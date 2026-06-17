@@ -23,6 +23,7 @@ Product direction:
 - Hook policy test: `npm run test:hooks`
 - Build: `npm run build`
 - Browser smoke: `npm run test:browser`
+- Workflow status: `npm run workflow:status`
 - Focused browser smoke: `npm run test:browser:workspace`, `npm run test:browser:editor`, `npm run test:browser:layout`, `npm run test:browser:panels`, `npm run test:browser:collab`
 
 ## Work Tracking
@@ -44,6 +45,7 @@ Product direction:
 - Do not put `Fixes MTS-123` on every PR in a Graphite stack; only the closing PR should close the issue.
 - After `gt submit`, choose one label from `.github/labels.json` based on the PR context and run `npm run pr:metadata -- --label <Label>` for the current PR so GitHub labels and assignees are attached.
 - While taeha is the only developer, GitHub PR assignee defaults to `taehalim`; do not request taeha as reviewer on taeha-authored PRs because GitHub does not allow self-review requests.
+- Use `npm run workflow:status` when resuming work, after Graphite submit, or after PR merge to check the next expected action.
 - Follow `docs/graphite-workflow.md` for Graphite-specific commands, stack rules, and merge queue policy.
 - Follow `docs/engineering-workflow.md` for the canonical workflow.
 

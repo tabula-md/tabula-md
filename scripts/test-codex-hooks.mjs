@@ -12,6 +12,15 @@ import {
   recordChangedFiles,
   recordValidationCommand
 } from "../.codex/hooks/lib/validation-policy.mjs";
+import {
+  buildWorkflowReminder,
+  classifyWorkflowCommand,
+  formatStopReason,
+  getMissingWorkflowSteps,
+  recordPostMergeSyncRequired,
+  recordWorkflowCommand,
+  shouldMarkPostMergeSyncRequired
+} from "../.codex/hooks/lib/workflow-policy.mjs";
 
 const fixtureRoot = path.resolve(".codex/hooks/fixtures");
 
@@ -156,6 +165,54 @@ test("validates patch classification fixture", () => {
 test("validates stop missing browser smoke fixture", () => {
   const fixture = readFixture("stop-missing-browser-smoke.json");
   assert.deepEqual(getMissingValidations(fixture.state).map((item) => item.command), fixture.expectedMissingCommands);
+});
+
+test("classifies Graphite workflow commands", () => {
+  assert.deepEqual(classifyWorkflowCommand("gt create -am \"[MTS-7] Add hooks\"").map((event) => event.type), ["graphite:create"]);
+  assert.deepEqual(classifyWorkflowCommand("gt modify -a").map((event) => event.type), ["graphite:modify"]);
+  assert.deepEqual(classifyWorkflowCommand("gt submit --publish --no-edit").map((event) => event.type), ["graphite:submit"]);
+  assert.deepEqual(classifyWorkflowCommand("gt sync --delete-all").map((event) => event.type), ["graphite:sync"]);
+  assert.deepEqual(classifyWorkflowCommand("npm run pr:metadata -- --label Infra").map((event) => event.label), ["Infra"]);
+});
+
+test("reports missing PR metadata only after real submit", () => {
+  let state = {};
+  state = recordWorkflowCommand(state, "gt create -am \"[MTS-7] Add hooks\"", "2026-06-17T00:00:00.000Z");
+  state = recordWorkflowCommand(state, "gt submit --no-edit", "2026-06-17T00:01:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-metadata"]);
+
+  state = recordWorkflowCommand(state, "npm run pr:metadata -- --list-labels", "2026-06-17T00:02:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-metadata"]);
+
+  state = recordWorkflowCommand(state, "npm run pr:metadata -- --label Infra --dry-run", "2026-06-17T00:03:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-metadata"]);
+
+  state = recordWorkflowCommand(state, "npm run pr:metadata -- --label Infra", "2026-06-17T00:04:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state), []);
+
+  state = recordWorkflowCommand(state, "gt submit --publish --no-edit", "2026-06-17T00:05:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state), []);
+});
+
+test("formats workflow reminders for prompts and stop continuation", () => {
+  assert.match(buildWorkflowReminder("PR #2 머지했어"), /gt sync --delete-all/);
+  assert.equal(shouldMarkPostMergeSyncRequired("PR #2 머지했어"), true);
+  assert.match(buildWorkflowReminder("패치해줘"), /pr:metadata/);
+  assert.equal(buildWorkflowReminder("고마워"), "");
+  assert.match(
+    formatStopReason({
+      missingWorkflowSteps: [{ command: "npm run pr:metadata -- --label <Label>", reason: "metadata missing" }],
+      missingValidations: [{ command: "npm run build", reason: "build missing" }]
+    }),
+    /Finish the Tabula Graphite workflow/
+  );
+});
+
+test("reports missing post-merge sync until cleanup is observed", () => {
+  let state = recordPostMergeSyncRequired({}, "2026-06-17T00:00:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["post-merge-sync"]);
+  state = recordWorkflowCommand(state, "gt sync --delete-all", "2026-06-17T00:01:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state), []);
 });
 
 console.log("Codex hook policy tests passed.");

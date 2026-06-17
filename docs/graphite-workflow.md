@@ -122,6 +122,7 @@ request can produce many related changes.
 ```sh
 gt sync
 gt checkout --trunk
+npm run workflow:status
 
 # Layer 1: smallest stable foundation
 gt add <files>
@@ -174,7 +175,8 @@ gt submit --stack
 After the stack is merged:
 
 ```sh
-gt sync
+gt sync --delete-all
+npm run workflow:status
 ```
 
 ## Single-PR Exception Flow
@@ -186,6 +188,7 @@ fix.
 ```sh
 gt sync
 gt checkout --trunk
+npm run workflow:status
 # edit files
 gt add <files>
 gt create -m "[MTS-123] Short title"
@@ -274,8 +277,13 @@ gt submit
 After the PR is merged:
 
 ```sh
-gt sync
+gt sync --delete-all
+npm run workflow:status
 ```
+
+Use `npm run workflow:status` whenever a thread resumes, after `gt submit`, and
+after taeha says a PR was merged. It reports the current branch, PR metadata,
+checks, Graphite state, and the next expected action.
 
 ## Stack Candidates
 

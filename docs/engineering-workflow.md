@@ -226,6 +226,13 @@ hard-coded file-path rules. To inspect the selectable labels:
 npm run pr:metadata -- --list-labels
 ```
 
+Use the workflow status helper when resuming a Codex thread, after submit, or
+after merge:
+
+```sh
+npm run workflow:status
+```
+
 When there is a separate reviewer, pass that reviewer through Graphite at submit
 time or through the metadata script:
 

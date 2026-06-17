@@ -99,6 +99,7 @@ agent-authored session은 이 흐름을 따른다.
 ```sh
 gt sync
 gt checkout --trunk
+npm run workflow:status
 
 # Layer 1: smallest stable foundation
 gt add <files>
@@ -151,7 +152,8 @@ gt submit --stack
 Stack merge 이후:
 
 ```sh
-gt sync
+gt sync --delete-all
+npm run workflow:status
 ```
 
 ## Single PR 예외 흐름
@@ -162,6 +164,7 @@ concern으로 닫히는 작업에만 single Graphite PR을 쓴다.
 ```sh
 gt sync
 gt checkout --trunk
+npm run workflow:status
 # edit files
 gt add <files>
 gt create -m "[MTS-123] Short title"
@@ -251,8 +254,13 @@ gt submit
 PR merge 이후:
 
 ```sh
-gt sync
+gt sync --delete-all
+npm run workflow:status
 ```
+
+Thread를 resume했을 때, `gt submit` 이후, 또는 taeha가 PR을 merge했다고 말한
+뒤에는 `npm run workflow:status`를 사용한다. 이 명령은 현재 branch, PR
+metadata, check, Graphite state, 다음 예상 action을 보여준다.
 
 ## Stack 후보
 

@@ -14,21 +14,11 @@ const result = evaluateBashCommand(command);
 if (result.decision === "block") {
   console.log(JSON.stringify({
     hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: result.message
-    }
-  }));
-  process.exit(0);
-}
-
-if (result.decision === "warn") {
-  console.log(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      additionalContext: `Tabula Codex hook warning: ${result.message}`
+      hookEventName: "PermissionRequest",
+      decision: {
+        behavior: "deny",
+        message: result.message
+      }
     }
   }));
 }
-
-process.exit(0);

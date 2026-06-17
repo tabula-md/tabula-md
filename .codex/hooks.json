@@ -1,5 +1,30 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env node \"$(git rev-parse --show-toplevel)/.codex/hooks/session-start-context.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Loading Tabula workflow context"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env node \"$(git rev-parse --show-toplevel)/.codex/hooks/user-prompt-submit-context.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking Tabula workflow prompt context"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "^Bash$",
@@ -9,6 +34,19 @@
             "command": "/usr/bin/env node \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-tool-use-bash.mjs\"",
             "timeout": 10,
             "statusMessage": "Checking Tabula shell policy"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env node \"$(git rev-parse --show-toplevel)/.codex/hooks/permission-request-bash.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking Tabula approval policy"
           }
         ]
       }

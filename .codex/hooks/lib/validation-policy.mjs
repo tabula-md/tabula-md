@@ -267,6 +267,7 @@ export function parseGitStatusFiles(statusText) {
 
 export function normalizeState(state) {
   return {
+    ...(isPlainObject(state) ? state : {}),
     changedFiles: isPlainObject(state?.changedFiles) ? state.changedFiles : {},
     required: isPlainObject(state?.required) ? state.required : {},
     requiredBrowserSuites: isPlainObject(state?.requiredBrowserSuites) ? state.requiredBrowserSuites : {},

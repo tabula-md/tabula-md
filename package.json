@@ -16,6 +16,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "pr:metadata": "node scripts/apply-pr-metadata.mjs",
+    "workflow:status": "node scripts/workflow-status.mjs",
     "test": "vitest run",
     "test:hooks": "node scripts/test-codex-hooks.mjs",
     "test:browser": "node scripts/browser-smoke.mjs",
