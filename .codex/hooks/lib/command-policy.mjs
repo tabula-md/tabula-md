@@ -100,7 +100,24 @@ function findBlockedGraphiteLifecycleCommands(command) {
     findings.push(block("Manage PR creation and updates through `gt submit`/Graphite, not `gh pr` lifecycle commands."));
   }
 
+  if (isMutatingGitHubLifecycleApi(command)) {
+    findings.push(block("Do not mutate PRs or remote refs with direct `gh api` calls. Use Graphite lifecycle commands, `npm run pr:metadata`, or an explicit workflow doctor fix flag."));
+  }
+
   return findings;
+}
+
+function isMutatingGitHubLifecycleApi(command) {
+  if (!/\bgh\s+api\b/.test(command)) {
+    return false;
+  }
+
+  const mutates = /(?:--method|-X)\s+(?:POST|PATCH|PUT|DELETE)\b/i.test(command);
+  if (!mutates) {
+    return false;
+  }
+
+  return /\brepos\/[^\s"'`]+\/[^\s"'`]+\/pulls(?:\/|\b)|\brepos\/[^\s"'`]+\/[^\s"'`]+\/git\/refs\/heads(?:\/|\b)/.test(command);
 }
 
 function findDestructiveGitCommands(command) {

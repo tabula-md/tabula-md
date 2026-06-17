@@ -24,9 +24,11 @@ import {
 import {
   checkBranchName,
   checkConventionalTitle,
+  checkPrLabels,
   checkPrTemplateBody,
   checkStatusChecks,
-  hasFailures
+  hasFailures,
+  parseArgs
 } from "./lib/workflow-automation.mjs";
 import { parseAgentSection, upsertAgentSection } from "./lib/agent-context.mjs";
 
@@ -52,10 +54,15 @@ test("blocks raw Git branch creation and PR publishing lifecycle", () => {
   assert.equal(evaluateBashCommand("git commit -m test").decision, "block");
   assert.equal(evaluateBashCommand("git push origin HEAD").decision, "block");
   assert.equal(evaluateBashCommand("gh pr create --draft").decision, "block");
+  assert.equal(evaluateBashCommand("gh pr ready 5").decision, "block");
+  assert.equal(evaluateBashCommand("gh pr edit 5 --body-file body.md").decision, "block");
+  assert.equal(evaluateBashCommand("gh api --method PATCH repos/tabula-md/tabula-md/pulls/5").decision, "block");
+  assert.equal(evaluateBashCommand("gh api -X DELETE repos/tabula-md/tabula-md/git/refs/heads/graphite-base/4").decision, "block");
+  assert.equal(evaluateBashCommand("gh api repos/tabula-md/tabula-md/pulls/5").decision, "allow");
 });
 
 test("allows Graphite commands and safe Git passthrough", () => {
-  assert.equal(evaluateBashCommand("gt create -am \"[MTS-123] Add layer\"").decision, "allow");
+  assert.equal(evaluateBashCommand("gt create codex/hook-policy -m \"chore(codex): update hook policy\"").decision, "allow");
   assert.equal(evaluateBashCommand("gt submit --stack").decision, "allow");
   assert.equal(evaluateBashCommand("git status --short").decision, "allow");
   assert.equal(evaluateBashCommand("git diff -- apps/web/src/App.tsx").decision, "allow");
@@ -178,7 +185,7 @@ test("validates stop missing browser smoke fixture", () => {
 test("classifies Graphite workflow commands", () => {
   assert.deepEqual(classifyWorkflowCommand("gt create -am \"chore(codex): add hooks\"").map((event) => event.type), ["graphite:create"]);
   assert.deepEqual(classifyWorkflowCommand("gt modify -a").map((event) => event.type), ["graphite:modify"]);
-  assert.deepEqual(classifyWorkflowCommand("gt submit --publish --no-edit").map((event) => event.type), ["graphite:submit"]);
+  assert.deepEqual(classifyWorkflowCommand("gt submit --publish --update-only").map((event) => event.type), ["graphite:submit"]);
   assert.deepEqual(classifyWorkflowCommand("gt sync --delete-all").map((event) => event.type), ["graphite:sync"]);
   assert.deepEqual(classifyWorkflowCommand("npm run pr:metadata -- --label Infra").map((event) => event.label), ["Infra"]);
 });
@@ -198,7 +205,7 @@ test("reports missing PR metadata only after real submit", () => {
   state = recordWorkflowCommand(state, "npm run pr:metadata -- --label Infra", "2026-06-17T00:04:00.000Z");
   assert.deepEqual(getMissingWorkflowSteps(state), []);
 
-  state = recordWorkflowCommand(state, "gt submit --publish --no-edit", "2026-06-17T00:05:00.000Z");
+  state = recordWorkflowCommand(state, "gt submit --publish --update-only", "2026-06-17T00:05:00.000Z");
   assert.deepEqual(getMissingWorkflowSteps(state), []);
 });
 
@@ -224,17 +231,30 @@ test("reports missing post-merge sync until cleanup is observed", () => {
 });
 
 test("checks PR readiness policy helpers", () => {
+  const publicPrBody = "## Summary\n\n## Review Focus\n\n## Implementation Notes\n\n## Validation\n\n## Risk\n\n## Evidence";
+  const agentPrBody = "## Summary\n\n## Review Focus\n\n## Implementation Notes\n\n## Agent\n\n- Tool: Codex\n- Session: 019ed132-9bc9-7a11-a31d-6bc08a92d5ff\n\n## Validation\n\n## Risk\n\n## Evidence";
+  const unknownAgentBody = "## Summary\n\n## Review Focus\n\n## Implementation Notes\n\n## Agent\n\n- Tool: Codex\n- Session: Unknown\n\n## Validation\n\n## Risk\n\n## Evidence";
+  const labelCatalog = [{ name: "Infra" }, { name: "Docs" }];
+
   assert.equal(checkConventionalTitle("fix(layout): keep rail aligned").level, "ok");
   assert.equal(checkConventionalTitle("[MTS-7] Keep rail aligned").level, "fail");
   assert.deepEqual(checkBranchName("layout-rail-alignment").map((check) => check.level), ["ok"]);
+  assert.deepEqual(checkBranchName("codex/workflow-public-readiness").map((check) => check.level), ["ok"]);
+  assert.deepEqual(checkBranchName("dev/taehalim/editor-rail-alignment").map((check) => check.level), ["ok"]);
   assert.equal(checkBranchName("06-17-_mts-7_add_workflow_entrypoint").some((check) => check.level === "warn"), true);
-  assert.equal(
-    hasFailures(checkPrTemplateBody("## Summary\n\n## Review Focus\n\n## Implementation Notes\n\n## Agent\n\n- Tool: Codex\n- Session: 019ed132-9bc9-7a11-a31d-6bc08a92d5ff\n\n## Validation\n\n## Risk\n\n## Evidence")),
-    false
-  );
+  assert.equal(checkBranchName("chore_workflow_clean_stale_graphite_temp_branches").some((check) => check.level === "warn"), true);
+  assert.equal(hasFailures(checkPrTemplateBody(publicPrBody, { branch: "dev/taehalim/docs-polish" })), false);
+  assert.equal(hasFailures(checkPrTemplateBody(publicPrBody, { branch: "codex/docs-polish" })), true);
+  assert.equal(hasFailures(checkPrTemplateBody(agentPrBody, { branch: "codex/docs-polish" })), false);
+  assert.equal(hasFailures(checkPrTemplateBody(unknownAgentBody, { branch: "codex/docs-polish" })), true);
   assert.equal(hasFailures(checkPrTemplateBody("## Summary")), true);
+  assert.deepEqual(checkPrLabels([{ name: "Infra" }], labelCatalog).map((check) => check.level), ["ok"]);
+  assert.equal(hasFailures(checkPrLabels([{ name: "Infra" }, { name: "Docs" }], labelCatalog)), true);
   assert.deepEqual(checkStatusChecks([{ name: "Verify", conclusion: "SUCCESS" }]).map((check) => check.level), ["ok"]);
   assert.deepEqual(checkStatusChecks([{ name: "Verify", status: "PENDING" }]).map((check) => check.level), ["warn"]);
+  assert.throws(() => parseArgs(["--fix"]), /explicit fix flag/);
+  assert.equal(parseArgs(["--delete-stale-graphite-base"]).deleteStaleGraphiteBase, true);
+  assert.throws(() => parseArgs(["--sync-labels"], { allowWorkflowFixFlags: false }), /Unknown option/);
 });
 
 test("upserts PR agent context", () => {

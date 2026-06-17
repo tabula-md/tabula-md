@@ -30,7 +30,7 @@ PR-bound development should use Graphite commands:
 gt sync
 gt checkout --trunk
 gt add <files>
-gt create -m "[MTS-123] Short title"
+gt create codex/short-kebab-slug -m "type(scope): summary"
 gt submit --stack
 ```
 
@@ -50,8 +50,9 @@ npm run pr:metadata -- --label <Label>
 ```
 
 The metadata script assigns the configured GitHub account, applies the chosen
-type label, records agent provenance, and skips self-review requests because
-GitHub does not allow requesting review from the PR author.
+type label, records agent provenance when explicit context is available, and
+skips self-review requests because GitHub does not allow requesting review from
+the PR author.
 
 Agents can inspect the current workflow state at any time:
 

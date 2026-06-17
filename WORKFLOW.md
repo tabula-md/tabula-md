@@ -7,16 +7,18 @@ file, this file wins.
 
 ## Operating Model
 
-- Linear tracks work intent: what should change, why it matters, priority, issue
-  state, and acceptance criteria.
+- GitHub Issues are the public inbound channel for bug reports and feature
+  requests.
+- Linear tracks accepted maintainer work: what should change, why it matters,
+  priority, issue state, and acceptance criteria.
 - Graphite owns PR-bound branch creation, stack shape, submit, review flow, and
   post-merge sync.
 - GitHub owns PR records, CI, code review metadata, and merge history.
 - Git owns local history.
 - ADRs track long-lived architecture decisions.
 
-GitHub Issues are not the default tracker. Use Linear unless the repository
-owner explicitly asks for a GitHub-native issue flow.
+For maintainer execution, use Linear unless the repository owner explicitly
+asks for a GitHub-native issue flow.
 
 ## Agent Contract
 
@@ -74,7 +76,7 @@ npm run workflow:status
 Before editing:
 
 - Confirm the worktree is clean or understand every existing change.
-- Create or identify the `MTS-*` Linear issue for trackable work.
+- Create or identify the `MTS-*` Linear issue for accepted maintainer work.
 - Decide whether the work is local-only, one PR, one stack, or multiple Linear
   issues.
 - Identify the intended Graphite layers before broad edits.
@@ -85,9 +87,47 @@ stack, and next expected action.
 
 Use `npm run workflow:doctor` when workflow setup looks suspicious. It checks
 repo-local templates, scripts, Graphite availability, GitHub merge settings, and
-label catalog drift without submitting or merging anything. Use
-`npm run workflow:doctor -- --fix` only when you want to apply safe local
-Graphite branch naming settings.
+stale Graphite temporary branches or label catalog drift without submitting or
+merging anything. Fixes are intentionally split by remote effect:
+
+- `npm run workflow:doctor -- --fix-graphite-config`
+- `npm run workflow:doctor -- --delete-stale-graphite-base`
+- `npm run workflow:doctor -- --sync-labels`
+
+## Command Ownership
+
+Graphite owns PR-bound branch and PR lifecycle:
+
+- Branch creation and commits: `gt create`.
+- Updating a branch after feedback: `gt modify`.
+- Stack navigation: `gt checkout`, `gt up`, `gt down`, `gt top`, `gt bottom`.
+- Stack shape: `gt move`, `gt reorder`, `gt fold`, `gt split`, `gt absorb`.
+- Sync and restack: `gt sync`, `gt restack`.
+- PR creation, PR updates, draft publishing: `gt submit`.
+- Recovery from a bad Graphite mutation: `gt undo`.
+
+GitHub API and GitHub CLI are allowed only for metadata and repository hygiene
+that Graphite does not own:
+
+- `npm run pr:metadata` may apply labels, assignees, reviewers, and agent
+  provenance after Graphite submit.
+- `npm run pr:ready` may read PR state, metadata, and checks.
+- `npm run workflow:doctor -- --sync-labels` may sync GitHub labels.
+- `npm run workflow:doctor -- --delete-stale-graphite-base` may delete stale
+  `graphite-base/*` branches only when no PRs are open.
+
+Do not use raw `git` or `gh` commands for Graphite-owned lifecycle operations.
+In particular, do not use `git checkout -b`, `git commit`, `git push`,
+`git pull`, `gh pr create`, `gh pr ready`, `gh pr edit`, `gh pr merge`, or
+direct mutating `gh api` calls against pull requests or remote refs.
+
+State-changing workflow commands must be serialized. Do not run Graphite
+mutations, GitHub metadata mutations, Linear status updates, or remote ref
+cleanup in parallel with each other or with reads that depend on their result.
+Parallel reads and validation are fine after the mutation has completed.
+
+When multiple agents work in parallel, use one Git worktree per agent session.
+Do not have two agents mutate the same Graphite stack from the same worktree.
 
 ## Linear Standard
 
@@ -95,8 +135,8 @@ Current Linear team: `Members of Technical Staff`.
 Current Linear issue key: `MTS`.
 Current Linear project: `tabula-md`.
 
-Create a Linear issue when work has durable product, architecture, security, or
-implementation context.
+Create a Linear issue when maintainer work has durable product, architecture,
+security, or implementation context.
 
 Required issue states:
 
@@ -151,8 +191,9 @@ safe local edits when useful and clearly report that submission is blocked.
 Local Graphite setup:
 
 - Disable date prefixes in generated branch names.
-- Do not use a tool, author, GitHub account, or session prefix by default.
-- Prefer Graphite-generated semantic branch names from commit titles.
+- Do not use date prefixes, Linear issue keys, session ids, or underscores.
+- Prefer explicit slash/kebab-case branch names over Graphite's default
+  underscore-generated names.
 
 Branch names are short-lived implementation details. The review surface is the
 Graphite stack, PR title, PR body, checks, and metadata.
@@ -171,31 +212,43 @@ Core CLI commands:
 gt sync --delete-all        # update trunk, restack, and delete merged branches
 gt checkout --trunk         # move back to trunk before new work
 gt add <files>              # stage files through Graphite
-gt create -m "type(scope): summary"
+gt create codex/short-kebab-slug -m "type(scope): summary"
 gt log short                # inspect the current stack
 gt submit                   # submit one branch
 gt submit --stack           # submit the whole stack
+gt submit --publish --update-only
 gt checkout <branch>        # move to an existing Graphite branch
+gt up / gt down             # move through a stack
 gt modify                   # amend the current Graphite branch
 gt modify -a                # stage all changes and amend
 gt restack                  # repair stack order after dependency changes
+gt move                     # move a branch to a different parent
+gt reorder                  # edit branch order in a stack
 gt fold                     # combine a too-small layer into another layer
 gt split                    # split one branch into reviewable layers
+gt absorb                   # distribute staged changes to matching downstack commits
+gt undo                     # undo the most recent Graphite mutation
 ```
 
 Graphite branch rules:
 
 - Do not create an empty branch first.
 - Make the edit, stage it, then run `gt create`.
-- Let Graphite generate short semantic branch names from the commit title.
-- Do not put tool identity, GitHub username, session id, or Linear issue key in
-  branch names by default.
-- If an explicit branch name is needed, use a short work-description slug such
-  as `workflow-entrypoint` or `rail-alignment`.
+- Pass an explicit branch name to `gt create` for PR-bound work.
+- Use slash-separated ownership and kebab-case intent:
+  - Agent-authored work: `codex/<short-slug>` or `claude/<short-slug>`.
+  - Human maintainer work: `dev/<github-login>/<short-slug>`.
+  - Release automation or exceptional release work: `release/v0.1.1`.
+- Keep the slug short, usually two to five words.
+- Do not include date prefixes, Linear issue keys, session ids, or underscores.
+- Do not rename an open Graphite PR branch just for style. GitHub PR branch
+  names are immutable, and `gt branch rename` removes the PR association.
 - Use Conventional Commit style for commit and PR titles:
   `type(scope): summary`.
 - Keep Linear issue keys out of commit titles and PR titles by default.
 - Treat each Graphite branch as one atomic review layer.
+- Treat `graphite-base/*` as a Graphite temporary implementation branch, not as
+  a work branch. Do not edit, submit, or review it directly.
 
 Allowed title types:
 
@@ -219,7 +272,7 @@ Create a single PR:
 
 ```sh
 gt add <files>
-gt create -m "fix(editor): keep rail aligned across modes"
+gt create codex/rail-alignment -m "fix(editor): keep rail aligned across modes"
 gt submit
 ```
 
@@ -228,11 +281,11 @@ Create a stack:
 ```sh
 # layer 1
 gt add <files>
-gt create -m "refactor(comments): extract panel view model"
+gt create codex/comments-view-model -m "refactor(comments): extract panel view model"
 
 # layer 2
 gt add <files>
-gt create -m "feat(comments): add anchored thread interactions"
+gt create codex/anchored-comment-threads -m "feat(comments): add anchored thread interactions"
 
 gt log short
 gt submit --stack
@@ -245,14 +298,14 @@ gt checkout <branch>
 # edit files
 gt add <files>
 gt modify
-gt submit --stack
+gt submit --stack --update-only
 ```
 
 Shortcut when all modified files should be included:
 
 ```sh
 gt modify -a
-gt submit --stack
+gt submit --stack --update-only
 ```
 
 ## Stack Shape
@@ -302,6 +355,9 @@ Before submit, confirm:
 - Use `gt split` for branches that contain multiple review concerns.
 - Use `gt reorder`, `gt move`, or `gt restack` when dependencies are out of
   order.
+- Use `gt absorb` when staged feedback belongs to older downstack commits.
+- Use `gt undo` before reaching for raw Git after an incorrect Graphite
+  mutation.
 
 ## Pull Request Standard
 
@@ -347,11 +403,6 @@ PR body shape:
 
 -
 
-## Agent
-
-- Tool:
-- Session:
-
 ## Validation
 
 - Automated:
@@ -376,6 +427,9 @@ Use `Implementation Notes` for meaningful decisions, tradeoffs, stack/layer
 context, or alternatives only when they help review. Do not force those details
 into every small PR.
 
+Agent-authored PRs include an additional `Agent` section inserted by
+`pr:metadata`. Public contributor PRs do not need that section.
+
 For UI changes, include screenshots or an explicit `Not visual` note. For
 behavior changes, include the exact verification command or manual check. If
 validation is intentionally skipped, explain why in `Not run`.
@@ -387,8 +441,8 @@ npm run pr:metadata -- --label <Label>
 ```
 
 `pr:metadata` also records the agent tool and session id in the PR body. It
-auto-detects common agent context when available, and supports explicit
-provenance:
+uses explicit arguments or agent context environment variables. Agent-authored
+PRs must not rely on guessed session ids:
 
 ```sh
 npm run pr:metadata -- --label <Label> --agent "Codex" --session <session-id>
@@ -397,12 +451,18 @@ npm run pr:metadata -- --label <Label> --agent "Codex" --session <session-id>
 Before asking the repository owner to merge, run:
 
 ```sh
+gt submit --publish --update-only
 npm run pr:ready
 ```
 
-This checks local cleanliness, PR metadata, title shape, body template shape,
-branch naming policy, fast whitespace checks, and GitHub check status. It does
-not submit, merge, or run expensive validation.
+`gt submit --publish --update-only` is the standard way to move an existing
+Graphite PR from draft to ready for review without creating new PRs. Do not use
+`gh pr ready` unless Graphite is unavailable and the repository owner explicitly
+approves the fallback.
+
+`pr:ready` checks local cleanliness, PR metadata, title shape, body template
+shape, branch naming policy, fast whitespace checks, and GitHub check status. It
+does not submit, merge, publish, or run expensive validation.
 
 Keep commit history concise:
 
@@ -467,6 +527,8 @@ order from bottom to top.
 
 Repository merge policy:
 
+- `main` is the only long-lived branch.
+- Do not create `dev`, `develop`, or `staging` branches for normal work.
 - GitHub merge commits are disabled.
 - Squash and rebase remain available.
 - Open PR branches stay alive while review is active.
@@ -479,13 +541,43 @@ After the repository owner merges a PR or stack:
 
 ```sh
 gt sync --delete-all
+git remote prune origin
 npm run workflow:status
+npm run workflow:doctor
 ```
+
+During active stack merges, Graphite may create remote `graphite-base/*`
+branches to keep upstack PR diffs stable while it rebases or retargets them.
+Do not touch those branches while PRs are open. After the full stack is merged,
+`gt sync --delete-all` has run, and there are no open PRs, any remaining
+`graphite-base/*` branches are stale temporary branches. Run:
+
+```sh
+npm run workflow:doctor -- --delete-stale-graphite-base
+```
+
+to remove stale remote Graphite temporary branches instead of letting them
+accumulate.
 
 Then move the Linear issue to `Done` when the closing PR has landed and no
 follow-up work remains.
 
 ## Release And Changelog
+
+Release from `main` only. Do not release from a feature branch, `dev`, or a
+temporary Graphite branch.
+
+Use semantic version tags:
+
+```txt
+v0.1.0
+v0.1.1
+v0.2.0
+```
+
+Release by user-visible value, not by PR count. Use patch releases for fixes,
+docs, and small polish. Use minor releases before `1.0.0` for meaningful product
+capabilities or workflow improvements.
 
 Use `.release/RELEASE_NOTES_TEMPLATE.md` when preparing a GitHub release,
 customer-facing release note, or milestone summary.
@@ -493,6 +585,10 @@ customer-facing release note, or milestone summary.
 Use `.release/CHANGELOG_ENTRY_TEMPLATE.md` when drafting changelog entries from
 merged PRs. Keep changelog text concise and user-impact focused; do not paste PR
 bodies directly into a changelog.
+
+Update `CHANGELOG.md` for user-facing changes before tagging a release. Internal
+workflow-only changes may skip changelog entries unless they affect contributors
+or maintainers.
 
 Do not create a release or publish release notes unless the repository owner
 explicitly asks. These templates are preparation aids, not automatic release

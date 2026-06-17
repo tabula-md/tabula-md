@@ -39,9 +39,9 @@ const reviewers = reviewerCandidates.filter((login) => login !== pullRequest.aut
 const skippedReviewers = reviewerCandidates.filter((login) => login === pullRequest.author?.login);
 const agentContext = resolveAgentContext({
   agent: options.agent,
-  session: options.session,
-  cwd: process.cwd()
+  session: options.session
 });
+const shouldUpdateAgentContext = !options.noAgentContext && hasCompleteAgentContext(agentContext);
 
 const resolvedLabels = labels.map((label) => ensureGitHubLabel(repo, label, options.dryRun));
 
@@ -58,7 +58,7 @@ if (!options.dryRun) {
     requestPullRequestReviewers(repo, pullRequest.number, reviewers);
   }
 
-  if (!options.noAgentContext) {
+  if (shouldUpdateAgentContext) {
     updatePullRequestBody(repo, pullRequest.number, upsertAgentSection(pullRequest.body, agentContext));
   }
 }
@@ -68,7 +68,7 @@ console.log(`URL: ${pullRequest.url}`);
 console.log(`Labels: ${resolvedLabels.join(", ") || "none"}`);
 console.log(`Assignees: ${assignees.join(", ") || "none"}`);
 console.log(`Reviewers: ${reviewers.join(", ") || "none"}`);
-console.log(`Agent: ${options.noAgentContext ? "not updated" : `${agentContext.tool} / ${agentContext.session}`}`);
+console.log(`Agent: ${formatAgentOutput(options.noAgentContext, shouldUpdateAgentContext, agentContext)}`);
 
 if (skippedReviewers.length > 0) {
   console.log(`Skipped self-reviewer: ${skippedReviewers.join(", ")}. GitHub does not allow requesting review from the PR author.`);
@@ -293,6 +293,22 @@ function resolveCatalogLabelName(labelName) {
   return resolved;
 }
 
+function hasCompleteAgentContext(context) {
+  return Boolean(context.tool && context.tool !== "Unknown" && context.session && context.session !== "Unknown");
+}
+
+function formatAgentOutput(noAgentContext, shouldUpdateAgentContext, context) {
+  if (noAgentContext) {
+    return "not updated";
+  }
+
+  if (shouldUpdateAgentContext) {
+    return `${context.tool} / ${context.session}`;
+  }
+
+  return `skipped; incomplete context (${context.tool} / ${context.session}). Pass --agent and --session, or set agent context env vars.`;
+}
+
 function requiredValue(flag, value) {
   if (!value || value.startsWith("--")) {
     throw new Error(`${flag} requires a value.`);
@@ -338,7 +354,7 @@ Options:
   --agent <name>             Agent/tool name for the PR Agent section.
   --label <label[,..]>       GitHub label selected by the agent from .github/labels.json. Required.
   --list-labels              Print selectable Tabula.md labels and exit.
-  --session <id>             Agent session id for the PR Agent section.
+  --session <id>             Agent session id for the PR Agent section. Required with --agent for agent-authored PRs.
   --reviewer <login[,..]>    GitHub reviewer. Defaults to TABULA_PR_REVIEWERS or taehalim.
   --no-agent-context         Do not update the PR Agent section.
   --no-reviewers            Do not request reviewers.

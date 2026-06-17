@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest a new capability or improvement.
+title: "feat: "
+labels: ["Feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or workflow problem should this solve?
+      placeholder: Describe the job to be done.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should Tabula.md do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: What workarounds or alternatives have you considered?
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Product surface
+      options:
+        - Markdown editing
+        - Preview
+        - Files and project context
+        - Comments
+        - Collaboration
+        - Import or export
+        - Agent handoff
+        - Other
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links, screenshots, examples, or related issues.

@@ -1,32 +1,24 @@
 # Tabula.md
 
-An instant Markdown collaboration prototype.
+The default document format for humans and agents.
 
-Open the app and edit Markdown immediately. A default `README.md` tab is always
-available, and additional tabs can be created with `+`. The active tab stays local
-until you use `Share -> Start session`, which turns that tab into a live Yjs room
-and creates a shareable `/r/:roomId#key=...` URL.
+Tabula.md is a local-first Markdown workspace for writing, previewing,
+commenting, and sharing Markdown documents without turning them into a database
+or proprietary document format.
 
-Markdown frontmatter is kept in the editor and shown as metadata in preview mode.
+## Status
 
-## Architecture
+Tabula.md is in public preview. The core Markdown workflow is usable locally;
+live collaboration is experimental and will continue to evolve before a stable
+`1.0.0` release.
 
-Tabula.md now keeps the product boundaries separate while staying in one repo:
+## What It Does
 
-```txt
-apps/web
-  Markdown project UI, tabs, preview, comments, libraries, and collab client adapter
-
-apps/collab-server
-  Hocuspocus/Yjs room server, WebSocket sync, persistence, snapshots, and recovery metadata
-
-packages/collab-protocol
-  Shared route helpers and room metadata contract
-```
-
-This mirrors the production direction used by tools like Excalidraw: the web app
-owns the user experience, while the live collaboration service has its own
-runtime boundary.
+- Edit Markdown files in a focused local workspace.
+- Preview GitHub Flavored Markdown.
+- Keep project context close with files, outline, and comments panels.
+- Open shareable live sessions when collaboration is needed.
+- Preserve Markdown as the source of truth.
 
 ## Run
 
@@ -36,40 +28,7 @@ Install dependencies:
 npm install
 ```
 
-Start the collaboration server:
-
-```sh
-npm run server
-```
-
-The collaboration server is powered by Hocuspocus and stores room state under
-`.tabula-collab/` by default.
-
-The local server also exposes a development token endpoint at `/collab/token`.
-The web app uses it to request a signed short-lived room token before opening a
-Hocuspocus connection. In production, keep the token validation path but move
-token issuance behind your authenticated app backend.
-
-The current live collaboration path is a prototype. The intended production
-direction is an Excalidraw-style end-to-end encrypted room model where the room
-key stays in the URL fragment and the server only relays or stores ciphertext.
-See `private-docs/adr/0001-e2ee-collaboration.md` for the decision record.
-
-Useful collaboration environment variables:
-
-```sh
-COLLAB_TOKEN_SECRET=change-me
-COLLAB_TOKEN_TTL_SECONDS=3600
-COLLAB_REQUIRE_TOKEN=true
-COLLAB_ENABLE_DEV_TOKEN_ENDPOINT=true
-COLLAB_ALLOWED_ORIGINS=http://localhost:5174
-COLLAB_MAX_PAYLOAD_BYTES=2097152
-COLLAB_CONNECTION_RATE_LIMIT_PER_MINUTE=120
-COLLAB_UPDATE_RATE_LIMIT_PER_MINUTE=600
-COLLAB_TOKEN_RATE_LIMIT_PER_MINUTE=120
-```
-
-Start the web app in another terminal:
+Start the web app:
 
 ```sh
 npm run dev
@@ -77,10 +36,19 @@ npm run dev
 
 Then open `http://localhost:5173`.
 
-## Workflow
+To run local live collaboration as well:
 
-Tabula.md uses Linear for trackable work, Graphite for mandatory stack-first PR
-workflow, GitHub for PR records and CI, and Git for history. Use `WORKFLOW.md`
-as the canonical workflow source, including Linear, Graphite, PR metadata,
-validation, merge cleanup, and Codex hook behavior. The detailed docs under
-`docs/` are supporting references.
+```sh
+npm run dev:all
+```
+
+## Contributing
+
+Use GitHub Issues for public bug reports and feature requests.
+
+See `CONTRIBUTING.md` for public contribution guidance and `SECURITY.md` for
+private vulnerability reporting.
+
+## License
+
+MIT. See `LICENSE`.
