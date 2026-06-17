@@ -137,6 +137,8 @@ gt create -m "[MTS-123] Add reviewable follow-up layer"
 
 gt log short
 gt submit --stack
+# Applies to the PR for the branch you are on. Repeat per PR in a stack.
+npm run pr:metadata -- --label <Label>
 ```
 
 Layering rules:
@@ -188,6 +190,7 @@ gt checkout --trunk
 gt add <files>
 gt create -m "[MTS-123] Short title"
 gt submit
+npm run pr:metadata -- --label <Label>
 ```
 
 PR title:
@@ -203,6 +206,53 @@ Linear: MTS-123
 ```
 
 Use `Fixes MTS-123` only when that PR should close the Linear issue.
+
+## GitHub PR Metadata
+
+Graphite creates and updates the GitHub pull request, but Tabula.md still keeps
+explicit GitHub PR metadata attached after submit.
+
+After each `gt submit`, run:
+
+```sh
+npm run pr:metadata -- --label <Label>
+```
+
+Default solo-project behavior:
+
+- Assignee: `taehalim`.
+- Label: one agent-selected type label from `.github/labels.json`: `Bug`,
+  `Feature`, `Improvement`, `Refactor`, `Infra`, `Docs`, `Chore`, or `Spike`.
+- Reviewer: no self-review request. GitHub does not allow requesting review from
+  the PR author, so taeha-authored solo PRs use assignee ownership instead.
+- Checks: GitHub Actions creates the PR checks from `.github/workflows/ci.yml`.
+
+The agent chooses the label from the label name and description in
+`.github/labels.json`; the metadata script does not infer labels from file-path
+rules. To inspect the selectable labels:
+
+```sh
+npm run pr:metadata -- --list-labels
+```
+
+When another reviewer exists, request them at submit time:
+
+```sh
+gt submit --reviewers <github-login>
+```
+
+or after submit:
+
+```sh
+npm run pr:metadata -- --label <Label> --reviewer <github-login>
+```
+
+For stacked work, apply metadata to each submitted PR branch. The script also
+accepts an explicit PR number:
+
+```sh
+npm run pr:metadata -- --pr <number> --label <Label>
+```
 
 After feedback on a single PR:
 

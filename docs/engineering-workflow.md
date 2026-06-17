@@ -206,6 +206,34 @@ Use the repository PR template. For UI changes, include screenshots or an
 explicit note that the change is not visual. For behavior changes, include the
 exact verification command or manual check.
 
+After Graphite creates or updates a PR, run:
+
+```sh
+npm run pr:metadata -- --label <Label>
+```
+
+This applies Tabula.md's GitHub PR metadata defaults for the current branch:
+
+- Assignee: `taehalim` while taeha is the only developer.
+- Label: one agent-selected type label from `.github/labels.json`.
+- Reviewer: skipped for taeha-authored solo PRs because GitHub does not allow
+  requesting review from the PR author.
+
+The agent must choose the label from the label name and description, not from
+hard-coded file-path rules. To inspect the selectable labels:
+
+```sh
+npm run pr:metadata -- --list-labels
+```
+
+When there is a separate reviewer, pass that reviewer through Graphite at submit
+time or through the metadata script:
+
+```sh
+gt submit --reviewers <github-login>
+npm run pr:metadata -- --label <Label> --reviewer <github-login>
+```
+
 Target PR size:
 
 - One clear concern per PR.

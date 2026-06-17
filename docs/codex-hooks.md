@@ -12,6 +12,7 @@ The hooks are intentionally small. They enforce the parts of the workflow that
 are easy to forget and cheap to check:
 
 - Use Graphite CLI for PR-bound branch, commit, stack, and PR lifecycle.
+- Attach GitHub PR metadata after Graphite submit with `npm run pr:metadata -- --label <Label>`.
 - Avoid destructive Git and shell commands unless taeha explicitly asked for
   them.
 - Use `apply_patch` for manual source edits instead of shell redirection or
@@ -40,6 +41,17 @@ gt add <files>
 gt modify
 gt submit --stack
 ```
+
+After Graphite creates or updates a PR, choose one label from
+`.github/labels.json` based on the PR context and apply GitHub PR metadata:
+
+```sh
+npm run pr:metadata -- --label <Label>
+```
+
+The metadata script assigns taeha's GitHub account, applies the chosen type
+label, and skips self-review requests for taeha-authored PRs because GitHub does
+not allow requesting review from the PR author.
 
 The pre-tool hook blocks raw Git/GitHub lifecycle commands such as:
 
