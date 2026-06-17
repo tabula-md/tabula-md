@@ -1,5 +1,6 @@
 const sourceWriteRoots = [
-  ".codex/",
+  ".codex/hooks/",
+  ".codex/hooks.json",
   ".github/",
   "apps/",
   "docs/",
@@ -101,7 +102,7 @@ function findBlockedGraphiteLifecycleCommands(command) {
   }
 
   if (isMutatingGitHubLifecycleApi(command)) {
-    findings.push(block("Do not mutate PRs or remote refs with direct `gh api` calls. Use Graphite lifecycle commands, `npm run pr:metadata`, or an explicit workflow doctor fix flag."));
+    findings.push(block("Do not mutate PRs or remote refs with direct `gh api` calls. Use Graphite lifecycle commands, `npm run pr:title`, `npm run pr:body`, `npm run pr:metadata`, or an explicit workflow doctor fix flag."));
   }
 
   return findings;
@@ -179,8 +180,11 @@ function findShellSourceWrites(command) {
     }
   }
 
-  if (/\b(?:python3?|node|ruby|perl)\b[\s\S]*(?:writeFileSync|writeFile|write_text|open\s*\([^)]*,\s*["']w|Path\s*\([^)]*\)\.write_text)/.test(command)) {
-    findings.push(block("Use apply_patch for manual source edits instead of scripting file writes."));
+  for (const target of extractScriptedWriteTargets(command)) {
+    if (isProjectSourcePath(target)) {
+      findings.push(block(`Use apply_patch for manual source edits instead of scripting file writes to \`${target}\`.`));
+      break;
+    }
   }
 
   return findings;
@@ -258,7 +262,37 @@ function sanitizePath(value) {
 
 function isProjectSourcePath(target) {
   const normalized = sanitizePath(target);
-  return sourceWriteRoots.some((root) => normalized === root || normalized.startsWith(root));
+  return sourceWriteRoots.some((root) => {
+    if (root.endsWith("/")) {
+      return normalized === root.slice(0, -1) || normalized.startsWith(root);
+    }
+
+    return normalized === root;
+  });
+}
+
+function extractScriptedWriteTargets(command) {
+  if (!/\b(?:python3?|node|ruby|perl)\b/.test(command)) {
+    return [];
+  }
+
+  const targets = new Set();
+  const patterns = [
+    /\bwriteFile(?:Sync)?\s*\(\s*(["'`])([^"'`]+)\1/g,
+    /\bopen\s*\(\s*(["'])([^"']+)\1\s*,\s*(["'])[^"']*w[^"']*\3/g,
+    /\b(?:Path|pathlib\.Path)\s*\(\s*(["'])([^"']+)\1\s*\)\.write_text\b/g
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of command.matchAll(pattern)) {
+      const target = sanitizePath(match[2]);
+      if (target) {
+        targets.add(target);
+      }
+    }
+  }
+
+  return [...targets];
 }
 
 function block(message) {

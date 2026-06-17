@@ -1,4 +1,4 @@
-# AGENTS.md
+# CLAUDE.md
 
 ## Project Overview
 
@@ -21,6 +21,9 @@ Product direction:
 - Treat `WORKFLOW.md` as the workflow source of truth. Do not duplicate or
   override workflow rules in this file.
 - If workflow guidance conflicts, `WORKFLOW.md` wins.
+- Claude Code may not run Codex project hooks. When hooks are unavailable,
+  manually follow the same command policy and validation checks described in
+  `WORKFLOW.md`.
 
 ## Commands
 

@@ -10,7 +10,14 @@ export const workflowRequiredFiles = [
   "LICENSE",
   "SECURITY.md",
   "WORKFLOW.md",
+  "WORKFLOW.ko.md",
   "AGENTS.md",
+  "CLAUDE.md",
+  "docs/README.md",
+  "knowledge/index.md",
+  "knowledge/log.md",
+  "knowledge/architecture/collaboration-security.md",
+  "knowledge/workflow/codex-hooks.md",
   ".codex/hooks.json",
   ".github/ISSUE_TEMPLATE/bug_report.yml",
   ".github/ISSUE_TEMPLATE/config.yml",
@@ -20,14 +27,26 @@ export const workflowRequiredFiles = [
   ".github/workflows/ci.yml",
   ".linear/ISSUE_TEMPLATE.md",
   ".release/CHANGELOG_ENTRY_TEMPLATE.md",
-  ".release/RELEASE_NOTES_TEMPLATE.md"
+  ".release/RELEASE_NOTES_TEMPLATE.md",
+  "scripts/workflow-doctor.mjs",
+  "scripts/knowledge-check.mjs",
+  "scripts/pr-body.mjs",
+  "scripts/pr-title.mjs",
+  "scripts/workflow-maintenance.mjs",
+  "scripts/workflow-status.mjs",
+  "scripts/workflow-sync.mjs"
 ];
 
 export const workflowRequiredScripts = [
+  "pr:body",
   "pr:metadata",
   "pr:ready",
+  "pr:title",
+  "knowledge:check",
   "workflow:doctor",
+  "workflow:maintenance",
   "workflow:status",
+  "workflow:sync",
   "test:hooks",
   "test",
   "build"
@@ -46,7 +65,7 @@ const conventionalTitlePattern = /^(feat|fix|docs|refactor|test|build|ci|chore|p
 const datePrefixedBranchPattern = /^\d{2}-\d{2}-/;
 const linearKeyBranchPattern = /(?:^|[/_-])mts-\d+(?:[/_-]|$)/i;
 const underscoreBranchPattern = /_/;
-const agentBranchPattern = /^(codex|claude)\//;
+const agentBranchPattern = /^(?:(?:codex|claude|cursor)|agent\/[a-z0-9-]+)\//;
 
 export function ok(message, detail = "") {
   return { level: "ok", message, detail };
@@ -142,11 +161,20 @@ export function checkPrTemplateBody(body, { branch = "" } = {}) {
   const checks = [];
 
   for (const section of prBodySections) {
+    const content = getMarkdownSection(text, section);
     checks.push(
-      text.includes(`## ${section}`)
+      content !== null
         ? ok(`PR body has section: ${section}`)
         : fail(`PR body missing section: ${section}`)
     );
+
+    if (content !== null) {
+      checks.push(
+        hasMeaningfulSectionContent(content, section)
+          ? ok(`PR body fills section: ${section}`)
+          : fail(`PR body section is still placeholder-only: ${section}`)
+      );
+    }
   }
 
   if (/^## Links\b/m.test(text)) {
@@ -165,6 +193,30 @@ export function checkPrTemplateBody(body, { branch = "" } = {}) {
   }
 
   return checks;
+}
+
+export function getMarkdownSection(body, section) {
+  const text = String(body ?? "");
+  const header = new RegExp(`^## ${escapeRegExp(section)}\\s*$`, "m").exec(text);
+  if (!header) {
+    return null;
+  }
+
+  const contentStart = header.index + header[0].length;
+  const rest = text.slice(contentStart);
+  const nextHeader = rest.search(/\n## [^\n]+/);
+  return nextHeader >= 0 ? rest.slice(0, nextHeader) : rest;
+}
+
+export function hasMeaningfulSectionContent(content, section = "") {
+  const lines = String(content ?? "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !isPlaceholderLine(line, section));
+
+  return lines.length > 0;
 }
 
 export function checkPrLabels(labels = [], labelCatalog = []) {
@@ -261,12 +313,53 @@ export function checkStatusChecks(checks = []) {
   });
 }
 
-export function parseArgs(argv, { allowWorkflowFixFlags = true } = {}) {
+export function parseGitCountObjects(output) {
+  const parsed = {};
+
+  for (const line of String(output ?? "").split(/\r?\n/)) {
+    const [key, ...valueParts] = line.split(":");
+    if (!key || valueParts.length === 0) {
+      continue;
+    }
+    parsed[key.trim()] = valueParts.join(":").trim();
+  }
+
+  return {
+    count: numberOrNull(parsed.count),
+    size: parsed.size ?? "",
+    inPack: numberOrNull(parsed["in-pack"]),
+    packs: numberOrNull(parsed.packs),
+    prunePackable: numberOrNull(parsed["prune-packable"]),
+    garbage: numberOrNull(parsed.garbage),
+    sizeGarbage: parsed["size-garbage"] ?? ""
+  };
+}
+
+export function readGitMaintenanceState(root) {
+  const gitDir = commandOutput("git", ["rev-parse", "--git-dir"], root);
+  const resolvedGitDir = gitDir ? path.resolve(root, gitDir) : path.join(root, ".git");
+  const gcLogPath = path.join(resolvedGitDir, "gc.log");
+  const countResult = commandResult("git", ["count-objects", "-vH"], root);
+  const counts = countResult.ok ? parseGitCountObjects(countResult.stdout) : null;
+  const gcLog = fs.existsSync(gcLogPath) ? fs.readFileSync(gcLogPath, "utf8").trim() : "";
+
+  return {
+    countResult,
+    counts,
+    gcLog,
+    gcLogPath,
+    hasGcLog: fs.existsSync(gcLogPath)
+  };
+}
+
+export function parseArgs(argv, { allowMaintenanceFlags = false, allowWorkflowFixFlags = true } = {}) {
   const options = {
     deleteStaleGraphiteBase: false,
     fixGraphiteConfig: false,
     help: false,
     json: false,
+    postMerge: false,
+    register: false,
     syncLabels: false
   };
 
@@ -307,6 +400,22 @@ export function parseArgs(argv, { allowWorkflowFixFlags = true } = {}) {
       continue;
     }
 
+    if (arg === "--post-merge") {
+      if (!allowMaintenanceFlags) {
+        throw new Error(`Unknown option: ${arg}`);
+      }
+      options.postMerge = true;
+      continue;
+    }
+
+    if (arg === "--register") {
+      if (!allowMaintenanceFlags) {
+        throw new Error(`Unknown option: ${arg}`);
+      }
+      options.register = true;
+      continue;
+    }
+
     if (arg === "--help" || arg === "-h") {
       options.help = true;
       continue;
@@ -316,4 +425,42 @@ export function parseArgs(argv, { allowWorkflowFixFlags = true } = {}) {
   }
 
   return options;
+}
+
+function numberOrNull(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function isPlaceholderLine(line, section) {
+  const value = line
+    .replace(/^[-*]\s*/, "")
+    .replace(/^\d+\.\s*/, "")
+    .trim();
+
+  if (!value || value === "-") {
+    return true;
+  }
+
+  if (/^(Automated|Manual|Not run):\s*$/i.test(value)) {
+    return true;
+  }
+
+  if (section === "Validation" && /^(Automated|Manual|Not run):\s*(?:none|n\/a)\.?$/i.test(value)) {
+    return true;
+  }
+
+  if (/^Screenshots\/video:\s*$/i.test(value)) {
+    return true;
+  }
+
+  return false;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

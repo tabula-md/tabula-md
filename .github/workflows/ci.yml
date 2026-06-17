@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check knowledge bundle
+        run: npm run knowledge:check
+
       - name: Test hooks
         run: npm run test:hooks
 

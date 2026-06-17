@@ -216,6 +216,25 @@ export function recordValidationCommand(state, command, timestamp = new Date().t
   return next;
 }
 
+export function shouldRecordGitStatusAfterCommand(command) {
+  const normalized = String(command ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return false;
+  }
+
+  return [
+    /\bnpm\s+(?:install|update|dedupe)\b/,
+    /\bnpm\s+pkg\s+set\b/,
+    /\bnpm\s+run\s+format\b/,
+    /\bnpm\s+run\s+lint\b[\s\S]*\s--fix(?:\s|$)/,
+    /\bprettier\b[\s\S]*\s--write(?:\s|$)/,
+    /\beslint\b[\s\S]*\s--fix(?:\s|$)/,
+    /\b(?:node|python3?|ruby|perl)\b[\s\S]*(?:writeFileSync|writeFile|write_text|open\s*\([^)]*,\s*["']w|Path\s*\([^)]*\)\.write_text)/,
+    /(?:^|[\s;|&])(?:cat|printf|echo)[\s\S]*?(?:>{1,2})\s*[^\s;&|]+/,
+    /(?:^|[\s;|&])tee\s+(?:-[a-zA-Z]+\s+)*[^\s;&|]+/
+  ].some((pattern) => pattern.test(normalized));
+}
+
 export function getMissingValidations(state) {
   const normalized = normalizeState(state);
   const missing = [];
@@ -392,5 +411,5 @@ const validationReasons = {
   build: "TypeScript, import, package, or app wiring changed.",
   browser: "Editor, preview, panel, file tree, share, collaboration, or browser-smoke UI coverage changed.",
   unit: "Pure Markdown/comment/storage-style logic changed.",
-  hooks: "Codex hook policy or hook tests changed."
+  hooks: "Agent hook policy or hook tests changed."
 };

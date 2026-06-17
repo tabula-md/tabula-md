@@ -1,9 +1,10 @@
 # WORKFLOW.md
 
-This file is the standard workflow for this repository. It should be enough to
-plan, implement, submit, review, merge, and clean up normal work without opening
-another workflow document. If another workflow document conflicts with this
-file, this file wins.
+This file is the standard workflow for this repository for humans and coding
+agents, including Codex, Cursor-compatible agents, Claude Code, and future
+tools. It should be enough to plan, implement, submit, review, merge, and clean
+up normal work without opening another workflow document. If another workflow
+document conflicts with this file, this file wins.
 
 ## Operating Model
 
@@ -20,10 +21,51 @@ file, this file wins.
 For maintainer execution, use Linear unless the repository owner explicitly
 asks for a GitHub-native issue flow.
 
+Agent entry files are intentionally thin:
+
+- `WORKFLOW.md`: canonical workflow for every contributor and agent.
+- `WORKFLOW.ko.md`: Korean-language version of the same workflow.
+- `AGENTS.md`: repo instructions for Codex and Cursor-compatible agents.
+- `CLAUDE.md`: repo instructions for Claude Code.
+
+Tool-specific entry files may add context needed by that tool, but they must
+not define a competing workflow.
+
+## Knowledge Bundle
+
+The repository includes `knowledge/`, an OKF-inspired bundle of Markdown concept
+documents with small YAML frontmatter blocks. It gives humans and agents a
+portable project knowledge map without adding another service or agent-specific
+runtime.
+
+Use it for deeper context about product principles, workflow concepts,
+architecture constraints, repository areas, and runbooks. Do not use it to
+override execution rules. `WORKFLOW.md` remains the workflow source of truth.
+The bundle uses OKF-style structure without claiming that repo-specific quality
+checks are general OKF conformance checks.
+
+Conventions:
+
+- `knowledge/index.md` is the navigation entrypoint.
+- `knowledge/log.md` records knowledge bundle changes.
+- Every non-reserved Markdown file under `knowledge/` is a concept document.
+- Concept documents include frontmatter with at least `type`.
+- Prefer normal Markdown links between concepts.
+
+Run this after editing the bundle:
+
+```sh
+npm run knowledge:check
+```
+
+`knowledge:check` is intentionally stricter than permissive OKF consumers. It
+may fail on broken internal links because this repository treats those links as
+curated context quality issues.
+
 ## Agent Contract
 
-When the human operator gives a concrete instruction, an agent has exactly three valid
-responses:
+When the human operator gives a concrete instruction, a coding agent has
+exactly three valid responses:
 
 - Explain why the instruction is technically wrong, product-inconsistent, or
   likely to break the project, with a concrete reason and a better alternative.
@@ -55,13 +97,73 @@ Use this decision order before editing:
 - Single PR: use one Graphite PR when the work has one reviewable concern, such
   as a typo, small docs patch, isolated test, or narrow bug fix.
 - Stack: use multiple Graphite PRs when one outcome has several reviewable
-  layers, such as foundation refactor, storage, behavior, UI, tests, docs, or
-  migration.
+  slices or layers.
 - Multiple Linear issues: split the issue only when the request has separate
   product outcomes, owners, timelines, or acceptance criteria.
 
 Do not create extra Linear issues merely because a Graphite stack has multiple
 PRs.
+
+## Slice Strategy
+
+Choose how to split the work before broad edits. Graphite stacks are review and
+merge structure; they do not require horizontal engineering layers.
+
+Default to a vertical slice when the work crosses a new or uncertain boundary:
+
+- New repo, service, package, deployment target, or runtime boundary.
+- Client/server, browser/server, worker/server, or multi-repo integration.
+- Collaboration, authentication, encryption, persistence, migrations, or
+  external systems.
+- Any change where the biggest risk is "do these parts actually connect?"
+
+A vertical slice should prove a thin end-to-end path first. It may be incomplete
+in depth, but it must run through the important boundary. Prefer this before
+deepening any one layer.
+
+Use a tracer bullet as the first vertical slice when uncertainty is high. A
+tracer bullet is the smallest useful path through the system, such as:
+
+```txt
+Tabula web
+-> room client config
+-> external room endpoint
+-> minimal room response
+-> smoke or manual verification
+```
+
+For example, if `tabula-room` becomes a separate repository, the first work
+should not be a complete room server. The first work should prove that Tabula can
+talk to a minimal external room service end to end. Security hardening,
+persistence, deployment, and protocol depth should follow after the path is
+proven.
+
+Use horizontal layers only when the integration path is already proven or the
+work is mostly internal cleanup:
+
+- Pure refactor below already-working behavior.
+- Test-only, docs-only, or tooling-only changes.
+- A shared contract or type cleanup that reduces later diffs.
+- A migration split where each layer can be verified independently.
+
+Good stack shapes:
+
+```txt
+High uncertainty:
+PR 1: thin vertical tracer bullet
+PR 2: harden protocol and data contracts
+PR 3: add persistence/security/deployment depth
+PR 4: tests and docs for the finished behavior
+
+Low uncertainty:
+PR 1: pure refactor or shared contract cleanup
+PR 2: behavior change
+PR 3: UI/tests/docs
+```
+
+Before choosing a horizontal split, ask whether reviewers can run or inspect a
+meaningful behavior before the later branches land. If not, start with a
+vertical slice instead.
 
 ## Start Of Work
 
@@ -79,7 +181,8 @@ Before editing:
 - Create or identify the `MTS-*` Linear issue for accepted maintainer work.
 - Decide whether the work is local-only, one PR, one stack, or multiple Linear
   issues.
-- Identify the intended Graphite layers before broad edits.
+- Choose vertical slice, tracer bullet, or horizontal layer split before broad
+  edits.
 
 Use `npm run workflow:status` when resuming a thread, after Graphite submit, and
 after merge. It summarizes the current branch, PR, metadata, checks, Graphite
@@ -87,12 +190,31 @@ stack, and next expected action.
 
 Use `npm run workflow:doctor` when workflow setup looks suspicious. It checks
 repo-local templates, scripts, Graphite availability, GitHub merge settings, and
-stale Graphite temporary branches or label catalog drift without submitting or
-merging anything. Fixes are intentionally split by remote effect:
+stale Graphite temporary branches, label catalog drift, or local Git maintenance
+warnings without submitting or merging anything. Fixes are intentionally split
+into explicit commands by effect:
 
 - `npm run workflow:doctor -- --fix-graphite-config`
 - `npm run workflow:doctor -- --delete-stale-graphite-base`
 - `npm run workflow:doctor -- --sync-labels`
+- `npm run workflow:maintenance -- --register`
+
+Use `npm run workflow:sync` after a PR or stack merge. It is the single
+post-merge cleanup command for normal work. Internally it runs Graphite sync,
+checks out trunk, prunes remote-tracking refs, runs post-merge local Git object
+maintenance, runs workflow doctor, and reports workflow status.
+`workflow:doctor`, `workflow:maintenance`, and `workflow:status` remain separate
+because they answer different questions: doctor checks repo/tooling health,
+maintenance repairs local Git object storage at safe boundaries, and status
+reports the current branch and PR state.
+
+Git object cleanup is separate from Graphite branch cleanup. Graphite owns
+merged branch cleanup through `gt sync --delete-all`. Git owns unreachable local
+objects. If `workflow:doctor` reports `.git/gc.log` or too many loose Git
+objects, do not prune during active branch work. The repair point is the
+post-merge boundary: after the PR or stack is merged, `npm run workflow:sync`
+runs `npm run workflow:maintenance -- --post-merge`, which repairs local Git
+object storage only when the repo is clean and on trunk.
 
 ## Command Ownership
 
@@ -109,6 +231,10 @@ Graphite owns PR-bound branch and PR lifecycle:
 GitHub API and GitHub CLI are allowed only for metadata and repository hygiene
 that Graphite does not own:
 
+- `npm run pr:title` may update the PR title after the agent reviews whether
+  the implementation scope changed.
+- `npm run pr:body` may write the agent-authored review body after Graphite
+  submit.
 - `npm run pr:metadata` may apply labels, assignees, reviewers, and agent
   provenance after Graphite submit.
 - `npm run pr:ready` may read PR state, metadata, and checks.
@@ -188,47 +314,18 @@ Allowed exceptions:
 If Graphite is unavailable, unauthenticated, uninitialized, or blocked, complete
 safe local edits when useful and clearly report that submission is blocked.
 
-Local Graphite setup:
+Lifecycle:
 
-- Disable date prefixes in generated branch names.
-- Do not use date prefixes, Linear issue keys, session ids, or underscores.
-- Prefer explicit slash/kebab-case branch names over Graphite's default
-  underscore-generated names.
-
-Branch names are short-lived implementation details. The review surface is the
-Graphite stack, PR title, PR body, checks, and metadata.
-
-Graphite terms:
-
-- Trunk: the base branch for new work, usually `main`.
-- Branch: one reviewable layer, usually one atomic commit.
-- Stack: ordered Graphite branches where later layers depend on earlier layers.
-- Submit: push Graphite branches and create or update GitHub PRs.
-- Restack: rewrite dependent branches after a lower layer changes.
-
-Core CLI commands:
-
-```sh
-gt sync --delete-all        # update trunk, restack, and delete merged branches
-gt checkout --trunk         # move back to trunk before new work
-gt add <files>              # stage files through Graphite
-gt create codex/short-kebab-slug -m "type(scope): summary"
-gt log short                # inspect the current stack
-gt submit                   # submit one branch
-gt submit --stack           # submit the whole stack
-gt submit --publish --update-only
-gt checkout <branch>        # move to an existing Graphite branch
-gt up / gt down             # move through a stack
-gt modify                   # amend the current Graphite branch
-gt modify -a                # stage all changes and amend
-gt restack                  # repair stack order after dependency changes
-gt move                     # move a branch to a different parent
-gt reorder                  # edit branch order in a stack
-gt fold                     # combine a too-small layer into another layer
-gt split                    # split one branch into reviewable layers
-gt absorb                   # distribute staged changes to matching downstack commits
-gt undo                     # undo the most recent Graphite mutation
-```
+- Start from trunk with `gt sync --delete-all` and `gt checkout --trunk`.
+- Create a layer by editing files, running `gt add <files>`, then running
+  `gt create <agent-or-dev-prefix>/short-kebab-slug -m "type(scope): summary"`.
+- Update a layer with `gt checkout <branch>`, edits, `gt add <files>`, and
+  `gt modify`.
+- Submit with `gt submit` for one branch or `gt submit --stack` for a stack.
+- Publish an existing draft PR with `gt submit --publish --update-only`.
+- Use `gt log short` before handoff.
+- Use `gt restack`, `gt move`, `gt reorder`, `gt fold`, `gt split`,
+  `gt absorb`, and `gt undo` for stack repair instead of raw Git recovery.
 
 Graphite branch rules:
 
@@ -236,9 +333,11 @@ Graphite branch rules:
 - Make the edit, stage it, then run `gt create`.
 - Pass an explicit branch name to `gt create` for PR-bound work.
 - Use slash-separated ownership and kebab-case intent:
-  - Agent-authored work: `codex/<short-slug>` or `claude/<short-slug>`.
+  - Agent-authored work: `<tool>/<short-slug>` for known agent tools, such as
+    `codex/<short-slug>`, `claude/<short-slug>`, or `cursor/<short-slug>`.
+  - New agent tools: `agent/<tool-slug>/<short-slug>` when a short top-level
+    prefix would be ambiguous.
   - Human maintainer work: `dev/<github-login>/<short-slug>`.
-  - Release automation or exceptional release work: `release/v0.1.1`.
 - Keep the slug short, usually two to five words.
 - Do not include date prefixes, Linear issue keys, session ids, or underscores.
 - Do not rename an open Graphite PR branch just for style. GitHub PR branch
@@ -265,92 +364,47 @@ Allowed title types:
 - `revert`: revert of a prior change.
 
 Use a scope when it helps review, such as `editor`, `preview`, `workflow`,
-`codex`, `collab`, `comments`, `files`, `layout`, or `ci`. Keep summaries
+`agent`, `collab`, `comments`, `files`, `layout`, or `ci`. Keep summaries
 short, lower-case, and free of trailing periods.
 
-Create a single PR:
-
-```sh
-gt add <files>
-gt create codex/rail-alignment -m "fix(editor): keep rail aligned across modes"
-gt submit
-```
-
-Create a stack:
-
-```sh
-# layer 1
-gt add <files>
-gt create codex/comments-view-model -m "refactor(comments): extract panel view model"
-
-# layer 2
-gt add <files>
-gt create codex/anchored-comment-threads -m "feat(comments): add anchored thread interactions"
-
-gt log short
-gt submit --stack
-```
-
-Update an existing branch after feedback:
-
-```sh
-gt checkout <branch>
-# edit files
-gt add <files>
-gt modify
-gt submit --stack --update-only
-```
-
-Shortcut when all modified files should be included:
-
-```sh
-gt modify -a
-gt submit --stack --update-only
-```
+For Graphite concepts and examples, use
+`knowledge/workflow/graphite-pr-lifecycle.md` and
+`knowledge/workflow/graphite-stack-shape.md`.
 
 ## Stack Shape
 
-Keep a layer split when:
+Shape the stack around the chosen slice strategy. Each branch needs one clear
+review purpose and should be independently reviewable, testable, and revertible.
 
-- It has one clear purpose that a reviewer can explain in one sentence.
-- It can build and test independently.
-- It can be reverted independently.
-- It has a different product surface, risk profile, reviewer, or architecture
-  boundary from nearby layers.
-- It establishes a foundation that later layers depend on.
+Use `gt modify` only when the change still belongs to the current review layer:
 
-Fold a layer into another branch when:
+- Reviewer feedback on that PR.
+- A bug, test, copy, or documentation adjustment needed for that PR to be
+  correct.
+- PR metadata, title, or body cleanup for that same layer.
 
-- It only makes sense with the branch directly below or above it.
-- The review cost of a separate PR is higher than the clarity it adds.
-- It is a tiny copy, CSS, fixture, or test adjustment for one implementation
-  layer.
-- Reviewing it separately would force reviewers to reconstruct context that
-  should be local to one PR.
-- It cannot pass meaningful verification on its own.
+Use `gt create` to add a new upstack PR when the work introduces a new
+reviewable concern:
 
-Split a branch further when:
+- The PR title would need to change to describe the new work.
+- The PR body `Review Focus` would need multiple unrelated focus areas.
+- A new command, hook policy, doc structure, runtime behavior, migration, or UI
+  surface can be reviewed and tested independently.
+- The change is useful but not required for the current PR's acceptance
+  criteria.
+- The current PR would become harder to revert cleanly.
 
-- Refactor, behavior, UI, tests, docs, or migration work are mixed together and
-  can be reviewed separately.
-- Failure would be hard to localize to one kind of change.
-- Reverting the branch would remove more product behavior than necessary.
-- The branch requires multiple reviewers for unrelated reasons.
-- The diff hides a risky change inside a broad cleanup.
-
-Reorder a stack when:
-
-- A later branch introduces primitives, contracts, or data shape that earlier
-  branches already depend on.
-- A pure refactor can sit below behavior changes and reduce later diffs.
-- Tests or docs describe behavior that has not appeared downstack yet.
+If scope drift is discovered before submit, use `gt split`, `gt move`, or
+`gt fold` to reshape the stack. If it is discovered after submit, prefer a new
+upstack branch with `gt create` over repeatedly widening the open PR. Keeping the
+work in the existing PR is an exception for tightly-coupled foundation cleanup
+or explicit repository-owner direction; call that out in `Implementation Notes`.
 
 Before submit, confirm:
 
 - `gt log short` reads bottom-to-top as a coherent implementation story.
 - Each branch title follows `type(scope): summary` and names the layer's
   purpose.
-- Each branch is independently reviewable, testable, and revertible.
 - Use `gt fold` for layers that are too small or too dependent to review alone.
 - Use `gt split` for branches that contain multiple review concerns.
 - Use `gt reorder`, `gt move`, or `gt restack` when dependencies are out of
@@ -359,6 +413,9 @@ Before submit, confirm:
 - Use `gt undo` before reaching for raw Git after an incorrect Graphite
   mutation.
 
+For split/fold/reorder criteria, use
+`knowledge/workflow/graphite-stack-shape.md`.
+
 ## Pull Request Standard
 
 PR title:
@@ -366,6 +423,11 @@ PR title:
 ```txt
 type(scope): summary
 ```
+
+The title must represent the final diff, not just the original task wording.
+Before readiness, compare the PR title against the actual changed files, the
+current commit subject, and the PR body `Summary`. If the implementation scope
+drifted, update both the current commit subject and the PR title.
 
 Good examples:
 
@@ -434,18 +496,53 @@ For UI changes, include screenshots or an explicit `Not visual` note. For
 behavior changes, include the exact verification command or manual check. If
 validation is intentionally skipped, explain why in `Not run`.
 
-After Graphite submit, apply metadata:
+After Graphite submit, review and update the title first:
+
+```sh
+npm run pr:title -- --title "type(scope): summary"
+```
+
+Then write the review body:
+
+```sh
+npm run pr:body -- \
+  --summary "<what changed and why>" \
+  --review-focus "<what the reviewer should inspect>" \
+  --implementation-notes "<important decision, tradeoff, or none with reason>" \
+  --validation-automated "<command or check that ran>" \
+  --validation-manual "<manual check, if any>" \
+  --validation-not-run "<skipped validation and reason, if any>" \
+  --risk "<remaining risk>" \
+  --evidence "<screenshot/video link or Not visual.>"
+```
+
+Then apply metadata:
 
 ```sh
 npm run pr:metadata -- --label <Label>
 ```
 
-`pr:metadata` also records the agent tool and session id in the PR body. It
-uses explicit arguments or agent context environment variables. Agent-authored
-PRs must not rely on guessed session ids:
+`pr:body` is not an automatic summarizer. The agent writes the content from the
+actual implementation, validation, and remaining risk; the script applies it in
+the standard template. `pr:ready` fails if body sections are missing or still
+placeholder-only.
+
+`pr:title` is the explicit title-review checkpoint. Use the existing title if
+it still describes the final diff; otherwise choose the smallest Conventional
+Commit title that names the dominant change. `pr:ready` fails if the PR title
+and the current commit subject disagree.
+
+`pr:metadata` records the agent tool and session id in the PR body. It uses
+explicit arguments or agent context environment variables. Agent-authored PRs
+must not rely on guessed session ids. Pass the actual tool name, such as
+`Codex`, `Claude Code`, `Cursor`, or another clear agent name:
 
 ```sh
 npm run pr:metadata -- --label <Label> --agent "Codex" --session <session-id>
+```
+
+```sh
+npm run pr:metadata -- --label <Label> --agent "Claude Code" --session <session-id>
 ```
 
 Before asking the repository owner to merge, run:
@@ -461,8 +558,9 @@ Graphite PR from draft to ready for review without creating new PRs. Do not use
 approves the fallback.
 
 `pr:ready` checks local cleanliness, PR metadata, title shape, body template
-shape, branch naming policy, fast whitespace checks, and GitHub check status. It
-does not submit, merge, publish, or run expensive validation.
+content, branch naming policy, PR-title-to-commit-subject agreement, fast
+whitespace checks, and GitHub check status. It does not submit, merge, publish,
+or run expensive validation.
 
 Keep commit history concise:
 
@@ -505,7 +603,9 @@ npm run pr:metadata -- --label <Label> --reviewer <github-login>
 ## Validation Standard
 
 - Run focused unit tests after pure-function changes.
-- Run `npm run test:hooks` after changing `.codex/hooks/**`.
+- Run `npm run knowledge:check` after changing `knowledge/**`.
+- Run `npm run test:hooks` after changing `.codex/hooks/**`, workflow policy
+  scripts, or agent automation checks.
 - Run `npm run build` after TypeScript, import, package, or app wiring changes.
 - Run `npm run test:browser` after editor, preview, right panel, file tree,
   share, or collaboration UI changes.
@@ -540,16 +640,13 @@ Repository merge policy:
 After the repository owner merges a PR or stack:
 
 ```sh
-gt sync --delete-all
-git remote prune origin
-npm run workflow:status
-npm run workflow:doctor
+npm run workflow:sync
 ```
 
 During active stack merges, Graphite may create remote `graphite-base/*`
 branches to keep upstack PR diffs stable while it rebases or retargets them.
 Do not touch those branches while PRs are open. After the full stack is merged,
-`gt sync --delete-all` has run, and there are no open PRs, any remaining
+`npm run workflow:sync` has run, and there are no open PRs, any remaining
 `graphite-base/*` branches are stale temporary branches. Run:
 
 ```sh
@@ -564,35 +661,10 @@ follow-up work remains.
 
 ## Release And Changelog
 
-Release from `main` only. Do not release from a feature branch, `dev`, or a
-temporary Graphite branch.
-
-Use semantic version tags:
-
-```txt
-v0.1.0
-v0.1.1
-v0.2.0
-```
-
-Release by user-visible value, not by PR count. Use patch releases for fixes,
-docs, and small polish. Use minor releases before `1.0.0` for meaningful product
-capabilities or workflow improvements.
-
-Use `.release/RELEASE_NOTES_TEMPLATE.md` when preparing a GitHub release,
-customer-facing release note, or milestone summary.
-
-Use `.release/CHANGELOG_ENTRY_TEMPLATE.md` when drafting changelog entries from
-merged PRs. Keep changelog text concise and user-impact focused; do not paste PR
-bodies directly into a changelog.
-
-Update `CHANGELOG.md` for user-facing changes before tagging a release. Internal
-workflow-only changes may skip changelog entries unless they affect contributors
-or maintainers.
-
-Do not create a release or publish release notes unless the repository owner
-explicitly asks. These templates are preparation aids, not automatic release
-triggers.
+Release and changelog strategy lives in
+`knowledge/runbooks/release-preparation.md`. Normal workflow work should only
+touch release artifacts when the repository owner explicitly asks for release or
+changelog preparation.
 
 ## Command Policy
 
@@ -621,27 +693,45 @@ Safe local inspection commands remain fine:
 - `git add`
 - `git rev-parse`
 
-## Codex Hooks
+## Agent Automation
 
-This repository uses project-local Codex hooks in `.codex/` as guardrails. The
-hooks reduce repeated workflow mistakes, but they do not replace agent judgment,
-code review, Linear planning, Graphite stack design, or test selection.
+The workflow does not depend on one agent runtime. Codex, Cursor-compatible
+agents, Claude Code, and future tools must all follow the same Linear,
+Graphite, validation, PR metadata, merge, and cleanup rules.
 
-Agents and contributors should know what the hooks do because hook output
-explains why a command was blocked, what validation is missing, or what next
-workflow action is expected.
+This repository currently includes project-local Codex hooks in `.codex/` as
+guardrails for Codex sessions. Other agents may not run those hooks. When an
+agent does not run the hooks, it must manually follow the same checks by using
+the scripts in this document, especially:
 
-Hooks automatically help with:
+```sh
+npm run workflow:status
+npm run workflow:doctor
+npm run pr:ready
+npm run test:hooks
+```
 
-- Adding short workflow context when a Codex session starts or a user prompt
-  asks for code, Graphite, Linear, or post-merge work.
+Codex hooks reduce repeated workflow mistakes, but they do not replace agent
+judgment, code review, Linear planning, Graphite stack design, or test
+selection.
+
+Codex hooks automatically help with:
+
+- Adding short workflow context when a Codex session starts.
+- Adding focused context when a prompt contains an explicit post-merge signal.
+- Blocking prompts that appear to contain API keys, access tokens, or private
+  key material.
 - Enforcing parts of the command policy above.
 - Recording likely validation needs after file changes.
-- Warning or continuing the turn when validation, PR metadata, or post-merge
-  sync appears to be missing.
+- Warning when validation appears to be missing.
+- Continuing the turn when Graphite submit happened in the current turn but PR
+  title, body, or metadata is still missing.
+- Reminding without blocking when older workflow state is pending during a later
+  explanation or investigation turn.
+- Continuing the turn when an explicit post-merge signal needs `workflow:sync`.
 - Denying approval requests that would bypass the same blocked command policy.
 
-Hooks do not automatically:
+Codex hooks do not automatically:
 
 - Create Linear issues.
 - Decide the right stack shape.
@@ -653,4 +743,6 @@ Hooks do not automatically:
 
 Project-local hooks load only when the project `.codex/` layer is trusted. When
 Codex reports changed hooks, review and trust them through the Codex hooks UI or
-CLI hook review flow before expecting them to run.
+CLI hook review flow before expecting them to run. Claude Code and other agents
+should treat `.codex/` as reference automation unless they explicitly support
+Codex hook execution.

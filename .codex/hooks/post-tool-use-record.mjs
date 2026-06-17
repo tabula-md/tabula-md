@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { findBashCommand, findPatchText, findToolName, readHookPayload, readState, repoRootFromCwd, statePathForPayload, writeState } from "./lib/hook-io.mjs";
-import { parseGitStatusFiles, parsePatchFiles, recordChangedFiles, recordValidationCommand } from "./lib/validation-policy.mjs";
+import { parseGitStatusFiles, parsePatchFiles, recordChangedFiles, recordValidationCommand, shouldRecordGitStatusAfterCommand } from "./lib/validation-policy.mjs";
 import { recordWorkflowCommand } from "./lib/workflow-policy.mjs";
 
 const maxStatusFilesToRecord = 80;
@@ -15,9 +15,11 @@ const command = findBashCommand(payload);
 if (command) {
   state = recordValidationCommand(state, command, now);
   state = recordWorkflowCommand(state, command, now);
-  const changedFiles = readBoundedGitStatusFiles(repoRootFromCwd(payload?.cwd));
-  if (changedFiles.length > 0) {
-    state = recordChangedFiles(state, changedFiles, now);
+  if (shouldRecordGitStatusAfterCommand(command)) {
+    const changedFiles = readBoundedGitStatusFiles(repoRootFromCwd(payload?.cwd));
+    if (changedFiles.length > 0) {
+      state = recordChangedFiles(state, changedFiles, now);
+    }
   }
 }
 

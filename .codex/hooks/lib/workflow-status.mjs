@@ -1,13 +1,16 @@
 import { execFileSync } from "node:child_process";
+import { checkPrTemplateBody, hasFailures } from "../../../scripts/lib/workflow-automation.mjs";
 
 export function collectWorkflowStatus(cwd = process.cwd()) {
   const branch = run("git", ["branch", "--show-current"], cwd).stdout || "unknown";
+  const currentCommitTitle = run("git", ["log", "-1", "--pretty=%s"], cwd).stdout || "";
   const gitStatus = run("git", ["status", "--short", "--untracked-files=all"], cwd).stdout;
   const graphiteLog = run("gt", ["log", "short", "--all"], cwd).stdout;
   const pr = branch && branch !== "main" ? readCurrentPullRequest(cwd) : null;
 
   return {
     branch,
+    currentCommitTitle,
     clean: gitStatus.trim().length === 0,
     dirtyFiles: gitStatus.split(/\r?\n/).filter(Boolean),
     graphiteLog,
@@ -56,27 +59,41 @@ export function buildSessionWorkflowContext(cwd = process.cwd()) {
 
 export function recommendNextActions(status) {
   if (status.pr?.state === "MERGED") {
-    return ["Run `gt checkout --trunk`, `gt sync --delete-all`, `git remote prune origin`, and `npm run workflow:doctor`, then confirm `gt log short --all` is clean."];
+    return ["Run `npm run workflow:sync`, then move the closing Linear issue to Done when appropriate."];
   }
 
   if (status.pr?.state === "OPEN") {
     const actions = [];
     const labels = Array.isArray(status.pr.labels) ? status.pr.labels : [];
     const assignees = Array.isArray(status.pr.assignees) ? status.pr.assignees : [];
+    if (status.currentCommitTitle && status.pr.title !== status.currentCommitTitle) {
+      actions.push(`Run \`npm run pr:title -- --title "${status.currentCommitTitle}"\` or update the current commit title so PR title and commit subject agree.`);
+    }
+    const bodyChecks = checkPrTemplateBody(status.pr.body, { branch: status.branch });
+    const bodyContentFailures = bodyChecks.filter((check) => (
+      check.level === "fail"
+      && /^PR body (?:missing section|section is still placeholder-only)/.test(check.message)
+    ));
+    if (bodyContentFailures.length > 0) {
+      actions.push("Run `npm run pr:body -- ...` with reviewable Summary, Review Focus, Validation, Risk, and Evidence content.");
+    }
     if (labels.length === 0 || assignees.length === 0) {
       actions.push("Run `npm run pr:metadata -- --label <Label>` with a label from `.github/labels.json`.");
     }
     if (status.pr.isDraft) {
       actions.push("Publish the PR when ready with `gt submit --publish --update-only`.");
     }
-    if (actions.length === 0) {
+    if (actions.length === 0 && !hasFailures(bodyChecks)) {
       actions.push("Review checks and merge in Graphite when the PR is acceptable.");
+    }
+    if (actions.length === 0) {
+      actions.push("Run `npm run pr:ready` and address any remaining readiness failures.");
     }
     return actions;
   }
 
   if (status.branch !== "main") {
-    return ["If this branch is PR-bound, run validation, `gt submit`, then `npm run pr:metadata -- --label <Label>`."];
+    return ["If this branch is PR-bound, run validation, `gt submit`, `npm run pr:title -- --title \"type(scope): summary\"`, `npm run pr:body -- ...`, then `npm run pr:metadata -- --label <Label>`."];
   }
 
   if (!status.clean) {

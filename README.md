@@ -49,6 +49,11 @@ Use GitHub Issues for public bug reports and feature requests.
 See `CONTRIBUTING.md` for public contribution guidance and `SECURITY.md` for
 private vulnerability reporting.
 
+## Docs
+
+See `docs/README.md` for public project docs. Maintainer workflow and durable
+agent-readable context live in `WORKFLOW.md` and `knowledge/`.
+
 ## License
 
 MIT. See `LICENSE`.
