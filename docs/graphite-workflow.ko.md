@@ -114,6 +114,8 @@ gt create -m "[MTS-123] Add reviewable follow-up layer"
 
 gt log short
 gt submit --stack
+# 현재 branch의 PR에 적용된다. Stack에서는 PR마다 반복한다.
+npm run pr:metadata -- --label <Label>
 ```
 
 Layering 규칙:
@@ -164,6 +166,7 @@ gt checkout --trunk
 gt add <files>
 gt create -m "[MTS-123] Short title"
 gt submit
+npm run pr:metadata -- --label <Label>
 ```
 
 PR 제목:
@@ -179,6 +182,54 @@ Linear: MTS-123
 ```
 
 Linear issue를 닫아야 하는 PR에만 `Fixes MTS-123`를 쓴다.
+
+## GitHub PR 메타데이터
+
+Graphite가 GitHub pull request를 만들고 업데이트하지만, Tabula.md는 submit
+이후 GitHub PR metadata를 명시적으로 붙인다.
+
+각 `gt submit` 이후 실행한다:
+
+```sh
+npm run pr:metadata -- --label <Label>
+```
+
+Solo project 기본값:
+
+- Assignee: `taehalim`.
+- Label: `.github/labels.json`에서 agent가 선택한 type label 하나. `Bug`,
+  `Feature`, `Improvement`, `Refactor`, `Infra`, `Docs`, `Chore`, `Spike`.
+- Reviewer: self-review request는 하지 않는다. GitHub는 PR author에게 review
+  request를 보낼 수 없으므로 taeha-authored solo PR은 assignee ownership으로
+  표시한다.
+- Checks: `.github/workflows/ci.yml`의 GitHub Actions가 PR check를 만든다.
+
+Agent는 `.github/labels.json`의 label 이름과 설명을 읽고 PR 맥락에 맞는
+label을 고른다. Metadata script는 file-path rule로 label을 추론하지 않는다.
+선택 가능한 label을 확인하려면:
+
+```sh
+npm run pr:metadata -- --list-labels
+```
+
+별도 reviewer가 생기면 submit 시점에 요청한다:
+
+```sh
+gt submit --reviewers <github-login>
+```
+
+또는 submit 이후 metadata script로 요청한다:
+
+```sh
+npm run pr:metadata -- --label <Label> --reviewer <github-login>
+```
+
+Stacked work에서는 submit된 각 PR branch마다 metadata를 적용한다. 명시적인
+PR number도 넘길 수 있다:
+
+```sh
+npm run pr:metadata -- --pr <number> --label <Label>
+```
 
 Single PR feedback 반영:
 

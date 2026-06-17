@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Bug",
+    "color": "d73a4a",
+    "description": "Intended behavior is broken or regressed."
+  },
+  {
+    "name": "Feature",
+    "color": "a2eeef",
+    "description": "New user-facing capability."
+  },
+  {
+    "name": "Improvement",
+    "color": "5319e7",
+    "description": "Better version of an existing capability."
+  },
+  {
+    "name": "Refactor",
+    "color": "c5def5",
+    "description": "Internal code improvement without behavior change."
+  },
+  {
+    "name": "Infra",
+    "color": "6f42c1",
+    "description": "Build, CI, deploy, tooling, or environment work."
+  },
+  {
+    "name": "Docs",
+    "color": "0075ca",
+    "description": "Documentation, specs, ADRs, or written process."
+  },
+  {
+    "name": "Chore",
+    "color": "d0d7de",
+    "description": "Maintenance that does not fit other types."
+  },
+  {
+    "name": "Spike",
+    "color": "fbca04",
+    "description": "Research or investigation before implementation."
+  }
+]

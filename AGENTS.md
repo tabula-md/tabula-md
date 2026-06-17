@@ -42,6 +42,8 @@ Product direction:
 - Include `Linear: MTS-123` in PR bodies.
 - Include `Fixes MTS-123` in PR bodies when the PR closes a Linear issue.
 - Do not put `Fixes MTS-123` on every PR in a Graphite stack; only the closing PR should close the issue.
+- After `gt submit`, choose one label from `.github/labels.json` based on the PR context and run `npm run pr:metadata -- --label <Label>` for the current PR so GitHub labels and assignees are attached.
+- While taeha is the only developer, GitHub PR assignee defaults to `taehalim`; do not request taeha as reviewer on taeha-authored PRs because GitHub does not allow self-review requests.
 - Follow `docs/graphite-workflow.md` for Graphite-specific commands, stack rules, and merge queue policy.
 - Follow `docs/engineering-workflow.md` for the canonical workflow.
 
