@@ -1,10 +1,8 @@
 # Tabula.md Codex Hooks
 
-Status: Active
-Owner: taeha
-
 This repository uses project-local Codex hooks to keep agent workflows aligned
-with the Tabula.md engineering process.
+with the Tabula.md engineering process. The canonical workflow source is
+`WORKFLOW.md`; this file is supporting hook reference.
 
 ## Scope
 
@@ -13,8 +11,8 @@ are easy to forget and cheap to check:
 
 - Use Graphite CLI for PR-bound branch, commit, stack, and PR lifecycle.
 - Attach GitHub PR metadata after Graphite submit with `npm run pr:metadata -- --label <Label>`.
-- Avoid destructive Git and shell commands unless taeha explicitly asked for
-  them.
+- Avoid destructive Git and shell commands unless the human operator explicitly
+  asked for them.
 - Use `apply_patch` for manual source edits instead of shell redirection or
   ad-hoc file-writing scripts.
 - Track which validations are likely needed before a turn ends.
@@ -51,9 +49,9 @@ After Graphite creates or updates a PR, choose one label from
 npm run pr:metadata -- --label <Label>
 ```
 
-The metadata script assigns taeha's GitHub account, applies the chosen type
-label, and skips self-review requests for taeha-authored PRs because GitHub does
-not allow requesting review from the PR author.
+The metadata script assigns the configured GitHub account, applies the chosen
+type label, records agent provenance, and skips self-review requests because
+GitHub does not allow requesting review from the PR author.
 
 Agents can inspect the current workflow state at any time:
 

@@ -1,28 +1,30 @@
-## Linear
-
-- Linear: MTS-
-- Closes: <!-- Use `Fixes MTS-123` only when this PR should close the issue. -->
-
-## Changes
+## Summary
 
 -
 
-## Verification
+## Review Focus
 
-- [ ] `npm test`
-- [ ] `npm run build`
-- [ ] `npm run test:browser`
-- [ ] Manual/browser check:
+-
 
-## Screenshots
+## Implementation Notes
 
-<!-- Required for visible UI changes. Write "Not visual" when not applicable. -->
+-
+
+## Agent
+
+- Tool:
+- Session:
+
+## Validation
+
+- Automated:
+- Manual:
+- Not run:
 
 ## Risk
 
 -
 
-## Graphite
+## Evidence
 
-- Stack: <!-- Link the Graphite stack, or write "Not stacked". -->
-- Layer: <!-- If stacked, describe this PR's layer in the stack. -->
+- Screenshots/video:

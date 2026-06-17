@@ -412,10 +412,10 @@ export async function run(ctx) {
       (await page.getByLabel("Your collaboration name").count()) === 1,
       "Live modal should expose the collaboration name after the room starts.",
     );
-    await page.getByLabel("Your collaboration name").fill("Taeha");
+    await page.getByLabel("Your collaboration name").fill("Local User");
     await page.getByLabel("Your collaboration name").blur();
     expect(
-      (await page.getByLabel("Your collaboration name").inputValue()) === "Taeha",
+      (await page.getByLabel("Your collaboration name").inputValue()) === "Local User",
       "Live modal should allow editing the collaboration name.",
     );
     expect((await page.locator(".share-link-display").count()) === 1, "Live modal should render a compact invite-link preview.");

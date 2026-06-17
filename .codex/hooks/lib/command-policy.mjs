@@ -107,15 +107,15 @@ function findDestructiveGitCommands(command) {
   const findings = [];
 
   if (/\bgit\s+reset\s+--hard\b/.test(command)) {
-    findings.push(block("`git reset --hard` can destroy user work. Do not run it unless taeha explicitly asked for that operation."));
+    findings.push(block("`git reset --hard` can destroy user work. Do not run it unless the human operator explicitly asked for that operation."));
   }
 
   if (/\bgit\s+checkout\s+--(?:\s|$)/.test(command) || /\bgit\s+restore\b/.test(command)) {
-    findings.push(block("Raw checkout/restore can discard user changes. Do not run it unless taeha explicitly asked for that operation."));
+    findings.push(block("Raw checkout/restore can discard user changes. Do not run it unless the human operator explicitly asked for that operation."));
   }
 
   if (/\bgit\s+clean\s+-[^\n;|&\s]*[fd][^\n;|&\s]*/.test(command)) {
-    findings.push(block("`git clean` can delete untracked work. Do not run it unless taeha explicitly asked for cleanup."));
+    findings.push(block("`git clean` can delete untracked work. Do not run it unless the human operator explicitly asked for cleanup."));
   }
 
   return findings;
@@ -125,7 +125,7 @@ function findDestructiveShellCommands(command) {
   const findings = [];
 
   if (/(?:^|[\s;|&])rm\s+-[^\n;|&\s]*r[^\n;|&\s]*f[^\n;|&\s]*(?:\s|$)/.test(command) || /(?:^|[\s;|&])rm\s+-[^\n;|&\s]*f[^\n;|&\s]*r[^\n;|&\s]*(?:\s|$)/.test(command)) {
-    findings.push(block("`rm -rf` can delete user work. Do not run it unless taeha explicitly asked for that exact cleanup."));
+    findings.push(block("`rm -rf` can delete user work. Do not run it unless the human operator explicitly asked for that exact cleanup."));
   }
 
   return findings;

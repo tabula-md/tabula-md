@@ -403,7 +403,7 @@ export async function run(ctx) {
       "Comment card actions should not appear when there are no comments.",
     );
 
-    await page.getByLabel("Comment author name").fill("Taeha");
+    await page.getByLabel("Comment author name").fill("Local User");
     await page.getByLabel("Comment author name").blur();
     await page.getByLabel("Add comment to README.md").fill("Review this intro.");
     await page.locator(".right-comment-form .right-comment-submit").click();
@@ -421,7 +421,7 @@ export async function run(ctx) {
     expect(commentsAfterAdd.fileHeaderCount === 0, "Active-file comments should not repeat the file header.");
     expect(commentsAfterAdd.actionText === "ReplyResolveDelete", "Comment cards should expose direct reply, resolve, and delete actions.");
     expect(commentsAfterAdd.visibleText.includes("Review this intro."), "Added comment should render in the comments panel.");
-    expect(commentsAfterAdd.authorText === "Taeha", "New comments should use the editable local identity.");
+    expect(commentsAfterAdd.authorText === "Local User", "New comments should use the editable local identity.");
     expect(
       commentsAfterAdd.actionText.includes("Reply") && commentsAfterAdd.actionText.includes("Resolve"),
       "Comment card actions should be available without opening a menu.",
@@ -440,7 +440,7 @@ export async function run(ctx) {
     }));
     expect(commentReplyState.replyCount === 1, "Reply should render under its parent comment.");
     expect(commentReplyState.replyAvatarCount === 0, "Replies should not repeat the full comment avatar treatment.");
-    expect(commentReplyState.replyText.includes("Taeha") && commentReplyState.replyText.includes("Reply back."), "Reply should keep author and body readable.");
+    expect(commentReplyState.replyText.includes("Local User") && commentReplyState.replyText.includes("Reply back."), "Reply should keep author and body readable.");
     expect(commentReplyState.replyAuthorVariant.includes("reply"), "Replies should use the compact author variant.");
     expect(commentReplyState.replyIndent !== "0px", "Replies should be visually nested under the root comment.");
 

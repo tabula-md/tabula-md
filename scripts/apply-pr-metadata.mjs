@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
+import { resolveAgentContext, upsertAgentSection } from "./lib/agent-context.mjs";
 
 const defaultOwnerLogin = "taehalim";
 const labelCatalog = JSON.parse(fs.readFileSync(new URL("../.github/labels.json", import.meta.url), "utf8"));
@@ -36,6 +37,11 @@ const reviewerCandidates = options.noReviewers
     : parseList(process.env.TABULA_PR_REVIEWERS || defaultOwnerLogin);
 const reviewers = reviewerCandidates.filter((login) => login !== pullRequest.author?.login);
 const skippedReviewers = reviewerCandidates.filter((login) => login === pullRequest.author?.login);
+const agentContext = resolveAgentContext({
+  agent: options.agent,
+  session: options.session,
+  cwd: process.cwd()
+});
 
 const resolvedLabels = labels.map((label) => ensureGitHubLabel(repo, label, options.dryRun));
 
@@ -51,6 +57,10 @@ if (!options.dryRun) {
   if (reviewers.length > 0) {
     requestPullRequestReviewers(repo, pullRequest.number, reviewers);
   }
+
+  if (!options.noAgentContext) {
+    updatePullRequestBody(repo, pullRequest.number, upsertAgentSection(pullRequest.body, agentContext));
+  }
 }
 
 console.log(`PR metadata target: ${repo}#${pullRequest.number}`);
@@ -58,6 +68,7 @@ console.log(`URL: ${pullRequest.url}`);
 console.log(`Labels: ${resolvedLabels.join(", ") || "none"}`);
 console.log(`Assignees: ${assignees.join(", ") || "none"}`);
 console.log(`Reviewers: ${reviewers.join(", ") || "none"}`);
+console.log(`Agent: ${options.noAgentContext ? "not updated" : `${agentContext.tool} / ${agentContext.session}`}`);
 
 if (skippedReviewers.length > 0) {
   console.log(`Skipped self-reviewer: ${skippedReviewers.join(", ")}. GitHub does not allow requesting review from the PR author.`);
@@ -72,12 +83,15 @@ function parseArgs(argv) {
     assignees: [],
     dryRun: false,
     help: false,
+    agent: null,
     labels: [],
     listLabels: false,
+    noAgentContext: false,
     noReviewers: false,
     pr: null,
     repo: null,
-    reviewers: []
+    reviewers: [],
+    session: null
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -104,6 +118,11 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === "--no-agent-context") {
+      parsed.noAgentContext = true;
+      continue;
+    }
+
     if (arg === "--repo") {
       parsed.repo = requiredValue(arg, next);
       index += 1;
@@ -112,6 +131,18 @@ function parseArgs(argv) {
 
     if (arg === "--pr") {
       parsed.pr = requiredValue(arg, next);
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--agent") {
+      parsed.agent = requiredValue(arg, next);
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--session") {
+      parsed.session = requiredValue(arg, next);
       index += 1;
       continue;
     }
@@ -153,10 +184,25 @@ function getPullRequest(repo, prNumber) {
 
   if (prNumber) {
     args.push(String(prNumber));
+  } else {
+    args.push(currentBranch());
   }
 
   args.push("--repo", repo, "--json", "number,author,isDraft,headRefName,url,title,body");
   return ghJson(args);
+}
+
+function currentBranch() {
+  const result = spawnSync("git", ["branch", "--show-current"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  if (result.status !== 0 || !result.stdout.trim()) {
+    throw new Error("Could not resolve current branch for PR metadata.");
+  }
+
+  return result.stdout.trim();
 }
 
 function ensureGitHubLabel(repo, labelName, dryRun) {
@@ -221,6 +267,17 @@ function requestPullRequestReviewers(repo, prNumber, reviewers) {
   ]);
 }
 
+function updatePullRequestBody(repo, prNumber, body) {
+  gh([
+    "api",
+    "--method",
+    "PATCH",
+    `repos/${repo}/pulls/${prNumber}`,
+    "-f",
+    `body=${body}`
+  ]);
+}
+
 function parseList(value) {
   return String(value ?? "")
     .split(/[,\s]+/)
@@ -278,9 +335,12 @@ Options:
   --pr <number>              PR number. Defaults to the PR for the current branch.
   --repo <owner/name>        GitHub repository. Defaults to the current repo.
   --assignee <login[,..]>    GitHub assignee. Defaults to TABULA_PR_ASSIGNEES or taehalim.
+  --agent <name>             Agent/tool name for the PR Agent section.
   --label <label[,..]>       GitHub label selected by the agent from .github/labels.json. Required.
   --list-labels              Print selectable Tabula.md labels and exit.
+  --session <id>             Agent session id for the PR Agent section.
   --reviewer <login[,..]>    GitHub reviewer. Defaults to TABULA_PR_REVIEWERS or taehalim.
+  --no-agent-context         Do not update the PR Agent section.
   --no-reviewers            Do not request reviewers.
   --dry-run                 Print the intended metadata without changing GitHub.
 `);

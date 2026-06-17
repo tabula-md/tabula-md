@@ -80,8 +80,7 @@ Then open `http://localhost:5173`.
 ## Workflow
 
 Tabula.md uses Linear for trackable work, Graphite for mandatory stack-first PR
-workflow, GitHub for PR records and CI, and Git for history. See
-`docs/team-onboarding.md`, `docs/engineering-workflow.md`, and
-`docs/graphite-workflow.md` for issue, stack, PR, and review conventions. See
-`docs/codex-hooks.md` for the local Codex hook policy that protects this
-workflow.
+workflow, GitHub for PR records and CI, and Git for history. Use `WORKFLOW.md`
+as the canonical workflow source, including Linear, Graphite, PR metadata,
+validation, merge cleanup, and Codex hook behavior. The detailed docs under
+`docs/` are supporting references.
