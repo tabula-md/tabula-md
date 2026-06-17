@@ -18,6 +18,8 @@ are easy to forget and cheap to check:
 - Use `apply_patch` for manual source edits instead of shell redirection or
   ad-hoc file-writing scripts.
 - Track which validations are likely needed before a turn ends.
+- Track Graphite submit, PR metadata, and sync steps so agent handoffs stay on
+  the expected workflow path.
 
 The hooks do not replace code review, Linear planning, Graphite stack design, or
 test judgment.
@@ -52,6 +54,15 @@ npm run pr:metadata -- --label <Label>
 The metadata script assigns taeha's GitHub account, applies the chosen type
 label, and skips self-review requests for taeha-authored PRs because GitHub does
 not allow requesting review from the PR author.
+
+Agents can inspect the current workflow state at any time:
+
+```sh
+npm run workflow:status
+```
+
+The status helper reports the current branch, worktree cleanliness, current PR
+metadata, checks, Graphite log, and the next recommended action.
 
 The pre-tool hook blocks raw Git/GitHub lifecycle commands such as:
 
@@ -99,9 +110,9 @@ command and records the changed files only when the result is bounded. Very
 large dirty states are ignored to avoid noisy validation state in bootstrapped or
 untracked repositories.
 
-The stop hook prints an advisory when a session changed files that usually need
-validation and the matching command was not observed after the latest relevant
-change:
+The stop hook checks for missing validation when a session changed files that
+usually need validation and the matching command was not observed after the
+latest relevant change:
 
 - TypeScript, package, import, or app wiring changes: `npm run build`
 - Editor, preview, panel, file tree, share, collaboration, or smoke UI changes:
@@ -109,6 +120,27 @@ change:
   otherwise `npm run test:browser`
 - Pure Markdown/comment/storage-style logic changes: `npm test`
 - Hook policy changes: `npm run test:hooks`
+
+The stop hook also tracks Graphite workflow state. When Codex tries to stop
+after an observed `gt submit` without a later successful
+`npm run pr:metadata -- --label <Label>`, or when local cleanup is explicitly
+marked required after a merge, the hook returns the official Stop-hook JSON
+continuation shape so Codex performs one more focused pass instead of ending the
+turn early.
+
+The hook does not create Linear issues, submit PRs, or merge PRs by itself. It
+only records command observations and nudges the agent toward the next expected
+command.
+
+## Prompt Context Hooks
+
+`SessionStart` injects a short Tabula workflow context for startup, resume,
+clear, and compact events. `UserPromptSubmit` adds focused reminders when a
+prompt appears to ask for code changes, Graphite work, Linear work, or post-merge
+cleanup.
+
+`PermissionRequest` reuses the same Bash policy as `PreToolUse` so approval
+requests for blocked commands are denied consistently.
 
 Focused browser smoke aliases are available:
 

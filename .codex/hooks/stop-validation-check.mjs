@@ -1,19 +1,28 @@
 #!/usr/bin/env node
 import { readHookPayload, readState, statePathForPayload } from "./lib/hook-io.mjs";
 import { getMissingValidations } from "./lib/validation-policy.mjs";
+import { formatStopReason, getMissingWorkflowSteps } from "./lib/workflow-policy.mjs";
 
 const payload = await readHookPayload();
 const state = readState(statePathForPayload(payload));
-const missing = getMissingValidations(state);
+const missingValidations = getMissingValidations(state);
+const missingWorkflowSteps = getMissingWorkflowSteps(state);
 
-if (missing.length === 0) {
+if (missingValidations.length === 0 && missingWorkflowSteps.length === 0) {
   process.exit(0);
 }
 
-const lines = [
-  "Tabula Codex hook: validation may be missing for this session.",
-  ...missing.map((item) => `- ${item.command}: ${item.reason}`)
-];
+const reason = formatStopReason({ missingValidations, missingWorkflowSteps });
 
-console.error(lines.join("\n"));
+if (payload?.stop_hook_active) {
+  console.log(JSON.stringify({
+    systemMessage: reason
+  }));
+  process.exit(0);
+}
+
+console.log(JSON.stringify({
+  decision: "block",
+  reason
+}));
 process.exit(0);
