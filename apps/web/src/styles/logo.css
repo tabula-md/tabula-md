@@ -1,0 +1,14 @@
+.tabula-logo {
+  display: block;
+  flex: 0 0 auto;
+  width: var(--tabula-logo-size, 104px);
+  aspect-ratio: 577 / 537;
+  color: #1f1f1f;
+  background-color: currentColor;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}

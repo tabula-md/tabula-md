@@ -1,0 +1,10 @@
+@import "./styles/base.css";
+@import "./styles/logo.css";
+@import "./styles/top-chrome.css";
+@import "./styles/tabs.css";
+@import "./styles/left-sidebar.css";
+@import "./styles/file-surface.css";
+@import "./styles/preview.css";
+@import "./styles/right-panel.css";
+@import "./styles/status-bar.css";
+@import "./styles/toast.css";

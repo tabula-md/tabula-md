@@ -1,0 +1,42 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env node \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-tool-use-bash.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking Tabula shell policy"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(Bash|apply_patch|Edit|Write)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env node \"$(git rev-parse --show-toplevel)/.codex/hooks/post-tool-use-record.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Recording Tabula validation context"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env node \"$(git rev-parse --show-toplevel)/.codex/hooks/stop-validation-check.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking Tabula validation coverage"
+          }
+        ]
+      }
+    ]
+  }
+}

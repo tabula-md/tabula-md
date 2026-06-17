@@ -1,0 +1,310 @@
+import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
+import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
+import { getScrollRatio, scrollElementToRatio } from "../scroll";
+import type { FileViewMode } from "../workspaceStorage";
+
+type ModeScrollSurface = "editor" | "preview";
+
+type ModeScrollAnchor = {
+  surface: ModeScrollSurface;
+  ratio: number;
+};
+
+type PendingModeScroll = {
+  fileId: string;
+  toMode: FileViewMode;
+  anchor: ModeScrollAnchor;
+};
+
+type SetWorkspaceViewModeOptions = {
+  preserveScroll?: boolean;
+  focusEditor?: boolean;
+};
+
+type UseWorkspaceScrollSyncArgs = {
+  activeFileId?: string;
+  activeViewMode: FileViewMode;
+  editorRef: RefObject<MarkdownEditorHandle | null>;
+  onSetActiveFileViewMode: (nextViewMode: FileViewMode) => void;
+};
+
+const clampScrollRatio = (ratio: number) => Math.max(0, Math.min(1, ratio));
+
+const getScrollableDistance = (element: HTMLElement) => Math.max(0, element.scrollHeight - element.clientHeight);
+
+const isScrollableElement = (element: HTMLElement | null) => Boolean(element && getScrollableDistance(element) > 1);
+
+const getWorkspaceRelativeTop = (element: HTMLElement, workspace: HTMLElement) =>
+  element.getBoundingClientRect().top - workspace.getBoundingClientRect().top + workspace.scrollTop;
+
+export function useWorkspaceScrollSync({
+  activeFileId,
+  activeViewMode,
+  editorRef,
+  onSetActiveFileViewMode,
+}: UseWorkspaceScrollSyncArgs) {
+  const scrollSyncingRef = useRef(false);
+  const lastSplitScrollSurfaceRef = useRef<ModeScrollSurface>("editor");
+  const pendingModeScrollRef = useRef<PendingModeScroll | null>(null);
+  const pendingEditorFocusRef = useRef(false);
+  const workspaceRef = useRef<HTMLElement | null>(null);
+  const editorSurfaceRef = useRef<HTMLElement | null>(null);
+  const previewSurfaceRef = useRef<HTMLElement | null>(null);
+
+  const getSurfaceElement = (surface: ModeScrollSurface) =>
+    surface === "preview" ? previewSurfaceRef.current : editorSurfaceRef.current;
+
+  const getSurfaceRatioInWorkspace = (surfaceElement: HTMLElement, workspace: HTMLElement) => {
+    const surfaceTop = getWorkspaceRelativeTop(surfaceElement, workspace);
+    const surfaceScrollableDistance = Math.max(0, surfaceElement.scrollHeight - workspace.clientHeight);
+    if (surfaceScrollableDistance <= 1) {
+      return 0;
+    }
+
+    return clampScrollRatio((workspace.scrollTop - surfaceTop) / surfaceScrollableDistance);
+  };
+
+  const getCurrentModeScrollAnchor = (): ModeScrollAnchor => {
+    const workspace = workspaceRef.current;
+
+    if (activeViewMode === "edit") {
+      return { surface: "editor", ratio: workspace ? getScrollRatio(workspace) : 0 };
+    }
+
+    if (activeViewMode === "preview") {
+      return { surface: "preview", ratio: workspace ? getScrollRatio(workspace) : 0 };
+    }
+
+    if (workspace && isScrollableElement(workspace)) {
+      const previewSurface = previewSurfaceRef.current;
+      const editorSurface = editorSurfaceRef.current;
+      const previewTop = previewSurface ? getWorkspaceRelativeTop(previewSurface, workspace) : Number.POSITIVE_INFINITY;
+      const viewportAnchor = workspace.scrollTop + workspace.clientHeight * 0.45;
+
+      if (previewSurface && viewportAnchor >= previewTop) {
+        return {
+          surface: "preview",
+          ratio: getSurfaceRatioInWorkspace(previewSurface, workspace),
+        };
+      }
+
+      if (editorSurface) {
+        return {
+          surface: "editor",
+          ratio: getSurfaceRatioInWorkspace(editorSurface, workspace),
+        };
+      }
+    }
+
+    const sourceSurface = lastSplitScrollSurfaceRef.current;
+    const sourceElement = getSurfaceElement(sourceSurface);
+    return {
+      surface: sourceSurface,
+      ratio: sourceElement && isScrollableElement(sourceElement) ? getScrollRatio(sourceElement) : (editorRef.current?.getScrollRatio() ?? 0),
+    };
+  };
+
+  const scrollWorkspaceToSurfaceAnchor = (
+    workspace: HTMLElement,
+    surface: ModeScrollSurface,
+    ratio: number,
+  ) => {
+    const surfaceElement = getSurfaceElement(surface);
+    if (!surfaceElement) {
+      scrollElementToRatio(workspace, ratio);
+      return;
+    }
+
+    const surfaceTop = getWorkspaceRelativeTop(surfaceElement, workspace);
+    const surfaceScrollableDistance = Math.max(0, surfaceElement.scrollHeight - workspace.clientHeight);
+    const nextScrollTop = surfaceTop + clampScrollRatio(ratio) * surfaceScrollableDistance;
+    workspace.scrollTop = Math.max(0, Math.min(nextScrollTop, getScrollableDistance(workspace)));
+  };
+
+  const applyModeScrollAnchor = (anchor: ModeScrollAnchor) => {
+    const workspace = workspaceRef.current;
+
+    if (activeViewMode === "split") {
+      if (workspace && isScrollableElement(workspace)) {
+        scrollWorkspaceToSurfaceAnchor(workspace, anchor.surface, anchor.ratio);
+        return;
+      }
+
+      if (editorSurfaceRef.current) {
+        scrollElementToRatio(editorSurfaceRef.current, anchor.ratio);
+      }
+      if (previewSurfaceRef.current) {
+        scrollElementToRatio(previewSurfaceRef.current, anchor.ratio);
+      }
+      return;
+    }
+
+    if (workspace) {
+      scrollElementToRatio(workspace, anchor.ratio);
+    }
+  };
+
+  const releaseScrollSync = () => {
+    window.requestAnimationFrame(() => {
+      scrollSyncingRef.current = false;
+    });
+  };
+
+  const setActiveFileViewMode = (
+    nextViewMode: FileViewMode,
+    options: SetWorkspaceViewModeOptions = {},
+  ) => {
+    if (!activeFileId) {
+      return;
+    }
+
+    const shouldPreserveScroll = options.preserveScroll ?? true;
+    const shouldFocusEditor = options.focusEditor ?? nextViewMode === "edit";
+    if (nextViewMode !== activeViewMode && shouldPreserveScroll) {
+      pendingModeScrollRef.current = {
+        fileId: activeFileId,
+        toMode: nextViewMode,
+        anchor: getCurrentModeScrollAnchor(),
+      };
+    } else {
+      pendingModeScrollRef.current = null;
+    }
+
+    onSetActiveFileViewMode(nextViewMode);
+
+    if (shouldFocusEditor && !shouldPreserveScroll) {
+      window.setTimeout(() => editorRef.current?.focus(), 0);
+    }
+  };
+
+  const queueEditorFocus = () => {
+    pendingEditorFocusRef.current = true;
+  };
+
+  useLayoutEffect(() => {
+    const pendingModeScroll = pendingModeScrollRef.current;
+    if (
+      !pendingModeScroll ||
+      pendingModeScroll.fileId !== activeFileId ||
+      pendingModeScroll.toMode !== activeViewMode
+    ) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      scrollSyncingRef.current = true;
+      applyModeScrollAnchor(pendingModeScroll.anchor);
+      pendingModeScrollRef.current = null;
+      releaseScrollSync();
+
+      if (activeViewMode === "edit") {
+        editorRef.current?.focus();
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeFileId, activeViewMode]);
+
+  useLayoutEffect(() => {
+    if (!pendingEditorFocusRef.current || !activeFileId || activeViewMode !== "edit") {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      pendingEditorFocusRef.current = false;
+      editorRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeFileId, activeViewMode]);
+
+  const handleEditorScrollRatioChange = (ratio: number) => {
+    if (activeViewMode !== "split" || scrollSyncingRef.current) {
+      return;
+    }
+
+    lastSplitScrollSurfaceRef.current = "editor";
+
+    const previewSurface = previewSurfaceRef.current;
+    if (!previewSurface) {
+      return;
+    }
+
+    scrollSyncingRef.current = true;
+    scrollElementToRatio(previewSurface, ratio);
+    releaseScrollSync();
+  };
+
+  const handleEditorSurfaceScroll = () => {
+    if (activeViewMode !== "split" || scrollSyncingRef.current) {
+      return;
+    }
+
+    lastSplitScrollSurfaceRef.current = "editor";
+
+    const editorSurface = editorSurfaceRef.current;
+    const previewSurface = previewSurfaceRef.current;
+    if (!editorSurface || !previewSurface) {
+      return;
+    }
+
+    scrollSyncingRef.current = true;
+    scrollElementToRatio(previewSurface, getScrollRatio(editorSurface));
+    releaseScrollSync();
+  };
+
+  const handlePreviewScroll = () => {
+    if (activeViewMode !== "split" || scrollSyncingRef.current) {
+      return;
+    }
+
+    lastSplitScrollSurfaceRef.current = "preview";
+
+    const previewSurface = previewSurfaceRef.current;
+    if (!previewSurface) {
+      return;
+    }
+
+    scrollSyncingRef.current = true;
+    if (editorSurfaceRef.current && editorSurfaceRef.current.scrollHeight > editorSurfaceRef.current.clientHeight) {
+      scrollElementToRatio(editorSurfaceRef.current, getScrollRatio(previewSurface));
+    } else {
+      editorRef.current?.scrollToRatio(getScrollRatio(previewSurface));
+    }
+    releaseScrollSync();
+  };
+
+  useEffect(() => {
+    if (activeViewMode !== "split") {
+      return;
+    }
+
+    const pendingModeScroll = pendingModeScrollRef.current;
+    if (pendingModeScroll) {
+      const { fileId, toMode } = pendingModeScroll;
+      if (fileId === activeFileId && toMode === "split") {
+        return;
+      }
+    }
+
+    const previewSurface = previewSurfaceRef.current;
+    if (!previewSurface) {
+      return;
+    }
+
+    scrollSyncingRef.current = true;
+    scrollElementToRatio(previewSurface, editorSurfaceRef.current ? getScrollRatio(editorSurfaceRef.current) : 0);
+    releaseScrollSync();
+  }, [activeViewMode, activeFileId]);
+
+  return {
+    workspaceRef,
+    editorSurfaceRef,
+    previewSurfaceRef,
+    setActiveFileViewMode,
+    queueEditorFocus,
+    handleEditorScrollRatioChange,
+    handleEditorSurfaceScroll,
+    handlePreviewScroll,
+  };
+}

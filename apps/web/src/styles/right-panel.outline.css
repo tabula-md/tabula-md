@@ -1,0 +1,67 @@
+.right-outline-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.right-outline-list li {
+  min-width: 0;
+  margin: 0;
+}
+
+.right-outline-row {
+  display: grid;
+  grid-template-columns: var(--right-chevron-size) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--right-tight-gap);
+  padding: 0 6px;
+}
+
+.right-outline-toggle,
+.right-outline-toggle-spacer {
+  display: grid;
+  place-items: center;
+  width: var(--right-chevron-size);
+  height: var(--right-row-height);
+}
+
+.right-outline-toggle {
+  color: #8c8c8c;
+  background: transparent;
+}
+
+.right-outline-toggle:hover,
+.right-outline-toggle:focus-visible {
+  color: #1f1f1f;
+}
+
+.right-outline-link {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--right-tight-gap);
+  min-width: 0;
+  height: var(--right-row-height);
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.right-outline-depth {
+  min-width: 0;
+  overflow: hidden;
+  color: #8c8c8c;
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: var(--right-row-height);
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.right-panel-action {
+  justify-content: center;
+  gap: var(--right-row-gap);
+}

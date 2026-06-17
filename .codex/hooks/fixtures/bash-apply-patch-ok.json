@@ -1,0 +1,17 @@
+{
+  "kind": "patch-policy",
+  "name": "records apply_patch file classification",
+  "patch": "*** Begin Patch\n*** Update File: apps/web/src/components/FileToolbar.tsx\n@@\n-const oldValue = true;\n+const oldValue = false;\n*** End Patch",
+  "expectedFiles": [
+    "apps/web/src/components/FileToolbar.tsx"
+  ],
+  "expectedNeeds": {
+    "build": true,
+    "browser": true,
+    "unit": false,
+    "hooks": false
+  },
+  "expectedBrowserSuites": [
+    "editor-preview"
+  ]
+}

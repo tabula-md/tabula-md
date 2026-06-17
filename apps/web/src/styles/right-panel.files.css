@@ -1,0 +1,211 @@
+.right-file-tree,
+.right-file-tree-children {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.right-file-tree-node {
+  position: relative;
+  min-width: 0;
+}
+
+.right-file-tree-children {
+  position: relative;
+}
+
+.right-file-tree-row {
+  display: grid;
+  grid-template-columns: var(--right-icon-size) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--right-row-gap);
+  padding: 0 var(--right-row-x) 0 0;
+  line-height: 1;
+}
+
+.right-file-tree-row.file {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px;
+  padding-right: 4px;
+}
+
+.right-file-tree-row.folder {
+  grid-template-columns: var(--right-chevron-size) var(--right-icon-size) minmax(0, 1fr);
+  color: #555555;
+}
+
+.right-file-tree-row svg {
+  width: var(--right-icon-size);
+  height: var(--right-icon-size);
+}
+
+.right-file-tree-row.folder > svg:first-child {
+  width: 13px;
+  height: 13px;
+}
+
+.right-file-tree-row.folder > svg:nth-child(2) {
+  width: 15px;
+  height: 15px;
+}
+
+.right-file-open-button {
+  display: grid;
+  grid-template-columns: var(--right-icon-size) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--right-row-gap);
+  min-width: 0;
+  min-height: var(--right-row-height);
+  padding: 0 0 0 var(--right-row-x);
+  color: inherit;
+  background: transparent;
+  border-radius: var(--right-row-radius);
+  font: inherit;
+  line-height: 1;
+  text-align: left;
+}
+
+.right-file-open-button:hover,
+.right-file-open-button:focus-visible {
+  color: #1f1f1f;
+  background: transparent;
+}
+
+.right-file-open-button svg {
+  width: var(--right-icon-size);
+  height: var(--right-icon-size);
+}
+
+.right-file-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1px;
+  min-width: 52px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.right-file-tree-row.file:hover .right-file-actions,
+.right-file-tree-row.file:focus-within .right-file-actions {
+  opacity: 1;
+}
+
+.right-file-action {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border-radius: 6px;
+  color: #8c8c8c;
+  background: transparent;
+}
+
+.right-file-action:hover,
+.right-file-action:focus-visible {
+  color: #1f1f1f;
+  background: #ffffff;
+}
+
+.right-file-action.danger:hover,
+.right-file-action.danger:focus-visible {
+  color: #b25050;
+}
+
+.right-file-menu-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.right-file-action-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 136px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.12);
+}
+
+.right-file-action-menu button {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 7px;
+  border-radius: 6px;
+  color: #5f5f5f;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.right-file-action-menu button:hover,
+.right-file-action-menu button:focus-visible {
+  color: #1f1f1f;
+  background: var(--surface-muted);
+}
+
+.right-file-action-menu button.danger:hover,
+.right-file-action-menu button.danger:focus-visible {
+  color: #b25050;
+}
+
+.right-file-rename-input {
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: #1f1f1f;
+  background: transparent;
+  font: inherit;
+  line-height: 24px;
+}
+
+.right-file-rename-input::selection {
+  background: #dcdcdc;
+}
+
+.right-file-tree-signals {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--right-tight-gap);
+  min-width: 0;
+}
+
+.right-live-dot {
+  display: block;
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c0c0c0;
+}
+
+.right-live-dot.connected {
+  background: #58a36a;
+}
+
+.right-live-dot.connecting {
+  background: #9a9a9a;
+}
+
+.right-live-dot.offline {
+  background: #c0c0c0;
+}
+
+.right-file-tree-comment-count {
+  background: #ffffff;
+}

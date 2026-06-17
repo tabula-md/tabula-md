@@ -1,0 +1,57 @@
+{
+  "name": "tabula-md",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "web:dev": "vite --host 0.0.0.0",
+    "server": "npm run collab:dev",
+    "collab:dev": "node apps/collab-server/src/server.mjs",
+    "dev:all": "npm run collab:dev & npm run web:dev",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "test:hooks": "node scripts/test-codex-hooks.mjs",
+    "test:browser": "node scripts/browser-smoke.mjs",
+    "test:browser:workspace": "npm run test:browser -- --suite=workspace",
+    "test:browser:editor": "npm run test:browser -- --suite=editor-preview",
+    "test:browser:layout": "npm run test:browser -- --suite=layout",
+    "test:browser:panels": "npm run test:browser -- --suite=panels",
+    "test:browser:collab": "npm run test:browser -- --suite=collaboration"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.43.1",
+    "@fontsource/geist-mono": "^5.2.8",
+    "@fontsource/geist-sans": "^5.2.5",
+    "@hocuspocus/provider": "^4.1.1",
+    "@hocuspocus/server": "^4.1.1",
+    "@lezer/highlight": "^1.2.3",
+    "@vitejs/plugin-react": "^5.0.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^9.0.0",
+    "remark-gfm": "^4.0.0",
+    "ws": "^8.18.0",
+    "yjs": "^13.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.5.0",
+    "playwright": "^1.60.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "vitest": "^4.1.8"
+  }
+}
