@@ -141,11 +141,11 @@ export function buildWorkflowReminder(prompt) {
   const text = String(prompt ?? "").toLowerCase();
 
   if (isPostMergePrompt(text)) {
-    return "A PR may have been merged. Verify the PR state, run `gt sync --delete-all`, confirm `gt log short --all` shows only active branches, and move the Linear issue to Done when appropriate.";
+    return "A PR may have been merged. Verify the PR state, run `gt sync --delete-all`, `git remote prune origin`, and `npm run workflow:doctor`, confirm `gt log short --all` shows only active branches, and move the Linear issue to Done when appropriate.";
   }
 
   if (/(패치|구현|수정|고쳐|작업|개발|pr|graphite|linear|hook|commit|submit|올려)/i.test(text)) {
-    return "For Tabula PR-bound work: create or reuse a Linear MTS issue, keep work on Graphite branches, submit with `gt submit` or `gt submit --stack`, then run `npm run pr:metadata -- --label <Label>` using `.github/labels.json`.";
+    return "For Tabula PR-bound work: classify the work first, create or reuse a Linear MTS issue for accepted maintainer work, keep PR-bound changes on Graphite branches, submit with `gt submit` or `gt submit --stack`, then run `npm run pr:metadata -- --label <Label>` using `.github/labels.json`.";
   }
 
   return "";

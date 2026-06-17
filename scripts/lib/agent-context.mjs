@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
-
 const agentNameEnvKeys = [
   "TABULA_AGENT_NAME",
   "AGENT_NAME",
@@ -19,10 +16,10 @@ const sessionIdEnvKeys = [
   "SESSION_ID"
 ];
 
-export function resolveAgentContext({ agent, session, cwd = process.cwd() } = {}) {
+export function resolveAgentContext({ agent, session } = {}) {
   return {
     tool: firstNonEmpty([agent, ...agentNameEnvKeys.map((key) => process.env[key]), inferAgentName()]) ?? "Unknown",
-    session: firstNonEmpty([session, ...sessionIdEnvKeys.map((key) => process.env[key]), latestHookStateSessionId(cwd)]) ?? "Unknown"
+    session: firstNonEmpty([session, ...sessionIdEnvKeys.map((key) => process.env[key])]) ?? "Unknown"
   };
 }
 
@@ -87,40 +84,6 @@ function inferAgentName() {
   }
 
   return "";
-}
-
-function latestHookStateSessionId(cwd) {
-  const stateDir = path.join(repoRoot(cwd), ".codex", "hook-state");
-
-  try {
-    const latest = fs.readdirSync(stateDir)
-      .filter((file) => file.endsWith(".json"))
-      .map((file) => {
-        const filePath = path.join(stateDir, file);
-        return { file, mtimeMs: fs.statSync(filePath).mtimeMs };
-      })
-      .sort((left, right) => right.mtimeMs - left.mtimeMs)[0];
-
-    return latest ? latest.file.replace(/\.json$/, "") : "";
-  } catch {
-    return "";
-  }
-}
-
-function repoRoot(cwd) {
-  let current = path.resolve(cwd);
-
-  while (true) {
-    if (fs.existsSync(path.join(current, ".git"))) {
-      return current;
-    }
-
-    const parent = path.dirname(current);
-    if (parent === current) {
-      return path.resolve(cwd);
-    }
-    current = parent;
-  }
 }
 
 function firstNonEmpty(values) {

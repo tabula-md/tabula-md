@@ -47,8 +47,6 @@ Product direction:
 - `apps/collab-server`: current collaboration server prototype.
 - `packages/collab-protocol`: shared collaboration route and metadata contracts.
 - `docs`: supporting engineering, onboarding, and reference docs.
-- `private-docs`: product planning documents.
-- `private-docs/adr`: architecture decision records.
 
 ## Code Style
 
@@ -58,10 +56,6 @@ Product direction:
 - Keep UI copy and component naming consistent: use "Comments", not "Notes".
 - For major architecture decisions, ask the repository owner before creating or
   updating an ADR.
-- When the repository owner confirms an ADR is needed, use
-  `private-docs/adr/TEMPLATE.md` as the canonical source.
-- Use `.ko.md` ADR files as Korean human-facing companions, not as the source of
-  truth for agents.
 
 ## Testing
 
@@ -71,12 +65,8 @@ Product direction:
 
 ## Collaboration Security
 
-The current Hocuspocus/Yjs share path is a prototype. The target collaboration
-model is Excalidraw-style E2EE rooms.
-
 Before changing room links, share behavior, tokens, or collaboration
-persistence, read `private-docs/adr/0001-e2ee-collaboration.md` and preserve
-these constraints:
+persistence, preserve these constraints:
 
 - Room keys stay in the URL fragment.
 - Room keys are never sent to the server.

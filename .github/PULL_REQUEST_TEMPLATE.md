@@ -10,11 +10,6 @@
 
 -
 
-## Agent
-
-- Tool:
-- Session:
-
 ## Validation
 
 - Automated:

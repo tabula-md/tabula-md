@@ -4,10 +4,17 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { parseAgentSection } from "./agent-context.mjs";
 
 export const workflowRequiredFiles = [
+  "CHANGELOG.md",
+  "CONTRIBUTING.md",
+  "DEVELOPMENT.md",
+  "LICENSE",
+  "SECURITY.md",
   "WORKFLOW.md",
   "AGENTS.md",
   ".codex/hooks.json",
+  ".github/ISSUE_TEMPLATE/bug_report.yml",
   ".github/ISSUE_TEMPLATE/config.yml",
+  ".github/ISSUE_TEMPLATE/feature_request.yml",
   ".github/PULL_REQUEST_TEMPLATE.md",
   ".github/labels.json",
   ".github/workflows/ci.yml",
@@ -30,7 +37,6 @@ export const prBodySections = [
   "Summary",
   "Review Focus",
   "Implementation Notes",
-  "Agent",
   "Validation",
   "Risk",
   "Evidence"
@@ -39,6 +45,8 @@ export const prBodySections = [
 const conventionalTitlePattern = /^(feat|fix|docs|refactor|test|build|ci|chore|perf|style|revert)(\([a-z0-9-]+\))?: .*[a-zA-Z0-9`)"]$/;
 const datePrefixedBranchPattern = /^\d{2}-\d{2}-/;
 const linearKeyBranchPattern = /(?:^|[/_-])mts-\d+(?:[/_-]|$)/i;
+const underscoreBranchPattern = /_/;
+const agentBranchPattern = /^(codex|claude)\//;
 
 export function ok(message, detail = "") {
   return { level: "ok", message, detail };
@@ -129,7 +137,7 @@ export function checkPackageScripts(root, scripts = workflowRequiredScripts) {
   ));
 }
 
-export function checkPrTemplateBody(body) {
+export function checkPrTemplateBody(body, { branch = "" } = {}) {
   const text = String(body ?? "");
   const checks = [];
 
@@ -146,14 +154,46 @@ export function checkPrTemplateBody(body) {
   }
 
   const agent = parseAgentSection(text);
-  if (!agent.present) {
-    checks.push(fail("PR body missing agent provenance"));
-  } else {
-    checks.push(agent.tool && agent.tool !== "Unknown" ? ok("PR body records agent tool", agent.tool) : warn("PR body has unknown agent tool"));
-    checks.push(agent.session && agent.session !== "Unknown" ? ok("PR body records agent session", agent.session) : warn("PR body has unknown agent session"));
+  const shouldValidateAgent = agent.present || isAgentAuthoredBranch(branch);
+  if (shouldValidateAgent) {
+    if (!agent.present) {
+      checks.push(fail("Agent-authored PR is missing agent provenance"));
+    } else {
+      checks.push(agent.tool && agent.tool !== "Unknown" ? ok("PR body records agent tool", agent.tool) : fail("PR body has unknown agent tool"));
+      checks.push(agent.session && agent.session !== "Unknown" ? ok("PR body records agent session", agent.session) : fail("PR body has unknown agent session"));
+    }
   }
 
   return checks;
+}
+
+export function checkPrLabels(labels = [], labelCatalog = []) {
+  const labelNames = labels.map((label) => label.name).filter(Boolean);
+  const catalogNames = new Set(labelCatalog.map((label) => label.name).filter(Boolean));
+
+  if (labelNames.length === 0) {
+    return [fail("PR is missing label metadata")];
+  }
+
+  if (catalogNames.size === 0) {
+    return [warn("PR label catalog is unavailable", labelNames.join(", "))];
+  }
+
+  const typeLabels = labelNames.filter((name) => catalogNames.has(name));
+  if (typeLabels.length === 0) {
+    return [fail("PR is missing a type label from .github/labels.json", labelNames.join(", "))];
+  }
+
+  if (typeLabels.length > 1) {
+    return [fail("PR should have exactly one type label from .github/labels.json", typeLabels.join(", "))];
+  }
+
+  return [ok("PR has one type label", typeLabels[0])];
+}
+
+export function readLabelCatalog(root) {
+  const labels = readJson(path.join(root, ".github", "labels.json"));
+  return Array.isArray(labels) ? labels : [];
 }
 
 export function checkConventionalTitle(title) {
@@ -180,8 +220,12 @@ export function checkBranchName(branch) {
     checks.push(warn("Branch includes a Linear issue key", value));
   }
 
-  if (/^(codex|taehalim)\//i.test(value)) {
-    checks.push(warn("Branch includes a tool or account prefix", value));
+  if (underscoreBranchPattern.test(value)) {
+    checks.push(warn("Branch uses underscores instead of slash/kebab-case", value));
+  }
+
+  if (value.length > 72) {
+    checks.push(warn("Branch name is longer than 72 characters", value));
   }
 
   if (checks.length === 0) {
@@ -189,6 +233,10 @@ export function checkBranchName(branch) {
   }
 
   return checks;
+}
+
+export function isAgentAuthoredBranch(branch) {
+  return agentBranchPattern.test(String(branch ?? "").trim());
 }
 
 export function checkStatusChecks(checks = []) {
@@ -213,16 +261,44 @@ export function checkStatusChecks(checks = []) {
   });
 }
 
-export function parseArgs(argv) {
+export function parseArgs(argv, { allowWorkflowFixFlags = true } = {}) {
   const options = {
-    fix: false,
+    deleteStaleGraphiteBase: false,
+    fixGraphiteConfig: false,
     help: false,
-    json: false
+    json: false,
+    syncLabels: false
   };
 
   for (const arg of argv) {
     if (arg === "--fix") {
-      options.fix = true;
+      if (allowWorkflowFixFlags) {
+        throw new Error("Use an explicit fix flag: --fix-graphite-config, --delete-stale-graphite-base, or --sync-labels.");
+      }
+      throw new Error(`Unknown option: ${arg}`);
+    }
+
+    if (arg === "--fix-graphite-config") {
+      if (!allowWorkflowFixFlags) {
+        throw new Error(`Unknown option: ${arg}`);
+      }
+      options.fixGraphiteConfig = true;
+      continue;
+    }
+
+    if (arg === "--delete-stale-graphite-base") {
+      if (!allowWorkflowFixFlags) {
+        throw new Error(`Unknown option: ${arg}`);
+      }
+      options.deleteStaleGraphiteBase = true;
+      continue;
+    }
+
+    if (arg === "--sync-labels") {
+      if (!allowWorkflowFixFlags) {
+        throw new Error(`Unknown option: ${arg}`);
+      }
+      options.syncLabels = true;
       continue;
     }
 

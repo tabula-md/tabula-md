@@ -56,7 +56,7 @@ export function buildSessionWorkflowContext(cwd = process.cwd()) {
 
 export function recommendNextActions(status) {
   if (status.pr?.state === "MERGED") {
-    return ["Run `gt checkout --trunk` and `gt sync --delete-all`, then confirm `gt log short --all` is clean."];
+    return ["Run `gt checkout --trunk`, `gt sync --delete-all`, `git remote prune origin`, and `npm run workflow:doctor`, then confirm `gt log short --all` is clean."];
   }
 
   if (status.pr?.state === "OPEN") {
@@ -67,7 +67,7 @@ export function recommendNextActions(status) {
       actions.push("Run `npm run pr:metadata -- --label <Label>` with a label from `.github/labels.json`.");
     }
     if (status.pr.isDraft) {
-      actions.push("Publish the PR when ready with `gt submit --publish --no-edit`.");
+      actions.push("Publish the PR when ready with `gt submit --publish --update-only`.");
     }
     if (actions.length === 0) {
       actions.push("Review checks and merge in Graphite when the PR is acceptable.");
@@ -80,10 +80,10 @@ export function recommendNextActions(status) {
   }
 
   if (!status.clean) {
-    return ["Finish edits, run focused validation, then create a Graphite branch with `gt create -m \"type(scope): summary\"`."];
+    return ["Finish edits, run focused validation, then create a Graphite branch with `gt create codex/short-kebab-slug -m \"type(scope): summary\"`."];
   }
 
-  return ["Ready for new work. Start with a Linear MTS issue, then edit from `main` and use Graphite for PR-bound changes."];
+  return ["Ready for new work. Classify the request first; create or reuse a Linear MTS issue for accepted maintainer work, then edit from `main` and use Graphite for PR-bound changes."];
 }
 
 function readCurrentPullRequest(cwd) {

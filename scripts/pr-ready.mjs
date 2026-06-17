@@ -3,6 +3,7 @@ import { collectWorkflowStatus } from "../.codex/hooks/lib/workflow-status.mjs";
 import {
   checkBranchName,
   checkConventionalTitle,
+  checkPrLabels,
   checkPrTemplateBody,
   checkStatusChecks,
   commandResult,
@@ -11,6 +12,7 @@ import {
   hasFailures,
   ok,
   parseArgs,
+  readLabelCatalog,
   repoRoot,
   warn
 } from "./lib/workflow-automation.mjs";
@@ -18,7 +20,7 @@ import {
 let options;
 
 try {
-  options = parseArgs(process.argv.slice(2));
+  options = parseArgs(process.argv.slice(2), { allowWorkflowFixFlags: false });
 } catch (error) {
   console.error(error.message);
   printHelp();
@@ -31,10 +33,11 @@ if (options.help) {
 }
 
 const root = repoRoot(process.cwd());
+const labelCatalog = readLabelCatalog(root);
 const status = collectWorkflowStatus(root);
 const checks = [
   ...checkWorktree(status),
-  ...checkCurrentPullRequest(status),
+  ...checkCurrentPullRequest(status, labelCatalog),
   ...checkFastLocalCommands(root)
 ];
 
@@ -56,7 +59,7 @@ function checkWorktree(status) {
   ];
 }
 
-function checkCurrentPullRequest(status) {
+function checkCurrentPullRequest(status, labelCatalog) {
   const checks = [];
   checks.push(...checkBranchName(status.branch));
 
@@ -77,12 +80,12 @@ function checkCurrentPullRequest(status) {
   checks.push(status.pr.isDraft ? fail("PR is still draft") : ok("PR is ready for review"));
 
   const labels = Array.isArray(status.pr.labels) ? status.pr.labels : [];
-  checks.push(labels.length > 0 ? ok("PR has label metadata", labels.map((label) => label.name).join(", ")) : fail("PR is missing label metadata"));
+  checks.push(...checkPrLabels(labels, labelCatalog));
 
   const assignees = Array.isArray(status.pr.assignees) ? status.pr.assignees : [];
   checks.push(assignees.length > 0 ? ok("PR has assignee metadata", assignees.map((assignee) => assignee.login).join(", ")) : fail("PR is missing assignee metadata"));
 
-  checks.push(...checkPrTemplateBody(status.pr.body));
+  checks.push(...checkPrTemplateBody(status.pr.body, { branch: status.branch }));
   checks.push(...checkStatusChecks(status.pr.statusCheckRollup));
 
   return checks;

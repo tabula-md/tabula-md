@@ -37,6 +37,7 @@ const checks = [
   ...checkPackageScripts(root),
   ...checkGraphite(root, options),
   ...checkGitHub(root),
+  ...checkGraphiteTempBranches(root, options),
   ...checkLabels(root, options)
 ];
 
@@ -78,14 +79,14 @@ function checkGraphite(rootDir, doctorOptions) {
     checks.push(warn("Current branch appears date-prefixed", branch));
   }
 
-  if (doctorOptions.fix) {
+  if (doctorOptions.fixGraphiteConfig) {
     const dateResult = commandResult("gt", ["user", "branch-date", "--disable"], rootDir);
     checks.push(dateResult.ok ? ok("Graphite branch date prefix disabled") : warn("Could not disable Graphite branch date prefix", dateResult.stderr));
 
     const prefixResult = commandResult("gt", ["user", "branch-prefix", "--reset"], rootDir);
     checks.push(prefixResult.ok ? ok("Graphite branch prefix reset") : warn("Could not reset Graphite branch prefix", prefixResult.stderr));
   } else if (branchAppearsDatePrefixed) {
-    checks.push(info("Graphite branch naming fix is available", "Run `npm run workflow:doctor -- --fix` to disable date prefixes and reset branch prefix."));
+    checks.push(info("Graphite branch naming fix is available", "Run `npm run workflow:doctor -- --fix-graphite-config` to disable date prefixes and reset branch prefix."));
   }
 
   return checks;
@@ -123,6 +124,79 @@ function checkGitHub(rootDir) {
       ? ok("GitHub rebase merge is available")
       : info("GitHub rebase merge is disabled")
   ];
+}
+
+function checkGraphiteTempBranches(rootDir, doctorOptions) {
+  const remote = commandResult("git", ["ls-remote", "--heads", "origin", "graphite-base/*"], rootDir);
+  if (!remote.ok) {
+    return [warn("Remote Graphite temporary branches could not be checked", remote.stderr || "Check the origin remote.")];
+  }
+
+  const branches = parseGraphiteTempBranches(remote.stdout);
+  if (branches.length === 0) {
+    return [ok("No remote Graphite temporary branches remain")];
+  }
+
+  const openPrs = commandResult("gh", ["pr", "list", "--state", "open", "--limit", "100", "--json", "number,headRefName,baseRefName"], rootDir);
+  if (!openPrs.ok) {
+    return [
+      warn(
+        "Remote Graphite temporary branches remain",
+        `${branches.join(", ")}. Open PR state is unavailable: ${openPrs.stderr || "check `gh auth status`."}`
+      )
+    ];
+  }
+
+  const openPrList = parseJson(openPrs.stdout);
+  if (!Array.isArray(openPrList)) {
+    return [
+      warn(
+        "Remote Graphite temporary branches remain",
+        `${branches.join(", ")}. Open PR state could not be parsed.`
+      )
+    ];
+  }
+
+  if (openPrList.length > 0) {
+    return [
+      info(
+        "Remote Graphite temporary branches exist while PRs are open",
+        `${branches.join(", ")}. Recheck after the stack is merged and \`gt sync --delete-all\` has run.`
+      )
+    ];
+  }
+
+  if (!doctorOptions.deleteStaleGraphiteBase) {
+    return [
+      warn(
+        "Stale remote Graphite temporary branches remain",
+        `${branches.join(", ")}. Run \`npm run workflow:doctor -- --delete-stale-graphite-base\` after confirming no open PRs.`
+      )
+    ];
+  }
+
+  const repo = commandOutput("gh", ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"], rootDir);
+  if (!repo) {
+    return [warn("Stale remote Graphite temporary branches could not be deleted", "Check `gh auth status`.")];
+  }
+
+  const deleted = [];
+  const failed = [];
+
+  for (const branch of branches) {
+    const result = commandResult("gh", ["api", "-X", "DELETE", `repos/${repo}/git/refs/heads/${branch}`], rootDir);
+    if (result.ok) {
+      deleted.push(branch);
+    } else {
+      failed.push(`${branch}: ${result.stderr || result.stdout}`);
+    }
+  }
+
+  if (failed.length > 0) {
+    return [warn("Some stale remote Graphite temporary branches could not be deleted", failed.join("; "))];
+  }
+
+  return [ok("Deleted stale remote Graphite temporary branches", deleted.join(", "))];
 }
 
 function checkLabels(rootDir, doctorOptions) {
@@ -169,7 +243,7 @@ function checkLabels(rootDir, doctorOptions) {
     return [ok("GitHub labels match .github/labels.json")];
   }
 
-  if (!doctorOptions.fix) {
+  if (!doctorOptions.syncLabels) {
     const summary = drift.map((item) => {
       if (item.type === "missing") {
         return `${item.local.name} missing`;
@@ -180,7 +254,7 @@ function checkLabels(rootDir, doctorOptions) {
     return [
       warn(
         "GitHub labels drift from .github/labels.json",
-        `${summary}. Run \`npm run workflow:doctor -- --fix\` to sync them.`
+        `${summary}. Run \`npm run workflow:doctor -- --sync-labels\` to create, rename, recolor, or redescribe labels from the catalog.`
       )
     ];
   }
@@ -232,6 +306,15 @@ function checkLabels(rootDir, doctorOptions) {
   return [ok("GitHub labels synced from .github/labels.json", synced.join(", "))];
 }
 
+function parseGraphiteTempBranches(stdout) {
+  return String(stdout ?? "")
+    .split("\n")
+    .map((line) => line.trim().split(/\s+/)[1])
+    .filter(Boolean)
+    .map((ref) => ref.replace(/^refs\/heads\//, ""))
+    .filter((branch) => branch.startsWith("graphite-base/"));
+}
+
 function normalizeColor(color) {
   return String(color ?? "").replace(/^#/, "").toLowerCase();
 }
@@ -245,12 +328,15 @@ function parseJson(text) {
 }
 
 function printHelp() {
-  console.log(`Usage: npm run workflow:doctor -- [--fix] [--json]
+  console.log(`Usage: npm run workflow:doctor -- [--fix-graphite-config] [--delete-stale-graphite-base] [--sync-labels] [--json]
 
 Checks repo-local workflow automation, Graphite availability, GitHub settings,
-required templates, required package scripts, and PR label catalog drift.
+required templates, required package scripts, stale Graphite temporary branches,
+and PR label catalog drift.
 
 Options:
-  --fix   Apply safe local Graphite branch naming settings and create missing GitHub labels.
-  --json  Print machine-readable check results.`);
+  --fix-graphite-config        Disable Graphite date prefixes and reset Graphite branch prefix.
+  --delete-stale-graphite-base Delete stale remote graphite-base branches when no PRs are open.
+  --sync-labels                Create, rename, recolor, or redescribe GitHub labels from .github/labels.json.
+  --json                       Print machine-readable check results.`);
 }
