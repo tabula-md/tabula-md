@@ -21,6 +21,14 @@ import {
   recordWorkflowCommand,
   shouldMarkPostMergeSyncRequired
 } from "../.codex/hooks/lib/workflow-policy.mjs";
+import {
+  checkBranchName,
+  checkConventionalTitle,
+  checkPrTemplateBody,
+  checkStatusChecks,
+  hasFailures
+} from "./lib/workflow-automation.mjs";
+import { parseAgentSection, upsertAgentSection } from "./lib/agent-context.mjs";
 
 const fixtureRoot = path.resolve(".codex/hooks/fixtures");
 
@@ -168,7 +176,7 @@ test("validates stop missing browser smoke fixture", () => {
 });
 
 test("classifies Graphite workflow commands", () => {
-  assert.deepEqual(classifyWorkflowCommand("gt create -am \"[MTS-7] Add hooks\"").map((event) => event.type), ["graphite:create"]);
+  assert.deepEqual(classifyWorkflowCommand("gt create -am \"chore(codex): add hooks\"").map((event) => event.type), ["graphite:create"]);
   assert.deepEqual(classifyWorkflowCommand("gt modify -a").map((event) => event.type), ["graphite:modify"]);
   assert.deepEqual(classifyWorkflowCommand("gt submit --publish --no-edit").map((event) => event.type), ["graphite:submit"]);
   assert.deepEqual(classifyWorkflowCommand("gt sync --delete-all").map((event) => event.type), ["graphite:sync"]);
@@ -177,7 +185,7 @@ test("classifies Graphite workflow commands", () => {
 
 test("reports missing PR metadata only after real submit", () => {
   let state = {};
-  state = recordWorkflowCommand(state, "gt create -am \"[MTS-7] Add hooks\"", "2026-06-17T00:00:00.000Z");
+  state = recordWorkflowCommand(state, "gt create -am \"chore(codex): add hooks\"", "2026-06-17T00:00:00.000Z");
   state = recordWorkflowCommand(state, "gt submit --no-edit", "2026-06-17T00:01:00.000Z");
   assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-metadata"]);
 
@@ -213,6 +221,46 @@ test("reports missing post-merge sync until cleanup is observed", () => {
   assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["post-merge-sync"]);
   state = recordWorkflowCommand(state, "gt sync --delete-all", "2026-06-17T00:01:00.000Z");
   assert.deepEqual(getMissingWorkflowSteps(state), []);
+});
+
+test("checks PR readiness policy helpers", () => {
+  assert.equal(checkConventionalTitle("fix(layout): keep rail aligned").level, "ok");
+  assert.equal(checkConventionalTitle("[MTS-7] Keep rail aligned").level, "fail");
+  assert.deepEqual(checkBranchName("layout-rail-alignment").map((check) => check.level), ["ok"]);
+  assert.equal(checkBranchName("06-17-_mts-7_add_workflow_entrypoint").some((check) => check.level === "warn"), true);
+  assert.equal(
+    hasFailures(checkPrTemplateBody("## Summary\n\n## Review Focus\n\n## Implementation Notes\n\n## Agent\n\n- Tool: Codex\n- Session: 019ed132-9bc9-7a11-a31d-6bc08a92d5ff\n\n## Validation\n\n## Risk\n\n## Evidence")),
+    false
+  );
+  assert.equal(hasFailures(checkPrTemplateBody("## Summary")), true);
+  assert.deepEqual(checkStatusChecks([{ name: "Verify", conclusion: "SUCCESS" }]).map((check) => check.level), ["ok"]);
+  assert.deepEqual(checkStatusChecks([{ name: "Verify", status: "PENDING" }]).map((check) => check.level), ["warn"]);
+});
+
+test("upserts PR agent context", () => {
+  const body = upsertAgentSection("## Summary\n\n-\n\n## Validation\n\n- Automated:", {
+    tool: "Codex",
+    session: "session-123"
+  });
+
+  assert.match(body, /## Agent/);
+  assert.deepEqual(parseAgentSection(body), {
+    present: true,
+    tool: "Codex",
+    session: "session-123"
+  });
+
+  const updated = upsertAgentSection(body, {
+    tool: "Claude Code",
+    session: "session-456"
+  });
+
+  assert.equal((updated.match(/^## Agent$/gm) ?? []).length, 1);
+  assert.deepEqual(parseAgentSection(updated), {
+    present: true,
+    tool: "Claude Code",
+    session: "session-456"
+  });
 });
 
 console.log("Codex hook policy tests passed.");

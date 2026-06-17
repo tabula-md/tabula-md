@@ -80,7 +80,7 @@ export function recommendNextActions(status) {
   }
 
   if (!status.clean) {
-    return ["Finish edits, run focused validation, then create a Graphite branch with `gt create -m \"[MTS-123] Short title\"`."];
+    return ["Finish edits, run focused validation, then create a Graphite branch with `gt create -m \"type(scope): summary\"`."];
   }
 
   return ["Ready for new work. Start with a Linear MTS issue, then edit from `main` and use Graphite for PR-bound changes."];
@@ -91,7 +91,7 @@ function readCurrentPullRequest(cwd) {
     "pr",
     "view",
     "--json",
-    "number,title,state,isDraft,mergedAt,url,labels,assignees,reviewRequests,statusCheckRollup"
+    "number,title,state,isDraft,mergedAt,url,headRefName,body,labels,assignees,reviewRequests,statusCheckRollup"
   ], cwd);
 
   if (!result.ok) {
