@@ -40,13 +40,13 @@ export async function run(ctx) {
 
       await firstPage.getByRole("button", { name: "Edit" }).click();
       await focusMarkdownEditor(firstPage);
-      await firstPage.keyboard.type("Hocuspocus sync check");
+      await firstPage.keyboard.type("Room sync check");
 
-      await waitForText(secondPage.locator(".cm-content"), "Hocuspocus sync check");
+      await waitForText(secondPage.locator(".cm-content"), "Room sync check");
       await firstPage.keyboard.press("Shift+Home");
       await waitForText(firstPage.locator(".status-selection"), "3 words selected");
       await firstPage.getByRole("button", { name: "Bold", exact: true }).click();
-      await waitForText(secondPage.locator(".cm-content"), "**Hocuspocus sync check**");
+      await waitForText(secondPage.locator(".cm-content"), "**Room sync check**");
       const liveFormattingState = await firstPage.evaluate(() => ({
         selectedWords: document.querySelector(".status-selection")?.textContent?.trim() ?? "",
         editorFocused: Boolean(document.querySelector(".markdown-editor")?.contains(document.activeElement)),
@@ -60,7 +60,7 @@ export async function run(ctx) {
       );
       expect(liveFormattingState.editorFocused, "Live formatting commands should keep focus in the editor.");
       expect(
-        remotePresenceState.editorText.includes("**Hocuspocus sync check**"),
+        remotePresenceState.editorText.includes("**Room sync check**"),
         "Remote live page should receive Markdown formatting command text.",
       );
     } finally {

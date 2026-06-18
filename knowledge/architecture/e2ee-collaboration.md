@@ -20,11 +20,11 @@ end-to-end-encrypted room model.
 - Room snapshots are encrypted in the browser before storage.
 - The server only relays or stores ciphertext, IVs, versions, and timestamps.
 
-# Migration Direction
+# Current Direction
 
-Do not force E2EE onto the current Hocuspocus server. Build a small encrypted
-room relay and encrypted snapshot store, then move the product share flow to
-that model after smoke coverage exists.
+Live collaboration uses the separate `tabula-room` server. The web app keeps
+Yjs document merge behavior in the browser, encrypts Yjs updates and presence
+before relay, and stores encrypted room snapshots through the Room HTTP API.
 
 # Consequences
 

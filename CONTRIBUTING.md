@@ -39,16 +39,20 @@ Run the web app:
 npm run dev
 ```
 
-Run the collaboration server:
+Live collaboration uses the separate `tabula-room` server. For local
+collaboration testing, run it in a sibling checkout:
 
 ```sh
-npm run server
+git clone https://github.com/tabula-md/tabula-room.git ../tabula-room
+cd ../tabula-room
+npm install
+npm run dev
 ```
 
-Run both locally:
+Then run the app with the room URL:
 
 ```sh
-npm run dev:all
+VITE_TABULA_ROOM_URL=http://localhost:3002 npm run dev
 ```
 
 Useful validation:

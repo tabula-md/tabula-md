@@ -38,9 +38,8 @@ same file as agent context.
 - Full account system.
 - Authenticated/private publish.
 - Billing.
-- Redis/Hocuspocus multi-container scaling.
+- Redis-backed room scaling.
 - R2/S3 blob storage.
-- Full E2EE in the current prototype path.
 - Mobile-first editing.
 - Public template marketplace.
 - Deep GitHub/Notion/Linear sync.

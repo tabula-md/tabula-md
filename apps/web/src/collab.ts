@@ -1,25 +1,45 @@
-import { HocuspocusProvider } from "@hocuspocus/provider";
+import { io, type Socket } from "socket.io-client";
 import * as Y from "yjs";
-import {
-  DEFAULT_COLLAB_WS_PORT,
-  createCollabSnapshotsPath,
-  createCollabTokenPath,
-  type Collaborator,
-  type CollabRecoveryEvent,
-  type ConnectionStatus,
-  type LiveSelection,
-  type RoomMeta,
-  type RoomTokenResponse,
-} from "@tabula-md/collab-protocol";
 
-export type {
-  Collaborator,
-  CollabRecoveryEvent,
-  ConnectionStatus,
-  LiveSelection,
-  RoomMeta,
-  RoomSnapshot,
-} from "@tabula-md/collab-protocol";
+export type ConnectionStatus = "idle" | "connecting" | "connected" | "offline";
+
+export type LiveSelection = {
+  from: number;
+  to: number;
+};
+
+export type Collaborator = {
+  id: string;
+  name: string;
+  color: string;
+  lastSeen: number;
+  fileTitle?: string;
+  selection?: LiveSelection;
+};
+
+export type RoomSnapshot = {
+  id: string;
+  createdAt: string;
+  textLength: number;
+  updateSize: number;
+  version: number;
+};
+
+export type RoomMeta = {
+  roomId: string;
+  version: number;
+  snapshotCount: number;
+  lastSavedAt?: string;
+  lastUpdatedAt?: string;
+  snapshots: RoomSnapshot[];
+};
+
+export type CollabRecoveryEvent = {
+  id: string;
+  type: "reconnected" | "snapshot-recovered" | "invalid-message";
+  message: string;
+  createdAt: string;
+};
 
 type ConnectOptions = {
   roomId: string;
@@ -34,12 +54,46 @@ type ConnectOptions = {
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
 };
 
-type StatelessRoomMetaMessage = {
-  type: "tabula-room-meta";
-  meta: RoomMeta;
+type EnvelopeKind = "yjs-update" | "presence" | "snapshot";
+
+type EncryptedEnvelope = {
+  v: 1;
+  roomId: string;
+  kind: EnvelopeKind;
+  version: number;
+  iv: string;
+  ciphertext: string;
+  createdAt: string;
 };
 
-const TABULA_AWARENESS_FIELD = "tabula";
+type RoomServerMetadata = {
+  roomId: string;
+  activeConnections: number;
+  snapshotVersion: number | null;
+  updatedAt: string | null;
+};
+
+type RoomJoinedMessage = {
+  roomId: string;
+  clientId: string;
+  peerCount: number;
+};
+
+type RoomPeersMessage = {
+  roomId: string;
+  peers: string[];
+};
+
+type PresencePayload = Collaborator & {
+  fileTitle: string;
+};
+
+const ROOM_KEY_BYTES = 32;
+const AES_GCM_IV_BYTES = 12;
+const ROOM_SERVER_PORT = 3002;
+const REMOTE_ORIGIN = "tabula-room-remote";
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
 const diffText = (oldText: string, nextText: string) => {
   let start = 0;
@@ -69,59 +123,156 @@ const diffText = (oldText: string, nextText: string) => {
   };
 };
 
-const getCollabWebSocketUrl = () => {
-  const configuredUrl = import.meta.env.VITE_COLLAB_WS_URL as string | undefined;
+export const encodeBase64Url = (bytes: Uint8Array) => {
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+};
 
+export const decodeBase64Url = (value: string) => {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+};
+
+export const generateRoomKey = () => {
+  const bytes = new Uint8Array(ROOM_KEY_BYTES);
+  crypto.getRandomValues(bytes);
+  return encodeBase64Url(bytes);
+};
+
+export const parseRoomKeyFromHash = (hash: string) => {
+  const params = new URLSearchParams(hash.replace(/^#/, ""));
+  return params.get("key");
+};
+
+export const getRoomKeyFromLocation = () => parseRoomKeyFromHash(window.location.hash);
+
+export const createRoomShareUrl = (origin: string, roomId: string, roomKey = generateRoomKey()) =>
+  `${origin}/r/${roomId}#key=${roomKey}`;
+
+export const importRoomKey = async (encodedKey: string) => {
+  const rawKey = decodeBase64Url(encodedKey);
+  if (rawKey.byteLength !== ROOM_KEY_BYTES) {
+    throw new Error("Room key must be 32 bytes");
+  }
+
+  return crypto.subtle.importKey("raw", toArrayBuffer(rawKey), "AES-GCM", false, ["encrypt", "decrypt"]);
+};
+
+export const encryptBytesForRoom = async (
+  roomKey: CryptoKey,
+  roomId: string,
+  kind: EnvelopeKind,
+  version: number,
+  plaintext: Uint8Array,
+): Promise<EncryptedEnvelope> => {
+  const iv = new Uint8Array(AES_GCM_IV_BYTES);
+  crypto.getRandomValues(iv);
+  const ciphertext = new Uint8Array(
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv }, roomKey, toArrayBuffer(plaintext)),
+  );
+
+  return {
+    v: 1,
+    roomId,
+    kind,
+    version,
+    iv: encodeBase64Url(iv),
+    ciphertext: encodeBase64Url(ciphertext),
+    createdAt: new Date().toISOString(),
+  };
+};
+
+export const decryptEnvelopeForRoom = async (roomKey: CryptoKey, envelope: EncryptedEnvelope) => {
+  const iv = decodeBase64Url(envelope.iv);
+  const ciphertext = decodeBase64Url(envelope.ciphertext);
+  return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, roomKey, toArrayBuffer(ciphertext)));
+};
+
+const toArrayBuffer = (bytes: Uint8Array) =>
+  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+
+const getTabulaRoomBaseUrl = () => {
+  const configuredUrl = import.meta.env.VITE_TABULA_ROOM_URL as string | undefined;
   if (configuredUrl) {
     return configuredUrl.replace(/\/$/, "");
   }
 
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.hostname}:${DEFAULT_COLLAB_WS_PORT}`;
+  const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+  return `${protocol}//${window.location.hostname}:${ROOM_SERVER_PORT}`;
 };
 
-const toHttpUrl = (url: string) => url.replace(/^wss:/, "https:").replace(/^ws:/, "http:");
+const createRoomApiUrl = (roomId: string, suffix = "") =>
+  `${getTabulaRoomBaseUrl()}/v1/rooms/${encodeURIComponent(roomId)}${suffix}`;
 
-const getRoomMetaUrl = (roomId: string) => {
-  const configuredHttpUrl = import.meta.env.VITE_COLLAB_HTTP_URL as string | undefined;
-  const baseUrl = configuredHttpUrl?.replace(/\/$/, "") ?? toHttpUrl(getCollabWebSocketUrl());
-  return `${baseUrl}${createCollabSnapshotsPath(roomId)}`;
+const toRoomMeta = (metadata: RoomServerMetadata): RoomMeta => {
+  const snapshotVersion = metadata.snapshotVersion ?? 0;
+  const latestSnapshot =
+    metadata.snapshotVersion && metadata.updatedAt
+      ? [
+          {
+            id: "latest",
+            createdAt: metadata.updatedAt,
+            textLength: 0,
+            updateSize: 0,
+            version: metadata.snapshotVersion,
+          },
+        ]
+      : [];
+
+  return {
+    roomId: metadata.roomId,
+    version: snapshotVersion,
+    snapshotCount: metadata.snapshotVersion ? 1 : 0,
+    lastSavedAt: metadata.updatedAt ?? undefined,
+    lastUpdatedAt: metadata.updatedAt ?? undefined,
+    snapshots: latestSnapshot,
+  };
 };
 
-const getRoomTokenUrl = () => {
-  const configuredHttpUrl = import.meta.env.VITE_COLLAB_HTTP_URL as string | undefined;
-  const baseUrl = configuredHttpUrl?.replace(/\/$/, "") ?? toHttpUrl(getCollabWebSocketUrl());
-  return `${baseUrl}${createCollabTokenPath()}`;
+const isEncryptedEnvelope = (value: unknown): value is EncryptedEnvelope => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const envelope = value as Partial<EncryptedEnvelope>;
+  return (
+    envelope.v === 1 &&
+    typeof envelope.roomId === "string" &&
+    ["yjs-update", "presence", "snapshot"].includes(String(envelope.kind)) &&
+    typeof envelope.version === "number" &&
+    typeof envelope.iv === "string" &&
+    typeof envelope.ciphertext === "string" &&
+    typeof envelope.createdAt === "string"
+  );
 };
 
-const parseRoomMetaMessage = (payload: string): RoomMeta | null => {
+const decodePresence = (bytes: Uint8Array): Collaborator | null => {
   try {
-    const decoded = JSON.parse(payload) as StatelessRoomMetaMessage;
-    return decoded.type === "tabula-room-meta" ? decoded.meta : null;
+    const decoded = JSON.parse(textDecoder.decode(bytes)) as Partial<PresencePayload>;
+    if (!decoded.id || !decoded.name || !decoded.color) {
+      return null;
+    }
+
+    return {
+      id: decoded.id,
+      name: decoded.name,
+      color: decoded.color,
+      lastSeen: typeof decoded.lastSeen === "number" ? decoded.lastSeen : Date.now(),
+      fileTitle: decoded.fileTitle,
+      selection: decoded.selection,
+    };
   } catch {
     return null;
   }
-};
-
-const toCollaborator = (state: Record<string, unknown>, fallbackClientId: string): Collaborator | null => {
-  const awarenessValue = state[TABULA_AWARENESS_FIELD];
-  if (!awarenessValue || typeof awarenessValue !== "object") {
-    return null;
-  }
-
-  const collaborator = awarenessValue as Partial<Collaborator>;
-  if (!collaborator.id || !collaborator.name || !collaborator.color) {
-    return null;
-  }
-
-  return {
-    id: collaborator.id,
-    name: collaborator.name,
-    color: collaborator.color,
-    lastSeen: typeof collaborator.lastSeen === "number" ? collaborator.lastSeen : Date.now(),
-    fileTitle: collaborator.fileTitle,
-    selection: collaborator.selection,
-  } satisfies Collaborator;
 };
 
 export const createCollabConnection = ({
@@ -138,11 +289,16 @@ export const createCollabConnection = ({
 }: ConnectOptions) => {
   const doc = new Y.Doc();
   const text = doc.getText("markdown");
+  const collaborators = new Map<string, Collaborator>();
   let currentFileTitle = fileTitle;
   let currentSelection = selection;
   let currentIdentity = identity;
   let closedByClient = false;
   let heartbeat: number | undefined;
+  let snapshotTimer: number | undefined;
+  let roomKey: CryptoKey | null = null;
+  let socket: Socket | null = null;
+  let envelopeVersion = 0;
   let hasConnectedOnce = false;
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
@@ -154,121 +310,249 @@ export const createCollabConnection = ({
     });
   };
 
-  const fetchRoomMeta = async () => {
+  const publishCollaborators = () => {
+    onCollaboratorsChange([...collaborators.values()].sort((first, second) => first.name.localeCompare(second.name)));
+  };
+
+  const refreshRoomMeta = async () => {
     try {
-      const response = await fetch(getRoomMetaUrl(roomId));
+      const response = await fetch(createRoomApiUrl(roomId));
       if (!response.ok) {
         return;
       }
 
-      onRoomMetaChange?.((await response.json()) as RoomMeta);
+      onRoomMetaChange?.(toRoomMeta((await response.json()) as RoomServerMetadata));
     } catch {
-      // Room metadata is best-effort; file sync is handled by Hocuspocus.
+      // Room metadata is best-effort. Realtime sync uses encrypted websocket envelopes.
     }
   };
 
-  const fetchRoomToken = async () => {
-    try {
-      const response = await fetch(getRoomTokenUrl(), {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          roomId,
-          userId: currentIdentity.id,
-          role: "write",
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const decoded = (await response.json()) as RoomTokenResponse;
-      return decoded.token;
-    } catch {
-      emitRecoveryEvent("invalid-message", "A room access token could not be issued.");
-      return "";
+  const encryptEnvelope = async (kind: EnvelopeKind, plaintext: Uint8Array) => {
+    if (!roomKey) {
+      throw new Error("Room key is not available");
     }
+
+    envelopeVersion += 1;
+    return encryptBytesForRoom(roomKey, roomId, kind, envelopeVersion, plaintext);
   };
 
-  const publishPresence = (provider: HocuspocusProvider) => {
-    provider.setAwarenessField(TABULA_AWARENESS_FIELD, {
-      ...identity,
+  const emitEnvelope = async (kind: EnvelopeKind, plaintext: Uint8Array) => {
+    if (!socket?.connected || !roomKey) {
+      return;
+    }
+
+    socket.emit("room:message", await encryptEnvelope(kind, plaintext));
+  };
+
+  const publishPresence = async () => {
+    const payload: PresencePayload = {
       ...currentIdentity,
       fileTitle: currentFileTitle,
       selection: currentSelection,
       lastSeen: Date.now(),
-    });
+    };
+    await emitEnvelope("presence", textEncoder.encode(JSON.stringify(payload)));
+  };
+
+  const storeSnapshot = async () => {
+    if (!roomKey) {
+      return;
+    }
+
+    try {
+      const snapshot = await encryptEnvelope("snapshot", Y.encodeStateAsUpdate(doc));
+      const response = await fetch(createRoomApiUrl(roomId, "/snapshot"), {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(snapshot),
+      });
+
+      if (response.ok) {
+        onRoomMetaChange?.(toRoomMeta((await response.json()) as RoomServerMetadata));
+      }
+    } catch {
+      emitRecoveryEvent("invalid-message", "The encrypted room snapshot could not be stored.");
+    }
+  };
+
+  const scheduleSnapshot = () => {
+    if (snapshotTimer) {
+      window.clearTimeout(snapshotTimer);
+    }
+    snapshotTimer = window.setTimeout(() => {
+      void storeSnapshot();
+    }, 1_000);
+  };
+
+  const fetchSnapshot = async () => {
+    if (!roomKey) {
+      return;
+    }
+
+    try {
+      const response = await fetch(createRoomApiUrl(roomId, "/snapshot"));
+      if (response.status === 404) {
+        await refreshRoomMeta();
+        return;
+      }
+      if (!response.ok) {
+        return;
+      }
+
+      const envelope = await response.json();
+      if (!isEncryptedEnvelope(envelope) || envelope.roomId !== roomId || envelope.kind !== "snapshot") {
+        emitRecoveryEvent("invalid-message", "A room snapshot was ignored because it was not a valid envelope.");
+        return;
+      }
+
+      const update = await decryptEnvelopeForRoom(roomKey, envelope);
+      Y.applyUpdate(doc, update, REMOTE_ORIGIN);
+      onTextChange(text.toString());
+      emitRecoveryEvent("snapshot-recovered", "Encrypted room snapshot restored.");
+      await refreshRoomMeta();
+    } catch {
+      emitRecoveryEvent("invalid-message", "The encrypted room snapshot could not be decrypted.");
+    }
+  };
+
+  const applyIncomingEnvelope = async (envelope: unknown) => {
+    if (!roomKey) {
+      return;
+    }
+
+    if (!isEncryptedEnvelope(envelope) || envelope.roomId !== roomId) {
+      emitRecoveryEvent("invalid-message", "A collaboration server message was ignored.");
+      return;
+    }
+
+    try {
+      const plaintext = await decryptEnvelopeForRoom(roomKey, envelope);
+      if (envelope.kind === "yjs-update") {
+        Y.applyUpdate(doc, plaintext, REMOTE_ORIGIN);
+        onTextChange(text.toString());
+        return;
+      }
+
+      if (envelope.kind === "presence") {
+        const collaborator = decodePresence(plaintext);
+        if (!collaborator || collaborator.id === currentIdentity.id) {
+          return;
+        }
+        collaborators.set(collaborator.id, collaborator);
+        publishCollaborators();
+      }
+    } catch {
+      emitRecoveryEvent("invalid-message", "An encrypted collaboration message could not be decrypted.");
+    }
   };
 
   if (initialText) {
     doc.transact(() => {
       text.insert(0, initialText);
-    });
+    }, "initial");
   }
 
-  const provider = new HocuspocusProvider({
-    url: getCollabWebSocketUrl(),
-    name: roomId,
-    document: doc,
-    token: fetchRoomToken,
-    forceSyncInterval: 10_000,
-    onStatus: ({ status }) => {
-      if (closedByClient) {
-        return;
-      }
+  doc.on("update", (update: Uint8Array, origin: unknown) => {
+    if (closedByClient || origin === REMOTE_ORIGIN) {
+      return;
+    }
 
-      if (status === "connected") {
-        onStatusChange("connected");
-        if (hasConnectedOnce) {
-          emitRecoveryEvent("reconnected", "Connection restored and room state was resynced.");
-        }
-        hasConnectedOnce = true;
-        return;
-      }
-
-      onStatusChange(status === "connecting" ? "connecting" : "offline");
-    },
-    onSynced: ({ state }) => {
-      if (!state) {
-        return;
-      }
-
-      onTextChange(text.toString());
-      void fetchRoomMeta();
-    },
-    onAwarenessChange: ({ states }) => {
-      const collaborators = states
-        .map((state) => toCollaborator(state, String(state.clientId)))
-        .filter((collaborator): collaborator is Collaborator => Boolean(collaborator))
-        .filter((collaborator) => collaborator.id !== currentIdentity.id);
-
-      onCollaboratorsChange(collaborators);
-    },
-    onStateless: ({ payload }) => {
-      const meta = parseRoomMetaMessage(payload);
-      if (meta) {
-        onRoomMetaChange?.(meta);
-        return;
-      }
-
-      emitRecoveryEvent("invalid-message", "A collaboration server message was ignored.");
-    },
-    onAuthenticationFailed: ({ reason }) => {
-      onStatusChange("offline");
-      emitRecoveryEvent("invalid-message", reason || "Collaboration authentication failed.");
-    },
+    void emitEnvelope("yjs-update", update);
+    scheduleSnapshot();
   });
 
   text.observe(() => {
     onTextChange(text.toString());
   });
 
-  publishPresence(provider);
-  heartbeat = window.setInterval(() => publishPresence(provider), 5_000);
+  const start = async () => {
+    const encodedKey = getRoomKeyFromLocation();
+    if (!encodedKey) {
+      onStatusChange("offline");
+      emitRecoveryEvent("invalid-message", "This room URL is missing its client-only room key.");
+      return;
+    }
+
+    try {
+      roomKey = await importRoomKey(encodedKey);
+    } catch {
+      onStatusChange("offline");
+      emitRecoveryEvent("invalid-message", "This room URL has an invalid room key.");
+      return;
+    }
+
+    socket = io(getTabulaRoomBaseUrl(), {
+      transports: ["websocket", "polling"],
+    });
+
+    socket.on("connect", () => {
+      if (closedByClient) {
+        return;
+      }
+
+      onStatusChange("connecting");
+      socket?.emit("room:join", { roomId, clientId: currentIdentity.id });
+    });
+
+    socket.on("room:joined", async (_message: RoomJoinedMessage) => {
+      if (closedByClient) {
+        return;
+      }
+
+      onStatusChange("connected");
+      if (hasConnectedOnce) {
+        emitRecoveryEvent("reconnected", "Connection restored and room state was resynced.");
+      }
+      hasConnectedOnce = true;
+      await fetchSnapshot();
+      await emitEnvelope("yjs-update", Y.encodeStateAsUpdate(doc));
+      await publishPresence();
+      await storeSnapshot();
+    });
+
+    socket.on("room:message", (envelope: unknown) => {
+      void applyIncomingEnvelope(envelope);
+    });
+
+    socket.on("room:peers", (message: RoomPeersMessage) => {
+      const peerIds = new Set(message.peers);
+      for (const collaboratorId of collaborators.keys()) {
+        if (!peerIds.has(collaboratorId)) {
+          collaborators.delete(collaboratorId);
+        }
+      }
+      publishCollaborators();
+    });
+
+    socket.on("room:error", (message: { error?: string }) => {
+      emitRecoveryEvent("invalid-message", message.error || "A collaboration server message was ignored.");
+    });
+
+    socket.on("disconnect", () => {
+      if (closedByClient) {
+        return;
+      }
+
+      onStatusChange("offline");
+      collaborators.clear();
+      publishCollaborators();
+    });
+
+    socket.on("connect_error", () => {
+      if (!closedByClient) {
+        onStatusChange("offline");
+      }
+    });
+
+    heartbeat = window.setInterval(() => {
+      void publishPresence();
+    }, 5_000);
+  };
+
   onStatusChange("connecting");
+  void start();
 
   return {
     applyLocalText(nextText: string) {
@@ -285,23 +569,26 @@ export const createCollabConnection = ({
         if (patch.insertText) {
           text.insert(patch.index, patch.insertText);
         }
-      });
+      }, "local");
     },
     setPresence(nextPresence: { fileTitle?: string; selection?: LiveSelection }) {
       currentFileTitle = nextPresence.fileTitle ?? currentFileTitle;
       currentSelection = nextPresence.selection ?? currentSelection;
-      publishPresence(provider);
+      void publishPresence();
     },
     setIdentity(nextIdentity: Collaborator) {
       currentIdentity = nextIdentity;
-      publishPresence(provider);
+      void publishPresence();
     },
     disconnect() {
       closedByClient = true;
       if (heartbeat) {
         window.clearInterval(heartbeat);
       }
-      provider.destroy();
+      if (snapshotTimer) {
+        window.clearTimeout(snapshotTimer);
+      }
+      socket?.disconnect();
       doc.destroy();
       onCollaboratorsChange([]);
     },

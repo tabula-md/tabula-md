@@ -32,15 +32,17 @@ collaboration workspace and common failure modes are understandable.
 - Live rooms persist beyond server memory.
 - Users can tell whether a document is local or live.
 - Users can recover or copy content when collaboration fails.
-- Runtime data such as `.tabula-collab` is not committed.
+- Runtime data such as `.tabula-room` and `.tabula-room-smoke` is not
+  committed.
 
 # Infrastructure Readiness
 
-- Neon schema is applied.
-- Collaboration server uses `COLLAB_PERSISTENCE=postgres` in beta.
-- Modal collaboration server is deployed with `max_containers=1`.
-- Web app build points to the deployed collaboration URL.
-- Production token secret and allowed origins are configured.
+- `tabula-room` has passing CI and accurate public README instructions.
+- The web app build points to the deployed Room URL with
+  `VITE_TABULA_ROOM_URL`.
+- The Room server has allowed origins, payload limits, rate limits, and a
+  persistent encrypted snapshot data directory.
+- Server logs and tests do not receive `roomKey` or plaintext Markdown.
 
 # Test Readiness
 
@@ -48,7 +50,7 @@ collaboration workspace and common failure modes are understandable.
 - `npm run test:browser` passes.
 - `npm run build` passes.
 - Local two-browser sync smoke passes.
-- Modal + Neon sync smoke passes.
+- Deployed app plus deployed Room sync smoke passes.
 
 # Related
 

@@ -6,6 +6,7 @@ import {
   type ConnectionStatus,
   type LiveSelection,
   type RoomMeta,
+  createRoomShareUrl,
   createCollabConnection,
 } from "../collab";
 import { randomId, syncUrlForFile, type MarkdownFile } from "../workspaceStorage";
@@ -18,8 +19,7 @@ type UseCollaborationRoomOptions = {
 };
 
 const createShareUrl = (roomId: string) => {
-  const secret = randomId();
-  return `${window.location.origin}/r/${roomId}#key=${secret}`;
+  return createRoomShareUrl(window.location.origin, roomId);
 };
 
 export function useCollaborationRoom({ activeFile, activeSelection, identity, setFiles }: UseCollaborationRoomOptions) {

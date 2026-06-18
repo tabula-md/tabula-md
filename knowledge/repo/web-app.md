@@ -24,4 +24,4 @@ collaboration UI changes.
 # Related
 
 - [Markdown-file-first product direction](/product/markdown-file-first.md)
-- [Collaboration protocol](collab-protocol.md)
+- [Tabula Room](tabula-room.md)

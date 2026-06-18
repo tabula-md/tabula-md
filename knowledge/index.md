@@ -48,8 +48,8 @@ than permissive OKF consumer conformance, especially for broken internal links.
 ## Repository
 
 - [Web app](repo/web-app.md) - the React/Vite Markdown workspace surface.
-- [Collaboration protocol](repo/collab-protocol.md) - shared contracts for
-  collaboration routes and metadata.
+- [Tabula Room](repo/tabula-room.md) - the separate encrypted room server repo
+  used by live collaboration.
 
 ## Runbooks
 

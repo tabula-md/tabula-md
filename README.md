@@ -36,10 +36,20 @@ npm run dev
 
 Then open `http://localhost:5173`.
 
-To run local live collaboration as well:
+To run local live collaboration, run the separate room server and point the app
+at it:
 
 ```sh
-npm run dev:all
+git clone https://github.com/tabula-md/tabula-room.git ../tabula-room
+cd ../tabula-room
+npm install
+npm run dev
+```
+
+Then, from this repository:
+
+```sh
+VITE_TABULA_ROOM_URL=http://localhost:3002 npm run dev
 ```
 
 ## Contributing

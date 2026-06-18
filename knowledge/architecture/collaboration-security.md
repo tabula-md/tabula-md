@@ -14,9 +14,10 @@ persistence, preserve these constraints:
 - Room keys are never sent to the server.
 - Server storage contains ciphertext only.
 - Decryption failure must not overwrite local state.
-- Token issuance must not grant write access based only on `roomId`.
+- If write tokens are added later, token issuance must not grant write access
+  based only on `roomId`.
 
 # Related
 
-- [Collaboration protocol](/repo/collab-protocol.md)
+- [Tabula Room](/repo/tabula-room.md)
 - [Vertical slice strategy](/workflow/vertical-slice-strategy.md)
