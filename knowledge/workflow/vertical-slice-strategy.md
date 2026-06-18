@@ -21,7 +21,7 @@ or tracer bullet. The first PR should prove the path, not complete every layer.
 
 # Example
 
-If `tabula-room` becomes a separate repository, the first slice should prove:
+For cross-repo collaboration work, the first slice should prove:
 
 ```txt
 Tabula web
@@ -31,10 +31,10 @@ Tabula web
 -> smoke or manual verification
 ```
 
-Security hardening, persistence, deployment, and protocol depth should follow
-after the end-to-end path is proven.
+Security hardening, persistence, deployment, and protocol depth can then deepen
+that proven path in small Graphite PRs.
 
 # Related
 
-- [Collaboration protocol](/repo/collab-protocol.md)
+- [Tabula Room](/repo/tabula-room.md)
 - [Collaboration security](/architecture/collaboration-security.md)

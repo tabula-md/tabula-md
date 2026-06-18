@@ -29,8 +29,8 @@ Product direction:
 
 - Install: `npm install`
 - Dev web app: `npm run dev`
-- Dev collaboration server: `npm run server`
-- Full local collaboration dev: `npm run dev:all`
+- Dev with local room server:
+  `VITE_TABULA_ROOM_URL=http://localhost:3002 npm run dev`
 - Test: `npm test`
 - Hook policy test: `npm run test:hooks`
 - Build: `npm run build`
@@ -52,8 +52,8 @@ Product direction:
   context; it does not replace `WORKFLOW.md`.
 - `apps/web`: React/Vite app, Markdown editor, preview, comments, panels, local
   persistence, and collaboration client.
-- `apps/collab-server`: current collaboration server prototype.
-- `packages/collab-protocol`: shared collaboration route and metadata contracts.
+- `tabula-room`: separate repository for the encrypted collaboration room
+  server.
 - `docs`: public, user-facing project documentation.
 - `knowledge/architecture/collaboration-security.md`: required constraints for
   room links, share behavior, tokens, and collaboration persistence.

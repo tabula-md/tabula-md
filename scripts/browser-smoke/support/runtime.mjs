@@ -1,11 +1,14 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import fs from "node:fs";
+import path from "node:path";
 import { chromium } from "playwright";
 
 const port = Number(process.env.TABULA_TEST_PORT ?? 5187);
-const collabPort = Number(process.env.TABULA_TEST_COLLAB_PORT ?? 1247);
+const roomPort = Number(process.env.TABULA_TEST_ROOM_PORT ?? 3002);
 const externalUrl = process.env.TABULA_TEST_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${port}`;
+const roomUrl = (process.env.VITE_TABULA_ROOM_URL ?? `http://127.0.0.1:${roomPort}`).replace(/\/$/, "");
 const isWindows = process.platform === "win32";
 const primaryShortcutKey = process.platform === "darwin" ? "Meta" : "Control";
 const appNewFileShortcut = `${primaryShortcutKey}+Alt+N`;
@@ -186,17 +189,43 @@ const createSmokeContext = (browser) => ({
 });
 
 const startLocalServers = async () => {
-  const collabServer = spawn(isWindows ? "npm.cmd" : "npm", ["run", "collab:dev"], {
-    cwd: process.cwd(),
-    env: { ...process.env, PORT: String(collabPort) },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  collabServer.stdout.on("data", () => {});
-  collabServer.stderr.on("data", () => {});
-  collabServer.on("error", (error) => {
-    throw error;
-  });
-  await waitForServer(`http://127.0.0.1:${collabPort}`);
+  const roomRepoDir = process.env.TABULA_ROOM_REPO_DIR ?? path.resolve(process.cwd(), "../tabula-room");
+  const roomCommand = process.env.TABULA_ROOM_SERVER_COMMAND;
+  const roomServer = roomCommand
+    ? spawn(roomCommand, {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          PORT: String(roomPort),
+          TABULA_ROOM_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
+          TABULA_ROOM_DATA_DIR: path.join(process.cwd(), ".tabula-room-smoke"),
+        },
+        shell: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      })
+    : fs.existsSync(path.join(roomRepoDir, "package.json"))
+      ? spawn(isWindows ? "npm.cmd" : "npm", ["run", "dev"], {
+          cwd: roomRepoDir,
+          env: {
+            ...process.env,
+            PORT: String(roomPort),
+            TABULA_ROOM_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
+            TABULA_ROOM_DATA_DIR: path.join(process.cwd(), ".tabula-room-smoke"),
+          },
+          stdio: ["ignore", "pipe", "pipe"],
+        })
+      : null;
+
+  if (roomServer) {
+    roomServer.stdout.on("data", () => {});
+    roomServer.stderr.on("data", () => {});
+    roomServer.on("error", (error) => {
+      throw error;
+    });
+    await waitForServer(`${roomUrl}/health`);
+  } else {
+    await waitForServer(`${roomUrl}/health`);
+  }
 
   const webServer = spawn(
     isWindows ? "npm.cmd" : "npm",
@@ -206,8 +235,7 @@ const startLocalServers = async () => {
       env: {
         ...process.env,
         BROWSER: "none",
-        VITE_COLLAB_WS_URL: `ws://127.0.0.1:${collabPort}`,
-        VITE_COLLAB_HTTP_URL: `http://127.0.0.1:${collabPort}`,
+        VITE_TABULA_ROOM_URL: roomUrl,
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -219,7 +247,7 @@ const startLocalServers = async () => {
   });
   await waitForServer(baseUrl);
 
-  return { collabServer, webServer };
+  return { roomServer, webServer };
 };
 
 const stopProcess = async (childProcess) => {
@@ -233,20 +261,21 @@ const stopProcess = async (childProcess) => {
 
 export const smokeConfig = {
   baseUrl,
-  collabPort,
   externalUrl,
   port,
+  roomPort,
+  roomUrl,
 };
 
 export async function runBrowserSmoke(suites) {
   const selectedSuites = selectSuites(suites);
   let webServer;
-  let collabServer;
+  let roomServer;
   let browser;
 
   try {
     if (!externalUrl) {
-      ({ webServer, collabServer } = await startLocalServers());
+      ({ webServer, roomServer } = await startLocalServers());
     }
 
     browser = await launchBrowser();
@@ -263,6 +292,6 @@ export async function runBrowserSmoke(suites) {
     }
 
     await stopProcess(webServer);
-    await stopProcess(collabServer);
+    await stopProcess(roomServer);
   }
 }

@@ -22,4 +22,4 @@ commenting, and handing off Markdown files to people or AI agents.
 # Related
 
 - [Web app](/repo/web-app.md)
-- [Collaboration protocol](/repo/collab-protocol.md)
+- [Tabula Room](/repo/tabula-room.md)

@@ -1,42 +1,48 @@
 ---
 type: Architecture Context
 title: Phase 1 infrastructure
-description: Phase 1 beta infrastructure uses Hocuspocus, Neon Postgres, and Modal single-container deployment.
+description: Phase 1 beta infrastructure uses the Tabula.md web app plus a separate encrypted Tabula Room server.
 tags: [architecture, infrastructure, beta]
 ---
 
 # Current Scope
 
-Phase 1 infrastructure is Hocuspocus + Neon Postgres + Modal single-container
-beta deployment.
+Phase 1 infrastructure has two public repositories:
 
-Local file persistence remains the default development mode. Production beta
-uses Postgres persistence.
+- `tabula-md`: the web app and Markdown workspace.
+- `tabula-room`: the encrypted collaboration room server.
+
+The first public collaboration server uses local file-backed encrypted
+snapshots through `TABULA_ROOM_DATA_DIR`. Production hosting and managed
+storage can follow once the public split is stable.
 
 # Persistence Direction
 
-- Add `COLLAB_PERSISTENCE=file|postgres` with `file` as the local default.
-- Keep Hocuspocus server logic independent from the storage adapter.
-- Use Neon for room state, snapshots, and later publish persistence after the
-  product flow is validated.
+- Keep Markdown content and room keys client-only.
+- Persist only encrypted snapshot envelopes in `tabula-room`.
+- Start with file storage for the open-source server.
+- Add managed storage later behind the same ciphertext-only envelope contract.
 
 # Deployment Direction
 
-- Deploy the collaboration server to Modal as a single-container beta service.
-- Keep `max_containers=1` while Hocuspocus room state is in-process.
-- Configure `COLLAB_ALLOWED_ORIGINS`, `COLLAB_TOKEN_SECRET`, and
-  `DATABASE_URL` for beta.
+- Deploy the web app with `VITE_TABULA_ROOM_URL` pointing at the selected Room
+  server.
+- Deploy `tabula-room` as a small Node service with allowed origins, payload
+  limits, rate limits, and persistent encrypted snapshot storage.
+- Keep accounts, billing, audit logs, Redis, and multi-region scaling out of
+  the public v0.
 
 # Parked
 
-- R2/S3 for large Yjs blobs or snapshots.
-- Redis-backed Hocuspocus horizontal scaling.
-- Multi-container Modal scaling.
-- Full audit logs, memberships, permissions, billing, and plan limits.
-- Optional URL-key E2EE persistence migration.
+- Redis-backed horizontal scaling.
+- R2/S3 or database-backed encrypted snapshot storage.
+- Full membership and permission service.
+- Authenticated private publishing.
+- Billing and plan limits.
 
 # Related
 
 - [Roadmap](/product/roadmap.md)
 - [Launch readiness](/runbooks/launch-readiness.md)
 - [E2EE collaboration model](e2ee-collaboration.md)
+- [Tabula Room](/repo/tabula-room.md)

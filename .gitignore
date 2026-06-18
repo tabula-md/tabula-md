@@ -1,6 +1,8 @@
 node_modules
 dist
 .tabula-collab
+.tabula-room
+.tabula-room-smoke
 .DS_Store
 .env
 .env.local

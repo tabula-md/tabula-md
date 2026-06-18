@@ -12,14 +12,11 @@
     "module": "ESNext",
     "moduleResolution": "Node",
     "baseUrl": ".",
-    "paths": {
-      "@tabula-md/collab-protocol": ["packages/collab-protocol/index.d.ts"]
-    },
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["apps/web/src", "packages/collab-protocol/index.d.ts"],
+  "include": ["apps/web/src"],
   "references": []
 }
