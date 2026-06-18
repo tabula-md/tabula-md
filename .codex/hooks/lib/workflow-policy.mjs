@@ -2,8 +2,10 @@ const workflowCommands = {
   create: "gt create",
   modify: "gt modify",
   submit: "gt submit",
+  title: "npm run pr:title -- --title <type(scope): summary>",
+  body: "npm run pr:body -- --summary <text> --review-focus <text> --implementation-notes <text> --validation-automated <cmd> --risk <text> --evidence <text>",
   metadata: "npm run pr:metadata -- --label <Label>",
-  sync: "gt sync --delete-all"
+  sync: "npm run workflow:sync"
 };
 
 export function classifyWorkflowCommand(command) {
@@ -22,16 +24,34 @@ export function classifyWorkflowCommand(command) {
     events.push({
       type: "graphite:submit",
       command: workflowCommands.submit,
+      dryRun: /\s--dry-run(?:\s|$)/.test(normalized),
       publish: /\s--publish(?:\s|$)/.test(normalized),
+      updateOnly: /\s--update-only(?:\s|$)/.test(normalized),
       stack: /\s--stack(?:\s|$)/.test(normalized)
     });
   }
 
-  if (/\bgt\s+sync\b/.test(normalized)) {
+  if (/\bnpm\s+run\s+pr:body\b/.test(normalized) || /\bnode\s+scripts\/pr-body\.mjs\b/.test(normalized)) {
+    events.push({
+      type: "pr:body",
+      command: workflowCommands.body,
+      dryRun: /\s--dry-run(?:\s|$)/.test(normalized)
+    });
+  }
+
+  if (/\bnpm\s+run\s+pr:title\b/.test(normalized) || /\bnode\s+scripts\/pr-title\.mjs\b/.test(normalized)) {
+    events.push({
+      type: "pr:title",
+      command: workflowCommands.title,
+      dryRun: /\s--dry-run(?:\s|$)/.test(normalized)
+    });
+  }
+
+  if (/\bgt\s+sync\b/.test(normalized) || /\bnpm\s+run\s+workflow:sync\b/.test(normalized) || /\bnode\s+scripts\/workflow-sync\.mjs\b/.test(normalized)) {
     events.push({
       type: "graphite:sync",
       command: workflowCommands.sync,
-      deleteAll: /\s--delete-all(?:\s|$)/.test(normalized)
+      deleteAll: /\bnpm\s+run\s+workflow:sync\b/.test(normalized) || /\bnode\s+scripts\/workflow-sync\.mjs\b/.test(normalized) || /\s--delete-all(?:\s|$)/.test(normalized)
     });
   }
 
@@ -68,6 +88,10 @@ export function recordWorkflowCommand(state, command, timestamp = new Date().toI
 
     if (event.type === "graphite:create") {
       workflow.lastCreateAt = timestamp;
+      workflow.prTitleRequiredAt = null;
+      workflow.prTitleAppliedAt = null;
+      workflow.prBodyRequiredAt = null;
+      workflow.prBodyAppliedAt = null;
       workflow.prMetadataRequiredAt = null;
       workflow.prMetadataAppliedAt = null;
     }
@@ -76,12 +100,26 @@ export function recordWorkflowCommand(state, command, timestamp = new Date().toI
       workflow.lastModifyAt = timestamp;
     }
 
-    if (event.type === "graphite:submit") {
+    if (event.type === "graphite:submit" && !event.dryRun) {
       workflow.lastSubmitAt = timestamp;
       workflow.lastSubmitWasPublish = event.publish;
+      if (!(event.publish && event.updateOnly && workflow.prTitleAppliedAt)) {
+        workflow.prTitleRequiredAt = timestamp;
+      }
+      if (!(event.publish && event.updateOnly && workflow.prBodyAppliedAt)) {
+        workflow.prBodyRequiredAt = timestamp;
+      }
       if (!workflow.prMetadataAppliedAt) {
         workflow.prMetadataRequiredAt = timestamp;
       }
+    }
+
+    if (event.type === "pr:body" && !event.dryRun) {
+      workflow.prBodyAppliedAt = timestamp;
+    }
+
+    if (event.type === "pr:title" && !event.dryRun) {
+      workflow.prTitleAppliedAt = timestamp;
     }
 
     if (event.type === "pr:metadata" && event.label && !event.dryRun && !event.listLabels) {
@@ -102,6 +140,16 @@ export function recordWorkflowCommand(state, command, timestamp = new Date().toI
   return next;
 }
 
+export function recordPromptSubmitted(state, timestamp = new Date().toISOString()) {
+  const next = normalizeFullState(state);
+  const workflow = normalizeWorkflowState(next.workflow);
+  workflow.currentTurnStartedAt = timestamp;
+  workflow.updatedAt = timestamp;
+  next.workflow = workflow;
+  next.updatedAt = timestamp;
+  return next;
+}
+
 export function recordPostMergeSyncRequired(state, timestamp = new Date().toISOString()) {
   const next = normalizeFullState(state);
   const workflow = normalizeWorkflowState(next.workflow);
@@ -116,12 +164,43 @@ export function getMissingWorkflowSteps(state) {
   const workflow = normalizeWorkflowState(state?.workflow);
   const missing = [];
 
+  if (workflow.prTitleRequiredAt && (!workflow.prTitleAppliedAt || workflow.prTitleAppliedAt < workflow.prTitleRequiredAt)) {
+    missing.push({
+      key: "pr-title",
+      requiredAt: workflow.prTitleRequiredAt,
+      command: workflowCommands.title,
+      reason: "Graphite submit was observed, but the PR title was not reviewed afterward."
+    });
+  }
+
   if (workflow.prMetadataRequiredAt && (!workflow.prMetadataAppliedAt || workflow.prMetadataAppliedAt < workflow.prMetadataRequiredAt)) {
+    if (workflow.prBodyRequiredAt && (!workflow.prBodyAppliedAt || workflow.prBodyAppliedAt < workflow.prBodyRequiredAt)) {
+      missing.push({
+        key: "pr-body",
+        requiredAt: workflow.prBodyRequiredAt,
+        command: workflowCommands.body,
+        reason: "Graphite submit was observed, but the PR body was not written afterward."
+      });
+    }
+
     missing.push({
       key: "pr-metadata",
       requiredAt: workflow.prMetadataRequiredAt,
       command: workflowCommands.metadata,
       reason: "Graphite submit was observed, but PR metadata was not applied afterward."
+    });
+  }
+
+  if (
+    (!workflow.prMetadataRequiredAt || (workflow.prMetadataAppliedAt && workflow.prMetadataAppliedAt >= workflow.prMetadataRequiredAt))
+    && workflow.prBodyRequiredAt
+    && (!workflow.prBodyAppliedAt || workflow.prBodyAppliedAt < workflow.prBodyRequiredAt)
+  ) {
+    missing.push({
+      key: "pr-body",
+      requiredAt: workflow.prBodyRequiredAt,
+      command: workflowCommands.body,
+      reason: "Graphite submit was observed, but the PR body was not written afterward."
     });
   }
 
@@ -137,29 +216,67 @@ export function getMissingWorkflowSteps(state) {
   return missing;
 }
 
-export function buildWorkflowReminder(prompt) {
-  const text = String(prompt ?? "").toLowerCase();
+export function shouldBlockForMissingWorkflowSteps(state, missingWorkflowSteps = getMissingWorkflowSteps(state)) {
+  return getCurrentTurnMissingWorkflowSteps(state, missingWorkflowSteps).length > 0;
+}
 
-  if (isPostMergePrompt(text)) {
-    return "A PR may have been merged. Verify the PR state, run `gt sync --delete-all`, `git remote prune origin`, and `npm run workflow:doctor`, confirm `gt log short --all` shows only active branches, and move the Linear issue to Done when appropriate.";
+export function getCurrentTurnMissingWorkflowSteps(state, missingWorkflowSteps = getMissingWorkflowSteps(state)) {
+  const workflow = normalizeWorkflowState(state?.workflow);
+  if (!workflow.currentTurnStartedAt) {
+    return missingWorkflowSteps;
   }
 
-  if (/(패치|구현|수정|고쳐|작업|개발|pr|graphite|linear|hook|commit|submit|올려)/i.test(text)) {
-    return "For Tabula PR-bound work: classify the work first, create or reuse a Linear MTS issue for accepted maintainer work, keep PR-bound changes on Graphite branches, submit with `gt submit` or `gt submit --stack`, then run `npm run pr:metadata -- --label <Label>` using `.github/labels.json`.";
+  return missingWorkflowSteps.filter((item) => item.requiredAt >= workflow.currentTurnStartedAt);
+}
+
+export function buildWorkflowReminder(prompt) {
+  const text = String(prompt ?? "");
+  const normalized = text.toLowerCase();
+
+  if (isPostMergePrompt(normalized)) {
+    return "A PR may have been merged. Run `npm run workflow:sync`, confirm only active Graphite branches remain, and move the Linear issue to Done when appropriate.";
   }
 
   return "";
+}
+
+export function evaluatePromptInput(prompt) {
+  const secretFindings = findPromptSecrets(prompt);
+  if (secretFindings.length > 0) {
+    return {
+      decision: "block",
+      reason: `Potential secret detected in the prompt (${secretFindings.join(", ")}). Remove the secret and rotate it before continuing.`
+    };
+  }
+
+  return {
+    decision: "allow",
+    additionalContext: buildWorkflowReminder(prompt)
+  };
+}
+
+export function findPromptSecrets(prompt) {
+  const text = String(prompt ?? "");
+  const findings = [];
+
+  for (const { name, pattern } of secretPatterns) {
+    if (pattern.test(text)) {
+      findings.push(name);
+    }
+  }
+
+  return [...new Set(findings)];
 }
 
 export function shouldMarkPostMergeSyncRequired(prompt) {
   return isPostMergePrompt(String(prompt ?? "").toLowerCase());
 }
 
-export function formatStopReason({ missingValidations = [], missingWorkflowSteps = [] }) {
+export function formatStopReason({ missingValidations = [], missingWorkflowSteps = [], blockingWorkflow = true }) {
   const lines = [];
 
   if (missingWorkflowSteps.length > 0) {
-    lines.push("Finish the Tabula Graphite workflow before responding:");
+    lines.push(blockingWorkflow ? "Finish the Tabula Graphite workflow before responding:" : "Pending Tabula workflow reminder:");
     for (const item of missingWorkflowSteps) {
       lines.push(`- ${item.command}: ${item.reason}`);
     }
@@ -188,6 +305,11 @@ export function normalizeWorkflowState(workflow) {
     prMetadataRequiredAt: stringOrNull(workflow?.prMetadataRequiredAt),
     prMetadataAppliedAt: stringOrNull(workflow?.prMetadataAppliedAt),
     prMetadataLabel: stringOrNull(workflow?.prMetadataLabel),
+    prTitleRequiredAt: stringOrNull(workflow?.prTitleRequiredAt),
+    prTitleAppliedAt: stringOrNull(workflow?.prTitleAppliedAt),
+    prBodyRequiredAt: stringOrNull(workflow?.prBodyRequiredAt),
+    prBodyAppliedAt: stringOrNull(workflow?.prBodyAppliedAt),
+    currentTurnStartedAt: stringOrNull(workflow?.currentTurnStartedAt),
     postMergeSyncRequiredAt: stringOrNull(workflow?.postMergeSyncRequiredAt),
     lastSyncAt: stringOrNull(workflow?.lastSyncAt),
     lastSyncDeletedAll: Boolean(workflow?.lastSyncDeletedAll),
@@ -210,9 +332,57 @@ function findMetadataLabel(command) {
 }
 
 function isPostMergePrompt(text) {
-  return /(머지했|merged|merge 완료|pr .*merged|합쳤)/i.test(text);
+  const normalized = String(text ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return false;
+  }
+
+  if (/(라고|라는|한다고|한다면|하면|했다면|시점|예를\s*들|가정|hypothetical|if\s+|when\s+)/i.test(normalized)) {
+    return false;
+  }
+
+  return [
+    /^(?:pr\s*#?\d+\s*)?(?:머지했어|머지했습니다|머지 완료|합쳤어|합쳤습니다)(?:[.!?。]|$)/i,
+    /^pr\s*#?\d+.*\b(?:merged|merge complete)\b/i,
+    /^(?:merged|merge complete)\s+pr\s*#?\d+/i
+  ].some((pattern) => pattern.test(normalized));
 }
 
 function stringOrNull(value) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
+
+const secretPatterns = [
+  {
+    name: "private key block",
+    pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/
+  },
+  {
+    name: "OpenAI API key",
+    pattern: /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{24,}\b/
+  },
+  {
+    name: "Anthropic API key",
+    pattern: /\bsk-ant-[A-Za-z0-9_-]{24,}\b/
+  },
+  {
+    name: "GitHub token",
+    pattern: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{24,}\b|\bgithub_pat_[A-Za-z0-9_]{24,}\b/
+  },
+  {
+    name: "Linear API key",
+    pattern: /\blin_api_[A-Za-z0-9_-]{24,}\b/
+  },
+  {
+    name: "Slack token",
+    pattern: /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/
+  },
+  {
+    name: "AWS access key",
+    pattern: /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/
+  },
+  {
+    name: "secret assignment",
+    pattern: /\b(?:OPENAI_API_KEY|ANTHROPIC_API_KEY|GITHUB_TOKEN|GH_TOKEN|LINEAR_API_KEY|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)\s*=\s*["']?(?!<|your-|example|placeholder|redacted|xxxx|test\b)[A-Za-z0-9_./+=:-]{16,}/i
+  }
+];

@@ -103,7 +103,7 @@ export function findBashCommand(payload) {
     return direct.trim();
   }
 
-  return findStringByKey(payload, new Set(["command", "cmd", "shell_command", "shellCommand"]));
+  return "";
 }
 
 export function findPatchText(payload) {
@@ -123,41 +123,6 @@ export function findPatchText(payload) {
   }
 
   return findStringContaining(payload, "*** ");
-}
-
-function findStringByKey(value, keys, depth = 0) {
-  if (!value || depth > 8) {
-    return "";
-  }
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findStringByKey(item, keys, depth + 1);
-      if (found) {
-        return found;
-      }
-    }
-    return "";
-  }
-
-  if (typeof value !== "object") {
-    return "";
-  }
-
-  for (const [key, entry] of Object.entries(value)) {
-    if (keys.has(key) && typeof entry === "string" && entry.trim()) {
-      return entry.trim();
-    }
-  }
-
-  for (const entry of Object.values(value)) {
-    const found = findStringByKey(entry, keys, depth + 1);
-    if (found) {
-      return found;
-    }
-  }
-
-  return "";
 }
 
 function findStringContaining(value, needle, depth = 0) {

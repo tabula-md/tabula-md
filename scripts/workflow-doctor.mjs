@@ -10,7 +10,9 @@ import {
   hasFailures,
   info,
   ok,
+  parseGitCountObjects,
   parseArgs,
+  readGitMaintenanceState,
   readJson,
   repoRoot,
   warn
@@ -37,6 +39,7 @@ const checks = [
   ...checkPackageScripts(root),
   ...checkGraphite(root, options),
   ...checkGitHub(root),
+  ...checkGitMaintenance(root),
   ...checkGraphiteTempBranches(root, options),
   ...checkLabels(root, options)
 ];
@@ -124,6 +127,49 @@ function checkGitHub(rootDir) {
       ? ok("GitHub rebase merge is available")
       : info("GitHub rebase merge is disabled")
   ];
+}
+
+function checkGitMaintenance(rootDir) {
+  const checks = [];
+  const maintenanceState = readGitMaintenanceState(rootDir);
+  const countResult = maintenanceState.countResult;
+  const looseObjectWarningThreshold = 7000;
+  const registeredRepos = commandOutput("git", ["config", "--global", "--get-all", "maintenance.repo"], rootDir)
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (registeredRepos.includes(rootDir)) {
+    checks.push(ok("Git background maintenance is registered"));
+  } else {
+    checks.push(warn("Git background maintenance is not registered", "Run `npm run workflow:maintenance -- --register`; post-merge `npm run workflow:sync` also registers it."));
+  }
+
+  if (!countResult.ok) {
+    checks.push(warn("Local Git object count could not be checked", countResult.stderr || "Run `git count-objects -vH` manually."));
+  } else {
+    const counts = maintenanceState.counts ?? parseGitCountObjects(countResult.stdout);
+    if (counts.count !== null && counts.count >= looseObjectWarningThreshold) {
+      checks.push(warn("Local Git loose object count is high", `${counts.count} loose object(s), ${counts.size || "unknown size"}. This is repaired by \`npm run workflow:sync\` after merge when the repo is clean and on trunk.`));
+    } else if (counts.count !== null) {
+      checks.push(ok("Local Git loose object count is healthy", `${counts.count} loose object(s)`));
+    } else {
+      checks.push(warn("Local Git object count could not be parsed", countResult.stdout));
+    }
+
+    if (counts.garbage && counts.garbage > 0) {
+      checks.push(warn("Local Git reports garbage files", `${counts.garbage} garbage file(s), ${counts.sizeGarbage || "unknown size"}. Run \`git gc\` after confirming the worktree is clean.`));
+    }
+  }
+
+  if (!maintenanceState.hasGcLog) {
+    checks.push(ok("Local Git gc.log is clear"));
+    return checks;
+  }
+
+  const summary = summarizeGcLog(maintenanceState.gcLog);
+  checks.push(warn("Local Git gc.log requires attention", `${summary}. Post-merge \`npm run workflow:sync\` repairs this when the repo is clean and on trunk.`));
+  return checks;
 }
 
 function checkGraphiteTempBranches(rootDir, doctorOptions) {
@@ -327,16 +373,34 @@ function parseJson(text) {
   }
 }
 
+function summarizeGcLog(text) {
+  const lines = String(text ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) {
+    return "gc.log exists but is empty";
+  }
+
+  const firstWarning = lines.find((line) => /warning|error/i.test(line));
+  return (firstWarning ?? lines[0]).replace(/[.。]+$/, "");
+}
+
 function printHelp() {
   console.log(`Usage: npm run workflow:doctor -- [--fix-graphite-config] [--delete-stale-graphite-base] [--sync-labels] [--json]
 
 Checks repo-local workflow automation, Graphite availability, GitHub settings,
 required templates, required package scripts, stale Graphite temporary branches,
-and PR label catalog drift.
+PR label catalog drift, and local Git maintenance warnings.
 
 Options:
   --fix-graphite-config        Disable Graphite date prefixes and reset Graphite branch prefix.
   --delete-stale-graphite-base Delete stale remote graphite-base branches when no PRs are open.
   --sync-labels                Create, rename, recolor, or redescribe GitHub labels from .github/labels.json.
-  --json                       Print machine-readable check results.`);
+  --json                       Print machine-readable check results.
+
+Git object maintenance:
+  npm run workflow:maintenance -- --register
+  npm run workflow:maintenance -- --post-merge`);
 }

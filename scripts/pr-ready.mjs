@@ -70,6 +70,7 @@ function checkCurrentPullRequest(status, labelCatalog) {
 
   checks.push(ok("Current branch has a PR", `#${status.pr.number}`));
   checks.push(checkConventionalTitle(status.pr.title));
+  checks.push(checkTitleMatchesCurrentCommit(root, status.pr.title));
 
   if (status.pr.state === "OPEN") {
     checks.push(ok("PR is open"));
@@ -99,10 +100,22 @@ function checkFastLocalCommands(root) {
   ];
 }
 
+function checkTitleMatchesCurrentCommit(root, prTitle) {
+  const result = commandResult("git", ["log", "-1", "--pretty=%s"], root);
+  if (!result.ok || !result.stdout) {
+    return warn("Current commit title is unavailable", result.stderr || "Could not compare PR title to the current commit subject.");
+  }
+
+  return result.stdout === prTitle
+    ? ok("PR title matches current commit subject", prTitle)
+    : fail("PR title should match the current commit subject", `PR: ${prTitle}; commit: ${result.stdout}`);
+}
+
 function printHelp() {
   console.log(`Usage: npm run pr:ready -- [--json]
 
-Checks the current PR for local cleanliness, metadata, template shape,
-Conventional Commit title, branch naming policy, fast whitespace checks, and
-GitHub check status. It does not submit, merge, or run expensive validation.`);
+Checks the current PR for local cleanliness, metadata, template content,
+Conventional Commit title, title-to-commit-subject agreement, branch naming
+policy, fast whitespace checks, and GitHub check status. It does not submit,
+merge, or run expensive validation.`);
 }
