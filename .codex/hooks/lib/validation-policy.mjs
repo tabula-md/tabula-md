@@ -262,6 +262,30 @@ export function getMissingValidations(state) {
   return missing;
 }
 
+export function getCurrentTurnMissingValidations(state, missingValidations = getMissingValidations(state)) {
+  const currentTurnStartedAt = typeof state?.workflow?.currentTurnStartedAt === "string"
+    ? state.workflow.currentTurnStartedAt
+    : null;
+
+  if (!currentTurnStartedAt) {
+    return missingValidations;
+  }
+
+  return missingValidations.filter((item) => item.requiredAt >= currentTurnStartedAt);
+}
+
+export function filterMissingValidationsForChangedFiles(missingValidations, files) {
+  const classified = classifyChangedFiles(files);
+
+  return missingValidations.filter((item) => {
+    if (item.key === "browser") {
+      return classified.needs.browser;
+    }
+
+    return Boolean(classified.needs[item.key]);
+  });
+}
+
 export function parseGitStatusFiles(statusText) {
   const files = new Set();
 
