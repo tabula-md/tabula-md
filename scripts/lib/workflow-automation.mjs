@@ -30,6 +30,7 @@ export const workflowRequiredFiles = [
   ".release/RELEASE_NOTES_TEMPLATE.md",
   "scripts/workflow-doctor.mjs",
   "scripts/knowledge-check.mjs",
+  "scripts/pr-handoff.mjs",
   "scripts/pr-body.mjs",
   "scripts/pr-title.mjs",
   "scripts/workflow-maintenance.mjs",
@@ -40,6 +41,7 @@ export const workflowRequiredFiles = [
 export const workflowRequiredScripts = [
   "pr:body",
   "pr:metadata",
+  "pr:handoff",
   "pr:ready",
   "pr:title",
   "knowledge:check",

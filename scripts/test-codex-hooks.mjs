@@ -65,6 +65,9 @@ test("blocks raw Git branch creation and PR publishing lifecycle", () => {
   assert.equal(evaluateBashCommand("git switch -c codex/MTS-123-test").decision, "block");
   assert.equal(evaluateBashCommand("git commit -m test").decision, "block");
   assert.equal(evaluateBashCommand("git push origin HEAD").decision, "block");
+  assert.equal(evaluateBashCommand("gt push origin HEAD").decision, "block");
+  assert.equal(evaluateBashCommand("gt pull --rebase").decision, "block");
+  assert.equal(evaluateBashCommand("npm run pr:handoff -- --summary \"Blocked gt push and gt pull passthrough\"").decision, "allow");
   assert.equal(evaluateBashCommand("gh pr create --draft").decision, "block");
   assert.equal(evaluateBashCommand("gh pr ready 5").decision, "block");
   assert.equal(evaluateBashCommand("gh pr edit 5 --body-file body.md").decision, "block");
@@ -259,6 +262,7 @@ test("classifies Graphite workflow commands", () => {
   assert.deepEqual(classifyWorkflowCommand("npm run pr:title -- --title \"chore(workflow): standardize agent workflow automation\"").map((event) => event.type), ["pr:title"]);
   assert.deepEqual(classifyWorkflowCommand("npm run pr:body -- --summary test").map((event) => event.type), ["pr:body"]);
   assert.deepEqual(classifyWorkflowCommand("npm run pr:metadata -- --label Infra").map((event) => event.label), ["Infra"]);
+  assert.deepEqual(classifyWorkflowCommand("npm run pr:handoff -- --title \"chore(workflow): add handoff\" --label Infra --summary x --review-focus x --implementation-notes x --validation-automated x --risk x --evidence x").map((event) => event.type), ["pr:handoff"]);
 });
 
 test("reports missing PR title, body, and metadata only after real submit", () => {
@@ -286,6 +290,18 @@ test("reports missing PR title, body, and metadata only after real submit", () =
   assert.deepEqual(getMissingWorkflowSteps(state), []);
 
   state = recordWorkflowCommand(state, "gt submit --publish --update-only", "2026-06-17T00:05:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state), []);
+});
+
+test("treats PR handoff as completing title body and metadata workflow steps", () => {
+  let state = recordWorkflowCommand({}, "gt submit --no-edit", "2026-06-17T00:01:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-title", "pr-body", "pr-metadata"]);
+
+  state = recordWorkflowCommand(
+    state,
+    "npm run pr:handoff -- --title \"chore(workflow): add handoff\" --label Infra --summary x --review-focus x --implementation-notes x --validation-automated x --risk x --evidence x",
+    "2026-06-17T00:02:00.000Z"
+  );
   assert.deepEqual(getMissingWorkflowSteps(state), []);
 });
 

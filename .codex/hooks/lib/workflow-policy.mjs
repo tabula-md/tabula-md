@@ -2,6 +2,7 @@ const workflowCommands = {
   create: "gt create",
   modify: "gt modify",
   submit: "gt submit",
+  handoff: "npm run pr:handoff -- --title <type(scope): summary> --label <Label> --summary <text> --review-focus <text> --implementation-notes <text> --validation-automated <cmd> --risk <text> --evidence <text>",
   title: "npm run pr:title -- --title <type(scope): summary>",
   body: "npm run pr:body -- --summary <text> --review-focus <text> --implementation-notes <text> --validation-automated <cmd> --risk <text> --evidence <text>",
   metadata: "npm run pr:metadata -- --label <Label>",
@@ -35,6 +36,15 @@ export function classifyWorkflowCommand(command) {
     events.push({
       type: "pr:body",
       command: workflowCommands.body,
+      dryRun: /\s--dry-run(?:\s|$)/.test(normalized)
+    });
+  }
+
+  if (/\bnpm\s+run\s+pr:handoff\b/.test(normalized) || /\bnode\s+scripts\/pr-handoff\.mjs\b/.test(normalized)) {
+    events.push({
+      type: "pr:handoff",
+      command: workflowCommands.handoff,
+      label: findMetadataLabel(normalized),
       dryRun: /\s--dry-run(?:\s|$)/.test(normalized)
     });
   }
@@ -122,6 +132,13 @@ export function recordWorkflowCommand(state, command, timestamp = new Date().toI
       workflow.prTitleAppliedAt = timestamp;
     }
 
+    if (event.type === "pr:handoff" && event.label && !event.dryRun) {
+      workflow.prTitleAppliedAt = timestamp;
+      workflow.prBodyAppliedAt = timestamp;
+      workflow.prMetadataAppliedAt = timestamp;
+      workflow.prMetadataLabel = event.label;
+    }
+
     if (event.type === "pr:metadata" && event.label && !event.dryRun && !event.listLabels) {
       workflow.prMetadataAppliedAt = timestamp;
       workflow.prMetadataLabel = event.label;
@@ -181,7 +198,7 @@ export function getMissingWorkflowSteps(state) {
       key: "pr-title",
       requiredAt: workflow.prTitleRequiredAt,
       command: workflowCommands.title,
-      reason: "Graphite submit was observed, but the PR title was not reviewed afterward."
+      reason: "Graphite submit was observed, but the PR title was not reviewed afterward. Prefer `npm run pr:handoff` for the standard path."
     });
   }
 
@@ -191,7 +208,7 @@ export function getMissingWorkflowSteps(state) {
         key: "pr-body",
         requiredAt: workflow.prBodyRequiredAt,
         command: workflowCommands.body,
-        reason: "Graphite submit was observed, but the PR body was not written afterward."
+        reason: "Graphite submit was observed, but the PR body was not written afterward. Prefer `npm run pr:handoff` for the standard path."
       });
     }
 
@@ -199,7 +216,7 @@ export function getMissingWorkflowSteps(state) {
       key: "pr-metadata",
       requiredAt: workflow.prMetadataRequiredAt,
       command: workflowCommands.metadata,
-      reason: "Graphite submit was observed, but PR metadata was not applied afterward."
+      reason: "Graphite submit was observed, but PR metadata was not applied afterward. Prefer `npm run pr:handoff` for the standard path."
     });
   }
 
@@ -212,7 +229,7 @@ export function getMissingWorkflowSteps(state) {
       key: "pr-body",
       requiredAt: workflow.prBodyRequiredAt,
       command: workflowCommands.body,
-      reason: "Graphite submit was observed, but the PR body was not written afterward."
+      reason: "Graphite submit was observed, but the PR body was not written afterward. Prefer `npm run pr:handoff` for the standard path."
     });
   }
 

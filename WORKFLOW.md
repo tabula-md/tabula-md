@@ -224,19 +224,22 @@ Graphite owns PR-bound branch and PR lifecycle:
 - Updating a branch after feedback: `gt modify`.
 - Stack navigation: `gt checkout`, `gt up`, `gt down`, `gt top`, `gt bottom`.
 - Stack shape: `gt move`, `gt reorder`, `gt fold`, `gt split`, `gt absorb`.
+- Remote stack retrieval: `gt get`.
 - Sync and restack: `gt sync`, `gt restack`.
-- PR creation, PR updates, draft publishing: `gt submit`.
+- PR creation, PR updates, draft publishing, and reviewer requests:
+  `gt submit`.
+- Conflict continuation and abort: `gt continue`, `gt abort`.
+- Branch protection while stacking on other work: `gt freeze`, `gt unfreeze`.
 - Recovery from a bad Graphite mutation: `gt undo`.
 
 GitHub API and GitHub CLI are allowed only for metadata and repository hygiene
 that Graphite does not own:
 
-- `npm run pr:title` may update the PR title after the agent reviews whether
-  the implementation scope changed.
-- `npm run pr:body` may write the agent-authored review body after Graphite
-  submit.
-- `npm run pr:metadata` may apply labels, assignees, reviewers, and agent
-  provenance after Graphite submit.
+- `npm run pr:handoff` is the normal post-submit path. It reviews the PR title,
+  writes the review body, applies label and assignee metadata, and records agent
+  provenance.
+- `npm run pr:title`, `npm run pr:body`, and `npm run pr:metadata` are lower
+  level recovery or focused-edit commands.
 - `npm run pr:ready` may read PR state, metadata, and checks.
 - `npm run workflow:doctor -- --sync-labels` may sync GitHub labels.
 - `npm run workflow:doctor -- --delete-stale-graphite-base` may delete stale
@@ -244,8 +247,9 @@ that Graphite does not own:
 
 Do not use raw `git` or `gh` commands for Graphite-owned lifecycle operations.
 In particular, do not use `git checkout -b`, `git commit`, `git push`,
-`git pull`, `gh pr create`, `gh pr ready`, `gh pr edit`, `gh pr merge`, or
-direct mutating `gh api` calls against pull requests or remote refs.
+`git pull`, `gt push`, `gt pull`, `gh pr create`, `gh pr ready`, `gh pr edit`,
+`gh pr merge`, or direct mutating `gh api` calls against pull requests or
+remote refs.
 
 State-changing workflow commands must be serialized. Do not run Graphite
 mutations, GitHub metadata mutations, Linear status updates, or remote ref
@@ -317,12 +321,27 @@ safe local edits when useful and clearly report that submission is blocked.
 Lifecycle:
 
 - Start from trunk with `gt sync --delete-all` and `gt checkout --trunk`.
-- Create a layer by editing files, running `gt add <files>`, then running
-  `gt create <agent-or-dev-prefix>/short-kebab-slug -m "type(scope): summary"`.
-- Update a layer with `gt checkout <branch>`, edits, `gt add <files>`, and
-  `gt modify`.
+- Create a layer by editing files, then running
+  `gt create <agent-or-dev-prefix>/short-kebab-slug --all -m "type(scope): summary"`.
+- For selected hunks or files, use `gt add <files>`, `gt create --patch`, or
+  `gt create --update` instead of staging unrelated work.
+- Insert a new layer between the current branch and its child with
+  `gt create --insert` when the stack already has an upstack branch.
+- Create on a specific parent with `gt create --onto <branch>` when the current
+  checkout is not the intended parent.
+- Update a layer with `gt checkout <branch>`, edits, and
+  `gt modify --all -m "type(scope): summary"` when the change still belongs to
+  that layer.
+- Use `gt modify --into <downstack-branch>` for focused downstack edits when
+  the current checkout is upstack.
 - Submit with `gt submit` for one branch or `gt submit --stack` for a stack.
+- For large or risky stacks, preview before mutating remote state with
+  `gt submit --dry-run` or `gt submit --confirm`.
+- Request non-self reviewers at submit time with
+  `gt submit --reviewers <github-login>` when reviewers are known.
 - Publish an existing draft PR with `gt submit --publish --update-only`.
+- Fetch a remote PR or stack with `gt get <branch-or-pr-number>`; add
+  `--remote-upstack` when remote-only upstack PRs should be fetched too.
 - Use `gt log short` before handoff.
 - Use `gt restack`, `gt move`, `gt reorder`, `gt fold`, `gt split`,
   `gt absorb`, and `gt undo` for stack repair instead of raw Git recovery.
@@ -341,7 +360,7 @@ Graphite branch rules:
 - Keep the slug short, usually two to five words.
 - Do not include date prefixes, Linear issue keys, session ids, or underscores.
 - Do not rename an open Graphite PR branch just for style. GitHub PR branch
-  names are immutable, and `gt branch rename` removes the PR association.
+  names are immutable, and `gt rename` removes the PR association unless forced.
 - Use Conventional Commit style for commit and PR titles:
   `type(scope): summary`.
 - Keep Linear issue keys out of commit titles and PR titles by default.
@@ -406,10 +425,17 @@ Before submit, confirm:
 - Each branch title follows `type(scope): summary` and names the layer's
   purpose.
 - Use `gt fold` for layers that are too small or too dependent to review alone.
-- Use `gt split` for branches that contain multiple review concerns.
+- Use `gt split --by-file <pathspec>` for non-interactive agent-safe splits by
+  file, or interactive `gt split --by-commit` / `gt split --by-hunk` when a
+  human can resolve the prompts.
 - Use `gt reorder`, `gt move`, or `gt restack` when dependencies are out of
   order.
-- Use `gt absorb` when staged feedback belongs to older downstack commits.
+- Use `gt absorb --dry-run` before `gt absorb` when staged feedback may belong
+  to older downstack commits.
+- Use `gt fold --close` or `gt delete --close` when reshaping already-submitted
+  branches should also close their associated GitHub PRs.
+- Use `gt squash` to collapse multiple commits inside one Graphite branch before
+  handoff.
 - Use `gt undo` before reaching for raw Git after an incorrect Graphite
   mutation.
 
@@ -496,16 +522,12 @@ For UI changes, include screenshots or an explicit `Not visual` note. For
 behavior changes, include the exact verification command or manual check. If
 validation is intentionally skipped, explain why in `Not run`.
 
-After Graphite submit, review and update the title first:
+After Graphite submit, run one handoff command:
 
 ```sh
-npm run pr:title -- --title "type(scope): summary"
-```
-
-Then write the review body:
-
-```sh
-npm run pr:body -- \
+npm run pr:handoff -- \
+  --title "type(scope): summary" \
+  --label <Label> \
   --summary "<what changed and why>" \
   --review-focus "<what the reviewer should inspect>" \
   --implementation-notes "<important decision, tradeoff, or none with reason>" \
@@ -516,16 +538,19 @@ npm run pr:body -- \
   --evidence "<screenshot/video link or Not visual.>"
 ```
 
-Then apply metadata:
+`pr:handoff` runs the title, body, and metadata steps in order. It is not an
+automatic summarizer. The agent writes the content from the actual
+implementation, validation, and remaining risk; the script applies it in the
+standard template. `pr:ready` fails if body sections are missing or still
+placeholder-only.
+
+Use the lower-level commands only for focused recovery or targeted updates:
 
 ```sh
+npm run pr:title -- --title "type(scope): summary"
+npm run pr:body -- --summary "..." --review-focus "..." --implementation-notes "..." --validation-automated "..." --risk "..." --evidence "..."
 npm run pr:metadata -- --label <Label>
 ```
-
-`pr:body` is not an automatic summarizer. The agent writes the content from the
-actual implementation, validation, and remaining risk; the script applies it in
-the standard template. `pr:ready` fails if body sections are missing or still
-placeholder-only.
 
 `pr:title` is the explicit title-review checkpoint. Use the existing title if
 it still describes the final diff; otherwise choose the smallest Conventional
@@ -549,6 +574,7 @@ Before asking the repository owner to merge, run:
 
 ```sh
 gt submit --publish --update-only
+npm run pr:handoff -- --title "type(scope): summary" --label <Label> ...
 npm run pr:ready
 ```
 
@@ -597,7 +623,7 @@ When another reviewer exists, request them at submit time or through metadata:
 
 ```sh
 gt submit --reviewers <github-login>
-npm run pr:metadata -- --label <Label> --reviewer <github-login>
+npm run pr:handoff -- --label <Label> --reviewer <github-login> ...
 ```
 
 ## Validation Standard

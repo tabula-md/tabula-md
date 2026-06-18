@@ -39,6 +39,7 @@ Product direction:
 - Workflow maintenance: `npm run workflow:maintenance`
 - Workflow status: `npm run workflow:status`
 - Workflow sync after merge: `npm run workflow:sync`
+- PR handoff: `npm run pr:handoff`
 - PR readiness: `npm run pr:ready`
 - Focused browser smoke: `npm run test:browser:workspace`,
   `npm run test:browser:editor`, `npm run test:browser:layout`,
