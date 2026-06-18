@@ -37,7 +37,6 @@ import {
   checkConventionalTitle,
   checkPrLabels,
   checkPrTemplateBody,
-  checkStatusChecks,
   hasFailures,
   parseGitCountObjects,
   parseArgs
@@ -342,6 +341,17 @@ test("blocks missing Graphite handoff only for the current turn", () => {
   );
 });
 
+test("does not fold validation reminders into blocking workflow stops", () => {
+  const reason = formatStopReason({
+    missingWorkflowSteps: [{ command: "npm run pr:handoff -- ...", reason: "handoff missing" }],
+    missingValidations: [],
+    blockingWorkflow: true
+  });
+
+  assert.match(reason, /Finish the Tabula Graphite workflow/);
+  assert.doesNotMatch(reason, /missing Tabula validation/);
+});
+
 test("formats workflow reminders for prompts and stop continuation", () => {
   assert.match(buildWorkflowReminder("PR #2 머지했어"), /workflow:sync/);
   assert.equal(shouldMarkPostMergeSyncRequired("PR #2 머지했어"), true);
@@ -441,8 +451,6 @@ test("checks PR readiness policy helpers", () => {
   assert.equal(hasFailures(checkPrTemplateBody("## Summary")), true);
   assert.deepEqual(checkPrLabels([{ name: "Infra" }], labelCatalog).map((check) => check.level), ["ok"]);
   assert.equal(hasFailures(checkPrLabels([{ name: "Infra" }, { name: "Docs" }], labelCatalog)), true);
-  assert.deepEqual(checkStatusChecks([{ name: "Verify", conclusion: "SUCCESS" }]).map((check) => check.level), ["ok"]);
-  assert.deepEqual(checkStatusChecks([{ name: "Verify", status: "PENDING" }]).map((check) => check.level), ["warn"]);
   assert.throws(() => parseArgs(["--fix"]), /explicit fix flag/);
   assert.equal(parseArgs(["--delete-stale-graphite-base"]).deleteStaleGraphiteBase, true);
   assert.throws(() => parseArgs(["--sync-labels"], { allowWorkflowFixFlags: false }), /Unknown option/);

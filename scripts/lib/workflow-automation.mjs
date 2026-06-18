@@ -298,28 +298,6 @@ export function isAgentAuthoredBranch(branch) {
   return agentBranchPattern.test(String(branch ?? "").trim());
 }
 
-export function checkStatusChecks(checks = []) {
-  if (!Array.isArray(checks) || checks.length === 0) {
-    return [warn("No PR checks found")];
-  }
-
-  return checks.map((check) => {
-    const name = check.name ?? "unknown check";
-    const state = check.conclusion ?? check.status ?? "unknown";
-    const normalizedState = String(state).toUpperCase();
-
-    if (["SUCCESS", "PASSED", "PASS", "COMPLETED"].includes(normalizedState)) {
-      return ok(`Check passed: ${name}`);
-    }
-
-    if (["FAILURE", "FAILED", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED"].includes(normalizedState)) {
-      return fail(`Check failed: ${name}`, state);
-    }
-
-    return warn(`Check not complete: ${name}`, state);
-  });
-}
-
 export function parseGitCountObjects(output) {
   const parsed = {};
 

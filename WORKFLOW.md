@@ -79,9 +79,65 @@ legacy behavior, defensive fallbacks, or alternate implementations unless the
 human operator explicitly asks for them or the existing product contract already
 requires them.
 
+## Work Modes
+
+Use the lightest mode that satisfies the request. Do not run the full PR
+handoff workflow for every implementation prompt.
+
+Work mode selection is agent judgment, not a keyword filter. The examples below
+are signals to consider, not a rule engine. Hooks must not choose a work mode
+from prompt text.
+
+### Fast Local Loop
+
+Default for ordinary implementation prompts when the repository owner did not
+ask for review handoff and the change does not inherently need one.
+
+In this mode:
+
+- Implement the change.
+- Run focused validation based on touched files.
+- Report the result and any validation not run.
+- Do not create a Linear issue, submit a Graphite PR, or run PR metadata
+  commands unless the task clearly needs review handoff.
+
+This is the normal speed path for small and medium coding tasks.
+
+### PR Handoff Loop
+
+Use this mode when the repository owner's intent is review handoff, or when the
+work is clearly meant to be reviewed as a PR or stack.
+
+In this mode:
+
+- Use Graphite for branch, commit, submit, stack, publish, and sync.
+- Run the focused validation needed for the changed files.
+- Run `npm run pr:handoff -- ...` after Graphite submit.
+- Run `npm run pr:ready` once before handoff to catch local metadata and
+  template gaps.
+- After handoff, do not poll CI or Graphite mergeability. The repository owner
+  reviews the Graphite App state and merges there; if merge is blocked, they
+  pass the concrete error back to the agent.
+
+### Release/Public Loop
+
+Use this mode for release, changelog, public launch, security, cross-repo,
+branch protection, CI, or externally visible project-process work.
+
+In this mode:
+
+- Prefer explicit Linear tracking.
+- Use Graphite stacks when there are separate reviewable layers.
+- Run broader validation and documentation checks.
+- Treat public docs, templates, and repository settings as product surfaces.
+
+Hooks may block hard safety violations, remind about observed Graphite handoff
+state, or signal likely validation needs. They must not replace the agent's work
+mode, stack shape, validation, or implementation judgment.
+
 ## Work Classification
 
-Default mapping:
+Default PR-bound mapping:
 
 ```txt
 One trackable request
@@ -92,8 +148,8 @@ One trackable request
 
 Use this decision order before editing:
 
-- Local-only work: skip Linear and PR only when the task is an obvious,
-  low-risk local cleanup or investigation and does not need handoff.
+- Fast local work: use Fast Local Loop by default when the owner asks for an
+  implementation but not for PR handoff.
 - Single PR: use one Graphite PR when the work has one reviewable concern, such
   as a typo, small docs patch, isolated test, or narrow bug fix.
 - Stack: use multiple Graphite PRs when one outcome has several reviewable
@@ -167,7 +223,16 @@ vertical slice instead.
 
 ## Start Of Work
 
-Start every PR-bound task from trunk:
+Start by checking where you are:
+
+```sh
+npm run workflow:status
+```
+
+For Fast Local Loop, this is usually enough. Confirm the worktree is clean or
+understand every existing change, then edit and run focused validation.
+
+Start PR Handoff Loop work from trunk:
 
 ```sh
 gt sync --delete-all
@@ -188,11 +253,13 @@ Use `npm run workflow:status` when resuming a thread, after Graphite submit, and
 after merge. It summarizes the current branch, PR, metadata, checks, Graphite
 stack, and next expected action.
 
-Use `npm run workflow:doctor` when workflow setup looks suspicious. It checks
-repo-local templates, scripts, Graphite availability, GitHub merge settings, and
-stale Graphite temporary branches, label catalog drift, or local Git maintenance
-warnings without submitting or merging anything. Fixes are intentionally split
-into explicit commands by effect:
+Use `npm run workflow:doctor` for setup, workflow automation changes,
+environment suspicion, or post-merge cleanup diagnostics. Do not run it as a
+default step for every small implementation. It checks repo-local templates,
+scripts, Graphite availability, GitHub merge settings, stale Graphite temporary
+branches, label catalog drift, and local Git maintenance warnings without
+submitting or merging anything. Fixes are intentionally split into explicit
+commands by effect:
 
 - `npm run workflow:doctor -- --fix-graphite-config`
 - `npm run workflow:doctor -- --delete-stale-graphite-base`
@@ -240,7 +307,9 @@ that Graphite does not own:
   provenance.
 - `npm run pr:title`, `npm run pr:body`, and `npm run pr:metadata` are lower
   level recovery or focused-edit commands.
-- `npm run pr:ready` may read PR state, metadata, and checks.
+- `npm run pr:ready` checks local handoff completeness: PR state, metadata,
+  title, body, branch policy, and fast whitespace checks. It must not poll CI
+  or Graphite mergeability as a merge gate.
 - `npm run workflow:doctor -- --sync-labels` may sync GitHub labels.
 - `npm run workflow:doctor -- --delete-stale-graphite-base` may delete stale
   `graphite-base/*` branches only when no PRs are open.
@@ -584,9 +653,14 @@ Graphite PR from draft to ready for review without creating new PRs. Do not use
 approves the fallback.
 
 `pr:ready` checks local cleanliness, PR metadata, title shape, body template
-content, branch naming policy, PR-title-to-commit-subject agreement, fast
-whitespace checks, and GitHub check status. It does not submit, merge, publish,
-or run expensive validation.
+content, branch naming policy, PR-title-to-commit-subject agreement, and fast
+whitespace checks. It does not submit, merge, publish, poll CI, poll Graphite
+mergeability, or run expensive validation.
+
+After `pr:ready` passes, hand the PR to the repository owner with the Graphite
+URL, the validation that ran, and any validation that intentionally did not run.
+Do not keep watching the PR. The Graphite App is the final merge surface for
+CI, mergeability, review status, and the merge button.
 
 Keep commit history concise:
 
@@ -628,6 +702,8 @@ npm run pr:handoff -- --label <Label> --reviewer <github-login> ...
 
 ## Validation Standard
 
+- Run the smallest validation that can catch likely regressions in the chosen
+  work mode.
 - Run focused unit tests after pure-function changes.
 - Run `npm run knowledge:check` after changing `knowledge/**`.
 - Run `npm run test:hooks` after changing `.codex/hooks/**`, workflow policy
@@ -635,6 +711,9 @@ npm run pr:handoff -- --label <Label> --reviewer <github-login> ...
 - Run `npm run build` after TypeScript, import, package, or app wiring changes.
 - Run `npm run test:browser` after editor, preview, right panel, file tree,
   share, or collaboration UI changes.
+- Do not run `npm test` plus `npm run build` plus browser smoke by default for
+  docs-only, comment-only, or narrow tooling changes. Escalate validation when
+  the changed files or risk justify it.
 
 Focused browser smoke aliases:
 
@@ -649,7 +728,10 @@ npm run test:browser:collab
 ## Merge And Cleanup
 
 Use Graphite UI for normal PR and stack merge. Merge stack layers in dependency
-order from bottom to top.
+order from bottom to top. The repository owner checks the final Graphite App
+merge state; agents should not repeatedly poll GitHub or Graphite after
+handoff. If the merge is blocked, the owner sends the specific Graphite or CI
+error back to the agent.
 
 Repository merge policy:
 
@@ -728,14 +810,17 @@ Graphite, validation, PR metadata, merge, and cleanup rules.
 This repository currently includes project-local Codex hooks in `.codex/` as
 guardrails for Codex sessions. Other agents may not run those hooks. When an
 agent does not run the hooks, it must manually follow the same checks by using
-the scripts in this document, especially:
+the scripts in this document where relevant:
 
 ```sh
 npm run workflow:status
-npm run workflow:doctor
 npm run pr:ready
 npm run test:hooks
 ```
+
+`workflow:doctor` is for setup suspicion, workflow automation changes, and
+post-merge diagnostics. It is not a mandatory command for every implementation
+turn.
 
 Codex hooks reduce repeated workflow mistakes, but they do not replace agent
 judgment, code review, Linear planning, Graphite stack design, or test
@@ -749,9 +834,9 @@ Codex hooks automatically help with:
   key material.
 - Enforcing parts of the command policy above.
 - Recording likely validation needs after file changes.
-- Warning when validation appears to be missing.
-- Continuing the turn when Graphite submit happened in the current turn but PR
-  title, body, or metadata is still missing.
+- Warning, not blocking, when validation appears to be missing.
+- Continuing the turn when Graphite submit happened in the current turn but
+  `pr:handoff` is still missing.
 - Reminding without blocking when older workflow state is pending during a later
   explanation or investigation turn.
 - Continuing the turn when an explicit post-merge signal needs `workflow:sync`.
@@ -764,7 +849,7 @@ Codex hooks do not automatically:
 - Choose the correct implementation.
 - Run expensive validation every time.
 - Submit or merge PRs by themselves.
-- Replace PR metadata commands.
+- Replace `pr:handoff`.
 - Move Linear issues to `Done`.
 
 Project-local hooks load only when the project `.codex/` layer is trusted. When
