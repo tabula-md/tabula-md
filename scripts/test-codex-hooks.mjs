@@ -73,6 +73,9 @@ test("blocks raw Git branch creation and PR publishing lifecycle", () => {
   assert.equal(evaluateBashCommand("gh api --method PATCH repos/tabula-md/tabula-md/pulls/5").decision, "block");
   assert.equal(evaluateBashCommand("gh api -X DELETE repos/tabula-md/tabula-md/git/refs/heads/graphite-base/4").decision, "block");
   assert.equal(evaluateBashCommand("gh api repos/tabula-md/tabula-md/pulls/5").decision, "allow");
+  assert.equal(evaluateBashCommand("git merge feature-branch").decision, "block");
+  assert.equal(evaluateBashCommand("git merge-base --is-ancestor codex/trust-shell-cleanup main").decision, "allow");
+  assert.equal(evaluateBashCommand("git merge-tree main HEAD").decision, "allow");
 });
 
 test("allows Graphite commands and safe Git passthrough", () => {
@@ -113,7 +116,7 @@ test("blocks destructive Git commands", () => {
   assert.equal(evaluateBashCommand("git reset --hard HEAD").decision, "block");
   assert.equal(evaluateBashCommand("git checkout -- apps/web/src/App.tsx").decision, "block");
   assert.equal(evaluateBashCommand("git clean -fd").decision, "block");
-  assert.equal(evaluateBashCommand("rm -rf apps/web/src").decision, "block");
+  assert.equal(evaluateBashCommand("rm -rf apps/web/src").decision, "allow");
 });
 
 test("blocks shell source writes under project-owned paths", () => {

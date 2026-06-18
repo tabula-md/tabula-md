@@ -15,7 +15,9 @@ truth.
 
 - Block obvious secret material in prompts.
 - Block raw Git/GitHub lifecycle commands that bypass Graphite.
-- Block destructive Git cleanup unless explicitly requested.
+- Block destructive Git commands that discard user work, such as
+  `git reset --hard`, `git checkout --`, `git restore`, and `git clean -fd`,
+  unless explicitly requested.
 - Block shell-based source writes where `apply_patch` should be used.
 - Record likely validation needs after file changes.
 - Continue a turn when Graphite submit was observed in that turn without later
@@ -29,6 +31,7 @@ truth.
 - Create Linear issues.
 - Choose stack shape.
 - Implement code.
+- Block `rm -rf`; shell cleanup is left to agent judgment.
 - Submit or merge PRs by themselves.
 - Run expensive validation automatically.
 - Replace code review.
