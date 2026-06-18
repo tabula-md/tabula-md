@@ -1,12 +1,31 @@
 #!/usr/bin/env node
-import { readHookPayload, readState, statePathForPayload } from "./lib/hook-io.mjs";
-import { getMissingValidations } from "./lib/validation-policy.mjs";
-import { formatStopReason, getCurrentTurnMissingWorkflowSteps, getMissingWorkflowSteps } from "./lib/workflow-policy.mjs";
+import { readHookPayload, readState, repoRootFromCwd, statePathForPayload, writeState } from "./lib/hook-io.mjs";
+import { filterMissingValidationsForChangedFiles, getCurrentTurnMissingValidations, getMissingValidations } from "./lib/validation-policy.mjs";
+import { collectWorkflowStatus, hasCurrentPullRequestHandoffComplete, readCurrentBranchChangedFiles } from "./lib/workflow-status.mjs";
+import { clearPrHandoffRequirements, formatStopReason, getCurrentTurnMissingWorkflowSteps, getMissingWorkflowSteps } from "./lib/workflow-policy.mjs";
 
 const payload = await readHookPayload();
-const state = readState(statePathForPayload(payload));
-const missingValidations = getMissingValidations(state);
-const missingWorkflowSteps = getMissingWorkflowSteps(state);
+const statePath = statePathForPayload(payload);
+let state = readState(statePath);
+const root = repoRootFromCwd(payload?.cwd);
+const status = collectWorkflowStatus(root);
+let missingValidations = getCurrentTurnMissingValidations(state, getMissingValidations(state));
+let missingWorkflowSteps = getMissingWorkflowSteps(state);
+
+if (status.clean && status.pr && missingValidations.length > 0) {
+  missingValidations = filterMissingValidationsForChangedFiles(
+    missingValidations,
+    readCurrentBranchChangedFiles(root)
+  );
+}
+
+if (missingWorkflowSteps.some((step) => isPrHandoffStep(step.key))) {
+  if (hasCurrentPullRequestHandoffComplete(status)) {
+    state = clearPrHandoffRequirements(state);
+    writeState(statePath, state);
+    missingWorkflowSteps = getMissingWorkflowSteps(state);
+  }
+}
 
 if (missingValidations.length === 0 && missingWorkflowSteps.length === 0) {
   process.exit(0);
@@ -39,3 +58,7 @@ console.log(JSON.stringify({
   reason
 }));
 process.exit(0);
+
+function isPrHandoffStep(key) {
+  return key === "pr-title" || key === "pr-body" || key === "pr-metadata";
+}

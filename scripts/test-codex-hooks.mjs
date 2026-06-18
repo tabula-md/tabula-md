@@ -7,6 +7,8 @@ import { findBashCommand } from "../.codex/hooks/lib/hook-io.mjs";
 import {
   classifyChangedFiles,
   classifyValidationCommand,
+  filterMissingValidationsForChangedFiles,
+  getCurrentTurnMissingValidations,
   getMissingValidations,
   parseGitStatusFiles,
   parsePatchFiles,
@@ -25,9 +27,11 @@ import {
   recordPromptSubmitted,
   recordPostMergeSyncRequired,
   recordWorkflowCommand,
+  clearPrHandoffRequirements,
   shouldBlockForMissingWorkflowSteps,
   shouldMarkPostMergeSyncRequired
 } from "../.codex/hooks/lib/workflow-policy.mjs";
+import { hasCurrentPullRequestHandoffComplete } from "../.codex/hooks/lib/workflow-status.mjs";
 import {
   checkBranchName,
   checkConventionalTitle,
@@ -186,6 +190,29 @@ test("reports validations missing after newer relevant changes", () => {
   assert.deepEqual(getMissingValidations(state), []);
 });
 
+test("reports stop validation reminders only for current-turn changes", () => {
+  let state = {};
+  state = recordChangedFiles(state, ["apps/web/src/App.tsx"], "2026-06-17T00:00:00.000Z");
+  state = recordPromptSubmitted(state, "2026-06-17T00:01:00.000Z");
+  assert.deepEqual(getCurrentTurnMissingValidations(state).map((item) => item.key), []);
+
+  state = recordChangedFiles(state, ["apps/web/src/components/FileToolbar.tsx"], "2026-06-17T00:02:00.000Z");
+  assert.deepEqual(getCurrentTurnMissingValidations(state).map((item) => item.key), ["build", "browser"]);
+});
+
+test("filters stale validation reminders to current branch files", () => {
+  const missing = [
+    { key: "build", requiredAt: "2026-06-17T00:00:00.000Z", command: "npm run build", reason: "build" },
+    { key: "browser", requiredAt: "2026-06-17T00:00:00.000Z", command: "npm run test:browser", reason: "browser" },
+    { key: "hooks", requiredAt: "2026-06-17T00:00:00.000Z", command: "npm run test:hooks", reason: "hooks" }
+  ];
+
+  assert.deepEqual(
+    filterMissingValidationsForChangedFiles(missing, [".codex/hooks/lib/workflow-status.mjs"]).map((item) => item.key),
+    ["hooks"]
+  );
+});
+
 test("parses git status output for bash post-tool change detection", () => {
   assert.deepEqual(
     parseGitStatusFiles(` M apps/web/src/App.tsx
@@ -259,6 +286,14 @@ test("reports missing PR title, body, and metadata only after real submit", () =
   assert.deepEqual(getMissingWorkflowSteps(state), []);
 
   state = recordWorkflowCommand(state, "gt submit --publish --update-only", "2026-06-17T00:05:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state), []);
+});
+
+test("clears stale PR handoff requirements when the current PR is already complete", () => {
+  let state = recordWorkflowCommand({}, "gt submit --no-edit", "2026-06-17T00:01:00.000Z");
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-title", "pr-body", "pr-metadata"]);
+
+  state = clearPrHandoffRequirements(state, "2026-06-17T00:02:00.000Z");
   assert.deepEqual(getMissingWorkflowSteps(state), []);
 });
 
@@ -398,6 +433,53 @@ test("checks PR readiness policy helpers", () => {
   assert.equal(parseArgs(["--post-merge"], { allowWorkflowFixFlags: false, allowMaintenanceFlags: true }).postMerge, true);
   assert.equal(parseArgs(["--register"], { allowWorkflowFixFlags: false, allowMaintenanceFlags: true }).register, true);
   assert.throws(() => parseArgs(["--post-merge"], { allowWorkflowFixFlags: false }), /Unknown option/);
+});
+
+test("detects complete current PR handoff from live PR metadata shape", () => {
+  const status = {
+    branch: "codex/test-hook",
+    currentCommitTitle: "chore(workflow): tighten hook state",
+    pr: {
+      state: "OPEN",
+      isDraft: false,
+      title: "chore(workflow): tighten hook state",
+      labels: [{ name: "Infra" }],
+      assignees: [{ login: "taehalim" }],
+      body: `## Summary
+
+- Tightened hook state cleanup.
+
+## Review Focus
+
+- Confirm stale PR handoff warnings clear when metadata is already complete.
+
+## Implementation Notes
+
+- Stop hook checks current PR metadata before repeating old pending state.
+
+## Agent
+
+- Tool: Codex
+- Session: 019ed132-9bc9-7a11-a31d-6bc08a92d5ff
+
+## Validation
+
+- Automated: npm run test:hooks
+- Manual: None.
+- Not run: None.
+
+## Risk
+
+- Low; hook policy only.
+
+## Evidence
+
+- Unit coverage exercises complete metadata.`
+    }
+  };
+
+  assert.equal(hasCurrentPullRequestHandoffComplete(status, process.cwd()), true);
+  assert.equal(hasCurrentPullRequestHandoffComplete({ ...status, pr: { ...status.pr, labels: [] } }, process.cwd()), false);
 });
 
 test("parses git count-objects output", () => {

@@ -1,5 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { checkPrTemplateBody, hasFailures } from "../../../scripts/lib/workflow-automation.mjs";
+import {
+  checkConventionalTitle,
+  checkPrLabels,
+  checkPrTemplateBody,
+  hasFailures,
+  readLabelCatalog,
+  repoRoot
+} from "../../../scripts/lib/workflow-automation.mjs";
 
 export function collectWorkflowStatus(cwd = process.cwd()) {
   const branch = run("git", ["branch", "--show-current"], cwd).stdout || "unknown";
@@ -101,6 +108,46 @@ export function recommendNextActions(status) {
   }
 
   return ["Ready for new work. Classify the request first; create or reuse a Linear MTS issue for accepted maintainer work, then edit from `main` and use Graphite for PR-bound changes."];
+}
+
+export function hasCurrentPullRequestHandoffComplete(status, cwd = process.cwd()) {
+  if (!status?.pr || status.pr.state !== "OPEN" || status.pr.isDraft) {
+    return false;
+  }
+
+  const root = repoRoot(cwd);
+  const labelCatalog = readLabelCatalog(root);
+  const titleChecks = [
+    checkConventionalTitle(status.pr.title),
+    status.currentCommitTitle && status.pr.title === status.currentCommitTitle
+      ? { level: "ok", message: "PR title matches current commit subject" }
+      : { level: "fail", message: "PR title should match current commit subject" }
+  ];
+  const bodyChecks = checkPrTemplateBody(status.pr.body, { branch: status.branch });
+  const labels = Array.isArray(status.pr.labels) ? status.pr.labels : [];
+  const assignees = Array.isArray(status.pr.assignees) ? status.pr.assignees : [];
+  const metadataChecks = [
+    ...checkPrLabels(labels, labelCatalog),
+    assignees.length > 0
+      ? { level: "ok", message: "PR has assignee metadata" }
+      : { level: "fail", message: "PR is missing assignee metadata" }
+  ];
+
+  return !hasFailures([...titleChecks, ...bodyChecks, ...metadataChecks]);
+}
+
+export function readCurrentBranchChangedFiles(cwd = process.cwd()) {
+  const branch = run("git", ["branch", "--show-current"], cwd).stdout;
+  if (!branch || branch === "main") {
+    return [];
+  }
+
+  const parent = run("gt", ["parent"], cwd).stdout;
+  const diff = parent
+    ? run("git", ["diff", "--name-only", `${parent}...HEAD`], cwd).stdout
+    : "";
+  const output = diff || run("git", ["show", "--name-only", "--format=", "HEAD"], cwd).stdout;
+  return output.split(/\r?\n/).map((file) => file.trim()).filter(Boolean);
 }
 
 function readCurrentPullRequest(cwd) {

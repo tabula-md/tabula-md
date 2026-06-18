@@ -160,6 +160,18 @@ export function recordPostMergeSyncRequired(state, timestamp = new Date().toISOS
   return next;
 }
 
+export function clearPrHandoffRequirements(state, timestamp = new Date().toISOString()) {
+  const next = normalizeFullState(state);
+  const workflow = normalizeWorkflowState(next.workflow);
+  workflow.prTitleRequiredAt = null;
+  workflow.prBodyRequiredAt = null;
+  workflow.prMetadataRequiredAt = null;
+  workflow.updatedAt = timestamp;
+  next.workflow = workflow;
+  next.updatedAt = timestamp;
+  return next;
+}
+
 export function getMissingWorkflowSteps(state) {
   const workflow = normalizeWorkflowState(state?.workflow);
   const missing = [];
