@@ -124,7 +124,7 @@ export function classifyChangedFiles(files) {
       needs.unit = true;
     }
 
-    if (file.startsWith(".codex/hooks/") || file === ".codex/hooks.json" || file === "scripts/test-codex-hooks.mjs") {
+    if (isHookPolicyFile(file)) {
       needs.hooks = true;
     }
   }
@@ -134,6 +134,15 @@ export function classifyChangedFiles(files) {
     browserSuites: [...browserSuites],
     needs
   };
+}
+
+function isHookPolicyFile(file) {
+  return file.startsWith(".codex/hooks/")
+    || file === ".codex/hooks.json"
+    || file === "scripts/test-codex-hooks.mjs"
+    || file === "scripts/lib/agent-context.mjs"
+    || file === "scripts/lib/workflow-automation.mjs"
+    || file === "scripts/lib/workflow-status.mjs";
 }
 
 export function classifyValidationCommand(command) {

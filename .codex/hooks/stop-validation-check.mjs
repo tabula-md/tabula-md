@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readHookPayload, readState, repoRootFromCwd, statePathForPayload, writeState } from "./lib/hook-io.mjs";
 import { filterMissingValidationsForChangedFiles, getCurrentTurnMissingValidations, getMissingValidations } from "./lib/validation-policy.mjs";
-import { collectWorkflowStatus, hasCurrentPullRequestHandoffComplete, readCurrentBranchChangedFiles } from "./lib/workflow-status.mjs";
+import { collectWorkflowStatus, hasCurrentPullRequestHandoffComplete, readCurrentBranchChangedFiles } from "../../scripts/lib/workflow-status.mjs";
 import { clearPrHandoffRequirements, formatStopReason, getCurrentTurnMissingWorkflowSteps, getMissingWorkflowSteps } from "./lib/workflow-policy.mjs";
 
 const payload = await readHookPayload();
@@ -60,5 +60,5 @@ console.log(JSON.stringify({
 process.exit(0);
 
 function isPrHandoffStep(key) {
-  return key === "pr-title" || key === "pr-body" || key === "pr-metadata";
+  return key === "pr-handoff" || key === "pr-title" || key === "pr-body" || key === "pr-metadata";
 }

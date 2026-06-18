@@ -36,7 +36,7 @@ export function upsertAgentSection(body, context) {
   const range = findAgentSectionRange(text);
 
   if (range) {
-    return `${`${text.slice(0, range.start).trimEnd()}\n${section}\n${text.slice(range.end).trimStart()}`.trim()}\n`;
+    return `${`${text.slice(0, range.start).trimEnd()}\n\n${section}\n\n${text.slice(range.end).trimStart()}`.trim()}\n`;
   }
 
   const validationIndex = text.search(/^## Validation$/m);

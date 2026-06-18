@@ -193,43 +193,18 @@ export function getMissingWorkflowSteps(state) {
   const workflow = normalizeWorkflowState(state?.workflow);
   const missing = [];
 
-  if (workflow.prTitleRequiredAt && (!workflow.prTitleAppliedAt || workflow.prTitleAppliedAt < workflow.prTitleRequiredAt)) {
-    missing.push({
-      key: "pr-title",
-      requiredAt: workflow.prTitleRequiredAt,
-      command: workflowCommands.title,
-      reason: "Graphite submit was observed, but the PR title was not reviewed afterward. Prefer `npm run pr:handoff` for the standard path."
-    });
-  }
+  const missingHandoffRequiredAt = [
+    isMissingStep(workflow.prTitleRequiredAt, workflow.prTitleAppliedAt),
+    isMissingStep(workflow.prBodyRequiredAt, workflow.prBodyAppliedAt),
+    isMissingStep(workflow.prMetadataRequiredAt, workflow.prMetadataAppliedAt)
+  ].filter(Boolean).sort().at(-1);
 
-  if (workflow.prMetadataRequiredAt && (!workflow.prMetadataAppliedAt || workflow.prMetadataAppliedAt < workflow.prMetadataRequiredAt)) {
-    if (workflow.prBodyRequiredAt && (!workflow.prBodyAppliedAt || workflow.prBodyAppliedAt < workflow.prBodyRequiredAt)) {
-      missing.push({
-        key: "pr-body",
-        requiredAt: workflow.prBodyRequiredAt,
-        command: workflowCommands.body,
-        reason: "Graphite submit was observed, but the PR body was not written afterward. Prefer `npm run pr:handoff` for the standard path."
-      });
-    }
-
+  if (missingHandoffRequiredAt) {
     missing.push({
-      key: "pr-metadata",
-      requiredAt: workflow.prMetadataRequiredAt,
-      command: workflowCommands.metadata,
-      reason: "Graphite submit was observed, but PR metadata was not applied afterward. Prefer `npm run pr:handoff` for the standard path."
-    });
-  }
-
-  if (
-    (!workflow.prMetadataRequiredAt || (workflow.prMetadataAppliedAt && workflow.prMetadataAppliedAt >= workflow.prMetadataRequiredAt))
-    && workflow.prBodyRequiredAt
-    && (!workflow.prBodyAppliedAt || workflow.prBodyAppliedAt < workflow.prBodyRequiredAt)
-  ) {
-    missing.push({
-      key: "pr-body",
-      requiredAt: workflow.prBodyRequiredAt,
-      command: workflowCommands.body,
-      reason: "Graphite submit was observed, but the PR body was not written afterward. Prefer `npm run pr:handoff` for the standard path."
+      key: "pr-handoff",
+      requiredAt: missingHandoffRequiredAt,
+      command: workflowCommands.handoff,
+      reason: "Graphite submit was observed, but PR handoff was not completed afterward."
     });
   }
 
@@ -243,6 +218,10 @@ export function getMissingWorkflowSteps(state) {
   }
 
   return missing;
+}
+
+function isMissingStep(requiredAt, appliedAt) {
+  return requiredAt && (!appliedAt || appliedAt < requiredAt) ? requiredAt : null;
 }
 
 export function shouldBlockForMissingWorkflowSteps(state, missingWorkflowSteps = getMissingWorkflowSteps(state)) {
