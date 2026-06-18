@@ -93,6 +93,14 @@ function findBlockedGraphiteLifecycleCommands(command) {
     findings.push(block("Sync trunk and restack Graphite branches with `gt sync`, not raw `git pull`."));
   }
 
+  if (hasGtSubcommand(command, "pull")) {
+    findings.push(block("`gt pull` is a Git passthrough. Sync trunk and Graphite branches with `gt sync`."));
+  }
+
+  if (hasGtSubcommand(command, "push")) {
+    findings.push(block("`gt push` is a Git passthrough. Publish or update PR-bound work with `gt submit` or `gt submit --stack`."));
+  }
+
   if (/\bgit\s+merge\b/.test(command)) {
     findings.push(block("Use Graphite restack/sync flows for PR-bound branches instead of raw `git merge`."));
   }
@@ -119,6 +127,15 @@ function isMutatingGitHubLifecycleApi(command) {
   }
 
   return /\brepos\/[^\s"'`]+\/[^\s"'`]+\/pulls(?:\/|\b)|\brepos\/[^\s"'`]+\/[^\s"'`]+\/git\/refs\/heads(?:\/|\b)/.test(command);
+}
+
+function hasGtSubcommand(command, subcommand) {
+  const pattern = new RegExp(`(?:^|[\\n;&|])\\s*gt\\s+${escapeRegExp(subcommand)}(?:\\s|$)`);
+  return pattern.test(command);
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function findDestructiveGitCommands(command) {
