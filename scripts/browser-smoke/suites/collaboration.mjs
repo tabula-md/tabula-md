@@ -97,6 +97,12 @@ export async function run(ctx) {
       expect(typeof startRoomServer === "function", "Collaboration smoke should be able to start the room server.");
       await stopRoomServer();
       await firstPage.waitForSelector(".share-status-dot.offline", { timeout: 8_000 });
+      await firstPage.locator(".share-trigger").click();
+      await waitForText(
+        firstPage.locator(".share-modal"),
+        "The collaboration server disconnected. Local edits will sync when it reconnects.",
+      );
+      await firstPage.getByRole("button", { name: "Close share dialog" }).click();
       await focusMarkdownEditor(firstPage);
       await firstPage.keyboard.press("ArrowRight");
       await firstPage.keyboard.press("End");

@@ -102,6 +102,7 @@ export function useCollaborationRoom({ activeFile, activeSelection, identity, se
             file.id === connectedFileId
               ? {
                   ...file,
+                  lastRecoveryType: event.type,
                   lastRecoveryMessage: event.message,
                   lastRecoveryAt: event.createdAt,
                 }
@@ -158,6 +159,7 @@ export function useCollaborationRoom({ activeFile, activeSelection, identity, se
               connectionStatus: "connecting",
               snapshotCount: 0,
               lastSnapshotAt: undefined,
+              lastRecoveryType: undefined,
               lastRecoveryMessage: undefined,
               lastRecoveryAt: undefined,
             }

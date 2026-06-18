@@ -739,6 +739,7 @@ function WorkspaceApp() {
               collaboratorCount: 0,
               snapshotCount: 0,
               lastSnapshotAt: undefined,
+              lastRecoveryType: undefined,
               lastRecoveryMessage: undefined,
               lastRecoveryAt: undefined,
             }
