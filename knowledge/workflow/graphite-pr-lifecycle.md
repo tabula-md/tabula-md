@@ -23,8 +23,12 @@ history. Git owns local history.
 7. Write the review body with `npm run pr:body -- ...`.
 8. Apply metadata with `npm run pr:metadata -- --label <Label>`.
 9. Publish with `gt submit --publish --update-only`.
-10. Check readiness with `npm run pr:ready`.
-11. After merge, run `npm run workflow:sync`.
+10. Check handoff completeness once with `npm run pr:ready`.
+11. Hand the Graphite URL, validation summary, and known skips to the
+    repository owner.
+12. The repository owner reviews CI and mergeability in Graphite App and merges
+    there. Do not keep polling after handoff.
+13. After merge, run `npm run workflow:sync`.
 
 # Update Existing PRs
 

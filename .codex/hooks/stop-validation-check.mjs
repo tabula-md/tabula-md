@@ -34,7 +34,7 @@ if (missingValidations.length === 0 && missingWorkflowSteps.length === 0) {
 const currentTurnMissingWorkflowSteps = getCurrentTurnMissingWorkflowSteps(state, missingWorkflowSteps);
 const blockWorkflowSteps = currentTurnMissingWorkflowSteps.length > 0;
 const reason = formatStopReason({
-  missingValidations,
+  missingValidations: blockWorkflowSteps ? [] : missingValidations,
   missingWorkflowSteps: blockWorkflowSteps ? currentTurnMissingWorkflowSteps : missingWorkflowSteps,
   blockingWorkflow: blockWorkflowSteps
 });

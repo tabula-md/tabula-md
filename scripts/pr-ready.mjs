@@ -5,7 +5,6 @@ import {
   checkConventionalTitle,
   checkPrLabels,
   checkPrTemplateBody,
-  checkStatusChecks,
   commandResult,
   fail,
   formatCheckReport,
@@ -87,7 +86,7 @@ function checkCurrentPullRequest(status, labelCatalog) {
   checks.push(assignees.length > 0 ? ok("PR has assignee metadata", assignees.map((assignee) => assignee.login).join(", ")) : fail("PR is missing assignee metadata"));
 
   checks.push(...checkPrTemplateBody(status.pr.body, { branch: status.branch }));
-  checks.push(...checkStatusChecks(status.pr.statusCheckRollup));
+  checks.push(warn("CI and mergeability are not polled by pr:ready", "Review the final Graphite App state before merging."));
 
   return checks;
 }
@@ -116,6 +115,6 @@ function printHelp() {
 
 Checks the current PR for local cleanliness, metadata, template content,
 Conventional Commit title, title-to-commit-subject agreement, branch naming
-policy, fast whitespace checks, and GitHub check status. It does not submit,
-merge, or run expensive validation.`);
+policy, and fast whitespace checks. It does not submit, merge, poll CI,
+poll Graphite mergeability, or run expensive validation.`);
 }

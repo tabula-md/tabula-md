@@ -39,7 +39,7 @@ export function formatWorkflowStatus(status) {
     lines.push(`- PR state: ${status.pr.state}${status.pr.isDraft ? " draft" : " ready"}`);
     lines.push(`- Labels: ${labels.length > 0 ? labels.map((label) => label.name).join(", ") : "none"}`);
     lines.push(`- Assignees: ${assignees.length > 0 ? assignees.map((assignee) => assignee.login).join(", ") : "none"}`);
-    lines.push(`- Checks: ${formatChecks(status.pr.statusCheckRollup)}`);
+    lines.push("- Merge gate: review CI and mergeability in Graphite App before merging");
   } else {
     lines.push("- PR: none for current branch");
   }
@@ -115,7 +115,7 @@ export function recommendNextActions(status) {
     return ["Finish edits, run focused validation, then create a Graphite branch with `gt create codex/short-kebab-slug -m \"type(scope): summary\"`."];
   }
 
-  return ["Ready for new work. Classify the request first; create or reuse a Linear MTS issue for accepted maintainer work, then edit from `main` and use Graphite for PR-bound changes."];
+  return ["Ready for new work. Use Fast Local Loop by default for implementation prompts; use Graphite and PR handoff only when review handoff is intended."];
 }
 
 export function hasCurrentPullRequestHandoffComplete(status, cwd = process.cwd()) {
@@ -163,7 +163,7 @@ function readCurrentPullRequest(cwd) {
     "pr",
     "view",
     "--json",
-    "number,title,state,isDraft,mergedAt,url,headRefName,body,labels,assignees,reviewRequests,statusCheckRollup"
+    "number,title,state,isDraft,mergedAt,url,headRefName,body,labels,assignees,reviewRequests"
   ], cwd);
 
   if (!result.ok) {
@@ -175,14 +175,6 @@ function readCurrentPullRequest(cwd) {
   } catch {
     return null;
   }
-}
-
-function formatChecks(checks = []) {
-  if (!Array.isArray(checks) || checks.length === 0) {
-    return "none";
-  }
-
-  return checks.map((check) => `${check.name}:${check.conclusion ?? check.status ?? "unknown"}`).join(", ");
 }
 
 function run(command, args, cwd) {

@@ -79,9 +79,59 @@ repository에서는 깨진 internal link를 curated context 품질 문제로 취
 계약이 요구하지 않는 한 compatibility path, legacy behavior, defensive
 fallback, alternate implementation을 추가하지 않는다.
 
+## 작업 모드
+
+요청을 만족하는 가장 가벼운 mode를 사용한다. 모든 구현 prompt에 full PR
+handoff workflow를 적용하지 않는다.
+
+작업 모드 선택은 agent judgment이지 keyword filter가 아니다. 아래 예시는
+고려할 signal이지 rule engine이 아니다. Hook은 prompt text만 보고 작업 모드를
+선택하면 안 된다.
+
+### Fast Local Loop
+
+Repository owner가 review handoff를 요청하지 않았고 변경 자체도 handoff를
+본질적으로 요구하지 않는 일반 구현 prompt의 기본 mode다.
+
+- 변경을 구현한다.
+- 건드린 파일에 맞는 focused validation을 실행한다.
+- 결과와 실행하지 않은 validation을 보고한다.
+- 작업이 review handoff를 명확히 요구하지 않으면 Linear issue, Graphite PR,
+  PR metadata command를 만들거나 실행하지 않는다.
+
+이 mode가 작은 작업과 중간 크기 coding task의 기본 속도 경로다.
+
+### PR Handoff Loop
+
+Repository owner의 의도가 review handoff이거나, 작업이 명확히 PR 또는 stack으로
+review되어야 할 때 사용한다.
+
+- Branch, commit, submit, stack, publish, sync는 Graphite를 사용한다.
+- 변경 파일에 필요한 focused validation을 실행한다.
+- Graphite submit 후 `npm run pr:handoff -- ...`를 실행한다.
+- Handoff 전에 `npm run pr:ready`를 한 번 실행해 local metadata와 template
+  gap을 잡는다.
+- Handoff 후에는 CI나 Graphite mergeability를 계속 polling하지 않는다.
+  Repository owner가 Graphite App 상태를 보고 merge하며, merge가 막히면
+  구체적 오류를 agent에게 다시 전달한다.
+
+### Release/Public Loop
+
+Release, changelog, public launch, security, cross-repo, branch protection,
+CI, 외부에 보이는 project process 작업에 사용한다.
+
+- 명시적 Linear tracking을 선호한다.
+- Reviewable layer가 나뉘면 Graphite stack을 사용한다.
+- 더 넓은 validation과 documentation check를 실행한다.
+- Public docs, templates, repository settings를 product surface로 취급한다.
+
+Hook은 hard safety violation을 차단하거나, 관측된 Graphite handoff state를
+알리거나, likely validation needs를 signal할 수 있다. 하지만 agent의 작업 모드,
+stack shape, validation, implementation judgment를 대체하면 안 된다.
+
 ## 작업 분류
 
-기본 매핑은 다음과 같다.
+PR-bound 작업의 기본 매핑은 다음과 같다.
 
 ```txt
 하나의 추적 가능한 요청
@@ -92,8 +142,8 @@ fallback, alternate implementation을 추가하지 않는다.
 
 수정 전에 이 순서로 판단한다.
 
-- Local-only work: 명백히 낮은 위험의 로컬 정리나 조사이고 handoff가
-  필요 없을 때만 Linear와 PR을 생략한다.
+- Fast local work: owner가 구현을 요청했지만 PR handoff를 요청하지 않았다면
+  기본적으로 Fast Local Loop를 사용한다.
 - Single PR: typo, 작은 docs patch, isolated test, 좁은 bug fix처럼 하나의
   review concern이면 하나의 Graphite PR을 사용한다.
 - Stack: 하나의 outcome이 여러 reviewable slice 또는 layer로 나뉘면 여러
@@ -167,7 +217,16 @@ behavior를 실행하거나 검토할 수 있는지 확인한다. 아니라면 v
 
 ## 작업 시작
 
-모든 PR-bound 작업은 trunk에서 시작한다.
+먼저 현재 위치를 확인한다.
+
+```sh
+npm run workflow:status
+```
+
+Fast Local Loop에서는 보통 이것으로 충분하다. Worktree가 clean한지 확인하거나
+기존 변경을 모두 이해한 뒤 수정하고 focused validation을 실행한다.
+
+PR Handoff Loop 작업은 trunk에서 시작한다.
 
 ```sh
 gt sync --delete-all
@@ -187,10 +246,12 @@ Thread를 재개할 때, Graphite submit 후, merge 후에는
 `npm run workflow:status`를 사용한다. 현재 branch, PR, metadata, checks,
 Graphite stack, 다음 expected action을 요약한다.
 
-Workflow setup이 의심스러우면 `npm run workflow:doctor`를 사용한다. 이
-명령은 repo-local template, scripts, Graphite availability, GitHub merge
-settings, stale Graphite temporary branches, label catalog drift, local Git
-maintenance warning을 검사한다. submit이나 merge는 하지 않는다.
+Workflow setup, workflow automation 변경, 환경 이상, post-merge cleanup
+진단이 필요하면 `npm run workflow:doctor`를 사용한다. 모든 작은 구현의 기본
+단계로 실행하지 않는다. 이 명령은 repo-local template, scripts, Graphite
+availability, GitHub merge settings, stale Graphite temporary branches, label
+catalog drift, local Git maintenance warning을 검사한다. submit이나 merge는
+하지 않는다.
 
 Fix는 effect별 명시적 명령으로 나뉜다.
 
@@ -239,7 +300,9 @@ hygiene에만 사용한다.
   표준 경로.
 - `npm run pr:title`, `npm run pr:body`, `npm run pr:metadata`: focused recovery
   또는 targeted update용 낮은 수준 명령.
-- `npm run pr:ready`: PR state, metadata, checks 읽기.
+- `npm run pr:ready`: local handoff completeness 확인. PR state, metadata,
+  title, body, branch policy, whitespace만 확인하며 CI나 Graphite
+  mergeability를 merge gate처럼 polling하지 않는다.
 - `npm run workflow:doctor -- --sync-labels`: GitHub labels sync.
 - `npm run workflow:doctor -- --delete-stale-graphite-base`: open PR이 없을 때
   stale `graphite-base/*` branches 삭제.
@@ -554,9 +617,14 @@ ready로 옮기는 표준 방법이다. Graphite가 unavailable이고 repository
 fallback을 명시적으로 승인하지 않는 한 `gh pr ready`를 사용하지 않는다.
 
 `pr:ready`는 local cleanliness, PR metadata, title shape, body template content,
-branch naming policy, PR-title-to-commit-subject agreement, whitespace checks,
-GitHub check status를 확인한다. Submit, merge, publish, expensive validation은
-하지 않는다.
+branch naming policy, PR-title-to-commit-subject agreement, whitespace checks를
+확인한다. Submit, merge, publish, CI polling, Graphite mergeability polling,
+expensive validation은 하지 않는다.
+
+`pr:ready`가 통과하면 Graphite URL, 실행한 validation, 의도적으로 생략한
+validation을 repository owner에게 넘긴다. 이후 agent는 PR을 계속 감시하지
+않는다. CI, mergeability, review status, merge button은 Graphite App이 최종
+merge surface다.
 
 Commit history는 간결하게 유지한다.
 
@@ -597,6 +665,8 @@ npm run pr:handoff -- --label <Label> --reviewer <github-login> ...
 
 ## Validation Standard
 
+- 선택한 작업 mode에서 likely regression을 잡을 수 있는 가장 작은 validation을
+  실행한다.
 - Pure-function 변경 후에는 focused unit tests를 실행한다.
 - `knowledge/**` 변경 후에는 `npm run knowledge:check`를 실행한다.
 - `.codex/hooks/**`, workflow policy scripts, agent automation checks를
@@ -605,6 +675,9 @@ npm run pr:handoff -- --label <Label> --reviewer <github-login> ...
   실행한다.
 - Editor, preview, right panel, file tree, share, collaboration UI 변경 후에는
   `npm run test:browser`를 실행한다.
+- Docs-only, comment-only, 좁은 tooling 변경에 기본적으로 `npm test`,
+  `npm run build`, browser smoke를 모두 실행하지 않는다. Changed files와 risk가
+  정당화할 때 validation을 넓힌다.
 
 Focused browser smoke aliases:
 
@@ -619,7 +692,10 @@ npm run test:browser:collab
 ## Merge And Cleanup
 
 정상 PR과 stack merge는 Graphite UI를 사용한다. Stack layer는 dependency order,
-즉 bottom to top으로 merge한다.
+즉 bottom to top으로 merge한다. 최종 merge state는 repository owner가
+Graphite App에서 확인한다. Agent는 handoff 후 GitHub나 Graphite를 반복 polling
+하지 않는다. Merge가 막히면 owner가 구체적 Graphite 또는 CI 오류를 agent에게
+전달한다.
 
 Repository merge policy:
 
@@ -692,15 +768,17 @@ Claude Code, future tools 모두 같은 Linear, Graphite, validation, PR metadat
 merge, cleanup 규칙을 따른다.
 
 현재 repo에는 Codex session을 위한 project-local Codex hooks가 `.codex/`에 있다.
-다른 agent는 이 hook을 실행하지 않을 수 있다. Hook이 없는 agent는 이 문서의
-script를 사용해 같은 check를 수동으로 따라야 한다.
+다른 agent는 이 hook을 실행하지 않을 수 있다. Hook이 없는 agent는 관련될 때
+이 문서의 script를 사용해 같은 check를 수동으로 따라야 한다.
 
 ```sh
 npm run workflow:status
-npm run workflow:doctor
 npm run pr:ready
 npm run test:hooks
 ```
+
+`workflow:doctor`는 setup suspicion, workflow automation 변경, post-merge
+diagnostics용이다. 모든 implementation turn의 필수 명령이 아니다.
 
 Codex hooks는 반복 workflow 실수를 줄이지만 agent judgment, code review, Linear
 planning, Graphite stack design, test selection을 대체하지 않는다.
@@ -712,9 +790,9 @@ Codex hooks가 자동으로 돕는 것:
 - API key, access token, private key material처럼 보이는 prompt 차단.
 - 위 command policy 일부 적용.
 - File changes 뒤 likely validation needs 기록.
-- Validation이 빠진 것처럼 보이면 warning.
-- Current turn에서 Graphite submit이 발생했는데 PR title, body, metadata가
-  빠져 있으면 turn continuation.
+- Validation이 빠진 것처럼 보이면 block하지 않고 warning.
+- Current turn에서 Graphite submit이 발생했는데 `pr:handoff`가 빠져 있으면
+  turn continuation.
 - 나중의 설명/조사 turn에서 오래된 workflow state가 남아 있으면 block하지 않고
   reminder만 표시.
 - 명시적 post-merge signal에 `workflow:sync`가 필요하면 turn continuation.
@@ -727,7 +805,7 @@ Codex hooks가 자동으로 하지 않는 것:
 - 올바른 implementation 선택.
 - 매번 expensive validation 실행.
 - PR submit 또는 merge.
-- PR metadata command 대체.
+- `pr:handoff` 대체.
 - Linear issue를 `Done`으로 이동.
 
 Project-local hooks는 project `.codex/` layer가 trusted일 때만 load된다. Codex가
