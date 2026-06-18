@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
-import { formatAgentSection, parseAgentSection } from "./lib/agent-context.mjs";
+import { renderPrBody, validatePrBodyOptions } from "./lib/pr-body-template.mjs";
+import { getPullRequest, getRepoNameWithOwner, updatePullRequestBody } from "./lib/pr-github.mjs";
+import { requiredValue } from "./lib/pr-options.mjs";
 
 const options = parseArgs(process.argv.slice(2));
 
@@ -9,10 +10,10 @@ if (options.help) {
   process.exit(0);
 }
 
-validateOptions(options);
+validatePrBodyOptions(options);
 
 const repo = options.repo ?? getRepoNameWithOwner();
-const pullRequest = getPullRequest(repo, options.pr);
+const pullRequest = getPullRequest(repo, options.pr, ["number", "url", "body"]);
 const body = renderPrBody(options, pullRequest.body);
 
 if (!options.dryRun) {
@@ -117,171 +118,6 @@ function parseArgs(argv) {
   }
 
   return parsed;
-}
-
-function validateOptions(bodyOptions) {
-  const missing = [];
-
-  for (const [label, values] of [
-    ["--summary", bodyOptions.summary],
-    ["--review-focus", bodyOptions.reviewFocus],
-    ["--implementation-notes", bodyOptions.implementationNotes],
-    ["--risk", bodyOptions.risk],
-    ["--evidence", bodyOptions.evidence]
-  ]) {
-    if (!hasMeaningfulItems(values)) {
-      missing.push(label);
-    }
-  }
-
-  if (!hasMeaningfulItems([
-    ...bodyOptions.validationAutomated,
-    ...bodyOptions.validationManual,
-    ...bodyOptions.validationNotRun
-  ])) {
-    missing.push("--validation-automated/--validation-manual/--validation-not-run");
-  }
-
-  if (missing.length > 0) {
-    throw new Error(`PR body requires meaningful content for: ${missing.join(", ")}.`);
-  }
-}
-
-function renderPrBody(bodyOptions, existingBody) {
-  const agent = parseAgentSection(existingBody);
-  const sections = [
-    renderSection("Summary", bodyOptions.summary),
-    renderSection("Review Focus", bodyOptions.reviewFocus),
-    renderSection("Implementation Notes", bodyOptions.implementationNotes)
-  ];
-
-  if (agent.present) {
-    sections.push(formatAgentSection({
-      tool: agent.tool || "Unknown",
-      session: agent.session || "Unknown"
-    }));
-  }
-
-  sections.push(
-    renderValidationSection(bodyOptions),
-    renderSection("Risk", bodyOptions.risk),
-    renderSection("Evidence", bodyOptions.evidence)
-  );
-
-  return `${sections.join("\n\n")}\n`;
-}
-
-function renderSection(title, items) {
-  return [`## ${title}`, "", ...formatItems(items)].join("\n");
-}
-
-function renderValidationSection(bodyOptions) {
-  return [
-    "## Validation",
-    "",
-    renderValidationGroup("Automated", bodyOptions.validationAutomated),
-    renderValidationGroup("Manual", bodyOptions.validationManual),
-    renderValidationGroup("Not run", bodyOptions.validationNotRun)
-  ].join("\n");
-}
-
-function renderValidationGroup(label, items) {
-  const values = normalizeItems(items);
-  if (values.length === 0) {
-    return `- ${label}: None.`;
-  }
-
-  if (values.length === 1) {
-    return `- ${label}: ${values[0]}`;
-  }
-
-  return [`- ${label}:`, ...values.map((item) => `  - ${item}`)].join("\n");
-}
-
-function formatItems(items) {
-  return normalizeItems(items).map((item) => `- ${item}`);
-}
-
-function normalizeItems(items) {
-  return items
-    .flatMap((item) => String(item ?? "").split(/\n+/))
-    .map((item) => item.trim())
-    .filter((item) => item && item !== "-");
-}
-
-function hasMeaningfulItems(items) {
-  return normalizeItems(items).length > 0;
-}
-
-function getRepoNameWithOwner() {
-  const repo = ghJson(["repo", "view", "--json", "nameWithOwner"]);
-  if (!repo.nameWithOwner) {
-    throw new Error("Could not resolve GitHub repository. Pass --repo owner/name.");
-  }
-  return repo.nameWithOwner;
-}
-
-function getPullRequest(repo, prNumber) {
-  const args = ["pr", "view"];
-
-  if (prNumber) {
-    args.push(String(prNumber));
-  } else {
-    args.push(currentBranch());
-  }
-
-  args.push("--repo", repo, "--json", "number,url,body");
-  return ghJson(args);
-}
-
-function currentBranch() {
-  const result = spawnSync("git", ["branch", "--show-current"], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
-  });
-
-  if (result.status !== 0 || !result.stdout.trim()) {
-    throw new Error("Could not resolve current branch for PR body update.");
-  }
-
-  return result.stdout.trim();
-}
-
-function updatePullRequestBody(repo, prNumber, body) {
-  gh([
-    "api",
-    "--method",
-    "PATCH",
-    `repos/${repo}/pulls/${prNumber}`,
-    "-f",
-    `body=${body}`
-  ]);
-}
-
-function requiredValue(flag, value) {
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${flag} requires a value.`);
-  }
-  return value;
-}
-
-function ghJson(args) {
-  return JSON.parse(gh(args));
-}
-
-function gh(args, options = {}) {
-  const result = spawnSync("gh", args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
-  });
-
-  if (result.status !== 0) {
-    const command = `gh ${args.join(" ")}`;
-    const details = result.stderr?.trim() || result.stdout?.trim() || "No details.";
-    throw new Error(`${command} failed: ${details}`);
-  }
-
-  return options.trim === false ? result.stdout : result.stdout.trim();
 }
 
 function printHelp() {

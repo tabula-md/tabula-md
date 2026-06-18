@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { getPullRequest, getRepoNameWithOwner, updatePullRequestTitle } from "./lib/pr-github.mjs";
+import { requiredValue } from "./lib/pr-options.mjs";
 import { checkConventionalTitle, hasFailures } from "./lib/workflow-automation.mjs";
 
 const options = parseArgs(process.argv.slice(2));
@@ -19,7 +20,7 @@ if (hasFailures([titleCheck])) {
 }
 
 const repo = options.repo ?? getRepoNameWithOwner();
-const pullRequest = getPullRequest(repo, options.pr);
+const pullRequest = getPullRequest(repo, options.pr, ["number", "url", "title"]);
 
 if (!options.dryRun) {
   updatePullRequestTitle(repo, pullRequest.number, options.title);
@@ -81,77 +82,6 @@ function parseArgs(argv) {
   }
 
   return parsed;
-}
-
-function getRepoNameWithOwner() {
-  const repo = ghJson(["repo", "view", "--json", "nameWithOwner"]);
-  if (!repo.nameWithOwner) {
-    throw new Error("Could not resolve GitHub repository. Pass --repo owner/name.");
-  }
-  return repo.nameWithOwner;
-}
-
-function getPullRequest(repo, prNumber) {
-  const args = ["pr", "view"];
-
-  if (prNumber) {
-    args.push(String(prNumber));
-  } else {
-    args.push(currentBranch());
-  }
-
-  args.push("--repo", repo, "--json", "number,url,title");
-  return ghJson(args);
-}
-
-function currentBranch() {
-  const result = spawnSync("git", ["branch", "--show-current"], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
-  });
-
-  if (result.status !== 0 || !result.stdout.trim()) {
-    throw new Error("Could not resolve current branch for PR title update.");
-  }
-
-  return result.stdout.trim();
-}
-
-function updatePullRequestTitle(repo, prNumber, title) {
-  gh([
-    "api",
-    "--method",
-    "PATCH",
-    `repos/${repo}/pulls/${prNumber}`,
-    "-f",
-    `title=${title}`
-  ]);
-}
-
-function requiredValue(flag, value) {
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${flag} requires a value.`);
-  }
-  return value;
-}
-
-function ghJson(args) {
-  return JSON.parse(gh(args));
-}
-
-function gh(args, options = {}) {
-  const result = spawnSync("gh", args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
-  });
-
-  if (result.status !== 0) {
-    const command = `gh ${args.join(" ")}`;
-    const details = result.stderr?.trim() || result.stdout?.trim() || "No details.";
-    throw new Error(`${command} failed: ${details}`);
-  }
-
-  return options.trim === false ? result.stdout : result.stdout.trim();
 }
 
 function printHelp() {

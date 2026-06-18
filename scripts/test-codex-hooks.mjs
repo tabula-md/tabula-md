@@ -31,7 +31,7 @@ import {
   shouldBlockForMissingWorkflowSteps,
   shouldMarkPostMergeSyncRequired
 } from "../.codex/hooks/lib/workflow-policy.mjs";
-import { hasCurrentPullRequestHandoffComplete } from "../.codex/hooks/lib/workflow-status.mjs";
+import { hasCurrentPullRequestHandoffComplete } from "./lib/workflow-status.mjs";
 import {
   checkBranchName,
   checkConventionalTitle,
@@ -211,7 +211,7 @@ test("filters stale validation reminders to current branch files", () => {
   ];
 
   assert.deepEqual(
-    filterMissingValidationsForChangedFiles(missing, [".codex/hooks/lib/workflow-status.mjs"]).map((item) => item.key),
+    filterMissingValidationsForChangedFiles(missing, ["scripts/lib/workflow-status.mjs"]).map((item) => item.key),
     ["hooks"]
   );
 });
@@ -272,19 +272,19 @@ test("reports missing PR title, body, and metadata only after real submit", () =
 
   state = recordWorkflowCommand(state, "gt create -am \"chore(codex): add hooks\"", "2026-06-17T00:00:00.000Z");
   state = recordWorkflowCommand(state, "gt submit --no-edit", "2026-06-17T00:01:00.000Z");
-  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-title", "pr-body", "pr-metadata"]);
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-handoff"]);
 
   state = recordWorkflowCommand(state, "npm run pr:metadata -- --list-labels", "2026-06-17T00:02:00.000Z");
-  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-title", "pr-body", "pr-metadata"]);
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-handoff"]);
 
   state = recordWorkflowCommand(state, "npm run pr:metadata -- --label Infra --dry-run", "2026-06-17T00:03:00.000Z");
-  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-title", "pr-body", "pr-metadata"]);
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-handoff"]);
 
   state = recordWorkflowCommand(state, "npm run pr:title -- --title \"chore(codex): add hooks\"", "2026-06-17T00:03:15.000Z");
-  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-body", "pr-metadata"]);
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-handoff"]);
 
   state = recordWorkflowCommand(state, "npm run pr:body -- --summary test", "2026-06-17T00:03:30.000Z");
-  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-metadata"]);
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-handoff"]);
 
   state = recordWorkflowCommand(state, "npm run pr:metadata -- --label Infra", "2026-06-17T00:04:00.000Z");
   assert.deepEqual(getMissingWorkflowSteps(state), []);
@@ -295,7 +295,7 @@ test("reports missing PR title, body, and metadata only after real submit", () =
 
 test("treats PR handoff as completing title body and metadata workflow steps", () => {
   let state = recordWorkflowCommand({}, "gt submit --no-edit", "2026-06-17T00:01:00.000Z");
-  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-title", "pr-body", "pr-metadata"]);
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-handoff"]);
 
   state = recordWorkflowCommand(
     state,
@@ -307,7 +307,7 @@ test("treats PR handoff as completing title body and metadata workflow steps", (
 
 test("clears stale PR handoff requirements when the current PR is already complete", () => {
   let state = recordWorkflowCommand({}, "gt submit --no-edit", "2026-06-17T00:01:00.000Z");
-  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-title", "pr-body", "pr-metadata"]);
+  assert.deepEqual(getMissingWorkflowSteps(state).map((item) => item.key), ["pr-handoff"]);
 
   state = clearPrHandoffRequirements(state, "2026-06-17T00:02:00.000Z");
   assert.deepEqual(getMissingWorkflowSteps(state), []);
@@ -317,7 +317,7 @@ test("blocks missing Graphite handoff only for the current turn", () => {
   let state = {};
   state = recordWorkflowCommand(state, "gt submit --no-edit", "2026-06-17T00:01:00.000Z");
   assert.equal(shouldBlockForMissingWorkflowSteps(state), true);
-  assert.deepEqual(getCurrentTurnMissingWorkflowSteps(state).map((item) => item.key), ["pr-title", "pr-body", "pr-metadata"]);
+  assert.deepEqual(getCurrentTurnMissingWorkflowSteps(state).map((item) => item.key), ["pr-handoff"]);
 
   state = recordPromptSubmitted(state, "2026-06-17T00:02:00.000Z");
   assert.equal(shouldBlockForMissingWorkflowSteps(state), false);
@@ -332,7 +332,7 @@ test("blocks missing Graphite handoff only for the current turn", () => {
 
   state = recordWorkflowCommand(state, "gt submit --no-edit", "2026-06-17T00:03:00.000Z");
   assert.equal(shouldBlockForMissingWorkflowSteps(state), true);
-  assert.deepEqual(getCurrentTurnMissingWorkflowSteps(state).map((item) => item.key), ["pr-title", "pr-body", "pr-metadata"]);
+  assert.deepEqual(getCurrentTurnMissingWorkflowSteps(state).map((item) => item.key), ["pr-handoff"]);
   assert.match(
     formatStopReason({
       missingWorkflowSteps: getCurrentTurnMissingWorkflowSteps(state),

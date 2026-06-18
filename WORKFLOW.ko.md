@@ -234,10 +234,11 @@ Graphite는 PR-bound branch와 PR lifecycle을 담당한다.
 GitHub API와 GitHub CLI는 Graphite가 담당하지 않는 metadata와 repository
 hygiene에만 사용한다.
 
-- `npm run pr:title`: Agent가 implementation scope 변경 여부를 검토한 뒤 PR
-  title 업데이트.
-- `npm run pr:body`: Graphite submit 후 agent가 작성한 review body 반영.
-- `npm run pr:metadata`: labels, assignees, reviewers, agent provenance 적용.
+- `npm run pr:handoff`: Graphite submit 후 PR title 검토, review body 작성,
+  label과 assignee metadata 적용, agent provenance 기록을 한 번에 수행하는
+  표준 경로.
+- `npm run pr:title`, `npm run pr:body`, `npm run pr:metadata`: focused recovery
+  또는 targeted update용 낮은 수준 명령.
 - `npm run pr:ready`: PR state, metadata, checks 읽기.
 - `npm run workflow:doctor -- --sync-labels`: GitHub labels sync.
 - `npm run workflow:doctor -- --delete-stale-graphite-base`: open PR이 없을 때
@@ -496,16 +497,12 @@ UI 변경은 screenshot 또는 명시적인 `Not visual` note를 포함한다. B
 change는 정확한 verification command나 manual check를 포함한다. Validation을
 의도적으로 생략했다면 `Not run`에 이유를 쓴다.
 
-Graphite submit 후 title을 먼저 검토하고 업데이트한다.
+Graphite submit 후 handoff command 하나를 실행한다.
 
 ```sh
-npm run pr:title -- --title "type(scope): summary"
-```
-
-그 다음 review body를 작성해 반영한다.
-
-```sh
-npm run pr:body -- \
+npm run pr:handoff -- \
+  --title "type(scope): summary" \
+  --label <Label> \
   --summary "<무엇을 왜 바꿨는지>" \
   --review-focus "<reviewer가 집중해서 볼 부분>" \
   --implementation-notes "<중요한 판단, tradeoff, 또는 없다는 이유>" \
@@ -516,15 +513,18 @@ npm run pr:body -- \
   --evidence "<screenshot/video link 또는 Not visual.>"
 ```
 
-그 다음 metadata를 적용한다.
+`pr:handoff`는 title, body, metadata 단계를 순서대로 처리한다. Automatic
+summarizer가 아니다. Agent가 실제 implementation, validation, remaining risk를
+보고 내용을 작성하고, script는 이를 표준 template에 반영한다. Body section이
+없거나 placeholder-only면 `pr:ready`가 실패한다.
+
+낮은 수준 명령은 focused recovery 또는 targeted update에만 사용한다.
 
 ```sh
+npm run pr:title -- --title "type(scope): summary"
+npm run pr:body -- --summary "..." --review-focus "..." --implementation-notes "..." --validation-automated "..." --risk "..." --evidence "..."
 npm run pr:metadata -- --label <Label>
 ```
-
-`pr:body`는 automatic summarizer가 아니다. Agent가 실제 implementation,
-validation, remaining risk를 보고 내용을 작성하고, script는 이를 표준 template에
-반영한다. Body section이 없거나 placeholder-only면 `pr:ready`가 실패한다.
 
 `pr:title`은 명시적인 title-review checkpoint다. 기존 title이 최종 diff를 여전히
 설명하면 그대로 사용한다. 아니면 dominant change를 말하는 가장 작은 Conventional
@@ -545,6 +545,7 @@ Repository owner에게 merge review를 요청하기 전에 실행한다.
 
 ```sh
 gt submit --publish --update-only
+npm run pr:handoff -- --title "type(scope): summary" --label <Label> ...
 npm run pr:ready
 ```
 
@@ -591,7 +592,7 @@ npm run pr:metadata -- --list-labels
 
 ```sh
 gt submit --reviewers <github-login>
-npm run pr:metadata -- --label <Label> --reviewer <github-login>
+npm run pr:handoff -- --label <Label> --reviewer <github-login> ...
 ```
 
 ## Validation Standard

@@ -33,8 +33,13 @@ export const workflowRequiredFiles = [
   "scripts/pr-handoff.mjs",
   "scripts/pr-body.mjs",
   "scripts/pr-title.mjs",
+  "scripts/lib/pr-body-template.mjs",
+  "scripts/lib/pr-github.mjs",
+  "scripts/lib/pr-metadata.mjs",
+  "scripts/lib/pr-options.mjs",
   "scripts/workflow-maintenance.mjs",
   "scripts/workflow-status.mjs",
+  "scripts/lib/workflow-status.mjs",
   "scripts/workflow-sync.mjs"
 ];
 

@@ -110,7 +110,7 @@ function findBlockedGraphiteLifecycleCommands(command) {
   }
 
   if (isMutatingGitHubLifecycleApi(command)) {
-    findings.push(block("Do not mutate PRs or remote refs with direct `gh api` calls. Use Graphite lifecycle commands, `npm run pr:title`, `npm run pr:body`, `npm run pr:metadata`, or an explicit workflow doctor fix flag."));
+    findings.push(block("Do not mutate PRs or remote refs with direct `gh api` calls. Use Graphite lifecycle commands, `npm run pr:handoff`, or an explicit workflow doctor fix flag."));
   }
 
   return findings;

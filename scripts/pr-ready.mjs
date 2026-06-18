@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { collectWorkflowStatus } from "../.codex/hooks/lib/workflow-status.mjs";
+import { collectWorkflowStatus } from "./lib/workflow-status.mjs";
 import {
   checkBranchName,
   checkConventionalTitle,

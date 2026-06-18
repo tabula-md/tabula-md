@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { renderPrBody, validatePrBodyOptions } from "./lib/pr-body-template.mjs";
+import { getPullRequest, getRepoNameWithOwner, updatePullRequestBody, updatePullRequestTitle } from "./lib/pr-github.mjs";
+import { applyPrMetadata, bodyWithAgentContext, buildPrMetadata, formatAgentOutput } from "./lib/pr-metadata.mjs";
+import { parseList, requiredValue } from "./lib/pr-options.mjs";
+import { checkConventionalTitle, hasFailures } from "./lib/workflow-automation.mjs";
 
 const options = parseArgs(process.argv.slice(2));
 
@@ -10,44 +14,40 @@ if (options.help) {
 
 validateOptions(options);
 
-const commonArgs = [
-  ...optionalPair("--pr", options.pr),
-  ...optionalPair("--repo", options.repo),
-  ...(options.dryRun ? ["--dry-run"] : [])
-];
-const metadataArgs = [
-  ...commonArgs,
-  "--label",
-  options.label,
-  ...optionalPair("--agent", options.agent),
-  ...optionalPair("--session", options.session),
-  ...options.assignees.flatMap((assignee) => ["--assignee", assignee]),
-  ...options.reviewers.flatMap((reviewer) => ["--reviewer", reviewer]),
-  ...(options.noReviewers ? ["--no-reviewers"] : []),
-  ...(options.noAgentContext ? ["--no-agent-context"] : [])
-];
+const repo = options.repo ?? getRepoNameWithOwner();
+const pullRequest = getPullRequest(repo, options.pr, ["number", "author", "url", "title", "body"]);
+const metadata = buildPrMetadata({ ...options, labels: [options.label] }, pullRequest, repo);
+const body = bodyWithAgentContext(renderPrBody(options, pullRequest.body), metadata);
 
-runNodeScript("scripts/pr-title.mjs", [
-  ...commonArgs,
-  "--title",
-  options.title
-]);
+if (!options.dryRun) {
+  updatePullRequestTitle(repo, pullRequest.number, options.title);
+  updatePullRequestBody(repo, pullRequest.number, body);
+  applyPrMetadata(repo, pullRequest, metadata, { updateAgentBody: false });
+}
 
-runNodeScript("scripts/pr-body.mjs", [
-  ...commonArgs,
-  ...options.summary.flatMap((value) => ["--summary", value]),
-  ...options.reviewFocus.flatMap((value) => ["--review-focus", value]),
-  ...options.implementationNotes.flatMap((value) => ["--implementation-notes", value]),
-  ...options.validationAutomated.flatMap((value) => ["--validation-automated", value]),
-  ...options.validationManual.flatMap((value) => ["--validation-manual", value]),
-  ...options.validationNotRun.flatMap((value) => ["--validation-not-run", value]),
-  ...options.risk.flatMap((value) => ["--risk", value]),
-  ...options.evidence.flatMap((value) => ["--evidence", value])
-]);
+console.log(`PR handoff target: ${repo}#${pullRequest.number}`);
+console.log(`URL: ${pullRequest.url}`);
+console.log(`Previous title: ${pullRequest.title}`);
+console.log(`New title: ${options.title}`);
+console.log(`Labels: ${metadata.resolvedLabels.join(", ") || "none"}`);
+console.log(`Assignees: ${metadata.assignees.join(", ") || "none"}`);
+console.log(`Reviewers: ${metadata.reviewers.join(", ") || "none"}`);
+console.log(`Agent: ${formatAgentOutput(options.noAgentContext, metadata.shouldUpdateAgentContext, metadata.agentContext)}`);
 
-runNodeScript("scripts/apply-pr-metadata.mjs", metadataArgs);
+if (metadata.skippedReviewers.length > 0) {
+  console.log(`Skipped self-reviewer: ${metadata.skippedReviewers.join(", ")}. GitHub does not allow requesting review from the PR author.`);
+}
 
-console.log("PR handoff complete.");
+if (pullRequest.title !== options.title) {
+  console.log("Scope checkpoint: title changed. Confirm this PR still represents one reviewable layer; otherwise create an upstack PR with `gt create` instead of growing this PR.");
+}
+
+if (options.dryRun) {
+  console.log("Dry run: no GitHub metadata was changed.");
+  console.log(body);
+} else {
+  console.log("PR handoff complete.");
+}
 
 function parseArgs(argv) {
   const parsed = {
@@ -210,35 +210,13 @@ function validateOptions(parsed) {
   if (missing.length > 0) {
     throw new Error(`PR handoff requires: ${missing.join(", ")}.`);
   }
-}
 
-function runNodeScript(script, args) {
-  const result = spawnSync(process.execPath, [script, ...args], {
-    encoding: "utf8",
-    stdio: "inherit"
-  });
-
-  if (result.status !== 0) {
-    throw new Error(`${script} failed.`);
+  const titleCheck = checkConventionalTitle(parsed.title);
+  if (hasFailures([titleCheck])) {
+    throw new Error(`${titleCheck.message}: ${titleCheck.detail}`);
   }
-}
 
-function optionalPair(flag, value) {
-  return value ? [flag, value] : [];
-}
-
-function parseList(value) {
-  return String(value ?? "")
-    .split(/[,\s]+/)
-    .map((item) => item.trim())
-    .filter((item, index, items) => item && items.indexOf(item) === index);
-}
-
-function requiredValue(flag, value) {
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${flag} requires a value.`);
-  }
-  return value;
+  validatePrBodyOptions(parsed);
 }
 
 function printHelp() {
