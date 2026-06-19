@@ -8,6 +8,7 @@ import {
   getPublishRoute,
   readServerPublishedSnapshot,
   republishServerPublishedSnapshot,
+  unpublishServerPublishedSnapshot,
 } from "./publish";
 import {
   createMarkdownFile,
@@ -742,6 +743,77 @@ Start here.`,
     expect(snapshot.urls.page).toBe(existingSnapshot.urls.page);
     expect(snapshot.ownerToken).toBe("owner-token");
     expect(snapshot.files).toEqual([{ id: "readme", title: "README.md", text: "# After" }]);
+  });
+
+  it("unpublishes server-backed snapshots with the owner token", async () => {
+    const snapshot = {
+      id: "publish_123456",
+      createdAt: "2026-06-19T00:00:00.000Z",
+      activeFileId: "readme",
+      fileCount: 1,
+      files: [{ id: "readme", title: "README.md", text: "# Published" }],
+      commentsByFileId: {},
+      urls: {
+        page: "https://tabula.md/p/publish_123456",
+        llmsTxt: "https://publish.tabula.md/p/publish_123456/llms.txt",
+        llmsFullTxt: "https://publish.tabula.md/p/publish_123456/llms-full.txt",
+      },
+      ownerToken: "owner-token",
+      llmsTxt: "# Tabula.md",
+      llmsFullTxt: "# Tabula.md Agent Context",
+      markdownBundle: "# Published",
+      publishBundle: "# Bundle",
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://publish.tabula.md/v1/publishes/publish_123456");
+      expect(init?.method).toBe("DELETE");
+      expect((init?.headers as Record<string, string>).authorization).toBe("Bearer owner-token");
+      return new Response(null, { status: 204 });
+    }) as unknown as typeof fetch;
+
+    await expect(
+      unpublishServerPublishedSnapshot({
+        serviceUrl: "https://publish.tabula.md",
+        snapshot,
+        fetchImpl: fetchMock,
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("surfaces unpublish service errors", async () => {
+    const snapshot = {
+      id: "publish_123456",
+      createdAt: "2026-06-19T00:00:00.000Z",
+      activeFileId: "readme",
+      fileCount: 1,
+      files: [{ id: "readme", title: "README.md", text: "# Published" }],
+      commentsByFileId: {},
+      urls: {
+        page: "https://tabula.md/p/publish_123456",
+        llmsTxt: "https://publish.tabula.md/p/publish_123456/llms.txt",
+        llmsFullTxt: "https://publish.tabula.md/p/publish_123456/llms-full.txt",
+      },
+      ownerToken: "owner-token",
+      llmsTxt: "# Tabula.md",
+      llmsFullTxt: "# Tabula.md Agent Context",
+      markdownBundle: "# Published",
+      publishBundle: "# Bundle",
+    };
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: "Owner token is invalid" }), {
+          status: 403,
+          headers: { "content-type": "application/json" },
+        }),
+    ) as unknown as typeof fetch;
+
+    await expect(
+      unpublishServerPublishedSnapshot({
+        serviceUrl: "https://publish.tabula.md",
+        snapshot,
+        fetchImpl: fetchMock,
+      }),
+    ).rejects.toThrow("Publish failed: Owner token is invalid");
   });
 
   it("surfaces publish service errors", async () => {

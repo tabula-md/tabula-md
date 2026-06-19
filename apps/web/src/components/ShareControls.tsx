@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Download, Link, Play, Share2, Square, Users, X } from "lucide-react";
+import { Check, Copy, Download, Link, Play, Share2, Square, Trash2, Users, X } from "lucide-react";
 import type { ConnectionStatus } from "../collab";
 import type { MarkdownFile } from "../workspaceStorage";
 
@@ -24,7 +24,9 @@ type ShareControlsProps = {
   publishLlmsFullTxtUrl?: string;
   canRepublishSnapshot: boolean;
   publishing: boolean;
+  unpublishing: boolean;
   onPublishSnapshot: () => void;
+  onUnpublishSnapshot: () => void;
   onCopyLlmsTxt: () => void;
   onCopyLlmsFullTxt: () => void;
   onCopyPublishPageUrl: () => void;
@@ -90,7 +92,9 @@ export function ShareControls({
   publishLlmsFullTxtUrl,
   canRepublishSnapshot,
   publishing,
+  unpublishing,
   onPublishSnapshot,
+  onUnpublishSnapshot,
   onCopyLlmsTxt,
   onCopyLlmsFullTxt,
   onCopyPublishPageUrl,
@@ -413,6 +417,12 @@ export function ShareControls({
                         <Download size={16} />
                         <span>Download bundle</span>
                       </button>
+                      {canRepublishSnapshot && (
+                        <button className="share-modal-secondary" type="button" onClick={onUnpublishSnapshot} disabled={unpublishing}>
+                          <Trash2 size={16} />
+                          <span>{unpublishing ? "Unpublishing..." : "Unpublish"}</span>
+                        </button>
+                      )}
                     </div>
                     <div className="publish-after-row" aria-label="Publish outputs">
                       <span>Outputs</span>
