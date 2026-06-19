@@ -16,6 +16,7 @@ import { EmptyFileState } from "./components/EmptyFileState";
 import { FileTabs } from "./components/FileTabs";
 import { FileToolbar } from "./components/FileToolbar";
 import { LeftSidebar } from "./components/LeftSidebar";
+import { LiveRoomNotice, type LiveRoomNoticeTone } from "./components/LiveRoomNotice";
 import { MarkdownEditor, type MarkdownCommentAnchor, type MarkdownEditorHandle } from "./components/MarkdownEditor";
 import { MarkdownFormattingToolbar } from "./components/MarkdownFormattingToolbar";
 import { MarkdownPreview, type MarkdownPreviewCommentAnchor } from "./components/MarkdownPreview";
@@ -109,6 +110,73 @@ type PreviewSelectionEvent =
   | ReactKeyboardEvent<HTMLElement>
   | ReactMouseEvent<HTMLElement>
   | ReactTouchEvent<HTMLElement>;
+
+type ActiveLiveRoomNotice = {
+  title: string;
+  message: string;
+  tone: LiveRoomNoticeTone;
+  canKeepLocal: boolean;
+};
+
+const getLiveRoomNotice = (file: MarkdownFile | undefined, status: ConnectionStatus): ActiveLiveRoomNotice | null => {
+  if (
+    !file?.roomId ||
+    status !== "offline" ||
+    file.lastRecoveryType !== "invalid-message" ||
+    !file.lastRecoveryMessage
+  ) {
+    return null;
+  }
+
+  const sourceMessage = file.lastRecoveryMessage;
+  const normalizedMessage = sourceMessage.toLowerCase();
+
+  if (normalizedMessage.includes("missing its client-only room key")) {
+    return {
+      title: "Room key missing",
+      message:
+        "This shared URL is missing the client-only key, so Tabula cannot decrypt the room. Ask for the full link or keep this file as a local copy.",
+      tone: "blocked",
+      canKeepLocal: true,
+    };
+  }
+
+  if (normalizedMessage.includes("invalid room key")) {
+    return {
+      title: "Room key invalid",
+      message:
+        "The key in this shared URL is not valid. Ask for a fresh room link or keep this file as a local copy.",
+      tone: "blocked",
+      canKeepLocal: true,
+    };
+  }
+
+  if (normalizedMessage.includes("could not be decrypted")) {
+    return {
+      title: "Room key does not match",
+      message:
+        "The key in this URL cannot decrypt the latest room snapshot. The encrypted room was not changed.",
+      tone: "blocked",
+      canKeepLocal: true,
+    };
+  }
+
+  if (normalizedMessage.includes("server disconnected") || normalizedMessage.includes("not reachable")) {
+    return {
+      title: "Room server offline",
+      message: sourceMessage,
+      tone: "offline",
+      canKeepLocal: false,
+    };
+  }
+
+  return {
+    title: "Live room needs attention",
+    message: sourceMessage,
+    tone: "blocked",
+    canKeepLocal: true,
+  };
+};
 
 const getTextOffsetWithinElement = (element: HTMLElement, container: Node, offset: number) => {
   const range = document.createRange();
@@ -1576,6 +1644,7 @@ function WorkspaceApp() {
   };
 
   const activeStatus = isLive ? connectionStatus : "idle";
+  const activeLiveRoomNotice = getLiveRoomNotice(activeFile, activeStatus);
   const statusLabel = getStatusLabel(activeStatus);
   const activeFileTitle = activeFile?.title ?? "No file open";
   const showFormattingToolbar = Boolean(activeFile && activeViewMode !== "preview");
@@ -1787,7 +1856,9 @@ function WorkspaceApp() {
           <section
             className={`file-shell ${
               activeFile ? `view-${activeViewMode} reading-${activeReadingWidth}` : "empty"
-            } ${showFormattingToolbar ? "with-format-toolbar" : ""}`}
+            } ${showFormattingToolbar ? "with-format-toolbar" : ""} ${
+              activeLiveRoomNotice ? "with-live-room-notice" : ""
+            }`}
           >
             {activeFile ? (
               <>
@@ -1837,6 +1908,21 @@ function WorkspaceApp() {
                     }}
                   />
                 </section>
+
+                {activeLiveRoomNotice && (
+                  <LiveRoomNotice
+                    title={activeLiveRoomNotice.title}
+                    message={activeLiveRoomNotice.message}
+                    tone={activeLiveRoomNotice.tone}
+                    canKeepLocal={activeLiveRoomNotice.canKeepLocal}
+                    onCopyMarkdown={copyCurrentMarkdown}
+                    onKeepLocal={stopSession}
+                    onOpenShare={() => {
+                      setTopPopover("share");
+                      setCenterPopover(null);
+                    }}
+                  />
+                )}
 
                 <section className={`workspace ${activeViewMode} reading-${activeReadingWidth}`} ref={workspaceRef}>
                   <article className="editor-surface" ref={editorSurfaceRef} onScroll={handleEditorSurfaceScroll}>

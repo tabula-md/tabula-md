@@ -255,6 +255,18 @@
   grid-template-rows: 48px minmax(0, 1fr) 42px;
 }
 
+.file-shell.with-live-room-notice {
+  grid-template-rows: 48px auto minmax(0, 1fr) 42px;
+}
+
+.file-shell.with-live-room-notice .workspace {
+  grid-row: 3;
+}
+
+.file-shell.with-live-room-notice .file-status-bar {
+  grid-row: 4;
+}
+
 .file-shell.empty {
   grid-template-rows: minmax(0, 1fr);
 }
@@ -304,8 +316,113 @@
   grid-row: 2;
 }
 
+.file-shell.with-format-toolbar.with-live-room-notice .workspace {
+  grid-row: 3;
+}
+
 .file-shell.with-format-toolbar .file-status-bar {
   grid-row: 3;
+}
+
+.file-shell.with-format-toolbar.with-live-room-notice .file-status-bar {
+  grid-row: 4;
+}
+
+.live-room-notice {
+  position: relative;
+  z-index: 11;
+  grid-column: 1;
+  grid-row: 2;
+  align-self: start;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  width: var(--document-chrome-width);
+  min-width: 0;
+  margin: 0 var(--document-lane-margin-right) 6px var(--document-lane-margin-left);
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #3f3f3f;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #ededee;
+}
+
+.live-room-notice.blocked {
+  box-shadow: inset 0 0 0 1px #ead8d5;
+}
+
+.live-room-notice.offline {
+  box-shadow: inset 0 0 0 1px #dedee2;
+}
+
+.live-room-notice > svg {
+  margin-top: 2px;
+  color: #8f3d36;
+}
+
+.live-room-notice.offline > svg {
+  color: #666666;
+}
+
+.live-room-notice-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.live-room-notice-copy strong {
+  color: #2f2f2f;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.live-room-notice-copy p {
+  margin: 0;
+  color: #666666;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.live-room-notice-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+}
+
+.live-room-notice-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 9px;
+  color: #555555;
+  background: var(--surface-muted);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.live-room-notice-actions button:hover {
+  color: #1f1f1f;
+  background: var(--surface-hover);
+}
+
+@container (max-width: 760px) {
+  .live-room-notice {
+    grid-template-columns: 18px minmax(0, 1fr);
+  }
+
+  .live-room-notice-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
 .markdown-formatting-row {
