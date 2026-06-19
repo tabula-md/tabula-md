@@ -65,6 +65,13 @@ type PublishCreateResponse = {
   ownerToken: string;
 };
 
+type PublishUpdateResponse = {
+  publishId: string;
+  createdAt: string;
+  updatedAt: string;
+  urls: PublishServiceUrls;
+};
+
 type PublicPublishResponse = Omit<PublishPayload, "markdownBundle" | "publishBundle"> & {
   publishId: string;
   createdAt: string;
@@ -188,6 +195,57 @@ export const createServerPublishedSnapshot = async ({
     },
     origin,
     ownerToken: publish.ownerToken,
+  });
+};
+
+export const republishServerPublishedSnapshot = async ({
+  serviceUrl,
+  origin,
+  snapshot,
+  files,
+  activeFileId,
+  commentsByFileId,
+  fetchImpl = fetch,
+}: {
+  serviceUrl: string;
+  origin: string;
+  snapshot: PublishedSnapshot;
+  files: MarkdownFile[];
+  activeFileId: string;
+  commentsByFileId: Record<string, FileComment[]>;
+  fetchImpl?: typeof fetch;
+}): Promise<PublishedSnapshot> => {
+  if (!snapshot.ownerToken) {
+    throw new Error("Publish failed: missing owner token");
+  }
+
+  const publishServiceUrl = trimTrailingSlash(serviceUrl);
+  const payload = createPublishPayload({ files, activeFileId, commentsByFileId });
+  const response = await fetchImpl(`${publishServiceUrl}/v1/publishes/${encodeURIComponent(snapshot.id)}`, {
+    method: "PUT",
+    headers: {
+      authorization: `Bearer ${snapshot.ownerToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Publish failed: ${await readPublishError(response)}`);
+  }
+
+  const updated = validatePublishUpdateResponse((await response.json()) as unknown);
+  return snapshotFromServicePublish({
+    publish: {
+      ...payload,
+      publishId: updated.publishId,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+      fileCount: payload.files.length,
+      urls: updated.urls,
+    },
+    origin,
+    ownerToken: snapshot.ownerToken,
   });
 };
 
@@ -358,6 +416,18 @@ const validatePublishCreateResponse = (value: unknown): PublishCreateResponse =>
     createdAt: requireNonEmptyString(value.createdAt, "createdAt"),
     updatedAt: requireNonEmptyString(value.updatedAt, "updatedAt"),
     ownerToken: requireNonEmptyString(value.ownerToken, "ownerToken"),
+    urls: validatePublishServiceUrls(value.urls),
+  };
+};
+
+const validatePublishUpdateResponse = (value: unknown): PublishUpdateResponse => {
+  if (!isRecord(value) || !isRecord(value.urls)) {
+    throw new Error("Publish failed: invalid service response");
+  }
+  return {
+    publishId: requireNonEmptyString(value.publishId, "publishId"),
+    createdAt: requireNonEmptyString(value.createdAt, "createdAt"),
+    updatedAt: requireNonEmptyString(value.updatedAt, "updatedAt"),
     urls: validatePublishServiceUrls(value.urls),
   };
 };
