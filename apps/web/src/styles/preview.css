@@ -4,12 +4,12 @@
 }
 
 .preview-surface {
-  color: #272727;
+  color: #252525;
   font-family:
     "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   font-size: 16px;
-  line-height: 1.75;
+  line-height: 1.72;
 }
 
 .frontmatter-view {
@@ -17,17 +17,10 @@
   gap: 6px;
   margin: 0 0 28px;
   padding: 12px 14px;
+  border: 0;
   border-radius: 8px;
   background: #f7f7f8;
   font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-}
-
-.preview-surface .frontmatter-view h2 {
-  margin: 0 0 2px;
-  color: #a0a0a0;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.2;
 }
 
 .frontmatter-row {
@@ -69,18 +62,18 @@
 .preview-surface h2,
 .preview-surface h3 {
   color: #1f1f1f;
-  line-height: 1.3;
+  line-height: 1.28;
 }
 
 .preview-surface h1 {
-  margin: 0 0 18px;
-  font-size: 26px;
+  margin: 0 0 17px;
+  font-size: 25px;
   font-weight: 720;
 }
 
 .preview-surface h2 {
-  margin: 28px 0 10px;
-  font-size: 20px;
+  margin: 27px 0 9px;
+  font-size: 19px;
   font-weight: 680;
 }
 
@@ -92,7 +85,7 @@
 
 .preview-surface p,
 .preview-surface li {
-  color: #272727;
+  color: #252525;
   font-size: inherit;
   line-height: inherit;
 }
@@ -191,7 +184,7 @@
 .preview-surface code {
   padding: 2px 5px;
   color: #1f1f1f;
-  background: #f2f2f2;
+  background: #f4f4f5;
   border-radius: 5px;
   font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.9em;
@@ -200,7 +193,8 @@
 .preview-code-block {
   position: relative;
   margin: 18px 0;
-  background: var(--surface-muted);
+  border: 1px solid var(--line-subtle);
+  background: #fbfbfb;
   border-radius: 8px;
 }
 
@@ -226,7 +220,7 @@
 .preview-code-action:hover,
 .preview-code-action.active {
   color: #4a4a4a;
-  background: #e9e9ea;
+  background: #eeeeef;
 }
 
 .preview-surface pre {
@@ -276,15 +270,17 @@
 
 .preview-surface blockquote {
   margin: 18px 0;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: var(--surface-muted);
-  color: #555555;
+  padding: 2px 0 2px 14px;
+  border-left: 2px solid #dedee0;
+  border-radius: 0;
+  background: transparent;
+  color: #555557;
 }
 
 .preview-surface blockquote blockquote {
   margin: 10px 0;
-  background: #ffffff;
+  border-left-color: #cfcfd2;
+  background: transparent;
 }
 
 .preview-surface blockquote ol,
@@ -305,8 +301,9 @@
   width: 100%;
   margin: 18px 0;
   overflow-x: auto;
+  border: 1px solid var(--line-subtle);
   border-radius: 8px;
-  background: var(--surface-muted);
+  background: #ffffff;
 }
 
 .preview-surface table {
@@ -329,7 +326,7 @@
 
 .preview-surface th {
   color: #555555;
-  background: var(--surface-muted);
+  background: #fafafa;
   font-weight: 650;
 }
 

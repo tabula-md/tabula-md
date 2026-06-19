@@ -330,7 +330,6 @@ export function MarkdownPreview({
     <>
       {metadata.length > 0 && (
         <section className="frontmatter-view" aria-label="Frontmatter">
-          <h2>Metadata</h2>
           {metadata.map((attribute) => (
             <div className="frontmatter-row" key={attribute.key}>
               <span>{attribute.key}</span>
