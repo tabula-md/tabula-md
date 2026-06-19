@@ -32,6 +32,7 @@ import {
   getPublishRoute,
   readLatestPublishedSnapshot,
   readPublishedSnapshot,
+  readServerPublishedSnapshot,
   savePublishedSnapshot,
   type PublishedSnapshot,
   type PublishRoute,
@@ -425,20 +426,35 @@ const createIdentity = (): Collaborator => {
 function PublishedSnapshotView({
   route,
   snapshot,
+  status = snapshot ? "ready" : "missing",
+  errorMessage,
 }: {
   route: PublishRoute;
   snapshot: PublishedSnapshot | null;
+  status?: "loading" | "ready" | "missing" | "error";
+  errorMessage?: string;
 }) {
   useEffect(() => {
-    document.title = snapshot ? `Published ${snapshot.files[0]?.title ?? PRODUCT_NAME}` : "Published snapshot not found";
-  }, [snapshot]);
+    document.title = snapshot
+      ? `Published ${snapshot.files[0]?.title ?? PRODUCT_NAME}`
+      : status === "loading"
+        ? "Loading published snapshot"
+        : "Published snapshot not found";
+  }, [snapshot, status]);
 
   if (!snapshot) {
+    const headline =
+      status === "loading"
+        ? "Loading published snapshot."
+        : status === "error"
+          ? "Unable to load published snapshot."
+          : "Published snapshot not found.";
     return (
       <main className="published-page published-missing">
         <section className="published-shell">
           <p>{PRODUCT_NAME}</p>
-          <h1>Published snapshot not found.</h1>
+          <h1>{headline}</h1>
+          {errorMessage && <p>{errorMessage}</p>}
           <a href="/">Return to project</a>
         </section>
       </main>
@@ -496,6 +512,59 @@ function PublishedSnapshotView({
       </section>
     </main>
   );
+}
+
+function PublishedSnapshotRoute({ route }: { route: PublishRoute }) {
+  const [snapshot, setSnapshot] = useState<PublishedSnapshot | null>(() => readPublishedSnapshot(route.snapshotId));
+  const [status, setStatus] = useState<"loading" | "ready" | "missing" | "error">(() =>
+    snapshot ? "ready" : "loading",
+  );
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const localSnapshot = readPublishedSnapshot(route.snapshotId);
+    setSnapshot(localSnapshot);
+    setErrorMessage(undefined);
+
+    if (localSnapshot) {
+      setStatus("ready");
+      return;
+    }
+
+    const publishServiceUrl = getConfiguredPublishServiceUrl();
+    if (!publishServiceUrl) {
+      setStatus("missing");
+      return;
+    }
+
+    let cancelled = false;
+    setStatus("loading");
+    void readServerPublishedSnapshot({
+      serviceUrl: publishServiceUrl,
+      origin: window.location.origin,
+      snapshotId: route.snapshotId,
+    })
+      .then((serverSnapshot) => {
+        if (cancelled) {
+          return;
+        }
+        setSnapshot(serverSnapshot);
+        setStatus(serverSnapshot ? "ready" : "missing");
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        setStatus("error");
+        setErrorMessage(error instanceof Error ? error.message : "Publish failed.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [route.snapshotId]);
+
+  return <PublishedSnapshotView route={route} snapshot={snapshot} status={status} errorMessage={errorMessage} />;
 }
 
 function WorkspaceApp() {
@@ -2072,7 +2141,7 @@ function WorkspaceApp() {
 function App() {
   const publishRoute = getPublishRoute(window.location.pathname);
   if (publishRoute) {
-    return <PublishedSnapshotView route={publishRoute} snapshot={readPublishedSnapshot(publishRoute.snapshotId)} />;
+    return <PublishedSnapshotRoute route={publishRoute} />;
   }
 
   return <WorkspaceApp />;
