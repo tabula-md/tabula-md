@@ -87,28 +87,6 @@
   line-height: 1;
 }
 
-.share-status-dot {
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #bbbbbb;
-}
-
-.share-status-dot.connected {
-  background: #15803d;
-}
-
-.share-status-dot.connecting {
-  background: #666666;
-}
-
-.share-status-dot.offline {
-  background: #999999;
-}
-
 .panel-toggle {
   flex: 0 0 30px;
   width: 30px;
@@ -819,6 +797,17 @@
   border-radius: 8px;
 }
 
+.sharing-presence {
+  padding-right: 10px;
+}
+
+.presence-label {
+  color: #555555;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+}
+
 .avatars {
   display: flex;
   min-width: 52px;
@@ -841,6 +830,7 @@
   }
 
   .share-label-visible,
+  .presence-label,
   .presence {
     display: none;
   }

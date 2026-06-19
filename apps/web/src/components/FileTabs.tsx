@@ -52,7 +52,7 @@ const getStatusLabel = (status: ConnectionStatus) =>
     idle: "Local draft",
     connecting: "Connecting",
     connected: "Live session",
-    offline: "Reconnecting",
+    offline: "Room offline",
   })[status];
 
 export function FileTabs({
@@ -314,6 +314,9 @@ export function FileTabs({
                   }
                 }}
               >
+                {file.roomId && (
+                  <span className={`tab-live-dot ${fileStatus}`} title={getStatusLabel(fileStatus)} />
+                )}
                 {isRenaming ? (
                   <input
                     ref={renameInputRef}
@@ -341,7 +344,6 @@ export function FileTabs({
                 <span className="tab-mode-icon" title={getViewModeLabel(file.viewMode)}>
                   {getViewModeIcon(file.viewMode)}
                 </span>
-                {file.roomId && <span className={`tab-live-dot ${fileStatus}`} />}
                 {file.roomId && collaboratorCount > 0 && (
                   <span className="tab-collaborator-count" title={`${collaboratorCount} collaborators`}>
                     {collaboratorCount}

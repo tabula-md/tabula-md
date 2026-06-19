@@ -38,6 +38,15 @@ export async function run(ctx) {
       await firstPage.getByRole("button", { name: "Start session" }).click();
       await firstPage.waitForURL(/\/r\/.+#key=/, { timeout: 5_000 });
       await firstPage.waitForSelector(".tab-item.live.active");
+      await waitForText(firstPage.locator(".sharing-presence"), "Sharing");
+      expect(
+        (await firstPage.locator(".share-status-dot").count()) === 0,
+        "Share trigger should not use a corner status dot for active sharing.",
+      );
+      expect(
+        (await firstPage.locator(".avatar.self").getAttribute("title"))?.length > 0,
+        "Self avatar should expose the collaborator name on hover.",
+      );
       await firstPage.getByRole("button", { name: "Close share dialog" }).click();
 
       const sharedPath = new URL(firstPage.url()).pathname + new URL(firstPage.url()).hash;
@@ -57,7 +66,7 @@ export async function run(ctx) {
       const roomUrl = new URL(firstPage.url());
       const roomId = roomUrl.pathname.split("/").filter(Boolean).at(-1);
       const roomKey = new URLSearchParams(roomUrl.hash.replace(/^#/, "")).get("key");
-      const snapshotRecord = await waitForSnapshotRecord(roomDataDir, roomId);
+      const snapshotRecord = await waitForStableSnapshotRecord(roomDataDir, roomId);
       const liveFormattingState = await firstPage.evaluate(() => ({
         selectedWords: document.querySelector(".status-selection")?.textContent?.trim() ?? "",
         editorFocused: Boolean(document.querySelector(".markdown-editor")?.contains(document.activeElement)),
@@ -96,16 +105,13 @@ export async function run(ctx) {
       expect(typeof stopRoomServer === "function", "Collaboration smoke should be able to stop the room server.");
       expect(typeof startRoomServer === "function", "Collaboration smoke should be able to start the room server.");
       await stopRoomServer();
-      await firstPage.waitForSelector(".share-status-dot.offline", { timeout: 8_000 });
-      await waitForText(firstPage.locator(".live-room-notice"), "Room server offline");
-      await waitForText(
-        firstPage.locator(".live-room-notice"),
-        "The collaboration server disconnected. Local edits will sync when it reconnects.",
-      );
+      await firstPage.waitForSelector(".tab-live-dot.offline", { timeout: 8_000 });
+      const offlineNoticeCount = await firstPage.locator(".live-room-notice").count();
+      expect(offlineNoticeCount === 0, "Recoverable server offline state should not show a document-level notice.");
       await firstPage.locator(".share-trigger").click();
-      await waitForText(
-        firstPage.locator(".share-modal"),
-        "The collaboration server disconnected. Local edits will sync when it reconnects.",
+      expect(
+        (await firstPage.locator(".share-modal .live-room-status").count()) === 0,
+        "Recoverable server offline state should not show routine status copy in Share.",
       );
       await firstPage.getByRole("button", { name: "Close share dialog" }).click();
       await focusMarkdownEditor(firstPage);
@@ -126,7 +132,10 @@ export async function run(ctx) {
         await restartPage.waitForSelector(".tab-item.live.active");
         await waitForText(restartPage.locator(".cm-content"), "Offline edit survived");
         await restartPage.locator(".share-trigger").click();
-        await waitForText(restartPage.locator(".share-modal"), "Encrypted room snapshot restored.");
+        expect(
+          (await restartPage.locator(".share-modal .live-room-status").count()) === 0,
+          "Successful snapshot restore should not show routine status copy in Share.",
+        );
       } finally {
         await restartContext.close();
       }
