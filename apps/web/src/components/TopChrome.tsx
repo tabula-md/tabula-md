@@ -27,6 +27,11 @@ export function TopChrome({
 }: TopChromeProps) {
   const leftPanelLabel = `${leftPanelOpen ? "Close" : "Open"} Project Menu`;
   const rightPanelLabel = `${rightPanelOpen ? "Close" : "Open"} Project Context`;
+  const liveCollaborators = [identity, ...collaborators];
+  const sharingTooltip =
+    liveCollaborators.length > 1
+      ? `Live with ${liveCollaborators.map((collaborator) => collaborator.name).join(", ")}`
+      : `Live as ${identity.name}`;
 
   return (
     <header className="top-chrome">
@@ -48,11 +53,10 @@ export function TopChrome({
 
       <div className="top-right-zone">
         {isLive && (
-          <div className="presence sharing-presence" aria-label="Sharing">
+          <div className="presence sharing-presence" aria-label={sharingTooltip} data-tooltip={sharingTooltip}>
             <Users size={15} />
-            <span className="presence-label">Sharing</span>
             <div className="avatars">
-              <span className="avatar self" style={{ background: identity.color }} title={identity.name}>
+              <span className="avatar self" style={{ background: identity.color }} data-tooltip={identity.name}>
                 {identity.name.slice(0, 1)}
               </span>
               {collaborators.slice(0, 4).map((collaborator) => (
@@ -60,7 +64,7 @@ export function TopChrome({
                   className="avatar"
                   key={collaborator.id}
                   style={{ background: collaborator.color }}
-                  title={collaborator.name}
+                  data-tooltip={collaborator.name}
                 >
                   {collaborator.name.slice(0, 1)}
                 </span>
