@@ -22,6 +22,7 @@ type ShareControlsProps = {
   publishPageUrl?: string;
   publishLlmsTxtUrl?: string;
   publishLlmsFullTxtUrl?: string;
+  canRepublishSnapshot: boolean;
   publishing: boolean;
   onPublishSnapshot: () => void;
   onCopyLlmsTxt: () => void;
@@ -87,6 +88,7 @@ export function ShareControls({
   publishPageUrl,
   publishLlmsTxtUrl,
   publishLlmsFullTxtUrl,
+  canRepublishSnapshot,
   publishing,
   onPublishSnapshot,
   onCopyLlmsTxt,
@@ -360,7 +362,7 @@ export function ShareControls({
 
                     <button className="share-modal-primary" type="button" onClick={onPublishSnapshot} disabled={publishing}>
                       <Link size={16} />
-                      <span>{publishing ? "Publishing..." : "Publish snapshot"}</span>
+                      <span>{publishing ? "Publishing..." : canRepublishSnapshot ? "Republish snapshot" : "Publish snapshot"}</span>
                     </button>
 
                     {hasPublishedSnapshot && (

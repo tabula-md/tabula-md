@@ -33,6 +33,7 @@ import {
   readLatestPublishedSnapshot,
   readPublishedSnapshot,
   readServerPublishedSnapshot,
+  republishServerPublishedSnapshot,
   savePublishedSnapshot,
   type PublishedSnapshot,
   type PublishRoute,
@@ -903,16 +904,26 @@ function WorkspaceApp() {
     }
 
     const publishServiceUrl = getConfiguredPublishServiceUrl();
+    const isRepublishing = Boolean(publishServiceUrl && publishedSnapshot?.ownerToken);
     setPublishing(true);
     try {
       const snapshot = publishServiceUrl
-        ? await createServerPublishedSnapshot({
-            serviceUrl: publishServiceUrl,
-            origin: window.location.origin,
-            files,
-            activeFileId: getPublishActiveFileId(),
-            commentsByFileId,
-          })
+        ? isRepublishing && publishedSnapshot
+          ? await republishServerPublishedSnapshot({
+              serviceUrl: publishServiceUrl,
+              origin: window.location.origin,
+              snapshot: publishedSnapshot,
+              files,
+              activeFileId: getPublishActiveFileId(),
+              commentsByFileId,
+            })
+          : await createServerPublishedSnapshot({
+              serviceUrl: publishServiceUrl,
+              origin: window.location.origin,
+              files,
+              activeFileId: getPublishActiveFileId(),
+              commentsByFileId,
+            })
         : createPublishedSnapshot({
             id: randomId(),
             origin: window.location.origin,
@@ -922,7 +933,7 @@ function WorkspaceApp() {
           });
       savePublishedSnapshot(snapshot);
       setPublishedSnapshot(snapshot);
-      showToast("Snapshot published.");
+      showToast(isRepublishing ? "Snapshot republished." : "Snapshot published.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Publish failed.");
     } finally {
@@ -1832,6 +1843,7 @@ function WorkspaceApp() {
       publishPageUrl={publishedSnapshot?.urls.page}
       publishLlmsTxtUrl={publishedSnapshot?.urls.llmsTxt}
       publishLlmsFullTxtUrl={publishedSnapshot?.urls.llmsFullTxt}
+      canRepublishSnapshot={Boolean(publishedSnapshot?.ownerToken)}
       publishing={publishing}
       onPublishSnapshot={publishProjectSnapshot}
       onCopyLlmsTxt={copyLlmsTxt}

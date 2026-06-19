@@ -3,7 +3,7 @@ export const description = "Server-backed publish snapshots, public artifacts, a
 export const requiresPublishService = true;
 
 export async function run(ctx) {
-  const { baseUrl, browser, expect, publishUrl, waitForText, withPage } = ctx;
+  const { baseUrl, browser, expect, focusMarkdownEditor, publishUrl, waitForText, withPage } = ctx;
 
   expect(Boolean(publishUrl), "Publish smoke requires a configured publish service URL.");
 
@@ -58,18 +58,100 @@ export async function run(ctx) {
     expect(fullResponse.headers.get("content-type")?.includes("text/plain"), "llms-full.txt should be text/plain.");
     expect(fullText.includes("## README.md"), "llms-full.txt should include the full Markdown context.");
 
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await focusMarkdownEditor(page);
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("Backspace");
+    await page.keyboard.insertText("# Republished README\n\nRepublished marker for server-backed publish.");
+
+    await page.locator(".share-trigger").click();
+    await page.getByRole("tab", { name: "Publish" }).click();
+    await page.getByRole("button", { name: "Republish snapshot" }).click();
+    await waitForText(page.locator(".app-toast"), "Snapshot republished.");
+
+    const republishedUrls = await page.evaluate(() => ({
+      page: document.querySelector('[data-testid="publish-page-url"]')?.textContent?.trim() ?? "",
+      llms: document.querySelector('[data-testid="publish-llms-url"]')?.textContent?.trim() ?? "",
+      llmsFull: document.querySelector('[data-testid="publish-llms-full-url"]')?.textContent?.trim() ?? "",
+    }));
+    expect(republishedUrls.page === publishedUrls.page, "Republish should keep the same app vanity URL.");
+    expect(republishedUrls.llms === publishedUrls.llms, "Republish should keep the same llms.txt URL.");
+    expect(republishedUrls.llmsFull === publishedUrls.llmsFull, "Republish should keep the same llms-full.txt URL.");
+
+    const republishedJsonResponse = await fetch(`${publishUrl}/v1/publishes/${publishId}`);
+    const republishedSnapshot = await republishedJsonResponse.json();
+    expect(
+      republishedSnapshot.files?.[0]?.text?.includes("Republished marker for server-backed publish."),
+      "Republish should update the public snapshot content.",
+    );
+    const republishedLlmsFull = await (await fetch(republishedUrls.llmsFull)).text();
+    expect(
+      republishedLlmsFull.includes("Republished marker for server-backed publish."),
+      "Republish should update the service llms-full.txt output.",
+    );
+
+    let failedRepublishRequests = 0;
+    await page.route(`${publishUrl}/v1/publishes/${publishId}`, async (route) => {
+      if (route.request().method() !== "PUT") {
+        await route.fallback();
+        return;
+      }
+
+      failedRepublishRequests += 1;
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Simulated failure" }),
+      });
+    });
+    await page.keyboard.press("Escape");
+    await focusMarkdownEditor(page);
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("Backspace");
+    await page.keyboard.insertText("# Failed Republish\n\nThis edit should remain local after a failed republish.");
+    await page.locator(".share-trigger").click();
+    await page.getByRole("tab", { name: "Publish" }).click();
+    await page.getByRole("button", { name: "Republish snapshot" }).click();
+    await waitForText(page.locator(".app-toast"), "Publish failed: Simulated failure");
+    expect(failedRepublishRequests === 1, "Failed republish smoke should intercept one PUT request.");
+    const failedUrls = await page.evaluate(() => ({
+      page: document.querySelector('[data-testid="publish-page-url"]')?.textContent?.trim() ?? "",
+      editorText: document.querySelector(".cm-content")?.textContent ?? "",
+    }));
+    expect(failedUrls.page === publishedUrls.page, "Failed republish should preserve the previous published URL.");
+    expect(
+      failedUrls.editorText.includes("This edit should remain local after a failed republish."),
+      "Failed republish should preserve the user's local document edit.",
+    );
+    const afterFailureSnapshot = await (await fetch(`${publishUrl}/v1/publishes/${publishId}`)).json();
+    expect(
+      afterFailureSnapshot.files?.[0]?.text?.includes("Republished marker for server-backed publish."),
+      "Failed republish should not overwrite the stored publish snapshot.",
+    );
+    expect(
+      !afterFailureSnapshot.files?.[0]?.text?.includes("This edit should remain local after a failed republish."),
+      "Failed republish should not publish failed-attempt content.",
+    );
+
     const publicContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     try {
       const vanityPage = await publicContext.newPage();
       await vanityPage.goto(publishedUrls.page);
       await vanityPage.waitForSelector(".published-page", { timeout: 5_000 });
       expect(
-        (await vanityPage.locator(".published-header").textContent())?.includes("Tabula.md"),
+        (await vanityPage.locator(".published-header").textContent())?.includes("README.md"),
         "Vanity page should restore from the publish service without localStorage.",
       );
       expect(
-        (await vanityPage.locator(".published-document").textContent())?.includes("Tabula.md"),
+        (await vanityPage.locator(".published-document").textContent())?.includes("Republished marker for server-backed publish."),
         "Vanity page should render the published Markdown document.",
+      );
+      expect(
+        !((await vanityPage.locator(".published-document").textContent()) ?? "").includes(
+          "This edit should remain local after a failed republish.",
+        ),
+        "Vanity page should not render failed-attempt Markdown.",
       );
     } finally {
       await publicContext.close();

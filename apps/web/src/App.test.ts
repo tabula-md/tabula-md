@@ -7,6 +7,7 @@ import {
   createServerPublishedSnapshot,
   getPublishRoute,
   readServerPublishedSnapshot,
+  republishServerPublishedSnapshot,
 } from "./publish";
 import {
   createMarkdownFile,
@@ -673,6 +674,74 @@ Start here.`,
       { id: "readme", title: "README.md", text: "# Published" },
       { id: "empty", title: "Untitled.md", text: "" },
     ]);
+  });
+
+  it("republishes server-backed snapshots with the owner token and stable URLs", async () => {
+    const existingSnapshot = {
+      id: "publish_123456",
+      createdAt: "2026-06-19T00:00:00.000Z",
+      updatedAt: "2026-06-19T00:00:00.000Z",
+      activeFileId: "readme",
+      fileCount: 1,
+      files: [{ id: "readme", title: "README.md", text: "# Before" }],
+      commentsByFileId: {},
+      urls: {
+        page: "https://tabula.md/p/publish_123456",
+        llmsTxt: "https://publish.tabula.md/p/publish_123456/llms.txt",
+        llmsFullTxt: "https://publish.tabula.md/p/publish_123456/llms-full.txt",
+      },
+      servicePageUrl: "https://publish.tabula.md/p/publish_123456",
+      ownerToken: "owner-token",
+      llmsTxt: "# Tabula.md",
+      llmsFullTxt: "# Tabula.md Agent Context",
+      markdownBundle: "# Before",
+      publishBundle: "# Bundle",
+    };
+    const updatedFiles = [
+      createMarkdownFile(1, {
+        id: "readme",
+        title: "README.md",
+        text: "# After",
+      }),
+    ];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://publish.tabula.md/v1/publishes/publish_123456");
+      expect(init?.method).toBe("PUT");
+      expect((init?.headers as Record<string, string>).authorization).toBe("Bearer owner-token");
+      expect(JSON.parse(String(init?.body)).files).toEqual([{ id: "readme", title: "README.md", text: "# After" }]);
+
+      return new Response(
+        JSON.stringify({
+          publishId: "publish_123456",
+          createdAt: "2026-06-19T00:00:00.000Z",
+          updatedAt: "2026-06-19T00:01:00.000Z",
+          urls: {
+            page: "https://publish.tabula.md/p/publish_123456",
+            llmsTxt: "https://publish.tabula.md/p/publish_123456/llms.txt",
+            llmsFullTxt: "https://publish.tabula.md/p/publish_123456/llms-full.txt",
+            appPage: "https://tabula.md/p/publish_123456",
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+
+    const snapshot = await republishServerPublishedSnapshot({
+      serviceUrl: "https://publish.tabula.md",
+      origin: "https://tabula.md",
+      snapshot: existingSnapshot,
+      files: updatedFiles,
+      activeFileId: "readme",
+      commentsByFileId: {},
+      fetchImpl: fetchMock,
+    });
+
+    expect(snapshot.id).toBe("publish_123456");
+    expect(snapshot.createdAt).toBe(existingSnapshot.createdAt);
+    expect(snapshot.updatedAt).toBe("2026-06-19T00:01:00.000Z");
+    expect(snapshot.urls.page).toBe(existingSnapshot.urls.page);
+    expect(snapshot.ownerToken).toBe("owner-token");
+    expect(snapshot.files).toEqual([{ id: "readme", title: "README.md", text: "# After" }]);
   });
 
   it("surfaces publish service errors", async () => {
