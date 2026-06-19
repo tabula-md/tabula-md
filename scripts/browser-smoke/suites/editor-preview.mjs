@@ -278,6 +278,8 @@ export async function run(ctx) {
         wrapTitle: document.querySelector(".preview-code-action")?.getAttribute("title") ?? "",
         copyTitle: document.querySelectorAll(".preview-code-action")[1]?.getAttribute("title") ?? "",
         blockRadius: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).borderRadius : "",
+        blockBorderWidth: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).borderTopWidth : "",
+        blockBackground: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).backgroundColor : "",
         preBackground: preStyle.backgroundColor,
         preRadius: preStyle.borderRadius,
         codeDisplay: codeStyle.display,
@@ -291,6 +293,8 @@ export async function run(ctx) {
     expect(previewCodeBlock?.wrapTitle === "Enable word wrap", "Preview code blocks should offer a word wrap control.");
     expect(previewCodeBlock?.copyTitle === "Copy code", "Preview code blocks should offer a copy code control.");
     expect(previewCodeBlock?.blockRadius !== "0px", "Preview code block controls should live inside the rounded code surface.");
+    expect(previewCodeBlock?.blockBorderWidth === "1px", "Preview code blocks should use a document boundary.");
+    expect(previewCodeBlock?.blockBackground === "rgb(251, 251, 251)", "Preview code blocks should stay quieter than filled gray cards.");
     expect(previewCodeBlock?.codeDisplay === "block", "Preview code blocks should render as stable block code.");
     expect(previewCodeBlock?.ligatures === "none", "Preview code blocks should preserve source-like character rendering.");
     expect(previewCodeBlock?.whiteSpace === "pre", "Preview code blocks should preserve source whitespace by default.");
@@ -327,6 +331,43 @@ export async function run(ctx) {
     }));
     expect(copiedCodeBlock.copiedText === "const value = 1;", "Preview copy code should copy the raw code contents.");
     expect(copiedCodeBlock.copyTitle === "Copied", "Preview copy code should acknowledge the copied state.");
+
+    await page.getByTitle("New tab").click();
+    await page.waitForTimeout(120);
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText(
+      [
+        "---",
+        "title: Preview Surface Brief",
+        "description: Frontmatter should support the document without becoming noisy.",
+        "status: Draft",
+        "---",
+        "",
+        "# Preview Surface Brief",
+        "",
+        "The rendered body should remain the focus.",
+      ].join("\n"),
+    );
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await page.waitForSelector(".frontmatter-view", { timeout: 5_000 });
+    const previewFrontmatterSurface = await page.evaluate(() => {
+      const frontmatter = document.querySelector(".frontmatter-view");
+      const firstBodyParagraph = document.querySelector(".preview-surface > p");
+      if (!(frontmatter instanceof HTMLElement) || !(firstBodyParagraph instanceof HTMLElement)) {
+        return null;
+      }
+      const frontmatterStyle = window.getComputedStyle(frontmatter);
+      return {
+        hasVisibleHeading: Boolean(frontmatter.querySelector("h2")),
+        background: frontmatterStyle.backgroundColor,
+        borderRadius: frontmatterStyle.borderRadius,
+        firstBodyText: firstBodyParagraph.textContent ?? "",
+      };
+    });
+    expect(!previewFrontmatterSurface?.hasVisibleHeading, "Preview frontmatter should not show a redundant Metadata label.");
+    expect(previewFrontmatterSurface?.background === "rgb(247, 247, 248)", "Preview frontmatter should stay grouped as a quiet metadata block.");
+    expect(previewFrontmatterSurface?.borderRadius !== "0px", "Preview frontmatter should keep the original grouped surface shape.");
+    expect(previewFrontmatterSurface?.firstBodyText === "The rendered body should remain the focus.", "Preview should remove the duplicated title from the body.");
 
     await page.getByTitle("New tab").click();
     await page.waitForTimeout(120);
@@ -382,11 +423,13 @@ export async function run(ctx) {
         linkRel: link?.getAttribute("rel") ?? "",
         quoteBorderLeftWidth: quoteStyle?.borderLeftWidth ?? "",
         quoteBackground: quoteStyle?.backgroundColor ?? "",
-        nestedQuoteBackground: nestedQuoteStyle?.backgroundColor ?? "",
+        nestedQuoteBorderLeftColor: nestedQuoteStyle?.borderLeftColor ?? "",
         taskCheckboxCount: document.querySelectorAll(".preview-task-checkbox").length,
         checkedTaskCheckboxCount: document.querySelectorAll('.preview-task-checkbox[data-checked="true"]').length,
         nativeTaskInputCount: document.querySelectorAll('.preview-surface input[type="checkbox"]').length,
         tableWrapRadius: tableWrapStyle?.borderRadius ?? "",
+        tableWrapBorderWidth: tableWrapStyle?.borderTopWidth ?? "",
+        tableWrapBackground: tableWrapStyle?.backgroundColor ?? "",
         rightAlignedTextAlign: rightAlignedStyle?.textAlign ?? "",
         imageFrameCount: document.querySelectorAll(".preview-image-frame").length,
         imageLoading: image?.getAttribute("loading") ?? "",
@@ -400,13 +443,15 @@ export async function run(ctx) {
     });
     expect(previewGfm.linkTarget === "_blank", "External preview links should open outside the workspace.");
     expect(previewGfm.linkRel === "noreferrer", "External preview links should avoid leaking opener context.");
-    expect(previewGfm.quoteBorderLeftWidth === "0px", "Preview blockquotes should not use vertical strike borders.");
-    expect(previewGfm.quoteBackground !== "rgba(0, 0, 0, 0)", "Preview blockquotes should use a quiet surface.");
-    expect(previewGfm.nestedQuoteBackground !== previewGfm.quoteBackground, "Nested preview blockquotes should keep visible depth.");
+    expect(previewGfm.quoteBorderLeftWidth === "2px", "Preview blockquotes should use a quiet Markdown quote rule.");
+    expect(previewGfm.quoteBackground === "rgba(0, 0, 0, 0)", "Preview blockquotes should not read as separate cards.");
+    expect(previewGfm.nestedQuoteBorderLeftColor !== "", "Nested preview blockquotes should keep visible depth.");
     expect(previewGfm.taskCheckboxCount === 2, "Preview checklists should render consistent non-native check indicators.");
     expect(previewGfm.checkedTaskCheckboxCount === 1, "Preview checklists should preserve checked task state.");
     expect(previewGfm.nativeTaskInputCount === 0, "Preview checklists should not expose interactive native checkboxes.");
     expect(previewGfm.tableWrapRadius !== "0px", "Preview tables should sit in the document surface system.");
+    expect(previewGfm.tableWrapBorderWidth === "1px", "Preview tables should use an explicit document boundary.");
+    expect(previewGfm.tableWrapBackground === "rgb(255, 255, 255)", "Preview tables should not look like filled gray cards.");
     expect(previewGfm.rightAlignedTextAlign === "right", "Preview tables should preserve GFM column alignment.");
     expect(previewGfm.imageFrameCount === 2, "Preview images should render through the Tabula.md image frame.");
     expect(previewGfm.imageLoading === "lazy", "Preview images should lazy-load.");
