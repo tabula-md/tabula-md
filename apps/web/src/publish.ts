@@ -50,17 +50,29 @@ type PublishPayload = {
   publishBundle: string;
 };
 
+type PublishServiceUrls = {
+  page: string;
+  llmsTxt: string;
+  llmsFullTxt: string;
+  appPage?: string;
+};
+
 type PublishCreateResponse = {
   publishId: string;
   createdAt: string;
   updatedAt: string;
-  urls: {
-    page: string;
-    llmsTxt: string;
-    llmsFullTxt: string;
-    appPage?: string;
-  };
+  urls: PublishServiceUrls;
   ownerToken: string;
+};
+
+type PublicPublishResponse = Omit<PublishPayload, "markdownBundle" | "publishBundle"> & {
+  publishId: string;
+  createdAt: string;
+  updatedAt: string;
+  fileCount: number;
+  urls: PublishServiceUrls;
+  markdownBundle?: string;
+  publishBundle?: string;
 };
 
 const readSnapshotMap = (): Record<string, PublishedSnapshot> => {
@@ -164,27 +176,75 @@ export const createServerPublishedSnapshot = async ({
 
   const created = (await response.json()) as unknown;
   const publish = validatePublishCreateResponse(created);
-  const pageUrl = publish.urls.appPage ?? `${origin}/p/${encodeURIComponent(publish.publishId)}`;
 
+  return snapshotFromServicePublish({
+    publish: {
+      ...payload,
+      publishId: publish.publishId,
+      createdAt: publish.createdAt,
+      updatedAt: publish.updatedAt,
+      fileCount: payload.files.length,
+      urls: publish.urls,
+    },
+    origin,
+    ownerToken: publish.ownerToken,
+  });
+};
+
+export const readServerPublishedSnapshot = async ({
+  serviceUrl,
+  origin,
+  snapshotId,
+  fetchImpl = fetch,
+}: {
+  serviceUrl: string;
+  origin: string;
+  snapshotId: string;
+  fetchImpl?: typeof fetch;
+}): Promise<PublishedSnapshot | null> => {
+  const publishServiceUrl = trimTrailingSlash(serviceUrl);
+  const response = await fetchImpl(`${publishServiceUrl}/v1/publishes/${encodeURIComponent(snapshotId)}`);
+
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Publish failed: ${await readPublishError(response)}`);
+  }
+
+  const publish = validatePublicPublishResponse((await response.json()) as unknown);
+  return snapshotFromServicePublish({ publish, origin });
+};
+
+const snapshotFromServicePublish = ({
+  publish,
+  origin,
+  ownerToken,
+}: {
+  publish: PublicPublishResponse;
+  origin: string;
+  ownerToken?: string;
+}): PublishedSnapshot => {
+  const pageUrl = publish.urls.appPage ?? `${origin}/p/${encodeURIComponent(publish.publishId)}`;
   return {
     id: publish.publishId,
     createdAt: publish.createdAt,
     updatedAt: publish.updatedAt,
-    activeFileId: payload.activeFileId,
-    fileCount: payload.files.length,
-    files: payload.files,
-    commentsByFileId: payload.commentsByFileId,
+    activeFileId: publish.activeFileId,
+    fileCount: publish.fileCount,
+    files: publish.files,
+    commentsByFileId: publish.commentsByFileId,
     urls: {
       page: pageUrl,
       llmsTxt: publish.urls.llmsTxt,
       llmsFullTxt: publish.urls.llmsFullTxt,
     },
     servicePageUrl: publish.urls.page,
-    ownerToken: publish.ownerToken,
-    llmsTxt: payload.llmsTxt,
-    llmsFullTxt: payload.llmsFullTxt,
-    markdownBundle: payload.markdownBundle,
-    publishBundle: payload.publishBundle,
+    ...(ownerToken ? { ownerToken } : {}),
+    llmsTxt: publish.llmsTxt,
+    llmsFullTxt: publish.llmsFullTxt,
+    markdownBundle: publish.markdownBundle ?? "",
+    publishBundle: publish.publishBundle ?? "",
   };
 };
 
@@ -293,26 +353,68 @@ const validatePublishCreateResponse = (value: unknown): PublishCreateResponse =>
   if (!isRecord(value) || !isRecord(value.urls)) {
     throw new Error("Publish failed: invalid service response");
   }
-  const publishId = requireString(value.publishId, "publishId");
   return {
-    publishId,
-    createdAt: requireString(value.createdAt, "createdAt"),
-    updatedAt: requireString(value.updatedAt, "updatedAt"),
-    ownerToken: requireString(value.ownerToken, "ownerToken"),
-    urls: {
-      page: requireString(value.urls.page, "urls.page"),
-      llmsTxt: requireString(value.urls.llmsTxt, "urls.llmsTxt"),
-      llmsFullTxt: requireString(value.urls.llmsFullTxt, "urls.llmsFullTxt"),
-      ...(typeof value.urls.appPage === "string" ? { appPage: value.urls.appPage } : {}),
-    },
+    publishId: requireNonEmptyString(value.publishId, "publishId"),
+    createdAt: requireNonEmptyString(value.createdAt, "createdAt"),
+    updatedAt: requireNonEmptyString(value.updatedAt, "updatedAt"),
+    ownerToken: requireNonEmptyString(value.ownerToken, "ownerToken"),
+    urls: validatePublishServiceUrls(value.urls),
   };
 };
 
+const validatePublicPublishResponse = (value: unknown): PublicPublishResponse => {
+  if (!isRecord(value) || !Array.isArray(value.files) || !isRecord(value.commentsByFileId) || !isRecord(value.urls)) {
+    throw new Error("Publish failed: invalid service response");
+  }
+
+  const files = value.files.map((file) => {
+    if (!isRecord(file)) {
+      throw new Error("Publish failed: invalid service response");
+    }
+    return {
+      id: requireString(file.id, "file.id"),
+      title: requireString(file.title, "file.title"),
+      text: requireString(file.text, "file.text"),
+    };
+  });
+
+  return {
+    ...(typeof value.title === "string" ? { title: value.title } : {}),
+    publishId: requireNonEmptyString(value.publishId, "publishId"),
+    createdAt: requireNonEmptyString(value.createdAt, "createdAt"),
+    updatedAt: requireNonEmptyString(value.updatedAt, "updatedAt"),
+    fileCount: typeof value.fileCount === "number" ? value.fileCount : files.length,
+    activeFileId: requireNonEmptyString(value.activeFileId, "activeFileId"),
+    files,
+    commentsByFileId: value.commentsByFileId as Record<string, FileComment[]>,
+    urls: validatePublishServiceUrls(value.urls),
+    llmsTxt: requireString(value.llmsTxt, "llmsTxt"),
+    llmsFullTxt: requireString(value.llmsFullTxt, "llmsFullTxt"),
+    ...(typeof value.markdownBundle === "string" ? { markdownBundle: value.markdownBundle } : {}),
+    ...(typeof value.publishBundle === "string" ? { publishBundle: value.publishBundle } : {}),
+  };
+};
+
+const validatePublishServiceUrls = (value: Record<string, unknown>): PublishServiceUrls => ({
+  page: requireNonEmptyString(value.page, "urls.page"),
+  llmsTxt: requireNonEmptyString(value.llmsTxt, "urls.llmsTxt"),
+  llmsFullTxt: requireNonEmptyString(value.llmsFullTxt, "urls.llmsFullTxt"),
+  ...(typeof value.appPage === "string" ? { appPage: value.appPage } : {}),
+});
+
 const requireString = (value: unknown, fieldName: string) => {
-  if (typeof value !== "string" || !value) {
+  if (typeof value !== "string") {
     throw new Error(`Publish failed: missing ${fieldName}`);
   }
   return value;
+};
+
+const requireNonEmptyString = (value: unknown, fieldName: string) => {
+  const text = requireString(value, fieldName);
+  if (!text) {
+    throw new Error(`Publish failed: missing ${fieldName}`);
+  }
+  return text;
 };
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "");

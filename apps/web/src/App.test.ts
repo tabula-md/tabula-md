@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildLlmsFullTxt, buildLlmsTxt, buildPublishBundle } from "./agentExports";
 import { COMMENT_ANCHOR_CONTEXT_LENGTH, getCommentRangeInText } from "./commentAnchors";
 import { getPreviewBody, parseFrontmatter } from "./markdown";
-import { createPublishedSnapshot, createServerPublishedSnapshot, getPublishRoute } from "./publish";
+import {
+  createPublishedSnapshot,
+  createServerPublishedSnapshot,
+  getPublishRoute,
+  readServerPublishedSnapshot,
+} from "./publish";
 import {
   createMarkdownFile,
   createStoredWorkspace,
@@ -623,6 +628,51 @@ Start here.`,
     expect(snapshot.servicePageUrl).toBe("https://publish.tabula.md/p/publish_123456");
     expect(snapshot.ownerToken).toBe("owner-token");
     expect(snapshot.files[0]).not.toHaveProperty("roomId");
+  });
+
+  it("reads public publish snapshots from the publish service for vanity pages", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      expect(String(input)).toBe("https://publish.tabula.md/v1/publishes/publish_123456");
+      return new Response(
+        JSON.stringify({
+          v: 1,
+          publishId: "publish_123456",
+          createdAt: "2026-06-19T00:00:00.000Z",
+          updatedAt: "2026-06-19T00:00:00.000Z",
+          activeFileId: "readme",
+          fileCount: 2,
+          files: [
+            { id: "readme", title: "README.md", text: "# Published" },
+            { id: "empty", title: "Untitled.md", text: "" },
+          ],
+          commentsByFileId: {},
+          llmsTxt: "# Tabula.md\n\nUse llms-full.txt",
+          llmsFullTxt: "# Tabula.md Agent Context\n\n## README.md",
+          urls: {
+            page: "https://publish.tabula.md/p/publish_123456",
+            llmsTxt: "https://publish.tabula.md/p/publish_123456/llms.txt",
+            llmsFullTxt: "https://publish.tabula.md/p/publish_123456/llms-full.txt",
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+
+    const snapshot = await readServerPublishedSnapshot({
+      serviceUrl: "https://publish.tabula.md",
+      origin: "https://tabula.md",
+      snapshotId: "publish_123456",
+      fetchImpl: fetchMock,
+    });
+
+    expect(snapshot?.urls.page).toBe("https://tabula.md/p/publish_123456");
+    expect(snapshot?.urls.llmsTxt).toBe("https://publish.tabula.md/p/publish_123456/llms.txt");
+    expect(snapshot?.servicePageUrl).toBe("https://publish.tabula.md/p/publish_123456");
+    expect(snapshot?.ownerToken).toBeUndefined();
+    expect(snapshot?.files).toEqual([
+      { id: "readme", title: "README.md", text: "# Published" },
+      { id: "empty", title: "Untitled.md", text: "" },
+    ]);
   });
 
   it("surfaces publish service errors", async () => {
