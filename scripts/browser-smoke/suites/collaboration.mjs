@@ -38,16 +38,31 @@ export async function run(ctx) {
       await firstPage.getByRole("button", { name: "Start session" }).click();
       await firstPage.waitForURL(/\/r\/.+#key=/, { timeout: 5_000 });
       await firstPage.waitForSelector(".tab-item.live.active");
-      await waitForText(firstPage.locator(".sharing-presence"), "Sharing");
+      await firstPage.waitForSelector(".sharing-presence");
+      const sharingPresenceTitle = await firstPage.locator(".sharing-presence").getAttribute("data-tooltip");
+      const sharingPresenceText = await firstPage.locator(".sharing-presence").textContent();
+      expect(
+        sharingPresenceTitle?.startsWith("Live"),
+        "Sharing presence should keep accessible live-session context without native title UI.",
+      );
+      expect(
+        !sharingPresenceText?.includes("Sharing"),
+        "Sharing presence should not add a visible text label to the top chrome.",
+      );
       expect(
         (await firstPage.locator(".share-status-dot").count()) === 0,
         "Share trigger should not use a corner status dot for active sharing.",
       );
       expect(
-        (await firstPage.locator(".avatar.self").getAttribute("title"))?.length > 0,
-        "Self avatar should expose the collaborator name on hover.",
+        (await firstPage.locator(".avatar.self").getAttribute("data-tooltip"))?.length > 0,
+        "Self avatar should expose the collaborator name through the custom hover tooltip.",
       );
       await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+      await firstPage.locator(".avatar.self").hover();
+      await firstPage.waitForFunction(() => {
+        const avatar = document.querySelector(".avatar.self");
+        return avatar && getComputedStyle(avatar, "::after").opacity === "1";
+      });
 
       const sharedPath = new URL(firstPage.url()).pathname + new URL(firstPage.url()).hash;
       await secondPage.goto(`${baseUrl}${sharedPath}`);
@@ -178,6 +193,39 @@ export async function run(ctx) {
       } finally {
         await missingKeyContext.close();
       }
+
+      await firstPage.locator(".share-trigger").click();
+      const dismissedStopDialogMessage = new Promise((resolve) => {
+        firstPage.once("dialog", async (dialog) => {
+          const message = dialog.message();
+          await dialog.dismiss();
+          resolve(message);
+        });
+      });
+      await firstPage.getByRole("button", { name: "Stop session" }).click();
+      const dismissedStopDialog = await dismissedStopDialogMessage;
+      expect(
+        dismissedStopDialog.includes("Stop sharing this file?"),
+        "Stop session should ask for native confirmation before leaving the live room.",
+      );
+      expect(
+        (await firstPage.locator(".tab-item.live.active").count()) === 1,
+        "Dismissing stop session confirmation should keep the file live.",
+      );
+      const acceptedStopDialogMessage = new Promise((resolve) => {
+        firstPage.once("dialog", async (dialog) => {
+          const message = dialog.message();
+          await dialog.accept();
+          resolve(message);
+        });
+      });
+      await firstPage.getByRole("button", { name: "Stop session" }).click();
+      const acceptedStopDialog = await acceptedStopDialogMessage;
+      expect(
+        acceptedStopDialog.includes("This tab will leave the live room"),
+        "Stop session confirmation should explain that this tab leaves the live room.",
+      );
+      await firstPage.locator(".tab-live-dot").waitFor({ state: "detached", timeout: 5_000 });
     } finally {
       await context.close();
     }

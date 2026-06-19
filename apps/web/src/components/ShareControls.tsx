@@ -168,6 +168,16 @@ export function ShareControls({
     return () => window.removeEventListener("keydown", handleEscape);
   }, [onCloseShare, shareOpen]);
 
+  const handleStopSession = () => {
+    const confirmed = window.confirm(
+      "Stop sharing this file?\n\nThis tab will leave the live room and keep the current Markdown local. Other collaborators can continue in the room.",
+    );
+
+    if (confirmed) {
+      onStopSession();
+    }
+  };
+
   return (
     <>
       <div className="share-wrap">
@@ -291,7 +301,7 @@ export function ShareControls({
                         </div>
                       </div>
 
-                      <button className="share-modal-danger" type="button" onClick={onStopSession}>
+                      <button className="share-modal-danger" type="button" onClick={handleStopSession}>
                         <Square size={14} />
                         <span>Stop session</span>
                       </button>
