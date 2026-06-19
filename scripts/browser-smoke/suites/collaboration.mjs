@@ -97,6 +97,11 @@ export async function run(ctx) {
       expect(typeof startRoomServer === "function", "Collaboration smoke should be able to start the room server.");
       await stopRoomServer();
       await firstPage.waitForSelector(".share-status-dot.offline", { timeout: 8_000 });
+      await waitForText(firstPage.locator(".live-room-notice"), "Room server offline");
+      await waitForText(
+        firstPage.locator(".live-room-notice"),
+        "The collaboration server disconnected. Local edits will sync when it reconnects.",
+      );
       await firstPage.locator(".share-trigger").click();
       await waitForText(
         firstPage.locator(".share-modal"),
@@ -133,6 +138,7 @@ export async function run(ctx) {
       try {
         await wrongKeyPage.goto(`${baseUrl}${roomUrl.pathname}#key=${wrongRoomKey}`);
         await wrongKeyPage.waitForSelector(".tab-item.live.active");
+        await waitForText(wrongKeyPage.locator(".live-room-notice"), "Room key does not match");
         await wrongKeyPage.locator(".share-trigger").click();
         await waitForText(
           wrongKeyPage.locator(".share-modal"),
@@ -153,6 +159,16 @@ export async function run(ctx) {
         snapshotAfterWrongKey.raw === snapshotBeforeWrongKey.raw,
         "A room opened with the wrong key should not overwrite the encrypted snapshot.",
       );
+
+      const missingKeyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      const missingKeyPage = await missingKeyContext.newPage();
+      try {
+        await missingKeyPage.goto(`${baseUrl}${roomUrl.pathname}`);
+        await missingKeyPage.waitForSelector(".tab-item.live.active");
+        await waitForText(missingKeyPage.locator(".live-room-notice"), "Room key missing");
+      } finally {
+        await missingKeyContext.close();
+      }
     } finally {
       await context.close();
     }
