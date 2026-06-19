@@ -1,4 +1,4 @@
-import type { ConnectionStatus } from "./collab";
+import type { CollabRecoveryEvent, ConnectionStatus } from "./collab";
 import { PRODUCT_NAME } from "./product";
 
 export const PROJECT_STORAGE_VERSION = 5;
@@ -40,6 +40,7 @@ No dashboard first. No project ceremony. Open a file, write Markdown, share the 
 export const READING_WIDTHS: ReadingWidth[] = ["narrow", "standard", "wide"];
 const FILE_VIEW_MODES: FileViewMode[] = ["edit", "split", "preview"];
 const CONNECTION_STATUSES: ConnectionStatus[] = ["idle", "connecting", "connected", "offline"];
+const RECOVERY_EVENT_TYPES: CollabRecoveryEvent["type"][] = ["reconnected", "snapshot-recovered", "invalid-message"];
 
 export type FileViewMode = "edit" | "split" | "preview";
 export type ReadingWidth = "narrow" | "standard" | "wide";
@@ -57,6 +58,7 @@ export type MarkdownFile = {
   collaboratorCount?: number;
   snapshotCount?: number;
   lastSnapshotAt?: string;
+  lastRecoveryType?: CollabRecoveryEvent["type"];
   lastRecoveryMessage?: string;
   lastRecoveryAt?: string;
 };
@@ -105,6 +107,7 @@ export type StoredMarkdownFile = {
   collaboratorCount?: number;
   snapshotCount?: number;
   lastSnapshotAt?: string;
+  lastRecoveryType?: CollabRecoveryEvent["type"];
   lastRecoveryMessage?: string;
   lastRecoveryAt?: string;
 };
@@ -289,6 +292,11 @@ const getConnectionStatus = (value: unknown): ConnectionStatus | undefined =>
     ? (value as ConnectionStatus)
     : undefined;
 
+const getRecoveryEventType = (value: unknown): CollabRecoveryEvent["type"] | undefined =>
+  typeof value === "string" && RECOVERY_EVENT_TYPES.includes(value as CollabRecoveryEvent["type"])
+    ? (value as CollabRecoveryEvent["type"])
+    : undefined;
+
 const normalizeConnectionStatus = (status: ConnectionStatus | undefined, roomId?: string) => {
   if (!roomId) {
     return "idle";
@@ -319,6 +327,7 @@ const normalizeMarkdownFile = (value: unknown, index: number): MarkdownFile | nu
     collaboratorCount: getFiniteNumber(value.collaboratorCount) ?? 0,
     snapshotCount: getFiniteNumber(value.snapshotCount) ?? 0,
     lastSnapshotAt: getString(value.lastSnapshotAt),
+    lastRecoveryType: getRecoveryEventType(value.lastRecoveryType),
     lastRecoveryMessage: getString(value.lastRecoveryMessage),
     lastRecoveryAt: getString(value.lastRecoveryAt),
   };
@@ -532,6 +541,7 @@ export const serializeFile = (file: MarkdownFile): StoredMarkdownFile => ({
   collaboratorCount: file.collaboratorCount ?? 0,
   snapshotCount: file.snapshotCount ?? 0,
   lastSnapshotAt: file.lastSnapshotAt,
+  lastRecoveryType: file.lastRecoveryType,
   lastRecoveryMessage: file.lastRecoveryMessage,
   lastRecoveryAt: file.lastRecoveryAt,
 });

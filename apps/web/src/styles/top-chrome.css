@@ -600,11 +600,59 @@
   background: var(--surface-hover);
 }
 
-.live-room-box > .share-room-status-hint {
+.live-room-status {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.live-room-status-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: #999999;
+}
+
+.live-room-status.connected .live-room-status-dot {
+  background: #15803d;
+}
+
+.live-room-status.connecting .live-room-status-dot {
+  background: #555555;
+}
+
+.live-room-status.attention .live-room-status-dot {
+  background: #b4534b;
+}
+
+.live-room-status > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.live-room-status span {
+  color: #3f3f3f;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.live-room-status p {
   margin: 0;
-  color: #8a8a8a;
-  font-size: 12px;
-  line-height: 1.45;
+  color: #777777;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.live-room-status.attention p {
+  color: #8f3d36;
 }
 
 .publish-output-box {

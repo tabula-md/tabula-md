@@ -248,6 +248,7 @@ describe("project persistence", () => {
           connectionStatus: "connected",
           snapshotCount: 3,
           lastSnapshotAt: "2026-06-11T00:00:00.000Z",
+          lastRecoveryType: "snapshot-recovered",
           lastRecoveryMessage: "Recovered",
           lastRecoveryAt: "2026-06-11T00:01:00.000Z",
         }),
@@ -266,6 +267,7 @@ describe("project persistence", () => {
       connectionStatus: "offline",
       snapshotCount: 3,
       lastSnapshotAt: "2026-06-11T00:00:00.000Z",
+      lastRecoveryType: "snapshot-recovered",
       lastRecoveryMessage: "Recovered",
       lastRecoveryAt: "2026-06-11T00:01:00.000Z",
     });

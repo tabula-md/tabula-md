@@ -51,6 +51,22 @@ const formatShareUrlPreview = (url: string) => {
   }
 };
 
+const formatRoomTime = (value?: string) => {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 export function ShareControls({
   activeFile,
   activeFileTitle,
@@ -86,9 +102,36 @@ export function ShareControls({
   const shareUrlPreview = formatShareUrlPreview(shareUrl);
   const activeFileDisplayTitle = activeFileTitle.replace(/\.(?:md|markdown)$/i, "");
   const shareModalTitle = sharePanel === "publish" ? "Publish project" : `Share ${activeFileDisplayTitle}`;
-  const roomStatusHint =
-    activeFile?.lastRecoveryMessage ??
-    (activeStatus === "connecting" ? "Connecting..." : activeStatus === "offline" ? "Reconnecting..." : "");
+  const lastSnapshotTime = formatRoomTime(activeFile?.lastSnapshotAt);
+  const roomIssueMessage =
+    activeFile?.lastRecoveryType === "invalid-message" ? (activeFile.lastRecoveryMessage ?? "") : "";
+  const roomInfoMessage =
+    activeFile?.lastRecoveryType === "reconnected" || activeFile?.lastRecoveryType === "snapshot-recovered"
+      ? (activeFile.lastRecoveryMessage ?? "")
+      : "";
+  const hasRoomIssue = activeStatus === "offline" && Boolean(roomIssueMessage);
+  const roomStatusLabel =
+    activeStatus === "connected"
+      ? "Live"
+      : activeStatus === "connecting"
+        ? "Connecting"
+        : activeStatus === "offline"
+          ? hasRoomIssue
+            ? "Attention needed"
+            : "Offline"
+          : "Local";
+  const roomStatusHint = roomIssueMessage
+    ? roomIssueMessage
+    : activeStatus === "connected"
+      ? roomInfoMessage ||
+        (activeFile?.snapshotCount
+          ? `Encrypted snapshot saved${lastSnapshotTime ? ` ${lastSnapshotTime}` : ""}.`
+          : "Encrypted snapshot pending.")
+      : activeStatus === "connecting"
+        ? "Joining the room and loading encrypted state."
+        : activeStatus === "offline"
+          ? "Offline edits stay local until the room reconnects."
+          : "";
   const hasPublishedSnapshot = Boolean(publishPageUrl && publishLlmsTxtUrl && publishLlmsFullTxtUrl);
   const publishedTime = publishedAt
     ? new Intl.DateTimeFormat(undefined, {
@@ -209,6 +252,14 @@ export function ShareControls({
 
                   {isLive && (
                     <div className="live-room-box">
+                      <div className={`live-room-status ${activeStatus} ${hasRoomIssue ? "attention" : ""}`}>
+                        <span className="live-room-status-dot" aria-hidden="true" />
+                        <div>
+                          <span>{roomStatusLabel}</span>
+                          {roomStatusHint && <p>{roomStatusHint}</p>}
+                        </div>
+                      </div>
+
                       <div className="share-modal-field">
                         <label>Your name</label>
                         <input
@@ -233,8 +284,6 @@ export function ShareControls({
                           </button>
                         </div>
                       </div>
-
-                      {roomStatusHint && <p className="share-room-status-hint">{roomStatusHint}</p>}
 
                       <button className="share-modal-danger" type="button" onClick={onStopSession}>
                         <Square size={14} />

@@ -301,6 +301,7 @@ export const createCollabConnection = ({
   let envelopeVersion = 0;
   let hasConnectedOnce = false;
   let collaborationBlocked = false;
+  let serverOfflineNotified = false;
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
     onRecoveryEvent?.({
@@ -518,6 +519,7 @@ export const createCollabConnection = ({
         emitRecoveryEvent("reconnected", "Connection restored and room state was resynced.");
       }
       hasConnectedOnce = true;
+      serverOfflineNotified = false;
       await emitEnvelope("yjs-update", Y.encodeStateAsUpdate(doc));
       await publishPresence();
       await storeSnapshot();
@@ -549,11 +551,25 @@ export const createCollabConnection = ({
       onStatusChange("offline");
       collaborators.clear();
       publishCollaborators();
+      if (hasConnectedOnce && !collaborationBlocked && !serverOfflineNotified) {
+        serverOfflineNotified = true;
+        emitRecoveryEvent(
+          "invalid-message",
+          "The collaboration server disconnected. Local edits will sync when it reconnects.",
+        );
+      }
     });
 
     socket.on("connect_error", () => {
       if (!closedByClient) {
         onStatusChange("offline");
+        if (!collaborationBlocked && !serverOfflineNotified) {
+          serverOfflineNotified = true;
+          emitRecoveryEvent(
+            "invalid-message",
+            "The collaboration server is not reachable. Local edits stay in this browser.",
+          );
+        }
       }
     });
 
