@@ -52,6 +52,7 @@ export type MarkdownFile = {
   viewMode: FileViewMode;
   readingWidth: ReadingWidth;
   lineWrapping: boolean;
+  lineNumbers: boolean;
   connectionStatus?: ConnectionStatus;
   roomId?: string;
   shareUrl?: string;
@@ -101,6 +102,7 @@ export type StoredMarkdownFile = {
   viewMode: FileViewMode;
   readingWidth: ReadingWidth;
   lineWrapping: boolean;
+  lineNumbers: boolean;
   connectionStatus?: ConnectionStatus;
   roomId?: string;
   shareUrl?: string;
@@ -222,6 +224,7 @@ const createReadmeFile = (): MarkdownFile => ({
   viewMode: "preview",
   readingWidth: "standard",
   lineWrapping: true,
+  lineNumbers: true,
   connectionStatus: "idle",
 });
 
@@ -233,6 +236,7 @@ export const createMarkdownFile = (index: number, overrides: Partial<MarkdownFil
     viewMode: "edit",
     readingWidth: "standard",
     lineWrapping: true,
+    lineNumbers: true,
     connectionStatus: "idle",
     ...overrides,
   };
@@ -257,6 +261,7 @@ export const ensureDefaultFiles = (files: MarkdownFile[], options: { ensureUntit
         viewMode: readmeFile.viewMode ?? "preview",
         readingWidth: readmeFile.readingWidth ?? "standard",
         lineWrapping: readmeFile.lineWrapping ?? true,
+        lineNumbers: readmeFile.lineNumbers ?? true,
         connectionStatus: readmeFile.connectionStatus ?? "idle",
       }
     : createReadmeFile();
@@ -321,6 +326,7 @@ const normalizeMarkdownFile = (value: unknown, index: number): MarkdownFile | nu
     viewMode: getFileViewMode(value.viewMode) ?? "edit",
     readingWidth: getReadingWidth(value.readingWidth) ?? "standard",
     lineWrapping: typeof value.lineWrapping === "boolean" ? value.lineWrapping : true,
+    lineNumbers: typeof value.lineNumbers === "boolean" ? value.lineNumbers : true,
     connectionStatus,
     roomId,
     shareUrl,
@@ -535,6 +541,7 @@ export const serializeFile = (file: MarkdownFile): StoredMarkdownFile => ({
   viewMode: file.viewMode,
   readingWidth: file.readingWidth,
   lineWrapping: file.lineWrapping,
+  lineNumbers: file.lineNumbers,
   connectionStatus: normalizeConnectionStatus(file.connectionStatus, file.roomId),
   roomId: file.roomId,
   shareUrl: file.shareUrl,

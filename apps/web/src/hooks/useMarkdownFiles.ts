@@ -153,6 +153,7 @@ export function useMarkdownFiles({
       viewMode: sourceFile.viewMode,
       readingWidth: sourceFile.readingWidth,
       lineWrapping: sourceFile.lineWrapping,
+      lineNumbers: sourceFile.lineNumbers,
       connectionStatus: "idle",
     });
 
@@ -324,6 +325,16 @@ export function useMarkdownFiles({
     );
   };
 
+  const setActiveFileLineNumbers = (nextLineNumbers: boolean) => {
+    if (!activeFile) {
+      return;
+    }
+
+    setFiles((currentFiles) =>
+      currentFiles.map((file) => (file.id === activeFile.id ? { ...file, lineNumbers: nextLineNumbers } : file)),
+    );
+  };
+
   return {
     files,
     openFiles,
@@ -347,6 +358,7 @@ export function useMarkdownFiles({
     setActiveFileViewMode,
     setActiveFileReadingWidth,
     setActiveFileLineWrapping,
+    setActiveFileLineNumbers,
     getAvailableFileTitle,
   };
 }

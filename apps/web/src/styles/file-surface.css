@@ -637,7 +637,21 @@
   min-height: 100%;
 }
 
+.workspace.split .markdown-editor .cm-content {
+  padding-right: 16px;
+}
+
+.workspace.split .markdown-editor .cm-activeLine {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.032) 0,
+    rgba(0, 0, 0, 0.032) calc(100% - 16px),
+    transparent calc(100% - 16px)
+  );
+}
+
 .workspace.split .preview-surface {
+  padding-left: 24px;
   box-shadow: inset 1px 0 0 var(--line-subtle);
 }
 
@@ -773,7 +787,7 @@
   font-feature-settings: "liga" 0, "calt" 0;
   font-variant-ligatures: none;
   font-size: 16px;
-  line-height: 1.75;
+  line-height: 1.68;
 }
 
 .markdown-editor * {
@@ -839,27 +853,53 @@
   line-height: inherit;
 }
 
+.markdown-editor .cm-gutters {
+  border: 0;
+  color: #c6c6c8;
+  background: transparent;
+}
+
+.markdown-editor .cm-lineNumbers {
+  min-width: 38px;
+}
+
+.markdown-editor .cm-lineNumbers .cm-gutterElement {
+  min-width: 32px;
+  padding: 0 10px 0 0;
+  color: #c6c6c8;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: inherit;
+  text-align: right;
+}
+
+.markdown-editor .cm-lineNumbers .cm-activeLineGutter,
+.markdown-editor .cm-activeLineGutter {
+  color: #6f6f72;
+  background: transparent;
+}
+
 .markdown-editor .cm-content {
   min-height: inherit;
-  padding: 0;
+  padding: 0 2px 0 4px;
   caret-color: #1f1f1f;
 }
 
 .markdown-editor .cm-line {
-  padding: 0;
+  padding: 0 4px;
 }
 
 .markdown-editor .cm-placeholder {
-  color: #aaaaaa;
+  color: #b7b7ba;
 }
 
 .markdown-editor .cm-selectionBackground,
 .markdown-editor .cm-focused .cm-selectionBackground {
-  background: #e8e8ea;
+  background: #dddddf;
 }
 
 .markdown-editor .cm-activeLine {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.035);
 }
 
 .markdown-editor .cm-matchingBracket {
@@ -924,6 +964,10 @@
   .preview-surface {
     width: var(--document-body-width);
     padding-top: 18px;
+  }
+
+  .markdown-editor .cm-gutters {
+    display: none;
   }
 
   .workspace.split {
