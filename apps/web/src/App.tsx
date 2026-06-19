@@ -27,6 +27,8 @@ import { TopChrome } from "./components/TopChrome";
 import { buildLlmsFullTxt, buildLlmsTxt, buildPublishBundle } from "./agentExports";
 import {
   createPublishedSnapshot,
+  createServerPublishedSnapshot,
+  getConfiguredPublishServiceUrl,
   getPublishRoute,
   readLatestPublishedSnapshot,
   readPublishedSnapshot,
@@ -544,6 +546,7 @@ function WorkspaceApp() {
   const [activeSelection, setActiveSelection] = useState<LiveSelection | undefined>(undefined);
   const [previewSelection, setPreviewSelection] = useState<PreviewSelectionState | null>(null);
   const [publishedSnapshot, setPublishedSnapshot] = useState<PublishedSnapshot | null>(() => readLatestPublishedSnapshot());
+  const [publishing, setPublishing] = useState(false);
   const [toast, setToast] = useState<AppToastState | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -825,17 +828,37 @@ function WorkspaceApp() {
   const getPublishBundle = () =>
     publishedSnapshot?.publishBundle ?? buildPublishBundle(files, getPublishActiveFileId(), commentsByFileId);
 
-  const publishProjectSnapshot = () => {
-    const snapshot = createPublishedSnapshot({
-      id: randomId(),
-      origin: window.location.origin,
-      files,
-      activeFileId: getPublishActiveFileId(),
-      commentsByFileId,
-    });
-    savePublishedSnapshot(snapshot);
-    setPublishedSnapshot(snapshot);
-    showToast("Snapshot published.");
+  const publishProjectSnapshot = async () => {
+    if (publishing) {
+      return;
+    }
+
+    const publishServiceUrl = getConfiguredPublishServiceUrl();
+    setPublishing(true);
+    try {
+      const snapshot = publishServiceUrl
+        ? await createServerPublishedSnapshot({
+            serviceUrl: publishServiceUrl,
+            origin: window.location.origin,
+            files,
+            activeFileId: getPublishActiveFileId(),
+            commentsByFileId,
+          })
+        : createPublishedSnapshot({
+            id: randomId(),
+            origin: window.location.origin,
+            files,
+            activeFileId: getPublishActiveFileId(),
+            commentsByFileId,
+          });
+      savePublishedSnapshot(snapshot);
+      setPublishedSnapshot(snapshot);
+      showToast("Snapshot published.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Publish failed.");
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const copyLlmsTxt = async () => {
@@ -1740,6 +1763,7 @@ function WorkspaceApp() {
       publishPageUrl={publishedSnapshot?.urls.page}
       publishLlmsTxtUrl={publishedSnapshot?.urls.llmsTxt}
       publishLlmsFullTxtUrl={publishedSnapshot?.urls.llmsFullTxt}
+      publishing={publishing}
       onPublishSnapshot={publishProjectSnapshot}
       onCopyLlmsTxt={copyLlmsTxt}
       onCopyLlmsFullTxt={copyLlmsFullTxt}
