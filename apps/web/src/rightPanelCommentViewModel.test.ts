@@ -13,6 +13,7 @@ const markdownFile = (id: string, title: string): MarkdownFile => ({
   viewMode: "edit",
   readingWidth: "standard",
   lineWrapping: true,
+  lineNumbers: true,
   connectionStatus: "idle",
 });
 

@@ -520,6 +520,7 @@ function WorkspaceApp() {
     setActiveFileViewMode: setMarkdownFileViewMode,
     setActiveFileReadingWidth,
     setActiveFileLineWrapping,
+    setActiveFileLineNumbers,
   } = useMarkdownFiles({
     initialFiles: initialWorkspace.files,
     initialOpenFileIds: initialWorkspace.openFileIds,
@@ -595,6 +596,7 @@ function WorkspaceApp() {
   const activeViewMode = activeFile?.viewMode ?? "edit";
   const activeReadingWidth = activeFile?.readingWidth ?? "standard";
   const activeLineWrapping = activeFile?.lineWrapping ?? true;
+  const activeLineNumbers = activeFile?.lineNumbers ?? true;
   const {
     workspaceRef,
     editorSurfaceRef,
@@ -1870,6 +1872,7 @@ function WorkspaceApp() {
                     activeViewMode={activeViewMode}
                     activeReadingWidth={activeReadingWidth}
                     activeLineWrapping={activeLineWrapping}
+                    activeLineNumbers={activeLineNumbers}
                     centerPopover={centerPopover}
                     searchInputRef={searchInputRef}
                     searchQuery={searchQuery}
@@ -1890,6 +1893,7 @@ function WorkspaceApp() {
                     onNarrower={() => adjustActiveFileReadingWidth(-1)}
                     onWider={() => adjustActiveFileReadingWidth(1)}
                     onToggleLineWrapping={() => setActiveFileLineWrapping(!activeLineWrapping)}
+                    onToggleLineNumbers={() => setActiveFileLineNumbers(!activeLineNumbers)}
                     onSearchQueryChange={setSearchQuery}
                     onGoToSearchMatch={goToSearchMatch}
                     onSelectSearchMatch={(match, index) => {
@@ -1920,6 +1924,7 @@ function WorkspaceApp() {
                       fileId={activeFile.id}
                       value={text}
                       lineWrapping={activeLineWrapping}
+                      lineNumbers={activeLineNumbers}
                       commentAnchors={activeCommentAnchors}
                       activeCommentId={focusedCommentId}
                       onChange={handleTextChange}

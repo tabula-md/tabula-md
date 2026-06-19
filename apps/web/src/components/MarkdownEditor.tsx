@@ -12,7 +12,17 @@ import {
 import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { Compartment, EditorState, type Extension, Transaction } from "@codemirror/state";
-import { Decoration, EditorView, drawSelection, dropCursor, keymap, placeholder } from "@codemirror/view";
+import {
+  Decoration,
+  EditorView,
+  drawSelection,
+  dropCursor,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  keymap,
+  lineNumbers as codeMirrorLineNumbers,
+  placeholder,
+} from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import type { LiveSelection } from "../collab";
 import { getMarkdownEnterEdit, getMarkdownIndentEdit, getMarkdownPasteEdit } from "../markdownEditing";
@@ -43,6 +53,7 @@ type MarkdownEditorProps = {
   fileId: string;
   value: string;
   lineWrapping: boolean;
+  lineNumbers: boolean;
   commentAnchors?: MarkdownCommentAnchor[];
   activeCommentId?: string | null;
   onChange: (nextValue: string) => void;
@@ -63,17 +74,17 @@ const markdownEditorHighlightStyle = HighlightStyle.define([
   { tag: tags.link, color: "#555555", textDecoration: "underline", textUnderlineOffset: "2px" },
   { tag: tags.url, color: "#555555" },
   { tag: tags.monospace, color: "#555555" },
-  { tag: tags.quote, color: "#777777" },
-  { tag: tags.list, color: "#777777" },
+  { tag: tags.quote, color: "#7f7f82" },
+  { tag: tags.list, color: "#555555" },
   { tag: tags.keyword, color: "#777777" },
   { tag: tags.atom, color: "#777777" },
   { tag: tags.bool, color: "#777777" },
   { tag: tags.number, color: "#777777" },
   { tag: tags.string, color: "#555555" },
-  { tag: tags.meta, color: "#8a8a8a", textDecoration: "none" },
-  { tag: tags.comment, color: "#8a8a8a", textDecoration: "none" },
-  { tag: tags.processingInstruction, color: "#8a8a8a", textDecoration: "none" },
-  { tag: tags.punctuation, color: "#999999", textDecoration: "none" },
+  { tag: tags.meta, color: "#9a9a9d", textDecoration: "none" },
+  { tag: tags.comment, color: "#9a9a9d", textDecoration: "none" },
+  { tag: tags.processingInstruction, color: "#9a9a9d", textDecoration: "none" },
+  { tag: tags.punctuation, color: "#adadb0", textDecoration: "none" },
 ]);
 
 const getEditorHistoryState = (state: EditorState) => ({
@@ -245,6 +256,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       fileId,
       value,
       lineWrapping,
+      lineNumbers,
       commentAnchors = [],
       activeCommentId,
       onChange,
@@ -263,6 +275,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const onSelectionChangeRef = useRef(onSelectionChange);
     const onScrollRatioChangeRef = useRef(onScrollRatioChange);
     const wrappingCompartmentRef = useRef(new Compartment());
+    const lineNumbersCompartmentRef = useRef(new Compartment());
     const commentAnchorCompartmentRef = useRef(new Compartment());
     const stateByFileIdRef = useRef(new Map<string, EditorState>());
     const lastHistoryStateRef = useRef({ canUndo: false, canRedo: false });
@@ -400,9 +413,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         history(),
         drawSelection(),
         dropCursor(),
+        highlightActiveLine(),
         markdown(),
         syntaxHighlighting(markdownEditorHighlightStyle, { fallback: true }),
         placeholder("Start writing Markdown..."),
+        lineNumbersCompartmentRef.current.of(lineNumbers ? [codeMirrorLineNumbers(), highlightActiveLineGutter()] : []),
         wrappingCompartmentRef.current.of(lineWrapping ? EditorView.lineWrapping : []),
         commentAnchorCompartmentRef.current.of(
           createCommentAnchorExtension(commentAnchors, activeCommentId, (commentId) => onOpenCommentRef.current?.(commentId)),
@@ -466,6 +481,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         effects: wrappingCompartmentRef.current.reconfigure(lineWrapping ? EditorView.lineWrapping : []),
       });
     }, [lineWrapping]);
+
+    useEffect(() => {
+      viewRef.current?.dispatch({
+        effects: lineNumbersCompartmentRef.current.reconfigure(
+          lineNumbers ? [codeMirrorLineNumbers(), highlightActiveLineGutter()] : [],
+        ),
+      });
+    }, [lineNumbers]);
 
     useEffect(() => {
       viewRef.current?.dispatch({

@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  ListOrdered,
   PencilLine,
   Search,
   SlidersHorizontal,
@@ -18,6 +19,7 @@ type FileToolbarProps = {
   activeViewMode: FileViewMode;
   activeReadingWidth: ReadingWidth;
   activeLineWrapping: boolean;
+  activeLineNumbers: boolean;
   centerPopover: CenterPopover;
   searchInputRef: RefObject<HTMLInputElement | null>;
   searchQuery: string;
@@ -29,6 +31,7 @@ type FileToolbarProps = {
   onNarrower: () => void;
   onWider: () => void;
   onToggleLineWrapping: () => void;
+  onToggleLineNumbers: () => void;
   onSearchQueryChange: (query: string) => void;
   onGoToSearchMatch: (direction: 1 | -1) => void;
   onSelectSearchMatch: (match: SearchMatch, index: number) => void;
@@ -51,6 +54,7 @@ export function FileToolbar({
   activeViewMode,
   activeReadingWidth,
   activeLineWrapping,
+  activeLineNumbers,
   centerPopover,
   searchInputRef,
   searchQuery,
@@ -62,6 +66,7 @@ export function FileToolbar({
   onNarrower,
   onWider,
   onToggleLineWrapping,
+  onToggleLineNumbers,
   onSearchQueryChange,
   onGoToSearchMatch,
   onSelectSearchMatch,
@@ -159,16 +164,28 @@ export function FileToolbar({
             </div>
           </div>
           {activeViewMode !== "preview" && (
-            <button
-              className={`view-toggle-button ${activeLineWrapping ? "active" : ""}`}
-              type="button"
-              aria-pressed={activeLineWrapping}
-              onClick={onToggleLineWrapping}
-            >
-              <WrapText size={15} />
-              <span>Line wrapping</span>
-              <small>{activeLineWrapping ? "On" : "Off"}</small>
-            </button>
+            <>
+              <button
+                className={`view-toggle-button ${activeLineNumbers ? "active" : ""}`}
+                type="button"
+                aria-pressed={activeLineNumbers}
+                onClick={onToggleLineNumbers}
+              >
+                <ListOrdered size={15} />
+                <span>Line numbers</span>
+                <small>{activeLineNumbers ? "On" : "Off"}</small>
+              </button>
+              <button
+                className={`view-toggle-button ${activeLineWrapping ? "active" : ""}`}
+                type="button"
+                aria-pressed={activeLineWrapping}
+                onClick={onToggleLineWrapping}
+              >
+                <WrapText size={15} />
+                <span>Line wrapping</span>
+                <small>{activeLineWrapping ? "On" : "Off"}</small>
+              </button>
+            </>
           )}
         </section>
       )}

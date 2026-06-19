@@ -23,6 +23,45 @@ export async function run(ctx) {
     await page.getByTitle("New tab").click();
     await page.waitForTimeout(120);
     await focusMarkdownEditor(page);
+    await page.keyboard.insertText("alpha\nbeta\ncharlie");
+    await page.waitForTimeout(80);
+
+    expect((await page.locator(".cm-lineNumbers").count()) === 1, "Edit mode should show line numbers by default.");
+    expect((await page.locator(".cm-activeLine").count()) >= 1, "Edit mode should highlight the active line.");
+    expect((await page.locator(".cm-activeLineGutter").count()) >= 1, "Edit mode should highlight the active line number.");
+
+    await page.getByRole("button", { name: /View options/ }).click();
+    await page.getByRole("button", { name: "Line numbers" }).click();
+    await page.waitForTimeout(80);
+    expect((await page.locator(".cm-lineNumbers").count()) === 0, "Line numbers should turn off from View options.");
+    await page.getByRole("button", { name: "Line numbers" }).click();
+    await page.waitForTimeout(80);
+    expect((await page.locator(".cm-lineNumbers").count()) === 1, "Line numbers should turn back on from View options.");
+
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await page.waitForTimeout(120);
+    expect(!(await page.locator(".cm-lineNumbers").isVisible()), "Preview mode should not show editor line numbers.");
+  });
+
+  const mobileContext = await browser.newContext({ viewport: { width: 390, height: 760 } });
+  const mobilePage = await mobileContext.newPage();
+  try {
+    await mobilePage.goto(baseUrl);
+    await mobilePage.getByTitle("New tab").click();
+    await mobilePage.waitForTimeout(120);
+    await focusMarkdownEditor(mobilePage);
+    await mobilePage.keyboard.insertText("mobile\nwrite");
+    await mobilePage.waitForTimeout(80);
+    const mobileGutterDisplay = await mobilePage.locator(".cm-gutters").evaluate((gutter) => getComputedStyle(gutter).display);
+    expect(mobileGutterDisplay === "none", "Mobile write mode should hide line number gutters.");
+  } finally {
+    await mobileContext.close();
+  }
+
+  await withPage(browser, "/", async (page) => {
+    await page.getByTitle("New tab").click();
+    await page.waitForTimeout(120);
+    await focusMarkdownEditor(page);
     const scrollSmokeMarkdown = Array.from(
       { length: 42 },
       (_, index) => `## Scroll section ${index + 1}\n\nThis paragraph keeps the document tall enough for mode transition scroll checks.`,
@@ -414,7 +453,9 @@ export async function run(ctx) {
       const fileToolbar = document.querySelector(".file-toolbar");
       const editor = document.querySelector(".workspace.split .editor-surface");
       const preview = document.querySelector(".workspace.split .preview-surface");
+      const editorGutter = document.querySelector(".workspace.split .cm-gutters");
       const editorContent = document.querySelector(".workspace.split .cm-content");
+      const activeLine = document.querySelector(".workspace.split .cm-activeLine");
       const previewParagraph = document.querySelector(".workspace.split .preview-surface p");
       const toolbarRect = toolbar?.getBoundingClientRect();
       const toolbarRowRect = toolbarRow?.getBoundingClientRect();
@@ -422,8 +463,11 @@ export async function run(ctx) {
       const fileToolbarRect = fileToolbar?.getBoundingClientRect();
       const editorRect = editor?.getBoundingClientRect();
       const previewRect = preview?.getBoundingClientRect();
+      const editorGutterRect = editorGutter?.getBoundingClientRect();
       const editorContentRect = editorContent?.getBoundingClientRect();
       const previewParagraphRect = previewParagraph?.getBoundingClientRect();
+      const activeLineStyle = activeLine ? window.getComputedStyle(activeLine) : null;
+      const previewStyle = preview ? window.getComputedStyle(preview) : null;
       return {
         editorText: document.querySelector(".cm-content")?.textContent ?? "",
         previewStrongText: document.querySelector(".preview-surface strong")?.textContent ?? "",
@@ -438,10 +482,18 @@ export async function run(ctx) {
           Boolean(controlRowRect && editorRect && previewRect) &&
           controlRowRect.width > editorRect.width &&
           controlRowRect.width > previewRect.width,
-        splitEditorContentKeepsPaneStart:
-          Boolean(editorRect && editorContentRect) && Math.abs(editorContentRect.left - editorRect.left) <= 1,
-        splitPreviewContentKeepsPaneStart:
-          Boolean(previewRect && previewParagraphRect) && Math.abs(previewParagraphRect.left - previewRect.left) <= 1,
+        splitEditorGutterKeepsPaneStart:
+          Boolean(editorRect && editorGutterRect) && Math.abs(editorGutterRect.left - editorRect.left) <= 1,
+        splitEditorContentFollowsGutter:
+          Boolean(editorGutterRect && editorContentRect) && editorContentRect.left >= editorGutterRect.right - 1,
+        splitPreviewContentBreathesFromDivider:
+          Boolean(previewRect && previewParagraphRect) &&
+          previewParagraphRect.left - previewRect.left >= 20 &&
+          previewParagraphRect.left - previewRect.left <= 32,
+        splitPreviewHasInset:
+          Boolean(previewStyle) && Number.parseFloat(previewStyle.paddingLeft) >= 20,
+        splitActiveLineStopsBeforeDivider:
+          Boolean(activeLineStyle) && activeLineStyle.backgroundImage.includes("linear-gradient"),
       };
     });
     expect(splitFormatting.editorText === "**alpha**", "Split toolbar command should update editor Markdown source.");
@@ -449,8 +501,11 @@ export async function run(ctx) {
     expect(splitFormatting.toolbarRailIsSingleLine, "Formatting and file tools should sit on one toolbar rail.");
     expect(splitFormatting.toolbarRailSeparatesLeftAndRight, "Toolbar rail should separate formatting tools left and file tools right.");
     expect(splitFormatting.toolbarRailUsesDocumentWidth, "Toolbar rail should span the document controls width, not just one pane.");
-    expect(splitFormatting.splitEditorContentKeepsPaneStart, "Split editor content should start at the editor pane edge.");
-    expect(splitFormatting.splitPreviewContentKeepsPaneStart, "Split preview content should start at the preview pane edge.");
+    expect(splitFormatting.splitEditorGutterKeepsPaneStart, "Split editor gutter should start at the editor pane edge.");
+    expect(splitFormatting.splitEditorContentFollowsGutter, "Split editor content should start after the line number gutter.");
+    expect(splitFormatting.splitPreviewContentBreathesFromDivider, "Split preview content should breathe away from the divider.");
+    expect(splitFormatting.splitPreviewHasInset, "Split preview should carry pane-specific left inset.");
+    expect(splitFormatting.splitActiveLineStopsBeforeDivider, "Split active line should visually stop before the divider.");
 
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+A");
