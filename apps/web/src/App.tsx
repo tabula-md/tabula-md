@@ -28,6 +28,7 @@ import { buildLlmsFullTxt, buildLlmsTxt, buildPublishBundle } from "./agentExpor
 import {
   createPublishedSnapshot,
   createServerPublishedSnapshot,
+  deletePublishedSnapshot,
   getConfiguredPublishServiceUrl,
   getPublishRoute,
   readLatestPublishedSnapshot,
@@ -35,6 +36,7 @@ import {
   readServerPublishedSnapshot,
   republishServerPublishedSnapshot,
   savePublishedSnapshot,
+  unpublishServerPublishedSnapshot,
   type PublishedSnapshot,
   type PublishRoute,
 } from "./publish";
@@ -617,6 +619,7 @@ function WorkspaceApp() {
   const [previewSelection, setPreviewSelection] = useState<PreviewSelectionState | null>(null);
   const [publishedSnapshot, setPublishedSnapshot] = useState<PublishedSnapshot | null>(() => readLatestPublishedSnapshot());
   const [publishing, setPublishing] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
   const [toast, setToast] = useState<AppToastState | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -938,6 +941,39 @@ function WorkspaceApp() {
       showToast(error instanceof Error ? error.message : "Publish failed.");
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const unpublishProjectSnapshot = async () => {
+    if (unpublishing || !publishedSnapshot?.ownerToken) {
+      return;
+    }
+
+    const publishServiceUrl = getConfiguredPublishServiceUrl();
+    if (!publishServiceUrl) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Unpublish this snapshot?\n\nThis removes the public page and agent-readable endpoints. The local project stays unchanged.",
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setUnpublishing(true);
+    try {
+      await unpublishServerPublishedSnapshot({
+        serviceUrl: publishServiceUrl,
+        snapshot: publishedSnapshot,
+      });
+      deletePublishedSnapshot(publishedSnapshot.id);
+      setPublishedSnapshot(null);
+      showToast("Snapshot unpublished.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Publish failed.");
+    } finally {
+      setUnpublishing(false);
     }
   };
 
@@ -1845,7 +1881,9 @@ function WorkspaceApp() {
       publishLlmsFullTxtUrl={publishedSnapshot?.urls.llmsFullTxt}
       canRepublishSnapshot={Boolean(publishedSnapshot?.ownerToken)}
       publishing={publishing}
+      unpublishing={unpublishing}
       onPublishSnapshot={publishProjectSnapshot}
+      onUnpublishSnapshot={unpublishProjectSnapshot}
       onCopyLlmsTxt={copyLlmsTxt}
       onCopyLlmsFullTxt={copyLlmsFullTxt}
       onCopyPublishPageUrl={() =>

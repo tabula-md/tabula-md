@@ -133,6 +133,7 @@ export async function run(ctx) {
       !afterFailureSnapshot.files?.[0]?.text?.includes("This edit should remain local after a failed republish."),
       "Failed republish should not publish failed-attempt content.",
     );
+    await page.unroute(`${publishUrl}/v1/publishes/${publishId}`);
 
     const publicContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     try {
@@ -156,5 +157,42 @@ export async function run(ctx) {
     } finally {
       await publicContext.close();
     }
+
+    let failedUnpublishRequests = 0;
+    await page.route(`${publishUrl}/v1/publishes/${publishId}`, async (route) => {
+      if (route.request().method() !== "DELETE") {
+        await route.fallback();
+        return;
+      }
+
+      failedUnpublishRequests += 1;
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Simulated unpublish failure" }),
+      });
+    });
+    page.once("dialog", async (dialog) => {
+      expect(dialog.message().includes("Unpublish this snapshot?"), "Unpublish should ask for confirmation.");
+      await dialog.accept();
+    });
+    await page.getByRole("button", { name: "Unpublish" }).click();
+    await waitForText(page.locator(".app-toast"), "Publish failed: Simulated unpublish failure");
+    expect(failedUnpublishRequests === 1, "Failed unpublish smoke should intercept one DELETE request.");
+    expect((await page.locator('[aria-label="Published URLs"]').count()) === 1, "Failed unpublish should keep published URLs visible.");
+    expect((await fetch(`${publishUrl}/v1/publishes/${publishId}`)).ok, "Failed unpublish should keep the public snapshot stored.");
+    await page.unroute(`${publishUrl}/v1/publishes/${publishId}`);
+
+    page.once("dialog", async (dialog) => {
+      expect(dialog.message().includes("agent-readable endpoints"), "Unpublish confirmation should describe public endpoints.");
+      await dialog.accept();
+    });
+    await page.getByRole("button", { name: "Unpublish" }).click();
+    await waitForText(page.locator(".app-toast"), "Snapshot unpublished.");
+    expect((await page.locator('[aria-label="Published URLs"]').count()) === 0, "Unpublish should clear published URLs from the UI.");
+    expect((await fetch(`${publishUrl}/v1/publishes/${publishId}`)).status === 404, "Unpublish should remove public JSON.");
+    expect((await fetch(servicePageUrl)).status === 404, "Unpublish should remove the public HTML page.");
+    expect((await fetch(publishedUrls.llms)).status === 404, "Unpublish should remove llms.txt.");
+    expect((await fetch(publishedUrls.llmsFull)).status === 404, "Unpublish should remove llms-full.txt.");
   });
 }

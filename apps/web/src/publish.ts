@@ -249,6 +249,32 @@ export const republishServerPublishedSnapshot = async ({
   });
 };
 
+export const unpublishServerPublishedSnapshot = async ({
+  serviceUrl,
+  snapshot,
+  fetchImpl = fetch,
+}: {
+  serviceUrl: string;
+  snapshot: PublishedSnapshot;
+  fetchImpl?: typeof fetch;
+}): Promise<void> => {
+  if (!snapshot.ownerToken) {
+    throw new Error("Publish failed: missing owner token");
+  }
+
+  const publishServiceUrl = trimTrailingSlash(serviceUrl);
+  const response = await fetchImpl(`${publishServiceUrl}/v1/publishes/${encodeURIComponent(snapshot.id)}`, {
+    method: "DELETE",
+    headers: {
+      authorization: `Bearer ${snapshot.ownerToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Publish failed: ${await readPublishError(response)}`);
+  }
+};
+
 export const readServerPublishedSnapshot = async ({
   serviceUrl,
   origin,
@@ -320,6 +346,15 @@ export const readPublishedSnapshot = (snapshotId: string) => readSnapshotMap()[s
 export const readLatestPublishedSnapshot = () => {
   const latestSnapshotId = window.localStorage.getItem(PUBLISH_LATEST_KEY);
   return latestSnapshotId ? readPublishedSnapshot(latestSnapshotId) : null;
+};
+
+export const deletePublishedSnapshot = (snapshotId: string) => {
+  const snapshots = readSnapshotMap();
+  delete snapshots[snapshotId];
+  writeSnapshotMap(snapshots);
+  if (window.localStorage.getItem(PUBLISH_LATEST_KEY) === snapshotId) {
+    window.localStorage.removeItem(PUBLISH_LATEST_KEY);
+  }
 };
 
 const createPublishPayload = ({
