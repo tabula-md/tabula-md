@@ -28,7 +28,8 @@
     "test:browser:editor": "npm run test:browser -- --suite=editor-preview",
     "test:browser:layout": "npm run test:browser -- --suite=layout",
     "test:browser:panels": "npm run test:browser -- --suite=panels",
-    "test:browser:collab": "npm run test:browser -- --suite=collaboration"
+    "test:browser:collab": "npm run test:browser -- --suite=collaboration",
+    "test:browser:publish": "npm run test:browser -- --suite=publish"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

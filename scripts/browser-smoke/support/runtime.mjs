@@ -6,10 +6,13 @@ import { chromium } from "playwright";
 
 const port = Number(process.env.TABULA_TEST_PORT ?? 5187);
 const roomPort = Number(process.env.TABULA_TEST_ROOM_PORT ?? 3002);
+const publishPort = Number(process.env.TABULA_TEST_PUBLISH_PORT ?? 3003);
 const externalUrl = process.env.TABULA_TEST_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${port}`;
 const roomUrl = (process.env.VITE_TABULA_ROOM_URL ?? `http://127.0.0.1:${roomPort}`).replace(/\/$/, "");
+const publishUrl = (process.env.VITE_TABULA_PUBLISH_URL ?? `http://127.0.0.1:${publishPort}`).replace(/\/$/, "");
 const roomDataDir = process.env.TABULA_ROOM_DATA_DIR ?? path.join(process.cwd(), ".tabula-room-smoke");
+const publishDataDir = process.env.TABULA_PUBLISH_DATA_DIR ?? path.join(process.cwd(), ".tabula-publish-smoke");
 const isWindows = process.platform === "win32";
 const primaryShortcutKey = process.platform === "darwin" ? "Meta" : "Control";
 const appNewFileShortcut = `${primaryShortcutKey}+Alt+N`;
@@ -185,6 +188,8 @@ const createSmokeContext = (browser, controls = {}) => ({
   openProjectContext,
   closeProjectContext,
   openProjectMenu,
+  publishDataDir,
+  publishUrl: controls.publishUrl,
   restartRoomServer: controls.restartRoomServer,
   roomDataDir,
   startRoomServer: controls.startRoomServer,
@@ -235,8 +240,56 @@ const spawnRoomServer = async () => {
   return roomServer;
 };
 
-const startLocalServers = async () => {
+const spawnPublishServer = async () => {
+  const publishRepoDir = process.env.TABULA_PUBLISH_REPO_DIR ?? path.resolve(process.cwd(), "../tabula-publish");
+  const publishCommand = process.env.TABULA_PUBLISH_SERVER_COMMAND;
+  fs.rmSync(publishDataDir, { recursive: true, force: true });
+  const publishServer = publishCommand
+    ? spawn(publishCommand, {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          PORT: String(publishPort),
+          TABULA_PUBLISH_ALLOWED_ORIGINS: baseUrl,
+          TABULA_PUBLISH_APP_PUBLIC_URL: baseUrl,
+          TABULA_PUBLISH_DATA_DIR: publishDataDir,
+          TABULA_PUBLISH_PUBLIC_URL: publishUrl,
+        },
+        shell: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      })
+    : fs.existsSync(path.join(publishRepoDir, "package.json"))
+      ? spawn(isWindows ? "npm.cmd" : "npm", ["run", "dev"], {
+          cwd: publishRepoDir,
+          env: {
+            ...process.env,
+            PORT: String(publishPort),
+            TABULA_PUBLISH_ALLOWED_ORIGINS: baseUrl,
+            TABULA_PUBLISH_APP_PUBLIC_URL: baseUrl,
+            TABULA_PUBLISH_DATA_DIR: publishDataDir,
+            TABULA_PUBLISH_PUBLIC_URL: publishUrl,
+          },
+          stdio: ["ignore", "pipe", "pipe"],
+        })
+      : null;
+
+  if (publishServer) {
+    publishServer.stdout.on("data", () => {});
+    publishServer.stderr.on("data", () => {});
+    publishServer.on("error", (error) => {
+      throw error;
+    });
+    await waitForServer(`${publishUrl}/health`);
+  } else {
+    await waitForServer(`${publishUrl}/health`);
+  }
+
+  return publishServer;
+};
+
+const startLocalServers = async ({ withPublishServer = false } = {}) => {
   const roomServer = await spawnRoomServer();
+  const publishServer = withPublishServer ? await spawnPublishServer() : null;
   const webServer = spawn(
     isWindows ? "npm.cmd" : "npm",
     ["run", "dev", "--", "--host", "127.0.0.1", "--port", String(port)],
@@ -246,6 +299,7 @@ const startLocalServers = async () => {
         ...process.env,
         BROWSER: "none",
         VITE_TABULA_ROOM_URL: roomUrl,
+        ...(withPublishServer ? { VITE_TABULA_PUBLISH_URL: publishUrl } : {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -257,7 +311,7 @@ const startLocalServers = async () => {
   });
   await waitForServer(baseUrl);
 
-  return { roomServer, webServer };
+  return { roomServer, webServer, publishServer };
 };
 
 const stopProcess = async (childProcess) => {
@@ -276,21 +330,27 @@ export const smokeConfig = {
   roomPort,
   roomUrl,
   roomDataDir,
+  publishPort,
+  publishUrl,
+  publishDataDir,
 };
 
 export async function runBrowserSmoke(suites) {
   const selectedSuites = selectSuites(suites);
+  const needsPublishServer = selectedSuites.some((suite) => suite.requiresPublishService);
   let webServer;
   let roomServer;
+  let publishServer;
   let browser;
 
   try {
     if (!externalUrl) {
-      ({ webServer, roomServer } = await startLocalServers());
+      ({ webServer, roomServer, publishServer } = await startLocalServers({ withPublishServer: needsPublishServer }));
     }
 
     browser = await launchBrowser();
     const context = createSmokeContext(browser, {
+      publishUrl: needsPublishServer ? publishUrl : process.env.VITE_TABULA_PUBLISH_URL?.replace(/\/$/, ""),
       restartRoomServer: async () => {
         if (!roomServer) {
           throw new Error("Cannot restart an externally managed Tabula Room server.");
@@ -334,5 +394,6 @@ export async function runBrowserSmoke(suites) {
 
     await stopProcess(webServer);
     await stopProcess(roomServer);
+    await stopProcess(publishServer);
   }
 }
