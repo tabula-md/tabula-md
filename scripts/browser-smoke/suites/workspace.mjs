@@ -15,9 +15,11 @@ export async function run(ctx) {
     openProjectContext,
     closeProjectContext,
     openProjectMenu,
+    publishUrl,
     waitForText,
     withPage,
   } = ctx;
+  const expectsPublishService = Boolean(publishUrl);
 
   await withPage(browser, "/", async (page) => {
     const tabs = await getTabs(page);
@@ -344,11 +346,26 @@ export async function run(ctx) {
       llmsFull: document.querySelector('[data-testid="publish-llms-full-url"]')?.textContent?.trim() ?? "",
     }));
     expect(/\/p\/[^/]+$/.test(publishedUrls.page), "Publishing should create a readable page URL.");
-    expect(publishedUrls.llms === `${publishedUrls.page}/llms.txt`, "Publishing should create an llms.txt endpoint URL.");
-    expect(
-      publishedUrls.llmsFull === `${publishedUrls.page}/llms-full.txt`,
-      "Publishing should create an llms-full.txt endpoint URL.",
-    );
+    if (expectsPublishService) {
+      expect(
+        publishedUrls.page.startsWith(`${baseUrl}/p/`),
+        "Server-backed publishing should expose the app vanity page URL.",
+      );
+      expect(
+        publishedUrls.llms.startsWith(`${publishUrl}/p/`) && publishedUrls.llms.endsWith("/llms.txt"),
+        "Server-backed publishing should expose the publish service llms.txt endpoint URL.",
+      );
+      expect(
+        publishedUrls.llmsFull.startsWith(`${publishUrl}/p/`) && publishedUrls.llmsFull.endsWith("/llms-full.txt"),
+        "Server-backed publishing should expose the publish service llms-full.txt endpoint URL.",
+      );
+    } else {
+      expect(publishedUrls.llms === `${publishedUrls.page}/llms.txt`, "Publishing should create an llms.txt endpoint URL.");
+      expect(
+        publishedUrls.llmsFull === `${publishedUrls.page}/llms-full.txt`,
+        "Publishing should create an llms-full.txt endpoint URL.",
+      );
+    }
     await page.getByRole("button", { name: "Copy page URL" }).click();
     await page.waitForTimeout(80);
     expect(
@@ -369,18 +386,27 @@ export async function run(ctx) {
       (await publishedPage.locator(".published-header").textContent())?.includes("Tabula.md"),
       "Published page should render the read-only Markdown page.",
     );
-    await publishedPage.goto(publishedUrls.llms);
-    await publishedPage.waitForSelector(".published-text-page pre", { timeout: 5_000 });
-    expect(
-      ((await publishedPage.locator(".published-text-page pre").textContent()) ?? "").includes("Use llms-full.txt"),
-      "Published llms.txt route should render the compact agent index.",
-    );
-    await publishedPage.goto(publishedUrls.llmsFull);
-    await publishedPage.waitForSelector(".published-text-page pre", { timeout: 5_000 });
-    expect(
-      ((await publishedPage.locator(".published-text-page pre").textContent()) ?? "").includes("## README.md"),
-      "Published llms-full.txt route should render the full agent context.",
-    );
+    if (expectsPublishService) {
+      const llmsResponse = await fetch(publishedUrls.llms);
+      const fullResponse = await fetch(publishedUrls.llmsFull);
+      expect(llmsResponse.headers.get("content-type")?.includes("text/plain"), "Publish llms.txt should be text/plain.");
+      expect((await llmsResponse.text()).includes("Use llms-full.txt"), "Published llms.txt should include the compact agent index.");
+      expect(fullResponse.headers.get("content-type")?.includes("text/plain"), "Publish llms-full.txt should be text/plain.");
+      expect((await fullResponse.text()).includes("## README.md"), "Published llms-full.txt should include the full agent context.");
+    } else {
+      await publishedPage.goto(publishedUrls.llms);
+      await publishedPage.waitForSelector(".published-text-page pre", { timeout: 5_000 });
+      expect(
+        ((await publishedPage.locator(".published-text-page pre").textContent()) ?? "").includes("Use llms-full.txt"),
+        "Published llms.txt route should render the compact agent index.",
+      );
+      await publishedPage.goto(publishedUrls.llmsFull);
+      await publishedPage.waitForSelector(".published-text-page pre", { timeout: 5_000 });
+      expect(
+        ((await publishedPage.locator(".published-text-page pre").textContent()) ?? "").includes("## README.md"),
+        "Published llms-full.txt route should render the full agent context.",
+      );
+    }
     await publishedPage.close();
 
     await page.getByRole("tab", { name: "Collaborate" }).click();
