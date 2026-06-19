@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildLlmsFullTxt, buildLlmsTxt, buildPublishBundle } from "./agentExports";
 import { COMMENT_ANCHOR_CONTEXT_LENGTH, getCommentRangeInText } from "./commentAnchors";
 import { getPreviewBody, parseFrontmatter } from "./markdown";
-import { createPublishedSnapshot, getPublishRoute } from "./publish";
+import { createPublishedSnapshot, createServerPublishedSnapshot, getPublishRoute } from "./publish";
 import {
   createMarkdownFile,
   createStoredWorkspace,
@@ -527,6 +527,124 @@ Start here.`,
     expect(snapshot.llmsTxt).toContain("Use llms-full.txt");
     expect(snapshot.llmsFullTxt).toContain("## PRD.md");
     expect(snapshot.publishBundle).toContain("## Markdown Bundle");
+  });
+
+  it("creates server-backed publish snapshots with sanitized payload and service URLs", async () => {
+    const liveFiles: MarkdownFile[] = [
+      {
+        ...files[0],
+        roomId: "room-123",
+        shareUrl: "https://tabula.md/r/room-123#key=secret",
+        connectionStatus: "connected",
+      },
+      files[1],
+    ];
+    const commentsByFileId = {
+      prd: [
+        {
+          id: "comment",
+          body: "Clarify launch scope.",
+          authorName: "Taeha",
+          quote: "Ship the project.",
+          resolved: false,
+          createdAt: "2026-06-14T00:00:00.000Z",
+        },
+      ],
+      deleted: [
+        {
+          id: "deleted-comment",
+          body: "Do not publish this.",
+          createdAt: "2026-06-14T00:00:00.000Z",
+        },
+      ],
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://publish.tabula.md/v1/publishes");
+      const payload = JSON.parse(String(init?.body)) as {
+        activeFileId: string;
+        files: Array<Record<string, unknown>>;
+        commentsByFileId: Record<string, unknown>;
+        llmsTxt: string;
+        llmsFullTxt: string;
+      };
+
+      expect(payload.activeFileId).toBe("prd");
+      expect(payload.files[0]).toEqual({
+        id: "readme",
+        title: "README.md",
+        text: files[0].text,
+      });
+      expect(payload.files[0]).not.toHaveProperty("roomId");
+      expect(payload.files[0]).not.toHaveProperty("shareUrl");
+      expect(payload.files[0]).not.toHaveProperty("viewMode");
+      expect(payload.commentsByFileId.prd).toEqual([
+        {
+          id: "comment",
+          body: "Clarify launch scope.",
+          authorName: "Taeha",
+          quote: "Ship the project.",
+          resolved: false,
+          createdAt: "2026-06-14T00:00:00.000Z",
+        },
+      ]);
+      expect(payload.commentsByFileId.deleted).toBeUndefined();
+      expect(payload.llmsTxt).toContain("Use llms-full.txt");
+      expect(payload.llmsFullTxt).toContain("Clarify launch scope.");
+
+      return new Response(
+        JSON.stringify({
+          publishId: "publish_123456",
+          createdAt: "2026-06-19T00:00:00.000Z",
+          updatedAt: "2026-06-19T00:00:00.000Z",
+          ownerToken: "owner-token",
+          urls: {
+            page: "https://publish.tabula.md/p/publish_123456",
+            llmsTxt: "https://publish.tabula.md/p/publish_123456/llms.txt",
+            llmsFullTxt: "https://publish.tabula.md/p/publish_123456/llms-full.txt",
+            appPage: "https://tabula.md/p/publish_123456",
+          },
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+
+    const snapshot = await createServerPublishedSnapshot({
+      serviceUrl: "https://publish.tabula.md/",
+      origin: "https://tabula.md",
+      files: liveFiles,
+      activeFileId: "prd",
+      commentsByFileId,
+      fetchImpl: fetchMock,
+    });
+
+    expect(snapshot.id).toBe("publish_123456");
+    expect(snapshot.urls.page).toBe("https://tabula.md/p/publish_123456");
+    expect(snapshot.urls.llmsTxt).toBe("https://publish.tabula.md/p/publish_123456/llms.txt");
+    expect(snapshot.servicePageUrl).toBe("https://publish.tabula.md/p/publish_123456");
+    expect(snapshot.ownerToken).toBe("owner-token");
+    expect(snapshot.files[0]).not.toHaveProperty("roomId");
+  });
+
+  it("surfaces publish service errors", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+          status: 429,
+          statusText: "Too Many Requests",
+          headers: { "content-type": "application/json" },
+        }),
+    ) as unknown as typeof fetch;
+
+    await expect(
+      createServerPublishedSnapshot({
+        serviceUrl: "https://publish.tabula.md",
+        origin: "https://tabula.md",
+        files,
+        activeFileId: "prd",
+        commentsByFileId: {},
+        fetchImpl: fetchMock,
+      }),
+    ).rejects.toThrow("Publish failed: Rate limit exceeded");
   });
 
   it("parses publish routes for page and agent outputs", () => {
