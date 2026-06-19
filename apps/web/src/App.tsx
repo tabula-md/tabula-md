@@ -476,10 +476,7 @@ function PublishedSnapshotView({
   }
 
   const parsedMarkdown = parseFrontmatter(activeFile?.text ?? "");
-  const visibleMetadata = parsedMarkdown.attributes.filter((attribute) =>
-    ["title", "description"].includes(attribute.key.toLowerCase()),
-  );
-  const metadataTitle = visibleMetadata.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
+  const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
   const renderedPreview = getPreviewBody(parsedMarkdown.body, metadataTitle);
 
   return (
@@ -507,8 +504,7 @@ function PublishedSnapshotView({
 
         <article className="published-document">
           <MarkdownPreview
-            metadata={visibleMetadata}
-            hiddenMetadataCount={Math.max(0, parsedMarkdown.attributes.length - visibleMetadata.length)}
+            metadata={parsedMarkdown.attributes}
             body={renderedPreview.body}
           />
         </article>
@@ -702,11 +698,7 @@ function WorkspaceApp() {
         : "";
   const selectedWordCount = selectedMarkdownText ? selectedMarkdownText.split(/\s+/).length : 0;
   const parsedMarkdown = parseFrontmatter(text);
-  const visibleMetadata = parsedMarkdown.attributes.filter((attribute) =>
-    ["title", "description"].includes(attribute.key.toLowerCase()),
-  );
-  const metadataTitle = visibleMetadata.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
-  const hiddenMetadataCount = Math.max(0, parsedMarkdown.attributes.length - visibleMetadata.length);
+  const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
   const renderedPreview = getPreviewBody(parsedMarkdown.body, metadataTitle);
   const shareOpen = topPopover === "share";
   const outlineHeadings = useMemo<MarkdownHeading[]>(
@@ -2087,8 +2079,7 @@ function WorkspaceApp() {
                     onTouchEnd={syncPreviewSelection}
                   >
                     <MarkdownPreview
-                      metadata={visibleMetadata}
-                      hiddenMetadataCount={hiddenMetadataCount}
+                      metadata={parsedMarkdown.attributes}
                       body={renderedPreview.body}
                       commentAnchors={activePreviewCommentAnchors}
                       activeCommentId={focusedCommentId}

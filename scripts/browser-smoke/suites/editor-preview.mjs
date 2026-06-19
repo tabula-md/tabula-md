@@ -341,6 +341,7 @@ export async function run(ctx) {
         "title: Preview Surface Brief",
         "description: Frontmatter should support the document without becoming noisy.",
         "status: Draft",
+        "owner: Product",
         "---",
         "",
         "# Preview Surface Brief",
@@ -359,12 +360,18 @@ export async function run(ctx) {
       const frontmatterStyle = window.getComputedStyle(frontmatter);
       return {
         hasVisibleHeading: Boolean(frontmatter.querySelector("h2")),
+        text: frontmatter.textContent ?? "",
         background: frontmatterStyle.backgroundColor,
         borderRadius: frontmatterStyle.borderRadius,
         firstBodyText: firstBodyParagraph.textContent ?? "",
       };
     });
     expect(!previewFrontmatterSurface?.hasVisibleHeading, "Preview frontmatter should not show a redundant Metadata label.");
+    expect(previewFrontmatterSurface?.text.includes("status"), "Preview frontmatter should show user-authored fields beyond title and description.");
+    expect(previewFrontmatterSurface?.text.includes("Draft"), "Preview frontmatter should preserve user-authored status values.");
+    expect(previewFrontmatterSurface?.text.includes("owner"), "Preview frontmatter should not hide user-authored metadata keys.");
+    expect(!previewFrontmatterSurface?.text.includes("hidden fields"), "Preview frontmatter should not replace user content with hidden-field hints.");
+    expect(!previewFrontmatterSurface?.text.includes("future commands"), "Preview frontmatter should not expose internal command language.");
     expect(previewFrontmatterSurface?.background === "rgb(247, 247, 248)", "Preview frontmatter should stay grouped as a quiet metadata block.");
     expect(previewFrontmatterSurface?.borderRadius !== "0px", "Preview frontmatter should keep the original grouped surface shape.");
     expect(previewFrontmatterSurface?.firstBodyText === "The rendered body should remain the focus.", "Preview should remove the duplicated title from the body.");

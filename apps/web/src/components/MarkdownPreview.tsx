@@ -10,7 +10,6 @@ export type MarkdownPreviewMetadata = {
 
 type MarkdownPreviewProps = {
   metadata: MarkdownPreviewMetadata[];
-  hiddenMetadataCount: number;
   body: string;
   commentAnchors?: MarkdownPreviewCommentAnchor[];
   activeCommentId?: string | null;
@@ -314,7 +313,6 @@ const createMarkdownPreviewComponents = (onOpenComment?: (commentId: string) => 
 
 export function MarkdownPreview({
   metadata,
-  hiddenMetadataCount,
   body,
   commentAnchors = [],
   activeCommentId,
@@ -336,11 +334,6 @@ export function MarkdownPreview({
               <strong>{attribute.value || "true"}</strong>
             </div>
           ))}
-          {hiddenMetadataCount > 0 && (
-            <div className="frontmatter-hidden-note">
-              {hiddenMetadataCount} hidden {hiddenMetadataCount === 1 ? "field" : "fields"} available to future commands
-            </div>
-          )}
         </section>
       )}
 
