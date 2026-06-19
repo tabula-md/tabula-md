@@ -16,7 +16,7 @@ import { EmptyFileState } from "./components/EmptyFileState";
 import { FileTabs } from "./components/FileTabs";
 import { FileToolbar } from "./components/FileToolbar";
 import { LeftSidebar } from "./components/LeftSidebar";
-import { LiveRoomNotice, type LiveRoomNoticeTone } from "./components/LiveRoomNotice";
+import { LiveRoomNotice } from "./components/LiveRoomNotice";
 import { MarkdownEditor, type MarkdownCommentAnchor, type MarkdownEditorHandle } from "./components/MarkdownEditor";
 import { MarkdownFormattingToolbar } from "./components/MarkdownFormattingToolbar";
 import { MarkdownPreview, type MarkdownPreviewCommentAnchor } from "./components/MarkdownPreview";
@@ -114,7 +114,6 @@ type PreviewSelectionEvent =
 type ActiveLiveRoomNotice = {
   title: string;
   message: string;
-  tone: LiveRoomNoticeTone;
   canKeepLocal: boolean;
 };
 
@@ -136,7 +135,6 @@ const getLiveRoomNotice = (file: MarkdownFile | undefined, status: ConnectionSta
       title: "Room key missing",
       message:
         "This shared URL is missing the client-only key, so Tabula cannot decrypt the room. Ask for the full link or keep this file as a local copy.",
-      tone: "blocked",
       canKeepLocal: true,
     };
   }
@@ -146,7 +144,6 @@ const getLiveRoomNotice = (file: MarkdownFile | undefined, status: ConnectionSta
       title: "Room key invalid",
       message:
         "The key in this shared URL is not valid. Ask for a fresh room link or keep this file as a local copy.",
-      tone: "blocked",
       canKeepLocal: true,
     };
   }
@@ -156,24 +153,17 @@ const getLiveRoomNotice = (file: MarkdownFile | undefined, status: ConnectionSta
       title: "Room key does not match",
       message:
         "The key in this URL cannot decrypt the latest room snapshot. The encrypted room was not changed.",
-      tone: "blocked",
       canKeepLocal: true,
     };
   }
 
   if (normalizedMessage.includes("server disconnected") || normalizedMessage.includes("not reachable")) {
-    return {
-      title: "Room server offline",
-      message: sourceMessage,
-      tone: "offline",
-      canKeepLocal: false,
-    };
+    return null;
   }
 
   return {
     title: "Live room needs attention",
     message: sourceMessage,
-    tone: "blocked",
     canKeepLocal: true,
   };
 };
@@ -1632,7 +1622,7 @@ function WorkspaceApp() {
       idle: "Local draft",
       connecting: "Connecting",
       connected: "Live session",
-      offline: "Reconnecting",
+      offline: "Room offline",
     })[status];
 
   const getFileStatus = (file: MarkdownFile) => {
@@ -1913,7 +1903,6 @@ function WorkspaceApp() {
                   <LiveRoomNotice
                     title={activeLiveRoomNotice.title}
                     message={activeLiveRoomNotice.message}
-                    tone={activeLiveRoomNotice.tone}
                     canKeepLocal={activeLiveRoomNotice.canKeepLocal}
                     onCopyMarkdown={copyCurrentMarkdown}
                     onKeepLocal={stopSession}

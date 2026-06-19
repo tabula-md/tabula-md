@@ -133,7 +133,7 @@
 }
 
 .tab-live-dot.connected {
-  background: #58a36a;
+  background: #15803d;
 }
 
 .tab-live-dot.connecting {
@@ -177,8 +177,6 @@
 
 .tab-item:hover .tab-mode-icon,
 .tab-item:focus-within .tab-mode-icon,
-.tab-item:hover .tab-live-dot,
-.tab-item:focus-within .tab-live-dot,
 .tab-item:hover .tab-collaborator-count,
 .tab-item:focus-within .tab-collaborator-count {
   opacity: 0;

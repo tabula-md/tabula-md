@@ -1,11 +1,8 @@
 import { AlertTriangle, Copy, Link2, Unplug } from "lucide-react";
 
-export type LiveRoomNoticeTone = "offline" | "blocked";
-
 type LiveRoomNoticeProps = {
   title: string;
   message: string;
-  tone: LiveRoomNoticeTone;
   canKeepLocal?: boolean;
   onCopyMarkdown: () => void;
   onKeepLocal: () => void;
@@ -15,14 +12,13 @@ type LiveRoomNoticeProps = {
 export function LiveRoomNotice({
   title,
   message,
-  tone,
   canKeepLocal = false,
   onCopyMarkdown,
   onKeepLocal,
   onOpenShare,
 }: LiveRoomNoticeProps) {
   return (
-    <aside className={`live-room-notice ${tone}`} aria-label="Live room status">
+    <aside className="live-room-notice" aria-label="Live room status">
       <AlertTriangle size={16} aria-hidden="true" />
       <div className="live-room-notice-copy">
         <strong>{title}</strong>

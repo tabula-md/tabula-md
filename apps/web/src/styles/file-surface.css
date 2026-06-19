@@ -345,24 +345,12 @@
   border-radius: 10px;
   color: #3f3f3f;
   background: #ffffff;
-  box-shadow: inset 0 0 0 1px #ededee;
-}
-
-.live-room-notice.blocked {
   box-shadow: inset 0 0 0 1px #ead8d5;
-}
-
-.live-room-notice.offline {
-  box-shadow: inset 0 0 0 1px #dedee2;
 }
 
 .live-room-notice > svg {
   margin-top: 2px;
   color: #8f3d36;
-}
-
-.live-room-notice.offline > svg {
-  color: #666666;
 }
 
 .live-room-notice-copy {

@@ -109,7 +109,10 @@ export function ShareControls({
     activeFile?.lastRecoveryType === "reconnected" || activeFile?.lastRecoveryType === "snapshot-recovered"
       ? (activeFile.lastRecoveryMessage ?? "")
       : "";
-  const hasRoomIssue = activeStatus === "offline" && Boolean(roomIssueMessage);
+  const isRecoverableOffline =
+    roomIssueMessage.toLowerCase().includes("server disconnected") ||
+    roomIssueMessage.toLowerCase().includes("not reachable");
+  const hasRoomIssue = activeStatus === "offline" && Boolean(roomIssueMessage) && !isRecoverableOffline;
   const roomStatusLabel =
     activeStatus === "connected"
       ? "Live"
@@ -121,7 +124,9 @@ export function ShareControls({
             : "Offline"
           : "Local";
   const roomStatusHint = roomIssueMessage
-    ? roomIssueMessage
+    ? hasRoomIssue
+      ? roomIssueMessage
+      : "Keep writing. Changes will sync when the room reconnects."
     : activeStatus === "connected"
       ? roomInfoMessage ||
         (activeFile?.snapshotCount
@@ -175,7 +180,6 @@ export function ShareControls({
         >
           <Share2 size={15} />
           <span className="share-label-visible">Share</span>
-          {isLive && <span className={`share-status-dot ${activeStatus}`} aria-hidden="true" />}
         </button>
       </div>
 
@@ -252,13 +256,15 @@ export function ShareControls({
 
                   {isLive && (
                     <div className="live-room-box">
-                      <div className={`live-room-status ${activeStatus} ${hasRoomIssue ? "attention" : ""}`}>
-                        <span className="live-room-status-dot" aria-hidden="true" />
-                        <div>
-                          <span>{roomStatusLabel}</span>
-                          {roomStatusHint && <p>{roomStatusHint}</p>}
+                      {hasRoomIssue && (
+                        <div className={`live-room-status ${activeStatus} attention`}>
+                          <span className="live-room-status-dot" aria-hidden="true" />
+                          <div>
+                            <span>{roomStatusLabel}</span>
+                            {roomStatusHint && <p>{roomStatusHint}</p>}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       <div className="share-modal-field">
                         <label>Your name</label>

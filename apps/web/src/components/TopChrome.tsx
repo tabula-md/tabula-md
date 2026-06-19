@@ -48,10 +48,11 @@ export function TopChrome({
 
       <div className="top-right-zone">
         {isLive && (
-          <div className="presence" title="Collaborators">
+          <div className="presence sharing-presence" aria-label="Sharing">
             <Users size={15} />
+            <span className="presence-label">Sharing</span>
             <div className="avatars">
-              <span className="avatar self" style={{ background: identity.color }}>
+              <span className="avatar self" style={{ background: identity.color }} title={identity.name}>
                 {identity.name.slice(0, 1)}
               </span>
               {collaborators.slice(0, 4).map((collaborator) => (
