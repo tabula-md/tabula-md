@@ -87,7 +87,8 @@ export function ShareControls({
   const activeFileDisplayTitle = activeFileTitle.replace(/\.(?:md|markdown)$/i, "");
   const shareModalTitle = sharePanel === "publish" ? "Publish project" : `Share ${activeFileDisplayTitle}`;
   const roomStatusHint =
-    activeStatus === "connecting" ? "Connecting..." : activeStatus === "offline" ? "Reconnecting..." : "";
+    activeFile?.lastRecoveryMessage ??
+    (activeStatus === "connecting" ? "Connecting..." : activeStatus === "offline" ? "Reconnecting..." : "");
   const hasPublishedSnapshot = Boolean(publishPageUrl && publishLlmsTxtUrl && publishLlmsFullTxtUrl);
   const publishedTime = publishedAt
     ? new Intl.DateTimeFormat(undefined, {

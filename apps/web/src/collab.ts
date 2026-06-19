@@ -300,6 +300,7 @@ export const createCollabConnection = ({
   let socket: Socket | null = null;
   let envelopeVersion = 0;
   let hasConnectedOnce = false;
+  let collaborationBlocked = false;
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
     onRecoveryEvent?.({
@@ -337,7 +338,7 @@ export const createCollabConnection = ({
   };
 
   const emitEnvelope = async (kind: EnvelopeKind, plaintext: Uint8Array) => {
-    if (!socket?.connected || !roomKey) {
+    if (!socket?.connected || !roomKey || collaborationBlocked) {
       return;
     }
 
@@ -355,7 +356,7 @@ export const createCollabConnection = ({
   };
 
   const storeSnapshot = async () => {
-    if (!roomKey) {
+    if (!roomKey || collaborationBlocked) {
       return;
     }
 
@@ -388,23 +389,24 @@ export const createCollabConnection = ({
 
   const fetchSnapshot = async () => {
     if (!roomKey) {
-      return;
+      return false;
     }
 
     try {
       const response = await fetch(createRoomApiUrl(roomId, "/snapshot"));
       if (response.status === 404) {
         await refreshRoomMeta();
-        return;
+        return true;
       }
       if (!response.ok) {
-        return;
+        emitRecoveryEvent("invalid-message", "The encrypted room snapshot could not be loaded.");
+        return false;
       }
 
       const envelope = await response.json();
       if (!isEncryptedEnvelope(envelope) || envelope.roomId !== roomId || envelope.kind !== "snapshot") {
         emitRecoveryEvent("invalid-message", "A room snapshot was ignored because it was not a valid envelope.");
-        return;
+        return false;
       }
 
       const update = await decryptEnvelopeForRoom(roomKey, envelope);
@@ -412,8 +414,10 @@ export const createCollabConnection = ({
       onTextChange(text.toString());
       emitRecoveryEvent("snapshot-recovered", "Encrypted room snapshot restored.");
       await refreshRoomMeta();
+      return true;
     } catch {
       emitRecoveryEvent("invalid-message", "The encrypted room snapshot could not be decrypted.");
+      return false;
     }
   };
 
@@ -501,12 +505,19 @@ export const createCollabConnection = ({
         return;
       }
 
+      const snapshotReady = await fetchSnapshot();
+      if (!snapshotReady) {
+        collaborationBlocked = true;
+        onStatusChange("offline");
+        socket?.disconnect();
+        return;
+      }
+
       onStatusChange("connected");
       if (hasConnectedOnce) {
         emitRecoveryEvent("reconnected", "Connection restored and room state was resynced.");
       }
       hasConnectedOnce = true;
-      await fetchSnapshot();
       await emitEnvelope("yjs-update", Y.encodeStateAsUpdate(doc));
       await publishPresence();
       await storeSnapshot();

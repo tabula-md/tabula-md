@@ -9,6 +9,7 @@ const roomPort = Number(process.env.TABULA_TEST_ROOM_PORT ?? 3002);
 const externalUrl = process.env.TABULA_TEST_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${port}`;
 const roomUrl = (process.env.VITE_TABULA_ROOM_URL ?? `http://127.0.0.1:${roomPort}`).replace(/\/$/, "");
+const roomDataDir = process.env.TABULA_ROOM_DATA_DIR ?? path.join(process.cwd(), ".tabula-room-smoke");
 const isWindows = process.platform === "win32";
 const primaryShortcutKey = process.platform === "darwin" ? "Meta" : "Control";
 const appNewFileShortcut = `${primaryShortcutKey}+Alt+N`;
@@ -171,7 +172,7 @@ const selectSuites = (suites) => {
   return suites.filter((suite) => requestedSuites.includes(suite.id));
 };
 
-const createSmokeContext = (browser) => ({
+const createSmokeContext = (browser, controls = {}) => ({
   appNewFileShortcut,
   baseUrl,
   browser,
@@ -184,11 +185,15 @@ const createSmokeContext = (browser) => ({
   openProjectContext,
   closeProjectContext,
   openProjectMenu,
+  restartRoomServer: controls.restartRoomServer,
+  roomDataDir,
+  startRoomServer: controls.startRoomServer,
+  stopRoomServer: controls.stopRoomServer,
   waitForText,
   withPage: createWithPage(),
 });
 
-const startLocalServers = async () => {
+const spawnRoomServer = async () => {
   const roomRepoDir = process.env.TABULA_ROOM_REPO_DIR ?? path.resolve(process.cwd(), "../tabula-room");
   const roomCommand = process.env.TABULA_ROOM_SERVER_COMMAND;
   const roomServer = roomCommand
@@ -198,7 +203,7 @@ const startLocalServers = async () => {
           ...process.env,
           PORT: String(roomPort),
           TABULA_ROOM_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
-          TABULA_ROOM_DATA_DIR: path.join(process.cwd(), ".tabula-room-smoke"),
+          TABULA_ROOM_DATA_DIR: roomDataDir,
         },
         shell: true,
         stdio: ["ignore", "pipe", "pipe"],
@@ -210,7 +215,7 @@ const startLocalServers = async () => {
             ...process.env,
             PORT: String(roomPort),
             TABULA_ROOM_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
-            TABULA_ROOM_DATA_DIR: path.join(process.cwd(), ".tabula-room-smoke"),
+            TABULA_ROOM_DATA_DIR: roomDataDir,
           },
           stdio: ["ignore", "pipe", "pipe"],
         })
@@ -227,6 +232,11 @@ const startLocalServers = async () => {
     await waitForServer(`${roomUrl}/health`);
   }
 
+  return roomServer;
+};
+
+const startLocalServers = async () => {
+  const roomServer = await spawnRoomServer();
   const webServer = spawn(
     isWindows ? "npm.cmd" : "npm",
     ["run", "dev", "--", "--host", "127.0.0.1", "--port", String(port)],
@@ -265,6 +275,7 @@ export const smokeConfig = {
   port,
   roomPort,
   roomUrl,
+  roomDataDir,
 };
 
 export async function runBrowserSmoke(suites) {
@@ -279,7 +290,37 @@ export async function runBrowserSmoke(suites) {
     }
 
     browser = await launchBrowser();
-    const context = createSmokeContext(browser);
+    const context = createSmokeContext(browser, {
+      restartRoomServer: async () => {
+        if (!roomServer) {
+          throw new Error("Cannot restart an externally managed Tabula Room server.");
+        }
+
+        await stopProcess(roomServer);
+        roomServer = await spawnRoomServer();
+        if (!roomServer) {
+          throw new Error("Tabula Room restart did not create a managed server process.");
+        }
+      },
+      startRoomServer: async () => {
+        if (roomServer) {
+          return;
+        }
+
+        roomServer = await spawnRoomServer();
+        if (!roomServer) {
+          throw new Error("Tabula Room start did not create a managed server process.");
+        }
+      },
+      stopRoomServer: async () => {
+        if (!roomServer) {
+          throw new Error("Cannot stop an externally managed Tabula Room server.");
+        }
+
+        await stopProcess(roomServer);
+        roomServer = null;
+      },
+    });
 
     for (const suite of selectedSuites) {
       await suite.run(context);
