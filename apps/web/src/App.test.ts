@@ -5,6 +5,8 @@ import { getPreviewBody, parseFrontmatter } from "./markdown";
 import {
   createPublishedSnapshot,
   createServerPublishedSnapshot,
+  getEmptyPublishFiles,
+  getEmptyPublishFilesMessage,
   getPublishRoute,
   readServerPublishedSnapshot,
   republishServerPublishedSnapshot,
@@ -523,17 +525,95 @@ Start here.`,
     const snapshot = createPublishedSnapshot({
       id: "snapshot-1",
       origin: "https://tabula.md",
+      ownerName: "Taeha",
       files,
       activeFileId: "prd",
       commentsByFileId: {},
     });
 
+    expect(snapshot.ownerName).toBe("Taeha");
     expect(snapshot.urls.page).toBe("https://tabula.md/p/snapshot-1");
     expect(snapshot.urls.llmsTxt).toBe("https://tabula.md/p/snapshot-1/llms.txt");
     expect(snapshot.urls.llmsFullTxt).toBe("https://tabula.md/p/snapshot-1/llms-full.txt");
     expect(snapshot.llmsTxt).toContain("Use llms-full.txt");
     expect(snapshot.llmsFullTxt).toContain("## PRD.md");
     expect(snapshot.publishBundle).toContain("## Markdown Bundle");
+  });
+
+  it("creates a current-page publish payload from a single scoped file", () => {
+    const snapshot = createPublishedSnapshot({
+      id: "page-1",
+      origin: "https://tabula.md",
+      scope: "file",
+      files: [files[1]],
+      activeFileId: "prd",
+      commentsByFileId: {
+        readme: [
+          {
+            id: "readme-comment",
+            body: "Keep this out of a page-only publish.",
+            createdAt: "2026-06-14T00:00:00.000Z",
+          },
+        ],
+        prd: [
+          {
+            id: "prd-comment",
+            body: "Include this page comment.",
+            createdAt: "2026-06-14T00:00:00.000Z",
+          },
+        ],
+      },
+    });
+
+    expect(snapshot.fileCount).toBe(1);
+    expect(snapshot.scope).toBe("file");
+    expect(snapshot.files).toEqual([{ id: "prd", title: "PRD.md", text: files[1].text }]);
+    expect(snapshot.commentsByFileId).toEqual({
+      prd: [
+        {
+          id: "prd-comment",
+          body: "Include this page comment.",
+          createdAt: "2026-06-14T00:00:00.000Z",
+        },
+      ],
+    });
+    expect(snapshot.llmsTxt).toContain("Files: 1");
+    expect(snapshot.llmsFullTxt).toContain("## PRD.md");
+    expect(snapshot.llmsFullTxt).not.toContain("## README.md");
+    expect(snapshot.llmsFullTxt).toContain("Include this page comment.");
+    expect(snapshot.llmsFullTxt).not.toContain("Keep this out of a page-only publish.");
+  });
+
+  it("rejects publish payloads when any selected Markdown file is empty", () => {
+    const emptyFiles = [
+      files[0],
+      createMarkdownFile(3, {
+        id: "empty",
+        title: "Untitled 2.md",
+        text: "  \n",
+      }),
+      createMarkdownFile(4, {
+        id: "empty-notes",
+        title: "Notes.markdown",
+        text: "",
+      }),
+    ];
+
+    expect(getEmptyPublishFiles(emptyFiles).map((file) => file.id)).toEqual(["empty", "empty-notes"]);
+    expect(getEmptyPublishFilesMessage([emptyFiles[1]], "file")).toBe("Add content to Untitled 2 before publishing.");
+    expect(getEmptyPublishFilesMessage(emptyFiles, "project")).toBe(
+      "Add content to Untitled 2 and 1 other empty project file before publishing.",
+    );
+    expect(() =>
+      createPublishedSnapshot({
+        id: "blocked",
+        origin: "https://tabula.md",
+        scope: "project",
+        files: emptyFiles,
+        activeFileId: "readme",
+        commentsByFileId: {},
+      }),
+    ).toThrow("Add content to Untitled 2 and 1 other empty project file before publishing.");
   });
 
   it("creates server-backed publish snapshots with sanitized payload and service URLs", async () => {
@@ -568,6 +648,7 @@ Start here.`,
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       expect(String(input)).toBe("https://publish.tabula.md/v1/publishes");
       const payload = JSON.parse(String(init?.body)) as {
+        ownerName?: string;
         activeFileId: string;
         files: Array<Record<string, unknown>>;
         commentsByFileId: Record<string, unknown>;
@@ -575,6 +656,7 @@ Start here.`,
         llmsFullTxt: string;
       };
 
+      expect(payload.ownerName).toBe("Taeha");
       expect(payload.activeFileId).toBe("prd");
       expect(payload.files[0]).toEqual({
         id: "readme",
@@ -618,6 +700,8 @@ Start here.`,
     const snapshot = await createServerPublishedSnapshot({
       serviceUrl: "https://publish.tabula.md/",
       origin: "https://tabula.md",
+      scope: "project",
+      ownerName: "Taeha",
       files: liveFiles,
       activeFileId: "prd",
       commentsByFileId,
@@ -625,6 +709,8 @@ Start here.`,
     });
 
     expect(snapshot.id).toBe("publish_123456");
+    expect(snapshot.scope).toBe("project");
+    expect(snapshot.ownerName).toBe("Taeha");
     expect(snapshot.urls.page).toBe("https://tabula.md/p/publish_123456");
     expect(snapshot.urls.llmsTxt).toBe("https://publish.tabula.md/p/publish_123456/llms.txt");
     expect(snapshot.servicePageUrl).toBe("https://publish.tabula.md/p/publish_123456");
@@ -641,6 +727,7 @@ Start here.`,
           publishId: "publish_123456",
           createdAt: "2026-06-19T00:00:00.000Z",
           updatedAt: "2026-06-19T00:00:00.000Z",
+          ownerName: "Taeha",
           activeFileId: "readme",
           fileCount: 2,
           files: [
@@ -671,6 +758,7 @@ Start here.`,
     expect(snapshot?.urls.llmsTxt).toBe("https://publish.tabula.md/p/publish_123456/llms.txt");
     expect(snapshot?.servicePageUrl).toBe("https://publish.tabula.md/p/publish_123456");
     expect(snapshot?.ownerToken).toBeUndefined();
+    expect(snapshot?.ownerName).toBe("Taeha");
     expect(snapshot?.files).toEqual([
       { id: "readme", title: "README.md", text: "# Published" },
       { id: "empty", title: "Untitled.md", text: "" },
@@ -709,7 +797,9 @@ Start here.`,
       expect(String(input)).toBe("https://publish.tabula.md/v1/publishes/publish_123456");
       expect(init?.method).toBe("PUT");
       expect((init?.headers as Record<string, string>).authorization).toBe("Bearer owner-token");
-      expect(JSON.parse(String(init?.body)).files).toEqual([{ id: "readme", title: "README.md", text: "# After" }]);
+      const payload = JSON.parse(String(init?.body)) as { ownerName?: string; files: Array<Record<string, unknown>> };
+      expect(payload.ownerName).toBe("Taeha");
+      expect(payload.files).toEqual([{ id: "readme", title: "README.md", text: "# After" }]);
 
       return new Response(
         JSON.stringify({
@@ -730,6 +820,8 @@ Start here.`,
     const snapshot = await republishServerPublishedSnapshot({
       serviceUrl: "https://publish.tabula.md",
       origin: "https://tabula.md",
+      scope: "file",
+      ownerName: "Taeha",
       snapshot: existingSnapshot,
       files: updatedFiles,
       activeFileId: "readme",
@@ -738,6 +830,8 @@ Start here.`,
     });
 
     expect(snapshot.id).toBe("publish_123456");
+    expect(snapshot.scope).toBe("file");
+    expect(snapshot.ownerName).toBe("Taeha");
     expect(snapshot.createdAt).toBe(existingSnapshot.createdAt);
     expect(snapshot.updatedAt).toBe("2026-06-19T00:01:00.000Z");
     expect(snapshot.urls.page).toBe(existingSnapshot.urls.page);
