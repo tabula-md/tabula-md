@@ -29,8 +29,8 @@ it as a public read-only page when the work needs a stable URL.
 - Link-first collaboration for Markdown documents.
 - Markdown-native writing and preview instead of rich-text with export.
 - Frontmatter-aware preview for agent-readable metadata.
-- Public read-only pages with `llms.txt` and `llms-full.txt` included
-  automatically for AI-readable context.
+- Current-page or project publish with `llms.txt` and `llms-full.txt` included
+  automatically as hidden AI-readable endpoints.
 - A minimal room/document surface instead of a dashboard-first SaaS surface.
 
 # Not Now

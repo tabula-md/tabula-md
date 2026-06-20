@@ -38,16 +38,22 @@ connecting, live, reconnecting, offline, or token-failed.
 # Publish
 
 Publish creates a public read-only page, separate from the live room. The human
-URL is `/p/:publishId`; AI-readable outputs are included automatically at
-`/p/:publishId/llms.txt` and `/p/:publishId/llms-full.txt`. Updating the
-published page keeps the same publish URL and changes the public page only when
-the user explicitly updates it.
+URL is `/p/:publishId`. The user chooses whether to publish the current page or
+the full project before publishing. AI-readable outputs are included
+automatically at `/p/:publishId/llms.txt` and
+`/p/:publishId/llms-full.txt`, but those endpoints should stay hidden from the
+human published page UI. Updating the published page keeps the same publish URL
+and changes the public page only when the user explicitly updates it. After a
+page is published, Share > Publish should act as a management view; changing
+between current-page and project publish is a separate explicit republish
+action. Project publish should use restrained contents navigation, not a file
+chip list above the document body.
 
 # Copy And AI Context
 
-The current document should have an obvious raw Markdown copy path. Room-wide
-AI context belongs as included Publish outputs, not in a separate heavy panel or
-as the primary reason to publish.
+The current document should have an obvious raw Markdown copy path. AI-readable
+context belongs as hidden included Publish outputs, not in a separate heavy
+panel or as the primary reason to publish.
 
 # Failure Recovery
 

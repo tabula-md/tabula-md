@@ -3,6 +3,7 @@ dist
 .tabula-collab
 .tabula-room
 .tabula-room-smoke
+.tabula-publish-smoke
 .DS_Store
 .env
 .env.local

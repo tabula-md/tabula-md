@@ -83,6 +83,38 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
+    await page.getByTitle("New tab").click();
+    await page.waitForTimeout(100);
+    await page.locator(".share-trigger").click();
+    await page.getByRole("tab", { name: "Publish" }).click();
+    expect(
+      await page.getByRole("button", { name: "Publish current page" }).isDisabled(),
+      "Publish should block a blank current page.",
+    );
+    expect(
+      (await page.getByText(/^Add content to Untitled(?: \d+)? before publishing\.$/).count()) === 1,
+      "Publish should explain that the current blank page needs content.",
+    );
+
+    await page.keyboard.press("Escape");
+    await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
+    await page.locator(".share-trigger").click();
+    await page.getByRole("tab", { name: "Publish" }).click();
+    expect(
+      !(await page.getByRole("button", { name: "Publish current page" }).isDisabled()),
+      "Publish should allow a non-empty current page even when another project file is blank.",
+    );
+    await page.getByRole("radio", { name: /Project/ }).click();
+    expect(await page.getByRole("button", { name: "Publish project" }).isDisabled(), "Project publish should block if any project file is blank.");
+    expect(
+      (await page
+        .getByText(/^Add content to Untitled(?: \d+)?(?: and \d+ other empty project files?)? before publishing\.$/)
+        .count()) === 1,
+      "Project publish should identify the blank project file before publishing.",
+    );
+  });
+
+  await withPage(browser, "/", async (page) => {
     for (let index = 0; index < 8; index += 1) {
       const tabCount = await page.locator(".tab-item").count();
       if (tabCount === 0) {
@@ -242,16 +274,21 @@ export async function run(ctx) {
     const sendShareHeight = await getShareModalHeight();
 
     await page.getByRole("tab", { name: "Publish" }).click();
-    expect((await page.getByText("Create a public read-only page for this project.").count()) > 0, "Publish should read as web publishing.");
-    expect((await page.getByText("Public page").count()) > 0, "Publish should lead with the public page.");
-    expect((await page.getByText("Publish project").count()) > 0, "Publish tab should name the project-level scope.");
+    expect((await page.getByText("Choose what goes live, then create a read-only page.").count()) > 0, "Publish should read as web publishing.");
+    expect((await page.getByText("Publish a public page").count()) > 0, "Publish tab should use a simple page heading.");
+    expect((await page.getByRole("radio", { name: /Current page/ }).count()) === 1, "Publish should offer current-page scope.");
+    expect((await page.getByRole("radio", { name: /Project/ }).count()) === 1, "Publish should offer project scope.");
+    expect(
+      (await page.getByRole("radio", { name: /Current page/ }).getAttribute("aria-checked")) === "true",
+      "Publish should default to current-page scope.",
+    );
     expect((await page.locator('input[aria-label="Publish URL"]').count()) === 0, "Publish should not show a URL before publishing.");
     expect((await page.locator('[aria-label="Published URLs"]').count()) === 0, "Publish should not show endpoint URLs before publishing.");
     expect((await page.locator('[aria-label="AI-readable output URLs"]').count()) === 0, "Publish should not show endpoint URLs before publishing.");
     expect((await page.getByText("No public URL exists yet.").count()) === 0, "Publish should not show an unavailable URL placeholder.");
-    expect((await page.getByText("llms.txt", { exact: true }).count()) > 0, "Publish should include llms.txt output.");
-    expect((await page.getByText("llms-full.txt", { exact: true }).count()) > 0, "Publish should include llms-full.txt output.");
-    expect((await page.getByText("AI-readable outputs included", { exact: true }).count()) === 1, "Publish should show AI outputs as included.");
+    expect((await page.getByText("llms.txt", { exact: true }).count()) === 0, "Publish should hide llms.txt from the human UI.");
+    expect((await page.getByText("llms-full.txt", { exact: true }).count()) === 0, "Publish should hide llms-full.txt from the human UI.");
+    expect((await page.getByText("AI-readable outputs included", { exact: true }).count()) === 0, "Publish should not expose AI output labels.");
     expect((await page.getByText("Outputs", { exact: true }).count()) === 0, "Publish should not make outputs the headline.");
     expect((await page.getByText("Project snapshot").count()) === 0, "Publish should not use snapshot-first language.");
     expect((await page.getByText("Published snapshot").count()) === 0, "Publish should not use snapshot-first language.");
@@ -264,10 +301,10 @@ export async function run(ctx) {
     expect((await page.getByRole("button", { name: "Copy llms.txt URL" }).count()) === 0, "Publish should not copy endpoint URLs before publishing.");
     expect((await page.getByRole("button", { name: "Copy llms-full.txt URL" }).count()) === 0, "Publish should not copy endpoint URLs before publishing.");
     expect((await page.getByRole("button", { name: "Copy page" }).count()) === 0, "Publish should not look like a Markdown export panel.");
-    expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 1, "Publish should copy llms.txt.");
-    expect((await page.getByRole("button", { name: "Copy llms-full.txt" }).count()) === 1, "Publish should copy llms-full.txt.");
-    expect((await page.getByRole("button", { name: "Download bundle" }).count()) === 1, "Publish should download the generated bundle.");
-    expect((await page.getByRole("button", { name: "Publish" }).count()) === 1, "Publish should create a public page.");
+    expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish should not expose llms copy actions.");
+    expect((await page.getByRole("button", { name: "Copy llms-full.txt" }).count()) === 0, "Publish should not expose llms copy actions.");
+    expect((await page.getByRole("button", { name: "Download bundle" }).count()) === 0, "Publish should not expose bundle download actions.");
+    expect((await page.getByRole("button", { name: "Publish current page" }).count()) === 1, "Publish should create a public page.");
     expect((await page.getByRole("button", { name: "Publish snapshot" }).count()) === 0, "Publish should not expose snapshots as the action.");
     expect((await page.getByText("Publish not configured").count()) === 0, "Publish should not be a disabled placeholder.");
     expect((await page.locator(".publish-popover").count()) === 0, "Publish should not use a separate popover.");
@@ -324,34 +361,20 @@ export async function run(ctx) {
     });
     await page.getByRole("tab", { name: "Publish" }).click();
     const publishModalTitle = await page.locator(".share-modal-header h2").textContent();
-    expect(publishModalTitle?.trim() === "Publish project", "Publish should switch the modal title to project scope.");
-    await page.getByRole("button", { name: "Copy llms.txt" }).click();
-    await page.waitForTimeout(80);
-    const copiedLlmsTxt = await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "");
-    expect(copiedLlmsTxt.includes("# Tabula.md"), "Copy llms.txt should copy the generated llms.txt body.");
-    expect(copiedLlmsTxt.includes("Use llms-full.txt"), "llms.txt should point agents to the full context output.");
-    await waitForText(page.locator(".app-toast"), "llms.txt copied.");
-    await page.getByRole("button", { name: "Copy llms-full.txt" }).click();
-    await page.waitForTimeout(80);
-    const copiedLlmsFullTxt = await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "");
-    expect(copiedLlmsFullTxt.includes("# Tabula.md Agent Context"), "Copy llms-full.txt should copy the full agent context.");
-    expect(copiedLlmsFullTxt.includes("## README.md"), "llms-full.txt should include Markdown file bodies.");
-    await waitForText(page.locator(".app-toast"), "llms-full.txt copied.");
-    const bundleDownload = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Download bundle" }).click();
-    const downloadedBundle = await bundleDownload;
-    expect(downloadedBundle.suggestedFilename() === "tabula-publish-bundle.md", "Publish bundle should download as a Markdown file.");
-    await waitForText(page.locator(".app-toast"), "Publish bundle downloaded.");
+    expect(publishModalTitle?.trim() === "Publish", "Publish should use a short modal title.");
 
-    await page.getByRole("button", { name: "Publish" }).click();
+    await page.getByRole("button", { name: "Publish current page" }).click();
     await waitForText(page.locator(".app-toast"), "Page published.");
-    const publishedUrls = await page.evaluate(() => ({
-      page: document.querySelector('[data-testid="publish-page-url"]')?.textContent?.trim() ?? "",
-      llms: document.querySelector('[data-testid="publish-llms-url"]')?.textContent?.trim() ?? "",
-      llmsFull: document.querySelector('[data-testid="publish-llms-full-url"]')?.textContent?.trim() ?? "",
-    }));
+    const publishedUrls = {
+      page: (await page.getByRole("link", { name: "View page" }).getAttribute("href")) ?? "",
+      llms: "",
+      llmsFull: "",
+    };
     expect(/\/p\/[^/]+$/.test(publishedUrls.page), "Publishing should create a readable page URL.");
     if (expectsPublishService) {
+      const publishId = publishedUrls.page.match(/\/p\/([^/]+)$/)?.[1] ?? "";
+      publishedUrls.llms = `${publishUrl}/p/${publishId}/llms.txt`;
+      publishedUrls.llmsFull = `${publishUrl}/p/${publishId}/llms-full.txt`;
       expect(
         publishedUrls.page.startsWith(`${baseUrl}/p/`),
         "Server-backed publishing should expose the app vanity page URL.",
@@ -365,6 +388,8 @@ export async function run(ctx) {
         "Server-backed publishing should expose the publish service llms-full.txt endpoint URL.",
       );
     } else {
+      publishedUrls.llms = `${publishedUrls.page}/llms.txt`;
+      publishedUrls.llmsFull = `${publishedUrls.page}/llms-full.txt`;
       expect(publishedUrls.llms === `${publishedUrls.page}/llms.txt`, "Publishing should create an llms.txt endpoint URL.");
       expect(
         publishedUrls.llmsFull === `${publishedUrls.page}/llms-full.txt`,
@@ -373,8 +398,14 @@ export async function run(ctx) {
     }
     expect((await page.getByRole("link", { name: "View page" }).count()) === 1, "Published state should offer a page view action.");
     expect((await page.getByRole("button", { name: "Copy link" }).count()) === 1, "Published state should offer a page copy action.");
-    expect((await page.locator('[aria-label="AI-readable output URLs"]').count()) === 1, "Published state should keep AI URLs secondary.");
-    expect((await page.getByRole("button", { name: "Update published page" }).count()) === 1, "Published state should update the page.");
+    expect(
+      (await page.getByText(/Published as current page:/).count()) === 1,
+      "Published state should summarize the published current page.",
+    );
+    expect((await page.getByRole("radio", { name: /Project/ }).count()) === 0, "Published state should hide scope cards by default.");
+    expect((await page.getByRole("button", { name: "Change scope" }).count()) === 1, "Published state should make scope changes explicit.");
+    expect((await page.locator('[aria-label="AI-readable output URLs"]').count()) === 0, "Published state should hide AI URLs.");
+    expect((await page.getByRole("button", { name: "Update current page" }).count()) === 1, "Published state should update the page.");
     expect((await page.getByRole("button", { name: "Republish snapshot" }).count()) === 0, "Published state should not use snapshot update copy.");
     await page.getByRole("button", { name: "Copy link" }).click();
     await page.waitForTimeout(80);
@@ -382,19 +413,73 @@ export async function run(ctx) {
       (await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "")) === publishedUrls.page,
       "Copy link should copy the published page URL.",
     );
-    await page.getByRole("button", { name: "Copy llms.txt URL" }).click();
-    await page.waitForTimeout(80);
-    expect(
-      (await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "")) === publishedUrls.llms,
-      "Copy llms.txt URL should copy the published llms endpoint.",
-    );
+    expect((await page.getByRole("button", { name: "Copy llms.txt URL" }).count()) === 0, "Published state should not expose llms URL copying.");
 
     const publishedPage = await page.context().newPage();
     await publishedPage.goto(publishedUrls.page);
     await publishedPage.waitForSelector(".published-page", { timeout: 5_000 });
     expect(
-      (await publishedPage.locator(".published-header").textContent())?.includes("Tabula.md"),
+      (await publishedPage.locator(".published-document").textContent())?.includes("Tabula.md"),
       "Published page should render the read-only Markdown page.",
+    );
+    expect((await publishedPage.getByRole("link", { name: "llms.txt" }).count()) === 0, "Published page should hide llms.txt links.");
+    expect(
+      (await publishedPage.getByRole("link", { name: "llms-full.txt" }).count()) === 0,
+      "Published page should hide llms-full.txt links.",
+    );
+    expect(
+      ((await publishedPage.locator(".published-footer").textContent()) ?? "").includes("Powered by") &&
+        ((await publishedPage.locator(".published-footer").textContent()) ?? "").includes("Tabula"),
+      "Published page should include the Powered by Tabula footer.",
+    );
+    expect(
+      (await publishedPage.locator(".published-meta-bar").count()) === 0,
+      "Published page should not show a Published with Tabula header.",
+    );
+    const singlePublishedLayout = await publishedPage.evaluate(() => {
+      const article = document.querySelector(".published-article-shell");
+      const footer = document.querySelector(".published-footer");
+      const footerLogo = document.querySelector(".published-footer-logo");
+      const articleRect = article?.getBoundingClientRect();
+      const footerRect = footer?.getBoundingClientRect();
+      const footerStyle = footer ? window.getComputedStyle(footer) : null;
+      const footerLogoStyle = footerLogo ? window.getComputedStyle(footerLogo) : null;
+
+      return {
+        articleCenter: articleRect ? Math.round(articleRect.left + articleRect.width / 2) : 0,
+        articleWidth: articleRect ? Math.round(articleRect.width) : 0,
+        previewSurface: document.querySelector(".published-document")?.classList.contains("preview-surface") ?? false,
+        viewportCenter: Math.round(window.innerWidth / 2),
+        footerCenter: footerRect ? Math.round(footerRect.left + footerRect.width / 2) : 0,
+        footerWidth: footerRect ? Math.round(footerRect.width) : 0,
+        footerBackgroundColor: footerStyle?.backgroundColor ?? "",
+        footerColor: footerStyle?.color ?? "",
+        footerFontSize: footerStyle?.fontSize ?? "",
+        footerBorderTopWidth: footerStyle?.borderTopWidth ?? "",
+        footerBorderRightWidth: footerStyle?.borderRightWidth ?? "",
+        footerBorderBottomWidth: footerStyle?.borderBottomWidth ?? "",
+        footerBorderLeftWidth: footerStyle?.borderLeftWidth ?? "",
+        footerBorderRadius: footerStyle?.borderRadius ?? "",
+        footerLogoColor: footerLogoStyle?.color ?? "",
+      };
+    });
+    expect(
+      Math.abs(singlePublishedLayout.articleCenter - singlePublishedLayout.viewportCenter) <= 2,
+      "Single-page publish should keep the document column centered.",
+    );
+    expect(singlePublishedLayout.previewSurface, "Single-page publish should use the same preview surface class as app Preview.");
+    expect(
+      Math.abs(singlePublishedLayout.footerCenter - singlePublishedLayout.articleCenter) <= 2 &&
+        singlePublishedLayout.footerWidth < singlePublishedLayout.articleWidth / 2 &&
+        singlePublishedLayout.footerBackgroundColor !== "rgba(0, 0, 0, 0)" &&
+        Number.parseFloat(singlePublishedLayout.footerBorderTopWidth) === 0 &&
+        Number.parseFloat(singlePublishedLayout.footerBorderRightWidth) === 0 &&
+        Number.parseFloat(singlePublishedLayout.footerBorderBottomWidth) === 0 &&
+        Number.parseFloat(singlePublishedLayout.footerBorderLeftWidth) === 0 &&
+        Number.parseFloat(singlePublishedLayout.footerBorderRadius) === 8 &&
+        Number.parseFloat(singlePublishedLayout.footerFontSize) === 14 &&
+        singlePublishedLayout.footerLogoColor === singlePublishedLayout.footerColor,
+      "Single-page publish footer should render as a centered filled Powered by badge.",
     );
     if (expectsPublishService) {
       const llmsResponse = await fetch(publishedUrls.llms);
