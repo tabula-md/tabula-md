@@ -666,6 +666,17 @@
   gap: 7px;
 }
 
+.publish-page-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  min-width: 0;
+}
+
+.publish-page-link {
+  text-decoration: none;
+}
+
 .publish-url-list {
   display: grid;
   gap: 6px;
@@ -675,10 +686,14 @@
 
 .publish-url-row {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) max-content;
+  grid-template-columns: 96px minmax(0, 1fr) max-content;
   align-items: center;
   gap: 7px;
   min-width: 0;
+}
+
+.publish-url-list:not(.publish-output-url-list) .publish-url-row {
+  grid-template-columns: 96px minmax(0, 1fr);
 }
 
 .publish-url-row > span {
@@ -742,7 +757,8 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  padding-top: 1px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .publish-after-row > span {
