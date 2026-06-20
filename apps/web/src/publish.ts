@@ -34,6 +34,7 @@ export type PublishedSnapshot = {
 export type PublishRoute = {
   snapshotId: string;
   output: "page" | "llms.txt" | "llms-full.txt";
+  fileId?: string;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -100,15 +101,19 @@ const writeSnapshotMap = (snapshots: Record<string, PublishedSnapshot>) => {
   window.localStorage.setItem(PUBLISH_STORAGE_KEY, JSON.stringify(latestSnapshots));
 };
 
-export const getPublishRoute = (pathname: string): PublishRoute | null => {
+export const getPublishRoute = (pathname: string, search = ""): PublishRoute | null => {
   const match = pathname.match(/^\/p\/([^/]+)(?:\/(llms\.txt|llms-full\.txt))?\/?$/);
   if (!match) {
     return null;
   }
 
+  const output = (match[2] as PublishRoute["output"] | undefined) ?? "page";
+  const fileId = output === "page" ? new URLSearchParams(search).get("file")?.trim() : undefined;
+
   return {
     snapshotId: decodeURIComponent(match[1]),
-    output: (match[2] as PublishRoute["output"] | undefined) ?? "page",
+    output,
+    ...(fileId ? { fileId } : {}),
   };
 };
 
