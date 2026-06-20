@@ -441,6 +441,13 @@
   background: var(--surface-hover);
 }
 
+.share-modal-primary:disabled {
+  cursor: default;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  opacity: 0.72;
+}
+
 .share-modal-secondary {
   color: #777777;
   background: var(--surface-muted);
@@ -638,109 +645,128 @@
   gap: 10px;
   justify-items: stretch;
   min-width: 0;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--surface-muted);
 }
 
-.publish-output-summary {
+.publish-scope-control {
   display: grid;
-  gap: 2px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
   min-width: 0;
 }
 
-.publish-output-summary > span {
+.publish-scope-control button {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
   color: #555555;
-  font-size: 12px;
-  font-weight: 400;
+  background: #ffffff;
+  text-align: left;
 }
 
-.publish-output-summary > p {
+.publish-scope-control button:hover,
+.publish-scope-control button.active {
+  border-color: #d1d1d1;
+  color: #1f1f1f;
+  background: var(--surface-muted);
+}
+
+.publish-scope-control span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.publish-scope-control small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.publish-scope-summary {
   margin: 0;
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.45;
 }
 
-.publish-actions {
-  gap: 7px;
+.publish-scope-summary.attention {
+  color: #6f5740;
 }
 
-.publish-page-actions {
+.publish-status-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.publish-status-card div {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  min-width: 0;
+}
+
+.publish-status-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.publish-status-card time {
+  flex: 0 0 auto;
+  color: #8a8a8a;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.publish-status-label {
+  color: #1f1f1f;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.publish-scope-actions,
+.publish-management-actions {
+  display: grid;
   gap: 7px;
   min-width: 0;
+}
+
+.publish-scope-actions {
+  grid-template-columns: minmax(0, max-content) minmax(0, max-content);
+}
+
+.publish-management-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.publish-management-actions .share-modal-primary {
+  grid-column: 1 / -1;
 }
 
 .publish-page-link {
   text-decoration: none;
-}
-
-.publish-url-list {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-  width: 100%;
-}
-
-.publish-url-row {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) max-content;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-}
-
-.publish-url-list:not(.publish-output-url-list) .publish-url-row {
-  grid-template-columns: 96px minmax(0, 1fr);
-}
-
-.publish-url-row > span {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.publish-url-row code {
-  display: block;
-  min-width: 0;
-  height: 32px;
-  padding: 8px 9px;
-  overflow: hidden;
-  border-radius: 7px;
-  color: #555555;
-  background: #ffffff;
-  font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 11px;
-  font-weight: 400;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.publish-url-row button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 10px;
-  border-radius: 7px;
-  color: #555555;
-  background: #ffffff;
-  font-size: 12px;
-  font-weight: 400;
-  white-space: nowrap;
-}
-
-.publish-url-row button:hover {
-  color: #1f1f1f;
-  background: var(--surface-hover);
 }
 
 .publish-output-box .share-modal-secondary {
@@ -749,35 +775,6 @@
 
 .publish-output-box .share-modal-secondary:hover {
   background: var(--surface-hover);
-}
-
-.publish-after-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding-top: 4px;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.publish-after-row > span {
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.publish-after-row code {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 9px;
-  border-radius: 7px;
-  color: #555555;
-  background: #ffffff;
-  font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 11px;
-  font-weight: 400;
 }
 
 .share-modal-note {
