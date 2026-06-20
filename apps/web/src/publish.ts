@@ -14,6 +14,8 @@ export type PublishedSnapshot = {
   id: string;
   createdAt: string;
   updatedAt?: string;
+  scope?: PublishScope;
+  ownerName?: string;
   activeFileId: string;
   fileCount: number;
   files: PublishedFile[];
@@ -37,11 +39,36 @@ export type PublishRoute = {
   fileId?: string;
 };
 
+export type PublishScope = "file" | "project";
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+const getFileDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
+
+export const getEmptyPublishFiles = (files: MarkdownFile[]) => files.filter((file) => file.text.trim().length === 0);
+
+export const getEmptyPublishFilesMessage = (files: MarkdownFile[], scope: PublishScope) => {
+  const emptyFiles = getEmptyPublishFiles(files);
+  const firstEmptyFile = emptyFiles[0];
+
+  if (!firstEmptyFile) {
+    return "";
+  }
+
+  const firstTitle = getFileDisplayTitle(firstEmptyFile.title);
+  if (scope === "file" || emptyFiles.length === 1) {
+    return `Add content to ${firstTitle} before publishing.`;
+  }
+
+  const remainingEmptyFileCount = emptyFiles.length - 1;
+  const remainingFileLabel = remainingEmptyFileCount === 1 ? "file" : "files";
+  return `Add content to ${firstTitle} and ${remainingEmptyFileCount} other empty project ${remainingFileLabel} before publishing.`;
+};
+
 type PublishPayload = {
   title?: string;
+  ownerName?: string;
   activeFileId: string;
   files: PublishedFile[];
   commentsByFileId: Record<string, FileComment[]>;
@@ -125,22 +152,28 @@ export const getConfiguredPublishServiceUrl = () => {
 export const createPublishedSnapshot = ({
   id,
   origin,
+  scope,
+  ownerName,
   files,
   activeFileId,
   commentsByFileId,
 }: {
   id: string;
   origin: string;
+  scope?: PublishScope;
+  ownerName?: string;
   files: MarkdownFile[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
 }): PublishedSnapshot => {
-  const payload = createPublishPayload({ files, activeFileId, commentsByFileId });
+  const payload = createPublishPayload({ ownerName, files, activeFileId, commentsByFileId });
   const baseUrl = `${origin}/p/${encodeURIComponent(id)}`;
 
   return {
     id,
     createdAt: new Date().toISOString(),
+    ...(scope ? { scope } : {}),
+    ...(payload.ownerName ? { ownerName: payload.ownerName } : {}),
     activeFileId,
     fileCount: payload.files.length,
     files: payload.files,
@@ -160,6 +193,8 @@ export const createPublishedSnapshot = ({
 export const createServerPublishedSnapshot = async ({
   serviceUrl,
   origin,
+  scope,
+  ownerName,
   files,
   activeFileId,
   commentsByFileId,
@@ -167,13 +202,15 @@ export const createServerPublishedSnapshot = async ({
 }: {
   serviceUrl: string;
   origin: string;
+  scope?: PublishScope;
+  ownerName?: string;
   files: MarkdownFile[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
   fetchImpl?: typeof fetch;
 }): Promise<PublishedSnapshot> => {
   const publishServiceUrl = trimTrailingSlash(serviceUrl);
-  const payload = createPublishPayload({ files, activeFileId, commentsByFileId });
+  const payload = createPublishPayload({ ownerName, files, activeFileId, commentsByFileId });
   const response = await fetchImpl(`${publishServiceUrl}/v1/publishes`, {
     method: "POST",
     headers: {
@@ -199,6 +236,7 @@ export const createServerPublishedSnapshot = async ({
       urls: publish.urls,
     },
     origin,
+    scope,
     ownerToken: publish.ownerToken,
   });
 };
@@ -206,6 +244,8 @@ export const createServerPublishedSnapshot = async ({
 export const republishServerPublishedSnapshot = async ({
   serviceUrl,
   origin,
+  scope,
+  ownerName,
   snapshot,
   files,
   activeFileId,
@@ -214,6 +254,8 @@ export const republishServerPublishedSnapshot = async ({
 }: {
   serviceUrl: string;
   origin: string;
+  scope?: PublishScope;
+  ownerName?: string;
   snapshot: PublishedSnapshot;
   files: MarkdownFile[];
   activeFileId: string;
@@ -225,7 +267,7 @@ export const republishServerPublishedSnapshot = async ({
   }
 
   const publishServiceUrl = trimTrailingSlash(serviceUrl);
-  const payload = createPublishPayload({ files, activeFileId, commentsByFileId });
+  const payload = createPublishPayload({ ownerName, files, activeFileId, commentsByFileId });
   const response = await fetchImpl(`${publishServiceUrl}/v1/publishes/${encodeURIComponent(snapshot.id)}`, {
     method: "PUT",
     headers: {
@@ -250,6 +292,7 @@ export const republishServerPublishedSnapshot = async ({
       urls: updated.urls,
     },
     origin,
+    scope,
     ownerToken: snapshot.ownerToken,
   });
 };
@@ -308,10 +351,12 @@ export const readServerPublishedSnapshot = async ({
 const snapshotFromServicePublish = ({
   publish,
   origin,
+  scope,
   ownerToken,
 }: {
   publish: PublicPublishResponse;
   origin: string;
+  scope?: PublishScope;
   ownerToken?: string;
 }): PublishedSnapshot => {
   const pageUrl = publish.urls.appPage ?? `${origin}/p/${encodeURIComponent(publish.publishId)}`;
@@ -319,6 +364,8 @@ const snapshotFromServicePublish = ({
     id: publish.publishId,
     createdAt: publish.createdAt,
     updatedAt: publish.updatedAt,
+    ...(scope ? { scope } : {}),
+    ...(publish.ownerName ? { ownerName: publish.ownerName } : {}),
     activeFileId: publish.activeFileId,
     fileCount: publish.fileCount,
     files: publish.files,
@@ -363,21 +410,30 @@ export const deletePublishedSnapshot = (snapshotId: string) => {
 };
 
 const createPublishPayload = ({
+  ownerName,
   files,
   activeFileId,
   commentsByFileId,
 }: {
+  ownerName?: string;
   files: MarkdownFile[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
 }): PublishPayload => {
+  const emptyPublishFiles = getEmptyPublishFiles(files);
+  if (emptyPublishFiles.length > 0) {
+    throw new Error(getEmptyPublishFilesMessage(files, "project"));
+  }
+
   const activeFile = files.find((file) => file.id === activeFileId) ?? files[0];
   const publishActiveFileId = activeFile?.id ?? activeFileId;
   const snapshotFiles = files.map(toPublishedFile);
   const snapshotComments = toPublishedComments(snapshotFiles, commentsByFileId);
+  const normalizedOwnerName = ownerName?.trim();
 
   return {
     ...(activeFile?.title ? { title: activeFile.title } : {}),
+    ...(normalizedOwnerName ? { ownerName: normalizedOwnerName } : {}),
     activeFileId: publishActiveFileId,
     files: snapshotFiles,
     commentsByFileId: snapshotComments,
@@ -490,6 +546,7 @@ const validatePublicPublishResponse = (value: unknown): PublicPublishResponse =>
 
   return {
     ...(typeof value.title === "string" ? { title: value.title } : {}),
+    ...(typeof value.ownerName === "string" ? { ownerName: value.ownerName } : {}),
     publishId: requireNonEmptyString(value.publishId, "publishId"),
     createdAt: requireNonEmptyString(value.createdAt, "createdAt"),
     updatedAt: requireNonEmptyString(value.updatedAt, "updatedAt"),

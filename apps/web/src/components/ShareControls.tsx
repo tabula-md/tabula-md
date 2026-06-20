@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Download, ExternalLink, Link, Play, Share2, Square, Trash2, Users, X } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, Link, Play, RefreshCw, Share2, Square, Trash2, Users, X } from "lucide-react";
 import type { ConnectionStatus } from "../collab";
+import type { PublishScope } from "../publish";
 import type { MarkdownFile } from "../workspaceStorage";
 
 type ShareControlsProps = {
@@ -17,22 +18,21 @@ type ShareControlsProps = {
   onCopyShareUrl: () => void;
   onCopyMarkdown: () => void;
   onDownloadMarkdown: () => void;
+  publishScope: PublishScope;
   publishFileCount: number;
+  publishedScope?: PublishScope;
+  publishedFileTitle?: string;
+  publishedFileCount?: number;
   publishedAt?: string;
   publishPageUrl?: string;
-  publishLlmsTxtUrl?: string;
-  publishLlmsFullTxtUrl?: string;
+  publishBlockerMessage?: string;
   canRepublishSnapshot: boolean;
   publishing: boolean;
   unpublishing: boolean;
+  onChangePublishScope: (nextScope: PublishScope) => void;
   onPublishSnapshot: () => void;
   onUnpublishSnapshot: () => void;
-  onCopyLlmsTxt: () => void;
-  onCopyLlmsFullTxt: () => void;
   onCopyPublishPageUrl: () => void;
-  onCopyPublishLlmsTxtUrl: () => void;
-  onCopyPublishLlmsFullTxtUrl: () => void;
-  onDownloadPublishBundle: () => void;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
   onStopSession: () => void;
@@ -85,31 +85,31 @@ export function ShareControls({
   onCopyShareUrl,
   onCopyMarkdown,
   onDownloadMarkdown,
+  publishScope,
   publishFileCount,
+  publishedScope,
+  publishedFileTitle,
+  publishedFileCount,
   publishedAt,
   publishPageUrl,
-  publishLlmsTxtUrl,
-  publishLlmsFullTxtUrl,
+  publishBlockerMessage,
   canRepublishSnapshot,
   publishing,
   unpublishing,
+  onChangePublishScope,
   onPublishSnapshot,
   onUnpublishSnapshot,
-  onCopyLlmsTxt,
-  onCopyLlmsFullTxt,
   onCopyPublishPageUrl,
-  onCopyPublishLlmsTxtUrl,
-  onCopyPublishLlmsFullTxtUrl,
-  onDownloadPublishBundle,
   onChangeUserName,
   onCommitUserName,
   onStopSession,
 }: ShareControlsProps) {
   const [sharePanel, setSharePanel] = useState<SharePanel>("collaborate");
+  const [changingPublishScope, setChangingPublishScope] = useState(false);
   const shareUrl = activeFile?.shareUrl || window.location.href;
   const shareUrlPreview = formatShareUrlPreview(shareUrl);
   const activeFileDisplayTitle = activeFileTitle.replace(/\.(?:md|markdown)$/i, "");
-  const shareModalTitle = sharePanel === "publish" ? "Publish project" : `Share ${activeFileDisplayTitle}`;
+  const shareModalTitle = sharePanel === "publish" ? "Publish" : `Share ${activeFileDisplayTitle}`;
   const lastSnapshotTime = formatRoomTime(activeFile?.lastSnapshotAt);
   const roomIssueMessage =
     activeFile?.lastRecoveryType === "invalid-message" ? (activeFile.lastRecoveryMessage ?? "") : "";
@@ -145,7 +145,43 @@ export function ShareControls({
         : activeStatus === "offline"
           ? "Offline edits stay local until the room reconnects."
           : "";
-  const hasPublishedPage = Boolean(publishPageUrl && publishLlmsTxtUrl && publishLlmsFullTxtUrl);
+  const hasPublishedPage = Boolean(publishPageUrl);
+  const scopeFileLabel = activeFileDisplayTitle || activeFileTitle;
+  const selectedScopeLabel = publishScope === "project" ? "project" : "current page";
+  const publishedScopeLabel = publishedScope === "project" ? "project" : "current-page";
+  const selectedScopeChanged = hasPublishedPage && Boolean(publishedScope) && publishScope !== publishedScope;
+  const publishBlocked = Boolean(publishBlockerMessage);
+  const publishScopeSummary =
+    publishScope === "file"
+      ? `${scopeFileLabel} will be published.`
+      : publishFileCount === 1
+        ? "1 project file will be published."
+        : `${publishFileCount} project files will be published.`;
+  const publishedScopeSummary =
+    publishedScope === "project"
+      ? publishedFileCount === 1
+        ? "Published as a project: 1 file."
+        : `Published as a project: ${publishedFileCount ?? publishFileCount} files.`
+      : `Published as current page: ${publishedFileTitle?.replace(/\.(?:md|markdown)$/i, "") || scopeFileLabel}.`;
+  const publishChangeSummary = selectedScopeChanged
+    ? `This will replace the existing ${publishedScopeLabel} publish with a ${selectedScopeLabel} publish at the same URL.`
+    : hasPublishedPage
+      ? `This updates the existing ${publishedScopeLabel} publish at the same URL.`
+      : publishScopeSummary;
+  const publishSummary = publishBlockerMessage || publishChangeSummary;
+  const publishPrimaryLabel = publishing
+    ? "Publishing..."
+    : !hasPublishedPage
+      ? publishScope === "project"
+        ? "Publish project"
+        : "Publish current page"
+      : selectedScopeChanged
+        ? publishScope === "project"
+          ? "Republish as project"
+          : "Republish as current page"
+        : publishedScope === "project"
+          ? "Update project"
+          : "Update current page";
   const publishedTime = publishedAt
     ? new Intl.DateTimeFormat(undefined, {
         hour: "2-digit",
@@ -158,8 +194,13 @@ export function ShareControls({
   useEffect(() => {
     if (shareOpen) {
       setSharePanel("collaborate");
+      setChangingPublishScope(false);
     }
   }, [activeFile?.id, shareOpen]);
+
+  useEffect(() => {
+    setChangingPublishScope(false);
+  }, [publishPageUrl, publishedScope]);
 
   useEffect(() => {
     if (!shareOpen) {
@@ -184,6 +225,24 @@ export function ShareControls({
     if (confirmed) {
       onStopSession();
     }
+  };
+
+  const showPublishScopePicker = () => {
+    if (publishedScope) {
+      onChangePublishScope(publishedScope);
+    }
+    setChangingPublishScope(true);
+  };
+
+  const hidePublishScopePicker = () => {
+    if (publishedScope) {
+      onChangePublishScope(publishedScope);
+    }
+    setChangingPublishScope(false);
+  };
+
+  const handlePublishSnapshot = () => {
+    void Promise.resolve(onPublishSnapshot()).finally(() => setChangingPublishScope(false));
   };
 
   return (
@@ -350,27 +409,39 @@ export function ShareControls({
                       <Link size={17} />
                     </span>
                     <div>
-                      <h3>Publish project</h3>
-                      <p>Create a public read-only page for this project.</p>
+                      <h3>{hasPublishedPage ? "Published page" : "Publish a public page"}</h3>
+                      <p>
+                        {hasPublishedPage
+                          ? "Manage the read-only page at this URL."
+                          : "Choose what goes live, then create a read-only page."}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="publish-output-box">
-                    <div className="publish-output-summary">
-                      <span>{hasPublishedPage ? "Published" : "Public page"}</span>
-                      <p>
-                        {publishFileCount === 1 ? "1 project file included." : `${publishFileCount} project files included.`}
-                        {publishedTime ? ` Published ${publishedTime}.` : ""}
-                      </p>
-                    </div>
+                  {hasPublishedPage && !changingPublishScope ? (
+                    <div className="publish-output-box publish-management-box">
+                      <div className="publish-status-card">
+                        <div>
+                          <span className="publish-status-label">Published</span>
+                          <p>{publishedScopeSummary}</p>
+                        </div>
+                        {publishedTime && <time>{publishedTime}</time>}
+                      </div>
 
-                    <button className="share-modal-primary" type="button" onClick={onPublishSnapshot} disabled={publishing}>
-                      <Link size={16} />
-                      <span>{publishing ? "Publishing..." : canRepublishSnapshot ? "Update published page" : "Publish"}</span>
-                    </button>
+                      {publishBlockerMessage && <p className="publish-scope-summary attention">{publishBlockerMessage}</p>}
 
-                    {hasPublishedPage && (
-                      <div className="publish-page-actions" aria-label="Published page actions">
+                      <div className="publish-management-actions" aria-label="Published page actions">
+                        {canRepublishSnapshot && (
+                          <button
+                            className="share-modal-primary"
+                            type="button"
+                            onClick={handlePublishSnapshot}
+                            disabled={publishing || publishBlocked}
+                          >
+                            <RefreshCw size={16} />
+                            <span>{publishPrimaryLabel}</span>
+                          </button>
+                        )}
                         <a className="share-modal-secondary publish-page-link" href={publishPageUrl} target="_blank" rel="noreferrer">
                           <ExternalLink size={16} />
                           <span>View page</span>
@@ -380,72 +451,70 @@ export function ShareControls({
                           <span>Copy link</span>
                         </button>
                         {canRepublishSnapshot && (
-                          <button className="share-modal-secondary" type="button" onClick={onUnpublishSnapshot} disabled={unpublishing}>
-                            <Trash2 size={16} />
-                            <span>{unpublishing ? "Unpublishing..." : "Unpublish"}</span>
-                          </button>
+                          <>
+                            <button className="share-modal-secondary" type="button" onClick={showPublishScopePicker}>
+                              <Link size={16} />
+                              <span>Change scope</span>
+                            </button>
+                            <button className="share-modal-secondary" type="button" onClick={onUnpublishSnapshot} disabled={unpublishing}>
+                              <Trash2 size={16} />
+                              <span>{unpublishing ? "Unpublishing..." : "Unpublish"}</span>
+                            </button>
+                          </>
                         )}
                       </div>
-                    )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="publish-scope-control" role="radiogroup" aria-label="Publish scope">
+                        <button
+                          className={publishScope === "file" ? "active" : ""}
+                          type="button"
+                          role="radio"
+                          aria-checked={publishScope === "file"}
+                          onClick={() => onChangePublishScope("file")}
+                        >
+                          <span>Current page</span>
+                          <small>{scopeFileLabel}</small>
+                        </button>
+                        <button
+                          className={publishScope === "project" ? "active" : ""}
+                          type="button"
+                          role="radio"
+                          aria-checked={publishScope === "project"}
+                          onClick={() => onChangePublishScope("project")}
+                        >
+                          <span>Project</span>
+                          <small>{publishFileCount === 1 ? "1 file" : `${publishFileCount} files`}</small>
+                        </button>
+                      </div>
 
-                    {hasPublishedPage && (
-                      <div className="publish-url-list" aria-label="Published URLs">
-                        <div className="publish-url-row">
-                          <span>Public page</span>
-                          <code title={publishPageUrl} data-testid="publish-page-url">
-                            {publishPageUrl}
-                          </code>
+                      <div className="publish-output-box">
+                        <p className={`publish-scope-summary ${publishBlocked || selectedScopeChanged ? "attention" : ""}`}>
+                          {publishSummary}
+                          {!publishBlocked && hasPublishedPage && publishedTime ? ` Published ${publishedTime}.` : ""}
+                        </p>
+
+                        <div className="publish-scope-actions">
+                          <button
+                            className="share-modal-primary"
+                            type="button"
+                            onClick={handlePublishSnapshot}
+                            disabled={publishing || publishBlocked}
+                          >
+                            <Link size={16} />
+                            <span>{publishPrimaryLabel}</span>
+                          </button>
+                          {hasPublishedPage && (
+                            <button className="share-modal-secondary" type="button" onClick={hidePublishScopePicker}>
+                              <X size={16} />
+                              <span>Cancel</span>
+                            </button>
+                          )}
                         </div>
                       </div>
-                    )}
-
-                    <div className="publish-after-row" aria-label="AI-readable outputs included">
-                      <span>AI-readable outputs included</span>
-                      <code>llms.txt</code>
-                      <code>llms-full.txt</code>
-                      <code>bundle.md</code>
-                    </div>
-
-                    <div className="share-modal-actions publish-actions" aria-label="AI-readable output actions">
-                      <button className="share-modal-secondary" type="button" onClick={onCopyLlmsTxt}>
-                        <Copy size={16} />
-                        <span>Copy llms.txt</span>
-                      </button>
-                      <button className="share-modal-secondary" type="button" onClick={onCopyLlmsFullTxt}>
-                        <Copy size={16} />
-                        <span>Copy llms-full.txt</span>
-                      </button>
-                      <button className="share-modal-secondary" type="button" onClick={onDownloadPublishBundle}>
-                        <Download size={16} />
-                        <span>Download bundle</span>
-                      </button>
-                    </div>
-
-                    {hasPublishedPage && (
-                      <div className="publish-url-list publish-output-url-list" aria-label="AI-readable output URLs">
-                        <div className="publish-url-row">
-                          <span>llms.txt</span>
-                          <code title={publishLlmsTxtUrl} data-testid="publish-llms-url">
-                            {publishLlmsTxtUrl}
-                          </code>
-                          <button type="button" onClick={onCopyPublishLlmsTxtUrl}>
-                            <Copy size={15} />
-                            <span>Copy llms.txt URL</span>
-                          </button>
-                        </div>
-                        <div className="publish-url-row">
-                          <span>llms-full.txt</span>
-                          <code title={publishLlmsFullTxtUrl} data-testid="publish-llms-full-url">
-                            {publishLlmsFullTxtUrl}
-                          </code>
-                          <button type="button" onClick={onCopyPublishLlmsFullTxtUrl}>
-                            <Copy size={15} />
-                            <span>Copy llms-full.txt URL</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </>
               )}
             </section>

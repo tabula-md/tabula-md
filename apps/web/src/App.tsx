@@ -24,12 +24,13 @@ import { RightPanel } from "./components/RightPanel";
 import { ShareControls } from "./components/ShareControls";
 import { StatusBar } from "./components/StatusBar";
 import { TopChrome } from "./components/TopChrome";
-import { buildLlmsFullTxt, buildLlmsTxt, buildPublishBundle } from "./agentExports";
 import {
   createPublishedSnapshot,
   createServerPublishedSnapshot,
   deletePublishedSnapshot,
   getConfiguredPublishServiceUrl,
+  getEmptyPublishFiles,
+  getEmptyPublishFilesMessage,
   getPublishRoute,
   readLatestPublishedSnapshot,
   readPublishedSnapshot,
@@ -39,6 +40,7 @@ import {
   unpublishServerPublishedSnapshot,
   type PublishedSnapshot,
   type PublishRoute,
+  type PublishScope,
 } from "./publish";
 import {
   getLineStartOffset,
@@ -51,7 +53,7 @@ import {
 } from "./markdown";
 import type { MarkdownFormatCommand } from "./markdownFormatting";
 import { getShortcutLabels, type ShortcutLabels } from "./keyboardShortcuts";
-import { PRODUCT_NAME, PUBLISH_BUNDLE_FILE_NAME, WORKSPACE_EXPORT_FILE_PREFIX } from "./product";
+import { PRODUCT_NAME, WORKSPACE_EXPORT_FILE_PREFIX } from "./product";
 import { useCollaborationRoom } from "./hooks/useCollaborationRoom";
 import { useFileComments } from "./hooks/useFileComments";
 import { useMarkdownFiles, normalizeMarkdownFileTitle } from "./hooks/useMarkdownFiles";
@@ -344,6 +346,14 @@ const getPublishedFilePageUrl = (pageUrl: string, fileId: string) => {
   return url.toString();
 };
 
+const getPublishedSnapshotScope = (snapshot: PublishedSnapshot | null | undefined): PublishScope | undefined => {
+  if (!snapshot) {
+    return undefined;
+  }
+
+  return snapshot.scope ?? (snapshot.fileCount > 1 ? "project" : "file");
+};
+
 const getKeyboardShortcuts = (shortcutLabels: ShortcutLabels) => [
   { keys: getAppShortcut(shortcutLabels, "N"), action: "New Markdown" },
   { keys: getAppShortcut(shortcutLabels, "O"), action: "Open .md file" },
@@ -630,6 +640,7 @@ function WorkspaceApp() {
   const [activeSelection, setActiveSelection] = useState<LiveSelection | undefined>(undefined);
   const [previewSelection, setPreviewSelection] = useState<PreviewSelectionState | null>(null);
   const [publishedSnapshot, setPublishedSnapshot] = useState<PublishedSnapshot | null>(() => readLatestPublishedSnapshot());
+  const [publishScope, setPublishScope] = useState<PublishScope>("file");
   const [publishing, setPublishing] = useState(false);
   const [unpublishing, setUnpublishing] = useState(false);
   const [toast, setToast] = useState<AppToastState | null>(null);
@@ -717,6 +728,10 @@ function WorkspaceApp() {
   const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
   const renderedPreview = getPreviewBody(parsedMarkdown.body, metadataTitle);
   const shareOpen = topPopover === "share";
+  const publishedScope = getPublishedSnapshotScope(publishedSnapshot);
+  const publishedFileTitle =
+    publishedSnapshot?.files.find((file) => file.id === publishedSnapshot.activeFileId)?.title ??
+    publishedSnapshot?.files[0]?.title;
   const outlineHeadings = useMemo<MarkdownHeading[]>(
     () => getOutlineHeadings(renderedPreview),
     [renderedPreview],
@@ -752,6 +767,13 @@ function WorkspaceApp() {
       setRightPanelView("files");
     }
   }, [activeFile, rightPanelView]);
+
+  useEffect(() => {
+    const currentPublishedScope = getPublishedSnapshotScope(publishedSnapshot);
+    if (currentPublishedScope) {
+      setPublishScope(currentPublishedScope);
+    }
+  }, [publishedSnapshot?.id, publishedSnapshot?.scope, publishedSnapshot?.fileCount]);
 
   useEffect(() => {
     return () => {
@@ -899,15 +921,21 @@ function WorkspaceApp() {
     window.setTimeout(() => setCopiedFileId(null), 1600);
   };
 
-  const getPublishActiveFileId = () => activeFile?.id ?? activeFileId;
+  const getPublishFiles = () => (publishScope === "file" && activeFile ? [activeFile] : files);
 
-  const getPublishLlmsTxt = () => publishedSnapshot?.llmsTxt ?? buildLlmsTxt(files, getPublishActiveFileId());
+  const getPublishCommentsByFileId = (publishFiles: MarkdownFile[]) => {
+    const publishFileIds = new Set(publishFiles.map((file) => file.id));
+    return Object.fromEntries(
+      Object.entries(commentsByFileId).filter(([fileId, comments]) => publishFileIds.has(fileId) && comments.length > 0),
+    );
+  };
 
-  const getPublishLlmsFullTxt = () =>
-    publishedSnapshot?.llmsFullTxt ?? buildLlmsFullTxt(files, getPublishActiveFileId(), commentsByFileId);
-
-  const getPublishBundle = () =>
-    publishedSnapshot?.publishBundle ?? buildPublishBundle(files, getPublishActiveFileId(), commentsByFileId);
+  const getPublishActiveFileId = (publishFiles = getPublishFiles()) => {
+    const requestedActiveFileId = activeFile?.id ?? activeFileId;
+    return publishFiles.some((file) => file.id === requestedActiveFileId)
+      ? requestedActiveFileId
+      : (publishFiles[0]?.id ?? requestedActiveFileId);
+  };
 
   const publishProjectSnapshot = async () => {
     if (publishing) {
@@ -918,6 +946,15 @@ function WorkspaceApp() {
     const isUpdatingPublishedPage = Boolean(
       publishedSnapshot && (publishServiceUrl ? publishedSnapshot.ownerToken : true),
     );
+    const publishFiles = getPublishFiles();
+    const emptyPublishFiles = getEmptyPublishFiles(publishFiles);
+    if (emptyPublishFiles.length > 0) {
+      showToast(getEmptyPublishFilesMessage(publishFiles, publishScope), "error");
+      return;
+    }
+
+    const publishActiveFileId = getPublishActiveFileId(publishFiles);
+    const publishCommentsByFileId = getPublishCommentsByFileId(publishFiles);
     setPublishing(true);
     try {
       const snapshot = publishServiceUrl
@@ -925,25 +962,31 @@ function WorkspaceApp() {
           ? await republishServerPublishedSnapshot({
               serviceUrl: publishServiceUrl,
               origin: window.location.origin,
+              scope: publishScope,
+              ownerName: identity.name,
               snapshot: publishedSnapshot,
-              files,
-              activeFileId: getPublishActiveFileId(),
-              commentsByFileId,
+              files: publishFiles,
+              activeFileId: publishActiveFileId,
+              commentsByFileId: publishCommentsByFileId,
             })
           : await createServerPublishedSnapshot({
               serviceUrl: publishServiceUrl,
               origin: window.location.origin,
-              files,
-              activeFileId: getPublishActiveFileId(),
-              commentsByFileId,
+              scope: publishScope,
+              ownerName: identity.name,
+              files: publishFiles,
+              activeFileId: publishActiveFileId,
+              commentsByFileId: publishCommentsByFileId,
             })
         : {
             ...createPublishedSnapshot({
               id: publishedSnapshot?.id ?? randomId(),
               origin: window.location.origin,
-              files,
-              activeFileId: getPublishActiveFileId(),
-              commentsByFileId,
+              scope: publishScope,
+              ownerName: identity.name,
+              files: publishFiles,
+              activeFileId: publishActiveFileId,
+              commentsByFileId: publishCommentsByFileId,
             }),
             ...(publishedSnapshot ? { createdAt: publishedSnapshot.createdAt, updatedAt: new Date().toISOString() } : {}),
           };
@@ -990,16 +1033,6 @@ function WorkspaceApp() {
     } finally {
       setUnpublishing(false);
     }
-  };
-
-  const copyLlmsTxt = async () => {
-    await navigator.clipboard.writeText(getPublishLlmsTxt());
-    showToast("llms.txt copied.");
-  };
-
-  const copyLlmsFullTxt = async () => {
-    await navigator.clipboard.writeText(getPublishLlmsFullTxt());
-    showToast("llms-full.txt copied.");
   };
 
   const copyPublishedUrl = async (url: string, label: string) => {
@@ -1063,15 +1096,6 @@ function WorkspaceApp() {
 
     downloadTextFile(activeFile.title, activeFile.text, "text/markdown;charset=utf-8");
     showToast("Markdown downloaded.");
-  };
-
-  const downloadPublishBundle = () => {
-    downloadTextFile(
-      PUBLISH_BUNDLE_FILE_NAME,
-      getPublishBundle(),
-      "text/markdown;charset=utf-8",
-    );
-    showToast("Publish bundle downloaded.");
   };
 
   const downloadWorkspace = () => {
@@ -1875,6 +1899,8 @@ function WorkspaceApp() {
   const canManagePublishedPage = Boolean(
     publishedSnapshot && (!publishServiceConfigured || publishedSnapshot.ownerToken),
   );
+  const publishPreviewFiles = publishScope === "file" && activeFile ? [activeFile] : files;
+  const publishBlockerMessage = getEmptyPublishFilesMessage(publishPreviewFiles, publishScope);
   const shareControlsNode = activeFile ? (
     <ShareControls
       activeFile={activeFile}
@@ -1893,28 +1919,23 @@ function WorkspaceApp() {
       onCopyShareUrl={copyShareUrl}
       onCopyMarkdown={copyCurrentMarkdown}
       onDownloadMarkdown={downloadCurrentMarkdownFile}
+      publishScope={publishScope}
       publishFileCount={files.length}
+      publishedScope={publishedScope}
+      publishedFileTitle={publishedFileTitle}
+      publishedFileCount={publishedSnapshot?.fileCount}
       publishedAt={publishedSnapshot?.updatedAt ?? publishedSnapshot?.createdAt}
       publishPageUrl={publishedSnapshot?.urls.page}
-      publishLlmsTxtUrl={publishedSnapshot?.urls.llmsTxt}
-      publishLlmsFullTxtUrl={publishedSnapshot?.urls.llmsFullTxt}
+      publishBlockerMessage={publishBlockerMessage}
       canRepublishSnapshot={canManagePublishedPage}
       publishing={publishing}
       unpublishing={unpublishing}
+      onChangePublishScope={setPublishScope}
       onPublishSnapshot={publishProjectSnapshot}
       onUnpublishSnapshot={unpublishProjectSnapshot}
-      onCopyLlmsTxt={copyLlmsTxt}
-      onCopyLlmsFullTxt={copyLlmsFullTxt}
       onCopyPublishPageUrl={() =>
         publishedSnapshot && copyPublishedUrl(publishedSnapshot.urls.page, "Published page link")
       }
-      onCopyPublishLlmsTxtUrl={() =>
-        publishedSnapshot && copyPublishedUrl(publishedSnapshot.urls.llmsTxt, "llms.txt URL")
-      }
-      onCopyPublishLlmsFullTxtUrl={() =>
-        publishedSnapshot && copyPublishedUrl(publishedSnapshot.urls.llmsFullTxt, "llms-full.txt URL")
-      }
-      onDownloadPublishBundle={downloadPublishBundle}
       onChangeUserName={updateIdentityName}
       onCommitUserName={normalizeIdentityName}
       onStopSession={stopSession}
