@@ -32,7 +32,6 @@ export function evaluateBashCommand(command) {
   const findings = [
     ...findBlockedGraphiteLifecycleCommands(normalized),
     ...findDestructiveGitCommands(normalized),
-    ...findDestructiveShellCommands(normalized),
     ...findShellSourceWrites(normalized),
     ...findAdvisoryGitCommands(normalized)
   ];
@@ -101,7 +100,7 @@ function findBlockedGraphiteLifecycleCommands(command) {
     findings.push(block("`gt push` is a Git passthrough. Publish or update PR-bound work with `gt submit` or `gt submit --stack`."));
   }
 
-  if (/\bgit\s+merge\b/.test(command)) {
+  if (hasGitSubcommand(command, "merge")) {
     findings.push(block("Use Graphite restack/sync flows for PR-bound branches instead of raw `git merge`."));
   }
 
@@ -134,6 +133,11 @@ function hasGtSubcommand(command, subcommand) {
   return pattern.test(command);
 }
 
+function hasGitSubcommand(command, subcommand) {
+  const pattern = new RegExp(`(?:^|[\\n;&|])\\s*git\\s+${escapeRegExp(subcommand)}(?:\\s|$)`);
+  return pattern.test(command);
+}
+
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -151,16 +155,6 @@ function findDestructiveGitCommands(command) {
 
   if (/\bgit\s+clean\s+-[^\n;|&\s]*[fd][^\n;|&\s]*/.test(command)) {
     findings.push(block("`git clean` can delete untracked work. Do not run it unless the human operator explicitly asked for cleanup."));
-  }
-
-  return findings;
-}
-
-function findDestructiveShellCommands(command) {
-  const findings = [];
-
-  if (/(?:^|[\s;|&])rm\s+-[^\n;|&\s]*r[^\n;|&\s]*f[^\n;|&\s]*(?:\s|$)/.test(command) || /(?:^|[\s;|&])rm\s+-[^\n;|&\s]*f[^\n;|&\s]*r[^\n;|&\s]*(?:\s|$)/.test(command)) {
-    findings.push(block("`rm -rf` can delete user work. Do not run it unless the human operator explicitly asked for that exact cleanup."));
   }
 
   return findings;

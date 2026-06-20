@@ -25,16 +25,32 @@ than permissive OKF consumer conformance, especially for broken internal links.
 
 ## Workflow
 
+- [Operating model](workflow/operating-model.md) - which tool owns public
+  intake, maintainer tracking, PR lifecycle, review records, and local history.
+- [Agent contract](workflow/agent-contract.md) - how coding agents should
+  execute, clarify, or challenge repository-owner instructions.
+- [Start of work](workflow/start-of-work.md) - how to begin local work,
+  PR-bound work, diagnostics, and post-merge cleanup.
+- [Command ownership](workflow/command-ownership.md) - which lifecycle commands
+  belong to Graphite, GitHub metadata tooling, or local Git.
+- [Linear tracking](workflow/linear-tracking.md) - when accepted maintainer work
+  needs Linear context, states, and labels.
 - [Graphite PR lifecycle](workflow/graphite-pr-lifecycle.md) - how PR-bound work
   moves from trunk to Graphite review and back to trunk.
 - [Agent session provenance](workflow/agent-session-provenance.md) - how agent
   tool and session metadata should appear on PRs.
+- [PR review artifacts](workflow/pr-review-artifacts.md) - how title, body,
+  validation, risk, evidence, labels, and Linear linkage should support review.
+- [Validation standard](workflow/validation-standard.md) - how validation scope
+  should follow changed files, risk, and handoff mode.
 - [Codex hooks](workflow/codex-hooks.md) - how repo-local Codex guardrails
   support command policy, validation reminders, and Graphite handoff.
 - [Vertical slice strategy](workflow/vertical-slice-strategy.md) - when to use a
   thin end-to-end tracer bullet instead of horizontal layers.
 - [Graphite stack shape](workflow/graphite-stack-shape.md) - how to split,
   fold, reorder, and review stacked PRs.
+- [Merge cleanup](workflow/merge-cleanup.md) - what happens after a PR or stack
+  is merged, including Graphite temporary branches and Linear state.
 
 ## Architecture
 
