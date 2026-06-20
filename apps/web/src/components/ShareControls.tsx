@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Download, Link, Play, Share2, Square, Trash2, Users, X } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, Link, Play, Share2, Square, Trash2, Users, X } from "lucide-react";
 import type { ConnectionStatus } from "../collab";
 import type { MarkdownFile } from "../workspaceStorage";
 
@@ -145,7 +145,7 @@ export function ShareControls({
         : activeStatus === "offline"
           ? "Offline edits stay local until the room reconnects."
           : "";
-  const hasPublishedSnapshot = Boolean(publishPageUrl && publishLlmsTxtUrl && publishLlmsFullTxtUrl);
+  const hasPublishedPage = Boolean(publishPageUrl && publishLlmsTxtUrl && publishLlmsFullTxtUrl);
   const publishedTime = publishedAt
     ? new Intl.DateTimeFormat(undefined, {
         hour: "2-digit",
@@ -351,13 +351,13 @@ export function ShareControls({
                     </span>
                     <div>
                       <h3>Publish project</h3>
-                      <p>Create a read-only page with agent-readable endpoints.</p>
+                      <p>Create a public read-only page for this project.</p>
                     </div>
                   </div>
 
                   <div className="publish-output-box">
                     <div className="publish-output-summary">
-                      <span>{hasPublishedSnapshot ? "Published snapshot" : "Project snapshot"}</span>
+                      <span>{hasPublishedPage ? "Published" : "Public page"}</span>
                       <p>
                         {publishFileCount === 1 ? "1 project file included." : `${publishFileCount} project files included.`}
                         {publishedTime ? ` Published ${publishedTime}.` : ""}
@@ -366,21 +366,63 @@ export function ShareControls({
 
                     <button className="share-modal-primary" type="button" onClick={onPublishSnapshot} disabled={publishing}>
                       <Link size={16} />
-                      <span>{publishing ? "Publishing..." : canRepublishSnapshot ? "Republish snapshot" : "Publish snapshot"}</span>
+                      <span>{publishing ? "Publishing..." : canRepublishSnapshot ? "Update published page" : "Publish"}</span>
                     </button>
 
-                    {hasPublishedSnapshot && (
+                    {hasPublishedPage && (
+                      <div className="publish-page-actions" aria-label="Published page actions">
+                        <a className="share-modal-secondary publish-page-link" href={publishPageUrl} target="_blank" rel="noreferrer">
+                          <ExternalLink size={16} />
+                          <span>View page</span>
+                        </a>
+                        <button className="share-modal-secondary" type="button" onClick={onCopyPublishPageUrl}>
+                          <Copy size={16} />
+                          <span>Copy link</span>
+                        </button>
+                        {canRepublishSnapshot && (
+                          <button className="share-modal-secondary" type="button" onClick={onUnpublishSnapshot} disabled={unpublishing}>
+                            <Trash2 size={16} />
+                            <span>{unpublishing ? "Unpublishing..." : "Unpublish"}</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {hasPublishedPage && (
                       <div className="publish-url-list" aria-label="Published URLs">
                         <div className="publish-url-row">
-                          <span>Page</span>
+                          <span>Public page</span>
                           <code title={publishPageUrl} data-testid="publish-page-url">
                             {publishPageUrl}
                           </code>
-                          <button type="button" onClick={onCopyPublishPageUrl}>
-                            <Copy size={15} />
-                            <span>Copy page URL</span>
-                          </button>
                         </div>
+                      </div>
+                    )}
+
+                    <div className="publish-after-row" aria-label="AI-readable outputs included">
+                      <span>AI-readable outputs included</span>
+                      <code>llms.txt</code>
+                      <code>llms-full.txt</code>
+                      <code>bundle.md</code>
+                    </div>
+
+                    <div className="share-modal-actions publish-actions" aria-label="AI-readable output actions">
+                      <button className="share-modal-secondary" type="button" onClick={onCopyLlmsTxt}>
+                        <Copy size={16} />
+                        <span>Copy llms.txt</span>
+                      </button>
+                      <button className="share-modal-secondary" type="button" onClick={onCopyLlmsFullTxt}>
+                        <Copy size={16} />
+                        <span>Copy llms-full.txt</span>
+                      </button>
+                      <button className="share-modal-secondary" type="button" onClick={onDownloadPublishBundle}>
+                        <Download size={16} />
+                        <span>Download bundle</span>
+                      </button>
+                    </div>
+
+                    {hasPublishedPage && (
+                      <div className="publish-url-list publish-output-url-list" aria-label="AI-readable output URLs">
                         <div className="publish-url-row">
                           <span>llms.txt</span>
                           <code title={publishLlmsTxtUrl} data-testid="publish-llms-url">
@@ -403,33 +445,6 @@ export function ShareControls({
                         </div>
                       </div>
                     )}
-
-                    <div className="share-modal-actions publish-actions">
-                      <button className="share-modal-secondary" type="button" onClick={onCopyLlmsTxt}>
-                        <Copy size={16} />
-                        <span>Copy llms.txt</span>
-                      </button>
-                      <button className="share-modal-secondary" type="button" onClick={onCopyLlmsFullTxt}>
-                        <Copy size={16} />
-                        <span>Copy llms-full.txt</span>
-                      </button>
-                      <button className="share-modal-secondary" type="button" onClick={onDownloadPublishBundle}>
-                        <Download size={16} />
-                        <span>Download bundle</span>
-                      </button>
-                      {canRepublishSnapshot && (
-                        <button className="share-modal-secondary" type="button" onClick={onUnpublishSnapshot} disabled={unpublishing}>
-                          <Trash2 size={16} />
-                          <span>{unpublishing ? "Unpublishing..." : "Unpublish"}</span>
-                        </button>
-                      )}
-                    </div>
-                    <div className="publish-after-row" aria-label="Publish outputs">
-                      <span>Outputs</span>
-                      <code>llms.txt</code>
-                      <code>llms-full.txt</code>
-                      <code>bundle.md</code>
-                    </div>
                   </div>
                 </>
               )}
