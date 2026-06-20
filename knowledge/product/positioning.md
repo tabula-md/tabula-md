@@ -7,13 +7,13 @@ tags: [product, positioning, users]
 
 # Positioning
 
-Tabula.md is the fastest way for teams to create and share Markdown documents
-they use with AI agents.
+Tabula.md is the fastest way for teams to create, share, and publish Markdown
+documents they use with people and AI agents.
 
 # Core Promise
 
-Open the app and write. Preview it for humans. Share it for co-editing. Use the
-same file as agent context.
+Open the app and write. Preview it for humans. Share it for co-editing. Publish
+it as a public read-only page when the work needs a stable URL.
 
 # Primary Users
 
@@ -26,11 +26,11 @@ same file as agent context.
 
 # Differentiation
 
-- Link-first collaboration for agent-first Markdown documents.
+- Link-first collaboration for Markdown documents.
 - Markdown-native writing and preview instead of rich-text with export.
 - Frontmatter-aware preview for agent-readable metadata.
-- Document-level Markdown copy plus publish-level `llms.txt` and
-  `llms-full.txt`.
+- Public read-only pages with `llms.txt` and `llms-full.txt` included
+  automatically for AI-readable context.
 - A minimal room/document surface instead of a dashboard-first SaaS surface.
 
 # Not Now

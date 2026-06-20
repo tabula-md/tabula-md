@@ -18,6 +18,7 @@ live collaboration is experimental and will continue to evolve before a stable
 - Preview GitHub Flavored Markdown.
 - Keep project context close with files, outline, and comments panels.
 - Open shareable live sessions when collaboration is needed.
+- Publish public read-only pages with AI-readable outputs included automatically.
 - Preserve Markdown as the source of truth.
 
 ## Run

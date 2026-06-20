@@ -37,15 +37,17 @@ connecting, live, reconnecting, offline, or token-failed.
 
 # Publish
 
-Publish creates a read-only snapshot, separate from the live room. The human URL
-is `/p/:publishId`; agent-readable outputs are `/p/:publishId/llms.txt` and
-`/p/:publishId/llms-full.txt`. Republish keeps the same publish URL and updates
-only when the user explicitly republishes.
+Publish creates a public read-only page, separate from the live room. The human
+URL is `/p/:publishId`; AI-readable outputs are included automatically at
+`/p/:publishId/llms.txt` and `/p/:publishId/llms-full.txt`. Updating the
+published page keeps the same publish URL and changes the public page only when
+the user explicitly updates it.
 
-# Copy And Agent Handoff
+# Copy And AI Context
 
 The current document should have an obvious raw Markdown copy path. Room-wide
-handoff belongs in Publish outputs, not in a separate heavy panel.
+AI context belongs as included Publish outputs, not in a separate heavy panel or
+as the primary reason to publish.
 
 # Failure Recovery
 
