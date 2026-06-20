@@ -338,6 +338,12 @@ description: Reusable workflow that an AI agent can invoke.
 
 const getAppShortcut = ({ primary, alternate }: ShortcutLabels, key: string) => `${primary} + ${alternate} + ${key}`;
 
+const getPublishedFilePageUrl = (pageUrl: string, fileId: string) => {
+  const url = new URL(pageUrl, window.location.origin);
+  url.searchParams.set("file", fileId);
+  return url.toString();
+};
+
 const getKeyboardShortcuts = (shortcutLabels: ShortcutLabels) => [
   { keys: getAppShortcut(shortcutLabels, "N"), action: "New Markdown" },
   { keys: getAppShortcut(shortcutLabels, "O"), action: "Open .md file" },
@@ -437,21 +443,29 @@ function PublishedSnapshotView({
   status?: "loading" | "ready" | "missing" | "error";
   errorMessage?: string;
 }) {
+  const activeFile =
+    snapshot?.files.find((file) => file.id === route.fileId) ??
+    snapshot?.files.find((file) => file.id === snapshot.activeFileId) ??
+    snapshot?.files[0];
+  const parsedMarkdown = parseFrontmatter(activeFile?.text ?? "");
+  const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
+  const pageTitle = metadataTitle || activeFile?.title || "Published page";
+
   useEffect(() => {
     document.title = snapshot
-      ? `Published ${snapshot.files[0]?.title ?? PRODUCT_NAME}`
+      ? `${pageTitle} - ${PRODUCT_NAME}`
       : status === "loading"
-        ? "Loading published snapshot"
-        : "Published snapshot not found";
-  }, [snapshot, status]);
+        ? "Loading published page"
+        : "Published page not found";
+  }, [pageTitle, snapshot, status]);
 
   if (!snapshot) {
     const headline =
       status === "loading"
-        ? "Loading published snapshot."
+        ? "Loading published page."
         : status === "error"
-          ? "Unable to load published snapshot."
-          : "Published snapshot not found.";
+          ? "Unable to load published page."
+          : "Published page not found.";
     return (
       <main className="published-page published-missing">
         <section className="published-shell">
@@ -464,7 +478,6 @@ function PublishedSnapshotView({
     );
   }
 
-  const activeFile = snapshot.files.find((file) => file.id === snapshot.activeFileId) ?? snapshot.files[0];
   const textOutput = route.output === "llms.txt" ? snapshot.llmsTxt : route.output === "llms-full.txt" ? snapshot.llmsFullTxt : "";
 
   if (route.output !== "page") {
@@ -475,8 +488,6 @@ function PublishedSnapshotView({
     );
   }
 
-  const parsedMarkdown = parseFrontmatter(activeFile?.text ?? "");
-  const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
   const renderedPreview = getPreviewBody(parsedMarkdown.body, metadataTitle);
 
   return (
@@ -485,7 +496,7 @@ function PublishedSnapshotView({
         <header className="published-header">
           <div>
             <p>{PRODUCT_NAME}</p>
-            <h1>{metadataTitle || activeFile?.title || "Published snapshot"}</h1>
+            <h1>{pageTitle}</h1>
           </div>
           <nav aria-label="Published outputs">
             <a href={snapshot.urls.llmsTxt}>llms.txt</a>
@@ -496,7 +507,12 @@ function PublishedSnapshotView({
         <aside className="published-file-list" aria-label="Published files">
           <span>{snapshot.fileCount === 1 ? "1 file" : `${snapshot.fileCount} files`}</span>
           {snapshot.files.map((file) => (
-            <a className={file.id === activeFile?.id ? "active" : ""} href={snapshot.urls.page} key={file.id}>
+            <a
+              aria-current={file.id === activeFile?.id ? "page" : undefined}
+              className={file.id === activeFile?.id ? "active" : ""}
+              href={getPublishedFilePageUrl(snapshot.urls.page, file.id)}
+              key={file.id}
+            >
               {file.title}
             </a>
           ))}
@@ -2180,7 +2196,7 @@ function WorkspaceApp() {
 }
 
 function App() {
-  const publishRoute = getPublishRoute(window.location.pathname);
+  const publishRoute = getPublishRoute(window.location.pathname, window.location.search);
   if (publishRoute) {
     return <PublishedSnapshotRoute route={publishRoute} />;
   }

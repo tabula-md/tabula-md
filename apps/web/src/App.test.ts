@@ -840,7 +840,16 @@ Start here.`,
 
   it("parses publish routes for page and agent outputs", () => {
     expect(getPublishRoute("/p/snapshot-1")).toEqual({ snapshotId: "snapshot-1", output: "page" });
+    expect(getPublishRoute("/p/snapshot-1", "?file=prd")).toEqual({
+      snapshotId: "snapshot-1",
+      output: "page",
+      fileId: "prd",
+    });
     expect(getPublishRoute("/p/snapshot-1/llms.txt")).toEqual({ snapshotId: "snapshot-1", output: "llms.txt" });
+    expect(getPublishRoute("/p/snapshot-1/llms.txt", "?file=prd")).toEqual({
+      snapshotId: "snapshot-1",
+      output: "llms.txt",
+    });
     expect(getPublishRoute("/p/snapshot-1/llms-full.txt")).toEqual({
       snapshotId: "snapshot-1",
       output: "llms-full.txt",
