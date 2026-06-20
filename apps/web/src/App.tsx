@@ -915,11 +915,13 @@ function WorkspaceApp() {
     }
 
     const publishServiceUrl = getConfiguredPublishServiceUrl();
-    const isRepublishing = Boolean(publishServiceUrl && publishedSnapshot?.ownerToken);
+    const isUpdatingPublishedPage = Boolean(
+      publishedSnapshot && (publishServiceUrl ? publishedSnapshot.ownerToken : true),
+    );
     setPublishing(true);
     try {
       const snapshot = publishServiceUrl
-        ? isRepublishing && publishedSnapshot
+        ? isUpdatingPublishedPage && publishedSnapshot?.ownerToken
           ? await republishServerPublishedSnapshot({
               serviceUrl: publishServiceUrl,
               origin: window.location.origin,
@@ -935,16 +937,19 @@ function WorkspaceApp() {
               activeFileId: getPublishActiveFileId(),
               commentsByFileId,
             })
-        : createPublishedSnapshot({
-            id: randomId(),
-            origin: window.location.origin,
-            files,
-            activeFileId: getPublishActiveFileId(),
-            commentsByFileId,
-          });
+        : {
+            ...createPublishedSnapshot({
+              id: publishedSnapshot?.id ?? randomId(),
+              origin: window.location.origin,
+              files,
+              activeFileId: getPublishActiveFileId(),
+              commentsByFileId,
+            }),
+            ...(publishedSnapshot ? { createdAt: publishedSnapshot.createdAt, updatedAt: new Date().toISOString() } : {}),
+          };
       savePublishedSnapshot(snapshot);
       setPublishedSnapshot(snapshot);
-      showToast(isRepublishing ? "Snapshot republished." : "Snapshot published.");
+      showToast(isUpdatingPublishedPage ? "Published page updated." : "Page published.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Publish failed.");
     } finally {
@@ -953,17 +958,17 @@ function WorkspaceApp() {
   };
 
   const unpublishProjectSnapshot = async () => {
-    if (unpublishing || !publishedSnapshot?.ownerToken) {
+    if (unpublishing || !publishedSnapshot) {
       return;
     }
 
     const publishServiceUrl = getConfiguredPublishServiceUrl();
-    if (!publishServiceUrl) {
+    if (publishServiceUrl && !publishedSnapshot.ownerToken) {
       return;
     }
 
     const confirmed = window.confirm(
-      "Unpublish this snapshot?\n\nThis removes the public page and agent-readable endpoints. The local project stays unchanged.",
+      "Unpublish this page?\n\nThis removes the public page and included AI-readable outputs. The local project stays unchanged.",
     );
     if (!confirmed) {
       return;
@@ -971,13 +976,15 @@ function WorkspaceApp() {
 
     setUnpublishing(true);
     try {
-      await unpublishServerPublishedSnapshot({
-        serviceUrl: publishServiceUrl,
-        snapshot: publishedSnapshot,
-      });
+      if (publishServiceUrl) {
+        await unpublishServerPublishedSnapshot({
+          serviceUrl: publishServiceUrl,
+          snapshot: publishedSnapshot,
+        });
+      }
       deletePublishedSnapshot(publishedSnapshot.id);
       setPublishedSnapshot(null);
-      showToast("Snapshot unpublished.");
+      showToast("Page unpublished.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Publish failed.");
     } finally {
@@ -1864,6 +1871,10 @@ function WorkspaceApp() {
     />
   );
 
+  const publishServiceConfigured = Boolean(getConfiguredPublishServiceUrl());
+  const canManagePublishedPage = Boolean(
+    publishedSnapshot && (!publishServiceConfigured || publishedSnapshot.ownerToken),
+  );
   const shareControlsNode = activeFile ? (
     <ShareControls
       activeFile={activeFile}
@@ -1883,11 +1894,11 @@ function WorkspaceApp() {
       onCopyMarkdown={copyCurrentMarkdown}
       onDownloadMarkdown={downloadCurrentMarkdownFile}
       publishFileCount={files.length}
-      publishedAt={publishedSnapshot?.createdAt}
+      publishedAt={publishedSnapshot?.updatedAt ?? publishedSnapshot?.createdAt}
       publishPageUrl={publishedSnapshot?.urls.page}
       publishLlmsTxtUrl={publishedSnapshot?.urls.llmsTxt}
       publishLlmsFullTxtUrl={publishedSnapshot?.urls.llmsFullTxt}
-      canRepublishSnapshot={Boolean(publishedSnapshot?.ownerToken)}
+      canRepublishSnapshot={canManagePublishedPage}
       publishing={publishing}
       unpublishing={unpublishing}
       onPublishSnapshot={publishProjectSnapshot}
@@ -1895,7 +1906,7 @@ function WorkspaceApp() {
       onCopyLlmsTxt={copyLlmsTxt}
       onCopyLlmsFullTxt={copyLlmsFullTxt}
       onCopyPublishPageUrl={() =>
-        publishedSnapshot && copyPublishedUrl(publishedSnapshot.urls.page, "Publish URL")
+        publishedSnapshot && copyPublishedUrl(publishedSnapshot.urls.page, "Published page link")
       }
       onCopyPublishLlmsTxtUrl={() =>
         publishedSnapshot && copyPublishedUrl(publishedSnapshot.urls.llmsTxt, "llms.txt URL")
