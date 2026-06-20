@@ -25,6 +25,7 @@ experience feels complete enough to use and publicly explain.
 - Improve Write and Preview modes.
 - Make tabs and document identity clearer.
 - Tighten Share and Live collaboration UX.
+- Keep Publish framed as a public page flow with AI-readable outputs included.
 - Decide comments, libraries, and version history product shape.
 
 # Infrastructure Track
