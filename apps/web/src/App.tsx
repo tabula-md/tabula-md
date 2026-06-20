@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { ChevronDown, ChevronRight, File as FileIcon, Folder as FolderIcon } from "lucide-react";
 import { COMMENT_ANCHOR_CONTEXT_LENGTH, getCommentRangeInText } from "./commentAnchors";
 import { type Collaborator, type ConnectionStatus, type LiveSelection } from "./collab";
 import { AppToast } from "./components/AppToast";
@@ -23,6 +24,7 @@ import { MarkdownPreview, type MarkdownPreviewCommentAnchor } from "./components
 import { RightPanel } from "./components/RightPanel";
 import { ShareControls } from "./components/ShareControls";
 import { StatusBar } from "./components/StatusBar";
+import { TabulaLogo } from "./components/TabulaLogo";
 import { TopChrome } from "./components/TopChrome";
 import {
   createPublishedSnapshot,
@@ -346,12 +348,33 @@ const getPublishedFilePageUrl = (pageUrl: string, fileId: string) => {
   return url.toString();
 };
 
+const getFileDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
+
+const getPublishedProjectLabel = (ownerName?: string) => {
+  const name = ownerName?.trim();
+  if (!name) {
+    return "Published Project";
+  }
+
+  return name.endsWith("s") ? `${name}' Project` : `${name}'s Project`;
+};
+
 const getPublishedSnapshotScope = (snapshot: PublishedSnapshot | null | undefined): PublishScope | undefined => {
   if (!snapshot) {
     return undefined;
   }
 
   return snapshot.scope ?? (snapshot.fileCount > 1 ? "project" : "file");
+};
+
+const getPublishedDocumentTitle = (body: string, metadataTitle?: string) => {
+  const frontmatterTitle = metadataTitle?.trim();
+  if (frontmatterTitle) {
+    return frontmatterTitle;
+  }
+
+  const heading = body.match(/^#{1,2}\s+(.+?)\s*#*\s*$/m)?.[1]?.trim();
+  return heading || "Published page";
 };
 
 const getKeyboardShortcuts = (shortcutLabels: ShortcutLabels) => [
@@ -459,7 +482,8 @@ function PublishedSnapshotView({
     snapshot?.files[0];
   const parsedMarkdown = parseFrontmatter(activeFile?.text ?? "");
   const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
-  const pageTitle = metadataTitle || activeFile?.title || "Published page";
+  const pageTitle = getPublishedDocumentTitle(parsedMarkdown.body, metadataTitle);
+  const [publishedFilesCollapsed, setPublishedFilesCollapsed] = useState(false);
 
   useEffect(() => {
     document.title = snapshot
@@ -498,42 +522,70 @@ function PublishedSnapshotView({
     );
   }
 
-  const renderedPreview = getPreviewBody(parsedMarkdown.body, metadataTitle);
+  const renderedPreview = getPreviewBody(parsedMarkdown.body);
+  const hasMultipleFiles = snapshot.fileCount > 1;
+  const publishedProjectLabel = getPublishedProjectLabel(snapshot.ownerName);
+  const renderPublishedFileLinks = (keyPrefix: string) =>
+    snapshot.files.map((file) => (
+      <a
+        aria-current={file.id === activeFile?.id ? "page" : undefined}
+        className={file.id === activeFile?.id ? "active" : ""}
+        href={getPublishedFilePageUrl(snapshot.urls.page, file.id)}
+        key={`${keyPrefix}-${file.id}`}
+        title={file.title}
+      >
+        <FileIcon size={16} />
+        <span>{getFileDisplayTitle(file.title)}</span>
+      </a>
+    ));
 
   return (
     <main className="published-page">
-      <section className="published-shell">
-        <header className="published-header">
-          <div>
-            <p>{PRODUCT_NAME}</p>
-            <h1>{pageTitle}</h1>
+      <section className={`published-shell ${hasMultipleFiles ? "published-project-shell" : ""}`}>
+        <div className="published-reader-shell">
+          {hasMultipleFiles && (
+            <aside className="published-file-list published-contents-sidebar" aria-label="Project contents">
+              <button
+                className="published-file-tree-root"
+                type="button"
+                aria-expanded={!publishedFilesCollapsed}
+                onClick={() => setPublishedFilesCollapsed((nextCollapsed) => !nextCollapsed)}
+              >
+                {publishedFilesCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                <FolderIcon size={15} />
+                <span>{publishedProjectLabel}</span>
+              </button>
+              {!publishedFilesCollapsed && (
+                <nav aria-label="Published project files">{renderPublishedFileLinks("sidebar")}</nav>
+              )}
+            </aside>
+          )}
+
+          <div className="published-article-shell">
+            {hasMultipleFiles && (
+              <details className="published-contents-menu">
+                <summary>
+                  <FolderIcon size={15} />
+                  <span>{publishedProjectLabel}</span>
+                </summary>
+                <nav aria-label="Published project files">{renderPublishedFileLinks("menu")}</nav>
+              </details>
+            )}
+
+            <article className="preview-surface published-document">
+              <MarkdownPreview
+                metadata={[]}
+                body={renderedPreview.body}
+              />
+            </article>
+
+            <footer className={`published-footer ${hasMultipleFiles ? "project" : ""}`}>
+              <span>Powered by</span>
+              <TabulaLogo className="published-footer-logo" size={16} />
+              <span>Tabula</span>
+            </footer>
           </div>
-          <nav aria-label="Published outputs">
-            <a href={snapshot.urls.llmsTxt}>llms.txt</a>
-            <a href={snapshot.urls.llmsFullTxt}>llms-full.txt</a>
-          </nav>
-        </header>
-
-        <aside className="published-file-list" aria-label="Published files">
-          <span>{snapshot.fileCount === 1 ? "1 file" : `${snapshot.fileCount} files`}</span>
-          {snapshot.files.map((file) => (
-            <a
-              aria-current={file.id === activeFile?.id ? "page" : undefined}
-              className={file.id === activeFile?.id ? "active" : ""}
-              href={getPublishedFilePageUrl(snapshot.urls.page, file.id)}
-              key={file.id}
-            >
-              {file.title}
-            </a>
-          ))}
-        </aside>
-
-        <article className="published-document">
-          <MarkdownPreview
-            metadata={parsedMarkdown.attributes}
-            body={renderedPreview.body}
-          />
-        </article>
+        </div>
       </section>
     </main>
   );
