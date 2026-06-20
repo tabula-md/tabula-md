@@ -1,5 +1,5 @@
 export const id = "publish";
-export const description = "Server-backed publish snapshots, public artifacts, and vanity page restore.";
+export const description = "Server-backed published pages, included AI-readable outputs, and vanity page restore.";
 export const requiresPublishService = true;
 
 export async function run(ctx) {
@@ -15,10 +15,17 @@ export async function run(ctx) {
       };
     });
 
+    await page.getByTitle("New tab").click();
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText("# Secondary public file\n\nSecondary published file marker.");
+    await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
+
     await page.locator(".share-trigger").click();
     await page.getByRole("tab", { name: "Publish" }).click();
-    await page.getByRole("button", { name: "Publish snapshot" }).click();
-    await waitForText(page.locator(".app-toast"), "Snapshot published.");
+    expect((await page.getByText("AI-readable outputs included", { exact: true }).count()) === 1, "Publish should treat AI outputs as included.");
+    expect((await page.getByText("Project snapshot").count()) === 0, "Publish should not lead with snapshot language.");
+    await page.getByRole("button", { name: "Publish" }).click();
+    await waitForText(page.locator(".app-toast"), "Page published.");
 
     const publishedUrls = await page.evaluate(() => ({
       page: document.querySelector('[data-testid="publish-page-url"]')?.textContent?.trim() ?? "",
@@ -42,6 +49,8 @@ export async function run(ctx) {
     expect(publicSnapshot.publishId === publishId, "Public snapshot JSON should match the published id.");
     expect(!("ownerToken" in publicSnapshot), "Public snapshot JSON must not expose the owner token.");
     expect(publicSnapshot.files?.[0]?.text?.includes("Tabula.md"), "Public snapshot JSON should include Markdown text.");
+    const secondaryFile = publicSnapshot.files?.find((file) => file.text?.includes("Secondary published file marker."));
+    expect(Boolean(secondaryFile?.id && secondaryFile?.title), "Public snapshot JSON should include the secondary Markdown file.");
 
     const servicePageResponse = await fetch(servicePageUrl);
     const servicePageHtml = await servicePageResponse.text();
@@ -67,38 +76,38 @@ export async function run(ctx) {
 
     await page.locator(".share-trigger").click();
     await page.getByRole("tab", { name: "Publish" }).click();
-    await page.getByRole("button", { name: "Republish snapshot" }).click();
-    await waitForText(page.locator(".app-toast"), "Snapshot republished.");
+    await page.getByRole("button", { name: "Update published page" }).click();
+    await waitForText(page.locator(".app-toast"), "Published page updated.");
 
     const republishedUrls = await page.evaluate(() => ({
       page: document.querySelector('[data-testid="publish-page-url"]')?.textContent?.trim() ?? "",
       llms: document.querySelector('[data-testid="publish-llms-url"]')?.textContent?.trim() ?? "",
       llmsFull: document.querySelector('[data-testid="publish-llms-full-url"]')?.textContent?.trim() ?? "",
     }));
-    expect(republishedUrls.page === publishedUrls.page, "Republish should keep the same app vanity URL.");
-    expect(republishedUrls.llms === publishedUrls.llms, "Republish should keep the same llms.txt URL.");
-    expect(republishedUrls.llmsFull === publishedUrls.llmsFull, "Republish should keep the same llms-full.txt URL.");
+    expect(republishedUrls.page === publishedUrls.page, "Updating the published page should keep the same app vanity URL.");
+    expect(republishedUrls.llms === publishedUrls.llms, "Updating the published page should keep the same llms.txt URL.");
+    expect(republishedUrls.llmsFull === publishedUrls.llmsFull, "Updating the published page should keep the same llms-full.txt URL.");
 
     const republishedJsonResponse = await fetch(`${publishUrl}/v1/publishes/${publishId}`);
     const republishedSnapshot = await republishedJsonResponse.json();
     expect(
       republishedSnapshot.files?.[0]?.text?.includes("Republished marker for server-backed publish."),
-      "Republish should update the public snapshot content.",
+      "Updating the published page should update the public content.",
     );
     const republishedLlmsFull = await (await fetch(republishedUrls.llmsFull)).text();
     expect(
       republishedLlmsFull.includes("Republished marker for server-backed publish."),
-      "Republish should update the service llms-full.txt output.",
+      "Updating the published page should update the service llms-full.txt output.",
     );
 
-    let failedRepublishRequests = 0;
+    let failedUpdateRequests = 0;
     await page.route(`${publishUrl}/v1/publishes/${publishId}`, async (route) => {
       if (route.request().method() !== "PUT") {
         await route.fallback();
         return;
       }
 
-      failedRepublishRequests += 1;
+      failedUpdateRequests += 1;
       await route.fulfill({
         status: 500,
         contentType: "application/json",
@@ -109,29 +118,29 @@ export async function run(ctx) {
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
-    await page.keyboard.insertText("# Failed Republish\n\nThis edit should remain local after a failed republish.");
+    await page.keyboard.insertText("# Failed Update\n\nThis edit should remain local after a failed published-page update.");
     await page.locator(".share-trigger").click();
     await page.getByRole("tab", { name: "Publish" }).click();
-    await page.getByRole("button", { name: "Republish snapshot" }).click();
+    await page.getByRole("button", { name: "Update published page" }).click();
     await waitForText(page.locator(".app-toast"), "Publish failed: Simulated failure");
-    expect(failedRepublishRequests === 1, "Failed republish smoke should intercept one PUT request.");
+    expect(failedUpdateRequests === 1, "Failed published-page update smoke should intercept one PUT request.");
     const failedUrls = await page.evaluate(() => ({
       page: document.querySelector('[data-testid="publish-page-url"]')?.textContent?.trim() ?? "",
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
     }));
-    expect(failedUrls.page === publishedUrls.page, "Failed republish should preserve the previous published URL.");
+    expect(failedUrls.page === publishedUrls.page, "Failed published-page update should preserve the previous published URL.");
     expect(
-      failedUrls.editorText.includes("This edit should remain local after a failed republish."),
-      "Failed republish should preserve the user's local document edit.",
+      failedUrls.editorText.includes("This edit should remain local after a failed published-page update."),
+      "Failed published-page update should preserve the user's local document edit.",
     );
     const afterFailureSnapshot = await (await fetch(`${publishUrl}/v1/publishes/${publishId}`)).json();
     expect(
       afterFailureSnapshot.files?.[0]?.text?.includes("Republished marker for server-backed publish."),
-      "Failed republish should not overwrite the stored publish snapshot.",
+      "Failed published-page update should not overwrite the stored publish snapshot.",
     );
     expect(
-      !afterFailureSnapshot.files?.[0]?.text?.includes("This edit should remain local after a failed republish."),
-      "Failed republish should not publish failed-attempt content.",
+      !afterFailureSnapshot.files?.[0]?.text?.includes("This edit should remain local after a failed published-page update."),
+      "Failed published-page update should not publish failed-attempt content.",
     );
     await page.unroute(`${publishUrl}/v1/publishes/${publishId}`);
 
@@ -150,9 +159,24 @@ export async function run(ctx) {
       );
       expect(
         !((await vanityPage.locator(".published-document").textContent()) ?? "").includes(
-          "This edit should remain local after a failed republish.",
+          "This edit should remain local after a failed published-page update.",
         ),
         "Vanity page should not render failed-attempt Markdown.",
+      );
+      await vanityPage.getByRole("link", { name: secondaryFile.title }).click();
+      await vanityPage.waitForFunction((fileId) => new URL(window.location.href).searchParams.get("file") === fileId, secondaryFile.id);
+      expect(
+        (await vanityPage.locator(".published-header h1").textContent())?.trim() === secondaryFile.title,
+        "Vanity page heading should match the selected published file.",
+      );
+      expect((await vanityPage.title()).includes(secondaryFile.title), "Vanity page title should match the selected published file.");
+      expect(
+        (await vanityPage.locator(".published-file-list a.active").textContent())?.trim() === secondaryFile.title,
+        "Vanity page file list should mark the selected file active.",
+      );
+      expect(
+        (await vanityPage.locator(".published-document").textContent())?.includes("Secondary published file marker."),
+        "Vanity page should render the selected file content.",
       );
     } finally {
       await publicContext.close();
@@ -173,7 +197,7 @@ export async function run(ctx) {
       });
     });
     page.once("dialog", async (dialog) => {
-      expect(dialog.message().includes("Unpublish this snapshot?"), "Unpublish should ask for confirmation.");
+      expect(dialog.message().includes("Unpublish this page?"), "Unpublish should ask for confirmation.");
       await dialog.accept();
     });
     await page.getByRole("button", { name: "Unpublish" }).click();
@@ -184,12 +208,13 @@ export async function run(ctx) {
     await page.unroute(`${publishUrl}/v1/publishes/${publishId}`);
 
     page.once("dialog", async (dialog) => {
-      expect(dialog.message().includes("agent-readable endpoints"), "Unpublish confirmation should describe public endpoints.");
+      expect(dialog.message().includes("AI-readable outputs"), "Unpublish confirmation should describe included AI outputs.");
       await dialog.accept();
     });
     await page.getByRole("button", { name: "Unpublish" }).click();
-    await waitForText(page.locator(".app-toast"), "Snapshot unpublished.");
+    await waitForText(page.locator(".app-toast"), "Page unpublished.");
     expect((await page.locator('[aria-label="Published URLs"]').count()) === 0, "Unpublish should clear published URLs from the UI.");
+    expect((await page.locator('[aria-label="AI-readable output URLs"]').count()) === 0, "Unpublish should clear secondary output URLs from the UI.");
     expect((await fetch(`${publishUrl}/v1/publishes/${publishId}`)).status === 404, "Unpublish should remove public JSON.");
     expect((await fetch(servicePageUrl)).status === 404, "Unpublish should remove the public HTML page.");
     expect((await fetch(publishedUrls.llms)).status === 404, "Unpublish should remove llms.txt.");

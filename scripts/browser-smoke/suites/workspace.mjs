@@ -231,7 +231,7 @@ export async function run(ctx) {
       "Collaborate should not ask for a name before a session exists.",
     );
     expect((await page.getByText("Send the Markdown file").count()) === 0, "Send actions should not be expanded by default.");
-    expect((await page.getByText("Publish snapshot").count()) === 0, "Publish actions should not be expanded by default.");
+    expect((await page.getByText("Publish project").count()) === 0, "Publish actions should not be expanded by default.");
     expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish actions should not be on the default Share panel.");
     const collaborateShareHeight = await getShareModalHeight();
 
@@ -242,15 +242,19 @@ export async function run(ctx) {
     const sendShareHeight = await getShareModalHeight();
 
     await page.getByRole("tab", { name: "Publish" }).click();
-    expect((await page.getByText("Publish snapshot").count()) > 0, "Share modal should expose publish outputs.");
-    expect((await page.getByText("Project snapshot").count()) > 0, "Publish should expose project-scoped outputs.");
+    expect((await page.getByText("Create a public read-only page for this project.").count()) > 0, "Publish should read as web publishing.");
+    expect((await page.getByText("Public page").count()) > 0, "Publish should lead with the public page.");
     expect((await page.getByText("Publish project").count()) > 0, "Publish tab should name the project-level scope.");
     expect((await page.locator('input[aria-label="Publish URL"]').count()) === 0, "Publish should not show a URL before publishing.");
     expect((await page.locator('[aria-label="Published URLs"]').count()) === 0, "Publish should not show endpoint URLs before publishing.");
+    expect((await page.locator('[aria-label="AI-readable output URLs"]').count()) === 0, "Publish should not show endpoint URLs before publishing.");
     expect((await page.getByText("No public URL exists yet.").count()) === 0, "Publish should not show an unavailable URL placeholder.");
     expect((await page.getByText("llms.txt", { exact: true }).count()) > 0, "Publish should include llms.txt output.");
     expect((await page.getByText("llms-full.txt", { exact: true }).count()) > 0, "Publish should include llms-full.txt output.");
-    expect((await page.getByText("Outputs", { exact: true }).count()) === 1, "Publish should keep output names compact.");
+    expect((await page.getByText("AI-readable outputs included", { exact: true }).count()) === 1, "Publish should show AI outputs as included.");
+    expect((await page.getByText("Outputs", { exact: true }).count()) === 0, "Publish should not make outputs the headline.");
+    expect((await page.getByText("Project snapshot").count()) === 0, "Publish should not use snapshot-first language.");
+    expect((await page.getByText("Published snapshot").count()) === 0, "Publish should not use snapshot-first language.");
     expect((await page.getByText("Publishing will index this file.").count()) === 0, "Publish should not repeat the file scope.");
     expect((await page.getByText(/open files/i).count()) === 0, "Share publish should not describe an open-file bundle.");
     expect((await page.getByText("For people").count()) === 0, "Publish should not split people and agent features.");
@@ -263,7 +267,8 @@ export async function run(ctx) {
     expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 1, "Publish should copy llms.txt.");
     expect((await page.getByRole("button", { name: "Copy llms-full.txt" }).count()) === 1, "Publish should copy llms-full.txt.");
     expect((await page.getByRole("button", { name: "Download bundle" }).count()) === 1, "Publish should download the generated bundle.");
-    expect((await page.getByRole("button", { name: "Publish snapshot" }).count()) === 1, "Publish should create a snapshot explicitly.");
+    expect((await page.getByRole("button", { name: "Publish" }).count()) === 1, "Publish should create a public page.");
+    expect((await page.getByRole("button", { name: "Publish snapshot" }).count()) === 0, "Publish should not expose snapshots as the action.");
     expect((await page.getByText("Publish not configured").count()) === 0, "Publish should not be a disabled placeholder.");
     expect((await page.locator(".publish-popover").count()) === 0, "Publish should not use a separate popover.");
     expect((await page.locator(".live-popover").count()) === 0, "Live should not use a separate popover.");
@@ -338,8 +343,8 @@ export async function run(ctx) {
     expect(downloadedBundle.suggestedFilename() === "tabula-publish-bundle.md", "Publish bundle should download as a Markdown file.");
     await waitForText(page.locator(".app-toast"), "Publish bundle downloaded.");
 
-    await page.getByRole("button", { name: "Publish snapshot" }).click();
-    await waitForText(page.locator(".app-toast"), "Snapshot published.");
+    await page.getByRole("button", { name: "Publish" }).click();
+    await waitForText(page.locator(".app-toast"), "Page published.");
     const publishedUrls = await page.evaluate(() => ({
       page: document.querySelector('[data-testid="publish-page-url"]')?.textContent?.trim() ?? "",
       llms: document.querySelector('[data-testid="publish-llms-url"]')?.textContent?.trim() ?? "",
@@ -366,11 +371,16 @@ export async function run(ctx) {
         "Publishing should create an llms-full.txt endpoint URL.",
       );
     }
-    await page.getByRole("button", { name: "Copy page URL" }).click();
+    expect((await page.getByRole("link", { name: "View page" }).count()) === 1, "Published state should offer a page view action.");
+    expect((await page.getByRole("button", { name: "Copy link" }).count()) === 1, "Published state should offer a page copy action.");
+    expect((await page.locator('[aria-label="AI-readable output URLs"]').count()) === 1, "Published state should keep AI URLs secondary.");
+    expect((await page.getByRole("button", { name: "Update published page" }).count()) === 1, "Published state should update the page.");
+    expect((await page.getByRole("button", { name: "Republish snapshot" }).count()) === 0, "Published state should not use snapshot update copy.");
+    await page.getByRole("button", { name: "Copy link" }).click();
     await page.waitForTimeout(80);
     expect(
       (await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "")) === publishedUrls.page,
-      "Copy page URL should copy the published page URL.",
+      "Copy link should copy the published page URL.",
     );
     await page.getByRole("button", { name: "Copy llms.txt URL" }).click();
     await page.waitForTimeout(80);
