@@ -701,7 +701,7 @@ function PublishedSnapshotView({
 
             <article className="preview-surface published-document">
               <MarkdownPreview
-                metadata={[]}
+                metadata={parsedMarkdown.attributes}
                 body={renderedPreview.body}
               />
             </article>
@@ -908,7 +908,7 @@ function WorkspaceApp() {
   const selectedWordCount = selectedMarkdownText ? selectedMarkdownText.split(/\s+/).length : 0;
   const parsedMarkdown = parseFrontmatter(text);
   const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
-  const renderedPreview = getPreviewBody(parsedMarkdown.body, metadataTitle);
+  const renderedPreview = getPreviewBody(parsedMarkdown.body);
   const shareOpen = topPopover === "share";
   const publishedScope = getPublishedSnapshotScope(publishedSnapshot);
   const publishedFileTitle =

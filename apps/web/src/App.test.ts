@@ -99,10 +99,10 @@ Body`;
     });
   });
 
-  it("removes duplicated H1 from preview body when it matches frontmatter title", () => {
-    expect(getPreviewBody("\n# Diagnose\n\nA discipline.", "Diagnose")).toEqual({
-      body: "A discipline.",
-      sourceLineOffset: 3,
+  it("keeps the Markdown body unchanged even when frontmatter title matches the first H1", () => {
+    expect(getPreviewBody("\n# Diagnose\n\nA discipline.")).toEqual({
+      body: "\n# Diagnose\n\nA discipline.",
+      sourceLineOffset: 0,
     });
   });
 });

@@ -26,7 +26,13 @@ export async function run(ctx) {
 
     await page.locator('.tab-item[data-file-name="Untitled.md"] .tab-select-button').click();
     await focusMarkdownEditor(page);
-    await page.keyboard.insertText("# Secondary public file\n\nSecondary published file marker.");
+    await page.keyboard.insertText(`---
+description: Secondary public context
+---
+
+# Secondary public file
+
+Secondary published file marker.`);
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
 
     await page.locator(".share-trigger").click();
@@ -351,6 +357,12 @@ export async function run(ctx) {
       expect(
         (await vanityPage.locator(".published-document h1").textContent())?.trim() === "Secondary public file",
         "Vanity page heading should come from the selected file body.",
+      );
+      expect(
+        ((await vanityPage.locator(".published-document .frontmatter-view").textContent()) ?? "").includes(
+          "Secondary public context",
+        ),
+        "Vanity page should render frontmatter with the same Preview surface contract.",
       );
       expect((await vanityPage.title()).includes("Secondary public file"), "Vanity page title should match the selected file body.");
       expect(
