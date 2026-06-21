@@ -210,7 +210,14 @@
 
 .file-shell {
   --document-reading-max: 860px;
-  --document-body-width: min(860px, calc(100% - 72px));
+  --document-safe-left: 0px;
+  --document-safe-right: 0px;
+  --document-safe-width: max(260px, calc(100% - var(--document-safe-left) - var(--document-safe-right)));
+  --document-horizontal-gutter: 72px;
+  --document-body-width: min(
+    var(--document-reading-max),
+    max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
+  );
   --document-chrome-width: var(--document-body-width);
   --document-lane-margin-left: auto;
   --document-lane-margin-right: auto;
@@ -230,24 +237,37 @@
 
 .file-shell.reading-narrow {
   --document-reading-max: 700px;
-  --document-body-width: min(var(--document-reading-max), calc(100% - 72px));
+  --document-body-width: min(
+    var(--document-reading-max),
+    max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
+  );
 }
 
 .file-shell.reading-wide {
   --document-reading-max: 1080px;
-  --document-body-width: min(var(--document-reading-max), calc(100% - 72px));
+  --document-body-width: min(
+    var(--document-reading-max),
+    max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
+  );
 }
 
 .file-shell.view-split {
-  --document-body-width: min(var(--document-reading-max), calc(100% - 72px));
+  --document-body-width: min(
+    var(--document-reading-max),
+    max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
+  );
   --document-chrome-width: var(--document-body-width);
 }
 
 .main-panel.left-panel-open .file-shell {
+  --document-safe-left: var(--left-panel-width);
+  --document-lane-margin-left: calc(var(--left-panel-width) + 36px);
   --split-safe-left: var(--left-panel-width);
 }
 
 .main-panel.right-panel-open .file-shell {
+  --document-safe-right: var(--right-panel-width);
+  --document-lane-margin-right: calc(var(--right-panel-width) + 36px);
   --split-safe-right: var(--right-panel-width);
 }
 
@@ -576,7 +596,8 @@
   position: relative;
   width: var(--document-body-width);
   min-height: 100%;
-  margin: 0 auto;
+  margin-left: var(--document-lane-margin-left);
+  margin-right: var(--document-lane-margin-right);
   padding: 18px 0 40px;
   background: #ffffff;
 }
@@ -657,11 +678,12 @@
 
 @container (max-width: 860px) {
   .file-shell.view-split {
-    --document-body-width: min(var(--document-reading-max), calc(100% - 56px));
-    --document-chrome-width: min(
+    --document-horizontal-gutter: 56px;
+    --document-body-width: min(
       var(--document-reading-max),
-      calc(100% - 56px)
+      max(240px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
     );
+    --document-chrome-width: var(--document-body-width);
   }
 
   .editor-control-row.split {
@@ -703,14 +725,12 @@
 @media (max-width: 1160px) {
   .main-panel.left-panel-open:not(.right-panel-open) .file-shell.view-split,
   .main-panel.right-panel-open:not(.left-panel-open) .file-shell.view-split {
+    --document-horizontal-gutter: 24px;
     --document-body-width: min(
       var(--document-reading-max),
-      calc(100% - var(--split-safe-left) - var(--split-safe-right) - 24px)
+      max(240px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
     );
-    --document-chrome-width: min(
-      var(--document-reading-max),
-      calc(100% - var(--split-safe-left) - var(--split-safe-right) - 24px)
-    );
+    --document-chrome-width: var(--document-body-width);
   }
 
   .main-panel.left-panel-open:not(.right-panel-open) .workspace.split,
@@ -743,14 +763,12 @@
 
 @media (max-width: 1460px) {
   .main-panel.left-panel-open.right-panel-open .file-shell.view-split {
+    --document-horizontal-gutter: 24px;
     --document-body-width: min(
       var(--document-reading-max),
-      calc(100% - var(--split-safe-left) - var(--split-safe-right) - 24px)
+      max(240px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
     );
-    --document-chrome-width: min(
-      var(--document-reading-max),
-      calc(100% - var(--split-safe-left) - var(--split-safe-right) - 24px)
-    );
+    --document-chrome-width: var(--document-body-width);
   }
 
   .main-panel.left-panel-open.right-panel-open .workspace.split {
@@ -911,12 +929,14 @@
   .file-shell,
   .file-shell.reading-narrow:not(.view-split),
   .file-shell.reading-wide:not(.view-split) {
-    --document-body-width: min(680px, calc(100% - 56px));
+    --document-horizontal-gutter: 56px;
+    --document-body-width: min(680px, max(220px, calc(var(--document-safe-width) - var(--document-horizontal-gutter))));
     --document-chrome-width: var(--document-body-width);
   }
 
   .file-shell.view-split {
-    --document-body-width: min(680px, calc(100% - var(--split-safe-left) - var(--split-safe-right) - 56px));
+    --document-horizontal-gutter: 56px;
+    --document-body-width: min(680px, max(220px, calc(var(--document-safe-width) - var(--document-horizontal-gutter))));
     --document-chrome-width: var(--document-body-width);
   }
 
@@ -994,12 +1014,14 @@
   .file-shell,
   .file-shell.reading-narrow:not(.view-split),
   .file-shell.reading-wide:not(.view-split) {
-    --document-body-width: calc(100% - 36px);
+    --document-horizontal-gutter: 36px;
+    --document-body-width: max(200px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)));
     --document-chrome-width: var(--document-body-width);
   }
 
   .file-shell.view-split {
-    --document-body-width: calc(100% - var(--split-safe-left) - var(--split-safe-right) - 36px);
+    --document-horizontal-gutter: 36px;
+    --document-body-width: max(200px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)));
     --document-chrome-width: var(--document-body-width);
   }
 
@@ -1010,8 +1032,8 @@
   .editor-control-row.reading-wide:not(.split),
   .editor-control-row.split {
     width: var(--document-chrome-width);
-    margin-left: auto;
-    margin-right: auto;
+    margin-left: var(--document-lane-margin-left);
+    margin-right: var(--document-lane-margin-right);
   }
 
   .workspace.split .editor-surface,

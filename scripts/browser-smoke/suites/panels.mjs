@@ -93,6 +93,24 @@ export async function run(ctx) {
       statusVisible: Boolean(document.querySelector(".file-status-bar")),
       panelToggleCount: document.querySelectorAll(".top-panel-toggle").length,
       bottomPanelCount: document.querySelectorAll(".bottom-panel").length,
+      laneGeometry: (() => {
+        const rectOf = (selector) => {
+          const rect = document.querySelector(selector)?.getBoundingClientRect();
+          return rect
+            ? {
+                left: Math.round(rect.left),
+                right: Math.round(rect.right),
+                width: Math.round(rect.width),
+              }
+            : null;
+        };
+        return {
+          leftPanel: rectOf(".left-sidebar"),
+          toolbar: rectOf(".editor-control-row"),
+          preview: rectOf(".preview-surface"),
+          status: rectOf(".file-status-bar"),
+        };
+      })(),
     }));
     // P7: left panel tools/templates/handoff product contract.
     expect(workbenchPanels.topLeftMenuCount === 0, "Workspace tools should move out of the old top-left chrome.");
@@ -182,6 +200,18 @@ export async function run(ctx) {
     expect(workbenchPanels.statusVisible, "The document status bar should remain visible.");
     expect(workbenchPanels.panelToggleCount === 1, "Top chrome should expose the remaining closed-panel toggle while Workspace Tools is open.");
     expect(workbenchPanels.bottomPanelCount === 0, "The bottom panel should stay removed; status bar owns bottom status.");
+    expect(
+      workbenchPanels.laneGeometry.preview.left >= workbenchPanels.laneGeometry.leftPanel.right + 20,
+      "Workspace Tools should not clip the preview document lane.",
+    );
+    expect(
+      workbenchPanels.laneGeometry.toolbar.left >= workbenchPanels.laneGeometry.leftPanel.right + 20,
+      "Workspace Tools should not clip the editor toolbar lane.",
+    );
+    expect(
+      workbenchPanels.laneGeometry.status.left >= workbenchPanels.laneGeometry.leftPanel.right + 20,
+      "Workspace Tools should not clip the status bar lane.",
+    );
 
     const supportActions = page.locator(".left-panel-footer");
     await supportActions.getByRole("button", { name: "Preferences", exact: true }).click();
@@ -347,6 +377,24 @@ export async function run(ctx) {
           fontWeight: style.fontWeight,
         };
       }),
+      laneGeometry: (() => {
+        const rectOf = (selector) => {
+          const rect = document.querySelector(selector)?.getBoundingClientRect();
+          return rect
+            ? {
+                left: Math.round(rect.left),
+                right: Math.round(rect.right),
+                width: Math.round(rect.width),
+              }
+            : null;
+        };
+        return {
+          rightPanel: rectOf(".right-panel"),
+          toolbar: rectOf(".editor-control-row"),
+          preview: rectOf(".preview-surface"),
+          status: rectOf(".file-status-bar"),
+        };
+      })(),
       bodyText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(rightPanelState.open, "The right panel should open from the top-right panel toggle.");
@@ -384,6 +432,57 @@ export async function run(ctx) {
       !rightPanelState.fileRows.some((row) => /\b(Preview|Edit|Split|Local|Live|Offline|Connecting)\b/.test(row.text)),
       "Right Files rows should not repeat mode/status labels.",
     );
+    expect(
+      rightPanelState.laneGeometry.preview.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
+      "Project Context should not clip the preview document lane.",
+    );
+    expect(
+      rightPanelState.laneGeometry.toolbar.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
+      "Project Context should not clip the editor toolbar lane.",
+    );
+    expect(
+      rightPanelState.laneGeometry.status.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
+      "Project Context should not clip the status bar lane.",
+    );
+
+    await openProjectMenu(page);
+    const dualPanelGeometry = await page.evaluate(() => {
+      const rectOf = (selector) => {
+        const rect = document.querySelector(selector)?.getBoundingClientRect();
+        return rect
+          ? {
+              left: Math.round(rect.left),
+              right: Math.round(rect.right),
+              width: Math.round(rect.width),
+            }
+          : null;
+      };
+      return {
+        leftPanel: rectOf(".left-sidebar"),
+        rightPanel: rectOf(".right-panel"),
+        toolbar: rectOf(".editor-control-row"),
+        preview: rectOf(".preview-surface"),
+        status: rectOf(".file-status-bar"),
+      };
+    });
+    expect(
+      dualPanelGeometry.preview.left >= dualPanelGeometry.leftPanel.right + 20 &&
+        dualPanelGeometry.preview.right <= dualPanelGeometry.rightPanel.left - 20 &&
+        dualPanelGeometry.preview.width >= 240,
+      "The preview document lane should remain readable when both side panels are open.",
+    );
+    expect(
+      dualPanelGeometry.toolbar.left >= dualPanelGeometry.leftPanel.right + 20 &&
+        dualPanelGeometry.toolbar.right <= dualPanelGeometry.rightPanel.left - 20,
+      "The editor toolbar lane should remain between both side panels.",
+    );
+    expect(
+      dualPanelGeometry.status.left >= dualPanelGeometry.leftPanel.right + 20 &&
+        dualPanelGeometry.status.right <= dualPanelGeometry.rightPanel.left - 20,
+      "The status bar lane should remain between both side panels.",
+    );
+    await page.getByRole("button", { name: "Close Workspace Tools", exact: true }).click();
+    await page.waitForTimeout(80);
 
     await page.getByRole("searchbox", { name: "Search files" }).fill("read");
     await page.keyboard.press("Escape");
