@@ -23,6 +23,13 @@ type LeftSidebarProps = {
   view: LeftPanelView;
   preferencesOpen: boolean;
   hasActiveFile: boolean;
+  activeFileTitle: string;
+  activeFileWordCount: number;
+  canPublishActiveFile: boolean;
+  activeFilePublishBlockerMessage: string;
+  projectFileCount: number;
+  projectEmptyFileCount: number;
+  projectPublishBlockerMessage: string;
   storageVersion: number;
   templates: LibraryItem[];
   newFileViewMode: FileViewMode;
@@ -55,6 +62,13 @@ export function LeftSidebar({
   view,
   preferencesOpen,
   hasActiveFile,
+  activeFileTitle,
+  activeFileWordCount,
+  canPublishActiveFile,
+  activeFilePublishBlockerMessage,
+  projectFileCount,
+  projectEmptyFileCount,
+  projectPublishBlockerMessage,
   storageVersion,
   templates,
   newFileViewMode,
@@ -120,6 +134,13 @@ export function LeftSidebar({
       <strong>{label}</strong>
     </button>
   );
+  const activeFileWordLabel = activeFileWordCount === 1 ? "1 word" : `${activeFileWordCount} words`;
+  const activeFileReadiness = !hasActiveFile
+    ? "Open a file before publishing."
+    : activeFilePublishBlockerMessage || "Current file is ready to publish.";
+  const projectReadiness =
+    projectPublishBlockerMessage || "Project is ready to publish. Agent-readable endpoints are included.";
+  const projectEmptyLabel = projectEmptyFileCount === 1 ? "1 empty file" : `${projectEmptyFileCount} empty files`;
 
   return (
     <aside className="left-sidebar" aria-label="Workspace Tools">
@@ -203,15 +224,31 @@ export function LeftSidebar({
                   <header className="left-panel-header">
                     <div>
                       <h2>Handoff</h2>
-                      <p>Move the current work to people, agents, or files.</p>
+                      <p>Check readiness, then hand work to people or agents.</p>
                     </div>
                   </header>
+                  <section className="left-handoff-readiness" aria-label="Handoff readiness">
+                    <div className="left-handoff-row">
+                      <span>Current file</span>
+                      <strong>{hasActiveFile ? getFileDisplayTitle(activeFileTitle) : "No file"}</strong>
+                      <small>{hasActiveFile ? activeFileWordLabel : "Open a Markdown file"}</small>
+                    </div>
+                    <div className="left-handoff-row">
+                      <span>Project</span>
+                      <strong>
+                        {projectFileCount} {projectFileCount === 1 ? "file" : "files"}
+                      </strong>
+                      <small>{projectEmptyFileCount > 0 ? projectEmptyLabel : "No empty files"}</small>
+                    </div>
+                    <p className={canPublishActiveFile ? "ready" : "blocked"}>{activeFileReadiness}</p>
+                    <p className={projectPublishBlockerMessage ? "blocked" : "ready"}>{projectReadiness}</p>
+                  </section>
                   <section className="left-workspace-actions" aria-label="Handoff actions">
                     <button type="button" disabled={!hasActiveFile} onClick={onOpenCollaborate}>
                       <Users size={14} />
                       <span>Live collaboration...</span>
                     </button>
-                    <button type="button" disabled={!hasActiveFile} onClick={onOpenPublish}>
+                    <button type="button" disabled={!canPublishActiveFile} onClick={onOpenPublish}>
                       <Link size={14} />
                       <span>Publish...</span>
                     </button>
