@@ -11,5 +11,7 @@ export type KeyboardShortcut = {
 export type LibraryItem = {
   title: string;
   description: string;
+  purpose: string;
+  sections: string[];
   content: string;
 };

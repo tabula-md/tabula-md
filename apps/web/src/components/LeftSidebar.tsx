@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   BookOpen,
   Check,
@@ -94,6 +94,11 @@ export function LeftSidebar({
   onAddTemplate,
 }: LeftSidebarProps) {
   const activeTab = view;
+  const [selectedTemplateTitle, setSelectedTemplateTitle] = useState(() => templates[0]?.title ?? "");
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => template.title === selectedTemplateTitle) ?? templates[0],
+    [selectedTemplateTitle, templates],
+  );
 
   const renderTab = (tabView: "new" | "templates" | "handoff", label: string, icon: ReactNode) => (
     <button
@@ -201,12 +206,13 @@ export function LeftSidebar({
                   <div className="left-library-items" aria-label="Templates">
                     {templates.map((item) => (
                       <button
-                        className="left-library-item"
+                        className={`left-library-item ${selectedTemplate?.title === item.title ? "active" : ""}`}
                         type="button"
                         key={item.title}
-                        aria-label={`Create ${item.title}`}
-                        title={`Create ${item.title}`}
-                        onClick={() => onAddTemplate(item)}
+                        aria-label={getFileDisplayTitle(item.title)}
+                        aria-pressed={selectedTemplate?.title === item.title}
+                        title={item.description}
+                        onClick={() => setSelectedTemplateTitle(item.title)}
                       >
                         <FileText size={14} />
                         <span>
@@ -216,6 +222,26 @@ export function LeftSidebar({
                       </button>
                     ))}
                   </div>
+                  {selectedTemplate && (
+                    <section className="left-template-detail" aria-label="Template details">
+                      <div className="left-template-detail-header">
+                        <FileText size={14} />
+                        <div>
+                          <span>{getFileDisplayTitle(selectedTemplate.title)}</span>
+                          <p>{selectedTemplate.purpose}</p>
+                        </div>
+                      </div>
+                      <div className="left-template-sections" aria-label="Template sections">
+                        {selectedTemplate.sections.map((section) => (
+                          <span key={section}>{section}</span>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => onAddTemplate(selectedTemplate)}>
+                        <FilePlus2 size={14} />
+                        <span>Create {getFileDisplayTitle(selectedTemplate.title)}</span>
+                      </button>
+                    </section>
+                  )}
                 </div>
               )}
 

@@ -295,6 +295,8 @@ const TEMPLATE_ITEMS = [
   {
     title: "PRD.md",
     description: "Problem, scope, users, success criteria.",
+    purpose: "Define what should exist before implementation starts.",
+    sections: ["Problem", "Goals", "Non-goals", "User flow", "Success criteria"],
     content: `---
 title: Product Requirements
 description: Problem, scope, users, and success criteria for the project.
@@ -325,6 +327,8 @@ description: Problem, scope, users, and success criteria for the project.
   {
     title: "DESIGN.md",
     description: "Interface principles and key states.",
+    purpose: "Turn a product direction into interface principles and states.",
+    sections: ["Principles", "Layout", "Key states", "Interaction notes"],
     content: `---
 title: Design Brief
 description: Interface principles, layout, states, and interaction notes.
@@ -354,6 +358,8 @@ description: Interface principles, layout, states, and interaction notes.
   {
     title: "DECISION.md",
     description: "Context, options, tradeoffs, final call.",
+    purpose: "Record why one path was chosen over alternatives.",
+    sections: ["Context", "Options", "Tradeoffs", "Decision", "Follow-up"],
     content: `---
 title: Decision
 description: Context, options, tradeoffs, and the final call.
@@ -383,6 +389,8 @@ description: Context, options, tradeoffs, and the final call.
   {
     title: "RUNBOOK.md",
     description: "Steps, checks, rollback, ownership.",
+    purpose: "Make an operational workflow repeatable and reviewable.",
+    sections: ["When to use", "Steps", "Checks", "Rollback", "Owner"],
     content: `---
 title: Runbook
 description: Operational steps, checks, rollback, and ownership.
@@ -413,6 +421,8 @@ description: Operational steps, checks, rollback, and ownership.
   {
     title: "HANDOFF.md",
     description: "Goal, context, constraints, next steps.",
+    purpose: "Package current context so another person or agent can continue.",
+    sections: ["Goal", "Context", "Constraints", "Current state", "Next steps"],
     content: `---
 title: Handoff
 description: Goal, context, constraints, and next steps.
@@ -442,6 +452,8 @@ description: Goal, context, constraints, and next steps.
   {
     title: "SKILL.md",
     description: "Reusable agent skill contract.",
+    purpose: "Capture a reusable agent workflow with clear inputs and outputs.",
+    sections: ["When to use", "Inputs", "Workflow", "Output"],
     content: `---
 title: Skill
 description: Reusable workflow that an AI agent can invoke.
