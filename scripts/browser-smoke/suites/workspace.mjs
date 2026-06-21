@@ -615,6 +615,7 @@ export async function run(ctx) {
           description: description?.textContent?.trim() ?? "",
           fullTitle: item.getAttribute("title") ?? "",
           ariaLabel: item.getAttribute("aria-label") ?? "",
+          active: item.classList.contains("active"),
           height: Math.round(rect.height),
           borderRadius: window.getComputedStyle(item).borderRadius,
           color: window.getComputedStyle(item).color,
@@ -633,6 +634,13 @@ export async function run(ctx) {
         groupCount: document.querySelectorAll(".left-library-group").length,
         rowCount: rows.length,
         rows,
+        detailTitle: document.querySelector(".left-template-detail-header span")?.textContent?.trim() ?? "",
+        detailPurpose: document.querySelector(".left-template-detail-header p")?.textContent?.trim() ?? "",
+        detailSections: Array.from(document.querySelectorAll(".left-template-sections span")).map((section) =>
+          section.textContent?.trim() ?? "",
+        ),
+        detailCreateButton:
+          document.querySelector(".left-template-detail > button")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
         librariesLinkCount: document.querySelectorAll(".left-library-link").length,
         customTemplateNoteCount: document.querySelectorAll(".left-custom-template-note").length,
         browseLibrariesButtonCount: Array.from(document.querySelectorAll("button")).filter((button) =>
@@ -654,13 +662,27 @@ export async function run(ctx) {
     );
     expect(
       templatesPanel.rows.map((row) => row.fullTitle).join("|") ===
-        "Create PRD.md|Create DESIGN.md|Create DECISION.md|Create RUNBOOK.md|Create HANDOFF.md|Create SKILL.md",
-      "Templates should keep full filenames in title metadata.",
+        "Problem, scope, users, success criteria.|Interface principles and key states.|Context, options, tradeoffs, final call.|Steps, checks, rollback, ownership.|Goal, context, constraints, next steps.|Reusable agent skill contract.",
+      "Template row title metadata should explain when to use the template.",
     );
     expect(
-      templatesPanel.rows.map((row) => row.ariaLabel).join("|") ===
-        "Create PRD.md|Create DESIGN.md|Create DECISION.md|Create RUNBOOK.md|Create HANDOFF.md|Create SKILL.md",
-      "Template row accessible labels should include full filenames.",
+      templatesPanel.rows.map((row) => row.ariaLabel).join("|") === "PRD|DESIGN|DECISION|RUNBOOK|HANDOFF|SKILL",
+      "Template row accessible labels should match the product-facing document names.",
+    );
+    expect(templatesPanel.rows.filter((row) => row.active).length === 1, "One template row should be selected.");
+    expect(templatesPanel.rows[0]?.active, "Templates should select PRD by default.");
+    expect(
+      templatesPanel.detailTitle === "PRD" &&
+        templatesPanel.detailPurpose === "Define what should exist before implementation starts.",
+      "Templates should show a selected-template detail surface before creating a file.",
+    );
+    expect(
+      templatesPanel.detailSections.join("|") === "Problem|Goals|Non-goals|User flow|Success criteria",
+      "Template details should preview the structure that will be created.",
+    );
+    expect(
+      templatesPanel.detailCreateButton === "Create PRD",
+      "Template details should expose the single create action for the selected template.",
     );
     expect(
       !/\b(AGENTS|DECISIONS|Markdown blocks|Frontmatter presets|Checklist snippets|Agent snippets)\b/.test(
@@ -699,12 +721,33 @@ export async function run(ctx) {
     expect(templatesPanel.customTemplateNoteCount === 0, "Templates should not reserve an empty custom-template slot.");
     expect(templatesPanel.browseLibrariesButtonCount === 0, "Browse libraries should not be implemented as a button CTA.");
 
-    await page.getByTitle("Create PRD.md").click();
+    await page.locator('.left-library-item[aria-label="DESIGN"]').click();
+    await page.waitForTimeout(80);
+    const selectedTemplateState = await page.evaluate(() => ({
+      activeRow: document.querySelector(".left-library-item.active strong")?.textContent?.trim() ?? "",
+      detailTitle: document.querySelector(".left-template-detail-header span")?.textContent?.trim() ?? "",
+      detailSections: Array.from(document.querySelectorAll(".left-template-sections span")).map((section) =>
+        section.textContent?.trim() ?? "",
+      ),
+      createButton: document.querySelector(".left-template-detail > button")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    }));
+    expect(
+      selectedTemplateState.activeRow === "DESIGN" &&
+        selectedTemplateState.detailTitle === "DESIGN" &&
+        selectedTemplateState.createButton === "Create DESIGN",
+      "Clicking a template row should select it instead of immediately creating a file.",
+    );
+    expect(
+      selectedTemplateState.detailSections.join("|") === "Principles|Layout|Key states|Interaction notes",
+      "Template details should update when a different standard document is selected.",
+    );
+
+    await page.getByRole("button", { name: "Create DESIGN", exact: true }).click();
     await page.waitForTimeout(120);
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);
-    expect(activeTab?.title === "PRD.md", "Clicking a template row should create and activate that document.");
-    expect(activeTab?.visibleTitle === "PRD", "Created template tabs should still hide the Markdown extension.");
+    expect(activeTab?.title === "DESIGN.md", "Template detail create should create and activate that document.");
+    expect(activeTab?.visibleTitle === "DESIGN", "Created template tabs should still hide the Markdown extension.");
   });
 
   await withPage(browser, "/", async (page) => {
