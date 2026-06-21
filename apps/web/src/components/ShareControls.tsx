@@ -72,6 +72,25 @@ const formatRoomTime = (value?: string) => {
   }).format(date);
 };
 
+const formatPublicUrlPreview = (url?: string) => {
+  if (!url) {
+    return "";
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    const publishId = parsedUrl.pathname.match(/^\/p\/([^/]+)/)?.[1];
+    if (!publishId) {
+      return `${parsedUrl.origin}${parsedUrl.pathname}`;
+    }
+
+    const compactPublishId = publishId.length > 12 ? `${publishId.slice(0, 8)}...` : publishId;
+    return `${parsedUrl.origin}/p/${compactPublishId}`;
+  } catch {
+    return url;
+  }
+};
+
 export function ShareControls({
   activeFile,
   activeFileTitle,
@@ -148,11 +167,37 @@ export function ShareControls({
           ? "Offline edits stay local until the room reconnects."
           : "";
   const hasPublishedPage = Boolean(publishPageUrl);
+  const publishUrlPreview = formatPublicUrlPreview(publishPageUrl);
   const scopeFileLabel = activeFileDisplayTitle || activeFileTitle;
   const selectedScopeLabel = publishScope === "project" ? "project" : "current page";
+  const selectedScopeTitle = publishScope === "project" ? "Project" : "Current page";
   const publishedScopeLabel = publishedScope === "project" ? "project" : "current-page";
+  const publishedScopeTitle = publishedScope === "project" ? "Project" : "Current page";
   const selectedScopeChanged = hasPublishedPage && Boolean(publishedScope) && publishScope !== publishedScope;
   const publishBlocked = Boolean(publishBlockerMessage);
+  const publishFileCountLabel =
+    publishScope === "file"
+      ? "1 file"
+      : publishFileCount === 1
+        ? "1 file"
+        : `${publishFileCount} files`;
+  const publishedFileCountLabel =
+    publishedScope === "project"
+      ? publishedFileCount === 1
+        ? "1 file"
+        : `${publishedFileCount ?? publishFileCount} files`
+      : "1 file";
+  const publishReadinessLabel = publishBlocked
+    ? "Needs content"
+    : selectedScopeChanged
+      ? "Ready to replace"
+      : hasPublishedPage
+        ? "Ready to update"
+        : "Ready to publish";
+  const publishResultSummary =
+    publishScope === "file"
+      ? "Creates one read-only public URL for this page."
+      : "Creates one read-only public URL for this project.";
   const publishScopeSummary =
     publishScope === "file"
       ? `${scopeFileLabel} will be published.`
@@ -423,14 +468,37 @@ export function ShareControls({
                   {hasPublishedPage && !changingPublishScope ? (
                     <div className="publish-output-box publish-management-box">
                       <div className="publish-status-card">
-                        <div>
+                        <div className="publish-status-copy">
+                          <div className="publish-status-topline">
+                            <span className="publish-live-pill">Live</span>
+                            {publishedTime && <time>Last updated {publishedTime}</time>}
+                          </div>
                           <span className="publish-status-label">Published</span>
                           <p>{publishedScopeSummary}</p>
                         </div>
-                        {publishedTime && <time>{publishedTime}</time>}
                       </div>
 
                       {publishBlockerMessage && <p className="publish-scope-summary attention">{publishBlockerMessage}</p>}
+
+                      {publishPageUrl && (
+                        <div className="publish-url-card">
+                          <span>Public URL</span>
+                          <a href={publishPageUrl} target="_blank" rel="noreferrer" title={publishPageUrl}>
+                            {publishUrlPreview || publishPageUrl}
+                          </a>
+                        </div>
+                      )}
+
+                      <div className="publish-detail-grid" aria-label="Published page details">
+                        <div>
+                          <span>Scope</span>
+                          <strong>{publishedScopeTitle}</strong>
+                        </div>
+                        <div>
+                          <span>Files</span>
+                          <strong>{publishedFileCountLabel}</strong>
+                        </div>
+                      </div>
 
                       <div className="publish-management-actions" aria-label="Published page actions">
                         {canRepublishSnapshot && (
@@ -492,10 +560,29 @@ export function ShareControls({
                       </div>
 
                       <div className="publish-output-box">
+                        <div className={`publish-plan-card ${publishBlocked ? "blocked" : "ready"}`}>
+                          <div>
+                            <span>{publishReadinessLabel}</span>
+                            <p>{publishResultSummary}</p>
+                          </div>
+                          <strong>{publishFileCountLabel}</strong>
+                        </div>
+
                         <p className={`publish-scope-summary ${publishBlocked || selectedScopeChanged ? "attention" : ""}`}>
                           {publishSummary}
                           {!publishBlocked && hasPublishedPage && publishedTime ? ` Published ${publishedTime}.` : ""}
                         </p>
+
+                        <div className="publish-detail-grid" aria-label="Publish plan details">
+                          <div>
+                            <span>Scope</span>
+                            <strong>{selectedScopeTitle}</strong>
+                          </div>
+                          <div>
+                            <span>Files</span>
+                            <strong>{publishFileCountLabel}</strong>
+                          </div>
+                        </div>
 
                         <div className="publish-scope-actions">
                           <button

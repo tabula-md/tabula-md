@@ -41,8 +41,27 @@ export async function run(ctx) {
     expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish should hide llms copy actions.");
     expect((await page.getByRole("button", { name: "Download bundle" }).count()) === 0, "Publish should hide bundle download actions.");
     expect((await page.getByText("Project snapshot").count()) === 0, "Publish should not lead with snapshot language.");
+    expect((await page.getByText("Ready to publish", { exact: true }).count()) === 1, "Publish should show pre-publish readiness.");
+    expect(
+      (await page.getByText("Creates one read-only public URL for this page.", { exact: true }).count()) === 1,
+      "Publish should preview the public-page result before publishing.",
+    );
+    expect((await page.getByText("Public URL", { exact: true }).count()) === 0, "Publish should not show a URL before publishing.");
     await page.getByRole("button", { name: "Publish current page" }).click();
     await waitForText(page.locator(".app-toast"), "Page published.");
+    const publishManagement = page.locator(".publish-management-box");
+    expect(
+      (await publishManagement.getByText("Live", { exact: true }).count()) === 1,
+      "Published state should show the public page is live.",
+    );
+    expect(
+      (await publishManagement.getByText("Public URL", { exact: true }).count()) === 1,
+      "Published state should expose the public URL as status information.",
+    );
+    expect(
+      (await publishManagement.getByText("Last updated").count()) === 1,
+      "Published state should show when the page was last updated.",
+    );
     expect(
       (await page.getByText(/Published as current page:/).count()) === 1,
       "Published state should summarize the current published scope.",
@@ -106,6 +125,10 @@ export async function run(ctx) {
     expect(
       (await page.getByText(/replace the existing current-page publish with a project publish/i).count()) === 1,
       "Converting scope should explain that the same URL will be replaced.",
+    );
+    expect(
+      (await page.getByText("Ready to replace", { exact: true }).count()) === 1,
+      "Scope conversion should read as a managed replacement action.",
     );
     await page.getByRole("button", { name: "Republish as project" }).click();
     await waitForText(page.locator(".app-toast"), "Published page updated.");
