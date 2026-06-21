@@ -45,6 +45,12 @@ const RECOVERY_EVENT_TYPES: CollabRecoveryEvent["type"][] = ["reconnected", "sna
 export type FileViewMode = "edit" | "split" | "preview";
 export type ReadingWidth = "narrow" | "standard" | "wide";
 
+export type FileBookmark = {
+  id: string;
+  position: number;
+  createdAt: string;
+};
+
 export type MarkdownFile = {
   id: string;
   title: string;
@@ -53,6 +59,7 @@ export type MarkdownFile = {
   readingWidth: ReadingWidth;
   lineWrapping: boolean;
   lineNumbers: boolean;
+  bookmarks?: FileBookmark[];
   connectionStatus?: ConnectionStatus;
   roomId?: string;
   shareUrl?: string;
@@ -103,6 +110,7 @@ export type StoredMarkdownFile = {
   readingWidth: ReadingWidth;
   lineWrapping: boolean;
   lineNumbers: boolean;
+  bookmarks?: FileBookmark[];
   connectionStatus?: ConnectionStatus;
   roomId?: string;
   shareUrl?: string;
@@ -225,6 +233,7 @@ const createReadmeFile = (): MarkdownFile => ({
   readingWidth: "standard",
   lineWrapping: true,
   lineNumbers: true,
+  bookmarks: [],
   connectionStatus: "idle",
 });
 
@@ -237,6 +246,7 @@ export const createMarkdownFile = (index: number, overrides: Partial<MarkdownFil
     readingWidth: "standard",
     lineWrapping: true,
     lineNumbers: true,
+    bookmarks: [],
     connectionStatus: "idle",
     ...overrides,
   };
@@ -262,6 +272,7 @@ export const ensureDefaultFiles = (files: MarkdownFile[], options: { ensureUntit
         readingWidth: readmeFile.readingWidth ?? "standard",
         lineWrapping: readmeFile.lineWrapping ?? true,
         lineNumbers: readmeFile.lineNumbers ?? true,
+        bookmarks: readmeFile.bookmarks ?? [],
         connectionStatus: readmeFile.connectionStatus ?? "idle",
       }
     : createReadmeFile();
@@ -310,11 +321,29 @@ const normalizeConnectionStatus = (status: ConnectionStatus | undefined, roomId?
   return status === "connecting" ? "connecting" : "offline";
 };
 
+const normalizeFileBookmarks = (bookmarks: unknown, textLength: number): FileBookmark[] => {
+  if (!Array.isArray(bookmarks)) {
+    return [];
+  }
+
+  return bookmarks
+    .filter((bookmark): bookmark is Record<string, unknown> => isRecord(bookmark))
+    .map((bookmark) => ({
+      id: getString(bookmark.id) || randomId(),
+      position: Math.max(0, Math.min(getFiniteNumber(bookmark.position) ?? 0, textLength)),
+      createdAt: getString(bookmark.createdAt) || new Date().toISOString(),
+    }))
+    .filter((bookmark, index, bookmarkList) =>
+      bookmarkList.findIndex((candidate) => candidate.position === bookmark.position) === index,
+    );
+};
+
 const normalizeMarkdownFile = (value: unknown, index: number): MarkdownFile | null => {
   if (!isRecord(value)) {
     return null;
   }
 
+  const text = getString(value.text) ?? "";
   const roomId = getString(value.roomId);
   const shareUrl = getString(value.shareUrl);
   const connectionStatus = normalizeConnectionStatus(getConnectionStatus(value.connectionStatus), roomId);
@@ -322,11 +351,12 @@ const normalizeMarkdownFile = (value: unknown, index: number): MarkdownFile | nu
   return {
     id: getString(value.id) || randomId(),
     title: getString(value.title) || `Untitled ${index + 1}.md`,
-    text: getString(value.text) ?? "",
+    text,
     viewMode: getFileViewMode(value.viewMode) ?? "edit",
     readingWidth: getReadingWidth(value.readingWidth) ?? "standard",
     lineWrapping: typeof value.lineWrapping === "boolean" ? value.lineWrapping : true,
     lineNumbers: typeof value.lineNumbers === "boolean" ? value.lineNumbers : true,
+    bookmarks: normalizeFileBookmarks(value.bookmarks, text.length),
     connectionStatus,
     roomId,
     shareUrl,
@@ -542,6 +572,7 @@ export const serializeFile = (file: MarkdownFile): StoredMarkdownFile => ({
   readingWidth: file.readingWidth,
   lineWrapping: file.lineWrapping,
   lineNumbers: file.lineNumbers,
+  bookmarks: file.bookmarks ?? [],
   connectionStatus: normalizeConnectionStatus(file.connectionStatus, file.roomId),
   roomId: file.roomId,
   shareUrl: file.shareUrl,

@@ -29,11 +29,153 @@ export async function run(ctx) {
     expect((await page.locator(".cm-lineNumbers").count()) === 1, "Edit mode should show line numbers by default.");
     expect((await page.locator(".cm-activeLine").count()) >= 1, "Edit mode should highlight the active line.");
     expect((await page.locator(".cm-activeLineGutter").count()) >= 1, "Edit mode should highlight the active line number.");
+    expect(
+      (await page.locator(".cm-annotationGutter .cm-activeLineGutter").count()) >= 1,
+      "Edit mode should include the left annotation gutter in the active line highlight.",
+    );
+    expect(
+      (await page.locator(".cm-commentGutter .cm-activeLineGutter").count()) >= 1,
+      "Edit mode should include the right comment gutter in the active line highlight.",
+    );
+    const editorRailLayout = await page.evaluate(() => {
+      const getRect = (selector) => {
+        const element = document.querySelector(selector);
+        if (!(element instanceof Element)) {
+          return null;
+        }
+
+        const rect = element.getBoundingClientRect();
+        return {
+          left: rect.left,
+          right: rect.right,
+          width: rect.width,
+        };
+      };
+      const content = getRect(".cm-content");
+      const activeLine = getRect(".cm-activeLine");
+      const activeCommentGutterLine = getRect(".cm-gutters-after .cm-activeLineGutter");
+      const editor = getRect(".cm-editor");
+      const annotationGutter = getRect(".cm-annotationGutter");
+      const lineNumberGutter = getRect(".cm-lineNumbers");
+      const commentGutter = getRect(".cm-commentGutter");
+      const bookmarkAction = getRect(".cm-annotationGutter .cm-activeLineGutter .cm-annotation-action");
+      const commentAction = getRect(".cm-commentGutter .cm-activeLineGutter .cm-line-comment-action");
+
+      return {
+        leftRail: (annotationGutter?.width ?? 0) + (lineNumberGutter?.width ?? 0),
+        rightRail: commentGutter?.width ?? 0,
+        lineToCommentGutterGap:
+          activeLine && activeCommentGutterLine ? activeCommentGutterLine.left - activeLine.right : Number.NaN,
+        trailingFrameGap: editor && commentGutter ? editor.right - commentGutter.right : Number.NaN,
+        leftActionDistance: content && bookmarkAction ? content.left - (bookmarkAction.left + bookmarkAction.width / 2) : Number.NaN,
+        rightActionDistance:
+          content && commentAction ? commentAction.left + commentAction.width / 2 - content.right : Number.NaN,
+      };
+    });
+    expect(
+      Math.abs(editorRailLayout.leftRail - editorRailLayout.rightRail) <= 1,
+      "Editor annotation rails should reserve symmetric left and right space.",
+    );
+    expect(
+      Math.abs(editorRailLayout.lineToCommentGutterGap) <= 1,
+      "Active line background should meet the right comment gutter without a visible seam.",
+    );
+    expect(Math.abs(editorRailLayout.trailingFrameGap) <= 1, "Right comment gutter should close the editor frame.");
+    expect(
+      Math.abs(editorRailLayout.leftActionDistance - editorRailLayout.rightActionDistance) <= 4,
+      "Left bookmark and right comment actions should sit at visually balanced distances from the text column.",
+    );
+    await page.mouse.move(12, 12);
+    const activeAnnotationLaneOpacity = await page.evaluate(() => {
+      const icon = document.querySelector(".cm-annotationGutter .cm-activeLineGutter .cm-annotation-icon");
+      return icon ? getComputedStyle(icon).opacity : "";
+    });
+    expect(activeAnnotationLaneOpacity === "0", "Annotation lanes should stay hidden until the pointer enters the gutter.");
+    const activeCommentLaneOpacity = await page.evaluate(() => {
+      const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
+      return icon ? getComputedStyle(icon).opacity : "";
+    });
+    expect(activeCommentLaneOpacity === "0", "Comment lanes should stay hidden until the pointer enters the right gutter.");
+    const activeTextLinePoint = await page.evaluate(() => {
+      const line = document.querySelector(".cm-activeLine");
+      if (!(line instanceof HTMLElement)) {
+        return null;
+      }
+
+      const rect = line.getBoundingClientRect();
+      return {
+        x: rect.left + Math.min(24, rect.width / 2),
+        y: rect.top + rect.height / 2,
+      };
+    });
+    expect(Boolean(activeTextLinePoint), "The active text line should have a hover point.");
+    await page.mouse.move(activeTextLinePoint.x, activeTextLinePoint.y);
+    await page.waitForTimeout(120);
+    const textHoveredCommentLaneOpacity = await page.evaluate(() => {
+      const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
+      return icon ? getComputedStyle(icon).opacity : "";
+    });
+    expect(textHoveredCommentLaneOpacity === "0", "Hovering editor text should not reveal the right comment lane.");
+    const activeAnnotationPoint = await page.evaluate(() => {
+      const line = document.querySelector(".cm-annotationGutter .cm-activeLineGutter");
+      if (!(line instanceof HTMLElement)) {
+        return null;
+      }
+
+      const rect = line.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
+    });
+    expect(Boolean(activeAnnotationPoint), "The active line should have an annotation gutter point.");
+    await page.mouse.move(activeAnnotationPoint.x, activeAnnotationPoint.y);
+    await page.waitForTimeout(160);
+    const hoveredAnnotationLaneOpacity = await page.evaluate(() => {
+      const icon = document.querySelector(".cm-annotationGutter .cm-activeLineGutter .cm-annotation-icon");
+      return icon ? getComputedStyle(icon).opacity : "";
+    });
+    expect(hoveredAnnotationLaneOpacity !== "0", "Annotation lanes should appear when the pointer enters the gutter.");
+    const activeCommentPoint = await page.evaluate(() => {
+      const line = document.querySelector(".cm-commentGutter .cm-activeLineGutter");
+      if (!(line instanceof HTMLElement)) {
+        return null;
+      }
+
+      const rect = line.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
+    });
+    expect(Boolean(activeCommentPoint), "The active line should have a right comment gutter point.");
+    await page.mouse.move(activeCommentPoint.x, activeCommentPoint.y);
+    await page.waitForTimeout(160);
+    const hoveredCommentLaneOpacity = await page.evaluate(() => {
+      const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
+      return icon ? getComputedStyle(icon).opacity : "";
+    });
+    expect(hoveredCommentLaneOpacity !== "0", "Comment lanes should appear when the pointer enters the right gutter.");
 
     await page.getByRole("button", { name: /View options/ }).click();
     await page.getByRole("button", { name: "Line numbers" }).click();
     await page.waitForTimeout(80);
     expect((await page.locator(".cm-lineNumbers").count()) === 0, "Line numbers should turn off from View options.");
+    const lineNumberOffRailLayout = await page.evaluate(() => {
+      const getWidth = (selector) => {
+        const element = document.querySelector(selector);
+        return element instanceof Element ? element.getBoundingClientRect().width : 0;
+      };
+
+      return {
+        leftRail: getWidth(".cm-annotationGutter"),
+        rightRail: getWidth(".cm-commentGutter"),
+      };
+    });
+    expect(
+      Math.abs(lineNumberOffRailLayout.leftRail - lineNumberOffRailLayout.rightRail) <= 1,
+      "Editor annotation rails should remain symmetric when line numbers are hidden.",
+    );
     await page.getByRole("button", { name: "Line numbers" }).click();
     await page.waitForTimeout(80);
     expect((await page.locator(".cm-lineNumbers").count()) === 1, "Line numbers should turn back on from View options.");
@@ -41,6 +183,98 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await page.waitForTimeout(120);
     expect(!(await page.locator(".cm-lineNumbers").isVisible()), "Preview mode should not show editor line numbers.");
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.getByTitle("New tab").click();
+    await page.waitForTimeout(120);
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText("alpha\nbeta\ncharlie");
+    await page.waitForTimeout(80);
+
+    const clickBookmarkLineAction = async (lineNumber) => {
+      const point = await page.evaluate((targetLineNumber) => {
+        const lineNumberElement = Array.from(document.querySelectorAll(".cm-lineNumbers .cm-gutterElement")).find(
+          (element) => element.textContent?.trim() === String(targetLineNumber),
+        );
+        const annotationGutter = document.querySelector(".cm-annotationGutter");
+        if (!(lineNumberElement instanceof HTMLElement) || !(annotationGutter instanceof HTMLElement)) {
+          return null;
+        }
+
+        const lineRect = lineNumberElement.getBoundingClientRect();
+        const gutterRect = annotationGutter.getBoundingClientRect();
+        return {
+          x: gutterRect.left + gutterRect.width / 2,
+          y: lineRect.top + lineRect.height / 2,
+        };
+      }, lineNumber);
+      expect(Boolean(point), `Line ${lineNumber} should have a bookmark gutter target.`);
+      await page.mouse.move(point.x, point.y);
+      await page.waitForTimeout(40);
+      await page.mouse.click(point.x, point.y);
+    };
+
+    const clickLineCommentAction = async (lineNumber) => {
+      const point = await page.evaluate((targetLineNumber) => {
+        const action = document.querySelector(`.cm-line-comment-action[data-line-number="${targetLineNumber}"]`);
+        if (!(action instanceof HTMLElement)) {
+          return null;
+        }
+
+        const rect = action.getBoundingClientRect();
+        return {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        };
+      }, lineNumber);
+      expect(Boolean(point), `Line ${lineNumber} should have a right-side comment target.`);
+      await page.mouse.move(point.x, point.y);
+      await page.waitForTimeout(40);
+      await page.mouse.click(point.x, point.y);
+    };
+
+    await clickBookmarkLineAction(2);
+    await page.waitForTimeout(100);
+    const bookmarkedLineState = await page.evaluate(() => ({
+      bookmarkMarkers: document.querySelectorAll(".cm-annotation-marker.has-bookmark").length,
+      bookmarkColor: (() => {
+        const action = document.querySelector(".cm-annotation-marker.has-bookmark .cm-annotation-action.bookmark");
+        return action ? getComputedStyle(action).color : "";
+      })(),
+      lineActionPopoverVisible: Boolean(document.querySelector(".line-annotation-popover")),
+      statusButtonVisible: Boolean(document.querySelector(".status-comment-button")),
+    }));
+    expect(bookmarkedLineState.bookmarkMarkers === 1, "Bookmarking a line should render a bookmark marker in the gutter.");
+    expect(bookmarkedLineState.bookmarkColor === "rgb(118, 63, 200)", "Active bookmarks should use the shared annotation accent.");
+    expect(!bookmarkedLineState.lineActionPopoverVisible, "Annotation gutter actions should not open a line action menu.");
+    expect(!bookmarkedLineState.statusButtonVisible, "Selection comments should no longer use the status bar action.");
+
+    await clickLineCommentAction(2);
+    await page.waitForTimeout(120);
+    await page.locator(".right-comment-input").fill("Line note");
+    await page.locator(".right-comment-form .right-comment-submit").click();
+    await page.waitForTimeout(180);
+
+    const lineCommentState = await page.evaluate(() => ({
+      commentActions: document.querySelectorAll(".cm-line-comment-marker.has-comment").length,
+      commentActionInRightGutter: Boolean(document.querySelector(".cm-commentGutter .cm-line-comment-marker.has-comment")),
+      commentActionInBody: Boolean(document.querySelector(".cm-line .cm-line-comment-action")),
+      commentColor: (() => {
+        const action = document.querySelector(".cm-line-comment-marker.has-comment .cm-line-comment-action");
+        return action ? getComputedStyle(action).color : "";
+      })(),
+      selectionPopoverVisible: Boolean(document.querySelector(".selection-comment-popover")),
+      markText: document.querySelector(".cm-comment-mark")?.textContent ?? "",
+      panelText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    }));
+    expect(lineCommentState.commentActions === 1, "A line with a comment should render a right-side comment affordance.");
+    expect(lineCommentState.commentActionInRightGutter, "Line comments should sit in the right gutter.");
+    expect(!lineCommentState.commentActionInBody, "Line comments should not sit inside the editable text body.");
+    expect(lineCommentState.commentColor === "rgb(118, 63, 200)", "Active line comments should use the shared annotation accent.");
+    expect(!lineCommentState.selectionPopoverVisible, "Line comments should not also show the selected-text comment popover.");
+    expect(lineCommentState.markText === "beta", "Line comments should anchor to the clicked line text.");
+    expect(lineCommentState.panelText.includes("Line note"), "Line comments should use the existing comments panel.");
   });
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 760 } });
@@ -52,8 +286,13 @@ export async function run(ctx) {
     await focusMarkdownEditor(mobilePage);
     await mobilePage.keyboard.insertText("mobile\nwrite");
     await mobilePage.waitForTimeout(80);
-    const mobileGutterDisplay = await mobilePage.locator(".cm-gutters").evaluate((gutter) => getComputedStyle(gutter).display);
-    expect(mobileGutterDisplay === "none", "Mobile write mode should hide line number gutters.");
+    const mobileGutterDisplays = await mobilePage
+      .locator(".cm-gutters")
+      .evaluateAll((gutters) => gutters.map((gutter) => getComputedStyle(gutter).display));
+    expect(
+      mobileGutterDisplays.length > 0 && mobileGutterDisplays.every((display) => display === "none"),
+      "Mobile write mode should hide editor gutters.",
+    );
   } finally {
     await mobileContext.close();
   }
@@ -139,7 +378,8 @@ export async function run(ctx) {
     const emptySelectionFormat = await page.evaluate(() => ({
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
       selectedText: document.getSelection()?.toString() ?? "",
-      selectedWords: document.querySelector(".status-selection")?.textContent?.trim() ?? "",
+      cursorPosition: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",
+      selectedWordsVisible: Boolean(document.querySelector(".status-selection")),
       editorFocused: Boolean(document.querySelector(".markdown-editor")?.contains(document.activeElement)),
     }));
     expect(
@@ -151,9 +391,10 @@ export async function run(ctx) {
       "Empty selection formatting should select the placeholder text.",
     );
     expect(
-      emptySelectionFormat.selectedWords === "2 words selected",
-      "Empty selection formatting should update selected-word status.",
+      emptySelectionFormat.cursorPosition.includes("(9 characters)"),
+      "Empty selection formatting should update selected-character status.",
     );
+    expect(!emptySelectionFormat.selectedWordsVisible, "Status bar should not show selected-word status.");
     expect(emptySelectionFormat.editorFocused, "Empty selection formatting should keep focus in the editor.");
 
     await page.getByTitle("New tab").click();
@@ -831,9 +1072,25 @@ export async function run(ctx) {
     await page.waitForTimeout(160);
     const sourceTokenRendering = await page.evaluate(() => {
       const measureLineText = (line) => {
+        const clone = line.cloneNode(true);
+        if (!(clone instanceof HTMLElement)) {
+          return 0;
+        }
+
+        clone.querySelectorAll(".cm-line-comment-action, .cm-widgetBuffer").forEach((element) => element.remove());
+        clone.style.position = "absolute";
+        clone.style.left = "-10000px";
+        clone.style.top = "0";
+        clone.style.width = "auto";
+        clone.style.padding = "0";
+        clone.style.whiteSpace = "pre";
+        line.parentElement?.append(clone);
         const range = document.createRange();
-        range.selectNodeContents(line);
-        return range.getBoundingClientRect().width;
+        range.selectNodeContents(clone);
+        const width = range.getBoundingClientRect().width;
+        range.detach();
+        clone.remove();
+        return width;
       };
       const lines = Array.from(document.querySelectorAll(".cm-line")).slice(0, 6);
       const style = window.getComputedStyle(lines[1] ?? document.body);
@@ -946,8 +1203,8 @@ export async function run(ctx) {
     const selectionAfterToolbarFormat = await page.evaluate(() => ({
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
       selectedText: document.getSelection()?.toString() ?? "",
-      selectedWords: document.querySelector(".status-selection")?.textContent?.trim() ?? "",
-      addSelectionCommentVisible: Boolean(document.querySelector(".status-comment-button")),
+      cursorPosition: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",
+      addSelectionCommentVisible: Boolean(document.querySelector(".selection-comment-button")),
       editorFocused: Boolean(document.querySelector(".markdown-editor")?.contains(document.activeElement)),
     }));
     expect(
@@ -955,16 +1212,16 @@ export async function run(ctx) {
       "Formatting a selection from the toolbar should update the Markdown source.",
     );
     expect(
-      selectionAfterToolbarFormat.selectedWords === "1 words selected",
+      selectionAfterToolbarFormat.cursorPosition.includes("(6 characters)"),
       "Toolbar formatting should keep the selected text available for comment creation.",
     );
     expect(
       selectionAfterToolbarFormat.addSelectionCommentVisible,
-      "Toolbar formatting should not remove the status action for adding a selection comment.",
+      "Toolbar formatting should not remove the inline action for adding a selection comment.",
     );
     expect(selectionAfterToolbarFormat.editorFocused, "Toolbar formatting should return focus to the Markdown editor.");
 
-    await page.locator(".status-comment-button").click();
+    await page.locator(".selection-comment-button").click();
     await page.waitForTimeout(120);
     await page.locator(".right-comment-input").fill("Review target");
     await page.locator(".right-comment-form .right-comment-submit").click();
@@ -993,7 +1250,7 @@ export async function run(ctx) {
       markCount: document.querySelectorAll(".cm-comment-mark").length,
       activeMarkCount: document.querySelectorAll(".cm-comment-mark.active").length,
       markText: document.querySelector(".cm-comment-mark")?.textContent ?? "",
-      selectedWords: document.querySelector(".status-selection")?.textContent?.trim() ?? "",
+      cursorPosition: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",
     }));
     expect(
       commentAfterOffsetShift.editorText === "**Alpha _target_ omega**",
@@ -1005,8 +1262,8 @@ export async function run(ctx) {
     );
     expect(commentAfterOffsetShift.activeMarkCount === 1, "Comment anchors should keep active focus after text edits.");
     expect(
-      commentAfterOffsetShift.selectedWords === "3 words selected",
-      "Formatting command selection should continue to update the status selection state.",
+      commentAfterOffsetShift.cursorPosition.includes("characters"),
+      "Formatting command selection should continue to update the cursor selection state.",
     );
 
     await closeProjectContext(page);
@@ -1097,13 +1354,13 @@ export async function run(ctx) {
     expect(previewSelectionState?.selectedText === "omega", "Preview smoke should select rendered preview text.");
     await page.waitForTimeout(120);
     const previewSelectionStatus = await page.evaluate(() => ({
-      selectedWords: document.querySelector(".status-selection")?.textContent?.trim() ?? "",
-      addSelectionCommentVisible: Boolean(document.querySelector(".status-comment-button")),
+      cursorPosition: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",
+      addSelectionCommentVisible: Boolean(document.querySelector(".selection-comment-button")),
     }));
-    expect(previewSelectionStatus.selectedWords === "1 words selected", "Preview selection should update the status bar.");
+    expect(previewSelectionStatus.cursorPosition.includes("(5 characters)"), "Preview selection should update the status bar.");
     expect(previewSelectionStatus.addSelectionCommentVisible, "Preview selection should expose Add comment.");
 
-    await page.locator(".status-comment-button").click();
+    await page.locator(".selection-comment-button").click();
     await page.waitForTimeout(120);
     await page.locator(".right-comment-input").fill("Preview note");
     await page.locator(".right-comment-form .right-comment-submit").click();
@@ -1161,7 +1418,7 @@ export async function run(ctx) {
     );
 
     await page.waitForTimeout(120);
-    await page.locator(".status-comment-button").click();
+    await page.locator(".selection-comment-button").click();
     await page.waitForTimeout(120);
     await page.locator(".right-comment-input").fill("Review formatted preview");
     await page.locator(".right-comment-form .right-comment-submit").click();
