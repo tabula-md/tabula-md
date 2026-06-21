@@ -127,34 +127,7 @@ const getFrontmatterBlock = (markdown: string) => {
   return null;
 };
 
-export const getPreviewBody = (body: string, title?: string): PreviewBody => {
-  const normalizedTitle = title?.trim().toLowerCase();
-  if (!normalizedTitle) {
-    return { body, sourceLineOffset: 0 };
-  }
-
-  const lines = body.split("\n");
-  const firstContentLineIndex = lines.findIndex((line) => line.trim().length > 0);
-  if (firstContentLineIndex === -1) {
-    return { body, sourceLineOffset: 0 };
-  }
-
-  const firstContentLine = lines[firstContentLineIndex].trim();
-  const headingMatch = firstContentLine.match(/^#\s+(.+?)\s*#*$/);
-  if (!headingMatch || headingMatch[1].trim().toLowerCase() !== normalizedTitle) {
-    return { body, sourceLineOffset: 0 };
-  }
-
-  let removedLineCount = firstContentLineIndex + 1;
-  if (lines[removedLineCount]?.trim() === "") {
-    removedLineCount += 1;
-  }
-
-  return {
-    body: lines.slice(removedLineCount).join("\n"),
-    sourceLineOffset: removedLineCount,
-  };
-};
+export const getPreviewBody = (body: string): PreviewBody => ({ body, sourceLineOffset: 0 });
 
 export const parseFrontmatter = (markdown: string): ParsedFrontmatter => {
   const frontmatterBlock = getFrontmatterBlock(markdown);
