@@ -213,6 +213,73 @@ export async function run(ctx) {
       "Workspace Tools should not clip the status bar lane.",
     );
 
+    await page.getByRole("button", { name: "Handoff", exact: true }).click();
+    await page.waitForTimeout(80);
+    const readyHandoffState = await page.evaluate(() => ({
+      heading: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
+      readinessRows: Array.from(document.querySelectorAll(".left-handoff-row")).map((row) =>
+        row.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      ),
+      readinessMessages: Array.from(document.querySelectorAll(".left-handoff-readiness p")).map((row) => ({
+        text: row.textContent?.replace(/\s+/g, " ").trim() ?? "",
+        blocked: row.classList.contains("blocked"),
+      })),
+      actions: Array.from(document.querySelectorAll(".left-workspace-actions button")).map((button) => ({
+        text: button.textContent?.replace(/\s+/g, " ").trim() ?? "",
+        disabled: button.disabled,
+      })),
+    }));
+    expect(readyHandoffState.heading === "Handoff", "Handoff should open as its own Workspace Tools surface.");
+    expect(
+      readyHandoffState.readinessRows[0]?.includes("Current file") &&
+        readyHandoffState.readinessRows[0]?.includes("README") &&
+        readyHandoffState.readinessRows[0]?.includes("words"),
+      "Handoff should summarize the active file and word count.",
+    );
+    expect(
+      readyHandoffState.readinessRows[1] === "Project2 files1 empty file",
+      "Handoff should summarize project file and empty-file state.",
+    );
+    expect(
+      readyHandoffState.readinessMessages.some((message) => message.text === "Current file is ready to publish." && !message.blocked),
+      "Handoff should show current-file publish readiness.",
+    );
+    expect(
+      readyHandoffState.readinessMessages.some((message) => message.text === "Add content to Untitled before publishing." && message.blocked),
+      "Handoff should show the project publish blocker without opening Publish.",
+    );
+    expect(
+      readyHandoffState.actions.find((action) => action.text === "Publish...")?.disabled === false,
+      "Handoff should keep Publish enabled when the current file has content.",
+    );
+
+    await page.locator('.tab-item[data-file-name="Untitled.md"] .tab-select-button').click();
+    await page.waitForTimeout(80);
+    const blockedHandoffState = await page.evaluate(() => ({
+      readinessRows: Array.from(document.querySelectorAll(".left-handoff-row")).map((row) =>
+        row.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      ),
+      readinessMessages: Array.from(document.querySelectorAll(".left-handoff-readiness p")).map((row) => ({
+        text: row.textContent?.replace(/\s+/g, " ").trim() ?? "",
+        blocked: row.classList.contains("blocked"),
+      })),
+      publishDisabled: Array.from(document.querySelectorAll(".left-workspace-actions button")).find((button) =>
+        button.textContent?.includes("Publish"),
+      )?.disabled,
+    }));
+    expect(
+      blockedHandoffState.readinessRows[0] === "Current fileUntitled0 words",
+      "Handoff should update the active-file summary when the selected file changes.",
+    );
+    expect(
+      blockedHandoffState.readinessMessages.some((message) => message.text === "Add content to Untitled before publishing." && message.blocked),
+      "Handoff should explain why an empty current file cannot be published.",
+    );
+    expect(blockedHandoffState.publishDisabled, "Handoff should disable Publish for an empty current file.");
+    await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
+    await page.getByRole("button", { name: "New", exact: true }).click();
+    await page.waitForTimeout(80);
+
     const supportActions = page.locator(".left-panel-footer");
     await supportActions.getByRole("button", { name: "Preferences", exact: true }).click();
     await page.waitForTimeout(80);

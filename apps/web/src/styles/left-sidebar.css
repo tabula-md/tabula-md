@@ -198,6 +198,61 @@
   white-space: nowrap;
 }
 
+.left-handoff-readiness {
+  display: grid;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.left-handoff-row {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 var(--left-row-x);
+  border-radius: var(--left-row-radius);
+  color: var(--left-row-text);
+  background: transparent;
+  font-size: 12px;
+}
+
+.left-handoff-row span {
+  color: var(--text-muted);
+}
+
+.left-handoff-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #3f3f3f;
+  font-size: 13px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.left-handoff-row small {
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.left-handoff-readiness p {
+  margin: 2px 0 0;
+  padding: 0 var(--left-row-x);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.left-handoff-readiness p.ready {
+  color: #777777;
+}
+
+.left-handoff-readiness p.blocked {
+  color: #8f3d36;
+}
+
 .left-detail-list div,
 .left-shortcut-row {
   display: grid;

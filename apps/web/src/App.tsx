@@ -2112,6 +2112,9 @@ function WorkspaceApp() {
   );
   const publishPreviewFiles = publishScope === "file" && activeFile ? [activeFile] : files;
   const publishBlockerMessage = getEmptyPublishFilesMessage(publishPreviewFiles, publishScope);
+  const activeFilePublishBlockerMessage = activeFile ? getEmptyPublishFilesMessage([activeFile], "file") : "";
+  const projectEmptyFileCount = getEmptyPublishFiles(files).length;
+  const projectPublishBlockerMessage = getEmptyPublishFilesMessage(files, "project");
   const shareControlsNode = activeFile ? (
     <ShareControls
       activeFile={activeFile}
@@ -2206,6 +2209,13 @@ function WorkspaceApp() {
             view={leftPanelView}
             preferencesOpen={preferencesOpen}
             hasActiveFile={Boolean(activeFile)}
+            activeFileTitle={activeFileTitle}
+            activeFileWordCount={activeWordCount}
+            canPublishActiveFile={Boolean(activeFile && !activeFilePublishBlockerMessage)}
+            activeFilePublishBlockerMessage={activeFilePublishBlockerMessage}
+            projectFileCount={files.length}
+            projectEmptyFileCount={projectEmptyFileCount}
+            projectPublishBlockerMessage={projectPublishBlockerMessage}
             storageVersion={PROJECT_STORAGE_VERSION}
             templates={TEMPLATE_ITEMS}
             newFileViewMode={workspacePreferences.newFileViewMode}
