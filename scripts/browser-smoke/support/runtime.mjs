@@ -125,7 +125,7 @@ const focusMarkdownEditor = async (page) => {
 
 const openProjectMenu = async (page) => {
   if ((await page.locator(".left-sidebar").count()) === 0) {
-    await page.getByRole("button", { name: "Open Project Menu", exact: true }).click();
+    await page.getByRole("button", { name: "Open Workspace Tools", exact: true }).click();
     await page.waitForTimeout(120);
   }
 };

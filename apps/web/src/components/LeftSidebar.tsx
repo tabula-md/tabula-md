@@ -1,29 +1,50 @@
-import { type RefObject } from "react";
+import { type ReactNode } from "react";
 import {
   BookOpen,
+  Check,
+  ChevronRight,
   Download,
-  Keyboard,
-  Menu,
+  FilePlus2,
+  FileText,
+  FolderOpen,
+  HelpCircle,
+  Link,
   PanelLeft,
-  Settings,
+  Settings2,
   Upload,
+  Users,
+  X,
 } from "lucide-react";
-import type { KeyboardShortcut, LeftPanelView, LibraryItem } from "../uiTypes";
+import type { LeftPanelView, LibraryItem } from "../uiTypes";
+import type { FileViewMode, ReadingWidth } from "../workspaceStorage";
 
 type LeftSidebarProps = {
   isOpen: boolean;
   view: LeftPanelView;
+  preferencesOpen: boolean;
   hasActiveFile: boolean;
-  importInputRef: RefObject<HTMLInputElement | null>;
-  workspaceImportInputRef: RefObject<HTMLInputElement | null>;
-  keyboardShortcuts: KeyboardShortcut[];
   storageVersion: number;
   templates: LibraryItem[];
-  librariesHref: string;
+  newFileViewMode: FileViewMode;
+  defaultReadingWidth: ReadingWidth;
+  defaultLineWrapping: boolean;
+  defaultLineNumbers: boolean;
   onSetView: (view: LeftPanelView) => void;
   onClose: () => void;
+  onTogglePreferences: () => void;
+  onClosePreferences: () => void;
+  onChangeNewFileViewMode: (viewMode: FileViewMode) => void;
+  onChangeDefaultReadingWidth: (readingWidth: ReadingWidth) => void;
+  onChangeDefaultLineWrapping: (lineWrapping: boolean) => void;
+  onChangeDefaultLineNumbers: (lineNumbers: boolean) => void;
+  onAddFile: () => void;
+  onOpenMarkdownFile: () => void;
+  onImportProject: () => void;
   onExportCurrentFile: () => void;
   onDownloadWorkspace: () => void;
+  onOpenCollaborate: () => void;
+  onOpenPublish: () => void;
+  onOpenHelp: () => void;
   onAddTemplate: (item: LibraryItem) => void;
 };
 
@@ -32,154 +53,240 @@ const getFileDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$
 export function LeftSidebar({
   isOpen,
   view,
+  preferencesOpen,
   hasActiveFile,
-  importInputRef,
-  workspaceImportInputRef,
-  keyboardShortcuts,
   storageVersion,
   templates,
-  librariesHref,
+  newFileViewMode,
+  defaultReadingWidth,
+  defaultLineWrapping,
+  defaultLineNumbers,
   onSetView,
   onClose,
+  onTogglePreferences,
+  onClosePreferences,
+  onChangeNewFileViewMode,
+  onChangeDefaultReadingWidth,
+  onChangeDefaultLineWrapping,
+  onChangeDefaultLineNumbers,
+  onAddFile,
+  onOpenMarkdownFile,
+  onImportProject,
   onExportCurrentFile,
   onDownloadWorkspace,
+  onOpenCollaborate,
+  onOpenPublish,
+  onOpenHelp,
   onAddTemplate,
 }: LeftSidebarProps) {
+  const activeTab = view;
+
+  const renderTab = (tabView: "new" | "templates" | "handoff", label: string, icon: ReactNode) => (
+    <button
+      className={activeTab === tabView ? "active" : ""}
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={activeTab === tabView}
+      onClick={() => onSetView(tabView)}
+    >
+      {icon}
+    </button>
+  );
+
+  const renderSegment = <Value extends string>(
+    currentValue: Value,
+    options: Array<{ value: Value; label: string }>,
+    onChange: (value: Value) => void,
+  ) => (
+    <div className="left-preferences-segmented">
+      {options.map((option) => (
+        <button
+          className={currentValue === option.value ? "active" : ""}
+          type="button"
+          key={option.value}
+          aria-pressed={currentValue === option.value}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const renderSwitch = (active: boolean, label: string, onChange: (active: boolean) => void) => (
+    <button className={`left-preferences-check ${active ? "active" : ""}`} type="button" onClick={() => onChange(!active)}>
+      <span aria-hidden="true">{active && <Check size={14} />}</span>
+      <strong>{label}</strong>
+    </button>
+  );
+
   return (
-    <aside className="left-sidebar" aria-label="Project Menu">
+    <aside className="left-sidebar" aria-label="Workspace Tools">
       {isOpen && (
         <>
           <div className="left-sidebar-chrome">
             <button
               className="left-panel-close"
               type="button"
-              title="Close Project Menu"
-              aria-label="Close Project Menu"
+              title="Close Workspace Tools"
+              aria-label="Close Workspace Tools"
               onClick={onClose}
             >
               <PanelLeft size={16} />
             </button>
             <nav className="left-panel-tabs" aria-label="Panel views">
-              <button
-                className={view === "menu" ? "active" : ""}
-                type="button"
-                title="Menu"
-                aria-label="Menu"
-                onClick={() => onSetView("menu")}
-              >
-                <Menu size={15} />
-              </button>
-              <button
-                className={view === "templates" ? "active" : ""}
-                type="button"
-                title="Templates"
-                aria-label="Templates"
-                onClick={() => onSetView("templates")}
-              >
-                <BookOpen size={15} />
-              </button>
+              {renderTab("new", "New", <FilePlus2 size={15} />)}
+              {renderTab("templates", "Templates", <BookOpen size={15} />)}
+              {renderTab("handoff", "Handoff", <Link size={15} />)}
             </nav>
           </div>
 
           <section className="left-panel" aria-label={`${view} panel`}>
-            {view === "menu" && (
-              <div className="left-panel-content">
-                <section className="left-workspace-actions" aria-label="Project actions">
-                  <button type="button" onClick={() => importInputRef.current?.click()}>
-                    <Upload size={14} />
-                    <span>Import Markdown</span>
-                  </button>
-                  <button type="button" disabled={!hasActiveFile} onClick={onExportCurrentFile}>
-                    <Download size={14} />
-                    <span>Export current file</span>
-                  </button>
-                  <button type="button" onClick={onDownloadWorkspace}>
-                    <Download size={14} />
-                    <span>Download project</span>
-                  </button>
-                  <button type="button" onClick={() => workspaceImportInputRef.current?.click()}>
-                    <Upload size={14} />
-                    <span>Import project</span>
-                  </button>
-                  <button type="button" onClick={() => onSetView("settings")}>
-                    <Settings size={14} />
-                    <span>Settings</span>
-                  </button>
-                  <button type="button" onClick={() => onSetView("shortcuts")}>
-                    <Keyboard size={14} />
-                    <span>Keyboard shortcuts</span>
-                  </button>
-                </section>
-              </div>
-            )}
-
-            {view === "templates" && (
-              <div className="left-panel-content">
-                <div className="left-library-items" aria-label="Templates">
-                  {templates.map((item) => (
-                    <button
-                      className="left-library-item"
-                      type="button"
-                      key={item.title}
-                      aria-label={`Create ${item.title}`}
-                      title={`Create ${item.title}`}
-                      onClick={() => onAddTemplate(item)}
-                    >
-                      <span>
-                        <strong>{getFileDisplayTitle(item.title)}</strong>
-                        <small>{item.description}</small>
-                      </span>
+            <div className="left-panel-scroll">
+              {view === "new" && (
+                <div className="left-panel-content">
+                  <header className="left-panel-header">
+                    <div>
+                      <h2>New</h2>
+                      <p>Start or bring Markdown into this project.</p>
+                    </div>
+                  </header>
+                  <section className="left-workspace-actions" aria-label="New document actions">
+                    <button type="button" onClick={onAddFile}>
+                      <FilePlus2 size={14} />
+                      <span>Blank Markdown</span>
                     </button>
-                  ))}
+                    <button type="button" onClick={onOpenMarkdownFile}>
+                      <FolderOpen size={14} />
+                      <span>Open Markdown...</span>
+                    </button>
+                    <button type="button" onClick={onImportProject}>
+                      <Upload size={14} />
+                      <span>Import project...</span>
+                    </button>
+                  </section>
                 </div>
-                <div className="left-template-extension">
-                  <a className="left-library-link" href={librariesHref}>
-                    <BookOpen size={14} aria-hidden="true" />
-                    <span>Browse libraries</span>
-                  </a>
-                  <p className="left-custom-template-note">Connect a library to use your own templates.</p>
-                </div>
-              </div>
-            )}
+              )}
 
-          {view === "settings" && (
-            <div className="left-panel-content">
-              <header className="left-panel-header">
-                <h2>Settings</h2>
-              </header>
-              <div className="left-detail-list">
-                <div>
-                  <span>Theme</span>
-                  <strong>System</strong>
-                </div>
-                <div>
-                  <span>Storage</span>
-                  <strong>Browser project v{storageVersion}</strong>
-                </div>
-                <div>
-                  <span>File names</span>
-                  <strong>Independent from frontmatter title</strong>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {view === "shortcuts" && (
-            <div className="left-panel-content">
-              <header className="left-panel-header">
-                <h2>Keyboard shortcuts</h2>
-              </header>
-              <div className="left-shortcut-list">
-                {keyboardShortcuts.map((shortcut) => (
-                  <div className="left-shortcut-row" key={shortcut.keys}>
-                    <kbd>{shortcut.keys}</kbd>
-                    <span>{shortcut.action}</span>
+              {view === "templates" && (
+                <div className="left-panel-content">
+                  <header className="left-panel-header">
+                    <div>
+                      <h2>Templates</h2>
+                      <p>Standard documents for people and AI agents.</p>
+                    </div>
+                  </header>
+                  <div className="left-library-items" aria-label="Templates">
+                    {templates.map((item) => (
+                      <button
+                        className="left-library-item"
+                        type="button"
+                        key={item.title}
+                        aria-label={`Create ${item.title}`}
+                        title={`Create ${item.title}`}
+                        onClick={() => onAddTemplate(item)}
+                      >
+                        <FileText size={14} />
+                        <span>
+                          <strong>{getFileDisplayTitle(item.title)}</strong>
+                          <small>{item.description}</small>
+                        </span>
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {view === "handoff" && (
+                <div className="left-panel-content">
+                  <header className="left-panel-header">
+                    <div>
+                      <h2>Handoff</h2>
+                      <p>Move the current work to people, agents, or files.</p>
+                    </div>
+                  </header>
+                  <section className="left-workspace-actions" aria-label="Handoff actions">
+                    <button type="button" disabled={!hasActiveFile} onClick={onOpenCollaborate}>
+                      <Users size={14} />
+                      <span>Live collaboration...</span>
+                    </button>
+                    <button type="button" disabled={!hasActiveFile} onClick={onOpenPublish}>
+                      <Link size={14} />
+                      <span>Publish...</span>
+                    </button>
+                    <button type="button" disabled={!hasActiveFile} onClick={onExportCurrentFile}>
+                      <Download size={14} />
+                      <span>Save current Markdown...</span>
+                    </button>
+                    <button type="button" onClick={onDownloadWorkspace}>
+                      <Download size={14} />
+                      <span>Download project...</span>
+                    </button>
+                  </section>
+                </div>
+              )}
+
             </div>
-          )}
+
+            <footer className="left-panel-footer" aria-label="Workspace support">
+              <button className={preferencesOpen ? "active" : ""} type="button" onClick={onTogglePreferences}>
+                <Settings2 size={14} />
+                <span>Preferences</span>
+                <ChevronRight size={14} />
+              </button>
+              <button type="button" onClick={onOpenHelp}>
+                <HelpCircle size={14} />
+                <span>Help</span>
+              </button>
+            </footer>
           </section>
+
+          {preferencesOpen && (
+            <section className="left-preferences-popover" aria-label="Preferences">
+              <header className="left-preferences-header">
+                <h2>Preferences</h2>
+                <button type="button" aria-label="Close Preferences" onClick={onClosePreferences}>
+                  <X size={14} />
+                </button>
+              </header>
+              <div className="left-preferences-row">
+                <span>New files open in</span>
+                {renderSegment<FileViewMode>(
+                  newFileViewMode,
+                  [
+                    { value: "edit", label: "Edit" },
+                    { value: "split", label: "Split" },
+                    { value: "preview", label: "Preview" },
+                  ],
+                  onChangeNewFileViewMode,
+                )}
+              </div>
+              <div className="left-preferences-row">
+                <span>Reading width</span>
+                {renderSegment<ReadingWidth>(
+                  defaultReadingWidth,
+                  [
+                    { value: "narrow", label: "Narrow" },
+                    { value: "standard", label: "Standard" },
+                    { value: "wide", label: "Wide" },
+                  ],
+                  onChangeDefaultReadingWidth,
+                )}
+              </div>
+              <div className="left-preferences-row">
+                <span>Editor</span>
+                <div className="left-preferences-checks">
+                  {renderSwitch(defaultLineWrapping, "Line wrapping", onChangeDefaultLineWrapping)}
+                  {renderSwitch(defaultLineNumbers, "Line numbers", onChangeDefaultLineNumbers)}
+                </div>
+              </div>
+              <div className="left-preferences-meta">
+                <span>Storage</span>
+                <strong>Browser project v{storageVersion}</strong>
+              </div>
+            </section>
+          )}
         </>
       )}
     </aside>
