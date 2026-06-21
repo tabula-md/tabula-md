@@ -25,7 +25,7 @@ export function TopChrome({
   onToggleLeftPanel,
   onToggleRightPanel,
 }: TopChromeProps) {
-  const leftPanelLabel = `${leftPanelOpen ? "Close" : "Open"} Project Menu`;
+  const leftPanelLabel = `${leftPanelOpen ? "Close" : "Open"} Workspace Tools`;
   const rightPanelLabel = `${rightPanelOpen ? "Close" : "Open"} Project Context`;
   const liveCollaborators = [identity, ...collaborators];
   const sharingTooltip =

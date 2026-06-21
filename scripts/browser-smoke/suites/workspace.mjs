@@ -370,9 +370,9 @@ export async function run(ctx) {
       llms: "",
       llmsFull: "",
     };
+    const publishId = publishedUrls.page.match(/\/p\/([^/]+)$/)?.[1] ?? "";
     expect(/\/p\/[^/]+$/.test(publishedUrls.page), "Publishing should create a readable page URL.");
     if (expectsPublishService) {
-      const publishId = publishedUrls.page.match(/\/p\/([^/]+)$/)?.[1] ?? "";
       publishedUrls.llms = `${publishUrl}/p/${publishId}/llms.txt`;
       publishedUrls.llmsFull = `${publishUrl}/p/${publishId}/llms-full.txt`;
       expect(
@@ -388,12 +388,20 @@ export async function run(ctx) {
         "Server-backed publishing should expose the publish service llms-full.txt endpoint URL.",
       );
     } else {
-      publishedUrls.llms = `${publishedUrls.page}/llms.txt`;
-      publishedUrls.llmsFull = `${publishedUrls.page}/llms-full.txt`;
-      expect(publishedUrls.llms === `${publishedUrls.page}/llms.txt`, "Publishing should create an llms.txt endpoint URL.");
+      const localSnapshotUrls = await page.evaluate((snapshotId) => {
+        const snapshots = JSON.parse(window.localStorage.getItem("tabula.published-snapshots.v1") ?? "{}");
+        return snapshots[snapshotId]?.urls ?? null;
+      }, decodeURIComponent(publishId));
+      publishedUrls.llms = localSnapshotUrls?.llmsTxt ?? "";
+      publishedUrls.llmsFull = localSnapshotUrls?.llmsFullTxt ?? "";
       expect(
-        publishedUrls.llmsFull === `${publishedUrls.page}/llms-full.txt`,
-        "Publishing should create an llms-full.txt endpoint URL.",
+        localSnapshotUrls?.page === publishedUrls.page,
+        "Local publishing should persist the published page URL shown in the UI.",
+      );
+      expect(
+        publishedUrls.llms === `${publishedUrls.page}/llms.txt` &&
+          publishedUrls.llmsFull === `${publishedUrls.page}/llms-full.txt`,
+        "Local publishing should persist llms endpoint URLs derived from the published page URL.",
       );
     }
     expect((await page.getByRole("link", { name: "View page" }).count()) === 1, "Published state should offer a page view action.");
@@ -615,42 +623,18 @@ export async function run(ctx) {
           titleFontWeight: titleStyle?.fontWeight ?? "",
           descriptionWhiteSpace: descriptionStyle?.whiteSpace ?? "",
           emCount: item.querySelectorAll("em").length,
+          iconCount: item.querySelectorAll("svg").length,
         };
       });
       return {
         templateHeadingCount: document.querySelectorAll(".left-panel-content > .left-panel-header h2").length,
+        templateHeadingText: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
         groupHeadingCount: document.querySelectorAll(".left-library-group h3").length,
         groupCount: document.querySelectorAll(".left-library-group").length,
         rowCount: rows.length,
         rows,
-        librariesLink: (() => {
-          const link = document.querySelector(".left-library-link");
-          if (!link) {
-            return null;
-          }
-          const style = window.getComputedStyle(link);
-          return {
-            text: link.textContent?.replace(/\s+/g, " ").trim() ?? "",
-            href: link.getAttribute("href") ?? "",
-            tagName: link.tagName,
-            iconCount: link.querySelectorAll("svg").length,
-            fontSize: style.fontSize,
-            fontWeight: style.fontWeight,
-          };
-        })(),
-        customTemplateNote: (() => {
-          const note = document.querySelector(".left-custom-template-note");
-          if (!note) {
-            return null;
-          }
-          const style = window.getComputedStyle(note);
-          return {
-            text: note.textContent?.replace(/\s+/g, " ").trim() ?? "",
-            fontSize: style.fontSize,
-            fontWeight: style.fontWeight,
-            color: style.color,
-          };
-        })(),
+        librariesLinkCount: document.querySelectorAll(".left-library-link").length,
+        customTemplateNoteCount: document.querySelectorAll(".left-custom-template-note").length,
         browseLibrariesButtonCount: Array.from(document.querySelectorAll("button")).filter((button) =>
           button.textContent?.includes("Browse libraries"),
         ).length,
@@ -659,21 +643,23 @@ export async function run(ctx) {
     });
 
     // P7: left panel template product contract.
-    expect(templatesPanel.templateHeadingCount === 0, "Templates view should not render a repeated section heading.");
+    expect(templatesPanel.templateHeadingCount === 1, "Templates view should name the standardization surface.");
+    expect(templatesPanel.templateHeadingText === "Templates", "Templates view should use a direct heading.");
     expect(templatesPanel.groupHeadingCount === 0, "Templates view should not render library group headings.");
     expect(templatesPanel.groupCount === 0, "Templates view should not render grouped card sections.");
-    expect(templatesPanel.rowCount === 3, "Templates view should only show the three prebuilt templates.");
+    expect(templatesPanel.rowCount === 6, "Templates view should show the core standard document templates.");
     expect(
-      templatesPanel.rows.map((row) => row.title).join("|") === "PRD|DESIGN|SKILL",
-      "Templates should show PRD, DESIGN, and SKILL without Markdown extensions.",
+      templatesPanel.rows.map((row) => row.title).join("|") === "PRD|DESIGN|DECISION|RUNBOOK|HANDOFF|SKILL",
+      "Templates should show standard document names without Markdown extensions.",
     );
     expect(
-      templatesPanel.rows.map((row) => row.fullTitle).join("|") === "Create PRD.md|Create DESIGN.md|Create SKILL.md",
+      templatesPanel.rows.map((row) => row.fullTitle).join("|") ===
+        "Create PRD.md|Create DESIGN.md|Create DECISION.md|Create RUNBOOK.md|Create HANDOFF.md|Create SKILL.md",
       "Templates should keep full filenames in title metadata.",
     );
     expect(
       templatesPanel.rows.map((row) => row.ariaLabel).join("|") ===
-        "Create PRD.md|Create DESIGN.md|Create SKILL.md",
+        "Create PRD.md|Create DESIGN.md|Create DECISION.md|Create RUNBOOK.md|Create HANDOFF.md|Create SKILL.md",
       "Template row accessible labels should include full filenames.",
     );
     expect(
@@ -685,6 +671,10 @@ export async function run(ctx) {
     expect(
       templatesPanel.rows.every((row) => row.emCount === 0 && !/\b(New|Insert)\b/.test(row.text)),
       "Template rows should not show repeated action labels.",
+    );
+    expect(
+      templatesPanel.rows.every((row) => row.iconCount === 1),
+      "Template rows should keep one document icon per row.",
     );
     expect(
       templatesPanel.rows.every((row) => row.titleFontWeight === "400"),
@@ -705,17 +695,8 @@ export async function run(ctx) {
       ),
       "Template rows should use the shared compact row tokens.",
     );
-    expect(templatesPanel.librariesLink?.tagName === "A", "Browse libraries should use real link semantics.");
-    expect(templatesPanel.librariesLink?.text === "Browse libraries", "Templates view should include a Browse libraries link.");
-    expect(templatesPanel.librariesLink?.href === "#libraries", "Libraries link should use the explicit placeholder route.");
-    expect(templatesPanel.librariesLink?.iconCount === 1, "Libraries link should be a compact icon plus label row.");
-    expect(templatesPanel.librariesLink?.fontSize === "12px", "Libraries link should be quieter than template rows.");
-    expect(
-      templatesPanel.customTemplateNote?.text === "Connect a library to use your own templates.",
-      "Templates view should reserve a muted custom-template slot.",
-    );
-    expect(templatesPanel.customTemplateNote?.fontSize === "11px", "Custom-template slot should be visually muted.");
-    expect(templatesPanel.customTemplateNote?.fontWeight === "400", "Custom-template slot should avoid strong CTA weight.");
+    expect(templatesPanel.librariesLinkCount === 0, "Templates should not expose an unbuilt libraries surface.");
+    expect(templatesPanel.customTemplateNoteCount === 0, "Templates should not reserve an empty custom-template slot.");
     expect(templatesPanel.browseLibrariesButtonCount === 0, "Browse libraries should not be implemented as a button CTA.");
 
     await page.getByTitle("Create PRD.md").click();

@@ -22,7 +22,7 @@ import { MarkdownEditor, type MarkdownCommentAnchor, type MarkdownEditorHandle }
 import { MarkdownFormattingToolbar } from "./components/MarkdownFormattingToolbar";
 import { MarkdownPreview, type MarkdownPreviewCommentAnchor } from "./components/MarkdownPreview";
 import { RightPanel } from "./components/RightPanel";
-import { ShareControls } from "./components/ShareControls";
+import { ShareControls, type SharePanel } from "./components/ShareControls";
 import { StatusBar } from "./components/StatusBar";
 import { TabulaLogo } from "./components/TabulaLogo";
 import { TopChrome } from "./components/TopChrome";
@@ -76,6 +76,7 @@ import {
   type FileViewMode,
   type LocationRoom,
   type MarkdownFile,
+  type ReadingWidth,
   type WorkspaceState,
   PROJECT_STORAGE_VERSION,
   writeStoredWorkspace,
@@ -83,7 +84,7 @@ import {
 import type { CenterPopover, LeftPanelView, LibraryItem, RightPanelView, TopPopover } from "./uiTypes";
 
 const IDENTITY_KEY = "tabula.identity";
-const LIBRARIES_HREF = "#libraries";
+const WORKSPACE_PREFERENCES_KEY = "tabula.preferences.v1";
 
 const COLORS = ["#0f766e", "#2563eb", "#7c3aed", "#c2410c", "#be123c", "#047857"];
 
@@ -108,6 +109,44 @@ type AppToastState = {
   tone: "error" | "neutral";
   actionLabel?: string;
   onAction?: () => void;
+};
+
+type WorkspacePreferences = {
+  newFileViewMode: FileViewMode;
+  readingWidth: ReadingWidth;
+  lineWrapping: boolean;
+  lineNumbers: boolean;
+};
+
+const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferences = {
+  newFileViewMode: "edit",
+  readingWidth: "standard",
+  lineWrapping: true,
+  lineNumbers: true,
+};
+
+const isFileViewMode = (value: unknown): value is FileViewMode =>
+  value === "edit" || value === "split" || value === "preview";
+
+const isReadingWidth = (value: unknown): value is ReadingWidth =>
+  value === "narrow" || value === "standard" || value === "wide";
+
+const readWorkspacePreferences = (): WorkspacePreferences => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(WORKSPACE_PREFERENCES_KEY) ?? "{}") as Partial<WorkspacePreferences>;
+    return {
+      newFileViewMode: isFileViewMode(parsed.newFileViewMode)
+        ? parsed.newFileViewMode
+        : DEFAULT_WORKSPACE_PREFERENCES.newFileViewMode,
+      readingWidth: isReadingWidth(parsed.readingWidth)
+        ? parsed.readingWidth
+        : DEFAULT_WORKSPACE_PREFERENCES.readingWidth,
+      lineWrapping: typeof parsed.lineWrapping === "boolean" ? parsed.lineWrapping : DEFAULT_WORKSPACE_PREFERENCES.lineWrapping,
+      lineNumbers: typeof parsed.lineNumbers === "boolean" ? parsed.lineNumbers : DEFAULT_WORKSPACE_PREFERENCES.lineNumbers,
+    };
+  } catch {
+    return DEFAULT_WORKSPACE_PREFERENCES;
+  }
 };
 
 type PreviewSelectionState = {
@@ -268,11 +307,11 @@ description: Problem, scope, users, and success criteria for the project.
 
 ## Goals
 
-- 
+-
 
 ## Non-goals
 
-- 
+-
 
 ## User flow
 
@@ -280,7 +319,7 @@ description: Problem, scope, users, and success criteria for the project.
 
 ## Success criteria
 
-- 
+-
 `,
   },
   {
@@ -310,6 +349,94 @@ description: Interface principles, layout, states, and interaction notes.
 ## Interaction notes
 
 - 
+`,
+  },
+  {
+    title: "DECISION.md",
+    description: "Context, options, tradeoffs, final call.",
+    content: `---
+title: Decision
+description: Context, options, tradeoffs, and the final call.
+---
+
+# Decision
+
+## Context
+
+
+## Options
+
+-
+
+## Tradeoffs
+
+-
+
+## Decision
+
+
+## Follow-up
+
+-
+`,
+  },
+  {
+    title: "RUNBOOK.md",
+    description: "Steps, checks, rollback, ownership.",
+    content: `---
+title: Runbook
+description: Operational steps, checks, rollback, and ownership.
+---
+
+# Runbook
+
+## When to use
+
+
+## Steps
+
+1.
+
+## Checks
+
+-
+
+## Rollback
+
+-
+
+## Owner
+
+-
+`,
+  },
+  {
+    title: "HANDOFF.md",
+    description: "Goal, context, constraints, next steps.",
+    content: `---
+title: Handoff
+description: Goal, context, constraints, and next steps.
+---
+
+# Handoff
+
+## Goal
+
+
+## Context
+
+-
+
+## Constraints
+
+-
+
+## Current state
+
+
+## Next steps
+
+1.
 `,
   },
   {
@@ -381,7 +508,7 @@ const getKeyboardShortcuts = (shortcutLabels: ShortcutLabels) => [
   { keys: getAppShortcut(shortcutLabels, "N"), action: "New Markdown" },
   { keys: getAppShortcut(shortcutLabels, "O"), action: "Open .md file" },
   { keys: getAppShortcut(shortcutLabels, "F"), action: "Browse project files" },
-  { keys: "?", action: "Open Help.md" },
+  { keys: "?", action: "Open HELP.md" },
   { keys: `${shortcutLabels.primary} + B`, action: "Bold" },
   { keys: `${shortcutLabels.primary} + I`, action: "Italic" },
   { keys: `${shortcutLabels.primary} + K`, action: "Link" },
@@ -401,11 +528,11 @@ const getKeyboardShortcuts = (shortcutLabels: ShortcutLabels) => [
 ];
 
 const createHelpMarkdown = (shortcutLabels: ShortcutLabels) => `---
-title: Help
+title: HELP
 description: Quick reference for using Tabula.md.
 ---
 
-# Help
+# HELP
 
 ## Start
 
@@ -424,17 +551,17 @@ description: Quick reference for using Tabula.md.
 - Share a live room when people need to edit together.
 - Publish a project snapshot when you need a read-only handoff for people or agents.
 
+## Preferences
+
+- Set the default mode for newly created Markdown files.
+- Choose the default reading width for new files.
+- Turn line wrapping and line numbers on or off for new editor surfaces.
+
 ## Shortcuts
 
 | Shortcut | Action |
 | --- | --- |
-| ${getAppShortcut(shortcutLabels, "N")} | New Markdown |
-| ${getAppShortcut(shortcutLabels, "O")} | Open .md file |
-| ${getAppShortcut(shortcutLabels, "F")} | Browse project files |
-| ? | Open Help.md |
-| ${getAppShortcut(shortcutLabels, "1")} | Edit mode |
-| ${getAppShortcut(shortcutLabels, "2")} | Split mode |
-| ${getAppShortcut(shortcutLabels, "3")} | Preview mode |
+${getKeyboardShortcuts(shortcutLabels).map((shortcut) => `| ${shortcut.keys} | ${shortcut.action} |`).join("\n")}
 `;
 
 const normalizeIdentity = (identity: Collaborator): Collaborator => {
@@ -679,7 +806,10 @@ function WorkspaceApp() {
   const [topPopover, setTopPopover] = useState<TopPopover>(null);
   const [centerPopover, setCenterPopover] = useState<CenterPopover>(null);
   const [leftPanelOpen, setLeftPanelOpen] = useState(false);
-  const [leftPanelView, setLeftPanelView] = useState<LeftPanelView>("menu");
+  const [leftPanelView, setLeftPanelView] = useState<LeftPanelView>("new");
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [workspacePreferences, setWorkspacePreferences] = useState<WorkspacePreferences>(() => readWorkspacePreferences());
+  const [sharePanelTarget, setSharePanelTarget] = useState<SharePanel | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(-1);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
@@ -836,6 +966,14 @@ function WorkspaceApp() {
   }, []);
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem(WORKSPACE_PREFERENCES_KEY, JSON.stringify(workspacePreferences));
+    } catch {
+      // Preferences are a local convenience, not required for document editing.
+    }
+  }, [workspacePreferences]);
+
+  useEffect(() => {
     const handlePopState = () => {
       const room = getRoomFromLocation();
       if (room) {
@@ -909,8 +1047,8 @@ function WorkspaceApp() {
 
       if (leftPanelOpen && (isInsideLeftPanel || !isInsideRightPanel)) {
         event.preventDefault();
-        if (leftPanelView === "settings" || leftPanelView === "shortcuts") {
-          setLeftPanelView("menu");
+        if (preferencesOpen) {
+          setPreferencesOpen(false);
           return;
         }
 
@@ -926,7 +1064,7 @@ function WorkspaceApp() {
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [centerPopover, leftPanelOpen, leftPanelView, rightPanelOpen, topPopover]);
+  }, [centerPopover, leftPanelOpen, preferencesOpen, rightPanelOpen, topPopover]);
 
   const startSession = async () => {
     const startedSession = startCollaborationSession();
@@ -1200,7 +1338,12 @@ function WorkspaceApp() {
 
   const importMarkdownFile = async (file: File) => {
     const importedText = await file.text();
-    const nextFile = addFileFromContent(normalizeMarkdownFileTitle(file.name || "Imported.md"), importedText);
+    const nextFile = addFileFromContent(
+      normalizeMarkdownFileTitle(file.name || "Imported.md"),
+      importedText,
+      workspacePreferences.newFileViewMode,
+      getNewFilePreferenceOverrides(),
+    );
     closeFloatingChrome();
     syncUrlForFile(nextFile);
 
@@ -1581,7 +1724,16 @@ function WorkspaceApp() {
   const closeFloatingChrome = () => {
     setTopPopover(null);
     setCenterPopover(null);
+    setPreferencesOpen(false);
+    setSharePanelTarget(undefined);
     setCopiedFileId(null);
+  };
+
+  const openSharePanel = (panel: SharePanel) => {
+    setSharePanelTarget(panel);
+    setTopPopover("share");
+    setCenterPopover(null);
+    setLeftPanelOpen(false);
   };
 
   const selectFile = (fileId: string) => {
@@ -1594,9 +1746,16 @@ function WorkspaceApp() {
     syncUrlForFile(nextFile);
   };
 
+  const getNewFilePreferenceOverrides = (): Partial<MarkdownFile> => ({
+    viewMode: workspacePreferences.newFileViewMode,
+    readingWidth: workspacePreferences.readingWidth,
+    lineWrapping: workspacePreferences.lineWrapping,
+    lineNumbers: workspacePreferences.lineNumbers,
+  });
+
   const addFile = () => {
     queueEditorFocus();
-    const nextFile = addMarkdownFile();
+    const nextFile = addMarkdownFile(getNewFilePreferenceOverrides());
     closeFloatingChrome();
     syncUrlForFile(nextFile);
   };
@@ -1608,21 +1767,21 @@ function WorkspaceApp() {
     if (existingHelpFile) {
       setFiles((currentFiles) =>
         currentFiles.map((file) =>
-          file.id === existingHelpFile.id ? { ...file, text: helpMarkdown, viewMode: "preview" } : file,
+          file.id === existingHelpFile.id ? { ...file, title: "HELP.md", text: helpMarkdown, viewMode: "preview" } : file,
         ),
       );
       selectFile(existingHelpFile.id);
       return;
     }
 
-    const nextFile = addFileFromContent("Help.md", helpMarkdown, "preview");
+    const nextFile = addFileFromContent("HELP.md", helpMarkdown, "preview");
     closeFloatingChrome();
     syncUrlForFile(nextFile);
   };
 
   const addTemplateFile = (template: LibraryItem) => {
     queueEditorFocus();
-    const nextFile = addMarkdownTemplateFile(template);
+    const nextFile = addMarkdownTemplateFile(template, getNewFilePreferenceOverrides());
     closeFloatingChrome();
     syncUrlForFile(nextFile);
   };
@@ -1961,12 +2120,17 @@ function WorkspaceApp() {
       activeStatus={activeStatus}
       isLive={isLive}
       shareOpen={shareOpen}
+      sharePanelTarget={sharePanelTarget}
       copied={copied}
       onToggleShare={() => {
+        setSharePanelTarget(undefined);
         setTopPopover(shareOpen ? null : "share");
         setCenterPopover(null);
       }}
-      onCloseShare={() => setTopPopover(null)}
+      onCloseShare={() => {
+        setTopPopover(null);
+        setSharePanelTarget(undefined);
+      }}
       onStartSession={startSession}
       onCopyShareUrl={copyShareUrl}
       onCopyMarkdown={copyCurrentMarkdown}
@@ -2040,21 +2204,50 @@ function WorkspaceApp() {
           <LeftSidebar
             isOpen={leftPanelOpen}
             view={leftPanelView}
+            preferencesOpen={preferencesOpen}
             hasActiveFile={Boolean(activeFile)}
-            importInputRef={importInputRef}
-            workspaceImportInputRef={workspaceImportInputRef}
-            keyboardShortcuts={keyboardShortcuts}
             storageVersion={PROJECT_STORAGE_VERSION}
             templates={TEMPLATE_ITEMS}
-            librariesHref={LIBRARIES_HREF}
-            onSetView={setLeftPanelView}
+            newFileViewMode={workspacePreferences.newFileViewMode}
+            defaultReadingWidth={workspacePreferences.readingWidth}
+            defaultLineWrapping={workspacePreferences.lineWrapping}
+            defaultLineNumbers={workspacePreferences.lineNumbers}
+            onSetView={(nextView) => {
+              setLeftPanelView(nextView);
+              setPreferencesOpen(false);
+            }}
             onClose={() => {
               setLeftPanelOpen(false);
+              setPreferencesOpen(false);
               setTopPopover(null);
               setCenterPopover(null);
+              setSharePanelTarget(undefined);
             }}
+            onTogglePreferences={() => setPreferencesOpen((isOpen) => !isOpen)}
+            onClosePreferences={() => setPreferencesOpen(false)}
+            onChangeNewFileViewMode={(newFileViewMode) =>
+              setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, newFileViewMode }))
+            }
+            onChangeDefaultReadingWidth={(readingWidth) =>
+              setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, readingWidth }))
+            }
+            onChangeDefaultLineWrapping={(lineWrapping) =>
+              setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, lineWrapping }))
+            }
+            onChangeDefaultLineNumbers={(lineNumbers) =>
+              setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, lineNumbers }))
+            }
+            onAddFile={addFile}
+            onOpenMarkdownFile={() => importInputRef.current?.click()}
+            onImportProject={() => workspaceImportInputRef.current?.click()}
             onExportCurrentFile={exportCurrentFile}
             onDownloadWorkspace={downloadWorkspace}
+            onOpenCollaborate={() => openSharePanel("collaborate")}
+            onOpenPublish={() => openSharePanel("publish")}
+            onOpenHelp={() => {
+              openHelpFile();
+              setLeftPanelOpen(false);
+            }}
             onAddTemplate={addTemplateFile}
           />
         )}
@@ -2070,6 +2263,7 @@ function WorkspaceApp() {
             shareControls={shareControlsNode}
             onToggleLeftPanel={() => {
               setLeftPanelOpen((isOpen) => !isOpen);
+              setPreferencesOpen(false);
               setTopPopover(null);
               setCenterPopover(null);
             }}

@@ -117,19 +117,25 @@ export function useMarkdownFiles({
     return nextFile;
   };
 
-  const addFile = () => {
-    const nextFile = createFile(getNextUserFileIndex());
+  const addFile = (overrides?: Partial<MarkdownFile>) => {
+    const nextFile = createFile(getNextUserFileIndex(), overrides);
     setFiles((currentFiles) => [...currentFiles, nextFile]);
     setOpenFileIds((currentFileIds) => [...currentFileIds, nextFile.id]);
     setActiveFileId(nextFile.id);
     return nextFile;
   };
 
-  const addFileFromContent = (title: string, text: string, viewMode: FileViewMode = "edit") => {
+  const addFileFromContent = (
+    title: string,
+    text: string,
+    viewMode: FileViewMode = "edit",
+    overrides?: Partial<MarkdownFile>,
+  ) => {
     const nextFile = createFile(getNextUserFileIndex(), {
+      ...overrides,
       title: getAvailableFileTitle(title),
       text,
-      viewMode,
+      viewMode: overrides?.viewMode ?? viewMode,
     });
     setFiles((currentFiles) => [...currentFiles, nextFile]);
     setOpenFileIds((currentFileIds) => [...currentFileIds, nextFile.id]);
@@ -137,8 +143,8 @@ export function useMarkdownFiles({
     return nextFile;
   };
 
-  const addTemplateFile = (template: { title: string; content: string }) => {
-    return addFileFromContent(template.title, template.content, "edit");
+  const addTemplateFile = (template: { title: string; content: string }, overrides?: Partial<MarkdownFile>) => {
+    return addFileFromContent(template.title, template.content, "edit", overrides);
   };
 
   const duplicateFile = (fileId: string) => {

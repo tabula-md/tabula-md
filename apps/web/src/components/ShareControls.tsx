@@ -11,6 +11,7 @@ type ShareControlsProps = {
   activeStatus: ConnectionStatus;
   isLive: boolean;
   shareOpen: boolean;
+  sharePanelTarget?: SharePanel;
   copied: boolean;
   onToggleShare: () => void;
   onCloseShare: () => void;
@@ -38,7 +39,7 @@ type ShareControlsProps = {
   onStopSession: () => void;
 };
 
-type SharePanel = "collaborate" | "send" | "publish";
+export type SharePanel = "collaborate" | "send" | "publish";
 
 const formatShareUrlPreview = (url: string) => {
   try {
@@ -78,6 +79,7 @@ export function ShareControls({
   activeStatus,
   isLive,
   shareOpen,
+  sharePanelTarget,
   copied,
   onToggleShare,
   onCloseShare,
@@ -193,10 +195,10 @@ export function ShareControls({
 
   useEffect(() => {
     if (shareOpen) {
-      setSharePanel("collaborate");
+      setSharePanel(sharePanelTarget ?? "collaborate");
       setChangingPublishScope(false);
     }
-  }, [activeFile?.id, shareOpen]);
+  }, [activeFile?.id, shareOpen, sharePanelTarget]);
 
   useEffect(() => {
     setChangingPublishScope(false);

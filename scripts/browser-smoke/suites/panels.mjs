@@ -25,6 +25,7 @@ export async function run(ctx) {
     const workbenchPanels = await page.evaluate(() => ({
       topLeftMenuCount: document.querySelectorAll(".workspace-menu-button").length,
       leftOpen: Boolean(document.querySelector(".left-sidebar")),
+      leftPanelLabel: document.querySelector(".left-sidebar")?.getAttribute("aria-label") ?? "",
       largeWorkspaceHeadingCount: document.querySelectorAll(".left-panel-header-main h2").length,
       leftTabLabels: Array.from(document.querySelectorAll(".left-panel-tabs button")).map((button) =>
         button.getAttribute("aria-label"),
@@ -62,6 +63,19 @@ export async function run(ctx) {
           iconCount: item.querySelectorAll("svg").length,
         };
       }),
+      footerRows: Array.from(document.querySelectorAll(".left-panel-footer button")).map((item) => {
+        const rect = item.getBoundingClientRect();
+        const style = window.getComputedStyle(item);
+        return {
+          text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
+          height: Math.round(rect.height),
+          borderRadius: style.borderRadius,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+          paddingLeft: style.paddingLeft,
+          iconCount: item.querySelectorAll("svg").length,
+        };
+      }),
       focusOrder: Array.from(
         document.querySelectorAll(".left-sidebar button, .left-sidebar input, .left-sidebar a"),
       )
@@ -80,16 +94,17 @@ export async function run(ctx) {
       panelToggleCount: document.querySelectorAll(".top-panel-toggle").length,
       bottomPanelCount: document.querySelectorAll(".bottom-panel").length,
     }));
-    // P7: left panel menu/templates product contract.
-    expect(workbenchPanels.topLeftMenuCount === 0, "Project actions should move out of the top-left chrome.");
-    expect(workbenchPanels.leftOpen, "The left project menu should open from the top-right panel toggle.");
+    // P7: left panel tools/templates/handoff product contract.
+    expect(workbenchPanels.topLeftMenuCount === 0, "Workspace tools should move out of the old top-left chrome.");
+    expect(workbenchPanels.leftOpen, "The workspace tools panel should open from the top-left panel toggle.");
+    expect(workbenchPanels.leftPanelLabel === "Workspace Tools", "The left panel should not claim the Project surface.");
     expect(workbenchPanels.largeWorkspaceHeadingCount === 0, "The left panel should not show a large Project title.");
     expect(
-      workbenchPanels.leftTabLabels.join("|") === "Menu|Templates",
-      "The left panel should expose only menu and templates.",
+      workbenchPanels.leftTabLabels.join("|") === "New|Templates|Handoff",
+      "The left panel should expose New, Templates, and Handoff surfaces.",
     );
     expect(
-      workbenchPanels.leftTabTitles.join("|") === "Menu|Templates",
+      workbenchPanels.leftTabTitles.join("|") === "New|Templates|Handoff",
       "Icon-only panel segmented controls should keep matching title attributes.",
     );
     expect(
@@ -101,26 +116,25 @@ export async function run(ctx) {
       ),
       "Panel segmented controls should keep stable size and weight across active/inactive states.",
     );
-    expect(workbenchPanels.menuHeadingCount === 0, "Menu view should not render a repeated section heading.");
+    expect(workbenchPanels.menuHeadingCount === 1, "New view should name the current tools surface.");
     expect(workbenchPanels.fileSearchCount === 0, "File search should live in the right project context panel.");
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the right project context panel.");
-    expect(workbenchPanels.actionHeadingCount === 0, "Project actions should not render a heading.");
+    expect(workbenchPanels.actionHeadingCount === 0, "Workspace tool rows should not render extra group headings.");
     expect(
-      workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "Import Markdown|Export current file|Download project|Import project|Settings|Keyboard shortcuts",
-      "Project actions should keep the focused import/export/settings menu rows.",
+      workbenchPanels.actionRows.map((row) => row.text).join("|") === "Blank Markdown|Open Markdown...|Import project...",
+      "New view should focus on starting or importing Markdown context.",
     );
     expect(
       workbenchPanels.actionRows.every((row) => row.iconCount === 1),
-      "Project action rows should be icon plus label only.",
+      "Workspace tool rows should be icon plus label only.",
     );
     expect(
       workbenchPanels.actionRows.every((row) => row.height >= 30 && row.height <= 34),
-      "Project action rows should stay compact.",
+      "Workspace tool rows should stay compact.",
     );
     expect(
       workbenchPanels.actionRows.every((row) => row.fontWeight === workbenchPanels.actionRows[0].fontWeight),
-      "Project action rows should use one regular text weight.",
+      "Workspace tool rows should use one regular text weight.",
     );
     expect(
       workbenchPanels.actionRows.every(
@@ -131,82 +145,147 @@ export async function run(ctx) {
           row.fontSize === workbenchPanels.actionRows[0].fontSize &&
           row.color === workbenchPanels.actionRows[0].color,
       ),
-      "Project action rows should use one compact row token set.",
+      "Workspace tool rows should use one compact row token set.",
+    );
+    expect(
+      workbenchPanels.footerRows.map((row) => row.text).join("|") === "Preferences|Help",
+      "Workspace tools should keep Preferences and Help pinned as secondary footer actions.",
+    );
+    expect(
+      workbenchPanels.footerRows.every(
+        (row) =>
+          row.iconCount >= 1 &&
+          row.iconCount <= 2 &&
+          row.height === workbenchPanels.actionRows[0].height &&
+          row.borderRadius === workbenchPanels.actionRows[0].borderRadius &&
+          row.paddingLeft === workbenchPanels.actionRows[0].paddingLeft &&
+          row.fontSize === workbenchPanels.actionRows[0].fontSize &&
+          row.fontWeight === workbenchPanels.actionRows[0].fontWeight,
+      ),
+      "Workspace support rows should share compact row tokens with the tool rows.",
     );
     const focusIndex = (label) => workbenchPanels.focusOrder.indexOf(label);
-    expect(focusIndex("Menu") !== -1, "Keyboard order should include the Menu segmented control.");
+    expect(focusIndex("New") !== -1, "Keyboard order should include the New segmented control.");
     expect(focusIndex("Templates") !== -1, "Keyboard order should include the Templates segmented control.");
-    expect(focusIndex("Import Markdown") !== -1, "Keyboard order should include project action rows.");
+    expect(focusIndex("Handoff") !== -1, "Keyboard order should include the Handoff segmented control.");
+    expect(focusIndex("Blank Markdown") !== -1, "Keyboard order should include New action rows.");
+    expect(focusIndex("Preferences") !== -1, "Keyboard order should include pinned support rows.");
     expect(
-      focusIndex("Menu") <
+      focusIndex("New") <
         focusIndex("Templates") &&
         focusIndex("Templates") <
-          focusIndex("Import Markdown"),
-      "Left panel keyboard order should be Menu, Templates, then project action rows.",
+          focusIndex("Handoff") &&
+        focusIndex("Handoff") < focusIndex("Blank Markdown") &&
+        focusIndex("Blank Markdown") < focusIndex("Preferences"),
+      "Left panel keyboard order should be tabs, current tool rows, then pinned support rows.",
     );
     expect(workbenchPanels.statusVisible, "The document status bar should remain visible.");
-    expect(workbenchPanels.panelToggleCount === 1, "Top chrome should expose the remaining closed-panel toggle while Project Menu is open.");
+    expect(workbenchPanels.panelToggleCount === 1, "Top chrome should expose the remaining closed-panel toggle while Workspace Tools is open.");
     expect(workbenchPanels.bottomPanelCount === 0, "The bottom panel should stay removed; status bar owns bottom status.");
 
-    const workspaceActions = page.locator(".left-workspace-actions");
-    await workspaceActions.getByRole("button", { name: "Settings", exact: true }).click();
+    const supportActions = page.locator(".left-panel-footer");
+    await supportActions.getByRole("button", { name: "Preferences", exact: true }).click();
     await page.waitForTimeout(80);
-    const settingsPanel = await page.evaluate(() => ({
+    const preferencesPanel = await page.evaluate(() => ({
       leftOpen: Boolean(document.querySelector(".left-sidebar")),
-      settingsHeading: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
-      detailLabels: Array.from(document.querySelectorAll(".left-detail-list div")).map((item) =>
+      preferencesOpen: Boolean(document.querySelector(".left-preferences-popover")),
+      currentPanelHeading: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
+      preferenceLabels: [
+        ...Array.from(document.querySelectorAll(".left-preferences-row > span")),
+        ...Array.from(document.querySelectorAll(".left-preferences-meta > span")),
+      ].map((item) => item.textContent?.replace(/\s+/g, " ").trim()),
+      segmentRows: Array.from(document.querySelectorAll(".left-preferences-segmented")).map((segment) =>
+        Array.from(segment.querySelectorAll("button"))
+          .map((button) => button.textContent?.replace(/\s+/g, " ").trim())
+          .join("|"),
+      ),
+      checkRows: Array.from(document.querySelectorAll(".left-preferences-check strong")).map((item) =>
         item.textContent?.replace(/\s+/g, " ").trim(),
       ),
+      detailRowCount: document.querySelectorAll(".left-detail-list div").length,
+      shortcutRowCount: document.querySelectorAll(".left-shortcut-row").length,
+      keyboardShortcutsFooterCount: Array.from(document.querySelectorAll(".left-panel-footer button")).filter((button) =>
+        button.textContent?.includes("Keyboard shortcuts"),
+      ).length,
+      preferenceFooterActive: document.querySelector(".left-panel-footer button")?.classList.contains("active") ?? false,
+      popoverLeft: Math.round(document.querySelector(".left-preferences-popover")?.getBoundingClientRect().left ?? 0),
+      sidebarRight: Math.round(document.querySelector(".left-sidebar")?.getBoundingClientRect().right ?? 0),
     }));
-    expect(settingsPanel.leftOpen, "Settings should open inside the same left panel.");
-    expect(settingsPanel.settingsHeading === "Settings", "Settings detail should stay scoped to the left panel.");
-    expect(settingsPanel.detailLabels.length > 0, "Settings detail should render compact panel rows.");
+    expect(preferencesPanel.leftOpen, "Preferences should keep the Workspace Tools panel open.");
+    expect(preferencesPanel.preferencesOpen, "Preferences should open as a nested side surface.");
+    expect(
+      preferencesPanel.currentPanelHeading === "New",
+      "Preferences should not replace the current Workspace Tools surface.",
+    );
+    expect(
+      preferencesPanel.preferenceLabels.join("|") === "New files open in|Reading width|Editor|Storage",
+      "Preferences should expose product-relevant Markdown defaults.",
+    );
+    expect(
+      preferencesPanel.segmentRows.join("/") === "Edit|Split|Preview/Narrow|Standard|Wide",
+      "Preferences should use compact segmented controls for default mode and width.",
+    );
+    expect(
+      preferencesPanel.checkRows.join("|") === "Line wrapping|Line numbers",
+      "Preferences should include editor defaults that affect newly created files.",
+    );
+    expect(preferencesPanel.detailRowCount === 0, "Preferences should not render as an in-panel detail list.");
+    expect(preferencesPanel.shortcutRowCount === 0, "Keyboard shortcuts should move out of the left panel surface.");
+    expect(preferencesPanel.keyboardShortcutsFooterCount === 0, "Keyboard shortcuts should be documented in Help, not pinned.");
+    expect(preferencesPanel.preferenceFooterActive, "The Preferences support row should stay selected while its surface is open.");
+    expect(
+      preferencesPanel.popoverLeft >= preferencesPanel.sidebarRight - 1,
+      "Preferences should open beside the Workspace Tools panel.",
+    );
+
+    const preferencesPopover = page.locator(".left-preferences-popover");
+    await preferencesPopover.getByRole("button", { name: "Split", exact: true }).click();
+    await preferencesPopover.getByRole("button", { name: "Wide", exact: true }).click();
+    await preferencesPopover.getByRole("button", { name: "Line numbers", exact: true }).click();
 
     await page.keyboard.press("Escape");
     await page.waitForTimeout(80);
-    const settingsEscapeState = await page.evaluate(() => ({
+    const preferencesEscapeState = await page.evaluate(() => ({
       leftOpen: Boolean(document.querySelector(".left-sidebar")),
-      menuActionsVisible: document.querySelectorAll(".left-workspace-actions button").length > 0,
-      settingsHeading: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
+      preferencesOpen: Boolean(document.querySelector(".left-preferences-popover")),
+      newActionsVisible: Array.from(document.querySelectorAll(".left-workspace-actions button")).some((button) =>
+        button.textContent?.includes("Blank Markdown"),
+      ),
+      currentPanelHeading: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
     }));
-    expect(settingsEscapeState.leftOpen, "Escape from Settings should keep the left panel open.");
-    expect(settingsEscapeState.menuActionsVisible, "Escape from Settings should return to Menu view.");
-    expect(settingsEscapeState.settingsHeading !== "Settings", "Escape from Settings should exit the detail view.");
+    expect(preferencesEscapeState.leftOpen, "Escape from Preferences should keep the left panel open.");
+    expect(!preferencesEscapeState.preferencesOpen, "Escape from Preferences should close only the nested side surface.");
+    expect(preferencesEscapeState.newActionsVisible, "Escape from Preferences should leave the New view available.");
+    expect(preferencesEscapeState.currentPanelHeading === "New", "Escape from Preferences should preserve the current panel view.");
 
-    await workspaceActions.getByRole("button", { name: "Keyboard shortcuts", exact: true }).click();
-    await page.waitForTimeout(80);
-    const shortcutsPanel = await page.evaluate(() => ({
-      leftOpen: Boolean(document.querySelector(".left-sidebar")),
-      shortcutsHeading: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
-      shortcutRows: document.querySelectorAll(".left-shortcut-row").length,
+    await page.getByRole("button", { name: "Blank Markdown", exact: true }).click();
+    await page.waitForTimeout(120);
+    const preferenceAppliedState = await page.evaluate(() => ({
+      fileShellClasses: document.querySelector(".file-shell")?.className ?? "",
+      workspaceClasses: document.querySelector(".workspace")?.className ?? "",
+      lineNumberGutterCount: document.querySelectorAll(".cm-lineNumbers").length,
     }));
-    expect(shortcutsPanel.leftOpen, "Keyboard shortcuts should open inside the same left panel.");
+    const preferenceAppliedTabs = await getTabs(page);
+    const activePreferenceTab = preferenceAppliedTabs.find((tab) => tab.active);
     expect(
-      shortcutsPanel.shortcutsHeading === "Keyboard shortcuts",
-      "Keyboard shortcuts detail should stay scoped to the left panel.",
+      activePreferenceTab?.mode === "Split",
+      `New files should honor the preferred default view mode. Got: ${activePreferenceTab?.mode}`,
     );
-    expect(shortcutsPanel.shortcutRows > 0, "Keyboard shortcuts detail should render compact panel rows.");
-
-    await page.keyboard.press("Escape");
+    expect(
+      preferenceAppliedState.fileShellClasses.includes("reading-wide") &&
+        preferenceAppliedState.workspaceClasses.includes("reading-wide"),
+      "New files should honor the preferred default reading width.",
+    );
+    expect(preferenceAppliedState.lineNumberGutterCount === 0, "New files should honor the preferred line number default.");
+    await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await page.waitForTimeout(80);
-    const shortcutsEscapeState = await page.evaluate(() => ({
-      leftOpen: Boolean(document.querySelector(".left-sidebar")),
-      menuActionsVisible: document.querySelectorAll(".left-workspace-actions button").length > 0,
-      shortcutsHeading: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
-    }));
-    expect(shortcutsEscapeState.leftOpen, "Escape from Keyboard shortcuts should keep the left panel open.");
-    expect(shortcutsEscapeState.menuActionsVisible, "Escape from Keyboard shortcuts should return to Menu view.");
-    expect(
-      shortcutsEscapeState.shortcutsHeading !== "Keyboard shortcuts",
-      "Escape from Keyboard shortcuts should exit the detail view.",
-    );
 
     await page.keyboard.press("Escape");
     await page.waitForTimeout(80);
     const leftEscapeState = await page.evaluate(() => ({
       leftOpen: Boolean(document.querySelector(".left-sidebar")),
     }));
-    expect(!leftEscapeState.leftOpen, "Escape from Menu view should close the left panel.");
+    expect(!leftEscapeState.leftOpen, "Escape from New view should close the left panel.");
 
     const rightPanelToggleContract = await page.evaluate(() => {
       const button = document.querySelector('button[aria-label="Open Project Context"]');
