@@ -22,7 +22,7 @@ type RightPanelCommentsProps = {
   commentDraft: string;
   identityName: string;
   selectedText: string;
-  selectedWordCount: number;
+  selectedCharacterCount: number;
   commentInputRef?: RefObject<HTMLTextAreaElement | null>;
   activeCommentId?: string | null;
   activeReplyCommentId?: string | null;
@@ -56,7 +56,7 @@ export function RightPanelComments({
   commentDraft,
   identityName,
   selectedText,
-  selectedWordCount,
+  selectedCharacterCount,
   commentInputRef,
   activeCommentId,
   activeReplyCommentId,
@@ -98,7 +98,7 @@ export function RightPanelComments({
   });
 
   useEffect(() => {
-    if (selectedWordCount <= 0) {
+    if (selectedCharacterCount <= 0) {
       return undefined;
     }
 
@@ -109,7 +109,7 @@ export function RightPanelComments({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [commentInputRef, selectedWordCount]);
+  }, [commentInputRef, selectedCharacterCount]);
 
   useEffect(() => {
     if (!activeCommentId) {
@@ -206,7 +206,7 @@ export function RightPanelComments({
             commentDraft={commentDraft}
             identityName={identityName}
             selectedText={selectedText}
-            selectedWordCount={selectedWordCount}
+            selectedCharacterCount={selectedCharacterCount}
             commentInputRef={commentInputRef}
             onCancel={cancelComment}
             onCommentDraftChange={onCommentDraftChange}

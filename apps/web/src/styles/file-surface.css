@@ -214,10 +214,21 @@
   --document-safe-right: 0px;
   --document-safe-width: max(260px, calc(100% - var(--document-safe-left) - var(--document-safe-right)));
   --document-horizontal-gutter: 72px;
+  --editor-active-line-background: rgba(0, 0, 0, 0.035);
+  --editor-bookmark-rail: 24px;
+  --editor-line-number-rail: 38px;
+  --editor-left-rail: calc(var(--editor-bookmark-rail) + var(--editor-line-number-rail));
+  --editor-comment-rail: var(--editor-left-rail);
+  --editor-frame-rails: calc(var(--editor-left-rail) + var(--editor-comment-rail));
   --document-body-width: min(
     var(--document-reading-max),
     max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
   );
+  --editor-body-width: min(
+    var(--document-reading-max),
+    max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter) - var(--editor-frame-rails)))
+  );
+  --editor-frame-width: calc(var(--editor-body-width) + var(--editor-frame-rails));
   --document-chrome-width: var(--document-body-width);
   --document-lane-margin-left: auto;
   --document-lane-margin-right: auto;
@@ -256,7 +267,7 @@
     var(--document-reading-max),
     max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
   );
-  --document-chrome-width: var(--document-body-width);
+  --document-chrome-width: var(--editor-frame-width);
 }
 
 .main-panel.left-panel-open .file-shell {
@@ -273,6 +284,14 @@
 
 .file-shell.with-format-toolbar {
   grid-template-rows: 48px minmax(0, 1fr) 42px;
+}
+
+.file-shell.line-numbers-off,
+.editor-surface.line-numbers-off {
+  --editor-line-number-rail: 0px;
+  --editor-left-rail: var(--editor-bookmark-rail);
+  --editor-comment-rail: var(--editor-left-rail);
+  --editor-frame-rails: calc(var(--editor-left-rail) + var(--editor-comment-rail));
 }
 
 .file-shell.with-live-room-notice {
@@ -318,6 +337,11 @@
 
 .editor-control-row.preview {
   background: transparent;
+}
+
+.file-shell.view-edit .editor-control-row,
+.file-shell.view-edit .file-status-bar {
+  width: var(--editor-frame-width);
 }
 
 .workspace {
@@ -617,9 +641,22 @@
   display: block;
 }
 
+.workspace.edit:not(.split) .editor-surface {
+  width: var(--editor-frame-width);
+}
+
+.workspace.edit:not(.split) .markdown-editor .cm-content {
+  flex: 0 0 calc(100% - var(--editor-frame-rails));
+  width: calc(100% - var(--editor-frame-rails));
+}
+
 .workspace.reading-narrow:not(.split) .editor-surface,
 .workspace.reading-narrow:not(.split) .preview-surface {
   width: var(--document-body-width);
+}
+
+.workspace.edit.reading-narrow:not(.split) .editor-surface {
+  width: var(--editor-frame-width);
 }
 
 .workspace.reading-wide:not(.split) .editor-surface,
@@ -627,10 +664,14 @@
   width: var(--document-body-width);
 }
 
+.workspace.edit.reading-wide:not(.split) .editor-surface {
+  width: var(--editor-frame-width);
+}
+
 .workspace.split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  width: var(--document-body-width);
+  width: var(--editor-frame-width);
   margin-left: var(--document-lane-margin-left);
   margin-right: var(--document-lane-margin-right);
   overflow: hidden;
@@ -665,8 +706,8 @@
 .workspace.split .markdown-editor .cm-activeLine {
   background: linear-gradient(
     90deg,
-    rgba(0, 0, 0, 0.032) 0,
-    rgba(0, 0, 0, 0.032) calc(100% - 16px),
+    var(--editor-active-line-background) 0,
+    var(--editor-active-line-background) calc(100% - 16px),
     transparent calc(100% - 16px)
   );
 }
@@ -878,11 +919,96 @@
 }
 
 .markdown-editor .cm-lineNumbers {
-  min-width: 38px;
+  min-width: var(--editor-line-number-rail);
+}
+
+.markdown-editor .cm-annotationGutter {
+  width: var(--editor-bookmark-rail);
+  min-width: var(--editor-bookmark-rail);
+}
+
+.markdown-editor .cm-commentGutter {
+  width: var(--editor-comment-rail);
+  min-width: var(--editor-comment-rail);
+}
+
+.markdown-editor .cm-annotationGutter .cm-gutterElement,
+.markdown-editor .cm-commentGutter .cm-gutterElement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.markdown-editor .cm-annotationGutter .cm-gutterElement {
+  width: var(--editor-bookmark-rail);
+  min-width: var(--editor-bookmark-rail);
+}
+
+.markdown-editor .cm-commentGutter .cm-gutterElement {
+  justify-content: flex-end;
+  width: var(--editor-comment-rail);
+  min-width: var(--editor-comment-rail);
+  padding-right: 4px;
+}
+
+.markdown-editor .cm-annotation-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  color: #8a8a8d;
+}
+
+.markdown-editor .cm-line-comment-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 18px;
+  color: #8a8a8d;
+}
+
+.markdown-editor .cm-annotation-action {
+  --annotation-active-color: #763fc8;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  color: #b7b7ba;
+  cursor: pointer;
+}
+
+.markdown-editor .cm-annotation-action:hover {
+  background: rgba(0, 0, 0, 0.055);
+}
+
+.markdown-editor .cm-annotation-icon {
+  display: block;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.markdown-editor .cm-annotationGutter:hover .cm-gutterElement:hover .cm-annotation-icon,
+.markdown-editor .cm-commentGutter:hover .cm-gutterElement:hover .cm-annotation-icon {
+  opacity: 0.72;
+}
+
+.markdown-editor .cm-annotation-marker.has-bookmark .cm-annotation-action,
+.markdown-editor .cm-line-comment-marker.has-comment .cm-annotation-action {
+  color: var(--annotation-active-color);
+}
+
+.markdown-editor .cm-annotation-marker.has-bookmark .cm-annotation-icon,
+.markdown-editor .cm-line-comment-marker.has-comment .cm-annotation-icon {
+  opacity: 1;
 }
 
 .markdown-editor .cm-lineNumbers .cm-gutterElement {
-  min-width: 32px;
+  min-width: var(--editor-line-number-rail);
   padding: 0 10px 0 0;
   color: #c6c6c8;
   font-size: 14px;
@@ -894,17 +1020,17 @@
 .markdown-editor .cm-lineNumbers .cm-activeLineGutter,
 .markdown-editor .cm-activeLineGutter {
   color: #6f6f72;
-  background: transparent;
+  background: var(--editor-active-line-background);
 }
 
 .markdown-editor .cm-content {
   min-height: inherit;
-  padding: 0 2px 0 4px;
+  padding: 0;
   caret-color: #1f1f1f;
 }
 
 .markdown-editor .cm-line {
-  padding: 0 4px;
+  padding: 0 0 0 8px;
 }
 
 .markdown-editor .cm-placeholder {
@@ -917,11 +1043,53 @@
 }
 
 .markdown-editor .cm-activeLine {
-  background: rgba(0, 0, 0, 0.035);
+  background: var(--editor-active-line-background);
 }
 
 .markdown-editor .cm-matchingBracket {
   color: inherit;
+  background: var(--surface-muted);
+}
+
+.selection-comment-popover {
+  position: fixed;
+  z-index: 80;
+  color: #1f1f1f;
+  background: #ffffff;
+  border: 1px solid var(--line-subtle);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+}
+
+.selection-comment-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  color: #1f1f1f;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.selection-comment-button:hover,
+.selection-comment-button:focus-visible {
+  background: var(--surface-hover);
+  outline: 0;
+}
+
+.selection-comment-popover {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 5px;
+}
+
+.selection-comment-button {
+  height: 28px;
+  padding: 0 8px;
   background: var(--surface-muted);
 }
 
@@ -968,6 +1136,11 @@
     width: var(--document-chrome-width);
   }
 
+  .file-shell.view-edit .editor-control-row,
+  .file-shell.view-edit .file-status-bar {
+    width: var(--document-chrome-width);
+  }
+
   .editor-control-row.with-formatting {
     padding: 4px;
   }
@@ -984,6 +1157,15 @@
   .preview-surface {
     width: var(--document-body-width);
     padding-top: 18px;
+  }
+
+  .workspace.edit:not(.split) .editor-surface {
+    width: var(--document-body-width);
+  }
+
+  .workspace.edit:not(.split) .markdown-editor .cm-content {
+    flex: auto;
+    width: auto;
   }
 
   .markdown-editor .cm-gutters {
@@ -1034,6 +1216,11 @@
     width: var(--document-chrome-width);
     margin-left: var(--document-lane-margin-left);
     margin-right: var(--document-lane-margin-right);
+  }
+
+  .file-shell.view-edit .editor-control-row,
+  .file-shell.view-edit .file-status-bar {
+    width: var(--document-chrome-width);
   }
 
   .workspace.split .editor-surface,

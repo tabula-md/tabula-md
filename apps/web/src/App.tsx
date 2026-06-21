@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type ChangeEvent,
   type DragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -9,7 +10,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { ChevronDown, ChevronRight, File as FileIcon, Folder as FolderIcon } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  File as FileIcon,
+  Folder as FolderIcon,
+  MessageSquarePlus,
+} from "lucide-react";
 import { COMMENT_ANCHOR_CONTEXT_LENGTH, getCommentRangeInText } from "./commentAnchors";
 import { type Collaborator, type ConnectionStatus, type LiveSelection } from "./collab";
 import { AppToast } from "./components/AppToast";
@@ -18,7 +25,14 @@ import { FileTabs } from "./components/FileTabs";
 import { FileToolbar } from "./components/FileToolbar";
 import { LeftSidebar } from "./components/LeftSidebar";
 import { LiveRoomNotice } from "./components/LiveRoomNotice";
-import { MarkdownEditor, type MarkdownCommentAnchor, type MarkdownEditorHandle } from "./components/MarkdownEditor";
+import {
+  MarkdownEditor,
+  type MarkdownBookmark,
+  type MarkdownCommentAnchor,
+  type MarkdownEditorHandle,
+  type MarkdownLineActionRequest,
+  type MarkdownSelectionActionPosition,
+} from "./components/MarkdownEditor";
 import { MarkdownFormattingToolbar } from "./components/MarkdownFormattingToolbar";
 import { MarkdownPreview, type MarkdownPreviewCommentAnchor } from "./components/MarkdownPreview";
 import { RightPanel } from "./components/RightPanel";
@@ -72,6 +86,7 @@ import {
   README_FILE_ID,
   READING_WIDTHS,
   syncUrlForFile,
+  type FileBookmark,
   type FileComment,
   type FileViewMode,
   type LocationRoom,
@@ -289,6 +304,48 @@ const readPreviewSelection = (surface: HTMLElement | null, previewBodyStartOffse
     to: Math.max(...segments.map((segment) => segment.to)),
     text: selectedText,
   };
+};
+
+const readSelectionActionPosition = (): MarkdownSelectionActionPosition | null => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    return null;
+  }
+
+  const rect = selection.getRangeAt(0).getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    return null;
+  }
+
+  return {
+    clientX: rect.left + rect.width / 2,
+    clientY: rect.top,
+  };
+};
+
+const getFloatingPopoverStyle = (
+  position: MarkdownSelectionActionPosition,
+  options: { width: number; yOffset: number },
+): CSSProperties => {
+  const viewportWidth = window.innerWidth || 1024;
+  const left = Math.max(12, Math.min(position.clientX, viewportWidth - options.width - 12));
+  const top = Math.max(72, position.clientY + options.yOffset);
+  return {
+    left,
+    top,
+  };
+};
+
+const isPositionInLineRange = (position: number, lineStart: number, lineEnd: number) =>
+  position >= lineStart && position <= lineEnd;
+
+const getCursorPositionLabel = (sourceText: string, offset: number) => {
+  const safeOffset = Math.max(0, Math.min(offset, sourceText.length));
+  const textBeforeCursor = sourceText.slice(0, safeOffset);
+  const lineNumber = textBeforeCursor.split("\n").length;
+  const previousLineBreak = safeOffset === 0 ? -1 : sourceText.lastIndexOf("\n", safeOffset - 1);
+  const columnNumber = safeOffset - previousLineBreak;
+  return `${lineNumber}:${columnNumber}`;
 };
 
 const TEMPLATE_ITEMS = [
@@ -833,6 +890,7 @@ function WorkspaceApp() {
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
   const [activeSelection, setActiveSelection] = useState<LiveSelection | undefined>(undefined);
   const [previewSelection, setPreviewSelection] = useState<PreviewSelectionState | null>(null);
+  const [selectionActionPosition, setSelectionActionPosition] = useState<MarkdownSelectionActionPosition | null>(null);
   const [publishedSnapshot, setPublishedSnapshot] = useState<PublishedSnapshot | null>(() => readLatestPublishedSnapshot());
   const [publishScope, setPublishScope] = useState<PublishScope>("file");
   const [publishing, setPublishing] = useState(false);
@@ -841,6 +899,7 @@ function WorkspaceApp() {
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const suppressSelectionActionPositionRef = useRef(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -890,6 +949,7 @@ function WorkspaceApp() {
   const activeReadingWidth = activeFile?.readingWidth ?? "standard";
   const activeLineWrapping = activeFile?.lineWrapping ?? true;
   const activeLineNumbers = activeFile?.lineNumbers ?? true;
+  const activeBookmarks = activeFile?.bookmarks ?? [];
   const {
     workspaceRef,
     editorSurfaceRef,
@@ -917,7 +977,9 @@ function WorkspaceApp() {
       : activeSelection && activeSelection.from !== activeSelection.to
         ? text.slice(Math.min(activeSelection.from, activeSelection.to), Math.max(activeSelection.from, activeSelection.to)).trim()
         : "";
-  const selectedWordCount = selectedMarkdownText ? selectedMarkdownText.split(/\s+/).length : 0;
+  const selectedCharacterCount =
+    activeSelection && activeSelection.from !== activeSelection.to ? Math.abs(activeSelection.to - activeSelection.from) : 0;
+  const cursorPositionLabel = getCursorPositionLabel(text, activeSelection?.to ?? 0);
   const parsedMarkdown = parseFrontmatter(text);
   const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
   const renderedPreview = getPreviewBody(parsedMarkdown.body);
@@ -1046,6 +1108,12 @@ function WorkspaceApp() {
         return;
       }
 
+      if (selectionActionPosition) {
+        event.preventDefault();
+        setSelectionActionPosition(null);
+        return;
+      }
+
       if (topPopover || centerPopover) {
         event.preventDefault();
         setTopPopover(null);
@@ -1076,7 +1144,29 @@ function WorkspaceApp() {
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [centerPopover, leftPanelOpen, preferencesOpen, rightPanelOpen, topPopover]);
+  }, [centerPopover, leftPanelOpen, preferencesOpen, rightPanelOpen, selectionActionPosition, topPopover]);
+
+  useEffect(() => {
+    if (!selectionActionPosition) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (
+        target?.closest(
+          ".selection-comment-popover, .cm-annotationGutter, .cm-comment-mark, .preview-comment-mark",
+        )
+      ) {
+        return;
+      }
+
+      setSelectionActionPosition(null);
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    return () => window.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [selectionActionPosition]);
 
   const startSession = async () => {
     const startedSession = startCollaborationSession();
@@ -1452,9 +1542,39 @@ function WorkspaceApp() {
     updateActiveFileText(nextText);
   };
 
+  const updateActiveFileBookmarks = (nextBookmarks: MarkdownBookmark[]) => {
+    if (!activeFile) {
+      return;
+    }
+
+    const normalizedBookmarks: FileBookmark[] = nextBookmarks
+      .map((bookmark) => ({
+        id: bookmark.id,
+        position: Math.max(0, bookmark.position),
+        createdAt: bookmark.createdAt ?? new Date().toISOString(),
+      }))
+      .filter(
+        (bookmark, index, bookmarkList) =>
+          bookmarkList.findIndex((candidate) => candidate.position === bookmark.position) === index,
+      );
+
+    setFiles((currentFiles) =>
+      currentFiles.map((file) => (file.id === activeFile.id ? { ...file, bookmarks: normalizedBookmarks } : file)),
+    );
+  };
+
   const handleEditorSelectionChange = (selection: LiveSelection) => {
     setPreviewSelection(null);
     setActiveSelection(selection);
+  };
+
+  const handleEditorSelectionActionPositionChange = (position: MarkdownSelectionActionPosition | null) => {
+    if (suppressSelectionActionPositionRef.current) {
+      setSelectionActionPosition(null);
+      return;
+    }
+
+    setSelectionActionPosition(position);
   };
 
   const undoActiveFile = () => {
@@ -1682,12 +1802,85 @@ function WorkspaceApp() {
   };
 
   const openSelectionComment = () => {
-    if (!selectedWordCount) {
+    if (!selectedCharacterCount) {
       return;
     }
 
+    setSelectionActionPosition(null);
     openCommentsPanel();
     window.setTimeout(() => commentInputRef.current?.focus(), 0);
+  };
+
+  const toggleLineBookmark = (lineRange: MarkdownLineActionRequest) => {
+    if (!activeFile) {
+      return;
+    }
+
+    const { start, end } = lineRange;
+    const existingBookmark = activeBookmarks.find((bookmark) => isPositionInLineRange(bookmark.position, start, end));
+    const nextBookmarks = existingBookmark
+      ? activeBookmarks.filter((bookmark) => bookmark.id !== existingBookmark.id)
+      : [
+          ...activeBookmarks,
+          {
+            id: randomId(),
+            position: start,
+            createdAt: new Date().toISOString(),
+          },
+        ];
+
+    setFiles((currentFiles) =>
+      currentFiles.map((file) => (file.id === activeFile.id ? { ...file, bookmarks: nextBookmarks } : file)),
+    );
+  };
+
+  const getLineComments = (lineRange: { start: number; end: number }) =>
+    activeOpenComments.filter((comment) => {
+      const commentRange = getCommentRange(comment);
+      return Boolean(commentRange && commentRange.end > lineRange.start && commentRange.start < lineRange.end);
+    });
+
+  const openLineComments = (lineRange: MarkdownLineActionRequest) => {
+    const lineComments = getLineComments(lineRange);
+    openCommentsPanel(lineComments[0]?.id);
+  };
+
+  const openLineCommentComposer = (lineRange: MarkdownLineActionRequest) => {
+    const { start, end } = lineRange;
+    if (end <= start) {
+      showToast("Line comments need text on the line.", "error");
+      return;
+    }
+
+    setPreviewSelection(null);
+    setActiveSelection({ from: start, to: end });
+    setSelectionActionPosition(null);
+    if (activeViewMode === "preview") {
+      setActiveFileViewMode("edit", { preserveScroll: false, focusEditor: false });
+    }
+    window.setTimeout(() => {
+      suppressSelectionActionPositionRef.current = true;
+      editorRef.current?.setSelectionRange(start, end);
+      suppressSelectionActionPositionRef.current = false;
+      setSelectionActionPosition(null);
+      openCommentsPanel();
+      commentInputRef.current?.focus();
+    }, 0);
+  };
+
+  const handleLineAnnotationAction = (request: MarkdownLineActionRequest) => {
+    setSelectionActionPosition(null);
+    if (request.action === "bookmark") {
+      toggleLineBookmark(request);
+      return;
+    }
+
+    if (request.hasComment) {
+      openLineComments(request);
+      return;
+    }
+
+    openLineCommentComposer(request);
   };
 
   const focusTextRange = (start: number, end = start) => {
@@ -1739,6 +1932,7 @@ function WorkspaceApp() {
     setPreferencesOpen(false);
     setSharePanelTarget(undefined);
     setCopiedFileId(null);
+    setSelectionActionPosition(null);
   };
 
   const openSharePanel = (panel: SharePanel) => {
@@ -2069,6 +2263,7 @@ function WorkspaceApp() {
       end: Math.min(renderedPreview.body.length, anchor.end),
     }))
     .filter((anchor) => anchor.end > anchor.start);
+  const showSelectionCommentPopover = Boolean(activeFile && selectedCharacterCount > 0 && selectionActionPosition);
 
   useEffect(() => {
     if (activeViewMode !== "preview") {
@@ -2097,6 +2292,7 @@ function WorkspaceApp() {
       const nextPreviewSelection = readPreviewSelection(previewSurfaceRef.current, previewBodyStartOffset);
       setPreviewSelection(nextPreviewSelection);
       setActiveSelection(nextPreviewSelection ? { from: nextPreviewSelection.from, to: nextPreviewSelection.to } : undefined);
+      setSelectionActionPosition(nextPreviewSelection ? readSelectionActionPosition() : null);
     }, 0);
   };
 
@@ -2299,7 +2495,9 @@ function WorkspaceApp() {
           <section
             className={`file-shell ${
               activeFile ? `view-${activeViewMode} reading-${activeReadingWidth}` : "empty"
-            } ${showFormattingToolbar ? "with-format-toolbar" : ""} ${
+            } ${activeFile ? (activeLineNumbers ? "line-numbers-on" : "line-numbers-off") : ""} ${
+              showFormattingToolbar ? "with-format-toolbar" : ""
+            } ${
               activeLiveRoomNotice ? "with-live-room-notice" : ""
             }`}
           >
@@ -2369,19 +2567,27 @@ function WorkspaceApp() {
                 )}
 
                 <section className={`workspace ${activeViewMode} reading-${activeReadingWidth}`} ref={workspaceRef}>
-                  <article className="editor-surface" ref={editorSurfaceRef} onScroll={handleEditorSurfaceScroll}>
+                  <article
+                    className={`editor-surface ${activeLineNumbers ? "line-numbers-on" : "line-numbers-off"}`}
+                    ref={editorSurfaceRef}
+                    onScroll={handleEditorSurfaceScroll}
+                  >
                     <MarkdownEditor
                       ref={editorRef}
                       fileId={activeFile.id}
                       value={text}
                       lineWrapping={activeLineWrapping}
                       lineNumbers={activeLineNumbers}
+                      bookmarks={activeBookmarks}
                       commentAnchors={activeCommentAnchors}
                       activeCommentId={focusedCommentId}
                       onChange={handleTextChange}
+                      onBookmarksChange={updateActiveFileBookmarks}
                       onHistoryStateChange={setEditorHistoryState}
+                      onOpenLineActions={handleLineAnnotationAction}
                       onOpenComment={openCommentMarker}
                       onSelectionChange={handleEditorSelectionChange}
+                      onSelectionActionPositionChange={handleEditorSelectionActionPositionChange}
                       onScrollRatioChange={handleEditorScrollRatioChange}
                     />
                   </article>
@@ -2404,6 +2610,20 @@ function WorkspaceApp() {
                   </article>
                 </section>
 
+                {showSelectionCommentPopover && selectionActionPosition && (
+                  <div
+                    className="selection-comment-popover"
+                    style={getFloatingPopoverStyle(selectionActionPosition, { width: 128, yOffset: 30 })}
+                    role="toolbar"
+                    aria-label="Selection actions"
+                  >
+                    <button className="selection-comment-button" type="button" onClick={openSelectionComment}>
+                      <MessageSquarePlus size={15} />
+                      <span>Add comment</span>
+                    </button>
+                  </div>
+                )}
+
                 <StatusBar
                   activeFileTitle={activeFileTitle}
                   canUndo={canUndo || editorHistoryState.canUndo}
@@ -2412,11 +2632,11 @@ function WorkspaceApp() {
                   statusLabel={statusLabel}
                   wordCount={activeWordCount}
                   commentCount={activeOpenComments.length}
-                  selectedWordCount={selectedWordCount}
+                  cursorPositionLabel={cursorPositionLabel}
+                  selectedCharacterCount={selectedCharacterCount}
                   onUndo={undoActiveFile}
                   onRedo={redoActiveFile}
                   onOpenComments={() => openCommentsPanel(focusedCommentId ?? activeOpenComments[0]?.id)}
-                  onAddSelectionComment={openSelectionComment}
                 />
               </>
             ) : (
@@ -2458,7 +2678,7 @@ function WorkspaceApp() {
             commentDraft={commentDraft}
             identityName={identity.name}
             selectedText={selectedMarkdownText}
-            selectedWordCount={selectedWordCount}
+            selectedCharacterCount={selectedCharacterCount}
             commentInputRef={commentInputRef}
             activeCommentId={focusedCommentId}
             activeReplyCommentId={activeReplyCommentId}

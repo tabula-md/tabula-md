@@ -56,15 +56,8 @@
   background: transparent;
 }
 
-.status-divider {
-  width: 1px;
-  height: 18px;
-  margin: 0 3px;
-  background: var(--line-subtle);
-}
-
 .status-save-state,
-.status-selection {
+.status-cursor-position {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -75,12 +68,11 @@
   white-space: nowrap;
 }
 
-.status-selection {
+.status-cursor-position {
   color: #777777;
   background: var(--surface-muted);
 }
 
-.status-comment-button,
 .status-comments-button {
   display: inline-flex;
   align-items: center;
@@ -101,7 +93,6 @@
   background: transparent;
 }
 
-.status-comment-button:hover,
 .status-comments-button:hover {
   color: #1f1f1f;
   background: var(--surface-hover);

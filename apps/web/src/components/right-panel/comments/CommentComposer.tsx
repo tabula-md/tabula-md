@@ -5,7 +5,7 @@ type CommentComposerProps = {
   commentDraft: string;
   identityName: string;
   selectedText: string;
-  selectedWordCount: number;
+  selectedCharacterCount: number;
   commentInputRef?: RefObject<HTMLTextAreaElement | null>;
   onCancel: () => void;
   onCommentDraftChange: (draft: string) => void;
@@ -19,7 +19,7 @@ export function CommentComposer({
   commentDraft,
   identityName,
   selectedText,
-  selectedWordCount,
+  selectedCharacterCount,
   commentInputRef,
   onCancel,
   onCommentDraftChange,
@@ -27,7 +27,7 @@ export function CommentComposer({
   onIdentityNameCommit,
   onAddComment,
 }: CommentComposerProps) {
-  const hasSelection = selectedWordCount > 0;
+  const hasSelection = selectedCharacterCount > 0;
   const canCancel = hasSelection || commentDraft.trim().length > 0;
   const selectedPreview = selectedText.replace(/\s+/g, " ").trim();
   const isExpanded = hasSelection || commentDraft.trim().length > 0;
@@ -62,7 +62,9 @@ export function CommentComposer({
       <div className="right-comment-form-footer">
         {hasSelection && (
           <span className="right-comment-scope">
-            {selectedPreview ? `Selected: "${selectedPreview}"` : `${selectedWordCount} selected ${selectedWordCount === 1 ? "word" : "words"}`}
+            {selectedPreview
+              ? `Selected: "${selectedPreview}"`
+              : `${selectedCharacterCount} selected ${selectedCharacterCount === 1 ? "character" : "characters"}`}
           </span>
         )}
         <span className="right-comment-form-actions">

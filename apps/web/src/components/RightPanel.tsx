@@ -29,7 +29,7 @@ type RightPanelProps = {
   commentDraft: string;
   identityName: string;
   selectedText: string;
-  selectedWordCount: number;
+  selectedCharacterCount: number;
   commentInputRef?: RefObject<HTMLTextAreaElement | null>;
   activeCommentId?: string | null;
   activeReplyCommentId?: string | null;
@@ -74,7 +74,7 @@ export function RightPanel({
   commentDraft,
   identityName,
   selectedText,
-  selectedWordCount,
+  selectedCharacterCount,
   commentInputRef,
   activeCommentId,
   activeReplyCommentId,
@@ -204,7 +204,7 @@ export function RightPanel({
             commentDraft={commentDraft}
             identityName={identityName}
             selectedText={selectedText}
-            selectedWordCount={selectedWordCount}
+            selectedCharacterCount={selectedCharacterCount}
             commentInputRef={commentInputRef}
             activeCommentId={activeCommentId}
             activeReplyCommentId={activeReplyCommentId}

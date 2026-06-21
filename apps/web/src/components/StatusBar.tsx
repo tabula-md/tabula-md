@@ -1,4 +1,4 @@
-import { Check, MessageSquare, MessageSquarePlus, Redo2, Undo2 } from "lucide-react";
+import { Check, MessageSquare, Redo2, Undo2 } from "lucide-react";
 
 type StatusBarProps = {
   activeFileTitle: string;
@@ -8,11 +8,11 @@ type StatusBarProps = {
   statusLabel: string;
   wordCount: number;
   commentCount: number;
-  selectedWordCount: number;
+  cursorPositionLabel: string;
+  selectedCharacterCount: number;
   onUndo: () => void;
   onRedo: () => void;
   onOpenComments: () => void;
-  onAddSelectionComment: () => void;
 };
 
 export function StatusBar({
@@ -23,15 +23,18 @@ export function StatusBar({
   statusLabel,
   wordCount,
   commentCount,
-  selectedWordCount,
+  cursorPositionLabel,
+  selectedCharacterCount,
   onUndo,
   onRedo,
   onOpenComments,
-  onAddSelectionComment,
 }: StatusBarProps) {
-  const hasSelection = selectedWordCount > 0;
   const hasComments = commentCount > 0;
   const saveLabel = isLive ? statusLabel : "Saved locally";
+  const cursorLabel =
+    selectedCharacterCount > 0
+      ? `${cursorPositionLabel} (${selectedCharacterCount} ${selectedCharacterCount === 1 ? "character" : "characters"})`
+      : cursorPositionLabel;
 
   return (
     <footer className="file-status-bar" aria-label={`Status for ${activeFileTitle}`}>
@@ -42,16 +45,6 @@ export function StatusBar({
         <button className="status-icon-button" type="button" title="Redo" aria-label="Redo" disabled={!canRedo} onClick={onRedo}>
           <Redo2 size={15} />
         </button>
-        {hasSelection && (
-          <>
-            <span className="status-divider" />
-            <span className="status-selection">{selectedWordCount} words selected</span>
-            <button className="status-comment-button" type="button" onClick={onAddSelectionComment}>
-              <MessageSquarePlus size={15} />
-              <span>Add comment</span>
-            </button>
-          </>
-        )}
       </div>
 
       <div className="status-bar-right">
@@ -60,6 +53,7 @@ export function StatusBar({
           <span>{saveLabel}</span>
         </span>
         <span>{wordCount} words</span>
+        <span className="status-cursor-position">{cursorLabel}</span>
         {hasComments && (
           <button className="status-comments-button" type="button" onClick={onOpenComments}>
             <MessageSquare size={13} />
