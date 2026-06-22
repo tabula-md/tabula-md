@@ -1,0 +1,231 @@
+import { useState, type ChangeEvent, type DragEvent, type RefObject } from "react";
+import type { MarkdownEditorHandle } from "../markdownEditorTypes";
+import { PRODUCT_NAME, WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
+import {
+  createStoredWorkspace,
+  migrateWorkspacePayload,
+  PROJECT_STORAGE_VERSION,
+  syncUrlForFile,
+  type FileComment,
+  type MarkdownFile,
+  type WorkspaceState,
+} from "../workspaceStorage";
+import { normalizeMarkdownFileTitle } from "../workspaceModel";
+import type { WorkspacePreferences } from "./useWorkspacePreferences";
+
+const isMarkdownImportFile = (file: File) => {
+  const fileName = file.name.toLowerCase();
+  return (
+    fileName.endsWith(".md") ||
+    fileName.endsWith(".markdown") ||
+    file.type === "text/markdown" ||
+    file.type === "text/plain"
+  );
+};
+
+const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
+type UseProjectIoControllerArgs = {
+  activeFile?: MarkdownFile;
+  activeFileId: string;
+  addFileFromContent: (
+    title: string,
+    text: string,
+    viewMode?: MarkdownFile["viewMode"],
+    overrides?: Partial<MarkdownFile>,
+  ) => MarkdownFile;
+  commentsByFileId: Record<string, FileComment[]>;
+  editorRef: RefObject<MarkdownEditorHandle | null>;
+  files: MarkdownFile[];
+  openFileIds: string[];
+  preferences: WorkspacePreferences;
+  replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
+  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">) => MarkdownFile | undefined;
+  resetCollaborationState: (nextStatus: MarkdownFile["connectionStatus"]) => void;
+  showToast: (message: string, tone?: "neutral" | "error", options?: { actionLabel?: string; onAction?: () => void }) => void;
+  clearFileHistory: () => void;
+  onCloseChrome: () => void;
+};
+
+export function getNewFilePreferenceOverrides(preferences: WorkspacePreferences): Partial<MarkdownFile> {
+  return {
+    viewMode: preferences.newFileViewMode,
+    readingWidth: preferences.readingWidth,
+    lineWrapping: preferences.lineWrapping,
+    lineNumbers: preferences.lineNumbers,
+  };
+}
+
+export function useProjectIoController({
+  activeFile,
+  activeFileId,
+  addFileFromContent,
+  commentsByFileId,
+  editorRef,
+  files,
+  openFileIds,
+  preferences,
+  replaceCommentsByFileId,
+  replaceWorkspace,
+  resetCollaborationState,
+  showToast,
+  clearFileHistory,
+  onCloseChrome,
+}: UseProjectIoControllerArgs) {
+  const [emptyDropActive, setEmptyDropActive] = useState(false);
+
+  const copyCurrentMarkdown = async () => {
+    if (!activeFile) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(activeFile.text);
+    showToast("Markdown copied.");
+  };
+
+  const downloadCurrentMarkdownFile = () => {
+    if (!activeFile) {
+      return;
+    }
+
+    downloadTextFile(activeFile.title, activeFile.text, "text/markdown;charset=utf-8");
+    showToast("Markdown downloaded.");
+  };
+
+  const downloadProject = () => {
+    const workspaceExport = createStoredWorkspace({
+      files,
+      openFileIds,
+      activeFileId: activeFile?.id ?? activeFileId,
+      commentsByFileId,
+    });
+    downloadTextFile(
+      `${WORKSPACE_EXPORT_FILE_PREFIX}-v${PROJECT_STORAGE_VERSION}.json`,
+      JSON.stringify(workspaceExport, null, 2),
+      "application/json",
+    );
+    showToast("Project downloaded.");
+  };
+
+  const importProjectFile = async (file: File) => {
+    let parsedWorkspace: unknown;
+
+    try {
+      parsedWorkspace = JSON.parse(await file.text());
+    } catch {
+      showToast("This file is not readable JSON.", "error");
+      return;
+    }
+
+    const nextWorkspace = migrateWorkspacePayload(parsedWorkspace, { includeLocationRoom: false });
+    if (!nextWorkspace) {
+      showToast(
+        `This JSON does not match the ${PRODUCT_NAME} project v${PROJECT_STORAGE_VERSION} files schema.`,
+        "error",
+      );
+      return;
+    }
+
+    const nextActiveFile = replaceWorkspace(nextWorkspace);
+    replaceCommentsByFileId(nextWorkspace.commentsByFileId);
+    clearFileHistory();
+    resetCollaborationState(nextActiveFile?.roomId ? "connecting" : "idle");
+    onCloseChrome();
+    syncUrlForFile(nextActiveFile);
+    showToast("Project imported.");
+  };
+
+  const importMarkdownFile = async (file: File) => {
+    const importedText = await file.text();
+    const nextFile = addFileFromContent(
+      normalizeMarkdownFileTitle(file.name || "Imported.md"),
+      importedText,
+      preferences.newFileViewMode,
+      getNewFilePreferenceOverrides(preferences),
+    );
+    onCloseChrome();
+    syncUrlForFile(nextFile);
+
+    window.setTimeout(() => editorRef.current?.focus(), 0);
+  };
+
+  const handleImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    void importMarkdownFile(file);
+  };
+
+  const handleProjectImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    void importProjectFile(file);
+  };
+
+  const getDroppedMarkdownFile = (event: DragEvent<HTMLElement>) => {
+    return Array.from(event.dataTransfer.files).find(isMarkdownImportFile);
+  };
+
+  const handleEmptyWorkspaceDragOver = (event: DragEvent<HTMLElement>) => {
+    if (!getDroppedMarkdownFile(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setEmptyDropActive(true);
+  };
+
+  const handleEmptyWorkspaceDragLeave = (event: DragEvent<HTMLElement>) => {
+    const relatedTarget = event.relatedTarget;
+    if (relatedTarget instanceof Node && event.currentTarget.contains(relatedTarget)) {
+      return;
+    }
+
+    setEmptyDropActive(false);
+  };
+
+  const handleEmptyWorkspaceDrop = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    setEmptyDropActive(false);
+
+    const markdownFile = getDroppedMarkdownFile(event);
+    if (!markdownFile) {
+      showToast("Drop a Markdown file.", "error");
+      return;
+    }
+
+    void importMarkdownFile(markdownFile);
+  };
+
+  return {
+    emptyDropActive,
+    copyCurrentMarkdown,
+    downloadCurrentMarkdownFile,
+    downloadProject,
+    handleImportInputChange,
+    handleProjectImportInputChange,
+    handleEmptyWorkspaceDragOver,
+    handleEmptyWorkspaceDragLeave,
+    handleEmptyWorkspaceDrop,
+  };
+}
