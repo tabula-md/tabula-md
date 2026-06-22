@@ -4,5 +4,6 @@ import * as layout from "./layout.mjs";
 import * as panels from "./panels.mjs";
 import * as collaboration from "./collaboration.mjs";
 import * as publish from "./publish.mjs";
+import * as performance from "./performance.mjs";
 
-export const suites = [workspace, editorPreview, layout, panels, collaboration, publish];
+export const suites = [workspace, editorPreview, layout, panels, collaboration, publish, performance];

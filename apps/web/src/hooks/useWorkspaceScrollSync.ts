@@ -14,6 +14,7 @@ type PendingModeScroll = {
   fileId: string;
   toMode: FileViewMode;
   anchor: ModeScrollAnchor;
+  focusEditor: boolean;
 };
 
 type SetWorkspaceViewModeOptions = {
@@ -159,12 +160,13 @@ export function useWorkspaceScrollSync({
     }
 
     const shouldPreserveScroll = options.preserveScroll ?? true;
-    const shouldFocusEditor = options.focusEditor ?? nextViewMode === "edit";
+    const shouldFocusEditor = options.focusEditor ?? (nextViewMode === "edit" && !shouldPreserveScroll);
     if (nextViewMode !== activeViewMode && shouldPreserveScroll) {
       pendingModeScrollRef.current = {
         fileId: activeFileId,
         toMode: nextViewMode,
         anchor: getCurrentModeScrollAnchor(),
+        focusEditor: shouldFocusEditor,
       };
     } else {
       pendingModeScrollRef.current = null;
@@ -191,15 +193,19 @@ export function useWorkspaceScrollSync({
       return;
     }
 
-    const frame = window.requestAnimationFrame(() => {
-      scrollSyncingRef.current = true;
-      applyModeScrollAnchor(pendingModeScroll.anchor);
-      pendingModeScrollRef.current = null;
-      releaseScrollSync();
+    scrollSyncingRef.current = true;
+    applyModeScrollAnchor(pendingModeScroll.anchor);
+    pendingModeScrollRef.current = null;
 
-      if (activeViewMode === "edit") {
-        editorRef.current?.focus();
-      }
+    if (activeViewMode !== "edit" || !pendingModeScroll.focusEditor) {
+      releaseScrollSync();
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      editorRef.current?.focus({ preventScroll: true });
+      applyModeScrollAnchor(pendingModeScroll.anchor);
+      releaseScrollSync();
     });
 
     return () => window.cancelAnimationFrame(frame);

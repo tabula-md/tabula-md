@@ -1,5 +1,6 @@
 import {
   isValidElement,
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -24,6 +25,7 @@ type MarkdownPreviewProps = {
   commentAnchors?: MarkdownPreviewCommentAnchor[];
   lineAnnotations?: MarkdownPreviewLineAnnotation[];
   activeCommentId?: string | null;
+  suspendLineMeasurement?: boolean;
   onLineAction?: (request: MarkdownPreviewLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
 };
@@ -48,6 +50,10 @@ export type MarkdownPreviewLineActionRequest = MarkdownPreviewLineAnnotation & {
 };
 
 const externalLinkPattern = /^(?:https?:)?\/\//i;
+const MARKDOWN_REMARK_PLUGINS = [remarkGfm];
+const EMPTY_MARKDOWN_PREVIEW_METADATA: MarkdownPreviewMetadata[] = [];
+const EMPTY_PREVIEW_COMMENT_ANCHORS: MarkdownPreviewCommentAnchor[] = [];
+const EMPTY_PREVIEW_LINE_ANNOTATIONS: MarkdownPreviewLineAnnotation[] = [];
 const previewSourceBlockTags = new Set([
   "blockquote",
   "h1",
@@ -206,6 +212,8 @@ const createPreviewSourceLinePlugin = () => () => {
     walk(tree);
   };
 };
+
+const PREVIEW_SOURCE_LINE_REHYPE_PLUGINS = [createPreviewSourceLinePlugin()];
 
 const createPreviewCommentAnchorPlugin =
   (commentAnchors: MarkdownPreviewCommentAnchor[] = [], activeCommentId?: string | null) => () => {
@@ -386,6 +394,70 @@ type PreviewLineBlock = {
   bottom: number;
 };
 
+const PREVIEW_LINE_MEASUREMENT_WIDTH_BUCKET = 8;
+const PREVIEW_LINE_MEASUREMENT_CACHE_LIMIT = 12;
+
+const getStringHash = (value: string) => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(31, hash) + value.charCodeAt(index);
+    hash |= 0;
+  }
+
+  return `${value.length}:${hash.toString(36)}`;
+};
+
+const getPreviewLineAnnotationsSignature = (annotations: MarkdownPreviewLineAnnotation[]) =>
+  annotations
+    .map((annotation) =>
+      [
+        annotation.lineNumber,
+        annotation.start,
+        annotation.end,
+        annotation.hasBookmark ? 1 : 0,
+        annotation.hasComment ? 1 : 0,
+        annotation.hasActiveComment ? 1 : 0,
+      ].join(":"),
+    )
+    .join("|");
+
+const getWidthBucket = (width: number) =>
+  Math.max(0, Math.round(width / PREVIEW_LINE_MEASUREMENT_WIDTH_BUCKET) * PREVIEW_LINE_MEASUREMENT_WIDTH_BUCKET);
+
+const writePreviewLineMeasurementCache = (
+  cache: Map<string, PreviewLineRailRow[]>,
+  key: string,
+  rows: PreviewLineRailRow[],
+) => {
+  cache.delete(key);
+  cache.set(key, rows);
+
+  while (cache.size > PREVIEW_LINE_MEASUREMENT_CACHE_LIMIT) {
+    const oldestKey = cache.keys().next().value;
+    if (typeof oldestKey !== "string") {
+      return;
+    }
+
+    cache.delete(oldestKey);
+  }
+};
+
+const arePreviewLineRowsEqual = (firstRows: PreviewLineRailRow[], secondRows: PreviewLineRailRow[]) =>
+  firstRows.length === secondRows.length &&
+  firstRows.every((firstRow, index) => {
+    const secondRow = secondRows[index];
+    return (
+      firstRow.lineNumber === secondRow.lineNumber &&
+      firstRow.start === secondRow.start &&
+      firstRow.end === secondRow.end &&
+      firstRow.hasBookmark === secondRow.hasBookmark &&
+      firstRow.hasComment === secondRow.hasComment &&
+      firstRow.hasActiveComment === secondRow.hasActiveComment &&
+      Math.abs(firstRow.top - secondRow.top) < 0.5 &&
+      Math.abs(firstRow.height - secondRow.height) < 0.5
+    );
+  });
+
 const getPreviewLineButtonLabel = (
   side: "bookmark" | "comment",
   row: MarkdownPreviewLineAnnotation,
@@ -445,34 +517,53 @@ function PreviewLineGutter({
   );
 }
 
-export function MarkdownPreview({
-  metadata,
+function MarkdownPreviewComponent({
+  metadata = EMPTY_MARKDOWN_PREVIEW_METADATA,
   body,
-  commentAnchors = [],
-  lineAnnotations = [],
+  commentAnchors = EMPTY_PREVIEW_COMMENT_ANCHORS,
+  lineAnnotations = EMPTY_PREVIEW_LINE_ANNOTATIONS,
   activeCommentId,
+  suspendLineMeasurement = false,
   onLineAction,
   onOpenComment,
 }: MarkdownPreviewProps) {
   const documentRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const wasLineMeasurementSuspendedRef = useRef(suspendLineMeasurement);
+  const lineMeasurementCacheRef = useRef(new Map<string, PreviewLineRailRow[]>());
   const [lineRailRows, setLineRailRows] = useState<PreviewLineRailRow[]>([]);
   const showLineGutters = Boolean(onLineAction);
   const markdownPreviewComponents = useMemo(() => createMarkdownPreviewComponents(onOpenComment), [onOpenComment]);
-  const sourceLinePlugins = useMemo(() => [createPreviewSourceLinePlugin()], []);
   const commentAnchorPlugins = useMemo(
     () => [createPreviewCommentAnchorPlugin(commentAnchors, activeCommentId)],
     [activeCommentId, commentAnchors],
   );
   const rehypePlugins = useMemo(
-    () => [...sourceLinePlugins, ...commentAnchorPlugins],
-    [commentAnchorPlugins, sourceLinePlugins],
+    () => [...PREVIEW_SOURCE_LINE_REHYPE_PLUGINS, ...commentAnchorPlugins],
+    [commentAnchorPlugins],
   );
-  const measurePreviewLineRows = useCallback(() => {
+  const bodyMeasurementKey = useMemo(() => getStringHash(body), [body]);
+  const lineAnnotationsSignature = useMemo(
+    () => getPreviewLineAnnotationsSignature(lineAnnotations),
+    [lineAnnotations],
+  );
+  const measurePreviewLineRows = useCallback((options: { force?: boolean } = {}) => {
+    if (suspendLineMeasurement && !options.force) {
+      return;
+    }
+
     const documentElement = documentRef.current;
     const contentElement = contentRef.current;
     if (!documentElement || !contentElement || !showLineGutters) {
       setLineRailRows((currentRows) => (currentRows.length > 0 ? [] : currentRows));
+      return;
+    }
+
+    const widthBucket = getWidthBucket(contentElement.clientWidth);
+    const cacheKey = `${bodyMeasurementKey}:${widthBucket}:${lineAnnotationsSignature}`;
+    const cachedRows = lineMeasurementCacheRef.current.get(cacheKey);
+    if (cachedRows) {
+      setLineRailRows((currentRows) => (arePreviewLineRowsEqual(currentRows, cachedRows) ? currentRows : cachedRows));
       return;
     }
 
@@ -539,28 +630,53 @@ export function MarkdownPreview({
       })
       .filter((row, index, rows) => rows.findIndex((candidate) => candidate.lineNumber === row.lineNumber) === index);
 
-    setLineRailRows(nextRows);
-  }, [lineAnnotations, showLineGutters]);
+    writePreviewLineMeasurementCache(lineMeasurementCacheRef.current, cacheKey, nextRows);
+    setLineRailRows((currentRows) => (arePreviewLineRowsEqual(currentRows, nextRows) ? currentRows : nextRows));
+  }, [bodyMeasurementKey, lineAnnotations, lineAnnotationsSignature, showLineGutters, suspendLineMeasurement]);
 
   useLayoutEffect(() => {
-    measurePreviewLineRows();
+    const wasSuspended = wasLineMeasurementSuspendedRef.current;
+    wasLineMeasurementSuspendedRef.current = suspendLineMeasurement;
 
-    const contentElement = contentRef.current;
-    if (!contentElement || !showLineGutters) {
+    if (suspendLineMeasurement) {
       return undefined;
     }
 
-    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measurePreviewLineRows);
+    let rafId: number | null = null;
+    if (wasSuspended) {
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        measurePreviewLineRows({ force: true });
+      });
+    } else {
+      measurePreviewLineRows();
+    }
+
+    const contentElement = contentRef.current;
+    if (!contentElement || !showLineGutters) {
+      return () => {
+        if (rafId !== null) {
+          window.cancelAnimationFrame(rafId);
+        }
+      };
+    }
+
+    const handleLineMeasurementInvalidated = () => measurePreviewLineRows();
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(handleLineMeasurementInvalidated);
     resizeObserver?.observe(contentElement);
-    window.addEventListener("resize", measurePreviewLineRows);
-    const timeoutId = window.setTimeout(measurePreviewLineRows, 120);
+    window.addEventListener("resize", handleLineMeasurementInvalidated);
+    const timeoutId = window.setTimeout(handleLineMeasurementInvalidated, 120);
 
     return () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
       resizeObserver?.disconnect();
-      window.removeEventListener("resize", measurePreviewLineRows);
+      window.removeEventListener("resize", handleLineMeasurementInvalidated);
       window.clearTimeout(timeoutId);
     };
-  }, [measurePreviewLineRows, showLineGutters]);
+  }, [measurePreviewLineRows, showLineGutters, suspendLineMeasurement]);
 
   return (
     <div ref={documentRef} className={`preview-document ${showLineGutters ? "with-line-gutters" : ""}`}>
@@ -581,7 +697,7 @@ export function MarkdownPreview({
         )}
 
         {body.trim().length > 0 ? (
-          <ReactMarkdown components={markdownPreviewComponents} rehypePlugins={rehypePlugins} remarkPlugins={[remarkGfm]}>
+          <ReactMarkdown components={markdownPreviewComponents} rehypePlugins={rehypePlugins} remarkPlugins={MARKDOWN_REMARK_PLUGINS}>
             {body}
           </ReactMarkdown>
         ) : (
@@ -595,3 +711,53 @@ export function MarkdownPreview({
     </div>
   );
 }
+
+const arePreviewMetadataEqual = (firstMetadata: MarkdownPreviewMetadata[], secondMetadata: MarkdownPreviewMetadata[]) =>
+  firstMetadata === secondMetadata ||
+  (firstMetadata.length === secondMetadata.length &&
+    firstMetadata.every((firstAttribute, index) => {
+      const secondAttribute = secondMetadata[index];
+      return firstAttribute.key === secondAttribute.key && firstAttribute.value === secondAttribute.value;
+    }));
+
+const arePreviewCommentAnchorsEqual = (
+  firstAnchors: MarkdownPreviewCommentAnchor[] = EMPTY_PREVIEW_COMMENT_ANCHORS,
+  secondAnchors: MarkdownPreviewCommentAnchor[] = EMPTY_PREVIEW_COMMENT_ANCHORS,
+) =>
+  firstAnchors === secondAnchors ||
+  (firstAnchors.length === secondAnchors.length &&
+    firstAnchors.every((firstAnchor, index) => {
+      const secondAnchor = secondAnchors[index];
+      return firstAnchor.id === secondAnchor.id && firstAnchor.start === secondAnchor.start && firstAnchor.end === secondAnchor.end;
+    }));
+
+const arePreviewLineAnnotationsEqual = (
+  firstAnnotations: MarkdownPreviewLineAnnotation[] = EMPTY_PREVIEW_LINE_ANNOTATIONS,
+  secondAnnotations: MarkdownPreviewLineAnnotation[] = EMPTY_PREVIEW_LINE_ANNOTATIONS,
+) =>
+  firstAnnotations === secondAnnotations ||
+  (firstAnnotations.length === secondAnnotations.length &&
+    firstAnnotations.every((firstAnnotation, index) => {
+      const secondAnnotation = secondAnnotations[index];
+      return (
+        firstAnnotation.lineNumber === secondAnnotation.lineNumber &&
+        firstAnnotation.start === secondAnnotation.start &&
+        firstAnnotation.end === secondAnnotation.end &&
+        firstAnnotation.hasBookmark === secondAnnotation.hasBookmark &&
+        firstAnnotation.hasComment === secondAnnotation.hasComment &&
+        firstAnnotation.hasActiveComment === secondAnnotation.hasActiveComment
+      );
+    }));
+
+const areMarkdownPreviewPropsEqual = (firstProps: MarkdownPreviewProps, secondProps: MarkdownPreviewProps) =>
+  firstProps.body === secondProps.body &&
+  firstProps.activeCommentId === secondProps.activeCommentId &&
+  firstProps.suspendLineMeasurement === secondProps.suspendLineMeasurement &&
+  firstProps.onLineAction === secondProps.onLineAction &&
+  firstProps.onOpenComment === secondProps.onOpenComment &&
+  arePreviewMetadataEqual(firstProps.metadata, secondProps.metadata) &&
+  arePreviewCommentAnchorsEqual(firstProps.commentAnchors, secondProps.commentAnchors) &&
+  arePreviewLineAnnotationsEqual(firstProps.lineAnnotations, secondProps.lineAnnotations);
+
+export const MarkdownPreview = memo(MarkdownPreviewComponent, areMarkdownPreviewPropsEqual);
+MarkdownPreview.displayName = "MarkdownPreview";

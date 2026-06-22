@@ -18,6 +18,7 @@ import type { ConnectionStatus } from "../collab";
 import { PRODUCT_PLUS_NAME } from "../product";
 import type { PublishScope } from "../publish";
 import { buildPublishViewModel } from "../publishViewModel";
+import type { SharePanel } from "../uiTypes";
 import type { MarkdownFile } from "../workspaceStorage";
 
 type ShareControlsProps = {
@@ -57,7 +58,7 @@ type ShareControlsProps = {
   onStopSession: () => void;
 };
 
-export type SharePanel = "collaborate" | "send" | "publish";
+export type { SharePanel } from "../uiTypes";
 
 const formatShareUrlPreview = (url: string) => {
   try {

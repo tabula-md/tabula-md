@@ -224,8 +224,18 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         const view = viewRef.current;
         return view ? runMarkdownFormatCommand(view, command) : false;
       },
-      focus: () => {
-        viewRef.current?.focus();
+      focus: (options?: FocusOptions) => {
+        const view = viewRef.current;
+        if (!view) {
+          return;
+        }
+
+        if (options?.preventScroll) {
+          view.contentDOM.focus(options);
+          return;
+        }
+
+        view.focus();
       },
       getScrollRatio: () => {
         const scrollElement = viewRef.current?.scrollDOM;

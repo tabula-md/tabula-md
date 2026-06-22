@@ -1,18 +1,10 @@
-import { useCallback, useMemo, useReducer, type Dispatch, type SetStateAction } from "react";
-import type { FileViewMode, MarkdownFile, ReadingWidth } from "../workspaceStorage";
+import { useMemo, useState } from "react";
+import { useWorkspaceStore } from "../stores/workspaceStore";
+import type { MarkdownFile } from "../workspaceStorage";
 import {
-  addWorkspaceFile,
-  closeWorkspaceFile,
-  createWorkspaceModelState,
-  deleteWorkspaceFile,
   getActiveWorkspaceFile,
   getAvailableMarkdownFileTitle,
   getOpenWorkspaceFiles,
-  renameWorkspaceFile,
-  reorderOpenWorkspaceFile,
-  selectAdjacentWorkspaceFile,
-  selectWorkspaceFile,
-  workspaceReducer,
 } from "../workspaceModel";
 export { normalizeMarkdownFileTitle } from "../workspaceModel";
 export type { RenameFileResult } from "../workspaceModel";
@@ -32,190 +24,100 @@ export function useMarkdownFiles({
   readmeFileId,
   createFile,
 }: UseMarkdownFilesOptions) {
-  const [workspace, dispatchWorkspace] = useReducer(
-    workspaceReducer,
-    {
+  useState(() => {
+    useWorkspaceStore.getState().initializeWorkspace({
       files: initialFiles,
       openFileIds: initialOpenFileIds,
       activeFileId: initialActiveFileId,
-    },
-    createWorkspaceModelState,
+      readmeFileId,
+      createFile,
+    });
+    return true;
+  });
+
+  const files = useWorkspaceStore((state) => state.files);
+  const openFileIds = useWorkspaceStore((state) => state.openFileIds);
+  const activeFileId = useWorkspaceStore((state) => state.activeFileId);
+  const workspace = useMemo(
+    () => ({
+      files,
+      openFileIds,
+      activeFileId,
+    }),
+    [activeFileId, files, openFileIds],
   );
-  const { files, openFileIds, activeFileId } = workspace;
   const openFiles = useMemo(() => getOpenWorkspaceFiles(workspace), [workspace]);
   const activeFile = useMemo(() => getActiveWorkspaceFile(workspace), [workspace]);
-
-  const setFiles = useCallback<Dispatch<SetStateAction<MarkdownFile[]>>>((update) => {
-    dispatchWorkspace({ type: "replaceFiles", update });
-  }, []);
-
-  const setOpenFileIds = useCallback<Dispatch<SetStateAction<string[]>>>((update) => {
-    dispatchWorkspace({ type: "replaceOpenFileIds", update });
-  }, []);
-
-  const setActiveFileId = useCallback((fileId: string) => {
-    dispatchWorkspace({ type: "setActiveFileId", fileId });
-  }, []);
+  const selectFile = useWorkspaceStore((state) => state.selectFile);
+  const addFile = useWorkspaceStore((state) => state.addFile);
+  const addFileFromContent = useWorkspaceStore((state) => state.addFileFromContent);
+  const activateRoomFile = useWorkspaceStore((state) => state.activateRoomFile);
+  const duplicateFile = useWorkspaceStore((state) => state.duplicateFile);
+  const renameFile = useWorkspaceStore((state) => state.renameFile);
+  const closeFile = useWorkspaceStore((state) => state.closeFile);
+  const deleteFile = useWorkspaceStore((state) => state.deleteFile);
+  const reorderFiles = useWorkspaceStore((state) => state.reorderFiles);
+  const moveFile = useWorkspaceStore((state) => state.moveFile);
+  const selectAdjacentFile = useWorkspaceStore((state) => state.selectAdjacentFile);
+  const replaceWorkspace = useWorkspaceStore((state) => state.replaceWorkspace);
+  const restoreFile = useWorkspaceStore((state) => state.restoreFile);
+  const upsertHelpFile = useWorkspaceStore((state) => state.upsertHelpFile);
+  const setActiveFileBookmarks = useWorkspaceStore((state) => state.setActiveFileBookmarks);
+  const setActiveFileText = useWorkspaceStore((state) => state.setActiveFileText);
+  const setActiveFileViewMode = useWorkspaceStore((state) => state.setActiveFileViewMode);
+  const setActiveFileReadingWidth = useWorkspaceStore((state) => state.setActiveFileReadingWidth);
+  const setActiveFileLineWrapping = useWorkspaceStore((state) => state.setActiveFileLineWrapping);
+  const setActiveFileLineNumbers = useWorkspaceStore((state) => state.setActiveFileLineNumbers);
+  const commitActiveFileSplitRatio = useWorkspaceStore((state) => state.commitActiveFileSplitRatio);
+  const setFileText = useWorkspaceStore((state) => state.setFileText);
+  const setFileCollaborationStatus = useWorkspaceStore((state) => state.setFileCollaborationStatus);
+  const setFileCollaboratorCount = useWorkspaceStore((state) => state.setFileCollaboratorCount);
+  const setFileRoomMeta = useWorkspaceStore((state) => state.setFileRoomMeta);
+  const setFileRecoveryEvent = useWorkspaceStore((state) => state.setFileRecoveryEvent);
+  const startFileCollaborationSession = useWorkspaceStore((state) => state.startFileCollaborationSession);
+  const stopFileCollaborationSession = useWorkspaceStore((state) => state.stopFileCollaborationSession);
 
   const getAvailableFileTitle = (baseTitle: string) => getAvailableMarkdownFileTitle(files, baseTitle);
 
-  const getNextUserFileIndex = () => files.filter((file) => file.id !== readmeFileId).length + 1;
-
-  const selectFile = (fileId: string) => {
-    const nextWorkspace = selectWorkspaceFile(workspace, fileId);
-    const nextFile = nextWorkspace.files.find((file) => file.id === fileId);
-    if (!nextFile) {
-      return undefined;
-    }
-
-    dispatchWorkspace({ type: "selectFile", fileId });
-    return nextFile;
-  };
-
-  const addFile = (overrides?: Partial<MarkdownFile>) => {
-    const nextFile = createFile(getNextUserFileIndex(), overrides);
-    dispatchWorkspace({ type: "addFile", file: nextFile });
-    return nextFile;
-  };
-
-  const addFileFromContent = (
-    title: string,
-    text: string,
-    viewMode: FileViewMode = "edit",
-    overrides?: Partial<MarkdownFile>,
-  ) => {
-    const nextFile = createFile(getNextUserFileIndex(), {
-      ...overrides,
-      title: getAvailableFileTitle(title),
-      text,
-      viewMode: overrides?.viewMode ?? viewMode,
-    });
-    dispatchWorkspace({ type: "addFile", file: nextFile });
-    return nextFile;
-  };
-
   const addTemplateFile = (template: { title: string; content: string }, overrides?: Partial<MarkdownFile>) => {
     return addFileFromContent(template.title, template.content, "edit", overrides);
-  };
-
-  const duplicateFile = (fileId: string) => {
-    const sourceFile = files.find((file) => file.id === fileId);
-    if (!sourceFile) {
-      return undefined;
-    }
-
-    const nextFile = createFile(getNextUserFileIndex(), {
-      title: getAvailableFileTitle(sourceFile.title),
-      text: sourceFile.text,
-      viewMode: sourceFile.viewMode,
-      readingWidth: sourceFile.readingWidth,
-      lineWrapping: sourceFile.lineWrapping,
-      lineNumbers: sourceFile.lineNumbers,
-      connectionStatus: "idle",
-    });
-
-    dispatchWorkspace({ type: "addFile", file: nextFile, insertAfterFileId: fileId });
-    return nextFile;
-  };
-
-  const renameFile = (fileId: string, nextRawTitle: string) => {
-    const { result } = renameWorkspaceFile(workspace, fileId, nextRawTitle);
-    if (result.ok) {
-      dispatchWorkspace({ type: "renameFile", fileId, title: nextRawTitle });
-    }
-
-    return result;
-  };
-
-  const closeFile = (fileId: string) => {
-    const next = closeWorkspaceFile(workspace, fileId);
-    if (!next) {
-      return undefined;
-    }
-
-    dispatchWorkspace({ type: "closeFile", fileId });
-    return next.result;
-  };
-
-  const deleteFile = (fileId: string) => {
-    const next = deleteWorkspaceFile(workspace, fileId);
-    if (!next) {
-      return undefined;
-    }
-
-    dispatchWorkspace({ type: "deleteFile", fileId });
-    return next.result;
-  };
-
-  const reorderFiles = (sourceFileId: string, targetFileId: string) => {
-    if (reorderOpenWorkspaceFile(workspace, sourceFileId, targetFileId) === workspace) {
-      return;
-    }
-
-    dispatchWorkspace({ type: "reorderOpenFile", sourceFileId, targetFileId });
-  };
-
-  const moveFile = (fileId: string, direction: -1 | 1) => {
-    const currentIndex = openFileIds.indexOf(fileId);
-    const targetFileId = openFileIds[currentIndex + direction];
-
-    if (!targetFileId) {
-      return;
-    }
-
-    reorderFiles(fileId, targetFileId);
-  };
-
-  const selectAdjacentFile = (direction: -1 | 1) => {
-    const next = selectAdjacentWorkspaceFile(workspace, direction);
-    if (!next.file) {
-      return undefined;
-    }
-
-    dispatchWorkspace({ type: "selectFile", fileId: next.file.id });
-    return next.file;
-  };
-
-  const setActiveFileViewMode = (nextViewMode: FileViewMode) => {
-    dispatchWorkspace({ type: "setActiveFileViewMode", viewMode: nextViewMode });
-  };
-
-  const setActiveFileReadingWidth = (nextReadingWidth: ReadingWidth) => {
-    dispatchWorkspace({ type: "setActiveFileReadingWidth", readingWidth: nextReadingWidth });
-  };
-
-  const setActiveFileLineWrapping = (nextLineWrapping: boolean) => {
-    dispatchWorkspace({ type: "setActiveFileLineWrapping", lineWrapping: nextLineWrapping });
-  };
-
-  const setActiveFileLineNumbers = (nextLineNumbers: boolean) => {
-    dispatchWorkspace({ type: "setActiveFileLineNumbers", lineNumbers: nextLineNumbers });
   };
 
   return {
     files,
     openFiles,
     openFileIds,
-    setOpenFileIds,
-    setFiles,
     activeFileId,
-    setActiveFileId,
     activeFile,
     selectFile,
     addFile,
     addFileFromContent,
+    activateRoomFile,
     addTemplateFile,
     duplicateFile,
     renameFile,
     closeFile,
     deleteFile,
+    replaceWorkspace,
+    restoreFile,
+    upsertHelpFile,
     reorderFiles,
     moveFile,
     selectAdjacentFile,
+    setActiveFileBookmarks,
+    setActiveFileText,
     setActiveFileViewMode,
     setActiveFileReadingWidth,
     setActiveFileLineWrapping,
     setActiveFileLineNumbers,
+    commitActiveFileSplitRatio,
+    setFileText,
+    setFileCollaborationStatus,
+    setFileCollaboratorCount,
+    setFileRoomMeta,
+    setFileRecoveryEvent,
+    startFileCollaborationSession,
+    stopFileCollaborationSession,
     getAvailableFileTitle,
   };
 }

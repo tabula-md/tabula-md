@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   type Collaborator,
   type CollabConnection,
@@ -15,14 +15,36 @@ type UseCollaborationRoomOptions = {
   activeFile?: MarkdownFile;
   activeSelection?: LiveSelection;
   identity: Collaborator;
-  setFiles: Dispatch<SetStateAction<MarkdownFile[]>>;
+  setFileText: (fileId: string, text: string) => void;
+  setFileCollaborationStatus: (
+    fileId: string,
+    status: ConnectionStatus,
+    options?: { collaboratorCount?: number; requireRoom?: boolean },
+  ) => void;
+  setFileCollaboratorCount: (fileId: string, collaboratorCount: number) => void;
+  setFileRoomMeta: (fileId: string, meta: { snapshotCount: number; lastSnapshotAt?: string }) => void;
+  setFileRecoveryEvent: (
+    fileId: string,
+    event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
+  ) => void;
+  startFileCollaborationSession: (fileId: string, roomId: string, shareUrl: string) => MarkdownFile | undefined;
 };
 
 const createShareUrl = (roomId: string) => {
   return createRoomShareUrl(window.location.origin, roomId);
 };
 
-export function useCollaborationRoom({ activeFile, activeSelection, identity, setFiles }: UseCollaborationRoomOptions) {
+export function useCollaborationRoom({
+  activeFile,
+  activeSelection,
+  identity,
+  setFileText,
+  setFileCollaborationStatus,
+  setFileCollaboratorCount,
+  setFileRoomMeta,
+  setFileRecoveryEvent,
+  startFileCollaborationSession,
+}: UseCollaborationRoomOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(() =>
     activeFile?.roomId ? "connecting" : "idle",
   );
@@ -38,11 +60,9 @@ export function useCollaborationRoom({ activeFile, activeSelection, identity, se
 
     if (!activeFile?.roomId) {
       setConnectionStatus("idle");
-      setFiles((currentFiles) =>
-        currentFiles.map((file) =>
-          file.id === activeFile?.id ? { ...file, connectionStatus: "idle", collaboratorCount: 0 } : file,
-        ),
-      );
+      if (activeFile?.id) {
+        setFileCollaborationStatus(activeFile.id, "idle", { collaboratorCount: 0 });
+      }
       return;
     }
 
@@ -51,11 +71,7 @@ export function useCollaborationRoom({ activeFile, activeSelection, identity, se
     const connectedRoomId = activeFile.roomId;
     pendingInitialTextRef.current = undefined;
     setConnectionStatus("connecting");
-    setFiles((currentFiles) =>
-      currentFiles.map((file) =>
-        file.id === connectedFileId ? { ...file, connectionStatus: "connecting" } : file,
-      ),
-    );
+    setFileCollaborationStatus(connectedFileId, "connecting");
 
     collabRef.current = createCollabConnection({
       roomId: connectedRoomId,
@@ -64,66 +80,50 @@ export function useCollaborationRoom({ activeFile, activeSelection, identity, se
       fileTitle: activeFile.title,
       selection: activeSelection,
       onTextChange: (nextText) => {
-        setFiles((currentFiles) =>
-          currentFiles.map((file) => (file.id === connectedFileId ? { ...file, text: nextText } : file)),
-        );
+        setFileText(connectedFileId, nextText);
       },
       onStatusChange: (status) => {
         setConnectionStatus(status);
-        setFiles((currentFiles) =>
-          currentFiles.map((file) => (file.id === connectedFileId ? { ...file, connectionStatus: status } : file)),
-        );
+        setFileCollaborationStatus(connectedFileId, status);
       },
       onCollaboratorsChange: (nextCollaborators) => {
         setCollaborators(nextCollaborators);
-        setFiles((currentFiles) =>
-          currentFiles.map((file) =>
-            file.id === connectedFileId ? { ...file, collaboratorCount: nextCollaborators.length } : file,
-          ),
-        );
+        setFileCollaboratorCount(connectedFileId, nextCollaborators.length);
       },
       onRoomMetaChange: (meta: RoomMeta) => {
         const latestSnapshot = meta.snapshots[0];
-        setFiles((currentFiles) =>
-          currentFiles.map((file) =>
-            file.id === connectedFileId
-              ? {
-                  ...file,
-                  snapshotCount: meta.snapshotCount,
-                  lastSnapshotAt: latestSnapshot?.createdAt ?? meta.lastSavedAt,
-                }
-              : file,
-          ),
-        );
+        setFileRoomMeta(connectedFileId, {
+          snapshotCount: meta.snapshotCount,
+          lastSnapshotAt: latestSnapshot?.createdAt ?? meta.lastSavedAt,
+        });
       },
       onRecoveryEvent: (event: CollabRecoveryEvent) => {
-        setFiles((currentFiles) =>
-          currentFiles.map((file) =>
-            file.id === connectedFileId
-              ? {
-                  ...file,
-                  lastRecoveryType: event.type,
-                  lastRecoveryMessage: event.message,
-                  lastRecoveryAt: event.createdAt,
-                }
-              : file,
-          ),
-        );
+        setFileRecoveryEvent(connectedFileId, {
+          type: event.type,
+          message: event.message,
+          createdAt: event.createdAt,
+        });
       },
     });
 
     return () => {
       collabRef.current?.disconnect();
       collabRef.current = null;
-      setFiles((currentFiles) =>
-        currentFiles.map((file) =>
-          file.id === connectedFileId && file.roomId
-            ? { ...file, connectionStatus: "offline", collaboratorCount: 0 }
-            : file,
-        ),
-      );
+      setFileCollaborationStatus(connectedFileId, "offline", {
+        collaboratorCount: 0,
+        requireRoom: true,
+      });
     };
-  }, [activeFile?.id, activeFile?.roomId, activeFile?.title, setFiles]);
+  }, [
+    activeFile?.id,
+    activeFile?.roomId,
+    activeFile?.title,
+    setFileCollaborationStatus,
+    setFileCollaboratorCount,
+    setFileRecoveryEvent,
+    setFileRoomMeta,
+    setFileText,
+  ]);
 
   useEffect(() => {
     collabRef.current?.setIdentity(identity);
@@ -149,23 +149,7 @@ export function useCollaborationRoom({ activeFile, activeSelection, identity, se
     const nextShareUrl = createShareUrl(nextRoomId);
     pendingInitialTextRef.current = activeFile.text;
     syncUrlForFile({ roomId: nextRoomId, shareUrl: nextShareUrl });
-    setFiles((currentFiles) =>
-      currentFiles.map((file) =>
-        file.id === activeFile.id
-          ? {
-              ...file,
-              roomId: nextRoomId,
-              shareUrl: nextShareUrl,
-              connectionStatus: "connecting",
-              snapshotCount: 0,
-              lastSnapshotAt: undefined,
-              lastRecoveryType: undefined,
-              lastRecoveryMessage: undefined,
-              lastRecoveryAt: undefined,
-            }
-          : file,
-      ),
-    );
+    startFileCollaborationSession(activeFile.id, nextRoomId, nextShareUrl);
     setConnectionStatus("connecting");
     return { roomId: nextRoomId, shareUrl: nextShareUrl };
   };

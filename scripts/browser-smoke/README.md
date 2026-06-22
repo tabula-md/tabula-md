@@ -20,6 +20,7 @@ Suite map:
 - `layout`: tab persistence, import collision, document chrome, split layout, and side-panel alignment.
 - `panels`: project menu, files, outline, comments, switcher, and right-panel file actions.
 - `collaboration`: local live-room sync.
+- `performance`: long-document split resize hot-path regression checks.
 
 When adding coverage, prefer the smallest suite that owns the product surface. Add shared browser helpers to
 `support/runtime.mjs` only when more than one suite needs them.

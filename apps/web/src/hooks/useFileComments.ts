@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Collaborator } from "../collab";
 import type { FileComment, FileCommentReply, MarkdownFile } from "../workspaceStorage";
 
@@ -42,9 +42,15 @@ export function useFileComments({
   const [replyDraftByCommentId, setReplyDraftByCommentId] = useState<Record<string, string>>({});
   const [focusedCommentId, setFocusedCommentId] = useState<string | null>(null);
 
-  const activeFileComments = activeFileId ? getFileComments(commentsByFileId, activeFileId) : [];
-  const activeOpenComments = activeFileComments.filter((comment) => !comment.resolved);
-  const fileIds = new Set(files.map((file) => file.id));
+  const activeFileComments = useMemo(
+    () => (activeFileId ? getFileComments(commentsByFileId, activeFileId) : []),
+    [activeFileId, commentsByFileId],
+  );
+  const activeOpenComments = useMemo(
+    () => activeFileComments.filter((comment) => !comment.resolved),
+    [activeFileComments],
+  );
+  const fileIds = useMemo(() => new Set(files.map((file) => file.id)), [files]);
 
   const resetCommentInteraction = () => {
     setCommentDraft("");

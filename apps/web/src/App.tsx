@@ -1,25 +1,11 @@
 import {
   type CSSProperties,
-  type ChangeEvent,
-  type DragEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
-  type TouchEvent as ReactTouchEvent,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  File as FileIcon,
-  Folder as FolderIcon,
-  MessageSquarePlus,
-} from "lucide-react";
-import { COMMENT_ANCHOR_CONTEXT_LENGTH, getCommentRangeInText } from "./commentAnchors";
-import { type Collaborator, type ConnectionStatus, type LiveSelection } from "./collab";
+import { MessageSquarePlus } from "lucide-react";
 import { AppToast } from "./components/AppToast";
 import { EmptyFileState } from "./components/EmptyFileState";
 import { FileTabs } from "./components/FileTabs";
@@ -27,312 +13,69 @@ import { FileSearchBar, FileToolbar } from "./components/FileToolbar";
 import { LiveRoomNotice } from "./components/LiveRoomNotice";
 import {
   MarkdownEditor,
-  type MarkdownBookmark,
-  type MarkdownCommentAnchor,
   type MarkdownEditorHandle,
-  type MarkdownLineActionRequest,
   type MarkdownSelectionActionPosition,
 } from "./components/MarkdownEditor";
 import { MarkdownFormattingToolbar } from "./components/MarkdownFormattingToolbar";
-import {
-  MarkdownPreview,
-  type MarkdownPreviewCommentAnchor,
-  type MarkdownPreviewLineAnnotation,
-} from "./components/MarkdownPreview";
+import { MarkdownPreview } from "./components/MarkdownPreview";
 import { RightPanel } from "./components/RightPanel";
-import { ShareControls, type SharePanel } from "./components/ShareControls";
+import { ShareControls } from "./components/ShareControls";
 import { StatusBar } from "./components/StatusBar";
-import { TabulaLogo } from "./components/TabulaLogo";
 import { TopChrome } from "./components/TopChrome";
 import { WorkspaceMenu } from "./components/WorkspaceMenu";
-import {
-  createPublishedSnapshot,
-  createServerPublishedSnapshot,
-  deletePublishedSnapshot,
-  getConfiguredPublishServiceUrl,
-  getEmptyPublishFiles,
-  getEmptyPublishFilesMessage,
-  getPublishRoute,
-  readLatestPublishedSnapshot,
-  readPublishedSnapshot,
-  readServerPublishedSnapshot,
-  republishServerPublishedSnapshot,
-  savePublishedSnapshot,
-  unpublishServerPublishedSnapshot,
-  type PublishedSnapshot,
-  type PublishRoute,
-  type PublishScope,
-} from "./publish";
+import { PublishedSnapshotRoute } from "./components/PublishedSnapshotRoute";
+import { getPublishRoute } from "./publish";
 import {
   getLineStartOffset,
   getOutlineHeadings,
   getPreviewBody,
-  getSearchMatches,
   parseFrontmatter,
   type MarkdownHeading,
-  type SearchMatch,
 } from "./markdown";
 import type { MarkdownFormatCommand } from "./markdownFormatting";
-import { getShortcutLabels, type ShortcutLabels } from "./keyboardShortcuts";
-import { PRODUCT_NAME, WORKSPACE_EXPORT_FILE_PREFIX } from "./product";
+import { getShortcutLabels } from "./keyboardShortcuts";
+import { createHelpMarkdown } from "./helpMarkdown";
 import { isTabulaPlusEnabled } from "./plus";
 import { useCollaborationRoom } from "./hooks/useCollaborationRoom";
+import { useAppToast } from "./hooks/useAppToast";
+import { useEditorSearchController } from "./hooks/useEditorSearchController";
+import { useEventCallback } from "./hooks/useEventCallback";
 import { useFileComments } from "./hooks/useFileComments";
-import { useMarkdownFiles, normalizeMarkdownFileTitle } from "./hooks/useMarkdownFiles";
+import { useMarkdownFiles } from "./hooks/useMarkdownFiles";
+import { usePublishController } from "./hooks/usePublishController";
+import { useProjectIoController } from "./hooks/useProjectIoController";
+import { useSelectionCommentController } from "./hooks/useSelectionCommentController";
+import { useSplitViewController } from "./hooks/useSplitViewController";
+import { useWorkspaceActiveFileEditor } from "./hooks/useWorkspaceActiveFileEditor";
+import { useWorkspaceChromeController } from "./hooks/useWorkspaceChromeController";
+import { useWorkspaceCommentActions } from "./hooks/useWorkspaceCommentActions";
+import { useWorkspaceFileActions } from "./hooks/useWorkspaceFileActions";
+import { useWorkspaceIdentity } from "./hooks/useWorkspaceIdentity";
+import { useWorkspaceKeyboardShortcuts } from "./hooks/useWorkspaceKeyboardShortcuts";
+import { useWorkspaceLiveRoomController } from "./hooks/useWorkspaceLiveRoomController";
+import { useWorkspacePreferences } from "./hooks/useWorkspacePreferences";
 import { useWorkspaceScrollSync } from "./hooks/useWorkspaceScrollSync";
+import {
+  getActiveWorkspaceStatus,
+  getMarkdownWordCount,
+  getWorkspaceFileSearchText,
+  getWorkspaceFileStatus,
+  getWorkspaceStatusLabel,
+} from "./workspaceViewModel";
 import {
   clampSplitEditorRatio,
   createMarkdownFile,
-  createStoredWorkspace,
   DEFAULT_SPLIT_EDITOR_RATIO,
-  ensureLiveFileForRoom,
-  getFileIdForRoom,
   getRoomFromLocation,
   initialWorkspaceState,
-  MAX_SPLIT_EDITOR_RATIO,
-  MIN_SPLIT_EDITOR_RATIO,
-  migrateWorkspacePayload,
   randomId,
   README_FILE_ID,
   syncUrlForFile,
-  type FileBookmark,
-  type FileComment,
-  type FileViewMode,
   type LocationRoom,
   type MarkdownFile,
-  type ReadingWidth,
   type WorkspaceState,
-  PROJECT_STORAGE_VERSION,
   writeStoredWorkspace,
 } from "./workspaceStorage";
-import type { CenterPopover, RightPanelView, TopPopover } from "./uiTypes";
-
-const IDENTITY_KEY = "tabula.identity";
-const WORKSPACE_PREFERENCES_KEY = "tabula.preferences.v1";
-
-const COLORS = ["#0f766e", "#2563eb", "#7c3aed", "#c2410c", "#be123c", "#047857"];
-const SPLIT_RESIZE_KEYBOARD_STEP = 0.02;
-const SPLIT_CENTER_SNAP_THRESHOLD = 0.025;
-
-const isMarkdownImportFile = (file: File) => {
-  const fileName = file.name.toLowerCase();
-  return (
-    fileName.endsWith(".md") ||
-    fileName.endsWith(".markdown") ||
-    file.type === "text/markdown" ||
-    file.type === "text/plain"
-  );
-};
-
-type FileHistory = {
-  past: string[];
-  future: string[];
-};
-
-type AppToastState = {
-  id: number;
-  message: string;
-  tone: "error" | "neutral";
-  actionLabel?: string;
-  onAction?: () => void;
-};
-
-type WorkspacePreferences = {
-  newFileViewMode: FileViewMode;
-  readingWidth: ReadingWidth;
-  lineWrapping: boolean;
-  lineNumbers: boolean;
-};
-
-const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferences = {
-  newFileViewMode: "edit",
-  readingWidth: "wide",
-  lineWrapping: true,
-  lineNumbers: true,
-};
-
-const isFileViewMode = (value: unknown): value is FileViewMode =>
-  value === "edit" || value === "split" || value === "preview";
-
-const isReadingWidth = (value: unknown): value is ReadingWidth =>
-  value === "narrow" || value === "standard" || value === "wide";
-
-const readWorkspacePreferences = (): WorkspacePreferences => {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(WORKSPACE_PREFERENCES_KEY) ?? "{}") as Partial<WorkspacePreferences>;
-    return {
-      newFileViewMode: isFileViewMode(parsed.newFileViewMode)
-        ? parsed.newFileViewMode
-        : DEFAULT_WORKSPACE_PREFERENCES.newFileViewMode,
-      readingWidth: isReadingWidth(parsed.readingWidth)
-        ? parsed.readingWidth
-        : DEFAULT_WORKSPACE_PREFERENCES.readingWidth,
-      lineWrapping: typeof parsed.lineWrapping === "boolean" ? parsed.lineWrapping : DEFAULT_WORKSPACE_PREFERENCES.lineWrapping,
-      lineNumbers: typeof parsed.lineNumbers === "boolean" ? parsed.lineNumbers : DEFAULT_WORKSPACE_PREFERENCES.lineNumbers,
-    };
-  } catch {
-    return DEFAULT_WORKSPACE_PREFERENCES;
-  }
-};
-
-type PreviewSelectionState = {
-  from: number;
-  to: number;
-  text: string;
-};
-
-type PreviewSelectionEvent =
-  | ReactKeyboardEvent<HTMLElement>
-  | ReactMouseEvent<HTMLElement>
-  | ReactTouchEvent<HTMLElement>;
-
-type ActiveLiveRoomNotice = {
-  title: string;
-  message: string;
-  canKeepLocal: boolean;
-};
-
-const getLiveRoomNotice = (file: MarkdownFile | undefined, status: ConnectionStatus): ActiveLiveRoomNotice | null => {
-  if (
-    !file?.roomId ||
-    status !== "offline" ||
-    file.lastRecoveryType !== "invalid-message" ||
-    !file.lastRecoveryMessage
-  ) {
-    return null;
-  }
-
-  const sourceMessage = file.lastRecoveryMessage;
-  const normalizedMessage = sourceMessage.toLowerCase();
-
-  if (normalizedMessage.includes("missing its client-only room key")) {
-    return {
-      title: "Room key missing",
-      message:
-        "This shared URL is missing the client-only key, so Tabula cannot decrypt the room. Ask for the full link or keep this file as a local copy.",
-      canKeepLocal: true,
-    };
-  }
-
-  if (normalizedMessage.includes("invalid room key")) {
-    return {
-      title: "Room key invalid",
-      message:
-        "The key in this shared URL is not valid. Ask for a fresh room link or keep this file as a local copy.",
-      canKeepLocal: true,
-    };
-  }
-
-  if (normalizedMessage.includes("could not be decrypted")) {
-    return {
-      title: "Room key does not match",
-      message:
-        "The key in this URL cannot decrypt the latest room snapshot. The encrypted room was not changed.",
-      canKeepLocal: true,
-    };
-  }
-
-  if (normalizedMessage.includes("server disconnected") || normalizedMessage.includes("not reachable")) {
-    return null;
-  }
-
-  return {
-    title: "Live room needs attention",
-    message: sourceMessage,
-    canKeepLocal: true,
-  };
-};
-
-const getTextOffsetWithinElement = (element: HTMLElement, container: Node, offset: number) => {
-  const range = document.createRange();
-  range.selectNodeContents(element);
-  range.setEnd(container, offset);
-  const textOffset = range.toString().length;
-  range.detach();
-  return Math.max(0, Math.min(textOffset, element.textContent?.length ?? 0));
-};
-
-const readPreviewSelection = (surface: HTMLElement | null, previewBodyStartOffset: number): PreviewSelectionState | null => {
-  if (!surface) {
-    return null;
-  }
-
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !selection.anchorNode || !selection.focusNode) {
-    return null;
-  }
-
-  if (!surface.contains(selection.anchorNode) || !surface.contains(selection.focusNode)) {
-    return null;
-  }
-
-  const selectedText = selection.toString().replace(/\s+/g, " ").trim();
-  if (!selectedText) {
-    return null;
-  }
-
-  const range = selection.getRangeAt(0);
-  const segments = Array.from(surface.querySelectorAll<HTMLElement>(".preview-source-text"))
-    .map((element) => {
-      if (!range.intersectsNode(element)) {
-        return null;
-      }
-
-      const sourceStart = Number(element.dataset.sourceStart);
-      const sourceEnd = Number(element.dataset.sourceEnd);
-      if (!Number.isFinite(sourceStart) || !Number.isFinite(sourceEnd) || sourceEnd <= sourceStart) {
-        return null;
-      }
-
-      const textLength = element.textContent?.length ?? 0;
-      let localStart = 0;
-      let localEnd = textLength;
-
-      if (element.contains(range.startContainer)) {
-        localStart = getTextOffsetWithinElement(element, range.startContainer, range.startOffset);
-      }
-      if (element.contains(range.endContainer)) {
-        localEnd = getTextOffsetWithinElement(element, range.endContainer, range.endOffset);
-      }
-
-      if (localEnd <= localStart) {
-        return null;
-      }
-
-      return {
-        from: previewBodyStartOffset + sourceStart + localStart,
-        to: previewBodyStartOffset + sourceStart + localEnd,
-      };
-    })
-    .filter((segment): segment is { from: number; to: number } => Boolean(segment));
-
-  if (segments.length === 0) {
-    return null;
-  }
-
-  return {
-    from: Math.min(...segments.map((segment) => segment.from)),
-    to: Math.max(...segments.map((segment) => segment.to)),
-    text: selectedText,
-  };
-};
-
-const readSelectionActionPosition = (): MarkdownSelectionActionPosition | null => {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-    return null;
-  }
-
-  const rect = selection.getRangeAt(0).getBoundingClientRect();
-  if (rect.width === 0 && rect.height === 0) {
-    return null;
-  }
-
-  return {
-    clientX: rect.left + rect.width / 2,
-    clientY: rect.top,
-  };
-};
 
 const getFloatingPopoverStyle = (
   position: MarkdownSelectionActionPosition,
@@ -347,393 +90,41 @@ const getFloatingPopoverStyle = (
   };
 };
 
-const isPositionInLineRange = (position: number, lineStart: number, lineEnd: number) =>
-  position >= lineStart && position <= lineEnd;
-
-const getPreviewLineAnnotations = ({
-  body,
-  bodyStartOffset,
-  bookmarks,
-  commentAnchors,
-  activeCommentId,
-}: {
-  body: string;
-  bodyStartOffset: number;
-  bookmarks: MarkdownBookmark[];
-  commentAnchors: MarkdownCommentAnchor[];
-  activeCommentId?: string | null;
-}): MarkdownPreviewLineAnnotation[] => {
-  const lines = body.split("\n");
-  let bodyOffset = 0;
-
-  return lines.map((line, index) => {
-    const start = bodyStartOffset + bodyOffset;
-    const end = start + line.length;
-    const hasBookmark = bookmarks.some((bookmark) => isPositionInLineRange(bookmark.position, start, end));
-    const lineComments = commentAnchors.filter((anchor) => anchor.end > start && anchor.start < end);
-    bodyOffset += line.length + 1;
-
-    return {
-      lineNumber: index + 1,
-      start,
-      end,
-      hasBookmark,
-      hasComment: lineComments.length > 0,
-      hasActiveComment: lineComments.some((anchor) => anchor.id === activeCommentId),
-    };
-  });
-};
-
-const getCursorPositionLabel = (sourceText: string, offset: number) => {
-  const safeOffset = Math.max(0, Math.min(offset, sourceText.length));
-  const textBeforeCursor = sourceText.slice(0, safeOffset);
-  const lineNumber = textBeforeCursor.split("\n").length;
-  const previousLineBreak = safeOffset === 0 ? -1 : sourceText.lastIndexOf("\n", safeOffset - 1);
-  const columnNumber = safeOffset - previousLineBreak;
-  return `${lineNumber}:${columnNumber}`;
-};
-
-const getSelectionLineCount = (sourceText: string, from: number, to: number) => {
-  const selectionFrom = Math.max(0, Math.min(Math.min(from, to), sourceText.length));
-  const selectionTo = Math.max(0, Math.min(Math.max(from, to), sourceText.length));
-  if (selectionFrom === selectionTo) {
-    return 0;
-  }
-
-  const adjustedSelectionTo = selectionTo > selectionFrom && sourceText[selectionTo - 1] === "\n" ? selectionTo - 1 : selectionTo;
-  const startLine = sourceText.slice(0, selectionFrom).split("\n").length;
-  const endLine = sourceText.slice(0, adjustedSelectionTo).split("\n").length;
-  return Math.max(1, endLine - startLine + 1);
-};
-
-const getAppShortcut = ({ primary, alternate }: ShortcutLabels, key: string) => `${primary} + ${alternate} + ${key}`;
-
-const getPublishedFilePageUrl = (pageUrl: string, fileId: string) => {
-  const url = new URL(pageUrl, window.location.origin);
-  url.searchParams.set("file", fileId);
-  return url.toString();
-};
-
-const getFileDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
-
-const getPublishedProjectLabel = (ownerName?: string) => {
-  const name = ownerName?.trim();
-  if (!name) {
-    return "Published Project";
-  }
-
-  return name.endsWith("s") ? `${name}' Project` : `${name}'s Project`;
-};
-
-const getPublishedSnapshotScope = (snapshot: PublishedSnapshot | null | undefined): PublishScope | undefined => {
-  if (!snapshot) {
-    return undefined;
-  }
-
-  return snapshot.scope ?? (snapshot.fileCount > 1 ? "project" : "file");
-};
-
-const getPublishedDocumentTitle = (body: string, metadataTitle?: string) => {
-  const frontmatterTitle = metadataTitle?.trim();
-  if (frontmatterTitle) {
-    return frontmatterTitle;
-  }
-
-  const heading = body.match(/^#{1,2}\s+(.+?)\s*#*\s*$/m)?.[1]?.trim();
-  return heading || "Published page";
-};
-
-const getKeyboardShortcuts = (shortcutLabels: ShortcutLabels) => [
-  { keys: getAppShortcut(shortcutLabels, "N"), action: "New Markdown" },
-  { keys: getAppShortcut(shortcutLabels, "O"), action: "Open .md file" },
-  { keys: getAppShortcut(shortcutLabels, "F"), action: "Browse project files" },
-  { keys: "?", action: "Open HELP.md" },
-  { keys: `${shortcutLabels.primary} + B`, action: "Bold" },
-  { keys: `${shortcutLabels.primary} + I`, action: "Italic" },
-  { keys: `${shortcutLabels.primary} + K`, action: "Link" },
-  { keys: `${shortcutLabels.primary} + Shift + 7`, action: "Numbered list" },
-  { keys: `${shortcutLabels.primary} + Shift + 8`, action: "Bullet list" },
-  { keys: `${shortcutLabels.primary} + Shift + 9`, action: "Quote" },
-  { keys: getAppShortcut(shortcutLabels, "1"), action: "Edit mode" },
-  { keys: getAppShortcut(shortcutLabels, "2"), action: "Split mode" },
-  { keys: getAppShortcut(shortcutLabels, "3"), action: "Preview mode" },
-  { keys: getAppShortcut(shortcutLabels, "Left"), action: "Previous file tab" },
-  { keys: getAppShortcut(shortcutLabels, "Right"), action: "Next file tab" },
-  { keys: "Enter in search", action: "Next search match" },
-  { keys: "Shift + Enter in search", action: "Previous search match" },
-  { keys: "Double-click tab", action: "Rename file" },
-  { keys: "Enter", action: "Commit rename" },
-  { keys: "Escape", action: "Cancel rename or close menu" },
-];
-
-const createHelpMarkdown = (shortcutLabels: ShortcutLabels) => `---
-title: HELP
-description: Quick reference for using Tabula.md.
----
-
-# HELP
-
-## Start
-
-- Create a Markdown file with **New Markdown**.
-- Open an existing \`.md\` or \`.markdown\` file with **Open .md file**.
-- Use **Browse project files** to reopen files after closing every tab.
-
-## Work
-
-- Edit Markdown in Edit mode.
-- Use Split mode to edit and preview together.
-- Use Preview mode to read and comment on the rendered document.
-
-## Share
-
-- Share a live room when people need to edit together.
-- Publish a project snapshot when you need a read-only handoff for people or agents.
-
-## Preferences
-
-- Set the default mode for newly created Markdown files.
-- Choose the default reading width for new files.
-- Turn line wrapping and line numbers on or off for new editor surfaces.
-
-## Shortcuts
-
-| Shortcut | Action |
-| --- | --- |
-${getKeyboardShortcuts(shortcutLabels).map((shortcut) => `| ${shortcut.keys} | ${shortcut.action} |`).join("\n")}
-`;
-
-const normalizeIdentity = (identity: Collaborator): Collaborator => {
-  const name = identity.name?.trim();
-  const nextName = name && !/^Guest\s+\d+$/i.test(name) ? name : `Anonymous ${identity.id.slice(0, 3)}`;
-  return {
-    ...identity,
-    name: nextName.slice(0, 40),
-    lastSeen: Date.now(),
-  };
-};
-
-const createIdentity = (): Collaborator => {
-  const stored = window.localStorage.getItem(IDENTITY_KEY);
-  if (stored) {
-    const identity = normalizeIdentity(JSON.parse(stored) as Collaborator);
-    window.localStorage.setItem(IDENTITY_KEY, JSON.stringify(identity));
-    return identity;
-  }
-
-  const identity = normalizeIdentity({
-    id: randomId(),
-    name: `Anonymous ${Math.floor(Math.random() * 900 + 100)}`,
-    color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    lastSeen: Date.now(),
-  });
-  window.localStorage.setItem(IDENTITY_KEY, JSON.stringify(identity));
-  return identity;
-};
-
-function PublishedSnapshotView({
-  route,
-  snapshot,
-  status = snapshot ? "ready" : "missing",
-  errorMessage,
-}: {
-  route: PublishRoute;
-  snapshot: PublishedSnapshot | null;
-  status?: "loading" | "ready" | "missing" | "error";
-  errorMessage?: string;
-}) {
-  const activeFile =
-    snapshot?.files.find((file) => file.id === route.fileId) ??
-    snapshot?.files.find((file) => file.id === snapshot.activeFileId) ??
-    snapshot?.files[0];
-  const parsedMarkdown = parseFrontmatter(activeFile?.text ?? "");
-  const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
-  const pageTitle = getPublishedDocumentTitle(parsedMarkdown.body, metadataTitle);
-  const [publishedFilesCollapsed, setPublishedFilesCollapsed] = useState(false);
-
-  useEffect(() => {
-    document.title = snapshot
-      ? `${pageTitle} - ${PRODUCT_NAME}`
-      : status === "loading"
-        ? "Loading published page"
-        : "Published page not found";
-  }, [pageTitle, snapshot, status]);
-
-  if (!snapshot) {
-    const headline =
-      status === "loading"
-        ? "Loading published page."
-        : status === "error"
-          ? "Unable to load published page."
-          : "Published page not found.";
-    return (
-      <main className="published-page published-missing">
-        <section className="published-shell">
-          <p>{PRODUCT_NAME}</p>
-          <h1>{headline}</h1>
-          {errorMessage && <p>{errorMessage}</p>}
-          <a href="/">Return to project</a>
-        </section>
-      </main>
-    );
-  }
-
-  const textOutput = route.output === "llms.txt" ? snapshot.llmsTxt : route.output === "llms-full.txt" ? snapshot.llmsFullTxt : "";
-
-  if (route.output !== "page") {
-    return (
-      <main className="published-text-page">
-        <pre>{textOutput}</pre>
-      </main>
-    );
-  }
-
-  const renderedPreview = getPreviewBody(parsedMarkdown.body);
-  const hasMultipleFiles = snapshot.fileCount > 1;
-  const publishedProjectLabel = getPublishedProjectLabel(snapshot.ownerName);
-  const renderPublishedFileLinks = (keyPrefix: string) =>
-    snapshot.files.map((file) => (
-      <a
-        aria-current={file.id === activeFile?.id ? "page" : undefined}
-        className={file.id === activeFile?.id ? "active" : ""}
-        href={getPublishedFilePageUrl(snapshot.urls.page, file.id)}
-        key={`${keyPrefix}-${file.id}`}
-        title={file.title}
-      >
-        <FileIcon size={16} />
-        <span>{getFileDisplayTitle(file.title)}</span>
-      </a>
-    ));
-
-  return (
-    <main className="published-page">
-      <section className={`published-shell ${hasMultipleFiles ? "published-project-shell" : ""}`}>
-        <div className="published-reader-shell">
-          {hasMultipleFiles && (
-            <aside className="published-file-list published-contents-sidebar" aria-label="Project contents">
-              <button
-                className="published-file-tree-root"
-                type="button"
-                aria-expanded={!publishedFilesCollapsed}
-                onClick={() => setPublishedFilesCollapsed((nextCollapsed) => !nextCollapsed)}
-              >
-                {publishedFilesCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
-                <FolderIcon size={15} />
-                <span>{publishedProjectLabel}</span>
-              </button>
-              {!publishedFilesCollapsed && (
-                <nav aria-label="Published project files">{renderPublishedFileLinks("sidebar")}</nav>
-              )}
-            </aside>
-          )}
-
-          <div className="published-article-shell">
-            {hasMultipleFiles && (
-              <details className="published-contents-menu">
-                <summary>
-                  <FolderIcon size={15} />
-                  <span>{publishedProjectLabel}</span>
-                </summary>
-                <nav aria-label="Published project files">{renderPublishedFileLinks("menu")}</nav>
-              </details>
-            )}
-
-            <article className="preview-surface published-document">
-              <MarkdownPreview
-                metadata={parsedMarkdown.attributes}
-                body={renderedPreview.body}
-              />
-            </article>
-
-            <footer className={`published-footer ${hasMultipleFiles ? "project" : ""}`}>
-              <span>Powered by</span>
-              <TabulaLogo className="published-footer-logo" size={16} />
-              <span>Tabula</span>
-            </footer>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function PublishedSnapshotRoute({ route }: { route: PublishRoute }) {
-  const [snapshot, setSnapshot] = useState<PublishedSnapshot | null>(() => readPublishedSnapshot(route.snapshotId));
-  const [status, setStatus] = useState<"loading" | "ready" | "missing" | "error">(() =>
-    snapshot ? "ready" : "loading",
-  );
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    const localSnapshot = readPublishedSnapshot(route.snapshotId);
-    setSnapshot(localSnapshot);
-    setErrorMessage(undefined);
-
-    if (localSnapshot) {
-      setStatus("ready");
-      return;
-    }
-
-    const publishServiceUrl = getConfiguredPublishServiceUrl();
-    if (!publishServiceUrl) {
-      setStatus("missing");
-      return;
-    }
-
-    let cancelled = false;
-    setStatus("loading");
-    void readServerPublishedSnapshot({
-      serviceUrl: publishServiceUrl,
-      origin: window.location.origin,
-      snapshotId: route.snapshotId,
-    })
-      .then((serverSnapshot) => {
-        if (cancelled) {
-          return;
-        }
-        setSnapshot(serverSnapshot);
-        setStatus(serverSnapshot ? "ready" : "missing");
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        setStatus("error");
-        setErrorMessage(error instanceof Error ? error.message : "Publish failed.");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [route.snapshotId]);
-
-  return <PublishedSnapshotView route={route} snapshot={snapshot} status={status} errorMessage={errorMessage} />;
-}
-
 function WorkspaceApp() {
   const [initialWorkspace] = useState<WorkspaceState>(() => initialWorkspaceState());
   const {
     files,
     openFiles,
     openFileIds,
-    setOpenFileIds,
-    setFiles,
     activeFileId,
-    setActiveFileId,
     activeFile,
     selectFile: selectMarkdownFile,
     addFile: addMarkdownFile,
     addFileFromContent,
+    activateRoomFile,
     duplicateFile: duplicateMarkdownFile,
     renameFile,
     closeFile: closeMarkdownFile,
     deleteFile: deleteMarkdownFile,
+    replaceWorkspace,
+    restoreFile,
+    upsertHelpFile,
     reorderFiles,
     selectAdjacentFile: selectAdjacentMarkdownFile,
+    setActiveFileBookmarks,
+    setActiveFileText,
     setActiveFileViewMode: setMarkdownFileViewMode,
     setActiveFileReadingWidth,
     setActiveFileLineWrapping,
     setActiveFileLineNumbers,
+    commitActiveFileSplitRatio,
+    setFileText,
+    setFileCollaborationStatus,
+    setFileCollaboratorCount,
+    setFileRoomMeta,
+    setFileRecoveryEvent,
+    startFileCollaborationSession,
+    stopFileCollaborationSession,
   } = useMarkdownFiles({
     initialFiles: initialWorkspace.files,
     initialOpenFileIds: initialWorkspace.openFileIds,
@@ -741,44 +132,17 @@ function WorkspaceApp() {
     readmeFileId: README_FILE_ID,
     createFile: createMarkdownFile,
   });
-  const [topPopover, setTopPopover] = useState<TopPopover>(null);
-  const [centerPopover, setCenterPopover] = useState<CenterPopover>(null);
-  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
-  const [preferencesOpen, setPreferencesOpen] = useState(false);
-  const [workspacePreferences, setWorkspacePreferences] = useState<WorkspacePreferences>(() => readWorkspacePreferences());
-  const [sharePanelTarget, setSharePanelTarget] = useState<SharePanel | undefined>(undefined);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(-1);
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
-  const [rightPanelView, setRightPanelView] = useState<RightPanelView>("files");
+  const [workspacePreferences, setWorkspacePreferences] = useWorkspacePreferences();
   const [rightFileQuery, setRightFileQuery] = useState("");
-  const [emptyDropActive, setEmptyDropActive] = useState(false);
-  const [historyByFileId, setHistoryByFileId] = useState<Record<string, FileHistory>>({});
-  const [editorHistoryState, setEditorHistoryState] = useState({ canUndo: false, canRedo: false });
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
-  const [activeSelection, setActiveSelection] = useState<LiveSelection | undefined>(undefined);
-  const [previewSelection, setPreviewSelection] = useState<PreviewSelectionState | null>(null);
-  const [selectionActionPosition, setSelectionActionPosition] = useState<MarkdownSelectionActionPosition | null>(null);
-  const [splitDividerDragging, setSplitDividerDragging] = useState(false);
-  const [publishedSnapshot, setPublishedSnapshot] = useState<PublishedSnapshot | null>(() => readLatestPublishedSnapshot());
-  const [publishScope, setPublishScope] = useState<PublishScope>("file");
-  const [publishing, setPublishing] = useState(false);
-  const [unpublishing, setUnpublishing] = useState(false);
-  const [toast, setToast] = useState<AppToastState | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const searchRevealKeyRef = useRef<string | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const suppressSelectionActionPositionRef = useRef(false);
-  const splitResizeBiasRef = useRef(0);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
-  const toastTimerRef = useRef<number | null>(null);
   const [shortcutLabels] = useState(() => getShortcutLabels());
   const [tabulaPlusEnabled] = useState(() => isTabulaPlusEnabled());
-
-  const [identity, setIdentity] = useState<Collaborator>(() => createIdentity());
+  const { toast, showToast } = useAppToast();
+  const { identity, updateIdentityName, normalizeIdentityName } = useWorkspaceIdentity();
   const {
     commentsByFileId,
     commentDraft,
@@ -805,32 +169,43 @@ function WorkspaceApp() {
     createId: randomId,
   });
   const {
-    collaborators,
-    connectionStatus,
-    startSession: startCollaborationSession,
-    applyLocalText,
-    resetCollaborationState,
-  } = useCollaborationRoom({
-    activeFile: activeFile,
-    activeSelection,
-    identity,
-    setFiles,
+    publishedSnapshot,
+    publishedScope,
+    publishedFileTitle,
+    publishScope,
+    setPublishScope,
+    publishing,
+    unpublishing,
+    canManagePublishedPage,
+    publishBlockerMessage,
+    publishProjectSnapshot,
+    unpublishProjectSnapshot,
+    copyPublishedUrl,
+  } = usePublishController({
+    activeFile,
+    activeFileId,
+    commentsByFileId,
+    files,
+    ownerName: identity.name,
+    showToast,
   });
   const text = activeFile?.text ?? "";
   const activeViewMode = activeFile?.viewMode ?? "edit";
   const activeReadingWidth = activeFile?.readingWidth ?? "wide";
   const activeSplitRatio = clampSplitEditorRatio(activeFile?.splitRatio ?? DEFAULT_SPLIT_EDITOR_RATIO);
-  const splitWorkspaceStyle =
-    activeViewMode === "split"
-      ? ({
-          "--split-editor-ratio": `${activeSplitRatio * 100}%`,
-          "--split-preview-ratio": `${(1 - activeSplitRatio) * 100}%`,
-        } as CSSProperties)
-      : undefined;
-  const splitDividerValue = Math.round(activeSplitRatio * 100);
   const activeLineWrapping = activeFile?.lineWrapping ?? true;
   const activeLineNumbers = activeFile?.lineNumbers ?? true;
   const activeBookmarks = activeFile?.bookmarks ?? [];
+  const parsedMarkdown = useMemo(() => parseFrontmatter(text), [text]);
+  const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
+  const renderedPreview = useMemo(() => getPreviewBody(parsedMarkdown.body), [parsedMarkdown.body]);
+  const previewBodyStartOffset = useMemo(() => {
+    const parsedBodyStartOffset = text.indexOf(parsedMarkdown.body);
+    return (
+      (parsedBodyStartOffset === -1 ? 0 : parsedBodyStartOffset) +
+      getLineStartOffset(parsedMarkdown.body, renderedPreview.sourceLineOffset)
+    );
+  }, [parsedMarkdown.body, renderedPreview.sourceLineOffset, text]);
   const {
     workspaceRef,
     editorSurfaceRef,
@@ -846,108 +221,166 @@ function WorkspaceApp() {
     editorRef,
     onSetActiveFileViewMode: setMarkdownFileViewMode,
   });
+  const {
+    splitDividerDragging,
+    splitDividerMinValue,
+    splitDividerMaxValue,
+    splitDividerValue,
+    splitWorkspaceStyle,
+    resetSplitRatio,
+    handleSplitDividerKeyDown,
+    handleSplitDividerPointerDown,
+    handleSplitDividerPointerMove,
+    endSplitDividerDrag,
+  } = useSplitViewController({
+    activeViewMode,
+    activeSplitRatio,
+    workspaceRef,
+    editorSurfaceRef,
+    onSetSplitRatio: commitActiveFileSplitRatio,
+  });
+  const focusTextRange = (start: number, end = start) => {
+    if (activeViewMode === "preview") {
+      setActiveFileViewMode("edit", { preserveScroll: false, focusEditor: false });
+    }
+
+    window.setTimeout(() => {
+      editorRef.current?.focus();
+      editorRef.current?.setSelectionRange(start, end);
+    }, 0);
+  };
+  const {
+    searchInputRef,
+    searchOpen,
+    setSearchOpen,
+    searchQuery,
+    setSearchQuery,
+    searchMatches,
+    activeSearchMatchIndex,
+    goToSearchMatch,
+  } = useEditorSearchController({
+    activeFileId: activeFile?.id,
+    editorRef,
+    text,
+    onFocusTextRange: focusTextRange,
+  });
+  const {
+    activeSelection,
+    selectedMarkdownText,
+    selectedCharacterCount,
+    selectedLineCount,
+    cursorPositionLabel,
+    selectionActionPosition,
+    setActiveSelection,
+    setSelectionActionPosition,
+    suppressSelectionActionPositionRef,
+    handleEditorSelectionChange,
+    handleEditorSelectionActionPositionChange,
+    clearPreviewSelection,
+    syncPreviewSelection,
+    getSelectedMarkdownExcerpt,
+    getSelectedMarkdownAnchor,
+  } = useSelectionCommentController({
+    activeFileId: activeFile?.id,
+    activeViewMode,
+    editorRef,
+    previewBodyStartOffset,
+    previewSurfaceRef,
+    text,
+  });
+  const {
+    topPopover,
+    setTopPopover,
+    centerPopover,
+    setCenterPopover,
+    workspaceMenuOpen,
+    setWorkspaceMenuOpen,
+    preferencesOpen,
+    setPreferencesOpen,
+    sharePanelTarget,
+    setSharePanelTarget,
+    rightPanelOpen,
+    setRightPanelOpen,
+    rightPanelView,
+    setRightPanelView,
+    closeFloatingChrome,
+    openFilesPanel,
+    openSharePanel,
+    toggleWorkspaceMenu,
+    toggleRightPanel,
+  } = useWorkspaceChromeController({
+    hasActiveFile: Boolean(activeFile),
+    selectionActionPosition,
+    setCopiedFileId,
+    setSelectionActionPosition,
+  });
+  const {
+    collaborators,
+    connectionStatus,
+    startSession: startCollaborationSession,
+    applyLocalText,
+    resetCollaborationState,
+  } = useCollaborationRoom({
+    activeFile: activeFile,
+    activeSelection,
+    identity,
+    setFileText,
+    setFileCollaborationStatus,
+    setFileCollaboratorCount,
+    setFileRoomMeta,
+    setFileRecoveryEvent,
+    startFileCollaborationSession,
+  });
+  const {
+    canRedo,
+    canUndo,
+    clearFileHistory,
+    editorHistoryState,
+    handleEditorHistoryStateChange,
+    handleTextChange,
+    historyByFileId,
+    redoActiveFile,
+    setHistoryByFileId,
+    undoActiveFile,
+    updateActiveFileBookmarks,
+  } = useWorkspaceActiveFileEditor({
+    activeFile,
+    applyLocalText,
+    editorRef,
+    setActiveFileBookmarks,
+    setActiveFileText,
+  });
   const isLive = Boolean(activeFile?.roomId);
-  const activeHistory = activeFile ? (historyByFileId[activeFile.id] ?? { past: [], future: [] }) : { past: [], future: [] };
-  const canUndo = activeHistory.past.length > 0;
-  const canRedo = activeHistory.future.length > 0;
+  const activeStatus = getActiveWorkspaceStatus({ isLive, connectionStatus });
+  const {
+    activeLiveRoomNotice,
+    copyShareUrl,
+    startSession,
+    stopSession,
+  } = useWorkspaceLiveRoomController({
+    activeFile,
+    activeStatus,
+    resetCollaborationState,
+    setCenterPopover,
+    setCopiedFileId,
+    startCollaborationSession,
+    stopFileCollaborationSession,
+  });
   const copied = copiedFileId === activeFile?.id;
-  const activeWordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
-  const selectedMarkdownText =
-    activeViewMode === "preview"
-      ? (previewSelection?.text ?? "")
-      : activeSelection && activeSelection.from !== activeSelection.to
-        ? text.slice(Math.min(activeSelection.from, activeSelection.to), Math.max(activeSelection.from, activeSelection.to)).trim()
-        : "";
-  const selectedCharacterCount =
-    activeSelection && activeSelection.from !== activeSelection.to ? Math.abs(activeSelection.to - activeSelection.from) : 0;
-  const selectedLineCount =
-    activeSelection && activeSelection.from !== activeSelection.to
-      ? getSelectionLineCount(text, activeSelection.from, activeSelection.to)
-      : 0;
-  const cursorPositionLabel = getCursorPositionLabel(text, activeSelection?.to ?? 0);
-  const parsedMarkdown = parseFrontmatter(text);
-  const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
-  const renderedPreview = getPreviewBody(parsedMarkdown.body);
+  const activeWordCount = getMarkdownWordCount(text);
   const shareOpen = topPopover === "share";
   const plusOpen = topPopover === "plus";
-  const publishedScope = getPublishedSnapshotScope(publishedSnapshot);
-  const publishedFileTitle =
-    publishedSnapshot?.files.find((file) => file.id === publishedSnapshot.activeFileId)?.title ??
-    publishedSnapshot?.files[0]?.title;
   const outlineHeadings = useMemo<MarkdownHeading[]>(
     () => getOutlineHeadings(renderedPreview),
     [renderedPreview],
   );
-  const searchMatches = useMemo<SearchMatch[]>(() => getSearchMatches(text, searchQuery), [searchQuery, text]);
-  const showToast = (
-    message: string,
-    tone: AppToastState["tone"] = "neutral",
-    action?: Pick<AppToastState, "actionLabel" | "onAction">,
-  ) => {
-    if (toastTimerRef.current) {
-      window.clearTimeout(toastTimerRef.current);
-    }
-
-    setToast({ id: Date.now(), message, tone, ...action });
-    toastTimerRef.current = window.setTimeout(() => {
-      setToast(null);
-      toastTimerRef.current = null;
-    }, 2800);
-  };
 
   const activateRoomFromLocation = (room: LocationRoom) => {
-    const targetFileId = getFileIdForRoom(files, room.roomId);
-    setFiles((currentFiles) => ensureLiveFileForRoom(currentFiles, room));
-    setActiveFileId(targetFileId);
+    activateRoomFile(room);
     setTopPopover(null);
     setCenterPopover(null);
     setCopiedFileId(null);
   };
-
-  useEffect(() => {
-    if (!activeFile && rightPanelView !== "files") {
-      setRightPanelView("files");
-    }
-  }, [activeFile, rightPanelView]);
-
-  useEffect(() => {
-    const currentPublishedScope = getPublishedSnapshotScope(publishedSnapshot);
-    if (currentPublishedScope) {
-      setPublishScope(currentPublishedScope);
-    }
-  }, [publishedSnapshot?.id, publishedSnapshot?.scope, publishedSnapshot?.fileCount]);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) {
-        window.clearTimeout(toastTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(WORKSPACE_PREFERENCES_KEY, JSON.stringify(workspacePreferences));
-    } catch {
-      // Preferences are a local convenience, not required for document editing.
-    }
-  }, [workspacePreferences]);
-
-  useEffect(() => {
-    if (!splitDividerDragging) {
-      return undefined;
-    }
-
-    const previousCursor = document.body.style.cursor;
-    const previousUserSelect = document.body.style.userSelect;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-
-    return () => {
-      document.body.style.cursor = previousCursor;
-      document.body.style.userSelect = previousUserSelect;
-    };
-  }, [splitDividerDragging]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -964,7 +397,7 @@ function WorkspaceApp() {
 
       const localFile = files.find((file) => !file.roomId) ?? files[0];
       if (localFile) {
-        setActiveFileId(localFile.id);
+        selectMarkdownFile(localFile.id);
         setTopPopover(null);
         setCenterPopover(null);
         setCopiedFileId(null);
@@ -973,7 +406,7 @@ function WorkspaceApp() {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [activeFileId, files]);
+  }, [activeFileId, activateRoomFile, files, selectMarkdownFile]);
 
   useEffect(() => {
     if (!activeFile) {
@@ -991,88 +424,6 @@ function WorkspaceApp() {
       commentsByFileId,
     });
   }, [activeFileId, commentsByFileId, files, openFileIds]);
-
-  useEffect(() => {
-    const normalizedSearchQuery = searchQuery.trim();
-    const revealKey = searchOpen && normalizedSearchQuery ? `${activeFile?.id ?? ""}:${normalizedSearchQuery}` : null;
-
-    if (!searchOpen || !normalizedSearchQuery || searchMatches.length === 0) {
-      setActiveSearchMatchIndex(-1);
-      searchRevealKeyRef.current = revealKey;
-      return;
-    }
-
-    if (searchRevealKeyRef.current !== revealKey) {
-      const firstMatch = searchMatches[0];
-      setActiveSearchMatchIndex(0);
-      searchRevealKeyRef.current = revealKey;
-      window.setTimeout(() => {
-        editorRef.current?.revealRange(firstMatch.start, firstMatch.end);
-      }, 0);
-      return;
-    }
-
-    setActiveSearchMatchIndex((currentIndex) => {
-      if (currentIndex === -1) {
-        return 0;
-      }
-
-      return Math.min(currentIndex, searchMatches.length - 1);
-    });
-  }, [activeFile?.id, searchMatches, searchOpen, searchQuery]);
-
-  useEffect(() => {
-    if (!searchOpen) {
-      return;
-    }
-
-    window.setTimeout(() => searchInputRef.current?.focus(), 0);
-  }, [searchOpen]);
-
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-
-      if (selectionActionPosition) {
-        event.preventDefault();
-        setSelectionActionPosition(null);
-        return;
-      }
-
-      if (topPopover || centerPopover || searchOpen) {
-        event.preventDefault();
-        setTopPopover(null);
-        setCenterPopover(null);
-        setSearchOpen(false);
-        return;
-      }
-
-      const target = event.target instanceof Element ? event.target : null;
-      const isInsideWorkspaceMenu = Boolean(target?.closest(".workspace-menu-popover"));
-      const isInsideRightPanel = Boolean(target?.closest(".right-panel"));
-
-      if (workspaceMenuOpen && (isInsideWorkspaceMenu || !isInsideRightPanel)) {
-        event.preventDefault();
-        if (preferencesOpen) {
-          setPreferencesOpen(false);
-          return;
-        }
-
-        setWorkspaceMenuOpen(false);
-        return;
-      }
-
-      if (rightPanelOpen) {
-        event.preventDefault();
-        setRightPanelOpen(false);
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [centerPopover, preferencesOpen, rightPanelOpen, searchOpen, selectionActionPosition, topPopover, workspaceMenuOpen]);
 
   useEffect(() => {
     if (!selectionActionPosition) {
@@ -1096,861 +447,6 @@ function WorkspaceApp() {
     return () => window.removeEventListener("pointerdown", handlePointerDown, true);
   }, [selectionActionPosition]);
 
-  useEffect(() => {
-    if (centerPopover !== "view") {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest(".file-toolbar-wrap")) {
-        return;
-      }
-
-      setCenterPopover(null);
-    };
-
-    window.addEventListener("pointerdown", handlePointerDown, true);
-    return () => window.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [centerPopover]);
-
-  const startSession = async () => {
-    const startedSession = startCollaborationSession();
-    if (!startedSession) {
-      return;
-    }
-
-    setCopiedFileId(null);
-    setCenterPopover(null);
-  };
-
-  const stopSession = () => {
-    if (!activeFile?.roomId) {
-      return;
-    }
-
-    const stoppedFileId = activeFile.id;
-    resetCollaborationState("idle");
-    setCopiedFileId(null);
-    setFiles((currentFiles) =>
-      currentFiles.map((file) =>
-        file.id === stoppedFileId
-          ? {
-              ...file,
-              roomId: undefined,
-              shareUrl: undefined,
-              connectionStatus: "idle",
-              collaboratorCount: 0,
-              snapshotCount: 0,
-              lastSnapshotAt: undefined,
-              lastRecoveryType: undefined,
-              lastRecoveryMessage: undefined,
-              lastRecoveryAt: undefined,
-            }
-          : file,
-      ),
-    );
-  };
-
-  const copyShareUrl = async () => {
-    const url = activeFile?.shareUrl || window.location.href;
-    await navigator.clipboard.writeText(url);
-    activeFile && setCopiedFileId(activeFile.id);
-    window.setTimeout(() => setCopiedFileId(null), 1600);
-  };
-
-  const getPublishFiles = () => (publishScope === "file" && activeFile ? [activeFile] : files);
-
-  const getPublishCommentsByFileId = (publishFiles: MarkdownFile[]) => {
-    const publishFileIds = new Set(publishFiles.map((file) => file.id));
-    return Object.fromEntries(
-      Object.entries(commentsByFileId).filter(([fileId, comments]) => publishFileIds.has(fileId) && comments.length > 0),
-    );
-  };
-
-  const getPublishActiveFileId = (publishFiles = getPublishFiles()) => {
-    const requestedActiveFileId = activeFile?.id ?? activeFileId;
-    return publishFiles.some((file) => file.id === requestedActiveFileId)
-      ? requestedActiveFileId
-      : (publishFiles[0]?.id ?? requestedActiveFileId);
-  };
-
-  const publishProjectSnapshot = async () => {
-    if (publishing) {
-      return;
-    }
-
-    const publishServiceUrl = getConfiguredPublishServiceUrl();
-    const isUpdatingPublishedPage = Boolean(
-      publishedSnapshot && (publishServiceUrl ? publishedSnapshot.ownerToken : true),
-    );
-    const publishFiles = getPublishFiles();
-    const emptyPublishFiles = getEmptyPublishFiles(publishFiles);
-    if (emptyPublishFiles.length > 0) {
-      showToast(getEmptyPublishFilesMessage(publishFiles, publishScope), "error");
-      return;
-    }
-
-    const publishActiveFileId = getPublishActiveFileId(publishFiles);
-    const publishCommentsByFileId = getPublishCommentsByFileId(publishFiles);
-    setPublishing(true);
-    try {
-      const snapshot = publishServiceUrl
-        ? isUpdatingPublishedPage && publishedSnapshot?.ownerToken
-          ? await republishServerPublishedSnapshot({
-              serviceUrl: publishServiceUrl,
-              origin: window.location.origin,
-              scope: publishScope,
-              ownerName: identity.name,
-              snapshot: publishedSnapshot,
-              files: publishFiles,
-              activeFileId: publishActiveFileId,
-              commentsByFileId: publishCommentsByFileId,
-            })
-          : await createServerPublishedSnapshot({
-              serviceUrl: publishServiceUrl,
-              origin: window.location.origin,
-              scope: publishScope,
-              ownerName: identity.name,
-              files: publishFiles,
-              activeFileId: publishActiveFileId,
-              commentsByFileId: publishCommentsByFileId,
-            })
-        : {
-            ...createPublishedSnapshot({
-              id: publishedSnapshot?.id ?? randomId(),
-              origin: window.location.origin,
-              scope: publishScope,
-              ownerName: identity.name,
-              files: publishFiles,
-              activeFileId: publishActiveFileId,
-              commentsByFileId: publishCommentsByFileId,
-            }),
-            ...(publishedSnapshot ? { createdAt: publishedSnapshot.createdAt, updatedAt: new Date().toISOString() } : {}),
-          };
-      savePublishedSnapshot(snapshot);
-      setPublishedSnapshot(snapshot);
-      showToast(isUpdatingPublishedPage ? "Published page updated." : "Page published.");
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "Publish failed.");
-    } finally {
-      setPublishing(false);
-    }
-  };
-
-  const unpublishProjectSnapshot = async () => {
-    if (unpublishing || !publishedSnapshot) {
-      return;
-    }
-
-    const publishServiceUrl = getConfiguredPublishServiceUrl();
-    if (publishServiceUrl && !publishedSnapshot.ownerToken) {
-      return;
-    }
-
-    const confirmed = window.confirm(
-      "Unpublish this page?\n\nThis removes the public page and included AI-readable outputs. The local project stays unchanged.",
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    setUnpublishing(true);
-    try {
-      if (publishServiceUrl) {
-        await unpublishServerPublishedSnapshot({
-          serviceUrl: publishServiceUrl,
-          snapshot: publishedSnapshot,
-        });
-      }
-      deletePublishedSnapshot(publishedSnapshot.id);
-      setPublishedSnapshot(null);
-      showToast("Page unpublished.");
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "Publish failed.");
-    } finally {
-      setUnpublishing(false);
-    }
-  };
-
-  const copyPublishedUrl = async (url: string, label: string) => {
-    await navigator.clipboard.writeText(url);
-    showToast(`${label} copied.`);
-  };
-
-  const updateIdentityName = (nextName: string) => {
-    setIdentity((currentIdentity) => {
-      const updatedIdentity = {
-        ...currentIdentity,
-        name: nextName.slice(0, 40),
-        lastSeen: Date.now(),
-      };
-      window.localStorage.setItem(IDENTITY_KEY, JSON.stringify(updatedIdentity));
-      return updatedIdentity;
-    });
-  };
-
-  const normalizeIdentityName = () => {
-    setIdentity((currentIdentity) => {
-      const updatedIdentity = normalizeIdentity(currentIdentity);
-      window.localStorage.setItem(IDENTITY_KEY, JSON.stringify(updatedIdentity));
-      return updatedIdentity;
-    });
-  };
-
-  const copyCurrentMarkdown = async () => {
-    if (!activeFile) {
-      return;
-    }
-
-    await navigator.clipboard.writeText(activeFile.text);
-    showToast("Markdown copied.");
-  };
-
-  const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
-    const blob = new Blob([content], { type });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportCurrentFile = () => {
-    if (!activeFile) {
-      return;
-    }
-
-    downloadTextFile(activeFile.title, activeFile.text, "text/markdown;charset=utf-8");
-  };
-
-  const downloadCurrentMarkdownFile = () => {
-    if (!activeFile) {
-      return;
-    }
-
-    downloadTextFile(activeFile.title, activeFile.text, "text/markdown;charset=utf-8");
-    showToast("Markdown downloaded.");
-  };
-
-  const downloadWorkspace = () => {
-    const workspaceExport = createStoredWorkspace({
-      files,
-      openFileIds,
-      activeFileId: activeFile?.id ?? activeFileId,
-      commentsByFileId,
-    });
-    downloadTextFile(
-      `${WORKSPACE_EXPORT_FILE_PREFIX}-v${PROJECT_STORAGE_VERSION}.json`,
-      JSON.stringify(workspaceExport, null, 2),
-      "application/json",
-    );
-    showToast("Project downloaded.");
-  };
-
-  const importWorkspaceFile = async (file: File) => {
-    let parsedWorkspace: unknown;
-
-    try {
-      parsedWorkspace = JSON.parse(await file.text());
-    } catch {
-      showToast("This file is not readable JSON.", "error");
-      return;
-    }
-
-    const nextWorkspace = migrateWorkspacePayload(parsedWorkspace, { includeLocationRoom: false });
-    if (!nextWorkspace) {
-      showToast(`This JSON does not match the ${PRODUCT_NAME} project v${PROJECT_STORAGE_VERSION} files schema.`, "error");
-      return;
-    }
-
-    const nextActiveFile = nextWorkspace.activeFileId
-      ? nextWorkspace.files.find((file) => file.id === nextWorkspace.activeFileId)
-      : undefined;
-
-    setFiles(nextWorkspace.files);
-    setOpenFileIds(nextWorkspace.openFileIds);
-    setActiveFileId(nextActiveFile?.id ?? "");
-    replaceCommentsByFileId(nextWorkspace.commentsByFileId);
-    setHistoryByFileId({});
-    resetCollaborationState(nextActiveFile?.roomId ? "connecting" : "idle");
-    setTopPopover(null);
-    setCenterPopover(null);
-    setCopiedFileId(null);
-    syncUrlForFile(nextActiveFile);
-    showToast("Project imported.");
-  };
-
-  const importMarkdownFile = async (file: File) => {
-    const importedText = await file.text();
-    const nextFile = addFileFromContent(
-      normalizeMarkdownFileTitle(file.name || "Imported.md"),
-      importedText,
-      workspacePreferences.newFileViewMode,
-      getNewFilePreferenceOverrides(),
-    );
-    closeFloatingChrome();
-    syncUrlForFile(nextFile);
-
-    window.setTimeout(() => editorRef.current?.focus(), 0);
-  };
-
-  const handleImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    void importMarkdownFile(file);
-  };
-
-  const handleWorkspaceImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    void importWorkspaceFile(file);
-  };
-
-  const getDroppedMarkdownFile = (event: DragEvent<HTMLElement>) => {
-    return Array.from(event.dataTransfer.files).find(isMarkdownImportFile);
-  };
-
-  const handleEmptyWorkspaceDragOver = (event: DragEvent<HTMLElement>) => {
-    if (!getDroppedMarkdownFile(event)) {
-      return;
-    }
-
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
-    setEmptyDropActive(true);
-  };
-
-  const handleEmptyWorkspaceDragLeave = (event: DragEvent<HTMLElement>) => {
-    const relatedTarget = event.relatedTarget;
-    if (relatedTarget instanceof Node && event.currentTarget.contains(relatedTarget)) {
-      return;
-    }
-
-    setEmptyDropActive(false);
-  };
-
-  const handleEmptyWorkspaceDrop = (event: DragEvent<HTMLElement>) => {
-    event.preventDefault();
-    setEmptyDropActive(false);
-
-    const markdownFile = getDroppedMarkdownFile(event);
-    if (!markdownFile) {
-      showToast("Drop a Markdown file.", "error");
-      return;
-    }
-
-    void importMarkdownFile(markdownFile);
-  };
-
-  const updateActiveFileText = (nextText: string, options: { recordHistory?: boolean } = {}) => {
-    if (!activeFile) {
-      return;
-    }
-
-    const shouldRecordHistory = options.recordHistory ?? true;
-    if (shouldRecordHistory && nextText !== activeFile.text) {
-      setHistoryByFileId((currentHistory) => {
-        const fileHistory = currentHistory[activeFile.id] ?? { past: [], future: [] };
-        return {
-          ...currentHistory,
-          [activeFile.id]: {
-            past: [...fileHistory.past.slice(-79), activeFile.text],
-            future: [],
-          },
-        };
-      });
-    }
-
-    setFiles((currentFiles) =>
-      currentFiles.map((file) => (file.id === activeFile.id ? { ...file, text: nextText } : file)),
-    );
-
-    if (activeFile.roomId) {
-      applyLocalText(nextText);
-    }
-  };
-
-  const handleTextChange = (nextText: string) => {
-    updateActiveFileText(nextText);
-  };
-
-  const updateActiveFileBookmarks = (nextBookmarks: MarkdownBookmark[]) => {
-    if (!activeFile) {
-      return;
-    }
-
-    const normalizedBookmarks: FileBookmark[] = nextBookmarks
-      .map((bookmark) => ({
-        id: bookmark.id,
-        position: Math.max(0, bookmark.position),
-        createdAt: bookmark.createdAt ?? new Date().toISOString(),
-      }))
-      .filter(
-        (bookmark, index, bookmarkList) =>
-          bookmarkList.findIndex((candidate) => candidate.position === bookmark.position) === index,
-      );
-
-    setFiles((currentFiles) =>
-      currentFiles.map((file) => (file.id === activeFile.id ? { ...file, bookmarks: normalizedBookmarks } : file)),
-    );
-  };
-
-  const handleEditorSelectionChange = (selection: LiveSelection) => {
-    setPreviewSelection(null);
-    setActiveSelection(selection);
-  };
-
-  const handleEditorSelectionActionPositionChange = (position: MarkdownSelectionActionPosition | null) => {
-    if (suppressSelectionActionPositionRef.current) {
-      setSelectionActionPosition(null);
-      return;
-    }
-
-    setSelectionActionPosition(position);
-  };
-
-  const undoActiveFile = () => {
-    if (editorRef.current?.undo()) {
-      return;
-    }
-
-    if (!activeFile || !canUndo) {
-      return;
-    }
-
-    const previousText = activeHistory.past[activeHistory.past.length - 1];
-    setHistoryByFileId((currentHistory) => {
-      const fileHistory = currentHistory[activeFile.id] ?? { past: [], future: [] };
-      return {
-        ...currentHistory,
-        [activeFile.id]: {
-          past: fileHistory.past.slice(0, -1),
-          future: [activeFile.text, ...fileHistory.future].slice(0, 80),
-        },
-      };
-    });
-    updateActiveFileText(previousText, { recordHistory: false });
-  };
-
-  const redoActiveFile = () => {
-    if (editorRef.current?.redo()) {
-      return;
-    }
-
-    if (!activeFile || !canRedo) {
-      return;
-    }
-
-    const nextText = activeHistory.future[0];
-    setHistoryByFileId((currentHistory) => {
-      const fileHistory = currentHistory[activeFile.id] ?? { past: [], future: [] };
-      return {
-        ...currentHistory,
-        [activeFile.id]: {
-          past: [...fileHistory.past.slice(-79), activeFile.text],
-          future: fileHistory.future.slice(1),
-        },
-      };
-    });
-    updateActiveFileText(nextText, { recordHistory: false });
-  };
-
-  const getSelectedMarkdownExcerpt = () => {
-    const selectedText = activeViewMode === "preview" ? (previewSelection?.text ?? "") : (editorRef.current?.getSelectedText() ?? "");
-    if (!selectedText) {
-      return "";
-    }
-
-    return selectedText
-      .trim()
-      .replace(/\s+/g, " ")
-      .slice(0, 180);
-  };
-
-  const getSelectedMarkdownRange = () => {
-    if (activeViewMode === "preview") {
-      if (!previewSelection || previewSelection.from === previewSelection.to) {
-        return null;
-      }
-
-      return {
-        start: Math.min(previewSelection.from, previewSelection.to),
-        end: Math.max(previewSelection.from, previewSelection.to),
-      };
-    }
-
-    if (!activeSelection || activeSelection.from === activeSelection.to) {
-      return null;
-    }
-
-    return {
-      start: Math.min(activeSelection.from, activeSelection.to),
-      end: Math.max(activeSelection.from, activeSelection.to),
-    };
-  };
-
-  const getSelectedMarkdownAnchor = () => {
-    const selectionRange = getSelectedMarkdownRange();
-    if (!selectionRange) {
-      return null;
-    }
-
-    return {
-      ...selectionRange,
-      sourceQuote: text.slice(selectionRange.start, selectionRange.end),
-      prefix: text.slice(Math.max(0, selectionRange.start - COMMENT_ANCHOR_CONTEXT_LENGTH), selectionRange.start),
-      suffix: text.slice(selectionRange.end, selectionRange.end + COMMENT_ANCHOR_CONTEXT_LENGTH),
-    };
-  };
-
-  const addFileComment = () => {
-    if (!activeFile) {
-      return;
-    }
-
-    const selectionAnchor = getSelectedMarkdownAnchor();
-    createFileComment({
-      fileId: activeFile.id,
-      body: commentDraft,
-      quote: getSelectedMarkdownExcerpt() || undefined,
-      anchor: selectionAnchor,
-    });
-  };
-
-  const startCommentReply = (_fileId: string, commentId: string) => {
-    openCommentsPanel(commentId);
-    beginCommentReply(commentId);
-  };
-
-  const getCommentRange = (comment: FileComment): { start: number; end: number } | null =>
-    getCommentRangeInText(text, comment);
-
-  const scrollCommentIntoView = (commentId: string) => {
-    window.setTimeout(() => {
-      document
-        .querySelector<HTMLElement>(`.right-comment-card[data-comment-id="${commentId}"]`)
-        ?.scrollIntoView({ block: "nearest" });
-    }, 0);
-  };
-
-  const openCommentsPanel = (commentId?: string) => {
-    setRightPanelOpen(true);
-    setRightPanelView("comments");
-    setTopPopover(null);
-    setCenterPopover(null);
-
-    if (commentId) {
-      setFocusedCommentId(commentId);
-      scrollCommentIntoView(commentId);
-    }
-  };
-
-  const setFileViewMode = (fileId: string, nextViewMode: FileViewMode) => {
-    setFiles((currentFiles) =>
-      currentFiles.map((file) => (file.id === fileId ? { ...file, viewMode: nextViewMode } : file)),
-    );
-  };
-
-  const setActiveFileSplitRatio = (nextSplitRatio: number) => {
-    if (!activeFile) {
-      return;
-    }
-
-    const splitRatio = clampSplitEditorRatio(nextSplitRatio);
-    setFiles((currentFiles) =>
-      currentFiles.map((file) => (file.id === activeFile.id ? { ...file, splitRatio } : file)),
-    );
-  };
-
-  const getMagnetizedSplitRatio = (nextSplitRatio: number) => {
-    const clampedRatio = clampSplitEditorRatio(nextSplitRatio);
-    return Math.abs(clampedRatio - DEFAULT_SPLIT_EDITOR_RATIO) <= SPLIT_CENTER_SNAP_THRESHOLD
-      ? DEFAULT_SPLIT_EDITOR_RATIO
-      : clampedRatio;
-  };
-
-  const getCurrentSplitBias = () => {
-    const workspaceRect = workspaceRef.current?.getBoundingClientRect();
-    const editorRect = editorSurfaceRef.current?.getBoundingClientRect();
-    if (!workspaceRect || !editorRect || workspaceRect.width <= 0) {
-      return 0;
-    }
-
-    return editorRect.width - activeSplitRatio * workspaceRect.width;
-  };
-
-  const updateSplitRatioFromClientX = (clientX: number) => {
-    const workspaceRect = workspaceRef.current?.getBoundingClientRect();
-    if (!workspaceRect || workspaceRect.width <= 0) {
-      return;
-    }
-
-    const nextSplitRatio = (clientX - workspaceRect.left - splitResizeBiasRef.current) / workspaceRect.width;
-    setActiveFileSplitRatio(getMagnetizedSplitRatio(nextSplitRatio));
-  };
-
-  const handleSplitDividerPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (activeViewMode !== "split" || event.button !== 0) {
-      return;
-    }
-
-    event.preventDefault();
-    splitResizeBiasRef.current = getCurrentSplitBias();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setSplitDividerDragging(true);
-    updateSplitRatioFromClientX(event.clientX);
-  };
-
-  const handleSplitDividerPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (!splitDividerDragging) {
-      return;
-    }
-
-    event.preventDefault();
-    updateSplitRatioFromClientX(event.clientX);
-  };
-
-  const endSplitDividerDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setSplitDividerDragging(false);
-  };
-
-  const handleSplitDividerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      setActiveFileSplitRatio(DEFAULT_SPLIT_EDITOR_RATIO);
-      return;
-    }
-
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      setActiveFileSplitRatio(activeSplitRatio - SPLIT_RESIZE_KEYBOARD_STEP);
-      return;
-    }
-
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      setActiveFileSplitRatio(activeSplitRatio + SPLIT_RESIZE_KEYBOARD_STEP);
-      return;
-    }
-
-    if (event.key === "Home") {
-      event.preventDefault();
-      setActiveFileSplitRatio(MIN_SPLIT_EDITOR_RATIO);
-      return;
-    }
-
-    if (event.key === "End") {
-      event.preventDefault();
-      setActiveFileSplitRatio(MAX_SPLIT_EDITOR_RATIO);
-    }
-  };
-
-  const goToFileComment = (fileId: string, comment: FileComment) => {
-    const targetFile = files.find((file) => file.id === fileId);
-    if (!targetFile) {
-      return;
-    }
-
-    openCommentsPanel(comment.id);
-    if (targetFile.id !== activeFile?.id) {
-      selectFile(targetFile.id);
-    }
-
-    const commentRange = getCommentRangeInText(targetFile.text, comment);
-    if (!commentRange) {
-      showToast("Original text not found.", "neutral");
-      return;
-    }
-
-    if (targetFile.viewMode === "preview") {
-      window.setTimeout(() => {
-        previewSurfaceRef.current
-          ?.querySelector<HTMLElement>(`.preview-comment-mark[data-comment-id="${comment.id}"]`)
-          ?.scrollIntoView({ block: "center", behavior: "smooth" });
-      }, 0);
-      return;
-    }
-
-    window.setTimeout(() => {
-      editorRef.current?.focus();
-      editorRef.current?.setSelectionRange(commentRange.start, commentRange.end);
-    }, 0);
-  };
-
-  const openCommentMarker = (commentId: string) => {
-    const comment = activeFileComments.find((fileComment) => fileComment.id === commentId);
-    if (!comment) {
-      openCommentsPanel(commentId);
-      return;
-    }
-
-    if (activeFile) {
-      goToFileComment(activeFile.id, comment);
-    }
-  };
-
-  const formatCommentDate = (isoDate: string) => {
-    const date = new Date(isoDate);
-    if (Number.isNaN(date.getTime())) {
-      return "";
-    }
-
-    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
-    if (elapsedSeconds < 45) {
-      return "just now";
-    }
-
-    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-    if (elapsedMinutes < 60) {
-      return `${elapsedMinutes} ${elapsedMinutes === 1 ? "minute" : "minutes"} ago`;
-    }
-
-    const elapsedHours = Math.floor(elapsedMinutes / 60);
-    if (elapsedHours < 24) {
-      return `${elapsedHours} ${elapsedHours === 1 ? "hour" : "hours"} ago`;
-    }
-
-    const elapsedDays = Math.floor(elapsedHours / 24);
-    if (elapsedDays < 7) {
-      return `${elapsedDays} ${elapsedDays === 1 ? "day" : "days"} ago`;
-    }
-
-    return new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-    }).format(date);
-  };
-
-  const openSelectionComment = () => {
-    if (!selectedCharacterCount) {
-      return;
-    }
-
-    setSelectionActionPosition(null);
-    openCommentsPanel();
-    window.setTimeout(() => commentInputRef.current?.focus(), 0);
-  };
-
-  const toggleLineBookmark = (lineRange: MarkdownLineActionRequest) => {
-    if (!activeFile) {
-      return;
-    }
-
-    const { start, end } = lineRange;
-    const existingBookmark = activeBookmarks.find((bookmark) => isPositionInLineRange(bookmark.position, start, end));
-    const nextBookmarks = existingBookmark
-      ? activeBookmarks.filter((bookmark) => bookmark.id !== existingBookmark.id)
-      : [
-          ...activeBookmarks,
-          {
-            id: randomId(),
-            position: start,
-            createdAt: new Date().toISOString(),
-          },
-        ];
-
-    setFiles((currentFiles) =>
-      currentFiles.map((file) => (file.id === activeFile.id ? { ...file, bookmarks: nextBookmarks } : file)),
-    );
-  };
-
-  const getLineComments = (lineRange: { start: number; end: number }) =>
-    activeOpenComments.filter((comment) => {
-      const commentRange = getCommentRange(comment);
-      return Boolean(commentRange && commentRange.end > lineRange.start && commentRange.start < lineRange.end);
-    });
-
-  const openLineComments = (lineRange: MarkdownLineActionRequest) => {
-    const lineComments = getLineComments(lineRange);
-    openCommentsPanel(lineComments[0]?.id);
-  };
-
-  const openLineCommentComposer = (lineRange: MarkdownLineActionRequest) => {
-    const { start, end } = lineRange;
-    if (end <= start) {
-      showToast("Line comments need text on the line.", "error");
-      return;
-    }
-
-    setPreviewSelection(null);
-    setActiveSelection({ from: start, to: end });
-    setSelectionActionPosition(null);
-    if (activeViewMode === "preview") {
-      setActiveFileViewMode("edit", { preserveScroll: false, focusEditor: false });
-    }
-    window.setTimeout(() => {
-      suppressSelectionActionPositionRef.current = true;
-      editorRef.current?.setSelectionRange(start, end);
-      suppressSelectionActionPositionRef.current = false;
-      setSelectionActionPosition(null);
-      openCommentsPanel();
-      commentInputRef.current?.focus();
-    }, 0);
-  };
-
-  const handleLineAnnotationAction = (request: MarkdownLineActionRequest) => {
-    setSelectionActionPosition(null);
-    if (request.action === "bookmark") {
-      toggleLineBookmark(request);
-      return;
-    }
-
-    if (request.hasComment) {
-      openLineComments(request);
-      return;
-    }
-
-    openLineCommentComposer(request);
-  };
-
-  const focusTextRange = (start: number, end = start) => {
-    if (activeViewMode === "preview") {
-      setActiveFileViewMode("edit", { preserveScroll: false, focusEditor: false });
-    }
-
-    window.setTimeout(() => {
-      editorRef.current?.focus();
-      editorRef.current?.setSelectionRange(start, end);
-    }, 0);
-  };
-
-  const goToSearchMatch = (direction: 1 | -1) => {
-    if (searchMatches.length === 0) {
-      return;
-    }
-
-    const currentIndex = activeSearchMatchIndex === -1 ? (direction === 1 ? -1 : 0) : activeSearchMatchIndex;
-    const nextIndex =
-      direction === 1
-        ? (currentIndex + 1) % searchMatches.length
-        : (currentIndex - 1 + searchMatches.length) % searchMatches.length;
-    const match = searchMatches[nextIndex];
-    setActiveSearchMatchIndex(nextIndex);
-    if (searchOpen) {
-      editorRef.current?.revealRange(match.start, match.end);
-      return;
-    }
-
-    focusTextRange(match.start, match.end);
-  };
-
   const goToOutlineHeading = (heading: MarkdownHeading, headingIndex: number) => {
     if (activeViewMode === "preview") {
       const renderedHeadings = Array.from(previewSurfaceRef.current?.querySelectorAll("h1, h2, h3") ?? []).filter(
@@ -1968,376 +464,137 @@ function WorkspaceApp() {
     focusTextRange(targetOffset, targetOffset + heading.text.length + heading.depth + 1);
   };
 
-  const closeFloatingChrome = () => {
-    setTopPopover(null);
-    setCenterPopover(null);
-    setPreferencesOpen(false);
-    setWorkspaceMenuOpen(false);
-    setSharePanelTarget(undefined);
-    setCopiedFileId(null);
-    setSelectionActionPosition(null);
-  };
+  const {
+    emptyDropActive,
+    copyCurrentMarkdown,
+    downloadCurrentMarkdownFile,
+    downloadProject,
+    handleImportInputChange,
+    handleProjectImportInputChange,
+    handleEmptyWorkspaceDragOver,
+    handleEmptyWorkspaceDragLeave,
+    handleEmptyWorkspaceDrop,
+  } = useProjectIoController({
+    activeFile,
+    activeFileId,
+    addFileFromContent,
+    commentsByFileId,
+    editorRef,
+    files,
+    openFileIds,
+    preferences: workspacePreferences,
+    replaceCommentsByFileId,
+    replaceWorkspace,
+    resetCollaborationState,
+    showToast,
+    clearFileHistory,
+    onCloseChrome: closeFloatingChrome,
+  });
+  const {
+    selectFile,
+    addFile,
+    openHelpFile,
+    renameMarkdownFile,
+    duplicateFile,
+    deleteFile,
+    closeFile,
+    selectAdjacentFile,
+  } = useWorkspaceFileActions({
+    activeFile,
+    activeFileId,
+    addMarkdownFile,
+    closeFloatingChrome,
+    closeMarkdownFile,
+    commentsByFileId,
+    deleteMarkdownFile,
+    duplicateMarkdownFile,
+    files,
+    helpMarkdown: createHelpMarkdown(shortcutLabels),
+    historyByFileId,
+    openFileIds,
+    preferences: workspacePreferences,
+    queueEditorFocus,
+    renameFile,
+    replaceCommentsByFileId,
+    resetCollaborationState,
+    restoreFile,
+    selectAdjacentMarkdownFile,
+    selectMarkdownFile,
+    setHistoryByFileId,
+    showToast,
+    upsertHelpFile,
+  });
+  const {
+    activeCommentAnchors,
+    activePreviewCommentAnchors,
+    activePreviewLineAnnotations,
+    addFileComment,
+    formatCommentDate,
+    goToFileComment,
+    handleLineAnnotationAction,
+    openCommentMarker,
+    openCommentsPanel,
+    openSelectionComment,
+    startCommentReply,
+  } = useWorkspaceCommentActions({
+    activeBookmarks,
+    activeFile,
+    activeFileComments,
+    activeOpenComments,
+    activeViewMode,
+    clearPreviewSelection,
+    commentDraft,
+    commentInputRef,
+    createFileComment,
+    createId: randomId,
+    editorRef,
+    files,
+    focusedCommentId,
+    getSelectedMarkdownAnchor,
+    getSelectedMarkdownExcerpt,
+    previewBody: renderedPreview.body,
+    previewBodyStartOffset,
+    previewSurfaceRef,
+    selectFile,
+    selectedCharacterCount,
+    setActiveFileBookmarks,
+    setActiveFileViewMode,
+    setActiveSelection,
+    setCenterPopover,
+    setFocusedCommentId,
+    setRightPanelOpen,
+    setRightPanelView,
+    setSelectionActionPosition,
+    setTopPopover,
+    showToast,
+    startCommentReply: beginCommentReply,
+    suppressSelectionActionPositionRef,
+    text,
+  });
+  const handleStableLineAnnotationAction = useEventCallback(handleLineAnnotationAction);
+  const openStableCommentMarker = useEventCallback(openCommentMarker);
 
-  const openSharePanel = (panel: SharePanel) => {
-    setSharePanelTarget(panel);
-    setTopPopover("share");
-    setCenterPopover(null);
-    setWorkspaceMenuOpen(false);
-  };
-
-  const selectFile = (fileId: string) => {
-    const nextFile = selectMarkdownFile(fileId);
-    if (!nextFile) {
-      return;
-    }
-
-    closeFloatingChrome();
-    syncUrlForFile(nextFile);
-  };
-
-  const getNewFilePreferenceOverrides = (): Partial<MarkdownFile> => ({
-    viewMode: workspacePreferences.newFileViewMode,
-    readingWidth: workspacePreferences.readingWidth,
-    lineWrapping: workspacePreferences.lineWrapping,
-    lineNumbers: workspacePreferences.lineNumbers,
+  useWorkspaceKeyboardShortcuts({
+    importInputRef,
+    addFile,
+    closeFloatingChrome,
+    openFilesPanel,
+    openHelpFile,
+    selectAdjacentFile,
+    setActiveFileViewMode,
+    setCenterPopover,
   });
 
-  const addFile = () => {
-    queueEditorFocus();
-    const nextFile = addMarkdownFile(getNewFilePreferenceOverrides());
-    closeFloatingChrome();
-    syncUrlForFile(nextFile);
-  };
-
-  const openHelpFile = () => {
-    const helpMarkdown = createHelpMarkdown(shortcutLabels);
-    const existingHelpFile = files.find((file) => file.title.trim().toLowerCase() === "help.md");
-
-    if (existingHelpFile) {
-      setFiles((currentFiles) =>
-        currentFiles.map((file) =>
-          file.id === existingHelpFile.id ? { ...file, title: "HELP.md", text: helpMarkdown, viewMode: "preview" } : file,
-        ),
-      );
-      selectFile(existingHelpFile.id);
-      return;
-    }
-
-    const nextFile = addFileFromContent("HELP.md", helpMarkdown, "preview");
-    closeFloatingChrome();
-    syncUrlForFile(nextFile);
-  };
-
-  const renameMarkdownFile = (fileId: string, nextRawTitle: string) => {
-    const result = renameFile(fileId, nextRawTitle);
-    if (!result.ok) {
-      showToast(result.message, "error");
-    }
-    return result;
-  };
-
-  const duplicateFile = (fileId: string) => {
-    queueEditorFocus();
-    const nextFile = duplicateMarkdownFile(fileId);
-    if (!nextFile) {
-      return;
-    }
-
-    closeFloatingChrome();
-    syncUrlForFile(nextFile);
-    showToast("File duplicated.");
-  };
-
-  const deleteFile = (fileId: string) => {
-    const deletedFile = files.find((file) => file.id === fileId);
-    if (!deletedFile) {
-      return;
-    }
-
-    const deletedFileIndex = Math.max(
-      0,
-      files.findIndex((file) => file.id === fileId),
-    );
-    const previousOpenFileIds = openFileIds;
-    const previousActiveFileId = activeFile?.id ?? activeFileId;
-    const deletedComments = commentsByFileId[fileId];
-    const deletedHistory = historyByFileId[fileId];
-    const result = deleteMarkdownFile(fileId);
-    if (!result) {
-      return;
-    }
-
-    setHistoryByFileId((currentHistory) => {
-      if (!currentHistory[fileId]) {
-        return currentHistory;
-      }
-
-      const { [fileId]: _deletedHistory, ...nextHistory } = currentHistory;
-      return nextHistory;
+  const getFileStatus = (file: MarkdownFile) =>
+    getWorkspaceFileStatus({
+      file,
+      activeFileId: activeFile?.id,
+      activeConnectionStatus: connectionStatus,
     });
-    if (commentsByFileId[fileId]) {
-      const { [fileId]: _deletedComments, ...nextCommentsByFileId } = commentsByFileId;
-      replaceCommentsByFileId(nextCommentsByFileId);
-    }
-
-    if (result.closedActiveFile) {
-      closeFloatingChrome();
-      setCopiedFileId(null);
-
-      if (result.nextActiveFile) {
-        syncUrlForFile(result.nextActiveFile);
-      } else {
-        resetCollaborationState("idle");
-        syncUrlForFile(undefined, "replace");
-      }
-    }
-
-    showToast("File deleted.", "neutral", {
-      actionLabel: "Undo",
-      onAction: () => {
-        setFiles((currentFiles) => {
-          if (currentFiles.some((file) => file.id === deletedFile.id)) {
-            return currentFiles;
-          }
-
-          const nextFiles = [...currentFiles];
-          nextFiles.splice(Math.min(deletedFileIndex, nextFiles.length), 0, deletedFile);
-          return nextFiles;
-        });
-        setOpenFileIds((currentOpenFileIds) => {
-          if (!previousOpenFileIds.includes(deletedFile.id) || currentOpenFileIds.includes(deletedFile.id)) {
-            return currentOpenFileIds;
-          }
-
-          const previousOpenIndex = previousOpenFileIds.indexOf(deletedFile.id);
-          const nextOpenFileIds = [...currentOpenFileIds];
-          nextOpenFileIds.splice(Math.min(previousOpenIndex, nextOpenFileIds.length), 0, deletedFile.id);
-          return nextOpenFileIds;
-        });
-        if (previousActiveFileId === deletedFile.id) {
-          setActiveFileId(deletedFile.id);
-          syncUrlForFile(deletedFile);
-        }
-        if (deletedComments?.length) {
-          replaceCommentsByFileId({
-            ...commentsByFileId,
-            [deletedFile.id]: deletedComments,
-          });
-        }
-        if (deletedHistory) {
-          setHistoryByFileId((currentHistory) => ({
-            ...currentHistory,
-            [deletedFile.id]: deletedHistory,
-          }));
-        }
-        showToast("File restored.");
-      },
-    });
-  };
-
-  const closeFile = (fileId: string) => {
-    const result = closeMarkdownFile(fileId);
-    if (!result) {
-      return;
-    }
-
-    if (result.closedActiveFile) {
-      closeFloatingChrome();
-      setCopiedFileId(null);
-
-      if (result.nextActiveFile) {
-        syncUrlForFile(result.nextActiveFile);
-        return;
-      }
-
-      resetCollaborationState("idle");
-      syncUrlForFile(undefined, "replace");
-    }
-  };
-
-  const selectAdjacentFile = (direction: -1 | 1) => {
-    const nextFile = selectAdjacentMarkdownFile(direction);
-    if (nextFile) {
-      closeFloatingChrome();
-      syncUrlForFile(nextFile);
-    }
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target;
-      const isRenameInput = target instanceof HTMLElement && target.classList.contains("tab-rename-input");
-      const isEditableTarget =
-        target instanceof HTMLElement &&
-        (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
-
-      if (isRenameInput) {
-        return;
-      }
-
-      const hasCommandModifier = event.metaKey || event.ctrlKey;
-      const hasAppModifier = hasCommandModifier && event.altKey && !event.shiftKey;
-      const key = event.key.toLowerCase();
-      const code = event.code;
-      const isKey = (nextKey: string) => key === nextKey.toLowerCase() || code === `Key${nextKey.toUpperCase()}`;
-      const isDigit = (digit: string) => event.key === digit || code === `Digit${digit}`;
-      const consumeShortcut = () => {
-        event.preventDefault();
-        event.stopPropagation();
-      };
-
-      if (hasAppModifier && isKey("n")) {
-        consumeShortcut();
-        addFile();
-        return;
-      }
-
-      if (hasAppModifier && isKey("o")) {
-        consumeShortcut();
-        closeFloatingChrome();
-        importInputRef.current?.click();
-        return;
-      }
-
-      if (hasAppModifier && isKey("f")) {
-        consumeShortcut();
-        setRightPanelOpen(true);
-        setRightPanelView("files");
-        closeFloatingChrome();
-        return;
-      }
-
-      if (!isEditableTarget && !hasCommandModifier && !event.altKey && event.key === "?") {
-        consumeShortcut();
-        openHelpFile();
-        return;
-      }
-
-      if (!hasAppModifier) {
-        return;
-      }
-
-      if (event.key === "ArrowLeft") {
-        consumeShortcut();
-        selectAdjacentFile(-1);
-      }
-
-      if (event.key === "ArrowRight") {
-        consumeShortcut();
-        selectAdjacentFile(1);
-      }
-
-      if (isDigit("1")) {
-        consumeShortcut();
-        setActiveFileViewMode("edit");
-        setCenterPopover(null);
-      }
-
-      if (isDigit("2")) {
-        consumeShortcut();
-        setActiveFileViewMode("split");
-        setCenterPopover(null);
-      }
-
-      if (isDigit("3")) {
-        consumeShortcut();
-        setActiveFileViewMode("preview");
-        setCenterPopover(null);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  });
-
-  const getStatusLabel = (status: ConnectionStatus) =>
-    ({
-      idle: "Local draft",
-      connecting: "Connecting",
-      connected: "Live session",
-      offline: "Room offline",
-    })[status];
-
-  const getFileStatus = (file: MarkdownFile) => {
-    if (file.id === activeFile?.id) {
-      return connectionStatus;
-    }
-
-    return file.connectionStatus ?? (file.roomId ? "offline" : "idle");
-  };
-
-  const activeStatus = isLive ? connectionStatus : "idle";
-  const activeLiveRoomNotice = getLiveRoomNotice(activeFile, activeStatus);
-  const statusLabel = getStatusLabel(activeStatus);
+  const statusLabel = getWorkspaceStatusLabel(activeStatus);
   const activeFileTitle = activeFile?.title ?? "No file open";
   const showFormattingToolbar = Boolean(activeFile && activeViewMode !== "preview");
-  const getFileSearchText = (file: MarkdownFile) => {
-    const metadata = parseFrontmatter(file.text);
-    const title = metadata.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value ?? "";
-    return `${file.title} ${title}`;
-  };
-  const activeCommentAnchors: MarkdownCommentAnchor[] = activeOpenComments
-    .map((comment) => {
-      const commentRange = getCommentRange(comment);
-      return commentRange ? { id: comment.id, start: commentRange.start, end: commentRange.end } : null;
-    })
-    .filter((anchor): anchor is MarkdownCommentAnchor => Boolean(anchor));
-  const parsedBodyStartOffset = text.indexOf(parsedMarkdown.body);
-  const previewBodyStartOffset =
-    (parsedBodyStartOffset === -1 ? 0 : parsedBodyStartOffset) +
-    getLineStartOffset(parsedMarkdown.body, renderedPreview.sourceLineOffset);
-  const activePreviewCommentAnchors: MarkdownPreviewCommentAnchor[] = activeCommentAnchors
-    .map((anchor) => ({
-      id: anchor.id,
-      start: anchor.start - previewBodyStartOffset,
-      end: anchor.end - previewBodyStartOffset,
-    }))
-    .filter((anchor) => anchor.end > 0 && anchor.start < renderedPreview.body.length)
-    .map((anchor) => ({
-      ...anchor,
-      start: Math.max(0, anchor.start),
-      end: Math.min(renderedPreview.body.length, anchor.end),
-    }))
-    .filter((anchor) => anchor.end > anchor.start);
-  const activePreviewLineAnnotations = getPreviewLineAnnotations({
-    body: renderedPreview.body,
-    bodyStartOffset: previewBodyStartOffset,
-    bookmarks: activeBookmarks,
-    commentAnchors: activeCommentAnchors,
-    activeCommentId: focusedCommentId,
-  });
   const showSelectionCommentPopover = Boolean(activeFile && selectedCharacterCount > 0 && selectionActionPosition);
-
-  useEffect(() => {
-    if (activeViewMode !== "preview") {
-      setPreviewSelection(null);
-    }
-  }, [activeFile?.id, activeViewMode]);
-
-  const shouldIgnorePreviewSelectionEvent = (event?: PreviewSelectionEvent) => {
-    const target = event?.target;
-    return (
-      target instanceof Element &&
-      Boolean(target.closest("button, a, .preview-code-block, .preview-comment-mark"))
-    );
-  };
-
-  const syncPreviewSelection = (event?: PreviewSelectionEvent) => {
-    if (activeViewMode !== "preview") {
-      return;
-    }
-
-    if (shouldIgnorePreviewSelectionEvent(event)) {
-      return;
-    }
-
-    window.setTimeout(() => {
-      const nextPreviewSelection = readPreviewSelection(previewSurfaceRef.current, previewBodyStartOffset);
-      setPreviewSelection(nextPreviewSelection);
-      setActiveSelection(nextPreviewSelection ? { from: nextPreviewSelection.from, to: nextPreviewSelection.to } : undefined);
-      setSelectionActionPosition(nextPreviewSelection ? readSelectionActionPosition() : null);
-    }, 0);
-  };
 
   const fileTabsNode = (
     <FileTabs
@@ -2357,12 +614,6 @@ function WorkspaceApp() {
     />
   );
 
-  const publishServiceConfigured = Boolean(getConfiguredPublishServiceUrl());
-  const canManagePublishedPage = Boolean(
-    publishedSnapshot && (!publishServiceConfigured || publishedSnapshot.ownerToken),
-  );
-  const publishPreviewFiles = publishScope === "file" && activeFile ? [activeFile] : files;
-  const publishBlockerMessage = getEmptyPublishFilesMessage(publishPreviewFiles, publishScope);
   const shareControlsNode = activeFile ? (
     <ShareControls
       activeFile={activeFile}
@@ -2451,7 +702,7 @@ function WorkspaceApp() {
         className="workspace-file-input"
         type="file"
         accept=".json,application/json"
-        onChange={handleWorkspaceImportInputChange}
+        onChange={handleProjectImportInputChange}
         aria-label="Import project file"
       />
       <section className={`main-panel ${rightPanelOpen ? "right-panel-open" : ""}`}>
@@ -2503,7 +754,7 @@ function WorkspaceApp() {
             closeFloatingChrome();
           }}
           onDownloadProject={() => {
-            downloadWorkspace();
+            downloadProject();
             closeFloatingChrome();
           }}
           onOpenCollaboration={() => openSharePanel("collaborate")}
@@ -2523,19 +774,8 @@ function WorkspaceApp() {
             collaborators={collaborators}
             fileTabs={fileTabsNode}
             shareControls={shareControlsNode}
-            onToggleWorkspaceMenu={() => {
-              setWorkspaceMenuOpen((isOpen) => !isOpen);
-              setPreferencesOpen(false);
-              setTopPopover(null);
-              setCenterPopover(null);
-            }}
-            onToggleRightPanel={() => {
-              setRightPanelOpen((isOpen) => !isOpen);
-              setWorkspaceMenuOpen(false);
-              setPreferencesOpen(false);
-              setTopPopover(null);
-              setCenterPopover(null);
-            }}
+            onToggleWorkspaceMenu={toggleWorkspaceMenu}
+            onToggleRightPanel={toggleRightPanel}
           />
 
           <section
@@ -2652,9 +892,9 @@ function WorkspaceApp() {
                       activeSearchMatchIndex={searchOpen ? activeSearchMatchIndex : -1}
                       onChange={handleTextChange}
                       onBookmarksChange={updateActiveFileBookmarks}
-                      onHistoryStateChange={setEditorHistoryState}
-                      onOpenLineActions={handleLineAnnotationAction}
-                      onOpenComment={openCommentMarker}
+                      onHistoryStateChange={handleEditorHistoryStateChange}
+                      onOpenLineActions={handleStableLineAnnotationAction}
+                      onOpenComment={openStableCommentMarker}
                       onSelectionChange={handleEditorSelectionChange}
                       onSelectionActionPositionChange={handleEditorSelectionActionPositionChange}
                       onScrollRatioChange={handleEditorScrollRatioChange}
@@ -2668,10 +908,10 @@ function WorkspaceApp() {
                       role="separator"
                       aria-label="Resize split view"
                       aria-orientation="vertical"
-                      aria-valuemin={Math.round(MIN_SPLIT_EDITOR_RATIO * 100)}
-                      aria-valuemax={Math.round(MAX_SPLIT_EDITOR_RATIO * 100)}
+                      aria-valuemin={splitDividerMinValue}
+                      aria-valuemax={splitDividerMaxValue}
                       aria-valuenow={splitDividerValue}
-                      onDoubleClick={() => setActiveFileSplitRatio(DEFAULT_SPLIT_EDITOR_RATIO)}
+                      onDoubleClick={resetSplitRatio}
                       onKeyDown={handleSplitDividerKeyDown}
                       onPointerCancel={endSplitDividerDrag}
                       onPointerDown={handleSplitDividerPointerDown}
@@ -2694,8 +934,9 @@ function WorkspaceApp() {
                       commentAnchors={activePreviewCommentAnchors}
                       lineAnnotations={activePreviewLineAnnotations}
                       activeCommentId={focusedCommentId}
-                      onLineAction={handleLineAnnotationAction}
-                      onOpenComment={openCommentMarker}
+                      suspendLineMeasurement={splitDividerDragging}
+                      onLineAction={handleStableLineAnnotationAction}
+                      onOpenComment={openStableCommentMarker}
                     />
                   </article>
                 </section>
@@ -2741,11 +982,7 @@ function WorkspaceApp() {
                 <EmptyFileState
                   onNewFile={addFile}
                   onOpenMarkdown={() => importInputRef.current?.click()}
-                  onBrowseFiles={() => {
-                    setRightPanelOpen(true);
-                    setRightPanelView("files");
-                    closeFloatingChrome();
-                  }}
+                  onBrowseFiles={openFilesPanel}
                   onOpenHelp={openHelpFile}
                   primaryShortcutModifier={shortcutLabels.primary}
                   alternateShortcutModifier={shortcutLabels.alternate}
@@ -2775,7 +1012,7 @@ function WorkspaceApp() {
             activeReplyCommentId={activeReplyCommentId}
             replyDraftByCommentId={replyDraftByCommentId}
             getFileStatus={getFileStatus}
-            getFileSearchText={getFileSearchText}
+            getFileSearchText={getWorkspaceFileSearchText}
             onSetView={setRightPanelView}
             onClose={() => setRightPanelOpen(false)}
             onFileQueryChange={setRightFileQuery}

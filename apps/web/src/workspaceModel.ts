@@ -1,4 +1,9 @@
-import type { FileViewMode, MarkdownFile, ReadingWidth } from "./workspaceStorage";
+import {
+  clampSplitEditorRatio,
+  type FileViewMode,
+  type MarkdownFile,
+  type ReadingWidth,
+} from "./workspaceStorage";
 
 export type WorkspaceModelState = {
   files: MarkdownFile[];
@@ -36,10 +41,12 @@ export type WorkspaceModelAction =
   | { type: "closeFile"; fileId: string }
   | { type: "deleteFile"; fileId: string }
   | { type: "reorderOpenFile"; sourceFileId: string; targetFileId: string }
+  | { type: "setActiveFileText"; text: string }
   | { type: "setActiveFileViewMode"; viewMode: FileViewMode }
   | { type: "setActiveFileReadingWidth"; readingWidth: ReadingWidth }
   | { type: "setActiveFileLineWrapping"; lineWrapping: boolean }
-  | { type: "setActiveFileLineNumbers"; lineNumbers: boolean };
+  | { type: "setActiveFileLineNumbers"; lineNumbers: boolean }
+  | { type: "setActiveFileSplitRatio"; splitRatio: number };
 
 const applyValueUpdater = <T>(value: T, update: WorkspaceValueUpdater<T>) =>
   typeof update === "function" ? (update as (currentValue: T) => T)(value) : update;
@@ -380,6 +387,8 @@ export const workspaceReducer = (
       return deleteWorkspaceFile(state, action.fileId)?.state ?? state;
     case "reorderOpenFile":
       return reorderOpenWorkspaceFile(state, action.sourceFileId, action.targetFileId);
+    case "setActiveFileText":
+      return updateActiveWorkspaceFile(state, (file) => ({ ...file, text: action.text }));
     case "setActiveFileViewMode":
       return updateActiveWorkspaceFile(state, (file) => ({ ...file, viewMode: action.viewMode }));
     case "setActiveFileReadingWidth":
@@ -388,6 +397,11 @@ export const workspaceReducer = (
       return updateActiveWorkspaceFile(state, (file) => ({ ...file, lineWrapping: action.lineWrapping }));
     case "setActiveFileLineNumbers":
       return updateActiveWorkspaceFile(state, (file) => ({ ...file, lineNumbers: action.lineNumbers }));
+    case "setActiveFileSplitRatio":
+      return updateActiveWorkspaceFile(state, (file) => ({
+        ...file,
+        splitRatio: clampSplitEditorRatio(action.splitRatio),
+      }));
     default:
       return state;
   }

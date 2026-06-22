@@ -29,7 +29,8 @@
     "test:browser:layout": "npm run test:browser -- --suite=layout",
     "test:browser:panels": "npm run test:browser -- --suite=panels",
     "test:browser:collab": "npm run test:browser -- --suite=collaboration",
-    "test:browser:publish": "npm run test:browser -- --suite=publish"
+    "test:browser:publish": "npm run test:browser -- --suite=publish",
+    "test:browser:performance": "npm run test:browser -- --suite=performance"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
@@ -47,7 +48,8 @@
     "react-markdown": "^9.0.0",
     "remark-gfm": "^4.0.0",
     "socket.io-client": "^4.8.1",
-    "yjs": "^13.6.0"
+    "yjs": "^13.6.0",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
