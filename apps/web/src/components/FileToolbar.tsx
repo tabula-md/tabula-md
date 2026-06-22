@@ -1,40 +1,42 @@
 import { type ReactNode, type RefObject } from "react";
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   Eye,
-  ListOrdered,
   PencilLine,
   Search,
   SlidersHorizontal,
   SplitSquareHorizontal,
-  WrapText,
+  X,
 } from "lucide-react";
 import type { SearchMatch } from "../markdown";
 import type { CenterPopover } from "../uiTypes";
-import type { FileViewMode, ReadingWidth } from "../workspaceStorage";
+import { READING_WIDTHS, type FileViewMode, type ReadingWidth } from "../workspaceStorage";
 
 type FileToolbarProps = {
-  activeFileTitle: string;
   activeViewMode: FileViewMode;
   activeReadingWidth: ReadingWidth;
   activeLineWrapping: boolean;
   activeLineNumbers: boolean;
   centerPopover: CenterPopover;
+  searchOpen: boolean;
+  onSetViewMode: (viewMode: FileViewMode) => void;
+  onToggleSearch: () => void;
+  onToggleViewOptions: () => void;
+  onSetReadingWidth: (readingWidth: ReadingWidth) => void;
+  onToggleLineWrapping: () => void;
+  onToggleLineNumbers: () => void;
+};
+
+type FileSearchBarProps = {
   searchInputRef: RefObject<HTMLInputElement | null>;
   searchQuery: string;
   searchMatches: SearchMatch[];
   activeSearchMatchIndex: number;
-  onSetViewMode: (viewMode: FileViewMode) => void;
-  onToggleSearch: () => void;
-  onToggleViewOptions: () => void;
-  onNarrower: () => void;
-  onWider: () => void;
-  onToggleLineWrapping: () => void;
-  onToggleLineNumbers: () => void;
   onSearchQueryChange: (query: string) => void;
   onGoToSearchMatch: (direction: 1 | -1) => void;
-  onSelectSearchMatch: (match: SearchMatch, index: number) => void;
+  onCloseSearch: () => void;
 };
 
 type ViewModeAction = {
@@ -49,27 +51,25 @@ type ViewModeSlot = {
   action?: ViewModeAction;
 };
 
+const readingWidthLabels: Record<ReadingWidth, string> = {
+  narrow: "Focus",
+  standard: "Standard",
+  wide: "Fill",
+};
+
 export function FileToolbar({
-  activeFileTitle,
   activeViewMode,
   activeReadingWidth,
   activeLineWrapping,
   activeLineNumbers,
   centerPopover,
-  searchInputRef,
-  searchQuery,
-  searchMatches,
-  activeSearchMatchIndex,
+  searchOpen,
   onSetViewMode,
   onToggleSearch,
   onToggleViewOptions,
-  onNarrower,
-  onWider,
+  onSetReadingWidth,
   onToggleLineWrapping,
   onToggleLineNumbers,
-  onSearchQueryChange,
-  onGoToSearchMatch,
-  onSelectSearchMatch,
 }: FileToolbarProps) {
   const viewModeSlots: ViewModeSlot[] = [
     {
@@ -118,18 +118,17 @@ export function FileToolbar({
         <button
           className={`tool-button ${centerPopover === "view" ? "active" : ""}`}
           type="button"
-          title="View options"
-          aria-label={`View options for ${activeFileTitle}`}
+          title="Editor controls"
+          aria-label="Editor controls"
           onClick={onToggleViewOptions}
         >
           <SlidersHorizontal size={16} />
         </button>
-        <span className="toolbar-separator" />
         <button
-          className={`tool-button ${centerPopover === "search" ? "active" : ""}`}
+          className={`tool-button ${searchOpen ? "active" : ""}`}
           type="button"
           title="Search"
-          aria-label={`Search ${activeFileTitle}`}
+          aria-label="Search"
           onClick={onToggleSearch}
         >
           <Search size={16} />
@@ -137,116 +136,113 @@ export function FileToolbar({
       </nav>
 
       {centerPopover === "view" && (
-        <section className="file-tool-popover view-options" aria-label="View options">
-          <div className="tool-popover-title">View {activeFileTitle}</div>
-          <div className="tool-popover-row">
-            <span className="tool-popover-label">Reading width</span>
-            <div className="view-width-control">
-              <button
-                type="button"
-                title="Narrower reading width"
-                aria-label="Narrower reading width"
-                disabled={activeReadingWidth === "narrow"}
-                onClick={onNarrower}
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <span>{activeReadingWidth}</span>
-              <button
-                type="button"
-                title="Wider reading width"
-                aria-label="Wider reading width"
-                disabled={activeReadingWidth === "wide"}
-                onClick={onWider}
-              >
-                <ChevronRight size={14} />
-              </button>
+        <section className="file-tool-popover editor-controls-popover" aria-label="Editor controls">
+          <div className="editor-controls-section">
+            {activeViewMode !== "preview" && (
+              <>
+                <button
+                  className={`editor-controls-row ${activeLineNumbers ? "active" : ""}`}
+                  type="button"
+                  aria-pressed={activeLineNumbers}
+                  onClick={onToggleLineNumbers}
+                >
+                  <span className="editor-controls-check">{activeLineNumbers && <Check size={14} />}</span>
+                  <span>Line Numbers</span>
+                </button>
+                <button
+                  className={`editor-controls-row ${activeLineWrapping ? "active" : ""}`}
+                  type="button"
+                  aria-pressed={activeLineWrapping}
+                  onClick={onToggleLineWrapping}
+                >
+                  <span className="editor-controls-check">{activeLineWrapping && <Check size={14} />}</span>
+                  <span>Line Wrapping</span>
+                </button>
+              </>
+            )}
+            <div className="editor-controls-width-row">
+              <span>Text Width</span>
+              <div className="editor-width-control" aria-label="Text width">
+                {READING_WIDTHS.map((readingWidth) => (
+                  <button
+                    key={readingWidth}
+                    className={readingWidth === activeReadingWidth ? "active" : ""}
+                    type="button"
+                    aria-pressed={readingWidth === activeReadingWidth}
+                    onClick={() => onSetReadingWidth(readingWidth)}
+                  >
+                    {readingWidthLabels[readingWidth]}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          {activeViewMode !== "preview" && (
-            <>
-              <button
-                className={`view-toggle-button ${activeLineNumbers ? "active" : ""}`}
-                type="button"
-                aria-pressed={activeLineNumbers}
-                onClick={onToggleLineNumbers}
-              >
-                <ListOrdered size={15} />
-                <span>Line numbers</span>
-                <small>{activeLineNumbers ? "On" : "Off"}</small>
-              </button>
-              <button
-                className={`view-toggle-button ${activeLineWrapping ? "active" : ""}`}
-                type="button"
-                aria-pressed={activeLineWrapping}
-                onClick={onToggleLineWrapping}
-              >
-                <WrapText size={15} />
-                <span>Line wrapping</span>
-                <small>{activeLineWrapping ? "On" : "Off"}</small>
-              </button>
-            </>
-          )}
-        </section>
-      )}
-
-      {centerPopover === "search" && (
-        <section className="file-tool-popover" aria-label="File search">
-          <div className="tool-popover-title">Search {activeFileTitle}</div>
-          <input
-            ref={searchInputRef}
-            value={searchQuery}
-            onChange={(event) => onSearchQueryChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter") {
-                return;
-              }
-
-              event.preventDefault();
-              onGoToSearchMatch(event.shiftKey ? -1 : 1);
-            }}
-            placeholder="Find in file"
-            aria-label="Search query"
-          />
-          <div className="tool-popover-meta">
-            {searchQuery.trim()
-              ? `${searchMatches.length} matches${
-                  searchMatches.length > 0 && activeSearchMatchIndex >= 0
-                    ? ` · ${activeSearchMatchIndex + 1} selected`
-                    : ""
-                }`
-              : "Search is scoped to the active tab."}
-          </div>
-          {searchMatches.length > 0 && (
-            <>
-              <div className="search-controls">
-                <button type="button" onClick={() => onGoToSearchMatch(-1)}>
-                  <ChevronLeft size={13} />
-                  <span>Previous</span>
-                </button>
-                <button type="button" onClick={() => onGoToSearchMatch(1)}>
-                  <span>Next</span>
-                  <ChevronRight size={13} />
-                </button>
-              </div>
-              <ol className="search-match-list">
-                {searchMatches.slice(0, 6).map((match, index) => (
-                  <li key={`${match.start}-${match.end}`}>
-                    <button
-                      className={index === activeSearchMatchIndex ? "active" : ""}
-                      type="button"
-                      onClick={() => onSelectSearchMatch(match, index)}
-                    >
-                      {match.preview}
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            </>
-          )}
         </section>
       )}
 
     </div>
+  );
+}
+
+export function FileSearchBar({
+  searchInputRef,
+  searchQuery,
+  searchMatches,
+  activeSearchMatchIndex,
+  onSearchQueryChange,
+  onGoToSearchMatch,
+  onCloseSearch,
+}: FileSearchBarProps) {
+  return (
+    <section className="file-search-row" aria-label="Find in file">
+      <div className="file-search-bar">
+        <Search size={15} />
+        <input
+          type="text"
+          role="searchbox"
+          ref={searchInputRef}
+          value={searchQuery}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(event) => onSearchQueryChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") {
+              return;
+            }
+
+            event.preventDefault();
+            onGoToSearchMatch(event.shiftKey ? -1 : 1);
+          }}
+          placeholder="Find in file"
+          aria-label="Find in file"
+        />
+        <span className="file-search-count">
+          {searchQuery.trim() && searchMatches.length > 0 && activeSearchMatchIndex >= 0
+            ? `${activeSearchMatchIndex + 1}/${searchMatches.length}`
+            : `0/${searchQuery.trim() ? searchMatches.length : 0}`}
+        </span>
+        <button
+          type="button"
+          title="Previous match"
+          aria-label="Previous match"
+          disabled={searchMatches.length === 0}
+          onClick={() => onGoToSearchMatch(-1)}
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <button
+          type="button"
+          title="Next match"
+          aria-label="Next match"
+          disabled={searchMatches.length === 0}
+          onClick={() => onGoToSearchMatch(1)}
+        >
+          <ChevronRight size={14} />
+        </button>
+        <button type="button" title="Close search" aria-label="Close search" onClick={onCloseSearch}>
+          <X size={14} />
+        </button>
+      </div>
+    </section>
   );
 }

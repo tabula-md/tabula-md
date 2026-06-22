@@ -4,6 +4,7 @@ import {
   type DragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type TouchEvent as ReactTouchEvent,
   useEffect,
   useMemo,
@@ -22,8 +23,7 @@ import { type Collaborator, type ConnectionStatus, type LiveSelection } from "./
 import { AppToast } from "./components/AppToast";
 import { EmptyFileState } from "./components/EmptyFileState";
 import { FileTabs } from "./components/FileTabs";
-import { FileToolbar } from "./components/FileToolbar";
-import { LeftSidebar } from "./components/LeftSidebar";
+import { FileSearchBar, FileToolbar } from "./components/FileToolbar";
 import { LiveRoomNotice } from "./components/LiveRoomNotice";
 import {
   MarkdownEditor,
@@ -34,12 +34,17 @@ import {
   type MarkdownSelectionActionPosition,
 } from "./components/MarkdownEditor";
 import { MarkdownFormattingToolbar } from "./components/MarkdownFormattingToolbar";
-import { MarkdownPreview, type MarkdownPreviewCommentAnchor } from "./components/MarkdownPreview";
+import {
+  MarkdownPreview,
+  type MarkdownPreviewCommentAnchor,
+  type MarkdownPreviewLineAnnotation,
+} from "./components/MarkdownPreview";
 import { RightPanel } from "./components/RightPanel";
 import { ShareControls, type SharePanel } from "./components/ShareControls";
 import { StatusBar } from "./components/StatusBar";
 import { TabulaLogo } from "./components/TabulaLogo";
 import { TopChrome } from "./components/TopChrome";
+import { WorkspaceMenu } from "./components/WorkspaceMenu";
 import {
   createPublishedSnapshot,
   createServerPublishedSnapshot,
@@ -70,21 +75,25 @@ import {
 import type { MarkdownFormatCommand } from "./markdownFormatting";
 import { getShortcutLabels, type ShortcutLabels } from "./keyboardShortcuts";
 import { PRODUCT_NAME, WORKSPACE_EXPORT_FILE_PREFIX } from "./product";
+import { isTabulaPlusEnabled } from "./plus";
 import { useCollaborationRoom } from "./hooks/useCollaborationRoom";
 import { useFileComments } from "./hooks/useFileComments";
 import { useMarkdownFiles, normalizeMarkdownFileTitle } from "./hooks/useMarkdownFiles";
 import { useWorkspaceScrollSync } from "./hooks/useWorkspaceScrollSync";
 import {
+  clampSplitEditorRatio,
   createMarkdownFile,
   createStoredWorkspace,
+  DEFAULT_SPLIT_EDITOR_RATIO,
   ensureLiveFileForRoom,
   getFileIdForRoom,
   getRoomFromLocation,
   initialWorkspaceState,
+  MAX_SPLIT_EDITOR_RATIO,
+  MIN_SPLIT_EDITOR_RATIO,
   migrateWorkspacePayload,
   randomId,
   README_FILE_ID,
-  READING_WIDTHS,
   syncUrlForFile,
   type FileBookmark,
   type FileComment,
@@ -96,12 +105,14 @@ import {
   PROJECT_STORAGE_VERSION,
   writeStoredWorkspace,
 } from "./workspaceStorage";
-import type { CenterPopover, LeftPanelView, LibraryItem, RightPanelView, TopPopover } from "./uiTypes";
+import type { CenterPopover, RightPanelView, TopPopover } from "./uiTypes";
 
 const IDENTITY_KEY = "tabula.identity";
 const WORKSPACE_PREFERENCES_KEY = "tabula.preferences.v1";
 
 const COLORS = ["#0f766e", "#2563eb", "#7c3aed", "#c2410c", "#be123c", "#047857"];
+const SPLIT_RESIZE_KEYBOARD_STEP = 0.02;
+const SPLIT_CENTER_SNAP_THRESHOLD = 0.025;
 
 const isMarkdownImportFile = (file: File) => {
   const fileName = file.name.toLowerCase();
@@ -135,7 +146,7 @@ type WorkspacePreferences = {
 
 const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferences = {
   newFileViewMode: "edit",
-  readingWidth: "standard",
+  readingWidth: "wide",
   lineWrapping: true,
   lineNumbers: true,
 };
@@ -339,6 +350,40 @@ const getFloatingPopoverStyle = (
 const isPositionInLineRange = (position: number, lineStart: number, lineEnd: number) =>
   position >= lineStart && position <= lineEnd;
 
+const getPreviewLineAnnotations = ({
+  body,
+  bodyStartOffset,
+  bookmarks,
+  commentAnchors,
+  activeCommentId,
+}: {
+  body: string;
+  bodyStartOffset: number;
+  bookmarks: MarkdownBookmark[];
+  commentAnchors: MarkdownCommentAnchor[];
+  activeCommentId?: string | null;
+}): MarkdownPreviewLineAnnotation[] => {
+  const lines = body.split("\n");
+  let bodyOffset = 0;
+
+  return lines.map((line, index) => {
+    const start = bodyStartOffset + bodyOffset;
+    const end = start + line.length;
+    const hasBookmark = bookmarks.some((bookmark) => isPositionInLineRange(bookmark.position, start, end));
+    const lineComments = commentAnchors.filter((anchor) => anchor.end > start && anchor.start < end);
+    bodyOffset += line.length + 1;
+
+    return {
+      lineNumber: index + 1,
+      start,
+      end,
+      hasBookmark,
+      hasComment: lineComments.length > 0,
+      hasActiveComment: lineComments.some((anchor) => anchor.id === activeCommentId),
+    };
+  });
+};
+
 const getCursorPositionLabel = (sourceText: string, offset: number) => {
   const safeOffset = Math.max(0, Math.min(offset, sourceText.length));
   const textBeforeCursor = sourceText.slice(0, safeOffset);
@@ -348,193 +393,18 @@ const getCursorPositionLabel = (sourceText: string, offset: number) => {
   return `${lineNumber}:${columnNumber}`;
 };
 
-const TEMPLATE_ITEMS = [
-  {
-    title: "PRD.md",
-    description: "Problem, scope, users, success criteria.",
-    purpose: "Define what should exist before implementation starts.",
-    sections: ["Problem", "Goals", "Non-goals", "User flow", "Success criteria"],
-    content: `---
-title: Product Requirements
-description: Problem, scope, users, and success criteria for the project.
----
+const getSelectionLineCount = (sourceText: string, from: number, to: number) => {
+  const selectionFrom = Math.max(0, Math.min(Math.min(from, to), sourceText.length));
+  const selectionTo = Math.max(0, Math.min(Math.max(from, to), sourceText.length));
+  if (selectionFrom === selectionTo) {
+    return 0;
+  }
 
-# Product Requirements
-
-## Problem
-
-
-## Goals
-
--
-
-## Non-goals
-
--
-
-## User flow
-
-1. 
-
-## Success criteria
-
--
-`,
-  },
-  {
-    title: "DESIGN.md",
-    description: "Interface principles and key states.",
-    purpose: "Turn a product direction into interface principles and states.",
-    sections: ["Principles", "Layout", "Key states", "Interaction notes"],
-    content: `---
-title: Design Brief
-description: Interface principles, layout, states, and interaction notes.
----
-
-# Design Brief
-
-## Principles
-
-- 
-
-## Layout
-
-
-## Key states
-
-- Empty
-- Loading
-- Error
-- Complete
-
-## Interaction notes
-
-- 
-`,
-  },
-  {
-    title: "DECISION.md",
-    description: "Context, options, tradeoffs, final call.",
-    purpose: "Record why one path was chosen over alternatives.",
-    sections: ["Context", "Options", "Tradeoffs", "Decision", "Follow-up"],
-    content: `---
-title: Decision
-description: Context, options, tradeoffs, and the final call.
----
-
-# Decision
-
-## Context
-
-
-## Options
-
--
-
-## Tradeoffs
-
--
-
-## Decision
-
-
-## Follow-up
-
--
-`,
-  },
-  {
-    title: "RUNBOOK.md",
-    description: "Steps, checks, rollback, ownership.",
-    purpose: "Make an operational workflow repeatable and reviewable.",
-    sections: ["When to use", "Steps", "Checks", "Rollback", "Owner"],
-    content: `---
-title: Runbook
-description: Operational steps, checks, rollback, and ownership.
----
-
-# Runbook
-
-## When to use
-
-
-## Steps
-
-1.
-
-## Checks
-
--
-
-## Rollback
-
--
-
-## Owner
-
--
-`,
-  },
-  {
-    title: "HANDOFF.md",
-    description: "Goal, context, constraints, next steps.",
-    purpose: "Package current context so another person or agent can continue.",
-    sections: ["Goal", "Context", "Constraints", "Current state", "Next steps"],
-    content: `---
-title: Handoff
-description: Goal, context, constraints, and next steps.
----
-
-# Handoff
-
-## Goal
-
-
-## Context
-
--
-
-## Constraints
-
--
-
-## Current state
-
-
-## Next steps
-
-1.
-`,
-  },
-  {
-    title: "SKILL.md",
-    description: "Reusable agent skill contract.",
-    purpose: "Capture a reusable agent workflow with clear inputs and outputs.",
-    sections: ["When to use", "Inputs", "Workflow", "Output"],
-    content: `---
-title: Skill
-description: Reusable workflow that an AI agent can invoke.
----
-
-# Skill
-
-## When to use
-
-
-## Inputs
-
-- 
-
-## Workflow
-
-1. 
-
-## Output
-
-- 
-`,
-  },
-] satisfies LibraryItem[];
+  const adjustedSelectionTo = selectionTo > selectionFrom && sourceText[selectionTo - 1] === "\n" ? selectionTo - 1 : selectionTo;
+  const startLine = sourceText.slice(0, selectionFrom).split("\n").length;
+  const endLine = sourceText.slice(0, adjustedSelectionTo).split("\n").length;
+  return Math.max(1, endLine - startLine + 1);
+};
 
 const getAppShortcut = ({ primary, alternate }: ShortcutLabels, key: string) => `${primary} + ${alternate} + ${key}`;
 
@@ -854,7 +724,6 @@ function WorkspaceApp() {
     selectFile: selectMarkdownFile,
     addFile: addMarkdownFile,
     addFileFromContent,
-    addTemplateFile: addMarkdownTemplateFile,
     duplicateFile: duplicateMarkdownFile,
     renameFile,
     closeFile: closeMarkdownFile,
@@ -874,11 +743,11 @@ function WorkspaceApp() {
   });
   const [topPopover, setTopPopover] = useState<TopPopover>(null);
   const [centerPopover, setCenterPopover] = useState<CenterPopover>(null);
-  const [leftPanelOpen, setLeftPanelOpen] = useState(false);
-  const [leftPanelView, setLeftPanelView] = useState<LeftPanelView>("new");
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [workspacePreferences, setWorkspacePreferences] = useState<WorkspacePreferences>(() => readWorkspacePreferences());
   const [sharePanelTarget, setSharePanelTarget] = useState<SharePanel | undefined>(undefined);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(-1);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
@@ -891,6 +760,7 @@ function WorkspaceApp() {
   const [activeSelection, setActiveSelection] = useState<LiveSelection | undefined>(undefined);
   const [previewSelection, setPreviewSelection] = useState<PreviewSelectionState | null>(null);
   const [selectionActionPosition, setSelectionActionPosition] = useState<MarkdownSelectionActionPosition | null>(null);
+  const [splitDividerDragging, setSplitDividerDragging] = useState(false);
   const [publishedSnapshot, setPublishedSnapshot] = useState<PublishedSnapshot | null>(() => readLatestPublishedSnapshot());
   const [publishScope, setPublishScope] = useState<PublishScope>("file");
   const [publishing, setPublishing] = useState(false);
@@ -898,13 +768,15 @@ function WorkspaceApp() {
   const [toast, setToast] = useState<AppToastState | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchRevealKeyRef = useRef<string | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const suppressSelectionActionPositionRef = useRef(false);
+  const splitResizeBiasRef = useRef(0);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
   const toastTimerRef = useRef<number | null>(null);
   const [shortcutLabels] = useState(() => getShortcutLabels());
-  const keyboardShortcuts = useMemo(() => getKeyboardShortcuts(shortcutLabels), [shortcutLabels]);
+  const [tabulaPlusEnabled] = useState(() => isTabulaPlusEnabled());
 
   const [identity, setIdentity] = useState<Collaborator>(() => createIdentity());
   const {
@@ -946,7 +818,16 @@ function WorkspaceApp() {
   });
   const text = activeFile?.text ?? "";
   const activeViewMode = activeFile?.viewMode ?? "edit";
-  const activeReadingWidth = activeFile?.readingWidth ?? "standard";
+  const activeReadingWidth = activeFile?.readingWidth ?? "wide";
+  const activeSplitRatio = clampSplitEditorRatio(activeFile?.splitRatio ?? DEFAULT_SPLIT_EDITOR_RATIO);
+  const splitWorkspaceStyle =
+    activeViewMode === "split"
+      ? ({
+          "--split-editor-ratio": `${activeSplitRatio * 100}%`,
+          "--split-preview-ratio": `${(1 - activeSplitRatio) * 100}%`,
+        } as CSSProperties)
+      : undefined;
+  const splitDividerValue = Math.round(activeSplitRatio * 100);
   const activeLineWrapping = activeFile?.lineWrapping ?? true;
   const activeLineNumbers = activeFile?.lineNumbers ?? true;
   const activeBookmarks = activeFile?.bookmarks ?? [];
@@ -979,11 +860,16 @@ function WorkspaceApp() {
         : "";
   const selectedCharacterCount =
     activeSelection && activeSelection.from !== activeSelection.to ? Math.abs(activeSelection.to - activeSelection.from) : 0;
+  const selectedLineCount =
+    activeSelection && activeSelection.from !== activeSelection.to
+      ? getSelectionLineCount(text, activeSelection.from, activeSelection.to)
+      : 0;
   const cursorPositionLabel = getCursorPositionLabel(text, activeSelection?.to ?? 0);
   const parsedMarkdown = parseFrontmatter(text);
   const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
   const renderedPreview = getPreviewBody(parsedMarkdown.body);
   const shareOpen = topPopover === "share";
+  const plusOpen = topPopover === "plus";
   const publishedScope = getPublishedSnapshotScope(publishedSnapshot);
   const publishedFileTitle =
     publishedSnapshot?.files.find((file) => file.id === publishedSnapshot.activeFileId)?.title ??
@@ -1048,6 +934,22 @@ function WorkspaceApp() {
   }, [workspacePreferences]);
 
   useEffect(() => {
+    if (!splitDividerDragging) {
+      return undefined;
+    }
+
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+    };
+  }, [splitDividerDragging]);
+
+  useEffect(() => {
     const handlePopState = () => {
       const room = getRoomFromLocation();
       if (room) {
@@ -1091,16 +993,41 @@ function WorkspaceApp() {
   }, [activeFileId, commentsByFileId, files, openFileIds]);
 
   useEffect(() => {
-    setActiveSearchMatchIndex(-1);
-  }, [searchQuery, activeFile?.id]);
+    const normalizedSearchQuery = searchQuery.trim();
+    const revealKey = searchOpen && normalizedSearchQuery ? `${activeFile?.id ?? ""}:${normalizedSearchQuery}` : null;
+
+    if (!searchOpen || !normalizedSearchQuery || searchMatches.length === 0) {
+      setActiveSearchMatchIndex(-1);
+      searchRevealKeyRef.current = revealKey;
+      return;
+    }
+
+    if (searchRevealKeyRef.current !== revealKey) {
+      const firstMatch = searchMatches[0];
+      setActiveSearchMatchIndex(0);
+      searchRevealKeyRef.current = revealKey;
+      window.setTimeout(() => {
+        editorRef.current?.revealRange(firstMatch.start, firstMatch.end);
+      }, 0);
+      return;
+    }
+
+    setActiveSearchMatchIndex((currentIndex) => {
+      if (currentIndex === -1) {
+        return 0;
+      }
+
+      return Math.min(currentIndex, searchMatches.length - 1);
+    });
+  }, [activeFile?.id, searchMatches, searchOpen, searchQuery]);
 
   useEffect(() => {
-    if (centerPopover !== "search") {
+    if (!searchOpen) {
       return;
     }
 
     window.setTimeout(() => searchInputRef.current?.focus(), 0);
-  }, [centerPopover]);
+  }, [searchOpen]);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -1114,25 +1041,26 @@ function WorkspaceApp() {
         return;
       }
 
-      if (topPopover || centerPopover) {
+      if (topPopover || centerPopover || searchOpen) {
         event.preventDefault();
         setTopPopover(null);
         setCenterPopover(null);
+        setSearchOpen(false);
         return;
       }
 
       const target = event.target instanceof Element ? event.target : null;
-      const isInsideLeftPanel = Boolean(target?.closest(".left-sidebar"));
+      const isInsideWorkspaceMenu = Boolean(target?.closest(".workspace-menu-popover"));
       const isInsideRightPanel = Boolean(target?.closest(".right-panel"));
 
-      if (leftPanelOpen && (isInsideLeftPanel || !isInsideRightPanel)) {
+      if (workspaceMenuOpen && (isInsideWorkspaceMenu || !isInsideRightPanel)) {
         event.preventDefault();
         if (preferencesOpen) {
           setPreferencesOpen(false);
           return;
         }
 
-        setLeftPanelOpen(false);
+        setWorkspaceMenuOpen(false);
         return;
       }
 
@@ -1144,7 +1072,7 @@ function WorkspaceApp() {
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [centerPopover, leftPanelOpen, preferencesOpen, rightPanelOpen, selectionActionPosition, topPopover]);
+  }, [centerPopover, preferencesOpen, rightPanelOpen, searchOpen, selectionActionPosition, topPopover, workspaceMenuOpen]);
 
   useEffect(() => {
     if (!selectionActionPosition) {
@@ -1167,6 +1095,24 @@ function WorkspaceApp() {
     window.addEventListener("pointerdown", handlePointerDown, true);
     return () => window.removeEventListener("pointerdown", handlePointerDown, true);
   }, [selectionActionPosition]);
+
+  useEffect(() => {
+    if (centerPopover !== "view") {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(".file-toolbar-wrap")) {
+        return;
+      }
+
+      setCenterPopover(null);
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    return () => window.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [centerPopover]);
 
   const startSession = async () => {
     const startedSession = startCollaborationSession();
@@ -1719,6 +1665,103 @@ function WorkspaceApp() {
     );
   };
 
+  const setActiveFileSplitRatio = (nextSplitRatio: number) => {
+    if (!activeFile) {
+      return;
+    }
+
+    const splitRatio = clampSplitEditorRatio(nextSplitRatio);
+    setFiles((currentFiles) =>
+      currentFiles.map((file) => (file.id === activeFile.id ? { ...file, splitRatio } : file)),
+    );
+  };
+
+  const getMagnetizedSplitRatio = (nextSplitRatio: number) => {
+    const clampedRatio = clampSplitEditorRatio(nextSplitRatio);
+    return Math.abs(clampedRatio - DEFAULT_SPLIT_EDITOR_RATIO) <= SPLIT_CENTER_SNAP_THRESHOLD
+      ? DEFAULT_SPLIT_EDITOR_RATIO
+      : clampedRatio;
+  };
+
+  const getCurrentSplitBias = () => {
+    const workspaceRect = workspaceRef.current?.getBoundingClientRect();
+    const editorRect = editorSurfaceRef.current?.getBoundingClientRect();
+    if (!workspaceRect || !editorRect || workspaceRect.width <= 0) {
+      return 0;
+    }
+
+    return editorRect.width - activeSplitRatio * workspaceRect.width;
+  };
+
+  const updateSplitRatioFromClientX = (clientX: number) => {
+    const workspaceRect = workspaceRef.current?.getBoundingClientRect();
+    if (!workspaceRect || workspaceRect.width <= 0) {
+      return;
+    }
+
+    const nextSplitRatio = (clientX - workspaceRect.left - splitResizeBiasRef.current) / workspaceRect.width;
+    setActiveFileSplitRatio(getMagnetizedSplitRatio(nextSplitRatio));
+  };
+
+  const handleSplitDividerPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (activeViewMode !== "split" || event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    splitResizeBiasRef.current = getCurrentSplitBias();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSplitDividerDragging(true);
+    updateSplitRatioFromClientX(event.clientX);
+  };
+
+  const handleSplitDividerPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!splitDividerDragging) {
+      return;
+    }
+
+    event.preventDefault();
+    updateSplitRatioFromClientX(event.clientX);
+  };
+
+  const endSplitDividerDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setSplitDividerDragging(false);
+  };
+
+  const handleSplitDividerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setActiveFileSplitRatio(DEFAULT_SPLIT_EDITOR_RATIO);
+      return;
+    }
+
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      setActiveFileSplitRatio(activeSplitRatio - SPLIT_RESIZE_KEYBOARD_STEP);
+      return;
+    }
+
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      setActiveFileSplitRatio(activeSplitRatio + SPLIT_RESIZE_KEYBOARD_STEP);
+      return;
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      setActiveFileSplitRatio(MIN_SPLIT_EDITOR_RATIO);
+      return;
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      setActiveFileSplitRatio(MAX_SPLIT_EDITOR_RATIO);
+    }
+  };
+
   const goToFileComment = (fileId: string, comment: FileComment) => {
     const targetFile = files.find((file) => file.id === fileId);
     if (!targetFile) {
@@ -1793,12 +1836,6 @@ function WorkspaceApp() {
       month: "short",
       day: "numeric",
     }).format(date);
-  };
-
-  const adjustActiveFileReadingWidth = (direction: -1 | 1) => {
-    const currentIndex = READING_WIDTHS.indexOf(activeReadingWidth);
-    const nextReadingWidth = READING_WIDTHS[Math.min(READING_WIDTHS.length - 1, Math.max(0, currentIndex + direction))];
-    setActiveFileReadingWidth(nextReadingWidth);
   };
 
   const openSelectionComment = () => {
@@ -1906,6 +1943,11 @@ function WorkspaceApp() {
         : (currentIndex - 1 + searchMatches.length) % searchMatches.length;
     const match = searchMatches[nextIndex];
     setActiveSearchMatchIndex(nextIndex);
+    if (searchOpen) {
+      editorRef.current?.revealRange(match.start, match.end);
+      return;
+    }
+
     focusTextRange(match.start, match.end);
   };
 
@@ -1930,6 +1972,7 @@ function WorkspaceApp() {
     setTopPopover(null);
     setCenterPopover(null);
     setPreferencesOpen(false);
+    setWorkspaceMenuOpen(false);
     setSharePanelTarget(undefined);
     setCopiedFileId(null);
     setSelectionActionPosition(null);
@@ -1939,7 +1982,7 @@ function WorkspaceApp() {
     setSharePanelTarget(panel);
     setTopPopover("share");
     setCenterPopover(null);
-    setLeftPanelOpen(false);
+    setWorkspaceMenuOpen(false);
   };
 
   const selectFile = (fileId: string) => {
@@ -1981,13 +2024,6 @@ function WorkspaceApp() {
     }
 
     const nextFile = addFileFromContent("HELP.md", helpMarkdown, "preview");
-    closeFloatingChrome();
-    syncUrlForFile(nextFile);
-  };
-
-  const addTemplateFile = (template: LibraryItem) => {
-    queueEditorFocus();
-    const nextFile = addMarkdownTemplateFile(template, getNewFilePreferenceOverrides());
     closeFloatingChrome();
     syncUrlForFile(nextFile);
   };
@@ -2263,6 +2299,13 @@ function WorkspaceApp() {
       end: Math.min(renderedPreview.body.length, anchor.end),
     }))
     .filter((anchor) => anchor.end > anchor.start);
+  const activePreviewLineAnnotations = getPreviewLineAnnotations({
+    body: renderedPreview.body,
+    bodyStartOffset: previewBodyStartOffset,
+    bookmarks: activeBookmarks,
+    commentAnchors: activeCommentAnchors,
+    activeCommentId: focusedCommentId,
+  });
   const showSelectionCommentPopover = Boolean(activeFile && selectedCharacterCount > 0 && selectionActionPosition);
 
   useEffect(() => {
@@ -2320,9 +2363,6 @@ function WorkspaceApp() {
   );
   const publishPreviewFiles = publishScope === "file" && activeFile ? [activeFile] : files;
   const publishBlockerMessage = getEmptyPublishFilesMessage(publishPreviewFiles, publishScope);
-  const activeFilePublishBlockerMessage = activeFile ? getEmptyPublishFilesMessage([activeFile], "file") : "";
-  const projectEmptyFileCount = getEmptyPublishFiles(files).length;
-  const projectPublishBlockerMessage = getEmptyPublishFilesMessage(files, "project");
   const shareControlsNode = activeFile ? (
     <ShareControls
       activeFile={activeFile}
@@ -2332,6 +2372,7 @@ function WorkspaceApp() {
       isLive={isLive}
       shareOpen={shareOpen}
       sharePanelTarget={sharePanelTarget}
+      tabulaPlusEnabled={tabulaPlusEnabled}
       copied={copied}
       onToggleShare={() => {
         setSharePanelTarget(undefined);
@@ -2341,6 +2382,13 @@ function WorkspaceApp() {
       onCloseShare={() => {
         setTopPopover(null);
         setSharePanelTarget(undefined);
+      }}
+      onOpenTabulaPlus={() => {
+        setWorkspaceMenuOpen(true);
+        setPreferencesOpen(false);
+        setTopPopover("plus");
+        setSharePanelTarget(undefined);
+        setCenterPopover(null);
       }}
       onStartSession={startSession}
       onCopyShareUrl={copyShareUrl}
@@ -2406,87 +2454,85 @@ function WorkspaceApp() {
         onChange={handleWorkspaceImportInputChange}
         aria-label="Import project file"
       />
-      <section
-        className={`main-panel ${leftPanelOpen ? "left-panel-open" : ""} ${
-          rightPanelOpen ? "right-panel-open" : ""
-        }`}
-      >
-        {leftPanelOpen && (
-          <LeftSidebar
-            isOpen={leftPanelOpen}
-            view={leftPanelView}
-            preferencesOpen={preferencesOpen}
-            hasActiveFile={Boolean(activeFile)}
-            activeFileTitle={activeFileTitle}
-            activeFileWordCount={activeWordCount}
-            canPublishActiveFile={Boolean(activeFile && !activeFilePublishBlockerMessage)}
-            activeFilePublishBlockerMessage={activeFilePublishBlockerMessage}
-            projectFileCount={files.length}
-            projectEmptyFileCount={projectEmptyFileCount}
-            projectPublishBlockerMessage={projectPublishBlockerMessage}
-            storageVersion={PROJECT_STORAGE_VERSION}
-            templates={TEMPLATE_ITEMS}
-            newFileViewMode={workspacePreferences.newFileViewMode}
-            defaultReadingWidth={workspacePreferences.readingWidth}
-            defaultLineWrapping={workspacePreferences.lineWrapping}
-            defaultLineNumbers={workspacePreferences.lineNumbers}
-            onSetView={(nextView) => {
-              setLeftPanelView(nextView);
-              setPreferencesOpen(false);
-            }}
-            onClose={() => {
-              setLeftPanelOpen(false);
-              setPreferencesOpen(false);
-              setTopPopover(null);
-              setCenterPopover(null);
-              setSharePanelTarget(undefined);
-            }}
-            onTogglePreferences={() => setPreferencesOpen((isOpen) => !isOpen)}
-            onClosePreferences={() => setPreferencesOpen(false)}
-            onChangeNewFileViewMode={(newFileViewMode) =>
-              setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, newFileViewMode }))
-            }
-            onChangeDefaultReadingWidth={(readingWidth) =>
-              setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, readingWidth }))
-            }
-            onChangeDefaultLineWrapping={(lineWrapping) =>
-              setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, lineWrapping }))
-            }
-            onChangeDefaultLineNumbers={(lineNumbers) =>
-              setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, lineNumbers }))
-            }
-            onAddFile={addFile}
-            onOpenMarkdownFile={() => importInputRef.current?.click()}
-            onImportProject={() => workspaceImportInputRef.current?.click()}
-            onExportCurrentFile={exportCurrentFile}
-            onDownloadWorkspace={downloadWorkspace}
-            onOpenCollaborate={() => openSharePanel("collaborate")}
-            onOpenPublish={() => openSharePanel("publish")}
-            onOpenHelp={() => {
-              openHelpFile();
-              setLeftPanelOpen(false);
-            }}
-            onAddTemplate={addTemplateFile}
-          />
-        )}
+      <section className={`main-panel ${rightPanelOpen ? "right-panel-open" : ""}`}>
+        <WorkspaceMenu
+          isOpen={workspaceMenuOpen}
+          preferencesOpen={preferencesOpen}
+          plusOpen={plusOpen}
+          plusEnabled={tabulaPlusEnabled}
+          canExportCurrentFile={Boolean(activeFile)}
+          newFileViewMode={workspacePreferences.newFileViewMode}
+          defaultReadingWidth={workspacePreferences.readingWidth}
+          defaultLineWrapping={workspacePreferences.lineWrapping}
+          defaultLineNumbers={workspacePreferences.lineNumbers}
+          onTogglePreferences={() => {
+            setPreferencesOpen((isOpen) => !isOpen);
+            setTopPopover(null);
+          }}
+          onClosePreferences={() => setPreferencesOpen(false)}
+          onTogglePlus={() => {
+            setPreferencesOpen(false);
+            setTopPopover(plusOpen ? null : "plus");
+            setCenterPopover(null);
+            setSharePanelTarget(undefined);
+          }}
+          onClosePlus={() => setTopPopover(null)}
+          onChangeNewFileViewMode={(newFileViewMode) =>
+            setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, newFileViewMode }))
+          }
+          onChangeDefaultReadingWidth={(readingWidth) =>
+            setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, readingWidth }))
+          }
+          onChangeDefaultLineWrapping={(lineWrapping) =>
+            setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, lineWrapping }))
+          }
+          onChangeDefaultLineNumbers={(lineNumbers) =>
+            setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, lineNumbers }))
+          }
+          onAddFile={addFile}
+          onOpenMarkdownFile={() => {
+            closeFloatingChrome();
+            importInputRef.current?.click();
+          }}
+          onImportProject={() => {
+            closeFloatingChrome();
+            workspaceImportInputRef.current?.click();
+          }}
+          onDownloadMarkdown={() => {
+            downloadCurrentMarkdownFile();
+            closeFloatingChrome();
+          }}
+          onDownloadProject={() => {
+            downloadWorkspace();
+            closeFloatingChrome();
+          }}
+          onOpenCollaboration={() => openSharePanel("collaborate")}
+          onOpenHelp={openHelpFile}
+        />
 
-        <section className="center-workbench">
+        <section
+          className={`center-workbench ${
+            activeFile ? `has-file view-${activeViewMode} reading-${activeReadingWidth}` : "empty"
+          } ${activeFile ? (activeLineNumbers ? "line-numbers-on" : "line-numbers-off") : ""}`}
+        >
           <TopChrome
-            leftPanelOpen={leftPanelOpen}
+            workspaceMenuOpen={workspaceMenuOpen}
             rightPanelOpen={rightPanelOpen}
             isLive={isLive}
             identity={identity}
             collaborators={collaborators}
             fileTabs={fileTabsNode}
             shareControls={shareControlsNode}
-            onToggleLeftPanel={() => {
-              setLeftPanelOpen((isOpen) => !isOpen);
+            onToggleWorkspaceMenu={() => {
+              setWorkspaceMenuOpen((isOpen) => !isOpen);
               setPreferencesOpen(false);
               setTopPopover(null);
               setCenterPopover(null);
             }}
             onToggleRightPanel={() => {
               setRightPanelOpen((isOpen) => !isOpen);
+              setWorkspaceMenuOpen(false);
+              setPreferencesOpen(false);
               setTopPopover(null);
               setCenterPopover(null);
             }}
@@ -2497,6 +2543,8 @@ function WorkspaceApp() {
               activeFile ? `view-${activeViewMode} reading-${activeReadingWidth}` : "empty"
             } ${activeFile ? (activeLineNumbers ? "line-numbers-on" : "line-numbers-off") : ""} ${
               showFormattingToolbar ? "with-format-toolbar" : ""
+            } ${
+              searchOpen ? "with-search-row" : ""
             } ${
               activeLiveRoomNotice ? "with-live-room-notice" : ""
             }`}
@@ -2517,40 +2565,51 @@ function WorkspaceApp() {
                   )}
 
                   <FileToolbar
-                    activeFileTitle={activeFileTitle}
                     activeViewMode={activeViewMode}
                     activeReadingWidth={activeReadingWidth}
                     activeLineWrapping={activeLineWrapping}
                     activeLineNumbers={activeLineNumbers}
                     centerPopover={centerPopover}
-                    searchInputRef={searchInputRef}
-                    searchQuery={searchQuery}
-                    searchMatches={searchMatches}
-                    activeSearchMatchIndex={activeSearchMatchIndex}
+                    searchOpen={searchOpen}
                     onSetViewMode={(nextViewMode) => {
                       setActiveFileViewMode(nextViewMode);
                       setCenterPopover(null);
                     }}
                     onToggleSearch={() => {
-                      setCenterPopover((current) => (current === "search" ? null : "search"));
+                      setSearchOpen((current) => !current);
+                      setCenterPopover(null);
                       setTopPopover(null);
                     }}
                     onToggleViewOptions={() => {
                       setCenterPopover((current) => (current === "view" ? null : "view"));
                       setTopPopover(null);
                     }}
-                    onNarrower={() => adjustActiveFileReadingWidth(-1)}
-                    onWider={() => adjustActiveFileReadingWidth(1)}
-                    onToggleLineWrapping={() => setActiveFileLineWrapping(!activeLineWrapping)}
-                    onToggleLineNumbers={() => setActiveFileLineNumbers(!activeLineNumbers)}
-                    onSearchQueryChange={setSearchQuery}
-                    onGoToSearchMatch={goToSearchMatch}
-                    onSelectSearchMatch={(match, index) => {
-                      setActiveSearchMatchIndex(index);
-                      focusTextRange(match.start, match.end);
+                    onSetReadingWidth={(nextReadingWidth) => {
+                      setActiveFileReadingWidth(nextReadingWidth);
+                      setCenterPopover(null);
+                    }}
+                    onToggleLineWrapping={() => {
+                      setActiveFileLineWrapping(!activeLineWrapping);
+                      setCenterPopover(null);
+                    }}
+                    onToggleLineNumbers={() => {
+                      setActiveFileLineNumbers(!activeLineNumbers);
+                      setCenterPopover(null);
                     }}
                   />
                 </section>
+
+                {searchOpen && (
+                  <FileSearchBar
+                    searchInputRef={searchInputRef}
+                    searchQuery={searchQuery}
+                    searchMatches={searchMatches}
+                    activeSearchMatchIndex={activeSearchMatchIndex}
+                    onSearchQueryChange={setSearchQuery}
+                    onGoToSearchMatch={goToSearchMatch}
+                    onCloseSearch={() => setSearchOpen(false)}
+                  />
+                )}
 
                 {activeLiveRoomNotice && (
                   <LiveRoomNotice
@@ -2566,9 +2625,17 @@ function WorkspaceApp() {
                   />
                 )}
 
-                <section className={`workspace ${activeViewMode} reading-${activeReadingWidth}`} ref={workspaceRef}>
+                <section
+                  className={`workspace ${activeViewMode} reading-${activeReadingWidth} ${
+                    splitDividerDragging ? "split-resizing" : ""
+                  }`}
+                  ref={workspaceRef}
+                  style={splitWorkspaceStyle}
+                >
                   <article
-                    className={`editor-surface ${activeLineNumbers ? "line-numbers-on" : "line-numbers-off"}`}
+                    className={`editor-surface ${activeLineNumbers ? "line-numbers-on" : "line-numbers-off"} ${
+                      selectedCharacterCount > 0 ? "has-text-selection" : ""
+                    }`}
                     ref={editorSurfaceRef}
                     onScroll={handleEditorSurfaceScroll}
                   >
@@ -2581,6 +2648,8 @@ function WorkspaceApp() {
                       bookmarks={activeBookmarks}
                       commentAnchors={activeCommentAnchors}
                       activeCommentId={focusedCommentId}
+                      searchMatches={searchOpen ? searchMatches : []}
+                      activeSearchMatchIndex={searchOpen ? activeSearchMatchIndex : -1}
                       onChange={handleTextChange}
                       onBookmarksChange={updateActiveFileBookmarks}
                       onHistoryStateChange={setEditorHistoryState}
@@ -2591,6 +2660,25 @@ function WorkspaceApp() {
                       onScrollRatioChange={handleEditorScrollRatioChange}
                     />
                   </article>
+
+                  {activeViewMode === "split" && (
+                    <button
+                      type="button"
+                      className="split-resize-handle"
+                      role="separator"
+                      aria-label="Resize split view"
+                      aria-orientation="vertical"
+                      aria-valuemin={Math.round(MIN_SPLIT_EDITOR_RATIO * 100)}
+                      aria-valuemax={Math.round(MAX_SPLIT_EDITOR_RATIO * 100)}
+                      aria-valuenow={splitDividerValue}
+                      onDoubleClick={() => setActiveFileSplitRatio(DEFAULT_SPLIT_EDITOR_RATIO)}
+                      onKeyDown={handleSplitDividerKeyDown}
+                      onPointerCancel={endSplitDividerDrag}
+                      onPointerDown={handleSplitDividerPointerDown}
+                      onPointerMove={handleSplitDividerPointerMove}
+                      onPointerUp={endSplitDividerDrag}
+                    />
+                  )}
 
                   <article
                     className="preview-surface"
@@ -2604,7 +2692,9 @@ function WorkspaceApp() {
                       metadata={parsedMarkdown.attributes}
                       body={renderedPreview.body}
                       commentAnchors={activePreviewCommentAnchors}
+                      lineAnnotations={activePreviewLineAnnotations}
                       activeCommentId={focusedCommentId}
+                      onLineAction={handleLineAnnotationAction}
                       onOpenComment={openCommentMarker}
                     />
                   </article>
@@ -2634,6 +2724,7 @@ function WorkspaceApp() {
                   commentCount={activeOpenComments.length}
                   cursorPositionLabel={cursorPositionLabel}
                   selectedCharacterCount={selectedCharacterCount}
+                  selectedLineCount={selectedLineCount}
                   onUndo={undoActiveFile}
                   onRedo={redoActiveFile}
                   onOpenComments={() => openCommentsPanel(focusedCommentId ?? activeOpenComments[0]?.id)}

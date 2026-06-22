@@ -15,6 +15,11 @@ export async function run(ctx) {
     openProjectContext,
     closeProjectContext,
     openProjectMenu,
+    waitForActiveTab,
+    waitForEditorReady,
+    waitForFileCount,
+    waitForPanelTab,
+    waitForRenderFrame,
     waitForText,
     withPage,
   } = ctx;
@@ -23,30 +28,15 @@ export async function run(ctx) {
     await openProjectMenu(page);
 
     const workbenchPanels = await page.evaluate(() => ({
-      topLeftMenuCount: document.querySelectorAll(".workspace-menu-button").length,
-      leftOpen: Boolean(document.querySelector(".left-sidebar")),
-      leftPanelLabel: document.querySelector(".left-sidebar")?.getAttribute("aria-label") ?? "",
-      largeWorkspaceHeadingCount: document.querySelectorAll(".left-panel-header-main h2").length,
-      leftTabLabels: Array.from(document.querySelectorAll(".left-panel-tabs button")).map((button) =>
-        button.getAttribute("aria-label"),
-      ),
-      leftTabTitles: Array.from(document.querySelectorAll(".left-panel-tabs button")).map((button) =>
-        button.getAttribute("title"),
-      ),
-      leftTabGeometry: Array.from(document.querySelectorAll(".left-panel-tabs button")).map((button) => {
-        const rect = button.getBoundingClientRect();
-        const style = window.getComputedStyle(button);
-        return {
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
-          fontWeight: style.fontWeight,
-        };
-      }),
-      menuHeadingCount: document.querySelectorAll(".left-panel-content > .left-panel-header h2").length,
+      menuButtonCount: document.querySelectorAll(".workspace-menu-button").length,
+      menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
+      leftPanelCount: document.querySelectorAll(".left-sidebar").length,
+      leftTabCount: document.querySelectorAll(".left-panel-tabs button").length,
+      templateRowCount: document.querySelectorAll(".left-library-item").length,
+      menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       fileSearchCount: document.querySelectorAll(".left-panel-search").length,
       fileRowCount: document.querySelectorAll(".left-file-item").length,
-      actionHeadingCount: document.querySelectorAll(".left-workspace-actions h3").length,
-      actionRows: Array.from(document.querySelectorAll(".left-workspace-actions button")).map((item) => {
+      actionRows: Array.from(document.querySelectorAll(".workspace-menu-row")).map((item) => {
         const rect = item.getBoundingClientRect();
         const style = window.getComputedStyle(item);
         const icon = item.querySelector("svg");
@@ -61,23 +51,11 @@ export async function run(ctx) {
           paddingLeft: style.paddingLeft,
           iconColor: iconStyle?.color ?? "",
           iconCount: item.querySelectorAll("svg").length,
-        };
-      }),
-      footerRows: Array.from(document.querySelectorAll(".left-panel-footer button")).map((item) => {
-        const rect = item.getBoundingClientRect();
-        const style = window.getComputedStyle(item);
-        return {
-          text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
-          height: Math.round(rect.height),
-          borderRadius: style.borderRadius,
-          fontSize: style.fontSize,
-          fontWeight: style.fontWeight,
-          paddingLeft: style.paddingLeft,
-          iconCount: item.querySelectorAll("svg").length,
+          disabled: item.disabled,
         };
       }),
       focusOrder: Array.from(
-        document.querySelectorAll(".left-sidebar button, .left-sidebar input, .left-sidebar a"),
+        document.querySelectorAll(".workspace-menu-popover button, .workspace-menu-popover input, .workspace-menu-popover a"),
       )
         .filter((element) => {
           const style = window.getComputedStyle(element);
@@ -105,54 +83,38 @@ export async function run(ctx) {
             : null;
         };
         return {
-          leftPanel: rectOf(".left-sidebar"),
+          menu: rectOf(".workspace-menu-popover"),
           toolbar: rectOf(".editor-control-row"),
           preview: rectOf(".preview-surface"),
           status: rectOf(".file-status-bar"),
         };
       })(),
     }));
-    // P7: left panel tools/templates/handoff product contract.
-    expect(workbenchPanels.topLeftMenuCount === 0, "Workspace tools should move out of the old top-left chrome.");
-    expect(workbenchPanels.leftOpen, "The workspace tools panel should open from the top-left panel toggle.");
-    expect(workbenchPanels.leftPanelLabel === "Workspace Tools", "The left panel should not claim the Project surface.");
-    expect(workbenchPanels.largeWorkspaceHeadingCount === 0, "The left panel should not show a large Project title.");
-    expect(
-      workbenchPanels.leftTabLabels.join("|") === "New|Templates|Handoff",
-      "The left panel should expose New, Templates, and Handoff surfaces.",
-    );
-    expect(
-      workbenchPanels.leftTabTitles.join("|") === "New|Templates|Handoff",
-      "Icon-only panel segmented controls should keep matching title attributes.",
-    );
-    expect(
-      workbenchPanels.leftTabGeometry.every(
-        (tab) =>
-          Math.abs(tab.width - workbenchPanels.leftTabGeometry[0].width) <= 1 &&
-          Math.abs(tab.height - workbenchPanels.leftTabGeometry[0].height) <= 1 &&
-          tab.fontWeight === workbenchPanels.leftTabGeometry[0].fontWeight,
-      ),
-      "Panel segmented controls should keep stable size and weight across active/inactive states.",
-    );
-    expect(workbenchPanels.menuHeadingCount === 1, "New view should name the current tools surface.");
+    // P7: workspace menu product contract.
+    expect(workbenchPanels.menuButtonCount === 1, "Top chrome should expose one workspace menu button.");
+    expect(workbenchPanels.menuOpen, "The workspace menu should open from the top-left menu button.");
+    expect(workbenchPanels.leftPanelCount === 0, "The app should not render a left side panel for future surfaces.");
+    expect(workbenchPanels.leftTabCount === 0, "The workspace menu should not expose New/Templates/Agent tabs.");
+    expect(workbenchPanels.templateRowCount === 0, "Templates should not ship as a visible surface yet.");
+    expect(!workbenchPanels.menuText.includes("Agent"), "Agent should not ship as an inert menu surface.");
     expect(workbenchPanels.fileSearchCount === 0, "File search should live in the right project context panel.");
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the right project context panel.");
-    expect(workbenchPanels.actionHeadingCount === 0, "Workspace tool rows should not render extra group headings.");
     expect(
-      workbenchPanels.actionRows.map((row) => row.text).join("|") === "Blank Markdown|Open Markdown...|Import project...",
-      "New view should focus on starting or importing Markdown context.",
+      workbenchPanels.actionRows.map((row) => row.text).join("|") ===
+        "New Markdown|Open Markdown...|Import project...|Save Markdown...|Export project...|Live collaboration...|Tabula +|Settings|Help",
+      "The workspace menu should only expose implemented file, collaboration, Plus, Settings, and Help actions.",
     );
     expect(
-      workbenchPanels.actionRows.every((row) => row.iconCount === 1),
-      "Workspace tool rows should be icon plus label only.",
+      workbenchPanels.actionRows.every((row) => row.iconCount >= 1 && row.iconCount <= 2),
+      "Workspace menu rows should be icon plus label, with chevrons only for nested surfaces.",
     );
     expect(
       workbenchPanels.actionRows.every((row) => row.height >= 30 && row.height <= 34),
-      "Workspace tool rows should stay compact.",
+      "Workspace menu rows should stay compact.",
     );
     expect(
       workbenchPanels.actionRows.every((row) => row.fontWeight === workbenchPanels.actionRows[0].fontWeight),
-      "Workspace tool rows should use one regular text weight.",
+      "Workspace menu rows should use one regular text weight.",
     );
     expect(
       workbenchPanels.actionRows.every(
@@ -163,200 +125,158 @@ export async function run(ctx) {
           row.fontSize === workbenchPanels.actionRows[0].fontSize &&
           row.color === workbenchPanels.actionRows[0].color,
       ),
-      "Workspace tool rows should use one compact row token set.",
-    );
-    expect(
-      workbenchPanels.footerRows.map((row) => row.text).join("|") === "Preferences|Help",
-      "Workspace tools should keep Preferences and Help pinned as secondary footer actions.",
-    );
-    expect(
-      workbenchPanels.footerRows.every(
-        (row) =>
-          row.iconCount >= 1 &&
-          row.iconCount <= 2 &&
-          row.height === workbenchPanels.actionRows[0].height &&
-          row.borderRadius === workbenchPanels.actionRows[0].borderRadius &&
-          row.paddingLeft === workbenchPanels.actionRows[0].paddingLeft &&
-          row.fontSize === workbenchPanels.actionRows[0].fontSize &&
-          row.fontWeight === workbenchPanels.actionRows[0].fontWeight,
-      ),
-      "Workspace support rows should share compact row tokens with the tool rows.",
+      "Workspace menu rows should use one compact row token set.",
     );
     const focusIndex = (label) => workbenchPanels.focusOrder.indexOf(label);
-    expect(focusIndex("New") !== -1, "Keyboard order should include the New segmented control.");
-    expect(focusIndex("Templates") !== -1, "Keyboard order should include the Templates segmented control.");
-    expect(focusIndex("Handoff") !== -1, "Keyboard order should include the Handoff segmented control.");
-    expect(focusIndex("Blank Markdown") !== -1, "Keyboard order should include New action rows.");
-    expect(focusIndex("Preferences") !== -1, "Keyboard order should include pinned support rows.");
+    expect(focusIndex("New Markdown") !== -1, "Keyboard order should include file creation.");
+    expect(focusIndex("Open Markdown...") !== -1, "Keyboard order should include Markdown import.");
+    expect(focusIndex("Live collaboration...") !== -1, "Keyboard order should include live collaboration.");
+    expect(focusIndex("Tabula +") !== -1, "Keyboard order should include the Tabula + support row.");
+    expect(focusIndex("Settings") !== -1, "Keyboard order should include Settings.");
+    expect(focusIndex("Help") !== -1, "Keyboard order should include Help.");
     expect(
-      focusIndex("New") <
-        focusIndex("Templates") &&
-        focusIndex("Templates") <
-          focusIndex("Handoff") &&
-        focusIndex("Handoff") < focusIndex("Blank Markdown") &&
-        focusIndex("Blank Markdown") < focusIndex("Preferences"),
-      "Left panel keyboard order should be tabs, current tool rows, then pinned support rows.",
+      focusIndex("New Markdown") <
+        focusIndex("Open Markdown...") &&
+        focusIndex("Open Markdown...") < focusIndex("Live collaboration...") &&
+        focusIndex("Live collaboration...") < focusIndex("Tabula +") &&
+        focusIndex("Tabula +") < focusIndex("Settings") &&
+        focusIndex("Settings") < focusIndex("Help"),
+      "Workspace menu keyboard order should move from file actions to support actions.",
     );
     expect(workbenchPanels.statusVisible, "The document status bar should remain visible.");
-    expect(workbenchPanels.panelToggleCount === 1, "Top chrome should expose the remaining closed-panel toggle while Workspace Tools is open.");
+    expect(workbenchPanels.panelToggleCount === 2, "Top chrome should keep both menu and Project Context toggles visible.");
     expect(workbenchPanels.bottomPanelCount === 0, "The bottom panel should stay removed; status bar owns bottom status.");
     expect(
-      workbenchPanels.laneGeometry.preview.left >= workbenchPanels.laneGeometry.leftPanel.right + 20,
-      "Workspace Tools should not clip the preview document lane.",
+      workbenchPanels.laneGeometry.menu.width <= 320,
+      "The workspace menu should stay a compact popover, not a side panel.",
     );
     expect(
-      workbenchPanels.laneGeometry.toolbar.left >= workbenchPanels.laneGeometry.leftPanel.right + 20,
-      "Workspace Tools should not clip the editor toolbar lane.",
+      workbenchPanels.laneGeometry.toolbar.left < workbenchPanels.laneGeometry.preview.left + 2,
+      "Opening the workspace menu should not shift the document toolbar lane.",
     );
     expect(
-      workbenchPanels.laneGeometry.status.left >= workbenchPanels.laneGeometry.leftPanel.right + 20,
-      "Workspace Tools should not clip the status bar lane.",
+      workbenchPanels.laneGeometry.status.left < workbenchPanels.laneGeometry.preview.left + 2,
+      "Opening the workspace menu should not shift the document status lane.",
     );
 
-    await page.getByRole("button", { name: "Handoff", exact: true }).click();
-    await page.waitForTimeout(80);
-    const readyHandoffState = await page.evaluate(() => ({
-      heading: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
-      readinessRows: Array.from(document.querySelectorAll(".left-handoff-row")).map((row) =>
-        row.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    const supportActions = page.locator(".workspace-menu-popover");
+    await supportActions.getByRole("button", { name: "Tabula +", exact: true }).click();
+    await waitForRenderFrame(page);
+    const plusPanel = await page.evaluate(() => ({
+      menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
+      plusOpen: Boolean(document.querySelector(".workspace-plus-popover")),
+      settingsOpen: Boolean(document.querySelector(".workspace-preferences-popover")),
+      plusFooterActive:
+        Array.from(document.querySelectorAll(".workspace-menu-row"))
+          .find((button) => button.textContent?.includes("Tabula +"))
+          ?.classList.contains("active") ?? false,
+      plusFooterIndex: Array.from(document.querySelectorAll(".workspace-menu-row")).findIndex((button) =>
+        button.textContent?.includes("Tabula +"),
       ),
-      readinessMessages: Array.from(document.querySelectorAll(".left-handoff-readiness p")).map((row) => ({
-        text: row.textContent?.replace(/\s+/g, " ").trim() ?? "",
-        blocked: row.classList.contains("blocked"),
-      })),
-      actions: Array.from(document.querySelectorAll(".left-workspace-actions button")).map((button) => ({
-        text: button.textContent?.replace(/\s+/g, " ").trim() ?? "",
-        disabled: button.disabled,
-      })),
-    }));
-    expect(readyHandoffState.heading === "Handoff", "Handoff should open as its own Workspace Tools surface.");
-    expect(
-      readyHandoffState.readinessRows[0]?.includes("Current file") &&
-        readyHandoffState.readinessRows[0]?.includes("README") &&
-        readyHandoffState.readinessRows[0]?.includes("words"),
-      "Handoff should summarize the active file and word count.",
-    );
-    expect(
-      readyHandoffState.readinessRows[1] === "Project2 files1 empty file",
-      "Handoff should summarize project file and empty-file state.",
-    );
-    expect(
-      readyHandoffState.readinessMessages.some((message) => message.text === "Current file is ready to publish." && !message.blocked),
-      "Handoff should show current-file publish readiness.",
-    );
-    expect(
-      readyHandoffState.readinessMessages.some((message) => message.text === "Add content to Untitled before publishing." && message.blocked),
-      "Handoff should show the project publish blocker without opening Publish.",
-    );
-    expect(
-      readyHandoffState.actions.find((action) => action.text === "Publish...")?.disabled === false,
-      "Handoff should keep Publish enabled when the current file has content.",
-    );
-
-    await page.locator('.tab-item[data-file-name="Untitled.md"] .tab-select-button').click();
-    await page.waitForTimeout(80);
-    const blockedHandoffState = await page.evaluate(() => ({
-      readinessRows: Array.from(document.querySelectorAll(".left-handoff-row")).map((row) =>
-        row.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      settingsFooterIndex: Array.from(document.querySelectorAll(".workspace-menu-row")).findIndex((button) =>
+        button.textContent?.includes("Settings"),
       ),
-      readinessMessages: Array.from(document.querySelectorAll(".left-handoff-readiness p")).map((row) => ({
-        text: row.textContent?.replace(/\s+/g, " ").trim() ?? "",
-        blocked: row.classList.contains("blocked"),
-      })),
-      publishDisabled: Array.from(document.querySelectorAll(".left-workspace-actions button")).find((button) =>
-        button.textContent?.includes("Publish"),
-      )?.disabled,
     }));
+    expect(plusPanel.menuOpen, "Tabula + should live inside the workspace menu.");
+    expect(plusPanel.plusOpen, "Tabula + should open a product-boundary popover.");
+    expect(!plusPanel.settingsOpen, "Tabula + should not open Settings.");
+    expect(plusPanel.plusFooterActive, "The Tabula + support row should stay selected while its surface is open.");
     expect(
-      blockedHandoffState.readinessRows[0] === "Current fileUntitled0 words",
-      "Handoff should update the active-file summary when the selected file changes.",
+      plusPanel.plusFooterIndex !== -1 && plusPanel.plusFooterIndex < plusPanel.settingsFooterIndex,
+      "Tabula + should sit directly above Settings in the support rows.",
     );
-    expect(
-      blockedHandoffState.readinessMessages.some((message) => message.text === "Add content to Untitled before publishing." && message.blocked),
-      "Handoff should explain why an empty current file cannot be published.",
-    );
-    expect(blockedHandoffState.publishDisabled, "Handoff should disable Publish for an empty current file.");
-    await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
-    await page.getByRole("button", { name: "New", exact: true }).click();
-    await page.waitForTimeout(80);
 
-    const supportActions = page.locator(".left-panel-footer");
-    await supportActions.getByRole("button", { name: "Preferences", exact: true }).click();
-    await page.waitForTimeout(80);
+    await supportActions.getByRole("button", { name: "Settings", exact: true }).click();
+    await waitForRenderFrame(page);
     const preferencesPanel = await page.evaluate(() => ({
-      leftOpen: Boolean(document.querySelector(".left-sidebar")),
-      preferencesOpen: Boolean(document.querySelector(".left-preferences-popover")),
-      currentPanelHeading: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
-      preferenceLabels: [
-        ...Array.from(document.querySelectorAll(".left-preferences-row > span")),
-        ...Array.from(document.querySelectorAll(".left-preferences-meta > span")),
-      ].map((item) => item.textContent?.replace(/\s+/g, " ").trim()),
-      segmentRows: Array.from(document.querySelectorAll(".left-preferences-segmented")).map((segment) =>
+      menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
+      preferencesOpen: Boolean(document.querySelector(".workspace-preferences-popover")),
+      surfaceLabel: document.querySelector(".workspace-preferences-popover")?.getAttribute("aria-label") ?? "",
+      surfaceHeading: document.querySelector(".workspace-preferences-header h2")?.textContent?.trim() ?? "",
+      sectionLabels: Array.from(document.querySelectorAll(".workspace-preferences-section h3")).map((item) =>
+        item.textContent?.replace(/\s+/g, " ").trim(),
+      ),
+      preferenceLabels: Array.from(document.querySelectorAll(".workspace-preferences-setting > span")).map((item) =>
+        item.textContent?.replace(/\s+/g, " ").trim(),
+      ),
+      segmentRows: Array.from(document.querySelectorAll(".workspace-preferences-segmented")).map((segment) =>
         Array.from(segment.querySelectorAll("button"))
           .map((button) => button.textContent?.replace(/\s+/g, " ").trim())
           .join("|"),
       ),
-      checkRows: Array.from(document.querySelectorAll(".left-preferences-check strong")).map((item) =>
+      switchRows: Array.from(document.querySelectorAll(".workspace-preferences-switch > span")).map((item) =>
         item.textContent?.replace(/\s+/g, " ").trim(),
       ),
+      internalLabelLeak:
+        document.querySelector(".workspace-preferences-popover")?.textContent?.includes("Browser project") ?? false,
+      storageSurfaceLeak:
+        document.querySelector(".workspace-preferences-popover")?.textContent?.includes("Storage") ?? false,
+      checkRowCount: document.querySelectorAll(".workspace-preferences-check").length,
       detailRowCount: document.querySelectorAll(".left-detail-list div").length,
       shortcutRowCount: document.querySelectorAll(".left-shortcut-row").length,
-      keyboardShortcutsFooterCount: Array.from(document.querySelectorAll(".left-panel-footer button")).filter((button) =>
+      keyboardShortcutsFooterCount: Array.from(document.querySelectorAll(".workspace-menu-row")).filter((button) =>
         button.textContent?.includes("Keyboard shortcuts"),
       ).length,
-      preferenceFooterActive: document.querySelector(".left-panel-footer button")?.classList.contains("active") ?? false,
-      popoverLeft: Math.round(document.querySelector(".left-preferences-popover")?.getBoundingClientRect().left ?? 0),
-      sidebarRight: Math.round(document.querySelector(".left-sidebar")?.getBoundingClientRect().right ?? 0),
+      preferenceFooterActive:
+        Array.from(document.querySelectorAll(".workspace-menu-row"))
+          .find((button) => button.textContent?.includes("Settings"))
+          ?.classList.contains("active") ?? false,
+      popoverLeft: Math.round(document.querySelector(".workspace-preferences-popover")?.getBoundingClientRect().left ?? 0),
+      menuRight: Math.round(document.querySelector(".workspace-menu-popover")?.getBoundingClientRect().right ?? 0),
     }));
-    expect(preferencesPanel.leftOpen, "Preferences should keep the Workspace Tools panel open.");
-    expect(preferencesPanel.preferencesOpen, "Preferences should open as a nested side surface.");
+    expect(preferencesPanel.menuOpen, "Settings should keep the workspace menu open.");
+    expect(preferencesPanel.preferencesOpen, "Settings should open as a nested menu surface.");
+    expect(preferencesPanel.surfaceLabel === "Settings", "The nested side surface should be labeled Settings.");
+    expect(preferencesPanel.surfaceHeading === "Settings", "The nested side surface heading should be Settings.");
     expect(
-      preferencesPanel.currentPanelHeading === "New",
-      "Preferences should not replace the current Workspace Tools surface.",
+      preferencesPanel.sectionLabels.join("|") === "Writing|Reading|Editor",
+      "Settings should only group user-changeable writing, reading, and editor defaults.",
     );
     expect(
-      preferencesPanel.preferenceLabels.join("|") === "New files open in|Reading width|Editor|Storage",
-      "Preferences should expose product-relevant Markdown defaults.",
+      preferencesPanel.preferenceLabels.join("|") === "New files open in|Text width",
+      "Settings should expose product-relevant Markdown defaults without implementation details.",
     );
     expect(
-      preferencesPanel.segmentRows.join("/") === "Edit|Split|Preview/Narrow|Standard|Wide",
-      "Preferences should use compact segmented controls for default mode and width.",
+      preferencesPanel.segmentRows.join("/") === "Edit|Split|Preview/Focus|Standard|Fill",
+      "Settings should use compact segmented controls for default mode and width.",
     );
     expect(
-      preferencesPanel.checkRows.join("|") === "Line wrapping|Line numbers",
-      "Preferences should include editor defaults that affect newly created files.",
+      preferencesPanel.switchRows.join("|") === "Line wrapping|Line numbers",
+      "Settings should include editor defaults that affect newly created files.",
     );
-    expect(preferencesPanel.detailRowCount === 0, "Preferences should not render as an in-panel detail list.");
+    expect(!preferencesPanel.storageSurfaceLeak, "Settings should not explain local storage as a configurable surface.");
+    expect(!preferencesPanel.internalLabelLeak, "Settings should not leak internal storage implementation names.");
+    expect(preferencesPanel.checkRowCount === 0, "Settings should use switches instead of checkmark rows.");
+    expect(preferencesPanel.detailRowCount === 0, "Settings should not render as an in-panel detail list.");
     expect(preferencesPanel.shortcutRowCount === 0, "Keyboard shortcuts should move out of the left panel surface.");
-    expect(preferencesPanel.keyboardShortcutsFooterCount === 0, "Keyboard shortcuts should be documented in Help, not pinned.");
-    expect(preferencesPanel.preferenceFooterActive, "The Preferences support row should stay selected while its surface is open.");
+    expect(preferencesPanel.keyboardShortcutsFooterCount === 0, "Keyboard shortcuts should be documented in HELP.md, not pinned.");
+    expect(preferencesPanel.preferenceFooterActive, "The Settings support row should stay selected while its surface is open.");
     expect(
-      preferencesPanel.popoverLeft >= preferencesPanel.sidebarRight - 1,
-      "Preferences should open beside the Workspace Tools panel.",
+      preferencesPanel.popoverLeft >= preferencesPanel.menuRight - 1,
+      "Settings should open beside the workspace menu.",
     );
 
-    const preferencesPopover = page.locator(".left-preferences-popover");
+    const preferencesPopover = page.locator(".workspace-preferences-popover");
     await preferencesPopover.getByRole("button", { name: "Split", exact: true }).click();
-    await preferencesPopover.getByRole("button", { name: "Wide", exact: true }).click();
+    await preferencesPopover.getByRole("button", { name: "Fill", exact: true }).click();
     await preferencesPopover.getByRole("button", { name: "Line numbers", exact: true }).click();
 
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const preferencesEscapeState = await page.evaluate(() => ({
-      leftOpen: Boolean(document.querySelector(".left-sidebar")),
-      preferencesOpen: Boolean(document.querySelector(".left-preferences-popover")),
-      newActionsVisible: Array.from(document.querySelectorAll(".left-workspace-actions button")).some((button) =>
-        button.textContent?.includes("Blank Markdown"),
+      menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
+      preferencesOpen: Boolean(document.querySelector(".workspace-preferences-popover")),
+      newActionsVisible: Array.from(document.querySelectorAll(".workspace-menu-row")).some((button) =>
+        button.textContent?.includes("New Markdown"),
       ),
-      currentPanelHeading: document.querySelector(".left-panel-header h2")?.textContent?.trim() ?? "",
     }));
-    expect(preferencesEscapeState.leftOpen, "Escape from Preferences should keep the left panel open.");
-    expect(!preferencesEscapeState.preferencesOpen, "Escape from Preferences should close only the nested side surface.");
-    expect(preferencesEscapeState.newActionsVisible, "Escape from Preferences should leave the New view available.");
-    expect(preferencesEscapeState.currentPanelHeading === "New", "Escape from Preferences should preserve the current panel view.");
+    expect(preferencesEscapeState.menuOpen, "Escape from Settings should keep the workspace menu open.");
+    expect(!preferencesEscapeState.preferencesOpen, "Escape from Settings should close only the nested side surface.");
+    expect(preferencesEscapeState.newActionsVisible, "Escape from Settings should leave file creation available.");
 
-    await page.getByRole("button", { name: "Blank Markdown", exact: true }).click();
-    await page.waitForTimeout(120);
+    await page.getByRole("button", { name: "New Markdown", exact: true }).click();
+    await waitForActiveTab(page, { startsWith: "Untitled" });
+    await waitForEditorReady(page, { mode: "split" });
     const preferenceAppliedState = await page.evaluate(() => ({
       fileShellClasses: document.querySelector(".file-shell")?.className ?? "",
       workspaceClasses: document.querySelector(".workspace")?.className ?? "",
@@ -375,14 +295,15 @@ export async function run(ctx) {
     );
     expect(preferenceAppliedState.lineNumberGutterCount === 0, "New files should honor the preferred line number default.");
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
-    await page.waitForTimeout(80);
+    await waitForActiveTab(page, { exact: "README.md" });
 
+    await openProjectMenu(page);
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(80);
-    const leftEscapeState = await page.evaluate(() => ({
-      leftOpen: Boolean(document.querySelector(".left-sidebar")),
+    await waitForRenderFrame(page);
+    const menuEscapeState = await page.evaluate(() => ({
+      menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
     }));
-    expect(!leftEscapeState.leftOpen, "Escape from New view should close the left panel.");
+    expect(!menuEscapeState.menuOpen, "Escape from the workspace menu should close the menu popover.");
 
     const rightPanelToggleContract = await page.evaluate(() => {
       const button = document.querySelector('button[aria-label="Open Project Context"]');
@@ -401,6 +322,7 @@ export async function run(ctx) {
     );
 
     await openProjectContext(page);
+    await waitForPanelTab(page, "Files");
     const rightPanelState = await page.evaluate(() => ({
       open: Boolean(document.querySelector(".right-panel")),
       ariaLabel: document.querySelector(".right-panel")?.getAttribute("aria-label") ?? "",
@@ -525,35 +447,33 @@ export async function run(ctx) {
           : null;
       };
       return {
-        leftPanel: rectOf(".left-sidebar"),
+        menu: rectOf(".workspace-menu-popover"),
         rightPanel: rectOf(".right-panel"),
         toolbar: rectOf(".editor-control-row"),
         preview: rectOf(".preview-surface"),
         status: rectOf(".file-status-bar"),
       };
     });
+    expect(dualPanelGeometry.menu, "The workspace menu should be measurable while Project Context is open.");
     expect(
-      dualPanelGeometry.preview.left >= dualPanelGeometry.leftPanel.right + 20 &&
-        dualPanelGeometry.preview.right <= dualPanelGeometry.rightPanel.left - 20 &&
+      dualPanelGeometry.preview.right <= dualPanelGeometry.rightPanel.left - 20 &&
         dualPanelGeometry.preview.width >= 240,
-      "The preview document lane should remain readable when both side panels are open.",
+      "The preview document lane should remain readable when Project Context is open.",
     );
     expect(
-      dualPanelGeometry.toolbar.left >= dualPanelGeometry.leftPanel.right + 20 &&
-        dualPanelGeometry.toolbar.right <= dualPanelGeometry.rightPanel.left - 20,
-      "The editor toolbar lane should remain between both side panels.",
+      dualPanelGeometry.toolbar.right <= dualPanelGeometry.rightPanel.left - 20,
+      "The editor toolbar lane should stay clear of Project Context.",
     );
     expect(
-      dualPanelGeometry.status.left >= dualPanelGeometry.leftPanel.right + 20 &&
-        dualPanelGeometry.status.right <= dualPanelGeometry.rightPanel.left - 20,
-      "The status bar lane should remain between both side panels.",
+      dualPanelGeometry.status.right <= dualPanelGeometry.rightPanel.left - 20,
+      "The status bar lane should stay clear of Project Context.",
     );
-    await page.getByRole("button", { name: "Close Workspace Tools", exact: true }).click();
-    await page.waitForTimeout(80);
+    await page.getByRole("button", { name: "Close Workspace menu", exact: true }).click();
+    await waitForRenderFrame(page);
 
     await page.getByRole("searchbox", { name: "Search files" }).fill("read");
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const searchEscapeState = await page.evaluate(() => ({
       value: document.querySelector(".right-panel-search")?.value ?? "",
       panelOpen: Boolean(document.querySelector(".right-panel")),
@@ -563,23 +483,23 @@ export async function run(ctx) {
 
     await page.getByRole("searchbox", { name: "Search files" }).focus();
     await page.keyboard.press("ArrowDown");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const firstKeyboardFileFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
     expect(firstKeyboardFileFocus.startsWith("Open "), "ArrowDown in Files search should focus the first file row.");
     await page.keyboard.press("ArrowDown");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const secondKeyboardFileFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
     expect(
       secondKeyboardFileFocus.startsWith("Open ") && secondKeyboardFileFocus !== firstKeyboardFileFocus,
       "ArrowDown on a file row should move focus to the next file row.",
     );
     await page.keyboard.press("ArrowUp");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const restoredKeyboardFileFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
     expect(restoredKeyboardFileFocus === firstKeyboardFileFocus, "ArrowUp on a file row should move focus back.");
 
     await page.getByRole("button", { name: "Outline", exact: true }).click();
-    await page.waitForTimeout(80);
+    await waitForPanelTab(page, "Outline");
     const rightOutlineState = await page.evaluate(() => ({
       outlineRows: Array.from(document.querySelectorAll(".right-outline-list button")).map((row) => {
         const rect = row.getBoundingClientRect();
@@ -599,7 +519,7 @@ export async function run(ctx) {
     );
 
     await page.getByRole("button", { name: "Comments", exact: true }).click();
-    await page.waitForTimeout(80);
+    await waitForPanelTab(page, "Comments");
     const emptyCommentsState = await page.evaluate(() => ({
       contextLabels: Array.from(document.querySelectorAll(".right-comments-context span")).map(
         (span) => span.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -652,7 +572,7 @@ export async function run(ctx) {
     await page.getByLabel("Comment author name").blur();
     await page.getByLabel("Add comment to README.md").fill("Review this intro.");
     await page.locator(".right-comment-form .right-comment-submit").click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const commentsAfterAdd = await page.evaluate(() => ({
       cardCount: document.querySelectorAll(".right-comment-card").length,
       emptyCount: document.querySelectorAll(".right-comments-empty").length,
@@ -675,7 +595,7 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Reply", exact: true }).click();
     await page.locator(".right-comment-reply-form textarea").fill("Reply back.");
     await page.locator(".right-comment-reply-form .right-comment-submit").click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const commentReplyState = await page.evaluate(() => ({
       replyCount: document.querySelectorAll(".right-comment-reply").length,
       replyAvatarCount: document.querySelectorAll(".right-comment-reply .right-comment-avatar").length,
@@ -690,17 +610,17 @@ export async function run(ctx) {
     expect(commentReplyState.replyIndent !== "0px", "Replies should be visually nested under the root comment.");
 
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForActiveTab(page, { startsWith: "Untitled" });
     await page.locator(".right-comment-input").fill("Later file note.");
     await page.locator(".right-comment-form .right-comment-submit").click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const laterCommentFile = await page.evaluate(
       () => document.querySelector(".tab-item.active .tab-title")?.textContent?.trim() ?? "",
     );
     expect(Boolean(laterCommentFile), "Creating a later file comment should leave a readable active file title.");
 
     await page.getByRole("button", { name: "Show all comments", exact: true }).click();
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const allCommentsScopeState = await page.evaluate(() => ({
       scopeTitle: document.querySelector(".right-comments-context")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       switchText: document.querySelector(".right-comments-switch")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -737,10 +657,10 @@ export async function run(ctx) {
     );
 
     await page.getByRole("button", { name: "Show current file comments", exact: true }).click();
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
 
     await page.getByRole("button", { name: "Resolve" }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const commentsAfterResolve = await page.evaluate(() => ({
       openCardCount: document.querySelectorAll(".right-comment-group:not(.resolved) .right-comment-card").length,
       resolvedHeader: document.querySelector(".right-resolved-comments-header")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -751,13 +671,13 @@ export async function run(ctx) {
     expect(commentsAfterResolve.actionText === "", "Resolved comments should stay hidden until the resolved row is opened.");
 
     await page.getByRole("button", { name: "Show resolved comments" }).click();
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const resolvedCommentActions = await page.evaluate(() => ({
       actionText: document.querySelector(".right-comment-actions")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(resolvedCommentActions.actionText === "ReopenDelete", "Resolved comments should expose direct reopen and delete actions.");
     await page.getByRole("button", { name: "Reopen" }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const commentsAfterReopen = await page.evaluate(() => ({
       openCardCount: document.querySelectorAll(".right-comment-group .right-comment-card:not(.resolved)").length,
       resolvedHeaderCount: document.querySelectorAll(".right-resolved-comments-header").length,
@@ -766,16 +686,17 @@ export async function run(ctx) {
     expect(commentsAfterReopen.resolvedHeaderCount === 0, "Reopening the only resolved comment should hide the resolved row.");
 
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const rightEscapeState = await page.evaluate(() => ({
       rightOpen: Boolean(document.querySelector(".right-panel")),
     }));
     expect(!rightEscapeState.rightOpen, "Escape should close the right panel.");
 
+    const overflowInitialTabCount = (await getTabs(page)).length;
     for (let index = 0; index < 10; index += 1) {
       await page.getByTitle("New tab").click();
     }
-    await page.waitForTimeout(120);
+    await waitForFileCount(page, overflowInitialTabCount + 10);
 
     const overflow = await page.evaluate(() => {
       const tabsScroll = document.querySelector(".tabs-scroll");
@@ -927,7 +848,7 @@ export async function run(ctx) {
     });
     expect(activeTabBeforeRename, "Active tab geometry should be measurable before rename.");
     await page.mouse.dblclick(activeTabBeforeRename.titleClickX, activeTabBeforeRename.titleClickY);
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const activeTabDuringRename = await page.evaluate(() => {
       const activeTab = document.querySelector(".tab-item.active");
       const editableTitle = activeTab?.querySelector(".tab-rename-input");
@@ -988,7 +909,7 @@ export async function run(ctx) {
     expect(activeTabDuringRename.contentEditable !== "true", "Rename should not use React-controlled contentEditable text.");
     expect(activeTabDuringRename.allTextSelected, "Double-click rename should select the title so typing replaces it cleanly.");
     await page.keyboard.type("A");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const activeTabAfterFirstCharacter = await page.evaluate(() => {
       const input = document.querySelector(".tab-item.active .tab-rename-input");
       return input && "value" in input
@@ -1005,7 +926,7 @@ export async function run(ctx) {
       "After the first rename character, the caret should stay at the end.",
     );
     await page.keyboard.type("B");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const activeTabAfterSecondCharacter = await page.evaluate(() => {
       const input = document.querySelector(".tab-item.active .tab-rename-input");
       return input && "value" in input
@@ -1031,7 +952,7 @@ export async function run(ctx) {
     });
     expect(activeTabAfterTyping === "AB Smoke Rename", "Typing while renaming should not prepend, append, or duplicate characters.");
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
 
     const emptyRenameClick = await page.evaluate(() => {
       const title = document.querySelector(".tab-item.active .tab-title");
@@ -1049,7 +970,7 @@ export async function run(ctx) {
     await page.mouse.dblclick(emptyRenameClick.x, emptyRenameClick.y);
     await page.keyboard.press("Backspace");
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const emptyRename = await page.evaluate(() => {
       const activeTab = document.querySelector(".tab-item.active");
       const input = activeTab?.querySelector(".tab-rename-input");
@@ -1065,7 +986,7 @@ export async function run(ctx) {
     expect(emptyRename.toastError, "Empty rename toast should use the error tone.");
     expect(emptyRename.fileName, "Empty rename should not erase the current file title.");
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
 
     const duplicateRenameClick = await page.evaluate(() => {
       const title = document.querySelector(".tab-item.active .tab-title");
@@ -1083,7 +1004,7 @@ export async function run(ctx) {
     await page.mouse.dblclick(duplicateRenameClick.x, duplicateRenameClick.y);
     await page.keyboard.type("README");
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const duplicateRename = await page.evaluate(() => {
       const activeTab = document.querySelector(".tab-item.active");
       const input = activeTab?.querySelector(".tab-rename-input");
@@ -1099,14 +1020,14 @@ export async function run(ctx) {
     expect(duplicateRename.toastError, "Duplicate rename toast should use the error tone.");
     expect(duplicateRename.fileName !== "README.md", "Duplicate rename should not overwrite the current file title.");
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
 
     await page.evaluate(() => {
       const tabsScroll = document.querySelector(".tabs-scroll");
       tabsScroll?.scrollTo({ left: 0 });
       tabsScroll?.dispatchEvent(new Event("scroll"));
     });
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const activeReturnButton = await page.evaluate(() => {
       const leftButton = document.querySelector(".tabbar > .tab-scroll-button");
       const rightButton = document.querySelector(".tabbar-actions .tab-scroll-button");
@@ -1140,7 +1061,7 @@ export async function run(ctx) {
     const activeReturnButtonLocator = page.locator(".tab-scroll-button.has-current-tab");
     expect((await activeReturnButtonLocator.count()) === 1, "There should be one highlighted active-tab scroll button.");
     await activeReturnButtonLocator.click();
-    await page.waitForTimeout(220);
+    await waitForRenderFrame(page);
     const returnedToActiveTab = await page.evaluate(() => {
       const activeReturnButton = document.querySelector(".tab-scroll-button.has-current-tab");
       const tabsScroll = document.querySelector(".tabs-scroll");
@@ -1226,7 +1147,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     const rightFilesInitialTabs = await getTabs(page);
     const rightFilesActiveTitle = rightFilesInitialTabs.find((tab) => tab.active)?.title ?? "";
     expect(rightFilesActiveTitle, "Right Files action test should have an active file tab.");
@@ -1260,7 +1181,7 @@ export async function run(ctx) {
     );
 
     await page.getByRole("button", { name: "Close tab README.md" }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const filesAfterCloseTab = await page.evaluate(() => ({
       hasReadmeRow: Boolean(document.querySelector('.right-file-tree-row.file[title="README.md"]')),
       hasReadmeTab: Boolean(document.querySelector('.tab-item[data-file-name="README.md"]')),
@@ -1271,7 +1192,7 @@ export async function run(ctx) {
     expect(filesAfterCloseTab.closeReadmeActionCount === 0, "Closed files should no longer show a close-tab action.");
 
     await page.getByRole("button", { name: "Open README.md" }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const filesAfterReopenClosedTab = await page.evaluate(() => ({
       hasReadmeTab: Boolean(document.querySelector('.tab-item[data-file-name="README.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
@@ -1280,7 +1201,7 @@ export async function run(ctx) {
     expect(filesAfterReopenClosedTab.activeTabTitle === "README.md", "Selecting a closed file should activate the reopened tab.");
 
     await page.getByRole("button", { name: `Open ${rightFilesActiveTitle}` }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
 
     await openRightFileMenu(rightFilesActiveTitle);
     expect((await page.getByRole("menuitem", { name: "Rename" }).count()) === 1, "Right Files menu should expose rename.");
@@ -1289,7 +1210,7 @@ export async function run(ctx) {
     await page.getByRole("menuitem", { name: "Rename" }).click();
     await page.getByRole("textbox", { name: `Rename ${rightFilesActiveTitle} in Files` }).fill("README");
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const duplicateRename = await page.evaluate(() => ({
       inputValue: document.querySelector(".right-file-rename-input")?.value ?? "",
       toastText: document.querySelector(".app-toast")?.textContent?.trim() ?? "",
@@ -1302,7 +1223,7 @@ export async function run(ctx) {
     expect(duplicateRename.panelOpen, "Right Files duplicate rename should not close the panel.");
 
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     expect(
       (await page.locator(".right-file-rename-input").count()) === 0,
       "Escape in Right Files rename should cancel rename without closing the panel.",
@@ -1313,7 +1234,7 @@ export async function run(ctx) {
     await page.getByRole("menuitem", { name: "Rename" }).click();
     await page.getByRole("textbox", { name: `Rename ${rightFilesActiveTitle} in Files` }).fill("Right Panel");
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     let filesAfterRename = await page.evaluate(() => ({
       hasRenamedRow: Boolean(document.querySelector('.right-file-tree-row.file[title="Right Panel.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
@@ -1323,7 +1244,7 @@ export async function run(ctx) {
 
     await openRightFileMenu("Right Panel.md");
     await page.getByRole("menuitem", { name: "Duplicate" }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const filesAfterDuplicate = await page.evaluate(() => ({
       hasDuplicateRow: Boolean(document.querySelector('.right-file-tree-row.file[title="Right Panel 2.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
@@ -1335,7 +1256,7 @@ export async function run(ctx) {
 
     await openRightFileMenu("Right Panel 2.md");
     await page.getByRole("menuitem", { name: "Delete" }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const filesAfterDelete = await page.evaluate(() => ({
       hasDeletedRow: Boolean(document.querySelector('.right-file-tree-row.file[title="Right Panel 2.md"]')),
       hasDeletedTab: Boolean(document.querySelector('.tab-item[data-file-name="Right Panel 2.md"]')),
@@ -1353,7 +1274,7 @@ export async function run(ctx) {
     expect(filesAfterDelete.undoVisible, "Right Files delete should offer undo from the app toast.");
 
     await page.locator(".app-toast-action").click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const filesAfterUndoDelete = await page.evaluate(() => ({
       hasRestoredRow: Boolean(document.querySelector('.right-file-tree-row.file[title="Right Panel 2.md"]')),
       hasRestoredTab: Boolean(document.querySelector('.tab-item[data-file-name="Right Panel 2.md"]')),
@@ -1375,7 +1296,7 @@ export async function run(ctx) {
         buffer: Buffer.from("# Imported from Files\n\nRight panel import check."),
       },
     ]);
-    await page.waitForTimeout(160);
+    await waitForRenderFrame(page);
     const filesAfterImport = await page.evaluate(() => ({
       hasImportedRow: Boolean(document.querySelector('.right-file-tree-row.file[title="Panel Import.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",

@@ -2,8 +2,11 @@
 @import "./styles/logo.css";
 @import "./styles/top-chrome.css";
 @import "./styles/tabs.css";
-@import "./styles/left-sidebar.css";
+@import "./styles/workspace-menu.css";
 @import "./styles/file-surface.css";
+@import "./styles/editor-search.css";
+@import "./styles/split-view.css";
+@import "./styles/editor-selection.css";
 @import "./styles/preview.css";
 @import "./styles/right-panel.css";
 @import "./styles/status-bar.css";

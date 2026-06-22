@@ -67,15 +67,15 @@ export async function run(ctx) {
       const sharedPath = new URL(firstPage.url()).pathname + new URL(firstPage.url()).hash;
       await secondPage.goto(`${baseUrl}${sharedPath}`);
       await secondPage.waitForSelector(".tab-item.live.active");
-      await secondPage.getByRole("button", { name: "Edit" }).click();
+      await secondPage.getByRole("button", { name: "Edit", exact: true }).click();
 
-      await firstPage.getByRole("button", { name: "Edit" }).click();
+      await firstPage.getByRole("button", { name: "Edit", exact: true }).click();
       await focusMarkdownEditor(firstPage);
       await firstPage.keyboard.type("Room sync check");
 
       await waitForText(secondPage.locator(".cm-content"), "Room sync check");
       await firstPage.keyboard.press("Shift+Home");
-      await waitForText(firstPage.locator(".status-selection"), "3 words selected");
+      await waitForText(firstPage.locator(".status-cursor-position"), "(15 characters)");
       await firstPage.getByRole("button", { name: "Bold", exact: true }).click();
       await waitForText(secondPage.locator(".cm-content"), "**Room sync check**");
       const roomUrl = new URL(firstPage.url());
@@ -83,15 +83,15 @@ export async function run(ctx) {
       const roomKey = new URLSearchParams(roomUrl.hash.replace(/^#/, "")).get("key");
       const snapshotRecord = await waitForStableSnapshotRecord(roomDataDir, roomId);
       const liveFormattingState = await firstPage.evaluate(() => ({
-        selectedWords: document.querySelector(".status-selection")?.textContent?.trim() ?? "",
+        cursorPosition: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",
         editorFocused: Boolean(document.querySelector(".markdown-editor")?.contains(document.activeElement)),
       }));
       const remotePresenceState = await secondPage.evaluate(() => ({
         editorText: document.querySelector(".cm-content")?.textContent ?? "",
       }));
       expect(
-        liveFormattingState.selectedWords === "3 words selected",
-        "Live formatting commands should keep selection presence state current after dispatch.",
+        liveFormattingState.cursorPosition.includes("(15 characters)"),
+        "Live formatting commands should keep selection character state current after dispatch.",
       );
       expect(liveFormattingState.editorFocused, "Live formatting commands should keep focus in the editor.");
       expect(

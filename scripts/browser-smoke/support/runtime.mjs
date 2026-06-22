@@ -119,28 +119,160 @@ const waitForText = async (locator, text, timeout = 8_000) => {
   throw new Error(`Timed out waiting for text: ${text}`);
 };
 
+const waitForEditorReady = async (page, { mode } = {}) => {
+  await page.waitForFunction(
+    ({ mode }) => {
+      const shell = document.querySelector(".file-shell");
+      const editor = document.querySelector(".cm-content");
+      const editorSurface = document.querySelector(".editor-surface");
+      const previewSurface = document.querySelector(".preview-surface");
+
+      if (!shell) {
+        return false;
+      }
+
+      if (mode && !shell.classList.contains(`view-${mode}`)) {
+        return false;
+      }
+
+      if (mode === "preview") {
+        return Boolean(previewSurface);
+      }
+
+      if (mode === "split") {
+        return Boolean(editor && editorSurface && previewSurface && editor.getClientRects().length > 0);
+      }
+
+      return Boolean(editor && editorSurface && editor.getClientRects().length > 0);
+    },
+    { mode },
+  );
+};
+
+const waitForSavedLocally = async (page) => {
+  await page.waitForFunction(() => document.querySelector(".status-save-state")?.textContent?.includes("Saved locally"));
+};
+
+const waitForSelectionLayer = async (page, { minSegments = 1, popoverVisible } = {}) => {
+  await page.waitForFunction(
+    ({ minSegments, popoverVisible }) => {
+      const surface = document.querySelector(".editor-surface");
+      const segmentCount = document.querySelectorAll(".cm-user-selection-segment").length;
+      const popover = document.querySelector(".selection-comment-popover");
+      const hasPopoverState = popoverVisible === undefined || Boolean(popover) === popoverVisible;
+      return surface?.classList.contains("has-text-selection") && segmentCount >= minSegments && hasPopoverState;
+    },
+    { minSegments, popoverVisible },
+  );
+};
+
+const waitForShareDialogState = async (page, { open = true, panel, text } = {}) => {
+  if (!open) {
+    await page.locator(".share-modal").waitFor({ state: "detached" });
+    return;
+  }
+
+  await page.locator(".share-modal").waitFor({ state: "visible" });
+
+  if (panel) {
+    await page.waitForFunction(
+      ({ panel }) =>
+        Array.from(document.querySelectorAll(".share-modal-tabs [role='tab']")).some(
+          (tab) => tab.getAttribute("aria-selected") === "true" && tab.textContent?.trim() === panel,
+        ),
+      { panel },
+    );
+  }
+
+  if (text) {
+    await page.waitForFunction(
+      ({ text }) => document.querySelector(".share-modal")?.textContent?.includes(text),
+      { text },
+    );
+  }
+};
+
+const waitForPanelTab = async (page, label) => {
+  await page.locator(".right-panel").waitFor({ state: "visible" });
+  await page.waitForFunction(
+    ({ label }) => document.querySelector(".right-panel-tab.active")?.getAttribute("aria-label") === label,
+    { label },
+  );
+};
+
+const waitForWorkspaceMenuState = async (page, open = true) => {
+  await page.locator(".workspace-menu-popover").waitFor({ state: open ? "visible" : "detached" });
+};
+
+const waitForProjectContextState = async (page, open = true) => {
+  await page.locator(".right-panel").waitFor({ state: open ? "visible" : "detached" });
+};
+
+const waitForActiveTab = async (page, matcher) => {
+  await page.waitForFunction(
+    ({ matcher }) => {
+      const activeTab = document.querySelector(".tab-item.active");
+      if (!activeTab) {
+        return false;
+      }
+
+      const title = activeTab.getAttribute("data-file-name") ?? "";
+      if (!matcher) {
+        return true;
+      }
+
+      if (matcher.exact) {
+        return title === matcher.exact;
+      }
+
+      if (matcher.startsWith) {
+        return title.startsWith(matcher.startsWith);
+      }
+
+      return true;
+    },
+    { matcher },
+  );
+};
+
+const waitForFileCount = async (page, count) => {
+  await page.waitForFunction(
+    ({ count }) => document.querySelectorAll(".tab-item").length === count,
+    { count },
+  );
+};
+
+const waitForRenderFrame = async (page) => {
+  await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+      }),
+  );
+};
+
 const focusMarkdownEditor = async (page) => {
   await page.locator(".cm-content").focus();
 };
 
 const openProjectMenu = async (page) => {
-  if ((await page.locator(".left-sidebar").count()) === 0) {
-    await page.getByRole("button", { name: "Open Workspace Tools", exact: true }).click();
-    await page.waitForTimeout(120);
+  if ((await page.locator(".workspace-menu-popover").count()) === 0) {
+    await page.getByRole("button", { name: "Open Workspace menu", exact: true }).click();
+    await waitForWorkspaceMenuState(page, true);
   }
 };
 
 const openProjectContext = async (page) => {
   if ((await page.locator(".right-panel").count()) === 0) {
     await page.getByRole("button", { name: "Open Project Context", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForProjectContextState(page, true);
   }
 };
 
 const closeProjectContext = async (page) => {
   if ((await page.locator(".right-panel").count()) > 0) {
     await page.getByRole("button", { name: "Close Project Context", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForProjectContextState(page, false);
   }
 };
 
@@ -194,7 +326,17 @@ const createSmokeContext = (browser, controls = {}) => ({
   roomDataDir,
   startRoomServer: controls.startRoomServer,
   stopRoomServer: controls.stopRoomServer,
+  waitForActiveTab,
+  waitForEditorReady,
+  waitForFileCount,
+  waitForPanelTab,
+  waitForProjectContextState,
+  waitForRenderFrame,
+  waitForSavedLocally,
+  waitForSelectionLayer,
+  waitForShareDialogState,
   waitForText,
+  waitForWorkspaceMenuState,
   withPage: createWithPage(),
 });
 
@@ -299,7 +441,7 @@ const startLocalServers = async ({ withPublishServer = false } = {}) => {
         ...process.env,
         BROWSER: "none",
         VITE_TABULA_ROOM_URL: roomUrl,
-        ...(withPublishServer ? { VITE_TABULA_PUBLISH_URL: publishUrl } : {}),
+        ...(withPublishServer ? { VITE_TABULA_PLUS_ENABLED: "1", VITE_TABULA_PUBLISH_URL: publishUrl } : {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
     },

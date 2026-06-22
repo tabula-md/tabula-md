@@ -50,7 +50,6 @@ button {
 
 .app-shell {
   --side-panel-width: 288px;
-  --left-panel-width: var(--side-panel-width);
   --right-panel-width: var(--side-panel-width);
 
   width: 100vw;
@@ -73,15 +72,7 @@ button {
   overscroll-behavior: none;
 }
 
-.main-panel.left-panel-open {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .main-panel.right-panel-open {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.main-panel.left-panel-open.right-panel-open {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -94,10 +85,6 @@ button {
   height: 100vh;
   overflow: hidden;
   overscroll-behavior: none;
-}
-
-.main-panel.left-panel-open .center-workbench {
-  grid-column: 1;
 }
 
 .top-left-zone,
@@ -114,8 +101,7 @@ button {
 .tool-button,
 .panel-toggle,
 .right-panel-tab,
-.right-panel-close,
-.left-panel-tabs button {
+.right-panel-close {
   display: grid;
   place-items: center;
   width: 28px;
@@ -405,9 +391,7 @@ button {
 .panel-toggle.active,
 .right-panel-tab:hover,
 .right-panel-tab.active,
-.right-panel-close:hover,
-.left-panel-tabs button:hover,
-.left-panel-tabs button.active {
+.right-panel-close:hover {
   color: #1f1f1f;
   background: #ffffff;
 }

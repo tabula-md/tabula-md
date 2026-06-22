@@ -91,7 +91,7 @@ export const buildAgentsLintReport = (files: MarkdownFile[]) => {
     {
       status: agentsFile ? "pass" : "warn",
       label: "AGENTS.md exists",
-      detail: agentsFile ? "Agent instructions are present." : "Create AGENTS.md from Templates.",
+      detail: agentsFile ? "Agent instructions are present." : "Create AGENTS.md in the project.",
     },
     {
       status: hasFrontmatterKey(agentsFile, "title") ? "pass" : "warn",
@@ -266,7 +266,7 @@ export const buildAgentContextExport = (
       return `## ${file.title}
 
 - Mode: ${file.viewMode}
-- Reading width: ${file.readingWidth}
+- Text width: ${file.readingWidth}
 - Line wrapping: ${file.lineWrapping ? "on" : "off"}
 - State: ${file.roomId ? `live ${file.roomId}` : "local"}
 ${commentsBlock}

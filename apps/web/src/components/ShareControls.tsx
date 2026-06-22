@@ -1,7 +1,23 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Download, ExternalLink, Link, Play, RefreshCw, Share2, Square, Trash2, Users, X } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Download,
+  ExternalLink,
+  Link,
+  Play,
+  RefreshCw,
+  Share2,
+  Sparkles,
+  Square,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
 import type { ConnectionStatus } from "../collab";
+import { PRODUCT_PLUS_NAME } from "../product";
 import type { PublishScope } from "../publish";
+import { buildPublishViewModel } from "../publishViewModel";
 import type { MarkdownFile } from "../workspaceStorage";
 
 type ShareControlsProps = {
@@ -12,9 +28,11 @@ type ShareControlsProps = {
   isLive: boolean;
   shareOpen: boolean;
   sharePanelTarget?: SharePanel;
+  tabulaPlusEnabled: boolean;
   copied: boolean;
   onToggleShare: () => void;
   onCloseShare: () => void;
+  onOpenTabulaPlus: () => void;
   onStartSession: () => void;
   onCopyShareUrl: () => void;
   onCopyMarkdown: () => void;
@@ -72,25 +90,6 @@ const formatRoomTime = (value?: string) => {
   }).format(date);
 };
 
-const formatPublicUrlPreview = (url?: string) => {
-  if (!url) {
-    return "";
-  }
-
-  try {
-    const parsedUrl = new URL(url);
-    const publishId = parsedUrl.pathname.match(/^\/p\/([^/]+)/)?.[1];
-    if (!publishId) {
-      return `${parsedUrl.origin}${parsedUrl.pathname}`;
-    }
-
-    const compactPublishId = publishId.length > 12 ? `${publishId.slice(0, 8)}...` : publishId;
-    return `${parsedUrl.origin}/p/${compactPublishId}`;
-  } catch {
-    return url;
-  }
-};
-
 export function ShareControls({
   activeFile,
   activeFileTitle,
@@ -99,9 +98,11 @@ export function ShareControls({
   isLive,
   shareOpen,
   sharePanelTarget,
+  tabulaPlusEnabled,
   copied,
   onToggleShare,
   onCloseShare,
+  onOpenTabulaPlus,
   onStartSession,
   onCopyShareUrl,
   onCopyMarkdown,
@@ -166,77 +167,22 @@ export function ShareControls({
         : activeStatus === "offline"
           ? "Offline edits stay local until the room reconnects."
           : "";
-  const hasPublishedPage = Boolean(publishPageUrl);
-  const publishUrlPreview = formatPublicUrlPreview(publishPageUrl);
-  const scopeFileLabel = activeFileDisplayTitle || activeFileTitle;
-  const selectedScopeLabel = publishScope === "project" ? "project" : "current page";
-  const selectedScopeTitle = publishScope === "project" ? "Project" : "Current page";
-  const publishedScopeLabel = publishedScope === "project" ? "project" : "current-page";
-  const publishedScopeTitle = publishedScope === "project" ? "Project" : "Current page";
-  const selectedScopeChanged = hasPublishedPage && Boolean(publishedScope) && publishScope !== publishedScope;
-  const publishBlocked = Boolean(publishBlockerMessage);
-  const publishFileCountLabel =
-    publishScope === "file"
-      ? "1 file"
-      : publishFileCount === 1
-        ? "1 file"
-        : `${publishFileCount} files`;
-  const publishedFileCountLabel =
-    publishedScope === "project"
-      ? publishedFileCount === 1
-        ? "1 file"
-        : `${publishedFileCount ?? publishFileCount} files`
-      : "1 file";
-  const publishReadinessLabel = publishBlocked
-    ? "Needs content"
-    : selectedScopeChanged
-      ? "Ready to replace"
-      : hasPublishedPage
-        ? "Ready to update"
-        : "Ready to publish";
-  const publishResultSummary =
-    publishScope === "file"
-      ? "Creates one read-only public URL for this page."
-      : "Creates one read-only public URL for this project.";
-  const publishScopeSummary =
-    publishScope === "file"
-      ? `${scopeFileLabel} will be published.`
-      : publishFileCount === 1
-        ? "1 project file will be published."
-        : `${publishFileCount} project files will be published.`;
-  const publishedScopeSummary =
-    publishedScope === "project"
-      ? publishedFileCount === 1
-        ? "Published as a project: 1 file."
-        : `Published as a project: ${publishedFileCount ?? publishFileCount} files.`
-      : `Published as current page: ${publishedFileTitle?.replace(/\.(?:md|markdown)$/i, "") || scopeFileLabel}.`;
-  const publishChangeSummary = selectedScopeChanged
-    ? `This will replace the existing ${publishedScopeLabel} publish with a ${selectedScopeLabel} publish at the same URL.`
-    : hasPublishedPage
-      ? `This updates the existing ${publishedScopeLabel} publish at the same URL.`
-      : publishScopeSummary;
-  const publishSummary = publishBlockerMessage || publishChangeSummary;
-  const publishPrimaryLabel = publishing
-    ? "Publishing..."
-    : !hasPublishedPage
-      ? publishScope === "project"
-        ? "Publish project"
-        : "Publish current page"
-      : selectedScopeChanged
-        ? publishScope === "project"
-          ? "Republish as project"
-          : "Republish as current page"
-        : publishedScope === "project"
-          ? "Update project"
-          : "Update current page";
-  const publishedTime = publishedAt
-    ? new Intl.DateTimeFormat(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-        month: "short",
-        day: "numeric",
-      }).format(new Date(publishedAt))
-    : "";
+  const publishView = buildPublishViewModel({
+    activeFileDisplayTitle,
+    activeFileTitle,
+    tabulaPlusEnabled,
+    publishScope,
+    publishFileCount,
+    publishedScope,
+    publishedFileTitle,
+    publishedFileCount,
+    publishedAt,
+    publishPageUrl,
+    publishBlockerMessage,
+    canRepublishSnapshot,
+    publishing,
+    unpublishing,
+  });
 
   useEffect(() => {
     if (shareOpen) {
@@ -290,6 +236,70 @@ export function ShareControls({
 
   const handlePublishSnapshot = () => {
     void Promise.resolve(onPublishSnapshot()).finally(() => setChangingPublishScope(false));
+  };
+
+  const renderPublishManagementAction = (action: (typeof publishView.managementActions)[number]) => {
+    const actionTitle = action.disabledReason || undefined;
+
+    switch (action.id) {
+      case "update":
+        return (
+          <button
+            key={action.id}
+            className="share-modal-primary"
+            type="button"
+            onClick={handlePublishSnapshot}
+            disabled={action.disabled}
+            title={actionTitle}
+          >
+            <RefreshCw size={16} />
+            <span>{action.label}</span>
+          </button>
+        );
+      case "view":
+        return (
+          <a
+            key={action.id}
+            className="share-modal-secondary publish-page-link"
+            href={publishPageUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ExternalLink size={16} />
+            <span>{action.label}</span>
+          </a>
+        );
+      case "copy":
+        return (
+          <button key={action.id} className="share-modal-secondary" type="button" onClick={onCopyPublishPageUrl}>
+            <Copy size={16} />
+            <span>{action.label}</span>
+          </button>
+        );
+      case "changeScope":
+        return (
+          <button key={action.id} className="share-modal-secondary" type="button" onClick={showPublishScopePicker}>
+            <Link size={16} />
+            <span>{action.label}</span>
+          </button>
+        );
+      case "unpublish":
+        return (
+          <button
+            key={action.id}
+            className="share-modal-secondary"
+            type="button"
+            onClick={onUnpublishSnapshot}
+            disabled={action.disabled}
+            title={actionTitle}
+          >
+            <Trash2 size={16} />
+            <span>{action.label}</span>
+          </button>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
@@ -456,35 +466,53 @@ export function ShareControls({
                       <Link size={17} />
                     </span>
                     <div>
-                      <h3>{hasPublishedPage ? "Published page" : "Publish a public page"}</h3>
-                      <p>
-                        {hasPublishedPage
-                          ? "Manage the read-only page at this URL."
-                          : "Choose what goes live, then create a read-only page."}
-                      </p>
+                      <h3>{publishView.headingTitle}</h3>
+                      <p>{publishView.headingDescription}</p>
                     </div>
                   </div>
 
-                  {hasPublishedPage && !changingPublishScope ? (
+                  {publishView.requiresPlus ? (
+                    <div className="publish-plus-gate" aria-label={`${PRODUCT_PLUS_NAME} publish boundary`}>
+                      <div className="publish-plus-card">
+                        <span className="publish-plus-pill">
+                          <Sparkles size={13} />
+                          {PRODUCT_PLUS_NAME}
+                        </span>
+                        <strong>Public publishing is a Plus feature.</strong>
+                        <p>Keep local writing free, then use Plus when work needs a durable public URL.</p>
+                      </div>
+                      <div className="publish-plus-features" aria-label={`${PRODUCT_PLUS_NAME} publish features`}>
+                        <span>Current-page publish</span>
+                        <span>Project publish</span>
+                        <span>Stable agent-readable endpoints</span>
+                      </div>
+                      <button className="share-modal-primary" type="button" onClick={onOpenTabulaPlus}>
+                        <Sparkles size={16} />
+                        <span>View {PRODUCT_PLUS_NAME}</span>
+                      </button>
+                    </div>
+                  ) : publishView.hasPublishedPage && !changingPublishScope ? (
                     <div className="publish-output-box publish-management-box">
                       <div className="publish-status-card">
                         <div className="publish-status-copy">
                           <div className="publish-status-topline">
                             <span className="publish-live-pill">Live</span>
-                            {publishedTime && <time>Last updated {publishedTime}</time>}
+                            {publishView.publishedTime && <time>Last updated {publishView.publishedTime}</time>}
                           </div>
                           <span className="publish-status-label">Published</span>
-                          <p>{publishedScopeSummary}</p>
+                          <p>{publishView.publishedScopeSummary}</p>
                         </div>
                       </div>
 
-                      {publishBlockerMessage && <p className="publish-scope-summary attention">{publishBlockerMessage}</p>}
+                      {publishView.blocked && publishView.disabledReason && (
+                        <p className="publish-scope-summary attention">{publishView.disabledReason}</p>
+                      )}
 
                       {publishPageUrl && (
                         <div className="publish-url-card">
                           <span>Public URL</span>
                           <a href={publishPageUrl} target="_blank" rel="noreferrer" title={publishPageUrl}>
-                            {publishUrlPreview || publishPageUrl}
+                            {publishView.publicUrlPreview || publishPageUrl}
                           </a>
                         </div>
                       )}
@@ -492,95 +520,57 @@ export function ShareControls({
                       <div className="publish-detail-grid" aria-label="Published page details">
                         <div>
                           <span>Scope</span>
-                          <strong>{publishedScopeTitle}</strong>
+                          <strong>{publishView.details.publishedScopeTitle}</strong>
                         </div>
                         <div>
                           <span>Files</span>
-                          <strong>{publishedFileCountLabel}</strong>
+                          <strong>{publishView.details.publishedFilesLabel}</strong>
                         </div>
                       </div>
 
                       <div className="publish-management-actions" aria-label="Published page actions">
-                        {canRepublishSnapshot && (
-                          <button
-                            className="share-modal-primary"
-                            type="button"
-                            onClick={handlePublishSnapshot}
-                            disabled={publishing || publishBlocked}
-                          >
-                            <RefreshCw size={16} />
-                            <span>{publishPrimaryLabel}</span>
-                          </button>
-                        )}
-                        <a className="share-modal-secondary publish-page-link" href={publishPageUrl} target="_blank" rel="noreferrer">
-                          <ExternalLink size={16} />
-                          <span>View page</span>
-                        </a>
-                        <button className="share-modal-secondary" type="button" onClick={onCopyPublishPageUrl}>
-                          <Copy size={16} />
-                          <span>Copy link</span>
-                        </button>
-                        {canRepublishSnapshot && (
-                          <>
-                            <button className="share-modal-secondary" type="button" onClick={showPublishScopePicker}>
-                              <Link size={16} />
-                              <span>Change scope</span>
-                            </button>
-                            <button className="share-modal-secondary" type="button" onClick={onUnpublishSnapshot} disabled={unpublishing}>
-                              <Trash2 size={16} />
-                              <span>{unpublishing ? "Unpublishing..." : "Unpublish"}</span>
-                            </button>
-                          </>
-                        )}
+                        {publishView.managementActions.map(renderPublishManagementAction)}
                       </div>
                     </div>
                   ) : (
                     <>
                       <div className="publish-scope-control" role="radiogroup" aria-label="Publish scope">
-                        <button
-                          className={publishScope === "file" ? "active" : ""}
-                          type="button"
-                          role="radio"
-                          aria-checked={publishScope === "file"}
-                          onClick={() => onChangePublishScope("file")}
-                        >
-                          <span>Current page</span>
-                          <small>{scopeFileLabel}</small>
-                        </button>
-                        <button
-                          className={publishScope === "project" ? "active" : ""}
-                          type="button"
-                          role="radio"
-                          aria-checked={publishScope === "project"}
-                          onClick={() => onChangePublishScope("project")}
-                        >
-                          <span>Project</span>
-                          <small>{publishFileCount === 1 ? "1 file" : `${publishFileCount} files`}</small>
-                        </button>
+                        {publishView.scopeCards.map((scopeCard) => (
+                          <button
+                            key={scopeCard.scope}
+                            className={scopeCard.active ? "active" : ""}
+                            type="button"
+                            role="radio"
+                            aria-checked={scopeCard.active}
+                            onClick={() => onChangePublishScope(scopeCard.scope)}
+                          >
+                            <span>{scopeCard.title}</span>
+                            <small>{scopeCard.detail}</small>
+                          </button>
+                        ))}
                       </div>
 
                       <div className="publish-output-box">
-                        <div className={`publish-plan-card ${publishBlocked ? "blocked" : "ready"}`}>
+                        <div className={`publish-plan-card ${publishView.blocked ? "blocked" : "ready"}`}>
                           <div>
-                            <span>{publishReadinessLabel}</span>
-                            <p>{publishResultSummary}</p>
+                            <span>{publishView.readinessLabel}</span>
+                            <p>{publishView.publishResultSummary}</p>
                           </div>
-                          <strong>{publishFileCountLabel}</strong>
+                          <strong>{publishView.details.filesLabel}</strong>
                         </div>
 
-                        <p className={`publish-scope-summary ${publishBlocked || selectedScopeChanged ? "attention" : ""}`}>
-                          {publishSummary}
-                          {!publishBlocked && hasPublishedPage && publishedTime ? ` Published ${publishedTime}.` : ""}
+                        <p className={`publish-scope-summary ${publishView.blocked || publishView.selectedScopeChanged ? "attention" : ""}`}>
+                          {publishView.summary}
                         </p>
 
                         <div className="publish-detail-grid" aria-label="Publish plan details">
                           <div>
                             <span>Scope</span>
-                            <strong>{selectedScopeTitle}</strong>
+                            <strong>{publishView.details.selectedScopeTitle}</strong>
                           </div>
                           <div>
                             <span>Files</span>
-                            <strong>{publishFileCountLabel}</strong>
+                            <strong>{publishView.details.filesLabel}</strong>
                           </div>
                         </div>
 
@@ -589,12 +579,13 @@ export function ShareControls({
                             className="share-modal-primary"
                             type="button"
                             onClick={handlePublishSnapshot}
-                            disabled={publishing || publishBlocked}
+                            disabled={!publishView.canSubmit}
+                            title={publishView.disabledReason || undefined}
                           >
                             <Link size={16} />
-                            <span>{publishPrimaryLabel}</span>
+                            <span>{publishView.primaryLabel}</span>
                           </button>
-                          {hasPublishedPage && (
+                          {publishView.hasPublishedPage && (
                             <button className="share-modal-secondary" type="button" onClick={hidePublishScopePicker}>
                               <X size={16} />
                               <span>Cancel</span>

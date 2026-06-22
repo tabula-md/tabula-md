@@ -1,5 +1,15 @@
-import { isValidElement, useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
-import { Check, Copy, WrapText } from "lucide-react";
+import {
+  isValidElement,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
+import { Bookmark, Check, Copy, MessageSquare, WrapText } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -12,7 +22,9 @@ type MarkdownPreviewProps = {
   metadata: MarkdownPreviewMetadata[];
   body: string;
   commentAnchors?: MarkdownPreviewCommentAnchor[];
+  lineAnnotations?: MarkdownPreviewLineAnnotation[];
   activeCommentId?: string | null;
+  onLineAction?: (request: MarkdownPreviewLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
 };
 
@@ -22,7 +34,36 @@ export type MarkdownPreviewCommentAnchor = {
   end: number;
 };
 
+export type MarkdownPreviewLineAnnotation = {
+  lineNumber: number;
+  start: number;
+  end: number;
+  hasBookmark: boolean;
+  hasComment: boolean;
+  hasActiveComment?: boolean;
+};
+
+export type MarkdownPreviewLineActionRequest = MarkdownPreviewLineAnnotation & {
+  action: "bookmark" | "comment";
+};
+
 const externalLinkPattern = /^(?:https?:)?\/\//i;
+const previewSourceBlockTags = new Set([
+  "blockquote",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "hr",
+  "li",
+  "ol",
+  "p",
+  "pre",
+  "table",
+  "ul",
+]);
 
 const getNodeText = (node: ReactNode): string => {
   if (typeof node === "string" || typeof node === "number") {
@@ -136,13 +177,35 @@ type HastNode = {
   properties?: Record<string, unknown>;
   children?: HastNode[];
   position?: {
-    start?: { offset?: number };
-    end?: { offset?: number };
+    start?: { line?: number; offset?: number };
+    end?: { line?: number; offset?: number };
   };
 };
 
 const ignoredPreviewSourceTags = new Set(["button", "code", "pre"]);
 const ignoredCommentAnchorTags = new Set(["a", "button", "code", "pre"]);
+
+const createPreviewSourceLinePlugin = () => () => {
+  const walk = (node: HastNode) => {
+    if (node.type === "element" && typeof node.tagName === "string" && previewSourceBlockTags.has(node.tagName)) {
+      const startLine = node.position?.start?.line;
+      const endLine = node.position?.end?.line;
+      if (typeof startLine === "number" && typeof endLine === "number") {
+        node.properties = {
+          ...node.properties,
+          dataPreviewLineStart: startLine,
+          dataPreviewLineEnd: Math.max(startLine, endLine),
+        };
+      }
+    }
+
+    node.children?.forEach(walk);
+  };
+
+  return (tree: HastNode) => {
+    walk(tree);
+  };
+};
 
 const createPreviewCommentAnchorPlugin =
   (commentAnchors: MarkdownPreviewCommentAnchor[] = [], activeCommentId?: string | null) => () => {
@@ -311,39 +374,224 @@ const createMarkdownPreviewComponents = (onOpenComment?: (commentId: string) => 
   ),
 });
 
+type PreviewLineRailRow = MarkdownPreviewLineAnnotation & {
+  top: number;
+  height: number;
+};
+
+type PreviewLineBlock = {
+  startLine: number;
+  endLine: number;
+  top: number;
+  bottom: number;
+};
+
+const getPreviewLineButtonLabel = (
+  side: "bookmark" | "comment",
+  row: MarkdownPreviewLineAnnotation,
+) => {
+  if (side === "bookmark") {
+    return row.hasBookmark ? "Remove preview line bookmark" : "Bookmark preview line";
+  }
+
+  return row.hasComment ? "Open preview line comments" : "Comment on preview line";
+};
+
+function PreviewLineGutter({
+  side,
+  rows,
+  onLineAction,
+}: {
+  side: "bookmark" | "comment";
+  rows: PreviewLineRailRow[];
+  onLineAction: (request: MarkdownPreviewLineActionRequest) => void;
+}) {
+  const Icon = side === "bookmark" ? Bookmark : MessageSquare;
+
+  return (
+    <div className={`preview-line-gutter ${side}`} aria-label={side === "bookmark" ? "Preview bookmarks" : "Preview comments"}>
+      {rows.map((row) => {
+        const isActive = side === "bookmark" ? row.hasBookmark : row.hasComment;
+        const className = [
+          "preview-line-action",
+          side,
+          isActive ? `has-${side === "bookmark" ? "bookmark" : "comment"}` : "",
+          side === "comment" && row.hasActiveComment ? "active" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        return (
+          <button
+            key={`${side}-${row.lineNumber}`}
+            className={className}
+            type="button"
+            style={{ top: row.top, height: row.height }}
+            tabIndex={isActive ? 0 : -1}
+            aria-label={getPreviewLineButtonLabel(side, row)}
+            title={side === "bookmark" ? (row.hasBookmark ? "Remove bookmark" : "Bookmark line") : row.hasComment ? "Open comments" : "Comment on line"}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onLineAction({ ...row, action: side });
+            }}
+          >
+            <Icon className="preview-line-action-icon" size={14} strokeWidth={2} aria-hidden="true" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function MarkdownPreview({
   metadata,
   body,
   commentAnchors = [],
+  lineAnnotations = [],
   activeCommentId,
+  onLineAction,
   onOpenComment,
 }: MarkdownPreviewProps) {
+  const documentRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [lineRailRows, setLineRailRows] = useState<PreviewLineRailRow[]>([]);
+  const showLineGutters = Boolean(onLineAction);
   const markdownPreviewComponents = useMemo(() => createMarkdownPreviewComponents(onOpenComment), [onOpenComment]);
+  const sourceLinePlugins = useMemo(() => [createPreviewSourceLinePlugin()], []);
   const commentAnchorPlugins = useMemo(
     () => [createPreviewCommentAnchorPlugin(commentAnchors, activeCommentId)],
     [activeCommentId, commentAnchors],
   );
+  const rehypePlugins = useMemo(
+    () => [...sourceLinePlugins, ...commentAnchorPlugins],
+    [commentAnchorPlugins, sourceLinePlugins],
+  );
+  const measurePreviewLineRows = useCallback(() => {
+    const documentElement = documentRef.current;
+    const contentElement = contentRef.current;
+    if (!documentElement || !contentElement || !showLineGutters) {
+      setLineRailRows((currentRows) => (currentRows.length > 0 ? [] : currentRows));
+      return;
+    }
+
+    const documentRect = documentElement.getBoundingClientRect();
+    const sourceBlocks = Array.from(contentElement.querySelectorAll<HTMLElement>("[data-preview-line-start]"))
+      .map((element) => {
+        const startLine = Number(element.dataset.previewLineStart);
+        const endLine = Number(element.dataset.previewLineEnd);
+        if (!Number.isFinite(startLine) || !Number.isFinite(endLine)) {
+          return null;
+        }
+
+        const rect = element.getBoundingClientRect();
+        return {
+          startLine,
+          endLine: Math.max(startLine, endLine),
+          top: rect.top - documentRect.top,
+          bottom: rect.bottom - documentRect.top,
+        };
+      })
+      .filter((block): block is PreviewLineBlock => Boolean(block))
+      .sort((first, second) => first.startLine - second.startLine || first.top - second.top);
+
+    const getFallbackLineTop = (lineNumber: number) => {
+      const previousBlock = [...sourceBlocks].reverse().find((block) => block.endLine < lineNumber);
+      const nextBlock = sourceBlocks.find((block) => block.startLine > lineNumber);
+      if (previousBlock && nextBlock) {
+        return previousBlock.bottom + Math.max(0, nextBlock.top - previousBlock.bottom) / 2 - 10;
+      }
+
+      if (previousBlock) {
+        return previousBlock.bottom + 6;
+      }
+
+      if (nextBlock) {
+        return Math.max(0, nextBlock.top - 26);
+      }
+
+      return 0;
+    };
+
+    const nextRows = lineAnnotations
+      .map((annotation) => {
+        const matchingBlock = sourceBlocks.find(
+          (block) => block.startLine <= annotation.lineNumber && block.endLine >= annotation.lineNumber,
+        );
+
+        if (!matchingBlock) {
+          return {
+            ...annotation,
+            top: getFallbackLineTop(annotation.lineNumber),
+            height: 24,
+          };
+        }
+
+        const sourceLineCount = Math.max(1, matchingBlock.endLine - matchingBlock.startLine + 1);
+        const sourceLineHeight = Math.max(20, (matchingBlock.bottom - matchingBlock.top) / sourceLineCount);
+        const top = matchingBlock.top + (annotation.lineNumber - matchingBlock.startLine) * sourceLineHeight;
+        return {
+          ...annotation,
+          top,
+          height: sourceLineHeight,
+        };
+      })
+      .filter((row, index, rows) => rows.findIndex((candidate) => candidate.lineNumber === row.lineNumber) === index);
+
+    setLineRailRows(nextRows);
+  }, [lineAnnotations, showLineGutters]);
+
+  useLayoutEffect(() => {
+    measurePreviewLineRows();
+
+    const contentElement = contentRef.current;
+    if (!contentElement || !showLineGutters) {
+      return undefined;
+    }
+
+    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measurePreviewLineRows);
+    resizeObserver?.observe(contentElement);
+    window.addEventListener("resize", measurePreviewLineRows);
+    const timeoutId = window.setTimeout(measurePreviewLineRows, 120);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", measurePreviewLineRows);
+      window.clearTimeout(timeoutId);
+    };
+  }, [measurePreviewLineRows, showLineGutters]);
 
   return (
-    <>
-      {metadata.length > 0 && (
-        <section className="frontmatter-view" aria-label="Frontmatter">
-          {metadata.map((attribute) => (
-            <div className="frontmatter-row" key={attribute.key}>
-              <span>{attribute.key}</span>
-              <strong>{attribute.value || "true"}</strong>
-            </div>
-          ))}
-        </section>
+    <div ref={documentRef} className={`preview-document ${showLineGutters ? "with-line-gutters" : ""}`}>
+      {showLineGutters && onLineAction && (
+        <PreviewLineGutter side="bookmark" rows={lineRailRows} onLineAction={onLineAction} />
       )}
 
-      {body.trim().length > 0 ? (
-        <ReactMarkdown components={markdownPreviewComponents} rehypePlugins={commentAnchorPlugins} remarkPlugins={[remarkGfm]}>
-          {body}
-        </ReactMarkdown>
-      ) : (
-        <div className="preview-placeholder">Preview appears here.</div>
+      <div ref={contentRef} className="preview-document-content">
+        {metadata.length > 0 && (
+          <section className="frontmatter-view" aria-label="Frontmatter">
+            {metadata.map((attribute) => (
+              <div className="frontmatter-row" key={attribute.key}>
+                <span>{attribute.key}</span>
+                <strong>{attribute.value || "true"}</strong>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {body.trim().length > 0 ? (
+          <ReactMarkdown components={markdownPreviewComponents} rehypePlugins={rehypePlugins} remarkPlugins={[remarkGfm]}>
+            {body}
+          </ReactMarkdown>
+        ) : (
+          <div className="preview-placeholder">Preview appears here.</div>
+        )}
+      </div>
+
+      {showLineGutters && onLineAction && (
+        <PreviewLineGutter side="comment" rows={lineRailRows} onLineAction={onLineAction} />
       )}
-    </>
+    </div>
   );
 }

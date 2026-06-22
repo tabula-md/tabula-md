@@ -115,16 +115,17 @@ export function FileTabs({
       return;
     }
 
+    const scrollPadding = Math.min(44, Math.floor(element.clientWidth * 0.2));
     const activeLeft = activeTabElement.offsetLeft;
     const activeRight = activeLeft + activeTabElement.offsetWidth;
-    const visibleLeft = element.scrollLeft;
-    const visibleRight = visibleLeft + element.clientWidth;
+    const visibleLeft = element.scrollLeft + scrollPadding;
+    const visibleRight = element.scrollLeft + element.clientWidth - scrollPadding;
     let nextScrollLeft = visibleLeft;
 
     if (activeLeft < visibleLeft) {
-      nextScrollLeft = activeLeft;
+      nextScrollLeft = activeLeft - scrollPadding;
     } else if (activeRight > visibleRight) {
-      nextScrollLeft = activeRight - element.clientWidth;
+      nextScrollLeft = activeRight - element.clientWidth + scrollPadding;
     }
 
     const maxScrollLeft = Math.max(0, element.scrollWidth - element.clientWidth);

@@ -1,0 +1,81 @@
+.markdown-editor .cm-selectionBackground,
+.markdown-editor .cm-focused .cm-selectionBackground {
+  background: transparent;
+}
+
+.markdown-editor .cm-content ::selection {
+  background: transparent;
+}
+
+.markdown-editor .cm-user-selection-segment {
+  --editor-selection-background: #e4d9f4;
+
+  border-radius: 4px;
+  background: var(--editor-selection-background);
+  pointer-events: none;
+}
+
+.markdown-editor .cm-user-selection-bridge {
+  border-radius: 0;
+}
+
+.markdown-editor .cm-user-selection-segment.selection-square-top-left {
+  border-top-left-radius: 0;
+}
+
+.markdown-editor .cm-user-selection-segment.selection-square-top-right {
+  border-top-right-radius: 0;
+}
+
+.markdown-editor .cm-user-selection-segment.selection-square-bottom-left {
+  border-bottom-left-radius: 0;
+}
+
+.markdown-editor .cm-user-selection-segment.selection-square-bottom-right {
+  border-bottom-right-radius: 0;
+}
+
+.markdown-editor .cm-user-selection-segment .cm-comment-mark {
+  pointer-events: auto;
+}
+
+.editor-surface.has-text-selection .markdown-editor .cm-activeLine,
+.editor-surface.has-text-selection .markdown-editor .cm-activeLineGutter {
+  color: inherit;
+  background: transparent;
+}
+
+.selection-comment-popover {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 5px;
+  color: #1f1f1f;
+  background: #ffffff;
+  border: 1px solid var(--line-subtle);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+}
+
+.selection-comment-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  color: #1f1f1f;
+  background: var(--surface-muted);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.selection-comment-button:hover,
+.selection-comment-button:focus-visible {
+  background: var(--surface-hover);
+  outline: 0;
+}

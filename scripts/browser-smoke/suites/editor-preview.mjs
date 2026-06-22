@@ -15,16 +15,19 @@ export async function run(ctx) {
     openProjectContext,
     closeProjectContext,
     openProjectMenu,
+    waitForEditorReady,
+    waitForRenderFrame,
+    waitForSelectionLayer,
     waitForText,
     withPage,
   } = ctx;
 
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("alpha\nbeta\ncharlie");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
 
     expect((await page.locator(".cm-lineNumbers").count()) === 1, "Edit mode should show line numbers by default.");
     expect((await page.locator(".cm-activeLine").count()) >= 1, "Edit mode should highlight the active line.");
@@ -110,7 +113,7 @@ export async function run(ctx) {
     });
     expect(Boolean(activeTextLinePoint), "The active text line should have a hover point.");
     await page.mouse.move(activeTextLinePoint.x, activeTextLinePoint.y);
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const textHoveredCommentLaneOpacity = await page.evaluate(() => {
       const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
       return icon ? getComputedStyle(icon).opacity : "";
@@ -130,7 +133,7 @@ export async function run(ctx) {
     });
     expect(Boolean(activeAnnotationPoint), "The active line should have an annotation gutter point.");
     await page.mouse.move(activeAnnotationPoint.x, activeAnnotationPoint.y);
-    await page.waitForTimeout(160);
+    await waitForRenderFrame(page);
     const hoveredAnnotationLaneOpacity = await page.evaluate(() => {
       const icon = document.querySelector(".cm-annotationGutter .cm-activeLineGutter .cm-annotation-icon");
       return icon ? getComputedStyle(icon).opacity : "";
@@ -150,17 +153,17 @@ export async function run(ctx) {
     });
     expect(Boolean(activeCommentPoint), "The active line should have a right comment gutter point.");
     await page.mouse.move(activeCommentPoint.x, activeCommentPoint.y);
-    await page.waitForTimeout(160);
+    await waitForRenderFrame(page);
     const hoveredCommentLaneOpacity = await page.evaluate(() => {
       const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
       return icon ? getComputedStyle(icon).opacity : "";
     });
     expect(hoveredCommentLaneOpacity !== "0", "Comment lanes should appear when the pointer enters the right gutter.");
 
-    await page.getByRole("button", { name: /View options/ }).click();
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     await page.getByRole("button", { name: "Line numbers" }).click();
-    await page.waitForTimeout(80);
-    expect((await page.locator(".cm-lineNumbers").count()) === 0, "Line numbers should turn off from View options.");
+    await waitForRenderFrame(page);
+    expect((await page.locator(".cm-lineNumbers").count()) === 0, "Line numbers should turn off from Editor controls.");
     const lineNumberOffRailLayout = await page.evaluate(() => {
       const getWidth = (selector) => {
         const element = document.querySelector(selector);
@@ -176,21 +179,201 @@ export async function run(ctx) {
       Math.abs(lineNumberOffRailLayout.leftRail - lineNumberOffRailLayout.rightRail) <= 1,
       "Editor annotation rails should remain symmetric when line numbers are hidden.",
     );
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     await page.getByRole("button", { name: "Line numbers" }).click();
-    await page.waitForTimeout(80);
-    expect((await page.locator(".cm-lineNumbers").count()) === 1, "Line numbers should turn back on from View options.");
+    await waitForRenderFrame(page);
+    expect((await page.locator(".cm-lineNumbers").count()) === 1, "Line numbers should turn back on from Editor controls.");
 
     await page.getByRole("button", { name: "Preview", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "preview" });
     expect(!(await page.locator(".cm-lineNumbers").isVisible()), "Preview mode should not show editor line numbers.");
   });
 
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText("alpha beta\nbeta gamma\nalpha beta");
+    await waitForRenderFrame(page);
+
+    const readSearchRowLayout = () =>
+      page.evaluate(() => {
+        const controls = document.querySelector(".editor-control-row");
+        const row = document.querySelector(".file-search-row");
+        const workspace = document.querySelector(".workspace");
+        if (!(controls instanceof HTMLElement) || !(row instanceof HTMLElement) || !(workspace instanceof HTMLElement)) {
+          return null;
+        }
+
+        const controlsRect = controls.getBoundingClientRect();
+        const rowRect = row.getBoundingClientRect();
+        const workspaceRect = workspace.getBoundingClientRect();
+        const rowStyle = getComputedStyle(row);
+        return {
+          rowLeft: Math.round(rowRect.left),
+          rowRight: Math.round(rowRect.right),
+          rowTop: Math.round(rowRect.top),
+          rowBottom: Math.round(rowRect.bottom),
+          rowWidth: Math.round(rowRect.width),
+          controlsLeft: Math.round(controlsRect.left),
+          controlsRight: Math.round(controlsRect.right),
+          controlsBottom: Math.round(controlsRect.bottom),
+          controlsWidth: Math.round(controlsRect.width),
+          workspaceTop: Math.round(workspaceRect.top),
+          rowPosition: rowStyle.position,
+          rowBorderTop: rowStyle.borderTopWidth,
+          rowBorderBottom: rowStyle.borderBottomWidth,
+          fileToolbarSeparators: document.querySelectorAll(".file-toolbar > .toolbar-separator").length,
+        };
+      });
+
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.waitForSelector(".file-search-row");
+    const searchRowLayout = await readSearchRowLayout();
+    expect(Boolean(searchRowLayout), "Search should render a measurable row.");
+    expect(searchRowLayout.rowPosition === "relative", "Search should be a document row, not a floating popover.");
+    expect(searchRowLayout.rowTop >= searchRowLayout.controlsBottom - 1, "Search row should sit below the editor controls.");
+    expect(searchRowLayout.workspaceTop >= searchRowLayout.rowBottom - 1, "Workspace should start below the search row.");
+    expect(
+      Math.abs(searchRowLayout.rowLeft - searchRowLayout.controlsLeft) <= 1 &&
+        Math.abs(searchRowLayout.rowRight - searchRowLayout.controlsRight) <= 1 &&
+        Math.abs(searchRowLayout.rowWidth - searchRowLayout.controlsWidth) <= 1,
+      "Search row should follow the same text-width layout as the top toolbar.",
+    );
+    expect(
+      searchRowLayout.rowBorderTop === "0px" && searchRowLayout.rowBorderBottom === "0px",
+      "Search row should not add splitter-style border lines.",
+    );
+    expect(searchRowLayout.fileToolbarSeparators === 0, "File toolbar controls should not use a splitter line.");
+
+    await page.getByRole("button", { name: "Close search" }).click();
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
+    await page.getByRole("button", { name: "Focus" }).click();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.waitForSelector(".file-search-row");
+    const focusedWidthSearchLayout = await readSearchRowLayout();
+    expect(Boolean(focusedWidthSearchLayout), "Search row should be measurable after changing text width.");
+    expect(
+      Math.abs(focusedWidthSearchLayout.rowLeft - focusedWidthSearchLayout.controlsLeft) <= 1 &&
+        Math.abs(focusedWidthSearchLayout.rowRight - focusedWidthSearchLayout.controlsRight) <= 1 &&
+        Math.abs(focusedWidthSearchLayout.rowWidth - focusedWidthSearchLayout.controlsWidth) <= 1,
+      "Search row should stay aligned after Text Width changes.",
+    );
+
+    const searchInput = page.getByRole("searchbox", { name: "Find in file" });
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
+    expect((await page.locator(".file-search-row").count()) === 1, "Search should stay open while Editor Controls are opened.");
+    expect((await page.locator('.file-tool-popover[aria-label="Editor controls"]').count()) === 1, "Editor Controls should open over the persistent search row.");
+    await page.locator(".workspace").click({ position: { x: 20, y: 20 } });
+    await waitForRenderFrame(page);
+    expect((await page.locator('.file-tool-popover[aria-label="Editor controls"]').count()) === 0, "Outside click should close Editor Controls.");
+    expect((await page.locator(".file-search-row").count()) === 1, "Outside click should not close Search.");
+
+    await searchInput.click();
+    await searchInput.type("bet");
+    await waitForRenderFrame(page);
+    expect((await page.locator(".file-search-count").textContent()) === "1/3", "Search should update result count while typing.");
+    expect((await page.locator(".cm-search-match").count()) === 3, "Search should highlight all matches while typing.");
+    expect((await page.locator(".cm-search-match.active").count()) === 1, "Search should highlight the active match.");
+    const searchHighlightColors = await page.evaluate(() => {
+      const match = document.querySelector(".cm-search-match:not(.active)") ?? document.querySelector(".cm-search-match");
+      const activeMatch = document.querySelector(".cm-search-match.active");
+      return {
+        match: match instanceof HTMLElement ? getComputedStyle(match).backgroundColor : "",
+        activeMatch: activeMatch instanceof HTMLElement ? getComputedStyle(activeMatch).backgroundColor : "",
+      };
+    });
+    expect(
+      searchHighlightColors.match.includes("118, 63, 200") &&
+        searchHighlightColors.activeMatch.includes("118, 63, 200"),
+      "Search highlights should use the Tabula purple accent scale.",
+    );
+
+    await page.keyboard.press("Enter");
+    await waitForRenderFrame(page);
+    expect((await page.locator(".file-search-count").textContent()) === "2/3", "Enter should move to the next search result.");
+    expect((await searchInput.inputValue()) === "bet", "Enter should keep the search query in the input.");
+    const activeSearchFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
+    expect(activeSearchFocus === "Find in file", "Enter should keep focus in the search input.");
+
+    await page.locator(".workspace").click({ position: { x: 20, y: 20 } });
+    await waitForRenderFrame(page);
+    expect((await page.locator(".file-search-row").count()) === 1, "Search should stay open after clicking the document.");
+
+    await searchInput.fill("zzz");
+    await waitForRenderFrame(page);
+    expect((await page.locator(".file-search-count").textContent()) === "0/0", "Search should show zero results as the query changes.");
+    expect((await page.locator(".cm-search-match").count()) === 0, "Search should clear highlights when there are no matches.");
+
+    await page.getByRole("button", { name: "Close search" }).click();
+    await waitForRenderFrame(page);
+    expect((await page.locator(".file-search-row").count()) === 0, "Closing search should remove the search row.");
+
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
+    expect((await page.locator('.file-tool-popover[aria-label="Editor controls"]').count()) === 1, "Editor Controls should open as a popover.");
+    await page.locator(".workspace").click({ position: { x: 20, y: 20 } });
+    await waitForRenderFrame(page);
+    expect((await page.locator('.file-tool-popover[aria-label="Editor controls"]').count()) === 0, "Editor Controls should close on outside click.");
+
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
+    await page.getByRole("button", { name: "Line Wrapping" }).click();
+    await waitForRenderFrame(page);
+    expect((await page.locator('.file-tool-popover[aria-label="Editor controls"]').count()) === 0, "Editor Controls should close after choosing an action.");
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.getByTitle("New tab").click();
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText("Agent anchor\n\nWorking line");
+    await waitForRenderFrame(page);
+
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    const searchInput = page.getByRole("searchbox", { name: "Find in file" });
+    await searchInput.fill("Agent");
+    await waitForRenderFrame(page);
+    expect((await page.locator(".file-search-count").textContent()) === "1/1", "Search should find the Agent match before editing.");
+
+    const workingLinePoint = await page.evaluate(() => {
+      const line = Array.from(document.querySelectorAll(".cm-line")).find((element) =>
+        element.textContent?.includes("Working line"),
+      );
+      if (!(line instanceof HTMLElement)) {
+        return null;
+      }
+
+      const rect = line.getBoundingClientRect();
+      return {
+        x: rect.left + 20,
+        y: rect.top + rect.height / 2,
+      };
+    });
+    expect(Boolean(workingLinePoint), "The non-search editing line should be clickable.");
+    await page.mouse.click(workingLinePoint.x, workingLinePoint.y);
+    await page.keyboard.press("End");
+    await page.keyboard.type(" typed", { delay: 25 });
+    await waitForRenderFrame(page);
+
+    const searchEditState = await page.evaluate(() => ({
+      editorText: document.querySelector(".cm-content")?.textContent ?? "",
+      searchCount: document.querySelector(".file-search-count")?.textContent ?? "",
+      activeElementLabel: document.activeElement?.getAttribute("aria-label") ?? "",
+    }));
+    expect(searchEditState.editorText.includes("Agent anchor"), "Editing with Search open should not overwrite the matching Agent text.");
+    expect(
+      searchEditState.editorText.includes("Working line typed"),
+      "Editing with Search open should keep typing on the line the user selected.",
+    );
+    expect(searchEditState.searchCount === "1/1", "Search should keep the same match count while unrelated text changes.");
+    expect(searchEditState.activeElementLabel !== "Find in file", "Typing in the document should not be pulled back into the search input.");
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.getByTitle("New tab").click();
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("alpha\nbeta\ncharlie");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
 
     const clickBookmarkLineAction = async (lineNumber) => {
       const point = await page.evaluate((targetLineNumber) => {
@@ -211,7 +394,7 @@ export async function run(ctx) {
       }, lineNumber);
       expect(Boolean(point), `Line ${lineNumber} should have a bookmark gutter target.`);
       await page.mouse.move(point.x, point.y);
-      await page.waitForTimeout(40);
+      await waitForRenderFrame(page);
       await page.mouse.click(point.x, point.y);
     };
 
@@ -230,12 +413,12 @@ export async function run(ctx) {
       }, lineNumber);
       expect(Boolean(point), `Line ${lineNumber} should have a right-side comment target.`);
       await page.mouse.move(point.x, point.y);
-      await page.waitForTimeout(40);
+      await waitForRenderFrame(page);
       await page.mouse.click(point.x, point.y);
     };
 
     await clickBookmarkLineAction(2);
-    await page.waitForTimeout(100);
+    await waitForRenderFrame(page);
     const bookmarkedLineState = await page.evaluate(() => ({
       bookmarkMarkers: document.querySelectorAll(".cm-annotation-marker.has-bookmark").length,
       bookmarkColor: (() => {
@@ -251,10 +434,10 @@ export async function run(ctx) {
     expect(!bookmarkedLineState.statusButtonVisible, "Selection comments should no longer use the status bar action.");
 
     await clickLineCommentAction(2);
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     await page.locator(".right-comment-input").fill("Line note");
     await page.locator(".right-comment-form .right-comment-submit").click();
-    await page.waitForTimeout(180);
+    await waitForRenderFrame(page);
 
     const lineCommentState = await page.evaluate(() => ({
       commentActions: document.querySelectorAll(".cm-line-comment-marker.has-comment").length,
@@ -275,6 +458,39 @@ export async function run(ctx) {
     expect(!lineCommentState.selectionPopoverVisible, "Line comments should not also show the selected-text comment popover.");
     expect(lineCommentState.markText === "beta", "Line comments should anchor to the clicked line text.");
     expect(lineCommentState.panelText.includes("Line note"), "Line comments should use the existing comments panel.");
+
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await page.waitForSelector(".workspace.preview .preview-line-action.bookmark.has-bookmark", { timeout: 5_000 });
+    await page.waitForSelector(".workspace.preview .preview-line-action.comment.has-comment", { timeout: 5_000 });
+    const previewLineGutterState = await page.evaluate(() => {
+      const previewDocument = document.querySelector(".workspace.preview .preview-document.with-line-gutters");
+      const previewContent = document.querySelector(".workspace.preview .preview-document-content");
+      const bookmarkAction = document.querySelector(".workspace.preview .preview-line-action.bookmark.has-bookmark");
+      const commentAction = document.querySelector(".workspace.preview .preview-line-action.comment.has-comment");
+      const previewDocumentRect = previewDocument?.getBoundingClientRect();
+      const previewContentRect = previewContent?.getBoundingClientRect();
+      const bookmarkRect = bookmarkAction?.getBoundingClientRect();
+      const commentRect = commentAction?.getBoundingClientRect();
+      return {
+        hasPreviewLineGutter: Boolean(previewDocument && previewContent),
+        bookmarkColor: bookmarkAction instanceof HTMLElement ? getComputedStyle(bookmarkAction).color : "",
+        commentColor: commentAction instanceof HTMLElement ? getComputedStyle(commentAction).color : "",
+        bookmarkLeftOfContent:
+          Boolean(bookmarkRect && previewContentRect) && bookmarkRect.right <= previewContentRect.left + 1,
+        commentRightOfContent:
+          Boolean(commentRect && previewContentRect) && commentRect.left >= previewContentRect.right - 1,
+        contentInsideDocument:
+          Boolean(previewDocumentRect && previewContentRect) &&
+          previewContentRect.left > previewDocumentRect.left &&
+          previewContentRect.right < previewDocumentRect.right,
+      };
+    });
+    expect(previewLineGutterState.hasPreviewLineGutter, "Preview mode should render line gutters around the document body.");
+    expect(previewLineGutterState.bookmarkColor === "rgb(118, 63, 200)", "Preview bookmarks should use the shared annotation accent.");
+    expect(previewLineGutterState.commentColor === "rgb(118, 63, 200)", "Preview comments should use the shared annotation accent.");
+    expect(previewLineGutterState.bookmarkLeftOfContent, "Preview bookmark markers should sit in the left rail outside content.");
+    expect(previewLineGutterState.commentRightOfContent, "Preview comment markers should sit in the right rail outside content.");
+    expect(previewLineGutterState.contentInsideDocument, "Preview line gutters should frame the rendered document content.");
   });
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 760 } });
@@ -282,10 +498,10 @@ export async function run(ctx) {
   try {
     await mobilePage.goto(baseUrl);
     await mobilePage.getByTitle("New tab").click();
-    await mobilePage.waitForTimeout(120);
+    await waitForEditorReady(mobilePage, { mode: "edit" });
     await focusMarkdownEditor(mobilePage);
     await mobilePage.keyboard.insertText("mobile\nwrite");
-    await mobilePage.waitForTimeout(80);
+    await waitForRenderFrame(mobilePage);
     const mobileGutterDisplays = await mobilePage
       .locator(".cm-gutters")
       .evaluateAll((gutters) => gutters.map((gutter) => getComputedStyle(gutter).display));
@@ -299,7 +515,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     const scrollSmokeMarkdown = Array.from(
       { length: 42 },
@@ -307,7 +523,7 @@ export async function run(ctx) {
     ).join("\n\n");
     await page.keyboard.insertText(scrollSmokeMarkdown);
     await page.getByRole("button", { name: "Preview", exact: true }).click();
-    await page.waitForTimeout(80);
+    await waitForEditorReady(page, { mode: "preview" });
 
     const setWorkspaceRatio = async (ratio) =>
       page.evaluate((nextRatio) => {
@@ -348,7 +564,7 @@ export async function run(ctx) {
     expect(previewBefore && previewBefore.scrollHeight > previewBefore.clientHeight, "Preview should be scrollable for mode transition smoke.");
 
     await page.getByRole("button", { name: "Edit", exact: true }).click();
-    await page.waitForTimeout(160);
+    await waitForEditorReady(page, { mode: "edit" });
     const writeAfter = await readWorkspaceRatio();
     expect(writeAfter, "Edit mode workspace should be measurable.");
     expect(
@@ -359,7 +575,7 @@ export async function run(ctx) {
     expect(writeAfter.statusTop > 0, "Mode transition should not detach the status row.");
 
     await page.getByRole("button", { name: "Preview", exact: true }).click();
-    await page.waitForTimeout(160);
+    await waitForEditorReady(page, { mode: "preview" });
     const previewAfter = await readWorkspaceRatio();
     expect(previewAfter, "Preview mode workspace should be measurable after returning from Edit.");
     expect(
@@ -370,11 +586,11 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
 
     await page.getByRole("button", { name: "Bold", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const emptySelectionFormat = await page.evaluate(() => ({
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
       selectedText: document.getSelection()?.toString() ?? "",
@@ -398,12 +614,12 @@ export async function run(ctx) {
     expect(emptySelectionFormat.editorFocused, "Empty selection formatting should keep focus in the editor.");
 
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("const value = 1;");
     await page.keyboard.press("ControlOrMeta+A");
     await page.getByRole("button", { name: "Code block", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const codeBlockFormatting = await page.evaluate(() => {
       const editorText = Array.from(document.querySelectorAll(".cm-line"))
         .map((line) => line.textContent ?? "")
@@ -425,10 +641,10 @@ export async function run(ctx) {
     expect(codeBlockFormatting.buttonCount === 13, "Formatting toolbar should expose the complete core command set.");
 
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.getByRole("button", { name: "Heading 1", exact: true }).click();
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const headingOneFormatting = await page.evaluate(() => ({
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
       selectedText: document.getSelection()?.toString() ?? "",
@@ -438,20 +654,20 @@ export async function run(ctx) {
     await page.keyboard.insertText("Subhead");
     await page.keyboard.press("ControlOrMeta+A");
     await page.getByRole("button", { name: "Heading 3", exact: true }).click();
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const headingThreeFormatting = await page.locator(".cm-content").textContent();
     expect(headingThreeFormatting === "### Subhead", "Heading 3 toolbar button should convert selected heading text.");
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("alpha\nbeta");
     await page.keyboard.press("ControlOrMeta+A");
     await page.getByRole("button", { name: "Numbered list", exact: true }).click();
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const numberedListFormatting = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
     expect(numberedListFormatting === "1. alpha\n2. beta", "Numbered list toolbar button should number selected lines.");
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("alpha\nbeta");
     await page.getByRole("button", { name: "Horizontal rule", exact: true }).click();
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const horizontalRuleFormatting = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
     expect(
       horizontalRuleFormatting === "alpha\nbeta\n\n---",
@@ -474,14 +690,14 @@ export async function run(ctx) {
     };
 
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("Open docs");
     for (let index = 0; index < 4; index += 1) {
       await page.keyboard.press("Shift+ArrowLeft");
     }
     await pasteIntoEditor("https://example.com/docs");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const pastedLinkText = await page.locator(".cm-content").textContent();
     expect(
       pastedLinkText === "Open [docs](https://example.com/docs)",
@@ -489,10 +705,10 @@ export async function run(ctx) {
     );
 
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await pasteIntoEditor("“Title”\r\n\titem\r\n\r\n\r\nnext");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     const normalizedPasteText = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
     expect(
       normalizedPasteText === '"Title"\n  item\n\nnext',
@@ -540,7 +756,7 @@ export async function run(ctx) {
     expect(previewCodeBlock?.ligatures === "none", "Preview code blocks should preserve source-like character rendering.");
     expect(previewCodeBlock?.whiteSpace === "pre", "Preview code blocks should preserve source whitespace by default.");
     await page.getByRole("button", { name: "Enable word wrap", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const wrappedCodeBlock = await page.evaluate(() => {
       const code = document.querySelector(".preview-surface pre code");
       const wrapButton = document.querySelector(".preview-code-action");
@@ -565,7 +781,7 @@ export async function run(ctx) {
       });
     });
     await page.getByRole("button", { name: "Copy code", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const copiedCodeBlock = await page.evaluate(() => ({
       copiedText: window.__tabulaCopiedCode ?? "",
       copyTitle: document.querySelectorAll(".preview-code-action")[1]?.getAttribute("title") ?? "",
@@ -574,7 +790,7 @@ export async function run(ctx) {
     expect(copiedCodeBlock.copyTitle === "Copied", "Preview copy code should acknowledge the copied state.");
 
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(
       [
@@ -594,8 +810,13 @@ export async function run(ctx) {
     await page.waitForSelector(".frontmatter-view", { timeout: 5_000 });
     const previewFrontmatterSurface = await page.evaluate(() => {
       const frontmatter = document.querySelector(".frontmatter-view");
-      const firstBodyParagraph = document.querySelector(".preview-surface > p");
-      if (!(frontmatter instanceof HTMLElement) || !(firstBodyParagraph instanceof HTMLElement)) {
+      const bodyHeading = document.querySelector(".preview-document-content h1");
+      const firstBodyParagraph = document.querySelector(".preview-document-content p");
+      if (
+        !(frontmatter instanceof HTMLElement) ||
+        !(bodyHeading instanceof HTMLElement) ||
+        !(firstBodyParagraph instanceof HTMLElement)
+      ) {
         return null;
       }
       const frontmatterStyle = window.getComputedStyle(frontmatter);
@@ -604,6 +825,7 @@ export async function run(ctx) {
         text: frontmatter.textContent ?? "",
         background: frontmatterStyle.backgroundColor,
         borderRadius: frontmatterStyle.borderRadius,
+        bodyHeadingText: bodyHeading.textContent ?? "",
         firstBodyText: firstBodyParagraph.textContent ?? "",
       };
     });
@@ -615,10 +837,11 @@ export async function run(ctx) {
     expect(!previewFrontmatterSurface?.text.includes("future commands"), "Preview frontmatter should not expose internal command language.");
     expect(previewFrontmatterSurface?.background === "rgb(247, 247, 248)", "Preview frontmatter should stay grouped as a quiet metadata block.");
     expect(previewFrontmatterSurface?.borderRadius !== "0px", "Preview frontmatter should keep the original grouped surface shape.");
-    expect(previewFrontmatterSurface?.firstBodyText === "The rendered body should remain the focus.", "Preview should remove the duplicated title from the body.");
+    expect(previewFrontmatterSurface?.bodyHeadingText === "Preview Surface Brief", "Preview should render the authored H1 as Markdown.");
+    expect(previewFrontmatterSurface?.firstBodyText === "The rendered body should remain the focus.", "Preview should keep body content after the authored H1.");
 
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     const tinyPngDataUrl =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
@@ -711,21 +934,21 @@ export async function run(ctx) {
     expect(previewGfm.imageFrameDisplay === "grid", "Standalone preview images should render as block-like document media.");
 
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.type("plain");
-    await page.waitForTimeout(80);
+    await waitForRenderFrame(page);
     await page.keyboard.press("Shift+Home");
     await page.getByRole("button", { name: "Bold", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const beforeUndo = await page.locator(".cm-content").textContent();
     expect(beforeUndo === "**plain**", "Toolbar formatting should wrap selected text before undo smoke.");
     await page.getByRole("button", { name: "Undo", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const afterUndo = await page.locator(".cm-content").textContent();
     expect(afterUndo === "plain", "Undo should revert a formatting command in one step.");
     await page.getByRole("button", { name: "Redo", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const afterRedo = await page.locator(".cm-content").textContent();
     expect(afterRedo === "**plain**", "Redo should restore a formatting command in one step.");
 
@@ -734,11 +957,14 @@ export async function run(ctx) {
     await page.keyboard.press("Backspace");
     await page.keyboard.type("alpha");
     await page.getByRole("button", { name: "Split", exact: true }).click();
-    await page.waitForTimeout(160);
+    await waitForEditorReady(page, { mode: "split" });
     await focusMarkdownEditor(page);
     await page.keyboard.press("Shift+Home");
     await page.getByRole("button", { name: "Bold", exact: true }).click();
     await page.waitForSelector(".preview-surface strong", { timeout: 5_000 });
+    await page.waitForSelector(".workspace.split .preview-line-action-icon", { timeout: 5_000 });
+    await page.mouse.move(1, 1);
+    await waitForRenderFrame(page);
     const splitFormatting = await page.evaluate(() => {
       const toolbar = document.querySelector(".markdown-formatting-toolbar");
       const toolbarRow = document.querySelector(".markdown-formatting-row");
@@ -749,6 +975,13 @@ export async function run(ctx) {
       const editorGutter = document.querySelector(".workspace.split .cm-gutters");
       const editorContent = document.querySelector(".workspace.split .cm-content");
       const activeLine = document.querySelector(".workspace.split .cm-activeLine");
+      const activeCommentGutterLine = document.querySelector(".workspace.split .cm-gutters-after .cm-activeLineGutter");
+      const commentGutter = document.querySelector(".workspace.split .cm-commentGutter");
+      const previewDocument = document.querySelector(".workspace.split .preview-document.with-line-gutters");
+      const previewContent = document.querySelector(".workspace.split .preview-document-content");
+      const previewBookmarkGutter = document.querySelector(".workspace.split .preview-line-gutter.bookmark");
+      const previewCommentGutter = document.querySelector(".workspace.split .preview-line-gutter.comment");
+      const previewLineActions = Array.from(document.querySelectorAll(".workspace.split .preview-line-action"));
       const previewParagraph = document.querySelector(".workspace.split .preview-surface p");
       const toolbarRect = toolbar?.getBoundingClientRect();
       const toolbarRowRect = toolbarRow?.getBoundingClientRect();
@@ -758,9 +991,18 @@ export async function run(ctx) {
       const previewRect = preview?.getBoundingClientRect();
       const editorGutterRect = editorGutter?.getBoundingClientRect();
       const editorContentRect = editorContent?.getBoundingClientRect();
+      const activeLineRect = activeLine?.getBoundingClientRect();
+      const activeCommentGutterLineRect = activeCommentGutterLine?.getBoundingClientRect();
+      const commentGutterRect = commentGutter?.getBoundingClientRect();
+      const previewDocumentRect = previewDocument?.getBoundingClientRect();
+      const previewContentRect = previewContent?.getBoundingClientRect();
+      const previewBookmarkGutterRect = previewBookmarkGutter?.getBoundingClientRect();
+      const previewCommentGutterRect = previewCommentGutter?.getBoundingClientRect();
       const previewParagraphRect = previewParagraph?.getBoundingClientRect();
       const activeLineStyle = activeLine ? window.getComputedStyle(activeLine) : null;
+      const editorStyle = editor ? window.getComputedStyle(editor) : null;
       const previewStyle = preview ? window.getComputedStyle(preview) : null;
+      const editorScrollbarRail = Number.parseFloat(editorStyle?.paddingRight ?? "0");
       return {
         editorText: document.querySelector(".cm-content")?.textContent ?? "",
         previewStrongText: document.querySelector(".preview-surface strong")?.textContent ?? "",
@@ -781,12 +1023,40 @@ export async function run(ctx) {
           Boolean(editorGutterRect && editorContentRect) && editorContentRect.left >= editorGutterRect.right - 1,
         splitPreviewContentBreathesFromDivider:
           Boolean(previewRect && previewParagraphRect) &&
-          previewParagraphRect.left - previewRect.left >= 20 &&
-          previewParagraphRect.left - previewRect.left <= 32,
+          previewParagraphRect.left - previewRect.left >= 52 &&
+          previewParagraphRect.left - previewRect.left <= 66,
         splitPreviewHasInset:
           Boolean(previewStyle) && Number.parseFloat(previewStyle.paddingLeft) >= 20,
-        splitActiveLineStopsBeforeDivider:
-          Boolean(activeLineStyle) && activeLineStyle.backgroundImage.includes("linear-gradient"),
+        splitPreviewHasLineGutters:
+          Boolean(previewDocumentRect && previewContentRect && previewBookmarkGutterRect && previewCommentGutterRect) &&
+          Math.abs(previewBookmarkGutterRect.left - previewDocumentRect.left) <= 1 &&
+          Math.abs(previewBookmarkGutterRect.right - previewContentRect.left) <= 1 &&
+          Math.abs(previewCommentGutterRect.left - previewContentRect.right) <= 1 &&
+          Math.abs(previewCommentGutterRect.right - previewDocumentRect.right) <= 1,
+        splitPreviewInactiveGutterIconsHidden:
+          previewLineActions.length > 0 &&
+          previewLineActions.every((action) => {
+            const icon = action.querySelector(".preview-line-action-icon");
+            if (!(action instanceof HTMLElement) || !(icon instanceof SVGElement)) {
+              return false;
+            }
+
+            const isActive =
+              action.classList.contains("has-bookmark") ||
+              action.classList.contains("has-comment") ||
+              action.classList.contains("active");
+            return isActive || window.getComputedStyle(icon).opacity === "0";
+          }),
+        splitReadableColumnsBalanced:
+          Boolean(editorContentRect && previewParagraphRect) &&
+          Math.abs(editorContentRect.width - previewParagraphRect.width) <= 24,
+        splitActiveLineUsesSolidRow:
+          Boolean(activeLineStyle) && activeLineStyle.backgroundImage === "none",
+        splitActiveLineMeetsCommentGutter:
+          Boolean(activeLineRect && activeCommentGutterLineRect) &&
+          Math.abs(activeCommentGutterLineRect.left - activeLineRect.right) <= 1,
+        splitCommentGutterClosesEditorFrame:
+          Boolean(editorRect && commentGutterRect) && Math.abs(editorRect.right - editorScrollbarRail - commentGutterRect.right) <= 1,
       };
     });
     expect(splitFormatting.editorText === "**alpha**", "Split toolbar command should update editor Markdown source.");
@@ -798,14 +1068,145 @@ export async function run(ctx) {
     expect(splitFormatting.splitEditorContentFollowsGutter, "Split editor content should start after the line number gutter.");
     expect(splitFormatting.splitPreviewContentBreathesFromDivider, "Split preview content should breathe away from the divider.");
     expect(splitFormatting.splitPreviewHasInset, "Split preview should carry pane-specific left inset.");
-    expect(splitFormatting.splitActiveLineStopsBeforeDivider, "Split active line should visually stop before the divider.");
+    expect(splitFormatting.splitPreviewHasLineGutters, "Split preview should reserve bookmark and comment gutters around content.");
+    expect(splitFormatting.splitPreviewInactiveGutterIconsHidden, "Split preview gutter icons should stay hidden until active or hovered.");
+    expect(splitFormatting.splitReadableColumnsBalanced, "Split should balance the editor text column with preview content width.");
+    expect(splitFormatting.splitActiveLineUsesSolidRow, "Split active line should use one solid row background.");
+    expect(splitFormatting.splitActiveLineMeetsCommentGutter, "Split active line should meet the right comment gutter without a seam.");
+    expect(splitFormatting.splitCommentGutterClosesEditorFrame, "Split comment gutter should close the editor frame before the scrollbar rail.");
+
+    const splitResizeInitial = await page.evaluate(() => {
+      const handle = document.querySelector(".split-resize-handle");
+      const editor = document.querySelector(".workspace.split .editor-surface");
+      const preview = document.querySelector(".workspace.split .preview-surface");
+      const handleRect = handle?.getBoundingClientRect();
+      const editorRect = editor?.getBoundingClientRect();
+      const previewRect = preview?.getBoundingClientRect();
+      const handleStyle = handle instanceof HTMLElement ? window.getComputedStyle(handle) : null;
+      const handleLineStyle = handle instanceof HTMLElement ? window.getComputedStyle(handle, "::before") : null;
+      const editorStyle = editor instanceof HTMLElement ? window.getComputedStyle(editor) : null;
+      const previewStyle = preview instanceof HTMLElement ? window.getComputedStyle(preview) : null;
+
+      return {
+        handle: handleRect
+          ? {
+              x: handleRect.x,
+              y: handleRect.y,
+              width: handleRect.width,
+              height: handleRect.height,
+            }
+          : null,
+        editorWidth: editorRect?.width ?? 0,
+        previewWidth: previewRect?.width ?? 0,
+        cursor: handleStyle?.cursor ?? "",
+        lineOpacity: handleLineStyle?.opacity ?? "",
+        lineWidth: handleLineStyle?.width ?? "",
+        editorScrollbarGutter: editorStyle?.scrollbarGutter ?? "",
+        previewScrollbarGutter: previewStyle?.scrollbarGutter ?? "",
+        editorPaddingRight: Number.parseFloat(editorStyle?.paddingRight ?? "0"),
+        previewPaddingRight: Number.parseFloat(previewStyle?.paddingRight ?? "0"),
+      };
+    });
+    expect(splitResizeInitial.handle && splitResizeInitial.handle.width >= 24, "Split should expose a generous magnetic resize hit area.");
+    expect(splitResizeInitial.cursor === "col-resize", "Split resize handle should use the horizontal resize cursor.");
+    expect(splitResizeInitial.lineOpacity === "0", "Split divider line should be hidden by default.");
+    expect(splitResizeInitial.lineWidth === "1px", "Split divider should be a thin line when revealed.");
+    expect(
+      splitResizeInitial.editorScrollbarGutter === "stable" && splitResizeInitial.previewScrollbarGutter === "stable",
+      "Split editor and preview panes should reserve stable scrollbar rails.",
+    );
+    expect(
+      splitResizeInitial.editorPaddingRight >= 12 && splitResizeInitial.previewPaddingRight >= 12,
+      "Split editor and preview panes should reserve a dedicated scrollbar rail.",
+    );
+
+    await page.mouse.move(
+      splitResizeInitial.handle.x + splitResizeInitial.handle.width / 2,
+      splitResizeInitial.handle.y + splitResizeInitial.handle.height / 2,
+    );
+    await page.waitForFunction(() => {
+      const handle = document.querySelector(".split-resize-handle");
+      return handle instanceof HTMLElement && window.getComputedStyle(handle, "::before").opacity === "1";
+    });
+    const splitResizeHover = await page.evaluate(() => {
+      const handle = document.querySelector(".split-resize-handle");
+      return handle instanceof HTMLElement ? window.getComputedStyle(handle, "::before").opacity : "";
+    });
+    expect(splitResizeHover === "1", "Split divider line should reveal when the pointer nears the divider.");
+
+    await page.mouse.down();
+    await page.mouse.move(
+      splitResizeInitial.handle.x + splitResizeInitial.handle.width / 2 + 120,
+      splitResizeInitial.handle.y + splitResizeInitial.handle.height / 2,
+      { steps: 8 },
+    );
+    await page.mouse.up();
+    await waitForRenderFrame(page);
+    const splitResizeAfterDrag = await page.evaluate(() => {
+      const handle = document.querySelector(".split-resize-handle");
+      const editor = document.querySelector(".workspace.split .editor-surface");
+      const preview = document.querySelector(".workspace.split .preview-surface");
+      return {
+        editorWidth: editor?.getBoundingClientRect().width ?? 0,
+        previewWidth: preview?.getBoundingClientRect().width ?? 0,
+        valueNow: handle?.getAttribute("aria-valuenow") ?? "",
+      };
+    });
+    expect(
+      splitResizeAfterDrag.editorWidth > splitResizeInitial.editorWidth + 40 &&
+        splitResizeAfterDrag.previewWidth < splitResizeInitial.previewWidth - 40,
+      "Dragging the split divider should resize the editor and preview panes.",
+    );
+    expect(Number(splitResizeAfterDrag.valueNow) > 50, "Split divider aria value should reflect the adjusted editor width.");
+
+    const splitResizeAfterDragHandle = await page.evaluate(() => {
+      const handle = document.querySelector(".split-resize-handle");
+      const rect = handle?.getBoundingClientRect();
+      return rect
+        ? {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+          }
+        : null;
+    });
+    expect(Boolean(splitResizeAfterDragHandle), "Split resize handle should remain available after resizing.");
+    await page.mouse.move(
+      splitResizeAfterDragHandle.x + splitResizeAfterDragHandle.width / 2,
+      splitResizeAfterDragHandle.y + splitResizeAfterDragHandle.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      splitResizeInitial.handle.x + splitResizeInitial.handle.width / 2 + 4,
+      splitResizeInitial.handle.y + splitResizeInitial.handle.height / 2,
+      { steps: 8 },
+    );
+    await page.mouse.up();
+    await waitForRenderFrame(page);
+    const splitResizeAfterSnap = await page.evaluate(() => {
+      const handle = document.querySelector(".split-resize-handle");
+      const editor = document.querySelector(".workspace.split .editor-surface");
+      const preview = document.querySelector(".workspace.split .preview-surface");
+      return {
+        editorWidth: editor?.getBoundingClientRect().width ?? 0,
+        previewWidth: preview?.getBoundingClientRect().width ?? 0,
+        valueNow: handle?.getAttribute("aria-valuenow") ?? "",
+      };
+    });
+    expect(
+      Number(splitResizeAfterSnap.valueNow) === 50 &&
+        Math.abs(splitResizeAfterSnap.editorWidth - splitResizeInitial.editorWidth) <= 8 &&
+        Math.abs(splitResizeAfterSnap.previewWidth - splitResizeInitial.previewWidth) <= 8,
+      "Dragging near the center should magnetically snap split panes back to 50/50.",
+    );
 
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
     const longMarkdown = Array.from({ length: 80 }, (_, index) => `## Section ${index + 1}\n\nBody ${index + 1}`).join("\n\n");
     await page.keyboard.insertText(longMarkdown);
-    await page.waitForTimeout(240);
+    await waitForRenderFrame(page);
     const splitScrollSync = await page.evaluate(async () => {
       const editor = document.querySelector(".workspace.split .editor-surface");
       const preview = document.querySelector(".workspace.split .preview-surface");
@@ -885,10 +1286,10 @@ export async function run(ctx) {
 
     const splitAlignment = await readDocumentControlAlignment();
     await page.getByRole("button", { name: "Preview", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "preview" });
     const previewAlignment = await readDocumentControlAlignment();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     const writeAlignment = await readDocumentControlAlignment();
 
     for (const [name, alignment] of Object.entries({ splitAlignment, previewAlignment, writeAlignment })) {
@@ -935,22 +1336,228 @@ export async function run(ctx) {
     );
 
     await page.getByRole("button", { name: "Preview", exact: true }).click();
-    await page.locator('button[title="View options"]').click();
+    await page.locator('button[title="Editor controls"]').click();
     const previewToolbarState = await page.evaluate(() => ({
       formattingToolbarCount: document.querySelectorAll(".markdown-formatting-toolbar").length,
-      viewOptionsText: document.querySelector('.file-tool-popover[aria-label="View options"]')?.textContent ?? "",
+      editorControlsText: document.querySelector('.file-tool-popover[aria-label="Editor controls"]')?.textContent ?? "",
     }));
     expect(previewToolbarState.formattingToolbarCount === 0, "Preview mode should hide Markdown formatting tools.");
     expect(
-      !previewToolbarState.viewOptionsText.includes("Line wrapping"),
+      !previewToolbarState.editorControlsText.includes("Line Wrapping"),
       "Preview mode should hide edit-only line wrapping controls.",
     );
   });
 
   await withPage(browser, "/", async (page) => {
+    await page.getByTitle("New tab").click();
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText("a\n\nmuch longer selected line\nb");
+    const lineMetricsBeforeSelection = await page.evaluate(() =>
+      Array.from(document.querySelectorAll(".cm-line")).map((line) => {
+        const rect = line.getBoundingClientRect();
+        return {
+          top: Math.round(rect.top),
+          height: Math.round(rect.height),
+        };
+      }),
+    );
+    await page.keyboard.press("ControlOrMeta+A");
+    await waitForSelectionLayer(page, { minSegments: 4 });
+
+    const selectionSurfaceState = await page.evaluate(() => {
+      const activeLine = document.querySelector(".cm-activeLine");
+      const activeGutter = document.querySelector(".cm-activeLineGutter");
+      const selectionBackground = document.querySelector(".cm-selectionBackground");
+      const segments = Array.from(document.querySelectorAll(".cm-user-selection-segment"));
+      const textSegments = segments.filter((segment) => !segment.classList.contains("cm-user-selection-bridge"));
+      const lines = Array.from(document.querySelectorAll(".cm-line"));
+      const maxLineWidth = Math.max(...lines.map((line) => line.getBoundingClientRect().width));
+      const segmentRects = textSegments.map((segment) => {
+        const rect = segment.getBoundingClientRect();
+        const style = getComputedStyle(segment);
+        return {
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          background: style.backgroundColor,
+          className: segment.className,
+          topLeftRadius: style.borderTopLeftRadius,
+          bottomLeftRadius: style.borderBottomLeftRadius,
+          topRightRadius: style.borderTopRightRadius,
+          bottomRightRadius: style.borderBottomRightRadius,
+        };
+      });
+      const lineMetricsAfterSelection = Array.from(document.querySelectorAll(".cm-line")).map((line) => {
+        const rect = line.getBoundingClientRect();
+        return {
+          top: Math.round(rect.top),
+          height: Math.round(rect.height),
+        };
+      });
+      const exposedMiddleLineSegment = segmentRects.find((segment) => segment.width > 180);
+
+      return {
+        hasSelectionClass: Boolean(document.querySelector(".editor-surface.has-text-selection")),
+        activeLineBackground: activeLine instanceof HTMLElement ? getComputedStyle(activeLine).backgroundColor : "",
+        activeGutterBackground: activeGutter instanceof HTMLElement ? getComputedStyle(activeGutter).backgroundColor : "",
+        selectionBackground:
+          selectionBackground instanceof HTMLElement ? getComputedStyle(selectionBackground).backgroundColor : "",
+        statusText: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",
+        segmentCount: textSegments.length,
+        bridgeSegmentCount: segments.filter((segment) => segment.classList.contains("cm-user-selection-bridge")).length,
+        emptySegmentCount: textSegments.filter((segment) => segment.classList.contains("cm-user-selection-empty")).length,
+        segmentRects,
+        exposedMiddleLineSegment,
+        lineMetricsAfterSelection,
+        maxLineWidth: Math.round(maxLineWidth),
+      };
+    });
+    expect(
+      JSON.stringify(selectionSurfaceState.lineMetricsAfterSelection) === JSON.stringify(lineMetricsBeforeSelection),
+      "Text selection highlights should not change editor line positions or heights.",
+    );
+    expect(selectionSurfaceState.hasSelectionClass, "Editor surface should enter selected-text mode.");
+    expect(
+      selectionSurfaceState.activeLineBackground === "rgba(0, 0, 0, 0)" &&
+        selectionSurfaceState.activeGutterBackground === "rgba(0, 0, 0, 0)",
+      "Text selection should suppress active-line focus styling.",
+    );
+    expect(
+      !selectionSurfaceState.selectionBackground || selectionSurfaceState.selectionBackground === "rgba(0, 0, 0, 0)",
+      "Default full-line selection rectangles should not be visible.",
+    );
+    expect(selectionSurfaceState.segmentCount === 4, "Text selection should render one segment per selected line.");
+    expect(selectionSurfaceState.bridgeSegmentCount > 0, "Text selection should render bridge segments between connected rows.");
+    expect(
+      selectionSurfaceState.segmentRects.every(
+        (segment) =>
+          segment.background === "rgb(228, 217, 244)" &&
+          segment.width > 0 &&
+          segment.width < selectionSurfaceState.maxLineWidth,
+      ),
+      "Selection segments should wrap selected text with the Tabula purple selection color.",
+    );
+    expect(selectionSurfaceState.emptySegmentCount === 1, "Text selection should cover selected empty lines.");
+    expect(
+      selectionSurfaceState.segmentRects.some(
+        (segment) => segment.className.includes("selection-square-top-left") && segment.topLeftRadius === "0px",
+      ) &&
+        selectionSurfaceState.segmentRects.some(
+          (segment) => segment.className.includes("selection-square-bottom-left") && segment.bottomLeftRadius === "0px",
+        ),
+      "Consecutive selected lines should share adjacent edges instead of rendering as fully separate rounded islands.",
+    );
+    expect(
+      selectionSurfaceState.exposedMiddleLineSegment?.topRightRadius === "4px" &&
+        selectionSurfaceState.exposedMiddleLineSegment?.bottomRightRadius === "4px",
+      "A multi-line selection should keep exposed line ends rounded.",
+    );
+    expect(
+      selectionSurfaceState.statusText.includes("(4 lines,"),
+      "Status bar should include line count and character count for multi-line selections.",
+    );
+
+    await focusMarkdownEditor(page);
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("Backspace");
+    const longWrappedLine = Array.from({ length: 42 }, (_, index) => `wrapped-${index + 1}`).join(" ");
+    await page.keyboard.insertText(`top\n${longWrappedLine}\nbottom`);
+    const wrappedLineMetricsBeforeSelection = await page.evaluate(() =>
+      Array.from(document.querySelectorAll(".cm-line")).map((line) => {
+        const rect = line.getBoundingClientRect();
+        return {
+          top: Math.round(rect.top),
+          height: Math.round(rect.height),
+        };
+      }),
+    );
+    await page.keyboard.press("ControlOrMeta+A");
+    await waitForSelectionLayer(page, { minSegments: 3 });
+    const wrappedSelectionSurfaceState = await page.evaluate(() => {
+      const segments = Array.from(document.querySelectorAll(".cm-user-selection-segment"));
+      const textSegments = segments.filter((segment) => !segment.classList.contains("cm-user-selection-bridge"));
+      const bridgeSegments = segments.filter((segment) => segment.classList.contains("cm-user-selection-bridge"));
+      const lines = Array.from(document.querySelectorAll(".cm-line"));
+      const lineRects = lines.map((line) => {
+        const rect = line.getBoundingClientRect();
+        return {
+          top: Math.round(rect.top),
+          height: Math.round(rect.height),
+        };
+      });
+      const segmentRects = textSegments
+        .map((segment) => {
+          const rect = segment.getBoundingClientRect();
+          const style = getComputedStyle(segment);
+          return {
+            left: Math.round(rect.left),
+            top: Math.round(rect.top),
+            bottom: Math.round(rect.bottom),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+            className: segment.className,
+            topLeftRadius: style.borderTopLeftRadius,
+            bottomLeftRadius: style.borderBottomLeftRadius,
+          };
+        })
+        .sort((first, second) => first.top - second.top || first.left - second.left);
+      const visualRowCount = new Set(segmentRects.map((segment) => segment.top)).size;
+      const noTextSegmentVerticalOverlap = segmentRects.every((segment, index) => {
+        const nextSegment = segmentRects[index + 1];
+        if (!nextSegment || nextSegment.top === segment.top) {
+          return true;
+        }
+
+        return nextSegment.top >= segment.bottom - 1;
+      });
+      const connectedWrappedRows = segmentRects.some((segment, index) => {
+        const nextSegment = segmentRects[index + 1];
+        if (!nextSegment) {
+          return false;
+        }
+
+        return (
+          Math.abs(segment.left - nextSegment.left) <= 2 &&
+          nextSegment.top > segment.top &&
+          nextSegment.top - segment.top <= Math.max(segment.height, nextSegment.height) * 1.6 &&
+          segment.bottomLeftRadius === "0px" &&
+          nextSegment.topLeftRadius === "0px"
+        );
+      });
+
+      return {
+        logicalLineCount: lines.length,
+        visualRowCount,
+        bridgeSegmentCount: bridgeSegments.length,
+        segmentCount: segmentRects.length,
+        emptySegmentCount: textSegments.filter((segment) => segment.classList.contains("cm-user-selection-empty")).length,
+        wrappedLineIsTallerThanSingleRow: lineRects[1]?.height > (lineRects[0]?.height ?? 0) * 1.5,
+        noTextSegmentVerticalOverlap,
+        connectedWrappedRows,
+        lineMetricsAfterSelection: lineRects,
+      };
+    });
+    expect(
+      JSON.stringify(wrappedSelectionSurfaceState.lineMetricsAfterSelection) ===
+        JSON.stringify(wrappedLineMetricsBeforeSelection),
+      "Wrapped text selection highlights should not change editor line positions or heights.",
+    );
+    expect(wrappedSelectionSurfaceState.wrappedLineIsTallerThanSingleRow, "Smoke document should contain a wrapped logical line.");
+    expect(
+      wrappedSelectionSurfaceState.visualRowCount > wrappedSelectionSurfaceState.logicalLineCount,
+      "A wrapped logical line should render selection by visual rows.",
+    );
+    expect(wrappedSelectionSurfaceState.segmentCount >= wrappedSelectionSurfaceState.visualRowCount, "Every visual row should receive a selection segment.");
+    expect(wrappedSelectionSurfaceState.bridgeSegmentCount > 0, "Wrapped visual rows should receive bridge segments.");
+    expect(wrappedSelectionSurfaceState.noTextSegmentVerticalOverlap, "Wrapped text selection segments should not overlap each other.");
+    expect(wrappedSelectionSurfaceState.emptySegmentCount === 0, "Wrapped lines should not create fake empty-line connector segments.");
+    expect(wrappedSelectionSurfaceState.connectedWrappedRows, "Wrapped visual rows should share adjacent selection edges.");
+  });
+
+  await withPage(browser, "/", async (page) => {
     await openProjectMenu(page);
     await page.getByRole("button", { name: "Edit", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
 
     const readLeftPanelModeLayout = () => {
       const readRect = (selector) => {
@@ -966,6 +1573,17 @@ export async function run(ctx) {
           display: style.display,
         };
       };
+      const readContentRect = (selector) => {
+        const element = document.querySelector(selector);
+        if (!element) {
+          return null;
+        }
+        const rect = element.getBoundingClientRect();
+        return {
+          x: Math.round(rect.x),
+          width: Math.round(rect.width),
+        };
+      };
 
       return {
         workspaceClass: document.querySelector(".workspace")?.className ?? "",
@@ -975,6 +1593,8 @@ export async function run(ctx) {
           readRect(".workspace.preview .preview-surface"),
         editor: readRect(".workspace.split .editor-surface") ?? readRect(".workspace.edit .editor-surface"),
         preview: readRect(".workspace.split .preview-surface") ?? readRect(".workspace.preview .preview-surface"),
+        editorContent: readContentRect(".workspace.split .cm-content"),
+        previewContent: readContentRect(".workspace.split .preview-surface p"),
         rail: readRect(".editor-control-row"),
         status: readRect(".file-status-bar"),
       };
@@ -982,7 +1602,7 @@ export async function run(ctx) {
 
     const leftWriteLayout = await page.evaluate(readLeftPanelModeLayout);
     await page.getByRole("button", { name: "Split", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "split" });
     const leftSplitLayout = await page.evaluate(readLeftPanelModeLayout);
 
     for (const [name, layout] of Object.entries({ leftWriteLayout, leftSplitLayout })) {
@@ -1000,14 +1620,20 @@ export async function run(ctx) {
         leftSplitLayout.body.display === "grid" &&
         Math.abs(leftSplitLayout.body.x - leftWriteLayout.body.x) <= 1 &&
         Math.abs(leftSplitLayout.body.width - leftWriteLayout.body.width) <= 1,
-      "Opening only the left panel should not move or stack the document when switching Edit to Split.",
+      "Opening the workspace menu should not move or stack the document when switching Edit to Split.",
     );
     expect(
       leftSplitLayout.editor &&
         leftSplitLayout.preview &&
-        Math.abs(leftSplitLayout.editor.width - leftWriteLayout.body.width / 2) <= 1 &&
-        Math.abs(leftSplitLayout.preview.width - leftWriteLayout.body.width / 2) <= 1,
-      "Left-panel Split should divide the same document lane into equal editor and preview panes.",
+        leftSplitLayout.editor.width > leftSplitLayout.preview.width &&
+        Math.abs(leftSplitLayout.editor.width + leftSplitLayout.preview.width - leftWriteLayout.body.width) <= 1,
+      "Split should keep one document lane while giving the editor pane rail-aware width.",
+    );
+    expect(
+      leftSplitLayout.editorContent &&
+        leftSplitLayout.previewContent &&
+        Math.abs(leftSplitLayout.editorContent.width - leftSplitLayout.previewContent.width) <= 24,
+      "Split should balance the editable text column with the rendered preview content column.",
     );
   });
 
@@ -1016,7 +1642,7 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await page.getByTitle("New tab").click();
-      await page.waitForTimeout(160);
+      await waitForEditorReady(page, { mode: "edit" });
       const mobileToolbar = await page.evaluate(() => {
         const toolbar = document.querySelector(".markdown-formatting-toolbar");
         const row = document.querySelector(".markdown-formatting-row");
@@ -1066,10 +1692,10 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(["x", "---", "###", "=>", "===", "___"].join("\n"));
-    await page.waitForTimeout(160);
+    await waitForRenderFrame(page);
     const sourceTokenRendering = await page.evaluate(() => {
       const measureLineText = (line) => {
         const clone = line.cloneNode(true);
@@ -1146,7 +1772,7 @@ export async function run(ctx) {
       );
 
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await replaceEditorText("- item");
     await page.keyboard.press("Enter");
     await page.keyboard.insertText("next");
@@ -1187,7 +1813,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.type("Alpha target omega");
     for (let index = 0; index < 6; index += 1) {
@@ -1196,10 +1822,10 @@ export async function run(ctx) {
     for (let index = 0; index < 6; index += 1) {
       await page.keyboard.press("Shift+ArrowLeft");
     }
-    await page.waitForTimeout(80);
+    await waitForSelectionLayer(page, { minSegments: 1 });
 
     await page.getByRole("button", { name: "Italic", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForSelectionLayer(page, { minSegments: 1 });
     const selectionAfterToolbarFormat = await page.evaluate(() => ({
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
       selectedText: document.getSelection()?.toString() ?? "",
@@ -1222,10 +1848,10 @@ export async function run(ctx) {
     expect(selectionAfterToolbarFormat.editorFocused, "Toolbar formatting should return focus to the Markdown editor.");
 
     await page.locator(".selection-comment-button").click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     await page.locator(".right-comment-input").fill("Review target");
     await page.locator(".right-comment-form .right-comment-submit").click();
-    await page.waitForTimeout(160);
+    await waitForRenderFrame(page);
     const commentAfterCreate = await page.evaluate(() => ({
       markCount: document.querySelectorAll(".cm-comment-mark").length,
       activeMarkCount: document.querySelectorAll(".cm-comment-mark.active").length,
@@ -1244,7 +1870,7 @@ export async function run(ctx) {
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+A");
     await page.getByRole("button", { name: "Bold", exact: true }).click();
-    await page.waitForTimeout(160);
+    await waitForRenderFrame(page);
     const commentAfterOffsetShift = await page.evaluate(() => ({
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
       markCount: document.querySelectorAll(".cm-comment-mark").length,
@@ -1268,8 +1894,21 @@ export async function run(ctx) {
 
     await closeProjectContext(page);
     expect((await page.locator(".right-panel").count()) === 0, "The right panel should close before comment-mark click smoke.");
-    await page.locator(".cm-comment-mark").click();
-    await page.waitForTimeout(160);
+    const commentMarkPoint = await page.evaluate(() => {
+      const mark = document.querySelector(".cm-comment-mark");
+      if (!(mark instanceof HTMLElement)) {
+        return null;
+      }
+
+      const rect = mark.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
+    });
+    expect(Boolean(commentMarkPoint), "Editor comment mark should have a clickable point.");
+    await page.mouse.click(commentMarkPoint.x, commentMarkPoint.y);
+    await waitForRenderFrame(page);
     const commentMarkClickState = await page.evaluate(() => ({
       rightPanelOpen: Boolean(document.querySelector(".right-panel")),
       activeTab: document.querySelector(".right-panel-tab.active")?.getAttribute("aria-label") ?? "",
@@ -1299,7 +1938,7 @@ export async function run(ctx) {
     await closeProjectContext(page);
     expect((await page.locator(".right-panel").count()) === 0, "The right panel should close before preview comment-mark click smoke.");
     await page.locator(".preview-comment-mark").click();
-    await page.waitForTimeout(160);
+    await waitForRenderFrame(page);
     const previewMarkClickState = await page.evaluate(() => ({
       rightPanelOpen: Boolean(document.querySelector(".right-panel")),
       activeTab: document.querySelector(".right-panel-tab.active")?.getAttribute("aria-label") ?? "",
@@ -1314,7 +1953,7 @@ export async function run(ctx) {
     expect(previewMarkClickState.workspacePreview, "Clicking a preview comment mark should keep Preview mode.");
 
     await page.getByRole("button", { name: "Show quoted text", exact: true }).click();
-    await page.waitForTimeout(160);
+    await waitForRenderFrame(page);
     const quoteClickInPreviewState = await page.evaluate(() => ({
       workspacePreview: Boolean(document.querySelector(".workspace.preview")),
       activePreviewMarks: document.querySelectorAll(".preview-comment-mark.active").length,
@@ -1352,7 +1991,7 @@ export async function run(ctx) {
       };
     });
     expect(previewSelectionState?.selectedText === "omega", "Preview smoke should select rendered preview text.");
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     const previewSelectionStatus = await page.evaluate(() => ({
       cursorPosition: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",
       addSelectionCommentVisible: Boolean(document.querySelector(".selection-comment-button")),
@@ -1361,10 +2000,10 @@ export async function run(ctx) {
     expect(previewSelectionStatus.addSelectionCommentVisible, "Preview selection should expose Add comment.");
 
     await page.locator(".selection-comment-button").click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     await page.locator(".right-comment-input").fill("Preview note");
     await page.locator(".right-comment-form .right-comment-submit").click();
-    await page.waitForTimeout(180);
+    await waitForRenderFrame(page);
     const previewSelectionCommentState = await page.evaluate(() => ({
       workspacePreview: Boolean(document.querySelector(".workspace.preview")),
       previewMarkTexts: Array.from(document.querySelectorAll(".preview-comment-mark")).map((mark) => mark.textContent ?? ""),
@@ -1379,7 +2018,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.type("Alpha **target** omega.");
     await page.getByRole("button", { name: "Preview", exact: true }).click();
@@ -1417,12 +2056,12 @@ export async function run(ctx) {
       "Preview should allow selecting rendered text across Markdown formatting boundaries.",
     );
 
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     await page.locator(".selection-comment-button").click();
-    await page.waitForTimeout(120);
+    await waitForRenderFrame(page);
     await page.locator(".right-comment-input").fill("Review formatted preview");
     await page.locator(".right-comment-form .right-comment-submit").click();
-    await page.waitForTimeout(180);
+    await waitForRenderFrame(page);
 
     const formattedPreviewCommentState = await page.evaluate(() => ({
       previewMarkText: Array.from(document.querySelectorAll(".preview-comment-mark"))
@@ -1445,7 +2084,7 @@ export async function run(ctx) {
     );
 
     await page.getByRole("button", { name: "Edit", exact: true }).click();
-    await page.waitForTimeout(180);
+    await waitForEditorReady(page, { mode: "edit" });
     const formattedEditorCommentState = await page.evaluate(() => ({
       markCount: document.querySelectorAll(".cm-comment-mark").length,
       markText: document.querySelector(".cm-comment-mark")?.textContent ?? "",
