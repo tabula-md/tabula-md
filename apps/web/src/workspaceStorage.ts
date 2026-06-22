@@ -38,6 +38,9 @@ No dashboard first. No project ceremony. Open a file, write Markdown, share the 
 - Publishing creates a public read-only page with \`/llms.txt\` and \`/llms-full.txt\` included automatically.
 `;
 export const READING_WIDTHS: ReadingWidth[] = ["narrow", "standard", "wide"];
+export const DEFAULT_SPLIT_EDITOR_RATIO = 0.5;
+export const MIN_SPLIT_EDITOR_RATIO = 0.28;
+export const MAX_SPLIT_EDITOR_RATIO = 0.72;
 const FILE_VIEW_MODES: FileViewMode[] = ["edit", "split", "preview"];
 const CONNECTION_STATUSES: ConnectionStatus[] = ["idle", "connecting", "connected", "offline"];
 const RECOVERY_EVENT_TYPES: CollabRecoveryEvent["type"][] = ["reconnected", "snapshot-recovered", "invalid-message"];
@@ -57,6 +60,7 @@ export type MarkdownFile = {
   text: string;
   viewMode: FileViewMode;
   readingWidth: ReadingWidth;
+  splitRatio?: number;
   lineWrapping: boolean;
   lineNumbers: boolean;
   bookmarks?: FileBookmark[];
@@ -108,6 +112,7 @@ export type StoredMarkdownFile = {
   text: string;
   viewMode: FileViewMode;
   readingWidth: ReadingWidth;
+  splitRatio?: number;
   lineWrapping: boolean;
   lineNumbers: boolean;
   bookmarks?: FileBookmark[];
@@ -142,6 +147,11 @@ export const randomId = () => {
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+export const clampSplitEditorRatio = (value: unknown) => {
+  const numericValue = typeof value === "number" && Number.isFinite(value) ? value : DEFAULT_SPLIT_EDITOR_RATIO;
+  return Math.min(MAX_SPLIT_EDITOR_RATIO, Math.max(MIN_SPLIT_EDITOR_RATIO, numericValue));
 };
 
 export const getRoomIdFromLocation = () => {
@@ -230,7 +240,7 @@ const createReadmeFile = (): MarkdownFile => ({
   title: "README.md",
   text: README_MARKDOWN,
   viewMode: "preview",
-  readingWidth: "standard",
+  readingWidth: "wide",
   lineWrapping: true,
   lineNumbers: true,
   bookmarks: [],
@@ -243,7 +253,7 @@ export const createMarkdownFile = (index: number, overrides: Partial<MarkdownFil
     title: index === 1 ? "Untitled.md" : `Untitled ${index}.md`,
     text: STARTER_MARKDOWN,
     viewMode: "edit",
-    readingWidth: "standard",
+    readingWidth: "wide",
     lineWrapping: true,
     lineNumbers: true,
     bookmarks: [],
@@ -269,7 +279,7 @@ export const ensureDefaultFiles = (files: MarkdownFile[], options: { ensureUntit
         title: readmeTitle === "readme.md" ? "README.md" : readmeFile.title,
         text: shouldRefreshReadmeText ? README_MARKDOWN : readmeFile.text,
         viewMode: readmeFile.viewMode ?? "preview",
-        readingWidth: readmeFile.readingWidth ?? "standard",
+        readingWidth: readmeFile.readingWidth ?? "wide",
         lineWrapping: readmeFile.lineWrapping ?? true,
         lineNumbers: readmeFile.lineNumbers ?? true,
         bookmarks: readmeFile.bookmarks ?? [],
@@ -347,13 +357,15 @@ const normalizeMarkdownFile = (value: unknown, index: number): MarkdownFile | nu
   const roomId = getString(value.roomId);
   const shareUrl = getString(value.shareUrl);
   const connectionStatus = normalizeConnectionStatus(getConnectionStatus(value.connectionStatus), roomId);
+  const splitRatio = getFiniteNumber(value.splitRatio);
 
   return {
     id: getString(value.id) || randomId(),
     title: getString(value.title) || `Untitled ${index + 1}.md`,
     text,
     viewMode: getFileViewMode(value.viewMode) ?? "edit",
-    readingWidth: getReadingWidth(value.readingWidth) ?? "standard",
+    readingWidth: getReadingWidth(value.readingWidth) ?? "wide",
+    splitRatio: splitRatio === undefined ? undefined : clampSplitEditorRatio(splitRatio),
     lineWrapping: typeof value.lineWrapping === "boolean" ? value.lineWrapping : true,
     lineNumbers: typeof value.lineNumbers === "boolean" ? value.lineNumbers : true,
     bookmarks: normalizeFileBookmarks(value.bookmarks, text.length),
@@ -570,6 +582,7 @@ export const serializeFile = (file: MarkdownFile): StoredMarkdownFile => ({
   text: file.text,
   viewMode: file.viewMode,
   readingWidth: file.readingWidth,
+  splitRatio: typeof file.splitRatio === "number" ? clampSplitEditorRatio(file.splitRatio) : undefined,
   lineWrapping: file.lineWrapping,
   lineNumbers: file.lineNumbers,
   bookmarks: file.bookmarks ?? [],

@@ -1,23 +1,15 @@
 .top-chrome {
-  --top-chrome-left-padding: 12px;
-  --top-chrome-right-padding: 12px;
-
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
   z-index: 20;
-  padding: 8px var(--top-chrome-right-padding) 8px var(--top-chrome-left-padding);
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  min-width: 0;
+  height: 54px;
+  padding: 8px calc(12px + var(--document-safe-right, 0px)) 8px 12px;
   overflow: visible;
   background: #ffffff;
-}
-
-.main-panel.left-panel-open .top-chrome {
-  --top-chrome-left-padding: calc(var(--left-panel-width) + 12px);
-}
-
-.main-panel.right-panel-open .top-chrome {
-  --top-chrome-right-padding: calc(var(--right-panel-width) + 12px);
 }
 
 .top-left-zone {
@@ -25,11 +17,26 @@
   z-index: 3;
   display: flex;
   align-items: center;
-  flex: 1 1 auto;
   gap: 9px;
-  width: auto;
-  max-width: 100%;
+  grid-column: 1;
+  width: 30px;
+  height: 38px;
   min-width: 0;
+  overflow: visible;
+}
+
+.top-document-zone {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 12px;
+  grid-column: 2;
+  width: 100%;
+  height: 38px;
+  min-width: 0;
+  margin: 0;
   overflow: visible;
 }
 
@@ -41,6 +48,7 @@
   flex: 0 0 auto;
   justify-content: flex-end;
   gap: 8px;
+  height: 38px;
   min-width: max-content;
 }
 
@@ -645,6 +653,63 @@
   gap: 10px;
   justify-items: stretch;
   min-width: 0;
+}
+
+.publish-plus-gate {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.publish-plus-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.publish-plus-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  color: #763fc8;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.publish-plus-card strong {
+  color: #1f1f1f;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.publish-plus-card p {
+  margin: 0;
+  color: #666666;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.publish-plus-features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.publish-plus-features span {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: #555555;
+  background: #ffffff;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .publish-scope-control {

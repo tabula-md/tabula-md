@@ -15,32 +15,47 @@ export async function run(ctx) {
     openProjectContext,
     closeProjectContext,
     openProjectMenu,
+    waitForActiveTab,
+    waitForEditorReady,
+    waitForFileCount,
     waitForText,
     withPage,
   } = ctx;
 
   await withPage(browser, "/", async (page) => {
+    const initialTabCount = (await getTabs(page)).length;
     await page.getByTitle("New tab").click();
-    await page.getByTitle("New tab").click();
-    await page.waitForTimeout(120);
+    await waitForFileCount(page, initialTabCount + 1);
+    await waitForActiveTab(page, { startsWith: "Untitled" });
     let tabs = await getTabs(page);
-    expect(tabs.find((tab) => tab.active)?.title === "Untitled 3.md", "Second created blank file should be active before close.");
+    const firstCreatedTitle = tabs.find((tab) => tab.active)?.title ?? "";
+    expect(firstCreatedTitle.startsWith("Untitled"), "First created blank file should be active before creating another file.");
+
+    await page.getByTitle("New tab").click();
+    await waitForFileCount(page, initialTabCount + 2);
+    tabs = await getTabs(page);
+    const secondCreatedTitle = tabs.find((tab) => tab.active)?.title ?? "";
+    expect(
+      secondCreatedTitle.startsWith("Untitled") && secondCreatedTitle !== firstCreatedTitle,
+      "Second created blank file should be active before close.",
+    );
 
     await page.locator(".tab-item.active").hover();
     await page.locator(".tab-item.active .tab-action-button.close").click();
-    await page.waitForTimeout(120);
+    await waitForFileCount(page, initialTabCount + 1);
     tabs = await getTabs(page);
-    expect(tabs.length === 3, "Closing the active file should remove exactly one tab.");
-    expect(tabs.find((tab) => tab.active)?.title === "Untitled 2.md", "Closing the last active tab should activate the previous file.");
+    expect(tabs.length === initialTabCount + 1, "Closing the active file should remove exactly one tab.");
+    expect(tabs.find((tab) => tab.active)?.title === firstCreatedTitle, "Closing the last active tab should activate the previous file.");
 
     await page.locator('.tab-select-button[title^="README.md ·"]').click();
+    await waitForActiveTab(page, { exact: "README.md" });
     await page.locator(".tab-item.active").hover();
     await page.locator(".tab-item.active .tab-action-button.close").click();
-    await page.waitForTimeout(120);
+    await waitForFileCount(page, initialTabCount);
     tabs = await getTabs(page);
     expect(!tabs.some((tab) => tab.title === "README.md"), "README should be closable like a normal file.");
-    expect(tabs.length === 2, "Closing README should leave the remaining local files.");
-    expect(tabs.find((tab) => tab.active)?.title === "Untitled.md", "Closing active README should activate the remaining file.");
+    expect(tabs.length === initialTabCount, "Closing README should leave the remaining open files.");
+    expect(tabs.some((tab) => tab.active && tab.title !== "README.md"), "Closing active README should activate a remaining file.");
   });
 
   await withPage(browser, "/", async (page) => {
@@ -50,7 +65,8 @@ export async function run(ctx) {
       mimeType: "text/markdown",
       buffer: Buffer.from("# Imported README\n\nImported body."),
     });
-    await page.waitForTimeout(160);
+    await waitForActiveTab(page, { exact: "README 2.md" });
+    await waitForEditorReady(page, { mode: "edit" });
     const importedState = await page.evaluate(() => {
       const activeTab = document.querySelector(".tab-item.active");
       const editorText = document.querySelector(".cm-content")?.textContent ?? "";
@@ -88,11 +104,12 @@ export async function run(ctx) {
 
       return {
         left: readRect(".top-left-zone"),
+        documentZone: readRect(".top-document-zone"),
         right: readRect(".top-right-zone"),
         actionRow: readRect(".editor-control-row"),
         tabs: readRect(".tabbar"),
         panelToggles: readRect(".top-panel-toggle"),
-        leftSidebar: readRect(".left-sidebar"),
+        workspaceMenu: readRect(".workspace-menu-popover"),
         centerWorkbench: readRect(".center-workbench"),
         toolbar: readRect(".file-toolbar"),
         toolbarWrap: readRect(".file-toolbar-wrap"),
@@ -107,6 +124,7 @@ export async function run(ctx) {
 
     for (const [name, rect] of Object.entries({
       left: chrome.left,
+      documentZone: chrome.documentZone,
       right: chrome.right,
       actionRow: chrome.actionRow,
       tabs: chrome.tabs,
@@ -122,13 +140,21 @@ export async function run(ctx) {
 
     expect(chrome.workspace && chrome.workspace.height > 0, "Document workspace should be visible.");
     expect(chrome.status && chrome.status.height > 0, "Document status bar should be visible.");
-    expect(chrome.topLeftMenuCount === 0, "The old top-left project menu should not render.");
-    expect(!chrome.leftSidebar, "The left project panel should start closed so tabs and the document read as one workbench.");
+    expect(chrome.topLeftMenuCount === 1, "The top-left workspace menu button should render.");
+    expect(!chrome.workspaceMenu, "The workspace menu popover should start closed so the document reads as one workbench.");
     expect(chrome.bottomPanelCount === 0, "The bottom panel should not render until it has a clear product purpose.");
     expect(chrome.centerWorkbench.x <= 1, "The closed-panel workbench should start at the left edge.");
     expect(chrome.floatingStatusCount === 0, "Status controls should not render as floating canvas chips.");
-    expect(chrome.left.width > chrome.right.width * 2, "The top row should prioritize document tabs over actions.");
-    expect(chrome.tabs.width > chrome.toolbar.width * 3, "Tabs should get the primary width in the top row.");
+    expect(
+      chrome.documentZone.x >= chrome.left.x + chrome.left.width + 8,
+      "The top tab lane should start after the workspace menu.",
+    );
+    expect(
+      chrome.documentZone.x + chrome.documentZone.width <= chrome.centerWorkbench.x + chrome.centerWorkbench.width + 1,
+      "The top tab lane should stay inside the workbench chrome.",
+    );
+    expect(chrome.tabs.x >= chrome.documentZone.x - 1, "Tabs should start inside the top tab lane.");
+    expect(chrome.tabs.x + chrome.tabs.width <= chrome.right.x - 8, "Tabs should leave a stable slot for Share.");
     expect(chrome.actionRow.y > chrome.tabs.y + chrome.tabs.height, "Document actions should be in a row below tabs.");
     expect(chrome.toolbar.y >= chrome.actionRow.y, "Document tools should sit inside the document action row.");
     expect(chrome.right.y < chrome.actionRow.y, "Share should stay in the top tab row.");
@@ -166,47 +192,50 @@ export async function run(ctx) {
         actionRow: readRect(".editor-control-row"),
         status: readRect(".file-status-bar"),
         tabs: readRect(".tabbar"),
+        documentZone: readRect(".top-document-zone"),
+        right: readRect(".top-right-zone"),
         documentSurface:
           readRect(".workspace.preview .preview-surface") ??
           readRect(".workspace.edit .editor-surface") ??
           readRect(".workspace.split"),
         previewSurface: readRect(".preview-surface"),
         workspace: readRect(".workspace"),
+        menu: readRect(".workspace-menu-popover"),
+        rightPanel: readRect(".right-panel"),
       };
     };
 
     const closedLayout = await page.evaluate(readStableDocumentLayout);
     await openProjectMenu(page);
-    const leftPanelLayout = await page.evaluate(readStableDocumentLayout);
+    const menuLayout = await page.evaluate(readStableDocumentLayout);
     await openProjectContext(page);
-    const bothPanelsLayout = await page.evaluate(readStableDocumentLayout);
+    const rightPanelLayout = await page.evaluate(readStableDocumentLayout);
 
-    expect(
-      leftPanelLayout.tabs && closedLayout.tabs && leftPanelLayout.tabs.x > closedLayout.tabs.x + 240,
-      "Opening the left panel should move the top tabs into the available chrome area.",
-    );
-    expect(
-      bothPanelsLayout.tabs && closedLayout.tabs && bothPanelsLayout.tabs.width < closedLayout.tabs.width,
-      "Opening side panels should constrain the top tab chrome.",
-    );
+    expect(menuLayout.tabs && rightPanelLayout.tabs, "Top tabs should stay measurable while menu surfaces are open.");
 
     for (const [name, rect] of Object.entries({
-      leftPanelDocument: leftPanelLayout.documentSurface,
-      bothPanelsDocument: bothPanelsLayout.documentSurface,
-      leftPanelWorkspace: leftPanelLayout.workspace,
-      bothPanelsWorkspace: bothPanelsLayout.workspace,
-      leftPanelActionRow: leftPanelLayout.actionRow,
-      bothPanelsActionRow: bothPanelsLayout.actionRow,
-      leftPanelStatus: leftPanelLayout.status,
-      bothPanelsStatus: bothPanelsLayout.status,
+      menuDocument: menuLayout.documentSurface,
+      rightPanelDocument: rightPanelLayout.documentSurface,
+      menuWorkspace: menuLayout.workspace,
+      rightPanelWorkspace: rightPanelLayout.workspace,
+      menuActionRow: menuLayout.actionRow,
+      rightPanelActionRow: rightPanelLayout.actionRow,
+      menuStatus: menuLayout.status,
+      rightPanelStatus: rightPanelLayout.status,
+      menuDocumentZone: menuLayout.documentZone,
+      rightPanelDocumentZone: rightPanelLayout.documentZone,
+      menuRightChrome: menuLayout.right,
+      rightPanelRightChrome: rightPanelLayout.right,
+      menuPopover: menuLayout.menu,
+      rightPanel: rightPanelLayout.rightPanel,
     })) {
-      expect(rect, `${name} should be measurable while panels are open.`);
+      expect(rect, `${name} should be measurable while menu surfaces are open.`);
     }
 
     for (const [name, layout] of Object.entries({
       closedLayout,
-      leftPanelLayout,
-      bothPanelsLayout,
+      menuLayout,
+      rightPanelLayout,
     })) {
       expect(
         Math.abs(layout.actionRow.x - layout.documentSurface.x) <= 1 &&
@@ -218,45 +247,41 @@ export async function run(ctx) {
           Math.abs(layout.status.width - layout.documentSurface.width) <= 1,
         `${name} status bar should follow the document body width.`,
       );
+      expect(
+        layout.tabs.x >= layout.documentZone.x - 1 &&
+          layout.tabs.x + layout.tabs.width <= layout.right.x - 8,
+        `${name} top tab lane should behave as app chrome while document controls follow the body.`,
+      );
     }
 
     expect(
-      Math.abs(leftPanelLayout.documentSurface.x - closedLayout.documentSurface.x) <= 1 &&
-        Math.abs(leftPanelLayout.documentSurface.width - closedLayout.documentSurface.width) <= 1 &&
-        Math.abs(bothPanelsLayout.documentSurface.x - closedLayout.documentSurface.x) <= 1 &&
-        Math.abs(bothPanelsLayout.documentSurface.width - closedLayout.documentSurface.width) <= 1,
-      "Opening side panels should not move or resize the document body.",
+      Math.abs(menuLayout.documentSurface.x - closedLayout.documentSurface.x) <= 1 &&
+        Math.abs(menuLayout.documentSurface.width - closedLayout.documentSurface.width) <= 1,
+      "Opening the workspace menu should not shift or resize the document frame.",
     );
     expect(
-      Math.abs(leftPanelLayout.workspace.x - closedLayout.workspace.x) <= 1 &&
-        Math.abs(leftPanelLayout.workspace.width - closedLayout.workspace.width) <= 1 &&
-        Math.abs(bothPanelsLayout.workspace.x - closedLayout.workspace.x) <= 1 &&
-        Math.abs(bothPanelsLayout.workspace.width - closedLayout.workspace.width) <= 1,
-      "Opening side panels should keep the document workspace viewport stable.",
+      rightPanelLayout.documentSurface.x + rightPanelLayout.documentSurface.width <= rightPanelLayout.rightPanel.x - 20,
+      "Opening Project Context should keep the document frame clear of the right panel.",
     );
     expect(
-      Math.abs(leftPanelLayout.actionRow.x - closedLayout.actionRow.x) <= 1 &&
-        Math.abs(leftPanelLayout.actionRow.width - closedLayout.actionRow.width) <= 1 &&
-        Math.abs(bothPanelsLayout.actionRow.x - closedLayout.actionRow.x) <= 1 &&
-        Math.abs(bothPanelsLayout.actionRow.width - closedLayout.actionRow.width) <= 1,
-      "Opening side panels should not move or resize the single-document toolbar rail.",
+      rightPanelLayout.documentZone.x + rightPanelLayout.documentZone.width <= rightPanelLayout.rightPanel.x - 8,
+      "Opening Project Context should keep top chrome controls clear of the right panel.",
     );
     expect(
-      Math.abs(leftPanelLayout.status.x - closedLayout.status.x) <= 1 &&
-        Math.abs(leftPanelLayout.status.width - closedLayout.status.width) <= 1 &&
-        Math.abs(bothPanelsLayout.status.x - closedLayout.status.x) <= 1 &&
-        Math.abs(bothPanelsLayout.status.width - closedLayout.status.width) <= 1,
-      "Opening side panels should not move or resize the single-document status bar.",
+      Math.abs(menuLayout.workspace.x - closedLayout.workspace.x) <= 1 &&
+        Math.abs(menuLayout.workspace.width - closedLayout.workspace.width) <= 1 &&
+        Math.abs(rightPanelLayout.workspace.x - closedLayout.workspace.x) <= 1 &&
+        Math.abs(rightPanelLayout.workspace.width - closedLayout.workspace.width) <= 1,
+      "Opening menu surfaces should keep the document workspace viewport stable.",
     );
   });
 
   await withPage(browser, "/", async (page) => {
-    await openProjectMenu(page);
     await openProjectContext(page);
     await page.getByRole("button", { name: "Edit", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "edit" });
     await page.getByRole("button", { name: "Split", exact: true }).click();
-    await page.waitForTimeout(120);
+    await waitForEditorReady(page, { mode: "split" });
 
     const splitLayout = await page.evaluate(() => {
       const readRect = (selector) => {
@@ -288,10 +313,10 @@ export async function run(ctx) {
     });
 
     expect(
-      splitLayout.mainClass.includes("left-panel-open") && splitLayout.mainClass.includes("right-panel-open"),
-      "Split layout smoke should run with both side panels open.",
+      splitLayout.mainClass.includes("right-panel-open") && !splitLayout.mainClass.includes("left-panel-open"),
+      "Split layout smoke should run with Project Context open and no left side panel.",
     );
-    expect(splitLayout.workspace?.display === "block", "Split should stack when side panels narrow the document safe area.");
+    expect(splitLayout.workspace?.display === "block", "Split should stack when Project Context narrows the document safe area.");
     expect(splitLayout.workspace?.overflowY === "auto", "Stacked split should use the document workspace as the scroll root.");
     expect(
       splitLayout.editor && splitLayout.preview && splitLayout.preview.y > splitLayout.editor.y + splitLayout.editor.height - 2,
@@ -319,5 +344,5 @@ export async function run(ctx) {
       splitLayout.frontmatterRow && splitLayout.frontmatterRow.height <= 28,
       "Split frontmatter should not wrap into tall one-character columns.",
     );
-  });
+  }, { viewport: { width: 1100, height: 800 } });
 }

@@ -1,9 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
-  defaultKeymap,
   history,
-  historyKeymap,
-  indentWithTab,
   redo as redoEditor,
   redoDepth,
   undo as undoEditor,
@@ -13,81 +10,29 @@ import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { Compartment, EditorState, type Extension, Transaction } from "@codemirror/state";
 import {
-  Decoration,
   EditorView,
-  drawSelection,
   dropCursor,
-  gutter,
-  GutterMarker,
   highlightActiveLine,
   highlightActiveLineGutter,
-  keymap,
   lineNumbers as codeMirrorLineNumbers,
   placeholder,
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import type { LiveSelection } from "../collab";
-import { getMarkdownEnterEdit, getMarkdownIndentEdit, getMarkdownPasteEdit } from "../markdownEditing";
-import { applyMarkdownFormat, type MarkdownFormatCommand } from "../markdownFormatting";
+import { createCommentAnchorExtension } from "../editorExtensions/commentAnchors";
+import { createLineAnnotationGutterExtension, createLineCommentActionExtension } from "../editorExtensions/lineAnnotations";
+import { createMarkdownCommandExtensions, runMarkdownFormatCommand } from "../editorExtensions/markdownCommands";
+import { createSearchHighlightExtension } from "../editorExtensions/searchHighlight";
+import { createTextSelectionHighlightExtension } from "../editorExtensions/selectionLayer";
+import type { MarkdownBookmark, MarkdownEditorHandle, MarkdownEditorProps } from "../markdownEditorTypes";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
 
-export type MarkdownEditorHandle = {
-  canRedo: () => boolean;
-  canUndo: () => boolean;
-  format: (command: MarkdownFormatCommand) => boolean;
-  focus: () => void;
-  getScrollRatio: () => number;
-  getSelectionRange: () => { from: number; to: number };
-  getSelectedText: () => string;
-  scrollToRatio: (ratio: number) => void;
-  setSelectionRange: (from: number, to?: number) => void;
-  undo: () => boolean;
-  redo: () => boolean;
-};
-
-export type MarkdownCommentAnchor = {
-  id: string;
-  start: number;
-  end: number;
-};
-
-export type MarkdownBookmark = {
-  id: string;
-  position: number;
-  createdAt?: string;
-};
-
-export type MarkdownLineActionRequest = {
-  action: "bookmark" | "comment";
-  lineNumber: number;
-  start: number;
-  end: number;
-  hasBookmark: boolean;
-  hasComment: boolean;
-};
-
-export type MarkdownSelectionActionPosition = {
-  clientX: number;
-  clientY: number;
-};
-
-type MarkdownEditorProps = {
-  fileId: string;
-  value: string;
-  lineWrapping: boolean;
-  lineNumbers: boolean;
-  bookmarks?: MarkdownBookmark[];
-  commentAnchors?: MarkdownCommentAnchor[];
-  activeCommentId?: string | null;
-  onChange: (nextValue: string) => void;
-  onBookmarksChange?: (bookmarks: MarkdownBookmark[]) => void;
-  onHistoryStateChange?: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
-  onOpenLineActions?: (request: MarkdownLineActionRequest) => void;
-  onOpenComment?: (commentId: string) => void;
-  onSelectionChange?: (selection: LiveSelection) => void;
-  onSelectionActionPositionChange?: (position: MarkdownSelectionActionPosition | null) => void;
-  onScrollRatioChange?: (ratio: number) => void;
-};
+export type {
+  MarkdownBookmark,
+  MarkdownCommentAnchor,
+  MarkdownEditorHandle,
+  MarkdownLineActionRequest,
+  MarkdownSelectionActionPosition,
+} from "../markdownEditorTypes";
 
 const markdownEditorHighlightStyle = HighlightStyle.define([
   { tag: tags.heading, color: "#1f1f1f", fontWeight: "600", textDecoration: "none" },
@@ -118,427 +63,7 @@ const getEditorHistoryState = (state: EditorState) => ({
   canRedo: redoDepth(state) > 0,
 });
 
-const getMinimalTextChange = (currentText: string, nextText: string) => {
-  let from = 0;
-  while (from < currentText.length && from < nextText.length && currentText[from] === nextText[from]) {
-    from += 1;
-  }
-
-  let currentTo = currentText.length;
-  let nextTo = nextText.length;
-  while (currentTo > from && nextTo > from && currentText[currentTo - 1] === nextText[nextTo - 1]) {
-    currentTo -= 1;
-    nextTo -= 1;
-  }
-
-  return {
-    from,
-    to: currentTo,
-    insert: nextText.slice(from, nextTo),
-  };
-};
-
-const runMarkdownFormatCommand = (view: EditorView, command: MarkdownFormatCommand) => {
-  const currentText = view.state.doc.toString();
-  const selection = view.state.selection.main;
-  const result = applyMarkdownFormat(currentText, { from: selection.from, to: selection.to }, command);
-  const selectionRange = { anchor: result.selection.from, head: result.selection.to };
-
-  if (result.text === currentText) {
-    view.dispatch({
-      selection: selectionRange,
-      scrollIntoView: true,
-    });
-    view.focus();
-    return true;
-  }
-
-  const change = getMinimalTextChange(currentText, result.text);
-  view.dispatch({
-    changes: change,
-    selection: selectionRange,
-    scrollIntoView: true,
-  });
-  view.focus();
-  return true;
-};
-
-const createMarkdownFormatKeyCommand = (command: MarkdownFormatCommand) => (view: EditorView) =>
-  runMarkdownFormatCommand(view, command);
-
-const runMarkdownEnterCommand = (view: EditorView) => {
-  const selection = view.state.selection.main;
-  if (!selection.empty) {
-    return false;
-  }
-
-  const edit = getMarkdownEnterEdit(view.state.doc.toString(), selection.head);
-  if (!edit) {
-    return false;
-  }
-
-  view.dispatch({
-    changes: { from: edit.from, to: edit.to, insert: edit.insert },
-    selection: { anchor: edit.selection, head: edit.selection },
-    scrollIntoView: true,
-  });
-  return true;
-};
-
-const createMarkdownIndentCommand = (direction: "indent" | "outdent") => (view: EditorView) => {
-  const selection = view.state.selection.main;
-  const edit = getMarkdownIndentEdit(
-    view.state.doc.toString(),
-    { from: selection.from, to: selection.to },
-    direction,
-  );
-  if (!edit) {
-    return false;
-  }
-
-  view.dispatch({
-    changes: { from: edit.from, to: edit.to, insert: edit.insert },
-    selection: { anchor: edit.selection.from, head: edit.selection.to },
-    scrollIntoView: true,
-  });
-  return true;
-};
-
-const runMarkdownPasteCommand = (view: EditorView, event: ClipboardEvent) => {
-  const clipboardText = event.clipboardData?.getData("text/plain") ?? "";
-  if (!clipboardText) {
-    return false;
-  }
-
-  const selection = view.state.selection.main;
-  const edit = getMarkdownPasteEdit(
-    view.state.doc.toString(),
-    { from: selection.from, to: selection.to },
-    clipboardText,
-  );
-  if (!edit) {
-    return false;
-  }
-
-  event.preventDefault();
-  view.dispatch({
-    changes: { from: edit.from, to: edit.to, insert: edit.insert },
-    selection: { anchor: edit.selection.from, head: edit.selection.to },
-    scrollIntoView: true,
-  });
-  return true;
-};
-
-const createCommentAnchorExtension = (
-  commentAnchors: MarkdownCommentAnchor[] = [],
-  activeCommentId?: string | null,
-  onOpenComment?: (commentId: string) => void,
-): Extension => [
-  EditorView.decorations.of((view) => {
-    const docLength = view.state.doc.length;
-    const ranges = commentAnchors
-      .map((anchor) => ({
-        ...anchor,
-        start: Math.max(0, Math.min(anchor.start, docLength)),
-        end: Math.max(0, Math.min(anchor.end, docLength)),
-      }))
-      .filter((anchor) => anchor.end > anchor.start)
-      .sort((a, b) => a.start - b.start || a.end - b.end)
-      .map((anchor) =>
-        Decoration.mark({
-          class: anchor.id === activeCommentId ? "cm-comment-mark active" : "cm-comment-mark",
-          attributes: {
-            "data-comment-id": anchor.id,
-            title: anchor.id === activeCommentId ? "Active comment" : "Open comment",
-          },
-        }).range(anchor.start, anchor.end),
-      );
-
-    return Decoration.set(ranges, true);
-  }),
-  EditorView.domEventHandlers({
-    click(event) {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) {
-        return false;
-      }
-
-      const commentMark = target.closest<HTMLElement>(".cm-comment-mark");
-      const commentId = commentMark?.dataset.commentId;
-      if (!commentId || !onOpenComment) {
-        return false;
-      }
-
-      event.preventDefault();
-      onOpenComment(commentId);
-      return true;
-    },
-  }),
-];
-
-type LineAnnotationState = {
-  hasBookmark: boolean;
-};
-
-type LineCommentActionState = {
-  lineNumber: number;
-  start: number;
-  end: number;
-  hasComment: boolean;
-};
-
-type EditorLineActionIcon = "bookmark" | "message-square";
-
-const LUCIDE_ICON_PATHS: Record<EditorLineActionIcon, string[]> = {
-  bookmark: ["m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"],
-  "message-square": ["M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"],
-};
-
-const createLucideSvgIcon = (icon: EditorLineActionIcon) => {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("class", "cm-annotation-icon");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("width", "14");
-  svg.setAttribute("height", "14");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  svg.setAttribute("aria-hidden", "true");
-
-  LUCIDE_ICON_PATHS[icon].forEach((pathData) => {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", pathData);
-    svg.append(path);
-  });
-
-  return svg;
-};
-
-class LineAnnotationGutterMarker extends GutterMarker {
-  constructor(private readonly annotationState: LineAnnotationState) {
-    super();
-  }
-
-  eq(other: GutterMarker) {
-    return (
-      other instanceof LineAnnotationGutterMarker &&
-      other.annotationState.hasBookmark === this.annotationState.hasBookmark
-    );
-  }
-
-  toDOM() {
-    const marker = document.createElement("span");
-    marker.className = [
-      "cm-annotation-marker",
-      this.annotationState.hasBookmark ? "has-bookmark" : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    const bookmarkAction = document.createElement("span");
-    bookmarkAction.className = "cm-annotation-action bookmark";
-    bookmarkAction.dataset.lineAction = "bookmark";
-    bookmarkAction.role = "button";
-    bookmarkAction.ariaLabel = this.annotationState.hasBookmark ? "Remove line bookmark" : "Bookmark line";
-    bookmarkAction.title = this.annotationState.hasBookmark ? "Remove bookmark" : "Bookmark line";
-    bookmarkAction.append(createLucideSvgIcon("bookmark"));
-
-    marker.append(bookmarkAction);
-    return marker;
-  }
-}
-
-const lineAnnotationMarkers = {
-  empty: new LineAnnotationGutterMarker({ hasBookmark: false }),
-  bookmark: new LineAnnotationGutterMarker({ hasBookmark: true }),
-};
-
 const clampPosition = (position: number, docLength: number) => Math.max(0, Math.min(position, docLength));
-
-const getBookmarkLineNumbers = (view: EditorView, bookmarks: MarkdownBookmark[]) => {
-  const docLength = view.state.doc.length;
-  return new Set(
-    bookmarks.map((bookmark) => view.state.doc.lineAt(clampPosition(bookmark.position, docLength)).number),
-  );
-};
-
-const getCommentLineNumbers = (view: EditorView, commentAnchors: MarkdownCommentAnchor[]) => {
-  const docLength = view.state.doc.length;
-  const lineNumbers = new Set<number>();
-
-  commentAnchors.forEach((anchor) => {
-    const start = clampPosition(anchor.start, docLength);
-    const end = clampPosition(anchor.end, docLength);
-    if (end <= start) {
-      return;
-    }
-
-    const startLine = view.state.doc.lineAt(start).number;
-    const endLine = view.state.doc.lineAt(Math.max(start, end - 1)).number;
-    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
-      lineNumbers.add(lineNumber);
-    }
-  });
-
-  return lineNumbers;
-};
-
-const getLineAnnotationKind = (lineNumber: number, bookmarkLineNumbers: Set<number>): keyof typeof lineAnnotationMarkers =>
-  bookmarkLineNumbers.has(lineNumber) ? "bookmark" : "empty";
-
-const createLineAnnotationGutterExtension = (
-  bookmarks: MarkdownBookmark[] = [],
-  onOpenLineActions?: (request: MarkdownLineActionRequest) => void,
-): Extension =>
-  gutter({
-    class: "cm-annotationGutter",
-    renderEmptyElements: true,
-    lineMarker(view, line) {
-      const lineNumber = view.state.doc.lineAt(line.from).number;
-      const bookmarkLineNumbers = getBookmarkLineNumbers(view, bookmarks);
-      return lineAnnotationMarkers[getLineAnnotationKind(lineNumber, bookmarkLineNumbers)];
-    },
-    lineMarkerChange(update) {
-      return update.docChanged || update.viewportChanged || update.selectionSet;
-    },
-    initialSpacer: () => lineAnnotationMarkers.empty,
-    domEventHandlers: {
-      click(view, line, event) {
-        if (!onOpenLineActions) {
-          return false;
-        }
-
-        const target = event.target;
-        if (!(target instanceof Element)) {
-          return false;
-        }
-
-        const actionElement = target.closest<HTMLElement>("[data-line-action]");
-        const action = actionElement?.dataset.lineAction;
-        if (action !== "bookmark") {
-          return false;
-        }
-
-        const docLine = view.state.doc.lineAt(line.from);
-        const bookmarkLineNumbers = getBookmarkLineNumbers(view, bookmarks);
-        event.preventDefault();
-        onOpenLineActions({
-          action,
-          lineNumber: docLine.number,
-          start: docLine.from,
-          end: docLine.to,
-          hasBookmark: bookmarkLineNumbers.has(docLine.number),
-          hasComment: false,
-        });
-        return true;
-      },
-    },
-  });
-
-class LineCommentGutterMarker extends GutterMarker {
-  constructor(private readonly actionState: LineCommentActionState) {
-    super();
-  }
-
-  eq(other: GutterMarker) {
-    return (
-      other instanceof LineCommentGutterMarker &&
-      other.actionState.lineNumber === this.actionState.lineNumber &&
-      other.actionState.start === this.actionState.start &&
-      other.actionState.end === this.actionState.end &&
-      other.actionState.hasComment === this.actionState.hasComment
-    );
-  }
-
-  toDOM() {
-    const marker = document.createElement("span");
-    marker.className = [
-      "cm-line-comment-marker",
-      this.actionState.hasComment ? "has-comment" : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    const action = document.createElement("span");
-    action.className = "cm-annotation-action cm-line-comment-action comment";
-    action.dataset.lineAction = "comment";
-    action.dataset.lineNumber = String(this.actionState.lineNumber);
-    action.dataset.lineStart = String(this.actionState.start);
-    action.dataset.lineEnd = String(this.actionState.end);
-    action.role = "button";
-    action.ariaLabel = this.actionState.hasComment ? "Open line comments" : "Comment on line";
-    action.title = this.actionState.hasComment ? "Open comments" : "Comment on line";
-    action.append(createLucideSvgIcon("message-square"));
-
-    marker.append(action);
-    return marker;
-  }
-}
-
-const emptyLineCommentMarker = new LineCommentGutterMarker({
-  lineNumber: 0,
-  start: 0,
-  end: 0,
-  hasComment: false,
-});
-
-const createLineCommentActionExtension = (
-  bookmarks: MarkdownBookmark[] = [],
-  commentAnchors: MarkdownCommentAnchor[] = [],
-  onOpenLineActions?: (request: MarkdownLineActionRequest) => void,
-): Extension =>
-  gutter({
-    class: "cm-commentGutter",
-    renderEmptyElements: true,
-    side: "after",
-    lineMarker(view, line) {
-      const docLine = view.state.doc.lineAt(line.from);
-      const commentLineNumbers = getCommentLineNumbers(view, commentAnchors);
-      return new LineCommentGutterMarker({
-        lineNumber: docLine.number,
-        start: docLine.from,
-        end: docLine.to,
-        hasComment: commentLineNumbers.has(docLine.number),
-      });
-    },
-    lineMarkerChange(update) {
-      return update.docChanged || update.viewportChanged || update.selectionSet;
-    },
-    initialSpacer: () => emptyLineCommentMarker,
-    domEventHandlers: {
-      click(view, line, event) {
-        if (!onOpenLineActions) {
-          return false;
-        }
-
-        const target = event.target;
-        if (!(target instanceof Element)) {
-          return false;
-        }
-
-        const actionElement = target.closest<HTMLElement>(".cm-line-comment-action[data-line-action='comment']");
-        if (!actionElement) {
-          return false;
-        }
-
-        const docLine = view.state.doc.lineAt(line.from);
-        const bookmarkLineNumbers = getBookmarkLineNumbers(view, bookmarks);
-        const commentLineNumbers = getCommentLineNumbers(view, commentAnchors);
-        event.preventDefault();
-        onOpenLineActions({
-          action: "comment",
-          lineNumber: docLine.number,
-          start: docLine.from,
-          end: docLine.to,
-          hasBookmark: bookmarkLineNumbers.has(docLine.number),
-          hasComment: commentLineNumbers.has(docLine.number),
-        });
-        return true;
-      },
-    },
-  });
 
 export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
   (
@@ -550,6 +75,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       bookmarks = [],
       commentAnchors = [],
       activeCommentId,
+      searchMatches = [],
+      activeSearchMatchIndex = -1,
       onChange,
       onBookmarksChange,
       onHistoryStateChange,
@@ -577,6 +104,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const lineCommentActionCompartmentRef = useRef(new Compartment());
     const lineNumbersCompartmentRef = useRef(new Compartment());
     const commentAnchorCompartmentRef = useRef(new Compartment());
+    const searchHighlightCompartmentRef = useRef(new Compartment());
     const stateByFileIdRef = useRef(new Map<string, EditorState>());
     const lastHistoryStateRef = useRef({ canUndo: false, canRedo: false });
 
@@ -733,6 +261,20 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         });
         view.focus();
       },
+      revealRange: (from: number, to = from) => {
+        const view = viewRef.current;
+        if (!view) {
+          return;
+        }
+
+        const docLength = view.state.doc.length;
+        const selectionFrom = Math.max(0, Math.min(from, docLength));
+        const selectionTo = Math.max(0, Math.min(to, docLength));
+        view.dispatch({
+          selection: { anchor: selectionFrom, head: selectionTo },
+          scrollIntoView: true,
+        });
+      },
       undo: () => (viewRef.current ? undoEditor(viewRef.current) : false),
       redo: () => (viewRef.current ? redoEditor(viewRef.current) : false),
     }));
@@ -765,28 +307,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           onChangeRef.current(update.state.doc.toString());
         }
       });
-      const editorKeymap = keymap.of([
-        { key: "Enter", run: runMarkdownEnterCommand },
-        { key: "Tab", run: createMarkdownIndentCommand("indent") },
-        { key: "Shift-Tab", run: createMarkdownIndentCommand("outdent") },
-        indentWithTab,
-        { key: "Mod-b", run: createMarkdownFormatKeyCommand("bold") },
-        { key: "Mod-i", run: createMarkdownFormatKeyCommand("italic") },
-        { key: "Mod-k", run: createMarkdownFormatKeyCommand("link") },
-        { key: "Mod-Shift-7", run: createMarkdownFormatKeyCommand("numbered-list") },
-        { key: "Mod-Shift-8", run: createMarkdownFormatKeyCommand("bullet-list") },
-        { key: "Mod-Shift-9", run: createMarkdownFormatKeyCommand("quote") },
-        ...defaultKeymap,
-        ...historyKeymap,
-      ]);
-      const pasteExtension = EditorView.domEventHandlers({
-        paste(event, view) {
-          return runMarkdownPasteCommand(view, event);
-        },
-      });
       const extensions: Extension[] = [
         history(),
-        drawSelection(),
         dropCursor(),
         highlightActiveLine(),
         highlightActiveLineGutter(),
@@ -806,8 +328,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         commentAnchorCompartmentRef.current.of(
           createCommentAnchorExtension(commentAnchors, activeCommentId, (commentId) => onOpenCommentRef.current?.(commentId)),
         ),
-        pasteExtension,
-        editorKeymap,
+        createTextSelectionHighlightExtension(),
+        searchHighlightCompartmentRef.current.of(createSearchHighlightExtension(searchMatches, activeSearchMatchIndex)),
+        ...createMarkdownCommandExtensions(),
         updateExtension,
       ];
       const cachedState = stateByFileIdRef.current.get(fileId);
@@ -881,6 +404,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         ),
       });
     }, [activeCommentId, commentAnchors]);
+
+    useEffect(() => {
+      viewRef.current?.dispatch({
+        effects: searchHighlightCompartmentRef.current.reconfigure(
+          createSearchHighlightExtension(searchMatches, activeSearchMatchIndex),
+        ),
+      });
+    }, [activeSearchMatchIndex, searchMatches]);
 
     useEffect(() => {
       viewRef.current?.dispatch({

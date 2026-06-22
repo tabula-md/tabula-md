@@ -31,10 +31,6 @@
   box-shadow: none;
 }
 
-.main-panel.left-panel-open .right-panel {
-  grid-column: auto;
-}
-
 .right-panel-header {
   display: flex;
   align-items: center;

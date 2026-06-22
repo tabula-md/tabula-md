@@ -12,6 +12,20 @@
   line-height: 1.72;
 }
 
+.preview-document {
+  position: relative;
+  min-height: 100%;
+}
+
+.preview-document.with-line-gutters {
+  padding-left: var(--preview-bookmark-rail);
+  padding-right: var(--preview-comment-rail);
+}
+
+.preview-document-content {
+  min-width: 0;
+}
+
 .frontmatter-view {
   display: grid;
   gap: 6px;
@@ -46,8 +60,79 @@
   font-weight: 400;
 }
 
-.preview-surface > *:first-child {
+.preview-surface > *:first-child,
+.preview-document-content > *:first-child {
   margin-top: 0;
+}
+
+.preview-line-gutter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--preview-bookmark-rail);
+  pointer-events: none;
+}
+
+.preview-line-gutter.bookmark {
+  left: 0;
+}
+
+.preview-line-gutter.comment {
+  right: 0;
+}
+
+.preview-line-action {
+  --annotation-active-color: #763fc8;
+
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 20px;
+  padding: 0;
+  color: #b7b7ba;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.preview-line-action::before {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  content: "";
+}
+
+.preview-line-action:hover::before,
+.preview-line-action:focus-visible::before {
+  background: rgba(0, 0, 0, 0.055);
+}
+
+.preview-line-action-icon {
+  position: relative;
+  z-index: 1;
+  display: block;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.preview-line-action:hover .preview-line-action-icon,
+.preview-line-action:focus-visible .preview-line-action-icon {
+  opacity: 0.72;
+}
+
+.preview-line-action.has-bookmark,
+.preview-line-action.has-comment,
+.preview-line-action.active {
+  color: var(--annotation-active-color);
+}
+
+.preview-line-action.has-bookmark .preview-line-action-icon,
+.preview-line-action.has-comment .preview-line-action-icon,
+.preview-line-action.active .preview-line-action-icon {
+  opacity: 1;
 }
 
 .preview-surface h1,

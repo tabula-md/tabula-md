@@ -10,6 +10,7 @@ type StatusBarProps = {
   commentCount: number;
   cursorPositionLabel: string;
   selectedCharacterCount: number;
+  selectedLineCount: number;
   onUndo: () => void;
   onRedo: () => void;
   onOpenComments: () => void;
@@ -25,6 +26,7 @@ export function StatusBar({
   commentCount,
   cursorPositionLabel,
   selectedCharacterCount,
+  selectedLineCount,
   onUndo,
   onRedo,
   onOpenComments,
@@ -33,7 +35,9 @@ export function StatusBar({
   const saveLabel = isLive ? statusLabel : "Saved locally";
   const cursorLabel =
     selectedCharacterCount > 0
-      ? `${cursorPositionLabel} (${selectedCharacterCount} ${selectedCharacterCount === 1 ? "character" : "characters"})`
+      ? `${cursorPositionLabel} (${selectedLineCount > 1 ? `${selectedLineCount} lines, ` : ""}${selectedCharacterCount} ${
+          selectedCharacterCount === 1 ? "character" : "characters"
+        })`
       : cursorPositionLabel;
 
   return (
