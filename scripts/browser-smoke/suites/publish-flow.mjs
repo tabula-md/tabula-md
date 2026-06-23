@@ -3,7 +3,7 @@ export const description = "Server-backed published pages, included AI-readable 
 export const requiresPublishService = true;
 
 export async function run(ctx) {
-  const { baseUrl, browser, expect, focusMarkdownEditor, publishUrl, waitForText, withPage } = ctx;
+  const { baseUrl, browser, expect, focusMarkdownEditor, publishUrl, waitForShareDialogState, waitForText, withPage } = ctx;
   const getPublishedFileDisplayTitle = (title) => title.replace(/\.(?:md|markdown)$/i, "");
 
   expect(Boolean(publishUrl), "Publish smoke requires a configured publish service URL.");
@@ -37,6 +37,7 @@ Secondary published file marker.`);
 
     await page.locator(".share-trigger").click();
     await page.getByRole("tab", { name: "Publish" }).click();
+    await waitForShareDialogState(page, { panel: "Publish" });
     expect((await page.getByRole("radio", { name: /Current page/ }).count()) === 1, "Publish should offer current-page scope.");
     expect((await page.getByRole("radio", { name: /Project/ }).count()) === 1, "Publish should offer project scope.");
     expect(
@@ -161,6 +162,7 @@ Secondary published file marker.`);
 
     await page.locator(".share-trigger").click();
     await page.getByRole("tab", { name: "Publish" }).click();
+    await waitForShareDialogState(page, { panel: "Publish" });
     await page.getByRole("button", { name: "Update project" }).click();
     await waitForText(page.locator(".app-toast"), "Published page updated.");
 
@@ -206,6 +208,7 @@ Secondary published file marker.`);
     await page.keyboard.insertText("# Failed Update\n\nThis edit should remain local after a failed published-page update.");
     await page.locator(".share-trigger").click();
     await page.getByRole("tab", { name: "Publish" }).click();
+    await waitForShareDialogState(page, { panel: "Publish" });
     await page.getByRole("button", { name: "Update project" }).click();
     await waitForText(page.locator(".app-toast"), "Publish failed: Simulated failure");
     expect(failedUpdateRequests === 1, "Failed published-page update smoke should intercept one PUT request.");

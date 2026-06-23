@@ -25,7 +25,7 @@
     "test:hooks": "node scripts/test-codex-hooks.mjs",
     "test:browser": "node scripts/browser-smoke.mjs",
     "test:browser:workspace": "npm run test:browser -- --suite=workspace",
-    "test:browser:editor": "npm run test:browser -- --suite=editor-preview",
+    "test:browser:editor": "npm run test:browser -- --suite=editor-preview,editor-search,editor-selection-comments,split-layout",
     "test:browser:layout": "npm run test:browser -- --suite=layout",
     "test:browser:panels": "npm run test:browser -- --suite=panels",
     "test:browser:collab": "npm run test:browser -- --suite=collaboration",
