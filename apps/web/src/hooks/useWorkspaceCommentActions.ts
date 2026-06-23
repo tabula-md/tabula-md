@@ -11,11 +11,18 @@ import type {
   MarkdownPreviewLineAnnotation,
 } from "../components/MarkdownPreview";
 import type { AppToastState } from "./useAppToast";
+import { useAnimationFrameTask } from "./useAnimationFrameTask";
 import type { FileComment, FileBookmark, FileViewMode, MarkdownFile } from "../workspaceStorage";
 
 type SetWorkspaceViewMode = (
   nextViewMode: FileViewMode,
   options?: { preserveScroll?: boolean; focusEditor?: boolean },
+) => void;
+
+type QueueEditorTextRange = (
+  start: number,
+  end?: number,
+  options?: { preventScroll?: boolean },
 ) => void;
 
 type ShowToast = (
@@ -60,6 +67,7 @@ type UseWorkspaceCommentActionsArgs = {
   previewBody: string;
   previewBodyStartOffset: number;
   previewSurfaceRef: RefObject<HTMLElement | null>;
+  queueEditorTextRange: QueueEditorTextRange;
   selectFile: (fileId: string) => void;
   selectedCharacterCount: number;
   setActiveFileViewMode: SetWorkspaceViewMode;
@@ -246,6 +254,7 @@ export function useWorkspaceCommentActions({
   previewBody,
   previewBodyStartOffset,
   previewSurfaceRef,
+  queueEditorTextRange,
   selectFile,
   selectedCharacterCount,
   setActiveFileBookmarks,
@@ -286,6 +295,7 @@ export function useWorkspaceCommentActions({
       }),
     [activeBookmarks, activeCommentAnchors, focusedCommentId, previewBody, previewBodyStartOffset],
   );
+  const queueAnimationFrameTask = useAnimationFrameTask();
 
   const openCommentsPanel = useCallback((commentId?: string) => {
     setRightPanelOpen(true);
@@ -295,13 +305,20 @@ export function useWorkspaceCommentActions({
 
     if (commentId) {
       setFocusedCommentId(commentId);
-      window.setTimeout(() => {
+      queueAnimationFrameTask(() => {
         document
           .querySelector<HTMLElement>(`.right-comment-card[data-comment-id="${commentId}"]`)
           ?.scrollIntoView({ block: "nearest" });
-      }, 0);
+      });
     }
-  }, [setCenterPopover, setFocusedCommentId, setRightPanelOpen, setRightPanelView, setTopPopover]);
+  }, [
+    queueAnimationFrameTask,
+    setCenterPopover,
+    setFocusedCommentId,
+    setRightPanelOpen,
+    setRightPanelView,
+    setTopPopover,
+  ]);
 
   const addFileComment = useCallback(() => {
     if (!activeFile) {
@@ -340,19 +357,25 @@ export function useWorkspaceCommentActions({
     }
 
     if (targetFile.viewMode === "preview") {
-      window.setTimeout(() => {
+      queueAnimationFrameTask(() => {
         previewSurfaceRef.current
           ?.querySelector<HTMLElement>(`.preview-comment-mark[data-comment-id="${comment.id}"]`)
           ?.scrollIntoView({ block: "center", behavior: "smooth" });
-      }, 0);
+      });
       return;
     }
 
-    window.setTimeout(() => {
-      editorRef.current?.focus();
-      editorRef.current?.setSelectionRange(commentRange.start, commentRange.end);
-    }, 0);
-  }, [activeFile?.id, editorRef, files, openCommentsPanel, previewSurfaceRef, selectFile, showToast]);
+    queueEditorTextRange(commentRange.start, commentRange.end);
+  }, [
+    activeFile?.id,
+    files,
+    openCommentsPanel,
+    previewSurfaceRef,
+    queueAnimationFrameTask,
+    queueEditorTextRange,
+    selectFile,
+    showToast,
+  ]);
 
   const openCommentMarker = useCallback((commentId: string) => {
     const comment = activeFileComments.find((fileComment) => fileComment.id === commentId);
@@ -373,8 +396,14 @@ export function useWorkspaceCommentActions({
 
     setSelectionActionPosition(null);
     openCommentsPanel();
-    window.setTimeout(() => commentInputRef.current?.focus(), 0);
-  }, [commentInputRef, openCommentsPanel, selectedCharacterCount, setSelectionActionPosition]);
+    queueAnimationFrameTask(() => commentInputRef.current?.focus());
+  }, [
+    commentInputRef,
+    openCommentsPanel,
+    queueAnimationFrameTask,
+    selectedCharacterCount,
+    setSelectionActionPosition,
+  ]);
 
   const toggleLineBookmark = useCallback((lineRange: MarkdownLineActionRequest) => {
     if (!activeFile) {
@@ -415,20 +444,22 @@ export function useWorkspaceCommentActions({
     if (activeViewMode === "preview") {
       setActiveFileViewMode("edit", { preserveScroll: false, focusEditor: false });
     }
-    window.setTimeout(() => {
+
+    queueAnimationFrameTask(() => {
       suppressSelectionActionPositionRef.current = true;
       editorRef.current?.setSelectionRange(start, end);
       suppressSelectionActionPositionRef.current = false;
       setSelectionActionPosition(null);
       openCommentsPanel();
       commentInputRef.current?.focus();
-    }, 0);
+    });
   }, [
     activeViewMode,
     clearPreviewSelection,
     commentInputRef,
     editorRef,
     openCommentsPanel,
+    queueAnimationFrameTask,
     setActiveFileViewMode,
     setActiveSelection,
     setSelectionActionPosition,

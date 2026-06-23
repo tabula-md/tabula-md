@@ -12,6 +12,7 @@ import {
 } from "../workspaceStorage";
 import { normalizeMarkdownFileTitle } from "../workspaceModel";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
+import { useAnimationFrameTask } from "./useAnimationFrameTask";
 
 const isMarkdownImportFile = (file: File) => {
   const fileName = file.name.toLowerCase();
@@ -83,6 +84,7 @@ export function useProjectIoController({
   onCloseChrome,
 }: UseProjectIoControllerArgs) {
   const [emptyDropActive, setEmptyDropActive] = useState(false);
+  const queueAnimationFrameTask = useAnimationFrameTask();
 
   const copyCurrentMarkdown = async () => {
     if (!activeFile) {
@@ -156,7 +158,7 @@ export function useProjectIoController({
     onCloseChrome();
     syncUrlForFile(nextFile);
 
-    window.setTimeout(() => editorRef.current?.focus(), 0);
+    queueAnimationFrameTask(() => editorRef.current?.focus());
   };
 
   const handleImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {

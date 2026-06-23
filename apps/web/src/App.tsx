@@ -212,6 +212,7 @@ function WorkspaceApp() {
     previewSurfaceRef,
     setActiveFileViewMode,
     queueEditorFocus,
+    queueEditorTextRange,
     handleEditorScrollRatioChange,
     handleEditorSurfaceScroll,
     handlePreviewScroll,
@@ -244,10 +245,7 @@ function WorkspaceApp() {
       setActiveFileViewMode("edit", { preserveScroll: false, focusEditor: false });
     }
 
-    window.setTimeout(() => {
-      editorRef.current?.focus();
-      editorRef.current?.setSelectionRange(start, end);
-    }, 0);
+    queueEditorTextRange(start, end);
   };
   const {
     searchInputRef,
@@ -569,6 +567,7 @@ function WorkspaceApp() {
     showToast,
     startCommentReply: beginCommentReply,
     suppressSelectionActionPositionRef,
+    queueEditorTextRange,
     text,
   });
   const handleStableLineAnnotationAction = useEventCallback(handleLineAnnotationAction);

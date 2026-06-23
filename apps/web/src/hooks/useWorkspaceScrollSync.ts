@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
 import type { FileViewMode } from "../workspaceStorage";
@@ -16,6 +16,18 @@ type PendingModeScroll = {
   anchor: ModeScrollAnchor;
   focusEditor: boolean;
 };
+
+type PendingEditorCommand =
+  | {
+      kind: "focus";
+      preventScroll?: boolean;
+    }
+  | {
+      kind: "selectRange";
+      start: number;
+      end: number;
+      preventScroll?: boolean;
+    };
 
 type SetWorkspaceViewModeOptions = {
   preserveScroll?: boolean;
@@ -47,7 +59,8 @@ export function useWorkspaceScrollSync({
   const scrollSyncingRef = useRef(false);
   const lastSplitScrollSurfaceRef = useRef<ModeScrollSurface>("editor");
   const pendingModeScrollRef = useRef<PendingModeScroll | null>(null);
-  const pendingEditorFocusRef = useRef(false);
+  const pendingEditorCommandRef = useRef<PendingEditorCommand | null>(null);
+  const [editorCommandRevision, setEditorCommandRevision] = useState(0);
   const workspaceRef = useRef<HTMLElement | null>(null);
   const editorSurfaceRef = useRef<HTMLElement | null>(null);
   const previewSurfaceRef = useRef<HTMLElement | null>(null);
@@ -175,12 +188,26 @@ export function useWorkspaceScrollSync({
     onSetActiveFileViewMode(nextViewMode);
 
     if (shouldFocusEditor && !shouldPreserveScroll) {
-      window.setTimeout(() => editorRef.current?.focus(), 0);
+      queueEditorFocus();
     }
   };
 
-  const queueEditorFocus = () => {
-    pendingEditorFocusRef.current = true;
+  const queueEditorCommand = (command: PendingEditorCommand) => {
+    pendingEditorCommandRef.current = command;
+    setEditorCommandRevision((currentRevision) => currentRevision + 1);
+  };
+
+  const queueEditorFocus = (options: { preventScroll?: boolean } = {}) => {
+    queueEditorCommand({ kind: "focus", preventScroll: options.preventScroll });
+  };
+
+  const queueEditorTextRange = (start: number, end = start, options: { preventScroll?: boolean } = {}) => {
+    queueEditorCommand({
+      kind: "selectRange",
+      start,
+      end,
+      preventScroll: options.preventScroll,
+    });
   };
 
   useLayoutEffect(() => {
@@ -212,17 +239,24 @@ export function useWorkspaceScrollSync({
   }, [activeFileId, activeViewMode]);
 
   useLayoutEffect(() => {
-    if (!pendingEditorFocusRef.current || !activeFileId || activeViewMode !== "edit") {
+    const pendingEditorCommand = pendingEditorCommandRef.current;
+    if (!pendingEditorCommand || !activeFileId || activeViewMode !== "edit") {
       return;
     }
 
     const frame = window.requestAnimationFrame(() => {
-      pendingEditorFocusRef.current = false;
-      editorRef.current?.focus();
+      pendingEditorCommandRef.current = null;
+      if (pendingEditorCommand.kind === "focus") {
+        editorRef.current?.focus({ preventScroll: pendingEditorCommand.preventScroll });
+        return;
+      }
+
+      editorRef.current?.focus({ preventScroll: pendingEditorCommand.preventScroll });
+      editorRef.current?.setSelectionRange(pendingEditorCommand.start, pendingEditorCommand.end);
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [activeFileId, activeViewMode]);
+  }, [activeFileId, activeViewMode, editorCommandRevision, editorRef]);
 
   const handleEditorScrollRatioChange = (ratio: number) => {
     if (activeViewMode !== "split" || scrollSyncingRef.current) {
@@ -309,6 +343,7 @@ export function useWorkspaceScrollSync({
     previewSurfaceRef,
     setActiveFileViewMode,
     queueEditorFocus,
+    queueEditorTextRange,
     handleEditorScrollRatioChange,
     handleEditorSurfaceScroll,
     handlePreviewScroll,

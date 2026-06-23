@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
 import { getSearchMatches } from "../markdown";
 import { useWorkspaceUiStore } from "../stores/workspaceUiStore";
+import { useAnimationFrameTask } from "./useAnimationFrameTask";
 
 type UseEditorSearchControllerOptions = {
   activeFileId?: string;
@@ -22,6 +23,7 @@ export function useEditorSearchController({
   const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchRevealKeyRef = useRef<string | null>(null);
+  const queueAnimationFrameTask = useAnimationFrameTask();
   const searchMatches = useMemo(() => getSearchMatches(text, searchQuery), [searchQuery, text]);
 
   useEffect(() => {
@@ -38,9 +40,9 @@ export function useEditorSearchController({
       const firstMatch = searchMatches[0];
       setActiveSearchMatchIndex(0);
       searchRevealKeyRef.current = revealKey;
-      window.setTimeout(() => {
+      queueAnimationFrameTask(() => {
         editorRef.current?.revealRange(firstMatch.start, firstMatch.end);
-      }, 0);
+      });
       return;
     }
 
@@ -51,15 +53,15 @@ export function useEditorSearchController({
 
       return Math.min(currentIndex, searchMatches.length - 1);
     });
-  }, [activeFileId, editorRef, searchMatches, searchOpen, searchQuery]);
+  }, [activeFileId, editorRef, queueAnimationFrameTask, searchMatches, searchOpen, searchQuery]);
 
   useEffect(() => {
     if (!searchOpen) {
       return;
     }
 
-    window.setTimeout(() => searchInputRef.current?.focus(), 0);
-  }, [searchOpen]);
+    queueAnimationFrameTask(() => searchInputRef.current?.focus());
+  }, [queueAnimationFrameTask, searchOpen]);
 
   const goToSearchMatch = (direction: 1 | -1) => {
     if (searchMatches.length === 0) {
