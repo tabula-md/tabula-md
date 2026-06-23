@@ -44,6 +44,7 @@ import { useFileComments } from "./hooks/useFileComments";
 import { useMarkdownFiles } from "./hooks/useMarkdownFiles";
 import { usePublishController } from "./hooks/usePublishController";
 import { useProjectIoController } from "./hooks/useProjectIoController";
+import { useQueuedWorkspacePersistence } from "./hooks/useQueuedWorkspacePersistence";
 import { useSelectionCommentController } from "./hooks/useSelectionCommentController";
 import { useSplitViewController } from "./hooks/useSplitViewController";
 import { useWorkspaceActiveFileEditor } from "./hooks/useWorkspaceActiveFileEditor";
@@ -74,7 +75,6 @@ import {
   type LocationRoom,
   type MarkdownFile,
   type WorkspaceState,
-  writeStoredWorkspace,
 } from "./workspaceStorage";
 
 const getFloatingPopoverStyle = (
@@ -194,6 +194,16 @@ function WorkspaceApp() {
       getLineStartOffset(parsedMarkdown.body, renderedPreview.sourceLineOffset)
     );
   }, [parsedMarkdown.body, renderedPreview.sourceLineOffset, text]);
+  const workspacePersistenceSnapshot = useMemo<WorkspaceState>(
+    () => ({
+      files,
+      openFileIds,
+      activeFileId,
+      commentsByFileId,
+    }),
+    [activeFileId, commentsByFileId, files, openFileIds],
+  );
+  useQueuedWorkspacePersistence(workspacePersistenceSnapshot);
   const {
     workspaceRef,
     editorSurfaceRef,
@@ -401,15 +411,6 @@ function WorkspaceApp() {
 
     syncUrlForFile(activeFile, "replace");
   }, [activeFile?.id, activeFile?.roomId, activeFile?.shareUrl]);
-
-  useEffect(() => {
-    writeStoredWorkspace({
-      files,
-      openFileIds,
-      activeFileId,
-      commentsByFileId,
-    });
-  }, [activeFileId, commentsByFileId, files, openFileIds]);
 
   useEffect(() => {
     if (!selectionActionPosition) {
