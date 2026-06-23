@@ -11,6 +11,7 @@ import { COMMENT_ANCHOR_CONTEXT_LENGTH } from "../commentAnchors";
 import type { LiveSelection } from "../collab";
 import type { MarkdownEditorHandle, MarkdownSelectionActionPosition } from "../components/MarkdownEditor";
 import type { FileViewMode } from "../workspaceStorage";
+import { useAnimationFrameTask } from "./useAnimationFrameTask";
 
 type PreviewSelectionState = {
   from: number;
@@ -176,6 +177,7 @@ export function useSelectionCommentController({
   const [previewSelection, setPreviewSelection] = useState<PreviewSelectionState | null>(null);
   const [selectionActionPosition, setSelectionActionPosition] = useState<MarkdownSelectionActionPosition | null>(null);
   const suppressSelectionActionPositionRef = useRef(false);
+  const queueAnimationFrameTask = useAnimationFrameTask();
 
   const selectedMarkdownText =
     activeViewMode === "preview"
@@ -224,12 +226,12 @@ export function useSelectionCommentController({
       return;
     }
 
-    window.setTimeout(() => {
+    queueAnimationFrameTask(() => {
       const nextPreviewSelection = readPreviewSelection(previewSurfaceRef.current, previewBodyStartOffset);
       setPreviewSelection(nextPreviewSelection);
       setActiveSelection(nextPreviewSelection ? { from: nextPreviewSelection.from, to: nextPreviewSelection.to } : undefined);
       setSelectionActionPosition(nextPreviewSelection ? readSelectionActionPosition() : null);
-    }, 0);
+    });
   };
 
   const getSelectedMarkdownExcerpt = () => {

@@ -666,7 +666,7 @@ function MarkdownPreviewComponent({
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(handleLineMeasurementInvalidated);
     resizeObserver?.observe(contentElement);
     window.addEventListener("resize", handleLineMeasurementInvalidated);
-    const timeoutId = window.setTimeout(handleLineMeasurementInvalidated, 120);
+    const initialMeasureFrame = window.requestAnimationFrame(handleLineMeasurementInvalidated);
 
     return () => {
       if (rafId !== null) {
@@ -674,7 +674,7 @@ function MarkdownPreviewComponent({
       }
       resizeObserver?.disconnect();
       window.removeEventListener("resize", handleLineMeasurementInvalidated);
-      window.clearTimeout(timeoutId);
+      window.cancelAnimationFrame(initialMeasureFrame);
     };
   }, [measurePreviewLineRows, showLineGutters, suspendLineMeasurement]);
 
