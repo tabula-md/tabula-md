@@ -177,12 +177,7 @@ export async function run(ctx) {
         await wrongKeyContext.close();
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1_500));
-      const snapshotAfterWrongKey = await waitForSnapshotRecord(roomDataDir, roomId);
-      expect(
-        snapshotAfterWrongKey.raw === snapshotBeforeWrongKey.raw,
-        "A room opened with the wrong key should not overwrite the encrypted snapshot.",
-      );
+      await waitForSnapshotRecordToRemainUnchanged(roomDataDir, roomId, snapshotBeforeWrongKey.raw);
 
       const missingKeyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const missingKeyPage = await missingKeyContext.newPage();
@@ -247,7 +242,7 @@ async function waitForSnapshotRecord(roomDataDir, roomId) {
       return { raw, json: JSON.parse(raw) };
     } catch (error) {
       lastError = error;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await wait(100);
     }
   }
 
@@ -257,15 +252,40 @@ async function waitForSnapshotRecord(roomDataDir, roomId) {
 async function waitForStableSnapshotRecord(roomDataDir, roomId) {
   const deadline = Date.now() + 8_000;
   let previous = await waitForSnapshotRecord(roomDataDir, roomId);
+  let stableSince = Date.now();
 
   while (Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 1_300));
+    await wait(100);
     const next = await waitForSnapshotRecord(roomDataDir, roomId);
     if (next.raw === previous.raw) {
-      return next;
+      if (Date.now() - stableSince >= 1_300) {
+        return next;
+      }
+    } else {
+      stableSince = Date.now();
     }
     previous = next;
   }
 
   throw new Error("Timed out waiting for encrypted room snapshot to stabilize.");
+}
+
+async function waitForSnapshotRecordToRemainUnchanged(roomDataDir, roomId, expectedRaw) {
+  const deadline = Date.now() + 1_500;
+  let latest = await waitForSnapshotRecord(roomDataDir, roomId);
+
+  while (Date.now() < deadline) {
+    latest = await waitForSnapshotRecord(roomDataDir, roomId);
+    if (latest.raw !== expectedRaw) {
+      throw new Error("A room opened with the wrong key overwrote the encrypted snapshot.");
+    }
+
+    await wait(Math.min(100, Math.max(0, deadline - Date.now())));
+  }
+
+  return latest;
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
