@@ -7,60 +7,97 @@ file, this file wins.
 Use `knowledge/index.md` only when deeper context is needed. Do not make every
 task pay for the full background material.
 
-## Default
+## Purpose
 
-Use the lightest mode that satisfies the request.
+Keep work small, reviewable, and synchronized with reality. The core workflow
+describes how to shape work; repository-specific tools are adapters below.
 
-### Fast Local Loop
+## Principles
 
-Default for ordinary implementation prompts.
+- Ship the smallest useful outcome.
+- Keep one reviewable concern per slice.
+- Slice before building when work is broad or uncertain.
+- Keep public review surfaces clean.
+- Let planning state follow reality.
+- Validate the surface that changed.
 
-- Implement the requested change.
-- Run focused validation for the touched files.
-- Report what changed and what validation did or did not run.
-- Do not create Linear issues, Graphite PRs, or PR metadata unless review
-  handoff is intended.
+## The Loop
 
-### PR Handoff Loop
+Use the same loop for every request:
 
-Use when the owner asks for PR/Graphite/review handoff, or when the work is
-clearly meant to be reviewed as a PR or stack.
+1. Intake: identify the user-visible outcome and any review expectation.
+2. Shape: decide whether the answer is direct, local-only, one review slice, or
+   a sequence of slices.
+3. Slice: separate broad work before implementation.
+4. Build: implement only the current slice; avoid incidental cleanup.
+5. Validate: run the smallest checks that catch likely regressions.
+6. Handoff: report local work, or submit the ready review slice.
 
-- Use Graphite for branch, commit, submit, stack, publish, and sync.
-- Run focused validation before handoff.
-- After Graphite submit, run one `npm run pr:handoff -- ...`.
-- Run `npm run pr:ready` once before handing the PR to the owner.
-- Do not poll CI or Graphite mergeability after handoff. The owner reviews and
-  merges in Graphite App; if merge is blocked, they pass the concrete error
-  back to the agent.
+Hooks may signal missing work, but they do not choose the shape.
 
-### Release/Public Loop
+## Slice Rules
 
-Use for release, changelog, public launch, security, CI, repository settings,
-or cross-repo Tabula work.
+A slice must make sense as an independent review. If reviewers need the whole
+sequence to understand one slice, split it differently.
 
-- Prefer explicit Linear tracking.
-- Use Graphite stacks when there are separate reviewable layers.
-- Run broader validation and docs checks.
-- Treat public docs, templates, CI, and repository settings as product surfaces.
+Prefer multiple slices when any of these are true:
 
-Mode selection is agent judgment, not a keyword filter. Hooks may signal
-missing work, but they do not choose the mode.
+- The change would exceed about 250 meaningful changed lines or 25 files.
+- Refactor and behavior change would be mixed.
+- Mechanical/noisy edits would be mixed with meaningful product or logic edits.
+- Changes with different risk profiles would be mixed.
+- The owner asks for broad product analysis, multiple issues, or a large patch.
 
-## Work Shape
+Use these slice patterns as appropriate:
 
-- One accepted trackable request normally maps to one Linear issue, one
-  Graphite stack, and one or more GitHub PRs.
-- Use one PR for one reviewable concern.
-- Use a stack when the outcome has several dependent reviewable layers.
-- Use a vertical slice when work crosses a new runtime, repo, persistence,
-  encryption, collaboration, auth, or external-system boundary.
-- Do not split Linear issues just because a Graphite stack has multiple PRs.
+- Component: split by independently reviewable subsystem.
+- Iterative: submit the first useful improvement, then refine.
+- Refactor/change: land structure-only cleanup before behavior changes.
+- Mechanical/noise: isolate generated, moved, renamed, or bulk style changes.
+- Risk: land low-risk prep before risky behavior or performance work.
+
+Size budgets:
+
+- Around 250 meaningful lines or 25 files: warn and re-check shape.
+- Around 800 lines: split strongly preferred.
+- Around 1200 lines: stop adding more changes to that slice.
+
+Ready slices should move to review as soon as they are ready. Do not wait for
+the entire sequence to be complete before opening bottom layers.
+
+For broad work, write a short Stack Plan before implementation:
+
+1. `<title>` — why this slice is independently reviewable.
+2. `<title>` — what it depends on from the previous slice.
+3. `<title>` — what validation should focus on.
 
 Details: `knowledge/workflow/vertical-slice-strategy.md` and
 `knowledge/workflow/graphite-stack-shape.md`.
 
-## Graphite
+## Open Review Rule
+
+When working on a branch that already has an open PR, classify every new edit
+before coding:
+
+- Same review concern: modify the current slice.
+- Dependent follow-up concern: create a new upstack slice.
+- Unrelated concern: stop and ask or switch context.
+
+Do not grow an open PR just because it is the current branch. If the change
+would make review ask a second question, create the next slice.
+
+## Review Surfaces
+
+- Branches use semantic work names, not planning-ticket keys.
+- Pull requests are public review artifacts: problem, change, validation, risk.
+- Issue trackers are private planning state: priority, owner, status, links.
+- Keep ticket keys out of branch names, PR titles, and public PR bodies.
+- Link PRs to tracker issues through Resources/attachments.
+- Move planning state when reality changes: started, in review, merged.
+
+## Repository Tooling
+
+### Graphite
 
 Graphite owns PR-bound branch and PR lifecycle.
 
@@ -69,15 +106,27 @@ Graphite owns PR-bound branch and PR lifecycle.
 - Update the current review layer with `gt modify --all -m "type(scope): summary"`.
 - Submit one PR with `gt submit`; submit a stack with `gt submit --stack`.
 - Publish an existing draft with `gt submit --publish --update-only`.
-- Use `gt restack`, `gt move`, `gt reorder`, `gt fold`, `gt split`, and
-  `gt undo` before raw Git recovery.
+- Use `gt restack`, `gt move`, `gt reorder`, `gt fold`, `gt split`,
+  `gt absorb`, and `gt undo` before raw Git recovery.
 
 Do not use raw `git commit`, raw `git push`, `git checkout -b`, `git pull`,
 `gh pr create`, `gh pr ready`, or `gh pr merge` for normal PR work.
 
 Details: `knowledge/workflow/graphite-pr-lifecycle.md`.
 
-## PR Handoff
+### Linear
+
+Linear is the private planning surface for this repository.
+
+- When PR-bound Linear work starts, move the issue to `In Progress`.
+- After Graphite submit, `pr:handoff`, and `pr:ready` are complete, confirm the
+  PR appears in Linear Resources and move the issue to `In Review`.
+- Move the issue to `Done` only after the closing PR lands and required
+  follow-up is complete.
+
+Do not split Linear issues just because one outcome has several review slices.
+
+### PR Handoff
 
 After Graphite submit, run:
 
@@ -104,7 +153,7 @@ Run `npm run pr:ready` once before handoff. It checks local handoff
 completeness only. It does not submit, merge, poll CI, poll Graphite
 mergeability, or run expensive validation.
 
-## Validation
+### Validation
 
 Run the smallest validation set that catches likely regressions.
 
@@ -119,7 +168,7 @@ Run the smallest validation set that catches likely regressions.
 For docs-only changes, it is acceptable to skip app tests or build when the PR
 body explains why.
 
-## Merge Cleanup
+### Merge Cleanup
 
 The owner merges in Graphite App. After merge:
 

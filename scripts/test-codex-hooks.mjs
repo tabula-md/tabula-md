@@ -35,6 +35,7 @@ import { hasCurrentPullRequestHandoffComplete } from "./lib/workflow-status.mjs"
 import {
   checkBranchName,
   checkConventionalTitle,
+  checkPrDiffBudget,
   checkPrLabels,
   checkPrTemplateBody,
   hasFailures,
@@ -443,6 +444,11 @@ test("checks PR readiness policy helpers", () => {
   assert.deepEqual(checkBranchName("dev/taehalim/editor-rail-alignment").map((check) => check.level), ["ok"]);
   assert.equal(checkBranchName("06-17-_mts-7_add_workflow_entrypoint").some((check) => check.level === "warn"), true);
   assert.equal(checkBranchName("chore_workflow_clean_stale_graphite_temp_branches").some((check) => check.level === "warn"), true);
+  assert.deepEqual(checkPrDiffBudget({ changedLines: 120, fileCount: 8 }).map((check) => check.level), ["ok", "ok"]);
+  assert.equal(checkPrDiffBudget({ changedLines: 300, fileCount: 8 }).some((check) => check.level === "warn"), true);
+  assert.equal(checkPrDiffBudget({ changedLines: 900, fileCount: 8 }).some((check) => /local review budget/.test(check.message)), true);
+  assert.equal(checkPrDiffBudget({ changedLines: 1300, fileCount: 8 }).some((check) => /far above/.test(check.message)), true);
+  assert.equal(checkPrDiffBudget({ changedLines: 120, fileCount: 26 }).some((check) => /25 files/.test(check.message)), true);
   assert.equal(hasFailures(checkPrTemplateBody(publicPrBody, { branch: "dev/taehalim/docs-polish" })), false);
   assert.equal(hasFailures(checkPrTemplateBody(emptyPrBody, { branch: "dev/taehalim/docs-polish" })), true);
   assert.equal(hasFailures(checkPrTemplateBody(publicPrBody, { branch: "codex/docs-polish" })), true);
