@@ -6,6 +6,16 @@ export const WORKSPACE_STORAGE_VERSION = PROJECT_STORAGE_VERSION;
 const PROJECT_STORAGE_KEY = "tabula.project.v5";
 const STARTER_MARKDOWN = "";
 export const README_FILE_ID = "tabula-readme";
+
+export type WorkspaceStorageAdapter = {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+};
+
+export const browserWorkspaceStorageAdapter: WorkspaceStorageAdapter = {
+  getItem: (key) => window.localStorage.getItem(key),
+  setItem: (key, value) => window.localStorage.setItem(key, value),
+};
 const DEFAULT_README_REFRESH_MARKERS = [
   "It is intentionally Markdown-file-first",
   "## Frontmatter",
@@ -155,11 +165,19 @@ export const clampSplitEditorRatio = (value: unknown) => {
 };
 
 export const getRoomIdFromLocation = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   const match = window.location.pathname.match(/^\/r\/([^/]+)/);
   return match?.[1] ?? null;
 };
 
 export const getRoomFromLocation = (): LocationRoom | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   const roomId = getRoomIdFromLocation();
   if (!roomId) {
     return null;
@@ -553,10 +571,10 @@ export const migrateWorkspacePayload = (
   return null;
 };
 
-const readJsonFromLocalStorage = (key: string) => {
+const readJsonFromStorage = (key: string, storage: WorkspaceStorageAdapter) => {
   let stored: string | null;
   try {
-    stored = window.localStorage.getItem(key);
+    stored = storage.getItem(key);
   } catch {
     return null;
   }
@@ -572,8 +590,10 @@ const readJsonFromLocalStorage = (key: string) => {
   }
 };
 
-export const readStoredWorkspace = (): WorkspaceState | null => {
-  return migrateWorkspacePayload(readJsonFromLocalStorage(PROJECT_STORAGE_KEY));
+export const readStoredWorkspace = (
+  storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
+): WorkspaceState | null => {
+  return migrateWorkspacePayload(readJsonFromStorage(PROJECT_STORAGE_KEY, storage));
 };
 
 export const serializeFile = (file: MarkdownFile): StoredMarkdownFile => ({
@@ -619,8 +639,11 @@ export const createStoredWorkspace = ({
   commentsByFileId,
 });
 
-export const writeStoredWorkspace = (workspace: WorkspaceState) => {
-  window.localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createStoredWorkspace(workspace)));
+export const writeStoredWorkspace = (
+  workspace: WorkspaceState,
+  storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
+) => {
+  storage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createStoredWorkspace(workspace)));
 };
 
 export const initialWorkspaceState = (): WorkspaceState => {
