@@ -10,6 +10,10 @@ import type {
   MarkdownPreviewCommentAnchor,
   MarkdownPreviewLineAnnotation,
 } from "../components/MarkdownPreview";
+import {
+  positionInSourceLine,
+  sourceRangeIntersectsLine,
+} from "../lineSurfaceModel";
 import type { AppToastState } from "./useAppToast";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";
 import type { FileComment, FileBookmark, FileViewMode, MarkdownFile } from "../workspaceStorage";
@@ -86,7 +90,7 @@ type UseWorkspaceCommentActionsArgs = {
 };
 
 export const isPositionInLineRange = (position: number, lineStart: number, lineEnd: number) =>
-  position >= lineStart && position <= lineEnd;
+  positionInSourceLine(position, lineStart, lineEnd);
 
 export const toggleLineBookmarkInList = ({
   bookmarks,
@@ -172,8 +176,9 @@ export const getPreviewLineAnnotations = ({
   return lines.map((line, index) => {
     const start = bodyStartOffset + bodyOffset;
     const end = start + line.length;
-    const hasBookmark = bookmarks.some((bookmark) => isPositionInLineRange(bookmark.position, start, end));
-    const lineComments = commentAnchors.filter((anchor) => anchor.end > start && anchor.start < end);
+    const sourceLine = { start, end };
+    const hasBookmark = bookmarks.some((bookmark) => positionInSourceLine(bookmark.position, start, end));
+    const lineComments = commentAnchors.filter((anchor) => sourceRangeIntersectsLine(anchor, sourceLine));
     bodyOffset += line.length + 1;
 
     return {
@@ -200,7 +205,7 @@ export const getCommentsInLineRange = ({
 }) =>
   comments.filter((comment) => {
     const commentRange = getCommentRangeInText(sourceText, comment);
-    return Boolean(commentRange && commentRange.end > lineStart && commentRange.start < lineEnd);
+    return Boolean(commentRange && sourceRangeIntersectsLine(commentRange, { start: lineStart, end: lineEnd }));
   });
 
 export const formatCommentDate = (isoDate: string, now = Date.now()) => {

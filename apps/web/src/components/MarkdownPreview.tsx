@@ -13,6 +13,14 @@ import {
 import { Bookmark, Check, Copy, MessageSquare, WrapText } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  areLineSurfaceRowsEqual,
+  buildLineSurfaceAnnotationRows,
+  getLineSurfaceAnnotationsSignature,
+  type LineSurfaceAnnotation,
+  type LineSurfaceRow,
+  type LineSurfaceSourceBlock,
+} from "../lineSurfaceModel";
 
 export type MarkdownPreviewMetadata = {
   key: string;
@@ -36,14 +44,7 @@ export type MarkdownPreviewCommentAnchor = {
   end: number;
 };
 
-export type MarkdownPreviewLineAnnotation = {
-  lineNumber: number;
-  start: number;
-  end: number;
-  hasBookmark: boolean;
-  hasComment: boolean;
-  hasActiveComment?: boolean;
-};
+export type MarkdownPreviewLineAnnotation = LineSurfaceAnnotation;
 
 export type MarkdownPreviewLineActionRequest = MarkdownPreviewLineAnnotation & {
   action: "bookmark" | "comment";
@@ -382,17 +383,7 @@ const createMarkdownPreviewComponents = (onOpenComment?: (commentId: string) => 
   ),
 });
 
-type PreviewLineRailRow = MarkdownPreviewLineAnnotation & {
-  top: number;
-  height: number;
-};
-
-type PreviewLineBlock = {
-  startLine: number;
-  endLine: number;
-  top: number;
-  bottom: number;
-};
+type PreviewLineRailRow = LineSurfaceRow<MarkdownPreviewLineAnnotation>;
 
 const PREVIEW_LINE_MEASUREMENT_WIDTH_BUCKET = 8;
 const PREVIEW_LINE_MEASUREMENT_CACHE_LIMIT = 12;
@@ -406,20 +397,6 @@ const getStringHash = (value: string) => {
 
   return `${value.length}:${hash.toString(36)}`;
 };
-
-const getPreviewLineAnnotationsSignature = (annotations: MarkdownPreviewLineAnnotation[]) =>
-  annotations
-    .map((annotation) =>
-      [
-        annotation.lineNumber,
-        annotation.start,
-        annotation.end,
-        annotation.hasBookmark ? 1 : 0,
-        annotation.hasComment ? 1 : 0,
-        annotation.hasActiveComment ? 1 : 0,
-      ].join(":"),
-    )
-    .join("|");
 
 const getWidthBucket = (width: number) =>
   Math.max(0, Math.round(width / PREVIEW_LINE_MEASUREMENT_WIDTH_BUCKET) * PREVIEW_LINE_MEASUREMENT_WIDTH_BUCKET);
@@ -441,22 +418,6 @@ const writePreviewLineMeasurementCache = (
     cache.delete(oldestKey);
   }
 };
-
-const arePreviewLineRowsEqual = (firstRows: PreviewLineRailRow[], secondRows: PreviewLineRailRow[]) =>
-  firstRows.length === secondRows.length &&
-  firstRows.every((firstRow, index) => {
-    const secondRow = secondRows[index];
-    return (
-      firstRow.lineNumber === secondRow.lineNumber &&
-      firstRow.start === secondRow.start &&
-      firstRow.end === secondRow.end &&
-      firstRow.hasBookmark === secondRow.hasBookmark &&
-      firstRow.hasComment === secondRow.hasComment &&
-      firstRow.hasActiveComment === secondRow.hasActiveComment &&
-      Math.abs(firstRow.top - secondRow.top) < 0.5 &&
-      Math.abs(firstRow.height - secondRow.height) < 0.5
-    );
-  });
 
 const getPreviewLineButtonLabel = (
   side: "bookmark" | "comment",
@@ -544,7 +505,7 @@ function MarkdownPreviewComponent({
   );
   const bodyMeasurementKey = useMemo(() => getStringHash(body), [body]);
   const lineAnnotationsSignature = useMemo(
-    () => getPreviewLineAnnotationsSignature(lineAnnotations),
+    () => getLineSurfaceAnnotationsSignature(lineAnnotations),
     [lineAnnotations],
   );
   const measurePreviewLineRows = useCallback((options: { force?: boolean } = {}) => {
@@ -563,7 +524,7 @@ function MarkdownPreviewComponent({
     const cacheKey = `${bodyMeasurementKey}:${widthBucket}:${lineAnnotationsSignature}`;
     const cachedRows = lineMeasurementCacheRef.current.get(cacheKey);
     if (cachedRows) {
-      setLineRailRows((currentRows) => (arePreviewLineRowsEqual(currentRows, cachedRows) ? currentRows : cachedRows));
+      setLineRailRows((currentRows) => (areLineSurfaceRowsEqual(currentRows, cachedRows) ? currentRows : cachedRows));
       return;
     }
 
@@ -584,54 +545,12 @@ function MarkdownPreviewComponent({
           bottom: rect.bottom - documentRect.top,
         };
       })
-      .filter((block): block is PreviewLineBlock => Boolean(block))
+      .filter((block): block is LineSurfaceSourceBlock => Boolean(block))
       .sort((first, second) => first.startLine - second.startLine || first.top - second.top);
-
-    const getFallbackLineTop = (lineNumber: number) => {
-      const previousBlock = [...sourceBlocks].reverse().find((block) => block.endLine < lineNumber);
-      const nextBlock = sourceBlocks.find((block) => block.startLine > lineNumber);
-      if (previousBlock && nextBlock) {
-        return previousBlock.bottom + Math.max(0, nextBlock.top - previousBlock.bottom) / 2 - 10;
-      }
-
-      if (previousBlock) {
-        return previousBlock.bottom + 6;
-      }
-
-      if (nextBlock) {
-        return Math.max(0, nextBlock.top - 26);
-      }
-
-      return 0;
-    };
-
-    const nextRows = lineAnnotations
-      .map((annotation) => {
-        const matchingBlock = sourceBlocks.find(
-          (block) => block.startLine <= annotation.lineNumber && block.endLine >= annotation.lineNumber,
-        );
-
-        if (!matchingBlock) {
-          return {
-            ...annotation,
-            top: getFallbackLineTop(annotation.lineNumber),
-            height: 24,
-          };
-        }
-
-        const sourceLineCount = Math.max(1, matchingBlock.endLine - matchingBlock.startLine + 1);
-        const sourceLineHeight = Math.max(20, (matchingBlock.bottom - matchingBlock.top) / sourceLineCount);
-        const top = matchingBlock.top + (annotation.lineNumber - matchingBlock.startLine) * sourceLineHeight;
-        return {
-          ...annotation,
-          top,
-          height: sourceLineHeight,
-        };
-      })
-      .filter((row, index, rows) => rows.findIndex((candidate) => candidate.lineNumber === row.lineNumber) === index);
+    const nextRows = buildLineSurfaceAnnotationRows(lineAnnotations, sourceBlocks);
 
     writePreviewLineMeasurementCache(lineMeasurementCacheRef.current, cacheKey, nextRows);
-    setLineRailRows((currentRows) => (arePreviewLineRowsEqual(currentRows, nextRows) ? currentRows : nextRows));
+    setLineRailRows((currentRows) => (areLineSurfaceRowsEqual(currentRows, nextRows) ? currentRows : nextRows));
   }, [bodyMeasurementKey, lineAnnotations, lineAnnotationsSignature, showLineGutters, suspendLineMeasurement]);
 
   useLayoutEffect(() => {
