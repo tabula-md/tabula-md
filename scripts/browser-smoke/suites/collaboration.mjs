@@ -22,9 +22,18 @@ export async function run(ctx) {
     roomDataDir,
     startRoomServer,
     stopRoomServer,
+    waitForEditorReady,
     waitForText,
     withPage,
   } = ctx;
+
+  const ensureEditMode = async (page) => {
+    const editButton = page.getByRole("button", { name: "Edit", exact: true });
+    if ((await editButton.count()) > 0) {
+      await editButton.click();
+    }
+    await waitForEditorReady(page, { mode: "edit" });
+  };
 
   if (!externalUrl) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -67,9 +76,9 @@ export async function run(ctx) {
       const sharedPath = new URL(firstPage.url()).pathname + new URL(firstPage.url()).hash;
       await secondPage.goto(`${baseUrl}${sharedPath}`);
       await secondPage.waitForSelector(".tab-item.live.active");
-      await secondPage.getByRole("button", { name: "Edit", exact: true }).click();
+      await ensureEditMode(secondPage);
 
-      await firstPage.getByRole("button", { name: "Edit", exact: true }).click();
+      await ensureEditMode(firstPage);
       await focusMarkdownEditor(firstPage);
       await firstPage.keyboard.type("Room sync check");
 
