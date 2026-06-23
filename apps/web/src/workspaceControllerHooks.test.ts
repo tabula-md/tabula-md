@@ -33,6 +33,7 @@ import {
 import {
   formatCommentDate,
   getPreviewCommentAnchors,
+  getPreviewLineAnnotations,
   toggleLineBookmarkInList,
 } from "./hooks/useWorkspaceCommentActions";
 import {
@@ -426,6 +427,25 @@ describe("workspace comment actions controller", () => {
       { id: "inside", start: 2, end: 6 },
       { id: "overlap", start: 8, end: 10 },
     ]);
+  });
+
+  it("keeps preview line annotations on empty source lines", () => {
+    expect(
+      getPreviewLineAnnotations({
+        body: "alpha\n\ncharlie",
+        bodyStartOffset: 10,
+        bookmarks: [{ id: "empty-bookmark", position: 16, createdAt: "2026-01-01T00:00:00.000Z" }],
+        commentAnchors: [{ id: "empty-comment", start: 16, end: 16 }],
+        activeCommentId: "empty-comment",
+      }),
+    ).toContainEqual({
+      lineNumber: 2,
+      start: 16,
+      end: 16,
+      hasBookmark: true,
+      hasComment: true,
+      hasActiveComment: true,
+    });
   });
 
   it("formats relative comment dates", () => {

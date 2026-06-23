@@ -1,5 +1,10 @@
 import { type Extension, type Text } from "@codemirror/state";
 import { EditorView, gutter, GutterMarker } from "@codemirror/view";
+import {
+  getLineNumberForSourcePosition,
+  getLineNumbersForSourceRanges,
+  type LineSurfaceSourceLine,
+} from "../lineSurfaceModel";
 import type { MarkdownBookmark, MarkdownCommentAnchor, MarkdownLineActionRequest } from "../markdownEditorTypes";
 
 type LineAnnotationState = {
@@ -81,34 +86,36 @@ const lineAnnotationMarkers = {
   bookmark: new LineAnnotationGutterMarker({ hasBookmark: true }),
 };
 
-const clampPosition = (position: number, docLength: number) => Math.max(0, Math.min(position, docLength));
+const createLineResolver = (view: EditorView) => (position: number): LineSurfaceSourceLine => {
+  const line = view.state.doc.lineAt(position);
+  return {
+    number: line.number,
+    start: line.from,
+    end: line.to,
+  };
+};
 
 export const getBookmarkLineNumbers = (view: EditorView, bookmarks: MarkdownBookmark[]) => {
   const docLength = view.state.doc.length;
+  const resolveLineAt = createLineResolver(view);
   return new Set(
-    bookmarks.map((bookmark) => view.state.doc.lineAt(clampPosition(bookmark.position, docLength)).number),
+    bookmarks.map((bookmark) =>
+      getLineNumberForSourcePosition({
+        docLength,
+        position: bookmark.position,
+        resolveLineAt,
+      }),
+    ),
   );
 };
 
 const getCommentLineNumbers = (view: EditorView, commentAnchors: MarkdownCommentAnchor[]) => {
   const docLength = view.state.doc.length;
-  const lineNumbers = new Set<number>();
-
-  commentAnchors.forEach((anchor) => {
-    const start = clampPosition(anchor.start, docLength);
-    const end = clampPosition(anchor.end, docLength);
-    if (end <= start) {
-      return;
-    }
-
-    const startLine = view.state.doc.lineAt(start).number;
-    const endLine = view.state.doc.lineAt(Math.max(start, end - 1)).number;
-    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
-      lineNumbers.add(lineNumber);
-    }
+  return getLineNumbersForSourceRanges({
+    docLength,
+    ranges: commentAnchors.map((anchor) => ({ start: anchor.start, end: anchor.end })),
+    resolveLineAt: createLineResolver(view),
   });
-
-  return lineNumbers;
 };
 
 const getLineAnnotationKind = (lineNumber: number, bookmarkLineNumbers: Set<number>): keyof typeof lineAnnotationMarkers =>
