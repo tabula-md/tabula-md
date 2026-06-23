@@ -1,0 +1,99 @@
+.file-shell.empty {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.file-shell.empty .workspace {
+  grid-row: 1;
+}
+
+.empty-workspace {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.empty-workspace.drop-active {
+  background: #fbfbfb;
+}
+
+.empty-file-state {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 100%;
+  color: #1f1f1f;
+  text-align: center;
+}
+
+.empty-file-center {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  width: min(460px, calc(100% - 48px));
+  text-align: center;
+  transform: translateY(-10px);
+}
+
+.empty-file-brand {
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.empty-file-logo {
+  --tabula-logo-size: 112px;
+
+  color: #1f1f1f;
+  opacity: 0.14;
+}
+
+.empty-file-state p {
+  max-width: 420px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.empty-file-actions {
+  display: grid;
+  gap: 2px;
+  width: min(430px, 100%);
+  margin-top: 8px;
+}
+
+.empty-file-action {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  color: #666666;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.empty-file-action svg {
+  color: #8f8f8f;
+}
+
+.empty-file-action-hint {
+  color: #aaaaaa;
+  font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.empty-file-action:hover {
+  color: #1f1f1f;
+  background: var(--surface-muted);
+}

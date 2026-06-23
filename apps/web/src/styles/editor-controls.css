@@ -1,0 +1,261 @@
+.file-toolbar-wrap {
+  position: relative;
+  z-index: 1;
+  justify-self: end;
+  min-width: 0;
+}
+
+.file-toolbar,
+.markdown-formatting-toolbar {
+  --document-control-height: 34px;
+  --document-control-inner: 28px;
+  --document-control-radius: 8px;
+}
+
+.file-toolbar {
+  gap: 2px;
+  height: var(--document-control-height);
+  padding: 3px;
+  border-radius: var(--document-control-radius);
+  background: var(--surface-muted);
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: #e4e4e5;
+}
+
+.mode-slot-placeholder {
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.file-tool-popover {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  z-index: 30;
+  width: 264px;
+  padding: 6px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
+  transform: none;
+}
+
+.file-tool-popover.editor-controls-popover {
+  width: 304px;
+}
+
+.editor-controls-section {
+  display: grid;
+  gap: 2px;
+}
+
+.editor-controls-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: #1f1f1f;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.editor-controls-row:hover {
+  background: var(--surface-muted);
+}
+
+.editor-controls-check {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: #763fc8;
+}
+
+.editor-controls-width-row {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 8px;
+  border-top: 1px solid var(--line-subtle);
+  color: #1f1f1f;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.editor-width-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  height: 32px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.editor-width-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: #777777;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.editor-width-control button:hover,
+.editor-width-control button.active {
+  color: #1f1f1f;
+  background: #ffffff;
+}
+
+.editor-control-row {
+  position: relative;
+  z-index: 13;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  justify-items: end;
+  gap: 8px;
+  width: var(--document-chrome-width);
+  min-width: 0;
+  margin-left: var(--document-lane-margin-left);
+  margin-right: var(--document-lane-margin-right);
+  height: 42px;
+  padding: 4px 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.editor-control-row.with-formatting {
+  grid-template-columns: minmax(0, 1fr) auto;
+  justify-items: stretch;
+}
+
+.editor-control-row.preview {
+  background: transparent;
+}
+
+.file-shell.view-edit .editor-control-row {
+  width: var(--editor-frame-width);
+}
+
+.markdown-formatting-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.editor-control-row.with-formatting .markdown-formatting-row {
+  max-width: none;
+  overflow: hidden;
+}
+
+.editor-control-row.with-formatting .file-toolbar-wrap {
+  justify-self: end;
+}
+
+.markdown-formatting-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  height: var(--document-control-height);
+  padding: 3px;
+  overflow-x: auto;
+  border-radius: var(--document-control-radius);
+  background: var(--surface-muted);
+  scrollbar-width: none;
+}
+
+.editor-control-row .file-toolbar,
+.editor-control-row.with-formatting .markdown-formatting-toolbar {
+  height: var(--document-control-height);
+  padding: 3px;
+  border-radius: var(--document-control-radius);
+  background: var(--surface-muted);
+}
+
+.markdown-formatting-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.markdown-format-button {
+  flex: 0 0 auto;
+}
+
+.markdown-formatting-row.reading-narrow:not(.split) {
+  max-width: 100%;
+}
+
+.markdown-formatting-row.reading-wide:not(.split) {
+  max-width: 100%;
+}
+
+@media (max-width: 820px) {
+  .file-toolbar-wrap {
+    display: none;
+  }
+
+  .editor-control-row:not(.with-formatting) {
+    display: none;
+  }
+
+  .editor-control-row,
+  .editor-control-row.reading-narrow:not(.split),
+  .editor-control-row.reading-wide:not(.split) {
+    justify-content: flex-start;
+    width: var(--document-chrome-width);
+  }
+
+  .file-shell.view-edit .editor-control-row {
+    width: var(--document-chrome-width);
+  }
+
+  .editor-control-row.with-formatting {
+    padding: 4px;
+  }
+
+  .markdown-formatting-row,
+  .markdown-formatting-row.reading-narrow:not(.split),
+  .markdown-formatting-row.reading-wide:not(.split) {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .editor-control-row,
+  .editor-control-row.reading-narrow:not(.split),
+  .editor-control-row.reading-wide:not(.split) {
+    width: var(--document-chrome-width);
+    margin-left: var(--document-lane-margin-left);
+    margin-right: var(--document-lane-margin-right);
+  }
+
+  .file-shell.view-edit .editor-control-row {
+    width: var(--document-chrome-width);
+  }
+}

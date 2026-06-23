@@ -26,6 +26,26 @@
   min-width: 0;
 }
 
+.preview-surface .preview-comment-mark {
+  position: relative;
+  border-bottom: 1px solid #bdbdbd;
+  border-radius: 3px;
+  background: #f7f7f8;
+  cursor: pointer;
+}
+
+.preview-surface .preview-comment-mark:hover,
+.preview-surface .preview-comment-mark:focus-visible {
+  background: #eeeeef;
+  border-bottom-color: #777777;
+  outline: 0;
+}
+
+.preview-surface .preview-comment-mark.active {
+  background: #eeeeef;
+  border-bottom-color: #4f4f4f;
+}
+
 .frontmatter-view {
   display: grid;
   gap: 6px;

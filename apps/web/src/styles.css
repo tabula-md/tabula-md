@@ -4,6 +4,9 @@
 @import "./styles/tabs.css";
 @import "./styles/workspace-menu.css";
 @import "./styles/file-surface.css";
+@import "./styles/empty-workspace.css";
+@import "./styles/editor-controls.css";
+@import "./styles/editor-code.css";
 @import "./styles/editor-search.css";
 @import "./styles/split-view.css";
 @import "./styles/editor-selection.css";
