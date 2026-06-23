@@ -1207,7 +1207,7 @@ export async function run(ctx) {
     const longMarkdown = Array.from({ length: 80 }, (_, index) => `## Section ${index + 1}\n\nBody ${index + 1}`).join("\n\n");
     await page.keyboard.insertText(longMarkdown);
     await waitForRenderFrame(page);
-    const splitScrollSync = await page.evaluate(async () => {
+    const splitScrollPrepared = await page.evaluate(() => {
       const editor = document.querySelector(".workspace.split .editor-surface");
       const preview = document.querySelector(".workspace.split .preview-surface");
       if (!(editor instanceof HTMLElement) || !(preview instanceof HTMLElement)) {
@@ -1229,9 +1229,44 @@ export async function run(ctx) {
 
       editor.scrollTop = maxEditorScrollTop * 0.55;
       editor.dispatchEvent(new Event("scroll", { bubbles: true }));
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
       return {
         scrollable: true,
+        editorRatio: getRatio(editor),
+        previewRatio: getRatio(preview),
+      };
+    });
+    expect(splitScrollPrepared?.scrollable, "Split editor and preview should be scrollable for toolbar-height scroll smoke.");
+    await page.waitForFunction(
+      ({ tolerance }) => {
+        const editor = document.querySelector(".workspace.split .editor-surface");
+        const preview = document.querySelector(".workspace.split .preview-surface");
+        if (!(editor instanceof HTMLElement) || !(preview instanceof HTMLElement)) {
+          return false;
+        }
+
+        const getRatio = (element) => {
+          const maxScrollTop = element.scrollHeight - element.clientHeight;
+          return maxScrollTop <= 0 ? 0 : element.scrollTop / maxScrollTop;
+        };
+
+        return Math.abs(getRatio(preview) - getRatio(editor)) < tolerance;
+      },
+      { tolerance: 0.12 },
+    );
+    const splitScrollSync = await page.evaluate(() => {
+      const editor = document.querySelector(".workspace.split .editor-surface");
+      const preview = document.querySelector(".workspace.split .preview-surface");
+      if (!(editor instanceof HTMLElement) || !(preview instanceof HTMLElement)) {
+        return null;
+      }
+
+      const getRatio = (element) => {
+        const maxScrollTop = element.scrollHeight - element.clientHeight;
+        return maxScrollTop <= 0 ? 0 : element.scrollTop / maxScrollTop;
+      };
+
+      return {
+        scrollable: editor.scrollHeight - editor.clientHeight > 1 && preview.scrollHeight - preview.clientHeight > 1,
         editorRatio: getRatio(editor),
         previewRatio: getRatio(preview),
       };
