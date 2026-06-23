@@ -6,59 +6,96 @@
 깊은 배경이 필요할 때만 `knowledge/index.md`를 본다. 모든 작업이 전체 배경
 문서를 읽어야 하는 것은 아니다.
 
-## 기본값
+## Purpose
 
-요청을 만족하는 가장 가벼운 mode를 사용한다.
+작업을 작고 review 가능하게 유지하고, 실제 상태와 planning 상태가 어긋나지 않게
+한다. Core workflow는 작업을 어떻게 shape할지 설명하고, repository-specific tool은
+아래 adapter로 둔다.
 
-### Fast Local Loop
+## Principles
 
-일반 구현 요청의 기본값이다.
+- 가장 작은 useful outcome을 낸다.
+- 하나의 slice에는 하나의 reviewable concern만 둔다.
+- 작업이 넓거나 불확실하면 구현 전에 나눈다.
+- Public review surface는 깨끗하게 유지한다.
+- Planning state는 실제 상태를 따라간다.
+- 변경된 surface를 검증한다.
 
-- 요청한 변경을 구현한다.
-- 변경 파일에 맞는 focused validation을 실행한다.
-- 무엇을 바꿨고 어떤 validation을 실행했거나 생략했는지 보고한다.
-- Review handoff 의도가 없으면 Linear issue, Graphite PR, PR metadata를 만들지
-  않는다.
+## The Loop
 
-### PR Handoff Loop
+모든 요청에 같은 loop를 적용한다.
 
-Owner가 PR, Graphite, review handoff를 요청했거나 작업 자체가 PR/stack review를
-명확히 필요로 할 때 사용한다.
+1. Intake: user-visible outcome과 review expectation을 식별한다.
+2. Shape: 직접 답변, local-only, review slice 하나, slice sequence 중 하나로 정한다.
+3. Slice: 넓은 작업은 구현 전에 분리한다.
+4. Build: 현재 slice만 구현하고 incidental cleanup은 피한다.
+5. Validate: likely regression을 잡는 가장 작은 check를 실행한다.
+6. Handoff: local work를 보고하거나 ready review slice를 제출한다.
 
-- Branch, commit, submit, stack, publish, sync는 Graphite를 사용한다.
-- Handoff 전 focused validation을 실행한다.
-- Graphite submit 후 `npm run pr:handoff -- ...`를 한 번 실행한다.
-- Owner에게 넘기기 전에 `npm run pr:ready`를 한 번 실행한다.
-- Handoff 후 CI나 Graphite mergeability를 polling하지 않는다. Owner가 Graphite
-  App에서 review/merge하고, 막히면 구체적 오류를 agent에게 넘긴다.
+Hook은 빠진 작업을 signal할 수 있지만 shape를 대신 고르지 않는다.
 
-### Release/Public Loop
+## Slice Rules
 
-Release, changelog, public launch, security, CI, repository settings, cross-repo
-Tabula 작업에 사용한다.
+Slice는 독립 review로 이해 가능해야 한다. 하나의 slice를 이해하기 위해 전체
+sequence가 필요하다면 다르게 나눈다.
 
-- 명시적 Linear tracking을 선호한다.
-- Reviewable layer가 나뉘면 Graphite stack을 사용한다.
-- 더 넓은 validation과 docs check를 실행한다.
-- Public docs, templates, CI, repository settings를 product surface로 취급한다.
+아래 중 하나라도 해당하면 여러 slice를 선호한다.
 
-Mode 선택은 agent judgment다. Keyword filter가 아니다. Hook은 빠진 작업을
-signal할 수 있지만 mode를 대신 고르지 않는다.
+- 변경이 약 250 meaningful changed lines 또는 25 files를 넘을 가능성이 있다.
+- Refactor와 behavior change가 섞인다.
+- Mechanical/noisy edit과 meaningful product 또는 logic edit이 섞인다.
+- Risk profile이 다른 변경이 섞인다.
+- Owner가 broad product analysis, multiple issues, large patch를 요청한다.
 
-## Work Shape
+상황에 맞게 slice pattern을 고른다.
 
-- Accepted trackable request 하나는 보통 Linear issue 하나, Graphite stack 하나,
-  GitHub PR 하나 이상으로 간다.
-- Reviewable concern이 하나면 PR 하나를 사용한다.
-- Outcome에 dependent review layer가 여러 개면 stack을 사용한다.
-- New runtime, repo, persistence, encryption, collaboration, auth, external
-  system boundary를 넘으면 vertical slice를 선호한다.
-- Graphite stack이 여러 PR이라고 Linear issue를 불필요하게 쪼개지 않는다.
+- Component: 독립적으로 review 가능한 subsystem별로 나눈다.
+- Iterative: 첫 useful improvement를 먼저 올리고 refinement를 이어간다.
+- Refactor/change: structure-only cleanup을 behavior change보다 먼저 land한다.
+- Mechanical/noise: generated, moved, renamed, bulk style 변경을 분리한다.
+- Risk: low-risk prep을 risky behavior 또는 performance work보다 먼저 land한다.
+
+Size budget:
+
+- 약 250 meaningful lines 또는 25 files: warning으로 shape를 다시 확인한다.
+- 약 800 lines: split을 강하게 선호한다.
+- 약 1200 lines: 해당 slice에 더 이상 변경을 추가하지 않는다.
+
+Ready slice는 준비되는 즉시 review로 보낸다. 전체 sequence가 끝날 때까지 bottom
+layer open을 기다리지 않는다.
+
+넓은 작업은 구현 전에 짧은 Stack Plan을 쓴다.
+
+1. `<title>` — 이 slice가 왜 독립 review 가능한지.
+2. `<title>` — 이전 slice에서 무엇에 의존하는지.
+3. `<title>` — validation이 무엇에 집중해야 하는지.
 
 자세한 설명은 `knowledge/workflow/vertical-slice-strategy.md`와
 `knowledge/workflow/graphite-stack-shape.md`에 있다.
 
-## Graphite
+## Open Review Rule
+
+이미 open PR이 있는 branch에서 작업할 때는 새 edit을 coding 전에 분류한다.
+
+- 같은 review concern: 현재 slice를 수정한다.
+- 의존적인 follow-up concern: 새 upstack slice를 만든다.
+- 무관한 concern: 멈추고 묻거나 context를 바꾼다.
+
+현재 branch라는 이유만으로 open PR을 키우지 않는다. 변경이 review에서 두 번째
+질문을 만들면 다음 slice를 만든다.
+
+## Review Surfaces
+
+- Branch는 planning-ticket key가 아니라 semantic work name을 사용한다.
+- Pull request는 public review artifact다: problem, change, validation, risk.
+- Issue tracker는 private planning state다: priority, owner, status, links.
+- Ticket key를 branch name, PR title, public PR body에 넣지 않는다.
+- PR과 tracker issue 연결은 Resources/attachments를 사용한다.
+- 실제 상태가 바뀔 때 planning state도 옮긴다: started, in review, merged.
+
+## Repository Tooling
+
+### Graphite
 
 PR-bound branch와 PR lifecycle은 Graphite가 담당한다.
 
@@ -69,14 +106,27 @@ PR-bound branch와 PR lifecycle은 Graphite가 담당한다.
 - Stack submit: `gt submit --stack`.
 - 기존 draft publish: `gt submit --publish --update-only`.
 - Raw Git recovery 전에 `gt restack`, `gt move`, `gt reorder`, `gt fold`,
-  `gt split`, `gt undo`를 먼저 고려한다.
+  `gt split`, `gt absorb`, `gt undo`를 먼저 고려한다.
 
 정상 PR 작업에는 raw `git commit`, raw `git push`, `git checkout -b`,
 `git pull`, `gh pr create`, `gh pr ready`, `gh pr merge`를 사용하지 않는다.
 
 자세한 설명은 `knowledge/workflow/graphite-pr-lifecycle.md`에 있다.
 
-## PR Handoff
+### Linear
+
+Linear는 이 repository의 private planning surface다.
+
+- PR-bound Linear 작업을 시작하면 issue를 `In Progress`로 옮긴다.
+- Graphite submit, `pr:handoff`, `pr:ready`가 끝나면 PR이 Linear Resources에
+  보이는지 확인하고 issue를 `In Review`로 옮긴다.
+- Closing PR이 land되고 required follow-up이 끝났을 때만 issue를 `Done`으로
+  옮긴다.
+
+Outcome 하나가 여러 review slice를 가진다는 이유만으로 Linear issue를 쪼개지
+않는다.
+
+### PR Handoff
 
 Graphite submit 후 다음 명령 하나를 실행한다.
 
@@ -102,7 +152,7 @@ Handoff 전에 `npm run pr:ready`를 한 번 실행한다. 이 명령은 local h
 completeness만 확인한다. Submit, merge, CI polling, Graphite mergeability
 polling, expensive validation은 하지 않는다.
 
-## Validation
+### Validation
 
 Regression을 잡을 수 있는 가장 작은 validation set을 실행한다.
 
@@ -116,7 +166,7 @@ Regression을 잡을 수 있는 가장 작은 validation set을 실행한다.
 
 Docs-only 변경은 PR body에 이유를 적으면 app tests나 build를 생략할 수 있다.
 
-## Merge Cleanup
+### Merge Cleanup
 
 Owner가 Graphite App에서 merge한다. Merge 후:
 

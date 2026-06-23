@@ -294,6 +294,30 @@ export function checkBranchName(branch) {
   return checks;
 }
 
+export function checkPrDiffBudget({ fileCount = 0, changedLines = 0 } = {}) {
+  const checks = [];
+  const normalizedFileCount = Number(fileCount) || 0;
+  const normalizedChangedLines = Number(changedLines) || 0;
+
+  if (normalizedChangedLines > 1200) {
+    checks.push(warn("PR is far above the Graphite review budget", `${normalizedChangedLines} changed lines. Split before adding more changes.`));
+  } else if (normalizedChangedLines > 800) {
+    checks.push(warn("PR is above the local review budget", `${normalizedChangedLines} changed lines. Consider \`gt split\` unless this is intentionally mechanical.`));
+  } else if (normalizedChangedLines > 250) {
+    checks.push(warn("PR is above Graphite's suggested large-PR warning threshold", `${normalizedChangedLines} changed lines. Confirm the PR is one independent reviewable concern.`));
+  } else {
+    checks.push(ok("PR changed-line budget is reviewable", `${normalizedChangedLines} changed lines`));
+  }
+
+  if (normalizedFileCount > 25) {
+    checks.push(warn("PR touches more than 25 files", `${normalizedFileCount} files. Confirm this is not mixing review concerns.`));
+  } else {
+    checks.push(ok("PR file-count budget is reviewable", `${normalizedFileCount} files`));
+  }
+
+  return checks;
+}
+
 export function isAgentAuthoredBranch(branch) {
   return agentBranchPattern.test(String(branch ?? "").trim());
 }

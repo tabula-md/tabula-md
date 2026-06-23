@@ -66,7 +66,7 @@ export function buildSessionWorkflowContext(cwd = process.cwd()) {
 
 export function recommendNextActions(status) {
   if (status.pr?.state === "MERGED") {
-    return ["Run `npm run workflow:sync`, then move the closing Linear issue to Done when appropriate."];
+    return ["Run `npm run workflow:sync`, then move the closing Linear issue from its Linear Resources-linked PR to Done when appropriate."];
   }
 
   if (!status.clean && status.pr?.state === "OPEN") {
@@ -97,7 +97,7 @@ export function recommendNextActions(status) {
     }
 
     if (actions.length === 0 && !hasFailures(bodyChecks)) {
-      actions.push("Review checks and merge in Graphite when the PR is acceptable.");
+      actions.push("Review checks and merge in Graphite when the PR is acceptable; if this PR is tied to Linear, confirm it appears in Linear Resources and the issue is In Review.");
     }
 
     if (actions.length === 0) {

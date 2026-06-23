@@ -3,6 +3,7 @@ import { collectWorkflowStatus } from "./lib/workflow-status.mjs";
 import {
   checkBranchName,
   checkConventionalTitle,
+  checkPrDiffBudget,
   checkPrLabels,
   checkPrTemplateBody,
   commandResult,
@@ -68,6 +69,7 @@ function checkCurrentPullRequest(status, labelCatalog) {
   }
 
   checks.push(ok("Current branch has a PR", `#${status.pr.number}`));
+  checks.push(...checkCurrentPrDiffBudget(root));
   checks.push(checkConventionalTitle(status.pr.title));
   checks.push(checkTitleMatchesCurrentCommit(root, status.pr.title));
 
@@ -87,8 +89,44 @@ function checkCurrentPullRequest(status, labelCatalog) {
 
   checks.push(...checkPrTemplateBody(status.pr.body, { branch: status.branch }));
   checks.push(warn("CI and mergeability are not polled by pr:ready", "Review the final Graphite App state before merging."));
+  checks.push(warn("Linear status is not changed by pr:ready", "For PR-bound Linear work, keep issue keys out of public PR surfaces, confirm the PR is attached in Linear Resources, then move the issue to In Review."));
 
   return checks;
+}
+
+function checkCurrentPrDiffBudget(root) {
+  const parentResult = commandResult("gt", ["parent"], root);
+  if (!parentResult.ok || !parentResult.stdout) {
+    return [warn("PR diff budget could not be measured", parentResult.stderr || "Could not resolve Graphite parent branch.")];
+  }
+
+  const numstatResult = commandResult("git", ["diff", "--numstat", `${parentResult.stdout}...HEAD`], root);
+  if (!numstatResult.ok) {
+    return [warn("PR diff budget could not be measured", numstatResult.stderr || "Could not read PR diff stats.")];
+  }
+
+  const stats = parseNumstat(numstatResult.stdout);
+  return checkPrDiffBudget(stats);
+}
+
+function parseNumstat(output) {
+  const rows = String(output ?? "").split(/\r?\n/).filter(Boolean);
+  let changedLines = 0;
+
+  for (const row of rows) {
+    const [additions, deletions] = row.split(/\s+/);
+    changedLines += parseNumstatValue(additions) + parseNumstatValue(deletions);
+  }
+
+  return {
+    changedLines,
+    fileCount: rows.length
+  };
+}
+
+function parseNumstatValue(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function checkFastLocalCommands(root) {
