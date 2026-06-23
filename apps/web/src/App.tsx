@@ -168,26 +168,14 @@ function WorkspaceApp() {
     identity,
     createId: randomId,
   });
-  const {
-    publishedSnapshot,
-    publishedScope,
-    publishedFileTitle,
-    publishScope,
-    setPublishScope,
-    publishing,
-    unpublishing,
-    canManagePublishedPage,
-    publishBlockerMessage,
-    publishProjectSnapshot,
-    unpublishProjectSnapshot,
-    copyPublishedUrl,
-  } = usePublishController({
+  const publish = usePublishController({
     activeFile,
     activeFileId,
     commentsByFileId,
     files,
     ownerName: identity.name,
     showToast,
+    tabulaPlusEnabled,
   });
   const text = activeFile?.text ?? "";
   const activeViewMode = activeFile?.viewMode ?? "edit";
@@ -622,8 +610,8 @@ function WorkspaceApp() {
       isLive={isLive}
       shareOpen={shareOpen}
       sharePanelTarget={sharePanelTarget}
-      tabulaPlusEnabled={tabulaPlusEnabled}
       copied={copied}
+      publish={publish}
       onToggleShare={() => {
         setSharePanelTarget(undefined);
         setTopPopover(shareOpen ? null : "share");
@@ -644,23 +632,6 @@ function WorkspaceApp() {
       onCopyShareUrl={copyShareUrl}
       onCopyMarkdown={copyCurrentMarkdown}
       onDownloadMarkdown={downloadCurrentMarkdownFile}
-      publishScope={publishScope}
-      publishFileCount={files.length}
-      publishedScope={publishedScope}
-      publishedFileTitle={publishedFileTitle}
-      publishedFileCount={publishedSnapshot?.fileCount}
-      publishedAt={publishedSnapshot?.updatedAt ?? publishedSnapshot?.createdAt}
-      publishPageUrl={publishedSnapshot?.urls.page}
-      publishBlockerMessage={publishBlockerMessage}
-      canRepublishSnapshot={canManagePublishedPage}
-      publishing={publishing}
-      unpublishing={unpublishing}
-      onChangePublishScope={setPublishScope}
-      onPublishSnapshot={publishProjectSnapshot}
-      onUnpublishSnapshot={unpublishProjectSnapshot}
-      onCopyPublishPageUrl={() =>
-        publishedSnapshot && copyPublishedUrl(publishedSnapshot.urls.page, "Published page link")
-      }
       onChangeUserName={updateIdentityName}
       onCommitUserName={normalizeIdentityName}
       onStopSession={stopSession}

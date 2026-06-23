@@ -16,8 +16,7 @@ import {
 } from "lucide-react";
 import type { ConnectionStatus } from "../collab";
 import { PRODUCT_PLUS_NAME } from "../product";
-import type { PublishScope } from "../publish";
-import { buildPublishViewModel } from "../publishViewModel";
+import type { PublishController } from "../hooks/usePublishController";
 import type { SharePanel } from "../uiTypes";
 import type { MarkdownFile } from "../workspaceStorage";
 
@@ -29,8 +28,8 @@ type ShareControlsProps = {
   isLive: boolean;
   shareOpen: boolean;
   sharePanelTarget?: SharePanel;
-  tabulaPlusEnabled: boolean;
   copied: boolean;
+  publish: PublishController;
   onToggleShare: () => void;
   onCloseShare: () => void;
   onOpenTabulaPlus: () => void;
@@ -38,21 +37,6 @@ type ShareControlsProps = {
   onCopyShareUrl: () => void;
   onCopyMarkdown: () => void;
   onDownloadMarkdown: () => void;
-  publishScope: PublishScope;
-  publishFileCount: number;
-  publishedScope?: PublishScope;
-  publishedFileTitle?: string;
-  publishedFileCount?: number;
-  publishedAt?: string;
-  publishPageUrl?: string;
-  publishBlockerMessage?: string;
-  canRepublishSnapshot: boolean;
-  publishing: boolean;
-  unpublishing: boolean;
-  onChangePublishScope: (nextScope: PublishScope) => void;
-  onPublishSnapshot: () => void;
-  onUnpublishSnapshot: () => void;
-  onCopyPublishPageUrl: () => void;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
   onStopSession: () => void;
@@ -99,8 +83,8 @@ export function ShareControls({
   isLive,
   shareOpen,
   sharePanelTarget,
-  tabulaPlusEnabled,
   copied,
+  publish,
   onToggleShare,
   onCloseShare,
   onOpenTabulaPlus,
@@ -108,21 +92,6 @@ export function ShareControls({
   onCopyShareUrl,
   onCopyMarkdown,
   onDownloadMarkdown,
-  publishScope,
-  publishFileCount,
-  publishedScope,
-  publishedFileTitle,
-  publishedFileCount,
-  publishedAt,
-  publishPageUrl,
-  publishBlockerMessage,
-  canRepublishSnapshot,
-  publishing,
-  unpublishing,
-  onChangePublishScope,
-  onPublishSnapshot,
-  onUnpublishSnapshot,
-  onCopyPublishPageUrl,
   onChangeUserName,
   onCommitUserName,
   onStopSession,
@@ -168,22 +137,7 @@ export function ShareControls({
         : activeStatus === "offline"
           ? "Offline edits stay local until the room reconnects."
           : "";
-  const publishView = buildPublishViewModel({
-    activeFileDisplayTitle,
-    activeFileTitle,
-    tabulaPlusEnabled,
-    publishScope,
-    publishFileCount,
-    publishedScope,
-    publishedFileTitle,
-    publishedFileCount,
-    publishedAt,
-    publishPageUrl,
-    publishBlockerMessage,
-    canRepublishSnapshot,
-    publishing,
-    unpublishing,
-  });
+  const publishView = publish.view;
 
   useEffect(() => {
     if (shareOpen) {
@@ -194,7 +148,7 @@ export function ShareControls({
 
   useEffect(() => {
     setChangingPublishScope(false);
-  }, [publishPageUrl, publishedScope]);
+  }, [publish.versionKey]);
 
   useEffect(() => {
     if (!shareOpen) {
@@ -222,21 +176,17 @@ export function ShareControls({
   };
 
   const showPublishScopePicker = () => {
-    if (publishedScope) {
-      onChangePublishScope(publishedScope);
-    }
+    publish.resetScopeToPublished();
     setChangingPublishScope(true);
   };
 
   const hidePublishScopePicker = () => {
-    if (publishedScope) {
-      onChangePublishScope(publishedScope);
-    }
+    publish.resetScopeToPublished();
     setChangingPublishScope(false);
   };
 
   const handlePublishSnapshot = () => {
-    void Promise.resolve(onPublishSnapshot()).finally(() => setChangingPublishScope(false));
+    void publish.publish().finally(() => setChangingPublishScope(false));
   };
 
   const renderPublishManagementAction = (action: (typeof publishView.managementActions)[number]) => {
@@ -262,7 +212,7 @@ export function ShareControls({
           <a
             key={action.id}
             className="share-modal-secondary publish-page-link"
-            href={publishPageUrl}
+            href={publish.pageUrl}
             target="_blank"
             rel="noreferrer"
           >
@@ -272,7 +222,7 @@ export function ShareControls({
         );
       case "copy":
         return (
-          <button key={action.id} className="share-modal-secondary" type="button" onClick={onCopyPublishPageUrl}>
+          <button key={action.id} className="share-modal-secondary" type="button" onClick={publish.copyPageUrl}>
             <Copy size={16} />
             <span>{action.label}</span>
           </button>
@@ -290,7 +240,7 @@ export function ShareControls({
             key={action.id}
             className="share-modal-secondary"
             type="button"
-            onClick={onUnpublishSnapshot}
+            onClick={publish.unpublish}
             disabled={action.disabled}
             title={actionTitle}
           >
@@ -509,11 +459,11 @@ export function ShareControls({
                         <p className="publish-scope-summary attention">{publishView.disabledReason}</p>
                       )}
 
-                      {publishPageUrl && (
+                      {publish.pageUrl && (
                         <div className="publish-url-card">
                           <span>Public URL</span>
-                          <a href={publishPageUrl} target="_blank" rel="noreferrer" title={publishPageUrl}>
-                            {publishView.publicUrlPreview || publishPageUrl}
+                          <a href={publish.pageUrl} target="_blank" rel="noreferrer" title={publish.pageUrl}>
+                            {publishView.publicUrlPreview || publish.pageUrl}
                           </a>
                         </div>
                       )}
@@ -543,7 +493,7 @@ export function ShareControls({
                             type="button"
                             role="radio"
                             aria-checked={scopeCard.active}
-                            onClick={() => onChangePublishScope(scopeCard.scope)}
+                            onClick={() => publish.changeScope(scopeCard.scope)}
                           >
                             <span>{scopeCard.title}</span>
                             <small>{scopeCard.detail}</small>
