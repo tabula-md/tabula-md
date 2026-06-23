@@ -13,6 +13,7 @@ import {
   type PublishedSnapshot,
   type PublishScope,
 } from "../publish";
+import { buildPublishViewModel, type PublishViewModel } from "../publishViewModel";
 import { randomId, type FileComment, type MarkdownFile } from "../workspaceStorage";
 
 type UsePublishControllerOptions = {
@@ -22,7 +23,22 @@ type UsePublishControllerOptions = {
   files: MarkdownFile[];
   ownerName: string;
   showToast: (message: string, tone?: "error" | "neutral") => void;
+  tabulaPlusEnabled: boolean;
 };
+
+type PublishLifecyclePolicy =
+  | {
+      canManagePublishedPage: boolean;
+      isUpdatingPublishedPage: boolean;
+      mode: "local";
+      serviceUrl: null;
+    }
+  | {
+      canManagePublishedPage: boolean;
+      isUpdatingPublishedPage: boolean;
+      mode: "server";
+      serviceUrl: string;
+    };
 
 const getCommentsForPublishedFiles = (
   commentsByFileId: Record<string, FileComment[]>,
@@ -44,6 +60,38 @@ const getPublishedSnapshotScope = (snapshot: PublishedSnapshot | null | undefine
   return snapshot.scope ?? (snapshot.fileCount > 1 ? "project" : "file");
 };
 
+export const getPublishLifecyclePolicy = (
+  serviceUrl: string | null,
+  publishedSnapshot: PublishedSnapshot | null,
+): PublishLifecyclePolicy => {
+  if (!serviceUrl) {
+    return {
+      canManagePublishedPage: Boolean(publishedSnapshot),
+      isUpdatingPublishedPage: Boolean(publishedSnapshot),
+      mode: "local",
+      serviceUrl: null,
+    };
+  }
+
+  return {
+    canManagePublishedPage: Boolean(publishedSnapshot?.ownerToken),
+    isUpdatingPublishedPage: Boolean(publishedSnapshot?.ownerToken),
+    mode: "server",
+    serviceUrl,
+  };
+};
+
+export type PublishController = {
+  changeScope: (nextScope: PublishScope) => void;
+  copyPageUrl: () => void;
+  pageUrl?: string;
+  publish: () => Promise<void>;
+  resetScopeToPublished: () => void;
+  unpublish: () => Promise<void>;
+  versionKey: string;
+  view: PublishViewModel;
+};
+
 export function usePublishController({
   activeFile,
   activeFileId,
@@ -51,6 +99,7 @@ export function usePublishController({
   files,
   ownerName,
   showToast,
+  tabulaPlusEnabled,
 }: UsePublishControllerOptions) {
   const [publishedSnapshot, setPublishedSnapshot] = useState<PublishedSnapshot | null>(() =>
     readLatestPublishedSnapshot(),
@@ -70,15 +119,56 @@ export function usePublishController({
   const publishedFileTitle =
     publishedSnapshot?.files.find((file) => file.id === publishedSnapshot.activeFileId)?.title ??
     publishedSnapshot?.files[0]?.title;
-  const publishServiceConfigured = Boolean(getConfiguredPublishServiceUrl());
-  const canManagePublishedPage = Boolean(
-    publishedSnapshot && (!publishServiceConfigured || publishedSnapshot.ownerToken),
-  );
+  const publishPolicy = getPublishLifecyclePolicy(getConfiguredPublishServiceUrl(), publishedSnapshot);
   const publishPreviewFiles = useMemo(
     () => (publishScope === "file" && activeFile ? [activeFile] : files),
     [activeFile, files, publishScope],
   );
   const publishBlockerMessage = getEmptyPublishFilesMessage(publishPreviewFiles, publishScope);
+  const activeFileTitle = activeFile?.title ?? "No file open";
+  const activeFileDisplayTitle = activeFileTitle.replace(/\.(?:md|markdown)$/i, "");
+  const publishViewModel = useMemo(
+    () =>
+      buildPublishViewModel({
+        activeFileDisplayTitle,
+        activeFileTitle,
+        tabulaPlusEnabled,
+        publishScope,
+        publishFileCount: files.length,
+        publishedScope,
+        publishedFileTitle,
+        publishedFileCount: publishedSnapshot?.fileCount,
+        publishedAt: publishedSnapshot?.updatedAt ?? publishedSnapshot?.createdAt,
+        publishPageUrl: publishedSnapshot?.urls.page,
+        publishBlockerMessage,
+        canRepublishSnapshot: publishPolicy.canManagePublishedPage,
+        publishing,
+        unpublishing,
+      }),
+    [
+      activeFileDisplayTitle,
+      activeFileTitle,
+      files.length,
+      publishBlockerMessage,
+      publishedFileTitle,
+      publishedScope,
+      publishedSnapshot?.createdAt,
+      publishedSnapshot?.fileCount,
+      publishedSnapshot?.updatedAt,
+      publishedSnapshot?.urls.page,
+      publishPolicy.canManagePublishedPage,
+      publishScope,
+      publishing,
+      tabulaPlusEnabled,
+      unpublishing,
+    ],
+  );
+  const publishedVersionKey = [
+    publishedSnapshot?.id ?? "",
+    publishedSnapshot?.scope ?? "",
+    publishedSnapshot?.updatedAt ?? "",
+    publishedSnapshot?.createdAt ?? "",
+  ].join(":");
 
   const getPublishActiveFileId = (publishFiles = publishPreviewFiles) => {
     const requestedActiveFileId = activeFile?.id ?? activeFileId;
@@ -92,10 +182,6 @@ export function usePublishController({
       return;
     }
 
-    const publishServiceUrl = getConfiguredPublishServiceUrl();
-    const isUpdatingPublishedPage = Boolean(
-      publishedSnapshot && (publishServiceUrl ? publishedSnapshot.ownerToken : true),
-    );
     const publishFiles = publishPreviewFiles;
     const emptyPublishFiles = getEmptyPublishFiles(publishFiles);
     if (emptyPublishFiles.length > 0) {
@@ -107,10 +193,10 @@ export function usePublishController({
     const publishCommentsByFileId = getCommentsForPublishedFiles(commentsByFileId, publishFiles);
     setPublishing(true);
     try {
-      const snapshot = publishServiceUrl
-        ? isUpdatingPublishedPage && publishedSnapshot?.ownerToken
+      const snapshot = publishPolicy.mode === "server"
+        ? publishPolicy.isUpdatingPublishedPage && publishedSnapshot?.ownerToken
           ? await republishServerPublishedSnapshot({
-              serviceUrl: publishServiceUrl,
+              serviceUrl: publishPolicy.serviceUrl,
               origin: window.location.origin,
               scope: publishScope,
               ownerName,
@@ -120,7 +206,7 @@ export function usePublishController({
               commentsByFileId: publishCommentsByFileId,
             })
           : await createServerPublishedSnapshot({
-              serviceUrl: publishServiceUrl,
+              serviceUrl: publishPolicy.serviceUrl,
               origin: window.location.origin,
               scope: publishScope,
               ownerName,
@@ -142,7 +228,7 @@ export function usePublishController({
           };
       savePublishedSnapshot(snapshot);
       setPublishedSnapshot(snapshot);
-      showToast(isUpdatingPublishedPage ? "Published page updated." : "Page published.");
+      showToast(publishPolicy.isUpdatingPublishedPage ? "Published page updated." : "Page published.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Publish failed.");
     } finally {
@@ -155,8 +241,7 @@ export function usePublishController({
       return;
     }
 
-    const publishServiceUrl = getConfiguredPublishServiceUrl();
-    if (publishServiceUrl && !publishedSnapshot.ownerToken) {
+    if (publishPolicy.mode === "server" && !publishedSnapshot.ownerToken) {
       return;
     }
 
@@ -169,9 +254,9 @@ export function usePublishController({
 
     setUnpublishing(true);
     try {
-      if (publishServiceUrl) {
+      if (publishPolicy.mode === "server") {
         await unpublishServerPublishedSnapshot({
-          serviceUrl: publishServiceUrl,
+          serviceUrl: publishPolicy.serviceUrl,
           snapshot: publishedSnapshot,
         });
       }
@@ -190,18 +275,28 @@ export function usePublishController({
     showToast(`${label} copied.`);
   };
 
+  const copyPublishedPageUrl = async () => {
+    if (!publishedSnapshot) {
+      return;
+    }
+
+    await copyPublishedUrl(publishedSnapshot.urls.page, "Published page link");
+  };
+
+  const resetScopeToPublished = () => {
+    if (publishedScope) {
+      setPublishScope(publishedScope);
+    }
+  };
+
   return {
-    publishedSnapshot,
-    publishedScope,
-    publishedFileTitle,
-    publishScope,
-    setPublishScope,
-    publishing,
-    unpublishing,
-    canManagePublishedPage,
-    publishBlockerMessage,
-    publishProjectSnapshot,
-    unpublishProjectSnapshot,
-    copyPublishedUrl,
+    changeScope: setPublishScope,
+    copyPageUrl: copyPublishedPageUrl,
+    pageUrl: publishedSnapshot?.urls.page,
+    publish: publishProjectSnapshot,
+    resetScopeToPublished,
+    unpublish: unpublishProjectSnapshot,
+    versionKey: publishedVersionKey,
+    view: publishViewModel,
   };
 }
