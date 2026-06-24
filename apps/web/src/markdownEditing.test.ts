@@ -95,13 +95,8 @@ describe("markdown editing input rules", () => {
     });
   });
 
-  it("normalizes pasted Markdown-hostile text", () => {
-    expect(getMarkdownPasteEdit("", { from: 0, to: 0 }, "“Title”\r\n\titem\r\n\r\n\r\nnext")).toEqual({
-      from: 0,
-      to: 0,
-      insert: '"Title"\n  item\n\nnext',
-      selection: { from: 20, to: 20 },
-    });
+  it("lets source-sensitive paste use the native editor path", () => {
+    expect(getMarkdownPasteEdit("", { from: 0, to: 0 }, "“Title”\r\n\titem\r\n\r\n\r\nnext")).toBeNull();
   });
 
   it("lets unchanged plain paste use the native editor path", () => {

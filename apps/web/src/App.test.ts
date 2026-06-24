@@ -43,7 +43,7 @@ Body`);
       { key: "title", value: "Diagnose" },
       { key: "description", value: "Hard bug loop" },
     ]);
-    expect(parsed.body).toBe("# Diagnose\n\nBody");
+    expect(parsed.body).toBe("\n# Diagnose\n\nBody");
   });
 
   it("formats multiline, arrays, and nested object metadata", () => {
@@ -70,6 +70,7 @@ Body`);
     expect(parsed.attributes).toContainEqual({ key: "tags", value: "prd, design" });
     expect(parsed.attributes).toContainEqual({ key: "owner", value: "name: Taeha\nteam: Product" });
     expect(parsed.attributes).toContainEqual({ key: "inline", value: "status: draft\nowner: taeha" });
+    expect(parsed.body).toBe("\nBody");
   });
 
   it("does not treat top horizontal rules as frontmatter without metadata key-values", () => {
