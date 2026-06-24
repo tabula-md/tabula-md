@@ -155,11 +155,7 @@ export const parseFrontmatter = (markdown: string): ParsedFrontmatter => {
 
     const separatorIndex = line.indexOf(":");
     if (separatorIndex === -1) {
-      if (!frontmatterKeyPattern.test(trimmedLine)) {
-        return { attributes: [], body: markdown };
-      }
-      attributes.push({ key: trimmedLine, value: "" });
-      continue;
+      return { attributes: [], body: markdown };
     }
 
     const key = line.slice(0, separatorIndex).trim();
