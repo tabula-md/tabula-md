@@ -12,6 +12,7 @@ import {
 } from "react";
 import { Bookmark, Check, Copy, MessageSquare, WrapText } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import {
   areLineSurfaceRowsEqual,
@@ -51,7 +52,7 @@ export type MarkdownPreviewLineActionRequest = MarkdownPreviewLineAnnotation & {
 };
 
 const externalLinkPattern = /^(?:https?:)?\/\//i;
-const MARKDOWN_REMARK_PLUGINS = [remarkGfm];
+const MARKDOWN_REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 const EMPTY_MARKDOWN_PREVIEW_METADATA: MarkdownPreviewMetadata[] = [];
 const EMPTY_PREVIEW_COMMENT_ANCHORS: MarkdownPreviewCommentAnchor[] = [];
 const EMPTY_PREVIEW_LINE_ANNOTATIONS: MarkdownPreviewLineAnnotation[] = [];

@@ -527,6 +527,25 @@ export async function run(ctx) {
     );
 
     await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.insertText("-o\noo");
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await waitForEditorReady(page, { mode: "preview" });
+    const softLineBreakState = await page.evaluate(() => {
+      const paragraph = document.querySelector(".preview-surface p");
+      return {
+        text: paragraph?.textContent ?? "",
+        breakCount: paragraph?.querySelectorAll("br").length ?? 0,
+      };
+    });
+    expect(
+      softLineBreakState.text === "-o\noo" && softLineBreakState.breakCount === 1,
+      "Preview should preserve author-entered soft line breaks for reading convenience.",
+    );
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+
+    await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("```ts\nconst value = 1;\n```");
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await page.waitForSelector(".preview-surface pre code", { timeout: 5_000 });
