@@ -108,6 +108,8 @@ Graphite owns PR-bound branch and PR lifecycle.
 - Publish an existing draft with `gt submit --publish --update-only`.
 - Use `gt restack`, `gt move`, `gt reorder`, `gt fold`, `gt split`,
   `gt absorb`, and `gt undo` before raw Git recovery.
+- Agents do not run `gt merge`; the owner merges review-ready PRs in Graphite
+  App.
 
 Do not use raw `git commit`, raw `git push`, `git checkout -b`, `git pull`,
 `gh pr create`, `gh pr ready`, or `gh pr merge` for normal PR work.

@@ -74,6 +74,7 @@ test("blocks raw Git branch creation and PR publishing lifecycle", () => {
   assert.equal(evaluateBashCommand("gh api --method PATCH repos/tabula-md/tabula-md/pulls/5").decision, "block");
   assert.equal(evaluateBashCommand("gh api -X DELETE repos/tabula-md/tabula-md/git/refs/heads/graphite-base/4").decision, "block");
   assert.equal(evaluateBashCommand("gh api repos/tabula-md/tabula-md/pulls/5").decision, "allow");
+  assert.equal(evaluateBashCommand("gt merge --no-interactive").decision, "block");
   assert.equal(evaluateBashCommand("git merge feature-branch").decision, "block");
   assert.equal(evaluateBashCommand("git merge-base --is-ancestor codex/trust-shell-cleanup main").decision, "allow");
   assert.equal(evaluateBashCommand("git merge-tree main HEAD").decision, "allow");

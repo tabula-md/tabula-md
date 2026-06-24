@@ -100,6 +100,10 @@ function findBlockedGraphiteLifecycleCommands(command) {
     findings.push(block("`gt push` is a Git passthrough. Publish or update PR-bound work with `gt submit` or `gt submit --stack`."));
   }
 
+  if (hasGtSubcommand(command, "merge")) {
+    findings.push(block("The owner merges in Graphite App. Stop after PR handoff/readiness; run `npm run workflow:sync` only after the owner confirms merge."));
+  }
+
   if (hasGitSubcommand(command, "merge")) {
     findings.push(block("Use Graphite restack/sync flows for PR-bound branches instead of raw `git merge`."));
   }
