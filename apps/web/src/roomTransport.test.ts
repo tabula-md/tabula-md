@@ -23,8 +23,13 @@ const socketState = vi.hoisted(() => {
 });
 
 class FakeWebSocket {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
   static instances: FakeWebSocket[] = [];
 
+  readyState = FakeWebSocket.CONNECTING;
   readonly sent: string[] = [];
   readonly listeners = new Map<string, ((event: { data?: string }) => void)[]>();
 
@@ -43,10 +48,17 @@ class FakeWebSocket {
   }
 
   close() {
+    this.readyState = FakeWebSocket.CLOSED;
     this.emit("close");
   }
 
   emit(event: string, payload: { data?: string } = {}) {
+    if (event === "open") {
+      this.readyState = FakeWebSocket.OPEN;
+    }
+    if (event === "close") {
+      this.readyState = FakeWebSocket.CLOSED;
+    }
     for (const listener of this.listeners.get(event) ?? []) {
       listener(payload);
     }
@@ -156,6 +168,7 @@ describe("native WebSocket room transport", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -234,5 +247,42 @@ describe("native WebSocket room transport", () => {
     expect(handlers.onMessage).toHaveBeenCalledWith(envelope);
     expect(handlers.onPeers).toHaveBeenCalledWith({ roomId: "room-123", peers: ["peer"] });
     expect(handlers.onError).toHaveBeenCalledWith({ error: "Room capped." });
+  });
+
+  it("reconnects and rejoins after an unexpected close", () => {
+    vi.useFakeTimers();
+    const handlers = createHandlers();
+    const transport = createWebSocketRoomTransport({
+      baseUrl: "https://rooms.tabula.test",
+      roomId: "room-123",
+      clientId: "client-456",
+      handlers,
+    });
+
+    transport.connect();
+    const firstSocket = FakeWebSocket.instances[0];
+    firstSocket.emit("open");
+    firstSocket.emit("close");
+
+    expect(handlers.onDisconnect).toHaveBeenCalledTimes(1);
+    expect(FakeWebSocket.instances).toHaveLength(1);
+
+    vi.advanceTimersByTime(750);
+
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    const secondSocket = FakeWebSocket.instances[1];
+    secondSocket.emit("open");
+
+    expect(handlers.onConnect).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(secondSocket.sent[0] ?? "{}")).toEqual({
+      type: "room:join",
+      roomId: "room-123",
+      clientId: "client-456",
+    });
+
+    transport.disconnect();
+    secondSocket.emit("close");
+    vi.advanceTimersByTime(750);
+    expect(FakeWebSocket.instances).toHaveLength(2);
   });
 });

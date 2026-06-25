@@ -13,6 +13,8 @@ export async function run(ctx) {
     focusMarkdownEditor,
     restartRoomServer,
     roomDataDir,
+    roomSnapshotMode,
+    roomUrl,
     startRoomServer,
     stopRoomServer,
     waitForEditorReady,
@@ -26,6 +28,7 @@ export async function run(ctx) {
     }
     await waitForEditorReady(page, { mode: "edit" });
   };
+  const snapshotSource = { mode: roomSnapshotMode, roomDataDir, roomUrl };
 
   if (!externalUrl) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -82,7 +85,7 @@ export async function run(ctx) {
       const roomUrl = new URL(firstPage.url());
       const roomId = roomUrl.pathname.split("/").filter(Boolean).at(-1);
       const roomKey = new URLSearchParams(roomUrl.hash.replace(/^#/, "")).get("key");
-      const snapshotRecord = await waitForStableSnapshotRecord(roomDataDir, roomId);
+      const snapshotRecord = await waitForStableSnapshotRecord(snapshotSource, roomId);
       const liveFormattingState = await firstPage.evaluate(() => ({
         cursorPosition: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",
         editorFocused: Boolean(document.querySelector(".markdown-editor")?.contains(document.activeElement)),
@@ -117,7 +120,7 @@ export async function run(ctx) {
       await waitForText(restoredPage.locator(".cm-content"), "**Room sync check**");
       await restoredPage.close();
 
-      let snapshotBeforeWrongKey = await waitForStableSnapshotRecord(roomDataDir, roomId);
+      let snapshotBeforeWrongKey = await waitForStableSnapshotRecord(snapshotSource, roomId);
       expect(typeof stopRoomServer === "function", "Collaboration smoke should be able to stop the room server.");
       expect(typeof startRoomServer === "function", "Collaboration smoke should be able to start the room server.");
       await stopRoomServer();
@@ -137,7 +140,7 @@ export async function run(ctx) {
       await startRoomServer();
       await waitForText(secondPage.locator(".cm-content"), "Offline edit survived", 12_000);
 
-      snapshotBeforeWrongKey = await waitForStableSnapshotRecord(roomDataDir, roomId);
+      snapshotBeforeWrongKey = await waitForStableSnapshotRecord(snapshotSource, roomId);
       expect(typeof restartRoomServer === "function", "Collaboration smoke should be able to restart the room server.");
       await restartRoomServer();
 
@@ -156,7 +159,7 @@ export async function run(ctx) {
         await restartContext.close();
       }
 
-      snapshotBeforeWrongKey = await waitForStableSnapshotRecord(roomDataDir, roomId);
+      snapshotBeforeWrongKey = await waitForStableSnapshotRecord(snapshotSource, roomId);
       const wrongRoomKey = roomKey === "A".repeat(43) ? "B".repeat(43) : "A".repeat(43);
       const wrongKeyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const wrongKeyPage = await wrongKeyContext.newPage();
@@ -178,7 +181,7 @@ export async function run(ctx) {
         await wrongKeyContext.close();
       }
 
-      await waitForSnapshotRecordToRemainUnchanged(roomDataDir, roomId, snapshotBeforeWrongKey.raw);
+      await waitForSnapshotRecordToRemainUnchanged(snapshotSource, roomId, snapshotBeforeWrongKey.raw);
 
       const missingKeyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const missingKeyPage = await missingKeyContext.newPage();
@@ -235,17 +238,30 @@ export async function run(ctx) {
   }
 }
 
-async function waitForSnapshotRecord(roomDataDir, roomId) {
+async function waitForSnapshotRecord(snapshotSource, roomId) {
   if (!roomId) {
     throw new Error("Live collaboration smoke could not determine the room id.");
   }
 
-  const snapshotPath = path.join(roomDataDir, roomId, "snapshot.json");
   const deadline = Date.now() + 8_000;
   let lastError;
 
   while (Date.now() < deadline) {
     try {
+      if (snapshotSource.mode === "http") {
+        const response = await fetch(`${snapshotSource.roomUrl}/v1/rooms/${encodeURIComponent(roomId)}/snapshot`);
+        if (response.status === 404) {
+          throw new Error("Snapshot not found");
+        }
+        if (!response.ok) {
+          throw new Error(`Snapshot endpoint returned ${response.status}`);
+        }
+        const envelope = await response.json();
+        const raw = JSON.stringify(envelope);
+        return { raw, json: { snapshot: envelope } };
+      }
+
+      const snapshotPath = path.join(snapshotSource.roomDataDir, roomId, "snapshot.json");
       const raw = await fs.readFile(snapshotPath, "utf8");
       return { raw, json: JSON.parse(raw) };
     } catch (error) {
@@ -254,17 +270,17 @@ async function waitForSnapshotRecord(roomDataDir, roomId) {
     }
   }
 
-  throw new Error(`Timed out waiting for encrypted room snapshot at ${snapshotPath}: ${lastError?.message ?? ""}`);
+  throw new Error(`Timed out waiting for encrypted room snapshot: ${lastError?.message ?? ""}`);
 }
 
-async function waitForStableSnapshotRecord(roomDataDir, roomId) {
+async function waitForStableSnapshotRecord(snapshotSource, roomId) {
   const deadline = Date.now() + 8_000;
-  let previous = await waitForSnapshotRecord(roomDataDir, roomId);
+  let previous = await waitForSnapshotRecord(snapshotSource, roomId);
   let stableSince = Date.now();
 
   while (Date.now() < deadline) {
     await wait(100);
-    const next = await waitForSnapshotRecord(roomDataDir, roomId);
+    const next = await waitForSnapshotRecord(snapshotSource, roomId);
     if (next.raw === previous.raw) {
       if (Date.now() - stableSince >= 1_300) {
         return next;
@@ -278,12 +294,12 @@ async function waitForStableSnapshotRecord(roomDataDir, roomId) {
   throw new Error("Timed out waiting for encrypted room snapshot to stabilize.");
 }
 
-async function waitForSnapshotRecordToRemainUnchanged(roomDataDir, roomId, expectedRaw) {
+async function waitForSnapshotRecordToRemainUnchanged(snapshotSource, roomId, expectedRaw) {
   const deadline = Date.now() + 1_500;
-  let latest = await waitForSnapshotRecord(roomDataDir, roomId);
+  let latest = await waitForSnapshotRecord(snapshotSource, roomId);
 
   while (Date.now() < deadline) {
-    latest = await waitForSnapshotRecord(roomDataDir, roomId);
+    latest = await waitForSnapshotRecord(snapshotSource, roomId);
     if (latest.raw !== expectedRaw) {
       throw new Error("A room opened with the wrong key overwrote the encrypted snapshot.");
     }
