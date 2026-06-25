@@ -1,4 +1,4 @@
-import { parseRoomLocation, type CollabRecoveryEvent, type ConnectionStatus } from "./collab";
+import { parseRoomLocation, parseRoomShareUrl, type CollabRecoveryEvent, type ConnectionStatus } from "./collab";
 import { PRODUCT_NAME } from "./product";
 
 export const PROJECT_STORAGE_VERSION = 5;
@@ -197,7 +197,12 @@ const getFileUrlPath = (file?: Pick<MarkdownFile, "roomId" | "shareUrl">) => {
     return "/";
   }
 
-  const fileUrl = new URL(file.shareUrl);
+  const parsedRoom = parseRoomShareUrl(file.shareUrl);
+  if (!parsedRoom || parsedRoom.roomId !== file.roomId) {
+    return "/";
+  }
+
+  const fileUrl = new URL(parsedRoom.shareUrl);
   return `${fileUrl.pathname}${fileUrl.hash}`;
 };
 
