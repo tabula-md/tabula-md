@@ -192,8 +192,15 @@ export async function run(ctx) {
       const missingKeyPage = await missingKeyContext.newPage();
       try {
         await missingKeyPage.goto(`${baseUrl}${roomUrl.pathname}`);
-        await missingKeyPage.waitForSelector(".tab-item.live.active");
-        await waitForText(missingKeyPage.locator(".live-room-notice"), "Room key missing");
+        await missingKeyPage.waitForSelector(".tabbar");
+        expect(
+          (await missingKeyPage.locator(".tab-item.live.active").count()) === 0,
+          "A room path without a client-only key should not open a live room.",
+        );
+        expect(
+          (await missingKeyPage.locator(".live-room-notice").count()) === 0,
+          "A room path without a client-only key should stay out of live-room recovery UI.",
+        );
       } finally {
         await missingKeyContext.close();
       }

@@ -178,13 +178,23 @@ export const getRoomIdFromLocation = () => {
   return match?.[1] ?? null;
 };
 
+const getRoomKeyFromLocationHash = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const roomKey = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("key");
+  return roomKey?.trim() ? roomKey : null;
+};
+
 export const getRoomFromLocation = (): LocationRoom | null => {
   if (typeof window === "undefined") {
     return null;
   }
 
   const roomId = getRoomIdFromLocation();
-  if (!roomId) {
+  const roomKey = getRoomKeyFromLocationHash();
+  if (!roomId || !roomKey) {
     return null;
   }
 
