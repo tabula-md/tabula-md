@@ -27,6 +27,9 @@ storage can follow once the public split is stable.
 
 - Deploy the web app with `VITE_TABULA_ROOM_URL` pointing at the selected Room
   server.
+- Do not rely on the local room fallback outside development. Production and
+  self-hosted builds without `VITE_TABULA_ROOM_URL` should leave Start session
+  unavailable until a room server is configured.
 - Deploy `tabula-room` as a small Node service with allowed origins, payload
   limits, rate limits, and persistent encrypted snapshot storage.
 - Keep accounts, billing, audit logs, Redis, and multi-region scaling out of

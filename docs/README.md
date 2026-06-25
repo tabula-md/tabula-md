@@ -5,6 +5,8 @@ This directory is for public, user-facing project documentation.
 Start here:
 
 - [README](../README.md) - product overview and local run commands.
+- [Live collaboration](live-collaboration.md) - Start session, room server, and
+  hosted/self-hosted environment setup.
 - [Contributing](../CONTRIBUTING.md) - public issue and pull request guidance.
 - [Security](../SECURITY.md) - private vulnerability reporting.
 - [Changelog](../CHANGELOG.md) - user-facing release notes.
