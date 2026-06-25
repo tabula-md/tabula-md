@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ConnectionStatus } from "../collab";
+import { getRoomShareLinkView } from "../shareLinkViewModel";
 import type { MarkdownFile } from "../workspaceStorage";
 
 export type ActiveLiveRoomNotice = {
@@ -105,11 +106,13 @@ export function useWorkspaceLiveRoomController({
   };
 
   const copyShareUrl = async () => {
-    const url = activeFile?.shareUrl || window.location.href;
-    await navigator.clipboard.writeText(url);
-    if (activeFile) {
-      setCopiedFileId(activeFile.id);
+    const shareUrlView = getRoomShareLinkView(activeFile?.shareUrl, activeFile?.roomId);
+    if (!activeFile || !shareUrlView.canCopy || !shareUrlView.url) {
+      return;
     }
+
+    await navigator.clipboard.writeText(shareUrlView.url);
+    setCopiedFileId(activeFile.id);
     window.setTimeout(() => setCopiedFileId(null), 1600);
   };
 

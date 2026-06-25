@@ -17,6 +17,7 @@ import {
 import type { ConnectionStatus } from "../collab";
 import { PRODUCT_PLUS_NAME } from "../product";
 import type { PublishController } from "../hooks/usePublishController";
+import { getRoomShareLinkView } from "../shareLinkViewModel";
 import type { SharePanel } from "../uiTypes";
 import type { MarkdownFile } from "../workspaceStorage";
 
@@ -45,21 +46,6 @@ type ShareControlsProps = {
 };
 
 export type { SharePanel } from "../uiTypes";
-
-const formatShareUrlPreview = (url: string) => {
-  try {
-    const parsedUrl = new URL(url);
-    const roomId = parsedUrl.pathname.match(/^\/r\/([^/]+)/)?.[1];
-    if (!roomId) {
-      return url;
-    }
-
-    const compactRoomId = roomId.length > 12 ? `${roomId.slice(0, 8)}...` : roomId;
-    return `${parsedUrl.origin}/r/${compactRoomId}${parsedUrl.hash ? "#key=..." : ""}`;
-  } catch {
-    return url;
-  }
-};
 
 const formatRoomTime = (value?: string) => {
   if (!value) {
@@ -102,8 +88,7 @@ export function ShareControls({
 }: ShareControlsProps) {
   const [sharePanel, setSharePanel] = useState<SharePanel>("collaborate");
   const [changingPublishScope, setChangingPublishScope] = useState(false);
-  const shareUrl = activeFile?.shareUrl || window.location.href;
-  const shareUrlPreview = formatShareUrlPreview(shareUrl);
+  const shareUrlView = getRoomShareLinkView(activeFile?.shareUrl, activeFile?.roomId);
   const activeFileDisplayTitle = activeFileTitle.replace(/\.(?:md|markdown)$/i, "");
   const shareModalTitle = sharePanel === "publish" ? "Publish" : `Share ${activeFileDisplayTitle}`;
   const lastSnapshotTime = formatRoomTime(activeFile?.lastSnapshotAt);
@@ -376,10 +361,15 @@ export function ShareControls({
                       <div className="share-modal-field">
                         <label>Invite link</label>
                         <div className="share-modal-link-row">
-                          <div className="share-link-display" aria-label="Share link" title={shareUrl}>
-                            <span>{shareUrlPreview}</span>
+                          <div className="share-link-display" aria-label="Share link" title={shareUrlView.title}>
+                            <span>{shareUrlView.display}</span>
                           </div>
-                          <button type="button" onClick={onCopyShareUrl}>
+                          <button
+                            type="button"
+                            onClick={onCopyShareUrl}
+                            disabled={!shareUrlView.canCopy}
+                            title={shareUrlView.canCopy ? undefined : "This live file does not have a valid invite link."}
+                          >
                             {copied ? <Check size={17} /> : <Copy size={17} />}
                             <span>{copied ? "Copied" : "Copy link"}</span>
                           </button>
