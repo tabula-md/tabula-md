@@ -78,6 +78,24 @@ describe("Tabula Room keys", () => {
     });
   });
 
+  it("rejects non-canonical room routes with extra path segments", () => {
+    expect(
+      parseRoomLocation({
+        origin: "https://tabula.test",
+        pathname: "/r/room-123/extra",
+        hash: "#key=secret-key",
+      }),
+    ).toBeNull();
+
+    expect(
+      parseRoomLocation({
+        origin: "https://tabula.test",
+        pathname: "/r/room-123/",
+        hash: "#key=secret-key",
+      }),
+    ).toBeNull();
+  });
+
   it("parses stored room share URLs without reading the current window location", () => {
     expect(parseRoomShareUrl("https://tabula.test/r/room-123#key=secret-key")).toEqual({
       roomId: "room-123",

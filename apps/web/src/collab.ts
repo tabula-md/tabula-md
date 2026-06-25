@@ -207,7 +207,7 @@ export const createRoomShareUrl = (origin: string, roomId: string, roomKey = gen
   `${origin}/r/${encodeURIComponent(roomId)}#key=${roomKey}`;
 
 export const parseRoomLocation = (location: RoomRouteLocation): ParsedRoomLocation | null => {
-  const roomId = location.pathname.match(/^\/r\/([^/]+)/)?.[1];
+  const roomId = location.pathname.match(/^\/r\/([^/]+)$/)?.[1];
   const roomKey = parseRoomKeyFromHash(location.hash);
 
   if (!roomId || !roomKey) {
