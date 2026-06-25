@@ -11,6 +11,17 @@ Start here:
 - [Security](../SECURITY.md) - private vulnerability reporting.
 - [Changelog](../CHANGELOG.md) - user-facing release notes.
 
+## Repository Boundary
+
+Tabula.md has two public open-source components:
+
+- `tabula-md` is the local-first Markdown workspace web app.
+- `tabula-room` is the encrypted collaboration room server.
+
+`tabula.md` is the official hosted deployment of those components. Hosted
+provider choices, production credentials, and private operations details do not
+belong in the public OSS repos.
+
 Maintainer workflow, agent instructions, architecture context, and internal
 runbooks live outside this directory:
 
