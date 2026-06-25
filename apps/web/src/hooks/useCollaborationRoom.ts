@@ -6,11 +6,11 @@ import {
   type ConnectionStatus,
   type LiveSelection,
   type RoomMeta,
-  createRoomShareUrl,
+  createRoomSession,
   createCollabConnection,
   getTabulaRoomAvailability,
 } from "../collab";
-import { randomId, syncUrlForFile, type MarkdownFile } from "../workspaceStorage";
+import { syncUrlForFile, type MarkdownFile } from "../workspaceStorage";
 
 type UseCollaborationRoomOptions = {
   activeFile?: MarkdownFile;
@@ -29,10 +29,6 @@ type UseCollaborationRoomOptions = {
     event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
   ) => void;
   startFileCollaborationSession: (fileId: string, roomId: string, shareUrl: string) => MarkdownFile | undefined;
-};
-
-const createShareUrl = (roomId: string) => {
-  return createRoomShareUrl(window.location.origin, roomId);
 };
 
 export function useCollaborationRoom({
@@ -147,13 +143,12 @@ export function useCollaborationRoom({
       return undefined;
     }
 
-    const nextRoomId = randomId();
-    const nextShareUrl = createShareUrl(nextRoomId);
+    const nextSession = createRoomSession(window.location.origin);
     pendingInitialTextRef.current = activeFile.text;
-    syncUrlForFile({ roomId: nextRoomId, shareUrl: nextShareUrl });
-    startFileCollaborationSession(activeFile.id, nextRoomId, nextShareUrl);
+    syncUrlForFile({ roomId: nextSession.roomId, shareUrl: nextSession.shareUrl });
+    startFileCollaborationSession(activeFile.id, nextSession.roomId, nextSession.shareUrl);
     setConnectionStatus("connecting");
-    return { roomId: nextRoomId, shareUrl: nextShareUrl };
+    return { roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
   };
 
   const applyLocalText = (nextText: string) => {

@@ -1,9 +1,11 @@
 import * as Y from "yjs";
 import { describe, expect, it } from "vitest";
 import {
+  createRoomSession,
   createRoomShareUrl,
   decryptEnvelopeForRoom,
   encryptBytesForRoom,
+  generateRoomId,
   generateRoomKey,
   importRoomKey,
   parseRoomKeyFromHash,
@@ -11,6 +13,13 @@ import {
 } from "./collab";
 
 describe("Tabula Room keys", () => {
+  it("generates a 16-byte base64url room id for public room routing", () => {
+    const roomId = generateRoomId();
+
+    expect(roomId).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(roomId).toHaveLength(22);
+  });
+
   it("generates a 32-byte base64url room key for URL fragments", () => {
     const key = generateRoomKey();
 
@@ -24,6 +33,18 @@ describe("Tabula Room keys", () => {
     expect(url).toBe("http://localhost:5173/r/room-123#key=secret-key");
     expect(new URL(url).pathname).toBe("/r/room-123");
     expect(new URL(url).search).toBe("");
+  });
+
+  it("creates a complete room session without moving the key out of the fragment", () => {
+    const session = createRoomSession("https://tabula.test");
+    const url = new URL(session.shareUrl);
+
+    expect(session.roomId).toMatch(/^[A-Za-z0-9_-]{22}$/);
+    expect(session.roomKey).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(url.pathname).toBe(`/r/${session.roomId}`);
+    expect(url.search).toBe("");
+    expect(url.hash).toBe(`#key=${session.roomKey}`);
+    expect(session.shareUrl).not.toContain(`?key=${session.roomKey}`);
   });
 
   it("parses only the client-side key fragment", () => {

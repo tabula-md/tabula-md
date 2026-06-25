@@ -108,6 +108,13 @@ export type TabulaRoomAvailability =
       unavailableReason: string;
     };
 
+export type RoomSession = {
+  roomId: string;
+  roomKey: string;
+  shareUrl: string;
+};
+
+const ROOM_ID_BYTES = 16;
 const ROOM_KEY_BYTES = 32;
 const AES_GCM_IV_BYTES = 12;
 const ROOM_SERVER_PORT = 3002;
@@ -170,6 +177,12 @@ export const generateRoomKey = () => {
   return encodeBase64Url(bytes);
 };
 
+export const generateRoomId = () => {
+  const bytes = new Uint8Array(ROOM_ID_BYTES);
+  crypto.getRandomValues(bytes);
+  return encodeBase64Url(bytes);
+};
+
 export const parseRoomKeyFromHash = (hash: string) => {
   const params = new URLSearchParams(hash.replace(/^#/, ""));
   return params.get("key");
@@ -178,7 +191,18 @@ export const parseRoomKeyFromHash = (hash: string) => {
 export const getRoomKeyFromLocation = () => parseRoomKeyFromHash(window.location.hash);
 
 export const createRoomShareUrl = (origin: string, roomId: string, roomKey = generateRoomKey()) =>
-  `${origin}/r/${roomId}#key=${roomKey}`;
+  `${origin}/r/${encodeURIComponent(roomId)}#key=${roomKey}`;
+
+export const createRoomSession = (origin: string): RoomSession => {
+  const roomId = generateRoomId();
+  const roomKey = generateRoomKey();
+
+  return {
+    roomId,
+    roomKey,
+    shareUrl: createRoomShareUrl(origin, roomId, roomKey),
+  };
+};
 
 export const importRoomKey = async (encodedKey: string) => {
   const rawKey = decodeBase64Url(encodedKey);
