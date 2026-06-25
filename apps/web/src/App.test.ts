@@ -22,6 +22,7 @@ import {
   getLiveFileTitle,
   migrateWorkspacePayload,
   PROJECT_STORAGE_VERSION,
+  syncUrlForFile,
   type MarkdownFile,
 } from "./workspaceStorage";
 
@@ -191,6 +192,43 @@ describe("file tab state transitions", () => {
       roomId: "room-a",
       shareUrl: "https://tabula.test/r/room-a#key=secret",
     });
+  });
+
+  it("syncs browser URLs only from valid stored live room share URLs", () => {
+    const replaceState = vi.fn();
+    vi.stubGlobal("window", {
+      location: {
+        pathname: "/",
+        hash: "",
+      },
+      history: {
+        replaceState,
+      },
+    });
+
+    syncUrlForFile({ roomId: "room-a", shareUrl: "https://tabula.test/r/room-a#key=secret" }, "replace");
+
+    expect(replaceState).toHaveBeenCalledWith(null, "", "/r/room-a#key=secret");
+  });
+
+  it("falls back to the local project path for invalid stored live room share URLs", () => {
+    const replaceState = vi.fn();
+    vi.stubGlobal("window", {
+      location: {
+        pathname: "/r/stale",
+        hash: "#key=stale",
+      },
+      history: {
+        replaceState,
+      },
+    });
+
+    expect(() => syncUrlForFile({ roomId: "room-a", shareUrl: "not a url" }, "replace")).not.toThrow();
+    syncUrlForFile({ roomId: "room-a", shareUrl: "https://tabula.test/r/room-b#key=secret" }, "replace");
+
+    expect(replaceState).toHaveBeenCalledTimes(2);
+    expect(replaceState).toHaveBeenNthCalledWith(1, null, "", "/");
+    expect(replaceState).toHaveBeenNthCalledWith(2, null, "", "/");
   });
 
   it("opens a fresh project on the product README", () => {
