@@ -117,7 +117,7 @@ this TODO to completion:
   - [x] no billing.
   - [x] no permissions.
   - [x] no server-side indexing, search, summarization, or moderation.
-- [ ] Verify local quick start works from a fresh clone.
+- [x] Verify local quick start works from a fresh clone.
 - [ ] Verify Docker quick start works.
 - [x] Verify `.env.example` documents:
   - [x] `PORT`.
