@@ -133,6 +133,45 @@ describe("workspace store", () => {
     expect(useWorkspaceStore.getState().openFileIds).toContain(liveFile?.id);
   });
 
+  it("replaces generated live room titles with the Markdown document title", () => {
+    initializeWorkspaceStore();
+
+    const liveFile = useWorkspaceStore.getState().activateRoomFile({
+      roomId: "room-123456",
+      shareUrl: `https://tabula.test/r/room-123456#key=${VALID_ROOM_KEY}`,
+    });
+
+    useWorkspaceStore.getState().setFileText(
+      liveFile!.id,
+      `---
+title: Product Requirements
+---
+
+# PRD
+`,
+    );
+
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === liveFile?.id)?.title).toBe(
+      "Product Requirements.md",
+    );
+  });
+
+  it("keeps user-renamed live room titles when remote text changes", () => {
+    initializeWorkspaceStore();
+
+    const liveFile = useWorkspaceStore.getState().activateRoomFile({
+      roomId: "room-123456",
+      shareUrl: `https://tabula.test/r/room-123456#key=${VALID_ROOM_KEY}`,
+    });
+
+    useWorkspaceStore.getState().renameFile(liveFile!.id, "Shared Notes");
+    useWorkspaceStore.getState().setFileText(liveFile!.id, "# Product Requirements");
+
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === liveFile?.id)?.title).toBe(
+      "Shared Notes.md",
+    );
+  });
+
   it("replaces an imported workspace and returns the next active file", () => {
     initializeWorkspaceStore();
     const imported = createTestFile(2, {
