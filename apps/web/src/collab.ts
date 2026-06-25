@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 
 import {
-  createSocketIoRoomTransport,
+  createDefaultRoomTransport,
   type CreateRoomTransport,
   type RoomTransport,
 } from "./roomTransport";
@@ -386,7 +386,7 @@ export const createCollabConnection = ({
   onCollaboratorsChange,
   onRoomMetaChange,
   onRecoveryEvent,
-  createRoomTransport = createSocketIoRoomTransport,
+  createRoomTransport = createDefaultRoomTransport,
 }: ConnectOptions) => {
   const doc = new Y.Doc();
   const text = doc.getText("markdown");
@@ -609,6 +609,8 @@ export const createCollabConnection = ({
 
     transport = createRoomTransport({
       baseUrl: roomBaseUrl,
+      roomId,
+      clientId: currentIdentity.id,
       handlers: {
         onConnect: () => {
           if (closedByClient) {
@@ -616,7 +618,6 @@ export const createCollabConnection = ({
           }
 
           onStatusChange("connecting");
-          transport?.join(roomId, currentIdentity.id);
         },
         onJoined: async () => {
           if (closedByClient) {
