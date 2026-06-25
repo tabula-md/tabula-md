@@ -121,6 +121,20 @@ export const parseFrontmatter = (markdown: string): ParsedFrontmatter => {
   return attributes.length > 0 ? { attributes, body: frontmatterBlock.body } : { attributes: [], body: markdown };
 };
 
+export const getMarkdownDocumentTitle = (markdown: string) => {
+  const parsed = parseFrontmatter(markdown);
+  const metadataTitle = parsed.attributes
+    .find((attribute) => attribute.key.toLowerCase() === "title")
+    ?.value.trim();
+
+  if (metadataTitle) {
+    return metadataTitle;
+  }
+
+  const headingTitle = parsed.body.match(/^#{1,2}\s+(.+?)\s*#*\s*$/m)?.[1]?.trim();
+  return headingTitle || "";
+};
+
 export const getOutlineHeadings = (previewBody: PreviewBody): MarkdownHeading[] => {
   return previewBody.body
     .split("\n")

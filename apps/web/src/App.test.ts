@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildLlmsFullTxt, buildLlmsTxt, buildPublishBundle } from "./agentExports";
 import { COMMENT_ANCHOR_CONTEXT_LENGTH, getCommentRangeInText } from "./commentAnchors";
-import { getPreviewBody, parseFrontmatter } from "./markdown";
+import { getMarkdownDocumentTitle, getPreviewBody, parseFrontmatter } from "./markdown";
 import {
   createPublishedSnapshot,
   createServerPublishedSnapshot,
@@ -124,6 +124,19 @@ Body`;
       body: "\n# Diagnose\n\nA discipline.",
       sourceLineOffset: 0,
     });
+  });
+
+  it("derives a document title from frontmatter before headings", () => {
+    expect(
+      getMarkdownDocumentTitle(`---
+title: Product Requirements
+---
+
+# PRD
+`),
+    ).toBe("Product Requirements");
+    expect(getMarkdownDocumentTitle("\n# Design Brief\n\nBody")).toBe("Design Brief");
+    expect(getMarkdownDocumentTitle("Plain body")).toBe("");
   });
 });
 

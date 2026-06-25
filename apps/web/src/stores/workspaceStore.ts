@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getMarkdownDocumentTitle } from "../markdown";
 import {
   addWorkspaceFile,
   closeWorkspaceFile,
@@ -19,6 +20,7 @@ import {
 import {
   ensureLiveFileForRoom,
   getFileIdForRoom,
+  getLiveFileTitle,
   type FileBookmark,
   type FileViewMode,
   type LocationRoom,
@@ -205,6 +207,20 @@ const clearCollaborationFields = (file: MarkdownFile): MarkdownFile => ({
   lastRecoveryMessage: undefined,
   lastRecoveryAt: undefined,
 });
+
+const getFileTitleFromLiveText = (files: MarkdownFile[], file: MarkdownFile, text: string) => {
+  if (!file.roomId || file.title !== getLiveFileTitle(file.roomId)) {
+    return file.title;
+  }
+
+  const documentTitle = getMarkdownDocumentTitle(text);
+  return documentTitle
+    ? getAvailableMarkdownFileTitle(
+        files.filter((candidate) => candidate.id !== file.id),
+        documentTitle,
+      )
+    : file.title;
+};
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   ...DEFAULT_WORKSPACE_STORE_STATE,
@@ -409,7 +425,13 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   setFileText: (fileId, text) => {
-    set((state) => updateFileInState(state, fileId, (file) => ({ ...file, text })));
+    set((state) =>
+      updateFileInState(state, fileId, (file) => ({
+        ...file,
+        title: getFileTitleFromLiveText(state.files, file, text),
+        text,
+      })),
+    );
   },
 
   setActiveFileBookmarks: (bookmarks) => {
