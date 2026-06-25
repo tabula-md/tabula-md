@@ -23,8 +23,12 @@ end-to-end-encrypted room model.
 # Current Direction
 
 Live collaboration uses the separate `tabula-room` server. The web app keeps
-Yjs document merge behavior in the browser, encrypts Yjs updates and presence
-before relay, and stores encrypted room snapshots through the Room HTTP API.
+Yjs document merge behavior in the browser and encrypts Yjs updates, presence,
+and any recovery snapshots before relay or storage.
+
+Automerge is not the v1 collaboration dependency. It remains a possible future
+spike if Yjs cannot satisfy Tabula.md's Markdown source editing and hosted room
+contract.
 
 # Consequences
 
@@ -38,4 +42,5 @@ before relay, and stores encrypted room snapshots through the Room HTTP API.
 # Related
 
 - [Collaboration security](collaboration-security.md)
+- [Share Start session contract](share-start-session-contract.md)
 - [Phase 1 infrastructure](phase-1-infra.md)

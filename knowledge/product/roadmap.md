@@ -13,6 +13,11 @@ Tabula.md now has a separate `tabula-room` path for encrypted collaboration
 relay and snapshots. The next product risk is whether the Markdown workspace
 experience feels complete enough to use and publicly explain.
 
+For PMF work, collaboration should stay on the smallest useful contract:
+`Share > Collaborate > Start session` starts encrypted live editing for the
+active file. Project-wide collaboration, accounts, billing, and server-side
+document intelligence remain parked until usage proves the need.
+
 # Current Priority
 
 1. Product shape and UX polish.
@@ -40,4 +45,5 @@ experience feels complete enough to use and publicly explain.
 # Related
 
 - [Phase 1 infrastructure](/architecture/phase-1-infra.md)
+- [Share Start session contract](/architecture/share-start-session-contract.md)
 - [Launch readiness](/runbooks/launch-readiness.md)

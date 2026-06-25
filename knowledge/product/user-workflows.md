@@ -31,9 +31,13 @@ a heavy template gallery.
 
 # Live Collaboration
 
-Live collaboration starts from the top-right Live action and creates
-`/r/:roomId#key=...`. The user should understand whether a document is local,
-connecting, live, reconnecting, offline, or token-failed.
+Live collaboration starts from `Share > Collaborate > Start session` and
+creates `/r/:roomId#key=...` for the active Markdown file. The user should
+understand whether the file is local, connecting, live, reconnecting, offline,
+or unable to decrypt.
+
+Start session is not Publish. It creates an editable live room; Publish creates
+a durable read-only snapshot.
 
 # Publish
 
@@ -70,4 +74,5 @@ recoverable anchor.
 # Related
 
 - [Product positioning](positioning.md)
+- [Share Start session contract](/architecture/share-start-session-contract.md)
 - [Collaboration security](/architecture/collaboration-security.md)
