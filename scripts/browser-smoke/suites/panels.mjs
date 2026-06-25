@@ -3,24 +3,16 @@ export const description = "Project menu, files, outline, comments, switcher, an
 
 export async function run(ctx) {
   const {
-    appNewFileShortcut,
-    baseUrl,
     browser,
     expect,
-    externalUrl,
-    focusMarkdownEditor,
     getTabs,
-    getViewModeActionLabels,
-    getViewModeSlots,
     openProjectContext,
-    closeProjectContext,
     openProjectMenu,
     waitForActiveTab,
     waitForEditorReady,
     waitForFileCount,
     waitForPanelTab,
     waitForRenderFrame,
-    waitForText,
     withPage,
   } = ctx;
 

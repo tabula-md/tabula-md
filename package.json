@@ -30,7 +30,8 @@
     "test:browser:panels": "npm run test:browser -- --suite=panels",
     "test:browser:collab": "npm run test:browser -- --suite=collaboration",
     "test:browser:publish": "npm run test:browser -- --suite=publish",
-    "test:browser:performance": "npm run test:browser -- --suite=performance"
+    "test:browser:performance": "npm run test:browser -- --suite=performance",
+    "lint:fast": "oxlint apps/web/src scripts --deny-warnings"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
@@ -58,6 +59,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "oxlint": "^1.71.0",
     "playwright": "^1.60.0",
     "typescript": "^5.7.0",
     "vite": "^6.0.0",
