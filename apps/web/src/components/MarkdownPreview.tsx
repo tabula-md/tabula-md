@@ -609,7 +609,7 @@ function MarkdownPreviewComponent({
             {metadata.map((attribute) => (
               <div className="frontmatter-row" key={attribute.key}>
                 <span>{attribute.key}</span>
-                <strong>{attribute.value || "true"}</strong>
+                <strong>{attribute.value}</strong>
               </div>
             ))}
           </section>

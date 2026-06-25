@@ -85,6 +85,20 @@ Body`;
     });
   });
 
+  it("does not coerce bare frontmatter lines into boolean metadata", () => {
+    const markdown = `---
+title: HELP
+a
+---
+
+# HELP`;
+
+    expect(parseFrontmatter(markdown)).toEqual({
+      attributes: [],
+      body: markdown,
+    });
+  });
+
   it("only closes frontmatter on a standalone delimiter line", () => {
     const markdown = `---
 title: Diagnose
