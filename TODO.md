@@ -103,39 +103,39 @@ this TODO to completion:
 
 ## 3. `tabula-room` OSS Readiness
 
-- [ ] Review `tabula-room` README for current truth.
-- [ ] Keep the ciphertext-only boundary prominent.
-- [ ] Explain what the server does:
-  - [ ] relay encrypted room messages.
-  - [ ] store encrypted snapshots.
-  - [ ] expose health and room metadata endpoints.
-- [ ] Explain what the server does not do:
-  - [ ] no room keys.
-  - [ ] no plaintext Markdown.
-  - [ ] no Publish.
-  - [ ] no accounts.
-  - [ ] no billing.
-  - [ ] no permissions.
-  - [ ] no server-side indexing, search, summarization, or moderation.
+- [x] Review `tabula-room` README for current truth.
+- [x] Keep the ciphertext-only boundary prominent.
+- [x] Explain what the server does:
+  - [x] relay encrypted room messages.
+  - [x] store encrypted snapshots.
+  - [x] expose health and room metadata endpoints.
+- [x] Explain what the server does not do:
+  - [x] no room keys.
+  - [x] no plaintext Markdown.
+  - [x] no Publish.
+  - [x] no accounts.
+  - [x] no billing.
+  - [x] no permissions.
+  - [x] no server-side indexing, search, summarization, or moderation.
 - [ ] Verify local quick start works from a fresh clone.
 - [ ] Verify Docker quick start works.
-- [ ] Verify `.env.example` documents:
-  - [ ] `PORT`.
-  - [ ] `TABULA_ROOM_ALLOWED_ORIGINS`.
-  - [ ] `TABULA_ROOM_DATA_DIR`.
-  - [ ] `TABULA_ROOM_MAX_PAYLOAD_BYTES`.
-  - [ ] `TABULA_ROOM_RATE_LIMIT_PER_MINUTE`.
-- [ ] Verify public production docs are provider-neutral:
-  - [ ] WebSocket-capable Node host.
-  - [ ] persistent encrypted snapshot storage.
-  - [ ] TLS.
-  - [ ] origin allowlist.
-  - [ ] payload limits.
-  - [ ] rate limits.
-  - [ ] `/health` monitoring.
+- [x] Verify `.env.example` documents:
+  - [x] `PORT`.
+  - [x] `TABULA_ROOM_ALLOWED_ORIGINS`.
+  - [x] `TABULA_ROOM_DATA_DIR`.
+  - [x] `TABULA_ROOM_MAX_PAYLOAD_BYTES`.
+  - [x] `TABULA_ROOM_RATE_LIMIT_PER_MINUTE`.
+- [x] Verify public production docs are provider-neutral:
+  - [x] WebSocket-capable Node host.
+  - [x] persistent encrypted snapshot storage.
+  - [x] TLS.
+  - [x] origin allowlist.
+  - [x] payload limits.
+  - [x] rate limits.
+  - [x] `/health` monitoring.
 - [ ] Run validation in `tabula-room`:
-  - [ ] `npm test`.
-  - [ ] `npm run build`.
+  - [x] `npm test`.
+  - [x] `npm run build`.
   - [ ] `npm run test:docker`.
 
 ## 4. `tabula-cloud` Private Repo

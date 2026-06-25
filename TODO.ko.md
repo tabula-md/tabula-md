@@ -101,39 +101,39 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
 
 ## 3. `tabula-room` OSS Readiness
 
-- [ ] `tabula-room` README가 현재 사실과 맞는지 검토한다.
-- [ ] ciphertext-only boundary를 가장 중요한 원칙으로 보여준다.
-- [ ] server가 하는 일을 설명한다.
-  - [ ] encrypted room message relay.
-  - [ ] encrypted snapshot storage.
-  - [ ] health and room metadata endpoints.
-- [ ] server가 하지 않는 일을 설명한다.
-  - [ ] room key 수신 없음.
-  - [ ] plaintext Markdown 수신 없음.
-  - [ ] Publish 없음.
-  - [ ] accounts 없음.
-  - [ ] billing 없음.
-  - [ ] permissions 없음.
-  - [ ] server-side indexing/search/summarization/moderation 없음.
+- [x] `tabula-room` README가 현재 사실과 맞는지 검토한다.
+- [x] ciphertext-only boundary를 가장 중요한 원칙으로 보여준다.
+- [x] server가 하는 일을 설명한다.
+  - [x] encrypted room message relay.
+  - [x] encrypted snapshot storage.
+  - [x] health and room metadata endpoints.
+- [x] server가 하지 않는 일을 설명한다.
+  - [x] room key 수신 없음.
+  - [x] plaintext Markdown 수신 없음.
+  - [x] Publish 없음.
+  - [x] accounts 없음.
+  - [x] billing 없음.
+  - [x] permissions 없음.
+  - [x] server-side indexing/search/summarization/moderation 없음.
 - [ ] fresh clone에서 local quick start가 동작하는지 확인한다.
 - [ ] Docker quick start가 동작하는지 확인한다.
-- [ ] `.env.example`가 아래를 문서화하는지 확인한다.
-  - [ ] `PORT`.
-  - [ ] `TABULA_ROOM_ALLOWED_ORIGINS`.
-  - [ ] `TABULA_ROOM_DATA_DIR`.
-  - [ ] `TABULA_ROOM_MAX_PAYLOAD_BYTES`.
-  - [ ] `TABULA_ROOM_RATE_LIMIT_PER_MINUTE`.
-- [ ] public production docs는 provider-neutral하게 둔다.
-  - [ ] WebSocket-capable Node host.
-  - [ ] persistent encrypted snapshot storage.
-  - [ ] TLS.
-  - [ ] origin allowlist.
-  - [ ] payload limits.
-  - [ ] rate limits.
-  - [ ] `/health` monitoring.
+- [x] `.env.example`가 아래를 문서화하는지 확인한다.
+  - [x] `PORT`.
+  - [x] `TABULA_ROOM_ALLOWED_ORIGINS`.
+  - [x] `TABULA_ROOM_DATA_DIR`.
+  - [x] `TABULA_ROOM_MAX_PAYLOAD_BYTES`.
+  - [x] `TABULA_ROOM_RATE_LIMIT_PER_MINUTE`.
+- [x] public production docs는 provider-neutral하게 둔다.
+  - [x] WebSocket-capable Node host.
+  - [x] persistent encrypted snapshot storage.
+  - [x] TLS.
+  - [x] origin allowlist.
+  - [x] payload limits.
+  - [x] rate limits.
+  - [x] `/health` monitoring.
 - [ ] `tabula-room`에서 검증을 실행한다.
-  - [ ] `npm test`.
-  - [ ] `npm run build`.
+  - [x] `npm test`.
+  - [x] `npm run build`.
   - [ ] `npm run test:docker`.
 
 ## 4. `tabula-cloud` Private Repo
