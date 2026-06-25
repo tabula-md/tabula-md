@@ -18,6 +18,7 @@ import {
   ensureDefaultFiles,
   ensureLiveFileForRoom,
   finalizeWorkspaceState,
+  getRoomFromLocation,
   getLiveFileTitle,
   migrateWorkspacePayload,
   PROJECT_STORAGE_VERSION,
@@ -165,6 +166,31 @@ describe("file tab state transitions", () => {
     expect(files.find((file) => file.roomId === "room-a")?.shareUrl).toBe(
       "http://localhost:5174/r/room-a#key=new",
     );
+  });
+
+  it("only treats /r links as live rooms when the client-only key fragment is present", () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://tabula.test",
+        pathname: "/r/room-a",
+        hash: "",
+      },
+    });
+
+    expect(getRoomFromLocation()).toBeNull();
+
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://tabula.test",
+        pathname: "/r/room-a",
+        hash: "#key=secret",
+      },
+    });
+
+    expect(getRoomFromLocation()).toEqual({
+      roomId: "room-a",
+      shareUrl: "https://tabula.test/r/room-a#key=secret",
+    });
   });
 
   it("opens a fresh project on the product README", () => {
