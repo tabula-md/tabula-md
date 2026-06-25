@@ -66,40 +66,40 @@ this TODO to completion:
 
 ## 2. `tabula-md` OSS Readiness
 
-- [ ] Review `README.md` for current truth.
-- [ ] Remove or reword stale Publish-first product claims.
-- [ ] Explain local-first Markdown writing clearly.
-- [ ] Explain that Share is visible in OSS builds.
-- [ ] Explain that Start session requires `VITE_TABULA_ROOM_URL`.
-- [ ] Explain that Start session is unavailable when no room service is
+- [x] Review `README.md` for current truth.
+- [x] Remove or reword stale Publish-first product claims.
+- [x] Explain local-first Markdown writing clearly.
+- [x] Explain that Share is visible in OSS builds.
+- [x] Explain that Start session requires `VITE_TABULA_ROOM_URL`.
+- [x] Explain that Start session is unavailable when no room service is
       configured.
-- [ ] Document local development:
-  - [ ] `npm install`.
-  - [ ] `npm run dev`.
-  - [ ] optional local `tabula-room`.
-- [ ] Document production/self-host requirements:
-  - [ ] static host with SPA fallback.
-  - [ ] `VITE_TABULA_ROOM_URL`.
-  - [ ] no localhost fallback in production.
-- [ ] Verify public-safe files:
-  - [ ] `LICENSE`.
-  - [ ] `CONTRIBUTING.md`.
-  - [ ] `SECURITY.md`.
-  - [ ] `.env.example`.
-  - [ ] `docs/live-collaboration.md`.
+- [x] Document local development:
+  - [x] `npm install`.
+  - [x] `npm run dev`.
+  - [x] optional local `tabula-room`.
+- [x] Document production/self-host requirements:
+  - [x] static host with SPA fallback.
+  - [x] `VITE_TABULA_ROOM_URL`.
+  - [x] no localhost fallback in production.
+- [x] Verify public-safe files:
+  - [x] `LICENSE`.
+  - [x] `CONTRIBUTING.md`.
+  - [x] `SECURITY.md`.
+  - [x] `.env.example`.
+  - [x] `docs/live-collaboration.md`.
 - [ ] Verify tracked files contain no:
   - [ ] production secrets.
   - [ ] room keys.
   - [ ] private hosted URLs beyond public product URLs.
   - [ ] local runtime data.
   - [ ] generated smoke artifacts.
-- [ ] Decide whether root `package.json` stays `"private": true` to prevent
+- [x] Decide whether root `package.json` stays `"private": true` to prevent
       accidental npm publishing.
-- [ ] Run validation:
-  - [ ] `npm test`.
-  - [ ] `npm run build`.
-  - [ ] `npm run knowledge:check`.
-  - [ ] focused browser collaboration smoke against local `tabula-room`.
+- [x] Run validation:
+  - [x] `npm test`.
+  - [x] `npm run build`.
+  - [x] `npm run knowledge:check`.
+  - [x] focused browser collaboration smoke against local `tabula-room`.
 
 ## 3. `tabula-room` OSS Readiness
 
