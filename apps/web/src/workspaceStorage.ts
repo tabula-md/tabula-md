@@ -3,7 +3,7 @@ import { PRODUCT_NAME } from "./product";
 
 export const PROJECT_STORAGE_VERSION = 5;
 export const WORKSPACE_STORAGE_VERSION = PROJECT_STORAGE_VERSION;
-const PROJECT_STORAGE_KEY = "tabula.project.v5";
+export const PROJECT_STORAGE_KEY = "tabula.project.v5";
 const STARTER_MARKDOWN = "";
 export const README_FILE_ID = "tabula-readme";
 

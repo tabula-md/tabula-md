@@ -1,12 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createWorkspacePersistenceQueue, DEFAULT_WORKSPACE_PERSISTENCE_DELAY_MS } from "./workspacePersistence";
+import {
+  createWorkspacePersistenceQueue,
+  DEFAULT_WORKSPACE_PERSISTENCE_DELAY_MS,
+  writeWorkspaceToPrimaryStores,
+} from "./workspacePersistence";
 import {
   createMarkdownFile,
   createStoredWorkspace,
   readStoredWorkspace,
+  PROJECT_STORAGE_KEY,
   type WorkspaceState,
   type WorkspaceStorageAdapter,
 } from "./workspaceStorage";
+import { writeIndexedDbWorkspace } from "./workspaceIndexedDb";
+
+vi.mock("./workspaceIndexedDb", () => ({
+  writeIndexedDbWorkspace: vi.fn(() => Promise.resolve()),
+}));
 
 const createWorkspace = (text: string): WorkspaceState => ({
   files: [createMarkdownFile(1, { id: "local", title: "LOCAL.md", text })],
@@ -18,6 +28,7 @@ const createWorkspace = (text: string): WorkspaceState => ({
 describe("workspace persistence queue", () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("debounces workspace writes", () => {
@@ -98,5 +109,30 @@ describe("workspace storage adapter", () => {
     };
 
     expect(readStoredWorkspace(storage)).toBeNull();
+  });
+});
+
+describe("workspace primary store writes", () => {
+  afterEach(() => {
+    vi.mocked(writeIndexedDbWorkspace).mockClear();
+  });
+
+  it("keeps localStorage as the synchronous write path while mirroring to IndexedDB", () => {
+    const storage: Record<string, string> = {};
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => storage[key] ?? null,
+        setItem: (key: string, value: string) => {
+          storage[key] = value;
+        },
+      },
+    });
+
+    writeWorkspaceToPrimaryStores(createWorkspace("# Mirrored"));
+
+    expect(JSON.parse(storage[PROJECT_STORAGE_KEY] ?? "{}").files.local.text).toBe("# Mirrored");
+    expect(writeIndexedDbWorkspace).toHaveBeenCalledWith(createWorkspace("# Mirrored"));
+
+    vi.unstubAllGlobals();
   });
 });
