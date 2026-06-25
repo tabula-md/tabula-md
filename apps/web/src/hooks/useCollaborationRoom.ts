@@ -9,6 +9,7 @@ import {
   createRoomSession,
   createCollabConnection,
   getTabulaRoomAvailability,
+  parseRoomShareUrl,
 } from "../collab";
 import { syncUrlForFile, type MarkdownFile } from "../workspaceStorage";
 
@@ -67,12 +68,26 @@ export function useCollaborationRoom({
     const pendingInitialText = pendingInitialTextRef.current;
     const connectedFileId = activeFile.id;
     const connectedRoomId = activeFile.roomId;
+    const roomFromShareUrl = activeFile.shareUrl ? parseRoomShareUrl(activeFile.shareUrl) : null;
     pendingInitialTextRef.current = undefined;
     setConnectionStatus("connecting");
     setFileCollaborationStatus(connectedFileId, "connecting");
 
+    if (!roomFromShareUrl || roomFromShareUrl.roomId !== connectedRoomId) {
+      const message = "This live file is missing its client-only room key.";
+      setConnectionStatus("offline");
+      setFileCollaborationStatus(connectedFileId, "offline");
+      setFileRecoveryEvent(connectedFileId, {
+        type: "invalid-message",
+        message,
+        createdAt: new Date().toISOString(),
+      });
+      return;
+    }
+
     collabRef.current = createCollabConnection({
       roomId: connectedRoomId,
+      roomKey: roomFromShareUrl.roomKey,
       initialText: pendingInitialText,
       identity,
       fileTitle: activeFile.title,
@@ -115,6 +130,7 @@ export function useCollaborationRoom({
   }, [
     activeFile?.id,
     activeFile?.roomId,
+    activeFile?.shareUrl,
     activeFile?.title,
     setFileCollaborationStatus,
     setFileCollaboratorCount,

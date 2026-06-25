@@ -43,6 +43,7 @@ export type CollabRecoveryEvent = {
 
 type ConnectOptions = {
   roomId: string;
+  roomKey: string;
   initialText?: string;
   identity: Collaborator;
   fileTitle: string;
@@ -193,8 +194,6 @@ export const parseRoomKeyFromHash = (hash: string) => {
   return roomKey?.trim() ? roomKey : null;
 };
 
-export const getRoomKeyFromLocation = () => parseRoomKeyFromHash(window.location.hash);
-
 export const createRoomShareUrl = (origin: string, roomId: string, roomKey = generateRoomKey()) =>
   `${origin}/r/${encodeURIComponent(roomId)}#key=${roomKey}`;
 
@@ -211,6 +210,14 @@ export const parseRoomLocation = (location: RoomRouteLocation): ParsedRoomLocati
     roomKey,
     shareUrl: createRoomShareUrl(location.origin, roomId, roomKey),
   };
+};
+
+export const parseRoomShareUrl = (shareUrl: string): ParsedRoomLocation | null => {
+  try {
+    return parseRoomLocation(new URL(shareUrl));
+  } catch {
+    return null;
+  }
 };
 
 export const createRoomSession = (origin: string): RoomSession => {
@@ -367,6 +374,7 @@ const decodePresence = (bytes: Uint8Array): Collaborator | null => {
 
 export const createCollabConnection = ({
   roomId,
+  roomKey: encodedRoomKey,
   initialText,
   identity,
   fileTitle,
@@ -572,7 +580,7 @@ export const createCollabConnection = ({
     }
     roomBaseUrl = configuredRoomBaseUrl;
 
-    const encodedKey = getRoomKeyFromLocation();
+    const encodedKey = encodedRoomKey;
     if (!encodedKey) {
       onStatusChange("offline");
       emitRecoveryEvent("invalid-message", "This room URL is missing its client-only room key.");

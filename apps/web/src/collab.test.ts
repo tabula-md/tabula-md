@@ -10,6 +10,7 @@ import {
   importRoomKey,
   parseRoomLocation,
   parseRoomKeyFromHash,
+  parseRoomShareUrl,
   resolveTabulaRoomBaseUrl,
 } from "./collab";
 
@@ -74,6 +75,17 @@ describe("Tabula Room keys", () => {
       roomKey: "secret-key",
       shareUrl: "https://tabula.test/r/room-123#key=secret-key",
     });
+  });
+
+  it("parses stored room share URLs without reading the current window location", () => {
+    expect(parseRoomShareUrl("https://tabula.test/r/room-123#key=secret-key")).toEqual({
+      roomId: "room-123",
+      roomKey: "secret-key",
+      shareUrl: "https://tabula.test/r/room-123#key=secret-key",
+    });
+
+    expect(parseRoomShareUrl("https://tabula.test/r/room-123")).toBeNull();
+    expect(parseRoomShareUrl("not a url")).toBeNull();
   });
 });
 
