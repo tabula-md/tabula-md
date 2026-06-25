@@ -1,4 +1,4 @@
-import type { CollabRecoveryEvent, ConnectionStatus } from "./collab";
+import { parseRoomLocation, type CollabRecoveryEvent, type ConnectionStatus } from "./collab";
 import { PRODUCT_NAME } from "./product";
 
 export const PROJECT_STORAGE_VERSION = 5;
@@ -169,38 +169,19 @@ export const clampSplitEditorRatio = (value: unknown) => {
   return Math.min(MAX_SPLIT_EDITOR_RATIO, Math.max(MIN_SPLIT_EDITOR_RATIO, numericValue));
 };
 
-export const getRoomIdFromLocation = () => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const match = window.location.pathname.match(/^\/r\/([^/]+)/);
-  return match?.[1] ?? null;
-};
-
-const getRoomKeyFromLocationHash = () => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const roomKey = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("key");
-  return roomKey?.trim() ? roomKey : null;
-};
-
 export const getRoomFromLocation = (): LocationRoom | null => {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const roomId = getRoomIdFromLocation();
-  const roomKey = getRoomKeyFromLocationHash();
-  if (!roomId || !roomKey) {
+  const room = parseRoomLocation(window.location);
+  if (!room) {
     return null;
   }
 
   return {
-    roomId,
-    shareUrl: `${window.location.origin}/r/${roomId}${window.location.hash}`,
+    roomId: room.roomId,
+    shareUrl: room.shareUrl,
   };
 };
 

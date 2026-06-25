@@ -96,6 +96,8 @@ type ResolveTabulaRoomUrlOptions = {
   location?: RoomServiceLocation;
 };
 
+type RoomRouteLocation = Pick<Location, "hash" | "origin" | "pathname">;
+
 export type TabulaRoomAvailability =
   | {
       available: true;
@@ -113,6 +115,8 @@ export type RoomSession = {
   roomKey: string;
   shareUrl: string;
 };
+
+export type ParsedRoomLocation = RoomSession;
 
 const ROOM_ID_BYTES = 16;
 const ROOM_KEY_BYTES = 32;
@@ -185,13 +189,29 @@ export const generateRoomId = () => {
 
 export const parseRoomKeyFromHash = (hash: string) => {
   const params = new URLSearchParams(hash.replace(/^#/, ""));
-  return params.get("key");
+  const roomKey = params.get("key");
+  return roomKey?.trim() ? roomKey : null;
 };
 
 export const getRoomKeyFromLocation = () => parseRoomKeyFromHash(window.location.hash);
 
 export const createRoomShareUrl = (origin: string, roomId: string, roomKey = generateRoomKey()) =>
   `${origin}/r/${encodeURIComponent(roomId)}#key=${roomKey}`;
+
+export const parseRoomLocation = (location: RoomRouteLocation): ParsedRoomLocation | null => {
+  const roomId = location.pathname.match(/^\/r\/([^/]+)/)?.[1];
+  const roomKey = parseRoomKeyFromHash(location.hash);
+
+  if (!roomId || !roomKey) {
+    return null;
+  }
+
+  return {
+    roomId,
+    roomKey,
+    shareUrl: createRoomShareUrl(location.origin, roomId, roomKey),
+  };
+};
 
 export const createRoomSession = (origin: string): RoomSession => {
   const roomId = generateRoomId();

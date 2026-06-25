@@ -8,6 +8,7 @@ import {
   generateRoomId,
   generateRoomKey,
   importRoomKey,
+  parseRoomLocation,
   parseRoomKeyFromHash,
   resolveTabulaRoomBaseUrl,
 } from "./collab";
@@ -49,7 +50,30 @@ describe("Tabula Room keys", () => {
 
   it("parses only the client-side key fragment", () => {
     expect(parseRoomKeyFromHash("#key=abc123")).toBe("abc123");
+    expect(parseRoomKeyFromHash("#key=   ")).toBeNull();
     expect(parseRoomKeyFromHash("#other=value")).toBeNull();
+  });
+
+  it("parses room routes only when the client-only key fragment is present", () => {
+    expect(
+      parseRoomLocation({
+        origin: "https://tabula.test",
+        pathname: "/r/room-123",
+        hash: "",
+      }),
+    ).toBeNull();
+
+    expect(
+      parseRoomLocation({
+        origin: "https://tabula.test",
+        pathname: "/r/room-123",
+        hash: "#key=secret-key",
+      }),
+    ).toEqual({
+      roomId: "room-123",
+      roomKey: "secret-key",
+      shareUrl: "https://tabula.test/r/room-123#key=secret-key",
+    });
   });
 });
 
