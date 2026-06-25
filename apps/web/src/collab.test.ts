@@ -12,6 +12,7 @@ import {
   parseRoomKeyFromHash,
   parseRoomShareUrl,
   resolveTabulaRoomBaseUrl,
+  shouldStoreSnapshotAfterJoin,
 } from "./collab";
 
 describe("Tabula Room keys", () => {
@@ -130,5 +131,30 @@ describe("Tabula Room encrypted envelopes", () => {
     expect(Object.keys(envelope)).not.toContain("roomKey");
     expect(Object.keys(envelope)).not.toContain("text");
     expect(restored.getText("markdown").toString()).toBe("# Live\n\nHello");
+  });
+});
+
+describe("Tabula Room snapshot storage policy", () => {
+  it("stores a snapshot for new rooms and local changes, but not for a pure restore", () => {
+    expect(
+      shouldStoreSnapshotAfterJoin({
+        hasUnstoredLocalChanges: false,
+        snapshotFetchResult: "missing",
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldStoreSnapshotAfterJoin({
+        hasUnstoredLocalChanges: true,
+        snapshotFetchResult: "restored",
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldStoreSnapshotAfterJoin({
+        hasUnstoredLocalChanges: false,
+        snapshotFetchResult: "restored",
+      }),
+    ).toBe(false);
   });
 });
