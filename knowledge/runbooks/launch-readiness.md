@@ -40,6 +40,8 @@ collaboration workspace and common failure modes are understandable.
 - `tabula-room` has passing CI and accurate public README instructions.
 - The web app build points to the deployed Room URL with
   `VITE_TABULA_ROOM_URL`.
+- Production Start session has been checked without `VITE_TABULA_ROOM_URL` and
+  shows a clear unavailable state instead of localhost fallback.
 - The Room server has allowed origins, payload limits, rate limits, and a
   persistent encrypted snapshot data directory.
 - Server logs and tests do not receive `roomKey` or plaintext Markdown.

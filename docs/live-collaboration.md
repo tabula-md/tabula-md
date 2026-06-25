@@ -1,0 +1,74 @@
+# Live Collaboration
+
+Tabula.md starts as a local Markdown workspace. A file joins a live room only
+when the user chooses **Share > Collaborate > Start session**.
+
+## What Start Session Does
+
+Start session creates an editable invite link for the active Markdown file:
+
+```txt
+https://tabula.md/r/<roomId>#key=<roomKey>
+```
+
+- `roomId` identifies the room.
+- `roomKey` stays in the URL fragment and is used only in the browser.
+- The room server must not receive `roomKey` or plaintext Markdown.
+- The room server relays encrypted updates and may store encrypted snapshots.
+
+Start session is separate from Publish. Start session is for live editing;
+Publish creates a durable read-only page.
+
+## Local Development
+
+Run the web app and a local room server:
+
+```sh
+git clone https://github.com/tabula-md/tabula-room.git ../tabula-room
+cd ../tabula-room
+npm install
+npm run dev
+```
+
+Then, from this repository:
+
+```sh
+cp .env.example .env.local
+npm run dev
+```
+
+The default `.env.example` points the web app at
+`http://localhost:3002`.
+
+## Hosted Or Self-Hosted Deployments
+
+Set the room service URL in the web app environment:
+
+```sh
+VITE_TABULA_ROOM_URL=https://rooms.example.com
+```
+
+Production builds do not fall back to a local room server. If
+`VITE_TABULA_ROOM_URL` is missing, Start session is unavailable until a room
+server is configured.
+
+The room service should be deployed with:
+
+- TLS.
+- Allowed origins for the web app.
+- Payload limits.
+- Rate limits.
+- Encrypted snapshot storage or a documented relay-only policy.
+- Logs and analytics that never include URL fragments, room keys, or plaintext
+  Markdown.
+
+## Security Contract
+
+The browser owns Markdown plaintext and keys. The room server sees room ids,
+connection events, ciphertext envelopes, IVs, versions, and timestamps.
+
+Do not send the URL hash, `roomKey`, plaintext Markdown, decrypted comments, or
+decrypted snapshots to the server, analytics, logs, or crash reports.
+
+For the architecture contract, see
+[Share Start session contract](../knowledge/architecture/share-start-session-contract.md).
