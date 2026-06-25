@@ -47,6 +47,16 @@
   border-bottom-color: #4f4f4f;
 }
 
+.markdown-editor .cm-remote-presence-line {
+  background: color-mix(in srgb, var(--remote-presence-color, #763fc8) 9%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--remote-presence-color, #763fc8) 70%, transparent);
+}
+
+.markdown-editor .cm-remote-selection {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--remote-presence-color, #763fc8) 18%, transparent);
+}
+
 .markdown-editor .cm-scroller {
   min-height: inherit;
   overflow: auto;

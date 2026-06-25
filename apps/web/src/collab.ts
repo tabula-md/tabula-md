@@ -717,8 +717,12 @@ export const createCollabConnection = ({
       }, "local");
     },
     setPresence(nextPresence: { fileTitle?: string; selection?: LiveSelection }) {
-      currentFileTitle = nextPresence.fileTitle ?? currentFileTitle;
-      currentSelection = nextPresence.selection ?? currentSelection;
+      if ("fileTitle" in nextPresence) {
+        currentFileTitle = nextPresence.fileTitle ?? currentFileTitle;
+      }
+      if ("selection" in nextPresence) {
+        currentSelection = nextPresence.selection;
+      }
       void publishPresence();
     },
     setIdentity(nextIdentity: Collaborator) {

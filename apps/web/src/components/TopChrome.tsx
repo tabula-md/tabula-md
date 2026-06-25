@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Menu, PanelRight, Users } from "lucide-react";
 import type { Collaborator } from "../collab";
+import { getCollaboratorPresenceLabel } from "../collaborationPresence";
 
 type TopChromeProps = {
   workspaceMenuOpen: boolean;
@@ -8,6 +9,7 @@ type TopChromeProps = {
   isLive: boolean;
   identity: Collaborator;
   collaborators: Collaborator[];
+  activeText: string;
   fileTabs: ReactNode;
   shareControls: ReactNode;
   onToggleWorkspaceMenu: () => void;
@@ -20,6 +22,7 @@ export function TopChrome({
   isLive,
   identity,
   collaborators,
+  activeText,
   fileTabs,
   shareControls,
   onToggleWorkspaceMenu,
@@ -32,6 +35,7 @@ export function TopChrome({
     liveCollaborators.length > 1
       ? `Live with ${liveCollaborators.map((collaborator) => collaborator.name).join(", ")}`
       : `Live as ${identity.name}`;
+  const getTooltip = (collaborator: Collaborator) => getCollaboratorPresenceLabel(collaborator, activeText);
 
   return (
     <header className="top-chrome">
@@ -56,7 +60,7 @@ export function TopChrome({
             <div className="presence sharing-presence" aria-label={sharingTooltip} data-tooltip={sharingTooltip}>
               <Users size={15} />
               <div className="avatars">
-                <span className="avatar self" style={{ background: identity.color }} data-tooltip={identity.name}>
+                <span className="avatar self" style={{ background: identity.color }} data-tooltip={getTooltip(identity)}>
                   {identity.name.slice(0, 1)}
                 </span>
                 {collaborators.slice(0, 4).map((collaborator) => (
@@ -64,7 +68,7 @@ export function TopChrome({
                     className="avatar"
                     key={collaborator.id}
                     style={{ background: collaborator.color }}
-                    data-tooltip={collaborator.name}
+                    data-tooltip={getTooltip(collaborator)}
                   >
                     {collaborator.name.slice(0, 1)}
                   </span>

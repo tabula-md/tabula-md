@@ -40,9 +40,18 @@ export async function run(ctx) {
       await firstPage.waitForSelector(".tabbar");
       await firstPage.locator(".share-trigger").click();
       await firstPage.getByRole("button", { name: "Start session" }).click();
-      await firstPage.waitForURL(/\/r\/.+#key=/, { timeout: 5_000 });
       await firstPage.waitForSelector(".tab-item.live.active");
       await firstPage.waitForSelector(".sharing-presence");
+      const firstPageUrl = new URL(firstPage.url());
+      expect(
+        firstPageUrl.pathname === "/" && !firstPageUrl.hash,
+        "Starting a live session should keep the current workspace URL separate from the invite link.",
+      );
+      const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
+      expect(
+        Boolean(shareUrl && new URL(shareUrl).pathname.startsWith("/r/") && new URL(shareUrl).hash.startsWith("#key=")),
+        "Live sessions should expose a client-key invite link without navigating the current tab.",
+      );
       const sharingPresenceTitle = await firstPage.locator(".sharing-presence").getAttribute("data-tooltip");
       const sharingPresenceText = await firstPage.locator(".sharing-presence").textContent();
       expect(
@@ -68,7 +77,8 @@ export async function run(ctx) {
         return avatar && getComputedStyle(avatar, "::after").opacity === "1";
       });
 
-      const sharedPath = new URL(firstPage.url()).pathname + new URL(firstPage.url()).hash;
+      const roomUrl = new URL(shareUrl);
+      const sharedPath = roomUrl.pathname + roomUrl.hash;
       await secondPage.goto(`${baseUrl}${sharedPath}`);
       await secondPage.waitForSelector(".tab-item.live.active");
       await ensureEditMode(secondPage);
@@ -82,7 +92,6 @@ export async function run(ctx) {
       await waitForText(firstPage.locator(".status-cursor-position"), "(15 characters)");
       await firstPage.getByRole("button", { name: "Bold", exact: true }).click();
       await waitForText(secondPage.locator(".cm-content"), "**Room sync check**");
-      const roomUrl = new URL(firstPage.url());
       const roomId = roomUrl.pathname.split("/").filter(Boolean).at(-1);
       const roomKey = new URLSearchParams(roomUrl.hash.replace(/^#/, "")).get("key");
       const snapshotRecord = await waitForStableSnapshotRecord(snapshotSource, roomId);

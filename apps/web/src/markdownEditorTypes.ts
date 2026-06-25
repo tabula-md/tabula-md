@@ -1,4 +1,4 @@
-import type { LiveSelection } from "./collab";
+import type { Collaborator, LiveSelection } from "./collab";
 import type { SearchMatch } from "./markdown";
 import type { MarkdownFormatCommand } from "./markdownFormatting";
 
@@ -50,6 +50,7 @@ export type MarkdownEditorProps = {
   lineNumbers: boolean;
   bookmarks?: MarkdownBookmark[];
   commentAnchors?: MarkdownCommentAnchor[];
+  collaborators?: Collaborator[];
   activeCommentId?: string | null;
   searchMatches?: SearchMatch[];
   activeSearchMatchIndex?: number;
