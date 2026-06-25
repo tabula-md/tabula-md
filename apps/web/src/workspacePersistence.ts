@@ -1,5 +1,6 @@
 import type { WorkspaceState } from "./workspaceStorage";
 import { writeStoredWorkspace } from "./workspaceStorage";
+import { writeIndexedDbWorkspace } from "./workspaceIndexedDb";
 
 export const DEFAULT_WORKSPACE_PERSISTENCE_DELAY_MS = 400;
 
@@ -24,7 +25,7 @@ const defaultTimers: WorkspacePersistenceTimers = {
 export const createWorkspacePersistenceQueue = ({
   delayMs = DEFAULT_WORKSPACE_PERSISTENCE_DELAY_MS,
   timers = defaultTimers,
-  writeWorkspace = writeStoredWorkspace,
+  writeWorkspace = writeWorkspaceToPrimaryStores,
 }: WorkspacePersistenceQueueOptions = {}) => {
   let pendingWorkspace: WorkspaceState | null = null;
   let pendingTimer: TimerHandle | null = null;
@@ -63,4 +64,11 @@ export const createWorkspacePersistenceQueue = ({
       pendingTimer = timers.setTimeout(flush, delayMs);
     },
   };
+};
+
+export const writeWorkspaceToPrimaryStores = (workspace: WorkspaceState) => {
+  writeStoredWorkspace(workspace);
+  void writeIndexedDbWorkspace(workspace).catch(() => {
+    // localStorage remains the synchronous recovery path until IndexedDB hydrate is wired.
+  });
 };
