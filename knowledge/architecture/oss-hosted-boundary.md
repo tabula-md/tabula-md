@@ -13,7 +13,7 @@ official hosted deployment:
 - `tabula-md`: the open-source Markdown workspace web app.
 - `tabula-room`: the open-source encrypted collaboration room server.
 - `tabula.md`: the official hosted deployment of the web app, connected to an
-  operator-managed room service.
+  operator-managed deployment of `tabula-room`.
 
 This is intentionally similar to the Excalidraw shape: a public client repo, a
 separate public room server repo, and an official hosted product surface. The
@@ -73,8 +73,7 @@ live in the public OSS repos, such as:
 - DNS and custom-domain automation;
 - hosted service environment templates;
 - monitoring, alerting, and incident runbooks;
-- a managed hosted runtime that requires source code separate from the OSS
-  app/server repos;
+- provider-specific deployment wrappers for the public web app and room server;
 - billing, account, or Tabula+ service code that should not live in the OSS
   repos.
 
@@ -90,7 +89,7 @@ The official hosted service should feel like this:
 2. The app opens directly into a local-first Markdown workspace.
 3. The user can write without an account.
 4. The user can open Share and start a live session.
-5. The hosted build already has a managed room service configured.
+5. The hosted build already has the official `tabula-room` service configured.
 6. The copied `/r/:roomId#key=...` link opens the same Markdown file in another
    browser.
 7. The room server never receives the room key or plaintext Markdown.
