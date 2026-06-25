@@ -18,7 +18,7 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
 
 - [ ] `tabula-md`가 OSS web app으로 공개 가능한 상태다.
 - [ ] `tabula-room`이 OSS encrypted room server로 공개 가능한 상태다.
-- [ ] private `tabula-cloud` 레포가 있다.
+- [x] private `tabula-cloud` 레포가 있다.
 - [ ] hosted `tabula.md`에서 production web app이 열린다.
 - [ ] hosted Share > Start session이 live room link를 만든다.
 - [ ] 두 번째 브라우저가 복사된 `/r/:roomId#key=...` 링크로 들어올 수 있다.
@@ -138,31 +138,31 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
 
 ## 4. `tabula-cloud` Private Repo
 
-- [ ] private repo 기본 구조를 만든다.
-  - [ ] `README.md`.
-  - [ ] `docs/architecture.md`.
-  - [ ] `docs/hosted-service-plan.md`.
-  - [ ] `docs/web-deployment.md`.
-  - [ ] `docs/room-deployment.md`.
-  - [ ] `docs/launch-checklist.md`.
-  - [ ] `docs/smoke-test.md`.
-  - [ ] `docs/rollback.md`.
-  - [ ] `env/tabula-md.production.example`.
-  - [ ] `env/tabula-room.production.example`.
-- [ ] repo boundary를 명시한다.
-  - [ ] public app code는 `tabula-md`에 둔다.
-  - [ ] public room server code는 `tabula-room`에 둔다.
-  - [ ] private hosted operations는 `tabula-cloud`에 둔다.
-- [ ] v0 hosted stack을 private하게 문서화한다.
-  - [ ] static web hosting provider.
-  - [ ] DNS/TLS provider.
-  - [ ] room service provider.
-  - [ ] persistent disk path.
-  - [ ] production web URL.
-  - [ ] production room URL.
-- [ ] production env example을 만들되 실제 secret 값은 넣지 않는다.
-- [ ] rollback instructions를 추가한다.
-- [ ] alert ownership and escalation notes를 추가한다.
+- [x] private repo 기본 구조를 만든다.
+  - [x] `README.md`.
+  - [x] `docs/architecture.md`.
+  - [x] `docs/hosted-service-plan.md`.
+  - [x] `docs/web-deployment.md`.
+  - [x] `docs/room-deployment.md`.
+  - [x] `docs/launch-checklist.md`.
+  - [x] `docs/smoke-test.md`.
+  - [x] `docs/rollback.md`.
+  - [x] `env/tabula-md.production.example`.
+  - [x] `env/tabula-room.production.example`.
+- [x] repo boundary를 명시한다.
+  - [x] public app code는 `tabula-md`에 둔다.
+  - [x] public room server code는 `tabula-room`에 둔다.
+  - [x] private hosted operations는 `tabula-cloud`에 둔다.
+- [x] v0 hosted stack을 private하게 문서화한다.
+  - [x] static web hosting provider.
+  - [x] DNS/TLS provider.
+  - [x] room service provider.
+  - [x] persistent disk path.
+  - [x] production web URL.
+  - [x] production room URL.
+- [x] production env example을 만들되 실제 secret 값은 넣지 않는다.
+- [x] rollback instructions를 추가한다.
+- [x] alert ownership and escalation notes를 추가한다.
 
 ## 5. Hosted Web Deployment
 

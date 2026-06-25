@@ -18,7 +18,7 @@ rewrites here.
 
 - [ ] `tabula-md` is ready to be public as the OSS web app.
 - [ ] `tabula-room` is ready to be public as the OSS encrypted room server.
-- [ ] Private `tabula-cloud` exists for hosted operations.
+- [x] Private `tabula-cloud` exists for hosted operations.
 - [ ] Hosted `tabula.md` loads the production web app.
 - [ ] Hosted Share > Start session creates a live room link.
 - [ ] A second browser can join the copied `/r/:roomId#key=...` link.
@@ -140,31 +140,31 @@ this TODO to completion:
 
 ## 4. `tabula-cloud` Private Repo
 
-- [ ] Add initial private repo structure:
-  - [ ] `README.md`.
-  - [ ] `docs/architecture.md`.
-  - [ ] `docs/hosted-service-plan.md`.
-  - [ ] `docs/web-deployment.md`.
-  - [ ] `docs/room-deployment.md`.
-  - [ ] `docs/launch-checklist.md`.
-  - [ ] `docs/smoke-test.md`.
-  - [ ] `docs/rollback.md`.
-  - [ ] `env/tabula-md.production.example`.
-  - [ ] `env/tabula-room.production.example`.
-- [ ] State the repo boundary:
-  - [ ] public app code stays in `tabula-md`.
-  - [ ] public room server code stays in `tabula-room`.
-  - [ ] private hosted operations live in `tabula-cloud`.
-- [ ] Document the v0 hosted stack privately:
-  - [ ] static web hosting provider.
-  - [ ] DNS/TLS provider.
-  - [ ] room service provider.
-  - [ ] persistent disk path.
-  - [ ] production web URL.
-  - [ ] production room URL.
-- [ ] Add production env examples without secret values.
-- [ ] Add rollback instructions.
-- [ ] Add alert ownership and escalation notes.
+- [x] Add initial private repo structure:
+  - [x] `README.md`.
+  - [x] `docs/architecture.md`.
+  - [x] `docs/hosted-service-plan.md`.
+  - [x] `docs/web-deployment.md`.
+  - [x] `docs/room-deployment.md`.
+  - [x] `docs/launch-checklist.md`.
+  - [x] `docs/smoke-test.md`.
+  - [x] `docs/rollback.md`.
+  - [x] `env/tabula-md.production.example`.
+  - [x] `env/tabula-room.production.example`.
+- [x] State the repo boundary:
+  - [x] public app code stays in `tabula-md`.
+  - [x] public room server code stays in `tabula-room`.
+  - [x] private hosted operations live in `tabula-cloud`.
+- [x] Document the v0 hosted stack privately:
+  - [x] static web hosting provider.
+  - [x] DNS/TLS provider.
+  - [x] room service provider.
+  - [x] persistent disk path.
+  - [x] production web URL.
+  - [x] production room URL.
+- [x] Add production env examples without secret values.
+- [x] Add rollback instructions.
+- [x] Add alert ownership and escalation notes.
 
 ## 5. Hosted Web Deployment
 
