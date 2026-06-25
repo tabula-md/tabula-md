@@ -238,17 +238,17 @@ this TODO to completion:
 
 - [ ] Confirm `tabula-md` public repo visibility can be changed safely.
 - [ ] Confirm `tabula-room` public repo visibility can be changed safely.
-- [ ] Confirm `tabula-cloud` remains private.
-- [ ] Confirm public docs are provider-neutral.
-- [ ] Confirm private hosted provider details are only in `tabula-cloud`.
-- [ ] Confirm security reporting path works.
-- [ ] Confirm issue templates do not route security issues publicly.
-- [ ] Confirm launch language:
-  - [ ] public preview.
-  - [ ] local-first by default.
-  - [ ] live collaboration is experimental.
-  - [ ] no account required.
-  - [ ] Publish/Tabula+ not included in v0.
+- [x] Confirm `tabula-cloud` remains private.
+- [x] Confirm public docs are provider-neutral.
+- [x] Confirm private hosted provider details are only in `tabula-cloud`.
+- [x] Confirm security reporting path works.
+- [x] Confirm issue templates do not route security issues publicly.
+- [x] Confirm launch language:
+  - [x] public preview.
+  - [x] local-first by default.
+  - [x] live collaboration is experimental.
+  - [x] no account required.
+  - [x] Publish/Tabula+ not included in v0.
 
 ## Out Of Scope For This TODO
 
