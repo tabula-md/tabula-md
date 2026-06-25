@@ -88,10 +88,32 @@ type PresencePayload = Collaborator & {
   fileTitle: string;
 };
 
+type RoomServiceLocation = Pick<Location, "hostname" | "protocol">;
+
+type ResolveTabulaRoomUrlOptions = {
+  configuredUrl?: string;
+  isDev?: boolean;
+  location?: RoomServiceLocation;
+};
+
+export type TabulaRoomAvailability =
+  | {
+      available: true;
+      baseUrl: string;
+      unavailableReason: "";
+    }
+  | {
+      available: false;
+      baseUrl: "";
+      unavailableReason: string;
+    };
+
 const ROOM_KEY_BYTES = 32;
 const AES_GCM_IV_BYTES = 12;
 const ROOM_SERVER_PORT = 3002;
 const REMOTE_ORIGIN = "tabula-room-remote";
+const ROOM_UNCONFIGURED_MESSAGE =
+  "Live collaboration needs a Tabula Room server. Configure VITE_TABULA_ROOM_URL to start sessions.";
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -200,18 +222,42 @@ export const decryptEnvelopeForRoom = async (roomKey: CryptoKey, envelope: Encry
 const toArrayBuffer = (bytes: Uint8Array) =>
   bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 
-const getTabulaRoomBaseUrl = () => {
-  const configuredUrl = import.meta.env.VITE_TABULA_ROOM_URL as string | undefined;
-  if (configuredUrl) {
-    return configuredUrl.replace(/\/$/, "");
+const normalizeRoomBaseUrl = (configuredUrl?: string) => {
+  const trimmedUrl = configuredUrl?.trim();
+  if (!trimmedUrl) {
+    return null;
   }
 
-  const protocol = window.location.protocol === "https:" ? "https:" : "http:";
-  return `${protocol}//${window.location.hostname}:${ROOM_SERVER_PORT}`;
+  return trimmedUrl.replace(/\/+$/, "");
 };
 
-const createRoomApiUrl = (roomId: string, suffix = "") =>
-  `${getTabulaRoomBaseUrl()}/v1/rooms/${encodeURIComponent(roomId)}${suffix}`;
+export const resolveTabulaRoomBaseUrl = ({
+  configuredUrl = import.meta.env.VITE_TABULA_ROOM_URL as string | undefined,
+  isDev = import.meta.env.DEV,
+  location = window.location,
+}: ResolveTabulaRoomUrlOptions = {}) => {
+  const configuredBaseUrl = normalizeRoomBaseUrl(configuredUrl);
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
+  }
+
+  if (!isDev) {
+    return null;
+  }
+
+  const protocol = location.protocol === "https:" ? "https:" : "http:";
+  return `${protocol}//${location.hostname}:${ROOM_SERVER_PORT}`;
+};
+
+export const getTabulaRoomAvailability = (): TabulaRoomAvailability => {
+  const baseUrl = resolveTabulaRoomBaseUrl();
+  return baseUrl
+    ? { available: true, baseUrl, unavailableReason: "" }
+    : { available: false, baseUrl: "", unavailableReason: ROOM_UNCONFIGURED_MESSAGE };
+};
+
+const createRoomApiUrl = (baseUrl: string, roomId: string, suffix = "") =>
+  `${baseUrl}/v1/rooms/${encodeURIComponent(roomId)}${suffix}`;
 
 const toRoomMeta = (metadata: RoomServerMetadata): RoomMeta => {
   const snapshotVersion = metadata.snapshotVersion ?? 0;
@@ -302,6 +348,7 @@ export const createCollabConnection = ({
   let hasConnectedOnce = false;
   let collaborationBlocked = false;
   let serverOfflineNotified = false;
+  let roomBaseUrl = "";
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
     onRecoveryEvent?.({
@@ -318,7 +365,7 @@ export const createCollabConnection = ({
 
   const refreshRoomMeta = async () => {
     try {
-      const response = await fetch(createRoomApiUrl(roomId));
+      const response = await fetch(createRoomApiUrl(roomBaseUrl, roomId));
       if (!response.ok) {
         return;
       }
@@ -363,7 +410,7 @@ export const createCollabConnection = ({
 
     try {
       const snapshot = await encryptEnvelope("snapshot", Y.encodeStateAsUpdate(doc));
-      const response = await fetch(createRoomApiUrl(roomId, "/snapshot"), {
+      const response = await fetch(createRoomApiUrl(roomBaseUrl, roomId, "/snapshot"), {
         method: "PUT",
         headers: {
           "content-type": "application/json",
@@ -394,7 +441,7 @@ export const createCollabConnection = ({
     }
 
     try {
-      const response = await fetch(createRoomApiUrl(roomId, "/snapshot"));
+      const response = await fetch(createRoomApiUrl(roomBaseUrl, roomId, "/snapshot"));
       if (response.status === 404) {
         await refreshRoomMeta();
         return true;
@@ -473,6 +520,14 @@ export const createCollabConnection = ({
   });
 
   const start = async () => {
+    const configuredRoomBaseUrl = resolveTabulaRoomBaseUrl();
+    if (!configuredRoomBaseUrl) {
+      onStatusChange("offline");
+      emitRecoveryEvent("invalid-message", ROOM_UNCONFIGURED_MESSAGE);
+      return;
+    }
+    roomBaseUrl = configuredRoomBaseUrl;
+
     const encodedKey = getRoomKeyFromLocation();
     if (!encodedKey) {
       onStatusChange("offline");
@@ -488,7 +543,7 @@ export const createCollabConnection = ({
       return;
     }
 
-    socket = io(getTabulaRoomBaseUrl(), {
+    socket = io(roomBaseUrl, {
       transports: ["websocket", "polling"],
     });
 

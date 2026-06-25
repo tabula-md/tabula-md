@@ -311,8 +311,10 @@ function WorkspaceApp() {
     setSelectionActionPosition,
   });
   const {
+    canStartSession,
     collaborators,
     connectionStatus,
+    startSessionUnavailableReason,
     startSession: startCollaborationSession,
     applyLocalText,
     resetCollaborationState,
@@ -608,11 +610,13 @@ function WorkspaceApp() {
       activeFileTitle={activeFileTitle}
       currentUserName={identity.name}
       activeStatus={activeStatus}
+      canStartSession={canStartSession}
       isLive={isLive}
       shareOpen={shareOpen}
       sharePanelTarget={sharePanelTarget}
       copied={copied}
       publish={publish}
+      startSessionUnavailableReason={startSessionUnavailableReason}
       onToggleShare={() => {
         setSharePanelTarget(undefined);
         setTopPopover(shareOpen ? null : "share");
