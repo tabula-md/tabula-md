@@ -127,13 +127,115 @@ const toRoomPeersMessage = (message: { [key: string]: unknown }): RoomPeersMessa
   };
 };
 
+const WEBSOCKET_RECONNECT_DELAY_MS = 750;
+
 export const createWebSocketRoomTransport: CreateRoomTransport = ({ baseUrl, roomId, clientId, handlers }) => {
   let socket: WebSocket | null = null;
   let connected = false;
   let closedByClient = false;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
   const sendJson = (message: unknown) => {
-    socket?.send(JSON.stringify(message));
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(message));
+    }
+  };
+
+  const clearReconnectTimer = () => {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+    }
+  };
+
+  const scheduleReconnect = () => {
+    if (closedByClient || reconnectTimer) {
+      return;
+    }
+
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = undefined;
+      if (!closedByClient) {
+        openSocket();
+      }
+    }, WEBSOCKET_RECONNECT_DELAY_MS);
+  };
+
+  const openSocket = () => {
+    const nextSocket = new WebSocket(createRoomWebSocketUrl(baseUrl, roomId));
+    socket = nextSocket;
+
+    nextSocket.addEventListener("open", () => {
+      if (socket !== nextSocket) {
+        return;
+      }
+      connected = true;
+      handlers.onConnect();
+      sendJson({ type: "room:join", roomId, clientId });
+    });
+    nextSocket.addEventListener("message", (event) => {
+      if (socket !== nextSocket) {
+        return;
+      }
+      const message = parseWebSocketMessage(event.data);
+      if (!message) {
+        handlers.onError({ error: "Invalid room message." });
+        return;
+      }
+
+      if (message.type === "room:joined") {
+        const joinedMessage = toRoomJoinedMessage(message);
+        if (joinedMessage) {
+          handlers.onJoined(joinedMessage);
+        } else {
+          handlers.onError({ error: "Invalid room join message." });
+        }
+        return;
+      }
+
+      if (message.type === "room:message") {
+        handlers.onMessage(message.envelope);
+        return;
+      }
+
+      if (message.type === "room:peers") {
+        const peersMessage = toRoomPeersMessage(message);
+        if (peersMessage) {
+          handlers.onPeers(peersMessage);
+        } else {
+          handlers.onError({ error: "Invalid room peers message." });
+        }
+        return;
+      }
+
+      if (message.type === "room:error") {
+        handlers.onError({ error: typeof message.error === "string" ? message.error : undefined });
+        return;
+      }
+
+      handlers.onError({ error: "Unknown room message." });
+    });
+    nextSocket.addEventListener("close", () => {
+      if (socket !== nextSocket) {
+        return;
+      }
+      connected = false;
+      if (!closedByClient) {
+        handlers.onDisconnect();
+        scheduleReconnect();
+      }
+    });
+    nextSocket.addEventListener("error", () => {
+      if (socket !== nextSocket) {
+        return;
+      }
+      if (!closedByClient) {
+        handlers.onConnectError();
+        if (!connected) {
+          scheduleReconnect();
+        }
+      }
+    });
   };
 
   return {
@@ -142,62 +244,8 @@ export const createWebSocketRoomTransport: CreateRoomTransport = ({ baseUrl, roo
     },
     connect() {
       closedByClient = false;
-      socket = new WebSocket(createRoomWebSocketUrl(baseUrl, roomId));
-      socket.addEventListener("open", () => {
-        connected = true;
-        handlers.onConnect();
-        sendJson({ type: "room:join", roomId, clientId });
-      });
-      socket.addEventListener("message", (event) => {
-        const message = parseWebSocketMessage(event.data);
-        if (!message) {
-          handlers.onError({ error: "Invalid room message." });
-          return;
-        }
-
-        if (message.type === "room:joined") {
-          const joinedMessage = toRoomJoinedMessage(message);
-          if (joinedMessage) {
-            handlers.onJoined(joinedMessage);
-          } else {
-            handlers.onError({ error: "Invalid room join message." });
-          }
-          return;
-        }
-
-        if (message.type === "room:message") {
-          handlers.onMessage(message.envelope);
-          return;
-        }
-
-        if (message.type === "room:peers") {
-          const peersMessage = toRoomPeersMessage(message);
-          if (peersMessage) {
-            handlers.onPeers(peersMessage);
-          } else {
-            handlers.onError({ error: "Invalid room peers message." });
-          }
-          return;
-        }
-
-        if (message.type === "room:error") {
-          handlers.onError({ error: typeof message.error === "string" ? message.error : undefined });
-          return;
-        }
-
-        handlers.onError({ error: "Unknown room message." });
-      });
-      socket.addEventListener("close", () => {
-        connected = false;
-        if (!closedByClient) {
-          handlers.onDisconnect();
-        }
-      });
-      socket.addEventListener("error", () => {
-        if (!closedByClient) {
-          handlers.onConnectError();
-        }
-      });
+      clearReconnectTimer();
+      openSocket();
     },
     sendEnvelope(envelope) {
       sendJson({ type: "room:message", envelope });
@@ -205,6 +253,7 @@ export const createWebSocketRoomTransport: CreateRoomTransport = ({ baseUrl, roo
     disconnect() {
       closedByClient = true;
       connected = false;
+      clearReconnectTimer();
       socket?.close();
       socket = null;
     },
