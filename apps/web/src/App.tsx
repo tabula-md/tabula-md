@@ -44,6 +44,7 @@ import { useFileComments } from "./hooks/useFileComments";
 import { useMarkdownFiles } from "./hooks/useMarkdownFiles";
 import { usePublishController } from "./hooks/usePublishController";
 import { useProjectIoController } from "./hooks/useProjectIoController";
+import { useIndexedDbWorkspaceHydration } from "./hooks/useIndexedDbWorkspaceHydration";
 import { useQueuedWorkspacePersistence } from "./hooks/useQueuedWorkspacePersistence";
 import { useSelectionCommentController } from "./hooks/useSelectionCommentController";
 import { useSplitViewController } from "./hooks/useSplitViewController";
@@ -68,7 +69,7 @@ import {
   createMarkdownFile,
   DEFAULT_SPLIT_EDITOR_RATIO,
   getRoomFromLocation,
-  initialWorkspaceState,
+  readInitialWorkspaceSnapshot,
   randomId,
   README_FILE_ID,
   syncUrlForFile,
@@ -91,7 +92,8 @@ const getFloatingPopoverStyle = (
 };
 
 function WorkspaceApp() {
-  const [initialWorkspace] = useState<WorkspaceState>(() => initialWorkspaceState());
+  const [initialWorkspaceSnapshot] = useState(() => readInitialWorkspaceSnapshot());
+  const initialWorkspace = initialWorkspaceSnapshot.workspace;
   const {
     files,
     openFiles,
@@ -203,7 +205,6 @@ function WorkspaceApp() {
     }),
     [activeFileId, commentsByFileId, files, openFileIds],
   );
-  useQueuedWorkspacePersistence(workspacePersistenceSnapshot);
   const {
     workspaceRef,
     editorSurfaceRef,
@@ -284,6 +285,14 @@ function WorkspaceApp() {
     previewSurfaceRef,
     text,
   });
+  const indexedDbHydration = useIndexedDbWorkspaceHydration({
+    enabled: initialWorkspaceSnapshot.source === "starter",
+    initialWorkspace,
+    workspace: workspacePersistenceSnapshot,
+    replaceCommentsByFileId,
+    replaceWorkspace,
+  });
+  useQueuedWorkspacePersistence(workspacePersistenceSnapshot, { enabled: !indexedDbHydration.deferPersistence });
   const {
     topPopover,
     setTopPopover,
