@@ -90,6 +90,7 @@ type PresencePayload = Collaborator & {
 };
 
 type RoomServiceLocation = Pick<Location, "hostname" | "protocol">;
+type SnapshotFetchResult = "missing" | "restored";
 
 type ResolveTabulaRoomUrlOptions = {
   configuredUrl?: string;
@@ -118,6 +119,14 @@ export type RoomSession = {
 };
 
 export type ParsedRoomLocation = RoomSession;
+
+export const shouldStoreSnapshotAfterJoin = ({
+  hasUnstoredLocalChanges,
+  snapshotFetchResult,
+}: {
+  hasUnstoredLocalChanges: boolean;
+  snapshotFetchResult: SnapshotFetchResult;
+}) => hasUnstoredLocalChanges || snapshotFetchResult === "missing";
 
 const ROOM_ID_BYTES = 16;
 const ROOM_KEY_BYTES = 32;
@@ -398,6 +407,7 @@ export const createCollabConnection = ({
   let socket: Socket | null = null;
   let envelopeVersion = 0;
   let hasConnectedOnce = false;
+  let hasUnstoredLocalChanges = Boolean(initialText);
   let collaborationBlocked = false;
   let serverOfflineNotified = false;
   let roomBaseUrl = "";
@@ -455,6 +465,13 @@ export const createCollabConnection = ({
     await emitEnvelope("presence", textEncoder.encode(JSON.stringify(payload)));
   };
 
+  const clearSnapshotTimer = () => {
+    if (snapshotTimer) {
+      window.clearTimeout(snapshotTimer);
+      snapshotTimer = undefined;
+    }
+  };
+
   const storeSnapshot = async () => {
     if (!roomKey || collaborationBlocked) {
       return;
@@ -471,6 +488,8 @@ export const createCollabConnection = ({
       });
 
       if (response.ok) {
+        clearSnapshotTimer();
+        hasUnstoredLocalChanges = false;
         onRoomMetaChange?.(toRoomMeta((await response.json()) as RoomServerMetadata));
       }
     } catch {
@@ -479,9 +498,7 @@ export const createCollabConnection = ({
   };
 
   const scheduleSnapshot = () => {
-    if (snapshotTimer) {
-      window.clearTimeout(snapshotTimer);
-    }
+    clearSnapshotTimer();
     snapshotTimer = window.setTimeout(() => {
       void storeSnapshot();
     }, 1_000);
@@ -496,7 +513,7 @@ export const createCollabConnection = ({
       const response = await fetch(createRoomApiUrl(roomBaseUrl, roomId, "/snapshot"));
       if (response.status === 404) {
         await refreshRoomMeta();
-        return true;
+        return "missing" as const;
       }
       if (!response.ok) {
         emitRecoveryEvent("invalid-message", "The encrypted room snapshot could not be loaded.");
@@ -514,7 +531,7 @@ export const createCollabConnection = ({
       onTextChange(text.toString());
       emitRecoveryEvent("snapshot-recovered", "Encrypted room snapshot restored.");
       await refreshRoomMeta();
-      return true;
+      return "restored" as const;
     } catch {
       emitRecoveryEvent("invalid-message", "The encrypted room snapshot could not be decrypted.");
       return false;
@@ -563,6 +580,7 @@ export const createCollabConnection = ({
       return;
     }
 
+    hasUnstoredLocalChanges = true;
     void emitEnvelope("yjs-update", update);
     scheduleSnapshot();
   });
@@ -613,8 +631,8 @@ export const createCollabConnection = ({
         return;
       }
 
-      const snapshotReady = await fetchSnapshot();
-      if (!snapshotReady) {
+      const snapshotFetchResult = await fetchSnapshot();
+      if (!snapshotFetchResult) {
         collaborationBlocked = true;
         onStatusChange("offline");
         socket?.disconnect();
@@ -629,7 +647,9 @@ export const createCollabConnection = ({
       serverOfflineNotified = false;
       await emitEnvelope("yjs-update", Y.encodeStateAsUpdate(doc));
       await publishPresence();
-      await storeSnapshot();
+      if (shouldStoreSnapshotAfterJoin({ hasUnstoredLocalChanges, snapshotFetchResult })) {
+        await storeSnapshot();
+      }
     });
 
     socket.on("room:message", (envelope: unknown) => {
