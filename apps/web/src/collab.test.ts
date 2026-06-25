@@ -7,6 +7,7 @@ import {
   generateRoomKey,
   importRoomKey,
   parseRoomKeyFromHash,
+  resolveTabulaRoomBaseUrl,
 } from "./collab";
 
 describe("Tabula Room keys", () => {
@@ -28,6 +29,25 @@ describe("Tabula Room keys", () => {
   it("parses only the client-side key fragment", () => {
     expect(parseRoomKeyFromHash("#key=abc123")).toBe("abc123");
     expect(parseRoomKeyFromHash("#other=value")).toBeNull();
+  });
+});
+
+describe("Tabula Room service URL", () => {
+  const localLocation = { hostname: "localhost", protocol: "http:" };
+
+  it("uses the configured room service URL without trailing slashes", () => {
+    expect(
+      resolveTabulaRoomBaseUrl({
+        configuredUrl: "https://rooms.tabula.md///",
+        isDev: false,
+        location: localLocation,
+      }),
+    ).toBe("https://rooms.tabula.md");
+  });
+
+  it("keeps the local room fallback limited to dev mode", () => {
+    expect(resolveTabulaRoomBaseUrl({ isDev: true, location: localLocation })).toBe("http://localhost:3002");
+    expect(resolveTabulaRoomBaseUrl({ isDev: false, location: localLocation })).toBeNull();
   });
 });
 

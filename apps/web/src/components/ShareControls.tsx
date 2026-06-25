@@ -25,11 +25,13 @@ type ShareControlsProps = {
   activeFileTitle: string;
   currentUserName: string;
   activeStatus: ConnectionStatus;
+  canStartSession: boolean;
   isLive: boolean;
   shareOpen: boolean;
   sharePanelTarget?: SharePanel;
   copied: boolean;
   publish: PublishController;
+  startSessionUnavailableReason: string;
   onToggleShare: () => void;
   onCloseShare: () => void;
   onOpenTabulaPlus: () => void;
@@ -80,11 +82,13 @@ export function ShareControls({
   activeFileTitle,
   currentUserName,
   activeStatus,
+  canStartSession,
   isLive,
   shareOpen,
   sharePanelTarget,
   copied,
   publish,
+  startSessionUnavailableReason,
   onToggleShare,
   onCloseShare,
   onOpenTabulaPlus,
@@ -331,11 +335,17 @@ export function ShareControls({
 
                   {!isLive && (
                     <div className="share-session-start">
-                      <button className="share-modal-primary" type="button" onClick={onStartSession}>
+                      <button
+                        className="share-modal-primary"
+                        type="button"
+                        disabled={!canStartSession}
+                        title={startSessionUnavailableReason || undefined}
+                        onClick={onStartSession}
+                      >
                         <Play size={16} />
                         <span>Start session</span>
                       </button>
-                      <p>An editable invite link will be created for this file.</p>
+                      <p>{startSessionUnavailableReason || "An editable invite link will be created for this file."}</p>
                     </div>
                   )}
 

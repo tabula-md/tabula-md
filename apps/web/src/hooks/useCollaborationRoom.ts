@@ -8,6 +8,7 @@ import {
   type RoomMeta,
   createRoomShareUrl,
   createCollabConnection,
+  getTabulaRoomAvailability,
 } from "../collab";
 import { randomId, syncUrlForFile, type MarkdownFile } from "../workspaceStorage";
 
@@ -52,6 +53,7 @@ export function useCollaborationRoom({
   const collabRef = useRef<CollabConnection | null>(null);
   const pendingInitialTextRef = useRef<string | undefined>(undefined);
   const isLive = Boolean(activeFile?.roomId);
+  const roomAvailability = getTabulaRoomAvailability();
 
   useEffect(() => {
     collabRef.current?.disconnect();
@@ -141,7 +143,7 @@ export function useCollaborationRoom({
   }, [activeFile?.title, activeSelection, isLive]);
 
   const startSession = () => {
-    if (!activeFile) {
+    if (!activeFile || !roomAvailability.available) {
       return undefined;
     }
 
@@ -166,8 +168,10 @@ export function useCollaborationRoom({
   };
 
   return {
+    canStartSession: Boolean(activeFile) && roomAvailability.available,
     collaborators,
     connectionStatus,
+    startSessionUnavailableReason: roomAvailability.unavailableReason,
     startSession,
     applyLocalText,
     resetCollaborationState,
