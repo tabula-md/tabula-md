@@ -284,6 +284,7 @@ export async function run(ctx) {
       const commentRect = commentAction?.getBoundingClientRect();
       return {
         hasPreviewLineGutter: Boolean(previewDocument && previewContent),
+        softBreakCount: previewContent?.querySelectorAll("p br").length ?? 0,
         bookmarkColor: bookmarkAction instanceof HTMLElement ? getComputedStyle(bookmarkAction).color : "",
         commentColor: commentAction instanceof HTMLElement ? getComputedStyle(commentAction).color : "",
         bookmarkLeftOfContent:
@@ -297,6 +298,7 @@ export async function run(ctx) {
       };
     });
     expect(previewLineGutterState.hasPreviewLineGutter, "Preview mode should render line gutters around the document body.");
+    expect(previewLineGutterState.softBreakCount >= 2, "Preview line gutters should tolerate preserved soft line breaks.");
     expect(previewLineGutterState.bookmarkColor === "rgb(118, 63, 200)", "Preview bookmarks should use the shared annotation accent.");
     expect(previewLineGutterState.commentColor === "rgb(118, 63, 200)", "Preview comments should use the shared annotation accent.");
     expect(previewLineGutterState.bookmarkLeftOfContent, "Preview bookmark markers should sit in the left rail outside content.");

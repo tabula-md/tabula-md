@@ -5,6 +5,13 @@ export const requiresPublishService = true;
 export async function run(ctx) {
   const { baseUrl, browser, expect, focusMarkdownEditor, publishUrl, waitForShareDialogState, waitForText, withPage } = ctx;
   const getPublishedFileDisplayTitle = (title) => title.replace(/\.(?:md|markdown)$/i, "");
+  const switchToEditMode = async (page) => {
+    const editButton = page.getByRole("button", { name: "Edit", exact: true });
+    if ((await editButton.count()) > 0) {
+      await editButton.click();
+    }
+    await focusMarkdownEditor(page);
+  };
 
   expect(Boolean(publishUrl), "Publish smoke requires a configured publish service URL.");
 
@@ -34,6 +41,9 @@ description: Secondary public context
 
 Secondary published file marker.`);
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
+    await switchToEditMode(page);
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.insertText("\n\nSoft publish line one\nsoft publish line two");
 
     await page.locator(".share-trigger").click();
     await page.getByRole("tab", { name: "Publish" }).click();
@@ -103,9 +113,36 @@ Secondary published file marker.`);
     expect(publicSnapshot.fileCount === 1, "Current-page publish should include one file.");
     expect(publicSnapshot.files?.[0]?.text?.includes("Tabula.md"), "Current-page publish should include the active Markdown text.");
     expect(
+      publicSnapshot.files?.[0]?.text?.includes("Soft publish line one\nsoft publish line two"),
+      "Current-page publish should preserve source soft line breaks.",
+    );
+    expect(
       !publicSnapshot.files?.some((file) => file.text?.includes("Secondary published file marker.")),
       "Current-page publish should not include the secondary Markdown file.",
     );
+
+    const publishedContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const publishedPage = await publishedContext.newPage();
+    try {
+      await publishedPage.goto(publishedUrls.page);
+      await publishedPage.waitForSelector(".published-document .preview-document-content", { timeout: 8_000 });
+      const publishedSoftLineBreakState = await publishedPage.evaluate(() => {
+        const paragraph = Array.from(document.querySelectorAll(".published-document p")).find((node) =>
+          (node.textContent ?? "").includes("Soft publish line one"),
+        );
+        return {
+          text: paragraph?.textContent ?? "",
+          breakCount: paragraph?.querySelectorAll("br").length ?? 0,
+        };
+      });
+      expect(
+        publishedSoftLineBreakState.text.includes("Soft publish line one\nsoft publish line two") &&
+          publishedSoftLineBreakState.breakCount >= 1,
+        "Published page should render soft line breaks the same way as in-app preview.",
+      );
+    } finally {
+      await publishedContext.close();
+    }
 
     const servicePageResponse = await fetch(servicePageUrl);
     const servicePageHtml = await servicePageResponse.text();
@@ -154,8 +191,7 @@ Secondary published file marker.`);
     expect(Boolean(secondaryFile?.id && secondaryFile?.title), "Project publish should include the secondary Markdown file.");
 
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
-    await focusMarkdownEditor(page);
+    await switchToEditMode(page);
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
     await page.keyboard.insertText("# Republished README\n\nRepublished marker for server-backed publish.");
