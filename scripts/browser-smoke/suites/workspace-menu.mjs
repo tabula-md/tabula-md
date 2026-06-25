@@ -1,5 +1,6 @@
 export const id = "workspace";
 export const description = "First screen, tabs, empty state, share, templates, and view-mode chrome.";
+const validRoomKey = "A".repeat(43);
 
 export async function run(ctx) {
   const {
@@ -611,14 +612,17 @@ export async function run(ctx) {
     expect(page.url().includes("/r/"), "Live -> Start session should move the URL to a room route.");
   });
 
-  await withPage(browser, "/r/browserroom#key=test", async (page) => {
+  await withPage(browser, `/r/browserroom#key=${validRoomKey}`, async (page) => {
     await page.waitForSelector(".tab-item.live.active");
     const tabs = await getTabs(page);
 
     expect(tabs.some((tab) => tab.title === "README.md"), "Opening a room should keep README.md.");
     expect(tabs.some((tab) => tab.title === "Untitled.md"), "Opening a room should keep the local untitled tab.");
     expect(tabs.some((tab) => tab.live && tab.active), "Opening a room should activate a live tab.");
-    expect(page.url().endsWith("/r/browserroom#key=test"), "Opening a room should keep the room URL active.");
+    expect(
+      page.url().endsWith(`/r/browserroom#key=${validRoomKey}`),
+      "Opening a room should keep the room URL active.",
+    );
   });
 
   await withPage(browser, "/", async (page) => {

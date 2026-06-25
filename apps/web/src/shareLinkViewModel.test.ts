@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { getRoomShareLinkView } from "./shareLinkViewModel";
 
+const VALID_ROOM_KEY = "A".repeat(43);
+
 describe("room share link view model", () => {
   it("formats valid live room links without exposing the client-only key", () => {
     expect(
       getRoomShareLinkView(
-        "https://tabula.test/r/room-1234567890abcdef#key=secret-key",
+        `https://tabula.test/r/room-1234567890abcdef#key=${VALID_ROOM_KEY}`,
         "room-1234567890abcdef",
       ),
     ).toEqual({
       canCopy: true,
       display: "https://tabula.test/r/room-123...#key=...",
-      title: "https://tabula.test/r/room-1234567890abcdef#key=secret-key",
-      url: "https://tabula.test/r/room-1234567890abcdef#key=secret-key",
+      title: `https://tabula.test/r/room-1234567890abcdef#key=${VALID_ROOM_KEY}`,
+      url: `https://tabula.test/r/room-1234567890abcdef#key=${VALID_ROOM_KEY}`,
     });
   });
 
@@ -31,10 +33,10 @@ describe("room share link view model", () => {
   });
 
   it("does not copy a room URL that belongs to a different stored live file", () => {
-    expect(getRoomShareLinkView("https://tabula.test/r/room-b#key=secret-key", "room-a")).toEqual({
+    expect(getRoomShareLinkView(`https://tabula.test/r/room-b#key=${VALID_ROOM_KEY}`, "room-a")).toEqual({
       canCopy: false,
       display: "Invite link unavailable",
-      title: "https://tabula.test/r/room-b#key=secret-key",
+      title: `https://tabula.test/r/room-b#key=${VALID_ROOM_KEY}`,
     });
   });
 });

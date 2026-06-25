@@ -133,6 +133,7 @@ const ROOM_KEY_BYTES = 32;
 const AES_GCM_IV_BYTES = 12;
 const ROOM_SERVER_PORT = 3002;
 const REMOTE_ORIGIN = "tabula-room-remote";
+const ROOM_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
 const ROOM_UNCONFIGURED_MESSAGE =
   "Live collaboration needs a Tabula Room server. Configure VITE_TABULA_ROOM_URL to start sessions.";
 const textEncoder = new TextEncoder();
@@ -199,8 +200,16 @@ export const generateRoomId = () => {
 
 export const parseRoomKeyFromHash = (hash: string) => {
   const params = new URLSearchParams(hash.replace(/^#/, ""));
-  const roomKey = params.get("key");
-  return roomKey?.trim() ? roomKey : null;
+  const roomKey = params.get("key")?.trim();
+  if (!roomKey || !ROOM_KEY_PATTERN.test(roomKey)) {
+    return null;
+  }
+
+  try {
+    return decodeBase64Url(roomKey).byteLength === ROOM_KEY_BYTES ? roomKey : null;
+  } catch {
+    return null;
+  }
 };
 
 export const createRoomShareUrl = (origin: string, roomId: string, roomKey = generateRoomKey()) =>
