@@ -58,6 +58,8 @@ than permissive OKF consumer conformance, especially for broken internal links.
   non-negotiable room link, token, and encrypted persistence constraints.
 - [Share Start session contract](architecture/share-start-session-contract.md) -
   the product, URL, hosted/open-source, and security boundary for live rooms.
+- [OSS and hosted service boundary](architecture/oss-hosted-boundary.md) - the
+  public repo, private operations, hosted deployment, and self-hosting boundary.
 - [E2EE collaboration model](architecture/e2ee-collaboration.md) - the
   target end-to-end encrypted room model.
 - [Phase 1 infrastructure](architecture/phase-1-infra.md) - the beta
