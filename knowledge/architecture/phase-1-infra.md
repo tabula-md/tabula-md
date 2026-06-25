@@ -18,16 +18,18 @@ choices, production credentials, and private operational automation belong
 outside the public repositories unless and until a private `tabula-cloud`
 operations repo is created.
 
-The first public collaboration server uses local file-backed encrypted
-snapshots through `TABULA_ROOM_DATA_DIR`. Production hosting and managed
-storage can follow once the public split is stable.
+The public `tabula-room` server is the self-hostable reference runtime. The
+official hosted service can use a separate managed room runtime as long as it
+preserves the same ciphertext-only room contract and `VITE_TABULA_ROOM_URL`
+client boundary.
 
 # Persistence Direction
 
 - Keep Markdown content and room keys client-only.
 - Persist only encrypted snapshot envelopes in `tabula-room`.
 - Start with file storage for the open-source server.
-- Add managed storage later behind the same ciphertext-only envelope contract.
+- Use managed per-room storage for the hosted deployment behind the same
+  ciphertext-only envelope contract.
 
 # Deployment Direction
 
@@ -36,15 +38,17 @@ storage can follow once the public split is stable.
 - Do not rely on the local room fallback outside development. Production and
   self-hosted builds without `VITE_TABULA_ROOM_URL` should leave Start session
   unavailable until a room server is configured.
-- Deploy `tabula-room` as a small Node service with allowed origins, payload
-  limits, rate limits, and persistent encrypted snapshot storage.
-- Keep accounts, billing, audit logs, Redis, and multi-region scaling out of
-  the public v0.
+- Keep the public `tabula-room` Node server self-hostable with allowed origins,
+  payload limits, rate limits, and encrypted snapshot storage.
+- Keep the hosted room runtime in private operations code when it needs
+  provider-specific routing, storage, alarms, or deployment configuration.
+- Keep accounts, billing, audit logs, and multi-tenant permission systems out
+  of the public v0.
 
 # Parked
 
-- Redis-backed horizontal scaling.
-- R2/S3 or database-backed encrypted snapshot storage.
+- Redis-backed horizontal scaling for the OSS Node runtime.
+- R2/S3 or database-backed encrypted snapshot storage for the OSS Node runtime.
 - Full membership and permission service.
 - Authenticated private publishing.
 - Billing and plan limits.

@@ -44,8 +44,8 @@ this TODO to completion:
 - Confirm the intended GitHub remote and default branch for each repo.
 - Confirm the `tabula.md` DNS zone is controlled in the production DNS account.
 - Confirm the hosted web provider account is ready for a static Vite app.
-- Confirm the hosted room provider account is ready for a paid Node/Docker
-  WebSocket service with persistent disk.
+- Confirm the hosted room provider account is ready for durable per-room
+  WebSocket coordination and encrypted snapshot storage.
 - Confirm the deployment CLI or browser session is logged in for the hosted web
   provider and the hosted room provider.
 - Confirm which accounts are allowed to receive production alerts.
@@ -159,7 +159,7 @@ this TODO to completion:
   - [x] static web hosting provider.
   - [x] DNS/TLS provider.
   - [x] room service provider.
-  - [x] persistent disk path.
+  - [x] durable room storage plan.
   - [x] production web URL.
   - [x] production room URL.
 - [x] Add production env examples without secret values.
@@ -187,22 +187,46 @@ this TODO to completion:
 - [ ] Verify local drafts survive refresh.
 - [ ] Verify Share surface is visible.
 
-## 6. Hosted Room Deployment
+## 6. Hosted Room Runtime Implementation
 
-- [ ] Create a paid Node/Docker WebSocket service from `tabula-room`.
-- [ ] Attach persistent disk for encrypted snapshots.
-- [ ] Mount disk at the path used by `TABULA_ROOM_DATA_DIR`.
-- [ ] Configure production environment:
-  - [ ] `PORT`.
-  - [ ] `TABULA_ROOM_ALLOWED_ORIGINS` includes the hosted web origin.
-  - [ ] `TABULA_ROOM_DATA_DIR`.
-  - [ ] `TABULA_ROOM_MAX_PAYLOAD_BYTES=1048576`.
-  - [ ] `TABULA_ROOM_RATE_LIMIT_PER_MINUTE=600`.
+- [ ] Define the hosted room transport contract:
+  - [ ] WebSocket URL shape.
+  - [ ] join payload.
+  - [ ] encrypted update payload.
+  - [ ] encrypted snapshot read/write payload.
+  - [ ] presence payload.
+  - [ ] error payload.
+- [ ] Keep the transport ciphertext-only:
+  - [ ] no `roomKey`.
+  - [ ] no URL fragment.
+  - [ ] no plaintext Markdown.
+  - [ ] no decrypted comments.
+- [ ] Update `tabula-md` so collaboration code talks through a room transport
+      adapter instead of directly depending on one server library.
+- [ ] Keep local/self-host development compatible with the public `tabula-room`
+      server.
+- [ ] Add browser smoke coverage for the hosted transport behavior using a
+      local test runtime or mock server.
+
+## 7. Hosted Room Deployment
+
+- [ ] Create the managed hosted room runtime described in private
+      `tabula-cloud`.
+- [ ] Route room traffic by `roomId` so independent rooms do not share one
+      process-level bottleneck.
+- [ ] Store encrypted snapshots in durable per-room storage.
+- [ ] Configure production policy:
+  - [ ] hosted web origin allowlist.
+  - [ ] maximum encrypted payload size.
+  - [ ] per-room connection cap.
+  - [ ] per-IP room creation and join limits.
+  - [ ] room snapshot TTL or cleanup policy.
+  - [ ] kill switch for Start session.
 - [ ] Connect hosted room domain.
 - [ ] Verify TLS.
 - [ ] Verify `/health`.
 - [ ] Verify WebSocket connection from hosted app.
-- [ ] Verify encrypted snapshot survives restart.
+- [ ] Verify encrypted snapshot survives runtime hibernation/restart.
 - [ ] Verify logs do not contain:
   - [ ] `roomKey`.
   - [ ] URL fragments.
@@ -210,7 +234,7 @@ this TODO to completion:
   - [ ] full encrypted envelopes unless explicitly needed for temporary local
         debugging.
 
-## 7. End-To-End Hosted Smoke
+## 8. End-To-End Hosted Smoke
 
 - [ ] Open hosted `tabula.md`.
 - [ ] Confirm first screen feels like a Markdown workspace.
@@ -234,7 +258,7 @@ this TODO to completion:
   - [ ] two-browser collaboration result.
   - [ ] unavailable-state result.
 
-## 8. Final OSS Release Check
+## 9. Final OSS Release Check
 
 - [ ] Confirm `tabula-md` public repo visibility can be changed safely.
 - [ ] Confirm `tabula-room` public repo visibility can be changed safely.
@@ -262,7 +286,7 @@ These are intentionally not completion blockers:
 - Private publishing.
 - Redis-backed room scaling.
 - Object storage or database-backed room snapshots.
-- Alternative managed room runtime.
+- Alternative OSS room runtime.
 - Full permission system.
 - Agent Memory as a real product surface.
 - Templates as a real standardized document system.
