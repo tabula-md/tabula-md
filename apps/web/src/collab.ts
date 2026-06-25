@@ -1,5 +1,11 @@
-import { io, type Socket } from "socket.io-client";
 import * as Y from "yjs";
+
+import {
+  createSocketIoRoomTransport,
+  type CreateRoomTransport,
+  type RoomTransport,
+} from "./roomTransport";
+import type { EncryptedEnvelope, EnvelopeKind } from "./roomProtocol";
 
 export type ConnectionStatus = "idle" | "connecting" | "connected" | "offline";
 
@@ -53,18 +59,7 @@ type ConnectOptions = {
   onCollaboratorsChange: (collaborators: Collaborator[]) => void;
   onRoomMetaChange?: (meta: RoomMeta) => void;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
-};
-
-type EnvelopeKind = "yjs-update" | "presence" | "snapshot";
-
-type EncryptedEnvelope = {
-  v: 1;
-  roomId: string;
-  kind: EnvelopeKind;
-  version: number;
-  iv: string;
-  ciphertext: string;
-  createdAt: string;
+  createRoomTransport?: CreateRoomTransport;
 };
 
 type RoomServerMetadata = {
@@ -72,17 +67,6 @@ type RoomServerMetadata = {
   activeConnections: number;
   snapshotVersion: number | null;
   updatedAt: string | null;
-};
-
-type RoomJoinedMessage = {
-  roomId: string;
-  clientId: string;
-  peerCount: number;
-};
-
-type RoomPeersMessage = {
-  roomId: string;
-  peers: string[];
 };
 
 type PresencePayload = Collaborator & {
@@ -402,6 +386,7 @@ export const createCollabConnection = ({
   onCollaboratorsChange,
   onRoomMetaChange,
   onRecoveryEvent,
+  createRoomTransport = createSocketIoRoomTransport,
 }: ConnectOptions) => {
   const doc = new Y.Doc();
   const text = doc.getText("markdown");
@@ -413,7 +398,7 @@ export const createCollabConnection = ({
   let heartbeat: number | undefined;
   let snapshotTimer: number | undefined;
   let roomKey: CryptoKey | null = null;
-  let socket: Socket | null = null;
+  let transport: RoomTransport | null = null;
   let envelopeVersion = 0;
   let hasConnectedOnce = false;
   let hasUnstoredLocalChanges = Boolean(initialText);
@@ -457,11 +442,11 @@ export const createCollabConnection = ({
   };
 
   const emitEnvelope = async (kind: EnvelopeKind, plaintext: Uint8Array) => {
-    if (!socket?.connected || !roomKey || collaborationBlocked) {
+    if (!transport?.connected || !roomKey || collaborationBlocked) {
       return;
     }
 
-    socket.emit("room:message", await encryptEnvelope(kind, plaintext));
+    transport.sendEnvelope(await encryptEnvelope(kind, plaintext));
   };
 
   const publishPresence = async () => {
@@ -622,92 +607,88 @@ export const createCollabConnection = ({
       return;
     }
 
-    socket = io(roomBaseUrl, {
-      transports: ["websocket", "polling"],
+    transport = createRoomTransport({
+      baseUrl: roomBaseUrl,
+      handlers: {
+        onConnect: () => {
+          if (closedByClient) {
+            return;
+          }
+
+          onStatusChange("connecting");
+          transport?.join(roomId, currentIdentity.id);
+        },
+        onJoined: async () => {
+          if (closedByClient) {
+            return;
+          }
+
+          const snapshotFetchResult = await fetchSnapshot();
+          if (!snapshotFetchResult) {
+            collaborationBlocked = true;
+            onStatusChange("offline");
+            transport?.disconnect();
+            return;
+          }
+
+          onStatusChange("connected");
+          if (hasConnectedOnce) {
+            emitRecoveryEvent("reconnected", "Connection restored and room state was resynced.");
+          }
+          hasConnectedOnce = true;
+          serverOfflineNotified = false;
+          await emitEnvelope("yjs-update", Y.encodeStateAsUpdate(doc));
+          await publishPresence();
+          if (shouldStoreSnapshotAfterJoin({ hasUnstoredLocalChanges, snapshotFetchResult })) {
+            await storeSnapshot();
+          }
+        },
+        onMessage: (envelope) => {
+          void applyIncomingEnvelope(envelope);
+        },
+        onPeers: (message) => {
+          const peerIds = new Set(message.peers);
+          for (const collaboratorId of collaborators.keys()) {
+            if (!peerIds.has(collaboratorId)) {
+              collaborators.delete(collaboratorId);
+            }
+          }
+          publishCollaborators();
+        },
+        onError: (message) => {
+          emitRecoveryEvent("invalid-message", message.error || "A collaboration server message was ignored.");
+        },
+        onDisconnect: () => {
+          if (closedByClient) {
+            return;
+          }
+
+          onStatusChange("offline");
+          collaborators.clear();
+          publishCollaborators();
+          if (hasConnectedOnce && !collaborationBlocked && !serverOfflineNotified) {
+            serverOfflineNotified = true;
+            emitRecoveryEvent(
+              "invalid-message",
+              "The collaboration server disconnected. Local edits will sync when it reconnects.",
+            );
+          }
+        },
+        onConnectError: () => {
+          if (!closedByClient) {
+            onStatusChange("offline");
+            if (!collaborationBlocked && !serverOfflineNotified) {
+              serverOfflineNotified = true;
+              emitRecoveryEvent(
+                "invalid-message",
+                "The collaboration server is not reachable. Local edits stay in this browser.",
+              );
+            }
+          }
+        },
+      },
     });
-
-    socket.on("connect", () => {
-      if (closedByClient) {
-        return;
-      }
-
-      onStatusChange("connecting");
-      socket?.emit("room:join", { roomId, clientId: currentIdentity.id });
-    });
-
-    socket.on("room:joined", async (_message: RoomJoinedMessage) => {
-      if (closedByClient) {
-        return;
-      }
-
-      const snapshotFetchResult = await fetchSnapshot();
-      if (!snapshotFetchResult) {
-        collaborationBlocked = true;
-        onStatusChange("offline");
-        socket?.disconnect();
-        return;
-      }
-
-      onStatusChange("connected");
-      if (hasConnectedOnce) {
-        emitRecoveryEvent("reconnected", "Connection restored and room state was resynced.");
-      }
-      hasConnectedOnce = true;
-      serverOfflineNotified = false;
-      await emitEnvelope("yjs-update", Y.encodeStateAsUpdate(doc));
-      await publishPresence();
-      if (shouldStoreSnapshotAfterJoin({ hasUnstoredLocalChanges, snapshotFetchResult })) {
-        await storeSnapshot();
-      }
-    });
-
-    socket.on("room:message", (envelope: unknown) => {
-      void applyIncomingEnvelope(envelope);
-    });
-
-    socket.on("room:peers", (message: RoomPeersMessage) => {
-      const peerIds = new Set(message.peers);
-      for (const collaboratorId of collaborators.keys()) {
-        if (!peerIds.has(collaboratorId)) {
-          collaborators.delete(collaboratorId);
-        }
-      }
-      publishCollaborators();
-    });
-
-    socket.on("room:error", (message: { error?: string }) => {
-      emitRecoveryEvent("invalid-message", message.error || "A collaboration server message was ignored.");
-    });
-
-    socket.on("disconnect", () => {
-      if (closedByClient) {
-        return;
-      }
-
-      onStatusChange("offline");
-      collaborators.clear();
-      publishCollaborators();
-      if (hasConnectedOnce && !collaborationBlocked && !serverOfflineNotified) {
-        serverOfflineNotified = true;
-        emitRecoveryEvent(
-          "invalid-message",
-          "The collaboration server disconnected. Local edits will sync when it reconnects.",
-        );
-      }
-    });
-
-    socket.on("connect_error", () => {
-      if (!closedByClient) {
-        onStatusChange("offline");
-        if (!collaborationBlocked && !serverOfflineNotified) {
-          serverOfflineNotified = true;
-          emitRecoveryEvent(
-            "invalid-message",
-            "The collaboration server is not reachable. Local edits stay in this browser.",
-          );
-        }
-      }
-    });
+    transport.connect();
 
     heartbeat = window.setInterval(() => {
       void publishPresence();
@@ -751,7 +732,7 @@ export const createCollabConnection = ({
       if (snapshotTimer) {
         window.clearTimeout(snapshotTimer);
       }
-      socket?.disconnect();
+      transport?.disconnect();
       doc.destroy();
       onCollaboratorsChange([]);
     },
