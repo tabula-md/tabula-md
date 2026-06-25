@@ -85,12 +85,12 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
   - [x] `SECURITY.md`.
   - [x] `.env.example`.
   - [x] `docs/live-collaboration.md`.
-- [ ] tracked files에 아래가 없는지 확인한다.
-  - [ ] production secrets.
-  - [ ] room keys.
-  - [ ] public product URL이 아닌 private hosted URL.
-  - [ ] local runtime data.
-  - [ ] generated smoke artifacts.
+- [x] tracked files에 아래가 없는지 확인한다.
+  - [x] production secrets.
+  - [x] room keys.
+  - [x] public product URL이 아닌 private hosted URL.
+  - [x] local runtime data.
+  - [x] generated smoke artifacts.
 - [x] GitHub repo는 public이어도 accidental npm publish를 막기 위해
       root `package.json`의 `"private": true`를 유지할지 결정한다.
 - [x] 검증을 실행한다.

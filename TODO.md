@@ -87,12 +87,12 @@ this TODO to completion:
   - [x] `SECURITY.md`.
   - [x] `.env.example`.
   - [x] `docs/live-collaboration.md`.
-- [ ] Verify tracked files contain no:
-  - [ ] production secrets.
-  - [ ] room keys.
-  - [ ] private hosted URLs beyond public product URLs.
-  - [ ] local runtime data.
-  - [ ] generated smoke artifacts.
+- [x] Verify tracked files contain no:
+  - [x] production secrets.
+  - [x] room keys.
+  - [x] private hosted URLs beyond public product URLs.
+  - [x] local runtime data.
+  - [x] generated smoke artifacts.
 - [x] Decide whether root `package.json` stays `"private": true` to prevent
       accidental npm publishing.
 - [x] Run validation:
