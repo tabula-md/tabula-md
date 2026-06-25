@@ -12,6 +12,12 @@ Phase 1 infrastructure has two public repositories:
 - `tabula-md`: the web app and Markdown workspace.
 - `tabula-room`: the encrypted collaboration room server.
 
+The official hosted `tabula.md` service is not a third public product repo. It
+is the managed deployment of these two open-source components. Hosted provider
+choices, production credentials, and private operational automation belong
+outside the public repositories unless and until a private `tabula-cloud`
+operations repo is created.
+
 The first public collaboration server uses local file-backed encrypted
 snapshots through `TABULA_ROOM_DATA_DIR`. Production hosting and managed
 storage can follow once the public split is stable.
@@ -45,6 +51,7 @@ storage can follow once the public split is stable.
 
 # Related
 
+- [OSS and hosted service boundary](oss-hosted-boundary.md)
 - [Roadmap](/product/roadmap.md)
 - [Launch readiness](/runbooks/launch-readiness.md)
 - [E2EE collaboration model](e2ee-collaboration.md)
