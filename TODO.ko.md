@@ -65,39 +65,39 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
 
 ## 2. `tabula-md` OSS Readiness
 
-- [ ] `README.md`가 현재 사실과 맞는지 검토한다.
-- [ ] Publish-first로 읽히는 오래된 문구를 제거하거나 고친다.
-- [ ] local-first Markdown writing을 명확히 설명한다.
-- [ ] OSS build에서도 Share 표면이 보인다는 점을 설명한다.
-- [ ] Start session에는 `VITE_TABULA_ROOM_URL`이 필요하다는 점을 설명한다.
-- [ ] room service가 없으면 Start session이 unavailable이라는 점을 설명한다.
-- [ ] local development를 문서화한다.
-  - [ ] `npm install`.
-  - [ ] `npm run dev`.
-  - [ ] optional local `tabula-room`.
-- [ ] production/self-host requirement를 문서화한다.
-  - [ ] SPA fallback을 지원하는 static host.
-  - [ ] `VITE_TABULA_ROOM_URL`.
-  - [ ] production에서 localhost fallback 없음.
-- [ ] public-safe 파일을 확인한다.
-  - [ ] `LICENSE`.
-  - [ ] `CONTRIBUTING.md`.
-  - [ ] `SECURITY.md`.
-  - [ ] `.env.example`.
-  - [ ] `docs/live-collaboration.md`.
+- [x] `README.md`가 현재 사실과 맞는지 검토한다.
+- [x] Publish-first로 읽히는 오래된 문구를 제거하거나 고친다.
+- [x] local-first Markdown writing을 명확히 설명한다.
+- [x] OSS build에서도 Share 표면이 보인다는 점을 설명한다.
+- [x] Start session에는 `VITE_TABULA_ROOM_URL`이 필요하다는 점을 설명한다.
+- [x] room service가 없으면 Start session이 unavailable이라는 점을 설명한다.
+- [x] local development를 문서화한다.
+  - [x] `npm install`.
+  - [x] `npm run dev`.
+  - [x] optional local `tabula-room`.
+- [x] production/self-host requirement를 문서화한다.
+  - [x] SPA fallback을 지원하는 static host.
+  - [x] `VITE_TABULA_ROOM_URL`.
+  - [x] production에서 localhost fallback 없음.
+- [x] public-safe 파일을 확인한다.
+  - [x] `LICENSE`.
+  - [x] `CONTRIBUTING.md`.
+  - [x] `SECURITY.md`.
+  - [x] `.env.example`.
+  - [x] `docs/live-collaboration.md`.
 - [ ] tracked files에 아래가 없는지 확인한다.
   - [ ] production secrets.
   - [ ] room keys.
   - [ ] public product URL이 아닌 private hosted URL.
   - [ ] local runtime data.
   - [ ] generated smoke artifacts.
-- [ ] GitHub repo는 public이어도 accidental npm publish를 막기 위해
+- [x] GitHub repo는 public이어도 accidental npm publish를 막기 위해
       root `package.json`의 `"private": true`를 유지할지 결정한다.
-- [ ] 검증을 실행한다.
-  - [ ] `npm test`.
-  - [ ] `npm run build`.
-  - [ ] `npm run knowledge:check`.
-  - [ ] local `tabula-room`을 붙인 focused browser collaboration smoke.
+- [x] 검증을 실행한다.
+  - [x] `npm test`.
+  - [x] `npm run build`.
+  - [x] `npm run knowledge:check`.
+  - [x] local `tabula-room`을 붙인 focused browser collaboration smoke.
 
 ## 3. `tabula-room` OSS Readiness
 

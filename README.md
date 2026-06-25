@@ -53,9 +53,11 @@ Then, from this repository:
 VITE_TABULA_ROOM_URL=http://localhost:3002 npm run dev
 ```
 
-Production and self-hosted builds require `VITE_TABULA_ROOM_URL` for
-**Share > Collaborate > Start session**. Without it, live collaboration is
-unavailable instead of falling back to localhost. See
+Production and self-hosted deployments are static Vite builds. Serve `dist`
+from a static host with SPA fallback for client routes such as `/r/:roomId`.
+Production and self-hosted builds require `VITE_TABULA_ROOM_URL` for **Share >
+Collaborate > Start session**. Without it, live collaboration is unavailable
+instead of falling back to localhost. See
 [`docs/live-collaboration.md`](docs/live-collaboration.md).
 
 ## Contributing

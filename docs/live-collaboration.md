@@ -16,8 +16,8 @@ https://tabula.md/r/<roomId>#key=<roomKey>
 - The room server must not receive `roomKey` or plaintext Markdown.
 - The room server relays encrypted updates and may store encrypted snapshots.
 
-Start session is separate from Publish. Start session is for live editing;
-Publish creates a durable read-only page.
+Start session is live collaboration. It does not create a public read-only page
+or upload a publishable copy of the document.
 
 ## Local Development
 
@@ -37,8 +37,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-The default `.env.example` points the web app at
-`http://localhost:3002`.
+The default `.env.example` points the web app at `http://localhost:3002`.
 
 ## Hosted Or Self-Hosted Deployments
 
@@ -48,9 +47,9 @@ Set the room service URL in the web app environment:
 VITE_TABULA_ROOM_URL=https://rooms.example.com
 ```
 
-Production builds do not fall back to a local room server. If
-`VITE_TABULA_ROOM_URL` is missing, Start session is unavailable until a room
-server is configured.
+Production builds do not fall back to a local room server. The Share surface may
+still be visible, but if `VITE_TABULA_ROOM_URL` is missing, Start session is
+unavailable until a room server is configured.
 
 The room service should be deployed with:
 
