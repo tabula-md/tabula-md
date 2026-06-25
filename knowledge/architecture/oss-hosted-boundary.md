@@ -63,12 +63,10 @@ The public room repo should not contain:
 - server-side Markdown indexing, previewing, search, summarization, or
   moderation.
 
-# Private Repository Decision
+# Private Operations Repository
 
-Do not create a third repository yet.
-
-Create a private `tabula-cloud` repository only when hosted operations need
-reviewable code, such as:
+The private `tabula-cloud` repository exists for hosted operations that must not
+live in the public OSS repos, such as:
 
 - infrastructure-as-code;
 - repeatable deployment scripts;
@@ -80,9 +78,9 @@ reviewable code, such as:
 - billing, account, or Tabula+ service code that should not live in the OSS
   repos.
 
-Until that threshold is reached, keep hosted provider choices in private
-operator notes and deployment dashboards. Do not leak them into public OSS
-documentation.
+Keep hosted provider choices, production URLs, credentials, and private
+operational details in `tabula-cloud` or deployment dashboards. Do not leak
+them into public OSS documentation.
 
 # Hosted Service Shape
 

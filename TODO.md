@@ -53,16 +53,16 @@ this TODO to completion:
 
 ## 1. Public Repo Boundary
 
-- [ ] Keep `tabula-md` as the OSS web app repo.
-- [ ] Keep `tabula-room` as the OSS room server repo.
-- [ ] Keep `tabula-cloud` private for hosted operations.
-- [ ] Ensure public docs describe the boundary:
-  - [ ] `tabula-md` is the local-first Markdown workspace.
-  - [ ] `tabula-room` is the encrypted collaboration server.
-  - [ ] `tabula.md` is the official hosted deployment.
-  - [ ] hosted provider choices live outside public OSS docs.
-- [ ] Ensure no public repo claims Publish is required for v0.
-- [ ] Ensure no public repo claims accounts, billing, or Tabula+ exist in v0.
+- [x] Keep `tabula-md` as the OSS web app repo.
+- [x] Keep `tabula-room` as the OSS room server repo.
+- [x] Keep `tabula-cloud` private for hosted operations.
+- [x] Ensure public docs describe the boundary:
+  - [x] `tabula-md` is the local-first Markdown workspace.
+  - [x] `tabula-room` is the encrypted collaboration server.
+  - [x] `tabula.md` is the official hosted deployment.
+  - [x] hosted provider choices live outside public OSS docs.
+- [x] Ensure no public repo claims Publish is required for v0.
+- [x] Ensure no public repo claims accounts, billing, or Tabula+ exist in v0.
 
 ## 2. `tabula-md` OSS Readiness
 
