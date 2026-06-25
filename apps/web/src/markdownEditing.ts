@@ -41,16 +41,6 @@ const getLineAtOffset = (text: string, offset: number) => {
 
 const markdownUrlPattern = /^(?:https?:\/\/|mailto:)[^\s<>()]+$/i;
 
-const normalizePastedMarkdownText = (text: string) =>
-  text
-    .replace(/\r\n?/g, "\n")
-    .replace(/\u00a0/g, " ")
-    .replace(/[\u2018\u2019\u201b]/g, "'")
-    .replace(/[\u201c\u201d\u201f]/g, '"')
-    .replace(/\t/g, "  ")
-    .replace(/\n[ \t]+(?=\n)/g, "\n")
-    .replace(/\n{3,}/g, "\n\n");
-
 const isMarkdownUrl = (text: string) => markdownUrlPattern.test(text);
 
 const formatMarkdownLinkText = (text: string) => {
@@ -239,12 +229,11 @@ export const getMarkdownPasteEdit = (
   const from = range.selectionFrom;
   const to = range.selectionTo;
   const selectedText = text.slice(from, to);
-  const normalizedText = normalizePastedMarkdownText(pastedText);
-  const urlCandidate = normalizedText.trim();
+  const urlCandidate = pastedText.trim();
   const shouldLinkSelection =
     selectedText.trim().length > 0 &&
     !selectedText.includes("\n") &&
-    urlCandidate === normalizedText &&
+    urlCandidate === pastedText &&
     isMarkdownUrl(urlCandidate);
 
   if (shouldLinkSelection) {
@@ -259,15 +248,5 @@ export const getMarkdownPasteEdit = (
     };
   }
 
-  if (normalizedText === pastedText) {
-    return null;
-  }
-
-  const nextOffset = from + normalizedText.length;
-  return {
-    from,
-    to,
-    insert: normalizedText,
-    selection: { from: nextOffset, to: nextOffset },
-  };
+  return null;
 };

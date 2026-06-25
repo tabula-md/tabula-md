@@ -520,10 +520,10 @@ export async function run(ctx) {
     await focusMarkdownEditor(page);
     await pasteIntoEditor("“Title”\r\n\titem\r\n\r\n\r\nnext");
     await waitForRenderFrame(page);
-    const normalizedPasteText = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
+    const sourcePasteText = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
     expect(
-      normalizedPasteText === '"Title"\n  item\n\nnext',
-      "Paste normalization should clean smart quotes, tabs, CRLF, and excessive blank lines.",
+      sourcePasteText === "“Title”\n\titem\n\n\nnext",
+      "Pasting source-sensitive text should preserve quotes, tabs, and blank lines.",
     );
 
     await page.keyboard.press("ControlOrMeta+A");

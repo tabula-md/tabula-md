@@ -1,3 +1,5 @@
+import { isMap, isScalar, parseDocument } from "yaml";
+
 export type ParsedFrontmatter = {
   attributes: Array<{ key: string; value: string }>;
   body: string;
@@ -21,70 +23,29 @@ export type SearchMatch = {
   preview: string;
 };
 
-const cleanFrontmatterValue = (value: string) => value.trim().replace(/^["']|["']$/g, "");
-
-const formatInlineFrontmatterValue = (value: string) => {
-  const cleanedValue = cleanFrontmatterValue(value);
-  if (cleanedValue.startsWith("[") && cleanedValue.endsWith("]")) {
-    return cleanedValue
-      .slice(1, -1)
-      .split(",")
-      .map((item) => cleanFrontmatterValue(item))
-      .filter(Boolean)
-      .join(", ");
-  }
-
-  if (cleanedValue.startsWith("{") && cleanedValue.endsWith("}")) {
-    return cleanedValue
-      .slice(1, -1)
-      .split(",")
-      .map((entry) => {
-        const separatorIndex = entry.indexOf(":");
-        if (separatorIndex === -1) {
-          return cleanFrontmatterValue(entry);
-        }
-
-        const key = cleanFrontmatterValue(entry.slice(0, separatorIndex));
-        const nestedValue = cleanFrontmatterValue(entry.slice(separatorIndex + 1));
-        return `${key}: ${nestedValue}`;
-      })
-      .filter(Boolean)
-      .join("\n");
-  }
-
-  return cleanedValue;
-};
-
-const parseIndentedFrontmatterBlock = (lines: string[]) => {
-  const trimmedLines = lines.map((line) => line.trim()).filter(Boolean);
-  if (trimmedLines.length === 0) {
-    return "";
-  }
-
-  if (trimmedLines.every((line) => line.startsWith("- "))) {
-    return trimmedLines.map((line) => cleanFrontmatterValue(line.slice(2))).join(", ");
-  }
-
-  if (trimmedLines.every((line) => line.includes(":"))) {
-    return trimmedLines
-      .map((line) => {
-        const separatorIndex = line.indexOf(":");
-        const key = line.slice(0, separatorIndex).trim();
-        const value = formatInlineFrontmatterValue(line.slice(separatorIndex + 1));
-        return value ? `${key}: ${value}` : key;
-      })
-      .join("\n");
-  }
-
-  return trimmedLines.map(cleanFrontmatterValue).join(" ");
-};
-
 const frontmatterOpeningDelimiterPattern = /^---\s*$/;
 const frontmatterClosingDelimiterPattern = /^(?:---|\.\.\.)\s*$/;
-const frontmatterKeyPattern = /^[A-Za-z_][A-Za-z0-9_.-]*(?:\s+[A-Za-z_][A-Za-z0-9_.-]*)*$/;
 
 const getLineBreakLength = (text: string, lineBreakIndex: number) =>
   text.startsWith("\r\n", lineBreakIndex) ? 2 : 1;
+
+const formatYamlMetadataValue = (value: unknown): string => {
+  if (value === null || typeof value === "undefined") {
+    return "";
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(formatYamlMetadataValue).join(", ");
+  }
+
+  if (typeof value === "object") {
+    return Object.entries(value)
+      .map(([key, nestedValue]) => `${key}: ${formatYamlMetadataValue(nestedValue)}`)
+      .join("\n");
+  }
+
+  return String(value).replace(/\n$/, "");
+};
 
 const getFrontmatterBlock = (markdown: string) => {
   const firstLineBreakIndex = markdown.search(/\r?\n/);
@@ -114,7 +75,7 @@ const getFrontmatterBlock = (markdown: string) => {
       const bodyStart = nextLineBreakIndex === -1 ? markdown.length : nextLineBreakIndex + 1;
       return {
         rawFrontmatter: markdown.slice(rawStart, cursor).replace(/\r?\n$/, ""),
-        body: markdown.slice(bodyStart).replace(/^(?:\r?\n)+/, ""),
+        body: markdown.slice(bodyStart),
       };
     }
 
@@ -135,67 +96,29 @@ export const parseFrontmatter = (markdown: string): ParsedFrontmatter => {
     return { attributes: [], body: markdown };
   }
 
-  const rawFrontmatter = frontmatterBlock.rawFrontmatter.trim();
-  const hasKeyValueLine = rawFrontmatter
-    .split(/\r?\n/)
-    .some((line) => frontmatterKeyPattern.test(line.slice(0, line.indexOf(":")).trim()) && line.includes(":"));
-  if (!hasKeyValueLine) {
+  const document = parseDocument(frontmatterBlock.rawFrontmatter, { prettyErrors: false });
+  if (document.errors.length > 0 || !isMap(document.contents)) {
     return { attributes: [], body: markdown };
   }
 
   const attributes: ParsedFrontmatter["attributes"] = [];
-  const lines = rawFrontmatter.split(/\r?\n/);
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    const trimmedLine = line.trim();
-    if (!trimmedLine || trimmedLine.startsWith("#")) {
-      continue;
-    }
-
-    const separatorIndex = line.indexOf(":");
-    if (separatorIndex === -1) {
+  for (const item of document.contents.items) {
+    if (!isScalar(item.key)) {
       return { attributes: [], body: markdown };
     }
 
-    const key = line.slice(0, separatorIndex).trim();
-    if (!frontmatterKeyPattern.test(key)) {
+    const key = formatYamlMetadataValue(item.key.value).trim();
+    if (!key) {
       return { attributes: [], body: markdown };
-    }
-    let value = line.slice(separatorIndex + 1).trim();
-
-    if (value === "|" || value === ">") {
-      const blockLines: string[] = [];
-      while (index + 1 < lines.length && /^\s+/.test(lines[index + 1])) {
-        index += 1;
-        blockLines.push(lines[index].replace(/^\s{2}/, ""));
-      }
-      value = blockLines.join(value === ">" ? " " : "\n");
-    } else if (!value && index + 1 < lines.length && /^\s+/.test(lines[index + 1])) {
-      const nestedLines: string[] = [];
-      while (index + 1 < lines.length && /^\s+/.test(lines[index + 1])) {
-        index += 1;
-        nestedLines.push(lines[index]);
-      }
-      value = parseIndentedFrontmatterBlock(nestedLines);
-    } else {
-      const continuationLines: string[] = [];
-      while (index + 1 < lines.length && /^\s+/.test(lines[index + 1])) {
-        index += 1;
-        continuationLines.push(lines[index].trim());
-      }
-      if (continuationLines.length > 0) {
-        value = [value, ...continuationLines].join(" ");
-      }
     }
 
     attributes.push({
       key,
-      value: formatInlineFrontmatterValue(value),
+      value: formatYamlMetadataValue(item.value?.toJSON()),
     });
   }
 
-  return { attributes, body: frontmatterBlock.body };
+  return attributes.length > 0 ? { attributes, body: frontmatterBlock.body } : { attributes: [], body: markdown };
 };
 
 export const getOutlineHeadings = (previewBody: PreviewBody): MarkdownHeading[] => {
