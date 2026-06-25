@@ -116,6 +116,11 @@ export type WorkspaceState = {
   commentsByFileId: Record<string, FileComment[]>;
 };
 
+export type InitialWorkspaceSnapshot = {
+  source: "localStorage" | "starter";
+  workspace: WorkspaceState;
+};
+
 export type StoredMarkdownFile = {
   id: string;
   title: string;
@@ -596,6 +601,13 @@ export const readStoredWorkspace = (
   return migrateWorkspacePayload(readJsonFromStorage(PROJECT_STORAGE_KEY, storage));
 };
 
+export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {
+  const storedWorkspace = readStoredWorkspace();
+  return storedWorkspace
+    ? { source: "localStorage", workspace: storedWorkspace }
+    : { source: "starter", workspace: finalizeWorkspaceState([]) };
+};
+
 export const serializeFile = (file: MarkdownFile): StoredMarkdownFile => ({
   id: file.id,
   title: file.title,
@@ -647,5 +659,5 @@ export const writeStoredWorkspace = (
 };
 
 export const initialWorkspaceState = (): WorkspaceState => {
-  return readStoredWorkspace() ?? finalizeWorkspaceState([]);
+  return readInitialWorkspaceSnapshot().workspace;
 };

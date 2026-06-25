@@ -2,7 +2,14 @@ import { useEffect, useRef } from "react";
 import { createWorkspacePersistenceQueue } from "../workspacePersistence";
 import type { WorkspaceState } from "../workspaceStorage";
 
-export const useQueuedWorkspacePersistence = (workspace: WorkspaceState) => {
+type UseQueuedWorkspacePersistenceOptions = {
+  enabled?: boolean;
+};
+
+export const useQueuedWorkspacePersistence = (
+  workspace: WorkspaceState,
+  { enabled = true }: UseQueuedWorkspacePersistenceOptions = {},
+) => {
   const queueRef = useRef<ReturnType<typeof createWorkspacePersistenceQueue> | null>(null);
 
   if (!queueRef.current) {
@@ -10,8 +17,13 @@ export const useQueuedWorkspacePersistence = (workspace: WorkspaceState) => {
   }
 
   useEffect(() => {
+    if (!enabled) {
+      queueRef.current?.cancel();
+      return;
+    }
+
     queueRef.current?.schedule(workspace);
-  }, [workspace]);
+  }, [enabled, workspace]);
 
   useEffect(() => {
     const flushPendingWorkspace = () => {
