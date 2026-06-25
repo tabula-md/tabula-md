@@ -26,6 +26,9 @@ import {
   type MarkdownFile,
 } from "./workspaceStorage";
 
+const VALID_ROOM_KEY = "A".repeat(43);
+const NEXT_VALID_ROOM_KEY = "B".repeat(43);
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -139,7 +142,7 @@ describe("file tab state transitions", () => {
     const localFiles = ensureDefaultFiles([], { ensureUntitled: true });
     const files = ensureLiveFileForRoom(localFiles, {
       roomId: "browserroom",
-      shareUrl: "http://localhost:5174/r/browserroom#key=test",
+      shareUrl: `http://localhost:5174/r/browserroom#key=${VALID_ROOM_KEY}`,
     });
 
     expect(files.map((file) => file.title)).toEqual([
@@ -155,17 +158,17 @@ describe("file tab state transitions", () => {
     const files = ensureLiveFileForRoom(
       ensureLiveFileForRoom(ensureDefaultFiles([], { ensureUntitled: true }), {
         roomId: "room-a",
-        shareUrl: "http://localhost:5174/r/room-a#key=old",
+        shareUrl: `http://localhost:5174/r/room-a#key=${VALID_ROOM_KEY}`,
       }),
       {
         roomId: "room-a",
-        shareUrl: "http://localhost:5174/r/room-a#key=new",
+        shareUrl: `http://localhost:5174/r/room-a#key=${NEXT_VALID_ROOM_KEY}`,
       },
     );
 
     expect(files.filter((file) => file.roomId === "room-a")).toHaveLength(1);
     expect(files.find((file) => file.roomId === "room-a")?.shareUrl).toBe(
-      "http://localhost:5174/r/room-a#key=new",
+      `http://localhost:5174/r/room-a#key=${NEXT_VALID_ROOM_KEY}`,
     );
   });
 
@@ -184,13 +187,13 @@ describe("file tab state transitions", () => {
       location: {
         origin: "https://tabula.test",
         pathname: "/r/room-a",
-        hash: "#key=secret",
+        hash: `#key=${VALID_ROOM_KEY}`,
       },
     });
 
     expect(getRoomFromLocation()).toEqual({
       roomId: "room-a",
-      shareUrl: "https://tabula.test/r/room-a#key=secret",
+      shareUrl: `https://tabula.test/r/room-a#key=${VALID_ROOM_KEY}`,
     });
   });
 
@@ -206,9 +209,9 @@ describe("file tab state transitions", () => {
       },
     });
 
-    syncUrlForFile({ roomId: "room-a", shareUrl: "https://tabula.test/r/room-a#key=secret" }, "replace");
+    syncUrlForFile({ roomId: "room-a", shareUrl: `https://tabula.test/r/room-a#key=${VALID_ROOM_KEY}` }, "replace");
 
-    expect(replaceState).toHaveBeenCalledWith(null, "", "/r/room-a#key=secret");
+    expect(replaceState).toHaveBeenCalledWith(null, "", `/r/room-a#key=${VALID_ROOM_KEY}`);
   });
 
   it("falls back to the local project path for invalid stored live room share URLs", () => {
@@ -224,7 +227,7 @@ describe("file tab state transitions", () => {
     });
 
     expect(() => syncUrlForFile({ roomId: "room-a", shareUrl: "not a url" }, "replace")).not.toThrow();
-    syncUrlForFile({ roomId: "room-a", shareUrl: "https://tabula.test/r/room-b#key=secret" }, "replace");
+    syncUrlForFile({ roomId: "room-a", shareUrl: `https://tabula.test/r/room-b#key=${VALID_ROOM_KEY}` }, "replace");
 
     expect(replaceState).toHaveBeenCalledTimes(2);
     expect(replaceState).toHaveBeenNthCalledWith(1, null, "", "/");
@@ -332,7 +335,7 @@ describe("project persistence", () => {
           title: "Shared room.md",
           text: "# Live",
           roomId: "room-live",
-          shareUrl: "http://localhost:5174/r/room-live#key=secret",
+          shareUrl: `http://localhost:5174/r/room-live#key=${VALID_ROOM_KEY}`,
           connectionStatus: "connected",
           snapshotCount: 3,
           lastSnapshotAt: "2026-06-11T00:00:00.000Z",
@@ -351,7 +354,7 @@ describe("project persistence", () => {
     expect(localFile?.text).toBe("# Local\n\nDraft");
     expect(liveFile).toMatchObject({
       roomId: "room-live",
-      shareUrl: "http://localhost:5174/r/room-live#key=secret",
+      shareUrl: `http://localhost:5174/r/room-live#key=${VALID_ROOM_KEY}`,
       connectionStatus: "offline",
       snapshotCount: 3,
       lastSnapshotAt: "2026-06-11T00:00:00.000Z",
@@ -700,7 +703,7 @@ Start here.`,
       {
         ...files[0],
         roomId: "room-123",
-        shareUrl: "https://tabula.md/r/room-123#key=secret",
+        shareUrl: `https://tabula.md/r/room-123#key=${VALID_ROOM_KEY}`,
         connectionStatus: "connected",
       },
       files[1],

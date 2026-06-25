@@ -5,6 +5,8 @@ import {
 } from "./workspaceStore";
 import type { MarkdownFile } from "../workspaceStorage";
 
+const VALID_ROOM_KEY = "A".repeat(43);
+
 const createTestFile = (index: number, overrides: Partial<MarkdownFile> = {}): MarkdownFile => ({
   id: overrides.id ?? `file-${index}`,
   title: overrides.title ?? `Untitled ${index}.md`,
@@ -118,13 +120,13 @@ describe("workspace store", () => {
 
     const liveFile = useWorkspaceStore.getState().activateRoomFile({
       roomId: "room-123456",
-      shareUrl: "https://tabula.test/r/room-123456#key",
+      shareUrl: `https://tabula.test/r/room-123456#key=${VALID_ROOM_KEY}`,
     });
 
     expect(liveFile).toMatchObject({
       id: "live-room-123456",
       roomId: "room-123456",
-      shareUrl: "https://tabula.test/r/room-123456#key",
+      shareUrl: `https://tabula.test/r/room-123456#key=${VALID_ROOM_KEY}`,
       connectionStatus: "connecting",
     });
     expect(useWorkspaceStore.getState().activeFileId).toBe(liveFile?.id);
@@ -193,7 +195,7 @@ describe("workspace store", () => {
 
     const liveFile = useWorkspaceStore
       .getState()
-      .startFileCollaborationSession(draft.id, "room-123", "https://tabula.test/r/room-123#key");
+      .startFileCollaborationSession(draft.id, "room-123", `https://tabula.test/r/room-123#key=${VALID_ROOM_KEY}`);
     useWorkspaceStore.getState().setFileText(draft.id, "Remote text");
     useWorkspaceStore.getState().setFileCollaborationStatus(draft.id, "connected", { collaboratorCount: 2 });
     useWorkspaceStore.getState().setFileRoomMeta(draft.id, {
@@ -208,7 +210,7 @@ describe("workspace store", () => {
 
     expect(liveFile).toMatchObject({
       roomId: "room-123",
-      shareUrl: "https://tabula.test/r/room-123#key",
+      shareUrl: `https://tabula.test/r/room-123#key=${VALID_ROOM_KEY}`,
       connectionStatus: "connecting",
     });
     expect(useWorkspaceStore.getState().files.find((file) => file.id === draft.id)).toMatchObject({
