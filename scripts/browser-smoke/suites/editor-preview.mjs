@@ -799,7 +799,6 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
     const splitFormatting = await page.evaluate(() => {
       const toolbar = document.querySelector(".markdown-formatting-toolbar");
-      const toolbarRow = document.querySelector(".markdown-formatting-row");
       const controlRow = document.querySelector(".editor-control-row.with-formatting");
       const fileToolbar = document.querySelector(".file-toolbar");
       const editor = document.querySelector(".workspace.split .editor-surface");
@@ -816,7 +815,6 @@ export async function run(ctx) {
       const previewLineActions = Array.from(document.querySelectorAll(".workspace.split .preview-line-action"));
       const previewParagraph = document.querySelector(".workspace.split .preview-surface p");
       const toolbarRect = toolbar?.getBoundingClientRect();
-      const toolbarRowRect = toolbarRow?.getBoundingClientRect();
       const controlRowRect = controlRow?.getBoundingClientRect();
       const fileToolbarRect = fileToolbar?.getBoundingClientRect();
       const editorRect = editor?.getBoundingClientRect();

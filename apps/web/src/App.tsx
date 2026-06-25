@@ -185,7 +185,6 @@ function WorkspaceApp() {
   const activeLineNumbers = activeFile?.lineNumbers ?? true;
   const activeBookmarks = activeFile?.bookmarks ?? [];
   const parsedMarkdown = useMemo(() => parseFrontmatter(text), [text]);
-  const metadataTitle = parsedMarkdown.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value;
   const renderedPreview = useMemo(() => getPreviewBody(parsedMarkdown.body), [parsedMarkdown.body]);
   const previewBodyStartOffset = useMemo(() => {
     const parsedBodyStartOffset = text.indexOf(parsedMarkdown.body);

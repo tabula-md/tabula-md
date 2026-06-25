@@ -107,7 +107,9 @@ export function useWorkspaceLiveRoomController({
   const copyShareUrl = async () => {
     const url = activeFile?.shareUrl || window.location.href;
     await navigator.clipboard.writeText(url);
-    activeFile && setCopiedFileId(activeFile.id);
+    if (activeFile) {
+      setCopiedFileId(activeFile.id);
+    }
     window.setTimeout(() => setCopiedFileId(null), 1600);
   };
 

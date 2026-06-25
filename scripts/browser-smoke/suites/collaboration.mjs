@@ -6,25 +6,17 @@ export const description = "Local collaboration room synchronization smoke.";
 
 export async function run(ctx) {
   const {
-    appNewFileShortcut,
     baseUrl,
     browser,
     expect,
     externalUrl,
     focusMarkdownEditor,
-    getTabs,
-    getViewModeActionLabels,
-    getViewModeSlots,
-    openProjectContext,
-    closeProjectContext,
-    openProjectMenu,
     restartRoomServer,
     roomDataDir,
     startRoomServer,
     stopRoomServer,
     waitForEditorReady,
     waitForText,
-    withPage,
   } = ctx;
 
   const ensureEditMode = async (page) => {

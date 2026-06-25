@@ -164,12 +164,12 @@ export const buildDocsConsistencyReport = (files: MarkdownFile[]) => {
       detail: "DESIGN.md should describe interface principles and key states.",
     },
     {
-      status: Boolean(readmeFile && /PRD\.md/i.test(readmeFile.text)) ? "pass" : "warn",
+      status: readmeFile && /PRD\.md/i.test(readmeFile.text) ? "pass" : "warn",
       label: "README links PRD",
       detail: "README.md should point readers and agents to PRD.md.",
     },
     {
-      status: Boolean(readmeFile && /DESIGN\.md/i.test(readmeFile.text)) ? "pass" : "warn",
+      status: readmeFile && /DESIGN\.md/i.test(readmeFile.text) ? "pass" : "warn",
       label: "README links design",
       detail: "README.md should point readers and agents to DESIGN.md.",
     },
@@ -194,7 +194,7 @@ export const buildDocsConsistencyReport = (files: MarkdownFile[]) => {
       detail: "DESIGN.md should include Principles and Key states.",
     },
     {
-      status: Boolean(readmeFile && prdFile && designFile) ? "pass" : "warn",
+      status: readmeFile && prdFile && designFile ? "pass" : "warn",
       label: "Agent handoff set",
       detail: "README.md, PRD.md, and DESIGN.md should exist together.",
     },

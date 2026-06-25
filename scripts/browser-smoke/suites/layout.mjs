@@ -3,22 +3,14 @@ export const description = "Tab persistence, import collision, document chrome, 
 
 export async function run(ctx) {
   const {
-    appNewFileShortcut,
-    baseUrl,
     browser,
     expect,
-    externalUrl,
-    focusMarkdownEditor,
     getTabs,
-    getViewModeActionLabels,
-    getViewModeSlots,
     openProjectContext,
-    closeProjectContext,
     openProjectMenu,
     waitForActiveTab,
     waitForEditorReady,
     waitForFileCount,
-    waitForText,
     withPage,
   } = ctx;
 

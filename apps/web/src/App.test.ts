@@ -811,7 +811,8 @@ Start here.`,
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       expect(String(input)).toBe("https://publish.tabula.md/v1/publishes/publish_123456");
       expect(init?.method).toBe("PUT");
-      expect((init?.headers as Record<string, string>).authorization).toBe("Bearer owner-token");
+      const headers = init?.headers as Record<string, string> | undefined;
+      expect(headers?.authorization).toBe("Bearer owner-token");
       const payload = JSON.parse(String(init?.body)) as { ownerName?: string; files: Array<Record<string, unknown>> };
       expect(payload.ownerName).toBe("Taeha");
       expect(payload.files).toEqual([{ id: "readme", title: "README.md", text: "# After" }]);
@@ -876,7 +877,8 @@ Start here.`,
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       expect(String(input)).toBe("https://publish.tabula.md/v1/publishes/publish_123456");
       expect(init?.method).toBe("DELETE");
-      expect((init?.headers as Record<string, string>).authorization).toBe("Bearer owner-token");
+      const headers = init?.headers as Record<string, string> | undefined;
+      expect(headers?.authorization).toBe("Bearer owner-token");
       return new Response(null, { status: 204 });
     }) as unknown as typeof fetch;
 
