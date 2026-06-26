@@ -6,6 +6,13 @@ import {
   type RoomTransport,
 } from "./roomTransport";
 import type { EncryptedEnvelope, EnvelopeKind } from "./roomProtocol";
+import {
+  applyTextPatches,
+  diffTextPatch,
+  getTextPatchesForChange,
+  type TextChange,
+  type TextPatch,
+} from "./textPatches";
 
 export type ConnectionStatus = "idle" | "connecting" | "connected" | "offline";
 
@@ -19,6 +26,7 @@ export type Collaborator = {
   name: string;
   color: string;
   lastSeen: number;
+  roomId?: string;
   fileTitle?: string;
   selection?: LiveSelection;
 };
@@ -54,7 +62,7 @@ type ConnectOptions = {
   identity: Collaborator;
   fileTitle: string;
   selection?: LiveSelection;
-  onTextChange: (text: string) => void;
+  onTextChange: (text: string, change?: TextChange) => void;
   onStatusChange: (status: ConnectionStatus) => void;
   onCollaboratorsChange: (collaborators: Collaborator[]) => void;
   onRoomMetaChange?: (meta: RoomMeta) => void;
@@ -70,6 +78,7 @@ type RoomServerMetadata = {
 };
 
 type PresencePayload = Collaborator & {
+  roomId: string;
   fileTitle: string;
 };
 
@@ -122,34 +131,6 @@ const ROOM_UNCONFIGURED_MESSAGE =
   "Live collaboration needs a Tabula Room server. Configure VITE_TABULA_ROOM_URL to start sessions.";
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
-
-const diffText = (oldText: string, nextText: string) => {
-  let start = 0;
-  while (
-    start < oldText.length &&
-    start < nextText.length &&
-    oldText[start] === nextText[start]
-  ) {
-    start += 1;
-  }
-
-  let oldEnd = oldText.length;
-  let nextEnd = nextText.length;
-  while (
-    oldEnd > start &&
-    nextEnd > start &&
-    oldText[oldEnd - 1] === nextText[nextEnd - 1]
-  ) {
-    oldEnd -= 1;
-    nextEnd -= 1;
-  }
-
-  return {
-    index: start,
-    deleteCount: oldEnd - start,
-    insertText: nextText.slice(start, nextEnd),
-  };
-};
 
 export const encodeBase64Url = (bytes: Uint8Array) => {
   let binary = "";
@@ -366,6 +347,7 @@ const decodePresence = (bytes: Uint8Array): Collaborator | null => {
       name: decoded.name,
       color: decoded.color,
       lastSeen: typeof decoded.lastSeen === "number" ? decoded.lastSeen : Date.now(),
+      roomId: typeof decoded.roomId === "string" ? decoded.roomId : undefined,
       fileTitle: decoded.fileTitle,
       selection: decoded.selection,
     };
@@ -397,6 +379,8 @@ export const createCollabConnection = ({
   let closedByClient = false;
   let heartbeat: number | undefined;
   let snapshotTimer: number | undefined;
+  let localUpdateFlushTimer: number | undefined;
+  let pendingLocalUpdates: Uint8Array[] = [];
   let roomKey: CryptoKey | null = null;
   let transport: RoomTransport | null = null;
   let envelopeVersion = 0;
@@ -405,6 +389,31 @@ export const createCollabConnection = ({
   let collaborationBlocked = false;
   let serverOfflineNotified = false;
   let roomBaseUrl = "";
+
+  const applyTextPatchTransaction = (patches: readonly TextPatch[]) => {
+    const orderedPatches = [...patches].sort((first, second) => second.from - first.from || second.to - first.to);
+    doc.transact(() => {
+      orderedPatches.forEach((patch) => {
+        if (patch.to > patch.from) {
+          text.delete(patch.from, patch.to - patch.from);
+        }
+        if (patch.insert) {
+          text.insert(patch.from, patch.insert);
+        }
+      });
+    }, "local");
+  };
+
+  const emitRemoteTextChange = (previousText: string) => {
+    const nextText = text.toString();
+    if (previousText === nextText) {
+      return;
+    }
+
+    onTextChange(nextText, {
+      patches: getTextPatchesForChange(previousText, nextText),
+    });
+  };
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
     onRecoveryEvent?.({
@@ -452,6 +461,7 @@ export const createCollabConnection = ({
   const publishPresence = async () => {
     const payload: PresencePayload = {
       ...currentIdentity,
+      roomId,
       fileTitle: currentFileTitle,
       selection: currentSelection,
       lastSeen: Date.now(),
@@ -464,6 +474,34 @@ export const createCollabConnection = ({
       window.clearTimeout(snapshotTimer);
       snapshotTimer = undefined;
     }
+  };
+
+  const clearLocalUpdateFlushTimer = () => {
+    if (localUpdateFlushTimer) {
+      window.clearTimeout(localUpdateFlushTimer);
+      localUpdateFlushTimer = undefined;
+    }
+  };
+
+  const flushLocalUpdates = () => {
+    clearLocalUpdateFlushTimer();
+    if (pendingLocalUpdates.length === 0) {
+      return;
+    }
+
+    const update =
+      pendingLocalUpdates.length === 1 ? pendingLocalUpdates[0] : Y.mergeUpdates(pendingLocalUpdates);
+    pendingLocalUpdates = [];
+    void emitEnvelope("yjs-update", update);
+  };
+
+  const scheduleLocalUpdate = (update: Uint8Array) => {
+    pendingLocalUpdates.push(update);
+    if (localUpdateFlushTimer) {
+      return;
+    }
+
+    localUpdateFlushTimer = window.setTimeout(flushLocalUpdates, 25);
   };
 
   const storeSnapshot = async () => {
@@ -520,9 +558,10 @@ export const createCollabConnection = ({
         return false;
       }
 
+      const previousText = text.toString();
       const update = await decryptEnvelopeForRoom(roomKey, envelope);
       Y.applyUpdate(doc, update, REMOTE_ORIGIN);
-      onTextChange(text.toString());
+      emitRemoteTextChange(previousText);
       emitRecoveryEvent("snapshot-recovered", "Encrypted room snapshot restored.");
       await refreshRoomMeta();
       return "restored" as const;
@@ -545,8 +584,9 @@ export const createCollabConnection = ({
     try {
       const plaintext = await decryptEnvelopeForRoom(roomKey, envelope);
       if (envelope.kind === "yjs-update") {
+        const previousText = text.toString();
         Y.applyUpdate(doc, plaintext, REMOTE_ORIGIN);
-        onTextChange(text.toString());
+        emitRemoteTextChange(previousText);
         return;
       }
 
@@ -575,12 +615,8 @@ export const createCollabConnection = ({
     }
 
     hasUnstoredLocalChanges = true;
-    void emitEnvelope("yjs-update", update);
+    scheduleLocalUpdate(update);
     scheduleSnapshot();
-  });
-
-  text.observe(() => {
-    onTextChange(text.toString());
   });
 
   const start = async () => {
@@ -700,21 +736,20 @@ export const createCollabConnection = ({
   void start();
 
   return {
-    applyLocalText(nextText: string) {
+    applyLocalText(nextText: string, patches?: readonly TextPatch[]) {
       const currentText = text.toString();
       if (currentText === nextText) {
         return;
       }
 
-      const patch = diffText(currentText, nextText);
-      doc.transact(() => {
-        if (patch.deleteCount > 0) {
-          text.delete(patch.index, patch.deleteCount);
-        }
-        if (patch.insertText) {
-          text.insert(patch.index, patch.insertText);
-        }
-      }, "local");
+      const nextPatches = getTextPatchesForChange(currentText, nextText, patches);
+      const patchedText = applyTextPatches(currentText, nextPatches);
+      if (patchedText === nextText) {
+        applyTextPatchTransaction(nextPatches);
+        return;
+      }
+
+      applyTextPatchTransaction([diffTextPatch(currentText, nextText)]);
     },
     setPresence(nextPresence: { fileTitle?: string; selection?: LiveSelection }) {
       if ("fileTitle" in nextPresence) {
@@ -737,6 +772,8 @@ export const createCollabConnection = ({
       if (snapshotTimer) {
         window.clearTimeout(snapshotTimer);
       }
+      clearLocalUpdateFlushTimer();
+      pendingLocalUpdates = [];
       transport?.disconnect();
       doc.destroy();
       onCollaboratorsChange([]);

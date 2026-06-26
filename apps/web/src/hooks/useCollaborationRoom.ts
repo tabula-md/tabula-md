@@ -11,6 +11,7 @@ import {
   getTabulaRoomAvailability,
   parseRoomShareUrl,
 } from "../collab";
+import type { TextChange, TextPatch } from "../textPatches";
 import type { MarkdownFile } from "../workspaceStorage";
 
 type UseCollaborationRoomOptions = {
@@ -30,6 +31,7 @@ type UseCollaborationRoomOptions = {
     event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
   ) => void;
   startFileCollaborationSession: (fileId: string, roomId: string, shareUrl: string) => MarkdownFile | undefined;
+  onRemoteTextChange?: (fileId: string, text: string, change?: TextChange) => void;
 };
 
 export function useCollaborationRoom({
@@ -42,6 +44,7 @@ export function useCollaborationRoom({
   setFileRoomMeta,
   setFileRecoveryEvent,
   startFileCollaborationSession,
+  onRemoteTextChange,
 }: UseCollaborationRoomOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(() =>
     activeFile?.roomId ? "connecting" : "idle",
@@ -92,7 +95,8 @@ export function useCollaborationRoom({
       identity,
       fileTitle: activeFile.title,
       selection: activeSelection,
-      onTextChange: (nextText) => {
+      onTextChange: (nextText, change) => {
+        onRemoteTextChange?.(connectedFileId, nextText, change);
         setFileText(connectedFileId, nextText);
       },
       onStatusChange: (status) => {
@@ -137,6 +141,7 @@ export function useCollaborationRoom({
     setFileRecoveryEvent,
     setFileRoomMeta,
     setFileText,
+    onRemoteTextChange,
   ]);
 
   useEffect(() => {
@@ -166,8 +171,8 @@ export function useCollaborationRoom({
     return { roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
   };
 
-  const applyLocalText = (nextText: string) => {
-    collabRef.current?.applyLocalText(nextText);
+  const applyLocalText = (nextText: string, patches?: readonly TextPatch[]) => {
+    collabRef.current?.applyLocalText(nextText, patches);
   };
 
   const resetCollaborationState = (nextStatus: ConnectionStatus = "idle") => {

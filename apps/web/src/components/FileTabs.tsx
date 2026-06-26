@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Eye, PencilLine, Plus, SplitSquareHorizontal, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import type { ConnectionStatus } from "../collab";
 import type { RenameFileResult } from "../hooks/useMarkdownFiles";
-import type { FileViewMode, MarkdownFile } from "../workspaceStorage";
+import type { MarkdownFile } from "../workspaceStorage";
 
 type TabScrollState = {
   canScrollLeft: boolean;
@@ -32,20 +32,6 @@ const emptyTabScrollState: TabScrollState = {
 };
 
 const getTabDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
-
-const getViewModeLabel = (mode: FileViewMode) =>
-  ({
-    edit: "Edit",
-    split: "Split",
-    preview: "Preview",
-  })[mode];
-
-const getViewModeIcon = (mode: FileViewMode) =>
-  ({
-    edit: <PencilLine size={12} />,
-    split: <SplitSquareHorizontal size={12} />,
-    preview: <Eye size={12} />,
-  })[mode];
 
 const getStatusLabel = (status: ConnectionStatus) =>
   ({
@@ -268,6 +254,7 @@ export function FileTabs({
               }`}
               data-file-name={file.title}
               data-display-title={tabDisplayTitle}
+              data-view-mode={file.viewMode}
               draggable={!isRenaming}
               key={file.id}
               onDragStart={() => setDraggedFileId(file.id)}
@@ -284,9 +271,7 @@ export function FileTabs({
                 className={`tab-select-button ${isRenaming ? "tab-rename-shell" : ""}`}
                 role={isRenaming ? undefined : "button"}
                 tabIndex={isRenaming ? undefined : 0}
-                title={`${file.title} · ${getViewModeLabel(file.viewMode)} · ${
-                  file.roomId ? getStatusLabel(fileStatus) : "Local draft"
-                }`}
+                title={`${file.title} · ${file.roomId ? getStatusLabel(fileStatus) : "Local draft"}`}
                 onMouseDown={(event) => {
                   if (event.detail >= 2) {
                     event.preventDefault();
@@ -342,9 +327,6 @@ export function FileTabs({
                 ) : (
                   <span className="tab-title">{tabDisplayTitle}</span>
                 )}
-                <span className="tab-mode-icon" title={getViewModeLabel(file.viewMode)}>
-                  {getViewModeIcon(file.viewMode)}
-                </span>
                 {file.roomId && collaboratorCount > 0 && (
                   <span className="tab-collaborator-count" title={`${collaboratorCount} collaborators`}>
                     {collaboratorCount}

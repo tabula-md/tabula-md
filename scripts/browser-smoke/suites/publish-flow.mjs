@@ -1,5 +1,6 @@
 export const id = "publish";
 export const description = "Server-backed published pages, included AI-readable outputs, and vanity page restore.";
+export const hiddenFeature = true;
 export const requiresPublishService = true;
 
 export async function run(ctx) {

@@ -10,8 +10,19 @@ export async function run(ctx) {
     waitForEditorReady,
     waitForRenderFrame,
     waitForSelectionLayer,
+    waitForShareDialogState,
     withPage,
   } = ctx;
+
+  const startLiveSession = async (page) => {
+    await page.locator(".share-trigger").click();
+    await waitForShareDialogState(page, { panel: "Collaborate" });
+    await page.getByRole("button", { name: "Start session" }).click();
+    await waitForShareDialogState(page, { text: "Current session link" });
+    await page.keyboard.press("Escape");
+    await waitForShareDialogState(page, { open: false });
+    await page.waitForSelector(".tab-item.live.active", { timeout: 5_000 });
+  };
 
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
@@ -222,6 +233,7 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
     await waitForEditorReady(page, { mode: "edit" });
+    await startLiveSession(page);
     await focusMarkdownEditor(page);
     await page.keyboard.type("Alpha target omega");
     for (let index = 0; index < 6; index += 1) {
@@ -427,6 +439,7 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
     await waitForEditorReady(page, { mode: "edit" });
+    await startLiveSession(page);
     await focusMarkdownEditor(page);
     await page.keyboard.type("Alpha **target** omega.");
     await page.getByRole("button", { name: "Preview", exact: true }).click();

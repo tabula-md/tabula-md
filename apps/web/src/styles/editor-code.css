@@ -57,6 +57,37 @@
   background: color-mix(in srgb, var(--remote-presence-color, #763fc8) 18%, transparent);
 }
 
+.markdown-editor .cm-remote-cursor {
+  position: relative;
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  margin-left: -1px;
+  vertical-align: text-bottom;
+  background: var(--remote-presence-color, #763fc8);
+  pointer-events: none;
+}
+
+.markdown-editor .cm-remote-cursor-label {
+  position: absolute;
+  top: -1.45em;
+  left: 0;
+  max-width: 180px;
+  padding: 2px 6px;
+  overflow: hidden;
+  border-radius: 5px;
+  color: #ffffff;
+  background: var(--remote-presence-color, #763fc8);
+  font-family:
+    "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .markdown-editor .cm-scroller {
   min-height: inherit;
   overflow: auto;

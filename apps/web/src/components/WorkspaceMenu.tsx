@@ -7,19 +7,15 @@ import {
   FolderOpen,
   HelpCircle,
   Settings2,
-  Sparkles,
   Upload,
   Users,
   X,
 } from "lucide-react";
-import { PRODUCT_PLUS_NAME } from "../product";
 import type { FileViewMode, ReadingWidth } from "../workspaceStorage";
 
 type WorkspaceMenuProps = {
   isOpen: boolean;
   preferencesOpen: boolean;
-  plusOpen: boolean;
-  plusEnabled: boolean;
   canExportCurrentFile: boolean;
   newFileViewMode: FileViewMode;
   defaultReadingWidth: ReadingWidth;
@@ -27,8 +23,6 @@ type WorkspaceMenuProps = {
   defaultLineNumbers: boolean;
   onTogglePreferences: () => void;
   onClosePreferences: () => void;
-  onTogglePlus: () => void;
-  onClosePlus: () => void;
   onChangeNewFileViewMode: (viewMode: FileViewMode) => void;
   onChangeDefaultReadingWidth: (readingWidth: ReadingWidth) => void;
   onChangeDefaultLineWrapping: (lineWrapping: boolean) => void;
@@ -64,8 +58,6 @@ function MenuRow({ children, icon, onClick, className = "", disabled = false, tr
 export function WorkspaceMenu({
   isOpen,
   preferencesOpen,
-  plusOpen,
-  plusEnabled,
   canExportCurrentFile,
   newFileViewMode,
   defaultReadingWidth,
@@ -73,8 +65,6 @@ export function WorkspaceMenu({
   defaultLineNumbers,
   onTogglePreferences,
   onClosePreferences,
-  onTogglePlus,
-  onClosePlus,
   onChangeNewFileViewMode,
   onChangeDefaultReadingWidth,
   onChangeDefaultLineWrapping,
@@ -151,14 +141,6 @@ export function WorkspaceMenu({
         <div className="workspace-menu-divider" role="separator" />
 
         <MenuRow
-          className={plusOpen ? "workspace-menu-plus active" : "workspace-menu-plus"}
-          icon={<Sparkles size={15} />}
-          trailing={<ChevronRight size={14} />}
-          onClick={onTogglePlus}
-        >
-          {PRODUCT_PLUS_NAME}
-        </MenuRow>
-        <MenuRow
           className={preferencesOpen ? "active" : ""}
           icon={<Settings2 size={15} />}
           trailing={<ChevronRight size={14} />}
@@ -170,26 +152,6 @@ export function WorkspaceMenu({
           Help
         </MenuRow>
       </nav>
-
-      {plusOpen && (
-        <section className="workspace-plus-popover" role="dialog" aria-label={PRODUCT_PLUS_NAME}>
-          <header className="workspace-plus-popover-header">
-            <span>{PRODUCT_PLUS_NAME}</span>
-            <button type="button" aria-label={`Close ${PRODUCT_PLUS_NAME}`} onClick={onClosePlus}>
-              <X size={14} />
-            </button>
-          </header>
-          <p>Cloud publishing and agent handoff for work that needs a durable public surface.</p>
-          <div className="workspace-plus-feature-list" aria-label={`${PRODUCT_PLUS_NAME} features`}>
-            <span>Durable public URLs</span>
-            <span>Project publish</span>
-            <span>Agent-readable endpoints</span>
-          </div>
-          <div className="workspace-plus-status">
-            {plusEnabled ? "Enabled in this build" : "Not connected in this local build"}
-          </div>
-        </section>
-      )}
 
       {preferencesOpen && (
         <section className="workspace-preferences-popover" aria-label="Settings">

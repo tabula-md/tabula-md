@@ -47,7 +47,6 @@ description: Quick reference for using Tabula.md.
 ## Share
 
 - Share a live room when people need to edit together.
-- Publish a project snapshot when you need a read-only handoff for people or agents.
 
 ## Preferences
 

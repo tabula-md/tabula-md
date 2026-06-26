@@ -19,6 +19,7 @@ import { RightPanelOutline } from "./RightPanelOutline";
 type RightPanelProps = {
   isOpen: boolean;
   view: RightPanelView;
+  commentsEnabled: boolean;
   files: MarkdownFile[];
   openFileIds: string[];
   activeFileId: string;
@@ -64,6 +65,7 @@ type RightPanelProps = {
 export function RightPanel({
   isOpen,
   view,
+  commentsEnabled,
   files,
   openFileIds,
   activeFileId,
@@ -105,6 +107,7 @@ export function RightPanel({
   onDeleteComment,
   formatCommentDate,
 }: RightPanelProps) {
+  const visibleCommentsByFileId = commentsEnabled ? commentsByFileId : {};
   const {
     showResolved,
     collapsedReplyIds,
@@ -120,7 +123,7 @@ export function RightPanel({
     activeFileId,
     activeCommentId,
     activeReplyCommentId,
-    commentsByFileId,
+    commentsByFileId: visibleCommentsByFileId,
   });
 
   if (!isOpen) {
@@ -128,13 +131,14 @@ export function RightPanel({
   }
 
   const activeFile = files.find((file) => file.id === activeFileId);
+  const effectiveView = commentsEnabled || view !== "comments" ? view : "files";
   const { openCommentGroups, resolvedCommentGroups, openCommentCount } = getRightPanelCommentGroups(
     files,
-    commentsByFileId,
+    visibleCommentsByFileId,
   );
   const renderTab = (tabView: RightPanelView, label: string, icon: ReactNode, count?: number) => (
     <button
-      className={`right-panel-tab ${view === tabView ? "active" : ""} ${
+      className={`right-panel-tab ${effectiveView === tabView ? "active" : ""} ${
         typeof count === "number" && count > 0 ? "has-count" : ""
       }`}
       type="button"
@@ -153,21 +157,21 @@ export function RightPanel({
         <nav className="right-panel-tabs" aria-label="Project context sections">
           {renderTab("files", "Files", <Folder size={14} />)}
           {renderTab("outline", "Outline", <ListTree size={14} />)}
-          {renderTab("comments", "Comments", <MessageSquare size={14} />, openCommentCount)}
+          {commentsEnabled && renderTab("comments", "Comments", <MessageSquare size={14} />, openCommentCount)}
         </nav>
         <button className="right-panel-close" type="button" aria-label="Close Project Context" onClick={onClose}>
           <PanelRight size={16} />
         </button>
       </div>
 
-      <div className={`right-panel-body ${view === "comments" ? "comments" : ""}`}>
-        {view === "files" && (
+      <div className={`right-panel-body ${effectiveView === "comments" ? "comments" : ""}`}>
+        {effectiveView === "files" && (
           <RightPanelFiles
             files={files}
             openFileIds={openFileIds}
             activeFileId={activeFileId}
             fileQuery={fileQuery}
-            commentsByFileId={commentsByFileId}
+            commentsByFileId={visibleCommentsByFileId}
             collapsedFolderIds={collapsedFileTreeFolderIds}
             getFileStatus={getFileStatus}
             getFileSearchText={getFileSearchText}
@@ -183,7 +187,7 @@ export function RightPanel({
           />
         )}
 
-        {view === "outline" && (
+        {effectiveView === "outline" && (
           <RightPanelOutline
             activeFileTitle={activeFileTitle}
             outlineHeadings={outlineHeadings}
@@ -193,7 +197,7 @@ export function RightPanel({
           />
         )}
 
-        {view === "comments" && (
+        {effectiveView === "comments" && commentsEnabled && (
           <RightPanelComments
             activeFile={activeFile}
             activeFileId={activeFileId}

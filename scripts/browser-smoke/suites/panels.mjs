@@ -13,6 +13,7 @@ export async function run(ctx) {
     waitForFileCount,
     waitForPanelTab,
     waitForRenderFrame,
+    waitForShareDialogState,
     withPage,
   } = ctx;
 
@@ -93,8 +94,8 @@ export async function run(ctx) {
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the right project context panel.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New Markdown|Open Markdown...|Import project...|Save Markdown...|Export project...|Live collaboration...|Tabula +|Settings|Help",
-      "The workspace menu should only expose implemented file, collaboration, Plus, Settings, and Help actions.",
+        "New Markdown|Open Markdown...|Import project...|Save Markdown...|Export project...|Live collaboration...|Settings|Help",
+      "The workspace menu should only expose implemented file, collaboration, Settings, and Help actions.",
     );
     expect(
       workbenchPanels.actionRows.every((row) => row.iconCount >= 1 && row.iconCount <= 2),
@@ -123,15 +124,14 @@ export async function run(ctx) {
     expect(focusIndex("New Markdown") !== -1, "Keyboard order should include file creation.");
     expect(focusIndex("Open Markdown...") !== -1, "Keyboard order should include Markdown import.");
     expect(focusIndex("Live collaboration...") !== -1, "Keyboard order should include live collaboration.");
-    expect(focusIndex("Tabula +") !== -1, "Keyboard order should include the Tabula + support row.");
+    expect(focusIndex("Tabula +") === -1, "Workspace menu should keep Tabula + hidden until publishing ships.");
     expect(focusIndex("Settings") !== -1, "Keyboard order should include Settings.");
     expect(focusIndex("Help") !== -1, "Keyboard order should include Help.");
     expect(
       focusIndex("New Markdown") <
         focusIndex("Open Markdown...") &&
         focusIndex("Open Markdown...") < focusIndex("Live collaboration...") &&
-        focusIndex("Live collaboration...") < focusIndex("Tabula +") &&
-        focusIndex("Tabula +") < focusIndex("Settings") &&
+        focusIndex("Live collaboration...") < focusIndex("Settings") &&
         focusIndex("Settings") < focusIndex("Help"),
       "Workspace menu keyboard order should move from file actions to support actions.",
     );
@@ -152,31 +152,7 @@ export async function run(ctx) {
     );
 
     const supportActions = page.locator(".workspace-menu-popover");
-    await supportActions.getByRole("button", { name: "Tabula +", exact: true }).click();
-    await waitForRenderFrame(page);
-    const plusPanel = await page.evaluate(() => ({
-      menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
-      plusOpen: Boolean(document.querySelector(".workspace-plus-popover")),
-      settingsOpen: Boolean(document.querySelector(".workspace-preferences-popover")),
-      plusFooterActive:
-        Array.from(document.querySelectorAll(".workspace-menu-row"))
-          .find((button) => button.textContent?.includes("Tabula +"))
-          ?.classList.contains("active") ?? false,
-      plusFooterIndex: Array.from(document.querySelectorAll(".workspace-menu-row")).findIndex((button) =>
-        button.textContent?.includes("Tabula +"),
-      ),
-      settingsFooterIndex: Array.from(document.querySelectorAll(".workspace-menu-row")).findIndex((button) =>
-        button.textContent?.includes("Settings"),
-      ),
-    }));
-    expect(plusPanel.menuOpen, "Tabula + should live inside the workspace menu.");
-    expect(plusPanel.plusOpen, "Tabula + should open a product-boundary popover.");
-    expect(!plusPanel.settingsOpen, "Tabula + should not open Settings.");
-    expect(plusPanel.plusFooterActive, "The Tabula + support row should stay selected while its surface is open.");
-    expect(
-      plusPanel.plusFooterIndex !== -1 && plusPanel.plusFooterIndex < plusPanel.settingsFooterIndex,
-      "Tabula + should sit directly above Settings in the support rows.",
-    );
+    expect((await supportActions.getByRole("button", { name: "Tabula +", exact: true }).count()) === 0, "Tabula + should not appear in the left menu yet.");
 
     await supportActions.getByRole("button", { name: "Settings", exact: true }).click();
     await waitForRenderFrame(page);
@@ -385,8 +361,8 @@ export async function run(ctx) {
       "The right panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Files|Outline|Comments",
-      "The right panel should put file management first, then document context.",
+      rightPanelState.tabs.join("|") === "Files|Outline",
+      "The right panel should keep comments out of local-only documents.",
     );
     expect(rightPanelState.bodyText.includes("Project"), "The right panel should expose the project file tree by default.");
     expect(rightPanelState.headingCount === 0, "The right panel should not render large panel headings.");
@@ -510,6 +486,15 @@ export async function run(ctx) {
       "The right panel outline rows should stay compact and regular weight.",
     );
 
+    expect((await page.getByRole("button", { name: "Comments", exact: true }).count()) === 0, "Comments should be hidden before live collaboration starts.");
+    await page.locator(".share-trigger").click();
+    await waitForShareDialogState(page, { panel: "Collaborate" });
+    await page.getByRole("button", { name: "Start session" }).click();
+    await waitForShareDialogState(page, { text: "Current session link" });
+    await page.keyboard.press("Escape");
+    await waitForShareDialogState(page, { open: false });
+    await page.waitForSelector(".tab-item.live.active", { timeout: 5_000 });
+    expect((await page.getByRole("button", { name: "Comments", exact: true }).count()) === 1, "Comments should become available during live collaboration.");
     await page.getByRole("button", { name: "Comments", exact: true }).click();
     await waitForPanelTab(page, "Comments");
     const emptyCommentsState = await page.evaluate(() => ({
@@ -601,56 +586,6 @@ export async function run(ctx) {
     expect(commentReplyState.replyAuthorVariant.includes("reply"), "Replies should use the compact author variant.");
     expect(commentReplyState.replyIndent !== "0px", "Replies should be visually nested under the root comment.");
 
-    await page.getByTitle("New tab").click();
-    await waitForActiveTab(page, { startsWith: "Untitled" });
-    await page.locator(".right-comment-input").fill("Later file note.");
-    await page.locator(".right-comment-form .right-comment-submit").click();
-    await waitForRenderFrame(page);
-    const laterCommentFile = await page.evaluate(
-      () => document.querySelector(".tab-item.active .tab-title")?.textContent?.trim() ?? "",
-    );
-    expect(Boolean(laterCommentFile), "Creating a later file comment should leave a readable active file title.");
-
-    await page.getByRole("button", { name: "Show all comments", exact: true }).click();
-    await waitForRenderFrame(page);
-    const allCommentsScopeState = await page.evaluate(() => ({
-      scopeTitle: document.querySelector(".right-comments-context")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-      switchText: document.querySelector(".right-comments-switch")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-      switchPressed: document.querySelector(".right-comments-switch")?.getAttribute("aria-pressed") ?? "",
-      inputCount: document.querySelectorAll(".right-comment-input").length,
-      fileHeaders: Array.from(document.querySelectorAll(".right-comment-file .right-row-label")).map(
-        (item) => item.textContent?.trim() ?? "",
-      ),
-      cards: document.querySelectorAll(".right-comment-card").length,
-      cardTexts: Array.from(document.querySelectorAll(".right-comment-card")).map(
-        (card) => card.textContent?.replace(/\s+/g, " ").trim() ?? "",
-      ),
-    }));
-    expect(allCommentsScopeState.switchPressed === "true", "All comments scope should become active when selected.");
-    expect(
-      allCommentsScopeState.switchText.replace(/\d+$/, "") === "Current file",
-      "All comments should expose Current file as the way back.",
-    );
-    expect(allCommentsScopeState.scopeTitle.includes("All comments"), "All comments scope should use a scope title, not the active file title.");
-    expect(allCommentsScopeState.inputCount === 0, "All comments is an inbox view and should not show the current-file composer.");
-    expect(allCommentsScopeState.cards >= 2, "All comments scope should include comments from multiple files.");
-    expect(
-      allCommentsScopeState.fileHeaders.length >= 1 &&
-        allCommentsScopeState.fileHeaders.every((title) => !title.endsWith(".md")),
-      "All files scope should show compact file headers without .md.",
-    );
-    expect(
-      allCommentsScopeState.fileHeaders[0] === laterCommentFile,
-      "All comments should sort file groups by latest comment activity.",
-    );
-    expect(
-      allCommentsScopeState.cardTexts[0]?.includes("Later file note."),
-      "All comments should show the latest active comment first inside the newest file group.",
-    );
-
-    await page.getByRole("button", { name: "Show current file comments", exact: true }).click();
-    await waitForRenderFrame(page);
-
     await page.getByRole("button", { name: "Resolve" }).click();
     await waitForRenderFrame(page);
     const commentsAfterResolve = await page.evaluate(() => ({
@@ -715,21 +650,6 @@ export async function run(ctx) {
       const readmeStyle = window.getComputedStyle(readmeTab);
       const activeStyle = window.getComputedStyle(activeTab);
       const tabsScrollStyle = window.getComputedStyle(tabsScroll);
-      const activeTitleRect = activeTab.querySelector(".tab-title")?.getBoundingClientRect();
-      const activeModeIconStyle = activeTab.querySelector(".tab-mode-icon")
-        ? window.getComputedStyle(activeTab.querySelector(".tab-mode-icon"))
-        : null;
-      const inactiveTitleInsets = Array.from(document.querySelectorAll(".tab-item:not(.active)"))
-        .slice(0, 4)
-        .map((tab) => {
-          const tabRect = tab.getBoundingClientRect();
-          const titleRect = tab.querySelector(".tab-title")?.getBoundingClientRect();
-          return titleRect ? titleRect.left - tabRect.left : null;
-        })
-        .filter((inset) => inset !== null);
-      const inactiveModeIconDisplays = Array.from(document.querySelectorAll(".tab-item:not(.active) .tab-mode-icon"))
-        .slice(0, 4)
-        .map((icon) => window.getComputedStyle(icon).display);
       return {
         activeTabVisible:
           activeRect.left >= scrollRect.left - 1 &&
@@ -762,10 +682,6 @@ export async function run(ctx) {
         activeFileName: activeTab.getAttribute("data-file-name") ?? "",
         activeWidth: activeRect.width,
         activeWeight: activeStyle.fontWeight,
-        activeTitleInset: activeTitleRect ? activeTitleRect.left - activeRect.left : null,
-        inactiveTitleInsets,
-        activeModeIconDisplay: activeModeIconStyle?.display ?? "",
-        inactiveModeIconDisplays,
         inactiveWidths: Array.from(document.querySelectorAll(".tab-item:not(.active)"))
           .slice(0, 4)
           .map((tab) => tab.getBoundingClientRect().width),
@@ -802,15 +718,6 @@ export async function run(ctx) {
     expect(
       overflow.inactiveWeights.every((weight) => weight === overflow.activeWeight),
       "Focused tabs should keep the same font weight as neighboring tabs.",
-    );
-    expect(overflow.activeModeIconDisplay === "grid", "Active tab mode icon should keep its layout slot.");
-    expect(
-      overflow.inactiveModeIconDisplays.every((display) => display === overflow.activeModeIconDisplay),
-      "Inactive tab mode icons should keep the same layout slot as the active tab.",
-    );
-    expect(
-      overflow.inactiveTitleInsets.every((inset) => Math.abs(inset - overflow.activeTitleInset) <= 1),
-      "Focused tabs should keep title text aligned with neighboring tabs.",
     );
     expect(overflow.activeCloseCentered, "Close buttons should stay vertically centered inside tabs.");
     expect(overflow.activeTabVisible, "Active overflow tab should remain visible.");

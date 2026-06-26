@@ -109,21 +109,6 @@
   white-space: nowrap;
 }
 
-.tab-mode-icon {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  color: #aaaaaa;
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-}
-
-.tab-item:not(.active) .tab-mode-icon {
-  visibility: hidden;
-  opacity: 0;
-}
-
 .tab-live-dot {
   flex: 0 0 auto;
   width: 6px;
@@ -175,8 +160,6 @@
   pointer-events: auto;
 }
 
-.tab-item:hover .tab-mode-icon,
-.tab-item:focus-within .tab-mode-icon,
 .tab-item:hover .tab-collaborator-count,
 .tab-item:focus-within .tab-collaborator-count {
   opacity: 0;
@@ -254,11 +237,6 @@
 .tab-item.active {
   color: #1f1f1f;
   background: var(--surface-muted);
-}
-
-.tab-item.active .tab-mode-icon {
-  color: #777777;
-  background: #ffffff;
 }
 
 .add-tab-button {

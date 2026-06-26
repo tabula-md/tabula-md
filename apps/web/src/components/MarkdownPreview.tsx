@@ -34,6 +34,7 @@ type MarkdownPreviewProps = {
   commentAnchors?: MarkdownPreviewCommentAnchor[];
   lineAnnotations?: MarkdownPreviewLineAnnotation[];
   activeCommentId?: string | null;
+  commentsEnabled?: boolean;
   suspendLineMeasurement?: boolean;
   onLineAction?: (request: MarkdownPreviewLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
@@ -435,16 +436,18 @@ function PreviewLineGutter({
   side,
   rows,
   onLineAction,
+  enabled = true,
 }: {
   side: "bookmark" | "comment";
   rows: PreviewLineRailRow[];
   onLineAction: (request: MarkdownPreviewLineActionRequest) => void;
+  enabled?: boolean;
 }) {
   const Icon = side === "bookmark" ? Bookmark : MessageSquare;
 
   return (
     <div className={`preview-line-gutter ${side}`} aria-label={side === "bookmark" ? "Preview bookmarks" : "Preview comments"}>
-      {rows.map((row) => {
+      {enabled && rows.map((row) => {
         const isActive = side === "bookmark" ? row.hasBookmark : row.hasComment;
         const className = [
           "preview-line-action",
@@ -485,6 +488,7 @@ function MarkdownPreviewComponent({
   commentAnchors = EMPTY_PREVIEW_COMMENT_ANCHORS,
   lineAnnotations = EMPTY_PREVIEW_LINE_ANNOTATIONS,
   activeCommentId,
+  commentsEnabled = true,
   suspendLineMeasurement = false,
   onLineAction,
   onOpenComment,
@@ -495,10 +499,11 @@ function MarkdownPreviewComponent({
   const lineMeasurementCacheRef = useRef(new Map<string, PreviewLineRailRow[]>());
   const [lineRailRows, setLineRailRows] = useState<PreviewLineRailRow[]>([]);
   const showLineGutters = Boolean(onLineAction);
+  const showCommentGutter = showLineGutters;
   const markdownPreviewComponents = useMemo(() => createMarkdownPreviewComponents(onOpenComment), [onOpenComment]);
   const commentAnchorPlugins = useMemo(
-    () => [createPreviewCommentAnchorPlugin(commentAnchors, activeCommentId)],
-    [activeCommentId, commentAnchors],
+    () => (commentsEnabled ? [createPreviewCommentAnchorPlugin(commentAnchors, activeCommentId)] : []),
+    [activeCommentId, commentAnchors, commentsEnabled],
   );
   const rehypePlugins = useMemo(
     () => [...PREVIEW_SOURCE_LINE_REHYPE_PLUGINS, ...commentAnchorPlugins],
@@ -625,8 +630,8 @@ function MarkdownPreviewComponent({
         )}
       </div>
 
-      {showLineGutters && onLineAction && (
-        <PreviewLineGutter side="comment" rows={lineRailRows} onLineAction={onLineAction} />
+      {showCommentGutter && onLineAction && (
+        <PreviewLineGutter side="comment" rows={lineRailRows} onLineAction={onLineAction} enabled={commentsEnabled} />
       )}
     </div>
   );
@@ -672,6 +677,7 @@ const arePreviewLineAnnotationsEqual = (
 const areMarkdownPreviewPropsEqual = (firstProps: MarkdownPreviewProps, secondProps: MarkdownPreviewProps) =>
   firstProps.body === secondProps.body &&
   firstProps.activeCommentId === secondProps.activeCommentId &&
+  firstProps.commentsEnabled === secondProps.commentsEnabled &&
   firstProps.suspendLineMeasurement === secondProps.suspendLineMeasurement &&
   firstProps.onLineAction === secondProps.onLineAction &&
   firstProps.onOpenComment === secondProps.onOpenComment &&

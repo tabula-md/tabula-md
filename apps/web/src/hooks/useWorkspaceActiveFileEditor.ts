@@ -7,6 +7,7 @@ import type {
   FileBookmark,
   MarkdownFile,
 } from "../workspaceStorage";
+import type { TextChange, TextPatch } from "../textPatches";
 
 export type FileHistory = {
   past: string[];
@@ -27,7 +28,7 @@ const MAX_FILE_HISTORY_ENTRIES = 80;
 
 type UseWorkspaceActiveFileEditorArgs = {
   activeFile?: MarkdownFile;
-  applyLocalText: (text: string) => void;
+  applyLocalText: (text: string, patches?: readonly TextPatch[]) => void;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
   setActiveFileText: (text: string) => void;
@@ -69,7 +70,7 @@ export function useWorkspaceActiveFileEditor({
   const canUndo = activeHistory.past.length > 0;
   const canRedo = activeHistory.future.length > 0;
 
-  const updateActiveFileText = (nextText: string, options: { recordHistory?: boolean } = {}) => {
+  const updateActiveFileText = (nextText: string, options: { recordHistory?: boolean; patches?: readonly TextPatch[] } = {}) => {
     if (!activeFile) {
       return;
     }
@@ -85,8 +86,12 @@ export function useWorkspaceActiveFileEditor({
     setActiveFileText(nextText);
 
     if (activeFile.roomId) {
-      applyLocalText(nextText);
+      applyLocalText(nextText, options.patches);
     }
+  };
+
+  const handleEditorTextChange = (nextText: string, change?: TextChange) => {
+    updateActiveFileText(nextText, { patches: change?.patches });
   };
 
   const updateActiveFileBookmarks = (nextBookmarks: MarkdownBookmark[]) => {
@@ -151,7 +156,7 @@ export function useWorkspaceActiveFileEditor({
     clearFileHistory: () => setHistoryByFileId({}),
     editorHistoryState,
     handleEditorHistoryStateChange: setEditorHistoryState,
-    handleTextChange: updateActiveFileText,
+    handleTextChange: handleEditorTextChange,
     historyByFileId,
     redoActiveFile,
     setHistoryByFileId,
