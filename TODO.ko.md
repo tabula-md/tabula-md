@@ -1,6 +1,6 @@
 # Tabula.md OSS + Hosted Launch TODO
 
-최종 업데이트: 2026-06-25
+최종 업데이트: 2026-06-26
 
 이 TODO는 일부러 좁게 잡는다. 목표는 아래 네 가지다.
 
@@ -44,7 +44,8 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
 - `tabula.md` DNS zone을 production DNS 계정에서 제어할 수 있는지 확인한다.
 - hosted web provider 계정이 static Vite app 배포를 할 수 있는 상태인지 확인한다.
 - hosted room provider 계정이 paid Node/Docker WebSocket service와 persistent
-  disk를 만들 수 있는 상태인지 확인한다.
+  disk를 만들 수 있는 상태인지 확인한다. v0의 hosted room은 별도 private
+  구현체가 아니라 public `tabula-room` 서버를 production 설정으로 배포한다.
 - hosted web provider와 hosted room provider에 쓸 deployment CLI 또는 browser
   session이 로그인되어 있는지 확인한다.
 - production alert를 받을 계정/채널을 정한다.
@@ -188,6 +189,10 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
 ## 6. Hosted Room Deployment
 
 - [ ] `tabula-room`에서 paid Node/Docker WebSocket service를 만든다.
+- [ ] build/start를 설정한다.
+  - [ ] build command: `npm install && npm run build`.
+  - [ ] start command: `npm start`.
+  - [ ] `tabula-room`과 맞는 Node version.
 - [ ] encrypted snapshot용 persistent disk를 붙인다.
 - [ ] disk를 `TABULA_ROOM_DATA_DIR`에서 쓰는 path에 mount한다.
 - [ ] production environment를 설정한다.
@@ -206,6 +211,10 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
   - [ ] URL fragments.
   - [ ] plaintext Markdown.
   - [ ] 임시 local debugging을 제외한 full encrypted envelopes.
+- [ ] v0 이후로 미룰 scaling 작업을 명확히 분리한다.
+  - [ ] Redis-backed horizontal room scaling.
+  - [ ] object storage or database-backed encrypted snapshots.
+  - [ ] multi-region room routing.
 
 ## 7. End-To-End Hosted Smoke
 
@@ -260,7 +269,7 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
 - Private publishing.
 - Redis-backed room scaling.
 - Object storage or database-backed room snapshots.
-- Alternative managed room runtime.
+- Alternative OSS room runtime.
 - Full permission system.
 - Agent Memory as a real product surface.
 - Templates as a real standardized document system.

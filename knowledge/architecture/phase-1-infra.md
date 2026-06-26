@@ -18,18 +18,20 @@ choices, production credentials, and private operational automation belong
 outside the public repositories unless and until a private `tabula-cloud`
 operations repo is created.
 
-The public `tabula-room` server is the self-hostable reference runtime. The
-official hosted service can use a separate managed room runtime as long as it
-preserves the same ciphertext-only room contract and `VITE_TABULA_ROOM_URL`
-client boundary.
+The public `tabula-room` server is the source of truth for both self-hosted and
+official hosted live collaboration in v0. The official hosted service should
+deploy `tabula-room` with production configuration, not fork a second room
+runtime in private code. Private operations code may wrap deployment,
+environment, DNS, monitoring, and rollback, but it should not redefine the room
+protocol or persistence behavior.
 
 # Persistence Direction
 
 - Keep Markdown content and room keys client-only.
 - Persist only encrypted snapshot envelopes in `tabula-room`.
 - Start with file storage for the open-source server.
-- Use managed per-room storage for the hosted deployment behind the same
-  ciphertext-only envelope contract.
+- Use the same encrypted snapshot storage behavior in the hosted deployment,
+  mounted on provider-managed persistent disk.
 
 # Deployment Direction
 
@@ -40,8 +42,9 @@ client boundary.
   unavailable until a room server is configured.
 - Keep the public `tabula-room` Node server self-hostable with allowed origins,
   payload limits, rate limits, and encrypted snapshot storage.
-- Keep the hosted room runtime in private operations code when it needs
-  provider-specific routing, storage, alarms, or deployment configuration.
+- Keep hosted provider-specific deployment configuration in private operations
+  code. The hosted room service should still run the public `tabula-room`
+  server.
 - Keep accounts, billing, audit logs, and multi-tenant permission systems out
   of the public v0.
 
