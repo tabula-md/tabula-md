@@ -20,6 +20,7 @@ import {
 import { getMagnetizedSplitRatio } from "./hooks/useSplitViewController";
 import { getNewFilePreferenceOverrides } from "./hooks/useProjectIoController";
 import {
+  isFileTextFallbackHistoryEnabled,
   normalizeFileBookmarks,
   recordFileTextHistory,
 } from "./hooks/useWorkspaceActiveFileEditor";
@@ -286,6 +287,11 @@ describe("workspace view model", () => {
 });
 
 describe("workspace active file editor controller", () => {
+  it("disables whole-document fallback history for live collaboration files", () => {
+    expect(isFileTextFallbackHistoryEnabled({ roomId: undefined })).toBe(true);
+    expect(isFileTextFallbackHistoryEnabled({ roomId: "room-1" })).toBe(false);
+  });
+
   it("records text history with a bounded past stack and clears redo history", () => {
     const history = recordFileTextHistory(
       {
