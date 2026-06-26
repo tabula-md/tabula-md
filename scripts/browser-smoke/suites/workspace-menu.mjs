@@ -538,9 +538,13 @@ export async function run(ctx) {
     await page.getByRole("tab", { name: "Collaborate" }).click();
     await waitForShareDialogState(page, { panel: "Collaborate" });
     const preLiveShareHeight = await getShareModalHeight();
+    const preLiveUrl = page.url();
     await page.getByRole("button", { name: "Start session" }).click();
-    await page.waitForURL(/\/r\/.+#key=/, { timeout: 5_000 });
     await waitForShareDialogState(page, { text: "Invite link" });
+    expect(
+      page.url() === preLiveUrl,
+      "Live -> Start session should keep the current workspace URL separate from the room invite link.",
+    );
     expect(
       (await page.getByText("Collaborate with people").count()) > 0,
       "Starting live should keep the Collaborate panel heading stable.",
@@ -574,9 +578,14 @@ export async function run(ctx) {
     );
     expect((await page.locator(".share-link-display").count()) === 1, "Live modal should render a compact invite-link preview.");
     const shareLinkPreview = await page.locator(".share-link-display").textContent();
+    const shareLinkTitle = await page.locator(".share-link-display").getAttribute("title");
     expect(
       /\/r\/.+#key=\.\.\./.test(shareLinkPreview ?? ""),
       "Live modal should not show a visually clipped raw invite URL.",
+    );
+    expect(
+      Boolean(shareLinkTitle && new URL(shareLinkTitle).pathname.startsWith("/r/") && new URL(shareLinkTitle).hash.startsWith("#key=")),
+      "Live modal should keep the full room URL in the invite-link title.",
     );
     const liveLinkLayout = await page.evaluate(() => {
       const roomBox = document.querySelector(".live-room-box");
@@ -609,7 +618,7 @@ export async function run(ctx) {
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);
     expect(activeTab?.live, "Live -> Start session should mark the active tab as live.");
-    expect(page.url().includes("/r/"), "Live -> Start session should move the URL to a room route.");
+    expect(!page.url().includes("/r/"), "Live -> Start session should not move the current tab to a room route.");
   });
 
   await withPage(browser, `/r/browserroom#key=${validRoomKey}`, async (page) => {

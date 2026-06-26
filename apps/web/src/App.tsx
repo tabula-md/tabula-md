@@ -415,12 +415,12 @@ function WorkspaceApp() {
   }, [activeFileId, activateRoomFile, files, selectMarkdownFile]);
 
   useEffect(() => {
-    if (!activeFile) {
+    if (!activeFile || activeFile.roomId || !getRoomFromLocation()) {
       return;
     }
 
-    syncUrlForFile(activeFile, "replace");
-  }, [activeFile?.id, activeFile?.roomId, activeFile?.shareUrl]);
+    syncUrlForFile(undefined, "replace");
+  }, [activeFile?.id, activeFile?.roomId]);
 
   useEffect(() => {
     if (!selectionActionPosition) {
@@ -588,9 +588,20 @@ function WorkspaceApp() {
       file,
       activeFileId: activeFile?.id,
       activeConnectionStatus: connectionStatus,
-    });
+  });
   const statusLabel = getWorkspaceStatusLabel(activeStatus);
   const activeFileTitle = activeFile?.title ?? "No file open";
+  const activePresenceIdentity = useMemo(
+    () =>
+      isLive
+        ? {
+            ...identity,
+            fileTitle: activeFileTitle,
+            selection: activeSelection,
+          }
+        : identity,
+    [activeFileTitle, activeSelection, identity, isLive],
+  );
   const showFormattingToolbar = Boolean(activeFile && activeViewMode !== "preview");
   const showSelectionCommentPopover = Boolean(activeFile && selectedCharacterCount > 0 && selectionActionPosition);
 
@@ -753,8 +764,9 @@ function WorkspaceApp() {
             workspaceMenuOpen={workspaceMenuOpen}
             rightPanelOpen={rightPanelOpen}
             isLive={isLive}
-            identity={identity}
+            identity={activePresenceIdentity}
             collaborators={collaborators}
+            activeText={text}
             fileTabs={fileTabsNode}
             shareControls={shareControlsNode}
             onToggleWorkspaceMenu={toggleWorkspaceMenu}
@@ -870,6 +882,7 @@ function WorkspaceApp() {
                       lineNumbers={activeLineNumbers}
                       bookmarks={activeBookmarks}
                       commentAnchors={activeCommentAnchors}
+                      collaborators={isLive ? collaborators : []}
                       activeCommentId={focusedCommentId}
                       searchMatches={searchOpen ? searchMatches : []}
                       activeSearchMatchIndex={searchOpen ? activeSearchMatchIndex : -1}

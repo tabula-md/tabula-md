@@ -21,6 +21,7 @@ import { tags } from "@lezer/highlight";
 import { createCommentAnchorExtension } from "../editorExtensions/commentAnchors";
 import { createLineAnnotationGutterExtension, createLineCommentActionExtension } from "../editorExtensions/lineAnnotations";
 import { createMarkdownCommandExtensions, runMarkdownFormatCommand } from "../editorExtensions/markdownCommands";
+import { createRemotePresenceExtension } from "../editorExtensions/remotePresence";
 import { createSearchHighlightExtension } from "../editorExtensions/searchHighlight";
 import { createTextSelectionHighlightExtension } from "../editorExtensions/selectionLayer";
 import type { MarkdownBookmark, MarkdownEditorHandle, MarkdownEditorProps } from "../markdownEditorTypes";
@@ -74,6 +75,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       lineNumbers,
       bookmarks = [],
       commentAnchors = [],
+      collaborators = [],
       activeCommentId,
       searchMatches = [],
       activeSearchMatchIndex = -1,
@@ -104,6 +106,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const lineCommentActionCompartmentRef = useRef(new Compartment());
     const lineNumbersCompartmentRef = useRef(new Compartment());
     const commentAnchorCompartmentRef = useRef(new Compartment());
+    const remotePresenceCompartmentRef = useRef(new Compartment());
     const searchHighlightCompartmentRef = useRef(new Compartment());
     const stateByFileIdRef = useRef(new Map<string, EditorState>());
     const lastHistoryStateRef = useRef({ canUndo: false, canRedo: false });
@@ -338,6 +341,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         commentAnchorCompartmentRef.current.of(
           createCommentAnchorExtension(commentAnchors, activeCommentId, (commentId) => onOpenCommentRef.current?.(commentId)),
         ),
+        remotePresenceCompartmentRef.current.of(createRemotePresenceExtension(collaborators)),
         createTextSelectionHighlightExtension(),
         searchHighlightCompartmentRef.current.of(createSearchHighlightExtension(searchMatches, activeSearchMatchIndex)),
         ...createMarkdownCommandExtensions(),
@@ -414,6 +418,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         ),
       });
     }, [activeCommentId, commentAnchors]);
+
+    useEffect(() => {
+      viewRef.current?.dispatch({
+        effects: remotePresenceCompartmentRef.current.reconfigure(createRemotePresenceExtension(collaborators)),
+      });
+    }, [collaborators]);
 
     useEffect(() => {
       viewRef.current?.dispatch({

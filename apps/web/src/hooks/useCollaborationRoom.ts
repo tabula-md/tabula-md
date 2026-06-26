@@ -11,7 +11,7 @@ import {
   getTabulaRoomAvailability,
   parseRoomShareUrl,
 } from "../collab";
-import { syncUrlForFile, type MarkdownFile } from "../workspaceStorage";
+import type { MarkdownFile } from "../workspaceStorage";
 
 type UseCollaborationRoomOptions = {
   activeFile?: MarkdownFile;
@@ -161,7 +161,6 @@ export function useCollaborationRoom({
 
     const nextSession = createRoomSession(window.location.origin);
     pendingInitialTextRef.current = activeFile.text;
-    syncUrlForFile({ roomId: nextSession.roomId, shareUrl: nextSession.shareUrl });
     startFileCollaborationSession(activeFile.id, nextSession.roomId, nextSession.shareUrl);
     setConnectionStatus("connecting");
     return { roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
