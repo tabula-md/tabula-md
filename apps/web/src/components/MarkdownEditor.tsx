@@ -8,7 +8,7 @@ import {
 } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { Compartment, EditorState, type Extension, Transaction } from "@codemirror/state";
+import { type ChangeSet, Compartment, EditorState, type Extension, Transaction } from "@codemirror/state";
 import {
   EditorView,
   dropCursor,
@@ -26,6 +26,7 @@ import { createSearchHighlightExtension } from "../editorExtensions/searchHighli
 import { createTextSelectionHighlightExtension } from "../editorExtensions/selectionLayer";
 import type { MarkdownBookmark, MarkdownEditorHandle, MarkdownEditorProps } from "../markdownEditorTypes";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
+import { getTextPatchesForChange, type TextPatch } from "../textPatches";
 
 export type {
   MarkdownBookmark,
@@ -66,15 +67,56 @@ const getEditorHistoryState = (state: EditorState) => ({
 
 const clampPosition = (position: number, docLength: number) => Math.max(0, Math.min(position, docLength));
 
+const getEditorTextChangePatches = (changes: ChangeSet): TextPatch[] => {
+  const patches: TextPatch[] = [];
+
+  changes.iterChanges((from, to, _insertFrom, _insertTo, insert) => {
+    const insertText = insert.toString();
+    if (from !== to || insertText) {
+      patches.push({ from, to, insert: insertText });
+    }
+  });
+
+  return patches;
+};
+
+const dispatchRemoteTextChange = (
+  view: EditorView,
+  nextValue: string,
+  preferredPatches?: readonly TextPatch[],
+) => {
+  const currentValue = view.state.doc.toString();
+  if (currentValue === nextValue) {
+    return;
+  }
+
+  const patches = getTextPatchesForChange(currentValue, nextValue, preferredPatches);
+  if (patches.length === 0) {
+    return;
+  }
+
+  view.dispatch({
+    changes: patches.map((patch) => ({
+      from: patch.from,
+      to: patch.to,
+      insert: patch.insert,
+    })),
+    annotations: [Transaction.remote.of(true), Transaction.addToHistory.of(false)],
+  });
+};
+
 export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
   (
     {
       fileId,
+      fileTitle,
+      roomId,
       value,
       lineWrapping,
       lineNumbers,
       bookmarks = [],
       commentAnchors = [],
+      commentsEnabled = true,
       collaborators = [],
       activeCommentId,
       searchMatches = [],
@@ -110,6 +152,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const searchHighlightCompartmentRef = useRef(new Compartment());
     const stateByFileIdRef = useRef(new Map<string, EditorState>());
     const lastHistoryStateRef = useRef({ canUndo: false, canRedo: false });
+    const localEchoValuesRef = useRef(new Set<string>());
 
     useEffect(() => {
       onChangeRef.current = onChange;
@@ -253,6 +296,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         const selection = view?.state.selection.main;
         return view && selection ? view.state.sliceDoc(selection.from, selection.to) : "";
       },
+      applyRemoteTextChange: (nextValue, patches) => {
+        const view = viewRef.current;
+        if (view) {
+          dispatchRemoteTextChange(view, nextValue, patches);
+        }
+      },
       scrollToRatio: (ratio: number) => {
         const scrollElement = viewRef.current?.scrollDOM;
         if (scrollElement) {
@@ -296,11 +345,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       if (!containerRef.current) {
         return;
       }
+      localEchoValuesRef.current.clear();
 
       const updateExtension = EditorView.updateListener.of((update) => {
         emitHistoryState(update.view);
+        const isExternalUpdate = update.transactions.some((transaction) => transaction.annotation(Transaction.remote));
 
-        if (update.selectionSet) {
+        if (update.selectionSet || (update.docChanged && !isExternalUpdate)) {
           const selection = update.state.selection.main;
           onSelectionChangeRef.current?.({ from: selection.from, to: selection.to });
         }
@@ -315,9 +366,19 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
         mapBookmarksThroughDocumentChange(update.view, update.transactions);
 
-        const isExternalUpdate = update.transactions.some((transaction) => transaction.annotation(Transaction.remote));
         if (!isExternalUpdate) {
-          onChangeRef.current(update.state.doc.toString());
+          const nextValue = update.state.doc.toString();
+          localEchoValuesRef.current.add(nextValue);
+          if (localEchoValuesRef.current.size > 40) {
+            const oldestValue = localEchoValuesRef.current.values().next().value as string | undefined;
+            if (oldestValue !== undefined) {
+              localEchoValuesRef.current.delete(oldestValue);
+            }
+          }
+
+          onChangeRef.current(nextValue, {
+            patches: getEditorTextChangePatches(update.changes),
+          });
         }
       });
       const extensions: Extension[] = [
@@ -332,16 +393,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           createLineAnnotationGutterExtension(bookmarks, (request) => onOpenLineActionsRef.current?.(request)),
         ),
         lineCommentActionCompartmentRef.current.of(
-          createLineCommentActionExtension(bookmarks, commentAnchors, (request) =>
-            onOpenLineActionsRef.current?.(request),
+          createLineCommentActionExtension(
+            bookmarks,
+            commentsEnabled ? commentAnchors : [],
+            commentsEnabled ? (request) => onOpenLineActionsRef.current?.(request) : undefined,
+            commentsEnabled,
           ),
         ),
         lineNumbersCompartmentRef.current.of(lineNumbers ? [codeMirrorLineNumbers()] : []),
         wrappingCompartmentRef.current.of(lineWrapping ? EditorView.lineWrapping : []),
         commentAnchorCompartmentRef.current.of(
-          createCommentAnchorExtension(commentAnchors, activeCommentId, (commentId) => onOpenCommentRef.current?.(commentId)),
+          commentsEnabled
+            ? createCommentAnchorExtension(commentAnchors, activeCommentId, (commentId) => onOpenCommentRef.current?.(commentId))
+            : [],
         ),
-        remotePresenceCompartmentRef.current.of(createRemotePresenceExtension(collaborators)),
+        remotePresenceCompartmentRef.current.of(createRemotePresenceExtension(collaborators, fileTitle, roomId)),
         createTextSelectionHighlightExtension(),
         searchHighlightCompartmentRef.current.of(createSearchHighlightExtension(searchMatches, activeSearchMatchIndex)),
         ...createMarkdownCommandExtensions(),
@@ -380,21 +446,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         return;
       }
 
-      const currentValue = view.state.doc.toString();
-      if (currentValue === value) {
+      if (localEchoValuesRef.current.delete(value)) {
         return;
       }
 
-      const selection = view.state.selection.main;
-      const nextLength = value.length;
-      view.dispatch({
-        changes: { from: 0, to: currentValue.length, insert: value },
-        selection: {
-          anchor: Math.min(selection.from, nextLength),
-          head: Math.min(selection.to, nextLength),
-        },
-        annotations: Transaction.remote.of(true),
-      });
+      dispatchRemoteTextChange(view, value);
     }, [fileId, value]);
 
     useEffect(() => {
@@ -414,16 +470,20 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     useEffect(() => {
       viewRef.current?.dispatch({
         effects: commentAnchorCompartmentRef.current.reconfigure(
-          createCommentAnchorExtension(commentAnchors, activeCommentId, (commentId) => onOpenCommentRef.current?.(commentId)),
+          commentsEnabled
+            ? createCommentAnchorExtension(commentAnchors, activeCommentId, (commentId) => onOpenCommentRef.current?.(commentId))
+            : [],
         ),
       });
-    }, [activeCommentId, commentAnchors]);
+    }, [activeCommentId, commentAnchors, commentsEnabled]);
 
     useEffect(() => {
       viewRef.current?.dispatch({
-        effects: remotePresenceCompartmentRef.current.reconfigure(createRemotePresenceExtension(collaborators)),
+        effects: remotePresenceCompartmentRef.current.reconfigure(
+          createRemotePresenceExtension(collaborators, fileTitle, roomId),
+        ),
       });
-    }, [collaborators]);
+    }, [collaborators, fileTitle, roomId]);
 
     useEffect(() => {
       viewRef.current?.dispatch({
@@ -444,12 +504,15 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     useEffect(() => {
       viewRef.current?.dispatch({
         effects: lineCommentActionCompartmentRef.current.reconfigure(
-          createLineCommentActionExtension(bookmarks, commentAnchors, (request) =>
-            onOpenLineActionsRef.current?.(request),
+          createLineCommentActionExtension(
+            bookmarks,
+            commentsEnabled ? commentAnchors : [],
+            commentsEnabled ? (request) => onOpenLineActionsRef.current?.(request) : undefined,
+            commentsEnabled,
           ),
         ),
       });
-    }, [bookmarks, commentAnchors]);
+    }, [bookmarks, commentAnchors, commentsEnabled]);
 
     return <div ref={containerRef} className="markdown-editor" aria-label="Markdown editor" />;
   },

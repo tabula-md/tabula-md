@@ -23,18 +23,18 @@ const DEFAULT_README_REFRESH_MARKERS = [
 ];
 const README_MARKDOWN = `---
 title: ${PRODUCT_NAME}
-description: A local-first Markdown workspace for project context and public pages.
+description: A local-first Markdown workspace for project context and live sharing.
 ---
 
 ${PRODUCT_NAME} is a local-first Markdown workspace for files that people and AI agents can both read.
 
-No dashboard first. No project ceremony. Open a file, write Markdown, share the room, and publish a public page when it is ready.
+No dashboard first. No project ceremony. Open a file, write Markdown, and share a live room when people need to work together.
 
 ## Start here
 
 1. Create a blank Markdown file.
 2. Edit, preview, or keep split view open.
-3. Share for live editing or publish a public read-only page.
+3. Share a live room when the file is ready for collaboration.
 
 ## Fits
 
@@ -45,7 +45,6 @@ No dashboard first. No project ceremony. Open a file, write Markdown, share the 
 
 - Local files are saved in this browser.
 - Live rooms sync the active file through a collaboration session.
-- Publishing creates a public read-only page with \`/llms.txt\` and \`/llms-full.txt\` included automatically.
 `;
 export const READING_WIDTHS: ReadingWidth[] = ["narrow", "standard", "wide"];
 export const DEFAULT_SPLIT_EDITOR_RATIO = 0.5;

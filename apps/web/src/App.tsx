@@ -77,6 +77,7 @@ import {
   type MarkdownFile,
   type WorkspaceState,
 } from "./workspaceStorage";
+import type { TextChange } from "./textPatches";
 
 const getFloatingPopoverStyle = (
   position: MarkdownSelectionActionPosition,
@@ -284,6 +285,15 @@ function WorkspaceApp() {
     previewSurfaceRef,
     text,
   });
+  const handleCollaborationRemoteTextChange = useEventCallback(
+    (fileId: string, nextText: string, change?: TextChange) => {
+      if (fileId !== activeFile?.id) {
+        return;
+      }
+
+      editorRef.current?.applyRemoteTextChange(nextText, change?.patches);
+    },
+  );
   const indexedDbHydration = useIndexedDbWorkspaceHydration({
     enabled: initialWorkspaceSnapshot.source === "starter",
     initialWorkspace,
@@ -298,7 +308,6 @@ function WorkspaceApp() {
     centerPopover,
     setCenterPopover,
     workspaceMenuOpen,
-    setWorkspaceMenuOpen,
     preferencesOpen,
     setPreferencesOpen,
     sharePanelTarget,
@@ -336,6 +345,7 @@ function WorkspaceApp() {
     setFileRoomMeta,
     setFileRecoveryEvent,
     startFileCollaborationSession,
+    onRemoteTextChange: handleCollaborationRemoteTextChange,
   });
   const {
     canRedo,
@@ -358,6 +368,12 @@ function WorkspaceApp() {
   });
   const isLive = Boolean(activeFile?.roomId);
   const activeStatus = getActiveWorkspaceStatus({ isLive, connectionStatus });
+  useEffect(() => {
+    if (!isLive && rightPanelView === "comments") {
+      setRightPanelView("files");
+    }
+  }, [isLive, rightPanelView, setRightPanelView]);
+
   const {
     activeLiveRoomNotice,
     copyShareUrl,
@@ -375,7 +391,6 @@ function WorkspaceApp() {
   const copied = copiedFileId === activeFile?.id;
   const activeWordCount = getMarkdownWordCount(text);
   const shareOpen = topPopover === "share";
-  const plusOpen = topPopover === "plus";
   const outlineHeadings = useMemo<MarkdownHeading[]>(
     () => getOutlineHeadings(renderedPreview),
     [renderedPreview],
@@ -541,6 +556,7 @@ function WorkspaceApp() {
     activeViewMode,
     clearPreviewSelection,
     commentDraft,
+    commentsEnabled: isLive,
     commentInputRef,
     createFileComment,
     createId: randomId,
@@ -596,14 +612,15 @@ function WorkspaceApp() {
       isLive
         ? {
             ...identity,
+            roomId: activeFile?.roomId,
             fileTitle: activeFileTitle,
             selection: activeSelection,
           }
         : identity,
-    [activeFileTitle, activeSelection, identity, isLive],
+    [activeFile?.roomId, activeFileTitle, activeSelection, identity, isLive],
   );
   const showFormattingToolbar = Boolean(activeFile && activeViewMode !== "preview");
-  const showSelectionCommentPopover = Boolean(activeFile && selectedCharacterCount > 0 && selectionActionPosition);
+  const showSelectionCommentPopover = Boolean(isLive && activeFile && selectedCharacterCount > 0 && selectionActionPosition);
 
   const fileTabsNode = (
     <FileTabs
@@ -627,6 +644,7 @@ function WorkspaceApp() {
     <ShareControls
       activeFile={activeFile}
       activeFileTitle={activeFileTitle}
+      currentWorkspaceUrl={window.location.href}
       currentUserName={identity.name}
       activeStatus={activeStatus}
       canStartSession={canStartSession}
@@ -646,9 +664,8 @@ function WorkspaceApp() {
         setSharePanelTarget(undefined);
       }}
       onOpenTabulaPlus={() => {
-        setWorkspaceMenuOpen(true);
         setPreferencesOpen(false);
-        setTopPopover("plus");
+        setTopPopover(null);
         setSharePanelTarget(undefined);
         setCenterPopover(null);
       }}
@@ -703,8 +720,6 @@ function WorkspaceApp() {
         <WorkspaceMenu
           isOpen={workspaceMenuOpen}
           preferencesOpen={preferencesOpen}
-          plusOpen={plusOpen}
-          plusEnabled={tabulaPlusEnabled}
           canExportCurrentFile={Boolean(activeFile)}
           newFileViewMode={workspacePreferences.newFileViewMode}
           defaultReadingWidth={workspacePreferences.readingWidth}
@@ -715,13 +730,6 @@ function WorkspaceApp() {
             setTopPopover(null);
           }}
           onClosePreferences={() => setPreferencesOpen(false)}
-          onTogglePlus={() => {
-            setPreferencesOpen(false);
-            setTopPopover(plusOpen ? null : "plus");
-            setCenterPopover(null);
-            setSharePanelTarget(undefined);
-          }}
-          onClosePlus={() => setTopPopover(null)}
           onChangeNewFileViewMode={(newFileViewMode) =>
             setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, newFileViewMode }))
           }
@@ -877,11 +885,14 @@ function WorkspaceApp() {
                     <MarkdownEditor
                       ref={editorRef}
                       fileId={activeFile.id}
+                      fileTitle={activeFileTitle}
+                      roomId={activeFile.roomId}
                       value={text}
                       lineWrapping={activeLineWrapping}
                       lineNumbers={activeLineNumbers}
                       bookmarks={activeBookmarks}
-                      commentAnchors={activeCommentAnchors}
+                      commentAnchors={isLive ? activeCommentAnchors : []}
+                      commentsEnabled={isLive}
                       collaborators={isLive ? collaborators : []}
                       activeCommentId={focusedCommentId}
                       searchMatches={searchOpen ? searchMatches : []}
@@ -927,9 +938,10 @@ function WorkspaceApp() {
                     <MarkdownPreview
                       metadata={parsedMarkdown.attributes}
                       body={renderedPreview.body}
-                      commentAnchors={activePreviewCommentAnchors}
+                      commentAnchors={isLive ? activePreviewCommentAnchors : []}
                       lineAnnotations={activePreviewLineAnnotations}
                       activeCommentId={focusedCommentId}
+                      commentsEnabled={isLive}
                       suspendLineMeasurement={splitDividerDragging}
                       onLineAction={handleStableLineAnnotationAction}
                       onOpenComment={openStableCommentMarker}
@@ -958,7 +970,7 @@ function WorkspaceApp() {
                   isLive={isLive}
                   statusLabel={statusLabel}
                   wordCount={activeWordCount}
-                  commentCount={activeOpenComments.length}
+                  commentCount={isLive ? activeOpenComments.length : 0}
                   cursorPositionLabel={cursorPositionLabel}
                   selectedCharacterCount={selectedCharacterCount}
                   selectedLineCount={selectedLineCount}
@@ -992,6 +1004,7 @@ function WorkspaceApp() {
           <RightPanel
             isOpen={rightPanelOpen}
             view={rightPanelView}
+            commentsEnabled={isLive}
             files={files}
             openFileIds={openFileIds}
             activeFileId={activeFile?.id ?? ""}

@@ -507,7 +507,8 @@
 }
 
 .share-modal-field > input,
-.share-link-display {
+.share-link-display,
+.share-current-url-display {
   min-width: 0;
   width: 100%;
   height: 36px;
@@ -529,7 +530,14 @@
   align-items: center;
 }
 
-.share-link-display span {
+.share-current-url-display {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.share-link-display span,
+.share-current-url-display span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1006,8 +1014,18 @@
   border-radius: 8px;
 }
 
+.presence-wrap {
+  position: relative;
+}
+
 .sharing-presence {
   padding-right: 8px;
+}
+
+.sharing-presence.active,
+.sharing-presence:hover {
+  color: #4d4d4d;
+  background: var(--surface-hover);
 }
 
 .avatars {
@@ -1049,6 +1067,97 @@
 .sharing-presence .avatar:hover::after {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+.presence-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 25;
+  display: grid;
+  gap: 8px;
+  width: 260px;
+  padding: 10px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.12);
+}
+
+.presence-popover header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 6px;
+  color: #555555;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.presence-popover header strong {
+  display: grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  border-radius: 999px;
+  color: #763fc8;
+  background: #f1eafb;
+  font-size: 11px;
+}
+
+.presence-list {
+  display: grid;
+  gap: 4px;
+}
+
+.presence-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 7px;
+  border-radius: 7px;
+  background: transparent;
+}
+
+.presence-row.self {
+  background: var(--surface-muted);
+}
+
+.presence-row-avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.presence-row span {
+  display: block;
+  overflow: hidden;
+  color: #2f2f2f;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presence-row p {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presence-row p.other-file {
+  color: #763fc8;
 }
 
 @media (max-width: 820px) {

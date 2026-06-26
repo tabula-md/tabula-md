@@ -9,12 +9,24 @@ export async function run(ctx) {
     focusMarkdownEditor,
     waitForEditorReady,
     waitForRenderFrame,
+    waitForShareDialogState,
     withPage,
   } = ctx;
+
+  const startLiveSession = async (page) => {
+    await page.locator(".share-trigger").click();
+    await waitForShareDialogState(page, { panel: "Collaborate" });
+    await page.getByRole("button", { name: "Start session" }).click();
+    await waitForShareDialogState(page, { text: "Current session link" });
+    await page.keyboard.press("Escape");
+    await waitForShareDialogState(page, { open: false });
+    await page.waitForSelector(".tab-item.live.active", { timeout: 5_000 });
+  };
 
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
     await waitForEditorReady(page, { mode: "edit" });
+    await startLiveSession(page);
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("alpha\nbeta\ncharlie");
     await waitForRenderFrame(page);
@@ -182,6 +194,7 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
     await waitForEditorReady(page, { mode: "edit" });
+    await startLiveSession(page);
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("alpha\nbeta\ncharlie");
     await waitForRenderFrame(page);
@@ -400,6 +413,7 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await page.getByTitle("New tab").click();
     await waitForEditorReady(page, { mode: "edit" });
+    await startLiveSession(page);
     await focusMarkdownEditor(page);
 
     await page.getByRole("button", { name: "Bold", exact: true }).click();
@@ -788,6 +802,8 @@ export async function run(ctx) {
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
     await page.keyboard.type("alpha");
+    await startLiveSession(page);
+    await focusMarkdownEditor(page);
     await page.getByRole("button", { name: "Split", exact: true }).click();
     await waitForEditorReady(page, { mode: "split" });
     await focusMarkdownEditor(page);

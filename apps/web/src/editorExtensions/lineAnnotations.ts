@@ -16,6 +16,7 @@ type LineCommentActionState = {
   start: number;
   end: number;
   hasComment: boolean;
+  enabled: boolean;
 };
 
 type EditorLineActionIcon = "bookmark" | "message-square";
@@ -213,7 +214,8 @@ class LineCommentGutterMarker extends GutterMarker {
       other.actionState.lineNumber === this.actionState.lineNumber &&
       other.actionState.start === this.actionState.start &&
       other.actionState.end === this.actionState.end &&
-      other.actionState.hasComment === this.actionState.hasComment
+      other.actionState.hasComment === this.actionState.hasComment &&
+      other.actionState.enabled === this.actionState.enabled
     );
   }
 
@@ -221,10 +223,15 @@ class LineCommentGutterMarker extends GutterMarker {
     const marker = document.createElement("span");
     marker.className = [
       "cm-line-comment-marker",
+      !this.actionState.enabled ? "disabled" : "",
       this.actionState.hasComment ? "has-comment" : "",
     ]
       .filter(Boolean)
       .join(" ");
+
+    if (!this.actionState.enabled) {
+      return marker;
+    }
 
     const action = document.createElement("span");
     action.className = "cm-annotation-action cm-line-comment-action comment";
@@ -247,12 +254,14 @@ const emptyLineCommentMarker = new LineCommentGutterMarker({
   start: 0,
   end: 0,
   hasComment: false,
+  enabled: false,
 });
 
 export const createLineCommentActionExtension = (
   bookmarks: MarkdownBookmark[] = [],
   commentAnchors: MarkdownCommentAnchor[] = [],
   onOpenLineActions?: (request: MarkdownLineActionRequest) => void,
+  enabled = true,
 ): Extension => {
   const getCachedBookmarkLineNumbers = createBookmarkLineNumberGetter(bookmarks);
   const getCachedCommentLineNumbers = createCommentLineNumberGetter(commentAnchors);
@@ -267,7 +276,8 @@ export const createLineCommentActionExtension = (
         lineNumber: docLine.number,
         start: docLine.from,
         end: docLine.to,
-        hasComment: getCachedCommentLineNumbers(view).has(docLine.number),
+        hasComment: enabled && getCachedCommentLineNumbers(view).has(docLine.number),
+        enabled,
       });
     },
     lineMarkerChange(update) {
@@ -276,7 +286,7 @@ export const createLineCommentActionExtension = (
     initialSpacer: () => emptyLineCommentMarker,
     domEventHandlers: {
       click(view, line, event) {
-        if (!onOpenLineActions) {
+        if (!enabled || !onOpenLineActions) {
           return false;
         }
 

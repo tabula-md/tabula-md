@@ -24,6 +24,7 @@ import type { MarkdownFile } from "../workspaceStorage";
 type ShareControlsProps = {
   activeFile?: MarkdownFile;
   activeFileTitle: string;
+  currentWorkspaceUrl: string;
   currentUserName: string;
   activeStatus: ConnectionStatus;
   canStartSession: boolean;
@@ -63,9 +64,12 @@ const formatRoomTime = (value?: string) => {
   }).format(date);
 };
 
+const normalizeSharePanel = (panel?: SharePanel): SharePanel => (panel === "publish" ? "collaborate" : (panel ?? "collaborate"));
+
 export function ShareControls({
   activeFile,
   activeFileTitle,
+  currentWorkspaceUrl,
   currentUserName,
   activeStatus,
   canStartSession,
@@ -90,7 +94,7 @@ export function ShareControls({
   const [changingPublishScope, setChangingPublishScope] = useState(false);
   const shareUrlView = getRoomShareLinkView(activeFile?.shareUrl, activeFile?.roomId);
   const activeFileDisplayTitle = activeFileTitle.replace(/\.(?:md|markdown)$/i, "");
-  const shareModalTitle = sharePanel === "publish" ? "Publish" : `Share ${activeFileDisplayTitle}`;
+  const shareModalTitle = `Share ${activeFileDisplayTitle}`;
   const lastSnapshotTime = formatRoomTime(activeFile?.lastSnapshotAt);
   const roomIssueMessage =
     activeFile?.lastRecoveryType === "invalid-message" ? (activeFile.lastRecoveryMessage ?? "") : "";
@@ -130,7 +134,7 @@ export function ShareControls({
 
   useEffect(() => {
     if (shareOpen) {
-      setSharePanel(sharePanelTarget ?? "collaborate");
+      setSharePanel(normalizeSharePanel(sharePanelTarget));
       setChangingPublishScope(false);
     }
   }, [activeFile?.id, shareOpen, sharePanelTarget]);
@@ -294,15 +298,6 @@ export function ShareControls({
               >
                 Send
               </button>
-              <button
-                className={sharePanel === "publish" ? "active" : ""}
-                type="button"
-                role="tab"
-                aria-selected={sharePanel === "publish"}
-                onClick={() => setSharePanel("publish")}
-              >
-                Publish
-              </button>
             </nav>
 
             <section className="share-modal-panel" role="tabpanel">
@@ -359,7 +354,7 @@ export function ShareControls({
                       </div>
 
                       <div className="share-modal-field">
-                        <label>Invite link</label>
+                        <label>Current session link</label>
                         <div className="share-modal-link-row">
                           <div className="share-link-display" aria-label="Share link" title={shareUrlView.title}>
                             <span>{shareUrlView.display}</span>
@@ -374,6 +369,15 @@ export function ShareControls({
                             <span>{copied ? "Copied" : "Copy link"}</span>
                           </button>
                         </div>
+                        <p className="share-modal-muted">Use this link to invite collaborators. The room key stays after #.</p>
+                      </div>
+
+                      <div className="share-modal-field">
+                        <label>This browser URL</label>
+                        <div className="share-current-url-display" aria-label="Current browser URL" title={currentWorkspaceUrl}>
+                          <span>{currentWorkspaceUrl}</span>
+                        </div>
+                        <p className="share-modal-muted">Starting a session does not move this tab to the invite URL.</p>
                       </div>
 
                       <button className="share-modal-danger" type="button" onClick={handleStopSession}>

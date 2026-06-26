@@ -30,6 +30,7 @@
     "test:browser:layout": "npm run test:browser -- --suite=layout",
     "test:browser:panels": "npm run test:browser -- --suite=panels",
     "test:browser:collab": "npm run test:browser -- --suite=collaboration",
+    "test:browser:production:collab": "TABULA_TEST_URL=https://tabula.md VITE_TABULA_ROOM_URL=https://rooms.tabula.md TABULA_ROOM_SNAPSHOT_MODE=http npm run test:browser -- --suite=collaboration",
     "test:browser:publish": "npm run test:browser -- --suite=publish",
     "test:browser:performance": "npm run test:browser -- --suite=performance",
     "lint:fast": "oxlint apps/web/src scripts --deny-warnings"

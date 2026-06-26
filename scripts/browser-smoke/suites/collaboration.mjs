@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 export const id = "collaboration";
-export const description = "Local collaboration room synchronization smoke.";
+export const description = "Live collaboration room synchronization smoke.";
 
 export async function run(ctx) {
   const {
@@ -30,89 +30,97 @@ export async function run(ctx) {
   };
   const snapshotSource = { mode: roomSnapshotMode, roomDataDir, roomUrl };
 
-  if (!externalUrl) {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    const firstPage = await context.newPage();
-    const secondPage = await context.newPage();
+  const firstContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const secondContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const firstPage = await firstContext.newPage();
+  const secondPage = await secondContext.newPage();
 
-    try {
-      await firstPage.goto(baseUrl);
-      await firstPage.waitForSelector(".tabbar");
-      await firstPage.locator(".share-trigger").click();
-      await firstPage.getByRole("button", { name: "Start session" }).click();
-      await firstPage.waitForSelector(".tab-item.live.active");
-      await firstPage.waitForSelector(".sharing-presence");
-      const firstPageUrl = new URL(firstPage.url());
-      expect(
-        firstPageUrl.pathname === "/" && !firstPageUrl.hash,
-        "Starting a live session should keep the current workspace URL separate from the invite link.",
-      );
-      const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
-      expect(
-        Boolean(shareUrl && new URL(shareUrl).pathname.startsWith("/r/") && new URL(shareUrl).hash.startsWith("#key=")),
-        "Live sessions should expose a client-key invite link without navigating the current tab.",
-      );
-      const sharingPresenceTitle = await firstPage.locator(".sharing-presence").getAttribute("data-tooltip");
-      const sharingPresenceText = await firstPage.locator(".sharing-presence").textContent();
-      expect(
-        sharingPresenceTitle?.startsWith("Live"),
-        "Sharing presence should keep accessible live-session context without native title UI.",
-      );
-      expect(
-        !sharingPresenceText?.includes("Sharing"),
-        "Sharing presence should not add a visible text label to the top chrome.",
-      );
-      expect(
-        (await firstPage.locator(".share-status-dot").count()) === 0,
-        "Share trigger should not use a corner status dot for active sharing.",
-      );
-      expect(
-        (await firstPage.locator(".avatar.self").getAttribute("data-tooltip"))?.length > 0,
-        "Self avatar should expose the collaborator name through the custom hover tooltip.",
-      );
-      await firstPage.getByRole("button", { name: "Close share dialog" }).click();
-      await firstPage.locator(".avatar.self").hover();
-      await firstPage.waitForFunction(() => {
-        const avatar = document.querySelector(".avatar.self");
-        return avatar && getComputedStyle(avatar, "::after").opacity === "1";
-      });
+  try {
+    await firstPage.goto(baseUrl);
+    await firstPage.waitForSelector(".tabbar");
+    await firstPage.locator(".share-trigger").click();
+    await firstPage.getByRole("button", { name: "Start session" }).click();
+    await firstPage.waitForSelector(".tab-item.live.active");
+    await firstPage.waitForSelector(".sharing-presence");
+    const firstPageUrl = new URL(firstPage.url());
+    expect(
+      firstPageUrl.pathname === "/" && !firstPageUrl.hash,
+      "Starting a live session should keep the current workspace URL separate from the invite link.",
+    );
+    await waitForText(firstPage.locator(".share-modal"), "Current session link");
+    await waitForText(firstPage.locator(".share-modal"), "This browser URL");
+    const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
+    expect(
+      Boolean(shareUrl && new URL(shareUrl).pathname.startsWith("/r/") && new URL(shareUrl).hash.startsWith("#key=")),
+      "Live sessions should expose a client-key invite link without navigating the current tab.",
+    );
+    const sharingPresenceTitle = await firstPage.locator(".sharing-presence").getAttribute("data-tooltip");
+    const sharingPresenceText = await firstPage.locator(".sharing-presence").textContent();
+    expect(
+      sharingPresenceTitle?.startsWith("Live"),
+      "Sharing presence should keep accessible live-session context without native title UI.",
+    );
+    expect(
+      !sharingPresenceText?.includes("Sharing"),
+      "Sharing presence should not add a visible text label to the top chrome.",
+    );
+    expect(
+      (await firstPage.locator(".share-status-dot").count()) === 0,
+      "Share trigger should not use a corner status dot for active sharing.",
+    );
+    expect(
+      (await firstPage.locator(".avatar.self").getAttribute("data-tooltip"))?.length > 0,
+      "Self avatar should expose the collaborator name through the custom hover tooltip.",
+    );
+    await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+    await firstPage.locator(".avatar.self").hover();
+    await firstPage.waitForFunction(() => {
+      const avatar = document.querySelector(".avatar.self");
+      return avatar && getComputedStyle(avatar, "::after").opacity === "1";
+    });
 
-      const roomUrl = new URL(shareUrl);
-      const sharedPath = roomUrl.pathname + roomUrl.hash;
-      await secondPage.goto(`${baseUrl}${sharedPath}`);
-      await secondPage.waitForSelector(".tab-item.live.active");
-      await ensureEditMode(secondPage);
+    const roomUrl = new URL(shareUrl);
+    const sharedPath = roomUrl.pathname + roomUrl.hash;
+    await secondPage.goto(`${baseUrl}${sharedPath}`);
+    await secondPage.waitForSelector(".tab-item.live.active");
+    await ensureEditMode(secondPage);
+    await ensureEditMode(firstPage);
 
-      await ensureEditMode(firstPage);
-      await focusMarkdownEditor(firstPage);
-      await firstPage.keyboard.type("Room sync check");
+    const syncedText = await runLiveEditingCorrectnessSmoke({
+      expect,
+      firstPage,
+      secondPage,
+      focusMarkdownEditor,
+    });
+    const roomId = roomUrl.pathname.split("/").filter(Boolean).at(-1);
+    const roomKey = new URLSearchParams(roomUrl.hash.replace(/^#/, "")).get("key");
 
-      await waitForText(secondPage.locator(".cm-content"), "Room sync check");
-      await firstPage.keyboard.press("Shift+Home");
-      await waitForText(firstPage.locator(".status-cursor-position"), "(15 characters)");
-      await firstPage.getByRole("button", { name: "Bold", exact: true }).click();
-      await waitForText(secondPage.locator(".cm-content"), "**Room sync check**");
-      const roomId = roomUrl.pathname.split("/").filter(Boolean).at(-1);
-      const roomKey = new URLSearchParams(roomUrl.hash.replace(/^#/, "")).get("key");
+    await firstPage.locator(".sharing-presence").click();
+    await firstPage.waitForSelector(".presence-popover");
+    expect(
+      (await firstPage.locator(".presence-popover .presence-row").count()) >= 1,
+      "Presence popover should list live collaborators.",
+    );
+    await firstPage.keyboard.press("Escape");
+    await firstPage.locator(".presence-popover").waitFor({ state: "detached" });
+
+    await waitForStableSnapshotRecord(snapshotSource, roomId);
+
+    const restoredContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const restoredPage = await restoredContext.newPage();
+    await restoredPage.goto(`${baseUrl}${sharedPath}`);
+    await restoredPage.waitForSelector(".tab-item.live.active");
+    await waitForText(restoredPage.locator(".cm-content"), "Second browser edit");
+    expect(
+      (await getEditorDocumentText(restoredPage)) === syncedText,
+      "Reloading the invite link should restore the latest live Markdown.",
+    );
+    await restoredContext.close();
+
+    if (!externalUrl) {
       const snapshotRecord = await waitForStableSnapshotRecord(snapshotSource, roomId);
-      const liveFormattingState = await firstPage.evaluate(() => ({
-        cursorPosition: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",
-        editorFocused: Boolean(document.querySelector(".markdown-editor")?.contains(document.activeElement)),
-      }));
-      const remotePresenceState = await secondPage.evaluate(() => ({
-        editorText: document.querySelector(".cm-content")?.textContent ?? "",
-      }));
       expect(
-        liveFormattingState.cursorPosition.includes("(15 characters)"),
-        "Live formatting commands should keep selection character state current after dispatch.",
-      );
-      expect(liveFormattingState.editorFocused, "Live formatting commands should keep focus in the editor.");
-      expect(
-        remotePresenceState.editorText.includes("**Room sync check**"),
-        "Remote live page should receive Markdown formatting command text.",
-      );
-      expect(
-        !snapshotRecord.raw.includes("Room sync check") && !snapshotRecord.raw.includes("**Room sync check**"),
+        !snapshotRecord.raw.includes("Room sync check") && !snapshotRecord.raw.includes("Second browser edit"),
         "Room snapshot storage should not contain plaintext Markdown.",
       );
       expect(!roomKey || !snapshotRecord.raw.includes(roomKey), "Room snapshot storage should not contain room keys.");
@@ -122,12 +130,6 @@ export async function run(ctx) {
           snapshotRecord.json.snapshot.ciphertext.length > 0,
         "Room snapshot storage should contain ciphertext.",
       );
-
-      const restoredPage = await context.newPage();
-      await restoredPage.goto(`${baseUrl}${sharedPath}`);
-      await restoredPage.waitForSelector(".tab-item.live.active");
-      await waitForText(restoredPage.locator(".cm-content"), "**Room sync check**");
-      await restoredPage.close();
 
       let snapshotBeforeWrongKey = await waitForStableSnapshotRecord(snapshotSource, roomId);
       expect(typeof stopRoomServer === "function", "Collaboration smoke should be able to stop the room server.");
@@ -143,9 +145,10 @@ export async function run(ctx) {
       );
       await firstPage.getByRole("button", { name: "Close share dialog" }).click();
       await focusMarkdownEditor(firstPage);
-      await firstPage.keyboard.press("ArrowRight");
-      await firstPage.keyboard.press("End");
-      await firstPage.keyboard.type("\n\nOffline edit survived");
+      await firstPage.keyboard.press("ControlOrMeta+End");
+      await firstPage.keyboard.press("Enter");
+      await firstPage.keyboard.press("Enter");
+      await firstPage.keyboard.type("Offline edit survived");
       await startRoomServer();
       await waitForText(secondPage.locator(".cm-content"), "Offline edit survived", 12_000);
 
@@ -241,10 +244,113 @@ export async function run(ctx) {
         "Stop session confirmation should explain that this tab leaves the live room.",
       );
       await firstPage.locator(".tab-live-dot").waitFor({ state: "detached", timeout: 5_000 });
-    } finally {
-      await context.close();
     }
+  } finally {
+    await Promise.all([firstContext.close(), secondContext.close()]);
   }
+}
+
+async function getEditorLines(page) {
+  return page.$$eval(".cm-content .cm-line", (lines) =>
+    lines.map((line) => {
+      const clone = line.cloneNode(true);
+      clone.querySelectorAll(".cm-remote-cursor").forEach((cursor) => cursor.remove());
+      return clone.textContent ?? "";
+    }),
+  );
+}
+
+async function getEditorDocumentText(page) {
+  return (await getEditorLines(page)).join("\n");
+}
+
+async function waitForEditorLines(page, expectedLines, timeout = 8_000) {
+  try {
+    await page.waitForFunction(
+      ({ expectedLines }) => {
+        const lines = Array.from(document.querySelectorAll(".cm-content .cm-line")).map((line) => {
+          const clone = line.cloneNode(true);
+          clone.querySelectorAll(".cm-remote-cursor").forEach((cursor) => cursor.remove());
+          return clone.textContent ?? "";
+        });
+        return lines.length === expectedLines.length && lines.every((line, index) => line === expectedLines[index]);
+      },
+      { expectedLines },
+      { timeout },
+    );
+  } catch (error) {
+    const actualLines = await getEditorLines(page);
+    throw new Error(
+      `Timed out waiting for editor lines.\nExpected: ${JSON.stringify(expectedLines)}\nActual: ${JSON.stringify(actualLines)}\n${error.message}`,
+    );
+  }
+}
+
+async function runLiveEditingCorrectnessSmoke({ expect, firstPage, secondPage, focusMarkdownEditor }) {
+  const longParagraph = Array.from({ length: 90 }, (_, index) => `segment-${index + 1}`).join(" ");
+
+  await focusMarkdownEditor(firstPage);
+  await firstPage.keyboard.press("ControlOrMeta+A");
+  await firstPage.keyboard.type("Room sync check");
+  await waitForEditorLines(secondPage, ["Room sync check"]);
+
+  await firstPage.keyboard.press("Enter");
+  await firstPage.keyboard.type("Second line");
+  await waitForEditorLines(secondPage, ["Room sync check", "Second line"]);
+
+  await firstPage.keyboard.press("Backspace");
+  await waitForEditorLines(secondPage, ["Room sync check", "Second lin"]);
+  await firstPage.keyboard.type("e");
+  await waitForEditorLines(secondPage, ["Room sync check", "Second line"]);
+
+  for (let index = 0; index < "Second line".length; index += 1) {
+    await firstPage.keyboard.press("ArrowLeft");
+  }
+  await firstPage.keyboard.press("Backspace");
+  await waitForEditorLines(secondPage, ["Room sync checkSecond line"]);
+
+  await firstPage.keyboard.press("End");
+  await firstPage.keyboard.press("Enter");
+  await firstPage.keyboard.insertText(longParagraph);
+  await waitForEditorLines(secondPage, ["Room sync checkSecond line", longParagraph], 12_000);
+
+  const secondPageSyncedText = await getEditorDocumentText(secondPage);
+  await focusMarkdownEditor(secondPage);
+  await secondPage.keyboard.press("ControlOrMeta+Z");
+  await waitForEditorLines(secondPage, ["Room sync checkSecond line", longParagraph]);
+  expect(
+    (await getEditorDocumentText(secondPage)) === secondPageSyncedText,
+    "Remote updates should not enter the local undo stack.",
+  );
+
+  await secondPage.keyboard.press("ControlOrMeta+End");
+  await secondPage.keyboard.press("Enter");
+  await secondPage.keyboard.insertText("Second browser edit");
+  const expectedLines = ["Room sync checkSecond line", longParagraph, "Second browser edit"];
+  await waitForEditorLines(firstPage, expectedLines, 12_000);
+
+  try {
+    await firstPage.waitForSelector(".cm-remote-cursor", { timeout: 8_000 });
+  } catch (error) {
+    const remotePresenceDebug = await firstPage.evaluate(() => ({
+      collaboratorAvatars: document.querySelectorAll(".sharing-presence .avatar:not(.self)").length,
+      remoteCursorCount: document.querySelectorAll(".cm-remote-cursor").length,
+      remoteLineCount: document.querySelectorAll(".cm-remote-presence-line").length,
+      remoteSelectionCount: document.querySelectorAll(".cm-remote-selection").length,
+      presenceText: document.querySelector(".sharing-presence")?.textContent ?? "",
+      collaboratorTooltips: Array.from(document.querySelectorAll(".sharing-presence .avatar:not(.self)")).map(
+        (avatar) => avatar.getAttribute("data-tooltip") ?? "",
+      ),
+      editorText: Array.from(document.querySelectorAll(".cm-content .cm-line")).map(
+        (line) => line.textContent ?? "",
+      ),
+    }));
+    throw new Error(
+      `Timed out waiting for remote cursor.\n${JSON.stringify(remotePresenceDebug, null, 2)}\n${error.message}`,
+    );
+  }
+
+  return expectedLines.join("\n");
 }
 
 async function waitForSnapshotRecord(snapshotSource, roomId) {

@@ -23,6 +23,32 @@ export const getLineNumberForSelection = (text: string, selection?: LiveSelectio
   return getLineNumberForOffset(text, selection.to);
 };
 
+export const isCollaboratorInFile = (
+  collaborator: Collaborator,
+  currentFileTitle?: string,
+  currentRoomId?: string,
+) => {
+  if (currentRoomId && collaborator.roomId) {
+    return collaborator.roomId === currentRoomId;
+  }
+
+  return !currentFileTitle || !collaborator.fileTitle || collaborator.fileTitle === currentFileTitle;
+};
+
+export const getCollaboratorPresenceDetail = (
+  collaborator: Collaborator,
+  text: string,
+  currentFileTitle?: string,
+  currentRoomId?: string,
+) => {
+  if (!isCollaboratorInFile(collaborator, currentFileTitle, currentRoomId)) {
+    return `Viewing ${collaborator.fileTitle}`;
+  }
+
+  const lineNumber = getLineNumberForSelection(text, collaborator.selection);
+  return lineNumber ? `Line ${lineNumber}` : "In this file";
+};
+
 export const getCollaboratorPresenceLabel = (collaborator: Collaborator, text: string) => {
   const lineNumber = getLineNumberForSelection(text, collaborator.selection);
   const segments = [collaborator.name];

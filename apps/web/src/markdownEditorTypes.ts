@@ -1,6 +1,7 @@
 import type { Collaborator, LiveSelection } from "./collab";
 import type { SearchMatch } from "./markdown";
 import type { MarkdownFormatCommand } from "./markdownFormatting";
+import type { TextChange, TextPatch } from "./textPatches";
 
 export type MarkdownEditorHandle = {
   canRedo: () => boolean;
@@ -10,6 +11,7 @@ export type MarkdownEditorHandle = {
   getScrollRatio: () => number;
   getSelectionRange: () => { from: number; to: number };
   getSelectedText: () => string;
+  applyRemoteTextChange: (nextValue: string, patches?: TextPatch[]) => void;
   revealRange: (from: number, to?: number) => void;
   scrollToRatio: (ratio: number) => void;
   setSelectionRange: (from: number, to?: number) => void;
@@ -45,16 +47,19 @@ export type MarkdownSelectionActionPosition = {
 
 export type MarkdownEditorProps = {
   fileId: string;
+  fileTitle?: string;
+  roomId?: string;
   value: string;
   lineWrapping: boolean;
   lineNumbers: boolean;
   bookmarks?: MarkdownBookmark[];
   commentAnchors?: MarkdownCommentAnchor[];
+  commentsEnabled?: boolean;
   collaborators?: Collaborator[];
   activeCommentId?: string | null;
   searchMatches?: SearchMatch[];
   activeSearchMatchIndex?: number;
-  onChange: (nextValue: string) => void;
+  onChange: (nextValue: string, change?: TextChange) => void;
   onBookmarksChange?: (bookmarks: MarkdownBookmark[]) => void;
   onHistoryStateChange?: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onOpenLineActions?: (request: MarkdownLineActionRequest) => void;

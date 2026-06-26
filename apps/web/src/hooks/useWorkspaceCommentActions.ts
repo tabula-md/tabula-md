@@ -43,6 +43,7 @@ type UseWorkspaceCommentActionsArgs = {
   activeViewMode: FileViewMode;
   clearPreviewSelection: () => void;
   commentDraft: string;
+  commentsEnabled: boolean;
   commentInputRef: RefObject<HTMLTextAreaElement | null>;
   createFileComment: (options: {
     fileId: string;
@@ -248,6 +249,7 @@ export function useWorkspaceCommentActions({
   activeViewMode,
   clearPreviewSelection,
   commentDraft,
+  commentsEnabled,
   commentInputRef,
   createFileComment,
   createId,
@@ -303,6 +305,10 @@ export function useWorkspaceCommentActions({
   const queueAnimationFrameTask = useAnimationFrameTask();
 
   const openCommentsPanel = useCallback((commentId?: string) => {
+    if (!commentsEnabled) {
+      return;
+    }
+
     setRightPanelOpen(true);
     setRightPanelView("comments");
     setTopPopover(null);
@@ -318,6 +324,7 @@ export function useWorkspaceCommentActions({
     }
   }, [
     queueAnimationFrameTask,
+    commentsEnabled,
     setCenterPopover,
     setFocusedCommentId,
     setRightPanelOpen,
@@ -326,7 +333,7 @@ export function useWorkspaceCommentActions({
   ]);
 
   const addFileComment = useCallback(() => {
-    if (!activeFile) {
+    if (!activeFile || !commentsEnabled) {
       return;
     }
 
@@ -337,7 +344,7 @@ export function useWorkspaceCommentActions({
       quote: getSelectedMarkdownExcerpt() || undefined,
       anchor: selectionAnchor,
     });
-  }, [activeFile, commentDraft, createFileComment, getSelectedMarkdownAnchor, getSelectedMarkdownExcerpt]);
+  }, [activeFile, commentDraft, commentsEnabled, createFileComment, getSelectedMarkdownAnchor, getSelectedMarkdownExcerpt]);
 
   const startCommentReplyForFile = useCallback((_fileId: string, commentId: string) => {
     openCommentsPanel(commentId);
@@ -383,6 +390,10 @@ export function useWorkspaceCommentActions({
   ]);
 
   const openCommentMarker = useCallback((commentId: string) => {
+    if (!commentsEnabled) {
+      return;
+    }
+
     const comment = activeFileComments.find((fileComment) => fileComment.id === commentId);
     if (!comment) {
       openCommentsPanel(commentId);
@@ -392,10 +403,10 @@ export function useWorkspaceCommentActions({
     if (activeFile) {
       goToFileComment(activeFile.id, comment);
     }
-  }, [activeFile, activeFileComments, goToFileComment, openCommentsPanel]);
+  }, [activeFile, activeFileComments, commentsEnabled, goToFileComment, openCommentsPanel]);
 
   const openSelectionComment = useCallback(() => {
-    if (!selectedCharacterCount) {
+    if (!commentsEnabled || !selectedCharacterCount) {
       return;
     }
 
@@ -404,6 +415,7 @@ export function useWorkspaceCommentActions({
     queueAnimationFrameTask(() => commentInputRef.current?.focus());
   }, [
     commentInputRef,
+    commentsEnabled,
     openCommentsPanel,
     queueAnimationFrameTask,
     selectedCharacterCount,
@@ -427,6 +439,10 @@ export function useWorkspaceCommentActions({
   }, [activeBookmarks, activeFile, createId, setActiveFileBookmarks]);
 
   const openLineComments = useCallback((lineRange: MarkdownLineActionRequest) => {
+    if (!commentsEnabled) {
+      return;
+    }
+
     const lineComments = getCommentsInLineRange({
       comments: activeOpenComments,
       lineStart: lineRange.start,
@@ -434,9 +450,13 @@ export function useWorkspaceCommentActions({
       sourceText: text,
     });
     openCommentsPanel(lineComments[0]?.id);
-  }, [activeOpenComments, openCommentsPanel, text]);
+  }, [activeOpenComments, commentsEnabled, openCommentsPanel, text]);
 
   const openLineCommentComposer = useCallback((lineRange: MarkdownLineActionRequest) => {
+    if (!commentsEnabled) {
+      return;
+    }
+
     const { start, end } = lineRange;
     if (end <= start) {
       showToast("Line comments need text on the line.", "error");
@@ -462,6 +482,7 @@ export function useWorkspaceCommentActions({
     activeViewMode,
     clearPreviewSelection,
     commentInputRef,
+    commentsEnabled,
     editorRef,
     openCommentsPanel,
     queueAnimationFrameTask,
@@ -479,13 +500,17 @@ export function useWorkspaceCommentActions({
       return;
     }
 
+    if (!commentsEnabled) {
+      return;
+    }
+
     if (request.hasComment) {
       openLineComments(request);
       return;
     }
 
     openLineCommentComposer(request);
-  }, [openLineCommentComposer, openLineComments, setSelectionActionPosition, toggleLineBookmark]);
+  }, [commentsEnabled, openLineCommentComposer, openLineComments, setSelectionActionPosition, toggleLineBookmark]);
 
   return {
     activeCommentAnchors,

@@ -11,7 +11,8 @@ const externalUrl = process.env.TABULA_TEST_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${port}`;
 const roomUrl = (process.env.VITE_TABULA_ROOM_URL ?? `http://127.0.0.1:${roomPort}`).replace(/\/$/, "");
 const roomSnapshotMode =
-  process.env.TABULA_ROOM_SNAPSHOT_MODE ?? (process.env.VITE_TABULA_ROOM_TRANSPORT === "websocket" ? "http" : "file");
+  process.env.TABULA_ROOM_SNAPSHOT_MODE ??
+  (externalUrl || process.env.VITE_TABULA_ROOM_TRANSPORT === "websocket" ? "http" : "file");
 const publishUrl = (process.env.VITE_TABULA_PUBLISH_URL ?? `http://127.0.0.1:${publishPort}`).replace(/\/$/, "");
 const roomDataDir = process.env.TABULA_ROOM_DATA_DIR ?? path.join(process.cwd(), ".tabula-room-smoke");
 const publishDataDir = process.env.TABULA_PUBLISH_DATA_DIR ?? path.join(process.cwd(), ".tabula-publish-smoke");
@@ -66,13 +67,14 @@ const getTabs = async (page) =>
   page.$$eval(".tab-item", (items) =>
     items.map((item) => {
       const button = item.querySelector(".tab-select-button");
-      const modeIcon = item.querySelector(".tab-mode-icon");
+      const rawMode = item.getAttribute("data-view-mode") ?? "";
+      const mode = rawMode ? `${rawMode.slice(0, 1).toUpperCase()}${rawMode.slice(1)}` : "";
       return {
         title: item.getAttribute("data-file-name") ?? item.querySelector(".tab-title")?.textContent?.trim() ?? "",
         visibleTitle: item.querySelector(".tab-title")?.textContent?.trim() ?? "",
         active: item.classList.contains("active"),
         live: item.classList.contains("live"),
-        mode: modeIcon?.getAttribute("title") ?? "",
+        mode,
         buttonTitle: button?.getAttribute("title") ?? "",
       };
     }),
@@ -295,7 +297,7 @@ const getRequestedSuites = () => {
 const selectSuites = (suites) => {
   const requestedSuites = getRequestedSuites();
   if (requestedSuites.length === 0 || requestedSuites.includes("all")) {
-    return suites;
+    return suites.filter((suite) => !suite.hiddenFeature);
   }
 
   const knownSuiteIds = new Set(suites.map((suite) => suite.id));
