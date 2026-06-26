@@ -37,6 +37,8 @@ type UseWorkspaceActiveFileEditorArgs = {
 export const getActiveFileHistory = (historyByFileId: Record<string, FileHistory>, activeFileId?: string) =>
   activeFileId ? (historyByFileId[activeFileId] ?? EMPTY_FILE_HISTORY) : EMPTY_FILE_HISTORY;
 
+export const isFileTextFallbackHistoryEnabled = (file?: Pick<MarkdownFile, "roomId">) => !file?.roomId;
+
 export const recordFileTextHistory = (history: FileHistory | undefined, previousText: string): FileHistory => ({
   past: [...(history?.past ?? []).slice(-(MAX_FILE_HISTORY_ENTRIES - 1)), previousText],
   future: [],
@@ -67,15 +69,16 @@ export function useWorkspaceActiveFileEditor({
     canRedo: false,
   });
   const activeHistory = getActiveFileHistory(historyByFileId, activeFile?.id);
-  const canUndo = activeHistory.past.length > 0;
-  const canRedo = activeHistory.future.length > 0;
+  const fallbackHistoryEnabled = isFileTextFallbackHistoryEnabled(activeFile);
+  const canUndo = fallbackHistoryEnabled && activeHistory.past.length > 0;
+  const canRedo = fallbackHistoryEnabled && activeHistory.future.length > 0;
 
   const updateActiveFileText = (nextText: string, options: { recordHistory?: boolean; patches?: readonly TextPatch[] } = {}) => {
     if (!activeFile) {
       return;
     }
 
-    const shouldRecordHistory = options.recordHistory ?? true;
+    const shouldRecordHistory = (options.recordHistory ?? true) && fallbackHistoryEnabled;
     if (shouldRecordHistory && nextText !== activeFile.text) {
       setHistoryByFileId((currentHistory) => ({
         ...currentHistory,
@@ -108,7 +111,7 @@ export function useWorkspaceActiveFileEditor({
       return;
     }
 
-    if (!activeFile || !canUndo) {
+    if (!fallbackHistoryEnabled || !activeFile || !canUndo) {
       return;
     }
 
@@ -131,7 +134,7 @@ export function useWorkspaceActiveFileEditor({
       return;
     }
 
-    if (!activeFile || !canRedo) {
+    if (!fallbackHistoryEnabled || !activeFile || !canRedo) {
       return;
     }
 

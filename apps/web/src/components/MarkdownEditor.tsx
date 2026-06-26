@@ -435,6 +435,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       return () => {
         view.scrollDOM.removeEventListener("scroll", handleScroll);
         stateByFileIdRef.current.set(fileId, view.state);
+        lastHistoryStateRef.current = { canUndo: false, canRedo: false };
+        onHistoryStateChangeRef.current?.(lastHistoryStateRef.current);
         view.destroy();
         viewRef.current = null;
       };
