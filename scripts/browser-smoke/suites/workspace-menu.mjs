@@ -404,12 +404,12 @@ export async function run(ctx) {
     const shareLinkPreview = await page.locator(".share-link-display").textContent();
     const shareLinkTitle = await page.locator(".share-link-display").getAttribute("title");
     expect(
-      /\/r\/.+#key=\.\.\./.test(shareLinkPreview ?? ""),
-      "Live modal should not show a visually clipped raw invite URL.",
+      /#room=.+,\.\.\./.test(shareLinkPreview ?? ""),
+      "Live modal should show the canonical hash room invite shape without exposing the key.",
     );
     expect(
-      Boolean(shareLinkTitle && new URL(shareLinkTitle).pathname.startsWith("/r/") && new URL(shareLinkTitle).hash.startsWith("#key=")),
-      "Live modal should keep the full room URL in the invite-link title.",
+      Boolean(shareLinkTitle && new URL(shareLinkTitle).pathname === "/" && new URL(shareLinkTitle).hash.startsWith("#room=")),
+      "Live modal should keep the full hash room URL in the invite-link title.",
     );
     const liveLinkLayout = await page.evaluate(() => {
       const roomBox = document.querySelector(".live-room-box");
@@ -442,10 +442,10 @@ export async function run(ctx) {
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);
     expect(activeTab?.live, "Live -> Start session should mark the active tab as live.");
-    expect(!page.url().includes("/r/"), "Live -> Start session should not move the current tab to a room route.");
+    expect(!page.url().includes("#room="), "Live -> Start session should not move the current tab to a room route.");
   });
 
-  await withPage(browser, `/r/browserroom#key=${validRoomKey}`, async (page) => {
+  await withPage(browser, `/#room=browserroom,${validRoomKey}`, async (page) => {
     await page.waitForSelector(".tab-item.live.active");
     const tabs = await getTabs(page);
 
@@ -453,7 +453,7 @@ export async function run(ctx) {
     expect(tabs.some((tab) => tab.title === "Untitled.md"), "Opening a room should keep the local untitled tab.");
     expect(tabs.some((tab) => tab.live && tab.active), "Opening a room should activate a live tab.");
     expect(
-      page.url().endsWith(`/r/browserroom#key=${validRoomKey}`),
+      page.url().endsWith(`/#room=browserroom,${validRoomKey}`),
       "Opening a room should keep the room URL active.",
     );
   });

@@ -7,6 +7,7 @@ export const IDENTITY_KEY = "tabula.identity";
 const IDENTITY_COLORS = ["#0f766e", "#2563eb", "#7c3aed", "#c2410c", "#be123c", "#047857"];
 
 const getAnonymousName = (id: string) => `Anonymous ${id.slice(0, 3)}`;
+const isGeneratedName = (name: string) => /^Guest\s+\d+$/i.test(name) || /^Anonymous\s+\S+$/i.test(name);
 
 export const normalizeWorkspaceIdentity = (
   identity: Collaborator,
@@ -37,23 +38,27 @@ export const createWorkspaceIdentity = ({
   random?: () => number;
   now?: () => number;
 } = {}): Collaborator => {
+  const id = createId();
+  const fallbackName = `Anonymous ${Math.floor(random() * 900 + 100)}`;
+  const fallbackColor = IDENTITY_COLORS[Math.floor(random() * IDENTITY_COLORS.length)] ?? IDENTITY_COLORS[0];
+  let storedProfile: Partial<Collaborator> | null = null;
+
   try {
     const stored = storage.getItem(IDENTITY_KEY);
     if (stored) {
-      const identity = normalizeWorkspaceIdentity(JSON.parse(stored) as Collaborator, now);
-      writeIdentity(identity, storage);
-      return identity;
+      storedProfile = JSON.parse(stored) as Partial<Collaborator>;
     }
   } catch {
     // Fall through and create a new local identity.
   }
 
-  const id = createId();
+  const storedName = typeof storedProfile?.name === "string" ? storedProfile.name.trim() : "";
+  const storedColor = typeof storedProfile?.color === "string" ? storedProfile.color : "";
   const identity = normalizeWorkspaceIdentity(
     {
       id,
-      name: `Anonymous ${Math.floor(random() * 900 + 100)}`,
-      color: IDENTITY_COLORS[Math.floor(random() * IDENTITY_COLORS.length)] ?? IDENTITY_COLORS[0],
+      name: storedName && !isGeneratedName(storedName) ? storedName : fallbackName,
+      color: storedColor || fallbackColor,
       lastSeen: now(),
     },
     now,

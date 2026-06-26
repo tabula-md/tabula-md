@@ -10,9 +10,7 @@ const publishPort = Number(process.env.TABULA_TEST_PUBLISH_PORT ?? 3003);
 const externalUrl = process.env.TABULA_TEST_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${port}`;
 const roomUrl = (process.env.VITE_TABULA_ROOM_URL ?? `http://127.0.0.1:${roomPort}`).replace(/\/$/, "");
-const roomSnapshotMode =
-  process.env.TABULA_ROOM_SNAPSHOT_MODE ??
-  (externalUrl || process.env.VITE_TABULA_ROOM_TRANSPORT === "websocket" ? "http" : "file");
+const roomSnapshotMode = process.env.TABULA_ROOM_SNAPSHOT_MODE ?? (externalUrl ? "http" : "file");
 const publishUrl = (process.env.VITE_TABULA_PUBLISH_URL ?? `http://127.0.0.1:${publishPort}`).replace(/\/$/, "");
 const roomDataDir = process.env.TABULA_ROOM_DATA_DIR ?? path.join(process.cwd(), ".tabula-room-smoke");
 const publishDataDir = process.env.TABULA_PUBLISH_DATA_DIR ?? path.join(process.cwd(), ".tabula-publish-smoke");

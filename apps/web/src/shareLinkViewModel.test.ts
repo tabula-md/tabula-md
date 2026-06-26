@@ -7,14 +7,14 @@ describe("room share link view model", () => {
   it("formats valid live room links without exposing the client-only key", () => {
     expect(
       getRoomShareLinkView(
-        `https://tabula.test/r/room-1234567890abcdef#key=${VALID_ROOM_KEY}`,
+        `https://tabula.test/#room=room-1234567890abcdef,${VALID_ROOM_KEY}`,
         "room-1234567890abcdef",
       ),
     ).toEqual({
       canCopy: true,
-      display: "https://tabula.test/r/room-123...#key=...",
-      title: `https://tabula.test/r/room-1234567890abcdef#key=${VALID_ROOM_KEY}`,
-      url: `https://tabula.test/r/room-1234567890abcdef#key=${VALID_ROOM_KEY}`,
+      display: "https://tabula.test/#room=room-123...,...",
+      title: `https://tabula.test/#room=room-1234567890abcdef,${VALID_ROOM_KEY}`,
+      url: `https://tabula.test/#room=room-1234567890abcdef,${VALID_ROOM_KEY}`,
     });
   });
 
@@ -25,18 +25,18 @@ describe("room share link view model", () => {
       title: "not a url",
     });
 
-    expect(getRoomShareLinkView("https://tabula.test/r/room-a", "room-a")).toEqual({
+    expect(getRoomShareLinkView("https://tabula.test/#room=room-a", "room-a")).toEqual({
       canCopy: false,
       display: "Invite link unavailable",
-      title: "https://tabula.test/r/room-a",
+      title: "https://tabula.test/#room=room-a",
     });
   });
 
   it("does not copy a room URL that belongs to a different stored live file", () => {
-    expect(getRoomShareLinkView(`https://tabula.test/r/room-b#key=${VALID_ROOM_KEY}`, "room-a")).toEqual({
+    expect(getRoomShareLinkView(`https://tabula.test/#room=room-b,${VALID_ROOM_KEY}`, "room-a")).toEqual({
       canCopy: false,
       display: "Invite link unavailable",
-      title: `https://tabula.test/r/room-b#key=${VALID_ROOM_KEY}`,
+      title: `https://tabula.test/#room=room-b,${VALID_ROOM_KEY}`,
     });
   });
 });
