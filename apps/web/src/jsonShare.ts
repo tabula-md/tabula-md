@@ -1,4 +1,4 @@
-import { createPublishPayload, getConfiguredPublishServiceUrl, type PublishedSnapshot, type PublishPayload } from "./publish";
+import { createPublishPayload, type PublishedSnapshot, type PublishPayload } from "./publish";
 import type { FileComment, MarkdownFile } from "./workspaceStorage";
 
 export type JsonShareRoute = {
@@ -42,7 +42,10 @@ const JSON_SHARE_PATTERN = /^[A-Za-z0-9_-]+$/;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
-export const getConfiguredJsonShareServiceUrl = getConfiguredPublishServiceUrl;
+export const getConfiguredJsonShareServiceUrl = () => {
+  const configuredUrl = import.meta.env.VITE_TABULA_JSON_URL as string | undefined;
+  return configuredUrl ? trimTrailingSlash(configuredUrl) : null;
+};
 
 export const createJsonShareUrl = (origin: string, snapshotId: string, key: string) =>
   `${origin}/#json=${snapshotId},${key}`;

@@ -28,7 +28,7 @@ describe("json share links", () => {
     };
 
     const created = await createJsonShareLink({
-      serviceUrl: "https://publish.tabula.md",
+      serviceUrl: "https://json.tabula.md",
       origin: "https://tabula.md",
       ownerName: "Taeha",
       files: [file()],
@@ -58,7 +58,7 @@ describe("json share links", () => {
       );
 
     const snapshot = await readJsonShareSnapshot({
-      serviceUrl: "https://publish.tabula.md",
+      serviceUrl: "https://json.tabula.md",
       origin: "https://tabula.md",
       route: route!,
       fetchImpl: readFetch as typeof fetch,
