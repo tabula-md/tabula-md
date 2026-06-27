@@ -33,6 +33,7 @@ export function StatusBar({
 }: StatusBarProps) {
   const hasComments = commentCount > 0;
   const saveLabel = isLive ? statusLabel : "Saved locally";
+  const showSaveState = !isLive || statusLabel === "Room offline";
   const cursorLabel =
     selectedCharacterCount > 0
       ? `${cursorPositionLabel} (${selectedLineCount > 1 ? `${selectedLineCount} lines, ` : ""}${selectedCharacterCount} ${
@@ -52,10 +53,12 @@ export function StatusBar({
       </div>
 
       <div className="status-bar-right">
-        <span className="status-save-state">
-          <Check size={13} />
-          <span>{saveLabel}</span>
-        </span>
+        {showSaveState && (
+          <span className="status-save-state">
+            <Check size={13} />
+            <span>{saveLabel}</span>
+          </span>
+        )}
         <span>{wordCount} words</span>
         <span className="status-cursor-position">{cursorLabel}</span>
         {hasComments && (

@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import {
+  Bot,
   Check,
+  Clipboard,
   Copy,
   Download,
   ExternalLink,
+  FileText,
+  FolderArchive,
   Link,
   Play,
   RefreshCw,
@@ -15,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import type { ConnectionStatus } from "../collab";
+import type { JsonShareController } from "../hooks/useJsonShareController";
 import { PRODUCT_PLUS_NAME } from "../product";
 import type { PublishController } from "../hooks/usePublishController";
 import { getRoomShareLinkView } from "../shareLinkViewModel";
@@ -23,8 +28,8 @@ import type { MarkdownFile } from "../workspaceStorage";
 
 type ShareControlsProps = {
   activeFile?: MarkdownFile;
+  files: MarkdownFile[];
   activeFileTitle: string;
-  currentWorkspaceUrl: string;
   currentUserName: string;
   activeStatus: ConnectionStatus;
   canStartSession: boolean;
@@ -32,6 +37,7 @@ type ShareControlsProps = {
   shareOpen: boolean;
   sharePanelTarget?: SharePanel;
   copied: boolean;
+  jsonShare: JsonShareController;
   publish: PublishController;
   startSessionUnavailableReason: string;
   onToggleShare: () => void;
@@ -47,6 +53,9 @@ type ShareControlsProps = {
 };
 
 export type { SharePanel } from "../uiTypes";
+
+type VisibleSharePanel = "share-link" | "export" | "send-to";
+type AgentHandoffScope = "file" | "project";
 
 const formatRoomTime = (value?: string) => {
   if (!value) {
@@ -64,12 +73,46 @@ const formatRoomTime = (value?: string) => {
   }).format(date);
 };
 
-const normalizeSharePanel = (panel?: SharePanel): SharePanel => (panel === "publish" ? "collaborate" : (panel ?? "collaborate"));
+const normalizeSharePanel = (panel?: SharePanel): VisibleSharePanel => {
+  if (panel === "export" || panel === "send-to" || panel === "share-link") {
+    return panel;
+  }
+
+  return "share-link";
+};
+
+const buildLocalAgentPrompt = ({
+  activeFile,
+  files,
+  instruction,
+  scope,
+}: {
+  activeFile?: MarkdownFile;
+  files: MarkdownFile[];
+  instruction: string;
+  scope: AgentHandoffScope;
+}) => {
+  const trimmedInstruction = instruction.trim();
+  const visibleFiles =
+    scope === "project" ? files : activeFile ? [activeFile] : [];
+  const fileSections = visibleFiles
+    .map((file) => `## ${file.title}\n\n\`\`\`markdown\n${file.text.trimEnd()}\n\`\`\``)
+    .join("\n\n");
+
+  return [
+    "Use the following Tabula.md Markdown context.",
+    trimmedInstruction ? `Task: ${trimmedInstruction}` : "Task: Help me continue from this context.",
+    "",
+    `Scope: ${scope === "project" ? "project" : "current file"}`,
+    "",
+    fileSections || "No Markdown content is available.",
+  ].join("\n");
+};
 
 export function ShareControls({
   activeFile,
+  files,
   activeFileTitle,
-  currentWorkspaceUrl,
   currentUserName,
   activeStatus,
   canStartSession,
@@ -77,6 +120,7 @@ export function ShareControls({
   shareOpen,
   sharePanelTarget,
   copied,
+  jsonShare,
   publish,
   startSessionUnavailableReason,
   onToggleShare,
@@ -90,8 +134,12 @@ export function ShareControls({
   onCommitUserName,
   onStopSession,
 }: ShareControlsProps) {
-  const [sharePanel, setSharePanel] = useState<SharePanel>("collaborate");
+  const [sharePanel, setSharePanel] = useState<SharePanel>("share-link");
   const [changingPublishScope, setChangingPublishScope] = useState(false);
+  const [agentScope, setAgentScope] = useState<AgentHandoffScope>("file");
+  const [agentInstruction, setAgentInstruction] = useState("");
+  const [agentPromptCopied, setAgentPromptCopied] = useState(false);
+  const [exportLinkCopied, setExportLinkCopied] = useState(false);
   const shareUrlView = getRoomShareLinkView(activeFile?.shareUrl, activeFile?.roomId);
   const activeFileDisplayTitle = activeFileTitle.replace(/\.(?:md|markdown)$/i, "");
   const shareModalTitle = `Share ${activeFileDisplayTitle}`;
@@ -145,6 +193,13 @@ export function ShareControls({
 
   useEffect(() => {
     if (!shareOpen) {
+      setAgentPromptCopied(false);
+      setExportLinkCopied(false);
+    }
+  }, [shareOpen]);
+
+  useEffect(() => {
+    if (!shareOpen) {
       return;
     }
 
@@ -180,6 +235,29 @@ export function ShareControls({
 
   const handlePublishSnapshot = () => {
     void publish.publish().finally(() => setChangingPublishScope(false));
+  };
+
+  const handleExportToJsonLink = () => {
+    void jsonShare.exportLink().finally(() => setExportLinkCopied(false));
+  };
+
+  const copyReadOnlyLink = async () => {
+    await jsonShare.copyLink();
+    setExportLinkCopied(true);
+    window.setTimeout(() => setExportLinkCopied(false), 1200);
+  };
+
+  const copyLocalAgentPrompt = async () => {
+    const prompt = buildLocalAgentPrompt({
+      activeFile,
+      files,
+      instruction: agentInstruction,
+      scope: agentScope,
+    });
+
+    await navigator.clipboard.writeText(prompt);
+    setAgentPromptCopied(true);
+    window.setTimeout(() => setAgentPromptCopied(false), 1200);
   };
 
   const renderPublishManagementAction = (action: (typeof publishView.managementActions)[number]) => {
@@ -281,136 +359,278 @@ export function ShareControls({
 
             <nav className="share-modal-tabs" role="tablist" aria-label="Share purpose">
               <button
-                className={sharePanel === "collaborate" ? "active" : ""}
+                className={sharePanel === "share-link" ? "active" : ""}
                 type="button"
                 role="tab"
-                aria-selected={sharePanel === "collaborate"}
-                onClick={() => setSharePanel("collaborate")}
+                aria-selected={sharePanel === "share-link"}
+                onClick={() => setSharePanel("share-link")}
               >
-                Collaborate
+                Share link
               </button>
               <button
-                className={sharePanel === "send" ? "active" : ""}
+                className={sharePanel === "export" ? "active" : ""}
                 type="button"
                 role="tab"
-                aria-selected={sharePanel === "send"}
-                onClick={() => setSharePanel("send")}
+                aria-selected={sharePanel === "export"}
+                onClick={() => setSharePanel("export")}
               >
-                Send
+                Export
+              </button>
+              <button
+                className={sharePanel === "send-to" ? "active" : ""}
+                type="button"
+                role="tab"
+                aria-selected={sharePanel === "send-to"}
+                onClick={() => setSharePanel("send-to")}
+              >
+                Send to...
               </button>
             </nav>
 
             <section className="share-modal-panel" role="tabpanel">
-              {sharePanel === "collaborate" && (
+              {sharePanel === "share-link" && (
                 <>
-                  <div className="share-panel-heading">
-                    <span className="share-modal-option-icon">
-                      <Users size={17} />
-                    </span>
-                    <div>
-                      <h3>Collaborate with people</h3>
-                      <p>Invite people to edit this file together.</p>
+                  <div className="share-link-section">
+                    <div className="share-panel-heading">
+                      <span className="share-modal-option-icon">
+                        <Users size={17} />
+                      </span>
+                      <div>
+                        <h3>Live collaboration</h3>
+                        <p>Invite people to edit this file together.</p>
+                      </div>
                     </div>
+
+                    {!isLive && (
+                      <div className="share-session-start">
+                        <button
+                          className="share-modal-primary"
+                          type="button"
+                          disabled={!canStartSession}
+                          title={startSessionUnavailableReason || undefined}
+                          onClick={onStartSession}
+                        >
+                          <Play size={16} />
+                          <span>Start session</span>
+                        </button>
+                        <p>{startSessionUnavailableReason || "Create an editable invite link for this file."}</p>
+                      </div>
+                    )}
+
+                    {isLive && (
+                      <div className="live-room-box">
+                        {hasRoomIssue && (
+                          <div className={`live-room-status ${activeStatus} attention`}>
+                            <span className="live-room-status-dot" aria-hidden="true" />
+                            <div>
+                              <span>{roomStatusLabel}</span>
+                              {roomStatusHint && <p>{roomStatusHint}</p>}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="share-modal-field">
+                          <label>Your name</label>
+                          <input
+                            value={currentUserName}
+                            aria-label="Your collaboration name"
+                            placeholder="Anonymous"
+                            maxLength={40}
+                            onBlur={onCommitUserName}
+                            onChange={(event) => onChangeUserName(event.target.value)}
+                          />
+                        </div>
+
+                        <div className="share-modal-field">
+                          <label>Invite link</label>
+                          <div className="share-modal-link-row">
+                            <div className="share-link-display" aria-label="Share link" title={shareUrlView.title}>
+                              <span>{shareUrlView.display}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={onCopyShareUrl}
+                              disabled={!shareUrlView.canCopy}
+                              title={shareUrlView.canCopy ? undefined : "This live file does not have a valid invite link."}
+                            >
+                              {copied ? <Check size={17} /> : <Copy size={17} />}
+                              <span>{copied ? "Copied" : "Copy link"}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <button className="share-modal-danger" type="button" onClick={handleStopSession}>
+                          <Square size={14} />
+                          <span>Stop session</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  {!isLive && (
-                    <div className="share-session-start">
-                      <button
-                        className="share-modal-primary"
-                        type="button"
-                        disabled={!canStartSession}
-                        title={startSessionUnavailableReason || undefined}
-                        onClick={onStartSession}
-                      >
-                        <Play size={16} />
-                        <span>Start session</span>
-                      </button>
-                      <p>{startSessionUnavailableReason || "An editable invite link will be created for this file."}</p>
-                    </div>
-                  )}
+                  <div className="share-section-divider" aria-hidden="true">
+                    <span />
+                    <strong>Or</strong>
+                    <span />
+                  </div>
 
-                  {isLive && (
-                    <div className="live-room-box">
-                      {hasRoomIssue && (
-                        <div className={`live-room-status ${activeStatus} attention`}>
-                          <span className="live-room-status-dot" aria-hidden="true" />
-                          <div>
-                            <span>{roomStatusLabel}</span>
-                            {roomStatusHint && <p>{roomStatusHint}</p>}
+                  <div className="share-link-section">
+                    <div className="share-panel-heading">
+                      <span className="share-modal-option-icon">
+                        <Link size={17} />
+                      </span>
+                      <div>
+                        <h3>Shareable link</h3>
+                        <p>Export a read-only snapshot of this file.</p>
+                      </div>
+                    </div>
+
+                    {jsonShare.url ? (
+                      <div className="share-readonly-box">
+                        <div className="share-modal-field">
+                          <label>Read-only link</label>
+                          <div className="share-modal-link-row">
+                            <a
+                              className="share-link-display"
+                              href={jsonShare.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              aria-label="Read-only link"
+                              title={jsonShare.url}
+                            >
+                              <span>{jsonShare.urlPreview}</span>
+                            </a>
+                            <button type="button" onClick={copyReadOnlyLink}>
+                              {exportLinkCopied ? <Check size={17} /> : <Copy size={17} />}
+                              <span>{exportLinkCopied ? "Copied" : "Copy link"}</span>
+                            </button>
                           </div>
                         </div>
-                      )}
 
-                      <div className="share-modal-field">
-                        <label>Your name</label>
-                        <input
-                          value={currentUserName}
-                          aria-label="Your collaboration name"
-                          placeholder="Anonymous"
-                          maxLength={40}
-                          onBlur={onCommitUserName}
-                          onChange={(event) => onChangeUserName(event.target.value)}
-                        />
-                      </div>
-
-                      <div className="share-modal-field">
-                        <label>Current session link</label>
-                        <div className="share-modal-link-row">
-                          <div className="share-link-display" aria-label="Share link" title={shareUrlView.title}>
-                            <span>{shareUrlView.display}</span>
-                          </div>
+                        <div className="share-readonly-actions">
                           <button
+                            className="share-modal-primary"
                             type="button"
-                            onClick={onCopyShareUrl}
-                            disabled={!shareUrlView.canCopy}
-                            title={shareUrlView.canCopy ? undefined : "This live file does not have a valid invite link."}
+                            onClick={handleExportToJsonLink}
+                            disabled={!jsonShare.canExport}
+                            title={jsonShare.disabledReason || undefined}
                           >
-                            {copied ? <Check size={17} /> : <Copy size={17} />}
-                            <span>{copied ? "Copied" : "Copy link"}</span>
+                            <RefreshCw size={16} />
+                            <span>{jsonShare.exporting ? "Exporting" : "Update link"}</span>
                           </button>
+                          <a className="share-modal-secondary" href={jsonShare.url} target="_blank" rel="noreferrer">
+                            <ExternalLink size={16} />
+                            <span>Open link</span>
+                          </a>
                         </div>
-                        <p className="share-modal-muted">Use this link to invite collaborators. The room key stays after #.</p>
                       </div>
-
-                      <div className="share-modal-field">
-                        <label>This browser URL</label>
-                        <div className="share-current-url-display" aria-label="Current browser URL" title={currentWorkspaceUrl}>
-                          <span>{currentWorkspaceUrl}</span>
-                        </div>
-                        <p className="share-modal-muted">Starting a session does not move this tab to the invite URL.</p>
+                    ) : (
+                      <div className="share-readonly-box">
+                        <button
+                          className="share-modal-primary"
+                          type="button"
+                          onClick={handleExportToJsonLink}
+                          disabled={!jsonShare.canExport}
+                          title={jsonShare.disabledReason || undefined}
+                        >
+                          <Link size={16} />
+                          <span>{jsonShare.exporting ? "Exporting" : "Export to link"}</span>
+                        </button>
+                        <p className="share-modal-muted">Creates a read-only page for people who do not need edit access.</p>
                       </div>
-
-                      <button className="share-modal-danger" type="button" onClick={handleStopSession}>
-                        <Square size={14} />
-                        <span>Stop session</span>
-                      </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </>
               )}
 
-              {sharePanel === "send" && (
+              {sharePanel === "export" && (
                 <>
                   <div className="share-panel-heading">
                     <span className="share-modal-option-icon">
                       <Download size={17} />
                     </span>
                     <div>
-                      <h3>Send the Markdown file</h3>
-                      <p>Copy the source Markdown or download this file.</p>
+                      <h3>Export Markdown</h3>
+                      <p>Take the current file out of Tabula.md.</p>
                     </div>
                   </div>
-                  <div className="share-modal-actions">
-                    <button className="share-modal-secondary" type="button" onClick={onCopyMarkdown}>
-                      <Copy size={16} />
-                      <span>Copy Markdown</span>
+                  <div className="share-export-grid" aria-label="Export formats">
+                    <button className="share-export-card" type="button" onClick={onDownloadMarkdown}>
+                      <span className="share-export-icon">
+                        <FileText size={18} />
+                      </span>
+                      <strong>Markdown <span>.md</span></strong>
+                      <p>Download the current file as source Markdown.</p>
                     </button>
-                    <button className="share-modal-secondary" type="button" onClick={onDownloadMarkdown}>
-                      <Download size={16} />
-                      <span>Download .md</span>
+                    <button className="share-export-card" type="button" onClick={onCopyMarkdown}>
+                      <span className="share-export-icon">
+                        <Copy size={18} />
+                      </span>
+                      <strong>Copy Markdown</strong>
+                      <p>Copy the current file to the clipboard.</p>
+                    </button>
+                    <button className="share-export-card disabled" type="button" disabled>
+                      <span className="share-export-icon">
+                        <FolderArchive size={18} />
+                      </span>
+                      <strong>Project archive <span>.zip</span></strong>
+                      <p>Bundle every project file.</p>
                     </button>
                   </div>
-                  <p className="share-modal-muted">Best for sending one file to a teammate, another editor, or an AI chat.</p>
+                </>
+              )}
+
+              {sharePanel === "send-to" && (
+                <>
+                  <div className="share-panel-heading">
+                    <span className="share-modal-option-icon">
+                      <Bot size={17} />
+                    </span>
+                    <div>
+                      <h3>Send to local coding agent</h3>
+                      <p>Create a prompt for Codex, Claude Code, or another local coding agent.</p>
+                    </div>
+                  </div>
+
+                  <div className="send-destination-row">
+                    <div className="send-destination-mark" aria-hidden="true">
+                      <Bot size={20} />
+                    </div>
+                    <div>
+                      <strong>Local coding agent</strong>
+                      <p>Hand off Markdown context as a paste-ready prompt.</p>
+                    </div>
+                    <button className="share-modal-primary" type="button" onClick={copyLocalAgentPrompt}>
+                      {agentPromptCopied ? <Check size={16} /> : <Clipboard size={16} />}
+                      <span>{agentPromptCopied ? "Copied" : "Copy prompt"}</span>
+                    </button>
+                  </div>
+
+                  <div className="send-scope-control" role="group" aria-label="Agent handoff scope">
+                    <button
+                      className={agentScope === "file" ? "active" : ""}
+                      type="button"
+                      onClick={() => setAgentScope("file")}
+                    >
+                      Current file
+                    </button>
+                    <button
+                      className={agentScope === "project" ? "active" : ""}
+                      type="button"
+                      onClick={() => setAgentScope("project")}
+                    >
+                      Project
+                    </button>
+                  </div>
+
+                  <label className="send-instruction-field">
+                    <span>What should the agent do?</span>
+                    <textarea
+                      value={agentInstruction}
+                      placeholder={`Implement the next step for ${activeFileDisplayTitle}.`}
+                      rows={3}
+                      onChange={(event) => setAgentInstruction(event.target.value)}
+                    />
+                  </label>
                 </>
               )}
 

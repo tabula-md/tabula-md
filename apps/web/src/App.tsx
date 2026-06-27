@@ -23,8 +23,9 @@ import { ShareControls } from "./components/ShareControls";
 import { StatusBar } from "./components/StatusBar";
 import { TopChrome } from "./components/TopChrome";
 import { WorkspaceMenu } from "./components/WorkspaceMenu";
-import { PublishedSnapshotRoute } from "./components/PublishedSnapshotRoute";
+import { JsonSnapshotRoute, PublishedSnapshotRoute } from "./components/PublishedSnapshotRoute";
 import { getPublishRoute } from "./publish";
+import { getJsonShareRoute } from "./jsonShare";
 import {
   getLineStartOffset,
   getOutlineHeadings,
@@ -45,6 +46,7 @@ import { useMarkdownFiles } from "./hooks/useMarkdownFiles";
 import { usePublishController } from "./hooks/usePublishController";
 import { useProjectIoController } from "./hooks/useProjectIoController";
 import { useIndexedDbWorkspaceHydration } from "./hooks/useIndexedDbWorkspaceHydration";
+import { useJsonShareController } from "./hooks/useJsonShareController";
 import { useQueuedWorkspacePersistence } from "./hooks/useQueuedWorkspacePersistence";
 import { useSelectionCommentController } from "./hooks/useSelectionCommentController";
 import { useSplitViewController } from "./hooks/useSplitViewController";
@@ -179,6 +181,12 @@ function WorkspaceApp() {
     ownerName: identity.name,
     showToast,
     tabulaPlusEnabled,
+  });
+  const jsonShare = useJsonShareController({
+    activeFile,
+    commentsByFileId,
+    ownerName: identity.name,
+    showToast,
   });
   const text = activeFile?.text ?? "";
   const activeViewMode = activeFile?.viewMode ?? "edit";
@@ -643,8 +651,8 @@ function WorkspaceApp() {
   const shareControlsNode = activeFile ? (
     <ShareControls
       activeFile={activeFile}
+      files={files}
       activeFileTitle={activeFileTitle}
-      currentWorkspaceUrl={window.location.href}
       currentUserName={identity.name}
       activeStatus={activeStatus}
       canStartSession={canStartSession}
@@ -652,6 +660,7 @@ function WorkspaceApp() {
       shareOpen={shareOpen}
       sharePanelTarget={sharePanelTarget}
       copied={copied}
+      jsonShare={jsonShare}
       publish={publish}
       startSessionUnavailableReason={startSessionUnavailableReason}
       onToggleShare={() => {
@@ -759,7 +768,7 @@ function WorkspaceApp() {
             downloadProject();
             closeFloatingChrome();
           }}
-          onOpenCollaboration={() => openSharePanel("collaborate")}
+          onOpenCollaboration={() => openSharePanel("share-link")}
           onOpenHelp={openHelpFile}
         />
 
@@ -790,6 +799,8 @@ function WorkspaceApp() {
               searchOpen ? "with-search-row" : ""
             } ${
               activeLiveRoomNotice ? "with-live-room-notice" : ""
+            } ${
+              shareOpen ? "share-modal-open" : ""
             }`}
           >
             {activeFile ? (
@@ -908,7 +919,7 @@ function WorkspaceApp() {
                     />
                   </article>
 
-                  {activeViewMode === "split" && (
+                  {activeViewMode === "split" && !shareOpen && (
                     <button
                       type="button"
                       className="split-resize-handle"
@@ -1053,6 +1064,11 @@ function WorkspaceApp() {
 }
 
 function App() {
+  const jsonShareRoute = getJsonShareRoute(window.location);
+  if (jsonShareRoute) {
+    return <JsonSnapshotRoute route={jsonShareRoute} />;
+  }
+
   const publishRoute = getPublishRoute(window.location.pathname, window.location.search);
   if (publishRoute) {
     return <PublishedSnapshotRoute route={publishRoute} />;

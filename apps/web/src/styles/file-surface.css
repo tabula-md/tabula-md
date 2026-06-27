@@ -149,6 +149,13 @@
   grid-row: 4;
 }
 
+.file-shell.share-modal-open .editor-control-row,
+.file-shell.share-modal-open .workspace,
+.file-shell.share-modal-open .file-status-bar,
+.file-shell.share-modal-open .live-room-notice {
+  pointer-events: none;
+}
+
 .live-room-notice {
   position: relative;
   z-index: 11;
