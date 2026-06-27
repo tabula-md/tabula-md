@@ -26,7 +26,7 @@ export const getRoomShareLinkView = (shareUrl?: string, expectedRoomId?: string)
 
   return {
     canCopy: true,
-    display: `${parsedUrl.origin}/r/${compactRoomId(parsedRoom.roomId)}#key=...`,
+    display: `${parsedUrl.origin}/#room=${compactRoomId(parsedRoom.roomId)},...`,
     title: parsedRoom.shareUrl,
     url: parsedRoom.shareUrl,
   };

@@ -51,8 +51,8 @@ export async function run(ctx) {
     await waitForText(firstPage.locator(".share-modal"), "This browser URL");
     const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
     expect(
-      Boolean(shareUrl && new URL(shareUrl).pathname.startsWith("/r/") && new URL(shareUrl).hash.startsWith("#key=")),
-      "Live sessions should expose a client-key invite link without navigating the current tab.",
+      Boolean(shareUrl && new URL(shareUrl).pathname === "/" && new URL(shareUrl).hash.startsWith("#room=")),
+      "Live sessions should expose a hash room invite link without navigating the current tab.",
     );
     const sharingPresenceTitle = await firstPage.locator(".sharing-presence").getAttribute("data-tooltip");
     const sharingPresenceText = await firstPage.locator(".sharing-presence").textContent();
@@ -86,14 +86,25 @@ export async function run(ctx) {
     await ensureEditMode(secondPage);
     await ensureEditMode(firstPage);
 
+    const sameBrowserTab = await firstContext.newPage();
+    await sameBrowserTab.goto(`${baseUrl}${sharedPath}`);
+    await sameBrowserTab.waitForSelector(".tab-item.live.active");
+    await firstPage.waitForFunction(() => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 2);
+    await sameBrowserTab.close();
+    await firstPage.waitForFunction(() => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length === 1);
+    expect(
+      (await firstPage.locator(".sharing-presence .avatar:not(.self)").count()) === 1,
+      "Presence should remove a collaborator avatar after that browser tab leaves the live room.",
+    );
+
     const syncedText = await runLiveEditingCorrectnessSmoke({
       expect,
       firstPage,
       secondPage,
       focusMarkdownEditor,
     });
-    const roomId = roomUrl.pathname.split("/").filter(Boolean).at(-1);
-    const roomKey = new URLSearchParams(roomUrl.hash.replace(/^#/, "")).get("key");
+    const roomValue = new URLSearchParams(roomUrl.hash.replace(/^#/, "")).get("room") ?? "";
+    const [roomId, roomKey] = roomValue.split(",");
 
     await firstPage.locator(".sharing-presence").click();
     await firstPage.waitForSelector(".presence-popover");
@@ -176,7 +187,7 @@ export async function run(ctx) {
       const wrongKeyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const wrongKeyPage = await wrongKeyContext.newPage();
       try {
-        await wrongKeyPage.goto(`${baseUrl}${roomUrl.pathname}#key=${wrongRoomKey}`);
+        await wrongKeyPage.goto(`${baseUrl}/#room=${roomId},${wrongRoomKey}`);
         await wrongKeyPage.waitForSelector(".tab-item.live.active");
         await waitForText(wrongKeyPage.locator(".live-room-notice"), "Room key does not match");
         await wrongKeyPage.locator(".share-trigger").click();
@@ -198,7 +209,7 @@ export async function run(ctx) {
       const missingKeyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const missingKeyPage = await missingKeyContext.newPage();
       try {
-        await missingKeyPage.goto(`${baseUrl}${roomUrl.pathname}`);
+        await missingKeyPage.goto(`${baseUrl}/#room=${roomId}`);
         await missingKeyPage.waitForSelector(".tabbar");
         expect(
           (await missingKeyPage.locator(".tab-item.live.active").count()) === 0,

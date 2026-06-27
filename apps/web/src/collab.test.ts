@@ -36,8 +36,8 @@ describe("Tabula Room keys", () => {
   it("keeps the room key in the URL fragment", () => {
     const url = createRoomShareUrl("http://localhost:5173", "room-123", VALID_ROOM_KEY);
 
-    expect(url).toBe(`http://localhost:5173/r/room-123#key=${VALID_ROOM_KEY}`);
-    expect(new URL(url).pathname).toBe("/r/room-123");
+    expect(url).toBe(`http://localhost:5173/#room=room-123,${VALID_ROOM_KEY}`);
+    expect(new URL(url).pathname).toBe("/");
     expect(new URL(url).search).toBe("");
   });
 
@@ -47,14 +47,14 @@ describe("Tabula Room keys", () => {
 
     expect(session.roomId).toMatch(/^[A-Za-z0-9_-]{22}$/);
     expect(session.roomKey).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(url.pathname).toBe(`/r/${session.roomId}`);
+    expect(url.pathname).toBe("/");
     expect(url.search).toBe("");
-    expect(url.hash).toBe(`#key=${session.roomKey}`);
+    expect(url.hash).toBe(`#room=${session.roomId},${session.roomKey}`);
     expect(session.shareUrl).not.toContain(`?key=${session.roomKey}`);
   });
 
   it("parses only the client-side key fragment", () => {
-    expect(parseRoomKeyFromHash(`#key=${VALID_ROOM_KEY}`)).toBe(VALID_ROOM_KEY);
+    expect(parseRoomKeyFromHash(`#room=room-123,${VALID_ROOM_KEY}`)).toBe(VALID_ROOM_KEY);
     expect(parseRoomKeyFromHash("#key=abc123")).toBeNull();
     expect(parseRoomKeyFromHash("#key=   ")).toBeNull();
     expect(parseRoomKeyFromHash("#key=not+base64url")).toBeNull();
@@ -65,7 +65,7 @@ describe("Tabula Room keys", () => {
     expect(
       parseRoomLocation({
         origin: "https://tabula.test",
-        pathname: "/r/room-123",
+        pathname: "/",
         hash: "",
       }),
     ).toBeNull();
@@ -73,44 +73,52 @@ describe("Tabula Room keys", () => {
     expect(
       parseRoomLocation({
         origin: "https://tabula.test",
-        pathname: "/r/room-123",
-        hash: `#key=${VALID_ROOM_KEY}`,
+        pathname: "/",
+        hash: `#room=room-123,${VALID_ROOM_KEY}`,
       }),
     ).toEqual({
       roomId: "room-123",
       roomKey: VALID_ROOM_KEY,
-      shareUrl: `https://tabula.test/r/room-123#key=${VALID_ROOM_KEY}`,
+      shareUrl: `https://tabula.test/#room=room-123,${VALID_ROOM_KEY}`,
     });
   });
 
-  it("rejects non-canonical room routes with extra path segments", () => {
+  it("rejects non-canonical room routes and malformed room fragments", () => {
     expect(
       parseRoomLocation({
         origin: "https://tabula.test",
-        pathname: "/r/room-123/extra",
-        hash: `#key=${VALID_ROOM_KEY}`,
+        pathname: "/r/room-123",
+        hash: `#room=room-123,${VALID_ROOM_KEY}`,
       }),
     ).toBeNull();
 
     expect(
       parseRoomLocation({
         origin: "https://tabula.test",
-        pathname: "/r/room-123/",
-        hash: `#key=${VALID_ROOM_KEY}`,
+        pathname: "/",
+        hash: `#room=room-123`,
+      }),
+    ).toBeNull();
+
+    expect(
+      parseRoomLocation({
+        origin: "https://tabula.test",
+        pathname: "/",
+        hash: `#room=room-123,${VALID_ROOM_KEY}&extra=value`,
       }),
     ).toBeNull();
   });
 
   it("parses stored room share URLs without reading the current window location", () => {
-    expect(parseRoomShareUrl(`https://tabula.test/r/room-123#key=${VALID_ROOM_KEY}`)).toEqual({
+    expect(parseRoomShareUrl(`https://tabula.test/#room=room-123,${VALID_ROOM_KEY}`)).toEqual({
       roomId: "room-123",
       roomKey: VALID_ROOM_KEY,
-      shareUrl: `https://tabula.test/r/room-123#key=${VALID_ROOM_KEY}`,
+      shareUrl: `https://tabula.test/#room=room-123,${VALID_ROOM_KEY}`,
     });
 
     expect(parseRoomShareUrl("https://tabula.test/r/room-123")).toBeNull();
     expect(parseRoomShareUrl("https://tabula.test/r/room-123#key=secret-key")).toBeNull();
-    expect(parseRoomShareUrl(`https://tabula.test/r/room-123#key=${NEXT_VALID_ROOM_KEY}`)?.roomKey).toBe(
+    expect(parseRoomShareUrl(`https://tabula.test/#room=room-123,${NEXT_VALID_ROOM_KEY}`)?.roomKey).toBe(
       NEXT_VALID_ROOM_KEY,
     );
     expect(parseRoomShareUrl("not a url")).toBeNull();

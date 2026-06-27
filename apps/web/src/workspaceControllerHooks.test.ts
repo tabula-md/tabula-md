@@ -152,6 +152,56 @@ describe("workspace identity controller", () => {
     });
     expect(JSON.parse(storage.getItem(IDENTITY_KEY) ?? "{}")).toEqual(identity);
   });
+
+  it("creates a tab-scoped collaborator id even when a stored profile exists", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      IDENTITY_KEY,
+      JSON.stringify({
+        id: "previous-tab",
+        name: "Taeha",
+        color: "#2563eb",
+        lastSeen: 1,
+      }),
+    );
+
+    const identity = createWorkspaceIdentity({
+      storage,
+      createId: () => "next-tab",
+      random: () => 0,
+      now: () => 20,
+    });
+
+    expect(identity).toEqual({
+      id: "next-tab",
+      name: "Taeha",
+      color: "#2563eb",
+      lastSeen: 20,
+    });
+  });
+
+  it("does not reuse generated anonymous names across tabs", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      IDENTITY_KEY,
+      JSON.stringify({
+        id: "previous-tab",
+        name: "Anonymous old",
+        color: "#2563eb",
+        lastSeen: 1,
+      }),
+    );
+
+    const identity = createWorkspaceIdentity({
+      storage,
+      createId: () => "next-tab",
+      random: () => 0,
+      now: () => 20,
+    });
+
+    expect(identity.name).toBe("Anonymous 100");
+    expect(identity.id).toBe("next-tab");
+  });
 });
 
 describe("selection comment controller", () => {

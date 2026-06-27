@@ -155,7 +155,7 @@ describe("file tab state transitions", () => {
     const localFiles = ensureDefaultFiles([], { ensureUntitled: true });
     const files = ensureLiveFileForRoom(localFiles, {
       roomId: "browserroom",
-      shareUrl: `http://localhost:5174/r/browserroom#key=${VALID_ROOM_KEY}`,
+      shareUrl: `http://localhost:5174/#room=browserroom,${VALID_ROOM_KEY}`,
     });
 
     expect(files.map((file) => file.title)).toEqual([
@@ -171,25 +171,25 @@ describe("file tab state transitions", () => {
     const files = ensureLiveFileForRoom(
       ensureLiveFileForRoom(ensureDefaultFiles([], { ensureUntitled: true }), {
         roomId: "room-a",
-        shareUrl: `http://localhost:5174/r/room-a#key=${VALID_ROOM_KEY}`,
+        shareUrl: `http://localhost:5174/#room=room-a,${VALID_ROOM_KEY}`,
       }),
       {
         roomId: "room-a",
-        shareUrl: `http://localhost:5174/r/room-a#key=${NEXT_VALID_ROOM_KEY}`,
+        shareUrl: `http://localhost:5174/#room=room-a,${NEXT_VALID_ROOM_KEY}`,
       },
     );
 
     expect(files.filter((file) => file.roomId === "room-a")).toHaveLength(1);
     expect(files.find((file) => file.roomId === "room-a")?.shareUrl).toBe(
-      `http://localhost:5174/r/room-a#key=${NEXT_VALID_ROOM_KEY}`,
+      `http://localhost:5174/#room=room-a,${NEXT_VALID_ROOM_KEY}`,
     );
   });
 
-  it("only treats /r links as live rooms when the client-only key fragment is present", () => {
+  it("only treats canonical room hashes as live rooms when the client-only key fragment is present", () => {
     vi.stubGlobal("window", {
       location: {
         origin: "https://tabula.test",
-        pathname: "/r/room-a",
+        pathname: "/",
         hash: "",
       },
     });
@@ -199,14 +199,14 @@ describe("file tab state transitions", () => {
     vi.stubGlobal("window", {
       location: {
         origin: "https://tabula.test",
-        pathname: "/r/room-a",
-        hash: `#key=${VALID_ROOM_KEY}`,
+        pathname: "/",
+        hash: `#room=room-a,${VALID_ROOM_KEY}`,
       },
     });
 
     expect(getRoomFromLocation()).toEqual({
       roomId: "room-a",
-      shareUrl: `https://tabula.test/r/room-a#key=${VALID_ROOM_KEY}`,
+      shareUrl: `https://tabula.test/#room=room-a,${VALID_ROOM_KEY}`,
     });
   });
 
@@ -222,12 +222,12 @@ describe("file tab state transitions", () => {
       },
     });
 
-    syncUrlForFile({ roomId: "room-a", shareUrl: `https://tabula.test/r/room-a#key=${VALID_ROOM_KEY}` }, "replace");
+    syncUrlForFile({ roomId: "room-a", shareUrl: `https://tabula.test/#room=room-a,${VALID_ROOM_KEY}` }, "replace");
 
-    expect(replaceState).toHaveBeenCalledWith(null, "", `/r/room-a#key=${VALID_ROOM_KEY}`);
+    expect(replaceState).toHaveBeenCalledWith(null, "", `/#room=room-a,${VALID_ROOM_KEY}`);
   });
 
-  it("falls back to the local project path for invalid stored live room share URLs", () => {
+  it("does not keep invalid stored live room share URLs in the browser URL", () => {
     const replaceState = vi.fn();
     vi.stubGlobal("window", {
       location: {
@@ -240,7 +240,7 @@ describe("file tab state transitions", () => {
     });
 
     expect(() => syncUrlForFile({ roomId: "room-a", shareUrl: "not a url" }, "replace")).not.toThrow();
-    syncUrlForFile({ roomId: "room-a", shareUrl: `https://tabula.test/r/room-b#key=${VALID_ROOM_KEY}` }, "replace");
+    syncUrlForFile({ roomId: "room-a", shareUrl: `https://tabula.test/#room=room-b,${VALID_ROOM_KEY}` }, "replace");
 
     expect(replaceState).toHaveBeenCalledTimes(2);
     expect(replaceState).toHaveBeenNthCalledWith(1, null, "", "/");
@@ -348,7 +348,7 @@ describe("project persistence", () => {
           title: "Shared room.md",
           text: "# Live",
           roomId: "room-live",
-          shareUrl: `http://localhost:5174/r/room-live#key=${VALID_ROOM_KEY}`,
+          shareUrl: `http://localhost:5174/#room=room-live,${VALID_ROOM_KEY}`,
           connectionStatus: "connected",
           snapshotCount: 3,
           lastSnapshotAt: "2026-06-11T00:00:00.000Z",
@@ -367,7 +367,7 @@ describe("project persistence", () => {
     expect(localFile?.text).toBe("# Local\n\nDraft");
     expect(liveFile).toMatchObject({
       roomId: "room-live",
-      shareUrl: `http://localhost:5174/r/room-live#key=${VALID_ROOM_KEY}`,
+      shareUrl: `http://localhost:5174/#room=room-live,${VALID_ROOM_KEY}`,
       connectionStatus: "offline",
       snapshotCount: 3,
       lastSnapshotAt: "2026-06-11T00:00:00.000Z",
@@ -716,7 +716,7 @@ Start here.`,
       {
         ...files[0],
         roomId: "room-123",
-        shareUrl: `https://tabula.md/r/room-123#key=${VALID_ROOM_KEY}`,
+        shareUrl: `https://tabula.md/#room=room-123,${VALID_ROOM_KEY}`,
         connectionStatus: "connected",
       },
       files[1],

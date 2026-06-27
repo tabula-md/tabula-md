@@ -163,9 +163,34 @@ export const generateRoomId = () => {
   return encodeBase64Url(bytes);
 };
 
+export const parseRoomFromHash = (hash: string): Pick<RoomSession, "roomId" | "roomKey"> | null => {
+  const fragment = hash.replace(/^#/, "").trim();
+  if (!fragment.startsWith("room=")) {
+    return null;
+  }
+
+  const roomValue = fragment.slice("room=".length);
+  const [roomId, roomKey, extra] = roomValue.split(",");
+  if (
+    extra !== undefined ||
+    roomValue.includes("&") ||
+    !roomId ||
+    !ROOM_KEY_PATTERN.test(roomId) ||
+    !roomKey ||
+    !ROOM_KEY_PATTERN.test(roomKey)
+  ) {
+    return null;
+  }
+
+  try {
+    return decodeBase64Url(roomKey).byteLength === ROOM_KEY_BYTES ? { roomId, roomKey } : null;
+  } catch {
+    return null;
+  }
+};
+
 export const parseRoomKeyFromHash = (hash: string) => {
-  const params = new URLSearchParams(hash.replace(/^#/, ""));
-  const roomKey = params.get("key")?.trim();
+  const roomKey = parseRoomFromHash(hash)?.roomKey;
   if (!roomKey || !ROOM_KEY_PATTERN.test(roomKey)) {
     return null;
   }
@@ -178,20 +203,22 @@ export const parseRoomKeyFromHash = (hash: string) => {
 };
 
 export const createRoomShareUrl = (origin: string, roomId: string, roomKey = generateRoomKey()) =>
-  `${origin}/r/${encodeURIComponent(roomId)}#key=${roomKey}`;
+  `${origin}/#room=${roomId},${roomKey}`;
 
 export const parseRoomLocation = (location: RoomRouteLocation): ParsedRoomLocation | null => {
-  const roomId = location.pathname.match(/^\/r\/([^/]+)$/)?.[1];
-  const roomKey = parseRoomKeyFromHash(location.hash);
+  if (location.pathname !== "/") {
+    return null;
+  }
 
-  if (!roomId || !roomKey) {
+  const parsedRoom = parseRoomFromHash(location.hash);
+  if (!parsedRoom) {
     return null;
   }
 
   return {
-    roomId,
-    roomKey,
-    shareUrl: createRoomShareUrl(location.origin, roomId, roomKey),
+    roomId: parsedRoom.roomId,
+    roomKey: parsedRoom.roomKey,
+    shareUrl: createRoomShareUrl(location.origin, parsedRoom.roomId, parsedRoom.roomKey),
   };
 };
 
@@ -437,7 +464,7 @@ export const createCollabConnection = ({
 
       onRoomMetaChange?.(toRoomMeta((await response.json()) as RoomServerMetadata));
     } catch {
-      // Room metadata is best-effort. Realtime sync uses encrypted websocket envelopes.
+      // Room metadata is best-effort. Realtime sync uses encrypted room envelopes.
     }
   };
 

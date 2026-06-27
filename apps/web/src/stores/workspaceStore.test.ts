@@ -120,13 +120,13 @@ describe("workspace store", () => {
 
     const liveFile = useWorkspaceStore.getState().activateRoomFile({
       roomId: "room-123456",
-      shareUrl: `https://tabula.test/r/room-123456#key=${VALID_ROOM_KEY}`,
+      shareUrl: `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
     });
 
     expect(liveFile).toMatchObject({
       id: "live-room-123456",
       roomId: "room-123456",
-      shareUrl: `https://tabula.test/r/room-123456#key=${VALID_ROOM_KEY}`,
+      shareUrl: `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
       connectionStatus: "connecting",
     });
     expect(useWorkspaceStore.getState().activeFileId).toBe(liveFile?.id);
@@ -138,7 +138,7 @@ describe("workspace store", () => {
 
     const liveFile = useWorkspaceStore.getState().activateRoomFile({
       roomId: "room-123456",
-      shareUrl: `https://tabula.test/r/room-123456#key=${VALID_ROOM_KEY}`,
+      shareUrl: `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
     });
 
     useWorkspaceStore.getState().setFileText(
@@ -161,7 +161,7 @@ title: Product Requirements
 
     const liveFile = useWorkspaceStore.getState().activateRoomFile({
       roomId: "room-123456",
-      shareUrl: `https://tabula.test/r/room-123456#key=${VALID_ROOM_KEY}`,
+      shareUrl: `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
     });
 
     useWorkspaceStore.getState().renameFile(liveFile!.id, "Shared Notes");
@@ -234,7 +234,7 @@ title: Product Requirements
 
     const liveFile = useWorkspaceStore
       .getState()
-      .startFileCollaborationSession(draft.id, "room-123", `https://tabula.test/r/room-123#key=${VALID_ROOM_KEY}`);
+      .startFileCollaborationSession(draft.id, "room-123", `https://tabula.test/#room=room-123,${VALID_ROOM_KEY}`);
     useWorkspaceStore.getState().setFileText(draft.id, "Remote text");
     useWorkspaceStore.getState().setFileCollaborationStatus(draft.id, "connected", { collaboratorCount: 2 });
     useWorkspaceStore.getState().setFileRoomMeta(draft.id, {
@@ -249,7 +249,7 @@ title: Product Requirements
 
     expect(liveFile).toMatchObject({
       roomId: "room-123",
-      shareUrl: `https://tabula.test/r/room-123#key=${VALID_ROOM_KEY}`,
+      shareUrl: `https://tabula.test/#room=room-123,${VALID_ROOM_KEY}`,
       connectionStatus: "connecting",
     });
     expect(useWorkspaceStore.getState().files.find((file) => file.id === draft.id)).toMatchObject({
