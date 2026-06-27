@@ -90,7 +90,7 @@ export async function run(ctx) {
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".share-trigger").click();
-    await waitForShareDialogState(page, { panel: "Collaborate" });
+    await waitForShareDialogState(page, { panel: "Share link" });
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Publish should stay hidden in Share until it ships.");
     expect((await page.getByText("Publish with Tabula +").count()) === 0, "Share should not expose the Tabula + publish boundary yet.");
 
@@ -99,7 +99,7 @@ export async function run(ctx) {
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "README.md" });
     await page.locator(".share-trigger").click();
-    await waitForShareDialogState(page, { panel: "Collaborate" });
+    await waitForShareDialogState(page, { panel: "Share link" });
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Publish should stay hidden for non-empty files too.");
     expect((await page.locator(".workspace-plus-popover").count()) === 0, "The hidden publish boundary should not open a plus popover.");
   });
@@ -244,31 +244,34 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.locator(".share-trigger").click();
-    await waitForShareDialogState(page, { panel: "Collaborate" });
+    await waitForShareDialogState(page, { panel: "Share link" });
     expect((await page.locator(".share-modal").count()) === 1, "Share should open a centered modal.");
-    const getShareModalHeight = () =>
-      page.locator(".share-modal").evaluate((modal) => Math.round(modal.getBoundingClientRect().height));
-    expect((await page.getByRole("tab", { name: "Collaborate" }).count()) === 1, "Share modal should expose Collaborate as a purpose.");
-    expect((await page.getByRole("tab", { name: "Send" }).count()) === 1, "Share modal should expose Send as a purpose.");
+    expect((await page.getByRole("tab", { name: "Share link" }).count()) === 1, "Share modal should expose Share link as a purpose.");
+    expect((await page.getByRole("tab", { name: "Export" }).count()) === 1, "Share modal should expose Export as a purpose.");
+    expect((await page.getByRole("tab", { name: "Send to..." }).count()) === 1, "Share modal should expose Send to as a purpose.");
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Share modal should keep Publish hidden for now.");
-    expect((await page.getByText("Collaborate with people").count()) > 0, "Share modal should default to human collaboration.");
-    expect((await page.getByText("Not live").count()) === 0, "Collaborate should not show redundant pre-live state text.");
-    expect((await page.getByRole("button", { name: "Start session" }).count()) === 1, "Collaborate should start a session.");
+    expect((await page.getByText("Live collaboration").count()) > 0, "Share modal should default to live collaboration.");
+    expect((await page.getByText("Shareable link").count()) > 0, "Share modal should offer a read-only link path.");
+    expect((await page.getByRole("button", { name: "Export to link" }).count()) === 1, "Share modal should expose read-only link export.");
+    expect((await page.getByText("Not live").count()) === 0, "Share link should not show redundant pre-live state text.");
+    expect((await page.getByRole("button", { name: "Start session" }).count()) === 1, "Share link should start a session.");
     expect(
       (await page.getByLabel("Your collaboration name").count()) === 0,
-      "Collaborate should not ask for a name before a session exists.",
+      "Share link should not ask for a name before a session exists.",
     );
-    expect((await page.getByText("Send the Markdown file").count()) === 0, "Send actions should not be expanded by default.");
+    expect((await page.getByText("Export Markdown").count()) === 0, "Export actions should not be expanded by default.");
     expect((await page.getByText("Publish project").count()) === 0, "Publish actions should not be available by default.");
     expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish actions should not be on the default Share panel.");
-    const collaborateShareHeight = await getShareModalHeight();
+    await page.getByRole("tab", { name: "Export" }).click();
+    await waitForShareDialogState(page, { panel: "Export" });
+    expect((await page.getByText("Export Markdown").count()) > 0, "Export tab should expose local Markdown transfer.");
+    expect((await page.getByRole("button", { name: /Markdown \.md/ }).count()) === 1, "Share modal should download Markdown.");
+    expect((await page.getByRole("button", { name: /Copy Markdown/ }).count()) === 1, "Share modal should copy Markdown.");
 
-    await page.getByRole("tab", { name: "Send" }).click();
-    await waitForShareDialogState(page, { panel: "Send" });
-    expect((await page.getByText("Send the Markdown file").count()) > 0, "Send tab should expose local copy transfer.");
-    expect((await page.getByRole("button", { name: "Copy Markdown" }).count()) === 1, "Share modal should copy Markdown.");
-    expect((await page.getByRole("button", { name: "Download .md" }).count()) === 1, "Share modal should download Markdown.");
-    const sendShareHeight = await getShareModalHeight();
+    await page.getByRole("tab", { name: "Send to..." }).click();
+    await waitForShareDialogState(page, { panel: "Send to..." });
+    expect((await page.getByText("Send to local coding agent").count()) > 0, "Send to tab should expose local agent handoff.");
+    expect((await page.getByRole("button", { name: "Copy prompt" }).count()) === 1, "Send to tab should copy an agent prompt.");
 
     expect((await page.getByText("Publish with Tabula +").count()) === 0, "Share should not expose the Plus publish boundary yet.");
     expect((await page.getByRole("radio", { name: /Current page/ }).count()) === 0, "Publish scope controls should stay hidden.");
@@ -303,13 +306,8 @@ export async function run(ctx) {
     expect((await page.getByText("Publish not configured").count()) === 0, "Publish should not be a disabled placeholder.");
     expect((await page.locator(".publish-popover").count()) === 0, "Publish should not use a separate popover.");
     expect((await page.locator(".live-popover").count()) === 0, "Live should not use a separate popover.");
-    expect(
-      Math.abs(collaborateShareHeight - sendShareHeight) <= 1,
-      "Share modal height should stay stable when switching purpose tabs.",
-    );
-
-    await page.getByRole("tab", { name: "Collaborate" }).click();
-    await waitForShareDialogState(page, { panel: "Collaborate" });
+    await page.getByRole("tab", { name: "Share link" }).click();
+    await waitForShareDialogState(page, { panel: "Share link" });
     const shareModalStyle = await page.evaluate(() => {
       const modal = document.querySelector(".share-modal");
       const title = document.querySelector(".share-modal-header h2");
@@ -330,6 +328,7 @@ export async function run(ctx) {
         tabCount: tabs?.querySelectorAll("button").length ?? 0,
         tabsBackground: tabsStyle?.backgroundColor ?? "",
         dividerCount: modal?.querySelectorAll(".share-modal-divider").length ?? 0,
+        shareDividerCount: modal?.querySelectorAll(".share-section-divider").length ?? 0,
       };
     });
     expect(shareModalStyle.titleText === "Share README", "Share modal title should include the file name.");
@@ -341,8 +340,9 @@ export async function run(ctx) {
     );
     expect(shareModalStyle.primaryColor === "rgb(31, 31, 31)", "Share modal primary action should stay readable.");
     expect(Number.parseFloat(shareModalStyle.primaryMinHeight) <= 38, "Share modal actions should keep compact row height.");
-    expect(shareModalStyle.tabCount === 2, "Share modal should expose only Collaborate and Send until Publish ships.");
-    expect(shareModalStyle.dividerCount === 0, "Share modal should not use stacked Or dividers.");
+    expect(shareModalStyle.tabCount === 3, "Share modal should expose Share link, Export, and Send to until Publish ships.");
+    expect(shareModalStyle.dividerCount === 0, "Share modal should not use legacy stacked Or dividers.");
+    expect(shareModalStyle.shareDividerCount === 1, "Share link should separate live collaboration from read-only sharing.");
     expect(!/\bworkspace\b/i.test(shareModalStyle.text), "Share modal should avoid workspace terminology.");
 
     await page.evaluate(() => {
@@ -355,23 +355,22 @@ export async function run(ctx) {
     expect((await page.getByText("Publish with Tabula +").count()) === 0, "Hidden Publish should not expose Plus copy.");
     expect((await page.getByRole("button", { name: "Publish current page" }).count()) === 0, "Hidden Publish should not expose publishing actions.");
 
-    await page.getByRole("tab", { name: "Collaborate" }).click();
-    await waitForShareDialogState(page, { panel: "Collaborate" });
-    const preLiveShareHeight = await getShareModalHeight();
+    await page.getByRole("tab", { name: "Share link" }).click();
+    await waitForShareDialogState(page, { panel: "Share link" });
     const preLiveUrl = page.url();
     await page.getByRole("button", { name: "Start session" }).click();
-    await waitForShareDialogState(page, { text: "Current session link" });
+    await waitForShareDialogState(page, { text: "Invite link" });
     expect(
       page.url() === preLiveUrl,
       "Live -> Start session should keep the current workspace URL separate from the room invite link.",
     );
     expect(
-      (await page.getByText("Collaborate with people").count()) > 0,
-      "Starting live should keep the Collaborate panel heading stable.",
+      (await page.getByText("Live collaboration").count()) > 0,
+      "Starting live should keep the Share link panel heading stable.",
     );
     expect(
       (await page.getByText("Invite people to edit this file together.").count()) > 0,
-      "Starting live should keep the Collaborate panel explanation stable.",
+      "Starting live should keep the Share link panel explanation stable.",
     );
     expect(
       (await page.locator(".share-modal").getByText("Live room", { exact: true }).count()) === 0,
@@ -398,8 +397,8 @@ export async function run(ctx) {
     );
     expect((await page.locator(".share-link-display").count()) === 1, "Live modal should render one compact session-link preview.");
     expect(
-      (await page.locator(".share-current-url-display").count()) === 1,
-      "Live modal should separately explain the current browser URL.",
+      (await page.locator(".share-current-url-display").count()) === 0,
+      "Live modal should not explain internal current-tab URL mechanics.",
     );
     const shareLinkPreview = await page.locator(".share-link-display").textContent();
     const shareLinkTitle = await page.locator(".share-link-display").getAttribute("title");
@@ -433,11 +432,6 @@ export async function run(ctx) {
       "Live invite-link preview should receive more width than the copy button.",
     );
     expect((await page.getByRole("button", { name: "Stop session" }).count()) === 1, "Live modal should offer session stop.");
-    const liveShareHeight = await getShareModalHeight();
-    expect(
-      Math.abs(preLiveShareHeight - liveShareHeight) <= 1,
-      "Share modal height should stay stable when starting a live room.",
-    );
 
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);

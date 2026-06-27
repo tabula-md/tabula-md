@@ -488,9 +488,9 @@ export async function run(ctx) {
 
     expect((await page.getByRole("button", { name: "Comments", exact: true }).count()) === 0, "Comments should be hidden before live collaboration starts.");
     await page.locator(".share-trigger").click();
-    await waitForShareDialogState(page, { panel: "Collaborate" });
+    await waitForShareDialogState(page, { panel: "Share link" });
     await page.getByRole("button", { name: "Start session" }).click();
-    await waitForShareDialogState(page, { text: "Current session link" });
+    await waitForShareDialogState(page, { text: "Invite link" });
     await page.keyboard.press("Escape");
     await waitForShareDialogState(page, { open: false });
     await page.waitForSelector(".tab-item.live.active", { timeout: 5_000 });

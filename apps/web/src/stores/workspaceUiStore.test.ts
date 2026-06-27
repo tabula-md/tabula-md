@@ -49,13 +49,13 @@ describe("workspace UI store", () => {
     useWorkspaceUiStore.getState().setCenterPopover("view");
     useWorkspaceUiStore.getState().setWorkspaceMenuOpen(true);
 
-    useWorkspaceUiStore.getState().openSharePanel("collaborate");
+    useWorkspaceUiStore.getState().openSharePanel("share-link");
 
     expect(useWorkspaceUiStore.getState()).toMatchObject({
       topPopover: "share",
       centerPopover: null,
       workspaceMenuOpen: false,
-      sharePanelTarget: "collaborate",
+      sharePanelTarget: "share-link",
     });
   });
 

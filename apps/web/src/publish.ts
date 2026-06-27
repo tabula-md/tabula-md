@@ -66,7 +66,7 @@ export const getEmptyPublishFilesMessage = (files: MarkdownFile[], scope: Publis
   return `Add content to ${firstTitle} and ${remainingEmptyFileCount} other empty project ${remainingFileLabel} before publishing.`;
 };
 
-type PublishPayload = {
+export type PublishPayload = {
   title?: string;
   ownerName?: string;
   activeFileId: string;
@@ -409,7 +409,7 @@ export const deletePublishedSnapshot = (snapshotId: string) => {
   }
 };
 
-const createPublishPayload = ({
+export const createPublishPayload = ({
   ownerName,
   files,
   activeFileId,

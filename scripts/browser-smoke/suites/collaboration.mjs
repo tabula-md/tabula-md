@@ -47,8 +47,7 @@ export async function run(ctx) {
       firstPageUrl.pathname === "/" && !firstPageUrl.hash,
       "Starting a live session should keep the current workspace URL separate from the invite link.",
     );
-    await waitForText(firstPage.locator(".share-modal"), "Current session link");
-    await waitForText(firstPage.locator(".share-modal"), "This browser URL");
+    await waitForText(firstPage.locator(".share-modal"), "Invite link");
     const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
     expect(
       Boolean(shareUrl && new URL(shareUrl).pathname === "/" && new URL(shareUrl).hash.startsWith("#room=")),
