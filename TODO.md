@@ -1,14 +1,16 @@
 # Tabula.md OSS + Hosted Launch TODO
 
-Last updated: 2026-06-26
+Last updated: 2026-06-29
 
 This TODO is intentionally narrow. It is the work needed for:
 
 1. `tabula-md` to be open-source ready.
 2. `tabula-room` to be open-source ready.
-3. `tabula.md` to be usable as the hosted product.
-4. A user to open `tabula.md`, write Markdown, start Share, copy a live room
+3. `tabula-json` to be open-source ready.
+4. `tabula.md` to be usable as the hosted product.
+5. A user to open `tabula.md`, write Markdown, start Share, copy a live room
    link, and collaborate in another browser.
+6. A user to export an encrypted snapshot link and open it in another browser.
 
 This is not the full product backlog. Do not add Tabula+, Publish, billing,
 accounts, team workspaces, templates, agent memory, or future infrastructure
@@ -18,12 +20,15 @@ rewrites here.
 
 - [ ] `tabula-md` is ready to be public as the OSS web app.
 - [ ] `tabula-room` is ready to be public as the OSS encrypted room server.
+- [ ] `tabula-json` is ready to be public as the OSS encrypted snapshot store.
 - [x] Private `tabula-cloud` exists for hosted operations.
 - [ ] Hosted `tabula.md` loads the production web app.
 - [ ] Hosted Share > Start session creates a live room link.
-- [ ] A second browser can join the copied `/r/:roomId#key=...` link.
+- [ ] A second browser can join the copied `/#room=<roomId>,<roomKey>` link.
 - [ ] Both browsers can edit the same Markdown document.
 - [ ] Reload restores encrypted room state.
+- [ ] Hosted Share > Export to link creates a `/#json=<jsonId>,<key>` link.
+- [ ] A second browser can open the snapshot link as a replace/import flow.
 - [ ] Logs and docs do not expose room keys, URL fragments, plaintext Markdown,
       provider secrets, or private hosted operations details.
 
@@ -35,11 +40,13 @@ this TODO to completion:
 - Create or confirm the GitHub org/owner that will hold:
   - `tabula-md` public repo.
   - `tabula-room` public repo.
+  - `tabula-json` public repo.
   - `tabula-cloud` private repo.
 - Create the empty private `tabula-cloud` repo.
 - Make writable local checkouts available for:
   - this `tabula-md` repo.
   - the `tabula-room` repo.
+  - the `tabula-json` repo.
   - the private `tabula-cloud` repo.
 - Confirm the intended GitHub remote and default branch for each repo.
 - Confirm the `tabula.md` DNS zone is controlled in the production DNS account.
@@ -55,10 +62,12 @@ this TODO to completion:
 
 - [x] Keep `tabula-md` as the OSS web app repo.
 - [x] Keep `tabula-room` as the OSS room server repo.
+- [x] Keep `tabula-json` as the OSS encrypted snapshot store repo.
 - [x] Keep `tabula-cloud` private for hosted operations.
 - [x] Ensure public docs describe the boundary:
   - [x] `tabula-md` is the local-first Markdown workspace.
   - [x] `tabula-room` is the encrypted collaboration server.
+  - [x] `tabula-json` is the encrypted snapshot store for `#json` links.
   - [x] `tabula.md` is the official hosted deployment.
   - [x] hosted provider choices live outside public OSS docs.
 - [x] Ensure no public repo claims Publish is required for v0.
@@ -166,6 +175,36 @@ this TODO to completion:
 - [x] Add rollback instructions.
 - [x] Add alert ownership and escalation notes.
 
+## 4A. `tabula-json` OSS Readiness
+
+- [ ] Review `tabula-json` README for current truth.
+- [ ] Keep the opaque ciphertext-only boundary prominent.
+- [ ] Explain what the server does:
+  - [ ] accept encrypted snapshot bytes.
+  - [ ] store them under a generated id.
+  - [ ] return encrypted snapshot bytes by id.
+  - [ ] expose `/health`.
+- [ ] Explain what the server does not do:
+  - [ ] no decryption keys.
+  - [ ] no plaintext Markdown.
+  - [ ] no live collaboration.
+  - [ ] no Publish.
+  - [ ] no accounts.
+  - [ ] no permissions.
+- [ ] Verify `.env.example` or README documents:
+  - [ ] `PORT`.
+  - [ ] `TABULA_JSON_ALLOWED_ORIGINS`.
+  - [ ] `TABULA_JSON_STORAGE_DRIVER`.
+  - [ ] R2 account, bucket, access key, secret key, and prefix variables.
+  - [ ] `TABULA_JSON_MAX_PAYLOAD_BYTES`.
+  - [ ] `TABULA_JSON_RATE_LIMIT_PER_MINUTE`.
+- [ ] Verify retention policy is explicit:
+  - [ ] snapshot links are durable unless the product contract changes.
+  - [ ] R2 lifecycle rules should not expire objects by default.
+- [ ] Run validation in `tabula-json`:
+  - [ ] `npm test`.
+  - [ ] `npm run build`.
+
 ## 5. Hosted Web Deployment
 
 - [ ] Create the hosted static web app project from `tabula-md`.
@@ -179,6 +218,7 @@ this TODO to completion:
 - [ ] Connect `tabula.md`.
 - [ ] Configure production environment:
   - [ ] `VITE_TABULA_ROOM_URL` points to the hosted room service.
+  - [ ] `VITE_TABULA_JSON_URL` points to the hosted snapshot store.
   - [ ] no production `VITE_TABULA_PUBLISH_URL` requirement for v0.
   - [ ] no localhost room fallback.
 - [ ] Verify hosted app loads.
@@ -232,6 +272,11 @@ this TODO to completion:
 - [ ] Type in both browsers.
 - [ ] Reload both browsers.
 - [ ] Confirm encrypted room state restores.
+- [ ] Export a snapshot link.
+- [ ] Open the snapshot link in a second browser or profile.
+- [ ] Confirm the app asks before replacing a non-empty workspace.
+- [ ] Confirm the opened snapshot content matches the exported file.
+- [ ] Confirm `json.tabula.md` requests do not include the `#json` key.
 - [ ] Test missing-key link.
 - [ ] Test wrong-key link.
 - [ ] Stop or disable room service and confirm unavailable state is clear.
