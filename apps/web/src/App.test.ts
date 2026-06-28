@@ -377,6 +377,50 @@ describe("project persistence", () => {
     });
   });
 
+  it("drops incomplete live room metadata across reloads", () => {
+    const stored = createStoredWorkspace({
+      files: [
+        createMarkdownFile(1, {
+          id: "broken-live",
+          title: "Broken.md",
+          text: "# Broken",
+          roomId: "room-live",
+          shareUrl: "https://tabula.test/",
+          connectionStatus: "offline",
+          collaboratorCount: 2,
+          snapshotCount: 3,
+          lastSnapshotAt: "2026-06-11T00:00:00.000Z",
+          lastRecoveryType: "invalid-message",
+          lastRecoveryMessage: "This room URL is missing its client-only room key.",
+          lastRecoveryAt: "2026-06-11T00:01:00.000Z",
+        }),
+      ],
+      activeFileId: "broken-live",
+      commentsByFileId: {},
+    });
+    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+    const brokenFile = restored?.files.find((file) => file.id === "broken-live");
+
+    expect(stored.files["broken-live"]).toMatchObject({
+      connectionStatus: "idle",
+      collaboratorCount: 0,
+      snapshotCount: 0,
+    });
+    expect(stored.files["broken-live"]?.roomId).toBeUndefined();
+    expect(stored.files["broken-live"]?.shareUrl).toBeUndefined();
+    expect(stored.files["broken-live"]?.lastRecoveryType).toBeUndefined();
+    expect(stored.files["broken-live"]?.lastRecoveryMessage).toBeUndefined();
+    expect(brokenFile).toMatchObject({
+      connectionStatus: "idle",
+      collaboratorCount: 0,
+      snapshotCount: 0,
+    });
+    expect(brokenFile?.roomId).toBeUndefined();
+    expect(brokenFile?.shareUrl).toBeUndefined();
+    expect(brokenFile?.lastRecoveryType).toBeUndefined();
+    expect(brokenFile?.lastRecoveryMessage).toBeUndefined();
+  });
+
   it("preserves comment source ranges across reloads", () => {
     const stored = createStoredWorkspace({
       files: [createMarkdownFile(1, { id: "local", title: "LOCAL.md", text: "Quoted source text." })],

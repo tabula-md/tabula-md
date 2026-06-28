@@ -1,6 +1,6 @@
 import type { ConnectionStatus } from "./collab";
 import { parseFrontmatter } from "./markdown";
-import type { MarkdownFile } from "./workspaceStorage";
+import { isUsableLiveRoomFile, type MarkdownFile } from "./workspaceStorage";
 
 export const getWorkspaceStatusLabel = (status: ConnectionStatus) =>
   ({
@@ -31,7 +31,11 @@ export const getWorkspaceFileStatus = ({
     return activeConnectionStatus;
   }
 
-  return file.connectionStatus ?? (file.roomId ? "offline" : "idle");
+  if (!isUsableLiveRoomFile(file)) {
+    return "idle";
+  }
+
+  return file.connectionStatus ?? "offline";
 };
 
 export const getWorkspaceFileSearchText = (file: MarkdownFile) => {

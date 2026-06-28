@@ -192,17 +192,32 @@ export const getLiveFileTitle = (roomId: string) => `Shared ${roomId.slice(0, 8)
 export const getFileIdForRoom = (files: MarkdownFile[], roomId: string) =>
   files.find((file) => file.roomId === roomId)?.id ?? getLiveFileId(roomId);
 
+const getUsableLiveRoom = (roomId?: string, shareUrl?: string) => {
+  if (!roomId || !shareUrl) {
+    return {};
+  }
+
+  const parsedRoom = parseRoomShareUrl(shareUrl);
+  if (!parsedRoom || parsedRoom.roomId !== roomId) {
+    return {};
+  }
+
+  return {
+    roomId: parsedRoom.roomId,
+    shareUrl: parsedRoom.shareUrl,
+  };
+};
+
+export const isUsableLiveRoomFile = (file?: Pick<MarkdownFile, "roomId" | "shareUrl">) =>
+  Boolean(getUsableLiveRoom(file?.roomId, file?.shareUrl).roomId);
+
 const getFileUrlPath = (file?: Pick<MarkdownFile, "roomId" | "shareUrl">) => {
-  if (!file?.roomId || !file.shareUrl) {
+  const liveRoom = getUsableLiveRoom(file?.roomId, file?.shareUrl);
+  if (!liveRoom.roomId || !liveRoom.shareUrl) {
     return "/";
   }
 
-  const parsedRoom = parseRoomShareUrl(file.shareUrl);
-  if (!parsedRoom || parsedRoom.roomId !== file.roomId) {
-    return "/";
-  }
-
-  const fileUrl = new URL(parsedRoom.shareUrl);
+  const fileUrl = new URL(liveRoom.shareUrl);
   return `${fileUrl.pathname}${fileUrl.hash}`;
 };
 
@@ -373,10 +388,10 @@ const normalizeMarkdownFile = (value: unknown, index: number): MarkdownFile | nu
   }
 
   const text = getString(value.text) ?? "";
-  const roomId = getString(value.roomId);
-  const shareUrl = getString(value.shareUrl);
-  const connectionStatus = normalizeConnectionStatus(getConnectionStatus(value.connectionStatus), roomId);
+  const liveRoom = getUsableLiveRoom(getString(value.roomId), getString(value.shareUrl));
+  const connectionStatus = normalizeConnectionStatus(getConnectionStatus(value.connectionStatus), liveRoom.roomId);
   const splitRatio = getFiniteNumber(value.splitRatio);
+  const isLiveRoom = Boolean(liveRoom.roomId);
 
   return {
     id: getString(value.id) || randomId(),
@@ -389,14 +404,14 @@ const normalizeMarkdownFile = (value: unknown, index: number): MarkdownFile | nu
     lineNumbers: typeof value.lineNumbers === "boolean" ? value.lineNumbers : true,
     bookmarks: normalizeFileBookmarks(value.bookmarks, text.length),
     connectionStatus,
-    roomId,
-    shareUrl,
-    collaboratorCount: getFiniteNumber(value.collaboratorCount) ?? 0,
-    snapshotCount: getFiniteNumber(value.snapshotCount) ?? 0,
-    lastSnapshotAt: getString(value.lastSnapshotAt),
-    lastRecoveryType: getRecoveryEventType(value.lastRecoveryType),
-    lastRecoveryMessage: getString(value.lastRecoveryMessage),
-    lastRecoveryAt: getString(value.lastRecoveryAt),
+    roomId: liveRoom.roomId,
+    shareUrl: liveRoom.shareUrl,
+    collaboratorCount: isLiveRoom ? (getFiniteNumber(value.collaboratorCount) ?? 0) : 0,
+    snapshotCount: isLiveRoom ? (getFiniteNumber(value.snapshotCount) ?? 0) : 0,
+    lastSnapshotAt: isLiveRoom ? getString(value.lastSnapshotAt) : undefined,
+    lastRecoveryType: isLiveRoom ? getRecoveryEventType(value.lastRecoveryType) : undefined,
+    lastRecoveryMessage: isLiveRoom ? getString(value.lastRecoveryMessage) : undefined,
+    lastRecoveryAt: isLiveRoom ? getString(value.lastRecoveryAt) : undefined,
   };
 };
 
@@ -604,26 +619,31 @@ export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {
     : { source: "starter", workspace: finalizeWorkspaceState([]) };
 };
 
-export const serializeFile = (file: MarkdownFile): StoredMarkdownFile => ({
-  id: file.id,
-  title: file.title,
-  text: file.text,
-  viewMode: file.viewMode,
-  readingWidth: file.readingWidth,
-  splitRatio: typeof file.splitRatio === "number" ? clampSplitEditorRatio(file.splitRatio) : undefined,
-  lineWrapping: file.lineWrapping,
-  lineNumbers: file.lineNumbers,
-  bookmarks: file.bookmarks ?? [],
-  connectionStatus: normalizeConnectionStatus(file.connectionStatus, file.roomId),
-  roomId: file.roomId,
-  shareUrl: file.shareUrl,
-  collaboratorCount: file.collaboratorCount ?? 0,
-  snapshotCount: file.snapshotCount ?? 0,
-  lastSnapshotAt: file.lastSnapshotAt,
-  lastRecoveryType: file.lastRecoveryType,
-  lastRecoveryMessage: file.lastRecoveryMessage,
-  lastRecoveryAt: file.lastRecoveryAt,
-});
+export const serializeFile = (file: MarkdownFile): StoredMarkdownFile => {
+  const liveRoom = getUsableLiveRoom(file.roomId, file.shareUrl);
+  const isLiveRoom = Boolean(liveRoom.roomId);
+
+  return {
+    id: file.id,
+    title: file.title,
+    text: file.text,
+    viewMode: file.viewMode,
+    readingWidth: file.readingWidth,
+    splitRatio: typeof file.splitRatio === "number" ? clampSplitEditorRatio(file.splitRatio) : undefined,
+    lineWrapping: file.lineWrapping,
+    lineNumbers: file.lineNumbers,
+    bookmarks: file.bookmarks ?? [],
+    connectionStatus: normalizeConnectionStatus(file.connectionStatus, liveRoom.roomId),
+    roomId: liveRoom.roomId,
+    shareUrl: liveRoom.shareUrl,
+    collaboratorCount: isLiveRoom ? (file.collaboratorCount ?? 0) : 0,
+    snapshotCount: isLiveRoom ? (file.snapshotCount ?? 0) : 0,
+    lastSnapshotAt: isLiveRoom ? file.lastSnapshotAt : undefined,
+    lastRecoveryType: isLiveRoom ? file.lastRecoveryType : undefined,
+    lastRecoveryMessage: isLiveRoom ? file.lastRecoveryMessage : undefined,
+    lastRecoveryAt: isLiveRoom ? file.lastRecoveryAt : undefined,
+  };
+};
 
 type CreateStoredWorkspaceInput = Omit<WorkspaceState, "openFileIds"> & {
   openFileIds?: string[];
