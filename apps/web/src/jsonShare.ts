@@ -13,8 +13,8 @@ export type JsonShareRoute = {
 };
 
 type JsonShareCreateResponse = {
-  jsonId: string;
-  createdAt: string;
+  id: string;
+  data: string;
 };
 
 type CreateJsonShareLinkOptions = {
@@ -103,7 +103,7 @@ export const createJsonShareLink = async ({
   const key = generateJsonShareKey();
   const encrypted = await encryptJsonSharePayload(payload, key);
   const jsonShareServiceUrl = trimTrailingSlash(serviceUrl);
-  const response = await fetchImpl(`${jsonShareServiceUrl}/v1/json`, {
+  const response = await fetchImpl(`${jsonShareServiceUrl}/api/v1/post/`, {
     method: "POST",
     headers: {
       "content-type": "application/octet-stream",
@@ -115,11 +115,11 @@ export const createJsonShareLink = async ({
     throw new Error(`Share link failed: ${await readJsonShareError(response)}`);
   }
 
-  const created = validateJsonShareCreateResponse((await response.json()) as unknown);
-  const url = createJsonShareUrl(origin, created.jsonId, key);
+  const created = validateJsonShareCreateResponse((await response.json()) as unknown, jsonShareServiceUrl);
+  const url = createJsonShareUrl(origin, created.id, key);
   return {
     snapshot: createShareSnapshot({
-      id: created.jsonId,
+      id: created.id,
       url,
       payload,
     }),
@@ -134,7 +134,7 @@ export const readJsonShareSnapshot = async ({
   fetchImpl = fetch,
 }: ReadJsonShareSnapshotOptions): Promise<ShareSnapshot | null> => {
   const jsonShareServiceUrl = trimTrailingSlash(serviceUrl);
-  const response = await fetchImpl(`${jsonShareServiceUrl}/v1/json/${encodeURIComponent(route.snapshotId)}`);
+  const response = await fetchImpl(`${jsonShareServiceUrl}/api/v1/${encodeURIComponent(route.snapshotId)}`);
 
   if (response.status === 404) {
     return null;
@@ -233,13 +233,22 @@ const decodeBase64Url = (value: string) => {
   return bytes;
 };
 
-const validateJsonShareCreateResponse = (value: unknown): JsonShareCreateResponse => {
+const validateJsonShareCreateResponse = (value: unknown, serviceUrl: string): JsonShareCreateResponse => {
   if (!isRecord(value)) {
     throw new Error("Share link failed: invalid service response");
   }
+  const id = requireNonEmptyString(value.id, "id");
+  if (!JSON_SHARE_PATTERN.test(id)) {
+    throw new Error("Share link failed: invalid service response id");
+  }
+  const data = requireNonEmptyString(value.data, "data");
+  const expectedData = `${trimTrailingSlash(serviceUrl)}/api/v1/${id}`;
+  if (data !== expectedData) {
+    throw new Error("Share link failed: invalid service response data");
+  }
   return {
-    jsonId: requireNonEmptyString(value.jsonId, "jsonId"),
-    createdAt: requireNonEmptyString(value.createdAt, "createdAt"),
+    id,
+    data,
   };
 };
 
