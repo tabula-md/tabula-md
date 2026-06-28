@@ -188,11 +188,15 @@ export async function run(ctx) {
       try {
         await wrongKeyPage.goto(`${baseUrl}/#room=${roomId},${wrongRoomKey}`);
         await wrongKeyPage.waitForSelector(".tab-item.live.active");
-        await waitForText(wrongKeyPage.locator(".live-room-notice"), "Room key does not match");
+        await waitForText(wrongKeyPage.locator(".file-status-bar"), "Room offline");
+        expect(
+          (await wrongKeyPage.locator(".live-room-notice").count()) === 0,
+          "A room opened with the wrong key should not show document-level recovery UI.",
+        );
         await wrongKeyPage.locator(".share-trigger").click();
-        await waitForText(
-          wrongKeyPage.locator(".share-modal"),
-          "The encrypted room snapshot could not be decrypted.",
+        expect(
+          (await wrongKeyPage.locator(".share-modal .live-room-status").count()) === 0,
+          "A room opened with the wrong key should not show technical key state in Share.",
         );
         const wrongKeyText = await wrongKeyPage.locator(".cm-content").textContent();
         expect(

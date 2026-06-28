@@ -24,7 +24,6 @@ import {
   normalizeFileBookmarks,
   recordFileTextHistory,
 } from "./hooks/useWorkspaceActiveFileEditor";
-import { getLiveRoomNotice } from "./hooks/useWorkspaceLiveRoomController";
 import { getWorkspaceShortcutAction } from "./hooks/useWorkspaceKeyboardShortcuts";
 import {
   removeRecordKey,
@@ -44,7 +43,9 @@ import {
   getWorkspaceFileStatus,
   getWorkspaceStatusLabel,
 } from "./workspaceViewModel";
-import type { FileBookmark, MarkdownFile } from "./workspaceStorage";
+import { isUsableLiveRoomFile, type FileBookmark, type MarkdownFile } from "./workspaceStorage";
+
+const VALID_ROOM_KEY = "A".repeat(43);
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -315,14 +316,23 @@ describe("workspace view model", () => {
     ).toBe("connecting");
     expect(
       getWorkspaceFileStatus({
-        file: file({ id: "room-file", roomId: "room-1" }),
+        file: file({
+          id: "room-file",
+          roomId: "room-1",
+          shareUrl: `https://tabula.md/#room=room-1,${VALID_ROOM_KEY}`,
+        }),
         activeFileId: "file",
         activeConnectionStatus: "connected",
       }),
     ).toBe("offline");
     expect(
       getWorkspaceFileStatus({
-        file: file({ id: "remote-file", connectionStatus: "connected" }),
+        file: file({
+          id: "remote-file",
+          roomId: "room-2",
+          shareUrl: `https://tabula.md/#room=room-2,${VALID_ROOM_KEY}`,
+          connectionStatus: "connected",
+        }),
         activeFileId: "file",
         activeConnectionStatus: "idle",
       }),
@@ -374,8 +384,8 @@ describe("workspace active file editor controller", () => {
   });
 });
 
-describe("workspace live room controller", () => {
-  const liveFile = (lastRecoveryMessage: string): MarkdownFile => ({
+describe("workspace live room contract", () => {
+  const liveFile = (overrides: Partial<MarkdownFile>): MarkdownFile => ({
     id: "live",
     title: "Live.md",
     text: "Live",
@@ -383,25 +393,55 @@ describe("workspace live room controller", () => {
     readingWidth: "wide",
     lineWrapping: true,
     lineNumbers: true,
-    roomId: "room",
-    lastRecoveryType: "invalid-message",
-    lastRecoveryMessage,
+    ...overrides,
   });
 
-  it("maps room key failures to user-facing notices", () => {
-    expect(getLiveRoomNotice(liveFile("missing its client-only room key"), "offline")?.title).toBe(
-      "Room key missing",
-    );
-    expect(getLiveRoomNotice(liveFile("invalid room key"), "offline")?.title).toBe("Room key invalid");
-    expect(getLiveRoomNotice(liveFile("could not be decrypted"), "offline")?.title).toBe(
-      "Room key does not match",
-    );
+  it("only treats complete canonical room links as usable live rooms", () => {
+    expect(
+      isUsableLiveRoomFile(
+        liveFile({
+          roomId: "room",
+          shareUrl: `https://tabula.md/#room=room,${VALID_ROOM_KEY}`,
+        }),
+      ),
+    ).toBe(true);
+
+    expect(isUsableLiveRoomFile(liveFile({ roomId: "room" }))).toBe(false);
+    expect(
+      isUsableLiveRoomFile(
+        liveFile({
+          roomId: "room",
+          shareUrl: `https://tabula.md/#room=other,${VALID_ROOM_KEY}`,
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isUsableLiveRoomFile(
+        liveFile({
+          roomId: "room",
+          shareUrl: "https://tabula.md/#room=room,not-a-valid-key",
+        }),
+      ),
+    ).toBe(false);
   });
 
-  it("does not show recovery notices for transient connection failures", () => {
-    expect(getLiveRoomNotice(liveFile("server disconnected"), "offline")).toBeNull();
-    expect(getLiveRoomNotice(liveFile("not reachable"), "offline")).toBeNull();
-    expect(getLiveRoomNotice(liveFile("invalid room key"), "connected")).toBeNull();
+  it("reports broken live room metadata as local workspace status", () => {
+    const brokenFile = liveFile({
+      roomId: "room",
+      connectionStatus: "offline",
+    });
+
+    expect(
+      getWorkspaceFileStatus({
+        file: brokenFile,
+        activeFileId: "other",
+        activeConnectionStatus: "connected",
+      }),
+    ).toBe("idle");
+
+    expect(getActiveWorkspaceStatus({ isLive: isUsableLiveRoomFile(brokenFile), connectionStatus: "offline" })).toBe(
+      "idle",
+    );
   });
 });
 

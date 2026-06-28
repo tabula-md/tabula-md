@@ -79,14 +79,6 @@
   grid-template-rows: 48px 44px minmax(0, 1fr) 42px;
 }
 
-.file-shell.with-search-row.with-live-room-notice {
-  grid-template-rows: 48px 44px auto minmax(0, 1fr) 42px;
-}
-
-.file-shell.with-search-row.with-live-room-notice .live-room-notice {
-  grid-row: 3;
-}
-
 .file-shell.view-edit .file-search-row {
   width: var(--editor-frame-width);
 }
@@ -97,14 +89,6 @@
 
 .file-shell.with-search-row .file-status-bar {
   grid-row: 4;
-}
-
-.file-shell.with-search-row.with-live-room-notice .workspace {
-  grid-row: 4;
-}
-
-.file-shell.with-search-row.with-live-room-notice .file-status-bar {
-  grid-row: 5;
 }
 
 .markdown-editor .cm-search-match {

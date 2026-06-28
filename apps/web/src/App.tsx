@@ -10,7 +10,6 @@ import { AppToast } from "./components/AppToast";
 import { EmptyFileState } from "./components/EmptyFileState";
 import { FileTabs } from "./components/FileTabs";
 import { FileSearchBar, FileToolbar } from "./components/FileToolbar";
-import { LiveRoomNotice } from "./components/LiveRoomNotice";
 import {
   MarkdownEditor,
   type MarkdownEditorHandle,
@@ -72,6 +71,7 @@ import {
   createMarkdownFile,
   DEFAULT_SPLIT_EDITOR_RATIO,
   getRoomFromLocation,
+  isUsableLiveRoomFile,
   readInitialWorkspaceSnapshot,
   randomId,
   README_FILE_ID,
@@ -374,7 +374,7 @@ function WorkspaceApp() {
     setActiveFileBookmarks,
     setActiveFileText,
   });
-  const isLive = Boolean(activeFile?.roomId);
+  const isLive = isUsableLiveRoomFile(activeFile);
   const activeStatus = getActiveWorkspaceStatus({ isLive, connectionStatus });
   useEffect(() => {
     if (!isLive && rightPanelView === "comments") {
@@ -382,14 +382,8 @@ function WorkspaceApp() {
     }
   }, [isLive, rightPanelView, setRightPanelView]);
 
-  const {
-    activeLiveRoomNotice,
-    copyShareUrl,
-    startSession,
-    stopSession,
-  } = useWorkspaceLiveRoomController({
+  const { copyShareUrl, startSession, stopSession } = useWorkspaceLiveRoomController({
     activeFile,
-    activeStatus,
     resetCollaborationState,
     setCenterPopover,
     setCopiedFileId,
@@ -670,7 +664,6 @@ function WorkspaceApp() {
       files={files}
       activeFileTitle={activeFileTitle}
       currentUserName={identity.name}
-      activeStatus={activeStatus}
       canStartSession={canStartSession}
       isLive={isLive}
       shareOpen={shareOpen}
@@ -827,8 +820,6 @@ function WorkspaceApp() {
             } ${
               searchOpen ? "with-search-row" : ""
             } ${
-              activeLiveRoomNotice ? "with-live-room-notice" : ""
-            } ${
               shareOpen ? "share-modal-open" : ""
             }`}
           >
@@ -891,20 +882,6 @@ function WorkspaceApp() {
                     onSearchQueryChange={setSearchQuery}
                     onGoToSearchMatch={goToSearchMatch}
                     onCloseSearch={() => setSearchOpen(false)}
-                  />
-                )}
-
-                {activeLiveRoomNotice && (
-                  <LiveRoomNotice
-                    title={activeLiveRoomNotice.title}
-                    message={activeLiveRoomNotice.message}
-                    canKeepLocal={activeLiveRoomNotice.canKeepLocal}
-                    onCopyMarkdown={copyCurrentMarkdown}
-                    onKeepLocal={stopSession}
-                    onOpenShare={() => {
-                      setTopPopover("share");
-                      setCenterPopover(null);
-                    }}
                   />
                 )}
 

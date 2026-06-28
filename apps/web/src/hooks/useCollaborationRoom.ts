@@ -12,7 +12,7 @@ import {
   parseRoomShareUrl,
 } from "../collab";
 import type { TextChange, TextPatch } from "../textPatches";
-import type { MarkdownFile } from "../workspaceStorage";
+import { isUsableLiveRoomFile, type MarkdownFile } from "../workspaceStorage";
 
 type UseCollaborationRoomOptions = {
   activeFile?: MarkdownFile;
@@ -47,12 +47,12 @@ export function useCollaborationRoom({
   onRemoteTextChange,
 }: UseCollaborationRoomOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(() =>
-    activeFile?.roomId ? "connecting" : "idle",
+    isUsableLiveRoomFile(activeFile) ? "connecting" : "idle",
   );
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const collabRef = useRef<CollabConnection | null>(null);
   const pendingInitialTextRef = useRef<string | undefined>(undefined);
-  const isLive = Boolean(activeFile?.roomId);
+  const isLive = isUsableLiveRoomFile(activeFile);
   const roomAvailability = getTabulaRoomAvailability();
 
   useEffect(() => {
@@ -60,7 +60,10 @@ export function useCollaborationRoom({
     collabRef.current = null;
     setCollaborators([]);
 
-    if (!activeFile?.roomId) {
+    const roomFromShareUrl = activeFile?.shareUrl ? parseRoomShareUrl(activeFile.shareUrl) : null;
+    const hasUsableLiveRoom = Boolean(activeFile?.roomId && roomFromShareUrl?.roomId === activeFile.roomId);
+
+    if (!activeFile?.id || !activeFile.roomId || !hasUsableLiveRoom || !roomFromShareUrl) {
       setConnectionStatus("idle");
       if (activeFile?.id) {
         setFileCollaborationStatus(activeFile.id, "idle", { collaboratorCount: 0 });
@@ -71,22 +74,9 @@ export function useCollaborationRoom({
     const pendingInitialText = pendingInitialTextRef.current;
     const connectedFileId = activeFile.id;
     const connectedRoomId = activeFile.roomId;
-    const roomFromShareUrl = activeFile.shareUrl ? parseRoomShareUrl(activeFile.shareUrl) : null;
     pendingInitialTextRef.current = undefined;
     setConnectionStatus("connecting");
     setFileCollaborationStatus(connectedFileId, "connecting");
-
-    if (!roomFromShareUrl || roomFromShareUrl.roomId !== connectedRoomId) {
-      const message = "This live file is missing its client-only room key.";
-      setConnectionStatus("offline");
-      setFileCollaborationStatus(connectedFileId, "offline");
-      setFileRecoveryEvent(connectedFileId, {
-        type: "invalid-message",
-        message,
-        createdAt: new Date().toISOString(),
-      });
-      return;
-    }
 
     collabRef.current = createCollabConnection({
       roomId: connectedRoomId,

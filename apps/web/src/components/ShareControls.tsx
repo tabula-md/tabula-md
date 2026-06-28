@@ -18,7 +18,6 @@ import {
   Users,
   X,
 } from "lucide-react";
-import type { ConnectionStatus } from "../collab";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import { PRODUCT_PLUS_NAME } from "../product";
 import type { PublishController } from "../hooks/usePublishController";
@@ -31,7 +30,6 @@ type ShareControlsProps = {
   files: MarkdownFile[];
   activeFileTitle: string;
   currentUserName: string;
-  activeStatus: ConnectionStatus;
   canStartSession: boolean;
   isLive: boolean;
   shareOpen: boolean;
@@ -56,22 +54,6 @@ export type { SharePanel } from "../uiTypes";
 
 type VisibleSharePanel = "share-link" | "export" | "send-to";
 type AgentHandoffScope = "file" | "project";
-
-const formatRoomTime = (value?: string) => {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-};
 
 const normalizeSharePanel = (panel?: SharePanel): VisibleSharePanel => {
   if (panel === "export" || panel === "send-to" || panel === "share-link") {
@@ -114,7 +96,6 @@ export function ShareControls({
   files,
   activeFileTitle,
   currentUserName,
-  activeStatus,
   canStartSession,
   isLive,
   shareOpen,
@@ -143,41 +124,6 @@ export function ShareControls({
   const shareUrlView = getRoomShareLinkView(activeFile?.shareUrl, activeFile?.roomId);
   const activeFileDisplayTitle = activeFileTitle.replace(/\.(?:md|markdown)$/i, "");
   const shareModalTitle = `Share ${activeFileDisplayTitle}`;
-  const lastSnapshotTime = formatRoomTime(activeFile?.lastSnapshotAt);
-  const roomIssueMessage =
-    activeFile?.lastRecoveryType === "invalid-message" ? (activeFile.lastRecoveryMessage ?? "") : "";
-  const roomInfoMessage =
-    activeFile?.lastRecoveryType === "reconnected" || activeFile?.lastRecoveryType === "snapshot-recovered"
-      ? (activeFile.lastRecoveryMessage ?? "")
-      : "";
-  const isRecoverableOffline =
-    roomIssueMessage.toLowerCase().includes("server disconnected") ||
-    roomIssueMessage.toLowerCase().includes("not reachable");
-  const hasRoomIssue = activeStatus === "offline" && Boolean(roomIssueMessage) && !isRecoverableOffline;
-  const roomStatusLabel =
-    activeStatus === "connected"
-      ? "Live"
-      : activeStatus === "connecting"
-        ? "Connecting"
-        : activeStatus === "offline"
-          ? hasRoomIssue
-            ? "Attention needed"
-            : "Offline"
-          : "Local";
-  const roomStatusHint = roomIssueMessage
-    ? hasRoomIssue
-      ? roomIssueMessage
-      : "Keep writing. Changes will sync when the room reconnects."
-    : activeStatus === "connected"
-      ? roomInfoMessage ||
-        (activeFile?.snapshotCount
-          ? `Encrypted snapshot saved${lastSnapshotTime ? ` ${lastSnapshotTime}` : ""}.`
-          : "Encrypted snapshot pending.")
-      : activeStatus === "connecting"
-        ? "Joining the room and loading encrypted state."
-        : activeStatus === "offline"
-          ? "Offline edits stay local until the room reconnects."
-          : "";
   const publishView = publish.view;
 
   useEffect(() => {
@@ -419,16 +365,6 @@ export function ShareControls({
 
                     {isLive && (
                       <div className="live-room-box">
-                        {hasRoomIssue && (
-                          <div className={`live-room-status ${activeStatus} attention`}>
-                            <span className="live-room-status-dot" aria-hidden="true" />
-                            <div>
-                              <span>{roomStatusLabel}</span>
-                              {roomStatusHint && <p>{roomStatusHint}</p>}
-                            </div>
-                          </div>
-                        )}
-
                         <div className="share-modal-field">
                           <label>Your name</label>
                           <input
