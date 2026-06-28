@@ -251,8 +251,8 @@ export async function run(ctx) {
     expect((await page.getByRole("tab", { name: "Send to..." }).count()) === 1, "Share modal should expose Send to as a purpose.");
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Share modal should keep Publish hidden for now.");
     expect((await page.getByText("Live collaboration").count()) > 0, "Share modal should default to live collaboration.");
-    expect((await page.getByText("Shareable link").count()) > 0, "Share modal should offer a read-only link path.");
-    expect((await page.getByRole("button", { name: "Export to link" }).count()) === 1, "Share modal should expose read-only link export.");
+    expect((await page.getByText("Shareable link").count()) > 0, "Share modal should offer a snapshot link path.");
+    expect((await page.getByRole("button", { name: "Export to link" }).count()) === 1, "Share modal should expose snapshot link export.");
     expect((await page.getByText("Not live").count()) === 0, "Share link should not show redundant pre-live state text.");
     expect((await page.getByRole("button", { name: "Start session" }).count()) === 1, "Share link should start a session.");
     expect(
@@ -342,7 +342,7 @@ export async function run(ctx) {
     expect(Number.parseFloat(shareModalStyle.primaryMinHeight) <= 38, "Share modal actions should keep compact row height.");
     expect(shareModalStyle.tabCount === 3, "Share modal should expose Share link, Export, and Send to until Publish ships.");
     expect(shareModalStyle.dividerCount === 0, "Share modal should not use legacy stacked Or dividers.");
-    expect(shareModalStyle.shareDividerCount === 1, "Share link should separate live collaboration from read-only sharing.");
+    expect(shareModalStyle.shareDividerCount === 1, "Share link should separate live collaboration from snapshot sharing.");
     expect(!/\bworkspace\b/i.test(shareModalStyle.text), "Share modal should avoid workspace terminology.");
 
     await page.evaluate(() => {

@@ -53,7 +53,7 @@ Then, from this repository:
 VITE_TABULA_ROOM_URL=http://localhost:3002 npm run dev
 ```
 
-To run local read-only `#json` share links, run the separate JSON service and
+To run local `#json` snapshot share links, run the separate JSON service and
 point the app at it:
 
 ```sh
@@ -70,13 +70,13 @@ VITE_TABULA_JSON_URL=http://localhost:3004 npm run dev
 ```
 
 Production and self-hosted deployments are static Vite builds. Serve `dist`
-from a static host. Collaboration and read-only share links use root URL
+from a static host. Collaboration and snapshot share links use root URL
 fragments such as `/#room=<roomId>,<roomKey>` and `/#json=<jsonId>,<key>`.
 Production and self-hosted builds require `VITE_TABULA_ROOM_URL` for **Share >
 Collaborate > Start session**. Without it, live collaboration is unavailable
 instead of falling back to localhost. See
 [`docs/live-collaboration.md`](docs/live-collaboration.md).
-Read-only `#json` share links require `VITE_TABULA_JSON_URL`, usually
+Snapshot `#json` share links require `VITE_TABULA_JSON_URL`, usually
 `https://json.tabula.md`.
 
 ## Contributing
