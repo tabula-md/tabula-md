@@ -3,11 +3,6 @@ import { ChevronDown, ChevronRight, File as FileIcon, Folder as FolderIcon } fro
 import { getPreviewBody, parseFrontmatter } from "../markdown";
 import { PRODUCT_NAME } from "../product";
 import {
-  getConfiguredJsonShareServiceUrl,
-  readJsonShareSnapshot,
-  type JsonShareRoute,
-} from "../jsonShare";
-import {
   getConfiguredPublishServiceUrl,
   readPublishedSnapshot,
   readServerPublishedSnapshot,
@@ -219,56 +214,4 @@ export function PublishedSnapshotRoute({ route }: { route: PublishRoute }) {
   }, [route.snapshotId]);
 
   return <PublishedSnapshotView route={route} snapshot={snapshot} status={status} errorMessage={errorMessage} />;
-}
-
-export function JsonSnapshotRoute({ route }: { route: JsonShareRoute }) {
-  const [snapshot, setSnapshot] = useState<PublishedSnapshot | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    const jsonShareServiceUrl = getConfiguredJsonShareServiceUrl();
-    setSnapshot(null);
-    setErrorMessage(undefined);
-
-    if (!jsonShareServiceUrl) {
-      setStatus("missing");
-      return;
-    }
-
-    let cancelled = false;
-    setStatus("loading");
-    void readJsonShareSnapshot({
-      serviceUrl: jsonShareServiceUrl,
-      origin: window.location.origin,
-      route,
-    })
-      .then((jsonSnapshot) => {
-        if (cancelled) {
-          return;
-        }
-        setSnapshot(jsonSnapshot);
-        setStatus(jsonSnapshot ? "ready" : "missing");
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        setStatus("error");
-        setErrorMessage(error instanceof Error ? error.message : "Share link failed.");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [route.key, route.snapshotId]);
-
-  return (
-    <PublishedSnapshotView
-      route={{ snapshotId: route.snapshotId, output: "page" }}
-      snapshot={snapshot}
-      status={status}
-      errorMessage={errorMessage}
-    />
-  );
 }

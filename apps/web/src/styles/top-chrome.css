@@ -342,6 +342,40 @@
   scrollbar-gutter: stable;
 }
 
+.json-import-modal {
+  width: min(540px, calc(100vw - 48px));
+}
+
+.json-import-state,
+.json-import-warning {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.json-import-state p,
+.json-import-warning p {
+  margin: 0;
+}
+
+.json-import-state svg {
+  animation: tabula-spin 0.9s linear infinite;
+}
+
+@keyframes tabula-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .share-modal-option {
   display: grid;
   gap: 9px;
