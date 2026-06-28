@@ -6,7 +6,7 @@ import {
   readJsonShareSnapshot,
 } from "./jsonShare";
 import { createWorkspaceFromJsonShareSnapshot, hasMeaningfulWorkspaceContent } from "./jsonShareImport";
-import { SHARE_SNAPSHOT_SCHEMA, SHARE_SNAPSHOT_VERSION, type ShareSnapshot } from "./shareSnapshotPayload";
+import { SHARE_SNAPSHOT_SCHEMA_VERSION, type ShareSnapshot } from "./shareSnapshotPayload";
 import { STARTER_README_MARKDOWN, type MarkdownFile } from "./workspaceStorage";
 
 const file = (): MarkdownFile => ({
@@ -75,7 +75,7 @@ describe("json share links", () => {
     expect(readRequestUrl).not.toContain(route!.key);
     expect(snapshot?.id).toBe(jsonId);
     expect(snapshot?.url).toBe(created.url);
-    expect(snapshot?.schema).toBe(SHARE_SNAPSHOT_SCHEMA);
+    expect(snapshot?.schemaVersion).toBe(SHARE_SNAPSHOT_SCHEMA_VERSION);
     expect(snapshot?.files[0]).toMatchObject({
       id: "readme",
       title: "README.md",
@@ -98,8 +98,7 @@ describe("json share links", () => {
     const workspace = createWorkspaceFromJsonShareSnapshot({
       id: "jsonShare123",
       url: "https://tabula.md/#json=jsonShare123,key",
-      schema: SHARE_SNAPSHOT_SCHEMA,
-      version: SHARE_SNAPSHOT_VERSION,
+      schemaVersion: SHARE_SNAPSHOT_SCHEMA_VERSION,
       createdAt: "2026-06-28T00:00:00.000Z",
       activeFileId: "brief",
       files: [{ id: "brief", title: "BRIEF.md", text: "# Brief" }],

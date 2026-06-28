@@ -1,7 +1,6 @@
 import type { FileComment, FileCommentReply, MarkdownFile } from "./workspaceStorage";
 
-export const SHARE_SNAPSHOT_SCHEMA = "tabula.share-snapshot";
-export const SHARE_SNAPSHOT_VERSION = 1;
+export const SHARE_SNAPSHOT_SCHEMA_VERSION = 1;
 
 export type ShareSnapshotFile = {
   id: string;
@@ -10,8 +9,7 @@ export type ShareSnapshotFile = {
 };
 
 export type ShareSnapshotPayload = {
-  schema: typeof SHARE_SNAPSHOT_SCHEMA;
-  version: typeof SHARE_SNAPSHOT_VERSION;
+  schemaVersion: typeof SHARE_SNAPSHOT_SCHEMA_VERSION;
   createdAt: string;
   activeFileId: string;
   files: ShareSnapshotFile[];
@@ -38,8 +36,7 @@ export const createShareSnapshotPayload = ({
   const activeFile = snapshotFiles.find((file) => file.id === activeFileId) ?? snapshotFiles[0];
 
   return {
-    schema: SHARE_SNAPSHOT_SCHEMA,
-    version: SHARE_SNAPSHOT_VERSION,
+    schemaVersion: SHARE_SNAPSHOT_SCHEMA_VERSION,
     createdAt: now().toISOString(),
     activeFileId: activeFile?.id ?? activeFileId,
     files: snapshotFiles,
@@ -65,7 +62,7 @@ export const validateShareSnapshotPayload = (value: unknown): ShareSnapshotPaylo
   if (!isRecord(value)) {
     throw new Error("Share link failed: invalid snapshot payload");
   }
-  if (value.schema !== SHARE_SNAPSHOT_SCHEMA || value.version !== SHARE_SNAPSHOT_VERSION) {
+  if (value.schemaVersion !== SHARE_SNAPSHOT_SCHEMA_VERSION) {
     throw new Error("Share link failed: unsupported snapshot payload");
   }
   if (!Array.isArray(value.files) || !isRecord(value.commentsByFileId)) {
@@ -74,8 +71,7 @@ export const validateShareSnapshotPayload = (value: unknown): ShareSnapshotPaylo
 
   const files = value.files.map(validateShareSnapshotFile);
   return {
-    schema: SHARE_SNAPSHOT_SCHEMA,
-    version: SHARE_SNAPSHOT_VERSION,
+    schemaVersion: SHARE_SNAPSHOT_SCHEMA_VERSION,
     createdAt: requireNonEmptyString(value.createdAt, "createdAt"),
     activeFileId: requireNonEmptyString(value.activeFileId, "activeFileId"),
     files,
