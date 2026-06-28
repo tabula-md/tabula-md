@@ -23,9 +23,9 @@ import { ShareControls } from "./components/ShareControls";
 import { StatusBar } from "./components/StatusBar";
 import { TopChrome } from "./components/TopChrome";
 import { WorkspaceMenu } from "./components/WorkspaceMenu";
-import { JsonSnapshotRoute, PublishedSnapshotRoute } from "./components/PublishedSnapshotRoute";
+import { JsonShareImportDialog } from "./components/JsonShareImportDialog";
+import { PublishedSnapshotRoute } from "./components/PublishedSnapshotRoute";
 import { getPublishRoute } from "./publish";
-import { getJsonShareRoute } from "./jsonShare";
 import {
   getLineStartOffset,
   getOutlineHeadings,
@@ -46,6 +46,7 @@ import { useMarkdownFiles } from "./hooks/useMarkdownFiles";
 import { usePublishController } from "./hooks/usePublishController";
 import { useProjectIoController } from "./hooks/useProjectIoController";
 import { useIndexedDbWorkspaceHydration } from "./hooks/useIndexedDbWorkspaceHydration";
+import { useJsonShareImportController } from "./hooks/useJsonShareImportController";
 import { useJsonShareController } from "./hooks/useJsonShareController";
 import { useQueuedWorkspacePersistence } from "./hooks/useQueuedWorkspacePersistence";
 import { useSelectionCommentController } from "./hooks/useSelectionCommentController";
@@ -185,7 +186,6 @@ function WorkspaceApp() {
   const jsonShare = useJsonShareController({
     activeFile,
     commentsByFileId,
-    ownerName: identity.name,
     showToast,
   });
   const text = activeFile?.text ?? "";
@@ -511,6 +511,22 @@ function WorkspaceApp() {
     onCloseChrome: closeFloatingChrome,
   });
   const {
+    closeJsonShareImport,
+    jsonShareImport,
+    replaceWorkspaceWithJsonShare,
+  } = useJsonShareImportController({
+    clearFileHistory,
+    closeFloatingChrome,
+    commentsByFileId,
+    files,
+    replaceCommentsByFileId,
+    replaceWorkspace,
+    resetCollaborationState,
+    showToast,
+    workspaceSource: initialWorkspaceSnapshot.source,
+  });
+
+  const {
     selectFile,
     addFile,
     openHelpFile,
@@ -707,6 +723,19 @@ function WorkspaceApp() {
           tone={toast.tone}
           actionLabel={toast.actionLabel}
           onAction={toast.onAction}
+        />
+      )}
+      {jsonShareImport && (
+        <JsonShareImportDialog
+          status={jsonShareImport.status}
+          fileCount={jsonShareImport.status === "ready" ? jsonShareImport.workspace.files.length : undefined}
+          errorMessage={jsonShareImport.status === "error" ? jsonShareImport.errorMessage : undefined}
+          onCancel={closeJsonShareImport}
+          onReplace={() => {
+            if (jsonShareImport.status === "ready") {
+              replaceWorkspaceWithJsonShare(jsonShareImport.workspace);
+            }
+          }}
         />
       )}
       <input
@@ -1064,11 +1093,6 @@ function WorkspaceApp() {
 }
 
 function App() {
-  const jsonShareRoute = getJsonShareRoute(window.location);
-  if (jsonShareRoute) {
-    return <JsonSnapshotRoute route={jsonShareRoute} />;
-  }
-
   const publishRoute = getPublishRoute(window.location.pathname, window.location.search);
   if (publishRoute) {
     return <PublishedSnapshotRoute route={publishRoute} />;

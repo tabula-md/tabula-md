@@ -9,7 +9,6 @@ import type { FileComment, MarkdownFile } from "../workspaceStorage";
 type UseJsonShareControllerOptions = {
   activeFile?: MarkdownFile;
   commentsByFileId: Record<string, FileComment[]>;
-  ownerName: string;
   showToast: (message: string, tone?: "error" | "neutral") => void;
 };
 
@@ -26,7 +25,6 @@ export type JsonShareController = {
 export function useJsonShareController({
   activeFile,
   commentsByFileId,
-  ownerName,
   showToast,
 }: UseJsonShareControllerOptions): JsonShareController {
   const [jsonShareUrl, setJsonShareUrl] = useState<string | undefined>(undefined);
@@ -45,7 +43,7 @@ export function useJsonShareController({
       return `Add content to ${activeFile.title.replace(/\.(?:md|markdown)$/i, "")} before exporting a link.`;
     }
     if (!serviceUrl) {
-      return "Read-only links are not configured.";
+      return "Snapshot links are not configured.";
     }
     return "";
   }, [activeFile, serviceUrl]);
@@ -64,13 +62,12 @@ export function useJsonShareController({
       const { url } = await createJsonShareLink({
         serviceUrl,
         origin: window.location.origin,
-        ownerName,
         files: [activeFile],
         activeFileId: activeFile.id,
         commentsByFileId: activeFileComments.length > 0 ? { [activeFile.id]: activeFileComments } : {},
       });
       setJsonShareUrl(url);
-      showToast("Read-only link created.");
+      showToast("Snapshot link created.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Share link failed.", "error");
     } finally {
@@ -83,7 +80,7 @@ export function useJsonShareController({
       return;
     }
     await navigator.clipboard.writeText(jsonShareUrl);
-    showToast("Read-only link copied.");
+    showToast("Snapshot link copied.");
   };
 
   return {

@@ -480,21 +480,21 @@ export function ShareControls({
                       </span>
                       <div>
                         <h3>Shareable link</h3>
-                        <p>Export a read-only snapshot of this file.</p>
+                        <p>Creates an encrypted snapshot link.</p>
                       </div>
                     </div>
 
                     {jsonShare.url ? (
                       <div className="share-readonly-box">
                         <div className="share-modal-field">
-                          <label>Read-only link</label>
+                          <label>Snapshot link</label>
                           <div className="share-modal-link-row">
                             <a
                               className="share-link-display"
                               href={jsonShare.url}
                               target="_blank"
                               rel="noreferrer"
-                              aria-label="Read-only link"
+                              aria-label="Snapshot link"
                               title={jsonShare.url}
                             >
                               <span>{jsonShare.urlPreview}</span>
@@ -535,7 +535,6 @@ export function ShareControls({
                           <Link size={16} />
                           <span>{jsonShare.exporting ? "Exporting" : "Export to link"}</span>
                         </button>
-                        <p className="share-modal-muted">Creates a read-only page for people who do not need edit access.</p>
                       </div>
                     )}
                   </div>

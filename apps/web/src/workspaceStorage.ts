@@ -21,7 +21,7 @@ const DEFAULT_README_REFRESH_MARKERS = [
   "## Frontmatter",
   "Markdown bundle",
 ];
-const README_MARKDOWN = `---
+export const STARTER_README_MARKDOWN = `---
 title: ${PRODUCT_NAME}
 description: A local-first Markdown workspace for project context and live sharing.
 ---
@@ -46,6 +46,7 @@ No dashboard first. No project ceremony. Open a file, write Markdown, and share 
 - Local files are saved in this browser.
 - Live rooms sync the active file through a collaboration session.
 `;
+export const isStarterReadmeText = (text: string) => text === STARTER_README_MARKDOWN;
 export const READING_WIDTHS: ReadingWidth[] = ["narrow", "standard", "wide"];
 export const DEFAULT_SPLIT_EDITOR_RATIO = 0.5;
 export const MIN_SPLIT_EDITOR_RATIO = 0.28;
@@ -256,7 +257,7 @@ export const ensureLiveFileForRoom = (files: MarkdownFile[], room: LocationRoom)
 const createReadmeFile = (): MarkdownFile => ({
   id: README_FILE_ID,
   title: "README.md",
-  text: README_MARKDOWN,
+  text: STARTER_README_MARKDOWN,
   viewMode: "preview",
   readingWidth: "wide",
   lineWrapping: true,
@@ -295,7 +296,7 @@ export const ensureDefaultFiles = (files: MarkdownFile[], options: { ensureUntit
         ...readmeFile,
         id: README_FILE_ID,
         title: readmeTitle === "readme.md" ? "README.md" : readmeFile.title,
-        text: shouldRefreshReadmeText ? README_MARKDOWN : readmeFile.text,
+        text: shouldRefreshReadmeText ? STARTER_README_MARKDOWN : readmeFile.text,
         viewMode: readmeFile.viewMode ?? "preview",
         readingWidth: readmeFile.readingWidth ?? "wide",
         lineWrapping: readmeFile.lineWrapping ?? true,

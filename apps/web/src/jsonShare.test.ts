@@ -5,7 +5,9 @@ import {
   parseJsonShareFromHash,
   readJsonShareSnapshot,
 } from "./jsonShare";
-import type { MarkdownFile } from "./workspaceStorage";
+import { createWorkspaceFromJsonShareSnapshot, hasMeaningfulWorkspaceContent } from "./jsonShareImport";
+import { SHARE_SNAPSHOT_SCHEMA, SHARE_SNAPSHOT_VERSION, type ShareSnapshot } from "./shareSnapshotPayload";
+import { STARTER_README_MARKDOWN, type MarkdownFile } from "./workspaceStorage";
 
 const file = (): MarkdownFile => ({
   id: "readme",
@@ -19,18 +21,20 @@ const file = (): MarkdownFile => ({
 
 describe("json share links", () => {
   it("creates an encrypted #json link and reads it back with the fragment key", async () => {
-    let encryptedRequest: Record<string, string> | undefined;
+    let encryptedRequest: ArrayBuffer | undefined;
+    let createRequestUrl = "";
     const createdAt = "2026-06-28T00:00:00.000Z";
     const jsonId = "jsonShare123";
-    const createFetch = async (_url: RequestInfo | URL, init?: RequestInit) => {
-      encryptedRequest = JSON.parse(String(init?.body)) as Record<string, string>;
+    const createFetch = async (url: RequestInfo | URL, init?: RequestInit) => {
+      createRequestUrl = String(url);
+      encryptedRequest = init?.body as ArrayBuffer;
+      expect(init?.headers).toMatchObject({ "content-type": "application/octet-stream" });
       return new Response(JSON.stringify({ jsonId, createdAt }), { status: 201 });
     };
 
     const created = await createJsonShareLink({
       serviceUrl: "https://json.tabula.md",
       origin: "https://tabula.md",
-      ownerName: "Taeha",
       files: [file()],
       activeFileId: "readme",
       commentsByFileId: {},
@@ -38,24 +42,27 @@ describe("json share links", () => {
     });
 
     expect(created.url).toMatch(/^https:\/\/tabula\.md\/#json=jsonShare123,/);
-    expect(encryptedRequest?.encryptedData).toEqual(expect.any(String));
-    expect(encryptedRequest?.iv).toEqual(expect.any(String));
-    expect(JSON.stringify(encryptedRequest)).not.toContain("Encrypted share content");
+    expect(createRequestUrl).toBe("https://json.tabula.md/v1/json");
+    expect(createRequestUrl).not.toContain(new URL(created.url).hash.slice(1));
+    const encryptedBody = encryptedRequest;
+    if (!encryptedBody) {
+      throw new Error("Expected encrypted request body");
+    }
+    expect(encryptedBody.byteLength).toBeGreaterThan(20);
+    expect(new TextDecoder().decode(encryptedBody)).not.toContain("Encrypted share content");
+    expect(new TextDecoder().decode(encryptedBody)).not.toContain("llmsTxt");
 
     const route = parseJsonShareFromHash(new URL(created.url).hash);
     expect(route).toMatchObject({ snapshotId: jsonId });
 
-    const readFetch = async () =>
-      new Response(
-        JSON.stringify({
-          v: 1,
-          jsonId,
-          createdAt,
-          encryptedData: encryptedRequest?.encryptedData,
-          iv: encryptedRequest?.iv,
-        }),
-        { status: 200 },
-      );
+    let readRequestUrl = "";
+    const readFetch = async (url: RequestInfo | URL) => {
+      readRequestUrl = String(url);
+      return new Response(encryptedBody, {
+        headers: { "content-type": "application/octet-stream" },
+        status: 200,
+      });
+    };
 
     const snapshot = await readJsonShareSnapshot({
       serviceUrl: "https://json.tabula.md",
@@ -64,8 +71,11 @@ describe("json share links", () => {
       fetchImpl: readFetch as typeof fetch,
     });
 
+    expect(readRequestUrl).toBe("https://json.tabula.md/v1/json/jsonShare123");
+    expect(readRequestUrl).not.toContain(route!.key);
     expect(snapshot?.id).toBe(jsonId);
-    expect(snapshot?.urls.page).toBe(created.url);
+    expect(snapshot?.url).toBe(created.url);
+    expect(snapshot?.schema).toBe(SHARE_SNAPSHOT_SCHEMA);
     expect(snapshot?.files[0]).toMatchObject({
       id: "readme",
       title: "README.md",
@@ -82,5 +92,58 @@ describe("json share links", () => {
     });
     expect(getJsonShareRoute({ pathname: "/p/example", hash: `#json=abc12345,${key}` })).toBeNull();
     expect(parseJsonShareFromHash(`#json=abc12345,${key}&bad=1`)).toBeNull();
+  });
+
+  it("converts decrypted snapshots into editable workspaces", () => {
+    const workspace = createWorkspaceFromJsonShareSnapshot({
+      id: "jsonShare123",
+      url: "https://tabula.md/#json=jsonShare123,key",
+      schema: SHARE_SNAPSHOT_SCHEMA,
+      version: SHARE_SNAPSHOT_VERSION,
+      createdAt: "2026-06-28T00:00:00.000Z",
+      activeFileId: "brief",
+      files: [{ id: "brief", title: "BRIEF.md", text: "# Brief" }],
+      commentsByFileId: { brief: [] },
+    } satisfies ShareSnapshot);
+
+    expect(workspace.activeFileId).toBe("brief");
+    expect(workspace.openFileIds).toEqual(["brief"]);
+    expect(workspace.files[0]).toMatchObject({
+      id: "brief",
+      title: "BRIEF.md",
+      text: "# Brief",
+      viewMode: "edit",
+      connectionStatus: "idle",
+    });
+  });
+
+  it("does not treat the default README as content that blocks share-link import", () => {
+    expect(
+      hasMeaningfulWorkspaceContent({
+        files: [
+          {
+            ...file(),
+            id: "tabula-readme",
+            title: "README.md",
+            text: STARTER_README_MARKDOWN,
+          },
+        ],
+        commentsByFileId: {},
+      }),
+    ).toBe(false);
+    expect(
+      hasMeaningfulWorkspaceContent({
+        files: [
+          {
+            ...file(),
+            id: "tabula-readme",
+            title: "README.md",
+            text: `${STARTER_README_MARKDOWN}\nUser note.`,
+          },
+        ],
+        commentsByFileId: {},
+      }),
+    ).toBe(true);
+    expect(hasMeaningfulWorkspaceContent({ files: [file()], commentsByFileId: {} })).toBe(true);
   });
 });
