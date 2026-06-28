@@ -23,13 +23,18 @@ describe("json share links", () => {
   it("creates an encrypted #json link and reads it back with the fragment key", async () => {
     let encryptedRequest: ArrayBuffer | undefined;
     let createRequestUrl = "";
-    const createdAt = "2026-06-28T00:00:00.000Z";
     const jsonId = "jsonShare123";
     const createFetch = async (url: RequestInfo | URL, init?: RequestInit) => {
       createRequestUrl = String(url);
       encryptedRequest = init?.body as ArrayBuffer;
       expect(init?.headers).toMatchObject({ "content-type": "application/octet-stream" });
-      return new Response(JSON.stringify({ jsonId, createdAt }), { status: 201 });
+      return new Response(
+        JSON.stringify({
+          id: jsonId,
+          data: `https://json.tabula.md/api/v1/${jsonId}`,
+        }),
+        { status: 201 },
+      );
     };
 
     const created = await createJsonShareLink({
@@ -42,7 +47,7 @@ describe("json share links", () => {
     });
 
     expect(created.url).toMatch(/^https:\/\/tabula\.md\/#json=jsonShare123,/);
-    expect(createRequestUrl).toBe("https://json.tabula.md/v1/json");
+    expect(createRequestUrl).toBe("https://json.tabula.md/api/v1/post/");
     expect(createRequestUrl).not.toContain(new URL(created.url).hash.slice(1));
     const encryptedBody = encryptedRequest;
     if (!encryptedBody) {
@@ -71,7 +76,7 @@ describe("json share links", () => {
       fetchImpl: readFetch as typeof fetch,
     });
 
-    expect(readRequestUrl).toBe("https://json.tabula.md/v1/json/jsonShare123");
+    expect(readRequestUrl).toBe("https://json.tabula.md/api/v1/jsonShare123");
     expect(readRequestUrl).not.toContain(route!.key);
     expect(snapshot?.id).toBe(jsonId);
     expect(snapshot?.url).toBe(created.url);
@@ -81,6 +86,26 @@ describe("json share links", () => {
       title: "README.md",
       text: "# Hello\n\nEncrypted share content.",
     });
+  });
+
+  it("rejects create responses whose data URL does not match the configured store", async () => {
+    await expect(
+      createJsonShareLink({
+        serviceUrl: "https://json.tabula.md",
+        origin: "https://tabula.md",
+        files: [file()],
+        activeFileId: "readme",
+        commentsByFileId: {},
+        fetchImpl: (async () =>
+          new Response(
+            JSON.stringify({
+              id: "jsonShare123",
+              data: "https://other.example/api/v1/jsonShare123",
+            }),
+            { status: 201 },
+          )) as typeof fetch,
+      }),
+    ).rejects.toThrow("Share link failed: invalid service response data");
   });
 
   it("only treats root #json fragments as share routes", () => {
