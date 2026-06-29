@@ -501,6 +501,14 @@ button {
   background: var(--surface-active);
 }
 
+.tool-button:disabled,
+.tool-button:disabled:hover {
+  cursor: default;
+  color: var(--text-soft);
+  background: transparent;
+  opacity: 0.35;
+}
+
 .share-file-card {
   display: grid;
   gap: 8px;

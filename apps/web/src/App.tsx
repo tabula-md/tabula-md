@@ -784,6 +784,7 @@ function WorkspaceApp() {
             activeText={text}
             fileTabs={fileTabsNode}
             shareControls={shareControlsNode}
+            onCopyMarkdown={copyCurrentMarkdown}
             onToggleWorkspaceMenu={toggleWorkspaceMenu}
             onToggleRightPanel={toggleRightPanel}
           />
@@ -810,7 +811,11 @@ function WorkspaceApp() {
                   {showFormattingToolbar && (
                     <MarkdownFormattingToolbar
                       className={`${activeViewMode} reading-${activeReadingWidth}`}
+                      canUndo={canUndo || editorHistoryState.canUndo}
+                      canRedo={canRedo || editorHistoryState.canRedo}
                       onFormat={formatMarkdown}
+                      onUndo={undoActiveFile}
+                      onRedo={redoActiveFile}
                     />
                   )}
 
@@ -958,8 +963,6 @@ function WorkspaceApp() {
 
                 <StatusBar
                   activeFileTitle={activeFileTitle}
-                  canUndo={canUndo || editorHistoryState.canUndo}
-                  canRedo={canRedo || editorHistoryState.canRedo}
                   isLive={isLive}
                   statusLabel={statusLabel}
                   wordCount={activeWordCount}
@@ -967,8 +970,6 @@ function WorkspaceApp() {
                   cursorPositionLabel={cursorPositionLabel}
                   selectedCharacterCount={selectedCharacterCount}
                   selectedLineCount={selectedLineCount}
-                  onUndo={undoActiveFile}
-                  onRedo={redoActiveFile}
                   onOpenComments={() => openCommentsPanel(focusedCommentId ?? activeOpenComments[0]?.id)}
                 />
               </>

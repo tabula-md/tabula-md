@@ -8,7 +8,7 @@
   position: absolute;
   top: 48px;
   left: 12px;
-  z-index: 50;
+  z-index: 110;
   width: 286px;
   max-width: calc(100vw - 24px);
   padding: 8px;
@@ -83,7 +83,7 @@
 .workspace-preferences-popover {
   position: absolute;
   left: calc(100% + 8px);
-  z-index: 51;
+  z-index: 111;
   border: 1px solid var(--line-subtle);
   border-radius: 9px;
   background: var(--surface-panel);

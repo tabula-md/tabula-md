@@ -10,15 +10,21 @@ import {
   List,
   ListOrdered,
   Quote,
+  Redo2,
   SeparatorHorizontal,
   SquareCode,
+  Undo2,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { MarkdownFormatCommand } from "../markdownFormatting";
 
 type MarkdownFormattingToolbarProps = {
   className?: string;
+  canRedo: boolean;
+  canUndo: boolean;
   onFormat: (command: MarkdownFormatCommand) => void;
+  onRedo: () => void;
+  onUndo: () => void;
 };
 
 type MarkdownFormattingTool = {
@@ -70,10 +76,40 @@ const renderToolButton = (tool: MarkdownFormattingTool, onFormat: (command: Mark
   );
 };
 
-export function MarkdownFormattingToolbar({ className = "", onFormat }: MarkdownFormattingToolbarProps) {
+export function MarkdownFormattingToolbar({
+  className = "",
+  canRedo,
+  canUndo,
+  onFormat,
+  onRedo,
+  onUndo,
+}: MarkdownFormattingToolbarProps) {
   return (
     <div className={`markdown-formatting-row ${className}`}>
       <nav className="markdown-formatting-toolbar" aria-label="Markdown formatting">
+        <button
+          className="tool-button markdown-format-button"
+          type="button"
+          title="Undo"
+          aria-label="Undo"
+          disabled={!canUndo}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onUndo}
+        >
+          <Undo2 size={16} />
+        </button>
+        <button
+          className="tool-button markdown-format-button"
+          type="button"
+          title="Redo"
+          aria-label="Redo"
+          disabled={!canRedo}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onRedo}
+        >
+          <Redo2 size={16} />
+        </button>
+        <span className="toolbar-separator" />
         {inlineTools.map((tool) => renderToolButton(tool, onFormat))}
         <span className="toolbar-separator" />
         {headingTools.map((tool) => renderToolButton(tool, onFormat))}

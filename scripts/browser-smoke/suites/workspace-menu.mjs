@@ -36,6 +36,19 @@ export async function run(ctx) {
     expect((await page.locator(".intro-action-button").count()) === 0, "The product README should not embed app actions.");
     expect((await page.locator(".tabula-plus-trigger").count()) === 0, "Tabula + should not live in the top-right document chrome.");
     expect((await page.locator(".share-trigger").count()) === 1, "Share should be a single top-right chrome action.");
+    expect((await page.getByRole("button", { name: "Copy current file" }).count()) === 1, "Copy should be a top-right document action.");
+    await page.evaluate(() => {
+      window.__tabulaClipboard = [];
+      navigator.clipboard.writeText = async (text) => {
+        window.__tabulaClipboard.push(text);
+      };
+    });
+    await page.getByRole("button", { name: "Copy current file" }).click();
+    const copiedMarkdown = await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "");
+    expect(
+      copiedMarkdown.includes("Tabula.md is a local-first Markdown workspace"),
+      "Top-right Copy should copy the active Markdown source.",
+    );
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".publish-trigger").count()) === 0, "Publish should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".blank-document-action").count()) === 0, "The first screen should not show canvas-style onboarding actions.");
@@ -529,6 +542,13 @@ export async function run(ctx) {
       "The menu should keep the must-have Markdown start actions.",
     );
 
+    await page.mouse.click(760, 420);
+    expect(
+      (await page.locator(".workspace-menu-popover").count()) === 0,
+      "Clicking outside the workspace menu should close it.",
+    );
+
+    await openProjectMenu(page);
     await page.getByRole("button", { name: "New Markdown", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });

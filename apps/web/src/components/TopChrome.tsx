@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Menu, PanelRight, Users } from "lucide-react";
+import { ClipboardCopy, Menu, PanelRight, Users } from "lucide-react";
 import type { Collaborator } from "../collab";
 import {
   getCollaboratorPresenceDetail,
@@ -16,6 +16,7 @@ type TopChromeProps = {
   activeText: string;
   fileTabs: ReactNode;
   shareControls: ReactNode;
+  onCopyMarkdown: () => void;
   onToggleWorkspaceMenu: () => void;
   onToggleRightPanel: () => void;
 };
@@ -29,6 +30,7 @@ export function TopChrome({
   activeText,
   fileTabs,
   shareControls,
+  onCopyMarkdown,
   onToggleWorkspaceMenu,
   onToggleRightPanel,
 }: TopChromeProps) {
@@ -156,6 +158,17 @@ export function TopChrome({
               )}
             </div>
           )}
+
+          <button
+            className="top-document-action"
+            type="button"
+            title={activeText.length > 0 ? "Copy Markdown" : "Nothing to copy"}
+            aria-label="Copy current file"
+            disabled={activeText.length === 0}
+            onClick={onCopyMarkdown}
+          >
+            <ClipboardCopy size={15} />
+          </button>
 
           {shareControls}
 

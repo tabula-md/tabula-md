@@ -3,7 +3,7 @@
   grid-row: 3;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   width: var(--document-chrome-width);
   min-width: 0;
@@ -17,7 +17,6 @@
   font-weight: 400;
 }
 
-.status-bar-left,
 .status-bar-right {
   display: flex;
   align-items: center;
@@ -27,33 +26,6 @@
 
 .status-bar-right {
   justify-content: flex-end;
-}
-
-.status-icon-button {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  color: var(--text-soft);
-  background: transparent;
-  border-radius: 8px;
-}
-
-.status-icon-button:hover,
-.status-icon-button.active {
-  color: var(--text-primary);
-  background: var(--surface-hover);
-}
-
-.status-icon-button:disabled {
-  cursor: default;
-  opacity: 0.35;
-}
-
-.status-icon-button:disabled:hover {
-  color: var(--text-soft);
-  background: transparent;
 }
 
 .status-save-state,
@@ -112,7 +84,6 @@
     overflow-x: auto;
   }
 
-  .status-bar-left,
   .status-bar-right {
     flex: 0 0 auto;
   }

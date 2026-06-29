@@ -1,10 +1,8 @@
-import { Check, MessageSquare, Redo2, Undo2 } from "lucide-react";
+import { Check, MessageSquare } from "lucide-react";
 import { getStatusBarSaveState } from "../statusBarViewModel";
 
 type StatusBarProps = {
   activeFileTitle: string;
-  canUndo: boolean;
-  canRedo: boolean;
   isLive: boolean;
   statusLabel: string;
   wordCount: number;
@@ -12,15 +10,11 @@ type StatusBarProps = {
   cursorPositionLabel: string;
   selectedCharacterCount: number;
   selectedLineCount: number;
-  onUndo: () => void;
-  onRedo: () => void;
   onOpenComments: () => void;
 };
 
 export function StatusBar({
   activeFileTitle,
-  canUndo,
-  canRedo,
   isLive,
   statusLabel,
   wordCount,
@@ -28,8 +22,6 @@ export function StatusBar({
   cursorPositionLabel,
   selectedCharacterCount,
   selectedLineCount,
-  onUndo,
-  onRedo,
   onOpenComments,
 }: StatusBarProps) {
   const hasComments = commentCount > 0;
@@ -43,15 +35,6 @@ export function StatusBar({
 
   return (
     <footer className="file-status-bar" aria-label={`Status for ${activeFileTitle}`}>
-      <div className="status-bar-left">
-        <button className="status-icon-button" type="button" title="Undo" aria-label="Undo" disabled={!canUndo} onClick={onUndo}>
-          <Undo2 size={15} />
-        </button>
-        <button className="status-icon-button" type="button" title="Redo" aria-label="Redo" disabled={!canRedo} onClick={onRedo}>
-          <Redo2 size={15} />
-        </button>
-      </div>
-
       <div className="status-bar-right">
         {saveState.visible && (
           <span className="status-save-state">
