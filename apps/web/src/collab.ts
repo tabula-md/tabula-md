@@ -21,6 +21,7 @@ import {
   sortCollaborators,
 } from "./collabConnectionModel";
 import { fetchRoomMeta, fetchRoomSnapshotEnvelope, putRoomSnapshotEnvelope } from "./collabRoomClient";
+import { createCollabUpdateBuffer } from "./collabUpdateBuffer";
 import {
   applyLocalTextToYText,
   applyRemoteUpdateToYText,
@@ -127,8 +128,6 @@ export const createCollabConnection = ({
   let closedByClient = false;
   let heartbeat: number | undefined;
   let snapshotTimer: number | undefined;
-  let localUpdateFlushTimer: number | undefined;
-  let pendingLocalUpdates: Uint8Array[] = [];
   let roomKey: CryptoKey | null = null;
   let transport: RoomTransport | null = null;
   let envelopeVersion = 0;
@@ -175,6 +174,15 @@ export const createCollabConnection = ({
     transport.sendEnvelope(await encryptEnvelope(kind, plaintext));
   };
 
+  const localUpdateBuffer = createCollabUpdateBuffer({
+    delayMs: 25,
+    onFlush: (update) => {
+      void emitEnvelope("yjs-update", update);
+    },
+    setTimeoutFn: (callback, delayMs) => window.setTimeout(callback, delayMs),
+    clearTimeoutFn: (handle) => window.clearTimeout(handle as number),
+  });
+
   const publishPresence = async () => {
     await emitEnvelope(
       "presence",
@@ -192,34 +200,6 @@ export const createCollabConnection = ({
       window.clearTimeout(snapshotTimer);
       snapshotTimer = undefined;
     }
-  };
-
-  const clearLocalUpdateFlushTimer = () => {
-    if (localUpdateFlushTimer) {
-      window.clearTimeout(localUpdateFlushTimer);
-      localUpdateFlushTimer = undefined;
-    }
-  };
-
-  const flushLocalUpdates = () => {
-    clearLocalUpdateFlushTimer();
-    if (pendingLocalUpdates.length === 0) {
-      return;
-    }
-
-    const update =
-      pendingLocalUpdates.length === 1 ? pendingLocalUpdates[0] : Y.mergeUpdates(pendingLocalUpdates);
-    pendingLocalUpdates = [];
-    void emitEnvelope("yjs-update", update);
-  };
-
-  const scheduleLocalUpdate = (update: Uint8Array) => {
-    pendingLocalUpdates.push(update);
-    if (localUpdateFlushTimer) {
-      return;
-    }
-
-    localUpdateFlushTimer = window.setTimeout(flushLocalUpdates, 25);
   };
 
   const storeSnapshot = async () => {
@@ -316,7 +296,7 @@ export const createCollabConnection = ({
     }
 
     hasUnstoredLocalChanges = true;
-    scheduleLocalUpdate(update);
+    localUpdateBuffer.push(update);
     scheduleSnapshot();
   });
 
@@ -461,8 +441,7 @@ export const createCollabConnection = ({
       if (snapshotTimer) {
         window.clearTimeout(snapshotTimer);
       }
-      clearLocalUpdateFlushTimer();
-      pendingLocalUpdates = [];
+      localUpdateBuffer.clear();
       transport?.disconnect();
       doc.destroy();
       onCollaboratorsChange([]);
