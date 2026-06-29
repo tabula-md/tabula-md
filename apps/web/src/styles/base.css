@@ -1,18 +1,35 @@
 :root {
-  color: #1f1f1f;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--app-background);
+  --app-background: #ffffff;
+  --surface-panel: #ffffff;
   --surface-muted: #f7f7f8;
   --surface-hover: #eeeeef;
   --surface-active: #ffffff;
   --line-subtle: #eeeeef;
+  --text-primary: #1f1f1f;
   --text-muted: #8a8a8a;
   --text-soft: #777777;
+  --editor-active-line-background: rgba(0, 0, 0, 0.035);
   font-family:
     "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme="dark"] {
+  --app-background: #111111;
+  --surface-panel: #19191a;
+  --surface-muted: #232325;
+  --surface-hover: #2d2d30;
+  --surface-active: #303034;
+  --line-subtle: #333337;
+  --text-primary: #ededee;
+  --text-muted: #9a9aa0;
+  --text-soft: #b4b4b8;
+  --editor-active-line-background: rgba(255, 255, 255, 0.06);
 }
 
 * {
@@ -28,6 +45,11 @@ body,
   margin: 0;
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+body {
+  color: var(--text-primary);
+  background: var(--app-background);
 }
 
 button,
@@ -57,7 +79,8 @@ button {
   min-height: 100vh;
   overflow: hidden;
   overscroll-behavior: none;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--app-background);
 }
 
 .main-panel {

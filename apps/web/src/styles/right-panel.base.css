@@ -9,7 +9,7 @@
   --right-row-radius: 7px;
   --right-row-x: 8px;
   --right-row-gap: 8px;
-  --right-row-text: #5f5f5f;
+  --right-row-text: var(--text-soft);
   --right-control-size: 28px;
   --right-chevron-size: 14px;
   --right-icon-size: 16px;
@@ -27,7 +27,8 @@
   min-height: 0;
   height: 100vh;
   padding: var(--right-panel-top) var(--right-panel-x) var(--right-panel-bottom);
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--surface-panel);
   box-shadow: none;
 }
 

@@ -79,6 +79,8 @@ describe("workspace preferences controller", () => {
   it("normalizes unknown preference payloads to supported values", () => {
     expect(
       parseWorkspacePreferences({
+        theme: "system",
+        language: "fr",
         newFileViewMode: "reader",
         readingWidth: "wide",
         lineWrapping: false,
@@ -94,6 +96,8 @@ describe("workspace preferences controller", () => {
   it("reads and writes the persisted workspace preferences contract", () => {
     const storage = new MemoryStorage();
     const preferences = {
+      theme: "dark" as const,
+      language: "ko" as const,
       newFileViewMode: "split" as const,
       readingWidth: "standard" as const,
       lineWrapping: false,
@@ -228,6 +232,8 @@ describe("project IO controller", () => {
   it("maps workspace preferences to new file overrides", () => {
     expect(
       getNewFilePreferenceOverrides({
+        theme: "light",
+        language: "en",
         newFileViewMode: "preview",
         readingWidth: "narrow",
         lineWrapping: false,

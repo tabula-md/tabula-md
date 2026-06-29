@@ -141,9 +141,10 @@ export function useWorkspaceFileActions({
   };
 
   const openAboutFile = () => {
+    const getNormalizedTitle = (file: MarkdownFile) => file.title.trim().toLowerCase().replace(/\.md$/, "");
     const readmeFile =
       files.find((file) => file.id === README_FILE_ID) ??
-      files.find((file) => file.title.trim().toLowerCase() === "readme.md");
+      files.find((file) => getNormalizedTitle(file) === "readme");
     if (!readmeFile) {
       return;
     }

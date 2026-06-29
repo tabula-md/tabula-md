@@ -3,7 +3,12 @@ import type { FileViewMode, ReadingWidth } from "../workspaceStorage";
 
 export const WORKSPACE_PREFERENCES_KEY = "tabula.preferences.v1";
 
+export type WorkspaceTheme = "light" | "dark";
+export type WorkspaceLanguage = "en" | "ko";
+
 export type WorkspacePreferences = {
+  theme: WorkspaceTheme;
+  language: WorkspaceLanguage;
   newFileViewMode: FileViewMode;
   readingWidth: ReadingWidth;
   lineWrapping: boolean;
@@ -11,11 +16,17 @@ export type WorkspacePreferences = {
 };
 
 export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferences = {
+  theme: "light",
+  language: "en",
   newFileViewMode: "edit",
   readingWidth: "wide",
   lineWrapping: true,
   lineNumbers: true,
 };
+
+const isWorkspaceTheme = (value: unknown): value is WorkspaceTheme => value === "light" || value === "dark";
+
+const isWorkspaceLanguage = (value: unknown): value is WorkspaceLanguage => value === "en" || value === "ko";
 
 const isFileViewMode = (value: unknown): value is FileViewMode =>
   value === "edit" || value === "split" || value === "preview";
@@ -28,6 +39,12 @@ export const parseWorkspacePreferences = (value: unknown): WorkspacePreferences 
     value && typeof value === "object" ? (value as Partial<WorkspacePreferences>) : {};
 
   return {
+    theme: isWorkspaceTheme(partialPreferences.theme)
+      ? partialPreferences.theme
+      : DEFAULT_WORKSPACE_PREFERENCES.theme,
+    language: isWorkspaceLanguage(partialPreferences.language)
+      ? partialPreferences.language
+      : DEFAULT_WORKSPACE_PREFERENCES.language,
     newFileViewMode: isFileViewMode(partialPreferences.newFileViewMode)
       ? partialPreferences.newFileViewMode
       : DEFAULT_WORKSPACE_PREFERENCES.newFileViewMode,
@@ -67,6 +84,12 @@ export function useWorkspacePreferences(): [
   const [workspacePreferences, setWorkspacePreferences] = useState<WorkspacePreferences>(() =>
     readWorkspacePreferences(),
   );
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = workspacePreferences.theme;
+    document.documentElement.lang = workspacePreferences.language;
+    document.documentElement.style.colorScheme = workspacePreferences.theme;
+  }, [workspacePreferences.language, workspacePreferences.theme]);
 
   useEffect(() => {
     try {

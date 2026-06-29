@@ -9,7 +9,6 @@
     calc(var(--document-workbench-width) - var(--document-safe-left) - var(--document-safe-right))
   );
   --document-horizontal-gutter: 72px;
-  --editor-active-line-background: rgba(0, 0, 0, 0.035);
   --editor-bookmark-rail: 28px;
   --editor-line-number-rail: 40px;
   --editor-left-rail: calc(var(--editor-bookmark-rail) + var(--editor-line-number-rail));
@@ -117,7 +116,7 @@
   overflow-y: auto;
   overflow-anchor: none;
   overscroll-behavior: contain;
-  background: #ffffff;
+  background: var(--app-background);
   scrollbar-gutter: stable;
 }
 

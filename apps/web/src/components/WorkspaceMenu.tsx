@@ -8,27 +8,22 @@ import {
   HelpCircle,
   Github,
   Info,
-  Settings2,
+  SlidersHorizontal,
   Upload,
   Users,
   X,
 } from "lucide-react";
-import type { FileViewMode, ReadingWidth } from "../workspaceStorage";
+import type { WorkspaceLanguage, WorkspaceTheme } from "../hooks/useWorkspacePreferences";
 
 type WorkspaceMenuProps = {
   isOpen: boolean;
   preferencesOpen: boolean;
   canExportCurrentFile: boolean;
-  newFileViewMode: FileViewMode;
-  defaultReadingWidth: ReadingWidth;
-  defaultLineWrapping: boolean;
-  defaultLineNumbers: boolean;
+  theme: WorkspaceTheme;
+  language: WorkspaceLanguage;
   onTogglePreferences: () => void;
-  onClosePreferences: () => void;
-  onChangeNewFileViewMode: (viewMode: FileViewMode) => void;
-  onChangeDefaultReadingWidth: (readingWidth: ReadingWidth) => void;
-  onChangeDefaultLineWrapping: (lineWrapping: boolean) => void;
-  onChangeDefaultLineNumbers: (lineNumbers: boolean) => void;
+  onChangeTheme: (theme: WorkspaceTheme) => void;
+  onChangeLanguage: (language: WorkspaceLanguage) => void;
   onAddFile: () => void;
   onOpenMarkdownFile: () => void;
   onImportProject: () => void;
@@ -78,16 +73,11 @@ export function WorkspaceMenu({
   isOpen,
   preferencesOpen,
   canExportCurrentFile,
-  newFileViewMode,
-  defaultReadingWidth,
-  defaultLineWrapping,
-  defaultLineNumbers,
+  theme,
+  language,
   onTogglePreferences,
-  onClosePreferences,
-  onChangeNewFileViewMode,
-  onChangeDefaultReadingWidth,
-  onChangeDefaultLineWrapping,
-  onChangeDefaultLineNumbers,
+  onChangeTheme,
+  onChangeLanguage,
   onAddFile,
   onOpenMarkdownFile,
   onImportProject,
@@ -121,18 +111,6 @@ export function WorkspaceMenu({
     </div>
   );
 
-  const renderSwitch = (active: boolean, label: string, onChange: (active: boolean) => void) => (
-    <button
-      className={`workspace-preferences-switch ${active ? "active" : ""}`}
-      type="button"
-      aria-pressed={active}
-      onClick={() => onChange(!active)}
-    >
-      <span>{label}</span>
-      <i aria-hidden="true" />
-    </button>
-  );
-
   return (
     <section className="workspace-menu-popover" role="dialog" aria-label="Workspace menu">
       <nav className="workspace-menu-list" aria-label="Workspace actions">
@@ -162,11 +140,11 @@ export function WorkspaceMenu({
 
         <MenuRow
           className={preferencesOpen ? "active" : ""}
-          icon={<Settings2 size={15} />}
+          icon={<SlidersHorizontal size={15} />}
           trailing={<ChevronRight size={14} />}
           onClick={onTogglePreferences}
         >
-          Settings
+          Preferences
         </MenuRow>
         <MenuRow icon={<Info size={15} />} onClick={onOpenAbout}>
           About
@@ -179,10 +157,10 @@ export function WorkspaceMenu({
 
         <MenuLink
           href="https://x.com/tabula_md"
-          icon={<span className="workspace-menu-brand-icon">X</span>}
+          icon={<X size={15} />}
           ariaLabel="Open Tabula.md on X"
         >
-          X
+          Follow us
         </MenuLink>
         <MenuLink
           href="https://github.com/tabula-md/tabula-md"
@@ -194,50 +172,29 @@ export function WorkspaceMenu({
       </nav>
 
       {preferencesOpen && (
-        <section className="workspace-preferences-popover" aria-label="Settings">
-          <header className="workspace-preferences-header">
-            <h2>Settings</h2>
-            <button type="button" aria-label="Close Settings" onClick={onClosePreferences}>
-              <X size={14} />
-            </button>
-          </header>
-          <section className="workspace-preferences-section" aria-labelledby="workspace-preferences-writing">
-            <h3 id="workspace-preferences-writing">Writing</h3>
-            <div className="workspace-preferences-setting">
-              <span>New files open in</span>
-              {renderSegment<FileViewMode>(
-                newFileViewMode,
-                [
-                  { value: "edit", label: "Edit" },
-                  { value: "split", label: "Split" },
-                  { value: "preview", label: "Preview" },
-                ],
-                onChangeNewFileViewMode,
-              )}
-            </div>
-          </section>
-          <section className="workspace-preferences-section" aria-labelledby="workspace-preferences-reading">
-            <h3 id="workspace-preferences-reading">Reading</h3>
-            <div className="workspace-preferences-setting">
-              <span>Text width</span>
-              {renderSegment<ReadingWidth>(
-                defaultReadingWidth,
-                [
-                  { value: "narrow", label: "Focus" },
-                  { value: "standard", label: "Standard" },
-                  { value: "wide", label: "Fill" },
-                ],
-                onChangeDefaultReadingWidth,
-              )}
-            </div>
-          </section>
-          <section className="workspace-preferences-section" aria-labelledby="workspace-preferences-editor">
-            <h3 id="workspace-preferences-editor">Editor</h3>
-            <div className="workspace-preferences-switches">
-              {renderSwitch(defaultLineWrapping, "Line wrapping", onChangeDefaultLineWrapping)}
-              {renderSwitch(defaultLineNumbers, "Line numbers", onChangeDefaultLineNumbers)}
-            </div>
-          </section>
+        <section className="workspace-preferences-popover" aria-label="Preferences">
+          <div className="workspace-preferences-setting">
+            <span>Theme</span>
+            {renderSegment<WorkspaceTheme>(
+              theme,
+              [
+                { value: "light", label: "Light" },
+                { value: "dark", label: "Dark" },
+              ],
+              onChangeTheme,
+            )}
+          </div>
+          <div className="workspace-preferences-setting">
+            <span>Language</span>
+            {renderSegment<WorkspaceLanguage>(
+              language,
+              [
+                { value: "en", label: "English" },
+                { value: "ko", label: "Korean" },
+              ],
+              onChangeLanguage,
+            )}
+          </div>
         </section>
       )}
     </section>

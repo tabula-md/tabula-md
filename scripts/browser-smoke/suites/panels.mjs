@@ -94,8 +94,8 @@ export async function run(ctx) {
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the right project context panel.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New Markdown|Open Markdown...|Import project...|Save Markdown...|Export project...|Live collaboration...|Settings|Help",
-      "The workspace menu should only expose implemented file, collaboration, Settings, and Help actions.",
+        "New Markdown|Open Markdown...|Import project...|Save Markdown...|Export project...|Live collaboration...|Preferences|About|Help|Follow us|GitHub",
+      "The workspace menu should only expose implemented file, collaboration, preferences, support, and public links.",
     );
     expect(
       workbenchPanels.actionRows.every((row) => row.iconCount >= 1 && row.iconCount <= 2),
@@ -125,14 +125,16 @@ export async function run(ctx) {
     expect(focusIndex("Open Markdown...") !== -1, "Keyboard order should include Markdown import.");
     expect(focusIndex("Live collaboration...") !== -1, "Keyboard order should include live collaboration.");
     expect(focusIndex("Tabula +") === -1, "Workspace menu should keep Tabula + hidden until publishing ships.");
-    expect(focusIndex("Settings") !== -1, "Keyboard order should include Settings.");
+    expect(focusIndex("Preferences") !== -1, "Keyboard order should include Preferences.");
+    expect(focusIndex("About") !== -1, "Keyboard order should include About.");
     expect(focusIndex("Help") !== -1, "Keyboard order should include Help.");
     expect(
       focusIndex("New Markdown") <
         focusIndex("Open Markdown...") &&
         focusIndex("Open Markdown...") < focusIndex("Live collaboration...") &&
-        focusIndex("Live collaboration...") < focusIndex("Settings") &&
-        focusIndex("Settings") < focusIndex("Help"),
+        focusIndex("Live collaboration...") < focusIndex("Preferences") &&
+        focusIndex("Preferences") < focusIndex("About") &&
+        focusIndex("About") < focusIndex("Help"),
       "Workspace menu keyboard order should move from file actions to support actions.",
     );
     expect(workbenchPanels.statusVisible, "The document status bar should remain visible.");
@@ -154,16 +156,12 @@ export async function run(ctx) {
     const supportActions = page.locator(".workspace-menu-popover");
     expect((await supportActions.getByRole("button", { name: "Tabula +", exact: true }).count()) === 0, "Tabula + should not appear in the left menu yet.");
 
-    await supportActions.getByRole("button", { name: "Settings", exact: true }).click();
+    await supportActions.getByRole("button", { name: "Preferences", exact: true }).click();
     await waitForRenderFrame(page);
     const preferencesPanel = await page.evaluate(() => ({
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       preferencesOpen: Boolean(document.querySelector(".workspace-preferences-popover")),
       surfaceLabel: document.querySelector(".workspace-preferences-popover")?.getAttribute("aria-label") ?? "",
-      surfaceHeading: document.querySelector(".workspace-preferences-header h2")?.textContent?.trim() ?? "",
-      sectionLabels: Array.from(document.querySelectorAll(".workspace-preferences-section h3")).map((item) =>
-        item.textContent?.replace(/\s+/g, " ").trim(),
-      ),
       preferenceLabels: Array.from(document.querySelectorAll(".workspace-preferences-setting > span")).map((item) =>
         item.textContent?.replace(/\s+/g, " ").trim(),
       ),
@@ -187,47 +185,44 @@ export async function run(ctx) {
       ).length,
       preferenceFooterActive:
         Array.from(document.querySelectorAll(".workspace-menu-row"))
-          .find((button) => button.textContent?.includes("Settings"))
+          .find((button) => button.textContent?.includes("Preferences"))
           ?.classList.contains("active") ?? false,
       popoverLeft: Math.round(document.querySelector(".workspace-preferences-popover")?.getBoundingClientRect().left ?? 0),
       menuRight: Math.round(document.querySelector(".workspace-menu-popover")?.getBoundingClientRect().right ?? 0),
     }));
-    expect(preferencesPanel.menuOpen, "Settings should keep the workspace menu open.");
-    expect(preferencesPanel.preferencesOpen, "Settings should open as a nested menu surface.");
-    expect(preferencesPanel.surfaceLabel === "Settings", "The nested side surface should be labeled Settings.");
-    expect(preferencesPanel.surfaceHeading === "Settings", "The nested side surface heading should be Settings.");
+    expect(preferencesPanel.menuOpen, "Preferences should keep the workspace menu open.");
+    expect(preferencesPanel.preferencesOpen, "Preferences should open as a nested menu surface.");
+    expect(preferencesPanel.surfaceLabel === "Preferences", "The nested side surface should be labeled Preferences.");
     expect(
-      preferencesPanel.sectionLabels.join("|") === "Writing|Reading|Editor",
-      "Settings should only group user-changeable writing, reading, and editor defaults.",
+      preferencesPanel.preferenceLabels.join("|") === "Theme|Language",
+      "Preferences should only expose lightweight app-wide preferences.",
     );
     expect(
-      preferencesPanel.preferenceLabels.join("|") === "New files open in|Text width",
-      "Settings should expose product-relevant Markdown defaults without implementation details.",
+      preferencesPanel.segmentRows.join("/") === "Light|Dark/English|Korean",
+      "Preferences should use compact segmented controls for theme and language.",
     );
-    expect(
-      preferencesPanel.segmentRows.join("/") === "Edit|Split|Preview/Focus|Standard|Fill",
-      "Settings should use compact segmented controls for default mode and width.",
-    );
-    expect(
-      preferencesPanel.switchRows.join("|") === "Line wrapping|Line numbers",
-      "Settings should include editor defaults that affect newly created files.",
-    );
-    expect(!preferencesPanel.storageSurfaceLeak, "Settings should not explain local storage as a configurable surface.");
-    expect(!preferencesPanel.internalLabelLeak, "Settings should not leak internal storage implementation names.");
-    expect(preferencesPanel.checkRowCount === 0, "Settings should use switches instead of checkmark rows.");
-    expect(preferencesPanel.detailRowCount === 0, "Settings should not render as an in-panel detail list.");
+    expect(preferencesPanel.switchRows.length === 0, "Preferences should not duplicate editor controls.");
+    expect(!preferencesPanel.storageSurfaceLeak, "Preferences should not explain local storage as a configurable surface.");
+    expect(!preferencesPanel.internalLabelLeak, "Preferences should not leak internal storage implementation names.");
+    expect(preferencesPanel.checkRowCount === 0, "Preferences should use segmented controls instead of checkmark rows.");
+    expect(preferencesPanel.detailRowCount === 0, "Preferences should not render as an in-panel detail list.");
     expect(preferencesPanel.shortcutRowCount === 0, "Keyboard shortcuts should move out of the left panel surface.");
     expect(preferencesPanel.keyboardShortcutsFooterCount === 0, "Keyboard shortcuts should be documented in HELP.md, not pinned.");
-    expect(preferencesPanel.preferenceFooterActive, "The Settings support row should stay selected while its surface is open.");
+    expect(preferencesPanel.preferenceFooterActive, "The Preferences support row should stay selected while its surface is open.");
     expect(
       preferencesPanel.popoverLeft >= preferencesPanel.menuRight - 1,
-      "Settings should open beside the workspace menu.",
+      "Preferences should open beside the workspace menu.",
     );
 
     const preferencesPopover = page.locator(".workspace-preferences-popover");
-    await preferencesPopover.getByRole("button", { name: "Split", exact: true }).click();
-    await preferencesPopover.getByRole("button", { name: "Fill", exact: true }).click();
-    await preferencesPopover.getByRole("button", { name: "Line numbers", exact: true }).click();
+    await preferencesPopover.getByRole("button", { name: "Dark", exact: true }).click();
+    await preferencesPopover.getByRole("button", { name: "Korean", exact: true }).click();
+    const rootPreferences = await page.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      language: document.documentElement.lang,
+    }));
+    expect(rootPreferences.theme === "dark", "Choosing Dark should update the app theme contract.");
+    expect(rootPreferences.language === "ko", "Choosing Korean should update the document language contract.");
 
     await page.keyboard.press("Escape");
     await waitForRenderFrame(page);
@@ -238,30 +233,40 @@ export async function run(ctx) {
         button.textContent?.includes("New Markdown"),
       ),
     }));
-    expect(preferencesEscapeState.menuOpen, "Escape from Settings should keep the workspace menu open.");
-    expect(!preferencesEscapeState.preferencesOpen, "Escape from Settings should close only the nested side surface.");
-    expect(preferencesEscapeState.newActionsVisible, "Escape from Settings should leave file creation available.");
+    expect(preferencesEscapeState.menuOpen, "Escape from Preferences should keep the workspace menu open.");
+    expect(!preferencesEscapeState.preferencesOpen, "Escape from Preferences should close only the nested side surface.");
+    expect(preferencesEscapeState.newActionsVisible, "Escape from Preferences should leave file creation available.");
+
+    await supportActions.getByRole("button", { name: "About", exact: true }).click();
+    await waitForRenderFrame(page);
+    const aboutState = await page.evaluate(() => ({
+      menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
+      activeTab: document.querySelector(".tab-item.active")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    }));
+    expect(!aboutState.menuOpen, "About should close the workspace menu after opening README.md.");
+    expect(aboutState.activeTab.includes("README"), "About should open the product README.");
+
+    await openProjectMenu(page);
 
     await page.getByRole("button", { name: "New Markdown", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
-    await waitForEditorReady(page, { mode: "split" });
-    const preferenceAppliedState = await page.evaluate(() => ({
+    await waitForEditorReady(page, { mode: "edit" });
+    const newFileState = await page.evaluate(() => ({
       fileShellClasses: document.querySelector(".file-shell")?.className ?? "",
       workspaceClasses: document.querySelector(".workspace")?.className ?? "",
       lineNumberGutterCount: document.querySelectorAll(".cm-lineNumbers").length,
     }));
-    const preferenceAppliedTabs = await getTabs(page);
-    const activePreferenceTab = preferenceAppliedTabs.find((tab) => tab.active);
+    const newFileTabs = await getTabs(page);
+    const activeNewFileTab = newFileTabs.find((tab) => tab.active);
     expect(
-      activePreferenceTab?.mode === "Split",
-      `New files should honor the preferred default view mode. Got: ${activePreferenceTab?.mode}`,
+      activeNewFileTab?.mode === "Edit",
+      `New files should keep the editor default view mode. Got: ${activeNewFileTab?.mode}`,
     );
     expect(
-      preferenceAppliedState.fileShellClasses.includes("reading-wide") &&
-        preferenceAppliedState.workspaceClasses.includes("reading-wide"),
-      "New files should honor the preferred default reading width.",
+      newFileState.fileShellClasses.includes("reading-wide") && newFileState.workspaceClasses.includes("reading-wide"),
+      "New files should keep the default reading width.",
     );
-    expect(preferenceAppliedState.lineNumberGutterCount === 0, "New files should honor the preferred line number default.");
+    expect(newFileState.lineNumberGutterCount > 0, "New files should keep line numbers visible by default.");
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "README.md" });
 
@@ -746,7 +751,7 @@ export async function run(ctx) {
       };
     });
     expect(activeTabBeforeRename, "Active tab geometry should be measurable before rename.");
-    await page.mouse.dblclick(activeTabBeforeRename.titleClickX, activeTabBeforeRename.titleClickY);
+    await page.locator(".tab-item.active .tab-select-button").dblclick();
     await waitForRenderFrame(page);
     const activeTabDuringRename = await page.evaluate(() => {
       const activeTab = document.querySelector(".tab-item.active");

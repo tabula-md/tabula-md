@@ -24,7 +24,7 @@
   width: 1px;
   height: 18px;
   margin: 0 3px;
-  background: #e4e4e5;
+  background: var(--line-subtle);
 }
 
 .mode-slot-placeholder {
@@ -40,7 +40,7 @@
   width: 264px;
   padding: 6px;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface-panel);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
   transform: none;
 }
@@ -63,7 +63,7 @@
   min-height: 34px;
   padding: 0 8px;
   border-radius: 7px;
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: transparent;
   font-size: 13px;
   font-weight: 400;
@@ -88,7 +88,7 @@
   margin-top: 4px;
   padding: 8px;
   border-top: 1px solid var(--line-subtle);
-  color: #1f1f1f;
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 400;
 }
@@ -111,7 +111,7 @@
   height: 28px;
   padding: 0 8px;
   border-radius: 7px;
-  color: #777777;
+  color: var(--text-soft);
   background: transparent;
   font-size: 12px;
   font-weight: 500;
@@ -119,8 +119,8 @@
 
 .editor-width-control button:hover,
 .editor-width-control button.active {
-  color: #1f1f1f;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--surface-active);
 }
 
 .editor-control-row {
