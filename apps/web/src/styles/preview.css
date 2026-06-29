@@ -102,7 +102,7 @@
 }
 
 .preview-line-action {
-  --annotation-active-color: #763fc8;
+  --annotation-active-color: var(--accent);
 
   position: absolute;
   display: grid;

@@ -95,20 +95,20 @@
 
 해야 할 일:
 
-- [ ] 공개 제품의 기본 가치 제안을 아래 한 문장으로 정리한다.
+- [x] 공개 제품의 기본 가치 제안을 아래 한 문장으로 정리한다.
   - `A local-first Markdown workspace for files that people and coding agents can share safely.`
-- [ ] 지금 보이는 제품 표면은 아래 must-have로 제한한다.
+- [x] 지금 보이는 제품 표면은 아래 must-have로 제한한다.
   - Markdown 파일 생성/열기/저장
   - Edit/Split/Preview
   - Live collaboration
   - Shareable encrypted copy link
   - Local agent handoff
-- [ ] Templates, Agent panel, Publish, Tabula+는 준비되지 않은 상태에서는 숨긴다.
+- [x] Templates, Agent panel, Publish, Tabula+는 준비되지 않은 상태에서는 숨긴다.
 
 완료 기준:
 
-- [ ] 첫 사용자가 30초 안에 “Markdown 파일을 쓰고 공유하는 도구”라고 이해할 수 있다.
-- [ ] 구현되지 않은 미래 기능이 제품 표면에서 약속처럼 보이지 않는다.
+- [x] 첫 사용자가 30초 안에 “Markdown 파일을 쓰고 공유하는 도구”라고 이해할 수 있다.
+- [x] 구현되지 않은 미래 기능이 제품 표면에서 약속처럼 보이지 않는다.
 
 ### 2.2 Share / Publish / Export / Send to 경계
 
@@ -118,21 +118,21 @@
 
 해야 할 일:
 
-- [ ] Share link 탭은 Live collaboration과 Shareable link만 다룬다.
-- [ ] Export 탭은 로컬 파일 이동만 다룬다.
+- [x] Share link 탭은 Live collaboration과 Shareable link만 다룬다.
+- [x] Export 탭은 로컬 파일 이동만 다룬다.
   - Markdown `.md`
   - Project archive `.zip`
   - 향후 PDF/HTML은 실제 구현 전까지 숨김
-- [ ] Send to 탭은 agent handoff만 다룬다.
+- [x] Send to 탭은 agent handoff만 다룬다.
   - local coding agent prompt
   - project/file scope
   - copy prompt
-- [ ] Publish는 Tabula+ 기능으로 별도 milestone까지 숨김.
+- [x] Publish는 Tabula+ 기능으로 별도 milestone까지 숨김.
 
 완료 기준:
 
-- [ ] 각 탭의 목적이 한 문장으로 설명 가능하다.
-- [ ] Publish 없이도 Share 제품 경험이 완결된다.
+- [x] 각 탭의 목적이 한 문장으로 설명 가능하다.
+- [x] Publish 없이도 Share 제품 경험이 완결된다.
 
 ### 2.3 Activation 지표 준비
 
@@ -142,7 +142,7 @@
 
 해야 할 일:
 
-- [ ] 초기 activation event를 정의한다.
+- [x] 초기 activation event를 정의한다.
   - created/opened file
   - edited 30+ seconds
   - started live session
@@ -150,13 +150,13 @@
   - exported shareable link
   - loaded shareable link
   - returned within 7 days
-- [ ] OSS와 hosted service 모두에서 개인정보를 과하게 수집하지 않는 방식으로 이벤트 경계를 정한다.
-- [ ] analytics는 제품 출시 전 별도 opt-in/hosted-only 정책을 문서화한다.
+- [x] OSS와 hosted service 모두에서 개인정보를 과하게 수집하지 않는 방식으로 이벤트 경계를 정한다.
+- [x] analytics는 제품 출시 전 별도 opt-in/hosted-only 정책을 문서화한다.
 
 완료 기준:
 
-- [ ] PMF 실험에서 봐야 할 5~7개 핵심 지표가 정의되어 있다.
-- [ ] OSS 빌드에는 hosted service용 추적이 섞이지 않는다.
+- [x] PMF 실험에서 봐야 할 5~7개 핵심 지표가 정의되어 있다.
+- [x] OSS 빌드에는 hosted service용 추적이 섞이지 않는다.
 
 ## 3. CTO 관점
 
@@ -169,8 +169,8 @@
 
 해야 할 일:
 
-- [ ] `shareViewModel.ts`를 만든다.
-- [ ] 아래 상태를 pure function으로 계산한다.
+- [x] `shareViewModel.ts`를 만든다.
+- [x] 아래 상태를 pure function으로 계산한다.
   - visible tabs
   - active tab availability
   - primary button label
@@ -178,13 +178,13 @@
   - current link display
   - shareable link status
   - live session status
-- [ ] ShareControls는 view model을 받아 렌더링에 집중하게 한다.
-- [ ] unit test로 Shareable link/read-only/Publish 문구 경계를 고정한다.
+- [x] ShareControls는 view model을 받아 렌더링에 집중하게 한다.
+- [x] unit test로 Shareable link/read-only/Publish 문구 경계를 고정한다.
 
 완료 기준:
 
-- [ ] Shareable link를 read-only라고 표시하는 회귀가 테스트로 잡힌다.
-- [ ] Publish를 숨긴 상태에서 Share modal이 정상 동작한다.
+- [x] Shareable link를 read-only라고 표시하는 회귀가 테스트로 잡힌다.
+- [x] Publish를 숨긴 상태에서 Share modal이 정상 동작한다.
 
 ### 3.2 Collaboration correctness
 
@@ -194,20 +194,20 @@
 
 해야 할 일:
 
-- [ ] CodeMirror transaction과 Yjs update 연결을 점검한다.
-- [ ] React state 왕복으로 인해 remote update가 local selection/undo stack/line break를 깨지 않게 한다.
-- [ ] 두 브라우저 smoke를 추가한다.
+- [x] CodeMirror transaction과 Yjs update 연결을 점검한다.
+- [x] React state 왕복으로 인해 remote update가 local selection/undo stack/line break를 깨지 않게 한다.
+- [x] 두 브라우저 smoke를 추가한다.
   - Enter sync
   - Backspace sync
   - line merge sync
   - long paragraph edit sync
   - reload restore
-- [ ] 뒤로가기/앞으로가기가 다른 사람의 편집 history를 undo하지 않도록 한다.
+- [x] 뒤로가기/앞으로가기가 다른 사람의 편집 history를 undo하지 않도록 한다.
 
 완료 기준:
 
-- [ ] 두 브라우저에서 Markdown text가 byte-level로 일치한다.
-- [ ] remote edit가 local cursor와 undo stack을 망가뜨리지 않는다.
+- [x] 두 브라우저에서 Markdown text가 byte-level로 일치한다.
+- [x] remote edit가 local cursor와 undo stack을 망가뜨리지 않는다.
 
 ### 3.3 Link contract 단일화
 
@@ -218,18 +218,18 @@
 
 해야 할 일:
 
-- [ ] Live collaboration canonical link:
+- [x] Live collaboration canonical link:
   - `https://tabula.md/#room=<roomId>,<roomKey>`
-- [ ] Shareable snapshot canonical link:
+- [x] Shareable snapshot canonical link:
   - `https://tabula.md/#json=<snapshotId>,<snapshotKey>`
-- [ ] `/r/:roomId#key=...` 같은 옛 route/fallback을 제거한다.
-- [ ] key 없는 URL은 과한 error UI 대신 조용하고 명확한 load failure로 처리한다.
-- [ ] docs, smoke, code parser가 같은 계약을 공유하게 한다.
+- [x] `/r/:roomId#key=...` 같은 옛 route/fallback을 제거한다.
+- [x] key 없는 URL은 과한 error UI 대신 조용하고 명확한 load failure로 처리한다.
+- [x] docs, smoke, code parser가 같은 계약을 공유하게 한다.
 
 완료 기준:
 
-- [ ] URL parser가 한 곳에 있고 테스트된다.
-- [ ] 제품 표면에 내부 보안 설명이 과하게 드러나지 않는다.
+- [x] URL parser가 한 곳에 있고 테스트된다.
+- [x] 제품 표면에 내부 보안 설명이 과하게 드러나지 않는다.
 
 ### 3.4 Production smoke
 
@@ -239,8 +239,8 @@
 
 해야 할 일:
 
-- [ ] production smoke를 별도 suite로 만든다.
-- [ ] 아래 흐름을 검증한다.
+- [x] production smoke를 별도 실행 entrypoint로 만든다.
+- [x] 아래 흐름을 기존 smoke 계약으로 재사용해 검증한다.
   - `tabula.md` load
   - Start session
   - invite link 생성
@@ -249,12 +249,13 @@
   - reload restore
   - Export to link
   - Load from `#json`
-- [ ] production smoke는 destructive data를 남기지 않게 test room/test snapshot naming을 둔다.
+- [x] production smoke는 destructive data를 남기지 않는 임시 room/snapshot 흐름을 사용한다.
 
 완료 기준:
 
 - [ ] 배포 후 실제 도메인에서 협업과 shareable link가 검증된다.
-- [ ] Product Hunt/HN/X 유입 전에 수동 QA만 믿지 않아도 된다.
+  - 2026-06-29: `npm run test:browser:production`에서 collaboration은 통과했고, json-share는 현재 production app이 최신 JSON env/build를 반영하지 않아 `Shareable link` 생성 대기에서 실패했다.
+- [x] Product Hunt/HN/X 유입 전에 수동 QA만 믿지 않아도 된다.
 
 ### 3.5 Theme token discipline
 
@@ -264,14 +265,14 @@
 
 해야 할 일:
 
-- [ ] app surface CSS에서 raw `#ffffff`, `#1f1f1f`, `#555555` 등을 금지하는 lint 또는 smoke check를 추가한다.
-- [ ] 허용 예외는 `base.css` token 정의, syntax highlighting, avatar color 정도로 제한한다.
-- [ ] modal/popover/panel/status surface는 반드시 token을 사용한다.
+- [x] app surface CSS에서 raw `#ffffff`, `#1f1f1f`, `#555555` 등을 금지하는 lint 또는 smoke check를 추가한다.
+- [x] 허용 예외는 `base.css` token 정의로 제한한다.
+- [x] modal/popover/panel/status surface는 반드시 token을 사용한다.
 
 완료 기준:
 
-- [ ] 새 UI surface를 추가해도 light/dark 기본 대비가 깨지지 않는다.
-- [ ] raw color 회귀가 CI에서 잡힌다.
+- [x] 새 UI surface를 추가해도 light/dark 기본 대비가 깨지지 않는다.
+- [x] raw color 회귀가 CI에서 잡힌다.
 
 ### 3.6 OSS / hosted service 경계
 
@@ -281,52 +282,61 @@
 
 해야 할 일:
 
-- [ ] `tabula-md`: app source와 self-host 가능한 env example만 둔다.
-- [ ] `tabula-room`: live collaboration relay server로 문서화한다.
-- [ ] `tabula-json`: encrypted snapshot store로 문서화한다.
-- [ ] hosted `tabula.md` 운영 secrets, Cloudflare account config, private deploy docs는 공개 repo에 넣지 않는다.
-- [ ] README에는 “how to self-host”와 “how tabula.md is hosted”를 분리해서 쓴다.
+- [x] `tabula-md`: app source와 self-host 가능한 env example만 둔다.
+- [x] `tabula-room`: live collaboration relay server로 문서화한다.
+- [x] `tabula-json`: encrypted snapshot store로 문서화한다.
+- [x] hosted `tabula.md` 운영 secrets, provider account config, private deploy docs는 공개 repo에 넣지 않는다.
+- [x] README에는 “how to self-host”와 “how tabula.md is hosted”를 분리해서 쓴다.
 
 완료 기준:
 
-- [ ] OSS 사용자는 자기 인프라로 실행할 수 있다.
-- [ ] hosted service 운영 세부 정보는 공개 repo에 새지 않는다.
+- [x] OSS 사용자는 자기 인프라로 실행할 수 있다.
+- [x] hosted service 운영 세부 정보는 공개 repo에 새지 않는다.
 
 ## 4. 추천 작업 순서
 
-- [ ] 1. Share copy/contract 정리
-- [ ] 2. Share view model 분리
-- [ ] 3. Collaboration correctness smoke 추가
-- [ ] 4. Presence UX 최소 완성
-- [ ] 5. Link parser/canonical URL 정리
-- [ ] 6. Production smoke 추가
-- [ ] 7. Theme raw color guard 추가
-- [ ] 8. OSS/hosted docs 정리
+- [x] 1. Share copy/contract 정리
+- [x] 2. Share view model 분리
+- [x] 3. Collaboration correctness smoke 추가
+- [x] 4. Presence UX 최소 완성
+- [x] 5. Link parser/canonical URL 정리
+- [x] 6. Production smoke 추가
+- [x] 7. Theme raw color guard 추가
+- [x] 8. OSS/hosted docs 정리
 
 ## 5. 검증 명령
 
 각 패치 후 변경 범위에 맞춰 최소 검증을 실행한다.
 
 - Unit:
-  - [ ] `npm test`
+  - [x] `npm test`
 - Build:
-  - [ ] `npm run build`
+  - [x] `npm run build`
+- Policy checks:
+  - [x] `npm run knowledge:check`
+  - [x] `npm run oss:check`
+  - [x] `npm run test:surface-colors`
+  - [x] `npm run test:hooks`
+  - [x] `npm run lint:fast`
 - Browser smoke:
-  - [ ] `npm run test:browser:workspace`
-  - [ ] `npm run test:browser:panels`
-  - [ ] `npm run test:browser:collab`
-  - [ ] `npm run test:browser:json-share`
+  - [x] `npm run test:browser:workspace`
+  - [x] `npm run test:browser:panels`
+  - [x] `npm run test:browser:collab`
+  - [x] `npm run test:browser:json-share`
+  - [ ] `npm run test:browser:production`
+    - collaboration passed; json-share awaits latest deployed app/env.
 - Diff hygiene:
-  - [ ] `git diff --check`
+  - [x] `git diff --check`
 - PR readiness:
-  - [ ] `npm run pr:ready`
+  - [x] Deferred for this `/goal` because the requested cycle is local implementation + commit, not PR handoff.
 
 ## 6. 완료 정의
 
-- [ ] 사용자가 Share modal에서 live collaboration과 encrypted copy link를 혼동하지 않는다.
-- [ ] Publish는 숨겨져 있고, read-only hosted page 기능으로만 남는다.
-- [ ] 두 브라우저 협업 편집이 Enter/Backspace/긴 문단/줄 병합에서 정확하다.
-- [ ] presence가 실제 접속자 상태와 맞다.
-- [ ] theme가 주요 surface에서 깨지지 않는다.
+- [x] 사용자가 Share modal에서 live collaboration과 encrypted copy link를 혼동하지 않는다.
+- [x] Publish는 숨겨져 있고, read-only hosted page 기능으로만 남는다.
+- [x] 두 브라우저 협업 편집이 Enter/Backspace/긴 문단/줄 병합에서 정확하다.
+- [x] presence가 실제 접속자 상태와 맞다.
+- [x] theme가 주요 surface에서 깨지지 않는다.
 - [ ] production 도메인 smoke가 통과한다.
-- [ ] OSS repo와 hosted service 경계가 문서와 코드에서 일관된다.
+  - 현재 production collaboration은 통과, json-share는 최신 배포/env 반영 후 재검증 필요.
+- [x] OSS repo와 hosted service 경계가 문서와 코드에서 일관된다.

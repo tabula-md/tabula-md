@@ -221,7 +221,7 @@ button {
   width: 100vw;
   height: 100vh;
   overflow: auto;
-  background: #ffffff;
+  background: var(--app-background);
 }
 
 .published-shell {
@@ -268,7 +268,7 @@ button {
 .published-header h1,
 .published-missing h1 {
   margin: 0;
-  color: #1f1f1f;
+  color: var(--text-primary);
   font-size: 24px;
   font-weight: 500;
   letter-spacing: 0;
@@ -289,7 +289,7 @@ button {
   min-height: 30px;
   padding: 0 10px;
   border-radius: 7px;
-  color: #555555;
+  color: var(--text-soft);
   background: var(--surface-muted);
   font-size: 12px;
   text-decoration: none;
@@ -297,7 +297,7 @@ button {
 
 .published-header a:hover,
 .published-missing a:hover {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-hover);
 }
 
@@ -312,7 +312,7 @@ button {
   position: fixed;
   left: max(24px, calc(50vw - 624px));
   top: 34px;
-  color: #5f5f5f;
+  color: var(--text-soft);
   font-size: 13px;
 }
 
@@ -324,7 +324,7 @@ button {
   width: 100%;
   min-height: 30px;
   padding: 0 8px 0 0;
-  color: #555555;
+  color: var(--text-soft);
   background: transparent;
   border-radius: 7px;
   font: inherit;
@@ -368,7 +368,7 @@ button {
   overflow: hidden;
   padding: 0 8px 0 28px;
   border-radius: 7px;
-  color: #5f5f5f;
+  color: var(--text-soft);
   font-size: 13px;
   line-height: 1.3;
   text-decoration: none;
@@ -378,13 +378,13 @@ button {
 .published-contents-menu a:hover,
 .published-file-list a.active,
 .published-contents-menu a.active {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-hover);
 }
 
 .published-file-tree-root:hover,
 .published-file-tree-root:focus-visible {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-hover);
 }
 
@@ -401,7 +401,7 @@ button {
   min-height: 32px;
   padding: 0 10px;
   border-radius: 7px;
-  color: #555555;
+  color: var(--text-soft);
   background: var(--surface-muted);
   cursor: pointer;
   font-size: 12px;
@@ -462,7 +462,7 @@ button {
 .published-text-page pre {
   width: min(960px, 100%);
   margin: 0 auto;
-  color: #1f1f1f;
+  color: var(--text-primary);
   font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 13px;
   line-height: 1.55;
@@ -517,7 +517,7 @@ button {
   min-height: 22px;
   padding: 0 8px;
   border-radius: 7px;
-  color: #777777;
+  color: var(--text-muted);
   background: var(--surface-muted);
   font-size: 12px;
   font-weight: 650;
@@ -527,19 +527,19 @@ button {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #bbbbbb;
+  background: var(--status-dot-idle);
 }
 
 .share-status-pill.connected span {
-  background: #15803d;
+  background: var(--status-dot-connected);
 }
 
 .share-status-pill.connecting span {
-  background: #666666;
+  background: var(--status-dot-connecting);
 }
 
 .share-status-pill.offline span {
-  background: #999999;
+  background: var(--status-dot-offline);
 }
 
 .share-link-row {
@@ -548,7 +548,7 @@ button {
 
 .copy-feedback {
   align-self: center;
-  color: #777777;
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 650;
   white-space: nowrap;
@@ -582,9 +582,9 @@ button {
   width: 22px;
   height: 22px;
   margin-left: -6px;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--surface-panel);
   border-radius: 50%;
-  color: #ffffff;
+  color: var(--toast-text);
   font-size: 10px;
   font-weight: 780;
   text-transform: uppercase;

@@ -79,7 +79,7 @@
   place-items: center;
   width: 16px;
   height: 16px;
-  color: #763fc8;
+  color: var(--accent);
 }
 
 .editor-controls-width-row {
