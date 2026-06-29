@@ -67,6 +67,11 @@ export async function run(ctx) {
       (await firstPage.locator(".share-status-dot").count()) === 0,
       "Share trigger should not use a corner status dot for active sharing.",
     );
+    const liveStatusBarText = (await firstPage.locator(".file-status-bar").textContent()) ?? "";
+    expect(
+      !/\b(?:Connecting|Live session)\b/.test(liveStatusBarText),
+      "Live collaboration status should live in top presence, not the bottom status bar.",
+    );
     expect(
       (await firstPage.locator(".avatar.self").getAttribute("data-tooltip"))?.length > 0,
       "Self avatar should expose the collaborator name through the custom hover tooltip.",
