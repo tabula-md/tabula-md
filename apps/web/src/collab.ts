@@ -14,18 +14,14 @@ import {
   ROOM_UNCONFIGURED_MESSAGE,
   shouldStoreSnapshotAfterJoin,
 } from "./collabRoom";
-import {
-  decodePresence,
-  encodePresenceForRoom,
-  isEncryptedEnvelope,
-} from "./collabConnectionModel";
+import { encodePresenceForRoom } from "./collabConnectionModel";
 import { createCollaboratorRegistry } from "./collabCollaborators";
+import { createCollabEnvelopeRouter } from "./collabEnvelopeRouter";
 import { createCollabSessionState } from "./collabSessionState";
 import { createCollabSnapshotSync } from "./collabSnapshotSync";
 import { createCollabUpdateBuffer } from "./collabUpdateBuffer";
 import {
   applyLocalTextToYText,
-  applyRemoteUpdateToYText,
   COLLAB_REMOTE_ORIGIN,
   createCollabTextDocument,
 } from "./collabTextModel";
@@ -209,39 +205,22 @@ export const createCollabConnection = ({
     clearTimeoutFn: (handle) => window.clearTimeout(handle as number),
   });
 
-  const applyIncomingEnvelope = async (envelope: unknown) => {
-    if (!roomKey) {
-      return;
-    }
-
-    if (!isEncryptedEnvelope(envelope) || envelope.roomId !== roomId) {
-      emitRecoveryEvent("invalid-message", "A collaboration server message was ignored.");
-      return;
-    }
-
-    try {
-      const plaintext = await decryptEnvelopeForRoom(roomKey, envelope);
-      if (envelope.kind === "yjs-update") {
-        const result = applyRemoteUpdateToYText({ doc, text, update: plaintext });
-        if (result) {
-          onTextChange(result.text, result.change);
-        }
-        return;
+  const envelopeRouter = createCollabEnvelopeRouter({
+    roomId,
+    textDocument,
+    collaborators,
+    canDecrypt: () => Boolean(roomKey),
+    getSelfId: () => currentIdentity.id,
+    decryptEnvelope: (envelope) => {
+      if (!roomKey) {
+        throw new Error("Room key is not available");
       }
-
-      if (envelope.kind === "presence") {
-        const collaborator = decodePresence(plaintext);
-        if (!collaborator) {
-          return;
-        }
-        if (collaborators.upsert(collaborator, currentIdentity.id)) {
-          publishCollaborators();
-        }
-      }
-    } catch {
-      emitRecoveryEvent("invalid-message", "An encrypted collaboration message could not be decrypted.");
-    }
-  };
+      return decryptEnvelopeForRoom(roomKey, envelope);
+    },
+    onTextChange,
+    publishCollaborators,
+    emitRecoveryEvent,
+  });
 
   doc.on("update", (update: Uint8Array, origin: unknown) => {
     if (closedByClient || origin === COLLAB_REMOTE_ORIGIN) {
@@ -314,7 +293,7 @@ export const createCollabConnection = ({
           }
         },
         onMessage: (envelope) => {
-          void applyIncomingEnvelope(envelope);
+          void envelopeRouter.route(envelope);
         },
         onPeers: (message) => {
           if (collaborators.prune(message.peers)) {
