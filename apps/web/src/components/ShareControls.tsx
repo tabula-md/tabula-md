@@ -187,7 +187,7 @@ export function ShareControls({
     void jsonShare.exportLink().finally(() => setExportLinkCopied(false));
   };
 
-  const copyReadOnlyLink = async () => {
+  const copyShareableLink = async () => {
     await jsonShare.copyLink();
     setExportLinkCopied(true);
     window.setTimeout(() => setExportLinkCopied(false), 1200);
@@ -416,33 +416,33 @@ export function ShareControls({
                       </span>
                       <div>
                         <h3>Shareable link</h3>
-                        <p>Creates an encrypted snapshot link.</p>
+                        <p>Export an encrypted copy of this file.</p>
                       </div>
                     </div>
 
                     {jsonShare.url ? (
-                      <div className="share-readonly-box">
+                      <div className="share-copy-box">
                         <div className="share-modal-field">
-                          <label>Snapshot link</label>
+                          <label>Shareable link</label>
                           <div className="share-modal-link-row">
                             <a
                               className="share-link-display"
                               href={jsonShare.url}
                               target="_blank"
                               rel="noreferrer"
-                              aria-label="Snapshot link"
+                              aria-label="Shareable link"
                               title={jsonShare.url}
                             >
                               <span>{jsonShare.urlPreview}</span>
                             </a>
-                            <button type="button" onClick={copyReadOnlyLink}>
+                            <button type="button" onClick={copyShareableLink}>
                               {exportLinkCopied ? <Check size={17} /> : <Copy size={17} />}
                               <span>{exportLinkCopied ? "Copied" : "Copy link"}</span>
                             </button>
                           </div>
                         </div>
 
-                        <div className="share-readonly-actions">
+                        <div className="share-copy-actions">
                           <button
                             className="share-modal-primary"
                             type="button"
@@ -460,7 +460,7 @@ export function ShareControls({
                         </div>
                       </div>
                     ) : (
-                      <div className="share-readonly-box">
+                      <div className="share-copy-box">
                         <button
                           className="share-modal-primary"
                           type="button"

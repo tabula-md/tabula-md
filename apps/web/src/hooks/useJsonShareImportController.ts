@@ -70,7 +70,7 @@ export function useJsonShareImportController({
     closeFloatingChrome();
     syncUrlForFile(nextActiveFile, "replace");
     setJsonShareImport(null);
-    showToast("Shared snapshot opened.");
+    showToast("Shared copy loaded.");
   });
 
   useEffect(() => {
@@ -111,7 +111,7 @@ export function useJsonShareImportController({
             setJsonShareImport({
               status: "error",
               route,
-              errorMessage: "This shared snapshot was not found.",
+              errorMessage: "This shared link was not found.",
             });
             return;
           }
@@ -132,7 +132,7 @@ export function useJsonShareImportController({
           setJsonShareImport({
             status: "error",
             route,
-            errorMessage: error instanceof Error ? error.message : "This shared snapshot could not be opened.",
+            errorMessage: error instanceof Error ? error.message : "This shared link could not be loaded.",
           });
         });
 
