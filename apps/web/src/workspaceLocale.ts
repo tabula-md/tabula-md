@@ -89,6 +89,8 @@ type WorkspaceMenuCopy = {
   };
 };
 
+export type WorkspaceShareCopy = WorkspaceMenuCopy["share"];
+
 export const WORKSPACE_LANGUAGE_OPTIONS: Array<{
   value: WorkspaceLanguage;
   label: string;
