@@ -20,6 +20,9 @@ describe("workspace locale chrome copy", () => {
   it("localizes Preferences, empty state, and Share chrome together", () => {
     const english = getWorkspaceMenuCopy("en");
     expect(english.actions.preferences).toBe("Preferences");
+    expect(english.emptyState.tagline).toBe(
+      "A local-first Markdown workspace for files that people and coding agents can share safely.",
+    );
     expect(english.emptyState.newMarkdown).toBe("New Markdown");
     expect(english.share.tabs.shareLink).toBe("Share link");
     expect(english.share.shareable.description).toBe("Export an encrypted copy of this file.");

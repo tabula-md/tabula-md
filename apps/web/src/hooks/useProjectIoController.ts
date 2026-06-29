@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type DragEvent, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { PRODUCT_NAME, WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
+import { createProjectArchive } from "../projectArchive";
 import {
   createStoredWorkspace,
   migrateWorkspacePayload,
@@ -26,6 +27,10 @@ const isMarkdownImportFile = (file: File) => {
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
+  downloadBlobFile(fileName, blob);
+};
+
+const downloadBlobFile = (fileName: string, blob: Blob) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -117,6 +122,12 @@ export function useProjectIoController({
       "application/json",
     );
     showToast("Project downloaded.");
+  };
+
+  const downloadProjectArchive = () => {
+    const archive = createProjectArchive(files);
+    downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
+    showToast("Project archive downloaded.");
   };
 
   const importProjectFile = async (file: File) => {
@@ -224,6 +235,7 @@ export function useProjectIoController({
     copyCurrentMarkdown,
     downloadCurrentMarkdownFile,
     downloadProject,
+    downloadProjectArchive,
     handleImportInputChange,
     handleProjectImportInputChange,
     handleEmptyWorkspaceDragOver,

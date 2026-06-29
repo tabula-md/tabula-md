@@ -35,14 +35,12 @@ import {
 import type { MarkdownFormatCommand } from "./markdownFormatting";
 import { getShortcutLabels } from "./keyboardShortcuts";
 import { createHelpMarkdown } from "./helpMarkdown";
-import { isTabulaPlusEnabled } from "./plus";
 import { useCollaborationRoom } from "./hooks/useCollaborationRoom";
 import { useAppToast } from "./hooks/useAppToast";
 import { useEditorSearchController } from "./hooks/useEditorSearchController";
 import { useEventCallback } from "./hooks/useEventCallback";
 import { useFileComments } from "./hooks/useFileComments";
 import { useMarkdownFiles } from "./hooks/useMarkdownFiles";
-import { usePublishController } from "./hooks/usePublishController";
 import { useProjectIoController } from "./hooks/useProjectIoController";
 import { useIndexedDbWorkspaceHydration } from "./hooks/useIndexedDbWorkspaceHydration";
 import { useJsonShareImportController } from "./hooks/useJsonShareImportController";
@@ -146,7 +144,6 @@ function WorkspaceApp() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
   const [shortcutLabels] = useState(() => getShortcutLabels());
-  const [tabulaPlusEnabled] = useState(() => isTabulaPlusEnabled());
   const { toast, showToast } = useAppToast();
   const { identity, updateIdentityName, normalizeIdentityName } = useWorkspaceIdentity();
   const {
@@ -173,15 +170,6 @@ function WorkspaceApp() {
     files,
     identity,
     createId: randomId,
-  });
-  const publish = usePublishController({
-    activeFile,
-    activeFileId,
-    commentsByFileId,
-    files,
-    ownerName: identity.name,
-    showToast,
-    tabulaPlusEnabled,
   });
   const jsonShare = useJsonShareController({
     activeFile,
@@ -483,6 +471,7 @@ function WorkspaceApp() {
     copyCurrentMarkdown,
     downloadCurrentMarkdownFile,
     downloadProject,
+    downloadProjectArchive,
     handleImportInputChange,
     handleProjectImportInputChange,
     handleEmptyWorkspaceDragOver,
@@ -673,7 +662,6 @@ function WorkspaceApp() {
       sharePanelTarget={sharePanelTarget}
       copied={copied}
       jsonShare={jsonShare}
-      publish={publish}
       startSessionUnavailableReason={startSessionUnavailableReason}
       onToggleShare={() => {
         setSharePanelTarget(undefined);
@@ -684,16 +672,11 @@ function WorkspaceApp() {
         setTopPopover(null);
         setSharePanelTarget(undefined);
       }}
-      onOpenTabulaPlus={() => {
-        setPreferencesOpen(false);
-        setTopPopover(null);
-        setSharePanelTarget(undefined);
-        setCenterPopover(null);
-      }}
       onStartSession={startSession}
       onCopyShareUrl={copyShareUrl}
       onCopyMarkdown={copyCurrentMarkdown}
       onDownloadMarkdown={downloadCurrentMarkdownFile}
+      onDownloadProjectArchive={downloadProjectArchive}
       onChangeUserName={updateIdentityName}
       onCommitUserName={normalizeIdentityName}
       onStopSession={stopSession}
