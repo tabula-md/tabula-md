@@ -523,6 +523,7 @@ function WorkspaceApp() {
   const {
     selectFile,
     addFile,
+    openAboutFile,
     openHelpFile,
     renameMarkdownFile,
     duplicateFile,
@@ -791,6 +792,7 @@ function WorkspaceApp() {
             closeFloatingChrome();
           }}
           onOpenCollaboration={() => openSharePanel("share-link")}
+          onOpenAbout={openAboutFile}
           onOpenHelp={openHelpFile}
         />
 

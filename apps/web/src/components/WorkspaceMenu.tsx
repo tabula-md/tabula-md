@@ -6,6 +6,8 @@ import {
   FilePlus2,
   FolderOpen,
   HelpCircle,
+  Github,
+  Info,
   Settings2,
   Upload,
   Users,
@@ -33,6 +35,7 @@ type WorkspaceMenuProps = {
   onDownloadMarkdown: () => void;
   onDownloadProject: () => void;
   onOpenCollaboration: () => void;
+  onOpenAbout: () => void;
   onOpenHelp: () => void;
 };
 
@@ -52,6 +55,22 @@ function MenuRow({ children, icon, onClick, className = "", disabled = false, tr
       <span>{children}</span>
       {trailing}
     </button>
+  );
+}
+
+type MenuLinkProps = {
+  children: ReactNode;
+  href: string;
+  icon: ReactNode;
+  ariaLabel?: string;
+};
+
+function MenuLink({ children, href, icon, ariaLabel }: MenuLinkProps) {
+  return (
+    <a className="workspace-menu-row" href={href} target="_blank" rel="noreferrer" aria-label={ariaLabel}>
+      {icon}
+      <span>{children}</span>
+    </a>
   );
 }
 
@@ -75,6 +94,7 @@ export function WorkspaceMenu({
   onDownloadMarkdown,
   onDownloadProject,
   onOpenCollaboration,
+  onOpenAbout,
   onOpenHelp,
 }: WorkspaceMenuProps) {
   if (!isOpen) {
@@ -148,9 +168,29 @@ export function WorkspaceMenu({
         >
           Settings
         </MenuRow>
+        <MenuRow icon={<Info size={15} />} onClick={onOpenAbout}>
+          About
+        </MenuRow>
         <MenuRow icon={<HelpCircle size={15} />} onClick={onOpenHelp}>
           Help
         </MenuRow>
+
+        <div className="workspace-menu-divider" role="separator" />
+
+        <MenuLink
+          href="https://x.com/tabula_md"
+          icon={<span className="workspace-menu-brand-icon">X</span>}
+          ariaLabel="Open Tabula.md on X"
+        >
+          X
+        </MenuLink>
+        <MenuLink
+          href="https://github.com/tabula-md/tabula-md"
+          icon={<Github size={15} />}
+          ariaLabel="Open Tabula.md on GitHub"
+        >
+          GitHub
+        </MenuLink>
       </nav>
 
       {preferencesOpen && (
