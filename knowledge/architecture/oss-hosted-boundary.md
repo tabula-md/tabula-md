@@ -90,7 +90,7 @@ The official hosted service should feel like this:
 3. The user can write without an account.
 4. The user can open Share and start a live session.
 5. The hosted build already has the official `tabula-room` service configured.
-6. The copied `/r/:roomId#key=...` link opens the same Markdown file in another
+6. The copied `/#room=<roomId>,<roomKey>` link opens the same Markdown file in another
    browser.
 7. The room server never receives the room key or plaintext Markdown.
 8. Publish is not required for this v0 hosted experience; it belongs to

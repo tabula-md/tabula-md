@@ -1,19 +1,19 @@
 ---
 type: Product Context
 title: Product positioning
-description: Tabula.md is a Markdown workspace for humans and agents, optimized for fast context creation, preview, sharing, and handoff.
+description: Tabula.md is a Markdown workspace for people and coding agents, optimized for fast context creation, preview, sharing, and handoff.
 tags: [product, positioning, users]
 ---
 
 # Positioning
 
-Tabula.md is the fastest way for teams to create, share, and publish Markdown
-documents they use with people and AI agents.
+Tabula.md is a local-first Markdown workspace for files that people and coding
+agents can share safely.
 
 # Core Promise
 
-Open the app and write. Preview it for humans. Share it for co-editing. Publish
-it as a public read-only page when the work needs a stable URL.
+Open the app and write. Preview the Markdown. Share it for co-editing, export
+an encrypted copy link for handoff, or send the context to a local coding agent.
 
 # Primary Users
 
@@ -29,8 +29,7 @@ it as a public read-only page when the work needs a stable URL.
 - Link-first collaboration for Markdown documents.
 - Markdown-native writing and preview instead of rich-text with export.
 - Frontmatter-aware preview for agent-readable metadata.
-- Current-page or project publish with `llms.txt` and `llms-full.txt` included
-  automatically as hidden AI-readable endpoints.
+- Encrypted copy links for handoff without making the document public.
 - A minimal room/document surface instead of a dashboard-first SaaS surface.
 
 # Not Now
@@ -38,6 +37,7 @@ it as a public read-only page when the work needs a stable URL.
 - Full account system.
 - Authenticated/private publish.
 - Billing.
+- Public read-only publish.
 - Redis-backed room scaling.
 - R2/S3 blob storage.
 - Mobile-first editing.

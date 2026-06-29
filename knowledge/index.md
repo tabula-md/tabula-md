@@ -18,6 +18,8 @@ than permissive OKF consumer conformance, especially for broken internal links.
   Tabula.md centers files, preview, comments, and handoff instead of dashboards.
 - [Product positioning](product/positioning.md) - who Tabula.md is for, what it
   promises, and what is intentionally out of scope.
+- [Activation metrics](product/activation-metrics.md) - early hosted-service
+  activation events and privacy boundaries.
 - [User workflows](product/user-workflows.md) - the primary user flows the app
   should make fast and understandable.
 - [Roadmap](product/roadmap.md) - the current product and infrastructure

@@ -1,10 +1,10 @@
 # Tabula.md
 
-The default document format for humans and agents.
+A local-first Markdown workspace for files that people and coding agents can
+share safely.
 
-Tabula.md is a local-first Markdown workspace for writing, previewing,
-commenting, and sharing Markdown documents without turning them into a database
-or proprietary document format.
+Tabula.md is for writing, previewing, commenting, and sharing Markdown files
+without turning them into a database or proprietary document format.
 
 ## Status
 
@@ -17,8 +17,9 @@ live collaboration is experimental and will continue to evolve before a stable
 - Edit Markdown files in a focused local workspace.
 - Preview GitHub Flavored Markdown.
 - Keep project context close with files, outline, and comments panels.
-- Open shareable live sessions when collaboration is needed.
-- Keep Markdown usable for handoff to teammates and AI agents.
+- Open live sessions when collaboration is needed.
+- Export encrypted copy links when someone needs their own local copy.
+- Keep Markdown usable for handoff to teammates and coding agents.
 - Preserve Markdown as the source of truth.
 
 ## Run
@@ -69,15 +70,27 @@ Then, from this repository:
 VITE_TABULA_JSON_URL=http://localhost:3004 npm run dev
 ```
 
-Production and self-hosted deployments are static Vite builds. Serve `dist`
-from a static host. Collaboration and snapshot share links use root URL
-fragments such as `/#room=<roomId>,<roomKey>` and `/#json=<jsonId>,<key>`.
-Production and self-hosted builds require `VITE_TABULA_ROOM_URL` for **Share >
-Collaborate > Start session**. Without it, live collaboration is unavailable
-instead of falling back to localhost. See
+## Self-Hosting
+
+Self-hosted deployments are static Vite builds. Serve `dist` from a static
+host. Live collaboration and encrypted copy links use root URL fragments such
+as `/#room=<roomId>,<roomKey>` and `/#json=<jsonId>,<key>`.
+
+Set these environment variables for the capabilities you want to enable:
+
+- `VITE_TABULA_ROOM_URL` for **Share > Start session**.
+- `VITE_TABULA_JSON_URL` for **Shareable link**.
+
+Without those service URLs, the matching feature stays unavailable instead of
+falling back to localhost. See
 [`docs/live-collaboration.md`](docs/live-collaboration.md).
-Snapshot `#json` share links require `VITE_TABULA_JSON_URL`, usually
-`https://json.tabula.md`.
+
+## Official Hosted Service
+
+[`tabula.md`](https://tabula.md) is the managed hosted deployment of this app
+pointed at the official room and encrypted snapshot services. Production
+credentials, managed-service account details, provider-specific deploy settings,
+and private operations runbooks do not belong in this public repository.
 
 ## Contributing
 

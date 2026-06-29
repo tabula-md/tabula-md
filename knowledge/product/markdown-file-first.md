@@ -1,14 +1,14 @@
 ---
 type: Product Principle
 title: Markdown-file-first product direction
-description: Tabula.md should feel like a workspace for Markdown files, comments, sharing, and publishing.
+description: Tabula.md should feel like a workspace for Markdown files, comments, and safe sharing.
 tags: [product, markdown, workspace]
 ---
 
 # Principle
 
-Tabula.md is a local-first Markdown workspace for writing, previewing,
-commenting, sharing, and publishing Markdown files for people and AI agents.
+Tabula.md is a local-first Markdown workspace for files that people and coding
+agents can share safely.
 
 # Product Boundaries
 

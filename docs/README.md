@@ -13,10 +13,11 @@ Start here:
 
 ## Repository Boundary
 
-Tabula.md has two public open-source components:
+Tabula.md has three public open-source components:
 
 - `tabula-md` is the local-first Markdown workspace web app.
 - `tabula-room` is the encrypted collaboration room server.
+- `tabula-json` is the encrypted snapshot store for shareable copy links.
 
 `tabula.md` is the official hosted deployment of those components. Hosted
 provider choices, production credentials, and private operations details do not
@@ -27,4 +28,4 @@ runbooks live outside this directory:
 
 - [WORKFLOW](../WORKFLOW.md) - execution rules for maintainers and agents.
 - [Knowledge bundle](../knowledge/index.md) - durable project context for
-  humans and agents.
+  maintainers and coding agents.
