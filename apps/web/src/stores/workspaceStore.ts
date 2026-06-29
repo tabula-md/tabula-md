@@ -6,7 +6,7 @@ import {
   createWorkspaceModelState,
   deleteWorkspaceFile,
   getActiveWorkspaceFile,
-  getAvailableMarkdownFileTitle,
+  getAvailableWorkspaceFileTitle,
   getOpenWorkspaceFiles,
   renameWorkspaceFile,
   reorderOpenWorkspaceFile,
@@ -24,17 +24,17 @@ import {
   type FileBookmark,
   type FileViewMode,
   type LocationRoom,
-  type MarkdownFile,
+  type WorkspaceFile,
   type ReadingWidth,
 } from "../workspaceStorage";
 
 type WorkspaceStoreInitialization = WorkspaceModelState & {
-  createFile: (index: number, overrides?: Partial<MarkdownFile>) => MarkdownFile;
+  createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   readmeFileId: string;
 };
 
 type RestoreFileInput = {
-  file: MarkdownFile;
+  file: WorkspaceFile;
   fileIndex: number;
   previousOpenFileIds: string[];
   activate: boolean;
@@ -51,38 +51,38 @@ type RoomMetaUpdate = {
 };
 
 type RecoveryEventUpdate = {
-  type: NonNullable<MarkdownFile["lastRecoveryType"]>;
+  type: NonNullable<WorkspaceFile["lastRecoveryType"]>;
   message: string;
   createdAt: string;
 };
 
 type WorkspaceStoreState = WorkspaceModelState & {
-  createFile: (index: number, overrides?: Partial<MarkdownFile>) => MarkdownFile;
+  createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   initialized: boolean;
   readmeFileId: string;
 };
 
 type WorkspaceStoreActions = {
-  addFile: (overrides?: Partial<MarkdownFile>) => MarkdownFile;
+  addFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   addFileFromContent: (
     title: string,
     text: string,
     viewMode?: FileViewMode,
-    overrides?: Partial<MarkdownFile>,
-  ) => MarkdownFile;
-  activateRoomFile: (room: LocationRoom) => MarkdownFile | undefined;
+    overrides?: Partial<WorkspaceFile>,
+  ) => WorkspaceFile;
+  activateRoomFile: (room: LocationRoom) => WorkspaceFile | undefined;
   closeFile: (fileId: string) => CloseFileResult | undefined;
   commitActiveFileSplitRatio: (splitRatio: number) => void;
   deleteFile: (fileId: string) => CloseFileResult | undefined;
-  duplicateFile: (fileId: string) => MarkdownFile | undefined;
+  duplicateFile: (fileId: string) => WorkspaceFile | undefined;
   initializeWorkspace: (initialization: WorkspaceStoreInitialization) => void;
   moveFile: (fileId: string, direction: -1 | 1) => void;
   renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
   reorderFiles: (sourceFileId: string, targetFileId: string) => void;
-  replaceWorkspace: (workspace: WorkspaceModelState) => MarkdownFile | undefined;
-  restoreFile: (input: RestoreFileInput) => MarkdownFile;
-  selectAdjacentFile: (direction: -1 | 1) => MarkdownFile | undefined;
-  selectFile: (fileId: string) => MarkdownFile | undefined;
+  replaceWorkspace: (workspace: WorkspaceModelState) => WorkspaceFile | undefined;
+  restoreFile: (input: RestoreFileInput) => WorkspaceFile;
+  selectAdjacentFile: (direction: -1 | 1) => WorkspaceFile | undefined;
+  selectFile: (fileId: string) => WorkspaceFile | undefined;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
   setActiveFileLineNumbers: (lineNumbers: boolean) => void;
   setActiveFileLineWrapping: (lineWrapping: boolean) => void;
@@ -91,21 +91,21 @@ type WorkspaceStoreActions = {
   setActiveFileViewMode: (viewMode: FileViewMode) => void;
   setFileCollaborationStatus: (
     fileId: string,
-    status: NonNullable<MarkdownFile["connectionStatus"]>,
+    status: NonNullable<WorkspaceFile["connectionStatus"]>,
     options?: CollaborationStatusOptions,
   ) => void;
   setFileCollaboratorCount: (fileId: string, collaboratorCount: number) => void;
   setFileRecoveryEvent: (fileId: string, event: RecoveryEventUpdate) => void;
   setFileRoomMeta: (fileId: string, meta: RoomMetaUpdate) => void;
   setFileText: (fileId: string, text: string) => void;
-  startFileCollaborationSession: (fileId: string, roomId: string, shareUrl: string) => MarkdownFile | undefined;
-  stopFileCollaborationSession: (fileId: string) => MarkdownFile | undefined;
-  upsertHelpFile: (helpMarkdown: string) => MarkdownFile;
+  startFileCollaborationSession: (fileId: string, roomId: string, shareUrl: string) => WorkspaceFile | undefined;
+  stopFileCollaborationSession: (fileId: string) => WorkspaceFile | undefined;
+  upsertHelpFile: (helpMarkdown: string) => WorkspaceFile;
 };
 
 export type WorkspaceStore = WorkspaceStoreState & WorkspaceStoreActions;
 
-const noopCreateFile = (index: number, overrides: Partial<MarkdownFile> = {}): MarkdownFile => ({
+const noopCreateFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
   id: overrides.id ?? `workspace-file-${index}`,
   title: overrides.title ?? (index === 1 ? "Untitled.md" : `Untitled ${index}.md`),
   text: overrides.text ?? "",
@@ -141,11 +141,11 @@ const getWorkspaceState = (state: WorkspaceStoreState): WorkspaceModelState => (
   activeFileId: state.activeFileId,
 });
 
-const getNextUserFileIndex = (files: MarkdownFile[], readmeFileId: string) =>
+const getNextUserFileIndex = (files: WorkspaceFile[], readmeFileId: string) =>
   files.filter((file) => file.id !== readmeFileId).length + 1;
 
-const getAvailableFileTitle = (files: MarkdownFile[], baseTitle: string) =>
-  getAvailableMarkdownFileTitle(files, baseTitle);
+const getAvailableFileTitle = (files: WorkspaceFile[], baseTitle: string) =>
+  getAvailableWorkspaceFileTitle(files, baseTitle);
 
 const reduceWorkspace = (
   state: WorkspaceStoreState,
@@ -158,7 +158,7 @@ const reduceWorkspace = (
 const updateFileInState = (
   state: WorkspaceStoreState,
   fileId: string,
-  updateFile: (file: MarkdownFile) => MarkdownFile,
+  updateFile: (file: WorkspaceFile) => WorkspaceFile,
 ) => {
   if (!state.files.some((file) => file.id === fileId)) {
     return state;
@@ -170,7 +170,7 @@ const updateFileInState = (
   };
 };
 
-const insertFileAt = (files: MarkdownFile[], file: MarkdownFile, fileIndex: number) => {
+const insertFileAt = (files: WorkspaceFile[], file: WorkspaceFile, fileIndex: number) => {
   if (files.some((candidate) => candidate.id === file.id)) {
     return files;
   }
@@ -195,7 +195,7 @@ const restoreOpenFileId = (
   return nextOpenFileIds;
 };
 
-const clearCollaborationFields = (file: MarkdownFile): MarkdownFile => ({
+const clearCollaborationFields = (file: WorkspaceFile): WorkspaceFile => ({
   ...file,
   roomId: undefined,
   shareUrl: undefined,
@@ -208,14 +208,14 @@ const clearCollaborationFields = (file: MarkdownFile): MarkdownFile => ({
   lastRecoveryAt: undefined,
 });
 
-const getFileTitleFromLiveText = (files: MarkdownFile[], file: MarkdownFile, text: string) => {
+const getFileTitleFromLiveText = (files: WorkspaceFile[], file: WorkspaceFile, text: string) => {
   if (!file.roomId || file.title !== getLiveFileTitle(file.roomId)) {
     return file.title;
   }
 
   const documentTitle = getMarkdownDocumentTitle(text);
   return documentTitle
-    ? getAvailableMarkdownFileTitle(
+    ? getAvailableWorkspaceFileTitle(
         files.filter((candidate) => candidate.id !== file.id),
         documentTitle,
       )
@@ -500,7 +500,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   startFileCollaborationSession: (fileId, roomId, shareUrl) => {
-    let nextFile: MarkdownFile | undefined;
+    let nextFile: WorkspaceFile | undefined;
 
     set((state) =>
       updateFileInState(state, fileId, (file) => {
@@ -523,7 +523,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   stopFileCollaborationSession: (fileId) => {
-    let nextFile: MarkdownFile | undefined;
+    let nextFile: WorkspaceFile | undefined;
 
     set((state) =>
       updateFileInState(state, fileId, (file) => {

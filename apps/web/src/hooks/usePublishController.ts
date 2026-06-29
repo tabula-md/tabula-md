@@ -14,13 +14,13 @@ import {
   type PublishScope,
 } from "../publish";
 import { buildPublishViewModel, type PublishViewModel } from "../publishViewModel";
-import { randomId, type FileComment, type MarkdownFile } from "../workspaceStorage";
+import { randomId, type FileComment, type WorkspaceFile } from "../workspaceStorage";
 
 type UsePublishControllerOptions = {
-  activeFile?: MarkdownFile;
+  activeFile?: WorkspaceFile;
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   ownerName: string;
   showToast: (message: string, tone?: "error" | "neutral") => void;
   tabulaPlusEnabled: boolean;
@@ -42,7 +42,7 @@ type PublishLifecyclePolicy =
 
 const getCommentsForPublishedFiles = (
   commentsByFileId: Record<string, FileComment[]>,
-  publishFiles: MarkdownFile[],
+  publishFiles: WorkspaceFile[],
 ) => {
   const publishFileIds = new Set(publishFiles.map((file) => file.id));
   return Object.fromEntries(

@@ -30,6 +30,12 @@ jobs:
       - name: Check knowledge bundle
         run: npm run knowledge:check
 
+      - name: Check OSS boundary
+        run: npm run oss:check
+
+      - name: Check surface colors
+        run: npm run test:surface-colors
+
       - name: Test hooks
         run: npm run test:hooks
 

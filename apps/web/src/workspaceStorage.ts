@@ -65,7 +65,7 @@ export type FileBookmark = {
   createdAt: string;
 };
 
-export type MarkdownFile = {
+export type WorkspaceFile = {
   id: string;
   title: string;
   text: string;
@@ -111,7 +111,7 @@ export type FileComment = {
 };
 
 export type WorkspaceState = {
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   openFileIds: string[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
@@ -122,7 +122,7 @@ export type InitialWorkspaceSnapshot = {
   workspace: WorkspaceState;
 };
 
-export type StoredMarkdownFile = {
+export type StoredWorkspaceFile = {
   id: string;
   title: string;
   text: string;
@@ -150,7 +150,7 @@ export type StoredProjectV5 = {
   activeFileId: string;
   openFileIds: string[];
   fileOrder: string[];
-  files: Record<string, StoredMarkdownFile>;
+  files: Record<string, StoredWorkspaceFile>;
   commentsByFileId: Record<string, FileComment[]>;
 };
 
@@ -190,7 +190,7 @@ const getLiveFileId = (roomId: string) => `live-${roomId}`;
 
 export const getLiveFileTitle = (roomId: string) => `Shared ${roomId.slice(0, 8)}.md`;
 
-export const getFileIdForRoom = (files: MarkdownFile[], roomId: string) =>
+export const getFileIdForRoom = (files: WorkspaceFile[], roomId: string) =>
   files.find((file) => file.roomId === roomId)?.id ?? getLiveFileId(roomId);
 
 const getUsableLiveRoom = (roomId?: string, shareUrl?: string) => {
@@ -209,10 +209,10 @@ const getUsableLiveRoom = (roomId?: string, shareUrl?: string) => {
   };
 };
 
-export const isUsableLiveRoomFile = (file?: Pick<MarkdownFile, "roomId" | "shareUrl">) =>
+export const isUsableLiveRoomFile = (file?: Pick<WorkspaceFile, "roomId" | "shareUrl">) =>
   Boolean(getUsableLiveRoom(file?.roomId, file?.shareUrl).roomId);
 
-const getFileUrlPath = (file?: Pick<MarkdownFile, "roomId" | "shareUrl">) => {
+const getFileUrlPath = (file?: Pick<WorkspaceFile, "roomId" | "shareUrl">) => {
   const liveRoom = getUsableLiveRoom(file?.roomId, file?.shareUrl);
   if (!liveRoom.roomId || !liveRoom.shareUrl) {
     return "/";
@@ -237,13 +237,13 @@ const syncUrlPath = (nextPath: string, mode: "push" | "replace" = "push") => {
 };
 
 export const syncUrlForFile = (
-  file?: Pick<MarkdownFile, "roomId" | "shareUrl">,
+  file?: Pick<WorkspaceFile, "roomId" | "shareUrl">,
   mode: "push" | "replace" = "push",
 ) => {
   syncUrlPath(getFileUrlPath(file), mode);
 };
 
-export const ensureLiveFileForRoom = (files: MarkdownFile[], room: LocationRoom) => {
+export const ensureLiveFileForRoom = (files: WorkspaceFile[], room: LocationRoom) => {
   const existingFile = files.find((file) => file.roomId === room.roomId);
   if (existingFile) {
     return files.map((file) =>
@@ -260,7 +260,7 @@ export const ensureLiveFileForRoom = (files: MarkdownFile[], room: LocationRoom)
   const userFileCount = files.filter((file) => file.id !== README_FILE_ID).length;
   return [
     ...files,
-    createMarkdownFile(userFileCount + 1, {
+    createWorkspaceFile(userFileCount + 1, {
       id: getLiveFileId(room.roomId),
       title: getLiveFileTitle(room.roomId),
       roomId: room.roomId,
@@ -270,7 +270,7 @@ export const ensureLiveFileForRoom = (files: MarkdownFile[], room: LocationRoom)
   ];
 };
 
-const createReadmeFile = (): MarkdownFile => ({
+const createReadmeFile = (): WorkspaceFile => ({
   id: README_FILE_ID,
   title: "README.md",
   text: STARTER_README_MARKDOWN,
@@ -282,7 +282,7 @@ const createReadmeFile = (): MarkdownFile => ({
   connectionStatus: "idle",
 });
 
-export const createMarkdownFile = (index: number, overrides: Partial<MarkdownFile> = {}): MarkdownFile => {
+export const createWorkspaceFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => {
   return {
     id: randomId(),
     title: index === 1 ? "Untitled.md" : `Untitled ${index}.md`,
@@ -297,12 +297,12 @@ export const createMarkdownFile = (index: number, overrides: Partial<MarkdownFil
   };
 };
 
-const isDefaultReadmeFile = (file: Partial<MarkdownFile>) => {
+const isDefaultReadmeFile = (file: Partial<WorkspaceFile>) => {
   const normalizedTitle = file.title?.trim().toLowerCase();
   return file.id === README_FILE_ID || normalizedTitle === "readme.md";
 };
 
-export const ensureDefaultFiles = (files: MarkdownFile[], options: { ensureUntitled?: boolean } = {}) => {
+export const ensureDefaultFiles = (files: WorkspaceFile[], options: { ensureUntitled?: boolean } = {}) => {
   const readmeFile = files.find(isDefaultReadmeFile);
   const readmeTitle = readmeFile?.title?.trim().toLowerCase();
   const shouldRefreshReadmeText =
@@ -330,7 +330,7 @@ export const ensureDefaultFiles = (files: MarkdownFile[], options: { ensureUntit
     return files;
   }
 
-  return options.ensureUntitled ? [normalizedReadmeFile, createMarkdownFile(1)] : [normalizedReadmeFile];
+  return options.ensureUntitled ? [normalizedReadmeFile, createWorkspaceFile(1)] : [normalizedReadmeFile];
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -383,7 +383,7 @@ const normalizeFileBookmarks = (bookmarks: unknown, textLength: number): FileBoo
     );
 };
 
-const normalizeMarkdownFile = (value: unknown, index: number): MarkdownFile | null => {
+const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | null => {
   if (!isRecord(value)) {
     return null;
   }
@@ -494,12 +494,12 @@ const normalizeFilesFromMap = (files: unknown, fileOrder: unknown) => {
   const allIds = [...orderedIds, ...remainingIds];
 
   return allIds
-    .map((fileId, index) => normalizeMarkdownFile(files[fileId], index))
-    .filter((file): file is MarkdownFile => Boolean(file));
+    .map((fileId, index) => normalizeWorkspaceFile(files[fileId], index))
+    .filter((file): file is WorkspaceFile => Boolean(file));
 };
 
 export const finalizeWorkspaceState = (
-  files: MarkdownFile[],
+  files: WorkspaceFile[],
   activeFileId?: string,
   commentsByFileId: Record<string, FileComment[]> = {},
   options: { includeLocationRoom?: boolean; openFileIds?: string[] } = {},
@@ -620,7 +620,7 @@ export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {
     : { source: "starter", workspace: finalizeWorkspaceState([]) };
 };
 
-export const serializeFile = (file: MarkdownFile): StoredMarkdownFile => {
+export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
   const liveRoom = getUsableLiveRoom(file.roomId, file.shareUrl);
   const isLiveRoom = Boolean(liveRoom.roomId);
 

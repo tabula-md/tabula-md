@@ -3,7 +3,7 @@ import type { FileViewMode } from "../workspaceStorage";
 
 type WorkspaceShortcutAction =
   | "newFile"
-  | "openMarkdown"
+  | "openFile"
   | "browseFiles"
   | "openHelp"
   | "previousFile"
@@ -55,7 +55,7 @@ export function getWorkspaceShortcutAction(
   }
 
   if (hasAppModifier && isShortcutKey(event, "o")) {
-    return "openMarkdown";
+    return "openFile";
   }
 
   if (hasAppModifier && isShortcutKey(event, "f")) {
@@ -129,7 +129,7 @@ export function useWorkspaceKeyboardShortcuts({
         return;
       }
 
-      if (action === "openMarkdown") {
+      if (action === "openFile") {
         closeFloatingChrome();
         importInputRef.current?.click();
         return;

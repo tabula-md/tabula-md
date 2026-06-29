@@ -7,7 +7,7 @@ import { TabulaLogo } from "./TabulaLogo";
 type EmptyFileStateProps = {
   language: WorkspaceLanguage;
   onNewFile: () => void;
-  onOpenMarkdown: () => void;
+  onOpenFile: () => void;
   onBrowseFiles: () => void;
   onOpenHelp: () => void;
   primaryShortcutModifier: string;
@@ -17,7 +17,7 @@ type EmptyFileStateProps = {
 export function EmptyFileState({
   language,
   onNewFile,
-  onOpenMarkdown,
+  onOpenFile,
   onBrowseFiles,
   onOpenHelp,
   primaryShortcutModifier,
@@ -36,12 +36,12 @@ export function EmptyFileState({
         <div className="empty-file-actions">
           <button type="button" onClick={onNewFile} className="empty-file-action">
             <FilePlus2 size={15} />
-            <span>{copy.newMarkdown}</span>
+            <span>{copy.newFile}</span>
             <span className="empty-file-action-hint">{appShortcutPrefix}+N</span>
           </button>
-          <button type="button" onClick={onOpenMarkdown} className="empty-file-action">
+          <button type="button" onClick={onOpenFile} className="empty-file-action">
             <Upload size={15} />
-            <span>{copy.openMarkdown}</span>
+            <span>{copy.openFile}</span>
             <span className="empty-file-action-hint">{appShortcutPrefix}+O</span>
           </button>
           <button type="button" onClick={onBrowseFiles} className="empty-file-action">

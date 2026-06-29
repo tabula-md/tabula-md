@@ -4,7 +4,7 @@ import {
   type CommentScope,
   type RightPanelCommentGroup,
 } from "../rightPanelCommentViewModel";
-import type { FileComment, MarkdownFile } from "../workspaceStorage";
+import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 import { CommentComposer } from "./right-panel/comments/CommentComposer";
 import { CommentGroup } from "./right-panel/comments/CommentGroup";
 import { ResolvedCommentsSection } from "./right-panel/comments/ResolvedCommentsSection";
@@ -13,7 +13,7 @@ import type { FormatCommentDate } from "./right-panel/comments/types";
 export type { RightPanelCommentGroup } from "../rightPanelCommentViewModel";
 
 type RightPanelCommentsProps = {
-  activeFile?: MarkdownFile;
+  activeFile?: WorkspaceFile;
   activeFileId: string;
   activeFileTitle: string;
   openCommentGroups: RightPanelCommentGroup[];

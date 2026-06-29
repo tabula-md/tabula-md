@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
-import type { FileComment, MarkdownFile, WorkspaceState } from "../workspaceStorage";
+import type { FileComment, WorkspaceFile, WorkspaceState } from "../workspaceStorage";
 
 type WorkspaceHydrationStatus = "idle" | "pending" | "applied" | "skipped";
 
@@ -20,7 +20,7 @@ type ShouldApplyIndexedDbWorkspaceHydrationInput = {
   indexedDbWorkspace: WorkspaceState | null;
 };
 
-const stableFiles = (files: MarkdownFile[]) => files.map((file) => ({ ...file }));
+const stableFiles = (files: WorkspaceFile[]) => files.map((file) => ({ ...file }));
 
 export const getWorkspaceHydrationSignature = (workspace: WorkspaceState) =>
   JSON.stringify({

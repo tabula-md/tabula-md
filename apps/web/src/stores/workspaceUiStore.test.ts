@@ -14,7 +14,7 @@ describe("workspace UI store", () => {
     useWorkspaceUiStore.getState().setCenterPopover("view");
     useWorkspaceUiStore.getState().setWorkspaceMenuOpen(true);
     useWorkspaceUiStore.getState().setPreferencesOpen(true);
-    useWorkspaceUiStore.getState().setSharePanelTarget("publish");
+    useWorkspaceUiStore.getState().setSharePanelTarget("export");
 
     useWorkspaceUiStore.getState().closeFloatingChrome();
 

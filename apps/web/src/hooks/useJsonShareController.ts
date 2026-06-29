@@ -4,10 +4,10 @@ import {
   formatJsonShareUrlPreview,
   getConfiguredJsonShareServiceUrl,
 } from "../jsonShare";
-import type { FileComment, MarkdownFile } from "../workspaceStorage";
+import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 
 type UseJsonShareControllerOptions = {
-  activeFile?: MarkdownFile;
+  activeFile?: WorkspaceFile;
   commentsByFileId: Record<string, FileComment[]>;
   showToast: (message: string, tone?: "error" | "neutral") => void;
 };

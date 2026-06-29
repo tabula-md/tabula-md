@@ -9,9 +9,9 @@ import {
   workspaceReducer,
   type WorkspaceModelState,
 } from "./workspaceModel";
-import type { MarkdownFile } from "./workspaceStorage";
+import type { WorkspaceFile } from "./workspaceStorage";
 
-const createFile = (id: string, overrides: Partial<MarkdownFile> = {}): MarkdownFile => ({
+const createFile = (id: string, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
   id,
   title: `${id}.md`,
   text: "",

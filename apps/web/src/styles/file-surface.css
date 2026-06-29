@@ -6,31 +6,51 @@
   --document-safe-right: 0px;
   --document-safe-width: max(
     260px,
-    calc(var(--document-workbench-width) - var(--document-safe-left) - var(--document-safe-right))
+    calc(
+      var(--document-workbench-width) - var(--document-safe-left) -
+        var(--document-safe-right)
+    )
   );
   --document-horizontal-gutter: 72px;
   --editor-bookmark-rail: 28px;
   --editor-line-number-rail: 40px;
-  --editor-left-rail: calc(var(--editor-bookmark-rail) + var(--editor-line-number-rail));
+  --editor-left-rail: calc(
+    var(--editor-bookmark-rail) + var(--editor-line-number-rail)
+  );
   --editor-comment-rail: var(--editor-left-rail);
-  --editor-frame-rails: calc(var(--editor-left-rail) + var(--editor-comment-rail));
+  --editor-frame-rails: calc(
+    var(--editor-left-rail) + var(--editor-comment-rail)
+  );
   --preview-bookmark-rail: var(--editor-bookmark-rail);
   --preview-comment-rail: var(--editor-bookmark-rail);
-  --preview-frame-rails: calc(var(--preview-bookmark-rail) + var(--preview-comment-rail));
-  --document-body-width: min(
-    var(--document-reading-max),
-    max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
+  --preview-frame-rails: calc(
+    var(--preview-bookmark-rail) + var(--preview-comment-rail)
   );
   --editor-body-width: min(
     var(--document-reading-max),
-    max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter) - var(--editor-frame-rails)))
+    max(
+      260px,
+      calc(
+        var(--document-safe-width) - var(--document-horizontal-gutter) -
+          var(--editor-frame-rails)
+      )
+    )
   );
-  --editor-frame-width: calc(var(--editor-body-width) + var(--editor-frame-rails));
-  --document-chrome-width: var(--document-body-width);
+  --document-body-width: var(--editor-body-width);
+  --editor-frame-width: calc(
+    var(--editor-body-width) + var(--editor-frame-rails)
+  );
+  --document-chrome-width: var(--editor-frame-width);
   --document-lane-margin-left: auto;
   --document-lane-margin-right: auto;
   --split-preview-inset: 28px;
-  --split-editor-bias: calc((var(--editor-frame-rails) - var(--split-preview-inset) - var(--preview-frame-rails)) / 2);
+  --split-editor-bias: calc(
+    (
+        var(--editor-frame-rails) - var(--split-preview-inset) -
+          var(--preview-frame-rails)
+      ) /
+      2
+  );
   --split-editor-ratio: 50%;
   --split-preview-ratio: 50%;
   --split-resize-hit-width: 28px;
@@ -54,33 +74,24 @@
 .center-workbench.reading-narrow,
 .file-shell.reading-narrow {
   --document-reading-max: 700px;
-  --document-body-width: min(
-    var(--document-reading-max),
-    max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
-  );
+  --document-body-width: var(--editor-body-width);
 }
 
 .center-workbench.reading-wide,
 .file-shell.reading-wide {
   --document-reading-max: 9999px;
-  --document-body-width: max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)));
+  --document-body-width: var(--editor-body-width);
 }
 
 .center-workbench.view-edit {
-  --document-body-width: min(
-    var(--document-reading-max),
-    max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)))
-  );
+  --document-body-width: var(--editor-body-width);
   --document-chrome-width: var(--editor-frame-width);
 }
 
 .center-workbench.view-preview,
 .file-shell.view-preview {
-  --document-body-width: min(
-    var(--document-reading-max),
-    max(260px, calc(var(--document-safe-width) - var(--document-horizontal-gutter) - var(--preview-frame-rails)))
-  );
-  --document-chrome-width: calc(var(--document-body-width) + var(--preview-frame-rails));
+  --document-body-width: var(--editor-body-width);
+  --document-chrome-width: var(--editor-frame-width);
 }
 
 .main-panel.right-panel-open .center-workbench,
@@ -100,7 +111,9 @@
   --editor-line-number-rail: 0px;
   --editor-left-rail: var(--editor-bookmark-rail);
   --editor-comment-rail: var(--editor-left-rail);
-  --editor-frame-rails: calc(var(--editor-left-rail) + var(--editor-comment-rail));
+  --editor-frame-rails: calc(
+    var(--editor-left-rail) + var(--editor-comment-rail)
+  );
 }
 
 .file-shell.view-edit .file-status-bar {
@@ -128,10 +141,19 @@
   grid-row: 3;
 }
 
-.file-shell.share-modal-open .editor-control-row,
+.file-shell.share-modal-open .document-toolbar-row,
 .file-shell.share-modal-open .workspace,
 .file-shell.share-modal-open .file-status-bar {
   pointer-events: none;
+}
+
+.file-shell.share-modal-open .workspace.split {
+  --split-handle-line: transparent;
+}
+
+.file-shell.share-modal-open .workspace.split .editor-surface,
+.file-shell.share-modal-open .workspace.split .preview-surface {
+  scrollbar-color: transparent transparent;
 }
 
 .editor-surface,
@@ -196,13 +218,25 @@
   .file-shell.reading-narrow:not(.view-split),
   .file-shell.reading-wide:not(.view-split) {
     --document-horizontal-gutter: 56px;
-    --document-body-width: min(680px, max(220px, calc(var(--document-safe-width) - var(--document-horizontal-gutter))));
+    --document-body-width: min(
+      680px,
+      max(
+        220px,
+        calc(var(--document-safe-width) - var(--document-horizontal-gutter))
+      )
+    );
     --document-chrome-width: var(--document-body-width);
   }
 
   .center-workbench.view-edit {
     --document-horizontal-gutter: 56px;
-    --document-body-width: min(680px, max(220px, calc(var(--document-safe-width) - var(--document-horizontal-gutter))));
+    --document-body-width: min(
+      680px,
+      max(
+        220px,
+        calc(var(--document-safe-width) - var(--document-horizontal-gutter))
+      )
+    );
     --document-chrome-width: var(--document-body-width);
   }
 
@@ -246,13 +280,19 @@
   .file-shell.reading-narrow:not(.view-split),
   .file-shell.reading-wide:not(.view-split) {
     --document-horizontal-gutter: 36px;
-    --document-body-width: max(200px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)));
+    --document-body-width: max(
+      200px,
+      calc(var(--document-safe-width) - var(--document-horizontal-gutter))
+    );
     --document-chrome-width: var(--document-body-width);
   }
 
   .center-workbench.view-edit {
     --document-horizontal-gutter: 36px;
-    --document-body-width: max(200px, calc(var(--document-safe-width) - var(--document-horizontal-gutter)));
+    --document-body-width: max(
+      200px,
+      calc(var(--document-safe-width) - var(--document-horizontal-gutter))
+    );
     --document-chrome-width: var(--document-body-width);
   }
 
@@ -266,5 +306,4 @@
   .file-shell.view-edit .file-status-bar {
     width: var(--document-chrome-width);
   }
-
 }

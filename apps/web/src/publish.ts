@@ -1,5 +1,5 @@
 import { buildLlmsFullTxt, buildLlmsTxt, buildMarkdownBundle, buildPublishBundle } from "./agentExports";
-import type { FileComment, MarkdownFile } from "./workspaceStorage";
+import type { FileComment, WorkspaceFile } from "./workspaceStorage";
 
 const PUBLISH_STORAGE_KEY = "tabula.published-snapshots.v1";
 const PUBLISH_LATEST_KEY = "tabula.latest-published-snapshot.v1";
@@ -46,9 +46,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const getFileDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
 
-export const getEmptyPublishFiles = (files: MarkdownFile[]) => files.filter((file) => file.text.trim().length === 0);
+export const getEmptyPublishFiles = (files: WorkspaceFile[]) => files.filter((file) => file.text.trim().length === 0);
 
-export const getEmptyPublishFilesMessage = (files: MarkdownFile[], scope: PublishScope) => {
+export const getEmptyPublishFilesMessage = (files: WorkspaceFile[], scope: PublishScope) => {
   const emptyFiles = getEmptyPublishFiles(files);
   const firstEmptyFile = emptyFiles[0];
 
@@ -162,7 +162,7 @@ export const createPublishedSnapshot = ({
   origin: string;
   scope?: PublishScope;
   ownerName?: string;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
 }): PublishedSnapshot => {
@@ -204,7 +204,7 @@ export const createServerPublishedSnapshot = async ({
   origin: string;
   scope?: PublishScope;
   ownerName?: string;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
   fetchImpl?: typeof fetch;
@@ -257,7 +257,7 @@ export const republishServerPublishedSnapshot = async ({
   scope?: PublishScope;
   ownerName?: string;
   snapshot: PublishedSnapshot;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
   fetchImpl?: typeof fetch;
@@ -416,7 +416,7 @@ export const createPublishPayload = ({
   commentsByFileId,
 }: {
   ownerName?: string;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
 }): PublishPayload => {
@@ -444,7 +444,7 @@ export const createPublishPayload = ({
   };
 };
 
-const toPublishedFile = (file: MarkdownFile): PublishedFile => ({
+const toPublishedFile = (file: WorkspaceFile): PublishedFile => ({
   id: file.id,
   title: file.title,
   text: file.text,

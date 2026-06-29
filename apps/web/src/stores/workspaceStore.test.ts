@@ -3,11 +3,11 @@ import {
   resetWorkspaceStoreForTests,
   useWorkspaceStore,
 } from "./workspaceStore";
-import type { MarkdownFile } from "../workspaceStorage";
+import type { WorkspaceFile } from "../workspaceStorage";
 
 const VALID_ROOM_KEY = "A".repeat(43);
 
-const createTestFile = (index: number, overrides: Partial<MarkdownFile> = {}): MarkdownFile => ({
+const createTestFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
   id: overrides.id ?? `file-${index}`,
   title: overrides.title ?? `Untitled ${index}.md`,
   text: overrides.text ?? "",

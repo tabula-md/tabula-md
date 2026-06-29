@@ -27,7 +27,7 @@ export async function run(ctx) {
     const previewText = await page.locator(".preview-surface").textContent();
 
     expect(activeTab?.title === "README.md", "Fresh projects should open on the product README.");
-    expect(activeTab?.visibleTitle === "README", "Markdown tabs should omit the .md extension visually.");
+    expect(activeTab?.visibleTitle === "README", "File tabs should omit the .md extension visually.");
     expect(activeTab?.mode === "Preview", "The product README should open in Preview mode.");
     expect(previewText?.includes("Tabula.md is a local-first Markdown workspace"), "The first screen should be a product document.");
     expect(previewText?.includes("No dashboard first."), "The README should explain the product in a short product voice.");
@@ -36,6 +36,19 @@ export async function run(ctx) {
     expect((await page.locator(".intro-action-button").count()) === 0, "The product README should not embed app actions.");
     expect((await page.locator(".tabula-plus-trigger").count()) === 0, "Tabula + should not live in the top-right document chrome.");
     expect((await page.locator(".share-trigger").count()) === 1, "Share should be a single top-right chrome action.");
+    expect((await page.getByRole("button", { name: "Copy current file" }).count()) === 1, "Copy should be a document controls action.");
+    await page.evaluate(() => {
+      window.__tabulaClipboard = [];
+      navigator.clipboard.writeText = async (text) => {
+        window.__tabulaClipboard.push(text);
+      };
+    });
+    await page.getByRole("button", { name: "Copy current file" }).click();
+    const copiedFile = await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "");
+    expect(
+      copiedFile.includes("Tabula.md is a local-first Markdown workspace"),
+      "Document controls Copy should copy the active file source.",
+    );
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".publish-trigger").count()) === 0, "Publish should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".blank-document-action").count()) === 0, "The first screen should not show canvas-style onboarding actions.");
@@ -74,7 +87,7 @@ export async function run(ctx) {
     expect(nextTabs.find((tab) => tab.active)?.title?.startsWith("Untitled"), "New tab should activate a blank document.");
     expect(
       !nextTabs.find((tab) => tab.active)?.visibleTitle.endsWith(".md"),
-      "Blank Markdown tabs should omit the .md extension visually.",
+      "Blank File tabs should omit the .md extension visually.",
     );
     expect((await page.locator(".intro-action-button").count()) === 0, "Blank writing documents should not show README actions.");
 
@@ -118,7 +131,7 @@ export async function run(ctx) {
 
     expect((await page.locator(".tab-item").count()) === 0, "Closing the final tab should leave no tabs open.");
     expect((await page.locator(".empty-file-state").count()) === 1, "Closing every tab should show the no-open-file state.");
-    expect((await page.locator(".file-toolbar").count()) === 0, "No-open-file state should hide file tools.");
+    expect((await page.locator(".document-controls").count()) === 0, "No-open-file state should hide file tools.");
     expect((await page.locator(".file-status-bar").count()) === 0, "No-open-file state should hide the file status bar.");
     expect((await page.locator(".share-trigger").count()) === 0, "No-open-file state should hide file sharing.");
 
@@ -145,15 +158,15 @@ export async function run(ctx) {
     );
     expect(
       emptyChromeState.workspaceText.includes(
-        "A local-first Markdown workspace for files that people and coding agents can share safely.",
+        "A local-first workspace for files that people and coding agents can share safely.",
       ) &&
         !emptyChromeState.workspaceText.includes("Start with Markdown.") &&
         !emptyChromeState.workspaceText.includes("Tabula turns Markdowns into collaborative documents for people and agents.") &&
-        emptyChromeState.workspaceText.includes("New Markdown") &&
-        emptyChromeState.workspaceText.includes("Open .md file") &&
+        emptyChromeState.workspaceText.includes("New File") &&
+        emptyChromeState.workspaceText.includes("Open File") &&
         emptyChromeState.workspaceText.includes("Browse project files") &&
         emptyChromeState.workspaceText.includes("Help") &&
-        !emptyChromeState.workspaceText.includes("Import Markdown") &&
+        !emptyChromeState.workspaceText.includes("Import file") &&
         !emptyChromeState.workspaceText.includes("Export project") &&
         !emptyChromeState.workspaceText.includes("Project menu") &&
         !emptyChromeState.workspaceText.includes("No file open") &&
@@ -200,7 +213,7 @@ export async function run(ctx) {
     expect(reloadedNoOpenState.tabCount === 0, "Reloading with no open tabs should preserve the openTabs state.");
     expect(
       reloadedNoOpenState.text.includes(
-        "A local-first Markdown workspace for files that people and coding agents can share safely.",
+        "A local-first workspace for files that people and coding agents can share safely.",
       ),
       "Reloading with no open tabs should keep the branded start state.",
     );
@@ -224,26 +237,26 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await waitForSavedLocally(page);
     let nextTabs = await getTabs(page);
-    expect(nextTabs.length === 1, "New Markdown shortcut from the empty workbench should open one tab.");
-    expect(nextTabs[0]?.active, "New Markdown shortcut from the empty workbench should activate the new tab.");
+    expect(nextTabs.length === 1, "New File shortcut from the empty workbench should open one tab.");
+    expect(nextTabs[0]?.active, "New File shortcut from the empty workbench should activate the new tab.");
 
     await page.locator(".tab-item.active").hover();
     await page.locator(".tab-item.active .tab-action-button.close").click();
     await waitForFileCount(page, 0);
-    await page.locator(".empty-file-actions").getByRole("button", { name: "New Markdown" }).click();
+    await page.locator(".empty-file-actions").getByRole("button", { name: "New File" }).click();
     await waitForFileCount(page, 1);
     await waitForEditorReady(page, { mode: "edit" });
     await waitForSavedLocally(page);
     nextTabs = await getTabs(page);
-    expect(nextTabs.length === 1, "New Markdown from the empty workbench should open one tab.");
-    expect(nextTabs[0]?.active, "New Markdown from the empty workbench should activate the new tab.");
+    expect(nextTabs.length === 1, "New File from the empty workbench should open one tab.");
+    expect(nextTabs[0]?.active, "New File from the empty workbench should activate the new tab.");
     expect((await page.locator(".empty-file-state").count()) === 0, "New file should leave the empty workbench.");
-    expect((await page.locator(".file-toolbar").count()) === 1, "New file should restore file tools.");
+    expect((await page.locator(".document-controls").count()) === 1, "New file should restore file tools.");
     const newFileFocused = await page.evaluate(() => {
       const editor = document.querySelector(".markdown-editor");
       return Boolean(editor?.contains(document.activeElement));
     });
-    expect(newFileFocused, "New file from the empty workbench should focus the Markdown editor.");
+    expect(newFileFocused, "New file from the empty workbench should focus the Editor.");
   });
 
   await withPage(browser, "/", async (page) => {
@@ -272,14 +285,14 @@ export async function run(ctx) {
       (await page.getByLabel("Your collaboration name").count()) === 0,
       "Share link should not ask for a name before a session exists.",
     );
-    expect((await page.getByText("Export Markdown").count()) === 0, "Export actions should not be expanded by default.");
+    expect((await page.getByText("Export File").count()) === 0, "Export actions should not be expanded by default.");
     expect((await page.getByText("Publish project").count()) === 0, "Publish actions should not be available by default.");
     expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish actions should not be on the default Share panel.");
     await page.getByRole("tab", { name: "Export" }).click();
     await waitForShareDialogState(page, { panel: "Export" });
-    expect((await page.getByText("Export Markdown").count()) > 0, "Export tab should expose local Markdown transfer.");
-    expect((await page.getByRole("button", { name: /Markdown \.md/ }).count()) === 1, "Share modal should download Markdown.");
-    expect((await page.getByRole("button", { name: /Copy Markdown/ }).count()) === 1, "Share modal should copy Markdown.");
+    expect((await page.getByText("Export File").count()) > 0, "Export tab should expose local file transfer.");
+    expect((await page.getByRole("button", { name: /File \.md/ }).count()) === 1, "Share modal should download the file.");
+    expect((await page.getByRole("button", { name: /Copy File/ }).count()) === 1, "Share modal should copy the file.");
 
     await page.getByRole("tab", { name: "Send to..." }).click();
     await waitForShareDialogState(page, { panel: "Send to..." });
@@ -307,7 +320,7 @@ export async function run(ctx) {
     expect((await page.getByRole("button", { name: "Copy publish URL" }).count()) === 0, "Publish should not copy a URL before publishing.");
     expect((await page.getByRole("button", { name: "Copy llms.txt URL" }).count()) === 0, "Publish should not copy endpoint URLs before publishing.");
     expect((await page.getByRole("button", { name: "Copy llms-full.txt URL" }).count()) === 0, "Publish should not copy endpoint URLs before publishing.");
-    expect((await page.getByRole("button", { name: "Copy page" }).count()) === 0, "Publish should not look like a Markdown export panel.");
+    expect((await page.getByRole("button", { name: "Copy page" }).count()) === 0, "Publish should not look like a file export panel.");
     expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish should not expose llms copy actions.");
     expect((await page.getByRole("button", { name: "Copy llms-full.txt" }).count()) === 0, "Publish should not expose llms copy actions.");
     expect((await page.getByRole("button", { name: "Download bundle" }).count()) === 0, "Publish should not expose bundle download actions.");
@@ -382,7 +395,7 @@ export async function run(ctx) {
     const modalPointerState = await page.evaluate(() => {
       const fileShell = document.querySelector(".file-shell");
       const workspace = document.querySelector(".workspace");
-      const editorControlRow = document.querySelector(".editor-control-row");
+      const editorControlRow = document.querySelector(".document-toolbar-row");
       const statusBar = document.querySelector(".file-status-bar");
       return {
         fileShellHasModalClass: Boolean(fileShell?.classList.contains("share-modal-open")),
@@ -525,16 +538,23 @@ export async function run(ctx) {
     expect(menuSurface.agentButtonCount === 0, "Agent should not ship as an inert menu item yet.");
     expect(menuSurface.templateSurfaceCount === 0, "Template detail surfaces should be removed until templates are real.");
     expect(
-      menuSurface.menuRows.includes("New Markdown") && menuSurface.menuRows.includes("Open Markdown..."),
-      "The menu should keep the must-have Markdown start actions.",
+      menuSurface.menuRows.includes("New File") && menuSurface.menuRows.includes("Open File..."),
+      "The menu should keep the must-have file start actions.",
     );
 
-    await page.getByRole("button", { name: "New Markdown", exact: true }).click();
+    await page.mouse.click(760, 420);
+    expect(
+      (await page.locator(".workspace-menu-popover").count()) === 0,
+      "Clicking outside the workspace menu should close it.",
+    );
+
+    await openProjectMenu(page);
+    await page.getByRole("button", { name: "New File", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);
-    expect(activeTab?.title.startsWith("Untitled"), "Menu New Markdown should create and activate the next blank document.");
+    expect(activeTab?.title.startsWith("Untitled"), "Menu New File should create and activate the next blank document.");
     expect(!activeTab?.visibleTitle.endsWith(".md"), "New blank tabs should still hide the Markdown extension.");
   });
 
@@ -542,24 +562,24 @@ export async function run(ctx) {
     let tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "Preview mode should be reflected in the active tab.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit"]),
-      "Preview mode should only show Edit as the available mode action.",
+      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Split", "Edit"]),
+      "Preview mode should expose Split and Edit as the available mode actions.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
-          { slot: "split", label: "", action: "", active: false },
+          { slot: "split", label: "Split", action: "split", active: false },
           { slot: "edit-preview", label: "Edit", action: "edit", active: false },
         ]),
-      "Preview mode should leave Split's slot empty and put Edit in the shared Edit/Preview slot.",
+      "Preview mode should keep Split reachable and put Edit in the shared Edit/Preview slot.",
     );
     expect(
       (await page.getByRole("button", { name: "Preview", exact: true }).count()) === 0,
       "The active Preview mode should not also be rendered as a toolbar action.",
     );
     expect(
-      (await page.getByRole("button", { name: "Split", exact: true }).count()) === 0,
-      "Preview mode should not expose Split because Split belongs to editing.",
+      (await page.getByRole("button", { name: "Split", exact: true }).count()) === 1,
+      "Preview mode should expose Split for direct comparison.",
     );
 
     await page.getByTitle("New tab").click();
@@ -588,22 +608,22 @@ export async function run(ctx) {
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Split", "Split should be reachable from Edit mode.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Split", "Preview"]),
-      "Split mode should preserve the Split slot first and keep Preview in the shared Edit/Preview slot.",
+      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Preview"]),
+      "Split mode should expose Edit and Preview as the available mode actions.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
-          { slot: "split", label: "Split", action: "edit", active: true },
+          { slot: "split", label: "Edit", action: "edit", active: false },
           { slot: "edit-preview", label: "Preview", action: "preview", active: false },
         ]),
-      "Split mode should keep Split active in the Split slot and target Edit when pressed again.",
+      "Split mode should replace the active Split button with direct Edit and Preview actions.",
     );
 
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     tabs = await getTabs(page);
-    expect(tabs.find((tab) => tab.active)?.mode === "Edit", "Pressing active Split again should return to Edit mode.");
+    expect(tabs.find((tab) => tab.active)?.mode === "Edit", "Pressing Edit from Split should return to Edit mode.");
 
     await page.locator('.tab-select-button[title^="README.md ·"]').click();
     await waitForActiveTab(page, { exact: "README.md" });

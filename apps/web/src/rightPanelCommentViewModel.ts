@@ -1,9 +1,9 @@
-import type { FileComment, MarkdownFile } from "./workspaceStorage";
+import type { FileComment, WorkspaceFile } from "./workspaceStorage";
 
 export type CommentScope = "current" | "all";
 
 export type RightPanelCommentGroup = {
-  file: MarkdownFile;
+  file: WorkspaceFile;
   comments: FileComment[];
 };
 
@@ -14,7 +14,7 @@ type RightPanelCommentGroups = {
 };
 
 type RightPanelCommentScopeModelArgs = {
-  activeFile?: MarkdownFile;
+  activeFile?: WorkspaceFile;
   activeFileId: string;
   activeFileTitle: string;
   openCommentGroups: RightPanelCommentGroup[];
@@ -44,7 +44,7 @@ const sortCommentGroupsByActivity = (groups: RightPanelCommentGroup[]) =>
     .sort((first, second) => getGroupActivityTime(second) - getGroupActivityTime(first));
 
 export const getRightPanelCommentGroups = (
-  files: MarkdownFile[],
+  files: WorkspaceFile[],
   commentsByFileId: Record<string, FileComment[]>,
 ): RightPanelCommentGroups => {
   const openCommentGroups = files

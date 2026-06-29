@@ -454,7 +454,7 @@ export async function run(ctx) {
       return {
         editorText,
         selectedText: document.getSelection()?.toString() ?? "",
-        buttonCount: document.querySelectorAll(".markdown-format-button").length,
+        buttonCount: document.querySelectorAll(".formatting-command-button").length,
       };
     });
     expect(
@@ -814,9 +814,9 @@ export async function run(ctx) {
     await page.mouse.move(1, 1);
     await waitForRenderFrame(page);
     const splitFormatting = await page.evaluate(() => {
-      const toolbar = document.querySelector(".markdown-formatting-toolbar");
-      const controlRow = document.querySelector(".editor-control-row.with-formatting");
-      const fileToolbar = document.querySelector(".file-toolbar");
+      const toolbar = document.querySelector(".formatting-toolbar");
+      const controlRow = document.querySelector(".document-toolbar-row.with-formatting");
+      const documentControls = document.querySelector(".document-controls");
       const editor = document.querySelector(".workspace.split .editor-surface");
       const preview = document.querySelector(".workspace.split .preview-surface");
       const editorGutter = document.querySelector(".workspace.split .cm-gutters");
@@ -832,7 +832,7 @@ export async function run(ctx) {
       const previewParagraph = document.querySelector(".workspace.split .preview-surface p");
       const toolbarRect = toolbar?.getBoundingClientRect();
       const controlRowRect = controlRow?.getBoundingClientRect();
-      const fileToolbarRect = fileToolbar?.getBoundingClientRect();
+      const documentControlsRect = documentControls?.getBoundingClientRect();
       const editorRect = editor?.getBoundingClientRect();
       const previewRect = preview?.getBoundingClientRect();
       const editorGutterRect = editorGutter?.getBoundingClientRect();
@@ -853,12 +853,12 @@ export async function run(ctx) {
         editorText: document.querySelector(".cm-content")?.textContent ?? "",
         previewStrongText: document.querySelector(".preview-surface strong")?.textContent ?? "",
         toolbarRailIsSingleLine:
-          Boolean(toolbarRect && fileToolbarRect) && Math.abs(toolbarRect.top - fileToolbarRect.top) <= 1,
+          Boolean(toolbarRect && documentControlsRect) && Math.abs(toolbarRect.top - documentControlsRect.top) <= 1,
         toolbarRailSeparatesLeftAndRight:
-          Boolean(toolbarRect && fileToolbarRect && controlRowRect) &&
+          Boolean(toolbarRect && documentControlsRect && controlRowRect) &&
           toolbarRect.left >= controlRowRect.left &&
-          fileToolbarRect.right <= controlRowRect.right + 1 &&
-          toolbarRect.right < fileToolbarRect.left,
+          documentControlsRect.right <= controlRowRect.right + 1 &&
+          toolbarRect.right < documentControlsRect.left,
         toolbarRailUsesDocumentWidth:
           Boolean(controlRowRect && editorRect && previewRect) &&
           controlRowRect.width > editorRect.width &&
@@ -1149,17 +1149,17 @@ export async function run(ctx) {
             : readRect(".workspace.split .editor-surface") ??
               readRect(".workspace.preview .preview-surface") ??
               readRect(".workspace.edit .editor-surface");
-        const rail = readRect(".editor-control-row");
-        const fileToolbar = readRect(".file-toolbar");
-        const formattingToolbar = readRect(".markdown-formatting-toolbar");
+        const rail = readRect(".document-toolbar-row");
+        const documentControls = readRect(".document-controls");
+        const formattingToolbar = readRect(".formatting-toolbar");
         const status = readRect(".file-status-bar");
-        if (!body || !rail || !fileToolbar || !status) {
+        if (!body || !rail || !documentControls || !status) {
           return null;
         }
         return {
           body,
           rail,
-          fileToolbar,
+          documentControls,
           formattingToolbar,
           status,
         };
@@ -1197,32 +1197,32 @@ export async function run(ctx) {
       "The toolbar rail row should stay transparent in Edit, Preview, and Split.",
     );
     expect(
-      splitAlignment.fileToolbar.height === previewAlignment.fileToolbar.height &&
-        previewAlignment.fileToolbar.height === writeAlignment.fileToolbar.height &&
-        previewAlignment.fileToolbar.height === 34,
-      "The visible file toolbar surface should keep the same 34px background height in every document mode.",
+      splitAlignment.documentControls.height === previewAlignment.documentControls.height &&
+        previewAlignment.documentControls.height === writeAlignment.documentControls.height &&
+        previewAlignment.documentControls.height === 34,
+      "The visible document controls surface should keep the same 34px background height in every document mode.",
     );
     expect(
-      splitAlignment.fileToolbar.background === previewAlignment.fileToolbar.background &&
-        previewAlignment.fileToolbar.background === writeAlignment.fileToolbar.background &&
-        previewAlignment.fileToolbar.background !== "rgba(0, 0, 0, 0)",
-      "The visible file toolbar surface should carry the same background in Edit, Preview, and Split.",
+      splitAlignment.documentControls.background === previewAlignment.documentControls.background &&
+        previewAlignment.documentControls.background === writeAlignment.documentControls.background &&
+        previewAlignment.documentControls.background !== "rgba(0, 0, 0, 0)",
+      "The visible document controls surface should carry the same background in Edit, Preview, and Split.",
     );
     expect(
       splitAlignment.formattingToolbar?.height === 34 &&
         writeAlignment.formattingToolbar?.height === 34 &&
-        splitAlignment.formattingToolbar?.background === splitAlignment.fileToolbar.background &&
-        writeAlignment.formattingToolbar?.background === writeAlignment.fileToolbar.background,
-      "Edit and Split formatting toolbars should use the same 34px surface as the file toolbar.",
+        splitAlignment.formattingToolbar?.background === splitAlignment.documentControls.background &&
+        writeAlignment.formattingToolbar?.background === writeAlignment.documentControls.background,
+      "Edit and Split formatting toolbars should use the same 34px surface as the document controls.",
     );
 
     await page.getByRole("button", { name: "Preview", exact: true }).click();
-    await page.locator('button[title="Editor controls"]').click();
+    await page.locator('button[title="View controls"]').click();
     const previewToolbarState = await page.evaluate(() => ({
-      formattingToolbarCount: document.querySelectorAll(".markdown-formatting-toolbar").length,
-      editorControlsText: document.querySelector('.file-tool-popover[aria-label="Editor controls"]')?.textContent ?? "",
+      formattingToolbarCount: document.querySelectorAll(".formatting-toolbar").length,
+      editorControlsText: document.querySelector('.document-controls-popover[aria-label="View controls"]')?.textContent ?? "",
     }));
-    expect(previewToolbarState.formattingToolbarCount === 0, "Preview mode should hide Markdown formatting tools.");
+    expect(previewToolbarState.formattingToolbarCount === 0, "Preview mode should hide Formatting tools.");
     expect(
       !previewToolbarState.editorControlsText.includes("Line Wrapping"),
       "Preview mode should hide edit-only line wrapping controls.",
@@ -1236,9 +1236,9 @@ export async function run(ctx) {
       await page.getByTitle("New tab").click();
       await waitForEditorReady(page, { mode: "edit" });
       const mobileToolbar = await page.evaluate(() => {
-        const toolbar = document.querySelector(".markdown-formatting-toolbar");
-        const row = document.querySelector(".markdown-formatting-row");
-        const buttons = Array.from(document.querySelectorAll(".markdown-format-button"));
+        const toolbar = document.querySelector(".formatting-toolbar");
+        const row = document.querySelector(".formatting-row");
+        const buttons = Array.from(document.querySelectorAll(".formatting-command-button"));
         const toolbarRect = toolbar?.getBoundingClientRect();
         const rowRect = row?.getBoundingClientRect();
         const buttonRects = buttons.map((button) => {

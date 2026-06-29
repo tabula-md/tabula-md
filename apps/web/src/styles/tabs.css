@@ -13,7 +13,7 @@
 }
 
 .tabs-scroll {
-  --tab-overflow-mask: linear-gradient(90deg, #000000 0%, #000000 100%);
+  --tab-overflow-mask: linear-gradient(90deg, black 0%, black 100%);
   display: flex;
   align-items: center;
   gap: 3px;
@@ -33,19 +33,19 @@
 }
 
 .tabbar.can-scroll-left .tabs-scroll {
-  --tab-overflow-mask: linear-gradient(90deg, transparent 0, #000000 34px, #000000 100%);
+  --tab-overflow-mask: linear-gradient(90deg, transparent 0, black 34px, black 100%);
 }
 
 .tabbar.can-scroll-right .tabs-scroll {
-  --tab-overflow-mask: linear-gradient(90deg, #000000 0, #000000 calc(100% - 44px), transparent 100%);
+  --tab-overflow-mask: linear-gradient(90deg, black 0, black calc(100% - 44px), transparent 100%);
 }
 
 .tabbar.can-scroll-left.can-scroll-right .tabs-scroll {
   --tab-overflow-mask: linear-gradient(
     90deg,
     transparent 0,
-    #000000 34px,
-    #000000 calc(100% - 44px),
+    black 34px,
+    black calc(100% - 44px),
     transparent 100%
   );
 }
@@ -114,19 +114,19 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #a8a8a8;
+  background: var(--status-dot-idle);
 }
 
 .tab-live-dot.connected {
-  background: #15803d;
+  background: var(--status-dot-connected);
 }
 
 .tab-live-dot.connecting {
-  background: #9a9a9a;
+  background: var(--status-dot-connecting);
 }
 
 .tab-live-dot.offline {
-  background: #c0c0c0;
+  background: var(--status-dot-offline);
 }
 
 .tab-collaborator-count {

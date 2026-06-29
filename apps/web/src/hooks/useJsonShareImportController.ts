@@ -10,7 +10,7 @@ import {
   syncUrlForFile,
   type FileComment,
   type InitialWorkspaceSnapshot,
-  type MarkdownFile,
+  type WorkspaceFile,
   type WorkspaceState,
 } from "../workspaceStorage";
 import { useEventCallback } from "./useEventCallback";
@@ -24,10 +24,10 @@ type UseJsonShareImportControllerArgs = {
   clearFileHistory: () => void;
   closeFloatingChrome: () => void;
   commentsByFileId: Record<string, FileComment[]>;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
-  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">) => MarkdownFile | undefined;
-  resetCollaborationState: (nextStatus: MarkdownFile["connectionStatus"]) => void;
+  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
+  resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
   showToast: (message: string, tone?: "neutral" | "error") => void;
   workspaceSource: InitialWorkspaceSnapshot["source"];
 };

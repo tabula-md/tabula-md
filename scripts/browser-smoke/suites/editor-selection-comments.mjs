@@ -265,7 +265,7 @@ export async function run(ctx) {
       selectionAfterToolbarFormat.addSelectionCommentVisible,
       "Toolbar formatting should not remove the inline action for adding a selection comment.",
     );
-    expect(selectionAfterToolbarFormat.editorFocused, "Toolbar formatting should return focus to the Markdown editor.");
+    expect(selectionAfterToolbarFormat.editorFocused, "Toolbar formatting should return focus to the Editor.");
 
     await page.locator(".selection-comment-button").click();
     await waitForRenderFrame(page);
@@ -474,7 +474,7 @@ export async function run(ctx) {
     });
     expect(
       previewFormattedSelection?.selectedText === "Alpha target omega",
-      "Preview should allow selecting rendered text across Markdown formatting boundaries.",
+      "Preview should allow selecting rendered text across Formatting boundaries.",
     );
 
     await waitForRenderFrame(page);

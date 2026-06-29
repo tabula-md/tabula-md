@@ -36,6 +36,7 @@
     "test:browser:production": "npm run test:browser:production:collab && npm run test:browser:production:json-share",
     "test:browser:publish": "npm run test:browser -- --suite=publish",
     "test:browser:performance": "npm run test:browser -- --suite=performance",
+    "test:surface-colors": "node scripts/check-surface-colors.mjs",
     "lint:fast": "oxlint apps/web/src scripts --deny-warnings"
   },
   "dependencies": {

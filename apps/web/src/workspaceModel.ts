@@ -1,19 +1,19 @@
 import {
   clampSplitEditorRatio,
   type FileViewMode,
-  type MarkdownFile,
+  type WorkspaceFile,
   type ReadingWidth,
 } from "./workspaceStorage";
 
 export type WorkspaceModelState = {
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   openFileIds: string[];
   activeFileId: string;
 };
 
 export type CloseFileResult = {
   closedActiveFile: boolean;
-  nextActiveFile?: MarkdownFile;
+  nextActiveFile?: WorkspaceFile;
 };
 
 export type RenameFileResult =
@@ -32,11 +32,11 @@ type WorkspaceValueUpdater<T> = T | ((currentValue: T) => T);
 
 export type WorkspaceModelAction =
   | { type: "replaceWorkspace"; state: WorkspaceModelState }
-  | { type: "replaceFiles"; update: WorkspaceValueUpdater<MarkdownFile[]> }
+  | { type: "replaceFiles"; update: WorkspaceValueUpdater<WorkspaceFile[]> }
   | { type: "replaceOpenFileIds"; update: WorkspaceValueUpdater<string[]> }
   | { type: "setActiveFileId"; fileId: string }
   | { type: "selectFile"; fileId: string }
-  | { type: "addFile"; file: MarkdownFile; insertAfterFileId?: string }
+  | { type: "addFile"; file: WorkspaceFile; insertAfterFileId?: string }
   | { type: "renameFile"; fileId: string; title: string }
   | { type: "closeFile"; fileId: string }
   | { type: "deleteFile"; fileId: string }
@@ -89,12 +89,12 @@ export const createWorkspaceModelState = ({
 export const getOpenWorkspaceFiles = (state: WorkspaceModelState) =>
   state.openFileIds
     .map((fileId) => state.files.find((file) => file.id === fileId))
-    .filter((file): file is MarkdownFile => Boolean(file));
+    .filter((file): file is WorkspaceFile => Boolean(file));
 
 export const getActiveWorkspaceFile = (state: WorkspaceModelState) =>
   getOpenWorkspaceFiles(state).find((file) => file.id === state.activeFileId);
 
-export const normalizeMarkdownFileTitle = (title: string) => {
+export const normalizeWorkspaceFileTitle = (title: string) => {
   const trimmedTitle = title.trim().replace(/\s+/g, " ");
   if (!trimmedTitle) {
     return "Untitled.md";
@@ -103,8 +103,8 @@ export const normalizeMarkdownFileTitle = (title: string) => {
   return /\.[A-Za-z0-9]+$/.test(trimmedTitle) ? trimmedTitle : `${trimmedTitle}.md`;
 };
 
-export const getAvailableMarkdownFileTitle = (files: MarkdownFile[], baseTitle: string) => {
-  const normalizedTitle = normalizeMarkdownFileTitle(baseTitle);
+export const getAvailableWorkspaceFileTitle = (files: WorkspaceFile[], baseTitle: string) => {
+  const normalizedTitle = normalizeWorkspaceFileTitle(baseTitle);
   const existingTitles = new Set(files.map((file) => file.title.toLowerCase()));
   if (!existingTitles.has(normalizedTitle.toLowerCase())) {
     return normalizedTitle;
@@ -142,7 +142,7 @@ export const renameWorkspaceFile = (
     };
   }
 
-  const nextTitle = normalizeMarkdownFileTitle(trimmedTitle);
+  const nextTitle = normalizeWorkspaceFileTitle(trimmedTitle);
   const duplicateFile = state.files.find(
     (file) => file.id !== fileId && file.title.toLowerCase() === nextTitle.toLowerCase(),
   );
@@ -193,7 +193,7 @@ export const setWorkspaceActiveFileId = (state: WorkspaceModelState, fileId: str
 
 export const addWorkspaceFile = (
   state: WorkspaceModelState,
-  file: MarkdownFile,
+  file: WorkspaceFile,
   options: { insertAfterFileId?: string } = {},
 ): WorkspaceModelState => {
   const files = [...state.files];
@@ -299,7 +299,7 @@ export const reorderOpenWorkspaceFile = (
 export const selectAdjacentWorkspaceFile = (
   state: WorkspaceModelState,
   direction: -1 | 1,
-): { state: WorkspaceModelState; file?: MarkdownFile } => {
+): { state: WorkspaceModelState; file?: WorkspaceFile } => {
   const openFiles = getOpenWorkspaceFiles(state);
   if (openFiles.length < 2) {
     return { state };
@@ -324,7 +324,7 @@ export const selectAdjacentWorkspaceFile = (
 const updateWorkspaceFile = (
   state: WorkspaceModelState,
   fileId: string,
-  updateFile: (file: MarkdownFile) => MarkdownFile,
+  updateFile: (file: WorkspaceFile) => WorkspaceFile,
 ): WorkspaceModelState => {
   if (!state.files.some((file) => file.id === fileId)) {
     return state;
@@ -338,7 +338,7 @@ const updateWorkspaceFile = (
 
 const updateActiveWorkspaceFile = (
   state: WorkspaceModelState,
-  updateFile: (file: MarkdownFile) => MarkdownFile,
+  updateFile: (file: WorkspaceFile) => WorkspaceFile,
 ): WorkspaceModelState => {
   if (!state.activeFileId) {
     return state;

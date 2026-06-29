@@ -388,7 +388,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         highlightActiveLineGutter(),
         markdown(),
         syntaxHighlighting(markdownEditorHighlightStyle, { fallback: true }),
-        placeholder("Start writing Markdown..."),
+        placeholder("Start writing..."),
         annotationGutterCompartmentRef.current.of(
           createLineAnnotationGutterExtension(bookmarks, (request) => onOpenLineActionsRef.current?.(request)),
         ),
@@ -516,6 +516,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       });
     }, [bookmarks, commentAnchors, commentsEnabled]);
 
-    return <div ref={containerRef} className="markdown-editor" aria-label="Markdown editor" />;
+    return <div ref={containerRef} className="markdown-editor" aria-label="Editor" />;
   },
 );

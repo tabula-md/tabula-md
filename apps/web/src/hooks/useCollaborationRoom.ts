@@ -12,10 +12,10 @@ import {
   parseRoomShareUrl,
 } from "../collab";
 import type { TextChange, TextPatch } from "../textPatches";
-import { isUsableLiveRoomFile, type MarkdownFile } from "../workspaceStorage";
+import { isUsableLiveRoomFile, type WorkspaceFile } from "../workspaceStorage";
 
 type UseCollaborationRoomOptions = {
-  activeFile?: MarkdownFile;
+  activeFile?: WorkspaceFile;
   activeSelection?: LiveSelection;
   identity: Collaborator;
   setFileText: (fileId: string, text: string) => void;
@@ -30,7 +30,7 @@ type UseCollaborationRoomOptions = {
     fileId: string,
     event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
   ) => void;
-  startFileCollaborationSession: (fileId: string, roomId: string, shareUrl: string) => MarkdownFile | undefined;
+  startFileCollaborationSession: (fileId: string, roomId: string, shareUrl: string) => WorkspaceFile | undefined;
   onRemoteTextChange?: (fileId: string, text: string, change?: TextChange) => void;
 };
 

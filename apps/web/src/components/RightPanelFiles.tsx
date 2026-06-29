@@ -13,8 +13,8 @@ import {
   X,
 } from "lucide-react";
 import type { ConnectionStatus } from "../collab";
-import type { RenameFileResult } from "../hooks/useMarkdownFiles";
-import type { FileComment, MarkdownFile } from "../workspaceStorage";
+import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
+import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 
 type FileTreeFolderNode = {
   type: "folder";
@@ -27,23 +27,23 @@ type FileTreeFileNode = {
   type: "file";
   id: string;
   name: string;
-  file: MarkdownFile;
+  file: WorkspaceFile;
 };
 
 type FileTreeNode = FileTreeFolderNode | FileTreeFileNode;
 
 type RightPanelFilesProps = {
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   openFileIds: string[];
   activeFileId: string;
   fileQuery: string;
   commentsByFileId: Record<string, FileComment[]>;
   collapsedFolderIds: Set<string>;
-  getFileStatus: (file: MarkdownFile) => ConnectionStatus;
-  getFileSearchText: (file: MarkdownFile) => string;
+  getFileStatus: (file: WorkspaceFile) => ConnectionStatus;
+  getFileSearchText: (file: WorkspaceFile) => string;
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
-  onImportMarkdown: () => void;
+  onImportFile: () => void;
   onToggleFolder: (folderId: string) => void;
   onSelectFile: (fileId: string) => void;
   onCloseFile: (fileId: string) => void;
@@ -91,7 +91,7 @@ const sortFileTree = (folderNode: FileTreeFolderNode) => {
   return folderNode;
 };
 
-const buildFileTree = (files: MarkdownFile[]): FileTreeFolderNode => {
+const buildFileTree = (files: WorkspaceFile[]): FileTreeFolderNode => {
   const rootNode: FileTreeFolderNode = {
     type: "folder",
     id: "project-root",
@@ -165,7 +165,7 @@ export function RightPanelFiles({
   getFileSearchText,
   onFileQueryChange,
   onNewFile,
-  onImportMarkdown,
+  onImportFile,
   onToggleFolder,
   onSelectFile,
   onCloseFile,
@@ -229,7 +229,7 @@ export function RightPanelFiles({
     };
   }, [actionMenuFileId]);
 
-  const startRenamingFile = (file: MarkdownFile) => {
+  const startRenamingFile = (file: WorkspaceFile) => {
     setActionMenuFileId(null);
     setRenamingFileId(file.id);
     setRenamingTitle(getFileDisplayTitle(file.title));
@@ -507,9 +507,9 @@ export function RightPanelFiles({
         <button
           className="right-file-import-button"
           type="button"
-          title="Import Markdown"
-          aria-label="Import Markdown"
-          onClick={onImportMarkdown}
+          title="Import file"
+          aria-label="Import file"
+          onClick={onImportFile}
         >
           <Upload size={15} />
         </button>

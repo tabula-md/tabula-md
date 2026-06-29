@@ -9,7 +9,7 @@ import {
   STARTER_README_MARKDOWN,
   syncUrlForFile,
   type FileComment,
-  type MarkdownFile,
+  type WorkspaceFile,
 } from "../workspaceStorage";
 
 type ShowToast = (
@@ -20,30 +20,30 @@ type ShowToast = (
 
 type DeleteFileResult = {
   closedActiveFile: boolean;
-  nextActiveFile?: MarkdownFile;
+  nextActiveFile?: WorkspaceFile;
 };
 
 type CloseFileResult = {
   closedActiveFile: boolean;
-  nextActiveFile?: MarkdownFile;
+  nextActiveFile?: WorkspaceFile;
 };
 
 type UseWorkspaceFileActionsArgs = {
-  activeFile?: MarkdownFile;
+  activeFile?: WorkspaceFile;
   activeFileId: string;
   addFileFromContent: (
     title: string,
     text: string,
-    viewMode?: MarkdownFile["viewMode"],
-    overrides?: Partial<MarkdownFile>,
-  ) => MarkdownFile;
-  addMarkdownFile: (overrides?: Partial<MarkdownFile>) => MarkdownFile;
+    viewMode?: WorkspaceFile["viewMode"],
+    overrides?: Partial<WorkspaceFile>,
+  ) => WorkspaceFile;
+  addWorkspaceFileAction: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   closeFloatingChrome: () => void;
-  closeMarkdownFile: (fileId: string) => CloseFileResult | undefined;
+  closeWorkspaceFileAction: (fileId: string) => CloseFileResult | undefined;
   commentsByFileId: Record<string, FileComment[]>;
-  deleteMarkdownFile: (fileId: string) => DeleteFileResult | undefined;
-  duplicateMarkdownFile: (fileId: string) => MarkdownFile | undefined;
-  files: MarkdownFile[];
+  deleteWorkspaceFileAction: (fileId: string) => DeleteFileResult | undefined;
+  duplicateWorkspaceFile: (fileId: string) => WorkspaceFile | undefined;
+  files: WorkspaceFile[];
   helpMarkdown: string;
   historyByFileId: Record<string, FileHistory>;
   openFileIds: string[];
@@ -51,18 +51,18 @@ type UseWorkspaceFileActionsArgs = {
   queueEditorFocus: () => void;
   renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
-  resetCollaborationState: (nextStatus: MarkdownFile["connectionStatus"]) => void;
+  resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
   restoreFile: (input: {
-    file: MarkdownFile;
+    file: WorkspaceFile;
     fileIndex: number;
     previousOpenFileIds: string[];
     activate: boolean;
-  }) => MarkdownFile;
-  selectAdjacentMarkdownFile: (direction: -1 | 1) => MarkdownFile | undefined;
-  selectMarkdownFile: (fileId: string) => MarkdownFile | undefined;
+  }) => WorkspaceFile;
+  selectAdjacentWorkspaceFileAction: (direction: -1 | 1) => WorkspaceFile | undefined;
+  selectWorkspaceFileAction: (fileId: string) => WorkspaceFile | undefined;
   setHistoryByFileId: Dispatch<SetStateAction<Record<string, FileHistory>>>;
   showToast: ShowToast;
-  upsertHelpFile: (helpMarkdown: string) => MarkdownFile;
+  upsertHelpFile: (helpMarkdown: string) => WorkspaceFile;
 };
 
 export function removeRecordKey<TValue>(record: Record<string, TValue>, key: string) {
@@ -74,7 +74,7 @@ export function removeRecordKey<TValue>(record: Record<string, TValue>, key: str
   return nextRecord;
 }
 
-export function restoreFileToList(files: MarkdownFile[], restoredFile: MarkdownFile, restoredIndex: number) {
+export function restoreFileToList(files: WorkspaceFile[], restoredFile: WorkspaceFile, restoredIndex: number) {
   if (files.some((file) => file.id === restoredFile.id)) {
     return files;
   }
@@ -103,12 +103,12 @@ export function useWorkspaceFileActions({
   activeFile,
   activeFileId,
   addFileFromContent,
-  addMarkdownFile,
+  addWorkspaceFileAction,
   closeFloatingChrome,
-  closeMarkdownFile,
+  closeWorkspaceFileAction,
   commentsByFileId,
-  deleteMarkdownFile,
-  duplicateMarkdownFile,
+  deleteWorkspaceFileAction,
+  duplicateWorkspaceFile,
   files,
   helpMarkdown,
   historyByFileId,
@@ -119,14 +119,14 @@ export function useWorkspaceFileActions({
   replaceCommentsByFileId,
   resetCollaborationState,
   restoreFile,
-  selectAdjacentMarkdownFile,
-  selectMarkdownFile,
+  selectAdjacentWorkspaceFileAction,
+  selectWorkspaceFileAction,
   setHistoryByFileId,
   showToast,
   upsertHelpFile,
 }: UseWorkspaceFileActionsArgs) {
   const selectFile = (fileId: string) => {
-    const nextFile = selectMarkdownFile(fileId);
+    const nextFile = selectWorkspaceFileAction(fileId);
     if (!nextFile) {
       return;
     }
@@ -137,7 +137,7 @@ export function useWorkspaceFileActions({
 
   const addFile = () => {
     queueEditorFocus();
-    const nextFile = addMarkdownFile(getNewFilePreferenceOverrides(preferences));
+    const nextFile = addWorkspaceFileAction(getNewFilePreferenceOverrides(preferences));
     closeFloatingChrome();
     syncUrlForFile(nextFile);
   };
@@ -149,7 +149,7 @@ export function useWorkspaceFileActions({
   };
 
   const openAboutFile = () => {
-    const getNormalizedTitle = (file: MarkdownFile) => file.title.trim().toLowerCase().replace(/\.md$/, "");
+    const getNormalizedTitle = (file: WorkspaceFile) => file.title.trim().toLowerCase().replace(/\.md$/, "");
     const readmeFile =
       files.find((file) => file.id === README_FILE_ID) ??
       files.find((file) => getNormalizedTitle(file) === "readme");
@@ -162,12 +162,12 @@ export function useWorkspaceFileActions({
         readingWidth: "wide",
       });
 
-    selectMarkdownFile(nextFile.id);
+    selectWorkspaceFileAction(nextFile.id);
     closeFloatingChrome();
     syncUrlForFile(nextFile);
   };
 
-  const renameMarkdownFile = (fileId: string, nextRawTitle: string) => {
+  const renameWorkspaceFileAction = (fileId: string, nextRawTitle: string) => {
     const result = renameFile(fileId, nextRawTitle);
     if (!result.ok) {
       showToast(result.message, "error");
@@ -177,7 +177,7 @@ export function useWorkspaceFileActions({
 
   const duplicateFile = (fileId: string) => {
     queueEditorFocus();
-    const nextFile = duplicateMarkdownFile(fileId);
+    const nextFile = duplicateWorkspaceFile(fileId);
     if (!nextFile) {
       return;
     }
@@ -201,7 +201,7 @@ export function useWorkspaceFileActions({
     const previousActiveFileId = activeFile?.id ?? activeFileId;
     const deletedComments = commentsByFileId[fileId];
     const deletedHistory = historyByFileId[fileId];
-    const result = deleteMarkdownFile(fileId);
+    const result = deleteWorkspaceFileAction(fileId);
     if (!result) {
       return;
     }
@@ -253,7 +253,7 @@ export function useWorkspaceFileActions({
   };
 
   const closeFile = (fileId: string) => {
-    const result = closeMarkdownFile(fileId);
+    const result = closeWorkspaceFileAction(fileId);
     if (!result) {
       return;
     }
@@ -272,7 +272,7 @@ export function useWorkspaceFileActions({
   };
 
   const selectAdjacentFile = (direction: -1 | 1) => {
-    const nextFile = selectAdjacentMarkdownFile(direction);
+    const nextFile = selectAdjacentWorkspaceFileAction(direction);
     if (nextFile) {
       closeFloatingChrome();
       syncUrlForFile(nextFile);
@@ -284,7 +284,7 @@ export function useWorkspaceFileActions({
     addFile,
     openAboutFile,
     openHelpFile,
-    renameMarkdownFile,
+    renameWorkspaceFileAction,
     duplicateFile,
     deleteFile,
     closeFile,

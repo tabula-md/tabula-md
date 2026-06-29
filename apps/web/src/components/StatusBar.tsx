@@ -1,57 +1,61 @@
-import { Check, MessageSquare, Redo2, Undo2 } from "lucide-react";
+import { Check, MessageSquare } from "lucide-react";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getStatusBarSaveState } from "../statusBarViewModel";
+import { getWorkspaceChromeCopy } from "../workspaceLocale";
+import type { FileViewMode } from "../workspaceStorage";
 
 type StatusBarProps = {
   activeFileTitle: string;
-  canUndo: boolean;
-  canRedo: boolean;
+  activeViewMode: FileViewMode;
   isLive: boolean;
+  language: WorkspaceLanguage;
   statusLabel: string;
   wordCount: number;
   commentCount: number;
   cursorPositionLabel: string;
   selectedCharacterCount: number;
   selectedLineCount: number;
-  onUndo: () => void;
-  onRedo: () => void;
   onOpenComments: () => void;
 };
 
 export function StatusBar({
   activeFileTitle,
-  canUndo,
-  canRedo,
+  activeViewMode,
   isLive,
+  language,
   statusLabel,
   wordCount,
   commentCount,
   cursorPositionLabel,
   selectedCharacterCount,
   selectedLineCount,
-  onUndo,
-  onRedo,
   onOpenComments,
 }: StatusBarProps) {
+  const copy = getWorkspaceChromeCopy(language).statusBar;
   const hasComments = commentCount > 0;
-  const saveState = getStatusBarSaveState({ isLive, statusLabel });
+  const saveState = getStatusBarSaveState({
+    isLive,
+    roomOfflineLabel: copy.roomOffline,
+    savedLocallyLabel: copy.savedLocally,
+    statusLabel,
+  });
   const cursorLabel =
     selectedCharacterCount > 0
-      ? `${cursorPositionLabel} (${selectedLineCount > 1 ? `${selectedLineCount} lines, ` : ""}${selectedCharacterCount} ${
-          selectedCharacterCount === 1 ? "character" : "characters"
+      ? `${cursorPositionLabel} (${
+          selectedLineCount > 1 ? `${selectedLineCount} ${copy.lines}, ` : ""
+        }${selectedCharacterCount} ${
+          selectedCharacterCount === 1 ? copy.character : copy.characters
         })`
       : cursorPositionLabel;
+  const wordCountLabel = `${wordCount} ${wordCount === 1 ? copy.word : copy.words}`;
+  const commentCountLabel = `${commentCount} ${commentCount === 1 ? copy.comment : copy.comments}`;
+  const showCursorPosition = activeViewMode !== "preview";
 
   return (
-    <footer className="file-status-bar" aria-label={`Status for ${activeFileTitle}`}>
-      <div className="status-bar-left">
-        <button className="status-icon-button" type="button" title="Undo" aria-label="Undo" disabled={!canUndo} onClick={onUndo}>
-          <Undo2 size={15} />
-        </button>
-        <button className="status-icon-button" type="button" title="Redo" aria-label="Redo" disabled={!canRedo} onClick={onRedo}>
-          <Redo2 size={15} />
-        </button>
-      </div>
-
+    <footer
+      className="file-status-bar"
+      aria-label={`Status for ${activeFileTitle}`}
+    >
       <div className="status-bar-right">
         {saveState.visible && (
           <span className="status-save-state">
@@ -59,14 +63,18 @@ export function StatusBar({
             <span>{saveState.label}</span>
           </span>
         )}
-        <span>{wordCount} words</span>
-        <span className="status-cursor-position">{cursorLabel}</span>
+        <span>{wordCountLabel}</span>
+        {showCursorPosition && (
+          <span className="status-cursor-position">{cursorLabel}</span>
+        )}
         {hasComments && (
-          <button className="status-comments-button" type="button" onClick={onOpenComments}>
+          <button
+            className="status-comments-button"
+            type="button"
+            onClick={onOpenComments}
+          >
             <MessageSquare size={13} />
-            <span>
-              {commentCount} {commentCount === 1 ? "comment" : "comments"}
-            </span>
+            <span>{commentCountLabel}</span>
           </button>
         )}
       </div>

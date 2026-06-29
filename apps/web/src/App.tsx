@@ -9,13 +9,13 @@ import { MessageSquarePlus } from "lucide-react";
 import { AppToast } from "./components/AppToast";
 import { EmptyFileState } from "./components/EmptyFileState";
 import { FileTabs } from "./components/FileTabs";
-import { FileSearchBar, FileToolbar } from "./components/FileToolbar";
+import { DocumentSearchBar, DocumentControls } from "./components/DocumentControls";
 import {
   MarkdownEditor,
   type MarkdownEditorHandle,
   type MarkdownSelectionActionPosition,
 } from "./components/MarkdownEditor";
-import { MarkdownFormattingToolbar } from "./components/MarkdownFormattingToolbar";
+import { FormattingToolbar } from "./components/FormattingToolbar";
 import { MarkdownPreview } from "./components/MarkdownPreview";
 import { RightPanel } from "./components/RightPanel";
 import { ShareControls } from "./components/ShareControls";
@@ -40,7 +40,7 @@ import { useAppToast } from "./hooks/useAppToast";
 import { useEditorSearchController } from "./hooks/useEditorSearchController";
 import { useEventCallback } from "./hooks/useEventCallback";
 import { useFileComments } from "./hooks/useFileComments";
-import { useMarkdownFiles } from "./hooks/useMarkdownFiles";
+import { useWorkspaceFiles } from "./hooks/useWorkspaceFiles";
 import { useProjectIoController } from "./hooks/useProjectIoController";
 import { useIndexedDbWorkspaceHydration } from "./hooks/useIndexedDbWorkspaceHydration";
 import { useJsonShareImportController } from "./hooks/useJsonShareImportController";
@@ -57,6 +57,7 @@ import { useWorkspaceKeyboardShortcuts } from "./hooks/useWorkspaceKeyboardShort
 import { useWorkspaceLiveRoomController } from "./hooks/useWorkspaceLiveRoomController";
 import { useWorkspacePreferences } from "./hooks/useWorkspacePreferences";
 import { useWorkspaceScrollSync } from "./hooks/useWorkspaceScrollSync";
+import { getWorkspaceChromeCopy } from "./workspaceLocale";
 import {
   getActiveWorkspaceStatus,
   getMarkdownWordCount,
@@ -66,7 +67,7 @@ import {
 } from "./workspaceViewModel";
 import {
   clampSplitEditorRatio,
-  createMarkdownFile,
+  createWorkspaceFile,
   DEFAULT_SPLIT_EDITOR_RATIO,
   getRoomFromLocation,
   isUsableLiveRoomFile,
@@ -75,7 +76,7 @@ import {
   README_FILE_ID,
   syncUrlForFile,
   type LocationRoom,
-  type MarkdownFile,
+  type WorkspaceFile,
   type WorkspaceState,
 } from "./workspaceStorage";
 import type { TextChange } from "./textPatches";
@@ -85,7 +86,10 @@ const getFloatingPopoverStyle = (
   options: { width: number; yOffset: number },
 ): CSSProperties => {
   const viewportWidth = window.innerWidth || 1024;
-  const left = Math.max(12, Math.min(position.clientX, viewportWidth - options.width - 12));
+  const left = Math.max(
+    12,
+    Math.min(position.clientX, viewportWidth - options.width - 12),
+  );
   const top = Math.max(72, position.clientY + options.yOffset);
   return {
     left,
@@ -94,7 +98,9 @@ const getFloatingPopoverStyle = (
 };
 
 function WorkspaceApp() {
-  const [initialWorkspaceSnapshot] = useState(() => readInitialWorkspaceSnapshot());
+  const [initialWorkspaceSnapshot] = useState(() =>
+    readInitialWorkspaceSnapshot(),
+  );
   const initialWorkspace = initialWorkspaceSnapshot.workspace;
   const {
     files,
@@ -102,22 +108,22 @@ function WorkspaceApp() {
     openFileIds,
     activeFileId,
     activeFile,
-    selectFile: selectMarkdownFile,
-    addFile: addMarkdownFile,
+    selectFile: selectWorkspaceFileAction,
+    addFile: addWorkspaceFileAction,
     addFileFromContent,
     activateRoomFile,
-    duplicateFile: duplicateMarkdownFile,
+    duplicateFile: duplicateWorkspaceFile,
     renameFile,
-    closeFile: closeMarkdownFile,
-    deleteFile: deleteMarkdownFile,
+    closeFile: closeWorkspaceFileAction,
+    deleteFile: deleteWorkspaceFileAction,
     replaceWorkspace,
     restoreFile,
     upsertHelpFile,
     reorderFiles,
-    selectAdjacentFile: selectAdjacentMarkdownFile,
+    selectAdjacentFile: selectAdjacentWorkspaceFileAction,
     setActiveFileBookmarks,
     setActiveFileText,
-    setActiveFileViewMode: setMarkdownFileViewMode,
+    setActiveFileViewMode: setWorkspaceFileViewMode,
     setActiveFileReadingWidth,
     setActiveFileLineWrapping,
     setActiveFileLineNumbers,
@@ -129,14 +135,18 @@ function WorkspaceApp() {
     setFileRecoveryEvent,
     startFileCollaborationSession,
     stopFileCollaborationSession,
-  } = useMarkdownFiles({
+  } = useWorkspaceFiles({
     initialFiles: initialWorkspace.files,
     initialOpenFileIds: initialWorkspace.openFileIds,
     initialActiveFileId: initialWorkspace.activeFileId,
     readmeFileId: README_FILE_ID,
-    createFile: createMarkdownFile,
+    createFile: createWorkspaceFile,
   });
-  const [workspacePreferences, setWorkspacePreferences] = useWorkspacePreferences();
+  const [workspacePreferences, setWorkspacePreferences] =
+    useWorkspacePreferences();
+  const workspaceChromeCopy = getWorkspaceChromeCopy(
+    workspacePreferences.language,
+  );
   const [rightFileQuery, setRightFileQuery] = useState("");
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
@@ -145,7 +155,8 @@ function WorkspaceApp() {
   const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
   const [shortcutLabels] = useState(() => getShortcutLabels());
   const { toast, showToast } = useAppToast();
-  const { identity, updateIdentityName, normalizeIdentityName } = useWorkspaceIdentity();
+  const { identity, updateIdentityName, normalizeIdentityName } =
+    useWorkspaceIdentity();
   const {
     commentsByFileId,
     commentDraft,
@@ -179,12 +190,17 @@ function WorkspaceApp() {
   const text = activeFile?.text ?? "";
   const activeViewMode = activeFile?.viewMode ?? "edit";
   const activeReadingWidth = activeFile?.readingWidth ?? "wide";
-  const activeSplitRatio = clampSplitEditorRatio(activeFile?.splitRatio ?? DEFAULT_SPLIT_EDITOR_RATIO);
+  const activeSplitRatio = clampSplitEditorRatio(
+    activeFile?.splitRatio ?? DEFAULT_SPLIT_EDITOR_RATIO,
+  );
   const activeLineWrapping = activeFile?.lineWrapping ?? true;
   const activeLineNumbers = activeFile?.lineNumbers ?? true;
   const activeBookmarks = activeFile?.bookmarks ?? [];
   const parsedMarkdown = useMemo(() => parseFrontmatter(text), [text]);
-  const renderedPreview = useMemo(() => getPreviewBody(parsedMarkdown.body), [parsedMarkdown.body]);
+  const renderedPreview = useMemo(
+    () => getPreviewBody(parsedMarkdown.body),
+    [parsedMarkdown.body],
+  );
   const previewBodyStartOffset = useMemo(() => {
     const parsedBodyStartOffset = text.indexOf(parsedMarkdown.body);
     return (
@@ -215,7 +231,7 @@ function WorkspaceApp() {
     activeFileId: activeFile?.id,
     activeViewMode,
     editorRef,
-    onSetActiveFileViewMode: setMarkdownFileViewMode,
+    onSetActiveFileViewMode: setWorkspaceFileViewMode,
   });
   const {
     splitDividerDragging,
@@ -237,7 +253,10 @@ function WorkspaceApp() {
   });
   const focusTextRange = (start: number, end = start) => {
     if (activeViewMode === "preview") {
-      setActiveFileViewMode("edit", { preserveScroll: false, focusEditor: false });
+      setActiveFileViewMode("edit", {
+        preserveScroll: false,
+        focusEditor: false,
+      });
     }
 
     queueEditorTextRange(start, end);
@@ -297,13 +316,16 @@ function WorkspaceApp() {
     replaceCommentsByFileId,
     replaceWorkspace,
   });
-  useQueuedWorkspacePersistence(workspacePersistenceSnapshot, { enabled: !indexedDbHydration.deferPersistence });
+  useQueuedWorkspacePersistence(workspacePersistenceSnapshot, {
+    enabled: !indexedDbHydration.deferPersistence,
+  });
   const {
     topPopover,
     setTopPopover,
     centerPopover,
     setCenterPopover,
     workspaceMenuOpen,
+    setWorkspaceMenuOpen,
     preferencesOpen,
     setPreferencesOpen,
     sharePanelTarget,
@@ -370,14 +392,15 @@ function WorkspaceApp() {
     }
   }, [isLive, rightPanelView, setRightPanelView]);
 
-  const { copyShareUrl, startSession, stopSession } = useWorkspaceLiveRoomController({
-    activeFile,
-    resetCollaborationState,
-    setCenterPopover,
-    setCopiedFileId,
-    startCollaborationSession,
-    stopFileCollaborationSession,
-  });
+  const { copyShareUrl, startSession, stopSession } =
+    useWorkspaceLiveRoomController({
+      activeFile,
+      resetCollaborationState,
+      setCenterPopover,
+      setCopiedFileId,
+      startCollaborationSession,
+      stopFileCollaborationSession,
+    });
   const copied = copiedFileId === activeFile?.id;
   const activeWordCount = getMarkdownWordCount(text);
   const shareOpen = topPopover === "share";
@@ -408,7 +431,7 @@ function WorkspaceApp() {
 
       const localFile = files.find((file) => !file.roomId) ?? files[0];
       if (localFile) {
-        selectMarkdownFile(localFile.id);
+        selectWorkspaceFileAction(localFile.id);
         setTopPopover(null);
         setCenterPopover(null);
         setCopiedFileId(null);
@@ -417,7 +440,7 @@ function WorkspaceApp() {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [activeFileId, activateRoomFile, files, selectMarkdownFile]);
+  }, [activeFileId, activateRoomFile, files, selectWorkspaceFileAction]);
 
   useEffect(() => {
     if (!activeFile || activeFile.roomId || !getRoomFromLocation()) {
@@ -446,14 +469,18 @@ function WorkspaceApp() {
     };
 
     window.addEventListener("pointerdown", handlePointerDown, true);
-    return () => window.removeEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      window.removeEventListener("pointerdown", handlePointerDown, true);
   }, [selectionActionPosition]);
 
-  const goToOutlineHeading = (heading: MarkdownHeading, headingIndex: number) => {
+  const goToOutlineHeading = (
+    heading: MarkdownHeading,
+    headingIndex: number,
+  ) => {
     if (activeViewMode === "preview") {
-      const renderedHeadings = Array.from(previewSurfaceRef.current?.querySelectorAll("h1, h2, h3") ?? []).filter(
-        (heading) => !heading.closest(".frontmatter-view"),
-      );
+      const renderedHeadings = Array.from(
+        previewSurfaceRef.current?.querySelectorAll("h1, h2, h3") ?? [],
+      ).filter((heading) => !heading.closest(".frontmatter-view"));
       const renderedHeading = renderedHeadings[headingIndex];
       renderedHeading?.scrollIntoView({ block: "start", behavior: "smooth" });
       return;
@@ -463,13 +490,16 @@ function WorkspaceApp() {
     const targetOffset =
       (bodyStartOffset === -1 ? 0 : bodyStartOffset) +
       getLineStartOffset(parsedMarkdown.body, heading.sourceLineIndex);
-    focusTextRange(targetOffset, targetOffset + heading.text.length + heading.depth + 1);
+    focusTextRange(
+      targetOffset,
+      targetOffset + heading.text.length + heading.depth + 1,
+    );
   };
 
   const {
     emptyDropActive,
-    copyCurrentMarkdown,
-    downloadCurrentMarkdownFile,
+    copyCurrentFile,
+    downloadCurrentFile,
     downloadProject,
     downloadProjectArchive,
     handleImportInputChange,
@@ -514,7 +544,7 @@ function WorkspaceApp() {
     addFile,
     openAboutFile,
     openHelpFile,
-    renameMarkdownFile,
+    renameWorkspaceFileAction,
     duplicateFile,
     deleteFile,
     closeFile,
@@ -523,12 +553,12 @@ function WorkspaceApp() {
     activeFile,
     activeFileId,
     addFileFromContent,
-    addMarkdownFile,
+    addWorkspaceFileAction,
     closeFloatingChrome,
-    closeMarkdownFile,
+    closeWorkspaceFileAction,
     commentsByFileId,
-    deleteMarkdownFile,
-    duplicateMarkdownFile,
+    deleteWorkspaceFileAction,
+    duplicateWorkspaceFile,
     files,
     helpMarkdown: createHelpMarkdown(shortcutLabels),
     historyByFileId,
@@ -539,8 +569,8 @@ function WorkspaceApp() {
     replaceCommentsByFileId,
     resetCollaborationState,
     restoreFile,
-    selectAdjacentMarkdownFile,
-    selectMarkdownFile,
+    selectAdjacentWorkspaceFileAction,
+    selectWorkspaceFileAction,
     setHistoryByFileId,
     showToast,
     upsertHelpFile,
@@ -594,7 +624,9 @@ function WorkspaceApp() {
     queueEditorTextRange,
     text,
   });
-  const handleStableLineAnnotationAction = useEventCallback(handleLineAnnotationAction);
+  const handleStableLineAnnotationAction = useEventCallback(
+    handleLineAnnotationAction,
+  );
   const openStableCommentMarker = useEventCallback(openCommentMarker);
 
   useWorkspaceKeyboardShortcuts({
@@ -608,12 +640,12 @@ function WorkspaceApp() {
     setCenterPopover,
   });
 
-  const getFileStatus = (file: MarkdownFile) =>
+  const getFileStatus = (file: WorkspaceFile) =>
     getWorkspaceFileStatus({
       file,
       activeFileId: activeFile?.id,
       activeConnectionStatus: connectionStatus,
-  });
+    });
   const statusLabel = getWorkspaceStatusLabel(activeStatus);
   const activeFileTitle = activeFile?.title ?? "No file open";
   const activePresenceIdentity = useMemo(
@@ -628,8 +660,15 @@ function WorkspaceApp() {
         : identity,
     [activeFile?.roomId, activeFileTitle, activeSelection, identity, isLive],
   );
-  const showFormattingToolbar = Boolean(activeFile && activeViewMode !== "preview");
-  const showSelectionCommentPopover = Boolean(isLive && activeFile && selectedCharacterCount > 0 && selectionActionPosition);
+  const showFormattingToolbar = Boolean(
+    activeFile && activeViewMode !== "preview",
+  );
+  const showSelectionCommentPopover = Boolean(
+    isLive &&
+    activeFile &&
+    selectedCharacterCount > 0 &&
+    selectionActionPosition,
+  );
 
   const fileTabsNode = (
     <FileTabs
@@ -639,7 +678,7 @@ function WorkspaceApp() {
       getFileStatus={getFileStatus}
       onAddFile={addFile}
       onSelectFile={selectFile}
-      onRenameFile={renameMarkdownFile}
+      onRenameFile={renameWorkspaceFileAction}
       onCloseFile={closeFile}
       onReorderFiles={reorderFiles}
       onChromeInteraction={() => {
@@ -667,6 +706,8 @@ function WorkspaceApp() {
         setSharePanelTarget(undefined);
         setTopPopover(shareOpen ? null : "share");
         setCenterPopover(null);
+        setWorkspaceMenuOpen(false);
+        setPreferencesOpen(false);
       }}
       onCloseShare={() => {
         setTopPopover(null);
@@ -674,8 +715,8 @@ function WorkspaceApp() {
       }}
       onStartSession={startSession}
       onCopyShareUrl={copyShareUrl}
-      onCopyMarkdown={copyCurrentMarkdown}
-      onDownloadMarkdown={downloadCurrentMarkdownFile}
+      onCopyFile={copyCurrentFile}
+      onDownloadFile={downloadCurrentFile}
       onDownloadProjectArchive={downloadProjectArchive}
       onChangeUserName={updateIdentityName}
       onCommitUserName={normalizeIdentityName}
@@ -707,8 +748,16 @@ function WorkspaceApp() {
       {jsonShareImport && (
         <JsonShareImportDialog
           status={jsonShareImport.status}
-          fileCount={jsonShareImport.status === "ready" ? jsonShareImport.workspace.files.length : undefined}
-          errorMessage={jsonShareImport.status === "error" ? jsonShareImport.errorMessage : undefined}
+          fileCount={
+            jsonShareImport.status === "ready"
+              ? jsonShareImport.workspace.files.length
+              : undefined
+          }
+          errorMessage={
+            jsonShareImport.status === "error"
+              ? jsonShareImport.errorMessage
+              : undefined
+          }
           onCancel={closeJsonShareImport}
           onReplace={() => {
             if (jsonShareImport.status === "ready") {
@@ -723,7 +772,7 @@ function WorkspaceApp() {
         type="file"
         accept=".md,.markdown,text/markdown,text/plain"
         onChange={handleImportInputChange}
-        aria-label="Import Markdown file"
+        aria-label="Import file"
       />
       <input
         ref={workspaceImportInputRef}
@@ -733,7 +782,9 @@ function WorkspaceApp() {
         onChange={handleProjectImportInputChange}
         aria-label="Import project file"
       />
-      <section className={`main-panel ${rightPanelOpen ? "right-panel-open" : ""}`}>
+      <section
+        className={`main-panel ${rightPanelOpen ? "right-panel-open" : ""}`}
+      >
         <WorkspaceMenu
           isOpen={workspaceMenuOpen}
           preferencesOpen={preferencesOpen}
@@ -744,12 +795,20 @@ function WorkspaceApp() {
             setPreferencesOpen((isOpen) => !isOpen);
             setTopPopover(null);
           }}
-          onChangeTheme={(theme) => setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, theme }))}
+          onChangeTheme={(theme) =>
+            setWorkspacePreferences((currentPreferences) => ({
+              ...currentPreferences,
+              theme,
+            }))
+          }
           onChangeLanguage={(language) =>
-            setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, language }))
+            setWorkspacePreferences((currentPreferences) => ({
+              ...currentPreferences,
+              language,
+            }))
           }
           onAddFile={addFile}
-          onOpenMarkdownFile={() => {
+          onOpenFile={() => {
             closeFloatingChrome();
             importInputRef.current?.click();
           }}
@@ -757,8 +816,8 @@ function WorkspaceApp() {
             closeFloatingChrome();
             workspaceImportInputRef.current?.click();
           }}
-          onDownloadMarkdown={() => {
-            downloadCurrentMarkdownFile();
+          onDownloadFile={() => {
+            downloadCurrentFile();
             closeFloatingChrome();
           }}
           onDownloadProject={() => {
@@ -772,13 +831,16 @@ function WorkspaceApp() {
 
         <section
           className={`center-workbench ${
-            activeFile ? `has-file view-${activeViewMode} reading-${activeReadingWidth}` : "empty"
+            activeFile
+              ? `has-file view-${activeViewMode} reading-${activeReadingWidth}`
+              : "empty"
           } ${activeFile ? (activeLineNumbers ? "line-numbers-on" : "line-numbers-off") : ""}`}
         >
           <TopChrome
             workspaceMenuOpen={workspaceMenuOpen}
             rightPanelOpen={rightPanelOpen}
             isLive={isLive}
+            language={workspacePreferences.language}
             identity={activePresenceIdentity}
             collaborators={collaborators}
             activeText={text}
@@ -790,37 +852,44 @@ function WorkspaceApp() {
 
           <section
             className={`file-shell ${
-              activeFile ? `view-${activeViewMode} reading-${activeReadingWidth}` : "empty"
+              activeFile
+                ? `view-${activeViewMode} reading-${activeReadingWidth}`
+                : "empty"
             } ${activeFile ? (activeLineNumbers ? "line-numbers-on" : "line-numbers-off") : ""} ${
               showFormattingToolbar ? "with-format-toolbar" : ""
-            } ${
-              searchOpen ? "with-search-row" : ""
-            } ${
+            } ${searchOpen ? "with-search-row" : ""} ${
               shareOpen ? "share-modal-open" : ""
             }`}
           >
             {activeFile ? (
               <>
                 <section
-                  className={`editor-control-row ${activeViewMode} reading-${activeReadingWidth} ${
+                  className={`document-toolbar-row ${activeViewMode} reading-${activeReadingWidth} ${
                     showFormattingToolbar ? "with-formatting" : ""
                   }`}
-                  aria-label="Editor controls"
+                  aria-label={workspaceChromeCopy.documentControls.documentToolbar}
                 >
                   {showFormattingToolbar && (
-                    <MarkdownFormattingToolbar
+                    <FormattingToolbar
                       className={`${activeViewMode} reading-${activeReadingWidth}`}
+                      canUndo={canUndo || editorHistoryState.canUndo}
+                      canRedo={canRedo || editorHistoryState.canRedo}
                       onFormat={formatMarkdown}
+                      onUndo={undoActiveFile}
+                      onRedo={redoActiveFile}
                     />
                   )}
 
-                  <FileToolbar
+                  <DocumentControls
                     activeViewMode={activeViewMode}
                     activeReadingWidth={activeReadingWidth}
                     activeLineWrapping={activeLineWrapping}
                     activeLineNumbers={activeLineNumbers}
+                    canCopyFile={text.trim().length > 0}
                     centerPopover={centerPopover}
+                    language={workspacePreferences.language}
                     searchOpen={searchOpen}
+                    onCopyFile={copyCurrentFile}
                     onSetViewMode={(nextViewMode) => {
                       setActiveFileViewMode(nextViewMode);
                       setCenterPopover(null);
@@ -831,7 +900,9 @@ function WorkspaceApp() {
                       setTopPopover(null);
                     }}
                     onToggleViewOptions={() => {
-                      setCenterPopover((current) => (current === "view" ? null : "view"));
+                      setCenterPopover((current) =>
+                        current === "view" ? null : "view",
+                      );
                       setTopPopover(null);
                     }}
                     onSetReadingWidth={(nextReadingWidth) => {
@@ -850,11 +921,12 @@ function WorkspaceApp() {
                 </section>
 
                 {searchOpen && (
-                  <FileSearchBar
+                  <DocumentSearchBar
                     searchInputRef={searchInputRef}
                     searchQuery={searchQuery}
                     searchMatches={searchMatches}
                     activeSearchMatchIndex={activeSearchMatchIndex}
+                    language={workspacePreferences.language}
                     onSearchQueryChange={setSearchQuery}
                     onGoToSearchMatch={goToSearchMatch}
                     onCloseSearch={() => setSearchOpen(false)}
@@ -889,14 +961,18 @@ function WorkspaceApp() {
                       collaborators={isLive ? collaborators : []}
                       activeCommentId={focusedCommentId}
                       searchMatches={searchOpen ? searchMatches : []}
-                      activeSearchMatchIndex={searchOpen ? activeSearchMatchIndex : -1}
+                      activeSearchMatchIndex={
+                        searchOpen ? activeSearchMatchIndex : -1
+                      }
                       onChange={handleTextChange}
                       onBookmarksChange={updateActiveFileBookmarks}
                       onHistoryStateChange={handleEditorHistoryStateChange}
                       onOpenLineActions={handleStableLineAnnotationAction}
                       onOpenComment={openStableCommentMarker}
                       onSelectionChange={handleEditorSelectionChange}
-                      onSelectionActionPositionChange={handleEditorSelectionActionPositionChange}
+                      onSelectionActionPositionChange={
+                        handleEditorSelectionActionPositionChange
+                      }
                       onScrollRatioChange={handleEditorScrollRatioChange}
                     />
                   </article>
@@ -945,11 +1021,18 @@ function WorkspaceApp() {
                 {showSelectionCommentPopover && selectionActionPosition && (
                   <div
                     className="selection-comment-popover"
-                    style={getFloatingPopoverStyle(selectionActionPosition, { width: 128, yOffset: 30 })}
+                    style={getFloatingPopoverStyle(selectionActionPosition, {
+                      width: 128,
+                      yOffset: 30,
+                    })}
                     role="toolbar"
                     aria-label="Selection actions"
                   >
-                    <button className="selection-comment-button" type="button" onClick={openSelectionComment}>
+                    <button
+                      className="selection-comment-button"
+                      type="button"
+                      onClick={openSelectionComment}
+                    >
                       <MessageSquarePlus size={15} />
                       <span>Add comment</span>
                     </button>
@@ -958,18 +1041,20 @@ function WorkspaceApp() {
 
                 <StatusBar
                   activeFileTitle={activeFileTitle}
-                  canUndo={canUndo || editorHistoryState.canUndo}
-                  canRedo={canRedo || editorHistoryState.canRedo}
+                  activeViewMode={activeViewMode}
                   isLive={isLive}
+                  language={workspacePreferences.language}
                   statusLabel={statusLabel}
                   wordCount={activeWordCount}
                   commentCount={isLive ? activeOpenComments.length : 0}
                   cursorPositionLabel={cursorPositionLabel}
                   selectedCharacterCount={selectedCharacterCount}
                   selectedLineCount={selectedLineCount}
-                  onUndo={undoActiveFile}
-                  onRedo={redoActiveFile}
-                  onOpenComments={() => openCommentsPanel(focusedCommentId ?? activeOpenComments[0]?.id)}
+                  onOpenComments={() =>
+                    openCommentsPanel(
+                      focusedCommentId ?? activeOpenComments[0]?.id,
+                    )
+                  }
                 />
               </>
             ) : (
@@ -983,7 +1068,7 @@ function WorkspaceApp() {
                 <EmptyFileState
                   language={workspacePreferences.language}
                   onNewFile={addFile}
-                  onOpenMarkdown={() => importInputRef.current?.click()}
+                  onOpenFile={() => importInputRef.current?.click()}
                   onBrowseFiles={openFilesPanel}
                   onOpenHelp={openHelpFile}
                   primaryShortcutModifier={shortcutLabels.primary}
@@ -1020,10 +1105,10 @@ function WorkspaceApp() {
             onClose={() => setRightPanelOpen(false)}
             onFileQueryChange={setRightFileQuery}
             onNewFile={addFile}
-            onImportMarkdown={() => importInputRef.current?.click()}
+            onImportFile={() => importInputRef.current?.click()}
             onSelectFile={selectFile}
             onCloseFile={closeFile}
-            onRenameFile={renameMarkdownFile}
+            onRenameFile={renameWorkspaceFileAction}
             onDuplicateFile={duplicateFile}
             onDeleteFile={deleteFile}
             onGoToOutlineHeading={goToOutlineHeading}
@@ -1047,7 +1132,10 @@ function WorkspaceApp() {
 }
 
 function App() {
-  const publishRoute = getPublishRoute(window.location.pathname, window.location.search);
+  const publishRoute = getPublishRoute(
+    window.location.pathname,
+    window.location.search,
+  );
   if (publishRoute) {
     return <PublishedSnapshotRoute route={publishRoute} />;
   }

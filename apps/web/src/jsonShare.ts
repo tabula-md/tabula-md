@@ -5,7 +5,7 @@ import {
   type ShareSnapshot,
   type ShareSnapshotPayload,
 } from "./shareSnapshotPayload";
-import type { FileComment, MarkdownFile } from "./workspaceStorage";
+import type { FileComment, WorkspaceFile } from "./workspaceStorage";
 
 export type JsonShareRoute = {
   snapshotId: string;
@@ -20,7 +20,7 @@ type JsonShareCreateResponse = {
 type CreateJsonShareLinkOptions = {
   serviceUrl: string;
   origin: string;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
   fetchImpl?: typeof fetch;

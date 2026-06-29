@@ -5,17 +5,21 @@ export type StatusBarSaveState = {
 
 export const getStatusBarSaveState = ({
   isLive,
+  roomOfflineLabel = "Room offline",
+  savedLocallyLabel = "Saved locally",
   statusLabel,
 }: {
   isLive: boolean;
+  roomOfflineLabel?: string;
+  savedLocallyLabel?: string;
   statusLabel: string;
 }): StatusBarSaveState => {
   if (!isLive) {
-    return { label: "Saved locally", visible: true };
+    return { label: savedLocallyLabel, visible: true };
   }
 
-  if (statusLabel === "Room offline") {
-    return { label: statusLabel, visible: true };
+  if (statusLabel === roomOfflineLabel || statusLabel === "Room offline") {
+    return { label: roomOfflineLabel, visible: true };
   }
 
   return { label: statusLabel, visible: false };

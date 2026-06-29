@@ -70,6 +70,7 @@ export function useWorkspaceChromeController({
       if (topPopover || centerPopover || searchOpen) {
         event.preventDefault();
         setTopPopover(null);
+        setSharePanelTarget(undefined);
         setCenterPopover(null);
         setSearchOpen(false);
         return;
@@ -106,27 +107,53 @@ export function useWorkspaceChromeController({
     selectionActionPosition,
     setSearchOpen,
     setSelectionActionPosition,
+    setSharePanelTarget,
     topPopover,
     workspaceMenuOpen,
   ]);
 
   useEffect(() => {
-    if (centerPopover !== "view") {
+    if (!workspaceMenuOpen && !preferencesOpen && !centerPopover && !selectionActionPosition) {
       return;
     }
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest(".file-toolbar-wrap")) {
+      if (!target) {
         return;
       }
 
-      setCenterPopover(null);
+      const isInsideWorkspaceMenu = Boolean(target.closest(".workspace-menu-popover"));
+      const isWorkspaceMenuTrigger = Boolean(target.closest(".workspace-menu-button"));
+      const isInsideEditorControls = Boolean(target.closest(".document-controls-wrap"));
+      const isInsideSelectionPopover = Boolean(target.closest(".selection-comment-popover"));
+
+      if (selectionActionPosition && !isInsideSelectionPopover) {
+        setSelectionActionPosition(null);
+      }
+
+      if (workspaceMenuOpen && !isInsideWorkspaceMenu && !isWorkspaceMenuTrigger) {
+        setPreferencesOpen(false);
+        setWorkspaceMenuOpen(false);
+      }
+
+      if (centerPopover && !isInsideEditorControls) {
+        setCenterPopover(null);
+      }
     };
 
     window.addEventListener("pointerdown", handlePointerDown, true);
     return () => window.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [centerPopover]);
+  }, [
+    centerPopover,
+    preferencesOpen,
+    selectionActionPosition,
+    setCenterPopover,
+    setPreferencesOpen,
+    setSelectionActionPosition,
+    setWorkspaceMenuOpen,
+    workspaceMenuOpen,
+  ]);
 
   return {
     topPopover,

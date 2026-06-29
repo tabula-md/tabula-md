@@ -7,7 +7,7 @@
   --document-chrome-width: var(--editor-frame-width);
 }
 
-.markdown-formatting-row.split {
+.formatting-row.split {
   max-width: calc(50% - 14px);
 }
 
@@ -119,15 +119,15 @@
     --document-chrome-width: var(--document-body-width);
   }
 
-  .editor-control-row.split {
+  .document-toolbar-row.split {
     justify-content: flex-end;
   }
 
-  .editor-control-row.split.with-formatting {
+  .document-toolbar-row.split.with-formatting {
     justify-content: space-between;
   }
 
-  .markdown-formatting-row.split {
+  .formatting-row.split {
     max-width: 100%;
   }
 
@@ -206,12 +206,12 @@
     --document-chrome-width: var(--document-body-width);
   }
 
-  .editor-control-row.split {
+  .document-toolbar-row.split {
     justify-content: flex-start;
     width: var(--document-chrome-width);
   }
 
-  .markdown-formatting-row.split {
+  .formatting-row.split {
     width: 100%;
     max-width: 100%;
   }
@@ -248,7 +248,7 @@
     --document-chrome-width: var(--document-body-width);
   }
 
-  .editor-control-row.split {
+  .document-toolbar-row.split {
     width: var(--document-chrome-width);
     margin-left: var(--document-lane-margin-left);
     margin-right: var(--document-lane-margin-right);

@@ -5,7 +5,7 @@ import {
   getCrc32,
   getProjectArchiveEntries,
 } from "./projectArchive";
-import { createMarkdownFile } from "./workspaceStorage";
+import { createWorkspaceFile } from "./workspaceStorage";
 
 const textDecoder = new TextDecoder();
 
@@ -41,9 +41,9 @@ describe("project archive", () => {
   it("normalizes project files into deduped Markdown entry names", () => {
     expect(
       getProjectArchiveEntries([
-        createMarkdownFile(1, { title: "Design", text: "# Design" }),
-        createMarkdownFile(2, { title: "Design.md", text: "# Second" }),
-        createMarkdownFile(3, { title: "../bad/name?.markdown", text: "# Third" }),
+        createWorkspaceFile(1, { title: "Design", text: "# Design" }),
+        createWorkspaceFile(2, { title: "Design.md", text: "# Second" }),
+        createWorkspaceFile(3, { title: "../bad/name?.markdown", text: "# Third" }),
       ]),
     ).toEqual([
       { path: "Design.md", content: "# Design" },
@@ -54,8 +54,8 @@ describe("project archive", () => {
 
   it("creates an uncompressed zip archive with Markdown files", async () => {
     const archive = createProjectArchive([
-      createMarkdownFile(1, { title: "README.md", text: "# README" }),
-      createMarkdownFile(2, { title: "Notes.md", text: "한글 Markdown" }),
+      createWorkspaceFile(1, { title: "README.md", text: "# README" }),
+      createWorkspaceFile(2, { title: "Notes.md", text: "한글 Markdown" }),
     ]);
 
     expect(archive.type).toBe("application/zip");

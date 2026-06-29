@@ -21,16 +21,16 @@ describe("workspace locale chrome copy", () => {
     const english = getWorkspaceMenuCopy("en");
     expect(english.actions.preferences).toBe("Preferences");
     expect(english.emptyState.tagline).toBe(
-      "A local-first Markdown workspace for files that people and coding agents can share safely.",
+      "A local-first workspace for files that people and coding agents can share safely.",
     );
-    expect(english.emptyState.newMarkdown).toBe("New Markdown");
+    expect(english.emptyState.newFile).toBe("New File");
     expect(english.share.tabs.shareLink).toBe("Share link");
     expect(english.share.shareable.description).toBe("Export an encrypted copy of this file.");
     expect(english.share.modalTitle("README")).toBe("Share README");
 
     const korean = getWorkspaceMenuCopy("ko");
     expect(korean.actions.preferences).toBe("환경설정");
-    expect(korean.emptyState.openMarkdown).toBe(".md 파일 열기");
+    expect(korean.emptyState.openFile).toBe("파일 열기");
     expect(korean.share.tabs.shareLink).toBe("공유 링크");
     expect(korean.share.shareable.description).toBe("이 파일의 암호화된 복사본을 내보냅니다.");
     expect(korean.share.modalTitle("README")).toBe("README 공유");

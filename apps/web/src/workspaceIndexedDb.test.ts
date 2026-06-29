@@ -6,10 +6,10 @@ import {
   type StoredWorkspaceRecord,
   type WorkspaceRecordStore,
 } from "./workspaceIndexedDb";
-import { createMarkdownFile, PROJECT_STORAGE_KEY, type WorkspaceState } from "./workspaceStorage";
+import { createWorkspaceFile, PROJECT_STORAGE_KEY, type WorkspaceState } from "./workspaceStorage";
 
 const createWorkspace = (text: string): WorkspaceState => ({
-  files: [createMarkdownFile(1, { id: "local", title: "LOCAL.md", text })],
+  files: [createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text })],
   openFileIds: ["local"],
   activeFileId: "local",
   commentsByFileId: {},

@@ -184,7 +184,7 @@ export async function run(ctx) {
     browser,
     "/",
     async (page) => {
-      await page.locator('input[aria-label="Import Markdown file"]').setInputFiles({
+      await page.locator('input[aria-label="Import file"]').setInputFiles({
         name: "split-performance.md",
         mimeType: "text/markdown",
         buffer: Buffer.from(longMarkdown),
