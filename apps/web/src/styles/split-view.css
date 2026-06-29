@@ -87,7 +87,7 @@
   left: 50%;
   width: 1px;
   content: "";
-  background: rgba(31, 31, 31, 0.16);
+  background: var(--split-handle-line);
   opacity: 0;
   transform: translateX(-50%);
   transition: opacity 140ms ease;
@@ -235,7 +235,7 @@
 
   .workspace.split .preview-surface {
     border-left: 0;
-    border-top: 1px solid #e5e5e5;
+    border-top: 1px solid var(--line-subtle);
     box-shadow: none;
   }
 }

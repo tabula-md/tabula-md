@@ -73,17 +73,17 @@
 
 해야 할 일:
 
-- [ ] Share modal, Preferences, Editor Controls, right panel, status bar, import/load modal의 light/dark 상태를 모두 확인한다.
-- [ ] app surface CSS에서 token 없는 raw color 사용을 제거한다.
-- [ ] Preferences는 작고 직접적인 popover로 유지한다.
-- [ ] Language dropdown은 최소 7개 언어를 유지한다.
-- [ ] 언어 선택 후 메뉴/Preferences/주요 empty state/Share 기본 문구가 같은 범위에서 반영된다.
+- [x] Share modal, Preferences, Editor Controls, right panel, status bar, import/load modal의 light/dark 상태를 모두 확인한다.
+- [x] app surface CSS에서 token 없는 raw color 사용을 제거한다.
+- [x] Preferences는 작고 직접적인 popover로 유지한다.
+- [x] Language dropdown은 최소 7개 언어를 유지한다.
+- [x] 언어 선택 후 메뉴/Preferences/주요 empty state/Share 기본 문구가 같은 범위에서 반영된다.
 
 완료 기준:
 
-- [ ] dark mode에서 흰 modal이나 검은 active tab 같은 이질적인 표면이 없다.
-- [ ] Language 설정은 저장되고 reload 후 유지된다.
-- [ ] `document.documentElement.lang`이 선택 언어와 일치한다.
+- [x] dark mode에서 흰 modal이나 검은 active tab 같은 이질적인 표면이 없다.
+- [x] Language 설정은 저장되고 reload 후 유지된다.
+- [x] `document.documentElement.lang`이 선택 언어와 일치한다.
 
 ## 2. PM 관점
 

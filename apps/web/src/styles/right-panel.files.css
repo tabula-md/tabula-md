@@ -112,7 +112,7 @@
 
 .right-file-action.danger:hover,
 .right-file-action.danger:focus-visible {
-  color: #b25050;
+  color: var(--danger-text);
 }
 
 .right-file-menu-wrap {
@@ -157,7 +157,7 @@
 
 .right-file-action-menu button.danger:hover,
 .right-file-action-menu button.danger:focus-visible {
-  color: #b25050;
+  color: var(--danger-text);
 }
 
 .right-file-rename-input {
@@ -191,19 +191,19 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #c0c0c0;
+  background: var(--status-dot-idle);
 }
 
 .right-live-dot.connected {
-  background: #58a36a;
+  background: var(--status-dot-connected);
 }
 
 .right-live-dot.connecting {
-  background: #9a9a9a;
+  background: var(--status-dot-connecting);
 }
 
 .right-live-dot.offline {
-  background: #c0c0c0;
+  background: var(--status-dot-offline);
 }
 
 .right-file-tree-comment-count {

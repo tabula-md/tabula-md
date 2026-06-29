@@ -19,16 +19,19 @@ import {
   X,
 } from "lucide-react";
 import type { JsonShareController } from "../hooks/useJsonShareController";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { PRODUCT_PLUS_NAME } from "../product";
 import type { PublishController } from "../hooks/usePublishController";
 import { getRoomShareLinkView } from "../shareLinkViewModel";
 import type { SharePanel } from "../uiTypes";
+import { getWorkspaceMenuCopy } from "../workspaceLocale";
 import type { MarkdownFile } from "../workspaceStorage";
 
 type ShareControlsProps = {
   activeFile?: MarkdownFile;
   files: MarkdownFile[];
   activeFileTitle: string;
+  language: WorkspaceLanguage;
   currentUserName: string;
   canStartSession: boolean;
   isLive: boolean;
@@ -95,6 +98,7 @@ export function ShareControls({
   activeFile,
   files,
   activeFileTitle,
+  language,
   currentUserName,
   canStartSession,
   isLive,
@@ -123,7 +127,8 @@ export function ShareControls({
   const [exportLinkCopied, setExportLinkCopied] = useState(false);
   const shareUrlView = getRoomShareLinkView(activeFile?.shareUrl, activeFile?.roomId);
   const activeFileDisplayTitle = activeFileTitle.replace(/\.(?:md|markdown)$/i, "");
-  const shareModalTitle = `Share ${activeFileDisplayTitle}`;
+  const copy = getWorkspaceMenuCopy(language).share;
+  const shareModalTitle = copy.modalTitle(activeFileDisplayTitle);
   const publishView = publish.view;
 
   useEffect(() => {
@@ -160,9 +165,7 @@ export function ShareControls({
   }, [onCloseShare, shareOpen]);
 
   const handleStopSession = () => {
-    const confirmed = window.confirm(
-      "Stop sharing this file?\n\nThis tab will leave the live room and keep the current Markdown local. Other collaborators can continue in the room.",
-    );
+    const confirmed = window.confirm(copy.live.stopConfirm);
 
     if (confirmed) {
       onStopSession();
@@ -276,12 +279,13 @@ export function ShareControls({
         <button
           className={`share-button share-trigger ${shareOpen ? "active" : ""}`}
           type="button"
-          aria-label={`Share ${activeFileTitle}`}
+          aria-label={shareModalTitle}
+          title={copy.trigger}
           aria-expanded={shareOpen}
           onClick={onToggleShare}
         >
           <Share2 size={15} />
-          <span className="share-label-visible">Share</span>
+          <span className="share-label-visible">{copy.trigger}</span>
         </button>
       </div>
 
@@ -303,7 +307,7 @@ export function ShareControls({
               <h2 id="share-modal-title">{shareModalTitle}</h2>
             </header>
 
-            <nav className="share-modal-tabs" role="tablist" aria-label="Share purpose">
+            <nav className="share-modal-tabs" role="tablist" aria-label={copy.purposeAria}>
               <button
                 className={sharePanel === "share-link" ? "active" : ""}
                 type="button"
@@ -311,7 +315,7 @@ export function ShareControls({
                 aria-selected={sharePanel === "share-link"}
                 onClick={() => setSharePanel("share-link")}
               >
-                Share link
+                {copy.tabs.shareLink}
               </button>
               <button
                 className={sharePanel === "export" ? "active" : ""}
@@ -320,7 +324,7 @@ export function ShareControls({
                 aria-selected={sharePanel === "export"}
                 onClick={() => setSharePanel("export")}
               >
-                Export
+                {copy.tabs.export}
               </button>
               <button
                 className={sharePanel === "send-to" ? "active" : ""}
@@ -329,7 +333,7 @@ export function ShareControls({
                 aria-selected={sharePanel === "send-to"}
                 onClick={() => setSharePanel("send-to")}
               >
-                Send to...
+                {copy.tabs.sendTo}
               </button>
             </nav>
 
@@ -342,8 +346,8 @@ export function ShareControls({
                         <Users size={17} />
                       </span>
                       <div>
-                        <h3>Live collaboration</h3>
-                        <p>Invite people to edit this file together.</p>
+                        <h3>{copy.live.title}</h3>
+                        <p>{copy.live.description}</p>
                       </div>
                     </div>
 
@@ -357,20 +361,20 @@ export function ShareControls({
                           onClick={onStartSession}
                         >
                           <Play size={16} />
-                          <span>Start session</span>
+                          <span>{copy.live.startSession}</span>
                         </button>
-                        <p>{startSessionUnavailableReason || "Create an editable invite link for this file."}</p>
+                        <p>{startSessionUnavailableReason || copy.live.startDescription}</p>
                       </div>
                     )}
 
                     {isLive && (
                       <div className="live-room-box">
                         <div className="share-modal-field">
-                          <label>Your name</label>
+                          <label>{copy.live.nameLabel}</label>
                           <input
                             value={currentUserName}
-                            aria-label="Your collaboration name"
-                            placeholder="Anonymous"
+                            aria-label={copy.live.nameAria}
+                            placeholder={copy.live.anonymousPlaceholder}
                             maxLength={40}
                             onBlur={onCommitUserName}
                             onChange={(event) => onChangeUserName(event.target.value)}
@@ -378,26 +382,26 @@ export function ShareControls({
                         </div>
 
                         <div className="share-modal-field">
-                          <label>Invite link</label>
+                          <label>{copy.live.inviteLabel}</label>
                           <div className="share-modal-link-row">
-                            <div className="share-link-display" aria-label="Share link" title={shareUrlView.title}>
+                            <div className="share-link-display" aria-label={copy.live.inviteLabel} title={shareUrlView.title}>
                               <span>{shareUrlView.display}</span>
                             </div>
                             <button
                               type="button"
                               onClick={onCopyShareUrl}
                               disabled={!shareUrlView.canCopy}
-                              title={shareUrlView.canCopy ? undefined : "This live file does not have a valid invite link."}
+                              title={shareUrlView.canCopy ? undefined : copy.live.invalidInviteTitle}
                             >
                               {copied ? <Check size={17} /> : <Copy size={17} />}
-                              <span>{copied ? "Copied" : "Copy link"}</span>
+                              <span>{copied ? copy.live.copied : copy.live.copyLink}</span>
                             </button>
                           </div>
                         </div>
 
                         <button className="share-modal-danger" type="button" onClick={handleStopSession}>
                           <Square size={14} />
-                          <span>Stop session</span>
+                          <span>{copy.live.stopSession}</span>
                         </button>
                       </div>
                     )}
@@ -415,29 +419,29 @@ export function ShareControls({
                         <Link size={17} />
                       </span>
                       <div>
-                        <h3>Shareable link</h3>
-                        <p>Export an encrypted copy of this file.</p>
+                        <h3>{copy.shareable.title}</h3>
+                        <p>{copy.shareable.description}</p>
                       </div>
                     </div>
 
                     {jsonShare.url ? (
                       <div className="share-copy-box">
                         <div className="share-modal-field">
-                          <label>Shareable link</label>
+                          <label>{copy.shareable.linkLabel}</label>
                           <div className="share-modal-link-row">
                             <a
                               className="share-link-display"
                               href={jsonShare.url}
                               target="_blank"
                               rel="noreferrer"
-                              aria-label="Shareable link"
+                              aria-label={copy.shareable.linkLabel}
                               title={jsonShare.url}
                             >
                               <span>{jsonShare.urlPreview}</span>
                             </a>
                             <button type="button" onClick={copyShareableLink}>
                               {exportLinkCopied ? <Check size={17} /> : <Copy size={17} />}
-                              <span>{exportLinkCopied ? "Copied" : "Copy link"}</span>
+                              <span>{exportLinkCopied ? copy.live.copied : copy.live.copyLink}</span>
                             </button>
                           </div>
                         </div>
@@ -451,11 +455,11 @@ export function ShareControls({
                             title={jsonShare.disabledReason || undefined}
                           >
                             <RefreshCw size={16} />
-                            <span>{jsonShare.exporting ? "Exporting" : "Update link"}</span>
+                            <span>{jsonShare.exporting ? copy.shareable.exporting : copy.shareable.updateLink}</span>
                           </button>
                           <a className="share-modal-secondary" href={jsonShare.url} target="_blank" rel="noreferrer">
                             <ExternalLink size={16} />
-                            <span>Open link</span>
+                            <span>{copy.shareable.openLink}</span>
                           </a>
                         </div>
                       </div>
@@ -469,7 +473,7 @@ export function ShareControls({
                           title={jsonShare.disabledReason || undefined}
                         >
                           <Link size={16} />
-                          <span>{jsonShare.exporting ? "Exporting" : "Export to link"}</span>
+                          <span>{jsonShare.exporting ? copy.shareable.exporting : copy.shareable.exportToLink}</span>
                         </button>
                       </div>
                     )}
@@ -484,31 +488,31 @@ export function ShareControls({
                       <Download size={17} />
                     </span>
                     <div>
-                      <h3>Export Markdown</h3>
-                      <p>Take the current file out of Tabula.md.</p>
+                      <h3>{copy.exportPanel.title}</h3>
+                      <p>{copy.exportPanel.description}</p>
                     </div>
                   </div>
-                  <div className="share-export-grid" aria-label="Export formats">
+                  <div className="share-export-grid" aria-label={copy.exportPanel.title}>
                     <button className="share-export-card" type="button" onClick={onDownloadMarkdown}>
                       <span className="share-export-icon">
                         <FileText size={18} />
                       </span>
-                      <strong>Markdown <span>.md</span></strong>
-                      <p>Download the current file as source Markdown.</p>
+                      <strong>{copy.exportPanel.markdownTitle} <span>.md</span></strong>
+                      <p>{copy.exportPanel.markdownDescription}</p>
                     </button>
                     <button className="share-export-card" type="button" onClick={onCopyMarkdown}>
                       <span className="share-export-icon">
                         <Copy size={18} />
                       </span>
-                      <strong>Copy Markdown</strong>
-                      <p>Copy the current file to the clipboard.</p>
+                      <strong>{copy.exportPanel.copyMarkdownTitle}</strong>
+                      <p>{copy.exportPanel.copyMarkdownDescription}</p>
                     </button>
                     <button className="share-export-card disabled" type="button" disabled>
                       <span className="share-export-icon">
                         <FolderArchive size={18} />
                       </span>
-                      <strong>Project archive <span>.zip</span></strong>
-                      <p>Bundle every project file.</p>
+                      <strong>{copy.exportPanel.projectArchiveTitle} <span>.zip</span></strong>
+                      <p>{copy.exportPanel.projectArchiveDescription}</p>
                     </button>
                   </div>
                 </>
@@ -521,8 +525,8 @@ export function ShareControls({
                       <Bot size={17} />
                     </span>
                     <div>
-                      <h3>Send to local coding agent</h3>
-                      <p>Create a prompt for Codex, Claude Code, or another local coding agent.</p>
+                      <h3>{copy.sendTo.title}</h3>
+                      <p>{copy.sendTo.description}</p>
                     </div>
                   </div>
 
@@ -531,12 +535,12 @@ export function ShareControls({
                       <Bot size={20} />
                     </div>
                     <div>
-                      <strong>Local coding agent</strong>
-                      <p>Hand off Markdown context as a paste-ready prompt.</p>
+                      <strong>{copy.sendTo.destinationTitle}</strong>
+                      <p>{copy.sendTo.destinationDescription}</p>
                     </div>
                     <button className="share-modal-primary" type="button" onClick={copyLocalAgentPrompt}>
                       {agentPromptCopied ? <Check size={16} /> : <Clipboard size={16} />}
-                      <span>{agentPromptCopied ? "Copied" : "Copy prompt"}</span>
+                      <span>{agentPromptCopied ? copy.live.copied : copy.sendTo.copyPrompt}</span>
                     </button>
                   </div>
 
@@ -546,22 +550,22 @@ export function ShareControls({
                       type="button"
                       onClick={() => setAgentScope("file")}
                     >
-                      Current file
+                      {copy.sendTo.currentFile}
                     </button>
                     <button
                       className={agentScope === "project" ? "active" : ""}
                       type="button"
                       onClick={() => setAgentScope("project")}
                     >
-                      Project
+                      {copy.sendTo.project}
                     </button>
                   </div>
 
                   <label className="send-instruction-field">
-                    <span>What should the agent do?</span>
+                    <span>{copy.sendTo.instructionLabel}</span>
                     <textarea
                       value={agentInstruction}
-                      placeholder={`Implement the next step for ${activeFileDisplayTitle}.`}
+                      placeholder={copy.sendTo.instructionPlaceholder(activeFileDisplayTitle)}
                       rows={3}
                       onChange={(event) => setAgentInstruction(event.target.value)}
                     />
