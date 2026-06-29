@@ -128,7 +128,7 @@
   padding: 6px;
   border-radius: 8px;
   background: var(--surface-muted);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-soft);
 }
 
 .share-menu-section {
@@ -238,7 +238,7 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--overlay-scrim);
 }
 
 .share-modal {

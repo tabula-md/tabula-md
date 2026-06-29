@@ -665,6 +665,7 @@ function WorkspaceApp() {
       activeFile={activeFile}
       files={files}
       activeFileTitle={activeFileTitle}
+      language={workspacePreferences.language}
       currentUserName={identity.name}
       canStartSession={canStartSession}
       isLive={isLive}
@@ -997,6 +998,7 @@ function WorkspaceApp() {
                 onDrop={handleEmptyWorkspaceDrop}
               >
                 <EmptyFileState
+                  language={workspacePreferences.language}
                   onNewFile={addFile}
                   onOpenMarkdown={() => importInputRef.current?.click()}
                   onBrowseFiles={openFilesPanel}

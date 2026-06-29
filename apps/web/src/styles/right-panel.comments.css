@@ -528,7 +528,7 @@
 }
 
 .right-comment-action.danger:hover {
-  color: #9f1239;
+  color: var(--danger-text);
 }
 
 .right-comment-action.quiet,
