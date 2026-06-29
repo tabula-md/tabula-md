@@ -142,7 +142,8 @@
   margin-left: var(--document-lane-margin-left);
   margin-right: var(--document-lane-margin-right);
   padding: 18px 0 40px;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--app-background);
 }
 
 .workspace.preview .preview-surface {

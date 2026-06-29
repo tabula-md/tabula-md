@@ -7,9 +7,35 @@
   --surface-hover: #eeeeef;
   --surface-active: #ffffff;
   --line-subtle: #eeeeef;
+  --line-strong: #d8d8dc;
   --text-primary: #1f1f1f;
   --text-muted: #8a8a8a;
   --text-soft: #777777;
+  --text-inverse: #ffffff;
+  --accent: #763fc8;
+  --accent-soft: #f1eafb;
+  --accent-selection: #e4d9f4;
+  --success: #15803d;
+  --success-soft: #eef8f1;
+  --attention: #6f5740;
+  --danger-text: #b4534b;
+  --danger-text-strong: #96332c;
+  --danger-background: #fff7f6;
+  --danger-background-hover: #ffeded;
+  --shadow-popover: 0 14px 36px rgba(0, 0, 0, 0.12);
+  --editor-syntax-heading: #1f1f1f;
+  --editor-syntax-muted: #777777;
+  --editor-syntax-soft: #555555;
+  --editor-syntax-faint: #9a9a9d;
+  --editor-syntax-punctuation: #adadb0;
+  --editor-gutter-text: #c6c6c8;
+  --editor-placeholder-text: #b7b7ba;
+  --editor-comment-mark-background: #f7f7f8;
+  --editor-comment-mark-hover-background: #eeeeef;
+  --editor-comment-mark-border: #bdbdbd;
+  --editor-comment-mark-hover-border: #777777;
+  --editor-comment-mark-active-border: #4f4f4f;
+  --editor-selection-background: #e4d9f4;
   --editor-active-line-background: rgba(0, 0, 0, 0.035);
   font-family:
     "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -26,9 +52,35 @@
   --surface-hover: #2d2d30;
   --surface-active: #303034;
   --line-subtle: #333337;
+  --line-strong: #48484e;
   --text-primary: #ededee;
   --text-muted: #9a9aa0;
   --text-soft: #b4b4b8;
+  --text-inverse: #111111;
+  --accent: #a77af0;
+  --accent-soft: rgba(118, 63, 200, 0.22);
+  --accent-selection: rgba(118, 63, 200, 0.34);
+  --success: #65d48a;
+  --success-soft: rgba(101, 212, 138, 0.14);
+  --attention: #d7b78d;
+  --danger-text: #ff9a8f;
+  --danger-text-strong: #ffc0b8;
+  --danger-background: rgba(180, 83, 75, 0.16);
+  --danger-background-hover: rgba(180, 83, 75, 0.24);
+  --shadow-popover: 0 18px 42px rgba(0, 0, 0, 0.42);
+  --editor-syntax-heading: #ededee;
+  --editor-syntax-muted: #b4b4b8;
+  --editor-syntax-soft: #d6d6da;
+  --editor-syntax-faint: #8f8f96;
+  --editor-syntax-punctuation: #777780;
+  --editor-gutter-text: #6f6f76;
+  --editor-placeholder-text: #74747a;
+  --editor-comment-mark-background: #232325;
+  --editor-comment-mark-hover-background: #2d2d30;
+  --editor-comment-mark-border: #55555c;
+  --editor-comment-mark-hover-border: #8f8f96;
+  --editor-comment-mark-active-border: #b4b4b8;
+  --editor-selection-background: color-mix(in srgb, #763fc8 34%, transparent);
   --editor-active-line-background: rgba(255, 255, 255, 0.06);
 }
 
@@ -61,7 +113,7 @@ textarea {
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #d8d8d8;
+  outline: 2px solid var(--line-strong);
   outline-offset: 2px;
 }
 
@@ -415,8 +467,8 @@ button {
 .right-panel-tab:hover,
 .right-panel-tab.active,
 .right-panel-close:hover {
-  color: #1f1f1f;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--surface-active);
 }
 
 .share-file-card {
@@ -424,7 +476,7 @@ button {
   gap: 8px;
   padding: 10px;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface-panel);
 }
 
 .share-status-pill {
@@ -478,8 +530,8 @@ button {
   height: 34px;
   padding: 0 9px;
   border: 0;
-  color: #1f1f1f;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--surface-panel);
   font-size: 12px;
   border-radius: 8px;
 }
@@ -489,8 +541,8 @@ button {
   place-items: center;
   flex: 0 0 34px;
   height: 34px;
-  color: #3f3f3f;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--surface-panel);
   border-radius: 8px;
 }
 

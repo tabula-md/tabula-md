@@ -86,7 +86,7 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  color: #777777;
+  color: var(--text-soft);
   background: var(--surface-muted);
   font-size: 10px;
   font-weight: 400;
@@ -107,8 +107,8 @@
 .right-panel-tab:hover,
 .right-panel-tab.active,
 .right-panel-close:hover {
-  color: #1f1f1f;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--surface-active);
 }
 
 .right-panel-close:hover {
@@ -120,14 +120,14 @@
 }
 
 .right-panel button:focus-visible {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-muted);
 }
 
 .right-panel-body {
   min-height: 0;
   overflow: auto;
-  background: #ffffff;
+  background: var(--surface-panel);
 }
 
 .right-panel-body.comments {
@@ -162,7 +162,7 @@
   padding: 0 var(--right-row-x);
   border: 0;
   border-radius: var(--right-row-radius);
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-muted);
   font: inherit;
   font-size: 13px;
@@ -170,7 +170,7 @@
 }
 
 .right-panel-search::placeholder {
-  color: #8c8c8c;
+  color: var(--text-muted);
 }
 
 .right-file-import-button,
@@ -190,7 +190,7 @@
 .right-file-import-button:focus-visible,
 .right-file-create-button:hover,
 .right-file-create-button:focus-visible {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-hover);
 }
 
@@ -213,7 +213,7 @@
 .right-row:hover,
 .right-row.active,
 .right-row:focus-visible {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-muted);
 }
 
@@ -249,7 +249,7 @@
   height: var(--right-badge-height);
   padding: 0 5px;
   border-radius: calc(var(--right-badge-height) / 2);
-  color: #777777;
+  color: var(--text-soft);
   background: var(--surface-muted);
   font-size: 10px;
   font-weight: 400;

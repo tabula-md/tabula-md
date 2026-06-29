@@ -1,5 +1,5 @@
 .preview-placeholder {
-  color: #999999;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
@@ -28,22 +28,22 @@
 
 .preview-surface .preview-comment-mark {
   position: relative;
-  border-bottom: 1px solid #bdbdbd;
+  border-bottom: 1px solid var(--line-strong);
   border-radius: 3px;
-  background: #f7f7f8;
+  background: var(--surface-muted);
   cursor: pointer;
 }
 
 .preview-surface .preview-comment-mark:hover,
 .preview-surface .preview-comment-mark:focus-visible {
-  background: #eeeeef;
-  border-bottom-color: #777777;
+  background: var(--surface-hover);
+  border-bottom-color: var(--text-soft);
   outline: 0;
 }
 
 .preview-surface .preview-comment-mark.active {
-  background: #eeeeef;
-  border-bottom-color: #4f4f4f;
+  background: var(--surface-hover);
+  border-bottom-color: var(--text-primary);
 }
 
 .frontmatter-view {
@@ -110,7 +110,7 @@
   width: 100%;
   min-height: 20px;
   padding: 0;
-  color: #b7b7ba;
+  color: var(--text-muted);
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -127,7 +127,7 @@
 
 .preview-line-action:hover::before,
 .preview-line-action:focus-visible::before {
-  background: rgba(0, 0, 0, 0.055);
+  background: var(--surface-hover);
 }
 
 .preview-line-action-icon {
@@ -158,7 +158,7 @@
 .preview-surface h1,
 .preview-surface h2,
 .preview-surface h3 {
-  color: #1f1f1f;
+  color: var(--text-primary);
   line-height: 1.28;
 }
 
@@ -182,7 +182,7 @@
 
 .preview-surface p,
 .preview-surface li {
-  color: #252525;
+  color: var(--text-primary);
   font-size: inherit;
   line-height: inherit;
 }
@@ -216,15 +216,15 @@
 }
 
 .preview-surface a {
-  color: #1f1f1f;
+  color: var(--text-primary);
   text-decoration: underline;
-  text-decoration-color: #c8c8c8;
+  text-decoration-color: var(--line-strong);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
 .preview-surface a:hover {
-  text-decoration-color: #777777;
+  text-decoration-color: var(--text-soft);
 }
 
 .preview-surface hr {
@@ -259,7 +259,7 @@
 }
 
 .preview-image-caption {
-  color: #8a8a8a;
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
   line-height: 1.35;
@@ -270,7 +270,7 @@
   place-items: center;
   min-height: 118px;
   padding: 16px;
-  color: #8a8a8a;
+  color: var(--text-muted);
   background: var(--surface-muted);
   border-radius: 8px;
   font-size: 13px;
@@ -280,8 +280,8 @@
 
 .preview-surface code {
   padding: 2px 5px;
-  color: #1f1f1f;
-  background: #f4f4f5;
+  color: var(--text-primary);
+  background: var(--surface-muted);
   border-radius: 5px;
   font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.9em;
@@ -291,7 +291,7 @@
   position: relative;
   margin: 18px 0;
   border: 1px solid var(--line-subtle);
-  background: #fbfbfb;
+  background: var(--surface-panel);
   border-radius: 8px;
 }
 
@@ -309,15 +309,15 @@
   place-items: center;
   width: 32px;
   height: 32px;
-  color: #777777;
+  color: var(--text-soft);
   background: transparent;
   border-radius: 999px;
 }
 
 .preview-code-action:hover,
 .preview-code-action.active {
-  color: #4a4a4a;
-  background: #eeeeef;
+  color: var(--text-primary);
+  background: var(--surface-hover);
 }
 
 .preview-surface pre {
@@ -337,7 +337,7 @@
   display: block;
   min-width: max-content;
   padding: 0;
-  color: #2f2f2f;
+  color: var(--text-primary);
   background: transparent;
   border-radius: 0;
   font-feature-settings: "liga" 0, "calt" 0;
@@ -350,7 +350,7 @@
   position: absolute;
   top: 18px;
   left: 16px;
-  color: #999999;
+  color: var(--text-muted);
   font-family: "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 11px;
   font-weight: 500;
@@ -368,15 +368,15 @@
 .preview-surface blockquote {
   margin: 18px 0;
   padding: 2px 0 2px 14px;
-  border-left: 2px solid #dedee0;
+  border-left: 2px solid var(--line-strong);
   border-radius: 0;
   background: transparent;
-  color: #555557;
+  color: var(--text-soft);
 }
 
 .preview-surface blockquote blockquote {
   margin: 10px 0;
-  border-left-color: #cfcfd2;
+  border-left-color: var(--line-subtle);
   background: transparent;
 }
 
@@ -391,7 +391,7 @@
 
 .preview-surface blockquote p,
 .preview-surface blockquote li {
-  color: #555555;
+  color: var(--text-soft);
 }
 
 .preview-table-wrap {
@@ -400,7 +400,7 @@
   overflow-x: auto;
   border: 1px solid var(--line-subtle);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface-panel);
 }
 
 .preview-surface table {
@@ -408,7 +408,7 @@
   min-width: 520px;
   border-collapse: separate;
   border-spacing: 0;
-  color: #333333;
+  color: var(--text-primary);
   font-size: 14px;
   line-height: 1.45;
 }
@@ -422,8 +422,8 @@
 }
 
 .preview-surface th {
-  color: #555555;
-  background: #fafafa;
+  color: var(--text-soft);
+  background: var(--surface-muted);
   font-weight: 650;
 }
 
@@ -461,20 +461,20 @@
   height: 15px;
   margin: 0.38em 0 0;
   border-radius: 4px;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #cfcfcf;
+  background: var(--surface-panel);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
 .preview-task-checkbox.checked {
-  background: #f0f0f1;
-  box-shadow: inset 0 0 0 1px #b8b8b8;
+  background: var(--surface-muted);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
 .preview-task-checkbox.checked::after {
   width: 7px;
   height: 4px;
-  border-bottom: 2px solid #777777;
-  border-left: 2px solid #777777;
+  border-bottom: 2px solid var(--text-soft);
+  border-left: 2px solid var(--text-soft);
   transform: translateY(-1px) rotate(-45deg);
   content: "";
 }

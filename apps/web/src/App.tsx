@@ -533,6 +533,7 @@ function WorkspaceApp() {
   } = useWorkspaceFileActions({
     activeFile,
     activeFileId,
+    addFileFromContent,
     addMarkdownFile,
     closeFloatingChrome,
     closeMarkdownFile,

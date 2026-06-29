@@ -15,7 +15,7 @@
   gap: var(--right-tight-gap);
   min-height: 28px;
   padding: 0 var(--right-row-x) 10px;
-  color: #5f5f5f;
+  color: var(--text-soft);
   font-size: 12px;
   font-weight: 400;
   line-height: 1;
@@ -37,7 +37,7 @@
   min-height: 24px;
   padding: 0 6px;
   border-radius: 6px;
-  color: #8a8a8a;
+  color: var(--text-muted);
   background: transparent;
   font-size: 11px;
   font-weight: 400;
@@ -46,7 +46,7 @@
 
 .right-comments-switch:hover,
 .right-comments-switch:focus-visible {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-muted);
 }
 
@@ -66,7 +66,7 @@
   padding: 0 4px;
   border-radius: 8px;
   background: var(--surface-muted);
-  color: #9a9a9a;
+  color: var(--text-muted);
   font-size: 9px;
   font-weight: 400;
   line-height: 15px;
@@ -85,7 +85,7 @@
   display: grid;
   gap: var(--right-tight-gap);
   padding-top: var(--right-tight-gap);
-  background: #ffffff;
+  background: var(--surface-panel);
 }
 
 .right-comment-form {
@@ -104,7 +104,7 @@
   justify-self: start;
   min-width: 0;
   height: 16px;
-  color: #a0a0a0;
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 400;
   line-height: 1;
@@ -118,7 +118,7 @@
   border: 0;
   outline: 0;
   border-radius: 4px;
-  color: #888888;
+  color: var(--text-soft);
   background: transparent;
   font: inherit;
   line-height: 16px;
@@ -126,8 +126,8 @@
 
 .right-comment-composer-identity input:hover,
 .right-comment-composer-identity input:focus-visible {
-  color: #4f4f4f;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--surface-active);
 }
 
 .right-comment-input {
@@ -137,7 +137,7 @@
   border: 0;
   outline: 0;
   resize: none;
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: transparent;
   border-radius: 0;
   font-size: 12px;
@@ -152,7 +152,7 @@
 }
 
 .right-comment-input::placeholder {
-  color: #aaaaaa;
+  color: var(--text-muted);
 }
 
 .right-comment-input:focus,
@@ -190,7 +190,7 @@
 .right-comment-submit {
   min-height: 22px;
   padding: 0;
-  color: #8a8a8a;
+  color: var(--text-muted);
   background: transparent;
   border-radius: 5px;
   font-size: 11px;
@@ -199,20 +199,20 @@
 }
 
 .right-comment-submit {
-  color: #4f4f4f;
+  color: var(--text-soft);
 }
 
 .right-comment-text-button:hover,
 .right-comment-submit:hover:not(:disabled),
 .right-comment-text-button:focus-visible,
 .right-comment-submit:focus-visible {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: transparent;
 }
 
 .right-comment-submit:disabled {
   cursor: default;
-  color: #b0b0b0;
+  color: var(--text-muted);
 }
 
 .right-comments-empty {
@@ -223,7 +223,7 @@
 }
 
 .right-comments-empty span {
-  color: #777777;
+  color: var(--text-soft);
   font-size: 12px;
   font-weight: 400;
   line-height: 1.35;
@@ -231,7 +231,7 @@
 
 .right-comments-empty p {
   max-width: 26ch;
-  color: #9a9a9a;
+  color: var(--text-muted);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -271,7 +271,7 @@
 
 .right-comment-file:hover small,
 .right-comment-file.active small {
-  background: #ffffff;
+  background: var(--surface-active);
 }
 
 .right-comment-card {
@@ -311,7 +311,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  color: #ffffff;
+  color: var(--text-inverse);
   font-size: 10px;
   font-weight: 500;
   line-height: 1;
@@ -334,21 +334,21 @@
 
 .right-comment-author strong {
   min-width: 0;
-  color: #4a4a4a;
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 400;
   line-height: 1.2;
 }
 
 .right-comment-author-meta > span {
-  color: #b0b0b0;
+  color: var(--text-muted);
   font-size: 11px;
   line-height: 1;
 }
 
 .right-comment-author small {
   flex: 0 0 auto;
-  color: #9a9a9a;
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 400;
   line-height: 1.2;
@@ -360,7 +360,7 @@
   margin: 0;
   padding: 0;
   border-radius: 0;
-  color: #9a9a9a;
+  color: var(--text-muted);
   background: transparent;
   font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 11px;
@@ -372,7 +372,7 @@
 
 .right-comment-quote::before,
 .right-comment-quote::after {
-  color: #b0b0b0;
+  color: var(--text-muted);
 }
 
 .right-comment-quote::before {
@@ -384,13 +384,13 @@
 }
 
 .right-comment-quote:hover {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: transparent;
 }
 
 .right-comment-body {
   margin: 0;
-  color: #4f4f4f;
+  color: var(--text-soft);
   font-size: 12px;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -417,7 +417,7 @@
 .right-comment-meta .right-comment-author strong,
 .right-comment-meta .right-comment-author small,
 .right-comment-meta .right-comment-author-meta > span {
-  color: #9a9a9a;
+  color: var(--text-muted);
   font-size: 10.5px;
 }
 
@@ -434,7 +434,7 @@
   min-height: 22px;
   margin-left: 14px;
   padding: 0;
-  color: #777777;
+  color: var(--text-soft);
   background: transparent;
   border-radius: 6px;
   font-size: 11px;
@@ -450,7 +450,7 @@
 }
 
 .right-comment-thread-toggle:hover {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: transparent;
 }
 
@@ -474,7 +474,7 @@
 .right-comment-author.reply small,
 .right-comment-author.reply .right-comment-author-meta > span,
 .right-comment-reply .right-comment-body {
-  color: #8a8a8a;
+  color: var(--text-muted);
 }
 
 .right-comment-author.reply strong,
@@ -502,7 +502,7 @@
   justify-content: center;
   flex: 0 0 auto;
   height: 18px;
-  color: #8a8a8a;
+  color: var(--text-muted);
   background: transparent;
   border-radius: 5px;
   font-size: 11px;
@@ -523,7 +523,7 @@
 }
 
 .right-comment-action:hover {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: transparent;
 }
 
@@ -563,7 +563,7 @@
   border: 0;
   outline: 0;
   resize: none;
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-muted);
   border-radius: var(--right-row-radius);
   font-size: 12px;
@@ -573,7 +573,7 @@
 
 .right-comment-reply-form textarea:focus,
 .right-comment-reply-form textarea:focus-visible {
-  background: #f1f1f2;
+  background: var(--surface-hover);
 }
 
 .right-comment-reply-actions {
@@ -599,7 +599,7 @@
 
 .right-resolved-comments-header:hover,
 .right-resolved-comments-header:focus-visible {
-  color: #555555;
+  color: var(--text-soft);
   background: transparent;
 }
 

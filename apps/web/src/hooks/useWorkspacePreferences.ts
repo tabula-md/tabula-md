@@ -3,8 +3,19 @@ import type { FileViewMode, ReadingWidth } from "../workspaceStorage";
 
 export const WORKSPACE_PREFERENCES_KEY = "tabula.preferences.v1";
 
-export type WorkspaceTheme = "light" | "dark";
-export type WorkspaceLanguage = "en" | "ko";
+export type WorkspaceTheme = "system" | "light" | "dark";
+export type ResolvedWorkspaceTheme = Exclude<WorkspaceTheme, "system">;
+export type WorkspaceLanguage = "en" | "ko" | "ja" | "zh" | "es" | "fr" | "de";
+
+export const SUPPORTED_WORKSPACE_LANGUAGES: WorkspaceLanguage[] = [
+  "en",
+  "ko",
+  "ja",
+  "zh",
+  "es",
+  "fr",
+  "de",
+];
 
 export type WorkspacePreferences = {
   theme: WorkspaceTheme;
@@ -16,7 +27,7 @@ export type WorkspacePreferences = {
 };
 
 export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferences = {
-  theme: "light",
+  theme: "system",
   language: "en",
   newFileViewMode: "edit",
   readingWidth: "wide",
@@ -24,9 +35,12 @@ export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferences = {
   lineNumbers: true,
 };
 
-const isWorkspaceTheme = (value: unknown): value is WorkspaceTheme => value === "light" || value === "dark";
+const isWorkspaceTheme = (value: unknown): value is WorkspaceTheme =>
+  value === "system" || value === "light" || value === "dark";
 
-const isWorkspaceLanguage = (value: unknown): value is WorkspaceLanguage => value === "en" || value === "ko";
+const isWorkspaceLanguage = (value: unknown): value is WorkspaceLanguage =>
+  typeof value === "string" &&
+  SUPPORTED_WORKSPACE_LANGUAGES.includes(value as WorkspaceLanguage);
 
 const isFileViewMode = (value: unknown): value is FileViewMode =>
   value === "edit" || value === "split" || value === "preview";
@@ -77,6 +91,27 @@ export const writeWorkspacePreferences = (
   storage.setItem(WORKSPACE_PREFERENCES_KEY, JSON.stringify(preferences));
 };
 
+const getSystemTheme = (): ResolvedWorkspaceTheme => {
+  if (typeof window === "undefined" || !window.matchMedia) {
+    return "light";
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+};
+
+export const resolveWorkspaceTheme = (theme: WorkspaceTheme): ResolvedWorkspaceTheme =>
+  theme === "system" ? getSystemTheme() : theme;
+
+const subscribeToSystemTheme = (listener: () => void) => {
+  if (typeof window === "undefined" || !window.matchMedia) {
+    return undefined;
+  }
+
+  const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  colorSchemeQuery.addEventListener("change", listener);
+  return () => colorSchemeQuery.removeEventListener("change", listener);
+};
+
 export function useWorkspacePreferences(): [
   WorkspacePreferences,
   Dispatch<SetStateAction<WorkspacePreferences>>,
@@ -86,10 +121,25 @@ export function useWorkspacePreferences(): [
   );
 
   useEffect(() => {
-    document.documentElement.dataset.theme = workspacePreferences.theme;
+    const applyTheme = () => {
+      const resolvedTheme = resolveWorkspaceTheme(workspacePreferences.theme);
+      document.documentElement.dataset.theme = resolvedTheme;
+      document.documentElement.dataset.themePreference = workspacePreferences.theme;
+      document.documentElement.style.colorScheme = resolvedTheme;
+    };
+
+    applyTheme();
+
+    if (workspacePreferences.theme !== "system") {
+      return undefined;
+    }
+
+    return subscribeToSystemTheme(applyTheme);
+  }, [workspacePreferences.theme]);
+
+  useEffect(() => {
     document.documentElement.lang = workspacePreferences.language;
-    document.documentElement.style.colorScheme = workspacePreferences.theme;
-  }, [workspacePreferences.language, workspacePreferences.theme]);
+  }, [workspacePreferences.language]);
 
   useEffect(() => {
     try {
