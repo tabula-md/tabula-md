@@ -18,8 +18,8 @@ import {
   decodePresence,
   encodePresenceForRoom,
   isEncryptedEnvelope,
-  sortCollaborators,
 } from "./collabConnectionModel";
+import { createCollaboratorRegistry } from "./collabCollaborators";
 import { fetchRoomMeta, fetchRoomSnapshotEnvelope, putRoomSnapshotEnvelope } from "./collabRoomClient";
 import { createCollabUpdateBuffer } from "./collabUpdateBuffer";
 import {
@@ -121,7 +121,7 @@ export const createCollabConnection = ({
   createRoomTransport = createDefaultRoomTransport,
 }: ConnectOptions) => {
   const { doc, text } = createCollabTextDocument(initialText);
-  const collaborators = new Map<string, Collaborator>();
+  const collaborators = createCollaboratorRegistry();
   let currentFileTitle = fileTitle;
   let currentSelection = selection;
   let currentIdentity = identity;
@@ -147,7 +147,7 @@ export const createCollabConnection = ({
   };
 
   const publishCollaborators = () => {
-    onCollaboratorsChange(sortCollaborators(collaborators.values()));
+    onCollaboratorsChange(collaborators.list());
   };
 
   const refreshRoomMeta = async () => {
@@ -279,11 +279,12 @@ export const createCollabConnection = ({
 
       if (envelope.kind === "presence") {
         const collaborator = decodePresence(plaintext);
-        if (!collaborator || collaborator.id === currentIdentity.id) {
+        if (!collaborator) {
           return;
         }
-        collaborators.set(collaborator.id, collaborator);
-        publishCollaborators();
+        if (collaborators.upsert(collaborator, currentIdentity.id)) {
+          publishCollaborators();
+        }
       }
     } catch {
       emitRecoveryEvent("invalid-message", "An encrypted collaboration message could not be decrypted.");
@@ -365,13 +366,9 @@ export const createCollabConnection = ({
           void applyIncomingEnvelope(envelope);
         },
         onPeers: (message) => {
-          const peerIds = new Set(message.peers);
-          for (const collaboratorId of collaborators.keys()) {
-            if (!peerIds.has(collaboratorId)) {
-              collaborators.delete(collaboratorId);
-            }
+          if (collaborators.prune(message.peers)) {
+            publishCollaborators();
           }
-          publishCollaborators();
         },
         onError: (message) => {
           emitRecoveryEvent("invalid-message", message.error || "A collaboration server message was ignored.");
