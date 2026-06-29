@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import type { ConnectionStatus } from "../collab";
-import type { RenameFileResult } from "../hooks/useMarkdownFiles";
-import type { MarkdownFile } from "../workspaceStorage";
+import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
+import type { WorkspaceFile } from "../workspaceStorage";
 
 type TabScrollState = {
   canScrollLeft: boolean;
@@ -12,10 +12,10 @@ type TabScrollState = {
 };
 
 type FileTabsProps = {
-  files: MarkdownFile[];
-  activeFile?: MarkdownFile;
+  files: WorkspaceFile[];
+  activeFile?: WorkspaceFile;
   activeCollaboratorCount: number;
-  getFileStatus: (file: MarkdownFile) => ConnectionStatus;
+  getFileStatus: (file: WorkspaceFile) => ConnectionStatus;
   onAddFile: () => void;
   onSelectFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
@@ -142,7 +142,7 @@ export function FileTabs({
     scrollTabsBy(direction);
   };
 
-  const startRenamingFile = (file: MarkdownFile) => {
+  const startRenamingFile = (file: WorkspaceFile) => {
     setRenamingFileId(file.id);
     setRenamingTitle(getTabDisplayTitle(file.title));
     onChromeInteraction?.();

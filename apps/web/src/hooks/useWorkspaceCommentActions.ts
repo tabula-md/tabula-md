@@ -16,7 +16,7 @@ import {
 } from "../lineSurfaceModel";
 import type { AppToastState } from "./useAppToast";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";
-import type { FileComment, FileBookmark, FileViewMode, MarkdownFile } from "../workspaceStorage";
+import type { FileComment, FileBookmark, FileViewMode, WorkspaceFile } from "../workspaceStorage";
 
 type SetWorkspaceViewMode = (
   nextViewMode: FileViewMode,
@@ -37,7 +37,7 @@ type ShowToast = (
 
 type UseWorkspaceCommentActionsArgs = {
   activeBookmarks: FileBookmark[];
-  activeFile?: MarkdownFile;
+  activeFile?: WorkspaceFile;
   activeFileComments: FileComment[];
   activeOpenComments: FileComment[];
   activeViewMode: FileViewMode;
@@ -59,7 +59,7 @@ type UseWorkspaceCommentActionsArgs = {
   }) => FileComment | null;
   createId: () => string;
   editorRef: RefObject<MarkdownEditorHandle | null>;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   focusedCommentId: string | null;
   getSelectedMarkdownAnchor: () => {
     start: number;

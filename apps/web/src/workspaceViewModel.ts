@@ -1,6 +1,6 @@
 import type { ConnectionStatus } from "./collab";
 import { parseFrontmatter } from "./markdown";
-import { isUsableLiveRoomFile, type MarkdownFile } from "./workspaceStorage";
+import { isUsableLiveRoomFile, type WorkspaceFile } from "./workspaceStorage";
 
 export const getWorkspaceStatusLabel = (status: ConnectionStatus) =>
   ({
@@ -23,7 +23,7 @@ export const getWorkspaceFileStatus = ({
   activeFileId,
   activeConnectionStatus,
 }: {
-  file: MarkdownFile;
+  file: WorkspaceFile;
   activeFileId?: string;
   activeConnectionStatus: ConnectionStatus;
 }) => {
@@ -38,7 +38,7 @@ export const getWorkspaceFileStatus = ({
   return file.connectionStatus ?? "offline";
 };
 
-export const getWorkspaceFileSearchText = (file: MarkdownFile) => {
+export const getWorkspaceFileSearchText = (file: WorkspaceFile) => {
   const metadata = parseFrontmatter(file.text);
   const title = metadata.attributes.find((attribute) => attribute.key.toLowerCase() === "title")?.value ?? "";
   return `${file.title} ${title}`;

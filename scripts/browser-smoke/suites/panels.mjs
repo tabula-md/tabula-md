@@ -84,7 +84,7 @@ export async function run(ctx) {
         };
         return {
           menu: rectOf(".workspace-menu-popover"),
-          toolbar: rectOf(".editor-control-row"),
+          toolbar: rectOf(".document-toolbar-row"),
           preview: rectOf(".preview-surface"),
           status: rectOf(".file-status-bar"),
         };
@@ -101,7 +101,7 @@ export async function run(ctx) {
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the right project context panel.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New Markdown|Open Markdown...|Import project...|Save Markdown...|Export project...|Live collaboration...|Preferences|About|Help|Follow us|GitHub",
+        "New File|Open File...|Import project...|Save File...|Export project...|Live collaboration...|Preferences|About|Help|Follow us|GitHub",
       "The workspace menu should only expose implemented file, collaboration, preferences, support, and public links.",
     );
     const xPublicLink = workbenchPanels.publicLinks.find((link) => link.text === "Follow us");
@@ -135,17 +135,17 @@ export async function run(ctx) {
       "Workspace menu rows should use one compact row token set.",
     );
     const focusIndex = (label) => workbenchPanels.focusOrder.indexOf(label);
-    expect(focusIndex("New Markdown") !== -1, "Keyboard order should include file creation.");
-    expect(focusIndex("Open Markdown...") !== -1, "Keyboard order should include Markdown import.");
+    expect(focusIndex("New File") !== -1, "Keyboard order should include file creation.");
+    expect(focusIndex("Open File...") !== -1, "Keyboard order should include file import.");
     expect(focusIndex("Live collaboration...") !== -1, "Keyboard order should include live collaboration.");
     expect(focusIndex("Tabula +") === -1, "Workspace menu should keep Tabula + hidden until publishing ships.");
     expect(focusIndex("Preferences") !== -1, "Keyboard order should include Preferences.");
     expect(focusIndex("About") !== -1, "Keyboard order should include About.");
     expect(focusIndex("Help") !== -1, "Keyboard order should include Help.");
     expect(
-      focusIndex("New Markdown") <
-        focusIndex("Open Markdown...") &&
-        focusIndex("Open Markdown...") < focusIndex("Live collaboration...") &&
+      focusIndex("New File") <
+        focusIndex("Open File...") &&
+        focusIndex("Open File...") < focusIndex("Live collaboration...") &&
         focusIndex("Live collaboration...") < focusIndex("Preferences") &&
         focusIndex("Preferences") < focusIndex("About") &&
         focusIndex("About") < focusIndex("Help"),
@@ -174,8 +174,8 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
     const preferencesPanel = await page.evaluate(() => ({
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
-      preferencesOpen: Boolean(document.querySelector(".workspace-preferences-popover")),
-      surfaceLabel: document.querySelector(".workspace-preferences-popover")?.getAttribute("aria-label") ?? "",
+      preferencesOpen: Boolean(document.querySelector(".workspace-preferences-panel")),
+      surfaceLabel: document.querySelector(".workspace-preferences-panel")?.getAttribute("aria-label") ?? "",
       preferenceLabels: Array.from(document.querySelectorAll(".workspace-preferences-setting > span")).map((item) =>
         item.textContent?.replace(/\s+/g, " ").trim(),
       ),
@@ -196,9 +196,9 @@ export async function run(ctx) {
         item.textContent?.replace(/\s+/g, " ").trim(),
       ),
       internalLabelLeak:
-        document.querySelector(".workspace-preferences-popover")?.textContent?.includes("Browser project") ?? false,
+        document.querySelector(".workspace-preferences-panel")?.textContent?.includes("Browser project") ?? false,
       storageSurfaceLeak:
-        document.querySelector(".workspace-preferences-popover")?.textContent?.includes("Storage") ?? false,
+        document.querySelector(".workspace-preferences-panel")?.textContent?.includes("Storage") ?? false,
       checkRowCount: document.querySelectorAll(".workspace-preferences-check").length,
       detailRowCount: document.querySelectorAll(".left-detail-list div").length,
       shortcutRowCount: document.querySelectorAll(".left-shortcut-row").length,
@@ -209,12 +209,10 @@ export async function run(ctx) {
         Array.from(document.querySelectorAll(".workspace-menu-row"))
           .find((button) => button.textContent?.includes("Preferences"))
           ?.classList.contains("active") ?? false,
-      popoverLeft: Math.round(document.querySelector(".workspace-preferences-popover")?.getBoundingClientRect().left ?? 0),
-      menuRight: Math.round(document.querySelector(".workspace-menu-popover")?.getBoundingClientRect().right ?? 0),
     }));
     expect(preferencesPanel.menuOpen, "Preferences should keep the workspace menu open.");
-    expect(preferencesPanel.preferencesOpen, "Preferences should open as a nested menu surface.");
-    expect(preferencesPanel.surfaceLabel === "Preferences", "The nested side surface should be labeled Preferences.");
+    expect(preferencesPanel.preferencesOpen, "Preferences should open as an inline menu surface.");
+    expect(preferencesPanel.surfaceLabel === "Preferences", "The inline Preferences surface should be labeled Preferences.");
     expect(
       preferencesPanel.preferenceLabels.join("|") === "Theme|Language",
       "Preferences should only expose lightweight app-wide preferences.",
@@ -236,14 +234,10 @@ export async function run(ctx) {
     expect(preferencesPanel.shortcutRowCount === 0, "Keyboard shortcuts should move out of the left panel surface.");
     expect(preferencesPanel.keyboardShortcutsFooterCount === 0, "Keyboard shortcuts should be documented in HELP.md, not pinned.");
     expect(preferencesPanel.preferenceFooterActive, "The Preferences support row should stay selected while its surface is open.");
-    expect(
-      preferencesPanel.popoverLeft >= preferencesPanel.menuRight - 1,
-      "Preferences should open beside the workspace menu.",
-    );
 
-    const preferencesPopover = page.locator(".workspace-preferences-popover");
-    await preferencesPopover.getByRole("button", { name: "Dark", exact: true }).click();
-    await preferencesPopover.locator(".workspace-preferences-select select").selectOption("ko");
+    const preferencesPanelSurface = page.locator(".workspace-preferences-panel");
+    await preferencesPanelSurface.getByRole("button", { name: "Dark", exact: true }).click();
+    await preferencesPanelSurface.locator(".workspace-preferences-select select").selectOption("ko");
     const rootPreferences = await page.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       themePreference: document.documentElement.dataset.themePreference,
@@ -253,9 +247,9 @@ export async function run(ctx) {
     expect(rootPreferences.theme === "dark", "Choosing Dark should update the app theme contract.");
     expect(rootPreferences.themePreference === "dark", "Choosing Dark should persist the selected theme preference.");
     expect(rootPreferences.language === "ko", "Choosing Korean should update the document language contract.");
-    expect(rootPreferences.menuText.includes("새 Markdown"), "Choosing Korean should update workspace menu copy.");
-    await preferencesPopover.locator(".workspace-preferences-select select").selectOption("en");
-    await preferencesPopover.getByRole("button", { name: "System", exact: true }).click();
+    expect(rootPreferences.menuText.includes("새 파일"), "Choosing Korean should update workspace menu copy.");
+    await preferencesPanelSurface.locator(".workspace-preferences-select select").selectOption("en");
+    await preferencesPanelSurface.getByRole("button", { name: "System", exact: true }).click();
     const restoredPreferences = await page.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       themePreference: document.documentElement.dataset.themePreference,
@@ -268,22 +262,22 @@ export async function run(ctx) {
     );
     expect(restoredPreferences.themePreference === "system", "Choosing System should preserve the selected preference.");
     expect(restoredPreferences.language === "en", "Choosing English should restore the document language contract.");
-    expect(restoredPreferences.menuText.includes("New Markdown"), "Choosing English should restore workspace menu copy.");
+    expect(restoredPreferences.menuText.includes("New File"), "Choosing English should restore workspace menu copy.");
 
     await page.keyboard.press("Escape");
     await waitForRenderFrame(page);
     const preferencesEscapeState = await page.evaluate(() => ({
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
-      preferencesOpen: Boolean(document.querySelector(".workspace-preferences-popover")),
+      preferencesOpen: Boolean(document.querySelector(".workspace-preferences-panel")),
       newActionsVisible: Array.from(document.querySelectorAll(".workspace-menu-row")).some((button) =>
-        button.textContent?.includes("New Markdown"),
+        button.textContent?.includes("New File"),
       ),
     }));
     expect(preferencesEscapeState.menuOpen, "Escape from Preferences should keep the workspace menu open.");
-    expect(!preferencesEscapeState.preferencesOpen, "Escape from Preferences should close only the nested side surface.");
+    expect(!preferencesEscapeState.preferencesOpen, "Escape from Preferences should close only the inline Preferences surface.");
     expect(preferencesEscapeState.newActionsVisible, "Escape from Preferences should leave file creation available.");
 
-    await supportActions.getByRole("button", { name: "New Markdown", exact: true }).click();
+    await supportActions.getByRole("button", { name: "New File", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     await openProjectMenu(page);
@@ -301,7 +295,7 @@ export async function run(ctx) {
 
     await openProjectMenu(page);
 
-    await page.getByRole("button", { name: "New Markdown", exact: true }).click();
+    await page.getByRole("button", { name: "New File", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     const newFileState = await page.evaluate(() => ({
@@ -405,7 +399,7 @@ export async function run(ctx) {
         };
         return {
           rightPanel: rectOf(".right-panel"),
-          toolbar: rectOf(".editor-control-row"),
+          toolbar: rectOf(".document-toolbar-row"),
           preview: rectOf(".preview-surface"),
           status: rectOf(".file-status-bar"),
         };
@@ -475,7 +469,7 @@ export async function run(ctx) {
       return {
         menu: rectOf(".workspace-menu-popover"),
         rightPanel: rectOf(".right-panel"),
-        toolbar: rectOf(".editor-control-row"),
+        toolbar: rectOf(".document-toolbar-row"),
         preview: rectOf(".preview-surface"),
         status: rectOf(".file-status-bar"),
       };
@@ -1122,7 +1116,7 @@ export async function run(ctx) {
       duplicateCount: document.querySelectorAll('.right-file-action[aria-label^="Duplicate "]').length,
       deleteCount: document.querySelectorAll('.right-file-action[aria-label^="Delete "]').length,
       openMenuCount: document.querySelectorAll(".right-file-action-menu").length,
-      importCount: document.querySelectorAll('.right-file-import-button[aria-label="Import Markdown"]').length,
+      importCount: document.querySelectorAll('.right-file-import-button[aria-label="Import file"]').length,
       visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(fileActionContract.closeTabCount >= 2, "Right Files should expose close-tab actions for open files.");
@@ -1131,9 +1125,9 @@ export async function run(ctx) {
     expect(fileActionContract.duplicateCount === 0, "Right Files should hide duplicate behind a more-action menu.");
     expect(fileActionContract.deleteCount === 0, "Right Files should hide delete behind a more-action menu.");
     expect(fileActionContract.openMenuCount === 0, "Right Files should keep row menus closed by default.");
-    expect(fileActionContract.importCount === 1, "Right Files should expose one Markdown import control.");
+    expect(fileActionContract.importCount === 1, "Right Files should expose one file import control.");
     expect(
-      !/\b(Close tab|Rename|Duplicate|Delete|Import Markdown)\b/.test(fileActionContract.visibleText),
+      !/\b(Close tab|Rename|Duplicate|Delete|Import file)\b/.test(fileActionContract.visibleText),
       "Right Files action labels should stay icon-only in visible panel text.",
     );
 
@@ -1244,7 +1238,7 @@ export async function run(ctx) {
     expect(filesAfterUndoDelete.toastText === "File restored.", "Undo delete should confirm restoration.");
 
     const fileChooserPromise = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: "Import Markdown" }).click();
+    await page.getByRole("button", { name: "Import file" }).click();
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles([
       {

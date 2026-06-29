@@ -13,7 +13,7 @@ import {
   unpublishServerPublishedSnapshot,
 } from "./publish";
 import {
-  createMarkdownFile,
+  createWorkspaceFile,
   createStoredWorkspace,
   ensureDefaultFiles,
   ensureLiveFileForRoom,
@@ -23,7 +23,7 @@ import {
   migrateWorkspacePayload,
   PROJECT_STORAGE_VERSION,
   syncUrlForFile,
-  type MarkdownFile,
+  type WorkspaceFile,
 } from "./workspaceStorage";
 
 const VALID_ROOM_KEY = "A".repeat(43);
@@ -260,9 +260,9 @@ describe("file tab state transitions", () => {
 
 describe("project persistence", () => {
   it("preserves per-file view modes and active file", () => {
-    const files: MarkdownFile[] = [
-      createMarkdownFile(1, { id: "prd", title: "PRD.md", text: "# PRD", viewMode: "split" }),
-      createMarkdownFile(2, { id: "design", title: "DESIGN.md", text: "# Design", viewMode: "preview" }),
+    const files: WorkspaceFile[] = [
+      createWorkspaceFile(1, { id: "prd", title: "PRD.md", text: "# PRD", viewMode: "split" }),
+      createWorkspaceFile(2, { id: "design", title: "DESIGN.md", text: "# Design", viewMode: "preview" }),
     ];
     const stored = createStoredWorkspace({
       files,
@@ -305,7 +305,7 @@ describe("project persistence", () => {
         activeDocumentId: "local",
         documentOrder: ["local"],
         documents: {
-          local: createMarkdownFile(1, { id: "local", title: "LOCAL.md", text: "# Local" }),
+          local: createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text: "# Local" }),
         },
         commentsByDocumentId: {},
       },
@@ -317,7 +317,7 @@ describe("project persistence", () => {
 
   it("does not force the product README back into an existing project", () => {
     const stored = createStoredWorkspace({
-      files: [createMarkdownFile(1, { id: "local", title: "LOCAL.md", text: "# Local" })],
+      files: [createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text: "# Local" })],
       activeFileId: "local",
       commentsByFileId: {},
     });
@@ -330,8 +330,8 @@ describe("project persistence", () => {
   it("keeps the product README before the blank starter project", () => {
     const stored = createStoredWorkspace({
       files: [
-        createMarkdownFile(1, { id: "tabula-readme", title: "README.md", text: "# Guide", viewMode: "preview" }),
-        createMarkdownFile(2, { id: "blank", title: "Untitled.md", text: "", viewMode: "edit" }),
+        createWorkspaceFile(1, { id: "tabula-readme", title: "README.md", text: "# Guide", viewMode: "preview" }),
+        createWorkspaceFile(2, { id: "blank", title: "Untitled.md", text: "", viewMode: "edit" }),
       ],
       activeFileId: "blank",
       commentsByFileId: {},
@@ -345,8 +345,8 @@ describe("project persistence", () => {
   it("preserves local text and live room metadata across reloads", () => {
     const stored = createStoredWorkspace({
       files: [
-        createMarkdownFile(1, { id: "local", title: "LOCAL.md", text: "# Local\n\nDraft" }),
-        createMarkdownFile(2, {
+        createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text: "# Local\n\nDraft" }),
+        createWorkspaceFile(2, {
           id: "live",
           title: "Shared room.md",
           text: "# Live",
@@ -383,7 +383,7 @@ describe("project persistence", () => {
   it("drops incomplete live room metadata across reloads", () => {
     const stored = createStoredWorkspace({
       files: [
-        createMarkdownFile(1, {
+        createWorkspaceFile(1, {
           id: "broken-live",
           title: "Broken.md",
           text: "# Broken",
@@ -426,7 +426,7 @@ describe("project persistence", () => {
 
   it("preserves comment source ranges across reloads", () => {
     const stored = createStoredWorkspace({
-      files: [createMarkdownFile(1, { id: "local", title: "LOCAL.md", text: "Quoted source text." })],
+      files: [createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text: "Quoted source text." })],
       activeFileId: "local",
       commentsByFileId: {
         local: [
@@ -590,8 +590,8 @@ describe("comment anchors", () => {
 });
 
 describe("publish outputs", () => {
-  const files: MarkdownFile[] = [
-    createMarkdownFile(1, {
+  const files: WorkspaceFile[] = [
+    createWorkspaceFile(1, {
       id: "readme",
       title: "README.md",
       text: `---
@@ -603,7 +603,7 @@ description: Product entry point.
 
 Start here.`,
     }),
-    createMarkdownFile(2, {
+    createWorkspaceFile(2, {
       id: "prd",
       title: "PRD.md",
       text: "# Product Requirements\n\nShip the project.",
@@ -729,12 +729,12 @@ Start here.`,
   it("rejects publish payloads when any selected Markdown file is empty", () => {
     const emptyFiles = [
       files[0],
-      createMarkdownFile(3, {
+      createWorkspaceFile(3, {
         id: "empty",
         title: "Untitled 2.md",
         text: "  \n",
       }),
-      createMarkdownFile(4, {
+      createWorkspaceFile(4, {
         id: "empty-notes",
         title: "Notes.markdown",
         text: "",
@@ -759,7 +759,7 @@ Start here.`,
   });
 
   it("creates server-backed publish snapshots with sanitized payload and service URLs", async () => {
-    const liveFiles: MarkdownFile[] = [
+    const liveFiles: WorkspaceFile[] = [
       {
         ...files[0],
         roomId: "room-123",
@@ -929,7 +929,7 @@ Start here.`,
       publishBundle: "# Bundle",
     };
     const updatedFiles = [
-      createMarkdownFile(1, {
+      createWorkspaceFile(1, {
         id: "readme",
         title: "README.md",
         text: "# After",

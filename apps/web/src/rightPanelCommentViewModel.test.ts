@@ -4,9 +4,9 @@ import {
   getRightPanelCommentScopeModel,
   type RightPanelCommentGroup,
 } from "./rightPanelCommentViewModel";
-import type { FileComment, MarkdownFile } from "./workspaceStorage";
+import type { FileComment, WorkspaceFile } from "./workspaceStorage";
 
-const markdownFile = (id: string, title: string): MarkdownFile => ({
+const importedFile = (id: string, title: string): WorkspaceFile => ({
   id,
   title,
   text: "",
@@ -28,7 +28,7 @@ const fileComment = (id: string, createdAt: string, overrides: Partial<FileComme
 
 describe("rightPanelCommentViewModel", () => {
   it("separates open and resolved comment groups", () => {
-    const files = [markdownFile("file-a", "Plan.md"), markdownFile("file-b", "Notes.md")];
+    const files = [importedFile("file-a", "Plan.md"), importedFile("file-b", "Notes.md")];
     const result = getRightPanelCommentGroups(files, {
       "file-a": [
         fileComment("open-a", "2026-01-01T00:00:00.000Z"),
@@ -48,11 +48,11 @@ describe("rightPanelCommentViewModel", () => {
   });
 
   it("models current-file scope labels and counts", () => {
-    const activeFile = markdownFile("file-a", "Plan.md");
+    const activeFile = importedFile("file-a", "Plan.md");
     const openCommentGroups: RightPanelCommentGroup[] = [
       { file: activeFile, comments: [fileComment("open-a", "2026-01-01T00:00:00.000Z")] },
       {
-        file: markdownFile("file-b", "Notes.md"),
+        file: importedFile("file-b", "Notes.md"),
         comments: [fileComment("open-b", "2026-01-02T00:00:00.000Z")],
       },
     ];
@@ -82,8 +82,8 @@ describe("rightPanelCommentViewModel", () => {
   });
 
   it("sorts all-scope groups and comments by latest activity", () => {
-    const fileA = markdownFile("file-a", "Plan.md");
-    const fileB = markdownFile("file-b", "Notes.md");
+    const fileA = importedFile("file-a", "Plan.md");
+    const fileB = importedFile("file-b", "Notes.md");
     const openCommentGroups: RightPanelCommentGroup[] = [
       {
         file: fileB,

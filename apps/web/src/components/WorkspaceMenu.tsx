@@ -16,8 +16,14 @@ import {
   Upload,
   Users,
 } from "lucide-react";
-import type { WorkspaceLanguage, WorkspaceTheme } from "../hooks/useWorkspacePreferences";
-import { getWorkspaceMenuCopy, WORKSPACE_LANGUAGE_OPTIONS } from "../workspaceLocale";
+import type {
+  WorkspaceLanguage,
+  WorkspaceTheme,
+} from "../hooks/useWorkspacePreferences";
+import {
+  getWorkspaceMenuCopy,
+  WORKSPACE_LANGUAGE_OPTIONS,
+} from "../workspaceLocale";
 
 type WorkspaceMenuProps = {
   isOpen: boolean;
@@ -29,9 +35,9 @@ type WorkspaceMenuProps = {
   onChangeTheme: (theme: WorkspaceTheme) => void;
   onChangeLanguage: (language: WorkspaceLanguage) => void;
   onAddFile: () => void;
-  onOpenMarkdownFile: () => void;
+  onOpenFile: () => void;
   onImportProject: () => void;
-  onDownloadMarkdown: () => void;
+  onDownloadFile: () => void;
   onDownloadProject: () => void;
   onOpenCollaboration: () => void;
   onOpenAbout: () => void;
@@ -47,9 +53,21 @@ type MenuRowProps = {
   trailing?: ReactNode;
 };
 
-function MenuRow({ children, icon, onClick, className = "", disabled = false, trailing }: MenuRowProps) {
+function MenuRow({
+  children,
+  icon,
+  onClick,
+  className = "",
+  disabled = false,
+  trailing,
+}: MenuRowProps) {
   return (
-    <button className={`workspace-menu-row ${className}`} type="button" disabled={disabled} onClick={onClick}>
+    <button
+      className={`workspace-menu-row ${className}`}
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+    >
       {icon}
       <span>{children}</span>
       {trailing}
@@ -66,7 +84,13 @@ type MenuLinkProps = {
 
 function MenuLink({ children, href, icon, ariaLabel }: MenuLinkProps) {
   return (
-    <a className="workspace-menu-row" href={href} target="_blank" rel="noreferrer" aria-label={ariaLabel}>
+    <a
+      className="workspace-menu-row"
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={ariaLabel}
+    >
       {icon}
       <span>{children}</span>
     </a>
@@ -98,9 +122,9 @@ export function WorkspaceMenu({
   onChangeTheme,
   onChangeLanguage,
   onAddFile,
-  onOpenMarkdownFile,
+  onOpenFile,
   onImportProject,
-  onDownloadMarkdown,
+  onDownloadFile,
   onDownloadProject,
   onOpenCollaboration,
   onOpenAbout,
@@ -135,13 +159,17 @@ export function WorkspaceMenu({
   );
 
   return (
-    <section className="workspace-menu-popover" role="dialog" aria-label="Workspace menu">
+    <section
+      className="workspace-menu-popover"
+      role="dialog"
+      aria-label="Workspace menu"
+    >
       <nav className="workspace-menu-list" aria-label="Workspace actions">
         <MenuRow icon={<FilePlus2 size={15} />} onClick={onAddFile}>
-          {copy.actions.newMarkdown}
+          {copy.actions.newFile}
         </MenuRow>
-        <MenuRow icon={<FolderOpen size={15} />} onClick={onOpenMarkdownFile}>
-          {copy.actions.openMarkdown}
+        <MenuRow icon={<FolderOpen size={15} />} onClick={onOpenFile}>
+          {copy.actions.openFile}
         </MenuRow>
         <MenuRow icon={<Upload size={15} />} onClick={onImportProject}>
           {copy.actions.importProject}
@@ -149,8 +177,12 @@ export function WorkspaceMenu({
 
         <div className="workspace-menu-divider" role="separator" />
 
-        <MenuRow icon={<FileDown size={15} />} disabled={!canExportCurrentFile} onClick={onDownloadMarkdown}>
-          {copy.actions.saveMarkdown}
+        <MenuRow
+          icon={<FileDown size={15} />}
+          disabled={!canExportCurrentFile}
+          onClick={onDownloadFile}
+        >
+          {copy.actions.saveFile}
         </MenuRow>
         <MenuRow icon={<Download size={15} />} onClick={onDownloadProject}>
           {copy.actions.exportProject}
@@ -164,11 +196,69 @@ export function WorkspaceMenu({
         <MenuRow
           className={preferencesOpen ? "active" : ""}
           icon={<SlidersHorizontal size={15} />}
-          trailing={<ChevronRight size={14} />}
+          trailing={
+            preferencesOpen ? (
+              <ChevronDown size={14} />
+            ) : (
+              <ChevronRight size={14} />
+            )
+          }
           onClick={onTogglePreferences}
         >
           {copy.actions.preferences}
         </MenuRow>
+        {preferencesOpen && (
+          <section
+            className="workspace-preferences-panel"
+            aria-label={copy.actions.preferences}
+          >
+            <div className="workspace-preferences-setting">
+              <span>{copy.preferences.theme}</span>
+              {renderSegment<WorkspaceTheme>(
+                theme,
+                [
+                  {
+                    value: "system",
+                    label: copy.preferences.system,
+                    icon: <Monitor size={15} />,
+                  },
+                  {
+                    value: "light",
+                    label: copy.preferences.light,
+                    icon: <Sun size={15} />,
+                  },
+                  {
+                    value: "dark",
+                    label: copy.preferences.dark,
+                    icon: <Moon size={15} />,
+                  },
+                ],
+                onChangeTheme,
+              )}
+            </div>
+            <div className="workspace-preferences-setting">
+              <span>{copy.preferences.language}</span>
+              <label className="workspace-preferences-select">
+                <select
+                  aria-label={copy.preferences.language}
+                  value={language}
+                  onChange={(event) =>
+                    onChangeLanguage(
+                      event.currentTarget.value as WorkspaceLanguage,
+                    )
+                  }
+                >
+                  {WORKSPACE_LANGUAGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} aria-hidden="true" />
+              </label>
+            </div>
+          </section>
+        )}
         <MenuRow icon={<Info size={15} />} onClick={onOpenAbout}>
           {copy.actions.about}
         </MenuRow>
@@ -193,40 +283,6 @@ export function WorkspaceMenu({
           {copy.actions.github}
         </MenuLink>
       </nav>
-
-      {preferencesOpen && (
-        <section className="workspace-preferences-popover" aria-label="Preferences">
-          <div className="workspace-preferences-setting">
-            <span>{copy.preferences.theme}</span>
-            {renderSegment<WorkspaceTheme>(
-              theme,
-              [
-                { value: "system", label: copy.preferences.system, icon: <Monitor size={15} /> },
-                { value: "light", label: copy.preferences.light, icon: <Sun size={15} /> },
-                { value: "dark", label: copy.preferences.dark, icon: <Moon size={15} /> },
-              ],
-              onChangeTheme,
-            )}
-          </div>
-          <div className="workspace-preferences-setting">
-            <span>{copy.preferences.language}</span>
-            <label className="workspace-preferences-select">
-              <select
-                aria-label={copy.preferences.language}
-                value={language}
-                onChange={(event) => onChangeLanguage(event.currentTarget.value as WorkspaceLanguage)}
-              >
-                {WORKSPACE_LANGUAGE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={14} aria-hidden="true" />
-            </label>
-          </div>
-        </section>
-      )}
     </section>
   );
 }

@@ -3,8 +3,8 @@ import type { ShortcutLabels } from "./keyboardShortcuts";
 const getAppShortcut = ({ primary, alternate }: ShortcutLabels, key: string) => `${primary} + ${alternate} + ${key}`;
 
 export const getKeyboardShortcuts = (shortcutLabels: ShortcutLabels) => [
-  { keys: getAppShortcut(shortcutLabels, "N"), action: "New Markdown" },
-  { keys: getAppShortcut(shortcutLabels, "O"), action: "Open .md file" },
+  { keys: getAppShortcut(shortcutLabels, "N"), action: "New File" },
+  { keys: getAppShortcut(shortcutLabels, "O"), action: "Open File" },
   { keys: getAppShortcut(shortcutLabels, "F"), action: "Browse project files" },
   { keys: "?", action: "Open HELP.md" },
   { keys: `${shortcutLabels.primary} + B`, action: "Bold" },
@@ -34,13 +34,13 @@ description: Quick reference for using Tabula.md.
 
 ## Start
 
-- Create a Markdown file with **New Markdown**.
-- Open an existing \`.md\` or \`.markdown\` file with **Open .md file**.
+- Create a file with **New File**.
+- Open an existing \`.md\` or \`.markdown\` file with **Open File**.
 - Use **Browse project files** to reopen files after closing every tab.
 
 ## Work
 
-- Edit Markdown in Edit mode.
+- Edit in Edit mode.
 - Use Split mode to edit and preview together.
 - Use Preview mode to read and comment on the rendered document.
 

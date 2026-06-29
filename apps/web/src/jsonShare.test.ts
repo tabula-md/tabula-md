@@ -7,9 +7,9 @@ import {
 } from "./jsonShare";
 import { createWorkspaceFromJsonShareSnapshot, hasMeaningfulWorkspaceContent } from "./jsonShareImport";
 import { SHARE_SNAPSHOT_SCHEMA_VERSION, type ShareSnapshot } from "./shareSnapshotPayload";
-import { STARTER_README_MARKDOWN, type MarkdownFile } from "./workspaceStorage";
+import { STARTER_README_MARKDOWN, type WorkspaceFile } from "./workspaceStorage";
 
-const file = (): MarkdownFile => ({
+const file = (): WorkspaceFile => ({
   id: "readme",
   title: "README.md",
   text: "# Hello\n\nEncrypted share content.",

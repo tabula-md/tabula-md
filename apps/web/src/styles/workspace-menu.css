@@ -79,8 +79,7 @@
   background: var(--line-subtle);
 }
 
-.workspace-plus-popover,
-.workspace-preferences-popover {
+.workspace-plus-popover {
   position: absolute;
   left: calc(100% + 8px);
   z-index: 111;
@@ -166,18 +165,16 @@
   line-height: 1.25;
 }
 
-.workspace-preferences-popover {
-  top: 194px;
+.workspace-preferences-panel {
   display: grid;
   gap: 6px;
-  width: 292px;
-  max-width: calc(100vw - 330px);
-  padding: 8px;
+  min-width: 0;
+  padding: 4px 0 6px 25px;
 }
 
 .workspace-preferences-setting {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: 68px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   min-height: 36px;
@@ -245,7 +242,7 @@
   border: 1px solid var(--line-subtle);
   border-radius: 8px;
   color: var(--text-primary);
-  background: var(--surface-muted);
+  background: var(--surface-panel);
   font: inherit;
   font-size: 13px;
   font-weight: 500;

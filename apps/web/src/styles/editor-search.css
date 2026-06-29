@@ -1,4 +1,4 @@
-.file-search-row {
+.document-search-row {
   position: relative;
   z-index: 12;
   grid-column: 1;
@@ -14,7 +14,7 @@
   background: transparent;
 }
 
-.file-search-bar {
+.document-search-bar {
   display: grid;
   grid-template-columns: 16px minmax(180px, 1fr) auto auto auto auto;
   align-items: center;
@@ -28,7 +28,7 @@
   box-shadow: none;
 }
 
-.file-search-bar input {
+.document-search-bar input {
   appearance: none;
   width: 100%;
   height: 30px;
@@ -41,7 +41,7 @@
   font-size: 13px;
 }
 
-.file-search-count {
+.document-search-count {
   min-width: 42px;
   color: var(--text-soft);
   font-size: 12px;
@@ -49,7 +49,7 @@
   white-space: nowrap;
 }
 
-.file-search-bar button {
+.document-search-bar button {
   display: grid;
   place-items: center;
   width: 28px;
@@ -60,17 +60,17 @@
   border-radius: 7px;
 }
 
-.file-search-bar button:hover {
+.document-search-bar button:hover {
   color: var(--text-primary);
   background: var(--surface-hover);
 }
 
-.file-search-bar button:disabled {
+.document-search-bar button:disabled {
   cursor: default;
   opacity: 0.32;
 }
 
-.file-search-bar button:disabled:hover {
+.document-search-bar button:disabled:hover {
   color: var(--text-soft);
   background: transparent;
 }
@@ -79,7 +79,7 @@
   grid-template-rows: 48px 44px minmax(0, 1fr) 42px;
 }
 
-.file-shell.view-edit .file-search-row {
+.file-shell.view-edit .document-search-row {
   width: var(--editor-frame-width);
 }
 
@@ -105,7 +105,7 @@
     grid-template-rows: 44px minmax(0, 1fr) 42px;
   }
 
-  .file-shell.with-search-row:not(.with-format-toolbar) .file-search-row {
+  .file-shell.with-search-row:not(.with-format-toolbar) .document-search-row {
     grid-row: 1;
   }
 

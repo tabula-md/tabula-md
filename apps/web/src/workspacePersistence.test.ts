@@ -5,7 +5,7 @@ import {
   writeWorkspaceToPrimaryStores,
 } from "./workspacePersistence";
 import {
-  createMarkdownFile,
+  createWorkspaceFile,
   createStoredWorkspace,
   readStoredWorkspace,
   PROJECT_STORAGE_KEY,
@@ -19,7 +19,7 @@ vi.mock("./workspaceIndexedDb", () => ({
 }));
 
 const createWorkspace = (text: string): WorkspaceState => ({
-  files: [createMarkdownFile(1, { id: "local", title: "LOCAL.md", text })],
+  files: [createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text })],
   openFileIds: ["local"],
   activeFileId: "local",
   commentsByFileId: {},

@@ -1,4 +1,4 @@
-import type { MarkdownFile } from "./workspaceStorage";
+import type { WorkspaceFile } from "./workspaceStorage";
 
 const textEncoder = new TextEncoder();
 const ZIP_LOCAL_FILE_HEADER = 0x04034b50;
@@ -64,7 +64,7 @@ const normalizeArchiveFileName = (title: string) => {
   return /\.(?:md|markdown)$/i.test(baseName) ? baseName : `${baseName}.md`;
 };
 
-export const getProjectArchiveEntries = (files: MarkdownFile[]): ZipEntrySource[] => {
+export const getProjectArchiveEntries = (files: WorkspaceFile[]): ZipEntrySource[] => {
   const fileNameCounts = new Map<string, number>();
 
   return files.map((file) => {
@@ -157,4 +157,4 @@ export const createZipArchive = (entries: ZipEntrySource[]) => {
   return new Blob([zipBytes.buffer], { type: "application/zip" });
 };
 
-export const createProjectArchive = (files: MarkdownFile[]) => createZipArchive(getProjectArchiveEntries(files));
+export const createProjectArchive = (files: WorkspaceFile[]) => createZipArchive(getProjectArchiveEntries(files));

@@ -22,19 +22,28 @@ const baseInput = {
 };
 
 describe("share view model", () => {
-  it("hides publish from the public share surface", () => {
-    const viewModel = buildShareViewModel({ ...baseInput, activePanel: "publish" });
+  it("keeps the public share surface limited to implemented tabs", () => {
+    const viewModel = buildShareViewModel({
+      ...baseInput,
+      activePanel: "publish",
+    });
 
     expect(viewModel.activePanel).toBe("share-link");
-    expect(viewModel.publishVisible).toBe(false);
-    expect(viewModel.tabs.map((tab) => tab.id)).toEqual(["share-link", "export", "send-to"]);
-    expect(viewModel.tabs).not.toContainEqual(expect.objectContaining({ id: "publish" }));
+    expect(viewModel.tabs.map((tab) => tab.id)).toEqual([
+      "share-link",
+      "export",
+      "send-to",
+    ]);
+    expect(viewModel.tabs).not.toContainEqual(
+      expect.objectContaining({ id: "publish" }),
+    );
   });
 
   it("normalizes unknown or future share panels to the share link tab", () => {
     expect(normalizeSharePanel("export")).toBe("export");
     expect(normalizeSharePanel("send-to")).toBe("send-to");
     expect(normalizeSharePanel("publish")).toBe("share-link");
+    expect(normalizeSharePanel("future-panel")).toBe("share-link");
     expect(normalizeSharePanel(undefined)).toBe("share-link");
   });
 
@@ -46,8 +55,12 @@ describe("share view model", () => {
 
     expect(viewModel.shareable.status).toBe("exported");
     expect(viewModel.shareable.primaryLabel).toBe("Update link");
-    expect(JSON.stringify(viewModel.shareable).toLowerCase()).not.toContain("read-only");
-    expect(JSON.stringify(viewModel.shareable).toLowerCase()).not.toContain("publish");
+    expect(JSON.stringify(viewModel.shareable).toLowerCase()).not.toContain(
+      "read-only",
+    );
+    expect(JSON.stringify(viewModel.shareable).toLowerCase()).not.toContain(
+      "publish",
+    );
   });
 
   it("blocks shareable export with a direct disabled reason", () => {
@@ -59,7 +72,9 @@ describe("share view model", () => {
 
     expect(viewModel.shareable.status).toBe("blocked");
     expect(viewModel.shareable.canExport).toBe(false);
-    expect(viewModel.shareable.disabledReason).toBe("Add content before exporting a link.");
+    expect(viewModel.shareable.disabledReason).toBe(
+      "Add content before exporting a link.",
+    );
   });
 
   it("keeps the live room invite display unavailable until a valid room link exists", () => {

@@ -4,10 +4,10 @@ import {
   shouldDeferIndexedDbWorkspacePersistence,
   shouldApplyIndexedDbWorkspaceHydration,
 } from "./useIndexedDbWorkspaceHydration";
-import { createMarkdownFile, type WorkspaceState } from "../workspaceStorage";
+import { createWorkspaceFile, type WorkspaceState } from "../workspaceStorage";
 
 const createWorkspace = (text: string): WorkspaceState => ({
-  files: [createMarkdownFile(1, { id: "local", title: "LOCAL.md", text })],
+  files: [createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text })],
   openFileIds: ["local"],
   activeFileId: "local",
   commentsByFileId: {},

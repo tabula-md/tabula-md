@@ -1,15 +1,15 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ConnectionStatus } from "../collab";
 import { getRoomShareLinkView } from "../shareLinkViewModel";
-import type { MarkdownFile } from "../workspaceStorage";
+import type { WorkspaceFile } from "../workspaceStorage";
 
 type UseWorkspaceLiveRoomControllerArgs = {
-  activeFile?: MarkdownFile;
+  activeFile?: WorkspaceFile;
   resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   setCenterPopover: (popover: null) => void;
   setCopiedFileId: Dispatch<SetStateAction<string | null>>;
   startCollaborationSession: () => { roomId: string; shareUrl: string } | undefined;
-  stopFileCollaborationSession: (fileId: string) => MarkdownFile | undefined;
+  stopFileCollaborationSession: (fileId: string) => WorkspaceFile | undefined;
 };
 
 export function useWorkspaceLiveRoomController({

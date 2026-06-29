@@ -1,29 +1,29 @@
 import { useMemo, useState } from "react";
 import { useWorkspaceStore } from "../stores/workspaceStore";
-import type { MarkdownFile } from "../workspaceStorage";
+import type { WorkspaceFile } from "../workspaceStorage";
 import {
   getActiveWorkspaceFile,
-  getAvailableMarkdownFileTitle,
+  getAvailableWorkspaceFileTitle,
   getOpenWorkspaceFiles,
 } from "../workspaceModel";
-export { normalizeMarkdownFileTitle } from "../workspaceModel";
+export { normalizeWorkspaceFileTitle } from "../workspaceModel";
 export type { RenameFileResult } from "../workspaceModel";
 
-type UseMarkdownFilesOptions = {
-  initialFiles: MarkdownFile[];
+type UseWorkspaceFilesOptions = {
+  initialFiles: WorkspaceFile[];
   initialOpenFileIds: string[];
   initialActiveFileId: string;
   readmeFileId: string;
-  createFile: (index: number, overrides?: Partial<MarkdownFile>) => MarkdownFile;
+  createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
 };
 
-export function useMarkdownFiles({
+export function useWorkspaceFiles({
   initialFiles,
   initialOpenFileIds,
   initialActiveFileId,
   readmeFileId,
   createFile,
-}: UseMarkdownFilesOptions) {
+}: UseWorkspaceFilesOptions) {
   useState(() => {
     useWorkspaceStore.getState().initializeWorkspace({
       files: initialFiles,
@@ -77,9 +77,9 @@ export function useMarkdownFiles({
   const startFileCollaborationSession = useWorkspaceStore((state) => state.startFileCollaborationSession);
   const stopFileCollaborationSession = useWorkspaceStore((state) => state.stopFileCollaborationSession);
 
-  const getAvailableFileTitle = (baseTitle: string) => getAvailableMarkdownFileTitle(files, baseTitle);
+  const getAvailableFileTitle = (baseTitle: string) => getAvailableWorkspaceFileTitle(files, baseTitle);
 
-  const addTemplateFile = (template: { title: string; content: string }, overrides?: Partial<MarkdownFile>) => {
+  const addTemplateFile = (template: { title: string; content: string }, overrides?: Partial<WorkspaceFile>) => {
     return addFileFromContent(template.title, template.content, "edit", overrides);
   };
 

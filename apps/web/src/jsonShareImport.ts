@@ -1,16 +1,16 @@
 import type { ShareSnapshot } from "./shareSnapshotPayload";
 import {
-  createMarkdownFile,
+  createWorkspaceFile,
   isStarterReadmeText,
   README_FILE_ID,
   type FileComment,
-  type MarkdownFile,
+  type WorkspaceFile,
   type WorkspaceState,
 } from "./workspaceStorage";
 
 export const createWorkspaceFromJsonShareSnapshot = (snapshot: ShareSnapshot): WorkspaceState => {
   const files = snapshot.files.map((file, index) =>
-    createMarkdownFile(index + 1, {
+    createWorkspaceFile(index + 1, {
       id: file.id,
       title: file.title || (index === 0 ? "Shared.md" : `Shared ${index + 1}.md`),
       text: file.text ?? "",
@@ -25,7 +25,7 @@ export const createWorkspaceFromJsonShareSnapshot = (snapshot: ShareSnapshot): W
       collaboratorCount: undefined,
     }),
   );
-  const normalizedFiles = files.length > 0 ? files : [createMarkdownFile(1, { title: "Shared.md" })];
+  const normalizedFiles = files.length > 0 ? files : [createWorkspaceFile(1, { title: "Shared.md" })];
   const activeFileId = normalizedFiles.some((file) => file.id === snapshot.activeFileId)
     ? snapshot.activeFileId
     : normalizedFiles[0]?.id;
@@ -42,7 +42,7 @@ export const hasMeaningfulWorkspaceContent = ({
   files,
   commentsByFileId,
 }: {
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   commentsByFileId: Record<string, FileComment[]>;
 }) => {
   if (Object.values(commentsByFileId).some((comments) => comments.length > 0)) {
@@ -62,7 +62,7 @@ export const hasMeaningfulWorkspaceContent = ({
 
 const normalizeSnapshotComments = (
   commentsByFileId: Record<string, FileComment[]>,
-  files: MarkdownFile[],
+  files: WorkspaceFile[],
 ): Record<string, FileComment[]> => {
   const fileIds = new Set(files.map((file) => file.id));
   return Object.fromEntries(Object.entries(commentsByFileId).filter(([fileId]) => fileIds.has(fileId)));

@@ -1,9 +1,14 @@
 import { Check, MessageSquare } from "lucide-react";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getStatusBarSaveState } from "../statusBarViewModel";
+import { getWorkspaceChromeCopy } from "../workspaceLocale";
+import type { FileViewMode } from "../workspaceStorage";
 
 type StatusBarProps = {
   activeFileTitle: string;
+  activeViewMode: FileViewMode;
   isLive: boolean;
+  language: WorkspaceLanguage;
   statusLabel: string;
   wordCount: number;
   commentCount: number;
@@ -15,7 +20,9 @@ type StatusBarProps = {
 
 export function StatusBar({
   activeFileTitle,
+  activeViewMode,
   isLive,
+  language,
   statusLabel,
   wordCount,
   commentCount,
@@ -24,17 +31,31 @@ export function StatusBar({
   selectedLineCount,
   onOpenComments,
 }: StatusBarProps) {
+  const copy = getWorkspaceChromeCopy(language).statusBar;
   const hasComments = commentCount > 0;
-  const saveState = getStatusBarSaveState({ isLive, statusLabel });
+  const saveState = getStatusBarSaveState({
+    isLive,
+    roomOfflineLabel: copy.roomOffline,
+    savedLocallyLabel: copy.savedLocally,
+    statusLabel,
+  });
   const cursorLabel =
     selectedCharacterCount > 0
-      ? `${cursorPositionLabel} (${selectedLineCount > 1 ? `${selectedLineCount} lines, ` : ""}${selectedCharacterCount} ${
-          selectedCharacterCount === 1 ? "character" : "characters"
+      ? `${cursorPositionLabel} (${
+          selectedLineCount > 1 ? `${selectedLineCount} ${copy.lines}, ` : ""
+        }${selectedCharacterCount} ${
+          selectedCharacterCount === 1 ? copy.character : copy.characters
         })`
       : cursorPositionLabel;
+  const wordCountLabel = `${wordCount} ${wordCount === 1 ? copy.word : copy.words}`;
+  const commentCountLabel = `${commentCount} ${commentCount === 1 ? copy.comment : copy.comments}`;
+  const showCursorPosition = activeViewMode !== "preview";
 
   return (
-    <footer className="file-status-bar" aria-label={`Status for ${activeFileTitle}`}>
+    <footer
+      className="file-status-bar"
+      aria-label={`Status for ${activeFileTitle}`}
+    >
       <div className="status-bar-right">
         {saveState.visible && (
           <span className="status-save-state">
@@ -42,14 +63,18 @@ export function StatusBar({
             <span>{saveState.label}</span>
           </span>
         )}
-        <span>{wordCount} words</span>
-        <span className="status-cursor-position">{cursorLabel}</span>
+        <span>{wordCountLabel}</span>
+        {showCursorPosition && (
+          <span className="status-cursor-position">{cursorLabel}</span>
+        )}
         {hasComments && (
-          <button className="status-comments-button" type="button" onClick={onOpenComments}>
+          <button
+            className="status-comments-button"
+            type="button"
+            onClick={onOpenComments}
+          >
             <MessageSquare size={13} />
-            <span>
-              {commentCount} {commentCount === 1 ? "comment" : "comments"}
-            </span>
+            <span>{commentCountLabel}</span>
           </button>
         )}
       </div>

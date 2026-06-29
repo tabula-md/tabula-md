@@ -7,11 +7,11 @@ import {
 } from "lucide-react";
 import type { ConnectionStatus } from "../collab";
 import { useRightPanelCollapseState } from "../hooks/useRightPanelCollapseState";
-import type { RenameFileResult } from "../hooks/useMarkdownFiles";
+import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
 import type { MarkdownHeading } from "../markdown";
 import { getRightPanelCommentGroups } from "../rightPanelCommentViewModel";
 import type { RightPanelView } from "../uiTypes";
-import type { FileComment, MarkdownFile } from "../workspaceStorage";
+import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 import { RightPanelComments } from "./RightPanelComments";
 import { RightPanelFiles } from "./RightPanelFiles";
 import { RightPanelOutline } from "./RightPanelOutline";
@@ -20,7 +20,7 @@ type RightPanelProps = {
   isOpen: boolean;
   view: RightPanelView;
   commentsEnabled: boolean;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   openFileIds: string[];
   activeFileId: string;
   activeFileTitle: string;
@@ -35,13 +35,13 @@ type RightPanelProps = {
   activeCommentId?: string | null;
   activeReplyCommentId?: string | null;
   replyDraftByCommentId: Record<string, string>;
-  getFileStatus: (file: MarkdownFile) => ConnectionStatus;
-  getFileSearchText: (file: MarkdownFile) => string;
+  getFileStatus: (file: WorkspaceFile) => ConnectionStatus;
+  getFileSearchText: (file: WorkspaceFile) => string;
   onSetView: (view: RightPanelView) => void;
   onClose: () => void;
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
-  onImportMarkdown: () => void;
+  onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
   onCloseFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
@@ -87,7 +87,7 @@ export function RightPanel({
   onClose,
   onFileQueryChange,
   onNewFile,
-  onImportMarkdown,
+  onImportFile,
   onSelectFile,
   onCloseFile,
   onRenameFile,
@@ -177,7 +177,7 @@ export function RightPanel({
             getFileSearchText={getFileSearchText}
             onFileQueryChange={onFileQueryChange}
             onNewFile={onNewFile}
-            onImportMarkdown={onImportMarkdown}
+            onImportFile={onImportFile}
             onToggleFolder={toggleFileTreeFolderCollapsed}
             onSelectFile={onSelectFile}
             onCloseFile={onCloseFile}

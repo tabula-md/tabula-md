@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Collaborator } from "../collab";
-import type { FileComment, FileCommentReply, MarkdownFile } from "../workspaceStorage";
+import type { FileComment, FileCommentReply, WorkspaceFile } from "../workspaceStorage";
 
 export type CommentSelectionAnchor = {
   start: number;
@@ -20,7 +20,7 @@ type AddFileCommentOptions = {
 type UseFileCommentsOptions = {
   initialCommentsByFileId: Record<string, FileComment[]>;
   activeFileId: string;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   identity: Collaborator;
   createId: () => string;
 };

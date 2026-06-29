@@ -1,18 +1,18 @@
-.file-toolbar-wrap {
+.document-controls-wrap {
   position: relative;
   z-index: 1;
   justify-self: end;
   min-width: 0;
 }
 
-.file-toolbar,
-.markdown-formatting-toolbar {
+.document-controls,
+.formatting-toolbar {
   --document-control-height: 34px;
   --document-control-inner: 28px;
   --document-control-radius: 8px;
 }
 
-.file-toolbar {
+.document-controls {
   gap: 2px;
   height: var(--document-control-height);
   padding: 3px;
@@ -27,12 +27,7 @@
   background: var(--line-subtle);
 }
 
-.mode-slot-placeholder {
-  pointer-events: none;
-  visibility: hidden;
-}
-
-.file-tool-popover {
+.document-controls-popover {
   position: absolute;
   top: 44px;
   right: 0;
@@ -45,7 +40,7 @@
   transform: none;
 }
 
-.file-tool-popover.editor-controls-popover {
+.document-controls-popover.editor-controls-popover {
   width: 304px;
 }
 
@@ -123,7 +118,7 @@
   background: var(--surface-active);
 }
 
-.editor-control-row {
+.document-toolbar-row {
   position: relative;
   z-index: 13;
   grid-column: 1;
@@ -144,20 +139,20 @@
   background: transparent;
 }
 
-.editor-control-row.with-formatting {
+.document-toolbar-row.with-formatting {
   grid-template-columns: minmax(0, 1fr) auto;
   justify-items: stretch;
 }
 
-.editor-control-row.preview {
+.document-toolbar-row.preview {
   background: transparent;
 }
 
-.file-shell.view-edit .editor-control-row {
+.file-shell.view-edit .document-toolbar-row {
   width: var(--editor-frame-width);
 }
 
-.markdown-formatting-row {
+.formatting-row {
   position: relative;
   z-index: 1;
   display: flex;
@@ -168,16 +163,16 @@
   max-width: 100%;
 }
 
-.editor-control-row.with-formatting .markdown-formatting-row {
+.document-toolbar-row.with-formatting .formatting-row {
   max-width: none;
   overflow: hidden;
 }
 
-.editor-control-row.with-formatting .file-toolbar-wrap {
+.document-toolbar-row.with-formatting .document-controls-wrap {
   justify-self: end;
 }
 
-.markdown-formatting-toolbar {
+.formatting-toolbar {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -190,72 +185,72 @@
   scrollbar-width: none;
 }
 
-.editor-control-row .file-toolbar,
-.editor-control-row.with-formatting .markdown-formatting-toolbar {
+.document-toolbar-row .document-controls,
+.document-toolbar-row.with-formatting .formatting-toolbar {
   height: var(--document-control-height);
   padding: 3px;
   border-radius: var(--document-control-radius);
   background: var(--surface-muted);
 }
 
-.markdown-formatting-toolbar::-webkit-scrollbar {
+.formatting-toolbar::-webkit-scrollbar {
   display: none;
 }
 
-.markdown-format-button {
+.formatting-button {
   flex: 0 0 auto;
 }
 
-.markdown-formatting-row.reading-narrow:not(.split) {
+.formatting-row.reading-narrow:not(.split) {
   max-width: 100%;
 }
 
-.markdown-formatting-row.reading-wide:not(.split) {
+.formatting-row.reading-wide:not(.split) {
   max-width: 100%;
 }
 
 @media (max-width: 820px) {
-  .file-toolbar-wrap {
+  .document-controls-wrap {
     display: none;
   }
 
-  .editor-control-row:not(.with-formatting) {
+  .document-toolbar-row:not(.with-formatting) {
     display: none;
   }
 
-  .editor-control-row,
-  .editor-control-row.reading-narrow:not(.split),
-  .editor-control-row.reading-wide:not(.split) {
+  .document-toolbar-row,
+  .document-toolbar-row.reading-narrow:not(.split),
+  .document-toolbar-row.reading-wide:not(.split) {
     justify-content: flex-start;
     width: var(--document-chrome-width);
   }
 
-  .file-shell.view-edit .editor-control-row {
+  .file-shell.view-edit .document-toolbar-row {
     width: var(--document-chrome-width);
   }
 
-  .editor-control-row.with-formatting {
+  .document-toolbar-row.with-formatting {
     padding: 4px;
   }
 
-  .markdown-formatting-row,
-  .markdown-formatting-row.reading-narrow:not(.split),
-  .markdown-formatting-row.reading-wide:not(.split) {
+  .formatting-row,
+  .formatting-row.reading-narrow:not(.split),
+  .formatting-row.reading-wide:not(.split) {
     width: 100%;
     max-width: 100%;
   }
 }
 
 @media (max-width: 560px) {
-  .editor-control-row,
-  .editor-control-row.reading-narrow:not(.split),
-  .editor-control-row.reading-wide:not(.split) {
+  .document-toolbar-row,
+  .document-toolbar-row.reading-narrow:not(.split),
+  .document-toolbar-row.reading-wide:not(.split) {
     width: var(--document-chrome-width);
     margin-left: var(--document-lane-margin-left);
     margin-right: var(--document-lane-margin-right);
   }
 
-  .file-shell.view-edit .editor-control-row {
+  .file-shell.view-edit .document-toolbar-row {
     width: var(--document-chrome-width);
   }
 }

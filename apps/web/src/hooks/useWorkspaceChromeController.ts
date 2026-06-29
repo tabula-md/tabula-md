@@ -125,7 +125,7 @@ export function useWorkspaceChromeController({
 
       const isInsideWorkspaceMenu = Boolean(target.closest(".workspace-menu-popover"));
       const isWorkspaceMenuTrigger = Boolean(target.closest(".workspace-menu-button"));
-      const isInsideEditorControls = Boolean(target.closest(".file-toolbar-wrap"));
+      const isInsideEditorControls = Boolean(target.closest(".document-controls-wrap"));
       const isInsideSelectionPopover = Boolean(target.closest(".selection-comment-popover"));
 
       if (selectionActionPosition && !isInsideSelectionPopover) {

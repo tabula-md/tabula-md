@@ -20,8 +20,8 @@ export async function run(ctx) {
 
     const readSearchRowLayout = () =>
       page.evaluate(() => {
-        const controls = document.querySelector(".editor-control-row");
-        const row = document.querySelector(".file-search-row");
+        const controls = document.querySelector(".document-toolbar-row");
+        const row = document.querySelector(".document-search-row");
         const workspace = document.querySelector(".workspace");
         if (!(controls instanceof HTMLElement) || !(row instanceof HTMLElement) || !(workspace instanceof HTMLElement)) {
           return null;
@@ -45,12 +45,12 @@ export async function run(ctx) {
           rowPosition: rowStyle.position,
           rowBorderTop: rowStyle.borderTopWidth,
           rowBorderBottom: rowStyle.borderBottomWidth,
-          fileToolbarSeparators: document.querySelectorAll(".file-toolbar > .toolbar-separator").length,
+          documentControlsSeparators: document.querySelectorAll(".document-controls > .toolbar-separator").length,
         };
       });
 
     await page.getByRole("button", { name: "Search", exact: true }).click();
-    await page.waitForSelector(".file-search-row");
+    await page.waitForSelector(".document-search-row");
     const searchRowLayout = await readSearchRowLayout();
     expect(Boolean(searchRowLayout), "Search should render a measurable row.");
     expect(searchRowLayout.rowPosition === "relative", "Search should be a document row, not a floating popover.");
@@ -66,13 +66,13 @@ export async function run(ctx) {
       searchRowLayout.rowBorderTop === "0px" && searchRowLayout.rowBorderBottom === "0px",
       "Search row should not add splitter-style border lines.",
     );
-    expect(searchRowLayout.fileToolbarSeparators === 0, "File toolbar controls should not use a splitter line.");
+    expect(searchRowLayout.documentControlsSeparators === 0, "Document controls should not use a splitter line.");
 
     await page.getByRole("button", { name: "Close search" }).click();
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     await page.getByRole("button", { name: "Focus" }).click();
     await page.getByRole("button", { name: "Search", exact: true }).click();
-    await page.waitForSelector(".file-search-row");
+    await page.waitForSelector(".document-search-row");
     const focusedWidthSearchLayout = await readSearchRowLayout();
     expect(Boolean(focusedWidthSearchLayout), "Search row should be measurable after changing text width.");
     expect(
@@ -84,17 +84,17 @@ export async function run(ctx) {
 
     const searchInput = page.getByRole("searchbox", { name: "Find in file" });
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
-    expect((await page.locator(".file-search-row").count()) === 1, "Search should stay open while Editor Controls are opened.");
-    expect((await page.locator('.file-tool-popover[aria-label="Editor controls"]').count()) === 1, "Editor Controls should open over the persistent search row.");
+    expect((await page.locator(".document-search-row").count()) === 1, "Search should stay open while Editor Controls are opened.");
+    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 1, "Editor Controls should open over the persistent search row.");
     await page.locator(".workspace").click({ position: { x: 20, y: 20 } });
     await waitForRenderFrame(page);
-    expect((await page.locator('.file-tool-popover[aria-label="Editor controls"]').count()) === 0, "Outside click should close Editor Controls.");
-    expect((await page.locator(".file-search-row").count()) === 1, "Outside click should not close Search.");
+    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 0, "Outside click should close Editor Controls.");
+    expect((await page.locator(".document-search-row").count()) === 1, "Outside click should not close Search.");
 
     await searchInput.click();
     await searchInput.type("bet");
     await waitForRenderFrame(page);
-    expect((await page.locator(".file-search-count").textContent()) === "1/3", "Search should update result count while typing.");
+    expect((await page.locator(".document-search-count").textContent()) === "1/3", "Search should update result count while typing.");
     expect((await page.locator(".cm-search-match").count()) === 3, "Search should highlight all matches while typing.");
     expect((await page.locator(".cm-search-match.active").count()) === 1, "Search should highlight the active match.");
     const searchHighlightColors = await page.evaluate(() => {
@@ -113,34 +113,34 @@ export async function run(ctx) {
 
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
-    expect((await page.locator(".file-search-count").textContent()) === "2/3", "Enter should move to the next search result.");
+    expect((await page.locator(".document-search-count").textContent()) === "2/3", "Enter should move to the next search result.");
     expect((await searchInput.inputValue()) === "bet", "Enter should keep the search query in the input.");
     const activeSearchFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
     expect(activeSearchFocus === "Find in file", "Enter should keep focus in the search input.");
 
     await page.locator(".workspace").click({ position: { x: 20, y: 20 } });
     await waitForRenderFrame(page);
-    expect((await page.locator(".file-search-row").count()) === 1, "Search should stay open after clicking the document.");
+    expect((await page.locator(".document-search-row").count()) === 1, "Search should stay open after clicking the document.");
 
     await searchInput.fill("zzz");
     await waitForRenderFrame(page);
-    expect((await page.locator(".file-search-count").textContent()) === "0/0", "Search should show zero results as the query changes.");
+    expect((await page.locator(".document-search-count").textContent()) === "0/0", "Search should show zero results as the query changes.");
     expect((await page.locator(".cm-search-match").count()) === 0, "Search should clear highlights when there are no matches.");
 
     await page.getByRole("button", { name: "Close search" }).click();
     await waitForRenderFrame(page);
-    expect((await page.locator(".file-search-row").count()) === 0, "Closing search should remove the search row.");
+    expect((await page.locator(".document-search-row").count()) === 0, "Closing search should remove the search row.");
 
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
-    expect((await page.locator('.file-tool-popover[aria-label="Editor controls"]').count()) === 1, "Editor Controls should open as a popover.");
+    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 1, "Editor Controls should open as a popover.");
     await page.locator(".workspace").click({ position: { x: 20, y: 20 } });
     await waitForRenderFrame(page);
-    expect((await page.locator('.file-tool-popover[aria-label="Editor controls"]').count()) === 0, "Editor Controls should close on outside click.");
+    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 0, "Editor Controls should close on outside click.");
 
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     await page.getByRole("button", { name: "Line Wrapping" }).click();
     await waitForRenderFrame(page);
-    expect((await page.locator('.file-tool-popover[aria-label="Editor controls"]').count()) === 0, "Editor Controls should close after choosing an action.");
+    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 0, "Editor Controls should close after choosing an action.");
   });
 
   await withPage(browser, "/", async (page) => {
@@ -154,7 +154,7 @@ export async function run(ctx) {
     const searchInput = page.getByRole("searchbox", { name: "Find in file" });
     await searchInput.fill("Agent");
     await waitForRenderFrame(page);
-    expect((await page.locator(".file-search-count").textContent()) === "1/1", "Search should find the Agent match before editing.");
+    expect((await page.locator(".document-search-count").textContent()) === "1/1", "Search should find the Agent match before editing.");
 
     const workingLinePoint = await page.evaluate(() => {
       const line = Array.from(document.querySelectorAll(".cm-line")).find((element) =>
@@ -178,7 +178,7 @@ export async function run(ctx) {
 
     const searchEditState = await page.evaluate(() => ({
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
-      searchCount: document.querySelector(".file-search-count")?.textContent ?? "",
+      searchCount: document.querySelector(".document-search-count")?.textContent ?? "",
       activeElementLabel: document.activeElement?.getAttribute("aria-label") ?? "",
     }));
     expect(searchEditState.editorText.includes("Agent anchor"), "Editing with Search open should not overwrite the matching Agent text.");

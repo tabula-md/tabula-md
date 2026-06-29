@@ -8,14 +8,14 @@ import {
   PROJECT_STORAGE_VERSION,
   syncUrlForFile,
   type FileComment,
-  type MarkdownFile,
+  type WorkspaceFile,
   type WorkspaceState,
 } from "../workspaceStorage";
-import { normalizeMarkdownFileTitle } from "../workspaceModel";
+import { normalizeWorkspaceFileTitle } from "../workspaceModel";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";
 
-const isMarkdownImportFile = (file: File) => {
+const isSupportedImportFile = (file: File) => {
   const fileName = file.name.toLowerCase();
   return (
     fileName.endsWith(".md") ||
@@ -42,28 +42,28 @@ const downloadBlobFile = (fileName: string, blob: Blob) => {
 };
 
 type UseProjectIoControllerArgs = {
-  activeFile?: MarkdownFile;
+  activeFile?: WorkspaceFile;
   activeFileId: string;
   addFileFromContent: (
     title: string,
     text: string,
-    viewMode?: MarkdownFile["viewMode"],
-    overrides?: Partial<MarkdownFile>,
-  ) => MarkdownFile;
+    viewMode?: WorkspaceFile["viewMode"],
+    overrides?: Partial<WorkspaceFile>,
+  ) => WorkspaceFile;
   commentsByFileId: Record<string, FileComment[]>;
   editorRef: RefObject<MarkdownEditorHandle | null>;
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   openFileIds: string[];
   preferences: WorkspacePreferences;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
-  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">) => MarkdownFile | undefined;
-  resetCollaborationState: (nextStatus: MarkdownFile["connectionStatus"]) => void;
+  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
+  resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
   showToast: (message: string, tone?: "neutral" | "error", options?: { actionLabel?: string; onAction?: () => void }) => void;
   clearFileHistory: () => void;
   onCloseChrome: () => void;
 };
 
-export function getNewFilePreferenceOverrides(preferences: WorkspacePreferences): Partial<MarkdownFile> {
+export function getNewFilePreferenceOverrides(preferences: WorkspacePreferences): Partial<WorkspaceFile> {
   return {
     viewMode: preferences.newFileViewMode,
     readingWidth: preferences.readingWidth,
@@ -91,22 +91,22 @@ export function useProjectIoController({
   const [emptyDropActive, setEmptyDropActive] = useState(false);
   const queueAnimationFrameTask = useAnimationFrameTask();
 
-  const copyCurrentMarkdown = async () => {
+  const copyCurrentFile = async () => {
     if (!activeFile) {
       return;
     }
 
     await navigator.clipboard.writeText(activeFile.text);
-    showToast("Markdown copied.");
+    showToast("File copied.");
   };
 
-  const downloadCurrentMarkdownFile = () => {
+  const downloadCurrentFile = () => {
     if (!activeFile) {
       return;
     }
 
     downloadTextFile(activeFile.title, activeFile.text, "text/markdown;charset=utf-8");
-    showToast("Markdown downloaded.");
+    showToast("File downloaded.");
   };
 
   const downloadProject = () => {
@@ -158,10 +158,10 @@ export function useProjectIoController({
     showToast("Project imported.");
   };
 
-  const importMarkdownFile = async (file: File) => {
+  const importFile = async (file: File) => {
     const importedText = await file.text();
     const nextFile = addFileFromContent(
-      normalizeMarkdownFileTitle(file.name || "Imported.md"),
+      normalizeWorkspaceFileTitle(file.name || "Imported.md"),
       importedText,
       preferences.newFileViewMode,
       getNewFilePreferenceOverrides(preferences),
@@ -180,7 +180,7 @@ export function useProjectIoController({
       return;
     }
 
-    void importMarkdownFile(file);
+    void importFile(file);
   };
 
   const handleProjectImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -194,12 +194,12 @@ export function useProjectIoController({
     void importProjectFile(file);
   };
 
-  const getDroppedMarkdownFile = (event: DragEvent<HTMLElement>) => {
-    return Array.from(event.dataTransfer.files).find(isMarkdownImportFile);
+  const getDroppedImportFile = (event: DragEvent<HTMLElement>) => {
+    return Array.from(event.dataTransfer.files).find(isSupportedImportFile);
   };
 
   const handleEmptyWorkspaceDragOver = (event: DragEvent<HTMLElement>) => {
-    if (!getDroppedMarkdownFile(event)) {
+    if (!getDroppedImportFile(event)) {
       return;
     }
 
@@ -221,19 +221,19 @@ export function useProjectIoController({
     event.preventDefault();
     setEmptyDropActive(false);
 
-    const markdownFile = getDroppedMarkdownFile(event);
-    if (!markdownFile) {
-      showToast("Drop a Markdown file.", "error");
+    const importedFile = getDroppedImportFile(event);
+    if (!importedFile) {
+      showToast("Drop a supported file.", "error");
       return;
     }
 
-    void importMarkdownFile(markdownFile);
+    void importFile(importedFile);
   };
 
   return {
     emptyDropActive,
-    copyCurrentMarkdown,
-    downloadCurrentMarkdownFile,
+    copyCurrentFile,
+    downloadCurrentFile,
     downloadProject,
     downloadProjectArchive,
     handleImportInputChange,

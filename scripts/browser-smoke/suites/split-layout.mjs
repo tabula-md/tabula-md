@@ -51,7 +51,7 @@ export async function run(ctx) {
         preview: readRect(".workspace.split .preview-surface") ?? readRect(".workspace.preview .preview-surface"),
         editorContent: readContentRect(".workspace.split .cm-content"),
         previewContent: readContentRect(".workspace.split .preview-surface p"),
-        rail: readRect(".editor-control-row"),
+        rail: readRect(".document-toolbar-row"),
         status: readRect(".file-status-bar"),
       };
     };

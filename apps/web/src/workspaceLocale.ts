@@ -2,10 +2,10 @@ import type { WorkspaceLanguage } from "./hooks/useWorkspacePreferences";
 
 type WorkspaceMenuCopy = {
   actions: {
-    newMarkdown: string;
-    openMarkdown: string;
+    newFile: string;
+    openFile: string;
     importProject: string;
-    saveMarkdown: string;
+    saveFile: string;
     exportProject: string;
     liveCollaboration: string;
     preferences: string;
@@ -27,8 +27,8 @@ type WorkspaceMenuCopy = {
   };
   emptyState: {
     tagline: string;
-    newMarkdown: string;
-    openMarkdown: string;
+    newFile: string;
+    openFile: string;
     browseFiles: string;
     help: string;
   };
@@ -68,10 +68,10 @@ type WorkspaceMenuCopy = {
     exportPanel: {
       title: string;
       description: string;
-      markdownTitle: string;
-      markdownDescription: string;
-      copyMarkdownTitle: string;
-      copyMarkdownDescription: string;
+      fileTitle: string;
+      fileDescription: string;
+      copyFileTitle: string;
+      copyFileDescription: string;
       projectArchiveTitle: string;
       projectArchiveDescription: string;
     };
@@ -105,10 +105,10 @@ export const WORKSPACE_LANGUAGE_OPTIONS: Array<{
 const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   en: {
     actions: {
-      newMarkdown: "New Markdown",
-      openMarkdown: "Open Markdown...",
+      newFile: "New File",
+      openFile: "Open File...",
       importProject: "Import project...",
-      saveMarkdown: "Save Markdown...",
+      saveFile: "Save File...",
       exportProject: "Export project...",
       liveCollaboration: "Live collaboration...",
       preferences: "Preferences",
@@ -129,9 +129,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Dark",
     },
     emptyState: {
-      tagline: "A local-first Markdown workspace for files that people and coding agents can share safely.",
-      newMarkdown: "New Markdown",
-      openMarkdown: "Open .md file",
+      tagline:
+        "A local-first workspace for files that people and coding agents can share safely.",
+      newFile: "New File",
+      openFile: "Open File",
       browseFiles: "Browse project files",
       help: "Help",
     },
@@ -158,7 +159,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copied: "Copied",
         stopSession: "Stop session",
         stopConfirm:
-          "Stop sharing this file?\n\nThis tab will leave the live room and keep the current Markdown local. Other collaborators can continue in the room.",
+          "Stop sharing this file?\n\nThis tab will leave the live room and keep the current file local. Other collaborators can continue in the room.",
       },
       shareable: {
         title: "Shareable link",
@@ -170,34 +171,37 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         linkLabel: "Shareable link",
       },
       exportPanel: {
-        title: "Export Markdown",
+        title: "Export File",
         description: "Take the current file out of Tabula.md.",
-        markdownTitle: "Markdown",
-        markdownDescription: "Download the current file as source Markdown.",
-        copyMarkdownTitle: "Copy Markdown",
-        copyMarkdownDescription: "Copy the current file to the clipboard.",
+        fileTitle: "File",
+        fileDescription: "Download the current file.",
+        copyFileTitle: "Copy File",
+        copyFileDescription: "Copy the current file to the clipboard.",
         projectArchiveTitle: "Project archive",
         projectArchiveDescription: "Bundle every project file.",
       },
       sendTo: {
         title: "Send to local coding agent",
-        description: "Create a prompt for Codex, Claude Code, or another local coding agent.",
+        description:
+          "Create a prompt for Codex, Claude Code, or another local coding agent.",
         destinationTitle: "Local coding agent",
-        destinationDescription: "Hand off Markdown context as a paste-ready prompt.",
+        destinationDescription:
+          "Hand off file context as a paste-ready prompt.",
         copyPrompt: "Copy prompt",
         currentFile: "Current file",
         project: "Project",
         instructionLabel: "What should the agent do?",
-        instructionPlaceholder: (fileTitle) => `Implement the next step for ${fileTitle}.`,
+        instructionPlaceholder: (fileTitle) =>
+          `Implement the next step for ${fileTitle}.`,
       },
     },
   },
   ko: {
     actions: {
-      newMarkdown: "새 Markdown",
-      openMarkdown: "Markdown 열기...",
+      newFile: "새 파일",
+      openFile: "파일 열기...",
       importProject: "프로젝트 가져오기...",
-      saveMarkdown: "Markdown 저장...",
+      saveFile: "파일 저장...",
       exportProject: "프로젝트 내보내기...",
       liveCollaboration: "실시간 협업...",
       preferences: "환경설정",
@@ -218,9 +222,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "다크",
     },
     emptyState: {
-      tagline: "사람과 코딩 에이전트가 안전하게 공유할 수 있는 로컬 우선 Markdown 작업공간.",
-      newMarkdown: "새 Markdown",
-      openMarkdown: ".md 파일 열기",
+      tagline:
+        "사람과 코딩 에이전트가 안전하게 공유할 수 있는 로컬 우선 작업공간.",
+      newFile: "새 파일",
+      openFile: "파일 열기",
       browseFiles: "프로젝트 파일 보기",
       help: "도움말",
     },
@@ -247,7 +252,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copied: "복사됨",
         stopSession: "세션 중지",
         stopConfirm:
-          "이 파일 공유를 중지할까요?\n\n이 탭은 실시간 room에서 나가고 현재 Markdown은 로컬에 유지됩니다. 다른 협업자는 room에서 계속 작업할 수 있습니다.",
+          "이 파일 공유를 중지할까요?\n\n이 탭은 실시간 room에서 나가고 현재 파일은 로컬에 유지됩니다. 다른 협업자는 room에서 계속 작업할 수 있습니다.",
       },
       shareable: {
         title: "공유 가능한 링크",
@@ -259,34 +264,37 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         linkLabel: "공유 가능한 링크",
       },
       exportPanel: {
-        title: "Markdown 내보내기",
+        title: "파일 내보내기",
         description: "현재 파일을 Tabula.md 밖으로 가져갑니다.",
-        markdownTitle: "Markdown",
-        markdownDescription: "현재 파일을 원본 Markdown으로 다운로드합니다.",
-        copyMarkdownTitle: "Markdown 복사",
-        copyMarkdownDescription: "현재 파일을 클립보드에 복사합니다.",
+        fileTitle: "File",
+        fileDescription: "현재 파일을 다운로드합니다.",
+        copyFileTitle: "파일 복사",
+        copyFileDescription: "현재 파일을 클립보드에 복사합니다.",
         projectArchiveTitle: "프로젝트 압축 파일",
         projectArchiveDescription: "프로젝트의 모든 파일을 묶습니다.",
       },
       sendTo: {
         title: "로컬 코딩 에이전트로 보내기",
-        description: "Codex, Claude Code 또는 다른 로컬 코딩 에이전트용 프롬프트를 만듭니다.",
+        description:
+          "Codex, Claude Code 또는 다른 로컬 코딩 에이전트용 프롬프트를 만듭니다.",
         destinationTitle: "로컬 코딩 에이전트",
-        destinationDescription: "Markdown 컨텍스트를 바로 붙여넣을 수 있는 프롬프트로 전달합니다.",
+        destinationDescription:
+          "파일 컨텍스트를 바로 붙여넣을 수 있는 프롬프트로 전달합니다.",
         copyPrompt: "프롬프트 복사",
         currentFile: "현재 파일",
         project: "프로젝트",
         instructionLabel: "에이전트가 무엇을 하면 되나요?",
-        instructionPlaceholder: (fileTitle) => `${fileTitle}의 다음 단계를 구현하세요.`,
+        instructionPlaceholder: (fileTitle) =>
+          `${fileTitle}의 다음 단계를 구현하세요.`,
       },
     },
   },
   ja: {
     actions: {
-      newMarkdown: "新規 Markdown",
-      openMarkdown: "Markdown を開く...",
+      newFile: "新規ファイル",
+      openFile: "ファイルを開く...",
       importProject: "プロジェクトを読み込む...",
-      saveMarkdown: "Markdown を保存...",
+      saveFile: "ファイルを保存...",
       exportProject: "プロジェクトを書き出す...",
       liveCollaboration: "ライブ共同編集...",
       preferences: "環境設定",
@@ -307,9 +315,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "ダーク",
     },
     emptyState: {
-      tagline: "人とコーディングエージェントが安全に共有できるローカルファースト Markdown ワークスペース。",
-      newMarkdown: "新規 Markdown",
-      openMarkdown: ".md ファイルを開く",
+      tagline:
+        "人とコーディングエージェントが安全に共有できるローカルファーストのワークスペース。",
+      newFile: "新規ファイル",
+      openFile: "ファイルを開く",
       browseFiles: "プロジェクトファイルを見る",
       help: "ヘルプ",
     },
@@ -331,12 +340,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         nameAria: "共同編集で表示する名前",
         anonymousPlaceholder: "匿名",
         inviteLabel: "招待リンク",
-        invalidInviteTitle: "このライブファイルには有効な招待リンクがありません。",
+        invalidInviteTitle:
+          "このライブファイルには有効な招待リンクがありません。",
         copyLink: "リンクをコピー",
         copied: "コピー済み",
         stopSession: "セッション停止",
         stopConfirm:
-          "このファイルの共有を停止しますか?\n\nこのタブはライブ room から退出し、現在の Markdown はローカルに残ります。他の共同編集者は room で作業を続けられます。",
+          "このファイルの共有を停止しますか?\n\nこのタブはライブ room から退出し、現在のファイルはローカルに残ります。他の共同編集者は room で作業を続けられます。",
       },
       shareable: {
         title: "共有可能リンク",
@@ -348,34 +358,40 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         linkLabel: "共有可能リンク",
       },
       exportPanel: {
-        title: "Markdown を書き出し",
+        title: "ファイルを書き出し",
         description: "現在のファイルを Tabula.md の外へ持ち出します。",
-        markdownTitle: "Markdown",
-        markdownDescription: "現在のファイルを Markdown ソースとしてダウンロードします。",
-        copyMarkdownTitle: "Markdown をコピー",
-        copyMarkdownDescription: "現在のファイルをクリップボードへコピーします。",
+        fileTitle: "File",
+        fileDescription:
+          "現在のファイルをダウンロードします。",
+        copyFileTitle: "ファイルをコピー",
+        copyFileDescription:
+          "現在のファイルをクリップボードへコピーします。",
         projectArchiveTitle: "プロジェクトアーカイブ",
-        projectArchiveDescription: "プロジェクト内のすべてのファイルをまとめます。",
+        projectArchiveDescription:
+          "プロジェクト内のすべてのファイルをまとめます。",
       },
       sendTo: {
         title: "ローカルコーディングエージェントに送信",
-        description: "Codex、Claude Code、または他のローカルコーディングエージェント用のプロンプトを作成します。",
+        description:
+          "Codex、Claude Code、または他のローカルコーディングエージェント用のプロンプトを作成します。",
         destinationTitle: "ローカルコーディングエージェント",
-        destinationDescription: "Markdown コンテキストを貼り付け可能なプロンプトとして渡します。",
+        destinationDescription:
+          "ファイルコンテキストを貼り付け可能なプロンプトとして渡します。",
         copyPrompt: "プロンプトをコピー",
         currentFile: "現在のファイル",
         project: "プロジェクト",
         instructionLabel: "エージェントに何をしてほしいですか?",
-        instructionPlaceholder: (fileTitle) => `${fileTitle} の次のステップを実装してください。`,
+        instructionPlaceholder: (fileTitle) =>
+          `${fileTitle} の次のステップを実装してください。`,
       },
     },
   },
   zh: {
     actions: {
-      newMarkdown: "新建 Markdown",
-      openMarkdown: "打开 Markdown...",
+      newFile: "新建文件",
+      openFile: "打开文件...",
       importProject: "导入项目...",
-      saveMarkdown: "保存 Markdown...",
+      saveFile: "保存文件...",
       exportProject: "导出项目...",
       liveCollaboration: "实时协作...",
       preferences: "偏好设置",
@@ -396,9 +412,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "深色",
     },
     emptyState: {
-      tagline: "让人与编码智能体安全共享文件的本地优先 Markdown 工作区。",
-      newMarkdown: "新建 Markdown",
-      openMarkdown: "打开 .md 文件",
+      tagline: "让人与编码智能体安全共享文件的本地优先工作区。",
+      newFile: "新建文件",
+      openFile: "打开文件",
       browseFiles: "浏览项目文件",
       help: "帮助",
     },
@@ -425,7 +441,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copied: "已复制",
         stopSession: "停止会话",
         stopConfirm:
-          "停止分享此文件吗？\n\n此标签页将离开实时 room，并把当前 Markdown 保留在本地。其他协作者仍可在 room 中继续。",
+          "停止分享此文件吗？\n\n此标签页将离开实时 room，并把当前文件保留在本地。其他协作者仍可在 room 中继续。",
       },
       shareable: {
         title: "可分享链接",
@@ -437,12 +453,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         linkLabel: "可分享链接",
       },
       exportPanel: {
-        title: "导出 Markdown",
+        title: "导出文件",
         description: "将当前文件带出 Tabula.md。",
-        markdownTitle: "Markdown",
-        markdownDescription: "将当前文件下载为 Markdown 源文件。",
-        copyMarkdownTitle: "复制 Markdown",
-        copyMarkdownDescription: "将当前文件复制到剪贴板。",
+        fileTitle: "File",
+        fileDescription: "下载当前文件。",
+        copyFileTitle: "复制文件",
+        copyFileDescription: "将当前文件复制到剪贴板。",
         projectArchiveTitle: "项目归档",
         projectArchiveDescription: "打包项目中的所有文件。",
       },
@@ -450,7 +466,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "发送到本地编码智能体",
         description: "为 Codex、Claude Code 或其他本地编码智能体创建提示词。",
         destinationTitle: "本地编码智能体",
-        destinationDescription: "把 Markdown 上下文交给可直接粘贴的提示词。",
+        destinationDescription: "把文件上下文交给可直接粘贴的提示词。",
         copyPrompt: "复制提示词",
         currentFile: "当前文件",
         project: "项目",
@@ -461,10 +477,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   },
   es: {
     actions: {
-      newMarkdown: "Nuevo Markdown",
-      openMarkdown: "Abrir Markdown...",
+      newFile: "Nuevo archivo",
+      openFile: "Abrir archivo...",
       importProject: "Importar proyecto...",
-      saveMarkdown: "Guardar Markdown...",
+      saveFile: "Guardar archivo...",
       exportProject: "Exportar proyecto...",
       liveCollaboration: "Colaboración en vivo...",
       preferences: "Preferencias",
@@ -485,9 +501,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Oscuro",
     },
     emptyState: {
-      tagline: "Un espacio Markdown local-first para compartir archivos con personas y agentes de código.",
-      newMarkdown: "Nuevo Markdown",
-      openMarkdown: "Abrir archivo .md",
+      tagline:
+        "Un espacio local-first para compartir archivos con personas y agentes de código.",
+      newFile: "Nuevo archivo",
+      openFile: "Abrir archivo",
       browseFiles: "Ver archivos del proyecto",
       help: "Ayuda",
     },
@@ -504,17 +521,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Colaboración en vivo",
         description: "Invita a otros a editar este archivo contigo.",
         startSession: "Iniciar sesión",
-        startDescription: "Crea un enlace editable de invitación para este archivo.",
+        startDescription:
+          "Crea un enlace editable de invitación para este archivo.",
         nameLabel: "Tu nombre",
         nameAria: "Tu nombre de colaboración",
         anonymousPlaceholder: "Anónimo",
         inviteLabel: "Enlace de invitación",
-        invalidInviteTitle: "Este archivo en vivo no tiene un enlace de invitación válido.",
+        invalidInviteTitle:
+          "Este archivo en vivo no tiene un enlace de invitación válido.",
         copyLink: "Copiar enlace",
         copied: "Copiado",
         stopSession: "Detener sesión",
         stopConfirm:
-          "¿Dejar de compartir este archivo?\n\nEsta pestaña saldrá del room en vivo y conservará el Markdown actual en local. Otros colaboradores pueden continuar en el room.",
+          "¿Dejar de compartir este archivo?\n\nEsta pestaña saldrá del room en vivo y conservará el archivo actual en local. Otros colaboradores pueden continuar en el room.",
       },
       shareable: {
         title: "Enlace compartible",
@@ -526,34 +545,37 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         linkLabel: "Enlace compartible",
       },
       exportPanel: {
-        title: "Exportar Markdown",
+        title: "Exportar archivo",
         description: "Saca el archivo actual de Tabula.md.",
-        markdownTitle: "Markdown",
-        markdownDescription: "Descarga el archivo actual como Markdown fuente.",
-        copyMarkdownTitle: "Copiar Markdown",
-        copyMarkdownDescription: "Copia el archivo actual al portapapeles.",
+        fileTitle: "File",
+        fileDescription: "Descarga el archivo actual.",
+        copyFileTitle: "Copiar archivo",
+        copyFileDescription: "Copia el archivo actual al portapapeles.",
         projectArchiveTitle: "Archivo del proyecto",
         projectArchiveDescription: "Empaqueta todos los archivos del proyecto.",
       },
       sendTo: {
         title: "Enviar a un agente local de código",
-        description: "Crea un prompt para Codex, Claude Code u otro agente local de código.",
+        description:
+          "Crea un prompt para Codex, Claude Code u otro agente local de código.",
         destinationTitle: "Agente local de código",
-        destinationDescription: "Entrega el contexto Markdown como prompt listo para pegar.",
+        destinationDescription:
+          "Entrega el contexto del archivo como prompt listo para pegar.",
         copyPrompt: "Copiar prompt",
         currentFile: "Archivo actual",
         project: "Proyecto",
         instructionLabel: "¿Qué debe hacer el agente?",
-        instructionPlaceholder: (fileTitle) => `Implementa el siguiente paso para ${fileTitle}.`,
+        instructionPlaceholder: (fileTitle) =>
+          `Implementa el siguiente paso para ${fileTitle}.`,
       },
     },
   },
   fr: {
     actions: {
-      newMarkdown: "Nouveau Markdown",
-      openMarkdown: "Ouvrir Markdown...",
+      newFile: "Nouveau fichier",
+      openFile: "Ouvrir un fichier...",
       importProject: "Importer un projet...",
-      saveMarkdown: "Enregistrer Markdown...",
+      saveFile: "Enregistrer le fichier...",
       exportProject: "Exporter le projet...",
       liveCollaboration: "Collaboration en direct...",
       preferences: "Préférences",
@@ -574,9 +596,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Sombre",
     },
     emptyState: {
-      tagline: "Un espace Markdown local-first pour partager des fichiers avec des personnes et des agents de code.",
-      newMarkdown: "Nouveau Markdown",
-      openMarkdown: "Ouvrir un fichier .md",
+      tagline:
+        "Un espace local-first pour partager des fichiers avec des personnes et des agents de code.",
+      newFile: "Nouveau fichier",
+      openFile: "Ouvrir un fichier",
       browseFiles: "Parcourir les fichiers",
       help: "Aide",
     },
@@ -593,17 +616,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Collaboration en direct",
         description: "Invitez des personnes à modifier ce fichier avec vous.",
         startSession: "Démarrer la session",
-        startDescription: "Créez un lien d'invitation modifiable pour ce fichier.",
+        startDescription:
+          "Créez un lien d'invitation modifiable pour ce fichier.",
         nameLabel: "Votre nom",
         nameAria: "Votre nom de collaboration",
         anonymousPlaceholder: "Anonyme",
         inviteLabel: "Lien d'invitation",
-        invalidInviteTitle: "Ce fichier en direct n'a pas de lien d'invitation valide.",
+        invalidInviteTitle:
+          "Ce fichier en direct n'a pas de lien d'invitation valide.",
         copyLink: "Copier le lien",
         copied: "Copié",
         stopSession: "Arrêter la session",
         stopConfirm:
-          "Arrêter le partage de ce fichier ?\n\nCet onglet quittera le room en direct et gardera le Markdown actuel en local. Les autres collaborateurs peuvent continuer dans le room.",
+          "Arrêter le partage de ce fichier ?\n\nCet onglet quittera le room en direct et gardera le fichier actuel en local. Les autres collaborateurs peuvent continuer dans le room.",
       },
       shareable: {
         title: "Lien partageable",
@@ -615,34 +640,39 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         linkLabel: "Lien partageable",
       },
       exportPanel: {
-        title: "Exporter Markdown",
+        title: "Exporter le fichier",
         description: "Sortez le fichier actuel de Tabula.md.",
-        markdownTitle: "Markdown",
-        markdownDescription: "Téléchargez le fichier actuel en Markdown source.",
-        copyMarkdownTitle: "Copier Markdown",
-        copyMarkdownDescription: "Copiez le fichier actuel dans le presse-papiers.",
+        fileTitle: "File",
+        fileDescription:
+          "Téléchargez le fichier actuel.",
+        copyFileTitle: "Copier le fichier",
+        copyFileDescription:
+          "Copiez le fichier actuel dans le presse-papiers.",
         projectArchiveTitle: "Archive du projet",
         projectArchiveDescription: "Regroupez tous les fichiers du projet.",
       },
       sendTo: {
         title: "Envoyer à un agent de code local",
-        description: "Créez un prompt pour Codex, Claude Code ou un autre agent de code local.",
+        description:
+          "Créez un prompt pour Codex, Claude Code ou un autre agent de code local.",
         destinationTitle: "Agent de code local",
-        destinationDescription: "Transmettez le contexte Markdown comme prompt prêt à coller.",
+        destinationDescription:
+          "Transmettez le contexte du fichier comme prompt prêt à coller.",
         copyPrompt: "Copier le prompt",
         currentFile: "Fichier actuel",
         project: "Projet",
         instructionLabel: "Que doit faire l'agent ?",
-        instructionPlaceholder: (fileTitle) => `Implémentez la prochaine étape pour ${fileTitle}.`,
+        instructionPlaceholder: (fileTitle) =>
+          `Implémentez la prochaine étape pour ${fileTitle}.`,
       },
     },
   },
   de: {
     actions: {
-      newMarkdown: "Neues Markdown",
-      openMarkdown: "Markdown öffnen...",
+      newFile: "Neue Datei",
+      openFile: "Datei öffnen...",
       importProject: "Projekt importieren...",
-      saveMarkdown: "Markdown speichern...",
+      saveFile: "Datei speichern...",
       exportProject: "Projekt exportieren...",
       liveCollaboration: "Live-Zusammenarbeit...",
       preferences: "Einstellungen",
@@ -663,9 +693,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Dunkel",
     },
     emptyState: {
-      tagline: "Ein local-first Markdown-Workspace zum sicheren Teilen von Dateien mit Menschen und Coding-Agenten.",
-      newMarkdown: "Neues Markdown",
-      openMarkdown: ".md-Datei öffnen",
+      tagline:
+        "Ein local-first Workspace zum sicheren Teilen von Dateien mit Menschen und Coding-Agenten.",
+      newFile: "Neue Datei",
+      openFile: "Datei öffnen",
       browseFiles: "Projektdateien ansehen",
       help: "Hilfe",
     },
@@ -682,17 +713,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Live-Zusammenarbeit",
         description: "Lade Personen ein, diese Datei gemeinsam zu bearbeiten.",
         startSession: "Sitzung starten",
-        startDescription: "Erstelle einen bearbeitbaren Einladungslink für diese Datei.",
+        startDescription:
+          "Erstelle einen bearbeitbaren Einladungslink für diese Datei.",
         nameLabel: "Dein Name",
         nameAria: "Dein Name für die Zusammenarbeit",
         anonymousPlaceholder: "Anonym",
         inviteLabel: "Einladungslink",
-        invalidInviteTitle: "Diese Live-Datei hat keinen gültigen Einladungslink.",
+        invalidInviteTitle:
+          "Diese Live-Datei hat keinen gültigen Einladungslink.",
         copyLink: "Link kopieren",
         copied: "Kopiert",
         stopSession: "Sitzung stoppen",
         stopConfirm:
-          "Diese Datei nicht mehr teilen?\n\nDieser Tab verlässt den Live-room und behält das aktuelle Markdown lokal. Andere können im room weiterarbeiten.",
+          "Diese Datei nicht mehr teilen?\n\nDieser Tab verlässt den Live-room und behält die aktuelle Datei lokal. Andere können im room weiterarbeiten.",
       },
       shareable: {
         title: "Teilbarer Link",
@@ -704,28 +737,428 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         linkLabel: "Teilbarer Link",
       },
       exportPanel: {
-        title: "Markdown exportieren",
+        title: "Datei exportieren",
         description: "Nimm die aktuelle Datei aus Tabula.md heraus.",
-        markdownTitle: "Markdown",
-        markdownDescription: "Lade die aktuelle Datei als Markdown-Quelle herunter.",
-        copyMarkdownTitle: "Markdown kopieren",
-        copyMarkdownDescription: "Kopiere die aktuelle Datei in die Zwischenablage.",
+        fileTitle: "File",
+        fileDescription:
+          "Lade die aktuelle Datei herunter.",
+        copyFileTitle: "Datei kopieren",
+        copyFileDescription:
+          "Kopiere die aktuelle Datei in die Zwischenablage.",
         projectArchiveTitle: "Projektarchiv",
         projectArchiveDescription: "Bündle alle Projektdateien.",
       },
       sendTo: {
         title: "An lokalen Coding-Agent senden",
-        description: "Erstelle einen Prompt für Codex, Claude Code oder einen anderen lokalen Coding-Agent.",
+        description:
+          "Erstelle einen Prompt für Codex, Claude Code oder einen anderen lokalen Coding-Agent.",
         destinationTitle: "Lokaler Coding-Agent",
-        destinationDescription: "Übergib Markdown-Kontext als einfügbaren Prompt.",
+        destinationDescription:
+          "Übergib Dateikontext als einfügbaren Prompt.",
         copyPrompt: "Prompt kopieren",
         currentFile: "Aktuelle Datei",
         project: "Projekt",
         instructionLabel: "Was soll der Agent tun?",
-        instructionPlaceholder: (fileTitle) => `Implementiere den nächsten Schritt für ${fileTitle}.`,
+        instructionPlaceholder: (fileTitle) =>
+          `Implementiere den nächsten Schritt für ${fileTitle}.`,
       },
     },
   },
 };
 
-export const getWorkspaceMenuCopy = (language: WorkspaceLanguage) => workspaceMenuCopy[language];
+export const getWorkspaceMenuCopy = (language: WorkspaceLanguage) =>
+  workspaceMenuCopy[language];
+
+export type WorkspaceChromeCopy = {
+  common: {
+    or: string;
+    closeShareDialog: string;
+  };
+  topChrome: {
+    openWorkspaceMenu: string;
+    closeWorkspaceMenu: string;
+    openProjectContext: string;
+    closeProjectContext: string;
+    collaborators: string;
+    liveWith: (names: string) => string;
+    liveAs: (name: string) => string;
+  };
+  documentControls: {
+    documentToolbar: string;
+    documentControlsLabel: string;
+    split: string;
+    edit: string;
+    preview: string;
+    copyFile: string;
+    copyCurrentFile: string;
+    nothingToCopy: string;
+    editorControls: string;
+    viewControls: string;
+    layoutControls: string;
+    search: string;
+    lineNumbers: string;
+    lineWrapping: string;
+    textWidth: string;
+    focusWidth: string;
+    standardWidth: string;
+    fillWidth: string;
+    findInFile: string;
+    previousMatch: string;
+    nextMatch: string;
+    closeSearch: string;
+  };
+  statusBar: {
+    savedLocally: string;
+    roomOffline: string;
+    word: string;
+    words: string;
+    comment: string;
+    comments: string;
+    line: string;
+    lines: string;
+    character: string;
+    characters: string;
+  };
+};
+
+const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
+  en: {
+    common: { or: "Or", closeShareDialog: "Close share dialog" },
+    topChrome: {
+      openWorkspaceMenu: "Open Workspace menu",
+      closeWorkspaceMenu: "Close Workspace menu",
+      openProjectContext: "Open Project Context",
+      closeProjectContext: "Close Project Context",
+      collaborators: "Collaborators",
+      liveWith: (names) => `Live with ${names}`,
+      liveAs: (name) => `Live as ${name}`,
+    },
+    documentControls: {
+      documentToolbar: "Document toolbar",
+      documentControlsLabel: "Document controls",
+      split: "Split",
+      edit: "Edit",
+      preview: "Preview",
+      copyFile: "Copy File",
+      copyCurrentFile: "Copy current file",
+      nothingToCopy: "Add content to copy",
+      editorControls: "Editor controls",
+      viewControls: "View controls",
+      layoutControls: "Layout controls",
+      search: "Search",
+      lineNumbers: "Line Numbers",
+      lineWrapping: "Line Wrapping",
+      textWidth: "Text Width",
+      focusWidth: "Focus",
+      standardWidth: "Standard",
+      fillWidth: "Fill",
+      findInFile: "Find in file",
+      previousMatch: "Previous match",
+      nextMatch: "Next match",
+      closeSearch: "Close search",
+    },
+    statusBar: {
+      savedLocally: "Saved locally",
+      roomOffline: "Room offline",
+      word: "word",
+      words: "words",
+      comment: "comment",
+      comments: "comments",
+      line: "line",
+      lines: "lines",
+      character: "character",
+      characters: "characters",
+    },
+  },
+  ko: {
+    common: { or: "또는", closeShareDialog: "공유 창 닫기" },
+    topChrome: {
+      openWorkspaceMenu: "작업공간 메뉴 열기",
+      closeWorkspaceMenu: "작업공간 메뉴 닫기",
+      openProjectContext: "프로젝트 컨텍스트 열기",
+      closeProjectContext: "프로젝트 컨텍스트 닫기",
+      collaborators: "협업자",
+      liveWith: (names) => `${names}와 협업 중`,
+      liveAs: (name) => `${name}으로 접속 중`,
+    },
+    documentControls: {
+      documentToolbar: "문서 툴바",
+      documentControlsLabel: "문서 컨트롤",
+      split: "분할",
+      edit: "편집",
+      preview: "미리보기",
+      copyFile: "파일 복사",
+      copyCurrentFile: "현재 파일 복사",
+      nothingToCopy: "복사할 내용을 입력하세요",
+      editorControls: "에디터 컨트롤",
+      viewControls: "보기 컨트롤",
+      layoutControls: "레이아웃 컨트롤",
+      search: "검색",
+      lineNumbers: "줄 번호",
+      lineWrapping: "줄 바꿈",
+      textWidth: "텍스트 폭",
+      focusWidth: "집중",
+      standardWidth: "표준",
+      fillWidth: "채우기",
+      findInFile: "파일에서 찾기",
+      previousMatch: "이전 결과",
+      nextMatch: "다음 결과",
+      closeSearch: "검색 닫기",
+    },
+    statusBar: {
+      savedLocally: "로컬 저장됨",
+      roomOffline: "Room 연결 끊김",
+      word: "단어",
+      words: "단어",
+      comment: "댓글",
+      comments: "댓글",
+      line: "줄",
+      lines: "줄",
+      character: "글자",
+      characters: "글자",
+    },
+  },
+  ja: {
+    common: { or: "または", closeShareDialog: "共有ダイアログを閉じる" },
+    topChrome: {
+      openWorkspaceMenu: "ワークスペースメニューを開く",
+      closeWorkspaceMenu: "ワークスペースメニューを閉じる",
+      openProjectContext: "プロジェクトコンテキストを開く",
+      closeProjectContext: "プロジェクトコンテキストを閉じる",
+      collaborators: "共同編集者",
+      liveWith: (names) => `${names} と共同編集中`,
+      liveAs: (name) => `${name} として参加中`,
+    },
+    documentControls: {
+      documentToolbar: "ドキュメントツールバー",
+      documentControlsLabel: "ドキュメント操作",
+      split: "分割",
+      edit: "編集",
+      preview: "プレビュー",
+      copyFile: "ファイルをコピー",
+      copyCurrentFile: "現在のファイルをコピー",
+      nothingToCopy: "コピーする内容を入力してください",
+      editorControls: "エディター設定",
+      viewControls: "表示設定",
+      layoutControls: "レイアウト設定",
+      search: "検索",
+      lineNumbers: "行番号",
+      lineWrapping: "行折り返し",
+      textWidth: "テキスト幅",
+      focusWidth: "集中",
+      standardWidth: "標準",
+      fillWidth: "全幅",
+      findInFile: "ファイル内検索",
+      previousMatch: "前の一致",
+      nextMatch: "次の一致",
+      closeSearch: "検索を閉じる",
+    },
+    statusBar: {
+      savedLocally: "ローカルに保存済み",
+      roomOffline: "Room オフライン",
+      word: "語",
+      words: "語",
+      comment: "コメント",
+      comments: "コメント",
+      line: "行",
+      lines: "行",
+      character: "文字",
+      characters: "文字",
+    },
+  },
+  zh: {
+    common: { or: "或", closeShareDialog: "关闭分享对话框" },
+    topChrome: {
+      openWorkspaceMenu: "打开工作区菜单",
+      closeWorkspaceMenu: "关闭工作区菜单",
+      openProjectContext: "打开项目上下文",
+      closeProjectContext: "关闭项目上下文",
+      collaborators: "协作者",
+      liveWith: (names) => `正在与 ${names} 协作`,
+      liveAs: (name) => `以 ${name} 加入`,
+    },
+    documentControls: {
+      documentToolbar: "文档工具栏",
+      documentControlsLabel: "文档控制",
+      split: "分屏",
+      edit: "编辑",
+      preview: "预览",
+      copyFile: "复制文件",
+      copyCurrentFile: "复制当前文件",
+      nothingToCopy: "请输入可复制的内容",
+      editorControls: "编辑器控制",
+      viewControls: "视图控制",
+      layoutControls: "布局控制",
+      search: "搜索",
+      lineNumbers: "行号",
+      lineWrapping: "自动换行",
+      textWidth: "文本宽度",
+      focusWidth: "专注",
+      standardWidth: "标准",
+      fillWidth: "填满",
+      findInFile: "在文件中查找",
+      previousMatch: "上一个匹配",
+      nextMatch: "下一个匹配",
+      closeSearch: "关闭搜索",
+    },
+    statusBar: {
+      savedLocally: "已本地保存",
+      roomOffline: "Room 离线",
+      word: "词",
+      words: "词",
+      comment: "评论",
+      comments: "评论",
+      line: "行",
+      lines: "行",
+      character: "字符",
+      characters: "字符",
+    },
+  },
+  es: {
+    common: { or: "O", closeShareDialog: "Cerrar diálogo de compartir" },
+    topChrome: {
+      openWorkspaceMenu: "Abrir menú del espacio",
+      closeWorkspaceMenu: "Cerrar menú del espacio",
+      openProjectContext: "Abrir contexto del proyecto",
+      closeProjectContext: "Cerrar contexto del proyecto",
+      collaborators: "Colaboradores",
+      liveWith: (names) => `En vivo con ${names}`,
+      liveAs: (name) => `En vivo como ${name}`,
+    },
+    documentControls: {
+      documentToolbar: "Barra del documento",
+      documentControlsLabel: "Controles del documento",
+      split: "Dividir",
+      edit: "Editar",
+      preview: "Vista previa",
+      copyFile: "Copiar archivo",
+      copyCurrentFile: "Copiar archivo actual",
+      nothingToCopy: "Agrega contenido para copiar",
+      editorControls: "Controles del editor",
+      viewControls: "Controles de vista",
+      layoutControls: "Controles de diseño",
+      search: "Buscar",
+      lineNumbers: "Números de línea",
+      lineWrapping: "Ajuste de línea",
+      textWidth: "Ancho de texto",
+      focusWidth: "Enfoque",
+      standardWidth: "Estándar",
+      fillWidth: "Llenar",
+      findInFile: "Buscar en archivo",
+      previousMatch: "Coincidencia anterior",
+      nextMatch: "Siguiente coincidencia",
+      closeSearch: "Cerrar búsqueda",
+    },
+    statusBar: {
+      savedLocally: "Guardado localmente",
+      roomOffline: "Room sin conexión",
+      word: "palabra",
+      words: "palabras",
+      comment: "comentario",
+      comments: "comentarios",
+      line: "línea",
+      lines: "líneas",
+      character: "carácter",
+      characters: "caracteres",
+    },
+  },
+  fr: {
+    common: { or: "Ou", closeShareDialog: "Fermer la fenêtre de partage" },
+    topChrome: {
+      openWorkspaceMenu: "Ouvrir le menu de l’espace",
+      closeWorkspaceMenu: "Fermer le menu de l’espace",
+      openProjectContext: "Ouvrir le contexte du projet",
+      closeProjectContext: "Fermer le contexte du projet",
+      collaborators: "Collaborateurs",
+      liveWith: (names) => `En direct avec ${names}`,
+      liveAs: (name) => `En direct en tant que ${name}`,
+    },
+    documentControls: {
+      documentToolbar: "Barre du document",
+      documentControlsLabel: "Contrôles du document",
+      split: "Scinder",
+      edit: "Modifier",
+      preview: "Aperçu",
+      copyFile: "Copier le fichier",
+      copyCurrentFile: "Copier le fichier actuel",
+      nothingToCopy: "Ajoutez du contenu à copier",
+      editorControls: "Contrôles de l’éditeur",
+      viewControls: "Contrôles d’affichage",
+      layoutControls: "Contrôles de mise en page",
+      search: "Rechercher",
+      lineNumbers: "Numéros de ligne",
+      lineWrapping: "Retour à la ligne",
+      textWidth: "Largeur du texte",
+      focusWidth: "Focus",
+      standardWidth: "Standard",
+      fillWidth: "Remplir",
+      findInFile: "Rechercher dans le fichier",
+      previousMatch: "Résultat précédent",
+      nextMatch: "Résultat suivant",
+      closeSearch: "Fermer la recherche",
+    },
+    statusBar: {
+      savedLocally: "Enregistré localement",
+      roomOffline: "Room hors ligne",
+      word: "mot",
+      words: "mots",
+      comment: "commentaire",
+      comments: "commentaires",
+      line: "ligne",
+      lines: "lignes",
+      character: "caractère",
+      characters: "caractères",
+    },
+  },
+  de: {
+    common: { or: "Oder", closeShareDialog: "Teilen-Dialog schließen" },
+    topChrome: {
+      openWorkspaceMenu: "Workspace-Menü öffnen",
+      closeWorkspaceMenu: "Workspace-Menü schließen",
+      openProjectContext: "Projektkontext öffnen",
+      closeProjectContext: "Projektkontext schließen",
+      collaborators: "Mitwirkende",
+      liveWith: (names) => `Live mit ${names}`,
+      liveAs: (name) => `Live als ${name}`,
+    },
+    documentControls: {
+      documentToolbar: "Dokument-Toolbar",
+      documentControlsLabel: "Dokumentsteuerung",
+      split: "Teilen",
+      edit: "Bearbeiten",
+      preview: "Vorschau",
+      copyFile: "Datei kopieren",
+      copyCurrentFile: "Aktuelle Datei kopieren",
+      nothingToCopy: "Inhalt zum Kopieren hinzufügen",
+      editorControls: "Editorsteuerung",
+      viewControls: "Ansichtssteuerung",
+      layoutControls: "Layoutsteuerung",
+      search: "Suchen",
+      lineNumbers: "Zeilennummern",
+      lineWrapping: "Zeilenumbruch",
+      textWidth: "Textbreite",
+      focusWidth: "Fokus",
+      standardWidth: "Standard",
+      fillWidth: "Füllen",
+      findInFile: "In Datei suchen",
+      previousMatch: "Vorheriger Treffer",
+      nextMatch: "Nächster Treffer",
+      closeSearch: "Suche schließen",
+    },
+    statusBar: {
+      savedLocally: "Lokal gespeichert",
+      roomOffline: "Room offline",
+      word: "Wort",
+      words: "Wörter",
+      comment: "Kommentar",
+      comments: "Kommentare",
+      line: "Zeile",
+      lines: "Zeilen",
+      character: "Zeichen",
+      characters: "Zeichen",
+    },
+  },
+};
+
+export const getWorkspaceChromeCopy = (language: WorkspaceLanguage) =>
+  workspaceChromeCopy[language];

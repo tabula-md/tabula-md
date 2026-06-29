@@ -1,6 +1,6 @@
 import { parseFrontmatter } from "./markdown";
 import { PRODUCT_NAME } from "./product";
-import type { FileComment, MarkdownFile } from "./workspaceStorage";
+import type { FileComment, WorkspaceFile } from "./workspaceStorage";
 
 type AgentCheck = {
   status: "pass" | "warn";
@@ -10,24 +10,24 @@ type AgentCheck = {
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const findFileByTitle = (files: MarkdownFile[], title: string) =>
+const findFileByTitle = (files: WorkspaceFile[], title: string) =>
   files.find((file) => file.title.trim().toLowerCase() === title.toLowerCase());
 
-const hasFrontmatterKey = (file: MarkdownFile | undefined, key: string) =>
+const hasFrontmatterKey = (file: WorkspaceFile | undefined, key: string) =>
   Boolean(file && parseFrontmatter(file.text).attributes.some((attribute) => attribute.key.toLowerCase() === key));
 
-const hasHeading = (file: MarkdownFile | undefined, heading: string) =>
+const hasHeading = (file: WorkspaceFile | undefined, heading: string) =>
   Boolean(file && new RegExp(`^#{1,4}\\s+${escapeRegExp(heading)}\\s*$`, "im").test(file.text));
 
-const hasNonEmptyCommand = (file: MarkdownFile | undefined, command: string) =>
+const hasNonEmptyCommand = (file: WorkspaceFile | undefined, command: string) =>
   Boolean(file && new RegExp(`^-\\s*${escapeRegExp(command)}:\\s*\\S`, "im").test(file.text));
 
-const getFileWordCount = (file: MarkdownFile) => (file.text.trim() ? file.text.trim().split(/\s+/).length : 0);
+const getFileWordCount = (file: WorkspaceFile) => (file.text.trim() ? file.text.trim().split(/\s+/).length : 0);
 
-const getFrontmatterValue = (file: MarkdownFile, key: string) =>
+const getFrontmatterValue = (file: WorkspaceFile, key: string) =>
   parseFrontmatter(file.text).attributes.find((attribute) => attribute.key.toLowerCase() === key.toLowerCase())?.value;
 
-const getFileDescription = (file: MarkdownFile) => getFrontmatterValue(file, "description") ?? "";
+const getFileDescription = (file: WorkspaceFile) => getFrontmatterValue(file, "description") ?? "";
 
 const getOpenComments = (commentsByFileId: Record<string, FileComment[]>, fileId: string) =>
   (commentsByFileId[fileId] ?? []).filter((comment) => !comment.resolved);
@@ -45,7 +45,7 @@ const formatCommentForExport = (comment: FileComment) => {
   return `- ${author}${comment.body}${quote}${replies}`;
 };
 
-const formatOpenComments = (files: MarkdownFile[], commentsByFileId: Record<string, FileComment[]>) => {
+const formatOpenComments = (files: WorkspaceFile[], commentsByFileId: Record<string, FileComment[]>) => {
   const commentBlocks = files
     .map((file) => {
       const openComments = getOpenComments(commentsByFileId, file.id);
@@ -85,7 +85,7 @@ ${checks
 `;
 };
 
-export const buildAgentsLintReport = (files: MarkdownFile[]) => {
+export const buildAgentsLintReport = (files: WorkspaceFile[]) => {
   const agentsFile = findFileByTitle(files, "AGENTS.md");
   const checks: AgentCheck[] = [
     {
@@ -143,7 +143,7 @@ export const buildAgentsLintReport = (files: MarkdownFile[]) => {
   return formatAgentChecks("AGENTS.md Lint", checks);
 };
 
-export const buildDocsConsistencyReport = (files: MarkdownFile[]) => {
+export const buildDocsConsistencyReport = (files: WorkspaceFile[]) => {
   const readmeFile = findFileByTitle(files, "README.md");
   const prdFile = findFileByTitle(files, "PRD.md");
   const designFile = findFileByTitle(files, "DESIGN.md");
@@ -212,7 +212,7 @@ export const createCodeFence = (content: string, language = "md") => {
   return `${fence}${language}\n${content}\n${fence}`;
 };
 
-export const buildLlmsTxt = (files: MarkdownFile[], activeFileId: string) => {
+export const buildLlmsTxt = (files: WorkspaceFile[], activeFileId: string) => {
   const activeFile = files.find((file) => file.id === activeFileId) ?? files[0];
   const fileIndex = files
     .map((file) => {
@@ -241,7 +241,7 @@ Use llms-full.txt for the complete Markdown bundle.
 };
 
 export const buildAgentContextExport = (
-  files: MarkdownFile[],
+  files: WorkspaceFile[],
   activeFileId: string,
   commentsByFileId: Record<string, FileComment[]>,
 ) => {
@@ -294,12 +294,12 @@ ${fileBodies}`;
 };
 
 export const buildLlmsFullTxt = (
-  files: MarkdownFile[],
+  files: WorkspaceFile[],
   activeFileId: string,
   commentsByFileId: Record<string, FileComment[]>,
 ) => buildAgentContextExport(files, activeFileId, commentsByFileId);
 
-export const buildMarkdownBundle = (files: MarkdownFile[]) =>
+export const buildMarkdownBundle = (files: WorkspaceFile[]) =>
   files
     .map(
       (file) => `<!-- BEGIN ${file.title} -->
@@ -311,7 +311,7 @@ ${file.text}
     .join("\n\n");
 
 export const buildPublishBundle = (
-  files: MarkdownFile[],
+  files: WorkspaceFile[],
   activeFileId: string,
   commentsByFileId: Record<string, FileComment[]>,
 ) => `# ${PRODUCT_NAME} Project Publish Bundle
@@ -329,7 +329,7 @@ ${createCodeFence(buildLlmsFullTxt(files, activeFileId, commentsByFileId), "txt"
 ${createCodeFence(buildMarkdownBundle(files))}
 `;
 
-export const buildGitHubPrExport = (files: MarkdownFile[], activeFileId: string) => {
+export const buildGitHubPrExport = (files: WorkspaceFile[], activeFileId: string) => {
   const activeFile = files.find((file) => file.id === activeFileId) ?? files[0];
   const fileList = files.map((file) => `- ${file.title}`).join("\n");
   const activeSummary = activeFile ? `Update ${activeFile.title}` : "Update Markdown project";

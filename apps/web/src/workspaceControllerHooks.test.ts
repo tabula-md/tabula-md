@@ -43,7 +43,7 @@ import {
   getWorkspaceFileStatus,
   getWorkspaceStatusLabel,
 } from "./workspaceViewModel";
-import { isUsableLiveRoomFile, type FileBookmark, type MarkdownFile } from "./workspaceStorage";
+import { isUsableLiveRoomFile, type FileBookmark, type WorkspaceFile } from "./workspaceStorage";
 
 const VALID_ROOM_KEY = "A".repeat(43);
 
@@ -117,7 +117,7 @@ describe("workspace help markdown", () => {
   it("creates HELP.md with the app shortcut table", () => {
     expect(getKeyboardShortcuts(shortcutLabels)).toContainEqual({
       keys: "Cmd + Option + N",
-      action: "New Markdown",
+      action: "New File",
     });
     expect(createHelpMarkdown(shortcutLabels)).toContain("| Cmd + Option + 2 | Split mode |");
   });
@@ -266,7 +266,7 @@ describe("workspace keyboard shortcuts controller", () => {
       "newFile",
     );
     expect(getWorkspaceShortcutAction(keyEvent({ altKey: true, code: "KeyO", metaKey: true, key: "o" }), targetState)).toBe(
-      "openMarkdown",
+      "openFile",
     );
     expect(getWorkspaceShortcutAction(keyEvent({ altKey: true, code: "KeyF", ctrlKey: true, key: "f" }), targetState)).toBe(
       "browseFiles",
@@ -294,7 +294,7 @@ describe("workspace keyboard shortcuts controller", () => {
 });
 
 describe("workspace view model", () => {
-  const file = (overrides: Partial<MarkdownFile> = {}): MarkdownFile => ({
+  const file = (overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
     id: "file",
     title: "README.md",
     text: "---\ntitle: Product Requirements\n---\n# Body",
@@ -391,7 +391,7 @@ describe("workspace active file editor controller", () => {
 });
 
 describe("workspace live room contract", () => {
-  const liveFile = (overrides: Partial<MarkdownFile>): MarkdownFile => ({
+  const liveFile = (overrides: Partial<WorkspaceFile>): WorkspaceFile => ({
     id: "live",
     title: "Live.md",
     text: "Live",
@@ -452,7 +452,7 @@ describe("workspace live room contract", () => {
 });
 
 describe("workspace file actions controller", () => {
-  const file = (id: string): MarkdownFile => ({
+  const file = (id: string): WorkspaceFile => ({
     id,
     title: `${id}.md`,
     text: id,

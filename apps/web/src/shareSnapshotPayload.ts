@@ -1,4 +1,4 @@
-import type { FileComment, FileCommentReply, MarkdownFile } from "./workspaceStorage";
+import type { FileComment, FileCommentReply, WorkspaceFile } from "./workspaceStorage";
 
 export const SHARE_SNAPSHOT_SCHEMA_VERSION = 1;
 
@@ -27,7 +27,7 @@ export const createShareSnapshotPayload = ({
   commentsByFileId,
   now = () => new Date(),
 }: {
-  files: MarkdownFile[];
+  files: WorkspaceFile[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
   now?: () => Date;
@@ -79,7 +79,7 @@ export const validateShareSnapshotPayload = (value: unknown): ShareSnapshotPaylo
   };
 };
 
-const toShareSnapshotFile = (file: MarkdownFile): ShareSnapshotFile => ({
+const toShareSnapshotFile = (file: WorkspaceFile): ShareSnapshotFile => ({
   id: file.id,
   title: file.title,
   text: file.text,

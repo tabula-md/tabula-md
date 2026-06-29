@@ -12,10 +12,6 @@
   background: var(--app-background);
 }
 
-.top-chrome:has(.share-modal-layer) {
-  z-index: 90;
-}
-
 .top-left-zone {
   position: relative;
   z-index: 3;
@@ -64,7 +60,6 @@
   position: relative;
 }
 
-.top-document-action,
 .share-button {
   position: relative;
   display: grid;
@@ -88,22 +83,10 @@
   padding: 0 10px;
 }
 
-.top-document-action:hover,
-.top-document-action.active,
 .share-button:hover,
 .share-button.active {
   color: var(--text-primary);
   background: var(--surface-hover);
-}
-
-.top-document-action:disabled {
-  cursor: default;
-  opacity: 0.36;
-}
-
-.top-document-action:disabled:hover {
-  color: var(--text-soft);
-  background: transparent;
 }
 
 .share-label-visible {
@@ -251,7 +234,7 @@
 .share-modal-layer {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 140;
   display: grid;
   place-items: center;
   padding: 24px;

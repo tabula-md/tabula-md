@@ -82,12 +82,12 @@ const getTabs = async (page) =>
   );
 
 const getViewModeActionLabels = async (page) =>
-  page.$$eval(".file-toolbar [data-view-mode-action]", (buttons) =>
+  page.$$eval(".document-controls [data-view-mode-action]", (buttons) =>
     buttons.map((button) => button.getAttribute("aria-label") ?? button.getAttribute("title") ?? ""),
   );
 
 const getViewModeSlots = async (page) =>
-  page.$$eval(".file-toolbar [data-view-mode-slot]", (items) =>
+  page.$$eval(".document-controls [data-view-mode-slot]", (items) =>
     items.map((item) => ({
       slot: item.getAttribute("data-view-mode-slot") ?? "",
       label: item.getAttribute("aria-label") ?? "",

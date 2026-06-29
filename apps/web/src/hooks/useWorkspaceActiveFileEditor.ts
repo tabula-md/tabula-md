@@ -5,7 +5,7 @@ import type {
 } from "../components/MarkdownEditor";
 import type {
   FileBookmark,
-  MarkdownFile,
+  WorkspaceFile,
 } from "../workspaceStorage";
 import type { TextChange, TextPatch } from "../textPatches";
 
@@ -27,7 +27,7 @@ const EMPTY_FILE_HISTORY: FileHistory = {
 const MAX_FILE_HISTORY_ENTRIES = 80;
 
 type UseWorkspaceActiveFileEditorArgs = {
-  activeFile?: MarkdownFile;
+  activeFile?: WorkspaceFile;
   applyLocalText: (text: string, patches?: readonly TextPatch[]) => void;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
@@ -37,7 +37,7 @@ type UseWorkspaceActiveFileEditorArgs = {
 export const getActiveFileHistory = (historyByFileId: Record<string, FileHistory>, activeFileId?: string) =>
   activeFileId ? (historyByFileId[activeFileId] ?? EMPTY_FILE_HISTORY) : EMPTY_FILE_HISTORY;
 
-export const isFileTextFallbackHistoryEnabled = (file?: Pick<MarkdownFile, "roomId">) => !file?.roomId;
+export const isFileTextFallbackHistoryEnabled = (file?: Pick<WorkspaceFile, "roomId">) => !file?.roomId;
 
 export const recordFileTextHistory = (history: FileHistory | undefined, previousText: string): FileHistory => ({
   past: [...(history?.past ?? []).slice(-(MAX_FILE_HISTORY_ENTRIES - 1)), previousText],
