@@ -2,7 +2,7 @@
   display: block;
   width: 100%;
   min-height: 100%;
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: transparent;
   font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-feature-settings: "liga" 0, "calt" 0;
@@ -215,7 +215,7 @@
 .markdown-editor .cm-content {
   min-height: inherit;
   padding: 0;
-  caret-color: #1f1f1f;
+  caret-color: var(--text-primary);
 }
 
 .markdown-editor .cm-line {

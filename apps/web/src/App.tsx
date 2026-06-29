@@ -753,26 +753,15 @@ function WorkspaceApp() {
           isOpen={workspaceMenuOpen}
           preferencesOpen={preferencesOpen}
           canExportCurrentFile={Boolean(activeFile)}
-          newFileViewMode={workspacePreferences.newFileViewMode}
-          defaultReadingWidth={workspacePreferences.readingWidth}
-          defaultLineWrapping={workspacePreferences.lineWrapping}
-          defaultLineNumbers={workspacePreferences.lineNumbers}
+          theme={workspacePreferences.theme}
+          language={workspacePreferences.language}
           onTogglePreferences={() => {
             setPreferencesOpen((isOpen) => !isOpen);
             setTopPopover(null);
           }}
-          onClosePreferences={() => setPreferencesOpen(false)}
-          onChangeNewFileViewMode={(newFileViewMode) =>
-            setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, newFileViewMode }))
-          }
-          onChangeDefaultReadingWidth={(readingWidth) =>
-            setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, readingWidth }))
-          }
-          onChangeDefaultLineWrapping={(lineWrapping) =>
-            setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, lineWrapping }))
-          }
-          onChangeDefaultLineNumbers={(lineNumbers) =>
-            setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, lineNumbers }))
+          onChangeTheme={(theme) => setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, theme }))}
+          onChangeLanguage={(language) =>
+            setWorkspacePreferences((currentPreferences) => ({ ...currentPreferences, language }))
           }
           onAddFile={addFile}
           onOpenMarkdownFile={() => {
