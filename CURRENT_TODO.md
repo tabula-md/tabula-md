@@ -51,18 +51,18 @@
 
 해야 할 일:
 
-- [ ] 우측 상단 presence를 협업 상태의 단일 신뢰 표면으로 만든다.
-- [ ] 같은 브라우저라도 탭 2개가 같은 room에 들어오면 2명의 익명 사용자처럼 보여야 한다.
-- [ ] 사용자가 room에서 나가면 avatar/presence에서 제거된다.
-- [ ] presence 클릭 시 collaborator list를 보여준다.
-- [ ] 같은 파일/다른 파일 상태를 조용하게 표시한다.
-- [ ] 하단 status bar의 live session copy는 최소화하거나 제거한다.
+- [x] 우측 상단 presence를 협업 상태의 단일 신뢰 표면으로 만든다.
+- [x] 같은 브라우저라도 탭 2개가 같은 room에 들어오면 2명의 익명 사용자처럼 보여야 한다.
+- [x] 사용자가 room에서 나가면 avatar/presence에서 제거된다.
+- [x] presence 클릭 시 collaborator list를 보여준다.
+- [x] 같은 파일/다른 파일 상태를 조용하게 표시한다.
+- [x] 하단 status bar의 live session copy는 최소화하거나 제거한다.
 
 완료 기준:
 
-- [ ] Excalidraw처럼 “누가 현재 세션에 있는지”가 즉시 보인다.
-- [ ] 사용자가 나가면 5초 이내에 presence에서 사라진다.
-- [ ] 하단 상태 텍스트가 협업 UX의 주 표면이 되지 않는다.
+- [x] Excalidraw처럼 “누가 현재 세션에 있는지”가 즉시 보인다.
+- [x] 사용자가 나가면 5초 이내에 presence에서 사라진다.
+- [x] 하단 상태 텍스트가 협업 UX의 주 표면이 되지 않는다.
 
 ### 1.3 Theme와 Preferences 완성도
 

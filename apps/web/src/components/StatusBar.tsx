@@ -1,4 +1,5 @@
 import { Check, MessageSquare, Redo2, Undo2 } from "lucide-react";
+import { getStatusBarSaveState } from "../statusBarViewModel";
 
 type StatusBarProps = {
   activeFileTitle: string;
@@ -32,8 +33,7 @@ export function StatusBar({
   onOpenComments,
 }: StatusBarProps) {
   const hasComments = commentCount > 0;
-  const saveLabel = isLive ? statusLabel : "Saved locally";
-  const showSaveState = !isLive || statusLabel === "Room offline";
+  const saveState = getStatusBarSaveState({ isLive, statusLabel });
   const cursorLabel =
     selectedCharacterCount > 0
       ? `${cursorPositionLabel} (${selectedLineCount > 1 ? `${selectedLineCount} lines, ` : ""}${selectedCharacterCount} ${
@@ -53,10 +53,10 @@ export function StatusBar({
       </div>
 
       <div className="status-bar-right">
-        {showSaveState && (
+        {saveState.visible && (
           <span className="status-save-state">
             <Check size={13} />
-            <span>{saveLabel}</span>
+            <span>{saveState.label}</span>
           </span>
         )}
         <span>{wordCount} words</span>
