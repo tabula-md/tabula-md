@@ -347,6 +347,12 @@ async function runLiveEditingCorrectnessSmoke({ expect, firstPage, secondPage, f
   await secondPage.keyboard.insertText("Second browser edit");
   const expectedLines = ["Room sync checkSecond line", longParagraph, "Second browser edit"];
   await waitForEditorLines(firstPage, expectedLines, 12_000);
+  const firstPageText = await getEditorDocumentText(firstPage);
+  const secondPageText = await getEditorDocumentText(secondPage);
+  expect(
+    firstPageText === secondPageText && firstPageText === expectedLines.join("\n"),
+    "Two live browsers should converge to byte-level identical Markdown after remote edits.",
+  );
 
   try {
     await firstPage.waitForSelector(".cm-remote-cursor", { timeout: 8_000 });

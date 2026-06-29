@@ -8,7 +8,7 @@ when the user chooses **Share > Collaborate > Start session**.
 Start session creates an editable invite link for the active Markdown file:
 
 ```txt
-https://tabula.md/r/<roomId>#key=<roomKey>
+https://tabula.md/#room=<roomId>,<roomKey>
 ```
 
 - `roomId` identifies the room.

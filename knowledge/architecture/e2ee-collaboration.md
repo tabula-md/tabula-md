@@ -13,7 +13,7 @@ end-to-end-encrypted room model.
 # Target Model
 
 - The browser generates both `roomId` and `roomKey`.
-- Share URLs keep the `/r/:roomId#key=:roomKey` shape.
+- Share URLs keep the root hash `/#room=<roomId>,<roomKey>` shape.
 - `roomId` is public routing metadata.
 - `roomKey` is client-only and must never be sent to the server.
 - Realtime messages are encrypted in the browser before transmission.
@@ -33,7 +33,7 @@ contract.
 # Consequences
 
 - The server cannot read Markdown content or comments.
-- `#key` has real meaning in the product security model.
+- The `#room` fragment key has real meaning in the product security model.
 - Server-side indexing, preview, search, moderation, and agent processing are
   limited.
 - Agent handoff must happen through explicit export from decrypted client

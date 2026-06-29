@@ -32,12 +32,13 @@ a heavy template gallery.
 # Live Collaboration
 
 Live collaboration starts from `Share > Collaborate > Start session` and
-creates `/r/:roomId#key=...` for the active Markdown file. The user should
+creates `/#room=<roomId>,<roomKey>` for the active Markdown file. The user should
 understand whether the file is local, connecting, live, reconnecting, offline,
 or unable to decrypt.
 
-Start session is not Publish. It creates an editable live room; Publish creates
-a durable read-only snapshot.
+Start session is not Shareable link or Publish. It creates an editable live
+room. Shareable link creates an encrypted copy/import snapshot. Publish creates
+a future durable read-only hosted page.
 
 # Publish
 
