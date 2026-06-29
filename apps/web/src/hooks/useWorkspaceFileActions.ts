@@ -6,6 +6,7 @@ import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import type { RenameFileResult } from "../workspaceModel";
 import {
   README_FILE_ID,
+  STARTER_README_MARKDOWN,
   syncUrlForFile,
   type FileComment,
   type MarkdownFile,
@@ -30,6 +31,12 @@ type CloseFileResult = {
 type UseWorkspaceFileActionsArgs = {
   activeFile?: MarkdownFile;
   activeFileId: string;
+  addFileFromContent: (
+    title: string,
+    text: string,
+    viewMode?: MarkdownFile["viewMode"],
+    overrides?: Partial<MarkdownFile>,
+  ) => MarkdownFile;
   addMarkdownFile: (overrides?: Partial<MarkdownFile>) => MarkdownFile;
   closeFloatingChrome: () => void;
   closeMarkdownFile: (fileId: string) => CloseFileResult | undefined;
@@ -95,6 +102,7 @@ export function restoreOpenFileId(
 export function useWorkspaceFileActions({
   activeFile,
   activeFileId,
+  addFileFromContent,
   addMarkdownFile,
   closeFloatingChrome,
   closeMarkdownFile,
@@ -145,13 +153,18 @@ export function useWorkspaceFileActions({
     const readmeFile =
       files.find((file) => file.id === README_FILE_ID) ??
       files.find((file) => getNormalizedTitle(file) === "readme");
-    if (!readmeFile) {
-      return;
-    }
+    const nextFile =
+      readmeFile ??
+      addFileFromContent("README.md", STARTER_README_MARKDOWN, "preview", {
+        id: README_FILE_ID,
+        lineNumbers: true,
+        lineWrapping: true,
+        readingWidth: "wide",
+      });
 
-    selectMarkdownFile(readmeFile.id);
+    selectMarkdownFile(nextFile.id);
     closeFloatingChrome();
-    syncUrlForFile(readmeFile);
+    syncUrlForFile(nextFile);
   };
 
   const renameMarkdownFile = (fileId: string, nextRawTitle: string) => {

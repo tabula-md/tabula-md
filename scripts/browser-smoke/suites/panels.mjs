@@ -27,6 +27,13 @@ export async function run(ctx) {
       leftTabCount: document.querySelectorAll(".left-panel-tabs button").length,
       templateRowCount: document.querySelectorAll(".left-library-item").length,
       menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      publicLinks: Array.from(document.querySelectorAll(".workspace-menu-popover a")).map((link) => ({
+        text: link.textContent?.replace(/\s+/g, " ").trim() ?? "",
+        href: link.getAttribute("href") ?? "",
+        ariaLabel: link.getAttribute("aria-label") ?? "",
+        svgPath: link.querySelector("svg path")?.getAttribute("d") ?? "",
+        svgFill: link.querySelector("svg")?.getAttribute("fill") ?? "",
+      })),
       fileSearchCount: document.querySelectorAll(".left-panel-search").length,
       fileRowCount: document.querySelectorAll(".left-file-item").length,
       actionRows: Array.from(document.querySelectorAll(".workspace-menu-row")).map((item) => {
@@ -96,6 +103,13 @@ export async function run(ctx) {
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
         "New Markdown|Open Markdown...|Import project...|Save Markdown...|Export project...|Live collaboration...|Preferences|About|Help|Follow us|GitHub",
       "The workspace menu should only expose implemented file, collaboration, preferences, support, and public links.",
+    );
+    const xPublicLink = workbenchPanels.publicLinks.find((link) => link.text === "Follow us");
+    expect(xPublicLink?.href === "https://x.com/tabula_md", "Follow us should point to the Tabula X profile.");
+    expect(xPublicLink?.ariaLabel === "Open Tabula.md on X", "Follow us should expose an explicit X destination label.");
+    expect(
+      xPublicLink?.svgFill === "currentColor" && xPublicLink?.svgPath.startsWith("M18.901"),
+      "Follow us should use the X logo icon, not a letter or generic close icon.",
     );
     expect(
       workbenchPanels.actionRows.every((row) => row.iconCount >= 1 && row.iconCount <= 2),
@@ -167,9 +181,17 @@ export async function run(ctx) {
       ),
       segmentRows: Array.from(document.querySelectorAll(".workspace-preferences-segmented")).map((segment) =>
         Array.from(segment.querySelectorAll("button"))
-          .map((button) => button.textContent?.replace(/\s+/g, " ").trim())
+          .map(
+            (button) =>
+              button.getAttribute("aria-label") ??
+              button.textContent?.replace(/\s+/g, " ").trim(),
+          )
           .join("|"),
       ),
+      languageOptions: Array.from(document.querySelectorAll(".workspace-preferences-select option")).map((option) =>
+        option.textContent?.replace(/\s+/g, " ").trim(),
+      ),
+      languageSelectCount: document.querySelectorAll(".workspace-preferences-select select").length,
       switchRows: Array.from(document.querySelectorAll(".workspace-preferences-switch > span")).map((item) =>
         item.textContent?.replace(/\s+/g, " ").trim(),
       ),
@@ -198,8 +220,13 @@ export async function run(ctx) {
       "Preferences should only expose lightweight app-wide preferences.",
     );
     expect(
-      preferencesPanel.segmentRows.join("/") === "Light|Dark/English|Korean",
-      "Preferences should use compact segmented controls for theme and language.",
+      preferencesPanel.segmentRows.join("/") === "System|Light|Dark",
+      "Preferences should keep theme as a compact segmented control.",
+    );
+    expect(preferencesPanel.languageSelectCount === 1, "Preferences should expose language as one dropdown.");
+    expect(
+      preferencesPanel.languageOptions.join("|") === "English|한국어|日本語|中文|Español|Français|Deutsch",
+      "Language dropdown should expose the supported app chrome languages.",
     );
     expect(preferencesPanel.switchRows.length === 0, "Preferences should not duplicate editor controls.");
     expect(!preferencesPanel.storageSurfaceLeak, "Preferences should not explain local storage as a configurable surface.");
@@ -216,13 +243,32 @@ export async function run(ctx) {
 
     const preferencesPopover = page.locator(".workspace-preferences-popover");
     await preferencesPopover.getByRole("button", { name: "Dark", exact: true }).click();
-    await preferencesPopover.getByRole("button", { name: "Korean", exact: true }).click();
+    await preferencesPopover.locator(".workspace-preferences-select select").selectOption("ko");
     const rootPreferences = await page.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
+      themePreference: document.documentElement.dataset.themePreference,
       language: document.documentElement.lang,
+      menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(rootPreferences.theme === "dark", "Choosing Dark should update the app theme contract.");
+    expect(rootPreferences.themePreference === "dark", "Choosing Dark should persist the selected theme preference.");
     expect(rootPreferences.language === "ko", "Choosing Korean should update the document language contract.");
+    expect(rootPreferences.menuText.includes("새 Markdown"), "Choosing Korean should update workspace menu copy.");
+    await preferencesPopover.locator(".workspace-preferences-select select").selectOption("en");
+    await preferencesPopover.getByRole("button", { name: "System", exact: true }).click();
+    const restoredPreferences = await page.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      themePreference: document.documentElement.dataset.themePreference,
+      language: document.documentElement.lang,
+      menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    }));
+    expect(
+      restoredPreferences.theme === "light" || restoredPreferences.theme === "dark",
+      "Choosing System should resolve to a concrete light or dark theme.",
+    );
+    expect(restoredPreferences.themePreference === "system", "Choosing System should preserve the selected preference.");
+    expect(restoredPreferences.language === "en", "Choosing English should restore the document language contract.");
+    expect(restoredPreferences.menuText.includes("New Markdown"), "Choosing English should restore workspace menu copy.");
 
     await page.keyboard.press("Escape");
     await waitForRenderFrame(page);
@@ -237,14 +283,21 @@ export async function run(ctx) {
     expect(!preferencesEscapeState.preferencesOpen, "Escape from Preferences should close only the nested side surface.");
     expect(preferencesEscapeState.newActionsVisible, "Escape from Preferences should leave file creation available.");
 
-    await supportActions.getByRole("button", { name: "About", exact: true }).click();
+    await supportActions.getByRole("button", { name: "New Markdown", exact: true }).click();
+    await waitForActiveTab(page, { startsWith: "Untitled" });
+    await waitForEditorReady(page, { mode: "edit" });
+    await openProjectMenu(page);
+    await page.getByRole("button", { name: "About", exact: true }).click();
     await waitForRenderFrame(page);
     const aboutState = await page.evaluate(() => ({
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       activeTab: document.querySelector(".tab-item.active")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(!aboutState.menuOpen, "About should close the workspace menu after opening README.md.");
-    expect(aboutState.activeTab.includes("README"), "About should open the product README.");
+    expect(
+      aboutState.activeTab.includes("README") && !aboutState.activeTab.includes("Untitled"),
+      "About should open the product README from a different active file.",
+    );
 
     await openProjectMenu(page);
 

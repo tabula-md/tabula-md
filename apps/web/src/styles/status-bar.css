@@ -12,7 +12,7 @@
   margin-right: var(--document-lane-margin-right);
   padding: 5px 12px;
   color: var(--text-soft);
-  background: #ffffff;
+  background: var(--app-background);
   font-size: 13px;
   font-weight: 400;
 }
@@ -35,14 +35,14 @@
   width: 32px;
   height: 32px;
   padding: 0;
-  color: #777777;
+  color: var(--text-soft);
   background: transparent;
   border-radius: 8px;
 }
 
 .status-icon-button:hover,
 .status-icon-button.active {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-hover);
 }
 
@@ -52,7 +52,7 @@
 }
 
 .status-icon-button:disabled:hover {
-  color: #777777;
+  color: var(--text-soft);
   background: transparent;
 }
 
@@ -63,13 +63,13 @@
   gap: 6px;
   min-height: 32px;
   padding: 0 10px;
-  color: #777777;
+  color: var(--text-soft);
   border-radius: 8px;
   white-space: nowrap;
 }
 
 .status-cursor-position {
-  color: #777777;
+  color: var(--text-soft);
   background: var(--surface-muted);
 }
 
@@ -80,7 +80,7 @@
   gap: 7px;
   height: 32px;
   padding: 0 10px;
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-muted);
   border-radius: 8px;
   font-size: 13px;
@@ -89,12 +89,12 @@
 }
 
 .status-comments-button {
-  color: #777777;
+  color: var(--text-soft);
   background: transparent;
 }
 
 .status-comments-button:hover {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-hover);
 }
 

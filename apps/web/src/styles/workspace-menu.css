@@ -3,7 +3,7 @@
   --workspace-menu-radius: 8px;
   --workspace-menu-row-x: 10px;
   --workspace-menu-icon-size: 16px;
-  --workspace-menu-text: var(--text-primary, #444444);
+  --workspace-menu-text: var(--text-primary);
 
   position: absolute;
   top: 48px;
@@ -12,10 +12,10 @@
   width: 286px;
   max-width: calc(100vw - 24px);
   padding: 8px;
-  border: 1px solid rgba(31, 31, 31, 0.08);
+  border: 1px solid var(--line-subtle);
   border-radius: 9px;
-  background: var(--surface-panel, #ffffff);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.12);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-popover);
 }
 
 .workspace-menu-list {
@@ -42,7 +42,7 @@
 
 .workspace-menu-row:hover,
 .workspace-menu-row.active {
-  color: var(--text-primary, #1f1f1f);
+  color: var(--text-primary);
   background: var(--surface-muted);
 }
 
@@ -63,7 +63,7 @@
 }
 
 .workspace-menu-plus svg:first-child {
-  color: #763fc8;
+  color: var(--accent);
 }
 
 .workspace-menu-row span {
@@ -76,7 +76,7 @@
 .workspace-menu-divider {
   height: 1px;
   margin: 6px 4px;
-  background: rgba(31, 31, 31, 0.07);
+  background: var(--line-subtle);
 }
 
 .workspace-plus-popover,
@@ -84,10 +84,10 @@
   position: absolute;
   left: calc(100% + 8px);
   z-index: 51;
-  border: 1px solid rgba(31, 31, 31, 0.08);
+  border: 1px solid var(--line-subtle);
   border-radius: 9px;
-  background: var(--surface-panel, #ffffff);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.12);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-popover);
 }
 
 .workspace-plus-popover {
@@ -108,7 +108,7 @@
 }
 
 .workspace-plus-popover-header span {
-  color: #1f1f1f;
+  color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
   line-height: 1.25;
@@ -127,13 +127,13 @@
 }
 
 .workspace-plus-popover-header button:hover {
-  color: var(--text-primary, #1f1f1f);
+  color: var(--text-primary);
   background: var(--surface-muted);
 }
 
 .workspace-plus-popover p {
   margin: 0;
-  color: #666666;
+  color: var(--text-soft);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -148,7 +148,7 @@
   min-width: 0;
   padding: 6px 8px;
   border-radius: 7px;
-  color: #3f3f3f;
+  color: var(--text-primary);
   background: var(--surface-muted);
   font-size: 12px;
   line-height: 1.35;
@@ -159,8 +159,8 @@
   max-width: 100%;
   padding: 5px 8px;
   border-radius: 7px;
-  color: #763fc8;
-  background: rgba(118, 63, 200, 0.08);
+  color: var(--accent);
+  background: var(--accent-soft);
   font-size: 12px;
   font-weight: 500;
   line-height: 1.25;
@@ -184,7 +184,7 @@
 }
 
 .workspace-preferences-setting > span {
-  color: var(--text-primary, #4f4f4f);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 400;
 }
@@ -196,12 +196,15 @@
   gap: 3px;
   min-height: 30px;
   padding: 3px;
-  border: 1px solid rgba(31, 31, 31, 0.07);
+  border: 1px solid var(--line-subtle);
   border-radius: 8px;
   background: var(--surface-muted);
 }
 
 .workspace-preferences-segmented button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
   padding: 0 8px;
   border-radius: 7px;
@@ -212,7 +215,58 @@
 }
 
 .workspace-preferences-segmented button.active {
-  color: var(--text-primary, #1f1f1f);
-  background: var(--surface-active, #ffffff);
+  color: var(--text-primary);
+  background: var(--surface-active);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.workspace-preferences-segmented button.icon-only {
+  padding: 0;
+}
+
+.workspace-preferences-segmented button.icon-only svg {
+  width: 15px;
+  height: 15px;
+}
+
+.workspace-preferences-select {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  height: 36px;
+  color: var(--text-primary);
+}
+
+.workspace-preferences-select select {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  color: var(--text-primary);
+  background: var(--surface-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  appearance: none;
+}
+
+.workspace-preferences-select select:hover {
+  background: var(--surface-hover);
+}
+
+.workspace-preferences-select select:focus {
+  outline: none;
+  border-color: var(--line-strong);
+  background: var(--surface-active);
+}
+
+.workspace-preferences-select svg {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  color: var(--text-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
 }

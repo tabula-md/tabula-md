@@ -243,6 +243,11 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = "dark";
+      document.documentElement.dataset.themePreference = "dark";
+      document.documentElement.style.colorScheme = "dark";
+    });
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
     expect((await page.locator(".share-modal").count()) === 1, "Share should open a centered modal.");
@@ -313,32 +318,53 @@ export async function run(ctx) {
       const title = document.querySelector(".share-modal-header h2");
       const primaryButton = document.querySelector(".share-modal-primary");
       const tabs = document.querySelector(".share-modal-tabs");
+      const activeTab = document.querySelector(".share-modal-tabs button.active");
+      const modalStyle = modal ? window.getComputedStyle(modal) : null;
       const titleStyle = title ? window.getComputedStyle(title) : null;
       const primaryStyle = primaryButton ? window.getComputedStyle(primaryButton) : null;
       const tabsStyle = tabs ? window.getComputedStyle(tabs) : null;
+      const activeTabStyle = activeTab ? window.getComputedStyle(activeTab) : null;
 
       return {
         text: modal?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+        modalBackground: modalStyle?.backgroundColor ?? "",
         titleText: title?.textContent?.trim() ?? "",
         titleFontSize: titleStyle?.fontSize ?? "",
         titleFontWeight: titleStyle?.fontWeight ?? "",
+        titleColor: titleStyle?.color ?? "",
         primaryBackground: primaryStyle?.backgroundColor ?? "",
         primaryColor: primaryStyle?.color ?? "",
         primaryMinHeight: primaryStyle?.minHeight ?? "",
         tabCount: tabs?.querySelectorAll("button").length ?? 0,
         tabsBackground: tabsStyle?.backgroundColor ?? "",
+        activeTabBackground: activeTabStyle?.backgroundColor ?? "",
         dividerCount: modal?.querySelectorAll(".share-modal-divider").length ?? 0,
         shareDividerCount: modal?.querySelectorAll(".share-section-divider").length ?? 0,
       };
     });
     expect(shareModalStyle.titleText === "Share README", "Share modal title should include the file name.");
+    expect(
+      shareModalStyle.modalBackground !== "rgb(255, 255, 255)",
+      "Share modal should follow the active dark app theme.",
+    );
+    expect(
+      shareModalStyle.activeTabBackground !== "rgb(255, 255, 255)",
+      "Share modal active tab should not stay white in dark theme.",
+    );
+    expect(
+      shareModalStyle.titleColor !== "rgb(31, 31, 31)",
+      "Share modal title should inherit dark-theme text color.",
+    );
     expect(Number.parseFloat(shareModalStyle.titleFontSize) <= 24, "Share modal title should not use hero-scale type.");
     expect(Number.parseInt(shareModalStyle.titleFontWeight, 10) <= 500, "Share modal title should use quiet weight.");
     expect(
       shareModalStyle.primaryBackground !== "rgb(31, 31, 31)",
       "Share modal primary action should not use the old black button treatment.",
     );
-    expect(shareModalStyle.primaryColor === "rgb(31, 31, 31)", "Share modal primary action should stay readable.");
+    expect(
+      shareModalStyle.primaryColor !== "rgb(119, 119, 119)",
+      "Share modal primary action should stay readable.",
+    );
     expect(Number.parseFloat(shareModalStyle.primaryMinHeight) <= 38, "Share modal actions should keep compact row height.");
     expect(shareModalStyle.tabCount === 3, "Share modal should expose Share link, Export, and Send to until Publish ships.");
     expect(shareModalStyle.dividerCount === 0, "Share modal should not use legacy stacked Or dividers.");

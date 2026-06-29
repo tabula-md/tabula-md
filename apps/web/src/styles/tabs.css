@@ -77,7 +77,7 @@
 }
 
 .tab-item:not(.active) {
-  color: #9a9a9a;
+  color: var(--text-muted);
 }
 
 .tab-item.dragging {
@@ -134,8 +134,8 @@
   height: 14px;
   padding: 0 4px;
   border-radius: 7px;
-  color: #777777;
-  background: #ffffff;
+  color: var(--text-soft);
+  background: var(--surface-panel);
   font-size: 10px;
   line-height: 14px;
 }
@@ -171,7 +171,7 @@
   width: 22px;
   height: 22px;
   padding: 0;
-  color: #9a9a9a;
+  color: var(--text-muted);
   background: transparent;
   border-radius: 5px;
   line-height: 0;
@@ -184,8 +184,8 @@
 }
 
 .tab-action-button:hover {
-  color: #1f1f1f;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--surface-active);
 }
 
 .tab-action-button:disabled {
@@ -194,7 +194,7 @@
 }
 
 .tab-action-button.close:hover {
-  color: #1f1f1f;
+  color: var(--text-primary);
 }
 
 .tab-rename-input {
@@ -210,7 +210,7 @@
   outline-offset: 0;
   color: inherit;
   background: transparent;
-  caret-color: #1f1f1f;
+  caret-color: var(--text-primary);
   font: inherit;
   line-height: inherit;
   user-select: text;
@@ -223,19 +223,19 @@
 }
 
 .tab-rename-input::selection {
-  color: #1f1f1f;
-  background: #e8e8e8;
+  color: var(--text-primary);
+  background: var(--surface-hover);
 }
 
 .tab-item:hover,
 .add-tab-button:hover,
 .tab-scroll-button:not(:disabled):hover {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-hover);
 }
 
 .tab-item.active {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-muted);
 }
 
@@ -251,7 +251,7 @@
   align-items: center;
   gap: 4px;
   flex: 0 0 auto;
-  background: #ffffff;
+  background: var(--app-background);
 }
 
 .tab-scroll-button {
@@ -262,7 +262,7 @@
 }
 
 .tab-scroll-button.has-current-tab {
-  color: #1f1f1f;
+  color: var(--text-primary);
   background: var(--surface-muted);
 }
 
@@ -273,7 +273,7 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #1f1f1f;
+  background: var(--text-primary);
   content: "";
   opacity: 0.55;
 }

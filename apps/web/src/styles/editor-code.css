@@ -31,20 +31,20 @@
 
 .markdown-editor .cm-comment-mark {
   position: relative;
-  border-bottom: 1px solid #bdbdbd;
-  background: #f7f7f8;
+  border-bottom: 1px solid var(--editor-comment-mark-border);
+  background: var(--editor-comment-mark-background);
   border-radius: 3px;
   cursor: pointer;
 }
 
 .markdown-editor .cm-comment-mark:hover {
-  background: #eeeeef;
-  border-bottom-color: #777777;
+  background: var(--editor-comment-mark-hover-background);
+  border-bottom-color: var(--editor-comment-mark-hover-border);
 }
 
 .markdown-editor .cm-comment-mark.active {
-  background: #eeeeef;
-  border-bottom-color: #4f4f4f;
+  background: var(--editor-comment-mark-hover-background);
+  border-bottom-color: var(--editor-comment-mark-active-border);
 }
 
 .markdown-editor .cm-remote-presence-line {
@@ -76,7 +76,7 @@
   padding: 2px 6px;
   overflow: hidden;
   border-radius: 5px;
-  color: #ffffff;
+  color: var(--text-inverse);
   background: var(--remote-presence-color, #763fc8);
   font-family:
     "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -97,7 +97,7 @@
 
 .markdown-editor .cm-gutters {
   border: 0;
-  color: #c6c6c8;
+  color: var(--editor-gutter-text);
   background: transparent;
 }
 
@@ -146,7 +146,7 @@
   justify-content: center;
   width: 20px;
   height: 18px;
-  color: #8a8a8d;
+  color: var(--text-muted);
 }
 
 .markdown-editor .cm-line-comment-marker {
@@ -155,7 +155,7 @@
   justify-content: center;
   width: 22px;
   height: 18px;
-  color: #8a8a8d;
+  color: var(--text-muted);
 }
 
 .markdown-editor .cm-annotation-action {
@@ -167,12 +167,12 @@
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  color: #b7b7ba;
+  color: var(--editor-placeholder-text);
   cursor: pointer;
 }
 
 .markdown-editor .cm-annotation-action:hover {
-  background: rgba(0, 0, 0, 0.055);
+  background: var(--surface-hover);
 }
 
 .markdown-editor .cm-annotation-icon {
@@ -199,7 +199,7 @@
 .markdown-editor .cm-lineNumbers .cm-gutterElement {
   min-width: var(--editor-line-number-rail);
   padding: 0 10px 0 0;
-  color: #c6c6c8;
+  color: var(--editor-gutter-text);
   font-size: 14px;
   font-weight: 400;
   line-height: inherit;
@@ -208,7 +208,7 @@
 
 .markdown-editor .cm-lineNumbers .cm-activeLineGutter,
 .markdown-editor .cm-activeLineGutter {
-  color: #6f6f72;
+  color: var(--text-soft);
   background: var(--editor-active-line-background);
 }
 
@@ -223,7 +223,7 @@
 }
 
 .markdown-editor .cm-placeholder {
-  color: #b7b7ba;
+  color: var(--editor-placeholder-text);
 }
 
 .markdown-editor .cm-activeLine {

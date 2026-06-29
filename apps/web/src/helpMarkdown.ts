@@ -50,9 +50,8 @@ description: Quick reference for using Tabula.md.
 
 ## Preferences
 
-- Set the default mode for newly created Markdown files.
-- Choose the default reading width for new files.
-- Turn line wrapping and line numbers on or off for new editor surfaces.
+- Choose System, Light, or Dark theme.
+- Switch the app chrome language from the Preferences menu.
 
 ## Shortcuts
 

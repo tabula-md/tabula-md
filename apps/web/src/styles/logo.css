@@ -3,7 +3,7 @@
   flex: 0 0 auto;
   width: var(--tabula-logo-size, 104px);
   aspect-ratio: 577 / 537;
-  color: #1f1f1f;
+  color: var(--text-primary);
   background-color: currentColor;
   mask-position: center;
   mask-repeat: no-repeat;

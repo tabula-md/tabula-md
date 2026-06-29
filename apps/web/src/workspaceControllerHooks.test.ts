@@ -80,7 +80,7 @@ describe("workspace preferences controller", () => {
     expect(
       parseWorkspacePreferences({
         theme: "system",
-        language: "fr",
+        language: "it",
         newFileViewMode: "reader",
         readingWidth: "wide",
         lineWrapping: false,
