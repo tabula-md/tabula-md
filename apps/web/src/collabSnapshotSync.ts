@@ -7,7 +7,7 @@ import type { RoomMeta } from "./collab";
 import type { TextChange } from "./textPatches";
 
 type TimeoutHandle = unknown;
-type SnapshotFetchResult = "missing" | "restored" | false;
+export type CollabSnapshotFetchResult = "missing" | "restored" | false;
 
 type SnapshotRecoveryType = "snapshot-recovered" | "invalid-message";
 
@@ -29,7 +29,7 @@ type CollabSnapshotSyncOptions = {
 
 export type CollabSnapshotSync = {
   refreshMeta(): Promise<void>;
-  fetch(): Promise<SnapshotFetchResult>;
+  fetch(): Promise<CollabSnapshotFetchResult>;
   store(): Promise<boolean>;
   scheduleStore(): void;
   clearTimer(): void;
