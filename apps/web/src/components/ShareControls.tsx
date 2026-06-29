@@ -12,17 +12,13 @@ import {
   Play,
   RefreshCw,
   Share2,
-  Sparkles,
   Square,
-  Trash2,
   Users,
   X,
 } from "lucide-react";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import { PRODUCT_PLUS_NAME } from "../product";
-import type { PublishController } from "../hooks/usePublishController";
-import { getRoomShareLinkView } from "../shareLinkViewModel";
+import { buildShareViewModel, normalizeSharePanel, type VisibleSharePanel } from "../shareViewModel";
 import type { SharePanel } from "../uiTypes";
 import { getWorkspaceMenuCopy } from "../workspaceLocale";
 import type { MarkdownFile } from "../workspaceStorage";
@@ -39,15 +35,14 @@ type ShareControlsProps = {
   sharePanelTarget?: SharePanel;
   copied: boolean;
   jsonShare: JsonShareController;
-  publish: PublishController;
   startSessionUnavailableReason: string;
   onToggleShare: () => void;
   onCloseShare: () => void;
-  onOpenTabulaPlus: () => void;
   onStartSession: () => void;
   onCopyShareUrl: () => void;
   onCopyMarkdown: () => void;
   onDownloadMarkdown: () => void;
+  onDownloadProjectArchive: () => void;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
   onStopSession: () => void;
@@ -55,16 +50,7 @@ type ShareControlsProps = {
 
 export type { SharePanel } from "../uiTypes";
 
-type VisibleSharePanel = "share-link" | "export" | "send-to";
 type AgentHandoffScope = "file" | "project";
-
-const normalizeSharePanel = (panel?: SharePanel): VisibleSharePanel => {
-  if (panel === "export" || panel === "send-to" || panel === "share-link") {
-    return panel;
-  }
-
-  return "share-link";
-};
 
 const buildLocalAgentPrompt = ({
   activeFile,
@@ -106,41 +92,52 @@ export function ShareControls({
   sharePanelTarget,
   copied,
   jsonShare,
-  publish,
   startSessionUnavailableReason,
   onToggleShare,
   onCloseShare,
-  onOpenTabulaPlus,
   onStartSession,
   onCopyShareUrl,
   onCopyMarkdown,
   onDownloadMarkdown,
+  onDownloadProjectArchive,
   onChangeUserName,
   onCommitUserName,
   onStopSession,
 }: ShareControlsProps) {
-  const [sharePanel, setSharePanel] = useState<SharePanel>("share-link");
-  const [changingPublishScope, setChangingPublishScope] = useState(false);
+  const [sharePanel, setSharePanel] = useState<VisibleSharePanel>("share-link");
   const [agentScope, setAgentScope] = useState<AgentHandoffScope>("file");
   const [agentInstruction, setAgentInstruction] = useState("");
   const [agentPromptCopied, setAgentPromptCopied] = useState(false);
   const [exportLinkCopied, setExportLinkCopied] = useState(false);
-  const shareUrlView = getRoomShareLinkView(activeFile?.shareUrl, activeFile?.roomId);
   const activeFileDisplayTitle = activeFileTitle.replace(/\.(?:md|markdown)$/i, "");
   const copy = getWorkspaceMenuCopy(language).share;
   const shareModalTitle = copy.modalTitle(activeFileDisplayTitle);
-  const publishView = publish.view;
+  const shareView = buildShareViewModel({
+    activePanel: sharePanel,
+    canStartSession,
+    isLive,
+    labels: {
+      shareLink: copy.tabs.shareLink,
+      export: copy.tabs.export,
+      sendTo: copy.tabs.sendTo,
+      exportToLink: copy.shareable.exportToLink,
+      exporting: copy.shareable.exporting,
+      updateLink: copy.shareable.updateLink,
+    },
+    jsonShareCanExport: jsonShare.canExport,
+    jsonShareDisabledReason: jsonShare.disabledReason,
+    jsonShareExporting: jsonShare.exporting,
+    jsonShareUrl: jsonShare.url,
+    roomId: activeFile?.roomId,
+    shareUrl: activeFile?.shareUrl,
+    startSessionUnavailableReason,
+  });
 
   useEffect(() => {
     if (shareOpen) {
       setSharePanel(normalizeSharePanel(sharePanelTarget));
-      setChangingPublishScope(false);
     }
   }, [activeFile?.id, shareOpen, sharePanelTarget]);
-
-  useEffect(() => {
-    setChangingPublishScope(false);
-  }, [publish.versionKey]);
 
   useEffect(() => {
     if (!shareOpen) {
@@ -172,20 +169,6 @@ export function ShareControls({
     }
   };
 
-  const showPublishScopePicker = () => {
-    publish.resetScopeToPublished();
-    setChangingPublishScope(true);
-  };
-
-  const hidePublishScopePicker = () => {
-    publish.resetScopeToPublished();
-    setChangingPublishScope(false);
-  };
-
-  const handlePublishSnapshot = () => {
-    void publish.publish().finally(() => setChangingPublishScope(false));
-  };
-
   const handleExportToJsonLink = () => {
     void jsonShare.exportLink().finally(() => setExportLinkCopied(false));
   };
@@ -207,70 +190,6 @@ export function ShareControls({
     await navigator.clipboard.writeText(prompt);
     setAgentPromptCopied(true);
     window.setTimeout(() => setAgentPromptCopied(false), 1200);
-  };
-
-  const renderPublishManagementAction = (action: (typeof publishView.managementActions)[number]) => {
-    const actionTitle = action.disabledReason || undefined;
-
-    switch (action.id) {
-      case "update":
-        return (
-          <button
-            key={action.id}
-            className="share-modal-primary"
-            type="button"
-            onClick={handlePublishSnapshot}
-            disabled={action.disabled}
-            title={actionTitle}
-          >
-            <RefreshCw size={16} />
-            <span>{action.label}</span>
-          </button>
-        );
-      case "view":
-        return (
-          <a
-            key={action.id}
-            className="share-modal-secondary publish-page-link"
-            href={publish.pageUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <ExternalLink size={16} />
-            <span>{action.label}</span>
-          </a>
-        );
-      case "copy":
-        return (
-          <button key={action.id} className="share-modal-secondary" type="button" onClick={publish.copyPageUrl}>
-            <Copy size={16} />
-            <span>{action.label}</span>
-          </button>
-        );
-      case "changeScope":
-        return (
-          <button key={action.id} className="share-modal-secondary" type="button" onClick={showPublishScopePicker}>
-            <Link size={16} />
-            <span>{action.label}</span>
-          </button>
-        );
-      case "unpublish":
-        return (
-          <button
-            key={action.id}
-            className="share-modal-secondary"
-            type="button"
-            onClick={publish.unpublish}
-            disabled={action.disabled}
-            title={actionTitle}
-          >
-            <Trash2 size={16} />
-            <span>{action.label}</span>
-          </button>
-        );
-      default:
-        return null;
-    }
   };
 
   return (
@@ -308,37 +227,22 @@ export function ShareControls({
             </header>
 
             <nav className="share-modal-tabs" role="tablist" aria-label={copy.purposeAria}>
-              <button
-                className={sharePanel === "share-link" ? "active" : ""}
-                type="button"
-                role="tab"
-                aria-selected={sharePanel === "share-link"}
-                onClick={() => setSharePanel("share-link")}
-              >
-                {copy.tabs.shareLink}
-              </button>
-              <button
-                className={sharePanel === "export" ? "active" : ""}
-                type="button"
-                role="tab"
-                aria-selected={sharePanel === "export"}
-                onClick={() => setSharePanel("export")}
-              >
-                {copy.tabs.export}
-              </button>
-              <button
-                className={sharePanel === "send-to" ? "active" : ""}
-                type="button"
-                role="tab"
-                aria-selected={sharePanel === "send-to"}
-                onClick={() => setSharePanel("send-to")}
-              >
-                {copy.tabs.sendTo}
-              </button>
+              {shareView.tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={shareView.activePanel === tab.id ? "active" : ""}
+                  type="button"
+                  role="tab"
+                  aria-selected={shareView.activePanel === tab.id}
+                  onClick={() => setSharePanel(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </nav>
 
             <section className="share-modal-panel" role="tabpanel">
-              {sharePanel === "share-link" && (
+              {shareView.activePanel === "share-link" && (
                 <>
                   <div className="share-link-section">
                     <div className="share-panel-heading">
@@ -356,14 +260,14 @@ export function ShareControls({
                         <button
                           className="share-modal-primary"
                           type="button"
-                          disabled={!canStartSession}
-                          title={startSessionUnavailableReason || undefined}
+                          disabled={!shareView.live.canStart}
+                          title={shareView.live.disabledReason || undefined}
                           onClick={onStartSession}
                         >
                           <Play size={16} />
                           <span>{copy.live.startSession}</span>
                         </button>
-                        <p>{startSessionUnavailableReason || copy.live.startDescription}</p>
+                        <p>{shareView.live.disabledReason || copy.live.startDescription}</p>
                       </div>
                     )}
 
@@ -384,14 +288,14 @@ export function ShareControls({
                         <div className="share-modal-field">
                           <label>{copy.live.inviteLabel}</label>
                           <div className="share-modal-link-row">
-                            <div className="share-link-display" aria-label={copy.live.inviteLabel} title={shareUrlView.title}>
-                              <span>{shareUrlView.display}</span>
+                            <div className="share-link-display" aria-label={copy.live.inviteLabel} title={shareView.live.link.title}>
+                              <span>{shareView.live.link.display}</span>
                             </div>
                             <button
                               type="button"
                               onClick={onCopyShareUrl}
-                              disabled={!shareUrlView.canCopy}
-                              title={shareUrlView.canCopy ? undefined : copy.live.invalidInviteTitle}
+                              disabled={!shareView.live.link.canCopy}
+                              title={shareView.live.link.canCopy ? undefined : copy.live.invalidInviteTitle}
                             >
                               {copied ? <Check size={17} /> : <Copy size={17} />}
                               <span>{copied ? copy.live.copied : copy.live.copyLink}</span>
@@ -424,7 +328,7 @@ export function ShareControls({
                       </div>
                     </div>
 
-                    {jsonShare.url ? (
+                    {shareView.shareable.hasLink && jsonShare.url ? (
                       <div className="share-copy-box">
                         <div className="share-modal-field">
                           <label>{copy.shareable.linkLabel}</label>
@@ -452,10 +356,10 @@ export function ShareControls({
                             type="button"
                             onClick={handleExportToJsonLink}
                             disabled={!jsonShare.canExport}
-                            title={jsonShare.disabledReason || undefined}
+                            title={shareView.shareable.disabledReason || undefined}
                           >
                             <RefreshCw size={16} />
-                            <span>{jsonShare.exporting ? copy.shareable.exporting : copy.shareable.updateLink}</span>
+                            <span>{shareView.shareable.primaryLabel}</span>
                           </button>
                           <a className="share-modal-secondary" href={jsonShare.url} target="_blank" rel="noreferrer">
                             <ExternalLink size={16} />
@@ -470,10 +374,10 @@ export function ShareControls({
                           type="button"
                           onClick={handleExportToJsonLink}
                           disabled={!jsonShare.canExport}
-                          title={jsonShare.disabledReason || undefined}
+                          title={shareView.shareable.disabledReason || undefined}
                         >
                           <Link size={16} />
-                          <span>{jsonShare.exporting ? copy.shareable.exporting : copy.shareable.exportToLink}</span>
+                          <span>{shareView.shareable.primaryLabel}</span>
                         </button>
                       </div>
                     )}
@@ -481,7 +385,7 @@ export function ShareControls({
                 </>
               )}
 
-              {sharePanel === "export" && (
+              {shareView.activePanel === "export" && (
                 <>
                   <div className="share-panel-heading">
                     <span className="share-modal-option-icon">
@@ -507,7 +411,7 @@ export function ShareControls({
                       <strong>{copy.exportPanel.copyMarkdownTitle}</strong>
                       <p>{copy.exportPanel.copyMarkdownDescription}</p>
                     </button>
-                    <button className="share-export-card disabled" type="button" disabled>
+                    <button className="share-export-card" type="button" onClick={onDownloadProjectArchive}>
                       <span className="share-export-icon">
                         <FolderArchive size={18} />
                       </span>
@@ -518,7 +422,7 @@ export function ShareControls({
                 </>
               )}
 
-              {sharePanel === "send-to" && (
+              {shareView.activePanel === "send-to" && (
                 <>
                   <div className="share-panel-heading">
                     <span className="share-modal-option-icon">
@@ -573,144 +477,6 @@ export function ShareControls({
                 </>
               )}
 
-              {sharePanel === "publish" && (
-                <>
-                  <div className="share-panel-heading">
-                    <span className="share-modal-option-icon">
-                      <Link size={17} />
-                    </span>
-                    <div>
-                      <h3>{publishView.headingTitle}</h3>
-                      <p>{publishView.headingDescription}</p>
-                    </div>
-                  </div>
-
-                  {publishView.requiresPlus ? (
-                    <div className="publish-plus-gate" aria-label={`${PRODUCT_PLUS_NAME} publish boundary`}>
-                      <div className="publish-plus-card">
-                        <span className="publish-plus-pill">
-                          <Sparkles size={13} />
-                          {PRODUCT_PLUS_NAME}
-                        </span>
-                        <strong>Public publishing is a Plus feature.</strong>
-                        <p>Keep local writing free, then use Plus when work needs a durable public URL.</p>
-                      </div>
-                      <div className="publish-plus-features" aria-label={`${PRODUCT_PLUS_NAME} publish features`}>
-                        <span>Current-page publish</span>
-                        <span>Project publish</span>
-                        <span>Stable agent-readable endpoints</span>
-                      </div>
-                      <button className="share-modal-primary" type="button" onClick={onOpenTabulaPlus}>
-                        <Sparkles size={16} />
-                        <span>View {PRODUCT_PLUS_NAME}</span>
-                      </button>
-                    </div>
-                  ) : publishView.hasPublishedPage && !changingPublishScope ? (
-                    <div className="publish-output-box publish-management-box">
-                      <div className="publish-status-card">
-                        <div className="publish-status-copy">
-                          <div className="publish-status-topline">
-                            <span className="publish-live-pill">Live</span>
-                            {publishView.publishedTime && <time>Last updated {publishView.publishedTime}</time>}
-                          </div>
-                          <span className="publish-status-label">Published</span>
-                          <p>{publishView.publishedScopeSummary}</p>
-                        </div>
-                      </div>
-
-                      {publishView.blocked && publishView.disabledReason && (
-                        <p className="publish-scope-summary attention">{publishView.disabledReason}</p>
-                      )}
-
-                      {publish.pageUrl && (
-                        <div className="publish-url-card">
-                          <span>Public URL</span>
-                          <a href={publish.pageUrl} target="_blank" rel="noreferrer" title={publish.pageUrl}>
-                            {publishView.publicUrlPreview || publish.pageUrl}
-                          </a>
-                        </div>
-                      )}
-
-                      <div className="publish-detail-grid" aria-label="Published page details">
-                        <div>
-                          <span>Scope</span>
-                          <strong>{publishView.details.publishedScopeTitle}</strong>
-                        </div>
-                        <div>
-                          <span>Files</span>
-                          <strong>{publishView.details.publishedFilesLabel}</strong>
-                        </div>
-                      </div>
-
-                      <div className="publish-management-actions" aria-label="Published page actions">
-                        {publishView.managementActions.map(renderPublishManagementAction)}
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="publish-scope-control" role="radiogroup" aria-label="Publish scope">
-                        {publishView.scopeCards.map((scopeCard) => (
-                          <button
-                            key={scopeCard.scope}
-                            className={scopeCard.active ? "active" : ""}
-                            type="button"
-                            role="radio"
-                            aria-checked={scopeCard.active}
-                            onClick={() => publish.changeScope(scopeCard.scope)}
-                          >
-                            <span>{scopeCard.title}</span>
-                            <small>{scopeCard.detail}</small>
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="publish-output-box">
-                        <div className={`publish-plan-card ${publishView.blocked ? "blocked" : "ready"}`}>
-                          <div>
-                            <span>{publishView.readinessLabel}</span>
-                            <p>{publishView.publishResultSummary}</p>
-                          </div>
-                          <strong>{publishView.details.filesLabel}</strong>
-                        </div>
-
-                        <p className={`publish-scope-summary ${publishView.blocked || publishView.selectedScopeChanged ? "attention" : ""}`}>
-                          {publishView.summary}
-                        </p>
-
-                        <div className="publish-detail-grid" aria-label="Publish plan details">
-                          <div>
-                            <span>Scope</span>
-                            <strong>{publishView.details.selectedScopeTitle}</strong>
-                          </div>
-                          <div>
-                            <span>Files</span>
-                            <strong>{publishView.details.filesLabel}</strong>
-                          </div>
-                        </div>
-
-                        <div className="publish-scope-actions">
-                          <button
-                            className="share-modal-primary"
-                            type="button"
-                            onClick={handlePublishSnapshot}
-                            disabled={!publishView.canSubmit}
-                            title={publishView.disabledReason || undefined}
-                          >
-                            <Link size={16} />
-                            <span>{publishView.primaryLabel}</span>
-                          </button>
-                          {publishView.hasPublishedPage && (
-                            <button className="share-modal-secondary" type="button" onClick={hidePublishScopePicker}>
-                              <X size={16} />
-                              <span>Cancel</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
             </section>
           </section>
         </div>

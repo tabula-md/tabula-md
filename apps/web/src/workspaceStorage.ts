@@ -23,28 +23,29 @@ const DEFAULT_README_REFRESH_MARKERS = [
 ];
 export const STARTER_README_MARKDOWN = `---
 title: ${PRODUCT_NAME}
-description: A local-first Markdown workspace for project context and live sharing.
+description: A local-first Markdown workspace for files that people and coding agents can share safely.
 ---
 
-${PRODUCT_NAME} is a local-first Markdown workspace for files that people and AI agents can both read.
+${PRODUCT_NAME} is a local-first Markdown workspace for files that people and coding agents can share safely.
 
-No dashboard first. No project ceremony. Open a file, write Markdown, and share a live room when people need to work together.
+No dashboard first. No project ceremony. Open a file, write Markdown, and share only when the file is ready to leave your browser.
 
 ## Start here
 
 1. Create a blank Markdown file.
 2. Edit, preview, or keep split view open.
-3. Share a live room when the file is ready for collaboration.
+3. Share a live room for co-editing or an encrypted copy link for handoff.
 
 ## Fits
 
 - Product specs, design notes, decisions, runbooks, research, and implementation plans.
-- Markdown files that should be readable by both teammates and AI agents.
+- Markdown files that teammates and coding agents should both understand.
 
 ## Storage and sharing
 
 - Local files are saved in this browser.
 - Live rooms sync the active file through a collaboration session.
+- Shareable links export an encrypted copy that opens in another local workspace.
 `;
 export const isStarterReadmeText = (text: string) => text === STARTER_README_MARKDOWN;
 export const READING_WIDTHS: ReadingWidth[] = ["narrow", "standard", "wide"];

@@ -144,7 +144,9 @@ export async function run(ctx) {
       "No-open-file state should sit near the center of the empty file area.",
     );
     expect(
-      emptyChromeState.workspaceText.includes("The default document format for humans and agents.") &&
+      emptyChromeState.workspaceText.includes(
+        "A local-first Markdown workspace for files that people and coding agents can share safely.",
+      ) &&
         !emptyChromeState.workspaceText.includes("Start with Markdown.") &&
         !emptyChromeState.workspaceText.includes("Tabula turns Markdowns into collaborative documents for people and agents.") &&
         emptyChromeState.workspaceText.includes("New Markdown") &&
@@ -197,7 +199,9 @@ export async function run(ctx) {
     }));
     expect(reloadedNoOpenState.tabCount === 0, "Reloading with no open tabs should preserve the openTabs state.");
     expect(
-      reloadedNoOpenState.text.includes("The default document format for humans and agents."),
+      reloadedNoOpenState.text.includes(
+        "A local-first Markdown workspace for files that people and coding agents can share safely.",
+      ),
       "Reloading with no open tabs should keep the branded start state.",
     );
 

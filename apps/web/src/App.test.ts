@@ -146,7 +146,10 @@ describe("file tab state transitions", () => {
 
     expect(files.map((file) => file.title)).toEqual(["README.md", "Untitled.md"]);
     expect(files[0].viewMode).toBe("preview");
-    expect(files[0].text).toContain("Tabula.md is a local-first Markdown workspace");
+    expect(files[0].text).toContain(
+      "Tabula.md is a local-first Markdown workspace for files that people and coding agents can share safely.",
+    );
+    expect(files[0].text).not.toContain("AI agents can both read");
     expect(files[1].viewMode).toBe("edit");
     expect(files[1].text).toBe("");
   });

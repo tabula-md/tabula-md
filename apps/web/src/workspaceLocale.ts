@@ -129,7 +129,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Dark",
     },
     emptyState: {
-      tagline: "The default document format for humans and agents.",
+      tagline: "A local-first Markdown workspace for files that people and coding agents can share safely.",
       newMarkdown: "New Markdown",
       openMarkdown: "Open .md file",
       browseFiles: "Browse project files",
@@ -218,7 +218,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "다크",
     },
     emptyState: {
-      tagline: "사람과 에이전트가 함께 읽는 기본 문서 형식.",
+      tagline: "사람과 코딩 에이전트가 안전하게 공유할 수 있는 로컬 우선 Markdown 작업공간.",
       newMarkdown: "새 Markdown",
       openMarkdown: ".md 파일 열기",
       browseFiles: "프로젝트 파일 보기",
@@ -307,7 +307,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "ダーク",
     },
     emptyState: {
-      tagline: "人とエージェントが一緒に読める標準ドキュメント形式。",
+      tagline: "人とコーディングエージェントが安全に共有できるローカルファースト Markdown ワークスペース。",
       newMarkdown: "新規 Markdown",
       openMarkdown: ".md ファイルを開く",
       browseFiles: "プロジェクトファイルを見る",
@@ -396,7 +396,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "深色",
     },
     emptyState: {
-      tagline: "供人和智能体共同阅读的默认文档格式。",
+      tagline: "让人与编码智能体安全共享文件的本地优先 Markdown 工作区。",
       newMarkdown: "新建 Markdown",
       openMarkdown: "打开 .md 文件",
       browseFiles: "浏览项目文件",
@@ -485,7 +485,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Oscuro",
     },
     emptyState: {
-      tagline: "El formato de documento predeterminado para personas y agentes.",
+      tagline: "Un espacio Markdown local-first para compartir archivos con personas y agentes de código.",
       newMarkdown: "Nuevo Markdown",
       openMarkdown: "Abrir archivo .md",
       browseFiles: "Ver archivos del proyecto",
@@ -574,7 +574,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Sombre",
     },
     emptyState: {
-      tagline: "Le format de document par défaut pour les humains et les agents.",
+      tagline: "Un espace Markdown local-first pour partager des fichiers avec des personnes et des agents de code.",
       newMarkdown: "Nouveau Markdown",
       openMarkdown: "Ouvrir un fichier .md",
       browseFiles: "Parcourir les fichiers",
@@ -663,7 +663,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Dunkel",
     },
     emptyState: {
-      tagline: "Das Standard-Dokumentformat für Menschen und Agenten.",
+      tagline: "Ein local-first Markdown-Workspace zum sicheren Teilen von Dateien mit Menschen und Coding-Agenten.",
       newMarkdown: "Neues Markdown",
       openMarkdown: ".md-Datei öffnen",
       browseFiles: "Projektdateien ansehen",
