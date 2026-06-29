@@ -43,7 +43,7 @@ export function useJsonShareController({
       return `Add content to ${activeFile.title.replace(/\.(?:md|markdown)$/i, "")} before exporting a link.`;
     }
     if (!serviceUrl) {
-      return "Snapshot links are not configured.";
+      return "Shareable links are not configured.";
     }
     return "";
   }, [activeFile, serviceUrl]);
@@ -67,7 +67,7 @@ export function useJsonShareController({
         commentsByFileId: activeFileComments.length > 0 ? { [activeFile.id]: activeFileComments } : {},
       });
       setJsonShareUrl(url);
-      showToast("Snapshot link created.");
+      showToast("Shareable link created.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Share link failed.", "error");
     } finally {
@@ -80,7 +80,7 @@ export function useJsonShareController({
       return;
     }
     await navigator.clipboard.writeText(jsonShareUrl);
-    showToast("Snapshot link copied.");
+    showToast("Shareable link copied.");
   };
 
   return {

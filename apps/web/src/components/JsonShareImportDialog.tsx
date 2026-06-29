@@ -20,18 +20,18 @@ export function JsonShareImportDialog({
   return (
     <div className="share-modal-layer json-import-modal-layer">
       <section className="share-modal json-import-modal" role="dialog" aria-modal="true" aria-labelledby="json-import-title">
-        <button className="share-modal-close" type="button" aria-label="Close shared snapshot dialog" onClick={onCancel}>
+        <button className="share-modal-close" type="button" aria-label="Close shared link dialog" onClick={onCancel}>
           <X size={20} />
         </button>
 
         {status === "loading" && (
           <>
             <header className="share-modal-header">
-              <h2 id="json-import-title">Opening snapshot</h2>
+              <h2 id="json-import-title">Load from link</h2>
             </header>
             <div className="json-import-state">
               <Loader2 size={20} aria-hidden="true" />
-              <p>Preparing snapshot.</p>
+              <p>Preparing shared copy.</p>
             </div>
           </>
         )}
@@ -43,7 +43,7 @@ export function JsonShareImportDialog({
             </header>
             <div className="json-import-warning">
               <AlertTriangle size={22} aria-hidden="true" />
-              <p>{errorMessage || "This shared snapshot could not be opened."}</p>
+              <p>{errorMessage || "This shared link could not be loaded."}</p>
             </div>
             <div className="share-modal-actions">
               <button className="share-modal-primary" type="button" onClick={onCancel}>
@@ -56,8 +56,8 @@ export function JsonShareImportDialog({
         {status === "ready" && (
           <>
             <header className="share-modal-header compact">
-              <h2 id="json-import-title">Open shared snapshot?</h2>
-              <p>This will replace your current workspace.</p>
+              <h2 id="json-import-title">Load from link</h2>
+              <p>Loading this link will replace your current local content.</p>
             </header>
             <div className="json-import-warning">
               <AlertTriangle size={22} aria-hidden="true" />
@@ -70,7 +70,7 @@ export function JsonShareImportDialog({
                 Cancel
               </button>
               <button className="share-modal-primary" type="button" onClick={onReplace}>
-                Replace
+                Load copy
               </button>
             </div>
           </>

@@ -454,7 +454,7 @@
 }
 
 .share-link-section,
-.share-readonly-box {
+.share-copy-box {
   display: grid;
   gap: 12px;
   min-width: 0;
@@ -479,7 +479,7 @@
   font-weight: 500;
 }
 
-.share-readonly-actions {
+.share-copy-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
