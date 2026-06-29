@@ -5,6 +5,7 @@ import { getNewFilePreferenceOverrides } from "./useProjectIoController";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import type { RenameFileResult } from "../workspaceModel";
 import {
+  README_FILE_ID,
   syncUrlForFile,
   type FileComment,
   type MarkdownFile,
@@ -139,6 +140,19 @@ export function useWorkspaceFileActions({
     syncUrlForFile(nextFile);
   };
 
+  const openAboutFile = () => {
+    const readmeFile =
+      files.find((file) => file.id === README_FILE_ID) ??
+      files.find((file) => file.title.trim().toLowerCase() === "readme.md");
+    if (!readmeFile) {
+      return;
+    }
+
+    selectMarkdownFile(readmeFile.id);
+    closeFloatingChrome();
+    syncUrlForFile(readmeFile);
+  };
+
   const renameMarkdownFile = (fileId: string, nextRawTitle: string) => {
     const result = renameFile(fileId, nextRawTitle);
     if (!result.ok) {
@@ -254,6 +268,7 @@ export function useWorkspaceFileActions({
   return {
     selectFile,
     addFile,
+    openAboutFile,
     openHelpFile,
     renameMarkdownFile,
     duplicateFile,

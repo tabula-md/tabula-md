@@ -37,6 +37,7 @@
   font-size: 13px;
   font-weight: 400;
   text-align: left;
+  text-decoration: none;
 }
 
 .workspace-menu-row:hover,
@@ -59,6 +60,17 @@
   width: var(--workspace-menu-icon-size);
   height: var(--workspace-menu-icon-size);
   color: var(--text-soft);
+}
+
+.workspace-menu-brand-icon {
+  display: grid;
+  width: var(--workspace-menu-icon-size);
+  height: var(--workspace-menu-icon-size);
+  place-items: center;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .workspace-menu-plus svg:first-child {
