@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useMemo, type RefObject } from "react";
 import type {
   Collaborator,
   CollabRecoveryEvent,
@@ -7,12 +7,20 @@ import type {
 } from "../collab";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import type { TextChange } from "../textPatches";
-import type { WorkspaceFile } from "../workspaceStorage";
+import {
+  isUsableLiveRoomFile,
+  type WorkspaceFile,
+} from "../workspaceStorage";
+import {
+  getActiveWorkspaceStatus,
+  getWorkspaceStatusLabel,
+} from "../workspaceViewModel";
 import { useCollaborationRoom } from "./useCollaborationRoom";
 import { useEventCallback } from "./useEventCallback";
 
 type UseWorkspaceCollaborationRuntimeOptions = {
   activeFile?: WorkspaceFile;
+  activeFileTitle: string;
   activeSelection?: LiveSelection;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   identity: Collaborator;
@@ -44,6 +52,7 @@ type UseWorkspaceCollaborationRuntimeOptions = {
 
 export function useWorkspaceCollaborationRuntime({
   activeFile,
+  activeFileTitle,
   activeSelection,
   editorRef,
   identity,
@@ -64,7 +73,7 @@ export function useWorkspaceCollaborationRuntime({
     },
   );
 
-  return useCollaborationRoom({
+  const room = useCollaborationRoom({
     activeFile,
     activeSelection,
     identity,
@@ -76,4 +85,29 @@ export function useWorkspaceCollaborationRuntime({
     startFileCollaborationSession,
     onRemoteTextChange: handleRemoteTextChange,
   });
+  const isLive = isUsableLiveRoomFile(activeFile);
+  const activeStatus = getActiveWorkspaceStatus({
+    isLive,
+    connectionStatus: room.connectionStatus,
+  });
+  const presenceIdentity = useMemo(
+    () =>
+      isLive
+        ? {
+            ...identity,
+            roomId: activeFile?.roomId,
+            fileTitle: activeFileTitle,
+            selection: activeSelection,
+          }
+        : identity,
+    [activeFile?.roomId, activeFileTitle, activeSelection, identity, isLive],
+  );
+
+  return {
+    ...room,
+    activeStatus,
+    isLive,
+    presenceIdentity,
+    statusLabel: getWorkspaceStatusLabel(activeStatus),
+  };
 }

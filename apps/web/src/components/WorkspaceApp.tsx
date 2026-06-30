@@ -53,14 +53,11 @@ import { useWorkspaceShareRuntime } from "../hooks/useWorkspaceShareRuntime";
 import { useWorkspaceCollaborationRuntime } from "../hooks/useWorkspaceCollaborationRuntime";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import {
-  getActiveWorkspaceStatus,
   getWorkspaceFileSearchText,
   getWorkspaceFileStatus,
-  getWorkspaceStatusLabel,
 } from "../workspaceViewModel";
 import {
   createWorkspaceFile,
-  isUsableLiveRoomFile,
   readInitialWorkspaceSnapshot,
   randomId,
   README_FILE_ID,
@@ -177,6 +174,7 @@ export function WorkspaceApp() {
   const activeLineWrapping = activeDocument.lineWrapping;
   const activeLineNumbers = activeDocument.lineNumbers;
   const activeBookmarks = activeDocument.bookmarks;
+  const activeFileTitle = activeDocument.title;
   const parsedMarkdown = activeDocument.parsedMarkdown;
   const renderedPreview = activeDocument.renderedPreview;
   const previewBodyStartOffset = activeDocument.previewBodyStartOffset;
@@ -309,12 +307,16 @@ export function WorkspaceApp() {
     canStartSession,
     collaborators,
     connectionStatus,
+    isLive,
+    presenceIdentity,
     startSessionUnavailableReason,
+    statusLabel,
     startSession: startCollaborationSession,
     applyLocalText,
     resetCollaborationState,
   } = useWorkspaceCollaborationRuntime({
     activeFile: activeFile,
+    activeFileTitle,
     activeSelection,
     editorRef,
     identity,
@@ -344,8 +346,6 @@ export function WorkspaceApp() {
     setActiveFileBookmarks,
     setActiveFileText,
   });
-  const isLive = isUsableLiveRoomFile(activeFile);
-  const activeStatus = getActiveWorkspaceStatus({ isLive, connectionStatus });
   useEffect(() => {
     if (!isLive && rightPanelView === "comments") {
       setRightPanelView("files");
@@ -567,20 +567,6 @@ export function WorkspaceApp() {
       activeFileId: activeFile?.id,
       activeConnectionStatus: connectionStatus,
     });
-  const statusLabel = getWorkspaceStatusLabel(activeStatus);
-  const activeFileTitle = activeDocument.title;
-  const activePresenceIdentity = useMemo(
-    () =>
-      isLive
-        ? {
-            ...identity,
-            roomId: activeFile?.roomId,
-            fileTitle: activeFileTitle,
-            selection: activeSelection,
-          }
-        : identity,
-    [activeFile?.roomId, activeFileTitle, activeSelection, identity, isLive],
-  );
   const showFormattingToolbar = Boolean(
     activeFile && activeViewMode !== "preview",
   );
@@ -762,7 +748,7 @@ export function WorkspaceApp() {
             rightPanelOpen={rightPanelOpen}
             isLive={isLive}
             language={workspacePreferences.language}
-            identity={activePresenceIdentity}
+            identity={presenceIdentity}
             collaborators={collaborators}
             activeText={text}
             fileTabs={fileTabsNode}
