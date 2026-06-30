@@ -7,7 +7,7 @@ import {
 import { AppToast } from "./AppToast";
 import { EmptyFileState } from "./EmptyFileState";
 import { DocumentWorkbench } from "./DocumentWorkbench";
-import { WorkspaceMenu } from "./WorkspaceMenu";
+import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";
 import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { JsonShareImportDialog } from "./JsonShareImportDialog";
@@ -589,31 +589,20 @@ export function WorkspaceApp() {
           }}
         />
       )}
-      <input
-        ref={importInputRef}
-        className="workspace-file-input"
-        type="file"
-        accept=".md,.markdown,text/markdown,text/plain"
-        onChange={handleImportInputChange}
-        aria-label="Import file"
-      />
-      <input
-        ref={workspaceImportInputRef}
-        className="workspace-file-input"
-        type="file"
-        accept=".json,application/json"
-        onChange={handleProjectImportInputChange}
-        aria-label="Import project file"
-      />
       <section
         className={`main-panel ${rightPanelOpen ? "right-panel-open" : ""}`}
       >
-        <WorkspaceMenu
+        <WorkspaceMenuSurface
           isOpen={workspaceMenuOpen}
           preferencesOpen={preferencesOpen}
           canExportCurrentFile={Boolean(activeFile)}
           theme={workspacePreferences.theme}
           language={workspacePreferences.language}
+          importInputRef={importInputRef}
+          workspaceImportInputRef={workspaceImportInputRef}
+          onImportFileChange={handleImportInputChange}
+          onImportProjectChange={handleProjectImportInputChange}
+          onCloseChrome={closeFloatingChrome}
           onTogglePreferences={() => {
             setPreferencesOpen((isOpen) => !isOpen);
             setTopPopover(null);
@@ -631,22 +620,8 @@ export function WorkspaceApp() {
             }))
           }
           onAddFile={addFile}
-          onOpenFile={() => {
-            closeFloatingChrome();
-            importInputRef.current?.click();
-          }}
-          onImportProject={() => {
-            closeFloatingChrome();
-            workspaceImportInputRef.current?.click();
-          }}
-          onDownloadFile={() => {
-            downloadCurrentFile();
-            closeFloatingChrome();
-          }}
-          onDownloadProject={() => {
-            downloadProject();
-            closeFloatingChrome();
-          }}
+          onDownloadFile={downloadCurrentFile}
+          onDownloadProject={downloadProject}
           onOpenCollaboration={() => openSharePanel("share-link")}
           onOpenAbout={openAboutFile}
           onOpenHelp={openHelpFile}
