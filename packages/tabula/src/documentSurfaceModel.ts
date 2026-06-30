@@ -1,9 +1,22 @@
-import type { ActiveDocumentRuntime } from "./documentRuntime";
+import type { FileViewMode, ReadingWidth } from "./documentPrimitives";
 
-const classNames = (...parts: Array<string | false | undefined>) => parts.filter(Boolean).join(" ");
+const classNames = (...parts: Array<string | false | undefined>) =>
+  parts.filter(Boolean).join(" ");
+
+export type DocumentSurfaceDocumentState = {
+  canCopy: boolean;
+  canFormat: boolean;
+  hasFile: boolean;
+  lineNumbers: boolean;
+  lineWrapping: boolean;
+  readingWidth: ReadingWidth;
+  title: string;
+  viewMode: FileViewMode;
+  wordCount: number;
+};
 
 export type DocumentSurfaceState = {
-  document: ActiveDocumentRuntime;
+  document: DocumentSurfaceDocumentState;
   hasSelectionActionPosition: boolean;
   isLive: boolean;
   openCommentCount: number;
@@ -24,7 +37,9 @@ export const buildDocumentSurface = ({
   splitDividerDragging,
 }: DocumentSurfaceState) => {
   const documentModeClassName = `view-${document.viewMode} reading-${document.readingWidth}`;
-  const lineNumbersClassName = document.lineNumbers ? "line-numbers-on" : "line-numbers-off";
+  const lineNumbersClassName = document.lineNumbers
+    ? "line-numbers-on"
+    : "line-numbers-off";
 
   return {
     centerWorkbenchClassName: classNames(
@@ -58,10 +73,16 @@ export const buildDocumentSurface = ({
       searchOpen && "with-search-row",
       shareOpen && "share-modal-open",
     ),
-    formattingToolbarClassName: classNames(document.viewMode, `reading-${document.readingWidth}`),
+    formattingToolbarClassName: classNames(
+      document.viewMode,
+      `reading-${document.readingWidth}`,
+    ),
     showFormattingToolbar: document.canFormat,
     showSelectionCommentPopover: Boolean(
-      isLive && document.hasFile && selectedCharacterCount > 0 && hasSelectionActionPosition,
+      isLive &&
+        document.hasFile &&
+        selectedCharacterCount > 0 &&
+        hasSelectionActionPosition,
     ),
     showSplitResizeHandle: document.viewMode === "split" && !shareOpen,
     statusBar: {

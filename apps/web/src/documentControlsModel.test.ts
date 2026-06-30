@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDocumentControlsModel } from "./documentControlsModel";
+import { buildDocumentControlsModel } from "@tabula-md/tabula";
 import { getWorkspaceChromeCopy } from "./workspaceLocale";
 
 const copy = getWorkspaceChromeCopy("en").documentControls;
