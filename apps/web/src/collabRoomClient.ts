@@ -2,7 +2,7 @@ import type { EncryptedEnvelope } from "./roomProtocol";
 import type { RoomMeta } from "./collab";
 import { createRoomApiUrl, isEncryptedEnvelope, toRoomMeta, type RoomServerMetadata } from "./collabConnectionModel";
 
-type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 type RoomRequestOptions = {
   baseUrl: string;
