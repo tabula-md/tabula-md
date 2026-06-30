@@ -24,12 +24,12 @@ import {
   type RoomServerMetadata,
 } from "./collabConnectionModel";
 import {
-  applyTextPatches,
-  diffTextPatch,
-  getTextPatchesForChange,
-  type TextChange,
-  type TextPatch,
-} from "./textPatches";
+  applyLocalTextToYText,
+  applyRemoteUpdateToYText,
+  COLLAB_REMOTE_ORIGIN,
+  createCollabTextDocument,
+} from "./collabTextModel";
+import type { TextChange, TextPatch } from "./textPatches";
 
 export {
   createRoomSession,
@@ -107,8 +107,6 @@ type ConnectOptions = {
   createRoomTransport?: CreateRoomTransport;
 };
 
-const REMOTE_ORIGIN = "tabula-room-remote";
-
 export const createCollabConnection = ({
   roomId,
   roomKey: encodedRoomKey,
@@ -123,8 +121,7 @@ export const createCollabConnection = ({
   onRecoveryEvent,
   createRoomTransport = createDefaultRoomTransport,
 }: ConnectOptions) => {
-  const doc = new Y.Doc();
-  const text = doc.getText("markdown");
+  const { doc, text } = createCollabTextDocument(initialText);
   const collaborators = new Map<string, Collaborator>();
   let currentFileTitle = fileTitle;
   let currentSelection = selection;
@@ -142,31 +139,6 @@ export const createCollabConnection = ({
   let collaborationBlocked = false;
   let serverOfflineNotified = false;
   let roomBaseUrl = "";
-
-  const applyTextPatchTransaction = (patches: readonly TextPatch[]) => {
-    const orderedPatches = [...patches].sort((first, second) => second.from - first.from || second.to - first.to);
-    doc.transact(() => {
-      orderedPatches.forEach((patch) => {
-        if (patch.to > patch.from) {
-          text.delete(patch.from, patch.to - patch.from);
-        }
-        if (patch.insert) {
-          text.insert(patch.from, patch.insert);
-        }
-      });
-    }, "local");
-  };
-
-  const emitRemoteTextChange = (previousText: string) => {
-    const nextText = text.toString();
-    if (previousText === nextText) {
-      return;
-    }
-
-    onTextChange(nextText, {
-      patches: getTextPatchesForChange(previousText, nextText),
-    });
-  };
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
     onRecoveryEvent?.({
@@ -312,10 +284,11 @@ export const createCollabConnection = ({
         return false;
       }
 
-      const previousText = text.toString();
       const update = await decryptEnvelopeForRoom(roomKey, envelope);
-      Y.applyUpdate(doc, update, REMOTE_ORIGIN);
-      emitRemoteTextChange(previousText);
+      const result = applyRemoteUpdateToYText({ doc, text, update });
+      if (result) {
+        onTextChange(result.text, result.change);
+      }
       emitRecoveryEvent("snapshot-recovered", "Encrypted room snapshot restored.");
       await refreshRoomMeta();
       return "restored" as const;
@@ -338,9 +311,10 @@ export const createCollabConnection = ({
     try {
       const plaintext = await decryptEnvelopeForRoom(roomKey, envelope);
       if (envelope.kind === "yjs-update") {
-        const previousText = text.toString();
-        Y.applyUpdate(doc, plaintext, REMOTE_ORIGIN);
-        emitRemoteTextChange(previousText);
+        const result = applyRemoteUpdateToYText({ doc, text, update: plaintext });
+        if (result) {
+          onTextChange(result.text, result.change);
+        }
         return;
       }
 
@@ -357,14 +331,8 @@ export const createCollabConnection = ({
     }
   };
 
-  if (initialText) {
-    doc.transact(() => {
-      text.insert(0, initialText);
-    }, "initial");
-  }
-
   doc.on("update", (update: Uint8Array, origin: unknown) => {
-    if (closedByClient || origin === REMOTE_ORIGIN) {
+    if (closedByClient || origin === COLLAB_REMOTE_ORIGIN) {
       return;
     }
 
@@ -491,19 +459,7 @@ export const createCollabConnection = ({
 
   return {
     applyLocalText(nextText: string, patches?: readonly TextPatch[]) {
-      const currentText = text.toString();
-      if (currentText === nextText) {
-        return;
-      }
-
-      const nextPatches = getTextPatchesForChange(currentText, nextText, patches);
-      const patchedText = applyTextPatches(currentText, nextPatches);
-      if (patchedText === nextText) {
-        applyTextPatchTransaction(nextPatches);
-        return;
-      }
-
-      applyTextPatchTransaction([diffTextPatch(currentText, nextText)]);
+      applyLocalTextToYText({ doc, text, nextText, patches });
     },
     setPresence(nextPresence: { fileTitle?: string; selection?: LiveSelection }) {
       if ("fileTitle" in nextPresence) {
