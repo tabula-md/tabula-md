@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const workspaceRoot = fileURLToPath(new URL(".", import.meta.url));
 const tabulaAppRoot = fileURLToPath(new URL("./tabula-app", import.meta.url));
+const tabulaCoreEntry = fileURLToPath(new URL("./packages/tabula/src/index.ts", import.meta.url));
 
 const includesPackage = (id: string, packageName: string) =>
   id.includes(`/node_modules/${packageName}/`);
@@ -12,6 +13,11 @@ export default defineConfig({
   root: tabulaAppRoot,
   envDir: workspaceRoot,
   plugins: [react()],
+  resolve: {
+    alias: {
+      "@tabula-md/tabula": tabulaCoreEntry,
+    },
+  },
   server: {
     port: 5173,
   },

@@ -32,6 +32,11 @@ export type WorkspaceIoFile = {
   text: string;
 };
 
+export type WorkspaceImportFileDescriptor = {
+  name: string;
+  type: string;
+};
+
 export type ImportedWorkspaceFileDraft<
   TViewMode extends string = FileViewMode,
   TReadingWidth extends string = ReadingWidth,
@@ -56,9 +61,7 @@ export function getNewFilePreferenceOverrides<
   };
 }
 
-export const isSupportedImportFileDescriptor = (
-  file: Pick<File, "name" | "type">,
-) => {
+export const isSupportedImportFileDescriptor = (file: WorkspaceImportFileDescriptor) => {
   const fileName = file.name.toLowerCase();
   return (
     fileName.endsWith(".md") ||

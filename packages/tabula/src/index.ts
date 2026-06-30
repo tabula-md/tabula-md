@@ -261,6 +261,7 @@ export type {
   ImportedWorkspaceFileDraft,
   TextFileDownloadDraft,
   WorkspaceFilePreferenceDefaults,
+  WorkspaceImportFileDescriptor,
   WorkspaceIoFile,
   WorkspaceIoPreferenceOverrides,
 } from "./workspaceIoModel";

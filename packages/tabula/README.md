@@ -55,20 +55,19 @@ identifier, not the decryption key.
 
 ```ts
 import {
+  applyMarkdownFormat,
+  createJsonShareUrl,
   parseRoomShareUrl,
-  parseJsonShareUrl,
-  applyMarkdownFormatCommand,
 } from "@tabula-md/tabula";
 
 const room = parseRoomShareUrl("https://tabula.md/#room=abc,secret");
-const snapshot = parseJsonShareUrl("https://tabula.md/#json=abc,secret");
+const snapshotUrl = createJsonShareUrl("https://tabula.md", "abc", "secret");
 
-const nextText = applyMarkdownFormatCommand({
-  command: "bold",
-  text: "hello",
-  selectionStart: 0,
-  selectionEnd: 5,
-}).text;
+const nextText = applyMarkdownFormat(
+  "hello",
+  { from: 0, to: 5 },
+  "bold",
+).text;
 ```
 
 ## Service App Relationship

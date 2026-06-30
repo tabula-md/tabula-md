@@ -11,6 +11,7 @@
     "dev": "vite --host 0.0.0.0",
     "app:dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
+    "build:core": "npm run build -w @tabula-md/tabula",
     "preview": "vite preview --host 0.0.0.0",
     "pr:body": "node scripts/pr-body.mjs",
     "pr:metadata": "node scripts/apply-pr-metadata.mjs",
