@@ -13,10 +13,13 @@ import {
 } from "lucide-react";
 import type { SearchMatch } from "../markdown";
 import type { CenterPopover } from "../uiTypes";
+import {
+  buildDocumentControlsModel,
+  type DocumentViewModeIcon,
+} from "../documentControlsModel";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import {
-  READING_WIDTHS,
   type FileViewMode,
   type ReadingWidth,
 } from "../workspaceStorage";
@@ -50,15 +53,10 @@ type DocumentSearchBarProps = {
   onCloseSearch: () => void;
 };
 
-type ViewModeAction = {
-  viewMode: FileViewMode;
-  label: string;
-  icon: ReactNode;
-};
-
-type ViewModeSlot = {
-  slot: "edit-preview" | "split";
-  action: ViewModeAction;
+const viewModeIcons: Record<DocumentViewModeIcon, ReactNode> = {
+  edit: <PencilLine size={16} />,
+  preview: <Eye size={16} />,
+  split: <SplitSquareHorizontal size={16} />,
 };
 
 export function DocumentControls({
@@ -79,72 +77,37 @@ export function DocumentControls({
   onToggleLineNumbers,
 }: DocumentControlsProps) {
   const copy = getWorkspaceChromeCopy(language).documentControls;
-  const readingWidthLabels: Record<ReadingWidth, string> = {
-    narrow: copy.focusWidth,
-    standard: copy.standardWidth,
-    wide: copy.fillWidth,
-  };
-  const controlsLabel =
-    activeViewMode === "preview"
-      ? copy.viewControls
-      : activeViewMode === "split"
-        ? copy.layoutControls
-        : copy.editorControls;
-  const viewModeSlots: ViewModeSlot[] = [
-    {
-      slot: "split",
-      action:
-        activeViewMode === "split"
-          ? {
-              viewMode: "edit",
-              label: copy.edit,
-              icon: <PencilLine size={16} />,
-            }
-          : {
-              viewMode: "split",
-              label: copy.split,
-              icon: <SplitSquareHorizontal size={16} />,
-            },
-    },
-    {
-      slot: "edit-preview",
-      action:
-        activeViewMode === "preview"
-          ? {
-              viewMode: "edit",
-              label: copy.edit,
-              icon: <PencilLine size={16} />,
-            }
-          : {
-              viewMode: "preview",
-              label: copy.preview,
-              icon: <Eye size={16} />,
-            },
-    },
-  ];
+  const controls = buildDocumentControlsModel({
+    activeLineNumbers,
+    activeLineWrapping,
+    activeReadingWidth,
+    activeViewMode,
+    canCopyFile,
+    copy,
+  });
 
   return (
     <div className="document-controls-wrap">
-      <nav className="document-controls" aria-label={copy.documentControlsLabel}>
-        {viewModeSlots.map(({ slot, action }) => (
+      <nav className="document-controls" aria-label={controls.documentControlsLabel}>
+        {controls.viewModeActions.map((action) => (
           <button
-            key={slot}
+            key={action.slot}
             className="tool-button"
             type="button"
             title={action.label}
             aria-label={action.label}
-            data-view-mode-slot={slot}
+            data-view-mode-slot={action.slot}
             data-view-mode-action={action.viewMode}
             onClick={() => onSetViewMode(action.viewMode)}
           >
-            {action.icon}
+            {viewModeIcons[action.icon]}
           </button>
         ))}
         <button
           className="tool-button"
           type="button"
-          title={canCopyFile ? copy.copyFile : copy.nothingToCopy}
-          aria-label={copy.copyCurrentFile}
+          title={controls.copyButtonTitle}
+          aria-label={controls.copyButtonAriaLabel}
           disabled={!canCopyFile}
           onClick={onCopyFile}
         >
@@ -153,8 +116,8 @@ export function DocumentControls({
         <button
           className={`tool-button ${centerPopover === "view" ? "active" : ""}`}
           type="button"
-          title={controlsLabel}
-          aria-label={controlsLabel}
+          title={controls.controlsLabel}
+          aria-label={controls.controlsLabel}
           onClick={onToggleViewOptions}
         >
           <SlidersHorizontal size={16} />
@@ -162,8 +125,8 @@ export function DocumentControls({
         <button
           className={`tool-button ${searchOpen ? "active" : ""}`}
           type="button"
-          title={copy.search}
-          aria-label={copy.search}
+          title={controls.searchLabel}
+          aria-label={controls.searchLabel}
           onClick={onToggleSearch}
         >
           <Search size={16} />
@@ -173,49 +136,47 @@ export function DocumentControls({
       {centerPopover === "view" && (
         <section
           className="document-controls-popover editor-controls-popover"
-          aria-label={controlsLabel}
+          aria-label={controls.controlsLabel}
         >
           <div className="editor-controls-section">
-            {activeViewMode !== "preview" && (
+            {controls.showEditorToggles && (
               <>
                 <button
-                  className={`editor-controls-row ${activeLineNumbers ? "active" : ""}`}
+                  className={`editor-controls-row ${controls.lineNumbers.active ? "active" : ""}`}
                   type="button"
-                  aria-pressed={activeLineNumbers}
+                  aria-pressed={controls.lineNumbers.active}
                   onClick={onToggleLineNumbers}
                 >
                   <span className="editor-controls-check">
-                    {activeLineNumbers && <Check size={14} />}
+                    {controls.lineNumbers.active && <Check size={14} />}
                   </span>
-                  <span>{copy.lineNumbers}</span>
+                  <span>{controls.lineNumbers.label}</span>
                 </button>
                 <button
-                  className={`editor-controls-row ${activeLineWrapping ? "active" : ""}`}
+                  className={`editor-controls-row ${controls.lineWrapping.active ? "active" : ""}`}
                   type="button"
-                  aria-pressed={activeLineWrapping}
+                  aria-pressed={controls.lineWrapping.active}
                   onClick={onToggleLineWrapping}
                 >
                   <span className="editor-controls-check">
-                    {activeLineWrapping && <Check size={14} />}
+                    {controls.lineWrapping.active && <Check size={14} />}
                   </span>
-                  <span>{copy.lineWrapping}</span>
+                  <span>{controls.lineWrapping.label}</span>
                 </button>
               </>
             )}
             <div className="editor-controls-width-row">
-              <span>{copy.textWidth}</span>
-              <div className="editor-width-control" aria-label={copy.textWidth}>
-                {READING_WIDTHS.map((readingWidth) => (
+              <span>{controls.readingWidthLabel}</span>
+              <div className="editor-width-control" aria-label={controls.readingWidthLabel}>
+                {controls.readingWidthOptions.map(({ active, label, readingWidth }) => (
                   <button
                     key={readingWidth}
-                    className={
-                      readingWidth === activeReadingWidth ? "active" : ""
-                    }
+                    className={active ? "active" : ""}
                     type="button"
-                    aria-pressed={readingWidth === activeReadingWidth}
+                    aria-pressed={active}
                     onClick={() => onSetReadingWidth(readingWidth)}
                   >
-                    {readingWidthLabels[readingWidth]}
+                    {label}
                   </button>
                 ))}
               </div>
