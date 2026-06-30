@@ -11,13 +11,17 @@ import {
   type ParsedRoomLocation,
   type RoomSession,
 } from "@tabula-md/tabula";
+import {
+  resolveTabulaRoomServiceUrl,
+  tabulaServiceConfig,
+  type RoomServiceLocation,
+} from "../serviceConfig";
 import type { EncryptedEnvelope, EnvelopeKind } from "./roomProtocol";
 
-type RoomServiceLocation = Pick<Location, "hostname" | "protocol">;
 type SnapshotFetchResult = "missing" | "restored";
 
 type ResolveTabulaRoomUrlOptions = {
-  configuredUrl?: string;
+  configuredUrl?: string | null;
   isDev?: boolean;
   location?: RoomServiceLocation;
 };
@@ -35,10 +39,9 @@ export type TabulaRoomAvailability =
     };
 
 export const ROOM_UNCONFIGURED_MESSAGE =
-  "Live collaboration needs a Tabula Room server. Configure VITE_TABULA_ROOM_URL to start sessions.";
+  tabulaServiceConfig.copy.roomUnconfiguredMessage;
 
 const AES_GCM_IV_BYTES = 12;
-const ROOM_SERVER_PORT = 3002;
 
 export {
   decodeBase64Url,
@@ -126,31 +129,12 @@ export const decryptEnvelopeForRoom = async (roomKey: CryptoKey, envelope: Encry
 const toArrayBuffer = (bytes: Uint8Array) =>
   bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 
-const normalizeRoomBaseUrl = (configuredUrl?: string) => {
-  const trimmedUrl = configuredUrl?.trim();
-  if (!trimmedUrl) {
-    return null;
-  }
-
-  return trimmedUrl.replace(/\/+$/, "");
-};
-
 export const resolveTabulaRoomBaseUrl = ({
-  configuredUrl = import.meta.env.VITE_TABULA_ROOM_URL as string | undefined,
-  isDev = import.meta.env.DEV,
+  configuredUrl = tabulaServiceConfig.roomUrl,
+  isDev = tabulaServiceConfig.isDev,
   location = window.location,
 }: ResolveTabulaRoomUrlOptions = {}) => {
-  const configuredBaseUrl = normalizeRoomBaseUrl(configuredUrl);
-  if (configuredBaseUrl) {
-    return configuredBaseUrl;
-  }
-
-  if (!isDev) {
-    return null;
-  }
-
-  const protocol = location.protocol === "https:" ? "https:" : "http:";
-  return `${protocol}//${location.hostname}:${ROOM_SERVER_PORT}`;
+  return resolveTabulaRoomServiceUrl({ configuredUrl, isDev, location });
 };
 
 export const getTabulaRoomAvailability = (): TabulaRoomAvailability => {
