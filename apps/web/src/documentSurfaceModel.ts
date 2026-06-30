@@ -78,3 +78,5 @@ export const buildDocumentSurface = ({
     ),
   };
 };
+
+export type DocumentSurfaceModel = ReturnType<typeof buildDocumentSurface>;
