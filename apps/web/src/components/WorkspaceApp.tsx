@@ -4,13 +4,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { AppToast } from "./AppToast";
 import { EmptyFileState } from "./EmptyFileState";
 import { DocumentWorkbench } from "./DocumentWorkbench";
 import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";
+import { WorkspaceOverlaySurface } from "./WorkspaceOverlaySurface";
 import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
-import { JsonShareImportDialog } from "./JsonShareImportDialog";
 import { buildDocumentSurface } from "../documentSurfaceModel";
 import {
   getLineStartOffset,
@@ -559,36 +558,12 @@ export function WorkspaceApp() {
 
   return (
     <main className="app-shell">
-      {toast && (
-        <AppToast
-          key={toast.id}
-          message={toast.message}
-          tone={toast.tone}
-          actionLabel={toast.actionLabel}
-          onAction={toast.onAction}
-        />
-      )}
-      {jsonShareImport && (
-        <JsonShareImportDialog
-          status={jsonShareImport.status}
-          fileCount={
-            jsonShareImport.status === "ready"
-              ? jsonShareImport.workspace.files.length
-              : undefined
-          }
-          errorMessage={
-            jsonShareImport.status === "error"
-              ? jsonShareImport.errorMessage
-              : undefined
-          }
-          onCancel={closeJsonShareImport}
-          onReplace={() => {
-            if (jsonShareImport.status === "ready") {
-              replaceWorkspaceWithJsonShare(jsonShareImport.workspace);
-            }
-          }}
-        />
-      )}
+      <WorkspaceOverlaySurface
+        jsonShareImport={jsonShareImport}
+        toast={toast}
+        onCloseJsonShareImport={closeJsonShareImport}
+        onReplaceWorkspaceWithJsonShare={replaceWorkspaceWithJsonShare}
+      />
       <section
         className={`main-panel ${rightPanelOpen ? "right-panel-open" : ""}`}
       >
