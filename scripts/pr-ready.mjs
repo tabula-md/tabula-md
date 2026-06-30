@@ -131,8 +131,10 @@ function parseNumstatValue(value) {
 
 function checkFastLocalCommands(root) {
   const diffCheck = commandResult("git", ["diff", "--check"], root);
+  const boundaryCheck = commandResult("npm", ["run", "boundary:check"], root);
   return [
     diffCheck.ok ? ok("git diff --check passes") : fail("git diff --check failed", diffCheck.stdout || diffCheck.stderr),
+    boundaryCheck.ok ? ok("Package boundary check passes") : fail("Package boundary check failed", boundaryCheck.stdout || boundaryCheck.stderr),
     warn("Full validation is not run by pr:ready", "Use required commands from hook output or CI checks.")
   ];
 }

@@ -21,6 +21,15 @@ Keep in this package:
   not require a transport.
 - Pure helpers that can be tested without the DOM, React, storage, or network.
 
+Public imports must go through the package root:
+
+```ts
+import { parseRoomShareUrl } from "@tabula-md/tabula";
+```
+
+Do not rely on deep source paths. The root `src/index.ts` file is the public
+API list and new modules are private until they are explicitly exported there.
+
 Keep outside this package:
 
 - React components and hooks.

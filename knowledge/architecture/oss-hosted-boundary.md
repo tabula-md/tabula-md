@@ -22,6 +22,29 @@ remain coherent and self-hostable.
 
 # Public Repository Contracts
 
+## Package and Runtime Boundaries
+
+`tabula-md` has three long-lived implementation boundaries:
+
+- `packages/tabula`: pure Tabula.md product contracts and deterministic models.
+- `tabula-app`: the hosted app shell and browser runtime wiring.
+- external services: room relay and encrypted JSON snapshot storage.
+
+`packages/tabula` is the public core surface. It may contain Markdown editing
+commands, text patch logic, workspace state transitions, document runtime
+models, comment view models, share-link parsing, room-link parsing, room
+protocol shape validation, and pure collaboration presence models. It must not
+import React, CodeMirror, Yjs, Socket.IO, Vite, browser storage, or direct DOM
+globals.
+
+`tabula-app` owns React components, hooks, browser persistence, CodeMirror
+extensions, Yjs/socket adapters, network clients, feature flags, and hosted
+service copy. It should import core behavior through `@tabula-md/tabula` and
+avoid deep imports into `packages/tabula`.
+
+This boundary is enforced by the package boundary check and should be treated
+as an architectural guardrail, not a style preference.
+
 ## `tabula-md`
 
 The public app repo should contain:
