@@ -37,9 +37,8 @@ import { useEventCallback } from "../hooks/useEventCallback";
 import { useFileComments } from "../hooks/useFileComments";
 import { useWorkspaceFiles } from "../hooks/useWorkspaceFiles";
 import { useProjectIoController } from "../hooks/useProjectIoController";
-import { useIndexedDbWorkspaceHydration } from "../hooks/useIndexedDbWorkspaceHydration";
 import { useJsonShareImportController } from "../hooks/useJsonShareImportController";
-import { useQueuedWorkspacePersistence } from "../hooks/useQueuedWorkspacePersistence";
+import { useWorkspacePersistenceRuntime } from "../hooks/useWorkspacePersistenceRuntime";
 import { useSelectionCommentController } from "../hooks/useSelectionCommentController";
 import { useSplitViewController } from "../hooks/useSplitViewController";
 import { useWorkspaceActiveFileEditor } from "../hooks/useWorkspaceActiveFileEditor";
@@ -274,15 +273,12 @@ export function WorkspaceApp() {
     previewSurfaceRef,
     text,
   });
-  const indexedDbHydration = useIndexedDbWorkspaceHydration({
+  useWorkspacePersistenceRuntime({
     enabled: initialWorkspaceSnapshot.source === "starter",
     initialWorkspace,
     workspace: workspacePersistenceSnapshot,
     replaceCommentsByFileId,
     replaceWorkspace,
-  });
-  useQueuedWorkspacePersistence(workspacePersistenceSnapshot, {
-    enabled: !indexedDbHydration.deferPersistence,
   });
   const {
     topPopover,
