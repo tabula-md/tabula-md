@@ -1,8 +1,6 @@
-import * as Y from "yjs";
-
 import type { EncryptedEnvelope } from "./roomProtocol";
 import { fetchRoomMeta, fetchRoomSnapshotEnvelope, putRoomSnapshotEnvelope, type FetchLike } from "./collabRoomClient";
-import { applyRemoteUpdateToYText, type CollabTextDocument } from "./collabTextModel";
+import type { CollabTextAdapter, CollabTextDocumentHandle } from "./collabRuntimeAdapters";
 import type { RoomMeta } from "./liveCollaboration";
 import type { TextChange } from "../textPatches";
 
@@ -13,7 +11,8 @@ type SnapshotRecoveryType = "snapshot-recovered" | "invalid-message";
 
 type CollabSnapshotSyncOptions = {
   roomId: string;
-  textDocument: CollabTextDocument;
+  textAdapter: Pick<CollabTextAdapter, "applyRemoteUpdate" | "encodeState">;
+  textDocument: CollabTextDocumentHandle;
   getBaseUrl: () => string;
   canUseSnapshots: () => boolean;
   encryptSnapshot: (update: Uint8Array) => Promise<EncryptedEnvelope>;
@@ -40,6 +39,7 @@ const defaultClearTimeout = (handle: TimeoutHandle) => clearTimeout(handle as Re
 
 export const createCollabSnapshotSync = ({
   roomId,
+  textAdapter,
   textDocument,
   getBaseUrl,
   canUseSnapshots,
@@ -75,7 +75,7 @@ export const createCollabSnapshotSync = ({
     }
 
     try {
-      const envelope = await encryptSnapshot(Y.encodeStateAsUpdate(textDocument.doc));
+      const envelope = await encryptSnapshot(textAdapter.encodeState(textDocument));
       const meta = await putRoomSnapshotEnvelope({ baseUrl: getBaseUrl(), roomId, envelope, fetcher });
       if (!meta) {
         return false;
@@ -110,7 +110,7 @@ export const createCollabSnapshotSync = ({
         }
 
         const update = await decryptSnapshot(snapshot.envelope);
-        const result = applyRemoteUpdateToYText({ ...textDocument, update });
+        const result = textAdapter.applyRemoteUpdate(textDocument, update);
         if (result) {
           onTextChange(result.text, result.change);
         }

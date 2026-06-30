@@ -9,6 +9,7 @@ describe("collaboration update buffer", () => {
     const buffer = createCollabUpdateBuffer({
       delayMs: 25,
       onFlush,
+      mergeUpdates: (updates) => Y.mergeUpdates([...updates]),
       setTimeoutFn: vi.fn(),
       clearTimeoutFn: vi.fn(),
     });
@@ -36,6 +37,7 @@ describe("collaboration update buffer", () => {
     const buffer = createCollabUpdateBuffer({
       delayMs: 25,
       onFlush,
+      mergeUpdates: (updates) => Y.mergeUpdates([...updates]),
       setTimeoutFn,
       clearTimeoutFn: vi.fn(),
     });
@@ -61,6 +63,7 @@ describe("collaboration update buffer", () => {
     const buffer = createCollabUpdateBuffer({
       delayMs: 25,
       onFlush: (update) => flushedUpdates.push(update),
+      mergeUpdates: (updates) => Y.mergeUpdates([...updates]),
       setTimeoutFn: (callback) => {
         scheduled = callback;
         return 1;
@@ -82,6 +85,7 @@ describe("collaboration update buffer", () => {
     const buffer = createCollabUpdateBuffer({
       delayMs: 25,
       onFlush,
+      mergeUpdates: (updates) => Y.mergeUpdates([...updates]),
       setTimeoutFn: vi.fn(() => 1),
       clearTimeoutFn,
     });

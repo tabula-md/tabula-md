@@ -10,12 +10,16 @@ import { createCollaboratorRegistry } from "./collabCollaborators";
 import { encodePresenceForRoom } from ".";
 import { createCollabEnvelopeRouter } from "./collabEnvelopeRouter";
 import { createCollabTextDocument } from "./collabTextModel";
+import { createYjsCollabTextAdapter } from "./collabYjsTextAdapter";
+
+const textAdapter = createYjsCollabTextAdapter();
 
 describe("collaboration envelope router", () => {
   it("ignores messages while decryption is unavailable", async () => {
     const emitRecoveryEvent = vi.fn();
     const router = createCollabEnvelopeRouter({
       roomId: "room-1",
+      textAdapter,
       textDocument: createCollabTextDocument(),
       collaborators: createCollaboratorRegistry(),
       canDecrypt: () => false,
@@ -35,6 +39,7 @@ describe("collaboration envelope router", () => {
     const emitRecoveryEvent = vi.fn();
     const router = createCollabEnvelopeRouter({
       roomId: "room-1",
+      textAdapter,
       textDocument: createCollabTextDocument(),
       collaborators: createCollaboratorRegistry(),
       canDecrypt: () => true,
@@ -59,6 +64,7 @@ describe("collaboration envelope router", () => {
     const onTextChange = vi.fn();
     const router = createCollabEnvelopeRouter({
       roomId: "room-1",
+      textAdapter,
       textDocument,
       collaborators: createCollaboratorRegistry(),
       canDecrypt: () => true,
@@ -103,6 +109,7 @@ describe("collaboration envelope router", () => {
     );
     const router = createCollabEnvelopeRouter({
       roomId: "room-1",
+      textAdapter,
       textDocument: createCollabTextDocument(),
       collaborators,
       canDecrypt: () => true,

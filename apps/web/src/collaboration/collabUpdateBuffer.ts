@@ -1,10 +1,9 @@
-import * as Y from "yjs";
-
 type TimeoutHandle = unknown;
 
 type CollabUpdateBufferOptions = {
   delayMs: number;
   onFlush: (update: Uint8Array) => void;
+  mergeUpdates: (updates: readonly Uint8Array[]) => Uint8Array;
   setTimeoutFn?: (callback: () => void, delayMs: number) => TimeoutHandle;
   clearTimeoutFn?: (handle: TimeoutHandle) => void;
 };
@@ -22,6 +21,7 @@ export type CollabUpdateBuffer = {
 export const createCollabUpdateBuffer = ({
   delayMs,
   onFlush,
+  mergeUpdates,
   setTimeoutFn = defaultSetTimeout,
   clearTimeoutFn = defaultClearTimeout,
 }: CollabUpdateBufferOptions): CollabUpdateBuffer => {
@@ -41,7 +41,7 @@ export const createCollabUpdateBuffer = ({
       return;
     }
 
-    const update = pendingUpdates.length === 1 ? pendingUpdates[0] : Y.mergeUpdates(pendingUpdates);
+    const update = pendingUpdates.length === 1 ? pendingUpdates[0] : mergeUpdates(pendingUpdates);
     pendingUpdates = [];
     onFlush(update);
   };
