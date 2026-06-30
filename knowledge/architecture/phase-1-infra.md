@@ -1,7 +1,7 @@
 ---
 type: Architecture Context
 title: Phase 1 infrastructure
-description: Phase 1 beta infrastructure uses the Tabula.md web app plus a separate encrypted Tabula Room server.
+description: Phase 1 beta infrastructure uses the Tabula.md Tabula app plus a separate encrypted Tabula Room server.
 tags: [architecture, infrastructure, beta]
 ---
 
@@ -9,7 +9,7 @@ tags: [architecture, infrastructure, beta]
 
 Phase 1 infrastructure has two public repositories:
 
-- `tabula-md`: the web app and Markdown workspace.
+- `tabula-md`: the Tabula app and Markdown workspace.
 - `tabula-room`: the encrypted collaboration room server.
 
 The official hosted `tabula.md` service is not a third public product repo. It
@@ -35,7 +35,7 @@ protocol or persistence behavior.
 
 # Deployment Direction
 
-- Deploy the web app with `VITE_TABULA_ROOM_URL` pointing at the selected Room
+- Deploy the Tabula app with `VITE_TABULA_ROOM_URL` pointing at the selected Room
   server.
 - Do not rely on the local room fallback outside development. Production and
   self-hosted builds without `VITE_TABULA_ROOM_URL` should leave Start session

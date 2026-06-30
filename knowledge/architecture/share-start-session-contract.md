@@ -62,9 +62,9 @@ contract.
 
 The open-source repositories and hosted service share the same contract:
 
-- `tabula-md`: open-source web app and self-hostable client.
+- `tabula-md`: open-source Tabula app and self-hostable client.
 - `tabula-room`: open-source encrypted room relay/server.
-- `tabula.md`: managed deployment of the same web app pointed at the managed
+- `tabula.md`: managed deployment of the same Tabula app pointed at the managed
   room service.
 
 Hosted builds may provide a default `VITE_TABULA_ROOM_URL`. Self-hosted builds

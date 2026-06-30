@@ -84,7 +84,7 @@ test("allows Graphite commands and safe Git passthrough", () => {
   assert.equal(evaluateBashCommand("gt create codex/hook-policy -m \"chore(codex): update hook policy\"").decision, "allow");
   assert.equal(evaluateBashCommand("gt submit --stack").decision, "allow");
   assert.equal(evaluateBashCommand("git status --short").decision, "allow");
-  assert.equal(evaluateBashCommand("git diff -- apps/web/src/App.tsx").decision, "allow");
+  assert.equal(evaluateBashCommand("git diff -- tabula-app/src/App.tsx").decision, "allow");
   assert.equal(evaluateBashCommand("git branch --show-current").decision, "allow");
   assert.equal(evaluateBashCommand("git branch -a").decision, "allow");
   assert.equal(evaluateBashCommand("git stash push -m wip").decision, "allow");
@@ -116,15 +116,15 @@ test("warns for raw Git navigation and rebase without blocking recovery", () => 
 
 test("blocks destructive Git commands", () => {
   assert.equal(evaluateBashCommand("git reset --hard HEAD").decision, "block");
-  assert.equal(evaluateBashCommand("git checkout -- apps/web/src/App.tsx").decision, "block");
+  assert.equal(evaluateBashCommand("git checkout -- tabula-app/src/App.tsx").decision, "block");
   assert.equal(evaluateBashCommand("git clean -fd").decision, "block");
-  assert.equal(evaluateBashCommand("rm -rf apps/web/src").decision, "allow");
+  assert.equal(evaluateBashCommand("rm -rf tabula-app/src").decision, "allow");
 });
 
 test("blocks shell source writes under project-owned paths", () => {
-  assert.equal(evaluateBashCommand("cat <<'EOF' > apps/web/src/App.tsx\nx\nEOF").decision, "block");
+  assert.equal(evaluateBashCommand("cat <<'EOF' > tabula-app/src/App.tsx\nx\nEOF").decision, "block");
   assert.equal(evaluateBashCommand("printf '%s' test > docs/README.md").decision, "block");
-  assert.equal(evaluateBashCommand("node -e 'fs.writeFileSync(\"apps/web/src/App.tsx\", \"x\")'").decision, "block");
+  assert.equal(evaluateBashCommand("node -e 'fs.writeFileSync(\"tabula-app/src/App.tsx\", \"x\")'").decision, "block");
   assert.equal(evaluateBashCommand("node -e 'fs.writeFileSync(\".codex/hooks.json\", \"x\")'").decision, "block");
   assert.equal(evaluateBashCommand("node -e 'fs.writeFileSync(\".codex/hooks/lib/tmp.mjs\", \"x\")'").decision, "block");
   assert.equal(evaluateBashCommand("python -c 'from pathlib import Path; Path(\"scripts/tmp.mjs\").write_text(\"x\")'").decision, "block");
@@ -137,16 +137,16 @@ test("blocks shell source writes under project-owned paths", () => {
 test("parses apply_patch file paths", () => {
   assert.deepEqual(
     parsePatchFiles(`*** Begin Patch
-*** Update File: apps/web/src/App.tsx
+*** Update File: tabula-app/src/App.tsx
 @@
 *** Add File: docs/README.md
 *** End Patch`),
-    ["apps/web/src/App.tsx", "docs/README.md"]
+    ["tabula-app/src/App.tsx", "docs/README.md"]
   );
 });
 
 test("classifies validation needs by changed file", () => {
-  assert.deepEqual(classifyChangedFiles(["apps/web/src/App.tsx"]).needs, {
+  assert.deepEqual(classifyChangedFiles(["tabula-app/src/App.tsx"]).needs, {
     build: true,
     browser: true,
     unit: false,
@@ -158,8 +158,8 @@ test("classifies validation needs by changed file", () => {
     unit: false,
     hooks: true
   });
-  assert.deepEqual(classifyChangedFiles(["apps/web/src/styles/top-chrome.css"]).browserSuites, ["layout"]);
-  assert.deepEqual(classifyChangedFiles(["apps/web/src/components/FileToolbar.tsx"]).browserSuites, ["editor-preview"]);
+  assert.deepEqual(classifyChangedFiles(["tabula-app/src/styles/top-chrome.css"]).browserSuites, ["layout"]);
+  assert.deepEqual(classifyChangedFiles(["tabula-app/src/components/DocumentControls.tsx"]).browserSuites, ["editor-preview"]);
 });
 
 test("classifies observed validation commands", () => {
@@ -190,7 +190,7 @@ test("classifies observed validation commands", () => {
 
 test("reports validations missing after newer relevant changes", () => {
   let state = {};
-  state = recordChangedFiles(state, ["apps/web/src/workspaceStorage.ts"], "2026-06-17T00:00:00.000Z");
+  state = recordChangedFiles(state, ["tabula-app/src/workspaceStorage.ts"], "2026-06-17T00:00:00.000Z");
   state = recordValidationCommand(state, "npm run build", "2026-06-17T00:01:00.000Z");
   assert.deepEqual(getMissingValidations(state).map((item) => item.command), ["npm run test:browser:workspace"]);
   state = recordValidationCommand(state, "npm run test:browser:workspace", "2026-06-17T00:02:00.000Z");
@@ -199,11 +199,11 @@ test("reports validations missing after newer relevant changes", () => {
 
 test("reports stop validation reminders only for current-turn changes", () => {
   let state = {};
-  state = recordChangedFiles(state, ["apps/web/src/App.tsx"], "2026-06-17T00:00:00.000Z");
+  state = recordChangedFiles(state, ["tabula-app/src/App.tsx"], "2026-06-17T00:00:00.000Z");
   state = recordPromptSubmitted(state, "2026-06-17T00:01:00.000Z");
   assert.deepEqual(getCurrentTurnMissingValidations(state).map((item) => item.key), []);
 
-  state = recordChangedFiles(state, ["apps/web/src/components/FileToolbar.tsx"], "2026-06-17T00:02:00.000Z");
+  state = recordChangedFiles(state, ["tabula-app/src/components/DocumentControls.tsx"], "2026-06-17T00:02:00.000Z");
   assert.deepEqual(getCurrentTurnMissingValidations(state).map((item) => item.key), ["build", "browser"]);
 });
 
@@ -222,10 +222,10 @@ test("filters stale validation reminders to current branch files", () => {
 
 test("parses git status output for bash post-tool change detection", () => {
   assert.deepEqual(
-    parseGitStatusFiles(` M apps/web/src/App.tsx
+parseGitStatusFiles(` M tabula-app/src/App.tsx
 ?? docs/README.md
-R  old-name.md -> apps/web/src/components/FileToolbar.tsx`),
-    ["apps/web/src/App.tsx", "docs/README.md", "apps/web/src/components/FileToolbar.tsx"]
+R  old-name.md -> tabula-app/src/components/DocumentControls.tsx`),
+    ["tabula-app/src/App.tsx", "docs/README.md", "tabula-app/src/components/DocumentControls.tsx"]
   );
   assert.equal(shouldRecordGitStatusAfterCommand("npm run workflow:status"), false);
   assert.equal(shouldRecordGitStatusAfterCommand("git diff -- WORKFLOW.md"), false);

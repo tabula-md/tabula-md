@@ -4,7 +4,7 @@
 
 이 TODO는 일부러 좁게 잡는다. 목표는 아래 네 가지다.
 
-1. `tabula-md`가 오픈소스 웹앱 레포로 공개될 수 있을 것.
+1. `tabula-md`가 오픈소스 Tabula app 레포로 공개될 수 있을 것.
 2. `tabula-room`이 오픈소스 encrypted room server 레포로 공개될 수 있을 것.
 3. 사용자가 `tabula.md`에 들어와 제품을 실제로 쓸 수 있을 것.
 4. 사용자가 Markdown을 쓰고, Share를 눌러 live room link를 복사하고, 다른
@@ -16,12 +16,12 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
 
 ## 완료 정의
 
-- [ ] `tabula-md`가 OSS web app으로 공개 가능한 상태다.
+- [ ] `tabula-md`가 OSS Tabula app으로 공개 가능한 상태다.
 - [ ] `tabula-room`이 OSS encrypted room server로 공개 가능한 상태다.
 - [x] private `tabula-cloud` 레포가 있다.
-- [ ] hosted `tabula.md`에서 production web app이 열린다.
+- [ ] hosted `tabula.md`에서 production Tabula app이 열린다.
 - [ ] hosted Share > Start session이 live room link를 만든다.
-- [ ] 두 번째 브라우저가 복사된 `/r/:roomId#key=...` 링크로 들어올 수 있다.
+- [ ] 두 번째 브라우저가 복사된 `/#room=<roomId>,<roomKey>` 링크로 들어올 수 있다.
 - [ ] 두 브라우저가 같은 Markdown 문서를 함께 편집할 수 있다.
 - [ ] reload 후 encrypted room state가 복구된다.
 - [ ] 로그와 문서에 room key, URL fragment, plaintext Markdown, provider
@@ -53,7 +53,7 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
 
 ## 1. Public Repo Boundary
 
-- [ ] `tabula-md`는 OSS web app repo로 유지한다.
+- [ ] `tabula-md`는 OSS Tabula app repo로 유지한다.
 - [ ] `tabula-room`은 OSS room server repo로 유지한다.
 - [ ] `tabula-cloud`는 hosted operations용 private repo로 유지한다.
 - [ ] public docs에서 경계를 설명한다.
@@ -167,13 +167,13 @@ team workspace, template system, agent memory, 미래 인프라 리라이트는 
 
 ## 5. Hosted Web Deployment
 
-- [ ] `tabula-md`에서 hosted static web app project를 만든다.
+- [ ] `tabula-md`에서 hosted static Tabula app project를 만든다.
 - [ ] build를 설정한다.
   - [ ] build command: `npm run build`.
   - [ ] output directory: `dist`.
   - [ ] repo와 맞는 Node version.
 - [ ] client route용 SPA fallback을 설정한다.
-  - [ ] `/r/:roomId`.
+  - [ ] `/#room=<roomId>,<roomKey>`.
   - [ ] future client routes.
 - [ ] `tabula.md`를 연결한다.
 - [ ] production environment를 설정한다.

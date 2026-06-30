@@ -574,6 +574,11 @@ export async function run(ctx) {
       }
       const preStyle = window.getComputedStyle(pre);
       const codeStyle = window.getComputedStyle(code);
+      const surfaceProbe = document.createElement("span");
+      surfaceProbe.style.background = "var(--surface-panel)";
+      document.body.append(surfaceProbe);
+      const surfacePanelBackground = window.getComputedStyle(surfaceProbe).backgroundColor;
+      surfaceProbe.remove();
       return {
         text: code.textContent ?? "",
         language: code.dataset.language ?? "",
@@ -583,6 +588,7 @@ export async function run(ctx) {
         blockRadius: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).borderRadius : "",
         blockBorderWidth: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).borderTopWidth : "",
         blockBackground: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).backgroundColor : "",
+        surfacePanelBackground,
         preBackground: preStyle.backgroundColor,
         preRadius: preStyle.borderRadius,
         codeDisplay: codeStyle.display,
@@ -597,7 +603,10 @@ export async function run(ctx) {
     expect(previewCodeBlock?.copyTitle === "Copy code", "Preview code blocks should offer a copy code control.");
     expect(previewCodeBlock?.blockRadius !== "0px", "Preview code block controls should live inside the rounded code surface.");
     expect(previewCodeBlock?.blockBorderWidth === "1px", "Preview code blocks should use a document boundary.");
-    expect(previewCodeBlock?.blockBackground === "rgb(251, 251, 251)", "Preview code blocks should stay quieter than filled gray cards.");
+    expect(
+      previewCodeBlock?.blockBackground === previewCodeBlock?.surfacePanelBackground,
+      "Preview code blocks should stay quieter than filled gray cards.",
+    );
     expect(previewCodeBlock?.codeDisplay === "block", "Preview code blocks should render as stable block code.");
     expect(previewCodeBlock?.ligatures === "none", "Preview code blocks should preserve source-like character rendering.");
     expect(previewCodeBlock?.whiteSpace === "pre", "Preview code blocks should preserve source whitespace by default.");

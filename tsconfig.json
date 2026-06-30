@@ -20,6 +20,6 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["apps/web/src", "packages/tabula/src"],
+  "include": ["tabula-app/src", "packages/tabula/src"],
   "references": []
 }

@@ -33,7 +33,7 @@ Install dependencies:
 npm install
 ```
 
-Run the web app:
+Run the Tabula app:
 
 ```sh
 npm run dev

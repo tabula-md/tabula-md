@@ -5,7 +5,7 @@ Core product contracts for Tabula.md.
 This package is intentionally small and browser-service agnostic. It contains
 pure models for Markdown editing, workspace files, document controls, comments,
 status labels, live room links, encrypted JSON snapshot links, and the pure
-parts of collaboration presence. The web app in `apps/web` wires these
+parts of collaboration presence. The Tabula app in `tabula-app` wires these
 contracts to React, CodeMirror, local storage, collaboration transports, and
 network services.
 
@@ -64,6 +64,6 @@ const nextText = applyMarkdownFormatCommand({
 
 ## Service App Relationship
 
-`apps/web` is the tabula.md service app. It can choose to enable or hide service
+`tabula-app` is the tabula.md service app. It can choose to enable or hide service
 features such as live collaboration, encrypted snapshot upload, Send to..., or
 future Tabula+ boundaries without changing the pure contracts here.

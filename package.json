@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "apps/web",
+    "tabula-app",
     "packages/tabula"
   ],
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "web:dev": "vite --host 0.0.0.0",
+    "app:dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "pr:body": "node scripts/pr-body.mjs",
@@ -35,10 +35,10 @@
     "test:browser:json-share": "npm run test:browser -- --suite=json-share",
     "test:browser:production:json-share": "TABULA_TEST_URL=https://tabula.md VITE_TABULA_JSON_URL=https://json.tabula.md npm run test:browser -- --suite=json-share",
     "test:browser:production": "npm run test:browser:production:collab && npm run test:browser:production:json-share",
-    "test:browser:publish": "npm run test:browser -- --suite=publish",
     "test:browser:performance": "npm run test:browser -- --suite=performance",
+    "bundle:check": "node scripts/check-bundle-chunks.mjs",
     "test:surface-colors": "node scripts/check-surface-colors.mjs",
-    "lint:fast": "oxlint apps/web/src packages/tabula/src scripts --deny-warnings"
+    "lint:fast": "oxlint tabula-app/src packages/tabula/src scripts --deny-warnings"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

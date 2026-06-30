@@ -22,7 +22,7 @@ end-to-end-encrypted room model.
 
 # Current Direction
 
-Live collaboration uses the separate `tabula-room` server. The web app keeps
+Live collaboration uses the separate `tabula-room` server. The Tabula app keeps
 Yjs document merge behavior in the browser and encrypts Yjs updates, presence,
 and any recovery snapshots before relay or storage.
 

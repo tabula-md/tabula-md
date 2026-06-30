@@ -1,9 +1,9 @@
 {
   "kind": "patch-policy",
   "name": "records apply_patch file classification",
-  "patch": "*** Begin Patch\n*** Update File: apps/web/src/components/FileToolbar.tsx\n@@\n-const oldValue = true;\n+const oldValue = false;\n*** End Patch",
+  "patch": "*** Begin Patch\n*** Update File: tabula-app/src/components/DocumentControls.tsx\n@@\n-const oldValue = true;\n+const oldValue = false;\n*** End Patch",
   "expectedFiles": [
-    "apps/web/src/components/FileToolbar.tsx"
+    "tabula-app/src/components/DocumentControls.tsx"
   ],
   "expectedNeeds": {
     "build": true,

@@ -18,6 +18,33 @@ describe("markdown document model", () => {
     expect(parsed.body).toBe("\n# HELP");
   });
 
+  it("formats multiline, arrays, and nested object metadata", () => {
+    const parsed = parseFrontmatter(`---
+description: |
+  First line
+  Second line
+summary: >
+  Folded
+  value
+tags:
+  - prd
+  - design
+owner:
+  name: Taeha
+  team: Product
+inline: { status: draft, owner: taeha }
+---
+
+Body`);
+
+    expect(parsed.attributes).toContainEqual({ key: "description", value: "First line\nSecond line" });
+    expect(parsed.attributes).toContainEqual({ key: "summary", value: "Folded value" });
+    expect(parsed.attributes).toContainEqual({ key: "tags", value: "prd, design" });
+    expect(parsed.attributes).toContainEqual({ key: "owner", value: "name: Taeha\nteam: Product" });
+    expect(parsed.attributes).toContainEqual({ key: "inline", value: "status: draft\nowner: taeha" });
+    expect(parsed.body).toBe("\nBody");
+  });
+
   it("treats invalid frontmatter as normal markdown text", () => {
     const markdown = `---\ntitle: HELP\na\n---\n\n# HELP`;
 
@@ -27,9 +54,46 @@ describe("markdown document model", () => {
     });
   });
 
+  it("does not treat top horizontal rules as frontmatter without metadata key-values", () => {
+    const markdown = `---
+Intro divider
+---
+
+Body`;
+
+    expect(parseFrontmatter(markdown)).toEqual({
+      attributes: [],
+      body: markdown,
+    });
+  });
+
+  it("only closes frontmatter on a standalone delimiter line", () => {
+    const markdown = `---
+title: Diagnose
+--- not a delimiter
+---
+
+Body`;
+
+    expect(parseFrontmatter(markdown)).toEqual({
+      attributes: [],
+      body: markdown,
+    });
+  });
+
   it("derives document titles from frontmatter before headings", () => {
-    expect(getMarkdownDocumentTitle("---\ntitle: Brief\n---\n\n# Other")).toBe("Brief");
-    expect(getMarkdownDocumentTitle("# Heading")).toBe("Heading");
+    expect(getMarkdownDocumentTitle("---\ntitle: Product Requirements\n---\n\n# PRD\n")).toBe(
+      "Product Requirements",
+    );
+    expect(getMarkdownDocumentTitle("\n# Design Brief\n\nBody")).toBe("Design Brief");
+    expect(getMarkdownDocumentTitle("Plain body")).toBe("");
+  });
+
+  it("keeps preview body unchanged when frontmatter title matches the first H1", () => {
+    expect(getPreviewBody("\n# Diagnose\n\nA discipline.")).toEqual({
+      body: "\n# Diagnose\n\nA discipline.",
+      sourceLineOffset: 0,
+    });
   });
 
   it("extracts outline headings from preview body line positions", () => {
