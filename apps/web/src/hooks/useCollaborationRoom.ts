@@ -5,14 +5,14 @@ import {
   type CollabRecoveryEvent,
   type ConnectionStatus,
   type LiveSelection,
-  createRoomSession,
   createCollabConnection,
   getTabulaRoomAvailability,
 } from "../collab";
 import {
-  canStartCollaborationSession,
+  createCollaborationSessionStartRequest,
   getDisconnectedStatusPatch,
   getIdleStatusPatch,
+  getInitialCollaborationStatus,
   getLiveRoomConnectionTarget,
   getRecoveryEventPatch,
   getRoomMetaPatch,
@@ -53,7 +53,7 @@ export function useCollaborationRoom({
   onRemoteTextChange,
 }: UseCollaborationRoomOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(() =>
-    isUsableLiveRoomFile(activeFile) ? "connecting" : "idle",
+    getInitialCollaborationStatus(activeFile),
   );
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const collabRef = useRef<CollabConnection | null>(null);
@@ -143,12 +143,16 @@ export function useCollaborationRoom({
 
   const startSession = () => {
     const sessionFile = activeFile;
-    if (!canStartCollaborationSession({ activeFile: sessionFile, roomAvailability }) || !sessionFile) {
+    const nextSession = createCollaborationSessionStartRequest({
+      activeFile: sessionFile,
+      origin: window.location.origin,
+      roomAvailability,
+    });
+    if (!sessionFile || !nextSession) {
       return undefined;
     }
 
-    const nextSession = createRoomSession(window.location.origin);
-    pendingInitialTextRef.current = sessionFile.text;
+    pendingInitialTextRef.current = nextSession.initialText;
     startFileCollaborationSession(sessionFile.id, nextSession.roomId, nextSession.shareUrl);
     setConnectionStatus("connecting");
     return { roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };

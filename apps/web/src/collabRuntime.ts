@@ -1,7 +1,12 @@
 import {
+  createRoomSession,
   parseRoomShareUrl,
+  type Collaborator,
   type CollabRecoveryEvent,
+  type ConnectionStatus,
+  type LiveSelection,
   type RoomMeta,
+  type RoomSession,
   type TabulaRoomAvailability,
 } from "./collab";
 import type { WorkspaceFile } from "./workspaceStorage";
@@ -30,6 +35,22 @@ export type RecoveryEventPatch = {
   createdAt: string;
 };
 
+export type CollaborationPresenceIdentityInput = {
+  identity: Collaborator;
+  isLive: boolean;
+  roomId?: string;
+  fileTitle: string;
+  selection?: LiveSelection;
+};
+
+export type CollaborationSessionStartRequest = {
+  initialText: string;
+  roomId: string;
+  shareUrl: string;
+};
+
+type CreateRoomSession = (origin: string) => Pick<RoomSession, "roomId" | "shareUrl">;
+
 export const getLiveRoomConnectionTarget = (file?: WorkspaceFile): LiveRoomConnectionTarget | null => {
   if (!file?.id || !file.roomId || !file.shareUrl) {
     return null;
@@ -48,6 +69,9 @@ export const getLiveRoomConnectionTarget = (file?: WorkspaceFile): LiveRoomConne
     shareUrl: parsedRoom.shareUrl,
   };
 };
+
+export const getInitialCollaborationStatus = (file?: WorkspaceFile): ConnectionStatus =>
+  getLiveRoomConnectionTarget(file) ? "connecting" : "idle";
 
 export const getDisconnectedStatusPatch = (): CollaborationStatusPatch => ({
   collaboratorCount: 0,
@@ -85,3 +109,42 @@ export const canStartCollaborationSession = ({
   activeFile?: WorkspaceFile;
   roomAvailability: TabulaRoomAvailability;
 }) => Boolean(activeFile) && roomAvailability.available;
+
+export const createCollaborationSessionStartRequest = ({
+  activeFile,
+  origin,
+  roomAvailability,
+  createSession = createRoomSession,
+}: {
+  activeFile?: WorkspaceFile;
+  origin: string;
+  roomAvailability: TabulaRoomAvailability;
+  createSession?: CreateRoomSession;
+}): CollaborationSessionStartRequest | undefined => {
+  if (!canStartCollaborationSession({ activeFile, roomAvailability }) || !activeFile) {
+    return undefined;
+  }
+
+  const session = createSession(origin);
+  return {
+    initialText: activeFile.text,
+    roomId: session.roomId,
+    shareUrl: session.shareUrl,
+  };
+};
+
+export const createCollaborationPresenceIdentity = ({
+  identity,
+  isLive,
+  roomId,
+  fileTitle,
+  selection,
+}: CollaborationPresenceIdentityInput): Collaborator =>
+  isLive
+    ? {
+        ...identity,
+        roomId,
+        fileTitle,
+        selection,
+      }
+    : identity;

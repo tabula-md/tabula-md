@@ -17,6 +17,7 @@ import {
 } from "../workspaceViewModel";
 import { useCollaborationRoom } from "./useCollaborationRoom";
 import { useEventCallback } from "./useEventCallback";
+import { createCollaborationPresenceIdentity } from "../collabRuntime";
 
 type UseWorkspaceCollaborationRuntimeOptions = {
   activeFile?: WorkspaceFile;
@@ -92,14 +93,13 @@ export function useWorkspaceCollaborationRuntime({
   });
   const presenceIdentity = useMemo(
     () =>
-      isLive
-        ? {
-            ...identity,
-            roomId: activeFile?.roomId,
-            fileTitle: activeFileTitle,
-            selection: activeSelection,
-          }
-        : identity,
+      createCollaborationPresenceIdentity({
+        identity,
+        isLive,
+        roomId: activeFile?.roomId,
+        fileTitle: activeFileTitle,
+        selection: activeSelection,
+      }),
     [activeFile?.roomId, activeFileTitle, activeSelection, identity, isLive],
   );
 
