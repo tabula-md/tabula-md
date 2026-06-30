@@ -6,12 +6,10 @@ import {
 } from "react";
 import { AppToast } from "./AppToast";
 import { EmptyFileState } from "./EmptyFileState";
-import { FileTabs } from "./FileTabs";
 import { DocumentWorkbench } from "./DocumentWorkbench";
 import { RightPanel } from "./RightPanel";
-import { ShareControls } from "./ShareControls";
-import { TopChrome } from "./TopChrome";
 import { WorkspaceMenu } from "./WorkspaceMenu";
+import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { JsonShareImportDialog } from "./JsonShareImportDialog";
 import { buildDocumentSurface } from "../documentSurfaceModel";
 import {
@@ -552,60 +550,6 @@ export function WorkspaceApp() {
     splitDividerDragging,
   });
 
-  const fileTabsNode = (
-    <FileTabs
-      files={openFiles}
-      activeFile={activeFile}
-      activeCollaboratorCount={collaborators.length}
-      getFileStatus={getFileStatus}
-      onAddFile={addFile}
-      onSelectFile={selectFile}
-      onRenameFile={renameWorkspaceFileAction}
-      onCloseFile={closeFile}
-      onReorderFiles={reorderFiles}
-      onChromeInteraction={() => {
-        setTopPopover(null);
-        setCenterPopover(null);
-      }}
-    />
-  );
-
-  const shareControlsNode = activeFile ? (
-    <ShareControls
-      activeFile={activeFile}
-      files={files}
-      activeFileTitle={activeFileTitle}
-      language={workspacePreferences.language}
-      currentUserName={identity.name}
-      canStartSession={canStartSession}
-      isLive={isLive}
-      shareOpen={shareOpen}
-      sharePanelTarget={sharePanelTarget}
-      copied={copied}
-      jsonShare={jsonShare}
-      startSessionUnavailableReason={startSessionUnavailableReason}
-      onToggleShare={() => {
-        setSharePanelTarget(undefined);
-        setTopPopover(shareOpen ? null : "share");
-        setCenterPopover(null);
-        setWorkspaceMenuOpen(false);
-        setPreferencesOpen(false);
-      }}
-      onCloseShare={() => {
-        setTopPopover(null);
-        setSharePanelTarget(undefined);
-      }}
-      onStartSession={startSession}
-      onCopyShareUrl={copyShareUrl}
-      onCopyFile={copyCurrentFile}
-      onDownloadFile={downloadCurrentFile}
-      onDownloadProjectArchive={downloadProjectArchive}
-      onChangeUserName={updateIdentityName}
-      onCommitUserName={normalizeIdentityName}
-      onStopSession={stopSession}
-    />
-  ) : null;
-
   const formatMarkdown = (command: MarkdownFormatCommand) => {
     if (activeViewMode === "preview") {
       return;
@@ -712,18 +656,56 @@ export function WorkspaceApp() {
         />
 
         <section className={documentSurface.centerWorkbenchClassName}>
-          <TopChrome
-            workspaceMenuOpen={workspaceMenuOpen}
-            rightPanelOpen={rightPanelOpen}
-            isLive={isLive}
-            language={workspacePreferences.language}
-            identity={presenceIdentity}
-            collaborators={collaborators}
+          <WorkspaceTopChrome
+            activeFile={activeFile}
+            activeFileTitle={activeFileTitle}
             activeText={text}
-            fileTabs={fileTabsNode}
-            shareControls={shareControlsNode}
+            canStartSession={canStartSession}
+            collaborators={collaborators}
+            copied={copied}
+            currentUserName={identity.name}
+            files={files}
+            getFileStatus={getFileStatus}
+            identity={presenceIdentity}
+            isLive={isLive}
+            jsonShare={jsonShare}
+            language={workspacePreferences.language}
+            openFiles={openFiles}
+            rightPanelOpen={rightPanelOpen}
+            shareOpen={shareOpen}
+            sharePanelTarget={sharePanelTarget}
+            startSessionUnavailableReason={startSessionUnavailableReason}
+            workspaceMenuOpen={workspaceMenuOpen}
+            onAddFile={addFile}
+            onChangeUserName={updateIdentityName}
+            onChromeInteraction={() => {
+              setTopPopover(null);
+              setCenterPopover(null);
+            }}
+            onCloseFile={closeFile}
+            onCloseShare={() => {
+              setTopPopover(null);
+              setSharePanelTarget(undefined);
+            }}
+            onCommitUserName={normalizeIdentityName}
+            onCopyFile={copyCurrentFile}
+            onCopyShareUrl={copyShareUrl}
+            onDownloadFile={downloadCurrentFile}
+            onDownloadProjectArchive={downloadProjectArchive}
+            onReorderFiles={reorderFiles}
+            onRenameFile={renameWorkspaceFileAction}
+            onSelectFile={selectFile}
+            onStartSession={startSession}
+            onStopSession={stopSession}
             onToggleWorkspaceMenu={toggleWorkspaceMenu}
             onToggleRightPanel={toggleRightPanel}
+            onToggleShare={() => {
+              setSharePanelTarget(undefined);
+              setTopPopover(shareOpen ? null : "share");
+              setCenterPopover(null);
+              setWorkspaceMenuOpen(false);
+              setPreferencesOpen(false);
+            }}
           />
 
           <section className={documentSurface.fileShellClassName}>
