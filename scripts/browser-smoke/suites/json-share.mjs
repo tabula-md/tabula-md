@@ -1,5 +1,5 @@
 export const id = "json-share";
-export const description = "Encrypted shareable link export and import.";
+export const description = "Encrypted snapshot link export and import.";
 export const requiresJsonService = true;
 
 export async function run(ctx) {
@@ -31,18 +31,18 @@ export async function run(ctx) {
 
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
-    await page.getByRole("button", { name: "Export to link" }).click();
-    await page.waitForSelector('a[aria-label="Shareable link"]', { timeout: 8_000 });
+    await page.getByRole("button", { name: "Create snapshot link" }).click();
+    await page.waitForSelector('a[aria-label="Snapshot link"]', { timeout: 8_000 });
 
-    const snapshotUrl = await page.locator('a[aria-label="Shareable link"]').getAttribute("href");
-    expect(Boolean(snapshotUrl), "Export to link should create a shareable URL.");
+    const snapshotUrl = await page.locator('a[aria-label="Snapshot link"]').getAttribute("href");
+    expect(Boolean(snapshotUrl), "Create snapshot link should create a snapshot URL.");
 
     const parsedSnapshotUrl = new URL(snapshotUrl);
     const [, snapshotKey] = parsedSnapshotUrl.hash.replace(/^#json=/, "").split(",");
-    expect(parsedSnapshotUrl.origin === baseUrl, "Shareable links should point at the current Tabula.md origin.");
-    expect(parsedSnapshotUrl.pathname === "/", "Shareable links should keep the app root path.");
-    expect(parsedSnapshotUrl.hash.startsWith("#json="), "Shareable links should use the #json fragment.");
-    expect(Boolean(snapshotKey), "Shareable links should include a local decryption key in the hash fragment.");
+    expect(parsedSnapshotUrl.origin === baseUrl, "Snapshot links should point at the current Tabula.md origin.");
+    expect(parsedSnapshotUrl.pathname === "/", "Snapshot links should keep the app root path.");
+    expect(parsedSnapshotUrl.hash.startsWith("#json="), "Snapshot links should use the #json fragment.");
+    expect(Boolean(snapshotKey), "Snapshot links should include a local decryption key in the hash fragment.");
     expect(
       requestUrls.every((url) => !url.includes(snapshotKey)),
       "Snapshot export should not send the local decryption key to the app or JSON store.",
@@ -61,15 +61,19 @@ export async function run(ctx) {
       await waitForSavedLocally(secondPage);
 
       await secondPage.goto(`${baseUrl}${parsedSnapshotUrl.hash}`);
-      await waitForText(secondPage.locator(".share-modal"), "Load from link");
+      await waitForText(secondPage.locator(".share-modal"), "Load snapshot");
       await waitForText(secondPage.locator(".share-modal"), "Loading this link will replace your current local content.");
-      await secondPage.getByRole("button", { name: "Load copy" }).click();
+      await secondPage.getByRole("button", { name: "Load snapshot" }).click();
       await secondPage.locator(".share-modal").waitFor({ state: "detached" });
       await waitForText(secondPage.locator(".cm-content"), "Snapshot import body.");
       expect(
         secondRequestUrls.every((url) => !url.includes(snapshotKey)),
         "Snapshot import should not send the local decryption key to the app or JSON store.",
       );
+
+      await secondPage.goto(`${baseUrl}/#json=${parsedSnapshotUrl.hash.replace(/^#json=/, "").split(",")[0]}`);
+      await waitForText(secondPage.locator(".share-modal"), "Unable to open link");
+      await waitForText(secondPage.locator(".share-modal"), "This snapshot link is missing its client-only key.");
     } finally {
       await secondContext.close();
     }

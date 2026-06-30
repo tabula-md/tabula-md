@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createJsonShareLink,
+  getJsonShareImportRoute,
   getJsonShareRoute,
   parseJsonShareFromHash,
   readJsonShareSnapshot,
@@ -117,6 +118,29 @@ describe("json share links", () => {
     });
     expect(getJsonShareRoute({ pathname: "/p/example", hash: `#json=abc12345,${key}` })).toBeNull();
     expect(parseJsonShareFromHash(`#json=abc12345,${key}&bad=1`)).toBeNull();
+  });
+
+  it("routes malformed #json fragments into the import failure flow", () => {
+    const key = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+    expect(getJsonShareImportRoute({ pathname: "/", hash: `#json=abc12345,${key}` })).toMatchObject({
+      status: "valid",
+      route: {
+        snapshotId: "abc12345",
+        key,
+      },
+    });
+    expect(getJsonShareImportRoute({ pathname: "/p/example", hash: "#json=abc12345" })).toBeNull();
+    expect(getJsonShareImportRoute({ pathname: "/", hash: "#json=abc12345" })).toEqual({
+      status: "invalid",
+      routeKey: "invalid:abc12345",
+      errorMessage: "This snapshot link is missing its client-only key.",
+    });
+    expect(getJsonShareImportRoute({ pathname: "/", hash: "#json=abc12345,not-a-32-byte-key" })).toEqual({
+      status: "invalid",
+      routeKey: "invalid:abc12345,not-a-32-byte-key",
+      errorMessage: "This snapshot link has an invalid client-only key.",
+    });
   });
 
   it("converts decrypted snapshots into editable workspaces", () => {

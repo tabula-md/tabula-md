@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   getConfiguredJsonShareServiceUrl,
-  getJsonShareRoute,
+  getJsonShareImportRoute,
   readJsonShareSnapshot,
   type JsonShareRoute,
   createWorkspaceFromJsonShareSnapshot,
@@ -19,7 +19,7 @@ import { useEventCallback } from "./useEventCallback";
 export type PendingJsonShareImport =
   | { status: "loading"; route: JsonShareRoute }
   | { status: "ready"; route: JsonShareRoute; workspace: WorkspaceState }
-  | { status: "error"; route: JsonShareRoute; errorMessage: string };
+  | { status: "error"; route?: JsonShareRoute; errorMessage: string };
 
 type UseJsonShareImportControllerArgs = {
   clearFileHistory: () => void;
@@ -71,21 +71,30 @@ export function useJsonShareImportController({
     closeFloatingChrome();
     syncUrlForFile(nextActiveFile, "replace");
     setJsonShareImport(null);
-    showToast("Shared copy loaded.");
+    showToast("Snapshot loaded.");
   });
 
   useEffect(() => {
     const openJsonShareRoute = () => {
-      const route = getJsonShareRoute(window.location);
-      if (!route) {
+      const importRoute = getJsonShareImportRoute(window.location);
+      if (!importRoute) {
         return;
       }
 
-      const routeKey = `${route.snapshotId}:${route.key}`;
-      if (handledJsonShareRouteRef.current === routeKey) {
+      if (handledJsonShareRouteRef.current === importRoute.routeKey) {
         return;
       }
-      handledJsonShareRouteRef.current = routeKey;
+      handledJsonShareRouteRef.current = importRoute.routeKey;
+
+      if (importRoute.status === "invalid") {
+        setJsonShareImport({
+          status: "error",
+          errorMessage: importRoute.errorMessage,
+        });
+        return;
+      }
+
+      const { route } = importRoute;
       setJsonShareImport({ status: "loading", route });
 
       const serviceUrl = getConfiguredJsonShareServiceUrl();
@@ -93,7 +102,7 @@ export function useJsonShareImportController({
         setJsonShareImport({
           status: "error",
           route,
-          errorMessage: "Shared links are not configured for this build.",
+          errorMessage: "Snapshot links are not configured for this build.",
         });
         return;
       }

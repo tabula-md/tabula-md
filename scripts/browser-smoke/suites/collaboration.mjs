@@ -150,13 +150,13 @@ export async function run(ctx) {
       expect(typeof stopRoomServer === "function", "Collaboration smoke should be able to stop the room server.");
       expect(typeof startRoomServer === "function", "Collaboration smoke should be able to start the room server.");
       await stopRoomServer();
-      await firstPage.waitForSelector(".tab-live-dot.offline", { timeout: 8_000 });
+      await firstPage.waitForSelector(".tab-live-dot.reconnecting", { timeout: 8_000 });
       const offlineNoticeCount = await firstPage.locator(".live-room-notice").count();
-      expect(offlineNoticeCount === 0, "Recoverable server offline state should not show a document-level notice.");
+      expect(offlineNoticeCount === 0, "Recoverable reconnecting state should not show a document-level notice.");
       await firstPage.locator(".share-trigger").click();
       expect(
         (await firstPage.locator(".share-modal .live-room-status").count()) === 0,
-        "Recoverable server offline state should not show routine status copy in Share.",
+        "Recoverable reconnecting state should not show routine status copy in Share.",
       );
       await firstPage.getByRole("button", { name: "Close share dialog" }).click();
       await focusMarkdownEditor(firstPage);
@@ -193,7 +193,7 @@ export async function run(ctx) {
       try {
         await wrongKeyPage.goto(`${baseUrl}/#room=${roomId},${wrongRoomKey}`);
         await wrongKeyPage.waitForSelector(".tab-item.live.active");
-        await waitForText(wrongKeyPage.locator(".file-status-bar"), "Room offline");
+        await waitForText(wrongKeyPage.locator(".file-status-bar"), "Connection failed");
         expect(
           (await wrongKeyPage.locator(".live-room-notice").count()) === 0,
           "A room opened with the wrong key should not show document-level recovery UI.",

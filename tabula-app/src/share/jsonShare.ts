@@ -20,8 +20,10 @@ import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 export {
   createJsonShareUrl,
   formatJsonShareUrlPreview,
+  getJsonShareImportRoute,
   getJsonShareRoute,
   parseJsonShareFromHash,
+  type JsonShareImportRoute,
   type JsonShareRoute,
 } from "@tabula-md/tabula";
 

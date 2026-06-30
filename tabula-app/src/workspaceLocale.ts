@@ -166,7 +166,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Snapshot link",
         description:
-          "Create an encrypted snapshot that imports into another workspace.",
+          "Create an encrypted snapshot that opens as a local copy.",
         exportToLink: "Create snapshot link",
         exporting: "Creating link",
         updateLink: "New snapshot link",
@@ -260,7 +260,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "스냅샷 링크",
         description:
-          "다른 워크스페이스로 가져올 암호화된 스냅샷을 만듭니다.",
+          "로컬 복사본으로 열 암호화된 스냅샷을 만듭니다.",
         exportToLink: "스냅샷 링크 만들기",
         exporting: "링크 만드는 중",
         updateLink: "새 스냅샷 링크",
@@ -355,7 +355,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "スナップショットリンク",
         description:
-          "別のワークスペースに読み込む暗号化スナップショットを作成します。",
+          "ローカルコピーとして開く暗号化スナップショットを作成します。",
         exportToLink: "スナップショットリンクを作成",
         exporting: "リンクを作成中",
         updateLink: "新しいスナップショットリンク",
@@ -450,7 +450,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       shareable: {
         title: "快照链接",
-        description: "创建可导入到另一个工作区的加密快照。",
+        description: "创建可作为本地副本打开的加密快照。",
         exportToLink: "创建快照链接",
         exporting: "正在创建链接",
         updateLink: "新建快照链接",
@@ -543,7 +543,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Enlace de snapshot",
         description:
-          "Crea un snapshot cifrado que se importa en otro espacio de trabajo.",
+          "Crea un snapshot cifrado que se abre como copia local.",
         exportToLink: "Crear enlace de snapshot",
         exporting: "Creando enlace",
         updateLink: "Nuevo enlace de snapshot",
@@ -639,7 +639,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Lien de snapshot",
         description:
-          "Créez un snapshot chiffré à importer dans un autre espace de travail.",
+          "Créez un snapshot chiffré qui s'ouvre comme copie locale.",
         exportToLink: "Créer un lien de snapshot",
         exporting: "Création du lien",
         updateLink: "Nouveau lien de snapshot",
@@ -737,7 +737,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Snapshot-Link",
         description:
-          "Erstelle einen verschlüsselten Snapshot zum Import in einen anderen Workspace.",
+          "Erstelle einen verschlüsselten Snapshot, der als lokale Kopie geöffnet wird.",
         exportToLink: "Snapshot-Link erstellen",
         exporting: "Link wird erstellt",
         updateLink: "Neuer Snapshot-Link",

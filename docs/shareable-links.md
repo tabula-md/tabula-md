@@ -59,6 +59,38 @@ The JSON service should be deployed with:
 - Logs and analytics that never include URL fragments, snapshot keys, or
   plaintext Markdown.
 
+## `tabula-json` Client Contract
+
+The Tabula app treats `VITE_TABULA_JSON_URL` as the base URL for an encrypted
+snapshot store. The current client contract is:
+
+```txt
+GET  /health
+POST /api/v1/post/
+GET  /api/v1/:snapshotId
+```
+
+`POST /api/v1/post/` receives an `application/octet-stream` body containing the
+encrypted snapshot blob. It returns JSON:
+
+```json
+{
+  "id": "snapshot_id",
+  "data": "https://json.example.com/api/v1/snapshot_id"
+}
+```
+
+The `data` URL must match the configured store URL and generated id. The Tabula
+app then creates the import URL locally:
+
+```txt
+https://tabula.md/#json=<snapshotId>,<snapshotKey>
+```
+
+`GET /api/v1/:snapshotId` returns the same encrypted octet-stream blob or `404`
+when the snapshot is missing. The service never receives `snapshotKey` because
+it stays in the URL fragment.
+
 ## Security Contract
 
 The browser owns Markdown plaintext and keys. The JSON service sees snapshot

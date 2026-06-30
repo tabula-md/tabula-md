@@ -97,6 +97,7 @@ export { buildDocumentSurface } from "./documentSurfaceModel";
 
 export type {
   JsonShareCreateResponse,
+  JsonShareImportRoute,
   JsonShareLocation,
   JsonShareRoute,
 } from "./jsonShareLinkModel";
@@ -107,6 +108,7 @@ export {
   decodeBase64Url,
   encodeBase64Url,
   formatJsonShareUrlPreview,
+  getJsonShareImportRoute,
   getJsonShareRoute,
   parseJsonShareFromHash,
   trimTrailingSlash,

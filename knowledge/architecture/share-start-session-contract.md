@@ -16,7 +16,7 @@ public page, or move the whole project into the cloud.
 - Scope: the active Markdown file only.
 - Default state: local-only until the user starts a session.
 - Session state: live editable room for people with the invite link.
-- Durable handoff: handled by encrypted Shareable link or explicit agent export,
+- Durable handoff: handled by encrypted Snapshot link or explicit agent export,
   not by Start session.
 - Stop session: disconnects this browser from the room and returns the file to
   local editing. It must not claim to revoke already shared plaintext or keys.
@@ -24,7 +24,7 @@ public page, or move the whole project into the cloud.
 The user-facing distinction is:
 
 - **Start session**: live co-editing.
-- **Shareable link**: encrypted copy/import snapshot.
+- **Snapshot link**: encrypted copy/import snapshot.
 - **Publish**: future read-only hosted page.
 
 # URL Contract
@@ -79,7 +79,7 @@ should not promise permanent document hosting. Product language must stay clear:
 
 - local files remain the user's editable source.
 - live rooms are for collaboration.
-- shareable links are encrypted copy/import snapshots.
+- Snapshot links are encrypted copy/import snapshots.
 - published pages are future durable read-only outputs.
 
 # Not In V1
