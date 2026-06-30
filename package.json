@@ -37,6 +37,7 @@
     "test:browser:json-share": "npm run test:browser -- --suite=json-share",
     "test:browser:production:json-share": "TABULA_TEST_URL=https://tabula.md VITE_TABULA_JSON_URL=https://json.tabula.md npm run test:browser -- --suite=json-share",
     "test:browser:production": "npm run test:browser:production:collab && npm run test:browser:production:json-share",
+    "test:browser:production:launch": "node scripts/production-qa-checklist.mjs",
     "test:browser:performance": "npm run test:browser -- --suite=performance",
     "bundle:check": "node scripts/check-bundle-chunks.mjs",
     "test:surface-colors": "node scripts/check-surface-colors.mjs",

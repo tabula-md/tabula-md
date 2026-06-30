@@ -9,6 +9,8 @@ Start here:
   hosted/self-hosted environment setup.
 - [Snapshot links](shareable-links.md) - encrypted `#json` snapshot import links,
   service, and hosted/self-hosted environment setup.
+- [Self-hosting](self-hosting.md) - local app, room server, JSON snapshot store,
+  and production build wiring.
 - [Contributing](../CONTRIBUTING.md) - public issue and pull request guidance.
 - [Security](../SECURITY.md) - private vulnerability reporting.
 - [Changelog](../CHANGELOG.md) - user-facing release notes.
