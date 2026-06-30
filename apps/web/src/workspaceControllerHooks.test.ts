@@ -26,10 +26,13 @@ import {
 } from "./hooks/useWorkspaceActiveFileEditor";
 import { getWorkspaceShortcutAction } from "./hooks/useWorkspaceKeyboardShortcuts";
 import {
+  findWorkspaceAboutFile,
+  getWorkspaceAboutFileDraft,
+  normalizeWorkspaceFileTitleForLookup,
   removeRecordKey,
   restoreFileToList,
   restoreOpenFileId,
-} from "./hooks/useWorkspaceFileActions";
+} from "./workspaceFileRuntimeModel";
 import {
   formatCommentDate,
   getPreviewCommentAnchors,
@@ -475,6 +478,10 @@ describe("workspace file actions controller", () => {
       "two",
       "three",
     ]);
+    expect(restoreFileToList([file("one")], file("zero"), -5).map((item) => item.id)).toEqual([
+      "zero",
+      "one",
+    ]);
     expect(restoreFileToList([file("one")], file("one"), 0).map((item) => item.id)).toEqual(["one"]);
     expect(restoreOpenFileId(["one", "three"], "two", ["one", "two", "three"])).toEqual([
       "one",
@@ -482,6 +489,29 @@ describe("workspace file actions controller", () => {
       "three",
     ]);
     expect(restoreOpenFileId(["one", "two"], "two", ["one", "two"])).toEqual(["one", "two"]);
+  });
+
+  it("resolves the About file from README identity before title fallback", () => {
+    const readmeByTitle = { ...file("title-readme"), title: "README.md" };
+    const readmeById = { ...file("tabula-readme"), title: "About.md" };
+
+    expect(normalizeWorkspaceFileTitleForLookup({ title: " README.md " })).toBe("readme");
+    expect(findWorkspaceAboutFile([readmeByTitle])?.id).toBe("title-readme");
+    expect(findWorkspaceAboutFile([readmeByTitle, readmeById])?.id).toBe("tabula-readme");
+  });
+
+  it("creates a preview README draft for About when no README exists", () => {
+    expect(getWorkspaceAboutFileDraft()).toMatchObject({
+      title: "README.md",
+      viewMode: "preview",
+      overrides: {
+        id: "tabula-readme",
+        lineNumbers: true,
+        lineWrapping: true,
+        readingWidth: "wide",
+      },
+    });
+    expect(getWorkspaceAboutFileDraft().text).toContain("Tabula.md");
   });
 });
 
