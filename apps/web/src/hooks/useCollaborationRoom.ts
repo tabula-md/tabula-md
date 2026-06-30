@@ -5,12 +5,18 @@ import {
   type CollabRecoveryEvent,
   type ConnectionStatus,
   type LiveSelection,
-  type RoomMeta,
   createRoomSession,
   createCollabConnection,
   getTabulaRoomAvailability,
-  parseRoomShareUrl,
 } from "../collab";
+import {
+  canStartCollaborationSession,
+  getDisconnectedStatusPatch,
+  getIdleStatusPatch,
+  getLiveRoomConnectionTarget,
+  getRecoveryEventPatch,
+  getRoomMetaPatch,
+} from "../collabRuntime";
 import type { TextChange, TextPatch } from "../textPatches";
 import { isUsableLiveRoomFile, type WorkspaceFile } from "../workspaceStorage";
 
@@ -60,66 +66,52 @@ export function useCollaborationRoom({
     collabRef.current = null;
     setCollaborators([]);
 
-    const roomFromShareUrl = activeFile?.shareUrl ? parseRoomShareUrl(activeFile.shareUrl) : null;
-    const hasUsableLiveRoom = Boolean(activeFile?.roomId && roomFromShareUrl?.roomId === activeFile.roomId);
+    const target = getLiveRoomConnectionTarget(activeFile);
 
-    if (!activeFile?.id || !activeFile.roomId || !hasUsableLiveRoom || !roomFromShareUrl) {
+    if (!target) {
       setConnectionStatus("idle");
       if (activeFile?.id) {
-        setFileCollaborationStatus(activeFile.id, "idle", { collaboratorCount: 0 });
+        setFileCollaborationStatus(activeFile.id, "idle", getIdleStatusPatch());
       }
       return;
     }
 
     const pendingInitialText = pendingInitialTextRef.current;
-    const connectedFileId = activeFile.id;
-    const connectedRoomId = activeFile.roomId;
     pendingInitialTextRef.current = undefined;
     setConnectionStatus("connecting");
-    setFileCollaborationStatus(connectedFileId, "connecting");
+    setFileCollaborationStatus(target.fileId, "connecting");
 
     collabRef.current = createCollabConnection({
-      roomId: connectedRoomId,
-      roomKey: roomFromShareUrl.roomKey,
+      roomId: target.roomId,
+      roomKey: target.roomKey,
       initialText: pendingInitialText,
       identity,
-      fileTitle: activeFile.title,
+      fileTitle: target.fileTitle,
       selection: activeSelection,
       onTextChange: (nextText, change) => {
-        onRemoteTextChange?.(connectedFileId, nextText, change);
-        setFileText(connectedFileId, nextText);
+        onRemoteTextChange?.(target.fileId, nextText, change);
+        setFileText(target.fileId, nextText);
       },
       onStatusChange: (status) => {
         setConnectionStatus(status);
-        setFileCollaborationStatus(connectedFileId, status);
+        setFileCollaborationStatus(target.fileId, status);
       },
       onCollaboratorsChange: (nextCollaborators) => {
         setCollaborators(nextCollaborators);
-        setFileCollaboratorCount(connectedFileId, nextCollaborators.length);
+        setFileCollaboratorCount(target.fileId, nextCollaborators.length);
       },
-      onRoomMetaChange: (meta: RoomMeta) => {
-        const latestSnapshot = meta.snapshots[0];
-        setFileRoomMeta(connectedFileId, {
-          snapshotCount: meta.snapshotCount,
-          lastSnapshotAt: latestSnapshot?.createdAt ?? meta.lastSavedAt,
-        });
+      onRoomMetaChange: (meta) => {
+        setFileRoomMeta(target.fileId, getRoomMetaPatch(meta));
       },
-      onRecoveryEvent: (event: CollabRecoveryEvent) => {
-        setFileRecoveryEvent(connectedFileId, {
-          type: event.type,
-          message: event.message,
-          createdAt: event.createdAt,
-        });
+      onRecoveryEvent: (event) => {
+        setFileRecoveryEvent(target.fileId, getRecoveryEventPatch(event));
       },
     });
 
     return () => {
       collabRef.current?.disconnect();
       collabRef.current = null;
-      setFileCollaborationStatus(connectedFileId, "offline", {
-        collaboratorCount: 0,
-        requireRoom: true,
-      });
+      setFileCollaborationStatus(target.fileId, "offline", getDisconnectedStatusPatch());
     };
   }, [
     activeFile?.id,
@@ -150,13 +142,14 @@ export function useCollaborationRoom({
   }, [activeFile?.title, activeSelection, isLive]);
 
   const startSession = () => {
-    if (!activeFile || !roomAvailability.available) {
+    const sessionFile = activeFile;
+    if (!canStartCollaborationSession({ activeFile: sessionFile, roomAvailability }) || !sessionFile) {
       return undefined;
     }
 
     const nextSession = createRoomSession(window.location.origin);
-    pendingInitialTextRef.current = activeFile.text;
-    startFileCollaborationSession(activeFile.id, nextSession.roomId, nextSession.shareUrl);
+    pendingInitialTextRef.current = sessionFile.text;
+    startFileCollaborationSession(sessionFile.id, nextSession.roomId, nextSession.shareUrl);
     setConnectionStatus("connecting");
     return { roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
   };
