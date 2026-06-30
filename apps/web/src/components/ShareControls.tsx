@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Share2,
@@ -9,20 +8,8 @@ import { ShareLinkPanel } from "./share/ShareLinkPanel";
 import { ShareSendToPanel } from "./share/ShareSendToPanel";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import {
-  buildLocalAgentPrompt,
-  type AgentHandoffScope,
-} from "../shareAgentHandoff";
-import {
-  buildShareViewModel,
-  normalizeSharePanel,
-  type VisibleSharePanel,
-} from "../shareViewModel";
+import { useShareDialogRuntime } from "../hooks/useShareDialogRuntime";
 import type { SharePanel } from "../uiTypes";
-import {
-  getWorkspaceChromeCopy,
-  getWorkspaceMenuCopy,
-} from "../workspaceLocale";
 import type { WorkspaceFile } from "../workspaceStorage";
 
 type ShareControlsProps = {
@@ -76,97 +63,20 @@ export function ShareControls({
   onCommitUserName,
   onStopSession,
 }: ShareControlsProps) {
-  const [sharePanel, setSharePanel] = useState<VisibleSharePanel>("share-link");
-  const [agentScope, setAgentScope] = useState<AgentHandoffScope>("file");
-  const [agentInstruction, setAgentInstruction] = useState("");
-  const [agentPromptCopied, setAgentPromptCopied] = useState(false);
-  const [exportLinkCopied, setExportLinkCopied] = useState(false);
-  const activeFileDisplayTitle = activeFileTitle.replace(
-    /\.(?:md|markdown)$/i,
-    "",
-  );
-  const copy = getWorkspaceMenuCopy(language).share;
-  const chromeCopy = getWorkspaceChromeCopy(language);
-  const shareModalTitle = copy.modalTitle(activeFileDisplayTitle);
-  const shareView = buildShareViewModel({
-    activePanel: sharePanel,
+  const shareRuntime = useShareDialogRuntime({
+    activeFile,
+    activeFileTitle,
     canStartSession,
+    files,
     isLive,
-    labels: {
-      shareLink: copy.tabs.shareLink,
-      export: copy.tabs.export,
-      sendTo: copy.tabs.sendTo,
-      exportToLink: copy.shareable.exportToLink,
-      exporting: copy.shareable.exporting,
-      updateLink: copy.shareable.updateLink,
-    },
-    jsonShareCanExport: jsonShare.canExport,
-    jsonShareDisabledReason: jsonShare.disabledReason,
-    jsonShareExporting: jsonShare.exporting,
-    jsonShareUrl: jsonShare.url,
-    roomId: activeFile?.roomId,
-    shareUrl: activeFile?.shareUrl,
+    jsonShare,
+    language,
+    shareOpen,
+    sharePanelTarget,
     startSessionUnavailableReason,
+    onCloseShare,
+    onStopSession,
   });
-
-  useEffect(() => {
-    if (shareOpen) {
-      setSharePanel(normalizeSharePanel(sharePanelTarget));
-    }
-  }, [activeFile?.id, shareOpen, sharePanelTarget]);
-
-  useEffect(() => {
-    if (!shareOpen) {
-      setAgentPromptCopied(false);
-      setExportLinkCopied(false);
-    }
-  }, [shareOpen]);
-
-  useEffect(() => {
-    if (!shareOpen) {
-      return;
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onCloseShare();
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [onCloseShare, shareOpen]);
-
-  const handleStopSession = () => {
-    const confirmed = window.confirm(copy.live.stopConfirm);
-
-    if (confirmed) {
-      onStopSession();
-    }
-  };
-
-  const handleExportToJsonLink = () => {
-    void jsonShare.exportLink().finally(() => setExportLinkCopied(false));
-  };
-
-  const copyShareableLink = async () => {
-    await jsonShare.copyLink();
-    setExportLinkCopied(true);
-    window.setTimeout(() => setExportLinkCopied(false), 1200);
-  };
-
-  const copyLocalAgentPrompt = async () => {
-    const prompt = buildLocalAgentPrompt({
-      activeFile,
-      files,
-      instruction: agentInstruction,
-      scope: agentScope,
-    });
-
-    await navigator.clipboard.writeText(prompt);
-    setAgentPromptCopied(true);
-    window.setTimeout(() => setAgentPromptCopied(false), 1200);
-  };
 
   return (
     <>
@@ -174,13 +84,13 @@ export function ShareControls({
         <button
           className={`share-button share-trigger ${shareOpen ? "active" : ""}`}
           type="button"
-          aria-label={shareModalTitle}
-          title={copy.trigger}
+          aria-label={shareRuntime.shareModalTitle}
+          title={shareRuntime.copy.trigger}
           aria-expanded={shareOpen}
           onClick={onToggleShare}
         >
           <Share2 size={15} />
-          <span className="share-label-visible">{copy.trigger}</span>
+          <span className="share-label-visible">{shareRuntime.copy.trigger}</span>
         </button>
       </div>
 
@@ -203,29 +113,29 @@ export function ShareControls({
               <button
                 className="share-modal-close"
                 type="button"
-                aria-label={chromeCopy.common.closeShareDialog}
+                aria-label={shareRuntime.chromeCopy.common.closeShareDialog}
                 onClick={onCloseShare}
               >
                 <X size={17} />
               </button>
 
               <header className="share-modal-header">
-                <h2 id="share-modal-title">{shareModalTitle}</h2>
+                <h2 id="share-modal-title">{shareRuntime.shareModalTitle}</h2>
               </header>
 
               <nav
                 className="share-modal-tabs"
                 role="tablist"
-                aria-label={copy.purposeAria}
+                aria-label={shareRuntime.copy.purposeAria}
               >
-                {shareView.tabs.map((tab) => (
+                {shareRuntime.shareView.tabs.map((tab) => (
                   <button
                     key={tab.id}
-                    className={shareView.activePanel === tab.id ? "active" : ""}
+                    className={shareRuntime.shareView.activePanel === tab.id ? "active" : ""}
                     type="button"
                     role="tab"
-                    aria-selected={shareView.activePanel === tab.id}
-                    onClick={() => setSharePanel(tab.id)}
+                    aria-selected={shareRuntime.shareView.activePanel === tab.id}
+                    onClick={() => shareRuntime.setSharePanel(tab.id)}
                   >
                     {tab.label}
                   </button>
@@ -233,45 +143,45 @@ export function ShareControls({
               </nav>
 
               <section className="share-modal-panel" role="tabpanel">
-                {shareView.activePanel === "share-link" && (
+                {shareRuntime.shareView.activePanel === "share-link" && (
                   <ShareLinkPanel
-                    chromeCopy={chromeCopy}
+                    chromeCopy={shareRuntime.chromeCopy}
                     copied={copied}
-                    copy={copy}
+                    copy={shareRuntime.copy}
                     currentUserName={currentUserName}
-                    exportLinkCopied={exportLinkCopied}
+                    exportLinkCopied={shareRuntime.exportLinkCopied}
                     isLive={isLive}
                     jsonShare={jsonShare}
-                    shareView={shareView}
+                    shareView={shareRuntime.shareView}
                     onChangeUserName={onChangeUserName}
                     onCommitUserName={onCommitUserName}
                     onCopyShareUrl={onCopyShareUrl}
-                    onCopyShareableLink={copyShareableLink}
-                    onExportToJsonLink={handleExportToJsonLink}
+                    onCopyShareableLink={shareRuntime.copyShareableLink}
+                    onExportToJsonLink={shareRuntime.exportToJsonLink}
                     onStartSession={onStartSession}
-                    onStopSession={handleStopSession}
+                    onStopSession={shareRuntime.stopSession}
                   />
                 )}
 
-                {shareView.activePanel === "export" && (
+                {shareRuntime.shareView.activePanel === "export" && (
                   <ShareExportPanel
-                    copy={copy}
+                    copy={shareRuntime.copy}
                     onCopyFile={onCopyFile}
                     onDownloadFile={onDownloadFile}
                     onDownloadProjectArchive={onDownloadProjectArchive}
                   />
                 )}
 
-                {shareView.activePanel === "send-to" && (
+                {shareRuntime.shareView.activePanel === "send-to" && (
                   <ShareSendToPanel
-                    activeFileDisplayTitle={activeFileDisplayTitle}
-                    agentInstruction={agentInstruction}
-                    agentPromptCopied={agentPromptCopied}
-                    agentScope={agentScope}
-                    copy={copy}
-                    onChangeAgentInstruction={setAgentInstruction}
-                    onChangeAgentScope={setAgentScope}
-                    onCopyLocalAgentPrompt={copyLocalAgentPrompt}
+                    activeFileDisplayTitle={shareRuntime.activeFileDisplayTitle}
+                    agentInstruction={shareRuntime.agentInstruction}
+                    agentPromptCopied={shareRuntime.agentPromptCopied}
+                    agentScope={shareRuntime.agentScope}
+                    copy={shareRuntime.copy}
+                    onChangeAgentInstruction={shareRuntime.setAgentInstruction}
+                    onChangeAgentScope={shareRuntime.setAgentScope}
+                    onCopyLocalAgentPrompt={shareRuntime.copyLocalAgentPrompt}
                   />
                 )}
               </section>
