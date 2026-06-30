@@ -1,7 +1,7 @@
 ---
 type: Repository Area
 title: Tabula JSON
-description: Separate encrypted snapshot store for Tabula.md shareable copy links.
+description: Separate encrypted snapshot store for Tabula.md Snapshot links.
 resource: https://github.com/tabula-md/tabula-json
 tags: [repo, share, snapshot, e2ee]
 ---
@@ -9,14 +9,14 @@ tags: [repo, share, snapshot, e2ee]
 # Scope
 
 `tabula-json` is a separate open-source repository for encrypted snapshot
-storage used by Shareable link.
+storage used by Snapshot link.
 
 It is not live collaboration and it is not Publish. The Tabula app talks to it
 through `VITE_TABULA_JSON_URL`.
 
 Production and self-hosted `tabula-md` builds require `VITE_TABULA_JSON_URL` for
-Export to link. Production builds must not silently point encrypted snapshot
-sharing at localhost.
+Create snapshot link. Production builds must not silently point encrypted
+snapshot sharing at localhost.
 
 # Boundaries
 

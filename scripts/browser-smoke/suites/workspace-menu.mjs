@@ -273,12 +273,12 @@ export async function run(ctx) {
     expect((await page.getByRole("tab", { name: "Send to..." }).count()) === 1, "Share modal should expose Send to as a purpose.");
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Share modal should keep Publish hidden for now.");
     expect((await page.getByText("Live collaboration").count()) > 0, "Share modal should default to live collaboration.");
-    expect((await page.getByText("Shareable link").count()) > 0, "Share modal should offer an encrypted copy link path.");
+    expect((await page.getByText("Snapshot link").count()) > 0, "Share modal should offer an encrypted snapshot import path.");
     expect(
-      (await page.getByText("Export an encrypted copy of this file.").count()) === 1,
-      "Shareable link should describe encrypted copy export, not publish.",
+      (await page.getByText("Create an encrypted snapshot that opens as a local copy.").count()) === 1,
+      "Snapshot link should describe encrypted snapshot import, not publish.",
     );
-    expect((await page.getByRole("button", { name: "Export to link" }).count()) === 1, "Share modal should expose encrypted copy export.");
+    expect((await page.getByRole("button", { name: "Create snapshot link" }).count()) === 1, "Share modal should expose encrypted snapshot export.");
     expect((await page.getByText("Not live").count()) === 0, "Share link should not show redundant pre-live state text.");
     expect((await page.getByRole("button", { name: "Start session" }).count()) === 1, "Share link should start a session.");
     expect(
@@ -389,9 +389,9 @@ export async function run(ctx) {
     expect(Number.parseFloat(shareModalStyle.primaryMinHeight) <= 38, "Share modal actions should keep compact row height.");
     expect(shareModalStyle.tabCount === 3, "Share modal should expose Share link, Export, and Send to until Publish ships.");
     expect(shareModalStyle.dividerCount === 0, "Share modal should not use legacy stacked Or dividers.");
-    expect(shareModalStyle.shareDividerCount === 1, "Share link should separate live collaboration from encrypted copy sharing.");
+    expect(shareModalStyle.shareDividerCount === 1, "Share link should separate live collaboration from encrypted snapshot sharing.");
     expect(!/\bworkspace\b/i.test(shareModalStyle.text), "Share modal should avoid workspace terminology.");
-    expect(!/\bread-only\b/i.test(shareModalStyle.text), "Shareable link should not be described as read-only publish.");
+    expect(!/\bread-only\b/i.test(shareModalStyle.text), "Snapshot link should not be described as read-only publish.");
     const modalPointerState = await page.evaluate(() => {
       const fileShell = document.querySelector(".file-shell");
       const workspace = document.querySelector(".workspace");

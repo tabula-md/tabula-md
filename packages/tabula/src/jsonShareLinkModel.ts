@@ -3,6 +3,18 @@ export type JsonShareRoute = {
   key: string;
 };
 
+export type JsonShareImportRoute =
+  | {
+      status: "valid";
+      route: JsonShareRoute;
+      routeKey: string;
+    }
+  | {
+      status: "invalid";
+      errorMessage: string;
+      routeKey: string;
+    };
+
 export type JsonShareCreateResponse = {
   id: string;
   data: string;
@@ -52,6 +64,51 @@ export const getJsonShareRoute = (location: JsonShareLocation): JsonShareRoute |
     return null;
   }
   return parseJsonShareFromHash(location.hash);
+};
+
+export const getJsonShareImportRoute = (location: JsonShareLocation): JsonShareImportRoute | null => {
+  if (location.pathname !== "/") {
+    return null;
+  }
+
+  const fragment = location.hash.replace(/^#/, "").trim();
+  if (!fragment.startsWith("json=")) {
+    return null;
+  }
+
+  const route = parseJsonShareFromHash(location.hash);
+  if (route) {
+    return {
+      status: "valid",
+      route,
+      routeKey: `${route.snapshotId}:${route.key}`,
+    };
+  }
+
+  const jsonValue = fragment.slice("json=".length);
+  const [snapshotId, key, extra] = jsonValue.split(",");
+  const routeKey = `invalid:${jsonValue}`;
+  if (!snapshotId || extra !== undefined || jsonValue.includes("&") || !JSON_SHARE_ID_PATTERN.test(snapshotId)) {
+    return {
+      status: "invalid",
+      routeKey,
+      errorMessage: "This snapshot link is invalid.",
+    };
+  }
+
+  if (!key) {
+    return {
+      status: "invalid",
+      routeKey,
+      errorMessage: "This snapshot link is missing its client-only key.",
+    };
+  }
+
+  return {
+    status: "invalid",
+    routeKey,
+    errorMessage: "This snapshot link has an invalid client-only key.",
+  };
 };
 
 export const formatJsonShareUrlPreview = (url: string) => {

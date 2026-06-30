@@ -33,32 +33,29 @@ a heavy template gallery.
 
 Live collaboration starts from `Share > Collaborate > Start session` and
 creates `/#room=<roomId>,<roomKey>` for the active Markdown file. The user should
-understand whether the file is local, connecting, live, reconnecting, offline,
-or unable to decrypt.
+understand whether the file is local, connecting, live, reconnecting,
+disconnected, or failed.
 
-Start session is not Shareable link or Publish. It creates an editable live
-room. Shareable link creates an encrypted copy/import snapshot. Publish creates
-a future durable read-only hosted page.
+# Snapshot Link
 
-# Publish
+Snapshot link creates `/#json=<snapshotId>,<snapshotKey>` for encrypted
+copy/import handoff. It is not a live room and it is not a read-only published
+page. Opening a valid snapshot link should use the import/replace flow. Opening
+a keyless or malformed snapshot link should stay in the same import failure
+flow without adding a separate alarm-style warning surface.
 
-Publish creates a public read-only page, separate from the live room. The human
-URL is `/p/:publishId`. The user chooses whether to publish the current page or
-the full project before publishing. AI-readable outputs are included
-automatically at `/p/:publishId/llms.txt` and
-`/p/:publishId/llms-full.txt`, but those endpoints should stay hidden from the
-human published page UI. Updating the published page keeps the same publish URL
-and changes the public page only when the user explicitly updates it. After a
-page is published, Share > Publish should act as a management view; changing
-between current-page and project publish is a separate explicit republish
-action. Project publish should use restrained contents navigation, not a file
-chip list above the document body.
+# Future Publish
+
+Publish is outside the v0 Share surface. The current Share modal should only
+present Live collaboration and Snapshot link as network share contracts.
+Future read-only publish may create a public `/p/:publishId` page and hidden
+AI-readable outputs, but that flow must remain isolated from v0 Snapshot link
+copy and from Start session.
 
 # Copy And AI Context
 
 The current document should have an obvious raw Markdown copy path. AI-readable
-context belongs as hidden included Publish outputs, not in a separate heavy
-panel or as the primary reason to publish.
+context should not become the primary reason to use the v0 Share surface.
 
 # Failure Recovery
 

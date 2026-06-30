@@ -42,6 +42,15 @@ extensions, Yjs/socket adapters, network clients, feature flags, and hosted
 service copy. It should import core behavior through `@tabula-md/tabula` and
 avoid deep imports into `packages/tabula`.
 
+The v0 Share surface has two network contracts:
+
+- Live collaboration: `/#room=<roomId>,<roomKey>`.
+- Snapshot import: `/#json=<snapshotId>,<snapshotKey>`.
+
+Future read-only Publish code may exist in isolated future modules while it is
+being developed, but it must not appear as a v0 Share modal path or be confused
+with encrypted Snapshot link.
+
 This boundary is enforced by the package boundary check and should be treated
 as an architectural guardrail, not a style preference.
 
