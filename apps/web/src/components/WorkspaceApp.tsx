@@ -36,8 +36,7 @@ import { useEditorSearchController } from "../hooks/useEditorSearchController";
 import { useEventCallback } from "../hooks/useEventCallback";
 import { useFileComments } from "../hooks/useFileComments";
 import { useWorkspaceFiles } from "../hooks/useWorkspaceFiles";
-import { useProjectIoController } from "../hooks/useProjectIoController";
-import { useJsonShareImportController } from "../hooks/useJsonShareImportController";
+import { useWorkspaceIoRuntime } from "../hooks/useWorkspaceIoRuntime";
 import { useWorkspacePersistenceRuntime } from "../hooks/useWorkspacePersistenceRuntime";
 import { useSelectionCommentController } from "../hooks/useSelectionCommentController";
 import { useSplitViewController } from "../hooks/useSplitViewController";
@@ -430,41 +429,30 @@ export function WorkspaceApp() {
   };
 
   const {
-    emptyDropActive,
+    closeJsonShareImport,
     copyCurrentFile,
     downloadCurrentFile,
     downloadProject,
     downloadProjectArchive,
+    emptyDropActive,
+    handleEmptyWorkspaceDragLeave,
+    handleEmptyWorkspaceDragOver,
+    handleEmptyWorkspaceDrop,
     handleImportInputChange,
     handleProjectImportInputChange,
-    handleEmptyWorkspaceDragOver,
-    handleEmptyWorkspaceDragLeave,
-    handleEmptyWorkspaceDrop,
-  } = useProjectIoController({
+    jsonShareImport,
+    replaceWorkspaceWithJsonShare,
+  } = useWorkspaceIoRuntime({
     activeFile,
     activeFileId,
     addFileFromContent,
+    clearFileHistory,
+    closeFloatingChrome,
     commentsByFileId,
     editorRef,
     files,
     openFileIds,
     preferences: workspacePreferences,
-    replaceCommentsByFileId,
-    replaceWorkspace,
-    resetCollaborationState,
-    showToast,
-    clearFileHistory,
-    onCloseChrome: closeFloatingChrome,
-  });
-  const {
-    closeJsonShareImport,
-    jsonShareImport,
-    replaceWorkspaceWithJsonShare,
-  } = useJsonShareImportController({
-    clearFileHistory,
-    closeFloatingChrome,
-    commentsByFileId,
-    files,
     replaceCommentsByFileId,
     replaceWorkspace,
     resetCollaborationState,
