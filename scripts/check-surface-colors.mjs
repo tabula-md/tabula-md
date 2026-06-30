@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const rootDir = process.cwd();
-const stylesDir = path.join(rootDir, "apps/web/src/styles");
+const stylesDir = path.join(rootDir, "tabula-app/src/styles");
 const rawHexPattern = /#[0-9a-fA-F]{3,8}\b/g;
 const errors = [];
 
@@ -49,5 +49,5 @@ function listCssFiles(dir) {
 }
 
 function isTokenDefinition(relativePath, line) {
-  return relativePath === "apps/web/src/styles/base.css" && line.trimStart().startsWith("--");
+  return relativePath === "tabula-app/src/styles/base.css" && line.trimStart().startsWith("--");
 }

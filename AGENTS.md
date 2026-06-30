@@ -25,7 +25,7 @@ Product direction:
 ## Commands
 
 - Install: `npm install`
-- Dev web app: `npm run dev`
+- Dev Tabula app: `npm run dev`
 - Dev with local room server:
   `VITE_TABULA_ROOM_URL=http://localhost:3002 npm run dev`
 - Test: `npm test`
@@ -48,7 +48,7 @@ Product direction:
 - `WORKFLOW.ko.md`: Korean-language version of the standard workflow.
 - `knowledge/index.md`: agent-readable project knowledge map for deeper
   context; it does not replace `WORKFLOW.md`.
-- `apps/web`: React/Vite app, Markdown editor, preview, comments, panels, local
+- `tabula-app`: React/Vite app, Markdown editor, preview, comments, panels, local
   persistence, and collaboration client.
 - `tabula-room`: separate repository for the encrypted collaboration room
   server.

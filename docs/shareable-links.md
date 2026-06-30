@@ -22,7 +22,7 @@ not create public read-only pages.
 
 ## Local Development
 
-Run the web app and a local JSON snapshot service:
+Run the Tabula app and a local JSON snapshot service:
 
 ```sh
 git clone https://github.com/tabula-md/tabula-json.git ../tabula-json
@@ -39,7 +39,7 @@ VITE_TABULA_JSON_URL=http://localhost:3004 npm run dev
 
 ## Hosted Or Self-Hosted Deployments
 
-Set the JSON service URL in the web app environment:
+Set the JSON service URL in the Tabula app environment:
 
 ```sh
 VITE_TABULA_JSON_URL=https://json.example.com
@@ -52,7 +52,7 @@ snapshot service is configured.
 The JSON service should be deployed with:
 
 - TLS.
-- Allowed origins for the web app.
+- Allowed origins for the Tabula app.
 - Payload limits.
 - Rate limits.
 - Object storage for encrypted snapshots.

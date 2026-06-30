@@ -21,5 +21,5 @@ agents can share safely.
 
 # Related
 
-- [Web app](/repo/web-app.md)
+- [Tabula app](/repo/tabula-app.md)
 - [Tabula Room](/repo/tabula-room.md)

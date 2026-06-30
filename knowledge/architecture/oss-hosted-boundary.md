@@ -10,9 +10,9 @@ tags: [architecture, oss, hosted, deployment]
 Tabula.md is one product with two public open-source components and one
 official hosted deployment:
 
-- `tabula-md`: the open-source Markdown workspace web app.
+- `tabula-md`: the open-source Markdown workspace app.
 - `tabula-room`: the open-source encrypted collaboration room server.
-- `tabula.md`: the official hosted deployment of the web app, connected to an
+- `tabula.md`: the official hosted deployment of the Tabula app, connected to an
   operator-managed deployment of `tabula-room`.
 
 This is intentionally similar to the Excalidraw shape: a public client repo, a
@@ -24,7 +24,7 @@ remain coherent and self-hostable.
 
 ## `tabula-md`
 
-The public web app repo should contain:
+The public app repo should contain:
 
 - the React/Vite Markdown workspace;
 - local-first storage behavior;
@@ -35,7 +35,7 @@ The public web app repo should contain:
 - `VITE_TABULA_ROOM_URL` as the room service configuration point;
 - a clear unavailable state when no room service URL is configured.
 
-The public web app repo should not contain:
+The public app repo should not contain:
 
 - the official hosted service provider choice;
 - DNS account details;
@@ -73,7 +73,7 @@ live in the public OSS repos, such as:
 - DNS and custom-domain automation;
 - hosted service environment templates;
 - monitoring, alerting, and incident runbooks;
-- provider-specific deployment wrappers for the public web app and room server;
+- provider-specific deployment wrappers for the public Tabula app and room server;
 - billing, account, or Tabula+ service code that should not live in the OSS
   repos.
 

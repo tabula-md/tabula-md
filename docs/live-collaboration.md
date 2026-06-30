@@ -21,7 +21,7 @@ or upload a publishable copy of the document.
 
 ## Local Development
 
-Run the web app and a local room server:
+Run the Tabula app and a local room server:
 
 ```sh
 git clone https://github.com/tabula-md/tabula-room.git ../tabula-room
@@ -37,11 +37,11 @@ cp .env.example .env.local
 npm run dev
 ```
 
-The default `.env.example` points the web app at `http://localhost:3002`.
+The default `.env.example` points the Tabula app at `http://localhost:3002`.
 
 ## Hosted Or Self-Hosted Deployments
 
-Set the room service URL in the web app environment:
+Set the room service URL in the Tabula app environment:
 
 ```sh
 VITE_TABULA_ROOM_URL=https://rooms.example.com
@@ -54,7 +54,7 @@ unavailable until a room server is configured.
 The room service should be deployed with:
 
 - TLS.
-- Allowed origins for the web app.
+- Allowed origins for the Tabula app.
 - Payload limits.
 - Rate limits.
 - Encrypted snapshot storage or a documented relay-only policy.

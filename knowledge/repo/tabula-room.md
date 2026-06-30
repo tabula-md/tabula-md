@@ -11,7 +11,7 @@ tags: [repo, collaboration, room, e2ee]
 `tabula-room` is a separate open-source repository for live collaboration
 transport and encrypted snapshot storage.
 
-It is not part of this `tabula-md` workspace. The web app talks to it through
+It is not part of this `tabula-md` workspace. The Tabula app talks to it through
 `VITE_TABULA_ROOM_URL`.
 
 Production and self-hosted `tabula-md` builds require `VITE_TABULA_ROOM_URL` for
@@ -35,4 +35,4 @@ production builds must not silently point live collaboration at localhost.
 - [Collaboration security](/architecture/collaboration-security.md)
 - [Share Start session contract](/architecture/share-start-session-contract.md)
 - [E2EE collaboration model](/architecture/e2ee-collaboration.md)
-- [Web app](web-app.md)
+- [Tabula app](tabula-app.md)

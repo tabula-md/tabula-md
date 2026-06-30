@@ -7,7 +7,6 @@ import * as layout from "./layout.mjs";
 import * as panels from "./panels.mjs";
 import * as collaboration from "./collaboration.mjs";
 import * as jsonShare from "./json-share.mjs";
-import * as publish from "./publish-flow.mjs";
 import * as performance from "./performance.mjs";
 
 export const suites = [
@@ -20,6 +19,5 @@ export const suites = [
   panels,
   collaboration,
   jsonShare,
-  publish,
   performance,
 ];

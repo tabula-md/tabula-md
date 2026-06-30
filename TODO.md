@@ -18,11 +18,11 @@ rewrites here.
 
 ## Done Definition
 
-- [ ] `tabula-md` is ready to be public as the OSS web app.
+- [ ] `tabula-md` is ready to be public as the OSS Tabula app.
 - [ ] `tabula-room` is ready to be public as the OSS encrypted room server.
 - [ ] `tabula-json` is ready to be public as the OSS encrypted snapshot store.
 - [x] Private `tabula-cloud` exists for hosted operations.
-- [ ] Hosted `tabula.md` loads the production web app.
+- [ ] Hosted `tabula.md` loads the production Tabula app.
 - [ ] Hosted Share > Start session creates a live room link.
 - [ ] A second browser can join the copied `/#room=<roomId>,<roomKey>` link.
 - [ ] Both browsers can edit the same Markdown document.
@@ -60,7 +60,7 @@ this TODO to completion:
 
 ## 1. Public Repo Boundary
 
-- [x] Keep `tabula-md` as the OSS web app repo.
+- [x] Keep `tabula-md` as the OSS Tabula app repo.
 - [x] Keep `tabula-room` as the OSS room server repo.
 - [x] Keep `tabula-json` as the OSS encrypted snapshot store repo.
 - [x] Keep `tabula-cloud` private for hosted operations.
@@ -207,7 +207,7 @@ this TODO to completion:
 
 ## 5. Hosted Web Deployment
 
-- [ ] Create the hosted static web app project from `tabula-md`.
+- [ ] Create the hosted static Tabula app project from `tabula-md`.
 - [ ] Configure build:
   - [ ] build command: `npm run build`.
   - [ ] output directory: `dist`.

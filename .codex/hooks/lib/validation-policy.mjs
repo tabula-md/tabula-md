@@ -1,9 +1,9 @@
 const browserUiPatterns = [
-  /^apps\/web\/src\/App\.tsx$/,
-  /^apps\/web\/src\/components\//,
-  /^apps\/web\/src\/hooks\/useMarkdownFiles\.ts$/,
-  /^apps\/web\/src\/keyboardShortcuts\.ts$/,
-  /^apps\/web\/src\/styles\//,
+  /^tabula-app\/src\/App\.tsx$/,
+  /^tabula-app\/src\/components\//,
+  /^tabula-app\/src\/hooks\/useMarkdownFiles\.ts$/,
+  /^tabula-app\/src\/keyboardShortcuts\.ts$/,
+  /^tabula-app\/src\/styles\//,
   /^scripts\/browser-smoke\//
 ];
 
@@ -11,52 +11,58 @@ const allBrowserSuites = ["workspace", "editor-preview", "layout", "panels", "co
 
 const browserSuitePatterns = {
   workspace: [
-    /^apps\/web\/src\/App\.tsx$/,
-    /^apps\/web\/src\/components\/EmptyFileState\.tsx$/,
-    /^apps\/web\/src\/components\/ShareControls\.tsx$/,
-    /^apps\/web\/src\/workspaceStorage\.ts$/,
-    /^apps\/web\/src\/publish\.ts$/,
+    /^tabula-app\/src\/App\.tsx$/,
+    /^tabula-app\/src\/components\/EmptyFileState\.tsx$/,
+    /^tabula-app\/src\/components\/WorkspaceApp\.tsx$/,
+    /^tabula-app\/src\/components\/WorkspaceMenu/,
+    /^tabula-app\/src\/components\/WorkspaceProjectContext\.tsx$/,
+    /^tabula-app\/src\/components\/WorkspaceTopChrome\.tsx$/,
+    /^tabula-app\/src\/components\/ShareControls\.tsx$/,
+    /^tabula-app\/src\/workspaceStorage\.ts$/,
+    /^tabula-app\/src\/workspace/,
     /^scripts\/browser-smoke\/suites\/workspace\.mjs$/
   ],
   "editor-preview": [
-    /^apps\/web\/src\/commentAnchors\.ts$/,
-    /^apps\/web\/src\/components\/FileToolbar\.tsx$/,
-    /^apps\/web\/src\/components\/MarkdownEditor\.tsx$/,
-    /^apps\/web\/src\/components\/MarkdownFormattingToolbar\.tsx$/,
-    /^apps\/web\/src\/components\/MarkdownPreview\.tsx$/,
-    /^apps\/web\/src\/markdown/,
-    /^apps\/web\/src\/styles\/file-surface\.css$/,
-    /^apps\/web\/src\/styles\/preview\.css$/,
+    /^tabula-app\/src\/commentAnchors\.ts$/,
+    /^tabula-app\/src\/components\/DocumentControls\.tsx$/,
+    /^tabula-app\/src\/components\/DocumentWorkbench\.tsx$/,
+    /^tabula-app\/src\/components\/FormattingToolbar\.tsx$/,
+    /^tabula-app\/src\/components\/MarkdownEditor\.tsx$/,
+    /^tabula-app\/src\/components\/MarkdownPreview\.tsx$/,
+    /^tabula-app\/src\/markdown/,
+    /^tabula-app\/src\/styles\/editor/,
+    /^tabula-app\/src\/styles\/file-surface\.css$/,
+    /^tabula-app\/src\/styles\/preview\.css$/,
     /^scripts\/browser-smoke\/suites\/editor-preview\.mjs$/
   ],
   layout: [
-    /^apps\/web\/src\/components\/FileTabs\.tsx$/,
-    /^apps\/web\/src\/components\/LeftSidebar\.tsx$/,
-    /^apps\/web\/src\/components\/StatusBar\.tsx$/,
-    /^apps\/web\/src\/components\/TopChrome\.tsx$/,
-    /^apps\/web\/src\/hooks\/useWorkspaceScrollSync\.ts$/,
-    /^apps\/web\/src\/styles\/base\.css$/,
-    /^apps\/web\/src\/styles\/file-surface\.css$/,
-    /^apps\/web\/src\/styles\/left-sidebar\.css$/,
-    /^apps\/web\/src\/styles\/status-bar\.css$/,
-    /^apps\/web\/src\/styles\/tabs\.css$/,
-    /^apps\/web\/src\/styles\/top-chrome\.css$/,
+    /^tabula-app\/src\/components\/FileTabs\.tsx$/,
+    /^tabula-app\/src\/components\/StatusBar\.tsx$/,
+    /^tabula-app\/src\/components\/TopChrome\.tsx$/,
+    /^tabula-app\/src\/components\/WorkspaceOverlaySurface\.tsx$/,
+    /^tabula-app\/src\/hooks\/useWorkspaceScrollSync\.ts$/,
+    /^tabula-app\/src\/styles\/base\.css$/,
+    /^tabula-app\/src\/styles\/file-surface\.css$/,
+    /^tabula-app\/src\/styles\/split-view\.css$/,
+    /^tabula-app\/src\/styles\/status-bar\.css$/,
+    /^tabula-app\/src\/styles\/tabs\.css$/,
+    /^tabula-app\/src\/styles\/top-chrome\.css$/,
+    /^tabula-app\/src\/styles\/workspace-menu\.css$/,
     /^scripts\/browser-smoke\/suites\/layout\.mjs$/
   ],
   panels: [
-    /^apps\/web\/src\/components\/RightPanel/,
-    /^apps\/web\/src\/components\/right-panel\//,
-    /^apps\/web\/src\/hooks\/useFileComments\.ts$/,
-    /^apps\/web\/src\/hooks\/useRightPanelCollapseState\.ts$/,
-    /^apps\/web\/src\/rightPanelCommentViewModel\.ts$/,
-    /^apps\/web\/src\/styles\/right-panel/,
+    /^tabula-app\/src\/components\/RightPanel/,
+    /^tabula-app\/src\/components\/right-panel\//,
+    /^tabula-app\/src\/hooks\/useFileComments\.ts$/,
+    /^tabula-app\/src\/hooks\/useRightPanelCollapseState\.ts$/,
+    /^tabula-app\/src\/rightPanelCommentViewModel\.ts$/,
+    /^tabula-app\/src\/styles\/right-panel/,
     /^scripts\/browser-smoke\/suites\/panels\.mjs$/
   ],
   collaboration: [
-    /^apps\/collab-server\//,
-    /^apps\/web\/src\/collab\.ts$/,
-    /^apps\/web\/src\/hooks\/useCollaborationRoom\.ts$/,
-    /^packages\/collab-protocol\//,
+    /^tabula-app\/src\/collaboration\//,
+    /^tabula-app\/src\/hooks\/useCollaboration/,
+    /^tabula-app\/src\/hooks\/useWorkspaceCollaborationRuntime\.ts$/,
     /^scripts\/browser-smoke\/suites\/collaboration\.mjs$/
   ]
 };
@@ -68,14 +74,16 @@ const browserSmokeSharedPatterns = [
 ];
 
 const unitTestPatterns = [
-  /^apps\/web\/src\/markdown/,
-  /^apps\/web\/src\/agentExports\.ts$/,
-  /^apps\/web\/src\/rightPanelCommentViewModel\.ts$/,
+  /^tabula-app\/src\/markdown/,
+  /^tabula-app\/src\/agentExports\.ts$/,
+  /^tabula-app\/src\/rightPanelCommentViewModel\.ts$/,
+  /^tabula-app\/src\/commentRuntimeModel\.ts$/,
+  /^tabula-app\/src\/workspace.*Model\.ts$/,
   /^packages\//
 ];
 
 const buildPatterns = [
-  /^apps\/.*\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/,
+  /^tabula-app\/.*\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/,
   /^packages\/.*\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/,
   /^vite\.config\.ts$/,
   /^tsconfig\.json$/,

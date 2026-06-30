@@ -69,7 +69,7 @@ than permissive OKF consumer conformance, especially for broken internal links.
 
 ## Repository
 
-- [Web app](repo/web-app.md) - the React/Vite Markdown workspace surface.
+- [Tabula app](repo/tabula-app.md) - the React/Vite Markdown workspace surface.
 - [Tabula Room](repo/tabula-room.md) - the separate encrypted room server repo
   used by live collaboration.
 - [Tabula JSON](repo/tabula-json.md) - the separate encrypted snapshot store

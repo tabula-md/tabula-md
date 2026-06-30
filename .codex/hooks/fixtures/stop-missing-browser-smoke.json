@@ -3,7 +3,7 @@
   "name": "recommends focused browser smoke for layout changes",
   "state": {
     "changedFiles": {
-      "apps/web/src/styles/top-chrome.css": "2026-06-17T00:00:00.000Z"
+      "tabula-app/src/styles/top-chrome.css": "2026-06-17T00:00:00.000Z"
     },
     "required": {
       "browser": "2026-06-17T00:00:00.000Z"

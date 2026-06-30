@@ -1,0 +1,9 @@
+{
+  "name": "@tabula-md/app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@tabula-md/tabula": "file:../packages/tabula"
+  }
+}

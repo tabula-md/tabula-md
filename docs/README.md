@@ -17,7 +17,7 @@ Start here:
 
 Tabula.md has three public open-source components:
 
-- `tabula-md` is the local-first Markdown workspace web app.
+- `tabula-md` is the local-first Markdown workspace Tabula app.
 - `tabula-room` is the encrypted collaboration room server.
 - `tabula-json` is the encrypted snapshot store for shareable copy links.
 

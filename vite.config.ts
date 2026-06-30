@@ -3,10 +3,13 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
 const workspaceRoot = fileURLToPath(new URL(".", import.meta.url));
-const webRoot = fileURLToPath(new URL("./apps/web", import.meta.url));
+const tabulaAppRoot = fileURLToPath(new URL("./tabula-app", import.meta.url));
+
+const includesPackage = (id: string, packageName: string) =>
+  id.includes(`/node_modules/${packageName}/`);
 
 export default defineConfig({
-  root: webRoot,
+  root: tabulaAppRoot,
   envDir: workspaceRoot,
   plugins: [react()],
   server: {
@@ -15,12 +18,12 @@ export default defineConfig({
   test: {
     root: workspaceRoot,
     include: [
-      "apps/web/src/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+      "tabula-app/src/**/*.{test,spec}.?(c|m)[jt]s?(x)",
       "packages/tabula/src/**/*.{test,spec}.?(c|m)[jt]s?(x)",
     ],
   },
   build: {
-    outDir: "../../dist",
+    outDir: "../dist",
     emptyOutDir: true,
     rollupOptions: {
       output: {
@@ -42,8 +45,40 @@ export default defineConfig({
             return "markdown-vendor";
           }
 
-          if (normalizedId.includes("/@codemirror/") || normalizedId.includes("/@lezer/")) {
-            return "editor-vendor";
+          if (
+            includesPackage(normalizedId, "@codemirror/state") ||
+            includesPackage(normalizedId, "@codemirror/view")
+          ) {
+            return "codemirror-core";
+          }
+
+          if (
+            includesPackage(normalizedId, "@codemirror/commands") ||
+            includesPackage(normalizedId, "@codemirror/search") ||
+            includesPackage(normalizedId, "@codemirror/autocomplete") ||
+            includesPackage(normalizedId, "@codemirror/lint") ||
+            includesPackage(normalizedId, "@codemirror/lang-markdown") ||
+            includesPackage(normalizedId, "@codemirror/lang-css") ||
+            includesPackage(normalizedId, "@codemirror/lang-html") ||
+            includesPackage(normalizedId, "@codemirror/lang-javascript") ||
+            includesPackage(normalizedId, "@codemirror/language")
+          ) {
+            return "codemirror-extensions";
+          }
+
+          if (normalizedId.includes("/node_modules/@lezer/")) {
+            return "lezer-vendor";
+          }
+
+          if (
+            includesPackage(normalizedId, "yjs") ||
+            includesPackage(normalizedId, "lib0") ||
+            includesPackage(normalizedId, "socket.io-client") ||
+            includesPackage(normalizedId, "socket.io-parser") ||
+            includesPackage(normalizedId, "engine.io-client") ||
+            includesPackage(normalizedId, "engine.io-parser")
+          ) {
+            return "collab-vendor";
           }
 
           if (

@@ -403,6 +403,7 @@ export async function run(ctx) {
       selection?.removeAllRanges();
       selection?.addRange(range);
       targetSpan.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      document.dispatchEvent(new Event("selectionchange"));
 
       return {
         selectedText: selection?.toString() ?? "",
@@ -411,6 +412,12 @@ export async function run(ctx) {
       };
     });
     expect(previewSelectionState?.selectedText === "omega", "Preview smoke should select rendered preview text.");
+    await page.waitForFunction(
+      () =>
+        (document.querySelector(".status-cursor-position")?.textContent ?? "").includes("(5 characters)") &&
+        Boolean(document.querySelector(".selection-comment-button")),
+    );
+    await waitForRenderFrame(page);
     await waitForRenderFrame(page);
     const previewSelectionStatus = await page.evaluate(() => ({
       cursorPosition: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",

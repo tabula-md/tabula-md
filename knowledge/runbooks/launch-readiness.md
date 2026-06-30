@@ -38,7 +38,7 @@ collaboration workspace and common failure modes are understandable.
 # Infrastructure Readiness
 
 - `tabula-room` has passing CI and accurate public README instructions.
-- The web app build points to the deployed Room URL with
+- The Tabula app build points to the deployed Room URL with
   `VITE_TABULA_ROOM_URL`.
 - Production Start session has been checked without `VITE_TABULA_ROOM_URL` and
   shows a clear unavailable state instead of localhost fallback.
