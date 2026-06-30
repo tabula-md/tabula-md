@@ -49,6 +49,7 @@ import { useWorkspaceFileActions } from "../hooks/useWorkspaceFileActions";
 import { useWorkspaceIdentity } from "../hooks/useWorkspaceIdentity";
 import { useWorkspaceKeyboardShortcuts } from "../hooks/useWorkspaceKeyboardShortcuts";
 import { useWorkspacePreferences } from "../hooks/useWorkspacePreferences";
+import { useWorkspaceRouteRuntime } from "../hooks/useWorkspaceRouteRuntime";
 import { useWorkspaceScrollSync } from "../hooks/useWorkspaceScrollSync";
 import { useWorkspaceShareRuntime } from "../hooks/useWorkspaceShareRuntime";
 import { useWorkspaceCollaborationRuntime } from "../hooks/useWorkspaceCollaborationRuntime";
@@ -61,13 +62,10 @@ import {
 } from "../workspaceViewModel";
 import {
   createWorkspaceFile,
-  getRoomFromLocation,
   isUsableLiveRoomFile,
   readInitialWorkspaceSnapshot,
   randomId,
   README_FILE_ID,
-  syncUrlForFile,
-  type LocationRoom,
   type WorkspaceFile,
   type WorkspaceState,
 } from "../workspaceStorage";
@@ -375,46 +373,19 @@ export function WorkspaceApp() {
   const shareOpen = topPopover === "share";
   const outlineHeadings = activeDocument.outlineHeadings;
 
-  const activateRoomFromLocation = (room: LocationRoom) => {
-    activateRoomFile(room);
+  const handleRouteWorkspaceChange = useEventCallback(() => {
     setTopPopover(null);
     setCenterPopover(null);
     setCopiedFileId(null);
-  };
-
-  useEffect(() => {
-    const handlePopState = () => {
-      const room = getRoomFromLocation();
-      if (room) {
-        activateRoomFromLocation(room);
-        return;
-      }
-
-      const currentFile = files.find((file) => file.id === activeFileId);
-      if (!currentFile?.roomId) {
-        return;
-      }
-
-      const localFile = files.find((file) => !file.roomId) ?? files[0];
-      if (localFile) {
-        selectWorkspaceFileAction(localFile.id);
-        setTopPopover(null);
-        setCenterPopover(null);
-        setCopiedFileId(null);
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [activeFileId, activateRoomFile, files, selectWorkspaceFileAction]);
-
-  useEffect(() => {
-    if (!activeFile || activeFile.roomId || !getRoomFromLocation()) {
-      return;
-    }
-
-    syncUrlForFile(undefined, "replace");
-  }, [activeFile?.id, activeFile?.roomId]);
+  });
+  useWorkspaceRouteRuntime({
+    activeFile,
+    activeFileId,
+    activateRoomFile,
+    files,
+    selectFile: selectWorkspaceFileAction,
+    onRouteWorkspaceChange: handleRouteWorkspaceChange,
+  });
 
   useEffect(() => {
     if (!selectionActionPosition) {
