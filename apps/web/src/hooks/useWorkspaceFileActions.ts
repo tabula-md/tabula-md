@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { AppToastState } from "./useAppToast";
 import type { FileHistory } from "./useWorkspaceActiveFileEditor";
-import { getNewFilePreferenceOverrides } from "./useProjectIoController";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
+import { getNewFilePreferenceOverrides } from "../workspaceIoModel";
 import type { RenameFileResult } from "../workspaceModel";
 import {
   findWorkspaceAboutFile,

@@ -1,29 +1,24 @@
 import { useState, type ChangeEvent, type DragEvent, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
-import { PRODUCT_NAME, WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
+import { WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
 import { createProjectArchive } from "../projectArchive";
 import {
-  createStoredWorkspace,
   migrateWorkspacePayload,
-  PROJECT_STORAGE_VERSION,
   syncUrlForFile,
   type FileComment,
   type WorkspaceFile,
   type WorkspaceState,
 } from "../workspaceStorage";
-import { normalizeWorkspaceFileTitle } from "../workspaceModel";
+import {
+  createCurrentFileDownloadDraft,
+  createImportedWorkspaceFileDraft,
+  createWorkspaceProjectDownloadDraft,
+  getUnreadableProjectJsonMessage,
+  getUnsupportedProjectSchemaMessage,
+  isSupportedImportFileDescriptor,
+} from "../workspaceIoModel";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";
-
-const isSupportedImportFile = (file: File) => {
-  const fileName = file.name.toLowerCase();
-  return (
-    fileName.endsWith(".md") ||
-    fileName.endsWith(".markdown") ||
-    file.type === "text/markdown" ||
-    file.type === "text/plain"
-  );
-};
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -63,15 +58,6 @@ type UseProjectIoControllerArgs = {
   onCloseChrome: () => void;
 };
 
-export function getNewFilePreferenceOverrides(preferences: WorkspacePreferences): Partial<WorkspaceFile> {
-  return {
-    viewMode: preferences.newFileViewMode,
-    readingWidth: preferences.readingWidth,
-    lineWrapping: preferences.lineWrapping,
-    lineNumbers: preferences.lineNumbers,
-  };
-}
-
 export function useProjectIoController({
   activeFile,
   activeFileId,
@@ -105,22 +91,19 @@ export function useProjectIoController({
       return;
     }
 
-    downloadTextFile(activeFile.title, activeFile.text, "text/markdown;charset=utf-8");
+    const download = createCurrentFileDownloadDraft(activeFile);
+    downloadTextFile(download.fileName, download.content, download.type);
     showToast("File downloaded.");
   };
 
   const downloadProject = () => {
-    const workspaceExport = createStoredWorkspace({
+    const download = createWorkspaceProjectDownloadDraft({
       files,
       openFileIds,
       activeFileId: activeFile?.id ?? activeFileId,
       commentsByFileId,
     });
-    downloadTextFile(
-      `${WORKSPACE_EXPORT_FILE_PREFIX}-v${PROJECT_STORAGE_VERSION}.json`,
-      JSON.stringify(workspaceExport, null, 2),
-      "application/json",
-    );
+    downloadTextFile(download.fileName, download.content, download.type);
     showToast("Project downloaded.");
   };
 
@@ -136,16 +119,13 @@ export function useProjectIoController({
     try {
       parsedWorkspace = JSON.parse(await file.text());
     } catch {
-      showToast("This file is not readable JSON.", "error");
+      showToast(getUnreadableProjectJsonMessage(), "error");
       return;
     }
 
     const nextWorkspace = migrateWorkspacePayload(parsedWorkspace, { includeLocationRoom: false });
     if (!nextWorkspace) {
-      showToast(
-        `This JSON does not match the ${PRODUCT_NAME} project v${PROJECT_STORAGE_VERSION} files schema.`,
-        "error",
-      );
+      showToast(getUnsupportedProjectSchemaMessage(), "error");
       return;
     }
 
@@ -160,11 +140,12 @@ export function useProjectIoController({
 
   const importFile = async (file: File) => {
     const importedText = await file.text();
+    const importedFileDraft = createImportedWorkspaceFileDraft(file.name, importedText, preferences);
     const nextFile = addFileFromContent(
-      normalizeWorkspaceFileTitle(file.name || "Imported.md"),
-      importedText,
-      preferences.newFileViewMode,
-      getNewFilePreferenceOverrides(preferences),
+      importedFileDraft.title,
+      importedFileDraft.text,
+      importedFileDraft.viewMode,
+      importedFileDraft.overrides,
     );
     onCloseChrome();
     syncUrlForFile(nextFile);
@@ -195,7 +176,7 @@ export function useProjectIoController({
   };
 
   const getDroppedImportFile = (event: DragEvent<HTMLElement>) => {
-    return Array.from(event.dataTransfer.files).find(isSupportedImportFile);
+    return Array.from(event.dataTransfer.files).find(isSupportedImportFileDescriptor);
   };
 
   const handleEmptyWorkspaceDragOver = (event: DragEvent<HTMLElement>) => {

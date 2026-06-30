@@ -18,7 +18,15 @@ import {
   getSelectionLineCount,
 } from "./hooks/useSelectionCommentController";
 import { getMagnetizedSplitRatio } from "./hooks/useSplitViewController";
-import { getNewFilePreferenceOverrides } from "./hooks/useProjectIoController";
+import {
+  createCurrentFileDownloadDraft,
+  createImportedWorkspaceFileDraft,
+  createWorkspaceProjectDownloadDraft,
+  getNewFilePreferenceOverrides,
+  getUnreadableProjectJsonMessage,
+  getUnsupportedProjectSchemaMessage,
+  isSupportedImportFileDescriptor,
+} from "./workspaceIoModel";
 import {
   isFileTextFallbackHistoryEnabled,
   normalizeFileBookmarks,
@@ -232,11 +240,19 @@ describe("split view controller", () => {
 });
 
 describe("project IO controller", () => {
+  const file = (id: string, text = id): WorkspaceFile => ({
+    id,
+    title: `${id}.md`,
+    text,
+    viewMode: "edit",
+    readingWidth: "wide",
+    lineWrapping: true,
+    lineNumbers: true,
+  });
+
   it("maps workspace preferences to new file overrides", () => {
     expect(
       getNewFilePreferenceOverrides({
-        theme: "light",
-        language: "en",
         newFileViewMode: "preview",
         readingWidth: "narrow",
         lineWrapping: false,
@@ -248,6 +264,82 @@ describe("project IO controller", () => {
       lineWrapping: false,
       lineNumbers: false,
     });
+  });
+
+  it("recognizes Markdown import file descriptors", () => {
+    expect(isSupportedImportFileDescriptor({ name: "Spec.md", type: "" })).toBe(true);
+    expect(isSupportedImportFileDescriptor({ name: "Spec.markdown", type: "" })).toBe(true);
+    expect(isSupportedImportFileDescriptor({ name: "notes", type: "text/plain" })).toBe(true);
+    expect(isSupportedImportFileDescriptor({ name: "archive.json", type: "application/json" })).toBe(false);
+  });
+
+  it("creates file and project download drafts without DOM side effects", () => {
+    const activeFile = file("brief", "# Brief");
+    const currentFileDownload = createCurrentFileDownloadDraft(activeFile);
+
+    expect(currentFileDownload).toEqual({
+      fileName: "brief.md",
+      content: "# Brief",
+      type: "text/markdown;charset=utf-8",
+    });
+
+    const projectDownload = createWorkspaceProjectDownloadDraft({
+      files: [activeFile],
+      openFileIds: [activeFile.id],
+      activeFileId: activeFile.id,
+      commentsByFileId: {
+        [activeFile.id]: [
+          {
+            id: "comment-one",
+            body: "Needs review",
+            createdAt: "2026-06-30T00:00:00.000Z",
+            authorName: "Taeha",
+            resolved: false,
+            replies: [],
+          },
+        ],
+      },
+    });
+
+    expect(projectDownload.fileName).toMatch(/^tabula-project-v\d+\.json$/);
+    expect(projectDownload.type).toBe("application/json");
+    expect(JSON.parse(projectDownload.content)).toMatchObject({
+      activeFileId: activeFile.id,
+      files: {
+        [activeFile.id]: {
+          id: activeFile.id,
+          title: "brief.md",
+          text: "# Brief",
+        },
+      },
+      commentsByFileId: {
+        [activeFile.id]: [{ id: "comment-one", body: "Needs review" }],
+      },
+    });
+  });
+
+  it("creates imported Markdown file drafts from preferences", () => {
+    expect(
+      createImportedWorkspaceFileDraft("Design Brief", "# Design", {
+        newFileViewMode: "split",
+        readingWidth: "standard",
+        lineWrapping: false,
+        lineNumbers: true,
+      }),
+    ).toEqual({
+      title: "Design Brief.md",
+      text: "# Design",
+      viewMode: "split",
+      overrides: {
+        viewMode: "split",
+        readingWidth: "standard",
+        lineWrapping: false,
+        lineNumbers: true,
+      },
+    });
+
+    expect(getUnreadableProjectJsonMessage()).toBe("This file is not readable JSON.");
+    expect(getUnsupportedProjectSchemaMessage()).toContain("project v");
   });
 });
 
