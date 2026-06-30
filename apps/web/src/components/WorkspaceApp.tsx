@@ -10,7 +10,7 @@ import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";
 import { WorkspaceOverlaySurface } from "./WorkspaceOverlaySurface";
 import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
-import { buildDocumentSurface } from "../documentSurfaceModel";
+import { buildDocumentSurface } from "@tabula-md/tabula";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { getShortcutLabels } from "../keyboardShortcuts";
 import { createHelpMarkdown } from "../helpMarkdown";

@@ -3,10 +3,10 @@ import {
   type RefObject,
 } from "react";
 import { MessageSquarePlus } from "lucide-react";
+import type { DocumentSurfaceModel } from "@tabula-md/tabula";
 import type { SearchMatch } from "../markdown";
 import type { MarkdownFormatCommand } from "../markdownFormatting";
 import type { CenterPopover } from "../uiTypes";
-import type { DocumentSurfaceModel } from "../documentSurfaceModel";
 import type { Collaborator, LiveSelection } from "../collab";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import type {

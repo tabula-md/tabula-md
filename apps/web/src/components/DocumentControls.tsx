@@ -16,7 +16,7 @@ import type { CenterPopover } from "../uiTypes";
 import {
   buildDocumentControlsModel,
   type DocumentViewModeIcon,
-} from "../documentControlsModel";
+} from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import {

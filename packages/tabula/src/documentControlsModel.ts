@@ -1,11 +1,28 @@
-import type { WorkspaceChromeCopy } from "./workspaceLocale";
 import {
   READING_WIDTHS,
   type FileViewMode,
   type ReadingWidth,
-} from "./workspaceStorage";
+} from "./documentPrimitives";
 
-type DocumentControlsCopy = WorkspaceChromeCopy["documentControls"];
+export type DocumentControlsCopy = {
+  copyCurrentFile: string;
+  copyFile: string;
+  documentControlsLabel: string;
+  edit: string;
+  editorControls: string;
+  fillWidth: string;
+  focusWidth: string;
+  layoutControls: string;
+  lineNumbers: string;
+  lineWrapping: string;
+  nothingToCopy: string;
+  preview: string;
+  search: string;
+  split: string;
+  standardWidth: string;
+  textWidth: string;
+  viewControls: string;
+};
 
 export type DocumentViewModeSlot = "split" | "edit-preview";
 export type DocumentViewModeIcon = "edit" | "preview" | "split";
