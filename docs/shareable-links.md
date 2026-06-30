@@ -1,11 +1,11 @@
-# Shareable Links
+# Snapshot Links
 
-Shareable link creates an encrypted copy link for the active Markdown file or
-workspace. It is not live collaboration and it is not Publish.
+Snapshot link creates an encrypted copy/import URL for the active Markdown file
+or workspace. It is not live collaboration and it is not Publish.
 
-## What Export To Link Does
+## What Create Snapshot Link Does
 
-Export to link stores an encrypted snapshot and creates a copy/import URL:
+Create snapshot link stores an encrypted snapshot and creates a copy/import URL:
 
 ```txt
 https://tabula.md/#json=<jsonId>,<jsonKey>
@@ -17,7 +17,7 @@ https://tabula.md/#json=<jsonId>,<jsonKey>
 - Opening the link asks the browser to load that external snapshot into the
   local workspace.
 
-Shareable links are for handoff. They do not create editable rooms and they do
+Snapshot links are for handoff. They do not create editable rooms and they do
 not create public read-only pages.
 
 ## Local Development
@@ -46,8 +46,8 @@ VITE_TABULA_JSON_URL=https://json.example.com
 ```
 
 Production builds do not fall back to a local JSON service. If
-`VITE_TABULA_JSON_URL` is missing, Export to link stays unavailable until a
-snapshot service is configured.
+`VITE_TABULA_JSON_URL` is missing, Create snapshot link stays unavailable until
+a snapshot service is configured.
 
 The JSON service should be deployed with:
 

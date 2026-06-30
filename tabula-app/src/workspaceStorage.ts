@@ -55,7 +55,7 @@ No dashboard first. No project ceremony. Open a file, write Markdown, and share 
 
 1. Create a blank Markdown file.
 2. Edit, preview, or keep split view open.
-3. Share a live room for co-editing or an encrypted copy link for handoff.
+3. Share a live room for co-editing or an encrypted snapshot link for handoff.
 
 ## Fits
 
@@ -66,7 +66,7 @@ No dashboard first. No project ceremony. Open a file, write Markdown, and share 
 
 - Local files are saved in this browser.
 - Live rooms sync the active file through a collaboration session.
-- Shareable links export an encrypted copy that opens in another local workspace.
+- Snapshot links export an encrypted copy that opens in another local workspace.
 `;
 export const isStarterReadmeText = (text: string) => text === STARTER_README_MARKDOWN;
 const CONNECTION_STATUSES: ConnectionStatus[] = ["idle", "connecting", "connected", "offline"];

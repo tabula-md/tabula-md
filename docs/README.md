@@ -7,7 +7,7 @@ Start here:
 - [README](../README.md) - product overview and local run commands.
 - [Live collaboration](live-collaboration.md) - Start session, room server, and
   hosted/self-hosted environment setup.
-- [Shareable links](shareable-links.md) - encrypted copy links, JSON snapshot
+- [Snapshot links](shareable-links.md) - encrypted `#json` snapshot import links,
   service, and hosted/self-hosted environment setup.
 - [Contributing](../CONTRIBUTING.md) - public issue and pull request guidance.
 - [Security](../SECURITY.md) - private vulnerability reporting.
@@ -19,7 +19,7 @@ Tabula.md has three public open-source components:
 
 - `tabula-md` is the local-first Markdown workspace Tabula app.
 - `tabula-room` is the encrypted collaboration room server.
-- `tabula-json` is the encrypted snapshot store for shareable copy links.
+- `tabula-json` is the encrypted snapshot store for snapshot import links.
 
 `tabula.md` is the official hosted deployment of those components. Hosted
 provider choices, production credentials, and private operations details do not
