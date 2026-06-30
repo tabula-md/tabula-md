@@ -1,25 +1,15 @@
 import {
-  type CSSProperties,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { MessageSquarePlus } from "lucide-react";
 import { AppToast } from "./AppToast";
 import { EmptyFileState } from "./EmptyFileState";
 import { FileTabs } from "./FileTabs";
-import { DocumentSearchBar, DocumentControls } from "./DocumentControls";
-import {
-  MarkdownEditor,
-  type MarkdownEditorHandle,
-  type MarkdownSelectionActionPosition,
-} from "./MarkdownEditor";
-import { FormattingToolbar } from "./FormattingToolbar";
-import { MarkdownPreview } from "./MarkdownPreview";
+import { DocumentWorkbench } from "./DocumentWorkbench";
 import { RightPanel } from "./RightPanel";
 import { ShareControls } from "./ShareControls";
-import { StatusBar } from "./StatusBar";
 import { TopChrome } from "./TopChrome";
 import { WorkspaceMenu } from "./WorkspaceMenu";
 import { JsonShareImportDialog } from "./JsonShareImportDialog";
@@ -28,6 +18,7 @@ import {
   getLineStartOffset,
   type MarkdownHeading,
 } from "../markdown";
+import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import type { MarkdownFormatCommand } from "../markdownFormatting";
 import { getShortcutLabels } from "../keyboardShortcuts";
 import { createHelpMarkdown } from "../helpMarkdown";
@@ -65,22 +56,6 @@ import {
   type WorkspaceFile,
   type WorkspaceState,
 } from "../workspaceStorage";
-
-const getFloatingPopoverStyle = (
-  position: MarkdownSelectionActionPosition,
-  options: { width: number; yOffset: number },
-): CSSProperties => {
-  const viewportWidth = window.innerWidth || 1024;
-  const left = Math.max(
-    12,
-    Math.min(position.clientX, viewportWidth - options.width - 12),
-  );
-  const top = Math.max(72, position.clientY + options.yOffset);
-  return {
-    left,
-    top,
-  };
-};
 
 export function WorkspaceApp() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -576,7 +551,6 @@ export function WorkspaceApp() {
     shareOpen,
     splitDividerDragging,
   });
-  const showFormattingToolbar = documentSurface.showFormattingToolbar;
 
   const fileTabsNode = (
     <FileTabs
@@ -754,195 +728,108 @@ export function WorkspaceApp() {
 
           <section className={documentSurface.fileShellClassName}>
             {activeFile ? (
-              <>
-                <section
-                  className={documentSurface.documentToolbarClassName}
-                  aria-label={workspaceChromeCopy.documentControls.documentToolbar}
-                >
-                  {showFormattingToolbar && (
-                    <FormattingToolbar
-                      className={documentSurface.formattingToolbarClassName}
-                      canUndo={canUndo || editorHistoryState.canUndo}
-                      canRedo={canRedo || editorHistoryState.canRedo}
-                      onFormat={formatMarkdown}
-                      onUndo={undoActiveFile}
-                      onRedo={redoActiveFile}
-                    />
-                  )}
-
-                  <DocumentControls
-                    activeViewMode={documentSurface.documentControls.activeViewMode}
-                    activeReadingWidth={documentSurface.documentControls.activeReadingWidth}
-                    activeLineWrapping={documentSurface.documentControls.activeLineWrapping}
-                    activeLineNumbers={documentSurface.documentControls.activeLineNumbers}
-                    canCopyFile={documentSurface.documentControls.canCopyFile}
-                    centerPopover={centerPopover}
-                    language={workspacePreferences.language}
-                    searchOpen={searchOpen}
-                    onCopyFile={copyCurrentFile}
-                    onSetViewMode={(nextViewMode) => {
-                      setActiveFileViewMode(nextViewMode);
-                      setCenterPopover(null);
-                    }}
-                    onToggleSearch={() => {
-                      setSearchOpen((current) => !current);
-                      setCenterPopover(null);
-                      setTopPopover(null);
-                    }}
-                    onToggleViewOptions={() => {
-                      setCenterPopover((current) =>
-                        current === "view" ? null : "view",
-                      );
-                      setTopPopover(null);
-                    }}
-                    onSetReadingWidth={(nextReadingWidth) => {
-                      setActiveFileReadingWidth(nextReadingWidth);
-                      setCenterPopover(null);
-                    }}
-                    onToggleLineWrapping={() => {
-                      setActiveFileLineWrapping(!activeLineWrapping);
-                      setCenterPopover(null);
-                    }}
-                    onToggleLineNumbers={() => {
-                      setActiveFileLineNumbers(!activeLineNumbers);
-                      setCenterPopover(null);
-                    }}
-                  />
-                </section>
-
-                {searchOpen && (
-                  <DocumentSearchBar
-                    searchInputRef={searchInputRef}
-                    searchQuery={searchQuery}
-                    searchMatches={searchMatches}
-                    activeSearchMatchIndex={activeSearchMatchIndex}
-                    language={workspacePreferences.language}
-                    onSearchQueryChange={setSearchQuery}
-                    onGoToSearchMatch={goToSearchMatch}
-                    onCloseSearch={() => setSearchOpen(false)}
-                  />
-                )}
-
-                <section
-                  className={documentSurface.workspaceClassName}
-                  ref={workspaceRef}
-                  style={splitWorkspaceStyle}
-                >
-                  <article
-                    className={documentSurface.editorSurfaceClassName}
-                    ref={editorSurfaceRef}
-                    onScroll={handleEditorSurfaceScroll}
-                  >
-                    <MarkdownEditor
-                      ref={editorRef}
-                      fileId={activeFile.id}
-                      fileTitle={activeFileTitle}
-                      roomId={activeFile.roomId}
-                      value={text}
-                      lineWrapping={activeLineWrapping}
-                      lineNumbers={activeLineNumbers}
-                      bookmarks={activeBookmarks}
-                      commentAnchors={isLive ? activeCommentAnchors : []}
-                      commentsEnabled={isLive}
-                      collaborators={isLive ? collaborators : []}
-                      activeCommentId={focusedCommentId}
-                      searchMatches={searchOpen ? searchMatches : []}
-                      activeSearchMatchIndex={
-                        searchOpen ? activeSearchMatchIndex : -1
-                      }
-                      onChange={handleTextChange}
-                      onBookmarksChange={updateActiveFileBookmarks}
-                      onHistoryStateChange={handleEditorHistoryStateChange}
-                      onOpenLineActions={handleStableLineAnnotationAction}
-                      onOpenComment={openStableCommentMarker}
-                      onSelectionChange={handleEditorSelectionChange}
-                      onSelectionActionPositionChange={
-                        handleEditorSelectionActionPositionChange
-                      }
-                      onScrollRatioChange={handleEditorScrollRatioChange}
-                    />
-                  </article>
-
-                  {documentSurface.showSplitResizeHandle && (
-                    <button
-                      type="button"
-                      className="split-resize-handle"
-                      role="separator"
-                      aria-label="Resize split view"
-                      aria-orientation="vertical"
-                      aria-valuemin={splitDividerMinValue}
-                      aria-valuemax={splitDividerMaxValue}
-                      aria-valuenow={splitDividerValue}
-                      onDoubleClick={resetSplitRatio}
-                      onKeyDown={handleSplitDividerKeyDown}
-                      onPointerCancel={endSplitDividerDrag}
-                      onPointerDown={handleSplitDividerPointerDown}
-                      onPointerMove={handleSplitDividerPointerMove}
-                      onPointerUp={endSplitDividerDrag}
-                    />
-                  )}
-
-                  <article
-                    className="preview-surface"
-                    ref={previewSurfaceRef}
-                    onKeyUp={syncPreviewSelection}
-                    onMouseUp={syncPreviewSelection}
-                    onScroll={handlePreviewScroll}
-                    onTouchEnd={syncPreviewSelection}
-                  >
-                    <MarkdownPreview
-                      metadata={parsedMarkdown.attributes}
-                      body={renderedPreview.body}
-                      commentAnchors={isLive ? activePreviewCommentAnchors : []}
-                      lineAnnotations={activePreviewLineAnnotations}
-                      activeCommentId={focusedCommentId}
-                      commentsEnabled={isLive}
-                      suspendLineMeasurement={splitDividerDragging}
-                      onLineAction={handleStableLineAnnotationAction}
-                      onOpenComment={openStableCommentMarker}
-                    />
-                  </article>
-                </section>
-
-                {documentSurface.showSelectionCommentPopover && selectionActionPosition && (
-                  <div
-                    className="selection-comment-popover"
-                    style={getFloatingPopoverStyle(selectionActionPosition, {
-                      width: 128,
-                      yOffset: 30,
-                    })}
-                    role="toolbar"
-                    aria-label="Selection actions"
-                  >
-                    <button
-                      className="selection-comment-button"
-                      type="button"
-                      onClick={openSelectionComment}
-                    >
-                      <MessageSquarePlus size={15} />
-                      <span>Add comment</span>
-                    </button>
-                  </div>
-                )}
-
-                <StatusBar
-                  activeFileTitle={documentSurface.statusBar.activeFileTitle}
-                  activeViewMode={documentSurface.statusBar.activeViewMode}
-                  isLive={isLive}
-                  language={workspacePreferences.language}
-                  statusLabel={statusLabel}
-                  wordCount={documentSurface.statusBar.wordCount}
-                  commentCount={documentSurface.statusBar.commentCount}
-                  cursorPositionLabel={cursorPositionLabel}
-                  selectedCharacterCount={selectedCharacterCount}
-                  selectedLineCount={selectedLineCount}
-                  onOpenComments={() =>
-                    openCommentsPanel(
-                      focusedCommentId ?? activeOpenComments[0]?.id,
-                    )
-                  }
-                />
-              </>
+              <DocumentWorkbench
+                activeBookmarks={activeBookmarks}
+                activeCommentAnchors={activeCommentAnchors}
+                activeFile={activeFile}
+                activeFileTitle={activeFileTitle}
+                activeLineNumbers={activeLineNumbers}
+                activeLineWrapping={activeLineWrapping}
+                activePreviewCommentAnchors={activePreviewCommentAnchors}
+                activePreviewLineAnnotations={activePreviewLineAnnotations}
+                activeSearchMatchIndex={activeSearchMatchIndex}
+                canRedo={canRedo}
+                canUndo={canUndo}
+                centerPopover={centerPopover}
+                collaborators={collaborators}
+                cursorPositionLabel={cursorPositionLabel}
+                documentSurface={documentSurface}
+                editorHistoryCanRedo={editorHistoryState.canRedo}
+                editorHistoryCanUndo={editorHistoryState.canUndo}
+                editorRef={editorRef}
+                editorSurfaceRef={editorSurfaceRef}
+                focusedCommentId={focusedCommentId}
+                isLive={isLive}
+                language={workspacePreferences.language}
+                previewBody={renderedPreview.body}
+                previewMetadata={parsedMarkdown.attributes}
+                previewSurfaceRef={previewSurfaceRef}
+                searchInputRef={searchInputRef}
+                searchMatches={searchMatches}
+                searchOpen={searchOpen}
+                searchQuery={searchQuery}
+                selectedCharacterCount={selectedCharacterCount}
+                selectedLineCount={selectedLineCount}
+                selectionActionPosition={selectionActionPosition}
+                splitDividerDragging={splitDividerDragging}
+                splitDividerMaxValue={splitDividerMaxValue}
+                splitDividerMinValue={splitDividerMinValue}
+                splitDividerValue={splitDividerValue}
+                splitWorkspaceStyle={splitWorkspaceStyle}
+                statusLabel={statusLabel}
+                text={text}
+                toolbarLabel={workspaceChromeCopy.documentControls.documentToolbar}
+                workspaceRef={workspaceRef}
+                onBookmarksChange={updateActiveFileBookmarks}
+                onCloseSearch={() => setSearchOpen(false)}
+                onCopyFile={copyCurrentFile}
+                onEditorHistoryStateChange={handleEditorHistoryStateChange}
+                onEditorScroll={handleEditorSurfaceScroll}
+                onEditorScrollRatioChange={handleEditorScrollRatioChange}
+                onEditorSelectionActionPositionChange={
+                  handleEditorSelectionActionPositionChange
+                }
+                onEditorSelectionChange={handleEditorSelectionChange}
+                onFormat={formatMarkdown}
+                onGoToSearchMatch={goToSearchMatch}
+                onLineAction={handleStableLineAnnotationAction}
+                onOpenComment={openStableCommentMarker}
+                onOpenComments={() =>
+                  openCommentsPanel(focusedCommentId ?? activeOpenComments[0]?.id)
+                }
+                onOpenSelectionComment={openSelectionComment}
+                onPreviewKeyUp={syncPreviewSelection}
+                onPreviewMouseUp={syncPreviewSelection}
+                onPreviewScroll={handlePreviewScroll}
+                onPreviewTouchEnd={syncPreviewSelection}
+                onRedo={redoActiveFile}
+                onResetSplitRatio={resetSplitRatio}
+                onSearchQueryChange={setSearchQuery}
+                onSetReadingWidth={(nextReadingWidth) => {
+                  setActiveFileReadingWidth(nextReadingWidth);
+                  setCenterPopover(null);
+                }}
+                onSetViewMode={(nextViewMode) => {
+                  setActiveFileViewMode(nextViewMode);
+                  setCenterPopover(null);
+                }}
+                onSplitDividerKeyDown={handleSplitDividerKeyDown}
+                onSplitDividerPointerCancel={endSplitDividerDrag}
+                onSplitDividerPointerDown={handleSplitDividerPointerDown}
+                onSplitDividerPointerMove={handleSplitDividerPointerMove}
+                onSplitDividerPointerUp={endSplitDividerDrag}
+                onTextChange={handleTextChange}
+                onToggleLineNumbers={() => {
+                  setActiveFileLineNumbers(!activeLineNumbers);
+                  setCenterPopover(null);
+                }}
+                onToggleLineWrapping={() => {
+                  setActiveFileLineWrapping(!activeLineWrapping);
+                  setCenterPopover(null);
+                }}
+                onToggleSearch={() => {
+                  setSearchOpen((current) => !current);
+                  setCenterPopover(null);
+                  setTopPopover(null);
+                }}
+                onToggleViewOptions={() => {
+                  setCenterPopover((current) =>
+                    current === "view" ? null : "view",
+                  );
+                  setTopPopover(null);
+                }}
+                onUndo={undoActiveFile}
+              />
             ) : (
               <section
                 className={`workspace empty-workspace ${emptyDropActive ? "drop-active" : ""}`}
