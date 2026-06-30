@@ -15,14 +15,12 @@ import {
   shouldStoreSnapshotAfterJoin,
 } from "./collabRoom";
 import {
-  createRoomApiUrl,
   decodePresence,
   encodePresenceForRoom,
   isEncryptedEnvelope,
   sortCollaborators,
-  toRoomMeta,
-  type RoomServerMetadata,
 } from "./collabConnectionModel";
+import { fetchRoomMeta, fetchRoomSnapshotEnvelope, putRoomSnapshotEnvelope } from "./collabRoomClient";
 import {
   applyLocalTextToYText,
   applyRemoteUpdateToYText,
@@ -154,15 +152,9 @@ export const createCollabConnection = ({
   };
 
   const refreshRoomMeta = async () => {
-    try {
-      const response = await fetch(createRoomApiUrl(roomBaseUrl, roomId));
-      if (!response.ok) {
-        return;
-      }
-
-      onRoomMetaChange?.(toRoomMeta((await response.json()) as RoomServerMetadata));
-    } catch {
-      // Room metadata is best-effort. Realtime sync uses encrypted room envelopes.
+    const meta = await fetchRoomMeta({ baseUrl: roomBaseUrl, roomId });
+    if (meta) {
+      onRoomMetaChange?.(meta);
     }
   };
 
@@ -237,18 +229,11 @@ export const createCollabConnection = ({
 
     try {
       const snapshot = await encryptEnvelope("snapshot", Y.encodeStateAsUpdate(doc));
-      const response = await fetch(createRoomApiUrl(roomBaseUrl, roomId, "/snapshot"), {
-        method: "PUT",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify(snapshot),
-      });
-
-      if (response.ok) {
+      const meta = await putRoomSnapshotEnvelope({ baseUrl: roomBaseUrl, roomId, envelope: snapshot });
+      if (meta) {
         clearSnapshotTimer();
         hasUnstoredLocalChanges = false;
-        onRoomMetaChange?.(toRoomMeta((await response.json()) as RoomServerMetadata));
+        onRoomMetaChange?.(meta);
       }
     } catch {
       emitRecoveryEvent("invalid-message", "The encrypted room snapshot could not be stored.");
@@ -268,23 +253,17 @@ export const createCollabConnection = ({
     }
 
     try {
-      const response = await fetch(createRoomApiUrl(roomBaseUrl, roomId, "/snapshot"));
-      if (response.status === 404) {
+      const snapshot = await fetchRoomSnapshotEnvelope({ baseUrl: roomBaseUrl, roomId });
+      if (snapshot.status === "missing") {
         await refreshRoomMeta();
         return "missing" as const;
       }
-      if (!response.ok) {
-        emitRecoveryEvent("invalid-message", "The encrypted room snapshot could not be loaded.");
+      if (snapshot.status === "invalid") {
+        emitRecoveryEvent("invalid-message", snapshot.message);
         return false;
       }
 
-      const envelope = await response.json();
-      if (!isEncryptedEnvelope(envelope) || envelope.roomId !== roomId || envelope.kind !== "snapshot") {
-        emitRecoveryEvent("invalid-message", "A room snapshot was ignored because it was not a valid envelope.");
-        return false;
-      }
-
-      const update = await decryptEnvelopeForRoom(roomKey, envelope);
+      const update = await decryptEnvelopeForRoom(roomKey, snapshot.envelope);
       const result = applyRemoteUpdateToYText({ doc, text, update });
       if (result) {
         onTextChange(result.text, result.change);
