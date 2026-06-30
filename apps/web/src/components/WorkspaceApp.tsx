@@ -567,9 +567,7 @@ export function WorkspaceApp() {
       activeFileId: activeFile?.id,
       activeConnectionStatus: connectionStatus,
     });
-  const showFormattingToolbar = Boolean(
-    activeFile && activeViewMode !== "preview",
-  );
+  const showFormattingToolbar = activeDocument.canFormat;
   const showSelectionCommentPopover = Boolean(
     isLive &&
     activeFile &&
@@ -792,7 +790,7 @@ export function WorkspaceApp() {
                     activeReadingWidth={activeReadingWidth}
                     activeLineWrapping={activeLineWrapping}
                     activeLineNumbers={activeLineNumbers}
-                    canCopyFile={text.trim().length > 0}
+                    canCopyFile={activeDocument.canCopy}
                     centerPopover={centerPopover}
                     language={workspacePreferences.language}
                     searchOpen={searchOpen}
