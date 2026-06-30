@@ -18,17 +18,14 @@ import {
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { getShortcutLabels } from "../keyboardShortcuts";
 import { createHelpMarkdown } from "../helpMarkdown";
-import { useActiveDocumentRuntime } from "../hooks/useActiveDocumentRuntime";
 import { useAppToast } from "../hooks/useAppToast";
 import { useDocumentWorkbenchRuntime } from "../hooks/useDocumentWorkbenchRuntime";
-import { useEditorSearchController } from "../hooks/useEditorSearchController";
 import { useEventCallback } from "../hooks/useEventCallback";
 import { useFileComments } from "../hooks/useFileComments";
+import { useWorkspaceDocumentRuntime } from "../hooks/useWorkspaceDocumentRuntime";
 import { useWorkspaceFiles } from "../hooks/useWorkspaceFiles";
 import { useWorkspaceIoRuntime } from "../hooks/useWorkspaceIoRuntime";
 import { useWorkspacePersistenceRuntime } from "../hooks/useWorkspacePersistenceRuntime";
-import { useSelectionCommentController } from "../hooks/useSelectionCommentController";
-import { useSplitViewController } from "../hooks/useSplitViewController";
 import { useWorkspaceActiveFileEditor } from "../hooks/useWorkspaceActiveFileEditor";
 import { useWorkspaceChromeController } from "../hooks/useWorkspaceChromeController";
 import { useWorkspaceCommentActions } from "../hooks/useWorkspaceCommentActions";
@@ -37,7 +34,6 @@ import { useWorkspaceIdentity } from "../hooks/useWorkspaceIdentity";
 import { useWorkspaceKeyboardShortcuts } from "../hooks/useWorkspaceKeyboardShortcuts";
 import { useWorkspacePreferences } from "../hooks/useWorkspacePreferences";
 import { useWorkspaceRouteRuntime } from "../hooks/useWorkspaceRouteRuntime";
-import { useWorkspaceScrollSync } from "../hooks/useWorkspaceScrollSync";
 import { useWorkspaceShareRuntime } from "../hooks/useWorkspaceShareRuntime";
 import { useWorkspaceCollaborationRuntime } from "../hooks/useWorkspaceCollaborationRuntime";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
@@ -136,17 +132,67 @@ export function WorkspaceApp() {
     identity,
     createId: randomId,
   });
-  const activeDocument = useActiveDocumentRuntime(activeFile);
-  const text = activeDocument.text;
-  const activeViewMode = activeDocument.viewMode;
-  const activeSplitRatio = activeDocument.splitRatio;
-  const activeLineWrapping = activeDocument.lineWrapping;
-  const activeLineNumbers = activeDocument.lineNumbers;
-  const activeBookmarks = activeDocument.bookmarks;
-  const activeFileTitle = activeDocument.title;
-  const parsedMarkdown = activeDocument.parsedMarkdown;
-  const renderedPreview = activeDocument.renderedPreview;
-  const previewBodyStartOffset = activeDocument.previewBodyStartOffset;
+  const {
+    activeDocument,
+    activeBookmarks,
+    activeFileTitle,
+    activeLineNumbers,
+    activeLineWrapping,
+    activeSearchMatchIndex,
+    activeSelection,
+    activeViewMode,
+    clearPreviewSelection,
+    cursorPositionLabel,
+    editorSurfaceRef,
+    endSplitDividerDrag,
+    focusTextRange,
+    getSelectedMarkdownAnchor,
+    getSelectedMarkdownExcerpt,
+    goToSearchMatch,
+    handleEditorScrollRatioChange,
+    handleEditorSelectionActionPositionChange,
+    handleEditorSelectionChange,
+    handleEditorSurfaceScroll,
+    handlePreviewScroll,
+    handleSplitDividerKeyDown,
+    handleSplitDividerPointerDown,
+    handleSplitDividerPointerMove,
+    outlineHeadings,
+    parsedMarkdown,
+    previewBodyStartOffset,
+    previewSurfaceRef,
+    queueEditorFocus,
+    queueEditorTextRange,
+    renderedPreview,
+    searchInputRef,
+    searchMatches,
+    searchOpen,
+    searchQuery,
+    selectedCharacterCount,
+    selectedLineCount,
+    selectedMarkdownText,
+    selectionActionPosition,
+    setActiveFileViewMode,
+    setActiveSelection,
+    setSearchOpen,
+    setSearchQuery,
+    setSelectionActionPosition,
+    splitDividerDragging,
+    splitDividerMaxValue,
+    splitDividerMinValue,
+    splitDividerValue,
+    splitWorkspaceStyle,
+    suppressSelectionActionPositionRef,
+    syncPreviewSelection,
+    text,
+    workspaceRef,
+    resetSplitRatio,
+  } = useWorkspaceDocumentRuntime({
+    activeFile,
+    editorRef,
+    onCommitActiveFileSplitRatio: commitActiveFileSplitRatio,
+    onSetWorkspaceFileViewMode: setWorkspaceFileViewMode,
+  });
   const workspacePersistenceSnapshot = useMemo<WorkspaceState>(
     () => ({
       files,
@@ -156,89 +202,6 @@ export function WorkspaceApp() {
     }),
     [activeFileId, commentsByFileId, files, openFileIds],
   );
-  const {
-    workspaceRef,
-    editorSurfaceRef,
-    previewSurfaceRef,
-    setActiveFileViewMode,
-    queueEditorFocus,
-    queueEditorTextRange,
-    handleEditorScrollRatioChange,
-    handleEditorSurfaceScroll,
-    handlePreviewScroll,
-  } = useWorkspaceScrollSync({
-    activeFileId: activeFile?.id,
-    activeViewMode,
-    editorRef,
-    onSetActiveFileViewMode: setWorkspaceFileViewMode,
-  });
-  const {
-    splitDividerDragging,
-    splitDividerMinValue,
-    splitDividerMaxValue,
-    splitDividerValue,
-    splitWorkspaceStyle,
-    resetSplitRatio,
-    handleSplitDividerKeyDown,
-    handleSplitDividerPointerDown,
-    handleSplitDividerPointerMove,
-    endSplitDividerDrag,
-  } = useSplitViewController({
-    activeViewMode,
-    activeSplitRatio,
-    workspaceRef,
-    editorSurfaceRef,
-    onSetSplitRatio: commitActiveFileSplitRatio,
-  });
-  const focusTextRange = (start: number, end = start) => {
-    if (activeViewMode === "preview") {
-      setActiveFileViewMode("edit", {
-        preserveScroll: false,
-        focusEditor: false,
-      });
-    }
-
-    queueEditorTextRange(start, end);
-  };
-  const {
-    searchInputRef,
-    searchOpen,
-    setSearchOpen,
-    searchQuery,
-    setSearchQuery,
-    searchMatches,
-    activeSearchMatchIndex,
-    goToSearchMatch,
-  } = useEditorSearchController({
-    activeFileId: activeFile?.id,
-    editorRef,
-    text,
-    onFocusTextRange: focusTextRange,
-  });
-  const {
-    activeSelection,
-    selectedMarkdownText,
-    selectedCharacterCount,
-    selectedLineCount,
-    cursorPositionLabel,
-    selectionActionPosition,
-    setActiveSelection,
-    setSelectionActionPosition,
-    suppressSelectionActionPositionRef,
-    handleEditorSelectionChange,
-    handleEditorSelectionActionPositionChange,
-    clearPreviewSelection,
-    syncPreviewSelection,
-    getSelectedMarkdownExcerpt,
-    getSelectedMarkdownAnchor,
-  } = useSelectionCommentController({
-    activeFileId: activeFile?.id,
-    activeViewMode,
-    editorRef,
-    previewBodyStartOffset,
-    previewSurfaceRef,
-    text,
-  });
   useWorkspacePersistenceRuntime({
     enabled: initialWorkspaceSnapshot.source === "starter",
     initialWorkspace,
@@ -334,7 +297,6 @@ export function WorkspaceApp() {
     });
   const copied = copiedFileId === activeFile?.id;
   const shareOpen = topPopover === "share";
-  const outlineHeadings = activeDocument.outlineHeadings;
 
   const handleRouteWorkspaceChange = useEventCallback(() => {
     setTopPopover(null);
