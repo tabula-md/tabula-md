@@ -33,6 +33,7 @@ import { useWorkspaceProjectContextRuntime } from "../hooks/useWorkspaceProjectC
 import { useWorkspaceRouteRuntime } from "../hooks/useWorkspaceRouteRuntime";
 import { useWorkspaceShareRuntime } from "../hooks/useWorkspaceShareRuntime";
 import { useWorkspaceCollaborationRuntime } from "../hooks/useWorkspaceCollaborationRuntime";
+import { useWorkspaceTopChromeRuntime } from "../hooks/useWorkspaceTopChromeRuntime";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import {
   createWorkspaceFile,
@@ -284,8 +285,6 @@ export function WorkspaceApp() {
       startCollaborationSession,
       stopFileCollaborationSession,
     });
-  const copied = copiedFileId === activeFile?.id;
-  const shareOpen = topPopover === "share";
 
   const handleRouteWorkspaceChange = useEventCallback(() => {
     setTopPopover(null);
@@ -494,6 +493,48 @@ export function WorkspaceApp() {
       text,
     });
 
+  const { shareOpen, topChromeProps } = useWorkspaceTopChromeRuntime({
+    activeFile,
+    activeFileTitle,
+    activeText: text,
+    canStartSession,
+    collaborators,
+    copiedFileId,
+    currentUserName: identity.name,
+    files,
+    getFileStatus,
+    identity: presenceIdentity,
+    isLive,
+    jsonShare,
+    language: workspacePreferences.language,
+    openFiles,
+    rightPanelOpen,
+    sharePanelTarget,
+    startSessionUnavailableReason,
+    topPopover,
+    workspaceMenuOpen,
+    onAddFile: addFile,
+    onChangeUserName: updateIdentityName,
+    onCloseFile: closeFile,
+    onCommitUserName: normalizeIdentityName,
+    onCopyFile: copyCurrentFile,
+    onCopyShareUrl: copyShareUrl,
+    onDownloadFile: downloadCurrentFile,
+    onDownloadProjectArchive: downloadProjectArchive,
+    onReorderFiles: reorderFiles,
+    onRenameFile: renameWorkspaceFileAction,
+    onSelectFile: selectFile,
+    onStartSession: startSession,
+    onStopSession: stopSession,
+    onToggleRightPanel: toggleRightPanel,
+    onToggleWorkspaceMenu: toggleWorkspaceMenu,
+    setCenterPopover,
+    setPreferencesOpen,
+    setSharePanelTarget,
+    setTopPopover,
+    setWorkspaceMenuOpen,
+  });
+
   useWorkspaceKeyboardShortcuts({
     importInputRef,
     addFile,
@@ -580,57 +621,7 @@ export function WorkspaceApp() {
         />
 
         <section className={documentSurface.centerWorkbenchClassName}>
-          <WorkspaceTopChrome
-            activeFile={activeFile}
-            activeFileTitle={activeFileTitle}
-            activeText={text}
-            canStartSession={canStartSession}
-            collaborators={collaborators}
-            copied={copied}
-            currentUserName={identity.name}
-            files={files}
-            getFileStatus={getFileStatus}
-            identity={presenceIdentity}
-            isLive={isLive}
-            jsonShare={jsonShare}
-            language={workspacePreferences.language}
-            openFiles={openFiles}
-            rightPanelOpen={rightPanelOpen}
-            shareOpen={shareOpen}
-            sharePanelTarget={sharePanelTarget}
-            startSessionUnavailableReason={startSessionUnavailableReason}
-            workspaceMenuOpen={workspaceMenuOpen}
-            onAddFile={addFile}
-            onChangeUserName={updateIdentityName}
-            onChromeInteraction={() => {
-              setTopPopover(null);
-              setCenterPopover(null);
-            }}
-            onCloseFile={closeFile}
-            onCloseShare={() => {
-              setTopPopover(null);
-              setSharePanelTarget(undefined);
-            }}
-            onCommitUserName={normalizeIdentityName}
-            onCopyFile={copyCurrentFile}
-            onCopyShareUrl={copyShareUrl}
-            onDownloadFile={downloadCurrentFile}
-            onDownloadProjectArchive={downloadProjectArchive}
-            onReorderFiles={reorderFiles}
-            onRenameFile={renameWorkspaceFileAction}
-            onSelectFile={selectFile}
-            onStartSession={startSession}
-            onStopSession={stopSession}
-            onToggleWorkspaceMenu={toggleWorkspaceMenu}
-            onToggleRightPanel={toggleRightPanel}
-            onToggleShare={() => {
-              setSharePanelTarget(undefined);
-              setTopPopover(shareOpen ? null : "share");
-              setCenterPopover(null);
-              setWorkspaceMenuOpen(false);
-              setPreferencesOpen(false);
-            }}
-          />
+          <WorkspaceTopChrome {...topChromeProps} />
 
           <section className={documentSurface.fileShellClassName}>
             {activeFile ? (
