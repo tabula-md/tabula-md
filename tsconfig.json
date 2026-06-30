@@ -12,11 +12,14 @@
     "module": "ESNext",
     "moduleResolution": "Node",
     "baseUrl": ".",
+    "paths": {
+      "@tabula-md/tabula": ["packages/tabula/src/index.ts"]
+    },
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["apps/web/src"],
+  "include": ["apps/web/src", "packages/tabula/src"],
   "references": []
 }

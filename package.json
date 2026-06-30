@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "apps/web"
+    "apps/web",
+    "packages/tabula"
   ],
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -37,7 +38,7 @@
     "test:browser:publish": "npm run test:browser -- --suite=publish",
     "test:browser:performance": "npm run test:browser -- --suite=performance",
     "test:surface-colors": "node scripts/check-surface-colors.mjs",
-    "lint:fast": "oxlint apps/web/src scripts --deny-warnings"
+    "lint:fast": "oxlint apps/web/src packages/tabula/src scripts --deny-warnings"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

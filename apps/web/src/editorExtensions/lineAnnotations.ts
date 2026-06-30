@@ -4,7 +4,7 @@ import {
   getLineNumberForSourcePosition,
   getLineNumbersForSourceRanges,
   type LineSurfaceSourceLine,
-} from "../lineSurfaceModel";
+} from "@tabula-md/tabula";
 import type { MarkdownBookmark, MarkdownCommentAnchor, MarkdownLineActionRequest } from "../markdownEditorTypes";
 
 type LineAnnotationState = {

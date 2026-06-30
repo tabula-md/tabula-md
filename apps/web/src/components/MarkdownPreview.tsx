@@ -21,7 +21,7 @@ import {
   type LineSurfaceAnnotation,
   type LineSurfaceRow,
   type LineSurfaceSourceBlock,
-} from "../lineSurfaceModel";
+} from "@tabula-md/tabula";
 
 export type MarkdownPreviewMetadata = {
   key: string;
