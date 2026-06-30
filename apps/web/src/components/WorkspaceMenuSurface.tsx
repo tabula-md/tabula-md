@@ -5,7 +5,7 @@ import type {
   WorkspaceTheme,
 } from "../hooks/useWorkspacePreferences";
 
-type WorkspaceMenuSurfaceProps = {
+export type WorkspaceMenuSurfaceProps = {
   canExportCurrentFile: boolean;
   importInputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
