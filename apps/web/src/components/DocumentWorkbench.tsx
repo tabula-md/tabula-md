@@ -35,7 +35,7 @@ import {
 } from "./MarkdownPreview";
 import { StatusBar } from "./StatusBar";
 
-type DocumentWorkbenchProps = {
+export type DocumentWorkbenchProps = {
   activeBookmarks: FileBookmark[];
   activeCommentAnchors: MarkdownCommentAnchor[];
   activeFile: WorkspaceFile;

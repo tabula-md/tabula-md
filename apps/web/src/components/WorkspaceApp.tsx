@@ -16,11 +16,11 @@ import {
   type MarkdownHeading,
 } from "../markdown";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
-import type { MarkdownFormatCommand } from "../markdownFormatting";
 import { getShortcutLabels } from "../keyboardShortcuts";
 import { createHelpMarkdown } from "../helpMarkdown";
 import { useActiveDocumentRuntime } from "../hooks/useActiveDocumentRuntime";
 import { useAppToast } from "../hooks/useAppToast";
+import { useDocumentWorkbenchRuntime } from "../hooks/useDocumentWorkbenchRuntime";
 import { useEditorSearchController } from "../hooks/useEditorSearchController";
 import { useEventCallback } from "../hooks/useEventCallback";
 import { useFileComments } from "../hooks/useFileComments";
@@ -546,15 +546,22 @@ export function WorkspaceApp() {
     splitDividerDragging,
   });
 
-  const formatMarkdown = (command: MarkdownFormatCommand) => {
-    if (activeViewMode === "preview") {
-      return;
-    }
-
-    setTopPopover(null);
-    setCenterPopover(null);
-    editorRef.current?.format(command);
-  };
+  const documentWorkbenchRuntime = useDocumentWorkbenchRuntime({
+    activeLineNumbers,
+    activeLineWrapping,
+    activeOpenComments,
+    activeViewMode,
+    editorRef,
+    focusedCommentId,
+    onOpenCommentsPanel: openCommentsPanel,
+    onSetActiveFileLineNumbers: setActiveFileLineNumbers,
+    onSetActiveFileLineWrapping: setActiveFileLineWrapping,
+    onSetActiveFileReadingWidth: setActiveFileReadingWidth,
+    onSetActiveFileViewMode: setActiveFileViewMode,
+    setCenterPopover,
+    setSearchOpen,
+    setTopPopover,
+  });
 
   return (
     <main className="app-shell">
@@ -700,7 +707,7 @@ export function WorkspaceApp() {
                 toolbarLabel={workspaceChromeCopy.documentControls.documentToolbar}
                 workspaceRef={workspaceRef}
                 onBookmarksChange={updateActiveFileBookmarks}
-                onCloseSearch={() => setSearchOpen(false)}
+                onCloseSearch={documentWorkbenchRuntime.onCloseSearch}
                 onCopyFile={copyCurrentFile}
                 onEditorHistoryStateChange={handleEditorHistoryStateChange}
                 onEditorScroll={handleEditorSurfaceScroll}
@@ -709,13 +716,11 @@ export function WorkspaceApp() {
                   handleEditorSelectionActionPositionChange
                 }
                 onEditorSelectionChange={handleEditorSelectionChange}
-                onFormat={formatMarkdown}
+                onFormat={documentWorkbenchRuntime.onFormat}
                 onGoToSearchMatch={goToSearchMatch}
                 onLineAction={handleStableLineAnnotationAction}
                 onOpenComment={openStableCommentMarker}
-                onOpenComments={() =>
-                  openCommentsPanel(focusedCommentId ?? activeOpenComments[0]?.id)
-                }
+                onOpenComments={documentWorkbenchRuntime.onOpenComments}
                 onOpenSelectionComment={openSelectionComment}
                 onPreviewKeyUp={syncPreviewSelection}
                 onPreviewMouseUp={syncPreviewSelection}
@@ -724,39 +729,18 @@ export function WorkspaceApp() {
                 onRedo={redoActiveFile}
                 onResetSplitRatio={resetSplitRatio}
                 onSearchQueryChange={setSearchQuery}
-                onSetReadingWidth={(nextReadingWidth) => {
-                  setActiveFileReadingWidth(nextReadingWidth);
-                  setCenterPopover(null);
-                }}
-                onSetViewMode={(nextViewMode) => {
-                  setActiveFileViewMode(nextViewMode);
-                  setCenterPopover(null);
-                }}
+                onSetReadingWidth={documentWorkbenchRuntime.onSetReadingWidth}
+                onSetViewMode={documentWorkbenchRuntime.onSetViewMode}
                 onSplitDividerKeyDown={handleSplitDividerKeyDown}
                 onSplitDividerPointerCancel={endSplitDividerDrag}
                 onSplitDividerPointerDown={handleSplitDividerPointerDown}
                 onSplitDividerPointerMove={handleSplitDividerPointerMove}
                 onSplitDividerPointerUp={endSplitDividerDrag}
                 onTextChange={handleTextChange}
-                onToggleLineNumbers={() => {
-                  setActiveFileLineNumbers(!activeLineNumbers);
-                  setCenterPopover(null);
-                }}
-                onToggleLineWrapping={() => {
-                  setActiveFileLineWrapping(!activeLineWrapping);
-                  setCenterPopover(null);
-                }}
-                onToggleSearch={() => {
-                  setSearchOpen((current) => !current);
-                  setCenterPopover(null);
-                  setTopPopover(null);
-                }}
-                onToggleViewOptions={() => {
-                  setCenterPopover((current) =>
-                    current === "view" ? null : "view",
-                  );
-                  setTopPopover(null);
-                }}
+                onToggleLineNumbers={documentWorkbenchRuntime.onToggleLineNumbers}
+                onToggleLineWrapping={documentWorkbenchRuntime.onToggleLineWrapping}
+                onToggleSearch={documentWorkbenchRuntime.onToggleSearch}
+                onToggleViewOptions={documentWorkbenchRuntime.onToggleViewOptions}
                 onUndo={undoActiveFile}
               />
             ) : (
