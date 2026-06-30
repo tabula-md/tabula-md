@@ -17,6 +17,7 @@ import { createCollabEnvelopeRouter } from "./collabEnvelopeRouter";
 import { createCollabSessionState } from "./collabSessionState";
 import { createCollabSnapshotSync } from "./collabSnapshotSync";
 import { resolveCollabStartConfig } from "./collabStartConfig";
+import { createCollabTransportHandlers } from "./collabTransportController";
 import { createCollabUpdateBuffer } from "./collabUpdateBuffer";
 import {
   applyLocalTextToYText,
@@ -244,72 +245,25 @@ export const createCollabConnection = ({
       baseUrl: roomBaseUrl,
       roomId,
       clientId: currentIdentity.id,
-      handlers: {
-        onConnect: () => {
-          if (closedByClient) {
-            return;
-          }
-
-          onStatusChange("connecting");
-        },
-        onJoined: async () => {
-          if (closedByClient) {
-            return;
-          }
-
-          const snapshotFetchResult = await snapshotSync.fetch();
-          if (!snapshotFetchResult) {
-            sessionState.markJoinBlocked();
-            onStatusChange("offline");
-            transport?.disconnect();
-            return;
-          }
-
-          onStatusChange("connected");
-          const joinResult = sessionState.markJoined();
-          if (joinResult.reconnected) {
-            emitRecoveryEvent("reconnected", joinResult.message);
-          }
-          await emitEnvelope("yjs-update", Y.encodeStateAsUpdate(doc));
-          await publishPresence();
-          if (shouldStoreSnapshotAfterJoin({ hasUnstoredLocalChanges, snapshotFetchResult })) {
-            await snapshotSync.store();
-          }
-        },
-        onMessage: (envelope) => {
-          void envelopeRouter.route(envelope);
-        },
-        onPeers: (message) => {
-          if (collaborators.prune(message.peers)) {
-            publishCollaborators();
-          }
-        },
-        onError: (message) => {
-          emitRecoveryEvent("invalid-message", message.error || "A collaboration server message was ignored.");
-        },
-        onDisconnect: () => {
-          if (closedByClient) {
-            return;
-          }
-
-          onStatusChange("offline");
-          collaborators.clear();
-          publishCollaborators();
-          const offlineResult = sessionState.markOffline("disconnect");
-          if (offlineResult.notify) {
-            emitRecoveryEvent("invalid-message", offlineResult.message);
-          }
-        },
-        onConnectError: () => {
-          if (!closedByClient) {
-            onStatusChange("offline");
-            const offlineResult = sessionState.markOffline("connect-error");
-            if (offlineResult.notify) {
-              emitRecoveryEvent("invalid-message", offlineResult.message);
-            }
-          }
-        },
-      },
+      handlers: createCollabTransportHandlers({
+        isClosed: () => closedByClient,
+        fetchSnapshot: () => snapshotSync.fetch(),
+        markJoinBlocked: () => sessionState.markJoinBlocked(),
+        markJoined: () => sessionState.markJoined(),
+        markOffline: (reason) => sessionState.markOffline(reason),
+        setStatus: onStatusChange,
+        disconnectTransport: () => transport?.disconnect(),
+        emitCurrentState: () => emitEnvelope("yjs-update", Y.encodeStateAsUpdate(doc)),
+        publishPresence,
+        shouldStoreSnapshot: (snapshotFetchResult) =>
+          shouldStoreSnapshotAfterJoin({ hasUnstoredLocalChanges, snapshotFetchResult }),
+        storeSnapshot: () => snapshotSync.store(),
+        routeEnvelope: (envelope) => envelopeRouter.route(envelope),
+        pruneCollaborators: (peerIds) => collaborators.prune(peerIds),
+        clearCollaborators: () => collaborators.clear(),
+        publishCollaborators,
+        emitRecoveryEvent,
+      }),
     });
     transport.connect();
 
