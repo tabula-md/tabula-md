@@ -10,7 +10,7 @@ import type { WorkspaceFile } from "../workspaceStorage";
 
 type FileTabsProps = ComponentProps<typeof FileTabs>;
 
-type WorkspaceTopChromeProps = {
+export type WorkspaceTopChromeProps = {
   activeFile?: WorkspaceFile;
   activeFileTitle: string;
   activeText: string;
