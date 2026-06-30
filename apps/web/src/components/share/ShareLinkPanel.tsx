@@ -9,7 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import type { JsonShareController } from "../../hooks/useJsonShareController";
-import type { ShareViewModel } from "../../shareViewModel";
+import type { ShareViewModel } from "../../share";
 import type {
   WorkspaceChromeCopy,
   WorkspaceShareCopy,

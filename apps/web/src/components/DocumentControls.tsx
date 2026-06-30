@@ -15,14 +15,12 @@ import type { SearchMatch } from "../markdown";
 import type { CenterPopover } from "../uiTypes";
 import {
   buildDocumentControlsModel,
+  type FileViewMode,
+  type ReadingWidth,
   type DocumentViewModeIcon,
 } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
-import {
-  type FileViewMode,
-  type ReadingWidth,
-} from "../workspaceStorage";
 
 type DocumentControlsProps = {
   activeViewMode: FileViewMode;

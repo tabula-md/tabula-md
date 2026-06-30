@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { ConnectionStatus } from "../collab";
-import { getRoomShareLinkView } from "../shareLinkViewModel";
+import type { ConnectionStatus } from "../collaboration";
+import { getRoomShareLinkView } from "../share";
 import type { WorkspaceFile } from "../workspaceStorage";
 
 type UseWorkspaceLiveRoomControllerArgs = {

@@ -8,7 +8,7 @@ import {
   type TouchEvent as ReactTouchEvent,
 } from "react";
 import { COMMENT_ANCHOR_CONTEXT_LENGTH } from "../commentAnchors";
-import type { LiveSelection } from "../collab";
+import type { LiveSelection } from "../collaboration";
 import type { MarkdownEditorHandle, MarkdownSelectionActionPosition } from "../components/MarkdownEditor";
 import type { FileViewMode } from "../workspaceStorage";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";

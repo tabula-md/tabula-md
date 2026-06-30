@@ -1,8 +1,10 @@
 {
   "name": "@tabula-md/tabula",
   "version": "0.1.0",
+  "description": "Pure Tabula.md document, workspace, and share-link contracts.",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./src/index.ts",

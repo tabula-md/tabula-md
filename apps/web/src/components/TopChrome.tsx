@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Menu, PanelRight, Users } from "lucide-react";
-import type { Collaborator } from "../collab";
+import type { Collaborator } from "../collaboration";
 import {
   getCollaboratorPresenceDetail,
   getCollaboratorPresenceLabel,
   isCollaboratorInFile,
-} from "../collaborationPresence";
+} from "../collaboration";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 

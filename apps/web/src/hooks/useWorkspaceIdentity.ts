@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Collaborator } from "../collab";
+import type { Collaborator } from "../collaboration";
 import { randomId } from "../workspaceStorage";
 
 export const IDENTITY_KEY = "tabula.identity";

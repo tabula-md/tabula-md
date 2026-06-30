@@ -6,14 +6,14 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
-import { useWorkspaceUiStore } from "../stores/workspaceUiStore";
 import {
   clampSplitEditorRatio,
   DEFAULT_SPLIT_EDITOR_RATIO,
   MAX_SPLIT_EDITOR_RATIO,
   MIN_SPLIT_EDITOR_RATIO,
   type FileViewMode,
-} from "../workspaceStorage";
+} from "@tabula-md/tabula";
+import { useWorkspaceUiStore } from "../stores/workspaceUiStore";
 
 const SPLIT_RESIZE_KEYBOARD_STEP = 0.02;
 const SPLIT_CENTER_SNAP_THRESHOLD = 0.025;

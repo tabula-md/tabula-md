@@ -12,7 +12,7 @@ import {
   type CollabRecoveryEvent,
   type ConnectionStatus,
   type LiveSelection,
-} from "../collab";
+} from "../collaboration";
 import {
   getDisconnectedStatusPatch,
   getIdleStatusPatch,
@@ -20,7 +20,7 @@ import {
   getLiveRoomConnectionTarget,
   getRecoveryEventPatch,
   getRoomMetaPatch,
-} from "../collabRuntime";
+} from "../collaboration";
 import type { TextChange, TextPatch } from "../textPatches";
 import { isUsableLiveRoomFile, type WorkspaceFile } from "../workspaceStorage";
 

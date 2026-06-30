@@ -5,8 +5,8 @@ import {
   type ConnectionStatus,
   type LiveSelection,
   getTabulaRoomAvailability,
-} from "../collab";
-import { createCollaborationSessionStartRequest } from "../collabRuntime";
+} from "../collaboration";
+import { createCollaborationSessionStartRequest } from "../collaboration";
 import type { TextChange } from "../textPatches";
 import type { WorkspaceFile } from "../workspaceStorage";
 import { useCollaborationConnectionRuntime } from "./useCollaborationConnectionRuntime";

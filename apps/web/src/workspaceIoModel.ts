@@ -5,58 +5,33 @@ import {
   type FileComment,
   type WorkspaceFile,
 } from "./workspaceStorage";
-import { normalizeWorkspaceFileTitle } from "./workspaceModel";
+import {
+  createCurrentFileDownloadDraft,
+  createImportedWorkspaceFileDraft,
+  getNewFilePreferenceOverrides,
+  isSupportedImportFileDescriptor,
+  type ImportedWorkspaceFileDraft as CoreImportedWorkspaceFileDraft,
+  type TextFileDownloadDraft,
+  type WorkspaceFilePreferenceDefaults as CoreWorkspaceFilePreferenceDefaults,
+} from "@tabula-md/tabula";
 
-export type WorkspaceFilePreferenceDefaults = {
-  newFileViewMode: WorkspaceFile["viewMode"];
-  readingWidth: WorkspaceFile["readingWidth"];
-  lineWrapping: boolean;
-  lineNumbers: boolean;
+export {
+  createCurrentFileDownloadDraft,
+  createImportedWorkspaceFileDraft,
+  getNewFilePreferenceOverrides,
+  isSupportedImportFileDescriptor,
 };
 
-export type TextFileDownloadDraft = {
-  fileName: string;
-  content: string;
-  type: string;
-};
+export type WorkspaceFilePreferenceDefaults = CoreWorkspaceFilePreferenceDefaults<
+  WorkspaceFile["viewMode"],
+  WorkspaceFile["readingWidth"]
+>;
 
-export type ImportedWorkspaceFileDraft = {
-  title: string;
-  text: string;
-  viewMode: WorkspaceFile["viewMode"];
-  overrides: Partial<WorkspaceFile>;
-};
-
-export function getNewFilePreferenceOverrides(
-  preferences: WorkspaceFilePreferenceDefaults,
-): Partial<WorkspaceFile> {
-  return {
-    viewMode: preferences.newFileViewMode,
-    readingWidth: preferences.readingWidth,
-    lineWrapping: preferences.lineWrapping,
-    lineNumbers: preferences.lineNumbers,
-  };
-}
-
-export const isSupportedImportFileDescriptor = (
-  file: Pick<File, "name" | "type">,
-) => {
-  const fileName = file.name.toLowerCase();
-  return (
-    fileName.endsWith(".md") ||
-    fileName.endsWith(".markdown") ||
-    file.type === "text/markdown" ||
-    file.type === "text/plain"
-  );
-};
-
-export const createCurrentFileDownloadDraft = (
-  file: WorkspaceFile,
-): TextFileDownloadDraft => ({
-  fileName: file.title,
-  content: file.text,
-  type: "text/markdown;charset=utf-8",
-});
+export type ImportedWorkspaceFileDraft = CoreImportedWorkspaceFileDraft<
+  WorkspaceFile["viewMode"],
+  WorkspaceFile["readingWidth"]
+>;
+export type { TextFileDownloadDraft };
 
 export const createWorkspaceProjectDownloadDraft = ({
   activeFileId,
@@ -81,17 +56,6 @@ export const createWorkspaceProjectDownloadDraft = ({
     2,
   ),
   type: "application/json",
-});
-
-export const createImportedWorkspaceFileDraft = (
-  fileName: string,
-  text: string,
-  preferences: WorkspaceFilePreferenceDefaults,
-): ImportedWorkspaceFileDraft => ({
-  title: normalizeWorkspaceFileTitle(fileName || "Imported.md"),
-  text,
-  viewMode: preferences.newFileViewMode,
-  overrides: getNewFilePreferenceOverrides(preferences),
 });
 
 export const getUnreadableProjectJsonMessage = () =>

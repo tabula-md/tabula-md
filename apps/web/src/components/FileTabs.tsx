@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
-import type { ConnectionStatus } from "../collab";
+import type { ConnectionStatus } from "../collaboration";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
 import type { WorkspaceFile } from "../workspaceStorage";
 

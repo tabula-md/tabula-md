@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import { RightPanel } from "./RightPanel";
-import { getWorkspaceFileSearchText } from "../workspaceViewModel";
+import { getWorkspaceFileSearchText } from "../workspace";
 
 type RightPanelProps = ComponentProps<typeof RightPanel>;
 

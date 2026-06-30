@@ -12,7 +12,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import type { ConnectionStatus } from "../collab";
+import type { ConnectionStatus } from "../collaboration";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 

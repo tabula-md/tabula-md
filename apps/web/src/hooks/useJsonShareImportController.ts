@@ -4,8 +4,9 @@ import {
   getJsonShareRoute,
   readJsonShareSnapshot,
   type JsonShareRoute,
-} from "../jsonShare";
-import { createWorkspaceFromJsonShareSnapshot, hasMeaningfulWorkspaceContent } from "../jsonShareImport";
+  createWorkspaceFromJsonShareSnapshot,
+  hasMeaningfulWorkspaceContent,
+} from "../share";
 import {
   syncUrlForFile,
   type FileComment,

@@ -9,7 +9,7 @@ import {
   buildShareViewModel,
   normalizeSharePanel,
   type VisibleSharePanel,
-} from "../shareViewModel";
+} from "../share";
 import type { SharePanel } from "../uiTypes";
 import {
   getWorkspaceChromeCopy,

@@ -1,4 +1,4 @@
-import type { Collaborator, LiveSelection } from "./collab";
+import type { Collaborator, LiveSelection } from "./collaboration";
 import type { SearchMatch } from "./markdown";
 import type { MarkdownFormatCommand } from "./markdownFormatting";
 import type { TextChange, TextPatch } from "./textPatches";

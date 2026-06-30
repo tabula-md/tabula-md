@@ -4,14 +4,14 @@ import {
   useState,
   type RefObject,
 } from "react";
-import type { ConnectionStatus } from "../collab";
+import type { ConnectionStatus } from "../collaboration";
 import type { WorkspaceProjectContextProps } from "../components/WorkspaceProjectContext";
 import {
   getLineStartOffset,
   type MarkdownHeading,
 } from "../markdown";
 import type { RightPanelView } from "../uiTypes";
-import { getWorkspaceFileStatus } from "../workspaceViewModel";
+import { getWorkspaceFileStatus } from "../workspace";
 import type {
   FileComment,
   FileViewMode,

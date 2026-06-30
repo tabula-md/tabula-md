@@ -8,7 +8,7 @@ type JsonShareImportState =
   | { status: "error"; errorMessage: string }
   | { status: "ready"; workspace: WorkspaceState };
 
-type WorkspaceOverlaySurfaceProps = {
+export type WorkspaceOverlaySurfaceProps = {
   jsonShareImport: JsonShareImportState | null;
   toast: AppToastState | null;
   onCloseJsonShareImport: () => void;

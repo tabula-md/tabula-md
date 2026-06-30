@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import { FileTabs } from "./FileTabs";
 import { ShareControls } from "./ShareControls";
 import { TopChrome } from "./TopChrome";
-import type { Collaborator } from "../collab";
+import type { Collaborator } from "../collaboration";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import type { SharePanel } from "../uiTypes";

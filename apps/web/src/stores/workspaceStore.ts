@@ -14,25 +14,26 @@ import {
   selectWorkspaceFile,
   workspaceReducer,
   type CloseFileResult,
+  type FileViewMode,
+  type ReadingWidth,
   type RenameFileResult,
+  type WorkspaceModelAction,
   type WorkspaceModelState,
-} from "../workspaceModel";
+} from "@tabula-md/tabula";
 import {
   ensureLiveFileForRoom,
   getFileIdForRoom,
   getLiveFileTitle,
   type FileBookmark,
-  type FileViewMode,
   type LocationRoom,
   type WorkspaceFile,
-  type ReadingWidth,
 } from "../workspaceStorage";
 import {
   restoreFileToList,
   restoreOpenFileId,
 } from "../workspaceFileRuntimeModel";
 
-type WorkspaceStoreInitialization = WorkspaceModelState & {
+type WorkspaceStoreInitialization = WorkspaceModelState<WorkspaceFile> & {
   createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   readmeFileId: string;
 };
@@ -60,7 +61,7 @@ type RecoveryEventUpdate = {
   createdAt: string;
 };
 
-type WorkspaceStoreState = WorkspaceModelState & {
+type WorkspaceStoreState = WorkspaceModelState<WorkspaceFile> & {
   createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   initialized: boolean;
   readmeFileId: string;
@@ -83,7 +84,7 @@ type WorkspaceStoreActions = {
   moveFile: (fileId: string, direction: -1 | 1) => void;
   renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
   reorderFiles: (sourceFileId: string, targetFileId: string) => void;
-  replaceWorkspace: (workspace: WorkspaceModelState) => WorkspaceFile | undefined;
+  replaceWorkspace: (workspace: WorkspaceModelState<WorkspaceFile>) => WorkspaceFile | undefined;
   restoreFile: (input: RestoreFileInput) => WorkspaceFile;
   selectAdjacentFile: (direction: -1 | 1) => WorkspaceFile | undefined;
   selectFile: (fileId: string) => WorkspaceFile | undefined;
@@ -139,7 +140,7 @@ const DEFAULT_WORKSPACE_STORE_STATE: WorkspaceStoreState = {
   readmeFileId: "",
 };
 
-const getWorkspaceState = (state: WorkspaceStoreState): WorkspaceModelState => ({
+const getWorkspaceState = (state: WorkspaceStoreState): WorkspaceModelState<WorkspaceFile> => ({
   files: state.files,
   openFileIds: state.openFileIds,
   activeFileId: state.activeFileId,
@@ -153,7 +154,7 @@ const getAvailableFileTitle = (files: WorkspaceFile[], baseTitle: string) =>
 
 const reduceWorkspace = (
   state: WorkspaceStoreState,
-  action: Parameters<typeof workspaceReducer>[1],
+  action: WorkspaceModelAction<WorkspaceFile>,
 ): WorkspaceStoreState => ({
   ...state,
   ...workspaceReducer(getWorkspaceState(state), action),
