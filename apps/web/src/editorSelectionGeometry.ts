@@ -3,7 +3,7 @@ import {
   getLineSurfaceRectRight,
   lineSurfaceRowsAreAdjacent,
   type LineSurfaceRect,
-} from "./lineSurfaceModel";
+} from "@tabula-md/tabula";
 
 export type SelectionSourceSegmentKind = "text" | "empty-line";
 

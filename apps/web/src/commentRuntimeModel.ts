@@ -3,7 +3,7 @@ import type { MarkdownCommentAnchor } from "./markdownEditorTypes";
 import {
   positionInSourceLine,
   sourceRangeIntersectsLine,
-} from "./lineSurfaceModel";
+} from "@tabula-md/tabula";
 import type { FileBookmark, FileComment } from "./workspaceStorage";
 
 export type PreviewCommentAnchor = {

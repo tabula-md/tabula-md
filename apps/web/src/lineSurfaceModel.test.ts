@@ -4,7 +4,7 @@ import {
   buildLineSurfaceVisualRows,
   getLineNumbersForSourceRanges,
   sourceRangeIntersectsLine,
-} from "./lineSurfaceModel";
+} from "@tabula-md/tabula";
 
 const sourceLines = [
   { number: 1, start: 0, end: 5 },
