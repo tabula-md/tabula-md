@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { CollabRecoveryEvent, RoomMeta, TabulaRoomAvailability } from "./collab";
 import {
   canStartCollaborationSession,
+  createCollaborationPresenceIdentity,
+  createCollaborationSessionStartRequest,
   getDisconnectedStatusPatch,
   getIdleStatusPatch,
+  getInitialCollaborationStatus,
   getLiveRoomConnectionTarget,
   getRecoveryEventPatch,
   getRoomMetaPatch,
@@ -39,6 +42,26 @@ describe("collaboration runtime model", () => {
       roomKey: VALID_ROOM_KEY,
       shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
     });
+  });
+
+  it("derives the initial runtime status from the connectable room contract", () => {
+    expect(getInitialCollaborationStatus(file())).toBe("idle");
+    expect(
+      getInitialCollaborationStatus(
+        file({
+          roomId: "room-1",
+          shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
+        }),
+      ),
+    ).toBe("connecting");
+    expect(
+      getInitialCollaborationStatus(
+        file({
+          roomId: "room-1",
+          shareUrl: `https://tabula.test/#room=room-2,${VALID_ROOM_KEY}`,
+        }),
+      ),
+    ).toBe("idle");
   });
 
   it("rejects missing, malformed, and mismatched live room links", () => {
@@ -113,5 +136,74 @@ describe("collaboration runtime model", () => {
     expect(canStartCollaborationSession({ activeFile: file(), roomAvailability: available })).toBe(true);
     expect(canStartCollaborationSession({ activeFile: undefined, roomAvailability: available })).toBe(false);
     expect(canStartCollaborationSession({ activeFile: file(), roomAvailability: unavailable })).toBe(false);
+  });
+
+  it("creates a session start request without leaking browser state into callers", () => {
+    const activeFile = file({ text: "# Draft" });
+    const available: TabulaRoomAvailability = { available: true, baseUrl: "https://rooms.test", unavailableReason: "" };
+
+    expect(
+      createCollaborationSessionStartRequest({
+        activeFile,
+        origin: "https://tabula.test",
+        roomAvailability: available,
+        createSession: (origin) => ({
+          roomId: "room-1",
+          shareUrl: `${origin}/#room=room-1,${VALID_ROOM_KEY}`,
+        }),
+      }),
+    ).toEqual({
+      initialText: "# Draft",
+      roomId: "room-1",
+      shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
+    });
+  });
+
+  it("does not create session requests when the room service is unavailable", () => {
+    expect(
+      createCollaborationSessionStartRequest({
+        activeFile: file(),
+        origin: "https://tabula.test",
+        roomAvailability: {
+          available: false,
+          baseUrl: "",
+          unavailableReason: "Room server missing.",
+        },
+      }),
+    ).toBeUndefined();
+  });
+
+  it("adds room-scoped presence metadata only while live", () => {
+    const identity = {
+      id: "self",
+      name: "Ada",
+      color: "#763FC8",
+      lastSeen: 1,
+    };
+
+    expect(
+      createCollaborationPresenceIdentity({
+        identity,
+        isLive: false,
+        roomId: "room-1",
+        fileTitle: "README",
+        selection: { from: 1, to: 2 },
+      }),
+    ).toBe(identity);
+
+    expect(
+      createCollaborationPresenceIdentity({
+        identity,
+        isLive: true,
+        roomId: "room-1",
+        fileTitle: "README",
+        selection: { from: 1, to: 2 },
+      }),
+    ).toEqual({
+      ...identity,
+      roomId: "room-1",
+      fileTitle: "README",
+      selection: { from: 1, to: 2 },
+    });
   });
 });
