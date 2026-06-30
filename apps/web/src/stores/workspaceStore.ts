@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { getMarkdownDocumentTitle } from "../markdown";
+import { getMarkdownDocumentTitle } from "@tabula-md/tabula";
 import {
   addWorkspaceFile,
   closeWorkspaceFile,

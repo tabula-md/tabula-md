@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { MarkdownHeading } from "../markdown";
+import type { MarkdownHeading } from "@tabula-md/tabula";
 
 type RightPanelOutlineProps = {
   activeFileTitle: string;

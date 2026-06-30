@@ -6,7 +6,7 @@ import {
   isEncryptedEnvelope,
   sortCollaborators,
   toRoomMeta,
-} from ".";
+} from "./collabConnectionModel";
 
 describe("collaboration connection model", () => {
   it("creates room API URLs with encoded room ids", () => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
-import { getSearchMatches } from "../markdown";
+import { getSearchMatches } from "@tabula-md/tabula";
 import { useWorkspaceUiStore } from "../stores/workspaceUiStore";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";
 

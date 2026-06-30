@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createActiveDocumentRuntime } from "../document";
+import { createActiveDocumentRuntime } from "@tabula-md/tabula";
 import type { WorkspaceFile } from "../workspaceStorage";
 
 export const useActiveDocumentRuntime = (activeFile?: WorkspaceFile) => {

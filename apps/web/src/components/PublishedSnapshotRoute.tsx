@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, File as FileIcon, Folder as FolderIcon } from "lucide-react";
-import { getPreviewBody, parseFrontmatter } from "../markdown";
+import { getPreviewBody, parseFrontmatter } from "@tabula-md/tabula";
 import { PRODUCT_NAME } from "../product";
 import {
   getConfiguredPublishServiceUrl,

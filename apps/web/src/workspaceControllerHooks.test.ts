@@ -52,8 +52,8 @@ import {
   getWorkspaceFileSearchText,
   getWorkspaceFileStatus,
   getWorkspaceStatusLabel,
-} from "./workspace";
-import { getMarkdownWordCount } from "./document";
+  getMarkdownWordCount,
+} from "@tabula-md/tabula";
 import { isUsableLiveRoomFile, type FileBookmark, type WorkspaceFile } from "./workspaceStorage";
 
 const VALID_ROOM_KEY = "A".repeat(43);

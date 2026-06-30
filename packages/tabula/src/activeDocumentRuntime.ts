@@ -1,4 +1,10 @@
 import {
+  clampSplitEditorRatio,
+  DEFAULT_SPLIT_EDITOR_RATIO,
+  type FileViewMode,
+  type ReadingWidth,
+} from "./documentPrimitives";
+import {
   getLineStartOffset,
   getOutlineHeadings,
   getPreviewBody,
@@ -6,21 +12,28 @@ import {
   type MarkdownHeading,
   type ParsedFrontmatter,
   type PreviewBody,
-} from "../markdown";
-import {
-  clampSplitEditorRatio,
-  DEFAULT_SPLIT_EDITOR_RATIO,
-  type FileViewMode,
-  type ReadingWidth,
-} from "@tabula-md/tabula";
-import {
-  type FileBookmark,
-  type WorkspaceFile,
-} from "../workspaceStorage";
+} from "./markdown";
 import { getMarkdownWordCount } from "./documentMetrics";
 
+export type DocumentBookmark = {
+  id: string;
+  position: number;
+  createdAt: string;
+};
+
+export type ActiveDocumentFile = {
+  title: string;
+  text: string;
+  viewMode: FileViewMode;
+  readingWidth: ReadingWidth;
+  splitRatio?: number;
+  lineWrapping: boolean;
+  lineNumbers: boolean;
+  bookmarks?: DocumentBookmark[];
+};
+
 export type ActiveDocumentRuntime = {
-  bookmarks: FileBookmark[];
+  bookmarks: DocumentBookmark[];
   canCopy: boolean;
   canFormat: boolean;
   hasFile: boolean;
@@ -38,7 +51,7 @@ export type ActiveDocumentRuntime = {
   wordCount: number;
 };
 
-export const createActiveDocumentRuntime = (activeFile?: WorkspaceFile): ActiveDocumentRuntime => {
+export const createActiveDocumentRuntime = (activeFile?: ActiveDocumentFile): ActiveDocumentRuntime => {
   const text = activeFile?.text ?? "";
   const viewMode = activeFile?.viewMode ?? "edit";
   const readingWidth = activeFile?.readingWidth ?? "wide";

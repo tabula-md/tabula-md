@@ -1,5 +1,5 @@
 import type { Collaborator, LiveSelection } from "./collaboration";
-import type { SearchMatch } from "./markdown";
+import type { SearchMatch } from "@tabula-md/tabula";
 import type { MarkdownFormatCommand } from "./markdownFormatting";
 import type { TextChange, TextPatch } from "./textPatches";
 

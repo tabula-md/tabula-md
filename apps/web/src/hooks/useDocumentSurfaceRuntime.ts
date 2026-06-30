@@ -1,6 +1,8 @@
 import type { RefObject } from "react";
-import { buildDocumentSurface } from "@tabula-md/tabula";
-import type { ActiveDocumentRuntime } from "../document/activeDocumentRuntime";
+import {
+  buildDocumentSurface,
+  type ActiveDocumentRuntime,
+} from "@tabula-md/tabula";
 import type {
   MarkdownEditorHandle,
   MarkdownSelectionActionPosition,
