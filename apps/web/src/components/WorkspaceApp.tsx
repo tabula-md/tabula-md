@@ -23,6 +23,7 @@ import { StatusBar } from "./StatusBar";
 import { TopChrome } from "./TopChrome";
 import { WorkspaceMenu } from "./WorkspaceMenu";
 import { JsonShareImportDialog } from "./JsonShareImportDialog";
+import { buildDocumentSurface } from "../documentSurfaceModel";
 import {
   getLineStartOffset,
   type MarkdownHeading,
@@ -169,7 +170,6 @@ export function WorkspaceApp() {
   const activeDocument = useActiveDocumentRuntime(activeFile);
   const text = activeDocument.text;
   const activeViewMode = activeDocument.viewMode;
-  const activeReadingWidth = activeDocument.readingWidth;
   const activeSplitRatio = activeDocument.splitRatio;
   const activeLineWrapping = activeDocument.lineWrapping;
   const activeLineNumbers = activeDocument.lineNumbers;
@@ -364,7 +364,6 @@ export function WorkspaceApp() {
       stopFileCollaborationSession,
     });
   const copied = copiedFileId === activeFile?.id;
-  const activeWordCount = activeDocument.wordCount;
   const shareOpen = topPopover === "share";
   const outlineHeadings = activeDocument.outlineHeadings;
 
@@ -567,13 +566,17 @@ export function WorkspaceApp() {
       activeFileId: activeFile?.id,
       activeConnectionStatus: connectionStatus,
     });
-  const showFormattingToolbar = activeDocument.canFormat;
-  const showSelectionCommentPopover = Boolean(
-    isLive &&
-    activeFile &&
-    selectedCharacterCount > 0 &&
-    selectionActionPosition,
-  );
+  const documentSurface = buildDocumentSurface({
+    document: activeDocument,
+    hasSelectionActionPosition: Boolean(selectionActionPosition),
+    isLive,
+    openCommentCount: activeOpenComments.length,
+    searchOpen,
+    selectedCharacterCount,
+    shareOpen,
+    splitDividerDragging,
+  });
+  const showFormattingToolbar = documentSurface.showFormattingToolbar;
 
   const fileTabsNode = (
     <FileTabs
@@ -734,13 +737,7 @@ export function WorkspaceApp() {
           onOpenHelp={openHelpFile}
         />
 
-        <section
-          className={`center-workbench ${
-            activeFile
-              ? `has-file view-${activeViewMode} reading-${activeReadingWidth}`
-              : "empty"
-          } ${activeFile ? (activeLineNumbers ? "line-numbers-on" : "line-numbers-off") : ""}`}
-        >
+        <section className={documentSurface.centerWorkbenchClassName}>
           <TopChrome
             workspaceMenuOpen={workspaceMenuOpen}
             rightPanelOpen={rightPanelOpen}
@@ -755,28 +752,16 @@ export function WorkspaceApp() {
             onToggleRightPanel={toggleRightPanel}
           />
 
-          <section
-            className={`file-shell ${
-              activeFile
-                ? `view-${activeViewMode} reading-${activeReadingWidth}`
-                : "empty"
-            } ${activeFile ? (activeLineNumbers ? "line-numbers-on" : "line-numbers-off") : ""} ${
-              showFormattingToolbar ? "with-format-toolbar" : ""
-            } ${searchOpen ? "with-search-row" : ""} ${
-              shareOpen ? "share-modal-open" : ""
-            }`}
-          >
+          <section className={documentSurface.fileShellClassName}>
             {activeFile ? (
               <>
                 <section
-                  className={`document-toolbar-row ${activeViewMode} reading-${activeReadingWidth} ${
-                    showFormattingToolbar ? "with-formatting" : ""
-                  }`}
+                  className={documentSurface.documentToolbarClassName}
                   aria-label={workspaceChromeCopy.documentControls.documentToolbar}
                 >
                   {showFormattingToolbar && (
                     <FormattingToolbar
-                      className={`${activeViewMode} reading-${activeReadingWidth}`}
+                      className={documentSurface.formattingToolbarClassName}
                       canUndo={canUndo || editorHistoryState.canUndo}
                       canRedo={canRedo || editorHistoryState.canRedo}
                       onFormat={formatMarkdown}
@@ -786,11 +771,11 @@ export function WorkspaceApp() {
                   )}
 
                   <DocumentControls
-                    activeViewMode={activeViewMode}
-                    activeReadingWidth={activeReadingWidth}
-                    activeLineWrapping={activeLineWrapping}
-                    activeLineNumbers={activeLineNumbers}
-                    canCopyFile={activeDocument.canCopy}
+                    activeViewMode={documentSurface.documentControls.activeViewMode}
+                    activeReadingWidth={documentSurface.documentControls.activeReadingWidth}
+                    activeLineWrapping={documentSurface.documentControls.activeLineWrapping}
+                    activeLineNumbers={documentSurface.documentControls.activeLineNumbers}
+                    canCopyFile={documentSurface.documentControls.canCopyFile}
                     centerPopover={centerPopover}
                     language={workspacePreferences.language}
                     searchOpen={searchOpen}
@@ -839,16 +824,12 @@ export function WorkspaceApp() {
                 )}
 
                 <section
-                  className={`workspace ${activeViewMode} reading-${activeReadingWidth} ${
-                    splitDividerDragging ? "split-resizing" : ""
-                  }`}
+                  className={documentSurface.workspaceClassName}
                   ref={workspaceRef}
                   style={splitWorkspaceStyle}
                 >
                   <article
-                    className={`editor-surface ${activeLineNumbers ? "line-numbers-on" : "line-numbers-off"} ${
-                      selectedCharacterCount > 0 ? "has-text-selection" : ""
-                    }`}
+                    className={documentSurface.editorSurfaceClassName}
                     ref={editorSurfaceRef}
                     onScroll={handleEditorSurfaceScroll}
                   >
@@ -882,7 +863,7 @@ export function WorkspaceApp() {
                     />
                   </article>
 
-                  {activeViewMode === "split" && !shareOpen && (
+                  {documentSurface.showSplitResizeHandle && (
                     <button
                       type="button"
                       className="split-resize-handle"
@@ -923,7 +904,7 @@ export function WorkspaceApp() {
                   </article>
                 </section>
 
-                {showSelectionCommentPopover && selectionActionPosition && (
+                {documentSurface.showSelectionCommentPopover && selectionActionPosition && (
                   <div
                     className="selection-comment-popover"
                     style={getFloatingPopoverStyle(selectionActionPosition, {
@@ -945,13 +926,13 @@ export function WorkspaceApp() {
                 )}
 
                 <StatusBar
-                  activeFileTitle={activeFileTitle}
-                  activeViewMode={activeViewMode}
+                  activeFileTitle={documentSurface.statusBar.activeFileTitle}
+                  activeViewMode={documentSurface.statusBar.activeViewMode}
                   isLive={isLive}
                   language={workspacePreferences.language}
                   statusLabel={statusLabel}
-                  wordCount={activeWordCount}
-                  commentCount={isLive ? activeOpenComments.length : 0}
+                  wordCount={documentSurface.statusBar.wordCount}
+                  commentCount={documentSurface.statusBar.commentCount}
                   cursorPositionLabel={cursorPositionLabel}
                   selectedCharacterCount={selectedCharacterCount}
                   selectedLineCount={selectedLineCount}
