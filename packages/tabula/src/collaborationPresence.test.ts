@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCollaboratorPresenceDetail,
   getCollaboratorPresenceLabel,
   getLineNumberForPresenceOffset,
   getLineNumberForPresenceSelection,
+  isCollaboratorInFile,
 } from "./collaborationPresence";
 
 describe("collaboration presence labels", () => {
@@ -33,5 +35,25 @@ describe("collaboration presence labels", () => {
         "one\ntwo",
       ),
     ).toBe("Ada - README - line 2");
+  });
+
+  it("distinguishes same-file and different-file presence", () => {
+    const collaborator = {
+      id: "peer-1",
+      name: "Ada",
+      color: "#763fc8",
+      lastSeen: 1,
+      roomId: "room-1",
+      fileTitle: "README.md",
+      selection: { from: 0, to: 8 },
+    };
+
+    expect(isCollaboratorInFile(collaborator, "README.md", "room-1")).toBe(true);
+    expect(getCollaboratorPresenceDetail(collaborator, "one\ntwo\nthree", "README.md", "room-1")).toBe("Line 3");
+
+    expect(isCollaboratorInFile({ ...collaborator, roomId: "room-2" }, "README.md", "room-1")).toBe(false);
+    expect(getCollaboratorPresenceDetail({ ...collaborator, roomId: "room-2" }, "one\ntwo", "README.md", "room-1")).toBe(
+      "Viewing README.md",
+    );
   });
 });

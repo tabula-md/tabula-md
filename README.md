@@ -18,7 +18,7 @@ live collaboration is experimental and will continue to evolve before a stable
 - Preview GitHub Flavored Markdown.
 - Keep project context close with files, outline, and comments panels.
 - Open live sessions when collaboration is needed.
-- Export encrypted copy links when someone needs their own local copy.
+- Export encrypted Snapshot links when someone needs their own local copy.
 - Keep Markdown usable for handoff to teammates and coding agents.
 - Preserve Markdown as the source of truth.
 
@@ -39,58 +39,28 @@ npm run dev
 Then open `http://localhost:5173`.
 
 To run local live collaboration, run the separate room server and point the app
-at it:
-
-```sh
-git clone https://github.com/tabula-md/tabula-room.git ../tabula-room
-cd ../tabula-room
-npm install
-npm run dev
-```
-
-Then, from this repository:
-
-```sh
-VITE_TABULA_ROOM_URL=http://localhost:3002 npm run dev
-```
-
-To run local `#json` snapshot share links, run the separate JSON service and
-point the app at it:
-
-```sh
-git clone https://github.com/tabula-md/tabula-json.git ../tabula-json
-cd ../tabula-json
-npm install
-npm run dev
-```
-
-Then, from this repository:
-
-```sh
-VITE_TABULA_JSON_URL=http://localhost:3004 npm run dev
-```
+at it. To run local Snapshot links, run the separate JSON snapshot service. See
+[`docs/self-hosting.md`](docs/self-hosting.md).
 
 ## Self-Hosting
 
-Self-hosted deployments are static Vite builds. Serve `dist` from a static
-host. Live collaboration and encrypted copy links use root URL fragments such
-as `/#room=<roomId>,<roomKey>` and `/#json=<jsonId>,<key>`.
+Self-hosted deployments are static Vite builds. Serve `dist` from a static host.
+Live collaboration and encrypted Snapshot links use root URL fragments such as
+`/#room=<roomId>,<roomKey>` and `/#json=<jsonId>,<key>`.
 
 Set these environment variables for the capabilities you want to enable:
 
 - `VITE_TABULA_ROOM_URL` for **Share > Start session**.
-- `VITE_TABULA_JSON_URL` for **Shareable link**.
+- `VITE_TABULA_JSON_URL` for **Snapshot link**.
 
 Without those service URLs, the matching feature stays unavailable instead of
 falling back to localhost. See
-[`docs/live-collaboration.md`](docs/live-collaboration.md).
+[`docs/self-hosting.md`](docs/self-hosting.md).
 
 ## Official Hosted Service
 
-[`tabula.md`](https://tabula.md) is the managed hosted deployment of this app
-pointed at the official room and encrypted snapshot services. Production
-credentials, managed-service account details, provider-specific deploy settings,
-and private operations runbooks do not belong in this public repository.
+[`tabula.md`](https://tabula.md) is the managed hosted deployment of the same
+OSS app pointed at the official room and encrypted snapshot services.
 
 ## Contributing
 
