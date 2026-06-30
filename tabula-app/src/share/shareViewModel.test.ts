@@ -5,9 +5,9 @@ const labels = {
   shareLink: "Share link",
   export: "Export",
   sendTo: "Send to...",
-  exportToLink: "Export to link",
-  exporting: "Exporting...",
-  updateLink: "Update link",
+  exportToLink: "Create snapshot link",
+  exporting: "Creating link",
+  updateLink: "New snapshot link",
 };
 
 const baseInput = {
@@ -47,14 +47,14 @@ describe("share view model", () => {
     expect(normalizeSharePanel(undefined)).toBe("share-link");
   });
 
-  it("models shareable links as encrypted copies, not read-only publishing", () => {
+  it("models snapshot links as encrypted copies, not read-only publishing", () => {
     const viewModel = buildShareViewModel({
       ...baseInput,
       jsonShareUrl: "https://tabula.md/#json=snapshot,key",
     });
 
     expect(viewModel.shareable.status).toBe("exported");
-    expect(viewModel.shareable.primaryLabel).toBe("Update link");
+    expect(viewModel.shareable.primaryLabel).toBe("New snapshot link");
     expect(JSON.stringify(viewModel.shareable).toLowerCase()).not.toContain(
       "read-only",
     );
@@ -63,7 +63,7 @@ describe("share view model", () => {
     );
   });
 
-  it("blocks shareable export with a direct disabled reason", () => {
+  it("blocks snapshot export with a direct disabled reason", () => {
     const viewModel = buildShareViewModel({
       ...baseInput,
       jsonShareCanExport: false,

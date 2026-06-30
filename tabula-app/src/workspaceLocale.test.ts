@@ -25,14 +25,20 @@ describe("workspace locale chrome copy", () => {
     );
     expect(english.emptyState.newFile).toBe("New File");
     expect(english.share.tabs.shareLink).toBe("Share link");
-    expect(english.share.shareable.description).toBe("Export an encrypted copy of this file.");
+    expect(english.share.shareable.title).toBe("Snapshot link");
+    expect(english.share.shareable.description).toBe(
+      "Create an encrypted snapshot that imports into another workspace.",
+    );
     expect(english.share.modalTitle("README")).toBe("Share README");
 
     const korean = getWorkspaceMenuCopy("ko");
     expect(korean.actions.preferences).toBe("환경설정");
     expect(korean.emptyState.openFile).toBe("파일 열기");
     expect(korean.share.tabs.shareLink).toBe("공유 링크");
-    expect(korean.share.shareable.description).toBe("이 파일의 암호화된 복사본을 내보냅니다.");
+    expect(korean.share.shareable.title).toBe("스냅샷 링크");
+    expect(korean.share.shareable.description).toBe(
+      "다른 워크스페이스로 가져올 암호화된 스냅샷을 만듭니다.",
+    );
     expect(korean.share.modalTitle("README")).toBe("README 공유");
   });
 });

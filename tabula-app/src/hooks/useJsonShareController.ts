@@ -68,7 +68,7 @@ export function useJsonShareController({
         commentsByFileId: activeFileComments.length > 0 ? { [activeFile.id]: activeFileComments } : {},
       });
       setJsonShareUrl(url);
-      showToast("Shareable link created.");
+      showToast("Snapshot link created.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Share link failed.", "error");
     } finally {
@@ -81,7 +81,7 @@ export function useJsonShareController({
       return;
     }
     await navigator.clipboard.writeText(jsonShareUrl);
-    showToast("Shareable link copied.");
+    showToast("Snapshot link copied.");
   };
 
   return {

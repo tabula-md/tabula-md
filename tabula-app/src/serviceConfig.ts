@@ -5,7 +5,7 @@ export const TABULA_LOCAL_ROOM_PORT = 3002;
 export const TABULA_HOSTED_SERVICE_COPY = {
   roomUnconfiguredMessage:
     "Live collaboration needs a Tabula Room server. Configure VITE_TABULA_ROOM_URL to start sessions.",
-  jsonShareUnconfiguredMessage: "Shareable links are not configured.",
+  jsonShareUnconfiguredMessage: "Snapshot links are not configured.",
 } as const;
 
 export type TabulaServiceConfig = {
