@@ -11,10 +11,6 @@ import { WorkspaceOverlaySurface } from "./WorkspaceOverlaySurface";
 import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { buildDocumentSurface } from "../documentSurfaceModel";
-import {
-  getLineStartOffset,
-  type MarkdownHeading,
-} from "../markdown";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { getShortcutLabels } from "../keyboardShortcuts";
 import { createHelpMarkdown } from "../helpMarkdown";
@@ -33,17 +29,16 @@ import { useWorkspaceFileActions } from "../hooks/useWorkspaceFileActions";
 import { useWorkspaceIdentity } from "../hooks/useWorkspaceIdentity";
 import { useWorkspaceKeyboardShortcuts } from "../hooks/useWorkspaceKeyboardShortcuts";
 import { useWorkspacePreferences } from "../hooks/useWorkspacePreferences";
+import { useWorkspaceProjectContextRuntime } from "../hooks/useWorkspaceProjectContextRuntime";
 import { useWorkspaceRouteRuntime } from "../hooks/useWorkspaceRouteRuntime";
 import { useWorkspaceShareRuntime } from "../hooks/useWorkspaceShareRuntime";
 import { useWorkspaceCollaborationRuntime } from "../hooks/useWorkspaceCollaborationRuntime";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
-import { getWorkspaceFileStatus } from "../workspaceViewModel";
 import {
   createWorkspaceFile,
   readInitialWorkspaceSnapshot,
   randomId,
   README_FILE_ID,
-  type WorkspaceFile,
   type WorkspaceState,
 } from "../workspaceStorage";
 
@@ -97,7 +92,6 @@ export function WorkspaceApp() {
   const workspaceChromeCopy = getWorkspaceChromeCopy(
     workspacePreferences.language,
   );
-  const [rightFileQuery, setRightFileQuery] = useState("");
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -278,11 +272,6 @@ export function WorkspaceApp() {
     setActiveFileBookmarks,
     setActiveFileText,
   });
-  useEffect(() => {
-    if (!isLive && rightPanelView === "comments") {
-      setRightPanelView("files");
-    }
-  }, [isLive, rightPanelView, setRightPanelView]);
 
   const { copyShareUrl, jsonShare, startSession, stopSession } =
     useWorkspaceShareRuntime({
@@ -334,29 +323,6 @@ export function WorkspaceApp() {
     return () =>
       window.removeEventListener("pointerdown", handlePointerDown, true);
   }, [selectionActionPosition]);
-
-  const goToOutlineHeading = (
-    heading: MarkdownHeading,
-    headingIndex: number,
-  ) => {
-    if (activeViewMode === "preview") {
-      const renderedHeadings = Array.from(
-        previewSurfaceRef.current?.querySelectorAll("h1, h2, h3") ?? [],
-      ).filter((heading) => !heading.closest(".frontmatter-view"));
-      const renderedHeading = renderedHeadings[headingIndex];
-      renderedHeading?.scrollIntoView({ block: "start", behavior: "smooth" });
-      return;
-    }
-
-    const bodyStartOffset = text.indexOf(parsedMarkdown.body);
-    const targetOffset =
-      (bodyStartOffset === -1 ? 0 : bodyStartOffset) +
-      getLineStartOffset(parsedMarkdown.body, heading.sourceLineIndex);
-    focusTextRange(
-      targetOffset,
-      targetOffset + heading.text.length + heading.depth + 1,
-    );
-  };
 
   const {
     closeJsonShareImport,
@@ -480,6 +446,54 @@ export function WorkspaceApp() {
   );
   const openStableCommentMarker = useEventCallback(openCommentMarker);
 
+  const { getFileStatus, projectContextProps } =
+    useWorkspaceProjectContextRuntime({
+      activeCommentId: focusedCommentId,
+      activeFile,
+      activeFileTitle,
+      activeReplyCommentId,
+      activeViewMode,
+      commentDraft,
+      commentInputRef,
+      commentsByFileId,
+      connectionStatus,
+      files,
+      focusTextRange,
+      formatCommentDate,
+      identityName: identity.name,
+      isLive,
+      onAddComment: addFileComment,
+      onAddCommentReply: addFileCommentReply,
+      onCancelCommentReply: cancelCommentReply,
+      onCloseFile: closeFile,
+      onCommentDraftChange: setCommentDraft,
+      onDeleteComment: deleteFileComment,
+      onDeleteFile: deleteFile,
+      onDuplicateFile: duplicateFile,
+      onGoToComment: goToFileComment,
+      onIdentityNameChange: updateIdentityName,
+      onIdentityNameCommit: normalizeIdentityName,
+      onImportFile: () => importInputRef.current?.click(),
+      onNewFile: addFile,
+      onRenameFile: renameWorkspaceFileAction,
+      onReplyDraftChange: updateCommentReplyDraft,
+      onSelectFile: selectFile,
+      onStartCommentReply: startCommentReply,
+      onToggleCommentResolved: toggleFileCommentResolved,
+      openFileIds,
+      outlineHeadings,
+      parsedMarkdownBody: parsedMarkdown.body,
+      previewSurfaceRef,
+      replyDraftByCommentId,
+      rightPanelOpen,
+      rightPanelView,
+      selectedCharacterCount,
+      selectedText: selectedMarkdownText,
+      setRightPanelOpen,
+      setRightPanelView,
+      text,
+    });
+
   useWorkspaceKeyboardShortcuts({
     importInputRef,
     addFile,
@@ -491,12 +505,6 @@ export function WorkspaceApp() {
     setCenterPopover,
   });
 
-  const getFileStatus = (file: WorkspaceFile) =>
-    getWorkspaceFileStatus({
-      file,
-      activeFileId: activeFile?.id,
-      activeConnectionStatus: connectionStatus,
-    });
   const documentSurface = buildDocumentSurface({
     document: activeDocument,
     hasSelectionActionPosition: Boolean(selectionActionPosition),
@@ -727,50 +735,7 @@ export function WorkspaceApp() {
           </section>
         </section>
 
-        <WorkspaceProjectContext
-          isOpen={rightPanelOpen}
-          view={rightPanelView}
-          isLive={isLive}
-          files={files}
-          openFileIds={openFileIds}
-          activeFileId={activeFile?.id}
-          activeFileTitle={activeFileTitle}
-          fileQuery={rightFileQuery}
-          outlineHeadings={outlineHeadings}
-          commentsByFileId={commentsByFileId}
-          commentDraft={commentDraft}
-          identityName={identity.name}
-          selectedText={selectedMarkdownText}
-          selectedCharacterCount={selectedCharacterCount}
-          commentInputRef={commentInputRef}
-          activeCommentId={focusedCommentId}
-          activeReplyCommentId={activeReplyCommentId}
-          replyDraftByCommentId={replyDraftByCommentId}
-          getFileStatus={getFileStatus}
-          onSetView={setRightPanelView}
-          onClose={() => setRightPanelOpen(false)}
-          onFileQueryChange={setRightFileQuery}
-          onNewFile={addFile}
-          onImportFile={() => importInputRef.current?.click()}
-          onSelectFile={selectFile}
-          onCloseFile={closeFile}
-          onRenameFile={renameWorkspaceFileAction}
-          onDuplicateFile={duplicateFile}
-          onDeleteFile={deleteFile}
-          onGoToOutlineHeading={goToOutlineHeading}
-          onCommentDraftChange={setCommentDraft}
-          onIdentityNameChange={updateIdentityName}
-          onIdentityNameCommit={normalizeIdentityName}
-          onAddComment={addFileComment}
-          onGoToComment={goToFileComment}
-          onStartCommentReply={startCommentReply}
-          onCancelCommentReply={cancelCommentReply}
-          onReplyDraftChange={updateCommentReplyDraft}
-          onAddCommentReply={addFileCommentReply}
-          onToggleCommentResolved={toggleFileCommentResolved}
-          onDeleteComment={deleteFileComment}
-          formatCommentDate={formatCommentDate}
-        />
+        <WorkspaceProjectContext {...projectContextProps} />
       </section>
     </main>
   );

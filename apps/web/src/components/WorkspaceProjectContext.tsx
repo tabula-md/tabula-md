@@ -4,7 +4,7 @@ import { getWorkspaceFileSearchText } from "../workspaceViewModel";
 
 type RightPanelProps = ComponentProps<typeof RightPanel>;
 
-type WorkspaceProjectContextProps = Omit<
+export type WorkspaceProjectContextProps = Omit<
   RightPanelProps,
   "activeFileId" | "commentsEnabled" | "getFileSearchText"
 > & {
