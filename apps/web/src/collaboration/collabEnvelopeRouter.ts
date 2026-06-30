@@ -1,14 +1,15 @@
 import type { EncryptedEnvelope } from "./roomProtocol";
 import type { CollaboratorRegistry } from "./collabCollaborators";
 import { decodePresence, isEncryptedEnvelope } from "./collabConnectionModel";
-import { applyRemoteUpdateToYText, type CollabTextDocument } from "./collabTextModel";
+import type { CollabTextAdapter, CollabTextDocumentHandle } from "./collabRuntimeAdapters";
 import type { TextChange } from "../textPatches";
 
 type EnvelopeRecoveryType = "invalid-message";
 
 type CollabEnvelopeRouterOptions = {
   roomId: string;
-  textDocument: CollabTextDocument;
+  textAdapter: Pick<CollabTextAdapter, "applyRemoteUpdate">;
+  textDocument: CollabTextDocumentHandle;
   collaborators: CollaboratorRegistry;
   canDecrypt: () => boolean;
   getSelfId: () => string;
@@ -24,6 +25,7 @@ export type CollabEnvelopeRouter = {
 
 export const createCollabEnvelopeRouter = ({
   roomId,
+  textAdapter,
   textDocument,
   collaborators,
   canDecrypt,
@@ -46,7 +48,7 @@ export const createCollabEnvelopeRouter = ({
     try {
       const plaintext = await decryptEnvelope(envelope);
       if (envelope.kind === "yjs-update") {
-        const result = applyRemoteUpdateToYText({ ...textDocument, update: plaintext });
+        const result = textAdapter.applyRemoteUpdate(textDocument, plaintext);
         if (result) {
           onTextChange(result.text, result.change);
         }

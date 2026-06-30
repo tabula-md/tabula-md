@@ -8,6 +8,9 @@ import {
 } from ".";
 import { createCollabSnapshotSync } from "./collabSnapshotSync";
 import { createCollabTextDocument } from "./collabTextModel";
+import { createYjsCollabTextAdapter } from "./collabYjsTextAdapter";
+
+const textAdapter = createYjsCollabTextAdapter();
 
 const metadata = {
   roomId: "room-1",
@@ -25,6 +28,7 @@ describe("collaboration snapshot sync", () => {
       .mockResolvedValueOnce(Response.json(metadata));
     const sync = createCollabSnapshotSync({
       roomId: "room-1",
+      textAdapter,
       textDocument: createCollabTextDocument(),
       getBaseUrl: () => "https://rooms.test",
       canUseSnapshots: () => true,
@@ -54,6 +58,7 @@ describe("collaboration snapshot sync", () => {
       .mockResolvedValueOnce(Response.json(metadata));
     const sync = createCollabSnapshotSync({
       roomId: "room-1",
+      textAdapter,
       textDocument,
       getBaseUrl: () => "https://rooms.test",
       canUseSnapshots: () => true,
@@ -83,6 +88,7 @@ describe("collaboration snapshot sync", () => {
     });
     const sync = createCollabSnapshotSync({
       roomId: "room-1",
+      textAdapter,
       textDocument,
       getBaseUrl: () => "https://rooms.test",
       canUseSnapshots: () => true,
@@ -104,6 +110,7 @@ describe("collaboration snapshot sync", () => {
     const emitRecoveryEvent = vi.fn();
     const sync = createCollabSnapshotSync({
       roomId: "room-1",
+      textAdapter,
       textDocument: createCollabTextDocument(),
       getBaseUrl: () => "https://rooms.test",
       canUseSnapshots: () => true,

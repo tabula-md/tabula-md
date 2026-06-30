@@ -1,29 +1,15 @@
-import * as Y from "yjs";
-
-import {
-  createDefaultRoomTransport,
-  type CreateRoomTransport,
-  type RoomTransport,
-} from "./roomTransport";
 import type { EnvelopeKind } from "./roomProtocol";
-import {
-  decryptEnvelopeForRoom,
-  encryptBytesForRoom,
-  shouldStoreSnapshotAfterJoin,
-} from "./collabRoom";
+import { shouldStoreSnapshotAfterJoin } from "./collabRoom";
 import { encodePresenceForRoom } from "./collabConnectionModel";
+import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
 import { createCollaboratorRegistry } from "./collabCollaborators";
 import { createCollabEnvelopeRouter } from "./collabEnvelopeRouter";
+import type { CollabRuntimeAdapters } from "./collabRuntimeAdapters";
 import { createCollabSessionState } from "./collabSessionState";
 import { createCollabSnapshotSync } from "./collabSnapshotSync";
 import { resolveCollabStartConfig } from "./collabStartConfig";
 import { createCollabTransportHandlers } from "./collabTransportController";
 import { createCollabUpdateBuffer } from "./collabUpdateBuffer";
-import {
-  applyLocalTextToYText,
-  COLLAB_REMOTE_ORIGIN,
-  createCollabTextDocument,
-} from "./collabTextModel";
 import type { TextChange, TextPatch } from "../textPatches";
 
 export {
@@ -99,7 +85,7 @@ type ConnectOptions = {
   onCollaboratorsChange: (collaborators: Collaborator[]) => void;
   onRoomMetaChange?: (meta: RoomMeta) => void;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
-  createRoomTransport?: CreateRoomTransport;
+  adapters?: CollabRuntimeAdapters;
 };
 
 export const createCollabConnection = ({
@@ -114,18 +100,17 @@ export const createCollabConnection = ({
   onCollaboratorsChange,
   onRoomMetaChange,
   onRecoveryEvent,
-  createRoomTransport = createDefaultRoomTransport,
+  adapters = createDefaultCollabRuntimeAdapters(),
 }: ConnectOptions) => {
-  const textDocument = createCollabTextDocument(initialText);
-  const { doc, text } = textDocument;
+  const textDocument = adapters.text.createDocument(initialText);
   const collaborators = createCollaboratorRegistry();
   let currentFileTitle = fileTitle;
   let currentSelection = selection;
   let currentIdentity = identity;
   let closedByClient = false;
-  let heartbeat: number | undefined;
+  let heartbeat: unknown;
   let roomKey: CryptoKey | null = null;
-  let transport: RoomTransport | null = null;
+  let transport: ReturnType<CollabRuntimeAdapters["createRoomTransport"]> | null = null;
   let envelopeVersion = 0;
   let hasUnstoredLocalChanges = Boolean(initialText);
   let roomBaseUrl = "";
@@ -133,10 +118,10 @@ export const createCollabConnection = ({
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
     onRecoveryEvent?.({
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      id: adapters.clock.createId(),
       type,
       message,
-      createdAt: new Date().toISOString(),
+      createdAt: adapters.clock.nowIso(),
     });
   };
 
@@ -150,7 +135,7 @@ export const createCollabConnection = ({
     }
 
     envelopeVersion += 1;
-    return encryptBytesForRoom(roomKey, roomId, kind, envelopeVersion, plaintext);
+    return adapters.crypto.encryptEnvelope(roomKey, roomId, kind, envelopeVersion, plaintext);
   };
 
   const emitEnvelope = async (kind: EnvelopeKind, plaintext: Uint8Array) => {
@@ -166,8 +151,9 @@ export const createCollabConnection = ({
     onFlush: (update) => {
       void emitEnvelope("yjs-update", update);
     },
-    setTimeoutFn: (callback, delayMs) => window.setTimeout(callback, delayMs),
-    clearTimeoutFn: (handle) => window.clearTimeout(handle as number),
+    mergeUpdates: adapters.text.mergeUpdates,
+    setTimeoutFn: adapters.clock.setTimeout,
+    clearTimeoutFn: adapters.clock.clearTimeout,
   });
 
   const publishPresence = async () => {
@@ -184,6 +170,7 @@ export const createCollabConnection = ({
 
   const snapshotSync = createCollabSnapshotSync({
     roomId,
+    textAdapter: adapters.text,
     textDocument,
     getBaseUrl: () => roomBaseUrl,
     canUseSnapshots: () => Boolean(roomKey) && !sessionState.isBlocked(),
@@ -192,7 +179,7 @@ export const createCollabConnection = ({
       if (!roomKey) {
         throw new Error("Room key is not available");
       }
-      return decryptEnvelopeForRoom(roomKey, envelope);
+      return adapters.crypto.decryptEnvelope(roomKey, envelope);
     },
     onTextChange,
     onRoomMetaChange,
@@ -200,12 +187,14 @@ export const createCollabConnection = ({
       hasUnstoredLocalChanges = false;
     },
     emitRecoveryEvent,
-    setTimeoutFn: (callback, delayMs) => window.setTimeout(callback, delayMs),
-    clearTimeoutFn: (handle) => window.clearTimeout(handle as number),
+    fetcher: adapters.fetcher,
+    setTimeoutFn: adapters.clock.setTimeout,
+    clearTimeoutFn: adapters.clock.clearTimeout,
   });
 
   const envelopeRouter = createCollabEnvelopeRouter({
     roomId,
+    textAdapter: adapters.text,
     textDocument,
     collaborators,
     canDecrypt: () => Boolean(roomKey),
@@ -214,15 +203,15 @@ export const createCollabConnection = ({
       if (!roomKey) {
         throw new Error("Room key is not available");
       }
-      return decryptEnvelopeForRoom(roomKey, envelope);
+      return adapters.crypto.decryptEnvelope(roomKey, envelope);
     },
     onTextChange,
     publishCollaborators,
     emitRecoveryEvent,
   });
 
-  doc.on("update", (update: Uint8Array, origin: unknown) => {
-    if (closedByClient || origin === COLLAB_REMOTE_ORIGIN) {
+  const unsubscribeTextUpdates = adapters.text.observeUpdates(textDocument, (update, origin) => {
+    if (closedByClient || adapters.text.isRemoteOrigin(origin)) {
       return;
     }
 
@@ -232,7 +221,11 @@ export const createCollabConnection = ({
   });
 
   const start = async () => {
-    const startConfig = await resolveCollabStartConfig({ encodedRoomKey });
+    const startConfig = await resolveCollabStartConfig({
+      encodedRoomKey,
+      resolveBaseUrl: adapters.resolveRoomBaseUrl,
+      importKey: adapters.crypto.importRoomKey,
+    });
     if (startConfig.status === "blocked") {
       onStatusChange("offline");
       emitRecoveryEvent("invalid-message", startConfig.message);
@@ -241,7 +234,7 @@ export const createCollabConnection = ({
     roomBaseUrl = startConfig.baseUrl;
     roomKey = startConfig.roomKey;
 
-    transport = createRoomTransport({
+    transport = adapters.createRoomTransport({
       baseUrl: roomBaseUrl,
       roomId,
       clientId: currentIdentity.id,
@@ -253,7 +246,7 @@ export const createCollabConnection = ({
         markOffline: (reason) => sessionState.markOffline(reason),
         setStatus: onStatusChange,
         disconnectTransport: () => transport?.disconnect(),
-        emitCurrentState: () => emitEnvelope("yjs-update", Y.encodeStateAsUpdate(doc)),
+        emitCurrentState: () => emitEnvelope("yjs-update", adapters.text.encodeState(textDocument)),
         publishPresence,
         shouldStoreSnapshot: (snapshotFetchResult) =>
           shouldStoreSnapshotAfterJoin({ hasUnstoredLocalChanges, snapshotFetchResult }),
@@ -267,7 +260,7 @@ export const createCollabConnection = ({
     });
     transport.connect();
 
-    heartbeat = window.setInterval(() => {
+    heartbeat = adapters.clock.setInterval(() => {
       void publishPresence();
     }, 5_000);
   };
@@ -277,7 +270,7 @@ export const createCollabConnection = ({
 
   return {
     applyLocalText(nextText: string, patches?: readonly TextPatch[]) {
-      applyLocalTextToYText({ doc, text, nextText, patches });
+      adapters.text.applyLocalText(textDocument, nextText, patches);
     },
     setPresence(nextPresence: { fileTitle?: string; selection?: LiveSelection }) {
       if ("fileTitle" in nextPresence) {
@@ -295,12 +288,13 @@ export const createCollabConnection = ({
     disconnect() {
       closedByClient = true;
       if (heartbeat) {
-        window.clearInterval(heartbeat);
+        adapters.clock.clearInterval(heartbeat);
       }
+      unsubscribeTextUpdates();
       snapshotSync.clearTimer();
       localUpdateBuffer.clear();
       transport?.disconnect();
-      doc.destroy();
+      adapters.text.destroy(textDocument);
       onCollaboratorsChange([]);
     },
   };
