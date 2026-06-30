@@ -1,7 +1,13 @@
 import { parseFrontmatter } from "./markdown";
 import { parseRoomShareUrl } from "./roomShareLinkModel";
 
-export type WorkspaceConnectionStatus = "idle" | "connecting" | "connected" | "offline";
+export type WorkspaceConnectionStatus =
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "disconnected"
+  | "failed";
 
 export type WorkspaceViewFile = {
   id: string;
@@ -17,7 +23,9 @@ export const getWorkspaceStatusLabel = (status: WorkspaceConnectionStatus) =>
     idle: "Local draft",
     connecting: "Connecting",
     connected: "Live session",
-    offline: "Room offline",
+    reconnecting: "Reconnecting",
+    disconnected: "Disconnected",
+    failed: "Connection failed",
   })[status];
 
 export const getActiveWorkspaceStatus = ({
@@ -54,7 +62,7 @@ export const getWorkspaceFileStatus = ({
     return "idle";
   }
 
-  return file.connectionStatus ?? "offline";
+  return file.connectionStatus ?? "disconnected";
 };
 
 export const getWorkspaceFileSearchText = (file: WorkspaceViewFile) => {

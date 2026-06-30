@@ -30,7 +30,8 @@
   --status-dot-idle: #c0c0c0;
   --status-dot-connected: #58a36a;
   --status-dot-connecting: #9a9a9a;
-  --status-dot-offline: #c0c0c0;
+  --status-dot-disconnected: #c0c0c0;
+  --status-dot-failed: #b4534b;
   --toast-text: #ffffff;
   --toast-background: #1f1f1f;
   --toast-action-hover: rgba(255, 255, 255, 0.12);
@@ -90,7 +91,8 @@
   --status-dot-idle: #5d5d64;
   --status-dot-connected: #65d48a;
   --status-dot-connecting: #9a9aa0;
-  --status-dot-offline: #5d5d64;
+  --status-dot-disconnected: #5d5d64;
+  --status-dot-failed: #d86f64;
   --toast-text: var(--text-primary);
   --toast-background: var(--surface-active);
   --toast-action-hover: rgba(255, 255, 255, 0.08);
@@ -272,8 +274,16 @@ button {
   background: var(--status-dot-connecting);
 }
 
-.share-status-pill.offline span {
-  background: var(--status-dot-offline);
+.share-status-pill.reconnecting span {
+  background: var(--status-dot-connecting);
+}
+
+.share-status-pill.disconnected span {
+  background: var(--status-dot-disconnected);
+}
+
+.share-status-pill.failed span {
+  background: var(--status-dot-failed);
 }
 
 .share-link-row {

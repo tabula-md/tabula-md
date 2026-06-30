@@ -425,7 +425,7 @@ describe("workspace view model", () => {
         activeFileId: "file",
         activeConnectionStatus: "connected",
       }),
-    ).toBe("offline");
+    ).toBe("disconnected");
     expect(
       getWorkspaceFileStatus({
         file: file({
@@ -529,7 +529,7 @@ describe("workspace live room contract", () => {
   it("reports broken live room metadata as local workspace status", () => {
     const brokenFile = liveFile({
       roomId: "room",
-      connectionStatus: "offline",
+      connectionStatus: "disconnected",
     });
 
     expect(
@@ -540,9 +540,12 @@ describe("workspace live room contract", () => {
       }),
     ).toBe("idle");
 
-    expect(getActiveWorkspaceStatus({ isLive: isUsableLiveRoomFile(brokenFile), connectionStatus: "offline" })).toBe(
-      "idle",
-    );
+    expect(
+      getActiveWorkspaceStatus({
+        isLive: isUsableLiveRoomFile(brokenFile),
+        connectionStatus: "disconnected",
+      }),
+    ).toBe("idle");
   });
 });
 

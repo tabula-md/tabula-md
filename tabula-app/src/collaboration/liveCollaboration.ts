@@ -32,7 +32,13 @@ export {
 } from "./collabRoom";
 export type { ParsedRoomLocation, RoomSession, TabulaRoomAvailability } from "./collabRoom";
 
-export type ConnectionStatus = "idle" | "connecting" | "connected" | "offline";
+export type ConnectionStatus =
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "disconnected"
+  | "failed";
 
 export type LiveSelection = {
   from: number;
@@ -227,7 +233,7 @@ export const createCollabConnection = ({
       importKey: adapters.crypto.importRoomKey,
     });
     if (startConfig.status === "blocked") {
-      onStatusChange("offline");
+      onStatusChange("failed");
       emitRecoveryEvent("invalid-message", startConfig.message);
       return;
     }

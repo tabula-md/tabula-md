@@ -867,7 +867,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
     statusBar: {
       savedLocally: "Saved locally",
-      roomOffline: "Room offline",
+      roomOffline: "Disconnected",
       word: "word",
       words: "words",
       comment: "comment",
@@ -915,7 +915,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
     statusBar: {
       savedLocally: "로컬 저장됨",
-      roomOffline: "Room 연결 끊김",
+      roomOffline: "연결 끊김",
       word: "단어",
       words: "단어",
       comment: "댓글",
@@ -963,7 +963,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
     statusBar: {
       savedLocally: "ローカルに保存済み",
-      roomOffline: "Room オフライン",
+      roomOffline: "切断されました",
       word: "語",
       words: "語",
       comment: "コメント",
@@ -1011,7 +1011,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
     statusBar: {
       savedLocally: "已本地保存",
-      roomOffline: "Room 离线",
+      roomOffline: "已断开连接",
       word: "词",
       words: "词",
       comment: "评论",
@@ -1059,7 +1059,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
     statusBar: {
       savedLocally: "Guardado localmente",
-      roomOffline: "Room sin conexión",
+      roomOffline: "Desconectado",
       word: "palabra",
       words: "palabras",
       comment: "comentario",
@@ -1107,7 +1107,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
     statusBar: {
       savedLocally: "Enregistré localement",
-      roomOffline: "Room hors ligne",
+      roomOffline: "Déconnecté",
       word: "mot",
       words: "mots",
       comment: "commentaire",
@@ -1155,7 +1155,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
     statusBar: {
       savedLocally: "Lokal gespeichert",
-      roomOffline: "Room offline",
+      roomOffline: "Getrennt",
       word: "Wort",
       words: "Wörter",
       comment: "Kommentar",

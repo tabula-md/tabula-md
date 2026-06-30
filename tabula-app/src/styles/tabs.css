@@ -125,8 +125,16 @@
   background: var(--status-dot-connecting);
 }
 
-.tab-live-dot.offline {
-  background: var(--status-dot-offline);
+.tab-live-dot.reconnecting {
+  background: var(--status-dot-connecting);
+}
+
+.tab-live-dot.disconnected {
+  background: var(--status-dot-disconnected);
+}
+
+.tab-live-dot.failed {
+  background: var(--status-dot-failed);
 }
 
 .tab-collaborator-count {

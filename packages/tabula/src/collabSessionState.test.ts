@@ -21,38 +21,53 @@ describe("collaboration session state", () => {
   it("reports disconnect only after the room connected once", () => {
     const state = createCollabSessionState();
 
-    expect(state.markOffline("disconnect")).toEqual({ notify: false });
+    expect(state.markOffline("disconnect")).toEqual({
+      status: "disconnected",
+      notify: false,
+    });
     state.markJoined();
 
     expect(state.markOffline("disconnect")).toEqual({
+      status: "reconnecting",
       notify: true,
       message: "The collaboration server disconnected. Local edits will sync when it reconnects.",
     });
-    expect(state.markOffline("disconnect")).toEqual({ notify: false });
+    expect(state.markOffline("disconnect")).toEqual({
+      status: "reconnecting",
+      notify: false,
+    });
   });
 
   it("reports connect errors once until a successful join resets the notification", () => {
     const state = createCollabSessionState();
 
     expect(state.markOffline("connect-error")).toEqual({
+      status: "failed",
       notify: true,
       message: "The collaboration server is not reachable. Local edits stay in this browser.",
     });
-    expect(state.markOffline("connect-error")).toEqual({ notify: false });
+    expect(state.markOffline("connect-error")).toEqual({
+      status: "failed",
+      notify: false,
+    });
 
     state.markJoined();
     expect(state.markOffline("connect-error")).toEqual({
+      status: "reconnecting",
       notify: true,
       message: "The collaboration server is not reachable. Local edits stay in this browser.",
     });
   });
 
-  it("suppresses offline notifications after collaboration is blocked", () => {
+  it("suppresses connection notifications after collaboration is blocked", () => {
     const state = createCollabSessionState();
 
     state.markJoinBlocked();
 
     expect(state.isBlocked()).toBe(true);
-    expect(state.markOffline("connect-error")).toEqual({ notify: false });
+    expect(state.markOffline("connect-error")).toEqual({
+      status: "failed",
+      notify: false,
+    });
   });
 });
