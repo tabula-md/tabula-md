@@ -1,0 +1,190 @@
+import { getCommentRangeInText } from "./commentAnchors";
+import type { MarkdownCommentAnchor } from "./markdownEditorTypes";
+import {
+  positionInSourceLine,
+  sourceRangeIntersectsLine,
+} from "./lineSurfaceModel";
+import type { FileBookmark, FileComment } from "./workspaceStorage";
+
+export type PreviewCommentAnchor = {
+  id: string;
+  start: number;
+  end: number;
+};
+
+export type PreviewLineAnnotation = {
+  lineNumber: number;
+  start: number;
+  end: number;
+  hasBookmark: boolean;
+  hasComment: boolean;
+  hasActiveComment: boolean;
+};
+
+export const isPositionInLineRange = (
+  position: number,
+  lineStart: number,
+  lineEnd: number,
+) => positionInSourceLine(position, lineStart, lineEnd);
+
+export const toggleLineBookmarkInList = ({
+  bookmarks,
+  createId,
+  lineStart,
+  lineEnd,
+  nowIso,
+}: {
+  bookmarks: FileBookmark[];
+  createId: () => string;
+  lineStart: number;
+  lineEnd: number;
+  nowIso: string;
+}) => {
+  const existingBookmark = bookmarks.find((bookmark) =>
+    isPositionInLineRange(bookmark.position, lineStart, lineEnd),
+  );
+
+  if (existingBookmark) {
+    return bookmarks.filter((bookmark) => bookmark.id !== existingBookmark.id);
+  }
+
+  return [
+    ...bookmarks,
+    {
+      id: createId(),
+      position: lineStart,
+      createdAt: nowIso,
+    },
+  ];
+};
+
+export const getCommentAnchors = (
+  comments: FileComment[],
+  sourceText: string,
+): MarkdownCommentAnchor[] =>
+  comments
+    .map((comment) => {
+      const commentRange = getCommentRangeInText(sourceText, comment);
+      return commentRange
+        ? { id: comment.id, start: commentRange.start, end: commentRange.end }
+        : null;
+    })
+    .filter((anchor): anchor is MarkdownCommentAnchor => Boolean(anchor));
+
+export const getPreviewCommentAnchors = ({
+  commentAnchors,
+  previewBody,
+  previewBodyStartOffset,
+}: {
+  commentAnchors: MarkdownCommentAnchor[];
+  previewBody: string;
+  previewBodyStartOffset: number;
+}): PreviewCommentAnchor[] =>
+  commentAnchors
+    .map((anchor) => ({
+      id: anchor.id,
+      start: anchor.start - previewBodyStartOffset,
+      end: anchor.end - previewBodyStartOffset,
+    }))
+    .filter((anchor) => anchor.end > 0 && anchor.start < previewBody.length)
+    .map((anchor) => ({
+      ...anchor,
+      start: Math.max(0, anchor.start),
+      end: Math.min(previewBody.length, anchor.end),
+    }))
+    .filter((anchor) => anchor.end > anchor.start);
+
+export const getPreviewLineAnnotations = ({
+  body,
+  bodyStartOffset,
+  bookmarks,
+  commentAnchors,
+  activeCommentId,
+}: {
+  body: string;
+  bodyStartOffset: number;
+  bookmarks: FileBookmark[];
+  commentAnchors: MarkdownCommentAnchor[];
+  activeCommentId?: string | null;
+}): PreviewLineAnnotation[] => {
+  const lines = body.split("\n");
+  let bodyOffset = 0;
+
+  return lines.map((line, index) => {
+    const start = bodyStartOffset + bodyOffset;
+    const end = start + line.length;
+    const sourceLine = { start, end };
+    const hasBookmark = bookmarks.some((bookmark) =>
+      positionInSourceLine(bookmark.position, start, end),
+    );
+    const lineComments = commentAnchors.filter((anchor) =>
+      sourceRangeIntersectsLine(anchor, sourceLine),
+    );
+    bodyOffset += line.length + 1;
+
+    return {
+      lineNumber: index + 1,
+      start,
+      end,
+      hasBookmark,
+      hasComment: lineComments.length > 0,
+      hasActiveComment: lineComments.some(
+        (anchor) => anchor.id === activeCommentId,
+      ),
+    };
+  });
+};
+
+export const getCommentsInLineRange = ({
+  comments,
+  lineStart,
+  lineEnd,
+  sourceText,
+}: {
+  comments: FileComment[];
+  lineStart: number;
+  lineEnd: number;
+  sourceText: string;
+}) =>
+  comments.filter((comment) => {
+    const commentRange = getCommentRangeInText(sourceText, comment);
+    return Boolean(
+      commentRange &&
+        sourceRangeIntersectsLine(commentRange, {
+          start: lineStart,
+          end: lineEnd,
+        }),
+    );
+  });
+
+export const formatCommentDate = (isoDate: string, now = Date.now()) => {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const elapsedSeconds = Math.max(0, Math.floor((now - date.getTime()) / 1000));
+  if (elapsedSeconds < 45) {
+    return "just now";
+  }
+
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes} ${elapsedMinutes === 1 ? "minute" : "minutes"} ago`;
+  }
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) {
+    return `${elapsedHours} ${elapsedHours === 1 ? "hour" : "hours"} ago`;
+  }
+
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  if (elapsedDays < 7) {
+    return `${elapsedDays} ${elapsedDays === 1 ? "day" : "days"} ago`;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+};

@@ -35,7 +35,7 @@ import {
   getPreviewCommentAnchors,
   getPreviewLineAnnotations,
   toggleLineBookmarkInList,
-} from "./hooks/useWorkspaceCommentActions";
+} from "./commentRuntimeModel";
 import {
   getActiveWorkspaceStatus,
   getMarkdownWordCount,
