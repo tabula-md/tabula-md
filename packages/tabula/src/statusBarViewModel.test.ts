@@ -30,7 +30,27 @@ describe("status bar view model", () => {
     });
   });
 
-  it("shows offline live state because it needs attention", () => {
+  it("shows interrupted live states because they need attention", () => {
+    expect(
+      getStatusBarSaveState({
+        isLive: true,
+        statusLabel: "Reconnecting",
+      }),
+    ).toEqual({
+      label: "Reconnecting",
+      visible: true,
+    });
+
+    expect(
+      getStatusBarSaveState({
+        isLive: true,
+        statusLabel: "Connection failed",
+      }),
+    ).toEqual({
+      label: "Connection failed",
+      visible: true,
+    });
+
     expect(
       getStatusBarSaveState({
         isLive: true,

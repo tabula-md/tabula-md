@@ -21,6 +21,9 @@ const file = (overrides: Partial<WorkspaceViewFile> = {}): WorkspaceViewFile => 
 describe("workspace view model", () => {
   it("labels connection states for user-facing chrome", () => {
     expect(getWorkspaceStatusLabel("connected")).toBe("Live session");
+    expect(getWorkspaceStatusLabel("reconnecting")).toBe("Reconnecting");
+    expect(getWorkspaceStatusLabel("disconnected")).toBe("Disconnected");
+    expect(getWorkspaceStatusLabel("failed")).toBe("Connection failed");
     expect(getWorkspaceStatusLabel("idle")).toBe("Local draft");
     expect(getActiveWorkspaceStatus({ isLive: false, connectionStatus: "connected" })).toBe("idle");
     expect(getActiveWorkspaceStatus({ isLive: true, connectionStatus: "connected" })).toBe("connected");
@@ -36,7 +39,7 @@ describe("workspace view model", () => {
     ).toBe("connected");
   });
 
-  it("keeps non-room files local and room files offline by default", () => {
+  it("keeps non-room files local and room files disconnected by default", () => {
     expect(
       getWorkspaceFileStatus({
         file: file({ id: "local" }),
@@ -55,7 +58,7 @@ describe("workspace view model", () => {
         activeFileId: "other",
         activeConnectionStatus: "connected",
       }),
-    ).toBe("offline");
+    ).toBe("disconnected");
   });
 
   it("rejects broken room metadata instead of showing live state", () => {

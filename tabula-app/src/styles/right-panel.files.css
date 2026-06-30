@@ -202,8 +202,16 @@
   background: var(--status-dot-connecting);
 }
 
-.right-live-dot.offline {
-  background: var(--status-dot-offline);
+.right-live-dot.reconnecting {
+  background: var(--status-dot-connecting);
+}
+
+.right-live-dot.disconnected {
+  background: var(--status-dot-disconnected);
+}
+
+.right-live-dot.failed {
+  background: var(--status-dot-failed);
 }
 
 .right-file-tree-comment-count {

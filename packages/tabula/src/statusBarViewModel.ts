@@ -5,11 +5,18 @@ export type StatusBarSaveState = {
 
 export const getStatusBarSaveState = ({
   isLive,
+  roomAttentionLabels = [
+    "Reconnecting",
+    "Disconnected",
+    "Connection failed",
+    "Room offline",
+  ],
   roomOfflineLabel = "Room offline",
   savedLocallyLabel = "Saved locally",
   statusLabel,
 }: {
   isLive: boolean;
+  roomAttentionLabels?: readonly string[];
   roomOfflineLabel?: string;
   savedLocallyLabel?: string;
   statusLabel: string;
@@ -18,7 +25,11 @@ export const getStatusBarSaveState = ({
     return { label: savedLocallyLabel, visible: true };
   }
 
-  if (statusLabel === roomOfflineLabel || statusLabel === "Room offline") {
+  if (roomAttentionLabels.includes(statusLabel)) {
+    return { label: statusLabel, visible: true };
+  }
+
+  if (statusLabel === roomOfflineLabel) {
     return { label: roomOfflineLabel, visible: true };
   }
 

@@ -252,7 +252,7 @@ describe("project persistence", () => {
     expect(liveFile).toMatchObject({
       roomId: "room-live",
       shareUrl: `http://localhost:5174/#room=room-live,${VALID_ROOM_KEY}`,
-      connectionStatus: "offline",
+      connectionStatus: "disconnected",
       snapshotCount: 3,
       lastSnapshotAt: "2026-06-11T00:00:00.000Z",
       lastRecoveryType: "snapshot-recovered",
@@ -270,7 +270,7 @@ describe("project persistence", () => {
           text: "# Broken",
           roomId: "room-live",
           shareUrl: "https://tabula.test/",
-          connectionStatus: "offline",
+          connectionStatus: "disconnected",
           collaboratorCount: 2,
           snapshotCount: 3,
           lastSnapshotAt: "2026-06-11T00:00:00.000Z",

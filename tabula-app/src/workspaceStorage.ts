@@ -69,7 +69,15 @@ No dashboard first. No project ceremony. Open a file, write Markdown, and share 
 - Snapshot links export an encrypted copy that opens in another local workspace.
 `;
 export const isStarterReadmeText = (text: string) => text === STARTER_README_MARKDOWN;
-const CONNECTION_STATUSES: ConnectionStatus[] = ["idle", "connecting", "connected", "offline"];
+const CONNECTION_STATUSES = [
+  "idle",
+  "connecting",
+  "connected",
+  "reconnecting",
+  "disconnected",
+  "failed",
+  "offline",
+] as const;
 const RECOVERY_EVENT_TYPES: CollabRecoveryEvent["type"][] = ["reconnected", "snapshot-recovered", "invalid-message"];
 
 export type FileBookmark = {
@@ -356,10 +364,15 @@ const getFileViewMode = (value: unknown): FileViewMode | undefined =>
 const getReadingWidth = (value: unknown): ReadingWidth | undefined =>
   typeof value === "string" && READING_WIDTHS.includes(value as ReadingWidth) ? (value as ReadingWidth) : undefined;
 
-const getConnectionStatus = (value: unknown): ConnectionStatus | undefined =>
-  typeof value === "string" && CONNECTION_STATUSES.includes(value as ConnectionStatus)
+const getConnectionStatus = (value: unknown): ConnectionStatus | undefined => {
+  if (value === "offline") {
+    return "disconnected";
+  }
+
+  return typeof value === "string" && CONNECTION_STATUSES.includes(value as (typeof CONNECTION_STATUSES)[number])
     ? (value as ConnectionStatus)
     : undefined;
+};
 
 const getRecoveryEventType = (value: unknown): CollabRecoveryEvent["type"] | undefined =>
   typeof value === "string" && RECOVERY_EVENT_TYPES.includes(value as CollabRecoveryEvent["type"])
@@ -371,7 +384,7 @@ const normalizeConnectionStatus = (status: ConnectionStatus | undefined, roomId?
     return "idle";
   }
 
-  return status === "connecting" ? "connecting" : "offline";
+  return status === "connecting" || status === "reconnecting" ? "connecting" : "disconnected";
 };
 
 const normalizeFileBookmarks = (bookmarks: unknown, textLength: number): FileBookmark[] => {

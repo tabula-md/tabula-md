@@ -1,7 +1,7 @@
 import type { RoomTransportHandlers } from "./roomTransport";
 import type { CollabSnapshotFetchResult } from "./collabSnapshotSync";
+import type { ConnectionStatus } from "./liveCollaboration";
 
-type ConnectionStatus = "connecting" | "connected" | "offline";
 type RecoveryType = "reconnected" | "invalid-message";
 type SnapshotFetchSuccess = Exclude<CollabSnapshotFetchResult, false>;
 
@@ -16,10 +16,12 @@ type JoinResult =
 
 type OfflineResult =
   | {
+      status: "reconnecting" | "disconnected" | "failed";
       notify: true;
       message: string;
     }
   | {
+      status: "reconnecting" | "disconnected" | "failed";
       notify: false;
     };
 
@@ -75,7 +77,7 @@ export const createCollabTransportHandlers = ({
     const snapshotFetchResult = await fetchSnapshot();
     if (!snapshotFetchResult) {
       markJoinBlocked();
-      setStatus("offline");
+      setStatus("failed");
       disconnectTransport();
       return;
     }
@@ -107,10 +109,10 @@ export const createCollabTransportHandlers = ({
       return;
     }
 
-    setStatus("offline");
     clearCollaborators();
     publishCollaborators();
     const offlineResult = markOffline("disconnect");
+    setStatus(offlineResult.status);
     if (offlineResult.notify) {
       emitRecoveryEvent("invalid-message", offlineResult.message);
     }
@@ -120,8 +122,8 @@ export const createCollabTransportHandlers = ({
       return;
     }
 
-    setStatus("offline");
     const offlineResult = markOffline("connect-error");
+    setStatus(offlineResult.status);
     if (offlineResult.notify) {
       emitRecoveryEvent("invalid-message", offlineResult.message);
     }

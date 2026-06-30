@@ -1,4 +1,10 @@
-export type CollaborationConnectionStatus = "idle" | "connecting" | "connected" | "offline";
+export type CollaborationConnectionStatus =
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "disconnected"
+  | "failed";
 
 export type CollaborationLiveSelection = {
   from: number;

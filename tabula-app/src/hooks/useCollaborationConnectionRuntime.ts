@@ -129,8 +129,8 @@ export function useCollaborationConnectionRuntime({
         if (disposed) {
           return;
         }
-        setConnectionStatus("offline");
-        setFileCollaborationStatus(target.fileId, "offline", getDisconnectedStatusPatch());
+        setConnectionStatus("failed");
+        setFileCollaborationStatus(target.fileId, "failed", getDisconnectedStatusPatch());
       });
 
     return () => {
@@ -138,7 +138,7 @@ export function useCollaborationConnectionRuntime({
       collabRef.current?.disconnect();
       collabRef.current = null;
       pendingLocalTextRef.current = null;
-      setFileCollaborationStatus(target.fileId, "offline", getDisconnectedStatusPatch());
+      setFileCollaborationStatus(target.fileId, "disconnected", getDisconnectedStatusPatch());
     };
   }, [
     activeFile?.id,

@@ -1,4 +1,5 @@
 export type CollabOfflineReason = "disconnect" | "connect-error";
+export type CollabOfflineStatus = "reconnecting" | "disconnected" | "failed";
 
 export type CollabJoinResult =
   | {
@@ -11,10 +12,12 @@ export type CollabJoinResult =
 
 export type CollabOfflineResult =
   | {
+      status: CollabOfflineStatus;
       notify: true;
       message: string;
     }
   | {
+      status: CollabOfflineStatus;
       notify: false;
     };
 
@@ -49,16 +52,30 @@ export const createCollabSessionState = (): CollabSessionState => {
           };
     },
     markOffline(reason) {
-      if (collaborationBlocked || serverOfflineNotified) {
-        return { notify: false };
+      const status: CollabOfflineStatus =
+        reason === "disconnect"
+          ? hasConnectedOnce
+            ? "reconnecting"
+            : "disconnected"
+          : hasConnectedOnce
+            ? "reconnecting"
+            : "failed";
+
+      if (collaborationBlocked) {
+        return { status: "failed", notify: false };
+      }
+
+      if (serverOfflineNotified) {
+        return { status, notify: false };
       }
 
       if (reason === "disconnect" && !hasConnectedOnce) {
-        return { notify: false };
+        return { status, notify: false };
       }
 
       serverOfflineNotified = true;
       return {
+        status,
         notify: true,
         message:
           reason === "disconnect"

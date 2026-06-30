@@ -38,7 +38,9 @@ const getStatusLabel = (status: ConnectionStatus) =>
     idle: "Local draft",
     connecting: "Connecting",
     connected: "Live session",
-    offline: "Room offline",
+    reconnecting: "Reconnecting",
+    disconnected: "Disconnected",
+    failed: "Connection failed",
   })[status];
 
 export function FileTabs({

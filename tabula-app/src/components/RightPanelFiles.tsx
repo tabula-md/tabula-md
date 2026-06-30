@@ -59,7 +59,9 @@ const getStatusLabel = (status: ConnectionStatus) =>
     idle: "Local",
     connecting: "Connecting",
     connected: "Live",
-    offline: "Offline",
+    reconnecting: "Reconnecting",
+    disconnected: "Disconnected",
+    failed: "Failed",
   })[status];
 
 const getFileTreeParts = (title: string) =>

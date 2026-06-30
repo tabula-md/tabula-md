@@ -7,7 +7,10 @@ const createHarness = (overrides: Partial<Parameters<typeof createCollabTranspor
     fetchSnapshot: vi.fn(async () => "missing" as const),
     markJoinBlocked: vi.fn(),
     markJoined: vi.fn(() => ({ reconnected: false as const })),
-    markOffline: vi.fn(() => ({ notify: false as const })),
+    markOffline: vi.fn(() => ({
+      status: "failed" as const,
+      notify: false as const,
+    })),
     setStatus: vi.fn(),
     disconnectTransport: vi.fn(),
     emitCurrentState: vi.fn(async () => {}),
@@ -60,7 +63,7 @@ describe("collaboration transport controller", () => {
     await handlers.onJoined({ roomId: "room-1", clientId: "self", peerCount: 0 });
 
     expect(options.markJoinBlocked).toHaveBeenCalled();
-    expect(options.setStatus).toHaveBeenCalledWith("offline");
+    expect(options.setStatus).toHaveBeenCalledWith("failed");
     expect(options.disconnectTransport).toHaveBeenCalled();
     expect(options.emitCurrentState).not.toHaveBeenCalled();
   });
@@ -116,9 +119,10 @@ describe("collaboration transport controller", () => {
     expect(options.publishCollaborators).toHaveBeenCalled();
   });
 
-  it("clears collaborators and reports offline disconnects", () => {
+  it("clears collaborators and reports reconnecting disconnects", () => {
     const { options, handlers } = createHarness({
       markOffline: vi.fn(() => ({
+        status: "reconnecting" as const,
         notify: true,
         message: "The collaboration server disconnected. Local edits will sync when it reconnects.",
       })),
@@ -126,7 +130,7 @@ describe("collaboration transport controller", () => {
 
     handlers.onDisconnect();
 
-    expect(options.setStatus).toHaveBeenCalledWith("offline");
+    expect(options.setStatus).toHaveBeenCalledWith("reconnecting");
     expect(options.clearCollaborators).toHaveBeenCalled();
     expect(options.publishCollaborators).toHaveBeenCalled();
     expect(options.markOffline).toHaveBeenCalledWith("disconnect");
@@ -139,6 +143,7 @@ describe("collaboration transport controller", () => {
   it("reports connect errors through the session state", () => {
     const { options, handlers } = createHarness({
       markOffline: vi.fn(() => ({
+        status: "failed" as const,
         notify: true,
         message: "The collaboration server is not reachable. Local edits stay in this browser.",
       })),
@@ -146,7 +151,7 @@ describe("collaboration transport controller", () => {
 
     handlers.onConnectError();
 
-    expect(options.setStatus).toHaveBeenCalledWith("offline");
+    expect(options.setStatus).toHaveBeenCalledWith("failed");
     expect(options.markOffline).toHaveBeenCalledWith("connect-error");
     expect(options.emitRecoveryEvent).toHaveBeenCalledWith(
       "invalid-message",
