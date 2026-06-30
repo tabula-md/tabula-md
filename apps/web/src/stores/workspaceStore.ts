@@ -27,6 +27,10 @@ import {
   type WorkspaceFile,
   type ReadingWidth,
 } from "../workspaceStorage";
+import {
+  restoreFileToList,
+  restoreOpenFileId,
+} from "../workspaceFileRuntimeModel";
 
 type WorkspaceStoreInitialization = WorkspaceModelState & {
   createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
@@ -168,31 +172,6 @@ const updateFileInState = (
     ...state,
     files: state.files.map((file) => (file.id === fileId ? updateFile(file) : file)),
   };
-};
-
-const insertFileAt = (files: WorkspaceFile[], file: WorkspaceFile, fileIndex: number) => {
-  if (files.some((candidate) => candidate.id === file.id)) {
-    return files;
-  }
-
-  const nextFiles = [...files];
-  nextFiles.splice(Math.min(Math.max(0, fileIndex), nextFiles.length), 0, file);
-  return nextFiles;
-};
-
-const restoreOpenFileId = (
-  openFileIds: string[],
-  restoredFileId: string,
-  previousOpenFileIds: string[],
-) => {
-  if (!previousOpenFileIds.includes(restoredFileId) || openFileIds.includes(restoredFileId)) {
-    return openFileIds;
-  }
-
-  const previousOpenIndex = previousOpenFileIds.indexOf(restoredFileId);
-  const nextOpenFileIds = [...openFileIds];
-  nextOpenFileIds.splice(Math.min(previousOpenIndex, nextOpenFileIds.length), 0, restoredFileId);
-  return nextOpenFileIds;
 };
 
 const clearCollaborationFields = (file: WorkspaceFile): WorkspaceFile => ({
@@ -380,7 +359,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     set((state) => ({
       ...state,
       ...createWorkspaceModelState({
-        files: insertFileAt(state.files, file, fileIndex),
+        files: restoreFileToList(state.files, file, fileIndex),
         openFileIds: restoreOpenFileId(state.openFileIds, file.id, previousOpenFileIds),
         activeFileId: activate ? file.id : state.activeFileId,
       }),

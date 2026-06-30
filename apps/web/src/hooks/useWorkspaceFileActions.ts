@@ -5,8 +5,11 @@ import { getNewFilePreferenceOverrides } from "./useProjectIoController";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import type { RenameFileResult } from "../workspaceModel";
 import {
-  README_FILE_ID,
-  STARTER_README_MARKDOWN,
+  findWorkspaceAboutFile,
+  getWorkspaceAboutFileDraft,
+  removeRecordKey,
+} from "../workspaceFileRuntimeModel";
+import {
   syncUrlForFile,
   type FileComment,
   type WorkspaceFile,
@@ -65,40 +68,6 @@ type UseWorkspaceFileActionsArgs = {
   upsertHelpFile: (helpMarkdown: string) => WorkspaceFile;
 };
 
-export function removeRecordKey<TValue>(record: Record<string, TValue>, key: string) {
-  if (!(key in record)) {
-    return record;
-  }
-
-  const { [key]: _removed, ...nextRecord } = record;
-  return nextRecord;
-}
-
-export function restoreFileToList(files: WorkspaceFile[], restoredFile: WorkspaceFile, restoredIndex: number) {
-  if (files.some((file) => file.id === restoredFile.id)) {
-    return files;
-  }
-
-  const nextFiles = [...files];
-  nextFiles.splice(Math.min(restoredIndex, nextFiles.length), 0, restoredFile);
-  return nextFiles;
-}
-
-export function restoreOpenFileId(
-  openFileIds: string[],
-  restoredFileId: string,
-  previousOpenFileIds: string[],
-) {
-  if (!previousOpenFileIds.includes(restoredFileId) || openFileIds.includes(restoredFileId)) {
-    return openFileIds;
-  }
-
-  const previousOpenIndex = previousOpenFileIds.indexOf(restoredFileId);
-  const nextOpenFileIds = [...openFileIds];
-  nextOpenFileIds.splice(Math.min(previousOpenIndex, nextOpenFileIds.length), 0, restoredFileId);
-  return nextOpenFileIds;
-}
-
 export function useWorkspaceFileActions({
   activeFile,
   activeFileId,
@@ -149,18 +118,16 @@ export function useWorkspaceFileActions({
   };
 
   const openAboutFile = () => {
-    const getNormalizedTitle = (file: WorkspaceFile) => file.title.trim().toLowerCase().replace(/\.md$/, "");
-    const readmeFile =
-      files.find((file) => file.id === README_FILE_ID) ??
-      files.find((file) => getNormalizedTitle(file) === "readme");
+    const readmeFile = findWorkspaceAboutFile(files);
+    const readmeDraft = getWorkspaceAboutFileDraft();
     const nextFile =
       readmeFile ??
-      addFileFromContent("README.md", STARTER_README_MARKDOWN, "preview", {
-        id: README_FILE_ID,
-        lineNumbers: true,
-        lineWrapping: true,
-        readingWidth: "wide",
-      });
+      addFileFromContent(
+        readmeDraft.title,
+        readmeDraft.text,
+        readmeDraft.viewMode,
+        readmeDraft.overrides,
+      );
 
     selectWorkspaceFileAction(nextFile.id);
     closeFloatingChrome();
