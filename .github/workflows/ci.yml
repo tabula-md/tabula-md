@@ -33,6 +33,9 @@ jobs:
       - name: Check OSS boundary
         run: npm run oss:check
 
+      - name: Check package boundaries
+        run: npm run boundary:check
+
       - name: Check surface colors
         run: npm run test:surface-colors
 

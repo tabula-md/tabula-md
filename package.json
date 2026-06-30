@@ -23,6 +23,7 @@
     "workflow:status": "node scripts/workflow-status.mjs",
     "workflow:sync": "node scripts/workflow-sync.mjs",
     "oss:check": "node scripts/oss-readiness-check.mjs",
+    "boundary:check": "node scripts/check-boundaries.mjs",
     "test": "vitest run",
     "test:hooks": "node scripts/test-codex-hooks.mjs",
     "test:browser": "node scripts/browser-smoke.mjs",
