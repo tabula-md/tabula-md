@@ -4,8 +4,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { EmptyFileState } from "./EmptyFileState";
 import { DocumentWorkbench } from "./DocumentWorkbench";
+import { WorkspaceEmptySurface } from "./WorkspaceEmptySurface";
 import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";
 import { WorkspaceOverlaySurface } from "./WorkspaceOverlaySurface";
 import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
@@ -28,6 +28,7 @@ import { useWorkspaceCommentActions } from "../hooks/useWorkspaceCommentActions"
 import { useWorkspaceFileActions } from "../hooks/useWorkspaceFileActions";
 import { useWorkspaceIdentity } from "../hooks/useWorkspaceIdentity";
 import { useWorkspaceKeyboardShortcuts } from "../hooks/useWorkspaceKeyboardShortcuts";
+import { useWorkspaceMenuRuntime } from "../hooks/useWorkspaceMenuRuntime";
 import { useWorkspacePreferences } from "../hooks/useWorkspacePreferences";
 import { useWorkspaceProjectContextRuntime } from "../hooks/useWorkspaceProjectContextRuntime";
 import { useWorkspaceRouteRuntime } from "../hooks/useWorkspaceRouteRuntime";
@@ -440,6 +441,27 @@ export function WorkspaceApp() {
     queueEditorTextRange,
     text,
   });
+
+  const { menuSurfaceProps } = useWorkspaceMenuRuntime({
+    activeFile,
+    importInputRef,
+    isOpen: workspaceMenuOpen,
+    onAddFile: addFile,
+    onCloseChrome: closeFloatingChrome,
+    onDownloadFile: downloadCurrentFile,
+    onDownloadProject: downloadProject,
+    onImportFileChange: handleImportInputChange,
+    onImportProjectChange: handleProjectImportInputChange,
+    onOpenAbout: openAboutFile,
+    onOpenHelp: openHelpFile,
+    openSharePanel,
+    preferences: workspacePreferences,
+    preferencesOpen,
+    setPreferences: setWorkspacePreferences,
+    setPreferencesOpen,
+    setTopPopover,
+    workspaceImportInputRef,
+  });
   const handleStableLineAnnotationAction = useEventCallback(
     handleLineAnnotationAction,
   );
@@ -585,40 +607,7 @@ export function WorkspaceApp() {
       <section
         className={`main-panel ${rightPanelOpen ? "right-panel-open" : ""}`}
       >
-        <WorkspaceMenuSurface
-          isOpen={workspaceMenuOpen}
-          preferencesOpen={preferencesOpen}
-          canExportCurrentFile={Boolean(activeFile)}
-          theme={workspacePreferences.theme}
-          language={workspacePreferences.language}
-          importInputRef={importInputRef}
-          workspaceImportInputRef={workspaceImportInputRef}
-          onImportFileChange={handleImportInputChange}
-          onImportProjectChange={handleProjectImportInputChange}
-          onCloseChrome={closeFloatingChrome}
-          onTogglePreferences={() => {
-            setPreferencesOpen((isOpen) => !isOpen);
-            setTopPopover(null);
-          }}
-          onChangeTheme={(theme) =>
-            setWorkspacePreferences((currentPreferences) => ({
-              ...currentPreferences,
-              theme,
-            }))
-          }
-          onChangeLanguage={(language) =>
-            setWorkspacePreferences((currentPreferences) => ({
-              ...currentPreferences,
-              language,
-            }))
-          }
-          onAddFile={addFile}
-          onDownloadFile={downloadCurrentFile}
-          onDownloadProject={downloadProject}
-          onOpenCollaboration={() => openSharePanel("share-link")}
-          onOpenAbout={openAboutFile}
-          onOpenHelp={openHelpFile}
-        />
+        <WorkspaceMenuSurface {...menuSurfaceProps} />
 
         <section className={documentSurface.centerWorkbenchClassName}>
           <WorkspaceTopChrome {...topChromeProps} />
@@ -705,23 +694,20 @@ export function WorkspaceApp() {
                 onUndo={undoActiveFile}
               />
             ) : (
-              <section
-                className={`workspace empty-workspace ${emptyDropActive ? "drop-active" : ""}`}
-                ref={workspaceRef}
-                onDragOver={handleEmptyWorkspaceDragOver}
+              <WorkspaceEmptySurface
+                alternateShortcutModifier={shortcutLabels.alternate}
+                dropActive={emptyDropActive}
+                language={workspacePreferences.language}
+                primaryShortcutModifier={shortcutLabels.primary}
+                workspaceRef={workspaceRef}
+                onBrowseFiles={openFilesPanel}
                 onDragLeave={handleEmptyWorkspaceDragLeave}
+                onDragOver={handleEmptyWorkspaceDragOver}
                 onDrop={handleEmptyWorkspaceDrop}
-              >
-                <EmptyFileState
-                  language={workspacePreferences.language}
-                  onNewFile={addFile}
-                  onOpenFile={() => importInputRef.current?.click()}
-                  onBrowseFiles={openFilesPanel}
-                  onOpenHelp={openHelpFile}
-                  primaryShortcutModifier={shortcutLabels.primary}
-                  alternateShortcutModifier={shortcutLabels.alternate}
-                />
-              </section>
+                onNewFile={addFile}
+                onOpenFile={() => importInputRef.current?.click()}
+                onOpenHelp={openHelpFile}
+              />
             )}
           </section>
         </section>
