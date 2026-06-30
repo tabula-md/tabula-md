@@ -21,6 +21,7 @@ import {
 } from "./collabConnectionModel";
 import { createCollaboratorRegistry } from "./collabCollaborators";
 import { fetchRoomMeta, fetchRoomSnapshotEnvelope, putRoomSnapshotEnvelope } from "./collabRoomClient";
+import { createCollabSessionState } from "./collabSessionState";
 import { createCollabUpdateBuffer } from "./collabUpdateBuffer";
 import {
   applyLocalTextToYText,
@@ -131,11 +132,9 @@ export const createCollabConnection = ({
   let roomKey: CryptoKey | null = null;
   let transport: RoomTransport | null = null;
   let envelopeVersion = 0;
-  let hasConnectedOnce = false;
   let hasUnstoredLocalChanges = Boolean(initialText);
-  let collaborationBlocked = false;
-  let serverOfflineNotified = false;
   let roomBaseUrl = "";
+  const sessionState = createCollabSessionState();
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
     onRecoveryEvent?.({
@@ -167,7 +166,7 @@ export const createCollabConnection = ({
   };
 
   const emitEnvelope = async (kind: EnvelopeKind, plaintext: Uint8Array) => {
-    if (!transport?.connected || !roomKey || collaborationBlocked) {
+    if (!transport?.connected || !roomKey || sessionState.isBlocked()) {
       return;
     }
 
@@ -203,7 +202,7 @@ export const createCollabConnection = ({
   };
 
   const storeSnapshot = async () => {
-    if (!roomKey || collaborationBlocked) {
+    if (!roomKey || sessionState.isBlocked()) {
       return;
     }
 
@@ -344,18 +343,17 @@ export const createCollabConnection = ({
 
           const snapshotFetchResult = await fetchSnapshot();
           if (!snapshotFetchResult) {
-            collaborationBlocked = true;
+            sessionState.markJoinBlocked();
             onStatusChange("offline");
             transport?.disconnect();
             return;
           }
 
           onStatusChange("connected");
-          if (hasConnectedOnce) {
-            emitRecoveryEvent("reconnected", "Connection restored and room state was resynced.");
+          const joinResult = sessionState.markJoined();
+          if (joinResult.reconnected) {
+            emitRecoveryEvent("reconnected", joinResult.message);
           }
-          hasConnectedOnce = true;
-          serverOfflineNotified = false;
           await emitEnvelope("yjs-update", Y.encodeStateAsUpdate(doc));
           await publishPresence();
           if (shouldStoreSnapshotAfterJoin({ hasUnstoredLocalChanges, snapshotFetchResult })) {
@@ -381,23 +379,17 @@ export const createCollabConnection = ({
           onStatusChange("offline");
           collaborators.clear();
           publishCollaborators();
-          if (hasConnectedOnce && !collaborationBlocked && !serverOfflineNotified) {
-            serverOfflineNotified = true;
-            emitRecoveryEvent(
-              "invalid-message",
-              "The collaboration server disconnected. Local edits will sync when it reconnects.",
-            );
+          const offlineResult = sessionState.markOffline("disconnect");
+          if (offlineResult.notify) {
+            emitRecoveryEvent("invalid-message", offlineResult.message);
           }
         },
         onConnectError: () => {
           if (!closedByClient) {
             onStatusChange("offline");
-            if (!collaborationBlocked && !serverOfflineNotified) {
-              serverOfflineNotified = true;
-              emitRecoveryEvent(
-                "invalid-message",
-                "The collaboration server is not reachable. Local edits stay in this browser.",
-              );
+            const offlineResult = sessionState.markOffline("connect-error");
+            if (offlineResult.notify) {
+              emitRecoveryEvent("invalid-message", offlineResult.message);
             }
           }
         },
