@@ -9,9 +9,6 @@ import type { EnvelopeKind } from "./roomProtocol";
 import {
   decryptEnvelopeForRoom,
   encryptBytesForRoom,
-  importRoomKey,
-  resolveTabulaRoomBaseUrl,
-  ROOM_UNCONFIGURED_MESSAGE,
   shouldStoreSnapshotAfterJoin,
 } from "./collabRoom";
 import { encodePresenceForRoom } from "./collabConnectionModel";
@@ -19,6 +16,7 @@ import { createCollaboratorRegistry } from "./collabCollaborators";
 import { createCollabEnvelopeRouter } from "./collabEnvelopeRouter";
 import { createCollabSessionState } from "./collabSessionState";
 import { createCollabSnapshotSync } from "./collabSnapshotSync";
+import { resolveCollabStartConfig } from "./collabStartConfig";
 import { createCollabUpdateBuffer } from "./collabUpdateBuffer";
 import {
   applyLocalTextToYText,
@@ -233,28 +231,14 @@ export const createCollabConnection = ({
   });
 
   const start = async () => {
-    const configuredRoomBaseUrl = resolveTabulaRoomBaseUrl();
-    if (!configuredRoomBaseUrl) {
+    const startConfig = await resolveCollabStartConfig({ encodedRoomKey });
+    if (startConfig.status === "blocked") {
       onStatusChange("offline");
-      emitRecoveryEvent("invalid-message", ROOM_UNCONFIGURED_MESSAGE);
+      emitRecoveryEvent("invalid-message", startConfig.message);
       return;
     }
-    roomBaseUrl = configuredRoomBaseUrl;
-
-    const encodedKey = encodedRoomKey;
-    if (!encodedKey) {
-      onStatusChange("offline");
-      emitRecoveryEvent("invalid-message", "This room URL is missing its client-only room key.");
-      return;
-    }
-
-    try {
-      roomKey = await importRoomKey(encodedKey);
-    } catch {
-      onStatusChange("offline");
-      emitRecoveryEvent("invalid-message", "This room URL has an invalid room key.");
-      return;
-    }
+    roomBaseUrl = startConfig.baseUrl;
+    roomKey = startConfig.roomKey;
 
     transport = createRoomTransport({
       baseUrl: roomBaseUrl,
