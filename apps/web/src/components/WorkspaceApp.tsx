@@ -7,8 +7,8 @@ import {
 import { AppToast } from "./AppToast";
 import { EmptyFileState } from "./EmptyFileState";
 import { DocumentWorkbench } from "./DocumentWorkbench";
-import { RightPanel } from "./RightPanel";
 import { WorkspaceMenu } from "./WorkspaceMenu";
+import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { JsonShareImportDialog } from "./JsonShareImportDialog";
 import { buildDocumentSurface } from "../documentSurfaceModel";
@@ -42,10 +42,7 @@ import { useWorkspaceScrollSync } from "../hooks/useWorkspaceScrollSync";
 import { useWorkspaceShareRuntime } from "../hooks/useWorkspaceShareRuntime";
 import { useWorkspaceCollaborationRuntime } from "../hooks/useWorkspaceCollaborationRuntime";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
-import {
-  getWorkspaceFileSearchText,
-  getWorkspaceFileStatus,
-} from "../workspaceViewModel";
+import { getWorkspaceFileStatus } from "../workspaceViewModel";
 import {
   createWorkspaceFile,
   readInitialWorkspaceSnapshot,
@@ -834,53 +831,50 @@ export function WorkspaceApp() {
           </section>
         </section>
 
-        {rightPanelOpen && (
-          <RightPanel
-            isOpen={rightPanelOpen}
-            view={rightPanelView}
-            commentsEnabled={isLive}
-            files={files}
-            openFileIds={openFileIds}
-            activeFileId={activeFile?.id ?? ""}
-            activeFileTitle={activeFileTitle}
-            fileQuery={rightFileQuery}
-            outlineHeadings={outlineHeadings}
-            commentsByFileId={commentsByFileId}
-            commentDraft={commentDraft}
-            identityName={identity.name}
-            selectedText={selectedMarkdownText}
-            selectedCharacterCount={selectedCharacterCount}
-            commentInputRef={commentInputRef}
-            activeCommentId={focusedCommentId}
-            activeReplyCommentId={activeReplyCommentId}
-            replyDraftByCommentId={replyDraftByCommentId}
-            getFileStatus={getFileStatus}
-            getFileSearchText={getWorkspaceFileSearchText}
-            onSetView={setRightPanelView}
-            onClose={() => setRightPanelOpen(false)}
-            onFileQueryChange={setRightFileQuery}
-            onNewFile={addFile}
-            onImportFile={() => importInputRef.current?.click()}
-            onSelectFile={selectFile}
-            onCloseFile={closeFile}
-            onRenameFile={renameWorkspaceFileAction}
-            onDuplicateFile={duplicateFile}
-            onDeleteFile={deleteFile}
-            onGoToOutlineHeading={goToOutlineHeading}
-            onCommentDraftChange={setCommentDraft}
-            onIdentityNameChange={updateIdentityName}
-            onIdentityNameCommit={normalizeIdentityName}
-            onAddComment={addFileComment}
-            onGoToComment={goToFileComment}
-            onStartCommentReply={startCommentReply}
-            onCancelCommentReply={cancelCommentReply}
-            onReplyDraftChange={updateCommentReplyDraft}
-            onAddCommentReply={addFileCommentReply}
-            onToggleCommentResolved={toggleFileCommentResolved}
-            onDeleteComment={deleteFileComment}
-            formatCommentDate={formatCommentDate}
-          />
-        )}
+        <WorkspaceProjectContext
+          isOpen={rightPanelOpen}
+          view={rightPanelView}
+          isLive={isLive}
+          files={files}
+          openFileIds={openFileIds}
+          activeFileId={activeFile?.id}
+          activeFileTitle={activeFileTitle}
+          fileQuery={rightFileQuery}
+          outlineHeadings={outlineHeadings}
+          commentsByFileId={commentsByFileId}
+          commentDraft={commentDraft}
+          identityName={identity.name}
+          selectedText={selectedMarkdownText}
+          selectedCharacterCount={selectedCharacterCount}
+          commentInputRef={commentInputRef}
+          activeCommentId={focusedCommentId}
+          activeReplyCommentId={activeReplyCommentId}
+          replyDraftByCommentId={replyDraftByCommentId}
+          getFileStatus={getFileStatus}
+          onSetView={setRightPanelView}
+          onClose={() => setRightPanelOpen(false)}
+          onFileQueryChange={setRightFileQuery}
+          onNewFile={addFile}
+          onImportFile={() => importInputRef.current?.click()}
+          onSelectFile={selectFile}
+          onCloseFile={closeFile}
+          onRenameFile={renameWorkspaceFileAction}
+          onDuplicateFile={duplicateFile}
+          onDeleteFile={deleteFile}
+          onGoToOutlineHeading={goToOutlineHeading}
+          onCommentDraftChange={setCommentDraft}
+          onIdentityNameChange={updateIdentityName}
+          onIdentityNameCommit={normalizeIdentityName}
+          onAddComment={addFileComment}
+          onGoToComment={goToFileComment}
+          onStartCommentReply={startCommentReply}
+          onCancelCommentReply={cancelCommentReply}
+          onReplyDraftChange={updateCommentReplyDraft}
+          onAddCommentReply={addFileCommentReply}
+          onToggleCommentResolved={toggleFileCommentResolved}
+          onDeleteComment={deleteFileComment}
+          formatCommentDate={formatCommentDate}
+        />
       </section>
     </main>
   );
