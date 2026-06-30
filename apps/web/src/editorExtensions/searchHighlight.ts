@@ -1,6 +1,6 @@
 import { type Extension } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
-import type { SearchMatch } from "../markdown";
+import type { SearchMatch } from "@tabula-md/tabula";
 
 export const createSearchHighlightExtension = (
   searchMatches: SearchMatch[] = [],

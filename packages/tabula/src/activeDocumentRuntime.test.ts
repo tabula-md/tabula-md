@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createActiveDocumentRuntime } from "./activeDocumentRuntime";
-import type { WorkspaceFile } from "../workspaceStorage";
+import {
+  createActiveDocumentRuntime,
+  type ActiveDocumentFile,
+} from "./activeDocumentRuntime";
 
-const file = (overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
-  id: "file-1",
+const file = (overrides: Partial<ActiveDocumentFile> = {}): ActiveDocumentFile => ({
   title: "README.md",
   text: "hello world",
   viewMode: "edit",

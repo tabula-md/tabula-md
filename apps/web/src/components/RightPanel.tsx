@@ -9,7 +9,7 @@ import { getRightPanelCommentGroups } from "@tabula-md/tabula";
 import type { ConnectionStatus } from "../collaboration";
 import { useRightPanelCollapseState } from "../hooks/useRightPanelCollapseState";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
-import type { MarkdownHeading } from "../markdown";
+import type { MarkdownHeading } from "@tabula-md/tabula";
 import type { RightPanelView } from "../uiTypes";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 import { RightPanelComments } from "./RightPanelComments";

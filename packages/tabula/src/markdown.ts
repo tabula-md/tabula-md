@@ -135,8 +135,8 @@ export const getMarkdownDocumentTitle = (markdown: string) => {
   return headingTitle || "";
 };
 
-export const getOutlineHeadings = (previewBody: PreviewBody): MarkdownHeading[] => {
-  return previewBody.body
+export const getOutlineHeadings = (previewBody: PreviewBody): MarkdownHeading[] =>
+  previewBody.body
     .split("\n")
     .map((line, lineIndex) => {
       const match = line.match(/^(#{1,3})\s+(.+)$/);
@@ -152,7 +152,6 @@ export const getOutlineHeadings = (previewBody: PreviewBody): MarkdownHeading[] 
       };
     })
     .filter((heading): heading is MarkdownHeading => Boolean(heading?.text));
-};
 
 export const getSearchMatches = (text: string, query: string): SearchMatch[] => {
   const normalizedQuery = query.trim();

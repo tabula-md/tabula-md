@@ -4,7 +4,7 @@ import {
 } from "react";
 import { MessageSquarePlus } from "lucide-react";
 import type { DocumentSurfaceModel } from "@tabula-md/tabula";
-import type { SearchMatch } from "../markdown";
+import type { SearchMatch } from "@tabula-md/tabula";
 import type { MarkdownFormatCommand } from "../markdownFormatting";
 import type { CenterPopover } from "../uiTypes";
 import type { Collaborator, LiveSelection } from "../collaboration";

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildLlmsFullTxt, buildLlmsTxt, buildPublishBundle } from "./agentExports";
 import { COMMENT_ANCHOR_CONTEXT_LENGTH, getCommentRangeInText } from "./commentAnchors";
-import { getMarkdownDocumentTitle, getPreviewBody, parseFrontmatter } from "./markdown";
+import { getMarkdownDocumentTitle, getPreviewBody, parseFrontmatter } from "@tabula-md/tabula";
 import {
   createPublishedSnapshot,
   createServerPublishedSnapshot,

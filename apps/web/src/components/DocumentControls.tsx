@@ -11,7 +11,7 @@ import {
   SplitSquareHorizontal,
   X,
 } from "lucide-react";
-import type { SearchMatch } from "../markdown";
+import type { SearchMatch } from "@tabula-md/tabula";
 import type { CenterPopover } from "../uiTypes";
 import {
   buildDocumentControlsModel,

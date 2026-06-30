@@ -9,7 +9,7 @@ import type { WorkspaceProjectContextProps } from "../components/WorkspaceProjec
 import {
   getLineStartOffset,
   type MarkdownHeading,
-} from "../markdown";
+} from "@tabula-md/tabula";
 import type { RightPanelView } from "../uiTypes";
 import { getWorkspaceFileStatus } from "../workspace";
 import type {

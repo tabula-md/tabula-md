@@ -1,4 +1,4 @@
-import { parseFrontmatter } from "./markdown";
+import { parseFrontmatter } from "@tabula-md/tabula";
 import { PRODUCT_NAME } from "./product";
 import type { FileComment, WorkspaceFile } from "./workspaceStorage";
 

@@ -4,9 +4,10 @@ Core product contracts for Tabula.md.
 
 This package is intentionally small and browser-service agnostic. It contains
 pure models for Markdown editing, workspace files, document controls, comments,
-status labels, live room links, and encrypted JSON snapshot links. The web app
-in `apps/web` wires these contracts to React, CodeMirror, local storage,
-collaboration, and network services.
+status labels, live room links, encrypted JSON snapshot links, and the pure
+parts of collaboration presence. The web app in `apps/web` wires these
+contracts to React, CodeMirror, local storage, collaboration transports, and
+network services.
 
 ## Boundary
 
@@ -16,6 +17,8 @@ Keep in this package:
 - Workspace file and tab state transitions.
 - Share link parsing and URL contracts.
 - Comment/status/document control view models.
+- Collaboration envelope, session, collaborator, and presence models that do
+  not require a transport.
 - Pure helpers that can be tested without the DOM, React, storage, or network.
 
 Keep outside this package:
@@ -23,6 +26,7 @@ Keep outside this package:
 - React components and hooks.
 - CodeMirror extensions and editor refs.
 - Browser storage, file picker, clipboard, and download behavior.
+- Socket.IO, fetch, Yjs transactions, or browser crypto wiring.
 - `tabula-room`, `tabula-json`, Cloudflare, Render, or production deployment
   settings.
 - Product surfaces that depend on a service account, billing, auth, or runtime
