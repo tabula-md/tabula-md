@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { stripMarkdownExtension } from "../../../rightPanelCommentViewModel";
+import { stripMarkdownExtension } from "@tabula-md/tabula";
 import type { FileComment } from "../../../workspaceStorage";
 import { CommentCard } from "./CommentCard";
 import type { FormatCommentDate, RightPanelCommentGroup } from "./types";

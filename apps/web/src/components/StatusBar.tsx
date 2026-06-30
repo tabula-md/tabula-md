@@ -1,6 +1,6 @@
 import { Check, MessageSquare } from "lucide-react";
+import { getStatusBarSaveState } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import { getStatusBarSaveState } from "../statusBarViewModel";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import type { FileViewMode } from "../workspaceStorage";
 

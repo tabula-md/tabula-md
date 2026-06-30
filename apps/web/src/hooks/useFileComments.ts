@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Collaborator } from "../collab";
+import type { Collaborator } from "../collaboration";
 import type { FileComment, FileCommentReply, WorkspaceFile } from "../workspaceStorage";
 
 export type CommentSelectionAnchor = {

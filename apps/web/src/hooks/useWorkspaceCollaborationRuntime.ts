@@ -1,12 +1,11 @@
-import { useMemo, type RefObject } from "react";
+import type { RefObject } from "react";
 import type {
   Collaborator,
   CollabRecoveryEvent,
   ConnectionStatus,
   LiveSelection,
-} from "../collab";
+} from "../collaboration";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
-import type { TextChange } from "../textPatches";
 import {
   isUsableLiveRoomFile,
   type WorkspaceFile,
@@ -14,10 +13,10 @@ import {
 import {
   getActiveWorkspaceStatus,
   getWorkspaceStatusLabel,
-} from "../workspaceViewModel";
+} from "../workspace";
+import { useCollaborationEditorBridge } from "./useCollaborationEditorBridge";
+import { useCollaborationPresenceRuntime } from "./useCollaborationPresenceRuntime";
 import { useCollaborationRoom } from "./useCollaborationRoom";
-import { useEventCallback } from "./useEventCallback";
-import { createCollaborationPresenceIdentity } from "../collabRuntime";
 
 type UseWorkspaceCollaborationRuntimeOptions = {
   activeFile?: WorkspaceFile;
@@ -64,15 +63,10 @@ export function useWorkspaceCollaborationRuntime({
   setFileRecoveryEvent,
   startFileCollaborationSession,
 }: UseWorkspaceCollaborationRuntimeOptions) {
-  const handleRemoteTextChange = useEventCallback(
-    (fileId: string, nextText: string, change?: TextChange) => {
-      if (fileId !== activeFile?.id) {
-        return;
-      }
-
-      editorRef.current?.applyRemoteTextChange(nextText, change?.patches);
-    },
-  );
+  const handleRemoteTextChange = useCollaborationEditorBridge({
+    activeFileId: activeFile?.id,
+    editorRef,
+  });
 
   const room = useCollaborationRoom({
     activeFile,
@@ -91,17 +85,13 @@ export function useWorkspaceCollaborationRuntime({
     isLive,
     connectionStatus: room.connectionStatus,
   });
-  const presenceIdentity = useMemo(
-    () =>
-      createCollaborationPresenceIdentity({
-        identity,
-        isLive,
-        roomId: activeFile?.roomId,
-        fileTitle: activeFileTitle,
-        selection: activeSelection,
-      }),
-    [activeFile?.roomId, activeFileTitle, activeSelection, identity, isLive],
-  );
+  const presenceIdentity = useCollaborationPresenceRuntime({
+    activeSelection,
+    fileTitle: activeFileTitle,
+    identity,
+    isLive,
+    roomId: activeFile?.roomId,
+  });
 
   return {
     ...room,

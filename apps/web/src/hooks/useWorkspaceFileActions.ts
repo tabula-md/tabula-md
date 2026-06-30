@@ -3,7 +3,7 @@ import type { AppToastState } from "./useAppToast";
 import type { FileHistory } from "./useWorkspaceActiveFileEditor";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import { getNewFilePreferenceOverrides } from "../workspaceIoModel";
-import type { RenameFileResult } from "../workspaceModel";
+import type { RenameFileResult } from "@tabula-md/tabula";
 import {
   findWorkspaceAboutFile,
   getWorkspaceAboutFileDraft,

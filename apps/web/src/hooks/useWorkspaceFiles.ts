@@ -5,9 +5,9 @@ import {
   getActiveWorkspaceFile,
   getAvailableWorkspaceFileTitle,
   getOpenWorkspaceFiles,
-} from "../workspaceModel";
-export { normalizeWorkspaceFileTitle } from "../workspaceModel";
-export type { RenameFileResult } from "../workspaceModel";
+} from "@tabula-md/tabula";
+export { normalizeWorkspaceFileTitle } from "@tabula-md/tabula";
+export type { RenameFileResult } from "@tabula-md/tabula";
 
 type UseWorkspaceFilesOptions = {
   initialFiles: WorkspaceFile[];

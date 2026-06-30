@@ -2,15 +2,15 @@ import { type RefObject, useEffect, useState } from "react";
 import {
   getRightPanelCommentScopeModel,
   type CommentScope,
-  type RightPanelCommentGroup,
-} from "../rightPanelCommentViewModel";
+  type RightPanelCommentGroup as CoreRightPanelCommentGroup,
+} from "@tabula-md/tabula";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 import { CommentComposer } from "./right-panel/comments/CommentComposer";
 import { CommentGroup } from "./right-panel/comments/CommentGroup";
 import { ResolvedCommentsSection } from "./right-panel/comments/ResolvedCommentsSection";
 import type { FormatCommentDate } from "./right-panel/comments/types";
 
-export type { RightPanelCommentGroup } from "../rightPanelCommentViewModel";
+export type RightPanelCommentGroup = CoreRightPanelCommentGroup<WorkspaceFile, FileComment>;
 
 type RightPanelCommentsProps = {
   activeFile?: WorkspaceFile;

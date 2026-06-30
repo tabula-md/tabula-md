@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createActiveDocumentRuntime } from "../documentRuntime";
+import { createActiveDocumentRuntime } from "../document";
 import type { WorkspaceFile } from "../workspaceStorage";
 
 export const useActiveDocumentRuntime = (activeFile?: WorkspaceFile) => {

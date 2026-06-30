@@ -8,7 +8,7 @@ import {
   selectAdjacentWorkspaceFile,
   workspaceReducer,
   type WorkspaceModelState,
-} from "./workspaceModel";
+} from "@tabula-md/tabula";
 import type { WorkspaceFile } from "./workspaceStorage";
 
 const createFile = (id: string, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => ({

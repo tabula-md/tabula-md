@@ -3,7 +3,7 @@ import {
   createJsonShareLink,
   formatJsonShareUrlPreview,
   getConfiguredJsonShareServiceUrl,
-} from "../jsonShare";
+} from "../share";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 
 type UseJsonShareControllerOptions = {

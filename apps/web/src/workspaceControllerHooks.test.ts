@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Collaborator } from "./collab";
+import type { Collaborator } from "./collaboration";
 import {
   createWorkspaceIdentity,
   IDENTITY_KEY,
@@ -49,11 +49,11 @@ import {
 } from "./commentRuntimeModel";
 import {
   getActiveWorkspaceStatus,
-  getMarkdownWordCount,
   getWorkspaceFileSearchText,
   getWorkspaceFileStatus,
   getWorkspaceStatusLabel,
-} from "./workspaceViewModel";
+} from "./workspace";
+import { getMarkdownWordCount } from "./document";
 import { isUsableLiveRoomFile, type FileBookmark, type WorkspaceFile } from "./workspaceStorage";
 
 const VALID_ROOM_KEY = "A".repeat(43);

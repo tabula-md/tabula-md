@@ -1,10 +1,10 @@
 import { type Extension } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
-import type { Collaborator } from "../collab";
+import type { Collaborator } from "../collaboration";
 import {
   getCollaboratorPresenceLabel,
   isCollaboratorInFile,
-} from "../collaborationPresence";
+} from "../collaboration";
 
 const clampPosition = (position: number, docLength: number) => Math.max(0, Math.min(position, docLength));
 

@@ -1,5 +1,26 @@
-import { parseRoomLocation, parseRoomShareUrl, type CollabRecoveryEvent, type ConnectionStatus } from "./collab";
+import {
+  clampSplitEditorRatio,
+  DEFAULT_SPLIT_EDITOR_RATIO,
+  FILE_VIEW_MODES,
+  MAX_SPLIT_EDITOR_RATIO,
+  MIN_SPLIT_EDITOR_RATIO,
+  parseRoomLocation,
+  parseRoomShareUrl,
+  READING_WIDTHS,
+  type FileViewMode,
+  type ReadingWidth,
+} from "@tabula-md/tabula";
+import type { CollabRecoveryEvent, ConnectionStatus } from "./collaboration";
 import { PRODUCT_NAME } from "./product";
+
+export {
+  clampSplitEditorRatio,
+  DEFAULT_SPLIT_EDITOR_RATIO,
+  MAX_SPLIT_EDITOR_RATIO,
+  MIN_SPLIT_EDITOR_RATIO,
+  READING_WIDTHS,
+};
+export type { FileViewMode, ReadingWidth };
 
 export const PROJECT_STORAGE_VERSION = 5;
 export const WORKSPACE_STORAGE_VERSION = PROJECT_STORAGE_VERSION;
@@ -48,16 +69,8 @@ No dashboard first. No project ceremony. Open a file, write Markdown, and share 
 - Shareable links export an encrypted copy that opens in another local workspace.
 `;
 export const isStarterReadmeText = (text: string) => text === STARTER_README_MARKDOWN;
-export const READING_WIDTHS: ReadingWidth[] = ["narrow", "standard", "wide"];
-export const DEFAULT_SPLIT_EDITOR_RATIO = 0.5;
-export const MIN_SPLIT_EDITOR_RATIO = 0.28;
-export const MAX_SPLIT_EDITOR_RATIO = 0.72;
-const FILE_VIEW_MODES: FileViewMode[] = ["edit", "split", "preview"];
 const CONNECTION_STATUSES: ConnectionStatus[] = ["idle", "connecting", "connected", "offline"];
 const RECOVERY_EVENT_TYPES: CollabRecoveryEvent["type"][] = ["reconnected", "snapshot-recovered", "invalid-message"];
-
-export type FileViewMode = "edit" | "split" | "preview";
-export type ReadingWidth = "narrow" | "standard" | "wide";
 
 export type FileBookmark = {
   id: string;
@@ -163,11 +176,6 @@ export const randomId = () => {
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-};
-
-export const clampSplitEditorRatio = (value: unknown) => {
-  const numericValue = typeof value === "number" && Number.isFinite(value) ? value : DEFAULT_SPLIT_EDITOR_RATIO;
-  return Math.min(MAX_SPLIT_EDITOR_RATIO, Math.max(MIN_SPLIT_EDITOR_RATIO, numericValue));
 };
 
 export const getRoomFromLocation = (): LocationRoom | null => {

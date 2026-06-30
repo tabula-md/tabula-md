@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { Collaborator } from "../collab";
+import type { Collaborator } from "../collaboration";
 import type { WorkspaceTopChromeProps } from "../components/WorkspaceTopChrome";
 import type { JsonShareController } from "./useJsonShareController";
 import type { RenameFileResult } from "./useWorkspaceFiles";

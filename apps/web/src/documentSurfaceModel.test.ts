@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildDocumentSurface } from "@tabula-md/tabula";
-import { createActiveDocumentRuntime } from "./documentRuntime";
+import { createActiveDocumentRuntime } from "./document";
 import type { WorkspaceFile } from "./workspaceStorage";
 
 const file = (overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => ({

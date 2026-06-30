@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +11,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+  },
+  test: {
+    root: workspaceRoot,
+    include: [
+      "apps/web/src/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+      "packages/tabula/src/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+    ],
   },
   build: {
     outDir: "../../dist",
