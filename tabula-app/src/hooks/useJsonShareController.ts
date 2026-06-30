@@ -4,6 +4,7 @@ import {
   formatJsonShareUrlPreview,
   getConfiguredJsonShareServiceUrl,
 } from "../share";
+import { tabulaServiceConfig } from "../serviceConfig";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 
 type UseJsonShareControllerOptions = {
@@ -43,7 +44,7 @@ export function useJsonShareController({
       return `Add content to ${activeFile.title.replace(/\.(?:md|markdown)$/i, "")} before exporting a link.`;
     }
     if (!serviceUrl) {
-      return "Shareable links are not configured.";
+      return tabulaServiceConfig.copy.jsonShareUnconfiguredMessage;
     }
     return "";
   }, [activeFile, serviceUrl]);

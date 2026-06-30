@@ -1,4 +1,5 @@
 import { buildLlmsFullTxt, buildLlmsTxt, buildMarkdownBundle, buildPublishBundle } from "../../agentExports";
+import { tabulaServiceConfig } from "../../serviceConfig";
 import type { FileComment, WorkspaceFile } from "../../workspaceStorage";
 
 const PUBLISH_STORAGE_KEY = "tabula.published-snapshots.v1";
@@ -145,8 +146,7 @@ export const getPublishRoute = (pathname: string, search = ""): PublishRoute | n
 };
 
 export const getConfiguredPublishServiceUrl = () => {
-  const configuredUrl = import.meta.env.VITE_TABULA_PUBLISH_URL as string | undefined;
-  return configuredUrl ? trimTrailingSlash(configuredUrl) : null;
+  return tabulaServiceConfig.publishUrl;
 };
 
 export const createPublishedSnapshot = ({

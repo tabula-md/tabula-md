@@ -14,6 +14,7 @@ import {
   type ShareSnapshot,
   type ShareSnapshotPayload,
 } from "./shareSnapshotPayload";
+import { tabulaServiceConfig } from "../serviceConfig";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 
 export {
@@ -46,8 +47,7 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 export const getConfiguredJsonShareServiceUrl = () => {
-  const configuredUrl = import.meta.env.VITE_TABULA_JSON_URL as string | undefined;
-  return configuredUrl ? trimTrailingSlash(configuredUrl) : null;
+  return tabulaServiceConfig.jsonUrl;
 };
 
 export const createJsonShareLink = async ({
