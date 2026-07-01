@@ -7,12 +7,14 @@ tags: [architecture, infrastructure, beta]
 
 # Current Scope
 
-Phase 1 infrastructure has three public repositories plus one hosted provider:
+Phase 1 infrastructure has three public repositories plus hosted providers for
+recovery and object storage:
 
 - `tabula-md`: the Tabula app and Markdown workspace.
 - `tabula-room`: the encrypted collaboration room relay.
 - `tabula-json`: the encrypted immutable Snapshot link store.
 - Firebase Firestore: the hosted live-room recovery provider.
+- Google Cloud Storage: the hosted encrypted Snapshot blob store.
 
 The official hosted `tabula.md` service is not a fourth public product repo. It
 is the managed deployment of these open-source components plus Firebase
@@ -34,7 +36,7 @@ protocol.
 - Keep `tabula-room` relay-only. It does not store room recovery snapshots.
 - Persist live-room recovery state as encrypted Firestore documents through
   `tabula-app/data/firebase.ts`.
-- Persist Snapshot link blobs only in `tabula-json`.
+- Persist Snapshot link blobs through `tabula-json` into Google Cloud Storage.
 
 # Deployment Direction
 
@@ -53,6 +55,11 @@ protocol.
 - Keep hosted provider-specific deployment configuration in private operations
   code. The hosted room service should still run the public `tabula-room`
   server.
+- Hosted `rooms.tabula.md` should run the public `tabula-room` server as a
+  single-process VM/nginx/pm2 relay until usage justifies shared Socket.IO
+  fanout.
+- Hosted `json.tabula.md` should run the public `tabula-json` service with the
+  Google App Engine deployment path and Google Cloud Storage driver.
 - Keep accounts, billing, audit logs, and multi-tenant permission systems out
   of the public v0.
 

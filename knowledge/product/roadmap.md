@@ -35,12 +35,13 @@ document intelligence remain parked until usage proves the need.
 
 # Infrastructure Track
 
-- Keep `tabula-room` small: relay encrypted envelopes and store encrypted
-  snapshots only.
+- Keep `tabula-room` small: relay encrypted envelopes only.
+- Keep encrypted Snapshot blobs in `tabula-json` backed by Google Cloud
+  Storage.
 - Keep room keys and Markdown plaintext out of the server.
 - Add managed persistence, scaling, and auth only after public v0 feedback.
-- Keep Redis, R2/S3, database-backed snapshots, and billing parked until
-  needed.
+- Keep Redis-backed room scaling, database-backed snapshot metadata, and
+  billing parked until needed.
 
 # Related
 

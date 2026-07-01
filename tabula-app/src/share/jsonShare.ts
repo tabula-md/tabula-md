@@ -8,6 +8,8 @@ import {
   generateEncryptionKey,
   importEncryptionKey,
   JSON_SHARE_KEY_BYTES,
+  JSON_SHARE_API_PREFIX,
+  JSON_SHARE_POST_PATH,
   parseShareSnapshot,
   serializeShareSnapshot,
   toArrayBuffer,
@@ -68,7 +70,7 @@ export const createJsonShareLink = async ({
   const key = generateJsonShareKey();
   const encrypted = await encryptJsonSharePayload(payload, key);
   const jsonShareServiceUrl = trimTrailingSlash(serviceUrl);
-  const response = await fetchImpl(`${jsonShareServiceUrl}/api/v1/post/`, {
+  const response = await fetchImpl(`${jsonShareServiceUrl}${JSON_SHARE_POST_PATH}`, {
     method: "POST",
     headers: {
       "content-type": "application/octet-stream",
@@ -99,7 +101,7 @@ export const readJsonShareSnapshot = async ({
   fetchImpl = fetch,
 }: ReadJsonShareSnapshotOptions): Promise<ShareSnapshot | null> => {
   const jsonShareServiceUrl = trimTrailingSlash(serviceUrl);
-  const response = await fetchImpl(`${jsonShareServiceUrl}/api/v1/${encodeURIComponent(route.snapshotId)}`);
+  const response = await fetchImpl(`${jsonShareServiceUrl}${JSON_SHARE_API_PREFIX}${encodeURIComponent(route.snapshotId)}`);
 
   if (response.status === 404) {
     return null;

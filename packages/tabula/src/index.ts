@@ -106,8 +106,10 @@ export type {
   JsonShareRoute,
 } from "./jsonShareLinkModel";
 export {
+  JSON_SHARE_API_PREFIX,
   JSON_SHARE_ID_PATTERN,
   JSON_SHARE_KEY_BYTES,
+  JSON_SHARE_POST_PATH,
   createJsonShareUrl,
   decodeBase64Url,
   encodeBase64Url,

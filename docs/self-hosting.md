@@ -11,7 +11,7 @@ flowchart LR
   app --> room["tabula-room websocket relay"]
   app --> json["tabula-json encrypted snapshot store"]
   app --> firebase["Firebase Firestore live recovery"]
-  json --> objectStorage["encrypted #json blobs"]
+  json --> objectStorage["Google Cloud Storage encrypted #json blobs"]
 ```
 
 ## Local App
@@ -90,6 +90,11 @@ https://your-app.example/#json=<snapshotId>,<snapshotKey>
 The JSON service stores encrypted snapshot blobs. It should never receive
 `snapshotKey` or plaintext Markdown.
 
+For hosted-service parity, run `tabula-json` as the Node service on Google App
+Engine with `TABULA_JSON_STORAGE_DRIVER=gcs` and a private Google Cloud Storage
+bucket. The bucket should not be public; `json.tabula.md` is the read/write API
+boundary.
+
 ## Production Build
 
 Build the static app:
@@ -108,7 +113,7 @@ Serve `dist` from a static host. Configure the room and JSON services with:
 - Payload limits.
 - Rate limits.
 - Firebase Firestore rules for encrypted live recovery, if recovery is enabled.
-- Persistent encrypted object storage for JSON snapshots.
+- Private Google Cloud Storage for JSON snapshot blobs.
 - Logs that exclude URL fragments, keys, and plaintext Markdown.
 
 If `VITE_TABULA_ROOM_URL` or `VITE_TABULA_JSON_URL` is missing, the matching

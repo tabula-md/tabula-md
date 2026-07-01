@@ -1,6 +1,6 @@
 import * as Y from "yjs";
 import { describe, expect, it, vi } from "vitest";
-import { createCollabSnapshotSync } from "./collabSnapshotSync";
+import { collabSnapshotStoreDelayMs, createCollabSnapshotSync } from "./collabSnapshotSync";
 import { createCollabTextDocument } from "./collabTextModel";
 import { createYjsCollabTextAdapter } from "./collabYjsTextAdapter";
 import type { RoomRecoveryStore } from "./collabRuntimeAdapters";
@@ -115,5 +115,32 @@ describe("collaboration snapshot sync", () => {
       "invalid-message",
       "The encrypted room recovery state could not be decrypted.",
     );
+  });
+
+  it("uses a production-safe debounce before storing recovery state", () => {
+    const textDocument = createCollabTextDocument("local");
+    const setTimeoutFn = vi.fn(() => "timer-1");
+    const clearTimeoutFn = vi.fn();
+    const recoveryStore: RoomRecoveryStore = {
+      load: vi.fn(),
+      save: vi.fn(),
+    };
+    const sync = createCollabSnapshotSync({
+      roomId: "room-1",
+      roomKey: "room-key",
+      textAdapter,
+      textDocument,
+      canUseSnapshots: () => true,
+      recoveryStore,
+      mergeStates: textAdapter.mergeUpdates,
+      onTextChange: vi.fn(),
+      emitRecoveryEvent: vi.fn(),
+      setTimeoutFn,
+      clearTimeoutFn,
+    });
+
+    sync.scheduleStore();
+
+    expect(setTimeoutFn).toHaveBeenCalledWith(expect.any(Function), collabSnapshotStoreDelayMs);
   });
 });

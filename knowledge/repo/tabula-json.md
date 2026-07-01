@@ -16,7 +16,9 @@ through `VITE_TABULA_JSON_URL`.
 
 Production and self-hosted `tabula-md` builds require `VITE_TABULA_JSON_URL` for
 Create snapshot link. Production builds must not silently point encrypted
-snapshot sharing at localhost.
+snapshot sharing at localhost. The hosted service should run the Node
+`tabula-json` API on Google App Engine with a Google Cloud Storage bucket for
+encrypted blobs.
 
 # Boundaries
 
@@ -28,7 +30,8 @@ snapshot sharing at localhost.
 - Local development expects a sibling checkout at `../tabula-json` unless
   `VITE_TABULA_JSON_URL` points elsewhere.
 - Hosted deployments should configure allowed origins, payload limits, rate
-  limits, TLS, and object storage for encrypted snapshots.
+  limits, TLS, Google App Engine service account access, and private Google
+  Cloud Storage object storage for encrypted snapshots.
 
 # Related
 

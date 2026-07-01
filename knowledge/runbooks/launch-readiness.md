@@ -57,10 +57,12 @@ collaboration workspace and common failure modes are understandable.
 - Production Start session has been checked without `VITE_TABULA_ROOM_URL` and
   shows a clear unavailable state instead of localhost fallback.
 - The Room server has allowed origins, payload limits, rate limits, and no
-  durable snapshot data directory.
+  durable snapshot data directory. Hosted `rooms.tabula.md` runs the public
+  relay behind nginx with pm2 restart supervision.
 - Firebase Firestore rules allow only ciphertext room recovery documents.
 - The JSON snapshot service has allowed origins, payload limits, rate limits,
-  and persistent encrypted object storage.
+  Google App Engine deployment, and a private Google Cloud Storage bucket for
+  encrypted object storage.
 - Server logs and tests do not receive `roomKey` or plaintext Markdown.
 - Server logs and tests do not receive `snapshotKey` or plaintext Markdown.
 
@@ -72,7 +74,9 @@ collaboration workspace and common failure modes are understandable.
 - App allowed origin configured in room service.
 - App allowed origin configured in JSON snapshot service.
 - Firebase room recovery storage is enabled and rules are deployed.
-- JSON snapshot storage is persistent.
+- `rooms.tabula.md` VM nginx and pm2 are configured.
+- `json.tabula.md` App Engine deployment is configured.
+- JSON snapshot storage uses a private Google Cloud Storage bucket.
 - Error logs redact URL fragments and ciphertext keys.
 
 # Test Readiness
