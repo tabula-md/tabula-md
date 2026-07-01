@@ -8,8 +8,7 @@ import type { EncryptedEnvelope } from "./roomProtocol";
 export type RoomServerMetadata = {
   roomId: string;
   activeConnections: number;
-  snapshotVersion: number | null;
-  updatedAt: string | null;
+  updatedAt?: string | null;
 };
 
 type PresencePayload = CollaborationCollaborator & {
@@ -32,27 +31,13 @@ export const createRoomApiUrl = (baseUrl: string, roomId: string, suffix = "") =
   `${baseUrl}/v1/rooms/${encodeURIComponent(roomId)}${suffix}`;
 
 export const toRoomMeta = (metadata: RoomServerMetadata): CollaborationRoomMeta => {
-  const snapshotVersion = metadata.snapshotVersion ?? 0;
-  const latestSnapshot =
-    metadata.snapshotVersion && metadata.updatedAt
-      ? [
-          {
-            id: "latest",
-            createdAt: metadata.updatedAt,
-            textLength: 0,
-            updateSize: 0,
-            version: metadata.snapshotVersion,
-          },
-        ]
-      : [];
-
   return {
     roomId: metadata.roomId,
-    version: snapshotVersion,
-    snapshotCount: metadata.snapshotVersion ? 1 : 0,
+    version: 0,
+    snapshotCount: 0,
     lastSavedAt: metadata.updatedAt ?? undefined,
     lastUpdatedAt: metadata.updatedAt ?? undefined,
-    snapshots: latestSnapshot,
+    snapshots: [],
   };
 };
 
@@ -65,7 +50,7 @@ export const isEncryptedEnvelope = (value: unknown): value is EncryptedEnvelope 
   return (
     envelope.v === 1 &&
     typeof envelope.roomId === "string" &&
-    ["yjs-update", "presence", "snapshot"].includes(String(envelope.kind)) &&
+    ["yjs-update", "presence", "state-init", "snapshot"].includes(String(envelope.kind)) &&
     typeof envelope.version === "number" &&
     typeof envelope.iv === "string" &&
     typeof envelope.ciphertext === "string" &&

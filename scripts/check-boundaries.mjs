@@ -188,7 +188,7 @@ const isObjectPropertyName = (node) =>
 
 const reportCoreBrowserGlobals = (sourceFile) => {
   const localBindings = collectFileLocalBindings(sourceFile);
-  const forbiddenGlobals = ["window", "document"];
+  const forbiddenGlobals = ["window", "document", "localStorage", "sessionStorage", "indexedDB", "fetch", "btoa", "atob"];
 
   const visit = (node) => {
     if (

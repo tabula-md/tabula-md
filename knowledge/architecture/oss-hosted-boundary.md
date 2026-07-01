@@ -7,13 +7,16 @@ tags: [architecture, oss, hosted, deployment]
 
 # Boundary
 
-Tabula.md is one product with two public open-source components and one
-official hosted deployment:
+Tabula.md is one product with three public open-source components, one hosted
+provider choice, and one official hosted deployment:
 
 - `tabula-md`: the open-source Markdown workspace app.
-- `tabula-room`: the open-source encrypted collaboration room server.
+- `tabula-room`: the open-source encrypted collaboration room relay.
+- `tabula-json`: the open-source encrypted Snapshot link store.
+- Firebase: hosted encrypted live-room recovery provider for v0.
 - `tabula.md`: the official hosted deployment of the Tabula app, connected to an
-  operator-managed deployment of `tabula-room`.
+  operator-managed deployment of `tabula-room`, `tabula-json`, and Firebase
+  recovery config.
 
 This is intentionally similar to the Excalidraw shape: a public client repo, a
 separate public room server repo, and an official hosted product surface. The
@@ -28,7 +31,8 @@ remain coherent and self-hostable.
 
 - `packages/tabula`: pure Tabula.md product contracts and deterministic models.
 - `tabula-app`: the hosted app shell and browser runtime wiring.
-- external services: room relay and encrypted JSON snapshot storage.
+- external services: room relay, encrypted Firebase live recovery, and encrypted
+  JSON snapshot storage.
 
 `packages/tabula` is the public core surface. It may contain Markdown editing
 commands, text patch logic, workspace state transitions, document runtime
@@ -65,6 +69,8 @@ The public app repo should contain:
 - client-side collaboration code;
 - provider-neutral deployment docs for static hosting;
 - `VITE_TABULA_ROOM_URL` as the room service configuration point;
+- `VITE_TABULA_JSON_URL` as the Snapshot service configuration point;
+- `VITE_TABULA_FIREBASE_CONFIG` as the hosted recovery configuration point;
 - a clear unavailable state when no room service URL is configured.
 
 The public app repo should not contain:
@@ -81,7 +87,6 @@ The public room repo should contain:
 
 - the Node room server;
 - WebSocket collaboration relay behavior;
-- encrypted snapshot persistence;
 - Docker and local development instructions;
 - CORS, payload-limit, and rate-limit configuration;
 - provider-neutral production requirements;
@@ -105,7 +110,8 @@ live in the public OSS repos, such as:
 - DNS and custom-domain automation;
 - hosted service environment templates;
 - monitoring, alerting, and incident runbooks;
-- provider-specific deployment wrappers for the public Tabula app and room server;
+- provider-specific deployment wrappers for the public Tabula app, room server,
+  JSON store, and Firebase rules;
 - billing, account, or Tabula+ service code that should not live in the OSS
   repos.
 
@@ -121,7 +127,8 @@ The official hosted service should feel like this:
 2. The app opens directly into a local-first Markdown workspace.
 3. The user can write without an account.
 4. The user can open Share and start a live session.
-5. The hosted build already has the official `tabula-room` service configured.
+5. The hosted build already has the official `tabula-room`, `tabula-json`, and
+   Firebase recovery configuration.
 6. The copied `/#room=<roomId>,<roomKey>` link opens the same Markdown file in another
    browser.
 7. The room server never receives the room key or plaintext Markdown.
@@ -134,10 +141,13 @@ The self-hosted OSS path should feel like this:
 
 1. A developer clones `tabula-md`.
 2. A developer clones `tabula-room`.
-3. They run `tabula-room`.
-4. They set `VITE_TABULA_ROOM_URL` when building or running `tabula-md`.
-5. Share > Start session works against their room server.
-6. If no room service is configured, the Share surface remains visible but
+3. They optionally clone `tabula-json`.
+4. They run `tabula-room`.
+5. They set `VITE_TABULA_ROOM_URL` when building or running `tabula-md`.
+6. They set `VITE_TABULA_FIREBASE_CONFIG` or accept relay-only collaboration
+   without recovery after all tabs close.
+7. Share > Start session works against their room server.
+8. If no room service is configured, the Share surface remains visible but
    Start session explains that collaboration is unavailable.
 
 # Related

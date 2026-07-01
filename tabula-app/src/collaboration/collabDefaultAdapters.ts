@@ -7,6 +7,7 @@ import {
 import { createBrowserCollabRuntimeClock, type CollabRuntimeAdapters } from "./collabRuntimeAdapters";
 import { createYjsCollabTextAdapter } from "./collabYjsTextAdapter";
 import { createDefaultRoomTransport } from "./roomTransport";
+import { createFirebaseRoomRecoveryStore } from "../data/firebase";
 
 export const createDefaultCollabRuntimeAdapters = (): CollabRuntimeAdapters => ({
   clock: createBrowserCollabRuntimeClock(),
@@ -18,4 +19,5 @@ export const createDefaultCollabRuntimeAdapters = (): CollabRuntimeAdapters => (
   text: createYjsCollabTextAdapter(),
   createRoomTransport: createDefaultRoomTransport,
   resolveRoomBaseUrl: resolveTabulaRoomBaseUrl,
+  roomRecoveryStore: createFirebaseRoomRecoveryStore(),
 });

@@ -3,7 +3,7 @@ import type { CollabSnapshotFetchResult } from "./collabSnapshotSync";
 import type { ConnectionStatus } from "./liveCollaboration";
 
 type RecoveryType = "reconnected" | "invalid-message";
-type SnapshotFetchSuccess = Exclude<CollabSnapshotFetchResult, false>;
+type SnapshotFetchSuccess = CollabSnapshotFetchResult;
 
 type JoinResult =
   | {
@@ -28,12 +28,11 @@ type OfflineResult =
 type CollabTransportControllerOptions = {
   isClosed: () => boolean;
   fetchSnapshot: () => Promise<CollabSnapshotFetchResult>;
-  markJoinBlocked: () => void;
   markJoined: () => JoinResult;
   markOffline: (reason: "disconnect" | "connect-error") => OfflineResult;
   setStatus: (status: ConnectionStatus) => void;
-  disconnectTransport: () => void;
   emitCurrentState: () => Promise<void>;
+  emitStateInit: () => Promise<void>;
   publishPresence: () => Promise<void>;
   shouldStoreSnapshot: (snapshotFetchResult: SnapshotFetchSuccess) => boolean;
   storeSnapshot: () => Promise<boolean>;
@@ -47,12 +46,11 @@ type CollabTransportControllerOptions = {
 export const createCollabTransportHandlers = ({
   isClosed,
   fetchSnapshot,
-  markJoinBlocked,
   markJoined,
   markOffline,
   setStatus,
-  disconnectTransport,
   emitCurrentState,
+  emitStateInit,
   publishPresence,
   shouldStoreSnapshot,
   storeSnapshot,
@@ -75,13 +73,6 @@ export const createCollabTransportHandlers = ({
     }
 
     const snapshotFetchResult = await fetchSnapshot();
-    if (!snapshotFetchResult) {
-      markJoinBlocked();
-      setStatus("failed");
-      disconnectTransport();
-      return;
-    }
-
     setStatus("connected");
     const joinResult = markJoined();
     if (joinResult.reconnected) {
@@ -95,6 +86,9 @@ export const createCollabTransportHandlers = ({
   },
   onMessage: (envelope) => {
     void routeEnvelope(envelope);
+  },
+  onPeerJoined: () => {
+    void emitStateInit();
   },
   onPeers: (message) => {
     if (pruneCollaborators(message.peers)) {

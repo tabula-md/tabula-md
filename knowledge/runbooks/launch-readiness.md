@@ -33,12 +33,13 @@ collaboration workspace and common failure modes are understandable.
 - User B can join by link without account setup.
 - Both users can type simultaneously.
 - Presence appears without dominating the UI.
-- Reloading a live room restores document content.
+- Reloading a live room restores document content through encrypted Firebase
+  recovery.
 
 # Data Trust
 
 - Local drafts survive refresh.
-- Live rooms persist beyond server memory.
+- Live rooms persist beyond relay memory through encrypted Firebase recovery.
 - Users can tell whether a document is local or live.
 - Users can recover or copy content when collaboration fails.
 - Runtime data such as `.tabula-room` and `.tabula-room-smoke` is not
@@ -51,10 +52,13 @@ collaboration workspace and common failure modes are understandable.
   `VITE_TABULA_ROOM_URL`.
 - The Tabula app build points to the deployed JSON snapshot URL with
   `VITE_TABULA_JSON_URL`.
+- The Tabula app build includes `VITE_TABULA_FIREBASE_CONFIG` for encrypted
+  live recovery.
 - Production Start session has been checked without `VITE_TABULA_ROOM_URL` and
   shows a clear unavailable state instead of localhost fallback.
-- The Room server has allowed origins, payload limits, rate limits, and a
-  persistent encrypted snapshot data directory.
+- The Room server has allowed origins, payload limits, rate limits, and no
+  durable snapshot data directory.
+- Firebase Firestore rules allow only ciphertext room recovery documents.
 - The JSON snapshot service has allowed origins, payload limits, rate limits,
   and persistent encrypted object storage.
 - Server logs and tests do not receive `roomKey` or plaintext Markdown.
@@ -64,9 +68,10 @@ collaboration workspace and common failure modes are understandable.
 
 - `VITE_TABULA_ROOM_URL=https://rooms.tabula.md`
 - `VITE_TABULA_JSON_URL=https://json.tabula.md`
+- `VITE_TABULA_FIREBASE_CONFIG={...}`
 - App allowed origin configured in room service.
 - App allowed origin configured in JSON snapshot service.
-- Room snapshot storage is persistent.
+- Firebase room recovery storage is enabled and rules are deployed.
 - JSON snapshot storage is persistent.
 - Error logs redact URL fragments and ciphertext keys.
 

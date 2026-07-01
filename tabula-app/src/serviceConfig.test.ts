@@ -10,6 +10,7 @@ describe("service config", () => {
     expect(
       getTabulaServiceConfig({
         DEV: false,
+        VITE_TABULA_FIREBASE_CONFIG: " {\"projectId\":\"tabula-test\"} ",
         VITE_TABULA_JSON_URL: "https://json.tabula.test///",
         VITE_TABULA_PLUS_ENABLED: "true",
         VITE_TABULA_PUBLISH_URL: "https://publish.tabula.test/",
@@ -18,6 +19,7 @@ describe("service config", () => {
     ).toEqual({
       roomUrl: "https://rooms.tabula.test",
       jsonUrl: "https://json.tabula.test",
+      firebaseConfig: "{\"projectId\":\"tabula-test\"}",
       publishUrl: "https://publish.tabula.test",
       plusEnabled: true,
       isDev: false,

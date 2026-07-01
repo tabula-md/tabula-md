@@ -17,14 +17,16 @@ end-to-end-encrypted room model.
 - `roomId` is public routing metadata.
 - `roomKey` is client-only and must never be sent to the server.
 - Realtime messages are encrypted in the browser before transmission.
-- Room snapshots are encrypted in the browser before storage.
-- The server only relays or stores ciphertext, IVs, versions, and timestamps.
+- Live recovery state is encrypted in the browser before storage.
+- The room relay only relays ciphertext. Firebase and `tabula-json` store
+  ciphertext, IVs, versions, and timestamps or object metadata.
 
 # Current Direction
 
-Live collaboration uses the separate `tabula-room` server. The Tabula app keeps
-Yjs document merge behavior in the browser and encrypts Yjs updates, presence,
-and any recovery snapshots before relay or storage.
+Live collaboration uses the separate relay-only `tabula-room` server. The
+Tabula app keeps Yjs document merge behavior in the browser and encrypts Yjs
+updates, presence, state-init payloads, and Firebase recovery state before
+relay or storage.
 
 Automerge is not the v1 collaboration dependency. It remains a possible future
 spike if Yjs cannot satisfy Tabula.md's Markdown source editing and hosted room

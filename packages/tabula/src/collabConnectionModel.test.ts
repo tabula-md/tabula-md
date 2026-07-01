@@ -10,34 +10,23 @@ import {
 
 describe("collaboration connection model", () => {
   it("creates room API URLs with encoded room ids", () => {
-    expect(createRoomApiUrl("https://rooms.test", "room/1", "/snapshot")).toBe(
-      "https://rooms.test/v1/rooms/room%2F1/snapshot",
-    );
+    expect(createRoomApiUrl("https://rooms.test", "room/1")).toBe("https://rooms.test/v1/rooms/room%2F1");
   });
 
-  it("maps room server metadata into product room metadata", () => {
+  it("maps relay-only room server metadata into product room metadata", () => {
     expect(
       toRoomMeta({
         roomId: "room-1",
         activeConnections: 3,
-        snapshotVersion: 7,
         updatedAt: "2026-06-29T00:00:00.000Z",
       }),
     ).toEqual({
       roomId: "room-1",
-      version: 7,
-      snapshotCount: 1,
+      version: 0,
+      snapshotCount: 0,
       lastSavedAt: "2026-06-29T00:00:00.000Z",
       lastUpdatedAt: "2026-06-29T00:00:00.000Z",
-      snapshots: [
-        {
-          id: "latest",
-          createdAt: "2026-06-29T00:00:00.000Z",
-          textLength: 0,
-          updateSize: 0,
-          version: 7,
-        },
-      ],
+      snapshots: [],
     });
   });
 

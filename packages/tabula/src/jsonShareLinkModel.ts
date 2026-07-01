@@ -143,24 +143,7 @@ export const validateJsonShareCreateResponse = (
   };
 };
 
-export const encodeBase64Url = (bytes: Uint8Array) => {
-  let binary = "";
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-};
-
-export const decodeBase64Url = (value: string) => {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-  const binary = atob(padded);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
-};
+export { decodeBase64Url, encodeBase64Url };
 
 const requireString = (value: unknown, fieldName: string) => {
   if (typeof value !== "string") {
@@ -179,3 +162,4 @@ const requireNonEmptyString = (value: unknown, fieldName: string) => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+import { decodeBase64Url, encodeBase64Url } from "./data/base64Url";

@@ -5,9 +5,10 @@ Core product contracts for Tabula.md.
 This package is intentionally small and browser-service agnostic. It contains
 pure models for Markdown editing, workspace files, document controls, comments,
 status labels, live room links, encrypted JSON snapshot links, and the pure
-parts of collaboration presence. The Tabula app in `tabula-app` wires these
-contracts to React, CodeMirror, local storage, collaboration transports, and
-network services.
+parts of collaboration presence. It also owns the Excalidraw-style data and
+room envelope contracts used by JSON Snapshot links and live recovery. The
+Tabula app in `tabula-app` wires these contracts to React, CodeMirror, local
+storage, collaboration transports, Firebase, and network services.
 
 ## Boundary
 
@@ -16,6 +17,8 @@ Keep in this package:
 - Markdown text transforms and formatting commands.
 - Workspace file and tab state transitions.
 - Share link parsing and URL contracts.
+- AES-GCM primitives through `globalThis.crypto`.
+- Versioned encrypted data encoding for Snapshot links and recovery blobs.
 - Comment/status/document control view models.
 - Collaboration envelope, session, collaborator, and presence models that do
   not require a transport.
@@ -35,9 +38,9 @@ Keep outside this package:
 - React components and hooks.
 - CodeMirror extensions and editor refs.
 - Browser storage, file picker, clipboard, and download behavior.
-- Socket.IO, fetch, Yjs transactions, or browser crypto wiring.
-- `tabula-room`, `tabula-json`, Cloudflare, Render, or production deployment
-  settings.
+- Socket.IO, fetch, Yjs transactions, Firebase SDKs, or browser app wiring.
+- `tabula-room`, `tabula-json`, Firebase project settings, Cloudflare, Render,
+  or production deployment settings.
 - Product surfaces that depend on a service account, billing, auth, or runtime
   environment.
 
@@ -56,6 +59,8 @@ identifier, not the decryption key.
 ```ts
 import {
   applyMarkdownFormat,
+  encodeEncryptedData,
+  generateEncryptionKey,
   createJsonShareUrl,
   parseRoomShareUrl,
 } from "@tabula-md/tabula";
@@ -68,10 +73,21 @@ const nextText = applyMarkdownFormat(
   { from: 0, to: 5 },
   "bold",
 ).text;
+
+const key = await generateEncryptionKey();
+const encrypted = await encodeEncryptedData(new TextEncoder().encode("# Draft"), key);
+```
+
+Subpath exports are available for lower-level integrations:
+
+```ts
+import { encryptData } from "@tabula-md/tabula/data/encryption";
+import { createRoomEnvelope } from "@tabula-md/tabula/room";
 ```
 
 ## Service App Relationship
 
-`tabula-app` is the tabula.md service app. It can choose to enable or hide service
-features such as live collaboration, encrypted snapshot upload, Send to..., or
-future Tabula+ boundaries without changing the pure contracts here.
+`tabula-app` is the tabula.md service app. It can choose to enable or hide
+service features such as live collaboration, Firebase recovery, encrypted
+snapshot upload, Send to..., or future Tabula+ boundaries without changing the
+pure contracts here.
