@@ -52,6 +52,7 @@ Set these environment variables for the capabilities you want to enable:
 
 - `VITE_TABULA_ROOM_URL` for **Share > Start session**.
 - `VITE_TABULA_JSON_URL` for **Snapshot link**.
+- `VITE_TABULA_FIREBASE_CONFIG` for encrypted live-room recovery.
 
 Without those service URLs, the matching feature stays unavailable instead of
 falling back to localhost. See
@@ -60,7 +61,8 @@ falling back to localhost. See
 ## Official Hosted Service
 
 [`tabula.md`](https://tabula.md) is the managed hosted deployment of the same
-OSS app pointed at the official room and encrypted snapshot services.
+OSS app pointed at the official room relay, encrypted snapshot service, and
+Firebase live recovery provider.
 
 ## Contributing
 

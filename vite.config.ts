@@ -76,6 +76,10 @@ export default defineConfig({
             return "lezer-vendor";
           }
 
+          if (includesPackage(normalizedId, "firebase") || normalizedId.includes("/node_modules/@firebase/")) {
+            return "firebase-vendor";
+          }
+
           if (
             includesPackage(normalizedId, "yjs") ||
             includesPackage(normalizedId, "lib0") ||

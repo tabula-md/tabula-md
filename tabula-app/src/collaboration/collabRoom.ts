@@ -2,6 +2,11 @@ import {
   createRoomShareUrl as createRoomShareUrlFromModel,
   decodeBase64Url,
   encodeBase64Url,
+  createRoomEnvelope,
+  decryptRoomEnvelope,
+  generateEncryptionKey,
+  getCrypto,
+  importEncryptionKey,
   parseRoomFromHash,
   parseRoomKeyFromHash,
   parseRoomLocation,
@@ -18,7 +23,7 @@ import {
 } from "../serviceConfig";
 import type { EncryptedEnvelope, EnvelopeKind } from "./roomProtocol";
 
-type SnapshotFetchResult = "missing" | "restored";
+type SnapshotFetchResult = "missing" | "restored" | "unavailable";
 
 type ResolveTabulaRoomUrlOptions = {
   configuredUrl?: string | null;
@@ -41,8 +46,6 @@ export type TabulaRoomAvailability =
 export const ROOM_UNCONFIGURED_MESSAGE =
   tabulaServiceConfig.copy.roomUnconfiguredMessage;
 
-const AES_GCM_IV_BYTES = 12;
-
 export {
   decodeBase64Url,
   encodeBase64Url,
@@ -59,17 +62,15 @@ export const shouldStoreSnapshotAfterJoin = ({
 }: {
   hasUnstoredLocalChanges: boolean;
   snapshotFetchResult: SnapshotFetchResult;
-}) => hasUnstoredLocalChanges || snapshotFetchResult === "missing";
+}) => snapshotFetchResult !== "unavailable" && (hasUnstoredLocalChanges || snapshotFetchResult === "missing");
 
 export const generateRoomKey = () => {
-  const bytes = new Uint8Array(ROOM_KEY_BYTES);
-  crypto.getRandomValues(bytes);
-  return encodeBase64Url(bytes);
+  return generateEncryptionKey(ROOM_KEY_BYTES);
 };
 
 export const generateRoomId = () => {
   const bytes = new Uint8Array(ROOM_ID_BYTES);
-  crypto.getRandomValues(bytes);
+  getCrypto().getRandomValues(bytes);
   return encodeBase64Url(bytes);
 };
 
@@ -88,12 +89,7 @@ export const createRoomSession = (origin: string): RoomSession => {
 };
 
 export const importRoomKey = async (encodedKey: string) => {
-  const rawKey = decodeBase64Url(encodedKey);
-  if (rawKey.byteLength !== ROOM_KEY_BYTES) {
-    throw new Error("Room key must be 32 bytes");
-  }
-
-  return crypto.subtle.importKey("raw", toArrayBuffer(rawKey), "AES-GCM", false, ["encrypt", "decrypt"]);
+  return importEncryptionKey(encodedKey, ["encrypt", "decrypt"], ROOM_KEY_BYTES);
 };
 
 export const encryptBytesForRoom = async (
@@ -103,31 +99,18 @@ export const encryptBytesForRoom = async (
   version: number,
   plaintext: Uint8Array,
 ): Promise<EncryptedEnvelope> => {
-  const iv = new Uint8Array(AES_GCM_IV_BYTES);
-  crypto.getRandomValues(iv);
-  const ciphertext = new Uint8Array(
-    await crypto.subtle.encrypt({ name: "AES-GCM", iv }, roomKey, toArrayBuffer(plaintext)),
-  );
-
-  return {
-    v: 1,
+  return createRoomEnvelope({
+    roomKey,
     roomId,
     kind,
     version,
-    iv: encodeBase64Url(iv),
-    ciphertext: encodeBase64Url(ciphertext),
-    createdAt: new Date().toISOString(),
-  };
+    plaintext,
+  });
 };
 
 export const decryptEnvelopeForRoom = async (roomKey: CryptoKey, envelope: EncryptedEnvelope) => {
-  const iv = decodeBase64Url(envelope.iv);
-  const ciphertext = decodeBase64Url(envelope.ciphertext);
-  return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, roomKey, toArrayBuffer(ciphertext)));
+  return decryptRoomEnvelope({ roomKey, envelope });
 };
-
-const toArrayBuffer = (bytes: Uint8Array) =>
-  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 
 export const resolveTabulaRoomBaseUrl = ({
   configuredUrl = tabulaServiceConfig.roomUrl,

@@ -116,6 +116,45 @@ export {
 } from "./jsonShareLinkModel";
 
 export type {
+  DecryptDataOptions,
+  EncryptedData,
+  EncryptDataOptions,
+} from "./data/encryption";
+export {
+  AES_GCM_IV_BYTES,
+  DEFAULT_ENCRYPTION_KEY_BYTES,
+  createIV,
+  decryptData,
+  encryptData,
+  generateEncryptionKey,
+  getCrypto,
+  importEncryptionKey,
+  toArrayBuffer,
+} from "./data/encryption";
+
+export type {
+  DecodeEncryptedDataOptions,
+  EncodeEncryptedDataOptions,
+  EncryptedDataEncodingInfo,
+} from "./data/encode";
+export {
+  decodeEncryptedData,
+  encodeEncryptedData,
+} from "./data/encode";
+
+export type {
+  SerializeShareSnapshotInput,
+} from "./data/json";
+export {
+  createShareSnapshotPayload as createShareSnapshotPayloadFromData,
+  parseShareSnapshot,
+  restoreShareSnapshot,
+  serializeShareSnapshot,
+} from "./data/json";
+
+export { restoreShareSnapshotPayload } from "./data/restore";
+
+export type {
   LineSurfaceAnnotation,
   LineSurfaceAnnotationRowOptions,
   LineSurfaceRect,
@@ -193,6 +232,15 @@ export type {
   RoomJoinedMessage,
   RoomPeersMessage,
 } from "./roomProtocol";
+
+export type { RoomEnvelopeMetadata } from "./room/envelope";
+export {
+  createRoomAad,
+  createRoomEnvelope,
+  decryptRoomEnvelope,
+  isEnvelopeKind,
+  validateRoomPayload,
+} from "./room/envelope";
 
 export type {
   ParsedRoomLocation,

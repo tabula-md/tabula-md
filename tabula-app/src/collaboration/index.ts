@@ -3,7 +3,6 @@ export * from "./collabConnectionModel";
 export * from "./collabDefaultAdapters";
 export * from "./collabEnvelopeRouter";
 export * from "./collabRoom";
-export * from "./collabRoomClient";
 export * from "./collabRuntime";
 export * from "./collabRuntimeAdapters";
 export * from "./collabSessionState";

@@ -3,6 +3,7 @@ import type { EncryptedEnvelope, RoomJoinedMessage, RoomPeersMessage } from "./r
 export type RoomTransportHandlers = {
   onConnect: () => void;
   onJoined: (message: RoomJoinedMessage) => void;
+  onPeerJoined: (message: { roomId: string; clientId: string }) => void;
   onMessage: (envelope: unknown) => void;
   onPeers: (message: RoomPeersMessage) => void;
   onError: (message: { error?: string }) => void;
@@ -14,6 +15,7 @@ export type RoomTransport = {
   readonly connected: boolean;
   connect: () => void;
   sendEnvelope: (envelope: EncryptedEnvelope) => void;
+  sendVolatileEnvelope: (envelope: EncryptedEnvelope) => void;
   disconnect: () => void;
 };
 
@@ -28,12 +30,14 @@ type SocketLike = {
   readonly connected: boolean;
   on(event: "connect", handler: () => void): SocketLike;
   on(event: "room:joined", handler: (message: RoomJoinedMessage) => void): SocketLike;
+  on(event: "room:peer-joined", handler: (message: { roomId: string; clientId: string }) => void): SocketLike;
   on(event: "room:message", handler: (envelope: unknown) => void): SocketLike;
   on(event: "room:peers", handler: (message: RoomPeersMessage) => void): SocketLike;
   on(event: "room:error", handler: (message: { error?: string }) => void): SocketLike;
   on(event: "disconnect" | "connect_error", handler: () => void): SocketLike;
   emit(event: "room:join", payload: { roomId: string; clientId: string }): void;
   emit(event: "room:message", payload: EncryptedEnvelope): void;
+  emit(event: "room:volatile-message", payload: EncryptedEnvelope): void;
   connect(): void;
   disconnect(): void;
 };
@@ -68,6 +72,7 @@ export const createSocketIoRoomTransport: CreateRoomTransport = ({ baseUrl, room
           nextSocket.emit("room:join", { roomId, clientId });
         });
         nextSocket.on("room:joined", handlers.onJoined);
+        nextSocket.on("room:peer-joined", handlers.onPeerJoined);
         nextSocket.on("room:message", handlers.onMessage);
         nextSocket.on("room:peers", handlers.onPeers);
         nextSocket.on("room:error", handlers.onError);
@@ -104,6 +109,9 @@ export const createSocketIoRoomTransport: CreateRoomTransport = ({ baseUrl, room
     },
     sendEnvelope(envelope) {
       socket?.emit("room:message", envelope);
+    },
+    sendVolatileEnvelope(envelope) {
+      socket?.emit("room:volatile-message", envelope);
     },
     disconnect() {
       disconnectRequested = true;

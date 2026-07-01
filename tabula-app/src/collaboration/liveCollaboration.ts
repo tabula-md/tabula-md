@@ -119,7 +119,6 @@ export const createCollabConnection = ({
   let transport: ReturnType<CollabRuntimeAdapters["createRoomTransport"]> | null = null;
   let envelopeVersion = 0;
   let hasUnstoredLocalChanges = Boolean(initialText);
-  let roomBaseUrl = "";
   const sessionState = createCollabSessionState();
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
@@ -144,12 +143,17 @@ export const createCollabConnection = ({
     return adapters.crypto.encryptEnvelope(roomKey, roomId, kind, envelopeVersion, plaintext);
   };
 
-  const emitEnvelope = async (kind: EnvelopeKind, plaintext: Uint8Array) => {
+  const emitEnvelope = async (kind: EnvelopeKind, plaintext: Uint8Array, options: { volatile?: boolean } = {}) => {
     if (!transport?.connected || !roomKey || sessionState.isBlocked()) {
       return;
     }
 
-    transport.sendEnvelope(await encryptEnvelope(kind, plaintext));
+    const envelope = await encryptEnvelope(kind, plaintext);
+    if (options.volatile) {
+      transport.sendVolatileEnvelope(envelope);
+      return;
+    }
+    transport.sendEnvelope(envelope);
   };
 
   const localUpdateBuffer = createCollabUpdateBuffer({
@@ -171,29 +175,24 @@ export const createCollabConnection = ({
         fileTitle: currentFileTitle,
         selection: currentSelection,
       }),
+      { volatile: true },
     );
   };
 
   const snapshotSync = createCollabSnapshotSync({
     roomId,
+    roomKey: encodedRoomKey,
     textAdapter: adapters.text,
     textDocument,
-    getBaseUrl: () => roomBaseUrl,
     canUseSnapshots: () => Boolean(roomKey) && !sessionState.isBlocked(),
-    encryptSnapshot: (update) => encryptEnvelope("snapshot", update),
-    decryptSnapshot: (envelope) => {
-      if (!roomKey) {
-        throw new Error("Room key is not available");
-      }
-      return adapters.crypto.decryptEnvelope(roomKey, envelope);
-    },
+    recoveryStore: adapters.roomRecoveryStore,
+    mergeStates: adapters.text.mergeUpdates,
     onTextChange,
     onRoomMetaChange,
     onSnapshotStored: () => {
       hasUnstoredLocalChanges = false;
     },
     emitRecoveryEvent,
-    fetcher: adapters.fetcher,
     setTimeoutFn: adapters.clock.setTimeout,
     clearTimeoutFn: adapters.clock.clearTimeout,
   });
@@ -237,22 +236,20 @@ export const createCollabConnection = ({
       emitRecoveryEvent("invalid-message", startConfig.message);
       return;
     }
-    roomBaseUrl = startConfig.baseUrl;
     roomKey = startConfig.roomKey;
 
     transport = adapters.createRoomTransport({
-      baseUrl: roomBaseUrl,
+      baseUrl: startConfig.baseUrl,
       roomId,
       clientId: currentIdentity.id,
       handlers: createCollabTransportHandlers({
         isClosed: () => closedByClient,
         fetchSnapshot: () => snapshotSync.fetch(),
-        markJoinBlocked: () => sessionState.markJoinBlocked(),
         markJoined: () => sessionState.markJoined(),
         markOffline: (reason) => sessionState.markOffline(reason),
         setStatus: onStatusChange,
-        disconnectTransport: () => transport?.disconnect(),
         emitCurrentState: () => emitEnvelope("yjs-update", adapters.text.encodeState(textDocument)),
+        emitStateInit: () => emitEnvelope("state-init", adapters.text.encodeState(textDocument)),
         publishPresence,
         shouldStoreSnapshot: (snapshotFetchResult) =>
           shouldStoreSnapshotAfterJoin({ hasUnstoredLocalChanges, snapshotFetchResult }),
@@ -298,6 +295,9 @@ export const createCollabConnection = ({
       }
       unsubscribeTextUpdates();
       snapshotSync.clearTimer();
+      if (hasUnstoredLocalChanges) {
+        void snapshotSync.store();
+      }
       localUpdateBuffer.clear();
       transport?.disconnect();
       adapters.text.destroy(textDocument);

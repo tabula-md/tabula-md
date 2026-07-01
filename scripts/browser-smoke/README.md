@@ -20,7 +20,8 @@ npm run test:browser:production:collab
 ```
 
 This opens the deployed app, starts a session, joins the invite link in a second browser context, verifies live
-Enter/backspace/line-merge sync, checks presence UI, waits for the room snapshot, and confirms reload restore.
+Enter/backspace/line-merge sync, checks presence UI, checks peer `state-init`, and confirms hosted Firebase
+recovery after every live-room tab closes.
 
 Run the deployed encrypted snapshot path after `tabula.md` and `json.tabula.md` are live:
 

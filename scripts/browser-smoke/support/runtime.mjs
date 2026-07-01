@@ -11,10 +11,8 @@ const jsonPort = Number(process.env.TABULA_TEST_JSON_PORT ?? 3004);
 const externalUrl = process.env.TABULA_TEST_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${port}`;
 const roomUrl = (process.env.VITE_TABULA_ROOM_URL ?? `http://127.0.0.1:${roomPort}`).replace(/\/$/, "");
-const roomSnapshotMode = process.env.TABULA_ROOM_SNAPSHOT_MODE ?? (externalUrl ? "http" : "file");
 const publishUrl = (process.env.VITE_TABULA_PUBLISH_URL ?? `http://127.0.0.1:${publishPort}`).replace(/\/$/, "");
 const jsonUrl = (process.env.VITE_TABULA_JSON_URL ?? `http://127.0.0.1:${jsonPort}`).replace(/\/$/, "");
-const roomDataDir = process.env.TABULA_ROOM_DATA_DIR ?? path.join(process.cwd(), ".tabula-room-smoke");
 const publishDataDir = process.env.TABULA_PUBLISH_DATA_DIR ?? path.join(process.cwd(), ".tabula-publish-smoke");
 const jsonDataDir = process.env.TABULA_JSON_DATA_DIR ?? path.join(process.cwd(), ".tabula-json-smoke");
 const isWindows = process.platform === "win32";
@@ -330,8 +328,6 @@ const createSmokeContext = (browser, controls = {}) => ({
   jsonDataDir,
   jsonUrl: controls.jsonUrl,
   restartRoomServer: controls.restartRoomServer,
-  roomDataDir,
-  roomSnapshotMode,
   roomUrl,
   startRoomServer: controls.startRoomServer,
   stopRoomServer: controls.stopRoomServer,
@@ -359,7 +355,6 @@ const spawnRoomServer = async () => {
           ...process.env,
           PORT: String(roomPort),
           TABULA_ROOM_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
-          TABULA_ROOM_DATA_DIR: roomDataDir,
         },
         shell: true,
         stdio: ["ignore", "pipe", "pipe"],
@@ -371,7 +366,6 @@ const spawnRoomServer = async () => {
             ...process.env,
             PORT: String(roomPort),
             TABULA_ROOM_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
-            TABULA_ROOM_DATA_DIR: roomDataDir,
           },
           stdio: ["ignore", "pipe", "pipe"],
         })
@@ -525,8 +519,6 @@ export const smokeConfig = {
   port,
   roomPort,
   roomUrl,
-  roomSnapshotMode,
-  roomDataDir,
   publishPort,
   publishUrl,
   publishDataDir,

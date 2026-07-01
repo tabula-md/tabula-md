@@ -47,7 +47,7 @@ export const createCollabEnvelopeRouter = ({
 
     try {
       const plaintext = await decryptEnvelope(envelope);
-      if (envelope.kind === "yjs-update") {
+      if (envelope.kind === "yjs-update" || envelope.kind === "state-init") {
         const result = textAdapter.applyRemoteUpdate(textDocument, plaintext);
         if (result) {
           onTextChange(result.text, result.change);
