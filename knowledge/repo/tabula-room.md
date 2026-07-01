@@ -9,7 +9,7 @@ tags: [repo, collaboration, room, e2ee]
 # Scope
 
 `tabula-room` is a separate open-source repository for live collaboration
-transport and encrypted snapshot storage.
+transport. It is relay-only and does not persist room recovery snapshots.
 
 It is not part of this `tabula-md` workspace. The Tabula app talks to it through
 `VITE_TABULA_ROOM_URL`.
@@ -24,11 +24,11 @@ production builds must not silently point live collaboration at localhost.
   versions, and timestamps.
 - The server must not receive `roomKey` or plaintext Markdown.
 - The client keeps Yjs merge behavior and encrypts updates before relay or
-  snapshot storage.
+  Firebase recovery storage.
 - Local development expects a sibling checkout at `../tabula-room` unless
   `TABULA_ROOM_REPO_DIR` or `VITE_TABULA_ROOM_URL` points elsewhere.
 - Hosted deployments should configure allowed origins, payload limits, rate
-  limits, TLS, and encrypted snapshot storage or an explicit relay-only policy.
+  limits, TLS, and health checks.
 
 # Related
 

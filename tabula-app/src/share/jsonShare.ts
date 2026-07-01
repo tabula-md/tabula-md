@@ -1,8 +1,16 @@
 import {
   createJsonShareUrl,
+  decodeEncryptedData,
   decodeBase64Url,
+  decryptData,
+  encodeEncryptedData,
   encodeBase64Url,
+  generateEncryptionKey,
+  importEncryptionKey,
   JSON_SHARE_KEY_BYTES,
+  parseShareSnapshot,
+  serializeShareSnapshot,
+  toArrayBuffer,
   trimTrailingSlash,
   validateJsonShareCreateResponse,
   type JsonShareRoute,
@@ -10,7 +18,6 @@ import {
 import {
   createShareSnapshot,
   createShareSnapshotPayload,
-  validateShareSnapshotPayload,
   type ShareSnapshot,
   type ShareSnapshotPayload,
 } from "./shareSnapshotPayload";
@@ -43,10 +50,7 @@ type ReadJsonShareSnapshotOptions = {
   fetchImpl?: typeof fetch;
 };
 
-const JSON_SHARE_IV_BYTES = 12;
 const JSON_SHARE_BLOB_MAGIC = new Uint8Array([0x54, 0x4a, 0x53, 0x31]);
-const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
 
 export const getConfiguredJsonShareServiceUrl = () => {
   return tabulaServiceConfig.jsonUrl;
@@ -114,65 +118,50 @@ export const readJsonShareSnapshot = async ({
 };
 
 const encryptJsonSharePayload = async (payload: ShareSnapshotPayload, encodedKey: string) => {
-  const cryptoKey = await importJsonShareKey(encodedKey, ["encrypt"]);
-  const iv = new Uint8Array(JSON_SHARE_IV_BYTES);
-  crypto.getRandomValues(iv);
-  const encrypted = await crypto.subtle.encrypt(
-    {
-      name: "AES-GCM",
-      iv,
-    },
-    cryptoKey,
-    textEncoder.encode(JSON.stringify(payload)),
-  );
-  const encryptedBytes = new Uint8Array(encrypted);
-  const blob = new Uint8Array(JSON_SHARE_BLOB_MAGIC.byteLength + JSON_SHARE_IV_BYTES + encryptedBytes.byteLength);
-  blob.set(JSON_SHARE_BLOB_MAGIC, 0);
-  blob.set(iv, JSON_SHARE_BLOB_MAGIC.byteLength);
-  blob.set(encryptedBytes, JSON_SHARE_BLOB_MAGIC.byteLength + JSON_SHARE_IV_BYTES);
-
-  return blob;
+  return encodeEncryptedData(serializeShareSnapshot(payload), {
+    encryptionKey: encodedKey,
+    metadata: { kind: "json-share", schemaVersion: payload.schemaVersion },
+  });
 };
 
 const decryptJsonSharePayload = async (
   encryptedBlob: Uint8Array,
   encodedKey: string,
 ): Promise<ShareSnapshotPayload> => {
-  if (encryptedBlob.byteLength <= JSON_SHARE_BLOB_MAGIC.byteLength + JSON_SHARE_IV_BYTES) {
-    throw new Error("Share link failed: invalid snapshot payload");
-  }
-  for (let index = 0; index < JSON_SHARE_BLOB_MAGIC.byteLength; index += 1) {
-    if (encryptedBlob[index] !== JSON_SHARE_BLOB_MAGIC[index]) {
-      throw new Error("Share link failed: unsupported snapshot payload");
-    }
+  if (isLegacyJsonShareBlob(encryptedBlob)) {
+    return decryptLegacyJsonSharePayload(encryptedBlob, encodedKey);
   }
 
-  const cryptoKey = await importJsonShareKey(encodedKey, ["decrypt"]);
-  const ivStart = JSON_SHARE_BLOB_MAGIC.byteLength;
-  const encryptedStart = JSON_SHARE_BLOB_MAGIC.byteLength + JSON_SHARE_IV_BYTES;
-  const decrypted = await crypto.subtle.decrypt(
-    {
-      name: "AES-GCM",
-      iv: encryptedBlob.slice(ivStart, encryptedStart),
-    },
-    cryptoKey,
-    encryptedBlob.slice(encryptedStart),
-  );
-  return validateShareSnapshotPayload(JSON.parse(textDecoder.decode(decrypted)) as unknown);
+  const decoded = await decodeEncryptedData(encryptedBlob, {
+    decryptionKey: encodedKey,
+  });
+  return parseShareSnapshot(decoded.data);
 };
 
 const generateJsonShareKey = () => {
-  const bytes = new Uint8Array(JSON_SHARE_KEY_BYTES);
-  crypto.getRandomValues(bytes);
-  return encodeBase64Url(bytes);
+  return generateEncryptionKey(JSON_SHARE_KEY_BYTES);
 };
 
-const importJsonShareKey = async (encodedKey: string, usages: KeyUsage[]) => {
+const isLegacyJsonShareBlob = (encryptedBlob: Uint8Array) =>
+  encryptedBlob.byteLength > JSON_SHARE_BLOB_MAGIC.byteLength &&
+  JSON_SHARE_BLOB_MAGIC.every((byte, index) => encryptedBlob[index] === byte);
+
+const decryptLegacyJsonSharePayload = async (
+  encryptedBlob: Uint8Array,
+  encodedKey: string,
+): Promise<ShareSnapshotPayload> => {
   const rawKey = decodeBase64Url(encodedKey);
   if (rawKey.byteLength !== JSON_SHARE_KEY_BYTES) {
     throw new Error("Share link key must be 32 bytes");
   }
-  return crypto.subtle.importKey("raw", toArrayBuffer(rawKey), "AES-GCM", false, usages);
+  const ivStart = JSON_SHARE_BLOB_MAGIC.byteLength;
+  const encryptedStart = JSON_SHARE_BLOB_MAGIC.byteLength + 12;
+  if (encryptedBlob.byteLength <= encryptedStart) {
+    throw new Error("Share link failed: invalid snapshot payload");
+  }
+  const key = await importEncryptionKey(encodeBase64Url(rawKey), ["decrypt"], JSON_SHARE_KEY_BYTES);
+  const decrypted = await decryptData(encryptedBlob.slice(ivStart, encryptedStart), encryptedBlob.slice(encryptedStart), key);
+  return parseShareSnapshot(new Uint8Array(decrypted));
 };
 
 const readJsonShareError = async (response: Response) => {
@@ -189,6 +178,3 @@ const readJsonShareError = async (response: Response) => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
-
-const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer =>
-  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;

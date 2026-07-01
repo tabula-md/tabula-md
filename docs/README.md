@@ -9,8 +9,8 @@ Start here:
   hosted/self-hosted environment setup.
 - [Snapshot links](shareable-links.md) - encrypted `#json` snapshot import links,
   service, and hosted/self-hosted environment setup.
-- [Self-hosting](self-hosting.md) - local app, room server, JSON snapshot store,
-  and production build wiring.
+- [Self-hosting](self-hosting.md) - local app, room relay, Firebase live
+  recovery, JSON snapshot store, and production build wiring.
 - [Contributing](../CONTRIBUTING.md) - public issue and pull request guidance.
 - [Security](../SECURITY.md) - private vulnerability reporting.
 - [Changelog](../CHANGELOG.md) - user-facing release notes.
@@ -20,7 +20,7 @@ Start here:
 Tabula.md has three public open-source components:
 
 - `tabula-md` is the local-first Markdown workspace Tabula app.
-- `tabula-room` is the encrypted collaboration room server.
+- `tabula-room` is the encrypted collaboration room relay.
 - `tabula-json` is the encrypted snapshot store for snapshot import links.
 
 `tabula.md` is the official hosted deployment of those components. Hosted

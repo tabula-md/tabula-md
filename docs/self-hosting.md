@@ -10,7 +10,7 @@ flowchart LR
   app --> core["packages/tabula pure contracts"]
   app --> room["tabula-room websocket relay"]
   app --> json["tabula-json encrypted snapshot store"]
-  room --> roomStorage["encrypted room snapshots"]
+  app --> firebase["Firebase Firestore live recovery"]
   json --> objectStorage["encrypted #json blobs"]
 ```
 
@@ -48,7 +48,21 @@ Live collaboration links use:
 https://your-app.example/#room=<roomId>,<roomKey>
 ```
 
-The room server should never receive `roomKey` or plaintext Markdown.
+The room server is relay-only. It should never receive `roomKey`, plaintext
+Markdown, or durable recovery snapshots.
+
+To enable durable live-room recovery, configure Firebase in the Tabula app. The
+browser encrypts recovery state before writing it to Firestore:
+
+```sh
+VITE_TABULA_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}' \
+VITE_TABULA_ROOM_URL=http://localhost:3002 \
+npm run dev
+```
+
+Without Firebase, existing peers can still initialize newly joined peers during
+the current live session, but a room cannot recover after every browser tab has
+closed.
 
 ## Snapshot Links
 
@@ -83,6 +97,7 @@ Build the static app:
 ```sh
 VITE_TABULA_ROOM_URL=https://rooms.example.com \
 VITE_TABULA_JSON_URL=https://json.example.com \
+VITE_TABULA_FIREBASE_CONFIG='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}' \
 npm run build
 ```
 
@@ -92,8 +107,11 @@ Serve `dist` from a static host. Configure the room and JSON services with:
 - Allowed origins for the app domain.
 - Payload limits.
 - Rate limits.
-- Persistent encrypted snapshot storage.
+- Firebase Firestore rules for encrypted live recovery, if recovery is enabled.
+- Persistent encrypted object storage for JSON snapshots.
 - Logs that exclude URL fragments, keys, and plaintext Markdown.
 
 If `VITE_TABULA_ROOM_URL` or `VITE_TABULA_JSON_URL` is missing, the matching
-Share action remains unavailable instead of falling back to localhost.
+Share action remains unavailable instead of falling back to localhost. If
+`VITE_TABULA_FIREBASE_CONFIG` is missing, live collaboration still works while
+peers are connected, but hosted recovery is disabled.

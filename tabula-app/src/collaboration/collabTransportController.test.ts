@@ -5,15 +5,14 @@ const createHarness = (overrides: Partial<Parameters<typeof createCollabTranspor
   const options: Parameters<typeof createCollabTransportHandlers>[0] = {
     isClosed: vi.fn(() => false),
     fetchSnapshot: vi.fn(async () => "missing" as const),
-    markJoinBlocked: vi.fn(),
     markJoined: vi.fn(() => ({ reconnected: false as const })),
     markOffline: vi.fn(() => ({
       status: "failed" as const,
       notify: false as const,
     })),
     setStatus: vi.fn(),
-    disconnectTransport: vi.fn(),
     emitCurrentState: vi.fn(async () => {}),
+    emitStateInit: vi.fn(async () => {}),
     publishPresence: vi.fn(async () => {}),
     shouldStoreSnapshot: vi.fn(() => false),
     storeSnapshot: vi.fn(async () => true),
@@ -55,17 +54,15 @@ describe("collaboration transport controller", () => {
     expect(options.clearCollaborators).not.toHaveBeenCalled();
   });
 
-  it("blocks the session when the snapshot cannot be fetched or decrypted", async () => {
+  it("continues joining when recovery is unavailable", async () => {
     const { options, handlers } = createHarness({
-      fetchSnapshot: vi.fn(async () => false as const),
+      fetchSnapshot: vi.fn(async () => "unavailable" as const),
     });
 
     await handlers.onJoined({ roomId: "room-1", clientId: "self", peerCount: 0 });
 
-    expect(options.markJoinBlocked).toHaveBeenCalled();
-    expect(options.setStatus).toHaveBeenCalledWith("failed");
-    expect(options.disconnectTransport).toHaveBeenCalled();
-    expect(options.emitCurrentState).not.toHaveBeenCalled();
+    expect(options.setStatus).toHaveBeenCalledWith("connected");
+    expect(options.emitCurrentState).toHaveBeenCalled();
   });
 
   it("publishes document state and presence after joining", async () => {
@@ -107,6 +104,14 @@ describe("collaboration transport controller", () => {
     handlers.onMessage(envelope);
 
     expect(options.routeEnvelope).toHaveBeenCalledWith(envelope);
+  });
+
+  it("emits state-init when a new peer joins", () => {
+    const { options, handlers } = createHarness();
+
+    handlers.onPeerJoined({ roomId: "room-1", clientId: "remote" });
+
+    expect(options.emitStateInit).toHaveBeenCalled();
   });
 
   it("publishes collaborators only when the peer list changes", () => {

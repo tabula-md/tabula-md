@@ -49,7 +49,8 @@ Tabula.md v1 keeps the collaboration runtime focused:
 - Yjs is the live text merge layer.
 - Web Crypto encrypts Yjs updates, presence, and snapshots before relay or
   storage.
-- `tabula-room` relays or stores ciphertext envelopes only.
+- `tabula-room` relays ciphertext envelopes only.
+- Firebase stores encrypted live recovery state for hosted v0.
 - Dexie is the preferred next local persistence layer for workspace files,
   metadata, comments, settings, and migration away from single-key
   `localStorage`.
@@ -74,8 +75,9 @@ falling back to insecure behavior.
 
 # Persistence Boundary
 
-Encrypted room snapshots may be used for room recovery, but Start session
-should not promise permanent document hosting. Product language must stay clear:
+Encrypted room recovery state may be used for reload/rejoin recovery, but Start
+session should not promise permanent document hosting. Product language must
+stay clear:
 
 - local files remain the user's editable source.
 - live rooms are for collaboration.

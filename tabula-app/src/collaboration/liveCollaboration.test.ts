@@ -16,7 +16,6 @@ import {
 } from ".";
 
 const VALID_ROOM_KEY = "A".repeat(43);
-const NEXT_VALID_ROOM_KEY = "B".repeat(43);
 
 describe("Tabula Room keys", () => {
   it("generates a 16-byte base64url room id for public room routing", () => {
@@ -118,9 +117,8 @@ describe("Tabula Room keys", () => {
 
     expect(parseRoomShareUrl("https://tabula.test/r/room-123")).toBeNull();
     expect(parseRoomShareUrl("https://tabula.test/r/room-123#key=secret-key")).toBeNull();
-    expect(parseRoomShareUrl(`https://tabula.test/#room=room-123,${NEXT_VALID_ROOM_KEY}`)?.roomKey).toBe(
-      NEXT_VALID_ROOM_KEY,
-    );
+    const nextRoomKey = generateRoomKey();
+    expect(parseRoomShareUrl(`https://tabula.test/#room=room-123,${nextRoomKey}`)?.roomKey).toBe(nextRoomKey);
     expect(parseRoomShareUrl("not a url")).toBeNull();
   });
 });
@@ -169,8 +167,8 @@ describe("Tabula Room encrypted envelopes", () => {
   });
 });
 
-describe("Tabula Room snapshot storage policy", () => {
-  it("stores a snapshot for new rooms and local changes, but not for a pure restore", () => {
+describe("Room recovery storage policy", () => {
+  it("stores recovery state for new rooms and local changes, but not for unavailable recovery or pure restore", () => {
     expect(
       shouldStoreSnapshotAfterJoin({
         hasUnstoredLocalChanges: false,
@@ -189,6 +187,13 @@ describe("Tabula Room snapshot storage policy", () => {
       shouldStoreSnapshotAfterJoin({
         hasUnstoredLocalChanges: false,
         snapshotFetchResult: "restored",
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldStoreSnapshotAfterJoin({
+        hasUnstoredLocalChanges: true,
+        snapshotFetchResult: "unavailable",
       }),
     ).toBe(false);
   });

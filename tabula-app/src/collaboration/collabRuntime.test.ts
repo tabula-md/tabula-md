@@ -109,13 +109,13 @@ describe("collaboration runtime model", () => {
     const event: CollabRecoveryEvent = {
       id: "event-1",
       type: "snapshot-recovered",
-      message: "Recovered from room snapshot.",
+      message: "Recovered from encrypted room recovery state.",
       createdAt: "2026-06-29T00:02:00.000Z",
     };
 
     expect(getRecoveryEventPatch(event)).toEqual({
       type: "snapshot-recovered",
-      message: "Recovered from room snapshot.",
+      message: "Recovered from encrypted room recovery state.",
       createdAt: "2026-06-29T00:02:00.000Z",
     });
   });

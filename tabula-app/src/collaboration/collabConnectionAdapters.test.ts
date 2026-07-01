@@ -105,6 +105,8 @@ const createFakeTextAdapter = (): CollabTextAdapter => ({
 const createFakeAdapters = () => {
   let handlers: RoomTransportHandlers | undefined;
   const sentEnvelopes: EncryptedEnvelope[] = [];
+  const volatileEnvelopes: EncryptedEnvelope[] = [];
+  const savedRecoveryStates: Uint8Array[] = [];
   const clock = createFakeClock();
   const text = createFakeTextAdapter();
 
@@ -117,6 +119,7 @@ const createFakeAdapters = () => {
         connected: true,
         connect: vi.fn(() => handlers?.onConnect()),
         sendEnvelope: vi.fn((envelope) => sentEnvelopes.push(envelope)),
+        sendVolatileEnvelope: vi.fn((envelope) => volatileEnvelopes.push(envelope)),
         disconnect: vi.fn(),
       };
     },
@@ -138,25 +141,13 @@ const createFakeAdapters = () => {
       ),
       decryptEnvelope: vi.fn(async (_roomKey, envelope) => (envelope as FakeEnvelope).plaintext),
     },
-    fetcher: vi
-      .fn()
-      .mockResolvedValueOnce(new Response(null, { status: 404 }))
-      .mockResolvedValueOnce(
-        Response.json({
-          roomId: "room-1",
-          activeConnections: 1,
-          snapshotVersion: 0,
-          updatedAt: "2026-07-01T00:00:00.000Z",
-        }),
-      )
-      .mockResolvedValue(
-        Response.json({
-          roomId: "room-1",
-          activeConnections: 1,
-          snapshotVersion: 1,
-          updatedAt: "2026-07-01T00:00:00.000Z",
-        }),
-      ),
+    roomRecoveryStore: {
+      load: vi.fn(async () => null),
+      save: vi.fn(async ({ state }) => {
+        savedRecoveryStates.push(state);
+        return { version: savedRecoveryStates.length };
+      }),
+    },
   };
 
   return {
@@ -169,12 +160,14 @@ const createFakeAdapters = () => {
       return handlers;
     },
     sentEnvelopes,
+    volatileEnvelopes,
+    savedRecoveryStates,
   };
 };
 
 describe("collaboration connection adapters", () => {
   it("runs the collaboration connection through injected transport, crypto, text, clock, and fetch adapters", async () => {
-    const { adapters, clock, getHandlers, sentEnvelopes } = createFakeAdapters();
+    const { adapters, clock, getHandlers, sentEnvelopes, volatileEnvelopes, savedRecoveryStates } = createFakeAdapters();
     const onStatusChange = vi.fn();
     const onTextChange = vi.fn();
     const connection = createCollabConnection({
@@ -201,26 +194,14 @@ describe("collaboration connection adapters", () => {
     expect(onStatusChange).toHaveBeenCalledWith("connecting");
     expect(onStatusChange).toHaveBeenCalledWith("connected");
     expect(sentEnvelopes.map((envelope) => envelope.kind)).toContain("yjs-update");
-    expect(sentEnvelopes.map((envelope) => envelope.kind)).toContain("presence");
+    expect(volatileEnvelopes.map((envelope) => envelope.kind)).toContain("presence");
+    expect(savedRecoveryStates).toHaveLength(1);
 
     connection.applyLocalText("hello\nworld", [{ from: 5, to: 5, insert: "\nworld" }]);
     clock.flushTimeouts();
     await Promise.resolve();
 
-    expect(adapters.crypto.encryptEnvelope).toHaveBeenCalledWith(
-      expect.anything(),
-      "room-1",
-      "snapshot",
-      expect.any(Number),
-      expect.any(Uint8Array),
-    );
-    expect(adapters.fetcher).toHaveBeenCalledWith("https://rooms.test/v1/rooms/room-1/snapshot", {
-      method: "PUT",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: expect.any(String),
-    });
+    expect(savedRecoveryStates).toHaveLength(2);
     expect(onTextChange).not.toHaveBeenCalledWith("hello\nworld", expect.anything());
 
     await getHandlers().onMessage({

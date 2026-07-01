@@ -11,6 +11,26 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./data/encryption": {
+      "types": "./dist/data/encryption.d.ts",
+      "import": "./dist/data/encryption.js"
+    },
+    "./data/encode": {
+      "types": "./dist/data/encode.d.ts",
+      "import": "./dist/data/encode.js"
+    },
+    "./data/json": {
+      "types": "./dist/data/json.d.ts",
+      "import": "./dist/data/json.js"
+    },
+    "./data/restore": {
+      "types": "./dist/data/restore.d.ts",
+      "import": "./dist/data/restore.js"
+    },
+    "./room": {
+      "types": "./dist/room/envelope.d.ts",
+      "import": "./dist/room/envelope.js"
     }
   },
   "files": [

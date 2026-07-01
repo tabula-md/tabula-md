@@ -36,6 +36,7 @@ import {
 const createHandlers = (): RoomTransportHandlers => ({
   onConnect: vi.fn(),
   onJoined: vi.fn(),
+  onPeerJoined: vi.fn(),
   onMessage: vi.fn(),
   onPeers: vi.fn(),
   onError: vi.fn(),
@@ -95,6 +96,7 @@ describe("Socket.IO room transport", () => {
     });
     expect(socketState.socket.on).toHaveBeenCalledWith("connect", expect.any(Function));
     expect(socketState.socket.on).toHaveBeenCalledWith("room:joined", handlers.onJoined);
+    expect(socketState.socket.on).toHaveBeenCalledWith("room:peer-joined", handlers.onPeerJoined);
     expect(socketState.socket.on).toHaveBeenCalledWith("room:message", handlers.onMessage);
 
     expect(socketState.socket.connect).toHaveBeenCalledTimes(1);
@@ -153,6 +155,24 @@ describe("Socket.IO room transport", () => {
     transport.sendEnvelope(envelope);
 
     expect(socketState.socket.emit).toHaveBeenCalledWith("room:message", envelope);
+  });
+
+  it("relays volatile encrypted envelopes through the volatile socket event", async () => {
+    const transport = createSocketIoRoomTransport({
+      baseUrl: "https://rooms.tabula.test",
+      roomId: "room-123",
+      clientId: "client-456",
+      handlers: createHandlers(),
+    });
+    const envelope = createEnvelope();
+
+    transport.connect();
+    await vi.waitFor(() => {
+      expect(socketState.socket.connect).toHaveBeenCalledTimes(1);
+    });
+    transport.sendVolatileEnvelope(envelope);
+
+    expect(socketState.socket.emit).toHaveBeenCalledWith("room:volatile-message", envelope);
   });
 
   it("uses Socket.IO as the sole default room transport", async () => {

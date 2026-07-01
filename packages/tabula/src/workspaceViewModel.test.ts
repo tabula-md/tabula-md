@@ -9,7 +9,7 @@ import {
 } from "./workspaceViewModel";
 
 const validRoomShareUrl =
-  "https://tabula.md/#room=abcdefghijklmnopqrstuA,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  "https://tabula.md/#room=abcdefghijklmnopqrstuA,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 const file = (overrides: Partial<WorkspaceViewFile> = {}): WorkspaceViewFile => ({
   id: "file-1",
@@ -65,7 +65,7 @@ describe("workspace view model", () => {
     const brokenFile = file({
       id: "room",
       roomId: "abcdefghijklmnopqrstuA",
-      shareUrl: "https://tabula.md/#room=other,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      shareUrl: "https://tabula.md/#room=other,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
       connectionStatus: "connected",
     });
 

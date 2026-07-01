@@ -13,6 +13,7 @@ persistence, preserve these constraints:
 - Room keys stay in the URL fragment.
 - Room keys are never sent to the server.
 - Server storage contains ciphertext only.
+- The room relay must not persist recovery snapshots.
 - Decryption failure must not overwrite local state.
 - Start session must not imply durable publishing or complete revoke of already
   shared keys.

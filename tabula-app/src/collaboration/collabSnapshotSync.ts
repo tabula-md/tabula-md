@@ -1,27 +1,25 @@
-import type { EncryptedEnvelope } from "./roomProtocol";
-import { fetchRoomMeta, fetchRoomSnapshotEnvelope, putRoomSnapshotEnvelope, type FetchLike } from "./collabRoomClient";
 import type { CollabTextAdapter, CollabTextDocumentHandle } from "./collabRuntimeAdapters";
+import type { RoomRecoveryStore } from "./collabRuntimeAdapters";
 import type { RoomMeta } from "./liveCollaboration";
 import type { TextChange } from "@tabula-md/tabula";
 
 type TimeoutHandle = unknown;
-export type CollabSnapshotFetchResult = "missing" | "restored" | false;
+export type CollabSnapshotFetchResult = "missing" | "restored" | "unavailable";
 
 type SnapshotRecoveryType = "snapshot-recovered" | "invalid-message";
 
 type CollabSnapshotSyncOptions = {
   roomId: string;
+  roomKey: string;
   textAdapter: Pick<CollabTextAdapter, "applyRemoteUpdate" | "encodeState">;
   textDocument: CollabTextDocumentHandle;
-  getBaseUrl: () => string;
   canUseSnapshots: () => boolean;
-  encryptSnapshot: (update: Uint8Array) => Promise<EncryptedEnvelope>;
-  decryptSnapshot: (envelope: EncryptedEnvelope) => Promise<Uint8Array>;
+  recoveryStore: RoomRecoveryStore;
+  mergeStates: (states: readonly Uint8Array[]) => Uint8Array;
   onTextChange: (text: string, change?: TextChange) => void;
   onRoomMetaChange?: (meta: RoomMeta) => void;
   onSnapshotStored?: () => void;
   emitRecoveryEvent: (type: SnapshotRecoveryType, message: string) => void;
-  fetcher?: FetchLike;
   setTimeoutFn?: (callback: () => void, delayMs: number) => TimeoutHandle;
   clearTimeoutFn?: (handle: TimeoutHandle) => void;
 };
@@ -39,17 +37,16 @@ const defaultClearTimeout = (handle: TimeoutHandle) => clearTimeout(handle as Re
 
 export const createCollabSnapshotSync = ({
   roomId,
+  roomKey,
   textAdapter,
   textDocument,
-  getBaseUrl,
   canUseSnapshots,
-  encryptSnapshot,
-  decryptSnapshot,
+  recoveryStore,
+  mergeStates,
   onTextChange,
   onRoomMetaChange,
   onSnapshotStored,
   emitRecoveryEvent,
-  fetcher,
   setTimeoutFn = defaultSetTimeout,
   clearTimeoutFn = defaultClearTimeout,
 }: CollabSnapshotSyncOptions): CollabSnapshotSync => {
@@ -62,12 +59,7 @@ export const createCollabSnapshotSync = ({
     }
   };
 
-  const refreshMeta = async () => {
-    const meta = await fetchRoomMeta({ baseUrl: getBaseUrl(), roomId, fetcher });
-    if (meta) {
-      onRoomMetaChange?.(meta);
-    }
-  };
+  const refreshMeta = async () => undefined;
 
   const store = async () => {
     if (!canUseSnapshots()) {
@@ -75,18 +67,37 @@ export const createCollabSnapshotSync = ({
     }
 
     try {
-      const envelope = await encryptSnapshot(textAdapter.encodeState(textDocument));
-      const meta = await putRoomSnapshotEnvelope({ baseUrl: getBaseUrl(), roomId, envelope, fetcher });
-      if (!meta) {
+      const stored = await recoveryStore.save({
+        roomId,
+        roomKey,
+        state: textAdapter.encodeState(textDocument),
+        mergeStates,
+      });
+      if (!stored) {
         return false;
       }
 
       clearTimer();
       onSnapshotStored?.();
-      onRoomMetaChange?.(meta);
+      onRoomMetaChange?.({
+        roomId,
+        version: stored.version,
+        snapshotCount: 1,
+        lastSavedAt: new Date().toISOString(),
+        lastUpdatedAt: new Date().toISOString(),
+        snapshots: [
+          {
+            id: "firebase",
+            createdAt: new Date().toISOString(),
+            textLength: 0,
+            updateSize: 0,
+            version: stored.version,
+          },
+        ],
+      });
       return true;
     } catch {
-      emitRecoveryEvent("invalid-message", "The encrypted room snapshot could not be stored.");
+      emitRecoveryEvent("invalid-message", "The encrypted room recovery state could not be stored.");
       return false;
     }
   };
@@ -95,31 +106,24 @@ export const createCollabSnapshotSync = ({
     refreshMeta,
     async fetch() {
       if (!canUseSnapshots()) {
-        return false;
+        return "unavailable";
       }
 
       try {
-        const snapshot = await fetchRoomSnapshotEnvelope({ baseUrl: getBaseUrl(), roomId, fetcher });
-        if (snapshot.status === "missing") {
-          await refreshMeta();
+        const update = await recoveryStore.load(roomId, roomKey);
+        if (!update) {
           return "missing";
         }
-        if (snapshot.status === "invalid") {
-          emitRecoveryEvent("invalid-message", snapshot.message);
-          return false;
-        }
-
-        const update = await decryptSnapshot(snapshot.envelope);
         const result = textAdapter.applyRemoteUpdate(textDocument, update);
         if (result) {
           onTextChange(result.text, result.change);
         }
-        emitRecoveryEvent("snapshot-recovered", "Encrypted room snapshot restored.");
+        emitRecoveryEvent("snapshot-recovered", "Encrypted room recovery state restored.");
         await refreshMeta();
         return "restored";
       } catch {
-        emitRecoveryEvent("invalid-message", "The encrypted room snapshot could not be decrypted.");
-        return false;
+        emitRecoveryEvent("invalid-message", "The encrypted room recovery state could not be decrypted.");
+        return "unavailable";
       }
     },
     store,
