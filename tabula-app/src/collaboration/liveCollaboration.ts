@@ -273,6 +273,9 @@ export const createCollabConnection = ({
 
   return {
     applyLocalText(nextText: string, patches?: readonly TextPatch[]) {
+      if (patches?.length && collaborators.remapSelections(patches, nextText.length)) {
+        publishCollaborators();
+      }
       adapters.text.applyLocalText(textDocument, nextText, patches);
     },
     setPresence(nextPresence: { fileTitle?: string; selection?: LiveSelection }) {

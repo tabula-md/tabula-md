@@ -186,6 +186,47 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
     expect((await page.locator(".cm-lineNumbers").count()) === 1, "Line numbers should turn back on from Editor controls.");
 
+    await focusMarkdownEditor(page);
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.insertText(
+      Array.from({ length: 36 }, (_, index) => `long-unwrapped-segment-${index + 1}`).join(" "),
+    );
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
+    await page.getByRole("button", { name: "Line Wrapping" }).click();
+    await waitForRenderFrame(page);
+    const unwrappedGutterState = await page.evaluate(() => {
+      const scroller = document.querySelector(".cm-scroller");
+      const gutters = document.querySelector(".cm-gutters");
+      const activeGutter = document.querySelector(".cm-lineNumbers .cm-activeLineGutter");
+      if (scroller instanceof HTMLElement) {
+        scroller.scrollLeft = 180;
+      }
+
+      const gutterStyle = gutters instanceof HTMLElement ? getComputedStyle(gutters) : null;
+      const activeGutterStyle = activeGutter instanceof HTMLElement ? getComputedStyle(activeGutter) : null;
+      return {
+        scrollLeft: scroller instanceof HTMLElement ? scroller.scrollLeft : 0,
+        gutterBackground: gutterStyle?.backgroundColor ?? "",
+        gutterZIndex: gutterStyle?.zIndex ?? "",
+        activeGutterBackground: activeGutterStyle?.backgroundColor ?? "",
+      };
+    });
+    expect(unwrappedGutterState.scrollLeft > 0, "Wrapping-off editor content should be horizontally scrollable.");
+    expect(
+      unwrappedGutterState.gutterBackground !== "" &&
+        unwrappedGutterState.gutterBackground !== "rgba(0, 0, 0, 0)",
+      "Line number gutters should stay opaque when wrapping is disabled.",
+    );
+    expect(Number(unwrappedGutterState.gutterZIndex) >= 1, "Line number gutters should stay above scrolled text.");
+    expect(
+      unwrappedGutterState.activeGutterBackground !== "" &&
+        unwrappedGutterState.activeGutterBackground !== "rgba(0, 0, 0, 0)",
+      "Active line number gutters should not expose darker overlapped text underneath.",
+    );
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
+    await page.getByRole("button", { name: "Line Wrapping" }).click();
+    await waitForRenderFrame(page);
+
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await waitForEditorReady(page, { mode: "preview" });
     expect(!(await page.locator(".cm-lineNumbers").isVisible()), "Preview mode should not show editor line numbers.");
