@@ -368,7 +368,17 @@ async function runLiveEditingCorrectnessSmoke({ expect, firstPage, secondPage, f
     );
   }
 
-  return expectedLines.join("\n");
+  await focusMarkdownEditor(firstPage);
+  await firstPage.keyboard.press("ControlOrMeta+Home");
+  await firstPage.keyboard.insertText("Local cursor map prefix\n");
+  const remappedExpectedLines = ["Local cursor map prefix", ...expectedLines];
+  await waitForEditorLines(secondPage, remappedExpectedLines, 12_000);
+  await firstPage.waitForFunction(() => {
+    const cursor = document.querySelector(".cm-remote-cursor");
+    return cursor?.getAttribute("title")?.includes("line 4");
+  });
+
+  return remappedExpectedLines.join("\n");
 }
 
 function wait(ms) {

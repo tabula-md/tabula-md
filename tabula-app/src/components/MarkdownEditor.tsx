@@ -351,7 +351,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         emitHistoryState(update.view);
         const isExternalUpdate = update.transactions.some((transaction) => transaction.annotation(Transaction.remote));
 
-        if (update.selectionSet || (update.docChanged && !isExternalUpdate)) {
+        if (update.selectionSet || update.docChanged) {
           const selection = update.state.selection.main;
           onSelectionChangeRef.current?.({ from: selection.from, to: selection.to });
         }

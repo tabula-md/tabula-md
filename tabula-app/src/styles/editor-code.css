@@ -97,14 +97,17 @@
 }
 
 .markdown-editor .cm-gutters {
+  position: sticky;
+  left: 0;
+  z-index: 2;
   border: 0;
   color: var(--editor-gutter-text);
-  background: transparent;
+  background: var(--surface-panel);
 }
 
 .markdown-editor .cm-gutters-before,
 .markdown-editor .cm-gutters-after {
-  background: transparent;
+  background: var(--surface-panel);
 }
 
 .markdown-editor .cm-lineNumbers {
@@ -211,6 +214,10 @@
 .markdown-editor .cm-activeLineGutter {
   color: var(--text-soft);
   background: var(--editor-active-line-background);
+}
+
+.markdown-editor .cm-gutters .cm-activeLineGutter {
+  background: color-mix(in srgb, var(--editor-active-line-background) 100%, var(--surface-panel));
 }
 
 .markdown-editor .cm-content {

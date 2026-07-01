@@ -16,7 +16,11 @@ export type {
 export type {
   CollaboratorRegistry,
 } from "./collabCollaborators";
-export { createCollaboratorRegistry } from "./collabCollaborators";
+export {
+  createCollaboratorRegistry,
+  mapCollaborationPositionThroughTextPatches,
+  mapCollaborationSelectionThroughTextPatches,
+} from "./collabCollaborators";
 
 export type {
   RoomServerMetadata,
