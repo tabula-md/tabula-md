@@ -66,17 +66,17 @@ snapshot store. The current client contract is:
 
 ```txt
 GET  /health
-POST /api/v1/post/
-GET  /api/v1/:snapshotId
+POST /api/v2/post/
+GET  /api/v2/:snapshotId
 ```
 
-`POST /api/v1/post/` receives an `application/octet-stream` body containing the
+`POST /api/v2/post/` receives an `application/octet-stream` body containing the
 encrypted snapshot blob. It returns JSON:
 
 ```json
 {
   "id": "snapshot_id",
-  "data": "https://json.example.com/api/v1/snapshot_id"
+  "data": "https://json.example.com/api/v2/snapshot_id"
 }
 ```
 
@@ -87,7 +87,7 @@ app then creates the import URL locally:
 https://tabula.md/#json=<snapshotId>,<snapshotKey>
 ```
 
-`GET /api/v1/:snapshotId` returns the same encrypted octet-stream blob or `404`
+`GET /api/v2/:snapshotId` returns the same encrypted octet-stream blob or `404`
 when the snapshot is missing. The service never receives `snapshotKey` because
 it stays in the URL fragment.
 

@@ -39,7 +39,8 @@ an encrypted copy link for handoff, or send the context to a local coding agent.
 - Billing.
 - Public read-only publish.
 - Redis-backed room scaling.
-- R2/S3 blob storage.
+- Alternate object-storage providers beyond the hosted Google Cloud Storage
+  path.
 - Mobile-first editing.
 - Public template marketplace.
 - Deep GitHub/Notion/Linear sync.

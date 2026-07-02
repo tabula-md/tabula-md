@@ -32,9 +32,9 @@ describe("json share links", () => {
       return new Response(
         JSON.stringify({
           id: jsonId,
-          data: `https://json.tabula.md/api/v1/${jsonId}`,
+          data: `https://json.tabula.md/api/v2/${jsonId}`,
         }),
-        { status: 201 },
+        { status: 200 },
       );
     };
 
@@ -48,7 +48,7 @@ describe("json share links", () => {
     });
 
     expect(created.url).toMatch(/^https:\/\/tabula\.md\/#json=jsonShare123,/);
-    expect(createRequestUrl).toBe("https://json.tabula.md/api/v1/post/");
+    expect(createRequestUrl).toBe("https://json.tabula.md/api/v2/post/");
     expect(createRequestUrl).not.toContain(new URL(created.url).hash.slice(1));
     const encryptedBody = encryptedRequest;
     if (!encryptedBody) {
@@ -77,7 +77,7 @@ describe("json share links", () => {
       fetchImpl: readFetch as typeof fetch,
     });
 
-    expect(readRequestUrl).toBe("https://json.tabula.md/api/v1/jsonShare123");
+    expect(readRequestUrl).toBe("https://json.tabula.md/api/v2/jsonShare123");
     expect(readRequestUrl).not.toContain(route!.key);
     expect(snapshot?.id).toBe(jsonId);
     expect(snapshot?.url).toBe(created.url);
@@ -101,9 +101,9 @@ describe("json share links", () => {
           new Response(
             JSON.stringify({
               id: "jsonShare123",
-              data: "https://other.example/api/v1/jsonShare123",
+              data: "https://other.example/api/v2/jsonShare123",
             }),
-            { status: 201 },
+            { status: 200 },
           )) as typeof fetch,
       }),
     ).rejects.toThrow("Share link failed: invalid service response data");

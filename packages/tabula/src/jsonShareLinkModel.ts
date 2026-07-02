@@ -27,6 +27,8 @@ export type JsonShareLocation = {
 
 export const JSON_SHARE_KEY_BYTES = 32;
 export const JSON_SHARE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+export const JSON_SHARE_API_PREFIX = "/api/v2/";
+export const JSON_SHARE_POST_PATH = "/api/v2/post/";
 
 export const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
@@ -133,7 +135,7 @@ export const validateJsonShareCreateResponse = (
     throw new Error("Share link failed: invalid service response id");
   }
   const data = requireNonEmptyString(value.data, "data");
-  const expectedData = `${trimTrailingSlash(serviceUrl)}/api/v1/${id}`;
+  const expectedData = `${trimTrailingSlash(serviceUrl)}${JSON_SHARE_API_PREFIX}${id}`;
   if (data !== expectedData) {
     throw new Error("Share link failed: invalid service response data");
   }
