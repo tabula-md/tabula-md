@@ -34,7 +34,7 @@ export type CollabSnapshotSync = {
 
 const defaultSetTimeout = (callback: () => void, delayMs: number): TimeoutHandle => setTimeout(callback, delayMs);
 const defaultClearTimeout = (handle: TimeoutHandle) => clearTimeout(handle as ReturnType<typeof setTimeout>);
-export const collabSnapshotStoreDelayMs = 5_000;
+export const collabSnapshotStoreDelayMs = 1_000;
 
 export const createCollabSnapshotSync = ({
   roomId,
