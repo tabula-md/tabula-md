@@ -27,9 +27,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check knowledge bundle
-        run: npm run knowledge:check
-
       - name: Check OSS boundary
         run: npm run oss:check
 
@@ -38,9 +35,6 @@ jobs:
 
       - name: Check surface colors
         run: npm run test:surface-colors
-
-      - name: Test hooks
-        run: npm run test:hooks
 
       - name: Test
         run: npm test

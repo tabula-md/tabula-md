@@ -65,5 +65,5 @@ npm run test:browser
 
 ## Release Notes
 
-User-facing changes should be reflected in `CHANGELOG.md`. PR bodies are review
-artifacts and should not be copied directly into the changelog.
+User-facing changes should be described in the pull request. Maintainers may
+summarize them in GitHub Releases when a release is cut.

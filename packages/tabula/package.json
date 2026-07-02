@@ -2,7 +2,7 @@
   "name": "@tabula-md/tabula",
   "version": "0.1.0",
   "description": "Pure Tabula.md document, workspace, and share-link contracts.",
-  "private": true,
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
@@ -37,6 +37,22 @@
     "dist",
     "README.md",
     "package.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tabula-md/tabula-md.git",
+    "directory": "packages/tabula"
+  },
+  "homepage": "https://github.com/tabula-md/tabula-md/tree/main/packages/tabula#readme",
+  "bugs": {
+    "url": "https://github.com/tabula-md/tabula-md/issues"
+  },
+  "keywords": [
+    "markdown",
+    "local-first",
+    "collaboration",
+    "e2ee",
+    "tabula"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json"

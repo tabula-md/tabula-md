@@ -13,7 +13,6 @@ Start here:
   recovery, JSON snapshot store, and production build wiring.
 - [Contributing](../CONTRIBUTING.md) - public issue and pull request guidance.
 - [Security](../SECURITY.md) - private vulnerability reporting.
-- [Changelog](../CHANGELOG.md) - user-facing release notes.
 
 ## Repository Boundary
 
@@ -26,10 +25,3 @@ Tabula.md has three public open-source components:
 `tabula.md` is the official hosted deployment of those components. Hosted
 provider choices, production credentials, and private operations details do not
 belong in the public OSS repos.
-
-Maintainer workflow, agent instructions, architecture context, and internal
-runbooks live outside this directory:
-
-- [WORKFLOW](../WORKFLOW.md) - execution rules for maintainers and agents.
-- [Knowledge bundle](../knowledge/index.md) - durable project context for
-  maintainers and coding agents.

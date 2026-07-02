@@ -1,6 +1,0 @@
-{
-  "kind": "bash-policy",
-  "name": "blocks raw git push",
-  "command": "git push origin HEAD",
-  "expectedDecision": "block"
-}
