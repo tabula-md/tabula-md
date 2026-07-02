@@ -75,6 +75,3 @@ Firestore sees encrypted recovery state only.
 
 Do not send the URL hash, `roomKey`, plaintext Markdown, decrypted comments, or
 decrypted snapshots to the server, analytics, logs, or crash reports.
-
-For the architecture contract, see
-[Share Start session contract](../knowledge/architecture/share-start-session-contract.md).

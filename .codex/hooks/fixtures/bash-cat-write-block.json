@@ -1,6 +1,0 @@
-{
-  "kind": "bash-policy",
-  "name": "blocks shell source writes",
-  "command": "cat <<'EOF' > tabula-app/src/App.tsx\nexport const value = 1;\nEOF",
-  "expectedDecision": "block"
-}

@@ -1,34 +1,43 @@
 # Development
 
-This is the maintainer entry point for Tabula.md development.
+This is the public development entry point for Tabula.md.
 
-Use these sources in order:
-
-- `WORKFLOW.md` for execution rules, commands, PR metadata, validation, merge,
-  and cleanup.
-- `knowledge/index.md` for durable product, architecture, workflow, repository,
-  release, and launch context.
-- `AGENTS.md` or `CLAUDE.md` for agent-specific repo entry context.
-
-## Daily Start
+## Setup
 
 ```sh
-gt sync --delete-all
-gt checkout --trunk
-npm run workflow:status
+npm install
+npm run dev
 ```
 
-## Before Handoff
+Open `http://localhost:5173`.
+
+## Useful Commands
 
 ```sh
-npm run knowledge:check
-npm run pr:ready
+npm test
+npm run build
+npm run boundary:check
+npm run oss:check
+npm run test:browser
 ```
 
-Run the focused validation required by the files you changed. `pr:ready` checks
-PR shape and metadata, but it does not replace tests, builds, or browser smoke.
+Run focused browser suites when a change only touches one product area:
 
-## Public Contribution Docs
+```sh
+npm run test:browser:workspace
+npm run test:browser:editor
+npm run test:browser:layout
+npm run test:browser:panels
+npm run test:browser:collab
+npm run test:browser:json-share
+```
 
-Use `CONTRIBUTING.md` for public contributors and `SECURITY.md` for private
-vulnerability reporting.
+## Services
+
+Live collaboration and encrypted snapshot links use separate open-source
+services:
+
+- `tabula-room`: encrypted websocket relay.
+- `tabula-json`: encrypted snapshot blob store.
+
+See `docs/self-hosting.md` for local wiring.

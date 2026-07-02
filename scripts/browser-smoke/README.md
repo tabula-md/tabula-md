@@ -13,20 +13,24 @@ npm run test:browser -- --suite=editor-preview
 TABULA_BROWSER_SMOKE_SUITE=panels npm run test:browser
 ```
 
-Run the deployed collaboration path after `tabula.md` and `rooms.tabula.md` are live:
+Run a deployed collaboration path by pointing the smoke runner at your app and room service:
 
 ```sh
-npm run test:browser:production:collab
+TABULA_TEST_URL=https://your-app.example \
+VITE_TABULA_ROOM_URL=https://rooms.example.com \
+npm run test:browser -- --suite=collaboration
 ```
 
 This opens the deployed app, starts a session, joins the invite link in a second browser context, verifies live
-Enter/backspace/line-merge sync, checks presence UI, checks peer `state-init`, and confirms hosted Firebase
-recovery after every live-room tab closes.
+Enter/backspace/line-merge sync, checks presence UI, checks peer `state-init`, and confirms recovery behavior
+when recovery is configured.
 
-Run the deployed encrypted snapshot path after `tabula.md` and `json.tabula.md` are live:
+Run a deployed encrypted snapshot path by pointing the smoke runner at your app and JSON service:
 
 ```sh
-npm run test:browser:production:json-share
+TABULA_TEST_URL=https://your-app.example \
+VITE_TABULA_JSON_URL=https://json.example.com \
+npm run test:browser -- --suite=json-share
 ```
 
 This opens the deployed app, exports a `#json` snapshot link, opens that link in a separate browser context, confirms
