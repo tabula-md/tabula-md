@@ -44,6 +44,7 @@ const forbiddenTrackedPrefixes = new Map([
   [".codex/", "local agent hooks do not belong in the public OSS repo"],
   [".linear/", "private tracker templates do not belong in the public OSS repo"],
   [".release/", "private release templates do not belong in the public OSS repo"],
+  ["docs/", "maintainer docs belong outside the public OSS repo"],
   ["knowledge/", "maintainer knowledge bundles belong outside the public OSS repo"],
   ["firebase-project/", "provider-specific project scaffolding belongs outside the public OSS repo"],
 ]);

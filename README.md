@@ -3,8 +3,7 @@
 Local-first Markdown workspace for files that people and coding agents can
 share without leaving Markdown behind.
 
-[Open Tabula.md](https://tabula.md) · [Docs](docs/README.md) ·
-[Self-hosting](docs/self-hosting.md)
+[Open Tabula.md](https://tabula.md)
 
 Tabula.md is a focused editor for writing, previewing, commenting, and sharing
 Markdown files. It keeps Markdown as the source of truth instead of turning a
