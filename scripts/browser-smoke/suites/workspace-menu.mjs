@@ -421,12 +421,11 @@ export async function run(ctx) {
 
     await page.getByRole("tab", { name: "Share link" }).click();
     await waitForShareDialogState(page, { panel: "Share link" });
-    const preLiveUrl = page.url();
     await page.getByRole("button", { name: "Start session" }).click();
     await waitForShareDialogState(page, { text: "Invite link" });
     expect(
-      page.url() === preLiveUrl,
-      "Live -> Start session should keep the current workspace URL separate from the room invite link.",
+      new URL(page.url()).hash.startsWith("#room="),
+      "Live -> Start session should move the current tab to the canonical room URL.",
     );
     expect(
       (await page.getByText("Live collaboration").count()) > 0,
@@ -500,7 +499,7 @@ export async function run(ctx) {
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);
     expect(activeTab?.live, "Live -> Start session should mark the active tab as live.");
-    expect(!page.url().includes("#room="), "Live -> Start session should not move the current tab to a room route.");
+    expect(page.url().includes("#room="), "Live -> Start session should keep the current tab on the room route.");
   });
 
   await withPage(browser, `/#room=browserroom,${validRoomKey}`, async (page) => {

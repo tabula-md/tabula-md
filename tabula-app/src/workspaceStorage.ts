@@ -69,16 +69,6 @@ No dashboard first. No project ceremony. Open a file, write Markdown, and share 
 - Snapshot links export an encrypted copy that opens in another local workspace.
 `;
 export const isStarterReadmeText = (text: string) => text === STARTER_README_MARKDOWN;
-const CONNECTION_STATUSES = [
-  "idle",
-  "connecting",
-  "connected",
-  "reconnecting",
-  "disconnected",
-  "failed",
-  "offline",
-] as const;
-const RECOVERY_EVENT_TYPES: CollabRecoveryEvent["type"][] = ["reconnected", "snapshot-recovered", "invalid-message"];
 
 export type FileBookmark = {
   id: string;
@@ -364,29 +354,6 @@ const getFileViewMode = (value: unknown): FileViewMode | undefined =>
 const getReadingWidth = (value: unknown): ReadingWidth | undefined =>
   typeof value === "string" && READING_WIDTHS.includes(value as ReadingWidth) ? (value as ReadingWidth) : undefined;
 
-const getConnectionStatus = (value: unknown): ConnectionStatus | undefined => {
-  if (value === "offline") {
-    return "disconnected";
-  }
-
-  return typeof value === "string" && CONNECTION_STATUSES.includes(value as (typeof CONNECTION_STATUSES)[number])
-    ? (value as ConnectionStatus)
-    : undefined;
-};
-
-const getRecoveryEventType = (value: unknown): CollabRecoveryEvent["type"] | undefined =>
-  typeof value === "string" && RECOVERY_EVENT_TYPES.includes(value as CollabRecoveryEvent["type"])
-    ? (value as CollabRecoveryEvent["type"])
-    : undefined;
-
-const normalizeConnectionStatus = (status: ConnectionStatus | undefined, roomId?: string) => {
-  if (!roomId) {
-    return "idle";
-  }
-
-  return status === "connecting" || status === "reconnecting" ? "connecting" : "disconnected";
-};
-
 const normalizeFileBookmarks = (bookmarks: unknown, textLength: number): FileBookmark[] => {
   if (!Array.isArray(bookmarks)) {
     return [];
@@ -410,10 +377,7 @@ const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | 
   }
 
   const text = getString(value.text) ?? "";
-  const liveRoom = getUsableLiveRoom(getString(value.roomId), getString(value.shareUrl));
-  const connectionStatus = normalizeConnectionStatus(getConnectionStatus(value.connectionStatus), liveRoom.roomId);
   const splitRatio = getFiniteNumber(value.splitRatio);
-  const isLiveRoom = Boolean(liveRoom.roomId);
 
   return {
     id: getString(value.id) || randomId(),
@@ -425,15 +389,15 @@ const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | 
     lineWrapping: typeof value.lineWrapping === "boolean" ? value.lineWrapping : true,
     lineNumbers: typeof value.lineNumbers === "boolean" ? value.lineNumbers : true,
     bookmarks: normalizeFileBookmarks(value.bookmarks, text.length),
-    connectionStatus,
-    roomId: liveRoom.roomId,
-    shareUrl: liveRoom.shareUrl,
-    collaboratorCount: isLiveRoom ? (getFiniteNumber(value.collaboratorCount) ?? 0) : 0,
-    snapshotCount: isLiveRoom ? (getFiniteNumber(value.snapshotCount) ?? 0) : 0,
-    lastSnapshotAt: isLiveRoom ? getString(value.lastSnapshotAt) : undefined,
-    lastRecoveryType: isLiveRoom ? getRecoveryEventType(value.lastRecoveryType) : undefined,
-    lastRecoveryMessage: isLiveRoom ? getString(value.lastRecoveryMessage) : undefined,
-    lastRecoveryAt: isLiveRoom ? getString(value.lastRecoveryAt) : undefined,
+    connectionStatus: "idle",
+    roomId: undefined,
+    shareUrl: undefined,
+    collaboratorCount: 0,
+    snapshotCount: 0,
+    lastSnapshotAt: undefined,
+    lastRecoveryType: undefined,
+    lastRecoveryMessage: undefined,
+    lastRecoveryAt: undefined,
   };
 };
 
@@ -642,9 +606,6 @@ export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {
 };
 
 export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
-  const liveRoom = getUsableLiveRoom(file.roomId, file.shareUrl);
-  const isLiveRoom = Boolean(liveRoom.roomId);
-
   return {
     id: file.id,
     title: file.title,
@@ -655,15 +616,15 @@ export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
     lineWrapping: file.lineWrapping,
     lineNumbers: file.lineNumbers,
     bookmarks: file.bookmarks ?? [],
-    connectionStatus: normalizeConnectionStatus(file.connectionStatus, liveRoom.roomId),
-    roomId: liveRoom.roomId,
-    shareUrl: liveRoom.shareUrl,
-    collaboratorCount: isLiveRoom ? (file.collaboratorCount ?? 0) : 0,
-    snapshotCount: isLiveRoom ? (file.snapshotCount ?? 0) : 0,
-    lastSnapshotAt: isLiveRoom ? file.lastSnapshotAt : undefined,
-    lastRecoveryType: isLiveRoom ? file.lastRecoveryType : undefined,
-    lastRecoveryMessage: isLiveRoom ? file.lastRecoveryMessage : undefined,
-    lastRecoveryAt: isLiveRoom ? file.lastRecoveryAt : undefined,
+    connectionStatus: "idle",
+    roomId: undefined,
+    shareUrl: undefined,
+    collaboratorCount: 0,
+    snapshotCount: 0,
+    lastSnapshotAt: undefined,
+    lastRecoveryType: undefined,
+    lastRecoveryMessage: undefined,
+    lastRecoveryAt: undefined,
   };
 };
 

@@ -10,6 +10,7 @@ import {
   getLiveRoomConnectionTarget,
   getRecoveryEventPatch,
   getRoomMetaPatch,
+  shouldStartLiveRoomConnection,
 } from "./collabRuntime";
 import type { WorkspaceFile } from "../workspaceStorage";
 
@@ -44,15 +45,22 @@ describe("collaboration runtime model", () => {
     });
   });
 
-  it("derives the initial runtime status from the connectable room contract", () => {
+  it("only derives a connecting initial runtime status from the active room route", () => {
+    const liveFile = file({
+      roomId: "room-1",
+      shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
+    });
+
     expect(getInitialCollaborationStatus(file())).toBe("idle");
+    expect(getInitialCollaborationStatus(liveFile, { location: null })).toBe("idle");
     expect(
-      getInitialCollaborationStatus(
-        file({
-          roomId: "room-1",
-          shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
-        }),
-      ),
+      getInitialCollaborationStatus(liveFile, {
+        location: {
+          origin: "https://tabula.test",
+          pathname: "/",
+          hash: `#room=room-1,${VALID_ROOM_KEY}`,
+        },
+      }),
     ).toBe("connecting");
     expect(
       getInitialCollaborationStatus(
@@ -60,8 +68,45 @@ describe("collaboration runtime model", () => {
           roomId: "room-1",
           shareUrl: `https://tabula.test/#room=room-2,${VALID_ROOM_KEY}`,
         }),
+        {
+          location: {
+            origin: "https://tabula.test",
+            pathname: "/",
+            hash: `#room=room-1,${VALID_ROOM_KEY}`,
+          },
+        },
       ),
     ).toBe("idle");
+  });
+
+  it("starts live-room networking only for room routes or explicit session starts", () => {
+    const liveFile = file({
+      roomId: "room-1",
+      shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
+    });
+
+    expect(shouldStartLiveRoomConnection({ file: liveFile, location: null })).toBe(false);
+    expect(
+      shouldStartLiveRoomConnection({
+        file: liveFile,
+        location: {
+          origin: "https://tabula.test",
+          pathname: "/",
+          hash: `#room=room-2,${VALID_ROOM_KEY}`,
+        },
+      }),
+    ).toBe(false);
+    expect(
+      shouldStartLiveRoomConnection({
+        file: liveFile,
+        location: {
+          origin: "https://tabula.test",
+          pathname: "/",
+          hash: `#room=room-1,${VALID_ROOM_KEY}`,
+        },
+      }),
+    ).toBe(true);
+    expect(shouldStartLiveRoomConnection({ file: liveFile, hasPendingInitialText: true, location: null })).toBe(true);
   });
 
   it("rejects missing, malformed, and mismatched live room links", () => {

@@ -48,7 +48,7 @@
 }
 
 .markdown-editor .cm-remote-presence-line {
-  background: color-mix(in srgb, var(--remote-presence-color, var(--accent)) 9%, transparent);
+  background: transparent;
   box-shadow: inset 2px 0 0
     color-mix(in srgb, var(--remote-presence-color, var(--accent)) 70%, transparent);
 }
@@ -61,18 +61,28 @@
 .markdown-editor .cm-remote-cursor {
   position: relative;
   display: inline-block;
+  width: 0;
+  height: 1.2em;
+  margin-left: 0;
+  vertical-align: text-bottom;
+  pointer-events: none;
+}
+
+.markdown-editor .cm-remote-cursor::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -1px;
   width: 2px;
   height: 1.2em;
-  margin-left: -1px;
-  vertical-align: text-bottom;
   background: var(--remote-presence-color, var(--accent));
-  pointer-events: none;
 }
 
 .markdown-editor .cm-remote-cursor-label {
   position: absolute;
-  top: -1.45em;
-  left: 0;
+  z-index: 4;
+  bottom: calc(100% + 2px);
+  left: -1px;
   max-width: 180px;
   padding: 2px 6px;
   overflow: hidden;
@@ -90,6 +100,7 @@
 }
 
 .markdown-editor .cm-scroller {
+  position: relative;
   min-height: inherit;
   overflow: auto;
   font-family: inherit;
@@ -100,9 +111,12 @@
   position: sticky;
   left: 0;
   z-index: 2;
+  flex-shrink: 0;
+  isolation: isolate;
   border: 0;
   color: var(--editor-gutter-text);
   background: var(--surface-panel);
+  box-shadow: 1px 0 0 var(--line-subtle);
 }
 
 .markdown-editor .cm-gutters-before,
@@ -218,6 +232,7 @@
 
 .markdown-editor .cm-gutters .cm-activeLineGutter {
   background: color-mix(in srgb, var(--editor-active-line-background) 100%, var(--surface-panel));
+  box-shadow: inset -1px 0 0 var(--line-subtle);
 }
 
 .markdown-editor .cm-content {

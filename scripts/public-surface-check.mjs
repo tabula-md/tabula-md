@@ -11,44 +11,44 @@ const errors = [];
 const allowedSecretFixturePaths = new Set();
 
 const forbiddenTrackedPaths = new Map([
-  ["AGENTS.md", "local agent instructions do not belong in the public OSS repo"],
-  ["CLAUDE.md", "local agent instructions do not belong in the public OSS repo"],
-  ["WORKFLOW.md", "maintainer workflow belongs outside the public OSS repo"],
-  ["WORKFLOW.ko.md", "maintainer workflow belongs outside the public OSS repo"],
-  ["TODO.md", "maintainer planning notes belong outside the public OSS repo"],
-  ["TODO.ko.md", "maintainer planning notes belong outside the public OSS repo"],
-  ["CURRENT_TODO.md", "maintainer planning notes belong outside the public OSS repo"],
+  ["AGENTS.md", "local agent instructions do not belong in the public repository"],
+  ["CLAUDE.md", "local agent instructions do not belong in the public repository"],
+  ["WORKFLOW.md", "maintainer workflow belongs outside the public repository"],
+  ["WORKFLOW.ko.md", "maintainer workflow belongs outside the public repository"],
+  ["TODO.md", "maintainer planning notes belong outside the public repository"],
+  ["TODO.ko.md", "maintainer planning notes belong outside the public repository"],
+  ["CURRENT_TODO.md", "maintainer planning notes belong outside the public repository"],
   ["CHANGELOG.md", "release notes should be published through GitHub Releases"],
   ["CONTRIBUTING.md", "public contribution policy is not ready yet"],
   ["SECURITY.md", "public security policy is not ready yet"],
-  ["scripts/apply-pr-metadata.mjs", "internal PR automation belongs outside the public OSS repo"],
-  ["scripts/knowledge-check.mjs", "internal knowledge automation belongs outside the public OSS repo"],
-  ["scripts/lib/agent-context.mjs", "internal agent automation belongs outside the public OSS repo"],
-  ["scripts/lib/pr-body-template.mjs", "internal PR automation belongs outside the public OSS repo"],
-  ["scripts/lib/pr-github.mjs", "internal PR automation belongs outside the public OSS repo"],
-  ["scripts/lib/pr-metadata.mjs", "internal PR automation belongs outside the public OSS repo"],
-  ["scripts/lib/pr-options.mjs", "internal PR automation belongs outside the public OSS repo"],
-  ["scripts/lib/workflow-automation.mjs", "internal workflow automation belongs outside the public OSS repo"],
-  ["scripts/lib/workflow-status.mjs", "internal workflow automation belongs outside the public OSS repo"],
-  ["scripts/pr-body.mjs", "internal PR automation belongs outside the public OSS repo"],
-  ["scripts/pr-handoff.mjs", "internal PR automation belongs outside the public OSS repo"],
-  ["scripts/pr-ready.mjs", "internal PR automation belongs outside the public OSS repo"],
-  ["scripts/pr-title.mjs", "internal PR automation belongs outside the public OSS repo"],
-  ["scripts/production-qa-checklist.mjs", "hosted production launch automation belongs outside the public OSS repo"],
-  ["scripts/test-codex-hooks.mjs", "local agent hook tests belong outside the public OSS repo"],
-  ["scripts/workflow-doctor.mjs", "internal workflow automation belongs outside the public OSS repo"],
-  ["scripts/workflow-maintenance.mjs", "internal workflow automation belongs outside the public OSS repo"],
-  ["scripts/workflow-status.mjs", "internal workflow automation belongs outside the public OSS repo"],
-  ["scripts/workflow-sync.mjs", "internal workflow automation belongs outside the public OSS repo"],
+  ["scripts/apply-pr-metadata.mjs", "internal PR automation belongs outside the public repository"],
+  ["scripts/knowledge-check.mjs", "internal knowledge automation belongs outside the public repository"],
+  ["scripts/lib/agent-context.mjs", "internal agent automation belongs outside the public repository"],
+  ["scripts/lib/pr-body-template.mjs", "internal PR automation belongs outside the public repository"],
+  ["scripts/lib/pr-github.mjs", "internal PR automation belongs outside the public repository"],
+  ["scripts/lib/pr-metadata.mjs", "internal PR automation belongs outside the public repository"],
+  ["scripts/lib/pr-options.mjs", "internal PR automation belongs outside the public repository"],
+  ["scripts/lib/workflow-automation.mjs", "internal workflow automation belongs outside the public repository"],
+  ["scripts/lib/workflow-status.mjs", "internal workflow automation belongs outside the public repository"],
+  ["scripts/pr-body.mjs", "internal PR automation belongs outside the public repository"],
+  ["scripts/pr-handoff.mjs", "internal PR automation belongs outside the public repository"],
+  ["scripts/pr-ready.mjs", "internal PR automation belongs outside the public repository"],
+  ["scripts/pr-title.mjs", "internal PR automation belongs outside the public repository"],
+  ["scripts/production-qa-checklist.mjs", "hosted production launch automation belongs outside the public repository"],
+  ["scripts/test-codex-hooks.mjs", "local agent hook tests belong outside the public repository"],
+  ["scripts/workflow-doctor.mjs", "internal workflow automation belongs outside the public repository"],
+  ["scripts/workflow-maintenance.mjs", "internal workflow automation belongs outside the public repository"],
+  ["scripts/workflow-status.mjs", "internal workflow automation belongs outside the public repository"],
+  ["scripts/workflow-sync.mjs", "internal workflow automation belongs outside the public repository"],
 ]);
 
 const forbiddenTrackedPrefixes = new Map([
-  [".codex/", "local agent hooks do not belong in the public OSS repo"],
-  [".linear/", "private tracker templates do not belong in the public OSS repo"],
-  [".release/", "private release templates do not belong in the public OSS repo"],
-  ["docs/", "maintainer docs belong outside the public OSS repo"],
-  ["knowledge/", "maintainer knowledge bundles belong outside the public OSS repo"],
-  ["firebase-project/", "provider-specific project scaffolding belongs outside the public OSS repo"],
+  [".codex/", "local agent hooks do not belong in the public repository"],
+  [".linear/", "private tracker templates do not belong in the public repository"],
+  [".release/", "private release templates do not belong in the public repository"],
+  ["docs/", "maintainer docs belong outside the public repository"],
+  ["knowledge/", "maintainer knowledge bundles belong outside the public repository"],
+  ["firebase-project/", "provider-specific project scaffolding belongs outside the public repository"],
 ]);
 
 const generatedPathPrefixes = [
@@ -144,11 +144,11 @@ for (const path of trackedFiles) {
 }
 
 if (errors.length > 0) {
-  console.error("OSS readiness check failed:");
+  console.error("Public surface check failed:");
   for (const error of errors) {
     console.error(`- ${error}`);
   }
   process.exit(1);
 }
 
-console.log(`OSS readiness check passed (${trackedFiles.length} tracked files).`);
+console.log(`Public surface check passed (${trackedFiles.length} tracked files).`);
