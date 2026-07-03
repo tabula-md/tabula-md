@@ -40,12 +40,16 @@ export const buildDocumentSurface = ({
   const lineNumbersClassName = document.lineNumbers
     ? "line-numbers-on"
     : "line-numbers-off";
+  const lineWrappingClassName = document.lineWrapping
+    ? "line-wrapping-on"
+    : "line-wrapping-off";
 
   return {
     centerWorkbenchClassName: classNames(
       "center-workbench",
       document.hasFile ? `has-file ${documentModeClassName}` : "empty",
       document.hasFile && lineNumbersClassName,
+      document.hasFile && lineWrappingClassName,
     ),
     documentControls: {
       activeLineNumbers: document.lineNumbers,
@@ -63,12 +67,14 @@ export const buildDocumentSurface = ({
     editorSurfaceClassName: classNames(
       "editor-surface",
       lineNumbersClassName,
+      lineWrappingClassName,
       selectedCharacterCount > 0 && "has-text-selection",
     ),
     fileShellClassName: classNames(
       "file-shell",
       document.hasFile ? documentModeClassName : "empty",
       document.hasFile && lineNumbersClassName,
+      document.hasFile && lineWrappingClassName,
       document.canFormat && "with-format-toolbar",
       searchOpen && "with-search-row",
       shareOpen && "share-modal-open",

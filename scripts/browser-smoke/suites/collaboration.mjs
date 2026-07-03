@@ -23,6 +23,60 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
   };
 
+  const legacyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await legacyContext.addInitScript((roomKey) => {
+    window.localStorage.setItem(
+      "tabula.project.v5",
+      JSON.stringify({
+        schema: "tabula.project",
+        version: 5,
+        savedAt: new Date().toISOString(),
+        activeFileId: "legacy-live",
+        openFileIds: ["legacy-live"],
+        fileOrder: ["legacy-live"],
+        files: {
+          "legacy-live": {
+            id: "legacy-live",
+            title: "Legacy Live.md",
+            text: "# Legacy live text",
+            viewMode: "edit",
+            readingWidth: "wide",
+            lineWrapping: true,
+            lineNumbers: true,
+            connectionStatus: "connected",
+            roomId: "legacyroom",
+            shareUrl: `${window.location.origin}/#room=legacyroom,${roomKey}`,
+          },
+        },
+        commentsByFileId: {},
+      }),
+    );
+  }, "A".repeat(43));
+  const legacyPage = await legacyContext.newPage();
+  const legacyNetworkRequests = [];
+  legacyPage.on("request", (request) => {
+    const url = request.url();
+    if (/firebase|firestore|socket\.io|liveCollaboration|collab-vendor/.test(url)) {
+      legacyNetworkRequests.push(url);
+    }
+  });
+  try {
+    await legacyPage.goto(baseUrl);
+    await legacyPage.waitForSelector(".tabbar");
+    await waitForText(legacyPage.locator(".cm-content"), "Legacy live text");
+    await wait(500);
+    expect(
+      (await legacyPage.locator(".tab-item.live.active").count()) === 0,
+      "A persisted room file opened from / should restore as a local file, not an active live tab.",
+    );
+    expect(
+      legacyNetworkRequests.length === 0,
+      "A plain / load with persisted room metadata should not load collaboration, Firebase, or Socket.IO.",
+    );
+  } finally {
+    await legacyContext.close();
+  }
+
   const firstContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const secondContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const firstPage = await firstContext.newPage();
@@ -37,14 +91,18 @@ export async function run(ctx) {
     await firstPage.waitForSelector(".sharing-presence");
     const firstPageUrl = new URL(firstPage.url());
     expect(
-      firstPageUrl.pathname === "/" && !firstPageUrl.hash,
-      "Starting a live session should keep the current workspace URL separate from the invite link.",
+      firstPageUrl.pathname === "/" && firstPageUrl.hash.startsWith("#room="),
+      "Starting a live session should move the current tab to the canonical room URL.",
     );
     await waitForText(firstPage.locator(".share-modal"), "Invite link");
     const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
     expect(
       Boolean(shareUrl && new URL(shareUrl).pathname === "/" && new URL(shareUrl).hash.startsWith("#room=")),
-      "Live sessions should expose a hash room invite link without navigating the current tab.",
+      "Live sessions should expose the canonical hash room invite link.",
+    );
+    expect(
+      shareUrl === firstPage.url(),
+      "The live invite link should match the current room URL after starting a session.",
     );
     const sharingPresenceTitle = await firstPage.locator(".sharing-presence").getAttribute("data-tooltip");
     const sharingPresenceText = await firstPage.locator(".sharing-presence").textContent();
@@ -348,7 +406,27 @@ async function runLiveEditingCorrectnessSmoke({ expect, firstPage, secondPage, f
   );
 
   try {
-    await firstPage.waitForSelector(".cm-remote-cursor", { timeout: 8_000 });
+    await firstPage.waitForSelector(".cm-remote-cursor", { state: "attached", timeout: 8_000 });
+    const remoteCursorLayout = await firstPage.evaluate(() => {
+      const cursor = document.querySelector(".cm-remote-cursor");
+      const label = document.querySelector(".cm-remote-cursor-label");
+      const cursorStyle = cursor instanceof HTMLElement ? getComputedStyle(cursor) : null;
+      const labelStyle = label instanceof HTMLElement ? getComputedStyle(label) : null;
+      const cursorRect = cursor instanceof HTMLElement ? cursor.getBoundingClientRect() : null;
+      return {
+        cursorWidth: cursorRect?.width ?? -1,
+        cursorDisplay: cursorStyle?.display ?? "",
+        labelPosition: labelStyle?.position ?? "",
+        labelZIndex: labelStyle?.zIndex ?? "",
+      };
+    });
+    expect(
+      remoteCursorLayout.cursorWidth <= 1,
+      "Remote cursor marker should not consume editor text width or move Markdown text.",
+    );
+    expect(remoteCursorLayout.cursorDisplay === "inline-block", "Remote cursor marker should stay inline with text.");
+    expect(remoteCursorLayout.labelPosition === "absolute", "Remote cursor label should not affect line layout.");
+    expect(Number(remoteCursorLayout.labelZIndex) >= 1, "Remote cursor label should render above editor text.");
   } catch (error) {
     const remotePresenceDebug = await firstPage.evaluate(() => ({
       collaboratorAvatars: document.querySelectorAll(".sharing-presence .avatar:not(.self)").length,

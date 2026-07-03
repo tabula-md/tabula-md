@@ -223,7 +223,7 @@ describe("project persistence", () => {
     expect(restored?.activeFileId).toBe("tabula-readme");
   });
 
-  it("preserves local text and live room metadata across reloads", () => {
+  it("preserves live-room text as a local file without persisting room credentials", () => {
     const stored = createStoredWorkspace({
       files: [
         createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text: "# Local\n\nDraft" }),
@@ -248,20 +248,32 @@ describe("project persistence", () => {
     const localFile = restored?.files.find((file) => file.id === "local");
     const liveFile = restored?.files.find((file) => file.id === "live");
 
+    expect(stored.files["live"]).toMatchObject({
+      title: "Shared room.md",
+      text: "# Live",
+      connectionStatus: "idle",
+      collaboratorCount: 0,
+      snapshotCount: 0,
+    });
+    expect(stored.files["live"]?.roomId).toBeUndefined();
+    expect(stored.files["live"]?.shareUrl).toBeUndefined();
+    expect(stored.files["live"]?.lastRecoveryType).toBeUndefined();
+    expect(stored.files["live"]?.lastRecoveryMessage).toBeUndefined();
     expect(localFile?.text).toBe("# Local\n\nDraft");
     expect(liveFile).toMatchObject({
-      roomId: "room-live",
-      shareUrl: `http://localhost:5174/#room=room-live,${VALID_ROOM_KEY}`,
-      connectionStatus: "disconnected",
-      snapshotCount: 3,
-      lastSnapshotAt: "2026-06-11T00:00:00.000Z",
-      lastRecoveryType: "snapshot-recovered",
-      lastRecoveryMessage: "Recovered",
-      lastRecoveryAt: "2026-06-11T00:01:00.000Z",
+      title: "Shared room.md",
+      text: "# Live",
+      connectionStatus: "idle",
+      collaboratorCount: 0,
+      snapshotCount: 0,
     });
+    expect(liveFile?.roomId).toBeUndefined();
+    expect(liveFile?.shareUrl).toBeUndefined();
+    expect(liveFile?.lastRecoveryType).toBeUndefined();
+    expect(liveFile?.lastRecoveryMessage).toBeUndefined();
   });
 
-  it("drops incomplete live room metadata across reloads", () => {
+  it("drops imported live room metadata across reloads", () => {
     const stored = createStoredWorkspace({
       files: [
         createWorkspaceFile(1, {

@@ -55,6 +55,11 @@
   padding-right: 0;
 }
 
+.workspace.split .editor-surface.line-wrapping-off .markdown-editor .cm-content {
+  width: max-content;
+  min-width: calc(100% - var(--editor-frame-rails));
+}
+
 .workspace.split .markdown-editor .cm-activeLine {
   background: var(--editor-active-line-background);
 }

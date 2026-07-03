@@ -192,6 +192,12 @@
   width: calc(100% - var(--editor-frame-rails));
 }
 
+.workspace.edit:not(.split) .editor-surface.line-wrapping-off .markdown-editor .cm-content {
+  flex-basis: max-content;
+  width: max-content;
+  min-width: calc(100% - var(--editor-frame-rails));
+}
+
 .workspace.reading-narrow:not(.split) .editor-surface,
 .workspace.reading-narrow:not(.split):not(.preview) .preview-surface {
   width: var(--document-body-width);

@@ -19,6 +19,7 @@ import {
   getLiveRoomConnectionTarget,
   getRecoveryEventPatch,
   getRoomMetaPatch,
+  shouldStartLiveRoomConnection,
 } from "../collaboration/collabRuntime";
 import type { TextChange, TextPatch } from "@tabula-md/tabula";
 import { isUsableLiveRoomFile, type WorkspaceFile } from "../workspaceStorage";
@@ -70,16 +71,28 @@ export function useCollaborationConnectionRuntime({
     setCollaborators([]);
 
     const target = getLiveRoomConnectionTarget(activeFile);
+    const pendingInitialText = pendingInitialTextRef.current;
 
-    if (!target) {
-      setConnectionStatus("idle");
+    if (
+      !target ||
+      !shouldStartLiveRoomConnection({
+        file: activeFile,
+        hasPendingInitialText: pendingInitialText !== undefined,
+      })
+    ) {
+      pendingInitialTextRef.current = undefined;
+      const nextStatus = target ? "disconnected" : "idle";
+      setConnectionStatus(nextStatus);
       if (activeFile?.id) {
-        setFileCollaborationStatus(activeFile.id, "idle", getIdleStatusPatch());
+        setFileCollaborationStatus(
+          activeFile.id,
+          nextStatus,
+          target ? getDisconnectedStatusPatch() : getIdleStatusPatch(),
+        );
       }
       return;
     }
 
-    const pendingInitialText = pendingInitialTextRef.current;
     pendingInitialTextRef.current = undefined;
     setConnectionStatus("connecting");
     setFileCollaborationStatus(target.fileId, "connecting");

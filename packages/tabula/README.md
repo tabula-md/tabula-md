@@ -39,7 +39,7 @@ Keep outside this package:
 - CodeMirror extensions and editor refs.
 - Browser storage, file picker, clipboard, and download behavior.
 - Socket.IO, fetch, Yjs transactions, hosted recovery SDKs, or browser app wiring.
-- `tabula-room`, `tabula-json`, recovery provider settings, or production
+- `tabula-room`, `tabula-json`, recovery provider settings, or managed
   deployment settings.
 - Product surfaces that depend on a service account, billing, auth, or runtime
   environment.

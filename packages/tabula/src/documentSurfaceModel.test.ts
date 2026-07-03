@@ -48,16 +48,16 @@ describe("document surface model", () => {
     expect(
       surface({
         document: createActiveDocumentRuntime(
-          file({ viewMode: "split", readingWidth: "wide", lineNumbers: false }),
+          file({ viewMode: "split", readingWidth: "wide", lineNumbers: false, lineWrapping: false }),
         ),
         searchOpen: true,
         splitDividerDragging: true,
       }),
     ).toMatchObject({
-      centerWorkbenchClassName: "center-workbench has-file view-split reading-wide line-numbers-off",
+      centerWorkbenchClassName: "center-workbench has-file view-split reading-wide line-numbers-off line-wrapping-off",
       documentToolbarClassName: "document-toolbar-row split reading-wide with-formatting",
-      editorSurfaceClassName: "editor-surface line-numbers-off",
-      fileShellClassName: "file-shell view-split reading-wide line-numbers-off with-format-toolbar with-search-row",
+      editorSurfaceClassName: "editor-surface line-numbers-off line-wrapping-off",
+      fileShellClassName: "file-shell view-split reading-wide line-numbers-off line-wrapping-off with-format-toolbar with-search-row",
       formattingToolbarClassName: "split reading-wide",
       showFormattingToolbar: true,
       showSplitResizeHandle: true,

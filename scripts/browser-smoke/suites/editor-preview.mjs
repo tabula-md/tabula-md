@@ -204,11 +204,17 @@ export async function run(ctx) {
 
       const gutterStyle = gutters instanceof HTMLElement ? getComputedStyle(gutters) : null;
       const activeGutterStyle = activeGutter instanceof HTMLElement ? getComputedStyle(activeGutter) : null;
+      const gutterRect = gutters instanceof HTMLElement ? gutters.getBoundingClientRect() : null;
+      const railElement = gutterRect
+        ? document.elementFromPoint(gutterRect.left + Math.min(12, Math.max(1, gutterRect.width - 2)), gutterRect.top + 24)
+        : null;
       return {
         scrollLeft: scroller instanceof HTMLElement ? scroller.scrollLeft : 0,
         gutterBackground: gutterStyle?.backgroundColor ?? "",
+        gutterBoxShadow: gutterStyle?.boxShadow ?? "",
         gutterZIndex: gutterStyle?.zIndex ?? "",
         activeGutterBackground: activeGutterStyle?.backgroundColor ?? "",
+        railElementClassName: railElement instanceof HTMLElement ? railElement.className : "",
       };
     });
     expect(unwrappedGutterState.scrollLeft > 0, "Wrapping-off editor content should be horizontally scrollable.");
@@ -218,6 +224,14 @@ export async function run(ctx) {
       "Line number gutters should stay opaque when wrapping is disabled.",
     );
     expect(Number(unwrappedGutterState.gutterZIndex) >= 1, "Line number gutters should stay above scrolled text.");
+    expect(
+      unwrappedGutterState.gutterBoxShadow !== "" && unwrappedGutterState.gutterBoxShadow !== "none",
+      "Line number gutters should visually separate from horizontally scrolled text.",
+    );
+    expect(
+      String(unwrappedGutterState.railElementClassName).includes("cm-gutter"),
+      "Horizontally scrolled text should not cover the line-number rail.",
+    );
     expect(
       unwrappedGutterState.activeGutterBackground !== "" &&
         unwrappedGutterState.activeGutterBackground !== "rgba(0, 0, 0, 0)",

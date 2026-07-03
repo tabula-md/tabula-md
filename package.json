@@ -13,7 +13,7 @@
     "build": "tsc && vite build",
     "build:core": "npm run build -w @tabula-md/tabula",
     "preview": "vite preview --host 0.0.0.0",
-    "oss:check": "node scripts/oss-readiness-check.mjs",
+    "surface:check": "node scripts/public-surface-check.mjs",
     "boundary:check": "node scripts/check-boundaries.mjs",
     "test": "vitest run",
     "test:browser": "node scripts/browser-smoke.mjs",

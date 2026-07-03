@@ -1,4 +1,8 @@
-import { parseRoomShareUrl } from "@tabula-md/tabula";
+import {
+  parseRoomLocation,
+  parseRoomShareUrl,
+  type RoomRouteLocation,
+} from "@tabula-md/tabula";
 import {
   type Collaborator,
   type CollabRecoveryEvent,
@@ -70,8 +74,41 @@ export const getLiveRoomConnectionTarget = (file?: WorkspaceFile): LiveRoomConne
   };
 };
 
-export const getInitialCollaborationStatus = (file?: WorkspaceFile): ConnectionStatus =>
-  getLiveRoomConnectionTarget(file) ? "connecting" : "idle";
+const getCurrentRoomLocation = (): RoomRouteLocation | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.location;
+};
+
+export const shouldStartLiveRoomConnection = ({
+  file,
+  hasPendingInitialText = false,
+  location,
+}: {
+  file?: WorkspaceFile;
+  hasPendingInitialText?: boolean;
+  location?: RoomRouteLocation | null;
+}) => {
+  const target = getLiveRoomConnectionTarget(file);
+  if (!target) {
+    return false;
+  }
+
+  if (hasPendingInitialText) {
+    return true;
+  }
+
+  const roomLocation = location === undefined ? getCurrentRoomLocation() : location;
+  const room = roomLocation ? parseRoomLocation(roomLocation) : null;
+  return Boolean(room && room.roomId === target.roomId && room.roomKey === target.roomKey);
+};
+
+export const getInitialCollaborationStatus = (
+  file?: WorkspaceFile,
+  options: { location?: RoomRouteLocation | null } = {},
+): ConnectionStatus => (shouldStartLiveRoomConnection({ file, location: options.location }) ? "connecting" : "idle");
 
 export const getDisconnectedStatusPatch = (): CollaborationStatusPatch => ({
   collaboratorCount: 0,

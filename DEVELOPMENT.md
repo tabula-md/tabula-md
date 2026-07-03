@@ -16,8 +16,8 @@ Open `http://localhost:5173`.
 ```sh
 npm test
 npm run build
+npm run surface:check
 npm run boundary:check
-npm run oss:check
 npm run test:browser
 ```
 
@@ -34,10 +34,7 @@ npm run test:browser:json-share
 
 ## Services
 
-Live collaboration and encrypted snapshot links use separate open-source
-services:
+Live collaboration and encrypted snapshot links use separate services:
 
 - `tabula-room`: encrypted websocket relay.
 - `tabula-json`: encrypted snapshot blob store.
-
-See `docs/self-hosting.md` for local wiring.
