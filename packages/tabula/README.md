@@ -8,7 +8,7 @@ status labels, live room links, encrypted JSON snapshot links, and the pure
 parts of collaboration presence. It also owns the product data and room
 envelope contracts used by JSON Snapshot links and live recovery. The Tabula
 app in `tabula-app` wires these contracts to React, CodeMirror, local storage,
-collaboration transports, Firebase, and network services.
+collaboration transports, hosted recovery, and network services.
 
 ## Boundary
 
@@ -38,9 +38,9 @@ Keep outside this package:
 - React components and hooks.
 - CodeMirror extensions and editor refs.
 - Browser storage, file picker, clipboard, and download behavior.
-- Socket.IO, fetch, Yjs transactions, Firebase SDKs, or browser app wiring.
-- `tabula-room`, `tabula-json`, Firebase project settings, Cloudflare, Render,
-  or production deployment settings.
+- Socket.IO, fetch, Yjs transactions, hosted recovery SDKs, or browser app wiring.
+- `tabula-room`, `tabula-json`, recovery provider settings, or production
+  deployment settings.
 - Product surfaces that depend on a service account, billing, auth, or runtime
   environment.
 
@@ -88,6 +88,6 @@ import { createRoomEnvelope } from "@tabula-md/tabula/room";
 ## Service App Relationship
 
 `tabula-app` is the tabula.md service app. It can choose to enable or hide
-service features such as live collaboration, Firebase recovery, encrypted
+service features such as live collaboration, hosted recovery, encrypted
 snapshot upload, Send to..., or future Tabula+ boundaries without changing the
 pure contracts here.

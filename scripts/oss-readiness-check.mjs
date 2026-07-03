@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const trackedFiles = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
   .split("\0")
@@ -19,6 +19,8 @@ const forbiddenTrackedPaths = new Map([
   ["TODO.ko.md", "maintainer planning notes belong outside the public OSS repo"],
   ["CURRENT_TODO.md", "maintainer planning notes belong outside the public OSS repo"],
   ["CHANGELOG.md", "release notes should be published through GitHub Releases"],
+  ["CONTRIBUTING.md", "public contribution policy is not ready yet"],
+  ["SECURITY.md", "public security policy is not ready yet"],
   ["scripts/apply-pr-metadata.mjs", "internal PR automation belongs outside the public OSS repo"],
   ["scripts/knowledge-check.mjs", "internal knowledge automation belongs outside the public OSS repo"],
   ["scripts/lib/agent-context.mjs", "internal agent automation belongs outside the public OSS repo"],
@@ -79,10 +81,16 @@ const publicDocPaths = (path) =>
   path === "README.md" ||
   path === "TODO.md" ||
   path === "TODO.ko.md" ||
+  /^packages\/[^/]+\/README\.md$/.test(path) ||
+  /^tabula-app\/README\.md$/.test(path) ||
   path.startsWith("docs/") ||
   path.startsWith("knowledge/");
 
 for (const path of trackedFiles) {
+  if (!existsSync(path)) {
+    continue;
+  }
+
   const forbiddenPathReason = forbiddenTrackedPaths.get(path);
   if (forbiddenPathReason) {
     errors.push(`${path}: ${forbiddenPathReason}`);
