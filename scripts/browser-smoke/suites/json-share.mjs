@@ -38,10 +38,11 @@ export async function run(ctx) {
     expect(Boolean(snapshotUrl), "Create snapshot link should create a snapshot URL.");
 
     const parsedSnapshotUrl = new URL(snapshotUrl);
-    const [, snapshotKey] = parsedSnapshotUrl.hash.replace(/^#json=/, "").split(",");
+    const [snapshotId, snapshotKey] = parsedSnapshotUrl.hash.replace(/^#json=/, "").split(",");
     expect(parsedSnapshotUrl.origin === baseUrl, "Snapshot links should point at the current Tabula.md origin.");
     expect(parsedSnapshotUrl.pathname === "/", "Snapshot links should keep the app root path.");
     expect(parsedSnapshotUrl.hash.startsWith("#json="), "Snapshot links should use the #json fragment.");
+    expect(Boolean(snapshotId), "Snapshot links should include a snapshot id in the hash fragment.");
     expect(Boolean(snapshotKey), "Snapshot links should include a local decryption key in the hash fragment.");
     expect(
       requestUrls.every((url) => !url.includes(snapshotKey)),
@@ -70,10 +71,21 @@ export async function run(ctx) {
         secondRequestUrls.every((url) => !url.includes(snapshotKey)),
         "Snapshot import should not send the local decryption key to the app or JSON store.",
       );
+      await waitForSavedLocally(secondPage);
+      await secondPage.reload();
+      await secondPage.waitForSelector(".tabbar");
+      await waitForText(secondPage.locator(".cm-content"), "Snapshot import body.");
+      expect(
+        (await secondPage.locator(".share-modal").count()) === 0,
+        "Reloading after snapshot import should restore the local workspace without reopening import UI.",
+      );
 
-      await secondPage.goto(`${baseUrl}/#json=${parsedSnapshotUrl.hash.replace(/^#json=/, "").split(",")[0]}`);
+      await secondPage.goto(`${baseUrl}/#json=${snapshotId}`);
       await waitForText(secondPage.locator(".share-modal"), "Unable to open link");
       await waitForText(secondPage.locator(".share-modal"), "This snapshot link is missing its client-only key.");
+      await secondPage.goto(`${baseUrl}/#json=${snapshotId},not-a-32-byte-key`);
+      await waitForText(secondPage.locator(".share-modal"), "Unable to open link");
+      await waitForText(secondPage.locator(".share-modal"), "This snapshot link has an invalid client-only key.");
     } finally {
       await secondContext.close();
     }

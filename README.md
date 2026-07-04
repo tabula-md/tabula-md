@@ -27,6 +27,10 @@ The app is intentionally Markdown-file-first. It does not turn your workspace
 into a database or proprietary document format. Markdown remains the source of
 truth for handoff to teammates, repositories, and coding agents.
 
+This public repository contains the open-source editor, core package, app
+shell, public contracts, and local development workflow. The official hosted
+service is configured separately and is not required to run Tabula.md locally.
+
 ## Features
 
 - Local-first Markdown workspaces.
@@ -63,6 +67,14 @@ development.
   collaboration relay.
 - [`tabula-json`](https://github.com/tabula-md/tabula-json): encrypted Snapshot
   blob store.
+
+## Security And Privacy
+
+Tabula.md keeps plaintext Markdown and link keys in the browser. Collaboration
+and Snapshot services receive routing metadata and encrypted payloads, not the
+document key or plaintext content.
+
+See [Privacy](PRIVACY.md) for the public product contract.
 
 ## Backed By
 

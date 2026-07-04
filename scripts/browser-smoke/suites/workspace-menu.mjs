@@ -106,6 +106,10 @@ export async function run(ctx) {
     await waitForShareDialogState(page, { panel: "Share link" });
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Publish should stay hidden in Share until it ships.");
     expect((await page.getByText("Publish with Tabula +").count()) === 0, "Share should not expose the Tabula + publish boundary yet.");
+    expect(
+      (await page.getByText(/Add content to Untitled(?: \d+)? before creating a snapshot link\./).count()) === 1,
+      "Empty files should explain why Snapshot link creation is unavailable.",
+    );
 
     await page.keyboard.press("Escape");
     await waitForShareDialogState(page, { open: false });

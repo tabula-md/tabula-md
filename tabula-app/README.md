@@ -1,14 +1,17 @@
-# Tabula.md Hosted App Shell
+# Tabula.md App Shell
 
-`tabula-app` is the hosted Tabula.md web application shell. It owns the React UI,
-browser persistence, CodeMirror integration, collaboration adapters, Firebase
-live recovery wiring, and JSON snapshot API client used by the deployed
-service.
+`tabula-app` is the Tabula.md web application shell. It owns the React UI,
+browser persistence, CodeMirror integration, collaboration adapters, optional
+live recovery wiring, and JSON snapshot API client.
 
 Core Markdown, encryption, data encoding, and room envelope behavior belongs in
-`packages/tabula` and should be imported through the package public API. Hosted
-service URLs, feature flags, and service-specific copy are centralized in
+`packages/tabula` and should be imported through the package public API. Service
+URLs, feature flags, and service-specific copy are centralized in
 `src/serviceConfig.ts`.
+
+The public repository keeps the app source and public runtime contracts. The
+official hosted service is configured outside this package and is not required
+for local development.
 
 ## Local Development
 
@@ -22,6 +25,6 @@ To run against a local room server:
 VITE_TABULA_ROOM_URL=http://localhost:3002 npm run dev
 ```
 
-To enable durable live recovery, also set `VITE_TABULA_FIREBASE_CONFIG` to a
-Firebase Web SDK config JSON string. Without it, collaboration remains relay-only
-after every connected browser tab closes.
+To enable durable live recovery with the bundled Firebase adapter, also set
+`VITE_TABULA_FIREBASE_CONFIG` to a Firebase Web SDK config JSON string. Without
+it, collaboration remains relay-only after every connected browser tab closes.

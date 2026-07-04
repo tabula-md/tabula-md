@@ -53,6 +53,8 @@ type ReadJsonShareSnapshotOptions = {
 };
 
 const JSON_SHARE_BLOB_MAGIC = new Uint8Array([0x54, 0x4a, 0x53, 0x31]);
+const JSON_SHARE_DECRYPTION_ERROR =
+  "This snapshot link could not be decrypted. It may have the wrong client-only key.";
 
 export const getConfiguredJsonShareServiceUrl = () => {
   return tabulaServiceConfig.jsonUrl;
@@ -111,7 +113,12 @@ export const readJsonShareSnapshot = async ({
   }
 
   const encrypted = new Uint8Array(await response.arrayBuffer());
-  const payload = await decryptJsonSharePayload(encrypted, route.key);
+  const payload = await decryptJsonSharePayload(encrypted, route.key).catch((error: unknown) => {
+    if (error instanceof Error && error.message.startsWith("Share link failed:")) {
+      throw error;
+    }
+    throw new Error(JSON_SHARE_DECRYPTION_ERROR);
+  });
   return createShareSnapshot({
     id: route.snapshotId,
     url: createJsonShareUrl(origin, route.snapshotId, route.key),

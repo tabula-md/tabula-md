@@ -5,11 +5,13 @@ import {
   getConfiguredJsonShareServiceUrl,
 } from "../share";
 import { tabulaServiceConfig } from "../serviceConfig";
+import type { WorkspaceShareCopy } from "../workspaceLocale";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 
 type UseJsonShareControllerOptions = {
   activeFile?: WorkspaceFile;
   commentsByFileId: Record<string, FileComment[]>;
+  copy: WorkspaceShareCopy;
   showToast: (message: string, tone?: "error" | "neutral") => void;
 };
 
@@ -26,6 +28,7 @@ export type JsonShareController = {
 export function useJsonShareController({
   activeFile,
   commentsByFileId,
+  copy,
   showToast,
 }: UseJsonShareControllerOptions): JsonShareController {
   const [jsonShareUrl, setJsonShareUrl] = useState<string | undefined>(undefined);
@@ -38,16 +41,16 @@ export function useJsonShareController({
 
   const disabledReason = useMemo(() => {
     if (!activeFile) {
-      return "Open a file before exporting a link.";
+      return copy.shareable.noFileReason;
     }
     if (activeFile.text.trim().length === 0) {
-      return `Add content to ${activeFile.title.replace(/\.(?:md|markdown)$/i, "")} before exporting a link.`;
+      return copy.shareable.emptyFileReason(activeFile.title.replace(/\.(?:md|markdown)$/i, ""));
     }
     if (!serviceUrl) {
       return tabulaServiceConfig.copy.jsonShareUnconfiguredMessage;
     }
     return "";
-  }, [activeFile, serviceUrl]);
+  }, [activeFile, copy, serviceUrl]);
 
   const exportLink = async () => {
     if (exporting || disabledReason || !activeFile || !serviceUrl) {

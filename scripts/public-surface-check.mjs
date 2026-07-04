@@ -76,9 +76,12 @@ const secretPatterns = [
 ];
 
 const roomKeyPattern = /#key=(?!<roomKey>|:roomKey|\.{3})[A-Za-z0-9_-]{16,}/g;
-const publicDocProviderPattern = /\b(?:Cloudflare|Render|Fly\.io|Vercel|Netlify|Durable Objects)\b/g;
+const publicDocProviderPattern =
+  /\b(?:Cloudflare|Render|Fly\.io|Vercel|Netlify|Durable Objects|DigitalOcean|App Engine|Google Cloud|GCP|GCS|R2)\b/g;
+const publicHostedEndpointPattern = /https:\/\/(?:rooms|json|publish)\.tabula\.md\b/g;
 const publicDocPaths = (path) =>
   path === "README.md" ||
+  path === "PRIVACY.md" ||
   path === "TODO.md" ||
   path === "TODO.ko.md" ||
   /^packages\/[^/]+\/README\.md$/.test(path) ||
@@ -139,6 +142,12 @@ for (const path of trackedFiles) {
     const providerMatches = [...text.matchAll(publicDocProviderPattern)].map((match) => match[0]);
     if (providerMatches.length > 0) {
       errors.push(`${path}: public docs mention hosted provider detail (${[...new Set(providerMatches)].join(", ")})`);
+    }
+
+    publicHostedEndpointPattern.lastIndex = 0;
+    const endpointMatches = [...text.matchAll(publicHostedEndpointPattern)].map((match) => match[0]);
+    if (endpointMatches.length > 0) {
+      errors.push(`${path}: public docs mention official hosted service endpoint (${[...new Set(endpointMatches)].join(", ")})`);
     }
   }
 }
