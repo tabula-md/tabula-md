@@ -168,7 +168,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Snapshot link",
         description:
-          "Create an encrypted snapshot that opens as a local copy.",
+          "Create an encrypted local-copy snapshot. Anyone with the full link can open it for 7 days.",
         noFileReason: "Open a file before creating a snapshot link.",
         emptyFileReason: (fileTitle) =>
           `Add content to ${fileTitle} before creating a snapshot link.`,
@@ -265,7 +265,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "스냅샷 링크",
         description:
-          "로컬 복사본으로 열 암호화된 스냅샷을 만듭니다.",
+          "암호화된 로컬 복사본 스냅샷을 만듭니다. 전체 링크가 있으면 7일 동안 열 수 있습니다.",
         noFileReason: "파일을 열면 스냅샷 링크를 만들 수 있습니다.",
         emptyFileReason: (fileTitle) =>
           `${fileTitle}에 내용을 추가하면 스냅샷 링크를 만들 수 있습니다.`,
@@ -363,7 +363,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "スナップショットリンク",
         description:
-          "ローカルコピーとして開く暗号化スナップショットを作成します。",
+          "暗号化されたローカルコピーのスナップショットを作成します。完全なリンクを持つ人は7日間開けます。",
         noFileReason:
           "ファイルを開くとスナップショットリンクを作成できます。",
         emptyFileReason: (fileTitle) =>
@@ -462,7 +462,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       shareable: {
         title: "快照链接",
-        description: "创建可作为本地副本打开的加密快照。",
+        description: "创建加密的本地副本快照。拥有完整链接的人可在 7 天内打开。",
         noFileReason: "打开文件后即可创建快照链接。",
         emptyFileReason: (fileTitle) =>
           `向 ${fileTitle} 添加内容后即可创建快照链接。`,
@@ -558,7 +558,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Enlace de snapshot",
         description:
-          "Crea un snapshot cifrado que se abre como copia local.",
+          "Crea un snapshot cifrado de copia local. Cualquiera con el enlace completo puede abrirlo durante 7 días.",
         noFileReason:
           "Abre un archivo antes de crear un enlace de snapshot.",
         emptyFileReason: (fileTitle) =>
@@ -658,7 +658,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Lien de snapshot",
         description:
-          "Créez un snapshot chiffré qui s'ouvre comme copie locale.",
+          "Créez un snapshot chiffré en copie locale. Toute personne disposant du lien complet peut l'ouvrir pendant 7 jours.",
         noFileReason:
           "Ouvrez un fichier avant de créer un lien de snapshot.",
         emptyFileReason: (fileTitle) =>
@@ -760,7 +760,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Snapshot-Link",
         description:
-          "Erstelle einen verschlüsselten Snapshot, der als lokale Kopie geöffnet wird.",
+          "Erstelle einen verschlüsselten Snapshot als lokale Kopie. Wer den vollständigen Link hat, kann ihn 7 Tage lang öffnen.",
         noFileReason:
           "Öffne eine Datei, bevor du einen Snapshot-Link erstellst.",
         emptyFileReason: (fileTitle) =>

@@ -18,6 +18,7 @@ export type JsonShareImportRoute =
 export type JsonShareCreateResponse = {
   id: string;
   data: string;
+  expiresAt?: string;
 };
 
 export type JsonShareLocation = {
@@ -139,9 +140,11 @@ export const validateJsonShareCreateResponse = (
   if (data !== expectedData) {
     throw new Error("Share link failed: invalid service response data");
   }
+  const expiresAt = optionalIsoDateString(value.expiresAt, "expiresAt");
   return {
     id,
     data,
+    ...(expiresAt ? { expiresAt } : {}),
   };
 };
 
@@ -164,4 +167,15 @@ const requireNonEmptyString = (value: unknown, fieldName: string) => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+const optionalIsoDateString = (value: unknown, fieldName: string) => {
+  if (value === undefined) {
+    return undefined;
+  }
+  const text = requireNonEmptyString(value, fieldName);
+  if (!Number.isFinite(Date.parse(text))) {
+    throw new Error(`Share link failed: invalid service response ${fieldName}`);
+  }
+  return text;
+};
 import { decodeBase64Url, encodeBase64Url } from "./data/base64Url";

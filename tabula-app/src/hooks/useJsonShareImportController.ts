@@ -121,7 +121,7 @@ export function useJsonShareImportController({
             setJsonShareImport({
               status: "error",
               route,
-              errorMessage: "This shared link was not found.",
+              errorMessage: "This snapshot link was not found or has expired.",
             });
             return;
           }

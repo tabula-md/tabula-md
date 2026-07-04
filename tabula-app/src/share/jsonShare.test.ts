@@ -33,6 +33,7 @@ describe("json share links", () => {
         JSON.stringify({
           id: jsonId,
           data: `https://json.tabula.md/api/v2/${jsonId}`,
+          expiresAt: "2026-10-01T00:00:00.000Z",
         }),
         { status: 200 },
       );
@@ -118,6 +119,27 @@ describe("json share links", () => {
           )) as typeof fetch,
       }),
     ).rejects.toThrow("Share link failed: invalid service response data");
+  });
+
+  it("rejects create responses with invalid snapshot expiry metadata", async () => {
+    await expect(
+      createJsonShareLink({
+        serviceUrl: "https://json.tabula.md",
+        origin: "https://tabula.md",
+        files: [file()],
+        activeFileId: "readme",
+        commentsByFileId: {},
+        fetchImpl: (async () =>
+          new Response(
+            JSON.stringify({
+              id: "jsonShare123",
+              data: "https://json.tabula.md/api/v2/jsonShare123",
+              expiresAt: "not-a-date",
+            }),
+            { status: 200 },
+          )) as typeof fetch,
+      }),
+    ).rejects.toThrow("Share link failed: invalid service response expiresAt");
   });
 
   it("only treats root #json fragments as share routes", () => {
