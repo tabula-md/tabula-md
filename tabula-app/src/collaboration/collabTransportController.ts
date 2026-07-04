@@ -89,10 +89,15 @@ export const createCollabTransportHandlers = ({
   },
   onPeerJoined: () => {
     void emitStateInit();
+    void publishPresence();
   },
   onPeers: (message) => {
     if (pruneCollaborators(message.peers)) {
       publishCollaborators();
+    }
+    if (message.peers.length > 1) {
+      void emitStateInit();
+      void publishPresence();
     }
   },
   onError: (message) => {

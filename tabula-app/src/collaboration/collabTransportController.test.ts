@@ -112,6 +112,7 @@ describe("collaboration transport controller", () => {
     handlers.onPeerJoined({ roomId: "room-1", clientId: "remote" });
 
     expect(options.emitStateInit).toHaveBeenCalled();
+    expect(options.publishPresence).toHaveBeenCalled();
   });
 
   it("publishes collaborators only when the peer list changes", () => {
@@ -122,6 +123,24 @@ describe("collaboration transport controller", () => {
     handlers.onPeers({ roomId: "room-1", peers: ["remote"] });
 
     expect(options.publishCollaborators).toHaveBeenCalled();
+  });
+
+  it("resyncs state and presence after receiving a multi-peer room list", () => {
+    const { options, handlers } = createHarness();
+
+    handlers.onPeers({ roomId: "room-1", peers: ["self", "remote"] });
+
+    expect(options.emitStateInit).toHaveBeenCalledTimes(1);
+    expect(options.publishPresence).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not resync state for a room list containing only self", () => {
+    const { options, handlers } = createHarness();
+
+    handlers.onPeers({ roomId: "room-1", peers: ["self"] });
+
+    expect(options.emitStateInit).not.toHaveBeenCalled();
+    expect(options.publishPresence).not.toHaveBeenCalled();
   });
 
   it("clears collaborators and reports reconnecting disconnects", () => {
