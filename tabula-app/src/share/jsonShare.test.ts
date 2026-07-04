@@ -87,6 +87,17 @@ describe("json share links", () => {
       title: "README.md",
       text: "# Hello\n\nEncrypted share content.",
     });
+
+    const wrongKey = route!.key === "E".repeat(43) ? "I".repeat(43) : "E".repeat(43);
+    await expect(
+      readJsonShareSnapshot({
+        serviceUrl: "https://json.tabula.md",
+        origin: "https://tabula.md",
+        route: { ...route!, key: wrongKey },
+        fetchImpl: readFetch as typeof fetch,
+      }),
+    ).rejects.toThrow("This snapshot link could not be decrypted. It may have the wrong client-only key.");
+    expect(readRequestUrl).not.toContain(wrongKey);
   });
 
   it("rejects create responses whose data URL does not match the configured store", async () => {

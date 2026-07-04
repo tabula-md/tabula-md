@@ -13,7 +13,10 @@ import {
   README_FILE_ID,
   type WorkspaceState,
 } from "../workspaceStorage";
-import { getWorkspaceChromeCopy } from "../workspaceLocale";
+import {
+  getWorkspaceChromeCopy,
+  getWorkspaceMenuCopy,
+} from "../workspaceLocale";
 import { createWorkspaceRuntimeView } from "../workspaceRuntimeView";
 import { useAppToast } from "./useAppToast";
 import { useDocumentSurfaceRuntime } from "./useDocumentSurfaceRuntime";
@@ -88,6 +91,9 @@ export function useWorkspaceRuntime() {
   const workspaceChromeCopy = getWorkspaceChromeCopy(
     workspacePreferences.language,
   );
+  const workspaceShareCopy = getWorkspaceMenuCopy(
+    workspacePreferences.language,
+  ).share;
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -272,6 +278,7 @@ export function useWorkspaceRuntime() {
     useWorkspaceShareRuntime({
       activeFile,
       commentsByFileId,
+      copy: workspaceShareCopy,
       resetCollaborationState,
       setCenterPopover,
       setCopiedFileId,

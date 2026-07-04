@@ -59,6 +59,8 @@ type WorkspaceMenuCopy = {
     shareable: {
       title: string;
       description: string;
+      noFileReason: string;
+      emptyFileReason: (fileTitle: string) => string;
       exportToLink: string;
       exporting: string;
       updateLink: string;
@@ -167,6 +169,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Snapshot link",
         description:
           "Create an encrypted snapshot that opens as a local copy.",
+        noFileReason: "Open a file before creating a snapshot link.",
+        emptyFileReason: (fileTitle) =>
+          `Add content to ${fileTitle} before creating a snapshot link.`,
         exportToLink: "Create snapshot link",
         exporting: "Creating link",
         updateLink: "New snapshot link",
@@ -261,6 +266,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "스냅샷 링크",
         description:
           "로컬 복사본으로 열 암호화된 스냅샷을 만듭니다.",
+        noFileReason: "파일을 열면 스냅샷 링크를 만들 수 있습니다.",
+        emptyFileReason: (fileTitle) =>
+          `${fileTitle}에 내용을 추가하면 스냅샷 링크를 만들 수 있습니다.`,
         exportToLink: "스냅샷 링크 만들기",
         exporting: "링크 만드는 중",
         updateLink: "새 스냅샷 링크",
@@ -356,6 +364,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "スナップショットリンク",
         description:
           "ローカルコピーとして開く暗号化スナップショットを作成します。",
+        noFileReason:
+          "ファイルを開くとスナップショットリンクを作成できます。",
+        emptyFileReason: (fileTitle) =>
+          `${fileTitle} に内容を追加するとスナップショットリンクを作成できます。`,
         exportToLink: "スナップショットリンクを作成",
         exporting: "リンクを作成中",
         updateLink: "新しいスナップショットリンク",
@@ -451,6 +463,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "快照链接",
         description: "创建可作为本地副本打开的加密快照。",
+        noFileReason: "打开文件后即可创建快照链接。",
+        emptyFileReason: (fileTitle) =>
+          `向 ${fileTitle} 添加内容后即可创建快照链接。`,
         exportToLink: "创建快照链接",
         exporting: "正在创建链接",
         updateLink: "新建快照链接",
@@ -544,6 +559,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Enlace de snapshot",
         description:
           "Crea un snapshot cifrado que se abre como copia local.",
+        noFileReason:
+          "Abre un archivo antes de crear un enlace de snapshot.",
+        emptyFileReason: (fileTitle) =>
+          `Añade contenido a ${fileTitle} antes de crear un enlace de snapshot.`,
         exportToLink: "Crear enlace de snapshot",
         exporting: "Creando enlace",
         updateLink: "Nuevo enlace de snapshot",
@@ -640,6 +659,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Lien de snapshot",
         description:
           "Créez un snapshot chiffré qui s'ouvre comme copie locale.",
+        noFileReason:
+          "Ouvrez un fichier avant de créer un lien de snapshot.",
+        emptyFileReason: (fileTitle) =>
+          `Ajoutez du contenu à ${fileTitle} avant de créer un lien de snapshot.`,
         exportToLink: "Créer un lien de snapshot",
         exporting: "Création du lien",
         updateLink: "Nouveau lien de snapshot",
@@ -738,6 +761,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Snapshot-Link",
         description:
           "Erstelle einen verschlüsselten Snapshot, der als lokale Kopie geöffnet wird.",
+        noFileReason:
+          "Öffne eine Datei, bevor du einen Snapshot-Link erstellst.",
+        emptyFileReason: (fileTitle) =>
+          `Füge Inhalt zu ${fileTitle} hinzu, bevor du einen Snapshot-Link erstellst.`,
         exportToLink: "Snapshot-Link erstellen",
         exporting: "Link wird erstellt",
         updateLink: "Neuer Snapshot-Link",

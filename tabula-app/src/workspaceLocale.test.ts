@@ -29,6 +29,9 @@ describe("workspace locale chrome copy", () => {
     expect(english.share.shareable.description).toBe(
       "Create an encrypted snapshot that opens as a local copy.",
     );
+    expect(english.share.shareable.emptyFileReason("Untitled")).toBe(
+      "Add content to Untitled before creating a snapshot link.",
+    );
     expect(english.share.modalTitle("README")).toBe("Share README");
 
     const korean = getWorkspaceMenuCopy("ko");
@@ -38,6 +41,9 @@ describe("workspace locale chrome copy", () => {
     expect(korean.share.shareable.title).toBe("스냅샷 링크");
     expect(korean.share.shareable.description).toBe(
       "로컬 복사본으로 열 암호화된 스냅샷을 만듭니다.",
+    );
+    expect(korean.share.shareable.emptyFileReason("Untitled 5")).toBe(
+      "Untitled 5에 내용을 추가하면 스냅샷 링크를 만들 수 있습니다.",
     );
     expect(korean.share.modalTitle("README")).toBe("README 공유");
   });

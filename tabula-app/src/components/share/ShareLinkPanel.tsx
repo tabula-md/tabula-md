@@ -193,6 +193,11 @@ export function ShareLinkPanel({
                 <span>{copy.shareable.openLink}</span>
               </a>
             </div>
+            {shareView.shareable.disabledReason && (
+              <p className="share-modal-muted">
+                {shareView.shareable.disabledReason}
+              </p>
+            )}
           </div>
         ) : (
           <div className="share-copy-box">
@@ -206,6 +211,11 @@ export function ShareLinkPanel({
               <Link size={16} />
               <span>{shareView.shareable.primaryLabel}</span>
             </button>
+            {shareView.shareable.disabledReason && (
+              <p className="share-modal-muted">
+                {shareView.shareable.disabledReason}
+              </p>
+            )}
           </div>
         )}
       </div>
