@@ -1,4 +1,4 @@
-import { type RefObject, useState } from "react";
+import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import type {
   MarkdownBookmark,
   MarkdownEditorHandle,
@@ -7,7 +7,16 @@ import type {
   FileBookmark,
   WorkspaceFile,
 } from "../workspaceStorage";
-import type { TextChange, TextPatch } from "@tabula-md/tabula";
+import {
+  createEditorDocumentRuntime,
+  LARGE_DOCUMENT_CHAR_THRESHOLD,
+  LARGE_DOCUMENT_LINE_THRESHOLD,
+  shouldCancelPendingDocumentBufferCommit,
+  type EditorDocumentRuntime,
+  type TextChange,
+  type TextPatch,
+  type PendingDocumentBufferCommit,
+} from "@tabula-md/tabula";
 
 export type FileHistory = {
   past: string[];
@@ -19,19 +28,34 @@ export type EditorHistoryState = {
   canRedo: boolean;
 };
 
+type PendingEditorCommit = PendingDocumentBufferCommit & {
+  getText?: () => string | null | undefined;
+};
+
+type WorkspaceTextChangeSource = "coarse-update" | "editor-typing";
+
+export type WorkspaceTextChangePolicy = {
+  shouldDeferWorkspaceCommit: boolean;
+  shouldRecordFallbackHistory: boolean;
+  shouldSendCollaborationPatchImmediately: boolean;
+};
+
 const EMPTY_FILE_HISTORY: FileHistory = {
   past: [],
   future: [],
 };
 
 const MAX_FILE_HISTORY_ENTRIES = 80;
+const LOCAL_TYPING_TEXT_COMMIT_DELAY_MS = 160;
+const LARGE_LOCAL_TYPING_TEXT_COMMIT_DELAY_MS = 360;
 
 type UseWorkspaceActiveFileEditorArgs = {
   activeFile?: WorkspaceFile;
-  applyLocalText: (text: string, patches?: readonly TextPatch[]) => void;
+  applyLocalText: (text: string | null, patches?: readonly TextPatch[], options?: { docLength?: number }) => void;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
   setActiveFileText: (text: string) => void;
+  setFileText: (fileId: string, text: string) => void;
 };
 
 export const getActiveFileHistory = (historyByFileId: Record<string, FileHistory>, activeFileId?: string) =>
@@ -43,6 +67,70 @@ export const recordFileTextHistory = (history: FileHistory | undefined, previous
   past: [...(history?.past ?? []).slice(-(MAX_FILE_HISTORY_ENTRIES - 1)), previousText],
   future: [],
 });
+
+export const getWorkspaceTextChangePolicy = ({
+  activeFile,
+  nextText,
+  recordHistory,
+  source,
+}: {
+  activeFile?: Pick<WorkspaceFile, "roomId" | "text">;
+  nextText: string;
+  recordHistory?: boolean;
+  source: WorkspaceTextChangeSource;
+}): WorkspaceTextChangePolicy => {
+  const hasActiveFile = Boolean(activeFile);
+  const isEditorTyping = source === "editor-typing";
+  const isLiveCollaborationFile = Boolean(activeFile?.roomId);
+  const shouldDeferWorkspaceCommit = hasActiveFile && isEditorTyping;
+  const shouldRecordFallbackHistory =
+    hasActiveFile &&
+    !isEditorTyping &&
+    (recordHistory ?? true) &&
+    isFileTextFallbackHistoryEnabled(activeFile) &&
+    nextText !== activeFile?.text;
+
+  return {
+    shouldDeferWorkspaceCommit,
+    shouldRecordFallbackHistory,
+    shouldSendCollaborationPatchImmediately: hasActiveFile && isLiveCollaborationFile,
+  };
+};
+
+export const getLocalTypingTextCommitDelay = (change?: Pick<TextChange, "docLength" | "lineCount">) =>
+  (change?.docLength ?? 0) >= LARGE_DOCUMENT_CHAR_THRESHOLD ||
+  (change?.lineCount ?? 0) >= LARGE_DOCUMENT_LINE_THRESHOLD
+    ? LARGE_LOCAL_TYPING_TEXT_COMMIT_DELAY_MS
+    : LOCAL_TYPING_TEXT_COMMIT_DELAY_MS;
+
+export const schedulePendingEditorCommitTimer = ({
+  clearTimeoutFn,
+  currentTimerId,
+  delayMs,
+  flushPendingEditorCommit,
+  setTimeoutFn,
+}: {
+  clearTimeoutFn: (timerId: number) => void;
+  currentTimerId: number | null;
+  delayMs: number;
+  flushPendingEditorCommit: () => void;
+  setTimeoutFn: (handler: () => void, timeout: number) => number;
+}) => {
+  if (currentTimerId !== null) {
+    clearTimeoutFn(currentTimerId);
+  }
+
+  return setTimeoutFn(flushPendingEditorCommit, delayMs);
+};
+
+const shouldSendFullTextToCollaboration = (change?: Pick<TextChange, "docLength" | "lineCount">) =>
+  (change?.docLength ?? 0) < LARGE_DOCUMENT_CHAR_THRESHOLD &&
+  (change?.lineCount ?? 0) < LARGE_DOCUMENT_LINE_THRESHOLD;
+
+export const shouldCancelPendingEditorCommit = (
+  pendingCommit: PendingEditorCommit | null,
+  activeFile: Pick<WorkspaceFile, "id" | "text"> | undefined,
+) => shouldCancelPendingDocumentBufferCommit(pendingCommit, activeFile);
 
 export const normalizeFileBookmarks = (bookmarks: MarkdownBookmark[], nowIso: string): FileBookmark[] =>
   bookmarks
@@ -62,39 +150,176 @@ export function useWorkspaceActiveFileEditor({
   editorRef,
   setActiveFileBookmarks,
   setActiveFileText,
+  setFileText,
 }: UseWorkspaceActiveFileEditorArgs) {
   const [historyByFileId, setHistoryByFileId] = useState<Record<string, FileHistory>>({});
   const [editorHistoryState, setEditorHistoryState] = useState<EditorHistoryState>({
     canUndo: false,
     canRedo: false,
   });
+  const editorDocumentRuntimeRef = useRef<EditorDocumentRuntime | null>(null);
+  const editorCommitTimerRef = useRef<number | null>(null);
   const activeHistory = getActiveFileHistory(historyByFileId, activeFile?.id);
   const fallbackHistoryEnabled = isFileTextFallbackHistoryEnabled(activeFile);
   const canUndo = fallbackHistoryEnabled && activeHistory.past.length > 0;
   const canRedo = fallbackHistoryEnabled && activeHistory.future.length > 0;
+
+  const cancelPendingEditorCommit = useCallback(() => {
+    if (editorCommitTimerRef.current !== null) {
+      window.clearTimeout(editorCommitTimerRef.current);
+      editorCommitTimerRef.current = null;
+    }
+  }, []);
+
+  const getEditorDocumentRuntime = useCallback((file: Pick<WorkspaceFile, "id" | "text">) => {
+    const currentRuntime = editorDocumentRuntimeRef.current;
+    if (currentRuntime?.getSnapshot().fileId === file.id) {
+      return currentRuntime;
+    }
+
+    const runtime = createEditorDocumentRuntime({
+      fileId: file.id,
+      text: file.text,
+    });
+    editorDocumentRuntimeRef.current = runtime;
+    return runtime;
+  }, []);
+
+  const flushPendingEditorCommit = useCallback(() => {
+    cancelPendingEditorCommit();
+    const runtime = editorDocumentRuntimeRef.current;
+    const commit = runtime?.flush();
+    if (commit) {
+      setFileText(commit.fileId, commit.text);
+    }
+  }, [cancelPendingEditorCommit, setFileText]);
+
+  const schedulePendingEditorCommit = useCallback(
+    (change?: Pick<TextChange, "docLength" | "lineCount">) => {
+      editorCommitTimerRef.current = schedulePendingEditorCommitTimer({
+        clearTimeoutFn: (timerId) => window.clearTimeout(timerId),
+        currentTimerId: editorCommitTimerRef.current,
+        delayMs: getLocalTypingTextCommitDelay(change),
+        flushPendingEditorCommit,
+        setTimeoutFn: (handler, timeout) => window.setTimeout(handler, timeout),
+      });
+    },
+    [flushPendingEditorCommit],
+  );
+
+  const getLatestFileText = useCallback((fileId: string, fallbackText: string) => {
+    const runtime = editorDocumentRuntimeRef.current;
+    return runtime?.getSnapshot().fileId === fileId ? runtime.getText() : fallbackText;
+  }, []);
+
+  useEffect(() => flushPendingEditorCommit, [activeFile?.id, flushPendingEditorCommit]);
+
+  useEffect(() => {
+    window.addEventListener("pagehide", flushPendingEditorCommit);
+    return () => window.removeEventListener("pagehide", flushPendingEditorCommit);
+  }, [flushPendingEditorCommit]);
+
+  useEffect(() => {
+    if (!activeFile) {
+      editorDocumentRuntimeRef.current = null;
+      return;
+    }
+
+    const runtime = getEditorDocumentRuntime(activeFile);
+    const snapshot = runtime.getSnapshot();
+    const pendingCommit: PendingEditorCommit | null = snapshot.pendingCommit
+      ? {
+          fileId: snapshot.fileId,
+          text: snapshot.pendingTextAvailable ? snapshot.text : undefined,
+        }
+      : null;
+
+    if (shouldCancelPendingEditorCommit(pendingCommit, activeFile)) {
+      cancelPendingEditorCommit();
+      runtime.syncCommitted({ fileId: activeFile.id, text: activeFile.text });
+      return;
+    }
+
+    if (!snapshot.pendingCommit && snapshot.committedText !== activeFile.text) {
+      runtime.syncCommitted({ fileId: activeFile.id, text: activeFile.text });
+    }
+  }, [activeFile?.id, activeFile?.text, cancelPendingEditorCommit, getEditorDocumentRuntime]);
 
   const updateActiveFileText = (nextText: string, options: { recordHistory?: boolean; patches?: readonly TextPatch[] } = {}) => {
     if (!activeFile) {
       return;
     }
 
-    const shouldRecordHistory = (options.recordHistory ?? true) && fallbackHistoryEnabled;
-    if (shouldRecordHistory && nextText !== activeFile.text) {
+    const policy = getWorkspaceTextChangePolicy({
+      activeFile,
+      nextText,
+      recordHistory: options.recordHistory,
+      source: "coarse-update",
+    });
+
+    if (policy.shouldRecordFallbackHistory) {
+      flushPendingEditorCommit();
       setHistoryByFileId((currentHistory) => ({
         ...currentHistory,
         [activeFile.id]: recordFileTextHistory(currentHistory[activeFile.id], activeFile.text),
       }));
     }
 
+    cancelPendingEditorCommit();
+    getEditorDocumentRuntime(activeFile).syncCommitted({
+      fileId: activeFile.id,
+      text: nextText,
+    });
     setActiveFileText(nextText);
 
-    if (activeFile.roomId) {
+    if (policy.shouldSendCollaborationPatchImmediately) {
       applyLocalText(nextText, options.patches);
     }
   };
 
-  const handleEditorTextChange = (nextText: string, change?: TextChange) => {
-    updateActiveFileText(nextText, { patches: change?.patches });
+  const handleEditorTextChange = (nextText: string | null, change?: TextChange) => {
+    if (!activeFile) {
+      return;
+    }
+
+    const runtime = getEditorDocumentRuntime(activeFile);
+    if (nextText === null) {
+      runtime.setPendingCommit({
+        readText: () => editorRef.current?.getValue(),
+      });
+      schedulePendingEditorCommit(change);
+
+      if (activeFile.roomId) {
+        applyLocalText(
+          shouldSendFullTextToCollaboration(change) ? (editorRef.current?.getValue() ?? null) : null,
+          change?.patches,
+          { docLength: change?.docLength },
+        );
+      }
+      return;
+    }
+
+    const policy = getWorkspaceTextChangePolicy({
+      activeFile,
+      nextText,
+      recordHistory: false,
+      source: "editor-typing",
+    });
+
+    if (!policy.shouldDeferWorkspaceCommit) {
+      updateActiveFileText(nextText, {
+        patches: change?.patches,
+        recordHistory: false,
+      });
+      return;
+    }
+
+    runtime.replaceAll(nextText);
+    schedulePendingEditorCommit(change);
+
+    if (policy.shouldSendCollaborationPatchImmediately) {
+      applyLocalText(nextText, change?.patches, { docLength: change?.docLength });
+    }
   };
 
   const updateActiveFileBookmarks = (nextBookmarks: MarkdownBookmark[]) => {
@@ -161,10 +386,12 @@ export function useWorkspaceActiveFileEditor({
     handleEditorHistoryStateChange: setEditorHistoryState,
     handleTextChange: handleEditorTextChange,
     historyByFileId,
+    getLatestFileText,
     redoActiveFile,
     setHistoryByFileId,
     undoActiveFile,
     updateActiveFileBookmarks,
     updateActiveFileText,
+    flushPendingEditorCommit,
   };
 }

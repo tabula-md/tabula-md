@@ -9,6 +9,7 @@ import {
   createStoredWorkspace,
   readStoredWorkspace,
   PROJECT_STORAGE_KEY,
+  PROJECT_STORAGE_MANIFEST_KEY,
   type WorkspaceState,
   type WorkspaceStorageAdapter,
 } from "./workspaceStorage";
@@ -117,11 +118,14 @@ describe("workspace primary store writes", () => {
     vi.mocked(writeIndexedDbWorkspace).mockClear();
   });
 
-  it("keeps localStorage as the synchronous write path while mirroring to IndexedDB", () => {
+  it("keeps localStorage writes small while persisting the full workspace to IndexedDB", async () => {
     const storage: Record<string, string> = {};
     vi.stubGlobal("window", {
       localStorage: {
         getItem: (key: string) => storage[key] ?? null,
+        removeItem: (key: string) => {
+          delete storage[key];
+        },
         setItem: (key: string, value: string) => {
           storage[key] = value;
         },
@@ -130,8 +134,14 @@ describe("workspace primary store writes", () => {
 
     writeWorkspaceToPrimaryStores(createWorkspace("# Mirrored"));
 
-    expect(JSON.parse(storage[PROJECT_STORAGE_KEY] ?? "{}").files.local.text).toBe("# Mirrored");
+    expect(JSON.parse(storage[PROJECT_STORAGE_MANIFEST_KEY] ?? "{}")).toMatchObject({
+      schema: "tabula.project.manifest",
+      activeFileId: "local",
+      fileCount: 1,
+    });
+    expect(storage[PROJECT_STORAGE_KEY]).toBeUndefined();
     expect(writeIndexedDbWorkspace).toHaveBeenCalledWith(createWorkspace("# Mirrored"));
+    await Promise.resolve();
 
     vi.unstubAllGlobals();
   });

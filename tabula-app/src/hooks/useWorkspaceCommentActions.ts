@@ -71,6 +71,8 @@ type UseWorkspaceCommentActionsArgs = {
   previewBody: string;
   previewBodyStartOffset: number;
   previewSurfaceRef: RefObject<HTMLElement | null>;
+  largeDocumentMode: boolean;
+  onBeforeCreateComment?: () => void;
   queueEditorTextRange: QueueEditorTextRange;
   selectFile: (fileId: string) => void;
   selectedCharacterCount: number;
@@ -109,6 +111,8 @@ export function useWorkspaceCommentActions({
   previewBody,
   previewBodyStartOffset,
   previewSurfaceRef,
+  largeDocumentMode,
+  onBeforeCreateComment,
   queueEditorTextRange,
   selectFile,
   selectedCharacterCount,
@@ -147,8 +151,9 @@ export function useWorkspaceCommentActions({
         bookmarks: activeBookmarks,
         commentAnchors: activeCommentAnchors,
         activeCommentId: focusedCommentId,
+        includeEmptyLines: !largeDocumentMode,
       }),
-    [activeBookmarks, activeCommentAnchors, focusedCommentId, previewBody, previewBodyStartOffset],
+    [activeBookmarks, activeCommentAnchors, focusedCommentId, largeDocumentMode, previewBody, previewBodyStartOffset],
   );
   const queueAnimationFrameTask = useAnimationFrameTask();
 
@@ -185,6 +190,7 @@ export function useWorkspaceCommentActions({
       return;
     }
 
+    onBeforeCreateComment?.();
     const selectionAnchor = getSelectedMarkdownAnchor();
     createFileComment({
       fileId: activeFile.id,
@@ -192,7 +198,15 @@ export function useWorkspaceCommentActions({
       quote: getSelectedMarkdownExcerpt() || undefined,
       anchor: selectionAnchor,
     });
-  }, [activeFile, commentDraft, commentsEnabled, createFileComment, getSelectedMarkdownAnchor, getSelectedMarkdownExcerpt]);
+  }, [
+    activeFile,
+    commentDraft,
+    commentsEnabled,
+    createFileComment,
+    getSelectedMarkdownAnchor,
+    getSelectedMarkdownExcerpt,
+    onBeforeCreateComment,
+  ]);
 
   const startCommentReplyForFile = useCallback((_fileId: string, commentId: string) => {
     openCommentsPanel(commentId);

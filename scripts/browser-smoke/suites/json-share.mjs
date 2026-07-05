@@ -66,7 +66,18 @@ export async function run(ctx) {
       await waitForText(secondPage.locator(".share-modal"), "Loading this link will replace your current local content.");
       await secondPage.getByRole("button", { name: "Load snapshot" }).click();
       await secondPage.locator(".share-modal").waitFor({ state: "detached" });
-      await waitForText(secondPage.locator(".cm-content"), "Snapshot import body.");
+      try {
+        await waitForText(secondPage.locator(".cm-content"), "Snapshot import body.");
+      } catch (error) {
+        const importDebug = await secondPage.evaluate(() => ({
+          activeTab: document.querySelector(".tab-item.active")?.textContent ?? "",
+          editorText: Array.from(document.querySelectorAll(".cm-content .cm-line")).map(
+            (line) => line.textContent ?? "",
+          ),
+          tabText: document.querySelector(".tabbar")?.textContent ?? "",
+        }));
+        throw new Error(`Snapshot import did not render expected body.\n${JSON.stringify(importDebug, null, 2)}\n${error.message}`);
+      }
       expect(
         secondRequestUrls.every((url) => !url.includes(snapshotKey)),
         "Snapshot import should not send the local decryption key to the app or JSON store.",

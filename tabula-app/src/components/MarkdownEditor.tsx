@@ -20,7 +20,7 @@ import {
   dispatchEditorSelectionRange,
   getEditorSelectionActionPosition,
 } from "../editor/editorLayout";
-import { createEditorPresenceExtension } from "../editor/editorPresence";
+import { updateEditorPresenceEffect } from "../editor/editorPresence";
 import { createEditorSearchExtension } from "../editor/editorSearch";
 import {
   createEditorAnnotationGutterExtension,
@@ -30,6 +30,7 @@ import {
   createMarkdownEditorExtensions,
 } from "../editor/editorState";
 import {
+  clampEditorPosition,
   dispatchLocalTextPatches,
   dispatchRemoteTextChange,
   getEditorTextChangePatches,
@@ -37,7 +38,12 @@ import {
   mapBookmarksThroughTransactions,
 } from "../editor/editorTransactions";
 import { runMarkdownFormatCommand } from "../editor/editorInputRules";
-import type { MarkdownBookmark, MarkdownEditorHandle, MarkdownEditorProps } from "../markdownEditorTypes";
+import type {
+  MarkdownBookmark,
+  MarkdownCommentAnchor,
+  MarkdownEditorHandle,
+  MarkdownEditorProps,
+} from "../markdownEditorTypes";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
 
 type EditorLinkPopoverState = {
@@ -97,6 +103,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const containerRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
     const bookmarksRef = useRef<MarkdownBookmark[]>(bookmarks);
+    const commentAnchorsRef = useRef<MarkdownCommentAnchor[]>(commentAnchors);
     const onChangeRef = useRef(onChange);
     const onBookmarksChangeRef = useRef(onBookmarksChange);
     const onHistoryStateChangeRef = useRef(onHistoryStateChange);
@@ -105,10 +112,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const onSelectionChangeRef = useRef(onSelectionChange);
     const onSelectionActionPositionChangeRef = useRef(onSelectionActionPositionChange);
     const onScrollRatioChangeRef = useRef(onScrollRatioChange);
+    const activeCommentIdRef = useRef(activeCommentId);
+    const commentsEnabledRef = useRef(commentsEnabled);
     const compartmentsRef = useRef(createMarkdownEditorCompartments());
     const stateByFileIdRef = useRef(new Map<string, EditorState>());
     const lastHistoryStateRef = useRef(EMPTY_EDITOR_HISTORY_STATE);
-    const localEchoValuesRef = useRef(new Set<string>());
     const [linkPopover, setLinkPopover] = useState<EditorLinkPopoverState | null>(null);
 
     useEffect(() => {
@@ -118,6 +126,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     useEffect(() => {
       bookmarksRef.current = bookmarks;
     }, [bookmarks]);
+
+    useEffect(() => {
+      commentAnchorsRef.current = commentAnchors;
+    }, [commentAnchors]);
 
     useEffect(() => {
       onBookmarksChangeRef.current = onBookmarksChange;
@@ -146,6 +158,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     useEffect(() => {
       onScrollRatioChangeRef.current = onScrollRatioChange;
     }, [onScrollRatioChange]);
+
+    useEffect(() => {
+      activeCommentIdRef.current = activeCommentId;
+    }, [activeCommentId]);
+
+    useEffect(() => {
+      commentsEnabledRef.current = commentsEnabled;
+    }, [commentsEnabled]);
 
     const emitHistoryState = (view: EditorView) => {
       const nextHistoryState = getEditorHistoryState(view.state);
@@ -177,6 +197,71 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         bookmarksRef.current = nextBookmarks;
         onBookmarksChangeRef.current?.(nextBookmarks);
       }
+    };
+
+    const reconfigureCommentDecorations = (view: EditorView, nextCommentAnchors: MarkdownCommentAnchor[]) => {
+      view.dispatch({
+        effects: [
+          compartmentsRef.current.commentAnchor.reconfigure(
+            commentsEnabledRef.current
+              ? createEditorCommentAnchorExtension(
+                  nextCommentAnchors,
+                  activeCommentIdRef.current,
+                  (commentId) => onOpenCommentRef.current?.(commentId),
+                )
+              : [],
+          ),
+          compartmentsRef.current.lineCommentAction.reconfigure(
+            createEditorLineCommentActionExtension(
+              bookmarksRef.current,
+              nextCommentAnchors,
+              commentsEnabledRef.current,
+              (request) => onOpenLineActionsRef.current?.(request),
+            ),
+          ),
+        ],
+      });
+    };
+
+    const mapCommentAnchorsThroughDocumentChange = (view: EditorView, transactions: readonly Transaction[]) => {
+      const currentCommentAnchors = commentAnchorsRef.current;
+      if (currentCommentAnchors.length === 0) {
+        return;
+      }
+
+      const docLength = view.state.doc.length;
+      let changed = false;
+      const nextCommentAnchors = currentCommentAnchors
+        .map((anchor) => {
+          const start = clampEditorPosition(
+            transactions.reduce(
+              (mappedPosition, transaction) => transaction.changes.mapPos(mappedPosition, 1),
+              anchor.start,
+            ),
+            docLength,
+          );
+          const end = clampEditorPosition(
+            transactions.reduce(
+              (mappedPosition, transaction) => transaction.changes.mapPos(mappedPosition, -1),
+              anchor.end,
+            ),
+            docLength,
+          );
+          changed = changed || start !== anchor.start || end !== anchor.end;
+          return { ...anchor, start, end };
+        })
+        .filter((anchor) => anchor.end > anchor.start);
+
+      if (!changed) {
+        return;
+      }
+
+      commentAnchorsRef.current = nextCommentAnchors;
+      queueMicrotask(() => {
+        if (viewRef.current === view) {
+          reconfigureCommentDecorations(view, nextCommentAnchors);
+        }
+      });
     };
 
     useImperativeHandle(ref, () => ({
@@ -216,6 +301,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         const selection = view?.state.selection.main;
         return view && selection ? view.state.sliceDoc(selection.from, selection.to) : "";
       },
+      getValue: () => viewRef.current?.state.doc.toString() ?? value,
       applyLocalTextPatches: (patches, selection, options) => {
         const view = viewRef.current;
         return view ? dispatchLocalTextPatches(view, patches, selection, options) : false;
@@ -256,7 +342,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       if (!containerRef.current) {
         return;
       }
-      localEchoValuesRef.current.clear();
 
       const updateExtension = EditorView.updateListener.of((update) => {
         emitHistoryState(update.view);
@@ -264,11 +349,25 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
         if (update.selectionSet || update.docChanged) {
           const selection = update.state.selection.main;
-          onSelectionChangeRef.current?.({ from: selection.from, to: selection.to });
+          const cursorLine = update.state.doc.lineAt(selection.to);
+          const fromLine = selection.from === selection.to ? cursorLine : update.state.doc.lineAt(selection.from);
+          onSelectionChangeRef.current?.({
+            from: selection.from,
+            to: selection.to,
+            columnNumber: selection.to - cursorLine.from + 1,
+            fromLineNumber: fromLine.number,
+            lineNumber: cursorLine.number,
+            selectionEndsWithLineBreak:
+              selection.to > selection.from && update.state.doc.sliceString(selection.to - 1, selection.to) === "\n",
+            toLineNumber: cursorLine.number,
+          });
         }
 
         if (update.selectionSet || update.docChanged) {
-          onSelectionActionPositionChangeRef.current?.(getEditorSelectionActionPosition(update.view));
+          const selection = update.state.selection.main;
+          onSelectionActionPositionChangeRef.current?.(
+            selection.empty ? null : getEditorSelectionActionPosition(update.view),
+          );
         }
 
         if (!update.docChanged) {
@@ -276,19 +375,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
 
         mapBookmarksThroughDocumentChange(update.view, update.transactions);
+        mapCommentAnchorsThroughDocumentChange(update.view, update.transactions);
 
         if (!isExternalUpdate) {
-          const nextValue = update.state.doc.toString();
-          localEchoValuesRef.current.add(nextValue);
-          if (localEchoValuesRef.current.size > 40) {
-            const oldestValue = localEchoValuesRef.current.values().next().value as string | undefined;
-            if (oldestValue !== undefined) {
-              localEchoValuesRef.current.delete(oldestValue);
-            }
-          }
-
-          onChangeRef.current(nextValue, {
-            patches: getEditorTextChangePatches(update.changes),
+          const patches = getEditorTextChangePatches(update.changes);
+          onChangeRef.current(null, {
+            docLength: update.state.doc.length,
+            lineCount: update.state.doc.lines,
+            patches,
           });
         }
       });
@@ -349,10 +443,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         return;
       }
 
-      if (localEchoValuesRef.current.delete(value)) {
-        return;
-      }
-
       dispatchRemoteTextChange(view, value);
     }, [fileId, value]);
 
@@ -384,9 +474,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
     useEffect(() => {
       viewRef.current?.dispatch({
-        effects: compartmentsRef.current.remotePresence.reconfigure(
-          createEditorPresenceExtension(collaborators, fileTitle, roomId),
-        ),
+        effects: updateEditorPresenceEffect.of({
+          collaborators,
+          currentFileTitle: fileTitle,
+          currentRoomId: roomId,
+        }),
       });
     }, [collaborators, fileTitle, roomId]);
 

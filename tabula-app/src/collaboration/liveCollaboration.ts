@@ -10,7 +10,7 @@ import { createCollabSnapshotSync } from "./collabSnapshotSync";
 import { resolveCollabStartConfig } from "./collabStartConfig";
 import { createCollabTransportHandlers } from "./collabTransportController";
 import { createCollabUpdateBuffer } from "./collabUpdateBuffer";
-import type { TextChange, TextPatch } from "@tabula-md/tabula";
+import { LARGE_DOCUMENT_CHAR_THRESHOLD, type TextChange, type TextPatch } from "@tabula-md/tabula";
 
 export {
   createRoomSession,
@@ -43,6 +43,11 @@ export type ConnectionStatus =
 export type LiveSelection = {
   from: number;
   to: number;
+  columnNumber?: number;
+  fromLineNumber?: number;
+  lineNumber?: number;
+  selectionEndsWithLineBreak?: boolean;
+  toLineNumber?: number;
 };
 
 export type Collaborator = {
@@ -94,6 +99,11 @@ type ConnectOptions = {
   adapters?: CollabRuntimeAdapters;
 };
 
+const PRESENCE_SEND_THROTTLE_MS = 75;
+const STATE_REPAIR_SYNC_DEBOUNCE_MS = 750;
+const STATE_REPAIR_SYNC_INTERVAL_MS = 10_000;
+const STATE_REPAIR_SYNC_COUNT_AFTER_LOCAL_UPDATE = 2;
+
 export const createCollabConnection = ({
   roomId,
   roomKey: encodedRoomKey,
@@ -115,10 +125,14 @@ export const createCollabConnection = ({
   let currentIdentity = identity;
   let closedByClient = false;
   let heartbeat: unknown;
+  let presenceTimer: unknown;
+  let stateRepairSyncTimer: unknown;
+  let stateRepairSyncBurstTimer: unknown;
   let roomKey: CryptoKey | null = null;
   let transport: ReturnType<CollabRuntimeAdapters["createRoomTransport"]> | null = null;
   let envelopeVersion = 0;
   let hasUnstoredLocalChanges = Boolean(initialText);
+  let pendingStateRepairSyncs = initialText ? STATE_REPAIR_SYNC_COUNT_AFTER_LOCAL_UPDATE : 0;
   const sessionState = createCollabSessionState();
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
@@ -166,6 +180,15 @@ export const createCollabConnection = ({
     clearTimeoutFn: adapters.clock.clearTimeout,
   });
 
+  const clearPresenceTimer = () => {
+    if (!presenceTimer) {
+      return;
+    }
+
+    adapters.clock.clearTimeout(presenceTimer);
+    presenceTimer = undefined;
+  };
+
   const publishPresence = async () => {
     await emitEnvelope(
       "presence",
@@ -177,6 +200,56 @@ export const createCollabConnection = ({
       }),
       { volatile: true },
     );
+  };
+
+  const schedulePresencePublish = () => {
+    if (closedByClient) {
+      return;
+    }
+
+    if (presenceTimer) {
+      return;
+    }
+
+    presenceTimer = adapters.clock.setTimeout(() => {
+      presenceTimer = undefined;
+      void publishPresence();
+    }, PRESENCE_SEND_THROTTLE_MS);
+  };
+
+  const publishStateRepairSync = () => {
+    if (closedByClient || pendingStateRepairSyncs <= 0) {
+      return;
+    }
+
+    pendingStateRepairSyncs -= 1;
+    void emitEnvelope("state-init", adapters.text.encodeState(textDocument));
+  };
+
+  const clearStateRepairSyncBurstTimer = () => {
+    if (!stateRepairSyncBurstTimer) {
+      return;
+    }
+
+    adapters.clock.clearTimeout(stateRepairSyncBurstTimer);
+    stateRepairSyncBurstTimer = undefined;
+  };
+
+  const scheduleStateRepairSyncBurst = () => {
+    if (closedByClient) {
+      return;
+    }
+
+    clearStateRepairSyncBurstTimer();
+    stateRepairSyncBurstTimer = adapters.clock.setTimeout(() => {
+      stateRepairSyncBurstTimer = undefined;
+      publishStateRepairSync();
+    }, STATE_REPAIR_SYNC_DEBOUNCE_MS);
+  };
+
+  const markStateRepairSyncNeeded = () => {
+    pendingStateRepairSyncs = STATE_REPAIR_SYNC_COUNT_AFTER_LOCAL_UPDATE;
+    scheduleStateRepairSyncBurst();
   };
 
   const snapshotSync = createCollabSnapshotSync({
@@ -195,6 +268,8 @@ export const createCollabConnection = ({
     emitRecoveryEvent,
     setTimeoutFn: adapters.clock.setTimeout,
     clearTimeoutFn: adapters.clock.clearTimeout,
+    requestIdleCallbackFn: adapters.clock.requestIdleCallback,
+    cancelIdleCallbackFn: adapters.clock.cancelIdleCallback,
   });
 
   const envelopeRouter = createCollabEnvelopeRouter({
@@ -221,6 +296,7 @@ export const createCollabConnection = ({
     }
 
     hasUnstoredLocalChanges = true;
+    markStateRepairSyncNeeded();
     localUpdateBuffer.push(update);
     snapshotSync.scheduleStore();
   });
@@ -266,6 +342,7 @@ export const createCollabConnection = ({
     heartbeat = adapters.clock.setInterval(() => {
       void publishPresence();
     }, 5_000);
+    stateRepairSyncTimer = adapters.clock.setInterval(publishStateRepairSync, STATE_REPAIR_SYNC_INTERVAL_MS);
   };
 
   onStatusChange("connecting");
@@ -277,6 +354,18 @@ export const createCollabConnection = ({
         publishCollaborators();
       }
       adapters.text.applyLocalText(textDocument, nextText, patches);
+      if (nextText.length < LARGE_DOCUMENT_CHAR_THRESHOLD) {
+        localUpdateBuffer.flush();
+      }
+    },
+    applyLocalTextPatches(patches: readonly TextPatch[], docLength?: number) {
+      if (patches.length === 0) {
+        return;
+      }
+      if (typeof docLength === "number" && collaborators.remapSelections(patches, docLength)) {
+        publishCollaborators();
+      }
+      adapters.text.applyLocalTextPatches(textDocument, patches);
     },
     setPresence(nextPresence: { fileTitle?: string; selection?: LiveSelection }) {
       if ("fileTitle" in nextPresence) {
@@ -285,17 +374,22 @@ export const createCollabConnection = ({
       if ("selection" in nextPresence) {
         currentSelection = nextPresence.selection;
       }
-      void publishPresence();
+      schedulePresencePublish();
     },
     setIdentity(nextIdentity: Collaborator) {
       currentIdentity = nextIdentity;
-      void publishPresence();
+      schedulePresencePublish();
     },
     disconnect() {
       closedByClient = true;
+      clearPresenceTimer();
       if (heartbeat) {
         adapters.clock.clearInterval(heartbeat);
       }
+      if (stateRepairSyncTimer) {
+        adapters.clock.clearInterval(stateRepairSyncTimer);
+      }
+      clearStateRepairSyncBurstTimer();
       unsubscribeTextUpdates();
       snapshotSync.clearTimer();
       if (hasUnstoredLocalChanges) {
@@ -305,6 +399,11 @@ export const createCollabConnection = ({
       transport?.disconnect();
       adapters.text.destroy(textDocument);
       onCollaboratorsChange([]);
+    },
+    flushRecoveryState() {
+      if (hasUnstoredLocalChanges) {
+        void snapshotSync.store();
+      }
     },
   };
 };

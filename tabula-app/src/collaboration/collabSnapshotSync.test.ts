@@ -1,6 +1,10 @@
 import * as Y from "yjs";
 import { describe, expect, it, vi } from "vitest";
-import { collabSnapshotStoreDelayMs, createCollabSnapshotSync } from "./collabSnapshotSync";
+import {
+  collabSnapshotStoreDelayMs,
+  collabSnapshotStoreIdleTimeoutMs,
+  createCollabSnapshotSync,
+} from "./collabSnapshotSync";
 import { createCollabTextDocument } from "./collabTextModel";
 import { createYjsCollabTextAdapter } from "./collabYjsTextAdapter";
 import type { RoomRecoveryStore } from "./collabRuntimeAdapters";
@@ -142,5 +146,118 @@ describe("collaboration snapshot sync", () => {
     sync.scheduleStore();
 
     expect(setTimeoutFn).toHaveBeenCalledWith(expect.any(Function), collabSnapshotStoreDelayMs);
+  });
+
+  it("runs scheduled recovery saves in an idle callback after debounce", async () => {
+    const textDocument = createCollabTextDocument("local");
+    const timeoutCallbacks: Array<() => void> = [];
+    const idleCallbacks: Array<() => void> = [];
+    const recoveryStore: RoomRecoveryStore = {
+      load: vi.fn(),
+      save: vi.fn(async () => ({ version: 1 })),
+    };
+    const sync = createCollabSnapshotSync({
+      roomId: "room-1",
+      roomKey: "room-key",
+      textAdapter,
+      textDocument,
+      canUseSnapshots: () => true,
+      recoveryStore,
+      mergeStates: textAdapter.mergeUpdates,
+      onTextChange: vi.fn(),
+      emitRecoveryEvent: vi.fn(),
+      setTimeoutFn: vi.fn((callback: () => void) => {
+        timeoutCallbacks.push(callback);
+        return callback;
+      }),
+      clearTimeoutFn: vi.fn(),
+      requestIdleCallbackFn: vi.fn((callback: () => void) => {
+        idleCallbacks.push(callback);
+        return callback;
+      }),
+      cancelIdleCallbackFn: vi.fn(),
+    });
+
+    sync.scheduleStore();
+
+    timeoutCallbacks[0]();
+    expect(recoveryStore.save).not.toHaveBeenCalled();
+    expect(idleCallbacks).toHaveLength(1);
+    idleCallbacks[0]();
+    await Promise.resolve();
+
+    expect(recoveryStore.save).toHaveBeenCalledTimes(1);
+    expect(sync).toBeDefined();
+  });
+
+  it("uses an idle timeout so recovery saves eventually run while the user keeps editing", () => {
+    const requestIdleCallbackFn = vi.fn(() => "idle-1");
+    const sync = createCollabSnapshotSync({
+      roomId: "room-1",
+      roomKey: "room-key",
+      textAdapter,
+      textDocument: createCollabTextDocument("local"),
+      canUseSnapshots: () => true,
+      recoveryStore: { load: vi.fn(), save: vi.fn() },
+      mergeStates: textAdapter.mergeUpdates,
+      onTextChange: vi.fn(),
+      emitRecoveryEvent: vi.fn(),
+      setTimeoutFn: vi.fn((callback: () => void) => {
+        callback();
+        return "timer-1";
+      }),
+      clearTimeoutFn: vi.fn(),
+      requestIdleCallbackFn,
+      cancelIdleCallbackFn: vi.fn(),
+    });
+
+    sync.scheduleStore();
+
+    expect(requestIdleCallbackFn).toHaveBeenCalledWith(expect.any(Function), {
+      timeout: collabSnapshotStoreIdleTimeoutMs,
+    });
+  });
+
+  it("does not run overlapping recovery saves", async () => {
+    const textDocument = createCollabTextDocument("local");
+    let resolveSave: ((value: { version: number }) => void) | undefined;
+    const scheduledCallbacks: Array<() => void> = [];
+    const setTimeoutFn = vi.fn((callback: () => void) => {
+      scheduledCallbacks.push(callback);
+      return "timer-1";
+    });
+    const recoveryStore: RoomRecoveryStore = {
+      load: vi.fn(),
+      save: vi.fn(
+        () =>
+          new Promise<{ version: number }>((resolve) => {
+            resolveSave = resolve;
+          }),
+      ),
+    };
+    const sync = createCollabSnapshotSync({
+      roomId: "room-1",
+      roomKey: "room-key",
+      textAdapter,
+      textDocument,
+      canUseSnapshots: () => true,
+      recoveryStore,
+      mergeStates: textAdapter.mergeUpdates,
+      onTextChange: vi.fn(),
+      emitRecoveryEvent: vi.fn(),
+      setTimeoutFn,
+      clearTimeoutFn: vi.fn(),
+    });
+
+    const firstStore = sync.store();
+    const secondStore = sync.store();
+
+    expect(recoveryStore.save).toHaveBeenCalledTimes(1);
+    resolveSave?.({ version: 1 });
+    await expect(firstStore).resolves.toBe(true);
+    await expect(secondStore).resolves.toBe(true);
+    expect(recoveryStore.save).toHaveBeenCalledTimes(1);
+    expect(setTimeoutFn).toHaveBeenCalledWith(expect.any(Function), collabSnapshotStoreDelayMs);
+    expect(scheduledCallbacks).toHaveLength(1);
   });
 });

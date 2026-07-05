@@ -41,6 +41,14 @@ service is configured separately and is not required to run Tabula.md locally.
 - Encrypted live collaboration by room link.
 - Encrypted Snapshot links for import and handoff.
 
+## Product Targets
+
+- Public preview target: 150KB Markdown files should remain responsive while
+  editing, scrolling, and using split view.
+- Launch target: 1MB Markdown files should keep editor input responsive. For
+  very large files, preview refresh can wait until editing is idle.
+- Collaboration target: 2-5 people editing together for 30 minutes or more.
+
 ## Run Locally
 
 Install dependencies:

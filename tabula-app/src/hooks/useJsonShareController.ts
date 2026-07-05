@@ -7,11 +7,13 @@ import {
 import { tabulaServiceConfig } from "../serviceConfig";
 import type { WorkspaceShareCopy } from "../workspaceLocale";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
+import { clientErrorReporter } from "../observability/clientErrorReporting";
 
 type UseJsonShareControllerOptions = {
   activeFile?: WorkspaceFile;
   commentsByFileId: Record<string, FileComment[]>;
   copy: WorkspaceShareCopy;
+  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   showToast: (message: string, tone?: "error" | "neutral") => void;
 };
 
@@ -29,6 +31,7 @@ export function useJsonShareController({
   activeFile,
   commentsByFileId,
   copy,
+  getActiveFileSnapshot,
   showToast,
 }: UseJsonShareControllerOptions): JsonShareController {
   const [jsonShareUrl, setJsonShareUrl] = useState<string | undefined>(undefined);
@@ -53,7 +56,8 @@ export function useJsonShareController({
   }, [activeFile, copy, serviceUrl]);
 
   const exportLink = async () => {
-    if (exporting || disabledReason || !activeFile || !serviceUrl) {
+    const fileSnapshot = getActiveFileSnapshot?.() ?? activeFile;
+    if (exporting || disabledReason || !fileSnapshot || !serviceUrl) {
       if (disabledReason) {
         showToast(disabledReason, "error");
       }
@@ -62,17 +66,22 @@ export function useJsonShareController({
 
     setExporting(true);
     try {
-      const activeFileComments = commentsByFileId[activeFile.id] ?? [];
+      const activeFileComments = commentsByFileId[fileSnapshot.id] ?? [];
       const { url } = await createJsonShareLink({
         serviceUrl,
         origin: window.location.origin,
-        files: [activeFile],
-        activeFileId: activeFile.id,
-        commentsByFileId: activeFileComments.length > 0 ? { [activeFile.id]: activeFileComments } : {},
+        files: [fileSnapshot],
+        activeFileId: fileSnapshot.id,
+        commentsByFileId: activeFileComments.length > 0 ? { [fileSnapshot.id]: activeFileComments } : {},
       });
       setJsonShareUrl(url);
       showToast("Snapshot link created.");
     } catch (error) {
+      clientErrorReporter.report({
+        feature: "json-share",
+        operation: "export",
+        error,
+      });
       showToast(error instanceof Error ? error.message : "Share link failed.", "error");
     } finally {
       setExporting(false);

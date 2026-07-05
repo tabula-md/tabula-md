@@ -24,7 +24,10 @@ export const getEditorTextChangePatches = (changes: ChangeSet): TextPatch[] => {
 };
 
 export const isRemoteEditorUpdate = (transactions: readonly Transaction[]) =>
-  transactions.some((transaction) => transaction.annotation(Transaction.remote));
+  transactions.some((transaction) => transaction.docChanged) &&
+  transactions
+    .filter((transaction) => transaction.docChanged)
+    .every((transaction) => transaction.annotation(Transaction.remote));
 
 export const dispatchRemoteTextChange = (
   view: EditorView,

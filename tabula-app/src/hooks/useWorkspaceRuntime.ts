@@ -11,6 +11,7 @@ import {
   randomId,
   readInitialWorkspaceSnapshot,
   README_FILE_ID,
+  type FileViewMode,
   type WorkspaceState,
 } from "../workspaceStorage";
 import {
@@ -266,6 +267,8 @@ export function useWorkspaceRuntime() {
     editorHistoryState,
     handleEditorHistoryStateChange,
     handleTextChange,
+    flushPendingEditorCommit,
+    getLatestFileText,
     historyByFileId,
     redoActiveFile,
     setHistoryByFileId,
@@ -277,12 +280,22 @@ export function useWorkspaceRuntime() {
     editorRef,
     setActiveFileBookmarks,
     setActiveFileText,
+    setFileText,
   });
+  const getActiveFileSnapshot = useEventCallback(() =>
+    activeFile
+      ? {
+          ...activeFile,
+          text: getLatestFileText(activeFile.id, activeFile.text),
+        }
+      : undefined,
+  );
   const { copyShareUrl, jsonShare, startSession, stopSession } =
     useWorkspaceShareRuntime({
       activeFile,
       commentsByFileId,
       copy: workspaceShareCopy,
+      getActiveFileSnapshot,
       resetCollaborationState,
       setCenterPopover,
       setCopiedFileId,
@@ -290,6 +303,48 @@ export function useWorkspaceRuntime() {
       startCollaborationSession,
       stopFileCollaborationSession,
     });
+  const copyCurrentFileWithPendingCommit = useEventCallback(() => {
+    flushPendingEditorCommit();
+    copyCurrentFile();
+  });
+  const downloadCurrentFileWithPendingCommit = useEventCallback(() => {
+    flushPendingEditorCommit();
+    downloadCurrentFile();
+  });
+  const downloadProjectWithPendingCommit = useEventCallback(() => {
+    flushPendingEditorCommit();
+    downloadProject();
+  });
+  const downloadProjectArchiveWithPendingCommit = useEventCallback(() => {
+    flushPendingEditorCommit();
+    downloadProjectArchive();
+  });
+  const copyShareUrlWithPendingCommit = useEventCallback(() => {
+    flushPendingEditorCommit();
+    void copyShareUrl();
+  });
+  const startSessionWithPendingCommit = useEventCallback(() => {
+    flushPendingEditorCommit();
+    startSession();
+  });
+  const stopSessionWithPendingCommit = useEventCallback(() => {
+    flushPendingEditorCommit();
+    stopSession();
+  });
+  const jsonShareWithPendingCommit = useMemo(
+    () => ({
+      ...jsonShare,
+      copyLink: async () => {
+        flushPendingEditorCommit();
+        await jsonShare.copyLink();
+      },
+      exportLink: async () => {
+        flushPendingEditorCommit();
+        await jsonShare.exportLink();
+      },
+    }),
+    [flushPendingEditorCommit, jsonShare],
+  );
   const handleRouteWorkspaceChange = useEventCallback(() => {
     setTopPopover(null);
     setCenterPopover(null);
@@ -408,6 +463,8 @@ export function useWorkspaceRuntime() {
     previewBody: renderedPreview.body,
     previewBodyStartOffset,
     previewSurfaceRef,
+    largeDocumentMode: activeDocument.largeDocumentMode,
+    onBeforeCreateComment: flushPendingEditorCommit,
     selectFile,
     selectedCharacterCount,
     setActiveFileBookmarks,
@@ -431,8 +488,8 @@ export function useWorkspaceRuntime() {
     isOpen: workspaceMenuOpen,
     onAddFile: addFile,
     onCloseChrome: closeFloatingChrome,
-    onDownloadFile: downloadCurrentFile,
-    onDownloadProject: downloadProject,
+    onDownloadFile: downloadCurrentFileWithPendingCommit,
+    onDownloadProject: downloadProjectWithPendingCommit,
     onImportFileChange: handleImportInputChange,
     onImportProjectChange: handleProjectImportInputChange,
     onOpenAbout: openAboutFile,
@@ -508,7 +565,7 @@ export function useWorkspaceRuntime() {
     getFileStatus,
     identity: presenceIdentity,
     isLive,
-    jsonShare,
+    jsonShare: jsonShareWithPendingCommit,
     language: workspacePreferences.language,
     openFiles,
     rightPanelOpen,
@@ -520,15 +577,15 @@ export function useWorkspaceRuntime() {
     onChangeUserName: updateIdentityName,
     onCloseFile: closeFile,
     onCommitUserName: normalizeIdentityName,
-    onCopyFile: copyCurrentFile,
-    onCopyShareUrl: copyShareUrl,
-    onDownloadFile: downloadCurrentFile,
-    onDownloadProjectArchive: downloadProjectArchive,
+    onCopyFile: copyCurrentFileWithPendingCommit,
+    onCopyShareUrl: copyShareUrlWithPendingCommit,
+    onDownloadFile: downloadCurrentFileWithPendingCommit,
+    onDownloadProjectArchive: downloadProjectArchiveWithPendingCommit,
     onReorderFiles: reorderFiles,
     onRenameFile: renameWorkspaceFileAction,
     onSelectFile: selectFile,
-    onStartSession: startSession,
-    onStopSession: stopSession,
+    onStartSession: startSessionWithPendingCommit,
+    onStopSession: stopSessionWithPendingCommit,
     onToggleRightPanel: toggleRightPanel,
     onToggleWorkspaceMenu: toggleWorkspaceMenu,
     setCenterPopover,
@@ -572,6 +629,10 @@ export function useWorkspaceRuntime() {
       setSearchOpen,
       setTopPopover,
     });
+  const setViewModeWithPendingCommit = useEventCallback((viewMode: FileViewMode) => {
+    flushPendingEditorCommit();
+    documentWorkbenchRuntime.onSetViewMode(viewMode);
+  });
 
   return createWorkspaceRuntimeView({
     activeFile,
@@ -626,6 +687,7 @@ export function useWorkspaceRuntime() {
       previewBodyStartOffset,
       previewMetadata: parsedMarkdown.attributes,
       previewSurfaceRef,
+      largeDocumentMode: activeDocument.largeDocumentMode,
       searchInputRef,
       searchMatches,
       searchOpen,
@@ -645,7 +707,7 @@ export function useWorkspaceRuntime() {
       workspaceRef,
       onBookmarksChange: updateActiveFileBookmarks,
       onCloseSearch: documentWorkbenchRuntime.onCloseSearch,
-      onCopyFile: copyCurrentFile,
+      onCopyFile: copyCurrentFileWithPendingCommit,
       onEditorHistoryStateChange: handleEditorHistoryStateChange,
       onEditorScroll: handleEditorSurfaceScroll,
       onEditorScrollRatioChange: handleEditorScrollRatioChange,
@@ -669,7 +731,7 @@ export function useWorkspaceRuntime() {
       onReplaceQueryChange: setReplaceQuery,
       onSearchQueryChange: setSearchQuery,
       onSetReadingWidth: documentWorkbenchRuntime.onSetReadingWidth,
-      onSetViewMode: documentWorkbenchRuntime.onSetViewMode,
+      onSetViewMode: setViewModeWithPendingCommit,
       onSplitDividerKeyDown: handleSplitDividerKeyDown,
       onSplitDividerPointerCancel: endSplitDividerDrag,
       onSplitDividerPointerDown: handleSplitDividerPointerDown,

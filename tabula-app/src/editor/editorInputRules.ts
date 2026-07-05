@@ -10,7 +10,31 @@ import {
   type MarkdownFormatCommand,
 } from "@tabula-md/tabula";
 
-const getMinimalTextChange = (currentText: string, nextText: string) => {
+const getMinimalTextChanges = (currentText: string, nextText: string) => {
+  if (currentText === nextText) {
+    return [];
+  }
+
+  const currentTextIndexInNext = nextText.indexOf(currentText);
+  if (currentTextIndexInNext >= 0) {
+    const prefix = nextText.slice(0, currentTextIndexInNext);
+    const suffix = nextText.slice(currentTextIndexInNext + currentText.length);
+    return [
+      prefix ? { from: 0, to: 0, insert: prefix } : null,
+      suffix ? { from: currentText.length, to: currentText.length, insert: suffix } : null,
+    ].filter((change): change is { from: number; to: number; insert: string } => Boolean(change));
+  }
+
+  const nextTextIndexInCurrent = currentText.indexOf(nextText);
+  if (nextTextIndexInCurrent >= 0) {
+    const prefixEnd = nextTextIndexInCurrent;
+    const suffixStart = nextTextIndexInCurrent + nextText.length;
+    return [
+      prefixEnd > 0 ? { from: 0, to: prefixEnd, insert: "" } : null,
+      suffixStart < currentText.length ? { from: suffixStart, to: currentText.length, insert: "" } : null,
+    ].filter((change): change is { from: number; to: number; insert: string } => Boolean(change));
+  }
+
   let from = 0;
   while (from < currentText.length && from < nextText.length && currentText[from] === nextText[from]) {
     from += 1;
@@ -23,11 +47,11 @@ const getMinimalTextChange = (currentText: string, nextText: string) => {
     nextTo -= 1;
   }
 
-  return {
+  return [{
     from,
     to: currentTo,
     insert: nextText.slice(from, nextTo),
-  };
+  }];
 };
 
 export const runMarkdownFormatCommand = (view: EditorView, command: MarkdownFormatCommand) => {
@@ -45,9 +69,9 @@ export const runMarkdownFormatCommand = (view: EditorView, command: MarkdownForm
     return true;
   }
 
-  const change = getMinimalTextChange(currentText, result.text);
+  const changes = getMinimalTextChanges(currentText, result.text);
   view.dispatch({
-    changes: change,
+    changes,
     selection: selectionRange,
     scrollIntoView: true,
   });

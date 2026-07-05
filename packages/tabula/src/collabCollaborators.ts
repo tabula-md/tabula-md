@@ -12,6 +12,27 @@ export type CollaboratorRegistry = {
 
 const clampPosition = (position: number, docLength: number) => Math.max(0, Math.min(position, docLength));
 
+const selectionsAreEqual = (
+  first?: CollaborationCollaborator["selection"],
+  second?: CollaborationCollaborator["selection"],
+) =>
+  first === second ||
+  (Boolean(first) &&
+    Boolean(second) &&
+    first?.from === second?.from &&
+    first?.to === second?.to);
+
+const collaboratorsAreEqual = (
+  first: CollaborationCollaborator,
+  second: CollaborationCollaborator,
+) =>
+  first.id === second.id &&
+  first.name === second.name &&
+  first.color === second.color &&
+  first.roomId === second.roomId &&
+  first.fileTitle === second.fileTitle &&
+  selectionsAreEqual(first.selection, second.selection);
+
 export const mapCollaborationPositionThroughTextPatches = (
   position: number,
   patches: readonly TextPatch[],
@@ -64,6 +85,11 @@ export const createCollaboratorRegistry = (): CollaboratorRegistry => {
   return {
     upsert(collaborator, selfId) {
       if (collaborator.id === selfId) {
+        return false;
+      }
+
+      const currentCollaborator = collaborators.get(collaborator.id);
+      if (currentCollaborator && collaboratorsAreEqual(currentCollaborator, collaborator)) {
         return false;
       }
 

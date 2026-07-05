@@ -9,6 +9,11 @@ export type CollaborationConnectionStatus =
 export type CollaborationLiveSelection = {
   from: number;
   to: number;
+  columnNumber?: number;
+  fromLineNumber?: number;
+  lineNumber?: number;
+  selectionEndsWithLineBreak?: boolean;
+  toLineNumber?: number;
 };
 
 export type CollaborationCollaborator = {

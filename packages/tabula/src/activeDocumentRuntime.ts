@@ -6,7 +6,7 @@ import {
 } from "./documentPrimitives";
 import {
   getLineStartOffset,
-  getOutlineHeadings,
+  getOutlineHeadingsFromMarkdown,
   getPreviewBody,
   parseFrontmatter,
   type MarkdownHeading,
@@ -14,6 +14,7 @@ import {
   type PreviewBody,
 } from "./markdown";
 import { getMarkdownWordCount } from "./documentMetrics";
+import { isLargeMarkdownDocument } from "./previewBlockModel";
 
 export type DocumentBookmark = {
   id: string;
@@ -44,6 +45,7 @@ export type ActiveDocumentRuntime = {
   previewBodyStartOffset: number;
   readingWidth: ReadingWidth;
   renderedPreview: PreviewBody;
+  largeDocumentMode: boolean;
   splitRatio: number;
   text: string;
   title: string;
@@ -51,7 +53,30 @@ export type ActiveDocumentRuntime = {
   wordCount: number;
 };
 
-export const createActiveDocumentRuntime = (activeFile?: ActiveDocumentFile): ActiveDocumentRuntime => {
+export type ActiveDocumentEditorRuntime = Omit<
+  ActiveDocumentRuntime,
+  "outlineHeadings" | "parsedMarkdown" | "previewBodyStartOffset" | "renderedPreview"
+>;
+
+export type ActiveDocumentPreviewRuntime = Pick<
+  ActiveDocumentRuntime,
+  "outlineHeadings" | "parsedMarkdown" | "previewBodyStartOffset" | "renderedPreview"
+>;
+
+const EMPTY_PARSED_MARKDOWN: ParsedFrontmatter = {
+  attributes: [],
+  body: "",
+};
+
+const EMPTY_PREVIEW_BODY: PreviewBody = {
+  body: "",
+  sourceLineOffset: 0,
+};
+
+export const createActiveDocumentEditorRuntime = (
+  activeFile?: ActiveDocumentFile,
+  options: { wordCount?: number } = {},
+): ActiveDocumentEditorRuntime => {
   const text = activeFile?.text ?? "";
   const viewMode = activeFile?.viewMode ?? "edit";
   const readingWidth = activeFile?.readingWidth ?? "wide";
@@ -60,28 +85,19 @@ export const createActiveDocumentRuntime = (activeFile?: ActiveDocumentFile): Ac
   const lineNumbers = activeFile?.lineNumbers ?? true;
   const bookmarks = activeFile?.bookmarks ?? [];
   const title = activeFile?.title ?? "No file open";
-  const parsedMarkdown = parseFrontmatter(text);
-  const renderedPreview = getPreviewBody(parsedMarkdown.body);
-  const parsedBodyStartOffset = text.indexOf(parsedMarkdown.body);
-  const previewBodyStartOffset =
-    (parsedBodyStartOffset === -1 ? 0 : parsedBodyStartOffset) +
-    getLineStartOffset(parsedMarkdown.body, renderedPreview.sourceLineOffset);
-  const outlineHeadings = getOutlineHeadings(renderedPreview);
-  const wordCount = getMarkdownWordCount(text);
+  const wordCount = options.wordCount ?? getMarkdownWordCount(text);
   const hasFile = Boolean(activeFile);
+  const largeDocumentMode = isLargeMarkdownDocument(text);
 
   return {
     bookmarks,
     canCopy: text.trim().length > 0,
     canFormat: hasFile && viewMode !== "preview",
     hasFile,
+    largeDocumentMode,
     lineNumbers,
     lineWrapping,
-    outlineHeadings,
-    parsedMarkdown,
-    previewBodyStartOffset,
     readingWidth,
-    renderedPreview,
     splitRatio,
     text,
     title,
@@ -89,3 +105,38 @@ export const createActiveDocumentRuntime = (activeFile?: ActiveDocumentFile): Ac
     wordCount,
   };
 };
+
+export const createActiveDocumentPreviewRuntime = (
+  activeFile?: Pick<ActiveDocumentFile, "text">,
+): ActiveDocumentPreviewRuntime => {
+  const text = activeFile?.text ?? "";
+
+  if (!activeFile) {
+    return {
+      outlineHeadings: [],
+      parsedMarkdown: EMPTY_PARSED_MARKDOWN,
+      previewBodyStartOffset: 0,
+      renderedPreview: EMPTY_PREVIEW_BODY,
+    };
+  }
+
+  const parsedMarkdown = parseFrontmatter(text);
+  const renderedPreview = getPreviewBody(parsedMarkdown.body);
+  const parsedBodyStartOffset = text.indexOf(parsedMarkdown.body);
+  const previewBodyStartOffset =
+    (parsedBodyStartOffset === -1 ? 0 : parsedBodyStartOffset) +
+    getLineStartOffset(parsedMarkdown.body, renderedPreview.sourceLineOffset);
+  const outlineHeadings = getOutlineHeadingsFromMarkdown(parsedMarkdown.body);
+
+  return {
+    outlineHeadings,
+    parsedMarkdown,
+    previewBodyStartOffset,
+    renderedPreview,
+  };
+};
+
+export const createActiveDocumentRuntime = (activeFile?: ActiveDocumentFile): ActiveDocumentRuntime => ({
+  ...createActiveDocumentEditorRuntime(activeFile),
+  ...createActiveDocumentPreviewRuntime(activeFile),
+});

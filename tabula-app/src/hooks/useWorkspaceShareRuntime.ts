@@ -9,6 +9,7 @@ type UseWorkspaceShareRuntimeOptions = {
   activeFile?: WorkspaceFile;
   commentsByFileId: Record<string, FileComment[]>;
   copy: WorkspaceShareCopy;
+  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   setCenterPopover: (popover: null) => void;
   setCopiedFileId: Dispatch<SetStateAction<string | null>>;
@@ -21,6 +22,7 @@ export function useWorkspaceShareRuntime({
   activeFile,
   commentsByFileId,
   copy,
+  getActiveFileSnapshot,
   resetCollaborationState,
   setCenterPopover,
   setCopiedFileId,
@@ -32,6 +34,7 @@ export function useWorkspaceShareRuntime({
     activeFile,
     commentsByFileId,
     copy,
+    getActiveFileSnapshot,
     showToast,
   });
   const liveRoom = useWorkspaceLiveRoomController({

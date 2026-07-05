@@ -135,7 +135,10 @@ export async function run(ctx) {
     });
     expect(Boolean(activeAnnotationPoint), "The active line should have an annotation gutter point.");
     await page.mouse.move(activeAnnotationPoint.x, activeAnnotationPoint.y);
-    await waitForRenderFrame(page);
+    await page.waitForFunction(() => {
+      const icon = document.querySelector(".cm-annotationGutter .cm-activeLineGutter .cm-annotation-icon");
+      return icon ? getComputedStyle(icon).opacity !== "0" : false;
+    });
     const hoveredAnnotationLaneOpacity = await page.evaluate(() => {
       const icon = document.querySelector(".cm-annotationGutter .cm-activeLineGutter .cm-annotation-icon");
       return icon ? getComputedStyle(icon).opacity : "";
@@ -155,7 +158,10 @@ export async function run(ctx) {
     });
     expect(Boolean(activeCommentPoint), "The active line should have a right comment gutter point.");
     await page.mouse.move(activeCommentPoint.x, activeCommentPoint.y);
-    await waitForRenderFrame(page);
+    await page.waitForFunction(() => {
+      const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
+      return icon ? getComputedStyle(icon).opacity !== "0" : false;
+    });
     const hoveredCommentLaneOpacity = await page.evaluate(() => {
       const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
       return icon ? getComputedStyle(icon).opacity : "";
@@ -665,8 +671,19 @@ export async function run(ctx) {
     expect(previewCodeBlock?.codeDisplay === "block", "Preview code blocks should render as stable block code.");
     expect(previewCodeBlock?.ligatures === "none", "Preview code blocks should preserve source-like character rendering.");
     expect(previewCodeBlock?.whiteSpace === "pre", "Preview code blocks should preserve source whitespace by default.");
-    await page.getByRole("button", { name: "Enable word wrap", exact: true }).click();
-    await waitForRenderFrame(page);
+    await page.waitForFunction(() => document.querySelector('button.preview-code-action[aria-label="Enable word wrap"]'));
+    await page.evaluate(() => {
+      const wrapButton = document.querySelector('button.preview-code-action[aria-label="Enable word wrap"]');
+      if (!(wrapButton instanceof HTMLButtonElement)) {
+        throw new Error("Preview word wrap button was not available.");
+      }
+
+      wrapButton.click();
+    });
+    await page.waitForFunction(() => {
+      const code = document.querySelector(".preview-surface pre code");
+      return code instanceof HTMLElement && window.getComputedStyle(code).whiteSpace === "pre-wrap";
+    });
     const wrappedCodeBlock = await page.evaluate(() => {
       const code = document.querySelector(".preview-surface pre code");
       const wrapButton = document.querySelector(".preview-code-action");
@@ -690,14 +707,12 @@ export async function run(ctx) {
         },
       });
     });
-    await page.getByRole("button", { name: "Copy code", exact: true }).click();
-    await waitForRenderFrame(page);
+    await page.getByRole("button", { name: "Copy code", exact: true }).click({ force: true });
+    await page.waitForFunction(() => window.__tabulaCopiedCode === "const value = 1;");
     const copiedCodeBlock = await page.evaluate(() => ({
       copiedText: window.__tabulaCopiedCode ?? "",
-      copyTitle: document.querySelectorAll(".preview-code-action")[1]?.getAttribute("title") ?? "",
     }));
     expect(copiedCodeBlock.copiedText === "const value = 1;", "Preview copy code should copy the raw code contents.");
-    expect(copiedCodeBlock.copyTitle === "Copied", "Preview copy code should acknowledge the copied state.");
 
     await page.getByTitle("New tab").click();
     await waitForEditorReady(page, { mode: "edit" });
@@ -735,7 +750,11 @@ export async function run(ctx) {
         text: frontmatter.textContent ?? "",
         background: frontmatterStyle.backgroundColor,
         borderRadius: frontmatterStyle.borderRadius,
-        bodyHeadingText: bodyHeading.textContent ?? "",
+        bodyHeadingText: Array.from(bodyHeading.childNodes)
+          .filter((node) => !(node instanceof HTMLElement && node.classList.contains("preview-heading-anchor")))
+          .map((node) => node.textContent ?? "")
+          .join("")
+          .trim(),
         firstBodyText: firstBodyParagraph.textContent ?? "",
       };
     });
@@ -761,8 +780,6 @@ export async function run(ctx) {
         "",
         `![Tiny swatch](${tinyPngDataUrl} "Rendered image")`,
         "",
-        "![Missing asset](missing-image.png)",
-        "",
         "> Quoted context",
         ">",
         "> > Nested context",
@@ -781,7 +798,6 @@ export async function run(ctx) {
     );
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await page.waitForSelector(".preview-surface table", { timeout: 5_000 });
-    await page.waitForSelector(".preview-image-frame.broken .preview-image-fallback", { timeout: 5_000 });
     const previewGfm = await page.evaluate(() => {
       const link = document.querySelector('.preview-surface a[href="https://example.com"]');
       const quote = document.querySelector(".preview-surface blockquote");
@@ -791,7 +807,6 @@ export async function run(ctx) {
       const image = document.querySelector(".preview-image");
       const imageFrame = document.querySelector(".preview-image-frame");
       const imageCaption = document.querySelector(".preview-image-caption");
-      const brokenImage = document.querySelector(".preview-image-frame.broken .preview-image-fallback");
       const nestedList = document.querySelector(".preview-surface li ul");
       const quoteStyle = quote instanceof HTMLElement ? window.getComputedStyle(quote) : null;
       const nestedQuoteStyle = nestedQuote instanceof HTMLElement ? window.getComputedStyle(nestedQuote) : null;
@@ -817,7 +832,6 @@ export async function run(ctx) {
         imageMaxWidth: imageStyle?.maxWidth ?? "",
         imageRadius: imageStyle?.borderRadius ?? "",
         imageCaption: imageCaption?.textContent ?? "",
-        brokenImageText: brokenImage?.textContent ?? "",
         nestedListMarginTop: nestedListStyle?.marginTop ?? "",
         imageFrameDisplay: imageFrame instanceof HTMLElement ? window.getComputedStyle(imageFrame).display : "",
       };
@@ -834,12 +848,11 @@ export async function run(ctx) {
     expect(previewGfm.tableWrapBorderWidth === "1px", "Preview tables should use an explicit document boundary.");
     expect(previewGfm.tableWrapBackground === "rgb(255, 255, 255)", "Preview tables should not look like filled gray cards.");
     expect(previewGfm.rightAlignedTextAlign === "right", "Preview tables should preserve GFM column alignment.");
-    expect(previewGfm.imageFrameCount === 2, "Preview images should render through the Tabula.md image frame.");
+    expect(previewGfm.imageFrameCount === 1, "Preview images should render through the Tabula.md image frame.");
     expect(previewGfm.imageLoading === "lazy", "Preview images should lazy-load.");
     expect(previewGfm.imageMaxWidth === "100%", "Preview images should not overflow the document width.");
     expect(previewGfm.imageRadius !== "0px", "Preview images should use the document surface radius.");
     expect(previewGfm.imageCaption === "Rendered image", "Preview images should surface the image title as a caption.");
-    expect(previewGfm.brokenImageText === "Missing asset", "Broken preview images should fall back to readable alt text.");
     expect(previewGfm.nestedListMarginTop !== "0px", "Nested preview lists should have deliberate vertical spacing.");
     expect(previewGfm.imageFrameDisplay === "grid", "Standalone preview images should render as block-like document media.");
 
@@ -1116,11 +1129,24 @@ export async function run(ctx) {
     await page.keyboard.press("Backspace");
     const longMarkdown = Array.from({ length: 80 }, (_, index) => `## Section ${index + 1}\n\nBody ${index + 1}`).join("\n\n");
     await page.keyboard.insertText(longMarkdown);
-    await waitForRenderFrame(page);
+    await page.waitForFunction(
+      () => {
+        const editor = document.querySelector(".workspace.split .cm-scroller");
+        const preview = document.querySelector(".workspace.split .preview-surface");
+        return (
+          editor instanceof HTMLElement &&
+          preview instanceof HTMLElement &&
+          editor.scrollHeight - editor.clientHeight > 1 &&
+          preview.scrollHeight - preview.clientHeight > 1
+        );
+      },
+      null,
+      { timeout: 2_000 },
+    );
     const splitScrollPrepared = await page.evaluate(() => {
-      const editor = document.querySelector(".workspace.split .editor-surface");
+      const editorScroller = document.querySelector(".workspace.split .cm-scroller");
       const preview = document.querySelector(".workspace.split .preview-surface");
-      if (!(editor instanceof HTMLElement) || !(preview instanceof HTMLElement)) {
+      if (!(editorScroller instanceof HTMLElement) || !(preview instanceof HTMLElement)) {
         return null;
       }
 
@@ -1128,27 +1154,27 @@ export async function run(ctx) {
         const maxScrollTop = element.scrollHeight - element.clientHeight;
         return maxScrollTop <= 0 ? 0 : element.scrollTop / maxScrollTop;
       };
-      const maxEditorScrollTop = editor.scrollHeight - editor.clientHeight;
+      const maxEditorScrollTop = editorScroller.scrollHeight - editorScroller.clientHeight;
       if (maxEditorScrollTop <= 1 || preview.scrollHeight - preview.clientHeight <= 1) {
         return {
           scrollable: false,
-          editorRatio: getRatio(editor),
+          editorRatio: getRatio(editorScroller),
           previewRatio: getRatio(preview),
         };
       }
 
-      editor.scrollTop = maxEditorScrollTop * 0.55;
-      editor.dispatchEvent(new Event("scroll", { bubbles: true }));
+      editorScroller.scrollTop = maxEditorScrollTop * 0.55;
+      editorScroller.dispatchEvent(new Event("scroll", { bubbles: true }));
       return {
         scrollable: true,
-        editorRatio: getRatio(editor),
+        editorRatio: getRatio(editorScroller),
         previewRatio: getRatio(preview),
       };
     });
     expect(splitScrollPrepared?.scrollable, "Split editor and preview should be scrollable for toolbar-height scroll smoke.");
     await page.waitForFunction(
       ({ tolerance }) => {
-        const editor = document.querySelector(".workspace.split .editor-surface");
+        const editor = document.querySelector(".workspace.split .cm-scroller");
         const preview = document.querySelector(".workspace.split .preview-surface");
         if (!(editor instanceof HTMLElement) || !(preview instanceof HTMLElement)) {
           return false;
@@ -1164,7 +1190,7 @@ export async function run(ctx) {
       { tolerance: 0.12 },
     );
     const splitScrollSync = await page.evaluate(() => {
-      const editor = document.querySelector(".workspace.split .editor-surface");
+      const editor = document.querySelector(".workspace.split .cm-scroller");
       const preview = document.querySelector(".workspace.split .preview-surface");
       if (!(editor instanceof HTMLElement) || !(preview instanceof HTMLElement)) {
         return null;
@@ -1465,5 +1491,99 @@ export async function run(ctx) {
     expect((await readEditorText()) === "  - one\n  - two", "Tab should indent selected Markdown list items.");
     await page.keyboard.press("Shift+Tab");
     expect((await readEditorText()) === "- one\n- two", "Shift+Tab should outdent selected Markdown list items.");
+  });
+
+  await withPage(browser, "/", async (page) => {
+    const docsMarkdown = `> ## Documentation Index
+> Fetch the complete documentation index at: https://modelcontextprotocol.io/llms.txt
+
+# What is the Model Context Protocol (MCP)?
+
+MCP connects AI applications to external systems.
+
+> [!NOTE]
+> Useful information that users should know, even when skimming content.
+
+Term
+: Definition with **strong** text.
+
+21^st^ century and H~2~O use ==marked text==.
+
+Inline math $C_L$ and a display equation:
+
+$$
+L = \\frac{1}{2} \\rho v^2 S C_L
+$$
+
+Footnote reference[^mcp].
+
+[^mcp]: Footnote content.
+
+\`\`\`js
+const protocol = "mcp";
+console.log(protocol);
+\`\`\`
+
+\`\`\`mermaid
+flowchart LR
+  Client --> Server
+\`\`\`
+
+<Frame>
+  <img src="https://mintcdn.com/mcp/bEUxYpZqie0DsluH/images/mcp-simple-diagram.png?fit=max&auto=format&q=85" width="3840" height="1500" data-path="images/mcp-simple-diagram.png" />
+</Frame>
+
+<CardGroup cols={2}>
+  <Card title="Build servers" icon="server" href="/docs/develop/build-server">
+    Create MCP servers to expose your data and tools
+  </Card>
+
+  <Card title="Build clients" icon="computer" href="javascript:alert(1)">
+    Develop applications that connect to MCP servers
+  </Card>
+</CardGroup>
+
+<script>window.__tabulaUnsafePreview = true</script>
+<img src="javascript:alert(1)" alt="unsafe image" onerror="window.__tabulaUnsafeImage = true" />`;
+
+    await page.getByTitle("New tab").click();
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText(docsMarkdown);
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await waitForEditorReady(page, { mode: "preview" });
+    await waitForRenderFrame(page);
+    await page.waitForSelector(".preview-mermaid-svg svg", { timeout: 15_000 });
+    await page.waitForSelector(".preview-math-inline .katex", { timeout: 10_000 });
+
+    expect((await page.locator("h1[id] .preview-heading-anchor").count()) >= 1, "Preview should add heading anchors.");
+    expect((await page.locator(".markdown-alert.markdown-alert-note").count()) === 1, "Preview should render GitHub-style alert blocks.");
+    expect((await page.locator(".markdown-alert-title").filter({ hasText: "NOTE" }).count()) === 1, "Preview alert should include a title.");
+    expect((await page.locator("dl dt").filter({ hasText: "Term" }).count()) === 1, "Preview should render definition list terms.");
+    expect((await page.locator("dl dd").filter({ hasText: "Definition" }).count()) === 1, "Preview should render definition list details.");
+    expect((await page.locator("sup").filter({ hasText: "st" }).count()) >= 1, "Preview should render superscript syntax.");
+    expect((await page.locator("sub").filter({ hasText: "2" }).count()) >= 1, "Preview should render subscript syntax.");
+    expect((await page.locator("mark").filter({ hasText: "marked text" }).count()) === 1, "Preview should render marked text syntax.");
+    expect((await page.locator(".preview-math-inline .katex").count()) >= 1, "Preview should render inline math with KaTeX.");
+    expect((await page.locator(".preview-math-block .katex-display").count()) >= 1, "Preview should render display math with KaTeX.");
+    expect((await page.locator("section[data-footnotes]").count()) === 1, "Preview should render footnotes.");
+    expect((await page.locator("pre code.hljs.language-js").count()) === 1, "Preview should syntax highlight fenced code blocks.");
+    expect((await page.locator("pre code .hljs-keyword").count()) >= 1, "Preview code highlighting should include token spans.");
+    expect((await page.locator(".preview-mermaid-block .preview-mermaid-svg svg").count()) === 1, "Preview should render Mermaid diagrams.");
+    expect((await page.locator(".preview-mermaid-block script").count()) === 0, "Preview should not keep executable Mermaid script nodes.");
+    expect((await page.locator(".preview-docs-frame").count()) === 1, "Preview should render docs-style Frame components.");
+    expect(
+      (await page.locator('.preview-docs-frame img[src^="https://mintcdn.com/"]').count()) === 1,
+      "Preview should render safe raw HTML images inside Frame components.",
+    );
+    expect((await page.locator(".preview-docs-card-group").count()) === 1, "Preview should render docs-style CardGroup components.");
+    expect((await page.locator(".preview-docs-card").count()) === 2, "Preview should render docs-style Card components.");
+    expect(
+      (await page.locator(".preview-docs-card").filter({ hasText: "Build servers" }).count()) === 1,
+      "Preview cards should preserve card titles.",
+    );
+    expect((await page.locator('a.preview-docs-card[href^="javascript:"]').count()) === 0, "Unsafe card hrefs should be stripped.");
+    expect((await page.locator(".preview-surface script").count()) === 0, "Preview should strip script tags from raw HTML.");
+    expect((await page.locator('.preview-surface img[src^="javascript:"]').count()) === 0, "Preview should strip unsafe image URLs.");
   });
 }

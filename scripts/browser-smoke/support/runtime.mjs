@@ -15,6 +15,7 @@ const publishUrl = (process.env.VITE_TABULA_PUBLISH_URL ?? `http://127.0.0.1:${p
 const jsonUrl = (process.env.VITE_TABULA_JSON_URL ?? `http://127.0.0.1:${jsonPort}`).replace(/\/$/, "");
 const publishDataDir = process.env.TABULA_PUBLISH_DATA_DIR ?? path.join(process.cwd(), ".tabula-publish-smoke");
 const jsonDataDir = process.env.TABULA_JSON_DATA_DIR ?? path.join(process.cwd(), ".tabula-json-smoke");
+const appServerMode = process.env.TABULA_TEST_APP_MODE ?? "dev";
 const isWindows = process.platform === "win32";
 const primaryShortcutKey = process.platform === "darwin" ? "Meta" : "Control";
 const appNewFileShortcut = `${primaryShortcutKey}+Alt+N`;
@@ -46,7 +47,14 @@ const waitForServer = async (url) => {
 };
 
 const launchBrowser = async () => {
-  const attempts = [{}, { channel: "chrome" }, { channel: "msedge" }];
+  const launchOptions = {
+    args: [
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-renderer-backgrounding",
+    ],
+  };
+  const attempts = [{ ...launchOptions, channel: "chrome" }, launchOptions, { ...launchOptions, channel: "msedge" }];
   let lastError;
 
   for (const attempt of attempts) {
@@ -355,6 +363,7 @@ const spawnRoomServer = async () => {
           ...process.env,
           PORT: String(roomPort),
           TABULA_ROOM_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
+          TABULA_ROOM_MAX_PAYLOAD_BYTES: process.env.TABULA_ROOM_MAX_PAYLOAD_BYTES ?? String(4 * 1024 * 1024),
         },
         shell: true,
         stdio: ["ignore", "pipe", "pipe"],
@@ -366,6 +375,7 @@ const spawnRoomServer = async () => {
             ...process.env,
             PORT: String(roomPort),
             TABULA_ROOM_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
+            TABULA_ROOM_MAX_PAYLOAD_BYTES: process.env.TABULA_ROOM_MAX_PAYLOAD_BYTES ?? String(4 * 1024 * 1024),
           },
           stdio: ["ignore", "pipe", "pipe"],
         })
@@ -479,9 +489,13 @@ const startLocalServers = async ({ withPublishServer = false, withJsonServer = f
   const roomServer = await spawnRoomServer();
   const publishServer = withPublishServer ? await spawnPublishServer() : null;
   const jsonServer = withJsonServer ? await spawnJsonServer() : null;
+  const appServerArgs =
+    appServerMode === "preview"
+      ? ["run", "preview", "--", "--host", "127.0.0.1", "--port", String(port)]
+      : ["run", "dev", "--", "--host", "127.0.0.1", "--port", String(port)];
   const webServer = spawn(
     isWindows ? "npm.cmd" : "npm",
-    ["run", "dev", "--", "--host", "127.0.0.1", "--port", String(port)],
+    appServerArgs,
     {
       cwd: process.cwd(),
       env: {

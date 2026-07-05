@@ -127,7 +127,22 @@ export const readSelectionActionPosition = (): MarkdownSelectionActionPosition |
   };
 };
 
-export const getCursorPositionLabel = (sourceText: string, offset: number) => {
+export const getCursorPositionLabel = (
+  sourceText: string,
+  offset: number,
+  selection?: Pick<LiveSelection, "columnNumber" | "lineNumber">,
+) => {
+  const lineNumberFromSelection = selection?.lineNumber;
+  const columnNumberFromSelection = selection?.columnNumber;
+  if (
+    Number.isFinite(lineNumberFromSelection) &&
+    Number.isFinite(columnNumberFromSelection) &&
+    (lineNumberFromSelection ?? 0) > 0 &&
+    (columnNumberFromSelection ?? 0) > 0
+  ) {
+    return `${lineNumberFromSelection}:${columnNumberFromSelection}`;
+  }
+
   const safeOffset = Math.max(0, Math.min(offset, sourceText.length));
   const textBeforeCursor = sourceText.slice(0, safeOffset);
   const lineNumber = textBeforeCursor.split("\n").length;
@@ -136,13 +151,40 @@ export const getCursorPositionLabel = (sourceText: string, offset: number) => {
   return `${lineNumber}:${columnNumber}`;
 };
 
-export const getSelectionLineCount = (sourceText: string, from: number, to: number) => {
-  const selectionFrom = Math.max(0, Math.min(Math.min(from, to), sourceText.length));
-  const selectionTo = Math.max(0, Math.min(Math.max(from, to), sourceText.length));
-  if (selectionFrom === selectionTo) {
+export const getSelectionLineCount = (
+  sourceText: string,
+  from: number,
+  to: number,
+  selection?: Pick<LiveSelection, "fromLineNumber" | "selectionEndsWithLineBreak" | "toLineNumber">,
+) => {
+  const selectionFromOffset = Math.min(from, to);
+  const selectionToOffset = Math.max(from, to);
+  if (selectionFromOffset === selectionToOffset) {
     return 0;
   }
 
+  const fromLineNumber = selection?.fromLineNumber;
+  const toLineNumber = selection?.toLineNumber;
+  if (
+    Number.isFinite(fromLineNumber) &&
+    Number.isFinite(toLineNumber) &&
+    (fromLineNumber ?? 0) > 0 &&
+    (toLineNumber ?? 0) > 0
+  ) {
+    const fallbackEndsWithLineBreak =
+      selection?.selectionEndsWithLineBreak ??
+      (selectionToOffset <= sourceText.length && selectionToOffset > selectionFromOffset
+        ? sourceText[selectionToOffset - 1] === "\n"
+        : false);
+    const adjustedToLineNumber =
+      fallbackEndsWithLineBreak
+        ? Math.max(fromLineNumber ?? 1, (toLineNumber ?? 1) - 1)
+        : (toLineNumber ?? 1);
+    return Math.max(1, Math.abs(adjustedToLineNumber - (fromLineNumber ?? 1)) + 1);
+  }
+
+  const selectionFrom = Math.max(0, Math.min(selectionFromOffset, sourceText.length));
+  const selectionTo = Math.max(0, Math.min(selectionToOffset, sourceText.length));
   const adjustedSelectionTo = selectionTo > selectionFrom && sourceText[selectionTo - 1] === "\n" ? selectionTo - 1 : selectionTo;
   const startLine = sourceText.slice(0, selectionFrom).split("\n").length;
   const endLine = sourceText.slice(0, adjustedSelectionTo).split("\n").length;
@@ -170,7 +212,12 @@ const areLiveSelectionsEqual = (
   nextSelection: LiveSelection | undefined,
 ) =>
   currentSelection?.from === nextSelection?.from &&
-  currentSelection?.to === nextSelection?.to;
+  currentSelection?.to === nextSelection?.to &&
+  currentSelection?.lineNumber === nextSelection?.lineNumber &&
+  currentSelection?.columnNumber === nextSelection?.columnNumber &&
+  currentSelection?.fromLineNumber === nextSelection?.fromLineNumber &&
+  currentSelection?.selectionEndsWithLineBreak === nextSelection?.selectionEndsWithLineBreak &&
+  currentSelection?.toLineNumber === nextSelection?.toLineNumber;
 
 const areSelectionActionPositionsEqual = (
   currentPosition: MarkdownSelectionActionPosition | null,
@@ -211,15 +258,16 @@ export function useSelectionCommentController({
     activeViewMode === "preview"
       ? (previewSelection?.text ?? "")
       : activeSelection && activeSelection.from !== activeSelection.to
-        ? text.slice(Math.min(activeSelection.from, activeSelection.to), Math.max(activeSelection.from, activeSelection.to)).trim()
+        ? (editorRef.current?.getSelectedText() ??
+            text.slice(Math.min(activeSelection.from, activeSelection.to), Math.max(activeSelection.from, activeSelection.to))).trim()
         : "";
   const selectedCharacterCount =
     activeSelection && activeSelection.from !== activeSelection.to ? Math.abs(activeSelection.to - activeSelection.from) : 0;
   const selectedLineCount =
     activeSelection && activeSelection.from !== activeSelection.to
-      ? getSelectionLineCount(text, activeSelection.from, activeSelection.to)
+      ? getSelectionLineCount(text, activeSelection.from, activeSelection.to, activeSelection)
       : 0;
-  const cursorPositionLabel = getCursorPositionLabel(text, activeSelection?.to ?? 0);
+  const cursorPositionLabel = getCursorPositionLabel(text, activeSelection?.to ?? 0, activeSelection);
 
   useEffect(() => {
     previewSelectionRef.current = previewSelection;
@@ -349,12 +397,13 @@ export function useSelectionCommentController({
     if (!selectionRange) {
       return null;
     }
+    const sourceText = activeViewMode === "preview" ? text : (editorRef.current?.getValue() ?? text);
 
     return {
       ...selectionRange,
-      sourceQuote: text.slice(selectionRange.start, selectionRange.end),
-      prefix: text.slice(Math.max(0, selectionRange.start - COMMENT_ANCHOR_CONTEXT_LENGTH), selectionRange.start),
-      suffix: text.slice(selectionRange.end, selectionRange.end + COMMENT_ANCHOR_CONTEXT_LENGTH),
+      sourceQuote: sourceText.slice(selectionRange.start, selectionRange.end),
+      prefix: sourceText.slice(Math.max(0, selectionRange.start - COMMENT_ANCHOR_CONTEXT_LENGTH), selectionRange.start),
+      suffix: sourceText.slice(selectionRange.end, selectionRange.end + COMMENT_ANCHOR_CONTEXT_LENGTH),
     };
   };
 

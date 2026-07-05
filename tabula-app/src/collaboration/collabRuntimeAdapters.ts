@@ -9,6 +9,8 @@ export type CollabRuntimeClock = {
   clearTimeout(handle: CollabRuntimeTimerHandle): void;
   setInterval(callback: () => void, delayMs: number): CollabRuntimeTimerHandle;
   clearInterval(handle: CollabRuntimeTimerHandle): void;
+  requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => CollabRuntimeTimerHandle;
+  cancelIdleCallback?: (handle: CollabRuntimeTimerHandle) => void;
   nowIso(): string;
   createId(): string;
 };
@@ -29,6 +31,7 @@ export type CollabTextAdapter = {
   encodeState(document: CollabTextDocumentHandle): Uint8Array;
   mergeUpdates(updates: readonly Uint8Array[]): Uint8Array;
   applyLocalText(document: CollabTextDocumentHandle, nextText: string, patches?: readonly TextPatch[]): void;
+  applyLocalTextPatches(document: CollabTextDocumentHandle, patches: readonly TextPatch[]): void;
   applyRemoteUpdate(document: CollabTextDocumentHandle, update: Uint8Array): CollabTextChangeResult | null;
   destroy(document: CollabTextDocumentHandle): void;
 };
@@ -79,6 +82,24 @@ export const createBrowserCollabRuntimeClock = (): CollabRuntimeClock => ({
   },
   clearInterval(handle) {
     globalThis.clearInterval(handle as ReturnType<typeof setInterval>);
+  },
+  requestIdleCallback(callback, options) {
+    const idleScheduler = globalThis as typeof globalThis & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => CollabRuntimeTimerHandle;
+    };
+    return idleScheduler.requestIdleCallback
+      ? idleScheduler.requestIdleCallback(callback, options)
+      : globalThis.setTimeout(callback, 0);
+  },
+  cancelIdleCallback(handle) {
+    const idleScheduler = globalThis as typeof globalThis & {
+      cancelIdleCallback?: (handle: CollabRuntimeTimerHandle) => void;
+    };
+    if (idleScheduler.cancelIdleCallback) {
+      idleScheduler.cancelIdleCallback(handle);
+      return;
+    }
+    globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>);
   },
   nowIso() {
     return new Date().toISOString();
