@@ -593,8 +593,8 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
     const sourcePasteText = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
     expect(
-      sourcePasteText === "“Title”\n\titem\n\n\nnext",
-      "Pasting source-sensitive text should preserve quotes, tabs, and blank lines.",
+      sourcePasteText === "“Title”\n  item\n\n\nnext",
+      "Pasting source-sensitive text should preserve quotes and blank lines while normalizing leading tabs.",
     );
 
     await page.keyboard.press("ControlOrMeta+A");

@@ -17,11 +17,16 @@ export type MarkdownHeading = {
   sourceLineIndex: number;
 };
 
-export type SearchMatch = {
-  start: number;
-  end: number;
-  preview: string;
-};
+export type {
+  MarkdownSearchReplaceEdit,
+  MarkdownSearchReplaceSelection,
+  SearchMatch,
+} from "./markdown/search";
+export {
+  getSearchMatches,
+  replaceAllSearchMatches,
+  replaceCurrentSearchMatch,
+} from "./markdown/search";
 
 const frontmatterOpeningDelimiterPattern = /^---\s*$/;
 const frontmatterClosingDelimiterPattern = /^(?:---|\.\.\.)\s*$/;
@@ -152,36 +157,6 @@ export const getOutlineHeadings = (previewBody: PreviewBody): MarkdownHeading[] 
       };
     })
     .filter((heading): heading is MarkdownHeading => Boolean(heading?.text));
-
-export const getSearchMatches = (text: string, query: string): SearchMatch[] => {
-  const normalizedQuery = query.trim();
-  if (!normalizedQuery) {
-    return [];
-  }
-
-  const matches: SearchMatch[] = [];
-  let fromIndex = 0;
-  const searchableText = text.toLowerCase();
-  const lowerQuery = normalizedQuery.toLowerCase();
-
-  while (fromIndex < searchableText.length) {
-    const foundIndex = searchableText.indexOf(lowerQuery, fromIndex);
-    if (foundIndex === -1) {
-      break;
-    }
-
-    const previewStart = Math.max(0, foundIndex - 28);
-    const previewEnd = Math.min(text.length, foundIndex + normalizedQuery.length + 40);
-    matches.push({
-      start: foundIndex,
-      end: foundIndex + normalizedQuery.length,
-      preview: text.slice(previewStart, previewEnd).replace(/\s+/g, " ").trim(),
-    });
-    fromIndex = foundIndex + Math.max(normalizedQuery.length, 1);
-  }
-
-  return matches;
-};
 
 export const getLineStartOffset = (markdown: string, targetLineIndex: number) => {
   const lines = markdown.split("\n");

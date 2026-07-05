@@ -188,6 +188,8 @@ export {
 
 export type {
   MarkdownHeading,
+  MarkdownSearchReplaceEdit,
+  MarkdownSearchReplaceSelection,
   ParsedFrontmatter,
   PreviewBody,
   SearchMatch,
@@ -200,6 +202,8 @@ export {
   getPreviewBody,
   getSearchMatches,
   parseFrontmatter,
+  replaceAllSearchMatches,
+  replaceCurrentSearchMatch,
 } from "./markdown";
 
 export type {
@@ -208,10 +212,33 @@ export type {
   MarkdownTextEdit,
 } from "./markdownEditing";
 export {
+  getMarkdownBackspaceEdit,
   getMarkdownEnterEdit,
   getMarkdownIndentEdit,
   getMarkdownPasteEdit,
 } from "./markdownEditing";
+
+export type {
+  MarkdownLink,
+  MarkdownLinkUrlEdit,
+} from "./markdown/links";
+export {
+  getMarkdownLinkAtOffset,
+  getMarkdownLinks,
+  isSafeMarkdownLinkUrl,
+  updateMarkdownLinkUrl,
+} from "./markdown/links";
+
+export type {
+  MarkdownTaskMarker,
+  MarkdownTaskToggleEdit,
+} from "./markdown/tasks";
+export {
+  getMarkdownTaskAtOffset,
+  getMarkdownTaskMarkers,
+  toggleMarkdownTaskOnLine,
+  toggleMarkdownTaskAtOffset,
+} from "./markdown/tasks";
 
 export type {
   MarkdownFormatCommand,

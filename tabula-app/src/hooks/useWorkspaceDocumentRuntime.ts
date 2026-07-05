@@ -2,7 +2,7 @@ import { useCallback, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import type { FileViewMode, WorkspaceFile } from "../workspaceStorage";
 import { useActiveDocumentRuntime } from "./useActiveDocumentRuntime";
-import { useEditorSearchController } from "./useEditorSearchController";
+import { useEditorSearchController } from "../editor/useEditorSearchController";
 import { useSelectionCommentController } from "./useSelectionCommentController";
 import { useSplitViewController } from "./useSplitViewController";
 import { useWorkspaceScrollSync } from "./useWorkspaceScrollSync";
