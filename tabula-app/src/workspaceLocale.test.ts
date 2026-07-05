@@ -27,7 +27,7 @@ describe("workspace locale chrome copy", () => {
     expect(english.share.tabs.shareLink).toBe("Share link");
     expect(english.share.shareable.title).toBe("Snapshot link");
     expect(english.share.shareable.description).toBe(
-      "Create an encrypted snapshot that opens as a local copy.",
+      "Create an encrypted local-copy snapshot. Anyone with the full link can open it for 7 days.",
     );
     expect(english.share.shareable.emptyFileReason("Untitled")).toBe(
       "Add content to Untitled before creating a snapshot link.",
@@ -40,7 +40,7 @@ describe("workspace locale chrome copy", () => {
     expect(korean.share.tabs.shareLink).toBe("공유 링크");
     expect(korean.share.shareable.title).toBe("스냅샷 링크");
     expect(korean.share.shareable.description).toBe(
-      "로컬 복사본으로 열 암호화된 스냅샷을 만듭니다.",
+      "암호화된 로컬 복사본 스냅샷을 만듭니다. 전체 링크가 있으면 7일 동안 열 수 있습니다.",
     );
     expect(korean.share.shareable.emptyFileReason("Untitled 5")).toBe(
       "Untitled 5에 내용을 추가하면 스냅샷 링크를 만들 수 있습니다.",

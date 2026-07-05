@@ -33,8 +33,9 @@ an encrypted copy. The snapshot service stores encrypted snapshot data, not the
 snapshot key or plaintext Markdown.
 
 Anyone with the full link, including the fragment key, can open a local copy.
-Tabula.md is in public preview and does not yet provide account-based link
-revoke controls.
+Hosted snapshot blobs are retained for a limited window. The current hosted
+service window is 7 days. Tabula.md is in public preview and does not yet
+provide account-based link revoke controls.
 
 ## Reporting Problems
 

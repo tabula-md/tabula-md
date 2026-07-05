@@ -279,7 +279,7 @@ export async function run(ctx) {
     expect((await page.getByText("Live collaboration").count()) > 0, "Share modal should default to live collaboration.");
     expect((await page.getByText("Snapshot link").count()) > 0, "Share modal should offer an encrypted snapshot import path.");
     expect(
-      (await page.getByText("Create an encrypted snapshot that opens as a local copy.").count()) === 1,
+      (await page.getByText("Create an encrypted local-copy snapshot. Anyone with the full link can open it for 7 days.").count()) === 1,
       "Snapshot link should describe encrypted snapshot import, not publish.",
     );
     expect((await page.getByRole("button", { name: "Create snapshot link" }).count()) === 1, "Share modal should expose encrypted snapshot export.");
