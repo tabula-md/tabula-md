@@ -132,6 +132,18 @@ export const shouldCancelPendingEditorCommit = (
   activeFile: Pick<WorkspaceFile, "id" | "text"> | undefined,
 ) => shouldCancelPendingDocumentBufferCommit(pendingCommit, activeFile);
 
+export const shouldUseFileTextFallbackHistory = ({
+  canUseFallbackHistory,
+  editorHandled,
+  fallbackHistoryEnabled,
+  hasActiveFile,
+}: {
+  canUseFallbackHistory: boolean;
+  editorHandled: boolean;
+  fallbackHistoryEnabled: boolean;
+  hasActiveFile: boolean;
+}) => !editorHandled && fallbackHistoryEnabled && hasActiveFile && canUseFallbackHistory;
+
 export const normalizeFileBookmarks = (bookmarks: MarkdownBookmark[], nowIso: string): FileBookmark[] =>
   bookmarks
     .map((bookmark) => ({
@@ -316,22 +328,25 @@ export function useWorkspaceActiveFileEditor({
   };
 
   const undoActiveFile = () => {
-    if (editorRef.current?.undo()) {
-      return;
-    }
-
-    if (!fallbackHistoryEnabled || !activeFile || !canUndo) {
+    const editorHandled = editorRef.current?.undo() ?? false;
+    if (!shouldUseFileTextFallbackHistory({
+      canUseFallbackHistory: canUndo,
+      editorHandled,
+      fallbackHistoryEnabled,
+      hasActiveFile: Boolean(activeFile),
+    }) || !activeFile) {
       return;
     }
 
     const previousText = activeHistory.past[activeHistory.past.length - 1];
+    const currentText = getLatestFileText(activeFile.id, activeFile.text);
     setHistoryByFileId((currentHistory) => {
       const fileHistory = currentHistory[activeFile.id] ?? EMPTY_FILE_HISTORY;
       return {
         ...currentHistory,
         [activeFile.id]: {
           past: fileHistory.past.slice(0, -1),
-          future: [activeFile.text, ...fileHistory.future].slice(0, MAX_FILE_HISTORY_ENTRIES),
+          future: [currentText, ...fileHistory.future].slice(0, MAX_FILE_HISTORY_ENTRIES),
         },
       };
     });
@@ -339,21 +354,24 @@ export function useWorkspaceActiveFileEditor({
   };
 
   const redoActiveFile = () => {
-    if (editorRef.current?.redo()) {
-      return;
-    }
-
-    if (!fallbackHistoryEnabled || !activeFile || !canRedo) {
+    const editorHandled = editorRef.current?.redo() ?? false;
+    if (!shouldUseFileTextFallbackHistory({
+      canUseFallbackHistory: canRedo,
+      editorHandled,
+      fallbackHistoryEnabled,
+      hasActiveFile: Boolean(activeFile),
+    }) || !activeFile) {
       return;
     }
 
     const nextText = activeHistory.future[0];
+    const currentText = getLatestFileText(activeFile.id, activeFile.text);
     setHistoryByFileId((currentHistory) => {
       const fileHistory = currentHistory[activeFile.id] ?? EMPTY_FILE_HISTORY;
       return {
         ...currentHistory,
         [activeFile.id]: {
-          past: [...fileHistory.past.slice(-(MAX_FILE_HISTORY_ENTRIES - 1)), activeFile.text],
+          past: [...fileHistory.past.slice(-(MAX_FILE_HISTORY_ENTRIES - 1)), currentText],
           future: fileHistory.future.slice(1),
         },
       };
