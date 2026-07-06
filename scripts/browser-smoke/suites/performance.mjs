@@ -1119,6 +1119,8 @@ export async function run(ctx) {
       await importMarkdownFixture(page, largeEditorMarkdown, "large-editor-performance.md");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
+      await page.evaluate(installLargePasteProbe);
+      await page.evaluate(() => window.__tabulaLargePasteProbe.start());
 
       const typingElapsed = await measureElapsed(async () => {
         await focusMarkdownEditor(page);
@@ -1126,11 +1128,20 @@ export async function run(ctx) {
         await page.keyboard.insertText("\nlatency-probe");
         await waitForEditorText(page, "latency-probe", LARGE_EDITOR_TYPING_MAX_MS);
       });
-      reportPerformanceMetric("large-editor-typing", { elapsedMs: Math.round(typingElapsed) });
+      const typingMetrics = await page.evaluate(() => window.__tabulaLargePasteProbe.stop());
+      reportPerformanceMetric("large-editor-typing", {
+        elapsedMs: Math.round(typingElapsed),
+        projectWrites: typingMetrics.projectWrites,
+      });
       expect(
         typingElapsed < LARGE_EDITOR_TYPING_MAX_MS,
         `Typing in a 5,000-line Markdown file should stay within budget. Elapsed: ${Math.round(typingElapsed)}ms.`,
       );
+      expect(
+        typingMetrics.projectWrites === 0,
+        `Typing in a 5,000-line Markdown file should not synchronously persist workspace state before the debounce window. Writes: ${typingMetrics.projectWrites}.`,
+      );
+      await page.evaluate(() => window.__tabulaLargePasteProbe.restore());
 
       const searchElapsed = await measureElapsed(async () => {
         await page.getByRole("button", { name: "Search", exact: true }).click();
