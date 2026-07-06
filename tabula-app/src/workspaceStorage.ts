@@ -663,6 +663,23 @@ export const createStoredWorkspace = ({
   commentsByFileId,
 });
 
+export const getStoredWorkspaceContentSignature = ({
+  files,
+  openFileIds = files.map((file) => file.id),
+  activeFileId,
+  commentsByFileId,
+}: CreateStoredWorkspaceInput) =>
+  JSON.stringify({
+    version: PROJECT_STORAGE_VERSION,
+    activeFileId,
+    openFileIds: openFileIds.filter(
+      (fileId, index, fileIdList) => files.some((file) => file.id === fileId) && fileIdList.indexOf(fileId) === index,
+    ),
+    fileOrder: files.map((file) => file.id),
+    files: Object.fromEntries(files.map((file) => [file.id, serializeFile(file)])),
+    commentsByFileId,
+  });
+
 export const createStoredWorkspaceManifest = ({
   files,
   openFileIds = files.map((file) => file.id),
@@ -698,6 +715,21 @@ export const clearStoredWorkspace = (
   storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
 ) => {
   storage.removeItem?.(PROJECT_STORAGE_KEY);
+};
+
+export const clearStoredWorkspaceIfCurrent = (
+  workspace: WorkspaceState,
+  storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
+) => {
+  const storedWorkspace = readStoredWorkspace(storage);
+  if (!storedWorkspace) {
+    clearStoredWorkspace(storage);
+    return;
+  }
+
+  if (getStoredWorkspaceContentSignature(storedWorkspace) === getStoredWorkspaceContentSignature(workspace)) {
+    clearStoredWorkspace(storage);
+  }
 };
 
 export const initialWorkspaceState = (): WorkspaceState => {

@@ -6,11 +6,13 @@ import {
 } from "./workspacePersistence";
 import { getWorkspacePersistenceFlushSnapshot } from "./hooks/useQueuedWorkspacePersistence";
 import {
+  clearStoredWorkspaceIfCurrent,
   createWorkspaceFile,
   createStoredWorkspace,
   readStoredWorkspace,
   PROJECT_STORAGE_KEY,
   PROJECT_STORAGE_MANIFEST_KEY,
+  writeStoredWorkspace,
   type WorkspaceState,
   type WorkspaceStorageAdapter,
 } from "./workspaceStorage";
@@ -128,6 +130,28 @@ describe("workspace storage adapter", () => {
     };
 
     expect(readStoredWorkspace(storage)).toBeNull();
+  });
+
+  it("does not clear a newer local fallback after a stale IndexedDB write succeeds", () => {
+    const storage: Record<string, string> = {};
+    const adapter: WorkspaceStorageAdapter = {
+      getItem: (key) => storage[key] ?? null,
+      removeItem: (key) => {
+        delete storage[key];
+      },
+      setItem: (key, value) => {
+        storage[key] = value;
+      },
+    };
+
+    writeStoredWorkspace(createWorkspace("# Latest fallback"), adapter);
+    clearStoredWorkspaceIfCurrent(createWorkspace("# Stale IndexedDB"), adapter);
+
+    expect(readStoredWorkspace(adapter)?.files[0]?.text).toBe("# Latest fallback");
+
+    clearStoredWorkspaceIfCurrent(createWorkspace("# Latest fallback"), adapter);
+
+    expect(readStoredWorkspace(adapter)).toBeNull();
   });
 });
 

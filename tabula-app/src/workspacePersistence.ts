@@ -1,6 +1,6 @@
 import type { WorkspaceState } from "./workspaceStorage";
 import {
-  clearStoredWorkspace,
+  clearStoredWorkspaceIfCurrent,
   writeStoredWorkspace,
   writeStoredWorkspaceManifest,
 } from "./workspaceStorage";
@@ -74,7 +74,7 @@ export const writeWorkspaceToPrimaryStores = (workspace: WorkspaceState) => {
   writeStoredWorkspaceManifest(workspace);
   void writeIndexedDbWorkspace(workspace)
     .then(() => {
-      clearStoredWorkspace();
+      clearStoredWorkspaceIfCurrent(workspace);
     })
     .catch(() => {
       writeStoredWorkspace(workspace);
