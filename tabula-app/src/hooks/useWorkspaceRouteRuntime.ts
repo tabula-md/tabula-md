@@ -12,6 +12,7 @@ type UseWorkspaceRouteRuntimeOptions = {
   activateRoomFile: (room: LocationRoom) => void;
   files: WorkspaceFile[];
   selectFile: (fileId: string) => void;
+  onBeforeWorkspaceBoundary?: () => void;
   onRouteWorkspaceChange: () => void;
 };
 
@@ -21,10 +22,12 @@ export function useWorkspaceRouteRuntime({
   activateRoomFile,
   files,
   selectFile,
+  onBeforeWorkspaceBoundary,
   onRouteWorkspaceChange,
 }: UseWorkspaceRouteRuntimeOptions) {
   useEffect(() => {
     const activateRoomFromLocation = (room: LocationRoom) => {
+      onBeforeWorkspaceBoundary?.();
       activateRoomFile(room);
       onRouteWorkspaceChange();
     };
@@ -43,6 +46,7 @@ export function useWorkspaceRouteRuntime({
 
       const localFile = files.find((file) => !file.roomId) ?? files[0];
       if (localFile) {
+        onBeforeWorkspaceBoundary?.();
         selectFile(localFile.id);
         onRouteWorkspaceChange();
       }
@@ -55,6 +59,7 @@ export function useWorkspaceRouteRuntime({
     activateRoomFile,
     files,
     onRouteWorkspaceChange,
+    onBeforeWorkspaceBoundary,
     selectFile,
   ]);
 

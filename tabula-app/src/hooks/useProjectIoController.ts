@@ -48,7 +48,10 @@ type UseProjectIoControllerArgs = {
   commentsByFileId: Record<string, FileComment[]>;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   files: WorkspaceFile[];
+  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
+  getWorkspaceSnapshot?: () => Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">;
   openFileIds: string[];
+  onBeforeWorkspaceBoundary?: () => void;
   preferences: WorkspacePreferences;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
   replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
@@ -58,6 +61,33 @@ type UseProjectIoControllerArgs = {
   onCloseChrome: () => void;
 };
 
+export const getProjectIoActiveFileSnapshot = ({
+  activeFile,
+  getActiveFileSnapshot,
+}: {
+  activeFile?: WorkspaceFile;
+  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
+}) => getActiveFileSnapshot?.() ?? activeFile;
+
+export const getProjectIoWorkspaceSnapshot = ({
+  activeFile,
+  activeFileId,
+  files,
+  getWorkspaceSnapshot,
+  openFileIds,
+}: {
+  activeFile?: WorkspaceFile;
+  activeFileId: string;
+  files: WorkspaceFile[];
+  getWorkspaceSnapshot?: () => Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">;
+  openFileIds: string[];
+}) =>
+  getWorkspaceSnapshot?.() ?? {
+    files,
+    openFileIds,
+    activeFileId: activeFile?.id ?? activeFileId,
+  };
+
 export function useProjectIoController({
   activeFile,
   activeFileId,
@@ -65,7 +95,10 @@ export function useProjectIoController({
   commentsByFileId,
   editorRef,
   files,
+  getActiveFileSnapshot,
+  getWorkspaceSnapshot,
   openFileIds,
+  onBeforeWorkspaceBoundary,
   preferences,
   replaceCommentsByFileId,
   replaceWorkspace,
@@ -78,29 +111,44 @@ export function useProjectIoController({
   const queueAnimationFrameTask = useAnimationFrameTask();
 
   const copyCurrentFile = async () => {
-    if (!activeFile) {
+    const fileSnapshot = getProjectIoActiveFileSnapshot({
+      activeFile,
+      getActiveFileSnapshot,
+    });
+    if (!fileSnapshot) {
       return;
     }
 
-    await navigator.clipboard.writeText(activeFile.text);
+    await navigator.clipboard.writeText(fileSnapshot.text);
     showToast("File copied.");
   };
 
   const downloadCurrentFile = () => {
-    if (!activeFile) {
+    const fileSnapshot = getProjectIoActiveFileSnapshot({
+      activeFile,
+      getActiveFileSnapshot,
+    });
+    if (!fileSnapshot) {
       return;
     }
 
-    const download = createCurrentFileDownloadDraft(activeFile);
+    const download = createCurrentFileDownloadDraft(fileSnapshot);
     downloadTextFile(download.fileName, download.content, download.type);
     showToast("File downloaded.");
   };
 
   const downloadProject = () => {
-    const download = createWorkspaceProjectDownloadDraft({
+    const workspaceSnapshot = getProjectIoWorkspaceSnapshot({
+      activeFile,
+      activeFileId,
       files,
+      getWorkspaceSnapshot,
       openFileIds,
-      activeFileId: activeFile?.id ?? activeFileId,
+    });
+    const download = createWorkspaceProjectDownloadDraft({
+      files: workspaceSnapshot.files,
+      openFileIds: workspaceSnapshot.openFileIds,
+      activeFileId: workspaceSnapshot.activeFileId,
       commentsByFileId,
     });
     downloadTextFile(download.fileName, download.content, download.type);
@@ -108,7 +156,14 @@ export function useProjectIoController({
   };
 
   const downloadProjectArchive = () => {
-    const archive = createProjectArchive(files);
+    const workspaceSnapshot = getProjectIoWorkspaceSnapshot({
+      activeFile,
+      activeFileId,
+      files,
+      getWorkspaceSnapshot,
+      openFileIds,
+    });
+    const archive = createProjectArchive(workspaceSnapshot.files);
     downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
     showToast("Project archive downloaded.");
   };
@@ -129,6 +184,7 @@ export function useProjectIoController({
       return;
     }
 
+    onBeforeWorkspaceBoundary?.();
     const nextActiveFile = replaceWorkspace(nextWorkspace);
     replaceCommentsByFileId(nextWorkspace.commentsByFileId);
     clearFileHistory();
@@ -141,6 +197,7 @@ export function useProjectIoController({
   const importFile = async (file: File) => {
     const importedText = await file.text();
     const importedFileDraft = createImportedWorkspaceFileDraft(file.name, importedText, preferences);
+    onBeforeWorkspaceBoundary?.();
     const nextFile = addFileFromContent(
       importedFileDraft.title,
       importedFileDraft.text,

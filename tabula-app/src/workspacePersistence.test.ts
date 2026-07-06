@@ -4,6 +4,7 @@ import {
   DEFAULT_WORKSPACE_PERSISTENCE_DELAY_MS,
   writeWorkspaceToPrimaryStores,
 } from "./workspacePersistence";
+import { getWorkspacePersistenceFlushSnapshot } from "./hooks/useQueuedWorkspacePersistence";
 import {
   createWorkspaceFile,
   createStoredWorkspace,
@@ -87,6 +88,23 @@ describe("workspace persistence queue", () => {
 
     expect(writeWorkspace).not.toHaveBeenCalled();
     expect(queue.hasPending()).toBe(false);
+  });
+
+  it("resolves pagehide flush snapshots after the editor runtime flushes", () => {
+    let pendingText = "# Pending";
+    const latestWorkspace = createWorkspace("# Stale");
+    const onBeforePersist = vi.fn(() => {
+      pendingText = "# Flushed";
+    });
+
+    const snapshot = getWorkspacePersistenceFlushSnapshot({
+      latestWorkspace,
+      onBeforePersist,
+      getWorkspaceSnapshot: () => createWorkspace(pendingText),
+    });
+
+    expect(onBeforePersist).toHaveBeenCalledTimes(1);
+    expect(snapshot.files[0]?.text).toBe("# Flushed");
   });
 });
 

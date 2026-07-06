@@ -14,6 +14,7 @@ import { useCollaborationConnectionRuntime } from "./useCollaborationConnectionR
 type UseCollaborationRoomOptions = {
   activeFile?: WorkspaceFile;
   activeSelection?: LiveSelection;
+  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   identity: Collaborator;
   setFileText: (fileId: string, text: string) => void;
   setFileCollaborationStatus: (
@@ -34,6 +35,7 @@ type UseCollaborationRoomOptions = {
 export function useCollaborationRoom({
   activeFile,
   activeSelection,
+  getActiveFileSnapshot,
   identity,
   setFileText,
   setFileCollaborationStatus,
@@ -60,7 +62,7 @@ export function useCollaborationRoom({
     });
 
   const startSession = () => {
-    const sessionFile = activeFile;
+    const sessionFile = getActiveFileSnapshot?.() ?? activeFile;
     const nextSession = createCollaborationSessionStartRequest({
       activeFile: sessionFile,
       origin: window.location.origin,

@@ -29,6 +29,8 @@ type UseJsonShareImportControllerArgs = {
   closeFloatingChrome: () => void;
   commentsByFileId: Record<string, FileComment[]>;
   files: WorkspaceFile[];
+  getWorkspaceSnapshot?: () => WorkspaceState;
+  onBeforeWorkspaceBoundary?: () => void;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
   replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
   resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
@@ -41,6 +43,8 @@ export function useJsonShareImportController({
   closeFloatingChrome,
   commentsByFileId,
   files,
+  getWorkspaceSnapshot,
+  onBeforeWorkspaceBoundary,
   replaceCommentsByFileId,
   replaceWorkspace,
   resetCollaborationState,
@@ -67,6 +71,7 @@ export function useJsonShareImportController({
   const replaceWorkspaceWithJsonShare = useEventCallback((workspace: WorkspaceState) => {
     jsonShareImportCleanupRef.current = null;
     handledJsonShareRouteRef.current = null;
+    onBeforeWorkspaceBoundary?.();
     const nextActiveFile = replaceWorkspace(workspace);
     replaceCommentsByFileId(workspace.commentsByFileId);
     writeStoredWorkspaceManifest(workspace);
@@ -147,8 +152,10 @@ export function useJsonShareImportController({
           }
 
           const nextWorkspace = createWorkspaceFromJsonShareSnapshot(snapshot);
+          onBeforeWorkspaceBoundary?.();
+          const currentWorkspaceContent = getWorkspaceSnapshot?.() ?? workspaceContentRef.current;
           const shouldConfirmImport =
-            workspaceSource !== "starter" || hasMeaningfulWorkspaceContent(workspaceContentRef.current);
+            workspaceSource !== "starter" || hasMeaningfulWorkspaceContent(currentWorkspaceContent);
           if (shouldConfirmImport) {
             setJsonShareImport({ status: "ready", route, workspace: nextWorkspace });
             return;
