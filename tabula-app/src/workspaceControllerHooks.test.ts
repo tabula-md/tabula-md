@@ -21,6 +21,10 @@ import {
   getProjectIoActiveFileSnapshot,
   getProjectIoWorkspaceSnapshot,
 } from "./hooks/useProjectIoController";
+import {
+  createActiveDocumentPreviewTextSnapshot,
+  createPreviewStateFromSnapshot,
+} from "./hooks/useActiveDocumentRuntime";
 import { getMagnetizedSplitRatio } from "./hooks/useSplitViewController";
 import {
   createCurrentFileDownloadDraft,
@@ -478,6 +482,25 @@ describe("split view controller", () => {
     expect(getMagnetizedSplitRatio(0.49)).toBe(0.5);
     expect(getMagnetizedSplitRatio(0.2)).toBe(0.28);
     expect(getMagnetizedSplitRatio(0.8)).toBe(0.72);
+  });
+});
+
+describe("active document preview runtime", () => {
+  it("derives preview state from the runtime snapshot text instead of stale file text", () => {
+    const staleFile = {
+      id: "file",
+      text: "# Stale workspace text",
+    };
+    const snapshot = createActiveDocumentPreviewTextSnapshot(
+      staleFile,
+      "# Runtime preview text\n\nBody",
+    );
+    const previewState = createPreviewStateFromSnapshot(snapshot);
+
+    expect(previewState.outlineHeadings).toEqual([
+      { depth: 1, text: "Runtime preview text", lineIndex: 0, sourceLineIndex: 0 },
+    ]);
+    expect(previewState.renderedPreview.body).toBe("# Runtime preview text\n\nBody");
   });
 });
 
