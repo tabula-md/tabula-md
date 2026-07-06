@@ -192,6 +192,7 @@ export function useWorkspaceRuntime() {
     replaceCurrentMatch,
   } = useWorkspaceDocumentRuntime({
     activeFile,
+    editorDocumentRuntime,
     editorRef,
     onCommitActiveFileSplitRatio: commitActiveFileSplitRatio,
     onSetWorkspaceFileViewMode: setWorkspaceFileViewMode,

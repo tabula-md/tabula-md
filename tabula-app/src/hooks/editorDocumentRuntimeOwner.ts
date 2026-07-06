@@ -13,10 +13,23 @@ export type WorkspaceEditorDocumentRuntimeOwner = {
   flush(): EditorDocumentRuntimeFlushResult | null;
   getLatestFileText(fileId: string, fallbackText: string): string;
   getRuntime(file: EditorDocumentRuntimeFile): EditorDocumentRuntime;
+  getVisibleFileText(file: EditorDocumentRuntimeFile): string;
 };
 
 export const createWorkspaceEditorDocumentRuntimeOwner = (): WorkspaceEditorDocumentRuntimeOwner => {
   let runtime: EditorDocumentRuntime | null = null;
+
+  const getRuntime = (file: EditorDocumentRuntimeFile) => {
+    if (runtime?.getSnapshot().fileId === file.id) {
+      return runtime;
+    }
+
+    runtime = createEditorDocumentRuntime({
+      fileId: file.id,
+      text: file.text,
+    });
+    return runtime;
+  };
 
   return {
     clear() {
@@ -31,16 +44,16 @@ export const createWorkspaceEditorDocumentRuntimeOwner = (): WorkspaceEditorDocu
       return runtime?.getSnapshot().fileId === fileId ? runtime.getText() : fallbackText;
     },
 
-    getRuntime(file) {
-      if (runtime?.getSnapshot().fileId === file.id) {
-        return runtime;
+    getRuntime,
+
+    getVisibleFileText(file) {
+      const activeRuntime = getRuntime(file);
+      const snapshot = activeRuntime.getSnapshot();
+      if (!snapshot.pendingCommit && snapshot.committedText !== file.text) {
+        activeRuntime.syncCommitted({ fileId: file.id, text: file.text });
       }
 
-      runtime = createEditorDocumentRuntime({
-        fileId: file.id,
-        text: file.text,
-      });
-      return runtime;
+      return activeRuntime.getText();
     },
   };
 };
