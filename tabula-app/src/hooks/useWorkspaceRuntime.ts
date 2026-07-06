@@ -276,6 +276,7 @@ export function useWorkspaceRuntime() {
     activeFile,
     activeFileTitle,
     activeSelection,
+    editorDocumentRuntime,
     editorRef,
     getActiveFileSnapshot,
     identity,
