@@ -1,12 +1,13 @@
 import { defaultKeymap, historyKeymap, indentWithTab } from "@codemirror/commands";
+import {
+  deleteMarkupBackward,
+  insertNewlineContinueMarkupCommand,
+} from "@codemirror/lang-markdown";
 import { type Extension } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { type EditorView, keymap } from "@codemirror/view";
 import {
   applyMarkdownFormat,
-  getMarkdownBackspaceEdit,
-  getMarkdownEnterEdit,
   getMarkdownIndentEdit,
-  getMarkdownPasteEdit,
   type MarkdownFormatCommand,
 } from "@tabula-md/tabula";
 
@@ -82,40 +83,28 @@ export const runMarkdownFormatCommand = (view: EditorView, command: MarkdownForm
 const createMarkdownFormatKeyCommand = (command: MarkdownFormatCommand) => (view: EditorView) =>
   runMarkdownFormatCommand(view, command);
 
-const runMarkdownEnterCommand = (view: EditorView) => {
+const continueMarkdownMarkup = insertNewlineContinueMarkupCommand({ nonTightLists: false });
+
+const runExitEmptyBlockquoteCommand = (view: EditorView) => {
   const selection = view.state.selection.main;
   if (!selection.empty) {
     return false;
   }
 
-  const edit = getMarkdownEnterEdit(view.state.doc.toString(), selection.head);
-  if (!edit) {
+  const line = view.state.doc.lineAt(selection.head);
+  const column = selection.head - line.from;
+  const beforeCursor = line.text.slice(0, column);
+  const afterCursor = line.text.slice(column);
+  if (afterCursor.trim().length > 0 || !/^(\s*(?:>\s?)+)$/.test(beforeCursor)) {
     return false;
   }
 
+  // CodeMirror waits for two empty quoted lines; Tabula.md exits on the first empty marker line.
   view.dispatch({
-    changes: { from: edit.from, to: edit.to, insert: edit.insert },
-    selection: { anchor: edit.selection, head: edit.selection },
+    changes: { from: line.from, to: line.to, insert: "" },
+    selection: { anchor: line.from, head: line.from },
     scrollIntoView: true,
-  });
-  return true;
-};
-
-const runMarkdownBackspaceCommand = (view: EditorView) => {
-  const selection = view.state.selection.main;
-  if (!selection.empty) {
-    return false;
-  }
-
-  const edit = getMarkdownBackspaceEdit(view.state.doc.toString(), selection.head);
-  if (!edit) {
-    return false;
-  }
-
-  view.dispatch({
-    changes: { from: edit.from, to: edit.to, insert: edit.insert },
-    selection: { anchor: edit.selection, head: edit.selection },
-    scrollIntoView: true,
+    userEvent: "input",
   });
   return true;
 };
@@ -139,40 +128,11 @@ const createMarkdownIndentCommand = (direction: "indent" | "outdent") => (view: 
   return true;
 };
 
-const runMarkdownPasteCommand = (view: EditorView, event: ClipboardEvent) => {
-  const clipboardText = event.clipboardData?.getData("text/plain") ?? "";
-  if (!clipboardText) {
-    return false;
-  }
-
-  const selection = view.state.selection.main;
-  const edit = getMarkdownPasteEdit(
-    view.state.doc.toString(),
-    { from: selection.from, to: selection.to },
-    clipboardText,
-  );
-  if (!edit) {
-    return false;
-  }
-
-  event.preventDefault();
-  view.dispatch({
-    changes: { from: edit.from, to: edit.to, insert: edit.insert },
-    selection: { anchor: edit.selection.from, head: edit.selection.to },
-    scrollIntoView: true,
-  });
-  return true;
-};
-
 export const createMarkdownCommandExtensions = (): Extension[] => [
-  EditorView.domEventHandlers({
-    paste(event, view) {
-      return runMarkdownPasteCommand(view, event);
-    },
-  }),
   keymap.of([
-    { key: "Enter", run: runMarkdownEnterCommand },
-    { key: "Backspace", run: runMarkdownBackspaceCommand },
+    { key: "Enter", run: runExitEmptyBlockquoteCommand },
+    { key: "Enter", run: continueMarkdownMarkup },
+    { key: "Backspace", run: deleteMarkupBackward },
     { key: "Tab", run: createMarkdownIndentCommand("indent") },
     { key: "Shift-Tab", run: createMarkdownIndentCommand("outdent") },
     indentWithTab,

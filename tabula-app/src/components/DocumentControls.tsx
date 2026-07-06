@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Copy,
   Eye,
+  ListChecks,
   PencilLine,
   Replace,
   ReplaceAll,
@@ -19,8 +20,8 @@ import {
   SplitSquareHorizontal,
   X,
 } from "lucide-react";
-import type { SearchMatch } from "@tabula-md/tabula";
 import type { CenterPopover } from "../uiTypes";
+import type { SearchOptions } from "../editor/editorSearchModel";
 import {
   buildDocumentControlsModel,
   type FileViewMode,
@@ -35,6 +36,7 @@ type DocumentControlsProps = {
   activeReadingWidth: ReadingWidth;
   activeLineWrapping: boolean;
   activeLineNumbers: boolean;
+  activeSyncScrolling: boolean;
   canCopyFile: boolean;
   centerPopover: CenterPopover;
   language: WorkspaceLanguage;
@@ -44,6 +46,7 @@ type DocumentControlsProps = {
   onToggleSearch: () => void;
   onToggleViewOptions: () => void;
   onSetReadingWidth: (readingWidth: ReadingWidth) => void;
+  onToggleSyncScrolling: () => void;
   onToggleLineWrapping: () => void;
   onToggleLineNumbers: () => void;
 };
@@ -52,12 +55,17 @@ type DocumentSearchBarProps = {
   searchInputRef: RefObject<HTMLInputElement | null>;
   searchQuery: string;
   replaceQuery: string;
-  searchMatches: SearchMatch[];
+  searchMatchCount: number;
+  searchError: string | null;
+  searchOptions: SearchOptions;
   activeSearchMatchIndex: number;
+  replaceAvailable: boolean;
   language: WorkspaceLanguage;
   onSearchQueryChange: (query: string) => void;
   onReplaceQueryChange: (query: string) => void;
+  onToggleSearchOption: (option: keyof SearchOptions) => void;
   onGoToSearchMatch: (direction: 1 | -1) => void;
+  onSelectAllSearchMatches: () => void;
   onReplaceCurrentMatch: () => void;
   onReplaceAllMatches: () => void;
   onCloseSearch: () => void;
@@ -74,6 +82,7 @@ export function DocumentControls({
   activeReadingWidth,
   activeLineWrapping,
   activeLineNumbers,
+  activeSyncScrolling,
   canCopyFile,
   centerPopover,
   language,
@@ -83,6 +92,7 @@ export function DocumentControls({
   onToggleSearch,
   onToggleViewOptions,
   onSetReadingWidth,
+  onToggleSyncScrolling,
   onToggleLineWrapping,
   onToggleLineNumbers,
 }: DocumentControlsProps) {
@@ -91,6 +101,7 @@ export function DocumentControls({
     activeLineNumbers,
     activeLineWrapping,
     activeReadingWidth,
+    activeSyncScrolling,
     activeViewMode,
     canCopyFile,
     copy,
@@ -175,6 +186,19 @@ export function DocumentControls({
                 </button>
               </>
             )}
+            {controls.showSplitToggles && (
+              <button
+                className={`editor-controls-row ${controls.syncScrolling.active ? "active" : ""}`}
+                type="button"
+                aria-pressed={controls.syncScrolling.active}
+                onClick={onToggleSyncScrolling}
+              >
+                <span className="editor-controls-check">
+                  {controls.syncScrolling.active && <Check size={14} />}
+                </span>
+                <span>{controls.syncScrolling.label}</span>
+              </button>
+            )}
             <div className="editor-controls-width-row">
               <span>{controls.readingWidthLabel}</span>
               <div className="editor-width-control" aria-label={controls.readingWidthLabel}>
@@ -202,20 +226,34 @@ export function DocumentSearchBar({
   searchInputRef,
   searchQuery,
   replaceQuery,
-  searchMatches,
+  searchMatchCount,
+  searchError,
+  searchOptions,
   activeSearchMatchIndex,
+  replaceAvailable,
   language,
   onSearchQueryChange,
   onReplaceQueryChange,
+  onToggleSearchOption,
   onGoToSearchMatch,
+  onSelectAllSearchMatches,
   onReplaceCurrentMatch,
   onReplaceAllMatches,
   onCloseSearch,
 }: DocumentSearchBarProps) {
   const copy = getWorkspaceChromeCopy(language).documentControls;
-  const hasMatches = searchMatches.length > 0;
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const hasSearchError = Boolean(searchError);
+  const hasMatches = !hasSearchError && searchMatchCount > 0;
+  const hasNoSearchResults = hasSearchQuery && !hasSearchError && searchMatchCount === 0;
   const [replaceOpen, setReplaceOpen] = useState(false);
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!replaceAvailable && replaceOpen) {
+      setReplaceOpen(false);
+    }
+  }, [replaceAvailable, replaceOpen]);
 
   useEffect(() => {
     if (!replaceOpen) {
@@ -226,44 +264,89 @@ export function DocumentSearchBar({
   }, [replaceOpen]);
 
   return (
-    <section className={`document-search-row ${replaceOpen ? "with-replace" : ""}`} aria-label={copy.search}>
-      <div className={`document-search-bar ${replaceOpen ? "with-replace" : ""}`}>
-        <div className="document-search-line">
-          <button
-            type="button"
-            className={replaceOpen ? "active" : ""}
-            title={copy.toggleReplace}
-            aria-label={copy.toggleReplace}
-            aria-pressed={replaceOpen}
-            onClick={() => setReplaceOpen((nextReplaceOpen) => !nextReplaceOpen)}
-          >
-            <Replace size={14} />
-          </button>
-          <Search size={15} />
-          <input
-            type="text"
-            role="searchbox"
-            ref={searchInputRef}
-            value={searchQuery}
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(event) => onSearchQueryChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter") {
-                return;
-              }
+    <section className={`document-search-row ${replaceOpen && replaceAvailable ? "with-replace" : ""}`} aria-label={copy.search}>
+      <div className={`document-search-bar ${replaceOpen && replaceAvailable ? "with-replace" : ""}`}>
+        <div className={`document-search-line ${replaceAvailable ? "" : "without-replace-toggle"}`}>
+          <div className="document-search-field">
+            <Search size={15} />
+            <input
+              type="text"
+              role="searchbox"
+              ref={searchInputRef}
+              value={searchQuery}
+              autoComplete="off"
+              spellCheck={false}
+              aria-invalid={hasSearchError}
+              data-empty-result={hasNoSearchResults ? "true" : undefined}
+              title={searchError ?? undefined}
+              onChange={(event) => onSearchQueryChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") {
+                  return;
+                }
 
-              event.preventDefault();
-              onGoToSearchMatch(event.shiftKey ? -1 : 1);
-            }}
-            placeholder={copy.search}
-            aria-label={copy.search}
-          />
-          <span className="document-search-count">
-            {searchQuery.trim() && hasMatches && activeSearchMatchIndex >= 0
-              ? `${activeSearchMatchIndex + 1}/${searchMatches.length}`
-              : `0/${searchQuery.trim() ? searchMatches.length : 0}`}
-          </span>
+                event.preventDefault();
+                onGoToSearchMatch(event.shiftKey ? -1 : 1);
+              }}
+              placeholder={copy.search}
+              aria-label={copy.search}
+            />
+            <div className="document-search-options" aria-label="Search options">
+              <button
+                type="button"
+                className={`document-search-option ${searchOptions.caseSensitive ? "active" : ""}`}
+                title={copy.matchCase}
+                aria-label={copy.matchCase}
+                aria-pressed={searchOptions.caseSensitive}
+                onClick={() => onToggleSearchOption("caseSensitive")}
+              >
+                Aa
+              </button>
+              <button
+                type="button"
+                className={`document-search-option ${searchOptions.wholeWord ? "active" : ""}`}
+                title={copy.matchWholeWord}
+                aria-label={copy.matchWholeWord}
+                aria-pressed={searchOptions.wholeWord}
+                onClick={() => onToggleSearchOption("wholeWord")}
+              >
+                wd
+              </button>
+              <button
+                type="button"
+                className={`document-search-option ${searchOptions.regexp ? "active" : ""}`}
+                title={copy.useRegularExpression}
+                aria-label={copy.useRegularExpression}
+                aria-pressed={searchOptions.regexp}
+                onClick={() => onToggleSearchOption("regexp")}
+              >
+                .*
+              </button>
+            </div>
+          </div>
+          {replaceAvailable && (
+            <button
+              type="button"
+              className={replaceOpen ? "active" : ""}
+              title={copy.toggleReplace}
+              aria-label={copy.toggleReplace}
+              aria-pressed={replaceOpen}
+              onClick={() => setReplaceOpen((nextReplaceOpen) => !nextReplaceOpen)}
+            >
+              <Replace size={14} />
+            </button>
+          )}
+          {replaceAvailable && (
+            <button
+              type="button"
+              title={copy.selectAllMatches}
+              aria-label={copy.selectAllMatches}
+              disabled={!hasMatches}
+              onClick={onSelectAllSearchMatches}
+            >
+              <ListChecks size={14} />
+            </button>
+          )}
           <button
             type="button"
             title={copy.previousMatch}
@@ -282,6 +365,11 @@ export function DocumentSearchBar({
           >
             <ChevronRight size={14} />
           </button>
+          <span className="document-search-count">
+            {hasSearchQuery && hasMatches && activeSearchMatchIndex >= 0
+              ? `${activeSearchMatchIndex + 1}/${searchMatchCount}`
+              : `0/${hasSearchQuery && !hasSearchError ? searchMatchCount : 0}`}
+          </span>
           <button
             type="button"
             title={copy.closeSearch}
@@ -291,33 +379,35 @@ export function DocumentSearchBar({
             <X size={14} />
           </button>
         </div>
-        {replaceOpen && (
+        {replaceOpen && replaceAvailable && (
           <div className="document-search-line document-replace-line">
-            <Replace size={15} />
-            <input
-              ref={replaceInputRef}
-              type="text"
-              value={replaceQuery}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(event) => onReplaceQueryChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter") {
-                  return;
-                }
+            <div className="document-search-field">
+              <Replace size={15} />
+              <input
+                ref={replaceInputRef}
+                type="text"
+                value={replaceQuery}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => onReplaceQueryChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") {
+                    return;
+                  }
 
-                event.preventDefault();
-                if (event.altKey) {
-                  onReplaceAllMatches();
-                  return;
-                }
+                  event.preventDefault();
+                  if (event.altKey) {
+                    onReplaceAllMatches();
+                    return;
+                  }
 
-                onReplaceCurrentMatch();
-              }}
-              placeholder={copy.replaceWith}
-              aria-label={copy.replaceWith}
-            />
-            <span className="document-search-spacer" />
+                  onReplaceCurrentMatch();
+                }}
+                placeholder={copy.replaceWith}
+                aria-label={copy.replaceWith}
+              />
+              <span className="document-search-field-spacer" aria-hidden="true" />
+            </div>
             <button
               type="button"
               title={copy.replaceMatch}
@@ -336,7 +426,6 @@ export function DocumentSearchBar({
             >
               <ReplaceAll size={14} />
             </button>
-            <span className="document-search-spacer" />
           </div>
         )}
       </div>

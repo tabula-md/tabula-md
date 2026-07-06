@@ -40,6 +40,17 @@ describe("workspace editor document runtime owner", () => {
     expect(owner.getVisibleFileText({ id: "file-a", text: "stale workspace text" })).toBe("runtime pending");
   });
 
+  it("uses pending editor reader text for visible and latest file text", () => {
+    const owner = createWorkspaceEditorDocumentRuntimeOwner();
+    const runtime = owner.getRuntime({ id: "file-a", text: "committed" });
+
+    runtime.setPendingCommit({ readText: () => "typed before mode switch" });
+
+    expect(owner.getVisibleFileText({ id: "file-a", text: "committed" })).toBe("typed before mode switch");
+    expect(owner.getLatestFileText("file-a", "fallback")).toBe("typed before mode switch");
+    expect(runtime.getText()).toBe("committed");
+  });
+
   it("syncs externally committed text into visible text when there is no pending runtime commit", () => {
     const owner = createWorkspaceEditorDocumentRuntimeOwner();
 

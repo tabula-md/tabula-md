@@ -1,6 +1,7 @@
 .markdown-editor .cm-selectionBackground,
 .markdown-editor .cm-focused .cm-selectionBackground {
-  background: transparent;
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 .markdown-editor .cm-content ::selection {

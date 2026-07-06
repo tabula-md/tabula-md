@@ -833,6 +833,7 @@ export type WorkspaceChromeCopy = {
     search: string;
     lineNumbers: string;
     lineWrapping: string;
+    syncScrolling: string;
     textWidth: string;
     focusWidth: string;
     standardWidth: string;
@@ -842,6 +843,10 @@ export type WorkspaceChromeCopy = {
     replaceWith: string;
     replaceMatch: string;
     replaceAllMatches: string;
+    selectAllMatches: string;
+    matchCase: string;
+    matchWholeWord: string;
+    useRegularExpression: string;
     previousMatch: string;
     nextMatch: string;
     closeSearch: string;
@@ -887,6 +892,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       search: "Search",
       lineNumbers: "Line Numbers",
       lineWrapping: "Line Wrapping",
+      syncScrolling: "Sync Scrolling",
       textWidth: "Text Width",
       focusWidth: "Focus",
       standardWidth: "Standard",
@@ -896,6 +902,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       replaceWith: "Replace with",
       replaceMatch: "Replace match",
       replaceAllMatches: "Replace all",
+      selectAllMatches: "Select all matches",
+      matchCase: "Match case",
+      matchWholeWord: "Match whole word",
+      useRegularExpression: "Use regular expression",
       previousMatch: "Previous match",
       nextMatch: "Next match",
       closeSearch: "Close search",
@@ -939,6 +949,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       search: "검색",
       lineNumbers: "줄 번호",
       lineWrapping: "줄 바꿈",
+      syncScrolling: "스크롤 동기화",
       textWidth: "텍스트 폭",
       focusWidth: "집중",
       standardWidth: "표준",
@@ -948,6 +959,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       replaceWith: "바꿀 내용",
       replaceMatch: "현재 결과 바꾸기",
       replaceAllMatches: "모두 바꾸기",
+      selectAllMatches: "모든 결과 선택",
+      matchCase: "대소문자 구분",
+      matchWholeWord: "단어 단위 검색",
+      useRegularExpression: "정규식 사용",
       previousMatch: "이전 결과",
       nextMatch: "다음 결과",
       closeSearch: "검색 닫기",
@@ -991,6 +1006,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       search: "検索",
       lineNumbers: "行番号",
       lineWrapping: "行折り返し",
+      syncScrolling: "スクロール同期",
       textWidth: "テキスト幅",
       focusWidth: "集中",
       standardWidth: "標準",
@@ -1000,6 +1016,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       replaceWith: "置換後の文字列",
       replaceMatch: "現在の一致を置換",
       replaceAllMatches: "すべて置換",
+      selectAllMatches: "すべての一致を選択",
+      matchCase: "大文字小文字を区別",
+      matchWholeWord: "単語単位で検索",
+      useRegularExpression: "正規表現を使用",
       previousMatch: "前の一致",
       nextMatch: "次の一致",
       closeSearch: "検索を閉じる",
@@ -1043,6 +1063,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       search: "搜索",
       lineNumbers: "行号",
       lineWrapping: "自动换行",
+      syncScrolling: "同步滚动",
       textWidth: "文本宽度",
       focusWidth: "专注",
       standardWidth: "标准",
@@ -1052,6 +1073,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       replaceWith: "替换为",
       replaceMatch: "替换当前匹配",
       replaceAllMatches: "全部替换",
+      selectAllMatches: "选择所有匹配项",
+      matchCase: "区分大小写",
+      matchWholeWord: "全词匹配",
+      useRegularExpression: "使用正则表达式",
       previousMatch: "上一个匹配",
       nextMatch: "下一个匹配",
       closeSearch: "关闭搜索",
@@ -1095,6 +1120,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       search: "Buscar",
       lineNumbers: "Números de línea",
       lineWrapping: "Ajuste de línea",
+      syncScrolling: "Sincronizar desplazamiento",
       textWidth: "Ancho de texto",
       focusWidth: "Enfoque",
       standardWidth: "Estándar",
@@ -1104,6 +1130,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       replaceWith: "Reemplazar con",
       replaceMatch: "Reemplazar coincidencia",
       replaceAllMatches: "Reemplazar todo",
+      selectAllMatches: "Seleccionar todas las coincidencias",
+      matchCase: "Coincidir mayúsculas",
+      matchWholeWord: "Palabra completa",
+      useRegularExpression: "Usar expresión regular",
       previousMatch: "Coincidencia anterior",
       nextMatch: "Siguiente coincidencia",
       closeSearch: "Cerrar búsqueda",
@@ -1147,6 +1177,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       search: "Rechercher",
       lineNumbers: "Numéros de ligne",
       lineWrapping: "Retour à la ligne",
+      syncScrolling: "Synchroniser le défilement",
       textWidth: "Largeur du texte",
       focusWidth: "Focus",
       standardWidth: "Standard",
@@ -1156,6 +1187,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       replaceWith: "Remplacer par",
       replaceMatch: "Remplacer ce résultat",
       replaceAllMatches: "Tout remplacer",
+      selectAllMatches: "Sélectionner tous les résultats",
+      matchCase: "Respecter la casse",
+      matchWholeWord: "Mot entier",
+      useRegularExpression: "Utiliser une expression régulière",
       previousMatch: "Résultat précédent",
       nextMatch: "Résultat suivant",
       closeSearch: "Fermer la recherche",
@@ -1199,6 +1234,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       search: "Suchen",
       lineNumbers: "Zeilennummern",
       lineWrapping: "Zeilenumbruch",
+      syncScrolling: "Scrollen synchronisieren",
       textWidth: "Textbreite",
       focusWidth: "Fokus",
       standardWidth: "Standard",
@@ -1208,6 +1244,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       replaceWith: "Ersetzen durch",
       replaceMatch: "Treffer ersetzen",
       replaceAllMatches: "Alle ersetzen",
+      selectAllMatches: "Alle Treffer auswählen",
+      matchCase: "Groß-/Kleinschreibung beachten",
+      matchWholeWord: "Ganzes Wort",
+      useRegularExpression: "Regulären Ausdruck verwenden",
       previousMatch: "Vorheriger Treffer",
       nextMatch: "Nächster Treffer",
       closeSearch: "Suche schließen",

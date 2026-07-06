@@ -1,7 +1,7 @@
 import { type Extension } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
-import type { SearchMatch } from "@tabula-md/tabula";
 import { clampEditorPosition } from "./editorTransactions";
+import type { SearchMatch } from "./editorSearchModel";
 
 export const createEditorSearchExtension = (
   searchMatches: SearchMatch[] = [],

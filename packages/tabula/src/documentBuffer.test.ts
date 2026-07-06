@@ -138,6 +138,20 @@ describe("editor document runtime", () => {
     expect(runtime.getText()).toBe("editor text");
   });
 
+  it("exposes editor-owned pending text as visible text without flushing", () => {
+    const runtime = createEditorDocumentRuntime({ fileId: "file-a", text: "committed" });
+
+    runtime.setPendingCommit({ readText: () => "editor text" });
+
+    expect(runtime.getText()).toBe("committed");
+    expect(runtime.getVisibleText()).toBe("editor text");
+    expect(runtime.getSnapshot()).toMatchObject({
+      dirty: true,
+      pendingCommit: true,
+      text: "committed",
+    });
+  });
+
   it("syncs an external committed document into the runtime boundary", () => {
     const runtime = createEditorDocumentRuntime({ fileId: "file-a", text: "local" });
     runtime.replaceAll("local pending");

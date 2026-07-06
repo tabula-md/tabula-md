@@ -1,15 +1,15 @@
 import { history } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { Compartment, type Extension } from "@codemirror/state";
+import { bracketMatching, HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import {
+  drawSelection,
   dropCursor,
   highlightActiveLine,
   highlightActiveLineGutter,
   placeholder,
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import type { SearchMatch } from "@tabula-md/tabula";
 import type { Collaborator } from "../collaboration";
 import { createCommentAnchorExtension } from "../editorExtensions/commentAnchors";
 import {
@@ -31,7 +31,9 @@ import {
   type EditorLayoutCompartments,
 } from "./editorLayout";
 import { createEditorPresenceExtension } from "./editorPresence";
+import { createEditorPasteNormalizationExtension } from "./editorPaste";
 import { createEditorSearchExtension } from "./editorSearch";
+import type { SearchMatch } from "./editorSearchModel";
 
 export type MarkdownEditorCompartments = EditorLayoutCompartments & {
   annotationGutter: Compartment;
@@ -117,6 +119,12 @@ export const createEditorCommentAnchorExtension = (
   onOpenComment?: (commentId: string) => void,
 ) => createCommentAnchorExtension(commentAnchors, activeCommentId, onOpenComment);
 
+export const createEditorSelectionDisplayExtensions = (): Extension[] => [
+  EditorState.allowMultipleSelections.of(true),
+  // Tabula draws range backgrounds in its custom layer; CodeMirror still owns multiple cursor DOM.
+  drawSelection(),
+];
+
 export const createMarkdownEditorExtensions = ({
   compartments,
   lineWrapping,
@@ -136,10 +144,13 @@ export const createMarkdownEditorExtensions = ({
   onOpenLinkPopover,
 }: MarkdownEditorExtensionConfig): Extension[] => [
   history(),
+  ...createEditorSelectionDisplayExtensions(),
   dropCursor(),
+  bracketMatching(),
   highlightActiveLine(),
   highlightActiveLineGutter(),
-  markdown(),
+  markdown({ addKeymap: false, pasteURLAsLink: true }),
+  createEditorPasteNormalizationExtension(),
   syntaxHighlighting(markdownEditorHighlightStyle, { fallback: true }),
   placeholder("Start writing..."),
   compartments.annotationGutter.of(createEditorAnnotationGutterExtension(bookmarks, onOpenLineActions)),

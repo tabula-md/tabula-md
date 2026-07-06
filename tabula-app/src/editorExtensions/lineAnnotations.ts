@@ -21,6 +21,17 @@ type LineCommentActionState = {
 
 type EditorLineActionIcon = "bookmark" | "message-square";
 
+type EditorLineActionElementOptions = {
+  action: "bookmark" | "comment";
+  active: boolean;
+  activeLabel: string;
+  activeTitle: string;
+  className: string;
+  icon: EditorLineActionIcon;
+  inactiveTitle: string;
+  dataset?: Record<string, string>;
+};
+
 const LUCIDE_ICON_PATHS: Record<EditorLineActionIcon, string[]> = {
   bookmark: ["m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"],
   "message-square": ["M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"],
@@ -48,6 +59,36 @@ const createLucideSvgIcon = (icon: EditorLineActionIcon) => {
   return svg;
 };
 
+const createEditorLineActionElement = ({
+  action,
+  active,
+  activeLabel,
+  activeTitle,
+  className,
+  dataset,
+  icon,
+  inactiveTitle,
+}: EditorLineActionElementOptions) => {
+  const actionElement = active ? document.createElement("button") : document.createElement("span");
+  actionElement.className = className;
+  actionElement.dataset.lineAction = action;
+  actionElement.title = active ? activeTitle : inactiveTitle;
+
+  if (active) {
+    (actionElement as HTMLButtonElement).type = "button";
+    actionElement.ariaLabel = activeLabel;
+  } else {
+    actionElement.setAttribute("aria-hidden", "true");
+  }
+
+  Object.entries(dataset ?? {}).forEach(([key, value]) => {
+    actionElement.dataset[key] = value;
+  });
+  actionElement.append(createLucideSvgIcon(icon));
+
+  return actionElement;
+};
+
 class LineAnnotationGutterMarker extends GutterMarker {
   constructor(private readonly annotationState: LineAnnotationState) {
     super();
@@ -69,14 +110,15 @@ class LineAnnotationGutterMarker extends GutterMarker {
       .filter(Boolean)
       .join(" ");
 
-    const bookmarkAction = document.createElement("span");
-    bookmarkAction.className = "cm-annotation-action bookmark";
-    bookmarkAction.dataset.lineAction = "bookmark";
-    bookmarkAction.role = "button";
-    bookmarkAction.ariaLabel = this.annotationState.hasBookmark ? "Remove line bookmark" : "Bookmark line";
-    bookmarkAction.title = this.annotationState.hasBookmark ? "Remove bookmark" : "Bookmark line";
-    bookmarkAction.append(createLucideSvgIcon("bookmark"));
-
+    const bookmarkAction = createEditorLineActionElement({
+      action: "bookmark",
+      active: this.annotationState.hasBookmark,
+      activeLabel: "Remove line bookmark",
+      activeTitle: "Remove bookmark",
+      className: "cm-annotation-action bookmark",
+      icon: "bookmark",
+      inactiveTitle: "Bookmark line",
+    });
     marker.append(bookmarkAction);
     return marker;
   }
@@ -233,17 +275,20 @@ class LineCommentGutterMarker extends GutterMarker {
       return marker;
     }
 
-    const action = document.createElement("span");
-    action.className = "cm-annotation-action cm-line-comment-action comment";
-    action.dataset.lineAction = "comment";
-    action.dataset.lineNumber = String(this.actionState.lineNumber);
-    action.dataset.lineStart = String(this.actionState.start);
-    action.dataset.lineEnd = String(this.actionState.end);
-    action.role = "button";
-    action.ariaLabel = this.actionState.hasComment ? "Open line comments" : "Comment on line";
-    action.title = this.actionState.hasComment ? "Open comments" : "Comment on line";
-    action.append(createLucideSvgIcon("message-square"));
-
+    const action = createEditorLineActionElement({
+      action: "comment",
+      active: this.actionState.hasComment,
+      activeLabel: "Open line comments",
+      activeTitle: "Open comments",
+      className: "cm-annotation-action cm-line-comment-action comment",
+      dataset: {
+        lineNumber: String(this.actionState.lineNumber),
+        lineStart: String(this.actionState.start),
+        lineEnd: String(this.actionState.end),
+      },
+      icon: "message-square",
+      inactiveTitle: "Comment on line",
+    });
     marker.append(action);
     return marker;
   }

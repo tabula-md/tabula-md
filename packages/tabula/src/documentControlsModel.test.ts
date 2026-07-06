@@ -20,6 +20,7 @@ const copy: DocumentControlsCopy = {
   search: "Search",
   split: "Split",
   standardWidth: "Standard",
+  syncScrolling: "Sync Scrolling",
   textWidth: "Text Width",
   viewControls: "View controls",
 };
@@ -30,6 +31,7 @@ describe("document controls model", () => {
       activeLineNumbers: true,
       activeLineWrapping: true,
       activeReadingWidth: "wide",
+      activeSyncScrolling: true,
       activeViewMode: "edit",
       canCopyFile: true,
       copy,
@@ -37,6 +39,7 @@ describe("document controls model", () => {
 
     expect(model.controlsLabel).toBe("Editor controls");
     expect(model.showEditorToggles).toBe(true);
+    expect(model.showSplitToggles).toBe(false);
     expect(model.viewModeActions).toEqual([
       {
         icon: "split",
@@ -58,12 +61,18 @@ describe("document controls model", () => {
       activeLineNumbers: true,
       activeLineWrapping: true,
       activeReadingWidth: "standard",
+      activeSyncScrolling: false,
       activeViewMode: "split",
       canCopyFile: true,
       copy,
     });
 
     expect(model.controlsLabel).toBe("Layout controls");
+    expect(model.showSplitToggles).toBe(true);
+    expect(model.syncScrolling).toEqual({
+      active: false,
+      label: "Sync Scrolling",
+    });
     expect(model.viewModeActions.map((action) => action.viewMode)).toEqual([
       "edit",
       "preview",
@@ -75,6 +84,7 @@ describe("document controls model", () => {
       activeLineNumbers: false,
       activeLineWrapping: false,
       activeReadingWidth: "narrow",
+      activeSyncScrolling: true,
       activeViewMode: "preview",
       canCopyFile: false,
       copy,
@@ -83,6 +93,7 @@ describe("document controls model", () => {
     expect(model.controlsLabel).toBe("View controls");
     expect(model.copyButtonTitle).toBe("Add content to copy");
     expect(model.showEditorToggles).toBe(false);
+    expect(model.showSplitToggles).toBe(false);
     expect(model.viewModeActions.map((action) => action.viewMode)).toEqual([
       "split",
       "edit",
@@ -94,6 +105,7 @@ describe("document controls model", () => {
       activeLineNumbers: true,
       activeLineWrapping: true,
       activeReadingWidth: "standard",
+      activeSyncScrolling: true,
       activeViewMode: "edit",
       canCopyFile: true,
       copy,

@@ -1,22 +1,20 @@
 import {
-  Bold,
-  CheckSquare,
-  Code2,
-  Heading1,
-  Heading2,
-  Heading3,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Quote,
-  Redo2,
-  SeparatorHorizontal,
-  SquareCode,
-  Undo2,
-} from "lucide-react";
-import type { ComponentType } from "react";
+  Fragment,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { MoreHorizontal } from "lucide-react";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
+import {
+  formattingToolbarGroupOrder,
+  getFormattingToolbarCommandsByPlacement,
+  type FormattingToolbarCommand,
+  type FormattingToolbarCommandActions,
+} from "../toolbar/formattingCommandRegistry";
 
 type FormattingToolbarProps = {
   className?: string;
@@ -27,49 +25,64 @@ type FormattingToolbarProps = {
   onUndo: () => void;
 };
 
-type FormattingTool = {
-  command: MarkdownFormatCommand;
-  label: string;
-  icon: ComponentType<{ size?: number }>;
+type GroupedFormattingCommands = {
+  group: FormattingToolbarCommand["group"];
+  commands: FormattingToolbarCommand[];
 };
 
-const inlineTools: FormattingTool[] = [
-  { command: "bold", label: "Bold", icon: Bold },
-  { command: "italic", label: "Italic", icon: Italic },
-  { command: "inline-code", label: "Inline code", icon: Code2 },
-  { command: "link", label: "Link", icon: Link2 },
-];
+const primaryCommands = getFormattingToolbarCommandsByPlacement("primary");
+const overflowCommands = getFormattingToolbarCommandsByPlacement("overflow");
 
-const headingTools: FormattingTool[] = [
-  { command: "heading-1", label: "Heading 1", icon: Heading1 },
-  { command: "heading-2", label: "Heading 2", icon: Heading2 },
-  { command: "heading-3", label: "Heading 3", icon: Heading3 },
-];
+const groupFormattingCommands = (
+  commands: FormattingToolbarCommand[],
+): GroupedFormattingCommands[] =>
+  formattingToolbarGroupOrder
+    .map((group) => ({
+      group,
+      commands: commands.filter((command) => command.group === group),
+    }))
+    .filter(({ commands }) => commands.length > 0);
 
-const listTools: FormattingTool[] = [
-  { command: "bullet-list", label: "Bullet list", icon: List },
-  { command: "numbered-list", label: "Numbered list", icon: ListOrdered },
-  { command: "check-list", label: "Checklist", icon: CheckSquare },
-];
+const primaryCommandGroups = groupFormattingCommands(primaryCommands);
+const overflowCommandGroups = groupFormattingCommands(overflowCommands);
 
-const blockTools: FormattingTool[] = [
-  { command: "quote", label: "Quote", icon: Quote },
-  { command: "code-block", label: "Code block", icon: SquareCode },
-  { command: "horizontal-rule", label: "Horizontal rule", icon: SeparatorHorizontal },
-];
+const getCommandTitle = (command: FormattingToolbarCommand) =>
+  command.shortcut ? `${command.tooltip} (${command.shortcut})` : command.tooltip;
 
-const renderToolButton = (tool: FormattingTool, onFormat: (command: MarkdownFormatCommand) => void) => {
-  const Icon = tool.icon;
+const isCommandDisabled = (
+  command: FormattingToolbarCommand,
+  actions: FormattingToolbarCommandActions,
+) => command.isDisabled?.(actions) ?? false;
+
+const applyToolbarCommand = (
+  command: FormattingToolbarCommand,
+  actions: FormattingToolbarCommandActions,
+) => {
+  if (isCommandDisabled(command, actions)) {
+    return;
+  }
+
+  command.applyCommand(actions);
+};
+
+const renderPrimaryCommand = (
+  command: FormattingToolbarCommand,
+  actions: FormattingToolbarCommandActions,
+) => {
+  const Icon = command.icon;
+  const disabled = isCommandDisabled(command, actions);
 
   return (
     <button
-      key={tool.command}
-      className="tool-button formatting-button formatting-command-button"
+      key={command.id}
+      className={`tool-button formatting-button formatting-${command.group}-button`}
       type="button"
-      title={tool.label}
-      aria-label={tool.label}
+      title={getCommandTitle(command)}
+      aria-label={command.label}
+      data-format-command={command.id}
+      disabled={disabled}
       onMouseDown={(event) => event.preventDefault()}
-      onClick={() => onFormat(tool.command)}
+      onClick={() => applyToolbarCommand(command, actions)}
     >
       <Icon size={16} />
     </button>
@@ -84,39 +97,214 @@ export function FormattingToolbar({
   onRedo,
   onUndo,
 }: FormattingToolbarProps) {
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const [overflowMenuStyle, setOverflowMenuStyle] = useState<CSSProperties | undefined>();
+  const overflowRef = useRef<HTMLDivElement | null>(null);
+  const overflowButtonRef = useRef<HTMLButtonElement | null>(null);
+  const overflowMenuRef = useRef<HTMLDivElement | null>(null);
+  const actions = useMemo<FormattingToolbarCommandActions>(
+    () => ({
+      canRedo,
+      canUndo,
+      onFormat,
+      onRedo,
+      onUndo,
+    }),
+    [canRedo, canUndo, onFormat, onRedo, onUndo],
+  );
+
+  const closeOverflowMenu = (restoreFocus = false) => {
+    setOverflowOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => overflowButtonRef.current?.focus());
+    }
+  };
+
+  const getOverflowMenuItems = () =>
+    Array.from(overflowMenuRef.current?.querySelectorAll<HTMLButtonElement>(".formatting-overflow-item") ?? [])
+      .filter((item) => !item.disabled);
+
+  const focusOverflowMenuItem = (targetIndex: number) => {
+    const items = getOverflowMenuItems();
+    if (items.length === 0) {
+      return;
+    }
+
+    const normalizedIndex = (targetIndex + items.length) % items.length;
+    items[normalizedIndex]?.focus();
+  };
+
+  useEffect(() => {
+    if (!overflowOpen) {
+      return;
+    }
+
+    const closeOverflow = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node) || overflowRef.current?.contains(target)) {
+        return;
+      }
+
+      closeOverflowMenu();
+    };
+
+    document.addEventListener("pointerdown", closeOverflow);
+    return () => document.removeEventListener("pointerdown", closeOverflow);
+  }, [overflowOpen]);
+
+  useEffect(() => {
+    if (!overflowOpen) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => focusOverflowMenuItem(0));
+    return () => window.cancelAnimationFrame(frame);
+  }, [overflowOpen]);
+
+  const toggleOverflow = () => {
+    setOverflowOpen((isOpen) => {
+      const nextOpen = !isOpen;
+      if (!nextOpen) {
+        return false;
+      }
+
+      const buttonRect = overflowButtonRef.current?.getBoundingClientRect();
+      if (!buttonRect) {
+        setOverflowMenuStyle(undefined);
+        return true;
+      }
+
+      const menuWidth = 236;
+      const viewportWidth = window.innerWidth || menuWidth;
+      const left = Math.max(12, Math.min(buttonRect.right - menuWidth, viewportWidth - menuWidth - 12));
+      setOverflowMenuStyle({
+        left,
+        top: buttonRect.bottom + 8,
+      });
+      return true;
+    });
+  };
+
+  const handleOverflowButtonKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "ArrowDown") {
+      return;
+    }
+
+    event.preventDefault();
+    if (!overflowOpen) {
+      toggleOverflow();
+      return;
+    }
+
+    focusOverflowMenuItem(0);
+  };
+
+  const handleOverflowMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeOverflowMenu(true);
+      return;
+    }
+
+    const items = getOverflowMenuItems();
+    const activeIndex = items.findIndex((item) => item === document.activeElement);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      focusOverflowMenuItem(activeIndex + 1);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      focusOverflowMenuItem(activeIndex - 1);
+      return;
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      focusOverflowMenuItem(0);
+      return;
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      focusOverflowMenuItem(items.length - 1);
+    }
+  };
+
   return (
     <div className={`formatting-row ${className}`}>
       <nav className="formatting-toolbar" aria-label="Formatting">
-        <button
-          className="tool-button formatting-button formatting-history-button"
-          type="button"
-          title="Undo"
-          aria-label="Undo"
-          disabled={!canUndo}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={onUndo}
-        >
-          <Undo2 size={16} />
-        </button>
-        <button
-          className="tool-button formatting-button formatting-history-button"
-          type="button"
-          title="Redo"
-          aria-label="Redo"
-          disabled={!canRedo}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={onRedo}
-        >
-          <Redo2 size={16} />
-        </button>
-        <span className="toolbar-separator" />
-        {inlineTools.map((tool) => renderToolButton(tool, onFormat))}
-        <span className="toolbar-separator" />
-        {headingTools.map((tool) => renderToolButton(tool, onFormat))}
-        <span className="toolbar-separator" />
-        {listTools.map((tool) => renderToolButton(tool, onFormat))}
-        <span className="toolbar-separator" />
-        {blockTools.map((tool) => renderToolButton(tool, onFormat))}
+        {primaryCommandGroups.map(({ group, commands }, groupIndex) => (
+          <Fragment key={group}>
+            {groupIndex > 0 && <span className="toolbar-separator" />}
+            {commands.map((command) => renderPrimaryCommand(command, actions))}
+          </Fragment>
+        ))}
+        {overflowCommands.length > 0 && (
+          <>
+            <span className="toolbar-separator" />
+            <div className="formatting-overflow" ref={overflowRef}>
+              <button
+                ref={overflowButtonRef}
+                className={`tool-button formatting-button formatting-overflow-button ${overflowOpen ? "active" : ""}`}
+                type="button"
+                title="More formatting"
+                aria-label="More formatting"
+                aria-haspopup="menu"
+                aria-expanded={overflowOpen}
+                data-format-command="more-formatting"
+                onMouseDown={(event) => event.preventDefault()}
+                onKeyDown={handleOverflowButtonKeyDown}
+                onClick={toggleOverflow}
+              >
+                <MoreHorizontal size={16} />
+              </button>
+              {overflowOpen && (
+                <div
+                  ref={overflowMenuRef}
+                  className="formatting-overflow-menu"
+                  role="menu"
+                  aria-label="More formatting"
+                  style={overflowMenuStyle}
+                  onKeyDown={handleOverflowMenuKeyDown}
+                >
+                  {overflowCommandGroups.map(({ group, commands }, groupIndex) => (
+                    <Fragment key={group}>
+                      {groupIndex > 0 && <span className="formatting-overflow-separator" />}
+                      {commands.map((command) => {
+                        const Icon = command.icon;
+                        const disabled = isCommandDisabled(command, actions);
+                        return (
+                          <button
+                            key={command.id}
+                            className="formatting-overflow-item"
+                            type="button"
+                            role="menuitem"
+                            title={getCommandTitle(command)}
+                            data-format-command={command.id}
+                            disabled={disabled}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              applyToolbarCommand(command, actions);
+                              closeOverflowMenu(true);
+                            }}
+                          >
+                            <Icon size={15} />
+                            <span>{command.label}</span>
+                            {command.shortcut && (
+                              <kbd>{command.shortcut}</kbd>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </nav>
     </div>
   );

@@ -17,17 +17,6 @@ export type MarkdownHeading = {
   sourceLineIndex: number;
 };
 
-export type {
-  MarkdownSearchReplaceEdit,
-  MarkdownSearchReplaceSelection,
-  SearchMatch,
-} from "./markdown/search";
-export {
-  getSearchMatches,
-  replaceAllSearchMatches,
-  replaceCurrentSearchMatch,
-} from "./markdown/search";
-
 const frontmatterOpeningDelimiterPattern = /^---\s*$/;
 const frontmatterClosingDelimiterPattern = /^(?:---|\.\.\.)\s*$/;
 

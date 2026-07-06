@@ -41,7 +41,7 @@ export const createWorkspaceEditorDocumentRuntimeOwner = (): WorkspaceEditorDocu
     },
 
     getLatestFileText(fileId, fallbackText) {
-      return runtime?.getSnapshot().fileId === fileId ? runtime.getText() : fallbackText;
+      return runtime?.getSnapshot().fileId === fileId ? runtime.getVisibleText() : fallbackText;
     },
 
     getRuntime,
@@ -53,7 +53,7 @@ export const createWorkspaceEditorDocumentRuntimeOwner = (): WorkspaceEditorDocu
         activeRuntime.syncCommitted({ fileId: file.id, text: file.text });
       }
 
-      return activeRuntime.getText();
+      return activeRuntime.getVisibleText();
     },
   };
 };

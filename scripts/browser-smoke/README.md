@@ -46,6 +46,8 @@ Suite map:
 
 - `workspace`: first screen, tabs, empty state, share, templates, and view-mode chrome.
 - `editor-preview`: editor commands, Markdown preview rendering, toolbar behavior, and comments.
+- `editor-preview-sync`: split preview scroll ownership and source-anchor follow behavior.
+- `editor-preview-typography`: Markdown preview type scale, supporting text hierarchy, and virtual preview rhythm.
 - `layout`: tab persistence, import collision, document chrome, split layout, and side-panel alignment.
 - `panels`: project menu, files, outline, comments, switcher, and right-panel file actions.
 - `collaboration`: local and deployed live-room sync.

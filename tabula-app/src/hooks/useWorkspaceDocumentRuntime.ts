@@ -1,5 +1,7 @@
-import { useCallback, type RefObject } from "react";
+import { useCallback, useMemo, type RefObject } from "react";
+import type { TextChange } from "@tabula-md/tabula";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
+import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import type { FileViewMode, WorkspaceFile } from "../workspaceStorage";
 import type { WorkspaceEditorDocumentRuntimeOwner } from "./editorDocumentRuntimeOwner";
 import { useActiveDocumentRuntime } from "./useActiveDocumentRuntime";
@@ -12,6 +14,10 @@ type UseWorkspaceDocumentRuntimeOptions = {
   activeFile?: WorkspaceFile;
   editorDocumentRuntime: WorkspaceEditorDocumentRuntimeOwner;
   editorRef: RefObject<MarkdownEditorHandle | null>;
+  previewRef: RefObject<MarkdownPreviewHandle | null>;
+  syncScrollingEnabled: boolean;
+  visibleTextChange?: TextChange | null;
+  visibleTextRevision: number;
   onCommitActiveFileSplitRatio: (splitRatio: number) => void;
   onSetWorkspaceFileViewMode: (viewMode: FileViewMode) => void;
 };
@@ -20,11 +26,21 @@ export function useWorkspaceDocumentRuntime({
   activeFile,
   editorDocumentRuntime,
   editorRef,
+  previewRef,
+  syncScrollingEnabled,
+  visibleTextChange,
+  visibleTextRevision,
   onCommitActiveFileSplitRatio,
   onSetWorkspaceFileViewMode,
 }: UseWorkspaceDocumentRuntimeOptions) {
-  const visibleText = activeFile ? editorDocumentRuntime.getVisibleFileText(activeFile) : "";
-  const activeDocument = useActiveDocumentRuntime(activeFile, { text: visibleText });
+  const visibleText = useMemo(
+    () => (activeFile ? editorDocumentRuntime.getVisibleFileText(activeFile) : ""),
+    [activeFile, editorDocumentRuntime, visibleTextRevision],
+  );
+  const activeDocument = useActiveDocumentRuntime(activeFile, {
+    text: visibleText,
+    textChange: visibleTextChange,
+  });
   const text = activeDocument.text;
   const activeViewMode = activeDocument.viewMode;
 
@@ -32,6 +48,8 @@ export function useWorkspaceDocumentRuntime({
     activeFileId: activeFile?.id,
     activeViewMode,
     editorRef,
+    previewRef,
+    syncScrollingEnabled,
     onSetActiveFileViewMode: onSetWorkspaceFileViewMode,
   });
   const {
@@ -65,7 +83,9 @@ export function useWorkspaceDocumentRuntime({
 
   const search = useEditorSearchController({
     activeFileId: activeFile?.id,
+    activeViewMode,
     editorRef,
+    previewSurfaceRef,
     text,
     onFocusTextRange: focusTextRange,
   });
@@ -90,6 +110,7 @@ export function useWorkspaceDocumentRuntime({
     outlineHeadings: activeDocument.outlineHeadings,
     parsedMarkdown: activeDocument.parsedMarkdown,
     previewBodyStartOffset: activeDocument.previewBodyStartOffset,
+    previewBodyTextChange: activeDocument.previewBodyTextChange,
     renderedPreview: activeDocument.renderedPreview,
     text,
     ...scroll,
