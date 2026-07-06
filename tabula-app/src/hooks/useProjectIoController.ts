@@ -88,6 +88,44 @@ export const getProjectIoWorkspaceSnapshot = ({
     activeFileId: activeFile?.id ?? activeFileId,
   };
 
+export const getProjectIoBoundaryActiveFileSnapshot = ({
+  activeFile,
+  getActiveFileSnapshot,
+  onBeforeWorkspaceBoundary,
+}: {
+  activeFile?: WorkspaceFile;
+  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
+  onBeforeWorkspaceBoundary?: () => void;
+}) => {
+  onBeforeWorkspaceBoundary?.();
+  return getProjectIoActiveFileSnapshot({ activeFile, getActiveFileSnapshot });
+};
+
+export const getProjectIoBoundaryWorkspaceSnapshot = ({
+  activeFile,
+  activeFileId,
+  files,
+  getWorkspaceSnapshot,
+  onBeforeWorkspaceBoundary,
+  openFileIds,
+}: {
+  activeFile?: WorkspaceFile;
+  activeFileId: string;
+  files: WorkspaceFile[];
+  getWorkspaceSnapshot?: () => Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">;
+  onBeforeWorkspaceBoundary?: () => void;
+  openFileIds: string[];
+}) => {
+  onBeforeWorkspaceBoundary?.();
+  return getProjectIoWorkspaceSnapshot({
+    activeFile,
+    activeFileId,
+    files,
+    getWorkspaceSnapshot,
+    openFileIds,
+  });
+};
+
 export function useProjectIoController({
   activeFile,
   activeFileId,
@@ -111,9 +149,10 @@ export function useProjectIoController({
   const queueAnimationFrameTask = useAnimationFrameTask();
 
   const copyCurrentFile = async () => {
-    const fileSnapshot = getProjectIoActiveFileSnapshot({
+    const fileSnapshot = getProjectIoBoundaryActiveFileSnapshot({
       activeFile,
       getActiveFileSnapshot,
+      onBeforeWorkspaceBoundary,
     });
     if (!fileSnapshot) {
       return;
@@ -124,9 +163,10 @@ export function useProjectIoController({
   };
 
   const downloadCurrentFile = () => {
-    const fileSnapshot = getProjectIoActiveFileSnapshot({
+    const fileSnapshot = getProjectIoBoundaryActiveFileSnapshot({
       activeFile,
       getActiveFileSnapshot,
+      onBeforeWorkspaceBoundary,
     });
     if (!fileSnapshot) {
       return;
@@ -138,11 +178,12 @@ export function useProjectIoController({
   };
 
   const downloadProject = () => {
-    const workspaceSnapshot = getProjectIoWorkspaceSnapshot({
+    const workspaceSnapshot = getProjectIoBoundaryWorkspaceSnapshot({
       activeFile,
       activeFileId,
       files,
       getWorkspaceSnapshot,
+      onBeforeWorkspaceBoundary,
       openFileIds,
     });
     const download = createWorkspaceProjectDownloadDraft({
@@ -156,11 +197,12 @@ export function useProjectIoController({
   };
 
   const downloadProjectArchive = () => {
-    const workspaceSnapshot = getProjectIoWorkspaceSnapshot({
+    const workspaceSnapshot = getProjectIoBoundaryWorkspaceSnapshot({
       activeFile,
       activeFileId,
       files,
       getWorkspaceSnapshot,
+      onBeforeWorkspaceBoundary,
       openFileIds,
     });
     const archive = createProjectArchive(workspaceSnapshot.files);

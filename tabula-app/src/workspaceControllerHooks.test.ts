@@ -19,8 +19,11 @@ import {
 } from "./hooks/useSelectionCommentController";
 import {
   getProjectIoActiveFileSnapshot,
+  getProjectIoBoundaryActiveFileSnapshot,
+  getProjectIoBoundaryWorkspaceSnapshot,
   getProjectIoWorkspaceSnapshot,
 } from "./hooks/useProjectIoController";
+import { getJsonShareExportFileSnapshot } from "./hooks/useJsonShareController";
 import {
   createActiveDocumentPreviewTextSnapshot,
   createPreviewStateFromSnapshot,
@@ -607,6 +610,60 @@ describe("project IO controller", () => {
         openFileIds: [staleActiveFile.id],
       }),
     ).toBe(runtimeWorkspace);
+  });
+
+  it("flushes before reading runtime snapshots for share and export boundaries", () => {
+    const staleActiveFile = file("brief", "# Stale");
+    const runtimeActiveFile = file("brief", "# Pending");
+    const runtimeWorkspace = {
+      files: [runtimeActiveFile],
+      openFileIds: [runtimeActiveFile.id],
+      activeFileId: runtimeActiveFile.id,
+    };
+    const calls: string[] = [];
+    const onBeforeWorkspaceBoundary = vi.fn(() => calls.push("flush"));
+    const getActiveFileSnapshot = vi.fn(() => {
+      calls.push("active-snapshot");
+      return runtimeActiveFile;
+    });
+    const getWorkspaceSnapshot = vi.fn(() => {
+      calls.push("workspace-snapshot");
+      return runtimeWorkspace;
+    });
+
+    expect(
+      getProjectIoBoundaryActiveFileSnapshot({
+        activeFile: staleActiveFile,
+        getActiveFileSnapshot,
+        onBeforeWorkspaceBoundary,
+      }),
+    ).toBe(runtimeActiveFile);
+    expect(
+      getProjectIoBoundaryWorkspaceSnapshot({
+        activeFile: staleActiveFile,
+        activeFileId: staleActiveFile.id,
+        files: [staleActiveFile],
+        getWorkspaceSnapshot,
+        onBeforeWorkspaceBoundary,
+        openFileIds: [staleActiveFile.id],
+      }),
+    ).toBe(runtimeWorkspace);
+    expect(
+      getJsonShareExportFileSnapshot({
+        activeFile: staleActiveFile,
+        getActiveFileSnapshot,
+        onBeforeWorkspaceBoundary,
+      }),
+    ).toBe(runtimeActiveFile);
+
+    expect(calls).toEqual([
+      "flush",
+      "active-snapshot",
+      "flush",
+      "workspace-snapshot",
+      "flush",
+      "active-snapshot",
+    ]);
   });
 
   it("creates imported Markdown file drafts from preferences", () => {
