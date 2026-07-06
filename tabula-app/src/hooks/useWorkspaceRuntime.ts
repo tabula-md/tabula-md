@@ -24,6 +24,7 @@ import { useDocumentSurfaceRuntime } from "./useDocumentSurfaceRuntime";
 import { useEventCallback } from "./useEventCallback";
 import { useFileComments } from "./useFileComments";
 import { useSelectionActionDismissal } from "./useSelectionActionDismissal";
+import { useWorkspaceEditorDocumentRuntimeOwner } from "./editorDocumentRuntimeOwner";
 import { useWorkspaceActiveFileEditor } from "./useWorkspaceActiveFileEditor";
 import { useWorkspaceChromeController } from "./useWorkspaceChromeController";
 import { useWorkspaceCollaborationRuntime } from "./useWorkspaceCollaborationRuntime";
@@ -97,6 +98,7 @@ export function useWorkspaceRuntime() {
   ).share;
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
+  const editorDocumentRuntime = useWorkspaceEditorDocumentRuntimeOwner();
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
@@ -277,6 +279,7 @@ export function useWorkspaceRuntime() {
   } = useWorkspaceActiveFileEditor({
     activeFile,
     applyLocalText,
+    editorDocumentRuntime,
     editorRef,
     setActiveFileBookmarks,
     setActiveFileText,
