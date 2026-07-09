@@ -35,6 +35,7 @@ import {
   recordFileTextHistory,
   schedulePendingEditorCommitTimer,
   shouldCancelPendingEditorCommit,
+  shouldUseFileTextFallbackHistory,
 } from "./hooks/useWorkspaceActiveFileEditor";
 import { getWorkspaceShortcutAction } from "./hooks/useWorkspaceKeyboardShortcuts";
 import {
@@ -312,6 +313,33 @@ describe("workspace active file editor controller", () => {
       shouldRecordFallbackHistory: false,
       shouldSendCollaborationPatchImmediately: true,
     });
+  });
+
+  it("uses file-text fallback history only after editor history declines the command", () => {
+    expect(
+      shouldUseFileTextFallbackHistory({
+        canUseFallbackHistory: true,
+        editorHandled: true,
+        fallbackHistoryEnabled: true,
+        hasActiveFile: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldUseFileTextFallbackHistory({
+        canUseFallbackHistory: true,
+        editorHandled: false,
+        fallbackHistoryEnabled: true,
+        hasActiveFile: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldUseFileTextFallbackHistory({
+        canUseFallbackHistory: true,
+        editorHandled: false,
+        fallbackHistoryEnabled: false,
+        hasActiveFile: true,
+      }),
+    ).toBe(false);
   });
 });
 
