@@ -1,4 +1,5 @@
 import type { EncryptedEnvelope, EnvelopeKind } from "./roomProtocol";
+import type { RoomCheckpointStore } from "./roomCheckpointStore";
 import type { CreateRoomTransport } from "./roomTransport";
 import type { TextChange, TextPatch } from "@tabula-md/tabula";
 
@@ -29,6 +30,7 @@ export type CollabTextAdapter = {
   observeUpdates(document: CollabTextDocumentHandle, listener: CollabTextUpdateListener): () => void;
   isRemoteOrigin(origin: unknown): boolean;
   encodeState(document: CollabTextDocumentHandle): Uint8Array;
+  getText(document: CollabTextDocumentHandle): string;
   mergeUpdates(updates: readonly Uint8Array[]): Uint8Array;
   applyLocalText(document: CollabTextDocumentHandle, nextText: string, patches?: readonly TextPatch[]): void;
   applyLocalTextPatches(document: CollabTextDocumentHandle, patches: readonly TextPatch[]): void;
@@ -48,26 +50,13 @@ export type CollabCryptoAdapter = {
   decryptEnvelope(roomKey: CryptoKey, envelope: EncryptedEnvelope): Promise<Uint8Array>;
 };
 
-export type RoomRecoveryStoreSaveInput = {
-  roomId: string;
-  roomKey: string;
-  state: Uint8Array;
-  expectedVersion?: number | null;
-  mergeStates?: (states: readonly Uint8Array[]) => Uint8Array;
-};
-
-export type RoomRecoveryStore = {
-  load(roomId: string, roomKey: string): Promise<Uint8Array | null>;
-  save(input: RoomRecoveryStoreSaveInput): Promise<{ version: number } | null>;
-};
-
 export type CollabRuntimeAdapters = {
   clock: CollabRuntimeClock;
   crypto: CollabCryptoAdapter;
   text: CollabTextAdapter;
+  roomCheckpointStore: RoomCheckpointStore;
   createRoomTransport: CreateRoomTransport;
   resolveRoomBaseUrl: () => string | null;
-  roomRecoveryStore: RoomRecoveryStore;
 };
 
 export const createBrowserCollabRuntimeClock = (): CollabRuntimeClock => ({
@@ -106,14 +95,5 @@ export const createBrowserCollabRuntimeClock = (): CollabRuntimeClock => ({
   },
   createId() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  },
-});
-
-export const createDisabledRoomRecoveryStore = (): RoomRecoveryStore => ({
-  async load() {
-    return null;
-  },
-  async save() {
-    return null;
   },
 });

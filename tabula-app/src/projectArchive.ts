@@ -51,7 +51,7 @@ const createRecord = (size: number, writer: (view: DataView) => void) => {
   return new Uint8Array(buffer);
 };
 
-const normalizeArchiveFileName = (title: string) => {
+const normalizeArchivePathSegment = (title: string, fallback: string) => {
   const cleanedTitle = title
     .trim()
     .replace(/[/\\?%*:|"<>]/g, "-")
@@ -59,27 +59,45 @@ const normalizeArchiveFileName = (title: string) => {
     .replace(/^\.+/, "")
     .replace(/^-+/, "")
     .slice(0, 120);
-  const baseName = cleanedTitle || "Untitled";
+  return cleanedTitle || fallback;
+};
+
+const normalizeArchiveFileName = (title: string) => {
+  const baseName = normalizeArchivePathSegment(title, "Untitled");
 
   return /\.(?:md|markdown)$/i.test(baseName) ? baseName : `${baseName}.md`;
 };
 
+const normalizeArchivePath = (title: string) => {
+  const rawParts = title
+    .split(/[\\/]+/)
+    .map((part) => part.trim())
+    .filter((part) => part && !/^\.+$/.test(part));
+  const parts = rawParts.length > 0 ? rawParts : ["Untitled"];
+  const folderParts = parts
+    .slice(0, -1)
+    .map((part, index) => normalizeArchivePathSegment(part, `Folder ${index + 1}`));
+  const fileName = normalizeArchiveFileName(parts.at(-1) ?? "Untitled");
+
+  return [...folderParts, fileName].join("/");
+};
+
 export const getProjectArchiveEntries = (files: WorkspaceFile[]): ZipEntrySource[] => {
-  const fileNameCounts = new Map<string, number>();
+  const pathCounts = new Map<string, number>();
 
   return files.map((file) => {
-    const fileName = normalizeArchiveFileName(file.title);
-    const normalizedKey = fileName.toLowerCase();
-    const count = fileNameCounts.get(normalizedKey) ?? 0;
-    fileNameCounts.set(normalizedKey, count + 1);
+    const archivePath = normalizeArchivePath(file.title);
+    const normalizedKey = archivePath.toLowerCase();
+    const count = pathCounts.get(normalizedKey) ?? 0;
+    pathCounts.set(normalizedKey, count + 1);
 
-    const dedupedFileName =
+    const dedupedPath =
       count === 0
-        ? fileName
-        : fileName.replace(/(\.(?:md|markdown))$/i, ` ${count + 1}$1`);
+        ? archivePath
+        : archivePath.replace(/(\.(?:md|markdown))$/i, ` ${count + 1}$1`);
 
     return {
-      path: dedupedFileName,
+      path: dedupedPath,
       content: file.text,
     };
   });

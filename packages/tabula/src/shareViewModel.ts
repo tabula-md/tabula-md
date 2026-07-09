@@ -3,25 +3,12 @@ import {
   type RoomShareLinkView,
 } from "./shareLinkViewModel";
 
-export type VisibleSharePanel = "share-link" | "export" | "send-to";
-
-export type ShareTabView = {
-  id: VisibleSharePanel;
-  label: string;
-};
-
 export type ShareViewLabels = {
-  shareLink: string;
-  export: string;
-  sendTo: string;
   exportToLink: string;
   exporting: string;
-  updateLink: string;
 };
 
 export type ShareViewModel = {
-  activePanel: VisibleSharePanel;
-  tabs: ShareTabView[];
   live: {
     status: "active" | "blocked" | "ready";
     canStart: boolean;
@@ -37,16 +24,7 @@ export type ShareViewModel = {
   };
 };
 
-export const normalizeSharePanel = (panel?: string): VisibleSharePanel => {
-  if (panel === "export" || panel === "send-to" || panel === "share-link") {
-    return panel;
-  }
-
-  return "share-link";
-};
-
 export const buildShareViewModel = ({
-  activePanel,
   canStartSession,
   isLive,
   labels,
@@ -58,7 +36,6 @@ export const buildShareViewModel = ({
   shareUrl,
   startSessionUnavailableReason,
 }: {
-  activePanel?: string;
   canStartSession: boolean;
   isLive: boolean;
   labels: ShareViewLabels;
@@ -74,12 +51,6 @@ export const buildShareViewModel = ({
   const shareableBlocked = Boolean(jsonShareDisabledReason);
 
   return {
-    activePanel: normalizeSharePanel(activePanel),
-    tabs: [
-      { id: "share-link", label: labels.shareLink },
-      { id: "export", label: labels.export },
-      { id: "send-to", label: labels.sendTo },
-    ],
     live: {
       status: isLive ? "active" : canStartSession ? "ready" : "blocked",
       canStart: canStartSession,
@@ -99,9 +70,7 @@ export const buildShareViewModel = ({
       hasLink: shareableHasLink,
       primaryLabel: jsonShareExporting
         ? labels.exporting
-        : shareableHasLink
-          ? labels.updateLink
-          : labels.exportToLink,
+        : labels.exportToLink,
     },
   };
 };

@@ -234,9 +234,7 @@ describe("project persistence", () => {
           roomId: "room-live",
           shareUrl: `http://localhost:5174/#room=room-live,${VALID_ROOM_KEY}`,
           connectionStatus: "connected",
-          snapshotCount: 3,
-          lastSnapshotAt: "2026-06-11T00:00:00.000Z",
-          lastRecoveryType: "snapshot-recovered",
+          lastRecoveryType: "reconnected",
           lastRecoveryMessage: "Recovered",
           lastRecoveryAt: "2026-06-11T00:01:00.000Z",
         }),
@@ -253,7 +251,6 @@ describe("project persistence", () => {
       text: "# Live",
       connectionStatus: "idle",
       collaboratorCount: 0,
-      snapshotCount: 0,
     });
     expect(stored.files["live"]?.roomId).toBeUndefined();
     expect(stored.files["live"]?.shareUrl).toBeUndefined();
@@ -265,12 +262,62 @@ describe("project persistence", () => {
       text: "# Live",
       connectionStatus: "idle",
       collaboratorCount: 0,
-      snapshotCount: 0,
     });
     expect(liveFile?.roomId).toBeUndefined();
     expect(liveFile?.shareUrl).toBeUndefined();
     expect(liveFile?.lastRecoveryType).toBeUndefined();
     expect(liveFile?.lastRecoveryMessage).toBeUndefined();
+  });
+
+  it("drops empty generated live-room placeholders across reloads", () => {
+    const stored = createStoredWorkspace({
+      files: [
+        createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text: "# Local" }),
+        createWorkspaceFile(2, {
+          id: "live-room-empty",
+          title: getLiveFileTitle("dp12Owqb123"),
+          text: "",
+          roomId: "dp12Owqb123",
+          shareUrl: `http://localhost:5174/#room=dp12Owqb123,${VALID_ROOM_KEY}`,
+          connectionStatus: "connecting",
+        }),
+      ],
+      activeFileId: "live-room-empty",
+      commentsByFileId: {},
+    });
+    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+
+    expect(Object.keys(stored.files)).toEqual(["local"]);
+    expect(stored.activeFileId).toBe("local");
+    expect(restored?.files.map((file) => file.id)).toEqual(["local"]);
+    expect(restored?.activeFileId).toBe("local");
+  });
+
+  it("keeps empty generated live-room placeholders when they have comments", () => {
+    const liveFile = createWorkspaceFile(1, {
+      id: "live-room-commented",
+      title: getLiveFileTitle("dp12Owqb123"),
+      text: "",
+      roomId: "dp12Owqb123",
+      shareUrl: `http://localhost:5174/#room=dp12Owqb123,${VALID_ROOM_KEY}`,
+    });
+    const stored = createStoredWorkspace({
+      files: [liveFile],
+      activeFileId: liveFile.id,
+      commentsByFileId: {
+        [liveFile.id]: [
+          {
+            id: "comment",
+            body: "Keep this placeholder because it has review context.",
+            createdAt: "2026-07-09T00:00:00.000Z",
+          },
+        ],
+      },
+    });
+    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+
+    expect(Object.keys(stored.files)).toEqual([liveFile.id]);
+    expect(restored?.files.map((file) => file.id)).toEqual([liveFile.id]);
   });
 
   it("drops imported live room metadata across reloads", () => {
@@ -284,8 +331,6 @@ describe("project persistence", () => {
           shareUrl: "https://tabula.test/",
           connectionStatus: "disconnected",
           collaboratorCount: 2,
-          snapshotCount: 3,
-          lastSnapshotAt: "2026-06-11T00:00:00.000Z",
           lastRecoveryType: "invalid-message",
           lastRecoveryMessage: "This room URL is missing its client-only room key.",
           lastRecoveryAt: "2026-06-11T00:01:00.000Z",
@@ -300,7 +345,6 @@ describe("project persistence", () => {
     expect(stored.files["broken-live"]).toMatchObject({
       connectionStatus: "idle",
       collaboratorCount: 0,
-      snapshotCount: 0,
     });
     expect(stored.files["broken-live"]?.roomId).toBeUndefined();
     expect(stored.files["broken-live"]?.shareUrl).toBeUndefined();
@@ -309,7 +353,6 @@ describe("project persistence", () => {
     expect(brokenFile).toMatchObject({
       connectionStatus: "idle",
       collaboratorCount: 0,
-      snapshotCount: 0,
     });
     expect(brokenFile?.roomId).toBeUndefined();
     expect(brokenFile?.shareUrl).toBeUndefined();

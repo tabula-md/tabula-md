@@ -1,7 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createCollabConnection } from "./liveCollaboration";
-import { applyTextPatches } from "@tabula-md/tabula";
+import {
+  decryptEnvelopeForRoom,
+  encryptBytesForRoom,
+  generateRoomKey,
+  importRoomKey,
+} from "./collabRoom";
+import {
+  applyTextPatches,
+  createRoomActor,
+  createWorkspaceRoomCheckpoint,
+  createWorkspaceRoomState,
+  encodeBase64Url,
+  encodeRoomEvent,
+} from "@tabula-md/tabula";
 import type {
   CollabRuntimeAdapters,
   CollabRuntimeClock,
@@ -11,6 +24,7 @@ import type {
 } from "./collabRuntimeAdapters";
 import type { EncryptedEnvelope, EnvelopeKind } from "./roomProtocol";
 import type { RoomTransportHandlers } from "./roomTransport";
+import { encryptWorkspaceRoomCheckpoint } from "./roomCheckpointStore";
 
 type FakeTextDocument = {
   text: string;
@@ -32,13 +46,16 @@ const flushAsyncWork = async () => {
   await Promise.resolve();
 };
 
+const waitForAsyncWork = async () => {
+  await flushAsyncWork();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+};
+
 const createFakeClock = (): CollabRuntimeClock & {
-  flushIdleCallbacks: () => void;
   flushIntervals: () => void;
   flushTimeouts: () => void;
   getClearedTimeoutCount: () => number;
 } => {
-  const idleCallbacks: Array<() => void> = [];
   const timeouts: Array<() => void> = [];
   const intervals: Array<() => void> = [];
   let clearedTimeoutCount = 0;
@@ -66,13 +83,13 @@ const createFakeClock = (): CollabRuntimeClock & {
       }
     },
     requestIdleCallback(callback) {
-      idleCallbacks.push(callback);
+      timeouts.push(callback);
       return callback;
     },
     cancelIdleCallback(handle) {
-      const index = idleCallbacks.indexOf(handle as () => void);
+      const index = timeouts.indexOf(handle as () => void);
       if (index >= 0) {
-        idleCallbacks.splice(index, 1);
+        timeouts.splice(index, 1);
       }
     },
     nowIso() {
@@ -83,10 +100,6 @@ const createFakeClock = (): CollabRuntimeClock & {
     },
     flushTimeouts() {
       const callbacks = timeouts.splice(0);
-      callbacks.forEach((callback) => callback());
-    },
-    flushIdleCallbacks() {
-      const callbacks = idleCallbacks.splice(0);
       callbacks.forEach((callback) => callback());
     },
     flushIntervals() {
@@ -114,6 +127,9 @@ const createFakeTextAdapter = (): CollabTextAdapter => ({
   },
   encodeState(document) {
     return new TextEncoder().encode(asFakeDocument(document).text);
+  },
+  getText(document) {
+    return asFakeDocument(document).text;
   },
   mergeUpdates(updates) {
     return new Uint8Array(updates.reduce((size, update) => size + update.byteLength, 0));
@@ -155,11 +171,13 @@ const createFakeTextAdapter = (): CollabTextAdapter => ({
   },
 });
 
+const decodeFakeEvent = (envelope: EncryptedEnvelope) =>
+  JSON.parse(new TextDecoder().decode((envelope as FakeEnvelope).plaintext));
+
 const createFakeAdapters = () => {
   let handlers: RoomTransportHandlers | undefined;
   const sentEnvelopes: EncryptedEnvelope[] = [];
   const volatileEnvelopes: EncryptedEnvelope[] = [];
-  const savedRecoveryStates: Uint8Array[] = [];
   const clock = createFakeClock();
   const text = createFakeTextAdapter();
 
@@ -175,6 +193,11 @@ const createFakeAdapters = () => {
         sendVolatileEnvelope: vi.fn((envelope) => volatileEnvelopes.push(envelope)),
         disconnect: vi.fn(),
       };
+    },
+    roomCheckpointStore: {
+      enabled: false,
+      loadEncryptedCheckpoint: vi.fn(async () => null),
+      saveEncryptedCheckpoint: vi.fn(async () => {}),
     },
     resolveRoomBaseUrl: () => "https://rooms.test",
     crypto: {
@@ -194,13 +217,6 @@ const createFakeAdapters = () => {
       ),
       decryptEnvelope: vi.fn(async (_roomKey, envelope) => (envelope as FakeEnvelope).plaintext),
     },
-    roomRecoveryStore: {
-      load: vi.fn(async () => null),
-      save: vi.fn(async ({ state }) => {
-        savedRecoveryStates.push(state);
-        return { version: savedRecoveryStates.length };
-      }),
-    },
   };
 
   return {
@@ -214,19 +230,22 @@ const createFakeAdapters = () => {
     },
     sentEnvelopes,
     volatileEnvelopes,
-    savedRecoveryStates,
   };
 };
 
 describe("collaboration connection adapters", () => {
-  it("runs the collaboration connection through injected transport, crypto, text, clock, and fetch adapters", async () => {
-    const { adapters, clock, getHandlers, sentEnvelopes, volatileEnvelopes, savedRecoveryStates } = createFakeAdapters();
+  it("publishes only encrypted room-events through injected transport, crypto, text, and clock adapters", async () => {
+    const { adapters, clock, getHandlers, sentEnvelopes, volatileEnvelopes } = createFakeAdapters();
     const onStatusChange = vi.fn();
     const onTextChange = vi.fn();
     const connection = createCollabConnection({
       roomId: "room-1",
       roomKey: "encoded-key",
-      initialText: "hello",
+      documentId: "readme",
+      documents: [
+        { id: "readme", title: "README.md", text: "readme text" },
+        { id: "untitled", title: "Untitled.md", text: "untitled text" },
+      ],
       identity: {
         id: "self",
         name: "Taeha",
@@ -245,38 +264,232 @@ describe("collaboration connection adapters", () => {
 
     expect(onStatusChange).toHaveBeenCalledWith("connecting");
     expect(onStatusChange).toHaveBeenCalledWith("connected");
-    expect(sentEnvelopes.map((envelope) => envelope.kind)).toContain("yjs-update");
-    expect(volatileEnvelopes.map((envelope) => envelope.kind)).toContain("presence");
-    expect(savedRecoveryStates).toHaveLength(1);
+    expect(sentEnvelopes.map((envelope) => envelope.kind)).toEqual(["room-event", "room-event", "room-event"]);
+    expect(volatileEnvelopes.map((envelope) => envelope.kind)).toEqual(["room-event"]);
 
-    connection.applyLocalText("hello\nworld", [{ from: 5, to: 5, insert: "\nworld" }]);
-    expect(savedRecoveryStates).toHaveLength(1);
+    const sentEvents = sentEnvelopes.map(decodeFakeEvent);
+    expect(sentEvents[0]).toMatchObject({
+      type: "workspace.updated",
+      actor: { id: "self", kind: "human", client: "tabula-md" },
+      workspace: {
+        mode: "workspace",
+        activeDocumentId: "readme",
+      },
+    });
+    expect(sentEvents.slice(1).map((event) => event.documentId).sort()).toEqual(["readme", "untitled"]);
+    expect(sentEvents.slice(1).every((event) => event.type === "text.updated" && event.actor.id === "self")).toBe(true);
+
+    connection.applyLocalText("readme changed");
     clock.flushTimeouts();
-    clock.flushIdleCallbacks();
     await flushAsyncWork();
 
-    expect(savedRecoveryStates).toHaveLength(2);
-    expect(onTextChange).not.toHaveBeenCalledWith("hello\nworld", expect.anything());
+    const localEditEvent = decodeFakeEvent(sentEnvelopes.at(-1)!);
+    expect(localEditEvent).toMatchObject({
+      type: "text.updated",
+      actor: { id: "self" },
+      documentId: "readme",
+    });
+    expect(sentEnvelopes.map((envelope) => envelope.kind)).not.toContain("yjs-update");
+    expect(onTextChange).not.toHaveBeenCalledWith("readme", "readme changed", expect.anything());
+
+    connection.disconnect();
+  });
+
+  it("loads an encrypted workspace checkpoint before joining the live relay", async () => {
+    const roomKey = generateRoomKey();
+    const checkpoint = await createWorkspaceRoomCheckpoint({
+      roomId: "room-1",
+      activeDocumentId: "readme",
+      nowIso: () => "2026-07-01T00:00:00.000Z",
+      documents: [
+        { id: "readme", title: "README.md", markdown: "# Restored readme" },
+        { id: "plan", title: "Plan.md", markdown: "Restored plan" },
+      ],
+    });
+    const encryptedCheckpoint = await encryptWorkspaceRoomCheckpoint({
+      checkpoint,
+      roomKey,
+    });
+    const { adapters } = createFakeAdapters();
+    adapters.crypto = {
+      importRoomKey,
+      encryptEnvelope: encryptBytesForRoom,
+      decryptEnvelope: decryptEnvelopeForRoom,
+    };
+    adapters.roomCheckpointStore = {
+      enabled: true,
+      loadEncryptedCheckpoint: vi.fn(async () => encryptedCheckpoint),
+      saveEncryptedCheckpoint: vi.fn(async () => {}),
+    };
+    const onTextChange = vi.fn();
+    const onRoomEvent = vi.fn();
+
+    createCollabConnection({
+      roomId: "room-1",
+      roomKey,
+      documentId: "live-room-1",
+      documents: [{ id: "live-room-1", title: "Shared room", text: "" }],
+      identity: {
+        id: "self",
+        name: "Taeha",
+        color: "#763FC8",
+        lastSeen: 1,
+      },
+      fileTitle: "Shared room",
+      onTextChange,
+      onStatusChange: vi.fn(),
+      onCollaboratorsChange: vi.fn(),
+      onRoomEvent,
+      adapters,
+    });
+
+    for (let index = 0; index < 10 && onRoomEvent.mock.calls.length === 0; index += 1) {
+      await waitForAsyncWork();
+    }
+
+    expect(adapters.roomCheckpointStore.loadEncryptedCheckpoint).toHaveBeenCalledWith("room-1");
+    expect(onRoomEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: "workspace.updated",
+      workspace: checkpoint.workspace,
+    }));
+    expect(onTextChange).toHaveBeenCalledWith("readme", "# Restored readme");
+    expect(onTextChange).toHaveBeenCalledWith("plan", "Restored plan");
+  });
+
+  it("applies incoming room-event text updates to the addressed document", async () => {
+    const { adapters, getHandlers } = createFakeAdapters();
+    const onTextChange = vi.fn();
+    const connection = createCollabConnection({
+      roomId: "room-1",
+      roomKey: "encoded-key",
+      documentId: "readme",
+      documents: [
+        { id: "readme", title: "README.md", text: "readme text" },
+        { id: "untitled", title: "Untitled.md", text: "untitled text" },
+      ],
+      identity: {
+        id: "self",
+        name: "Taeha",
+        color: "#763FC8",
+        lastSeen: 1,
+      },
+      fileTitle: "README",
+      onTextChange,
+      onStatusChange: vi.fn(),
+      onCollaboratorsChange: vi.fn(),
+      adapters,
+    });
+    await flushAsyncWork();
+    const writer = createRoomActor({
+      id: "writer",
+      kind: "agent",
+      name: "Writer",
+      client: "tabula-mcp",
+      capabilities: ["presence", "read", "write"],
+      joinedAt: "2026-07-01T00:00:00.000Z",
+    });
 
     await getHandlers().onMessage({
       v: 1,
       roomId: "room-1",
-      kind: "yjs-update",
+      kind: "room-event",
       version: 99,
       iv: "iv",
       ciphertext: "ciphertext",
       createdAt: "2026-07-01T00:00:00.000Z",
-      plaintext: new TextEncoder().encode("remote"),
+      plaintext: encodeRoomEvent({
+        id: "event-remote",
+        roomId: "room-1",
+        actorId: writer.id,
+        type: "text.updated",
+        createdAt: "2026-07-01T00:00:00.000Z",
+        actor: writer,
+        documentId: "untitled",
+        update: encodeBase64Url(new TextEncoder().encode("remote")),
+      }),
     } satisfies FakeEnvelope);
 
-    expect(onTextChange).toHaveBeenCalledWith("remote", {
+    expect(onTextChange).toHaveBeenCalledWith("untitled", "remote", {
       patches: [{ from: 0, to: 0, insert: "remote" }],
     });
 
     connection.disconnect();
   });
 
-  it("throttles rapid presence selection updates into a single volatile envelope", async () => {
+  it("prunes removed workspace documents before rebroadcasting current state", async () => {
+    const { adapters, getHandlers, sentEnvelopes } = createFakeAdapters();
+    const connection = createCollabConnection({
+      roomId: "room-1",
+      roomKey: "encoded-key",
+      documentId: "readme",
+      documents: [
+        { id: "readme", title: "README.md", text: "readme text" },
+        { id: "untitled", title: "Untitled.md", text: "deleted text" },
+      ],
+      identity: {
+        id: "self",
+        name: "Taeha",
+        color: "#763FC8",
+        lastSeen: 1,
+      },
+      fileTitle: "README",
+      onTextChange: vi.fn(),
+      onStatusChange: vi.fn(),
+      onCollaboratorsChange: vi.fn(),
+      adapters,
+    });
+    await flushAsyncWork();
+    await getHandlers().onJoined({ roomId: "room-1", clientId: "self", peerCount: 1 });
+    sentEnvelopes.splice(0);
+    const writer = createRoomActor({
+      id: "writer",
+      kind: "agent",
+      name: "Writer",
+      client: "tabula-mcp",
+      capabilities: ["presence", "read", "write"],
+      joinedAt: "2026-07-01T00:00:00.000Z",
+    });
+    const workspace = await createWorkspaceRoomState({
+      roomId: "room-1",
+      activeDocumentId: "readme",
+      documents: [{ id: "readme", title: "README.md", markdown: "readme text" }],
+      nowIso: () => "2026-07-01T00:00:00.000Z",
+    });
+
+    await getHandlers().onMessage({
+      v: 1,
+      roomId: "room-1",
+      kind: "room-event",
+      version: 99,
+      iv: "iv",
+      ciphertext: "ciphertext",
+      createdAt: "2026-07-01T00:00:00.000Z",
+      plaintext: encodeRoomEvent({
+        id: "event-remote",
+        roomId: "room-1",
+        actorId: writer.id,
+        type: "workspace.updated",
+        createdAt: "2026-07-01T00:00:00.000Z",
+        actor: writer,
+        workspace,
+      }),
+    } satisfies FakeEnvelope);
+    await waitForAsyncWork();
+    sentEnvelopes.splice(0);
+
+    await getHandlers().onPeerJoined({ roomId: "room-1", clientId: "new-peer" });
+    for (let index = 0; index < 10 && sentEnvelopes.length === 0; index += 1) {
+      await waitForAsyncWork();
+    }
+
+    const sentEvents = sentEnvelopes.map(decodeFakeEvent);
+    const workspaceEvent = sentEvents.find((event) => event.type === "workspace.updated");
+    expect(workspaceEvent.workspace.nodes.filter((node: { type: string }) => node.type === "document").map((node: { id: string }) => node.id)).toEqual(["readme"]);
+    expect(sentEvents.filter((event) => event.type === "text.updated").map((event) => event.documentId)).toEqual(["readme"]);
+    connection.disconnect();
+  });
+
+  it("throttles rapid presence selection updates into a single volatile room-event", async () => {
     const { adapters, clock, getHandlers, volatileEnvelopes } = createFakeAdapters();
     const connection = createCollabConnection({
       roomId: "room-1",
@@ -297,60 +510,24 @@ describe("collaboration connection adapters", () => {
 
     await flushAsyncWork();
     await getHandlers().onJoined({ roomId: "room-1", clientId: "self", peerCount: 1 });
-    const initialPresenceCount = volatileEnvelopes.filter((envelope) => envelope.kind === "presence").length;
+    const initialPresenceCount = volatileEnvelopes.filter((envelope) => decodeFakeEvent(envelope).type === "presence.updated").length;
 
     connection.setPresence({ selection: { from: 1, to: 1 } });
     connection.setPresence({ selection: { from: 2, to: 2 } });
     connection.setPresence({ selection: { from: 3, to: 3 } });
 
-    expect(volatileEnvelopes.filter((envelope) => envelope.kind === "presence")).toHaveLength(initialPresenceCount);
+    expect(volatileEnvelopes.filter((envelope) => decodeFakeEvent(envelope).type === "presence.updated")).toHaveLength(initialPresenceCount);
     expect(clock.getClearedTimeoutCount()).toBe(0);
     clock.flushTimeouts();
     await flushAsyncWork();
 
-    expect(volatileEnvelopes.filter((envelope) => envelope.kind === "presence")).toHaveLength(initialPresenceCount + 1);
-
-    connection.disconnect();
-  });
-
-  it("sends bounded full-state repair syncs after local updates", async () => {
-    const { adapters, clock, getHandlers, sentEnvelopes } = createFakeAdapters();
-    const connection = createCollabConnection({
-      roomId: "room-1",
-      roomKey: "encoded-key",
-      initialText: "hello",
-      identity: {
-        id: "self",
-        name: "Taeha",
-        color: "#763FC8",
-        lastSeen: 1,
+    expect(volatileEnvelopes.filter((envelope) => decodeFakeEvent(envelope).type === "presence.updated")).toHaveLength(initialPresenceCount + 1);
+    expect(decodeFakeEvent(volatileEnvelopes.at(-1)!)).toMatchObject({
+      type: "presence.updated",
+      presence: {
+        selection: { from: 3, to: 3 },
       },
-      fileTitle: "README",
-      onTextChange: vi.fn(),
-      onStatusChange: vi.fn(),
-      onCollaboratorsChange: vi.fn(),
-      adapters,
     });
-
-    await flushAsyncWork();
-    await getHandlers().onJoined({ roomId: "room-1", clientId: "self", peerCount: 1 });
-    const initialStateInitCount = sentEnvelopes.filter((envelope) => envelope.kind === "state-init").length;
-
-    connection.applyLocalText("hello\nworld", [{ from: 5, to: 5, insert: "\nworld" }]);
-    clock.flushTimeouts();
-    clock.flushIdleCallbacks();
-    await flushAsyncWork();
-
-    clock.flushIntervals();
-    await flushAsyncWork();
-    clock.flushIntervals();
-    await flushAsyncWork();
-    clock.flushIntervals();
-    await flushAsyncWork();
-
-    expect(sentEnvelopes.filter((envelope) => envelope.kind === "state-init")).toHaveLength(
-      initialStateInitCount + 2,
-    );
 
     connection.disconnect();
   });

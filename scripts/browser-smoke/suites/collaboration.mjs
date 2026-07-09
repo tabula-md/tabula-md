@@ -6,9 +6,7 @@ export async function run(ctx) {
     baseUrl,
     browser,
     expect,
-    externalUrl,
     focusMarkdownEditor,
-    restartRoomServer,
     startRoomServer,
     stopRoomServer,
     waitForEditorReady,
@@ -23,59 +21,21 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
   };
 
-  const legacyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  await legacyContext.addInitScript((roomKey) => {
-    window.localStorage.setItem(
-      "tabula.project.v5",
-      JSON.stringify({
-        schema: "tabula.project",
-        version: 5,
-        savedAt: new Date().toISOString(),
-        activeFileId: "legacy-live",
-        openFileIds: ["legacy-live"],
-        fileOrder: ["legacy-live"],
-        files: {
-          "legacy-live": {
-            id: "legacy-live",
-            title: "Legacy Live.md",
-            text: "# Legacy live text",
-            viewMode: "edit",
-            readingWidth: "wide",
-            lineWrapping: true,
-            lineNumbers: true,
-            connectionStatus: "connected",
-            roomId: "legacyroom",
-            shareUrl: `${window.location.origin}/#room=legacyroom,${roomKey}`,
-          },
-        },
-        commentsByFileId: {},
-      }),
-    );
-  }, "A".repeat(43));
-  const legacyPage = await legacyContext.newPage();
-  const legacyNetworkRequests = [];
-  legacyPage.on("request", (request) => {
-    const url = request.url();
-    if (/firebase|firestore|socket\.io|liveCollaboration|collab-vendor/.test(url)) {
-      legacyNetworkRequests.push(url);
-    }
-  });
-  try {
-    await legacyPage.goto(baseUrl);
-    await legacyPage.waitForSelector(".tabbar");
-    await waitForText(legacyPage.locator(".cm-content"), "Legacy live text");
-    await wait(500);
-    expect(
-      (await legacyPage.locator(".tab-item.live.active").count()) === 0,
-      "A persisted room file opened from / should restore as a local file, not an active live tab.",
-    );
-    expect(
-      legacyNetworkRequests.length === 0,
-      "A plain / load with persisted room metadata should not load collaboration, Firebase, or Socket.IO.",
-    );
-  } finally {
-    await legacyContext.close();
-  }
+  const collectPageDiagnostics = (page) => {
+    const diagnostics = [];
+    page.on("console", (message) => {
+      if (message.type() === "error" || message.type() === "warning") {
+        diagnostics.push(`console.${message.type()}: ${message.text()}`);
+      }
+    });
+    page.on("pageerror", (error) => {
+      diagnostics.push(`pageerror: ${error.stack ?? error.message}`);
+    });
+    page.on("requestfailed", (request) => {
+      diagnostics.push(`requestfailed: ${request.url()} ${request.failure()?.errorText ?? ""}`);
+    });
+    return diagnostics;
+  };
 
   const firstContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const secondContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -85,9 +45,20 @@ export async function run(ctx) {
   try {
     await firstPage.goto(baseUrl);
     await firstPage.waitForSelector(".tabbar");
+    await firstPage.locator(".add-tab-button").click();
+    await firstPage.waitForFunction(() => {
+      const activeTab = document.querySelector(".tab-item.active");
+      return activeTab && activeTab.getAttribute("data-file-name") !== "README.md";
+    });
+    const secondaryFileName = await firstPage.locator(".tab-item.active").getAttribute("data-file-name");
+    expect(Boolean(secondaryFileName), "Creating a second workspace document should open a non-README tab.");
+    await clickTabByFileName(firstPage, "README.md");
+    await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active');
     await firstPage.locator(".share-trigger").click();
     await firstPage.getByRole("button", { name: "Start session" }).click();
     await firstPage.waitForSelector(".tab-item.live.active");
+    await firstPage.waitForSelector(".share-trigger.live .share-live-dot");
+    await firstPage.waitForSelector(".tab-item.live.active .tab-live-scope-dot");
     await firstPage.waitForSelector(".sharing-presence");
     const firstPageUrl = new URL(firstPage.url());
     expect(
@@ -128,6 +99,33 @@ export async function run(ctx) {
       "Self avatar should expose the collaborator name through the custom hover tooltip.",
     );
     await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+    await clickTabByFileName(firstPage, secondaryFileName);
+    await firstPage.waitForFunction(
+      ({ secondaryFileName }) => {
+        const activeTab = document.querySelector(".tab-item.active.live");
+        return activeTab?.getAttribute("data-file-name") === secondaryFileName;
+      },
+      { secondaryFileName },
+    );
+    await firstPage.waitForSelector(".share-trigger.live .share-live-dot");
+    expect(
+      new URL(firstPage.url()).hash === firstPageUrl.hash,
+      "Switching to another included workspace document should keep the same live room URL.",
+    );
+    await firstPage.locator(".share-trigger").click();
+    await waitForText(firstPage.locator(".share-modal"), "Invite link");
+    const untitledShareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
+    expect(
+      untitledShareUrl === firstPage.url(),
+      "Included workspace documents should expose the same live invite link after tab switching.",
+    );
+    await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+    await clickTabByFileName(firstPage, "README.md");
+    await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active.live');
+    await firstPage.getByRole("button", { name: "Open Project Context" }).click();
+    await firstPage.waitForSelector(".right-panel-tab.live .right-panel-tab-live-dot");
+    await firstPage.waitForSelector(".right-file-document-icon.live .right-file-icon-live-dot");
+    await firstPage.getByRole("button", { name: "Close Project Context" }).click();
     await firstPage.locator(".avatar.self").hover();
     await firstPage.waitForFunction(() => {
       const avatar = document.querySelector(".avatar.self");
@@ -151,6 +149,9 @@ export async function run(ctx) {
       (await firstPage.locator(".sharing-presence .avatar:not(.self)").count()) === 1,
       "Presence should remove a collaborator avatar after that browser tab leaves the live room.",
     );
+    await secondPage.waitForSelector('.tab-item[data-file-name="README.md"].active.live');
+    await ensureEditMode(secondPage);
+    await ensureEditMode(firstPage);
 
     const syncedText = await runLiveEditingCorrectnessSmoke({
       expect,
@@ -172,43 +173,58 @@ export async function run(ctx) {
 
     const restoredContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const restoredPage = await restoredContext.newPage();
+    const restoredDiagnostics = collectPageDiagnostics(restoredPage);
     await restoredPage.goto(`${baseUrl}${sharedPath}`);
     await restoredPage.waitForSelector(".tab-item.live.active");
-    await waitForText(restoredPage.locator(".cm-content"), "Second browser edit");
+    try {
+      await restoredPage.waitForSelector('.tab-item[data-file-name="README.md"].active.live');
+    } catch (error) {
+      const tabs = await restoredPage.evaluate(() =>
+        ({
+          bodyText: document.body.textContent?.slice(0, 1000) ?? "",
+          tabs: Array.from(document.querySelectorAll(".tab-item")).map((tab) => ({
+            className: tab.className,
+            fileName: tab.getAttribute("data-file-name"),
+            text: tab.textContent,
+          })),
+          url: window.location.href,
+        }),
+      );
+      throw new Error(
+        `${error.message}\nRestored diagnostics:\n${JSON.stringify(restoredDiagnostics, null, 2)}\nRestored tabs:\n${JSON.stringify(tabs, null, 2)}`,
+      );
+    }
+    await ensureEditMode(restoredPage);
+    try {
+      await waitForText(restoredPage.locator(".cm-content"), "Second browser edit");
+    } catch (error) {
+      const restoredState = await restoredPage.evaluate(() => ({
+        url: window.location.href,
+        activeTab: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
+        status: document.querySelector(".file-status-bar")?.textContent ?? "",
+        editorLines: Array.from(document.querySelectorAll(".cm-content .cm-line")).map((line) => line.textContent ?? ""),
+        storage: window.localStorage.getItem("tabula.project.v5"),
+      }));
+      throw new Error(
+        `${error.message}\nRestored diagnostics:\n${JSON.stringify(restoredDiagnostics, null, 2)}\nRestored state:\n${JSON.stringify(restoredState, null, 2)}`,
+      );
+    }
+    const restoredText = await getEditorDocumentText(restoredPage);
     expect(
-      (await getEditorDocumentText(restoredPage)) === syncedText,
-      "Reloading the invite link should restore the latest live Markdown.",
+      restoredText === syncedText,
+      `Reloading the invite link should restore the latest live Markdown.\nExpected: ${JSON.stringify(syncedText)}\nActual: ${JSON.stringify(restoredText)}`,
     );
     await restoredContext.close();
 
-    if (externalUrl) {
-      await wait(2_000);
-      await firstContext.close();
-      await secondContext.close();
-      const recoveryContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-      const recoveryPage = await recoveryContext.newPage();
-      try {
-        await recoveryPage.goto(`${baseUrl}${sharedPath}`);
-        await recoveryPage.waitForSelector(".tab-item.live.active");
-        await waitForText(recoveryPage.locator(".cm-content"), "Second browser edit", 15_000);
-        expect(
-          (await getEditorDocumentText(recoveryPage)) === syncedText,
-          "Hosted live-room recovery should restore the latest encrypted Markdown after all tabs close.",
-        );
-      } finally {
-        await recoveryContext.close();
-      }
-      return;
-    }
-
-    if (!externalUrl) {
+    {
       expect(typeof stopRoomServer === "function", "Collaboration smoke should be able to stop the room server.");
       expect(typeof startRoomServer === "function", "Collaboration smoke should be able to start the room server.");
       await stopRoomServer();
-      await firstPage.waitForSelector(".tab-live-dot.reconnecting", { timeout: 8_000 });
+      await firstPage.waitForSelector(".share-trigger:not(.live)", { timeout: 8_000 });
       const offlineNoticeCount = await firstPage.locator(".live-room-notice").count();
       expect(offlineNoticeCount === 0, "Recoverable reconnecting state should not show a document-level notice.");
       await firstPage.locator(".share-trigger").click();
+      await firstPage.waitForSelector(".share-live-status.reconnecting");
       expect(
         (await firstPage.locator(".share-modal .live-room-status").count()) === 0,
         "Recoverable reconnecting state should not show routine status copy in Share.",
@@ -220,25 +236,8 @@ export async function run(ctx) {
       await firstPage.keyboard.press("Enter");
       await firstPage.keyboard.type("Offline edit survived");
       await startRoomServer();
+      await ensureEditMode(secondPage);
       await waitForText(secondPage.locator(".cm-content"), "Offline edit survived", 12_000);
-
-      expect(typeof restartRoomServer === "function", "Collaboration smoke should be able to restart the room server.");
-      await restartRoomServer();
-
-      const restartContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-      const restartPage = await restartContext.newPage();
-      try {
-        await restartPage.goto(`${baseUrl}${sharedPath}`);
-        await restartPage.waitForSelector(".tab-item.live.active");
-        await waitForText(restartPage.locator(".cm-content"), "Offline edit survived");
-        await restartPage.locator(".share-trigger").click();
-        expect(
-          (await restartPage.locator(".share-modal .live-room-status").count()) === 0,
-          "Successful snapshot restore should not show routine status copy in Share.",
-        );
-      } finally {
-        await restartContext.close();
-      }
 
       const wrongRoomKey = roomKey === "A".repeat(43) ? "B".repeat(43) : "A".repeat(43);
       const wrongKeyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -283,37 +282,12 @@ export async function run(ctx) {
       }
 
       await firstPage.locator(".share-trigger").click();
-      const dismissedStopDialogMessage = new Promise((resolve) => {
-        firstPage.once("dialog", async (dialog) => {
-          const message = dialog.message();
-          await dialog.dismiss();
-          resolve(message);
-        });
-      });
-      await firstPage.getByRole("button", { name: "Stop session" }).click();
-      const dismissedStopDialog = await dismissedStopDialogMessage;
-      expect(
-        dismissedStopDialog.includes("Stop sharing this file?"),
-        "Stop session should ask for native confirmation before leaving the live room.",
-      );
       expect(
         (await firstPage.locator(".tab-item.live.active").count()) === 1,
-        "Dismissing stop session confirmation should keep the file live.",
+        "The workspace should still be live before stopping the session.",
       );
-      const acceptedStopDialogMessage = new Promise((resolve) => {
-        firstPage.once("dialog", async (dialog) => {
-          const message = dialog.message();
-          await dialog.accept();
-          resolve(message);
-        });
-      });
       await firstPage.getByRole("button", { name: "Stop session" }).click();
-      const acceptedStopDialog = await acceptedStopDialogMessage;
-      expect(
-        acceptedStopDialog.includes("This tab will leave the live room"),
-        "Stop session confirmation should explain that this tab leaves the live room.",
-      );
-      await firstPage.locator(".tab-live-dot").waitFor({ state: "detached", timeout: 5_000 });
+      await firstPage.locator(".tab-live-scope-dot").waitFor({ state: "detached", timeout: 5_000 });
     }
   } finally {
     await Promise.all([firstContext.close(), secondContext.close()]);
@@ -332,6 +306,19 @@ async function getEditorLines(page) {
 
 async function getEditorDocumentText(page) {
   return (await getEditorLines(page)).join("\n");
+}
+
+async function clickTabByFileName(page, fileName) {
+  await page.evaluate((fileName) => {
+    const tab = Array.from(document.querySelectorAll(".tab-item")).find(
+      (item) => item.getAttribute("data-file-name") === fileName,
+    );
+    const button = tab?.querySelector(".tab-select-button");
+    if (!(button instanceof HTMLElement)) {
+      throw new Error(`Could not find tab: ${fileName}`);
+    }
+    button.click();
+  }, fileName);
 }
 
 async function waitForEditorLines(page, expectedLines, timeout = 8_000) {
@@ -393,6 +380,8 @@ async function runLiveEditingCorrectnessSmoke({ expect, firstPage, secondPage, f
     "Remote updates should not enter the local undo stack.",
   );
 
+  await focusMarkdownEditor(secondPage);
+  await secondPage.locator(".cm-content").click();
   await secondPage.keyboard.press("ControlOrMeta+End");
   await secondPage.keyboard.press("Enter");
   await secondPage.keyboard.insertText("Second browser edit");
@@ -448,9 +437,12 @@ async function runLiveEditingCorrectnessSmoke({ expect, firstPage, secondPage, f
   }
 
   await focusMarkdownEditor(firstPage);
+  await firstPage.locator(".cm-content").click();
   await firstPage.keyboard.press("ControlOrMeta+Home");
-  await firstPage.keyboard.insertText("Local cursor map prefix\n");
+  await firstPage.keyboard.insertText("Local cursor map prefix");
+  await firstPage.keyboard.press("Enter");
   const remappedExpectedLines = ["Local cursor map prefix", ...expectedLines];
+  await waitForEditorLines(firstPage, remappedExpectedLines, 4_000);
   await waitForEditorLines(secondPage, remappedExpectedLines, 12_000);
   await firstPage.waitForFunction(() => {
     const cursor = document.querySelector(".cm-remote-cursor");

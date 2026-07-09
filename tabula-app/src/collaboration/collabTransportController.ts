@@ -1,9 +1,7 @@
 import type { RoomTransportHandlers } from "./roomTransport";
-import type { CollabSnapshotFetchResult } from "./collabSnapshotSync";
 import type { ConnectionStatus } from "./liveCollaboration";
 
 type RecoveryType = "reconnected" | "invalid-message";
-type SnapshotFetchSuccess = CollabSnapshotFetchResult;
 
 type JoinResult =
   | {
@@ -27,15 +25,11 @@ type OfflineResult =
 
 type CollabTransportControllerOptions = {
   isClosed: () => boolean;
-  fetchSnapshot: () => Promise<CollabSnapshotFetchResult>;
   markJoined: () => JoinResult;
   markOffline: (reason: "disconnect" | "connect-error") => OfflineResult;
   setStatus: (status: ConnectionStatus) => void;
   emitCurrentState: () => Promise<void>;
-  emitStateInit: () => Promise<void>;
   publishPresence: () => Promise<void>;
-  shouldStoreSnapshot: (snapshotFetchResult: SnapshotFetchSuccess) => boolean;
-  storeSnapshot: () => Promise<boolean>;
   routeEnvelope: (envelope: unknown) => Promise<void>;
   pruneCollaborators: (peerIds: readonly string[]) => boolean;
   clearCollaborators: () => void;
@@ -45,86 +39,90 @@ type CollabTransportControllerOptions = {
 
 export const createCollabTransportHandlers = ({
   isClosed,
-  fetchSnapshot,
   markJoined,
   markOffline,
   setStatus,
   emitCurrentState,
-  emitStateInit,
   publishPresence,
-  shouldStoreSnapshot,
-  storeSnapshot,
   routeEnvelope,
   pruneCollaborators,
   clearCollaborators,
   publishCollaborators,
   emitRecoveryEvent,
-}: CollabTransportControllerOptions): RoomTransportHandlers => ({
-  onConnect: () => {
-    if (isClosed()) {
-      return;
-    }
+}: CollabTransportControllerOptions): RoomTransportHandlers => {
+  let lastPeerSignature = "";
 
-    setStatus("connecting");
-  },
-  onJoined: async () => {
-    if (isClosed()) {
-      return;
-    }
+  const getPeerSignature = (peers: readonly string[]) => [...peers].sort().join("\u0000");
 
-    const snapshotFetchResult = await fetchSnapshot();
-    setStatus("connected");
-    const joinResult = markJoined();
-    if (joinResult.reconnected) {
-      emitRecoveryEvent("reconnected", joinResult.message);
-    }
-    await emitCurrentState();
-    await publishPresence();
-    if (shouldStoreSnapshot(snapshotFetchResult)) {
-      await storeSnapshot();
-    }
-  },
-  onMessage: (envelope) => {
-    void routeEnvelope(envelope);
-  },
-  onPeerJoined: () => {
-    void emitStateInit();
-    void publishPresence();
-  },
-  onPeers: (message) => {
-    if (pruneCollaborators(message.peers)) {
-      publishCollaborators();
-    }
-    if (message.peers.length > 1) {
-      void emitStateInit();
+  return {
+    onConnect: () => {
+      if (isClosed()) {
+        return;
+      }
+
+      setStatus("connecting");
+    },
+    onJoined: async () => {
+      if (isClosed()) {
+        return;
+      }
+
+      setStatus("connected");
+      const joinResult = markJoined();
+      if (joinResult.reconnected) {
+        emitRecoveryEvent("reconnected", joinResult.message);
+      }
+      await publishPresence();
+      await emitCurrentState();
+    },
+    onMessage: (envelope) => {
+      void routeEnvelope(envelope);
+    },
+    onPeerJoined: () => {
       void publishPresence();
-    }
-  },
-  onError: (message) => {
-    emitRecoveryEvent("invalid-message", message.error || "A collaboration server message was ignored.");
-  },
-  onDisconnect: () => {
-    if (isClosed()) {
-      return;
-    }
+      void emitCurrentState();
+    },
+    onPeers: (message) => {
+      const peerSignature = getPeerSignature(message.peers);
+      const peerListChanged = peerSignature !== lastPeerSignature;
+      lastPeerSignature = peerSignature;
 
-    clearCollaborators();
-    publishCollaborators();
-    const offlineResult = markOffline("disconnect");
-    setStatus(offlineResult.status);
-    if (offlineResult.notify) {
-      emitRecoveryEvent("invalid-message", offlineResult.message);
-    }
-  },
-  onConnectError: () => {
-    if (isClosed()) {
-      return;
-    }
+      if (pruneCollaborators(message.peers)) {
+        publishCollaborators();
+      }
+      if (message.peers.length > 1 && peerListChanged) {
+        void publishPresence();
+        void emitCurrentState();
+      }
+    },
+    onError: (message) => {
+      emitRecoveryEvent("invalid-message", message.error || "A collaboration server message was ignored.");
+    },
+    onDisconnect: () => {
+      if (isClosed()) {
+        return;
+      }
 
-    const offlineResult = markOffline("connect-error");
-    setStatus(offlineResult.status);
-    if (offlineResult.notify) {
-      emitRecoveryEvent("invalid-message", offlineResult.message);
-    }
-  },
-});
+      lastPeerSignature = "";
+      clearCollaborators();
+      publishCollaborators();
+      const offlineResult = markOffline("disconnect");
+      setStatus(offlineResult.status);
+      if (offlineResult.notify) {
+        emitRecoveryEvent("invalid-message", offlineResult.message);
+      }
+    },
+    onConnectError: () => {
+      if (isClosed()) {
+        return;
+      }
+
+      lastPeerSignature = "";
+      const offlineResult = markOffline("connect-error");
+      setStatus(offlineResult.status);
+      if (offlineResult.notify) {
+        emitRecoveryEvent("invalid-message", offlineResult.message);
+      }
+    },
+  };
+};

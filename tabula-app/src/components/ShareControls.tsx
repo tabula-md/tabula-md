@@ -1,73 +1,81 @@
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { ShareExportPanel } from "./share/ShareExportPanel";
+import { ShareIncludedDocuments } from "./share/ShareIncludedDocuments";
 import { ShareLinkPanel } from "./share/ShareLinkPanel";
-import { ShareSendToPanel } from "./share/ShareSendToPanel";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { useShareDialogRuntime } from "../hooks/useShareDialogRuntime";
-import type { SharePanel } from "../uiTypes";
+import type { ConnectionStatus } from "../collaboration";
 import type { WorkspaceFile } from "../workspaceStorage";
 
 type ShareControlsProps = {
   activeFile?: WorkspaceFile;
   files: WorkspaceFile[];
-  activeFileTitle: string;
+  activeText: string;
   language: WorkspaceLanguage;
   currentUserName: string;
   canStartSession: boolean;
+  connectionStatus: ConnectionStatus;
   isLive: boolean;
+  isLiveConnected: boolean;
+  shareExcludedFileIds: readonly string[];
   shareOpen: boolean;
-  sharePanelTarget?: SharePanel;
   copied: boolean;
   jsonShare: JsonShareController;
   startSessionUnavailableReason: string;
   onCloseShare: () => void;
   onStartSession: () => void;
+  onRetrySession: () => void;
   onCopyShareUrl: () => void;
-  onCopyFile: () => void;
-  onDownloadFile: () => void;
-  onDownloadProjectArchive: () => void;
+  onDownloadProjectArchive: (fileIds?: readonly string[]) => void;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
   onStopSession: () => void;
+  onToggleShareFileExcluded: (fileId: string) => void;
 };
-
-export type { SharePanel } from "../uiTypes";
 
 export function ShareControls({
   activeFile,
   files,
-  activeFileTitle,
+  activeText,
   language,
   currentUserName,
   canStartSession,
+  connectionStatus,
   isLive,
+  isLiveConnected,
+  shareExcludedFileIds,
   shareOpen,
-  sharePanelTarget,
   copied,
   jsonShare,
   startSessionUnavailableReason,
   onCloseShare,
   onStartSession,
+  onRetrySession,
   onCopyShareUrl,
-  onCopyFile,
-  onDownloadFile,
   onDownloadProjectArchive,
   onChangeUserName,
   onCommitUserName,
   onStopSession,
+  onToggleShareFileExcluded,
 }: ShareControlsProps) {
+  const showLiveRoomPanel =
+    isLive &&
+    (isLiveConnected ||
+      connectionStatus === "reconnecting" ||
+      connectionStatus === "disconnected");
   const shareRuntime = useShareDialogRuntime({
     activeFile,
-    activeFileTitle,
-    canStartSession,
+    activeText,
+    canStartSession: canStartSession && !isLive,
     files,
-    isLive,
+    isLive: showLiveRoomPanel,
+    isLiveConnected,
     jsonShare,
     language,
+    shareExcludedFileIds,
     shareOpen,
-    sharePanelTarget,
     startSessionUnavailableReason,
     onCloseShare,
     onStopSession,
@@ -85,7 +93,7 @@ export function ShareControls({
             }}
           >
             <section
-              className="share-modal"
+              className={`share-modal ${showLiveRoomPanel ? "share-modal-live" : "share-modal-chooser"}`}
               role="dialog"
               aria-modal="true"
               aria-labelledby="share-modal-title"
@@ -99,70 +107,55 @@ export function ShareControls({
                 <X size={17} />
               </button>
 
-              <header className="share-modal-header">
-                <h2 id="share-modal-title">{shareRuntime.shareModalTitle}</h2>
-              </header>
+              <h2 className="share-modal-title-hidden" id="share-modal-title">
+                {shareRuntime.shareModalTitle}
+              </h2>
 
-              <nav
-                className="share-modal-tabs"
-                role="tablist"
-                aria-label={shareRuntime.copy.purposeAria}
-              >
-                {shareRuntime.shareView.tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    className={shareRuntime.shareView.activePanel === tab.id ? "active" : ""}
-                    type="button"
-                    role="tab"
-                    aria-selected={shareRuntime.shareView.activePanel === tab.id}
-                    onClick={() => shareRuntime.setSharePanel(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-
-              <section className="share-modal-panel" role="tabpanel">
-                {shareRuntime.shareView.activePanel === "share-link" && (
+              <section className={`share-modal-panel ${showLiveRoomPanel ? "live" : "chooser"}`}>
+                <div className="share-modal-actions-column">
                   <ShareLinkPanel
+                    agentPromptCopied={shareRuntime.agentPromptCopied}
                     chromeCopy={shareRuntime.chromeCopy}
                     copied={copied}
                     copy={shareRuntime.copy}
                     currentUserName={currentUserName}
-                    exportLinkCopied={shareRuntime.exportLinkCopied}
-                    isLive={isLive}
-                    jsonShare={jsonShare}
+                    connectionStatus={connectionStatus}
+                    isLive={showLiveRoomPanel}
+                    isLiveConnected={isLiveConnected}
                     shareView={shareRuntime.shareView}
+                    exportPanel={
+                      <ShareExportPanel
+                        copy={shareRuntime.copy}
+                        exportLinkCopied={shareRuntime.exportLinkCopied}
+                        includedFileCount={shareRuntime.includedFileCount}
+                        includedFileIds={shareRuntime.includedFileIds}
+                        jsonShare={jsonShare}
+                        shareView={shareRuntime.shareView}
+                        onCopyShareableLink={shareRuntime.copyShareableLink}
+                        onDownloadProjectArchive={onDownloadProjectArchive}
+                        onExportToJsonLink={shareRuntime.exportToJsonLink}
+                      />
+                    }
                     onChangeUserName={onChangeUserName}
                     onCommitUserName={onCommitUserName}
+                    onCopyLocalAgentPrompt={shareRuntime.copyLocalAgentPrompt}
                     onCopyShareUrl={onCopyShareUrl}
-                    onCopyShareableLink={shareRuntime.copyShareableLink}
-                    onExportToJsonLink={shareRuntime.exportToJsonLink}
-                    onStartSession={onStartSession}
+                    onRetrySession={onRetrySession}
+                    onStartWorkspaceRoom={onStartSession}
                     onStopSession={shareRuntime.stopSession}
                   />
-                )}
+                </div>
 
-                {shareRuntime.shareView.activePanel === "export" && (
-                  <ShareExportPanel
-                    copy={shareRuntime.copy}
-                    onCopyFile={onCopyFile}
-                    onDownloadFile={onDownloadFile}
-                    onDownloadProjectArchive={onDownloadProjectArchive}
-                  />
-                )}
-
-                {shareRuntime.shareView.activePanel === "send-to" && (
-                  <ShareSendToPanel
-                    activeFileDisplayTitle={shareRuntime.activeFileDisplayTitle}
-                    agentInstruction={shareRuntime.agentInstruction}
-                    agentPromptCopied={shareRuntime.agentPromptCopied}
-                    agentScope={shareRuntime.agentScope}
-                    copy={shareRuntime.copy}
-                    onChangeAgentInstruction={shareRuntime.setAgentInstruction}
-                    onChangeAgentScope={shareRuntime.setAgentScope}
-                    onCopyLocalAgentPrompt={shareRuntime.copyLocalAgentPrompt}
-                  />
+                {!showLiveRoomPanel && (
+                  <aside className="share-modal-scope-column">
+                    <ShareIncludedDocuments
+                      copy={shareRuntime.copy}
+                      excludedFileIds={shareRuntime.excludedFileIds}
+                      files={files}
+                      includedFileCount={shareRuntime.includedFileCount}
+                      onToggleFileExcluded={onToggleShareFileExcluded}
+                    />
+                  </aside>
                 )}
               </section>
             </section>

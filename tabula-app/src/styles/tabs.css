@@ -109,34 +109,6 @@
   white-space: nowrap;
 }
 
-.tab-live-dot {
-  flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--status-dot-idle);
-}
-
-.tab-live-dot.connected {
-  background: var(--status-dot-connected);
-}
-
-.tab-live-dot.connecting {
-  background: var(--status-dot-connecting);
-}
-
-.tab-live-dot.reconnecting {
-  background: var(--status-dot-connecting);
-}
-
-.tab-live-dot.disconnected {
-  background: var(--status-dot-disconnected);
-}
-
-.tab-live-dot.failed {
-  background: var(--status-dot-failed);
-}
-
 .tab-collaborator-count {
   min-width: 14px;
   height: 14px;
@@ -146,6 +118,20 @@
   background: var(--surface-panel);
   font-size: 10px;
   line-height: 14px;
+}
+
+.tab-live-scope-dot {
+  position: absolute;
+  top: 50%;
+  right: 13px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-dot-connected);
+  opacity: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 120ms ease;
 }
 
 .tab-actions {
@@ -168,6 +154,8 @@
   pointer-events: auto;
 }
 
+.tab-item:hover .tab-live-scope-dot,
+.tab-item:focus-within .tab-live-scope-dot,
 .tab-item:hover .tab-collaborator-count,
 .tab-item:focus-within .tab-collaborator-count {
   opacity: 0;

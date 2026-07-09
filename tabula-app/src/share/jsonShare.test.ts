@@ -97,7 +97,7 @@ describe("json share links", () => {
         route: { ...route!, key: wrongKey },
         fetchImpl: readFetch as typeof fetch,
       }),
-    ).rejects.toThrow("This snapshot link could not be decrypted. It may have the wrong client-only key.");
+    ).rejects.toThrow("This export link could not be decrypted. It may have the wrong client-only key.");
     expect(readRequestUrl).not.toContain(wrongKey);
   });
 
@@ -167,12 +167,12 @@ describe("json share links", () => {
     expect(getJsonShareImportRoute({ pathname: "/", hash: "#json=abc12345" })).toEqual({
       status: "invalid",
       routeKey: "invalid:abc12345",
-      errorMessage: "This snapshot link is missing its client-only key.",
+      errorMessage: "This export link is missing its client-only key.",
     });
     expect(getJsonShareImportRoute({ pathname: "/", hash: "#json=abc12345,not-a-32-byte-key" })).toEqual({
       status: "invalid",
       routeKey: "invalid:abc12345,not-a-32-byte-key",
-      errorMessage: "This snapshot link has an invalid client-only key.",
+      errorMessage: "This export link has an invalid client-only key.",
     });
   });
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   TABULA_HOSTED_SERVICE_COPY,
   getTabulaServiceConfig,
+  resolveTabulaJsonShareServiceUrl,
   resolveTabulaRoomServiceUrl,
 } from "./serviceConfig";
 
@@ -11,7 +12,7 @@ describe("service config", () => {
       getTabulaServiceConfig({
         DEV: false,
         VITE_TABULA_ERROR_REPORT_URL: "https://events.tabula.test///",
-        VITE_TABULA_FIREBASE_CONFIG: " {\"projectId\":\"tabula-test\"} ",
+        VITE_TABULA_FIREBASE_CONFIG: "{\"projectId\":\"tabula-test\"}",
         VITE_TABULA_JSON_URL: "https://json.tabula.test///",
         VITE_TABULA_PLUS_ENABLED: "true",
         VITE_TABULA_PUBLISH_URL: "https://publish.tabula.test/",
@@ -45,5 +46,31 @@ describe("service config", () => {
         location: { hostname: "localhost", protocol: "http:" },
       }),
     ).toBeNull();
+  });
+
+  it("keeps local export link storage fallback dev-only", () => {
+    expect(
+      resolveTabulaJsonShareServiceUrl({
+        configuredUrl: null,
+        isDev: true,
+        location: { hostname: "localhost", protocol: "http:" },
+      }),
+    ).toBe("http://localhost:3004");
+
+    expect(
+      resolveTabulaJsonShareServiceUrl({
+        configuredUrl: null,
+        isDev: false,
+        location: { hostname: "localhost", protocol: "http:" },
+      }),
+    ).toBeNull();
+
+    expect(
+      resolveTabulaJsonShareServiceUrl({
+        configuredUrl: "https://json.tabula.test///",
+        isDev: true,
+        location: { hostname: "localhost", protocol: "http:" },
+      }),
+    ).toBe("https://json.tabula.test");
   });
 });

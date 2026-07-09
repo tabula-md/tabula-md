@@ -12,7 +12,7 @@ import { getWorkspaceChromeCopy } from "../workspaceLocale";
 type TopChromeProps = {
   workspaceMenuOpen: boolean;
   rightPanelOpen: boolean;
-  isLive: boolean;
+  isLiveConnected: boolean;
   language: WorkspaceLanguage;
   identity: Collaborator;
   collaborators: Collaborator[];
@@ -26,7 +26,7 @@ type TopChromeProps = {
 export function TopChrome({
   workspaceMenuOpen,
   rightPanelOpen,
-  isLive,
+  isLiveConnected,
   language,
   identity,
   collaborators,
@@ -43,7 +43,9 @@ export function TopChrome({
   const rightPanelLabel = rightPanelOpen
     ? copy.closeProjectContext
     : copy.openProjectContext;
-  const liveCollaborators = [identity, ...collaborators];
+  const liveCollaborators = isLiveConnected ? [identity, ...collaborators] : [];
+  const getInitial = (collaborator: Collaborator) =>
+    (collaborator.name || "?").trim().slice(0, 1) || "?";
   const sharingTooltip =
     liveCollaborators.length > 1
       ? copy.liveWith(
@@ -54,14 +56,15 @@ export function TopChrome({
     getCollaboratorPresenceLabel(collaborator, activeText);
   const currentFileTitle = identity.fileTitle;
   const currentRoomId = identity.roomId;
+  const currentDocumentId = identity.activeDocumentId;
   const [presenceOpen, setPresenceOpen] = useState(false);
   const presenceRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!isLive) {
+    if (!isLiveConnected) {
       setPresenceOpen(false);
     }
-  }, [isLive]);
+  }, [isLiveConnected]);
 
   useEffect(() => {
     if (!presenceOpen) {
@@ -109,7 +112,7 @@ export function TopChrome({
         {fileTabs}
 
         <div className="top-right-zone">
-          {isLive && (
+          {isLiveConnected && (
             <div className="presence-wrap" ref={presenceRef}>
               <button
                 className={`presence sharing-presence ${presenceOpen ? "active" : ""}`}
@@ -122,20 +125,20 @@ export function TopChrome({
                 <Users size={15} />
                 <div className="avatars">
                   <span
-                    className="avatar self"
+                    className={`avatar self ${identity.kind === "agent" ? "agent" : "human"}`}
                     style={{ background: identity.color }}
                     data-tooltip={getTooltip(identity)}
                   >
-                    {identity.name.slice(0, 1)}
+                    {getInitial(identity)}
                   </span>
                   {collaborators.slice(0, 4).map((collaborator) => (
                     <span
-                      className="avatar"
+                      className={`avatar ${collaborator.kind === "agent" ? "agent" : "human"}`}
                       key={collaborator.id}
                       style={{ background: collaborator.color }}
                       data-tooltip={getTooltip(collaborator)}
                     >
-                      {collaborator.name.slice(0, 1)}
+                      {getInitial(collaborator)}
                     </span>
                   ))}
                 </div>
@@ -157,26 +160,35 @@ export function TopChrome({
                         collaborator,
                         currentFileTitle,
                         currentRoomId,
+                        currentDocumentId,
                       );
                       return (
                         <div
-                          className={`presence-row ${collaborator.id === identity.id ? "self" : ""}`}
+                          className={`presence-row ${collaborator.id === identity.id ? "self" : ""} ${
+                            collaborator.kind === "agent" ? "agent" : "human"
+                          }`}
                           key={collaborator.id}
                         >
                           <span
                             className="presence-row-avatar"
                             style={{ background: collaborator.color }}
                           >
-                            {collaborator.name.slice(0, 1)}
+                            {getInitial(collaborator)}
                           </span>
                           <div>
-                            <span>{collaborator.name}</span>
+                            <span>
+                              {collaborator.name}
+                              {collaborator.kind === "agent" && (
+                                <small className="presence-kind-badge">Agent</small>
+                              )}
+                            </span>
                             <p className={isCurrentFile ? "" : "other-file"}>
                               {getCollaboratorPresenceDetail(
                                 collaborator,
                                 activeText,
                                 currentFileTitle,
                                 currentRoomId,
+                                currentDocumentId,
                               )}
                             </p>
                           </div>

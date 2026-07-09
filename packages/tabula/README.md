@@ -4,9 +4,9 @@ Core product contracts for Tabula.md.
 
 This package is intentionally small and browser-service agnostic. It contains
 pure models for Markdown editing, workspace files, document controls, comments,
-status labels, live room links, encrypted JSON snapshot links, and the pure
+status labels, live room links, encrypted Export links, and the pure
 parts of collaboration presence. It also owns the product data and room
-envelope contracts used by JSON Snapshot links and live recovery. The Tabula
+envelope contracts used by Export links and live recovery. The Tabula
 app in `tabula-app` wires these contracts to React, CodeMirror, local storage,
 collaboration transports, hosted recovery, and network services.
 
@@ -18,7 +18,7 @@ Keep in this package:
 - Workspace file and tab state transitions.
 - Share link parsing and URL contracts.
 - AES-GCM primitives through `globalThis.crypto`.
-- Versioned encrypted data encoding for Snapshot links and recovery blobs.
+- Versioned encrypted data encoding for Export links and recovery blobs.
 - Comment/status/document control view models.
 - Collaboration envelope, session, collaborator, and presence models that do
   not require a transport.
@@ -49,7 +49,7 @@ Keep outside this package:
 Tabula has two first-class share links:
 
 - Live collaboration: `https://tabula.md/#room=<roomId>,<roomKey>`
-- Encrypted snapshot import: `https://tabula.md/#json=<snapshotId>,<snapshotKey>`
+- Export link import: `https://tabula.md/#json=<snapshotId>,<snapshotKey>`
 
 The key stays in the URL hash so it is client-only. Servers receive the object
 identifier, not the decryption key.

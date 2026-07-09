@@ -20,18 +20,18 @@ export function JsonShareImportDialog({
   return (
     <div className="share-modal-layer json-import-modal-layer">
       <section className="share-modal json-import-modal" role="dialog" aria-modal="true" aria-labelledby="json-import-title">
-        <button className="share-modal-close" type="button" aria-label="Close snapshot link dialog" onClick={onCancel}>
+        <button className="share-modal-close" type="button" aria-label="Close export link dialog" onClick={onCancel}>
           <X size={20} />
         </button>
 
         {status === "loading" && (
           <>
             <header className="share-modal-header">
-              <h2 id="json-import-title">Load snapshot</h2>
+              <h2 id="json-import-title">Load export link</h2>
             </header>
             <div className="json-import-state">
               <Loader2 size={20} aria-hidden="true" />
-              <p>Preparing encrypted snapshot.</p>
+              <p>Preparing encrypted export.</p>
             </div>
           </>
         )}
@@ -56,7 +56,7 @@ export function JsonShareImportDialog({
         {status === "ready" && (
           <>
             <header className="share-modal-header compact">
-              <h2 id="json-import-title">Load snapshot</h2>
+              <h2 id="json-import-title">Load export link</h2>
               <p>Loading this link will replace your current local content.</p>
             </header>
             <div className="json-import-warning">
@@ -70,7 +70,7 @@ export function JsonShareImportDialog({
                 Cancel
               </button>
               <button className="share-modal-primary" type="button" onClick={onReplace}>
-                Load snapshot
+                Load export
               </button>
             </div>
           </>

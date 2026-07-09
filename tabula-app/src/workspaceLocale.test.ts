@@ -24,27 +24,23 @@ describe("workspace locale chrome copy", () => {
       "A local-first workspace for files that people and coding agents can share safely.",
     );
     expect(english.emptyState.newFile).toBe("New File");
-    expect(english.share.tabs.shareLink).toBe("Share link");
-    expect(english.share.shareable.title).toBe("Snapshot link");
+    expect(english.share.live.startSession).toBe("Start session");
+    expect(english.share.live.includedCount(1, 3)).toBe("1/3 included");
+    expect(english.share.shareable.title).toBe("Export to link");
     expect(english.share.shareable.description).toBe(
-      "Create an encrypted local-copy snapshot. Anyone with the full link can open it for 7 days.",
+      "Create an encrypted link to a copy of the included documents.",
     );
-    expect(english.share.shareable.emptyFileReason("Untitled")).toBe(
-      "Add content to Untitled before creating a snapshot link.",
-    );
-    expect(english.share.modalTitle("README")).toBe("Share README");
+    expect(english.share.modalTitle).toBe("Share");
 
     const korean = getWorkspaceMenuCopy("ko");
     expect(korean.actions.preferences).toBe("환경설정");
     expect(korean.emptyState.openFile).toBe("파일 열기");
-    expect(korean.share.tabs.shareLink).toBe("공유 링크");
-    expect(korean.share.shareable.title).toBe("스냅샷 링크");
+    expect(korean.share.live.startSession).toBe("세션 시작");
+    expect(korean.share.live.includedCount(1, 3)).toBe("1/3개 포함");
+    expect(korean.share.shareable.title).toBe("링크로 내보내기");
     expect(korean.share.shareable.description).toBe(
-      "암호화된 로컬 복사본 스냅샷을 만듭니다. 전체 링크가 있으면 7일 동안 열 수 있습니다.",
+      "포함된 문서의 암호화된 복사본 링크를 만듭니다.",
     );
-    expect(korean.share.shareable.emptyFileReason("Untitled 5")).toBe(
-      "Untitled 5에 내용을 추가하면 스냅샷 링크를 만들 수 있습니다.",
-    );
-    expect(korean.share.modalTitle("README")).toBe("README 공유");
+    expect(korean.share.modalTitle).toBe("공유");
   });
 });

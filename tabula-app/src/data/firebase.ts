@@ -7,39 +7,30 @@ import {
   runTransaction,
   serverTimestamp,
 } from "firebase/firestore";
-import {
-  decryptData,
-  encryptData,
-  toArrayBuffer,
-} from "@tabula-md/tabula";
-import {
-  createDisabledRoomRecoveryStore,
-  type RoomRecoveryStore,
-} from "../collaboration/collabRuntimeAdapters";
+import type { RoomCheckpointStore } from "../collaboration/roomCheckpointStore";
 import { tabulaServiceConfig } from "../serviceConfig";
 
-type FirebaseRoomDocument = {
+type FirebaseRoomCheckpointDocument = {
   formatVersion: 1;
-  stateVersion: number;
-  iv: Bytes;
-  ciphertext: Bytes;
+  checkpointVersion: number;
+  checkpoint: Bytes;
   updatedAt?: unknown;
 };
 
-const firebaseAppName = "tabula-room-recovery";
-const roomRecoveryFormatVersion = 1;
-const textEncoder = new TextEncoder();
+const firebaseAppName = "tabula-room-checkpoint";
+const roomCheckpointFormatVersion = 1;
+const roomCheckpointCollection = "roomCheckpoints";
 
-export const createFirebaseRoomRecoveryStore = (
+export const createFirebaseRoomCheckpointStore = (
   firebaseConfig = tabulaServiceConfig.firebaseConfig,
-): RoomRecoveryStore => {
+): RoomCheckpointStore => {
   if (!firebaseConfig) {
-    return createDisabledRoomRecoveryStore();
+    return createDisabledFirebaseRoomCheckpointStore();
   }
 
   const config = parseFirebaseConfig(firebaseConfig);
   if (!config) {
-    return createDisabledRoomRecoveryStore();
+    return createDisabledFirebaseRoomCheckpointStore();
   }
 
   const app =
@@ -48,41 +39,44 @@ export const createFirebaseRoomRecoveryStore = (
   const firestore = getFirestore(app);
 
   return {
-    async load(roomId, roomKey) {
-      const snapshot = await getDoc(doc(firestore, "rooms", roomId));
+    enabled: true,
+    async loadEncryptedCheckpoint(roomId) {
+      const snapshot = await getDoc(doc(firestore, roomCheckpointCollection, roomId));
       if (!snapshot.exists()) {
         return null;
       }
 
-      return decryptStoredRoomState(readFirebaseRoomDocument(snapshot.data()), roomId, roomKey);
+      return readFirebaseRoomCheckpointDocument(snapshot.data()).checkpoint.toUint8Array();
     },
-    async save({ roomId, roomKey, state, mergeStates }) {
-      const roomRef = doc(firestore, "rooms", roomId);
-      return runTransaction(firestore, async (transaction) => {
+    async saveEncryptedCheckpoint(roomId, encryptedCheckpoint) {
+      const roomRef = doc(firestore, roomCheckpointCollection, roomId);
+      await runTransaction(firestore, async (transaction) => {
         const snapshot = await transaction.get(roomRef);
-        const previous = snapshot.exists() ? readFirebaseRoomDocument(snapshot.data()) : null;
-        const previousState = previous
-          ? await decryptStoredRoomState(previous, roomId, roomKey)
+        const previous = snapshot.exists()
+          ? readFirebaseRoomCheckpointDocument(snapshot.data())
           : null;
-        const nextState = previousState && mergeStates ? mergeStates([previousState, state]) : state;
-        const stateVersion = (previous?.stateVersion ?? 0) + 1;
-        const encrypted = await encryptData(roomKey, nextState, {
-          additionalData: createFirebaseRoomAad(roomId, stateVersion),
-        });
+        const checkpointVersion = (previous?.checkpointVersion ?? 0) + 1;
 
         transaction.set(roomRef, {
-          formatVersion: roomRecoveryFormatVersion,
-          stateVersion,
-          iv: Bytes.fromUint8Array(encrypted.iv),
-          ciphertext: Bytes.fromUint8Array(new Uint8Array(encrypted.encryptedBuffer)),
+          formatVersion: roomCheckpointFormatVersion,
+          checkpointVersion,
+          checkpoint: Bytes.fromUint8Array(encryptedCheckpoint),
           updatedAt: serverTimestamp(),
-        } satisfies FirebaseRoomDocument);
-
-        return { version: stateVersion };
+        } satisfies FirebaseRoomCheckpointDocument);
       });
     },
   };
 };
+
+const createDisabledFirebaseRoomCheckpointStore = (): RoomCheckpointStore => ({
+  enabled: false,
+  async loadEncryptedCheckpoint() {
+    return null;
+  },
+  async saveEncryptedCheckpoint() {
+    // Firebase room checkpoints are optional.
+  },
+});
 
 const parseFirebaseConfig = (rawConfig: string): FirebaseOptions | null => {
   try {
@@ -97,56 +91,29 @@ const parseFirebaseConfig = (rawConfig: string): FirebaseOptions | null => {
   }
 };
 
-const readFirebaseRoomDocument = (value: unknown): FirebaseRoomDocument => {
+const readFirebaseRoomCheckpointDocument = (value: unknown): FirebaseRoomCheckpointDocument => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("Invalid Firebase room recovery document");
+    throw new Error("Invalid Firebase room checkpoint document");
   }
 
-  const document = value as Partial<FirebaseRoomDocument>;
+  const document = value as Partial<FirebaseRoomCheckpointDocument>;
   if (
-    document.formatVersion !== roomRecoveryFormatVersion ||
-    !Number.isSafeInteger(document.stateVersion) ||
-    document.stateVersion === undefined ||
-    document.stateVersion < 0 ||
-    !(document.iv instanceof Bytes) ||
-    !(document.ciphertext instanceof Bytes)
+    document.formatVersion !== roomCheckpointFormatVersion ||
+    !Number.isSafeInteger(document.checkpointVersion) ||
+    document.checkpointVersion === undefined ||
+    document.checkpointVersion < 0 ||
+    !(document.checkpoint instanceof Bytes)
   ) {
-    throw new Error("Invalid Firebase room recovery document");
+    throw new Error("Invalid Firebase room checkpoint document");
   }
 
   return {
-    formatVersion: roomRecoveryFormatVersion,
-    stateVersion: document.stateVersion,
-    iv: document.iv,
-    ciphertext: document.ciphertext,
+    formatVersion: roomCheckpointFormatVersion,
+    checkpointVersion: document.checkpointVersion,
+    checkpoint: document.checkpoint,
     updatedAt: document.updatedAt,
   };
 };
-
-const decryptStoredRoomState = async (
-  stored: FirebaseRoomDocument,
-  roomId: string,
-  roomKey: string,
-) =>
-  new Uint8Array(
-    await decryptData(
-      stored.iv.toUint8Array(),
-      toArrayBuffer(stored.ciphertext.toUint8Array()),
-      roomKey,
-      {
-        additionalData: createFirebaseRoomAad(roomId, stored.stateVersion),
-      },
-    ),
-  );
-
-const createFirebaseRoomAad = (roomId: string, stateVersion: number) =>
-  textEncoder.encode(
-    JSON.stringify({
-      formatVersion: roomRecoveryFormatVersion,
-      roomId,
-      stateVersion,
-    }),
-  );
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown error";

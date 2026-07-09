@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CollabRecoveryEvent, RoomMeta, TabulaRoomAvailability } from ".";
+import type { CollabRecoveryEvent, TabulaRoomAvailability } from ".";
 import {
   canStartCollaborationSession,
   createCollaborationPresenceIdentity,
@@ -9,7 +9,6 @@ import {
   getInitialCollaborationStatus,
   getLiveRoomConnectionTarget,
   getRecoveryEventPatch,
-  getRoomMetaPatch,
   shouldStartLiveRoomConnection,
 } from "./collabRuntime";
 import type { WorkspaceFile } from "../workspaceStorage";
@@ -123,44 +122,17 @@ describe("collaboration runtime model", () => {
     ).toBeNull();
   });
 
-  it("keeps room meta patches product-shaped and stable", () => {
-    const meta: RoomMeta = {
-      roomId: "room-1",
-      version: 2,
-      snapshotCount: 1,
-      lastSavedAt: "2026-06-29T00:00:00.000Z",
-      snapshots: [
-        {
-          id: "latest",
-          createdAt: "2026-06-29T00:01:00.000Z",
-          textLength: 10,
-          updateSize: 20,
-          version: 2,
-        },
-      ],
-    };
-
-    expect(getRoomMetaPatch(meta)).toEqual({
-      snapshotCount: 1,
-      lastSnapshotAt: "2026-06-29T00:01:00.000Z",
-    });
-
-    expect(getRoomMetaPatch({ ...meta, lastSavedAt: undefined, snapshots: [] })).toEqual({
-      snapshotCount: 1,
-    });
-  });
-
   it("maps recovery events without leaking transport-specific detail into hooks", () => {
     const event: CollabRecoveryEvent = {
       id: "event-1",
-      type: "snapshot-recovered",
-      message: "Recovered from encrypted room recovery state.",
+      type: "reconnected",
+      message: "Connection restored and room state was resynced.",
       createdAt: "2026-06-29T00:02:00.000Z",
     };
 
     expect(getRecoveryEventPatch(event)).toEqual({
-      type: "snapshot-recovered",
-      message: "Recovered from encrypted room recovery state.",
+      type: "reconnected",
+      message: "Connection restored and room state was resynced.",
       createdAt: "2026-06-29T00:02:00.000Z",
     });
   });
@@ -246,6 +218,10 @@ describe("collaboration runtime model", () => {
       }),
     ).toEqual({
       ...identity,
+      kind: "human",
+      client: "tabula-md",
+      capabilities: ["presence", "read", "comment", "write", "create", "delete", "move"],
+      joinedAt: "1970-01-01T00:00:00.000Z",
       roomId: "room-1",
       fileTitle: "README",
       selection: { from: 1, to: 2 },

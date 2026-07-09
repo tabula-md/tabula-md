@@ -1,11 +1,14 @@
 import { trimTrailingSlash } from "@tabula-md/tabula";
 
 export const TABULA_LOCAL_ROOM_PORT = 3002;
+export const TABULA_LOCAL_JSON_PORT = 3004;
 
 export const TABULA_HOSTED_SERVICE_COPY = {
   roomUnconfiguredMessage:
     "Live collaboration needs a Tabula Room server. Configure VITE_TABULA_ROOM_URL to start sessions.",
-  jsonShareUnconfiguredMessage: "Snapshot links are not configured.",
+  jsonShareUnconfiguredMessage: "Export link service is not available.",
+  roomCheckpointUnconfiguredMessage:
+    "Live room persistence needs Firebase. Configure VITE_TABULA_FIREBASE_CONFIG to restore rooms without an active peer.",
 } as const;
 
 export type TabulaServiceConfig = {
@@ -32,12 +35,19 @@ type TabulaServiceEnv = Partial<
   >
 >;
 
-export type RoomServiceLocation = Pick<Location, "hostname" | "protocol">;
+export type LocalServiceLocation = Pick<Location, "hostname" | "protocol">;
+export type RoomServiceLocation = LocalServiceLocation;
 
 export type ResolveTabulaRoomServiceUrlOptions = {
   configuredUrl?: string | null;
   isDev?: boolean;
-  location?: RoomServiceLocation;
+  location?: LocalServiceLocation;
+};
+
+export type ResolveTabulaJsonShareServiceUrlOptions = {
+  configuredUrl?: string | null;
+  isDev?: boolean;
+  location?: LocalServiceLocation;
 };
 
 const normalizeServiceUrl = (value?: string | null) => {
@@ -62,11 +72,17 @@ export const getTabulaServiceConfig = (
 
 export const tabulaServiceConfig = getTabulaServiceConfig();
 
-export const resolveTabulaRoomServiceUrl = ({
-  configuredUrl = tabulaServiceConfig.roomUrl,
-  isDev = tabulaServiceConfig.isDev,
+const resolveLocalServiceUrl = ({
+  configuredUrl,
+  isDev,
   location,
-}: ResolveTabulaRoomServiceUrlOptions = {}) => {
+  port,
+}: {
+  configuredUrl?: string | null;
+  isDev: boolean;
+  location?: LocalServiceLocation;
+  port: number;
+}) => {
   const configuredBaseUrl = normalizeServiceUrl(configuredUrl);
   if (configuredBaseUrl) {
     return configuredBaseUrl;
@@ -77,5 +93,29 @@ export const resolveTabulaRoomServiceUrl = ({
   }
 
   const protocol = location.protocol === "https:" ? "https:" : "http:";
-  return `${protocol}//${location.hostname}:${TABULA_LOCAL_ROOM_PORT}`;
+  return `${protocol}//${location.hostname}:${port}`;
 };
+
+export const resolveTabulaRoomServiceUrl = ({
+  configuredUrl = tabulaServiceConfig.roomUrl,
+  isDev = tabulaServiceConfig.isDev,
+  location,
+}: ResolveTabulaRoomServiceUrlOptions = {}) =>
+  resolveLocalServiceUrl({
+    configuredUrl,
+    isDev,
+    location,
+    port: TABULA_LOCAL_ROOM_PORT,
+  });
+
+export const resolveTabulaJsonShareServiceUrl = ({
+  configuredUrl = tabulaServiceConfig.jsonUrl,
+  isDev = tabulaServiceConfig.isDev,
+  location,
+}: ResolveTabulaJsonShareServiceUrlOptions = {}) =>
+  resolveLocalServiceUrl({
+    configuredUrl,
+    isDev,
+    location,
+    port: TABULA_LOCAL_JSON_PORT,
+  });

@@ -26,7 +26,7 @@ export const updateEditorPresenceEffect = StateEffect.define<EditorPresenceState
 const getSelectionSignature = (selection: Collaborator["selection"]) =>
   selection ? `${selection.from}:${selection.to}` : "";
 
-const mapEditorPresenceStateThroughTransaction = (
+export const mapEditorPresenceStateThroughTransaction = (
   presenceState: EditorPresenceState,
   transaction: Transaction,
 ): EditorPresenceState => {
@@ -34,6 +34,7 @@ const mapEditorPresenceStateThroughTransaction = (
     return presenceState;
   }
 
+  const previousDocLength = transaction.startState.doc.length;
   return {
     ...presenceState,
     collaborators: presenceState.collaborators.map((collaborator) => {
@@ -42,8 +43,10 @@ const mapEditorPresenceStateThroughTransaction = (
         return collaborator;
       }
 
+      const from = clampEditorPosition(selection.from, previousDocLength);
+      const to = clampEditorPosition(selection.to, previousDocLength);
       if (selection.from === selection.to) {
-        const position = transaction.changes.mapPos(selection.to, -1);
+        const position = transaction.changes.mapPos(to, -1);
         return {
           ...collaborator,
           selection: {
@@ -60,8 +63,8 @@ const mapEditorPresenceStateThroughTransaction = (
         ...collaborator,
         selection: {
           ...selection,
-          from: transaction.changes.mapPos(selection.from, -1),
-          to: transaction.changes.mapPos(selection.to, 1),
+          from: transaction.changes.mapPos(from, -1),
+          to: transaction.changes.mapPos(to, 1),
           lineNumber: undefined,
           toLineNumber: undefined,
         },

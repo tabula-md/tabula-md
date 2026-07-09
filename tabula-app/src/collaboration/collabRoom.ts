@@ -23,8 +23,6 @@ import {
 } from "../serviceConfig";
 import type { EncryptedEnvelope, EnvelopeKind } from "./roomProtocol";
 
-type SnapshotFetchResult = "missing" | "restored" | "unavailable";
-
 type ResolveTabulaRoomUrlOptions = {
   configuredUrl?: string | null;
   isDev?: boolean;
@@ -55,14 +53,6 @@ export {
   parseRoomShareUrl,
 };
 export type { ParsedRoomLocation, RoomSession };
-
-export const shouldStoreSnapshotAfterJoin = ({
-  hasUnstoredLocalChanges,
-  snapshotFetchResult,
-}: {
-  hasUnstoredLocalChanges: boolean;
-  snapshotFetchResult: SnapshotFetchResult;
-}) => snapshotFetchResult !== "unavailable" && (hasUnstoredLocalChanges || snapshotFetchResult === "missing");
 
 export const generateRoomKey = () => {
   return generateEncryptionKey(ROOM_KEY_BYTES);

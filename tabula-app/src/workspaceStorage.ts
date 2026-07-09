@@ -58,7 +58,7 @@ No dashboard first. No project ceremony. Open a file, write Markdown, and share 
 
 1. Create a blank Markdown file.
 2. Edit, preview, or keep split view open.
-3. Share a live room for co-editing or an encrypted snapshot link for handoff.
+3. Share a live room for co-editing or an encrypted export link for handoff.
 
 ## Fits
 
@@ -68,8 +68,8 @@ No dashboard first. No project ceremony. Open a file, write Markdown, and share 
 ## Storage and sharing
 
 - Local files are saved in this browser.
-- Live rooms sync the active file through a collaboration session.
-- Snapshot links export an encrypted copy that opens in another local workspace.
+- Live rooms sync the included workspace documents through a collaboration session.
+- Export links create an encrypted copy that opens in another local workspace.
 `;
 export const isStarterReadmeText = (text: string) => text === STARTER_README_MARKDOWN;
 
@@ -83,6 +83,8 @@ export type WorkspaceFile = {
   id: string;
   title: string;
   text: string;
+  parentId?: string | null;
+  order?: number;
   viewMode: FileViewMode;
   readingWidth: ReadingWidth;
   splitRatio?: number;
@@ -93,8 +95,6 @@ export type WorkspaceFile = {
   roomId?: string;
   shareUrl?: string;
   collaboratorCount?: number;
-  snapshotCount?: number;
-  lastSnapshotAt?: string;
   lastRecoveryType?: CollabRecoveryEvent["type"];
   lastRecoveryMessage?: string;
   lastRecoveryAt?: string;
@@ -140,6 +140,8 @@ export type StoredWorkspaceFile = {
   id: string;
   title: string;
   text: string;
+  parentId?: string | null;
+  order?: number;
   viewMode: FileViewMode;
   readingWidth: ReadingWidth;
   splitRatio?: number;
@@ -150,8 +152,6 @@ export type StoredWorkspaceFile = {
   roomId?: string;
   shareUrl?: string;
   collaboratorCount?: number;
-  snapshotCount?: number;
-  lastSnapshotAt?: string;
   lastRecoveryType?: CollabRecoveryEvent["type"];
   lastRecoveryMessage?: string;
   lastRecoveryAt?: string;
@@ -208,6 +208,22 @@ export const getRoomFromLocation = (): LocationRoom | null => {
 const getLiveFileId = (roomId: string) => `live-${roomId}`;
 
 export const getLiveFileTitle = (roomId: string) => `Shared ${roomId.slice(0, 8)}.md`;
+
+const GENERATED_LIVE_FILE_TITLE_PATTERN = /^Shared [A-Za-z0-9_-]{8}\.md$/;
+
+export const isEmptyGeneratedLivePlaceholder = (file: WorkspaceFile) =>
+  file.text.trim() === "" &&
+  ((file.roomId && file.title === getLiveFileTitle(file.roomId)) ||
+    (!file.roomId && GENERATED_LIVE_FILE_TITLE_PATTERN.test(file.title)));
+
+const pruneEmptyGeneratedLivePlaceholders = (
+  files: WorkspaceFile[],
+  commentsByFileId: Record<string, FileComment[]> = {},
+) =>
+  files.filter((file) => {
+    const hasComments = (commentsByFileId[file.id] ?? []).length > 0;
+    return hasComments || !isEmptyGeneratedLivePlaceholder(file);
+  });
 
 export const getFileIdForRoom = (files: WorkspaceFile[], roomId: string) =>
   files.find((file) => file.roomId === roomId)?.id ?? getLiveFileId(roomId);
@@ -306,6 +322,8 @@ export const createWorkspaceFile = (index: number, overrides: Partial<WorkspaceF
     id: randomId(),
     title: index === 1 ? "Untitled.md" : `Untitled ${index}.md`,
     text: STARTER_MARKDOWN,
+    parentId: undefined,
+    order: undefined,
     viewMode: "edit",
     readingWidth: "wide",
     lineWrapping: true,
@@ -396,6 +414,8 @@ const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | 
     id: getString(value.id) || randomId(),
     title: getString(value.title) || `Untitled ${index + 1}.md`,
     text,
+    parentId: value.parentId === null || typeof value.parentId === "string" ? value.parentId : undefined,
+    order: getFiniteNumber(value.order),
     viewMode: getFileViewMode(value.viewMode) ?? "edit",
     readingWidth: getReadingWidth(value.readingWidth) ?? "wide",
     splitRatio: splitRatio === undefined ? undefined : clampSplitEditorRatio(splitRatio),
@@ -406,8 +426,6 @@ const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | 
     roomId: undefined,
     shareUrl: undefined,
     collaboratorCount: 0,
-    snapshotCount: 0,
-    lastSnapshotAt: undefined,
     lastRecoveryType: undefined,
     lastRecoveryMessage: undefined,
     lastRecoveryAt: undefined,
@@ -503,7 +521,8 @@ export const finalizeWorkspaceState = (
   options: { includeLocationRoom?: boolean; openFileIds?: string[] } = {},
 ): WorkspaceState => {
   const room = options.includeLocationRoom === false ? null : getRoomFromLocation();
-  let nextFiles = ensureDefaultFiles(files, { ensureUntitled: files.length === 0 });
+  const prunedFiles = pruneEmptyGeneratedLivePlaceholders(files, commentsByFileId);
+  let nextFiles = ensureDefaultFiles(prunedFiles, { ensureUntitled: prunedFiles.length === 0 });
 
   if (room) {
     nextFiles = ensureLiveFileForRoom(nextFiles, room);
@@ -623,6 +642,8 @@ export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
     id: file.id,
     title: file.title,
     text: file.text,
+    parentId: file.parentId ?? undefined,
+    order: file.order,
     viewMode: file.viewMode,
     readingWidth: file.readingWidth,
     splitRatio: typeof file.splitRatio === "number" ? clampSplitEditorRatio(file.splitRatio) : undefined,
@@ -633,8 +654,6 @@ export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
     roomId: undefined,
     shareUrl: undefined,
     collaboratorCount: 0,
-    snapshotCount: 0,
-    lastSnapshotAt: undefined,
     lastRecoveryType: undefined,
     lastRecoveryMessage: undefined,
     lastRecoveryAt: undefined,
@@ -650,35 +669,46 @@ export const createStoredWorkspace = ({
   openFileIds = files.map((file) => file.id),
   activeFileId,
   commentsByFileId,
-}: CreateStoredWorkspaceInput): StoredProjectV5 => ({
-  schema: "tabula.project",
-  version: PROJECT_STORAGE_VERSION,
-  savedAt: new Date().toISOString(),
-  activeFileId,
-  openFileIds: openFileIds.filter(
-    (fileId, index, fileIdList) => files.some((file) => file.id === fileId) && fileIdList.indexOf(fileId) === index,
-  ),
-  fileOrder: files.map((file) => file.id),
-  files: Object.fromEntries(files.map((file) => [file.id, serializeFile(file)])),
-  commentsByFileId,
-});
+}: CreateStoredWorkspaceInput): StoredProjectV5 => {
+  const storedFiles = pruneEmptyGeneratedLivePlaceholders(files, commentsByFileId);
+  const storedFileIds = new Set(storedFiles.map((file) => file.id));
+  const nextActiveFileId = storedFileIds.has(activeFileId) ? activeFileId : (storedFiles[0]?.id ?? "");
+
+  return {
+    schema: "tabula.project",
+    version: PROJECT_STORAGE_VERSION,
+    savedAt: new Date().toISOString(),
+    activeFileId: nextActiveFileId,
+    openFileIds: openFileIds.filter(
+      (fileId, index, fileIdList) => storedFileIds.has(fileId) && fileIdList.indexOf(fileId) === index,
+    ),
+    fileOrder: storedFiles.map((file) => file.id),
+    files: Object.fromEntries(storedFiles.map((file) => [file.id, serializeFile(file)])),
+    commentsByFileId,
+  };
+};
 
 export const getStoredWorkspaceContentSignature = ({
   files,
   openFileIds = files.map((file) => file.id),
   activeFileId,
   commentsByFileId,
-}: CreateStoredWorkspaceInput) =>
-  JSON.stringify({
+}: CreateStoredWorkspaceInput) => {
+  const storedFiles = pruneEmptyGeneratedLivePlaceholders(files, commentsByFileId);
+  const storedFileIds = new Set(storedFiles.map((file) => file.id));
+  const nextActiveFileId = storedFileIds.has(activeFileId) ? activeFileId : (storedFiles[0]?.id ?? "");
+
+  return JSON.stringify({
     version: PROJECT_STORAGE_VERSION,
-    activeFileId,
+    activeFileId: nextActiveFileId,
     openFileIds: openFileIds.filter(
-      (fileId, index, fileIdList) => files.some((file) => file.id === fileId) && fileIdList.indexOf(fileId) === index,
+      (fileId, index, fileIdList) => storedFileIds.has(fileId) && fileIdList.indexOf(fileId) === index,
     ),
-    fileOrder: files.map((file) => file.id),
-    files: Object.fromEntries(files.map((file) => [file.id, serializeFile(file)])),
+    fileOrder: storedFiles.map((file) => file.id),
+    files: Object.fromEntries(storedFiles.map((file) => [file.id, serializeFile(file)])),
     commentsByFileId,
   });
+};
 
 export const createStoredWorkspaceManifest = ({
   files,

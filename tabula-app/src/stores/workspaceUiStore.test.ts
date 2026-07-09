@@ -14,7 +14,6 @@ describe("workspace UI store", () => {
     useWorkspaceUiStore.getState().setCenterPopover("view");
     useWorkspaceUiStore.getState().setWorkspaceMenuOpen(true);
     useWorkspaceUiStore.getState().setPreferencesOpen(true);
-    useWorkspaceUiStore.getState().setSharePanelTarget("export");
 
     useWorkspaceUiStore.getState().closeFloatingChrome();
 
@@ -23,7 +22,6 @@ describe("workspace UI store", () => {
       centerPopover: null,
       workspaceMenuOpen: false,
       preferencesOpen: false,
-      sharePanelTarget: undefined,
     });
   });
 
@@ -45,17 +43,16 @@ describe("workspace UI store", () => {
     });
   });
 
-  it("opens the requested share panel and closes conflicting chrome", () => {
+  it("opens Share and closes conflicting chrome", () => {
     useWorkspaceUiStore.getState().setCenterPopover("view");
     useWorkspaceUiStore.getState().setWorkspaceMenuOpen(true);
 
-    useWorkspaceUiStore.getState().openSharePanel("share-link");
+    useWorkspaceUiStore.getState().openSharePanel();
 
     expect(useWorkspaceUiStore.getState()).toMatchObject({
       topPopover: "share",
       centerPopover: null,
       workspaceMenuOpen: false,
-      sharePanelTarget: "share-link",
     });
   });
 

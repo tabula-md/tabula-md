@@ -34,7 +34,7 @@ npm run test:browser:json-share
 
 ## Services
 
-Live collaboration and encrypted snapshot links use separate services:
+Live collaboration and encrypted Export links use separate services:
 
 - `tabula-room`: encrypted websocket relay.
-- `tabula-json`: encrypted snapshot blob store.
+- `tabula-json`: encrypted Export link blob store.

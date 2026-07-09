@@ -1,11 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import {
-  decryptData,
-  encryptData,
-  generateEncryptionKey,
-  toArrayBuffer,
-} from "@tabula-md/tabula";
-import { createFirebaseRoomRecoveryStore } from "./firebase";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createFirebaseRoomCheckpointStore } from "./firebase";
 
 const firebaseMocks = vi.hoisted(() => {
   class MockBytes {
@@ -57,64 +51,41 @@ const firebaseConfig = JSON.stringify({
   appId: "test-app-id",
 });
 
-const createAad = (roomId: string, stateVersion: number) =>
-  new TextEncoder().encode(
-    JSON.stringify({
-      formatVersion: 1,
-      roomId,
-      stateVersion,
-    }),
-  );
-
 beforeEach(() => {
   vi.clearAllMocks();
   firebaseMocks.getApps.mockReturnValue([]);
 });
 
-describe("createFirebaseRoomRecoveryStore", () => {
-  it("falls back to the disabled store when config is missing", async () => {
-    const store = createFirebaseRoomRecoveryStore(null);
+describe("createFirebaseRoomCheckpointStore", () => {
+  it("stays disabled when config is missing", async () => {
+    const store = createFirebaseRoomCheckpointStore(null);
 
-    await expect(store.load("room-1", "key")).resolves.toBeNull();
-    await expect(
-      store.save({
-        roomId: "room-1",
-        roomKey: "key",
-        state: new Uint8Array([1, 2, 3]),
-      }),
-    ).resolves.toBeNull();
+    expect(store.enabled).toBe(false);
+    await expect(store.loadEncryptedCheckpoint("room-1")).resolves.toBeNull();
+    await expect(store.saveEncryptedCheckpoint("room-1", new Uint8Array([1, 2, 3]))).resolves.toBeUndefined();
     expect(firebaseMocks.initializeApp).not.toHaveBeenCalled();
   });
 
-  it("loads and decrypts ciphertext-only room recovery documents", async () => {
-    const roomId = "room-1";
-    const roomKey = await generateEncryptionKey();
-    const state = new Uint8Array([1, 2, 3, 4]);
-    const encrypted = await encryptData(roomKey, state, {
-      additionalData: createAad(roomId, 1),
-    });
+  it("loads ciphertext-only room checkpoints by public room id", async () => {
+    const encryptedCheckpoint = new Uint8Array([1, 2, 3, 4]);
     firebaseMocks.getDoc.mockResolvedValue({
       exists: () => true,
       data: () => ({
         formatVersion: 1,
-        stateVersion: 1,
-        iv: firebaseMocks.MockBytes.fromUint8Array(encrypted.iv),
-        ciphertext: firebaseMocks.MockBytes.fromUint8Array(new Uint8Array(encrypted.encryptedBuffer)),
+        checkpointVersion: 1,
+        checkpoint: firebaseMocks.MockBytes.fromUint8Array(encryptedCheckpoint),
         updatedAt: { serverTimestamp: true },
       }),
     });
 
-    const store = createFirebaseRoomRecoveryStore(firebaseConfig);
-    const loaded = await store.load(roomId, roomKey);
+    const store = createFirebaseRoomCheckpointStore(firebaseConfig);
+    await expect(store.loadEncryptedCheckpoint("room-1")).resolves.toEqual(encryptedCheckpoint);
 
-    expect(loaded).toEqual(state);
-    expect(firebaseMocks.getDoc).toHaveBeenCalledWith({ path: ["rooms", roomId] });
+    expect(firebaseMocks.getDoc).toHaveBeenCalledWith({ path: ["roomCheckpoints", "room-1"] });
   });
 
-  it("writes encrypted recovery state through a Firestore transaction", async () => {
-    const roomId = "room-1";
-    const roomKey = await generateEncryptionKey();
-    const state = new Uint8Array([5, 6, 7, 8]);
+  it("writes encrypted checkpoints through a Firestore transaction without keys or plaintext", async () => {
+    const encryptedCheckpoint = new Uint8Array([5, 6, 7, 8]);
     const set = vi.fn();
     firebaseMocks.runTransaction.mockImplementation(async (_firestore, callback) =>
       callback({
@@ -123,34 +94,24 @@ describe("createFirebaseRoomRecoveryStore", () => {
       }),
     );
 
-    const store = createFirebaseRoomRecoveryStore(firebaseConfig);
-    const result = await store.save({ roomId, roomKey, state });
+    const store = createFirebaseRoomCheckpointStore(firebaseConfig);
+    await store.saveEncryptedCheckpoint("room-1", encryptedCheckpoint);
 
-    expect(result).toEqual({ version: 1 });
     expect(set).toHaveBeenCalledTimes(1);
     const [, written] = set.mock.calls[0] as [
       unknown,
       {
         formatVersion: 1;
-        stateVersion: number;
-        iv: InstanceType<typeof firebaseMocks.MockBytes>;
-        ciphertext: InstanceType<typeof firebaseMocks.MockBytes>;
+        checkpointVersion: number;
+        checkpoint: InstanceType<typeof firebaseMocks.MockBytes>;
         updatedAt: unknown;
       },
     ];
     expect(written.formatVersion).toBe(1);
-    expect(written.stateVersion).toBe(1);
+    expect(written.checkpointVersion).toBe(1);
+    expect(written.checkpoint.toUint8Array()).toEqual(encryptedCheckpoint);
     expect(written).not.toHaveProperty("roomKey");
-    expect(written).not.toHaveProperty("state");
-
-    const decrypted = new Uint8Array(
-      await decryptData(
-        written.iv.toUint8Array(),
-        toArrayBuffer(written.ciphertext.toUint8Array()),
-        roomKey,
-        { additionalData: createAad(roomId, 1) },
-      ),
-    );
-    expect(decrypted).toEqual(state);
+    expect(written).not.toHaveProperty("markdown");
+    expect(written).not.toHaveProperty("plaintext");
   });
 });

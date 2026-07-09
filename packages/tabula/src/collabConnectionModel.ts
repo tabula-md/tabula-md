@@ -1,8 +1,4 @@
-import type {
-  CollaborationCollaborator,
-  CollaborationLiveSelection,
-  CollaborationRoomMeta,
-} from "./collaborationTypes";
+import type { CollaborationCollaborator } from "./collaborationTypes";
 import type { EncryptedEnvelope } from "./roomProtocol";
 
 export type RoomServerMetadata = {
@@ -11,35 +7,8 @@ export type RoomServerMetadata = {
   updatedAt?: string | null;
 };
 
-type PresencePayload = CollaborationCollaborator & {
-  roomId: string;
-  fileTitle: string;
-};
-
-type EncodePresenceOptions = {
-  identity: CollaborationCollaborator;
-  roomId: string;
-  fileTitle: string;
-  selection?: CollaborationLiveSelection;
-  now?: () => number;
-};
-
-const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
-
 export const createRoomApiUrl = (baseUrl: string, roomId: string, suffix = "") =>
   `${baseUrl}/v1/rooms/${encodeURIComponent(roomId)}${suffix}`;
-
-export const toRoomMeta = (metadata: RoomServerMetadata): CollaborationRoomMeta => {
-  return {
-    roomId: metadata.roomId,
-    version: 0,
-    snapshotCount: 0,
-    lastSavedAt: metadata.updatedAt ?? undefined,
-    lastUpdatedAt: metadata.updatedAt ?? undefined,
-    snapshots: [],
-  };
-};
 
 export const isEncryptedEnvelope = (value: unknown): value is EncryptedEnvelope => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -50,51 +19,12 @@ export const isEncryptedEnvelope = (value: unknown): value is EncryptedEnvelope 
   return (
     envelope.v === 1 &&
     typeof envelope.roomId === "string" &&
-    ["yjs-update", "presence", "state-init", "snapshot"].includes(String(envelope.kind)) &&
+    envelope.kind === "room-event" &&
     typeof envelope.version === "number" &&
     typeof envelope.iv === "string" &&
     typeof envelope.ciphertext === "string" &&
     typeof envelope.createdAt === "string"
   );
-};
-
-export const encodePresenceForRoom = ({
-  identity,
-  roomId,
-  fileTitle,
-  selection,
-  now = Date.now,
-}: EncodePresenceOptions) => {
-  const payload: PresencePayload = {
-    ...identity,
-    roomId,
-    fileTitle,
-    selection,
-    lastSeen: now(),
-  };
-
-  return textEncoder.encode(JSON.stringify(payload));
-};
-
-export const decodePresence = (bytes: Uint8Array, now = Date.now): CollaborationCollaborator | null => {
-  try {
-    const decoded = JSON.parse(textDecoder.decode(bytes)) as Partial<PresencePayload>;
-    if (!decoded.id || !decoded.name || !decoded.color) {
-      return null;
-    }
-
-    return {
-      id: decoded.id,
-      name: decoded.name,
-      color: decoded.color,
-      lastSeen: typeof decoded.lastSeen === "number" ? decoded.lastSeen : now(),
-      roomId: typeof decoded.roomId === "string" ? decoded.roomId : undefined,
-      fileTitle: decoded.fileTitle,
-      selection: decoded.selection,
-    };
-  } catch {
-    return null;
-  }
 };
 
 export const sortCollaborators = (collaborators: Iterable<CollaborationCollaborator>) =>

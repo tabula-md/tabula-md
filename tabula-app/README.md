@@ -2,7 +2,7 @@
 
 `tabula-app` is the Tabula.md web application shell. It owns the React UI,
 browser persistence, CodeMirror integration, collaboration adapters, optional
-live recovery wiring, and JSON snapshot API client.
+live recovery wiring, and Export link API client.
 
 Core Markdown, encryption, data encoding, and room envelope behavior belongs in
 `packages/tabula` and should be imported through the package public API. Service

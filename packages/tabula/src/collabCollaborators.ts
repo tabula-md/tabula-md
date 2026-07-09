@@ -19,8 +19,19 @@ const selectionsAreEqual = (
   first === second ||
   (Boolean(first) &&
     Boolean(second) &&
+    first?.documentId === second?.documentId &&
     first?.from === second?.from &&
     first?.to === second?.to);
+
+const capabilityListsAreEqual = (
+  first?: readonly string[],
+  second?: readonly string[],
+) =>
+  first === second ||
+  (Boolean(first) &&
+    Boolean(second) &&
+    first?.length === second?.length &&
+    first?.every((capability, index) => capability === second?.[index]));
 
 const collaboratorsAreEqual = (
   first: CollaborationCollaborator,
@@ -29,6 +40,11 @@ const collaboratorsAreEqual = (
   first.id === second.id &&
   first.name === second.name &&
   first.color === second.color &&
+  first.activeDocumentId === second.activeDocumentId &&
+  first.kind === second.kind &&
+  first.client === second.client &&
+  first.joinedAt === second.joinedAt &&
+  capabilityListsAreEqual(first.capabilities, second.capabilities) &&
   first.roomId === second.roomId &&
   first.fileTitle === second.fileTitle &&
   selectionsAreEqual(first.selection, second.selection);

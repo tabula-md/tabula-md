@@ -1,7 +1,7 @@
 import { decodeBase64Url, encodeBase64Url } from "../data/base64Url";
 import { decryptData, encryptData } from "../data/encryption";
 
-export type EnvelopeKind = "yjs-update" | "presence" | "state-init" | "snapshot";
+export type EnvelopeKind = "room-event";
 
 export type EncryptedEnvelope = {
   v: 1;
@@ -78,4 +78,4 @@ export const validateRoomPayload = (envelope: unknown): envelope is EncryptedEnv
 };
 
 export const isEnvelopeKind = (value: unknown): value is EnvelopeKind =>
-  value === "yjs-update" || value === "presence" || value === "state-init" || value === "snapshot";
+  value === "room-event";

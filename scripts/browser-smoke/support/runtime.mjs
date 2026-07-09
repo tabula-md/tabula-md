@@ -187,10 +187,15 @@ const waitForShareDialogState = async (page, { open = true, panel, text } = {}) 
 
   if (panel) {
     await page.waitForFunction(
-      ({ panel }) =>
-        Array.from(document.querySelectorAll(".share-modal-tabs [role='tab']")).some(
+      ({ panel }) => {
+        const tabs = Array.from(document.querySelectorAll(".share-modal-tabs [role='tab']"));
+        if (tabs.length === 0) {
+          return panel === "Share link";
+        }
+        return tabs.some(
           (tab) => tab.getAttribute("aria-selected") === "true" && tab.textContent?.trim() === panel,
-        ),
+        );
+      },
       { panel },
     );
   }

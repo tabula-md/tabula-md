@@ -28,8 +28,7 @@ npm run test:browser -- --suite=collaboration
 ```
 
 This opens the deployed app, starts a session, joins the invite link in a second browser context, verifies live
-Enter/backspace/line-merge sync, checks presence UI, checks peer `state-init`, and confirms recovery behavior
-when recovery is configured.
+Enter/backspace/line-merge sync, checks workspace document sync, and checks presence UI.
 
 Run a deployed encrypted snapshot path by pointing the smoke runner at your app and JSON service:
 
@@ -39,7 +38,7 @@ VITE_TABULA_JSON_URL=https://json.example.com \
 npm run test:browser -- --suite=json-share
 ```
 
-This opens the deployed app, exports a `#json` snapshot link, opens that link in a separate browser context, confirms
+This opens the deployed app, exports a `#json` Export link, opens that link in a separate browser context, confirms
 the replace prompt, and verifies the imported Markdown content.
 
 Suite map:

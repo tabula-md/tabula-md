@@ -33,6 +33,9 @@ export const createYjsCollabTextAdapter = (): CollabTextAdapter => ({
   encodeState(document) {
     return Y.encodeStateAsUpdate(asYjsDocument(document).doc);
   },
+  getText(document) {
+    return asYjsDocument(document).text.toString();
+  },
   mergeUpdates(updates) {
     return updates.length === 1 ? updates[0] : Y.mergeUpdates([...updates]);
   },

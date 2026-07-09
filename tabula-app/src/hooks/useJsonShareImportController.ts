@@ -81,7 +81,7 @@ export function useJsonShareImportController({
     closeFloatingChrome();
     syncUrlForFile(nextActiveFile, "replace");
     setJsonShareImport(null);
-    showToast("Snapshot loaded.");
+    showToast("Export link loaded.");
   });
 
   useEffect(() => {
@@ -117,12 +117,12 @@ export function useJsonShareImportController({
         clientErrorReporter.report({
           feature: "json-share",
           operation: "import-config",
-          error: new Error("Snapshot links are not configured for this build."),
+          error: new Error("This export link cannot be opened here."),
         });
         setJsonShareImport({
           status: "error",
           route,
-          errorMessage: "Snapshot links are not configured for this build.",
+          errorMessage: "This export link cannot be opened here.",
         });
         return;
       }
@@ -141,12 +141,12 @@ export function useJsonShareImportController({
             clientErrorReporter.report({
               feature: "json-share",
               operation: "import-read",
-              error: new Error("This snapshot link was not found or has expired."),
+              error: new Error("This export link was not found or has expired."),
             });
             setJsonShareImport({
               status: "error",
               route,
-              errorMessage: "This snapshot link was not found or has expired.",
+              errorMessage: "This export link was not found or has expired.",
             });
             return;
           }

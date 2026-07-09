@@ -1,4 +1,5 @@
 import {
+  HUMAN_ROOM_CAPABILITIES,
   parseRoomLocation,
   parseRoomShareUrl,
   type RoomRouteLocation,
@@ -8,7 +9,6 @@ import {
   type CollabRecoveryEvent,
   type ConnectionStatus,
   type LiveSelection,
-  type RoomMeta,
   type RoomSession,
   type TabulaRoomAvailability,
 } from "./liveCollaboration";
@@ -28,11 +28,6 @@ export type CollaborationStatusPatch = {
   requireRoom?: boolean;
 };
 
-export type RoomMetaPatch = {
-  snapshotCount: number;
-  lastSnapshotAt?: string;
-};
-
 export type RecoveryEventPatch = {
   type: CollabRecoveryEvent["type"];
   message: string;
@@ -42,9 +37,11 @@ export type RecoveryEventPatch = {
 export type CollaborationPresenceIdentityInput = {
   identity: Collaborator;
   isLive: boolean;
+  activeDocumentId?: string;
   roomId?: string;
   fileTitle: string;
   selection?: LiveSelection;
+  joinedAt?: string;
 };
 
 export type CollaborationSessionStartRequest = {
@@ -119,20 +116,6 @@ export const getIdleStatusPatch = (): CollaborationStatusPatch => ({
   collaboratorCount: 0,
 });
 
-export const getRoomMetaPatch = (meta: RoomMeta): RoomMetaPatch => {
-  const latestSnapshot = meta.snapshots[0];
-  const lastSnapshotAt = latestSnapshot?.createdAt ?? meta.lastSavedAt;
-
-  return lastSnapshotAt
-    ? {
-        snapshotCount: meta.snapshotCount,
-        lastSnapshotAt,
-      }
-    : {
-        snapshotCount: meta.snapshotCount,
-      };
-};
-
 export const getRecoveryEventPatch = (event: CollabRecoveryEvent): RecoveryEventPatch => ({
   type: event.type,
   message: event.message,
@@ -173,15 +156,22 @@ export const createCollaborationSessionStartRequest = ({
 export const createCollaborationPresenceIdentity = ({
   identity,
   isLive,
+  activeDocumentId,
   roomId,
   fileTitle,
   selection,
+  joinedAt,
 }: CollaborationPresenceIdentityInput): Collaborator =>
   isLive
     ? {
         ...identity,
+        kind: identity.kind ?? "human",
+        client: identity.client ?? "tabula-md",
+        capabilities: identity.capabilities ?? [...HUMAN_ROOM_CAPABILITIES],
+        joinedAt: identity.joinedAt ?? joinedAt ?? new Date(0).toISOString(),
+        ...(activeDocumentId ? { activeDocumentId } : {}),
         roomId,
         fileTitle,
-        selection,
+        selection: selection && activeDocumentId ? { ...selection, documentId: selection.documentId ?? activeDocumentId } : selection,
       }
     : identity;

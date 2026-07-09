@@ -7,6 +7,7 @@ export async function run(ctx) {
     appNewFileShortcut,
     browser,
     expect,
+    externalUrl,
     getTabs,
     getViewModeActionLabels,
     getViewModeSlots,
@@ -18,6 +19,8 @@ export async function run(ctx) {
     waitForPanelTab,
     waitForSavedLocally,
     waitForShareDialogState,
+    startRoomServer,
+    stopRoomServer,
     withPage,
   } = ctx;
 
@@ -107,8 +110,8 @@ export async function run(ctx) {
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Publish should stay hidden in Share until it ships.");
     expect((await page.getByText("Publish with Tabula +").count()) === 0, "Share should not expose the Tabula + publish boundary yet.");
     expect(
-      (await page.getByText(/Add content to Untitled(?: \d+)? before creating a snapshot link\./).count()) === 1,
-      "Empty files should explain why Snapshot link creation is unavailable.",
+      (await page.getByText(/Add content to Untitled(?: \d+)? before creating an Export link\./).count()) === 0,
+      "Export links should use the included workspace documents instead of blocking on the current empty file.",
     );
 
     await page.keyboard.press("Escape");
@@ -272,36 +275,30 @@ export async function run(ctx) {
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
     expect((await page.locator(".share-modal").count()) === 1, "Share should open a centered modal.");
-    expect((await page.getByRole("tab", { name: "Share link" }).count()) === 1, "Share modal should expose Share link as a purpose.");
-    expect((await page.getByRole("tab", { name: "Export" }).count()) === 1, "Share modal should expose Export as a purpose.");
-    expect((await page.getByRole("tab", { name: "Send to..." }).count()) === 1, "Share modal should expose Send to as a purpose.");
+    expect((await page.getByRole("tab").count()) === 0, "Share modal should be a single room/snapshot/export screen.");
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Share modal should keep Publish hidden for now.");
     expect((await page.getByText("Live collaboration").count()) > 0, "Share modal should default to live collaboration.");
-    expect((await page.getByText("Snapshot link").count()) > 0, "Share modal should offer an encrypted snapshot import path.");
+    expect((await page.locator(".share-included-documents").count()) === 1, "Share modal should expose one shared workspace inclusion control.");
+    expect((await page.getByText("Invite agent").count()) === 0, "Share modal should not invite agents before a room exists.");
+    expect((await page.getByText("Export to link").count()) > 0, "Share modal should expose link export as a first-class local action.");
     expect(
-      (await page.getByText("Create an encrypted local-copy snapshot. Anyone with the full link can open it for 7 days.").count()) === 1,
-      "Snapshot link should describe encrypted snapshot import, not publish.",
+      (await page.getByText("Create an encrypted copy of the included documents.").count()) === 1,
+      "Export should describe encrypted copy export, not publish.",
     );
-    expect((await page.getByRole("button", { name: "Create snapshot link" }).count()) === 1, "Share modal should expose encrypted snapshot export.");
+    expect((await page.getByRole("button", { name: "Export to link" }).count()) === 1, "Share modal should offer export link from the same included documents.");
+    expect((await page.getByText(/unavailable in this build/i).count()) === 0, "Share modal should not expose build-status copy to users.");
     expect((await page.getByText("Not live").count()) === 0, "Share link should not show redundant pre-live state text.");
-    expect((await page.getByRole("button", { name: "Start session" }).count()) === 1, "Share link should start a session.");
+    expect((await page.getByRole("button", { name: "Start session" }).count()) === 1, "Share should start a workspace room.");
     expect(
       (await page.getByLabel("Your collaboration name").count()) === 0,
       "Share link should not ask for a name before a session exists.",
     );
-    expect((await page.getByText("Export File").count()) === 0, "Export actions should not be expanded by default.");
+    expect((await page.locator(".share-export-section").getByRole("heading", { name: "Export" }).count()) === 1, "Export actions should live on the single Share screen.");
+    expect((await page.getByRole("button", { name: /File \.md/ }).count()) === 0, "Share modal should not expose a current-file download.");
+    expect((await page.getByRole("button", { name: /Copy File/ }).count()) === 0, "Share modal should not copy files from Export.");
+    expect((await page.getByRole("button", { name: /Export to file/ }).count()) === 1, "Share modal should export the workspace archive as a file.");
     expect((await page.getByText("Publish project").count()) === 0, "Publish actions should not be available by default.");
     expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish actions should not be on the default Share panel.");
-    await page.getByRole("tab", { name: "Export" }).click();
-    await waitForShareDialogState(page, { panel: "Export" });
-    expect((await page.getByText("Export File").count()) > 0, "Export tab should expose local file transfer.");
-    expect((await page.getByRole("button", { name: /File \.md/ }).count()) === 1, "Share modal should download the file.");
-    expect((await page.getByRole("button", { name: /Copy File/ }).count()) === 1, "Share modal should copy the file.");
-
-    await page.getByRole("tab", { name: "Send to..." }).click();
-    await waitForShareDialogState(page, { panel: "Send to..." });
-    expect((await page.getByText("Send to local coding agent").count()) > 0, "Send to tab should expose local agent handoff.");
-    expect((await page.getByRole("button", { name: "Copy prompt" }).count()) === 1, "Send to tab should copy an agent prompt.");
 
     expect((await page.getByText("Publish with Tabula +").count()) === 0, "Share should not expose the Plus publish boundary yet.");
     expect((await page.getByRole("radio", { name: /Current page/ }).count()) === 0, "Publish scope controls should stay hidden.");
@@ -318,8 +315,8 @@ export async function run(ctx) {
     expect((await page.getByText("Published snapshot").count()) === 0, "Publish should not use snapshot-first language.");
     expect((await page.getByText("Publishing will index this file.").count()) === 0, "Publish should not repeat the file scope.");
     expect((await page.getByText(/open files/i).count()) === 0, "Share publish should not describe an open-file bundle.");
-    expect((await page.getByText("For people").count()) === 0, "Publish should not split people and agent features.");
-    expect((await page.getByText("For agents").count()) === 0, "Publish should not split people and agent features.");
+    expect((await page.getByText("For people", { exact: true }).count()) === 0, "Publish should not split people and agent features.");
+    expect((await page.getByText("For agents", { exact: true }).count()) === 0, "Publish should not split people and agent features.");
     expect((await page.getByRole("button", { name: "Create publish URL" }).count()) === 0, "Publish should not expose fake URL creation.");
     expect((await page.getByRole("button", { name: "Copy publish URL" }).count()) === 0, "Publish should not copy a URL before publishing.");
     expect((await page.getByRole("button", { name: "Copy llms.txt URL" }).count()) === 0, "Publish should not copy endpoint URLs before publishing.");
@@ -336,11 +333,10 @@ export async function run(ctx) {
     expect((await page.getByText("Publish not configured").count()) === 0, "Publish should not be a disabled placeholder.");
     expect((await page.locator(".publish-popover").count()) === 0, "Publish should not use a separate popover.");
     expect((await page.locator(".live-popover").count()) === 0, "Live should not use a separate popover.");
-    await page.getByRole("tab", { name: "Share link" }).click();
     await waitForShareDialogState(page, { panel: "Share link" });
     const shareModalStyle = await page.evaluate(() => {
       const modal = document.querySelector(".share-modal");
-      const title = document.querySelector(".share-modal-header h2");
+      const title = document.querySelector("#share-modal-title");
       const primaryButton = document.querySelector(".share-modal-primary");
       const tabs = document.querySelector(".share-modal-tabs");
       const activeTab = document.querySelector(".share-modal-tabs button.active");
@@ -361,20 +357,20 @@ export async function run(ctx) {
         primaryColor: primaryStyle?.color ?? "",
         primaryMinHeight: primaryStyle?.minHeight ?? "",
         tabCount: tabs?.querySelectorAll("button").length ?? 0,
-        tabsBackground: tabsStyle?.backgroundColor ?? "",
-        activeTabBackground: activeTabStyle?.backgroundColor ?? "",
+        tabsBackground: tabsStyle?.backgroundColor ?? "none",
+        activeTabBackground: activeTabStyle?.backgroundColor ?? "none",
         dividerCount: modal?.querySelectorAll(".share-modal-divider").length ?? 0,
         shareDividerCount: modal?.querySelectorAll(".share-section-divider").length ?? 0,
       };
     });
-    expect(shareModalStyle.titleText === "Share README", "Share modal title should include the file name.");
+    expect(shareModalStyle.titleText === "Share", "Share modal title should not depend on the current file.");
     expect(
       shareModalStyle.modalBackground !== "rgb(255, 255, 255)",
       "Share modal should follow the active dark app theme.",
     );
     expect(
-      shareModalStyle.activeTabBackground !== "rgb(255, 255, 255)",
-      "Share modal active tab should not stay white in dark theme.",
+      shareModalStyle.tabsBackground === "none",
+      "Share modal should not render legacy tab chrome.",
     );
     expect(
       shareModalStyle.titleColor !== "rgb(31, 31, 31)",
@@ -391,11 +387,11 @@ export async function run(ctx) {
       "Share modal primary action should stay readable.",
     );
     expect(Number.parseFloat(shareModalStyle.primaryMinHeight) <= 38, "Share modal actions should keep compact row height.");
-    expect(shareModalStyle.tabCount === 3, "Share modal should expose Share link, Export, and Send to until Publish ships.");
+    expect(shareModalStyle.tabCount === 0, "Share modal should not expose legacy purpose tabs.");
     expect(shareModalStyle.dividerCount === 0, "Share modal should not use legacy stacked Or dividers.");
-    expect(shareModalStyle.shareDividerCount === 1, "Share link should separate live collaboration from encrypted snapshot sharing.");
-    expect(!/\bworkspace\b/i.test(shareModalStyle.text), "Share modal should avoid workspace terminology.");
-    expect(!/\bread-only\b/i.test(shareModalStyle.text), "Snapshot link should not be described as read-only publish.");
+    expect(shareModalStyle.shareDividerCount === 1, "Share modal should separate live room and export choices.");
+    expect(/included documents/i.test(shareModalStyle.text), "Share modal should make the document scope explicit.");
+    expect(!/\bread-only\b/i.test(shareModalStyle.text), "Export link should not be described as read-only publish.");
     const modalPointerState = await page.evaluate(() => {
       const fileShell = document.querySelector(".file-shell");
       const workspace = document.querySelector(".workspace");
@@ -423,10 +419,9 @@ export async function run(ctx) {
     expect((await page.getByText("Publish with Tabula +").count()) === 0, "Hidden Publish should not expose Plus copy.");
     expect((await page.getByRole("button", { name: "Publish current page" }).count()) === 0, "Hidden Publish should not expose publishing actions.");
 
-    await page.getByRole("tab", { name: "Share link" }).click();
     await waitForShareDialogState(page, { panel: "Share link" });
     await page.getByRole("button", { name: "Start session" }).click();
-    await waitForShareDialogState(page, { text: "Invite link" });
+    await page.waitForSelector(".share-link-display");
     expect(
       new URL(page.url()).hash.startsWith("#room="),
       "Live -> Start session should move the current tab to the canonical room URL.",
@@ -436,9 +431,10 @@ export async function run(ctx) {
       "Starting live should keep the Share link panel heading stable.",
     );
     expect(
-      (await page.getByText("Invite people to edit this file together.").count()) > 0,
+      (await page.getByText("Create an encrypted room for real-time collaboration.").count()) > 0,
       "Starting live should keep the Share link panel explanation stable.",
     );
+    expect((await page.getByText("Copy agent prompt").count()) > 0, "Live modal should expose the agent prompt action after a room starts.");
     expect(
       (await page.locator(".share-modal").getByText("Live room", { exact: true }).count()) === 0,
       "Live modal should not show redundant room-state title text.",
@@ -505,6 +501,84 @@ export async function run(ctx) {
     expect(activeTab?.live, "Live -> Start session should mark the active tab as live.");
     expect(page.url().includes("#room="), "Live -> Start session should keep the current tab on the room route.");
   });
+
+  if (!externalUrl) {
+    await stopRoomServer();
+    try {
+      await withPage(browser, "/", async (page) => {
+        await page.locator(".share-trigger").click();
+        await waitForShareDialogState(page, { panel: "Share link" });
+        await page.getByRole("button", { name: "Start session" }).click();
+
+        const startSamples = [];
+        for (let index = 0; index < 30; index += 1) {
+          const modalCount = await page.locator(".share-modal").count();
+          const startButtonCount = await page.getByRole("button", { name: "Start session" }).count();
+          const inviteLinkCount = await page.locator(".share-link-display").count();
+          const stopSessionCount = await page.getByRole("button", { name: "Stop session" }).count();
+          const toastCount = await page.locator(".app-toast").count();
+          startSamples.push({
+            url: page.url(),
+            modalCount,
+            startButtonCount,
+            inviteLinkCount,
+            stopSessionCount,
+          });
+          if (toastCount > 0) {
+            break;
+          }
+          await page.waitForTimeout(100);
+        }
+        await page.waitForSelector(".app-toast", { timeout: 8_000 });
+
+        const failedStartState = await page.evaluate(() => {
+          const toast = document.querySelector(".app-toast");
+          const toastRect = toast?.getBoundingClientRect();
+          return {
+            modalCount: document.querySelectorAll(".share-modal").length,
+            startButtonCount: Array.from(document.querySelectorAll("button")).filter(
+              (button) => button.textContent?.replace(/\s+/g, " ").trim() === "Start session",
+            ).length,
+            inviteLinkCount: document.querySelectorAll(".share-link-display").length,
+            stopSessionCount: Array.from(document.querySelectorAll("button")).filter(
+              (button) => button.textContent?.replace(/\s+/g, " ").trim() === "Stop session",
+            ).length,
+            toastText: toast?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+            toastWidth: toastRect?.width ?? 0,
+            toastScrollWidth: toast?.scrollWidth ?? 0,
+            url: window.location.href,
+          };
+        });
+        expect(
+          startSamples.every((sample) => !new URL(sample.url).hash.startsWith("#room=")) &&
+            !new URL(failedStartState.url).hash.startsWith("#room="),
+          "Failed Start session should not flash or leave a room URL.",
+        );
+        expect(
+          failedStartState.toastText === "Live collaboration isn’t available right now.",
+          "Failed Start session should use short user-facing toast copy.",
+        );
+        expect(
+          failedStartState.toastScrollWidth <= Math.ceil(failedStartState.toastWidth) + 1,
+          "Failed Start session toast text should fit inside the toast.",
+        );
+        expect(
+          startSamples.every((sample) => sample.inviteLinkCount === 0 && sample.stopSessionCount === 0) &&
+            failedStartState.modalCount === 0 &&
+            failedStartState.startButtonCount === 0 &&
+            failedStartState.inviteLinkCount === 0 &&
+            failedStartState.stopSessionCount === 0,
+          "Failed Start session should close Share without showing invite-link controls.",
+        );
+        expect(
+          (await page.locator(".share-live-status.failed").count()) === 0,
+          "Failed Start session should not leave a failed live-room card in Share.",
+        );
+      });
+    } finally {
+      await startRoomServer();
+    }
+  }
 
   await withPage(browser, `/#room=browserroom,${validRoomKey}`, async (page) => {
     await page.waitForSelector(".tab-item.live.active");
