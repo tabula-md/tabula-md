@@ -838,6 +838,10 @@ export type WorkspaceChromeCopy = {
     standardWidth: string;
     fillWidth: string;
     findInFile: string;
+    toggleReplace: string;
+    replaceWith: string;
+    replaceMatch: string;
+    replaceAllMatches: string;
     previousMatch: string;
     nextMatch: string;
     closeSearch: string;
@@ -888,6 +892,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       standardWidth: "Standard",
       fillWidth: "Fill",
       findInFile: "Find in file",
+      toggleReplace: "Toggle replace",
+      replaceWith: "Replace with",
+      replaceMatch: "Replace match",
+      replaceAllMatches: "Replace all",
       previousMatch: "Previous match",
       nextMatch: "Next match",
       closeSearch: "Close search",
@@ -936,6 +944,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       standardWidth: "표준",
       fillWidth: "채우기",
       findInFile: "파일에서 찾기",
+      toggleReplace: "바꾸기 열기",
+      replaceWith: "바꿀 내용",
+      replaceMatch: "현재 결과 바꾸기",
+      replaceAllMatches: "모두 바꾸기",
       previousMatch: "이전 결과",
       nextMatch: "다음 결과",
       closeSearch: "검색 닫기",
@@ -984,6 +996,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       standardWidth: "標準",
       fillWidth: "全幅",
       findInFile: "ファイル内検索",
+      toggleReplace: "置換を切り替え",
+      replaceWith: "置換後の文字列",
+      replaceMatch: "現在の一致を置換",
+      replaceAllMatches: "すべて置換",
       previousMatch: "前の一致",
       nextMatch: "次の一致",
       closeSearch: "検索を閉じる",
@@ -1032,6 +1048,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       standardWidth: "标准",
       fillWidth: "填满",
       findInFile: "在文件中查找",
+      toggleReplace: "切换替换",
+      replaceWith: "替换为",
+      replaceMatch: "替换当前匹配",
+      replaceAllMatches: "全部替换",
       previousMatch: "上一个匹配",
       nextMatch: "下一个匹配",
       closeSearch: "关闭搜索",
@@ -1080,6 +1100,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       standardWidth: "Estándar",
       fillWidth: "Llenar",
       findInFile: "Buscar en archivo",
+      toggleReplace: "Alternar reemplazo",
+      replaceWith: "Reemplazar con",
+      replaceMatch: "Reemplazar coincidencia",
+      replaceAllMatches: "Reemplazar todo",
       previousMatch: "Coincidencia anterior",
       nextMatch: "Siguiente coincidencia",
       closeSearch: "Cerrar búsqueda",
@@ -1128,6 +1152,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       standardWidth: "Standard",
       fillWidth: "Remplir",
       findInFile: "Rechercher dans le fichier",
+      toggleReplace: "Afficher/masquer le remplacement",
+      replaceWith: "Remplacer par",
+      replaceMatch: "Remplacer ce résultat",
+      replaceAllMatches: "Tout remplacer",
       previousMatch: "Résultat précédent",
       nextMatch: "Résultat suivant",
       closeSearch: "Fermer la recherche",
@@ -1176,6 +1204,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       standardWidth: "Standard",
       fillWidth: "Füllen",
       findInFile: "In Datei suchen",
+      toggleReplace: "Ersetzen umschalten",
+      replaceWith: "Ersetzen durch",
+      replaceMatch: "Treffer ersetzen",
+      replaceAllMatches: "Alle ersetzen",
       previousMatch: "Vorheriger Treffer",
       nextMatch: "Nächster Treffer",
       closeSearch: "Suche schließen",

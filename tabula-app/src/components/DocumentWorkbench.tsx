@@ -1,8 +1,13 @@
 import {
   type CSSProperties,
   type RefObject,
+  useCallback,
 } from "react";
 import { MessageSquarePlus } from "lucide-react";
+import {
+  getLineStartOffset,
+  toggleMarkdownTaskOnLine,
+} from "@tabula-md/tabula";
 import type {
   DocumentSurfaceModel,
   MarkdownFormatCommand,
@@ -61,12 +66,14 @@ export type DocumentWorkbenchProps = {
   isLive: boolean;
   language: WorkspaceLanguage;
   previewBody: string;
+  previewBodyStartOffset: number;
   previewMetadata: MarkdownPreviewMetadata[];
   previewSurfaceRef: RefObject<HTMLElement | null>;
   searchInputRef: RefObject<HTMLInputElement | null>;
   searchMatches: SearchMatch[];
   searchOpen: boolean;
   searchQuery: string;
+  replaceQuery: string;
   selectedCharacterCount: number;
   selectedLineCount: number;
   selectionActionPosition: MarkdownSelectionActionPosition | null;
@@ -98,7 +105,10 @@ export type DocumentWorkbenchProps = {
   onPreviewScroll: () => void;
   onPreviewTouchEnd: () => void;
   onRedo: () => void;
+  onReplaceAllMatches: () => void;
+  onReplaceCurrentMatch: () => void;
   onResetSplitRatio: () => void;
+  onReplaceQueryChange: (query: string) => void;
   onSearchQueryChange: (query: string) => void;
   onSetReadingWidth: (readingWidth: ReadingWidth) => void;
   onSetViewMode: (viewMode: FileViewMode) => void;
@@ -155,12 +165,14 @@ export function DocumentWorkbench({
   isLive,
   language,
   previewBody,
+  previewBodyStartOffset,
   previewMetadata,
   previewSurfaceRef,
   searchInputRef,
   searchMatches,
   searchOpen,
   searchQuery,
+  replaceQuery,
   selectedCharacterCount,
   selectedLineCount,
   selectionActionPosition,
@@ -192,7 +204,10 @@ export function DocumentWorkbench({
   onPreviewScroll,
   onPreviewTouchEnd,
   onRedo,
+  onReplaceAllMatches,
+  onReplaceCurrentMatch,
   onResetSplitRatio,
+  onReplaceQueryChange,
   onSearchQueryChange,
   onSetReadingWidth,
   onSetViewMode,
@@ -208,6 +223,28 @@ export function DocumentWorkbench({
   onToggleViewOptions,
   onUndo,
 }: DocumentWorkbenchProps) {
+  const handlePreviewTaskToggle = useCallback((sourceLineIndex: number) => {
+    const lineStart = previewBodyStartOffset + getLineStartOffset(previewBody, sourceLineIndex);
+    const edit = toggleMarkdownTaskOnLine(text, lineStart);
+    if (!edit) {
+      return;
+    }
+
+    const applied =
+      editorRef.current?.applyLocalTextPatches([edit.patch], edit.selection, {
+        focus: false,
+        isolateHistory: true,
+      }) ?? false;
+    if (applied) {
+      return;
+    }
+
+    const patch = edit.patch;
+    onTextChange(`${text.slice(0, patch.from)}${patch.insert}${text.slice(patch.to)}`, {
+      patches: [patch],
+    });
+  }, [editorRef, onTextChange, previewBody, previewBodyStartOffset, text]);
+
   return (
     <>
       <section
@@ -248,11 +285,15 @@ export function DocumentWorkbench({
         <DocumentSearchBar
           searchInputRef={searchInputRef}
           searchQuery={searchQuery}
+          replaceQuery={replaceQuery}
           searchMatches={searchMatches}
           activeSearchMatchIndex={activeSearchMatchIndex}
           language={language}
           onSearchQueryChange={onSearchQueryChange}
+          onReplaceQueryChange={onReplaceQueryChange}
           onGoToSearchMatch={onGoToSearchMatch}
+          onReplaceCurrentMatch={onReplaceCurrentMatch}
+          onReplaceAllMatches={onReplaceAllMatches}
           onCloseSearch={onCloseSearch}
         />
       )}
@@ -330,6 +371,7 @@ export function DocumentWorkbench({
             suspendLineMeasurement={splitDividerDragging}
             onLineAction={onLineAction as (request: MarkdownPreviewLineActionRequest) => void}
             onOpenComment={onOpenComment}
+            onToggleTaskLine={handlePreviewTaskToggle}
           />
         </article>
       </section>

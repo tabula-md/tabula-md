@@ -1,4 +1,10 @@
-import { type ReactNode, type RefObject } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Check,
   ChevronLeft,
@@ -6,6 +12,8 @@ import {
   Copy,
   Eye,
   PencilLine,
+  Replace,
+  ReplaceAll,
   Search,
   SlidersHorizontal,
   SplitSquareHorizontal,
@@ -43,11 +51,15 @@ type DocumentControlsProps = {
 type DocumentSearchBarProps = {
   searchInputRef: RefObject<HTMLInputElement | null>;
   searchQuery: string;
+  replaceQuery: string;
   searchMatches: SearchMatch[];
   activeSearchMatchIndex: number;
   language: WorkspaceLanguage;
   onSearchQueryChange: (query: string) => void;
+  onReplaceQueryChange: (query: string) => void;
   onGoToSearchMatch: (direction: 1 | -1) => void;
+  onReplaceCurrentMatch: () => void;
+  onReplaceAllMatches: () => void;
   onCloseSearch: () => void;
 };
 
@@ -189,71 +201,144 @@ export function DocumentControls({
 export function DocumentSearchBar({
   searchInputRef,
   searchQuery,
+  replaceQuery,
   searchMatches,
   activeSearchMatchIndex,
   language,
   onSearchQueryChange,
+  onReplaceQueryChange,
   onGoToSearchMatch,
+  onReplaceCurrentMatch,
+  onReplaceAllMatches,
   onCloseSearch,
 }: DocumentSearchBarProps) {
   const copy = getWorkspaceChromeCopy(language).documentControls;
+  const hasMatches = searchMatches.length > 0;
+  const [replaceOpen, setReplaceOpen] = useState(false);
+  const replaceInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!replaceOpen) {
+      return;
+    }
+
+    replaceInputRef.current?.focus();
+  }, [replaceOpen]);
 
   return (
-    <section className="document-search-row" aria-label={copy.findInFile}>
-      <div className="document-search-bar">
-        <Search size={15} />
-        <input
-          type="text"
-          role="searchbox"
-          ref={searchInputRef}
-          value={searchQuery}
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(event) => onSearchQueryChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter") {
-              return;
-            }
+    <section className={`document-search-row ${replaceOpen ? "with-replace" : ""}`} aria-label={copy.search}>
+      <div className={`document-search-bar ${replaceOpen ? "with-replace" : ""}`}>
+        <div className="document-search-line">
+          <button
+            type="button"
+            className={replaceOpen ? "active" : ""}
+            title={copy.toggleReplace}
+            aria-label={copy.toggleReplace}
+            aria-pressed={replaceOpen}
+            onClick={() => setReplaceOpen((nextReplaceOpen) => !nextReplaceOpen)}
+          >
+            <Replace size={14} />
+          </button>
+          <Search size={15} />
+          <input
+            type="text"
+            role="searchbox"
+            ref={searchInputRef}
+            value={searchQuery}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => onSearchQueryChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") {
+                return;
+              }
 
-            event.preventDefault();
-            onGoToSearchMatch(event.shiftKey ? -1 : 1);
-          }}
-          placeholder={copy.findInFile}
-          aria-label={copy.findInFile}
-        />
-        <span className="document-search-count">
-          {searchQuery.trim() &&
-          searchMatches.length > 0 &&
-          activeSearchMatchIndex >= 0
-            ? `${activeSearchMatchIndex + 1}/${searchMatches.length}`
-            : `0/${searchQuery.trim() ? searchMatches.length : 0}`}
-        </span>
-        <button
-          type="button"
-          title={copy.previousMatch}
-          aria-label={copy.previousMatch}
-          disabled={searchMatches.length === 0}
-          onClick={() => onGoToSearchMatch(-1)}
-        >
-          <ChevronLeft size={14} />
-        </button>
-        <button
-          type="button"
-          title={copy.nextMatch}
-          aria-label={copy.nextMatch}
-          disabled={searchMatches.length === 0}
-          onClick={() => onGoToSearchMatch(1)}
-        >
-          <ChevronRight size={14} />
-        </button>
-        <button
-          type="button"
-          title={copy.closeSearch}
-          aria-label={copy.closeSearch}
-          onClick={onCloseSearch}
-        >
-          <X size={14} />
-        </button>
+              event.preventDefault();
+              onGoToSearchMatch(event.shiftKey ? -1 : 1);
+            }}
+            placeholder={copy.search}
+            aria-label={copy.search}
+          />
+          <span className="document-search-count">
+            {searchQuery.trim() && hasMatches && activeSearchMatchIndex >= 0
+              ? `${activeSearchMatchIndex + 1}/${searchMatches.length}`
+              : `0/${searchQuery.trim() ? searchMatches.length : 0}`}
+          </span>
+          <button
+            type="button"
+            title={copy.previousMatch}
+            aria-label={copy.previousMatch}
+            disabled={!hasMatches}
+            onClick={() => onGoToSearchMatch(-1)}
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            type="button"
+            title={copy.nextMatch}
+            aria-label={copy.nextMatch}
+            disabled={!hasMatches}
+            onClick={() => onGoToSearchMatch(1)}
+          >
+            <ChevronRight size={14} />
+          </button>
+          <button
+            type="button"
+            title={copy.closeSearch}
+            aria-label={copy.closeSearch}
+            onClick={onCloseSearch}
+          >
+            <X size={14} />
+          </button>
+        </div>
+        {replaceOpen && (
+          <div className="document-search-line document-replace-line">
+            <Replace size={15} />
+            <input
+              ref={replaceInputRef}
+              type="text"
+              value={replaceQuery}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) => onReplaceQueryChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") {
+                  return;
+                }
+
+                event.preventDefault();
+                if (event.altKey) {
+                  onReplaceAllMatches();
+                  return;
+                }
+
+                onReplaceCurrentMatch();
+              }}
+              placeholder={copy.replaceWith}
+              aria-label={copy.replaceWith}
+            />
+            <span className="document-search-spacer" />
+            <button
+              type="button"
+              title={copy.replaceMatch}
+              aria-label={copy.replaceMatch}
+              disabled={!hasMatches}
+              onClick={onReplaceCurrentMatch}
+            >
+              <Replace size={14} />
+            </button>
+            <button
+              type="button"
+              title={copy.replaceAllMatches}
+              aria-label={copy.replaceAllMatches}
+              disabled={!hasMatches}
+              onClick={onReplaceAllMatches}
+            >
+              <ReplaceAll size={14} />
+            </button>
+            <span className="document-search-spacer" />
+          </div>
+        )}
       </div>
     </section>
   );

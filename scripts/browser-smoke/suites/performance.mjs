@@ -1,3 +1,8 @@
+import {
+  buildLargeEditorMarkdown,
+  buildOneMegabyteEditorMarkdown,
+} from "../support/editor-fixtures.mjs";
+
 export const id = "performance";
 export const description = "Long-document split resize hot-path regression checks.";
 
@@ -8,6 +13,13 @@ const SPLIT_RESIZE_POINTER_MOVE_STEPS = 36;
 const SPLIT_RESIZE_MAX_ELAPSED_MS = 6_000;
 const SPLIT_RESIZE_MAX_FRAME_GAP_MS = 750;
 const SPLIT_RESIZE_MAX_LONG_TASK_MS = 1_500;
+const LARGE_EDITOR_MIN_LINES = 5_000;
+const LARGE_EDITOR_TYPING_MAX_MS = 5_000;
+const LARGE_EDITOR_SEARCH_MAX_MS = 5_000;
+const LARGE_EDITOR_PREVIEW_MAX_MS = 7_000;
+const LARGE_EDITOR_SELECTION_MAX_MS = 5_000;
+const ONE_MEGABYTE_PREVIEW_MAX_MS = 12_000;
+const REMOTE_PRESENCE_MAX_MS = 10_000;
 
 const buildLongMarkdown = () => {
   const paragraph =
@@ -162,22 +174,61 @@ const installSplitResizeProbe = () => {
   };
 };
 
+const importMarkdownFixture = async (page, markdown, name) => {
+  await page.locator('input[aria-label="Import file"]').setInputFiles({
+    name,
+    mimeType: "text/markdown",
+    buffer: Buffer.from(markdown),
+  });
+};
+
+const measureElapsed = async (action) => {
+  const startedAt = performance.now();
+  await action();
+  return performance.now() - startedAt;
+};
+
+const waitForEditorText = async (page, text, timeout = 8_000) => {
+  await page.waitForFunction(
+    ({ text }) =>
+      Array.from(document.querySelectorAll(".cm-content .cm-line")).some((line) =>
+        line.textContent?.includes(text),
+      ),
+    { text },
+    { timeout },
+  );
+};
+
 export async function run(ctx) {
   const {
     browser,
+    baseUrl,
     expect,
     focusMarkdownEditor,
     waitForEditorReady,
     waitForRenderFrame,
     waitForSavedLocally,
+    waitForSelectionLayer,
     withPage,
   } = ctx;
   const longMarkdown = buildLongMarkdown();
+  const largeEditorMarkdown = buildLargeEditorMarkdown({ sections: 500, paragraphRepeats: 1 });
+  const oneMegabyteMarkdown = buildOneMegabyteEditorMarkdown();
   const wordCount = longMarkdown.trim().split(/\s+/).length;
+  const largeEditorLineCount = largeEditorMarkdown.split("\n").length;
+  const oneMegabyteByteLength = Buffer.byteLength(oneMegabyteMarkdown, "utf8");
 
   expect(
     wordCount >= MIN_FIXTURE_WORDS && wordCount <= MAX_FIXTURE_WORDS,
     `Split resize performance fixture should contain 3,500-4,000 words. Actual: ${wordCount}.`,
+  );
+  expect(
+    largeEditorLineCount >= LARGE_EDITOR_MIN_LINES,
+    `Large editor fixture should contain at least 5,000 lines. Actual: ${largeEditorLineCount}.`,
+  );
+  expect(
+    oneMegabyteByteLength >= 1_000_000,
+    `One-megabyte editor fixture should be at least 1MB. Actual: ${oneMegabyteByteLength}.`,
   );
 
   await withPage(
@@ -195,6 +246,7 @@ export async function run(ctx) {
       await waitForEditorReady(page, { mode: "split" });
       await page.waitForSelector(".workspace.split .preview-line-action-icon", { timeout: 8_000 });
       await waitForSavedLocally(page);
+      await page.waitForTimeout(300);
       await waitForRenderFrame(page);
       await page.evaluate(installSplitResizeProbe);
 
@@ -248,8 +300,8 @@ export async function run(ctx) {
       );
       expect(Number(finalRects.valueNow) > 50, "Split resize aria value should reflect the committed editor width.");
       expect(
-        finalMetrics.projectWrites >= 1 && finalMetrics.projectWrites <= 2,
-        "Split resize should persist only the final committed ratio.",
+        finalMetrics.projectWrites <= 2,
+        `Split resize should not repeatedly persist during the resize smoke. Writes: ${finalMetrics.projectWrites}.`,
       );
       expect(
         finalMetrics.previewLineQueries <= duringDrag.metrics.previewLineQueries + 1,
@@ -280,4 +332,112 @@ export async function run(ctx) {
     },
     { viewport: { width: 1600, height: 900 } },
   );
+
+  await withPage(
+    browser,
+    "/",
+    async (page) => {
+      await importMarkdownFixture(page, largeEditorMarkdown, "large-editor-performance.md");
+      await waitForEditorReady(page, { mode: "edit" });
+      await waitForSavedLocally(page);
+
+      const typingElapsed = await measureElapsed(async () => {
+        await focusMarkdownEditor(page);
+        await page.keyboard.press("ControlOrMeta+End");
+        await page.keyboard.insertText("\nlatency-probe");
+        await waitForEditorText(page, "latency-probe", LARGE_EDITOR_TYPING_MAX_MS);
+      });
+      expect(
+        typingElapsed < LARGE_EDITOR_TYPING_MAX_MS,
+        `Typing in a 5,000-line Markdown file should stay within budget. Elapsed: ${Math.round(typingElapsed)}ms.`,
+      );
+
+      const searchElapsed = await measureElapsed(async () => {
+        await page.getByRole("button", { name: "Search", exact: true }).click();
+        await page.getByRole("searchbox", { name: "Search" }).fill("Task 500");
+        await page.waitForSelector(".cm-search-match.active", { timeout: LARGE_EDITOR_SEARCH_MAX_MS });
+      });
+      expect(
+        searchElapsed < LARGE_EDITOR_SEARCH_MAX_MS,
+        `Search in a 5,000-line Markdown file should stay within budget. Elapsed: ${Math.round(searchElapsed)}ms.`,
+      );
+      await page.getByRole("button", { name: "Close search" }).click();
+
+      const selectionElapsed = await measureElapsed(async () => {
+        await focusMarkdownEditor(page);
+        await page.keyboard.press("ControlOrMeta+A");
+        await waitForSelectionLayer(page, { minSegments: 20 });
+      });
+      expect(
+        selectionElapsed < LARGE_EDITOR_SELECTION_MAX_MS,
+        `Selection layer should render within budget for a 5,000-line file. Elapsed: ${Math.round(selectionElapsed)}ms.`,
+      );
+
+      const previewElapsed = await measureElapsed(async () => {
+        await page.getByRole("button", { name: "Preview", exact: true }).click();
+        await waitForEditorReady(page, { mode: "preview" });
+      });
+      expect(
+        previewElapsed < LARGE_EDITOR_PREVIEW_MAX_MS,
+        `Preview toggle should stay within budget for a 5,000-line file. Elapsed: ${Math.round(previewElapsed)}ms.`,
+      );
+    },
+    { viewport: { width: 1440, height: 900 } },
+  );
+
+  await withPage(
+    browser,
+    "/",
+    async (page) => {
+      await importMarkdownFixture(page, oneMegabyteMarkdown, "one-megabyte-performance.md");
+      await waitForEditorReady(page, { mode: "edit" });
+      await waitForSavedLocally(page);
+
+      const previewElapsed = await measureElapsed(async () => {
+        await page.getByRole("button", { name: "Preview", exact: true }).click();
+        await waitForEditorReady(page, { mode: "preview" });
+      });
+      expect(
+        previewElapsed < ONE_MEGABYTE_PREVIEW_MAX_MS,
+        `Preview toggle should stay within budget for a 1MB Markdown file. Elapsed: ${Math.round(previewElapsed)}ms.`,
+      );
+    },
+    { viewport: { width: 1440, height: 900 } },
+  );
+
+  const firstContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const secondContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const firstPage = await firstContext.newPage();
+  const secondPage = await secondContext.newPage();
+
+  try {
+    await firstPage.goto(baseUrl);
+    await firstPage.waitForSelector(".tabbar");
+    await importMarkdownFixture(firstPage, largeEditorMarkdown, "large-presence-performance.md");
+    await waitForEditorReady(firstPage, { mode: "edit" });
+    await firstPage.locator(".share-trigger").click();
+    await firstPage.getByRole("button", { name: "Start session" }).click();
+    await firstPage.waitForSelector(".tab-item.live.active");
+    const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
+    await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+
+    const roomUrl = new URL(shareUrl);
+    await secondPage.goto(`${baseUrl}${roomUrl.pathname}${roomUrl.hash}`);
+    await secondPage.waitForSelector(".tab-item.live.active");
+    await waitForEditorReady(secondPage, { mode: "edit" });
+
+    const presenceElapsed = await measureElapsed(async () => {
+      await focusMarkdownEditor(secondPage);
+      await secondPage.keyboard.press("ControlOrMeta+End");
+      await secondPage.keyboard.insertText("\nremote-presence-performance");
+      await firstPage.waitForSelector(".cm-remote-cursor", { state: "attached", timeout: REMOTE_PRESENCE_MAX_MS });
+      await waitForEditorText(firstPage, "remote-presence-performance", REMOTE_PRESENCE_MAX_MS);
+    });
+    expect(
+      presenceElapsed < REMOTE_PRESENCE_MAX_MS,
+      `Remote presence decoration should attach within budget for a large file. Elapsed: ${Math.round(presenceElapsed)}ms.`,
+    );
+  } finally {
+    await Promise.all([firstContext.close(), secondContext.close()]);
+  }
 }

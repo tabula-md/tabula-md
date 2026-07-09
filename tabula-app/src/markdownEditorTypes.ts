@@ -14,6 +14,11 @@ export type MarkdownEditorHandle = {
   getScrollRatio: () => number;
   getSelectionRange: () => { from: number; to: number };
   getSelectedText: () => string;
+  applyLocalTextPatches: (
+    patches: readonly TextPatch[],
+    selection?: { from: number; to: number },
+    options?: { focus?: boolean; isolateHistory?: boolean },
+  ) => boolean;
   applyRemoteTextChange: (nextValue: string, patches?: TextPatch[]) => void;
   revealRange: (from: number, to?: number) => void;
   scrollToRatio: (ratio: number) => void;

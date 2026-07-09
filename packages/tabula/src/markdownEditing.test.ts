@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getMarkdownEnterEdit, getMarkdownIndentEdit, getMarkdownPasteEdit } from "./markdownEditing";
+import {
+  getMarkdownBackspaceEdit,
+  getMarkdownEnterEdit,
+  getMarkdownIndentEdit,
+  getMarkdownPasteEdit,
+} from "./markdownEditing";
 
 describe("markdown editing input rules", () => {
   it("continues bullet lists on Enter", () => {
@@ -29,6 +34,15 @@ describe("markdown editing input rules", () => {
     });
   });
 
+  it("preserves nested list markers on Enter", () => {
+    expect(getMarkdownEnterEdit("  - nested", 10)).toEqual({
+      from: 10,
+      to: 10,
+      insert: "\n  - ",
+      selection: 15,
+    });
+  });
+
   it("continues blockquotes on Enter", () => {
     expect(getMarkdownEnterEdit("> quoted", 8)).toEqual({
       from: 8,
@@ -42,6 +56,15 @@ describe("markdown editing input rules", () => {
     expect(getMarkdownEnterEdit("- ", 2)).toEqual({
       from: 0,
       to: 2,
+      insert: "",
+      selection: 0,
+    });
+  });
+
+  it("removes an empty nested checklist marker on Enter", () => {
+    expect(getMarkdownEnterEdit("  - [ ] ", 8)).toEqual({
+      from: 0,
+      to: 8,
       insert: "",
       selection: 0,
     });
@@ -82,8 +105,57 @@ describe("markdown editing input rules", () => {
     });
   });
 
+  it("renumbers selected ordered list runs after indent", () => {
+    expect(getMarkdownIndentEdit("1. one\n1. two", { from: 0, to: 13 }, "indent")).toEqual({
+      from: 0,
+      to: 13,
+      insert: "  1. one\n  2. two",
+      selection: { from: 2, to: 17 },
+    });
+  });
+
+  it("renumbers selected ordered list runs after outdent", () => {
+    expect(getMarkdownIndentEdit("  1. one\n  1. two", { from: 0, to: 17 }, "outdent")).toEqual({
+      from: 0,
+      to: 17,
+      insert: "1. one\n2. two",
+      selection: { from: 0, to: 13 },
+    });
+  });
+
   it("does not consume Tab on plain paragraphs", () => {
     expect(getMarkdownIndentEdit("plain text", { from: 5, to: 5 }, "indent")).toBeNull();
+  });
+
+  it("removes empty list markers on Backspace", () => {
+    expect(getMarkdownBackspaceEdit("- ", 2)).toEqual({
+      from: 0,
+      to: 2,
+      insert: "",
+      selection: 0,
+    });
+  });
+
+  it("removes empty blockquote markers on Backspace", () => {
+    expect(getMarkdownBackspaceEdit("> ", 2)).toEqual({
+      from: 0,
+      to: 2,
+      insert: "",
+      selection: 0,
+    });
+  });
+
+  it("outdents nested list markers on Backspace", () => {
+    expect(getMarkdownBackspaceEdit("  - item", 4)).toEqual({
+      from: 0,
+      to: 2,
+      insert: "",
+      selection: 2,
+    });
+  });
+
+  it("does not intercept ordinary line merge Backspace", () => {
+    expect(getMarkdownBackspaceEdit("one\ntwo", 4)).toBeNull();
   });
 
   it("turns a pasted URL over selected text into a Markdown link", () => {
@@ -95,8 +167,13 @@ describe("markdown editing input rules", () => {
     });
   });
 
-  it("lets source-sensitive paste use the native editor path", () => {
-    expect(getMarkdownPasteEdit("", { from: 0, to: 0 }, "“Title”\r\n\titem\r\n\r\n\r\nnext")).toBeNull();
+  it("normalizes source-sensitive pasted Markdown line endings and leading tabs", () => {
+    expect(getMarkdownPasteEdit("", { from: 0, to: 0 }, "“Title”\r\n\titem\r\n\r\n\r\nnext")).toEqual({
+      from: 0,
+      to: 0,
+      insert: "“Title”\n  item\n\n\nnext",
+      selection: { from: 21, to: 21 },
+    });
   });
 
   it("lets unchanged plain paste use the native editor path", () => {

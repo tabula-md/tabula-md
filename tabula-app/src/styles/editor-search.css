@@ -7,25 +7,46 @@
   align-items: center;
   width: var(--document-chrome-width);
   min-width: 0;
-  min-height: 44px;
+  min-height: 40px;
   margin-left: var(--document-lane-margin-left);
   margin-right: var(--document-lane-margin-right);
   padding: 4px 0;
   background: transparent;
 }
 
+.document-search-row.with-replace {
+  min-height: 76px;
+}
+
 .document-search-bar {
   display: grid;
-  grid-template-columns: 16px minmax(180px, 1fr) auto auto auto auto;
-  align-items: center;
+  grid-template-rows: 32px;
   gap: 6px;
   width: 100%;
-  min-height: 40px;
+  min-height: 32px;
   padding: 0;
   border-radius: 0;
   color: var(--text-soft);
   background: transparent;
   box-shadow: none;
+}
+
+.document-search-bar.with-replace {
+  grid-template-rows: repeat(2, 32px);
+  min-height: 70px;
+}
+
+.document-search-line {
+  display: grid;
+  grid-template-columns: 28px 16px minmax(120px, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 32px;
+}
+
+.document-replace-line {
+  grid-template-columns: 16px minmax(120px, 1fr) auto auto auto auto;
 }
 
 .document-search-bar input {
@@ -49,6 +70,10 @@
   white-space: nowrap;
 }
 
+.document-search-spacer {
+  min-width: 42px;
+}
+
 .document-search-bar button {
   display: grid;
   place-items: center;
@@ -65,6 +90,11 @@
   background: var(--surface-hover);
 }
 
+.document-search-bar button.active {
+  color: var(--text-primary);
+  background: var(--surface-muted);
+}
+
 .document-search-bar button:disabled {
   cursor: default;
   opacity: 0.32;
@@ -76,7 +106,7 @@
 }
 
 .file-shell.with-search-row {
-  grid-template-rows: 48px 44px minmax(0, 1fr) 42px;
+  grid-template-rows: 48px auto minmax(0, 1fr) 42px;
 }
 
 .file-shell.view-edit .document-search-row {
@@ -102,7 +132,7 @@
 
 @media (max-width: 820px) {
   .file-shell.with-search-row:not(.with-format-toolbar) {
-    grid-template-rows: 44px minmax(0, 1fr) 42px;
+    grid-template-rows: auto minmax(0, 1fr) 42px;
   }
 
   .file-shell.with-search-row:not(.with-format-toolbar) .document-search-row {

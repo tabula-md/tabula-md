@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
 } from "react";
 import { Bookmark, Check, Copy, MessageSquare, WrapText } from "lucide-react";
@@ -38,6 +39,7 @@ type MarkdownPreviewProps = {
   suspendLineMeasurement?: boolean;
   onLineAction?: (request: MarkdownPreviewLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
+  onToggleTaskLine?: (sourceLineIndex: number) => void;
 };
 
 export type MarkdownPreviewCommentAnchor = {
@@ -319,7 +321,10 @@ const createPreviewCommentAnchorPlugin =
     };
   };
 
-const createMarkdownPreviewComponents = (onOpenComment?: (commentId: string) => void): Components => ({
+const createMarkdownPreviewComponents = (
+  onOpenComment?: (commentId: string) => void,
+  onToggleTaskLine?: (sourceLineIndex: number) => void,
+): Components => ({
   a: ({ node: _node, href, ...props }) => {
     const isExternal = typeof href === "string" && externalLinkPattern.test(href);
 
@@ -335,11 +340,38 @@ const createMarkdownPreviewComponents = (onOpenComment?: (commentId: string) => 
       return <input type={type} checked={checked} {...props} />;
     }
 
+    const className = `preview-task-checkbox ${checked ? "checked" : ""}`;
+    if (!onToggleTaskLine) {
+      return (
+        <span
+          aria-hidden="true"
+          className={className}
+          data-checked={checked ? "true" : "false"}
+        />
+      );
+    }
+
+    const handleTaskClick = (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const block = event.currentTarget.closest("[data-preview-line-start]");
+      const sourceLineNumber = Number((block as HTMLElement | null)?.dataset.previewLineStart);
+      if (!Number.isFinite(sourceLineNumber)) {
+        return;
+      }
+
+      onToggleTaskLine(sourceLineNumber - 1);
+    };
+
     return (
-      <span
-        aria-hidden="true"
-        className={`preview-task-checkbox ${checked ? "checked" : ""}`}
+      <button
+        type="button"
+        aria-label={checked ? "Mark task incomplete" : "Mark task complete"}
+        aria-pressed={checked}
+        className={className}
         data-checked={checked ? "true" : "false"}
+        onClick={handleTaskClick}
       />
     );
   },
@@ -492,6 +524,7 @@ function MarkdownPreviewComponent({
   suspendLineMeasurement = false,
   onLineAction,
   onOpenComment,
+  onToggleTaskLine,
 }: MarkdownPreviewProps) {
   const documentRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -500,7 +533,10 @@ function MarkdownPreviewComponent({
   const [lineRailRows, setLineRailRows] = useState<PreviewLineRailRow[]>([]);
   const showLineGutters = Boolean(onLineAction);
   const showCommentGutter = showLineGutters;
-  const markdownPreviewComponents = useMemo(() => createMarkdownPreviewComponents(onOpenComment), [onOpenComment]);
+  const markdownPreviewComponents = useMemo(
+    () => createMarkdownPreviewComponents(onOpenComment, onToggleTaskLine),
+    [onOpenComment, onToggleTaskLine],
+  );
   const commentAnchorPlugins = useMemo(
     () => (commentsEnabled ? [createPreviewCommentAnchorPlugin(commentAnchors, activeCommentId)] : []),
     [activeCommentId, commentAnchors, commentsEnabled],
@@ -681,6 +717,7 @@ const areMarkdownPreviewPropsEqual = (firstProps: MarkdownPreviewProps, secondPr
   firstProps.suspendLineMeasurement === secondProps.suspendLineMeasurement &&
   firstProps.onLineAction === secondProps.onLineAction &&
   firstProps.onOpenComment === secondProps.onOpenComment &&
+  firstProps.onToggleTaskLine === secondProps.onToggleTaskLine &&
   arePreviewMetadataEqual(firstProps.metadata, secondProps.metadata) &&
   arePreviewCommentAnchorsEqual(firstProps.commentAnchors, secondProps.commentAnchors) &&
   arePreviewLineAnnotationsEqual(firstProps.lineAnnotations, secondProps.lineAnnotations);

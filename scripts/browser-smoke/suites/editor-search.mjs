@@ -82,7 +82,14 @@ export async function run(ctx) {
       "Search row should stay aligned after Text Width changes.",
     );
 
-    const searchInput = page.getByRole("searchbox", { name: "Find in file" });
+    const searchInput = page.getByRole("searchbox", { name: "Search" });
+    expect((await searchInput.getAttribute("placeholder")) === "Search", "Search input placeholder should be Search.");
+    expect((await page.getByLabel("Replace with").count()) === 0, "Replace should stay collapsed by default.");
+    await page.getByRole("button", { name: "Toggle replace" }).click();
+    await page.getByLabel("Replace with").fill("replacement");
+    expect((await page.getByLabel("Replace with").inputValue()) === "replacement", "Toggle replace should reveal the replace input.");
+    await page.getByRole("button", { name: "Toggle replace" }).click();
+    expect((await page.getByLabel("Replace with").count()) === 0, "Toggle replace should collapse the replace input.");
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     expect((await page.locator(".document-search-row").count()) === 1, "Search should stay open while Editor Controls are opened.");
     expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 1, "Editor Controls should open over the persistent search row.");
@@ -116,7 +123,7 @@ export async function run(ctx) {
     expect((await page.locator(".document-search-count").textContent()) === "2/3", "Enter should move to the next search result.");
     expect((await searchInput.inputValue()) === "bet", "Enter should keep the search query in the input.");
     const activeSearchFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
-    expect(activeSearchFocus === "Find in file", "Enter should keep focus in the search input.");
+    expect(activeSearchFocus === "Search", "Enter should keep focus in the search input.");
 
     await page.locator(".workspace").click({ position: { x: 20, y: 20 } });
     await waitForRenderFrame(page);
@@ -151,7 +158,7 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
 
     await page.getByRole("button", { name: "Search", exact: true }).click();
-    const searchInput = page.getByRole("searchbox", { name: "Find in file" });
+    const searchInput = page.getByRole("searchbox", { name: "Search" });
     await searchInput.fill("Agent");
     await waitForRenderFrame(page);
     expect((await page.locator(".document-search-count").textContent()) === "1/1", "Search should find the Agent match before editing.");
@@ -187,6 +194,6 @@ export async function run(ctx) {
       "Editing with Search open should keep typing on the line the user selected.",
     );
     expect(searchEditState.searchCount === "1/1", "Search should keep the same match count while unrelated text changes.");
-    expect(searchEditState.activeElementLabel !== "Find in file", "Typing in the document should not be pulled back into the search input.");
+    expect(searchEditState.activeElementLabel !== "Search", "Typing in the document should not be pulled back into the search input.");
   });
 }
