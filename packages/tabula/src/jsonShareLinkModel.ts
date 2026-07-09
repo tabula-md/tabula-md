@@ -95,7 +95,7 @@ export const getJsonShareImportRoute = (location: JsonShareLocation): JsonShareI
     return {
       status: "invalid",
       routeKey,
-      errorMessage: "This snapshot link is invalid.",
+      errorMessage: "This export link is invalid.",
     };
   }
 
@@ -103,14 +103,14 @@ export const getJsonShareImportRoute = (location: JsonShareLocation): JsonShareI
     return {
       status: "invalid",
       routeKey,
-      errorMessage: "This snapshot link is missing its client-only key.",
+      errorMessage: "This export link is missing its client-only key.",
     };
   }
 
   return {
     status: "invalid",
     routeKey,
-    errorMessage: "This snapshot link has an invalid client-only key.",
+    errorMessage: "This export link has an invalid client-only key.",
   };
 };
 

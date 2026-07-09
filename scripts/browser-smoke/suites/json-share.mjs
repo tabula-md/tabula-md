@@ -1,5 +1,5 @@
 export const id = "json-share";
-export const description = "Encrypted snapshot link export and import.";
+export const description = "Encrypted Export link export and import.";
 export const requiresJsonService = true;
 
 export async function run(ctx) {
@@ -26,27 +26,27 @@ export async function run(ctx) {
     await page.getByTitle("New tab").click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
-    await page.keyboard.type("\n\n# Snapshot Smoke\n\nSnapshot import body.");
+    await page.keyboard.type("\n\n# Export Link Smoke\n\nExport link import body.");
     await waitForSavedLocally(page);
 
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
-    await page.getByRole("button", { name: "Create snapshot link" }).click();
-    await page.waitForSelector('a[aria-label="Snapshot link"]', { timeout: 8_000 });
+    await page.getByRole("button", { name: "Export to link" }).click();
+    await page.waitForSelector('[aria-label="Export link"]', { timeout: 8_000 });
 
-    const snapshotUrl = await page.locator('a[aria-label="Snapshot link"]').getAttribute("href");
-    expect(Boolean(snapshotUrl), "Create snapshot link should create a snapshot URL.");
+    const exportUrl = await page.locator('[aria-label="Export link"]').getAttribute("title");
+    expect(Boolean(exportUrl), "Export to link should create an Export link URL.");
 
-    const parsedSnapshotUrl = new URL(snapshotUrl);
-    const [snapshotId, snapshotKey] = parsedSnapshotUrl.hash.replace(/^#json=/, "").split(",");
-    expect(parsedSnapshotUrl.origin === baseUrl, "Snapshot links should point at the current Tabula.md origin.");
-    expect(parsedSnapshotUrl.pathname === "/", "Snapshot links should keep the app root path.");
-    expect(parsedSnapshotUrl.hash.startsWith("#json="), "Snapshot links should use the #json fragment.");
-    expect(Boolean(snapshotId), "Snapshot links should include a snapshot id in the hash fragment.");
-    expect(Boolean(snapshotKey), "Snapshot links should include a local decryption key in the hash fragment.");
+    const parsedExportUrl = new URL(exportUrl);
+    const [snapshotId, exportKey] = parsedExportUrl.hash.replace(/^#json=/, "").split(",");
+    expect(parsedExportUrl.origin === baseUrl, "Export links should point at the current Tabula.md origin.");
+    expect(parsedExportUrl.pathname === "/", "Export links should keep the app root path.");
+    expect(parsedExportUrl.hash.startsWith("#json="), "Export links should use the #json fragment.");
+    expect(Boolean(snapshotId), "Export links should include a snapshot id in the hash fragment.");
+    expect(Boolean(exportKey), "Export links should include a local decryption key in the hash fragment.");
     expect(
-      requestUrls.every((url) => !url.includes(snapshotKey)),
-      "Snapshot export should not send the local decryption key to the app or JSON store.",
+      requestUrls.every((url) => !url.includes(exportKey)),
+      "Export link creation should not send the local decryption key to the app or JSON store.",
     );
 
     const secondContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -61,13 +61,13 @@ export async function run(ctx) {
       await secondPage.keyboard.type("\n\nLocal draft before import.");
       await waitForSavedLocally(secondPage);
 
-      await secondPage.goto(`${baseUrl}${parsedSnapshotUrl.hash}`);
-      await waitForText(secondPage.locator(".share-modal"), "Load snapshot");
+      await secondPage.goto(`${baseUrl}${parsedExportUrl.hash}`);
+      await waitForText(secondPage.locator(".share-modal"), "Load export link");
       await waitForText(secondPage.locator(".share-modal"), "Loading this link will replace your current local content.");
-      await secondPage.getByRole("button", { name: "Load snapshot" }).click();
+      await secondPage.getByRole("button", { name: "Load export" }).click();
       await secondPage.locator(".share-modal").waitFor({ state: "detached" });
       try {
-        await waitForText(secondPage.locator(".cm-content"), "Snapshot import body.");
+        await waitForText(secondPage.locator(".cm-content"), "Export link import body.");
       } catch (error) {
         const importDebug = await secondPage.evaluate(() => ({
           activeTab: document.querySelector(".tab-item.active")?.textContent ?? "",
@@ -76,27 +76,27 @@ export async function run(ctx) {
           ),
           tabText: document.querySelector(".tabbar")?.textContent ?? "",
         }));
-        throw new Error(`Snapshot import did not render expected body.\n${JSON.stringify(importDebug, null, 2)}\n${error.message}`);
+        throw new Error(`Export link import did not render expected body.\n${JSON.stringify(importDebug, null, 2)}\n${error.message}`);
       }
       expect(
-        secondRequestUrls.every((url) => !url.includes(snapshotKey)),
-        "Snapshot import should not send the local decryption key to the app or JSON store.",
+        secondRequestUrls.every((url) => !url.includes(exportKey)),
+        "Export link import should not send the local decryption key to the app or JSON store.",
       );
       await waitForSavedLocally(secondPage);
       await secondPage.reload();
       await secondPage.waitForSelector(".tabbar");
-      await waitForText(secondPage.locator(".cm-content"), "Snapshot import body.");
+      await waitForText(secondPage.locator(".cm-content"), "Export link import body.");
       expect(
         (await secondPage.locator(".share-modal").count()) === 0,
-        "Reloading after snapshot import should restore the local workspace without reopening import UI.",
+        "Reloading after Export link import should restore the local workspace without reopening import UI.",
       );
 
       await secondPage.goto(`${baseUrl}/#json=${snapshotId}`);
       await waitForText(secondPage.locator(".share-modal"), "Unable to open link");
-      await waitForText(secondPage.locator(".share-modal"), "This snapshot link is missing its client-only key.");
+      await waitForText(secondPage.locator(".share-modal"), "This export link is missing its client-only key.");
       await secondPage.goto(`${baseUrl}/#json=${snapshotId},not-a-32-byte-key`);
       await waitForText(secondPage.locator(".share-modal"), "Unable to open link");
-      await waitForText(secondPage.locator(".share-modal"), "This snapshot link has an invalid client-only key.");
+      await waitForText(secondPage.locator(".share-modal"), "This export link has an invalid client-only key.");
     } finally {
       await secondContext.close();
     }

@@ -237,12 +237,8 @@ title: Product Requirements
       .startFileCollaborationSession(draft.id, "room-123", `https://tabula.test/#room=room-123,${VALID_ROOM_KEY}`);
     useWorkspaceStore.getState().setFileText(draft.id, "Remote text");
     useWorkspaceStore.getState().setFileCollaborationStatus(draft.id, "connected", { collaboratorCount: 2 });
-    useWorkspaceStore.getState().setFileRoomMeta(draft.id, {
-      snapshotCount: 3,
-      lastSnapshotAt: "2026-06-23T00:00:00.000Z",
-    });
     useWorkspaceStore.getState().setFileRecoveryEvent(draft.id, {
-      type: "snapshot-recovered",
+      type: "reconnected",
       message: "Recovered",
       createdAt: "2026-06-23T00:00:01.000Z",
     });
@@ -256,9 +252,7 @@ title: Product Requirements
       text: "Remote text",
       connectionStatus: "connected",
       collaboratorCount: 2,
-      snapshotCount: 3,
-      lastSnapshotAt: "2026-06-23T00:00:00.000Z",
-      lastRecoveryType: "snapshot-recovered",
+      lastRecoveryType: "reconnected",
       lastRecoveryMessage: "Recovered",
       lastRecoveryAt: "2026-06-23T00:00:01.000Z",
     });
@@ -270,7 +264,6 @@ title: Product Requirements
       shareUrl: undefined,
       connectionStatus: "idle",
       collaboratorCount: 0,
-      snapshotCount: 0,
     });
   });
 });

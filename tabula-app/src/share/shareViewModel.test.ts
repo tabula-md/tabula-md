@@ -1,17 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildShareViewModel, normalizeSharePanel } from ".";
+import { buildShareViewModel } from ".";
 
 const labels = {
-  shareLink: "Share link",
-  export: "Export",
-  sendTo: "Send to...",
-  exportToLink: "Create snapshot link",
-  exporting: "Creating link",
-  updateLink: "New snapshot link",
+  exportToLink: "Export to link",
+  exporting: "Exporting link",
 };
 
 const baseInput = {
-  activePanel: "share-link" as const,
   canStartSession: true,
   isLive: false,
   labels,
@@ -22,39 +17,23 @@ const baseInput = {
 };
 
 describe("share view model", () => {
-  it("keeps the public share surface limited to implemented tabs", () => {
+  it("models the share surface as a single live/export screen", () => {
     const viewModel = buildShareViewModel({
       ...baseInput,
-      activePanel: "publish",
     });
 
-    expect(viewModel.activePanel).toBe("share-link");
-    expect(viewModel.tabs.map((tab) => tab.id)).toEqual([
-      "share-link",
-      "export",
-      "send-to",
-    ]);
-    expect(viewModel.tabs).not.toContainEqual(
-      expect.objectContaining({ id: "publish" }),
-    );
+    expect(viewModel).not.toHaveProperty("tabs");
+    expect(viewModel).not.toHaveProperty("activePanel");
   });
 
-  it("normalizes unknown or future share panels to the share link tab", () => {
-    expect(normalizeSharePanel("export")).toBe("export");
-    expect(normalizeSharePanel("send-to")).toBe("send-to");
-    expect(normalizeSharePanel("publish")).toBe("share-link");
-    expect(normalizeSharePanel("future-panel")).toBe("share-link");
-    expect(normalizeSharePanel(undefined)).toBe("share-link");
-  });
-
-  it("models snapshot links as encrypted copies, not read-only publishing", () => {
+  it("models export links as encrypted copies, not read-only publishing", () => {
     const viewModel = buildShareViewModel({
       ...baseInput,
       jsonShareUrl: "https://tabula.md/#json=snapshot,key",
     });
 
     expect(viewModel.shareable.status).toBe("exported");
-    expect(viewModel.shareable.primaryLabel).toBe("New snapshot link");
+    expect(viewModel.shareable.primaryLabel).toBe("Export to link");
     expect(JSON.stringify(viewModel.shareable).toLowerCase()).not.toContain(
       "read-only",
     );
@@ -63,7 +42,7 @@ describe("share view model", () => {
     );
   });
 
-  it("blocks snapshot export with a direct disabled reason", () => {
+  it("blocks export link creation with a direct disabled reason", () => {
     const viewModel = buildShareViewModel({
       ...baseInput,
       jsonShareCanExport: false,

@@ -23,7 +23,10 @@ import {
   getProjectIoBoundaryWorkspaceSnapshot,
   getProjectIoWorkspaceSnapshot,
 } from "./hooks/useProjectIoController";
-import { getJsonShareExportFileSnapshot } from "./hooks/useJsonShareController";
+import {
+  getJsonShareExportFileSnapshot,
+  getJsonShareExportWorkspaceFiles,
+} from "./hooks/useJsonShareController";
 import {
   createActiveDocumentPreviewTextSnapshot,
   createPreviewStateFromSnapshot,
@@ -735,12 +738,23 @@ describe("project IO controller", () => {
         onBeforeWorkspaceBoundary,
       }),
     ).toBe(runtimeActiveFile);
+    expect(
+      getJsonShareExportWorkspaceFiles({
+        activeFile: staleActiveFile,
+        files: [staleActiveFile],
+        fileIds: [staleActiveFile.id],
+        getActiveFileSnapshot,
+        onBeforeWorkspaceBoundary,
+      }),
+    ).toEqual([runtimeActiveFile]);
 
     expect(calls).toEqual([
       "flush",
       "active-snapshot",
       "flush",
       "workspace-snapshot",
+      "flush",
+      "active-snapshot",
       "flush",
       "active-snapshot",
     ]);

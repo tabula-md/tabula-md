@@ -1,11 +1,11 @@
-import { lazy, Suspense, type ComponentProps } from "react";
+import { lazy, Suspense, useMemo, type ComponentProps } from "react";
 import { FileTabs } from "./FileTabs";
 import { ShareTrigger } from "./ShareTrigger";
 import { TopChrome } from "./TopChrome";
 import type { Collaborator } from "../collaboration";
 import type { JsonShareController } from "../hooks/useJsonShareController";
+import { getLiveWorkspaceFileIds } from "../liveWorkspaceScope";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import type { SharePanel } from "../uiTypes";
 import type { WorkspaceFile } from "../workspaceStorage";
 
 type FileTabsProps = ComponentProps<typeof FileTabs>;
@@ -18,7 +18,6 @@ const ShareControls = lazy(() =>
 
 export type WorkspaceTopChromeProps = {
   activeFile?: WorkspaceFile;
-  activeFileTitle: string;
   activeText: string;
   canStartSession: boolean;
   collaborators: Collaborator[];
@@ -28,12 +27,13 @@ export type WorkspaceTopChromeProps = {
   getFileStatus: FileTabsProps["getFileStatus"];
   identity: Collaborator;
   isLive: boolean;
+  isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
   rightPanelOpen: boolean;
+  shareExcludedFileIds: readonly string[];
   shareOpen: boolean;
-  sharePanelTarget?: SharePanel;
   startSessionUnavailableReason: string;
   workspaceMenuOpen: boolean;
   onAddFile: FileTabsProps["onAddFile"];
@@ -42,23 +42,22 @@ export type WorkspaceTopChromeProps = {
   onCloseFile: FileTabsProps["onCloseFile"];
   onCloseShare: () => void;
   onCommitUserName: () => void;
-  onCopyFile: () => void;
   onCopyShareUrl: () => void;
-  onDownloadFile: () => void;
-  onDownloadProjectArchive: () => void;
+  onDownloadProjectArchive: (fileIds?: readonly string[]) => void;
   onReorderFiles: FileTabsProps["onReorderFiles"];
   onRenameFile: FileTabsProps["onRenameFile"];
   onSelectFile: FileTabsProps["onSelectFile"];
   onStartSession: () => void;
   onStopSession: () => void;
+  onRetrySession: () => void;
   onToggleRightPanel: () => void;
+  onToggleShareFileExcluded: (fileId: string) => void;
   onToggleShare: () => void;
   onToggleWorkspaceMenu: () => void;
 };
 
 export function WorkspaceTopChrome({
   activeFile,
-  activeFileTitle,
   activeText,
   canStartSession,
   collaborators,
@@ -68,12 +67,13 @@ export function WorkspaceTopChrome({
   getFileStatus,
   identity,
   isLive,
+  isLiveConnected,
   jsonShare,
   language,
   openFiles,
   rightPanelOpen,
+  shareExcludedFileIds,
   shareOpen,
-  sharePanelTarget,
   startSessionUnavailableReason,
   workspaceMenuOpen,
   onAddFile,
@@ -82,25 +82,37 @@ export function WorkspaceTopChrome({
   onCloseFile,
   onCloseShare,
   onCommitUserName,
-  onCopyFile,
   onCopyShareUrl,
-  onDownloadFile,
   onDownloadProjectArchive,
   onReorderFiles,
   onRenameFile,
   onSelectFile,
   onStartSession,
   onStopSession,
+  onRetrySession,
   onToggleRightPanel,
+  onToggleShareFileExcluded,
   onToggleShare,
   onToggleWorkspaceMenu,
 }: WorkspaceTopChromeProps) {
+  const liveFileIds = useMemo(
+    () =>
+      getLiveWorkspaceFileIds({
+        activeFile,
+        excludedFileIds: shareExcludedFileIds,
+        files,
+        isLive: isLiveConnected,
+      }),
+    [activeFile, files, isLiveConnected, shareExcludedFileIds],
+  );
+
   const fileTabs = (
     <FileTabs
       files={openFiles}
       activeFile={activeFile}
       activeCollaboratorCount={collaborators.length}
       getFileStatus={getFileStatus}
+      liveFileIds={liveFileIds}
       onAddFile={onAddFile}
       onSelectFile={onSelectFile}
       onRenameFile={onRenameFile}
@@ -113,7 +125,7 @@ export function WorkspaceTopChrome({
   const shareControls = activeFile ? (
     <>
       <ShareTrigger
-        activeFileTitle={activeFileTitle}
+        isLive={isLiveConnected}
         language={language}
         shareOpen={shareOpen}
         onToggleShare={onToggleShare}
@@ -124,25 +136,27 @@ export function WorkspaceTopChrome({
           <ShareControls
             activeFile={activeFile}
             files={files}
-            activeFileTitle={activeFileTitle}
+            activeText={activeText}
             language={language}
             currentUserName={currentUserName}
             canStartSession={canStartSession}
+            connectionStatus={getFileStatus(activeFile)}
             isLive={isLive}
+            isLiveConnected={isLiveConnected}
+            shareExcludedFileIds={shareExcludedFileIds}
             shareOpen={shareOpen}
-            sharePanelTarget={sharePanelTarget}
             copied={copied}
             jsonShare={jsonShare}
             startSessionUnavailableReason={startSessionUnavailableReason}
             onCloseShare={onCloseShare}
             onStartSession={onStartSession}
+            onRetrySession={onRetrySession}
             onCopyShareUrl={onCopyShareUrl}
-            onCopyFile={onCopyFile}
-            onDownloadFile={onDownloadFile}
             onDownloadProjectArchive={onDownloadProjectArchive}
             onChangeUserName={onChangeUserName}
             onCommitUserName={onCommitUserName}
             onStopSession={onStopSession}
+            onToggleShareFileExcluded={onToggleShareFileExcluded}
           />
         </Suspense>
       )}
@@ -153,7 +167,7 @@ export function WorkspaceTopChrome({
     <TopChrome
       workspaceMenuOpen={workspaceMenuOpen}
       rightPanelOpen={rightPanelOpen}
-      isLive={isLive}
+      isLiveConnected={isLiveConnected}
       language={language}
       identity={identity}
       collaborators={collaborators}

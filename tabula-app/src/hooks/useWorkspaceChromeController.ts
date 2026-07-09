@@ -23,8 +23,6 @@ export function useWorkspaceChromeController({
   const setWorkspaceMenuOpen = useWorkspaceUiStore((state) => state.setWorkspaceMenuOpen);
   const preferencesOpen = useWorkspaceUiStore((state) => state.preferencesOpen);
   const setPreferencesOpen = useWorkspaceUiStore((state) => state.setPreferencesOpen);
-  const sharePanelTarget = useWorkspaceUiStore((state) => state.sharePanelTarget);
-  const setSharePanelTarget = useWorkspaceUiStore((state) => state.setSharePanelTarget);
   const rightPanelOpen = useWorkspaceUiStore((state) => state.rightPanelOpen);
   const setRightPanelOpen = useWorkspaceUiStore((state) => state.setRightPanelOpen);
   const rightPanelView = useWorkspaceUiStore((state) => state.rightPanelView);
@@ -70,7 +68,6 @@ export function useWorkspaceChromeController({
       if (topPopover || centerPopover || searchOpen) {
         event.preventDefault();
         setTopPopover(null);
-        setSharePanelTarget(undefined);
         setCenterPopover(null);
         setSearchOpen(false);
         return;
@@ -107,7 +104,6 @@ export function useWorkspaceChromeController({
     selectionActionPosition,
     setSearchOpen,
     setSelectionActionPosition,
-    setSharePanelTarget,
     topPopover,
     workspaceMenuOpen,
   ]);
@@ -164,8 +160,6 @@ export function useWorkspaceChromeController({
     setWorkspaceMenuOpen,
     preferencesOpen,
     setPreferencesOpen,
-    sharePanelTarget,
-    setSharePanelTarget,
     rightPanelOpen,
     setRightPanelOpen,
     rightPanelView,

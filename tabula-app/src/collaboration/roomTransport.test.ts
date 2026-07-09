@@ -47,7 +47,7 @@ const createHandlers = (): RoomTransportHandlers => ({
 const createEnvelope = (): EncryptedEnvelope => ({
   v: 1,
   roomId: "room-123",
-  kind: "yjs-update",
+  kind: "room-event",
   version: 1,
   iv: "iv",
   ciphertext: "ciphertext",

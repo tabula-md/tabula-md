@@ -39,7 +39,7 @@ service is configured separately and is not required to run Tabula.md locally.
 - Dark, light, and system themes.
 - Browser autosave and local restore.
 - Encrypted live collaboration by room link.
-- Encrypted Snapshot links for import and handoff.
+- Encrypted Export links for import and handoff.
 
 ## Product Targets
 
@@ -66,21 +66,21 @@ npm run dev
 Open `http://localhost:5173`.
 
 The app runs locally without hosted services. Configure a room server or
-snapshot store only when you need live sessions or Snapshot links during local
+export link store only when you need live sessions or Export links during local
 development.
 
 ## Related Repositories
 
 - [`tabula-room`](https://github.com/tabula-md/tabula-room): encrypted live
   collaboration relay.
-- [`tabula-json`](https://github.com/tabula-md/tabula-json): encrypted Snapshot
-  blob store.
+- [`tabula-json`](https://github.com/tabula-md/tabula-json): encrypted Export
+  link blob store.
 
 ## Security And Privacy
 
-Tabula.md keeps plaintext Markdown and link keys in the browser. Collaboration
-and Snapshot services receive routing metadata and encrypted payloads, not the
-document key or plaintext content.
+Tabula.md keeps plaintext Markdown and link keys in the browser. Collaboration,
+Export link, and live room persistence services receive routing metadata and
+encrypted payloads, not document keys or plaintext content.
 
 See [Privacy](PRIVACY.md) for the public product contract.
 

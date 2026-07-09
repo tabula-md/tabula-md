@@ -22,7 +22,8 @@ describe("buildLocalAgentPrompt", () => {
     });
 
     expect(prompt).toContain("Task: Continue this.");
-    expect(prompt).toContain("Scope: current file");
+    expect(prompt).toContain("Scope: current document");
+    expect(prompt).toContain("Active document: README (readme)");
     expect(prompt).toContain("## README");
     expect(prompt).not.toContain("Other");
   });
@@ -39,8 +40,24 @@ describe("buildLocalAgentPrompt", () => {
     });
 
     expect(prompt).toContain("Task: Help me continue from this context.");
-    expect(prompt).toContain("Scope: project");
+    expect(prompt).toContain("Scope: current workspace");
     expect(prompt).toContain("## README");
     expect(prompt).toContain("## DESIGN");
+  });
+
+  it("adds live room instructions only when a room URL is explicitly provided", () => {
+    const prompt = buildLocalAgentPrompt({
+      activeFile: file("readme", "README", "# README"),
+      files: [file("readme", "README", "# README")],
+      instruction: "",
+      liveRoomUrl: "https://tabula.test/#room=room-1&key=secret",
+      scope: "file",
+    });
+
+    expect(prompt).toContain("Join this Tabula.md room as an agent actor.");
+    expect(prompt).toContain("Participate as a normal room actor.");
+    expect(prompt).toContain("Apply document edits directly with text.updated events.");
+    expect(prompt).toContain("Apply workspace tree changes directly with workspace.updated events.");
+    expect(prompt).toContain("Room URL: https://tabula.test/#room=room-1&key=secret");
   });
 });

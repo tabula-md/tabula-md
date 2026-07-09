@@ -19,8 +19,6 @@ export type {
   CollaborationCollaborator,
   CollaborationConnectionStatus,
   CollaborationLiveSelection,
-  CollaborationRoomMeta,
-  CollaborationRoomSnapshot,
 } from "./collaborationTypes";
 
 export type {
@@ -37,11 +35,8 @@ export type {
 } from "./collabConnectionModel";
 export {
   createRoomApiUrl,
-  decodePresence,
-  encodePresenceForRoom,
   isEncryptedEnvelope,
   sortCollaborators,
-  toRoomMeta,
 } from "./collabConnectionModel";
 
 export type {
@@ -373,6 +368,59 @@ export type { RoomShareLinkView } from "./shareLinkViewModel";
 export { getRoomShareLinkView } from "./shareLinkViewModel";
 
 export type {
+  RoomActor,
+  RoomActorClient,
+  RoomActorKind,
+  RoomActorJoinedEvent,
+  RoomActorLeftEvent,
+  RoomCapability,
+  RoomEvent,
+  RoomEventBase,
+  RoomEventParseResult,
+  RoomEventType,
+  RoomPresence,
+  RoomPresenceUpdatedEvent,
+  RoomTextUpdatedEvent,
+  RoomWorkspaceUpdatedEvent,
+  WorkspaceDocumentNode,
+  WorkspaceFolderNode,
+  WorkspaceNode,
+  WorkspaceRoomDocument,
+  WorkspaceRoomCheckpoint,
+  WorkspaceRoomState,
+} from "./roomCollaboration";
+export {
+  AGENT_ROOM_CAPABILITIES,
+  DEFAULT_ACTOR_COLOR,
+  DEFAULT_ACTOR_NAME,
+  DEFAULT_AGENT_ACTOR_CLIENT,
+  DEFAULT_HUMAN_ACTOR_CLIENT,
+  HUMAN_ROOM_CAPABILITIES,
+  MARKDOWN_TEXT_HASH_ALGORITHM,
+  WORKSPACE_ROOM_CHECKPOINT_SCHEMA_VERSION,
+  createWorkspaceRoomCheckpoint,
+  createWorkspaceRoomState,
+  createRoomActor,
+  decodeRoomEvent,
+  decodeWorkspaceRoomCheckpoint,
+  encodeWorkspaceRoomCheckpoint,
+  encodeRoomEvent,
+  getDefaultRoomCapabilities,
+  hasRoomCapability,
+  hashMarkdownText,
+  isBase64UrlBytes,
+  isRoomCapability,
+  normalizeRoomCapabilities,
+  parseRoomActor,
+  parseRoomEvent,
+  parseRoomPresence,
+  parseWorkspaceNode,
+  parseWorkspaceRoomDocument,
+  parseWorkspaceRoomCheckpoint,
+  parseWorkspaceRoomState,
+} from "./roomCollaboration";
+
+export type {
   ShareSnapshot,
   ShareSnapshotComment,
   ShareSnapshotCommentReply,
@@ -388,12 +436,10 @@ export {
 } from "./shareSnapshotPayload";
 
 export type {
-  ShareTabView,
   ShareViewLabels,
   ShareViewModel,
-  VisibleSharePanel,
 } from "./shareViewModel";
-export { buildShareViewModel, normalizeSharePanel } from "./shareViewModel";
+export { buildShareViewModel } from "./shareViewModel";
 
 export type { StatusBarSaveState } from "./statusBarViewModel";
 export { getStatusBarSaveState } from "./statusBarViewModel";

@@ -6,7 +6,6 @@ import {
   PanelRight,
 } from "lucide-react";
 import { getRightPanelCommentGroups } from "@tabula-md/tabula";
-import type { ConnectionStatus } from "../collaboration";
 import { useRightPanelCollapseState } from "../hooks/useRightPanelCollapseState";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
 import type { MarkdownHeading } from "@tabula-md/tabula";
@@ -25,6 +24,7 @@ type RightPanelProps = {
   activeFileId: string;
   activeFileTitle: string;
   fileQuery: string;
+  liveFileIds: readonly string[];
   outlineHeadings: MarkdownHeading[];
   commentsByFileId: Record<string, FileComment[]>;
   commentDraft: string;
@@ -35,7 +35,6 @@ type RightPanelProps = {
   activeCommentId?: string | null;
   activeReplyCommentId?: string | null;
   replyDraftByCommentId: Record<string, string>;
-  getFileStatus: (file: WorkspaceFile) => ConnectionStatus;
   getFileSearchText: (file: WorkspaceFile) => string;
   onSetView: (view: RightPanelView) => void;
   onClose: () => void;
@@ -71,6 +70,7 @@ export function RightPanel({
   activeFileId,
   activeFileTitle,
   fileQuery,
+  liveFileIds,
   outlineHeadings,
   commentsByFileId,
   commentDraft,
@@ -81,7 +81,6 @@ export function RightPanel({
   activeCommentId,
   activeReplyCommentId,
   replyDraftByCommentId,
-  getFileStatus,
   getFileSearchText,
   onSetView,
   onClose,
@@ -131,22 +130,30 @@ export function RightPanel({
   }
 
   const activeFile = files.find((file) => file.id === activeFileId);
-  const effectiveView = commentsEnabled || view !== "comments" ? view : "files";
+  const effectiveView = !commentsEnabled && view === "comments" ? "files" : view;
   const { openCommentGroups, resolvedCommentGroups, openCommentCount } = getRightPanelCommentGroups(
     files,
     visibleCommentsByFileId,
   );
-  const renderTab = (tabView: RightPanelView, label: string, icon: ReactNode, count?: number) => (
+  const hasLiveFiles = liveFileIds.length > 0;
+  const renderTab = (
+    tabView: RightPanelView,
+    label: string,
+    icon: ReactNode,
+    count?: number,
+    live = false,
+  ) => (
     <button
       className={`right-panel-tab ${effectiveView === tabView ? "active" : ""} ${
         typeof count === "number" && count > 0 ? "has-count" : ""
-      }`}
+      } ${live ? "live" : ""}`}
       type="button"
       title={label}
       aria-label={label}
       onClick={() => onSetView(tabView)}
     >
       {icon}
+      {live && <span className="right-panel-tab-live-dot" aria-hidden="true" />}
       {typeof count === "number" && count > 0 && <small>{count}</small>}
     </button>
   );
@@ -155,7 +162,7 @@ export function RightPanel({
     <aside className="right-panel" aria-label="Project Context">
       <div className="right-panel-header">
         <nav className="right-panel-tabs" aria-label="Project context sections">
-          {renderTab("files", "Files", <Folder size={14} />)}
+          {renderTab("files", "Files", <Folder size={14} />, undefined, hasLiveFiles)}
           {renderTab("outline", "Outline", <ListTree size={14} />)}
           {commentsEnabled && renderTab("comments", "Comments", <MessageSquare size={14} />, openCommentCount)}
         </nav>
@@ -171,9 +178,9 @@ export function RightPanel({
             openFileIds={openFileIds}
             activeFileId={activeFileId}
             fileQuery={fileQuery}
+            liveFileIds={liveFileIds}
             commentsByFileId={visibleCommentsByFileId}
             collapsedFolderIds={collapsedFileTreeFolderIds}
-            getFileStatus={getFileStatus}
             getFileSearchText={getFileSearchText}
             onFileQueryChange={onFileQueryChange}
             onNewFile={onNewFile}

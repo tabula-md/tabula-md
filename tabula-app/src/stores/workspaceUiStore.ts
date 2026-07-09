@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CenterPopover, RightPanelView, SharePanel, TopPopover } from "../uiTypes";
+import type { CenterPopover, RightPanelView, TopPopover } from "../uiTypes";
 
 type UiValueUpdater<T> = T | ((currentValue: T) => T);
 
@@ -15,21 +15,18 @@ type WorkspaceUiStoreState = {
   preferencesOpen: boolean;
   searchOpen: boolean;
   splitDragging: boolean;
-  sharePanelTarget?: SharePanel;
 };
 
 type WorkspaceUiStoreActions = {
   closeFloatingChrome: () => void;
   closePreferences: () => void;
-  closeSharePanel: () => void;
   openFilesPanel: () => void;
-  openSharePanel: (panel?: SharePanel) => void;
+  openSharePanel: () => void;
   setCenterPopover: (popover: UiValueUpdater<CenterPopover>) => void;
   setPreferencesOpen: (isOpen: UiValueUpdater<boolean>) => void;
   setRightPanelOpen: (isOpen: UiValueUpdater<boolean>) => void;
   setRightPanelView: (view: RightPanelView) => void;
   setSearchOpen: (isOpen: UiValueUpdater<boolean>) => void;
-  setSharePanelTarget: (panel: SharePanel | undefined) => void;
   setSplitDragging: (isDragging: boolean) => void;
   setTopPopover: (popover: UiValueUpdater<TopPopover>) => void;
   setWorkspaceMenuOpen: (isOpen: UiValueUpdater<boolean>) => void;
@@ -50,7 +47,6 @@ const DEFAULT_WORKSPACE_UI_STORE_STATE: WorkspaceUiStoreState = {
   preferencesOpen: false,
   searchOpen: false,
   splitDragging: false,
-  sharePanelTarget: undefined,
 };
 
 export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
@@ -62,16 +58,11 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       centerPopover: null,
       preferencesOpen: false,
       workspaceMenuOpen: false,
-      sharePanelTarget: undefined,
     });
   },
 
   closePreferences: () => {
     set({ preferencesOpen: false });
-  },
-
-  closeSharePanel: () => {
-    set({ topPopover: null, sharePanelTarget: undefined });
   },
 
   openFilesPanel: () => {
@@ -80,18 +71,16 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       centerPopover: null,
       preferencesOpen: false,
       workspaceMenuOpen: false,
-      sharePanelTarget: undefined,
       rightPanelOpen: true,
       rightPanelView: "files",
     });
   },
 
-  openSharePanel: (panel) => {
+  openSharePanel: () => {
     set({
       topPopover: "share",
       centerPopover: null,
       workspaceMenuOpen: false,
-      sharePanelTarget: panel,
     });
   },
 
@@ -113,10 +102,6 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
 
   setSearchOpen: (isOpen) => {
     set((state) => ({ searchOpen: applyUiValueUpdater(state.searchOpen, isOpen) }));
-  },
-
-  setSharePanelTarget: (panel) => {
-    set({ sharePanelTarget: panel });
   },
 
   setSplitDragging: (isDragging) => {

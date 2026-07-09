@@ -7,7 +7,7 @@ import {
   type SetStateAction,
 } from "react";
 import type { WorkspaceMenuSurfaceProps } from "../components/WorkspaceMenuSurface";
-import type { SharePanel, TopPopover } from "../uiTypes";
+import type { TopPopover } from "../uiTypes";
 import type { WorkspaceFile } from "../workspaceStorage";
 import type {
   WorkspaceLanguage,
@@ -27,7 +27,7 @@ type UseWorkspaceMenuRuntimeOptions = {
   onImportProjectChange: ChangeEventHandler<HTMLInputElement>;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
-  openSharePanel: (target?: SharePanel) => void;
+  openSharePanel: () => void;
   preferences: WorkspacePreferences;
   preferencesOpen: boolean;
   setPreferences: Dispatch<SetStateAction<WorkspacePreferences>>;
@@ -76,7 +76,7 @@ export function useWorkspaceMenuRuntime({
   }, [setPreferencesOpen, setTopPopover]);
 
   const openCollaboration = useCallback(() => {
-    openSharePanel("share-link");
+    openSharePanel();
   }, [openSharePanel]);
 
   const menuSurfaceProps: WorkspaceMenuSurfaceProps = useMemo(

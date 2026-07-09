@@ -72,7 +72,6 @@ export function useWorkspaceFiles({
   const setFileText = useWorkspaceStore((state) => state.setFileText);
   const setFileCollaborationStatus = useWorkspaceStore((state) => state.setFileCollaborationStatus);
   const setFileCollaboratorCount = useWorkspaceStore((state) => state.setFileCollaboratorCount);
-  const setFileRoomMeta = useWorkspaceStore((state) => state.setFileRoomMeta);
   const setFileRecoveryEvent = useWorkspaceStore((state) => state.setFileRecoveryEvent);
   const startFileCollaborationSession = useWorkspaceStore((state) => state.startFileCollaborationSession);
   const stopFileCollaborationSession = useWorkspaceStore((state) => state.stopFileCollaborationSession);
@@ -114,7 +113,6 @@ export function useWorkspaceFiles({
     setFileText,
     setFileCollaborationStatus,
     setFileCollaboratorCount,
-    setFileRoomMeta,
     setFileRecoveryEvent,
     startFileCollaborationSession,
     stopFileCollaborationSession,

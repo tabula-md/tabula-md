@@ -1,15 +1,12 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ConnectionStatus } from "../collaboration";
 import { getRoomShareLinkView } from "../share";
-import {
-  syncUrlForFile,
-  type WorkspaceFile,
-} from "../workspaceStorage";
+import { syncUrlForFile, type WorkspaceFile } from "../workspaceStorage";
 
 type UseWorkspaceLiveRoomControllerArgs = {
   activeFile?: WorkspaceFile;
   resetCollaborationState: (nextStatus: ConnectionStatus) => void;
-  setCenterPopover: (popover: null) => void;
+  retryCollaborationConnection: () => void;
   setCopiedFileId: Dispatch<SetStateAction<string | null>>;
   startCollaborationSession: () => { roomId: string; shareUrl: string } | undefined;
   stopFileCollaborationSession: (fileId: string) => WorkspaceFile | undefined;
@@ -18,7 +15,7 @@ type UseWorkspaceLiveRoomControllerArgs = {
 export function useWorkspaceLiveRoomController({
   activeFile,
   resetCollaborationState,
-  setCenterPopover,
+  retryCollaborationConnection,
   setCopiedFileId,
   startCollaborationSession,
   stopFileCollaborationSession,
@@ -26,12 +23,11 @@ export function useWorkspaceLiveRoomController({
   const startSession = () => {
     const startedSession = startCollaborationSession();
     if (!startedSession) {
-      return;
+      return undefined;
     }
 
     setCopiedFileId(null);
-    setCenterPopover(null);
-    syncUrlForFile(startedSession);
+    return startedSession;
   };
 
   const stopSession = () => {
@@ -59,6 +55,7 @@ export function useWorkspaceLiveRoomController({
 
   return {
     copyShareUrl,
+    retrySession: retryCollaborationConnection,
     startSession,
     stopSession,
   };

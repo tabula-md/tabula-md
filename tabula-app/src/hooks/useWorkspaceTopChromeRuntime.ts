@@ -4,18 +4,16 @@ import type { WorkspaceTopChromeProps } from "../components/WorkspaceTopChrome";
 import type { JsonShareController } from "./useJsonShareController";
 import type { RenameFileResult } from "./useWorkspaceFiles";
 import type { WorkspaceLanguage } from "./useWorkspacePreferences";
-import type { SharePanel, TopPopover } from "../uiTypes";
+import type { TopPopover } from "../uiTypes";
 import type { WorkspaceFile } from "../workspaceStorage";
 
 type SetTopPopover = (popover: TopPopover) => void;
 type SetCenterPopover = (popover: null) => void;
 type SetWorkspaceMenuOpen = (isOpen: boolean) => void;
 type SetPreferencesOpen = (isOpen: boolean) => void;
-type SetSharePanelTarget = (target: SharePanel | undefined) => void;
 
 type UseWorkspaceTopChromeRuntimeOptions = {
   activeFile?: WorkspaceFile;
-  activeFileTitle: string;
   activeText: string;
   canStartSession: boolean;
   collaborators: Collaborator[];
@@ -25,11 +23,12 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   getFileStatus: WorkspaceTopChromeProps["getFileStatus"];
   identity: Collaborator;
   isLive: boolean;
+  isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
   rightPanelOpen: boolean;
-  sharePanelTarget?: SharePanel;
+  shareExcludedFileIds: readonly string[];
   startSessionUnavailableReason: string;
   topPopover: TopPopover;
   workspaceMenuOpen: boolean;
@@ -37,27 +36,25 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   onChangeUserName: (nextName: string) => void;
   onCloseFile: (fileId: string) => void;
   onCommitUserName: () => void;
-  onCopyFile: () => void;
   onCopyShareUrl: () => void;
-  onDownloadFile: () => void;
-  onDownloadProjectArchive: () => void;
+  onDownloadProjectArchive: (fileIds?: readonly string[]) => void;
   onReorderFiles: (sourceFileId: string, targetFileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onSelectFile: (fileId: string) => void;
   onStartSession: () => void;
   onStopSession: () => void;
+  onRetrySession: () => void;
   onToggleRightPanel: () => void;
+  onToggleShareFileExcluded: (fileId: string) => void;
   onToggleWorkspaceMenu: () => void;
   setCenterPopover: SetCenterPopover;
   setPreferencesOpen: SetPreferencesOpen;
-  setSharePanelTarget: SetSharePanelTarget;
   setTopPopover: SetTopPopover;
   setWorkspaceMenuOpen: SetWorkspaceMenuOpen;
 };
 
 export function useWorkspaceTopChromeRuntime({
   activeFile,
-  activeFileTitle,
   activeText,
   canStartSession,
   collaborators,
@@ -67,11 +64,12 @@ export function useWorkspaceTopChromeRuntime({
   getFileStatus,
   identity,
   isLive,
+  isLiveConnected,
   jsonShare,
   language,
   openFiles,
   rightPanelOpen,
-  sharePanelTarget,
+  shareExcludedFileIds,
   startSessionUnavailableReason,
   topPopover,
   workspaceMenuOpen,
@@ -79,20 +77,19 @@ export function useWorkspaceTopChromeRuntime({
   onChangeUserName,
   onCloseFile,
   onCommitUserName,
-  onCopyFile,
   onCopyShareUrl,
-  onDownloadFile,
   onDownloadProjectArchive,
   onReorderFiles,
   onRenameFile,
   onSelectFile,
   onStartSession,
   onStopSession,
+  onRetrySession,
   onToggleRightPanel,
+  onToggleShareFileExcluded,
   onToggleWorkspaceMenu,
   setCenterPopover,
   setPreferencesOpen,
-  setSharePanelTarget,
   setTopPopover,
   setWorkspaceMenuOpen,
 }: UseWorkspaceTopChromeRuntimeOptions) {
@@ -106,11 +103,9 @@ export function useWorkspaceTopChromeRuntime({
 
   const closeShare = useCallback(() => {
     setTopPopover(null);
-    setSharePanelTarget(undefined);
-  }, [setSharePanelTarget, setTopPopover]);
+  }, [setTopPopover]);
 
   const toggleShare = useCallback(() => {
-    setSharePanelTarget(undefined);
     setTopPopover(shareOpen ? null : "share");
     setCenterPopover(null);
     setWorkspaceMenuOpen(false);
@@ -118,7 +113,6 @@ export function useWorkspaceTopChromeRuntime({
   }, [
     setCenterPopover,
     setPreferencesOpen,
-    setSharePanelTarget,
     setTopPopover,
     setWorkspaceMenuOpen,
     shareOpen,
@@ -126,7 +120,6 @@ export function useWorkspaceTopChromeRuntime({
 
   const topChromeProps: WorkspaceTopChromeProps = {
     activeFile,
-    activeFileTitle,
     activeText,
     canStartSession,
     collaborators,
@@ -136,12 +129,13 @@ export function useWorkspaceTopChromeRuntime({
     getFileStatus,
     identity,
     isLive,
+    isLiveConnected,
     jsonShare,
     language,
     openFiles,
     rightPanelOpen,
+    shareExcludedFileIds,
     shareOpen,
-    sharePanelTarget,
     startSessionUnavailableReason,
     workspaceMenuOpen,
     onAddFile,
@@ -150,16 +144,16 @@ export function useWorkspaceTopChromeRuntime({
     onCloseFile,
     onCloseShare: closeShare,
     onCommitUserName,
-    onCopyFile,
     onCopyShareUrl,
-    onDownloadFile,
     onDownloadProjectArchive,
     onReorderFiles,
     onRenameFile,
     onSelectFile,
     onStartSession,
     onStopSession,
+    onRetrySession,
     onToggleRightPanel,
+    onToggleShareFileExcluded,
     onToggleShare: toggleShare,
     onToggleWorkspaceMenu,
   };

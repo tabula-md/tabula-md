@@ -34,18 +34,18 @@ type WorkspaceMenuCopy = {
   };
   share: {
     trigger: string;
-    modalTitle: (fileTitle: string) => string;
-    purposeAria: string;
-    tabs: {
-      shareLink: string;
-      export: string;
-      sendTo: string;
-    };
+    modalTitle: string;
     live: {
       title: string;
       description: string;
       startSession: string;
       startDescription: string;
+      roomDocumentsAria: string;
+      roomDocumentsLabel: string;
+      includedCount: (included: number, total: number) => string;
+      inviteAgent: string;
+      inviteAgentDescription: string;
+      retrySession: string;
       nameLabel: string;
       nameAria: string;
       anonymousPlaceholder: string;
@@ -54,39 +54,20 @@ type WorkspaceMenuCopy = {
       copyLink: string;
       copied: string;
       stopSession: string;
-      stopConfirm: string;
     };
     shareable: {
       title: string;
       description: string;
       noFileReason: string;
-      emptyFileReason: (fileTitle: string) => string;
       exportToLink: string;
       exporting: string;
-      updateLink: string;
-      openLink: string;
       linkLabel: string;
     };
     exportPanel: {
       title: string;
       description: string;
-      fileTitle: string;
-      fileDescription: string;
-      copyFileTitle: string;
-      copyFileDescription: string;
       projectArchiveTitle: string;
       projectArchiveDescription: string;
-    };
-    sendTo: {
-      title: string;
-      description: string;
-      destinationTitle: string;
-      destinationDescription: string;
-      copyPrompt: string;
-      currentFile: string;
-      project: string;
-      instructionLabel: string;
-      instructionPlaceholder: (fileTitle: string) => string;
     };
   };
 };
@@ -142,65 +123,44 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     share: {
       trigger: "Share",
-      modalTitle: (fileTitle) => `Share ${fileTitle}`,
-      purposeAria: "Share purpose",
-      tabs: {
-        shareLink: "Share link",
-        export: "Export",
-        sendTo: "Send to...",
-      },
+      modalTitle: "Share",
       live: {
         title: "Live collaboration",
-        description: "Invite people to edit this file together.",
+        description:
+          "Create an encrypted room for real-time collaboration.",
         startSession: "Start session",
-        startDescription: "Create an editable invite link for this file.",
+        startDescription:
+          "Included documents join the room. Excluded documents stay local.",
+        roomDocumentsAria: "Workspace documents included in sharing",
+        roomDocumentsLabel: "Included documents",
+        includedCount: (included, total) => `${included}/${total} included`,
+        inviteAgent: "Copy agent prompt",
+        inviteAgentDescription:
+          "Copy a room-aware prompt. The room URL is included only when you click.",
+        retrySession: "Retry",
         nameLabel: "Your name",
         nameAria: "Your collaboration name",
         anonymousPlaceholder: "Anonymous",
         inviteLabel: "Invite link",
-        invalidInviteTitle: "This live file does not have a valid invite link.",
+        invalidInviteTitle: "This live room does not have a valid invite link.",
         copyLink: "Copy link",
         copied: "Copied",
         stopSession: "Stop session",
-        stopConfirm:
-          "Stop sharing this file?\n\nThis tab will leave the live room and keep the current file local. Other collaborators can continue in the room.",
       },
       shareable: {
-        title: "Snapshot link",
+        title: "Export to link",
         description:
-          "Create an encrypted local-copy snapshot. Anyone with the full link can open it for 7 days.",
-        noFileReason: "Open a file before creating a snapshot link.",
-        emptyFileReason: (fileTitle) =>
-          `Add content to ${fileTitle} before creating a snapshot link.`,
-        exportToLink: "Create snapshot link",
-        exporting: "Creating link",
-        updateLink: "New snapshot link",
-        openLink: "Open snapshot",
-        linkLabel: "Snapshot link",
+          "Create an encrypted link to a copy of the included documents.",
+        noFileReason: "Open a file before exporting to link.",
+        exportToLink: "Export to link",
+        exporting: "Exporting link",
+        linkLabel: "Export link",
       },
       exportPanel: {
-        title: "Export File",
-        description: "Take the current file out of Tabula.md.",
-        fileTitle: "File",
-        fileDescription: "Download the current file.",
-        copyFileTitle: "Copy File",
-        copyFileDescription: "Copy the current file to the clipboard.",
-        projectArchiveTitle: "Project archive",
-        projectArchiveDescription: "Bundle every project file.",
-      },
-      sendTo: {
-        title: "Send to local coding agent",
-        description:
-          "Create a prompt for Codex, Claude Code, or another local coding agent.",
-        destinationTitle: "Local coding agent",
-        destinationDescription:
-          "Hand off file context as a paste-ready prompt.",
-        copyPrompt: "Copy prompt",
-        currentFile: "Current file",
-        project: "Project",
-        instructionLabel: "What should the agent do?",
-        instructionPlaceholder: (fileTitle) =>
-          `Implement the next step for ${fileTitle}.`,
+        title: "Export",
+        description: "Create an encrypted copy of the included documents.",
+        projectArchiveTitle: "Export to file",
+        projectArchiveDescription: "Export to file downloads the included documents as a .zip.",
       },
     },
   },
@@ -239,65 +199,44 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     share: {
       trigger: "공유",
-      modalTitle: (fileTitle) => `${fileTitle} 공유`,
-      purposeAria: "공유 목적",
-      tabs: {
-        shareLink: "공유 링크",
-        export: "내보내기",
-        sendTo: "보내기...",
-      },
+      modalTitle: "공유",
       live: {
         title: "실시간 협업",
-        description: "사람들을 초대해 이 파일을 함께 편집합니다.",
+        description:
+          "실시간 협업을 위한 암호화된 room을 만듭니다.",
         startSession: "세션 시작",
-        startDescription: "이 파일을 함께 편집할 수 있는 초대 링크를 만듭니다.",
+        startDescription:
+          "포함된 문서만 room에 들어갑니다. 제외한 문서는 로컬에 남습니다.",
+        roomDocumentsAria: "실시간 room에 포함되는 워크스페이스 문서",
+        roomDocumentsLabel: "포함할 문서",
+        includedCount: (included, total) => `${included}/${total}개 포함`,
+        inviteAgent: "에이전트 프롬프트 복사",
+        inviteAgentDescription:
+          "room용 프롬프트를 복사합니다. room URL은 이 버튼을 눌렀을 때만 포함됩니다.",
+        retrySession: "다시 연결",
         nameLabel: "내 이름",
         nameAria: "협업에서 표시할 이름",
         anonymousPlaceholder: "익명",
         inviteLabel: "초대 링크",
-        invalidInviteTitle: "이 실시간 파일에는 유효한 초대 링크가 없습니다.",
+        invalidInviteTitle: "이 실시간 room에는 유효한 초대 링크가 없습니다.",
         copyLink: "링크 복사",
         copied: "복사됨",
         stopSession: "세션 중지",
-        stopConfirm:
-          "이 파일 공유를 중지할까요?\n\n이 탭은 실시간 room에서 나가고 현재 파일은 로컬에 유지됩니다. 다른 협업자는 room에서 계속 작업할 수 있습니다.",
       },
       shareable: {
-        title: "스냅샷 링크",
+        title: "링크로 내보내기",
         description:
-          "암호화된 로컬 복사본 스냅샷을 만듭니다. 전체 링크가 있으면 7일 동안 열 수 있습니다.",
-        noFileReason: "파일을 열면 스냅샷 링크를 만들 수 있습니다.",
-        emptyFileReason: (fileTitle) =>
-          `${fileTitle}에 내용을 추가하면 스냅샷 링크를 만들 수 있습니다.`,
-        exportToLink: "스냅샷 링크 만들기",
-        exporting: "링크 만드는 중",
-        updateLink: "새 스냅샷 링크",
-        openLink: "스냅샷 열기",
-        linkLabel: "스냅샷 링크",
+          "포함된 문서의 암호화된 복사본 링크를 만듭니다.",
+        noFileReason: "파일을 열면 링크로 내보낼 수 있습니다.",
+        exportToLink: "링크로 내보내기",
+        exporting: "링크 내보내는 중",
+        linkLabel: "내보내기 링크",
       },
       exportPanel: {
-        title: "파일 내보내기",
-        description: "현재 파일을 Tabula.md 밖으로 가져갑니다.",
-        fileTitle: "File",
-        fileDescription: "현재 파일을 다운로드합니다.",
-        copyFileTitle: "파일 복사",
-        copyFileDescription: "현재 파일을 클립보드에 복사합니다.",
-        projectArchiveTitle: "프로젝트 압축 파일",
-        projectArchiveDescription: "프로젝트의 모든 파일을 묶습니다.",
-      },
-      sendTo: {
-        title: "로컬 코딩 에이전트로 보내기",
-        description:
-          "Codex, Claude Code 또는 다른 로컬 코딩 에이전트용 프롬프트를 만듭니다.",
-        destinationTitle: "로컬 코딩 에이전트",
-        destinationDescription:
-          "파일 컨텍스트를 바로 붙여넣을 수 있는 프롬프트로 전달합니다.",
-        copyPrompt: "프롬프트 복사",
-        currentFile: "현재 파일",
-        project: "프로젝트",
-        instructionLabel: "에이전트가 무엇을 하면 되나요?",
-        instructionPlaceholder: (fileTitle) =>
-          `${fileTitle}의 다음 단계를 구현하세요.`,
+        title: "내보내기",
+        description: "포함된 문서의 암호화된 복사본을 만듭니다.",
+        projectArchiveTitle: "파일로 내보내기",
+        projectArchiveDescription: "파일로 내보내기는 포함된 문서를 .zip으로 다운로드합니다.",
       },
     },
   },
@@ -336,70 +275,47 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     share: {
       trigger: "共有",
-      modalTitle: (fileTitle) => `${fileTitle} を共有`,
-      purposeAria: "共有の目的",
-      tabs: {
-        shareLink: "共有リンク",
-        export: "書き出し",
-        sendTo: "送信先...",
-      },
+      modalTitle: "共有",
       live: {
         title: "ライブ共同編集",
-        description: "このファイルを一緒に編集する人を招待します。",
-        startSession: "セッション開始",
-        startDescription: "このファイルを編集できる招待リンクを作成します。",
+        description:
+          "リアルタイム共同編集用の暗号化 room を作成します。",
+        startSession: "セッションを開始",
+        startDescription:
+          "含めたドキュメントだけが room に参加します。除外したものはローカルに残ります。",
+        roomDocumentsAria: "ライブ room に含めるワークスペースドキュメント",
+        roomDocumentsLabel: "含めるドキュメント",
+        includedCount: (included, total) => `${included}/${total} 件を含む`,
+        inviteAgent: "エージェント用プロンプトをコピー",
+        inviteAgentDescription:
+          "room 用プロンプトをコピーします。room URL はこのボタンを押したときだけ含まれます。",
+        retrySession: "再試行",
         nameLabel: "あなたの名前",
         nameAria: "共同編集で表示する名前",
         anonymousPlaceholder: "匿名",
         inviteLabel: "招待リンク",
         invalidInviteTitle:
-          "このライブファイルには有効な招待リンクがありません。",
+          "このライブ room には有効な招待リンクがありません。",
         copyLink: "リンクをコピー",
         copied: "コピー済み",
-        stopSession: "セッション停止",
-        stopConfirm:
-          "このファイルの共有を停止しますか?\n\nこのタブはライブ room から退出し、現在のファイルはローカルに残ります。他の共同編集者は room で作業を続けられます。",
+        stopSession: "セッションを停止",
       },
       shareable: {
-        title: "スナップショットリンク",
+        title: "リンクに書き出し",
         description:
-          "暗号化されたローカルコピーのスナップショットを作成します。完全なリンクを持つ人は7日間開けます。",
+          "含めたドキュメントの暗号化コピーへのリンクを作成します。",
         noFileReason:
-          "ファイルを開くとスナップショットリンクを作成できます。",
-        emptyFileReason: (fileTitle) =>
-          `${fileTitle} に内容を追加するとスナップショットリンクを作成できます。`,
-        exportToLink: "スナップショットリンクを作成",
-        exporting: "リンクを作成中",
-        updateLink: "新しいスナップショットリンク",
-        openLink: "スナップショットを開く",
-        linkLabel: "スナップショットリンク",
+          "ファイルを開くとリンクに書き出せます。",
+        exportToLink: "リンクに書き出し",
+        exporting: "リンクを書き出し中",
+        linkLabel: "書き出しリンク",
       },
       exportPanel: {
-        title: "ファイルを書き出し",
-        description: "現在のファイルを Tabula.md の外へ持ち出します。",
-        fileTitle: "File",
-        fileDescription:
-          "現在のファイルをダウンロードします。",
-        copyFileTitle: "ファイルをコピー",
-        copyFileDescription:
-          "現在のファイルをクリップボードへコピーします。",
-        projectArchiveTitle: "プロジェクトアーカイブ",
+        title: "書き出し",
+        description: "含めたドキュメントの暗号化コピーを作成します。",
+        projectArchiveTitle: "ファイルに書き出し",
         projectArchiveDescription:
-          "プロジェクト内のすべてのファイルをまとめます。",
-      },
-      sendTo: {
-        title: "ローカルコーディングエージェントに送信",
-        description:
-          "Codex、Claude Code、または他のローカルコーディングエージェント用のプロンプトを作成します。",
-        destinationTitle: "ローカルコーディングエージェント",
-        destinationDescription:
-          "ファイルコンテキストを貼り付け可能なプロンプトとして渡します。",
-        copyPrompt: "プロンプトをコピー",
-        currentFile: "現在のファイル",
-        project: "プロジェクト",
-        instructionLabel: "エージェントに何をしてほしいですか?",
-        instructionPlaceholder: (fileTitle) =>
-          `${fileTitle} の次のステップを実装してください。`,
+          "ファイルに書き出すと、含めたドキュメントを .zip としてダウンロードします。",
       },
     },
   },
@@ -437,61 +353,41 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     share: {
       trigger: "分享",
-      modalTitle: (fileTitle) => `分享 ${fileTitle}`,
-      purposeAria: "分享目的",
-      tabs: {
-        shareLink: "分享链接",
-        export: "导出",
-        sendTo: "发送到...",
-      },
+      modalTitle: "分享",
       live: {
         title: "实时协作",
-        description: "邀请他人一起编辑此文件。",
-        startSession: "开始会话",
-        startDescription: "为此文件创建可编辑的邀请链接。",
+        description: "创建用于实时协作的加密 room。",
+        startSession: "启动协作",
+        startDescription: "只有包含的文档会进入 room。排除的文档保留在本地。",
+        roomDocumentsAria: "实时 room 中包含的工作区文档",
+        roomDocumentsLabel: "包含的文档",
+        includedCount: (included, total) => `已包含 ${included}/${total}`,
+        inviteAgent: "复制智能体提示",
+        inviteAgentDescription:
+          "复制面向 room 的提示。只有点击此按钮时才会包含 room URL。",
+        retrySession: "重试",
         nameLabel: "你的名字",
         nameAria: "协作显示名称",
         anonymousPlaceholder: "匿名",
         inviteLabel: "邀请链接",
-        invalidInviteTitle: "此实时文件没有有效的邀请链接。",
+        invalidInviteTitle: "此实时 room 没有有效的邀请链接。",
         copyLink: "复制链接",
         copied: "已复制",
-        stopSession: "停止会话",
-        stopConfirm:
-          "停止分享此文件吗？\n\n此标签页将离开实时 room，并把当前文件保留在本地。其他协作者仍可在 room 中继续。",
+        stopSession: "停止协作",
       },
       shareable: {
-        title: "快照链接",
-        description: "创建加密的本地副本快照。拥有完整链接的人可在 7 天内打开。",
-        noFileReason: "打开文件后即可创建快照链接。",
-        emptyFileReason: (fileTitle) =>
-          `向 ${fileTitle} 添加内容后即可创建快照链接。`,
-        exportToLink: "创建快照链接",
-        exporting: "正在创建链接",
-        updateLink: "新建快照链接",
-        openLink: "打开快照",
-        linkLabel: "快照链接",
+        title: "导出为链接",
+        description: "创建已包含文档的加密副本链接。",
+        noFileReason: "打开文件后即可导出为链接。",
+        exportToLink: "导出为链接",
+        exporting: "正在导出链接",
+        linkLabel: "导出链接",
       },
       exportPanel: {
-        title: "导出文件",
-        description: "将当前文件带出 Tabula.md。",
-        fileTitle: "File",
-        fileDescription: "下载当前文件。",
-        copyFileTitle: "复制文件",
-        copyFileDescription: "将当前文件复制到剪贴板。",
-        projectArchiveTitle: "项目归档",
-        projectArchiveDescription: "打包项目中的所有文件。",
-      },
-      sendTo: {
-        title: "发送到本地编码智能体",
-        description: "为 Codex、Claude Code 或其他本地编码智能体创建提示词。",
-        destinationTitle: "本地编码智能体",
-        destinationDescription: "把文件上下文交给可直接粘贴的提示词。",
-        copyPrompt: "复制提示词",
-        currentFile: "当前文件",
-        project: "项目",
-        instructionLabel: "希望智能体做什么？",
-        instructionPlaceholder: (fileTitle) => `实现 ${fileTitle} 的下一步。`,
+        title: "导出",
+        description: "创建已包含文档的加密副本。",
+        projectArchiveTitle: "导出为文件",
+        projectArchiveDescription: "导出为文件会将已包含的文档下载为 .zip。",
       },
     },
   },
@@ -530,68 +426,46 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     share: {
       trigger: "Compartir",
-      modalTitle: (fileTitle) => `Compartir ${fileTitle}`,
-      purposeAria: "Propósito para compartir",
-      tabs: {
-        shareLink: "Enlace",
-        export: "Exportar",
-        sendTo: "Enviar a...",
-      },
+      modalTitle: "Compartir",
       live: {
         title: "Colaboración en vivo",
-        description: "Invita a otros a editar este archivo contigo.",
-        startSession: "Iniciar sesión",
+        description:
+          "Crea una sala cifrada para colaboración en tiempo real.",
+        startSession: "Iniciar colaboración",
         startDescription:
-          "Crea un enlace editable de invitación para este archivo.",
+          "Los documentos incluidos entran en la sala. Los excluidos quedan locales.",
+        roomDocumentsAria: "Documentos del workspace incluidos en la sala en vivo",
+        roomDocumentsLabel: "Documentos incluidos",
+        includedCount: (included, total) => `${included}/${total} incluidos`,
+        inviteAgent: "Copiar prompt de agente",
+        inviteAgentDescription:
+          "Copia un prompt para la sala. La URL de la sala solo se incluye al hacer clic.",
+        retrySession: "Reintentar",
         nameLabel: "Tu nombre",
         nameAria: "Tu nombre de colaboración",
         anonymousPlaceholder: "Anónimo",
         inviteLabel: "Enlace de invitación",
         invalidInviteTitle:
-          "Este archivo en vivo no tiene un enlace de invitación válido.",
+          "Esta sala en vivo no tiene un enlace de invitación válido.",
         copyLink: "Copiar enlace",
         copied: "Copiado",
-        stopSession: "Detener sesión",
-        stopConfirm:
-          "¿Dejar de compartir este archivo?\n\nEsta pestaña saldrá del room en vivo y conservará el archivo actual en local. Otros colaboradores pueden continuar en el room.",
+        stopSession: "Detener colaboración",
       },
       shareable: {
-        title: "Enlace de snapshot",
+        title: "Exportar a enlace",
         description:
-          "Crea un snapshot cifrado de copia local. Cualquiera con el enlace completo puede abrirlo durante 7 días.",
+          "Crea un enlace cifrado a una copia de los documentos incluidos.",
         noFileReason:
-          "Abre un archivo antes de crear un enlace de snapshot.",
-        emptyFileReason: (fileTitle) =>
-          `Añade contenido a ${fileTitle} antes de crear un enlace de snapshot.`,
-        exportToLink: "Crear enlace de snapshot",
-        exporting: "Creando enlace",
-        updateLink: "Nuevo enlace de snapshot",
-        openLink: "Abrir snapshot",
-        linkLabel: "Enlace de snapshot",
+          "Abre un archivo antes de exportar a enlace.",
+        exportToLink: "Exportar a enlace",
+        exporting: "Exportando enlace",
+        linkLabel: "Enlace de exportación",
       },
       exportPanel: {
-        title: "Exportar archivo",
-        description: "Saca el archivo actual de Tabula.md.",
-        fileTitle: "File",
-        fileDescription: "Descarga el archivo actual.",
-        copyFileTitle: "Copiar archivo",
-        copyFileDescription: "Copia el archivo actual al portapapeles.",
-        projectArchiveTitle: "Archivo del proyecto",
-        projectArchiveDescription: "Empaqueta todos los archivos del proyecto.",
-      },
-      sendTo: {
-        title: "Enviar a un agente local de código",
-        description:
-          "Crea un prompt para Codex, Claude Code u otro agente local de código.",
-        destinationTitle: "Agente local de código",
-        destinationDescription:
-          "Entrega el contexto del archivo como prompt listo para pegar.",
-        copyPrompt: "Copiar prompt",
-        currentFile: "Archivo actual",
-        project: "Proyecto",
-        instructionLabel: "¿Qué debe hacer el agente?",
-        instructionPlaceholder: (fileTitle) =>
-          `Implementa el siguiente paso para ${fileTitle}.`,
+        title: "Exportar",
+        description: "Crea una copia cifrada de los documentos incluidos.",
+        projectArchiveTitle: "Exportar a archivo",
+        projectArchiveDescription: "Exportar a archivo descarga los documentos incluidos como .zip.",
       },
     },
   },
@@ -630,70 +504,46 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     share: {
       trigger: "Partager",
-      modalTitle: (fileTitle) => `Partager ${fileTitle}`,
-      purposeAria: "Objectif du partage",
-      tabs: {
-        shareLink: "Lien",
-        export: "Exporter",
-        sendTo: "Envoyer à...",
-      },
+      modalTitle: "Partager",
       live: {
         title: "Collaboration en direct",
-        description: "Invitez des personnes à modifier ce fichier avec vous.",
+        description:
+          "Créez une room chiffrée pour collaborer en temps réel.",
         startSession: "Démarrer la session",
         startDescription:
-          "Créez un lien d'invitation modifiable pour ce fichier.",
+          "Les documents inclus rejoignent la room. Les documents exclus restent locaux.",
+        roomDocumentsAria: "Documents du workspace inclus dans la room en direct",
+        roomDocumentsLabel: "Documents inclus",
+        includedCount: (included, total) => `${included}/${total} inclus`,
+        inviteAgent: "Copier le prompt agent",
+        inviteAgentDescription:
+          "Copie un prompt pour la room. L'URL de la room est ajoutée seulement au clic.",
+        retrySession: "Réessayer",
         nameLabel: "Votre nom",
         nameAria: "Votre nom de collaboration",
         anonymousPlaceholder: "Anonyme",
         inviteLabel: "Lien d'invitation",
         invalidInviteTitle:
-          "Ce fichier en direct n'a pas de lien d'invitation valide.",
+          "Cette room en direct n'a pas de lien d'invitation valide.",
         copyLink: "Copier le lien",
         copied: "Copié",
         stopSession: "Arrêter la session",
-        stopConfirm:
-          "Arrêter le partage de ce fichier ?\n\nCet onglet quittera le room en direct et gardera le fichier actuel en local. Les autres collaborateurs peuvent continuer dans le room.",
       },
       shareable: {
-        title: "Lien de snapshot",
+        title: "Exporter vers un lien",
         description:
-          "Créez un snapshot chiffré en copie locale. Toute personne disposant du lien complet peut l'ouvrir pendant 7 jours.",
+          "Créez un lien chiffré vers une copie des documents inclus.",
         noFileReason:
-          "Ouvrez un fichier avant de créer un lien de snapshot.",
-        emptyFileReason: (fileTitle) =>
-          `Ajoutez du contenu à ${fileTitle} avant de créer un lien de snapshot.`,
-        exportToLink: "Créer un lien de snapshot",
-        exporting: "Création du lien",
-        updateLink: "Nouveau lien de snapshot",
-        openLink: "Ouvrir le snapshot",
-        linkLabel: "Lien de snapshot",
+          "Ouvrez un fichier avant d'exporter vers un lien.",
+        exportToLink: "Exporter vers un lien",
+        exporting: "Export du lien",
+        linkLabel: "Lien d'export",
       },
       exportPanel: {
-        title: "Exporter le fichier",
-        description: "Sortez le fichier actuel de Tabula.md.",
-        fileTitle: "File",
-        fileDescription:
-          "Téléchargez le fichier actuel.",
-        copyFileTitle: "Copier le fichier",
-        copyFileDescription:
-          "Copiez le fichier actuel dans le presse-papiers.",
-        projectArchiveTitle: "Archive du projet",
-        projectArchiveDescription: "Regroupez tous les fichiers du projet.",
-      },
-      sendTo: {
-        title: "Envoyer à un agent de code local",
-        description:
-          "Créez un prompt pour Codex, Claude Code ou un autre agent de code local.",
-        destinationTitle: "Agent de code local",
-        destinationDescription:
-          "Transmettez le contexte du fichier comme prompt prêt à coller.",
-        copyPrompt: "Copier le prompt",
-        currentFile: "Fichier actuel",
-        project: "Projet",
-        instructionLabel: "Que doit faire l'agent ?",
-        instructionPlaceholder: (fileTitle) =>
-          `Implémentez la prochaine étape pour ${fileTitle}.`,
+        title: "Exporter",
+        description: "Créez une copie chiffrée des documents inclus.",
+        projectArchiveTitle: "Exporter vers un fichier",
+        projectArchiveDescription: "Exporter vers un fichier télécharge les documents inclus en .zip.",
       },
     },
   },
@@ -732,70 +582,46 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     share: {
       trigger: "Teilen",
-      modalTitle: (fileTitle) => `${fileTitle} teilen`,
-      purposeAria: "Teilen-Zweck",
-      tabs: {
-        shareLink: "Teilen-Link",
-        export: "Exportieren",
-        sendTo: "Senden an...",
-      },
+      modalTitle: "Teilen",
       live: {
         title: "Live-Zusammenarbeit",
-        description: "Lade Personen ein, diese Datei gemeinsam zu bearbeiten.",
+        description:
+          "Erstelle einen verschlüsselten Room für Zusammenarbeit in Echtzeit.",
         startSession: "Sitzung starten",
         startDescription:
-          "Erstelle einen bearbeitbaren Einladungslink für diese Datei.",
+          "Eingeschlossene Dokumente treten dem Room bei. Ausgeschlossene bleiben lokal.",
+        roomDocumentsAria: "Workspace-Dokumente im Live-Room",
+        roomDocumentsLabel: "Eingeschlossene Dokumente",
+        includedCount: (included, total) => `${included}/${total} enthalten`,
+        inviteAgent: "Agent-Prompt kopieren",
+        inviteAgentDescription:
+          "Kopiert einen Room-Prompt. Die Room-URL wird nur beim Klick eingefügt.",
+        retrySession: "Erneut versuchen",
         nameLabel: "Dein Name",
         nameAria: "Dein Name für die Zusammenarbeit",
         anonymousPlaceholder: "Anonym",
         inviteLabel: "Einladungslink",
         invalidInviteTitle:
-          "Diese Live-Datei hat keinen gültigen Einladungslink.",
+          "Dieser Live-Room hat keinen gültigen Einladungslink.",
         copyLink: "Link kopieren",
         copied: "Kopiert",
-        stopSession: "Sitzung stoppen",
-        stopConfirm:
-          "Diese Datei nicht mehr teilen?\n\nDieser Tab verlässt den Live-room und behält die aktuelle Datei lokal. Andere können im room weiterarbeiten.",
+        stopSession: "Sitzung beenden",
       },
       shareable: {
-        title: "Snapshot-Link",
+        title: "Als Link exportieren",
         description:
-          "Erstelle einen verschlüsselten Snapshot als lokale Kopie. Wer den vollständigen Link hat, kann ihn 7 Tage lang öffnen.",
+          "Erstelle einen verschlüsselten Link zu einer Kopie der enthaltenen Dokumente.",
         noFileReason:
-          "Öffne eine Datei, bevor du einen Snapshot-Link erstellst.",
-        emptyFileReason: (fileTitle) =>
-          `Füge Inhalt zu ${fileTitle} hinzu, bevor du einen Snapshot-Link erstellst.`,
-        exportToLink: "Snapshot-Link erstellen",
-        exporting: "Link wird erstellt",
-        updateLink: "Neuer Snapshot-Link",
-        openLink: "Snapshot öffnen",
-        linkLabel: "Snapshot-Link",
+          "Öffne eine Datei, bevor du als Link exportierst.",
+        exportToLink: "Als Link exportieren",
+        exporting: "Link wird exportiert",
+        linkLabel: "Exportlink",
       },
       exportPanel: {
-        title: "Datei exportieren",
-        description: "Nimm die aktuelle Datei aus Tabula.md heraus.",
-        fileTitle: "File",
-        fileDescription:
-          "Lade die aktuelle Datei herunter.",
-        copyFileTitle: "Datei kopieren",
-        copyFileDescription:
-          "Kopiere die aktuelle Datei in die Zwischenablage.",
-        projectArchiveTitle: "Projektarchiv",
-        projectArchiveDescription: "Bündle alle Projektdateien.",
-      },
-      sendTo: {
-        title: "An lokalen Coding-Agent senden",
-        description:
-          "Erstelle einen Prompt für Codex, Claude Code oder einen anderen lokalen Coding-Agent.",
-        destinationTitle: "Lokaler Coding-Agent",
-        destinationDescription:
-          "Übergib Dateikontext als einfügbaren Prompt.",
-        copyPrompt: "Prompt kopieren",
-        currentFile: "Aktuelle Datei",
-        project: "Projekt",
-        instructionLabel: "Was soll der Agent tun?",
-        instructionPlaceholder: (fileTitle) =>
-          `Implementiere den nächsten Schritt für ${fileTitle}.`,
+        title: "Exportieren",
+        description: "Erstelle eine verschlüsselte Kopie der enthaltenen Dokumente.",
+        projectArchiveTitle: "Als Datei exportieren",
+        projectArchiveDescription: "Als Datei exportieren lädt die enthaltenen Dokumente als .zip herunter.",
       },
     },
   },

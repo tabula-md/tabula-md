@@ -9,11 +9,11 @@
 
 .app-toast {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   min-height: 34px;
-  max-width: min(420px, calc(100vw - 32px));
-  padding: 0 12px;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 9px 12px;
   border-radius: 8px;
   color: var(--toast-text);
   background: var(--toast-background);
@@ -22,7 +22,12 @@
   font-weight: 500;
   line-height: 1.3;
   pointer-events: auto;
-  white-space: nowrap;
+  white-space: normal;
+}
+
+.app-toast > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .app-toast-action {

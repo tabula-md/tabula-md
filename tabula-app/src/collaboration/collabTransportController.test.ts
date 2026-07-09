@@ -4,7 +4,6 @@ import { createCollabTransportHandlers } from "./collabTransportController";
 const createHarness = (overrides: Partial<Parameters<typeof createCollabTransportHandlers>[0]> = {}) => {
   const options: Parameters<typeof createCollabTransportHandlers>[0] = {
     isClosed: vi.fn(() => false),
-    fetchSnapshot: vi.fn(async () => "missing" as const),
     markJoined: vi.fn(() => ({ reconnected: false as const })),
     markOffline: vi.fn(() => ({
       status: "failed" as const,
@@ -12,10 +11,7 @@ const createHarness = (overrides: Partial<Parameters<typeof createCollabTranspor
     })),
     setStatus: vi.fn(),
     emitCurrentState: vi.fn(async () => {}),
-    emitStateInit: vi.fn(async () => {}),
     publishPresence: vi.fn(async () => {}),
-    shouldStoreSnapshot: vi.fn(() => false),
-    storeSnapshot: vi.fn(async () => true),
     routeEnvelope: vi.fn(async () => {}),
     pruneCollaborators: vi.fn(() => false),
     clearCollaborators: vi.fn(),
@@ -39,7 +35,7 @@ describe("collaboration transport controller", () => {
     expect(options.setStatus).toHaveBeenCalledWith("connecting");
   });
 
-  it("ignores socket events after the client closes the connection", async () => {
+  it("ignores lifecycle socket events after the client closes the connection", async () => {
     const { options, handlers } = createHarness({
       isClosed: vi.fn(() => true),
     });
@@ -50,38 +46,23 @@ describe("collaboration transport controller", () => {
     handlers.onConnectError();
 
     expect(options.setStatus).not.toHaveBeenCalled();
-    expect(options.fetchSnapshot).not.toHaveBeenCalled();
     expect(options.clearCollaborators).not.toHaveBeenCalled();
+    expect(options.emitCurrentState).not.toHaveBeenCalled();
+    expect(options.publishPresence).not.toHaveBeenCalled();
   });
 
-  it("continues joining when recovery is unavailable", async () => {
-    const { options, handlers } = createHarness({
-      fetchSnapshot: vi.fn(async () => "unavailable" as const),
-    });
-
-    await handlers.onJoined({ roomId: "room-1", clientId: "self", peerCount: 0 });
-
-    expect(options.setStatus).toHaveBeenCalledWith("connected");
-    expect(options.emitCurrentState).toHaveBeenCalled();
-  });
-
-  it("publishes document state and presence after joining", async () => {
-    const { options, handlers } = createHarness({
-      fetchSnapshot: vi.fn(async () => "restored" as const),
-      shouldStoreSnapshot: vi.fn(() => true),
-    });
+  it("publishes presence and current workspace state after joining", async () => {
+    const { options, handlers } = createHarness();
 
     await handlers.onJoined({ roomId: "room-1", clientId: "self", peerCount: 0 });
 
     expect(options.setStatus).toHaveBeenCalledWith("connected");
     expect(options.markJoined).toHaveBeenCalled();
-    expect(options.emitCurrentState).toHaveBeenCalled();
     expect(options.publishPresence).toHaveBeenCalled();
-    expect(options.shouldStoreSnapshot).toHaveBeenCalledWith("restored");
-    expect(options.storeSnapshot).toHaveBeenCalled();
+    expect(options.emitCurrentState).toHaveBeenCalled();
   });
 
-  it("emits a recovery event when a previous session reconnects", async () => {
+  it("emits a recovery event when a previous socket session reconnects", async () => {
     const { options, handlers } = createHarness({
       markJoined: vi.fn(() => ({
         reconnected: true,
@@ -99,20 +80,21 @@ describe("collaboration transport controller", () => {
 
   it("routes encrypted envelopes through the envelope router", () => {
     const { options, handlers } = createHarness();
-    const envelope = { kind: "presence" };
+    const envelope = { kind: "room-event" };
 
     handlers.onMessage(envelope);
 
     expect(options.routeEnvelope).toHaveBeenCalledWith(envelope);
   });
 
-  it("emits state-init when a new peer joins", () => {
+  it("publishes presence and current workspace state when a peer joins", async () => {
     const { options, handlers } = createHarness();
 
     handlers.onPeerJoined({ roomId: "room-1", clientId: "remote" });
+    await Promise.resolve();
 
-    expect(options.emitStateInit).toHaveBeenCalled();
     expect(options.publishPresence).toHaveBeenCalled();
+    expect(options.emitCurrentState).toHaveBeenCalled();
   });
 
   it("publishes collaborators only when the peer list changes", () => {
@@ -125,13 +107,25 @@ describe("collaboration transport controller", () => {
     expect(options.publishCollaborators).toHaveBeenCalled();
   });
 
-  it("resyncs state and presence after receiving a multi-peer room list", () => {
+  it("resyncs workspace state and presence after receiving a multi-peer room list", async () => {
     const { options, handlers } = createHarness();
 
     handlers.onPeers({ roomId: "room-1", peers: ["self", "remote"] });
+    await Promise.resolve();
 
-    expect(options.emitStateInit).toHaveBeenCalledTimes(1);
     expect(options.publishPresence).toHaveBeenCalledTimes(1);
+    expect(options.emitCurrentState).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not resync workspace state for an unchanged multi-peer room list", async () => {
+    const { options, handlers } = createHarness();
+
+    handlers.onPeers({ roomId: "room-1", peers: ["self", "remote"] });
+    handlers.onPeers({ roomId: "room-1", peers: ["remote", "self"] });
+    await Promise.resolve();
+
+    expect(options.publishPresence).toHaveBeenCalledTimes(1);
+    expect(options.emitCurrentState).toHaveBeenCalledTimes(1);
   });
 
   it("does not resync state for a room list containing only self", () => {
@@ -139,8 +133,8 @@ describe("collaboration transport controller", () => {
 
     handlers.onPeers({ roomId: "room-1", peers: ["self"] });
 
-    expect(options.emitStateInit).not.toHaveBeenCalled();
     expect(options.publishPresence).not.toHaveBeenCalled();
+    expect(options.emitCurrentState).not.toHaveBeenCalled();
   });
 
   it("clears collaborators and reports reconnecting disconnects", () => {

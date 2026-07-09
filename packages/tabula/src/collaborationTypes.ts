@@ -1,3 +1,9 @@
+import type {
+  RoomActorClient,
+  RoomActorKind,
+  RoomCapability,
+} from "./roomCollaboration";
+
 export type CollaborationConnectionStatus =
   | "idle"
   | "connecting"
@@ -7,6 +13,7 @@ export type CollaborationConnectionStatus =
   | "failed";
 
 export type CollaborationLiveSelection = {
+  documentId?: string;
   from: number;
   to: number;
   columnNumber?: number;
@@ -21,24 +28,12 @@ export type CollaborationCollaborator = {
   name: string;
   color: string;
   lastSeen: number;
+  activeDocumentId?: string;
+  kind?: RoomActorKind;
+  client?: RoomActorClient;
+  capabilities?: RoomCapability[];
+  joinedAt?: string;
   roomId?: string;
   fileTitle?: string;
   selection?: CollaborationLiveSelection;
-};
-
-export type CollaborationRoomSnapshot = {
-  id: string;
-  createdAt: string;
-  textLength: number;
-  updateSize: number;
-  version: number;
-};
-
-export type CollaborationRoomMeta = {
-  roomId: string;
-  version: number;
-  snapshotCount: number;
-  lastSavedAt?: string;
-  lastUpdatedAt?: string;
-  snapshots: CollaborationRoomSnapshot[];
 };

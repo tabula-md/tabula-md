@@ -12,7 +12,6 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import type { ConnectionStatus } from "../collaboration";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 
@@ -37,9 +36,9 @@ type RightPanelFilesProps = {
   openFileIds: string[];
   activeFileId: string;
   fileQuery: string;
+  liveFileIds: readonly string[];
   commentsByFileId: Record<string, FileComment[]>;
   collapsedFolderIds: Set<string>;
-  getFileStatus: (file: WorkspaceFile) => ConnectionStatus;
   getFileSearchText: (file: WorkspaceFile) => string;
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
@@ -53,16 +52,6 @@ type RightPanelFilesProps = {
 };
 
 const RIGHT_TREE_INDENT = 20;
-
-const getStatusLabel = (status: ConnectionStatus) =>
-  ({
-    idle: "Local",
-    connecting: "Connecting",
-    connected: "Live",
-    reconnecting: "Reconnecting",
-    disconnected: "Disconnected",
-    failed: "Failed",
-  })[status];
 
 const getFileTreeParts = (title: string) =>
   title
@@ -161,9 +150,9 @@ export function RightPanelFiles({
   openFileIds,
   activeFileId,
   fileQuery,
+  liveFileIds,
   commentsByFileId,
   collapsedFolderIds,
-  getFileStatus,
   getFileSearchText,
   onFileQueryChange,
   onNewFile,
@@ -182,6 +171,7 @@ export function RightPanelFiles({
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const getFileComments = (fileId: string) => commentsByFileId[fileId] ?? [];
+  const liveFileIdSet = new Set(liveFileIds);
   const openFileIdSet = new Set(openFileIds);
   const normalizedQuery = fileQuery.trim().toLowerCase();
   const visibleFiles = normalizedQuery
@@ -323,9 +313,18 @@ export function RightPanelFiles({
     }
   };
 
+  const nodeHasLiveFile = (node: FileTreeNode): boolean => {
+    if (node.type === "file") {
+      return liveFileIdSet.has(node.file.id);
+    }
+
+    return node.children.some(nodeHasLiveFile);
+  };
+
   const renderFileTreeNode = (node: FileTreeNode, depth: number) => {
     if (node.type === "folder") {
       const folderCollapsed = collapsedFolderIds.has(node.id);
+      const folderHasLiveFile = nodeHasLiveFile(node);
 
       return (
         <li className="right-file-tree-node folder" key={node.id}>
@@ -337,7 +336,10 @@ export function RightPanelFiles({
             onClick={() => onToggleFolder(node.id)}
           >
             {folderCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
-            <Folder size={15} />
+            <span className={`right-file-folder-icon ${folderHasLiveFile ? "live" : ""}`}>
+              <Folder size={15} />
+              {folderHasLiveFile && <span className="right-file-icon-live-dot" aria-hidden="true" />}
+            </span>
             <span className="right-row-label">{node.name}</span>
           </button>
           {!folderCollapsed && node.children.length > 0 && (
@@ -351,8 +353,8 @@ export function RightPanelFiles({
 
     const file = node.file;
     const openComments = getFileComments(file.id).filter((comment) => !comment.resolved);
-    const status = getFileStatus(file);
     const isActiveFile = file.id === activeFileId;
+    const isLiveFile = liveFileIdSet.has(file.id);
     const isOpenFile = openFileIdSet.has(file.id);
     const isRenaming = file.id === renamingFileId;
     const menuOpen = file.id === actionMenuFileId;
@@ -366,7 +368,10 @@ export function RightPanelFiles({
         >
           {isRenaming ? (
             <div className="right-file-open-button">
-              <File size={16} />
+              <span className={`right-file-document-icon ${isLiveFile ? "live" : ""}`}>
+                <File size={16} />
+                {isLiveFile && <span className="right-file-icon-live-dot" aria-hidden="true" />}
+              </span>
               <input
                 ref={renameInputRef}
                 className="right-file-rename-input"
@@ -394,7 +399,6 @@ export function RightPanelFiles({
                 }}
               />
               <span className="right-file-tree-signals">
-                {file.roomId && <span className={`right-live-dot ${status}`} title={getStatusLabel(status)} />}
                 {openComments.length > 0 && (
                   <span
                     className="right-row-badge right-file-tree-comment-count"
@@ -422,10 +426,12 @@ export function RightPanelFiles({
                 onClick={() => onSelectFile(file.id)}
                 onKeyDown={(event) => handleFileKeyDown(event, file.id)}
               >
-                <File size={16} />
+                <span className={`right-file-document-icon ${isLiveFile ? "live" : ""}`}>
+                  <File size={16} />
+                  {isLiveFile && <span className="right-file-icon-live-dot" aria-hidden="true" />}
+                </span>
                 <span className="right-row-label">{getFileDisplayTitle(node.name)}</span>
                 <span className="right-file-tree-signals">
-                  {file.roomId && <span className={`right-live-dot ${status}`} title={getStatusLabel(status)} />}
                   {openComments.length > 0 && (
                     <span
                       className="right-row-badge right-file-tree-comment-count"

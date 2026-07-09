@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import type { ConnectionStatus } from "../collaboration";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
@@ -16,6 +16,7 @@ type FileTabsProps = {
   activeFile?: WorkspaceFile;
   activeCollaboratorCount: number;
   getFileStatus: (file: WorkspaceFile) => ConnectionStatus;
+  liveFileIds: readonly string[];
   onAddFile: () => void;
   onSelectFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
@@ -48,6 +49,7 @@ export function FileTabs({
   activeFile,
   activeCollaboratorCount,
   getFileStatus,
+  liveFileIds,
   onAddFile,
   onSelectFile,
   onRenameFile,
@@ -61,6 +63,7 @@ export function FileTabs({
   const [draggedFileId, setDraggedFileId] = useState<string | null>(null);
   const tabsScrollRef = useRef<HTMLDivElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
+  const liveFileIdSet = useMemo(() => new Set(liveFileIds), [liveFileIds]);
 
   const updateTabScrollState = () => {
     const element = tabsScrollRef.current;
@@ -247,11 +250,14 @@ export function FileTabs({
           const fileStatus = getFileStatus(file);
           const isActiveFile = file.id === activeFile?.id;
           const isRenaming = file.id === renamingFileId;
+          const isLiveFile = liveFileIdSet.has(file.id);
+          const liveLabel =
+            isLiveFile && fileStatus !== "idle" ? getStatusLabel(fileStatus) : "Included in live room";
           const collaboratorCount = isActiveFile ? activeCollaboratorCount : (file.collaboratorCount ?? 0);
           const tabDisplayTitle = getTabDisplayTitle(file.title);
           return (
             <div
-              className={`tab-item ${isActiveFile ? "active" : ""} ${file.roomId ? "live" : ""} ${
+              className={`tab-item ${isActiveFile ? "active" : ""} ${isLiveFile ? "live" : ""} ${
                 draggedFileId === file.id ? "dragging" : ""
               }`}
               data-file-name={file.title}
@@ -273,7 +279,7 @@ export function FileTabs({
                 className={`tab-select-button ${isRenaming ? "tab-rename-shell" : ""}`}
                 role={isRenaming ? undefined : "button"}
                 tabIndex={isRenaming ? undefined : 0}
-                title={`${file.title} · ${file.roomId ? getStatusLabel(fileStatus) : "Local draft"}`}
+                title={`${file.title} · ${isLiveFile ? liveLabel : "Local draft"}`}
                 onMouseDown={(event) => {
                   if (event.detail >= 2) {
                     event.preventDefault();
@@ -302,9 +308,6 @@ export function FileTabs({
                   }
                 }}
               >
-                {file.roomId && (
-                  <span className={`tab-live-dot ${fileStatus}`} title={getStatusLabel(fileStatus)} />
-                )}
                 {isRenaming ? (
                   <input
                     ref={renameInputRef}
@@ -329,12 +332,20 @@ export function FileTabs({
                 ) : (
                   <span className="tab-title">{tabDisplayTitle}</span>
                 )}
-                {file.roomId && collaboratorCount > 0 && (
+                {isLiveFile && collaboratorCount > 0 && (
                   <span className="tab-collaborator-count" title={`${collaboratorCount} collaborators`}>
                     {collaboratorCount}
                   </span>
                 )}
               </div>
+
+              {isLiveFile && (
+                <span
+                  className="tab-live-scope-dot"
+                  title="Included in live room"
+                  aria-hidden="true"
+                />
+              )}
 
               {!isRenaming && (
                 <div className="tab-actions">

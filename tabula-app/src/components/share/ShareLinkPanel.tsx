@@ -1,14 +1,14 @@
 import {
+  Bot,
   Check,
   Copy,
-  ExternalLink,
-  Link,
   Play,
   RefreshCw,
   Square,
   Users,
 } from "lucide-react";
-import type { JsonShareController } from "../../hooks/useJsonShareController";
+import type { ReactNode } from "react";
+import type { ConnectionStatus } from "../../collaboration";
 import type { ShareViewModel } from "../../share";
 import type {
   WorkspaceChromeCopy,
@@ -16,40 +16,59 @@ import type {
 } from "../../workspaceLocale";
 
 type ShareLinkPanelProps = {
+  agentPromptCopied: boolean;
   chromeCopy: WorkspaceChromeCopy;
   copied: boolean;
   copy: WorkspaceShareCopy;
   currentUserName: string;
-  exportLinkCopied: boolean;
+  connectionStatus: ConnectionStatus;
+  exportPanel: ReactNode;
   isLive: boolean;
-  jsonShare: JsonShareController;
+  isLiveConnected: boolean;
   shareView: ShareViewModel;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
+  onCopyLocalAgentPrompt: () => void;
   onCopyShareUrl: () => void;
-  onCopyShareableLink: () => void;
-  onExportToJsonLink: () => void;
-  onStartSession: () => void;
+  onRetrySession: () => void;
+  onStartWorkspaceRoom: () => void;
   onStopSession: () => void;
 };
 
+const liveConnectionCopy: Record<Extract<ConnectionStatus, "reconnecting" | "disconnected">, { title: string; description: string }> = {
+  reconnecting: {
+    title: "Reconnecting to live room",
+    description: "Changes stay local until the room reconnects.",
+  },
+  disconnected: {
+    title: "Live room disconnected",
+    description: "Reconnect before inviting people or agents.",
+  },
+};
+
 export function ShareLinkPanel({
+  agentPromptCopied,
   chromeCopy,
   copied,
   copy,
   currentUserName,
-  exportLinkCopied,
+  connectionStatus,
+  exportPanel,
   isLive,
-  jsonShare,
+  isLiveConnected,
   shareView,
   onChangeUserName,
   onCommitUserName,
+  onCopyLocalAgentPrompt,
   onCopyShareUrl,
-  onCopyShareableLink,
-  onExportToJsonLink,
-  onStartSession,
+  onRetrySession,
+  onStartWorkspaceRoom,
   onStopSession,
 }: ShareLinkPanelProps) {
+  const canRetrySession = connectionStatus === "disconnected";
+  const showTransientLiveStatus = !isLiveConnected && (connectionStatus === "reconnecting" || connectionStatus === "disconnected");
+  const connectionCopy = showTransientLiveStatus ? liveConnectionCopy[connectionStatus] : null;
+
   return (
     <>
       <div className="share-link-section">
@@ -70,7 +89,7 @@ export function ShareLinkPanel({
               type="button"
               disabled={!shareView.live.canStart}
               title={shareView.live.disabledReason || undefined}
-              onClick={onStartSession}
+              onClick={onStartWorkspaceRoom}
             >
               <Play size={16} />
               <span>{copy.live.startSession}</span>
@@ -81,144 +100,109 @@ export function ShareLinkPanel({
 
         {isLive && (
           <div className="live-room-box">
-            <div className="share-modal-field">
-              <label>{copy.live.nameLabel}</label>
-              <input
-                value={currentUserName}
-                aria-label={copy.live.nameAria}
-                placeholder={copy.live.anonymousPlaceholder}
-                maxLength={40}
-                onBlur={onCommitUserName}
-                onChange={(event) => onChangeUserName(event.target.value)}
-              />
-            </div>
+            {connectionCopy && (
+              <div className={`share-live-status ${connectionStatus}`}>
+                <strong>{connectionCopy.title}</strong>
+                <p>{connectionCopy.description}</p>
+              </div>
+            )}
 
-            <div className="share-modal-field">
-              <label>{copy.live.inviteLabel}</label>
-              <div className="share-modal-link-row">
-                <div
-                  className="share-link-display"
-                  aria-label={copy.live.inviteLabel}
-                  title={shareView.live.link.title}
-                >
-                  <span>{shareView.live.link.display}</span>
+            {isLiveConnected && (
+              <>
+                <div className="share-modal-field">
+                  <label>{copy.live.nameLabel}</label>
+                  <input
+                    value={currentUserName}
+                    aria-label={copy.live.nameAria}
+                    placeholder={copy.live.anonymousPlaceholder}
+                    maxLength={40}
+                    onBlur={onCommitUserName}
+                    onChange={(event) => onChangeUserName(event.target.value)}
+                  />
                 </div>
+
+                <div className="share-modal-field">
+                  <label>{copy.live.inviteLabel}</label>
+                  <div className="share-modal-link-row">
+                    <div
+                      className="share-link-display"
+                      aria-label={copy.live.inviteLabel}
+                      title={shareView.live.link.title}
+                    >
+                      <span>{shareView.live.link.display}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onCopyShareUrl}
+                      disabled={!shareView.live.link.canCopy}
+                      title={
+                        shareView.live.link.canCopy
+                          ? undefined
+                          : copy.live.invalidInviteTitle
+                      }
+                    >
+                      {copied ? <Check size={17} /> : <Copy size={17} />}
+                      <span>{copied ? copy.live.copied : copy.live.copyLink}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="share-live-agent-box">
+                  <div>
+                    <strong>{copy.live.inviteAgent}</strong>
+                    <p>{copy.live.inviteAgentDescription}</p>
+                  </div>
+                  <button
+                    className="share-modal-secondary"
+                    type="button"
+                    onClick={onCopyLocalAgentPrompt}
+                  >
+                    {agentPromptCopied ? <Check size={16} /> : <Bot size={16} />}
+                    <span>
+                      {agentPromptCopied ? copy.live.copied : copy.live.inviteAgent}
+                    </span>
+                  </button>
+                </div>
+              </>
+            )}
+
+            <div className="share-live-session-actions">
+              {canRetrySession && (
                 <button
+                  className="share-modal-secondary"
                   type="button"
-                  onClick={onCopyShareUrl}
-                  disabled={!shareView.live.link.canCopy}
-                  title={
-                    shareView.live.link.canCopy
-                      ? undefined
-                      : copy.live.invalidInviteTitle
-                  }
+                  onClick={onRetrySession}
                 >
-                  {copied ? <Check size={17} /> : <Copy size={17} />}
-                  <span>{copied ? copy.live.copied : copy.live.copyLink}</span>
+                  <RefreshCw size={15} />
+                  <span>{copy.live.retrySession}</span>
                 </button>
-              </div>
-            </div>
-
-            <button
-              className="share-modal-danger"
-              type="button"
-              onClick={onStopSession}
-            >
-              <Square size={14} />
-              <span>{copy.live.stopSession}</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="share-section-divider" aria-hidden="true">
-        <span />
-        <strong>{chromeCopy.common.or}</strong>
-        <span />
-      </div>
-
-      <div className="share-link-section">
-        <div className="share-panel-heading">
-          <span className="share-modal-option-icon">
-            <Link size={17} />
-          </span>
-          <div>
-            <h3>{copy.shareable.title}</h3>
-            <p>{copy.shareable.description}</p>
-          </div>
-        </div>
-
-        {shareView.shareable.hasLink && jsonShare.url ? (
-          <div className="share-copy-box">
-            <div className="share-modal-field">
-              <label>{copy.shareable.linkLabel}</label>
-              <div className="share-modal-link-row">
-                <a
-                  className="share-link-display"
-                  href={jsonShare.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={copy.shareable.linkLabel}
-                  title={jsonShare.url}
-                >
-                  <span>{jsonShare.urlPreview}</span>
-                </a>
-                <button type="button" onClick={onCopyShareableLink}>
-                  {exportLinkCopied ? <Check size={17} /> : <Copy size={17} />}
-                  <span>
-                    {exportLinkCopied ? copy.live.copied : copy.live.copyLink}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="share-copy-actions">
+              )}
               <button
-                className="share-modal-primary"
+                className="share-modal-danger"
                 type="button"
-                onClick={onExportToJsonLink}
-                disabled={!jsonShare.canExport}
-                title={shareView.shareable.disabledReason || undefined}
+                onClick={onStopSession}
               >
-                <RefreshCw size={16} />
-                <span>{shareView.shareable.primaryLabel}</span>
+                <Square size={14} />
+                <span>{copy.live.stopSession}</span>
               </button>
-              <a
-                className="share-modal-secondary"
-                href={jsonShare.url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <ExternalLink size={16} />
-                <span>{copy.shareable.openLink}</span>
-              </a>
             </div>
-            {shareView.shareable.disabledReason && (
-              <p className="share-modal-muted">
-                {shareView.shareable.disabledReason}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="share-copy-box">
-            <button
-              className="share-modal-primary"
-              type="button"
-              onClick={onExportToJsonLink}
-              disabled={!jsonShare.canExport}
-              title={shareView.shareable.disabledReason || undefined}
-            >
-              <Link size={16} />
-              <span>{shareView.shareable.primaryLabel}</span>
-            </button>
-            {shareView.shareable.disabledReason && (
-              <p className="share-modal-muted">
-                {shareView.shareable.disabledReason}
-              </p>
-            )}
           </div>
         )}
       </div>
+
+      {!isLive && (
+        <>
+          <div className="share-section-divider" aria-hidden="true">
+            <span />
+            <strong>{chromeCopy.common.or}</strong>
+            <span />
+          </div>
+
+          <div className="share-link-section share-export-section">
+            {exportPanel}
+          </div>
+        </>
+      )}
     </>
   );
 }

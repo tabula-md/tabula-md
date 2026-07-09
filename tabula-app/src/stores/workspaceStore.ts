@@ -50,11 +50,6 @@ type CollaborationStatusOptions = {
   requireRoom?: boolean;
 };
 
-type RoomMetaUpdate = {
-  snapshotCount: number;
-  lastSnapshotAt?: string;
-};
-
 type RecoveryEventUpdate = {
   type: NonNullable<WorkspaceFile["lastRecoveryType"]>;
   message: string;
@@ -101,9 +96,12 @@ type WorkspaceStoreActions = {
   ) => void;
   setFileCollaboratorCount: (fileId: string, collaboratorCount: number) => void;
   setFileRecoveryEvent: (fileId: string, event: RecoveryEventUpdate) => void;
-  setFileRoomMeta: (fileId: string, meta: RoomMetaUpdate) => void;
   setFileText: (fileId: string, text: string) => void;
-  startFileCollaborationSession: (fileId: string, roomId: string, shareUrl: string) => WorkspaceFile | undefined;
+  startFileCollaborationSession: (
+    fileId: string,
+    roomId: string,
+    shareUrl: string,
+  ) => WorkspaceFile | undefined;
   stopFileCollaborationSession: (fileId: string) => WorkspaceFile | undefined;
   upsertHelpFile: (helpMarkdown: string) => WorkspaceFile;
 };
@@ -114,6 +112,8 @@ const noopCreateFile = (index: number, overrides: Partial<WorkspaceFile> = {}): 
   id: overrides.id ?? `workspace-file-${index}`,
   title: overrides.title ?? (index === 1 ? "Untitled.md" : `Untitled ${index}.md`),
   text: overrides.text ?? "",
+  parentId: overrides.parentId,
+  order: overrides.order,
   viewMode: overrides.viewMode ?? "edit",
   readingWidth: overrides.readingWidth ?? "wide",
   splitRatio: overrides.splitRatio,
@@ -124,8 +124,6 @@ const noopCreateFile = (index: number, overrides: Partial<WorkspaceFile> = {}): 
   roomId: overrides.roomId,
   shareUrl: overrides.shareUrl,
   collaboratorCount: overrides.collaboratorCount,
-  snapshotCount: overrides.snapshotCount,
-  lastSnapshotAt: overrides.lastSnapshotAt,
   lastRecoveryType: overrides.lastRecoveryType,
   lastRecoveryMessage: overrides.lastRecoveryMessage,
   lastRecoveryAt: overrides.lastRecoveryAt,
@@ -181,8 +179,6 @@ const clearCollaborationFields = (file: WorkspaceFile): WorkspaceFile => ({
   shareUrl: undefined,
   connectionStatus: "idle",
   collaboratorCount: 0,
-  snapshotCount: 0,
-  lastSnapshotAt: undefined,
   lastRecoveryType: undefined,
   lastRecoveryMessage: undefined,
   lastRecoveryAt: undefined,
@@ -458,16 +454,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     set((state) => updateFileInState(state, fileId, (file) => ({ ...file, collaboratorCount })));
   },
 
-  setFileRoomMeta: (fileId, meta) => {
-    set((state) =>
-      updateFileInState(state, fileId, (file) => ({
-        ...file,
-        snapshotCount: meta.snapshotCount,
-        lastSnapshotAt: meta.lastSnapshotAt,
-      })),
-    );
-  },
-
   setFileRecoveryEvent: (fileId, event) => {
     set((state) =>
       updateFileInState(state, fileId, (file) => ({
@@ -489,8 +475,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
           roomId,
           shareUrl,
           connectionStatus: "connecting",
-          snapshotCount: 0,
-          lastSnapshotAt: undefined,
           lastRecoveryType: undefined,
           lastRecoveryMessage: undefined,
           lastRecoveryAt: undefined,

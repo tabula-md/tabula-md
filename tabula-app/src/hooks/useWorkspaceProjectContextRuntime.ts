@@ -6,6 +6,7 @@ import {
 } from "react";
 import type { ConnectionStatus } from "../collaboration";
 import type { WorkspaceProjectContextProps } from "../components/WorkspaceProjectContext";
+import { getLiveWorkspaceFileIds } from "../liveWorkspaceScope";
 import {
   getLineStartOffset,
   type MarkdownHeading,
@@ -66,6 +67,7 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   rightPanelView: RightPanelView;
   selectedCharacterCount: number;
   selectedText: string;
+  shareExcludedFileIds: readonly string[];
   setRightPanelOpen: (isOpen: boolean) => void;
   setRightPanelView: (view: RightPanelView) => void;
   text: string;
@@ -113,6 +115,7 @@ export function useWorkspaceProjectContextRuntime({
   rightPanelView,
   selectedCharacterCount,
   selectedText,
+  shareExcludedFileIds,
   setRightPanelOpen,
   setRightPanelView,
   text,
@@ -134,6 +137,12 @@ export function useWorkspaceProjectContextRuntime({
       }),
     [activeFile?.id, connectionStatus],
   );
+  const liveFileIds = getLiveWorkspaceFileIds({
+    activeFile,
+    excludedFileIds: shareExcludedFileIds,
+    files,
+    isLive,
+  });
 
   const goToOutlineHeading = useCallback(
     (heading: MarkdownHeading, headingIndex: number) => {
@@ -176,6 +185,7 @@ export function useWorkspaceProjectContextRuntime({
     activeFileId: activeFile?.id,
     activeFileTitle,
     fileQuery,
+    liveFileIds,
     outlineHeadings,
     commentsByFileId,
     commentDraft,
@@ -186,7 +196,6 @@ export function useWorkspaceProjectContextRuntime({
     activeCommentId,
     activeReplyCommentId,
     replyDraftByCommentId,
-    getFileStatus,
     onSetView: setRightPanelView,
     onClose: () => setRightPanelOpen(false),
     onFileQueryChange: setFileQuery,

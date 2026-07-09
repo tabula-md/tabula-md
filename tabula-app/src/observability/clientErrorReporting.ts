@@ -2,7 +2,6 @@ import { tabulaServiceConfig } from "../serviceConfig";
 
 export type ClientErrorFeature =
   | "collaboration"
-  | "firebase-recovery"
   | "json-share"
   | "markdown-preview"
   | "workspace";

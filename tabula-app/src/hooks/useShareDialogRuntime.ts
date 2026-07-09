@@ -1,16 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { JsonShareController } from "./useJsonShareController";
 import type { WorkspaceLanguage } from "./useWorkspacePreferences";
-import {
-  buildLocalAgentPrompt,
-  type AgentHandoffScope,
-} from "../shareAgentHandoff";
-import {
-  buildShareViewModel,
-  normalizeSharePanel,
-  type VisibleSharePanel,
-} from "../share";
-import type { SharePanel } from "../uiTypes";
+import { buildLocalAgentPrompt } from "../shareAgentHandoff";
+import { buildShareViewModel } from "../share";
 import {
   getWorkspaceChromeCopy,
   getWorkspaceMenuCopy,
@@ -19,14 +11,15 @@ import type { WorkspaceFile } from "../workspaceStorage";
 
 type UseShareDialogRuntimeOptions = {
   activeFile?: WorkspaceFile;
-  activeFileTitle: string;
+  activeText: string;
   canStartSession: boolean;
   files: WorkspaceFile[];
   isLive: boolean;
+  isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
+  shareExcludedFileIds: readonly string[];
   shareOpen: boolean;
-  sharePanelTarget?: SharePanel;
   startSessionUnavailableReason: string;
   onCloseShare: () => void;
   onStopSession: () => void;
@@ -34,41 +27,60 @@ type UseShareDialogRuntimeOptions = {
 
 export function useShareDialogRuntime({
   activeFile,
-  activeFileTitle,
+  activeText,
   canStartSession,
   files,
   isLive,
+  isLiveConnected,
   jsonShare,
   language,
+  shareExcludedFileIds,
   shareOpen,
-  sharePanelTarget,
   startSessionUnavailableReason,
   onCloseShare,
   onStopSession,
 }: UseShareDialogRuntimeOptions) {
-  const [sharePanel, setSharePanel] = useState<VisibleSharePanel>("share-link");
-  const [agentScope, setAgentScope] = useState<AgentHandoffScope>("file");
-  const [agentInstruction, setAgentInstruction] = useState("");
   const [agentPromptCopied, setAgentPromptCopied] = useState(false);
   const [exportLinkCopied, setExportLinkCopied] = useState(false);
-  const activeFileDisplayTitle = activeFileTitle.replace(
-    /\.(?:md|markdown)$/i,
-    "",
-  );
   const copy = getWorkspaceMenuCopy(language).share;
   const chromeCopy = getWorkspaceChromeCopy(language);
-  const shareModalTitle = copy.modalTitle(activeFileDisplayTitle);
+  const shareModalTitle = copy.modalTitle;
+  const promptFiles = useMemo(
+    () =>
+      activeFile
+        ? files.map((file) =>
+            file.id === activeFile.id
+              ? { ...file, text: activeText }
+              : file,
+          )
+        : files,
+    [activeFile, activeText, files],
+  );
+  const excludedFileIds = useMemo(
+    () => new Set(shareExcludedFileIds),
+    [shareExcludedFileIds],
+  );
+  const includedFileIds = useMemo(
+    () =>
+      files
+        .filter((file) => !excludedFileIds.has(file.id))
+        .map((file) => file.id),
+    [excludedFileIds, files],
+  );
+  const roomPromptFiles = useMemo(() => {
+    const includedIds = new Set(includedFileIds);
+    return promptFiles.filter((file) => includedIds.has(file.id));
+  }, [includedFileIds, promptFiles]);
+  const includedFileCount = useMemo(
+    () => includedFileIds.length,
+    [includedFileIds],
+  );
   const shareView = buildShareViewModel({
-    activePanel: sharePanel,
     canStartSession,
     isLive,
     labels: {
-      shareLink: copy.tabs.shareLink,
-      export: copy.tabs.export,
-      sendTo: copy.tabs.sendTo,
       exportToLink: copy.shareable.exportToLink,
       exporting: copy.shareable.exporting,
-      updateLink: copy.shareable.updateLink,
     },
     jsonShareCanExport: jsonShare.canExport,
     jsonShareDisabledReason: jsonShare.disabledReason,
@@ -78,12 +90,6 @@ export function useShareDialogRuntime({
     shareUrl: activeFile?.shareUrl,
     startSessionUnavailableReason,
   });
-
-  useEffect(() => {
-    if (shareOpen) {
-      setSharePanel(normalizeSharePanel(sharePanelTarget));
-    }
-  }, [activeFile?.id, shareOpen, sharePanelTarget]);
 
   useEffect(() => {
     if (!shareOpen) {
@@ -107,16 +113,17 @@ export function useShareDialogRuntime({
     return () => window.removeEventListener("keydown", handleEscape);
   }, [onCloseShare, shareOpen]);
 
-  const stopSession = () => {
-    const confirmed = window.confirm(copy.live.stopConfirm);
-
-    if (confirmed) {
-      onStopSession();
-    }
-  };
+  const stopSession = () => onStopSession();
 
   const exportToJsonLink = () => {
-    void jsonShare.exportLink().finally(() => setExportLinkCopied(false));
+    void jsonShare
+      .exportLink(includedFileIds)
+      .then((exported) => {
+        if (!exported) {
+          onCloseShare();
+        }
+      })
+      .finally(() => setExportLinkCopied(false));
   };
 
   const copyShareableLink = async () => {
@@ -127,10 +134,11 @@ export function useShareDialogRuntime({
 
   const copyLocalAgentPrompt = async () => {
     const prompt = buildLocalAgentPrompt({
-      activeFile,
-      files,
-      instruction: agentInstruction,
-      scope: agentScope,
+      activeFile: activeFile ? { ...activeFile, text: activeText } : undefined,
+      files: roomPromptFiles,
+      instruction: "",
+      liveRoomUrl: isLiveConnected ? activeFile?.shareUrl : undefined,
+      scope: "project",
     });
 
     await navigator.clipboard.writeText(prompt);
@@ -139,19 +147,16 @@ export function useShareDialogRuntime({
   };
 
   return {
-    activeFileDisplayTitle,
-    agentInstruction,
     agentPromptCopied,
-    agentScope,
     chromeCopy,
     copy,
     copyLocalAgentPrompt,
     copyShareableLink,
+    excludedFileIds,
     exportLinkCopied,
     exportToJsonLink,
-    setAgentInstruction,
-    setAgentScope,
-    setSharePanel,
+    includedFileCount,
+    includedFileIds,
     shareModalTitle,
     shareView,
     stopSession,

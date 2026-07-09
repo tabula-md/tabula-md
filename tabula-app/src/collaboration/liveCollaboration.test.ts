@@ -1,4 +1,3 @@
-import * as Y from "yjs";
 import { describe, expect, it } from "vitest";
 import {
   createRoomSession,
@@ -12,7 +11,6 @@ import {
   parseRoomKeyFromHash,
   parseRoomShareUrl,
   resolveTabulaRoomBaseUrl,
-  shouldStoreSnapshotAfterJoin,
 } from ".";
 
 const VALID_ROOM_KEY = "A".repeat(43);
@@ -143,58 +141,26 @@ describe("Tabula Room service URL", () => {
 });
 
 describe("Tabula Room encrypted envelopes", () => {
-  it("roundtrips an encrypted Yjs update without plaintext fields", async () => {
-    const doc = new Y.Doc();
-    doc.getText("markdown").insert(0, "# Live\n\nHello");
-
+  it("roundtrips an encrypted room-event without plaintext fields", async () => {
     const roomKey = await importRoomKey(generateRoomKey());
-    const update = Y.encodeStateAsUpdate(doc);
-    const envelope = await encryptBytesForRoom(roomKey, "room-123", "yjs-update", 1, update);
+    const plaintext = new TextEncoder().encode(JSON.stringify({
+      id: "event-1",
+      roomId: "room-123",
+      actorId: "peer-1",
+      type: "workspace.updated",
+      createdAt: "2026-07-09T00:00:00.000Z",
+    }));
+    const envelope = await encryptBytesForRoom(roomKey, "room-123", "room-event", 1, plaintext);
     const decrypted = await decryptEnvelopeForRoom(roomKey, envelope);
-
-    const restored = new Y.Doc();
-    Y.applyUpdate(restored, decrypted);
 
     expect(envelope).toMatchObject({
       v: 1,
       roomId: "room-123",
-      kind: "yjs-update",
+      kind: "room-event",
       version: 1,
     });
     expect(Object.keys(envelope)).not.toContain("roomKey");
     expect(Object.keys(envelope)).not.toContain("text");
-    expect(restored.getText("markdown").toString()).toBe("# Live\n\nHello");
-  });
-});
-
-describe("Room recovery storage policy", () => {
-  it("stores recovery state for new rooms and local changes, but not for unavailable recovery or pure restore", () => {
-    expect(
-      shouldStoreSnapshotAfterJoin({
-        hasUnstoredLocalChanges: false,
-        snapshotFetchResult: "missing",
-      }),
-    ).toBe(true);
-
-    expect(
-      shouldStoreSnapshotAfterJoin({
-        hasUnstoredLocalChanges: true,
-        snapshotFetchResult: "restored",
-      }),
-    ).toBe(true);
-
-    expect(
-      shouldStoreSnapshotAfterJoin({
-        hasUnstoredLocalChanges: false,
-        snapshotFetchResult: "restored",
-      }),
-    ).toBe(false);
-
-    expect(
-      shouldStoreSnapshotAfterJoin({
-        hasUnstoredLocalChanges: true,
-        snapshotFetchResult: "unavailable",
-      }),
-    ).toBe(false);
+    expect(new TextDecoder().decode(decrypted)).toBe(new TextDecoder().decode(plaintext));
   });
 });

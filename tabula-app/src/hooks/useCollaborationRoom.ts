@@ -7,7 +7,7 @@ import {
 } from "../collaboration";
 import { getTabulaRoomAvailability } from "../collaboration/collabRoom";
 import { createCollaborationSessionStartRequest } from "../collaboration/collabRuntime";
-import type { TextChange } from "@tabula-md/tabula";
+import type { RoomEvent, TextChange } from "@tabula-md/tabula";
 import type { WorkspaceFile } from "../workspaceStorage";
 import { useCollaborationConnectionRuntime } from "./useCollaborationConnectionRuntime";
 
@@ -16,6 +16,7 @@ type UseCollaborationRoomOptions = {
   activeSelection?: LiveSelection;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   identity: Collaborator;
+  workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
   setFileText: (fileId: string, text: string) => void;
   setFileCollaborationStatus: (
     fileId: string,
@@ -23,13 +24,17 @@ type UseCollaborationRoomOptions = {
     options?: { collaboratorCount?: number; requireRoom?: boolean },
   ) => void;
   setFileCollaboratorCount: (fileId: string, collaboratorCount: number) => void;
-  setFileRoomMeta: (fileId: string, meta: { snapshotCount: number; lastSnapshotAt?: string }) => void;
   setFileRecoveryEvent: (
     fileId: string,
     event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
   ) => void;
-  startFileCollaborationSession: (fileId: string, roomId: string, shareUrl: string) => WorkspaceFile | undefined;
+  startFileCollaborationSession: (
+    fileId: string,
+    roomId: string,
+    shareUrl: string,
+  ) => WorkspaceFile | undefined;
   onRemoteTextChange?: (fileId: string, text: string, change?: TextChange) => void;
+  onRoomEvent?: (event: RoomEvent) => void;
 };
 
 export function useCollaborationRoom({
@@ -37,28 +42,37 @@ export function useCollaborationRoom({
   activeSelection,
   getActiveFileSnapshot,
   identity,
+  workspaceDocuments,
   setFileText,
   setFileCollaborationStatus,
   setFileCollaboratorCount,
-  setFileRoomMeta,
   setFileRecoveryEvent,
   startFileCollaborationSession,
   onRemoteTextChange,
+  onRoomEvent,
 }: UseCollaborationRoomOptions) {
   const pendingInitialTextRef = useRef<string | undefined>(undefined);
   const roomAvailability = getTabulaRoomAvailability();
-  const { applyLocalText, collaborators, connectionStatus, resetConnection } =
+  const {
+    applyLocalText,
+    collaborators,
+    connectionStatus,
+    publishRoomEvent,
+    resetConnection,
+    retryConnection,
+  } =
     useCollaborationConnectionRuntime({
       activeFile,
       activeSelection,
       identity,
       pendingInitialTextRef,
+      workspaceDocuments,
       setFileText,
       setFileCollaborationStatus,
       setFileCollaboratorCount,
-      setFileRoomMeta,
       setFileRecoveryEvent,
       onRemoteTextChange,
+      onRoomEvent,
     });
 
   const startSession = () => {
@@ -84,6 +98,8 @@ export function useCollaborationRoom({
     startSessionUnavailableReason: roomAvailability.unavailableReason,
     startSession,
     applyLocalText,
+    publishRoomEvent,
     resetCollaborationState: resetConnection,
+    retryConnection,
   };
 }

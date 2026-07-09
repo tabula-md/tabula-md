@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import {
   type Collaborator,
   type LiveSelection,
@@ -6,6 +6,7 @@ import {
 import { createCollaborationPresenceIdentity } from "../collaboration/collabRuntime";
 
 type UseCollaborationPresenceRuntimeOptions = {
+  activeDocumentId?: string;
   activeSelection?: LiveSelection;
   fileTitle: string;
   identity: Collaborator;
@@ -14,21 +15,26 @@ type UseCollaborationPresenceRuntimeOptions = {
 };
 
 export function useCollaborationPresenceRuntime({
+  activeDocumentId,
   activeSelection,
   fileTitle,
   identity,
   isLive,
   roomId,
 }: UseCollaborationPresenceRuntimeOptions) {
+  const joinedAtRef = useRef(new Date().toISOString());
+
   return useMemo(
     () =>
       createCollaborationPresenceIdentity({
+        activeDocumentId,
         identity,
         isLive,
         roomId,
         fileTitle,
         selection: activeSelection,
+        joinedAt: joinedAtRef.current,
       }),
-    [activeSelection, fileTitle, identity, isLive, roomId],
+    [activeDocumentId, activeSelection, fileTitle, identity, isLive, roomId],
   );
 }

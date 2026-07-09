@@ -8,8 +8,8 @@ import {
 
 describe("client error reporting", () => {
   it("classifies share and network failures without depending on raw content", () => {
-    expect(classifyClientError(new Error("This snapshot link is missing its client-only key."))).toBe("invalid-link");
-    expect(classifyClientError(new Error("This snapshot link was not found or has expired."))).toBe(
+    expect(classifyClientError(new Error("This export link is missing its client-only key."))).toBe("invalid-link");
+    expect(classifyClientError(new Error("This export link was not found or has expired."))).toBe(
       "not-found-or-expired",
     );
     expect(classifyClientError(new Error("Rate limit exceeded"))).toBe("rate-limited");

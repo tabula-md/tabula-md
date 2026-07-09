@@ -35,7 +35,12 @@ export const isCollaboratorInFile = (
   collaborator: CollaborationCollaborator,
   currentFileTitle?: string,
   currentRoomId?: string,
+  currentDocumentId?: string,
 ) => {
+  if (currentDocumentId && collaborator.activeDocumentId) {
+    return collaborator.activeDocumentId === currentDocumentId;
+  }
+
   if (currentRoomId && collaborator.roomId) {
     return collaborator.roomId === currentRoomId;
   }
@@ -48,18 +53,25 @@ export const getCollaboratorPresenceDetail = (
   text: string,
   currentFileTitle?: string,
   currentRoomId?: string,
+  currentDocumentId?: string,
 ) => {
-  if (!isCollaboratorInFile(collaborator, currentFileTitle, currentRoomId)) {
-    return `Viewing ${collaborator.fileTitle}`;
+  if (!isCollaboratorInFile(collaborator, currentFileTitle, currentRoomId, currentDocumentId)) {
+    return `${collaborator.kind === "agent" ? "Agent viewing" : "Viewing"} ${collaborator.fileTitle}`;
   }
 
   const lineNumber = getLineNumberForPresenceSelection(text, collaborator.selection);
-  return lineNumber ? `Line ${lineNumber}` : "In this file";
+  const prefix = collaborator.kind === "agent" ? "Agent" : "";
+  const detail = lineNumber ? `Line ${lineNumber}` : "In this file";
+  return prefix ? `${prefix} - ${detail}` : detail;
 };
 
 export const getCollaboratorPresenceLabel = (collaborator: CollaborationCollaborator, text = "") => {
   const lineNumber = getLineNumberForPresenceSelection(text, collaborator.selection);
   const segments = [collaborator.name];
+
+  if (collaborator.kind === "agent") {
+    segments.push("agent");
+  }
 
   if (collaborator.fileTitle) {
     segments.push(collaborator.fileTitle);

@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import type { TextChange } from "@tabula-md/tabula";
+import type { RoomEvent, TextChange } from "@tabula-md/tabula";
 import type {
   Collaborator,
   CollabRecoveryEvent,
@@ -29,6 +29,7 @@ type UseWorkspaceCollaborationRuntimeOptions = {
   editorRef: RefObject<MarkdownEditorHandle | null>;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   identity: Collaborator;
+  workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
   setFileText: (fileId: string, text: string) => void;
   setFileCollaborationStatus: (
     fileId: string,
@@ -36,10 +37,6 @@ type UseWorkspaceCollaborationRuntimeOptions = {
     options?: { collaboratorCount?: number; requireRoom?: boolean },
   ) => void;
   setFileCollaboratorCount: (fileId: string, collaboratorCount: number) => void;
-  setFileRoomMeta: (
-    fileId: string,
-    meta: { snapshotCount: number; lastSnapshotAt?: string },
-  ) => void;
   setFileRecoveryEvent: (
     fileId: string,
     event: {
@@ -53,6 +50,7 @@ type UseWorkspaceCollaborationRuntimeOptions = {
     roomId: string,
     shareUrl: string,
   ) => WorkspaceFile | undefined;
+  onRoomEvent?: (event: RoomEvent) => void;
 };
 
 export const syncRemoteTextToDocumentRuntime = ({
@@ -85,12 +83,13 @@ export function useWorkspaceCollaborationRuntime({
   editorRef,
   getActiveFileSnapshot,
   identity,
+  workspaceDocuments,
   setFileText,
   setFileCollaborationStatus,
   setFileCollaboratorCount,
-  setFileRoomMeta,
   setFileRecoveryEvent,
   startFileCollaborationSession,
+  onRoomEvent,
 }: UseWorkspaceCollaborationRuntimeOptions) {
   const applyRemoteTextToEditor = useCollaborationEditorBridge({
     activeFileId: activeFile?.id,
@@ -113,13 +112,14 @@ export function useWorkspaceCollaborationRuntime({
     activeSelection,
     getActiveFileSnapshot,
     identity,
+    workspaceDocuments,
     setFileText,
     setFileCollaborationStatus,
     setFileCollaboratorCount,
-    setFileRoomMeta,
     setFileRecoveryEvent,
     startFileCollaborationSession,
     onRemoteTextChange: handleRemoteTextChange,
+    onRoomEvent,
   });
   const isLive = isUsableLiveRoomFile(activeFile);
   const activeStatus = getActiveWorkspaceStatus({
@@ -127,6 +127,7 @@ export function useWorkspaceCollaborationRuntime({
     connectionStatus: room.connectionStatus,
   });
   const presenceIdentity = useCollaborationPresenceRuntime({
+    activeDocumentId: activeFile?.id,
     activeSelection,
     fileTitle: activeFileTitle,
     identity,

@@ -18,12 +18,17 @@ import {
   getInitialCollaborationStatus,
   getLiveRoomConnectionTarget,
   getRecoveryEventPatch,
-  getRoomMetaPatch,
   shouldStartLiveRoomConnection,
 } from "../collaboration/collabRuntime";
-import type { TextChange, TextPatch } from "@tabula-md/tabula";
-import { isUsableLiveRoomFile, type WorkspaceFile } from "../workspaceStorage";
+import type { RoomEvent, TextChange, TextPatch } from "@tabula-md/tabula";
+import {
+  isEmptyGeneratedLivePlaceholder,
+  isUsableLiveRoomFile,
+  type WorkspaceFile,
+} from "../workspaceStorage";
 
+// Remote text is applied to the editor immediately and mirrored to workspace storage.
+// The short delayed commit is a race-boundary fallback for route changes and pagehide.
 const REMOTE_WORKSPACE_COMMIT_DELAY_MS = 80;
 
 type UseCollaborationConnectionRuntimeOptions = {
@@ -31,6 +36,7 @@ type UseCollaborationConnectionRuntimeOptions = {
   activeSelection?: LiveSelection;
   identity: Collaborator;
   pendingInitialTextRef: MutableRefObject<string | undefined>;
+  workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
   setFileText: (fileId: string, text: string) => void;
   setFileCollaborationStatus: (
     fileId: string,
@@ -38,12 +44,12 @@ type UseCollaborationConnectionRuntimeOptions = {
     options?: { collaboratorCount?: number; requireRoom?: boolean },
   ) => void;
   setFileCollaboratorCount: (fileId: string, collaboratorCount: number) => void;
-  setFileRoomMeta: (fileId: string, meta: { snapshotCount: number; lastSnapshotAt?: string }) => void;
   setFileRecoveryEvent: (
     fileId: string,
     event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
   ) => void;
   onRemoteTextChange?: (fileId: string, text: string, change?: TextChange) => void;
+  onRoomEvent?: (event: RoomEvent) => void;
 };
 
 export function useCollaborationConnectionRuntime({
@@ -51,24 +57,35 @@ export function useCollaborationConnectionRuntime({
   activeSelection,
   identity,
   pendingInitialTextRef,
+  workspaceDocuments = [],
   setFileText,
   setFileCollaborationStatus,
   setFileCollaboratorCount,
-  setFileRoomMeta,
   setFileRecoveryEvent,
   onRemoteTextChange,
+  onRoomEvent,
 }: UseCollaborationConnectionRuntimeOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(() =>
     getInitialCollaborationStatus(activeFile),
   );
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
   const collabRef = useRef<CollabConnection | null>(null);
   const remoteWorkspaceCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingRemoteWorkspaceCommitRef = useRef<{ fileId: string; text: string } | null>(null);
-  const pendingLocalTextRef = useRef<
-    { text: string; patches?: readonly TextPatch[] } | { docLength?: number; patches: readonly TextPatch[] } | null
-  >(null);
+  const pendingRemoteWorkspaceCommitRef = useRef<Map<string, string>>(new Map());
+  const workspaceDocumentsRef = useRef(workspaceDocuments);
+  const pendingLocalTextQueueRef = useRef<
+    Array<{ text: string; patches?: readonly TextPatch[] } | { docLength?: number; patches: readonly TextPatch[] }>
+  >([]);
   const isLive = isUsableLiveRoomFile(activeFile);
+  const connectionKey =
+    activeFile?.roomId
+      ? `workspace:${activeFile.roomId}:${activeFile.shareUrl ?? ""}`
+      : "idle";
+
+  useEffect(() => {
+    workspaceDocumentsRef.current = workspaceDocuments;
+  }, [workspaceDocuments]);
 
   const clearRemoteWorkspaceCommitTimer = useCallback(() => {
     if (remoteWorkspaceCommitTimerRef.current !== null) {
@@ -79,20 +96,20 @@ export function useCollaborationConnectionRuntime({
 
   const flushRemoteWorkspaceCommit = useCallback(() => {
     clearRemoteWorkspaceCommitTimer();
-    const pendingCommit = pendingRemoteWorkspaceCommitRef.current;
-    pendingRemoteWorkspaceCommitRef.current = null;
-    if (pendingCommit) {
-      setFileText(pendingCommit.fileId, pendingCommit.text);
+    const pendingCommits = pendingRemoteWorkspaceCommitRef.current;
+    pendingRemoteWorkspaceCommitRef.current = new Map();
+    for (const [fileId, text] of pendingCommits) {
+      setFileText(fileId, text);
     }
   }, [clearRemoteWorkspaceCommitTimer, setFileText]);
 
   const discardRemoteWorkspaceCommit = useCallback(() => {
     clearRemoteWorkspaceCommitTimer();
-    pendingRemoteWorkspaceCommitRef.current = null;
+    pendingRemoteWorkspaceCommitRef.current = new Map();
   }, [clearRemoteWorkspaceCommitTimer]);
 
   const scheduleRemoteWorkspaceCommit = useCallback((fileId: string, text: string) => {
-    pendingRemoteWorkspaceCommitRef.current = { fileId, text };
+    pendingRemoteWorkspaceCommitRef.current.set(fileId, text);
     clearRemoteWorkspaceCommitTimer();
     remoteWorkspaceCommitTimerRef.current = setTimeout(
       flushRemoteWorkspaceCommit,
@@ -115,11 +132,12 @@ export function useCollaborationConnectionRuntime({
     flushRemoteWorkspaceCommit();
     collabRef.current?.disconnect();
     collabRef.current = null;
-    pendingLocalTextRef.current = null;
+    pendingLocalTextQueueRef.current = [];
     setCollaborators([]);
 
     const target = getLiveRoomConnectionTarget(activeFile);
     const pendingInitialText = pendingInitialTextRef.current;
+    const workspaceDocumentsSnapshot = workspaceDocumentsRef.current;
 
     if (
       !target ||
@@ -155,13 +173,17 @@ export function useCollaborationConnectionRuntime({
         const connection = createCollabConnection({
           roomId: target.roomId,
           roomKey: target.roomKey,
+          documentId: target.fileId,
+          documents: workspaceDocumentsSnapshot,
+          emitInitialWorkspaceState: !activeFile || !isEmptyGeneratedLivePlaceholder(activeFile),
           initialText: pendingInitialText,
           identity,
           fileTitle: target.fileTitle,
           selection: activeSelection,
-          onTextChange: (nextText, change) => {
-            onRemoteTextChange?.(target.fileId, nextText, change);
-            scheduleRemoteWorkspaceCommit(target.fileId, nextText);
+          onTextChange: (documentId, nextText, change) => {
+            onRemoteTextChange?.(documentId, nextText, change);
+            setFileText(documentId, nextText);
+            scheduleRemoteWorkspaceCommit(documentId, nextText);
           },
           onStatusChange: (status) => {
             setConnectionStatus(status);
@@ -171,18 +193,16 @@ export function useCollaborationConnectionRuntime({
             setCollaborators(nextCollaborators);
             setFileCollaboratorCount(target.fileId, nextCollaborators.length);
           },
-          onRoomMetaChange: (meta) => {
-            setFileRoomMeta(target.fileId, getRoomMetaPatch(meta));
-          },
+          onRoomEvent,
           onRecoveryEvent: (event) => {
             setFileRecoveryEvent(target.fileId, getRecoveryEventPatch(event));
           },
         });
 
         collabRef.current = connection;
-        const pendingLocalText = pendingLocalTextRef.current;
-        pendingLocalTextRef.current = null;
-        if (pendingLocalText) {
+        const pendingLocalTextQueue = pendingLocalTextQueueRef.current;
+        pendingLocalTextQueueRef.current = [];
+        for (const pendingLocalText of pendingLocalTextQueue) {
           if ("text" in pendingLocalText) {
             connection.applyLocalText(pendingLocalText.text, pendingLocalText.patches);
           } else {
@@ -203,19 +223,17 @@ export function useCollaborationConnectionRuntime({
       flushRemoteWorkspaceCommit();
       collabRef.current?.disconnect();
       collabRef.current = null;
-      pendingLocalTextRef.current = null;
+      pendingLocalTextQueueRef.current = [];
       setFileCollaborationStatus(target.fileId, "disconnected", getDisconnectedStatusPatch());
     };
   }, [
-    activeFile?.id,
-    activeFile?.roomId,
-    activeFile?.shareUrl,
-    activeFile?.title,
+    connectionAttempt,
+    connectionKey,
     setFileCollaborationStatus,
     setFileCollaboratorCount,
     setFileRecoveryEvent,
-    setFileRoomMeta,
     onRemoteTextChange,
+    onRoomEvent,
     flushRemoteWorkspaceCommit,
     scheduleRemoteWorkspaceCommit,
   ]);
@@ -223,6 +241,26 @@ export function useCollaborationConnectionRuntime({
   useEffect(() => {
     collabRef.current?.setIdentity(identity);
   }, [identity]);
+
+  useEffect(() => {
+    if (!activeFile?.id || !activeFile.roomId) {
+      return;
+    }
+
+    collabRef.current?.setActiveDocument({
+      documentId: activeFile.id,
+      fileTitle: activeFile.title,
+      initialText: workspaceDocumentsRef.current.find((document) => document.id === activeFile.id)?.text ?? activeFile.text,
+    });
+    setFileCollaborationStatus(activeFile.id, connectionStatus);
+  }, [
+    activeFile?.id,
+    activeFile?.roomId,
+    activeFile?.text,
+    activeFile?.title,
+    connectionStatus,
+    setFileCollaborationStatus,
+  ]);
 
   useEffect(() => {
     if (!isLive) {
@@ -252,12 +290,14 @@ export function useCollaborationConnectionRuntime({
       }
 
       if (isLive) {
-        pendingLocalTextRef.current =
-          nextText === null
-            ? patches?.length
-              ? { patches, docLength: options.docLength }
-              : null
-            : { text: nextText, patches };
+        if (nextText === null) {
+          if (patches?.length) {
+            pendingLocalTextQueueRef.current.push({ patches, docLength: options.docLength });
+          }
+          return;
+        }
+
+        pendingLocalTextQueueRef.current.push({ text: nextText, patches });
       }
     },
     [discardRemoteWorkspaceCommit, isLive],
@@ -267,15 +307,37 @@ export function useCollaborationConnectionRuntime({
     flushRemoteWorkspaceCommit();
     collabRef.current?.disconnect();
     collabRef.current = null;
-    pendingLocalTextRef.current = null;
+    pendingLocalTextQueueRef.current = [];
     setCollaborators([]);
     setConnectionStatus(nextStatus);
   }, [flushRemoteWorkspaceCommit]);
+
+  const retryConnection = useCallback(() => {
+    const activeFileId = activeFile?.id;
+    if (!activeFileId || !isUsableLiveRoomFile(activeFile)) {
+      return;
+    }
+
+    flushRemoteWorkspaceCommit();
+    collabRef.current?.disconnect();
+    collabRef.current = null;
+    pendingLocalTextQueueRef.current = [];
+    setCollaborators([]);
+    setConnectionStatus("connecting");
+    setFileCollaborationStatus(activeFileId, "connecting");
+    setConnectionAttempt((currentAttempt) => currentAttempt + 1);
+  }, [activeFile, flushRemoteWorkspaceCommit, setFileCollaborationStatus]);
+
+  const publishRoomEvent = useCallback((event: RoomEvent) => {
+    collabRef.current?.publishRoomEvent(event);
+  }, []);
 
   return {
     applyLocalText,
     collaborators,
     connectionStatus,
+    publishRoomEvent,
     resetConnection,
+    retryConnection,
   };
 }
