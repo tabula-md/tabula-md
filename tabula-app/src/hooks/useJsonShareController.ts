@@ -11,6 +11,7 @@ import { clientErrorReporter } from "../observability/clientErrorReporting";
 
 type UseJsonShareControllerOptions = {
   activeFile?: WorkspaceFile;
+  activeText?: string;
   commentsByFileId: Record<string, FileComment[]>;
   copy: WorkspaceShareCopy;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
@@ -29,6 +30,7 @@ export type JsonShareController = {
 
 export function useJsonShareController({
   activeFile,
+  activeText,
   commentsByFileId,
   copy,
   getActiveFileSnapshot,
@@ -46,14 +48,14 @@ export function useJsonShareController({
     if (!activeFile) {
       return copy.shareable.noFileReason;
     }
-    if (activeFile.text.trim().length === 0) {
+    if ((activeText ?? activeFile.text).trim().length === 0) {
       return copy.shareable.emptyFileReason(activeFile.title.replace(/\.(?:md|markdown)$/i, ""));
     }
     if (!serviceUrl) {
       return tabulaServiceConfig.copy.jsonShareUnconfiguredMessage;
     }
     return "";
-  }, [activeFile, copy, serviceUrl]);
+  }, [activeFile, activeText, copy, serviceUrl]);
 
   const exportLink = async () => {
     const fileSnapshot = getActiveFileSnapshot?.() ?? activeFile;

@@ -7,6 +7,7 @@ import { useWorkspaceLiveRoomController } from "./useWorkspaceLiveRoomController
 
 type UseWorkspaceShareRuntimeOptions = {
   activeFile?: WorkspaceFile;
+  activeText?: string;
   commentsByFileId: Record<string, FileComment[]>;
   copy: WorkspaceShareCopy;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
@@ -20,6 +21,7 @@ type UseWorkspaceShareRuntimeOptions = {
 
 export function useWorkspaceShareRuntime({
   activeFile,
+  activeText,
   commentsByFileId,
   copy,
   getActiveFileSnapshot,
@@ -32,6 +34,7 @@ export function useWorkspaceShareRuntime({
 }: UseWorkspaceShareRuntimeOptions) {
   const jsonShare = useJsonShareController({
     activeFile,
+    activeText,
     commentsByFileId,
     copy,
     getActiveFileSnapshot,

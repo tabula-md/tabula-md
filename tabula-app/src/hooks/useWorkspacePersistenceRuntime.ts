@@ -4,7 +4,9 @@ import type { FileComment, WorkspaceState } from "../workspaceStorage";
 
 type UseWorkspacePersistenceRuntimeOptions = {
   enabled: boolean;
+  getWorkspaceSnapshot?: () => WorkspaceState;
   initialWorkspace: WorkspaceState;
+  onBeforePersist?: () => void;
   replaceCommentsByFileId: (
     commentsByFileId: Record<string, FileComment[]>,
   ) => void;
@@ -16,7 +18,9 @@ type UseWorkspacePersistenceRuntimeOptions = {
 
 export function useWorkspacePersistenceRuntime({
   enabled,
+  getWorkspaceSnapshot,
   initialWorkspace,
+  onBeforePersist,
   replaceCommentsByFileId,
   replaceWorkspace,
   workspace,
@@ -31,6 +35,8 @@ export function useWorkspacePersistenceRuntime({
 
   useQueuedWorkspacePersistence(workspace, {
     enabled: !indexedDbHydration.deferPersistence,
+    getWorkspaceSnapshot,
+    onBeforePersist,
   });
 
   return indexedDbHydration;

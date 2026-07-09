@@ -19,6 +19,10 @@ import {
   getWorkspaceMenuCopy,
 } from "../workspaceLocale";
 import { createWorkspaceRuntimeView } from "../workspaceRuntimeView";
+import {
+  getWorkspaceStoreActiveFile,
+  getWorkspaceStoreSnapshot,
+} from "../stores/workspaceStore";
 import { useAppToast } from "./useAppToast";
 import { useDocumentSurfaceRuntime } from "./useDocumentSurfaceRuntime";
 import { useEventCallback } from "./useEventCallback";
@@ -131,6 +135,31 @@ export function useWorkspaceRuntime() {
     identity,
     createId: randomId,
   });
+  const getActiveFileSnapshot = useEventCallback(() => {
+    const latestActiveFile = getWorkspaceStoreActiveFile() ?? activeFile;
+    return latestActiveFile
+      ? {
+          ...latestActiveFile,
+          text: editorDocumentRuntime.getLatestFileText(
+            latestActiveFile.id,
+            latestActiveFile.text,
+          ),
+        }
+      : undefined;
+  });
+  const getWorkspaceSnapshot = useEventCallback((): WorkspaceState => {
+    const workspaceSnapshot = getWorkspaceStoreSnapshot();
+    const activeFileSnapshot = getActiveFileSnapshot();
+    return {
+      ...workspaceSnapshot,
+      files: activeFileSnapshot
+        ? workspaceSnapshot.files.map((file) =>
+            file.id === activeFileSnapshot.id ? activeFileSnapshot : file,
+          )
+        : workspaceSnapshot.files,
+      commentsByFileId,
+    };
+  });
   const {
     activeDocument,
     activeBookmarks,
@@ -206,13 +235,6 @@ export function useWorkspaceRuntime() {
     }),
     [activeFileId, commentsByFileId, files, openFileIds],
   );
-  useWorkspacePersistenceRuntime({
-    enabled: initialWorkspaceSnapshot.source === "starter",
-    initialWorkspace,
-    workspace: workspacePersistenceSnapshot,
-    replaceCommentsByFileId,
-    replaceWorkspace,
-  });
   const {
     topPopover,
     setTopPopover,
@@ -255,6 +277,7 @@ export function useWorkspaceRuntime() {
     activeFileTitle,
     activeSelection,
     editorRef,
+    getActiveFileSnapshot,
     identity,
     setFileText,
     setFileCollaborationStatus,
@@ -271,7 +294,6 @@ export function useWorkspaceRuntime() {
     handleEditorHistoryStateChange,
     handleTextChange,
     flushPendingEditorCommit,
-    getLatestFileText,
     historyByFileId,
     redoActiveFile,
     setHistoryByFileId,
@@ -286,17 +308,19 @@ export function useWorkspaceRuntime() {
     setActiveFileText,
     setFileText,
   });
-  const getActiveFileSnapshot = useEventCallback(() =>
-    activeFile
-      ? {
-          ...activeFile,
-          text: getLatestFileText(activeFile.id, activeFile.text),
-        }
-      : undefined,
-  );
+  useWorkspacePersistenceRuntime({
+    enabled: initialWorkspaceSnapshot.source === "starter",
+    getWorkspaceSnapshot,
+    initialWorkspace,
+    onBeforePersist: flushPendingEditorCommit,
+    workspace: workspacePersistenceSnapshot,
+    replaceCommentsByFileId,
+    replaceWorkspace,
+  });
   const { copyShareUrl, jsonShare, startSession, stopSession } =
     useWorkspaceShareRuntime({
       activeFile,
+      activeText: text,
       commentsByFileId,
       copy: workspaceShareCopy,
       getActiveFileSnapshot,
@@ -359,6 +383,7 @@ export function useWorkspaceRuntime() {
     activeFileId,
     activateRoomFile,
     files,
+    onBeforeWorkspaceBoundary: flushPendingEditorCommit,
     selectFile: selectWorkspaceFileAction,
     onRouteWorkspaceChange: handleRouteWorkspaceChange,
   });
@@ -391,7 +416,10 @@ export function useWorkspaceRuntime() {
     commentsByFileId,
     editorRef,
     files,
+    getActiveFileSnapshot,
+    getWorkspaceSnapshot,
     openFileIds,
+    onBeforeWorkspaceBoundary: flushPendingEditorCommit,
     preferences: workspacePreferences,
     replaceCommentsByFileId,
     replaceWorkspace,
@@ -423,6 +451,7 @@ export function useWorkspaceRuntime() {
     helpMarkdown: createHelpMarkdown(shortcutLabels),
     historyByFileId,
     openFileIds,
+    onBeforeWorkspaceBoundary: flushPendingEditorCommit,
     preferences: workspacePreferences,
     queueEditorFocus,
     renameFile,

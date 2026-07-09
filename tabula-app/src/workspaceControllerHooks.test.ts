@@ -17,6 +17,10 @@ import {
   getCursorPositionLabel,
   getSelectionLineCount,
 } from "./hooks/useSelectionCommentController";
+import {
+  getProjectIoActiveFileSnapshot,
+  getProjectIoWorkspaceSnapshot,
+} from "./hooks/useProjectIoController";
 import { getMagnetizedSplitRatio } from "./hooks/useSplitViewController";
 import {
   createCurrentFileDownloadDraft,
@@ -554,6 +558,32 @@ describe("project IO controller", () => {
         [activeFile.id]: [{ id: "comment-one", body: "Needs review" }],
       },
     });
+  });
+
+  it("prefers runtime snapshots for file and project IO boundaries", () => {
+    const staleActiveFile = file("brief", "# Stale");
+    const runtimeActiveFile = file("brief", "# Pending");
+    const runtimeWorkspace = {
+      files: [runtimeActiveFile],
+      openFileIds: [runtimeActiveFile.id],
+      activeFileId: runtimeActiveFile.id,
+    };
+
+    expect(
+      getProjectIoActiveFileSnapshot({
+        activeFile: staleActiveFile,
+        getActiveFileSnapshot: () => runtimeActiveFile,
+      }),
+    ).toBe(runtimeActiveFile);
+    expect(
+      getProjectIoWorkspaceSnapshot({
+        activeFile: staleActiveFile,
+        activeFileId: staleActiveFile.id,
+        files: [staleActiveFile],
+        getWorkspaceSnapshot: () => runtimeWorkspace,
+        openFileIds: [staleActiveFile.id],
+      }),
+    ).toBe(runtimeWorkspace);
   });
 
   it("creates imported Markdown file drafts from preferences", () => {

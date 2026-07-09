@@ -23,6 +23,7 @@ type UseWorkspaceCollaborationRuntimeOptions = {
   activeFileTitle: string;
   activeSelection?: LiveSelection;
   editorRef: RefObject<MarkdownEditorHandle | null>;
+  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   identity: Collaborator;
   setFileText: (fileId: string, text: string) => void;
   setFileCollaborationStatus: (
@@ -55,6 +56,7 @@ export function useWorkspaceCollaborationRuntime({
   activeFileTitle,
   activeSelection,
   editorRef,
+  getActiveFileSnapshot,
   identity,
   setFileText,
   setFileCollaborationStatus,
@@ -71,6 +73,7 @@ export function useWorkspaceCollaborationRuntime({
   const room = useCollaborationRoom({
     activeFile,
     activeSelection,
+    getActiveFileSnapshot,
     identity,
     setFileText,
     setFileCollaborationStatus,

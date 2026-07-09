@@ -50,6 +50,7 @@ type UseWorkspaceFileActionsArgs = {
   helpMarkdown: string;
   historyByFileId: Record<string, FileHistory>;
   openFileIds: string[];
+  onBeforeWorkspaceBoundary?: () => void;
   preferences: WorkspacePreferences;
   queueEditorFocus: () => void;
   renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
@@ -82,6 +83,7 @@ export function useWorkspaceFileActions({
   helpMarkdown,
   historyByFileId,
   openFileIds,
+  onBeforeWorkspaceBoundary,
   preferences,
   queueEditorFocus,
   renameFile,
@@ -95,6 +97,7 @@ export function useWorkspaceFileActions({
   upsertHelpFile,
 }: UseWorkspaceFileActionsArgs) {
   const selectFile = (fileId: string) => {
+    onBeforeWorkspaceBoundary?.();
     const nextFile = selectWorkspaceFileAction(fileId);
     if (!nextFile) {
       return;
@@ -105,6 +108,7 @@ export function useWorkspaceFileActions({
   };
 
   const addFile = () => {
+    onBeforeWorkspaceBoundary?.();
     queueEditorFocus();
     const nextFile = addWorkspaceFileAction(getNewFilePreferenceOverrides(preferences));
     closeFloatingChrome();
@@ -112,12 +116,14 @@ export function useWorkspaceFileActions({
   };
 
   const openHelpFile = () => {
+    onBeforeWorkspaceBoundary?.();
     const nextFile = upsertHelpFile(helpMarkdown);
     closeFloatingChrome();
     syncUrlForFile(nextFile);
   };
 
   const openAboutFile = () => {
+    onBeforeWorkspaceBoundary?.();
     const readmeFile = findWorkspaceAboutFile(files);
     const readmeDraft = getWorkspaceAboutFileDraft();
     const nextFile =
@@ -143,6 +149,7 @@ export function useWorkspaceFileActions({
   };
 
   const duplicateFile = (fileId: string) => {
+    onBeforeWorkspaceBoundary?.();
     queueEditorFocus();
     const nextFile = duplicateWorkspaceFile(fileId);
     if (!nextFile) {
@@ -155,6 +162,7 @@ export function useWorkspaceFileActions({
   };
 
   const deleteFile = (fileId: string) => {
+    onBeforeWorkspaceBoundary?.();
     const deletedFile = files.find((file) => file.id === fileId);
     if (!deletedFile) {
       return;
@@ -220,6 +228,7 @@ export function useWorkspaceFileActions({
   };
 
   const closeFile = (fileId: string) => {
+    onBeforeWorkspaceBoundary?.();
     const result = closeWorkspaceFileAction(fileId);
     if (!result) {
       return;
@@ -239,6 +248,7 @@ export function useWorkspaceFileActions({
   };
 
   const selectAdjacentFile = (direction: -1 | 1) => {
+    onBeforeWorkspaceBoundary?.();
     const nextFile = selectAdjacentWorkspaceFileAction(direction);
     if (nextFile) {
       closeFloatingChrome();

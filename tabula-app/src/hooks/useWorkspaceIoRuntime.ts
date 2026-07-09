@@ -24,7 +24,10 @@ type UseWorkspaceIoRuntimeOptions = {
   commentsByFileId: Record<string, FileComment[]>;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   files: WorkspaceFile[];
+  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
+  getWorkspaceSnapshot?: () => WorkspaceState;
   openFileIds: string[];
+  onBeforeWorkspaceBoundary?: () => void;
   preferences: WorkspacePreferences;
   replaceCommentsByFileId: (
     commentsByFileId: Record<string, FileComment[]>,
@@ -52,7 +55,10 @@ export function useWorkspaceIoRuntime({
   commentsByFileId,
   editorRef,
   files,
+  getActiveFileSnapshot,
+  getWorkspaceSnapshot,
   openFileIds,
+  onBeforeWorkspaceBoundary,
   preferences,
   replaceCommentsByFileId,
   replaceWorkspace,
@@ -67,7 +73,10 @@ export function useWorkspaceIoRuntime({
     commentsByFileId,
     editorRef,
     files,
+    getActiveFileSnapshot,
+    getWorkspaceSnapshot,
     openFileIds,
+    onBeforeWorkspaceBoundary,
     preferences,
     replaceCommentsByFileId,
     replaceWorkspace,
@@ -81,6 +90,8 @@ export function useWorkspaceIoRuntime({
     closeFloatingChrome,
     commentsByFileId,
     files,
+    getWorkspaceSnapshot,
+    onBeforeWorkspaceBoundary,
     replaceCommentsByFileId,
     replaceWorkspace,
     resetCollaborationState,
