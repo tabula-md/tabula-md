@@ -16,11 +16,37 @@ const PREVIEW_MODE_DERIVED_STATE_DELAY_MS = 220;
 const LARGE_DOCUMENT_DERIVED_STATE_DELAY_MS = 720;
 const IMMEDIATE_PREVIEW_MAX_CHARACTERS = 250_000;
 
-const createPreviewState = (activeFile: WorkspaceFile | undefined, text: string): ActiveDocumentPreviewRuntime =>
-  createActiveDocumentPreviewRuntime(activeFile, { text });
+export type ActiveDocumentPreviewTextSnapshot = {
+  fileId: string;
+  hasFile: boolean;
+  text: string;
+};
+
+export const createActiveDocumentPreviewTextSnapshot = (
+  activeFile: Pick<WorkspaceFile, "id"> | undefined,
+  text: string,
+): ActiveDocumentPreviewTextSnapshot => ({
+  fileId: activeFile?.id ?? "",
+  hasFile: Boolean(activeFile),
+  text,
+});
+
+const EMPTY_PREVIEW_TEXT_SNAPSHOT: ActiveDocumentPreviewTextSnapshot = {
+  fileId: "",
+  hasFile: false,
+  text: "",
+};
+
+export const createPreviewStateFromSnapshot = (
+  snapshot: ActiveDocumentPreviewTextSnapshot,
+): ActiveDocumentPreviewRuntime =>
+  createActiveDocumentPreviewRuntime(
+    snapshot.hasFile ? { text: snapshot.text } : undefined,
+    { text: snapshot.text },
+  );
 
 type DeferredDocumentState = {
-  fileId: string;
+  previewSnapshot: ActiveDocumentPreviewTextSnapshot;
   previewState: ActiveDocumentPreviewRuntime;
   wordCount: number;
 };
@@ -32,11 +58,12 @@ export const useActiveDocumentRuntime = (
   const activeFileId = activeFile?.id ?? "";
   const activeText = options.text ?? activeFile?.text ?? "";
   const activeViewMode = activeFile?.viewMode ?? "edit";
+  const activePreviewSnapshot = createActiveDocumentPreviewTextSnapshot(activeFile, activeText);
   const largeDocumentMode = isLargeMarkdownDocument(activeText);
   const immediatePreviewEligible = shouldUseImmediateMarkdownPreview(activeText);
   const [deferredState, setDeferredState] = useState<DeferredDocumentState>(() => ({
-    fileId: activeFileId,
-    previewState: createPreviewState(activeFile, activeText),
+    previewSnapshot: activePreviewSnapshot,
+    previewState: createPreviewStateFromSnapshot(activePreviewSnapshot),
     wordCount: getMarkdownWordCount(activeText),
   }));
   const shouldRenderPreviewImmediately =
@@ -45,21 +72,21 @@ export const useActiveDocumentRuntime = (
     activeText.length <= IMMEDIATE_PREVIEW_MAX_CHARACTERS &&
     immediatePreviewEligible;
   const immediatePreviewState = useMemo(
-    () => (shouldRenderPreviewImmediately ? createPreviewState(activeFile, activeText) : null),
+    () => (shouldRenderPreviewImmediately ? createPreviewStateFromSnapshot(activePreviewSnapshot) : null),
     [activeFileId, activeText, shouldRenderPreviewImmediately],
   );
   const previewState =
     immediatePreviewState ??
-    (deferredState.fileId === activeFileId
+    (deferredState.previewSnapshot.fileId === activeFileId
       ? deferredState.previewState
-      : createPreviewState(undefined, ""));
-  const wordCount = deferredState.fileId === activeFileId ? deferredState.wordCount : 0;
+      : createPreviewStateFromSnapshot(EMPTY_PREVIEW_TEXT_SNAPSHOT));
+  const wordCount = deferredState.previewSnapshot.fileId === activeFileId ? deferredState.wordCount : 0;
 
   useEffect(() => {
     if (!activeFile) {
       setDeferredState({
-        fileId: "",
-        previewState: createPreviewState(undefined, ""),
+        previewSnapshot: EMPTY_PREVIEW_TEXT_SNAPSHOT,
+        previewState: createPreviewStateFromSnapshot(EMPTY_PREVIEW_TEXT_SNAPSHOT),
         wordCount: 0,
       });
       return;
@@ -73,9 +100,10 @@ export const useActiveDocumentRuntime = (
           ? SMALL_HEAVY_PREVIEW_DERIVED_STATE_DELAY_MS
           : PREVIEW_MODE_DERIVED_STATE_DELAY_MS;
     const timer = window.setTimeout(() => {
+      const previewSnapshot = createActiveDocumentPreviewTextSnapshot(activeFile, activeText);
       setDeferredState({
-        fileId: activeFile.id,
-        previewState: createPreviewState(activeFile, activeText),
+        previewSnapshot,
+        previewState: createPreviewStateFromSnapshot(previewSnapshot),
         wordCount: getMarkdownWordCount(activeText),
       });
     }, delayMs);
