@@ -28,6 +28,8 @@ import {
   createActiveDocumentPreviewTextSnapshot,
   createPreviewStateFromSnapshot,
 } from "./hooks/useActiveDocumentRuntime";
+import { createWorkspaceEditorDocumentRuntimeOwner } from "./hooks/editorDocumentRuntimeOwner";
+import { syncRemoteTextToDocumentRuntime } from "./hooks/useWorkspaceCollaborationRuntime";
 import { getMagnetizedSplitRatio } from "./hooks/useSplitViewController";
 import {
   createCurrentFileDownloadDraft,
@@ -504,6 +506,57 @@ describe("active document preview runtime", () => {
       { depth: 1, text: "Runtime preview text", lineIndex: 0, sourceLineIndex: 0 },
     ]);
     expect(previewState.renderedPreview.body).toBe("# Runtime preview text\n\nBody");
+  });
+});
+
+describe("workspace collaboration runtime", () => {
+  const file = (id: string, text = id): WorkspaceFile => ({
+    id,
+    title: `${id}.md`,
+    text,
+    viewMode: "edit",
+    readingWidth: "wide",
+    lineWrapping: true,
+    lineNumbers: true,
+    roomId: "room",
+    shareUrl: `https://tabula.md/#room=room,${VALID_ROOM_KEY}`,
+  });
+
+  it("syncs remote text into the document runtime before the workspace text commit catches up", () => {
+    const owner = createWorkspaceEditorDocumentRuntimeOwner();
+    const liveFile = file("live", "# Workspace text");
+    owner.getRuntime(liveFile).replaceAll("# Local pending text");
+
+    expect(
+      syncRemoteTextToDocumentRuntime({
+        activeFile: liveFile,
+        editorDocumentRuntime: owner,
+        fileId: liveFile.id,
+        text: "# Local pending text\n\nRemote merge",
+      }),
+    ).toBe(true);
+
+    expect(owner.getLatestFileText(liveFile.id, liveFile.text)).toBe(
+      "# Local pending text\n\nRemote merge",
+    );
+    expect(owner.flush()).toBeNull();
+  });
+
+  it("ignores remote text for non-active files", () => {
+    const owner = createWorkspaceEditorDocumentRuntimeOwner();
+    const liveFile = file("live", "# Workspace text");
+    owner.getRuntime(liveFile).replaceAll("# Local pending text");
+
+    expect(
+      syncRemoteTextToDocumentRuntime({
+        activeFile: liveFile,
+        editorDocumentRuntime: owner,
+        fileId: "other",
+        text: "# Other remote",
+      }),
+    ).toBe(false);
+
+    expect(owner.getLatestFileText(liveFile.id, liveFile.text)).toBe("# Local pending text");
   });
 });
 
