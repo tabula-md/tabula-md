@@ -29,6 +29,8 @@ export type JsonShareController = {
   urlPreview: string;
 };
 
+const EXPORT_LINK_UNAVAILABLE_MESSAGE = "Export link isn’t available right now.";
+
 export const getJsonShareExportFileSnapshot = ({
   activeFile,
   getActiveFileSnapshot,
@@ -118,7 +120,7 @@ export function useJsonShareController({
       return false;
     }
     if (!serviceUrl) {
-      showToast("Export link isn’t available right now.", "error");
+      showToast(EXPORT_LINK_UNAVAILABLE_MESSAGE, "error");
       return false;
     }
 
@@ -180,10 +182,8 @@ const getJsonShareExportErrorMessage = (error: unknown) => {
     error instanceof TypeError ||
     (error instanceof Error && /failed to fetch|network/i.test(error.message))
   ) {
-    return "Export link isn’t available right now.";
+    return EXPORT_LINK_UNAVAILABLE_MESSAGE;
   }
 
-  return error instanceof Error
-    ? error.message
-    : "Couldn’t create export link.";
+  return "Couldn’t export to link.";
 };

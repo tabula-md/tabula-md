@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { COMMENT_ANCHOR_CONTEXT_LENGTH, getCommentRangeInText } from "./commentAnchors";
 import {
+  createRoomWorkspaceState,
   createWorkspaceFile,
   createStoredWorkspace,
   ensureDefaultFiles,
@@ -8,8 +9,10 @@ import {
   finalizeWorkspaceState,
   getRoomFromLocation,
   getLiveFileTitle,
+  isEmptyGeneratedLivePlaceholder,
   migrateWorkspacePayload,
   PROJECT_STORAGE_VERSION,
+  readInitialWorkspaceSnapshot,
   syncUrlForFile,
   type WorkspaceFile,
 } from "./workspaceStorage";
@@ -35,20 +38,46 @@ describe("file tab state transitions", () => {
     expect(files[1].text).toBe("");
   });
 
-  it("opens a shared room without replacing local tabs", () => {
-    const localFiles = ensureDefaultFiles([], { ensureUntitled: true });
-    const files = ensureLiveFileForRoom(localFiles, {
+  it("opens a shared room as a room session before documents arrive", () => {
+    const workspace = createRoomWorkspaceState({
       roomId: "browserroom",
       shareUrl: `http://localhost:5174/#room=browserroom,${VALID_ROOM_KEY}`,
     });
 
-    expect(files.map((file) => file.title)).toEqual([
-      "README.md",
-      "Untitled.md",
-      getLiveFileTitle("browserroom"),
-    ]);
-    expect(files[2].roomId).toBe("browserroom");
-    expect(files[2].connectionStatus).toBe("connecting");
+    expect(workspace.files).toEqual([]);
+    expect(workspace.openFileIds).toEqual([]);
+    expect(workspace.activeFileId).toBe("");
+  });
+
+  it("starts from a room-only workspace when the URL has a room hash", () => {
+    const storage = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        removeItem: (key: string) => storage.delete(key),
+        setItem: (key: string, value: string) => storage.set(key, value),
+      },
+      location: {
+        origin: "https://tabula.test",
+        pathname: "/",
+        hash: `#room=browserroom,${VALID_ROOM_KEY}`,
+      },
+    });
+    storage.set(
+      "tabula.project.v5",
+      JSON.stringify(createStoredWorkspace(finalizeWorkspaceState(ensureDefaultFiles([], { ensureUntitled: true })))),
+    );
+
+    const snapshot = readInitialWorkspaceSnapshot();
+
+    expect(snapshot.source).toBe("room");
+    expect(snapshot.room).toEqual({
+      roomId: "browserroom",
+      shareUrl: `https://tabula.test/#room=browserroom,${VALID_ROOM_KEY}`,
+    });
+    expect(snapshot.workspace.files).toEqual([]);
+    expect(snapshot.workspace.openFileIds).toEqual([]);
+    expect(snapshot.workspace.activeFileId).toBe("");
   });
 
   it("reactivates an existing shared room instead of duplicating it", () => {

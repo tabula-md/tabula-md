@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
+import {
+  createRoomActorColor,
+  createRoomActorName,
+} from "@tabula-md/tabula";
 import type { Collaborator } from "./collaboration";
 import {
   createWorkspaceIdentity,
   IDENTITY_KEY,
+  IDENTITY_SESSION_KEY,
   normalizeWorkspaceIdentity,
 } from "./hooks/useWorkspaceIdentity";
 import { createHelpMarkdown, getKeyboardShortcuts } from "./helpMarkdown";
@@ -55,6 +60,7 @@ import {
   shouldUseFileTextFallbackHistory,
 } from "./hooks/useWorkspaceActiveFileEditor";
 import { getWorkspaceShortcutAction } from "./hooks/useWorkspaceKeyboardShortcuts";
+import { getLiveRoomFileOverrides } from "./hooks/useWorkspaceFileActions";
 import {
   findWorkspaceAboutFile,
   getWorkspaceAboutFileDraft,
@@ -399,42 +405,45 @@ describe("workspace help markdown", () => {
 });
 
 describe("workspace identity controller", () => {
-  it("normalizes guest names to anonymous names and trims long names", () => {
+  it("normalizes generated names to room actor names and trims long names", () => {
     const identity: Collaborator = {
       id: "abcdef",
       name: "Guest 42",
-      color: "#000000",
+      color: "",
       lastSeen: 1,
     };
 
     expect(normalizeWorkspaceIdentity(identity, () => 1234)).toEqual({
       id: "abcdef",
-      name: "Anonymous abc",
-      color: "#000000",
+      name: createRoomActorName("human", "abcdef"),
+      color: createRoomActorColor("abcdef"),
       lastSeen: 1234,
     });
   });
 
   it("persists a created identity when no stored identity exists", () => {
     const storage = new MemoryStorage();
+    const sessionStorage = new MemoryStorage();
     const identity = createWorkspaceIdentity({
       storage,
+      sessionStorage,
       createId: () => "id-12345",
-      random: () => 0,
       now: () => 10,
     });
 
     expect(identity).toEqual({
       id: "id-12345",
-      name: "Anonymous 100",
-      color: "#0f766e",
+      name: createRoomActorName("human", "id-12345"),
+      color: createRoomActorColor("id-12345"),
       lastSeen: 10,
     });
     expect(JSON.parse(storage.getItem(IDENTITY_KEY) ?? "{}")).toEqual(identity);
+    expect(JSON.parse(sessionStorage.getItem(IDENTITY_SESSION_KEY) ?? "{}")).toEqual({ id: "id-12345" });
   });
 
-  it("creates a tab-scoped collaborator id even when a stored profile exists", () => {
+  it("uses a tab-scoped actor id while preserving a custom stored name", () => {
     const storage = new MemoryStorage();
+    const sessionStorage = new MemoryStorage();
     storage.setItem(
       IDENTITY_KEY,
       JSON.stringify({
@@ -447,21 +456,42 @@ describe("workspace identity controller", () => {
 
     const identity = createWorkspaceIdentity({
       storage,
+      sessionStorage,
       createId: () => "next-tab",
-      random: () => 0,
       now: () => 20,
     });
 
     expect(identity).toEqual({
       id: "next-tab",
       name: "Taeha",
-      color: "#2563eb",
+      color: createRoomActorColor("next-tab"),
       lastSeen: 20,
     });
   });
 
-  it("does not reuse generated anonymous names across tabs", () => {
+  it("reuses the tab-scoped actor id across reloads", () => {
     const storage = new MemoryStorage();
+    const sessionStorage = new MemoryStorage();
+    sessionStorage.setItem(IDENTITY_SESSION_KEY, JSON.stringify({ id: "same-tab" }));
+
+    const identity = createWorkspaceIdentity({
+      storage,
+      sessionStorage,
+      createId: () => "new-tab",
+      now: () => 20,
+    });
+
+    expect(identity).toEqual({
+      id: "same-tab",
+      name: createRoomActorName("human", "same-tab"),
+      color: createRoomActorColor("same-tab"),
+      lastSeen: 20,
+    });
+  });
+
+  it("replaces stored generated anonymous names with actor names", () => {
+    const storage = new MemoryStorage();
+    const sessionStorage = new MemoryStorage();
     storage.setItem(
       IDENTITY_KEY,
       JSON.stringify({
@@ -474,12 +504,12 @@ describe("workspace identity controller", () => {
 
     const identity = createWorkspaceIdentity({
       storage,
+      sessionStorage,
       createId: () => "next-tab",
-      random: () => 0,
       now: () => 20,
     });
 
-    expect(identity.name).toBe("Anonymous 100");
+    expect(identity.name).toBe(createRoomActorName("human", "next-tab"));
     expect(identity.id).toBe("next-tab");
   });
 });
@@ -1016,6 +1046,24 @@ describe("workspace file actions controller", () => {
 
     expect(removeRecordKey(record, "one")).toEqual({ two: ["b"] });
     expect(removeRecordKey(record, "missing")).toBe(record);
+  });
+
+  it("keeps newly created documents inside the active live workspace room", () => {
+    expect(
+      getLiveRoomFileOverrides({
+        roomId: "room-1",
+        shareUrl: `https://tabula.md/#room=room-1,${VALID_ROOM_KEY}`,
+        connectionStatus: "connected",
+        collaboratorCount: 2,
+      }),
+    ).toMatchObject({
+      roomId: "room-1",
+      shareUrl: `https://tabula.md/#room=room-1,${VALID_ROOM_KEY}`,
+      connectionStatus: "connected",
+      collaboratorCount: 2,
+    });
+
+    expect(getLiveRoomFileOverrides({ connectionStatus: "idle" })).toEqual({});
   });
 
   it("restores deleted files and open tab order without duplicating entries", () => {

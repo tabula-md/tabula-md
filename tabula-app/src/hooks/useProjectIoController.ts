@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent, type DragEvent, type RefObject } from "react";
+import { clientErrorReporter } from "../observability/clientErrorReporting";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
 import { createProjectArchive } from "../projectArchive";
@@ -197,21 +198,30 @@ export function useProjectIoController({
   };
 
   const downloadProjectArchive = (fileIds?: readonly string[]) => {
-    const workspaceSnapshot = getProjectIoBoundaryWorkspaceSnapshot({
-      activeFile,
-      activeFileId,
-      files,
-      getWorkspaceSnapshot,
-      onBeforeWorkspaceBoundary,
-      openFileIds,
-    });
-    const includedFileIds = fileIds ? new Set(fileIds) : null;
-    const archiveFiles = includedFileIds
-      ? workspaceSnapshot.files.filter((file) => includedFileIds.has(file.id))
-      : workspaceSnapshot.files;
-    const archive = createProjectArchive(archiveFiles);
-    downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
-    showToast("Project archive downloaded.");
+    try {
+      const workspaceSnapshot = getProjectIoBoundaryWorkspaceSnapshot({
+        activeFile,
+        activeFileId,
+        files,
+        getWorkspaceSnapshot,
+        onBeforeWorkspaceBoundary,
+        openFileIds,
+      });
+      const includedFileIds = fileIds ? new Set(fileIds) : null;
+      const archiveFiles = includedFileIds
+        ? workspaceSnapshot.files.filter((file) => includedFileIds.has(file.id))
+        : workspaceSnapshot.files;
+      const archive = createProjectArchive(archiveFiles);
+      downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
+      showToast("Project archive downloaded.");
+    } catch (error) {
+      clientErrorReporter.report({
+        feature: "workspace",
+        operation: "export-archive",
+        error,
+      });
+      showToast("Couldn’t export to file.", "error");
+    }
   };
 
   const importProjectFile = async (file: File) => {

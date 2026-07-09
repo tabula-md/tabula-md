@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
   type RefObject,
 } from "react";
@@ -18,6 +19,7 @@ import type {
   FileViewMode,
   WorkspaceFile,
 } from "../workspaceStorage";
+import { isEmptyGeneratedLivePlaceholder } from "../workspaceStorage";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
@@ -67,7 +69,6 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   rightPanelView: RightPanelView;
   selectedCharacterCount: number;
   selectedText: string;
-  shareExcludedFileIds: readonly string[];
   setRightPanelOpen: (isOpen: boolean) => void;
   setRightPanelView: (view: RightPanelView) => void;
   text: string;
@@ -115,7 +116,6 @@ export function useWorkspaceProjectContextRuntime({
   rightPanelView,
   selectedCharacterCount,
   selectedText,
-  shareExcludedFileIds,
   setRightPanelOpen,
   setRightPanelView,
   text,
@@ -137,10 +137,19 @@ export function useWorkspaceProjectContextRuntime({
       }),
     [activeFile?.id, connectionStatus],
   );
+  const visibleFiles = useMemo(
+    () => files.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
+    [files],
+  );
+  const visibleOpenFileIds = useMemo(() => {
+    const visibleFileIds = new Set(visibleFiles.map((file) => file.id));
+    return openFileIds.filter((fileId) => visibleFileIds.has(fileId));
+  }, [openFileIds, visibleFiles]);
+  const visibleActiveFileId =
+    activeFile && !isEmptyGeneratedLivePlaceholder(activeFile) ? activeFile.id : undefined;
   const liveFileIds = getLiveWorkspaceFileIds({
     activeFile,
-    excludedFileIds: shareExcludedFileIds,
-    files,
+    files: visibleFiles,
     isLive,
   });
 
@@ -180,9 +189,9 @@ export function useWorkspaceProjectContextRuntime({
     isOpen: rightPanelOpen,
     view: rightPanelView,
     isLive,
-    files,
-    openFileIds,
-    activeFileId: activeFile?.id,
+    files: visibleFiles,
+    openFileIds: visibleOpenFileIds,
+    activeFileId: visibleActiveFileId,
     activeFileTitle,
     fileQuery,
     liveFileIds,

@@ -131,4 +131,79 @@ describe("reconcileWorkspaceRoomState", () => {
     expect(nextWorkspace?.openFileIds).toEqual(["readme", "plan"]);
     expect(nextWorkspace?.activeFileId).toBe("readme");
   });
+
+  it("falls back to the remote active document when the local active room document was deleted", () => {
+    const activeFile = file({
+      id: "removed",
+      title: "Removed.md",
+      roomId: "room-1",
+      shareUrl: "https://tabula.test/#room=room-1,key",
+      connectionStatus: "connected",
+    });
+    const nextWorkspace = reconcileWorkspaceRoomState({
+      activeFile,
+      createFile,
+      workspace: workspaceState({
+        activeDocumentId: "readme",
+        nodes: [
+          workspaceState().nodes[0],
+          documentNode("readme", "README.md", 0),
+        ],
+      }),
+      workspaceSnapshot: {
+        activeFileId: "removed",
+        openFileIds: ["removed", "readme"],
+        files: [
+          activeFile,
+          file({
+            id: "readme",
+            title: "README.md",
+            roomId: "room-1",
+            shareUrl: activeFile.shareUrl,
+          }),
+        ],
+      },
+    });
+
+    expect(nextWorkspace?.files.map((nextFile) => nextFile.id)).toEqual(["readme"]);
+    expect(nextWorkspace?.openFileIds).toEqual(["readme"]);
+    expect(nextWorkspace?.activeFileId).toBe("readme");
+  });
+
+  it("keeps duplicate room document titles unique without colliding with local files", () => {
+    const activeFile = file({
+      id: "readme",
+      title: "README.md",
+      roomId: "room-1",
+      shareUrl: "https://tabula.test/#room=room-1,key",
+      connectionStatus: "connected",
+    });
+    const nextWorkspace = reconcileWorkspaceRoomState({
+      activeFile,
+      createFile,
+      workspace: workspaceState({
+        nodes: [
+          workspaceState().nodes[0],
+          documentNode("readme", "README.md", 0),
+          documentNode("plan", "Plan.md", 1),
+          documentNode("duplicate", "Plan.md", 2),
+        ],
+      }),
+      workspaceSnapshot: {
+        activeFileId: "readme",
+        openFileIds: ["readme"],
+        files: [
+          activeFile,
+          file({ id: "local", title: "Plan.md" }),
+        ],
+      },
+    });
+
+    expect(nextWorkspace?.files.map((nextFile) => nextFile.title)).toEqual([
+      "README.md",
+      "Plan.md",
+      "Plan 2.md",
+      "Plan.md",
+    ]);
+  });
 });

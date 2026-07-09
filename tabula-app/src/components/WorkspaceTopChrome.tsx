@@ -6,7 +6,10 @@ import type { Collaborator } from "../collaboration";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import { getLiveWorkspaceFileIds } from "../liveWorkspaceScope";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import type { WorkspaceFile } from "../workspaceStorage";
+import {
+  isEmptyGeneratedLivePlaceholder,
+  type WorkspaceFile,
+} from "../workspaceStorage";
 
 type FileTabsProps = ComponentProps<typeof FileTabs>;
 
@@ -99,17 +102,26 @@ export function WorkspaceTopChrome({
     () =>
       getLiveWorkspaceFileIds({
         activeFile,
-        excludedFileIds: shareExcludedFileIds,
         files,
         isLive: isLiveConnected,
       }),
-    [activeFile, files, isLiveConnected, shareExcludedFileIds],
+    [activeFile, files, isLiveConnected],
   );
+  const visibleFiles = useMemo(
+    () => files.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
+    [files],
+  );
+  const visibleOpenFiles = useMemo(
+    () => openFiles.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
+    [openFiles],
+  );
+  const visibleActiveFile =
+    activeFile && !isEmptyGeneratedLivePlaceholder(activeFile) ? activeFile : undefined;
 
   const fileTabs = (
     <FileTabs
-      files={openFiles}
-      activeFile={activeFile}
+      files={visibleOpenFiles}
+      activeFile={visibleActiveFile}
       activeCollaboratorCount={collaborators.length}
       getFileStatus={getFileStatus}
       liveFileIds={liveFileIds}
@@ -135,7 +147,7 @@ export function WorkspaceTopChrome({
         <Suspense fallback={null}>
           <ShareControls
             activeFile={activeFile}
-            files={files}
+            files={visibleFiles}
             activeText={activeText}
             language={language}
             currentUserName={currentUserName}

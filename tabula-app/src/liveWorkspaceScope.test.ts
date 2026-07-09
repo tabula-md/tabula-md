@@ -4,33 +4,30 @@ import { getLiveWorkspaceFileIds } from "./liveWorkspaceScope";
 const file = (id: string, roomId?: string) => ({ id, roomId });
 
 describe("live workspace scope", () => {
-  it("marks included workspace files while leaving excluded files local", () => {
+  it("marks files that are actually in the active live room", () => {
     expect(
       getLiveWorkspaceFileIds({
         activeFile: { id: "a", roomId: "room-1" },
-        excludedFileIds: ["b"],
-        files: [file("a"), file("b"), file("c")],
+        files: [file("a", "room-1"), file("b"), file("c", "room-1")],
         isLive: true,
       }),
     ).toEqual(["a", "c"]);
   });
 
-  it("keeps all non-excluded workspace files in scope even if older files do not yet store room ids", () => {
+  it("does not mark local files or files from another room", () => {
     expect(
       getLiveWorkspaceFileIds({
         activeFile: { id: "a", roomId: "room-1" },
-        excludedFileIds: [],
         files: [file("a", "room-1"), file("b"), file("c", "room-2")],
         isLive: true,
       }),
-    ).toEqual(["a", "b", "c"]);
+    ).toEqual(["a"]);
   });
 
   it("does not mark files when live collaboration is inactive", () => {
     expect(
       getLiveWorkspaceFileIds({
         activeFile: { id: "a", roomId: "room-1" },
-        excludedFileIds: [],
         files: [file("a"), file("b")],
         isLive: false,
       }),

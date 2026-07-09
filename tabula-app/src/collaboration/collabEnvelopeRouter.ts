@@ -3,6 +3,7 @@ import type { CollaboratorRegistry } from "./collabCollaborators";
 import { isEncryptedEnvelope } from "./collabConnectionModel";
 import type { CollabTextAdapter, CollabTextDocumentHandle } from "./collabRuntimeAdapters";
 import {
+  createRoomActorColor,
   decodeBase64Url,
   decodeRoomEvent,
   hasRoomCapability,
@@ -70,11 +71,15 @@ export const createCollabEnvelopeRouter = ({
       }
 
       const event = result.event;
-      if (event.roomId !== roomId || event.actorId === getSelfId()) {
+      if (event.roomId !== roomId) {
         return;
       }
+      const isSelfActor = event.actorId === getSelfId();
 
         if (event.type === "actor.joined") {
+          if (isSelfActor) {
+            return;
+          }
           if (
             collaborators.upsert(
               actorToCollaborator(event.actor),
@@ -88,6 +93,9 @@ export const createCollabEnvelopeRouter = ({
         }
 
         if (event.type === "actor.left") {
+          if (isSelfActor) {
+            return;
+          }
           const remainingIds = collaborators
             .list()
             .map((collaborator) => collaborator.id)
@@ -100,6 +108,9 @@ export const createCollabEnvelopeRouter = ({
         }
 
         if (event.type === "presence.updated") {
+          if (isSelfActor) {
+            return;
+          }
           const actor = event.actor;
           if (!hasRoomCapability(actor, "presence")) {
             return;
@@ -158,7 +169,7 @@ export const createCollabEnvelopeRouter = ({
 const actorToCollaborator = (actor: RoomActor) => ({
   id: actor.id,
   name: actor.name,
-  color: actor.color ?? "#64748b",
+  color: actor.color ?? createRoomActorColor(actor.id),
   lastSeen: Date.now(),
   kind: actor.kind,
   client: actor.client,

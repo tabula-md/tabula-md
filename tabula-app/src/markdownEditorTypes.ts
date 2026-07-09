@@ -82,7 +82,7 @@ export type MarkdownEditorProps = {
   onHistoryStateChange?: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onOpenLineActions?: (request: MarkdownLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
-  onSelectionChange?: (selection: LiveSelection) => void;
+  onSelectionChange?: (selection?: LiveSelection) => void;
   onSelectionActionPositionChange?: (position: MarkdownSelectionActionPosition | null) => void;
   onScrollRatioChange?: (ratio: number) => void;
 };

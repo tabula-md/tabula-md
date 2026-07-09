@@ -132,7 +132,8 @@ export type WorkspaceState = {
 };
 
 export type InitialWorkspaceSnapshot = {
-  source: "localStorage" | "starter";
+  source: "localStorage" | "room" | "starter";
+  room?: LocationRoom;
   workspace: WorkspaceState;
 };
 
@@ -303,6 +304,15 @@ export const ensureLiveFileForRoom = (files: WorkspaceFile[], room: LocationRoom
       connectionStatus: "connecting",
     }),
   ];
+};
+
+export const createRoomWorkspaceState = (_room: LocationRoom): WorkspaceState => {
+  return {
+    files: [],
+    openFileIds: [],
+    activeFileId: "",
+    commentsByFileId: {},
+  };
 };
 
 const createReadmeFile = (): WorkspaceFile => ({
@@ -627,10 +637,15 @@ const readJsonFromStorage = (key: string, storage: WorkspaceStorageAdapter) => {
 export const readStoredWorkspace = (
   storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
 ): WorkspaceState | null => {
-  return migrateWorkspacePayload(readJsonFromStorage(PROJECT_STORAGE_KEY, storage));
+  return migrateWorkspacePayload(readJsonFromStorage(PROJECT_STORAGE_KEY, storage), { includeLocationRoom: false });
 };
 
 export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {
+  const room = getRoomFromLocation();
+  if (room) {
+    return { source: "room", room, workspace: createRoomWorkspaceState(room) };
+  }
+
   const storedWorkspace = readStoredWorkspace();
   return storedWorkspace
     ? { source: "localStorage", workspace: storedWorkspace }

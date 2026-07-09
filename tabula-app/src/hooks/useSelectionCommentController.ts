@@ -289,7 +289,7 @@ export function useSelectionCommentController({
     }
   }, [activeFileId, activeViewMode]);
 
-  const handleEditorSelectionChange = (selection: LiveSelection) => {
+  const handleEditorSelectionChange = (selection?: LiveSelection) => {
     previewSelectionRef.current = null;
     setPreviewSelection(null);
     setActiveSelection(selection);

@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { getMarkdownDocumentTitle } from "@tabula-md/tabula";
 import {
   addWorkspaceFile,
   closeWorkspaceFile,
@@ -21,9 +20,7 @@ import {
   type WorkspaceModelState,
 } from "@tabula-md/tabula";
 import {
-  ensureLiveFileForRoom,
-  getFileIdForRoom,
-  getLiveFileTitle,
+  createRoomWorkspaceState,
   type FileBookmark,
   type LocationRoom,
   type WorkspaceFile,
@@ -184,20 +181,6 @@ const clearCollaborationFields = (file: WorkspaceFile): WorkspaceFile => ({
   lastRecoveryAt: undefined,
 });
 
-const getFileTitleFromLiveText = (files: WorkspaceFile[], file: WorkspaceFile, text: string) => {
-  if (!file.roomId || file.title !== getLiveFileTitle(file.roomId)) {
-    return file.title;
-  }
-
-  const documentTitle = getMarkdownDocumentTitle(text);
-  return documentTitle
-    ? getAvailableWorkspaceFileTitle(
-        files.filter((candidate) => candidate.id !== file.id),
-        documentTitle,
-      )
-    : file.title;
-};
-
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   ...DEFAULT_WORKSPACE_STORE_STATE,
 
@@ -283,17 +266,12 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   activateRoomFile: (room) => {
-    const nextFiles = ensureLiveFileForRoom(get().files, room);
-    const targetFileId = getFileIdForRoom(nextFiles, room.roomId);
-    const nextFile = nextFiles.find((file) => file.id === targetFileId);
+    const roomWorkspace = createRoomWorkspaceState(room);
+    const nextFile = roomWorkspace.files.find((file) => file.id === roomWorkspace.activeFileId);
 
     set((state) => ({
       ...state,
-      ...createWorkspaceModelState({
-        files: nextFiles,
-        openFileIds: state.openFileIds,
-        activeFileId: targetFileId,
-      }),
+      ...createWorkspaceModelState(roomWorkspace),
     }));
 
     return nextFile;
@@ -306,6 +284,20 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       return undefined;
     }
 
+    const collaborationFields =
+      sourceFile.roomId && sourceFile.shareUrl
+        ? {
+            roomId: sourceFile.roomId,
+            shareUrl: sourceFile.shareUrl,
+            connectionStatus: sourceFile.connectionStatus ?? "idle",
+            collaboratorCount: sourceFile.collaboratorCount ?? 0,
+          }
+        : {
+            connectionStatus: "idle" as const,
+            roomId: undefined,
+            shareUrl: undefined,
+            collaboratorCount: undefined,
+          };
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
       title: getAvailableFileTitle(state.files, sourceFile.title),
       text: sourceFile.text,
@@ -313,7 +305,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       readingWidth: sourceFile.readingWidth,
       lineWrapping: sourceFile.lineWrapping,
       lineNumbers: sourceFile.lineNumbers,
-      connectionStatus: "idle",
+      ...collaborationFields,
     });
 
     set((currentState) => ({
@@ -404,7 +396,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     set((state) =>
       updateFileInState(state, fileId, (file) => ({
         ...file,
-        title: getFileTitleFromLiveText(state.files, file, text),
         text,
       })),
     );

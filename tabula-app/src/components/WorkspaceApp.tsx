@@ -1,15 +1,19 @@
 import { DocumentWorkbench } from "./DocumentWorkbench";
+import { LiveRoomLoadingSurface } from "./LiveRoomLoadingSurface";
 import { WorkspaceEmptySurface } from "./WorkspaceEmptySurface";
 import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";
 import { WorkspaceOverlaySurface } from "./WorkspaceOverlaySurface";
 import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { useWorkspaceRuntime } from "../hooks/useWorkspaceRuntime";
+import { isEmptyGeneratedLivePlaceholder } from "../workspaceStorage";
 
 export function WorkspaceApp() {
   const {
     documentSurface,
     emptySurfaceProps,
+    liveRoomLoadingProps,
+    liveRoomOpenState,
     mainPanelClassName,
     menuSurfaceProps,
     overlayProps,
@@ -18,6 +22,11 @@ export function WorkspaceApp() {
     workbenchProps,
   } = useWorkspaceRuntime();
   const { activeFile, ...documentWorkbenchProps } = workbenchProps;
+  const activeFileIsLivePlaceholder = Boolean(activeFile && isEmptyGeneratedLivePlaceholder(activeFile));
+  const liveRoomSurfaceState =
+    activeFileIsLivePlaceholder || liveRoomOpenState !== "unavailable"
+      ? "opening"
+      : "unavailable";
 
   return (
     <main className="app-shell">
@@ -29,7 +38,12 @@ export function WorkspaceApp() {
           <WorkspaceTopChrome {...topChromeProps} />
 
           <section className={documentSurface.fileShellClassName}>
-            {activeFile ? (
+            {liveRoomOpenState !== "idle" || activeFileIsLivePlaceholder ? (
+              <LiveRoomLoadingSurface
+                state={liveRoomSurfaceState}
+                {...liveRoomLoadingProps}
+              />
+            ) : activeFile ? (
               <DocumentWorkbench
                 {...documentWorkbenchProps}
                 activeFile={activeFile}

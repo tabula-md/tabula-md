@@ -52,6 +52,7 @@ export type MarkdownEditorExtensionConfig = {
   commentsEnabled: boolean;
   activeCommentId?: string | null;
   collaborators: Collaborator[];
+  currentDocumentId?: string;
   fileTitle?: string;
   roomId?: string;
   searchMatches: SearchMatch[];
@@ -134,6 +135,7 @@ export const createMarkdownEditorExtensions = ({
   commentsEnabled,
   activeCommentId,
   collaborators,
+  currentDocumentId,
   fileTitle,
   roomId,
   searchMatches,
@@ -164,7 +166,7 @@ export const createMarkdownEditorExtensions = ({
       ? createEditorCommentAnchorExtension(commentAnchors, activeCommentId, onOpenComment)
       : [],
   ),
-  compartments.remotePresence.of(createEditorPresenceExtension(collaborators, fileTitle, roomId)),
+  compartments.remotePresence.of(createEditorPresenceExtension(collaborators, fileTitle, roomId, currentDocumentId)),
   createTextSelectionHighlightExtension(),
   compartments.searchHighlight.of(createEditorSearchExtension(searchMatches, activeSearchMatchIndex)),
   createEditorInteractionExtension({ onOpenLinkPopover }),

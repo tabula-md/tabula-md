@@ -68,6 +68,9 @@ export function ShareExportPanel({
         </button>
       </div>
       <p className="share-modal-muted">
+        {copy.shareable.description}
+      </p>
+      <p className="share-modal-muted">
         {copy.exportPanel.projectArchiveDescription}
       </p>
       {shareView.shareable.hasLink && jsonShare.url ? (

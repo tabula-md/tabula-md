@@ -1,5 +1,5 @@
 import { StateEffect, StateField, type EditorState, type Extension, type Transaction } from "@codemirror/state";
-import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
+import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import type { Collaborator } from "../collaboration";
 import {
   getCollaboratorPresenceLabel,
@@ -11,6 +11,7 @@ const toCssColor = (color: string) => (/^#[0-9a-fA-F]{6}$/.test(color) ? color :
 
 export type EditorPresenceState = {
   collaborators: Collaborator[];
+  currentDocumentId?: string;
   currentFileTitle?: string;
   currentRoomId?: string;
 };
@@ -25,6 +26,22 @@ export const updateEditorPresenceEffect = StateEffect.define<EditorPresenceState
 
 const getSelectionSignature = (selection: Collaborator["selection"]) =>
   selection ? `${selection.from}:${selection.to}` : "";
+
+export const shouldRenderRemoteCursor = ({
+  anchor,
+  docLength,
+}: {
+  anchor: number;
+  docLength: number;
+}) => anchor >= 0 && anchor <= docLength;
+
+export const getRemoteCursorWidgetSide = ({
+  anchor,
+  docLength,
+}: {
+  anchor: number;
+  docLength: number;
+}) => (docLength === 0 && anchor === 0 ? -1 : 1);
 
 export const mapEditorPresenceStateThroughTransaction = (
   presenceState: EditorPresenceState,
@@ -75,10 +92,12 @@ export const mapEditorPresenceStateThroughTransaction = (
 
 export const getEditorPresenceSignature = ({
   collaborators = [],
+  currentDocumentId = "",
   currentFileTitle = "",
   currentRoomId = "",
 }: EditorPresenceState) =>
   [
+    currentDocumentId,
     currentFileTitle,
     currentRoomId,
     ...collaborators.map((collaborator) =>
@@ -86,6 +105,7 @@ export const getEditorPresenceSignature = ({
         collaborator.id,
         collaborator.name,
         collaborator.color,
+        collaborator.activeDocumentId ?? "",
         collaborator.roomId ?? "",
         collaborator.fileTitle ?? "",
         getSelectionSignature(collaborator.selection),
@@ -118,12 +138,6 @@ class RemoteCursorWidget extends WidgetType {
     cursor.setAttribute("aria-label", this.label);
     cursor.setAttribute("title", this.label);
 
-    const label = document.createElement("span");
-    label.className = "cm-remote-cursor-label";
-    label.setAttribute("aria-hidden", "true");
-    label.textContent = this.collaborator.name;
-    cursor.append(label);
-
     return cursor;
   }
 
@@ -136,6 +150,7 @@ export const createEditorPresenceExtension = (
   collaborators: Collaborator[] = [],
   currentFileTitle?: string,
   currentRoomId?: string,
+  currentDocumentId?: string,
 ): Extension => {
   const createPresenceDecorations = (state: EditorState, presenceState: EditorPresenceState) => {
     if (presenceState.collaborators.length === 0) {
@@ -145,7 +160,14 @@ export const createEditorPresenceExtension = (
     const docLength = state.doc.length;
     const ranges = presenceState.collaborators
       .flatMap((collaborator) => {
-        if (!isCollaboratorInFile(collaborator, presenceState.currentFileTitle, presenceState.currentRoomId)) {
+        if (
+          !isCollaboratorInFile(
+            collaborator,
+            presenceState.currentFileTitle,
+            presenceState.currentRoomId,
+            presenceState.currentDocumentId,
+          )
+        ) {
           return [];
         }
 
@@ -158,6 +180,10 @@ export const createEditorPresenceExtension = (
         const from = clampEditorPosition(Math.min(selection.from, selection.to), docLength);
         const to = clampEditorPosition(Math.max(selection.from, selection.to), docLength);
         const anchor = clampEditorPosition(selection.to, docLength);
+        if (!shouldRenderRemoteCursor({ anchor, docLength })) {
+          return [];
+        }
+
         const line = state.doc.lineAt(anchor);
         const label = getCollaboratorPresenceLabel({
           ...collaborator,
@@ -169,16 +195,9 @@ export const createEditorPresenceExtension = (
         });
         const style = `--remote-presence-color: ${color};`;
         const decorations = [
-          Decoration.line({
-            class: "cm-remote-presence-line",
-            attributes: {
-              style,
-              title: label,
-            },
-          }).range(line.from),
           Decoration.widget({
             widget: new RemoteCursorWidget(collaborator, label, color),
-            side: 1,
+            side: getRemoteCursorWidgetSide({ anchor, docLength }),
           }).range(anchor),
         ];
 
@@ -202,6 +221,7 @@ export const createEditorPresenceExtension = (
   };
   const initialState: EditorPresenceState = {
     collaborators,
+    currentDocumentId,
     currentFileTitle,
     currentRoomId,
   };
@@ -240,5 +260,118 @@ export const createEditorPresenceExtension = (
     provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
   });
 
-  return presenceField;
+  const cursorLabelPlugin = ViewPlugin.fromClass(
+    class {
+      private readonly labelLayer: HTMLDivElement;
+      private renderFrame: number | null = null;
+
+      constructor(private readonly view: EditorView) {
+        this.labelLayer = document.createElement("div");
+        this.labelLayer.className = "cm-remote-cursor-label-layer";
+        this.view.dom.append(this.labelLayer);
+        this.view.scrollDOM.addEventListener("scroll", this.scheduleRender, { passive: true });
+        this.scheduleRender();
+      }
+
+      update(_update: ViewUpdate) {
+        this.scheduleRender();
+      }
+
+      destroy() {
+        this.view.scrollDOM.removeEventListener("scroll", this.scheduleRender);
+        const viewWindow = this.view.dom.ownerDocument.defaultView;
+        if (this.renderFrame !== null && viewWindow) {
+          viewWindow.cancelAnimationFrame(this.renderFrame);
+        }
+        this.labelLayer.remove();
+      }
+
+      private readonly scheduleRender = () => {
+        if (this.renderFrame !== null) {
+          return;
+        }
+
+        const viewWindow = this.view.dom.ownerDocument.defaultView;
+        if (!viewWindow) {
+          this.render();
+          return;
+        }
+
+        this.renderFrame = viewWindow.requestAnimationFrame(() => {
+          this.renderFrame = null;
+          this.render();
+        });
+      };
+
+      private readonly render = () => {
+        const field = this.view.state.field(presenceField, false);
+        const presenceState = field?.state;
+        if (!presenceState || presenceState.collaborators.length === 0) {
+          this.labelLayer.replaceChildren();
+          return;
+        }
+
+        const editorRect = this.view.dom.getBoundingClientRect();
+        const docLength = this.view.state.doc.length;
+        const labels = presenceState.collaborators.flatMap((collaborator) => {
+          if (
+            !isCollaboratorInFile(
+              collaborator,
+              presenceState.currentFileTitle,
+              presenceState.currentRoomId,
+              presenceState.currentDocumentId,
+            )
+          ) {
+            return [];
+          }
+
+          const selection = collaborator.selection;
+          if (!selection) {
+            return [];
+          }
+
+          const anchor = clampEditorPosition(selection.to, docLength);
+          if (!shouldRenderRemoteCursor({ anchor, docLength })) {
+            return [];
+          }
+
+          const coords = this.view.coordsAtPos(anchor, 1);
+          if (!coords) {
+            return [];
+          }
+
+          const line = this.view.state.doc.lineAt(anchor);
+          const label = getCollaboratorPresenceLabel({
+            ...collaborator,
+            selection: {
+              ...selection,
+              lineNumber: line.number,
+              toLineNumber: line.number,
+            },
+          });
+          const color = toCssColor(collaborator.color);
+          const labelElement = document.createElement("span");
+          labelElement.className =
+            coords.top - editorRect.top < 24
+              ? "cm-remote-cursor-label below"
+              : "cm-remote-cursor-label above";
+          labelElement.style.setProperty("--remote-presence-color", color);
+          labelElement.style.left = `${Math.max(
+            0,
+            Math.min(coords.left - editorRect.left + 6, Math.max(0, editorRect.width - 180)),
+          )}px`;
+          labelElement.style.top = `${
+            coords.top - editorRect.top < 24 ? coords.bottom - editorRect.top : coords.top - editorRect.top
+          }px`;
+          labelElement.setAttribute("title", label);
+          labelElement.textContent = collaborator.name;
+          return [labelElement];
+        });
+
+        this.labelLayer.replaceChildren(...labels);
+      };
+    },
+  );
+
+  return [presenceField, cursorLabelPlugin];
 };

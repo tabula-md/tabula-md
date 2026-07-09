@@ -26,7 +26,7 @@ describe("share view model", () => {
     expect(viewModel).not.toHaveProperty("activePanel");
   });
 
-  it("models export links as encrypted copies, not read-only publishing", () => {
+  it("models export links as encrypted copy links, not publishing", () => {
     const viewModel = buildShareViewModel({
       ...baseInput,
       jsonShareUrl: "https://tabula.md/#json=snapshot,key",
@@ -34,9 +34,6 @@ describe("share view model", () => {
 
     expect(viewModel.shareable.status).toBe("exported");
     expect(viewModel.shareable.primaryLabel).toBe("Export to link");
-    expect(JSON.stringify(viewModel.shareable).toLowerCase()).not.toContain(
-      "read-only",
-    );
     expect(JSON.stringify(viewModel.shareable).toLowerCase()).not.toContain(
       "publish",
     );

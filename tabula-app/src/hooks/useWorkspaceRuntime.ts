@@ -18,13 +18,18 @@ import {
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import { reconcileWorkspaceRoomState } from "../collaboration/workspaceRoomStateMerge";
 import {
+  createRoomWorkspaceState,
   createWorkspaceFile,
+  finalizeWorkspaceState,
   isEmptyGeneratedLivePlaceholder,
   randomId,
   readInitialWorkspaceSnapshot,
+  readStoredWorkspace,
   README_FILE_ID,
   syncUrlForFile,
   type FileViewMode,
+  type LocationRoom,
+  type WorkspaceFile,
   type WorkspaceState,
 } from "../workspaceStorage";
 import {
@@ -59,6 +64,88 @@ import { useWorkspaceProjectContextRuntime } from "./useWorkspaceProjectContextR
 import { useWorkspaceRouteRuntime } from "./useWorkspaceRouteRuntime";
 import { useWorkspaceShareRuntime } from "./useWorkspaceShareRuntime";
 import { useWorkspaceTopChromeRuntime } from "./useWorkspaceTopChromeRuntime";
+import {
+  getLiveRoomOpenState,
+  LIVE_ROOM_OPEN_TIMEOUT_MS,
+} from "../liveRoomOpenState";
+
+const getWorkspaceRoomTreeSignature = (
+  documents: readonly { id: string; title: string; parentId?: string | null }[],
+) =>
+  JSON.stringify(
+    documents.map((document) => ({
+      id: document.id,
+      title: document.title,
+      parentId: document.parentId ?? null,
+    })),
+  );
+
+const getWorkspaceRoomStateTreeSignature = (workspace: WorkspaceRoomState) =>
+  JSON.stringify(
+    workspace.nodes
+      .filter((node) => node.type === "document")
+      .map((node) => ({
+        id: node.id,
+        title: node.title,
+        parentId: node.parentId ?? null,
+      })),
+  );
+
+const getWorkspaceRoomPublishSignature = (roomId: string, treeSignature: string) =>
+  JSON.stringify({ roomId, tree: treeSignature });
+
+const createRoomBootstrapFile = (room: LocationRoom): WorkspaceFile =>
+  createWorkspaceFile(1, {
+    id: `room-bootstrap-${room.roomId}`,
+    title: "Workspace",
+    text: "",
+    roomId: room.roomId,
+    shareUrl: room.shareUrl,
+    connectionStatus: "connecting",
+  });
+
+const getWorkspaceRoomDocumentIds = (workspace: WorkspaceRoomState) =>
+  new Set(
+    workspace.nodes
+      .filter((node) => node.type === "document")
+      .map((node) => node.id),
+  );
+
+const omitRemovedWorkspaceRoomDocuments = (
+  workspace: WorkspaceRoomState,
+  removedDocumentIds: ReadonlySet<string> | undefined,
+): WorkspaceRoomState => {
+  if (!removedDocumentIds?.size) {
+    return workspace;
+  }
+
+  const nextNodes = workspace.nodes.filter(
+    (node) => node.type !== "document" || !removedDocumentIds.has(node.id),
+  );
+  const nextDocumentIds = new Set(
+    nextNodes
+      .filter((node) => node.type === "document")
+      .map((node) => node.id),
+  );
+  const activeDocumentId =
+    workspace.activeDocumentId && nextDocumentIds.has(workspace.activeDocumentId)
+      ? workspace.activeDocumentId
+      : nextDocumentIds.values().next().value;
+
+  if (activeDocumentId) {
+    return {
+      ...workspace,
+      nodes: nextNodes,
+      activeDocumentId,
+    };
+  }
+
+  const { activeDocumentId: _removedActiveDocumentId, ...workspaceWithoutActiveDocument } = workspace;
+  return {
+    ...workspaceWithoutActiveDocument,
+    nodes: nextNodes,
+  };
+};
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -74,7 +161,6 @@ export function useWorkspaceRuntime() {
     selectFile: selectWorkspaceFileAction,
     addFile: addWorkspaceFileAction,
     addFileFromContent,
-    activateRoomFile,
     duplicateFile: duplicateWorkspaceFile,
     renameFile,
     closeFile: closeWorkspaceFileAction,
@@ -119,6 +205,9 @@ export function useWorkspaceRuntime() {
     workspacePreferences.language,
   ).share;
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
+  const [activeRoom, setActiveRoom] = useState<LocationRoom | null>(() =>
+    initialWorkspaceSnapshot.source === "room" ? (initialWorkspaceSnapshot.room ?? null) : null,
+  );
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const previewRef = useRef<MarkdownPreviewHandle | null>(null);
   const editorDocumentRuntime = useWorkspaceEditorDocumentRuntimeOwner();
@@ -131,7 +220,27 @@ export function useWorkspaceRuntime() {
     useWorkspaceIdentity();
   const [shareExcludedFileIds, setShareExcludedFileIds] = useState<string[]>([]);
   const failedLiveRoomStartRef = useRef<string | null>(null);
+  const [liveRoomOpenTimedOut, setLiveRoomOpenTimedOut] = useState(false);
   const syncedLiveRoomUrlRef = useRef<string | null>(null);
+  const activeRoomId = activeFile?.roomId ?? activeRoom?.roomId;
+  const activeRoomShareUrl =
+    activeFile?.roomId && activeFile.shareUrl ? activeFile.shareUrl : activeRoom?.shareUrl;
+  const collaborationActiveFile = useMemo(
+    () => activeFile ?? (activeRoom ? createRoomBootstrapFile(activeRoom) : undefined),
+    [activeFile, activeRoom],
+  );
+  useEffect(() => {
+    if (activeFile?.roomId && activeFile.shareUrl) {
+      if (activeRoom?.roomId !== activeFile.roomId || activeRoom.shareUrl !== activeFile.shareUrl) {
+        setActiveRoom({ roomId: activeFile.roomId, shareUrl: activeFile.shareUrl });
+      }
+      return;
+    }
+
+    if (activeFile && activeRoom) {
+      setActiveRoom(null);
+    }
+  }, [activeFile?.roomId, activeFile?.shareUrl, activeFile?.id, activeRoom]);
   const {
     commentsByFileId,
     commentDraft,
@@ -269,11 +378,13 @@ export function useWorkspaceRuntime() {
     onSetWorkspaceFileViewMode: setWorkspaceFileViewMode,
   });
   const lastPublishedWorkspaceStateSignatureRef = useRef<string | null>(null);
-  const suppressNextWorkspaceStatePublishRef = useRef(false);
+  const removedLiveRoomDocumentIdsRef = useRef<Map<string, Set<string>>>(new Map());
+  const removedLiveDocumentIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     lastPublishedWorkspaceStateSignatureRef.current = null;
-    suppressNextWorkspaceStatePublishRef.current = false;
-  }, [activeFile?.roomId]);
+    removedLiveRoomDocumentIdsRef.current.clear();
+    removedLiveDocumentIdsRef.current.clear();
+  }, [activeRoomId]);
   const workspacePersistenceSnapshot = useMemo<WorkspaceState>(
     () => ({
       files,
@@ -308,21 +419,52 @@ export function useWorkspaceRuntime() {
     setSelectionActionPosition,
   });
   const mergeWorkspaceRoomState = useEventCallback((workspace: WorkspaceRoomState) => {
+    const workspaceSnapshot = getWorkspaceSnapshot();
+    const incomingDocumentIds = getWorkspaceRoomDocumentIds(workspace);
+    const isActiveRoomWorkspace = activeRoomId === workspace.roomId;
+    const removedDocumentIds = new Set([
+      ...removedLiveDocumentIdsRef.current,
+      ...(removedLiveRoomDocumentIdsRef.current.get(workspace.roomId) ?? []),
+    ]);
+    const excludedFileIds = new Set(shareExcludedFileIds);
+    for (const file of workspaceSnapshot.files) {
+      const fileInRoomScope =
+        file.roomId === workspace.roomId ||
+        (isActiveRoomWorkspace && !excludedFileIds.has(file.id));
+      if (fileInRoomScope && !incomingDocumentIds.has(file.id)) {
+        removedDocumentIds.add(file.id);
+        removedLiveDocumentIdsRef.current.add(file.id);
+      }
+    }
+    if (removedDocumentIds.size > 0) {
+      removedLiveRoomDocumentIdsRef.current.set(workspace.roomId, removedDocumentIds);
+    }
+    const nextRoomWorkspace = omitRemovedWorkspaceRoomDocuments(workspace, removedDocumentIds);
     const nextWorkspace = reconcileWorkspaceRoomState({
       activeFile,
       createFile: createWorkspaceFile,
-      workspace,
-      workspaceSnapshot: getWorkspaceSnapshot(),
+      roomShareUrl: activeRoomShareUrl,
+      workspace: nextRoomWorkspace,
+      workspaceSnapshot,
     });
     if (!nextWorkspace) {
       return;
     }
 
-    suppressNextWorkspaceStatePublishRef.current = true;
+    lastPublishedWorkspaceStateSignatureRef.current = getWorkspaceRoomPublishSignature(
+      nextRoomWorkspace.roomId,
+      getWorkspaceRoomStateTreeSignature(nextRoomWorkspace),
+    );
+    if (
+      activeRoomShareUrl &&
+      (activeRoom?.roomId !== nextRoomWorkspace.roomId || activeRoom.shareUrl !== activeRoomShareUrl)
+    ) {
+      setActiveRoom({ roomId: nextRoomWorkspace.roomId, shareUrl: activeRoomShareUrl });
+    }
     replaceWorkspace(nextWorkspace);
   });
   const handleRoomEvent = useEventCallback((event: RoomEvent) => {
-    if (!activeFile?.roomId || event.roomId !== activeFile.roomId) {
+    if (!activeRoomId || event.roomId !== activeRoomId) {
       return;
     }
 
@@ -332,15 +474,12 @@ export function useWorkspaceRuntime() {
   });
   const workspaceShareDocuments = useMemo(
     () => {
+      if (activeRoom && !activeFile) {
+        return [];
+      }
+
       if (activeFile && isEmptyGeneratedLivePlaceholder(activeFile)) {
-        return [
-          {
-            id: activeFile.id,
-            title: activeFile.title,
-            text: activeFile.text,
-            parentId: activeFile.parentId,
-          },
-        ];
+        return [];
       }
 
       const shareCandidateFiles = activeFile?.roomId
@@ -348,6 +487,7 @@ export function useWorkspaceRuntime() {
         : files.filter((file) => file.id === activeFile?.id || !shareExcludedFileIds.includes(file.id));
 
       return shareCandidateFiles
+        .filter((file) => !isEmptyGeneratedLivePlaceholder(file))
         .map((file) => ({
           id: file.id,
           title: file.title,
@@ -355,17 +495,10 @@ export function useWorkspaceRuntime() {
           parentId: file.parentId,
         }));
     },
-    [activeFile, files, shareExcludedFileIds],
+    [activeFile, activeRoom, files, shareExcludedFileIds],
   );
   const workspaceShareTreeSignature = useMemo(
-    () =>
-      JSON.stringify(
-        workspaceShareDocuments.map((document) => ({
-          id: document.id,
-          title: document.title,
-          parentId: document.parentId ?? null,
-        })),
-      ),
+    () => getWorkspaceRoomTreeSignature(workspaceShareDocuments),
     [workspaceShareDocuments],
   );
   const {
@@ -382,9 +515,9 @@ export function useWorkspaceRuntime() {
     resetCollaborationState,
     retryConnection: retryCollaborationConnection,
   } = useWorkspaceCollaborationRuntime({
-    activeFile,
-    activeFileTitle,
-    activeSelection,
+    activeFile: collaborationActiveFile,
+    activeFileTitle: activeFile ? activeFileTitle : "Workspace",
+    activeSelection: activeFile ? activeSelection : undefined,
     editorDocumentRuntime,
     editorRef,
     getActiveFileSnapshot,
@@ -427,9 +560,10 @@ export function useWorkspaceRuntime() {
     const excludedFileIds = new Set(shareExcludedFileIds);
     return workspaceSnapshot.files
       .filter((file) =>
-        activeFile?.roomId
+        !isEmptyGeneratedLivePlaceholder(file) &&
+        (activeFile?.roomId
           ? file.roomId === activeFile.roomId
-          : !excludedFileIds.has(file.id),
+          : !excludedFileIds.has(file.id)),
       )
       .map((file) => ({
         id: file.id,
@@ -464,20 +598,14 @@ export function useWorkspaceRuntime() {
 
     let cancelled = false;
     const documents = getWorkspaceRoomDocuments();
-    const publishSignature = JSON.stringify({
-      roomId: activeFile.roomId,
-      activeDocumentId: activeFile.id,
-      actorId: presenceIdentity.id,
-      tree: workspaceShareTreeSignature,
-    });
+    if (documents.length === 0) {
+      return;
+    }
+    const publishSignature = getWorkspaceRoomPublishSignature(activeFile.roomId, workspaceShareTreeSignature);
     if (lastPublishedWorkspaceStateSignatureRef.current === publishSignature) {
       return;
     }
     lastPublishedWorkspaceStateSignatureRef.current = publishSignature;
-    if (suppressNextWorkspaceStatePublishRef.current) {
-      suppressNextWorkspaceStatePublishRef.current = false;
-      return;
-    }
 
     void createWorkspaceRoomState({
       activeDocumentId: activeFile.id,
@@ -521,7 +649,7 @@ export function useWorkspaceRuntime() {
     workspaceShareTreeSignature,
   ]);
   useWorkspacePersistenceRuntime({
-    enabled: initialWorkspaceSnapshot.source === "starter",
+    enabled: initialWorkspaceSnapshot.source === "starter" && !activeFile?.roomId,
     getWorkspaceSnapshot,
     initialWorkspace,
     onBeforePersist: flushPendingEditorCommit,
@@ -545,6 +673,30 @@ export function useWorkspaceRuntime() {
       startCollaborationSession,
       stopFileCollaborationSession,
     });
+  useEffect(() => {
+    if (!activeRoom || activeFile || connectionStatus !== "connected") {
+      setLiveRoomOpenTimedOut(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setLiveRoomOpenTimedOut(true);
+    }, LIVE_ROOM_OPEN_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeFile, activeRoom, connectionStatus]);
+  const retryOpeningLiveRoom = useEventCallback(() => {
+    setLiveRoomOpenTimedOut(false);
+    retryCollaborationConnection();
+  });
+  const openLocalWorkspaceAfterRoomFailure = useEventCallback(() => {
+    flushPendingEditorCommit();
+    stopSession();
+    resetCollaborationState("idle");
+    setActiveRoom(null);
+    syncUrlForFile(undefined, "replace");
+    replaceWorkspace(readStoredWorkspace() ?? finalizeWorkspaceState([], undefined, {}, { includeLocationRoom: false }));
+  });
   const copyShareUrlWithPendingCommit = useEventCallback(() => {
     flushPendingEditorCommit();
     void copyShareUrl();
@@ -556,6 +708,7 @@ export function useWorkspaceRuntime() {
       return;
     }
 
+    setActiveRoom(startedSession);
     const excludedFileIds = new Set(shareExcludedFileIds);
     for (const file of files) {
       if (file.id === activeFile?.id || excludedFileIds.has(file.id)) {
@@ -566,10 +719,15 @@ export function useWorkspaceRuntime() {
     }
   });
   const stopSessionWithPendingCommit = useEventCallback(() => {
-    const roomId = activeFile?.roomId;
+    const roomId = activeFile?.roomId ?? activeRoom?.roomId;
     const workspaceRoomFileIds = roomId ? files.filter((file) => file.roomId === roomId).map((file) => file.id) : [];
     flushPendingEditorCommit();
     stopSession();
+    if (!activeFile?.roomId) {
+      resetCollaborationState("idle");
+      syncUrlForFile(undefined, "replace");
+    }
+    setActiveRoom(null);
     for (const fileId of workspaceRoomFileIds) {
       if (fileId !== activeFile?.id) {
         stopFileCollaborationSession(fileId);
@@ -577,7 +735,7 @@ export function useWorkspaceRuntime() {
     }
   });
   useEffect(() => {
-    const roomId = activeFile?.roomId;
+    const roomId = activeRoomId;
     if (!roomId || connectionStatus !== "failed") {
       return;
     }
@@ -590,17 +748,17 @@ export function useWorkspaceRuntime() {
     showToast("Live collaboration isn’t available right now.", "error");
     stopSessionWithPendingCommit();
   }, [
-    activeFile?.roomId,
+    activeRoomId,
     connectionStatus,
     setTopPopover,
     showToast,
     stopSessionWithPendingCommit,
   ]);
   useEffect(() => {
-    if (connectionStatus === "connected" || !activeFile?.roomId) {
+    if (connectionStatus === "connected" || !activeRoomId) {
       failedLiveRoomStartRef.current = null;
     }
-  }, [activeFile?.roomId, connectionStatus]);
+  }, [activeRoomId, connectionStatus]);
   useEffect(() => {
     if (!activeFile?.roomId || !activeFile.shareUrl) {
       syncedLiveRoomUrlRef.current = null;
@@ -621,10 +779,14 @@ export function useWorkspaceRuntime() {
     setCenterPopover(null);
     setCopiedFileId(null);
   });
+  const activateRoomWorkspace = useEventCallback((room: LocationRoom) => {
+    setActiveRoom(room);
+    replaceWorkspace(createRoomWorkspaceState(room));
+  });
   useWorkspaceRouteRuntime({
     activeFile,
     activeFileId,
-    activateRoomFile,
+    activateRoomFile: activateRoomWorkspace,
     files,
     onBeforeWorkspaceBoundary: flushPendingEditorCommit,
     selectFile: selectWorkspaceFileAction,
@@ -670,6 +832,28 @@ export function useWorkspaceRuntime() {
     showToast,
     workspaceSource: initialWorkspaceSnapshot.source,
   });
+  const deleteWorkspaceFileActionWithLiveTombstone = useEventCallback((fileId: string) => {
+    const file = getWorkspaceSnapshot().files.find((workspaceFile) => workspaceFile.id === fileId);
+    if (!file) {
+      return deleteWorkspaceFileAction(fileId);
+    }
+    const roomId =
+      file.roomId ?? (!shareExcludedFileIds.includes(fileId) ? activeFile?.roomId : undefined);
+    if (roomId) {
+      removedLiveDocumentIdsRef.current.add(file.id);
+      const removedDocumentIds = removedLiveRoomDocumentIdsRef.current.get(roomId) ?? new Set<string>();
+      removedDocumentIds.add(file.id);
+      removedLiveRoomDocumentIdsRef.current.set(roomId, removedDocumentIds);
+    }
+    const result = deleteWorkspaceFileAction(fileId);
+    if (!result && roomId) {
+      removedLiveRoomDocumentIdsRef.current.get(roomId)?.delete(file.id);
+    }
+    if (!result && roomId) {
+      removedLiveDocumentIdsRef.current.delete(file.id);
+    }
+    return result;
+  });
   const {
     selectFile,
     addFile,
@@ -688,7 +872,7 @@ export function useWorkspaceRuntime() {
     closeFloatingChrome,
     closeWorkspaceFileAction,
     commentsByFileId,
-    deleteWorkspaceFileAction,
+    deleteWorkspaceFileAction: deleteWorkspaceFileActionWithLiveTombstone,
     duplicateWorkspaceFile,
     files,
     helpMarkdown: createHelpMarkdown(shortcutLabels),
@@ -825,7 +1009,6 @@ export function useWorkspaceRuntime() {
       rightPanelView,
       selectedCharacterCount,
       selectedText: selectedMarkdownText,
-      shareExcludedFileIds,
       setRightPanelOpen,
       setRightPanelView,
       text,
@@ -930,6 +1113,16 @@ export function useWorkspaceRuntime() {
       onOpenFile: () => importInputRef.current?.click(),
       onOpenHelp: openHelpFile,
     },
+    liveRoomLoadingProps: {
+      onOpenLocalWorkspace: openLocalWorkspaceAfterRoomFailure,
+      onRetry: retryOpeningLiveRoom,
+    },
+    liveRoomOpenState: getLiveRoomOpenState({
+      connectionStatus,
+      hasActiveFile: Boolean(activeFile),
+      hasActiveRoom: Boolean(activeRoom),
+      timedOut: liveRoomOpenTimedOut,
+    }),
     menuSurfaceProps,
     overlayProps: {
       jsonShareImport,
