@@ -324,6 +324,7 @@ export function useWorkspaceRuntime() {
       commentsByFileId,
       copy: workspaceShareCopy,
       getActiveFileSnapshot,
+      onBeforeWorkspaceBoundary: flushPendingEditorCommit,
       resetCollaborationState,
       setCenterPopover,
       setCopiedFileId,
@@ -331,22 +332,6 @@ export function useWorkspaceRuntime() {
       startCollaborationSession,
       stopFileCollaborationSession,
     });
-  const copyCurrentFileWithPendingCommit = useEventCallback(() => {
-    flushPendingEditorCommit();
-    copyCurrentFile();
-  });
-  const downloadCurrentFileWithPendingCommit = useEventCallback(() => {
-    flushPendingEditorCommit();
-    downloadCurrentFile();
-  });
-  const downloadProjectWithPendingCommit = useEventCallback(() => {
-    flushPendingEditorCommit();
-    downloadProject();
-  });
-  const downloadProjectArchiveWithPendingCommit = useEventCallback(() => {
-    flushPendingEditorCommit();
-    downloadProjectArchive();
-  });
   const copyShareUrlWithPendingCommit = useEventCallback(() => {
     flushPendingEditorCommit();
     void copyShareUrl();
@@ -359,20 +344,6 @@ export function useWorkspaceRuntime() {
     flushPendingEditorCommit();
     stopSession();
   });
-  const jsonShareWithPendingCommit = useMemo(
-    () => ({
-      ...jsonShare,
-      copyLink: async () => {
-        flushPendingEditorCommit();
-        await jsonShare.copyLink();
-      },
-      exportLink: async () => {
-        flushPendingEditorCommit();
-        await jsonShare.exportLink();
-      },
-    }),
-    [flushPendingEditorCommit, jsonShare],
-  );
   const handleRouteWorkspaceChange = useEventCallback(() => {
     setTopPopover(null);
     setCenterPopover(null);
@@ -521,8 +492,8 @@ export function useWorkspaceRuntime() {
     isOpen: workspaceMenuOpen,
     onAddFile: addFile,
     onCloseChrome: closeFloatingChrome,
-    onDownloadFile: downloadCurrentFileWithPendingCommit,
-    onDownloadProject: downloadProjectWithPendingCommit,
+    onDownloadFile: downloadCurrentFile,
+    onDownloadProject: downloadProject,
     onImportFileChange: handleImportInputChange,
     onImportProjectChange: handleProjectImportInputChange,
     onOpenAbout: openAboutFile,
@@ -598,7 +569,7 @@ export function useWorkspaceRuntime() {
     getFileStatus,
     identity: presenceIdentity,
     isLive,
-    jsonShare: jsonShareWithPendingCommit,
+    jsonShare,
     language: workspacePreferences.language,
     openFiles,
     rightPanelOpen,
@@ -610,10 +581,10 @@ export function useWorkspaceRuntime() {
     onChangeUserName: updateIdentityName,
     onCloseFile: closeFile,
     onCommitUserName: normalizeIdentityName,
-    onCopyFile: copyCurrentFileWithPendingCommit,
+    onCopyFile: copyCurrentFile,
     onCopyShareUrl: copyShareUrlWithPendingCommit,
-    onDownloadFile: downloadCurrentFileWithPendingCommit,
-    onDownloadProjectArchive: downloadProjectArchiveWithPendingCommit,
+    onDownloadFile: downloadCurrentFile,
+    onDownloadProjectArchive: downloadProjectArchive,
     onReorderFiles: reorderFiles,
     onRenameFile: renameWorkspaceFileAction,
     onSelectFile: selectFile,
@@ -740,7 +711,7 @@ export function useWorkspaceRuntime() {
       workspaceRef,
       onBookmarksChange: updateActiveFileBookmarks,
       onCloseSearch: documentWorkbenchRuntime.onCloseSearch,
-      onCopyFile: copyCurrentFileWithPendingCommit,
+      onCopyFile: copyCurrentFile,
       onEditorHistoryStateChange: handleEditorHistoryStateChange,
       onEditorScroll: handleEditorSurfaceScroll,
       onEditorScrollRatioChange: handleEditorScrollRatioChange,

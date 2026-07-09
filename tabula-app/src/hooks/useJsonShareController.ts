@@ -15,6 +15,7 @@ type UseJsonShareControllerOptions = {
   commentsByFileId: Record<string, FileComment[]>;
   copy: WorkspaceShareCopy;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
+  onBeforeWorkspaceBoundary?: () => void;
   showToast: (message: string, tone?: "error" | "neutral") => void;
 };
 
@@ -28,12 +29,26 @@ export type JsonShareController = {
   urlPreview: string;
 };
 
+export const getJsonShareExportFileSnapshot = ({
+  activeFile,
+  getActiveFileSnapshot,
+  onBeforeWorkspaceBoundary,
+}: {
+  activeFile?: WorkspaceFile;
+  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
+  onBeforeWorkspaceBoundary?: () => void;
+}) => {
+  onBeforeWorkspaceBoundary?.();
+  return getActiveFileSnapshot?.() ?? activeFile;
+};
+
 export function useJsonShareController({
   activeFile,
   activeText,
   commentsByFileId,
   copy,
   getActiveFileSnapshot,
+  onBeforeWorkspaceBoundary,
   showToast,
 }: UseJsonShareControllerOptions): JsonShareController {
   const [jsonShareUrl, setJsonShareUrl] = useState<string | undefined>(undefined);
@@ -58,11 +73,18 @@ export function useJsonShareController({
   }, [activeFile, activeText, copy, serviceUrl]);
 
   const exportLink = async () => {
-    const fileSnapshot = getActiveFileSnapshot?.() ?? activeFile;
-    if (exporting || disabledReason || !fileSnapshot || !serviceUrl) {
+    if (exporting || disabledReason || !serviceUrl) {
       if (disabledReason) {
         showToast(disabledReason, "error");
       }
+      return;
+    }
+    const fileSnapshot = getJsonShareExportFileSnapshot({
+      activeFile,
+      getActiveFileSnapshot,
+      onBeforeWorkspaceBoundary,
+    });
+    if (!fileSnapshot) {
       return;
     }
 
