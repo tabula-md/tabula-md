@@ -1,6 +1,7 @@
 import { useCallback, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import type { FileViewMode, WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceEditorDocumentRuntimeOwner } from "./editorDocumentRuntimeOwner";
 import { useActiveDocumentRuntime } from "./useActiveDocumentRuntime";
 import { useEditorSearchController } from "../editor/useEditorSearchController";
 import { useSelectionCommentController } from "./useSelectionCommentController";
@@ -9,6 +10,7 @@ import { useWorkspaceScrollSync } from "./useWorkspaceScrollSync";
 
 type UseWorkspaceDocumentRuntimeOptions = {
   activeFile?: WorkspaceFile;
+  editorDocumentRuntime: WorkspaceEditorDocumentRuntimeOwner;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   onCommitActiveFileSplitRatio: (splitRatio: number) => void;
   onSetWorkspaceFileViewMode: (viewMode: FileViewMode) => void;
@@ -16,11 +18,13 @@ type UseWorkspaceDocumentRuntimeOptions = {
 
 export function useWorkspaceDocumentRuntime({
   activeFile,
+  editorDocumentRuntime,
   editorRef,
   onCommitActiveFileSplitRatio,
   onSetWorkspaceFileViewMode,
 }: UseWorkspaceDocumentRuntimeOptions) {
-  const activeDocument = useActiveDocumentRuntime(activeFile);
+  const visibleText = activeFile ? editorDocumentRuntime.getVisibleFileText(activeFile) : "";
+  const activeDocument = useActiveDocumentRuntime(activeFile, { text: visibleText });
   const text = activeDocument.text;
   const activeViewMode = activeDocument.viewMode;
 

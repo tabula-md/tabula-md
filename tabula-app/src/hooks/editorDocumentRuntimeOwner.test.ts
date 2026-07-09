@@ -31,6 +31,24 @@ describe("workspace editor document runtime owner", () => {
     expect(owner.getLatestFileText("file-b", "fallback")).toBe("second");
   });
 
+  it("returns runtime text as the active visible text while a workspace commit is pending", () => {
+    const owner = createWorkspaceEditorDocumentRuntimeOwner();
+    const runtime = owner.getRuntime({ id: "file-a", text: "committed" });
+
+    runtime.replaceAll("runtime pending");
+
+    expect(owner.getVisibleFileText({ id: "file-a", text: "stale workspace text" })).toBe("runtime pending");
+  });
+
+  it("syncs externally committed text into visible text when there is no pending runtime commit", () => {
+    const owner = createWorkspaceEditorDocumentRuntimeOwner();
+
+    owner.getRuntime({ id: "file-a", text: "committed" });
+
+    expect(owner.getVisibleFileText({ id: "file-a", text: "external commit" })).toBe("external commit");
+    expect(owner.getLatestFileText("file-a", "fallback")).toBe("external commit");
+  });
+
   it("can clear the active runtime boundary", () => {
     const owner = createWorkspaceEditorDocumentRuntimeOwner();
     owner.getRuntime({ id: "file-a", text: "first" }).replaceAll("first pending");

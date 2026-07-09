@@ -57,6 +57,29 @@ describe("active document runtime", () => {
     expect(runtime.bookmarks).toHaveLength(1);
   });
 
+  it("can derive the visible document from runtime text while preserving file metadata", () => {
+    const runtime = createActiveDocumentRuntime(
+      file({
+        text: "committed workspace text",
+        title: "Runtime.md",
+        viewMode: "split",
+      }),
+      { text: "# Runtime visible text\n\nPending words" },
+    );
+
+    expect(runtime).toMatchObject({
+      canCopy: true,
+      text: "# Runtime visible text\n\nPending words",
+      title: "Runtime.md",
+      viewMode: "split",
+      wordCount: 6,
+    });
+    expect(runtime.outlineHeadings).toEqual([
+      { depth: 1, text: "Runtime visible text", lineIndex: 0, sourceLineIndex: 0 },
+    ]);
+    expect(runtime.renderedPreview.body).toBe("# Runtime visible text\n\nPending words");
+  });
+
   it("disables formatting in preview mode while keeping copy available", () => {
     expect(
       createActiveDocumentRuntime(file({ viewMode: "preview", text: "# Ready" })),

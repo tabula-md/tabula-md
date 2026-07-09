@@ -16,8 +16,8 @@ const PREVIEW_MODE_DERIVED_STATE_DELAY_MS = 220;
 const LARGE_DOCUMENT_DERIVED_STATE_DELAY_MS = 720;
 const IMMEDIATE_PREVIEW_MAX_CHARACTERS = 250_000;
 
-const createPreviewState = (activeFile?: WorkspaceFile): ActiveDocumentPreviewRuntime =>
-  createActiveDocumentPreviewRuntime(activeFile);
+const createPreviewState = (activeFile: WorkspaceFile | undefined, text: string): ActiveDocumentPreviewRuntime =>
+  createActiveDocumentPreviewRuntime(activeFile, { text });
 
 type DeferredDocumentState = {
   fileId: string;
@@ -25,15 +25,18 @@ type DeferredDocumentState = {
   wordCount: number;
 };
 
-export const useActiveDocumentRuntime = (activeFile?: WorkspaceFile) => {
+export const useActiveDocumentRuntime = (
+  activeFile?: WorkspaceFile,
+  options: { text?: string } = {},
+) => {
   const activeFileId = activeFile?.id ?? "";
-  const activeText = activeFile?.text ?? "";
+  const activeText = options.text ?? activeFile?.text ?? "";
   const activeViewMode = activeFile?.viewMode ?? "edit";
   const largeDocumentMode = isLargeMarkdownDocument(activeText);
   const immediatePreviewEligible = shouldUseImmediateMarkdownPreview(activeText);
   const [deferredState, setDeferredState] = useState<DeferredDocumentState>(() => ({
     fileId: activeFileId,
-    previewState: createPreviewState(activeFile),
+    previewState: createPreviewState(activeFile, activeText),
     wordCount: getMarkdownWordCount(activeText),
   }));
   const shouldRenderPreviewImmediately =
@@ -42,21 +45,21 @@ export const useActiveDocumentRuntime = (activeFile?: WorkspaceFile) => {
     activeText.length <= IMMEDIATE_PREVIEW_MAX_CHARACTERS &&
     immediatePreviewEligible;
   const immediatePreviewState = useMemo(
-    () => (shouldRenderPreviewImmediately ? createPreviewState(activeFile) : null),
-    [activeFile, shouldRenderPreviewImmediately],
+    () => (shouldRenderPreviewImmediately ? createPreviewState(activeFile, activeText) : null),
+    [activeFileId, activeText, shouldRenderPreviewImmediately],
   );
   const previewState =
     immediatePreviewState ??
     (deferredState.fileId === activeFileId
       ? deferredState.previewState
-      : createPreviewState(undefined));
+      : createPreviewState(undefined, ""));
   const wordCount = deferredState.fileId === activeFileId ? deferredState.wordCount : 0;
 
   useEffect(() => {
     if (!activeFile) {
       setDeferredState({
         fileId: "",
-        previewState: createPreviewState(undefined),
+        previewState: createPreviewState(undefined, ""),
         wordCount: 0,
       });
       return;
@@ -72,8 +75,8 @@ export const useActiveDocumentRuntime = (activeFile?: WorkspaceFile) => {
     const timer = window.setTimeout(() => {
       setDeferredState({
         fileId: activeFile.id,
-        previewState: createPreviewState(activeFile),
-        wordCount: getMarkdownWordCount(activeFile.text),
+        previewState: createPreviewState(activeFile, activeText),
+        wordCount: getMarkdownWordCount(activeText),
       });
     }, delayMs);
 
@@ -81,14 +84,14 @@ export const useActiveDocumentRuntime = (activeFile?: WorkspaceFile) => {
   }, [activeFile, activeFileId, activeText, activeViewMode, largeDocumentMode]);
 
   const editorState = useMemo(
-    () => createActiveDocumentEditorRuntime(activeFile, { wordCount }),
+    () => createActiveDocumentEditorRuntime(activeFile, { text: activeText, wordCount }),
     [
       activeFile?.bookmarks,
       activeFile?.lineNumbers,
       activeFile?.lineWrapping,
       activeFile?.readingWidth,
       activeFile?.splitRatio,
-      activeFile?.text,
+      activeText,
       activeFile?.title,
       activeFile?.viewMode,
       wordCount,

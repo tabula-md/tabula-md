@@ -63,6 +63,11 @@ export type ActiveDocumentPreviewRuntime = Pick<
   "outlineHeadings" | "parsedMarkdown" | "previewBodyStartOffset" | "renderedPreview"
 >;
 
+export type ActiveDocumentRuntimeOptions = {
+  text?: string;
+  wordCount?: number;
+};
+
 const EMPTY_PARSED_MARKDOWN: ParsedFrontmatter = {
   attributes: [],
   body: "",
@@ -75,9 +80,9 @@ const EMPTY_PREVIEW_BODY: PreviewBody = {
 
 export const createActiveDocumentEditorRuntime = (
   activeFile?: ActiveDocumentFile,
-  options: { wordCount?: number } = {},
+  options: ActiveDocumentRuntimeOptions = {},
 ): ActiveDocumentEditorRuntime => {
-  const text = activeFile?.text ?? "";
+  const text = options.text ?? activeFile?.text ?? "";
   const viewMode = activeFile?.viewMode ?? "edit";
   const readingWidth = activeFile?.readingWidth ?? "wide";
   const splitRatio = clampSplitEditorRatio(activeFile?.splitRatio ?? DEFAULT_SPLIT_EDITOR_RATIO);
@@ -108,8 +113,9 @@ export const createActiveDocumentEditorRuntime = (
 
 export const createActiveDocumentPreviewRuntime = (
   activeFile?: Pick<ActiveDocumentFile, "text">,
+  options: Pick<ActiveDocumentRuntimeOptions, "text"> = {},
 ): ActiveDocumentPreviewRuntime => {
-  const text = activeFile?.text ?? "";
+  const text = options.text ?? activeFile?.text ?? "";
 
   if (!activeFile) {
     return {
@@ -136,7 +142,10 @@ export const createActiveDocumentPreviewRuntime = (
   };
 };
 
-export const createActiveDocumentRuntime = (activeFile?: ActiveDocumentFile): ActiveDocumentRuntime => ({
-  ...createActiveDocumentEditorRuntime(activeFile),
-  ...createActiveDocumentPreviewRuntime(activeFile),
+export const createActiveDocumentRuntime = (
+  activeFile?: ActiveDocumentFile,
+  options: ActiveDocumentRuntimeOptions = {},
+): ActiveDocumentRuntime => ({
+  ...createActiveDocumentEditorRuntime(activeFile, options),
+  ...createActiveDocumentPreviewRuntime(activeFile, options),
 });
