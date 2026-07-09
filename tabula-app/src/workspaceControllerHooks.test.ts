@@ -47,6 +47,7 @@ import {
   normalizeFileBookmarks,
   recordFileTextHistory,
   schedulePendingEditorCommitTimer,
+  shouldApplyEditorRuntimeVisibleTextPatch,
   shouldCancelPendingEditorCommit,
   shouldUseFileTextFallbackHistory,
 } from "./hooks/useWorkspaceActiveFileEditor";
@@ -131,6 +132,7 @@ describe("workspace preferences controller", () => {
       readingWidth: "standard" as const,
       lineWrapping: false,
       lineNumbers: false,
+      syncScrolling: false,
     };
 
     writeWorkspacePreferences(preferences, storage);
@@ -221,6 +223,31 @@ describe("workspace active file editor controller", () => {
     expect(getLocalTypingTextCommitDelay({ docLength: 1_000, lineCount: 2_000 })).toBe(
       getLocalTypingTextCommitDelay({ docLength: 120_000, lineCount: 20 }),
     );
+  });
+
+  it("patches editor runtime visible text synchronously only for non-large patch changes", () => {
+    expect(
+      shouldApplyEditorRuntimeVisibleTextPatch({
+        docLength: 1_000,
+        lineCount: 20,
+        patches: [{ from: 10, to: 10, insert: "x" }],
+      }),
+    ).toBe(true);
+    expect(
+      shouldApplyEditorRuntimeVisibleTextPatch({
+        docLength: 120_000,
+        lineCount: 20,
+        patches: [{ from: 10, to: 10, insert: "x" }],
+      }),
+    ).toBe(false);
+    expect(
+      shouldApplyEditorRuntimeVisibleTextPatch({
+        docLength: 1_000,
+        lineCount: 2_000,
+        patches: [{ from: 10, to: 10, insert: "x" }],
+      }),
+    ).toBe(false);
+    expect(shouldApplyEditorRuntimeVisibleTextPatch({ patches: [] })).toBe(false);
   });
 
   it("schedules 150KB and 1MB typing commits without flushing workspace text synchronously", () => {
@@ -767,6 +794,15 @@ describe("workspace keyboard shortcuts controller", () => {
     expect(getWorkspaceShortcutAction(keyEvent({ altKey: true, code: "KeyF", ctrlKey: true, key: "f" }), targetState)).toBe(
       "browseFiles",
     );
+    expect(getWorkspaceShortcutAction(keyEvent({ code: "KeyF", metaKey: true, key: "f" }), targetState)).toBe(
+      "documentSearch",
+    );
+    expect(
+      getWorkspaceShortcutAction(keyEvent({ code: "KeyF", ctrlKey: true, key: "f" }), {
+        ...targetState,
+        isEditableTarget: true,
+      }),
+    ).toBe("documentSearch");
     expect(
       getWorkspaceShortcutAction(keyEvent({ altKey: true, code: "Digit2", metaKey: true, key: "2" }), targetState),
     ).toBe("splitMode");

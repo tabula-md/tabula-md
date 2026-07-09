@@ -34,6 +34,17 @@ describe("markdown formatting commands", () => {
     });
   });
 
+  it("supports strikethrough wrappers", () => {
+    expect(applyMarkdownFormat("obsolete", { from: 0, to: 8 }, "strikethrough")).toEqual({
+      text: "~~obsolete~~",
+      selection: { from: 2, to: 10 },
+    });
+    expect(applyMarkdownFormat("~~obsolete~~", { from: 2, to: 10 }, "strikethrough")).toEqual({
+      text: "obsolete",
+      selection: { from: 0, to: 8 },
+    });
+  });
+
   it("inserts selected italic and inline code placeholders for empty selections", () => {
     expect(applyMarkdownFormat("", { from: 0, to: 0 }, "italic")).toEqual({
       text: "_italic text_",
@@ -49,6 +60,13 @@ describe("markdown formatting commands", () => {
     expect(applyMarkdownFormat("docs", { from: 0, to: 4 }, "link")).toEqual({
       text: "[docs](url)",
       selection: { from: 7, to: 10 },
+    });
+  });
+
+  it("inserts images and selects the URL placeholder", () => {
+    expect(applyMarkdownFormat("diagram", { from: 0, to: 7 }, "image")).toEqual({
+      text: "![diagram](image-url)",
+      selection: { from: 11, to: 20 },
     });
   });
 
@@ -174,12 +192,44 @@ describe("markdown formatting commands", () => {
     });
   });
 
+  it("inserts table blocks and selects the first heading", () => {
+    expect(applyMarkdownFormat("", { from: 0, to: 0 }, "table")).toEqual({
+      text: "| Column 1 | Column 2 |\n| --- | --- |\n| Value 1 | Value 2 |",
+      selection: { from: 2, to: 10 },
+    });
+  });
+
+  it("inserts frontmatter at the top of a document", () => {
+    expect(applyMarkdownFormat("Body", { from: 0, to: 0 }, "frontmatter")).toEqual({
+      text: "---\ntitle: Untitled\n---\n\nBody",
+      selection: { from: 11, to: 19 },
+    });
+  });
+
+  it("inserts footnotes and selects the footnote body", () => {
+    expect(applyMarkdownFormat("remember", { from: 0, to: 8 }, "footnote")).toEqual({
+      text: "[^1]\n\n[^1]: remember",
+      selection: { from: 12, to: 20 },
+    });
+  });
+
+  it("clears common Markdown formatting from the selected text", () => {
+    expect(
+      applyMarkdownFormat("## **Title**\n- [ ] [Task](url)\n![Alt](image.png)", { from: 0, to: 48 }, "clear-formatting"),
+    ).toEqual({
+      text: "Title\nTask\nAlt",
+      selection: { from: 0, to: 14 },
+    });
+  });
+
   it("exports the full MVP command set", () => {
     const commands: MarkdownFormatCommand[] = [
       "bold",
       "italic",
+      "strikethrough",
       "inline-code",
       "link",
+      "image",
       "quote",
       "heading-1",
       "heading-2",
@@ -189,8 +239,12 @@ describe("markdown formatting commands", () => {
       "check-list",
       "horizontal-rule",
       "code-block",
+      "table",
+      "frontmatter",
+      "footnote",
+      "clear-formatting",
     ];
 
-    expect(commands).toHaveLength(13);
+    expect(commands).toHaveLength(19);
   });
 });

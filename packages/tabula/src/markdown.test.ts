@@ -4,7 +4,6 @@ import {
   getOutlineHeadings,
   getOutlineHeadingsFromMarkdown,
   getPreviewBody,
-  getSearchMatches,
   parseFrontmatter,
 } from "./markdown";
 
@@ -108,13 +107,6 @@ Body`;
     expect(getOutlineHeadingsFromMarkdown("\n# Intro\n\n## Scope\n\n#### Hidden")).toEqual([
       { depth: 1, text: "Intro", lineIndex: 1, sourceLineIndex: 1 },
       { depth: 2, text: "Scope", lineIndex: 3, sourceLineIndex: 3 },
-    ]);
-  });
-
-  it("returns case-insensitive search matches with compact previews", () => {
-    expect(getSearchMatches("Alpha beta alpha", "ALPHA")).toEqual([
-      { start: 0, end: 5, preview: "Alpha beta alpha" },
-      { start: 11, end: 16, preview: "Alpha beta alpha" },
     ]);
   });
 });

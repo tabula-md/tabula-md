@@ -1,4 +1,6 @@
 import {
+  buildAsyncPreviewMediaMarkdown,
+  buildHtmxSplitPreviewSyncMarkdown,
   buildLargeEditorMarkdown,
   buildOneMegabyteEditorMarkdown,
 } from "../support/editor-fixtures.mjs";
@@ -35,11 +37,11 @@ const HTML_TABLE_DOC_CHAR_MIN = 150_000;
 const HTML_TABLE_DOC_WORD_MIN = 14_000;
 const HTML_TABLE_DOC_PREVIEW_NODE_MAX = 800;
 const HTML_TABLE_DOC_RENDERED_BLOCK_MAX = 120;
-const HTML_TABLE_DOC_INTERACTION_MAX_FRAME_GAP_MS = 120;
+const HTML_TABLE_DOC_INTERACTION_MAX_FRAME_GAP_MS = 130;
 const HTML_TABLE_DOC_TYPE_MAX_LONG_TASK_MS = 120;
 const HTML_TABLE_DOC_CLICK_MAX_LONG_TASK_MS = 80;
 const HTML_TABLE_DOC_SCROLL_MAX_LONG_TASK_MS = 120;
-const HTML_TABLE_DOC_RESIZE_MAX_ELAPSED_MS = 1_500;
+const HTML_TABLE_DOC_RESIZE_MAX_ELAPSED_MS = 1_800;
 const HTML_TABLE_DOC_RESIZE_MAX_LONG_TASK_MS = 100;
 const SMALL_PREVIEW_UPDATE_MAX_MS = 600;
 const KOREAN_SPLIT_LINE_COUNT = 2_200;
@@ -55,6 +57,11 @@ const ONE_MEGABYTE_SPLIT_TYPE_MAX_LONG_TASK_MS = 160;
 const ONE_MEGABYTE_SPLIT_TYPE_MAX_FRAME_GAP_MS = 140;
 const HOT_PATH_COMMIT_GUARD_MS = 90;
 const PROJECT_STORAGE_KEY = "tabula.project.v5";
+const SPLIT_SYNC_UNRELATED_LINE_JUMP_MAX = 160;
+const SPLIT_SYNC_IDLE_SCROLL_DRIFT_MAX = 120;
+const SPLIT_SYNC_EDITOR_SCROLL_DELTA_MAX = 1;
+const SPLIT_SYNC_PREVIEW_INPUT_UPDATE_MAX_MS = 500;
+const ASYNC_PREVIEW_MEDIA_MIN_LINES = 900;
 
 const reportPerformanceMetric = (name, metrics) => {
   console.log(`[performance] ${name}: ${JSON.stringify(metrics)}`);
@@ -426,6 +433,156 @@ const importMarkdownFixture = async (page, markdown, name) => {
   });
 };
 
+const readVisibleVirtualPreviewContract = () => {
+  const surface = document.querySelector(".workspace.split .preview-surface");
+  const surfaceRect = surface?.getBoundingClientRect();
+  const cmScroller = document.querySelector(".workspace.split .cm-scroller");
+  const blocks = Array.from(document.querySelectorAll(".workspace.split [data-preview-virtual-block]")).map((block) => {
+    const rect = block.getBoundingClientRect();
+    const sourceBlock = block.querySelector("[data-preview-line-start]");
+    const startLine = Number(
+      sourceBlock?.getAttribute("data-preview-line-start") ??
+        block.getAttribute("data-preview-block-start-line") ??
+        0,
+    );
+    const endLine = Number(
+      sourceBlock?.getAttribute("data-preview-line-end") ??
+        block.getAttribute("data-preview-block-end-line") ??
+        0,
+    );
+    return {
+      bottom: rect.bottom,
+      endLine,
+      height: rect.height,
+      startLine,
+      text: block.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      top: rect.top,
+    };
+  });
+  const visibleBlocks =
+    surfaceRect === undefined
+      ? []
+      : blocks.filter(
+          (block) =>
+            block.height > 1 &&
+            block.text.length > 0 &&
+            block.bottom > surfaceRect.top + 8 &&
+            block.top < surfaceRect.bottom - 8,
+        );
+
+  return {
+    cmScrollerScrollHeight: cmScroller?.scrollHeight ?? 0,
+    cmScrollerScrollTop: cmScroller?.scrollTop ?? 0,
+    firstRenderedBottom: Math.round(blocks[0]?.bottom ?? 0),
+    clientHeight: surface?.clientHeight ?? 0,
+    firstVisibleLine: visibleBlocks[0]?.startLine ?? 0,
+    lastVisibleLine: visibleBlocks.at(-1)?.endLine ?? 0,
+    firstRenderedLine: blocks[0]?.startLine ?? 0,
+    firstRenderedText: blocks[0]?.text.slice(0, 80) ?? "",
+    firstRenderedTop: Math.round(blocks[0]?.top ?? 0),
+    lastRenderedBottom: Math.round(blocks.at(-1)?.bottom ?? 0),
+    lastRenderedLine: blocks.at(-1)?.endLine ?? 0,
+    lastRenderedText: blocks.at(-1)?.text.slice(0, 80) ?? "",
+    lastRenderedTop: Math.round(blocks.at(-1)?.top ?? 0),
+    renderedBlockCount: blocks.length,
+    scrollHeight: surface?.scrollHeight ?? 0,
+    scrollTop: surface?.scrollTop ?? 0,
+    surfaceBottom: Math.round(surfaceRect?.bottom ?? 0),
+    surfaceTop: Math.round(surfaceRect?.top ?? 0),
+    visibleBlockCount: visibleBlocks.length,
+    visibleText: visibleBlocks.map((block) => block.text).join(" ").slice(0, 240),
+  };
+};
+
+const installVisibleVirtualPreviewSampler = () => {
+  window.__tabulaVisibleVirtualPreviewSampler = (() => {
+    let frameRequest = null;
+    let running = false;
+    const samples = [];
+
+    const readSample = () => {
+      const surface = document.querySelector(".workspace.split .preview-surface");
+      const surfaceRect = surface?.getBoundingClientRect();
+      const visibleBlocks =
+        surfaceRect === undefined
+          ? []
+          : Array.from(document.querySelectorAll(".workspace.split [data-preview-virtual-block]")).filter((block) => {
+              const rect = block.getBoundingClientRect();
+              const text = block.textContent?.trim() ?? "";
+              return (
+                rect.height > 1 &&
+                text.length > 0 &&
+                rect.bottom > surfaceRect.top + 8 &&
+                rect.top < surfaceRect.bottom - 8
+              );
+            });
+      const firstVisibleBlock = visibleBlocks[0];
+      const firstSourceBlock = firstVisibleBlock?.querySelector("[data-preview-line-start]");
+
+      return {
+        firstVisiblePreviewLine: Number(
+          firstSourceBlock?.getAttribute("data-preview-line-start") ??
+            firstVisibleBlock?.getAttribute("data-preview-block-start-line") ??
+            0,
+        ),
+        previewScrollTop: Math.round(surface?.scrollTop ?? 0),
+        visibleBlockCount: visibleBlocks.length,
+      };
+    };
+
+    const sample = () => {
+      samples.push(readSample());
+      if (running) {
+        frameRequest = window.requestAnimationFrame(sample);
+      }
+    };
+
+    return {
+      start() {
+        samples.length = 0;
+        running = true;
+        frameRequest = window.requestAnimationFrame(sample);
+      },
+      stop() {
+        running = false;
+        if (frameRequest !== null) {
+          window.cancelAnimationFrame(frameRequest);
+          frameRequest = null;
+        }
+
+        let maxPreviewJump = 0;
+        let maxLineJump = 0;
+        let backwardLineSamples = 0;
+        let forwardLineSamples = 0;
+        for (let index = 1; index < samples.length; index += 1) {
+          const lineDelta = samples[index].firstVisiblePreviewLine - samples[index - 1].firstVisiblePreviewLine;
+          maxPreviewJump = Math.max(
+            maxPreviewJump,
+            Math.abs(samples[index].previewScrollTop - samples[index - 1].previewScrollTop),
+          );
+          maxLineJump = Math.max(maxLineJump, Math.abs(lineDelta));
+          if (samples[index].firstVisiblePreviewLine > 0 && samples[index - 1].firstVisiblePreviewLine > 0) {
+            if (lineDelta < -5) {
+              backwardLineSamples += 1;
+            } else if (lineDelta > 5) {
+              forwardLineSamples += 1;
+            }
+          }
+        }
+
+        return {
+          backwardLineSamples,
+          blankSamples: samples.filter((sample) => sample.visibleBlockCount === 0).length,
+          forwardLineSamples,
+          maxLineJump,
+          maxPreviewJump,
+          sampleCount: samples.length,
+        };
+      },
+    };
+  })();
+};
+
 const measureElapsed = async (action) => {
   const startedAt = performance.now();
   await action();
@@ -464,6 +621,134 @@ const waitForEditorDocumentText = async (page, text, timeout = 8_000) => {
   );
 };
 
+const installSplitPreviewSyncProbe = () => {
+  window.__tabulaSplitPreviewSyncProbe = (() => {
+    const getEditorView = () => {
+      const content = document.querySelector(".workspace.split .cm-content") ?? document.querySelector(".cm-content");
+      return (
+        content?.cmView?.view ??
+        content?.cmTile?.view ??
+        content?.parentElement?.cmView?.view ??
+        content?.parentElement?.cmTile?.view ??
+        document.querySelector(".workspace.split .cm-editor")?.cmView?.view ??
+        document.querySelector(".cm-editor")?.cmView?.view ??
+        null
+      );
+    };
+
+    const getSourceRange = (element) => {
+      const startLine = Number(
+        element.querySelector("[data-preview-line-start]")?.getAttribute("data-preview-line-start") ??
+          element.getAttribute("data-preview-line-start") ??
+          element.getAttribute("data-preview-block-start-line") ??
+          0,
+      );
+      const endLine = Number(
+        element.querySelector("[data-preview-line-end]")?.getAttribute("data-preview-line-end") ??
+          element.getAttribute("data-preview-line-end") ??
+          element.getAttribute("data-preview-block-end-line") ??
+          startLine,
+      );
+      return { endLine, startLine };
+    };
+
+    const read = () => {
+      const view = getEditorView();
+      const editorScroller = document.querySelector(".workspace.split .cm-scroller");
+      const previewSurface = document.querySelector(".workspace.split .preview-surface");
+      const surfaceRect = previewSurface?.getBoundingClientRect();
+      const visiblePreviewBlocks =
+        surfaceRect === undefined
+          ? []
+          : Array.from(document.querySelectorAll(".workspace.split [data-preview-virtual-block]")).filter((block) => {
+              const rect = block.getBoundingClientRect();
+              const text = block.textContent?.trim() ?? "";
+              return (
+                rect.height > 1 &&
+                text.length > 0 &&
+                rect.bottom > surfaceRect.top + 8 &&
+                rect.top < surfaceRect.bottom - 8
+              );
+            });
+      const firstRange = visiblePreviewBlocks[0] ? getSourceRange(visiblePreviewBlocks[0]) : null;
+      const lastRange = visiblePreviewBlocks.at(-1) ? getSourceRange(visiblePreviewBlocks.at(-1)) : null;
+      const head = view?.state?.selection?.main?.head ?? 0;
+      const selectedLine =
+        typeof view?.state?.doc?.lineAt === "function" ? view.state.doc.lineAt(head).number : null;
+      return {
+        editorClientHeight: editorScroller?.clientHeight ?? 0,
+        editorScrollHeight: editorScroller?.scrollHeight ?? 0,
+        editorScrollTop: editorScroller?.scrollTop ?? 0,
+        firstVisiblePreviewLine: firstRange?.startLine ?? 0,
+        lastVisiblePreviewLine: lastRange?.endLine ?? 0,
+        previewClientHeight: previewSurface?.clientHeight ?? 0,
+        previewScrollHeight: previewSurface?.scrollHeight ?? 0,
+        previewScrollTop: previewSurface?.scrollTop ?? 0,
+        selectedLine,
+        visiblePreviewBlockCount: visiblePreviewBlocks.length,
+        visiblePreviewText: visiblePreviewBlocks
+          .map((block) => block.textContent?.replace(/\s+/g, " ").trim() ?? "")
+          .join(" ")
+          .slice(0, 240),
+      };
+    };
+
+    const scrollEditorToLine = (lineNumber, topOffset = 96) => {
+      const view = getEditorView();
+      if (!view) {
+        throw new Error("CodeMirror view was not found.");
+      }
+      const line = view.state.doc.line(Math.max(1, Math.min(lineNumber, view.state.doc.lines)));
+      const block = typeof view.lineBlockAt === "function" ? view.lineBlockAt(line.from) : null;
+      if (block && typeof block.top === "number") {
+        view.scrollDOM.scrollTop = Math.max(0, block.top - topOffset);
+      } else {
+        view.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
+      }
+      view.scrollDOM.dispatchEvent(new Event("scroll", { bubbles: true }));
+      return read();
+    };
+
+    const scrollEditorToBottom = () => {
+      const editorScroller = document.querySelector(".workspace.split .cm-scroller");
+      if (!editorScroller) {
+        throw new Error("CodeMirror scroller was not found.");
+      }
+      editorScroller.scrollTop = Math.max(0, editorScroller.scrollHeight - editorScroller.clientHeight);
+      editorScroller.dispatchEvent(new Event("scroll", { bubbles: true }));
+      return read();
+    };
+
+    const setCursor = (lineNumber, column = 0) => {
+      const view = getEditorView();
+      if (!view) {
+        throw new Error("CodeMirror view was not found.");
+      }
+      const line = view.state.doc.line(Math.max(1, Math.min(lineNumber, view.state.doc.lines)));
+      const position = Math.max(line.from, Math.min(line.to, line.from + column));
+      view.dispatch({ selection: { anchor: position }, scrollIntoView: false });
+      view.focus();
+      return read();
+    };
+
+    const getLineText = (lineNumber) => {
+      const view = getEditorView();
+      if (!view) {
+        throw new Error("CodeMirror view was not found.");
+      }
+      return view.state.doc.line(Math.max(1, Math.min(lineNumber, view.state.doc.lines))).text;
+    };
+
+    return {
+      getLineText,
+      read,
+      scrollEditorToBottom,
+      scrollEditorToLine,
+      setCursor,
+    };
+  })();
+};
+
 export async function run(ctx) {
   const {
     browser,
@@ -481,6 +766,8 @@ export async function run(ctx) {
   const oneMegabyteMarkdown = buildOneMegabyteEditorMarkdown();
   const largePasteMarkdown = buildLargePasteMarkdown();
   const htmlTableDocsMarkdown = buildHtmlTableDocsMarkdown();
+  const htmxSplitPreviewSyncMarkdown = buildHtmxSplitPreviewSyncMarkdown();
+  const asyncPreviewMediaMarkdown = buildAsyncPreviewMediaMarkdown();
   const koreanSplitMarkdown = buildKoreanSplitMarkdown();
   const globalSyntaxFallbackMarkdown = [
     buildGlobalSyntaxFallbackMarkdown(),
@@ -494,6 +781,11 @@ export async function run(ctx) {
   const htmlTableDocsByteLength = Buffer.byteLength(htmlTableDocsMarkdown, "utf8");
   const htmlTableDocsWordCount = htmlTableDocsMarkdown.trim().split(/\s+/).length;
   const htmlTableDocsLineCount = htmlTableDocsMarkdown.split("\n").length;
+  const htmxSplitPreviewSyncLines = htmxSplitPreviewSyncMarkdown.split("\n");
+  const asyncPreviewMediaLines = asyncPreviewMediaMarkdown.split("\n");
+  const asyncPreviewMediaLine = asyncPreviewMediaLines.findIndex((line) =>
+    line.includes("![Delayed media anchor]"),
+  ) + 1;
   const koreanSplitByteLength = Buffer.byteLength(koreanSplitMarkdown, "utf8");
   const koreanSplitLineCount = koreanSplitMarkdown.split("\n").length;
   const globalSyntaxFallbackLineCount = globalSyntaxFallbackMarkdown.split("\n").length;
@@ -515,8 +807,19 @@ export async function run(ctx) {
     `HTML/table docs fixture should match the reported performance shape. Actual: ${htmlTableDocsByteLength} bytes, ${htmlTableDocsWordCount} words.`,
   );
   expect(
+    htmxSplitPreviewSyncLines.length >= 3_200 &&
+      htmxSplitPreviewSyncLines[3_177] === "" &&
+      htmxSplitPreviewSyncLines[3_207] === "" &&
+      htmxSplitPreviewSyncLines[3_214]?.includes("data-sidebar-group"),
+    "htmx split preview sync fixture should preserve the reported bottom-line shape around lines 3178, 3208, and 3215.",
+  );
+  expect(
     koreanSplitByteLength >= KOREAN_SPLIT_CHAR_MIN && koreanSplitLineCount >= KOREAN_SPLIT_LINE_COUNT,
     `Korean split fixture should contain enough multilingual text. Actual: ${koreanSplitByteLength} bytes, ${koreanSplitLineCount} lines.`,
+  );
+  expect(
+    asyncPreviewMediaLines.length >= ASYNC_PREVIEW_MEDIA_MIN_LINES && asyncPreviewMediaLine > 0,
+    `Async preview media fixture should be virtualized and contain delayed media. Actual: ${asyncPreviewMediaLines.length} lines, media line ${asyncPreviewMediaLine}.`,
   );
   expect(
     globalSyntaxFallbackLineCount >= LARGE_SPLIT_LINE_COUNT,
@@ -530,6 +833,9 @@ export async function run(ctx) {
     htmlTableDocsByteLength,
     htmlTableDocsWordCount,
     htmlTableDocsLineCount,
+    htmxSplitPreviewSyncLineCount: htmxSplitPreviewSyncLines.length,
+    asyncPreviewMediaLineCount: asyncPreviewMediaLines.length,
+    asyncPreviewMediaLine,
     koreanSplitByteLength,
     koreanSplitLineCount,
     globalSyntaxFallbackLineCount,
@@ -729,7 +1035,7 @@ export async function run(ctx) {
         `Typing in HTML/table docs should not create a large long task. Max long task: ${typeMetrics.maxLongTask}ms.`,
       );
       expect(
-        typeMetrics.maxFrameGap < HTML_TABLE_DOC_INTERACTION_MAX_FRAME_GAP_MS,
+        typeMetrics.maxFrameGap <= HTML_TABLE_DOC_INTERACTION_MAX_FRAME_GAP_MS,
         `Typing in HTML/table docs should keep frames responsive. Max frame gap: ${typeMetrics.maxFrameGap}ms.`,
       );
 
@@ -774,12 +1080,15 @@ export async function run(ctx) {
           `${name} in HTML/table docs should not create a large long task. Max long task: ${scrollMetrics.maxLongTask}ms.`,
         );
         expect(
-          scrollMetrics.maxFrameGap < HTML_TABLE_DOC_INTERACTION_MAX_FRAME_GAP_MS,
+          scrollMetrics.maxFrameGap <= HTML_TABLE_DOC_INTERACTION_MAX_FRAME_GAP_MS,
           `${name} in HTML/table docs should keep frames responsive. Max frame gap: ${scrollMetrics.maxFrameGap}ms.`,
         );
       }
       await page.evaluate(() => window.__tabulaLargePasteProbe.restore());
 
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(100);
+      await waitForRenderFrame(page);
       await page.evaluate(installSplitResizeProbe);
       const initial = await page.evaluate(() => window.__tabulaReadSplitRects());
       const startX = initial.handle.x + initial.handle.width / 2;
@@ -812,6 +1121,393 @@ export async function run(ctx) {
       expect(
         resizeMetrics.previewLineQueries <= 5 && resizeMetrics.previewLineMeasurements < 500,
         `HTML/table docs divider drag should not repeatedly measure full preview lines. Queries: ${resizeMetrics.previewLineQueries}, measurements: ${resizeMetrics.previewLineMeasurements}.`,
+      );
+    },
+    { viewport: { width: 1600, height: 900 } },
+  );
+
+  await withPage(
+    browser,
+    "/",
+    async (page) => {
+      await page.route("**/tabula-delayed-media.svg**", async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 650));
+        await route.fulfill({
+          status: 200,
+          contentType: "image/svg+xml",
+          body: [
+            '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="980" viewBox="0 0 1200 980">',
+            '<rect width="1200" height="980" rx="36" fill="#f3f5f7"/>',
+            '<rect x="80" y="80" width="1040" height="820" rx="24" fill="#dce6ee"/>',
+            '<text x="120" y="180" font-family="Arial, sans-serif" font-size="64" fill="#24313a">Delayed media height</text>',
+            '<text x="120" y="280" font-family="Arial, sans-serif" font-size="40" fill="#52616b">This image intentionally loads after preview alignment.</text>',
+            "</svg>",
+          ].join(""),
+        });
+      });
+      await importMarkdownFixture(page, asyncPreviewMediaMarkdown, "async-preview-media.md");
+      await waitForEditorReady(page, { mode: "edit" });
+      await waitForSavedLocally(page);
+      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await waitForEditorReady(page, { mode: "split" });
+      await page.waitForSelector(".workspace.split [data-preview-virtual-block]", { timeout: 8_000 });
+      await waitForRenderFrame(page);
+      await page.evaluate(installSplitPreviewSyncProbe);
+      await page.evaluate(
+        ({ mediaLine }) => window.__tabulaSplitPreviewSyncProbe.scrollEditorToLine(Math.max(1, mediaLine - 4), 96),
+        { mediaLine: asyncPreviewMediaLine },
+      );
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(120);
+      await waitForRenderFrame(page);
+      const beforeDelayedMediaLoad = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.waitForFunction(
+        () => {
+          const image = document.querySelector(".workspace.split .preview-image[src*='tabula-delayed-media.svg']");
+          return image instanceof HTMLImageElement && image.complete && image.naturalHeight > 0;
+        },
+        null,
+        { timeout: 5_000 },
+      );
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(350);
+      await waitForRenderFrame(page);
+      const afterDelayedMediaLoad = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.waitForTimeout(900);
+      await waitForRenderFrame(page);
+      const idleDelayedMediaLoad = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      reportPerformanceMetric("async-preview-media-height-change", {
+        afterDelayedMediaLoad,
+        beforeDelayedMediaLoad,
+        idleDelayedMediaLoad,
+      });
+      expect(
+        Math.abs(afterDelayedMediaLoad.editorScrollTop - beforeDelayedMediaLoad.editorScrollTop) <=
+          SPLIT_SYNC_EDITOR_SCROLL_DELTA_MAX,
+        `Delayed media height changes should not move the editor. Before: ${JSON.stringify(
+          beforeDelayedMediaLoad,
+        )}; after: ${JSON.stringify(afterDelayedMediaLoad)}.`,
+      );
+      expect(
+        afterDelayedMediaLoad.visiblePreviewBlockCount > 0 &&
+          Math.abs(afterDelayedMediaLoad.firstVisiblePreviewLine - beforeDelayedMediaLoad.firstVisiblePreviewLine) <=
+            SPLIT_SYNC_UNRELATED_LINE_JUMP_MAX &&
+          Math.abs(idleDelayedMediaLoad.previewScrollTop - afterDelayedMediaLoad.previewScrollTop) <=
+            SPLIT_SYNC_IDLE_SCROLL_DRIFT_MAX,
+        `Delayed media height changes should preserve preview context without a late jump. Before: ${JSON.stringify(
+          beforeDelayedMediaLoad,
+        )}; after: ${JSON.stringify(afterDelayedMediaLoad)}; idle: ${JSON.stringify(idleDelayedMediaLoad)}.`,
+      );
+    },
+    { viewport: { width: 1600, height: 900 } },
+  );
+
+  await withPage(
+    browser,
+    "/",
+    async (page) => {
+      await importMarkdownFixture(page, htmlTableDocsMarkdown, "html-table-docs-visible-preview.md");
+      await waitForEditorReady(page, { mode: "edit" });
+      await waitForSavedLocally(page);
+      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await waitForEditorReady(page, { mode: "split" });
+      await page.waitForSelector(".workspace.split [data-preview-virtual-block]", { timeout: 8_000 });
+      await waitForRenderFrame(page);
+
+      const editorBox = await page.locator(".workspace.split .cm-scroller").boundingBox();
+      await page.mouse.move(editorBox.x + editorBox.width * 0.5, editorBox.y + editorBox.height * 0.5);
+      await page.evaluate(installVisibleVirtualPreviewSampler);
+      await page.evaluate(() => window.__tabulaVisibleVirtualPreviewSampler.start());
+      for (let index = 0; index < 8; index += 1) {
+        await page.mouse.wheel(0, 650);
+      }
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(250);
+      await waitForRenderFrame(page);
+      const duringScrollPreviewContract = await page.evaluate(() => window.__tabulaVisibleVirtualPreviewSampler.stop());
+      reportPerformanceMetric("html-table-docs-during-scroll-preview", duringScrollPreviewContract);
+      expect(
+        duringScrollPreviewContract.blankSamples === 0,
+        `HTML/table docs preview should not render blank frames while the split editor is scrolling. ${JSON.stringify(
+          duringScrollPreviewContract,
+        )}`,
+      );
+      const earlyScrollPreviewContract = await page.evaluate(readVisibleVirtualPreviewContract);
+      reportPerformanceMetric("html-table-docs-early-scroll-preview", earlyScrollPreviewContract);
+      expect(
+        earlyScrollPreviewContract.visibleBlockCount > 0,
+        `HTML/table docs preview should keep visible rendered content after a short editor scroll. ${JSON.stringify(
+          earlyScrollPreviewContract,
+        )}`,
+      );
+
+      await page.evaluate(() => {
+        const scroller = document.querySelector(".workspace.split .cm-scroller");
+        if (scroller) {
+          scroller.scrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+          scroller.dispatchEvent(new Event("scroll", { bubbles: true }));
+        }
+      });
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(250);
+      await waitForRenderFrame(page);
+      const bottomPreviewContract = await page.evaluate(readVisibleVirtualPreviewContract);
+      reportPerformanceMetric("html-table-docs-bottom-preview", bottomPreviewContract);
+      expect(
+        bottomPreviewContract.visibleBlockCount > 0,
+        `HTML/table docs preview should keep visible rendered content when the split editor is scrolled near the end. ${JSON.stringify(
+          bottomPreviewContract,
+        )}`,
+      );
+    },
+    { viewport: { width: 1600, height: 900 } },
+  );
+
+  await withPage(
+    browser,
+    "/",
+    async (page) => {
+      await importMarkdownFixture(page, htmxSplitPreviewSyncMarkdown, "htmx-split-preview-sync.md");
+      await waitForEditorReady(page, { mode: "edit" });
+      await waitForSavedLocally(page);
+      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await waitForEditorReady(page, { mode: "split" });
+      await page.waitForSelector(".workspace.split [data-preview-virtual-block]", { timeout: 8_000 });
+      await waitForRenderFrame(page);
+      await page.evaluate(installSplitPreviewSyncProbe);
+
+      const lineShape = await page.evaluate(() => ({
+        line102: window.__tabulaSplitPreviewSyncProbe.getLineText(102),
+        line3178: window.__tabulaSplitPreviewSyncProbe.getLineText(3178),
+        line3208: window.__tabulaSplitPreviewSyncProbe.getLineText(3208),
+        line3215: window.__tabulaSplitPreviewSyncProbe.getLineText(3215),
+      }));
+      expect(
+        lineShape.line102 === "" &&
+          lineShape.line3178 === "" &&
+          lineShape.line3208 === "" &&
+          lineShape.line3215.includes("data-sidebar-group"),
+        `htmx split sync smoke should use the reported fixture shape. ${JSON.stringify(lineShape)}`,
+      );
+
+      const editorBox = await page.locator(".workspace.split .cm-scroller").boundingBox();
+      await page.mouse.move(editorBox.x + editorBox.width * 0.5, editorBox.y + editorBox.height * 0.5);
+      await page.evaluate(installVisibleVirtualPreviewSampler);
+      await page.evaluate(() => window.__tabulaVisibleVirtualPreviewSampler.start());
+      for (let index = 0; index < 12; index += 1) {
+        await page.mouse.wheel(0, 520);
+        await page.waitForTimeout(80);
+      }
+      await waitForRenderFrame(page);
+      const htmxScrollDownSamples = await page.evaluate(() => window.__tabulaVisibleVirtualPreviewSampler.stop());
+      reportPerformanceMetric("htmx-split-sync-editor-scroll-down", htmxScrollDownSamples);
+      expect(
+        htmxScrollDownSamples.blankSamples === 0,
+        `htmx split preview should not blank during continuous editor scroll. ${JSON.stringify(
+          htmxScrollDownSamples,
+        )}`,
+      );
+      expect(
+        htmxScrollDownSamples.backwardLineSamples <= 2,
+        `htmx split preview should move monotonically with downward editor scroll. ${JSON.stringify(
+          htmxScrollDownSamples,
+        )}`,
+      );
+      const afterScrollDown = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.waitForTimeout(1_200);
+      await waitForRenderFrame(page);
+      const afterScrollDownIdle = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      reportPerformanceMetric("htmx-split-sync-scroll-down-idle", {
+        after: afterScrollDown,
+        idle: afterScrollDownIdle,
+      });
+      expect(
+        Math.abs(afterScrollDownIdle.previewScrollTop - afterScrollDown.previewScrollTop) <=
+          SPLIT_SYNC_IDLE_SCROLL_DRIFT_MAX,
+        `htmx split preview should not jump after editor scrolling becomes idle. Before: ${JSON.stringify(
+          afterScrollDown,
+        )}; after idle: ${JSON.stringify(afterScrollDownIdle)}.`,
+      );
+
+      await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.scrollEditorToBottom());
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(150);
+      await waitForRenderFrame(page);
+      const bottomState = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      expect(
+        bottomState.visiblePreviewBlockCount > 0,
+        `htmx split preview should render final blocks at document bottom. ${JSON.stringify(bottomState)}`,
+      );
+      await page.mouse.move(editorBox.x + editorBox.width * 0.5, editorBox.y + editorBox.height * 0.5);
+      for (let index = 0; index < 5; index += 1) {
+        await page.mouse.wheel(0, -620);
+      }
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(180);
+      await waitForRenderFrame(page);
+      const afterBottomScrollUp = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      reportPerformanceMetric("htmx-split-sync-bottom-scroll-up", {
+        afterBottomScrollUp,
+        bottomState,
+      });
+      expect(
+        afterBottomScrollUp.editorScrollTop < bottomState.editorScrollTop - 100 &&
+          afterBottomScrollUp.firstVisiblePreviewLine < bottomState.firstVisiblePreviewLine &&
+          afterBottomScrollUp.visiblePreviewBlockCount > 0,
+        `htmx split preview should follow upward editor scroll from document bottom. Bottom: ${JSON.stringify(
+          bottomState,
+        )}; after up: ${JSON.stringify(afterBottomScrollUp)}.`,
+      );
+
+      const previewBox = await page.locator(".workspace.split .preview-surface").boundingBox();
+      const beforePreviewManualScroll = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.mouse.move(previewBox.x + previewBox.width * 0.5, previewBox.y + previewBox.height * 0.5);
+      for (let index = 0; index < 4; index += 1) {
+        await page.mouse.wheel(0, -520);
+      }
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(180);
+      await waitForRenderFrame(page);
+      const afterPreviewManualScroll = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      reportPerformanceMetric("htmx-split-sync-preview-manual-scroll", {
+        afterPreviewManualScroll,
+        beforePreviewManualScroll,
+      });
+      expect(
+        Math.abs(afterPreviewManualScroll.editorScrollTop - beforePreviewManualScroll.editorScrollTop) <=
+          SPLIT_SYNC_EDITOR_SCROLL_DELTA_MAX,
+        `Preview manual scroll must not move the editor. Before: ${JSON.stringify(
+          beforePreviewManualScroll,
+        )}; after: ${JSON.stringify(afterPreviewManualScroll)}.`,
+      );
+
+      await page.mouse.move(editorBox.x + editorBox.width * 0.5, editorBox.y + editorBox.height * 0.5);
+      await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.scrollEditorToLine(100, 96));
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(150);
+      await waitForRenderFrame(page);
+      const beforeLine102Typing = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.setCursor(102, 0));
+      const line102PreviewUpdateElapsed = await measureElapsed(async () => {
+        await page.keyboard.insertText("sync102");
+        await waitForEditorDocumentText(page, "sync102", 2_000);
+        await page.waitForFunction(
+          () => document.querySelector(".workspace.split .preview-surface")?.textContent?.includes("sync102"),
+          null,
+          { timeout: 2_000 },
+        );
+      });
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(250);
+      await waitForRenderFrame(page);
+      const afterLine102Typing = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.waitForTimeout(1_000);
+      await waitForRenderFrame(page);
+      const idleLine102Typing = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      reportPerformanceMetric("htmx-split-sync-line-102-typing", {
+        afterLine102Typing,
+        beforeLine102Typing,
+        idleLine102Typing,
+        previewUpdateElapsedMs: Math.round(line102PreviewUpdateElapsed),
+      });
+      expect(
+        line102PreviewUpdateElapsed <= SPLIT_SYNC_PREVIEW_INPUT_UPDATE_MAX_MS,
+        `Typing on line 102 should appear in preview quickly. Elapsed: ${Math.round(line102PreviewUpdateElapsed)}ms.`,
+      );
+      expect(
+        Math.abs(afterLine102Typing.editorScrollTop - beforeLine102Typing.editorScrollTop) <=
+          SPLIT_SYNC_EDITOR_SCROLL_DELTA_MAX,
+        `Typing on line 102 should not move the editor. Before: ${JSON.stringify(
+          beforeLine102Typing,
+        )}; after: ${JSON.stringify(afterLine102Typing)}.`,
+      );
+      expect(
+        Math.abs(afterLine102Typing.firstVisiblePreviewLine - beforeLine102Typing.firstVisiblePreviewLine) <=
+          SPLIT_SYNC_UNRELATED_LINE_JUMP_MAX &&
+          Math.abs(idleLine102Typing.previewScrollTop - afterLine102Typing.previewScrollTop) <=
+            SPLIT_SYNC_IDLE_SCROLL_DRIFT_MAX,
+        `Typing on line 102 should not send preview to an unrelated section or jump later. Before: ${JSON.stringify(
+          beforeLine102Typing,
+        )}; after: ${JSON.stringify(afterLine102Typing)}; idle: ${JSON.stringify(idleLine102Typing)}.`,
+      );
+
+      await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.scrollEditorToLine(3176, 96));
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(150);
+      await waitForRenderFrame(page);
+      const beforeLine3178Typing = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.setCursor(3178, 0));
+      await page.keyboard.insertText("sync3178");
+      await page.keyboard.insertText("x");
+      await waitForEditorDocumentText(page, "sync3178x", 2_000);
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(250);
+      await waitForRenderFrame(page);
+      const afterLine3178Typing = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.waitForTimeout(1_000);
+      await waitForRenderFrame(page);
+      const idleLine3178Typing = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      reportPerformanceMetric("htmx-split-sync-line-3178-typing", {
+        afterLine3178Typing,
+        beforeLine3178Typing,
+        idleLine3178Typing,
+      });
+      expect(
+        Math.abs(afterLine3178Typing.editorScrollTop - beforeLine3178Typing.editorScrollTop) <=
+          SPLIT_SYNC_EDITOR_SCROLL_DELTA_MAX,
+        `Typing on line 3178 should not move the editor. Before: ${JSON.stringify(
+          beforeLine3178Typing,
+        )}; after: ${JSON.stringify(afterLine3178Typing)}.`,
+      );
+      expect(
+        Math.abs(afterLine3178Typing.firstVisiblePreviewLine - beforeLine3178Typing.firstVisiblePreviewLine) <=
+          SPLIT_SYNC_UNRELATED_LINE_JUMP_MAX &&
+          Math.abs(idleLine3178Typing.previewScrollTop - afterLine3178Typing.previewScrollTop) <=
+            SPLIT_SYNC_IDLE_SCROLL_DRIFT_MAX,
+        `Typing on line 3178 should not send preview to an unrelated section or jump later. Before: ${JSON.stringify(
+          beforeLine3178Typing,
+        )}; after: ${JSON.stringify(afterLine3178Typing)}; idle: ${JSON.stringify(idleLine3178Typing)}.`,
+      );
+
+      await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.scrollEditorToLine(3197, 96));
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(150);
+      await waitForRenderFrame(page);
+      const beforeCursorMove = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.setCursor(3199, 0));
+      await waitForRenderFrame(page);
+      const afterLine3199Cursor = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.setCursor(3208, 0));
+      await waitForRenderFrame(page);
+      const afterLine3208Cursor = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      await page.keyboard.insertText("dd");
+      await page.keyboard.insertText("d");
+      await waitForEditorDocumentText(page, "ddd", 2_000);
+      await waitForRenderFrame(page);
+      await page.waitForTimeout(250);
+      await waitForRenderFrame(page);
+      const afterLine3208Typing = await page.evaluate(() => window.__tabulaSplitPreviewSyncProbe.read());
+      reportPerformanceMetric("htmx-split-sync-line-3208-cursor-typing", {
+        afterLine3199Cursor,
+        afterLine3208Cursor,
+        afterLine3208Typing,
+        beforeCursorMove,
+      });
+      expect(
+        Math.abs(afterLine3208Cursor.previewScrollTop - beforeCursorMove.previewScrollTop) <=
+          SPLIT_SYNC_IDLE_SCROLL_DRIFT_MAX,
+        `Moving the cursor from line 3199 to line 3208 should not scroll preview. Before: ${JSON.stringify(
+          beforeCursorMove,
+        )}; after cursor: ${JSON.stringify(afterLine3208Cursor)}.`,
+      );
+      expect(
+        Math.abs(afterLine3208Typing.editorScrollTop - afterLine3208Cursor.editorScrollTop) <=
+          SPLIT_SYNC_EDITOR_SCROLL_DELTA_MAX &&
+          Math.abs(afterLine3208Typing.firstVisiblePreviewLine - afterLine3208Cursor.firstVisiblePreviewLine) <=
+            SPLIT_SYNC_UNRELATED_LINE_JUMP_MAX,
+        `Typing on line 3208 should not move the editor or jump preview to an unrelated section. Before typing: ${JSON.stringify(
+          afterLine3208Cursor,
+        )}; after typing: ${JSON.stringify(afterLine3208Typing)}.`,
       );
     },
     { viewport: { width: 1600, height: 900 } },

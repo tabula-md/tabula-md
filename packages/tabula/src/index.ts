@@ -1,12 +1,16 @@
 export type {
   ActiveDocumentFile,
   ActiveDocumentEditorRuntime,
+  ActiveDocumentPreviewBodyRuntime,
+  ActiveDocumentPreviewMetadataRuntime,
   ActiveDocumentPreviewRuntime,
   ActiveDocumentRuntime,
   DocumentBookmark,
 } from "./activeDocumentRuntime";
 export {
   createActiveDocumentEditorRuntime,
+  createActiveDocumentPreviewBodyRuntime,
+  createActiveDocumentPreviewMetadataRuntime,
   createActiveDocumentPreviewRuntime,
   createActiveDocumentRuntime,
 } from "./activeDocumentRuntime";
@@ -211,11 +215,8 @@ export {
 
 export type {
   MarkdownHeading,
-  MarkdownSearchReplaceEdit,
-  MarkdownSearchReplaceSelection,
   ParsedFrontmatter,
   PreviewBody,
-  SearchMatch,
 } from "./markdown";
 export {
   getLineNumberForOffset,
@@ -224,10 +225,7 @@ export {
   getOutlineHeadings,
   getOutlineHeadingsFromMarkdown,
   getPreviewBody,
-  getSearchMatches,
   parseFrontmatter,
-  replaceAllSearchMatches,
-  replaceCurrentSearchMatch,
 } from "./markdown";
 
 export type {
@@ -235,6 +233,9 @@ export type {
   PreviewBlockIndex,
   PreviewBlockMeasurements,
   PreviewBlockKind,
+  PreviewRenderableAnchor,
+  PreviewScrollMapAnchor,
+  PreviewScrollMapOptions,
   PreviewWindow,
 } from "./previewBlockModel";
 export {
@@ -248,8 +249,12 @@ export {
   LARGE_DOCUMENT_WORD_THRESHOLD,
   LIVE_PREVIEW_CHAR_THRESHOLD,
   applyPreviewBlockMeasurements,
+  choosePreviewRenderableAnchor,
+  createOptimisticPreviewBlockIndex,
+  createOptimisticPreviewBlockIndexFromPatches,
   createPreviewBlockIndex,
   getMarkdownLineCount,
+  getPreviewScrollTopForSourceLine,
   getPreviewWindow,
   hasGlobalMarkdownSyntax,
   hasHeavyMarkdownPreviewShape,
@@ -260,6 +265,24 @@ export {
   shouldUseImmediateMarkdownPreview,
 } from "./previewBlockModel";
 
+export type {
+  BuildSourceScrollSegmentsMetadata,
+  EditorScrollPosition,
+  PreviewScrollTarget,
+  SourceScrollMap,
+  SourceScrollPosition,
+  SourceScrollSegment,
+  SourceScrollSegmentKind,
+  SourceScrollTransferViewport,
+} from "./sourceScrollTransfer";
+export {
+  applyPreviewSegmentMeasurements,
+  buildSourceScrollSegments,
+  getPreviewScrollTargetForEditorPosition,
+  getPreviewScrollTopForSourcePosition,
+  resolveSourcePosition,
+} from "./sourceScrollTransfer";
+
 export {
   TABULA_LARGE_DOCUMENT_UX_POLICY,
   TABULA_PRODUCT_SUPPORT_TARGETS,
@@ -268,13 +291,9 @@ export {
 export type {
   MarkdownRangeEdit,
   MarkdownRangeSelection,
-  MarkdownTextEdit,
 } from "./markdownEditing";
 export {
-  getMarkdownBackspaceEdit,
-  getMarkdownEnterEdit,
   getMarkdownIndentEdit,
-  getMarkdownPasteEdit,
 } from "./markdownEditing";
 
 export type {

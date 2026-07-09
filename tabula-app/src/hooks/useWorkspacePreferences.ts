@@ -24,6 +24,7 @@ export type WorkspacePreferences = {
   readingWidth: ReadingWidth;
   lineWrapping: boolean;
   lineNumbers: boolean;
+  syncScrolling: boolean;
 };
 
 export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferences = {
@@ -33,6 +34,7 @@ export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferences = {
   readingWidth: "wide",
   lineWrapping: true,
   lineNumbers: true,
+  syncScrolling: true,
 };
 
 const isWorkspaceTheme = (value: unknown): value is WorkspaceTheme =>
@@ -73,6 +75,10 @@ export const parseWorkspacePreferences = (value: unknown): WorkspacePreferences 
       typeof partialPreferences.lineNumbers === "boolean"
         ? partialPreferences.lineNumbers
         : DEFAULT_WORKSPACE_PREFERENCES.lineNumbers,
+    syncScrolling:
+      typeof partialPreferences.syncScrolling === "boolean"
+        ? partialPreferences.syncScrolling
+        : DEFAULT_WORKSPACE_PREFERENCES.syncScrolling,
   };
 };
 

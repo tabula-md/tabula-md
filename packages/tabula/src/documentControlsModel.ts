@@ -20,6 +20,7 @@ export type DocumentControlsCopy = {
   search: string;
   split: string;
   standardWidth: string;
+  syncScrolling: string;
   textWidth: string;
   viewControls: string;
 };
@@ -56,6 +57,8 @@ export type DocumentControlsModel = {
   readingWidthOptions: DocumentReadingWidthOption[];
   searchLabel: string;
   showEditorToggles: boolean;
+  showSplitToggles: boolean;
+  syncScrolling: DocumentToggleControl;
   viewModeActions: DocumentViewModeAction[];
 };
 
@@ -63,6 +66,7 @@ export type DocumentControlsModelInput = {
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
   activeReadingWidth: ReadingWidth;
+  activeSyncScrolling: boolean;
   activeViewMode: FileViewMode;
   canCopyFile: boolean;
   copy: DocumentControlsCopy;
@@ -119,6 +123,7 @@ export const buildDocumentControlsModel = ({
   activeLineNumbers,
   activeLineWrapping,
   activeReadingWidth,
+  activeSyncScrolling,
   activeViewMode,
   canCopyFile,
   copy,
@@ -150,6 +155,11 @@ export const buildDocumentControlsModel = ({
     })),
     searchLabel: copy.search,
     showEditorToggles: activeViewMode !== "preview",
+    showSplitToggles: activeViewMode === "split",
+    syncScrolling: {
+      active: activeSyncScrolling,
+      label: copy.syncScrolling,
+    },
     viewModeActions: getViewModeActions(activeViewMode, copy),
   };
 };

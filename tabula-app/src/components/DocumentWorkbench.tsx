@@ -6,6 +6,7 @@ import {
 } from "react";
 import { MessageSquarePlus } from "lucide-react";
 import {
+  getLineNumberForOffset,
   getLineStartOffset,
   hasLongMarkdownLine,
   toggleMarkdownTaskOnLine,
@@ -13,11 +14,12 @@ import {
 import type {
   DocumentSurfaceModel,
   MarkdownFormatCommand,
-  SearchMatch,
   TextChange,
 } from "@tabula-md/tabula";
 import type { CenterPopover } from "../uiTypes";
 import type { Collaborator, LiveSelection } from "../collaboration";
+import type { SearchMatch, SearchOptions } from "../editor/editorSearchModel";
+import type { SearchTarget } from "../editor/useEditorSearchController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import type {
   MarkdownCommentAnchor,
@@ -26,6 +28,7 @@ import type {
   MarkdownLineActionRequest,
   MarkdownSelectionActionPosition,
 } from "../markdownEditorTypes";
+import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import type {
   FileBookmark,
   FileViewMode,
@@ -51,6 +54,7 @@ export type DocumentWorkbenchProps = {
   activeFileTitle: string;
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
+  activeSyncScrolling: boolean;
   activePreviewCommentAnchors: MarkdownPreviewCommentAnchor[];
   activePreviewLineAnnotations: MarkdownPreviewLineAnnotation[];
   activeSearchMatchIndex: number;
@@ -69,14 +73,21 @@ export type DocumentWorkbenchProps = {
   language: WorkspaceLanguage;
   previewBody: string;
   previewBodyStartOffset: number;
+  previewBodyTextChange?: TextChange | null;
   largeDocumentMode: boolean;
+  previewRef: RefObject<MarkdownPreviewHandle | null>;
   previewMetadata: MarkdownPreviewMetadata[];
   previewSurfaceRef: RefObject<HTMLElement | null>;
   searchInputRef: RefObject<HTMLInputElement | null>;
   searchMatches: SearchMatch[];
+  searchMatchCount: number;
+  searchError: string | null;
   searchOpen: boolean;
   searchQuery: string;
+  searchOptions: SearchOptions;
+  searchTarget: SearchTarget;
   replaceQuery: string;
+  replaceAvailable: boolean;
   selectedCharacterCount: number;
   selectedLineCount: number;
   selectionActionPosition: MarkdownSelectionActionPosition | null;
@@ -113,6 +124,9 @@ export type DocumentWorkbenchProps = {
   onResetSplitRatio: () => void;
   onReplaceQueryChange: (query: string) => void;
   onSearchQueryChange: (query: string) => void;
+  onPreviewSearchMatchCountChange: (count: number) => void;
+  onSelectAllSearchMatches: () => void;
+  onToggleSearchOption: (option: keyof SearchOptions) => void;
   onSetReadingWidth: (readingWidth: ReadingWidth) => void;
   onSetViewMode: (viewMode: FileViewMode) => void;
   onSplitDividerKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
@@ -124,6 +138,7 @@ export type DocumentWorkbenchProps = {
   onToggleLineNumbers: () => void;
   onToggleLineWrapping: () => void;
   onToggleSearch: () => void;
+  onToggleSyncScrolling: () => void;
   onToggleViewOptions: () => void;
   onUndo: () => void;
 };
@@ -151,6 +166,7 @@ export function DocumentWorkbench({
   activeFileTitle,
   activeLineNumbers,
   activeLineWrapping,
+  activeSyncScrolling,
   activePreviewCommentAnchors,
   activePreviewLineAnnotations,
   activeSearchMatchIndex,
@@ -169,14 +185,21 @@ export function DocumentWorkbench({
   language,
   previewBody,
   previewBodyStartOffset,
+  previewBodyTextChange,
   largeDocumentMode,
+  previewRef,
   previewMetadata,
   previewSurfaceRef,
   searchInputRef,
   searchMatches,
+  searchMatchCount,
+  searchError,
   searchOpen,
   searchQuery,
+  searchOptions,
+  searchTarget,
   replaceQuery,
+  replaceAvailable,
   selectedCharacterCount,
   selectedLineCount,
   selectionActionPosition,
@@ -213,6 +236,9 @@ export function DocumentWorkbench({
   onResetSplitRatio,
   onReplaceQueryChange,
   onSearchQueryChange,
+  onPreviewSearchMatchCountChange,
+  onSelectAllSearchMatches,
+  onToggleSearchOption,
   onSetReadingWidth,
   onSetViewMode,
   onSplitDividerKeyDown,
@@ -224,6 +250,7 @@ export function DocumentWorkbench({
   onToggleLineNumbers,
   onToggleLineWrapping,
   onToggleSearch,
+  onToggleSyncScrolling,
   onToggleViewOptions,
   onUndo,
 }: DocumentWorkbenchProps) {
@@ -233,11 +260,17 @@ export function DocumentWorkbench({
     [activeLineWrapping, text],
   );
   const effectiveLineWrapping = activeLineWrapping && !suspendLineWrappingForLongLine;
+  const isSourceSearchActive = searchOpen && searchTarget === "source";
+  const isPreviewSearchActive = searchOpen && searchTarget === "preview";
+  const previewBodySourceLineOffset = useMemo(
+    () => Math.max(0, getLineNumberForOffset(text, previewBodyStartOffset) - 1),
+    [previewBodyStartOffset, text],
+  );
   const editorSurfaceClassName = suspendLineWrappingForLongLine
     ? `${documentSurface.editorSurfaceClassName} line-wrapping-suspended`
     : documentSurface.editorSurfaceClassName;
   const handlePreviewTaskToggle = useCallback((sourceLineIndex: number) => {
-    const lineStart = previewBodyStartOffset + getLineStartOffset(previewBody, sourceLineIndex);
+    const lineStart = getLineStartOffset(text, sourceLineIndex);
     const edit = toggleMarkdownTaskOnLine(text, lineStart);
     if (!edit) {
       return;
@@ -256,7 +289,7 @@ export function DocumentWorkbench({
     onTextChange(`${text.slice(0, patch.from)}${patch.insert}${text.slice(patch.to)}`, {
       patches: [patch],
     });
-  }, [editorRef, onTextChange, previewBody, previewBodyStartOffset, text]);
+  }, [editorRef, onTextChange, text]);
 
   return (
     <>
@@ -280,6 +313,7 @@ export function DocumentWorkbench({
           activeReadingWidth={documentSurface.documentControls.activeReadingWidth}
           activeLineWrapping={documentSurface.documentControls.activeLineWrapping}
           activeLineNumbers={documentSurface.documentControls.activeLineNumbers}
+          activeSyncScrolling={activeSyncScrolling}
           canCopyFile={documentSurface.documentControls.canCopyFile}
           centerPopover={centerPopover}
           language={language}
@@ -289,6 +323,7 @@ export function DocumentWorkbench({
           onToggleSearch={onToggleSearch}
           onToggleViewOptions={onToggleViewOptions}
           onSetReadingWidth={onSetReadingWidth}
+          onToggleSyncScrolling={onToggleSyncScrolling}
           onToggleLineWrapping={onToggleLineWrapping}
           onToggleLineNumbers={onToggleLineNumbers}
         />
@@ -299,12 +334,17 @@ export function DocumentWorkbench({
           searchInputRef={searchInputRef}
           searchQuery={searchQuery}
           replaceQuery={replaceQuery}
-          searchMatches={searchMatches}
+          searchMatchCount={searchMatchCount}
+          searchError={searchError}
           activeSearchMatchIndex={activeSearchMatchIndex}
+          replaceAvailable={replaceAvailable}
+          searchOptions={searchOptions}
           language={language}
           onSearchQueryChange={onSearchQueryChange}
+          onToggleSearchOption={onToggleSearchOption}
           onReplaceQueryChange={onReplaceQueryChange}
           onGoToSearchMatch={onGoToSearchMatch}
+          onSelectAllSearchMatches={onSelectAllSearchMatches}
           onReplaceCurrentMatch={onReplaceCurrentMatch}
           onReplaceAllMatches={onReplaceAllMatches}
           onCloseSearch={onCloseSearch}
@@ -335,8 +375,8 @@ export function DocumentWorkbench({
             commentsEnabled={isLive}
             collaborators={isLive ? collaborators : []}
             activeCommentId={focusedCommentId}
-            searchMatches={searchOpen ? searchMatches : []}
-            activeSearchMatchIndex={searchOpen ? activeSearchMatchIndex : -1}
+            searchMatches={isSourceSearchActive ? searchMatches : []}
+            activeSearchMatchIndex={isSourceSearchActive ? activeSearchMatchIndex : -1}
             onChange={onTextChange}
             onBookmarksChange={onBookmarksChange}
             onHistoryStateChange={onEditorHistoryStateChange}
@@ -377,14 +417,21 @@ export function DocumentWorkbench({
             onTouchEnd={onPreviewTouchEnd}
           >
             <MarkdownPreview
+              ref={previewRef}
               metadata={previewMetadata}
               body={previewBody}
+              sourceLineOffset={previewBodySourceLineOffset}
+              bodyTextChange={previewBodyTextChange}
               largeDocumentMode={largeDocumentMode}
               commentAnchors={isLive ? activePreviewCommentAnchors : []}
               lineAnnotations={activePreviewLineAnnotations}
               activeCommentId={focusedCommentId}
               commentsEnabled={isLive}
+              searchQuery={isPreviewSearchActive ? searchQuery : ""}
+              searchOptions={searchOptions}
+              activeSearchMatchIndex={isPreviewSearchActive ? activeSearchMatchIndex : -1}
               suspendLineMeasurement={splitDividerDragging}
+              onSearchMatchCountChange={onPreviewSearchMatchCountChange}
               onLineAction={onLineAction as (request: MarkdownPreviewLineActionRequest) => void}
               onOpenComment={onOpenComment}
               onToggleTaskLine={handlePreviewTaskToggle}

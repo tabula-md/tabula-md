@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  createActiveDocumentPreviewBodyRuntime,
+  createActiveDocumentPreviewMetadataRuntime,
   createActiveDocumentRuntime,
   type ActiveDocumentFile,
 } from "./activeDocumentRuntime";
@@ -104,5 +106,32 @@ describe("active document runtime", () => {
       { depth: 1, text: "Intro", lineIndex: 1, sourceLineIndex: 1 },
       { depth: 2, text: "Scope", lineIndex: 3, sourceLineIndex: 3 },
     ]);
+  });
+
+  it("can derive preview body without deriving outline metadata", () => {
+    const text = `---\ntitle: Product Brief\n---\n\n# Intro\n\n## Scope`;
+
+    expect(createActiveDocumentPreviewBodyRuntime(file({ text }))).toEqual({
+      previewBodyStartOffset: text.indexOf("\n# Intro"),
+      renderedPreview: {
+        body: "\n# Intro\n\n## Scope",
+        sourceLineOffset: 0,
+      },
+    });
+  });
+
+  it("can derive preview metadata separately from the visible preview body", () => {
+    const text = `---\ntitle: Product Brief\n---\n\n# Intro\n\n## Scope`;
+
+    expect(createActiveDocumentPreviewMetadataRuntime(file({ text }))).toEqual({
+      parsedMarkdown: {
+        attributes: [{ key: "title", value: "Product Brief" }],
+        body: "\n# Intro\n\n## Scope",
+      },
+      outlineHeadings: [
+        { depth: 1, text: "Intro", lineIndex: 1, sourceLineIndex: 1 },
+        { depth: 2, text: "Scope", lineIndex: 3, sourceLineIndex: 3 },
+      ],
+    });
   });
 });

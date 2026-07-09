@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type CSSProperties } from "react";
-import { EditorState, type Transaction } from "@codemirror/state";
+import { EditorSelection, EditorState, type Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
   isSafeMarkdownLinkUrl,
@@ -44,6 +44,7 @@ import type {
   MarkdownEditorHandle,
   MarkdownEditorProps,
 } from "../markdownEditorTypes";
+import type { EditorViewportAnchor } from "../preview/previewSyncTypes";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
 
 type EditorLinkPopoverState = {
@@ -62,6 +63,24 @@ const getLinkPopoverStyle = ({ clientX, clientY }: EditorLinkPopoverState): CSSP
   return {
     left: Math.max(12, Math.min(clientX, viewportWidth - width - 12)),
     top: Math.max(72, Math.min(clientY + 12, viewportHeight - height - 12)),
+  };
+};
+
+const getEditorViewportLineAnchor = (view: EditorView): EditorViewportAnchor => {
+  const viewportTop = Math.max(0, view.scrollDOM.scrollTop);
+  const topLineBlock = view.lineBlockAtHeight(viewportTop);
+  const topLine = view.state.doc.lineAt(topLineBlock.from);
+  const lineOffsetRatio =
+    topLineBlock.height <= 0
+      ? 0
+      : Math.max(0, Math.min(1, (viewportTop - topLineBlock.top) / topLineBlock.height));
+  const atDocumentEnd =
+    view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight - view.scrollDOM.scrollTop <= 1;
+
+  return {
+    atDocumentEnd,
+    lineNumber: topLine.number,
+    lineOffsetRatio,
   };
 };
 
@@ -288,18 +307,40 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
         view.focus();
       },
+      getLineCount: () => viewRef.current?.state.doc.lines ?? value.split("\n").length,
       getScrollRatio: () => {
         const scrollElement = viewRef.current?.scrollDOM;
         return scrollElement ? getScrollRatio(scrollElement) : 0;
+      },
+      getViewportLineAnchor: () => {
+        const view = viewRef.current;
+        return view ? getEditorViewportLineAnchor(view) : null;
+      },
+      isScrolledToBottom: () => {
+        const scrollElement = viewRef.current?.scrollDOM;
+        if (!scrollElement) {
+          return false;
+        }
+
+        return scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop <= 1;
       },
       getSelectionRange: () => {
         const selection = viewRef.current?.state.selection.main;
         return selection ? { from: selection.from, to: selection.to } : { from: value.length, to: value.length };
       },
+      getSearchDocument: () => viewRef.current?.state.doc ?? null,
       getSelectedText: () => {
         const view = viewRef.current;
         const selection = view?.state.selection.main;
         return view && selection ? view.state.sliceDoc(selection.from, selection.to) : "";
+      },
+      getViewportLineNumber: () => {
+        const view = viewRef.current;
+        if (!view) {
+          return null;
+        }
+
+        return getEditorViewportLineAnchor(view).lineNumber;
       },
       getValue: () => viewRef.current?.state.doc.toString() ?? value,
       applyLocalTextPatches: (patches, selection, options) => {
@@ -317,6 +358,30 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         if (scrollElement) {
           scrollElementToRatio(scrollElement, ratio);
         }
+      },
+      setSelectionRanges: (ranges) => {
+        const view = viewRef.current;
+        if (!view || ranges.length === 0) {
+          return;
+        }
+
+        const docLength = view.state.doc.length;
+        const selectionRanges = ranges
+          .map((range) => ({
+            from: clampEditorPosition(Math.min(range.from, range.to), docLength),
+            to: clampEditorPosition(Math.max(range.from, range.to), docLength),
+          }))
+          .filter((range) => range.to > range.from)
+          .map((range) => EditorSelection.range(range.from, range.to));
+        if (selectionRanges.length === 0) {
+          return;
+        }
+
+        view.dispatch({
+          selection: EditorSelection.create(selectionRanges),
+          scrollIntoView: true,
+        });
+        view.focus();
       },
       setSelectionRange: (from: number, to = from) => {
         const view = viewRef.current;

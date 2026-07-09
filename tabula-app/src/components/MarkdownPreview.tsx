@@ -1,20 +1,24 @@
 import {
+  forwardRef,
   isValidElement,
   memo,
+  startTransition,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type ForwardedRef,
   type HTMLAttributes,
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { Bookmark, Check, Copy, FileText, MessageSquare, WrapText } from "lucide-react";
+import { Bookmark, Check, Copy, FileText, MessageSquare, Slash, WrapText } from "lucide-react";
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema, type Options as SanitizeSchema } from "rehype-sanitize";
@@ -28,17 +32,39 @@ import {
   areLineSurfaceRowsEqual,
   applyPreviewBlockMeasurements,
   buildLineSurfaceAnnotationRows,
+  createPreviewBlockIndex,
+  getLineNumberForOffset,
   getLineSurfaceAnnotationsSignature,
+  getMarkdownLineCount,
   getPreviewWindow,
   TABULA_LARGE_DOCUMENT_UX_POLICY,
   type LineSurfaceAnnotation,
   type LineSurfaceRow,
   type LineSurfaceSourceBlock,
-  type PreviewBlock,
   type PreviewBlockIndex,
   type PreviewBlockMeasurements,
+  type TextChange,
 } from "@tabula-md/tabula";
+import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
+import {
+  DEFAULT_SEARCH_OPTIONS,
+  getEditorSearchMatches,
+  getSearchQueryError,
+  type SearchOptions,
+} from "../editor/editorSearchModel";
+import {
+  getPreviewScrollSurface,
+  getPreviewViewport,
+  PREVIEW_VIEWPORT_FALLBACK_HEIGHT,
+  usePreviewFollowController,
+  type PreviewViewport,
+} from "../preview/usePreviewFollowController";
 import { usePreviewBlockIndexWorker } from "../preview/usePreviewBlockIndexWorker";
+import { useVirtualPreviewMeasurements } from "../preview/useVirtualPreviewMeasurements";
+import {
+  VirtualMarkdownPreview,
+  type GetVirtualPreviewBlockRehypePlugins,
+} from "../preview/VirtualMarkdownPreview";
 
 export type MarkdownPreviewMetadata = {
   key: string;
@@ -48,12 +74,18 @@ export type MarkdownPreviewMetadata = {
 type MarkdownPreviewProps = {
   metadata: MarkdownPreviewMetadata[];
   body: string;
+  sourceLineOffset?: number;
+  bodyTextChange?: TextChange | null;
   largeDocumentMode?: boolean;
   commentAnchors?: MarkdownPreviewCommentAnchor[];
   lineAnnotations?: MarkdownPreviewLineAnnotation[];
   activeCommentId?: string | null;
   commentsEnabled?: boolean;
+  searchQuery?: string;
+  searchOptions?: SearchOptions;
+  activeSearchMatchIndex?: number;
   suspendLineMeasurement?: boolean;
+  onSearchMatchCountChange?: (count: number) => void;
   onLineAction?: (request: MarkdownPreviewLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
   onToggleTaskLine?: (sourceLineIndex: number) => void;
@@ -162,11 +194,115 @@ const PREVIEW_SANITIZE_SCHEMA: SanitizeSchema = {
 const EMPTY_MARKDOWN_PREVIEW_METADATA: MarkdownPreviewMetadata[] = [];
 const EMPTY_PREVIEW_COMMENT_ANCHORS: MarkdownPreviewCommentAnchor[] = [];
 const EMPTY_PREVIEW_LINE_ANNOTATIONS: MarkdownPreviewLineAnnotation[] = [];
+
+const getElementOuterHeight = (element: HTMLElement) => {
+  const rect = element.getBoundingClientRect();
+  const style = window.getComputedStyle(element);
+  const marginTop = Number.parseFloat(style.marginTop);
+  const marginBottom = Number.parseFloat(style.marginBottom);
+  const outerHeight =
+    rect.height +
+    (Number.isFinite(marginTop) ? marginTop : 0) +
+    (Number.isFinite(marginBottom) ? marginBottom : 0);
+  return Math.max(0, Math.ceil(outerHeight));
+};
+
+type PreviewMeasuredSourceElement = {
+  bottom: number;
+  element: HTMLElement;
+  endLine: number;
+  startLine: number;
+  top: number;
+};
+
+const getPreviewMeasurementsAreEqual = (
+  firstMeasurements: PreviewBlockMeasurements,
+  secondMeasurements: PreviewBlockMeasurements,
+) => {
+  const firstEntries = Object.entries(firstMeasurements);
+  const secondEntries = Object.entries(secondMeasurements);
+  if (firstEntries.length !== secondEntries.length) {
+    return false;
+  }
+
+  return firstEntries.every(([key, value]) => secondMeasurements[key] === value);
+};
+
+const getInlinePreviewBlockMeasurements = (
+  contentElement: HTMLElement,
+  blockIndex: PreviewBlockIndex,
+  sourceLineOffset: number,
+): PreviewBlockMeasurements => {
+  const measuredElements = Array.from(
+    contentElement.querySelectorAll<HTMLElement>("[data-preview-line-start], [data-preview-block-start-line]"),
+  ).map((element): PreviewMeasuredSourceElement | null => {
+    const startLine = Number(element.dataset.previewLineStart ?? element.dataset.previewBlockStartLine);
+    const endLine = Number(element.dataset.previewLineEnd ?? element.dataset.previewBlockEndLine);
+    if (!Number.isFinite(startLine) || !Number.isFinite(endLine)) {
+      return null;
+    }
+
+    const rect = element.getBoundingClientRect();
+    return {
+      bottom: rect.bottom,
+      element,
+      endLine: Math.max(startLine, endLine),
+      startLine,
+      top: rect.top,
+    };
+  }).filter((element): element is PreviewMeasuredSourceElement => Boolean(element));
+
+  const measurements: Record<string, number> = {};
+  for (const block of blockIndex.blocks) {
+    if (block.kind === "blank") {
+      measurements[block.id] = 0;
+      continue;
+    }
+
+    const sourceStartLine = block.startLine + sourceLineOffset;
+    const sourceEndLine = block.endLine + sourceLineOffset;
+    const exactElements = measuredElements.filter(
+      (element) => element.startLine === sourceStartLine && element.endLine === sourceEndLine,
+    );
+    const containedElements = measuredElements.filter(
+      (element) => element.startLine >= sourceStartLine && element.endLine <= sourceEndLine,
+    );
+    const overlappingElements = measuredElements.filter(
+      (element) => element.startLine <= sourceEndLine && element.endLine >= sourceStartLine,
+    );
+    const blockElements =
+      exactElements.length > 0
+        ? exactElements
+        : containedElements.length > 0
+          ? containedElements
+          : overlappingElements;
+    if (blockElements.length === 0) {
+      continue;
+    }
+
+    measurements[block.id] =
+      blockElements.length === 1
+        ? getElementOuterHeight(blockElements[0].element)
+        : Math.max(
+            0,
+            Math.ceil(
+              Math.max(...blockElements.map((element) => element.bottom)) -
+                Math.min(...blockElements.map((element) => element.top)),
+            ),
+          );
+  }
+
+  return measurements;
+};
+
 const previewSourceBlockTags = new Set([
   "blockquote",
+  "card",
+  "cardgroup",
   "dd",
   "dl",
   "dt",
+  "frame",
   "h1",
   "h2",
   "h3",
@@ -178,6 +314,9 @@ const previewSourceBlockTags = new Set([
   "ol",
   "p",
   "pre",
+  "tabula-card",
+  "tabula-card-group",
+  "tabula-frame",
   "table",
   "ul",
 ]);
@@ -329,6 +468,7 @@ const MARKDOWN_REMARK_PLUGINS: NonNullable<ReactMarkdownOptions["remarkPlugins"]
 
 type PreviewCodeBlockProps = {
   children?: ReactNode;
+  searchActive?: boolean;
 } & HTMLAttributes<HTMLPreElement>;
 
 type PreviewMathProps = {
@@ -384,37 +524,145 @@ const loadHighlightRenderer = () => {
 const getResolvedCssColor = (variableName: string, fallback: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(variableName).trim() || fallback;
 
+const createMermaidThemeCss = ({
+  lineColor,
+  lineStrongColor,
+  mutedSurfaceColor,
+  panelColor,
+  textColor,
+}: {
+  lineColor: string;
+  lineStrongColor: string;
+  mutedSurfaceColor: string;
+  panelColor: string;
+  textColor: string;
+}) => `
+  .node rect,
+  .node circle,
+  .node ellipse,
+  .node polygon,
+  .node path {
+    fill: ${mutedSurfaceColor} !important;
+    stroke: ${lineStrongColor} !important;
+  }
+
+  .cluster rect {
+    fill: ${panelColor} !important;
+    stroke: ${lineStrongColor} !important;
+  }
+
+  .edgePath .path,
+  .flowchart-link,
+  .messageLine0,
+  .messageLine1,
+  .transition,
+  .relationshipLine {
+    stroke: ${lineColor} !important;
+  }
+
+  marker path,
+  .arrowMarkerPath {
+    fill: ${lineColor} !important;
+    stroke: ${lineColor} !important;
+  }
+
+  .nodeLabel,
+  .edgeLabel,
+  .cluster-label,
+  .label,
+  .label text,
+  .label span,
+  text,
+  tspan {
+    color: ${textColor} !important;
+    fill: ${textColor} !important;
+  }
+
+  .edgeLabel,
+  .edgeLabel p,
+  .labelBkg,
+  .label .background {
+    background-color: ${panelColor} !important;
+    fill: ${panelColor} !important;
+  }
+`;
+
 const createMermaidThemeConfig = () => {
   const textColor = getResolvedCssColor("--text-primary", "#1f1f1f");
   const softTextColor = getResolvedCssColor("--text-soft", "#777777");
   const panelColor = getResolvedCssColor("--surface-panel", "#ffffff");
   const mutedSurfaceColor = getResolvedCssColor("--surface-muted", "#f7f7f8");
-  const lineColor = getResolvedCssColor("--line-subtle", "#eeeeef");
+  const activeSurfaceColor = getResolvedCssColor("--surface-active", panelColor);
+  const lineStrongColor = getResolvedCssColor("--line-strong", "#d8d8dc");
+  const lineColor = softTextColor;
 
   return {
-    key: [textColor, softTextColor, panelColor, mutedSurfaceColor, lineColor].join("|"),
+    key: [textColor, softTextColor, panelColor, mutedSurfaceColor, activeSurfaceColor, lineStrongColor, lineColor].join("|"),
     options: {
       startOnLoad: false,
       securityLevel: "strict",
       theme: "base",
+      themeCSS: createMermaidThemeCss({
+        lineColor,
+        lineStrongColor,
+        mutedSurfaceColor,
+        panelColor,
+        textColor,
+      }),
       flowchart: {
         htmlLabels: false,
       },
       themeVariables: {
         background: panelColor,
-        mainBkg: panelColor,
-        primaryColor: panelColor,
+        mainBkg: mutedSurfaceColor,
+        primaryColor: mutedSurfaceColor,
         primaryTextColor: textColor,
-        primaryBorderColor: lineColor,
-        secondaryColor: mutedSurfaceColor,
+        primaryBorderColor: lineStrongColor,
+        secondaryColor: activeSurfaceColor,
         secondaryTextColor: textColor,
-        secondaryBorderColor: lineColor,
-        tertiaryColor: mutedSurfaceColor,
-        tertiaryTextColor: softTextColor,
-        tertiaryBorderColor: lineColor,
+        secondaryBorderColor: lineStrongColor,
+        tertiaryColor: panelColor,
+        tertiaryTextColor: textColor,
+        tertiaryBorderColor: lineStrongColor,
+        nodeBkg: mutedSurfaceColor,
+        nodeBorder: lineStrongColor,
+        clusterBkg: panelColor,
+        clusterBorder: lineStrongColor,
+        noteBkgColor: mutedSurfaceColor,
+        noteBorderColor: lineStrongColor,
+        noteTextColor: textColor,
         lineColor,
+        defaultLinkColor: lineColor,
+        arrowheadColor: lineColor,
         textColor,
         nodeTextColor: textColor,
+        titleColor: textColor,
+        edgeLabelBackground: panelColor,
+        labelBackgroundColor: panelColor,
+        stateBkg: mutedSurfaceColor,
+        stateBorder: lineStrongColor,
+        stateLabelColor: textColor,
+        stateEdgeLabelBackground: panelColor,
+        actorBkg: mutedSurfaceColor,
+        actorBorder: lineStrongColor,
+        actorLineColor: lineColor,
+        actorTextColor: textColor,
+        signalColor: lineColor,
+        signalTextColor: textColor,
+        labelBoxBkgColor: panelColor,
+        labelBoxBorderColor: lineStrongColor,
+        labelTextColor: textColor,
+        loopTextColor: textColor,
+        activationBorderColor: lineStrongColor,
+        activationBkgColor: activeSurfaceColor,
+        rectBkgColor: mutedSurfaceColor,
+        transitionColor: lineColor,
+        transitionLabelColor: textColor,
+        classText: textColor,
+        personBkg: mutedSurfaceColor,
+        personBorder: lineStrongColor,
+        compositeBackground: panelColor,
+        compositeBorder: lineStrongColor,
       },
     },
   };
@@ -598,11 +846,40 @@ const isMathDisplayCode = (className: string | undefined, language: string | und
 
 const isMermaidCode = (language: string | undefined) => language === "mermaid" || language === "mmd";
 
-const sanitizeMermaidSvg = (svg: string) => {
-  const template = document.createElement("template");
-  template.innerHTML = svg;
-  template.content.querySelectorAll("script, foreignObject").forEach((element) => element.remove());
-  template.content.querySelectorAll("*").forEach((element) => {
+const toFiniteNumber = (value: string | null, fallback: number) => {
+  const parsedValue = Number.parseFloat(value ?? "");
+  return Number.isFinite(parsedValue) ? parsedValue : fallback;
+};
+
+const preserveMermaidForeignObjectLabelText = (root: DocumentFragment) => {
+  root.querySelectorAll("foreignObject").forEach((foreignObject) => {
+    const labelText = foreignObject.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    if (!labelText) {
+      foreignObject.remove();
+      return;
+    }
+
+    const x = toFiniteNumber(foreignObject.getAttribute("x"), 0);
+    const y = toFiniteNumber(foreignObject.getAttribute("y"), 0);
+    const width = toFiniteNumber(foreignObject.getAttribute("width"), 0);
+    const height = toFiniteNumber(foreignObject.getAttribute("height"), 0);
+    const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    textElement.setAttribute("x", String(x + width / 2));
+    textElement.setAttribute("y", String(y + height / 2));
+    textElement.setAttribute("text-anchor", "middle");
+    textElement.setAttribute("dominant-baseline", "middle");
+    textElement.setAttribute("class", "nodeLabel");
+    textElement.textContent = labelText;
+    foreignObject.replaceWith(textElement);
+  });
+};
+
+const removeUnsafeMermaidNodes = (root: DocumentFragment) => {
+  root.querySelectorAll("script, foreignObject").forEach((element) => element.remove());
+};
+
+const removeUnsafeMermaidAttributes = (root: DocumentFragment) => {
+  root.querySelectorAll("*").forEach((element) => {
     for (let index = element.attributes.length - 1; index >= 0; index -= 1) {
       const attribute = element.attributes.item(index);
       if (!attribute) {
@@ -619,6 +896,14 @@ const sanitizeMermaidSvg = (svg: string) => {
       }
     }
   });
+};
+
+const sanitizeMermaidSvg = (svg: string) => {
+  const template = document.createElement("template");
+  template.innerHTML = svg;
+  preserveMermaidForeignObjectLabelText(template.content);
+  removeUnsafeMermaidNodes(template.content);
+  removeUnsafeMermaidAttributes(template.content);
 
   return template.innerHTML;
 };
@@ -642,6 +927,8 @@ type PreviewDocsComponentProps = {
 };
 
 type PreviewDocsRawComponentProps = PreviewDocsComponentProps & {
+  "data-preview-line-end"?: number | string;
+  "data-preview-line-start"?: number | string;
   node?: unknown;
 };
 
@@ -895,18 +1182,25 @@ const normalizePreviewDocsComponents = (markdown: string) => {
 };
 
 type PreviewGlobalMarkdownContext = {
-  globalDefinitions: string;
+  footnoteDefinitions: string;
+  footnoteReferences: string;
+  referenceDefinitions: string;
 };
 
 const referenceDefinitionLinePattern = /^ {0,3}\[(?!\^)([^\]\n]+)]:\s+\S/;
-const footnoteDefinitionLinePattern = /^ {0,3}\[\^[^\]\n]+]:/;
+const footnoteDefinitionLinePattern = /^ {0,3}\[\^([^\]\n]+)]:/;
+const footnoteContinuationLinePattern = /^(?: {4,}|\t)\S/;
 
 const getPreviewGlobalMarkdownContext = (markdown: string): PreviewGlobalMarkdownContext => {
+  const lines = markdown.split(/\r?\n/);
   let isInFence = false;
   let activeFenceMarker = "";
-  const globalDefinitionLines: string[] = [];
+  const referenceDefinitionLines: string[] = [];
+  const footnoteDefinitionLines: string[] = [];
+  const footnoteLabels: string[] = [];
 
-  for (const line of markdown.split(/\r?\n/)) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
     const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})/);
     if (fenceMatch) {
       const marker = fenceMatch[1];
@@ -924,24 +1218,48 @@ const getPreviewGlobalMarkdownContext = (markdown: string): PreviewGlobalMarkdow
       continue;
     }
 
-    if (footnoteDefinitionLinePattern.test(line)) {
-      globalDefinitionLines.push(line);
+    const footnoteDefinitionMatch = line.match(footnoteDefinitionLinePattern);
+    if (footnoteDefinitionMatch) {
+      const footnoteLines = [line];
+      const pendingBlankLines: string[] = [];
+      while (index + 1 < lines.length) {
+        const nextLine = lines[index + 1];
+        if (nextLine.trim().length === 0) {
+          pendingBlankLines.push(nextLine);
+          index += 1;
+          continue;
+        }
+
+        if (footnoteContinuationLinePattern.test(nextLine)) {
+          footnoteLines.push(...pendingBlankLines, nextLine);
+          pendingBlankLines.length = 0;
+          index += 1;
+          continue;
+        }
+
+        break;
+      }
+
+      footnoteDefinitionLines.push(...footnoteLines);
+      footnoteLabels.push(footnoteDefinitionMatch[1]);
       continue;
     }
 
     if (referenceDefinitionLinePattern.test(line)) {
-      globalDefinitionLines.push(line);
+      referenceDefinitionLines.push(line);
     }
   }
 
   return {
-    globalDefinitions: globalDefinitionLines.join("\n"),
+    footnoteDefinitions: footnoteDefinitionLines.join("\n"),
+    footnoteReferences: footnoteLabels.map((label) => `[^${label}]`).join(" "),
+    referenceDefinitions: referenceDefinitionLines.join("\n"),
   };
 };
 
-function PreviewFrame({ children, caption, hint }: PreviewDocsComponentProps) {
+function PreviewFrame({ children, caption, hint, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
   return (
-    <figure className="preview-docs-frame">
+    <figure {...sourceProps} className={`preview-docs-frame ${sourceProps.className ?? ""}`.trim()}>
       {hint && <div className="preview-docs-frame-hint">{hint}</div>}
       <div className="preview-docs-frame-body">{children}</div>
       {caption && <figcaption>{caption}</figcaption>}
@@ -949,12 +1267,13 @@ function PreviewFrame({ children, caption, hint }: PreviewDocsComponentProps) {
   );
 }
 
-function PreviewCardGroup({ children, cols }: PreviewDocsComponentProps) {
+function PreviewCardGroup({ children, cols, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
   const columnCount = getPreviewColumnCount(cols);
 
   return (
     <div
-      className="preview-docs-card-group"
+      {...sourceProps}
+      className={`preview-docs-card-group ${sourceProps.className ?? ""}`.trim()}
       style={{ "--preview-card-columns": columnCount } as CSSProperties}
     >
       {children}
@@ -962,7 +1281,15 @@ function PreviewCardGroup({ children, cols }: PreviewDocsComponentProps) {
   );
 }
 
-function PreviewCard({ children, horizontal, href, icon, img, title }: PreviewDocsComponentProps) {
+function PreviewCard({
+  children,
+  horizontal,
+  href,
+  icon,
+  img,
+  title,
+  ...sourceProps
+}: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
   const isExternal = typeof href === "string" && externalLinkPattern.test(href);
   const isHorizontal = normalizeDocsAttribute(horizontal) === true || normalizeDocsAttribute(horizontal) === "true";
   const cardBody = (
@@ -979,22 +1306,29 @@ function PreviewCard({ children, horizontal, href, icon, img, title }: PreviewDo
       </span>
     </>
   );
-  const className = `preview-docs-card ${isHorizontal ? "horizontal" : ""}`;
+  const className = `preview-docs-card ${isHorizontal ? "horizontal" : ""} ${sourceProps.className ?? ""}`.trim();
 
   if (!href) {
-    return <div className={className}>{cardBody}</div>;
+    return <div {...sourceProps} className={className}>{cardBody}</div>;
   }
 
   return (
-    <a className={className} href={href} target={isExternal ? "_blank" : undefined} rel={isExternal ? "noreferrer" : undefined}>
+    <a
+      {...sourceProps}
+      className={className}
+      href={href}
+      target={isExternal ? "_blank" : undefined}
+      rel={isExternal ? "noreferrer" : undefined}
+    >
       {cardBody}
     </a>
   );
 }
 
 const PREVIEW_DOCS_COMPONENTS = {
-  card: ({ children, href, icon, img, title, horizontal }: PreviewDocsRawComponentProps) => (
+  card: ({ children, href, icon, img, title, horizontal, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
     <PreviewCard
+      {...sourceProps}
       href={typeof href === "string" ? href : undefined}
       icon={typeof icon === "string" ? icon : undefined}
       img={typeof img === "string" ? img : undefined}
@@ -1004,8 +1338,9 @@ const PREVIEW_DOCS_COMPONENTS = {
       {children}
     </PreviewCard>
   ),
-  "tabula-card": ({ children, href, icon, img, title, horizontal }: PreviewDocsRawComponentProps) => (
+  "tabula-card": ({ children, href, icon, img, title, horizontal, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
     <PreviewCard
+      {...sourceProps}
       href={typeof href === "string" ? href : undefined}
       icon={typeof icon === "string" ? icon : undefined}
       img={typeof img === "string" ? img : undefined}
@@ -1015,26 +1350,28 @@ const PREVIEW_DOCS_COMPONENTS = {
       {children}
     </PreviewCard>
   ),
-  cardgroup: ({ children, cols }: PreviewDocsRawComponentProps) => (
-    <PreviewCardGroup cols={typeof cols === "string" || typeof cols === "number" ? cols : undefined}>
+  cardgroup: ({ children, cols, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <PreviewCardGroup {...sourceProps} cols={typeof cols === "string" || typeof cols === "number" ? cols : undefined}>
       {children}
     </PreviewCardGroup>
   ),
-  "tabula-card-group": ({ children, cols }: PreviewDocsRawComponentProps) => (
-    <PreviewCardGroup cols={typeof cols === "string" || typeof cols === "number" ? cols : undefined}>
+  "tabula-card-group": ({ children, cols, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <PreviewCardGroup {...sourceProps} cols={typeof cols === "string" || typeof cols === "number" ? cols : undefined}>
       {children}
     </PreviewCardGroup>
   ),
-  frame: ({ children, caption, hint }: PreviewDocsRawComponentProps) => (
+  frame: ({ children, caption, hint, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
     <PreviewFrame
+      {...sourceProps}
       caption={typeof caption === "string" ? caption : undefined}
       hint={typeof hint === "string" ? hint : undefined}
     >
       {children}
     </PreviewFrame>
   ),
-  "tabula-frame": ({ children, caption, hint }: PreviewDocsRawComponentProps) => (
+  "tabula-frame": ({ children, caption, hint, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
     <PreviewFrame
+      {...sourceProps}
       caption={typeof caption === "string" ? caption : undefined}
       hint={typeof hint === "string" ? hint : undefined}
     >
@@ -1043,7 +1380,7 @@ const PREVIEW_DOCS_COMPONENTS = {
   ),
 } as unknown as Components;
 
-function PreviewCodeBlock({ children, ...props }: PreviewCodeBlockProps) {
+function PreviewCodeBlock({ children, searchActive = false, ...props }: PreviewCodeBlockProps) {
   const [isWrapped, setIsWrapped] = useState(false);
   const [copied, setCopied] = useState(false);
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
@@ -1142,7 +1479,10 @@ function PreviewCodeBlock({ children, ...props }: PreviewCodeBlockProps) {
           aria-pressed={isWrapped}
           onClick={() => setIsWrapped((nextIsWrapped) => !nextIsWrapped)}
         >
-          <WrapText size={16} />
+          <span className="preview-code-action-icon-stack" aria-hidden="true">
+            <WrapText size={16} />
+            {isWrapped && <Slash className="preview-code-action-off-mark" size={16} />}
+          </span>
         </button>
         <button
           type="button"
@@ -1155,7 +1495,9 @@ function PreviewCodeBlock({ children, ...props }: PreviewCodeBlockProps) {
         </button>
       </div>
       <pre {...props}>
-        {highlightedHtml ? (
+        {searchActive ? (
+          children
+        ) : highlightedHtml ? (
           <code
             className={codeClassNames || undefined}
             data-language={language}
@@ -1286,6 +1628,49 @@ const createPreviewAlertPlugin = () => (tree: HastNode) => {
   walk(tree);
 };
 
+const hasFootnoteSectionClass = (className: unknown) =>
+  Array.isArray(className)
+    ? className.includes("footnotes")
+    : typeof className === "string" && className.split(/\s+/).includes("footnotes");
+
+const isFootnoteSectionNode = (node: HastNode | undefined) =>
+  isHastElement(node, "section") &&
+  (
+    node.properties?.dataFootnotes === true ||
+    node.properties?.dataFootnotes === "true" ||
+    node.properties?.["data-footnotes"] === true ||
+    node.properties?.["data-footnotes"] === "true" ||
+    hasFootnoteSectionClass(node.properties?.className)
+  );
+
+const createStripFootnoteSectionPlugin = () => (tree: HastNode) => {
+  const walk = (node: HastNode) => {
+    if (!node.children) {
+      return;
+    }
+
+    node.children = node.children.filter((child) => !isFootnoteSectionNode(child));
+    node.children.forEach(walk);
+  };
+
+  walk(tree);
+};
+
+const createFootnoteCollectorPlugin = () => (tree: HastNode) => {
+  if (!tree.children) {
+    return;
+  }
+
+  const footnoteSectionIndex = tree.children.findIndex(isFootnoteSectionNode);
+  if (footnoteSectionIndex <= 0) {
+    return;
+  }
+
+  tree.children = tree.children.filter(
+    (child, index) => index >= footnoteSectionIndex || !isHastElement(child, "p"),
+  );
+};
+
 const createPreviewSourceLinePlugin = (lineOffset = 0) => () => {
   const walk = (node: HastNode) => {
     if (node.type === "element" && typeof node.tagName === "string" && previewSourceBlockTags.has(node.tagName)) {
@@ -1413,9 +1798,118 @@ const createPreviewCommentAnchorPlugin =
     };
   };
 
+const previewSearchIgnoredTags = new Set(["script", "style", "svg"]);
+
+const createPreviewSearchPlugin =
+  (
+    query: string,
+    searchOptions: SearchOptions = DEFAULT_SEARCH_OPTIONS,
+    activeMatchIndex = -1,
+    options: {
+      sourceBackedMatches?: Array<{ start: number; end: number }>;
+      sourceOffsetBase?: number;
+    } = {},
+  ) => () => {
+    const normalizedQuery = query.trim();
+    const searchError = getSearchQueryError(normalizedQuery, searchOptions);
+    if (!normalizedQuery || searchError) {
+      return () => undefined;
+    }
+
+    return (tree: HastNode) => {
+      let matchIndex = 0;
+      const splitSearchTextNode = (node: HastNode): HastNode[] | null => {
+        const value = node.value ?? "";
+        const nodeStart =
+          typeof node.position?.start?.offset === "number"
+            ? node.position.start.offset + (options.sourceOffsetBase ?? 0)
+            : null;
+        const nodeEnd = nodeStart === null ? null : nodeStart + value.length;
+        const matches = options.sourceBackedMatches && nodeStart !== null && nodeEnd !== null
+          ? options.sourceBackedMatches
+              .map((match, index) => ({
+                end: Math.min(value.length, match.end - nodeStart),
+                index,
+                start: Math.max(0, match.start - nodeStart),
+              }))
+              .filter((match) => match.start < match.end && match.start < value.length && match.end > 0)
+          : getEditorSearchMatches(value, normalizedQuery, searchOptions).map((match, index) => ({
+              end: match.end,
+              index,
+              start: match.start,
+            }));
+        if (matches.length === 0) {
+          return null;
+        }
+
+        const nextChildren: HastNode[] = [];
+        let cursor = 0;
+        for (const match of matches) {
+          if (match.start > cursor) {
+            nextChildren.push({ type: "text", value: value.slice(cursor, match.start) });
+          }
+
+          const currentMatchIndex = options.sourceBackedMatches ? match.index : matchIndex;
+          const className = ["preview-search-match"];
+          if (currentMatchIndex === activeMatchIndex) {
+            className.push("active");
+          }
+
+          nextChildren.push({
+            type: "element",
+            tagName: "mark",
+            properties: {
+              className,
+              dataPreviewSearchIndex: currentMatchIndex,
+            },
+            children: [{ type: "text", value: value.slice(match.start, match.end) }],
+          });
+
+          cursor = match.end;
+          if (!options.sourceBackedMatches) {
+            matchIndex += 1;
+          }
+        }
+
+        if (cursor < value.length) {
+          nextChildren.push({ type: "text", value: value.slice(cursor) });
+        }
+
+        return nextChildren;
+      };
+      const walk = (node: HastNode, ignored = false) => {
+        const isIgnored =
+          ignored ||
+          (node.type === "element" &&
+            typeof node.tagName === "string" &&
+            previewSearchIgnoredTags.has(node.tagName));
+
+        if (!node.children || isIgnored) {
+          return;
+        }
+
+        const nextChildren: HastNode[] = [];
+        for (const child of node.children) {
+          if (child.type === "text") {
+            const replacementNodes = splitSearchTextNode(child);
+            nextChildren.push(...(replacementNodes ?? [child]));
+            continue;
+          }
+
+          walk(child, isIgnored);
+          nextChildren.push(child);
+        }
+        node.children = nextChildren;
+      };
+
+      walk(tree);
+    };
+  };
+
 const createMarkdownPreviewComponents = (
   onOpenComment?: (commentId: string) => void,
   onToggleTaskLine?: (sourceLineIndex: number) => void,
+  searchActive = false,
 ): Components => ({
   ...PREVIEW_DOCS_COMPONENTS,
   a: ({ node: _node, href, ...props }) => {
@@ -1511,7 +2005,9 @@ const createMarkdownPreviewComponents = (
       {children}
     </h6>
   ),
-  pre: ({ node: _node, children, ...props }) => <PreviewCodeBlock {...props}>{children}</PreviewCodeBlock>,
+  pre: ({ node: _node, children, ...props }) => (
+    <PreviewCodeBlock searchActive={searchActive} {...props}>{children}</PreviewCodeBlock>
+  ),
   span: ({ node: _node, className, children, ...props }) => {
     const spanProps = props as typeof props & { "data-comment-id"?: unknown };
     const commentId = typeof spanProps["data-comment-id"] === "string" ? spanProps["data-comment-id"] : undefined;
@@ -1554,13 +2050,9 @@ type PreviewLineRailRow = LineSurfaceRow<MarkdownPreviewLineAnnotation>;
 
 const PREVIEW_LINE_MEASUREMENT_WIDTH_BUCKET = 8;
 const PREVIEW_LINE_MEASUREMENT_CACHE_LIMIT = 12;
-const PREVIEW_VIRTUAL_OVERSCAN = 1_800;
-const PREVIEW_VIEWPORT_FALLBACK_HEIGHT = 720;
-
-type PreviewViewport = {
-  scrollTop: number;
-  viewportHeight: number;
-};
+const PREVIEW_VIRTUAL_OVERSCAN = 1_200;
+const VIRTUAL_GLOBAL_MARKDOWN_CONTEXT_DELAY_MS = 6_000;
+const VIRTUAL_LINE_MEASUREMENT_SCROLL_IDLE_MS = 140;
 
 const getStringHash = (value: string) => {
   let hash = 0;
@@ -1629,6 +2121,31 @@ function PreviewLineGutter({
         ]
           .filter(Boolean)
           .join(" ");
+        const title =
+          side === "bookmark"
+            ? row.hasBookmark ? "Remove bookmark" : "Bookmark line"
+            : row.hasComment ? "Open comments" : "Comment on line";
+        const children = <Icon className="preview-line-action-icon" size={14} strokeWidth={2} aria-hidden="true" />;
+
+        if (!isActive) {
+          return (
+            <span
+              key={`${side}-${row.lineNumber}`}
+              className={className}
+              style={{ top: row.top, height: row.height }}
+              aria-hidden="true"
+              title={title}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onLineAction({ ...row, action: side });
+              }}
+            >
+              {children}
+            </span>
+          );
+        }
 
         return (
           <button
@@ -1638,7 +2155,7 @@ function PreviewLineGutter({
             style={{ top: row.top, height: row.height }}
             tabIndex={isActive ? 0 : -1}
             aria-label={getPreviewLineButtonLabel(side, row)}
-            title={side === "bookmark" ? (row.hasBookmark ? "Remove bookmark" : "Bookmark line") : row.hasComment ? "Open comments" : "Comment on line"}
+            title={title}
             onMouseDown={(event) => event.preventDefault()}
             onClick={(event) => {
               event.preventDefault();
@@ -1646,7 +2163,7 @@ function PreviewLineGutter({
               onLineAction({ ...row, action: side });
             }}
           >
-            <Icon className="preview-line-action-icon" size={14} strokeWidth={2} aria-hidden="true" />
+            {children}
           </button>
         );
       })}
@@ -1654,101 +2171,147 @@ function PreviewLineGutter({
   );
 }
 
-const getPreviewScrollSurface = (documentElement: HTMLElement | null) =>
-  documentElement?.closest<HTMLElement>(".preview-surface") ?? null;
-
-const getPreviewViewport = (documentElement: HTMLElement | null): PreviewViewport => {
-  const scrollSurface = getPreviewScrollSurface(documentElement);
-  return {
-    scrollTop: scrollSurface?.scrollTop ?? 0,
-    viewportHeight: scrollSurface?.clientHeight ?? PREVIEW_VIEWPORT_FALLBACK_HEIGHT,
-  };
-};
-
 const createPreviewRehypePlugins = (
   commentAnchorPlugins: MarkdownRehypePlugins,
   lineOffset = 0,
+  options: {
+    previewSearchPlugin?: MarkdownRehypePlugins[number] | null;
+    stripFootnoteSection?: boolean;
+    stripGeneratedFootnoteReferences?: boolean;
+  } = {},
 ): MarkdownRehypePlugins => [
   rehypeRaw,
   [rehypeSanitize, PREVIEW_SANITIZE_SCHEMA],
   rehypeSlug,
   ...PREVIEW_ALERT_REHYPE_PLUGINS,
   createPreviewSourceLinePlugin(lineOffset),
+  ...(options.stripFootnoteSection ? [createStripFootnoteSectionPlugin] : []),
+  ...(options.stripGeneratedFootnoteReferences ? [createFootnoteCollectorPlugin] : []),
   ...commentAnchorPlugins,
+  ...(options.previewSearchPlugin ? [options.previewSearchPlugin] : []),
 ] as MarkdownRehypePlugins;
 
-const getBlockCommentAnchors = (
-  block: PreviewBlock,
-  commentAnchors: MarkdownPreviewCommentAnchor[],
-) =>
-  commentAnchors
-    .filter((anchor) => anchor.start < block.endOffset && anchor.end > block.startOffset)
-    .map((anchor) => ({
-      id: anchor.id,
-      start: Math.max(0, anchor.start - block.startOffset),
-      end: Math.min(block.endOffset - block.startOffset, anchor.end - block.startOffset),
-    }))
-    .filter((anchor) => anchor.end > anchor.start);
-
-function VirtualPreviewBlock({
+function MarkdownPreviewComponent({
+  metadata = EMPTY_MARKDOWN_PREVIEW_METADATA,
+  body,
+  sourceLineOffset = 0,
+  bodyTextChange,
+  largeDocumentMode = false,
+  commentAnchors = EMPTY_PREVIEW_COMMENT_ANCHORS,
+  lineAnnotations = EMPTY_PREVIEW_LINE_ANNOTATIONS,
   activeCommentId,
-  block,
-  commentsEnabled,
-  components,
-  commentAnchors,
-  onBlockHeightChange,
-  globalDefinitions,
-}: {
-  activeCommentId?: string | null;
-  block: PreviewBlock;
-  commentsEnabled: boolean;
-  components: Components;
-  commentAnchors: MarkdownPreviewCommentAnchor[];
-  onBlockHeightChange: (blockId: string, height: number) => void;
-  globalDefinitions: string;
-}) {
-  const blockRef = useRef<HTMLDivElement | null>(null);
-  const blockCommentAnchors = useMemo(
-    () => (commentsEnabled ? getBlockCommentAnchors(block, commentAnchors) : EMPTY_PREVIEW_COMMENT_ANCHORS),
-    [block, commentAnchors, commentsEnabled],
+  commentsEnabled = true,
+  searchQuery = "",
+  searchOptions = DEFAULT_SEARCH_OPTIONS,
+  activeSearchMatchIndex = -1,
+  suspendLineMeasurement = false,
+  onSearchMatchCountChange,
+  onLineAction,
+  onOpenComment,
+  onToggleTaskLine,
+}: MarkdownPreviewProps, ref: ForwardedRef<MarkdownPreviewHandle>) {
+  const documentRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const frontmatterRef = useRef<HTMLElement | null>(null);
+  const onOpenCommentRef = useRef(onOpenComment);
+  const onToggleTaskLineRef = useRef(onToggleTaskLine);
+  const wasLineMeasurementSuspendedRef = useRef(suspendLineMeasurement);
+  const hoverLineFrameRef = useRef<number | null>(null);
+  const pendingHoverLineRef = useRef<{ clientY: number; target: EventTarget | null } | null>(null);
+  const capturePreviewViewportAnchorForMeasurementRef = useRef<(() => void) | null>(null);
+  const previewViewportBlockIndexRef = useRef<PreviewBlockIndex | null>(null);
+  const lineMeasurementCacheRef = useRef(new Map<string, PreviewLineRailRow[]>());
+  const lineRailRowsRef = useRef<PreviewLineRailRow[]>([]);
+  const [lineRailRows, setLineRailRows] = useState<PreviewLineRailRow[]>([]);
+  const [hoverLineAnnotation, setHoverLineAnnotation] = useState<MarkdownPreviewLineAnnotation | null>(null);
+  const [previewViewport, setPreviewViewport] = useState<PreviewViewport>(() => ({
+    scrollTop: 0,
+    viewportHeight: PREVIEW_VIEWPORT_FALLBACK_HEIGHT,
+  }));
+  const [frontmatterPreviewHeight, setFrontmatterPreviewHeight] = useState(0);
+  const [inlinePreviewBlockMeasurements, setInlinePreviewBlockMeasurements] = useState<PreviewBlockMeasurements>({});
+  const showLineGutters = Boolean(onLineAction);
+  const showCommentGutter = showLineGutters;
+  const stableCommentAnchors = commentAnchors.length > 0 ? commentAnchors : EMPTY_PREVIEW_COMMENT_ANCHORS;
+  const stableLineAnnotations = lineAnnotations.length > 0 ? lineAnnotations : EMPTY_PREVIEW_LINE_ANNOTATIONS;
+  const renderableBody = useMemo(() => normalizePreviewDocsComponents(body), [body]);
+  const previewSearchActive = Boolean(searchQuery.trim()) && !getSearchQueryError(searchQuery, searchOptions);
+  const renderableBodyTextChange = renderableBody === body ? bodyTextChange : null;
+  const normalizedSourceLineOffset = Math.max(0, Math.floor(sourceLineOffset));
+  const frontmatterEndLine = Math.max(1, normalizedSourceLineOffset);
+  const previewSourceLineCount = useMemo(
+    () => Math.max(1, normalizedSourceLineOffset + getMarkdownLineCount(renderableBody)),
+    [normalizedSourceLineOffset, renderableBody],
   );
-  const blockCommentPlugins = useMemo(
-    () => (commentsEnabled ? [createPreviewCommentAnchorPlugin(blockCommentAnchors, activeCommentId)] : []),
-    [activeCommentId, blockCommentAnchors, commentsEnabled],
+  const shouldVirtualizePreview =
+    largeDocumentMode &&
+    renderableBody.trim().length > 0;
+  const inlinePreviewBlockIndex = useMemo(
+    () =>
+      !shouldVirtualizePreview && renderableBody.trim().length > 0
+        ? createPreviewBlockIndex(renderableBody)
+        : null,
+    [renderableBody, shouldVirtualizePreview],
   );
-  const blockRehypePlugins = useMemo(
-    () => createPreviewRehypePlugins(blockCommentPlugins, block.startLine - 1),
-    [block.startLine, blockCommentPlugins],
+  const measuredInlinePreviewBlockIndex = useMemo(
+    () =>
+      inlinePreviewBlockIndex
+        ? applyPreviewBlockMeasurements(inlinePreviewBlockIndex, inlinePreviewBlockMeasurements)
+        : null,
+    [inlinePreviewBlockIndex, inlinePreviewBlockMeasurements],
   );
-  const blockMarkdown = useMemo(
-    () => (globalDefinitions ? `${block.text}\n\n${globalDefinitions}` : block.text),
-    [block.text, globalDefinitions],
+  const [virtualGlobalMarkdownContext, setVirtualGlobalMarkdownContext] = useState<PreviewGlobalMarkdownContext>(() =>
+    getPreviewGlobalMarkdownContext(renderableBody),
   );
-
+  const inlineGlobalMarkdownContext = useMemo(
+    () => (shouldVirtualizePreview ? null : getPreviewGlobalMarkdownContext(renderableBody)),
+    [renderableBody, shouldVirtualizePreview],
+  );
+  const globalMarkdownContext = inlineGlobalMarkdownContext ?? virtualGlobalMarkdownContext;
+  const {
+    blockIndex: previewBlockIndex,
+    pending: previewBlockIndexPending,
+    source: previewBlockIndexSource,
+  } = usePreviewBlockIndexWorker(
+    renderableBody,
+    shouldVirtualizePreview,
+    { textChange: renderableBodyTextChange },
+  );
+  const onBeforePreviewMeasurementsCommit = useCallback(() => {
+    capturePreviewViewportAnchorForMeasurementRef.current?.();
+  }, []);
+  const {
+    handlePreviewBlockHeightChange,
+    virtualPreviewBlockIndex,
+  } = useVirtualPreviewMeasurements({
+    onBeforeMeasurementsCommit: onBeforePreviewMeasurementsCommit,
+    previewBlockIndex,
+  });
   useLayoutEffect(() => {
-    const element = blockRef.current;
+    const element = frontmatterRef.current;
     if (!element) {
+      setFrontmatterPreviewHeight(0);
       return undefined;
     }
 
     let frameId: number | null = null;
-    const reportHeight = () => {
+    const measureFrontmatter = () => {
       frameId = null;
-      const height = Math.ceil(element.getBoundingClientRect().height);
-      if (height > 0) {
-        onBlockHeightChange(block.id, height);
-      }
+      const nextHeight = getElementOuterHeight(element);
+      setFrontmatterPreviewHeight((currentHeight) =>
+        Math.abs(currentHeight - nextHeight) < 1 ? currentHeight : nextHeight,
+      );
     };
-    const scheduleReport = () => {
+    const scheduleMeasure = () => {
       if (frameId !== null) {
         return;
       }
-      frameId = window.requestAnimationFrame(reportHeight);
+      frameId = window.requestAnimationFrame(measureFrontmatter);
     };
 
-    scheduleReport();
+    scheduleMeasure();
     const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleReport);
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleMeasure);
     resizeObserver?.observe(element);
 
     return () => {
@@ -1757,149 +2320,69 @@ function VirtualPreviewBlock({
         window.cancelAnimationFrame(frameId);
       }
     };
-  }, [block.id, onBlockHeightChange]);
-
-  return (
-    <div
-      ref={blockRef}
-      className="preview-virtual-block"
-      data-preview-virtual-block="true"
-      data-preview-block-kind={block.kind}
-      data-preview-block-id={block.id}
-      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 220px" }}
-    >
-      <ReactMarkdown components={components} rehypePlugins={blockRehypePlugins} remarkPlugins={MARKDOWN_REMARK_PLUGINS}>
-        {blockMarkdown}
-      </ReactMarkdown>
-    </div>
-  );
-}
-
-function VirtualMarkdownPreview({
-  activeCommentId,
-  blockIndex,
-  commentsEnabled,
-  components,
-  commentAnchors,
-  onBlockHeightChange,
-  globalDefinitions,
-  viewport,
-}: {
-  activeCommentId?: string | null;
-  blockIndex: PreviewBlockIndex;
-  commentsEnabled: boolean;
-  components: Components;
-  commentAnchors: MarkdownPreviewCommentAnchor[];
-  onBlockHeightChange: (blockId: string, height: number) => void;
-  globalDefinitions: string;
-  viewport: PreviewViewport;
-}) {
-  const previewWindow = useMemo(
-    () => getPreviewWindow(blockIndex, viewport.scrollTop, viewport.viewportHeight, PREVIEW_VIRTUAL_OVERSCAN),
-    [blockIndex, viewport.scrollTop, viewport.viewportHeight],
-  );
-  const firstBlock = previewWindow.blocks[0] ?? null;
-  const lastBlock = previewWindow.blocks[previewWindow.blocks.length - 1] ?? null;
-  const topSpacerHeight = firstBlock?.estimatedTop ?? 0;
-  const bottomSpacerHeight = lastBlock
-    ? Math.max(0, blockIndex.totalEstimatedHeight - (lastBlock.estimatedTop + lastBlock.estimatedHeight))
-    : 0;
-
-  return (
-    <div
-      className="preview-virtual-content"
-      data-preview-virtual-content="true"
-      style={{ minHeight: blockIndex.totalEstimatedHeight }}
-    >
-      {topSpacerHeight > 0 && <div aria-hidden="true" className="preview-virtual-spacer" style={{ height: topSpacerHeight }} />}
-      {previewWindow.blocks.map((block) => (
-        <VirtualPreviewBlock
-          key={block.id}
-          activeCommentId={activeCommentId}
-          block={block}
-          commentsEnabled={commentsEnabled}
-          components={components}
-          commentAnchors={commentAnchors}
-          onBlockHeightChange={onBlockHeightChange}
-          globalDefinitions={globalDefinitions}
-        />
-      ))}
-      {bottomSpacerHeight > 0 && <div aria-hidden="true" className="preview-virtual-spacer" style={{ height: bottomSpacerHeight }} />}
-    </div>
-  );
-}
-
-function MarkdownPreviewComponent({
-  metadata = EMPTY_MARKDOWN_PREVIEW_METADATA,
-  body,
-  largeDocumentMode = false,
-  commentAnchors = EMPTY_PREVIEW_COMMENT_ANCHORS,
-  lineAnnotations = EMPTY_PREVIEW_LINE_ANNOTATIONS,
-  activeCommentId,
-  commentsEnabled = true,
-  suspendLineMeasurement = false,
-  onLineAction,
-  onOpenComment,
-  onToggleTaskLine,
-}: MarkdownPreviewProps) {
-  const documentRef = useRef<HTMLDivElement | null>(null);
-  const contentRef = useRef<HTMLDivElement | null>(null);
-  const onOpenCommentRef = useRef(onOpenComment);
-  const onToggleTaskLineRef = useRef(onToggleTaskLine);
-  const wasLineMeasurementSuspendedRef = useRef(suspendLineMeasurement);
-  const hoverLineFrameRef = useRef<number | null>(null);
-  const pendingHoverLineRef = useRef<{ clientY: number; target: EventTarget | null } | null>(null);
-  const lineMeasurementCacheRef = useRef(new Map<string, PreviewLineRailRow[]>());
-  const lineRailRowsRef = useRef<PreviewLineRailRow[]>([]);
-  const [lineRailRows, setLineRailRows] = useState<PreviewLineRailRow[]>([]);
-  const [hoverLineAnnotation, setHoverLineAnnotation] = useState<MarkdownPreviewLineAnnotation | null>(null);
-  const [previewBlockMeasurements, setPreviewBlockMeasurements] = useState<PreviewBlockMeasurements>({});
-  const [previewViewport, setPreviewViewport] = useState<PreviewViewport>(() => ({
-    scrollTop: 0,
-    viewportHeight: PREVIEW_VIEWPORT_FALLBACK_HEIGHT,
-  }));
-  const showLineGutters = Boolean(onLineAction);
-  const showCommentGutter = showLineGutters;
-  const stableCommentAnchors = commentAnchors.length > 0 ? commentAnchors : EMPTY_PREVIEW_COMMENT_ANCHORS;
-  const stableLineAnnotations = lineAnnotations.length > 0 ? lineAnnotations : EMPTY_PREVIEW_LINE_ANNOTATIONS;
-  const renderableBody = useMemo(() => normalizePreviewDocsComponents(body), [body]);
-  const globalMarkdownContext = useMemo(
-    () => getPreviewGlobalMarkdownContext(renderableBody),
-    [renderableBody],
-  );
-  const shouldVirtualizePreview =
-    largeDocumentMode &&
-    renderableBody.trim().length > 0;
-  const {
-    blockIndex: previewBlockIndex,
-    pending: previewBlockIndexPending,
-    source: previewBlockIndexSource,
-  } = usePreviewBlockIndexWorker(
-    renderableBody,
-    shouldVirtualizePreview,
-  );
-  const virtualPreviewBlockIndex = useMemo(
-    () => (previewBlockIndex ? applyPreviewBlockMeasurements(previewBlockIndex, previewBlockMeasurements) : null),
-    [previewBlockIndex, previewBlockMeasurements],
-  );
-  const handlePreviewBlockHeightChange = useCallback((blockId: string, height: number) => {
-    const measuredHeight = Math.ceil(height);
-    if (!Number.isFinite(measuredHeight) || measuredHeight <= 0) {
-      return;
+  }, [metadata.length]);
+  useLayoutEffect(() => {
+    const contentElement = contentRef.current;
+    if (shouldVirtualizePreview || !contentElement || !inlinePreviewBlockIndex) {
+      setInlinePreviewBlockMeasurements((currentMeasurements) =>
+        Object.keys(currentMeasurements).length === 0 ? currentMeasurements : {},
+      );
+      return undefined;
     }
 
-    setPreviewBlockMeasurements((currentMeasurements) => {
-      const currentHeight = currentMeasurements[blockId];
-      if (typeof currentHeight === "number" && Math.abs(currentHeight - measuredHeight) < 1) {
-        return currentMeasurements;
+    let frameId: number | null = null;
+    const measureInlinePreviewBlocks = () => {
+      frameId = null;
+      const nextMeasurements = getInlinePreviewBlockMeasurements(
+        contentElement,
+        inlinePreviewBlockIndex,
+        normalizedSourceLineOffset,
+      );
+      setInlinePreviewBlockMeasurements((currentMeasurements) =>
+        getPreviewMeasurementsAreEqual(currentMeasurements, nextMeasurements)
+          ? currentMeasurements
+          : nextMeasurements,
+      );
+    };
+    const scheduleMeasurement = () => {
+      if (frameId !== null) {
+        return;
       }
+      frameId = window.requestAnimationFrame(measureInlinePreviewBlocks);
+    };
 
-      return {
-        ...currentMeasurements,
-        [blockId]: measuredHeight,
-      };
-    });
-  }, []);
+    scheduleMeasurement();
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleMeasurement);
+    resizeObserver?.observe(contentElement);
+
+    return () => {
+      resizeObserver?.disconnect();
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [inlinePreviewBlockIndex, normalizedSourceLineOffset, shouldVirtualizePreview]);
+  useLayoutEffect(() => {
+    previewViewportBlockIndexRef.current = virtualPreviewBlockIndex;
+  });
+  const {
+    capturePreviewViewportAnchorForMeasurement,
+    followEditorPosition,
+    handlePreviewScrollEvent,
+  } = usePreviewFollowController({
+    documentRef,
+    frontmatterPreviewHeight,
+    onPreviewViewportChange: setPreviewViewport,
+    previewBlockIndex: shouldVirtualizePreview ? virtualPreviewBlockIndex : measuredInlinePreviewBlockIndex,
+    renderableBody,
+    sourceLineCount: previewSourceLineCount,
+    sourceLineOffset: normalizedSourceLineOffset,
+    shouldVirtualizePreview,
+  });
+  useLayoutEffect(() => {
+    capturePreviewViewportAnchorForMeasurementRef.current = capturePreviewViewportAnchorForMeasurement;
+  }, [capturePreviewViewportAnchorForMeasurement]);
   const effectiveLineAnnotations = useMemo(() => {
     if (!hoverLineAnnotation) {
       return stableLineAnnotations;
@@ -1921,24 +2404,101 @@ function MarkdownPreviewComponent({
   }, [onOpenComment, onToggleTaskLine]);
 
   useEffect(() => {
-    setPreviewBlockMeasurements({});
-  }, [renderableBody]);
+    if (!shouldVirtualizePreview) {
+      return;
+    }
+
+    let cancelled = false;
+    let cancelIdleTask: (() => void) | null = null;
+    const timer = window.setTimeout(() => {
+      cancelIdleTask = requestPreviewIdleTask(() => {
+        const nextGlobalMarkdownContext = getPreviewGlobalMarkdownContext(renderableBody);
+        startTransition(() => {
+          if (!cancelled) {
+            setVirtualGlobalMarkdownContext(nextGlobalMarkdownContext);
+          }
+        });
+      });
+    }, VIRTUAL_GLOBAL_MARKDOWN_CONTEXT_DELAY_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      cancelIdleTask?.();
+    };
+  }, [renderableBody, shouldVirtualizePreview]);
+
+  useImperativeHandle(ref, () => ({
+    followEditorPosition,
+  }), [followEditorPosition]);
 
   const markdownPreviewComponents = useMemo(
     () =>
       createMarkdownPreviewComponents(
         (commentId) => onOpenCommentRef.current?.(commentId),
         (sourceLineIndex) => onToggleTaskLineRef.current?.(sourceLineIndex),
+        previewSearchActive,
       ),
-    [],
+    [previewSearchActive],
   );
   const commentAnchorPlugins = useMemo(
     () => (commentsEnabled ? [createPreviewCommentAnchorPlugin(stableCommentAnchors, activeCommentId)] : []),
     [activeCommentId, commentsEnabled, stableCommentAnchors],
   );
+  const virtualPreviewSearchMatches = useMemo(
+    () =>
+      shouldVirtualizePreview && previewSearchActive
+        ? getEditorSearchMatches(renderableBody, searchQuery, searchOptions)
+        : [],
+    [previewSearchActive, renderableBody, searchOptions, searchQuery, shouldVirtualizePreview],
+  );
+  const previewSearchPlugin = useMemo(
+    () =>
+      previewSearchActive && !shouldVirtualizePreview
+        ? createPreviewSearchPlugin(searchQuery, searchOptions, activeSearchMatchIndex)
+        : null,
+    [activeSearchMatchIndex, previewSearchActive, searchOptions, searchQuery, shouldVirtualizePreview],
+  );
   const rehypePlugins = useMemo(
-    () => createPreviewRehypePlugins(commentAnchorPlugins),
-    [commentAnchorPlugins],
+    () => createPreviewRehypePlugins(commentAnchorPlugins, normalizedSourceLineOffset, { previewSearchPlugin }),
+    [commentAnchorPlugins, normalizedSourceLineOffset, previewSearchPlugin],
+  );
+  const getVirtualBlockRehypePlugins = useCallback<GetVirtualPreviewBlockRehypePlugins>(
+    (block, blockCommentAnchors) => {
+      const blockCommentPlugins = commentsEnabled
+        ? [createPreviewCommentAnchorPlugin(blockCommentAnchors, activeCommentId)]
+        : [];
+      const blockPreviewSearchPlugin =
+        previewSearchActive && shouldVirtualizePreview
+          ? createPreviewSearchPlugin(searchQuery, searchOptions, activeSearchMatchIndex, {
+              sourceBackedMatches: virtualPreviewSearchMatches,
+              sourceOffsetBase: block.startOffset,
+            })
+          : previewSearchPlugin;
+      return createPreviewRehypePlugins(
+        blockCommentPlugins,
+        normalizedSourceLineOffset + block.startLine - 1,
+        { previewSearchPlugin: blockPreviewSearchPlugin, stripFootnoteSection: true },
+      );
+    },
+    [
+      activeCommentId,
+      activeSearchMatchIndex,
+      commentsEnabled,
+      normalizedSourceLineOffset,
+      previewSearchActive,
+      previewSearchPlugin,
+      searchOptions,
+      searchQuery,
+      shouldVirtualizePreview,
+      virtualPreviewSearchMatches,
+    ],
+  );
+  const getVirtualFootnoteRehypePlugins = useCallback(
+    () => createPreviewRehypePlugins([], normalizedSourceLineOffset, {
+      stripGeneratedFootnoteReferences: true,
+    }),
+    [normalizedSourceLineOffset],
   );
   const bodyMeasurementKey = useMemo(() => getStringHash(renderableBody), [renderableBody]);
   const lineAnnotationsSignature = useMemo(
@@ -1961,6 +2521,10 @@ function MarkdownPreviewComponent({
     const documentElement = documentRef.current;
     const contentElement = contentRef.current;
     if (!documentElement || !contentElement || !showLineGutters) {
+      setMeasuredLineRailRows([]);
+      return;
+    }
+    if (effectiveLineAnnotations.length === 0) {
       setMeasuredLineRailRows([]);
       return;
     }
@@ -2045,6 +2609,15 @@ function MarkdownPreviewComponent({
     );
   }, [largeDocumentMode, showLineGutters, suspendLineMeasurement]);
 
+  const clearPreviewHoverLineAnnotation = useCallback(() => {
+    pendingHoverLineRef.current = null;
+    if (hoverLineFrameRef.current !== null) {
+      window.cancelAnimationFrame(hoverLineFrameRef.current);
+      hoverLineFrameRef.current = null;
+    }
+    setHoverLineAnnotation((current) => (current === null ? current : null));
+  }, []);
+
   const handlePreviewPointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
     if (!largeDocumentMode || !showLineGutters) {
       return;
@@ -2069,14 +2642,7 @@ function MarkdownPreviewComponent({
     });
   }, [largeDocumentMode, showLineGutters, updateHoverLineAnnotation]);
 
-  const handlePreviewPointerLeave = useCallback(() => {
-    pendingHoverLineRef.current = null;
-    if (hoverLineFrameRef.current !== null) {
-      window.cancelAnimationFrame(hoverLineFrameRef.current);
-      hoverLineFrameRef.current = null;
-    }
-    setHoverLineAnnotation(null);
-  }, []);
+  const handlePreviewPointerLeave = clearPreviewHoverLineAnnotation;
 
   useLayoutEffect(() => {
     if (!shouldVirtualizePreview) {
@@ -2093,14 +2659,47 @@ function MarkdownPreviewComponent({
     const updateViewport = () => {
       frameId = null;
       const nextViewport = getPreviewViewport(documentRef.current);
-      setPreviewViewport((currentViewport) =>
-        currentViewport.scrollTop === nextViewport.scrollTop &&
-        currentViewport.viewportHeight === nextViewport.viewportHeight
-          ? currentViewport
-          : nextViewport,
-      );
+      startTransition(() => {
+        setPreviewViewport((currentViewport) => {
+          if (
+            currentViewport.scrollTop === nextViewport.scrollTop &&
+            currentViewport.viewportHeight === nextViewport.viewportHeight
+          ) {
+            return currentViewport;
+          }
+
+          const blockIndex = previewViewportBlockIndexRef.current;
+          if (
+            blockIndex &&
+            currentViewport.viewportHeight === nextViewport.viewportHeight
+          ) {
+            const currentWindow = getPreviewWindow(
+              blockIndex,
+              currentViewport.scrollTop,
+              currentViewport.viewportHeight,
+              PREVIEW_VIRTUAL_OVERSCAN,
+            );
+            const nextWindow = getPreviewWindow(
+              blockIndex,
+              nextViewport.scrollTop,
+              nextViewport.viewportHeight,
+              PREVIEW_VIRTUAL_OVERSCAN,
+            );
+            if (
+              currentWindow.startIndex === nextWindow.startIndex &&
+              currentWindow.blocks.length === nextWindow.blocks.length
+            ) {
+              return currentViewport;
+            }
+          }
+
+          return nextViewport;
+        });
+      });
     };
     const scheduleViewportUpdate = () => {
+      clearPreviewHoverLineAnnotation();
+      handlePreviewScrollEvent(scrollSurface);
       if (frameId !== null) {
         return;
       }
@@ -2121,7 +2720,7 @@ function MarkdownPreviewComponent({
         window.cancelAnimationFrame(frameId);
       }
     };
-  }, [shouldVirtualizePreview, renderableBody]);
+  }, [clearPreviewHoverLineAnnotation, handlePreviewScrollEvent, renderableBody, shouldVirtualizePreview]);
 
   useLayoutEffect(() => {
     const wasSuspended = wasLineMeasurementSuspendedRef.current;
@@ -2131,12 +2730,21 @@ function MarkdownPreviewComponent({
       return undefined;
     }
 
-    let rafId: number | null = null;
-    if (wasSuspended) {
-      rafId = window.requestAnimationFrame(() => {
-        rafId = null;
-        measurePreviewLineRows({ force: true });
+    let initialMeasureFrameId: number | null = null;
+    let invalidationFrameId: number | null = null;
+    const scheduleLineMeasurement = (options: { force?: boolean } = {}) => {
+      if (invalidationFrameId !== null) {
+        return;
+      }
+
+      invalidationFrameId = window.requestAnimationFrame(() => {
+        invalidationFrameId = null;
+        measurePreviewLineRows(options);
       });
+    };
+
+    if (wasSuspended) {
+      scheduleLineMeasurement({ force: true });
     } else {
       measurePreviewLineRows();
     }
@@ -2144,42 +2752,122 @@ function MarkdownPreviewComponent({
     const contentElement = contentRef.current;
     if (!contentElement || !showLineGutters) {
       return () => {
-        if (rafId !== null) {
-          window.cancelAnimationFrame(rafId);
+        if (initialMeasureFrameId !== null) {
+          window.cancelAnimationFrame(initialMeasureFrameId);
+        }
+        if (invalidationFrameId !== null) {
+          window.cancelAnimationFrame(invalidationFrameId);
         }
       };
     }
 
-    const handleLineMeasurementInvalidated = () => measurePreviewLineRows();
+    const handleLineMeasurementInvalidated = () => scheduleLineMeasurement();
     const resizeObserver =
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(handleLineMeasurementInvalidated);
     resizeObserver?.observe(contentElement);
     window.addEventListener("resize", handleLineMeasurementInvalidated);
-    const initialMeasureFrame = window.requestAnimationFrame(handleLineMeasurementInvalidated);
+    if (!wasSuspended) {
+      initialMeasureFrameId = window.requestAnimationFrame(handleLineMeasurementInvalidated);
+    }
 
     return () => {
-      if (rafId !== null) {
-        window.cancelAnimationFrame(rafId);
+      if (initialMeasureFrameId !== null) {
+        window.cancelAnimationFrame(initialMeasureFrameId);
+      }
+      if (invalidationFrameId !== null) {
+        window.cancelAnimationFrame(invalidationFrameId);
       }
       resizeObserver?.disconnect();
       window.removeEventListener("resize", handleLineMeasurementInvalidated);
-      window.cancelAnimationFrame(initialMeasureFrame);
     };
   }, [measurePreviewLineRows, showLineGutters, suspendLineMeasurement]);
 
   useLayoutEffect(() => {
-    if (!shouldVirtualizePreview || suspendLineMeasurement) {
+    if (
+      !shouldVirtualizePreview ||
+      suspendLineMeasurement ||
+      !showLineGutters ||
+      stableLineAnnotations.length === 0
+    ) {
       return undefined;
     }
 
-    const frameId = window.requestAnimationFrame(() => measurePreviewLineRows({ force: true }));
-    return () => window.cancelAnimationFrame(frameId);
+    let frameId: number | null = null;
+    const timeoutId = window.setTimeout(() => {
+      frameId = window.requestAnimationFrame(() => {
+        frameId = null;
+        measurePreviewLineRows({ force: true });
+      });
+    }, VIRTUAL_LINE_MEASUREMENT_SCROLL_IDLE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
   }, [
     measurePreviewLineRows,
     previewViewport.scrollTop,
     previewViewport.viewportHeight,
     shouldVirtualizePreview,
+    showLineGutters,
+    stableLineAnnotations.length,
     suspendLineMeasurement,
+  ]);
+
+  useLayoutEffect(() => {
+    const contentElement = contentRef.current;
+    const nextMatchCount =
+      previewSearchActive && shouldVirtualizePreview
+        ? virtualPreviewSearchMatches.length
+        : contentElement?.querySelectorAll(".preview-search-match").length ?? 0;
+    onSearchMatchCountChange?.(previewSearchActive ? nextMatchCount : 0);
+
+    if (!previewSearchActive || activeSearchMatchIndex < 0) {
+      return undefined;
+    }
+
+    let frameId: number | null = window.requestAnimationFrame(() => {
+      frameId = null;
+      const activeMatchElement = contentRef.current?.querySelector<HTMLElement>(".preview-search-match.active");
+      if (activeMatchElement) {
+        activeMatchElement.scrollIntoView({ block: "center" });
+        return;
+      }
+
+      if (!shouldVirtualizePreview) {
+        return;
+      }
+
+      const activeMatch = virtualPreviewSearchMatches[activeSearchMatchIndex];
+      if (!activeMatch) {
+        return;
+      }
+
+      followEditorPosition({
+        atDocumentEnd: false,
+        lineNumber: normalizedSourceLineOffset + getLineNumberForOffset(renderableBody, activeMatch.start),
+        lineOffsetRatio: 0,
+      });
+    });
+
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [
+    activeSearchMatchIndex,
+    followEditorPosition,
+    normalizedSourceLineOffset,
+    onSearchMatchCountChange,
+    previewSearchActive,
+    previewViewport.scrollTop,
+    previewViewport.viewportHeight,
+    renderableBody,
+    shouldVirtualizePreview,
+    virtualPreviewSearchMatches,
   ]);
 
   return (
@@ -2197,7 +2885,15 @@ function MarkdownPreviewComponent({
 
       <div ref={contentRef} className="preview-document-content">
         {metadata.length > 0 && (
-          <section className="frontmatter-view" aria-label="Frontmatter">
+          <section
+            ref={frontmatterRef}
+            className="frontmatter-view"
+            aria-label="Frontmatter"
+            data-preview-block-start-line={1}
+            data-preview-block-end-line={frontmatterEndLine}
+            data-preview-line-start={1}
+            data-preview-line-end={frontmatterEndLine}
+          >
             {metadata.map((attribute) => (
               <div className="frontmatter-row" key={attribute.key}>
                 <span>{attribute.key}</span>
@@ -2211,13 +2907,19 @@ function MarkdownPreviewComponent({
           shouldVirtualizePreview ? (
             virtualPreviewBlockIndex ? (
               <VirtualMarkdownPreview
-                activeCommentId={activeCommentId}
                 blockIndex={virtualPreviewBlockIndex}
                 commentsEnabled={commentsEnabled}
                 components={markdownPreviewComponents}
                 commentAnchors={stableCommentAnchors}
+                footnoteDefinitions={globalMarkdownContext.footnoteDefinitions}
+                footnoteReferences={globalMarkdownContext.footnoteReferences}
+                getBlockRehypePlugins={getVirtualBlockRehypePlugins}
+                getFootnoteRehypePlugins={getVirtualFootnoteRehypePlugins}
+                referenceDefinitions={globalMarkdownContext.referenceDefinitions}
                 onBlockHeightChange={handlePreviewBlockHeightChange}
-                globalDefinitions={globalMarkdownContext.globalDefinitions}
+                overscan={PREVIEW_VIRTUAL_OVERSCAN}
+                remarkPlugins={MARKDOWN_REMARK_PLUGINS}
+                sourceLineOffset={normalizedSourceLineOffset}
                 viewport={previewViewport}
               />
             ) : (
@@ -2235,8 +2937,9 @@ function MarkdownPreviewComponent({
           )
         ) : (
           <div className="preview-empty-state" aria-label="Preview">
-            <FileText aria-hidden="true" className="preview-empty-state-icon" size={24} strokeWidth={1.8} />
-            <span>Preview</span>
+            <FileText aria-hidden="true" className="preview-empty-state-icon" size={28} strokeWidth={1.8} />
+            <strong>Nothing to preview</strong>
+            <span>Add text to this document to see it here.</span>
           </div>
         )}
       </div>
@@ -2285,18 +2988,67 @@ const arePreviewLineAnnotationsEqual = (
       );
     }));
 
+const areSearchOptionsEqual = (
+  firstOptions: SearchOptions | undefined,
+  secondOptions: SearchOptions | undefined,
+) => {
+  const first = firstOptions ?? DEFAULT_SEARCH_OPTIONS;
+  const second = secondOptions ?? DEFAULT_SEARCH_OPTIONS;
+  return (
+    first.caseSensitive === second.caseSensitive &&
+    first.wholeWord === second.wholeWord &&
+    first.regexp === second.regexp
+  );
+};
+
+const getComparableSourceLineOffset = (sourceLineOffset: number | undefined) =>
+  Math.max(0, Math.floor(sourceLineOffset ?? 0));
+
+const areTextChangesEqual = (firstChange: TextChange | null | undefined, secondChange: TextChange | null | undefined) => {
+  if (firstChange === secondChange) {
+    return true;
+  }
+
+  if (!firstChange || !secondChange) {
+    return !firstChange && !secondChange;
+  }
+
+  return (
+    firstChange.docLength === secondChange.docLength &&
+    firstChange.lineCount === secondChange.lineCount &&
+    firstChange.patches.length === secondChange.patches.length &&
+    firstChange.patches.every((firstPatch, index) => {
+      const secondPatch = secondChange.patches[index];
+      return (
+        firstPatch.from === secondPatch.from &&
+        firstPatch.to === secondPatch.to &&
+        firstPatch.insert === secondPatch.insert
+      );
+    })
+  );
+};
+
 const areMarkdownPreviewPropsEqual = (firstProps: MarkdownPreviewProps, secondProps: MarkdownPreviewProps) =>
   firstProps.body === secondProps.body &&
+  getComparableSourceLineOffset(firstProps.sourceLineOffset) === getComparableSourceLineOffset(secondProps.sourceLineOffset) &&
+  areTextChangesEqual(firstProps.bodyTextChange, secondProps.bodyTextChange) &&
   firstProps.activeCommentId === secondProps.activeCommentId &&
   firstProps.commentsEnabled === secondProps.commentsEnabled &&
   firstProps.largeDocumentMode === secondProps.largeDocumentMode &&
+  firstProps.searchQuery === secondProps.searchQuery &&
+  firstProps.activeSearchMatchIndex === secondProps.activeSearchMatchIndex &&
+  firstProps.onSearchMatchCountChange === secondProps.onSearchMatchCountChange &&
   firstProps.suspendLineMeasurement === secondProps.suspendLineMeasurement &&
   firstProps.onLineAction === secondProps.onLineAction &&
   firstProps.onOpenComment === secondProps.onOpenComment &&
   firstProps.onToggleTaskLine === secondProps.onToggleTaskLine &&
+  areSearchOptionsEqual(firstProps.searchOptions, secondProps.searchOptions) &&
   arePreviewMetadataEqual(firstProps.metadata, secondProps.metadata) &&
   arePreviewCommentAnchorsEqual(firstProps.commentAnchors, secondProps.commentAnchors) &&
   arePreviewLineAnnotationsEqual(firstProps.lineAnnotations, secondProps.lineAnnotations);
 
-export const MarkdownPreview = memo(MarkdownPreviewComponent, areMarkdownPreviewPropsEqual);
+const ForwardedMarkdownPreview = forwardRef<MarkdownPreviewHandle, MarkdownPreviewProps>(MarkdownPreviewComponent);
+ForwardedMarkdownPreview.displayName = "MarkdownPreview";
+
+export const MarkdownPreview = memo(ForwardedMarkdownPreview, areMarkdownPreviewPropsEqual);
 MarkdownPreview.displayName = "MarkdownPreview";

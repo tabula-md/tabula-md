@@ -1,8 +1,10 @@
 export type MarkdownFormatCommand =
   | "bold"
   | "italic"
+  | "strikethrough"
   | "inline-code"
   | "link"
+  | "image"
   | "quote"
   | "heading-1"
   | "heading-2"
@@ -11,7 +13,11 @@ export type MarkdownFormatCommand =
   | "numbered-list"
   | "check-list"
   | "horizontal-rule"
-  | "code-block";
+  | "code-block"
+  | "table"
+  | "frontmatter"
+  | "footnote"
+  | "clear-formatting";
 
 export type MarkdownFormatSelection = {
   from: number;
@@ -91,6 +97,14 @@ const insertLink = (text: string, selection: MarkdownFormatSelection) => {
   const insertion = `[${selectedText}](url)`;
   const urlFrom = from + selectedText.length + 3;
   return replaceTextRange(text, from, to, insertion, urlFrom, urlFrom + 3);
+};
+
+const insertImage = (text: string, selection: MarkdownFormatSelection) => {
+  const { from, to } = normalizeSelection(text, selection);
+  const selectedText = text.slice(from, to) || "image alt";
+  const insertion = `![${selectedText}](image-url)`;
+  const urlFrom = from + selectedText.length + 4;
+  return replaceTextRange(text, from, to, insertion, urlFrom, urlFrom + "image-url".length);
 };
 
 const getSelectedLineRange = (text: string, selection: MarkdownFormatSelection) => {
@@ -294,6 +308,91 @@ const applyCodeBlock = (text: string, selection: MarkdownFormatSelection) => {
   );
 };
 
+const insertBlockAtSelection = (
+  text: string,
+  selection: MarkdownFormatSelection,
+  block: string,
+  selectionOffset: number,
+  selectionLength: number,
+) => {
+  const { from, to } = normalizeSelection(text, selection);
+  const before = text.slice(0, from);
+  const after = text.slice(to);
+  const leadingBreak = before.length === 0 ? "" : before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
+  const trailingBreak = after.length === 0 ? "" : after.startsWith("\n\n") ? "" : after.startsWith("\n") ? "\n" : "\n\n";
+  const insertion = `${leadingBreak}${block}${trailingBreak}`;
+  const selectionFrom = from + leadingBreak.length + selectionOffset;
+  return replaceTextRange(
+    text,
+    from,
+    to,
+    insertion,
+    selectionFrom,
+    selectionFrom + selectionLength,
+  );
+};
+
+const insertTable = (text: string, selection: MarkdownFormatSelection) =>
+  insertBlockAtSelection(
+    text,
+    selection,
+    "| Column 1 | Column 2 |\n| --- | --- |\n| Value 1 | Value 2 |",
+    2,
+    "Column 1".length,
+  );
+
+const insertFrontmatter = (text: string, selection: MarkdownFormatSelection) => {
+  const { from, to } = normalizeSelection(text, selection);
+  const insertion = "---\ntitle: Untitled\n---\n\n";
+  const selectionFrom = "title: ".length + 4;
+  if (from === 0 && to === 0) {
+    return replaceTextRange(text, 0, 0, insertion, selectionFrom, selectionFrom + "Untitled".length);
+  }
+
+  return insertBlockAtSelection(text, selection, "---\ntitle: Untitled\n---", "title: ".length + 4, "Untitled".length);
+};
+
+const insertFootnote = (text: string, selection: MarkdownFormatSelection) => {
+  const { from, to } = normalizeSelection(text, selection);
+  const selectedText = text.slice(from, to) || "note";
+  const insertion = `[^1]\n\n[^1]: ${selectedText}`;
+  const selectionFrom = from + insertion.length - selectedText.length;
+  return replaceTextRange(text, from, to, insertion, selectionFrom, selectionFrom + selectedText.length);
+};
+
+const clearInlineFormatting = (value: string) =>
+  value
+    .replace(/\*\*([^*\n]+)\*\*/g, "$1")
+    .replace(/__([^_\n]+)__/g, "$1")
+    .replace(/~~([^~\n]+)~~/g, "$1")
+    .replace(/`([^`\n]+)`/g, "$1")
+    .replace(/!\[([^\]\n]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]\n]+)\]\([^)]+\)/g, "$1")
+    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1$2")
+    .replace(/(^|[^_])_([^_\n]+)_(?!_)/g, "$1$2");
+
+const clearLineFormatting = (line: string) => {
+  const withoutBlockMarker = line
+    .replace(/^(\s*)#{1,6}\s+/, "$1")
+    .replace(/^(\s*)>\s?/, "$1")
+    .replace(/^(\s*)(?:- \[[ xX]\]\s+|\d+\.\s+|[-*+]\s+)/, "$1");
+  return clearInlineFormatting(withoutBlockMarker);
+};
+
+const clearFormatting = (text: string, selection: MarkdownFormatSelection) => {
+  const { from, to } = normalizeSelection(text, selection);
+  if (from === to) {
+    return { text, selection: { from, to } };
+  }
+
+  const selectedText = text.slice(from, to);
+  const cleanedText = selectedText
+    .split("\n")
+    .map(clearLineFormatting)
+    .join("\n");
+  return replaceTextRange(text, from, to, cleanedText, from, from + cleanedText.length);
+};
+
 export const applyMarkdownFormat = (
   text: string,
   selection: MarkdownFormatSelection,
@@ -304,10 +403,14 @@ export const applyMarkdownFormat = (
       return wrapInlineSelection(text, selection, { prefix: "**", placeholder: "bold text" });
     case "italic":
       return wrapInlineSelection(text, selection, { prefix: "_", placeholder: "italic text" });
+    case "strikethrough":
+      return wrapInlineSelection(text, selection, { prefix: "~~", placeholder: "struck text" });
     case "inline-code":
       return wrapInlineSelection(text, selection, { prefix: "`", placeholder: "code" });
     case "link":
       return insertLink(text, selection);
+    case "image":
+      return insertImage(text, selection);
     case "quote":
       return applyQuote(text, selection);
     case "heading-1":
@@ -326,5 +429,13 @@ export const applyMarkdownFormat = (
       return applyHorizontalRule(text, selection);
     case "code-block":
       return applyCodeBlock(text, selection);
+    case "table":
+      return insertTable(text, selection);
+    case "frontmatter":
+      return insertFrontmatter(text, selection);
+    case "footnote":
+      return insertFootnote(text, selection);
+    case "clear-formatting":
+      return clearFormatting(text, selection);
   }
 };

@@ -63,6 +63,16 @@ export type ActiveDocumentPreviewRuntime = Pick<
   "outlineHeadings" | "parsedMarkdown" | "previewBodyStartOffset" | "renderedPreview"
 >;
 
+export type ActiveDocumentPreviewBodyRuntime = Pick<
+  ActiveDocumentRuntime,
+  "previewBodyStartOffset" | "renderedPreview"
+>;
+
+export type ActiveDocumentPreviewMetadataRuntime = Pick<
+  ActiveDocumentRuntime,
+  "outlineHeadings" | "parsedMarkdown"
+>;
+
 export type ActiveDocumentRuntimeOptions = {
   text?: string;
   wordCount?: number;
@@ -76,6 +86,16 @@ const EMPTY_PARSED_MARKDOWN: ParsedFrontmatter = {
 const EMPTY_PREVIEW_BODY: PreviewBody = {
   body: "",
   sourceLineOffset: 0,
+};
+
+const EMPTY_PREVIEW_BODY_RUNTIME: ActiveDocumentPreviewBodyRuntime = {
+  previewBodyStartOffset: 0,
+  renderedPreview: EMPTY_PREVIEW_BODY,
+};
+
+const EMPTY_PREVIEW_METADATA_RUNTIME: ActiveDocumentPreviewMetadataRuntime = {
+  outlineHeadings: [],
+  parsedMarkdown: EMPTY_PARSED_MARKDOWN,
 };
 
 export const createActiveDocumentEditorRuntime = (
@@ -115,17 +135,14 @@ export const createActiveDocumentPreviewRuntime = (
   activeFile?: Pick<ActiveDocumentFile, "text">,
   options: Pick<ActiveDocumentRuntimeOptions, "text"> = {},
 ): ActiveDocumentPreviewRuntime => {
-  const text = options.text ?? activeFile?.text ?? "";
-
   if (!activeFile) {
     return {
-      outlineHeadings: [],
-      parsedMarkdown: EMPTY_PARSED_MARKDOWN,
-      previewBodyStartOffset: 0,
-      renderedPreview: EMPTY_PREVIEW_BODY,
+      ...EMPTY_PREVIEW_BODY_RUNTIME,
+      ...EMPTY_PREVIEW_METADATA_RUNTIME,
     };
   }
 
+  const text = options.text ?? activeFile.text;
   const parsedMarkdown = parseFrontmatter(text);
   const renderedPreview = getPreviewBody(parsedMarkdown.body);
   const parsedBodyStartOffset = text.indexOf(parsedMarkdown.body);
@@ -139,6 +156,46 @@ export const createActiveDocumentPreviewRuntime = (
     parsedMarkdown,
     previewBodyStartOffset,
     renderedPreview,
+  };
+};
+
+export const createActiveDocumentPreviewBodyRuntime = (
+  activeFile?: Pick<ActiveDocumentFile, "text">,
+  options: Pick<ActiveDocumentRuntimeOptions, "text"> = {},
+): ActiveDocumentPreviewBodyRuntime => {
+  if (!activeFile) {
+    return EMPTY_PREVIEW_BODY_RUNTIME;
+  }
+
+  const text = options.text ?? activeFile.text;
+  const parsedMarkdown = parseFrontmatter(text);
+  const renderedPreview = getPreviewBody(parsedMarkdown.body);
+  const parsedBodyStartOffset = text.indexOf(parsedMarkdown.body);
+  const previewBodyStartOffset =
+    (parsedBodyStartOffset === -1 ? 0 : parsedBodyStartOffset) +
+    getLineStartOffset(parsedMarkdown.body, renderedPreview.sourceLineOffset);
+
+  return {
+    previewBodyStartOffset,
+    renderedPreview,
+  };
+};
+
+export const createActiveDocumentPreviewMetadataRuntime = (
+  activeFile?: Pick<ActiveDocumentFile, "text">,
+  options: Pick<ActiveDocumentRuntimeOptions, "text"> = {},
+): ActiveDocumentPreviewMetadataRuntime => {
+  if (!activeFile) {
+    return EMPTY_PREVIEW_METADATA_RUNTIME;
+  }
+
+  const text = options.text ?? activeFile.text;
+  const parsedMarkdown = parseFrontmatter(text);
+  const outlineHeadings = getOutlineHeadingsFromMarkdown(parsedMarkdown.body);
+
+  return {
+    outlineHeadings,
+    parsedMarkdown,
   };
 };
 

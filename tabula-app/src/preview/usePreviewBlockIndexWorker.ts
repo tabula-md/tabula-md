@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { createPreviewBlockIndex, type PreviewBlockIndex } from "@tabula-md/tabula";
+import {
+  createOptimisticPreviewBlockIndex,
+  createOptimisticPreviewBlockIndexFromPatches,
+  createPreviewBlockIndex,
+  type TextChange,
+  type PreviewBlockIndex,
+} from "@tabula-md/tabula";
 import { reusePreviewBlockIndex, type PreviewBlockCache } from "./previewBlockIndexCache";
 import type {
   PreviewBlockIndexWorkerRequest,
   PreviewBlockIndexWorkerResponse,
 } from "./previewBlockIndexWorker";
 
-export type PreviewBlockIndexSource = "none" | "pending" | "worker" | "fallback";
+export type PreviewBlockIndexSource = "none" | "pending" | "optimistic" | "worker" | "fallback";
 
 export type PreviewBlockIndexWorkerState = {
   blockIndex: PreviewBlockIndex | null;
@@ -16,6 +22,10 @@ export type PreviewBlockIndexWorkerState = {
 };
 
 type TimeoutHandle = ReturnType<typeof setTimeout>;
+
+type PreviewBlockIndexWorkerOptions = {
+  textChange?: TextChange | null;
+};
 
 const createInitialState = (): PreviewBlockIndexWorkerState => ({
   blockIndex: null,
@@ -27,9 +37,12 @@ const createInitialState = (): PreviewBlockIndexWorkerState => ({
 export const usePreviewBlockIndexWorker = (
   markdown: string,
   enabled: boolean,
+  options: PreviewBlockIndexWorkerOptions = {},
 ): PreviewBlockIndexWorkerState => {
   const blockCacheRef = useRef<PreviewBlockCache>(new Map());
   const fallbackTimerRef = useRef<TimeoutHandle | null>(null);
+  const blockIndexMarkdownRef = useRef("");
+  const blockIndexStateRef = useRef<PreviewBlockIndex | null>(null);
   const requestIdRef = useRef(0);
   const workerRef = useRef<Worker | null>(null);
   const [state, setState] = useState<PreviewBlockIndexWorkerState>(() => createInitialState());
@@ -54,16 +67,44 @@ export const usePreviewBlockIndexWorker = (
 
     if (!enabled || markdown.trim().length === 0) {
       blockCacheRef.current.clear();
+      blockIndexMarkdownRef.current = "";
+      blockIndexStateRef.current = null;
       setState(createInitialState());
       return undefined;
     }
 
-    setState((currentState) => ({
-      ...currentState,
-      elapsedMs: null,
-      pending: true,
-      source: currentState.blockIndex ? currentState.source : "pending",
-    }));
+    const previousBlockIndex = blockIndexStateRef.current;
+    const previousMarkdown = blockIndexMarkdownRef.current;
+    const optimisticTextChange = options.textChange;
+    const optimisticBlockIndex =
+      previousBlockIndex && previousMarkdown
+        ? optimisticTextChange?.patches.length
+          ? createOptimisticPreviewBlockIndexFromPatches(
+              previousBlockIndex,
+              previousMarkdown,
+              markdown,
+              optimisticTextChange.patches,
+            ) ?? createOptimisticPreviewBlockIndex(previousBlockIndex, previousMarkdown, markdown)
+          : createOptimisticPreviewBlockIndex(previousBlockIndex, previousMarkdown, markdown)
+        : null;
+    if (optimisticBlockIndex) {
+      const cachedOptimisticBlockIndex = reusePreviewBlockIndex(optimisticBlockIndex, blockCacheRef.current);
+      blockIndexMarkdownRef.current = markdown;
+      blockIndexStateRef.current = cachedOptimisticBlockIndex;
+      setState({
+        blockIndex: cachedOptimisticBlockIndex,
+        elapsedMs: null,
+        pending: true,
+        source: "optimistic",
+      });
+    } else {
+      setState((currentState) => ({
+        ...currentState,
+        elapsedMs: null,
+        pending: true,
+        source: currentState.blockIndex ? currentState.source : "pending",
+      }));
+    }
 
     const commitBlockIndex = (
       blockIndex: PreviewBlockIndex,
@@ -75,6 +116,8 @@ export const usePreviewBlockIndexWorker = (
       }
 
       const cachedBlockIndex = reusePreviewBlockIndex(blockIndex, blockCacheRef.current);
+      blockIndexMarkdownRef.current = markdown;
+      blockIndexStateRef.current = cachedBlockIndex;
       setState({
         blockIndex: cachedBlockIndex,
         elapsedMs,
@@ -147,7 +190,7 @@ export const usePreviewBlockIndexWorker = (
         fallbackTimerRef.current = null;
       }
     };
-  }, [enabled, markdown]);
+  }, [enabled, markdown, options.textChange]);
 
   return state;
 };

@@ -6,6 +6,8 @@ import {
 import { createHelpMarkdown } from "../helpMarkdown";
 import { getShortcutLabels } from "../keyboardShortcuts";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
+import type { TextChange } from "@tabula-md/tabula";
+import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import {
   createWorkspaceFile,
   randomId,
@@ -94,6 +96,12 @@ export function useWorkspaceRuntime() {
   });
   const [workspacePreferences, setWorkspacePreferences] =
     useWorkspacePreferences();
+  const setSyncScrollingPreference = useEventCallback((syncScrolling: boolean) => {
+    setWorkspacePreferences((currentPreferences) => ({
+      ...currentPreferences,
+      syncScrolling,
+    }));
+  });
   const workspaceChromeCopy = getWorkspaceChromeCopy(
     workspacePreferences.language,
   );
@@ -102,6 +110,7 @@ export function useWorkspaceRuntime() {
   ).share;
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
+  const previewRef = useRef<MarkdownPreviewHandle | null>(null);
   const editorDocumentRuntime = useWorkspaceEditorDocumentRuntimeOwner();
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -160,6 +169,12 @@ export function useWorkspaceRuntime() {
       commentsByFileId,
     };
   });
+  const [visibleTextRevision, setVisibleTextRevision] = useState(0);
+  const [visibleTextChange, setVisibleTextChange] = useState<TextChange | null>(null);
+  const bumpVisibleTextRevision = useEventCallback((change?: TextChange) => {
+    setVisibleTextChange(change ?? null);
+    setVisibleTextRevision((currentRevision) => currentRevision + 1);
+  });
   const {
     activeDocument,
     activeBookmarks,
@@ -188,15 +203,21 @@ export function useWorkspaceRuntime() {
     outlineHeadings,
     parsedMarkdown,
     previewBodyStartOffset,
+    previewBodyTextChange,
     previewSurfaceRef,
     queueEditorFocus,
     queueEditorTextRange,
     renderedPreview,
     searchInputRef,
     searchMatches,
+    searchMatchCount,
+    searchError,
     searchOpen,
     searchQuery,
+    searchOptions,
+    searchTarget,
     replaceQuery,
+    replaceAvailable,
     selectedCharacterCount,
     selectedLineCount,
     selectedMarkdownText,
@@ -206,6 +227,10 @@ export function useWorkspaceRuntime() {
     setSearchOpen,
     setSearchQuery,
     setReplaceQuery,
+    toggleSearchOption,
+    selectAllSearchMatches,
+    openSearchFromCurrentSelection,
+    onPreviewSearchMatchCountChange,
     setSelectionActionPosition,
     splitDividerDragging,
     splitDividerMaxValue,
@@ -223,6 +248,10 @@ export function useWorkspaceRuntime() {
     activeFile,
     editorDocumentRuntime,
     editorRef,
+    previewRef,
+    syncScrollingEnabled: workspacePreferences.syncScrolling,
+    visibleTextChange,
+    visibleTextRevision,
     onCommitActiveFileSplitRatio: commitActiveFileSplitRatio,
     onSetWorkspaceFileViewMode: setWorkspaceFileViewMode,
   });
@@ -305,6 +334,7 @@ export function useWorkspaceRuntime() {
     applyLocalText,
     editorDocumentRuntime,
     editorRef,
+    onVisibleTextChange: bumpVisibleTextRevision,
     setActiveFileBookmarks,
     setActiveFileText,
     setFileText,
@@ -605,6 +635,7 @@ export function useWorkspaceRuntime() {
     closeFloatingChrome,
     openFilesPanel,
     openHelpFile,
+    openDocumentSearch: openSearchFromCurrentSelection,
     selectAdjacentFile,
     setActiveFileViewMode,
     setCenterPopover,
@@ -616,6 +647,7 @@ export function useWorkspaceRuntime() {
       activeLineNumbers,
       activeLineWrapping,
       activeOpenComments,
+      activeSyncScrolling: workspacePreferences.syncScrolling,
       activeViewMode,
       editorRef,
       focusedCommentId,
@@ -630,6 +662,7 @@ export function useWorkspaceRuntime() {
       onSetActiveFileLineWrapping: setActiveFileLineWrapping,
       onSetActiveFileReadingWidth: setActiveFileReadingWidth,
       onSetActiveFileViewMode: setActiveFileViewMode,
+      onSetSyncScrolling: setSyncScrollingPreference,
       setCenterPopover,
       setSearchOpen,
       setTopPopover,
@@ -672,6 +705,7 @@ export function useWorkspaceRuntime() {
       activeFileTitle,
       activeLineNumbers,
       activeLineWrapping,
+      activeSyncScrolling: workspacePreferences.syncScrolling,
       activePreviewCommentAnchors,
       activePreviewLineAnnotations,
       activeSearchMatchIndex,
@@ -690,14 +724,21 @@ export function useWorkspaceRuntime() {
       language: workspacePreferences.language,
       previewBody: renderedPreview.body,
       previewBodyStartOffset,
+      previewBodyTextChange,
       previewMetadata: parsedMarkdown.attributes,
+      previewRef,
       previewSurfaceRef,
       largeDocumentMode: activeDocument.largeDocumentMode,
       searchInputRef,
       searchMatches,
+      searchMatchCount,
+      searchError,
       searchOpen,
       searchQuery,
+      searchOptions,
+      searchTarget,
       replaceQuery,
+      replaceAvailable,
       selectedCharacterCount,
       selectedLineCount,
       selectionActionPosition,
@@ -735,6 +776,9 @@ export function useWorkspaceRuntime() {
       onResetSplitRatio: resetSplitRatio,
       onReplaceQueryChange: setReplaceQuery,
       onSearchQueryChange: setSearchQuery,
+      onPreviewSearchMatchCountChange,
+      onSelectAllSearchMatches: selectAllSearchMatches,
+      onToggleSearchOption: toggleSearchOption,
       onSetReadingWidth: documentWorkbenchRuntime.onSetReadingWidth,
       onSetViewMode: setViewModeWithPendingCommit,
       onSplitDividerKeyDown: handleSplitDividerKeyDown,
@@ -746,6 +790,7 @@ export function useWorkspaceRuntime() {
       onToggleLineNumbers: documentWorkbenchRuntime.onToggleLineNumbers,
       onToggleLineWrapping: documentWorkbenchRuntime.onToggleLineWrapping,
       onToggleSearch: documentWorkbenchRuntime.onToggleSearch,
+      onToggleSyncScrolling: documentWorkbenchRuntime.onToggleSyncScrolling,
       onToggleViewOptions: documentWorkbenchRuntime.onToggleViewOptions,
       onUndo: undoActiveFile,
     },

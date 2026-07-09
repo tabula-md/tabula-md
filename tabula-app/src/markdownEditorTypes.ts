@@ -1,7 +1,9 @@
 import type { Collaborator, LiveSelection } from "./collaboration";
+import type { SearchMatch } from "./editor/editorSearchModel";
+import type { EditorViewportAnchor } from "./preview/previewSyncTypes";
+import type { Text } from "@codemirror/state";
 import type {
   MarkdownFormatCommand,
-  SearchMatch,
   TextChange,
   TextPatch,
 } from "@tabula-md/tabula";
@@ -11,9 +13,14 @@ export type MarkdownEditorHandle = {
   canUndo: () => boolean;
   format: (command: MarkdownFormatCommand) => boolean;
   focus: (options?: FocusOptions) => void;
+  getLineCount: () => number;
   getScrollRatio: () => number;
+  getViewportLineAnchor: () => EditorViewportAnchor | null;
+  isScrolledToBottom: () => boolean;
   getSelectionRange: () => { from: number; to: number };
+  getSearchDocument: () => Text | null;
   getSelectedText: () => string;
+  getViewportLineNumber: () => number | null;
   getValue: () => string;
   applyLocalTextPatches: (
     patches: readonly TextPatch[],
@@ -23,6 +30,7 @@ export type MarkdownEditorHandle = {
   applyRemoteTextChange: (nextValue: string, patches?: TextPatch[]) => void;
   revealRange: (from: number, to?: number) => void;
   scrollToRatio: (ratio: number) => void;
+  setSelectionRanges: (ranges: Array<{ from: number; to: number }>) => void;
   setSelectionRange: (from: number, to?: number) => void;
   undo: () => boolean;
   redo: () => boolean;

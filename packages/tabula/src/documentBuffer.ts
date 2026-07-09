@@ -36,6 +36,7 @@ export type EditorDocumentRuntime = {
   flush(): EditorDocumentRuntimeFlushResult | null;
   getSnapshot(): EditorDocumentRuntimeSnapshot;
   getText(): string;
+  getVisibleText(): string;
   replaceAll(text: string): void;
   setPendingCommit(input: { readText?: DocumentBufferTextReader; text?: string }): void;
   syncCommitted(input: { fileId: string; revision?: number; text: string }): void;
@@ -157,6 +158,17 @@ export const createEditorDocumentRuntime = ({
     text,
   });
 
+  const getVisibleText = () => {
+    if (pendingReader) {
+      const readText = pendingReader();
+      if (typeof readText === "string") {
+        return readText;
+      }
+    }
+
+    return text;
+  };
+
   return {
     applyPatch(patches) {
       const nextText = applyTextPatches(text, patches);
@@ -194,6 +206,7 @@ export const createEditorDocumentRuntime = ({
 
     getSnapshot,
     getText: () => text,
+    getVisibleText,
     replaceAll,
 
     setPendingCommit(input) {

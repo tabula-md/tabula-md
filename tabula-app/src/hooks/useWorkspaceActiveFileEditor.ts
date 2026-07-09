@@ -53,6 +53,7 @@ type UseWorkspaceActiveFileEditorArgs = {
   applyLocalText: (text: string | null, patches?: readonly TextPatch[], options?: { docLength?: number }) => void;
   editorDocumentRuntime: WorkspaceEditorDocumentRuntimeOwner;
   editorRef: RefObject<MarkdownEditorHandle | null>;
+  onVisibleTextChange?: (change?: TextChange) => void;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
   setActiveFileText: (text: string) => void;
   setFileText: (fileId: string, text: string) => void;
@@ -127,6 +128,13 @@ const shouldSendFullTextToCollaboration = (change?: Pick<TextChange, "docLength"
   (change?.docLength ?? 0) < LARGE_DOCUMENT_CHAR_THRESHOLD &&
   (change?.lineCount ?? 0) < LARGE_DOCUMENT_LINE_THRESHOLD;
 
+export const shouldApplyEditorRuntimeVisibleTextPatch = (
+  change?: Pick<TextChange, "docLength" | "lineCount" | "patches">,
+) =>
+  Boolean(change?.patches.length) &&
+  (change?.docLength ?? 0) < LARGE_DOCUMENT_CHAR_THRESHOLD &&
+  (change?.lineCount ?? 0) < LARGE_DOCUMENT_LINE_THRESHOLD;
+
 export const shouldCancelPendingEditorCommit = (
   pendingCommit: PendingEditorCommit | null,
   activeFile: Pick<WorkspaceFile, "id" | "text"> | undefined,
@@ -161,6 +169,7 @@ export function useWorkspaceActiveFileEditor({
   applyLocalText,
   editorDocumentRuntime,
   editorRef,
+  onVisibleTextChange,
   setActiveFileBookmarks,
   setActiveFileText,
   setFileText,
@@ -280,9 +289,18 @@ export function useWorkspaceActiveFileEditor({
 
     const runtime = editorDocumentRuntime.getRuntime(activeFile);
     if (nextText === null) {
-      runtime.setPendingCommit({
-        readText: () => editorRef.current?.getValue(),
-      });
+      const appliedPatchToVisibleText =
+        activeFile.viewMode !== "edit" &&
+        shouldApplyEditorRuntimeVisibleTextPatch(change) &&
+        runtime.applyPatch(change?.patches ?? []);
+      if (!appliedPatchToVisibleText) {
+        runtime.setPendingCommit({
+          readText: () => editorRef.current?.getValue(),
+        });
+      }
+      if (activeFile.viewMode !== "edit") {
+        onVisibleTextChange?.(change);
+      }
       schedulePendingEditorCommit(change);
 
       if (activeFile.roomId) {
@@ -311,6 +329,9 @@ export function useWorkspaceActiveFileEditor({
     }
 
     runtime.replaceAll(nextText);
+    if (activeFile.viewMode !== "edit") {
+      onVisibleTextChange?.(change);
+    }
     schedulePendingEditorCommit(change);
 
     if (policy.shouldSendCollaborationPatchImmediately) {

@@ -310,11 +310,20 @@ export async function run(ctx) {
         const action = document.querySelector(".cm-annotation-marker.has-bookmark .cm-annotation-action.bookmark");
         return action ? getComputedStyle(action).color : "";
       })(),
+      bookmarkTagName:
+        document.querySelector(".cm-annotation-marker.has-bookmark .cm-annotation-action.bookmark")?.tagName ?? "",
+      bookmarkAriaLabel:
+        document.querySelector(".cm-annotation-marker.has-bookmark .cm-annotation-action.bookmark")?.getAttribute("aria-label") ?? "",
       lineActionPopoverVisible: Boolean(document.querySelector(".line-annotation-popover")),
       statusButtonVisible: Boolean(document.querySelector(".status-comment-button")),
     }));
     expect(bookmarkedLineState.bookmarkMarkers === 1, "Bookmarking a line should render a bookmark marker in the gutter.");
     expect(bookmarkedLineState.bookmarkColor === "rgb(118, 63, 200)", "Active bookmarks should use the shared annotation accent.");
+    expect(bookmarkedLineState.bookmarkTagName === "BUTTON", "Active editor bookmarks should expose a real button.");
+    expect(
+      bookmarkedLineState.bookmarkAriaLabel === "Remove line bookmark",
+      "Active editor bookmarks should have a useful accessibility label.",
+    );
     expect(!bookmarkedLineState.lineActionPopoverVisible, "Annotation gutter actions should not open a line action menu.");
     expect(!bookmarkedLineState.statusButtonVisible, "Selection comments should no longer use the status bar action.");
 
@@ -332,6 +341,10 @@ export async function run(ctx) {
         const action = document.querySelector(".cm-line-comment-marker.has-comment .cm-line-comment-action");
         return action ? getComputedStyle(action).color : "";
       })(),
+      commentTagName:
+        document.querySelector(".cm-line-comment-marker.has-comment .cm-line-comment-action")?.tagName ?? "",
+      commentAriaLabel:
+        document.querySelector(".cm-line-comment-marker.has-comment .cm-line-comment-action")?.getAttribute("aria-label") ?? "",
       selectionPopoverVisible: Boolean(document.querySelector(".selection-comment-popover")),
       markText: document.querySelector(".cm-comment-mark")?.textContent ?? "",
       panelText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -340,6 +353,11 @@ export async function run(ctx) {
     expect(lineCommentState.commentActionInRightGutter, "Line comments should sit in the right gutter.");
     expect(!lineCommentState.commentActionInBody, "Line comments should not sit inside the editable text body.");
     expect(lineCommentState.commentColor === "rgb(118, 63, 200)", "Active line comments should use the shared annotation accent.");
+    expect(lineCommentState.commentTagName === "BUTTON", "Active editor line comments should expose a real button.");
+    expect(
+      lineCommentState.commentAriaLabel === "Open line comments",
+      "Active editor line comments should have a useful accessibility label.",
+    );
     expect(!lineCommentState.selectionPopoverVisible, "Line comments should not also show the selected-text comment popover.");
     expect(lineCommentState.markText === "beta", "Line comments should anchor to the clicked line text.");
     expect(lineCommentState.panelText.includes("Line note"), "Line comments should use the existing comments panel.");
@@ -361,6 +379,10 @@ export async function run(ctx) {
         softBreakCount: previewContent?.querySelectorAll("p br").length ?? 0,
         bookmarkColor: bookmarkAction instanceof HTMLElement ? getComputedStyle(bookmarkAction).color : "",
         commentColor: commentAction instanceof HTMLElement ? getComputedStyle(commentAction).color : "",
+        bookmarkTagName: bookmarkAction?.tagName ?? "",
+        commentTagName: commentAction?.tagName ?? "",
+        bookmarkAriaLabel: bookmarkAction?.getAttribute("aria-label") ?? "",
+        commentAriaLabel: commentAction?.getAttribute("aria-label") ?? "",
         bookmarkLeftOfContent:
           Boolean(bookmarkRect && previewContentRect) && bookmarkRect.right <= previewContentRect.left + 1,
         commentRightOfContent:
@@ -375,6 +397,16 @@ export async function run(ctx) {
     expect(previewLineGutterState.softBreakCount >= 2, "Preview line gutters should tolerate preserved soft line breaks.");
     expect(previewLineGutterState.bookmarkColor === "rgb(118, 63, 200)", "Preview bookmarks should use the shared annotation accent.");
     expect(previewLineGutterState.commentColor === "rgb(118, 63, 200)", "Preview comments should use the shared annotation accent.");
+    expect(previewLineGutterState.bookmarkTagName === "BUTTON", "Active preview bookmarks should expose a real button.");
+    expect(previewLineGutterState.commentTagName === "BUTTON", "Active preview comments should expose a real button.");
+    expect(
+      previewLineGutterState.bookmarkAriaLabel === "Remove preview line bookmark",
+      "Active preview bookmarks should have a useful accessibility label.",
+    );
+    expect(
+      previewLineGutterState.commentAriaLabel === "Open preview line comments",
+      "Active preview comments should have a useful accessibility label.",
+    );
     expect(previewLineGutterState.bookmarkLeftOfContent, "Preview bookmark markers should sit in the left rail outside content.");
     expect(previewLineGutterState.commentRightOfContent, "Preview comment markers should sit in the right rail outside content.");
     expect(previewLineGutterState.contentInsideDocument, "Preview line gutters should frame the rendered document content.");
@@ -515,7 +547,10 @@ export async function run(ctx) {
       return {
         editorText,
         selectedText: document.getSelection()?.toString() ?? "",
-        buttonCount: document.querySelectorAll(".formatting-command-button").length,
+        primaryFormattingCommandCount: document.querySelectorAll(
+          '.formatting-toolbar [data-format-command]:not([data-format-command="undo"]):not([data-format-command="redo"]):not([data-format-command="more-formatting"])',
+        ).length,
+        hasOverflowTrigger: Boolean(document.querySelector('.formatting-toolbar [data-format-command="more-formatting"]')),
       };
     });
     expect(
@@ -526,7 +561,11 @@ export async function run(ctx) {
       codeBlockFormatting.selectedText === "language",
       "Code block formatting should select the language placeholder first.",
     );
-    expect(codeBlockFormatting.buttonCount === 13, "Formatting toolbar should expose the complete core command set.");
+    expect(
+      codeBlockFormatting.primaryFormattingCommandCount === 13,
+      "Formatting toolbar should preserve the complete primary command set.",
+    );
+    expect(codeBlockFormatting.hasOverflowTrigger, "Formatting toolbar should expose overflow commands through the registry trigger.");
 
     await page.getByTitle("New tab").click();
     await waitForEditorReady(page, { mode: "edit" });
@@ -626,15 +665,23 @@ export async function run(ctx) {
     await page.keyboard.insertText("```ts\nconst value = 1;\n```");
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await page.waitForSelector(".preview-surface pre code", { timeout: 5_000 });
+    await page.mouse.move(0, 0);
+    await page.waitForFunction(() => {
+      const actions = document.querySelector(".preview-code-actions");
+      return actions instanceof HTMLElement && window.getComputedStyle(actions).opacity === "0";
+    });
     const previewCodeBlock = await page.evaluate(() => {
       const pre = document.querySelector(".preview-surface pre");
       const code = document.querySelector(".preview-surface pre code");
       const codeBlock = document.querySelector(".preview-code-block");
+      const actions = document.querySelector(".preview-code-actions");
+      const wrapIcon = document.querySelector('button.preview-code-action[aria-label="Enable word wrap"] svg');
       if (!(pre instanceof HTMLElement) || !(code instanceof HTMLElement)) {
         return null;
       }
       const preStyle = window.getComputedStyle(pre);
       const codeStyle = window.getComputedStyle(code);
+      const actionsStyle = actions instanceof HTMLElement ? window.getComputedStyle(actions) : null;
       const surfaceProbe = document.createElement("span");
       surfaceProbe.style.background = "var(--surface-panel)";
       document.body.append(surfaceProbe);
@@ -644,8 +691,12 @@ export async function run(ctx) {
         text: code.textContent ?? "",
         language: code.dataset.language ?? "",
         actionCount: document.querySelectorAll(".preview-code-action").length,
+        actionsOpacity: actionsStyle?.opacity ?? "",
+        actionsPointerEvents: actionsStyle?.pointerEvents ?? "",
         wrapTitle: document.querySelector(".preview-code-action")?.getAttribute("title") ?? "",
         copyTitle: document.querySelectorAll(".preview-code-action")[1]?.getAttribute("title") ?? "",
+        wrapIconClass: wrapIcon?.getAttribute("class") ?? "",
+        wrapOffMarkCount: document.querySelectorAll(".preview-code-action-off-mark").length,
         blockRadius: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).borderRadius : "",
         blockBorderWidth: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).borderTopWidth : "",
         blockBackground: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).backgroundColor : "",
@@ -660,10 +711,17 @@ export async function run(ctx) {
     expect(previewCodeBlock?.text.includes("const value = 1;"), "Preview should render fenced code block contents.");
     expect(previewCodeBlock?.language === "ts", "Preview should preserve fenced code block language metadata.");
     expect(previewCodeBlock?.actionCount === 2, "Preview code blocks should expose word wrap and copy actions.");
+    expect(previewCodeBlock?.actionsOpacity === "0", "Preview code block actions should stay hidden until hover or focus.");
+    expect(previewCodeBlock?.actionsPointerEvents === "none", "Hidden preview code block actions should not intercept the document.");
     expect(previewCodeBlock?.wrapTitle === "Enable word wrap", "Preview code blocks should offer a word wrap control.");
+    expect(
+      previewCodeBlock?.wrapIconClass.includes("lucide-wrap-text"),
+      "Preview code blocks should show the wrap icon before word wrap is enabled.",
+    );
+    expect(previewCodeBlock?.wrapOffMarkCount === 0, "Preview code blocks should not show the wrap-off mark before wrapping is enabled.");
     expect(previewCodeBlock?.copyTitle === "Copy code", "Preview code blocks should offer a copy code control.");
     expect(previewCodeBlock?.blockRadius !== "0px", "Preview code block controls should live inside the rounded code surface.");
-    expect(previewCodeBlock?.blockBorderWidth === "1px", "Preview code blocks should use a document boundary.");
+    expect(previewCodeBlock?.blockBorderWidth === "0px", "Preview code blocks should not draw a document boundary.");
     expect(
       previewCodeBlock?.blockBackground === previewCodeBlock?.surfacePanelBackground,
       "Preview code blocks should stay quieter than filled gray cards.",
@@ -671,6 +729,21 @@ export async function run(ctx) {
     expect(previewCodeBlock?.codeDisplay === "block", "Preview code blocks should render as stable block code.");
     expect(previewCodeBlock?.ligatures === "none", "Preview code blocks should preserve source-like character rendering.");
     expect(previewCodeBlock?.whiteSpace === "pre", "Preview code blocks should preserve source whitespace by default.");
+    await page.locator(".preview-code-block").hover();
+    await page.waitForFunction(() => {
+      const actions = document.querySelector(".preview-code-actions");
+      return actions instanceof HTMLElement && window.getComputedStyle(actions).opacity === "1";
+    });
+    const hoveredCodeActions = await page.evaluate(() => {
+      const actions = document.querySelector(".preview-code-actions");
+      const actionsStyle = actions instanceof HTMLElement ? window.getComputedStyle(actions) : null;
+      return {
+        opacity: actionsStyle?.opacity ?? "",
+        pointerEvents: actionsStyle?.pointerEvents ?? "",
+      };
+    });
+    expect(hoveredCodeActions.opacity === "1", "Preview code block actions should appear on hover.");
+    expect(hoveredCodeActions.pointerEvents === "auto", "Hovered preview code block actions should accept pointer input.");
     await page.waitForFunction(() => document.querySelector('button.preview-code-action[aria-label="Enable word wrap"]'));
     await page.evaluate(() => {
       const wrapButton = document.querySelector('button.preview-code-action[aria-label="Enable word wrap"]');
@@ -687,15 +760,24 @@ export async function run(ctx) {
     const wrappedCodeBlock = await page.evaluate(() => {
       const code = document.querySelector(".preview-surface pre code");
       const wrapButton = document.querySelector(".preview-code-action");
+      const wrapIcon = wrapButton?.querySelector("svg");
+      const wrapOffMark = wrapButton?.querySelector(".preview-code-action-off-mark");
       return {
         whiteSpace: code instanceof HTMLElement ? window.getComputedStyle(code).whiteSpace : "",
         wrapTitle: wrapButton?.getAttribute("title") ?? "",
         wrapPressed: wrapButton?.getAttribute("aria-pressed") ?? "",
+        wrapIconClass: wrapIcon?.getAttribute("class") ?? "",
+        wrapOffMarkClass: wrapOffMark?.getAttribute("class") ?? "",
       };
     });
     expect(wrappedCodeBlock.whiteSpace === "pre-wrap", "Preview word wrap should wrap code without changing the source.");
     expect(wrappedCodeBlock.wrapTitle === "Disable word wrap", "Preview word wrap should toggle the tooltip copy.");
     expect(wrappedCodeBlock.wrapPressed === "true", "Preview word wrap should expose pressed state.");
+    expect(
+      wrappedCodeBlock.wrapIconClass.includes("lucide-wrap-text") &&
+        wrappedCodeBlock.wrapOffMarkClass.includes("preview-code-action-off-mark"),
+      "Preview word wrap should show a distinct wrap-off icon after wrapping is enabled.",
+    );
     await page.evaluate(() => {
       window.__tabulaCopiedCode = "";
       Object.defineProperty(navigator, "clipboard", {
@@ -768,6 +850,51 @@ export async function run(ctx) {
     expect(previewFrontmatterSurface?.borderRadius !== "0px", "Preview frontmatter should keep the original grouped surface shape.");
     expect(previewFrontmatterSurface?.bodyHeadingText === "Preview Surface Brief", "Preview should render the authored H1 as Markdown.");
     expect(previewFrontmatterSurface?.firstBodyText === "The rendered body should remain the focus.", "Preview should keep body content after the authored H1.");
+    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await waitForEditorReady(page, { mode: "split" });
+    const readPreviewHeadingSourceLine = () =>
+      page.evaluate(() => {
+        const heading = document.querySelector(".workspace.split .preview-document-content h1");
+        const sourceLine = heading?.getAttribute("data-preview-line-start");
+        return sourceLine ? Number(sourceLine) : null;
+      });
+    const sourceLineBeforeFrontmatterPadding = await readPreviewHeadingSourceLine();
+    expect(
+      Number.isFinite(sourceLineBeforeFrontmatterPadding),
+      "Split preview heading should expose a source line before frontmatter edits.",
+    );
+    await page.evaluate(() => {
+      const content = document.querySelector(".cm-content");
+      const view =
+        content?.cmView?.view ??
+        content?.cmTile?.view ??
+        content?.parentElement?.cmView?.view ??
+        content?.parentElement?.cmTile?.view ??
+        document.querySelector(".cm-editor")?.cmView?.view;
+      const docText = view?.state?.doc?.toString?.() ?? "";
+      const closingFrontmatterMarker = docText.indexOf("\n---", 3);
+      if (!view || closingFrontmatterMarker < 0) {
+        throw new Error("Frontmatter source was not available for source-line offset smoke.");
+      }
+
+      view.dispatch({
+        changes: { from: closingFrontmatterMarker, to: closingFrontmatterMarker, insert: "\n" },
+        selection: { anchor: closingFrontmatterMarker + 1 },
+        scrollIntoView: true,
+      });
+    });
+    await page.waitForFunction(
+      (expectedSourceLine) => {
+        const heading = document.querySelector(".workspace.split .preview-document-content h1");
+        const sourceLine = heading?.getAttribute("data-preview-line-start");
+        return Number(sourceLine) === expectedSourceLine;
+      },
+      sourceLineBeforeFrontmatterPadding + 1,
+    );
+    expect(
+      (await readPreviewHeadingSourceLine()) === sourceLineBeforeFrontmatterPadding + 1,
+      "Preview source-line markers should update when frontmatter line count changes without body text changes.",
+    );
 
     await page.getByTitle("New tab").click();
     await waitForEditorReady(page, { mode: "edit" });
@@ -838,14 +965,14 @@ export async function run(ctx) {
     });
     expect(previewGfm.linkTarget === "_blank", "External preview links should open outside the workspace.");
     expect(previewGfm.linkRel === "noreferrer", "External preview links should avoid leaking opener context.");
-    expect(previewGfm.quoteBorderLeftWidth === "2px", "Preview blockquotes should use a quiet Markdown quote rule.");
+    expect(previewGfm.quoteBorderLeftWidth === "4px", "Preview blockquotes should use a legible Markdown quote rule.");
     expect(previewGfm.quoteBackground === "rgba(0, 0, 0, 0)", "Preview blockquotes should not read as separate cards.");
     expect(previewGfm.nestedQuoteBorderLeftColor !== "", "Nested preview blockquotes should keep visible depth.");
     expect(previewGfm.taskCheckboxCount === 2, "Preview checklists should render consistent non-native check indicators.");
     expect(previewGfm.checkedTaskCheckboxCount === 1, "Preview checklists should preserve checked task state.");
     expect(previewGfm.nativeTaskInputCount === 0, "Preview checklists should not expose interactive native checkboxes.");
     expect(previewGfm.tableWrapRadius !== "0px", "Preview tables should sit in the document surface system.");
-    expect(previewGfm.tableWrapBorderWidth === "1px", "Preview tables should use an explicit document boundary.");
+    expect(previewGfm.tableWrapBorderWidth === "0px", "Preview tables should not draw an explicit document boundary.");
     expect(previewGfm.tableWrapBackground === "rgb(255, 255, 255)", "Preview tables should not look like filled gray cards.");
     expect(previewGfm.rightAlignedTextAlign === "right", "Preview tables should preserve GFM column alignment.");
     expect(previewGfm.imageFrameCount === 1, "Preview images should render through the Tabula.md image frame.");
@@ -874,6 +1001,47 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
     const afterRedo = await page.locator(".cm-content").textContent();
     expect(afterRedo === "**plain**", "Redo should restore a formatting command in one step.");
+    const toolbarRegistryState = await page.evaluate(() => ({
+      boldCommand:
+        document
+          .querySelector('.formatting-toolbar [data-format-command="bold"]')
+          ?.getAttribute("aria-label") ?? "",
+      moreFormattingExpanded:
+        document
+          .querySelector('.formatting-toolbar [data-format-command="more-formatting"]')
+          ?.getAttribute("aria-expanded") ?? "",
+    }));
+    expect(toolbarRegistryState.boldCommand === "Bold", "Primary toolbar commands should expose stable registry ids.");
+    expect(
+      toolbarRegistryState.moreFormattingExpanded === "false",
+      "Overflow formatting command should expose a stable registry trigger.",
+    );
+
+    await focusMarkdownEditor(page);
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("Backspace");
+    await page.keyboard.type("obsolete");
+    await page.keyboard.press("Shift+Home");
+    await page.getByRole("button", { name: "More formatting", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Strikethrough", exact: true }).click();
+    await waitForRenderFrame(page);
+    const afterOverflowInlineCommand = await page.locator(".cm-content").textContent();
+    expect(
+      afterOverflowInlineCommand === "~~obsolete~~",
+      "Overflow formatting commands should apply to the current editor selection.",
+    );
+
+    await focusMarkdownEditor(page);
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("Backspace");
+    await page.getByRole("button", { name: "More formatting", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Table", exact: true }).click();
+    await waitForRenderFrame(page);
+    const afterOverflowInsertCommand = await page.locator(".cm-content").textContent();
+    expect(
+      afterOverflowInsertCommand.startsWith("| Column 1 | Column 2 |"),
+      "Overflow insert commands should apply through the same toolbar command path.",
+    );
 
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+A");
@@ -906,6 +1074,7 @@ export async function run(ctx) {
       const previewBookmarkGutter = document.querySelector(".workspace.split .preview-line-gutter.bookmark");
       const previewCommentGutter = document.querySelector(".workspace.split .preview-line-gutter.comment");
       const previewLineActions = Array.from(document.querySelectorAll(".workspace.split .preview-line-action"));
+      const editorLineActions = Array.from(document.querySelectorAll(".workspace.split .cm-annotation-action"));
       const previewParagraph = document.querySelector(".workspace.split .preview-surface p");
       const toolbarRect = toolbar?.getBoundingClientRect();
       const controlRowRect = controlRow?.getBoundingClientRect();
@@ -970,6 +1139,42 @@ export async function run(ctx) {
               action.classList.contains("active");
             return isActive || window.getComputedStyle(icon).opacity === "0";
           }),
+        splitPreviewInactiveGutterActionsHiddenFromAccessibility:
+          previewLineActions.length > 0 &&
+          previewLineActions.every((action) => {
+            if (!(action instanceof HTMLElement)) {
+              return false;
+            }
+
+            const isActive =
+              action.classList.contains("has-bookmark") ||
+              action.classList.contains("has-comment") ||
+              action.classList.contains("active");
+            return (
+              isActive ||
+              (action.tagName === "SPAN" &&
+                action.getAttribute("aria-hidden") === "true" &&
+                !action.hasAttribute("aria-label"))
+            );
+          }),
+        splitEditorInactiveGutterActionsHiddenFromAccessibility:
+          editorLineActions.length > 0 &&
+          editorLineActions.every((action) => {
+            if (!(action instanceof HTMLElement)) {
+              return false;
+            }
+
+            const isActive =
+              action.closest(".cm-annotation-marker.has-bookmark") ||
+              action.closest(".cm-line-comment-marker.has-comment");
+            return (
+              Boolean(isActive) ||
+              (action.tagName === "SPAN" &&
+                action.getAttribute("aria-hidden") === "true" &&
+                !action.hasAttribute("role") &&
+                !action.hasAttribute("aria-label"))
+            );
+          }),
         splitReadableColumnsBalanced:
           Boolean(editorContentRect && previewParagraphRect) &&
           Math.abs(editorContentRect.width - previewParagraphRect.width) <= 24,
@@ -993,6 +1198,14 @@ export async function run(ctx) {
     expect(splitFormatting.splitPreviewHasInset, "Split preview should carry pane-specific left inset.");
     expect(splitFormatting.splitPreviewHasLineGutters, "Split preview should reserve bookmark and comment gutters around content.");
     expect(splitFormatting.splitPreviewInactiveGutterIconsHidden, "Split preview gutter icons should stay hidden until active or hovered.");
+    expect(
+      splitFormatting.splitPreviewInactiveGutterActionsHiddenFromAccessibility,
+      "Inactive split preview gutter affordances should stay out of the accessibility tree.",
+    );
+    expect(
+      splitFormatting.splitEditorInactiveGutterActionsHiddenFromAccessibility,
+      "Inactive split editor gutter affordances should stay out of the accessibility tree.",
+    );
     expect(splitFormatting.splitReadableColumnsBalanced, "Split should balance the editor text column with preview content width.");
     expect(splitFormatting.splitActiveLineUsesSolidRow, "Split active line should use one solid row background.");
     expect(splitFormatting.splitActiveLineMeetsCommentGutter, "Split active line should meet the right comment gutter without a seam.");
@@ -1213,6 +1426,119 @@ export async function run(ctx) {
       "Split scroll sync should still work with the formatting toolbar row present.",
     );
 
+    await page.getByRole("button", { name: "Layout controls", exact: true }).click();
+    const syncToggleInitialState = await page
+      .getByRole("button", { name: "Sync Scrolling", exact: true })
+      .getAttribute("aria-pressed");
+    expect(syncToggleInitialState === "true", "Split sync scrolling should be enabled by default.");
+    await page.getByRole("button", { name: "Sync Scrolling", exact: true }).click();
+    await waitForRenderFrame(page);
+
+    const syncDisabledEditorScroll = await page.evaluate(() => {
+      const editor = document.querySelector(".workspace.split .cm-scroller");
+      const preview = document.querySelector(".workspace.split .preview-surface");
+      if (!(editor instanceof HTMLElement) || !(preview instanceof HTMLElement)) {
+        return null;
+      }
+
+      const maxEditorScrollTop = editor.scrollHeight - editor.clientHeight;
+      const editorBefore = editor.scrollTop;
+      const previewBefore = preview.scrollTop;
+      editor.scrollTop = Math.min(maxEditorScrollTop, editor.scrollTop + Math.max(260, editor.clientHeight * 0.65));
+      editor.dispatchEvent(new Event("scroll", { bubbles: true }));
+      return {
+        editorBefore,
+        editorAfter: editor.scrollTop,
+        previewBefore,
+        scrollable: maxEditorScrollTop > 1 && preview.scrollHeight - preview.clientHeight > 1,
+      };
+    });
+    await waitForRenderFrame(page);
+    await waitForRenderFrame(page);
+    const syncDisabledPreviewAfterEditorScroll = await page.evaluate(() => {
+      const preview = document.querySelector(".workspace.split .preview-surface");
+      return preview instanceof HTMLElement ? preview.scrollTop : Number.NaN;
+    });
+    expect(syncDisabledEditorScroll?.scrollable, "Split panes should be scrollable for sync toggle smoke.");
+    expect(
+      Math.abs((syncDisabledEditorScroll?.editorAfter ?? 0) - (syncDisabledEditorScroll?.editorBefore ?? 0)) > 20,
+      "Editor scroll should move while sync scrolling is disabled.",
+    );
+    expect(
+      Math.abs(syncDisabledPreviewAfterEditorScroll - (syncDisabledEditorScroll?.previewBefore ?? 0)) <= 2,
+      "Disabled sync scrolling should stop editor scroll from moving preview.",
+    );
+
+    const previewManualScroll = await page.evaluate(() => {
+      const editor = document.querySelector(".workspace.split .cm-scroller");
+      const preview = document.querySelector(".workspace.split .preview-surface");
+      if (!(editor instanceof HTMLElement) || !(preview instanceof HTMLElement)) {
+        return null;
+      }
+
+      const maxPreviewScrollTop = preview.scrollHeight - preview.clientHeight;
+      const editorBefore = editor.scrollTop;
+      const previewBefore = preview.scrollTop;
+      preview.scrollTop = Math.min(maxPreviewScrollTop, preview.scrollTop + Math.max(220, preview.clientHeight * 0.4));
+      preview.dispatchEvent(new Event("scroll", { bubbles: true }));
+      return {
+        editorBefore,
+        previewBefore,
+        previewAfter: preview.scrollTop,
+      };
+    });
+    await waitForRenderFrame(page);
+    await waitForRenderFrame(page);
+    const editorAfterPreviewManualScroll = await page.evaluate(() => {
+      const editor = document.querySelector(".workspace.split .cm-scroller");
+      return editor instanceof HTMLElement ? editor.scrollTop : Number.NaN;
+    });
+    expect(Boolean(previewManualScroll), "Preview manual scroll state should be readable.");
+    expect(
+      Math.abs((previewManualScroll?.previewAfter ?? 0) - (previewManualScroll?.previewBefore ?? 0)) > 20,
+      "Preview manual scroll should move preview while sync scrolling is disabled.",
+    );
+    expect(
+      Math.abs(editorAfterPreviewManualScroll - (previewManualScroll?.editorBefore ?? 0)) <= 2,
+      "Preview manual scroll should never move the editor.",
+    );
+
+    await page.getByRole("button", { name: "Layout controls", exact: true }).click();
+    const syncToggleDisabledState = await page
+      .getByRole("button", { name: "Sync Scrolling", exact: true })
+      .getAttribute("aria-pressed");
+    expect(syncToggleDisabledState === "false", "Sync scrolling toggle should persist its disabled state.");
+    await page.getByRole("button", { name: "Sync Scrolling", exact: true }).click();
+    await waitForRenderFrame(page);
+    const syncReenabledEditorScroll = await page.evaluate(() => {
+      const editor = document.querySelector(".workspace.split .cm-scroller");
+      const preview = document.querySelector(".workspace.split .preview-surface");
+      if (!(editor instanceof HTMLElement) || !(preview instanceof HTMLElement)) {
+        return null;
+      }
+
+      const maxEditorScrollTop = editor.scrollHeight - editor.clientHeight;
+      const currentRatio = maxEditorScrollTop <= 0 ? 0 : editor.scrollTop / maxEditorScrollTop;
+      const nextRatio = currentRatio > 0.5 ? 0.15 : 0.85;
+      const previewBefore = preview.scrollTop;
+      editor.scrollTop = maxEditorScrollTop * nextRatio;
+      editor.dispatchEvent(new Event("scroll", { bubbles: true }));
+      return {
+        previewBefore,
+        scrollable: maxEditorScrollTop > 1 && preview.scrollHeight - preview.clientHeight > 1,
+      };
+    });
+    expect(syncReenabledEditorScroll?.scrollable, "Split panes should stay scrollable after sync scrolling is re-enabled.");
+    const syncReenabledPreviewBefore = syncReenabledEditorScroll?.previewBefore ?? 0;
+    await page.waitForFunction(
+      ({ previewBefore }) => {
+        const preview = document.querySelector(".workspace.split .preview-surface");
+        return preview instanceof HTMLElement && Math.abs(preview.scrollTop - previewBefore) > 8;
+      },
+      { previewBefore: syncReenabledPreviewBefore },
+      { timeout: 2_000 },
+    );
+
     const readDocumentControlAlignment = async () =>
       page.evaluate(() => {
         const readRect = (selector) => {
@@ -1328,7 +1654,10 @@ export async function run(ctx) {
       const mobileToolbar = await page.evaluate(() => {
         const toolbar = document.querySelector(".formatting-toolbar");
         const row = document.querySelector(".formatting-row");
-        const buttons = Array.from(document.querySelectorAll(".formatting-command-button"));
+        const primaryCommands = Array.from(document.querySelectorAll(
+          '.formatting-toolbar [data-format-command]:not([data-format-command="undo"]):not([data-format-command="redo"]):not([data-format-command="more-formatting"])',
+        ));
+        const buttons = Array.from(document.querySelectorAll(".formatting-toolbar .formatting-button"));
         const toolbarRect = toolbar?.getBoundingClientRect();
         const rowRect = row?.getBoundingClientRect();
         const buttonRects = buttons.map((button) => {
@@ -1348,12 +1677,12 @@ export async function run(ctx) {
           rowLeft: Math.round(rowRect?.left ?? -1),
           rowRight: Math.round(rowRect?.right ?? -1),
           viewportWidth: window.innerWidth,
-          buttonCount: buttons.length,
+          primaryCommandCount: primaryCommands.length,
           buttonRects,
         };
       });
       expect(mobileToolbar.toolbarVisible, "Formatting toolbar should remain visible on mobile edit screens.");
-      expect(mobileToolbar.buttonCount === 13, "Mobile formatting toolbar should keep the core command set.");
+      expect(mobileToolbar.primaryCommandCount === 13, "Mobile formatting toolbar should keep the core command set.");
       expect(mobileToolbar.toolbarOverflowX === "auto", "Mobile formatting toolbar should allow horizontal overflow.");
       expect(mobileToolbar.rowLeft >= 16, "Mobile formatting toolbar should keep page-edge padding.");
       expect(
@@ -1439,8 +1768,14 @@ export async function run(ctx) {
       await page.keyboard.press("Backspace");
       await page.keyboard.insertText(text);
     };
-    const readEditorText = () =>
-      page.$$eval(".cm-line", (lines) =>
+    const readEditorText = async () =>
+      (await page.evaluate(() => {
+        const content = document.querySelector(".cm-content");
+        const view = content?.cmView?.view ?? content?.cmTile?.view;
+        const docText = view?.state?.doc?.toString?.();
+        return typeof docText === "string" ? docText : null;
+      })) ??
+      (await page.$$eval(".cm-line", (lines) =>
         lines
           .map((line) => {
             const clone = line.cloneNode(true);
@@ -1451,7 +1786,28 @@ export async function run(ctx) {
             return clone.textContent ?? "";
           })
           .join("\n"),
-      );
+      ));
+    const pasteText = async (text) => {
+      await page.evaluate((value) => {
+        const content = document.querySelector(".cm-content");
+        if (!content) {
+          throw new Error("Markdown editor content was not available for paste.");
+        }
+
+        const clipboardData = new DataTransfer();
+        clipboardData.setData("text/plain", value);
+        const event = new ClipboardEvent("paste", {
+          bubbles: true,
+          cancelable: true,
+          clipboardData,
+        });
+        if (!event.clipboardData) {
+          Object.defineProperty(event, "clipboardData", { value: clipboardData });
+        }
+        content.dispatchEvent(event);
+      }, text);
+      await waitForRenderFrame(page);
+    };
 
     await page.getByTitle("New tab").click();
     await waitForEditorReady(page, { mode: "edit" });
@@ -1459,6 +1815,12 @@ export async function run(ctx) {
     await page.keyboard.press("Enter");
     await page.keyboard.insertText("next");
     expect((await readEditorText()) === "- item\n- next", "Enter should continue bullet list markers.");
+
+    await replaceEditorText("- item");
+    await page.keyboard.press("Enter");
+    expect((await readEditorText()) === "- item\n- ", "Enter should create one empty bullet marker.");
+    await page.keyboard.press("Enter");
+    expect((await readEditorText()) === "- item\n", "Enter on an empty bullet marker should exit the list.");
 
     await replaceEditorText("1. item");
     await page.keyboard.press("Enter");
@@ -1470,10 +1832,22 @@ export async function run(ctx) {
     await page.keyboard.insertText("next");
     expect((await readEditorText()) === "- [x] done\n- [ ] next", "Enter should continue checklists as unchecked items.");
 
+    await replaceEditorText("- [x] done");
+    await page.keyboard.press("Enter");
+    expect((await readEditorText()) === "- [x] done\n- [ ] ", "Enter should create one empty checklist marker.");
+    await page.keyboard.press("Enter");
+    expect((await readEditorText()) === "- [x] done\n", "Enter on an empty checklist marker should exit the checklist.");
+
     await replaceEditorText("> quote");
     await page.keyboard.press("Enter");
     await page.keyboard.insertText("next");
     expect((await readEditorText()) === "> quote\n> next", "Enter should continue blockquotes.");
+
+    await replaceEditorText("> quote");
+    await page.keyboard.press("Enter");
+    expect((await readEditorText()) === "> quote\n> ", "Enter should create one empty blockquote marker.");
+    await page.keyboard.press("Enter");
+    expect((await readEditorText()) === "> quote\n", "Enter on an empty blockquote marker should exit the blockquote.");
 
     await replaceEditorText("- ");
     await page.keyboard.press("Enter");
@@ -1491,6 +1865,23 @@ export async function run(ctx) {
     expect((await readEditorText()) === "  - one\n  - two", "Tab should indent selected Markdown list items.");
     await page.keyboard.press("Shift+Tab");
     expect((await readEditorText()) === "- one\n- two", "Shift+Tab should outdent selected Markdown list items.");
+
+    await replaceEditorText("Open docs");
+    for (let index = 0; index < 4; index += 1) {
+      await page.keyboard.press("Shift+ArrowLeft");
+    }
+    await pasteText("https://example.com/docs");
+    expect(
+      (await readEditorText()) === "Open [docs](https://example.com/docs)",
+      "Pasting a URL over selected prose should use CodeMirror's Markdown link paste behavior.",
+    );
+
+    await replaceEditorText("");
+    await pasteText("Title\r\n\titem\r\n\r\nnext");
+    expect(
+      (await readEditorText()) === "Title\n  item\n\nnext",
+      "Pasting source-like Markdown should normalize CRLF line endings and leading tabs.",
+    );
   });
 
   await withPage(browser, "/", async (page) => {
@@ -1524,6 +1915,10 @@ const protocol = "mcp";
 console.log(protocol);
 \`\`\`
 
+| Column 1 | Column 2 |
+| --- | --- |
+| Value 1 | Value 2 |
+
 \`\`\`mermaid
 flowchart LR
   Client --> Server
@@ -1555,6 +1950,108 @@ flowchart LR
     await waitForRenderFrame(page);
     await page.waitForSelector(".preview-mermaid-svg svg", { timeout: 15_000 });
     await page.waitForSelector(".preview-math-inline .katex", { timeout: 10_000 });
+    const forceTheme = async (theme) => {
+      await page.evaluate((nextTheme) => {
+        document.documentElement.setAttribute("data-theme", nextTheme);
+      }, theme);
+      await page.waitForFunction(() => {
+        const block = document.querySelector(".preview-mermaid-block");
+        return block?.textContent?.includes("Client") && block.textContent.includes("Server");
+      });
+      await page.waitForSelector(".preview-mermaid-block .preview-mermaid-svg svg", { timeout: 15_000 });
+      await waitForRenderFrame(page);
+    };
+    const readPreviewBorderState = async () =>
+      page.evaluate(() => {
+        const readElementBorder = (selector) => {
+          const element = document.querySelector(selector);
+          if (!(element instanceof Element)) {
+            return null;
+          }
+
+          const style = window.getComputedStyle(element);
+          return {
+            borderWidths: [
+              style.borderTopWidth,
+              style.borderRightWidth,
+              style.borderBottomWidth,
+              style.borderLeftWidth,
+            ],
+            text: element.textContent?.replace(/\s+/g, " ").trim() ?? "",
+          };
+        };
+
+        return {
+          codeBlock: readElementBorder(".preview-code-block"),
+          tableBodyCell: readElementBorder(".preview-table-wrap td"),
+          tableHeaderCell: readElementBorder(".preview-table-wrap th"),
+          tableWrap: readElementBorder(".preview-table-wrap"),
+        };
+      });
+    const readMermaidVisualState = async () =>
+      page.evaluate(() => {
+        const block = document.querySelector(".preview-mermaid-block");
+        const blockStyle = block instanceof HTMLElement ? window.getComputedStyle(block) : null;
+        const readElement = (selector) => {
+          const element = block?.querySelector(selector);
+          if (!(element instanceof Element)) {
+            return null;
+          }
+
+          const style = window.getComputedStyle(element);
+          return {
+            color: style.color,
+            fill: style.fill,
+            stroke: style.stroke,
+            text: element.textContent?.replace(/\s+/g, " ").trim() ?? "",
+          };
+        };
+
+        return {
+          blockBackground: blockStyle?.backgroundColor ?? "",
+          blockBorderStyle: blockStyle?.borderTopStyle ?? "",
+          blockBorderWidth: blockStyle?.borderTopWidth ?? "",
+          edge: readElement(".edgePath .path, .flowchart-link"),
+          label: readElement(".nodeLabel, .label text, text"),
+          labelsText: block?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+          marker: readElement("marker path, .arrowMarkerPath"),
+          node: readElement(".node rect, .node circle, .node ellipse, .node polygon, .node path"),
+        };
+      });
+    const expectReadableMermaid = (state, theme) => {
+      expect(
+        state.labelsText.includes("Client") && state.labelsText.includes("Server"),
+        `${theme} Mermaid diagram should preserve node labels.`,
+      );
+      expect(Boolean(state.node), `${theme} Mermaid diagram should expose a node shape.`);
+      expect(Boolean(state.edge), `${theme} Mermaid diagram should expose an edge path.`);
+      expect(Boolean(state.label), `${theme} Mermaid diagram should expose a label element.`);
+      expect(
+        state.blockBorderStyle === "none" && state.blockBorderWidth === "0px",
+        `${theme} Mermaid container should not draw its own border.`,
+      );
+      expect(
+        state.node.fill !== state.blockBackground && state.node.stroke !== state.node.fill,
+        `${theme} Mermaid node fill and border should remain distinguishable from the preview panel.`,
+      );
+      expect(
+        state.edge.stroke !== "none" &&
+          state.edge.stroke !== state.node.fill &&
+          state.edge.stroke !== state.blockBackground,
+        `${theme} Mermaid edges should stay visible against node and panel surfaces.`,
+      );
+      expect(
+        state.label.fill !== state.node.fill || state.label.color !== state.node.fill,
+        `${theme} Mermaid labels should stay visible against node surfaces.`,
+      );
+    };
+    const expectNoVisibleBorder = (state, label) => {
+      expect(Boolean(state), `${label} should render before checking its border.`);
+      expect(
+        state.borderWidths.every((width) => Number.parseFloat(width) === 0),
+        `${label} should not draw a border.`,
+      );
+    };
 
     expect((await page.locator("h1[id] .preview-heading-anchor").count()) >= 1, "Preview should add heading anchors.");
     expect((await page.locator(".markdown-alert.markdown-alert-note").count()) === 1, "Preview should render GitHub-style alert blocks.");
@@ -1569,8 +2066,25 @@ flowchart LR
     expect((await page.locator("section[data-footnotes]").count()) === 1, "Preview should render footnotes.");
     expect((await page.locator("pre code.hljs.language-js").count()) === 1, "Preview should syntax highlight fenced code blocks.");
     expect((await page.locator("pre code .hljs-keyword").count()) >= 1, "Preview code highlighting should include token spans.");
+    expect((await page.locator(".preview-table-wrap table").count()) === 1, "Preview should render Markdown tables.");
+    expect((await page.locator(".preview-table-wrap").filter({ hasText: "Value 1" }).count()) === 1, "Preview tables should preserve body cells.");
+    const previewBorderState = await readPreviewBorderState();
+    expectNoVisibleBorder(previewBorderState.codeBlock, "Preview code block");
+    expectNoVisibleBorder(previewBorderState.tableWrap, "Preview table container");
+    expectNoVisibleBorder(previewBorderState.tableHeaderCell, "Preview table header cell");
+    expectNoVisibleBorder(previewBorderState.tableBodyCell, "Preview table body cell");
     expect((await page.locator(".preview-mermaid-block .preview-mermaid-svg svg").count()) === 1, "Preview should render Mermaid diagrams.");
+    expect(
+      (await page.locator(".preview-mermaid-block").filter({ hasText: "Client" }).count()) === 1 &&
+        (await page.locator(".preview-mermaid-block").filter({ hasText: "Server" }).count()) === 1,
+      "Preview Mermaid diagrams should keep node labels visible.",
+    );
+    await forceTheme("light");
+    expectReadableMermaid(await readMermaidVisualState(), "Light");
+    await forceTheme("dark");
+    expectReadableMermaid(await readMermaidVisualState(), "Dark");
     expect((await page.locator(".preview-mermaid-block script").count()) === 0, "Preview should not keep executable Mermaid script nodes.");
+    expect((await page.locator(".preview-mermaid-block foreignObject").count()) === 0, "Preview should not keep Mermaid foreignObject nodes.");
     expect((await page.locator(".preview-docs-frame").count()) === 1, "Preview should render docs-style Frame components.");
     expect(
       (await page.locator('.preview-docs-frame img[src^="https://mintcdn.com/"]').count()) === 1,

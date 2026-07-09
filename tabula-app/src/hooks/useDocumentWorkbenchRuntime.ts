@@ -23,6 +23,7 @@ type DocumentWorkbenchRuntimeHandlers = Pick<
   | "onToggleLineNumbers"
   | "onToggleLineWrapping"
   | "onToggleSearch"
+  | "onToggleSyncScrolling"
   | "onToggleViewOptions"
 >;
 
@@ -30,6 +31,7 @@ type UseDocumentWorkbenchRuntimeArgs = {
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
   activeOpenComments: FileComment[];
+  activeSyncScrolling: boolean;
   activeViewMode: FileViewMode;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   focusedCommentId: string | null;
@@ -38,6 +40,7 @@ type UseDocumentWorkbenchRuntimeArgs = {
   onSetActiveFileLineWrapping: (isEnabled: boolean) => void;
   onSetActiveFileReadingWidth: (readingWidth: ReadingWidth) => void;
   onSetActiveFileViewMode: (viewMode: FileViewMode) => void;
+  onSetSyncScrolling: (isEnabled: boolean) => void;
   setCenterPopover: SetUiValue<CenterPopover>;
   setSearchOpen: SetUiValue<boolean>;
   setTopPopover: SetUiValue<TopPopover>;
@@ -47,6 +50,7 @@ export function useDocumentWorkbenchRuntime({
   activeLineNumbers,
   activeLineWrapping,
   activeOpenComments,
+  activeSyncScrolling,
   activeViewMode,
   editorRef,
   focusedCommentId,
@@ -55,6 +59,7 @@ export function useDocumentWorkbenchRuntime({
   onSetActiveFileLineWrapping,
   onSetActiveFileReadingWidth,
   onSetActiveFileViewMode,
+  onSetSyncScrolling,
   setCenterPopover,
   setSearchOpen,
   setTopPopover,
@@ -114,6 +119,11 @@ export function useDocumentWorkbenchRuntime({
     closeCenterPopover();
   }, [activeLineWrapping, closeCenterPopover, onSetActiveFileLineWrapping]);
 
+  const onToggleSyncScrolling = useCallback(() => {
+    onSetSyncScrolling(!activeSyncScrolling);
+    closeCenterPopover();
+  }, [activeSyncScrolling, closeCenterPopover, onSetSyncScrolling]);
+
   const onToggleSearch = useCallback(() => {
     setSearchOpen((current) => !current);
     closeFloatingDocumentChrome();
@@ -133,6 +143,7 @@ export function useDocumentWorkbenchRuntime({
     onToggleLineNumbers,
     onToggleLineWrapping,
     onToggleSearch,
+    onToggleSyncScrolling,
     onToggleViewOptions,
   };
 }
