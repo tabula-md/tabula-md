@@ -2,10 +2,12 @@ import {
   type CSSProperties,
   type RefObject,
   useCallback,
+  useMemo,
 } from "react";
 import { MessageSquarePlus } from "lucide-react";
 import {
   getLineStartOffset,
+  hasLongMarkdownLine,
   toggleMarkdownTaskOnLine,
 } from "@tabula-md/tabula";
 import type {
@@ -67,6 +69,7 @@ export type DocumentWorkbenchProps = {
   language: WorkspaceLanguage;
   previewBody: string;
   previewBodyStartOffset: number;
+  largeDocumentMode: boolean;
   previewMetadata: MarkdownPreviewMetadata[];
   previewSurfaceRef: RefObject<HTMLElement | null>;
   searchInputRef: RefObject<HTMLInputElement | null>;
@@ -117,7 +120,7 @@ export type DocumentWorkbenchProps = {
   onSplitDividerPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onSplitDividerPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onSplitDividerPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void;
-  onTextChange: (nextValue: string, change?: TextChange) => void;
+  onTextChange: (nextValue: string | null, change?: TextChange) => void;
   onToggleLineNumbers: () => void;
   onToggleLineWrapping: () => void;
   onToggleSearch: () => void;
@@ -166,6 +169,7 @@ export function DocumentWorkbench({
   language,
   previewBody,
   previewBodyStartOffset,
+  largeDocumentMode,
   previewMetadata,
   previewSurfaceRef,
   searchInputRef,
@@ -223,6 +227,15 @@ export function DocumentWorkbench({
   onToggleViewOptions,
   onUndo,
 }: DocumentWorkbenchProps) {
+  const shouldRenderPreview = documentSurface.documentControls.activeViewMode !== "edit";
+  const suspendLineWrappingForLongLine = useMemo(
+    () => activeLineWrapping && hasLongMarkdownLine(text),
+    [activeLineWrapping, text],
+  );
+  const effectiveLineWrapping = activeLineWrapping && !suspendLineWrappingForLongLine;
+  const editorSurfaceClassName = suspendLineWrappingForLongLine
+    ? `${documentSurface.editorSurfaceClassName} line-wrapping-suspended`
+    : documentSurface.editorSurfaceClassName;
   const handlePreviewTaskToggle = useCallback((sourceLineIndex: number) => {
     const lineStart = previewBodyStartOffset + getLineStartOffset(previewBody, sourceLineIndex);
     const edit = toggleMarkdownTaskOnLine(text, lineStart);
@@ -304,7 +317,7 @@ export function DocumentWorkbench({
         style={splitWorkspaceStyle}
       >
         <article
-          className={documentSurface.editorSurfaceClassName}
+          className={editorSurfaceClassName}
           ref={editorSurfaceRef}
           onScroll={onEditorScroll}
         >
@@ -314,7 +327,8 @@ export function DocumentWorkbench({
             fileTitle={activeFileTitle}
             roomId={activeFile.roomId}
             value={text}
-            lineWrapping={activeLineWrapping}
+            largeDocumentMode={largeDocumentMode}
+            lineWrapping={effectiveLineWrapping}
             lineNumbers={activeLineNumbers}
             bookmarks={activeBookmarks}
             commentAnchors={isLive ? activeCommentAnchors : []}
@@ -353,27 +367,30 @@ export function DocumentWorkbench({
           />
         )}
 
-        <article
-          className="preview-surface"
-          ref={previewSurfaceRef}
-          onKeyUp={onPreviewKeyUp}
-          onMouseUp={onPreviewMouseUp}
-          onScroll={onPreviewScroll}
-          onTouchEnd={onPreviewTouchEnd}
-        >
-          <MarkdownPreview
-            metadata={previewMetadata}
-            body={previewBody}
-            commentAnchors={isLive ? activePreviewCommentAnchors : []}
-            lineAnnotations={activePreviewLineAnnotations}
-            activeCommentId={focusedCommentId}
-            commentsEnabled={isLive}
-            suspendLineMeasurement={splitDividerDragging}
-            onLineAction={onLineAction as (request: MarkdownPreviewLineActionRequest) => void}
-            onOpenComment={onOpenComment}
-            onToggleTaskLine={handlePreviewTaskToggle}
-          />
-        </article>
+        {shouldRenderPreview && (
+          <article
+            className="preview-surface"
+            ref={previewSurfaceRef}
+            onKeyUp={onPreviewKeyUp}
+            onMouseUp={onPreviewMouseUp}
+            onScroll={onPreviewScroll}
+            onTouchEnd={onPreviewTouchEnd}
+          >
+            <MarkdownPreview
+              metadata={previewMetadata}
+              body={previewBody}
+              largeDocumentMode={largeDocumentMode}
+              commentAnchors={isLive ? activePreviewCommentAnchors : []}
+              lineAnnotations={activePreviewLineAnnotations}
+              activeCommentId={focusedCommentId}
+              commentsEnabled={isLive}
+              suspendLineMeasurement={splitDividerDragging}
+              onLineAction={onLineAction as (request: MarkdownPreviewLineActionRequest) => void}
+              onOpenComment={onOpenComment}
+              onToggleTaskLine={handlePreviewTaskToggle}
+            />
+          </article>
+        )}
       </section>
 
       {documentSurface.showSelectionCommentPopover && selectionActionPosition && (

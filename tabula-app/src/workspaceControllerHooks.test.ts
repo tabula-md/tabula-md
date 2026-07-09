@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Collaborator } from "./collaboration";
 import {
   createWorkspaceIdentity,
@@ -28,9 +28,13 @@ import {
   isSupportedImportFileDescriptor,
 } from "./workspaceIoModel";
 import {
+  getLocalTypingTextCommitDelay,
+  getWorkspaceTextChangePolicy,
   isFileTextFallbackHistoryEnabled,
   normalizeFileBookmarks,
   recordFileTextHistory,
+  schedulePendingEditorCommitTimer,
+  shouldCancelPendingEditorCommit,
 } from "./hooks/useWorkspaceActiveFileEditor";
 import { getWorkspaceShortcutAction } from "./hooks/useWorkspaceKeyboardShortcuts";
 import {
@@ -119,6 +123,195 @@ describe("workspace preferences controller", () => {
 
     expect(storage.getItem(WORKSPACE_PREFERENCES_KEY)).toBe(JSON.stringify(preferences));
     expect(readWorkspacePreferences(storage)).toEqual(preferences);
+  });
+});
+
+describe("workspace active file editor controller", () => {
+  const localFile: Pick<WorkspaceFile, "roomId" | "text"> = {
+    roomId: undefined,
+    text: "previous",
+  };
+  const liveFile: Pick<WorkspaceFile, "roomId" | "text"> = {
+    roomId: "room-1",
+    text: "previous",
+  };
+  const largeText = "x".repeat(120_000);
+
+  it("cancels a pending large-document commit when the active file text changes externally", () => {
+    expect(
+      shouldCancelPendingEditorCommit(
+        { fileId: "draft", text: "local pending" },
+        { id: "draft", text: "remote merged" },
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps a pending large-document commit when it still matches the active file", () => {
+    expect(
+      shouldCancelPendingEditorCommit(
+        { fileId: "draft", text: "local pending" },
+        { id: "draft", text: "local pending" },
+      ),
+    ).toBe(false);
+  });
+
+  it("defers small local typing commits without recording whole-document fallback history", () => {
+    expect(
+      getWorkspaceTextChangePolicy({
+        activeFile: localFile,
+        nextText: "previous!",
+        recordHistory: false,
+        source: "editor-typing",
+      }),
+    ).toEqual({
+      shouldDeferWorkspaceCommit: true,
+      shouldRecordFallbackHistory: false,
+      shouldSendCollaborationPatchImmediately: false,
+    });
+  });
+
+  it("defers large local typing commits without creating per-keystroke fallback history", () => {
+    expect(
+      getWorkspaceTextChangePolicy({
+        activeFile: localFile,
+        nextText: largeText,
+        recordHistory: false,
+        source: "editor-typing",
+      }),
+    ).toEqual({
+      shouldDeferWorkspaceCommit: true,
+      shouldRecordFallbackHistory: false,
+      shouldSendCollaborationPatchImmediately: false,
+    });
+  });
+
+  it("sends live collaboration patches immediately even when workspace commits are deferred", () => {
+    expect(
+      getWorkspaceTextChangePolicy({
+        activeFile: liveFile,
+        nextText: largeText,
+        recordHistory: false,
+        source: "editor-typing",
+      }),
+    ).toEqual({
+      shouldDeferWorkspaceCommit: true,
+      shouldRecordFallbackHistory: false,
+      shouldSendCollaborationPatchImmediately: true,
+    });
+  });
+
+  it("uses a shorter typing commit delay for ordinary documents than large documents", () => {
+    expect(getLocalTypingTextCommitDelay({ docLength: 1_000, lineCount: 20 })).toBeLessThan(
+      getLocalTypingTextCommitDelay({ docLength: 120_000, lineCount: 20 }),
+    );
+    expect(getLocalTypingTextCommitDelay({ docLength: 1_000, lineCount: 2_000 })).toBe(
+      getLocalTypingTextCommitDelay({ docLength: 120_000, lineCount: 20 }),
+    );
+  });
+
+  it("schedules 150KB and 1MB typing commits without flushing workspace text synchronously", () => {
+    const clearTimeoutFn = vi.fn();
+
+    [150 * 1024, 1024 * 1024].forEach((docLength, index) => {
+      let scheduledFlush: (() => void) | undefined;
+      const flushPendingEditorCommit = vi.fn();
+      const delayMs = getLocalTypingTextCommitDelay({ docLength, lineCount: 20 });
+      const setTimeoutFn = vi.fn((handler: () => void, timeout: number) => {
+        scheduledFlush = handler;
+        expect(timeout).toBe(delayMs);
+        return index + 1;
+      });
+
+      expect(
+        getWorkspaceTextChangePolicy({
+          activeFile: localFile,
+          nextText: "x".repeat(docLength),
+          recordHistory: false,
+          source: "editor-typing",
+        }),
+      ).toEqual({
+        shouldDeferWorkspaceCommit: true,
+        shouldRecordFallbackHistory: false,
+        shouldSendCollaborationPatchImmediately: false,
+      });
+
+      const timerId = schedulePendingEditorCommitTimer({
+        clearTimeoutFn,
+        currentTimerId: null,
+        delayMs,
+        flushPendingEditorCommit,
+        setTimeoutFn,
+      });
+
+      expect(timerId).toBe(index + 1);
+      expect(flushPendingEditorCommit).not.toHaveBeenCalled();
+      expect(setTimeoutFn).toHaveBeenCalledTimes(1);
+
+      scheduledFlush?.();
+      expect(flushPendingEditorCommit).toHaveBeenCalledTimes(1);
+    });
+    expect(clearTimeoutFn).not.toHaveBeenCalled();
+  });
+
+  it("replaces a pending typing commit timer instead of stacking full-text commits", () => {
+    const clearTimeoutFn = vi.fn();
+    const flushPendingEditorCommit = vi.fn();
+    const setTimeoutFn = vi.fn(() => 12);
+
+    expect(
+      schedulePendingEditorCommitTimer({
+        clearTimeoutFn,
+        currentTimerId: 7,
+        delayMs: getLocalTypingTextCommitDelay({ docLength: 1024 * 1024, lineCount: 20 }),
+        flushPendingEditorCommit,
+        setTimeoutFn,
+      }),
+    ).toBe(12);
+
+    expect(clearTimeoutFn).toHaveBeenCalledWith(7);
+    expect(flushPendingEditorCommit).not.toHaveBeenCalled();
+    expect(setTimeoutFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("records fallback history only for changed coarse local document updates", () => {
+    expect(
+      getWorkspaceTextChangePolicy({
+        activeFile: localFile,
+        nextText: "replacement",
+        source: "coarse-update",
+      }),
+    ).toEqual({
+      shouldDeferWorkspaceCommit: false,
+      shouldRecordFallbackHistory: true,
+      shouldSendCollaborationPatchImmediately: false,
+    });
+
+    expect(
+      getWorkspaceTextChangePolicy({
+        activeFile: localFile,
+        nextText: "replacement",
+        recordHistory: false,
+        source: "coarse-update",
+      }).shouldRecordFallbackHistory,
+    ).toBe(false);
+    expect(
+      getWorkspaceTextChangePolicy({
+        activeFile: localFile,
+        nextText: localFile.text,
+        source: "coarse-update",
+      }).shouldRecordFallbackHistory,
+    ).toBe(false);
+    expect(
+      getWorkspaceTextChangePolicy({
+        activeFile: liveFile,
+        nextText: "replacement",
+        source: "coarse-update",
+      }),
+    ).toEqual({
+      shouldDeferWorkspaceCommit: false,
+      shouldRecordFallbackHistory: false,
+      shouldSendCollaborationPatchImmediately: true,
+    });
   });
 });
 
@@ -228,6 +421,23 @@ describe("selection comment controller", () => {
   it("counts selected lines without over-counting a trailing newline", () => {
     expect(getSelectionLineCount("one\ntwo\nthree", 0, 8)).toBe(2);
     expect(getSelectionLineCount("one\ntwo\nthree", 4, 13)).toBe(2);
+  });
+
+  it("counts selected lines from editor metadata when workspace text is stale", () => {
+    expect(
+      getSelectionLineCount("stale", 0, 42, {
+        fromLineNumber: 1,
+        toLineNumber: 4,
+        selectionEndsWithLineBreak: false,
+      }),
+    ).toBe(4);
+    expect(
+      getSelectionLineCount("stale", 0, 42, {
+        fromLineNumber: 1,
+        toLineNumber: 5,
+        selectionEndsWithLineBreak: true,
+      }),
+    ).toBe(4);
   });
 });
 

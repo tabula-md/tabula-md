@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import {
   applyLocalTextToYText,
   applyRemoteUpdateToYText,
+  applyTextPatchesToYText,
   COLLAB_REMOTE_ORIGIN,
   createCollabTextDocument,
   type CollabTextDocument,
@@ -37,6 +38,9 @@ export const createYjsCollabTextAdapter = (): CollabTextAdapter => ({
   },
   applyLocalText(document, nextText, patches) {
     applyLocalTextToYText({ ...asYjsDocument(document), nextText, patches });
+  },
+  applyLocalTextPatches(document, patches) {
+    applyTextPatchesToYText({ ...asYjsDocument(document), patches });
   },
   applyRemoteUpdate(document, update) {
     return applyRemoteUpdateToYText({ ...asYjsDocument(document), update });

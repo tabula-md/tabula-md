@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createCollabConnection } from "./liveCollaboration";
+import { applyTextPatches } from "@tabula-md/tabula";
 import type {
   CollabRuntimeAdapters,
   CollabRuntimeClock,
@@ -24,8 +25,23 @@ const remoteOrigin = Symbol("remote");
 
 const asFakeDocument = (document: CollabTextDocumentHandle) => document as FakeTextDocument;
 
-const createFakeClock = (): CollabRuntimeClock & { flushTimeouts: () => void } => {
+const flushAsyncWork = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+};
+
+const createFakeClock = (): CollabRuntimeClock & {
+  flushIdleCallbacks: () => void;
+  flushIntervals: () => void;
+  flushTimeouts: () => void;
+  getClearedTimeoutCount: () => number;
+} => {
+  const idleCallbacks: Array<() => void> = [];
   const timeouts: Array<() => void> = [];
+  const intervals: Array<() => void> = [];
+  let clearedTimeoutCount = 0;
 
   return {
     setTimeout(callback) {
@@ -36,12 +52,29 @@ const createFakeClock = (): CollabRuntimeClock & { flushTimeouts: () => void } =
       const index = timeouts.indexOf(handle as () => void);
       if (index >= 0) {
         timeouts.splice(index, 1);
+        clearedTimeoutCount += 1;
       }
     },
     setInterval(callback) {
+      intervals.push(callback);
       return callback;
     },
-    clearInterval: vi.fn(),
+    clearInterval(handle) {
+      const index = intervals.indexOf(handle as () => void);
+      if (index >= 0) {
+        intervals.splice(index, 1);
+      }
+    },
+    requestIdleCallback(callback) {
+      idleCallbacks.push(callback);
+      return callback;
+    },
+    cancelIdleCallback(handle) {
+      const index = idleCallbacks.indexOf(handle as () => void);
+      if (index >= 0) {
+        idleCallbacks.splice(index, 1);
+      }
+    },
     nowIso() {
       return "2026-07-01T00:00:00.000Z";
     },
@@ -51,6 +84,16 @@ const createFakeClock = (): CollabRuntimeClock & { flushTimeouts: () => void } =
     flushTimeouts() {
       const callbacks = timeouts.splice(0);
       callbacks.forEach((callback) => callback());
+    },
+    flushIdleCallbacks() {
+      const callbacks = idleCallbacks.splice(0);
+      callbacks.forEach((callback) => callback());
+    },
+    flushIntervals() {
+      [...intervals].forEach((callback) => callback());
+    },
+    getClearedTimeoutCount() {
+      return clearedTimeoutCount;
     },
   };
 };
@@ -77,6 +120,16 @@ const createFakeTextAdapter = (): CollabTextAdapter => ({
   },
   applyLocalText(document, nextText) {
     const fakeDocument = asFakeDocument(document);
+    fakeDocument.text = nextText;
+    const update = new TextEncoder().encode(nextText);
+    fakeDocument.listeners.forEach((listener) => listener(update, "local"));
+  },
+  applyLocalTextPatches(document, patches) {
+    const fakeDocument = asFakeDocument(document);
+    const nextText = applyTextPatches(fakeDocument.text, patches);
+    if (nextText === null) {
+      return;
+    }
     fakeDocument.text = nextText;
     const update = new TextEncoder().encode(nextText);
     fakeDocument.listeners.forEach((listener) => listener(update, "local"));
@@ -187,8 +240,7 @@ describe("collaboration connection adapters", () => {
       adapters,
     });
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushAsyncWork();
     await getHandlers().onJoined({ roomId: "room-1", clientId: "self", peerCount: 1 });
 
     expect(onStatusChange).toHaveBeenCalledWith("connecting");
@@ -198,8 +250,10 @@ describe("collaboration connection adapters", () => {
     expect(savedRecoveryStates).toHaveLength(1);
 
     connection.applyLocalText("hello\nworld", [{ from: 5, to: 5, insert: "\nworld" }]);
+    expect(savedRecoveryStates).toHaveLength(1);
     clock.flushTimeouts();
-    await Promise.resolve();
+    clock.flushIdleCallbacks();
+    await flushAsyncWork();
 
     expect(savedRecoveryStates).toHaveLength(2);
     expect(onTextChange).not.toHaveBeenCalledWith("hello\nworld", expect.anything());
@@ -218,6 +272,85 @@ describe("collaboration connection adapters", () => {
     expect(onTextChange).toHaveBeenCalledWith("remote", {
       patches: [{ from: 0, to: 0, insert: "remote" }],
     });
+
+    connection.disconnect();
+  });
+
+  it("throttles rapid presence selection updates into a single volatile envelope", async () => {
+    const { adapters, clock, getHandlers, volatileEnvelopes } = createFakeAdapters();
+    const connection = createCollabConnection({
+      roomId: "room-1",
+      roomKey: "encoded-key",
+      initialText: "hello",
+      identity: {
+        id: "self",
+        name: "Taeha",
+        color: "#763FC8",
+        lastSeen: 1,
+      },
+      fileTitle: "README",
+      onTextChange: vi.fn(),
+      onStatusChange: vi.fn(),
+      onCollaboratorsChange: vi.fn(),
+      adapters,
+    });
+
+    await flushAsyncWork();
+    await getHandlers().onJoined({ roomId: "room-1", clientId: "self", peerCount: 1 });
+    const initialPresenceCount = volatileEnvelopes.filter((envelope) => envelope.kind === "presence").length;
+
+    connection.setPresence({ selection: { from: 1, to: 1 } });
+    connection.setPresence({ selection: { from: 2, to: 2 } });
+    connection.setPresence({ selection: { from: 3, to: 3 } });
+
+    expect(volatileEnvelopes.filter((envelope) => envelope.kind === "presence")).toHaveLength(initialPresenceCount);
+    expect(clock.getClearedTimeoutCount()).toBe(0);
+    clock.flushTimeouts();
+    await flushAsyncWork();
+
+    expect(volatileEnvelopes.filter((envelope) => envelope.kind === "presence")).toHaveLength(initialPresenceCount + 1);
+
+    connection.disconnect();
+  });
+
+  it("sends bounded full-state repair syncs after local updates", async () => {
+    const { adapters, clock, getHandlers, sentEnvelopes } = createFakeAdapters();
+    const connection = createCollabConnection({
+      roomId: "room-1",
+      roomKey: "encoded-key",
+      initialText: "hello",
+      identity: {
+        id: "self",
+        name: "Taeha",
+        color: "#763FC8",
+        lastSeen: 1,
+      },
+      fileTitle: "README",
+      onTextChange: vi.fn(),
+      onStatusChange: vi.fn(),
+      onCollaboratorsChange: vi.fn(),
+      adapters,
+    });
+
+    await flushAsyncWork();
+    await getHandlers().onJoined({ roomId: "room-1", clientId: "self", peerCount: 1 });
+    const initialStateInitCount = sentEnvelopes.filter((envelope) => envelope.kind === "state-init").length;
+
+    connection.applyLocalText("hello\nworld", [{ from: 5, to: 5, insert: "\nworld" }]);
+    clock.flushTimeouts();
+    clock.flushIdleCallbacks();
+    await flushAsyncWork();
+
+    clock.flushIntervals();
+    await flushAsyncWork();
+    clock.flushIntervals();
+    await flushAsyncWork();
+    clock.flushIntervals();
+    await flushAsyncWork();
+
+    expect(sentEnvelopes.filter((envelope) => envelope.kind === "state-init")).toHaveLength(
+      initialStateInitCount + 2,
+    );
 
     connection.disconnect();
   });

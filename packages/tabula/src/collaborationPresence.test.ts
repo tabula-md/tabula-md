@@ -21,6 +21,20 @@ describe("collaboration presence labels", () => {
     expect(getLineNumberForPresenceSelection("one\ntwo\nthree", { from: 0, to: 8 })).toBe(3);
   });
 
+  it("uses selection line metadata without scanning document text", () => {
+    expect(getLineNumberForPresenceSelection("one", { from: 0, to: 0, lineNumber: 42 })).toBe(42);
+    expect(
+      getCollaboratorPresenceLabel({
+        id: "peer-1",
+        name: "Ada",
+        color: "#763fc8",
+        lastSeen: 1,
+        fileTitle: "README",
+        selection: { from: 0, to: 0, lineNumber: 42 },
+      }),
+    ).toBe("Ada - README - line 42");
+  });
+
   it("includes collaborator, file, and line in the product-facing label", () => {
     expect(
       getCollaboratorPresenceLabel(

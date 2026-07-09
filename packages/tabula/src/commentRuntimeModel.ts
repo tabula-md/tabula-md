@@ -104,17 +104,19 @@ export const getPreviewLineAnnotations = <
   bookmarks,
   commentAnchors,
   activeCommentId,
+  includeEmptyLines = true,
 }: {
   body: string;
   bodyStartOffset: number;
   bookmarks: TBookmark[];
   commentAnchors: TAnchor[];
   activeCommentId?: string | null;
+  includeEmptyLines?: boolean;
 }): PreviewLineAnnotation[] => {
   const lines = body.split("\n");
   let bodyOffset = 0;
 
-  return lines.map((line, index) => {
+  return lines.flatMap((line, index) => {
     const start = bodyStartOffset + bodyOffset;
     const end = start + line.length;
     const sourceLine = { start, end };
@@ -126,7 +128,11 @@ export const getPreviewLineAnnotations = <
     );
     bodyOffset += line.length + 1;
 
-    return {
+    if (!includeEmptyLines && !hasBookmark && lineComments.length === 0) {
+      return [];
+    }
+
+    return [{
       lineNumber: index + 1,
       start,
       end,
@@ -135,7 +141,7 @@ export const getPreviewLineAnnotations = <
       hasActiveComment: lineComments.some(
         (anchor) => anchor.id === activeCommentId,
       ),
-    };
+    }];
   });
 };
 

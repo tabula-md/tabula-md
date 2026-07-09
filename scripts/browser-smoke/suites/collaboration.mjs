@@ -397,6 +397,7 @@ async function runLiveEditingCorrectnessSmoke({ expect, firstPage, secondPage, f
   await secondPage.keyboard.press("Enter");
   await secondPage.keyboard.insertText("Second browser edit");
   const expectedLines = ["Room sync checkSecond line", longParagraph, "Second browser edit"];
+  await waitForEditorLines(secondPage, expectedLines, 12_000);
   await waitForEditorLines(firstPage, expectedLines, 12_000);
   const firstPageText = await getEditorDocumentText(firstPage);
   const secondPageText = await getEditorDocumentText(secondPage);

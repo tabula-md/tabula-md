@@ -25,14 +25,30 @@ export function useEditorSearchController({
   const setSearchOpen = useWorkspaceUiStore((state) => state.setSearchOpen);
   const [searchQuery, setSearchQuery] = useState("");
   const [replaceQuery, setReplaceQuery] = useState("");
+  const [searchDocumentText, setSearchDocumentText] = useState(text);
   const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchRevealKeyRef = useRef<string | null>(null);
   const queueAnimationFrameTask = useAnimationFrameTask();
-  const searchMatches = useMemo(() => getSearchMatches(text, searchQuery), [searchQuery, text]);
+  const normalizedSearchQuery = searchOpen ? searchQuery.trim() : "";
+  const searchMatches = useMemo(
+    () => (normalizedSearchQuery ? getSearchMatches(searchDocumentText, normalizedSearchQuery) : []),
+    [normalizedSearchQuery, searchDocumentText],
+  );
 
   useEffect(() => {
-    const normalizedSearchQuery = searchQuery.trim();
+    setSearchDocumentText(text);
+  }, [activeFileId, text]);
+
+  useEffect(() => {
+    if (!searchOpen || !normalizedSearchQuery) {
+      return;
+    }
+
+    setSearchDocumentText(editorRef.current?.getValue() ?? text);
+  }, [editorRef, normalizedSearchQuery, searchOpen, text]);
+
+  useEffect(() => {
     const revealKey = searchOpen && normalizedSearchQuery ? `${activeFileId ?? ""}:${normalizedSearchQuery}` : null;
 
     if (!searchOpen || !normalizedSearchQuery || searchMatches.length === 0) {
@@ -58,7 +74,7 @@ export function useEditorSearchController({
 
       return Math.min(currentIndex, searchMatches.length - 1);
     });
-  }, [activeFileId, editorRef, queueAnimationFrameTask, searchMatches, searchOpen, searchQuery]);
+  }, [activeFileId, editorRef, normalizedSearchQuery, queueAnimationFrameTask, searchMatches, searchOpen]);
 
   useEffect(() => {
     if (!searchOpen) {
@@ -90,11 +106,14 @@ export function useEditorSearchController({
   };
 
   const replaceCurrentMatch = () => {
+    const currentText = editorRef.current?.getValue() ?? text;
+    const currentMatches = getSearchMatches(currentText, searchQuery.trim());
+    const currentMatchIndex = activeSearchMatchIndex === -1 ? 0 : activeSearchMatchIndex;
     const edit = replaceCurrentSearchMatch(
-      text,
+      currentText,
       searchQuery,
       replaceQuery,
-      activeSearchMatchIndex === -1 ? 0 : activeSearchMatchIndex,
+      Math.min(currentMatchIndex, Math.max(0, currentMatches.length - 1)),
     );
     if (!edit) {
       return;
@@ -103,11 +122,13 @@ export function useEditorSearchController({
     const applied = editorRef.current?.applyLocalTextPatches(edit.patches, edit.selection) ?? false;
     if (applied) {
       setActiveSearchMatchIndex((currentIndex) => Math.max(0, currentIndex));
+      setSearchDocumentText(editorRef.current?.getValue() ?? currentText);
     }
   };
 
   const replaceAllMatches = () => {
-    const edit = replaceAllSearchMatches(text, searchQuery, replaceQuery);
+    const currentText = editorRef.current?.getValue() ?? text;
+    const edit = replaceAllSearchMatches(currentText, searchQuery, replaceQuery);
     if (!edit) {
       return;
     }
@@ -115,6 +136,7 @@ export function useEditorSearchController({
     const applied = editorRef.current?.applyLocalTextPatches(edit.patches, edit.selection) ?? false;
     if (applied) {
       setActiveSearchMatchIndex(-1);
+      setSearchDocumentText(editorRef.current?.getValue() ?? currentText);
     }
   };
 

@@ -14,6 +14,7 @@ export type MarkdownEditorHandle = {
   getScrollRatio: () => number;
   getSelectionRange: () => { from: number; to: number };
   getSelectedText: () => string;
+  getValue: () => string;
   applyLocalTextPatches: (
     patches: readonly TextPatch[],
     selection?: { from: number; to: number },
@@ -58,6 +59,7 @@ export type MarkdownEditorProps = {
   fileTitle?: string;
   roomId?: string;
   value: string;
+  largeDocumentMode: boolean;
   lineWrapping: boolean;
   lineNumbers: boolean;
   bookmarks?: MarkdownBookmark[];
@@ -67,7 +69,7 @@ export type MarkdownEditorProps = {
   activeCommentId?: string | null;
   searchMatches?: SearchMatch[];
   activeSearchMatchIndex?: number;
-  onChange: (nextValue: string, change?: TextChange) => void;
+  onChange: (nextValue: string | null, change?: TextChange) => void;
   onBookmarksChange?: (bookmarks: MarkdownBookmark[]) => void;
   onHistoryStateChange?: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onOpenLineActions?: (request: MarkdownLineActionRequest) => void;

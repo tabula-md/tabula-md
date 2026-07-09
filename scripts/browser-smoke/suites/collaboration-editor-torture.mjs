@@ -1,9 +1,53 @@
+import {
+  buildLargeEditorMarkdown,
+  buildOneMegabyteEditorMarkdown,
+} from "../support/editor-fixtures.mjs";
+
 export const id = "collaboration-editor-torture";
 export const description = "Deterministic live collaboration editor torture smoke.";
 
 const longParagraph = Array.from({ length: 120 }, (_, index) => `long-segment-${index + 1}`).join(" ");
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const LARGE_COLLAB_DOC_TARGET_BYTES = 150_000;
 
-const getEditorLines = async (page) =>
+const getByteLength = (value) => new TextEncoder().encode(value).byteLength;
+
+const buildLargeCollaborationMarkdown = () => {
+  const seed = buildLargeEditorMarkdown({ sections: 70, paragraphRepeats: 2 });
+  const chunks = [];
+  let byteLength = 0;
+  let index = 0;
+
+  while (byteLength < LARGE_COLLAB_DOC_TARGET_BYTES) {
+    const chunk = `\n\n<!-- collab-large-${index + 1} -->\n\n${seed}`;
+    chunks.push(chunk);
+    byteLength += getByteLength(chunk);
+    index += 1;
+  }
+
+  return chunks.join("").trimStart();
+};
+
+const getInitialSoakDocument = () => {
+  const size = (process.env.TABULA_COLLAB_TORTURE_DOC_SIZE ?? "").toLowerCase();
+  if (size === "150kb" || size === "large") {
+    return buildLargeCollaborationMarkdown();
+  }
+  if (size === "1mb") {
+    return buildOneMegabyteEditorMarkdown();
+  }
+  return null;
+};
+
+const getEditorStateText = async (page) =>
+  page.evaluate(() => {
+    const content = document.querySelector(".cm-content");
+    const view = content?.cmView?.view ?? content?.cmTile?.view;
+    const docText = view?.state?.doc?.toString?.();
+    return typeof docText === "string" ? docText : null;
+  });
+
+const getVisibleEditorLines = async (page) =>
   page.$$eval(".cm-content .cm-line", (lines) =>
     lines.map((line) => {
       const clone = line.cloneNode(true);
@@ -12,25 +56,75 @@ const getEditorLines = async (page) =>
     }),
   );
 
-const getEditorText = async (page) => (await getEditorLines(page)).join("\n");
+const getEditorText = async (page) => (await getEditorStateText(page)) ?? (await getVisibleEditorLines(page)).join("\n");
 
-const waitForEditorText = async (page, expectedText, timeout = 12_000) => {
+const getPageDiagnostics = async (page) =>
+  page.evaluate(() => ({
+    url: window.location.href,
+    bodyTextPrefix: document.body?.textContent?.slice(0, 240) ?? "",
+    cmContentCount: document.querySelectorAll(".cm-content").length,
+    fileShellClass: document.querySelector(".file-shell")?.className ?? null,
+    activeTab: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? null,
+    liveStatus: document.querySelector(".status-save-state")?.textContent?.trim() ?? null,
+  }));
+
+const getTextFingerprint = (text) => {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+
+  return {
+    hash,
+    length: text.length,
+    prefix: text.slice(0, 80),
+    suffix: text.slice(-160),
+  };
+};
+
+const waitForEditorText = async (page, expectedText, timeout = 12_000, label = "editor") => {
+  const expectedFingerprint = getTextFingerprint(expectedText);
   try {
     await page.waitForFunction(
-      ({ expectedText }) => {
+      ({ expectedFingerprint }) => {
+        const getFingerprint = (text) => {
+          let hash = 2166136261;
+          for (let index = 0; index < text.length; index += 1) {
+            hash ^= text.charCodeAt(index);
+            hash = Math.imul(hash, 16777619) >>> 0;
+          }
+          return {
+            hash,
+            length: text.length,
+          };
+        };
+        const content = document.querySelector(".cm-content");
+        const view = content?.cmView?.view ?? content?.cmTile?.view;
+        const docText = view?.state?.doc?.toString?.();
+        if (typeof docText === "string") {
+          const fingerprint = getFingerprint(docText);
+          return fingerprint.length === expectedFingerprint.length && fingerprint.hash === expectedFingerprint.hash;
+        }
+
         const lines = Array.from(document.querySelectorAll(".cm-content .cm-line")).map((line) => {
           const clone = line.cloneNode(true);
           clone.querySelectorAll(".cm-remote-cursor").forEach((cursor) => cursor.remove());
           return clone.textContent ?? "";
         });
-        return lines.join("\n") === expectedText;
+        const fingerprint = getFingerprint(lines.join("\n"));
+        return fingerprint.length === expectedFingerprint.length && fingerprint.hash === expectedFingerprint.hash;
       },
-      { expectedText },
+      { expectedFingerprint },
       { timeout },
     );
   } catch (error) {
+    const actualText = await getEditorText(page).catch(() => "");
+    const diagnostics = await getPageDiagnostics(page).catch((diagnosticError) => ({
+      diagnosticError: diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError),
+    }));
     throw new Error(
-      `Timed out waiting for editor text.\nExpected: ${JSON.stringify(expectedText)}\nActual: ${JSON.stringify(await getEditorText(page))}\n${error.message}`,
+      `Timed out waiting for ${label} text.\nExpected: ${JSON.stringify(expectedFingerprint)}\nActual: ${JSON.stringify(getTextFingerprint(actualText))}\nDiagnostics: ${JSON.stringify(diagnostics)}\n${error.message}`,
     );
   }
 };
@@ -60,6 +154,18 @@ const startLiveSession = async ({ baseUrl, firstPage, secondPage, waitForEditorR
   await secondPage.waitForSelector(".tab-item.live.active");
   await ensureEditMode(firstPage, waitForEditorReady);
   await ensureEditMode(secondPage, waitForEditorReady);
+  await firstPage.waitForFunction(
+    () => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 1,
+    undefined,
+    { timeout: 15_000 },
+  );
+  await secondPage.waitForFunction(
+    () => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 1,
+    undefined,
+    { timeout: 15_000 },
+  );
+
+  return { sharedPath: roomUrl.pathname + roomUrl.hash };
 };
 
 const toggleLineWrapping = async (page) => {
@@ -67,13 +173,87 @@ const toggleLineWrapping = async (page) => {
   await page.getByRole("button", { name: "Line Wrapping" }).click();
 };
 
-const assertConverged = async ({ expect, firstPage, secondPage, expectedText }) => {
-  await waitForEditorText(firstPage, expectedText);
-  await waitForEditorText(secondPage, expectedText);
+const assertConverged = async ({ expect, firstPage, secondPage, expectedText, timeout }) => {
+  await waitForEditorText(firstPage, expectedText, timeout, "first editor");
+  await waitForEditorText(secondPage, expectedText, timeout, "second editor");
   expect(
     (await getEditorText(firstPage)) === (await getEditorText(secondPage)),
     "Live editors should converge to byte-level identical Markdown.",
   );
+};
+
+const assertAllConverged = async ({ expect, pages, expectedText, timeout }) => {
+  for (const [index, page] of pages.entries()) {
+    await waitForEditorText(page, expectedText, timeout, `editor ${index + 1}`);
+  }
+
+  const fingerprints = await Promise.all(pages.map(async (page) => getTextFingerprint(await getEditorText(page))));
+  const expectedFingerprint = getTextFingerprint(expectedText);
+  expect(
+    fingerprints.every(
+      (fingerprint) =>
+        fingerprint.length === expectedFingerprint.length && fingerprint.hash === expectedFingerprint.hash,
+    ),
+    "All live editors should converge to byte-level identical Markdown.",
+  );
+};
+
+const replaceEditorDocumentText = async (page, text) => {
+  await page.evaluate((text) => {
+    const content = document.querySelector(".cm-content");
+    const view = content?.cmView?.view ?? content?.cmTile?.view;
+    if (!view?.dispatch) {
+      throw new Error("CodeMirror view was not available for collaboration fixture setup.");
+    }
+    view.dispatch({
+      changes: {
+        from: 0,
+        to: view.state.doc.length,
+        insert: text,
+      },
+    });
+  }, text);
+};
+
+const enableSplitMode = async (page, waitForEditorReady) => {
+  const splitButton = page.getByRole("button", { name: "Split", exact: true });
+  if ((await splitButton.count()) > 0) {
+    await splitButton.click();
+  }
+  await waitForEditorReady(page, { mode: "split" });
+};
+
+const prepareLargeSoakDocument = async ({
+  expect,
+  firstPage,
+  focusMarkdownEditor,
+  waitForEditorReady,
+  pages,
+}) => {
+  const initialDocument = getInitialSoakDocument();
+  if (!initialDocument) {
+    return null;
+  }
+
+  await focusMarkdownEditor(firstPage);
+  await replaceEditorDocumentText(firstPage, initialDocument);
+  await assertAllConverged({
+    expect,
+    pages,
+    expectedText: initialDocument,
+    timeout: Number(process.env.TABULA_COLLAB_TORTURE_INITIAL_SYNC_TIMEOUT_MS ?? 60_000),
+  });
+
+  if (process.env.TABULA_COLLAB_TORTURE_SPLIT === "1") {
+    for (const page of pages) {
+      await enableSplitMode(page, waitForEditorReady);
+    }
+  }
+
+  console.log(
+    `[collab-soak] initialDocBytes=${getByteLength(initialDocument)} initialDocLines=${initialDocument.split("\n").length}`,
+  );
+  return initialDocument;
 };
 
 const runDeterministicEditorTorture = async ({
@@ -160,28 +340,90 @@ const runDeterministicEditorTorture = async ({
   return alternatingSecond;
 };
 
-const runOptionalSoak = async ({ expect, firstPage, secondPage, focusMarkdownEditor, expectedText }) => {
+const runOptionalSoak = async ({ expect, pages, focusMarkdownEditor, expectedText }) => {
   const soakMs = Number(process.env.TABULA_COLLAB_TORTURE_SOAK_MS ?? 0);
   if (!Number.isFinite(soakMs) || soakMs <= 0) {
     return expectedText;
   }
+  const soakIntervalMs = Math.max(0, Number(process.env.TABULA_COLLAB_TORTURE_SOAK_INTERVAL_MS ?? 1000));
+  const soakIterationTimeoutMs = Math.max(
+    5_000,
+    Number(process.env.TABULA_COLLAB_TORTURE_ITERATION_TIMEOUT_MS ?? 20_000),
+  );
+  const progressIntervalMs = Math.max(10_000, Number(process.env.TABULA_COLLAB_TORTURE_PROGRESS_MS ?? 60_000));
+  const checkpointInterval = Math.max(0, Number(process.env.TABULA_COLLAB_TORTURE_CHECKPOINT_INTERVAL ?? 300));
+  const writerSwitchInterval = Math.max(1, Number(process.env.TABULA_COLLAB_TORTURE_WRITER_SWITCH_INTERVAL ?? 30));
 
   let currentText = expectedText;
-  const deadline = Date.now() + soakMs;
+  const startedAt = Date.now();
+  const deadline = startedAt + soakMs;
+  let lastProgressAt = startedAt;
   let index = 0;
+  let currentWriterPage = null;
 
   while (Date.now() < deadline) {
-    const page = index % 2 === 0 ? firstPage : secondPage;
-    await focusMarkdownEditor(page);
-    await page.keyboard.press("ControlOrMeta+End");
-    const token = ` soak-${index + 1}`;
-    await page.keyboard.insertText(token);
-    currentText += token;
-    await assertConverged({ expect, firstPage, secondPage, expectedText: currentText });
+    const iterationStartedAt = Date.now();
+    const nextIndex = index + 1;
+    await Promise.race([
+      (async () => {
+        const page = pages[Math.floor(index / writerSwitchInterval) % pages.length];
+        if (page !== currentWriterPage) {
+          currentWriterPage = page;
+          await focusMarkdownEditor(page);
+          await page.keyboard.press("ControlOrMeta+End");
+        }
+        if (checkpointInterval > 0 && nextIndex % checkpointInterval === 0) {
+          currentText = `Soak checkpoint ${nextIndex}\nThis document is intentionally compacted during the long-running collaboration soak.`;
+          await page.keyboard.press("ControlOrMeta+A");
+          await page.keyboard.insertText(currentText);
+        } else if (nextIndex % 40 === 0) {
+          await page.keyboard.press("Enter");
+          const token = `soak-line-${nextIndex}`;
+          await page.keyboard.insertText(token);
+          currentText += `\n${token}`;
+        } else {
+          const token = ` soak-${nextIndex}`;
+          await page.keyboard.insertText(token);
+          currentText += token;
+        }
+        await assertAllConverged({
+          expect,
+          pages,
+          expectedText: currentText,
+          timeout: soakIterationTimeoutMs,
+        });
+      })(),
+      delay(soakIterationTimeoutMs + 5_000).then(() => {
+        throw new Error(`Collaboration soak iteration ${nextIndex} exceeded ${soakIterationTimeoutMs}ms.`);
+      }),
+    ]);
     index += 1;
+    if (Date.now() - lastProgressAt >= progressIntervalMs) {
+      console.log(
+        `[collab-soak] elapsedMs=${Date.now() - startedAt} iterations=${index} textLength=${currentText.length}`,
+      );
+      lastProgressAt = Date.now();
+    }
+    const remainingIntervalMs = soakIntervalMs - (Date.now() - iterationStartedAt);
+    if (remainingIntervalMs > 0) {
+      if (Date.now() + remainingIntervalMs >= deadline) {
+        break;
+      }
+      await delay(remainingIntervalMs);
+    }
   }
 
+  console.log(`[collab-soak] completed elapsedMs=${Date.now() - startedAt} iterations=${index} textLength=${currentText.length}`);
   return currentText;
+};
+
+const closeContextWithTimeout = async (context) => {
+  await Promise.race([
+    context.close(),
+    delay(5_000).then(() => {
+      throw new Error("Timed out closing collaboration soak browser context.");
+    }),
+  ]);
 };
 
 export async function run(ctx) {
@@ -192,27 +434,99 @@ export async function run(ctx) {
     focusMarkdownEditor,
     waitForEditorReady,
   } = ctx;
+  const peerCount = Math.max(
+    2,
+    Math.min(5, Number(process.env.TABULA_COLLAB_TORTURE_PEER_COUNT ?? 2) || 2),
+  );
   const firstContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const secondContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const extraPeerContexts = [];
+  const extraPeerPages = [];
+  let primaryContextsClosed = false;
   const firstPage = await firstContext.newPage();
   const secondPage = await secondContext.newPage();
 
   try {
-    await startLiveSession({ baseUrl, firstPage, secondPage, waitForEditorReady });
-    const expectedText = await runDeterministicEditorTorture({
+    const { sharedPath } = await startLiveSession({ baseUrl, firstPage, secondPage, waitForEditorReady });
+    for (let peerIndex = 3; peerIndex <= peerCount; peerIndex += 1) {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      const page = await context.newPage();
+      extraPeerContexts.push(context);
+      extraPeerPages.push(page);
+      await page.goto(`${baseUrl}${sharedPath}`);
+      await page.waitForSelector(".tab-item.live.active");
+      await ensureEditMode(page, waitForEditorReady);
+    }
+    const pages = [firstPage, secondPage, ...extraPeerPages];
+    if (peerCount > 2) {
+      await Promise.all(
+        pages.map((page) =>
+          page.waitForFunction(
+            ({ expectedPeers }) =>
+              document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= expectedPeers - 1,
+            { expectedPeers: peerCount },
+            { timeout: 15_000 },
+          ),
+        ),
+      );
+      const baselineText = await getEditorText(firstPage);
+      await assertAllConverged({
+        expect,
+        pages,
+        expectedText: baselineText,
+        timeout: 30_000,
+      });
+    }
+
+    let expectedText = await runDeterministicEditorTorture({
       expect,
       firstPage,
       secondPage,
       focusMarkdownEditor,
     });
-    await runOptionalSoak({
+    const largeInitialText = await prepareLargeSoakDocument({
       expect,
       firstPage,
-      secondPage,
+      focusMarkdownEditor,
+      waitForEditorReady,
+      pages,
+    });
+    if (largeInitialText) {
+      expectedText = largeInitialText;
+    }
+
+    const finalText = await runOptionalSoak({
+      expect,
+      pages,
       focusMarkdownEditor,
       expectedText,
     });
+    await assertAllConverged({
+      expect,
+      pages,
+      expectedText: finalText,
+      timeout: Number(process.env.TABULA_COLLAB_TORTURE_FINAL_SYNC_TIMEOUT_MS ?? 60_000),
+    });
+    if (process.env.TABULA_COLLAB_TORTURE_VERIFY_REENTRY === "1") {
+      await Promise.all(extraPeerContexts.map(closeContextWithTimeout));
+      extraPeerContexts.length = 0;
+      await Promise.all([closeContextWithTimeout(firstContext), closeContextWithTimeout(secondContext)]);
+      primaryContextsClosed = true;
+      const recoveryContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      try {
+        const recoveryPage = await recoveryContext.newPage();
+        await recoveryPage.goto(`${baseUrl}${sharedPath}`);
+        await recoveryPage.waitForSelector(".tab-item.live.active");
+        await waitForEditorText(recoveryPage, finalText, 60_000, "reopened recovery editor");
+      } finally {
+        await closeContextWithTimeout(recoveryContext);
+      }
+      return;
+    }
   } finally {
-    await Promise.all([firstContext.close(), secondContext.close()]);
+    await Promise.all([
+      ...extraPeerContexts.map(closeContextWithTimeout),
+      ...(primaryContextsClosed ? [] : [closeContextWithTimeout(firstContext), closeContextWithTimeout(secondContext)]),
+    ]);
   }
 }

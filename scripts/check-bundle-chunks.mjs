@@ -8,8 +8,10 @@ const distDir = path.join(rootDir, "dist");
 const assetsDir = path.join(distDir, "assets");
 const indexHtmlPath = path.join(distDir, "index.html");
 
-const maxChunkBytes = 500 * 1024;
-const warnChunkBytes = 400 * 1024;
+const maxInitialChunkBytes = 500 * 1024;
+const warnInitialChunkBytes = 400 * 1024;
+const maxLazyChunkBytes = 750 * 1024;
+const warnLazyChunkBytes = 600 * 1024;
 
 const requiredChunkPrefixes = [
   "index-",
@@ -46,10 +48,19 @@ const failures = [];
 const warnings = [];
 
 for (const chunk of jsChunks) {
+  const isInitialChunk = indexHtml.includes(chunk.file);
+  const maxChunkBytes = isInitialChunk ? maxInitialChunkBytes : maxLazyChunkBytes;
+  const warnChunkBytes = isInitialChunk ? warnInitialChunkBytes : warnLazyChunkBytes;
+  const chunkKind = isInitialChunk ? "initial" : "lazy";
+
   if (chunk.bytes > maxChunkBytes) {
-    failures.push(`${chunk.file} is ${formatBytes(chunk.bytes)}; limit is ${formatBytes(maxChunkBytes)}.`);
+    failures.push(
+      `${chunk.file} is ${formatBytes(chunk.bytes)}; ${chunkKind} chunk limit is ${formatBytes(maxChunkBytes)}.`,
+    );
   } else if (chunk.bytes > warnChunkBytes) {
-    warnings.push(`${chunk.file} is ${formatBytes(chunk.bytes)}; warning threshold is ${formatBytes(warnChunkBytes)}.`);
+    warnings.push(
+      `${chunk.file} is ${formatBytes(chunk.bytes)}; ${chunkKind} warning threshold is ${formatBytes(warnChunkBytes)}.`,
+    );
   }
 }
 

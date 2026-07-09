@@ -9,11 +9,14 @@ import {
 } from "../share";
 import {
   syncUrlForFile,
+  writeStoredWorkspace,
+  writeStoredWorkspaceManifest,
   type FileComment,
   type InitialWorkspaceSnapshot,
   type WorkspaceFile,
   type WorkspaceState,
 } from "../workspaceStorage";
+import { clientErrorReporter } from "../observability/clientErrorReporting";
 import { useEventCallback } from "./useEventCallback";
 
 export type PendingJsonShareImport =
@@ -66,6 +69,8 @@ export function useJsonShareImportController({
     handledJsonShareRouteRef.current = null;
     const nextActiveFile = replaceWorkspace(workspace);
     replaceCommentsByFileId(workspace.commentsByFileId);
+    writeStoredWorkspaceManifest(workspace);
+    writeStoredWorkspace(workspace);
     clearFileHistory();
     resetCollaborationState(nextActiveFile?.roomId ? "connecting" : "idle");
     closeFloatingChrome();
@@ -87,6 +92,11 @@ export function useJsonShareImportController({
       handledJsonShareRouteRef.current = importRoute.routeKey;
 
       if (importRoute.status === "invalid") {
+        clientErrorReporter.report({
+          feature: "json-share",
+          operation: "import-route",
+          error: new Error(importRoute.errorMessage),
+        });
         setJsonShareImport({
           status: "error",
           errorMessage: importRoute.errorMessage,
@@ -99,6 +109,11 @@ export function useJsonShareImportController({
 
       const serviceUrl = getConfiguredJsonShareServiceUrl();
       if (!serviceUrl) {
+        clientErrorReporter.report({
+          feature: "json-share",
+          operation: "import-config",
+          error: new Error("Snapshot links are not configured for this build."),
+        });
         setJsonShareImport({
           status: "error",
           route,
@@ -118,6 +133,11 @@ export function useJsonShareImportController({
             return;
           }
           if (!snapshot) {
+            clientErrorReporter.report({
+              feature: "json-share",
+              operation: "import-read",
+              error: new Error("This snapshot link was not found or has expired."),
+            });
             setJsonShareImport({
               status: "error",
               route,
@@ -139,6 +159,11 @@ export function useJsonShareImportController({
           if (cancelled) {
             return;
           }
+          clientErrorReporter.report({
+            feature: "json-share",
+            operation: "import-read",
+            error,
+          });
           setJsonShareImport({
             status: "error",
             route,

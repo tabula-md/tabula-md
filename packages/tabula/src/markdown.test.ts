@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getMarkdownDocumentTitle,
   getOutlineHeadings,
+  getOutlineHeadingsFromMarkdown,
   getPreviewBody,
   getSearchMatches,
   parseFrontmatter,
@@ -98,6 +99,13 @@ Body`;
 
   it("extracts outline headings from preview body line positions", () => {
     expect(getOutlineHeadings(getPreviewBody("\n# Intro\n\n## Scope"))).toEqual([
+      { depth: 1, text: "Intro", lineIndex: 1, sourceLineIndex: 1 },
+      { depth: 2, text: "Scope", lineIndex: 3, sourceLineIndex: 3 },
+    ]);
+  });
+
+  it("extracts outline headings directly from markdown text", () => {
+    expect(getOutlineHeadingsFromMarkdown("\n# Intro\n\n## Scope\n\n#### Hidden")).toEqual([
       { depth: 1, text: "Intro", lineIndex: 1, sourceLineIndex: 1 },
       { depth: 2, text: "Scope", lineIndex: 3, sourceLineIndex: 3 },
     ]);

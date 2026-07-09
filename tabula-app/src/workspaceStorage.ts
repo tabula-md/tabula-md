@@ -25,16 +25,19 @@ export type { FileViewMode, ReadingWidth };
 export const PROJECT_STORAGE_VERSION = 5;
 export const WORKSPACE_STORAGE_VERSION = PROJECT_STORAGE_VERSION;
 export const PROJECT_STORAGE_KEY = "tabula.project.v5";
+export const PROJECT_STORAGE_MANIFEST_KEY = "tabula.project.manifest.v1";
 const STARTER_MARKDOWN = "";
 export const README_FILE_ID = "tabula-readme";
 
 export type WorkspaceStorageAdapter = {
   getItem: (key: string) => string | null;
+  removeItem?: (key: string) => void;
   setItem: (key: string, value: string) => void;
 };
 
 export const browserWorkspaceStorageAdapter: WorkspaceStorageAdapter = {
   getItem: (key) => window.localStorage.getItem(key),
+  removeItem: (key) => window.localStorage.removeItem(key),
   setItem: (key, value) => window.localStorage.setItem(key, value),
 };
 const DEFAULT_README_REFRESH_MARKERS = [
@@ -163,6 +166,16 @@ export type StoredProjectV5 = {
   fileOrder: string[];
   files: Record<string, StoredWorkspaceFile>;
   commentsByFileId: Record<string, FileComment[]>;
+};
+
+export type StoredWorkspaceManifestV1 = {
+  schema: "tabula.project.manifest";
+  version: 1;
+  savedAt: string;
+  activeFileId: string;
+  openFileIds: string[];
+  fileCount: number;
+  commentCount: number;
 };
 
 export type LocationRoom = {
@@ -650,11 +663,41 @@ export const createStoredWorkspace = ({
   commentsByFileId,
 });
 
+export const createStoredWorkspaceManifest = ({
+  files,
+  openFileIds = files.map((file) => file.id),
+  activeFileId,
+  commentsByFileId,
+}: CreateStoredWorkspaceInput): StoredWorkspaceManifestV1 => ({
+  schema: "tabula.project.manifest",
+  version: 1,
+  savedAt: new Date().toISOString(),
+  activeFileId,
+  openFileIds: openFileIds.filter(
+    (fileId, index, fileIdList) => files.some((file) => file.id === fileId) && fileIdList.indexOf(fileId) === index,
+  ),
+  fileCount: files.length,
+  commentCount: Object.values(commentsByFileId).reduce((count, comments) => count + comments.length, 0),
+});
+
 export const writeStoredWorkspace = (
   workspace: WorkspaceState,
   storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
 ) => {
   storage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createStoredWorkspace(workspace)));
+};
+
+export const writeStoredWorkspaceManifest = (
+  workspace: WorkspaceState,
+  storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
+) => {
+  storage.setItem(PROJECT_STORAGE_MANIFEST_KEY, JSON.stringify(createStoredWorkspaceManifest(workspace)));
+};
+
+export const clearStoredWorkspace = (
+  storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
+) => {
+  storage.removeItem?.(PROJECT_STORAGE_KEY);
 };
 
 export const initialWorkspaceState = (): WorkspaceState => {

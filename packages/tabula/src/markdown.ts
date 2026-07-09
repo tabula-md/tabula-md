@@ -158,6 +158,45 @@ export const getOutlineHeadings = (previewBody: PreviewBody): MarkdownHeading[] 
     })
     .filter((heading): heading is MarkdownHeading => Boolean(heading?.text));
 
+export const getOutlineHeadingsFromMarkdown = (markdown: string): MarkdownHeading[] => {
+  const headings: MarkdownHeading[] = [];
+  let lineIndex = 0;
+  let lineStart = 0;
+
+  while (lineStart <= markdown.length) {
+    const lineBreakIndex = markdown.indexOf("\n", lineStart);
+    const lineEnd =
+      lineBreakIndex === -1
+        ? markdown.length
+        : markdown[lineBreakIndex - 1] === "\r"
+          ? lineBreakIndex - 1
+          : lineBreakIndex;
+    const line = markdown.slice(lineStart, lineEnd);
+    const match = line.match(/^(#{1,3})\s+(.+)$/);
+
+    if (match) {
+      const text = match[2].replace(/\s+#+\s*$/, "").trim();
+      if (text) {
+        headings.push({
+          depth: match[1].length,
+          text,
+          lineIndex,
+          sourceLineIndex: lineIndex,
+        });
+      }
+    }
+
+    if (lineBreakIndex === -1) {
+      break;
+    }
+
+    lineIndex += 1;
+    lineStart = lineBreakIndex + 1;
+  }
+
+  return headings;
+};
+
 export const getLineStartOffset = (markdown: string, targetLineIndex: number) => {
   const lines = markdown.split("\n");
   let offset = 0;

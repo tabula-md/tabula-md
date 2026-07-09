@@ -1,5 +1,5 @@
-import { type Extension } from "@codemirror/state";
-import { Decoration, EditorView, WidgetType } from "@codemirror/view";
+import { StateEffect, StateField, type EditorState, type Extension, type Transaction } from "@codemirror/state";
+import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
 import type { Collaborator } from "../collaboration";
 import {
   getCollaboratorPresenceLabel,
@@ -8,6 +8,87 @@ import {
 import { clampEditorPosition } from "./editorTransactions";
 
 const toCssColor = (color: string) => (/^#[0-9a-fA-F]{6}$/.test(color) ? color : "#763fc8");
+
+export type EditorPresenceState = {
+  collaborators: Collaborator[];
+  currentFileTitle?: string;
+  currentRoomId?: string;
+};
+
+type EditorPresenceFieldValue = {
+  decorations: DecorationSet;
+  signature: string;
+  state: EditorPresenceState;
+};
+
+export const updateEditorPresenceEffect = StateEffect.define<EditorPresenceState>();
+
+const getSelectionSignature = (selection: Collaborator["selection"]) =>
+  selection ? `${selection.from}:${selection.to}` : "";
+
+const mapEditorPresenceStateThroughTransaction = (
+  presenceState: EditorPresenceState,
+  transaction: Transaction,
+): EditorPresenceState => {
+  if (presenceState.collaborators.length === 0 || !transaction.docChanged) {
+    return presenceState;
+  }
+
+  return {
+    ...presenceState,
+    collaborators: presenceState.collaborators.map((collaborator) => {
+      const selection = collaborator.selection;
+      if (!selection) {
+        return collaborator;
+      }
+
+      if (selection.from === selection.to) {
+        const position = transaction.changes.mapPos(selection.to, -1);
+        return {
+          ...collaborator,
+          selection: {
+            ...selection,
+            from: position,
+            to: position,
+            lineNumber: undefined,
+            toLineNumber: undefined,
+          },
+        };
+      }
+
+      return {
+        ...collaborator,
+        selection: {
+          ...selection,
+          from: transaction.changes.mapPos(selection.from, -1),
+          to: transaction.changes.mapPos(selection.to, 1),
+          lineNumber: undefined,
+          toLineNumber: undefined,
+        },
+      };
+    }),
+  };
+};
+
+export const getEditorPresenceSignature = ({
+  collaborators = [],
+  currentFileTitle = "",
+  currentRoomId = "",
+}: EditorPresenceState) =>
+  [
+    currentFileTitle,
+    currentRoomId,
+    ...collaborators.map((collaborator) =>
+      [
+        collaborator.id,
+        collaborator.name,
+        collaborator.color,
+        collaborator.roomId ?? "",
+        collaborator.fileTitle ?? "",
+        getSelectionSignature(collaborator.selection),
+      ].join(":"),
+    ),
+  ].join("|");
 
 class RemoteCursorWidget extends WidgetType {
   constructor(
@@ -52,17 +133,16 @@ export const createEditorPresenceExtension = (
   collaborators: Collaborator[] = [],
   currentFileTitle?: string,
   currentRoomId?: string,
-): Extension =>
-  EditorView.decorations.of((view) => {
-    if (collaborators.length === 0) {
+): Extension => {
+  const createPresenceDecorations = (state: EditorState, presenceState: EditorPresenceState) => {
+    if (presenceState.collaborators.length === 0) {
       return Decoration.set([]);
     }
 
-    const text = view.state.doc.toString();
-    const docLength = view.state.doc.length;
-    const ranges = collaborators
+    const docLength = state.doc.length;
+    const ranges = presenceState.collaborators
       .flatMap((collaborator) => {
-        if (!isCollaboratorInFile(collaborator, currentFileTitle, currentRoomId)) {
+        if (!isCollaboratorInFile(collaborator, presenceState.currentFileTitle, presenceState.currentRoomId)) {
           return [];
         }
 
@@ -75,8 +155,15 @@ export const createEditorPresenceExtension = (
         const from = clampEditorPosition(Math.min(selection.from, selection.to), docLength);
         const to = clampEditorPosition(Math.max(selection.from, selection.to), docLength);
         const anchor = clampEditorPosition(selection.to, docLength);
-        const line = view.state.doc.lineAt(anchor);
-        const label = getCollaboratorPresenceLabel(collaborator, text);
+        const line = state.doc.lineAt(anchor);
+        const label = getCollaboratorPresenceLabel({
+          ...collaborator,
+          selection: {
+            ...selection,
+            lineNumber: line.number,
+            toLineNumber: line.number,
+          },
+        });
         const style = `--remote-presence-color: ${color};`;
         const decorations = [
           Decoration.line({
@@ -109,4 +196,46 @@ export const createEditorPresenceExtension = (
       .sort((first, second) => first.from - second.from || first.to - second.to);
 
     return Decoration.set(ranges, true);
+  };
+  const initialState: EditorPresenceState = {
+    collaborators,
+    currentFileTitle,
+    currentRoomId,
+  };
+
+  const presenceField = StateField.define<EditorPresenceFieldValue>({
+    create: (state) => ({
+      decorations: createPresenceDecorations(state, initialState),
+      signature: getEditorPresenceSignature(initialState),
+      state: initialState,
+    }),
+    update: (value, transaction) => {
+      const presenceEffect = transaction.effects.find((effect) => effect.is(updateEditorPresenceEffect));
+      const nextPresence = mapEditorPresenceStateThroughTransaction(
+        presenceEffect?.value ?? value.state,
+        transaction,
+      );
+      const nextSignature = getEditorPresenceSignature(nextPresence);
+
+      if (nextSignature !== value.signature || transaction.docChanged) {
+        return {
+          decorations: createPresenceDecorations(transaction.state, nextPresence),
+          signature: nextSignature,
+          state: nextPresence,
+        };
+      }
+
+      if (!presenceEffect) {
+        return value;
+      }
+
+      return {
+        ...value,
+        state: nextPresence,
+      };
+    },
+    provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
   });
+
+  return presenceField;
+};

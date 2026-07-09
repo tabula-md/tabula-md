@@ -11,6 +11,7 @@ export const TABULA_HOSTED_SERVICE_COPY = {
 export type TabulaServiceConfig = {
   roomUrl: string | null;
   jsonUrl: string | null;
+  errorReportUrl: string | null;
   firebaseConfig: string | null;
   publishUrl: string | null;
   plusEnabled: boolean;
@@ -22,6 +23,7 @@ type TabulaServiceEnv = Partial<
   Pick<
     ImportMetaEnv,
     | "DEV"
+    | "VITE_TABULA_ERROR_REPORT_URL"
     | "VITE_TABULA_FIREBASE_CONFIG"
     | "VITE_TABULA_JSON_URL"
     | "VITE_TABULA_PLUS_ENABLED"
@@ -50,6 +52,7 @@ export const getTabulaServiceConfig = (
 ): TabulaServiceConfig => ({
   roomUrl: normalizeServiceUrl(env.VITE_TABULA_ROOM_URL),
   jsonUrl: normalizeServiceUrl(env.VITE_TABULA_JSON_URL),
+  errorReportUrl: normalizeServiceUrl(env.VITE_TABULA_ERROR_REPORT_URL),
   firebaseConfig: env.VITE_TABULA_FIREBASE_CONFIG?.trim() || null,
   publishUrl: normalizeServiceUrl(env.VITE_TABULA_PUBLISH_URL),
   plusEnabled: isEnabledFlag(env.VITE_TABULA_PLUS_ENABLED),

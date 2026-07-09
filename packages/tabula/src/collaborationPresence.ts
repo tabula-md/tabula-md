@@ -23,6 +23,11 @@ export const getLineNumberForPresenceSelection = (text: string, selection?: Coll
     return null;
   }
 
+  const metadataLineNumber = selection.lineNumber ?? selection.toLineNumber;
+  if (typeof metadataLineNumber === "number" && Number.isInteger(metadataLineNumber) && metadataLineNumber > 0) {
+    return metadataLineNumber;
+  }
+
   return getLineNumberForPresenceOffset(text, selection.to);
 };
 
@@ -52,7 +57,7 @@ export const getCollaboratorPresenceDetail = (
   return lineNumber ? `Line ${lineNumber}` : "In this file";
 };
 
-export const getCollaboratorPresenceLabel = (collaborator: CollaborationCollaborator, text: string) => {
+export const getCollaboratorPresenceLabel = (collaborator: CollaborationCollaborator, text = "") => {
   const lineNumber = getLineNumberForPresenceSelection(text, collaborator.selection);
   const segments = [collaborator.name];
 

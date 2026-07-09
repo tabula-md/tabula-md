@@ -26,6 +26,24 @@ describe("collaborator registry", () => {
     expect(registry.prune(["1"])).toBe(false);
   });
 
+  it("ignores repeated presence payloads that do not change collaborator state", () => {
+    const registry = createCollaboratorRegistry();
+    const collaborator = {
+      id: "1",
+      name: "Ada",
+      color: "#333",
+      lastSeen: 3,
+      roomId: "room-1",
+      fileTitle: "README.md",
+      selection: { from: 4, to: 8 },
+    };
+
+    expect(registry.upsert(collaborator, "self")).toBe(true);
+    expect(registry.upsert({ ...collaborator }, "self")).toBe(false);
+    expect(registry.upsert({ ...collaborator, lastSeen: 4 }, "self")).toBe(false);
+    expect(registry.upsert({ ...collaborator, selection: { from: 4, to: 9 } }, "self")).toBe(true);
+  });
+
   it("remaps remote caret positions through local text patches", () => {
     expect(
       mapCollaborationPositionThroughTextPatches(

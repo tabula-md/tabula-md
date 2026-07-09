@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { createWorkspacePersistenceQueue } from "../workspacePersistence";
-import type { WorkspaceState } from "../workspaceStorage";
+import { writeStoredWorkspace, type WorkspaceState } from "../workspaceStorage";
 
 type UseQueuedWorkspacePersistenceOptions = {
   enabled?: boolean;
@@ -15,8 +15,13 @@ export const useQueuedWorkspacePersistence = (
   if (!queueRef.current) {
     queueRef.current = createWorkspacePersistenceQueue();
   }
+  const enabledRef = useRef(enabled);
+  const latestWorkspaceRef = useRef(workspace);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    enabledRef.current = enabled;
+    latestWorkspaceRef.current = workspace;
+
     if (!enabled) {
       queueRef.current?.cancel();
       return;
@@ -27,7 +32,12 @@ export const useQueuedWorkspacePersistence = (
 
   useEffect(() => {
     const flushPendingWorkspace = () => {
+      if (!enabledRef.current) {
+        return;
+      }
+
       queueRef.current?.flush();
+      writeStoredWorkspace(latestWorkspaceRef.current);
     };
 
     window.addEventListener("pagehide", flushPendingWorkspace);

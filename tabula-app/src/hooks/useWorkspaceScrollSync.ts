@@ -60,6 +60,8 @@ export function useWorkspaceScrollSync({
   const lastSplitScrollSurfaceRef = useRef<ModeScrollSurface>("editor");
   const pendingModeScrollRef = useRef<PendingModeScroll | null>(null);
   const pendingEditorCommandRef = useRef<PendingEditorCommand | null>(null);
+  const pendingSplitScrollRef = useRef<{ source: ModeScrollSurface; ratio: number } | null>(null);
+  const splitScrollFrameRef = useRef<number | null>(null);
   const [editorCommandRevision, setEditorCommandRevision] = useState(0);
   const workspaceRef = useRef<HTMLElement | null>(null);
   const editorSurfaceRef = useRef<HTMLElement | null>(null);
@@ -114,7 +116,12 @@ export function useWorkspaceScrollSync({
     const sourceElement = getSurfaceElement(sourceSurface);
     return {
       surface: sourceSurface,
-      ratio: sourceElement && isScrollableElement(sourceElement) ? getScrollRatio(sourceElement) : (editorRef.current?.getScrollRatio() ?? 0),
+      ratio:
+        sourceSurface === "editor"
+          ? (editorRef.current?.getScrollRatio() ?? 0)
+          : sourceElement && isScrollableElement(sourceElement)
+            ? getScrollRatio(sourceElement)
+            : 0,
     };
   };
 
@@ -144,9 +151,7 @@ export function useWorkspaceScrollSync({
         return;
       }
 
-      if (editorSurfaceRef.current) {
-        scrollElementToRatio(editorSurfaceRef.current, anchor.ratio);
-      }
+      editorRef.current?.scrollToRatio(anchor.ratio);
       if (previewSurfaceRef.current) {
         scrollElementToRatio(previewSurfaceRef.current, anchor.ratio);
       }
@@ -161,6 +166,35 @@ export function useWorkspaceScrollSync({
   const releaseScrollSync = () => {
     window.requestAnimationFrame(() => {
       scrollSyncingRef.current = false;
+    });
+  };
+
+  const queueSplitScrollSync = (source: ModeScrollSurface, ratio: number) => {
+    lastSplitScrollSurfaceRef.current = source;
+    pendingSplitScrollRef.current = { source, ratio: clampScrollRatio(ratio) };
+
+    if (splitScrollFrameRef.current !== null) {
+      return;
+    }
+
+    splitScrollFrameRef.current = window.requestAnimationFrame(() => {
+      splitScrollFrameRef.current = null;
+      const pendingScroll = pendingSplitScrollRef.current;
+      pendingSplitScrollRef.current = null;
+      if (!pendingScroll || activeViewMode !== "split") {
+        return;
+      }
+
+      scrollSyncingRef.current = true;
+      if (pendingScroll.source === "editor") {
+        const previewSurface = previewSurfaceRef.current;
+        if (previewSurface) {
+          scrollElementToRatio(previewSurface, pendingScroll.ratio);
+        }
+      } else {
+        editorRef.current?.scrollToRatio(pendingScroll.ratio);
+      }
+      releaseScrollSync();
     });
   };
 
@@ -263,34 +297,17 @@ export function useWorkspaceScrollSync({
       return;
     }
 
-    lastSplitScrollSurfaceRef.current = "editor";
-
-    const previewSurface = previewSurfaceRef.current;
-    if (!previewSurface) {
-      return;
-    }
-
-    scrollSyncingRef.current = true;
-    scrollElementToRatio(previewSurface, ratio);
-    releaseScrollSync();
+    queueSplitScrollSync("editor", ratio);
   };
 
   const handleEditorSurfaceScroll = () => {
-    if (activeViewMode !== "split" || scrollSyncingRef.current) {
+    if (activeViewMode !== "split") {
       return;
     }
 
-    lastSplitScrollSurfaceRef.current = "editor";
-
-    const editorSurface = editorSurfaceRef.current;
-    const previewSurface = previewSurfaceRef.current;
-    if (!editorSurface || !previewSurface) {
-      return;
-    }
-
-    scrollSyncingRef.current = true;
-    scrollElementToRatio(previewSurface, getScrollRatio(editorSurface));
-    releaseScrollSync();
+    // In desktop split view the CodeMirror scroller is the only editor scroll owner.
+    // This handler remains attached for stacked responsive layouts but should not
+    // drive sync from the non-scrollable editor surface.
   };
 
   const handlePreviewScroll = () => {
@@ -298,20 +315,12 @@ export function useWorkspaceScrollSync({
       return;
     }
 
-    lastSplitScrollSurfaceRef.current = "preview";
-
     const previewSurface = previewSurfaceRef.current;
     if (!previewSurface) {
       return;
     }
 
-    scrollSyncingRef.current = true;
-    if (editorSurfaceRef.current && editorSurfaceRef.current.scrollHeight > editorSurfaceRef.current.clientHeight) {
-      scrollElementToRatio(editorSurfaceRef.current, getScrollRatio(previewSurface));
-    } else {
-      editorRef.current?.scrollToRatio(getScrollRatio(previewSurface));
-    }
-    releaseScrollSync();
+    queueSplitScrollSync("preview", getScrollRatio(previewSurface));
   };
 
   useEffect(() => {
@@ -333,9 +342,15 @@ export function useWorkspaceScrollSync({
     }
 
     scrollSyncingRef.current = true;
-    scrollElementToRatio(previewSurface, editorSurfaceRef.current ? getScrollRatio(editorSurfaceRef.current) : 0);
+    scrollElementToRatio(previewSurface, editorRef.current?.getScrollRatio() ?? 0);
     releaseScrollSync();
   }, [activeViewMode, activeFileId]);
+
+  useEffect(() => () => {
+    if (splitScrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(splitScrollFrameRef.current);
+    }
+  }, []);
 
   return {
     workspaceRef,

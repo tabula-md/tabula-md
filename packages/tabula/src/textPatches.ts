@@ -5,6 +5,8 @@ export type TextPatch = {
 };
 
 export type TextChange = {
+  docLength?: number;
+  lineCount?: number;
   patches: TextPatch[];
 };
 

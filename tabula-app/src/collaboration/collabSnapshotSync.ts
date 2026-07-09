@@ -4,6 +4,7 @@ import type { RoomMeta } from "./liveCollaboration";
 import type { TextChange } from "@tabula-md/tabula";
 
 type TimeoutHandle = unknown;
+type IdleCallbackHandle = unknown;
 export type CollabSnapshotFetchResult = "missing" | "restored" | "unavailable";
 
 type SnapshotRecoveryType = "snapshot-recovered" | "invalid-message";
@@ -22,6 +23,8 @@ type CollabSnapshotSyncOptions = {
   emitRecoveryEvent: (type: SnapshotRecoveryType, message: string) => void;
   setTimeoutFn?: (callback: () => void, delayMs: number) => TimeoutHandle;
   clearTimeoutFn?: (handle: TimeoutHandle) => void;
+  requestIdleCallbackFn?: (callback: () => void, options?: { timeout?: number }) => IdleCallbackHandle;
+  cancelIdleCallbackFn?: (handle: IdleCallbackHandle) => void;
 };
 
 export type CollabSnapshotSync = {
@@ -34,7 +37,26 @@ export type CollabSnapshotSync = {
 
 const defaultSetTimeout = (callback: () => void, delayMs: number): TimeoutHandle => setTimeout(callback, delayMs);
 const defaultClearTimeout = (handle: TimeoutHandle) => clearTimeout(handle as ReturnType<typeof setTimeout>);
-export const collabSnapshotStoreDelayMs = 1_000;
+const defaultRequestIdleCallback = (callback: () => void, options?: { timeout?: number }): IdleCallbackHandle => {
+  const idleScheduler = globalThis as typeof globalThis & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => IdleCallbackHandle;
+  };
+  return idleScheduler.requestIdleCallback
+    ? idleScheduler.requestIdleCallback(callback, options)
+    : defaultSetTimeout(callback, 0);
+};
+const defaultCancelIdleCallback = (handle: IdleCallbackHandle) => {
+  const idleScheduler = globalThis as typeof globalThis & {
+    cancelIdleCallback?: (handle: IdleCallbackHandle) => void;
+  };
+  if (idleScheduler.cancelIdleCallback) {
+    idleScheduler.cancelIdleCallback(handle);
+    return;
+  }
+  defaultClearTimeout(handle);
+};
+export const collabSnapshotStoreDelayMs = 8_000;
+export const collabSnapshotStoreIdleTimeoutMs = 2_000;
 
 export const createCollabSnapshotSync = ({
   roomId,
@@ -50,19 +72,28 @@ export const createCollabSnapshotSync = ({
   emitRecoveryEvent,
   setTimeoutFn = defaultSetTimeout,
   clearTimeoutFn = defaultClearTimeout,
+  requestIdleCallbackFn = defaultRequestIdleCallback,
+  cancelIdleCallbackFn = defaultCancelIdleCallback,
 }: CollabSnapshotSyncOptions): CollabSnapshotSync => {
   let snapshotTimer: TimeoutHandle | undefined;
+  let snapshotIdleCallback: IdleCallbackHandle | undefined;
+  let storePromise: Promise<boolean> | undefined;
+  let shouldStoreAfterCurrentSave = false;
 
   const clearTimer = () => {
     if (snapshotTimer) {
       clearTimeoutFn(snapshotTimer);
       snapshotTimer = undefined;
     }
+    if (snapshotIdleCallback) {
+      cancelIdleCallbackFn(snapshotIdleCallback);
+      snapshotIdleCallback = undefined;
+    }
   };
 
   const refreshMeta = async () => undefined;
 
-  const store = async () => {
+  const performStore = async () => {
     if (!canUseSnapshots()) {
       return false;
     }
@@ -103,6 +134,36 @@ export const createCollabSnapshotSync = ({
     }
   };
 
+  const store = async () => {
+    clearTimer();
+    if (storePromise) {
+      shouldStoreAfterCurrentSave = true;
+      return storePromise;
+    }
+
+    storePromise = performStore();
+    try {
+      return await storePromise;
+    } finally {
+      storePromise = undefined;
+      if (shouldStoreAfterCurrentSave) {
+        shouldStoreAfterCurrentSave = false;
+        scheduleStore();
+      }
+    }
+  };
+
+  const scheduleStore = () => {
+    clearTimer();
+    snapshotTimer = setTimeoutFn(() => {
+      snapshotTimer = undefined;
+      snapshotIdleCallback = requestIdleCallbackFn(() => {
+        snapshotIdleCallback = undefined;
+        void store();
+      }, { timeout: collabSnapshotStoreIdleTimeoutMs });
+    }, collabSnapshotStoreDelayMs);
+  };
+
   return {
     refreshMeta,
     async fetch() {
@@ -128,12 +189,7 @@ export const createCollabSnapshotSync = ({
       }
     },
     store,
-    scheduleStore() {
-      clearTimer();
-      snapshotTimer = setTimeoutFn(() => {
-        void store();
-      }, collabSnapshotStoreDelayMs);
-    },
+    scheduleStore,
     clearTimer,
   };
 };

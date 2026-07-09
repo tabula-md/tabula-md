@@ -43,12 +43,56 @@ export default defineConfig({
             normalizedId.includes("/react-markdown/") ||
             normalizedId.includes("/remark-") ||
             normalizedId.includes("/rehype-") ||
+            normalizedId.includes("/hast-util-") ||
+            normalizedId.includes("/hastscript/") ||
+            normalizedId.includes("/html-void-elements/") ||
             normalizedId.includes("/mdast-") ||
             normalizedId.includes("/micromark") ||
+            normalizedId.includes("/parse5/") ||
+            normalizedId.includes("/property-information/") ||
+            normalizedId.includes("/space-separated-tokens/") ||
+            normalizedId.includes("/comma-separated-tokens/") ||
+            normalizedId.includes("/trim-lines/") ||
             normalizedId.includes("/unified/") ||
+            normalizedId.includes("/unist-util-") ||
+            normalizedId.includes("/vfile/") ||
+            normalizedId.includes("/vfile-message/") ||
+            normalizedId.includes("/web-namespaces/") ||
             normalizedId.includes("/yaml/")
           ) {
             return "markdown-vendor";
+          }
+
+          if (includesPackage(normalizedId, "highlight.js") || includesPackage(normalizedId, "lowlight")) {
+            return "syntax-vendor";
+          }
+
+          if (includesPackage(normalizedId, "katex") && !normalizedId.includes("/dist/fonts/")) {
+            return "math-vendor";
+          }
+
+          if (
+            includesPackage(normalizedId, "mermaid") ||
+            normalizedId.includes("/node_modules/@mermaid-js/") ||
+            includesPackage(normalizedId, "d3") ||
+            normalizedId.includes("/node_modules/d3-") ||
+            includesPackage(normalizedId, "dagre-d3-es") ||
+            includesPackage(normalizedId, "elkjs") ||
+            includesPackage(normalizedId, "cytoscape") ||
+            includesPackage(normalizedId, "cytoscape-cose-bilkent") ||
+            includesPackage(normalizedId, "cytoscape-fcose") ||
+            includesPackage(normalizedId, "layout-base") ||
+            includesPackage(normalizedId, "roughjs") ||
+            includesPackage(normalizedId, "dompurify") ||
+            includesPackage(normalizedId, "khroma") ||
+            includesPackage(normalizedId, "lodash-es") ||
+            includesPackage(normalizedId, "lodash.camelcase") ||
+            includesPackage(normalizedId, "marked") ||
+            includesPackage(normalizedId, "stylis") ||
+            includesPackage(normalizedId, "ts-dedent") ||
+            includesPackage(normalizedId, "dayjs")
+          ) {
+            return;
           }
 
           if (

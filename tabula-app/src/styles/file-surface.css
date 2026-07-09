@@ -192,7 +192,8 @@
   width: calc(100% - var(--editor-frame-rails));
 }
 
-.workspace.edit:not(.split) .editor-surface.line-wrapping-off .markdown-editor .cm-content {
+.workspace.edit:not(.split) .editor-surface.line-wrapping-off .markdown-editor .cm-content,
+.workspace.edit:not(.split) .editor-surface.line-wrapping-suspended .markdown-editor .cm-content {
   flex-basis: max-content;
   width: max-content;
   min-width: calc(100% - var(--editor-frame-rails));

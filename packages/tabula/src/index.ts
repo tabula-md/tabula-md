@@ -1,9 +1,15 @@
 export type {
   ActiveDocumentFile,
+  ActiveDocumentEditorRuntime,
+  ActiveDocumentPreviewRuntime,
   ActiveDocumentRuntime,
   DocumentBookmark,
 } from "./activeDocumentRuntime";
-export { createActiveDocumentRuntime } from "./activeDocumentRuntime";
+export {
+  createActiveDocumentEditorRuntime,
+  createActiveDocumentPreviewRuntime,
+  createActiveDocumentRuntime,
+} from "./activeDocumentRuntime";
 
 export type {
   CollaborationCollaborator,
@@ -98,6 +104,23 @@ export type {
   DocumentSurfaceState,
 } from "./documentSurfaceModel";
 export { buildDocumentSurface } from "./documentSurfaceModel";
+
+export type {
+  DocumentBufferTextReader,
+  DocumentBufferTextState,
+  EditorDocumentRuntime,
+  EditorDocumentRuntimeFlushResult,
+  EditorDocumentRuntimeSnapshot,
+  PendingDocumentBufferCommit,
+} from "./documentBuffer";
+export {
+  createEditorDocumentRuntime,
+  createDocumentBufferTextState,
+  createPendingDocumentBufferCommit,
+  getDocumentBufferVisibleText,
+  resolvePendingDocumentBufferText,
+  shouldCancelPendingDocumentBufferCommit,
+} from "./documentBuffer";
 
 export type {
   JsonShareCreateResponse,
@@ -199,12 +222,48 @@ export {
   getLineStartOffset,
   getMarkdownDocumentTitle,
   getOutlineHeadings,
+  getOutlineHeadingsFromMarkdown,
   getPreviewBody,
   getSearchMatches,
   parseFrontmatter,
   replaceAllSearchMatches,
   replaceCurrentSearchMatch,
 } from "./markdown";
+
+export type {
+  PreviewBlock,
+  PreviewBlockIndex,
+  PreviewBlockMeasurements,
+  PreviewBlockKind,
+  PreviewWindow,
+} from "./previewBlockModel";
+export {
+  LARGE_DOCUMENT_CHAR_THRESHOLD,
+  HEAVY_PREVIEW_FENCE_CHAR_THRESHOLD,
+  HEAVY_PREVIEW_FENCE_LINE_THRESHOLD,
+  HEAVY_PREVIEW_TABLE_RUN_THRESHOLD,
+  LARGE_DOCUMENT_LINE_THRESHOLD,
+  LARGE_DOCUMENT_LONG_LINE_THRESHOLD,
+  LARGE_DOCUMENT_TABLE_RUN_THRESHOLD,
+  LARGE_DOCUMENT_WORD_THRESHOLD,
+  LIVE_PREVIEW_CHAR_THRESHOLD,
+  applyPreviewBlockMeasurements,
+  createPreviewBlockIndex,
+  getMarkdownLineCount,
+  getPreviewWindow,
+  hasGlobalMarkdownSyntax,
+  hasHeavyMarkdownPreviewShape,
+  hasLargeMarkdownWordCount,
+  hasLongMarkdownLine,
+  isLargeMarkdownDocument,
+  mapPreviewLineToBlock,
+  shouldUseImmediateMarkdownPreview,
+} from "./previewBlockModel";
+
+export {
+  TABULA_LARGE_DOCUMENT_UX_POLICY,
+  TABULA_PRODUCT_SUPPORT_TARGETS,
+} from "./productPerformancePolicy";
 
 export type {
   MarkdownRangeEdit,
