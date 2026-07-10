@@ -18,6 +18,7 @@ const createTestFile = (index: number, overrides: Partial<WorkspaceFile> = {}): 
   lineNumbers: overrides.lineNumbers ?? true,
   bookmarks: overrides.bookmarks ?? [],
   connectionStatus: overrides.connectionStatus ?? "idle",
+  ...overrides,
 });
 
 const initializeWorkspaceStore = () => {
@@ -115,25 +116,23 @@ describe("workspace store", () => {
     });
   });
 
-  it("creates and activates a live room file as a single workspace action", () => {
-    initializeWorkspaceStore();
+  it("duplicates live workspace documents inside the same room", () => {
+    const { draft } = initializeWorkspaceStore();
+    const shareUrl = `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`;
+    useWorkspaceStore.getState().startFileCollaborationSession(draft.id, "room-123456", shareUrl);
+    useWorkspaceStore.getState().setFileCollaborationStatus(draft.id, "connected", { collaboratorCount: 2 });
 
-    const liveFile = useWorkspaceStore.getState().activateRoomFile({
-      roomId: "room-123456",
-      shareUrl: `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
-    });
+    const duplicate = useWorkspaceStore.getState().duplicateFile(draft.id);
 
-    expect(liveFile).toMatchObject({
-      id: "live-room-123456",
+    expect(duplicate).toMatchObject({
       roomId: "room-123456",
-      shareUrl: `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
-      connectionStatus: "connecting",
+      shareUrl,
+      connectionStatus: "connected",
+      collaboratorCount: 2,
     });
-    expect(useWorkspaceStore.getState().activeFileId).toBe(liveFile?.id);
-    expect(useWorkspaceStore.getState().openFileIds).toContain(liveFile?.id);
   });
 
-  it("replaces generated live room titles with the Markdown document title", () => {
+  it("opens a live room route without creating a placeholder file", () => {
     initializeWorkspaceStore();
 
     const liveFile = useWorkspaceStore.getState().activateRoomFile({
@@ -141,8 +140,22 @@ describe("workspace store", () => {
       shareUrl: `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
     });
 
+    expect(liveFile).toBeUndefined();
+    expect(useWorkspaceStore.getState().activeFileId).toBe("");
+    expect(useWorkspaceStore.getState().openFileIds).toEqual([]);
+    expect(useWorkspaceStore.getState().files).toEqual([]);
+  });
+
+  it("does not rename live room documents from remote text changes", () => {
+    const { draft } = initializeWorkspaceStore();
+    useWorkspaceStore.getState().startFileCollaborationSession(
+      draft.id,
+      "room-123456",
+      `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
+    );
+
     useWorkspaceStore.getState().setFileText(
-      liveFile!.id,
+      draft.id,
       `---
 title: Product Requirements
 ---
@@ -151,23 +164,21 @@ title: Product Requirements
 `,
     );
 
-    expect(useWorkspaceStore.getState().files.find((file) => file.id === liveFile?.id)?.title).toBe(
-      "Product Requirements.md",
-    );
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === draft.id)?.title).toBe("Draft.md");
   });
 
   it("keeps user-renamed live room titles when remote text changes", () => {
-    initializeWorkspaceStore();
+    const { draft } = initializeWorkspaceStore();
+    useWorkspaceStore.getState().startFileCollaborationSession(
+      draft.id,
+      "room-123456",
+      `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
+    );
 
-    const liveFile = useWorkspaceStore.getState().activateRoomFile({
-      roomId: "room-123456",
-      shareUrl: `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
-    });
+    useWorkspaceStore.getState().renameFile(draft.id, "Shared Notes");
+    useWorkspaceStore.getState().setFileText(draft.id, "# Product Requirements");
 
-    useWorkspaceStore.getState().renameFile(liveFile!.id, "Shared Notes");
-    useWorkspaceStore.getState().setFileText(liveFile!.id, "# Product Requirements");
-
-    expect(useWorkspaceStore.getState().files.find((file) => file.id === liveFile?.id)?.title).toBe(
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === draft.id)?.title).toBe(
       "Shared Notes.md",
     );
   });

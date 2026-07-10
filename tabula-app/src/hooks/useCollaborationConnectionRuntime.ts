@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type MutableRefObject,
@@ -22,7 +23,6 @@ import {
 } from "../collaboration/collabRuntime";
 import type { RoomEvent, TextChange, TextPatch } from "@tabula-md/tabula";
 import {
-  isEmptyGeneratedLivePlaceholder,
   isUsableLiveRoomFile,
   type WorkspaceFile,
 } from "../workspaceStorage";
@@ -30,6 +30,13 @@ import {
 // Remote text is applied to the editor immediately and mirrored to workspace storage.
 // The short delayed commit is a race-boundary fallback for route changes and pagehide.
 const REMOTE_WORKSPACE_COMMIT_DELAY_MS = 80;
+
+const getWorkspaceDocumentsTreeSignature = (
+  documents: readonly { id: string; title: string; parentId?: string | null }[],
+) =>
+  documents
+    .map((document) => `${document.id}\u001f${document.title}\u001f${document.parentId ?? ""}`)
+    .join("\u001e");
 
 type UseCollaborationConnectionRuntimeOptions = {
   activeFile?: WorkspaceFile;
@@ -74,6 +81,10 @@ export function useCollaborationConnectionRuntime({
   const remoteWorkspaceCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRemoteWorkspaceCommitRef = useRef<Map<string, string>>(new Map());
   const workspaceDocumentsRef = useRef(workspaceDocuments);
+  const workspaceDocumentsTreeSignature = useMemo(
+    () => getWorkspaceDocumentsTreeSignature(workspaceDocuments),
+    [workspaceDocuments],
+  );
   const pendingLocalTextQueueRef = useRef<
     Array<{ text: string; patches?: readonly TextPatch[] } | { docLength?: number; patches: readonly TextPatch[] }>
   >([]);
@@ -86,6 +97,10 @@ export function useCollaborationConnectionRuntime({
   useEffect(() => {
     workspaceDocumentsRef.current = workspaceDocuments;
   }, [workspaceDocuments]);
+
+  useEffect(() => {
+    collabRef.current?.setWorkspaceDocuments(workspaceDocumentsRef.current);
+  }, [workspaceDocumentsTreeSignature]);
 
   const clearRemoteWorkspaceCommitTimer = useCallback(() => {
     if (remoteWorkspaceCommitTimerRef.current !== null) {
@@ -175,7 +190,7 @@ export function useCollaborationConnectionRuntime({
           roomKey: target.roomKey,
           documentId: target.fileId,
           documents: workspaceDocumentsSnapshot,
-          emitInitialWorkspaceState: !activeFile || !isEmptyGeneratedLivePlaceholder(activeFile),
+          emitInitialWorkspaceState: workspaceDocumentsSnapshot.length > 0,
           initialText: pendingInitialText,
           identity,
           fileTitle: target.fileTitle,

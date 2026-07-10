@@ -2,12 +2,10 @@ import type { WorkspaceFile } from "./workspaceStorage";
 
 export const getLiveWorkspaceFileIds = ({
   activeFile,
-  excludedFileIds,
   files,
   isLive,
 }: {
   activeFile?: Pick<WorkspaceFile, "id" | "roomId">;
-  excludedFileIds: readonly string[];
   files: readonly Pick<WorkspaceFile, "id" | "roomId">[];
   isLive: boolean;
 }) => {
@@ -15,8 +13,7 @@ export const getLiveWorkspaceFileIds = ({
     return [];
   }
 
-  const excludedFileIdSet = new Set(excludedFileIds);
   return files
-    .filter((file) => !excludedFileIdSet.has(file.id))
+    .filter((file) => file.roomId === activeFile.roomId)
     .map((file) => file.id);
 };

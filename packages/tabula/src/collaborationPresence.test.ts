@@ -6,6 +6,7 @@ import {
   getLineNumberForPresenceSelection,
   isCollaboratorInFile,
 } from "./collaborationPresence";
+import type { CollaborationCollaborator } from "./collaborationTypes";
 
 describe("collaboration presence labels", () => {
   it("maps document offsets to one-based line numbers", () => {
@@ -51,6 +52,26 @@ describe("collaboration presence labels", () => {
     ).toBe("Ada - README - line 2");
   });
 
+  it("marks agent collaborators distinctly while keeping the same presence model", () => {
+    const agent: CollaborationCollaborator = {
+      id: "agent-1",
+      name: "Local MCP",
+      color: "#64748b",
+      kind: "agent" as const,
+      client: "tabula-mcp" as const,
+      capabilities: ["presence", "read", "write"],
+      joinedAt: "2026-07-09T00:00:00.000Z",
+      lastSeen: 1,
+      roomId: "room-1",
+      fileTitle: "Plan.md",
+      activeDocumentId: "plan",
+      selection: { documentId: "plan", from: 0, to: 4 },
+    };
+
+    expect(getCollaboratorPresenceLabel(agent, "one\ntwo")).toBe("Local MCP - agent - Plan.md - line 2");
+    expect(getCollaboratorPresenceDetail(agent, "one\ntwo", "Plan.md", "room-1", "plan")).toBe("Agent - Line 2");
+  });
+
   it("distinguishes same-file and different-file presence", () => {
     const collaborator = {
       id: "peer-1",
@@ -64,6 +85,23 @@ describe("collaboration presence labels", () => {
 
     expect(isCollaboratorInFile(collaborator, "README.md", "room-1")).toBe(true);
     expect(getCollaboratorPresenceDetail(collaborator, "one\ntwo\nthree", "README.md", "room-1")).toBe("Line 3");
+
+    expect(
+      isCollaboratorInFile(
+        { ...collaborator, activeDocumentId: "untitled-2", selection: { documentId: "untitled-2", from: 0, to: 0 } },
+        "Untitled.md",
+        "room-1",
+        "untitled",
+      ),
+    ).toBe(false);
+    expect(
+      isCollaboratorInFile(
+        { ...collaborator, selection: { documentId: "untitled-2", from: 0, to: 0 } },
+        "Untitled.md",
+        "room-1",
+        "untitled",
+      ),
+    ).toBe(false);
 
     expect(isCollaboratorInFile({ ...collaborator, roomId: "room-2" }, "README.md", "room-1")).toBe(false);
     expect(getCollaboratorPresenceDetail({ ...collaborator, roomId: "room-2" }, "one\ntwo", "README.md", "room-1")).toBe(

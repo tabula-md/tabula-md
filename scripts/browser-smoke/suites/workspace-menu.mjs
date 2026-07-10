@@ -259,11 +259,7 @@ export async function run(ctx) {
     expect(nextTabs[0]?.active, "New File from the empty workbench should activate the new tab.");
     expect((await page.locator(".empty-file-state").count()) === 0, "New file should leave the empty workbench.");
     expect((await page.locator(".document-controls").count()) === 1, "New file should restore file tools.");
-    const newFileFocused = await page.evaluate(() => {
-      const editor = document.querySelector(".markdown-editor");
-      return Boolean(editor?.contains(document.activeElement));
-    });
-    expect(newFileFocused, "New file from the empty workbench should focus the Editor.");
+    await waitForEditorFocus(page);
   });
 
   await withPage(browser, "/", async (page) => {
@@ -282,8 +278,8 @@ export async function run(ctx) {
     expect((await page.getByText("Invite agent").count()) === 0, "Share modal should not invite agents before a room exists.");
     expect((await page.getByText("Export to link").count()) > 0, "Share modal should expose link export as a first-class local action.");
     expect(
-      (await page.getByText("Create an encrypted copy of the included documents.").count()) === 1,
-      "Export should describe encrypted copy export, not publish.",
+      (await page.getByText("Create a read-only encrypted link to a copy of the included documents.").count()) === 1,
+      "Export link should describe read-only encrypted copy export.",
     );
     expect((await page.getByRole("button", { name: "Export to link" }).count()) === 1, "Share modal should offer export link from the same included documents.");
     expect((await page.getByText(/unavailable in this build/i).count()) === 0, "Share modal should not expose build-status copy to users.");
@@ -391,7 +387,8 @@ export async function run(ctx) {
     expect(shareModalStyle.dividerCount === 0, "Share modal should not use legacy stacked Or dividers.");
     expect(shareModalStyle.shareDividerCount === 1, "Share modal should separate live room and export choices.");
     expect(/included documents/i.test(shareModalStyle.text), "Share modal should make the document scope explicit.");
-    expect(!/\bread-only\b/i.test(shareModalStyle.text), "Export link should not be described as read-only publish.");
+    expect(/\bread-only\b/i.test(shareModalStyle.text), "Export link should be described as a read-only copy.");
+    expect(!/\bpublish\b/i.test(shareModalStyle.text), "Export link should not be described as publishing.");
     const modalPointerState = await page.evaluate(() => {
       const fileShell = document.querySelector(".file-shell");
       const workspace = document.querySelector(".workspace");
@@ -581,12 +578,21 @@ export async function run(ctx) {
   }
 
   await withPage(browser, `/#room=browserroom,${validRoomKey}`, async (page) => {
-    await page.waitForSelector(".tab-item.live.active");
+    await page.waitForSelector(".live-room-loading-surface");
     const tabs = await getTabs(page);
 
-    expect(tabs.some((tab) => tab.title === "README.md"), "Opening a room should keep README.md.");
-    expect(tabs.some((tab) => tab.title === "Untitled.md"), "Opening a room should keep the local untitled tab.");
-    expect(tabs.some((tab) => tab.live && tab.active), "Opening a room should activate a live tab.");
+    expect(
+      tabs.length === 0 || tabs.every((tab) => !tab.title?.startsWith("Shared ")),
+      `Opening an empty room should not expose the internal live-room placeholder as a document tab.\n${JSON.stringify(tabs, null, 2)}`,
+    );
+    expect(
+      (await page.getByText(/^Shared browserroom/).count()) === 0,
+      "Opening an empty room should not render the generated room placeholder title.",
+    );
+    expect(
+      (await page.getByText("Opening live room...").count()) === 1,
+      "Opening an empty room should show a quiet room-loading surface.",
+    );
     expect(
       page.url().endsWith(`/#room=browserroom,${validRoomKey}`),
       "Opening a room should keep the room URL active.",
@@ -707,4 +713,19 @@ export async function run(ctx) {
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "README tab should keep its Preview mode.");
   });
+}
+
+async function waitForEditorFocus(page) {
+  try {
+    await page.waitForFunction(
+      () => {
+        const editor = document.querySelector(".markdown-editor");
+        return Boolean(editor?.contains(document.activeElement));
+      },
+      undefined,
+      { timeout: 2_000 },
+    );
+  } catch (error) {
+    throw new Error(`New file from the empty workbench should focus the Editor.\n${error.message}`);
+  }
 }

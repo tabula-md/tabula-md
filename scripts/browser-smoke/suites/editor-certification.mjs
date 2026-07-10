@@ -392,6 +392,7 @@ export async function run(ctx) {
     await waitForEditorText(secondPage, "remote cursor certification", 4_000);
     await waitForEditorText(firstPage, "remote cursor certification", 12_000);
     await firstPage.waitForSelector(".cm-remote-cursor", { state: "attached", timeout: 8_000 });
+    await firstPage.waitForSelector(".cm-remote-cursor-label", { state: "attached", timeout: 8_000 });
 
     const remoteCursorLayout = await firstPage.evaluate(() => {
       const cursor = document.querySelector(".cm-remote-cursor");
@@ -409,6 +410,7 @@ export async function run(ctx) {
         cursorDisplay: cursorStyle?.display ?? "",
         labelPosition: labelStyle?.position ?? "",
         labelZIndex: labelStyle?.zIndex ?? "",
+        remoteLineCount: document.querySelectorAll(".cm-remote-presence-line").length,
         text: lines.join("\n"),
       };
     });
@@ -416,6 +418,7 @@ export async function run(ctx) {
     expect(remoteCursorLayout.cursorDisplay === "inline-block", "Remote cursor marker should stay inline.");
     expect(remoteCursorLayout.labelPosition === "absolute", "Remote cursor label should not affect line layout.");
     expect(Number(remoteCursorLayout.labelZIndex) >= 1, "Remote cursor label should render above editor text.");
+    expect(remoteCursorLayout.remoteLineCount === 0, "Remote cursor should not add a line-level presence rail.");
     expect(
       remoteCursorLayout.text.includes("remote cursor certification"),
       "Remote cursor certification should preserve byte-level text after removing cursor widgets.",

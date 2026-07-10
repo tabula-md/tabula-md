@@ -97,3 +97,41 @@
   color: var(--text-primary);
   background: var(--surface-muted);
 }
+
+.live-room-loading-center {
+  gap: 10px;
+  color: var(--text-muted);
+}
+
+.live-room-loading-center svg {
+  color: var(--text-soft);
+}
+
+.live-room-loading-center p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.live-room-unavailable-center {
+  width: min(520px, calc(100% - 48px));
+  gap: 12px;
+}
+
+.live-room-unavailable-center .live-room-unavailable-title {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.live-room-unavailable-actions {
+  display: grid;
+  gap: 4px;
+  width: min(320px, 100%);
+  margin-top: 8px;
+}
+
+.live-room-unavailable-actions .empty-file-action {
+  grid-template-columns: 18px minmax(0, 1fr);
+}

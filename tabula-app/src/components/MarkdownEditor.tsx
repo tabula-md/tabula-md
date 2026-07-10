@@ -408,31 +408,41 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         return;
       }
 
+      const emitCurrentSelection = (view: EditorView) => {
+        const selection = view.state.selection.main;
+        const cursorLine = view.state.doc.lineAt(selection.to);
+        const fromLine = selection.from === selection.to ? cursorLine : view.state.doc.lineAt(selection.from);
+        onSelectionChangeRef.current?.({
+          from: selection.from,
+          to: selection.to,
+          columnNumber: selection.to - cursorLine.from + 1,
+          fromLineNumber: fromLine.number,
+          lineNumber: cursorLine.number,
+          selectionEndsWithLineBreak:
+            selection.to > selection.from && view.state.doc.sliceString(selection.to - 1, selection.to) === "\n",
+          toLineNumber: cursorLine.number,
+        });
+      };
+
       const updateExtension = EditorView.updateListener.of((update) => {
         emitHistoryState(update.view);
         const isExternalUpdate = isRemoteEditorUpdate(update.transactions);
 
-        if (update.selectionSet || update.docChanged) {
-          const selection = update.state.selection.main;
-          const cursorLine = update.state.doc.lineAt(selection.to);
-          const fromLine = selection.from === selection.to ? cursorLine : update.state.doc.lineAt(selection.from);
-          onSelectionChangeRef.current?.({
-            from: selection.from,
-            to: selection.to,
-            columnNumber: selection.to - cursorLine.from + 1,
-            fromLineNumber: fromLine.number,
-            lineNumber: cursorLine.number,
-            selectionEndsWithLineBreak:
-              selection.to > selection.from && update.state.doc.sliceString(selection.to - 1, selection.to) === "\n",
-            toLineNumber: cursorLine.number,
-          });
+        if (update.focusChanged && !update.view.hasFocus) {
+          onSelectionChangeRef.current?.(undefined);
         }
 
-        if (update.selectionSet || update.docChanged) {
+        if ((update.selectionSet || update.docChanged || update.focusChanged) && update.view.hasFocus) {
+          emitCurrentSelection(update.view);
+        }
+
+        if ((update.selectionSet || update.docChanged || update.focusChanged) && update.view.hasFocus) {
           const selection = update.state.selection.main;
           onSelectionActionPositionChangeRef.current?.(
             selection.empty ? null : getEditorSelectionActionPosition(update.view),
           );
+        } else if (update.focusChanged && !update.view.hasFocus) {
+          onSelectionActionPositionChangeRef.current?.(null);
         }
 
         if (!update.docChanged) {
@@ -460,6 +470,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         commentsEnabled,
         activeCommentId,
         collaborators,
+        currentDocumentId: fileId,
         fileTitle,
         roomId,
         searchMatches,
@@ -493,6 +504,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       view.scrollDOM.addEventListener("scroll", handleScroll, { passive: true });
 
       return () => {
+        onSelectionChangeRef.current?.(undefined);
+        onSelectionActionPositionChangeRef.current?.(null);
         view.scrollDOM.removeEventListener("scroll", handleScroll);
         stateByFileIdRef.current.set(fileId, view.state);
         lastHistoryStateRef.current = EMPTY_EDITOR_HISTORY_STATE;
@@ -541,11 +554,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       viewRef.current?.dispatch({
         effects: updateEditorPresenceEffect.of({
           collaborators,
+          currentDocumentId: fileId,
           currentFileTitle: fileTitle,
           currentRoomId: roomId,
         }),
       });
-    }, [collaborators, fileTitle, roomId]);
+    }, [collaborators, fileId, fileTitle, roomId]);
 
     useEffect(() => {
       viewRef.current?.dispatch({

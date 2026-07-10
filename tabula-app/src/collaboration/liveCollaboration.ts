@@ -92,7 +92,7 @@ type ConnectOptions = {
   roomId: string;
   roomKey: string;
   documentId?: string;
-  documents?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
+  documents?: readonly WorkspaceDocumentSnapshot[];
   emitInitialWorkspaceState?: boolean;
   initialText?: string;
   identity: Collaborator;
@@ -108,6 +108,13 @@ type ConnectOptions = {
 
 const PRESENCE_SEND_THROTTLE_MS = 75;
 const CHECKPOINT_SAVE_DELAY_MS = 250;
+
+type WorkspaceDocumentSnapshot = {
+  id: string;
+  title: string;
+  text: string;
+  parentId?: string | null;
+};
 
 export const createCollabConnection = ({
   roomId,
@@ -540,6 +547,16 @@ export const createCollabConnection = ({
     return nextTextDocument;
   };
 
+  const updateWorkspaceDocumentMetadata = (document: WorkspaceDocumentSnapshot) => {
+    const existingDocument = initialDocumentsById.get(document.id);
+    initialDocumentsById.set(document.id, {
+      id: document.id,
+      title: document.title,
+      text: existingDocument?.text ?? document.text,
+      parentId: document.parentId,
+    });
+  };
+
   const pruneWorkspaceTextDocuments = (nextDocumentIds: Set<string>) => {
     const nextActiveDocumentId = nextDocumentIds.has(activeDocumentId)
       ? activeDocumentId
@@ -561,6 +578,29 @@ export const createCollabConnection = ({
       textDocuments.delete(nextDocumentId);
       adapters.text.destroy(nextTextDocument);
     }
+  };
+
+  const setWorkspaceDocuments = (nextDocuments: readonly WorkspaceDocumentSnapshot[]) => {
+    if (!canEmitWorkspaceState || nextDocuments.length === 0) {
+      return;
+    }
+
+    const nextDocumentIds = new Set(nextDocuments.map((nextDocument) => nextDocument.id));
+    workspaceDocumentIds = nextDocumentIds;
+
+    for (const nextDocument of nextDocuments) {
+      if (!textDocuments.has(nextDocument.id)) {
+        getOrCreateTextDocument(nextDocument.id, {
+          initialText: nextDocument.text,
+          parentId: nextDocument.parentId,
+          title: nextDocument.title,
+        });
+      }
+      updateWorkspaceDocumentMetadata(nextDocument);
+    }
+
+    pruneWorkspaceTextDocuments(nextDocumentIds);
+    scheduleCheckpointSave();
   };
 
   const handleRoomEvent = (event: RoomEvent) => {
@@ -697,11 +737,21 @@ export const createCollabConnection = ({
         initialText: emitInitialWorkspaceState ? nextDocument.initialText : undefined,
         title: nextDocument.fileTitle,
       });
+      if (nextDocument.fileTitle) {
+        const existingDocument = initialDocumentsById.get(nextDocument.documentId);
+        initialDocumentsById.set(nextDocument.documentId, {
+          id: nextDocument.documentId,
+          title: nextDocument.fileTitle,
+          text: existingDocument?.text ?? nextDocument.initialText ?? "",
+          parentId: existingDocument?.parentId,
+        });
+      }
       if (emitInitialWorkspaceState) {
         workspaceDocumentIds?.add(nextDocument.documentId);
       }
       schedulePresencePublish();
     },
+    setWorkspaceDocuments,
     setPresence(nextPresence: { fileTitle?: string; selection?: LiveSelection }) {
       if ("fileTitle" in nextPresence) {
         currentFileTitle = nextPresence.fileTitle ?? currentFileTitle;

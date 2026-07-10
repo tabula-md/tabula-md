@@ -8,6 +8,7 @@ import {
 } from ".";
 import {
   createRoomActor,
+  createWorkspaceRoomState,
   encodeBase64Url,
   encodeRoomEvent,
   type RoomEvent,
@@ -207,6 +208,104 @@ describe("collaboration envelope router", () => {
     expect(onTextChange).not.toHaveBeenCalled();
   });
 
+  it("routes write-capable agent workspace updates through the shared room event path", async () => {
+    const workspace = await createWorkspaceRoomState({
+      roomId: "room-1",
+      activeDocumentId: "doc-2",
+      documents: [
+        { id: "doc-1", title: "README.md", markdown: "# Readme" },
+        { id: "doc-2", title: "Agent Plan.md", markdown: "Plan" },
+      ],
+      nowIso: () => "2026-07-09T00:00:00.000Z",
+    });
+    const { envelope, decryptEnvelope } = await encryptRoomEvent({
+      id: "event-1",
+      roomId: "room-1",
+      actorId: writer.id,
+      type: "workspace.updated",
+      createdAt: "2026-07-09T00:00:00.000Z",
+      actor: writer,
+      workspace,
+    });
+    const onRoomEvent = vi.fn();
+    const { router } = createRouter({
+      decryptEnvelope,
+      onRoomEvent,
+    });
+
+    await router.route(envelope);
+
+    expect(onRoomEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: "workspace.updated",
+      actor: expect.objectContaining({ kind: "agent", client: "tabula-mcp" }),
+      workspace,
+    }));
+  });
+
+  it("routes workspace updates from another socket even when the actor id matches this browser profile", async () => {
+    const selfActor = createRoomActor({
+      id: "self",
+      name: "Taeha",
+      color: "#763fc8",
+      joinedAt: "2026-07-09T00:00:00.000Z",
+    });
+    const workspace = await createWorkspaceRoomState({
+      roomId: "room-1",
+      activeDocumentId: "doc-1",
+      documents: [{ id: "doc-1", title: "README.md", markdown: "# Readme" }],
+      nowIso: () => "2026-07-09T00:00:00.000Z",
+    });
+    const { envelope, decryptEnvelope } = await encryptRoomEvent({
+      id: "event-1",
+      roomId: "room-1",
+      actorId: selfActor.id,
+      type: "workspace.updated",
+      createdAt: "2026-07-09T00:00:00.000Z",
+      actor: selfActor,
+      workspace,
+    });
+    const onRoomEvent = vi.fn();
+    const { router } = createRouter({
+      decryptEnvelope,
+      onRoomEvent,
+    });
+
+    await router.route(envelope);
+
+    expect(onRoomEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: "workspace.updated",
+      actor: expect.objectContaining({ id: "self" }),
+      workspace,
+    }));
+  });
+
+  it("ignores workspace updates from actors without write capability", async () => {
+    const workspace = await createWorkspaceRoomState({
+      roomId: "room-1",
+      activeDocumentId: "doc-1",
+      documents: [{ id: "doc-1", title: "README.md", markdown: "# Readme" }],
+      nowIso: () => "2026-07-09T00:00:00.000Z",
+    });
+    const { envelope, decryptEnvelope } = await encryptRoomEvent({
+      id: "event-1",
+      roomId: "room-1",
+      actorId: reader.id,
+      type: "workspace.updated",
+      createdAt: "2026-07-09T00:00:00.000Z",
+      actor: reader,
+      workspace,
+    });
+    const onRoomEvent = vi.fn();
+    const { router } = createRouter({
+      decryptEnvelope,
+      onRoomEvent,
+    });
+
+    await router.route(envelope);
+
+    expect(onRoomEvent).not.toHaveBeenCalled();
+  });
+
   it("routes document-scoped text.updated events to inactive workspace documents", async () => {
     const source = new Y.Doc();
     source.getText("markdown").insert(0, "other doc");
@@ -236,6 +335,41 @@ describe("collaboration envelope router", () => {
       "other doc",
       { patches: [{ from: 0, to: 0, insert: "other doc" }] },
       "doc-other",
+    );
+  });
+
+  it("routes text updates from another socket even when the actor id matches this browser profile", async () => {
+    const source = new Y.Doc();
+    source.getText("markdown").insert(0, "same profile tab");
+    const selfActor = createRoomActor({
+      id: "self",
+      name: "Taeha",
+      color: "#763fc8",
+      joinedAt: "2026-07-09T00:00:00.000Z",
+    });
+    const { envelope, decryptEnvelope } = await encryptRoomEvent({
+      id: "event-1",
+      roomId: "room-1",
+      actorId: selfActor.id,
+      type: "text.updated",
+      documentId: "doc-1",
+      actor: selfActor,
+      createdAt: "2026-07-09T00:00:00.000Z",
+      update: encodeBase64Url(Y.encodeStateAsUpdate(source)),
+    });
+    const onTextChange = vi.fn();
+    const { defaultDocument, router } = createRouter({
+      decryptEnvelope,
+      onTextChange,
+    });
+
+    await router.route(envelope);
+
+    expect(defaultDocument.text.toString()).toBe("same profile tab");
+    expect(onTextChange).toHaveBeenCalledWith(
+      "same profile tab",
+      { patches: [{ from: 0, to: 0, insert: "same profile tab" }] },
+      "doc-1",
     );
   });
 

@@ -37,8 +37,9 @@ export const isCollaboratorInFile = (
   currentRoomId?: string,
   currentDocumentId?: string,
 ) => {
-  if (currentDocumentId && collaborator.activeDocumentId) {
-    return collaborator.activeDocumentId === currentDocumentId;
+  const collaboratorDocumentId = collaborator.activeDocumentId ?? collaborator.selection?.documentId;
+  if (currentDocumentId && collaboratorDocumentId) {
+    return collaboratorDocumentId === currentDocumentId;
   }
 
   if (currentRoomId && collaborator.roomId) {

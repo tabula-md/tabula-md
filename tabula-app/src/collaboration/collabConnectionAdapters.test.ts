@@ -489,6 +489,51 @@ describe("collaboration connection adapters", () => {
     connection.disconnect();
   });
 
+  it("keeps local workspace metadata changes in the rebroadcasted room state", async () => {
+    const { adapters, getHandlers, sentEnvelopes } = createFakeAdapters();
+    const connection = createCollabConnection({
+      roomId: "room-1",
+      roomKey: "encoded-key",
+      documentId: "readme",
+      documents: [
+        { id: "readme", title: "README.md", text: "readme text" },
+        { id: "draft", title: "Draft.md", text: "draft text" },
+      ],
+      identity: {
+        id: "self",
+        name: "Taeha",
+        color: "#763FC8",
+        lastSeen: 1,
+      },
+      fileTitle: "README.md",
+      onTextChange: vi.fn(),
+      onStatusChange: vi.fn(),
+      onCollaboratorsChange: vi.fn(),
+      adapters,
+    });
+    await flushAsyncWork();
+    await getHandlers().onJoined({ roomId: "room-1", clientId: "self", peerCount: 1 });
+    sentEnvelopes.splice(0);
+
+    connection.setWorkspaceDocuments([
+      { id: "readme", title: "Read Me.md", text: "readme text" },
+    ]);
+
+    await getHandlers().onPeerJoined({ roomId: "room-1", clientId: "new-peer" });
+    for (let index = 0; index < 10 && sentEnvelopes.length === 0; index += 1) {
+      await waitForAsyncWork();
+    }
+
+    const sentEvents = sentEnvelopes.map(decodeFakeEvent);
+    const workspaceEvent = sentEvents.find((event) => event.type === "workspace.updated");
+    const documentNodes = workspaceEvent.workspace.nodes.filter((node: { type: string }) => node.type === "document");
+    expect(documentNodes.map((node: { id: string }) => node.id)).toEqual(["readme"]);
+    expect(documentNodes.map((node: { title: string }) => node.title)).toEqual(["Read Me.md"]);
+    expect(sentEvents.filter((event) => event.type === "text.updated").map((event) => event.documentId)).toEqual(["readme"]);
+
+    connection.disconnect();
+  });
+
   it("throttles rapid presence selection updates into a single volatile room-event", async () => {
     const { adapters, clock, getHandlers, volatileEnvelopes } = createFakeAdapters();
     const connection = createCollabConnection({

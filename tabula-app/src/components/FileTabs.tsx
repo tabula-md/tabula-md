@@ -260,7 +260,9 @@ export function FileTabs({
               className={`tab-item ${isActiveFile ? "active" : ""} ${isLiveFile ? "live" : ""} ${
                 draggedFileId === file.id ? "dragging" : ""
               }`}
+              data-file-id={file.id}
               data-file-name={file.title}
+              data-room-id={file.roomId ?? ""}
               data-display-title={tabDisplayTitle}
               data-view-mode={file.viewMode}
               draggable={!isRenaming}

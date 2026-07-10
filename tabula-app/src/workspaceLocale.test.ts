@@ -28,7 +28,7 @@ describe("workspace locale chrome copy", () => {
     expect(english.share.live.includedCount(1, 3)).toBe("1/3 included");
     expect(english.share.shareable.title).toBe("Export to link");
     expect(english.share.shareable.description).toBe(
-      "Create an encrypted link to a copy of the included documents.",
+      "Create a read-only encrypted link to a copy of the included documents.",
     );
     expect(english.share.modalTitle).toBe("Share");
 
@@ -39,7 +39,7 @@ describe("workspace locale chrome copy", () => {
     expect(korean.share.live.includedCount(1, 3)).toBe("1/3개 포함");
     expect(korean.share.shareable.title).toBe("링크로 내보내기");
     expect(korean.share.shareable.description).toBe(
-      "포함된 문서의 암호화된 복사본 링크를 만듭니다.",
+      "포함된 문서의 읽기 전용 암호화 복사본 링크를 만듭니다.",
     );
     expect(korean.share.modalTitle).toBe("공유");
   });

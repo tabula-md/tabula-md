@@ -173,8 +173,40 @@ export const AGENT_ROOM_CAPABILITIES: readonly RoomCapability[] = [
 
 export const DEFAULT_HUMAN_ACTOR_CLIENT: RoomActorClient = "tabula-md";
 export const DEFAULT_AGENT_ACTOR_CLIENT: RoomActorClient = "tabula-mcp";
-export const DEFAULT_ACTOR_NAME = "Participant";
-export const DEFAULT_ACTOR_COLOR = "#64748b";
+export const ROOM_ACTOR_ADJECTIVES = [
+  "Bright",
+  "Calm",
+  "Careful",
+  "Clear",
+  "Clever",
+  "Curious",
+  "Gentle",
+  "Kind",
+  "Lively",
+  "Nimble",
+  "Patient",
+  "Quiet",
+  "Ready",
+  "Sharp",
+  "Steady",
+  "Thoughtful",
+  "Warm",
+  "Wise",
+] as const;
+export const ROOM_ACTOR_COLORS = [
+  "#0f766e",
+  "#2563eb",
+  "#7c3aed",
+  "#c2410c",
+  "#be123c",
+  "#047857",
+  "#0e7490",
+  "#4f46e5",
+  "#9333ea",
+  "#b45309",
+] as const;
+export const DEFAULT_ACTOR_NAME = "Curious Human";
+export const DEFAULT_ACTOR_COLOR = ROOM_ACTOR_COLORS[0];
 export const MARKDOWN_TEXT_HASH_ALGORITHM = "sha256-hex";
 
 const textEncoder = new TextEncoder();
@@ -219,6 +251,28 @@ export const hasRoomCapability = (
   capability: RoomCapability,
 ) => Boolean(actor?.capabilities.includes(capability));
 
+const getStableActorIndex = (seed: string, modulo: number) => {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0) % modulo;
+};
+
+export const createRoomActorName = (kind: RoomActorKind = "human", actorId = "") => {
+  const adjective =
+    ROOM_ACTOR_ADJECTIVES[
+      getStableActorIndex(actorId.trim() || kind, ROOM_ACTOR_ADJECTIVES.length)
+    ] ?? "Curious";
+  return `${adjective} ${kind === "agent" ? "Agent" : "Human"}`;
+};
+
+export const createRoomActorColor = (actorId = "") =>
+  ROOM_ACTOR_COLORS[
+    getStableActorIndex(actorId.trim() || "actor", ROOM_ACTOR_COLORS.length)
+  ] ?? DEFAULT_ACTOR_COLOR;
+
 export const createRoomActor = ({
   id,
   kind = "human",
@@ -235,15 +289,18 @@ export const createRoomActor = ({
   client?: RoomActorClient;
   capabilities?: readonly RoomCapability[];
   joinedAt?: string;
-}): RoomActor => ({
-  id,
-  kind,
-  name: name?.trim() || DEFAULT_ACTOR_NAME,
-  color,
-  client: client ?? (kind === "agent" ? DEFAULT_AGENT_ACTOR_CLIENT : DEFAULT_HUMAN_ACTOR_CLIENT),
-  capabilities: capabilities?.length ? [...new Set(capabilities)] : getDefaultRoomCapabilities(kind),
-  joinedAt: joinedAt || new Date(0).toISOString(),
-});
+}): RoomActor => {
+  const actorId = id.trim() || "actor";
+  return {
+    id: actorId,
+    kind,
+    name: name?.trim() || createRoomActorName(kind, actorId),
+    color: color?.trim() || createRoomActorColor(actorId),
+    client: client ?? (kind === "agent" ? DEFAULT_AGENT_ACTOR_CLIENT : DEFAULT_HUMAN_ACTOR_CLIENT),
+    capabilities: capabilities?.length ? [...new Set(capabilities)] : getDefaultRoomCapabilities(kind),
+    joinedAt: joinedAt || new Date(0).toISOString(),
+  };
+};
 
 export const parseRoomActor = (value: unknown): RoomActor | null => {
   if (
@@ -266,10 +323,10 @@ export const parseRoomActor = (value: unknown): RoomActor | null => {
     return null;
   }
 
-  const color = typeof value.color === "string" && value.color ? value.color : undefined;
+  const color = typeof value.color === "string" && value.color.trim() ? value.color.trim() : createRoomActorColor(value.id);
 
   return {
-    id: value.id,
+    id: value.id.trim(),
     kind: value.kind,
     name: value.name.trim(),
     color,
@@ -443,6 +500,11 @@ export const createWorkspaceRoomState = async ({
   version?: number;
 }): Promise<WorkspaceRoomState> => {
   const createdAt = nowIso();
+  const documentIds = new Set(documents.map((document) => document.id));
+  const resolvedActiveDocumentId =
+    activeDocumentId && documentIds.has(activeDocumentId)
+      ? activeDocumentId
+      : documents[0]?.id;
   const documentNodes = await Promise.all(
     documents.map(async (document, index): Promise<WorkspaceDocumentNode> => ({
       id: document.id,
@@ -474,7 +536,7 @@ export const createWorkspaceRoomState = async ({
       },
       ...documentNodes,
     ],
-    activeDocumentId,
+    ...(resolvedActiveDocumentId ? { activeDocumentId: resolvedActiveDocumentId } : {}),
   };
 };
 

@@ -31,6 +31,27 @@ type CloseFileResult = {
   nextActiveFile?: WorkspaceFile;
 };
 
+export const getLiveRoomFileOverrides = (
+  activeFile?: Pick<
+    WorkspaceFile,
+    "roomId" | "shareUrl" | "connectionStatus" | "collaboratorCount"
+  >,
+): Partial<WorkspaceFile> => {
+  if (!activeFile?.roomId || !activeFile.shareUrl) {
+    return {};
+  }
+
+  return {
+    roomId: activeFile.roomId,
+    shareUrl: activeFile.shareUrl,
+    connectionStatus: activeFile.connectionStatus ?? "idle",
+    collaboratorCount: activeFile.collaboratorCount ?? 0,
+    lastRecoveryType: undefined,
+    lastRecoveryMessage: undefined,
+    lastRecoveryAt: undefined,
+  };
+};
+
 type UseWorkspaceFileActionsArgs = {
   activeFile?: WorkspaceFile;
   activeFileId: string;
@@ -110,7 +131,10 @@ export function useWorkspaceFileActions({
   const addFile = () => {
     onBeforeWorkspaceBoundary?.();
     queueEditorFocus();
-    const nextFile = addWorkspaceFileAction(getNewFilePreferenceOverrides(preferences));
+    const nextFile = addWorkspaceFileAction({
+      ...getNewFilePreferenceOverrides(preferences),
+      ...getLiveRoomFileOverrides(activeFile),
+    });
     closeFloatingChrome();
     syncUrlForFile(nextFile);
   };

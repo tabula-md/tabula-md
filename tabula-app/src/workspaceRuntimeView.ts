@@ -5,6 +5,7 @@ import type { WorkspaceMenuSurfaceProps } from "./components/WorkspaceMenuSurfac
 import type { WorkspaceOverlaySurfaceProps } from "./components/WorkspaceOverlaySurface";
 import type { WorkspaceProjectContextProps } from "./components/WorkspaceProjectContext";
 import type { WorkspaceTopChromeProps } from "./components/WorkspaceTopChrome";
+import type { LiveRoomOpenState } from "./liveRoomOpenState";
 import type { WorkspaceFile } from "./workspaceStorage";
 
 export type WorkspaceRuntimeWorkbenchProps = Omit<
@@ -18,6 +19,11 @@ export type WorkspaceRuntimeView = {
   activeFile?: WorkspaceFile;
   documentSurface: DocumentSurfaceModel;
   emptySurfaceProps: WorkspaceEmptySurfaceProps;
+  liveRoomOpenState: LiveRoomOpenState;
+  liveRoomLoadingProps: {
+    onOpenLocalWorkspace: () => void;
+    onRetry: () => void;
+  };
   mainPanelClassName: string;
   menuSurfaceProps: WorkspaceMenuSurfaceProps;
   overlayProps: WorkspaceOverlaySurfaceProps;

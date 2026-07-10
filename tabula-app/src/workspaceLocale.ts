@@ -150,7 +150,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Export to link",
         description:
-          "Create an encrypted link to a copy of the included documents.",
+          "Create a read-only encrypted link to a copy of the included documents.",
         noFileReason: "Open a file before exporting to link.",
         exportToLink: "Export to link",
         exporting: "Exporting link",
@@ -226,7 +226,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "링크로 내보내기",
         description:
-          "포함된 문서의 암호화된 복사본 링크를 만듭니다.",
+          "포함된 문서의 읽기 전용 암호화 복사본 링크를 만듭니다.",
         noFileReason: "파일을 열면 링크로 내보낼 수 있습니다.",
         exportToLink: "링크로 내보내기",
         exporting: "링크 내보내는 중",
@@ -303,7 +303,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "リンクに書き出し",
         description:
-          "含めたドキュメントの暗号化コピーへのリンクを作成します。",
+          "含めたドキュメントの読み取り専用の暗号化コピーへのリンクを作成します。",
         noFileReason:
           "ファイルを開くとリンクに書き出せます。",
         exportToLink: "リンクに書き出し",
@@ -377,7 +377,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       shareable: {
         title: "导出为链接",
-        description: "创建已包含文档的加密副本链接。",
+        description: "创建指向已包含文档只读加密副本的链接。",
         noFileReason: "打开文件后即可导出为链接。",
         exportToLink: "导出为链接",
         exporting: "正在导出链接",
@@ -454,7 +454,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Exportar a enlace",
         description:
-          "Crea un enlace cifrado a una copia de los documentos incluidos.",
+          "Crea un enlace cifrado y de solo lectura a una copia de los documentos incluidos.",
         noFileReason:
           "Abre un archivo antes de exportar a enlace.",
         exportToLink: "Exportar a enlace",
@@ -532,7 +532,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Exporter vers un lien",
         description:
-          "Créez un lien chiffré vers une copie des documents inclus.",
+          "Créez un lien chiffré en lecture seule vers une copie des documents inclus.",
         noFileReason:
           "Ouvrez un fichier avant d'exporter vers un lien.",
         exportToLink: "Exporter vers un lien",
@@ -610,7 +610,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Als Link exportieren",
         description:
-          "Erstelle einen verschlüsselten Link zu einer Kopie der enthaltenen Dokumente.",
+          "Erstelle einen schreibgeschützten verschlüsselten Link zu einer Kopie der enthaltenen Dokumente.",
         noFileReason:
           "Öffne eine Datei, bevor du als Link exportierst.",
         exportToLink: "Als Link exportieren",

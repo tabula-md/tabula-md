@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { encodeBase64Url } from "./data/base64Url";
 import {
   createRoomActor,
+  createRoomActorColor,
+  createRoomActorName,
   createWorkspaceRoomCheckpoint,
   createWorkspaceRoomState,
   decodeWorkspaceRoomCheckpoint,
@@ -32,7 +34,7 @@ describe("room collaboration contract", () => {
       id: "human-1",
       kind: "human",
       name: "Ada",
-      color: undefined,
+      color: createRoomActorColor("human-1"),
       client: "tabula-md",
       capabilities: ["presence", "read", "comment", "write", "create", "delete", "move"],
       joinedAt: "1970-01-01T00:00:00.000Z",
@@ -41,15 +43,24 @@ describe("room collaboration contract", () => {
       id: "agent-1",
       kind: "agent",
       name: "Local Agent",
-      color: undefined,
+      color: createRoomActorColor("agent-1"),
       client: "tabula-mcp",
       capabilities: ["presence", "read", "comment", "write", "create", "delete", "move"],
       joinedAt: "1970-01-01T00:00:00.000Z",
     });
+    expect(createRoomActor({ id: "human-1" }).name).toBe(createRoomActorName("human", "human-1"));
+    expect(createRoomActor({ id: "agent-1", kind: "agent" }).name).toBe(createRoomActorName("agent", "agent-1"));
+    expect(createRoomActor({ id: "agent-1", kind: "agent" }).name).toMatch(/ Agent$/);
+    expect(createRoomActor({ id: "human-1" }).name).toMatch(/ Human$/);
+    expect(createRoomActorColor("human-1")).toBe(createRoomActorColor("human-1"));
   });
 
   it("parses only explicit room actors from the wire contract", () => {
     expect(parseRoomActor(actor)).toEqual(actor);
+    expect(parseRoomActor({ ...actor, color: undefined })).toEqual({
+      ...actor,
+      color: createRoomActorColor(actor.id),
+    });
     expect(parseRoomActor({ id: "peer-1" })).toBeNull();
     expect(parseRoomActor({ id: "agent-1", type: "agent", displayName: "MCP", client: "tabula-mcp" })).toBeNull();
   });
@@ -109,6 +120,21 @@ describe("room collaboration contract", () => {
         { id: "doc-1", type: "document", title: "README.md", sha256: "hash:8", textLength: 8 },
         { id: "doc-2", type: "document", title: "Plan.md", sha256: "hash:4", textLength: 4 },
       ],
+    });
+  });
+
+  it("falls back when workspace room active document is not included", async () => {
+    await expect(createWorkspaceRoomState({
+      roomId: "room-1",
+      activeDocumentId: "deleted-doc",
+      nowIso: () => "2026-07-09T00:00:00.000Z",
+      hashText: async (text) => `hash:${text.length}`,
+      documents: [
+        { id: "doc-1", title: "README.md", markdown: "# Readme" },
+        { id: "doc-2", title: "Plan.md", markdown: "Plan" },
+      ],
+    })).resolves.toMatchObject({
+      activeDocumentId: "doc-1",
     });
   });
 

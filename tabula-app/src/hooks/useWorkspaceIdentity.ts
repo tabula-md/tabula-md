@@ -1,24 +1,34 @@
 import { useState } from "react";
+import {
+  createRoomActorColor,
+  createRoomActorName,
+  ROOM_ACTOR_ADJECTIVES,
+} from "@tabula-md/tabula";
 import type { Collaborator } from "../collaboration";
 import { randomId } from "../workspaceStorage";
 
 export const IDENTITY_KEY = "tabula.identity";
+export const IDENTITY_SESSION_KEY = "tabula.identity.session";
 
-const IDENTITY_COLORS = ["#0f766e", "#2563eb", "#7c3aed", "#c2410c", "#be123c", "#047857"];
-
-const getAnonymousName = (id: string) => `Anonymous ${id.slice(0, 3)}`;
-const isGeneratedName = (name: string) => /^Guest\s+\d+$/i.test(name) || /^Anonymous\s+\S+$/i.test(name);
+const isGeneratedName = (name: string) =>
+  /^Guest\s+\d+$/i.test(name) ||
+  /^Anonymous\s+\S+$/i.test(name) ||
+  ROOM_ACTOR_ADJECTIVES.some(
+    (adjective) => new RegExp(`^${adjective} (Human|Agent)$`, "i").test(name),
+  );
 
 export const normalizeWorkspaceIdentity = (
   identity: Collaborator,
   now: () => number = Date.now,
 ): Collaborator => {
   const name = identity.name?.trim();
-  const nextName = name && !/^Guest\s+\d+$/i.test(name) ? name : getAnonymousName(identity.id);
+  const kind = identity.kind ?? "human";
+  const nextName = name && !isGeneratedName(name) ? name : createRoomActorName(kind, identity.id);
 
   return {
     ...identity,
     name: nextName.slice(0, 40),
+    color: identity.color?.trim() || createRoomActorColor(identity.id),
     lastSeen: now(),
   };
 };
@@ -27,43 +37,53 @@ const writeIdentity = (identity: Collaborator, storage: Storage = window.localSt
   storage.setItem(IDENTITY_KEY, JSON.stringify(identity));
 };
 
+const readStoredJson = (storage: Storage, key: string) => {
+  try {
+    const stored = storage.getItem(key);
+    return stored ? (JSON.parse(stored) as Partial<Collaborator>) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeSessionIdentity = (
+  identity: Pick<Collaborator, "id">,
+  storage: Storage = window.sessionStorage,
+) => {
+  storage.setItem(IDENTITY_SESSION_KEY, JSON.stringify({ id: identity.id }));
+};
+
 export const createWorkspaceIdentity = ({
   storage = window.localStorage,
+  sessionStorage = window.sessionStorage,
   createId = randomId,
   random = Math.random,
   now = Date.now,
 }: {
   storage?: Storage;
+  sessionStorage?: Storage;
   createId?: () => string;
   random?: () => number;
   now?: () => number;
 } = {}): Collaborator => {
-  const id = createId();
-  const fallbackName = `Anonymous ${Math.floor(random() * 900 + 100)}`;
-  const fallbackColor = IDENTITY_COLORS[Math.floor(random() * IDENTITY_COLORS.length)] ?? IDENTITY_COLORS[0];
-  let storedProfile: Partial<Collaborator> | null = null;
+  void random;
+  const storedProfile = readStoredJson(storage, IDENTITY_KEY);
+  const storedSession = readStoredJson(sessionStorage, IDENTITY_SESSION_KEY);
 
-  try {
-    const stored = storage.getItem(IDENTITY_KEY);
-    if (stored) {
-      storedProfile = JSON.parse(stored) as Partial<Collaborator>;
-    }
-  } catch {
-    // Fall through and create a new local identity.
-  }
-
+  const storedSessionId = typeof storedSession?.id === "string" ? storedSession.id.trim() : "";
+  const id = storedSessionId || createId();
   const storedName = typeof storedProfile?.name === "string" ? storedProfile.name.trim() : "";
-  const storedColor = typeof storedProfile?.color === "string" ? storedProfile.color : "";
   const identity = normalizeWorkspaceIdentity(
     {
       id,
-      name: storedName && !isGeneratedName(storedName) ? storedName : fallbackName,
-      color: storedColor || fallbackColor,
+      name: storedName && !isGeneratedName(storedName) ? storedName : createRoomActorName("human", id),
+      color: createRoomActorColor(id),
       lastSeen: now(),
     },
     now,
   );
   writeIdentity(identity, storage);
+  writeSessionIdentity(identity, sessionStorage);
   return identity;
 };
 
