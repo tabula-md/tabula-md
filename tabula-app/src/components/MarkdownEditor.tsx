@@ -1,11 +1,6 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type CSSProperties } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorSelection, EditorState, type Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import {
-  isSafeMarkdownLinkUrl,
-  updateMarkdownLinkUrl,
-  type MarkdownLink,
-} from "@tabula-md/tabula";
 import {
   canRedoEditor,
   canUndoEditor,
@@ -46,25 +41,6 @@ import type {
 } from "../markdownEditorTypes";
 import type { EditorViewportAnchor } from "../preview/previewSyncTypes";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
-
-type EditorLinkPopoverState = {
-  link: MarkdownLink;
-  draftUrl: string;
-  clientX: number;
-  clientY: number;
-};
-
-const getLinkPopoverStyle = ({ clientX, clientY }: EditorLinkPopoverState): CSSProperties => {
-  const width = 320;
-  const height = 128;
-  const viewportWidth = window.innerWidth || 1024;
-  const viewportHeight = window.innerHeight || 768;
-
-  return {
-    left: Math.max(12, Math.min(clientX, viewportWidth - width - 12)),
-    top: Math.max(72, Math.min(clientY + 12, viewportHeight - height - 12)),
-  };
-};
 
 const getEditorViewportLineAnchor = (view: EditorView): EditorViewportAnchor => {
   const viewportTop = Math.max(0, view.scrollDOM.scrollTop);
@@ -136,7 +112,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const compartmentsRef = useRef(createMarkdownEditorCompartments());
     const stateByFileIdRef = useRef(new Map<string, EditorState>());
     const lastHistoryStateRef = useRef(EMPTY_EDITOR_HISTORY_STATE);
-    const [linkPopover, setLinkPopover] = useState<EditorLinkPopoverState | null>(null);
 
     useEffect(() => {
       onChangeRef.current = onChange;
@@ -467,11 +442,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         updateExtension,
         onOpenLineActions: (request) => onOpenLineActionsRef.current?.(request),
         onOpenComment: (commentId) => onOpenCommentRef.current?.(commentId),
-        onOpenLinkPopover: (request) =>
-          setLinkPopover({
-            ...request,
-            draftUrl: request.link.url,
-          }),
       });
       const cachedState = stateByFileIdRef.current.get(fileId);
       const state =
@@ -576,81 +546,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       });
     }, [bookmarks, commentAnchors, commentsEnabled]);
 
-    const linkPopoverUrlSafe = linkPopover ? isSafeMarkdownLinkUrl(linkPopover.draftUrl) : false;
-
-    const handleOpenLink = () => {
-      if (!linkPopover || !isSafeMarkdownLinkUrl(linkPopover.draftUrl)) {
-        return;
-      }
-
-      window.open(linkPopover.draftUrl, "_blank", "noopener,noreferrer");
-    };
-
-    const handleCopyLink = () => {
-      if (!linkPopover) {
-        return;
-      }
-
-      void navigator.clipboard?.writeText(linkPopover.draftUrl);
-    };
-
-    const handleSaveLink = () => {
-      const view = viewRef.current;
-      if (!view || !linkPopover) {
-        return;
-      }
-
-      const edit = updateMarkdownLinkUrl(
-        view.state.doc.toString(),
-        linkPopover.link.from,
-        linkPopover.draftUrl,
-      );
-      if (!edit) {
-        setLinkPopover(null);
-        return;
-      }
-
-      dispatchLocalTextPatches(view, [edit.patch], edit.selection);
-      setLinkPopover(null);
-    };
-
     return (
       <div className="markdown-editor-shell">
         <div ref={containerRef} className="markdown-editor" aria-label="Editor" />
-        {linkPopover && (
-          <div className="editor-link-popover" style={getLinkPopoverStyle(linkPopover)}>
-            <input
-              type="url"
-              value={linkPopover.draftUrl}
-              spellCheck={false}
-              aria-label="Link URL"
-              onChange={(event) =>
-                setLinkPopover((current) =>
-                  current
-                    ? {
-                        ...current,
-                        draftUrl: event.target.value,
-                      }
-                    : current,
-                )
-              }
-            />
-            <div className="editor-link-popover-actions">
-              <button type="button" disabled={!linkPopoverUrlSafe} onClick={handleOpenLink}>
-                Open
-              </button>
-              <button type="button" onClick={handleCopyLink}>
-                Copy
-              </button>
-              <button type="button" onClick={handleSaveLink}>
-                Save
-              </button>
-              <button type="button" onClick={() => setLinkPopover(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     );
   },

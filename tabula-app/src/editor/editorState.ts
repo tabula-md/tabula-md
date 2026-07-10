@@ -23,7 +23,6 @@ import type {
   MarkdownLineActionRequest,
 } from "../markdownEditorTypes";
 import { createMarkdownCommandExtensions } from "./editorInputRules";
-import { createEditorInteractionExtension, type EditorLinkPopoverRequest } from "./editorInteractions";
 import {
   createEditorLayoutCompartments,
   createEditorLineNumbersExtension,
@@ -59,7 +58,6 @@ export type MarkdownEditorExtensionConfig = {
   updateExtension: Extension;
   onOpenLineActions?: (request: MarkdownLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
-  onOpenLinkPopover?: (request: EditorLinkPopoverRequest) => void;
 };
 
 const markdownEditorHighlightStyle = HighlightStyle.define([
@@ -141,7 +139,6 @@ export const createMarkdownEditorExtensions = ({
   updateExtension,
   onOpenLineActions,
   onOpenComment,
-  onOpenLinkPopover,
 }: MarkdownEditorExtensionConfig): Extension[] => [
   history(),
   ...createEditorSelectionDisplayExtensions(),
@@ -167,7 +164,6 @@ export const createMarkdownEditorExtensions = ({
   compartments.remotePresence.of(createEditorPresenceExtension(collaborators, fileTitle, roomId)),
   createTextSelectionHighlightExtension(),
   compartments.searchHighlight.of(createEditorSearchExtension(searchMatches, activeSearchMatchIndex)),
-  createEditorInteractionExtension({ onOpenLinkPopover }),
   ...createMarkdownCommandExtensions(),
   updateExtension,
 ];

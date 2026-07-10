@@ -36,61 +36,6 @@
   outline: 0;
 }
 
-.editor-link-popover {
-  position: fixed;
-  z-index: 60;
-  display: grid;
-  gap: 8px;
-  width: 320px;
-  padding: 10px;
-  color: var(--text-primary);
-  background: var(--surface-panel);
-  border: 1px solid var(--line-subtle);
-  border-radius: 8px;
-  box-shadow: var(--shadow-popover);
-}
-
-.editor-link-popover input {
-  width: 100%;
-  min-width: 0;
-  height: 32px;
-  padding: 0 8px;
-  color: var(--text-primary);
-  background: var(--surface);
-  border: 1px solid var(--line-subtle);
-  border-radius: 6px;
-  font: inherit;
-  font-size: 13px;
-}
-
-.editor-link-popover-actions {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.editor-link-popover-actions button {
-  min-width: 0;
-  height: 30px;
-  padding: 0 8px;
-  color: var(--text-soft);
-  background: transparent;
-  border: 1px solid var(--line-subtle);
-  border-radius: 6px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.editor-link-popover-actions button:hover {
-  color: var(--text-primary);
-  background: var(--surface-hover);
-}
-
-.editor-link-popover-actions button:disabled {
-  cursor: default;
-  opacity: 0.35;
-}
-
 .markdown-editor .cm-comment-mark {
   position: relative;
   border-bottom: 1px solid var(--editor-comment-mark-border);
