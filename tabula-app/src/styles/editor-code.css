@@ -55,65 +55,6 @@
   border-bottom-color: var(--editor-comment-mark-active-border);
 }
 
-.markdown-editor .cm-remote-selection {
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--remote-presence-color, var(--accent)) 18%, transparent);
-}
-
-.markdown-editor .cm-remote-cursor {
-  position: relative;
-  display: inline-block;
-  width: 0;
-  height: 1.2em;
-  margin-left: 0;
-  vertical-align: text-bottom;
-  pointer-events: none;
-}
-
-.markdown-editor .cm-remote-cursor::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -1px;
-  width: 2px;
-  height: 1.2em;
-  background: var(--remote-presence-color, var(--accent));
-}
-
-.markdown-editor .cm-remote-cursor-label {
-  position: absolute;
-  z-index: 4;
-  max-width: 180px;
-  padding: 2px 6px;
-  overflow: hidden;
-  border-radius: 5px;
-  color: var(--text-inverse);
-  background: var(--remote-presence-color, var(--accent));
-  font-family:
-    "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.markdown-editor .cm-remote-cursor-label-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-}
-
-.markdown-editor .cm-remote-cursor-label.above {
-  transform: translateY(calc(-100% - 2px));
-}
-
-.markdown-editor .cm-remote-cursor-label.below {
-  transform: translateY(2px);
-}
-
 .markdown-editor .cm-scroller {
   position: relative;
   min-height: inherit;
@@ -256,7 +197,7 @@
 
 .markdown-editor .cm-content {
   min-height: inherit;
-  padding: 0;
+  padding: 0 0 24px;
   caret-color: var(--text-primary);
 }
 

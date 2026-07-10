@@ -1,28 +1,27 @@
 import { useEffect } from "react";
 import {
   getRoomFromLocation,
-  syncUrlForFile,
   type LocationRoom,
   type WorkspaceFile,
 } from "../workspaceStorage";
 
 type UseWorkspaceRouteRuntimeOptions = {
-  activeFile?: WorkspaceFile;
   activeFileId: string;
   activateRoomFile: (room: LocationRoom) => void;
   files: WorkspaceFile[];
   selectFile: (fileId: string) => void;
   onBeforeWorkspaceBoundary?: () => void;
+  onLeaveRoom?: () => void;
   onRouteWorkspaceChange: () => void;
 };
 
 export function useWorkspaceRouteRuntime({
-  activeFile,
   activeFileId,
   activateRoomFile,
   files,
   selectFile,
   onBeforeWorkspaceBoundary,
+  onLeaveRoom,
   onRouteWorkspaceChange,
 }: UseWorkspaceRouteRuntimeOptions) {
   useEffect(() => {
@@ -41,12 +40,14 @@ export function useWorkspaceRouteRuntime({
 
       const currentFile = files.find((file) => file.id === activeFileId);
       if (!currentFile?.roomId) {
+        onLeaveRoom?.();
         return;
       }
 
       const localFile = files.find((file) => !file.roomId) ?? files[0];
       if (localFile) {
         onBeforeWorkspaceBoundary?.();
+        onLeaveRoom?.();
         selectFile(localFile.id);
         onRouteWorkspaceChange();
       }
@@ -60,14 +61,7 @@ export function useWorkspaceRouteRuntime({
     files,
     onRouteWorkspaceChange,
     onBeforeWorkspaceBoundary,
+    onLeaveRoom,
     selectFile,
   ]);
-
-  useEffect(() => {
-    if (!activeFile || activeFile.roomId || !getRoomFromLocation()) {
-      return;
-    }
-
-    syncUrlForFile(undefined, "replace");
-  }, [activeFile?.id, activeFile?.roomId]);
 }

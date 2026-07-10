@@ -5,9 +5,9 @@ import path from "node:path";
 import { chromium } from "playwright";
 
 const port = Number(process.env.TABULA_TEST_PORT ?? 5187);
-const roomPort = Number(process.env.TABULA_TEST_ROOM_PORT ?? 3002);
-const publishPort = Number(process.env.TABULA_TEST_PUBLISH_PORT ?? 3003);
-const jsonPort = Number(process.env.TABULA_TEST_JSON_PORT ?? 3004);
+const roomPort = Number(process.env.TABULA_TEST_ROOM_PORT ?? 3012);
+const publishPort = Number(process.env.TABULA_TEST_PUBLISH_PORT ?? 3013);
+const jsonPort = Number(process.env.TABULA_TEST_JSON_PORT ?? 3014);
 const externalUrl = process.env.TABULA_TEST_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${port}`;
 const roomUrl = (process.env.VITE_TABULA_ROOM_URL ?? `http://127.0.0.1:${roomPort}`).replace(/\/$/, "");
@@ -80,7 +80,7 @@ const getTabs = async (page) =>
         title: item.getAttribute("data-file-name") ?? item.querySelector(".tab-title")?.textContent?.trim() ?? "",
         visibleTitle: item.querySelector(".tab-title")?.textContent?.trim() ?? "",
         active: item.classList.contains("active"),
-        live: item.classList.contains("live"),
+        live: Boolean(item.getAttribute("data-room-id")),
         mode,
         buttonTitle: button?.getAttribute("title") ?? "",
       };

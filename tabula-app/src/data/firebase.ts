@@ -1,89 +1,156 @@
 import { initializeApp, getApps, type FirebaseOptions } from "firebase/app";
 import {
-  Bytes,
+  Timestamp,
   doc,
   getDoc,
   getFirestore,
   runTransaction,
   serverTimestamp,
 } from "firebase/firestore";
+import {
+  deleteObject,
+  getBytes,
+  getStorage,
+  ref,
+  uploadBytes,
+} from "firebase/storage";
 import type { RoomCheckpointStore } from "../collaboration/roomCheckpointStore";
 import { tabulaServiceConfig } from "../serviceConfig";
 
-type FirebaseRoomCheckpointDocument = {
-  formatVersion: 1;
-  checkpointVersion: number;
-  checkpoint: Bytes;
+type FirebaseRoomCheckpointPointer = {
+  formatVersion: 2;
+  generation: number;
+  blobPath: string;
+  byteLength: number;
   updatedAt?: unknown;
+  expiresAt: Timestamp;
 };
 
 const firebaseAppName = "tabula-room-checkpoint";
-const roomCheckpointFormatVersion = 1;
-const roomCheckpointCollection = "roomCheckpoints";
+const roomCheckpointFormatVersion = 2;
+const roomCheckpointCollection = "roomCheckpointPointers";
+
+const throwIfAborted = (signal?: AbortSignal) => {
+  if (signal?.aborted) {
+    throw signal.reason ?? new DOMException("Aborted", "AbortError");
+  }
+};
+
+const createBlobId = () => {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+};
 
 export const createFirebaseRoomCheckpointStore = (
   firebaseConfig = tabulaServiceConfig.firebaseConfig,
 ): RoomCheckpointStore => {
-  if (!firebaseConfig) {
-    return createDisabledFirebaseRoomCheckpointStore();
-  }
-
+  if (!firebaseConfig) return createDisabledFirebaseRoomCheckpointStore();
   const config = parseFirebaseConfig(firebaseConfig);
-  if (!config) {
-    return createDisabledFirebaseRoomCheckpointStore();
-  }
+  if (!config) return createDisabledFirebaseRoomCheckpointStore();
 
-  const app =
-    getApps().find((candidate) => candidate.name === firebaseAppName) ??
-    initializeApp(config, firebaseAppName);
+  const app = getApps().find((candidate) => candidate.name === firebaseAppName) ?? initializeApp(config, firebaseAppName);
   const firestore = getFirestore(app);
+  const storage = getStorage(app);
 
   return {
     enabled: true,
-    async loadEncryptedCheckpoint(roomId) {
-      const snapshot = await getDoc(doc(firestore, roomCheckpointCollection, roomId));
-      if (!snapshot.exists()) {
-        return null;
+    async loadEncryptedCheckpoint(roomId, signal) {
+      let failedPointer: FirebaseRoomCheckpointPointer | null = null;
+      let failedRead: unknown;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        throwIfAborted(signal);
+        const snapshot = await getDoc(doc(firestore, roomCheckpointCollection, roomId));
+        throwIfAborted(signal);
+        if (!snapshot.exists()) return null;
+        const pointer = readFirebaseRoomCheckpointPointer(snapshot.data());
+        if (
+          failedPointer &&
+          failedPointer.generation === pointer.generation &&
+          failedPointer.blobPath === pointer.blobPath
+        ) {
+          throw failedRead;
+        }
+        const expiresAt = pointer.expiresAt.toMillis();
+        if (expiresAt <= Date.now()) {
+          return { status: "expired", generation: pointer.generation, expiresAt };
+        }
+        try {
+          const bytes = await getBytes(ref(storage, pointer.blobPath));
+          throwIfAborted(signal);
+          if (bytes.byteLength !== pointer.byteLength) {
+            throw new Error("Room checkpoint blob length does not match its pointer.");
+          }
+          return {
+            status: "ready",
+            generation: pointer.generation,
+            encryptedCheckpoint: new Uint8Array(bytes),
+            expiresAt,
+          };
+        } catch (error) {
+          throwIfAborted(signal);
+          failedPointer = pointer;
+          failedRead = error;
+        }
       }
-
-      return readFirebaseRoomCheckpointDocument(snapshot.data()).checkpoint.toUint8Array();
+      throw failedRead;
     },
-    async saveEncryptedCheckpoint(roomId, encryptedCheckpoint) {
-      const roomRef = doc(firestore, roomCheckpointCollection, roomId);
-      await runTransaction(firestore, async (transaction) => {
-        const snapshot = await transaction.get(roomRef);
-        const previous = snapshot.exists()
-          ? readFirebaseRoomCheckpointDocument(snapshot.data())
-          : null;
-        const checkpointVersion = (previous?.checkpointVersion ?? 0) + 1;
-
-        transaction.set(roomRef, {
-          formatVersion: roomCheckpointFormatVersion,
-          checkpointVersion,
-          checkpoint: Bytes.fromUint8Array(encryptedCheckpoint),
-          updatedAt: serverTimestamp(),
-        } satisfies FirebaseRoomCheckpointDocument);
-      });
+    async saveEncryptedCheckpoint(roomId, request, signal) {
+      throwIfAborted(signal);
+      const blobPath = `roomCheckpoints/${roomId}/${createBlobId()}.bin`;
+      const blobRef = ref(storage, blobPath);
+      await uploadBytes(blobRef, request.encryptedCheckpoint, { contentType: "application/octet-stream" });
+      throwIfAborted(signal);
+      let previousBlobPath: string | null = null;
+      try {
+        const result = await runTransaction(firestore, async (transaction) => {
+          const pointerRef = doc(firestore, roomCheckpointCollection, roomId);
+          const snapshot = await transaction.get(pointerRef);
+          const previous = snapshot.exists() ? readFirebaseRoomCheckpointPointer(snapshot.data()) : null;
+          const generation = previous?.generation ?? 0;
+          if (generation !== request.expectedGeneration) {
+            return { ok: false as const, reason: "conflict" as const, generation };
+          }
+          previousBlobPath = previous?.blobPath ?? null;
+          const nextGeneration = generation + 1;
+          transaction.set(pointerRef, {
+            formatVersion: roomCheckpointFormatVersion,
+            generation: nextGeneration,
+            blobPath,
+            byteLength: request.encryptedCheckpoint.byteLength,
+            updatedAt: serverTimestamp(),
+            expiresAt: Timestamp.fromMillis(request.expiresAt),
+          } satisfies FirebaseRoomCheckpointPointer);
+          return { ok: true as const, generation: nextGeneration };
+        });
+        if (!result.ok) {
+          await deleteObject(blobRef).catch(() => undefined);
+          return result;
+        }
+        if (previousBlobPath && previousBlobPath !== blobPath) {
+          await deleteObject(ref(storage, previousBlobPath)).catch(() => undefined);
+        }
+        return result;
+      } catch (error) {
+        await deleteObject(blobRef).catch(() => undefined);
+        throw error;
+      }
     },
   };
 };
 
 const createDisabledFirebaseRoomCheckpointStore = (): RoomCheckpointStore => ({
   enabled: false,
-  async loadEncryptedCheckpoint() {
-    return null;
-  },
-  async saveEncryptedCheckpoint() {
-    // Firebase room checkpoints are optional.
+  async loadEncryptedCheckpoint() { return null; },
+  async saveEncryptedCheckpoint(_roomId, request) {
+    return { ok: true, generation: request.expectedGeneration + 1 };
   },
 });
 
 const parseFirebaseConfig = (rawConfig: string): FirebaseOptions | null => {
   try {
     const parsed = JSON.parse(rawConfig) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error("Firebase config must be an object");
-    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Firebase config must be an object");
     return parsed as FirebaseOptions;
   } catch (error) {
     console.warn(`Invalid VITE_TABULA_FIREBASE_CONFIG: ${errorMessage(error)}`);
@@ -91,29 +158,18 @@ const parseFirebaseConfig = (rawConfig: string): FirebaseOptions | null => {
   }
 };
 
-const readFirebaseRoomCheckpointDocument = (value: unknown): FirebaseRoomCheckpointDocument => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("Invalid Firebase room checkpoint document");
-  }
-
-  const document = value as Partial<FirebaseRoomCheckpointDocument>;
+const readFirebaseRoomCheckpointPointer = (value: unknown): FirebaseRoomCheckpointPointer => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid Firebase room checkpoint pointer");
+  const pointer = value as Partial<FirebaseRoomCheckpointPointer>;
   if (
-    document.formatVersion !== roomCheckpointFormatVersion ||
-    !Number.isSafeInteger(document.checkpointVersion) ||
-    document.checkpointVersion === undefined ||
-    document.checkpointVersion < 0 ||
-    !(document.checkpoint instanceof Bytes)
-  ) {
-    throw new Error("Invalid Firebase room checkpoint document");
-  }
-
-  return {
-    formatVersion: roomCheckpointFormatVersion,
-    checkpointVersion: document.checkpointVersion,
-    checkpoint: document.checkpoint,
-    updatedAt: document.updatedAt,
-  };
+    pointer.formatVersion !== roomCheckpointFormatVersion ||
+    !Number.isSafeInteger(pointer.generation) ||
+    pointer.generation === undefined || pointer.generation < 1 ||
+    typeof pointer.blobPath !== "string" || !pointer.blobPath.startsWith("roomCheckpoints/") ||
+    !Number.isSafeInteger(pointer.byteLength) || pointer.byteLength === undefined || pointer.byteLength < 1 ||
+    !(pointer.expiresAt instanceof Timestamp)
+  ) throw new Error("Invalid Firebase room checkpoint pointer");
+  return pointer as FirebaseRoomCheckpointPointer;
 };
 
-const errorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "Unknown error";
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : "Unknown error";

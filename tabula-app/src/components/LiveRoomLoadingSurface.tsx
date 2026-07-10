@@ -1,7 +1,7 @@
 import { FolderOpen, Link2, UsersRound } from "lucide-react";
 
 export type LiveRoomLoadingSurfaceProps = {
-  state?: "opening" | "unavailable";
+  state?: "opening" | "unavailable" | "expired";
   onOpenLocalWorkspace?: () => void;
   onRetry?: () => void;
 };
@@ -11,6 +11,23 @@ export function LiveRoomLoadingSurface({
   onOpenLocalWorkspace,
   onRetry,
 }: LiveRoomLoadingSurfaceProps) {
+  if (state === "expired") {
+    return (
+      <section className="workspace empty-workspace live-room-loading-surface" aria-label="Live room expired">
+        <div className="empty-file-center live-room-loading-center live-room-unavailable-center">
+          <p className="live-room-unavailable-title">This live room has expired.</p>
+          <p>The encrypted workspace is no longer available.</p>
+          <div className="live-room-unavailable-actions">
+            <button type="button" className="empty-file-action" onClick={onOpenLocalWorkspace}>
+              <FolderOpen size={15} aria-hidden="true" />
+              <span>Open local workspace</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (state === "unavailable") {
     return (
       <section className="workspace empty-workspace live-room-loading-surface" aria-label="Live room unavailable">

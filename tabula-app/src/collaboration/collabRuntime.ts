@@ -17,14 +17,13 @@ import type { WorkspaceFile } from "../workspaceStorage";
 
 export type LiveRoomConnectionTarget = {
   fileId: string;
-  fileTitle: string;
+  fileTitle?: string;
   roomId: string;
   roomKey: string;
   shareUrl: string;
 };
 
 export type CollaborationStatusPatch = {
-  collaboratorCount?: number;
   requireRoom?: boolean;
 };
 
@@ -39,7 +38,7 @@ export type CollaborationPresenceIdentityInput = {
   isLive: boolean;
   activeDocumentId?: string;
   roomId?: string;
-  fileTitle: string;
+  fileTitle?: string;
   selection?: LiveSelection;
   joinedAt?: string;
 };
@@ -108,13 +107,10 @@ export const getInitialCollaborationStatus = (
 ): ConnectionStatus => (shouldStartLiveRoomConnection({ file, location: options.location }) ? "connecting" : "idle");
 
 export const getDisconnectedStatusPatch = (): CollaborationStatusPatch => ({
-  collaboratorCount: 0,
   requireRoom: true,
 });
 
-export const getIdleStatusPatch = (): CollaborationStatusPatch => ({
-  collaboratorCount: 0,
-});
+export const getIdleStatusPatch = (): CollaborationStatusPatch => ({});
 
 export const getRecoveryEventPatch = (event: CollabRecoveryEvent): RecoveryEventPatch => ({
   type: event.type,
@@ -171,7 +167,9 @@ export const createCollaborationPresenceIdentity = ({
         joinedAt: identity.joinedAt ?? joinedAt ?? new Date(0).toISOString(),
         ...(activeDocumentId ? { activeDocumentId } : {}),
         roomId,
-        fileTitle,
-        selection: selection && activeDocumentId ? { ...selection, documentId: selection.documentId ?? activeDocumentId } : selection,
+        ...(fileTitle ? { fileTitle } : {}),
+        selection: selection && activeDocumentId
+          ? { ...selection, documentId: selection.documentId ?? activeDocumentId }
+          : undefined,
       }
     : identity;

@@ -9,7 +9,6 @@ import {
   finalizeWorkspaceState,
   getRoomFromLocation,
   getLiveFileTitle,
-  isEmptyGeneratedLivePlaceholder,
   migrateWorkspacePayload,
   PROJECT_STORAGE_VERSION,
   readInitialWorkspaceSnapshot,
@@ -194,6 +193,8 @@ describe("project persistence", () => {
       "commentsByFileId",
       "fileOrder",
       "files",
+      "folderOrder",
+      "folders",
       "openFileIds",
       "savedAt",
       "schema",
@@ -205,6 +206,47 @@ describe("project persistence", () => {
       ["PRD.md", "split"],
       ["DESIGN.md", "preview"],
     ]);
+  });
+
+  it("migrates v5 path-like titles into a real v6 folder tree", () => {
+    const legacyFile = createWorkspaceFile(1, {
+      id: "adr",
+      title: "docs/decisions/ADR.md",
+      text: "# Decision",
+    });
+    const restored = migrateWorkspacePayload({
+      schema: "tabula.project",
+      version: 5,
+      savedAt: "2026-07-10T00:00:00.000Z",
+      activeFileId: "adr",
+      openFileIds: ["adr"],
+      fileOrder: ["adr"],
+      files: { adr: legacyFile },
+      commentsByFileId: {},
+    }, { includeLocationRoom: false });
+
+    const docsFolder = restored?.folders.find((folder) => folder.title === "docs");
+    const decisionsFolder = restored?.folders.find((folder) => folder.title === "decisions");
+    expect(docsFolder?.parentId).toBe("workspace-root");
+    expect(decisionsFolder?.parentId).toBe(docsFolder?.id);
+    expect(restored?.files[0]).toMatchObject({ title: "ADR.md", parentId: decisionsFolder?.id });
+  });
+
+  it("repairs cyclic v6 folders instead of exposing an unusable tree", () => {
+    const stored = createStoredWorkspace({
+      folders: [
+        { id: "workspace-root", title: "Project", parentId: null },
+        { id: "one", title: "One", parentId: "two" },
+        { id: "two", title: "Two", parentId: "one" },
+      ],
+      files: [createWorkspaceFile(1, { id: "file", title: "folder/name", parentId: "missing" })],
+      activeFileId: "file",
+      commentsByFileId: {},
+    });
+    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+
+    expect(restored?.files[0]).toMatchObject({ title: "folder name.md", parentId: "workspace-root" });
+    expect(restored?.folders.some((folder) => folder.id !== "workspace-root" && folder.parentId === "workspace-root")).toBe(true);
   });
 
   it("rejects non-Tabula project payloads", () => {
@@ -279,7 +321,6 @@ describe("project persistence", () => {
       title: "Shared room.md",
       text: "# Live",
       connectionStatus: "idle",
-      collaboratorCount: 0,
     });
     expect(stored.files["live"]?.roomId).toBeUndefined();
     expect(stored.files["live"]?.shareUrl).toBeUndefined();
@@ -290,7 +331,6 @@ describe("project persistence", () => {
       title: "Shared room.md",
       text: "# Live",
       connectionStatus: "idle",
-      collaboratorCount: 0,
     });
     expect(liveFile?.roomId).toBeUndefined();
     expect(liveFile?.shareUrl).toBeUndefined();
@@ -359,7 +399,6 @@ describe("project persistence", () => {
           roomId: "room-live",
           shareUrl: "https://tabula.test/",
           connectionStatus: "disconnected",
-          collaboratorCount: 2,
           lastRecoveryType: "invalid-message",
           lastRecoveryMessage: "This room URL is missing its client-only room key.",
           lastRecoveryAt: "2026-06-11T00:01:00.000Z",
@@ -373,7 +412,6 @@ describe("project persistence", () => {
 
     expect(stored.files["broken-live"]).toMatchObject({
       connectionStatus: "idle",
-      collaboratorCount: 0,
     });
     expect(stored.files["broken-live"]?.roomId).toBeUndefined();
     expect(stored.files["broken-live"]?.shareUrl).toBeUndefined();
@@ -381,7 +419,6 @@ describe("project persistence", () => {
     expect(stored.files["broken-live"]?.lastRecoveryMessage).toBeUndefined();
     expect(brokenFile).toMatchObject({
       connectionStatus: "idle",
-      collaboratorCount: 0,
     });
     expect(brokenFile?.roomId).toBeUndefined();
     expect(brokenFile?.shareUrl).toBeUndefined();

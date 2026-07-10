@@ -845,7 +845,7 @@ export async function run(ctx) {
     browser,
     "/",
     async (page) => {
-      await page.getByTitle("New tab").click();
+      await page.getByTitle("New document").click();
       await waitForEditorReady(page, { mode: "edit" });
       await page.getByRole("button", { name: "Split", exact: true }).click();
       await waitForEditorReady(page, { mode: "split" });
@@ -1071,6 +1071,7 @@ export async function run(ctx) {
             await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
             for (let index = 0; index < 8; index += 1) {
               await page.mouse.wheel(0, 650);
+              await page.evaluate(() => new Promise((resolve) => window.requestAnimationFrame(resolve)));
             }
           },
           700,
@@ -1762,7 +1763,7 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseUrl });
-      await page.getByTitle("New tab").click();
+      await page.getByTitle("New document").click();
       await waitForEditorReady(page, { mode: "edit" });
       await focusMarkdownEditor(page);
       await page.evaluate(installLargePasteProbe);
@@ -2051,13 +2052,18 @@ export async function run(ctx) {
     await waitForEditorReady(firstPage, { mode: "edit" });
     await firstPage.locator(".share-trigger").click();
     await firstPage.getByRole("button", { name: "Start session" }).click();
-    await firstPage.waitForSelector(".tab-item.live.active");
+    await firstPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
     const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
     await firstPage.getByRole("button", { name: "Close share dialog" }).click();
 
     const roomUrl = new URL(shareUrl);
     await secondPage.goto(`${baseUrl}${roomUrl.pathname}${roomUrl.hash}`);
-    await secondPage.waitForSelector(".tab-item.live.active");
+    await secondPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
+    if ((await secondPage.locator('.tab-item[data-file-name="large-presence-performance.md"]').count()) === 0) {
+      await secondPage.getByRole("button", { name: "Open Project Context" }).click();
+      await secondPage.getByRole("button", { name: "Files", exact: true }).click();
+      await secondPage.getByRole("button", { name: "Open large-presence-performance.md" }).click();
+    }
     await waitForEditorReady(secondPage, { mode: "edit" });
     await Promise.all([
       firstPage.waitForFunction(

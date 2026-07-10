@@ -8,7 +8,14 @@ import {
 } from ".";
 import { createWorkspaceFromJsonShareSnapshot, hasMeaningfulWorkspaceContent } from "./jsonShareImport";
 import { SHARE_SNAPSHOT_SCHEMA_VERSION, type ShareSnapshot } from "./shareSnapshotPayload";
-import { STARTER_README_MARKDOWN, type WorkspaceFile } from "../workspaceStorage";
+import {
+  STARTER_README_MARKDOWN,
+  WORKSPACE_ROOT_FOLDER_ID,
+  createWorkspaceRootFolder,
+  type WorkspaceFile,
+} from "../workspaceStorage";
+
+const folders = [createWorkspaceRootFolder()];
 
 const file = (): WorkspaceFile => ({
   id: "readme",
@@ -43,6 +50,8 @@ describe("json share links", () => {
       serviceUrl: "https://json.tabula.md",
       origin: "https://tabula.md",
       files: [file()],
+      folders,
+      rootFolderId: WORKSPACE_ROOT_FOLDER_ID,
       activeFileId: "readme",
       commentsByFileId: {},
       fetchImpl: createFetch as typeof fetch,
@@ -107,6 +116,8 @@ describe("json share links", () => {
         serviceUrl: "https://json.tabula.md",
         origin: "https://tabula.md",
         files: [file()],
+        folders,
+        rootFolderId: WORKSPACE_ROOT_FOLDER_ID,
         activeFileId: "readme",
         commentsByFileId: {},
         fetchImpl: (async () =>
@@ -127,6 +138,8 @@ describe("json share links", () => {
         serviceUrl: "https://json.tabula.md",
         origin: "https://tabula.md",
         files: [file()],
+        folders,
+        rootFolderId: WORKSPACE_ROOT_FOLDER_ID,
         activeFileId: "readme",
         commentsByFileId: {},
         fetchImpl: (async () =>
@@ -182,8 +195,16 @@ describe("json share links", () => {
       url: "https://tabula.md/#json=jsonShare123,key",
       schemaVersion: SHARE_SNAPSHOT_SCHEMA_VERSION,
       createdAt: "2026-06-28T00:00:00.000Z",
+      rootFolderId: WORKSPACE_ROOT_FOLDER_ID,
       activeFileId: "brief",
-      files: [{ id: "brief", title: "BRIEF.md", text: "# Brief" }],
+      folders: [{ id: WORKSPACE_ROOT_FOLDER_ID, title: "Project", parentId: null, order: 0 }],
+      files: [{
+        id: "brief",
+        title: "BRIEF.md",
+        text: "# Brief",
+        parentId: WORKSPACE_ROOT_FOLDER_ID,
+        order: 0,
+      }],
       commentsByFileId: { brief: [] },
     } satisfies ShareSnapshot);
 

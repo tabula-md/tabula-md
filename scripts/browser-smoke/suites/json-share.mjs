@@ -21,9 +21,14 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     const requestUrls = [];
+    const responseStatuses = [];
     page.on("request", (request) => requestUrls.push(request.url()));
+    page.on("response", (response) => responseStatuses.push({
+      status: response.status(),
+      url: response.url(),
+    }));
 
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.type("\n\n# Export Link Smoke\n\nExport link import body.");
@@ -32,7 +37,48 @@ export async function run(ctx) {
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
     await page.getByRole("button", { name: "Export to link" }).click();
-    await page.waitForSelector('[aria-label="Export link"]', { timeout: 8_000 });
+    const exportSamples = [];
+    for (let index = 0; index < 80; index += 1) {
+      const sample = await page.evaluate(() => ({
+        hasResult: Boolean(document.querySelector('[aria-label="Export link"]')),
+        modalText: document.querySelector(".share-modal")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+        toastText: document.querySelector(".app-toast")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      }));
+      exportSamples.push(sample);
+      if (sample.hasResult || (!sample.modalText && sample.toastText)) break;
+      await page.waitForTimeout(100);
+    }
+    if (!exportSamples.at(-1)?.hasResult) {
+      const payloadDebug = await page.evaluate(async () => {
+        const [{ useWorkspaceStore }, snapshotModule, storageModule] = await Promise.all([
+          import("/src/stores/workspaceStore.ts"),
+          import("/src/share/shareSnapshotPayload.ts"),
+          import("/src/workspaceStorage.ts"),
+        ]);
+        const state = useWorkspaceStore.getState();
+        const files = state.files.map(({ id, parentId, title }) => ({ id, parentId, title }));
+        const folders = state.folders.map(({ id, parentId, title }) => ({ id, parentId, title }));
+        try {
+          snapshotModule.createShareSnapshotPayload({
+            files: state.files,
+            folders: state.folders,
+            rootFolderId: storageModule.WORKSPACE_ROOT_FOLDER_ID,
+            activeFileId: state.activeFileId,
+            commentsByFileId: {},
+          });
+          return { error: "", files, folders };
+        } catch (error) {
+          return {
+            error: error instanceof Error ? error.message : String(error),
+            files,
+            folders,
+          };
+        }
+      });
+      throw new Error(
+        `Export to link did not render a result.\n${JSON.stringify({ exportSamples, payloadDebug, responseStatuses }, null, 2)}`,
+      );
+    }
 
     const exportUrl = await page.locator('[aria-label="Export link"]').getAttribute("title");
     expect(Boolean(exportUrl), "Export to link should create an Export link URL.");
@@ -55,7 +101,7 @@ export async function run(ctx) {
       const secondRequestUrls = [];
       secondPage.on("request", (request) => secondRequestUrls.push(request.url()));
       await secondPage.goto(baseUrl);
-      await secondPage.getByTitle("New tab").click();
+      await secondPage.getByTitle("New document").click();
       await waitForEditorReady(secondPage, { mode: "edit" });
       await focusMarkdownEditor(secondPage);
       await secondPage.keyboard.type("\n\nLocal draft before import.");

@@ -9,7 +9,9 @@ type UseIndexedDbWorkspaceHydrationOptions = {
   initialWorkspace: WorkspaceState;
   workspace: WorkspaceState;
   readWorkspace?: () => Promise<WorkspaceState | null>;
-  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">) => void;
+  replaceWorkspace: (
+    workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">,
+  ) => void;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
 };
 
@@ -27,6 +29,7 @@ export const getWorkspaceHydrationSignature = (workspace: WorkspaceState) =>
     activeFileId: workspace.activeFileId,
     commentsByFileId: workspace.commentsByFileId,
     files: stableFiles(workspace.files),
+    folders: workspace.folders,
     openFileIds: workspace.openFileIds,
   });
 
@@ -107,6 +110,7 @@ export const useIndexedDbWorkspaceHydration = ({
         replaceCommentsByFileId(indexedDbWorkspace.commentsByFileId);
         replaceWorkspace({
           files: indexedDbWorkspace.files,
+          folders: indexedDbWorkspace.folders,
           openFileIds: indexedDbWorkspace.openFileIds,
           activeFileId: indexedDbWorkspace.activeFileId,
         });

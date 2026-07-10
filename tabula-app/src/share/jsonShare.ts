@@ -24,7 +24,7 @@ import {
   type ShareSnapshotPayload,
 } from "./shareSnapshotPayload";
 import { resolveTabulaJsonShareServiceUrl } from "../serviceConfig";
-import type { FileComment, WorkspaceFile } from "../workspaceStorage";
+import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 
 export {
   createJsonShareUrl,
@@ -40,6 +40,8 @@ type CreateJsonShareLinkOptions = {
   serviceUrl: string;
   origin: string;
   files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
+  rootFolderId: string;
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
   fetchImpl?: typeof fetch;
@@ -65,11 +67,19 @@ export const createJsonShareLink = async ({
   serviceUrl,
   origin,
   files,
+  folders,
+  rootFolderId,
   activeFileId,
   commentsByFileId,
   fetchImpl = fetch,
 }: CreateJsonShareLinkOptions) => {
-  const payload = createShareSnapshotPayload({ files, activeFileId, commentsByFileId });
+  const payload = createShareSnapshotPayload({
+    files,
+    folders,
+    rootFolderId,
+    activeFileId,
+    commentsByFileId,
+  });
   const key = generateJsonShareKey();
   const encrypted = await encryptJsonSharePayload(payload, key);
   const jsonShareServiceUrl = trimTrailingSlash(serviceUrl);

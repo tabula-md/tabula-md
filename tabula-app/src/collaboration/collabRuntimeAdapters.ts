@@ -1,7 +1,6 @@
 import type { EncryptedEnvelope, EnvelopeKind } from "./roomProtocol";
 import type { RoomCheckpointStore } from "./roomCheckpointStore";
 import type { CreateRoomTransport } from "./roomTransport";
-import type { TextChange, TextPatch } from "@tabula-md/tabula";
 
 export type CollabRuntimeTimerHandle = unknown;
 
@@ -14,28 +13,6 @@ export type CollabRuntimeClock = {
   cancelIdleCallback?: (handle: CollabRuntimeTimerHandle) => void;
   nowIso(): string;
   createId(): string;
-};
-
-export type CollabTextDocumentHandle = unknown;
-
-export type CollabTextUpdateListener = (update: Uint8Array, origin: unknown) => void;
-
-export type CollabTextChangeResult = {
-  text: string;
-  change: TextChange;
-};
-
-export type CollabTextAdapter = {
-  createDocument(initialText?: string): CollabTextDocumentHandle;
-  observeUpdates(document: CollabTextDocumentHandle, listener: CollabTextUpdateListener): () => void;
-  isRemoteOrigin(origin: unknown): boolean;
-  encodeState(document: CollabTextDocumentHandle): Uint8Array;
-  getText(document: CollabTextDocumentHandle): string;
-  mergeUpdates(updates: readonly Uint8Array[]): Uint8Array;
-  applyLocalText(document: CollabTextDocumentHandle, nextText: string, patches?: readonly TextPatch[]): void;
-  applyLocalTextPatches(document: CollabTextDocumentHandle, patches: readonly TextPatch[]): void;
-  applyRemoteUpdate(document: CollabTextDocumentHandle, update: Uint8Array): CollabTextChangeResult | null;
-  destroy(document: CollabTextDocumentHandle): void;
 };
 
 export type CollabCryptoAdapter = {
@@ -53,7 +30,6 @@ export type CollabCryptoAdapter = {
 export type CollabRuntimeAdapters = {
   clock: CollabRuntimeClock;
   crypto: CollabCryptoAdapter;
-  text: CollabTextAdapter;
   roomCheckpointStore: RoomCheckpointStore;
   createRoomTransport: CreateRoomTransport;
   resolveRoomBaseUrl: () => string | null;

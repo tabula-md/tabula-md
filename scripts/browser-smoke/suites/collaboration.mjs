@@ -56,9 +56,8 @@ export async function run(ctx) {
     await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active');
     await firstPage.locator(".share-trigger").click();
     await firstPage.getByRole("button", { name: "Start session" }).click();
-    await firstPage.waitForSelector(".tab-item.live.active");
+    await firstPage.waitForSelector('.tab-item.active[data-room-id]:not([data-room-id=""])');
     await firstPage.waitForSelector(".share-trigger.live .share-live-dot");
-    await firstPage.waitForSelector(".tab-item.live.active .tab-live-scope-dot");
     await firstPage.waitForSelector(".sharing-presence");
     const firstPageUrl = new URL(firstPage.url());
     expect(
@@ -102,8 +101,8 @@ export async function run(ctx) {
     await clickTabByFileName(firstPage, secondaryFileName);
     await firstPage.waitForFunction(
       ({ secondaryFileName }) => {
-        const activeTab = document.querySelector(".tab-item.active.live");
-        return activeTab?.getAttribute("data-file-name") === secondaryFileName;
+        const activeTab = document.querySelector(".tab-item.active");
+        return activeTab?.getAttribute("data-file-name") === secondaryFileName && Boolean(activeTab.getAttribute("data-room-id"));
       },
       { secondaryFileName },
     );
@@ -121,10 +120,14 @@ export async function run(ctx) {
     );
     await firstPage.getByRole("button", { name: "Close share dialog" }).click();
     await clickTabByFileName(firstPage, "README.md");
-    await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active.live');
+    await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
     await firstPage.getByRole("button", { name: "Open Project Context" }).click();
     await firstPage.waitForSelector(".right-panel-tab.live .right-panel-tab-live-dot");
-    await firstPage.waitForSelector(".right-file-document-icon.live .right-file-icon-live-dot");
+    await firstPage.waitForSelector(".right-file-folder-icon.live .right-file-icon-live-dot");
+    expect(
+      (await firstPage.locator(".right-file-document-icon .right-file-icon-live-dot").count()) === 0,
+      "Live state should be shown once at workspace level, not repeated on every document.",
+    );
     await firstPage.getByRole("button", { name: "Close Project Context" }).click();
     await firstPage.locator(".avatar.self").hover();
     await firstPage.waitForFunction(() => {
@@ -139,13 +142,13 @@ export async function run(ctx) {
     await secondPage.locator(".add-tab-button").click();
     await secondPage.waitForSelector(".tab-item.active");
     await secondPage.goto(`${baseUrl}${sharedPath}`);
-    await secondPage.waitForSelector(".tab-item.live.active");
+    await secondPage.waitForSelector('.tab-item.active[data-room-id]:not([data-room-id=""])');
     await ensureEditMode(secondPage);
     await ensureEditMode(firstPage);
 
     const sameBrowserTab = await firstContext.newPage();
     await sameBrowserTab.goto(`${baseUrl}${sharedPath}`);
-    await sameBrowserTab.waitForSelector(".tab-item.live.active");
+    await sameBrowserTab.waitForSelector('.tab-item.active[data-room-id]:not([data-room-id=""])');
     await firstPage.waitForFunction(() => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 2);
     await sameBrowserTab.close();
     await firstPage.waitForFunction(() => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length === 1);
@@ -153,26 +156,28 @@ export async function run(ctx) {
       (await firstPage.locator(".sharing-presence .avatar:not(.self)").count()) === 1,
       "Presence should remove a collaborator avatar after that browser tab leaves the live room.",
     );
-    await secondPage.waitForSelector('.tab-item[data-file-name="README.md"].active.live');
+    await secondPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
     const joinedRoomTabs = await secondPage.evaluate(() =>
       Array.from(document.querySelectorAll(".tab-item")).map((tab) => ({
         fileName: tab.getAttribute("data-file-name"),
-        isLive: tab.classList.contains("live"),
         roomId: tab.getAttribute("data-room-id"),
       })),
     );
     expect(
-      joinedRoomTabs.length > 0 && joinedRoomTabs.every((tab) => tab.isLive && Boolean(tab.roomId)),
-      `Opening a room link should show only room-owned live tabs, not pre-existing local tabs.\n${JSON.stringify(joinedRoomTabs, null, 2)}`,
+      joinedRoomTabs.length > 0 && joinedRoomTabs.every((tab) => Boolean(tab.roomId)),
+      `Opening a room link should show only room-owned tabs, not pre-existing local tabs.\n${JSON.stringify(joinedRoomTabs, null, 2)}`,
     );
     expect(
       joinedRoomTabs.some((tab) => tab.fileName === "README.md"),
       "The joined room should include the shared README document.",
     );
     expect(
-      joinedRoomTabs.some((tab) => tab.fileName === secondaryFileName),
-      "The joined room should include the workspace document that existed before sharing.",
+      !joinedRoomTabs.some((tab) => tab.fileName === secondaryFileName),
+      "A shared document should not become an open tab until this participant opens it.",
     );
+    await openFileFromRightPanel(secondPage, secondaryFileName);
+    await secondPage.waitForSelector(`.tab-item.active[data-file-name="${secondaryFileName}"]`);
+    await clickTabByFileName(secondPage, "README.md");
     await ensureEditMode(secondPage);
     await ensureEditMode(firstPage);
 
@@ -190,10 +195,16 @@ export async function run(ctx) {
       waitForEditorReady,
       waitForText,
     });
+    await runPrivateDocumentSmoke({
+      expect,
+      firstPage,
+      secondPage,
+      roomHash: firstPageUrl.hash,
+    });
     await clickTabByFileName(firstPage, "README.md");
-    await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active.live');
+    await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
     await clickTabByFileName(secondPage, "README.md");
-    await secondPage.waitForSelector('.tab-item[data-file-name="README.md"].active.live');
+    await secondPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
     const roomValue = new URLSearchParams(roomUrl.hash.replace(/^#/, "")).get("room") ?? "";
     const [roomId, roomKey] = roomValue.split(",");
 
@@ -210,9 +221,9 @@ export async function run(ctx) {
     const restoredPage = await restoredContext.newPage();
     const restoredDiagnostics = collectPageDiagnostics(restoredPage);
     await restoredPage.goto(`${baseUrl}${sharedPath}`);
-    await restoredPage.waitForSelector(".tab-item.live.active");
+    await restoredPage.waitForSelector('.tab-item.active[data-room-id]:not([data-room-id=""])');
     try {
-      await restoredPage.waitForSelector('.tab-item[data-file-name="README.md"].active.live');
+      await restoredPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
     } catch (error) {
       const tabs = await restoredPage.evaluate(() =>
         ({
@@ -238,7 +249,7 @@ export async function run(ctx) {
         activeTab: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
         status: document.querySelector(".file-status-bar")?.textContent ?? "",
         editorLines: Array.from(document.querySelectorAll(".cm-content .cm-line")).map((line) => line.textContent ?? ""),
-        storage: window.localStorage.getItem("tabula.project.v5"),
+        storage: window.localStorage.getItem("tabula.project.v6"),
       }));
       throw new Error(
         `${error.message}\nRestored diagnostics:\n${JSON.stringify(restoredDiagnostics, null, 2)}\nRestored state:\n${JSON.stringify(restoredState, null, 2)}`,
@@ -286,7 +297,7 @@ export async function run(ctx) {
           "A room opened with the wrong key should not show document-level recovery UI.",
         );
         expect(
-          (await wrongKeyPage.locator(".tab-item.live").count()) === 0,
+          (await wrongKeyPage.locator('.tab-item[data-room-id]:not([data-room-id=""])').count()) === 0,
           "A room opened with the wrong key should not expose a placeholder live document tab.",
         );
         const wrongKeyText =
@@ -307,7 +318,7 @@ export async function run(ctx) {
         await missingKeyPage.goto(`${baseUrl}/#room=${roomId}`);
         await missingKeyPage.waitForSelector(".tabbar");
         expect(
-          (await missingKeyPage.locator(".tab-item.live.active").count()) === 0,
+          (await missingKeyPage.locator('.tab-item.active[data-room-id]:not([data-room-id=""])').count()) === 0,
           "A room path without a client-only key should not open a live room.",
         );
         expect(
@@ -320,11 +331,11 @@ export async function run(ctx) {
 
       await firstPage.locator(".share-trigger").click();
       expect(
-        (await firstPage.locator(".tab-item.live.active").count()) === 1,
+        (await firstPage.locator(".share-trigger.live").count()) === 1,
         "The workspace should still be live before stopping the session.",
       );
       await firstPage.getByRole("button", { name: "Stop session" }).click();
-      await firstPage.locator(".tab-live-scope-dot").waitFor({ state: "detached", timeout: 5_000 });
+      await firstPage.locator(".share-trigger.live").waitFor({ state: "detached", timeout: 5_000 });
     }
   } finally {
     await Promise.all([firstContext.close(), secondContext.close()]);
@@ -335,7 +346,7 @@ async function getEditorLines(page) {
   return page.$$eval(".cm-content .cm-line", (lines) =>
     lines.map((line) => {
       const clone = line.cloneNode(true);
-      clone.querySelectorAll(".cm-remote-cursor").forEach((cursor) => cursor.remove());
+      clone.querySelectorAll(".cm-ySelectionCaret").forEach((cursor) => cursor.remove());
       return clone.textContent ?? "";
     }),
   );
@@ -375,7 +386,7 @@ async function waitForEditorLines(page, expectedLines, timeout = 8_000) {
       ({ expectedLines }) => {
         const lines = Array.from(document.querySelectorAll(".cm-content .cm-line")).map((line) => {
           const clone = line.cloneNode(true);
-          clone.querySelectorAll(".cm-remote-cursor").forEach((cursor) => cursor.remove());
+          clone.querySelectorAll(".cm-ySelectionCaret").forEach((cursor) => cursor.remove());
           return clone.textContent ?? "";
         });
         return lines.length === expectedLines.length && lines.every((line, index) => line === expectedLines[index]);
@@ -444,36 +455,51 @@ async function runLiveEditingCorrectnessSmoke({ expect, firstPage, secondPage, f
   );
 
   try {
-    await firstPage.waitForSelector(".cm-remote-cursor", { state: "attached", timeout: 8_000 });
-    await firstPage.waitForSelector(".cm-remote-cursor-label", { state: "attached", timeout: 8_000 });
+    await firstPage.waitForSelector(".cm-ySelectionCaret", { state: "attached", timeout: 8_000 });
+    await firstPage.waitForSelector(".cm-ySelectionInfo", { state: "attached", timeout: 8_000 });
     const remoteCursorLayout = await firstPage.evaluate(() => {
-      const cursor = document.querySelector(".cm-remote-cursor");
-      const label = document.querySelector(".cm-remote-cursor-label");
+      const cursor = document.querySelector(".cm-ySelectionCaret");
+      const label = document.querySelector(".cm-ySelectionInfo");
       const cursorStyle = cursor instanceof HTMLElement ? getComputedStyle(cursor) : null;
       const labelStyle = label instanceof HTMLElement ? getComputedStyle(label) : null;
+      const remoteAvatar = document.querySelector(".sharing-presence .avatar:not(.self)");
+      const remoteAvatarStyle = remoteAvatar instanceof HTMLElement ? getComputedStyle(remoteAvatar) : null;
       const cursorRect = cursor instanceof HTMLElement ? cursor.getBoundingClientRect() : null;
       return {
         cursorWidth: cursorRect?.width ?? -1,
         cursorDisplay: cursorStyle?.display ?? "",
+        cursorMarginLeft: cursorStyle?.marginLeft ?? "",
+        cursorMarginRight: cursorStyle?.marginRight ?? "",
         labelPosition: labelStyle?.position ?? "",
         labelZIndex: labelStyle?.zIndex ?? "",
-        remoteLineCount: document.querySelectorAll(".cm-remote-presence-line").length,
+        labelBackground: labelStyle?.backgroundColor ?? "",
+        labelColor: labelStyle?.color ?? "",
+        remoteAvatarBackground: remoteAvatarStyle?.backgroundColor ?? "",
+        remoteLineCount: document.querySelectorAll(".cm-yLineSelection").length,
       };
     });
     expect(
-      remoteCursorLayout.cursorWidth <= 1,
+      remoteCursorLayout.cursorWidth <= 2 &&
+        remoteCursorLayout.cursorMarginLeft === "-1px" &&
+        remoteCursorLayout.cursorMarginRight === "-1px",
       "Remote cursor marker should not consume editor text width or move Markdown text.",
     );
-    expect(remoteCursorLayout.cursorDisplay === "inline-block", "Remote cursor marker should stay inline with text.");
+    expect(remoteCursorLayout.cursorDisplay === "inline", "Remote cursor marker should stay inline with text.");
     expect(remoteCursorLayout.labelPosition === "absolute", "Remote cursor label should not affect line layout.");
     expect(Number(remoteCursorLayout.labelZIndex) >= 1, "Remote cursor label should render above editor text.");
+    expect(
+      remoteCursorLayout.labelBackground === remoteCursorLayout.remoteAvatarBackground &&
+        remoteCursorLayout.labelBackground !== "rgba(0, 0, 0, 0)",
+      "Remote cursor labels should use the participant color in light and dark themes.",
+    );
+    expect(remoteCursorLayout.labelColor === "rgb(255, 255, 255)", "Remote cursor names should remain readable on participant colors.");
     expect(remoteCursorLayout.remoteLineCount === 0, "Remote cursor should not add a line-level presence rail.");
   } catch (error) {
     const remotePresenceDebug = await firstPage.evaluate(() => ({
       collaboratorAvatars: document.querySelectorAll(".sharing-presence .avatar:not(.self)").length,
-      remoteCursorCount: document.querySelectorAll(".cm-remote-cursor").length,
-      remoteLineCount: document.querySelectorAll(".cm-remote-presence-line").length,
-      remoteSelectionCount: document.querySelectorAll(".cm-remote-selection").length,
+      remoteCursorCount: document.querySelectorAll(".cm-ySelectionCaret").length,
+      remoteLineCount: document.querySelectorAll(".cm-yLineSelection").length,
+      remoteSelectionCount: document.querySelectorAll(".cm-ySelection").length,
       presenceText: document.querySelector(".sharing-presence")?.textContent ?? "",
       collaboratorTooltips: Array.from(document.querySelectorAll(".sharing-presence .avatar:not(.self)")).map(
         (avatar) => avatar.getAttribute("data-tooltip") ?? "",
@@ -495,10 +521,7 @@ async function runLiveEditingCorrectnessSmoke({ expect, firstPage, secondPage, f
   const remappedExpectedLines = ["Local cursor map prefix", ...expectedLines];
   await waitForEditorLines(firstPage, remappedExpectedLines, 4_000);
   await waitForEditorLines(secondPage, remappedExpectedLines, 12_000);
-  await firstPage.waitForFunction(() => {
-    const cursor = document.querySelector(".cm-remote-cursor");
-    return cursor?.getAttribute("title")?.includes("line 4");
-  });
+  await firstPage.waitForSelector(".cm-ySelectionCaret", { state: "attached" });
 
   return remappedExpectedLines.join("\n");
 }
@@ -512,29 +535,33 @@ async function runLiveWorkspaceDocumentCreationSmoke({
   waitForText,
 }) {
   await firstPage.locator(".add-tab-button").click();
+  await firstPage.getByRole("menuitem", { name: "Shared document" }).click();
   await firstPage.waitForFunction(() => {
-    const activeTab = document.querySelector(".tab-item.active.live");
-    return activeTab && activeTab.getAttribute("data-file-name") !== "README.md";
+    const activeTab = document.querySelector(".tab-item.active");
+    return activeTab && Boolean(activeTab.getAttribute("data-room-id")) && activeTab.getAttribute("data-file-name") !== "README.md";
   });
   const createdFileName = await firstPage.locator(".tab-item.active").getAttribute("data-file-name");
   const createdFileId = await firstPage.locator(".tab-item.active").getAttribute("data-file-id");
   expect(Boolean(createdFileName), "Creating a document during live collaboration should keep a named active tab.");
   expect(Boolean(createdFileId), "Creating a document during live collaboration should keep a stable file id.");
-  await focusMarkdownEditor(firstPage);
-  await firstPage.keyboard.insertText("New live document body");
-
-  await waitForTabByFileName(secondPage, createdFileName, 12_000);
-  await secondPage.waitForFunction(
-    ({ createdFileName }) =>
-      Array.from(document.querySelectorAll(".tab-item")).some(
-        (item) => item.getAttribute("data-file-name") === createdFileName && item.classList.contains("live"),
-      ),
-    { createdFileName },
-    { timeout: 12_000 },
+  await waitForRightPanelFile(secondPage, createdFileName, 12_000);
+  expect(
+    (await secondPage.locator(`.tab-item[data-file-name="${createdFileName}"]`).count()) === 0,
+    "A document created by another participant should appear in Files without opening a tab.",
   );
-  await clickTabByFileName(secondPage, createdFileName);
-  await secondPage.waitForSelector(".tab-item.active.live");
+  await openFileFromRightPanel(secondPage, createdFileName);
+  await secondPage.waitForSelector(`.tab-item.active[data-file-name="${createdFileName}"]`);
   await waitForEditorReady(secondPage, { mode: "edit" });
+  await focusMarkdownEditor(firstPage);
+  await wait(250);
+  const visibleEmptyDocumentRemoteCursors = await secondPage.locator(".cm-ySelectionCaret").evaluateAll(
+    (cursors) => cursors.filter((cursor) => getComputedStyle(cursor).display !== "none").length,
+  );
+  expect(
+    visibleEmptyDocumentRemoteCursors === 0,
+    "An empty document should not draw a remote cursor or name over the placeholder.",
+  );
+  await firstPage.keyboard.insertText("New live document body");
   await waitForText(secondPage.locator(".cm-content"), "New live document body", 12_000);
 
   await focusMarkdownEditor(secondPage);
@@ -553,7 +580,7 @@ async function runLiveWorkspaceDocumentCreationSmoke({
   await secondPage.waitForFunction(
     ({ createdFileName, renamedFileName }) =>
       !document.querySelector(`.tab-item[data-file-name="${createdFileName}"]`) &&
-      Boolean(document.querySelector(`.tab-item[data-file-name="${renamedFileName}"].active.live`)),
+      Boolean(document.querySelector(`.tab-item[data-file-name="${renamedFileName}"].active`)),
     { createdFileName, renamedFileName },
     { timeout: 12_000 },
   );
@@ -576,7 +603,7 @@ async function runLiveWorkspaceDocumentCreationSmoke({
     await secondPage.waitForFunction(
       ({ createdFileId }) =>
         !document.querySelector(`.tab-item[data-file-id="${createdFileId}"]`) &&
-        Boolean(document.querySelector(`.tab-item.active.live:not([data-file-id="${createdFileId}"])`)),
+        Boolean(document.querySelector(`.tab-item.active:not([data-file-id="${createdFileId}"])`)),
       { createdFileId },
       { timeout: 12_000 },
     );
@@ -589,17 +616,79 @@ async function runLiveWorkspaceDocumentCreationSmoke({
   }
 }
 
+async function runPrivateDocumentSmoke({ expect, firstPage, secondPage, roomHash }) {
+  await firstPage.locator(".add-tab-button").click();
+  await firstPage.getByRole("menuitem", { name: "Private document" }).click();
+  await firstPage.waitForSelector('.tab-item.private.active[data-room-id=""]');
+  const privateFileName = await firstPage.locator(".tab-item.private.active").getAttribute("data-file-name");
+  expect(Boolean(privateFileName), "A private document should open as a named local tab.");
+  expect(
+    new URL(firstPage.url()).hash === roomHash,
+    "Opening a private document should keep the live room URL and connection.",
+  );
+  expect(
+    (await firstPage.locator(".share-trigger.live").count()) === 1,
+    "Opening a private document should keep the workspace live.",
+  );
+  const privateText = "Private room-local note";
+  await firstPage.locator(".cm-content").click();
+  await firstPage.keyboard.insertText(privateText);
+  await firstPage.waitForFunction(
+    ({ privateText }) => document.querySelector(".cm-content")?.textContent?.includes(privateText),
+    { privateText },
+  );
+
+  await openFilesPanel(secondPage);
+  expect(
+    (await secondPage.getByRole("button", { name: `Open ${privateFileName}` }).count()) === 0,
+    "Private documents should not appear in another participant's workspace.",
+  );
+
+  await firstPage.reload();
+  await firstPage.waitForSelector(`.tab-item.private[data-file-name="${privateFileName}"]`);
+  await firstPage.waitForSelector(`.tab-item.private.active[data-file-name="${privateFileName}"]`);
+  await firstPage.waitForFunction(
+    ({ privateText }) => document.querySelector(".cm-content")?.textContent?.includes(privateText),
+    { privateText },
+  );
+  expect(
+    new URL(firstPage.url()).hash === roomHash,
+    "Reloading a private room-local tab should keep the room URL.",
+  );
+
+  await clickTabByFileName(firstPage, "README.md");
+  await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
+  expect(
+    (await firstPage.locator(".share-trigger.live").count()) === 1,
+    "Returning to a shared document should not require reconnecting.",
+  );
+}
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function openRightFileMenu(page, fileName) {
+async function openFilesPanel(page) {
   if ((await page.getByRole("button", { name: "Open Project Context" }).count()) > 0) {
     await page.getByRole("button", { name: "Open Project Context" }).click();
   }
   if ((await page.getByRole("button", { name: "Files", exact: true }).count()) > 0) {
     await page.getByRole("button", { name: "Files", exact: true }).click();
   }
+}
+
+async function waitForRightPanelFile(page, fileName, timeout = 8_000) {
+  await openFilesPanel(page);
+  await page.getByRole("button", { name: `Open ${fileName}` }).waitFor({ state: "visible", timeout });
+}
+
+async function openFileFromRightPanel(page, fileName) {
+  await waitForRightPanelFile(page, fileName);
+  await page.getByRole("button", { name: `Open ${fileName}` }).click();
+}
+
+async function openRightFileMenu(page, fileName) {
+  await openFilesPanel(page);
   await page.getByRole("button", { name: `Open ${fileName}` }).hover();
   await page.getByRole("button", { name: `More actions for ${fileName}` }).click();
 }
@@ -616,6 +705,6 @@ async function getTabDiagnostics(page) {
       text: tab.textContent,
     })),
     url: window.location.href,
-    workspaceStorage: window.localStorage.getItem("tabula.project.v5"),
+    workspaceStorage: window.localStorage.getItem("tabula.project.v6"),
   }));
 }

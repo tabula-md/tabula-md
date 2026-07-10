@@ -10,7 +10,7 @@ import { useRightPanelCollapseState } from "../hooks/useRightPanelCollapseState"
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
 import type { MarkdownHeading } from "@tabula-md/tabula";
 import type { RightPanelView } from "../uiTypes";
-import type { FileComment, WorkspaceFile } from "../workspaceStorage";
+import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { RightPanelComments } from "./RightPanelComments";
 import { RightPanelFiles } from "./RightPanelFiles";
 import { RightPanelOutline } from "./RightPanelOutline";
@@ -20,11 +20,13 @@ type RightPanelProps = {
   view: RightPanelView;
   commentsEnabled: boolean;
   files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
   openFileIds: string[];
   activeFileId: string;
   activeFileTitle: string;
   fileQuery: string;
   liveFileIds: readonly string[];
+  isLiveWorkspace: boolean;
   outlineHeadings: MarkdownHeading[];
   commentsByFileId: Record<string, FileComment[]>;
   commentDraft: string;
@@ -40,12 +42,21 @@ type RightPanelProps = {
   onClose: () => void;
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
+  onNewPrivateFile: () => void;
+  onNewFolder: (parentId?: string, scope?: "shared" | "private") => void;
+  onShareFile: (fileId: string) => void;
+  onMakeLocalFileCopy: (fileId: string) => void;
+  onShareFolder: (folderId: string) => void;
   onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
   onCloseFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
+  onDeleteFolder: (folderId: string) => void;
+  onMoveFileToFolder: (fileId: string, folderId: string) => void;
+  onMoveFolder: (folderId: string, parentId: string) => void;
+  onRenameFolder: (folderId: string, nextTitle: string) => boolean;
   onGoToOutlineHeading: (heading: MarkdownHeading, index: number) => void;
   onCommentDraftChange: (draft: string) => void;
   onIdentityNameChange: (name: string) => void;
@@ -66,11 +77,13 @@ export function RightPanel({
   view,
   commentsEnabled,
   files,
+  folders,
   openFileIds,
   activeFileId,
   activeFileTitle,
   fileQuery,
   liveFileIds,
+  isLiveWorkspace,
   outlineHeadings,
   commentsByFileId,
   commentDraft,
@@ -86,12 +99,21 @@ export function RightPanel({
   onClose,
   onFileQueryChange,
   onNewFile,
+  onNewPrivateFile,
+  onNewFolder,
+  onShareFile,
+  onMakeLocalFileCopy,
+  onShareFolder,
   onImportFile,
   onSelectFile,
   onCloseFile,
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
+  onDeleteFolder,
+  onMoveFileToFolder,
+  onMoveFolder,
+  onRenameFolder,
   onGoToOutlineHeading,
   onCommentDraftChange,
   onIdentityNameChange,
@@ -135,7 +157,7 @@ export function RightPanel({
     files,
     visibleCommentsByFileId,
   );
-  const hasLiveFiles = liveFileIds.length > 0;
+  const hasLiveFiles = isLiveWorkspace;
   const renderTab = (
     tabView: RightPanelView,
     label: string,
@@ -175,15 +197,22 @@ export function RightPanel({
         {effectiveView === "files" && (
           <RightPanelFiles
             files={files}
+            folders={folders}
             openFileIds={openFileIds}
             activeFileId={activeFileId}
             fileQuery={fileQuery}
             liveFileIds={liveFileIds}
+            isLiveWorkspace={isLiveWorkspace}
             commentsByFileId={visibleCommentsByFileId}
             collapsedFolderIds={collapsedFileTreeFolderIds}
             getFileSearchText={getFileSearchText}
             onFileQueryChange={onFileQueryChange}
             onNewFile={onNewFile}
+            onNewPrivateFile={onNewPrivateFile}
+            onNewFolder={onNewFolder}
+            onShareFile={onShareFile}
+            onMakeLocalFileCopy={onMakeLocalFileCopy}
+            onShareFolder={onShareFolder}
             onImportFile={onImportFile}
             onToggleFolder={toggleFileTreeFolderCollapsed}
             onSelectFile={onSelectFile}
@@ -191,6 +220,10 @@ export function RightPanel({
             onRenameFile={onRenameFile}
             onDuplicateFile={onDuplicateFile}
             onDeleteFile={onDeleteFile}
+            onDeleteFolder={onDeleteFolder}
+            onMoveFileToFolder={onMoveFileToFolder}
+            onMoveFolder={onMoveFolder}
+            onRenameFolder={onRenameFolder}
           />
         )}
 

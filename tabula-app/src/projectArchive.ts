@@ -1,4 +1,4 @@
-import type { WorkspaceFile } from "./workspaceStorage";
+import { WORKSPACE_ROOT_FOLDER_ID, type WorkspaceFile, type WorkspaceFolder } from "./workspaceStorage";
 
 const textEncoder = new TextEncoder();
 const ZIP_LOCAL_FILE_HEADER = 0x04034b50;
@@ -68,25 +68,43 @@ const normalizeArchiveFileName = (title: string) => {
   return /\.(?:md|markdown)$/i.test(baseName) ? baseName : `${baseName}.md`;
 };
 
-const normalizeArchivePath = (title: string) => {
-  const rawParts = title
-    .split(/[\\/]+/)
-    .map((part) => part.trim())
-    .filter((part) => part && !/^\.+$/.test(part));
-  const parts = rawParts.length > 0 ? rawParts : ["Untitled"];
-  const folderParts = parts
-    .slice(0, -1)
-    .map((part, index) => normalizeArchivePathSegment(part, `Folder ${index + 1}`));
-  const fileName = normalizeArchiveFileName(parts.at(-1) ?? "Untitled");
-
-  return [...folderParts, fileName].join("/");
+const getFolderPath = (folderId: string | null | undefined, foldersById: Map<string, WorkspaceFolder>) => {
+  const parts: string[] = [];
+  const visited = new Set<string>();
+  let currentId = folderId;
+  while (currentId && currentId !== WORKSPACE_ROOT_FOLDER_ID && !visited.has(currentId)) {
+    visited.add(currentId);
+    const folder = foldersById.get(currentId);
+    if (!folder) break;
+    parts.unshift(normalizeArchivePathSegment(folder.title, "Folder"));
+    currentId = folder.parentId;
+  }
+  return parts;
 };
 
-export const getProjectArchiveEntries = (files: WorkspaceFile[]): ZipEntrySource[] => {
+export const getProjectArchiveEntries = (files: WorkspaceFile[], folders: WorkspaceFolder[] = []): ZipEntrySource[] => {
   const pathCounts = new Map<string, number>();
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  const foldersWithDocuments = new Set<string>();
+  for (const file of files) {
+    let folderId = file.parentId;
+    const visited = new Set<string>();
+    while (folderId && folderId !== WORKSPACE_ROOT_FOLDER_ID && !visited.has(folderId)) {
+      visited.add(folderId);
+      foldersWithDocuments.add(folderId);
+      folderId = foldersById.get(folderId)?.parentId;
+    }
+  }
+  const emptyFolderEntries = folders
+    .filter((folder) => folder.id !== WORKSPACE_ROOT_FOLDER_ID && !foldersWithDocuments.has(folder.id))
+    .map((folder) => ({
+      path: `${getFolderPath(folder.id, foldersById).join("/")}/`,
+      content: "",
+    }))
+    .filter((entry) => entry.path !== "/");
 
-  return files.map((file) => {
-    const archivePath = normalizeArchivePath(file.title);
+  const fileEntries = files.map((file) => {
+    const archivePath = [...getFolderPath(file.parentId, foldersById), normalizeArchiveFileName(file.title)].join("/");
     const normalizedKey = archivePath.toLowerCase();
     const count = pathCounts.get(normalizedKey) ?? 0;
     pathCounts.set(normalizedKey, count + 1);
@@ -101,6 +119,7 @@ export const getProjectArchiveEntries = (files: WorkspaceFile[]): ZipEntrySource
       content: file.text,
     };
   });
+  return [...emptyFolderEntries, ...fileEntries];
 };
 
 export const createZipArchive = (entries: ZipEntrySource[]) => {
@@ -175,4 +194,5 @@ export const createZipArchive = (entries: ZipEntrySource[]) => {
   return new Blob([zipBytes.buffer], { type: "application/zip" });
 };
 
-export const createProjectArchive = (files: WorkspaceFile[]) => createZipArchive(getProjectArchiveEntries(files));
+export const createProjectArchive = (files: WorkspaceFile[], folders: WorkspaceFolder[] = []) =>
+  createZipArchive(getProjectArchiveEntries(files, folders));

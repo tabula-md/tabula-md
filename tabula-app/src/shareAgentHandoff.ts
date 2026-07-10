@@ -39,9 +39,8 @@ export const buildLocalAgentPrompt = ({
       ? [
           "",
           "Participate as a normal room actor.",
-          "Use the same encrypted room-event contract as Tabula.md.",
-          "Apply document edits directly with text.updated events.",
-          "Apply workspace tree changes directly with workspace.updated events.",
+          "Use Tabula.md workspace CRDT schema and binary room protocol v2.",
+          "Publish your agent actor through Awareness and edit the shared Yjs workspace directly.",
           "The room URL is a bearer secret. Do not log it or send it to a hosted plaintext processor.",
           `Room URL: ${liveRoomUrl}`,
         ].join("\n")

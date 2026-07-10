@@ -11,6 +11,7 @@ import {
   reorderOpenWorkspaceFile,
   selectAdjacentWorkspaceFile,
   selectWorkspaceFile,
+  WORKSPACE_ROOM_MAX_TREE_DEPTH,
   workspaceReducer,
   type CloseFileResult,
   type FileViewMode,
@@ -21,9 +22,12 @@ import {
 } from "@tabula-md/tabula";
 import {
   createRoomWorkspaceState,
+  randomId,
+  WORKSPACE_ROOT_FOLDER_ID,
   type FileBookmark,
   type LocationRoom,
   type WorkspaceFile,
+  type WorkspaceFolder,
 } from "../workspaceStorage";
 import {
   restoreFileToList,
@@ -31,6 +35,7 @@ import {
 } from "../workspaceFileRuntimeModel";
 
 type WorkspaceStoreInitialization = WorkspaceModelState<WorkspaceFile> & {
+  folders: WorkspaceFolder[];
   createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   readmeFileId: string;
 };
@@ -43,7 +48,6 @@ type RestoreFileInput = {
 };
 
 type CollaborationStatusOptions = {
-  collaboratorCount?: number;
   requireRoom?: boolean;
 };
 
@@ -54,12 +58,14 @@ type RecoveryEventUpdate = {
 };
 
 type WorkspaceStoreState = WorkspaceModelState<WorkspaceFile> & {
+  folders: WorkspaceFolder[];
   createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   initialized: boolean;
   readmeFileId: string;
 };
 
 type WorkspaceStoreActions = {
+  addFolder: (title?: string, parentId?: string, roomId?: string) => WorkspaceFolder | undefined;
   addFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   addFileFromContent: (
     title: string,
@@ -76,7 +82,11 @@ type WorkspaceStoreActions = {
   moveFile: (fileId: string, direction: -1 | 1) => void;
   renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
   reorderFiles: (sourceFileId: string, targetFileId: string) => void;
-  replaceWorkspace: (workspace: WorkspaceModelState<WorkspaceFile>) => WorkspaceFile | undefined;
+  replaceWorkspace: (workspace: WorkspaceModelState<WorkspaceFile> & { folders?: WorkspaceFolder[] }) => WorkspaceFile | undefined;
+  deleteFolder: (folderId: string) => void;
+  moveFileToFolder: (fileId: string, folderId: string) => boolean;
+  moveFolder: (folderId: string, parentId: string) => boolean;
+  renameFolder: (folderId: string, title: string) => boolean;
   restoreFile: (input: RestoreFileInput) => WorkspaceFile;
   selectAdjacentFile: (direction: -1 | 1) => WorkspaceFile | undefined;
   selectFile: (fileId: string) => WorkspaceFile | undefined;
@@ -91,9 +101,9 @@ type WorkspaceStoreActions = {
     status: NonNullable<WorkspaceFile["connectionStatus"]>,
     options?: CollaborationStatusOptions,
   ) => void;
-  setFileCollaboratorCount: (fileId: string, collaboratorCount: number) => void;
   setFileRecoveryEvent: (fileId: string, event: RecoveryEventUpdate) => void;
   setFileText: (fileId: string, text: string) => void;
+  setFolderCollaborationRoom: (folderId: string, roomId?: string) => void;
   startFileCollaborationSession: (
     fileId: string,
     roomId: string,
@@ -120,7 +130,6 @@ const noopCreateFile = (index: number, overrides: Partial<WorkspaceFile> = {}): 
   connectionStatus: overrides.connectionStatus ?? "idle",
   roomId: overrides.roomId,
   shareUrl: overrides.shareUrl,
-  collaboratorCount: overrides.collaboratorCount,
   lastRecoveryType: overrides.lastRecoveryType,
   lastRecoveryMessage: overrides.lastRecoveryMessage,
   lastRecoveryAt: overrides.lastRecoveryAt,
@@ -130,6 +139,7 @@ const DEFAULT_WORKSPACE_STORE_STATE: WorkspaceStoreState = {
   activeFileId: "",
   createFile: noopCreateFile,
   files: [],
+  folders: [],
   initialized: false,
   openFileIds: [],
   readmeFileId: "",
@@ -144,8 +154,66 @@ const getWorkspaceState = (state: WorkspaceStoreState): WorkspaceModelState<Work
 const getNextUserFileIndex = (files: WorkspaceFile[], readmeFileId: string) =>
   files.filter((file) => file.id !== readmeFileId).length + 1;
 
-const getAvailableFileTitle = (files: WorkspaceFile[], baseTitle: string) =>
-  getAvailableWorkspaceFileTitle(files, baseTitle);
+const getAvailableFileTitle = (files: WorkspaceFile[], baseTitle: string, parentId?: string | null) =>
+  getAvailableWorkspaceFileTitle(
+    files.filter((file) => (file.parentId ?? WORKSPACE_ROOT_FOLDER_ID) === (parentId ?? WORKSPACE_ROOT_FOLDER_ID)),
+    baseTitle,
+  );
+
+const getAvailableFolderTitle = (folders: WorkspaceFolder[], baseTitle: string, parentId: string) => {
+  const normalizedBase = baseTitle.trim().split("\0").join(" ").replace(/[/\\]/g, " ").replace(/\s+/g, " ") || "New folder";
+  const titles = new Set(
+    folders.filter((folder) => folder.parentId === parentId).map((folder) => folder.title.toLowerCase()),
+  );
+  if (!titles.has(normalizedBase.toLowerCase())) return normalizedBase;
+  let index = 2;
+  while (titles.has(`${normalizedBase} ${index}`.toLowerCase())) index += 1;
+  return `${normalizedBase} ${index}`;
+};
+
+const getFolderDescendantIds = (folders: WorkspaceFolder[], folderId: string) => {
+  const ids = new Set([folderId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const folder of folders) {
+      if (!ids.has(folder.id) && folder.parentId && ids.has(folder.parentId)) {
+        ids.add(folder.id);
+        changed = true;
+      }
+    }
+  }
+  return ids;
+};
+
+const getFolderDepth = (folders: WorkspaceFolder[], folderId: string) => {
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  const visited = new Set<string>();
+  let currentId: string | null = folderId;
+  let depth = 0;
+  while (currentId && currentId !== WORKSPACE_ROOT_FOLDER_ID) {
+    if (visited.has(currentId)) return Number.POSITIVE_INFINITY;
+    visited.add(currentId);
+    currentId = foldersById.get(currentId)?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
+    depth += 1;
+  }
+  return depth;
+};
+
+const getFolderSubtreeHeight = (folders: WorkspaceFolder[], folderId: string) => {
+  const descendants = getFolderDescendantIds(folders, folderId);
+  let maxHeight = 0;
+  for (const descendantId of descendants) {
+    let height = 0;
+    let current = folders.find((folder) => folder.id === descendantId);
+    while (current && current.id !== folderId) {
+      height += 1;
+      current = folders.find((folder) => folder.id === current?.parentId);
+    }
+    maxHeight = Math.max(maxHeight, height);
+  }
+  return maxHeight;
+};
 
 const reduceWorkspace = (
   state: WorkspaceStoreState,
@@ -175,7 +243,6 @@ const clearCollaborationFields = (file: WorkspaceFile): WorkspaceFile => ({
   roomId: undefined,
   shareUrl: undefined,
   connectionStatus: "idle",
-  collaboratorCount: 0,
   lastRecoveryType: undefined,
   lastRecoveryMessage: undefined,
   lastRecoveryAt: undefined,
@@ -184,10 +251,11 @@ const clearCollaborationFields = (file: WorkspaceFile): WorkspaceFile => ({
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   ...DEFAULT_WORKSPACE_STORE_STATE,
 
-  initializeWorkspace: ({ createFile, readmeFileId, ...workspace }) => {
+  initializeWorkspace: ({ createFile, folders, readmeFileId, ...workspace }) => {
     set({
       ...createWorkspaceModelState(workspace),
       createFile,
+      folders,
       initialized: true,
       readmeFileId,
     });
@@ -198,6 +266,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     set((state) => ({
       ...state,
       ...nextWorkspace,
+      folders: workspace.folders ?? state.folders,
     }));
 
     return getActiveWorkspaceFile(nextWorkspace);
@@ -217,7 +286,15 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   addFile: (overrides) => {
     const state = get();
-    const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), overrides);
+    const parentId = overrides?.parentId ?? state.files.find((file) => file.id === state.activeFileId)?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
+    const requestedTitle = overrides?.title?.trim();
+    const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
+      ...overrides,
+      parentId,
+      ...(requestedTitle
+        ? { title: getAvailableFileTitle(state.files, requestedTitle, parentId) }
+        : {}),
+    });
     set((currentState) => ({
       ...currentState,
       ...addWorkspaceFile(getWorkspaceState(currentState), nextFile),
@@ -227,9 +304,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   addFileFromContent: (title, text, viewMode = "edit", overrides) => {
     const state = get();
+    const parentId = overrides?.parentId ?? state.files.find((file) => file.id === state.activeFileId)?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
       ...overrides,
-      title: getAvailableFileTitle(state.files, title),
+      parentId,
+      title: getAvailableFileTitle(state.files, title, parentId),
       text,
       viewMode: overrides?.viewMode ?? viewMode,
     });
@@ -272,6 +351,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     set((state) => ({
       ...state,
       ...createWorkspaceModelState(roomWorkspace),
+      folders: roomWorkspace.folders,
     }));
 
     return nextFile;
@@ -290,21 +370,20 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
             roomId: sourceFile.roomId,
             shareUrl: sourceFile.shareUrl,
             connectionStatus: sourceFile.connectionStatus ?? "idle",
-            collaboratorCount: sourceFile.collaboratorCount ?? 0,
           }
         : {
             connectionStatus: "idle" as const,
             roomId: undefined,
             shareUrl: undefined,
-            collaboratorCount: undefined,
           };
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
-      title: getAvailableFileTitle(state.files, sourceFile.title),
+      title: getAvailableFileTitle(state.files, sourceFile.title, sourceFile.parentId),
       text: sourceFile.text,
       viewMode: sourceFile.viewMode,
       readingWidth: sourceFile.readingWidth,
       lineWrapping: sourceFile.lineWrapping,
       lineNumbers: sourceFile.lineNumbers,
+      parentId: sourceFile.parentId,
       ...collaborationFields,
     });
 
@@ -316,7 +395,18 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   renameFile: (fileId, nextRawTitle) => {
-    const { result } = renameWorkspaceFile(getWorkspaceState(get()), fileId, nextRawTitle);
+    const state = get();
+    const file = state.files.find((candidate) => candidate.id === fileId);
+    const siblingState = {
+      ...getWorkspaceState(state),
+      files: state.files.filter(
+        (candidate) =>
+          candidate.id === fileId ||
+          (candidate.parentId ?? WORKSPACE_ROOT_FOLDER_ID) ===
+            (file?.parentId ?? WORKSPACE_ROOT_FOLDER_ID),
+      ),
+    };
+    const { result } = renameWorkspaceFile(siblingState, fileId, nextRawTitle);
     if (result.ok) {
       set((state) => reduceWorkspace(state, { type: "renameFile", fileId, title: nextRawTitle }));
     }
@@ -435,14 +525,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
         return {
           ...file,
           connectionStatus: status,
-          collaboratorCount: options.collaboratorCount ?? file.collaboratorCount,
         };
       }),
     );
-  },
-
-  setFileCollaboratorCount: (fileId, collaboratorCount) => {
-    set((state) => updateFileInState(state, fileId, (file) => ({ ...file, collaboratorCount })));
   },
 
   setFileRecoveryEvent: (fileId, event) => {
@@ -488,6 +573,98 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     );
 
     return nextFile;
+  },
+
+  addFolder: (title = "New folder", parentId = WORKSPACE_ROOT_FOLDER_ID, roomId) => {
+    const state = get();
+    const validParentId = state.folders.some((folder) => folder.id === parentId)
+      ? parentId
+      : WORKSPACE_ROOT_FOLDER_ID;
+    if (getFolderDepth(state.folders, validParentId) >= WORKSPACE_ROOM_MAX_TREE_DEPTH) {
+      return undefined;
+    }
+    const folder: WorkspaceFolder = {
+      id: randomId(),
+      title: getAvailableFolderTitle(state.folders, title, validParentId),
+      parentId: validParentId,
+      order: state.folders.filter((candidate) => candidate.parentId === validParentId).length,
+      roomId,
+    };
+    set((current) => ({ ...current, folders: [...current.folders, folder] }));
+    return folder;
+  },
+
+  setFolderCollaborationRoom: (folderId, roomId) => {
+    if (folderId === WORKSPACE_ROOT_FOLDER_ID) return;
+    set((current) => ({
+      ...current,
+      folders: current.folders.map((folder) =>
+        folder.id === folderId ? { ...folder, roomId } : folder,
+      ),
+    }));
+  },
+
+  renameFolder: (folderId, title) => {
+    const state = get();
+    const folder = state.folders.find((candidate) => candidate.id === folderId);
+    const normalizedTitle = title.trim().split("\0").join(" ").replace(/[/\\]/g, " ").replace(/\s+/g, " ");
+    if (!folder || folder.id === WORKSPACE_ROOT_FOLDER_ID || !normalizedTitle) return false;
+    if (state.folders.some((candidate) =>
+      candidate.id !== folderId && candidate.parentId === folder.parentId && candidate.title.toLowerCase() === normalizedTitle.toLowerCase()
+    )) return false;
+    set((current) => ({
+      ...current,
+      folders: current.folders.map((candidate) => candidate.id === folderId ? { ...candidate, title: normalizedTitle } : candidate),
+    }));
+    return true;
+  },
+
+  moveFileToFolder: (fileId, folderId) => {
+    const state = get();
+    const file = state.files.find((candidate) => candidate.id === fileId);
+    if (!file || !state.folders.some((folder) => folder.id === folderId)) return false;
+    if (state.files.some((candidate) =>
+      candidate.id !== fileId &&
+      (candidate.parentId ?? WORKSPACE_ROOT_FOLDER_ID) === folderId &&
+      candidate.title.toLowerCase() === file.title.toLowerCase()
+    )) return false;
+    set((current) => updateFileInState(current, fileId, (file) => ({ ...file, parentId: folderId })));
+    return true;
+  },
+
+  moveFolder: (folderId, parentId) => {
+    const state = get();
+    const movingFolder = state.folders.find((folder) => folder.id === folderId);
+    if (!movingFolder || folderId === WORKSPACE_ROOT_FOLDER_ID || !state.folders.some((folder) => folder.id === parentId)) return false;
+    if (getFolderDescendantIds(state.folders, folderId).has(parentId)) return false;
+    if (getFolderDepth(state.folders, parentId) + 1 + getFolderSubtreeHeight(state.folders, folderId) > WORKSPACE_ROOM_MAX_TREE_DEPTH) return false;
+    if (state.folders.some((folder) =>
+      folder.id !== folderId &&
+      folder.parentId === parentId &&
+      folder.title.toLowerCase() === movingFolder.title.toLowerCase()
+    )) return false;
+    set((current) => ({
+      ...current,
+      folders: current.folders.map((folder) => folder.id === folderId ? { ...folder, parentId } : folder),
+    }));
+    return true;
+  },
+
+  deleteFolder: (folderId) => {
+    if (folderId === WORKSPACE_ROOT_FOLDER_ID) return;
+    const state = get();
+    const deletedFolderIds = getFolderDescendantIds(state.folders, folderId);
+    const deletedFileIds = new Set(state.files.filter((file) => deletedFolderIds.has(file.parentId ?? WORKSPACE_ROOT_FOLDER_ID)).map((file) => file.id));
+    const files = state.files.filter((file) => !deletedFileIds.has(file.id));
+    const openFileIds = state.openFileIds.filter((fileId) => !deletedFileIds.has(fileId));
+    const activeFileId = deletedFileIds.has(state.activeFileId) ? (openFileIds[0] ?? files[0]?.id ?? "") : state.activeFileId;
+    set((current) => ({
+      ...current,
+      folders: current.folders.filter((folder) => !deletedFolderIds.has(folder.id)),
+      files,
+      openFileIds,
+      activeFileId,
+    }));
   },
 }));
 

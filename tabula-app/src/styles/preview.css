@@ -78,6 +78,11 @@
   padding-right: var(--preview-comment-rail);
 }
 
+.workspace:not(.split) .preview-document.with-line-gutters {
+  padding-left: var(--editor-left-rail);
+  padding-right: var(--editor-comment-rail);
+}
+
 .preview-document-content {
   min-width: 0;
 }

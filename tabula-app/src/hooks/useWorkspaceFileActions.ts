@@ -34,7 +34,7 @@ type CloseFileResult = {
 export const getLiveRoomFileOverrides = (
   activeFile?: Pick<
     WorkspaceFile,
-    "roomId" | "shareUrl" | "connectionStatus" | "collaboratorCount"
+    "roomId" | "shareUrl" | "connectionStatus"
   >,
 ): Partial<WorkspaceFile> => {
   if (!activeFile?.roomId || !activeFile.shareUrl) {
@@ -45,7 +45,6 @@ export const getLiveRoomFileOverrides = (
     roomId: activeFile.roomId,
     shareUrl: activeFile.shareUrl,
     connectionStatus: activeFile.connectionStatus ?? "idle",
-    collaboratorCount: activeFile.collaboratorCount ?? 0,
     lastRecoveryType: undefined,
     lastRecoveryMessage: undefined,
     lastRecoveryAt: undefined,
@@ -54,6 +53,7 @@ export const getLiveRoomFileOverrides = (
 
 type UseWorkspaceFileActionsArgs = {
   activeFile?: WorkspaceFile;
+  roomFile?: WorkspaceFile;
   activeFileId: string;
   addFileFromContent: (
     title: string,
@@ -92,6 +92,7 @@ type UseWorkspaceFileActionsArgs = {
 
 export function useWorkspaceFileActions({
   activeFile,
+  roomFile,
   activeFileId,
   addFileFromContent,
   addWorkspaceFileAction,
@@ -117,6 +118,11 @@ export function useWorkspaceFileActions({
   showToast,
   upsertHelpFile,
 }: UseWorkspaceFileActionsArgs) {
+  const syncSelectedFileUrl = (file?: WorkspaceFile, mode: "push" | "replace" = "push") => {
+    if (roomFile?.roomId && !file?.roomId) return;
+    syncUrlForFile(file, mode);
+  };
+
   const selectFile = (fileId: string) => {
     onBeforeWorkspaceBoundary?.();
     const nextFile = selectWorkspaceFileAction(fileId);
@@ -125,25 +131,34 @@ export function useWorkspaceFileActions({
     }
 
     closeFloatingChrome();
-    syncUrlForFile(nextFile);
+    syncSelectedFileUrl(nextFile);
   };
 
-  const addFile = () => {
+  const createFile = (collaborationOverrides: Partial<WorkspaceFile>) => {
     onBeforeWorkspaceBoundary?.();
     queueEditorFocus();
     const nextFile = addWorkspaceFileAction({
       ...getNewFilePreferenceOverrides(preferences),
-      ...getLiveRoomFileOverrides(activeFile),
+      ...collaborationOverrides,
     });
     closeFloatingChrome();
-    syncUrlForFile(nextFile);
+    syncSelectedFileUrl(nextFile);
+    return nextFile;
   };
+
+  const addFile = () => createFile(getLiveRoomFileOverrides(roomFile ?? activeFile));
+
+  const addPrivateFile = () => createFile({
+    roomId: undefined,
+    shareUrl: undefined,
+    connectionStatus: "idle",
+  });
 
   const openHelpFile = () => {
     onBeforeWorkspaceBoundary?.();
     const nextFile = upsertHelpFile(helpMarkdown);
     closeFloatingChrome();
-    syncUrlForFile(nextFile);
+    syncSelectedFileUrl(nextFile);
   };
 
   const openAboutFile = () => {
@@ -161,7 +176,7 @@ export function useWorkspaceFileActions({
 
     selectWorkspaceFileAction(nextFile.id);
     closeFloatingChrome();
-    syncUrlForFile(nextFile);
+    syncSelectedFileUrl(nextFile);
   };
 
   const renameWorkspaceFileAction = (fileId: string, nextRawTitle: string) => {
@@ -181,7 +196,7 @@ export function useWorkspaceFileActions({
     }
 
     closeFloatingChrome();
-    syncUrlForFile(nextFile);
+    syncSelectedFileUrl(nextFile);
     showToast("File duplicated.");
   };
 
@@ -214,10 +229,12 @@ export function useWorkspaceFileActions({
       closeFloatingChrome();
 
       if (result.nextActiveFile) {
-        syncUrlForFile(result.nextActiveFile);
+        syncSelectedFileUrl(result.nextActiveFile);
       } else {
-        resetCollaborationState("idle");
-        syncUrlForFile(undefined, "replace");
+        if (!roomFile?.roomId) {
+          resetCollaborationState("idle");
+          syncSelectedFileUrl(undefined, "replace");
+        }
       }
     }
 
@@ -232,7 +249,7 @@ export function useWorkspaceFileActions({
           activate: shouldActivateRestoredFile,
         });
         if (shouldActivateRestoredFile) {
-          syncUrlForFile(deletedFile);
+          syncSelectedFileUrl(deletedFile);
         }
         if (deletedComments?.length) {
           replaceCommentsByFileId({
@@ -262,12 +279,14 @@ export function useWorkspaceFileActions({
       closeFloatingChrome();
 
       if (result.nextActiveFile) {
-        syncUrlForFile(result.nextActiveFile);
+        syncSelectedFileUrl(result.nextActiveFile);
         return;
       }
 
-      resetCollaborationState("idle");
-      syncUrlForFile(undefined, "replace");
+      if (!roomFile?.roomId) {
+        resetCollaborationState("idle");
+        syncSelectedFileUrl(undefined, "replace");
+      }
     }
   };
 
@@ -276,13 +295,14 @@ export function useWorkspaceFileActions({
     const nextFile = selectAdjacentWorkspaceFileAction(direction);
     if (nextFile) {
       closeFloatingChrome();
-      syncUrlForFile(nextFile);
+      syncSelectedFileUrl(nextFile);
     }
   };
 
   return {
     selectFile,
     addFile,
+    addPrivateFile,
     openAboutFile,
     openHelpFile,
     renameWorkspaceFileAction,

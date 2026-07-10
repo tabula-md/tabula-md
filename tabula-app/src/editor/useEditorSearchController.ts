@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
 import {
   DEFAULT_SEARCH_OPTIONS,
@@ -219,7 +219,7 @@ export function useEditorSearchController({
     }));
   };
 
-  const handlePreviewSearchMatchCountChange = (matchCount: number) => {
+  const handlePreviewSearchMatchCountChange = useCallback((matchCount: number) => {
     setPreviewSearchMatchCount((currentMatchCount) => {
       const nextState = {
         count: previewSearchMatchCountKey ? matchCount : 0,
@@ -232,7 +232,7 @@ export function useEditorSearchController({
         ? currentMatchCount
         : nextState;
     });
-  };
+  }, [previewSearchMatchCountKey, text]);
 
   const goToSearchMatch = (direction: 1 | -1) => {
     if (searchMatchCount === 0 || searchError) {
@@ -290,7 +290,10 @@ export function useEditorSearchController({
       return;
     }
 
-    const applied = editorRef.current?.applyLocalTextPatches(edit.patches, edit.selection, { focus: false }) ?? false;
+    const applied = editorRef.current?.applyLocalTextPatches(edit.patches, edit.selection, {
+      focus: false,
+      isolateHistory: true,
+    }) ?? false;
     if (applied) {
       const nextText = editorRef.current?.getValue() ?? edit.text;
       const nextMatches = getEditorSearchMatches(nextText, searchQuery, searchOptions);
@@ -311,7 +314,10 @@ export function useEditorSearchController({
       return;
     }
 
-    const applied = editorRef.current?.applyLocalTextPatches(edit.patches, edit.selection, { focus: false }) ?? false;
+    const applied = editorRef.current?.applyLocalTextPatches(edit.patches, edit.selection, {
+      focus: false,
+      isolateHistory: true,
+    }) ?? false;
     if (applied) {
       setActiveSearchMatchIndex(-1);
       setSearchDocumentText(editorRef.current?.getValue() ?? currentText);

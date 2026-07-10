@@ -17,7 +17,8 @@ import type {
   TextChange,
 } from "@tabula-md/tabula";
 import type { CenterPopover } from "../uiTypes";
-import type { Collaborator, LiveSelection } from "../collaboration";
+import type { LiveSelection } from "../collaboration";
+import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
 import type { SearchMatch, SearchOptions } from "../editor/editorSearchModel";
 import type { SearchTarget } from "../editor/useEditorSearchController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
@@ -51,7 +52,6 @@ export type DocumentWorkbenchProps = {
   activeBookmarks: FileBookmark[];
   activeCommentAnchors: MarkdownCommentAnchor[];
   activeFile: WorkspaceFile;
-  activeFileTitle: string;
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
   activeSyncScrolling: boolean;
@@ -61,7 +61,7 @@ export type DocumentWorkbenchProps = {
   canRedo: boolean;
   canUndo: boolean;
   centerPopover: CenterPopover;
-  collaborators: Collaborator[];
+  collaborationBinding?: CollabEditorBinding | null;
   cursorPositionLabel: string;
   documentSurface: DocumentSurfaceModel;
   editorHistoryCanRedo: boolean;
@@ -163,7 +163,6 @@ export function DocumentWorkbench({
   activeBookmarks,
   activeCommentAnchors,
   activeFile,
-  activeFileTitle,
   activeLineNumbers,
   activeLineWrapping,
   activeSyncScrolling,
@@ -173,7 +172,7 @@ export function DocumentWorkbench({
   canRedo,
   canUndo,
   centerPopover,
-  collaborators,
+  collaborationBinding,
   cursorPositionLabel,
   documentSurface,
   editorHistoryCanRedo,
@@ -364,8 +363,6 @@ export function DocumentWorkbench({
           <MarkdownEditor
             ref={editorRef}
             fileId={activeFile.id}
-            fileTitle={activeFileTitle}
-            roomId={activeFile.roomId}
             value={text}
             largeDocumentMode={largeDocumentMode}
             lineWrapping={effectiveLineWrapping}
@@ -373,7 +370,7 @@ export function DocumentWorkbench({
             bookmarks={activeBookmarks}
             commentAnchors={isLive ? activeCommentAnchors : []}
             commentsEnabled={isLive}
-            collaborators={isLive ? collaborators : []}
+            collaborationBinding={isLive ? collaborationBinding : null}
             activeCommentId={focusedCommentId}
             searchMatches={isSourceSearchActive ? searchMatches : []}
             activeSearchMatchIndex={isSourceSearchActive ? activeSearchMatchIndex : -1}

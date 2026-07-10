@@ -10,7 +10,6 @@ import {
   placeholder,
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import type { Collaborator } from "../collaboration";
 import { createCommentAnchorExtension } from "../editorExtensions/commentAnchors";
 import {
   createLineAnnotationGutterExtension,
@@ -22,23 +21,27 @@ import type {
   MarkdownCommentAnchor,
   MarkdownLineActionRequest,
 } from "../markdownEditorTypes";
-import { createMarkdownCommandExtensions } from "./editorInputRules";
+import {
+  createMarkdownCommandExtensions,
+  editorUndoBoundaryFacet,
+} from "./editorInputRules";
 import {
   createEditorLayoutCompartments,
   createEditorLineNumbersExtension,
   createEditorLineWrappingExtension,
   type EditorLayoutCompartments,
 } from "./editorLayout";
-import { createEditorPresenceExtension } from "./editorPresence";
 import { createEditorPasteNormalizationExtension } from "./editorPaste";
 import { createEditorSearchExtension } from "./editorSearch";
 import type { SearchMatch } from "./editorSearchModel";
+import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
 
 export type MarkdownEditorCompartments = EditorLayoutCompartments & {
   annotationGutter: Compartment;
   lineCommentAction: Compartment;
   commentAnchor: Compartment;
-  remotePresence: Compartment;
+  collaboration: Compartment;
+  history: Compartment;
   searchHighlight: Compartment;
 };
 
@@ -50,10 +53,7 @@ export type MarkdownEditorExtensionConfig = {
   commentAnchors: MarkdownCommentAnchor[];
   commentsEnabled: boolean;
   activeCommentId?: string | null;
-  collaborators: Collaborator[];
-  currentDocumentId?: string;
-  fileTitle?: string;
-  roomId?: string;
+  collaborationBinding?: CollabEditorBinding | null;
   searchMatches: SearchMatch[];
   activeSearchMatchIndex: number;
   updateExtension: Extension;
@@ -90,7 +90,8 @@ export const createMarkdownEditorCompartments = (): MarkdownEditorCompartments =
   annotationGutter: new Compartment(),
   lineCommentAction: new Compartment(),
   commentAnchor: new Compartment(),
-  remotePresence: new Compartment(),
+  collaboration: new Compartment(),
+  history: new Compartment(),
   searchHighlight: new Compartment(),
 });
 
@@ -124,6 +125,32 @@ export const createEditorSelectionDisplayExtensions = (): Extension[] => [
   drawSelection(),
 ];
 
+const utf8Encoder = new TextEncoder();
+
+export const createEditorCollaborationExtensions = (
+  collaborationBinding: NonNullable<MarkdownEditorExtensionConfig["collaborationBinding"]>,
+): Extension[] => [
+  EditorState.transactionFilter.of((transaction) => {
+    if (!transaction.docChanged) return transaction;
+
+    if (collaborationBinding.consumeRemoteProjection?.()) return transaction;
+
+    const yTextLength = collaborationBinding.yText.length;
+    const isRemoteYTextUpdate = yTextLength !== transaction.startState.doc.length &&
+      yTextLength === transaction.newDoc.length;
+    if (isRemoteYTextUpdate) return transaction;
+
+    let byteDelta = 0;
+    transaction.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+      byteDelta += utf8Encoder.encode(inserted.sliceString(0, inserted.length, "\n")).byteLength;
+      byteDelta -= utf8Encoder.encode(transaction.startState.doc.sliceString(fromA, toA, "\n")).byteLength;
+    });
+    return collaborationBinding.canApplyTextByteDelta(byteDelta) ? transaction : [];
+  }),
+  editorUndoBoundaryFacet.of(() => collaborationBinding.undoManager.stopCapturing()),
+  collaborationBinding.extension,
+];
+
 export const createMarkdownEditorExtensions = ({
   compartments,
   lineWrapping,
@@ -132,17 +159,14 @@ export const createMarkdownEditorExtensions = ({
   commentAnchors,
   commentsEnabled,
   activeCommentId,
-  collaborators,
-  currentDocumentId,
-  fileTitle,
-  roomId,
+  collaborationBinding,
   searchMatches,
   activeSearchMatchIndex,
   updateExtension,
   onOpenLineActions,
   onOpenComment,
 }: MarkdownEditorExtensionConfig): Extension[] => [
-  history(),
+  compartments.history.of(collaborationBinding ? [] : history()),
   ...createEditorSelectionDisplayExtensions(),
   dropCursor(),
   bracketMatching(),
@@ -163,7 +187,11 @@ export const createMarkdownEditorExtensions = ({
       ? createEditorCommentAnchorExtension(commentAnchors, activeCommentId, onOpenComment)
       : [],
   ),
-  compartments.remotePresence.of(createEditorPresenceExtension(collaborators, fileTitle, roomId, currentDocumentId)),
+  compartments.collaboration.of(
+    collaborationBinding
+      ? createEditorCollaborationExtensions(collaborationBinding)
+      : [],
+  ),
   createTextSelectionHighlightExtension(),
   compartments.searchHighlight.of(createEditorSearchExtension(searchMatches, activeSearchMatchIndex)),
   ...createMarkdownCommandExtensions(),

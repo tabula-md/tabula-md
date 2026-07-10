@@ -108,4 +108,17 @@ describe("collaboration presence labels", () => {
       "Viewing README.md",
     );
   });
+
+  it("treats a participant without an active shared document as workspace presence", () => {
+    const collaborator: CollaborationCollaborator = {
+      id: "peer-private",
+      name: "Curious Human",
+      color: "#2563eb",
+      lastSeen: 1,
+      roomId: "room-1",
+    };
+
+    expect(isCollaboratorInFile(collaborator, "README.md", "room-1", "readme")).toBe(false);
+    expect(getCollaboratorPresenceDetail(collaborator, "", "README.md", "room-1", "readme")).toBe("In workspace");
+  });
 });

@@ -51,6 +51,7 @@ const LARGE_LOCAL_TYPING_TEXT_COMMIT_DELAY_MS = 360;
 type UseWorkspaceActiveFileEditorArgs = {
   activeFile?: WorkspaceFile;
   applyLocalText: (text: string | null, patches?: readonly TextPatch[], options?: { docLength?: number }) => void;
+  collaborationBound?: boolean;
   editorDocumentRuntime: WorkspaceEditorDocumentRuntimeOwner;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   onVisibleTextChange?: (change?: TextChange) => void;
@@ -167,6 +168,7 @@ export const normalizeFileBookmarks = (bookmarks: MarkdownBookmark[], nowIso: st
 export function useWorkspaceActiveFileEditor({
   activeFile,
   applyLocalText,
+  collaborationBound = false,
   editorDocumentRuntime,
   editorRef,
   onVisibleTextChange,
@@ -301,9 +303,9 @@ export function useWorkspaceActiveFileEditor({
       if (activeFile.viewMode !== "edit") {
         onVisibleTextChange?.(change);
       }
-      schedulePendingEditorCommit(change);
+      if (!collaborationBound) schedulePendingEditorCommit(change);
 
-      if (activeFile.roomId) {
+      if (activeFile.roomId && !collaborationBound) {
         applyLocalText(
           shouldSendFullTextToCollaboration(change) ? (editorRef.current?.getValue() ?? null) : null,
           change?.patches,
@@ -332,9 +334,9 @@ export function useWorkspaceActiveFileEditor({
     if (activeFile.viewMode !== "edit") {
       onVisibleTextChange?.(change);
     }
-    schedulePendingEditorCommit(change);
+    if (!collaborationBound) schedulePendingEditorCommit(change);
 
-    if (policy.shouldSendCollaborationPatchImmediately) {
+    if (policy.shouldSendCollaborationPatchImmediately && !collaborationBound) {
       applyLocalText(nextText, change?.patches, { docLength: change?.docLength });
     }
   };

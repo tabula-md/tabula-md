@@ -7,6 +7,7 @@ import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { useWorkspaceRuntime } from "../hooks/useWorkspaceRuntime";
 import { isEmptyGeneratedLivePlaceholder } from "../workspaceStorage";
+import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 
 export function WorkspaceApp() {
   const {
@@ -24,9 +25,9 @@ export function WorkspaceApp() {
   const { activeFile, ...documentWorkbenchProps } = workbenchProps;
   const activeFileIsLivePlaceholder = Boolean(activeFile && isEmptyGeneratedLivePlaceholder(activeFile));
   const liveRoomSurfaceState =
-    activeFileIsLivePlaceholder || liveRoomOpenState !== "unavailable"
+    liveRoomOpenState === "idle" && activeFileIsLivePlaceholder
       ? "opening"
-      : "unavailable";
+      : liveRoomOpenState;
 
   return (
     <main className="app-shell">
@@ -37,10 +38,15 @@ export function WorkspaceApp() {
         <section className={documentSurface.centerWorkbenchClassName}>
           <WorkspaceTopChrome {...topChromeProps} />
 
-          <section className={documentSurface.fileShellClassName}>
+          <section
+            className={documentSurface.fileShellClassName}
+            id={activeFile ? getWorkspaceTabPanelId(activeFile.id) : undefined}
+            role={activeFile ? "tabpanel" : undefined}
+            aria-labelledby={activeFile ? getWorkspaceTabId(activeFile.id) : undefined}
+          >
             {liveRoomOpenState !== "idle" || activeFileIsLivePlaceholder ? (
               <LiveRoomLoadingSurface
-                state={liveRoomSurfaceState}
+                state={liveRoomSurfaceState === "idle" ? "opening" : liveRoomSurfaceState}
                 {...liveRoomLoadingProps}
               />
             ) : activeFile ? (

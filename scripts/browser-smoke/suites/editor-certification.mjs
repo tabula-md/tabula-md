@@ -7,7 +7,7 @@ const getEditorLines = async (page) =>
   page.$$eval(".cm-content .cm-line", (lines) =>
     lines.map((line) => {
       const clone = line.cloneNode(true);
-      clone.querySelectorAll(".cm-remote-cursor").forEach((cursor) => cursor.remove());
+      clone.querySelectorAll(".cm-ySelectionCaret").forEach((cursor) => cursor.remove());
       return clone.textContent ?? "";
     }),
   );
@@ -220,11 +220,20 @@ const assertSearchReplaceInvariants = async ({ expect, page, markdown, waitForRe
     (await getEditorText(page)).includes("![alt text](https://example.com/favicon.svg)"),
     "Replace current should update the active match through the editor transaction path.",
   );
+  await page.locator(".cm-content").focus();
   await page.keyboard.press("ControlOrMeta+Z");
   await waitForRenderFrame(page);
+  const replaceUndoText = await getEditorText(page);
+  const replaceUndoActiveElement = await page.evaluate(() => ({
+    tag: document.activeElement?.tagName ?? "",
+    ariaLabel: document.activeElement?.getAttribute("aria-label") ?? "",
+  }));
   expect(
-    (await getEditorText(page)).includes("![alt text](https://tabula.md/favicon.svg)"),
-    "Replace current should be undoable as one editor transaction.",
+    replaceUndoText.includes("![alt text](https://tabula.md/favicon.svg)"),
+    `Replace current should be undoable as one editor transaction. ` +
+      `active=${JSON.stringify(replaceUndoActiveElement)} ` +
+      `hasReplacement=${replaceUndoText.includes("https://example.com/favicon.svg")} ` +
+      `length=${replaceUndoText.length}`,
   );
 
   await page.getByRole("searchbox", { name: "Search" }).fill("Markdown");
@@ -234,6 +243,7 @@ const assertSearchReplaceInvariants = async ({ expect, page, markdown, waitForRe
   const replacedText = await getEditorText(page);
   expect(replacedText.includes("MD"), "Replace all should update matching text.");
   expect(!replacedText.includes("Markdown"), "Replace all should remove the searched term from the fixture.");
+  await page.locator(".cm-content").focus();
   await page.keyboard.press("ControlOrMeta+Z");
   await waitForRenderFrame(page);
   expect(
@@ -268,25 +278,16 @@ const assertTaskAndLinkInvariants = async ({ expect, page, waitForRenderFrame })
   );
 
   await clickEditorLineOffset(page, "[Tabula](https://tabula.md)", 2);
-  await page.getByLabel("Link URL").fill("https://example.com/docs");
-  await page.getByRole("button", { name: "Save" }).click();
   await waitForRenderFrame(page);
   expect(
-    (await getEditorText(page)).includes("[Tabula](https://example.com/docs)"),
-    "Saving the link popover should update only the link URL.",
+    (await page.getByLabel("Link URL").count()) === 0 &&
+      (await page.getByRole("button", { name: "Open", exact: true }).count()) === 0,
+    "Placing the cursor inside a Markdown link should not open a link action popover.",
   );
-  await page.keyboard.press("ControlOrMeta+Z");
-  await waitForRenderFrame(page);
   expect(
     (await getEditorText(page)).includes("[Tabula](https://tabula.md)"),
-    "Link URL edits should be undoable as one editor transaction.",
+    "Inspecting a Markdown link should not mutate its source.",
   );
-
-  await clickEditorLineOffset(page, "[Tabula](https://tabula.md)", 2);
-  await page.getByLabel("Link URL").fill("javascript:alert(1)");
-  const unsafeOpenDisabled = await page.getByRole("button", { name: "Open", exact: true }).isDisabled();
-  expect(unsafeOpenDisabled, "Unsafe link URLs should not be openable from the editor popover.");
-  await page.getByRole("button", { name: "Close", exact: true }).click();
 };
 
 export async function run(ctx) {
@@ -369,8 +370,10 @@ export async function run(ctx) {
   try {
     await firstPage.goto(baseUrl);
     await firstPage.waitForSelector(".tabbar");
-    await firstPage.getByTitle("New tab").click();
+    await firstPage.getByTitle("New document").click();
     await waitForEditorReady(firstPage, { mode: "edit" });
+    const targetFileName = await firstPage.locator(".tab-item.active").getAttribute("data-file-name");
+    expect(Boolean(targetFileName), "The remote cursor target document should be available.");
     await firstPage.locator(".share-trigger").click();
     await waitForShareDialogState(firstPage, { panel: "Share link" });
     await firstPage.getByRole("button", { name: "Start session" }).click();
@@ -380,7 +383,20 @@ export async function run(ctx) {
 
     const roomUrl = new URL(shareUrl);
     await secondPage.goto(`${baseUrl}${roomUrl.pathname}${roomUrl.hash}`);
-    await secondPage.waitForSelector(".tab-item.live.active");
+    await secondPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
+    const targetTab = secondPage.locator(`.tab-item[data-file-name="${targetFileName}"] .tab-select-button`);
+    if ((await targetTab.count()) === 1) {
+      await targetTab.click();
+    } else {
+      await secondPage.getByRole("button", { name: "Open Project Context" }).click();
+      await secondPage.getByRole("button", { name: "Files", exact: true }).click();
+      await secondPage.getByRole("button", { name: `Open ${targetFileName}` }).click();
+    }
+    await secondPage.waitForFunction(
+      ({ fileName }) =>
+        document.querySelector(".tab-item.active")?.getAttribute("data-file-name") === fileName,
+      { fileName: targetFileName },
+    );
     await waitForEditorReady(secondPage, { mode: "edit" });
     await firstPage.waitForFunction(() => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 1);
     await focusMarkdownEditor(secondPage);
@@ -391,31 +407,38 @@ export async function run(ctx) {
     await secondPage.keyboard.insertText("\nremote cursor certification");
     await waitForEditorText(secondPage, "remote cursor certification", 4_000);
     await waitForEditorText(firstPage, "remote cursor certification", 12_000);
-    await firstPage.waitForSelector(".cm-remote-cursor", { state: "attached", timeout: 8_000 });
-    await firstPage.waitForSelector(".cm-remote-cursor-label", { state: "attached", timeout: 8_000 });
+    await firstPage.waitForSelector(".cm-ySelectionCaret", { state: "attached", timeout: 8_000 });
+    await firstPage.waitForSelector(".cm-ySelectionInfo", { state: "attached", timeout: 8_000 });
 
     const remoteCursorLayout = await firstPage.evaluate(() => {
-      const cursor = document.querySelector(".cm-remote-cursor");
-      const label = document.querySelector(".cm-remote-cursor-label");
+      const cursor = document.querySelector(".cm-ySelectionCaret");
+      const label = document.querySelector(".cm-ySelectionInfo");
       const cursorStyle = cursor instanceof HTMLElement ? getComputedStyle(cursor) : null;
       const labelStyle = label instanceof HTMLElement ? getComputedStyle(label) : null;
       const cursorRect = cursor instanceof HTMLElement ? cursor.getBoundingClientRect() : null;
       const lines = Array.from(document.querySelectorAll(".cm-content .cm-line")).map((line) => {
         const clone = line.cloneNode(true);
-        clone.querySelectorAll(".cm-remote-cursor").forEach((remoteCursor) => remoteCursor.remove());
+        clone.querySelectorAll(".cm-ySelectionCaret").forEach((remoteCursor) => remoteCursor.remove());
         return clone.textContent ?? "";
       });
       return {
         cursorWidth: cursorRect?.width ?? -1,
         cursorDisplay: cursorStyle?.display ?? "",
+        cursorMarginLeft: cursorStyle?.marginLeft ?? "",
+        cursorMarginRight: cursorStyle?.marginRight ?? "",
         labelPosition: labelStyle?.position ?? "",
         labelZIndex: labelStyle?.zIndex ?? "",
-        remoteLineCount: document.querySelectorAll(".cm-remote-presence-line").length,
+        remoteLineCount: document.querySelectorAll(".cm-yLineSelection").length,
         text: lines.join("\n"),
       };
     });
-    expect(remoteCursorLayout.cursorWidth <= 1, "Remote cursor marker should not consume text width.");
-    expect(remoteCursorLayout.cursorDisplay === "inline-block", "Remote cursor marker should stay inline.");
+    expect(
+      remoteCursorLayout.cursorWidth <= 2 &&
+        remoteCursorLayout.cursorMarginLeft === "-1px" &&
+        remoteCursorLayout.cursorMarginRight === "-1px",
+      "Remote cursor marker should not consume text width.",
+    );
+    expect(remoteCursorLayout.cursorDisplay === "inline", "Remote cursor marker should stay inline.");
     expect(remoteCursorLayout.labelPosition === "absolute", "Remote cursor label should not affect line layout.");
     expect(Number(remoteCursorLayout.labelZIndex) >= 1, "Remote cursor label should render above editor text.");
     expect(remoteCursorLayout.remoteLineCount === 0, "Remote cursor should not add a line-level presence rail.");

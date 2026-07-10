@@ -7,7 +7,7 @@ describe("live workspace scope", () => {
   it("marks files that are actually in the active live room", () => {
     expect(
       getLiveWorkspaceFileIds({
-        activeFile: { id: "a", roomId: "room-1" },
+        roomId: "room-1",
         files: [file("a", "room-1"), file("b"), file("c", "room-1")],
         isLive: true,
       }),
@@ -17,7 +17,7 @@ describe("live workspace scope", () => {
   it("does not mark local files or files from another room", () => {
     expect(
       getLiveWorkspaceFileIds({
-        activeFile: { id: "a", roomId: "room-1" },
+        roomId: "room-1",
         files: [file("a", "room-1"), file("b"), file("c", "room-2")],
         isLive: true,
       }),
@@ -27,10 +27,20 @@ describe("live workspace scope", () => {
   it("does not mark files when live collaboration is inactive", () => {
     expect(
       getLiveWorkspaceFileIds({
-        activeFile: { id: "a", roomId: "room-1" },
+        roomId: "room-1",
         files: [file("a"), file("b")],
         isLive: false,
       }),
     ).toEqual([]);
+  });
+
+  it("keeps the room scope while a private document is active", () => {
+    expect(
+      getLiveWorkspaceFileIds({
+        roomId: "room-1",
+        files: [file("shared", "room-1"), file("private")],
+        isLive: true,
+      }),
+    ).toEqual(["shared"]);
   });
 });

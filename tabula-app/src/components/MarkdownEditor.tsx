@@ -15,10 +15,11 @@ import {
   dispatchEditorSelectionRange,
   getEditorSelectionActionPosition,
 } from "../editor/editorLayout";
-import { updateEditorPresenceEffect } from "../editor/editorPresence";
+import { history } from "@codemirror/commands";
 import { createEditorSearchExtension } from "../editor/editorSearch";
 import {
   createEditorAnnotationGutterExtension,
+  createEditorCollaborationExtensions,
   createEditorCommentAnchorExtension,
   createEditorLineCommentActionExtension,
   createMarkdownEditorCompartments,
@@ -41,6 +42,8 @@ import type {
 } from "../markdownEditorTypes";
 import type { EditorViewportAnchor } from "../preview/previewSyncTypes";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
+
+const MAX_CACHED_LOCAL_EDITOR_STATES = 20;
 
 const getEditorViewportLineAnchor = (view: EditorView): EditorViewportAnchor => {
   const viewportTop = Math.max(0, view.scrollDOM.scrollTop);
@@ -72,15 +75,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
   (
     {
       fileId,
-      fileTitle,
-      roomId,
       value,
       lineWrapping,
       lineNumbers,
       bookmarks = [],
       commentAnchors = [],
       commentsEnabled = true,
-      collaborators = [],
+      collaborationBinding,
       activeCommentId,
       searchMatches = [],
       activeSearchMatchIndex = -1,
@@ -108,6 +109,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const onSelectionActionPositionChangeRef = useRef(onSelectionActionPositionChange);
     const onScrollRatioChangeRef = useRef(onScrollRatioChange);
     const activeCommentIdRef = useRef(activeCommentId);
+    const collaborationBindingRef = useRef(collaborationBinding);
+    const appliedCollaborationBindingRef = useRef(collaborationBinding);
     const commentsEnabledRef = useRef(commentsEnabled);
     const compartmentsRef = useRef(createMarkdownEditorCompartments());
     const stateByFileIdRef = useRef(new Map<string, EditorState>());
@@ -161,8 +164,15 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       commentsEnabledRef.current = commentsEnabled;
     }, [commentsEnabled]);
 
+    useEffect(() => {
+      collaborationBindingRef.current = collaborationBinding;
+    }, [collaborationBinding]);
+
     const emitHistoryState = (view: EditorView) => {
-      const nextHistoryState = getEditorHistoryState(view.state);
+      const binding = collaborationBindingRef.current;
+      const nextHistoryState = binding
+        ? { canUndo: binding.undoManager.undoStack.length > 0, canRedo: binding.undoManager.redoStack.length > 0 }
+        : getEditorHistoryState(view.state);
       const previousHistoryState = lastHistoryStateRef.current;
       if (
         previousHistoryState.canUndo === nextHistoryState.canUndo &&
@@ -260,10 +270,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
     useImperativeHandle(ref, () => ({
       canRedo: () => {
-        return canRedoEditor(viewRef.current);
+        return collaborationBindingRef.current
+          ? collaborationBindingRef.current.undoManager.redoStack.length > 0
+          : canRedoEditor(viewRef.current);
       },
       canUndo: () => {
-        return canUndoEditor(viewRef.current);
+        return collaborationBindingRef.current
+          ? collaborationBindingRef.current.undoManager.undoStack.length > 0
+          : canUndoEditor(viewRef.current);
       },
       format: (command) => {
         const view = viewRef.current;
@@ -320,7 +334,16 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       getValue: () => viewRef.current?.state.doc.toString() ?? value,
       applyLocalTextPatches: (patches, selection, options) => {
         const view = viewRef.current;
-        return view ? dispatchLocalTextPatches(view, patches, selection, options) : false;
+        if (!view) {
+          return false;
+        }
+        const undoManager = options?.isolateHistory
+          ? collaborationBindingRef.current?.undoManager
+          : undefined;
+        undoManager?.stopCapturing();
+        const applied = dispatchLocalTextPatches(view, patches, selection, options);
+        undoManager?.stopCapturing();
+        return applied;
       },
       applyRemoteTextChange: (nextValue, patches) => {
         const view = viewRef.current;
@@ -374,8 +397,22 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
         dispatchEditorSelectionRange(view, from, to);
       },
-      undo: () => undoEditor(viewRef.current),
-      redo: () => redoEditor(viewRef.current),
+      undo: () => {
+        const binding = collaborationBindingRef.current;
+        if (binding) {
+          binding.undoManager.undo();
+          return true;
+        }
+        return undoEditor(viewRef.current);
+      },
+      redo: () => {
+        const binding = collaborationBindingRef.current;
+        if (binding) {
+          binding.undoManager.redo();
+          return true;
+        }
+        return redoEditor(viewRef.current);
+      },
     }));
 
     useEffect(() => {
@@ -444,21 +481,18 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         commentAnchors,
         commentsEnabled,
         activeCommentId,
-        collaborators,
-        currentDocumentId: fileId,
-        fileTitle,
-        roomId,
+        collaborationBinding,
         searchMatches,
         activeSearchMatchIndex,
         updateExtension,
         onOpenLineActions: (request) => onOpenLineActionsRef.current?.(request),
         onOpenComment: (commentId) => onOpenCommentRef.current?.(commentId),
       });
-      const cachedState = stateByFileIdRef.current.get(fileId);
+      const cachedState = collaborationBinding ? undefined : stateByFileIdRef.current.get(fileId);
       const state =
         cachedState ??
         EditorState.create({
-          doc: value,
+          doc: collaborationBinding?.yText.toString() ?? value,
           extensions,
         });
       const view = new EditorView({
@@ -467,6 +501,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       });
 
       viewRef.current = view;
+      appliedCollaborationBindingRef.current = collaborationBinding;
       emitHistoryState(view);
       const handleScroll = () => {
         onScrollRatioChangeRef.current?.(getScrollRatio(view.scrollDOM));
@@ -477,7 +512,16 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         onSelectionChangeRef.current?.(undefined);
         onSelectionActionPositionChangeRef.current?.(null);
         view.scrollDOM.removeEventListener("scroll", handleScroll);
-        stateByFileIdRef.current.set(fileId, view.state);
+        if (collaborationBindingRef.current) {
+          stateByFileIdRef.current.delete(fileId);
+        } else {
+          stateByFileIdRef.current.set(fileId, view.state);
+          while (stateByFileIdRef.current.size > MAX_CACHED_LOCAL_EDITOR_STATES) {
+            const oldestFileId = stateByFileIdRef.current.keys().next().value;
+            if (typeof oldestFileId !== "string") break;
+            stateByFileIdRef.current.delete(oldestFileId);
+          }
+        }
         lastHistoryStateRef.current = EMPTY_EDITOR_HISTORY_STATE;
         onHistoryStateChangeRef.current?.(lastHistoryStateRef.current);
         view.destroy();
@@ -487,12 +531,41 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
     useEffect(() => {
       const view = viewRef.current;
-      if (!view) {
+      if (!view || appliedCollaborationBindingRef.current === collaborationBinding) return;
+
+      // Detach the previous Y.Text before projecting the next document. Otherwise a
+      // tab switch can write the new document's text into the previous Y.Text.
+      view.dispatch({
+        effects: [
+          compartmentsRef.current.collaboration.reconfigure([]),
+          compartmentsRef.current.history.reconfigure([]),
+        ],
+      });
+      dispatchRemoteTextChange(
+        view,
+        collaborationBinding?.yText.toString() ?? value,
+      );
+      view.dispatch({
+        effects: [
+          compartmentsRef.current.collaboration.reconfigure(
+            collaborationBinding
+              ? createEditorCollaborationExtensions(collaborationBinding)
+              : [],
+          ),
+          compartmentsRef.current.history.reconfigure(collaborationBinding ? [] : history()),
+        ],
+      });
+      appliedCollaborationBindingRef.current = collaborationBinding;
+    }, [collaborationBinding, fileId]);
+
+    useEffect(() => {
+      const view = viewRef.current;
+      if (!view || collaborationBinding) {
         return;
       }
 
       dispatchRemoteTextChange(view, value);
-    }, [fileId, value]);
+    }, [collaborationBinding, fileId, value]);
 
     useEffect(() => {
       viewRef.current?.dispatch({
@@ -519,17 +592,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         ),
       });
     }, [activeCommentId, commentAnchors, commentsEnabled]);
-
-    useEffect(() => {
-      viewRef.current?.dispatch({
-        effects: updateEditorPresenceEffect.of({
-          collaborators,
-          currentDocumentId: fileId,
-          currentFileTitle: fileTitle,
-          currentRoomId: roomId,
-        }),
-      });
-    }, [collaborators, fileId, fileTitle, roomId]);
 
     useEffect(() => {
       viewRef.current?.dispatch({

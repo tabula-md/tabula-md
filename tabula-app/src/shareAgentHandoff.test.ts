@@ -56,8 +56,8 @@ describe("buildLocalAgentPrompt", () => {
 
     expect(prompt).toContain("Join this Tabula.md room as an agent actor.");
     expect(prompt).toContain("Participate as a normal room actor.");
-    expect(prompt).toContain("Apply document edits directly with text.updated events.");
-    expect(prompt).toContain("Apply workspace tree changes directly with workspace.updated events.");
+    expect(prompt).toContain("Use Tabula.md workspace CRDT schema and binary room protocol v2.");
+    expect(prompt).toContain("edit the shared Yjs workspace directly");
     expect(prompt).toContain("Room URL: https://tabula.test/#room=room-1&key=secret");
   });
 });

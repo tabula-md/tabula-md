@@ -99,17 +99,11 @@ export function RightPanelComments({
 
   useEffect(() => {
     if (selectedCharacterCount <= 0) {
-      return undefined;
+      return;
     }
 
     setCommentScope("current");
-
-    const frame = window.requestAnimationFrame(() => {
-      commentInputRef?.current?.focus();
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  }, [commentInputRef, selectedCharacterCount]);
+  }, [selectedCharacterCount]);
 
   useEffect(() => {
     if (!activeCommentId) {

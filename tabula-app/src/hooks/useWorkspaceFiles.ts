@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useWorkspaceStore } from "../stores/workspaceStore";
-import type { WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import {
   getActiveWorkspaceFile,
   getAvailableWorkspaceFileTitle,
@@ -11,6 +11,7 @@ export type { RenameFileResult } from "@tabula-md/tabula";
 
 type UseWorkspaceFilesOptions = {
   initialFiles: WorkspaceFile[];
+  initialFolders: WorkspaceFolder[];
   initialOpenFileIds: string[];
   initialActiveFileId: string;
   readmeFileId: string;
@@ -19,6 +20,7 @@ type UseWorkspaceFilesOptions = {
 
 export function useWorkspaceFiles({
   initialFiles,
+  initialFolders,
   initialOpenFileIds,
   initialActiveFileId,
   readmeFileId,
@@ -27,6 +29,7 @@ export function useWorkspaceFiles({
   useState(() => {
     useWorkspaceStore.getState().initializeWorkspace({
       files: initialFiles,
+      folders: initialFolders,
       openFileIds: initialOpenFileIds,
       activeFileId: initialActiveFileId,
       readmeFileId,
@@ -36,6 +39,7 @@ export function useWorkspaceFiles({
   });
 
   const files = useWorkspaceStore((state) => state.files);
+  const folders = useWorkspaceStore((state) => state.folders);
   const openFileIds = useWorkspaceStore((state) => state.openFileIds);
   const activeFileId = useWorkspaceStore((state) => state.activeFileId);
   const workspace = useMemo(
@@ -50,12 +54,17 @@ export function useWorkspaceFiles({
   const activeFile = useMemo(() => getActiveWorkspaceFile(workspace), [workspace]);
   const selectFile = useWorkspaceStore((state) => state.selectFile);
   const addFile = useWorkspaceStore((state) => state.addFile);
+  const addFolder = useWorkspaceStore((state) => state.addFolder);
   const addFileFromContent = useWorkspaceStore((state) => state.addFileFromContent);
   const activateRoomFile = useWorkspaceStore((state) => state.activateRoomFile);
   const duplicateFile = useWorkspaceStore((state) => state.duplicateFile);
   const renameFile = useWorkspaceStore((state) => state.renameFile);
   const closeFile = useWorkspaceStore((state) => state.closeFile);
   const deleteFile = useWorkspaceStore((state) => state.deleteFile);
+  const deleteFolder = useWorkspaceStore((state) => state.deleteFolder);
+  const moveFileToFolder = useWorkspaceStore((state) => state.moveFileToFolder);
+  const moveFolder = useWorkspaceStore((state) => state.moveFolder);
+  const renameFolder = useWorkspaceStore((state) => state.renameFolder);
   const reorderFiles = useWorkspaceStore((state) => state.reorderFiles);
   const moveFile = useWorkspaceStore((state) => state.moveFile);
   const selectAdjacentFile = useWorkspaceStore((state) => state.selectAdjacentFile);
@@ -71,8 +80,8 @@ export function useWorkspaceFiles({
   const commitActiveFileSplitRatio = useWorkspaceStore((state) => state.commitActiveFileSplitRatio);
   const setFileText = useWorkspaceStore((state) => state.setFileText);
   const setFileCollaborationStatus = useWorkspaceStore((state) => state.setFileCollaborationStatus);
-  const setFileCollaboratorCount = useWorkspaceStore((state) => state.setFileCollaboratorCount);
   const setFileRecoveryEvent = useWorkspaceStore((state) => state.setFileRecoveryEvent);
+  const setFolderCollaborationRoom = useWorkspaceStore((state) => state.setFolderCollaborationRoom);
   const startFileCollaborationSession = useWorkspaceStore((state) => state.startFileCollaborationSession);
   const stopFileCollaborationSession = useWorkspaceStore((state) => state.stopFileCollaborationSession);
 
@@ -84,12 +93,14 @@ export function useWorkspaceFiles({
 
   return {
     files,
+    folders,
     openFiles,
     openFileIds,
     activeFileId,
     activeFile,
     selectFile,
     addFile,
+    addFolder,
     addFileFromContent,
     activateRoomFile,
     addTemplateFile,
@@ -97,6 +108,10 @@ export function useWorkspaceFiles({
     renameFile,
     closeFile,
     deleteFile,
+    deleteFolder,
+    moveFileToFolder,
+    moveFolder,
+    renameFolder,
     replaceWorkspace,
     restoreFile,
     upsertHelpFile,
@@ -112,8 +127,8 @@ export function useWorkspaceFiles({
     commitActiveFileSplitRatio,
     setFileText,
     setFileCollaborationStatus,
-    setFileCollaboratorCount,
     setFileRecoveryEvent,
+    setFolderCollaborationRoom,
     startFileCollaborationSession,
     stopFileCollaborationSession,
     getAvailableFileTitle,

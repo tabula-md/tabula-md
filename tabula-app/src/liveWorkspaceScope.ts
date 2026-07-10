@@ -1,19 +1,19 @@
 import type { WorkspaceFile } from "./workspaceStorage";
 
 export const getLiveWorkspaceFileIds = ({
-  activeFile,
+  roomId,
   files,
   isLive,
 }: {
-  activeFile?: Pick<WorkspaceFile, "id" | "roomId">;
+  roomId?: string;
   files: readonly Pick<WorkspaceFile, "id" | "roomId">[];
   isLive: boolean;
 }) => {
-  if (!isLive || !activeFile?.roomId) {
+  if (!isLive || !roomId) {
     return [];
   }
 
   return files
-    .filter((file) => file.roomId === activeFile.roomId)
+    .filter((file) => file.roomId === roomId)
     .map((file) => file.id);
 };

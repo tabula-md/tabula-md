@@ -117,8 +117,13 @@ export const getActiveWorkspaceFile = <TFile extends WorkspaceModelFile>(
   getOpenWorkspaceFiles(state).find((file) => file.id === state.activeFileId);
 
 export const normalizeWorkspaceFileTitle = (title: string) => {
-  const trimmedTitle = title.trim().replace(/\s+/g, " ");
-  if (!trimmedTitle) {
+  const trimmedTitle = title
+    .trim()
+    .split("\0")
+    .join(" ")
+    .replace(/[/\\]/g, " ")
+    .replace(/\s+/g, " ");
+  if (!trimmedTitle || trimmedTitle === "." || trimmedTitle === "..") {
     return "Untitled.md";
   }
 

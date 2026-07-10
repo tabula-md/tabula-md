@@ -51,7 +51,7 @@ const getVisibleEditorLines = async (page) =>
   page.$$eval(".cm-content .cm-line", (lines) =>
     lines.map((line) => {
       const clone = line.cloneNode(true);
-      clone.querySelectorAll(".cm-remote-cursor").forEach((cursor) => cursor.remove());
+      clone.querySelectorAll(".cm-ySelectionCaret").forEach((cursor) => cursor.remove());
       return clone.textContent ?? "";
     }),
   );
@@ -109,7 +109,7 @@ const waitForEditorText = async (page, expectedText, timeout = 12_000, label = "
 
         const lines = Array.from(document.querySelectorAll(".cm-content .cm-line")).map((line) => {
           const clone = line.cloneNode(true);
-          clone.querySelectorAll(".cm-remote-cursor").forEach((cursor) => cursor.remove());
+          clone.querySelectorAll(".cm-ySelectionCaret").forEach((cursor) => cursor.remove());
           return clone.textContent ?? "";
         });
         const fingerprint = getFingerprint(lines.join("\n"));
@@ -137,23 +137,46 @@ const ensureEditMode = async (page, waitForEditorReady) => {
   await waitForEditorReady(page, { mode: "edit" });
 };
 
+const selectRoomDocument = async (page, fileName, waitForEditorReady) => {
+  const tab = page.locator(`.tab-item[data-file-name="${fileName}"] .tab-select-button`);
+  if ((await tab.count()) === 1) {
+    await tab.click();
+  } else {
+    const openProjectContext = page.getByRole("button", { name: "Open Project Context" });
+    if ((await openProjectContext.count()) === 1) await openProjectContext.click();
+    const filesTab = page.getByRole("button", { name: "Files", exact: true });
+    if ((await filesTab.count()) === 1) await filesTab.click();
+    await page.getByRole("button", { name: `Open ${fileName}` }).click();
+  }
+  await page.waitForFunction(
+    ({ targetFileName }) =>
+      document.querySelector(".tab-item.active")?.getAttribute("data-file-name") === targetFileName,
+    { targetFileName: fileName },
+  );
+  await ensureEditMode(page, waitForEditorReady);
+};
+
 const startLiveSession = async ({ baseUrl, firstPage, secondPage, waitForEditorReady }) => {
   await firstPage.goto(baseUrl);
   await firstPage.waitForSelector(".tabbar");
-  await firstPage.getByTitle("New tab").click();
+  await firstPage.getByTitle("New document").click();
   await waitForEditorReady(firstPage, { mode: "edit" });
+  const targetFileName = await firstPage.locator(".tab-item.active").getAttribute("data-file-name");
+  if (!targetFileName) {
+    throw new Error("The collaboration torture target document was not available.");
+  }
   await firstPage.locator(".share-trigger").click();
   await firstPage.getByRole("button", { name: "Start session" }).click();
-  await firstPage.waitForSelector(".tab-item.live.active");
+  await firstPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
   await firstPage.waitForSelector(".sharing-presence");
   const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
   await firstPage.getByRole("button", { name: "Close share dialog" }).click();
 
   const roomUrl = new URL(shareUrl);
   await secondPage.goto(`${baseUrl}${roomUrl.pathname}${roomUrl.hash}`);
-  await secondPage.waitForSelector(".tab-item.live.active");
+  await secondPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
   await ensureEditMode(firstPage, waitForEditorReady);
-  await ensureEditMode(secondPage, waitForEditorReady);
+  await selectRoomDocument(secondPage, targetFileName, waitForEditorReady);
   await firstPage.waitForFunction(
     () => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 1,
     undefined,
@@ -165,7 +188,7 @@ const startLiveSession = async ({ baseUrl, firstPage, secondPage, waitForEditorR
     { timeout: 15_000 },
   );
 
-  return { sharedPath: roomUrl.pathname + roomUrl.hash };
+  return { sharedPath: roomUrl.pathname + roomUrl.hash, targetFileName };
 };
 
 const toggleLineWrapping = async (page) => {
@@ -327,7 +350,7 @@ const runDeterministicEditorTorture = async ({
   await assertConverged({ expect, firstPage, secondPage, expectedText: alternatingSecond });
 
   await secondPage.keyboard.press("ControlOrMeta+A");
-  await firstPage.waitForSelector(".cm-remote-selection", { state: "attached", timeout: 8_000 });
+  await firstPage.waitForSelector(".cm-ySelection", { state: "attached", timeout: 8_000 });
   expect(
     (await getEditorText(firstPage)) === alternatingSecond,
     "Remote selection movement should not mutate Markdown text.",
@@ -447,15 +470,20 @@ export async function run(ctx) {
   const secondPage = await secondContext.newPage();
 
   try {
-    const { sharedPath } = await startLiveSession({ baseUrl, firstPage, secondPage, waitForEditorReady });
+    const { sharedPath, targetFileName } = await startLiveSession({
+      baseUrl,
+      firstPage,
+      secondPage,
+      waitForEditorReady,
+    });
     for (let peerIndex = 3; peerIndex <= peerCount; peerIndex += 1) {
       const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const page = await context.newPage();
       extraPeerContexts.push(context);
       extraPeerPages.push(page);
       await page.goto(`${baseUrl}${sharedPath}`);
-      await page.waitForSelector(".tab-item.live.active");
-      await ensureEditMode(page, waitForEditorReady);
+      await page.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
+      await selectRoomDocument(page, targetFileName, waitForEditorReady);
     }
     const pages = [firstPage, secondPage, ...extraPeerPages];
     if (peerCount > 2) {
@@ -516,7 +544,8 @@ export async function run(ctx) {
       try {
         const recoveryPage = await recoveryContext.newPage();
         await recoveryPage.goto(`${baseUrl}${sharedPath}`);
-        await recoveryPage.waitForSelector(".tab-item.live.active");
+        await recoveryPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
+        await selectRoomDocument(recoveryPage, targetFileName, waitForEditorReady);
         await waitForEditorText(recoveryPage, finalText, 60_000, "reopened recovery editor");
       } finally {
         await closeContextWithTimeout(recoveryContext);

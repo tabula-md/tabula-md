@@ -8,7 +8,7 @@ import { createCollaborationPresenceIdentity } from "../collaboration/collabRunt
 type UseCollaborationPresenceRuntimeOptions = {
   activeDocumentId?: string;
   activeSelection?: LiveSelection;
-  fileTitle: string;
+  fileTitle?: string;
   identity: Collaborator;
   isLive: boolean;
   roomId?: string;

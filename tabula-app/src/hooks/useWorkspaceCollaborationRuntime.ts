@@ -1,12 +1,11 @@
-import type { RefObject } from "react";
-import type { RoomEvent, TextChange } from "@tabula-md/tabula";
+import type { WorkspaceRoomComment, WorkspaceRoomSnapshot } from "@tabula-md/tabula";
 import type {
   Collaborator,
   CollabRecoveryEvent,
   ConnectionStatus,
   LiveSelection,
 } from "../collaboration";
-import type { MarkdownEditorHandle } from "../markdownEditorTypes";
+import type { WorkspaceRoomChangeOrigin } from "../collaboration/liveCollaboration";
 import {
   isUsableLiveRoomFile,
   type WorkspaceFile,
@@ -15,28 +14,28 @@ import {
   getActiveWorkspaceStatus,
   getWorkspaceStatusLabel,
 } from "../workspace";
-import { useCollaborationEditorBridge } from "./useCollaborationEditorBridge";
 import { useCollaborationPresenceRuntime } from "./useCollaborationPresenceRuntime";
 import { useCollaborationRoom } from "./useCollaborationRoom";
 import type { WorkspaceEditorDocumentRuntimeOwner } from "./editorDocumentRuntimeOwner";
 import { useEventCallback } from "./useEventCallback";
 
 type UseWorkspaceCollaborationRuntimeOptions = {
-  activeFile?: WorkspaceFile;
-  activeFileTitle: string;
+  roomFile?: WorkspaceFile;
+  activeDocument?: WorkspaceFile;
   activeSelection?: LiveSelection;
+  editorPresenceEnabled?: boolean;
   editorDocumentRuntime: WorkspaceEditorDocumentRuntimeOwner;
-  editorRef: RefObject<MarkdownEditorHandle | null>;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   identity: Collaborator;
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
+  workspaceFolders?: readonly { id: string; title: string; parentId: string | null; order?: number }[];
+  commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
   setFileText: (fileId: string, text: string) => void;
   setFileCollaborationStatus: (
     fileId: string,
     status: ConnectionStatus,
-    options?: { collaboratorCount?: number; requireRoom?: boolean },
+    options?: { requireRoom?: boolean },
   ) => void;
-  setFileCollaboratorCount: (fileId: string, collaboratorCount: number) => void;
   setFileRecoveryEvent: (
     fileId: string,
     event: {
@@ -50,7 +49,10 @@ type UseWorkspaceCollaborationRuntimeOptions = {
     roomId: string,
     shareUrl: string,
   ) => WorkspaceFile | undefined;
-  onRoomEvent?: (event: RoomEvent) => void;
+  onWorkspaceChange?: (snapshot: WorkspaceRoomSnapshot, origin?: WorkspaceRoomChangeOrigin) => void;
+  onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
+  onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
+  onCapacityExceeded?: () => void;
 };
 
 export const syncRemoteTextToDocumentRuntime = ({
@@ -76,63 +78,67 @@ export const syncRemoteTextToDocumentRuntime = ({
 };
 
 export function useWorkspaceCollaborationRuntime({
-  activeFile,
-  activeFileTitle,
+  roomFile,
+  activeDocument,
   activeSelection,
+  editorPresenceEnabled,
   editorDocumentRuntime,
-  editorRef,
   getActiveFileSnapshot,
   identity,
   workspaceDocuments,
+  workspaceFolders,
+  commentsByFileId,
   setFileText,
   setFileCollaborationStatus,
-  setFileCollaboratorCount,
   setFileRecoveryEvent,
   startFileCollaborationSession,
-  onRoomEvent,
+  onWorkspaceChange,
+  onCommentsChange,
+  onOpenFailure,
+  onCapacityExceeded,
 }: UseWorkspaceCollaborationRuntimeOptions) {
-  const applyRemoteTextToEditor = useCollaborationEditorBridge({
-    activeFileId: activeFile?.id,
-    editorRef,
-  });
   const handleRemoteTextChange = useEventCallback(
-    (fileId: string, nextText: string, change?: TextChange) => {
+    (fileId: string, nextText: string) => {
       syncRemoteTextToDocumentRuntime({
-        activeFile,
+        activeFile: activeDocument,
         editorDocumentRuntime,
         fileId,
         text: nextText,
       });
-      applyRemoteTextToEditor(fileId, nextText, change);
     },
   );
 
   const room = useCollaborationRoom({
-    activeFile,
-    activeSelection,
+    roomFile,
+    activeDocument,
+    editorPresenceEnabled,
     getActiveFileSnapshot,
     identity,
     workspaceDocuments,
+    workspaceFolders,
+    commentsByFileId,
     setFileText,
     setFileCollaborationStatus,
-    setFileCollaboratorCount,
     setFileRecoveryEvent,
     startFileCollaborationSession,
     onRemoteTextChange: handleRemoteTextChange,
-    onRoomEvent,
+    onWorkspaceChange,
+    onCommentsChange,
+    onOpenFailure,
+    onCapacityExceeded,
   });
-  const isLive = isUsableLiveRoomFile(activeFile);
+  const isLive = isUsableLiveRoomFile(roomFile);
   const activeStatus = getActiveWorkspaceStatus({
     isLive,
     connectionStatus: room.connectionStatus,
   });
   const presenceIdentity = useCollaborationPresenceRuntime({
-    activeDocumentId: activeFile?.id,
+    activeDocumentId: activeDocument?.id,
     activeSelection,
-    fileTitle: activeFileTitle,
+    fileTitle: activeDocument?.title,
     identity,
     isLive,
-    roomId: activeFile?.roomId,
+    roomId: roomFile?.roomId,
   });
 
   return {

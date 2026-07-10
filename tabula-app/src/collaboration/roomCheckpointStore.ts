@@ -1,23 +1,49 @@
 import {
   decodeEncryptedData,
-  decodeWorkspaceRoomCheckpoint,
   encodeEncryptedData,
-  encodeWorkspaceRoomCheckpoint,
-  WORKSPACE_ROOM_CHECKPOINT_SCHEMA_VERSION,
-  type WorkspaceRoomCheckpoint,
+  WORKSPACE_ROOM_SCHEMA_VERSION,
 } from "@tabula-md/tabula";
 import { tabulaServiceConfig } from "../serviceConfig";
 
+export const ROOM_CHECKPOINT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+export type LoadedRoomCheckpoint =
+  | {
+      status: "ready";
+      generation: number;
+      encryptedCheckpoint: Uint8Array;
+      expiresAt: number;
+    }
+  | {
+      status: "expired";
+      generation: number;
+      expiresAt: number;
+    };
+
+export type SaveRoomCheckpointRequest = {
+  expectedGeneration: number;
+  encryptedCheckpoint: Uint8Array;
+  expiresAt: number;
+};
+
+export type SaveRoomCheckpointResult =
+  | { ok: true; generation: number }
+  | { ok: false; reason: "conflict"; generation: number };
+
 export type RoomCheckpointStore = {
   enabled: boolean;
-  loadEncryptedCheckpoint(roomId: string): Promise<Uint8Array | null>;
-  saveEncryptedCheckpoint(roomId: string, encryptedCheckpoint: Uint8Array): Promise<void>;
+  loadEncryptedCheckpoint(roomId: string, signal?: AbortSignal): Promise<LoadedRoomCheckpoint | null>;
+  saveEncryptedCheckpoint(
+    roomId: string,
+    request: SaveRoomCheckpointRequest,
+    signal?: AbortSignal,
+  ): Promise<SaveRoomCheckpointResult>;
 };
 
 export type RoomCheckpointMetadata = {
-  kind: "workspace-room-checkpoint";
+  kind: "workspace-room-crdt";
   roomId: string;
-  schemaVersion: typeof WORKSPACE_ROOM_CHECKPOINT_SCHEMA_VERSION;
+  schemaVersion: typeof WORKSPACE_ROOM_SCHEMA_VERSION;
 };
 
 export const createNoopRoomCheckpointStore = (): RoomCheckpointStore => ({
@@ -25,8 +51,8 @@ export const createNoopRoomCheckpointStore = (): RoomCheckpointStore => ({
   async loadEncryptedCheckpoint() {
     return null;
   },
-  async saveEncryptedCheckpoint() {
-    // A checkpoint store is optional for local/dev relay-only sessions.
+  async saveEncryptedCheckpoint(_roomId, request) {
+    return { ok: true, generation: request.expectedGeneration + 1 };
   },
 });
 
@@ -34,7 +60,6 @@ export const createDefaultRoomCheckpointStore = (): RoomCheckpointStore => {
   if (tabulaServiceConfig.firebaseConfig) {
     return createLazyFirebaseRoomCheckpointStore(tabulaServiceConfig.firebaseConfig);
   }
-
   return createNoopRoomCheckpointStore();
 };
 
@@ -49,34 +74,38 @@ const createLazyFirebaseRoomCheckpointStore = (firebaseConfig: string): RoomChec
 
   return {
     enabled: true,
-    async loadEncryptedCheckpoint(roomId) {
+    async loadEncryptedCheckpoint(roomId, signal) {
       const store = await loadStore();
-      return store.enabled ? store.loadEncryptedCheckpoint(roomId) : null;
+      if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
+      return store.enabled ? store.loadEncryptedCheckpoint(roomId, signal) : null;
     },
-    async saveEncryptedCheckpoint(roomId, encryptedCheckpoint) {
+    async saveEncryptedCheckpoint(roomId, request, signal) {
       const store = await loadStore();
-      if (store.enabled) {
-        await store.saveEncryptedCheckpoint(roomId, encryptedCheckpoint);
-      }
+      if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
+      return store.enabled
+        ? store.saveEncryptedCheckpoint(roomId, request, signal)
+        : { ok: true, generation: request.expectedGeneration + 1 };
     },
   };
 };
 
 export const encryptWorkspaceRoomCheckpoint = async ({
-  checkpoint,
+  roomId,
+  update,
   roomKey,
 }: {
-  checkpoint: WorkspaceRoomCheckpoint;
+  roomId: string;
+  update: Uint8Array;
   roomKey: string | CryptoKey;
 }) =>
-  encodeEncryptedData(encodeWorkspaceRoomCheckpoint(checkpoint), {
+  encodeEncryptedData(update, {
     encryptionKey: roomKey,
     metadata: {
-      kind: "workspace-room-checkpoint",
-      roomId: checkpoint.roomId,
-      schemaVersion: WORKSPACE_ROOM_CHECKPOINT_SCHEMA_VERSION,
+      kind: "workspace-room-crdt",
+      roomId,
+      schemaVersion: WORKSPACE_ROOM_SCHEMA_VERSION,
     } satisfies RoomCheckpointMetadata,
-    additionalData: getRoomCheckpointAdditionalData(checkpoint.roomId),
+    additionalData: getRoomCheckpointAdditionalData(roomId),
   });
 
 export const decryptWorkspaceRoomCheckpoint = async ({
@@ -94,20 +123,14 @@ export const decryptWorkspaceRoomCheckpoint = async ({
   });
 
   if (
-    decoded.metadata.kind !== "workspace-room-checkpoint" ||
+    decoded.metadata.kind !== "workspace-room-crdt" ||
     decoded.metadata.roomId !== roomId ||
-    decoded.metadata.schemaVersion !== WORKSPACE_ROOM_CHECKPOINT_SCHEMA_VERSION
+    decoded.metadata.schemaVersion !== WORKSPACE_ROOM_SCHEMA_VERSION
   ) {
-    throw new Error("Room checkpoint failed: invalid checkpoint metadata");
+    throw new Error("Room checkpoint failed: unsupported checkpoint metadata");
   }
-
-  const checkpoint = decodeWorkspaceRoomCheckpoint(decoded.data);
-  if (!checkpoint || checkpoint.roomId !== roomId) {
-    throw new Error("Room checkpoint failed: invalid checkpoint payload");
-  }
-
-  return checkpoint;
+  return decoded.data;
 };
 
 const getRoomCheckpointAdditionalData = (roomId: string) =>
-  new TextEncoder().encode(`tabula.workspace-room-checkpoint:${roomId}`);
+  new TextEncoder().encode(`tabula.workspace-room-crdt:v${WORKSPACE_ROOM_SCHEMA_VERSION}:${roomId}`);

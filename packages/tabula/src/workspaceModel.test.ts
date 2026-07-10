@@ -4,6 +4,7 @@ import {
   closeWorkspaceFile,
   createWorkspaceModelState,
   deleteWorkspaceFile,
+  normalizeWorkspaceFileTitle,
   renameWorkspaceFile,
   selectAdjacentWorkspaceFile,
   workspaceReducer,
@@ -124,5 +125,10 @@ describe("workspace model", () => {
     expect(duplicateResult.state).toBe(state);
     expect(renamedResult.result).toEqual({ ok: true, title: "Decision.md" });
     expect(renamedResult.state.files.find((file) => file.id === "one")?.title).toBe("Decision.md");
+  });
+
+  it("keeps file titles as basenames instead of logical paths", () => {
+    expect(normalizeWorkspaceFileTitle(" docs\\decisions/ADR ")).toBe("docs decisions ADR.md");
+    expect(normalizeWorkspaceFileTitle("..")).toBe("Untitled.md");
   });
 });

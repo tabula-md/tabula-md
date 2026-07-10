@@ -20,10 +20,6 @@ const forbiddenCoreImports = [
     test: (source) => source.startsWith("@codemirror/"),
   },
   {
-    name: "Yjs",
-    test: (source) => source === "yjs" || source.startsWith("yjs/"),
-  },
-  {
     name: "Socket.IO client",
     test: (source) => source === "socket.io-client" || source.startsWith("socket.io-client/"),
   },
