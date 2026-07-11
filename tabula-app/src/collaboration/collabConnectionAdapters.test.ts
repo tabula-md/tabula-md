@@ -189,8 +189,15 @@ describe("workspace room runtime", () => {
     const transport = createConnectedTransport();
     const defaults = createDefaultCollabRuntimeAdapters();
     const activeIntervals = new Set<symbol>();
+    const activeTimeouts = new Set<symbol>();
     const clock = {
       ...defaults.clock,
+      setTimeout: vi.fn(() => {
+        const handle = Symbol("timeout");
+        activeTimeouts.add(handle);
+        return handle;
+      }),
+      clearTimeout: vi.fn((handle: unknown) => activeTimeouts.delete(handle as symbol)),
       setInterval: vi.fn(() => {
         const handle = Symbol("interval");
         activeIntervals.add(handle);
@@ -218,14 +225,18 @@ describe("workspace room runtime", () => {
         },
       });
       await vi.waitFor(() => expect(connection.getSnapshot().status).toBe("connected"));
+      connection.applyLocalTextPatches([{ from: 4, to: 4, insert: "!" }]);
+      expect(activeTimeouts.size).toBeGreaterThan(0);
       connection.disconnect();
       connection.disconnect();
+      expect(activeTimeouts.size).toBe(0);
       expect(activeIntervals.size).toBe(0);
     }
 
     expect(transport.getDisconnectCount()).toBe(5);
     expect(clock.setInterval).toHaveBeenCalledTimes(5);
     expect(clock.clearInterval).toHaveBeenCalledTimes(5);
+    expect(clock.clearTimeout).toHaveBeenCalled();
   });
 
   it("exposes one Y.Doc-backed editor binding per document and emits encrypted incremental packets", async () => {
