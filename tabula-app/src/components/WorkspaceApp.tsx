@@ -5,6 +5,7 @@ import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";
 import { WorkspaceOverlaySurface } from "./WorkspaceOverlaySurface";
 import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
+import { WorkspaceLoadingSurface } from "./WorkspaceLoadingSurface";
 import { useWorkspaceRuntime } from "../hooks/useWorkspaceRuntime";
 import { isEmptyGeneratedLivePlaceholder } from "../workspaceStorage";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
@@ -15,6 +16,7 @@ export function WorkspaceApp() {
     emptySurfaceProps,
     liveRoomLoadingProps,
     liveRoomOpenState,
+    localWorkspaceOpening,
     mainPanelClassName,
     menuSurfaceProps,
     overlayProps,
@@ -28,6 +30,8 @@ export function WorkspaceApp() {
     liveRoomOpenState === "idle" && activeFileIsLivePlaceholder
       ? "opening"
       : liveRoomOpenState;
+
+  if (localWorkspaceOpening) return <WorkspaceLoadingSurface />;
 
   return (
     <main className="app-shell">

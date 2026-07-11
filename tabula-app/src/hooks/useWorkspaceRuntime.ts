@@ -23,7 +23,6 @@ import {
   isEmptyGeneratedLivePlaceholder,
   randomId,
   readInitialWorkspaceSnapshot,
-  readStoredWorkspace,
   README_FILE_ID,
   WORKSPACE_ROOT_FOLDER_ID,
   syncUrlForFile,
@@ -73,6 +72,8 @@ import {
   LIVE_ROOM_OPEN_TIMEOUT_MS,
   type LiveRoomOpenFailure,
 } from "../liveRoomOpenState";
+import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
+import { clientErrorReporter } from "../observability/clientErrorReporting";
 
 const createRoomBootstrapFile = (room: LocationRoom): WorkspaceFile =>
   createWorkspaceFile(1, {
@@ -184,6 +185,7 @@ export function useWorkspaceRuntime() {
   const roomLocalStateRef = useRef<RoomLocalWorkspaceState | null>(null);
   const roomWorkspaceHydratedRef = useRef(false);
   const roomLocalViewRestoredRef = useRef(false);
+  const persistenceErrorShownRef = useRef(false);
   const activeRoomId = activeRoom?.roomId ?? activeFile?.roomId;
   const activeRoomShareUrl = activeRoom?.shareUrl ?? activeFile?.shareUrl;
   const collaborationRoomFile = useMemo(() => {
@@ -261,6 +263,16 @@ export function useWorkspaceRuntime() {
         : workspaceSnapshot.files,
       commentsByFileId,
     };
+  });
+  const handlePersistenceError = useEventCallback((error: unknown) => {
+    clientErrorReporter.report({
+      feature: "workspace",
+      operation: "persist",
+      error,
+    });
+    if (persistenceErrorShownRef.current) return;
+    persistenceErrorShownRef.current = true;
+    showToast("Changes couldn’t be saved in this browser.", "error");
   });
   const hydrateRoomLocalWorkspace = useEventCallback((state: RoomLocalWorkspaceState) => {
     if (state.roomId !== activeRoomId) return;
@@ -656,10 +668,11 @@ export function useWorkspaceRuntime() {
       currentFileIds.filter((fileId) => existingFileIds.has(fileId)),
     );
   }, [files]);
-  useWorkspacePersistenceRuntime({
+  const localWorkspacePersistence = useWorkspacePersistenceRuntime({
     enabled: localPersistenceEnabled,
     getWorkspaceSnapshot,
     initialWorkspace,
+    onError: handlePersistenceError,
     onBeforePersist: flushPendingEditorCommit,
     workspace: workspacePersistenceSnapshot,
     replaceCommentsByFileId,
@@ -671,6 +684,7 @@ export function useWorkspaceRuntime() {
     workspace: workspacePersistenceSnapshot,
     getWorkspaceSnapshot,
     onHydrate: hydrateRoomLocalWorkspace,
+    onError: handlePersistenceError,
   });
   const { copyShareUrl, jsonShare, startSession, stopSession } =
     useWorkspaceShareRuntime({
@@ -716,16 +730,20 @@ export function useWorkspaceRuntime() {
     setLiveRoomOpenFailure(null);
     setLocalPersistenceEnabled(true);
     syncUrlForFile(undefined, "replace");
-    const storedWorkspace = readStoredWorkspace() ?? finalizeWorkspaceState([], undefined, {}, { includeLocationRoom: false });
-    const roomLocalState = roomLocalStateRef.current;
-    const localWorkspace = roomLocalState
-      ? mergeRoomLocalWorkspaceState(storedWorkspace, roomLocalState)
-      : storedWorkspace;
-    replaceWorkspace(localWorkspace);
-    replaceCommentsByFileId({
-      ...storedWorkspace.commentsByFileId,
-      ...roomLocalState?.commentsByFileId,
-    });
+    void readIndexedDbWorkspace()
+      .then((storedWorkspace) => {
+        const nextStoredWorkspace = storedWorkspace ?? finalizeWorkspaceState([], undefined, {}, { includeLocationRoom: false });
+        const roomLocalState = roomLocalStateRef.current;
+        const localWorkspace = roomLocalState
+          ? mergeRoomLocalWorkspaceState(nextStoredWorkspace, roomLocalState)
+          : nextStoredWorkspace;
+        replaceWorkspace(localWorkspace);
+        replaceCommentsByFileId({
+          ...nextStoredWorkspace.commentsByFileId,
+          ...roomLocalState?.commentsByFileId,
+        });
+      })
+      .catch(handlePersistenceError);
   });
   const copyShareUrlWithPendingCommit = useEventCallback(() => {
     flushPendingEditorCommit();
@@ -1293,6 +1311,7 @@ export function useWorkspaceRuntime() {
       onOpenLocalWorkspace: openLocalWorkspaceAfterRoomFailure,
       onRetry: retryOpeningLiveRoom,
     },
+    localWorkspaceOpening: localPersistenceEnabled && localWorkspacePersistence.pending,
     liveRoomOpenState: getLiveRoomOpenState({
       connectionStatus,
       hasActiveFile: Boolean(activeFile),

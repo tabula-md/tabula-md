@@ -56,7 +56,7 @@ const ONE_MEGABYTE_SPLIT_INITIAL_MAX_MS = 2_500;
 const ONE_MEGABYTE_SPLIT_TYPE_MAX_LONG_TASK_MS = 160;
 const ONE_MEGABYTE_SPLIT_TYPE_MAX_FRAME_GAP_MS = 140;
 const HOT_PATH_COMMIT_GUARD_MS = 90;
-const PROJECT_STORAGE_KEY = "tabula.project.v5";
+const WORKSPACE_LOCAL_STORAGE_PREFIX = "tabula.project";
 const SPLIT_SYNC_UNRELATED_LINE_JUMP_MAX = 160;
 const SPLIT_SYNC_IDLE_SCROLL_DRIFT_MAX = 120;
 const SPLIT_SYNC_EDITOR_SCROLL_DELTA_MAX = 1;
@@ -252,7 +252,7 @@ const installLargePasteProbe = () => {
   observer?.observe({ entryTypes: ["longtask"] });
 
   Storage.prototype.setItem = function setItem(key, value) {
-    if (key === PROJECT_STORAGE_KEY) {
+    if (key.startsWith(WORKSPACE_LOCAL_STORAGE_PREFIX)) {
       metrics.projectWrites += 1;
     }
 
@@ -338,7 +338,7 @@ const installSplitResizeProbe = () => {
   const originalQuerySelectorAll = Element.prototype.querySelectorAll;
 
   Storage.prototype.setItem = function setItem(key, value) {
-    if (key === PROJECT_STORAGE_KEY) {
+    if (key.startsWith(WORKSPACE_LOCAL_STORAGE_PREFIX)) {
       metrics.projectWrites += 1;
     }
 

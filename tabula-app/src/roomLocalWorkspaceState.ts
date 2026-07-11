@@ -45,11 +45,12 @@ export const createRoomLocalWorkspaceState = (
 ): RoomLocalWorkspaceState => {
   const files = workspace.files
     .filter((file) => !file.roomId)
-    .map(clearFileCollaboration);
+    .map((file) => file.shareUrl || (file.connectionStatus && file.connectionStatus !== "idle")
+      ? clearFileCollaboration(file)
+      : file);
   const localFileIds = new Set(files.map((file) => file.id));
   const folders = workspace.folders
-    .filter((folder) => folder.id === WORKSPACE_ROOT_FOLDER_ID || !folder.roomId)
-    .map(clearFolderCollaboration);
+    .filter((folder) => folder.id === WORKSPACE_ROOT_FOLDER_ID || !folder.roomId);
 
   return {
     schema: ROOM_LOCAL_WORKSPACE_SCHEMA,

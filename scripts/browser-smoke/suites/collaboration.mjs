@@ -249,7 +249,6 @@ export async function run(ctx) {
         activeTab: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
         status: document.querySelector(".file-status-bar")?.textContent ?? "",
         editorLines: Array.from(document.querySelectorAll(".cm-content .cm-line")).map((line) => line.textContent ?? ""),
-        storage: window.localStorage.getItem("tabula.project.v6"),
       }));
       throw new Error(
         `${error.message}\nRestored diagnostics:\n${JSON.stringify(restoredDiagnostics, null, 2)}\nRestored state:\n${JSON.stringify(restoredState, null, 2)}`,
@@ -705,6 +704,5 @@ async function getTabDiagnostics(page) {
       text: tab.textContent,
     })),
     url: window.location.href,
-    workspaceStorage: window.localStorage.getItem("tabula.project.v6"),
   }));
 }

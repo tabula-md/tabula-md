@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import {
   createWorkspacePersistenceQueue,
-  writeWorkspaceToPrimaryStores,
+  writeWorkspaceToPrimaryStore,
 } from "../workspacePersistence";
-import { writeStoredWorkspace, type WorkspaceState } from "../workspaceStorage";
+import type { WorkspaceState } from "../workspaceStorage";
 
 type UseQueuedWorkspacePersistenceOptions = {
   enabled?: boolean;
   getWorkspaceSnapshot?: () => WorkspaceState;
+  onError?: (error: unknown) => void;
   onBeforePersist?: () => void;
 };
 
@@ -29,13 +30,17 @@ export const useQueuedWorkspacePersistence = (
   {
     enabled = true,
     getWorkspaceSnapshot,
+    onError,
     onBeforePersist,
   }: UseQueuedWorkspacePersistenceOptions = {},
 ) => {
+  const onErrorRef = useRef(onError);
   const queueRef = useRef<ReturnType<typeof createWorkspacePersistenceQueue> | null>(null);
 
   if (!queueRef.current) {
-    queueRef.current = createWorkspacePersistenceQueue();
+    queueRef.current = createWorkspacePersistenceQueue({
+      onError: (error) => onErrorRef.current?.(error),
+    });
   }
   const enabledRef = useRef(enabled);
   const getWorkspaceSnapshotRef = useRef(getWorkspaceSnapshot);
@@ -46,6 +51,7 @@ export const useQueuedWorkspacePersistence = (
     enabledRef.current = enabled;
     getWorkspaceSnapshotRef.current = getWorkspaceSnapshot;
     latestWorkspaceRef.current = workspace;
+    onErrorRef.current = onError;
     onBeforePersistRef.current = onBeforePersist;
 
     if (!enabled) {
@@ -54,7 +60,19 @@ export const useQueuedWorkspacePersistence = (
     }
 
     queueRef.current?.schedule(workspace);
-  }, [enabled, getWorkspaceSnapshot, onBeforePersist, workspace]);
+  }, [enabled, getWorkspaceSnapshot, onBeforePersist, onError, workspace]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const workspaceSnapshot = getWorkspacePersistenceFlushSnapshot({
+      getWorkspaceSnapshot: getWorkspaceSnapshotRef.current,
+      latestWorkspace: latestWorkspaceRef.current,
+      onBeforePersist: onBeforePersistRef.current,
+    });
+    void writeWorkspaceToPrimaryStore(workspaceSnapshot).catch((error: unknown) => {
+      onErrorRef.current?.(error);
+    });
+  }, [enabled, workspace.activeFileId, workspace.openFileIds]);
 
   useEffect(() => {
     const flushPendingWorkspace = () => {
@@ -68,12 +86,18 @@ export const useQueuedWorkspacePersistence = (
         onBeforePersist: onBeforePersistRef.current,
       });
       queueRef.current?.cancel();
-      writeWorkspaceToPrimaryStores(workspaceSnapshot);
-      writeStoredWorkspace(workspaceSnapshot);
+      void writeWorkspaceToPrimaryStore(workspaceSnapshot).catch((error: unknown) => {
+        onErrorRef.current?.(error);
+      });
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flushPendingWorkspace();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pagehide", flushPendingWorkspace);
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", flushPendingWorkspace);
       flushPendingWorkspace();
     };
