@@ -41,6 +41,44 @@ const waitForTasks = async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
 };
 
+const createMemoryRoomCheckpointStore = () => {
+  const checkpoints = new Map<string, {
+    generation: number;
+    encryptedCheckpoint: Uint8Array;
+    expiresAt: number;
+  }>();
+  const store: RoomCheckpointStore = {
+    enabled: true,
+    async loadEncryptedCheckpoint(roomId) {
+      const checkpoint = checkpoints.get(roomId);
+      return checkpoint
+        ? {
+            status: "ready" as const,
+            ...checkpoint,
+            encryptedCheckpoint: checkpoint.encryptedCheckpoint.slice(),
+          }
+        : null;
+    },
+    async saveEncryptedCheckpoint(roomId, request) {
+      const currentGeneration = checkpoints.get(roomId)?.generation ?? 0;
+      if (currentGeneration !== request.expectedGeneration) {
+        return { ok: false, reason: "conflict" as const, generation: currentGeneration };
+      }
+      const generation = currentGeneration + 1;
+      checkpoints.set(roomId, {
+        generation,
+        encryptedCheckpoint: request.encryptedCheckpoint.slice(),
+        expiresAt: request.expiresAt,
+      });
+      return { ok: true, generation };
+    },
+  };
+  return {
+    store,
+    getGeneration: (roomId: string) => checkpoints.get(roomId)?.generation ?? 0,
+  };
+};
+
 const createMemoryRoomRelay = () => {
   const endpoints = new Map<string, {
     roomId: string;
@@ -50,6 +88,7 @@ const createMemoryRoomRelay = () => {
     disconnect: () => void;
   }>();
   let sentBytes = 0;
+  let sentCount = 0;
 
   const connectedEndpoints = (roomId: string) =>
     [...endpoints.entries()].filter(([, endpoint]) => endpoint.roomId === roomId && endpoint.isConnected());
@@ -62,6 +101,7 @@ const createMemoryRoomRelay = () => {
   };
 
   const forward = (senderId: string, envelope: EncryptedEnvelope) => {
+    sentCount += 1;
     sentBytes += new TextEncoder().encode(JSON.stringify(envelope)).byteLength;
     queueMicrotask(() => {
       const sender = endpoints.get(senderId);
@@ -103,8 +143,9 @@ const createMemoryRoomRelay = () => {
 
   return {
     createRoomTransport,
+    getSentCount: () => sentCount,
     getSentBytes: () => sentBytes,
-    resetSentBytes: () => { sentBytes = 0; },
+    resetSentBytes: () => { sentBytes = 0; sentCount = 0; },
     setOnline(clientId: string, online: boolean) {
       const endpoint = endpoints.get(clientId);
       if (online) endpoint?.connect();
@@ -125,6 +166,7 @@ describe("workspace room runtime", () => {
       roomId: "room-1",
       roomKey: VALID_ROOM_KEY,
       documentId: "doc-1",
+      emitInitialWorkspaceState: true,
       documents: [{ id: "doc-1", title: "README.md", text: "# Hello" }],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
@@ -162,6 +204,7 @@ describe("workspace room runtime", () => {
         roomId: `room-cycle-${index}`,
         roomKey: VALID_ROOM_KEY,
         documentId: "doc",
+        emitInitialWorkspaceState: true,
         documents: [{ id: "doc", title: "README.md", text: "text" }],
         identity: { id: `human-${index}`, name: "Curious Human", color: "#2563eb", lastSeen: 0 },
         fileTitle: "README.md",
@@ -192,6 +235,7 @@ describe("workspace room runtime", () => {
       roomId: "room-1",
       roomKey: VALID_ROOM_KEY,
       documentId: "doc-1",
+      emitInitialWorkspaceState: true,
       documents: [
         { id: "doc-1", title: "README.md", text: "# Hello" },
         { id: "doc-2", title: "Notes.md", text: "Notes" },
@@ -229,6 +273,7 @@ describe("workspace room runtime", () => {
       roomId: "room-1",
       roomKey: VALID_ROOM_KEY,
       documentId: "local-doc",
+      emitInitialWorkspaceState: true,
       documents: [
         { id: "local-doc", title: "Local.md", text: "Local" },
         { id: "remote-doc", title: "Remote.md", text: "Remote" },
@@ -254,6 +299,7 @@ describe("workspace room runtime", () => {
 
   it("converges human and agent edits, workspace changes, comments, and presence through one room document", async () => {
     const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
     const defaults = createDefaultCollabRuntimeAdapters();
     const hostSnapshots: WorkspaceRoomSnapshot[] = [];
     const agentSnapshots: WorkspaceRoomSnapshot[] = [];
@@ -262,13 +308,14 @@ describe("workspace room runtime", () => {
     const adapters = {
       ...defaults,
       createRoomTransport: relay.createRoomTransport,
-      roomCheckpointStore: createNoopRoomCheckpointStore(),
+      roomCheckpointStore: checkpoints.store,
       resolveRoomBaseUrl: () => "http://memory-room.test",
     };
     const host = createWorkspaceRoomRuntime({
       roomId: "room-convergence",
       roomKey: VALID_ROOM_KEY,
       documentId: "doc-a",
+      emitInitialWorkspaceState: true,
       documents: [
         { id: "doc-a", title: "A.md", text: "Alpha" },
         { id: "doc-b", title: "B.md", text: "Beta" },
@@ -281,6 +328,7 @@ describe("workspace room runtime", () => {
       adapters,
     });
     await vi.waitFor(() => expect(host.getSnapshot().status).toBe("connected"));
+    await vi.waitFor(() => expect(checkpoints.getGeneration("room-convergence")).toBeGreaterThan(0));
 
     const agent = createWorkspaceRoomRuntime({
       roomId: "room-convergence",
@@ -368,18 +416,188 @@ describe("workspace room runtime", () => {
     }
     await vi.waitFor(() => expect(agent.getEditorBinding()?.yText.toString()).toContain("x".repeat(100)));
     expect(relay.getSentBytes()).toBeLessThan(100 * 1024);
+    expect(relay.getSentCount()).toBeLessThan(10);
 
     host.disconnect();
     agent.disconnect();
   });
 
+  it("bounds per-document undo history", async () => {
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const onTextChange = vi.fn();
+    const runtime = createWorkspaceRoomRuntime({
+      roomId: "room-bounded-undo",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-a",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc-a", title: "A.md", text: "" }],
+      identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "A.md",
+      onTextChange,
+      adapters: {
+        ...defaults,
+        createRoomTransport: transport.createRoomTransport,
+        roomCheckpointStore: createNoopRoomCheckpointStore(),
+        resolveRoomBaseUrl: () => "http://memory-room.test",
+      },
+    });
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe("connected"));
+
+    const undoManager = runtime.getEditorBinding()!.undoManager;
+    for (let index = 0; index < 150; index += 1) {
+      const position = runtime.getEditorBinding()!.yText.length;
+      runtime.applyLocalTextPatches([{ from: position, to: position, insert: "x" }]);
+      undoManager.stopCapturing();
+    }
+
+    expect(undoManager.undoStack.length).toBeLessThanOrEqual(100);
+    await vi.waitFor(() => expect(onTextChange).toHaveBeenLastCalledWith("doc-a", "x".repeat(150)));
+    runtime.disconnect();
+  });
+
+  it("coalesces repeated peer announcements while encryption is in flight", async () => {
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    let encryptionGate: Promise<void> | null = null;
+    let releaseEncryption: (() => void) | undefined;
+    const encryptEnvelope = vi.fn(async (
+      ...args: Parameters<typeof defaults.crypto.encryptEnvelope>
+    ) => {
+      if (encryptionGate) await encryptionGate;
+      return defaults.crypto.encryptEnvelope(...args);
+    });
+    const runtime = createWorkspaceRoomRuntime({
+      roomId: "room-bounded-sync",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-a",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc-a", title: "A.md", text: "" }],
+      identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "A.md",
+      onTextChange: vi.fn(),
+      adapters: {
+        ...defaults,
+        crypto: { ...defaults.crypto, encryptEnvelope },
+        createRoomTransport: transport.createRoomTransport,
+        roomCheckpointStore: createNoopRoomCheckpointStore(),
+        resolveRoomBaseUrl: () => "http://memory-room.test",
+      },
+    });
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe("connected"));
+    await waitForTasks();
+    encryptEnvelope.mockClear();
+
+    encryptionGate = new Promise<void>((resolve) => { releaseEncryption = resolve; });
+    for (let index = 0; index < 100; index += 1) {
+      transport.getHandlers()?.onPeerJoined({ roomId: "room-bounded-sync", clientId: `peer-${index}` });
+    }
+    await vi.waitFor(() => expect(encryptEnvelope).toHaveBeenCalledTimes(1));
+    encryptionGate = null;
+    releaseEncryption?.();
+    await vi.waitFor(() => expect(encryptEnvelope).toHaveBeenCalledTimes(4));
+
+    expect(encryptEnvelope).toHaveBeenCalledTimes(4);
+    runtime.disconnect();
+  });
+
+  it("rejects oversized encrypted envelopes before decrypting or buffering them", async () => {
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const decryptEnvelope = vi.fn(defaults.crypto.decryptEnvelope);
+    const runtime = createWorkspaceRoomRuntime({
+      roomId: "room-bounded-inbox",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-a",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc-a", title: "A.md", text: "" }],
+      identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "A.md",
+      onTextChange: vi.fn(),
+      adapters: {
+        ...defaults,
+        crypto: { ...defaults.crypto, decryptEnvelope },
+        createRoomTransport: transport.createRoomTransport,
+        roomCheckpointStore: createNoopRoomCheckpointStore(),
+        resolveRoomBaseUrl: () => "http://memory-room.test",
+      },
+    });
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe("connected"));
+
+    transport.getHandlers()?.onMessage({
+      v: 1,
+      roomId: "room-bounded-inbox",
+      kind: "room-event",
+      version: 1,
+      iv: "A".repeat(16),
+      ciphertext: "A".repeat(512 * 1024),
+      createdAt: "2026-07-11T00:00:00.000Z",
+    });
+    await waitForTasks();
+
+    expect(decryptEnvelope).not.toHaveBeenCalled();
+    runtime.disconnect();
+  });
+
+  it("bounds encrypted messages waiting for decryption", async () => {
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    let releaseFirstDecrypt: (() => void) | undefined;
+    const firstDecryptGate = new Promise<void>((resolve) => { releaseFirstDecrypt = resolve; });
+    let firstDecrypt = true;
+    const decryptEnvelope = vi.fn(async () => {
+      if (firstDecrypt) {
+        firstDecrypt = false;
+        await firstDecryptGate;
+      }
+      throw new Error("invalid ciphertext");
+    });
+    const runtime = createWorkspaceRoomRuntime({
+      roomId: "room-bounded-decryption",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-a",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc-a", title: "A.md", text: "" }],
+      identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "A.md",
+      onTextChange: vi.fn(),
+      adapters: {
+        ...defaults,
+        crypto: { ...defaults.crypto, decryptEnvelope },
+        createRoomTransport: transport.createRoomTransport,
+        roomCheckpointStore: createNoopRoomCheckpointStore(),
+        resolveRoomBaseUrl: () => "http://memory-room.test",
+      },
+    });
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe("connected"));
+
+    for (let index = 0; index < 100; index += 1) {
+      transport.getHandlers()?.onMessage({
+        v: 1,
+        roomId: "room-bounded-decryption",
+        kind: "room-event",
+        version: index + 1,
+        iv: "A".repeat(16),
+        ciphertext: "A".repeat(32),
+        createdAt: "2026-07-11T00:00:00.000Z",
+      });
+    }
+    await vi.waitFor(() => expect(decryptEnvelope).toHaveBeenCalledTimes(1));
+    releaseFirstDecrypt?.();
+    await vi.waitFor(() => expect(decryptEnvelope).toHaveBeenCalledTimes(65));
+
+    expect(decryptEnvelope).toHaveBeenCalledTimes(65);
+    runtime.disconnect();
+  });
+
   it("does not resurrect a deleted document when a stale peer reconnects", async () => {
     const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
     const defaults = createDefaultCollabRuntimeAdapters();
     const adapters = {
       ...defaults,
       createRoomTransport: relay.createRoomTransport,
-      roomCheckpointStore: createNoopRoomCheckpointStore(),
+      roomCheckpointStore: checkpoints.store,
       resolveRoomBaseUrl: () => "http://memory-room.test",
     };
     const hostSnapshots: WorkspaceRoomSnapshot[] = [];
@@ -388,6 +606,7 @@ describe("workspace room runtime", () => {
       roomId: "room-stale-peer",
       roomKey: VALID_ROOM_KEY,
       documentId: "doc-a",
+      emitInitialWorkspaceState: true,
       documents: [
         { id: "doc-a", title: "Delete me.md", text: "old" },
         { id: "doc-b", title: "Keep me.md", text: "current" },
@@ -398,6 +617,7 @@ describe("workspace room runtime", () => {
       onWorkspaceChange: (snapshot) => hostSnapshots.push(snapshot),
       adapters,
     });
+    await vi.waitFor(() => expect(checkpoints.getGeneration("room-stale-peer")).toBeGreaterThan(0));
     const peer = createWorkspaceRoomRuntime({
       roomId: "room-stale-peer",
       roomKey: VALID_ROOM_KEY,
@@ -431,11 +651,12 @@ describe("workspace room runtime", () => {
 
   it("converges to a valid room with no documents", async () => {
     const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
     const defaults = createDefaultCollabRuntimeAdapters();
     const adapters = {
       ...defaults,
       createRoomTransport: relay.createRoomTransport,
-      roomCheckpointStore: createNoopRoomCheckpointStore(),
+      roomCheckpointStore: checkpoints.store,
       resolveRoomBaseUrl: () => "http://memory-room.test",
     };
     const peerSnapshots: WorkspaceRoomSnapshot[] = [];
@@ -443,12 +664,14 @@ describe("workspace room runtime", () => {
       roomId: "room-empty",
       roomKey: VALID_ROOM_KEY,
       documentId: "doc-a",
+      emitInitialWorkspaceState: true,
       documents: [{ id: "doc-a", title: "A.md", text: "Alpha" }],
       identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
       onTextChange: vi.fn(),
       adapters,
     });
+    await vi.waitFor(() => expect(checkpoints.getGeneration("room-empty")).toBeGreaterThan(0));
     const peer = createWorkspaceRoomRuntime({
       roomId: "room-empty",
       roomKey: VALID_ROOM_KEY,
@@ -509,6 +732,7 @@ describe("workspace room runtime", () => {
       roomId: "room-cas",
       roomKey: VALID_ROOM_KEY,
       documentId: "local-doc",
+      emitInitialWorkspaceState: true,
       documents: [{ id: "local-doc", title: "Local.md", text: "local" }],
       identity: { id: "leader", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "Local.md",
@@ -538,23 +762,26 @@ describe("workspace room runtime", () => {
 
   it("ignores direct updates from an actor that did not advertise write capability", async () => {
     const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
     const defaults = createDefaultCollabRuntimeAdapters();
     const adapters = {
       ...defaults,
       createRoomTransport: relay.createRoomTransport,
-      roomCheckpointStore: createNoopRoomCheckpointStore(),
+      roomCheckpointStore: checkpoints.store,
       resolveRoomBaseUrl: () => "http://memory-room.test",
     };
     const host = createWorkspaceRoomRuntime({
       roomId: "room-read-only",
       roomKey: VALID_ROOM_KEY,
       documentId: "doc",
+      emitInitialWorkspaceState: true,
       documents: [{ id: "doc", title: "README.md", text: "original" }],
       identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
       onTextChange: vi.fn(),
       adapters,
     });
+    await vi.waitFor(() => expect(checkpoints.getGeneration("room-read-only")).toBeGreaterThan(0));
     const reader = createWorkspaceRoomRuntime({
       roomId: "room-read-only",
       roomKey: VALID_ROOM_KEY,

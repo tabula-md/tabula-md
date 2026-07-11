@@ -674,7 +674,6 @@ export async function run(ctx) {
     const overflowInitialTabCount = (await getTabs(page)).length;
     for (let index = 0; index < 10; index += 1) {
       await page.getByTitle("New document").click();
-      await page.getByRole("menuitem", { name: "Shared document" }).click();
     }
     await waitForFileCount(page, overflowInitialTabCount + 10);
 

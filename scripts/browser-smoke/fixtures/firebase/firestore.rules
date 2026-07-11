@@ -1,0 +1,46 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function validRoomId(roomId) {
+      return roomId is string && roomId.matches('^[A-Za-z0-9_-]{1,64}$');
+    }
+
+    function validRoomPointer(roomId, data) {
+      return data.keys().hasOnly([
+          'formatVersion',
+          'generation',
+          'blobPath',
+          'byteLength',
+          'updatedAt',
+          'expiresAt',
+        ])
+        && data.formatVersion == 2
+        && data.generation is int
+        && data.generation >= 1
+        && data.blobPath is string
+        && data.blobPath.matches('^roomCheckpoints/' + roomId + '/[A-Fa-f0-9]{32}\\.bin$')
+        && data.byteLength is int
+        && data.byteLength > 0
+        && data.byteLength <= 18000000
+        && data.updatedAt == request.time
+        && data.expiresAt is timestamp;
+    }
+
+    match /roomCheckpointPointers/{roomId} {
+      allow get: if validRoomId(roomId);
+      allow list: if false;
+      allow create: if validRoomId(roomId)
+        && validRoomPointer(roomId, request.resource.data)
+        && request.resource.data.generation == 1;
+      allow update: if validRoomId(roomId)
+        && validRoomPointer(roomId, request.resource.data)
+        && request.resource.data.generation == resource.data.generation + 1;
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

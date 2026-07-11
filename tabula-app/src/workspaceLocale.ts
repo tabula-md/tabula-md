@@ -40,9 +40,6 @@ type WorkspaceMenuCopy = {
       description: string;
       startSession: string;
       startDescription: string;
-      roomDocumentsAria: string;
-      roomDocumentsLabel: string;
-      includedCount: (included: number, total: number) => string;
       inviteAgent: string;
       inviteAgentDescription: string;
       retrySession: string;
@@ -129,11 +126,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         description:
           "Create an encrypted room for real-time collaboration.",
         startSession: "Start session",
-        startDescription:
-          "Included documents join the room. Excluded documents stay local.",
-        roomDocumentsAria: "Workspace documents included in sharing",
-        roomDocumentsLabel: "Included documents",
-        includedCount: (included, total) => `${included}/${total} included`,
+        startDescription: "The whole workspace joins the encrypted room.",
         inviteAgent: "Copy agent prompt",
         inviteAgentDescription:
           "Copy a room-aware prompt. The room URL is included only when you click.",
@@ -158,9 +151,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       exportPanel: {
         title: "Export",
-        description: "Create an encrypted copy of the included documents.",
+        description: "Export the whole workspace as a link or ZIP.",
         projectArchiveTitle: "Export to file",
-        projectArchiveDescription: "Export to file downloads the included documents as a .zip.",
+        projectArchiveDescription: "Download the folder structure and Markdown files as a ZIP.",
       },
     },
   },
@@ -205,11 +198,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         description:
           "실시간 협업을 위한 암호화된 room을 만듭니다.",
         startSession: "세션 시작",
-        startDescription:
-          "포함된 문서만 room에 들어갑니다. 제외한 문서는 로컬에 남습니다.",
-        roomDocumentsAria: "실시간 room에 포함되는 워크스페이스 문서",
-        roomDocumentsLabel: "포함할 문서",
-        includedCount: (included, total) => `${included}/${total}개 포함`,
+        startDescription: "워크스페이스 전체가 암호화된 room에 들어갑니다.",
         inviteAgent: "에이전트 프롬프트 복사",
         inviteAgentDescription:
           "room용 프롬프트를 복사합니다. room URL은 이 버튼을 눌렀을 때만 포함됩니다.",
@@ -234,9 +223,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       exportPanel: {
         title: "내보내기",
-        description: "포함된 문서의 암호화된 복사본을 만듭니다.",
+        description: "워크스페이스 전체를 링크 또는 ZIP으로 내보냅니다.",
         projectArchiveTitle: "파일로 내보내기",
-        projectArchiveDescription: "파일로 내보내기는 포함된 문서를 .zip으로 다운로드합니다.",
+        projectArchiveDescription: "폴더 구조와 Markdown 파일을 ZIP으로 다운로드합니다.",
       },
     },
   },
@@ -281,11 +270,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         description:
           "リアルタイム共同編集用の暗号化 room を作成します。",
         startSession: "セッションを開始",
-        startDescription:
-          "含めたドキュメントだけが room に参加します。除外したものはローカルに残ります。",
-        roomDocumentsAria: "ライブ room に含めるワークスペースドキュメント",
-        roomDocumentsLabel: "含めるドキュメント",
-        includedCount: (included, total) => `${included}/${total} 件を含む`,
+        startDescription: "ワークスペース全体が暗号化 room に参加します。",
         inviteAgent: "エージェント用プロンプトをコピー",
         inviteAgentDescription:
           "room 用プロンプトをコピーします。room URL はこのボタンを押したときだけ含まれます。",
@@ -312,10 +297,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       exportPanel: {
         title: "書き出し",
-        description: "含めたドキュメントの暗号化コピーを作成します。",
+        description: "ワークスペース全体をリンクまたは ZIP に書き出します。",
         projectArchiveTitle: "ファイルに書き出し",
         projectArchiveDescription:
-          "ファイルに書き出すと、含めたドキュメントを .zip としてダウンロードします。",
+          "フォルダー構造と Markdown ファイルを ZIP としてダウンロードします。",
       },
     },
   },
@@ -358,10 +343,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "实时协作",
         description: "创建用于实时协作的加密 room。",
         startSession: "启动协作",
-        startDescription: "只有包含的文档会进入 room。排除的文档保留在本地。",
-        roomDocumentsAria: "实时 room 中包含的工作区文档",
-        roomDocumentsLabel: "包含的文档",
-        includedCount: (included, total) => `已包含 ${included}/${total}`,
+        startDescription: "整个工作区会加入加密 room。",
         inviteAgent: "复制智能体提示",
         inviteAgentDescription:
           "复制面向 room 的提示。只有点击此按钮时才会包含 room URL。",
@@ -385,9 +367,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       exportPanel: {
         title: "导出",
-        description: "创建已包含文档的加密副本。",
+        description: "将整个工作区导出为链接或 ZIP。",
         projectArchiveTitle: "导出为文件",
-        projectArchiveDescription: "导出为文件会将已包含的文档下载为 .zip。",
+        projectArchiveDescription: "将文件夹结构和 Markdown 文件下载为 ZIP。",
       },
     },
   },
@@ -432,11 +414,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         description:
           "Crea una sala cifrada para colaboración en tiempo real.",
         startSession: "Iniciar colaboración",
-        startDescription:
-          "Los documentos incluidos entran en la sala. Los excluidos quedan locales.",
-        roomDocumentsAria: "Documentos del workspace incluidos en la sala en vivo",
-        roomDocumentsLabel: "Documentos incluidos",
-        includedCount: (included, total) => `${included}/${total} incluidos`,
+        startDescription: "Todo el workspace entra en la sala cifrada.",
         inviteAgent: "Copiar prompt de agente",
         inviteAgentDescription:
           "Copia un prompt para la sala. La URL de la sala solo se incluye al hacer clic.",
@@ -463,9 +441,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       exportPanel: {
         title: "Exportar",
-        description: "Crea una copia cifrada de los documentos incluidos.",
+        description: "Exporta todo el workspace como enlace o ZIP.",
         projectArchiveTitle: "Exportar a archivo",
-        projectArchiveDescription: "Exportar a archivo descarga los documentos incluidos como .zip.",
+        projectArchiveDescription: "Descarga la estructura de carpetas y los archivos Markdown como ZIP.",
       },
     },
   },
@@ -510,11 +488,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         description:
           "Créez une room chiffrée pour collaborer en temps réel.",
         startSession: "Démarrer la session",
-        startDescription:
-          "Les documents inclus rejoignent la room. Les documents exclus restent locaux.",
-        roomDocumentsAria: "Documents du workspace inclus dans la room en direct",
-        roomDocumentsLabel: "Documents inclus",
-        includedCount: (included, total) => `${included}/${total} inclus`,
+        startDescription: "Tout le workspace rejoint la room chiffrée.",
         inviteAgent: "Copier le prompt agent",
         inviteAgentDescription:
           "Copie un prompt pour la room. L'URL de la room est ajoutée seulement au clic.",
@@ -541,9 +515,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       exportPanel: {
         title: "Exporter",
-        description: "Créez une copie chiffrée des documents inclus.",
+        description: "Exportez tout le workspace sous forme de lien ou de ZIP.",
         projectArchiveTitle: "Exporter vers un fichier",
-        projectArchiveDescription: "Exporter vers un fichier télécharge les documents inclus en .zip.",
+        projectArchiveDescription: "Téléchargez les dossiers et fichiers Markdown dans un ZIP.",
       },
     },
   },
@@ -588,11 +562,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         description:
           "Erstelle einen verschlüsselten Room für Zusammenarbeit in Echtzeit.",
         startSession: "Sitzung starten",
-        startDescription:
-          "Eingeschlossene Dokumente treten dem Room bei. Ausgeschlossene bleiben lokal.",
-        roomDocumentsAria: "Workspace-Dokumente im Live-Room",
-        roomDocumentsLabel: "Eingeschlossene Dokumente",
-        includedCount: (included, total) => `${included}/${total} enthalten`,
+        startDescription: "Der gesamte Workspace tritt dem verschlüsselten Room bei.",
         inviteAgent: "Agent-Prompt kopieren",
         inviteAgentDescription:
           "Kopiert einen Room-Prompt. Die Room-URL wird nur beim Klick eingefügt.",
@@ -619,9 +589,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       exportPanel: {
         title: "Exportieren",
-        description: "Erstelle eine verschlüsselte Kopie der enthaltenen Dokumente.",
+        description: "Exportiere den gesamten Workspace als Link oder ZIP.",
         projectArchiveTitle: "Als Datei exportieren",
-        projectArchiveDescription: "Als Datei exportieren lädt die enthaltenen Dokumente als .zip herunter.",
+        projectArchiveDescription: "Lade Ordnerstruktur und Markdown-Dateien als ZIP herunter.",
       },
     },
   },

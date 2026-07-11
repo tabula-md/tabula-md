@@ -304,7 +304,8 @@ export async function run(ctx) {
     );
     expect(
       commentAfterOffsetShift.markCount === 1 && commentAfterOffsetShift.markText === "target",
-      "Comment anchors should survive formatting that shifts their stored offsets.",
+      `Comment anchors should survive formatting that shifts their stored offsets. ` +
+        `Actual: ${JSON.stringify(commentAfterOffsetShift)}`,
     );
     expect(commentAfterOffsetShift.activeMarkCount === 1, "Comment anchors should keep active focus after text edits.");
     expect(

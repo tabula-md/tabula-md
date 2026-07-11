@@ -22,7 +22,6 @@ type UseJsonShareControllerOptions = {
   folders: WorkspaceFolder[];
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   onBeforeWorkspaceBoundary?: () => void;
-  shareExcludedFileIds: readonly string[];
   showToast: (message: string, tone?: "error" | "neutral") => void;
 };
 
@@ -30,7 +29,9 @@ export type JsonShareController = {
   canExport: boolean;
   copyLink: () => Promise<void>;
   disabledReason: string;
-  exportLink: (fileIds?: readonly string[]) => Promise<boolean>;
+  documentCount: number;
+  expiresAt?: string;
+  exportLink: () => Promise<boolean>;
   exporting: boolean;
   reset: () => void;
   url?: string;
@@ -55,21 +56,18 @@ export const getJsonShareExportFileSnapshot = ({
 export const getJsonShareExportWorkspaceFiles = ({
   activeFile,
   activeText,
-  fileIds,
   files,
   getActiveFileSnapshot,
   onBeforeWorkspaceBoundary,
 }: {
   activeFile?: WorkspaceFile;
   activeText?: string;
-  fileIds?: readonly string[];
   files: WorkspaceFile[];
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   onBeforeWorkspaceBoundary?: () => void;
 }) => {
   onBeforeWorkspaceBoundary?.();
   const activeSnapshot = getActiveFileSnapshot?.();
-  const selectedIds = fileIds ? new Set(fileIds) : null;
   const filesById = new Map(files.map((file) => [file.id, file]));
 
   if (activeSnapshot) {
@@ -78,9 +76,7 @@ export const getJsonShareExportWorkspaceFiles = ({
     filesById.set(activeFile.id, { ...activeFile, text: activeText });
   }
 
-  return files
-    .map((file) => filesById.get(file.id) ?? file)
-    .filter((file) => !selectedIds || selectedIds.has(file.id));
+  return files.map((file) => filesById.get(file.id) ?? file);
 };
 
 export function useJsonShareController({
@@ -92,18 +88,21 @@ export function useJsonShareController({
   folders,
   getActiveFileSnapshot,
   onBeforeWorkspaceBoundary,
-  shareExcludedFileIds,
   showToast,
 }: UseJsonShareControllerOptions): JsonShareController {
-  const [jsonShareUrl, setJsonShareUrl] = useState<string | undefined>(undefined);
+  const [jsonShareResult, setJsonShareResult] = useState<{
+    url: string;
+    expiresAt?: string;
+    documentCount: number;
+  }>();
   const [exporting, setExporting] = useState(false);
   const serviceUrl = getConfiguredJsonShareServiceUrl();
 
-  const reset = useCallback(() => setJsonShareUrl(undefined), []);
+  const reset = useCallback(() => setJsonShareResult(undefined), []);
 
   useLayoutEffect(() => {
     reset();
-  }, [activeFile?.id, activeText, commentsByFileId, files, folders, reset, shareExcludedFileIds]);
+  }, [activeFile?.id, activeText, commentsByFileId, files, folders, reset]);
 
   const disabledReason = useMemo(() => {
     if (files.length === 0) {
@@ -112,7 +111,7 @@ export function useJsonShareController({
     return "";
   }, [copy, files.length]);
 
-  const exportLink = async (fileIds?: readonly string[]) => {
+  const exportLink = async () => {
     if (exporting || disabledReason) {
       if (disabledReason) {
         showToast(disabledReason, "error");
@@ -122,7 +121,6 @@ export function useJsonShareController({
     const selectedFiles = getJsonShareExportWorkspaceFiles({
       activeFile,
       activeText,
-      fileIds,
       files,
       getActiveFileSnapshot,
       onBeforeWorkspaceBoundary,
@@ -147,7 +145,7 @@ export function useJsonShareController({
       const snapshotActiveFileId =
         (activeFile && selectedFileIds.has(activeFile.id) ? activeFile.id : undefined) ??
         selectedFiles[0]!.id;
-      const { url } = await createJsonShareLink({
+      const { url, expiresAt } = await createJsonShareLink({
         serviceUrl,
         origin: window.location.origin,
         files: selectedFiles,
@@ -156,7 +154,7 @@ export function useJsonShareController({
         activeFileId: snapshotActiveFileId,
         commentsByFileId: selectedCommentsByFileId,
       });
-      setJsonShareUrl(url);
+      setJsonShareResult({ url, expiresAt, documentCount: selectedFiles.length });
       showToast("Export link created.");
       return true;
     } catch (error) {
@@ -173,10 +171,10 @@ export function useJsonShareController({
   };
 
   const copyLink = async () => {
-    if (!jsonShareUrl) {
+    if (!jsonShareResult?.url) {
       return;
     }
-    await navigator.clipboard.writeText(jsonShareUrl);
+    await navigator.clipboard.writeText(jsonShareResult.url);
     showToast("Export link copied.");
   };
 
@@ -184,11 +182,13 @@ export function useJsonShareController({
     canExport: !disabledReason && !exporting,
     copyLink,
     disabledReason,
+    documentCount: jsonShareResult?.documentCount ?? files.length,
+    expiresAt: jsonShareResult?.expiresAt,
     exportLink,
     exporting,
     reset,
-    ...(jsonShareUrl ? { url: jsonShareUrl } : {}),
-    urlPreview: jsonShareUrl ? formatJsonShareUrlPreview(jsonShareUrl) : "",
+    ...(jsonShareResult ? { url: jsonShareResult.url } : {}),
+    urlPreview: jsonShareResult ? formatJsonShareUrlPreview(jsonShareResult.url) : "",
   };
 }
 

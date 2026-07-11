@@ -766,7 +766,6 @@ describe("project IO controller", () => {
       getJsonShareExportWorkspaceFiles({
         activeFile: staleActiveFile,
         files: [staleActiveFile],
-        fileIds: [staleActiveFile.id],
         getActiveFileSnapshot,
         onBeforeWorkspaceBoundary,
       }),

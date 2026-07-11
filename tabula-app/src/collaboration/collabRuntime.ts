@@ -44,12 +44,12 @@ export type CollaborationPresenceIdentityInput = {
 };
 
 export type CollaborationSessionStartRequest = {
-  initialText: string;
   roomId: string;
+  roomKey: string;
   shareUrl: string;
 };
 
-type CreateRoomSession = (origin: string) => Pick<RoomSession, "roomId" | "shareUrl">;
+type CreateRoomSession = (origin: string) => Pick<RoomSession, "roomId" | "roomKey" | "shareUrl">;
 
 export const getLiveRoomConnectionTarget = (file?: WorkspaceFile): LiveRoomConnectionTarget | null => {
   if (!file?.id || !file.roomId || !file.shareUrl) {
@@ -80,11 +80,11 @@ const getCurrentRoomLocation = (): RoomRouteLocation | null => {
 
 export const shouldStartLiveRoomConnection = ({
   file,
-  hasPendingInitialText = false,
+  hasPendingStart = false,
   location,
 }: {
   file?: WorkspaceFile;
-  hasPendingInitialText?: boolean;
+  hasPendingStart?: boolean;
   location?: RoomRouteLocation | null;
 }) => {
   const target = getLiveRoomConnectionTarget(file);
@@ -92,7 +92,7 @@ export const shouldStartLiveRoomConnection = ({
     return false;
   }
 
-  if (hasPendingInitialText) {
+  if (hasPendingStart) {
     return true;
   }
 
@@ -143,8 +143,8 @@ export const createCollaborationSessionStartRequest = ({
 
   const session = createSession(origin);
   return {
-    initialText: activeFile.text,
     roomId: session.roomId,
+    roomKey: session.roomKey,
     shareUrl: session.shareUrl,
   };
 };

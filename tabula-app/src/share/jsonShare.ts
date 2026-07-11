@@ -1,12 +1,8 @@
 import {
   createJsonShareUrl,
   decodeEncryptedData,
-  decodeBase64Url,
-  decryptData,
   encodeEncryptedData,
-  encodeBase64Url,
   generateEncryptionKey,
-  importEncryptionKey,
   JSON_SHARE_KEY_BYTES,
   JSON_SHARE_API_PREFIX,
   JSON_SHARE_POST_PATH,
@@ -54,7 +50,6 @@ type ReadJsonShareSnapshotOptions = {
   fetchImpl?: typeof fetch;
 };
 
-const JSON_SHARE_BLOB_MAGIC = new Uint8Array([0x54, 0x4a, 0x53, 0x31]);
 const JSON_SHARE_DECRYPTION_ERROR =
   "This export link could not be decrypted. It may have the wrong client-only key.";
 
@@ -103,6 +98,7 @@ export const createJsonShareLink = async ({
       url,
       payload,
     }),
+    expiresAt: created.expiresAt,
     url,
   };
 };
@@ -148,10 +144,6 @@ const decryptJsonSharePayload = async (
   encryptedBlob: Uint8Array,
   encodedKey: string,
 ): Promise<ShareSnapshotPayload> => {
-  if (isLegacyJsonShareBlob(encryptedBlob)) {
-    return decryptLegacyJsonSharePayload(encryptedBlob, encodedKey);
-  }
-
   const decoded = await decodeEncryptedData(encryptedBlob, {
     decryptionKey: encodedKey,
   });
@@ -160,28 +152,6 @@ const decryptJsonSharePayload = async (
 
 const generateJsonShareKey = () => {
   return generateEncryptionKey(JSON_SHARE_KEY_BYTES);
-};
-
-const isLegacyJsonShareBlob = (encryptedBlob: Uint8Array) =>
-  encryptedBlob.byteLength > JSON_SHARE_BLOB_MAGIC.byteLength &&
-  JSON_SHARE_BLOB_MAGIC.every((byte, index) => encryptedBlob[index] === byte);
-
-const decryptLegacyJsonSharePayload = async (
-  encryptedBlob: Uint8Array,
-  encodedKey: string,
-): Promise<ShareSnapshotPayload> => {
-  const rawKey = decodeBase64Url(encodedKey);
-  if (rawKey.byteLength !== JSON_SHARE_KEY_BYTES) {
-    throw new Error("Share link key must be 32 bytes");
-  }
-  const ivStart = JSON_SHARE_BLOB_MAGIC.byteLength;
-  const encryptedStart = JSON_SHARE_BLOB_MAGIC.byteLength + 12;
-  if (encryptedBlob.byteLength <= encryptedStart) {
-    throw new Error("Share link failed: invalid snapshot payload");
-  }
-  const key = await importEncryptionKey(encodeBase64Url(rawKey), ["decrypt"], JSON_SHARE_KEY_BYTES);
-  const decrypted = await decryptData(encryptedBlob.slice(ivStart, encryptedStart), encryptedBlob.slice(encryptedStart), key);
-  return parseShareSnapshot(new Uint8Array(decrypted));
 };
 
 const readJsonShareError = async (response: Response) => {

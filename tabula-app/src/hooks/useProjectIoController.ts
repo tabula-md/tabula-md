@@ -210,7 +210,7 @@ export function useProjectIoController({
     showToast("Workspace backup downloaded.");
   };
 
-  const downloadProjectArchive = (fileIds?: readonly string[]) => {
+  const downloadProjectArchive = () => {
     try {
       const workspaceSnapshot = getProjectIoBoundaryWorkspaceSnapshot({
         activeFile,
@@ -221,11 +221,7 @@ export function useProjectIoController({
         onBeforeWorkspaceBoundary,
         openFileIds,
       });
-      const includedFileIds = fileIds ? new Set(fileIds) : null;
-      const archiveFiles = includedFileIds
-        ? workspaceSnapshot.files.filter((file) => includedFileIds.has(file.id))
-        : workspaceSnapshot.files;
-      const archive = createProjectArchive(archiveFiles, workspaceSnapshot.folders);
+      const archive = createProjectArchive(workspaceSnapshot.files, workspaceSnapshot.folders);
       downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
       showToast("Workspace files downloaded.");
     } catch (error) {

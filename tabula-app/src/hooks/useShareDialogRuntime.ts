@@ -19,7 +19,6 @@ type UseShareDialogRuntimeOptions = {
   isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
-  shareExcludedFileIds: readonly string[];
   shareOpen: boolean;
   startSessionUnavailableReason: string;
   onCloseShare: () => void;
@@ -36,7 +35,6 @@ export function useShareDialogRuntime({
   isLiveConnected,
   jsonShare,
   language,
-  shareExcludedFileIds,
   shareOpen,
   startSessionUnavailableReason,
   onCloseShare,
@@ -58,28 +56,7 @@ export function useShareDialogRuntime({
         : files,
     [activeFile, activeText, files],
   );
-  const excludedFileIds = useMemo(
-    () => new Set(shareExcludedFileIds),
-    [shareExcludedFileIds],
-  );
-  const includedFileIds = useMemo(
-    () =>
-      files
-        .filter((file) => !excludedFileIds.has(file.id))
-        .map((file) => file.id),
-    [excludedFileIds, files],
-  );
-  const roomPromptFiles = useMemo(() => {
-    if (roomFile?.roomId) {
-      return promptFiles.filter((file) => file.roomId === roomFile.roomId);
-    }
-    const includedIds = new Set(includedFileIds);
-    return promptFiles.filter((file) => includedIds.has(file.id));
-  }, [includedFileIds, promptFiles, roomFile?.roomId]);
-  const includedFileCount = useMemo(
-    () => includedFileIds.length,
-    [includedFileIds],
-  );
+  const roomPromptFiles = promptFiles;
   const shareView = buildShareViewModel({
     canStartSession,
     isLive,
@@ -123,7 +100,7 @@ export function useShareDialogRuntime({
 
   const exportToJsonLink = () => {
     void jsonShare
-      .exportLink(includedFileIds)
+      .exportLink()
       .then((exported) => {
         if (!exported) {
           onCloseShare();
@@ -161,11 +138,9 @@ export function useShareDialogRuntime({
     copy,
     copyLocalAgentPrompt,
     copyShareableLink,
-    excludedFileIds,
     exportLinkCopied,
     exportToJsonLink,
-    includedFileCount,
-    includedFileIds,
+    workspaceDocumentCount: files.length,
     shareModalTitle,
     shareView,
     stopSession,

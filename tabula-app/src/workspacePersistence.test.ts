@@ -83,6 +83,48 @@ describe("workspace persistence queue", () => {
     expect(queue.hasPending()).toBe(false);
   });
 
+  it("serializes writes and keeps only the latest state while a write is in flight", async () => {
+    let finishFirstWrite: (() => void) | undefined;
+    const firstWrite = new Promise<void>((resolve) => {
+      finishFirstWrite = resolve;
+    });
+    const writeWorkspace = vi.fn()
+      .mockReturnValueOnce(firstWrite)
+      .mockResolvedValue(undefined);
+    const queue = createWorkspacePersistenceQueue({ writeWorkspace });
+
+    queue.persistNow(createWorkspace("# First"));
+    queue.persistNow(createWorkspace("# Superseded"));
+    queue.persistNow(createWorkspace("# Latest"));
+
+    expect(writeWorkspace).toHaveBeenCalledTimes(1);
+    finishFirstWrite?.();
+    await firstWrite;
+    await vi.waitFor(() => expect(writeWorkspace).toHaveBeenCalledTimes(2));
+    expect(writeWorkspace).toHaveBeenLastCalledWith(createWorkspace("# Latest"));
+  });
+
+  it("does not discard an accepted write when a later debounce is cancelled", async () => {
+    let finishFirstWrite: (() => void) | undefined;
+    const firstWrite = new Promise<void>((resolve) => {
+      finishFirstWrite = resolve;
+    });
+    const writeWorkspace = vi.fn()
+      .mockReturnValueOnce(firstWrite)
+      .mockResolvedValue(undefined);
+    const queue = createWorkspacePersistenceQueue({ writeWorkspace });
+
+    queue.persistNow(createWorkspace("# First"));
+    queue.persistNow(createWorkspace("# Accepted latest"));
+    queue.schedule(createWorkspace("# Debounced only"));
+    queue.cancel();
+    finishFirstWrite?.();
+    await firstWrite;
+    await vi.waitFor(() => expect(writeWorkspace).toHaveBeenCalledTimes(2));
+
+    expect(writeWorkspace).toHaveBeenLastCalledWith(createWorkspace("# Accepted latest"));
+  });
+
   it("resolves pagehide flush snapshots after the editor runtime flushes", () => {
     let pendingText = "# Pending";
     const latestWorkspace = createWorkspace("# Stale");

@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /roomCheckpoints/{roomId}/{fileName} {
+      allow read: if roomId.matches('^[A-Za-z0-9_-]{1,64}$')
+        && fileName.matches('^[A-Fa-f0-9]{32}\\.bin$');
+      allow create: if roomId.matches('^[A-Za-z0-9_-]{1,64}$')
+        && fileName.matches('^[A-Fa-f0-9]{32}\\.bin$')
+        && request.resource.size > 0
+        && request.resource.size <= 18000000
+        && request.resource.contentType == 'application/octet-stream';
+      allow update: if false;
+      allow delete: if roomId.matches('^[A-Za-z0-9_-]{1,64}$')
+        && fileName.matches('^[A-Fa-f0-9]{32}\\.bin$');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

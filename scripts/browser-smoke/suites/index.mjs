@@ -16,6 +16,7 @@ import * as panels from "./panels.mjs";
 import * as collaboration from "./collaboration.mjs";
 import * as collaborationEditorTorture from "./collaboration-editor-torture.mjs";
 import * as collaborationMemory from "./collaboration-memory.mjs";
+import * as collaborationLifecycle from "./collaboration-lifecycle.mjs";
 import * as jsonShare from "./json-share.mjs";
 import * as performance from "./performance.mjs";
 
@@ -38,6 +39,7 @@ export const suites = [
   collaboration,
   collaborationEditorTorture,
   collaborationMemory,
+  collaborationLifecycle,
   jsonShare,
   performance,
 ];

@@ -25,8 +25,6 @@ export async function run(ctx) {
 
   const createDocument = async (page) => {
     await page.getByTitle("New document").click();
-    const sharedDocument = page.getByRole("menuitem", { name: "Shared document" });
-    if ((await sharedDocument.count()) === 1) await sharedDocument.click();
   };
 
   await withPage(browser, "/", async (page) => {

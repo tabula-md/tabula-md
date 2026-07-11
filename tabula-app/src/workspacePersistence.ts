@@ -30,6 +30,8 @@ export const createWorkspacePersistenceQueue = ({
 }: WorkspacePersistenceQueueOptions = {}) => {
   let pendingWorkspace: WorkspaceState | null = null;
   let pendingTimer: TimerHandle | null = null;
+  let queuedWrite: WorkspaceState | null = null;
+  let writeInFlight = false;
 
   const clearPendingTimer = () => {
     if (!pendingTimer) return;
@@ -37,11 +39,26 @@ export const createWorkspacePersistenceQueue = ({
     pendingTimer = null;
   };
 
+  const finishWrite = () => {
+    writeInFlight = false;
+    const nextWorkspace = queuedWrite;
+    queuedWrite = null;
+    if (nextWorkspace) persist(nextWorkspace);
+  };
+
   const persist = (workspace: WorkspaceState) => {
+    if (writeInFlight) {
+      queuedWrite = workspace;
+      return;
+    }
+    writeInFlight = true;
     try {
-      void Promise.resolve(writeWorkspace(workspace)).catch(onError);
+      void Promise.resolve(writeWorkspace(workspace))
+        .catch(onError)
+        .finally(finishWrite);
     } catch (error) {
       onError?.(error);
+      finishWrite();
     }
   };
 
@@ -62,7 +79,12 @@ export const createWorkspacePersistenceQueue = ({
       clearPendingTimer();
     },
     flush,
-    hasPending: () => Boolean(pendingWorkspace),
+    hasPending: () => Boolean(pendingWorkspace || queuedWrite),
+    persistNow: (workspace: WorkspaceState) => {
+      pendingWorkspace = null;
+      clearPendingTimer();
+      persist(workspace);
+    },
     schedule: (workspace: WorkspaceState) => {
       pendingWorkspace = workspace;
       clearPendingTimer();

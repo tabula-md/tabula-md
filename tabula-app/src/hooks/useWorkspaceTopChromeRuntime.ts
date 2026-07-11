@@ -30,17 +30,15 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   openFiles: WorkspaceFile[];
   roomFile?: WorkspaceFile;
   rightPanelOpen: boolean;
-  shareExcludedFileIds: readonly string[];
   startSessionUnavailableReason: string;
   topPopover: TopPopover;
   workspaceMenuOpen: boolean;
   onAddFile: () => void;
-  onAddPrivateFile: () => void;
   onChangeUserName: (nextName: string) => void;
   onCloseFile: (fileId: string) => void;
   onCommitUserName: () => void;
   onCopyShareUrl: () => void;
-  onDownloadProjectArchive: (fileIds?: readonly string[]) => void;
+  onDownloadProjectArchive: () => void;
   onReorderFiles: (sourceFileId: string, targetFileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onSelectFile: (fileId: string) => void;
@@ -48,7 +46,6 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   onStopSession: () => void;
   onRetrySession: () => void;
   onToggleRightPanel: () => void;
-  onToggleShareFileExcluded: (fileId: string) => void;
   onToggleWorkspaceMenu: () => void;
   setCenterPopover: SetCenterPopover;
   setPreferencesOpen: SetPreferencesOpen;
@@ -73,12 +70,10 @@ export function useWorkspaceTopChromeRuntime({
   openFiles,
   roomFile,
   rightPanelOpen,
-  shareExcludedFileIds,
   startSessionUnavailableReason,
   topPopover,
   workspaceMenuOpen,
   onAddFile,
-  onAddPrivateFile,
   onChangeUserName,
   onCloseFile,
   onCommitUserName,
@@ -91,7 +86,6 @@ export function useWorkspaceTopChromeRuntime({
   onStopSession,
   onRetrySession,
   onToggleRightPanel,
-  onToggleShareFileExcluded,
   onToggleWorkspaceMenu,
   setCenterPopover,
   setPreferencesOpen,
@@ -140,12 +134,10 @@ export function useWorkspaceTopChromeRuntime({
     openFiles,
     roomFile,
     rightPanelOpen,
-    shareExcludedFileIds,
     shareOpen,
     startSessionUnavailableReason,
     workspaceMenuOpen,
     onAddFile,
-    onAddPrivateFile,
     onChangeUserName,
     onChromeInteraction: closeDocumentChrome,
     onCloseFile,
@@ -160,7 +152,6 @@ export function useWorkspaceTopChromeRuntime({
     onStopSession,
     onRetrySession,
     onToggleRightPanel,
-    onToggleShareFileExcluded,
     onToggleShare: toggleShare,
     onToggleWorkspaceMenu,
   };

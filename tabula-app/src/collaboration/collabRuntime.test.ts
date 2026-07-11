@@ -105,7 +105,7 @@ describe("collaboration runtime model", () => {
         },
       }),
     ).toBe(true);
-    expect(shouldStartLiveRoomConnection({ file: liveFile, hasPendingInitialText: true, location: null })).toBe(true);
+    expect(shouldStartLiveRoomConnection({ file: liveFile, hasPendingStart: true, location: null })).toBe(true);
   });
 
   it("rejects missing, malformed, and mismatched live room links", () => {
@@ -166,12 +166,13 @@ describe("collaboration runtime model", () => {
         roomAvailability: available,
         createSession: (origin) => ({
           roomId: "room-1",
+          roomKey: VALID_ROOM_KEY,
           shareUrl: `${origin}/#room=room-1,${VALID_ROOM_KEY}`,
         }),
       }),
     ).toEqual({
-      initialText: "# Draft",
       roomId: "room-1",
+      roomKey: VALID_ROOM_KEY,
       shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
     });
   });

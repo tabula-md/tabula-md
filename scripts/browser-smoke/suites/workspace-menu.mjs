@@ -111,7 +111,7 @@ export async function run(ctx) {
     expect((await page.getByText("Publish with Tabula +").count()) === 0, "Share should not expose the Tabula + publish boundary yet.");
     expect(
       (await page.getByText(/Add content to Untitled(?: \d+)? before creating an Export link\./).count()) === 0,
-      "Export links should use the included workspace documents instead of blocking on the current empty file.",
+      "Export links should use the whole workspace instead of blocking on the current empty file.",
     );
 
     await page.keyboard.press("Escape");
@@ -275,14 +275,14 @@ export async function run(ctx) {
     expect((await shareModal.getByRole("tab").count()) === 0, "Share modal should be a single room/snapshot/export screen.");
     expect((await shareModal.getByRole("tab", { name: "Publish" }).count()) === 0, "Share modal should keep Publish hidden for now.");
     expect((await page.getByText("Live collaboration").count()) > 0, "Share modal should default to live collaboration.");
-    expect((await page.locator(".share-included-documents").count()) === 1, "Share modal should expose one shared workspace inclusion control.");
+    expect((await page.locator(".share-included-documents").count()) === 0, "Share modal should not expose document-level sharing scope.");
     expect((await page.getByText("Invite agent").count()) === 0, "Share modal should not invite agents before a room exists.");
     expect((await page.getByText("Export to link").count()) > 0, "Share modal should expose link export as a first-class local action.");
     expect(
       (await page.getByText("Create an encrypted point-in-time copy. Changes do not sync back.").count()) === 1,
       "Export link should describe an independent encrypted copy.",
     );
-    expect((await page.getByRole("button", { name: "Export to link" }).count()) === 1, "Share modal should offer export link from the same included documents.");
+    expect((await page.getByRole("button", { name: "Export to link" }).count()) === 1, "Share modal should export the whole workspace to a link.");
     expect((await page.getByText(/unavailable in this build/i).count()) === 0, "Share modal should not expose build-status copy to users.");
     expect((await page.getByText("Not live").count()) === 0, "Share link should not show redundant pre-live state text.");
     expect((await page.getByRole("button", { name: "Start session" }).count()) === 1, "Share should start a workspace room.");
@@ -387,7 +387,7 @@ export async function run(ctx) {
     expect(shareModalStyle.tabCount === 0, "Share modal should not expose legacy purpose tabs.");
     expect(shareModalStyle.dividerCount === 0, "Share modal should not use legacy stacked Or dividers.");
     expect(shareModalStyle.shareDividerCount === 1, "Share modal should separate live room and export choices.");
-    expect(/included documents/i.test(shareModalStyle.text), "Share modal should make the document scope explicit.");
+    expect(/whole workspace/i.test(shareModalStyle.text), "Share modal should make the whole-workspace contract explicit.");
     expect(/point-in-time/i.test(shareModalStyle.text), "Export link should be described as an independent point-in-time copy.");
     expect(!/\bpublish\b/i.test(shareModalStyle.text), "Export link should not be described as publishing.");
     const modalPointerState = await page.evaluate(() => {

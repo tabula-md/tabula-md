@@ -13,22 +13,20 @@ import type { WorkspaceShareCopy } from "../../workspaceLocale";
 type ShareExportPanelProps = {
   copy: WorkspaceShareCopy;
   exportLinkCopied: boolean;
-  includedFileCount: number;
-  includedFileIds: readonly string[];
   jsonShare: JsonShareController;
   shareView: ShareViewModel;
+  workspaceDocumentCount: number;
   onCopyShareableLink: () => void;
-  onDownloadProjectArchive: (fileIds?: readonly string[]) => void;
+  onDownloadProjectArchive: () => void;
   onExportToJsonLink: () => void;
 };
 
 export function ShareExportPanel({
   copy,
   exportLinkCopied,
-  includedFileCount,
-  includedFileIds,
   jsonShare,
   shareView,
+  workspaceDocumentCount,
   onCopyShareableLink,
   onDownloadProjectArchive,
   onExportToJsonLink,
@@ -60,8 +58,8 @@ export function ShareExportPanel({
         <button
           className="share-modal-secondary"
           type="button"
-          disabled={includedFileCount === 0}
-          onClick={() => onDownloadProjectArchive(includedFileIds)}
+          disabled={workspaceDocumentCount === 0}
+          onClick={onDownloadProjectArchive}
         >
           <FolderArchive size={16} />
           <span>{copy.exportPanel.projectArchiveTitle}</span>
@@ -92,6 +90,12 @@ export function ShareExportPanel({
                 </span>
               </button>
             </div>
+            <p className="share-modal-muted">
+              {jsonShare.documentCount} {jsonShare.documentCount === 1 ? "document" : "documents"}
+              {jsonShare.expiresAt
+                ? ` · Expires ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(jsonShare.expiresAt))}`
+                : ""}
+            </p>
           </div>
         </div>
       ) : null}

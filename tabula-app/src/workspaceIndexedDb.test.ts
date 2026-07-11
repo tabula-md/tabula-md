@@ -1,15 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   deleteIndexedDbWorkspace,
-  readIndexedDbRoomLocalWorkspace,
   readIndexedDbWorkspace,
-  writeIndexedDbRoomLocalWorkspace,
   writeIndexedDbWorkspace,
-  type RoomLocalWritePlan,
   type WorkspaceDatabaseAdapter,
   type WorkspaceWritePlan,
 } from "./workspaceIndexedDb";
-import { createRoomLocalWorkspaceState, type RoomLocalWorkspaceState } from "./roomLocalWorkspaceState";
 import { createWorkspaceFile, createWorkspaceRootFolder, type WorkspaceState } from "./workspaceStorage";
 
 const createWorkspace = (text: string): WorkspaceState => ({
@@ -22,9 +18,7 @@ const createWorkspace = (text: string): WorkspaceState => ({
 
 const createMemoryAdapter = () => {
   let workspace: WorkspaceState | null = null;
-  const roomWorkspaces = new Map<string, RoomLocalWorkspaceState>();
   const workspacePlans: WorkspaceWritePlan[] = [];
-  const roomPlans: RoomLocalWritePlan[] = [];
   const adapter: WorkspaceDatabaseAdapter = {
     readWorkspace: vi.fn(async () => workspace),
     writeWorkspace: vi.fn(async (plan) => {
@@ -33,18 +27,9 @@ const createMemoryAdapter = () => {
     deleteWorkspace: vi.fn(async () => {
       workspace = null;
     }),
-    readRoomLocalWorkspace: vi.fn(async (roomId, ownerId) => roomWorkspaces.get(`${roomId}:${ownerId}`) ?? null),
-    writeRoomLocalWorkspace: vi.fn(async (plan) => {
-      roomPlans.push(plan);
-    }),
-    deleteRoomLocalWorkspace: vi.fn(async (roomId, ownerId) => {
-      roomWorkspaces.delete(`${roomId}:${ownerId}`);
-    }),
   };
   return {
     adapter,
-    roomPlans,
-    roomWorkspaces,
     setWorkspace: (nextWorkspace: WorkspaceState | null) => {
       workspace = nextWorkspace;
     },
@@ -101,36 +86,5 @@ describe("workspace IndexedDB adapter", () => {
     await deleteIndexedDbWorkspace(memory.adapter);
 
     expect(memory.adapter.deleteWorkspace).toHaveBeenCalledTimes(1);
-  });
-
-  it("stores private room documents separately without room secrets", async () => {
-    const memory = createMemoryAdapter();
-    const workspace = createWorkspace("# Private");
-    workspace.files.push(createWorkspaceFile(2, {
-      id: "shared",
-      title: "Shared.md",
-      text: "# Shared",
-      roomId: "room-1",
-      shareUrl: "https://tabula.test/#room=room-1,secret",
-    }));
-    const state = createRoomLocalWorkspaceState("room-1", workspace);
-
-    await writeIndexedDbRoomLocalWorkspace(state, memory.adapter);
-    const plan = memory.roomPlans[0];
-
-    expect(plan?.manifest.fileOrder).toEqual(["local"]);
-    expect(plan?.filePuts.map((record) => record.id)).toEqual(["local"]);
-    expect(JSON.stringify(plan)).not.toContain("secret");
-    expect(JSON.stringify(plan)).not.toContain("# Shared");
-  });
-
-  it("hydrates private room state from the same normalized adapter", async () => {
-    const memory = createMemoryAdapter();
-    const state = createRoomLocalWorkspaceState("room-1", createWorkspace("# Private"));
-    memory.roomWorkspaces.set("room-1:browser", state);
-
-    const restored = await readIndexedDbRoomLocalWorkspace("room-1", "browser", memory.adapter);
-
-    expect(restored?.files[0]?.text).toBe("# Private");
   });
 });
