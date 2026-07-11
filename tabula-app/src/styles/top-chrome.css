@@ -984,8 +984,15 @@
   }
 
   .share-button {
-    width: 34px;
+    width: 36px;
+    height: 36px;
     padding: 0;
+  }
+
+  .top-panel-toggle {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
   }
 
   .share-label-visible,

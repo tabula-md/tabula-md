@@ -18,12 +18,22 @@ export function WorkspaceProjectContext({
   ...rightPanelProps
 }: WorkspaceProjectContextProps) {
   return (
-    <RightPanel
-      {...rightPanelProps}
-      activeFileId={activeFileId ?? ""}
-      commentsEnabled={isLive}
-      isLiveWorkspace={isLive}
-      getFileSearchText={getWorkspaceFileSearchText}
-    />
+    <>
+      {rightPanelProps.isOpen && (
+        <button
+          className="right-panel-backdrop"
+          type="button"
+          aria-label="Dismiss Project Context"
+          onClick={rightPanelProps.onClose}
+        />
+      )}
+      <RightPanel
+        {...rightPanelProps}
+        activeFileId={activeFileId ?? ""}
+        commentsEnabled={isLive}
+        isLiveWorkspace={isLive}
+        getFileSearchText={getWorkspaceFileSearchText}
+      />
+    </>
   );
 }

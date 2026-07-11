@@ -218,6 +218,13 @@
 }
 
 @media (max-width: 820px) {
+  .main-panel.right-panel-open .center-workbench,
+  .main-panel.right-panel-open .file-shell {
+    --document-safe-right: 0px;
+    --document-lane-margin-right: auto;
+    --split-safe-right: 0px;
+  }
+
   .center-workbench,
   .center-workbench.reading-narrow:not(.view-split),
   .center-workbench.reading-wide:not(.view-split),

@@ -290,4 +290,11 @@
   .tab-item {
     flex-basis: 112px;
   }
+
+  .add-tab-button,
+  .tab-scroll-button {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+  }
 }

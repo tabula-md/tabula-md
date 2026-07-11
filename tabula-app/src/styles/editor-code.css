@@ -225,6 +225,6 @@
 
 @media (max-width: 820px) {
   .markdown-editor .cm-gutters {
-    display: none;
+    display: none !important;
   }
 }

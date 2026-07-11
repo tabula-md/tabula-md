@@ -3,6 +3,7 @@ export const description = "Project menu, files, outline, comments, switcher, an
 
 export async function run(ctx) {
   const {
+    baseUrl,
     browser,
     expect,
     getTabs,
@@ -979,8 +980,7 @@ export async function run(ctx) {
       tabsScroll?.dispatchEvent(new Event("scroll"));
     });
     await waitForRenderFrame(page);
-    const activeReturnButton = await page.evaluate(() => {
-      const leftButton = document.querySelector(".tabbar > .tab-scroll-button");
+    const manualScrollButton = await page.evaluate(() => {
       const rightButton = document.querySelector(".tabbar-actions .tab-scroll-button");
       const tabsScroll = document.querySelector(".tabs-scroll");
       const activeTab = document.querySelector(".tab-item.active");
@@ -997,39 +997,26 @@ export async function run(ctx) {
           buttonRect.right <= window.innerWidth &&
           buttonRect.top >= 0 &&
           buttonRect.bottom <= window.innerHeight,
-        highlighted: rightButton.classList.contains("has-current-tab"),
-        leftHighlighted: Boolean(leftButton?.classList.contains("has-current-tab")),
         activeHiddenRight: activeRect.left > scrollRect.right - 4,
         label: rightButton.getAttribute("aria-label") ?? "",
+        scrollLeft: tabsScroll.scrollLeft,
       };
     });
-    expect(activeReturnButton?.visible, "The tab scroll button should remain visible when the active tab is outside the viewport.");
-    expect(activeReturnButton?.highlighted, "The scroll button toward the hidden active tab should be highlighted.");
-    expect(!activeReturnButton?.leftHighlighted, "Only the direction toward the hidden active tab should be highlighted.");
-    expect(activeReturnButton?.activeHiddenRight, "The smoke setup should hide the active tab to the right.");
-    expect(activeReturnButton?.label.includes(overflow.activeFileName), "The highlighted scroll button should name the active document.");
+    expect(manualScrollButton?.visible, "The tab scroll button should remain visible when later tabs are outside the viewport.");
+    expect(manualScrollButton?.activeHiddenRight, "The smoke setup should hide the active tab to the right.");
+    expect(manualScrollButton?.label === "Scroll tabs right", "Tab arrows should remain plain navigation controls.");
+    expect((await page.locator(".tab-scroll-button.has-current-tab").count()) === 0, "Tab arrows should not carry a second active-document state.");
 
-    const activeReturnButtonLocator = page.locator(".tab-scroll-button.has-current-tab");
-    expect((await activeReturnButtonLocator.count()) === 1, "There should be one highlighted active-tab scroll button.");
-    await activeReturnButtonLocator.click();
+    await page.locator(".tabbar-actions .tab-scroll-button").click();
     await waitForRenderFrame(page);
-    const returnedToActiveTab = await page.evaluate(() => {
-      const activeReturnButton = document.querySelector(".tab-scroll-button.has-current-tab");
+    const manualScrollResult = await page.evaluate(() => {
       const tabsScroll = document.querySelector(".tabs-scroll");
-      const activeTab = document.querySelector(".tab-item.active");
-      if (!tabsScroll || !activeTab) {
-        return null;
-      }
-
-      const scrollRect = tabsScroll.getBoundingClientRect();
-      const activeRect = activeTab.getBoundingClientRect();
-      return {
-        activeReturnVisible: Boolean(activeReturnButton),
-        activeVisible: activeRect.left >= scrollRect.left - 1 && activeRect.right <= scrollRect.right + 1,
-      };
+      return tabsScroll?.scrollLeft ?? null;
     });
-    expect(returnedToActiveTab?.activeVisible, "Clicking the highlighted scroll button should scroll the active tab back into view.");
-    expect(!returnedToActiveTab?.activeReturnVisible, "The scroll button highlight should disappear once the active tab is visible.");
+    expect(
+      typeof manualScrollResult === "number" && manualScrollResult > (manualScrollButton?.scrollLeft ?? 0),
+      "Clicking the right tab arrow should advance the tab strip.",
+    );
 
     if ((await page.locator(".right-panel").count()) === 0) {
       await openProjectContext(page);
@@ -1257,4 +1244,62 @@ export async function run(ctx) {
     expect(filesAfterImport.activeTabTitle === "Panel Import.md", "Right Files import should open the imported file as a tab.");
     expect(filesAfterImport.editorText.includes("Imported from Files"), "Right Files import should load the Markdown content.");
   });
+
+  const mobileContext = await browser.newContext({ viewport: { width: 390, height: 820 } });
+  const mobilePage = await mobileContext.newPage();
+  try {
+    await mobilePage.goto(baseUrl);
+    await mobilePage.getByTitle("New document").click();
+    await waitForEditorReady(mobilePage, { mode: "edit" });
+    for (let index = 0; index < 4; index += 1) {
+      await mobilePage.getByTitle("New document").click();
+    }
+    await waitForRenderFrame(mobilePage);
+
+    const mobileActiveTab = await mobilePage.evaluate(() => {
+      const tabs = document.querySelector(".tabs-scroll");
+      const active = document.querySelector(".tab-item.active");
+      if (!tabs || !active) return null;
+      const tabsRect = tabs.getBoundingClientRect();
+      const activeRect = active.getBoundingClientRect();
+      return {
+        visible: activeRect.left >= tabsRect.left - 1 && activeRect.right <= tabsRect.right + 1,
+        label: active.querySelector(".tab-title")?.textContent?.trim() ?? "",
+      };
+    });
+    expect(mobileActiveTab?.visible, "Creating a mobile document should keep the active tab visible.");
+    expect(mobileActiveTab?.label, "The visible mobile tab should name the active document.");
+
+    await openProjectContext(mobilePage);
+    const mobilePanel = await mobilePage.evaluate(() => {
+      const panel = document.querySelector(".right-panel");
+      const backdrop = document.querySelector(".right-panel-backdrop");
+      const shell = document.querySelector(".file-shell");
+      const gutter = document.querySelector(".cm-gutters");
+      if (!panel || !backdrop || !shell || !gutter) return null;
+      const panelRect = panel.getBoundingClientRect();
+      return {
+        panelLeft: Math.round(panelRect.left),
+        panelRight: Math.round(panelRect.right),
+        panelHeight: Math.round(panelRect.height),
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        backdropDisplay: getComputedStyle(backdrop).display,
+        documentSafeRight: getComputedStyle(shell).getPropertyValue("--document-safe-right").trim(),
+        gutterDisplay: getComputedStyle(gutter).display,
+      };
+    });
+    expect(mobilePanel?.panelLeft === 0, "Mobile Project Context should start at the left viewport edge.");
+    expect(mobilePanel?.panelRight === mobilePanel?.viewportWidth, "Mobile Project Context should fill the viewport width.");
+    expect(mobilePanel?.panelHeight === mobilePanel?.viewportHeight, "Mobile Project Context should fill the viewport height.");
+    expect(mobilePanel?.backdropDisplay !== "none", "Mobile Project Context should block the document behind it.");
+    expect(mobilePanel?.documentSafeRight === "0px", "Overlay panels should not shrink the document lane.");
+    expect(mobilePanel?.gutterDisplay === "none", "Mobile editors should not paint collapsed gutter content.");
+
+    await mobilePage.getByRole("button", { name: "Close Project Context" }).click();
+    await waitForRenderFrame(mobilePage);
+    expect((await mobilePage.locator(".right-panel-backdrop").count()) === 0, "Closing Project Context should remove its backdrop.");
+  } finally {
+    await mobileContext.close();
+  }
 }
