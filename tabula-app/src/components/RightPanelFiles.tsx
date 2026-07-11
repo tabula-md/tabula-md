@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
+import { getLiveFolderScope } from "../liveWorkspaceScope";
 import { WORKSPACE_ROOT_FOLDER_ID, type FileComment, type WorkspaceFile, type WorkspaceFolder } from "../workspaceStorage";
 import {
   getWorkspaceFileDisplayTitles,
@@ -54,7 +55,7 @@ type RightPanelFilesProps = {
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
   onNewPrivateFile: () => void;
-  onNewFolder: (parentId?: string, scope?: "shared" | "private") => void;
+  onNewFolder: (parentId?: string, scope?: "shared" | "private") => WorkspaceFolder | undefined;
   onShareFile: (fileId: string) => void;
   onMakeLocalFileCopy: (fileId: string) => void;
   onShareFolder: (folderId: string) => void;
@@ -366,19 +367,41 @@ export function RightPanelFiles({
     }
   };
 
-  const nodeHasLiveFile = (node: FileTreeNode): boolean => {
+  const createAndRenameFolder = (parentId?: string, scope: "shared" | "private" = "shared") => {
+    const folder = onNewFolder(parentId, scope);
+    if (!folder) return;
+    if (parentId && collapsedFolderIds.has(parentId)) onToggleFolder(parentId);
+    setRenamingFolderId(folder.id);
+    setRenamingFolderTitle(folder.title);
+  };
+
+  const getNodeFileIds = (node: FileTreeNode): string[] => {
     if (node.type === "file") {
-      return liveFileIdSet.has(node.file.id);
+      return [node.file.id];
     }
 
-    return node.children.some(nodeHasLiveFile);
+    return node.children.flatMap(getNodeFileIds);
   };
 
   const renderFileTreeNode = (node: FileTreeNode, depth: number) => {
     if (node.type === "folder") {
       const folderCollapsed = collapsedFolderIds.has(node.id);
-      const folderHasLiveFile = Boolean(node.folder.roomId) || nodeHasLiveFile(node);
-      const folderIsPrivate = hasLiveWorkspace && !folderHasLiveFile;
+      const folderScope = getLiveFolderScope({
+        folderRoomId: node.folder.roomId,
+        descendantFileIds: getNodeFileIds(node),
+        liveFileIds: liveFileIdSet,
+        isLive: hasLiveWorkspace,
+      });
+      const folderIsPrivate = folderScope === "private";
+      const folderIsShared = folderScope === "shared";
+      const folderIsMixed = folderScope === "mixed";
+      const folderScopeTitle = folderIsPrivate
+        ? "Private to this browser"
+        : folderIsShared
+          ? "Shared in this room"
+          : folderIsMixed
+            ? "Contains shared and private documents"
+            : undefined;
       const isRootFolder = node.id === WORKSPACE_ROOT_FOLDER_ID;
       const folderMenuOpen = actionMenuFolderId === node.id;
       const folderIsRenaming = renamingFolderId === node.id;
@@ -397,11 +420,11 @@ export function RightPanelFiles({
             >
               {folderCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
               <span
-                className={`right-file-folder-icon ${folderHasLiveFile ? "live" : ""} ${folderIsPrivate ? "private" : ""}`}
-                title={folderIsPrivate ? "Private to this browser" : undefined}
+                className={`right-file-folder-icon ${folderIsShared ? "live" : ""} ${folderIsMixed ? "mixed" : ""} ${folderIsPrivate ? "private" : ""}`}
+                title={folderScopeTitle}
               >
                 <Folder size={15} />
-                {folderHasLiveFile && <span className="right-file-icon-live-dot" aria-hidden="true" />}
+                {(folderIsShared || folderIsMixed) && <span className="right-file-icon-live-dot" aria-hidden="true" />}
               </span>
               {folderIsRenaming ? (
                 <input
@@ -438,14 +461,22 @@ export function RightPanelFiles({
                     <span className="right-file-action-menu" role="menu" aria-label={`${node.name} actions`}>
                       <button type="button" role="menuitem" onClick={() => {
                         setActionMenuFolderId(null);
-                        onNewFolder(node.id, folderHasLiveFile ? "shared" : "private");
+                        createAndRenameFolder(node.id, hasLiveWorkspace ? "shared" : "private");
                       }}>
-                        <Folder size={13} /><span>New subfolder</span>
+                        <Folder size={13} /><span>{hasLiveWorkspace ? "New shared subfolder" : "New subfolder"}</span>
                       </button>
+                      {hasLiveWorkspace && (
+                        <button type="button" role="menuitem" onClick={() => {
+                          setActionMenuFolderId(null);
+                          createAndRenameFolder(node.id, "private");
+                        }}>
+                          <HardDrive size={13} /><span>New private subfolder</span>
+                        </button>
+                      )}
                       <button type="button" role="menuitem" onClick={() => { setActionMenuFolderId(null); setRenamingFolderId(node.id); setRenamingFolderTitle(node.name); }}>
                         <PencilLine size={13} /><span>Rename</span>
                       </button>
-                      {hasLiveWorkspace && !folderHasLiveFile && (
+                      {hasLiveWorkspace && folderIsPrivate && (
                         <button type="button" role="menuitem" onClick={() => {
                           setActionMenuFolderId(null);
                           onShareFolder(node.id);
@@ -557,7 +588,7 @@ export function RightPanelFiles({
               >
                 <span
                   className={`right-file-document-icon ${hasLiveWorkspace && !fileIsShared ? "private" : ""}`}
-                  title={hasLiveWorkspace && !fileIsShared ? "Private to this browser" : "Shared in this room"}
+                  title={hasLiveWorkspace ? (fileIsShared ? "Shared in this room" : "Private to this browser") : "Local document"}
                 >
                   {hasLiveWorkspace && !fileIsShared ? <HardDrive size={15} /> : <File size={16} />}
                 </span>
@@ -683,8 +714,8 @@ export function RightPanelFiles({
         <NewFolderButton
           buttonClassName="right-file-import-button"
           live={hasLiveWorkspace}
-          onCreateShared={() => onNewFolder(undefined, "shared")}
-          onCreatePrivate={() => onNewFolder(undefined, "private")}
+          onCreateShared={() => createAndRenameFolder(undefined, "shared")}
+          onCreatePrivate={() => createAndRenameFolder(undefined, "private")}
         />
         <NewDocumentButton
           buttonClassName="right-file-create-button"

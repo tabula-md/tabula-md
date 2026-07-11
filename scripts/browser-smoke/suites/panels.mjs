@@ -101,7 +101,7 @@ export async function run(ctx) {
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the right project context panel.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New File|Open File...|Import project...|Save File...|Export project...|Live collaboration...|Preferences|About|Help|Follow us|GitHub",
+        "New File|Open File...|Restore workspace backup...|Save File...|Back up workspace...|Live collaboration...|Preferences|About|Help|Follow us|GitHub",
       "The workspace menu should only expose implemented file, collaboration, preferences, support, and public links.",
     );
     const xPublicLink = workbenchPanels.publicLinks.find((link) => link.text === "Follow us");

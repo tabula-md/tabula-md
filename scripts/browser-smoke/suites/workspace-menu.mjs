@@ -174,7 +174,7 @@ export async function run(ctx) {
         emptyChromeState.workspaceText.includes("Browse project files") &&
         emptyChromeState.workspaceText.includes("Help") &&
         !emptyChromeState.workspaceText.includes("Import file") &&
-        !emptyChromeState.workspaceText.includes("Export project") &&
+        !emptyChromeState.workspaceText.includes("Back up workspace") &&
         !emptyChromeState.workspaceText.includes("Project menu") &&
         !emptyChromeState.workspaceText.includes("No file open") &&
         !emptyChromeState.workspaceText.includes("Tabula.md"),

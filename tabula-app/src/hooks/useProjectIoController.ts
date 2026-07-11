@@ -207,7 +207,7 @@ export function useProjectIoController({
       commentsByFileId,
     });
     downloadTextFile(download.fileName, download.content, download.type);
-    showToast("Project downloaded.");
+    showToast("Workspace backup downloaded.");
   };
 
   const downloadProjectArchive = (fileIds?: readonly string[]) => {
@@ -227,7 +227,7 @@ export function useProjectIoController({
         : workspaceSnapshot.files;
       const archive = createProjectArchive(archiveFiles, workspaceSnapshot.folders);
       downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
-      showToast("Project archive downloaded.");
+      showToast("Workspace files downloaded.");
     } catch (error) {
       clientErrorReporter.report({
         feature: "workspace",
@@ -261,7 +261,7 @@ export function useProjectIoController({
     resetCollaborationState(nextActiveFile?.roomId ? "connecting" : "idle");
     onCloseChrome();
     syncUrlForFile(nextActiveFile);
-    showToast("Project imported.");
+    showToast("Workspace backup restored.");
   };
 
   const importFile = async (file: File) => {

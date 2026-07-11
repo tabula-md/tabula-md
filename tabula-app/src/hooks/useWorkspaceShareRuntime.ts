@@ -15,6 +15,7 @@ type UseWorkspaceShareRuntimeOptions = {
   folders: WorkspaceFolder[];
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   onBeforeWorkspaceBoundary?: () => void;
+  shareExcludedFileIds: readonly string[];
   resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   retryCollaborationConnection: () => void;
   setCopiedFileId: Dispatch<SetStateAction<string | null>>;
@@ -33,6 +34,7 @@ export function useWorkspaceShareRuntime({
   folders,
   getActiveFileSnapshot,
   onBeforeWorkspaceBoundary,
+  shareExcludedFileIds,
   resetCollaborationState,
   retryCollaborationConnection,
   setCopiedFileId,
@@ -49,6 +51,7 @@ export function useWorkspaceShareRuntime({
     folders,
     getActiveFileSnapshot,
     onBeforeWorkspaceBoundary,
+    shareExcludedFileIds,
     showToast,
   });
   const liveRoom = useWorkspaceLiveRoomController({

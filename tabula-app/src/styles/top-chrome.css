@@ -369,7 +369,8 @@
 }
 
 .json-import-state,
-.json-import-warning {
+.json-import-warning,
+.json-import-copy {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
@@ -384,8 +385,26 @@
 }
 
 .json-import-state p,
-.json-import-warning p {
+.json-import-warning p,
+.json-import-copy p {
   margin: 0;
+}
+
+.json-import-files {
+  display: grid;
+  gap: 3px;
+  margin: 10px 0;
+  padding: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  list-style: none;
+}
+
+.json-import-files li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .json-import-state svg {

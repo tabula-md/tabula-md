@@ -162,7 +162,7 @@ export function useWorkspaceRuntime() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
   const [shortcutLabels] = useState(() => getShortcutLabels());
-  const { toast, showToast } = useAppToast();
+  const { dismissToast, pauseToast, resumeToast, toast, showToast } = useAppToast();
   const { identity, updateIdentityName, normalizeIdentityName } =
     useWorkspaceIdentity();
   const roomCommentActionsRef = useRef<{
@@ -612,6 +612,7 @@ export function useWorkspaceRuntime() {
     };
   }, [activeRoomId, addRoomCommentReply, deleteRoomComment, files, setRoomCommentResolved, upsertRoomComment]);
   const isLiveConnected = isLive && connectionStatus === "connected";
+  const isLiveChromeVisible = isLive && !liveRoomOpenFailure && !liveRoomOpenTimedOut;
   const {
     canRedo,
     canUndo,
@@ -682,6 +683,7 @@ export function useWorkspaceRuntime() {
       folders,
       getActiveFileSnapshot,
       onBeforeWorkspaceBoundary: flushPendingEditorCommit,
+      shareExcludedFileIds,
       resetCollaborationState,
       retryCollaborationConnection,
       setCopiedFileId,
@@ -925,12 +927,15 @@ export function useWorkspaceRuntime() {
   const setFolderPathRoom = useEventCallback((folderId: string | null | undefined, roomId: string) => {
     const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
     const visited = new Set<string>();
+    let promotedLocalPath = false;
     let currentId = folderId ?? WORKSPACE_ROOT_FOLDER_ID;
     while (currentId !== WORKSPACE_ROOT_FOLDER_ID && !visited.has(currentId)) {
       visited.add(currentId);
+      if (foldersById.get(currentId)?.roomId !== roomId) promotedLocalPath = true;
       setFolderCollaborationRoom(currentId, roomId);
       currentId = foldersById.get(currentId)?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     }
+    return promotedLocalPath;
   });
   const shareFileInRoom = useEventCallback((fileId: string) => {
     const file = files.find((candidate) => candidate.id === fileId);
@@ -994,6 +999,7 @@ export function useWorkspaceRuntime() {
       return;
     }
     if (roomId) setFolderPathRoom(folder.parentId, roomId);
+    return folder;
   });
   const {
     activeCommentAnchors,
@@ -1085,7 +1091,7 @@ export function useWorkspaceRuntime() {
       focusTextRange,
       formatCommentDate,
       identityName: identity.name,
-      isLive,
+      isLive: isLiveChromeVisible,
       roomId: activeRoomId,
       onAddComment: addFileComment,
       onAddCommentReply: addFileCommentReply,
@@ -1143,14 +1149,25 @@ export function useWorkspaceRuntime() {
       onRenameFolder: renameFolder,
       onMoveFileToFolder: (fileId, folderId) => {
         const movingFile = files.find((file) => file.id === fileId);
-        if (movingFile?.roomId && activeRoomId) setFolderPathRoom(folderId, activeRoomId);
+        const promotedLocalPath = Boolean(
+          movingFile?.roomId && activeRoomId && setFolderPathRoom(folderId, activeRoomId),
+        );
         moveFileToFolder(fileId, folderId);
+        if (promotedLocalPath) {
+          showToast("The folder path is now shared. Private documents inside it stay local.");
+        }
       },
       onMoveFolder: (folderId, parentId) => {
         const movingFolder = folders.find((folder) => folder.id === folderId);
-        if (movingFolder?.roomId && activeRoomId) setFolderPathRoom(parentId, activeRoomId);
         if (!moveFolder(folderId, parentId)) {
           showToast("This folder can’t be moved there.", "error");
+          return;
+        }
+        const promotedLocalPath = Boolean(
+          movingFolder?.roomId && activeRoomId && setFolderPathRoom(parentId, activeRoomId),
+        );
+        if (promotedLocalPath) {
+          showToast("The parent folder path is now shared. Private documents inside it stay local.");
         }
       },
       onReplyDraftChange: updateCommentReplyDraft,
@@ -1180,7 +1197,7 @@ export function useWorkspaceRuntime() {
     currentUserName: identity.name,
     files,
     identity: presenceIdentity,
-    isLive,
+    isLive: isLiveChromeVisible,
     isLiveConnected,
     jsonShare,
     language: workspacePreferences.language,
@@ -1287,6 +1304,9 @@ export function useWorkspaceRuntime() {
     overlayProps: {
       jsonShareImport,
       toast,
+      onDismissToast: dismissToast,
+      onPauseToast: pauseToast,
+      onResumeToast: resumeToast,
       onCloseJsonShareImport: closeJsonShareImport,
       onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
     },
