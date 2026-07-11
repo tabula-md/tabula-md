@@ -6,19 +6,28 @@ import {
   Ellipsis,
   File,
   Folder,
+  FolderInput,
+  HardDrive,
   PencilLine,
-  Plus,
   Trash2,
   Upload,
+  Users,
   X,
 } from "lucide-react";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
-import type { FileComment, WorkspaceFile } from "../workspaceStorage";
+import { WORKSPACE_ROOT_FOLDER_ID, type FileComment, type WorkspaceFile, type WorkspaceFolder } from "../workspaceStorage";
+import {
+  getWorkspaceFileDisplayTitles,
+  getWorkspaceFolderDisplayTitles,
+} from "../workspaceDisplayTitles";
+import { NewDocumentButton } from "./NewDocumentButton";
+import { NewFolderButton } from "./NewFolderButton";
 
 type FileTreeFolderNode = {
   type: "folder";
   id: string;
   name: string;
+  folder: WorkspaceFolder;
   children: FileTreeNode[];
 };
 
@@ -33,15 +42,22 @@ type FileTreeNode = FileTreeFolderNode | FileTreeFileNode;
 
 type RightPanelFilesProps = {
   files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
   openFileIds: string[];
   activeFileId: string;
   fileQuery: string;
   liveFileIds: readonly string[];
+  isLiveWorkspace: boolean;
   commentsByFileId: Record<string, FileComment[]>;
   collapsedFolderIds: Set<string>;
   getFileSearchText: (file: WorkspaceFile) => string;
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
+  onNewPrivateFile: () => void;
+  onNewFolder: (parentId?: string, scope?: "shared" | "private") => void;
+  onShareFile: (fileId: string) => void;
+  onMakeLocalFileCopy: (fileId: string) => void;
+  onShareFolder: (folderId: string) => void;
   onImportFile: () => void;
   onToggleFolder: (folderId: string) => void;
   onSelectFile: (fileId: string) => void;
@@ -49,15 +65,13 @@ type RightPanelFilesProps = {
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
+  onDeleteFolder: (folderId: string) => void;
+  onMoveFileToFolder: (fileId: string, folderId: string) => void;
+  onMoveFolder: (folderId: string, parentId: string) => void;
+  onRenameFolder: (folderId: string, nextTitle: string) => boolean;
 };
 
 const RIGHT_TREE_INDENT = 20;
-
-const getFileTreeParts = (title: string) =>
-  title
-    .split(/[\\/]+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
 
 const getFileDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
 
@@ -82,43 +96,64 @@ const sortFileTree = (folderNode: FileTreeFolderNode) => {
   return folderNode;
 };
 
-const buildFileTree = (files: WorkspaceFile[]): FileTreeFolderNode => {
+export const buildFileTree = (
+  files: WorkspaceFile[],
+  folders: WorkspaceFolder[],
+  displayTitles = getWorkspaceFileDisplayTitles(files),
+  folderDisplayTitles = getWorkspaceFolderDisplayTitles(folders),
+): FileTreeFolderNode => {
+  const rootFolder = folders.find((folder) => folder.id === WORKSPACE_ROOT_FOLDER_ID) ?? {
+    id: WORKSPACE_ROOT_FOLDER_ID,
+    title: "Project",
+    parentId: null,
+  };
   const rootNode: FileTreeFolderNode = {
     type: "folder",
-    id: "project-root",
-    name: "Project",
+    id: rootFolder.id,
+    name: rootFolder.title,
+    folder: rootFolder,
     children: [],
   };
 
-  for (const file of files) {
-    const parts = getFileTreeParts(file.title);
-    const fileName = parts.at(-1) || file.title;
-    let currentFolder = rootNode;
-
-    for (const folderName of parts.slice(0, -1)) {
-      const existingFolder = currentFolder.children.find(
-        (child): child is FileTreeFolderNode => child.type === "folder" && child.name === folderName,
-      );
-
-      if (existingFolder) {
-        currentFolder = existingFolder;
-        continue;
-      }
-
-      const nextFolder: FileTreeFolderNode = {
+  const nodesById = new Map<string, FileTreeFolderNode>([[rootNode.id, rootNode]]);
+  const pendingFolders = folders.filter((folder) => folder.id !== rootNode.id);
+  let attempts = 0;
+  while (pendingFolders.length > 0 && attempts <= folders.length) {
+    attempts += 1;
+    for (let index = pendingFolders.length - 1; index >= 0; index -= 1) {
+      const folder = pendingFolders[index];
+      const parent = nodesById.get(folder.parentId ?? rootNode.id);
+      if (!parent) continue;
+      const node: FileTreeFolderNode = {
         type: "folder",
-        id: `${currentFolder.id}/${folderName}`,
-        name: folderName,
+        id: folder.id,
+        name: folderDisplayTitles.get(folder.id) ?? folder.title,
+        folder,
         children: [],
       };
-      currentFolder.children.push(nextFolder);
-      currentFolder = nextFolder;
+      parent.children.push(node);
+      nodesById.set(folder.id, node);
+      pendingFolders.splice(index, 1);
     }
+  }
+  for (const folder of pendingFolders) {
+    const node: FileTreeFolderNode = {
+      type: "folder",
+      id: folder.id,
+      name: folderDisplayTitles.get(folder.id) ?? folder.title,
+      folder,
+      children: [],
+    };
+    rootNode.children.push(node);
+    nodesById.set(folder.id, node);
+  }
 
-    currentFolder.children.push({
+  for (const file of files) {
+    const parent = nodesById.get(file.parentId ?? rootNode.id) ?? rootNode;
+    parent.children.push({
       type: "file",
       id: file.id,
-      name: fileName,
+      name: displayTitles.get(file.id) ?? file.title,
       file,
     });
   }
@@ -147,15 +182,22 @@ const collectVisibleFileIds = (
 
 export function RightPanelFiles({
   files,
+  folders,
   openFileIds,
   activeFileId,
   fileQuery,
   liveFileIds,
+  isLiveWorkspace,
   commentsByFileId,
   collapsedFolderIds,
   getFileSearchText,
   onFileQueryChange,
   onNewFile,
+  onNewPrivateFile,
+  onNewFolder,
+  onShareFile,
+  onMakeLocalFileCopy,
+  onShareFolder,
   onImportFile,
   onToggleFolder,
   onSelectFile,
@@ -163,10 +205,17 @@ export function RightPanelFiles({
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
+  onDeleteFolder,
+  onMoveFileToFolder,
+  onMoveFolder,
+  onRenameFolder,
 }: RightPanelFilesProps) {
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState("");
   const [actionMenuFileId, setActionMenuFileId] = useState<string | null>(null);
+  const [actionMenuFolderId, setActionMenuFolderId] = useState<string | null>(null);
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [renamingFolderTitle, setRenamingFolderTitle] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -177,7 +226,10 @@ export function RightPanelFiles({
   const visibleFiles = normalizedQuery
     ? files.filter((file) => getFileSearchText(file).toLowerCase().includes(normalizedQuery))
     : files;
-  const fileTreeRoot = buildFileTree(visibleFiles);
+  const hasLiveWorkspace = isLiveWorkspace;
+  const displayTitles = getWorkspaceFileDisplayTitles(files);
+  const folderDisplayTitles = getWorkspaceFolderDisplayTitles(folders);
+  const fileTreeRoot = buildFileTree(visibleFiles, folders, displayTitles, folderDisplayTitles);
   const visibleFileIds = collectVisibleFileIds(fileTreeRoot, collapsedFolderIds);
 
   useLayoutEffect(() => {
@@ -194,7 +246,7 @@ export function RightPanelFiles({
   }, [renamingFileId]);
 
   useEffect(() => {
-    if (!actionMenuFileId) {
+    if (!actionMenuFileId && !actionMenuFolderId) {
       return;
     }
 
@@ -204,6 +256,7 @@ export function RightPanelFiles({
       }
 
       setActionMenuFileId(null);
+      setActionMenuFolderId(null);
     };
 
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -219,7 +272,7 @@ export function RightPanelFiles({
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [actionMenuFileId]);
+  }, [actionMenuFileId, actionMenuFolderId]);
 
   const startRenamingFile = (file: WorkspaceFile) => {
     setActionMenuFileId(null);
@@ -324,24 +377,101 @@ export function RightPanelFiles({
   const renderFileTreeNode = (node: FileTreeNode, depth: number) => {
     if (node.type === "folder") {
       const folderCollapsed = collapsedFolderIds.has(node.id);
-      const folderHasLiveFile = nodeHasLiveFile(node);
+      const folderHasLiveFile = Boolean(node.folder.roomId) || nodeHasLiveFile(node);
+      const folderIsPrivate = hasLiveWorkspace && !folderHasLiveFile;
+      const isRootFolder = node.id === WORKSPACE_ROOT_FOLDER_ID;
+      const folderMenuOpen = actionMenuFolderId === node.id;
+      const folderIsRenaming = renamingFolderId === node.id;
 
       return (
         <li className="right-file-tree-node folder" key={node.id}>
-          <button
+          <div
             className="right-row right-file-tree-row folder"
-            type="button"
             style={{ paddingLeft: `${depth * RIGHT_TREE_INDENT}px` }}
-            aria-expanded={!folderCollapsed}
-            onClick={() => onToggleFolder(node.id)}
           >
-            {folderCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
-            <span className={`right-file-folder-icon ${folderHasLiveFile ? "live" : ""}`}>
-              <Folder size={15} />
-              {folderHasLiveFile && <span className="right-file-icon-live-dot" aria-hidden="true" />}
-            </span>
-            <span className="right-row-label">{node.name}</span>
-          </button>
+            <button
+              className="right-file-open-button"
+              type="button"
+              aria-expanded={!folderCollapsed}
+              onClick={() => onToggleFolder(node.id)}
+            >
+              {folderCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+              <span
+                className={`right-file-folder-icon ${folderHasLiveFile ? "live" : ""} ${folderIsPrivate ? "private" : ""}`}
+                title={folderIsPrivate ? "Private to this browser" : undefined}
+              >
+                <Folder size={15} />
+                {folderHasLiveFile && <span className="right-file-icon-live-dot" aria-hidden="true" />}
+              </span>
+              {folderIsRenaming ? (
+                <input
+                  className="right-file-rename-input"
+                  value={renamingFolderTitle}
+                  aria-label={`Rename ${node.name} folder`}
+                  onClick={(event) => event.stopPropagation()}
+                  onChange={(event) => setRenamingFolderTitle(event.target.value)}
+                  onBlur={() => {
+                    if (onRenameFolder(node.id, renamingFolderTitle)) setRenamingFolderId(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && onRenameFolder(node.id, renamingFolderTitle)) setRenamingFolderId(null);
+                    if (event.key === "Escape") setRenamingFolderId(null);
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <span className="right-row-label">{node.name}</span>
+              )}
+            </button>
+            {!isRootFolder && !folderIsRenaming && (
+              <span className="right-file-actions">
+                <span className="right-file-menu-wrap">
+                  <button
+                    className="right-file-action"
+                    type="button"
+                    aria-label={`More actions for ${node.name}`}
+                    onClick={() => setActionMenuFolderId(folderMenuOpen ? null : node.id)}
+                  >
+                    <Ellipsis size={14} />
+                  </button>
+                  {folderMenuOpen && (
+                    <span className="right-file-action-menu" role="menu" aria-label={`${node.name} actions`}>
+                      <button type="button" role="menuitem" onClick={() => {
+                        setActionMenuFolderId(null);
+                        onNewFolder(node.id, folderHasLiveFile ? "shared" : "private");
+                      }}>
+                        <Folder size={13} /><span>New subfolder</span>
+                      </button>
+                      <button type="button" role="menuitem" onClick={() => { setActionMenuFolderId(null); setRenamingFolderId(node.id); setRenamingFolderTitle(node.name); }}>
+                        <PencilLine size={13} /><span>Rename</span>
+                      </button>
+                      {hasLiveWorkspace && !folderHasLiveFile && (
+                        <button type="button" role="menuitem" onClick={() => {
+                          setActionMenuFolderId(null);
+                          onShareFolder(node.id);
+                        }}>
+                          <Users size={13} /><span>Share folder</span>
+                        </button>
+                      )}
+                      <label className="right-file-move-field">
+                        <FolderInput size={13} />
+                        <select value={node.folder.parentId ?? WORKSPACE_ROOT_FOLDER_ID} aria-label={`Move ${node.name}`} onChange={(event) => { onMoveFolder(node.id, event.target.value); setActionMenuFolderId(null); }}>
+                          {folders.filter((folder) => folder.id !== node.id).map((folder) => (
+                            <option key={folder.id} value={folder.id}>
+                              {folderDisplayTitles.get(folder.id) ?? folder.title}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button className="danger" type="button" role="menuitem" onClick={() => { setActionMenuFolderId(null); onDeleteFolder(node.id); }}>
+                        <Trash2 size={13} /><span>Delete</span>
+                      </button>
+                    </span>
+                  )}
+                </span>
+              </span>
+            )}
+          </div>
           {!folderCollapsed && node.children.length > 0 && (
             <ol className="right-file-tree-children">
               {node.children.map((childNode) => renderFileTreeNode(childNode, depth + 1))}
@@ -354,10 +484,10 @@ export function RightPanelFiles({
     const file = node.file;
     const openComments = getFileComments(file.id).filter((comment) => !comment.resolved);
     const isActiveFile = file.id === activeFileId;
-    const isLiveFile = liveFileIdSet.has(file.id);
     const isOpenFile = openFileIdSet.has(file.id);
     const isRenaming = file.id === renamingFileId;
     const menuOpen = file.id === actionMenuFileId;
+    const fileIsShared = liveFileIdSet.has(file.id);
 
     return (
       <li className="right-file-tree-node file" key={node.id}>
@@ -368,9 +498,8 @@ export function RightPanelFiles({
         >
           {isRenaming ? (
             <div className="right-file-open-button">
-              <span className={`right-file-document-icon ${isLiveFile ? "live" : ""}`}>
-                <File size={16} />
-                {isLiveFile && <span className="right-file-icon-live-dot" aria-hidden="true" />}
+              <span className={`right-file-document-icon ${hasLiveWorkspace && !fileIsShared ? "private" : ""}`}>
+                {hasLiveWorkspace && !fileIsShared ? <HardDrive size={15} /> : <File size={16} />}
               </span>
               <input
                 ref={renameInputRef}
@@ -426,9 +555,11 @@ export function RightPanelFiles({
                 onClick={() => onSelectFile(file.id)}
                 onKeyDown={(event) => handleFileKeyDown(event, file.id)}
               >
-                <span className={`right-file-document-icon ${isLiveFile ? "live" : ""}`}>
-                  <File size={16} />
-                  {isLiveFile && <span className="right-file-icon-live-dot" aria-hidden="true" />}
+                <span
+                  className={`right-file-document-icon ${hasLiveWorkspace && !fileIsShared ? "private" : ""}`}
+                  title={hasLiveWorkspace && !fileIsShared ? "Private to this browser" : "Shared in this room"}
+                >
+                  {hasLiveWorkspace && !fileIsShared ? <HardDrive size={15} /> : <File size={16} />}
                 </span>
                 <span className="right-row-label">{getFileDisplayTitle(node.name)}</span>
                 <span className="right-file-tree-signals">
@@ -479,6 +610,34 @@ export function RightPanelFiles({
                         <Copy size={13} />
                         <span>Duplicate</span>
                       </button>
+                      {hasLiveWorkspace && !fileIsShared && (
+                        <button role="menuitem" type="button" onClick={() => {
+                          setActionMenuFileId(null);
+                          onShareFile(file.id);
+                        }}>
+                          <Users size={13} />
+                          <span>Share in room</span>
+                        </button>
+                      )}
+                      {hasLiveWorkspace && fileIsShared && (
+                        <button role="menuitem" type="button" onClick={() => {
+                          setActionMenuFileId(null);
+                          onMakeLocalFileCopy(file.id);
+                        }}>
+                          <HardDrive size={13} />
+                          <span>Make local copy</span>
+                        </button>
+                      )}
+                      <label className="right-file-move-field">
+                        <FolderInput size={13} />
+                        <select value={file.parentId ?? WORKSPACE_ROOT_FOLDER_ID} aria-label={`Move ${file.title}`} onChange={(event) => { onMoveFileToFolder(file.id, event.target.value); setActionMenuFileId(null); }}>
+                          {folders.map((folder) => (
+                            <option key={folder.id} value={folder.id}>
+                              {folderDisplayTitles.get(folder.id) ?? folder.title}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                       <button
                         className="danger"
                         role="menuitem"
@@ -521,18 +680,22 @@ export function RightPanelFiles({
         >
           <Upload size={15} />
         </button>
-        <button
-          className="right-file-create-button"
-          type="button"
-          title="New file"
-          aria-label="New file"
-          onClick={onNewFile}
-        >
-          <Plus size={15} />
-        </button>
+        <NewFolderButton
+          buttonClassName="right-file-import-button"
+          live={hasLiveWorkspace}
+          onCreateShared={() => onNewFolder(undefined, "shared")}
+          onCreatePrivate={() => onNewFolder(undefined, "private")}
+        />
+        <NewDocumentButton
+          buttonClassName="right-file-create-button"
+          iconSize={15}
+          live={hasLiveWorkspace}
+          onCreateShared={onNewFile}
+          onCreatePrivate={onNewPrivateFile}
+        />
       </div>
-      {visibleFiles.length > 0 ? (
-        <ol className="right-file-tree" aria-label="Project files">
+      {visibleFiles.length > 0 || fileTreeRoot.children.length > 0 ? (
+        <ol className="right-file-tree" aria-label={hasLiveWorkspace ? "Room workspace" : "Project files"}>
           {renderFileTreeNode(fileTreeRoot, 0)}
         </ol>
       ) : (

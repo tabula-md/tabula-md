@@ -1,3 +1,5 @@
+import { WORKSPACE_ROOM_MAX_COMMENT_LENGTH } from "@tabula-md/tabula";
+
 type CommentReplyFormProps = {
   fileId: string;
   commentId: string;
@@ -19,6 +21,7 @@ export function CommentReplyForm({
     <div className="right-comment-reply-form">
       <textarea
         autoFocus
+        maxLength={WORKSPACE_ROOM_MAX_COMMENT_LENGTH}
         value={draft}
         onChange={(event) => onReplyDraftChange(commentId, event.target.value)}
         onKeyDown={(event) => {

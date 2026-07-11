@@ -50,4 +50,26 @@ describe("live room open state", () => {
       }),
     ).toBe("idle");
   });
+
+  it("distinguishes an expired room from a generic open failure", () => {
+    expect(
+      getLiveRoomOpenState({
+        connectionStatus: "failed",
+        hasActiveFile: false,
+        hasActiveRoom: true,
+        timedOut: false,
+        failure: "expired",
+      }),
+    ).toBe("expired");
+
+    expect(
+      getLiveRoomOpenState({
+        connectionStatus: "failed",
+        hasActiveFile: false,
+        hasActiveRoom: true,
+        timedOut: false,
+        failure: "unsupported",
+      }),
+    ).toBe("unavailable");
+  });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { WorkspaceRoomState } from "@tabula-md/tabula";
-import { reconcileWorkspaceRoomState } from "./workspaceRoomStateMerge";
-import type { WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceRoomSnapshot } from "@tabula-md/tabula";
+import { reconcileWorkspaceRoomSnapshot } from "./workspaceRoomStateMerge";
+import { createWorkspaceRootFolder, type WorkspaceFile } from "../workspaceStorage";
 
 const file = (overrides: Partial<WorkspaceFile> & Pick<WorkspaceFile, "id" | "title">): WorkspaceFile => ({
   text: "",
@@ -12,32 +12,22 @@ const file = (overrides: Partial<WorkspaceFile> & Pick<WorkspaceFile, "id" | "ti
   ...overrides,
 });
 
-const createFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile =>
-  file({
-    id: overrides.id ?? `created-${index}`,
-    title: overrides.title ?? `Created ${index}.md`,
-    text: overrides.text ?? "",
-    ...overrides,
-  });
-
-const workspaceState = (overrides: Partial<WorkspaceRoomState> = {}): WorkspaceRoomState => ({
-  roomId: "room-1",
-  mode: "workspace",
-  version: 1,
-  rootId: "workspace-root",
-  activeDocumentId: "readme",
-  nodes: [
-    {
-      id: "workspace-root",
-      type: "folder",
-      parentId: null,
-      title: "Workspace",
-      order: 0,
-      createdAt: "2026-07-01T00:00:00.000Z",
-      updatedAt: "2026-07-01T00:00:00.000Z",
-    },
-  ],
+const createFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => file({
+  id: overrides.id ?? `created-${index}`,
+  title: overrides.title ?? `Created ${index}.md`,
   ...overrides,
+});
+
+const snapshot = (nodes: WorkspaceRoomSnapshot["nodes"], documents: Record<string, string>): WorkspaceRoomSnapshot => ({
+  roomId: "room-1",
+  schemaVersion: 2,
+  rootId: "workspace-root",
+  nodes: [
+    { id: "workspace-root", type: "folder", parentId: null, title: "Workspace", order: 0, createdAt: "2026-07-01", updatedAt: "2026-07-01" },
+    ...nodes,
+  ],
+  documents,
+  commentsByFileId: {},
 });
 
 const documentNode = (id: string, title: string, order: number, parentId = "workspace-root") => ({
@@ -45,165 +35,103 @@ const documentNode = (id: string, title: string, order: number, parentId = "work
   type: "document" as const,
   parentId,
   title,
-  sha256: `hash-${id}`,
-  textLength: 0,
   order,
-  createdAt: "2026-07-01T00:00:00.000Z",
-  updatedAt: "2026-07-01T00:00:00.000Z",
+  createdAt: "2026-07-01",
+  updatedAt: "2026-07-01",
 });
 
-describe("reconcileWorkspaceRoomState", () => {
-  it("removes shared room files that are no longer in workspace.updated while preserving local-only files", () => {
-    const activeFile = file({
-      id: "readme",
-      title: "README.md",
-      roomId: "room-1",
-      shareUrl: "https://tabula.test/#room=room-1,key",
-      connectionStatus: "connected",
-    });
-    const nextWorkspace = reconcileWorkspaceRoomState({
+describe("reconcileWorkspaceRoomSnapshot", () => {
+  it("replaces room-owned documents while preserving excluded local files and local active selection", () => {
+    const activeFile = file({ id: "readme", title: "README.md", roomId: "room-1", shareUrl: "https://tabula.test/#room=room-1,key", connectionStatus: "connected" });
+    const next = reconcileWorkspaceRoomSnapshot({
       activeFile,
       createFile,
-      workspace: workspaceState({
-        activeDocumentId: "readme",
-        nodes: [
-          workspaceState().nodes[0],
-          documentNode("readme", "README.md", 0),
-        ],
-      }),
+      snapshot: snapshot([documentNode("readme", "README renamed.md", 0)], { readme: "# Remote" }),
       workspaceSnapshot: {
-        activeFileId: "draft",
-        openFileIds: ["readme", "draft", "removed"],
-        files: [
-          activeFile,
-          file({ id: "draft", title: "Local draft.md" }),
-          file({ id: "removed", title: "Removed.md", roomId: "room-1", shareUrl: activeFile.shareUrl }),
-        ],
+        folders: [createWorkspaceRootFolder()],
+        files: [activeFile, file({ id: "local", title: "Local.md" }), file({ id: "removed", title: "Removed.md", roomId: "room-1" })],
+        openFileIds: ["readme", "local", "removed"],
+        activeFileId: "local",
       },
     });
 
-    expect(nextWorkspace?.files.map((nextFile) => nextFile.id)).toEqual(["readme", "draft"]);
-    expect(nextWorkspace?.files.find((nextFile) => nextFile.id === "draft")?.roomId).toBeUndefined();
-    expect(nextWorkspace?.openFileIds).toEqual(["readme", "draft"]);
-    expect(nextWorkspace?.activeFileId).toBe("draft");
-  });
-
-  it("creates and updates shared room files from workspace.updated as room-owned files", () => {
-    const activeFile = file({
-      id: "readme",
-      title: "README.md",
-      roomId: "room-1",
-      shareUrl: "https://tabula.test/#room=room-1,key",
-      connectionStatus: "connected",
-    });
-    const nextWorkspace = reconcileWorkspaceRoomState({
-      activeFile,
-      createFile,
-      workspace: workspaceState({
-        activeDocumentId: "plan",
-        nodes: [
-          workspaceState().nodes[0],
-          documentNode("readme", "README renamed.md", 1),
-          documentNode("plan", "Plan.md", 0),
-        ],
-      }),
-      workspaceSnapshot: {
-        activeFileId: "readme",
-        openFileIds: ["readme"],
-        files: [
-          activeFile,
-          file({ id: "local", title: "Local.md" }),
-        ],
-      },
-    });
-
-    expect(nextWorkspace?.files.map((nextFile) => nextFile.id)).toEqual(["plan", "readme", "local"]);
-    expect(nextWorkspace?.files.find((nextFile) => nextFile.id === "readme")).toMatchObject({
+    expect(next?.files.map((candidate) => candidate.id)).toEqual(["local", "readme"]);
+    expect(next?.files.find((candidate) => candidate.id === "readme")).toMatchObject({
       title: "README renamed.md",
+      text: "# Remote",
       roomId: "room-1",
-      shareUrl: activeFile.shareUrl,
     });
-    expect(nextWorkspace?.files.find((nextFile) => nextFile.id === "plan")).toMatchObject({
-      title: "Plan.md",
-      roomId: "room-1",
-      shareUrl: activeFile.shareUrl,
-    });
-    expect(nextWorkspace?.openFileIds).toEqual(["readme", "plan"]);
-    expect(nextWorkspace?.activeFileId).toBe("readme");
+    expect(next?.activeFileId).toBe("local");
   });
 
-  it("falls back to the remote active document when the local active room document was deleted", () => {
-    const activeFile = file({
-      id: "removed",
-      title: "Removed.md",
-      roomId: "room-1",
-      shareUrl: "https://tabula.test/#room=room-1,key",
-      connectionStatus: "connected",
-    });
-    const nextWorkspace = reconcileWorkspaceRoomState({
-      activeFile,
+  it("uses the first remaining room document when the local active document is deleted", () => {
+    const next = reconcileWorkspaceRoomSnapshot({
+      activeFile: file({ id: "removed", title: "Removed.md", roomId: "room-1" }),
       createFile,
-      workspace: workspaceState({
-        activeDocumentId: "readme",
-        nodes: [
-          workspaceState().nodes[0],
-          documentNode("readme", "README.md", 0),
-        ],
-      }),
+      snapshot: snapshot([documentNode("readme", "README.md", 0)], { readme: "# README" }),
       workspaceSnapshot: {
+        folders: [createWorkspaceRootFolder()],
+        files: [file({ id: "removed", title: "Removed.md", roomId: "room-1" })],
+        openFileIds: ["removed"],
         activeFileId: "removed",
-        openFileIds: ["removed", "readme"],
-        files: [
-          activeFile,
-          file({
-            id: "readme",
-            title: "README.md",
-            roomId: "room-1",
-            shareUrl: activeFile.shareUrl,
-          }),
-        ],
       },
     });
-
-    expect(nextWorkspace?.files.map((nextFile) => nextFile.id)).toEqual(["readme"]);
-    expect(nextWorkspace?.openFileIds).toEqual(["readme"]);
-    expect(nextWorkspace?.activeFileId).toBe("readme");
+    expect(next?.activeFileId).toBe("readme");
+    expect(next?.openFileIds).toEqual(["readme"]);
   });
 
-  it("keeps duplicate room document titles unique without colliding with local files", () => {
-    const activeFile = file({
-      id: "readme",
-      title: "README.md",
-      roomId: "room-1",
-      shareUrl: "https://tabula.test/#room=room-1,key",
-      connectionStatus: "connected",
-    });
-    const nextWorkspace = reconcileWorkspaceRoomState({
-      activeFile,
+  it("adds remote documents to the workspace without opening tabs for them", () => {
+    const existing = file({ id: "readme", title: "README.md", roomId: "room-1" });
+    const next = reconcileWorkspaceRoomSnapshot({
+      activeFile: existing,
       createFile,
-      workspace: workspaceState({
-        nodes: [
-          workspaceState().nodes[0],
-          documentNode("readme", "README.md", 0),
-          documentNode("plan", "Plan.md", 1),
-          documentNode("duplicate", "Plan.md", 2),
-        ],
-      }),
+      snapshot: snapshot([
+        documentNode("readme", "README.md", 0),
+        documentNode("remote", "Remote.md", 1),
+      ], { readme: "# README", remote: "# Remote" }),
       workspaceSnapshot: {
-        activeFileId: "readme",
+        folders: [createWorkspaceRootFolder()],
+        files: [existing],
         openFileIds: ["readme"],
-        files: [
-          activeFile,
-          file({ id: "local", title: "Plan.md" }),
-        ],
+        activeFileId: "readme",
       },
     });
 
-    expect(nextWorkspace?.files.map((nextFile) => nextFile.title)).toEqual([
-      "README.md",
-      "Plan.md",
-      "Plan 2.md",
-      "Plan.md",
-    ]);
+    expect(next?.files.map((candidate) => candidate.id)).toEqual(["readme", "remote"]);
+    expect(next?.openFileIds).toEqual(["readme"]);
+    expect(next?.activeFileId).toBe("readme");
+  });
+
+  it("keeps canonical duplicate titles unchanged instead of publishing suffixes back into the room", () => {
+    const next = reconcileWorkspaceRoomSnapshot({
+      createFile,
+      snapshot: snapshot([
+        documentNode("first", "Plan.md", 0),
+        documentNode("second", "Plan.md", 1),
+      ], { first: "A", second: "B" }),
+      workspaceSnapshot: { folders: [createWorkspaceRootFolder()], files: [], openFileIds: [], activeFileId: "" },
+    });
+    expect(next?.files.map((candidate) => candidate.title)).toEqual(["Plan.md", "Plan.md"]);
+  });
+
+  it("accepts an empty room snapshot and removes only room-owned documents", () => {
+    const next = reconcileWorkspaceRoomSnapshot({
+      activeFile: file({ id: "shared", title: "Shared.md", roomId: "room-1" }),
+      createFile,
+      snapshot: snapshot([], {}),
+      workspaceSnapshot: {
+        folders: [createWorkspaceRootFolder()],
+        files: [
+          file({ id: "shared", title: "Shared.md", roomId: "room-1" }),
+          file({ id: "private", title: "Private.md" }),
+        ],
+        openFileIds: ["shared", "private"],
+        activeFileId: "shared",
+      },
+    });
+
+    expect(next.files.map((candidate) => candidate.id)).toEqual(["private"]);
+    expect(next.openFileIds).toEqual(["private"]);
+    expect(next.activeFileId).toBe("private");
   });
 });

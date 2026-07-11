@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { encodeRoomWirePacket } from "@tabula-md/tabula";
 import {
   createRoomSession,
   createRoomShareUrl,
@@ -143,13 +144,11 @@ describe("Tabula Room service URL", () => {
 describe("Tabula Room encrypted envelopes", () => {
   it("roundtrips an encrypted room-event without plaintext fields", async () => {
     const roomKey = await importRoomKey(generateRoomKey());
-    const plaintext = new TextEncoder().encode(JSON.stringify({
-      id: "event-1",
-      roomId: "room-123",
-      actorId: "peer-1",
-      type: "workspace.updated",
-      createdAt: "2026-07-09T00:00:00.000Z",
-    }));
+    const plaintext = encodeRoomWirePacket({
+      type: "sync.message",
+      senderId: "peer-1",
+      payload: new Uint8Array([0, 1, 2, 3]),
+    });
     const envelope = await encryptBytesForRoom(roomKey, "room-123", "room-event", 1, plaintext);
     const decrypted = await decryptEnvelopeForRoom(roomKey, envelope);
 

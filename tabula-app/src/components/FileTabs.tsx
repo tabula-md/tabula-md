@@ -1,8 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
-import type { ConnectionStatus } from "../collaboration";
+import { ChevronLeft, ChevronRight, HardDrive, X } from "lucide-react";
+import type { Collaborator } from "../collaboration";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
 import type { WorkspaceFile } from "../workspaceStorage";
+import { getWorkspaceFileDisplayTitles } from "../workspaceDisplayTitles";
+import { NewDocumentButton } from "./NewDocumentButton";
+import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 
 type TabScrollState = {
   canScrollLeft: boolean;
@@ -14,10 +17,10 @@ type TabScrollState = {
 type FileTabsProps = {
   files: WorkspaceFile[];
   activeFile?: WorkspaceFile;
-  activeCollaboratorCount: number;
-  getFileStatus: (file: WorkspaceFile) => ConnectionStatus;
-  liveFileIds: readonly string[];
+  collaborators: Collaborator[];
+  isLiveWorkspace: boolean;
   onAddFile: () => void;
+  onAddPrivateFile: () => void;
   onSelectFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onCloseFile: (fileId: string) => void;
@@ -34,23 +37,21 @@ const emptyTabScrollState: TabScrollState = {
 
 const getTabDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
 
-const getStatusLabel = (status: ConnectionStatus) =>
-  ({
-    idle: "Local draft",
-    connecting: "Connecting",
-    connected: "Live session",
-    reconnecting: "Reconnecting",
-    disconnected: "Disconnected",
-    failed: "Connection failed",
-  })[status];
+export const getDocumentCollaborators = (
+  collaborators: readonly Collaborator[],
+  documentId: string,
+) => collaborators.filter(
+  (collaborator) =>
+    (collaborator.activeDocumentId ?? collaborator.selection?.documentId) === documentId,
+);
 
 export function FileTabs({
   files,
   activeFile,
-  activeCollaboratorCount,
-  getFileStatus,
-  liveFileIds,
+  collaborators,
+  isLiveWorkspace,
   onAddFile,
+  onAddPrivateFile,
   onSelectFile,
   onRenameFile,
   onCloseFile,
@@ -63,7 +64,7 @@ export function FileTabs({
   const [draggedFileId, setDraggedFileId] = useState<string | null>(null);
   const tabsScrollRef = useRef<HTMLDivElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
-  const liveFileIdSet = useMemo(() => new Set(liveFileIds), [liveFileIds]);
+  const displayTitles = useMemo(() => getWorkspaceFileDisplayTitles(files), [files]);
 
   const updateTabScrollState = () => {
     const element = tabsScrollRef.current;
@@ -185,6 +186,16 @@ export function FileTabs({
     onSelectFile(fileId);
   };
 
+  const selectAndFocusFile = (fileId: string) => {
+    selectFile(fileId);
+    window.requestAnimationFrame(() => {
+      const tab = Array.from(
+        tabsScrollRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [],
+      ).find((candidate) => candidate.dataset.fileId === fileId);
+      tab?.focus();
+    });
+  };
+
   useEffect(() => {
     scrollActiveTabIntoView("auto");
   }, [activeFile?.id, files.length]);
@@ -221,11 +232,10 @@ export function FileTabs({
   }, [renamingFileId]);
 
   return (
-    <nav
+    <div
       className={`tabbar ${tabScrollState.canScrollLeft ? "can-scroll-left" : ""} ${
         tabScrollState.canScrollRight ? "can-scroll-right" : ""
       }`}
-      aria-label="Open files"
     >
       <button
         className={`tab-scroll-button ${tabScrollState.activeTabDirection === "left" ? "has-current-tab" : ""}`}
@@ -245,21 +255,22 @@ export function FileTabs({
       >
         <ChevronLeft size={14} />
       </button>
-      <div className="tabs-scroll" ref={tabsScrollRef}>
-        {files.map((file) => {
-          const fileStatus = getFileStatus(file);
+      <div className="tabs-scroll" ref={tabsScrollRef} role="tablist" aria-label="Open documents">
+        {files.map((file, fileIndex) => {
           const isActiveFile = file.id === activeFile?.id;
           const isRenaming = file.id === renamingFileId;
-          const isLiveFile = liveFileIdSet.has(file.id);
-          const liveLabel =
-            isLiveFile && fileStatus !== "idle" ? getStatusLabel(fileStatus) : "Included in live room";
-          const collaboratorCount = isActiveFile ? activeCollaboratorCount : (file.collaboratorCount ?? 0);
-          const tabDisplayTitle = getTabDisplayTitle(file.title);
+          const isPrivateFile = isLiveWorkspace && !file.roomId;
+          const allDocumentCollaborators = getDocumentCollaborators(collaborators, file.id);
+          const documentCollaborators = allDocumentCollaborators.slice(0, 2);
+          const hiddenCollaboratorCount = allDocumentCollaborators.length - documentCollaborators.length;
+          const displayTitle = displayTitles.get(file.id) ?? file.title;
+          const tabDisplayTitle = getTabDisplayTitle(displayTitle);
           return (
             <div
-              className={`tab-item ${isActiveFile ? "active" : ""} ${isLiveFile ? "live" : ""} ${
+              className={`tab-item ${isActiveFile ? "active" : ""} ${isPrivateFile ? "private" : ""} ${
                 draggedFileId === file.id ? "dragging" : ""
               }`}
+              role="presentation"
               data-file-id={file.id}
               data-file-name={file.title}
               data-room-id={file.roomId ?? ""}
@@ -277,40 +288,8 @@ export function FileTabs({
               }}
               onDragEnd={() => setDraggedFileId(null)}
             >
-              <div
-                className={`tab-select-button ${isRenaming ? "tab-rename-shell" : ""}`}
-                role={isRenaming ? undefined : "button"}
-                tabIndex={isRenaming ? undefined : 0}
-                title={`${file.title} · ${isLiveFile ? liveLabel : "Local draft"}`}
-                onMouseDown={(event) => {
-                  if (event.detail >= 2) {
-                    event.preventDefault();
-                  }
-                }}
-                onClick={() => {
-                  if (!isRenaming) {
-                    selectFile(file.id);
-                  }
-                }}
-                onDoubleClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (!isRenaming) {
-                    startRenamingFile(file);
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (isRenaming) {
-                    return;
-                  }
-
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    selectFile(file.id);
-                  }
-                }}
-              >
-                {isRenaming ? (
+              {isRenaming ? (
+                <div className="tab-select-button tab-rename-shell">
                   <input
                     ref={renameInputRef}
                     className="tab-title tab-rename-input"
@@ -331,22 +310,77 @@ export function FileTabs({
                     }}
                     aria-label={`Rename ${file.title}`}
                   />
-                ) : (
+                </div>
+              ) : (
+                <button
+                  className="tab-select-button"
+                  type="button"
+                  role="tab"
+                  id={getWorkspaceTabId(file.id)}
+                  aria-controls={getWorkspaceTabPanelId(file.id)}
+                  aria-selected={isActiveFile}
+                  tabIndex={isActiveFile ? 0 : -1}
+                  data-file-id={file.id}
+                  title={isPrivateFile ? `${displayTitle} · Private to this browser` : displayTitle}
+                  onMouseDown={(event) => {
+                    if (event.detail >= 2) event.preventDefault();
+                  }}
+                  onClick={() => selectFile(file.id)}
+                  onDoubleClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    startRenamingFile(file);
+                  }}
+                  onKeyDown={(event) => {
+                    const lastIndex = files.length - 1;
+                    const targetIndex =
+                      event.key === "ArrowLeft"
+                        ? Math.max(0, fileIndex - 1)
+                        : event.key === "ArrowRight"
+                          ? Math.min(lastIndex, fileIndex + 1)
+                          : event.key === "Home"
+                            ? 0
+                            : event.key === "End"
+                              ? lastIndex
+                              : -1;
+                    const targetFile = targetIndex >= 0 ? files[targetIndex] : undefined;
+                    if (targetFile) {
+                      event.preventDefault();
+                      selectAndFocusFile(targetFile.id);
+                    }
+                  }}
+                >
+                  {isPrivateFile && (
+                    <span className="tab-private-icon" title="Private to this browser" aria-label="Private to this browser">
+                      <HardDrive size={12} />
+                    </span>
+                  )}
                   <span className="tab-title">{tabDisplayTitle}</span>
-                )}
-                {isLiveFile && collaboratorCount > 0 && (
-                  <span className="tab-collaborator-count" title={`${collaboratorCount} collaborators`}>
-                    {collaboratorCount}
-                  </span>
-                )}
-              </div>
-
-              {isLiveFile && (
-                <span
-                  className="tab-live-scope-dot"
-                  title="Included in live room"
-                  aria-hidden="true"
-                />
+                  {documentCollaborators.length > 0 && (
+                    <span
+                      className="tab-presence-avatars"
+                      role="img"
+                      aria-label={`${allDocumentCollaborators.map((collaborator) => collaborator.name).join(", ")} in this document`}
+                      title={allDocumentCollaborators.map((collaborator) => collaborator.name).join(", ")}
+                    >
+                      {documentCollaborators.map((collaborator) => (
+                        <span
+                          className="tab-presence-avatar"
+                          key={collaborator.id}
+                          style={{ background: collaborator.color }}
+                          aria-hidden="true"
+                        >
+                          {(collaborator.name || "?").trim().slice(0, 1) || "?"}
+                        </span>
+                      ))}
+                      {hiddenCollaboratorCount > 0 && (
+                        <span className="tab-presence-overflow" aria-hidden="true">
+                          +{hiddenCollaboratorCount}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </button>
               )}
 
               {!isRenaming && (
@@ -367,9 +401,12 @@ export function FileTabs({
         })}
       </div>
       <div className="tabbar-actions">
-        <button className="add-tab-button" type="button" onClick={onAddFile} title="New tab">
-          <Plus size={16} />
-        </button>
+        <NewDocumentButton
+          buttonClassName="add-tab-button"
+          live={isLiveWorkspace}
+          onCreateShared={onAddFile}
+          onCreatePrivate={onAddPrivateFile}
+        />
         <button
           className={`tab-scroll-button ${tabScrollState.activeTabDirection === "right" ? "has-current-tab" : ""}`}
           type="button"
@@ -389,6 +426,6 @@ export function FileTabs({
           <ChevronRight size={14} />
         </button>
       </div>
-    </nav>
+    </div>
   );
 }

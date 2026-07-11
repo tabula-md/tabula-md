@@ -5,7 +5,6 @@ import {
   useState,
   type RefObject,
 } from "react";
-import type { ConnectionStatus } from "../collaboration";
 import type { WorkspaceProjectContextProps } from "../components/WorkspaceProjectContext";
 import { getLiveWorkspaceFileIds } from "../liveWorkspaceScope";
 import {
@@ -13,11 +12,11 @@ import {
   type MarkdownHeading,
 } from "@tabula-md/tabula";
 import type { RightPanelView } from "../uiTypes";
-import { getWorkspaceFileStatus } from "../workspace";
 import type {
   FileComment,
   FileViewMode,
   WorkspaceFile,
+  WorkspaceFolder,
 } from "../workspaceStorage";
 import { isEmptyGeneratedLivePlaceholder } from "../workspaceStorage";
 
@@ -33,12 +32,21 @@ type ProjectContextHandlers = Pick<
   | "onCommentDraftChange"
   | "onDeleteComment"
   | "onDeleteFile"
+  | "onDeleteFolder"
   | "onDuplicateFile"
   | "onIdentityNameChange"
   | "onIdentityNameCommit"
   | "onNewFile"
+  | "onNewPrivateFile"
+  | "onNewFolder"
+  | "onShareFile"
+  | "onMakeLocalFileCopy"
+  | "onShareFolder"
   | "onReplyDraftChange"
   | "onRenameFile"
+  | "onRenameFolder"
+  | "onMoveFileToFolder"
+  | "onMoveFolder"
   | "onSelectFile"
   | "onStartCommentReply"
   | "onToggleCommentResolved"
@@ -54,11 +62,12 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   commentDraft: string;
   commentInputRef: RefObject<HTMLTextAreaElement | null>;
   commentsByFileId: Record<string, FileComment[]>;
-  connectionStatus: ConnectionStatus;
   files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
   focusTextRange: FocusTextRange;
   identityName: string;
   isLive: boolean;
+  roomId?: string;
   onImportFile: () => void;
   openFileIds: string[];
   outlineHeadings: MarkdownHeading[];
@@ -83,12 +92,13 @@ export function useWorkspaceProjectContextRuntime({
   commentDraft,
   commentInputRef,
   commentsByFileId,
-  connectionStatus,
   files,
+  folders,
   focusTextRange,
   formatCommentDate,
   identityName,
   isLive,
+  roomId,
   onAddComment,
   onAddCommentReply,
   onCancelCommentReply,
@@ -96,13 +106,22 @@ export function useWorkspaceProjectContextRuntime({
   onCommentDraftChange,
   onDeleteComment,
   onDeleteFile,
+  onDeleteFolder,
   onDuplicateFile,
   onGoToComment,
   onIdentityNameChange,
   onIdentityNameCommit,
   onImportFile,
   onNewFile,
+  onNewPrivateFile,
+  onNewFolder,
+  onShareFile,
+  onMakeLocalFileCopy,
+  onShareFolder,
   onRenameFile,
+  onRenameFolder,
+  onMoveFileToFolder,
+  onMoveFolder,
   onReplyDraftChange,
   onSelectFile,
   onStartCommentReply,
@@ -128,15 +147,6 @@ export function useWorkspaceProjectContextRuntime({
     }
   }, [isLive, rightPanelView, setRightPanelView]);
 
-  const getFileStatus = useCallback(
-    (file: WorkspaceFile) =>
-      getWorkspaceFileStatus({
-        file,
-        activeFileId: activeFile?.id,
-        activeConnectionStatus: connectionStatus,
-      }),
-    [activeFile?.id, connectionStatus],
-  );
   const visibleFiles = useMemo(
     () => files.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
     [files],
@@ -148,7 +158,7 @@ export function useWorkspaceProjectContextRuntime({
   const visibleActiveFileId =
     activeFile && !isEmptyGeneratedLivePlaceholder(activeFile) ? activeFile.id : undefined;
   const liveFileIds = getLiveWorkspaceFileIds({
-    activeFile,
+    roomId,
     files: visibleFiles,
     isLive,
   });
@@ -190,6 +200,7 @@ export function useWorkspaceProjectContextRuntime({
     view: rightPanelView,
     isLive,
     files: visibleFiles,
+    folders,
     openFileIds: visibleOpenFileIds,
     activeFileId: visibleActiveFileId,
     activeFileTitle,
@@ -209,12 +220,21 @@ export function useWorkspaceProjectContextRuntime({
     onClose: () => setRightPanelOpen(false),
     onFileQueryChange: setFileQuery,
     onNewFile,
+    onNewPrivateFile,
+    onNewFolder,
+    onShareFile,
+    onMakeLocalFileCopy,
+    onShareFolder,
     onImportFile,
     onSelectFile,
     onCloseFile,
     onRenameFile,
     onDuplicateFile,
     onDeleteFile,
+    onDeleteFolder,
+    onMoveFileToFolder,
+    onMoveFolder,
+    onRenameFolder,
     onGoToOutlineHeading: goToOutlineHeading,
     onCommentDraftChange,
     onIdentityNameChange,
@@ -231,7 +251,6 @@ export function useWorkspaceProjectContextRuntime({
   };
 
   return {
-    getFileStatus,
     projectContextProps,
   };
 }

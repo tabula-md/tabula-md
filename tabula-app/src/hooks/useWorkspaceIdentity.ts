@@ -10,6 +10,20 @@ import { randomId } from "../workspaceStorage";
 export const IDENTITY_KEY = "tabula.identity";
 export const IDENTITY_SESSION_KEY = "tabula.identity.session";
 
+let pageActorId: string | null = null;
+
+const getPageActorId = () => {
+  if (pageActorId) return pageActorId;
+  try {
+    const storedActorId = window.sessionStorage.getItem(IDENTITY_SESSION_KEY)?.trim();
+    pageActorId = storedActorId || randomId();
+    if (!storedActorId) window.sessionStorage.setItem(IDENTITY_SESSION_KEY, pageActorId);
+  } catch {
+    pageActorId = randomId();
+  }
+  return pageActorId;
+};
+
 const isGeneratedName = (name: string) =>
   /^Guest\s+\d+$/i.test(name) ||
   /^Anonymous\s+\S+$/i.test(name) ||
@@ -34,7 +48,10 @@ export const normalizeWorkspaceIdentity = (
 };
 
 const writeIdentity = (identity: Collaborator, storage: Storage = window.localStorage) => {
-  storage.setItem(IDENTITY_KEY, JSON.stringify(identity));
+  storage.setItem(
+    IDENTITY_KEY,
+    JSON.stringify(identity.name && !isGeneratedName(identity.name) ? { name: identity.name } : {}),
+  );
 };
 
 const readStoredJson = (storage: Storage, key: string) => {
@@ -46,32 +63,19 @@ const readStoredJson = (storage: Storage, key: string) => {
   }
 };
 
-const writeSessionIdentity = (
-  identity: Pick<Collaborator, "id">,
-  storage: Storage = window.sessionStorage,
-) => {
-  storage.setItem(IDENTITY_SESSION_KEY, JSON.stringify({ id: identity.id }));
-};
-
 export const createWorkspaceIdentity = ({
   storage = window.localStorage,
-  sessionStorage = window.sessionStorage,
+  actorId,
   createId = randomId,
-  random = Math.random,
   now = Date.now,
 }: {
   storage?: Storage;
-  sessionStorage?: Storage;
+  actorId?: string;
   createId?: () => string;
-  random?: () => number;
   now?: () => number;
 } = {}): Collaborator => {
-  void random;
   const storedProfile = readStoredJson(storage, IDENTITY_KEY);
-  const storedSession = readStoredJson(sessionStorage, IDENTITY_SESSION_KEY);
-
-  const storedSessionId = typeof storedSession?.id === "string" ? storedSession.id.trim() : "";
-  const id = storedSessionId || createId();
+  const id = actorId?.trim() || createId();
   const storedName = typeof storedProfile?.name === "string" ? storedProfile.name.trim() : "";
   const identity = normalizeWorkspaceIdentity(
     {
@@ -83,12 +87,13 @@ export const createWorkspaceIdentity = ({
     now,
   );
   writeIdentity(identity, storage);
-  writeSessionIdentity(identity, sessionStorage);
   return identity;
 };
 
 export function useWorkspaceIdentity() {
-  const [identity, setIdentity] = useState<Collaborator>(() => createWorkspaceIdentity());
+  const [identity, setIdentity] = useState<Collaborator>(() =>
+    createWorkspaceIdentity({ actorId: getPageActorId() }),
+  );
 
   const updateIdentityName = (nextName: string) => {
     setIdentity((currentIdentity) => {

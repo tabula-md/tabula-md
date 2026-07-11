@@ -286,7 +286,7 @@ export async function run(ctx) {
   } = ctx;
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(FRONTMATTER_SYNC_FIXTURE);
@@ -368,7 +368,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(INLINE_MDX_SCROLL_TRANSFER_FIXTURE);
@@ -423,7 +423,7 @@ export async function run(ctx) {
   }, { viewport: { width: 1600, height: 900 } });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(LONG_SCROLL_TRANSFER_FIXTURE);

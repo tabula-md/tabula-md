@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { Collaborator } from "../collaboration";
+import type { ConnectionStatus } from "../collaboration";
 import type { WorkspaceTopChromeProps } from "../components/WorkspaceTopChrome";
 import type { JsonShareController } from "./useJsonShareController";
 import type { RenameFileResult } from "./useWorkspaceFiles";
@@ -17,22 +18,24 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   activeText: string;
   canStartSession: boolean;
   collaborators: Collaborator[];
+  connectionStatus: ConnectionStatus;
   copiedFileId: string | null;
   currentUserName: string;
   files: WorkspaceFile[];
-  getFileStatus: WorkspaceTopChromeProps["getFileStatus"];
   identity: Collaborator;
   isLive: boolean;
   isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
+  roomFile?: WorkspaceFile;
   rightPanelOpen: boolean;
   shareExcludedFileIds: readonly string[];
   startSessionUnavailableReason: string;
   topPopover: TopPopover;
   workspaceMenuOpen: boolean;
   onAddFile: () => void;
+  onAddPrivateFile: () => void;
   onChangeUserName: (nextName: string) => void;
   onCloseFile: (fileId: string) => void;
   onCommitUserName: () => void;
@@ -58,22 +61,24 @@ export function useWorkspaceTopChromeRuntime({
   activeText,
   canStartSession,
   collaborators,
+  connectionStatus,
   copiedFileId,
   currentUserName,
   files,
-  getFileStatus,
   identity,
   isLive,
   isLiveConnected,
   jsonShare,
   language,
   openFiles,
+  roomFile,
   rightPanelOpen,
   shareExcludedFileIds,
   startSessionUnavailableReason,
   topPopover,
   workspaceMenuOpen,
   onAddFile,
+  onAddPrivateFile,
   onChangeUserName,
   onCloseFile,
   onCommitUserName,
@@ -94,7 +99,7 @@ export function useWorkspaceTopChromeRuntime({
   setWorkspaceMenuOpen,
 }: UseWorkspaceTopChromeRuntimeOptions) {
   const shareOpen = topPopover === "share";
-  const copied = copiedFileId === activeFile?.id;
+  const copied = copiedFileId === (roomFile ?? activeFile)?.id;
 
   const closeDocumentChrome = useCallback(() => {
     setTopPopover(null);
@@ -123,22 +128,24 @@ export function useWorkspaceTopChromeRuntime({
     activeText,
     canStartSession,
     collaborators,
+    connectionStatus,
     copied,
     currentUserName,
     files,
-    getFileStatus,
     identity,
     isLive,
     isLiveConnected,
     jsonShare,
     language,
     openFiles,
+    roomFile,
     rightPanelOpen,
     shareExcludedFileIds,
     shareOpen,
     startSessionUnavailableReason,
     workspaceMenuOpen,
     onAddFile,
+    onAddPrivateFile,
     onChangeUserName,
     onChromeInteraction: closeDocumentChrome,
     onCloseFile,

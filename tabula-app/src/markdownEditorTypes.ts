@@ -1,7 +1,8 @@
-import type { Collaborator, LiveSelection } from "./collaboration";
+import type { LiveSelection } from "./collaboration";
 import type { SearchMatch } from "./editor/editorSearchModel";
 import type { EditorViewportAnchor } from "./preview/previewSyncTypes";
 import type { Text } from "@codemirror/state";
+import type { CollabEditorBinding } from "./collaboration/liveCollaboration";
 import type {
   MarkdownFormatCommand,
   TextChange,
@@ -64,8 +65,6 @@ export type MarkdownSelectionActionPosition = {
 
 export type MarkdownEditorProps = {
   fileId: string;
-  fileTitle?: string;
-  roomId?: string;
   value: string;
   largeDocumentMode: boolean;
   lineWrapping: boolean;
@@ -73,7 +72,7 @@ export type MarkdownEditorProps = {
   bookmarks?: MarkdownBookmark[];
   commentAnchors?: MarkdownCommentAnchor[];
   commentsEnabled?: boolean;
-  collaborators?: Collaborator[];
+  collaborationBinding?: CollabEditorBinding | null;
   activeCommentId?: string | null;
   searchMatches?: SearchMatch[];
   activeSearchMatchIndex?: number;

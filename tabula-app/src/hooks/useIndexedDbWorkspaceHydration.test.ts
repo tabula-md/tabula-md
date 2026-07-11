@@ -4,9 +4,10 @@ import {
   shouldDeferIndexedDbWorkspacePersistence,
   shouldApplyIndexedDbWorkspaceHydration,
 } from "./useIndexedDbWorkspaceHydration";
-import { createWorkspaceFile, type WorkspaceState } from "../workspaceStorage";
+import { createWorkspaceFile, createWorkspaceRootFolder, type WorkspaceState } from "../workspaceStorage";
 
 const createWorkspace = (text: string): WorkspaceState => ({
+  folders: [createWorkspaceRootFolder()],
   files: [createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text })],
   openFileIds: ["local"],
   activeFileId: "local",

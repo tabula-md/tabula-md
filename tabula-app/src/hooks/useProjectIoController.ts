@@ -8,6 +8,7 @@ import {
   syncUrlForFile,
   type FileComment,
   type WorkspaceFile,
+  type WorkspaceFolder,
   type WorkspaceState,
 } from "../workspaceStorage";
 import {
@@ -39,6 +40,7 @@ const downloadBlobFile = (fileName: string, blob: Blob) => {
 
 type UseProjectIoControllerArgs = {
   activeFile?: WorkspaceFile;
+  roomFile?: WorkspaceFile;
   activeFileId: string;
   addFileFromContent: (
     title: string,
@@ -49,13 +51,14 @@ type UseProjectIoControllerArgs = {
   commentsByFileId: Record<string, FileComment[]>;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
-  getWorkspaceSnapshot?: () => Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">;
+  getWorkspaceSnapshot?: () => Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">;
   openFileIds: string[];
   onBeforeWorkspaceBoundary?: () => void;
   preferences: WorkspacePreferences;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
-  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
+  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
   resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
   showToast: (message: string, tone?: "neutral" | "error", options?: { actionLabel?: string; onAction?: () => void }) => void;
   clearFileHistory: () => void;
@@ -74,17 +77,20 @@ export const getProjectIoWorkspaceSnapshot = ({
   activeFile,
   activeFileId,
   files,
+  folders,
   getWorkspaceSnapshot,
   openFileIds,
 }: {
   activeFile?: WorkspaceFile;
   activeFileId: string;
   files: WorkspaceFile[];
-  getWorkspaceSnapshot?: () => Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">;
+  folders: WorkspaceFolder[];
+  getWorkspaceSnapshot?: () => Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">;
   openFileIds: string[];
 }) =>
   getWorkspaceSnapshot?.() ?? {
     files,
+    folders,
     openFileIds,
     activeFileId: activeFile?.id ?? activeFileId,
   };
@@ -106,6 +112,7 @@ export const getProjectIoBoundaryWorkspaceSnapshot = ({
   activeFile,
   activeFileId,
   files,
+  folders,
   getWorkspaceSnapshot,
   onBeforeWorkspaceBoundary,
   openFileIds,
@@ -113,7 +120,8 @@ export const getProjectIoBoundaryWorkspaceSnapshot = ({
   activeFile?: WorkspaceFile;
   activeFileId: string;
   files: WorkspaceFile[];
-  getWorkspaceSnapshot?: () => Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">;
+  folders: WorkspaceFolder[];
+  getWorkspaceSnapshot?: () => Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">;
   onBeforeWorkspaceBoundary?: () => void;
   openFileIds: string[];
 }) => {
@@ -122,6 +130,7 @@ export const getProjectIoBoundaryWorkspaceSnapshot = ({
     activeFile,
     activeFileId,
     files,
+    folders,
     getWorkspaceSnapshot,
     openFileIds,
   });
@@ -129,11 +138,13 @@ export const getProjectIoBoundaryWorkspaceSnapshot = ({
 
 export function useProjectIoController({
   activeFile,
+  roomFile,
   activeFileId,
   addFileFromContent,
   commentsByFileId,
   editorRef,
   files,
+  folders,
   getActiveFileSnapshot,
   getWorkspaceSnapshot,
   openFileIds,
@@ -183,12 +194,14 @@ export function useProjectIoController({
       activeFile,
       activeFileId,
       files,
+      folders,
       getWorkspaceSnapshot,
       onBeforeWorkspaceBoundary,
       openFileIds,
     });
     const download = createWorkspaceProjectDownloadDraft({
       files: workspaceSnapshot.files,
+      folders: workspaceSnapshot.folders,
       openFileIds: workspaceSnapshot.openFileIds,
       activeFileId: workspaceSnapshot.activeFileId,
       commentsByFileId,
@@ -203,6 +216,7 @@ export function useProjectIoController({
         activeFile,
         activeFileId,
         files,
+        folders,
         getWorkspaceSnapshot,
         onBeforeWorkspaceBoundary,
         openFileIds,
@@ -211,7 +225,7 @@ export function useProjectIoController({
       const archiveFiles = includedFileIds
         ? workspaceSnapshot.files.filter((file) => includedFileIds.has(file.id))
         : workspaceSnapshot.files;
-      const archive = createProjectArchive(archiveFiles);
+      const archive = createProjectArchive(archiveFiles, workspaceSnapshot.folders);
       downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
       showToast("Project archive downloaded.");
     } catch (error) {
@@ -261,7 +275,7 @@ export function useProjectIoController({
       importedFileDraft.overrides,
     );
     onCloseChrome();
-    syncUrlForFile(nextFile);
+    if (!roomFile?.roomId) syncUrlForFile(nextFile);
 
     queueAnimationFrameTask(() => editorRef.current?.focus());
   };

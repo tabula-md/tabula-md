@@ -12,6 +12,7 @@ import type { WorkspacePreferences } from "./useWorkspacePreferences";
 
 type UseWorkspaceIoRuntimeOptions = {
   activeFile?: WorkspaceFile;
+  roomFile?: WorkspaceFile;
   activeFileId: string;
   addFileFromContent: (
     title: string,
@@ -24,6 +25,7 @@ type UseWorkspaceIoRuntimeOptions = {
   commentsByFileId: Record<string, FileComment[]>;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   files: WorkspaceFile[];
+  folders: import("../workspaceStorage").WorkspaceFolder[];
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   getWorkspaceSnapshot?: () => WorkspaceState;
   openFileIds: string[];
@@ -33,7 +35,7 @@ type UseWorkspaceIoRuntimeOptions = {
     commentsByFileId: Record<string, FileComment[]>,
   ) => void;
   replaceWorkspace: (
-    workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">,
+    workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">,
   ) => WorkspaceFile | undefined;
   resetCollaborationState: (
     nextStatus: WorkspaceFile["connectionStatus"],
@@ -48,6 +50,7 @@ type UseWorkspaceIoRuntimeOptions = {
 
 export function useWorkspaceIoRuntime({
   activeFile,
+  roomFile,
   activeFileId,
   addFileFromContent,
   clearFileHistory,
@@ -55,6 +58,7 @@ export function useWorkspaceIoRuntime({
   commentsByFileId,
   editorRef,
   files,
+  folders,
   getActiveFileSnapshot,
   getWorkspaceSnapshot,
   openFileIds,
@@ -68,11 +72,13 @@ export function useWorkspaceIoRuntime({
 }: UseWorkspaceIoRuntimeOptions) {
   const projectIo = useProjectIoController({
     activeFile,
+    roomFile,
     activeFileId,
     addFileFromContent,
     commentsByFileId,
     editorRef,
     files,
+    folders,
     getActiveFileSnapshot,
     getWorkspaceSnapshot,
     openFileIds,

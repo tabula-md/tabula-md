@@ -32,7 +32,7 @@ type UseJsonShareImportControllerArgs = {
   getWorkspaceSnapshot?: () => WorkspaceState;
   onBeforeWorkspaceBoundary?: () => void;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
-  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
+  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
   resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
   showToast: (message: string, tone?: "neutral" | "error") => void;
   workspaceSource: InitialWorkspaceSnapshot["source"];

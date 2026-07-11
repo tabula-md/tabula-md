@@ -78,3 +78,34 @@
   background: var(--surface-hover);
   outline: 0;
 }
+.markdown-editor .cm-ySelectionCaret {
+  border-width: 0 0 0 2px;
+  margin-left: -1px;
+}
+
+.markdown-editor .cm-ySelectionCaretDot {
+  display: none;
+}
+
+.markdown-editor .cm-content:has(.cm-placeholder) .cm-ySelectionCaret {
+  display: none;
+}
+
+.markdown-editor .cm-ySelectionInfo {
+  top: calc(100% + 3px);
+  left: -2px;
+  z-index: 8;
+  max-width: min(180px, 45vw);
+  padding: 2px 5px;
+  overflow: hidden;
+  border-radius: 4px;
+  opacity: 1;
+  color: #fff;
+  background-color: inherit;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

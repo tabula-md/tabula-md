@@ -5,7 +5,12 @@ import {
   getConfiguredJsonShareServiceUrl,
 } from "../share";
 import type { WorkspaceShareCopy } from "../workspaceLocale";
-import type { FileComment, WorkspaceFile } from "../workspaceStorage";
+import {
+  WORKSPACE_ROOT_FOLDER_ID,
+  type FileComment,
+  type WorkspaceFile,
+  type WorkspaceFolder,
+} from "../workspaceStorage";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 
 type UseJsonShareControllerOptions = {
@@ -14,6 +19,7 @@ type UseJsonShareControllerOptions = {
   commentsByFileId: Record<string, FileComment[]>;
   copy: WorkspaceShareCopy;
   files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   onBeforeWorkspaceBoundary?: () => void;
   showToast: (message: string, tone?: "error" | "neutral") => void;
@@ -81,6 +87,7 @@ export function useJsonShareController({
   commentsByFileId,
   copy,
   files,
+  folders,
   getActiveFileSnapshot,
   onBeforeWorkspaceBoundary,
   showToast,
@@ -139,6 +146,8 @@ export function useJsonShareController({
         serviceUrl,
         origin: window.location.origin,
         files: selectedFiles,
+        folders,
+        rootFolderId: WORKSPACE_ROOT_FOLDER_ID,
         activeFileId: snapshotActiveFileId,
         commentsByFileId: selectedCommentsByFileId,
       });

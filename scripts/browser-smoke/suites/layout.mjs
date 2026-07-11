@@ -17,7 +17,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     const initialTabCount = (await getTabs(page)).length;
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForFileCount(page, initialTabCount + 1);
     await waitForActiveTab(page, { startsWith: "Untitled" });
     let tabs = await getTabs(page);
@@ -27,7 +27,7 @@ export async function run(ctx) {
       "First created blank file should be active before creating another file.",
     );
 
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForFileCount(page, initialTabCount + 2);
     tabs = await getTabs(page);
     const secondCreatedTitle = tabs.find((tab) => tab.active)?.title ?? "";
@@ -50,7 +50,7 @@ export async function run(ctx) {
       "Closing the last active tab should activate the previous file.",
     );
 
-    await page.locator('.tab-select-button[title^="README.md ·"]').click();
+    await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "README.md" });
     await page.locator(".tab-item.active").hover();
     await page.locator(".tab-item.active .tab-action-button.close").click();
@@ -157,7 +157,8 @@ export async function run(ctx) {
       expect(
         Math.abs(editLayout.x - previewLayout.x) <= 1 &&
           Math.abs(editLayout.width - previewLayout.width) <= 1,
-        `${widthLabel} Text Width should keep the same content column when switching Edit and Preview.`,
+        `${widthLabel} Text Width should keep the same content column when switching Edit and Preview. ` +
+          `Edit=${JSON.stringify(editLayout)} Preview=${JSON.stringify(previewLayout)}`,
       );
     }
   });

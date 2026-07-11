@@ -8,7 +8,7 @@ type UseWorkspaceLiveRoomControllerArgs = {
   resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   retryCollaborationConnection: () => void;
   setCopiedFileId: Dispatch<SetStateAction<string | null>>;
-  startCollaborationSession: () => { roomId: string; shareUrl: string } | undefined;
+  startCollaborationSession: () => { fileId: string; roomId: string; shareUrl: string } | undefined;
   stopFileCollaborationSession: (fileId: string) => WorkspaceFile | undefined;
 };
 

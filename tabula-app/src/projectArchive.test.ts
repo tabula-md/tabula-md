@@ -5,7 +5,11 @@ import {
   getCrc32,
   getProjectArchiveEntries,
 } from "./projectArchive";
-import { createWorkspaceFile } from "./workspaceStorage";
+import {
+  WORKSPACE_ROOT_FOLDER_ID,
+  createWorkspaceFile,
+  createWorkspaceRootFolder,
+} from "./workspaceStorage";
 
 const textDecoder = new TextDecoder();
 
@@ -50,9 +54,9 @@ describe("project archive", () => {
     ).toEqual([
       { path: "Design.md", content: "# Design" },
       { path: "Design 2.md", content: "# Second" },
-      { path: "bad/name-.markdown", content: "# Third" },
-      { path: "docs/Guide.md", content: "# Guide" },
-      { path: "docs/Guide 2.md", content: "# Guide 2" },
+      { path: "bad-name-.markdown", content: "# Third" },
+      { path: "docs-Guide.md", content: "# Guide" },
+      { path: "docs-Guide 2.md", content: "# Guide 2" },
     ]);
   });
 
@@ -70,14 +74,36 @@ describe("project archive", () => {
   });
 
   it("creates zip entries with logical folder structure", async () => {
-    const archive = createProjectArchive([
-      createWorkspaceFile(1, { title: "docs/README.md", text: "# Docs" }),
-      createWorkspaceFile(2, { title: "decisions/ADR 1", text: "# ADR" }),
-    ]);
+    const archive = createProjectArchive(
+      [
+        createWorkspaceFile(1, { title: "README.md", text: "# Docs", parentId: "docs" }),
+        createWorkspaceFile(2, { title: "ADR 1", text: "# ADR", parentId: "decisions" }),
+      ],
+      [
+        createWorkspaceRootFolder(),
+        { id: "docs", title: "docs", parentId: WORKSPACE_ROOT_FOLDER_ID },
+        { id: "decisions", title: "decisions", parentId: WORKSPACE_ROOT_FOLDER_ID },
+      ],
+    );
 
     await expect(readStoredZipEntries(archive)).resolves.toEqual([
       { path: "docs/README.md", content: "# Docs" },
       { path: "decisions/ADR 1.md", content: "# ADR" },
+    ]);
+  });
+
+  it("preserves empty logical folders", async () => {
+    const archive = createProjectArchive(
+      [createWorkspaceFile(1, { title: "README.md", text: "# Root" })],
+      [
+        createWorkspaceRootFolder(),
+        { id: "empty", title: "Empty notes", parentId: WORKSPACE_ROOT_FOLDER_ID },
+      ],
+    );
+
+    await expect(readStoredZipEntries(archive)).resolves.toEqual([
+      { path: "Empty notes/", content: "" },
+      { path: "README.md", content: "# Root" },
     ]);
   });
 

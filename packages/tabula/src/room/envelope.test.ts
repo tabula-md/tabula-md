@@ -5,9 +5,13 @@ import {
   isEnvelopeKind,
 } from "./envelope";
 import { generateEncryptionKey } from "../data/encryption";
+import { encodeRoomWirePacket } from "../roomBinaryProtocol";
 
-const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
+const syncPacket = encodeRoomWirePacket({
+  type: "sync.message",
+  senderId: "actor-1",
+  payload: new Uint8Array([1, 2, 3]),
+});
 
 describe("room envelope encryption", () => {
   it("authenticates encrypted room-event metadata with AES-GCM AAD", async () => {
@@ -17,12 +21,12 @@ describe("room envelope encryption", () => {
       roomId: "room_123",
       kind: "room-event",
       version: 1,
-      plaintext: textEncoder.encode('{"type":"presence.updated"}'),
+      plaintext: syncPacket,
       createdAt: "2026-07-09T00:00:00.000Z",
     });
 
     await expect(decryptRoomEnvelope({ roomKey: key, envelope })).resolves.toEqual(
-      textEncoder.encode('{"type":"presence.updated"}'),
+      syncPacket,
     );
 
     await expect(
@@ -47,11 +51,11 @@ describe("room envelope encryption", () => {
       roomId: "room_123",
       kind: "room-event",
       version: 2,
-      plaintext: textEncoder.encode('{"type":"workspace.updated"}'),
+      plaintext: syncPacket,
     });
 
     const plaintext = await decryptRoomEnvelope({ roomKey: key, envelope });
 
-    expect(textDecoder.decode(plaintext)).toBe('{"type":"workspace.updated"}');
+    expect(plaintext).toEqual(syncPacket);
   });
 });

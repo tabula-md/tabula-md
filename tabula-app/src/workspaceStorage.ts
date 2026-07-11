@@ -4,6 +4,7 @@ import {
   FILE_VIEW_MODES,
   MAX_SPLIT_EDITOR_RATIO,
   MIN_SPLIT_EDITOR_RATIO,
+  normalizeWorkspaceFileTitle,
   parseRoomLocation,
   parseRoomShareUrl,
   READING_WIDTHS,
@@ -22,9 +23,10 @@ export {
 };
 export type { FileViewMode, ReadingWidth };
 
-export const PROJECT_STORAGE_VERSION = 5;
+export const PROJECT_STORAGE_VERSION = 6;
 export const WORKSPACE_STORAGE_VERSION = PROJECT_STORAGE_VERSION;
-export const PROJECT_STORAGE_KEY = "tabula.project.v5";
+export const PROJECT_STORAGE_KEY = "tabula.project.v6";
+export const LEGACY_PROJECT_STORAGE_KEY = "tabula.project.v5";
 export const PROJECT_STORAGE_MANIFEST_KEY = "tabula.project.manifest.v1";
 const STARTER_MARKDOWN = "";
 export const README_FILE_ID = "tabula-readme";
@@ -94,10 +96,19 @@ export type WorkspaceFile = {
   connectionStatus?: ConnectionStatus;
   roomId?: string;
   shareUrl?: string;
-  collaboratorCount?: number;
   lastRecoveryType?: CollabRecoveryEvent["type"];
   lastRecoveryMessage?: string;
   lastRecoveryAt?: string;
+};
+
+export const WORKSPACE_ROOT_FOLDER_ID = "workspace-root";
+
+export type WorkspaceFolder = {
+  id: string;
+  title: string;
+  parentId: string | null;
+  order?: number;
+  roomId?: string;
 };
 
 export type FileCommentReply = {
@@ -125,6 +136,7 @@ export type FileComment = {
 };
 
 export type WorkspaceState = {
+  folders: WorkspaceFolder[];
   files: WorkspaceFile[];
   openFileIds: string[];
   activeFileId: string;
@@ -152,21 +164,26 @@ export type StoredWorkspaceFile = {
   connectionStatus?: ConnectionStatus;
   roomId?: string;
   shareUrl?: string;
-  collaboratorCount?: number;
   lastRecoveryType?: CollabRecoveryEvent["type"];
   lastRecoveryMessage?: string;
   lastRecoveryAt?: string;
 };
 
-export type StoredProjectV5 = {
+export type StoredProjectV6 = {
   schema: "tabula.project";
   version: typeof PROJECT_STORAGE_VERSION;
   savedAt: string;
   activeFileId: string;
   openFileIds: string[];
   fileOrder: string[];
+  folderOrder: string[];
+  folders: Record<string, WorkspaceFolder>;
   files: Record<string, StoredWorkspaceFile>;
   commentsByFileId: Record<string, FileComment[]>;
+};
+
+export type StoredProjectV5 = Omit<StoredProjectV6, "version" | "folderOrder" | "folders"> & {
+  version: 5;
 };
 
 export type StoredWorkspaceManifestV1 = {
@@ -308,6 +325,7 @@ export const ensureLiveFileForRoom = (files: WorkspaceFile[], room: LocationRoom
 
 export const createRoomWorkspaceState = (_room: LocationRoom): WorkspaceState => {
   return {
+    folders: [createWorkspaceRootFolder()],
     files: [],
     openFileIds: [],
     activeFileId: "",
@@ -315,10 +333,18 @@ export const createRoomWorkspaceState = (_room: LocationRoom): WorkspaceState =>
   };
 };
 
+export const createWorkspaceRootFolder = (): WorkspaceFolder => ({
+  id: WORKSPACE_ROOT_FOLDER_ID,
+  title: "Project",
+  parentId: null,
+  order: 0,
+});
+
 const createReadmeFile = (): WorkspaceFile => ({
   id: README_FILE_ID,
   title: "README.md",
   text: STARTER_README_MARKDOWN,
+  parentId: WORKSPACE_ROOT_FOLDER_ID,
   viewMode: "preview",
   readingWidth: "wide",
   lineWrapping: true,
@@ -332,7 +358,7 @@ export const createWorkspaceFile = (index: number, overrides: Partial<WorkspaceF
     id: randomId(),
     title: index === 1 ? "Untitled.md" : `Untitled ${index}.md`,
     text: STARTER_MARKDOWN,
-    parentId: undefined,
+    parentId: WORKSPACE_ROOT_FOLDER_ID,
     order: undefined,
     viewMode: "edit",
     readingWidth: "wide",
@@ -424,7 +450,7 @@ const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | 
     id: getString(value.id) || randomId(),
     title: getString(value.title) || `Untitled ${index + 1}.md`,
     text,
-    parentId: value.parentId === null || typeof value.parentId === "string" ? value.parentId : undefined,
+    parentId: typeof value.parentId === "string" ? value.parentId : WORKSPACE_ROOT_FOLDER_ID,
     order: getFiniteNumber(value.order),
     viewMode: getFileViewMode(value.viewMode) ?? "edit",
     readingWidth: getReadingWidth(value.readingWidth) ?? "wide",
@@ -435,10 +461,134 @@ const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | 
     connectionStatus: "idle",
     roomId: undefined,
     shareUrl: undefined,
-    collaboratorCount: 0,
     lastRecoveryType: undefined,
     lastRecoveryMessage: undefined,
     lastRecoveryAt: undefined,
+  };
+};
+
+const normalizeWorkspaceFolder = (value: unknown, fallbackId?: string): WorkspaceFolder | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const id = getString(value.id) || fallbackId;
+  if (!id) {
+    return null;
+  }
+  return {
+    id,
+    title: (getString(value.title) ?? "")
+      .trim()
+      .split("\0")
+      .join(" ")
+      .replace(/[/\\]/g, " ")
+      .replace(/\s+/g, " ") || (id === WORKSPACE_ROOT_FOLDER_ID ? "Project" : "Folder"),
+    parentId: id === WORKSPACE_ROOT_FOLDER_ID
+      ? null
+      : (typeof value.parentId === "string" ? value.parentId : WORKSPACE_ROOT_FOLDER_ID),
+    order: getFiniteNumber(value.order),
+    roomId: undefined,
+  };
+};
+
+const normalizeFoldersFromMap = (folders: unknown, folderOrder: unknown): WorkspaceFolder[] => {
+  if (!isRecord(folders)) {
+    return [createWorkspaceRootFolder()];
+  }
+  const orderedIds = Array.isArray(folderOrder)
+    ? folderOrder.map(getString).filter((id): id is string => Boolean(id))
+    : [];
+  const ids = [...orderedIds, ...Object.keys(folders).filter((id) => !orderedIds.includes(id))];
+  const normalized = ids
+    .map((id) => normalizeWorkspaceFolder(folders[id], id))
+    .filter((folder): folder is WorkspaceFolder => Boolean(folder));
+  const withoutDuplicateRoots = normalized.filter((folder) => folder.id !== WORKSPACE_ROOT_FOLDER_ID);
+  return [createWorkspaceRootFolder(), ...withoutDuplicateRoots];
+};
+
+const stableFolderId = (path: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < path.length; index += 1) {
+    hash ^= path.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `folder-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+};
+
+const migrateLegacyFilePaths = (files: WorkspaceFile[]) => {
+  const foldersByPath = new Map<string, WorkspaceFolder>();
+  const migratedFiles = files.map((file) => {
+    const parts = file.title.split(/[\\/]+/).map((part) => part.trim()).filter(Boolean);
+    if (parts.length <= 1) {
+      return { ...file, parentId: WORKSPACE_ROOT_FOLDER_ID };
+    }
+    let parentId = WORKSPACE_ROOT_FOLDER_ID;
+    let path = "";
+    for (const folderTitle of parts.slice(0, -1)) {
+      path = path ? `${path}/${folderTitle}` : folderTitle;
+      let folder = foldersByPath.get(path);
+      if (!folder) {
+        folder = {
+          id: stableFolderId(path.toLowerCase()),
+          title: folderTitle,
+          parentId,
+          order: foldersByPath.size,
+        };
+        foldersByPath.set(path, folder);
+      }
+      parentId = folder.id;
+    }
+    return { ...file, title: normalizeWorkspaceFileTitle(parts.at(-1) ?? file.title), parentId };
+  });
+  return {
+    folders: [createWorkspaceRootFolder(), ...foldersByPath.values()],
+    files: migratedFiles,
+  };
+};
+
+const normalizeWorkspaceTree = (
+  files: WorkspaceFile[],
+  folders: WorkspaceFolder[],
+) => {
+  const uniqueFolders = new Map<string, WorkspaceFolder>();
+  for (const folder of folders) {
+    if (!folder.id || folder.id === WORKSPACE_ROOT_FOLDER_ID || uniqueFolders.has(folder.id)) continue;
+    uniqueFolders.set(folder.id, {
+      ...folder,
+      title: folder.title.trim().split("\0").join(" ").replace(/[/\\]/g, " ").replace(/\s+/g, " ") || "Folder",
+    });
+  }
+  const foldersById = new Map<string, WorkspaceFolder>([
+    [WORKSPACE_ROOT_FOLDER_ID, createWorkspaceRootFolder()],
+    ...uniqueFolders,
+  ]);
+  const normalizedFolders = [createWorkspaceRootFolder()];
+  for (const folder of uniqueFolders.values()) {
+    let parentId = folder.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
+    if (!foldersById.has(parentId) || parentId === folder.id) parentId = WORKSPACE_ROOT_FOLDER_ID;
+    const visited = new Set([folder.id]);
+    let ancestorId: string | null = parentId;
+    while (ancestorId && ancestorId !== WORKSPACE_ROOT_FOLDER_ID) {
+      if (visited.has(ancestorId)) {
+        parentId = WORKSPACE_ROOT_FOLDER_ID;
+        break;
+      }
+      visited.add(ancestorId);
+      ancestorId = foldersById.get(ancestorId)?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
+    }
+    const normalized = { ...folder, parentId };
+    foldersById.set(folder.id, normalized);
+    normalizedFolders.push(normalized);
+  }
+  return {
+    folders: normalizedFolders,
+    files: files.map((file) => ({
+      ...file,
+      title: normalizeWorkspaceFileTitle(file.title),
+      parentId: foldersById.has(file.parentId ?? "")
+        ? file.parentId
+        : WORKSPACE_ROOT_FOLDER_ID,
+    })),
   };
 };
 
@@ -528,10 +678,14 @@ export const finalizeWorkspaceState = (
   files: WorkspaceFile[],
   activeFileId?: string,
   commentsByFileId: Record<string, FileComment[]> = {},
-  options: { includeLocationRoom?: boolean; openFileIds?: string[] } = {},
+  options: { folders?: WorkspaceFolder[]; includeLocationRoom?: boolean; openFileIds?: string[] } = {},
 ): WorkspaceState => {
+  const normalizedTree = normalizeWorkspaceTree(
+    files,
+    options.folders?.length ? options.folders : [createWorkspaceRootFolder()],
+  );
   const room = options.includeLocationRoom === false ? null : getRoomFromLocation();
-  const prunedFiles = pruneEmptyGeneratedLivePlaceholders(files, commentsByFileId);
+  const prunedFiles = pruneEmptyGeneratedLivePlaceholders(normalizedTree.files, commentsByFileId);
   let nextFiles = ensureDefaultFiles(prunedFiles, { ensureUntitled: prunedFiles.length === 0 });
 
   if (room) {
@@ -578,6 +732,7 @@ export const finalizeWorkspaceState = (
   }
 
   return {
+    folders: normalizedTree.folders,
     files: nextFiles,
     openFileIds: nextOpenFileIds,
     activeFileId: nextActiveFileId,
@@ -608,8 +763,21 @@ export const migrateWorkspacePayload = (
       normalizeFilesFromMap(payload.files, payload.fileOrder),
       activeFileId,
       commentsByFileId,
-      { ...options, openFileIds },
+      {
+        ...options,
+        folders: normalizeFoldersFromMap(payload.folders, payload.folderOrder),
+        openFileIds,
+      },
     );
+  }
+
+  if (payload.version === 5 && payload.schema === "tabula.project" && isRecord(payload.files)) {
+    const migrated = migrateLegacyFilePaths(normalizeFilesFromMap(payload.files, payload.fileOrder));
+    return finalizeWorkspaceState(migrated.files, activeFileId, commentsByFileId, {
+      ...options,
+      folders: migrated.folders,
+      openFileIds,
+    });
   }
 
   return null;
@@ -637,7 +805,10 @@ const readJsonFromStorage = (key: string, storage: WorkspaceStorageAdapter) => {
 export const readStoredWorkspace = (
   storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
 ): WorkspaceState | null => {
-  return migrateWorkspacePayload(readJsonFromStorage(PROJECT_STORAGE_KEY, storage), { includeLocationRoom: false });
+  return migrateWorkspacePayload(
+    readJsonFromStorage(PROJECT_STORAGE_KEY, storage) ?? readJsonFromStorage(LEGACY_PROJECT_STORAGE_KEY, storage),
+    { includeLocationRoom: false },
+  );
 };
 
 export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {
@@ -657,7 +828,7 @@ export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
     id: file.id,
     title: file.title,
     text: file.text,
-    parentId: file.parentId ?? undefined,
+    parentId: file.parentId ?? WORKSPACE_ROOT_FOLDER_ID,
     order: file.order,
     viewMode: file.viewMode,
     readingWidth: file.readingWidth,
@@ -668,23 +839,24 @@ export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
     connectionStatus: "idle",
     roomId: undefined,
     shareUrl: undefined,
-    collaboratorCount: 0,
     lastRecoveryType: undefined,
     lastRecoveryMessage: undefined,
     lastRecoveryAt: undefined,
   };
 };
 
-type CreateStoredWorkspaceInput = Omit<WorkspaceState, "openFileIds"> & {
+type CreateStoredWorkspaceInput = Omit<WorkspaceState, "folders" | "openFileIds"> & {
+  folders?: WorkspaceFolder[];
   openFileIds?: string[];
 };
 
 export const createStoredWorkspace = ({
+  folders = [createWorkspaceRootFolder()],
   files,
   openFileIds = files.map((file) => file.id),
   activeFileId,
   commentsByFileId,
-}: CreateStoredWorkspaceInput): StoredProjectV5 => {
+}: CreateStoredWorkspaceInput): StoredProjectV6 => {
   const storedFiles = pruneEmptyGeneratedLivePlaceholders(files, commentsByFileId);
   const storedFileIds = new Set(storedFiles.map((file) => file.id));
   const nextActiveFileId = storedFileIds.has(activeFileId) ? activeFileId : (storedFiles[0]?.id ?? "");
@@ -698,12 +870,15 @@ export const createStoredWorkspace = ({
       (fileId, index, fileIdList) => storedFileIds.has(fileId) && fileIdList.indexOf(fileId) === index,
     ),
     fileOrder: storedFiles.map((file) => file.id),
+    folderOrder: folders.map((folder) => folder.id),
+    folders: Object.fromEntries(folders.map((folder) => [folder.id, { ...folder, roomId: undefined }])),
     files: Object.fromEntries(storedFiles.map((file) => [file.id, serializeFile(file)])),
     commentsByFileId,
   };
 };
 
 export const getStoredWorkspaceContentSignature = ({
+  folders = [createWorkspaceRootFolder()],
   files,
   openFileIds = files.map((file) => file.id),
   activeFileId,
@@ -720,6 +895,8 @@ export const getStoredWorkspaceContentSignature = ({
       (fileId, index, fileIdList) => storedFileIds.has(fileId) && fileIdList.indexOf(fileId) === index,
     ),
     fileOrder: storedFiles.map((file) => file.id),
+    folderOrder: folders.map((folder) => folder.id),
+    folders: Object.fromEntries(folders.map((folder) => [folder.id, { ...folder, roomId: undefined }])),
     files: Object.fromEntries(storedFiles.map((file) => [file.id, serializeFile(file)])),
     commentsByFileId,
   });
@@ -760,6 +937,7 @@ export const clearStoredWorkspace = (
   storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
 ) => {
   storage.removeItem?.(PROJECT_STORAGE_KEY);
+  storage.removeItem?.(LEGACY_PROJECT_STORAGE_KEY);
 };
 
 export const clearStoredWorkspaceIfCurrent = (

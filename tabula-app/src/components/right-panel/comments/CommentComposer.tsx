@@ -1,4 +1,5 @@
 import { type RefObject } from "react";
+import { WORKSPACE_ROOM_MAX_COMMENT_LENGTH } from "@tabula-md/tabula";
 
 type CommentComposerProps = {
   activeFileTitle: string;
@@ -47,6 +48,7 @@ export function CommentComposer({
       <textarea
         ref={commentInputRef}
         className="right-comment-input"
+        maxLength={WORKSPACE_ROOM_MAX_COMMENT_LENGTH}
         value={commentDraft}
         onChange={(event) => onCommentDraftChange(event.target.value)}
         onKeyDown={(event) => {

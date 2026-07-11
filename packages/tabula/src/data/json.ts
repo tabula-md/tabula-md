@@ -5,6 +5,7 @@ import {
   type ShareSnapshot,
   type ShareSnapshotPayload,
   type ShareSnapshotSourceFile,
+  type ShareSnapshotSourceFolder,
   type ShareSnapshotComment,
 } from "../shareSnapshotPayload";
 
@@ -13,6 +14,8 @@ const textDecoder = new TextDecoder();
 
 export type SerializeShareSnapshotInput = {
   files: ShareSnapshotSourceFile[];
+  folders: ShareSnapshotSourceFolder[];
+  rootFolderId: string;
   activeFileId: string;
   commentsByFileId: Record<string, ShareSnapshotComment[]>;
 };

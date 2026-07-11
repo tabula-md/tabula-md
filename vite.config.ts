@@ -97,7 +97,10 @@ export default defineConfig({
 
           if (
             includesPackage(normalizedId, "@codemirror/state") ||
-            includesPackage(normalizedId, "@codemirror/view")
+            includesPackage(normalizedId, "@codemirror/view") ||
+            includesPackage(normalizedId, "crelt") ||
+            includesPackage(normalizedId, "style-mod") ||
+            includesPackage(normalizedId, "w3c-keyname")
           ) {
             return "codemirror-core";
           }
@@ -120,19 +123,28 @@ export default defineConfig({
             return "lezer-vendor";
           }
 
-          if (includesPackage(normalizedId, "firebase") || normalizedId.includes("/node_modules/@firebase/")) {
-            return "firebase-vendor";
+          if (
+            includesPackage(normalizedId, "yjs") ||
+            includesPackage(normalizedId, "y-protocols") ||
+            includesPackage(normalizedId, "y-codemirror.next") ||
+            includesPackage(normalizedId, "lib0") ||
+            includesPackage(normalizedId, "isomorphic.js")
+          ) {
+            return "collab-vendor";
           }
 
           if (
-            includesPackage(normalizedId, "yjs") ||
-            includesPackage(normalizedId, "lib0") ||
             includesPackage(normalizedId, "socket.io-client") ||
             includesPackage(normalizedId, "socket.io-parser") ||
             includesPackage(normalizedId, "engine.io-client") ||
-            includesPackage(normalizedId, "engine.io-parser")
+            includesPackage(normalizedId, "engine.io-parser") ||
+            normalizedId.includes("/node_modules/@socket.io/")
           ) {
-            return "collab-vendor";
+            return "room-transport-vendor";
+          }
+
+          if (includesPackage(normalizedId, "firebase") || normalizedId.includes("/node_modules/@firebase/")) {
+            return "firebase-vendor";
           }
 
           if (

@@ -4,8 +4,8 @@ Core product contracts for Tabula.md.
 
 This package is intentionally small and browser-service agnostic. It contains
 pure models for Markdown editing, workspace files, document controls, comments,
-status labels, live room links, encrypted Export links, and the pure
-parts of collaboration presence. It also owns the product data and room
+status labels, live room links, encrypted Export links, the workspace Yjs
+schema, and binary room packets. It also owns product data, actor, and room
 envelope contracts used by Export links and live recovery. The Tabula
 app in `tabula-app` wires these contracts to React, CodeMirror, local storage,
 collaboration transports, hosted recovery, and network services.
@@ -20,8 +20,8 @@ Keep in this package:
 - AES-GCM primitives through `globalThis.crypto`.
 - Versioned encrypted data encoding for Export links and recovery blobs.
 - Comment/status/document control view models.
-- Collaboration envelope, session, collaborator, and presence models that do
-  not require a transport.
+- Workspace CRDT, binary room protocol, actor, envelope, and presence models
+  that do not require React or a concrete transport.
 - Pure helpers that can be tested without the DOM, React, storage, or network.
 
 Public imports must go through the package root:
@@ -38,7 +38,7 @@ Keep outside this package:
 - React components and hooks.
 - CodeMirror extensions and editor refs.
 - Browser storage, file picker, clipboard, and download behavior.
-- Socket.IO, fetch, Yjs transactions, hosted recovery SDKs, or browser app wiring.
+- Socket.IO, fetch, hosted recovery SDKs, or browser app wiring.
 - `tabula-room`, `tabula-json`, recovery provider settings, or managed
   deployment settings.
 - Product surfaces that depend on a service account, billing, auth, or runtime
@@ -89,5 +89,5 @@ import { createRoomEnvelope } from "@tabula-md/tabula/room";
 
 `tabula-app` is the tabula.md service app. It can choose to enable or hide
 service features such as live collaboration, hosted recovery, encrypted
-snapshot upload, Send to..., or future Tabula+ boundaries without changing the
+Export-link upload, or future Tabula+ boundaries without changing the
 pure contracts here.

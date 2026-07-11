@@ -7,7 +7,6 @@ import type { Collaborator } from "./collaboration";
 import {
   createWorkspaceIdentity,
   IDENTITY_KEY,
-  IDENTITY_SESSION_KEY,
   normalizeWorkspaceIdentity,
 } from "./hooks/useWorkspaceIdentity";
 import { createHelpMarkdown, getKeyboardShortcuts } from "./helpMarkdown";
@@ -48,6 +47,7 @@ import {
   getUnsupportedProjectSchemaMessage,
   isSupportedImportFileDescriptor,
 } from "./workspaceIoModel";
+import { createWorkspaceRootFolder } from "./workspaceStorage";
 import {
   getLocalTypingTextCommitDelay,
   getWorkspaceTextChangePolicy,
@@ -423,10 +423,8 @@ describe("workspace identity controller", () => {
 
   it("persists a created identity when no stored identity exists", () => {
     const storage = new MemoryStorage();
-    const sessionStorage = new MemoryStorage();
     const identity = createWorkspaceIdentity({
       storage,
-      sessionStorage,
       createId: () => "id-12345",
       now: () => 10,
     });
@@ -437,13 +435,11 @@ describe("workspace identity controller", () => {
       color: createRoomActorColor("id-12345"),
       lastSeen: 10,
     });
-    expect(JSON.parse(storage.getItem(IDENTITY_KEY) ?? "{}")).toEqual(identity);
-    expect(JSON.parse(sessionStorage.getItem(IDENTITY_SESSION_KEY) ?? "{}")).toEqual({ id: "id-12345" });
+    expect(JSON.parse(storage.getItem(IDENTITY_KEY) ?? "{}")).toEqual({});
   });
 
   it("uses a tab-scoped actor id while preserving a custom stored name", () => {
     const storage = new MemoryStorage();
-    const sessionStorage = new MemoryStorage();
     storage.setItem(
       IDENTITY_KEY,
       JSON.stringify({
@@ -456,7 +452,6 @@ describe("workspace identity controller", () => {
 
     const identity = createWorkspaceIdentity({
       storage,
-      sessionStorage,
       createId: () => "next-tab",
       now: () => 20,
     });
@@ -467,31 +462,27 @@ describe("workspace identity controller", () => {
       color: createRoomActorColor("next-tab"),
       lastSeen: 20,
     });
+    expect(JSON.parse(storage.getItem(IDENTITY_KEY) ?? "{}")).toEqual({ name: "Taeha" });
   });
 
-  it("reuses the tab-scoped actor id across reloads", () => {
+  it("creates a new actor id for each page runtime", () => {
     const storage = new MemoryStorage();
-    const sessionStorage = new MemoryStorage();
-    sessionStorage.setItem(IDENTITY_SESSION_KEY, JSON.stringify({ id: "same-tab" }));
-
     const identity = createWorkspaceIdentity({
       storage,
-      sessionStorage,
       createId: () => "new-tab",
       now: () => 20,
     });
 
     expect(identity).toEqual({
-      id: "same-tab",
-      name: createRoomActorName("human", "same-tab"),
-      color: createRoomActorColor("same-tab"),
+      id: "new-tab",
+      name: createRoomActorName("human", "new-tab"),
+      color: createRoomActorColor("new-tab"),
       lastSeen: 20,
     });
   });
 
   it("replaces stored generated anonymous names with actor names", () => {
     const storage = new MemoryStorage();
-    const sessionStorage = new MemoryStorage();
     storage.setItem(
       IDENTITY_KEY,
       JSON.stringify({
@@ -504,7 +495,6 @@ describe("workspace identity controller", () => {
 
     const identity = createWorkspaceIdentity({
       storage,
-      sessionStorage,
       createId: () => "next-tab",
       now: () => 20,
     });
@@ -703,6 +693,7 @@ describe("project IO controller", () => {
     const staleActiveFile = file("brief", "# Stale");
     const runtimeActiveFile = file("brief", "# Pending");
     const runtimeWorkspace = {
+      folders: [createWorkspaceRootFolder()],
       files: [runtimeActiveFile],
       openFileIds: [runtimeActiveFile.id],
       activeFileId: runtimeActiveFile.id,
@@ -719,6 +710,7 @@ describe("project IO controller", () => {
         activeFile: staleActiveFile,
         activeFileId: staleActiveFile.id,
         files: [staleActiveFile],
+        folders: [createWorkspaceRootFolder()],
         getWorkspaceSnapshot: () => runtimeWorkspace,
         openFileIds: [staleActiveFile.id],
       }),
@@ -729,6 +721,7 @@ describe("project IO controller", () => {
     const staleActiveFile = file("brief", "# Stale");
     const runtimeActiveFile = file("brief", "# Pending");
     const runtimeWorkspace = {
+      folders: [createWorkspaceRootFolder()],
       files: [runtimeActiveFile],
       openFileIds: [runtimeActiveFile.id],
       activeFileId: runtimeActiveFile.id,
@@ -756,6 +749,7 @@ describe("project IO controller", () => {
         activeFile: staleActiveFile,
         activeFileId: staleActiveFile.id,
         files: [staleActiveFile],
+        folders: [createWorkspaceRootFolder()],
         getWorkspaceSnapshot,
         onBeforeWorkspaceBoundary,
         openFileIds: [staleActiveFile.id],
@@ -1054,13 +1048,11 @@ describe("workspace file actions controller", () => {
         roomId: "room-1",
         shareUrl: `https://tabula.md/#room=room-1,${VALID_ROOM_KEY}`,
         connectionStatus: "connected",
-        collaboratorCount: 2,
       }),
     ).toMatchObject({
       roomId: "room-1",
       shareUrl: `https://tabula.md/#room=room-1,${VALID_ROOM_KEY}`,
       connectionStatus: "connected",
-      collaboratorCount: 2,
     });
 
     expect(getLiveRoomFileOverrides({ connectionStatus: "idle" })).toEqual({});

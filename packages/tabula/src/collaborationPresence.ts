@@ -38,8 +38,8 @@ export const isCollaboratorInFile = (
   currentDocumentId?: string,
 ) => {
   const collaboratorDocumentId = collaborator.activeDocumentId ?? collaborator.selection?.documentId;
-  if (currentDocumentId && collaboratorDocumentId) {
-    return collaboratorDocumentId === currentDocumentId;
+  if (currentDocumentId || collaboratorDocumentId) {
+    return Boolean(currentDocumentId && collaboratorDocumentId === currentDocumentId);
   }
 
   if (currentRoomId && collaborator.roomId) {
@@ -56,6 +56,11 @@ export const getCollaboratorPresenceDetail = (
   currentRoomId?: string,
   currentDocumentId?: string,
 ) => {
+  const collaboratorDocumentId = collaborator.activeDocumentId ?? collaborator.selection?.documentId;
+  if (!collaboratorDocumentId && !collaborator.fileTitle) {
+    return collaborator.kind === "agent" ? "Agent in workspace" : "In workspace";
+  }
+
   if (!isCollaboratorInFile(collaborator, currentFileTitle, currentRoomId, currentDocumentId)) {
     return `${collaborator.kind === "agent" ? "Agent viewing" : "Viewing"} ${collaborator.fileTitle}`;
   }

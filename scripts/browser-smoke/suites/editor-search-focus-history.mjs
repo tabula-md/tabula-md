@@ -12,7 +12,7 @@ export async function run(ctx) {
   } = ctx;
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("Agent anchor\n\nWorking line");
@@ -59,7 +59,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("editor undo base");

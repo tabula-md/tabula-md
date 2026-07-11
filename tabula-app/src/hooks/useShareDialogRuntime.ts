@@ -11,6 +11,7 @@ import type { WorkspaceFile } from "../workspaceStorage";
 
 type UseShareDialogRuntimeOptions = {
   activeFile?: WorkspaceFile;
+  roomFile?: WorkspaceFile;
   activeText: string;
   canStartSession: boolean;
   files: WorkspaceFile[];
@@ -27,6 +28,7 @@ type UseShareDialogRuntimeOptions = {
 
 export function useShareDialogRuntime({
   activeFile,
+  roomFile,
   activeText,
   canStartSession,
   files,
@@ -68,9 +70,12 @@ export function useShareDialogRuntime({
     [excludedFileIds, files],
   );
   const roomPromptFiles = useMemo(() => {
+    if (roomFile?.roomId) {
+      return promptFiles.filter((file) => file.roomId === roomFile.roomId);
+    }
     const includedIds = new Set(includedFileIds);
     return promptFiles.filter((file) => includedIds.has(file.id));
-  }, [includedFileIds, promptFiles]);
+  }, [includedFileIds, promptFiles, roomFile?.roomId]);
   const includedFileCount = useMemo(
     () => includedFileIds.length,
     [includedFileIds],
@@ -86,8 +91,8 @@ export function useShareDialogRuntime({
     jsonShareDisabledReason: jsonShare.disabledReason,
     jsonShareExporting: jsonShare.exporting,
     jsonShareUrl: jsonShare.url,
-    roomId: activeFile?.roomId,
-    shareUrl: activeFile?.shareUrl,
+    roomId: roomFile?.roomId ?? activeFile?.roomId,
+    shareUrl: roomFile?.shareUrl ?? activeFile?.shareUrl,
     startSessionUnavailableReason,
   });
 
@@ -133,11 +138,14 @@ export function useShareDialogRuntime({
   };
 
   const copyLocalAgentPrompt = async () => {
+    const promptActiveFile = activeFile && roomFile?.roomId && activeFile.roomId === roomFile.roomId
+      ? { ...activeFile, text: activeText }
+      : roomPromptFiles[0];
     const prompt = buildLocalAgentPrompt({
-      activeFile: activeFile ? { ...activeFile, text: activeText } : undefined,
+      activeFile: promptActiveFile,
       files: roomPromptFiles,
       instruction: "",
-      liveRoomUrl: isLiveConnected ? activeFile?.shareUrl : undefined,
+      liveRoomUrl: isLiveConnected ? (roomFile?.shareUrl ?? activeFile?.shareUrl) : undefined,
       scope: "project",
     });
 

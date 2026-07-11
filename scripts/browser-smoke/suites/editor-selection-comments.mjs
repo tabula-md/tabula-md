@@ -21,11 +21,11 @@ export async function run(ctx) {
     await waitForShareDialogState(page, { text: "Invite link" });
     await page.keyboard.press("Escape");
     await waitForShareDialogState(page, { open: false });
-    await page.waitForSelector(".tab-item.live.active", { timeout: 5_000 });
+    await page.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])", { timeout: 5_000 });
   };
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("a\n\nmuch longer selected line\nb");
@@ -231,7 +231,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
@@ -309,7 +309,8 @@ export async function run(ctx) {
     expect(commentAfterOffsetShift.activeMarkCount === 1, "Comment anchors should keep active focus after text edits.");
     expect(
       commentAfterOffsetShift.cursorPosition.includes("characters"),
-      "Formatting command selection should continue to update the cursor selection state.",
+      `Formatting command selection should continue to update the cursor selection state. ` +
+        `Actual: ${JSON.stringify(commentAfterOffsetShift.cursorPosition)}`,
     );
 
     await closeProjectContext(page);
@@ -444,7 +445,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);

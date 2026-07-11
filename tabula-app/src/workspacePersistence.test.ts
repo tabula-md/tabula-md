@@ -8,6 +8,7 @@ import { getWorkspacePersistenceFlushSnapshot } from "./hooks/useQueuedWorkspace
 import {
   clearStoredWorkspaceIfCurrent,
   createWorkspaceFile,
+  createWorkspaceRootFolder,
   createStoredWorkspace,
   readStoredWorkspace,
   PROJECT_STORAGE_KEY,
@@ -23,6 +24,7 @@ vi.mock("./workspaceIndexedDb", () => ({
 }));
 
 const createWorkspace = (text: string): WorkspaceState => ({
+  folders: [createWorkspaceRootFolder()],
   files: [createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text })],
   openFileIds: ["local"],
   activeFileId: "local",

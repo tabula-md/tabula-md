@@ -6,7 +6,7 @@ type RightPanelProps = ComponentProps<typeof RightPanel>;
 
 export type WorkspaceProjectContextProps = Omit<
   RightPanelProps,
-  "activeFileId" | "commentsEnabled" | "getFileSearchText"
+  "activeFileId" | "commentsEnabled" | "getFileSearchText" | "isLiveWorkspace"
 > & {
   activeFileId?: string;
   isLive: boolean;
@@ -22,6 +22,7 @@ export function WorkspaceProjectContext({
       {...rightPanelProps}
       activeFileId={activeFileId ?? ""}
       commentsEnabled={isLive}
+      isLiveWorkspace={isLive}
       getFileSearchText={getWorkspaceFileSearchText}
     />
   );

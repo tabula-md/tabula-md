@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from "react-markdown";
 import {
   getPreviewWindow,
@@ -95,7 +95,7 @@ const getBlockCommentAnchors = (
     }))
     .filter((anchor) => anchor.end > anchor.start);
 
-function VirtualPreviewBlock({
+const VirtualPreviewBlock = memo(function VirtualPreviewBlock({
   block,
   commentsEnabled,
   components,
@@ -183,7 +183,7 @@ function VirtualPreviewBlock({
       </ReactMarkdown>
     </div>
   );
-}
+});
 
 function VirtualPreviewFootnotes({
   components,

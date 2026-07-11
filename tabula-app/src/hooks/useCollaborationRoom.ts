@@ -3,27 +3,85 @@ import {
   type Collaborator,
   type CollabRecoveryEvent,
   type ConnectionStatus,
-  type LiveSelection,
 } from "../collaboration";
 import { getTabulaRoomAvailability } from "../collaboration/collabRoom";
 import { createCollaborationSessionStartRequest } from "../collaboration/collabRuntime";
-import type { RoomEvent, TextChange } from "@tabula-md/tabula";
+import {
+  WORKSPACE_ROOM_ROOT_ID,
+  WORKSPACE_ROOM_SCHEMA_VERSION,
+  validateWorkspaceRoomLimits,
+  type WorkspaceRoomComment,
+  type WorkspaceRoomSnapshot,
+} from "@tabula-md/tabula";
+import type {
+  WorkspaceFolderSnapshot,
+  WorkspaceRoomChangeOrigin,
+} from "../collaboration/liveCollaboration";
 import type { WorkspaceFile } from "../workspaceStorage";
 import { useCollaborationConnectionRuntime } from "./useCollaborationConnectionRuntime";
 
+export const validateCollaborationStartWorkspace = ({
+  documents,
+  folders,
+  commentsByFileId = {},
+}: {
+  documents: readonly { id: string; title: string; text: string; parentId?: string | null; order?: number }[];
+  folders: readonly WorkspaceFolderSnapshot[];
+  commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
+}) => validateWorkspaceRoomLimits({
+  roomId: "preflight",
+  schemaVersion: WORKSPACE_ROOM_SCHEMA_VERSION,
+  rootId: WORKSPACE_ROOM_ROOT_ID,
+  nodes: [
+    {
+      id: WORKSPACE_ROOM_ROOT_ID,
+      type: "folder",
+      parentId: null,
+      title: "Workspace",
+      order: 0,
+      createdAt: "",
+      updatedAt: "",
+    },
+    ...folders
+      .filter((folder) => folder.id !== WORKSPACE_ROOM_ROOT_ID)
+      .map((folder) => ({
+        id: folder.id,
+        type: "folder" as const,
+        parentId: folder.parentId ?? WORKSPACE_ROOM_ROOT_ID,
+        title: folder.title,
+        order: folder.order ?? 0,
+        createdAt: "",
+        updatedAt: "",
+      })),
+    ...documents.map((document) => ({
+      id: document.id,
+      type: "document" as const,
+      parentId: document.parentId ?? WORKSPACE_ROOM_ROOT_ID,
+      title: document.title,
+      order: document.order ?? 0,
+      createdAt: "",
+      updatedAt: "",
+    })),
+  ],
+  documents: Object.fromEntries(documents.map((document) => [document.id, document.text])),
+  commentsByFileId,
+});
+
 type UseCollaborationRoomOptions = {
-  activeFile?: WorkspaceFile;
-  activeSelection?: LiveSelection;
+  roomFile?: WorkspaceFile;
+  activeDocument?: WorkspaceFile;
+  editorPresenceEnabled?: boolean;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   identity: Collaborator;
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
+  workspaceFolders?: readonly WorkspaceFolderSnapshot[];
+  commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
   setFileText: (fileId: string, text: string) => void;
   setFileCollaborationStatus: (
     fileId: string,
     status: ConnectionStatus,
-    options?: { collaboratorCount?: number; requireRoom?: boolean },
+    options?: { requireRoom?: boolean },
   ) => void;
-  setFileCollaboratorCount: (fileId: string, collaboratorCount: number) => void;
   setFileRecoveryEvent: (
     fileId: string,
     event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
@@ -33,50 +91,73 @@ type UseCollaborationRoomOptions = {
     roomId: string,
     shareUrl: string,
   ) => WorkspaceFile | undefined;
-  onRemoteTextChange?: (fileId: string, text: string, change?: TextChange) => void;
-  onRoomEvent?: (event: RoomEvent) => void;
+  onRemoteTextChange?: (fileId: string, text: string) => void;
+  onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
+  onWorkspaceChange?: (snapshot: WorkspaceRoomSnapshot, origin?: WorkspaceRoomChangeOrigin) => void;
+  onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
+  onCapacityExceeded?: () => void;
 };
 
 export function useCollaborationRoom({
-  activeFile,
-  activeSelection,
+  roomFile,
+  activeDocument,
+  editorPresenceEnabled,
   getActiveFileSnapshot,
   identity,
   workspaceDocuments,
+  workspaceFolders,
+  commentsByFileId,
   setFileText,
   setFileCollaborationStatus,
-  setFileCollaboratorCount,
   setFileRecoveryEvent,
   startFileCollaborationSession,
   onRemoteTextChange,
-  onRoomEvent,
+  onCommentsChange,
+  onWorkspaceChange,
+  onOpenFailure,
+  onCapacityExceeded,
 }: UseCollaborationRoomOptions) {
   const pendingInitialTextRef = useRef<string | undefined>(undefined);
   const roomAvailability = getTabulaRoomAvailability();
+  const startValidation = validateCollaborationStartWorkspace({
+    documents: workspaceDocuments ?? [],
+    folders: workspaceFolders ?? [],
+    commentsByFileId,
+  });
   const {
     applyLocalText,
     collaborators,
     connectionStatus,
-    publishRoomEvent,
+    editorBinding,
+    upsertComment,
+    deleteComment,
+    setCommentResolved,
+    addCommentReply,
     resetConnection,
     retryConnection,
   } =
     useCollaborationConnectionRuntime({
-      activeFile,
-      activeSelection,
+      roomFile,
+      activeDocument,
+      editorPresenceEnabled,
       identity,
       pendingInitialTextRef,
       workspaceDocuments,
+      workspaceFolders,
+      commentsByFileId,
       setFileText,
       setFileCollaborationStatus,
-      setFileCollaboratorCount,
       setFileRecoveryEvent,
       onRemoteTextChange,
-      onRoomEvent,
+      onCommentsChange,
+      onWorkspaceChange,
+      onOpenFailure,
+      onCapacityExceeded,
     });
 
   const startSession = () => {
-    const sessionFile = getActiveFileSnapshot?.() ?? activeFile;
+    if (!startValidation.ok) return undefined;
+    const sessionFile = getActiveFileSnapshot?.() ?? roomFile;
     const nextSession = createCollaborationSessionStartRequest({
       activeFile: sessionFile,
       origin: window.location.origin,
@@ -88,17 +169,23 @@ export function useCollaborationRoom({
 
     pendingInitialTextRef.current = nextSession.initialText;
     startFileCollaborationSession(sessionFile.id, nextSession.roomId, nextSession.shareUrl);
-    return { roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
+    return { fileId: sessionFile.id, roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
   };
 
   return {
-    canStartSession: Boolean(activeFile) && roomAvailability.available,
+    canStartSession: Boolean(roomFile) && roomAvailability.available && startValidation.ok,
     collaborators,
     connectionStatus,
-    startSessionUnavailableReason: roomAvailability.unavailableReason,
+    startSessionUnavailableReason: startValidation.ok
+      ? roomAvailability.unavailableReason
+      : startValidation.message,
     startSession,
     applyLocalText,
-    publishRoomEvent,
+    editorBinding,
+    upsertComment,
+    deleteComment,
+    setCommentResolved,
+    addCommentReply,
     resetCollaborationState: resetConnection,
     retryConnection,
   };

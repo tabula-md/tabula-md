@@ -3,7 +3,7 @@ import {
   resetWorkspaceStoreForTests,
   useWorkspaceStore,
 } from "./workspaceStore";
-import type { WorkspaceFile } from "../workspaceStorage";
+import { createWorkspaceRootFolder, type WorkspaceFile } from "../workspaceStorage";
 
 const VALID_ROOM_KEY = "A".repeat(43);
 
@@ -36,6 +36,7 @@ const initializeWorkspaceStore = () => {
   });
 
   useWorkspaceStore.getState().initializeWorkspace({
+    folders: [createWorkspaceRootFolder()],
     files: [readme, draft],
     openFileIds: [readme.id, draft.id],
     activeFileId: draft.id,
@@ -49,6 +50,12 @@ const initializeWorkspaceStore = () => {
 describe("workspace store", () => {
   beforeEach(() => {
     resetWorkspaceStoreForTests();
+  });
+
+  it("keeps the v6 folder tree when the workspace is initialized", () => {
+    initializeWorkspaceStore();
+
+    expect(useWorkspaceStore.getState().folders).toEqual([createWorkspaceRootFolder()]);
   });
 
   it("updates active file text and layout through explicit actions", () => {
@@ -86,6 +93,26 @@ describe("workspace store", () => {
     });
   });
 
+  it("tracks folder room membership independently from open files", () => {
+    initializeWorkspaceStore();
+    const folder = useWorkspaceStore.getState().addFolder("Shared notes", undefined, "room-1");
+    expect(folder?.roomId).toBe("room-1");
+
+    useWorkspaceStore.getState().setFolderCollaborationRoom(folder!.id);
+    expect(useWorkspaceStore.getState().folders.find(({ id }) => id === folder?.id)?.roomId).toBeUndefined();
+  });
+
+  it("preserves the generated title when a new file has no title override", () => {
+    initializeWorkspaceStore();
+
+    const file = useWorkspaceStore.getState().addFile();
+
+    expect(file.title).toBe("Untitled 2.md");
+    expect(useWorkspaceStore.getState().files.find((candidate) => candidate.id === file.id)?.title).toBe(
+      "Untitled 2.md",
+    );
+  });
+
   it("keeps tab state coherent when closing and deleting active files", () => {
     const { draft } = initializeWorkspaceStore();
     const plan = useWorkspaceStore.getState().addFile({ title: "Plan.md" });
@@ -120,7 +147,7 @@ describe("workspace store", () => {
     const { draft } = initializeWorkspaceStore();
     const shareUrl = `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`;
     useWorkspaceStore.getState().startFileCollaborationSession(draft.id, "room-123456", shareUrl);
-    useWorkspaceStore.getState().setFileCollaborationStatus(draft.id, "connected", { collaboratorCount: 2 });
+    useWorkspaceStore.getState().setFileCollaborationStatus(draft.id, "connected");
 
     const duplicate = useWorkspaceStore.getState().duplicateFile(draft.id);
 
@@ -128,7 +155,6 @@ describe("workspace store", () => {
       roomId: "room-123456",
       shareUrl,
       connectionStatus: "connected",
-      collaboratorCount: 2,
     });
   });
 
@@ -247,7 +273,7 @@ title: Product Requirements
       .getState()
       .startFileCollaborationSession(draft.id, "room-123", `https://tabula.test/#room=room-123,${VALID_ROOM_KEY}`);
     useWorkspaceStore.getState().setFileText(draft.id, "Remote text");
-    useWorkspaceStore.getState().setFileCollaborationStatus(draft.id, "connected", { collaboratorCount: 2 });
+    useWorkspaceStore.getState().setFileCollaborationStatus(draft.id, "connected");
     useWorkspaceStore.getState().setFileRecoveryEvent(draft.id, {
       type: "reconnected",
       message: "Recovered",
@@ -262,7 +288,6 @@ title: Product Requirements
     expect(useWorkspaceStore.getState().files.find((file) => file.id === draft.id)).toMatchObject({
       text: "Remote text",
       connectionStatus: "connected",
-      collaboratorCount: 2,
       lastRecoveryType: "reconnected",
       lastRecoveryMessage: "Recovered",
       lastRecoveryAt: "2026-06-23T00:00:01.000Z",
@@ -274,7 +299,6 @@ title: Product Requirements
       roomId: undefined,
       shareUrl: undefined,
       connectionStatus: "idle",
-      collaboratorCount: 0,
     });
   });
 });

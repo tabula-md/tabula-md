@@ -138,8 +138,8 @@ describe("collaboration runtime model", () => {
   });
 
   it("centralizes lifecycle status patches", () => {
-    expect(getIdleStatusPatch()).toEqual({ collaboratorCount: 0 });
-    expect(getDisconnectedStatusPatch()).toEqual({ collaboratorCount: 0, requireRoom: true });
+    expect(getIdleStatusPatch()).toEqual({});
+    expect(getDisconnectedStatusPatch()).toEqual({ requireRoom: true });
   });
 
   it("only allows session creation when a file exists and room service is configured", () => {
@@ -212,6 +212,7 @@ describe("collaboration runtime model", () => {
       createCollaborationPresenceIdentity({
         identity,
         isLive: true,
+        activeDocumentId: "readme",
         roomId: "room-1",
         fileTitle: "README",
         selection: { from: 1, to: 2 },
@@ -220,11 +221,24 @@ describe("collaboration runtime model", () => {
       ...identity,
       kind: "human",
       client: "tabula-md",
-      capabilities: ["presence", "read", "comment", "write", "create", "delete", "move"],
+      capabilities: ["presence", "read", "write"],
       joinedAt: "1970-01-01T00:00:00.000Z",
+      activeDocumentId: "readme",
       roomId: "room-1",
       fileTitle: "README",
-      selection: { from: 1, to: 2 },
+      selection: { documentId: "readme", from: 1, to: 2 },
+    });
+
+    expect(
+      createCollaborationPresenceIdentity({
+        identity,
+        isLive: true,
+        roomId: "room-1",
+        selection: { from: 1, to: 2 },
+      }),
+    ).toMatchObject({
+      roomId: "room-1",
+      selection: undefined,
     });
   });
 });

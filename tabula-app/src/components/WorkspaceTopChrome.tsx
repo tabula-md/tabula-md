@@ -2,9 +2,8 @@ import { lazy, Suspense, useMemo, type ComponentProps } from "react";
 import { FileTabs } from "./FileTabs";
 import { ShareTrigger } from "./ShareTrigger";
 import { TopChrome } from "./TopChrome";
-import type { Collaborator } from "../collaboration";
+import type { Collaborator, ConnectionStatus } from "../collaboration";
 import type { JsonShareController } from "../hooks/useJsonShareController";
-import { getLiveWorkspaceFileIds } from "../liveWorkspaceScope";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import {
   isEmptyGeneratedLivePlaceholder,
@@ -24,22 +23,24 @@ export type WorkspaceTopChromeProps = {
   activeText: string;
   canStartSession: boolean;
   collaborators: Collaborator[];
+  connectionStatus: ConnectionStatus;
   copied: boolean;
   currentUserName: string;
   files: WorkspaceFile[];
-  getFileStatus: FileTabsProps["getFileStatus"];
   identity: Collaborator;
   isLive: boolean;
   isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
+  roomFile?: WorkspaceFile;
   rightPanelOpen: boolean;
   shareExcludedFileIds: readonly string[];
   shareOpen: boolean;
   startSessionUnavailableReason: string;
   workspaceMenuOpen: boolean;
   onAddFile: FileTabsProps["onAddFile"];
+  onAddPrivateFile: FileTabsProps["onAddPrivateFile"];
   onChangeUserName: (nextName: string) => void;
   onChromeInteraction: NonNullable<FileTabsProps["onChromeInteraction"]>;
   onCloseFile: FileTabsProps["onCloseFile"];
@@ -64,22 +65,24 @@ export function WorkspaceTopChrome({
   activeText,
   canStartSession,
   collaborators,
+  connectionStatus,
   copied,
   currentUserName,
   files,
-  getFileStatus,
   identity,
   isLive,
   isLiveConnected,
   jsonShare,
   language,
   openFiles,
+  roomFile,
   rightPanelOpen,
   shareExcludedFileIds,
   shareOpen,
   startSessionUnavailableReason,
   workspaceMenuOpen,
   onAddFile,
+  onAddPrivateFile,
   onChangeUserName,
   onChromeInteraction,
   onCloseFile,
@@ -98,15 +101,6 @@ export function WorkspaceTopChrome({
   onToggleShare,
   onToggleWorkspaceMenu,
 }: WorkspaceTopChromeProps) {
-  const liveFileIds = useMemo(
-    () =>
-      getLiveWorkspaceFileIds({
-        activeFile,
-        files,
-        isLive: isLiveConnected,
-      }),
-    [activeFile, files, isLiveConnected],
-  );
   const visibleFiles = useMemo(
     () => files.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
     [files],
@@ -122,10 +116,10 @@ export function WorkspaceTopChrome({
     <FileTabs
       files={visibleOpenFiles}
       activeFile={visibleActiveFile}
-      activeCollaboratorCount={collaborators.length}
-      getFileStatus={getFileStatus}
-      liveFileIds={liveFileIds}
+      collaborators={collaborators}
+      isLiveWorkspace={isLive}
       onAddFile={onAddFile}
+      onAddPrivateFile={onAddPrivateFile}
       onSelectFile={onSelectFile}
       onRenameFile={onRenameFile}
       onCloseFile={onCloseFile}
@@ -134,7 +128,8 @@ export function WorkspaceTopChrome({
     />
   );
 
-  const shareControls = activeFile ? (
+  const shareSubjectFile = activeFile ?? roomFile;
+  const shareControls = shareSubjectFile ? (
     <>
       <ShareTrigger
         isLive={isLiveConnected}
@@ -146,13 +141,14 @@ export function WorkspaceTopChrome({
       {shareOpen && (
         <Suspense fallback={null}>
           <ShareControls
-            activeFile={activeFile}
+            activeFile={shareSubjectFile}
+            roomFile={roomFile}
             files={visibleFiles}
             activeText={activeText}
             language={language}
             currentUserName={currentUserName}
             canStartSession={canStartSession}
-            connectionStatus={getFileStatus(activeFile)}
+            connectionStatus={connectionStatus}
             isLive={isLive}
             isLiveConnected={isLiveConnected}
             shareExcludedFileIds={shareExcludedFileIds}

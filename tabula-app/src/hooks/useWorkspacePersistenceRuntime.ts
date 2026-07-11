@@ -11,7 +11,7 @@ type UseWorkspacePersistenceRuntimeOptions = {
     commentsByFileId: Record<string, FileComment[]>,
   ) => void;
   replaceWorkspace: (
-    workspace: Pick<WorkspaceState, "activeFileId" | "files" | "openFileIds">,
+    workspace: Pick<WorkspaceState, "activeFileId" | "files" | "folders" | "openFileIds">,
   ) => void;
   workspace: WorkspaceState;
 };

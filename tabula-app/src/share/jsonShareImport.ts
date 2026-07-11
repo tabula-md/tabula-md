@@ -14,6 +14,8 @@ export const createWorkspaceFromJsonShareSnapshot = (snapshot: ShareSnapshot): W
       id: file.id,
       title: file.title || (index === 0 ? "Shared.md" : `Shared ${index + 1}.md`),
       text: file.text ?? "",
+      parentId: file.parentId,
+      order: file.order,
       viewMode: "edit",
       readingWidth: "wide",
       lineWrapping: true,
@@ -22,7 +24,6 @@ export const createWorkspaceFromJsonShareSnapshot = (snapshot: ShareSnapshot): W
       connectionStatus: "idle",
       roomId: undefined,
       shareUrl: undefined,
-      collaboratorCount: undefined,
     }),
   );
   const normalizedFiles = files.length > 0 ? files : [createWorkspaceFile(1, { title: "Shared.md" })];
@@ -31,6 +32,12 @@ export const createWorkspaceFromJsonShareSnapshot = (snapshot: ShareSnapshot): W
     : normalizedFiles[0]?.id;
 
   return {
+    folders: snapshot.folders.map((folder) => ({
+      id: folder.id,
+      title: folder.title,
+      parentId: folder.id === snapshot.rootFolderId ? null : folder.parentId,
+      order: folder.order,
+    })),
     files: normalizedFiles,
     openFileIds: normalizedFiles.map((file) => file.id),
     activeFileId: activeFileId ?? normalizedFiles[0]?.id ?? "",

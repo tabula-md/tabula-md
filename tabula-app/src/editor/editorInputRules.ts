@@ -1,9 +1,14 @@
-import { defaultKeymap, historyKeymap, indentWithTab } from "@codemirror/commands";
+import {
+  defaultKeymap,
+  historyKeymap,
+  indentWithTab,
+  isolateHistory,
+} from "@codemirror/commands";
 import {
   deleteMarkupBackward,
   insertNewlineContinueMarkupCommand,
 } from "@codemirror/lang-markdown";
-import { type Extension } from "@codemirror/state";
+import { Facet, type Extension } from "@codemirror/state";
 import { type EditorView, keymap } from "@codemirror/view";
 import {
   applyMarkdownFormat,
@@ -55,6 +60,10 @@ const getMinimalTextChanges = (currentText: string, nextText: string) => {
   }];
 };
 
+export const editorUndoBoundaryFacet = Facet.define<() => void, (() => void) | undefined>({
+  combine: (boundaries) => boundaries[boundaries.length - 1],
+});
+
 export const runMarkdownFormatCommand = (view: EditorView, command: MarkdownFormatCommand) => {
   const currentText = view.state.doc.toString();
   const selection = view.state.selection.main;
@@ -71,11 +80,15 @@ export const runMarkdownFormatCommand = (view: EditorView, command: MarkdownForm
   }
 
   const changes = getMinimalTextChanges(currentText, result.text);
+  const stopCapturing = view.state.facet(editorUndoBoundaryFacet);
+  stopCapturing?.();
   view.dispatch({
     changes,
     selection: selectionRange,
     scrollIntoView: true,
+    annotations: isolateHistory.of("full"),
   });
+  stopCapturing?.();
   view.focus();
   return true;
 };

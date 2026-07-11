@@ -77,24 +77,24 @@ export async function run(ctx) {
       };
     });
     expect(compactTabs, "Compact tab row should be measurable.");
-    expect(compactTabs.gap >= 0 && compactTabs.gap <= 12, "New tab should sit next to the last tab before overflow.");
+    expect(compactTabs.gap >= 0 && compactTabs.gap <= 12, "New document should sit next to the last tab before overflow.");
     expect(
       compactTabs.unusedSpaceAfterAdd > 120,
       "Compact tab row should leave unused space after the new-tab control instead of pinning it right.",
     );
 
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     let nextTabs = await getTabs(page);
-    expect(nextTabs.find((tab) => tab.active)?.title?.startsWith("Untitled"), "New tab should activate a blank document.");
+    expect(nextTabs.find((tab) => tab.active)?.title?.startsWith("Untitled"), "New document should activate a blank document.");
     expect(
       !nextTabs.find((tab) => tab.active)?.visibleTitle.endsWith(".md"),
       "Blank File tabs should omit the .md extension visually.",
     );
     expect((await page.locator(".intro-action-button").count()) === 0, "Blank writing documents should not show README actions.");
 
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     nextTabs = await getTabs(page);
@@ -102,7 +102,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".share-trigger").click();
@@ -271,8 +271,9 @@ export async function run(ctx) {
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
     expect((await page.locator(".share-modal").count()) === 1, "Share should open a centered modal.");
-    expect((await page.getByRole("tab").count()) === 0, "Share modal should be a single room/snapshot/export screen.");
-    expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Share modal should keep Publish hidden for now.");
+    const shareModal = page.locator(".share-modal");
+    expect((await shareModal.getByRole("tab").count()) === 0, "Share modal should be a single room/snapshot/export screen.");
+    expect((await shareModal.getByRole("tab", { name: "Publish" }).count()) === 0, "Share modal should keep Publish hidden for now.");
     expect((await page.getByText("Live collaboration").count()) > 0, "Share modal should default to live collaboration.");
     expect((await page.locator(".share-included-documents").count()) === 1, "Share modal should expose one shared workspace inclusion control.");
     expect((await page.getByText("Invite agent").count()) === 0, "Share modal should not invite agents before a room exists.");
@@ -582,7 +583,7 @@ export async function run(ctx) {
     const tabs = await getTabs(page);
 
     expect(
-      tabs.length === 0 || tabs.every((tab) => !tab.title?.startsWith("Shared ")),
+      tabs.every((tab) => !tab.title?.startsWith("Shared ")),
       `Opening an empty room should not expose the internal live-room placeholder as a document tab.\n${JSON.stringify(tabs, null, 2)}`,
     );
     expect(
@@ -665,7 +666,7 @@ export async function run(ctx) {
       "Preview mode should expose Split for direct comparison.",
     );
 
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Edit", "New local tabs should start in Edit mode.");
@@ -708,7 +709,7 @@ export async function run(ctx) {
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Edit", "Pressing Edit from Split should return to Edit mode.");
 
-    await page.locator('.tab-select-button[title^="README.md ·"]').click();
+    await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "README.md" });
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "README tab should keep its Preview mode.");

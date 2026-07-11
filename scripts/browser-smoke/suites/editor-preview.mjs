@@ -20,11 +20,17 @@ export async function run(ctx) {
     await waitForShareDialogState(page, { text: "Invite link" });
     await page.keyboard.press("Escape");
     await waitForShareDialogState(page, { open: false });
-    await page.waitForSelector(".tab-item.live.active", { timeout: 5_000 });
+    await page.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])", { timeout: 5_000 });
+  };
+
+  const createDocument = async (page) => {
+    await page.getByTitle("New document").click();
+    const sharedDocument = page.getByRole("menuitem", { name: "Shared document" });
+    if ((await sharedDocument.count()) === 1) await sharedDocument.click();
   };
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
@@ -253,7 +259,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
@@ -416,7 +422,7 @@ export async function run(ctx) {
   const mobilePage = await mobileContext.newPage();
   try {
     await mobilePage.goto(baseUrl);
-    await mobilePage.getByTitle("New tab").click();
+    await createDocument(mobilePage);
     await waitForEditorReady(mobilePage, { mode: "edit" });
     await focusMarkdownEditor(mobilePage);
     await mobilePage.keyboard.insertText("mobile\nwrite");
@@ -433,7 +439,7 @@ export async function run(ctx) {
   }
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     const scrollSmokeMarkdown = Array.from(
@@ -504,7 +510,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
@@ -533,7 +539,7 @@ export async function run(ctx) {
     expect(!emptySelectionFormat.selectedWordsVisible, "Status bar should not show selected-word status.");
     expect(emptySelectionFormat.editorFocused, "Empty selection formatting should keep focus in the editor.");
 
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("const value = 1;");
@@ -567,7 +573,7 @@ export async function run(ctx) {
     );
     expect(codeBlockFormatting.hasOverflowTrigger, "Formatting toolbar should expose overflow commands through the registry trigger.");
 
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.getByRole("button", { name: "Heading 1", exact: true }).click();
@@ -616,7 +622,7 @@ export async function run(ctx) {
       }, clipboardText);
     };
 
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("Open docs");
@@ -631,7 +637,7 @@ export async function run(ctx) {
       "Pasting a URL over selected text should create a Markdown link.",
     );
 
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await pasteIntoEditor("“Title”\r\n\titem\r\n\r\n\r\nnext");
@@ -796,7 +802,7 @@ export async function run(ctx) {
     }));
     expect(copiedCodeBlock.copiedText === "const value = 1;", "Preview copy code should copy the raw code contents.");
 
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(
@@ -896,7 +902,7 @@ export async function run(ctx) {
       "Preview source-line markers should update when frontmatter line count changes without body text changes.",
     );
 
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     const tinyPngDataUrl =
@@ -983,7 +989,7 @@ export async function run(ctx) {
     expect(previewGfm.nestedListMarginTop !== "0px", "Nested preview lists should have deliberate vertical spacing.");
     expect(previewGfm.imageFrameDisplay === "grid", "Standalone preview images should render as block-like document media.");
 
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.type("plain");
@@ -996,7 +1002,10 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Undo", exact: true }).click();
     await waitForRenderFrame(page);
     const afterUndo = await page.locator(".cm-content").textContent();
-    expect(afterUndo === "plain", "Undo should revert a formatting command in one step.");
+    expect(
+      afterUndo === "plain",
+      `Undo should revert a formatting command in one step. Actual: ${JSON.stringify(afterUndo)}`,
+    );
     await page.getByRole("button", { name: "Redo", exact: true }).click();
     await waitForRenderFrame(page);
     const afterRedo = await page.locator(".cm-content").textContent();
@@ -1047,7 +1056,7 @@ export async function run(ctx) {
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
     await page.keyboard.type("alpha");
-    await startLiveSession(page);
+    await page.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
     await focusMarkdownEditor(page);
     await page.getByRole("button", { name: "Split", exact: true }).click();
     await waitForEditorReady(page, { mode: "split" });
@@ -1649,7 +1658,7 @@ export async function run(ctx) {
     browser,
     "/",
     async (page) => {
-      await page.getByTitle("New tab").click();
+      await createDocument(page);
       await waitForEditorReady(page, { mode: "edit" });
       const mobileToolbar = await page.evaluate(() => {
         const toolbar = document.querySelector(".formatting-toolbar");
@@ -1702,7 +1711,7 @@ export async function run(ctx) {
   );
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(["x", "---", "###", "=>", "===", "___"].join("\n"));
@@ -1809,7 +1818,7 @@ export async function run(ctx) {
       await waitForRenderFrame(page);
     };
 
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await replaceEditorText("- item");
     await page.keyboard.press("Enter");
@@ -1941,7 +1950,7 @@ flowchart LR
 <script>window.__tabulaUnsafePreview = true</script>
 <img src="javascript:alert(1)" alt="unsafe image" onerror="window.__tabulaUnsafeImage = true" />`;
 
-    await page.getByTitle("New tab").click();
+    await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(docsMarkdown);

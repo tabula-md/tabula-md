@@ -1,32 +1,66 @@
-import type { EnvelopeKind } from "./roomProtocol";
-import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
-import { createCollaboratorRegistry } from "./collabCollaborators";
-import { createCollabEnvelopeRouter } from "./collabEnvelopeRouter";
-import type { CollabRuntimeAdapters, CollabTextDocumentHandle } from "./collabRuntimeAdapters";
-import { createCollabSessionState } from "./collabSessionState";
-import { resolveCollabStartConfig } from "./collabStartConfig";
-import { createCollabTransportHandlers } from "./collabTransportController";
-import { createCollabUpdateBuffer } from "./collabUpdateBuffer";
+import type { Extension } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
+import * as decoding from "lib0/decoding";
+import * as encoding from "lib0/encoding";
+import * as Y from "yjs";
 import {
+  Awareness,
+  applyAwarenessUpdate,
+  encodeAwarenessUpdate,
+  removeAwarenessStates,
+} from "y-protocols/awareness";
+import * as syncProtocol from "y-protocols/sync";
+import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
+import {
+  addWorkspaceRoomCommentReply,
+  applyTextPatches as applyTextPatchesToString,
   createRoomActor,
-  createWorkspaceRoomCheckpoint,
-  createWorkspaceRoomState,
-  encodeBase64Url as encodeBase64UrlBytes,
-  encodeRoomEvent,
-  LARGE_DOCUMENT_CHAR_THRESHOLD,
+  createRoomChunkAssembler,
+  createWorkspaceRoomCrdt,
+  createWorkspaceRoomDocument,
+  createWorkspaceRoomFolder,
+  decodeRoomWirePacket,
+  deleteWorkspaceRoomComment,
+  deleteWorkspaceRoomNode,
+  encodeRoomWirePackets,
+  getWorkspaceRoomDocument,
+  getWorkspaceRoomComments,
+  getWorkspaceRoomSnapshot,
+  hasRoomCapability,
+  initializeWorkspaceRoomCrdt,
+  moveWorkspaceRoomNode,
+  parseRoomActor,
+  renameWorkspaceRoomNode,
+  setWorkspaceRoomComment,
+  setWorkspaceRoomCommentResolved,
+  setWorkspaceRoomNodeOrder,
+  validateWorkspaceRoomLimits,
+  validateWorkspaceRoomStructure,
+  ROOM_WIRE_MAX_CRDT_STATE_BYTES,
+  WORKSPACE_ROOM_MAX_CONTENT_BYTES,
+  WORKSPACE_ROOM_ROOT_ID,
+  type RoomActor,
   type RoomActorClient,
   type RoomActorKind,
   type RoomCapability,
-  type RoomEvent,
-  type TextChange,
+  type RoomWireDataPacket,
   type TextPatch,
-  type WorkspaceRoomDocument,
-  type WorkspaceRoomCheckpoint,
+  type WorkspaceRoomComment,
+  type WorkspaceRoomCommentReply,
+  type WorkspaceRoomCrdt,
+  type WorkspaceRoomSnapshot,
 } from "@tabula-md/tabula";
+import { isEncryptedEnvelope } from "./collabConnectionModel";
+import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
+import type { CollabRuntimeAdapters } from "./collabRuntimeAdapters";
+import { createCollabSessionState } from "./collabSessionState";
+import { resolveCollabStartConfig } from "./collabStartConfig";
 import {
   decryptWorkspaceRoomCheckpoint,
   encryptWorkspaceRoomCheckpoint,
+  ROOM_CHECKPOINT_RETENTION_MS,
 } from "./roomCheckpointStore";
+import { Utf8TextSizeTracker } from "./utf8TextSizeTracker";
 
 export {
   createRoomSession,
@@ -47,13 +81,7 @@ export {
 } from "./collabRoom";
 export type { ParsedRoomLocation, RoomSession, TabulaRoomAvailability } from "./collabRoom";
 
-export type ConnectionStatus =
-  | "idle"
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "disconnected"
-  | "failed";
+export type ConnectionStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "failed";
 
 export type LiveSelection = {
   documentId?: string;
@@ -88,290 +116,493 @@ export type CollabRecoveryEvent = {
   createdAt: string;
 };
 
+export type CollabEditorBinding = {
+  documentId: string;
+  extension: Extension;
+  yText: Y.Text;
+  awareness: Awareness;
+  undoManager: Y.UndoManager;
+  canApplyTextByteDelta: (byteDelta: number) => boolean;
+  consumeRemoteProjection?: () => boolean;
+};
+
+export type WorkspaceRoomRuntimeSnapshot = {
+  status: ConnectionStatus;
+  collaborators: Collaborator[];
+  editorBinding: CollabEditorBinding | null;
+};
+
+export type WorkspaceRoomChangeOrigin = {
+  actorId: string;
+};
+
+export type WorkspaceDocumentSnapshot = {
+  id: string;
+  title: string;
+  text: string;
+  parentId?: string | null;
+  order?: number;
+};
+
+export type WorkspaceFolderSnapshot = {
+  id: string;
+  title: string;
+  parentId: string | null;
+  order?: number;
+};
+
 type ConnectOptions = {
   roomId: string;
   roomKey: string;
   documentId?: string;
   documents?: readonly WorkspaceDocumentSnapshot[];
+  folders?: readonly WorkspaceFolderSnapshot[];
+  commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
   emitInitialWorkspaceState?: boolean;
   initialText?: string;
   identity: Collaborator;
-  fileTitle: string;
-  selection?: LiveSelection;
-  onTextChange: (documentId: string, text: string, change?: TextChange) => void;
-  onStatusChange: (status: ConnectionStatus) => void;
-  onCollaboratorsChange: (collaborators: Collaborator[]) => void;
-  onRoomEvent?: (event: RoomEvent) => void;
+  fileTitle?: string;
+  onTextChange: (documentId: string, text: string) => void;
+  onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
+  onWorkspaceChange?: (snapshot: WorkspaceRoomSnapshot, origin?: WorkspaceRoomChangeOrigin) => void;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
+  onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
+  onCapacityExceeded?: () => void;
   adapters?: CollabRuntimeAdapters;
 };
 
-const PRESENCE_SEND_THROTTLE_MS = 75;
-const CHECKPOINT_SAVE_DELAY_MS = 250;
+const REMOTE_SYNC_ORIGIN = Symbol("tabula.remote-sync");
+const REMOTE_AWARENESS_ORIGIN = Symbol("tabula.remote-awareness");
+const CHECKPOINT_ORIGIN = Symbol("tabula.checkpoint");
+const CHECKPOINT_SAVE_DELAY_MS = 5_000;
+const AWARENESS_HEARTBEAT_MS = 15_000;
+const INVALID_MESSAGE_NOTICE_INTERVAL_MS = 5_000;
+const utf8Encoder = new TextEncoder();
 
-type WorkspaceDocumentSnapshot = {
-  id: string;
-  title: string;
-  text: string;
-  parentId?: string | null;
+type RemoteSyncOrigin = {
+  type: typeof REMOTE_SYNC_ORIGIN;
+  senderId: string;
 };
 
-export const createCollabConnection = ({
+const isRemoteSyncOrigin = (origin: unknown): origin is RemoteSyncOrigin =>
+  Boolean(origin && typeof origin === "object" && (origin as Partial<RemoteSyncOrigin>).type === REMOTE_SYNC_ORIGIN);
+
+const getActor = (identity: Collaborator): RoomActor => createRoomActor({
+  id: identity.id,
+  kind: identity.kind ?? "human",
+  name: identity.name,
+  color: identity.color,
+  client: identity.client ?? "tabula-md",
+  capabilities: identity.capabilities,
+  joinedAt: identity.joinedAt,
+});
+
+const isActor = (value: unknown): value is RoomActor => {
+  return parseRoomActor(value) !== null;
+};
+
+const getSelectionFromAwarenessState = (
+  room: WorkspaceRoomCrdt,
+  state: Record<string, unknown>,
+): LiveSelection | undefined => {
+  const cursor = state.cursor;
+  if (!cursor || typeof cursor !== "object" || Array.isArray(cursor)) return undefined;
+  const raw = cursor as { anchor?: Y.RelativePosition; head?: Y.RelativePosition };
+  if (!raw.anchor || !raw.head) return undefined;
+  try {
+    const anchor = Y.createAbsolutePositionFromRelativePosition(raw.anchor, room.doc);
+    const head = Y.createAbsolutePositionFromRelativePosition(raw.head, room.doc);
+    if (!anchor || !head || anchor.type !== head.type) return undefined;
+    let documentId: string | undefined;
+    room.documents.forEach((text, id) => {
+      if (text === anchor.type) documentId = id;
+    });
+    if (!documentId) return undefined;
+    return { documentId, from: Math.min(anchor.index, head.index), to: Math.max(anchor.index, head.index) };
+  } catch {
+    return undefined;
+  }
+};
+
+const applyTextPatches = (text: Y.Text, patches: readonly TextPatch[]) => {
+  for (const patch of [...patches].sort((first, second) => second.from - first.from)) {
+    const from = Math.max(0, Math.min(patch.from, text.length));
+    const to = Math.max(from, Math.min(patch.to, text.length));
+    if (to > from) text.delete(from, to - from);
+    if (patch.insert) text.insert(from, patch.insert);
+  }
+};
+
+const commentsToList = (commentsByFileId: Record<string, WorkspaceRoomComment[]> | undefined) =>
+  Object.values(commentsByFileId ?? {}).flat();
+
+export const createWorkspaceRoomRuntime = ({
   roomId,
   roomKey: encodedRoomKey,
-  documentId,
-  documents,
+  documentId = "document",
+  documents = [],
+  folders = [],
+  commentsByFileId,
   emitInitialWorkspaceState = true,
   initialText,
   identity,
   fileTitle,
-  selection,
   onTextChange,
-  onStatusChange,
-  onCollaboratorsChange,
-  onRoomEvent,
+  onCommentsChange,
+  onWorkspaceChange,
   onRecoveryEvent,
+  onOpenFailure,
+  onCapacityExceeded,
   adapters = createDefaultCollabRuntimeAdapters(),
 }: ConnectOptions) => {
-  let activeDocumentId = documentId ?? "document";
-  const initialDocuments = documents?.length
-    ? documents.map((document) =>
-        document.id === activeDocumentId && initialText !== undefined
-          ? { ...document, text: initialText }
-          : document,
-      )
-    : [{ id: activeDocumentId, title: fileTitle, text: initialText ?? "" }];
-  const initialDocumentsById = new Map(initialDocuments.map((document) => [document.id, document]));
-  const textDocuments = new Map<string, CollabTextDocumentHandle>();
-  for (const document of initialDocuments) {
-    textDocuments.set(document.id, adapters.text.createDocument(document.text));
-  }
-  if (!textDocuments.has(activeDocumentId)) {
-    textDocuments.set(activeDocumentId, adapters.text.createDocument(initialText));
-  }
-  const collaborators = createCollaboratorRegistry();
-  let currentFileTitle = fileTitle;
-  let currentSelection = selection;
-  let currentIdentity = identity;
-  let closedByClient = false;
-  let heartbeat: unknown;
-  let presenceTimer: unknown;
-  let checkpointSaveTimer: unknown;
-  let checkpointSaveInFlight = false;
-  let checkpointSaveRequested = false;
-  let checkpointSaveErrorReported = false;
-  let suppressLocalTextUpdates = false;
+  const abortController = new AbortController();
+  const room = createWorkspaceRoomCrdt({ roomId, initialize: emitInitialWorkspaceState });
+  const awareness = new Awareness(room.doc);
+  const chunkAssembler = createRoomChunkAssembler();
+  const sessionState = createCollabSessionState();
+  const undoManagers = new Map<string, Y.UndoManager>();
+  const documentByteLengths = new Map<string, number>();
+  const documentSizeTrackers = new Map<string, Utf8TextSizeTracker>();
+  const remoteProjectionRevisions = new Map<string, number>();
+  const consumedRemoteProjectionRevisions = new Map<string, number>();
+  const textObservers = new Map<
+    string,
+    {
+      text: Y.Text;
+      listener: (event: Y.YTextEvent, transaction: Y.Transaction) => void;
+    }
+  >();
+  let activeDocumentId: string | null = documentId;
+  let editorPresenceEnabled = true;
+  let currentFileTitle: string | undefined = fileTitle;
+  let currentIdentity: Collaborator = {
+    ...identity,
+    joinedAt: identity.joinedAt ?? adapters.clock.nowIso(),
+  };
   let roomKey: CryptoKey | null = null;
   let transport: ReturnType<CollabRuntimeAdapters["createRoomTransport"]> | null = null;
+  let heartbeat: unknown;
+  let checkpointTimer: unknown;
+  let commentProjectionTimer: unknown;
+  let checkpointGeneration = 0;
+  let checkpointSaveInFlight = false;
+  let checkpointSaveRequested = false;
   let envelopeVersion = 0;
-  let canEmitWorkspaceState = emitInitialWorkspaceState;
-  let workspaceDocumentIds: Set<string> | null = emitInitialWorkspaceState
-    ? new Set(initialDocuments.map((document) => document.id))
-    : null;
-  const sessionState = createCollabSessionState();
+  let closed = false;
+  let hasHydratedWorkspace = false;
+  let outboundQueue = Promise.resolve();
+  let inboundQueue = Promise.resolve();
+  let lastInvalidMessageNoticeAt = 0;
+  let capacityExceededNotified = false;
+  let runtimeSnapshot: WorkspaceRoomRuntimeSnapshot = {
+    status: "connecting",
+    collaborators: [],
+    editorBinding: null,
+  };
+  const runtimeListeners = new Set<() => void>();
+  let commentByteLength = 0;
+  let roomContentByteLength = 0;
+
+  const getCommentByteLength = () =>
+    Object.values(getWorkspaceRoomComments(room)).flat().reduce(
+      (total, comment) => total + utf8Encoder.encode(comment.body).byteLength +
+        comment.replies.reduce((replyTotal, reply) => replyTotal + utf8Encoder.encode(reply.body).byteLength, 0),
+      0,
+    );
+
+  const refreshRoomContentByteLength = () => {
+    roomContentByteLength = commentByteLength;
+    for (const byteLength of documentByteLengths.values()) roomContentByteLength += byteLength;
+  };
+
+  const refreshAllDocumentByteLengths = () => {
+    documentByteLengths.clear();
+    documentSizeTrackers.clear();
+    room.documents.forEach((text, id) => {
+      const tracker = new Utf8TextSizeTracker(text.toString());
+      documentSizeTrackers.set(id, tracker);
+      documentByteLengths.set(id, tracker.byteLength);
+    });
+    refreshRoomContentByteLength();
+  };
+
+  const refreshCommentByteLength = () => {
+    commentByteLength = getCommentByteLength();
+    refreshRoomContentByteLength();
+  };
+
+  const scheduleCommentProjection = () => {
+    if (!onCommentsChange || commentProjectionTimer || closed) return;
+    commentProjectionTimer = adapters.clock.setTimeout(() => {
+      commentProjectionTimer = undefined;
+      if (!closed) onCommentsChange(getWorkspaceRoomComments(room));
+    }, 120);
+  };
+
+  const canApplyTextByteDelta = (byteDelta: number) =>
+    Number.isFinite(byteDelta) &&
+    roomContentByteLength + byteDelta >= 0 &&
+    roomContentByteLength + byteDelta <= WORKSPACE_ROOM_MAX_CONTENT_BYTES;
+
+  const updateRuntimeSnapshot = (patch: Partial<WorkspaceRoomRuntimeSnapshot>) => {
+    const next = { ...runtimeSnapshot, ...patch };
+    if (
+      next.status === runtimeSnapshot.status &&
+      next.collaborators === runtimeSnapshot.collaborators &&
+      next.editorBinding === runtimeSnapshot.editorBinding
+    ) {
+      return;
+    }
+    runtimeSnapshot = next;
+    runtimeListeners.forEach((listener) => listener());
+  };
+
+  const setStatus = (status: ConnectionStatus) => updateRuntimeSnapshot({ status });
+  const setEditorBinding = (binding: CollabEditorBinding | null) =>
+    updateRuntimeSnapshot({ editorBinding: binding });
+
+  if (emitInitialWorkspaceState) {
+    const normalizedDocuments = documents.length > 0
+      ? documents.map((document) => document.id === documentId && initialText !== undefined ? { ...document, text: initialText } : document)
+      : [{
+          id: documentId,
+          title: fileTitle ?? "Untitled",
+          text: initialText ?? "",
+          parentId: WORKSPACE_ROOM_ROOT_ID,
+          order: 0,
+        }];
+    initializeWorkspaceRoomCrdt(room, {
+      nodes: [
+        ...folders.filter((folder) => folder.id !== WORKSPACE_ROOM_ROOT_ID).map((folder) => ({ ...folder, type: "folder" as const })),
+        ...normalizedDocuments.map((document) => ({
+          id: document.id,
+          type: "document" as const,
+          parentId: document.parentId ?? WORKSPACE_ROOM_ROOT_ID,
+          title: document.title,
+          order: document.order,
+          markdown: document.text,
+        })),
+      ],
+      comments: commentsToList(commentsByFileId),
+    });
+  }
+  refreshAllDocumentByteLengths();
+  refreshCommentByteLength();
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
-    onRecoveryEvent?.({
-      id: adapters.clock.createId(),
-      type,
-      message,
-      createdAt: adapters.clock.nowIso(),
-    });
+    onRecoveryEvent?.({ id: adapters.clock.createId(), type, message, createdAt: adapters.clock.nowIso() });
+  };
+
+  const emitInvalidMessage = (message: string) => {
+    const now = Date.now();
+    if (now - lastInvalidMessageNoticeAt < INVALID_MESSAGE_NOTICE_INTERVAL_MS) return;
+    lastInvalidMessageNoticeAt = now;
+    emitRecoveryEvent("invalid-message", message);
+  };
+
+  const notifyCapacityExceeded = () => {
+    if (capacityExceededNotified) return;
+    capacityExceededNotified = true;
+    onCapacityExceeded?.();
   };
 
   const publishCollaborators = () => {
-    onCollaboratorsChange(collaborators.list());
-  };
-
-  const encryptEnvelope = async (kind: EnvelopeKind, plaintext: Uint8Array) => {
-    if (!roomKey) {
-      throw new Error("Room key is not available");
-    }
-
-    envelopeVersion += 1;
-    return adapters.crypto.encryptEnvelope(roomKey, roomId, kind, envelopeVersion, plaintext);
-  };
-
-  const emitEnvelope = async (kind: EnvelopeKind, plaintext: Uint8Array, options: { volatile?: boolean } = {}) => {
-    if (!transport?.connected || !roomKey || sessionState.isBlocked()) {
-      return;
-    }
-
-    const envelope = await encryptEnvelope(kind, plaintext);
-    if (options.volatile) {
-      transport.sendVolatileEnvelope(envelope);
-      return;
-    }
-    transport.sendEnvelope(envelope);
-  };
-
-  const emitRoomEvent = async (event: RoomEvent, options: { volatile?: boolean } = {}) => {
-    await emitEnvelope("room-event", encodeRoomEvent(event), options);
-  };
-
-  const getCurrentActor = () =>
-    createRoomActor({
-      id: currentIdentity.id,
-      kind: currentIdentity.kind ?? "human",
-      name: currentIdentity.name,
-      color: currentIdentity.color,
-      client: currentIdentity.client ?? "tabula-md",
-      capabilities: currentIdentity.capabilities,
-      joinedAt: currentIdentity.joinedAt,
-    });
-
-  const workspaceUpdateBuffers = new Map<string, ReturnType<typeof createCollabUpdateBuffer>>();
-
-  const emitTextUpdatedEvent = async (nextDocumentId: string, update: Uint8Array) => {
-    const actor = getCurrentActor();
-    await emitRoomEvent({
-      id: adapters.clock.createId(),
-      roomId,
-      actorId: actor.id,
-      type: "text.updated",
-      createdAt: adapters.clock.nowIso(),
-      actor,
-      documentId: nextDocumentId,
-      update: encodeBase64UrlBytes(update),
-    });
-    scheduleCheckpointSave();
-  };
-
-  const getWorkspaceUpdateBuffer = (nextDocumentId: string, nextTextDocument: CollabTextDocumentHandle) => {
-    const existingBuffer = workspaceUpdateBuffers.get(nextDocumentId);
-    if (existingBuffer) {
-      return existingBuffer;
-    }
-
-    const nextBuffer = createCollabUpdateBuffer({
-      delayMs: 25,
-      onFlush: () => {
-        void emitTextUpdatedEvent(
-          nextDocumentId,
-          adapters.text.encodeState(nextTextDocument),
-        );
-      },
-      mergeUpdates: adapters.text.mergeUpdates,
-      setTimeoutFn: adapters.clock.setTimeout,
-      clearTimeoutFn: adapters.clock.clearTimeout,
-    });
-    workspaceUpdateBuffers.set(nextDocumentId, nextBuffer);
-    return nextBuffer;
-  };
-
-  const emitWorkspaceStateEvent = async () => {
-    const workspaceTextDocuments = Array.from(textDocuments.entries()).filter(
-      ([nextDocumentId]) => !workspaceDocumentIds || workspaceDocumentIds.has(nextDocumentId),
-    );
-    const workspace = await createWorkspaceRoomState({
-      activeDocumentId,
-      documents: workspaceTextDocuments.map(([nextDocumentId, nextTextDocument]) => {
-        const initialDocument = initialDocumentsById.get(nextDocumentId);
-        return {
-          id: nextDocumentId,
-          title: initialDocument?.title ?? nextDocumentId,
-          markdown: adapters.text.getText(nextTextDocument),
-          parentId: initialDocument?.parentId,
-        };
-      }),
-      nowIso: adapters.clock.nowIso,
-      roomId,
-    });
-
-    await emitRoomEvent({
-      id: adapters.clock.createId(),
-      roomId,
-      actorId: currentIdentity.id,
-      type: "workspace.updated",
-      createdAt: adapters.clock.nowIso(),
-      actor: getCurrentActor(),
-      workspace,
-    });
-    scheduleCheckpointSave();
-  };
-
-  const emitCurrentDocumentStates = async () => {
-    if (!canEmitWorkspaceState) {
-      return;
-    }
-
-    await emitWorkspaceStateEvent();
-    const workspaceTextDocuments = Array.from(textDocuments.entries()).filter(
-      ([nextDocumentId]) => !workspaceDocumentIds || workspaceDocumentIds.has(nextDocumentId),
-    );
-    for (const [nextDocumentId, nextTextDocument] of workspaceTextDocuments) {
-      await emitTextUpdatedEvent(
-        nextDocumentId,
-        adapters.text.encodeState(nextTextDocument),
-      );
-    }
-  };
-
-  const clearPresenceTimer = () => {
-    if (!presenceTimer) {
-      return;
-    }
-
-    adapters.clock.clearTimeout(presenceTimer);
-    presenceTimer = undefined;
-  };
-
-  const clearCheckpointSaveTimer = () => {
-    if (!checkpointSaveTimer) {
-      return;
-    }
-
-    adapters.clock.clearTimeout(checkpointSaveTimer);
-    checkpointSaveTimer = undefined;
-  };
-
-  const getCheckpointDocuments = (): WorkspaceRoomDocument[] =>
-    Array.from(textDocuments.entries())
-      .filter(([nextDocumentId]) => !workspaceDocumentIds || workspaceDocumentIds.has(nextDocumentId))
-      .map(([nextDocumentId, nextTextDocument]) => {
-        const initialDocument = initialDocumentsById.get(nextDocumentId);
-        return {
-          id: nextDocumentId,
-          title: initialDocument?.title ?? nextDocumentId,
-          markdown: adapters.text.getText(nextTextDocument),
-          parentId: initialDocument?.parentId ?? null,
-        };
+    const collaborators: Collaborator[] = [];
+    awareness.getStates().forEach((state, clientId) => {
+      if (clientId === awareness.clientID || !state || typeof state !== "object") return;
+      const actor = (state as Record<string, unknown>).actor;
+      if (!isActor(actor) || actor.id === currentIdentity.id || !hasRoomCapability(actor, "presence")) return;
+      collaborators.push({
+        id: actor.id,
+        name: actor.name,
+        color: actor.color ?? "#2563eb",
+        kind: actor.kind,
+        client: actor.client,
+        capabilities: actor.capabilities,
+        joinedAt: actor.joinedAt,
+        roomId,
+        activeDocumentId: typeof state.activeDocumentId === "string" ? state.activeDocumentId : undefined,
+        fileTitle: typeof state.fileTitle === "string" ? state.fileTitle : undefined,
+        selection: getSelectionFromAwarenessState(room, state as Record<string, unknown>),
+        lastSeen: typeof state.lastSeen === "number" ? state.lastSeen : Date.now(),
       });
-
-  const createCurrentCheckpoint = async (): Promise<WorkspaceRoomCheckpoint> => {
-    const documents = getCheckpointDocuments();
-    return createWorkspaceRoomCheckpoint({
-      activeDocumentId,
-      documents,
-      nowIso: adapters.clock.nowIso,
-      roomId,
     });
+    collaborators.sort((first, second) => first.name.localeCompare(second.name) || first.id.localeCompare(second.id));
+    updateRuntimeSnapshot({ collaborators });
   };
 
-  const saveCheckpointNow = async () => {
-    if (!adapters.roomCheckpointStore.enabled || !roomKey || closedByClient) {
+  const projectWorkspace = (origin?: unknown) => {
+    if (closed) return;
+    if (!room.meta.has("schemaVersion")) return;
+    const structure = validateWorkspaceRoomStructure(room, roomId);
+    if (!structure.ok) {
+      setStatus("failed");
+      onOpenFailure?.("unsupported");
+      emitInvalidMessage(structure.message);
       return;
     }
+    const snapshot = getWorkspaceRoomSnapshot(room);
+    const limits = validateWorkspaceRoomLimits(snapshot);
+    if (!limits.ok) {
+      setStatus("failed");
+      emitInvalidMessage(limits.message);
+      return;
+    }
+    hasHydratedWorkspace = true;
+    onWorkspaceChange?.(
+      snapshot,
+      isRemoteSyncOrigin(origin) ? { actorId: origin.senderId } : undefined,
+    );
+    refreshTextObservers();
+  };
 
+  const refreshTextObservers = () => {
+    for (const [id, observer] of textObservers) {
+      const current = room.documents.get(id);
+      if (current === observer.text) continue;
+      observer.text.unobserve(observer.listener);
+      textObservers.delete(id);
+      undoManagers.get(id)?.destroy();
+      undoManagers.delete(id);
+    }
+    room.documents.forEach((text, id) => {
+      if (textObservers.has(id)) return;
+      const listener = (event: Y.YTextEvent, transaction: Y.Transaction) => {
+        const tracker = documentSizeTrackers.get(id) ?? new Utf8TextSizeTracker(text.toString());
+        documentSizeTrackers.set(id, tracker);
+        documentByteLengths.set(id, tracker.applyDelta(event.delta));
+        refreshRoomContentByteLength();
+        if (isRemoteSyncOrigin(transaction.origin) || transaction.origin === CHECKPOINT_ORIGIN) {
+          remoteProjectionRevisions.set(id, (remoteProjectionRevisions.get(id) ?? 0) + 1);
+          onTextChange(id, text.toString());
+        }
+        if (room.comments.size > 0) scheduleCommentProjection();
+      };
+      text.observe(listener);
+      textObservers.set(id, { text, listener });
+      if (!undoManagers.has(id)) undoManagers.set(id, new Y.UndoManager(text));
+    });
+    setEditorBinding(getEditorBinding(activeDocumentId));
+  };
+
+  const getEditorBinding = (nextDocumentId?: string | null): CollabEditorBinding | null => {
+    if (!nextDocumentId) return null;
+    const yText = room.documents.get(nextDocumentId);
+    if (!yText) return null;
+    let undoManager = undoManagers.get(nextDocumentId);
+    if (!undoManager) {
+      undoManager = new Y.UndoManager(yText);
+      undoManagers.set(nextDocumentId, undoManager);
+    }
+    return {
+      documentId: nextDocumentId,
+      extension: [
+        yCollab(yText, awareness, { undoManager }),
+        keymap.of(yUndoManagerKeymap),
+      ],
+      yText,
+      awareness,
+      undoManager,
+      canApplyTextByteDelta,
+      consumeRemoteProjection: () => {
+        const revision = remoteProjectionRevisions.get(nextDocumentId) ?? 0;
+        const consumedRevision = consumedRemoteProjectionRevisions.get(nextDocumentId) ?? 0;
+        if (revision <= consumedRevision) return false;
+        consumedRemoteProjectionRevisions.set(nextDocumentId, revision);
+        return true;
+      },
+    };
+  };
+
+  const getActiveActors = () => {
+    const ids = new Set([currentIdentity.id]);
+    awareness.getStates().forEach((state) => {
+      const actor = state?.actor;
+      if (isActor(actor)) ids.add(actor.id);
+    });
+    return [...ids].sort();
+  };
+
+  const isCheckpointLeader = () => getActiveActors()[0] === currentIdentity.id;
+
+  const validateCheckpointUpdate = (update: Uint8Array) => {
+    if (update.byteLength > ROOM_WIRE_MAX_CRDT_STATE_BYTES) {
+      throw new Error("The collaboration state exceeds the supported size.");
+    }
+    const validationDoc = new Y.Doc();
+    const validationRoom = createWorkspaceRoomCrdt({
+      roomId,
+      doc: validationDoc,
+      initialize: false,
+    });
+    try {
+      Y.applyUpdate(validationDoc, update);
+      const structure = validateWorkspaceRoomStructure(validationRoom, roomId);
+      if (!structure.ok) throw new Error(structure.message);
+      const limits = validateWorkspaceRoomLimits(getWorkspaceRoomSnapshot(validationRoom));
+      if (!limits.ok) throw new Error(limits.message);
+    } finally {
+      validationDoc.destroy();
+    }
+  };
+
+  const clearCheckpointTimer = () => {
+    if (!checkpointTimer) return;
+    adapters.clock.clearTimeout(checkpointTimer);
+    checkpointTimer = undefined;
+  };
+
+  const persistCurrentCheckpoint = async (expectedGeneration: number) => {
+    if (!roomKey) return null;
+    refreshAllDocumentByteLengths();
+    const structure = validateWorkspaceRoomStructure(room, roomId);
+    if (!structure.ok) return null;
+    const limits = validateWorkspaceRoomLimits(getWorkspaceRoomSnapshot(room));
+    if (!limits.ok) return null;
+    const update = Y.encodeStateAsUpdate(room.doc);
+    if (update.byteLength > ROOM_WIRE_MAX_CRDT_STATE_BYTES) {
+      notifyCapacityExceeded();
+      return null;
+    }
+    const encryptedCheckpoint = await encryptWorkspaceRoomCheckpoint({ roomId, update, roomKey });
+    if (closed || abortController.signal.aborted) return null;
+    return adapters.roomCheckpointStore.saveEncryptedCheckpoint(roomId, {
+      expectedGeneration,
+      encryptedCheckpoint,
+      expiresAt: Date.now() + ROOM_CHECKPOINT_RETENTION_MS,
+    }, abortController.signal);
+  };
+
+  const saveCheckpointNow = async (): Promise<void> => {
+    clearCheckpointTimer();
+    if (closed || !roomKey || !adapters.roomCheckpointStore.enabled || !isCheckpointLeader()) return;
     if (checkpointSaveInFlight) {
       checkpointSaveRequested = true;
       return;
     }
-
     checkpointSaveInFlight = true;
     try {
-      const checkpoint = await createCurrentCheckpoint();
-      const encryptedCheckpoint = await encryptWorkspaceRoomCheckpoint({
-        checkpoint,
-        roomKey,
-      });
-      await adapters.roomCheckpointStore.saveEncryptedCheckpoint(roomId, encryptedCheckpoint);
-      checkpointSaveErrorReported = false;
-    } catch {
-      if (!checkpointSaveErrorReported) {
-        checkpointSaveErrorReported = true;
-        emitRecoveryEvent("invalid-message", "An encrypted room checkpoint could not be saved.");
+      const result = await persistCurrentCheckpoint(checkpointGeneration);
+      if (!result) return;
+      if (result.ok) {
+        checkpointGeneration = result.generation;
+      } else {
+        const latest = await adapters.roomCheckpointStore.loadEncryptedCheckpoint(roomId, abortController.signal);
+        if (latest?.status === "ready") {
+          checkpointGeneration = latest.generation;
+          const latestUpdate = await decryptWorkspaceRoomCheckpoint({
+            encryptedCheckpoint: latest.encryptedCheckpoint,
+            roomId,
+            roomKey,
+          });
+          validateCheckpointUpdate(latestUpdate);
+          Y.applyUpdate(room.doc, latestUpdate, CHECKPOINT_ORIGIN);
+          const retried = await persistCurrentCheckpoint(checkpointGeneration);
+          if (retried) checkpointGeneration = retried.generation;
+        }
       }
+    } catch {
+      if (!abortController.signal.aborted) emitInvalidMessage("The encrypted live room could not be saved.");
     } finally {
       checkpointSaveInFlight = false;
       if (checkpointSaveRequested) {
@@ -382,289 +613,166 @@ export const createCollabConnection = ({
   };
 
   const scheduleCheckpointSave = () => {
-    if (!adapters.roomCheckpointStore.enabled || closedByClient || !roomKey) {
-      return;
-    }
-
-    clearCheckpointSaveTimer();
-    checkpointSaveTimer = adapters.clock.setTimeout(() => {
-      checkpointSaveTimer = undefined;
+    if (closed || !roomKey || !adapters.roomCheckpointStore.enabled || !isCheckpointLeader()) return;
+    clearCheckpointTimer();
+    checkpointTimer = adapters.clock.setTimeout(() => {
+      checkpointTimer = undefined;
       void saveCheckpointNow();
     }, CHECKPOINT_SAVE_DELAY_MS);
   };
 
-  const applyCheckpoint = (checkpoint: WorkspaceRoomCheckpoint) => {
-    if (checkpoint.roomId !== roomId) {
+  const sendPacket = (packet: RoomWireDataPacket, volatile = false) => {
+    if (packet.type === "sync.message" && packet.payload.byteLength > ROOM_WIRE_MAX_CRDT_STATE_BYTES) {
+      notifyCapacityExceeded();
       return;
     }
-
-    const documentIds = new Set(checkpoint.documents.map((document) => document.id));
-    workspaceDocumentIds = documentIds;
-    canEmitWorkspaceState = true;
-    if (checkpoint.workspace.activeDocumentId) {
-      activeDocumentId = checkpoint.workspace.activeDocumentId;
-    }
-
-    handleRoomEvent({
-      id: adapters.clock.createId(),
-      roomId,
-      actorId: currentIdentity.id,
-      type: "workspace.updated",
-      createdAt: checkpoint.updatedAt,
-      actor: getCurrentActor(),
-      workspace: checkpoint.workspace,
-    });
-
-    suppressLocalTextUpdates = true;
-    try {
-      for (const document of checkpoint.documents) {
-        initialDocumentsById.set(document.id, {
-          id: document.id,
-          title: document.title,
-          text: document.markdown,
-          parentId: document.parentId,
-        });
-        const textDocument = getOrCreateTextDocument(document.id, {
-          initialText: document.markdown,
-          parentId: document.parentId,
-          title: document.title,
-        });
-        adapters.text.applyLocalText(textDocument, document.markdown);
-        onTextChange(document.id, document.markdown);
+    outboundQueue = outboundQueue.then(async () => {
+      if (closed || !roomKey || !transport?.connected) return;
+      const packets = encodeRoomWirePackets(packet, adapters.clock.createId);
+      for (const plaintext of packets) {
+        if (closed || !transport?.connected) return;
+        envelopeVersion += 1;
+        const envelope = await adapters.crypto.encryptEnvelope(roomKey, roomId, "room-event", envelopeVersion, plaintext);
+        if (closed || !transport?.connected) return;
+        if (volatile) transport.sendVolatileEnvelope(envelope);
+        else transport.sendEnvelope(envelope);
       }
-    } finally {
-      suppressLocalTextUpdates = false;
+    }).catch(() => emitInvalidMessage("A live collaboration update could not be sent."));
+  };
+
+  const sendSyncStep1 = () => {
+    const encoder = encoding.createEncoder();
+    syncProtocol.writeSyncStep1(encoder, room.doc);
+    sendPacket({ type: "sync.message", senderId: currentIdentity.id, payload: encoding.toUint8Array(encoder) });
+  };
+
+  const publishAwareness = (clients = [awareness.clientID], volatile = true) => {
+    const payload = encodeAwarenessUpdate(awareness, clients);
+    sendPacket({ type: "awareness.updated", senderId: currentIdentity.id, payload }, volatile);
+  };
+
+  const setLocalAwareness = () => {
+    const actor = getActor(currentIdentity);
+    const nextState: Record<string, unknown> = {
+      ...awareness.getLocalState(),
+      actor,
+      user: { name: actor.name, color: actor.color ?? "#2563eb", colorLight: `${actor.color ?? "#2563eb"}33` },
+      lastSeen: Date.now(),
+    };
+    if (activeDocumentId) {
+      nextState.activeDocumentId = activeDocumentId;
+      nextState.fileTitle = currentFileTitle;
+    } else {
+      delete nextState.activeDocumentId;
+      delete nextState.fileTitle;
     }
+    awareness.setLocalState(nextState);
+    if (!editorPresenceEnabled && awareness.getLocalState()?.cursor != null) {
+      awareness.setLocalStateField("cursor", null);
+    }
+  };
+
+  const getSenderActor = (senderId: string) => {
+    for (const state of awareness.getStates().values()) {
+      const actor = state?.actor;
+      if (isActor(actor) && actor.id === senderId) return actor;
+    }
+    return null;
+  };
+
+  const handleSyncMessage = (packet: RoomWireDataPacket) => {
+    const probe = decoding.createDecoder(packet.payload);
+    const messageType = decoding.readVarUint(probe);
+    const senderActor = getSenderActor(packet.senderId);
+    if (
+      messageType !== syncProtocol.messageYjsSyncStep1 &&
+      (!senderActor || !hasRoomCapability(senderActor, "write"))
+    ) return;
+    const decoder = decoding.createDecoder(packet.payload);
+    const reply = encoding.createEncoder();
+    syncProtocol.readSyncMessage(decoder, reply, room.doc, {
+      type: REMOTE_SYNC_ORIGIN,
+      senderId: packet.senderId,
+    } satisfies RemoteSyncOrigin, () => {
+      emitInvalidMessage("A malformed collaboration update was ignored.");
+    });
+    if (encoding.length(reply) > 0) {
+      sendPacket({ type: "sync.message", senderId: currentIdentity.id, payload: encoding.toUint8Array(reply) });
+    }
+  };
+
+  const handleDataPacket = (packet: RoomWireDataPacket) => {
+    if (packet.senderId === currentIdentity.id) return;
+    if (packet.type === "awareness.updated") {
+      applyAwarenessUpdate(awareness, packet.payload, REMOTE_AWARENESS_ORIGIN);
+      return;
+    }
+    handleSyncMessage(packet);
+  };
+
+  const routeEnvelope = (value: unknown) => {
+    inboundQueue = inboundQueue.then(async () => {
+      if (closed || !roomKey) return;
+      if (!isEncryptedEnvelope(value) || value.roomId !== roomId || value.kind !== "room-event") {
+        emitInvalidMessage("A collaboration server message was ignored.");
+        return;
+      }
+      try {
+        const plaintext = await adapters.crypto.decryptEnvelope(roomKey, value);
+        const decoded = decodeRoomWirePacket(plaintext);
+        if (!decoded.ok) {
+          if (decoded.reason === "unsupported") onOpenFailure?.("unsupported");
+          emitInvalidMessage("An unsupported collaboration message was ignored.");
+          return;
+        }
+        if (decoded.packet.type === "sync.chunk") {
+          const assembled = chunkAssembler.push(decoded.packet);
+          if (assembled) handleDataPacket(assembled);
+        } else {
+          handleDataPacket(decoded.packet);
+        }
+      } catch {
+        emitInvalidMessage("An encrypted collaboration message could not be opened.");
+      }
+    });
   };
 
   const loadCheckpoint = async () => {
-    if (!adapters.roomCheckpointStore.enabled || !roomKey) {
-      return;
+    if (!roomKey || !adapters.roomCheckpointStore.enabled) return true;
+    const loaded = await adapters.roomCheckpointStore.loadEncryptedCheckpoint(roomId, abortController.signal);
+    if (!loaded) return true;
+    checkpointGeneration = loaded.generation;
+    if (loaded.status === "expired") {
+      onOpenFailure?.("expired");
+      setStatus("failed");
+      return false;
     }
-
     try {
-      const encryptedCheckpoint = await adapters.roomCheckpointStore.loadEncryptedCheckpoint(roomId);
-      if (!encryptedCheckpoint) {
-        return;
-      }
-
-      const checkpoint = await decryptWorkspaceRoomCheckpoint({
-        encryptedCheckpoint,
+      const update = await decryptWorkspaceRoomCheckpoint({
+        encryptedCheckpoint: loaded.encryptedCheckpoint,
         roomId,
         roomKey,
       });
-      applyCheckpoint(checkpoint);
+      validateCheckpointUpdate(update);
+      Y.applyUpdate(room.doc, update, CHECKPOINT_ORIGIN);
+      return true;
     } catch {
-      emitRecoveryEvent("invalid-message", "An encrypted room checkpoint could not be loaded.");
+      onOpenFailure?.("unsupported");
+      setStatus("failed");
+      return false;
     }
   };
 
-  const publishPresence = async () => {
-    const createdAt = adapters.clock.nowIso();
-    const activeSelection = currentSelection
-      ? {
-          ...currentSelection,
-          documentId: currentSelection.documentId ?? activeDocumentId,
-        }
-      : undefined;
-    await emitRoomEvent(
-      {
-        id: adapters.clock.createId(),
-        roomId,
-        actorId: currentIdentity.id,
-        type: "presence.updated",
-        createdAt,
-        actor: getCurrentActor(),
-        presence: {
-          actorId: currentIdentity.id,
-          activeDocumentId,
-          selection: activeSelection,
-          lastSeen: Date.parse(createdAt) || Date.now(),
-        },
-        fileTitle: currentFileTitle,
-        selection: activeSelection,
-      },
-      { volatile: true },
-    );
-  };
-
-  const schedulePresencePublish = () => {
-    if (closedByClient) {
-      return;
-    }
-
-    if (presenceTimer) {
-      return;
-    }
-
-    presenceTimer = adapters.clock.setTimeout(() => {
-      presenceTimer = undefined;
-      void publishPresence();
-    }, PRESENCE_SEND_THROTTLE_MS);
-  };
-
-  const unsubscribeTextUpdates = new Map<string, () => void>();
-
-  const observeTextDocumentUpdates = (
-    nextDocumentId: string,
-    nextTextDocument: CollabTextDocumentHandle,
-  ) => {
-    const unsubscribe = adapters.text.observeUpdates(nextTextDocument, (update, origin) => {
-      if (closedByClient || suppressLocalTextUpdates || adapters.text.isRemoteOrigin(origin)) {
-        return;
-      }
-
-      getWorkspaceUpdateBuffer(nextDocumentId, nextTextDocument).push(update);
-      scheduleCheckpointSave();
+  const refreshAwarenessPeers = (peerIds: readonly string[]) => {
+    const allowed = new Set(peerIds);
+    const staleClientIds: number[] = [];
+    awareness.getStates().forEach((state, clientId) => {
+      if (clientId === awareness.clientID) return;
+      const actor = state?.actor;
+      if (isActor(actor) && !allowed.has(actor.id)) staleClientIds.push(clientId);
     });
-    unsubscribeTextUpdates.set(nextDocumentId, unsubscribe);
+    if (staleClientIds.length > 0) removeAwarenessStates(awareness, staleClientIds, "transport.peers");
   };
-
-  for (const [nextDocumentId, nextTextDocument] of textDocuments.entries()) {
-    observeTextDocumentUpdates(nextDocumentId, nextTextDocument);
-  }
-
-  const getOrCreateTextDocument = (
-    nextDocumentId?: string,
-    options: { initialText?: string; parentId?: string | null; title?: string } = {},
-  ) => {
-    const resolvedDocumentId = nextDocumentId ?? activeDocumentId;
-
-    const existingDocument = textDocuments.get(resolvedDocumentId);
-    if (existingDocument) {
-      return existingDocument;
-    }
-
-    const nextTextDocument = adapters.text.createDocument(options.initialText ?? "");
-    textDocuments.set(resolvedDocumentId, nextTextDocument);
-    initialDocumentsById.set(resolvedDocumentId, {
-      id: resolvedDocumentId,
-      title: options.title ?? resolvedDocumentId,
-      text: options.initialText ?? "",
-      parentId: options.parentId,
-    });
-    observeTextDocumentUpdates(resolvedDocumentId, nextTextDocument);
-    return nextTextDocument;
-  };
-
-  const updateWorkspaceDocumentMetadata = (document: WorkspaceDocumentSnapshot) => {
-    const existingDocument = initialDocumentsById.get(document.id);
-    initialDocumentsById.set(document.id, {
-      id: document.id,
-      title: document.title,
-      text: existingDocument?.text ?? document.text,
-      parentId: document.parentId,
-    });
-  };
-
-  const pruneWorkspaceTextDocuments = (nextDocumentIds: Set<string>) => {
-    const nextActiveDocumentId = nextDocumentIds.has(activeDocumentId)
-      ? activeDocumentId
-      : nextDocumentIds.values().next().value;
-    if (nextActiveDocumentId) {
-      activeDocumentId = nextActiveDocumentId;
-    }
-
-    for (const [nextDocumentId, nextTextDocument] of textDocuments.entries()) {
-      if (nextDocumentIds.has(nextDocumentId)) {
-        continue;
-      }
-
-      unsubscribeTextUpdates.get(nextDocumentId)?.();
-      unsubscribeTextUpdates.delete(nextDocumentId);
-      workspaceUpdateBuffers.get(nextDocumentId)?.clear();
-      workspaceUpdateBuffers.delete(nextDocumentId);
-      initialDocumentsById.delete(nextDocumentId);
-      textDocuments.delete(nextDocumentId);
-      adapters.text.destroy(nextTextDocument);
-    }
-  };
-
-  const setWorkspaceDocuments = (nextDocuments: readonly WorkspaceDocumentSnapshot[]) => {
-    if (!canEmitWorkspaceState || nextDocuments.length === 0) {
-      return;
-    }
-
-    const nextDocumentIds = new Set(nextDocuments.map((nextDocument) => nextDocument.id));
-    workspaceDocumentIds = nextDocumentIds;
-
-    for (const nextDocument of nextDocuments) {
-      if (!textDocuments.has(nextDocument.id)) {
-        getOrCreateTextDocument(nextDocument.id, {
-          initialText: nextDocument.text,
-          parentId: nextDocument.parentId,
-          title: nextDocument.title,
-        });
-      }
-      updateWorkspaceDocumentMetadata(nextDocument);
-    }
-
-    pruneWorkspaceTextDocuments(nextDocumentIds);
-    scheduleCheckpointSave();
-  };
-
-  const handleRoomEvent = (event: RoomEvent) => {
-    if (event.type === "workspace.updated") {
-      canEmitWorkspaceState = true;
-      const nextWorkspaceDocumentIds = new Set(
-        event.workspace.nodes
-          .filter((node) => node.type === "document" && node.id !== `live-${event.roomId}`)
-          .map((node) => node.id),
-      );
-      if (nextWorkspaceDocumentIds.size === 0) {
-        return;
-      }
-
-      workspaceDocumentIds = nextWorkspaceDocumentIds;
-      const requestedActiveDocumentId =
-        event.workspace.activeDocumentId && nextWorkspaceDocumentIds.has(event.workspace.activeDocumentId)
-          ? event.workspace.activeDocumentId
-          : nextWorkspaceDocumentIds.values().next().value;
-      if (requestedActiveDocumentId) {
-        activeDocumentId = requestedActiveDocumentId;
-      }
-      pruneWorkspaceTextDocuments(nextWorkspaceDocumentIds);
-      for (const node of event.workspace.nodes) {
-        if (node.type !== "document" || node.id === `live-${event.roomId}`) {
-          continue;
-        }
-        getOrCreateTextDocument(node.id, {
-          parentId: node.parentId,
-          title: node.title,
-        });
-        const initialDocument = initialDocumentsById.get(node.id);
-        initialDocumentsById.set(node.id, {
-          id: node.id,
-          title: node.title,
-          text: initialDocument?.text ?? "",
-          parentId: node.parentId,
-        });
-      }
-    }
-    if (event.type === "text.updated" || event.type === "workspace.updated") {
-      scheduleCheckpointSave();
-    }
-    onRoomEvent?.(event);
-  };
-
-  const envelopeRouter = createCollabEnvelopeRouter({
-    roomId,
-    textAdapter: adapters.text,
-    collaborators,
-    canDecrypt: () => Boolean(roomKey),
-    getTextDocumentForDocumentId: getOrCreateTextDocument,
-    getSelfId: () => currentIdentity.id,
-    decryptEnvelope: (envelope) => {
-      if (!roomKey) {
-        throw new Error("Room key is not available");
-      }
-      return adapters.crypto.decryptEnvelope(roomKey, envelope);
-    },
-    onTextChange: (text, change, nextDocumentId) => onTextChange(nextDocumentId ?? activeDocumentId, text, change),
-    onRoomEvent: handleRoomEvent,
-    publishCollaborators,
-    emitRecoveryEvent,
-  });
 
   const start = async () => {
     const startConfig = await resolveCollabStartConfig({
@@ -672,126 +780,343 @@ export const createCollabConnection = ({
       resolveBaseUrl: adapters.resolveRoomBaseUrl,
       importKey: adapters.crypto.importRoomKey,
     });
+    if (closed || abortController.signal.aborted) return;
     if (startConfig.status === "blocked") {
-      onStatusChange("failed");
-      emitRecoveryEvent("invalid-message", startConfig.message);
+      setStatus("failed");
+      onOpenFailure?.("invalid");
       return;
     }
     roomKey = startConfig.roomKey;
-    await loadCheckpoint();
+    if (!(await loadCheckpoint()) || closed || abortController.signal.aborted) return;
+    refreshTextObservers();
+    projectWorkspace();
+    setLocalAwareness();
 
     transport = adapters.createRoomTransport({
       baseUrl: startConfig.baseUrl,
       roomId,
       clientId: currentIdentity.id,
-      handlers: createCollabTransportHandlers({
-        isClosed: () => closedByClient,
-        markJoined: () => sessionState.markJoined(),
-        markOffline: (reason) => sessionState.markOffline(reason),
-        setStatus: onStatusChange,
-        emitCurrentState: emitCurrentDocumentStates,
-        publishPresence,
-        routeEnvelope: (envelope) => envelopeRouter.route(envelope),
-        pruneCollaborators: (peerIds) => collaborators.prune(peerIds),
-        clearCollaborators: () => collaborators.clear(),
-        publishCollaborators,
-        emitRecoveryEvent,
-      }),
+      handlers: {
+        onConnect: () => { if (!closed) setStatus("connecting"); },
+        onJoined: () => {
+          if (closed) return;
+          const joined = sessionState.markJoined();
+          setStatus("connected");
+          if (joined.reconnected) emitRecoveryEvent("reconnected", joined.message);
+          setLocalAwareness();
+          publishAwareness([awareness.clientID], false);
+          sendSyncStep1();
+          if (checkpointGeneration === 0) void saveCheckpointNow();
+          else scheduleCheckpointSave();
+        },
+        onPeerJoined: () => {
+          if (closed) return;
+          publishAwareness([awareness.clientID], false);
+          sendSyncStep1();
+        },
+        onMessage: routeEnvelope,
+        onPeers: (message) => {
+          refreshAwarenessPeers(message.peers);
+          publishCollaborators();
+        },
+        onError: (message) => emitInvalidMessage(message.error || "A collaboration server message was ignored."),
+        onDisconnect: () => {
+          if (closed) return;
+          setStatus(sessionState.markOffline("disconnect").status);
+        },
+        onConnectError: () => {
+          if (closed) return;
+          const offline = sessionState.markOffline("connect-error");
+          setStatus(offline.status);
+        },
+      },
     });
+    if (closed || abortController.signal.aborted) {
+      transport.disconnect();
+      transport = null;
+      return;
+    }
     transport.connect();
-
     heartbeat = adapters.clock.setInterval(() => {
-      void publishPresence();
-    }, 5_000);
+      if (closed) return;
+      setLocalAwareness();
+      publishAwareness();
+      chunkAssembler.prune();
+    }, AWARENESS_HEARTBEAT_MS);
   };
 
-  onStatusChange("connecting");
-  void start();
+  const handleDocumentUpdate = (update: Uint8Array, origin: unknown) => {
+    if (closed || isRemoteSyncOrigin(origin) || origin === CHECKPOINT_ORIGIN) return;
+    const encoder = encoding.createEncoder();
+    syncProtocol.writeUpdate(encoder, update);
+    sendPacket({ type: "sync.message", senderId: currentIdentity.id, payload: encoding.toUint8Array(encoder) });
+    scheduleCheckpointSave();
+  };
+
+  let projectionQueued = false;
+  let queuedWorkspaceOrigin: unknown;
+  const queueWorkspaceProjection = (origin?: unknown) => {
+    if (closed) return;
+    if (isRemoteSyncOrigin(origin)) queuedWorkspaceOrigin = origin;
+    else if (queuedWorkspaceOrigin === undefined) queuedWorkspaceOrigin = origin;
+    if (projectionQueued) return;
+    projectionQueued = true;
+    queueMicrotask(() => {
+      projectionQueued = false;
+      const nextOrigin = queuedWorkspaceOrigin;
+      queuedWorkspaceOrigin = undefined;
+      if (!closed) projectWorkspace(nextOrigin);
+    });
+  };
+  const handleDocumentsChange = (_event: unknown, transaction: Y.Transaction) => {
+    refreshAllDocumentByteLengths();
+    refreshTextObservers();
+    queueWorkspaceProjection(transaction.origin);
+  };
+  const handleWorkspaceStructureChange = (_event: unknown, transaction: Y.Transaction) =>
+    queueWorkspaceProjection(transaction.origin);
+  const handleCommentsChange = () => {
+    refreshCommentByteLength();
+    scheduleCommentProjection();
+  };
+
+  const handleAwarenessUpdate = (
+    changes: { added: number[]; updated: number[]; removed: number[] },
+    origin: unknown,
+  ) => {
+    publishCollaborators();
+    if (origin !== REMOTE_AWARENESS_ORIGIN && !closed) {
+      publishAwareness([...changes.added, ...changes.updated, ...changes.removed]);
+    }
+  };
+
+  room.doc.on("update", handleDocumentUpdate);
+  room.documents.observe(handleDocumentsChange);
+  room.meta.observe(handleWorkspaceStructureChange);
+  room.nodes.observeDeep(handleWorkspaceStructureChange);
+  room.comments.observeDeep(handleCommentsChange);
+  awareness.on("update", handleAwarenessUpdate);
+  refreshTextObservers();
+  setStatus("connecting");
+  void start().catch(() => {
+    if (!closed && !abortController.signal.aborted) {
+      setStatus("failed");
+      onOpenFailure?.("invalid");
+    }
+  });
+
+  const setWorkspace = ({
+    documents: nextDocuments,
+    folders: nextFolders = [],
+  }: {
+    documents: readonly WorkspaceDocumentSnapshot[];
+    folders?: readonly WorkspaceFolderSnapshot[];
+  }) => {
+    if (closed || (!emitInitialWorkspaceState && !hasHydratedWorkspace)) return;
+    const candidateIds = [
+      ...nextFolders.filter((folder) => folder.id !== WORKSPACE_ROOM_ROOT_ID).map((folder) => folder.id),
+      ...nextDocuments.map((document) => document.id),
+    ];
+    if (new Set(candidateIds).size !== candidateIds.length) return false;
+    const validationDoc = new Y.Doc();
+    const validationRoom = createWorkspaceRoomCrdt({ roomId, doc: validationDoc });
+    try {
+      const documentIds = new Set(nextDocuments.map((document) => document.id));
+      initializeWorkspaceRoomCrdt(validationRoom, {
+        nodes: [
+          ...nextFolders.filter((folder) => folder.id !== WORKSPACE_ROOM_ROOT_ID).map((folder) => ({
+            ...folder,
+            type: "folder" as const,
+          })),
+          ...nextDocuments.map((document) => ({
+            ...document,
+            type: "document" as const,
+            markdown: room.documents.get(document.id)?.toString() ?? document.text,
+          })),
+        ],
+        comments: commentsToList(getWorkspaceRoomComments(room)).filter((comment) => documentIds.has(comment.fileId)),
+      });
+      const structure = validateWorkspaceRoomStructure(validationRoom, roomId);
+      const limits = structure.ok
+        ? validateWorkspaceRoomLimits(getWorkspaceRoomSnapshot(validationRoom))
+        : structure;
+      if (!limits.ok) {
+        emitInvalidMessage(limits.message);
+        return false;
+      }
+    } finally {
+      validationDoc.destroy();
+    }
+    const desiredIds = new Set<string>([WORKSPACE_ROOM_ROOT_ID]);
+    room.doc.transact(() => {
+      for (const folder of nextFolders) {
+        if (folder.id === WORKSPACE_ROOM_ROOT_ID) continue;
+        desiredIds.add(folder.id);
+        if (!room.nodes.has(folder.id)) createWorkspaceRoomFolder(room, folder);
+        else {
+          renameWorkspaceRoomNode(room, folder.id, folder.title);
+          moveWorkspaceRoomNode(room, folder.id, folder.parentId ?? WORKSPACE_ROOM_ROOT_ID);
+          setWorkspaceRoomNodeOrder(room, folder.id, folder.order ?? 0);
+        }
+      }
+      for (const document of nextDocuments) {
+        desiredIds.add(document.id);
+        if (!room.nodes.has(document.id)) {
+          createWorkspaceRoomDocument(room, { ...document, markdown: document.text });
+        } else {
+          renameWorkspaceRoomNode(room, document.id, document.title);
+          moveWorkspaceRoomNode(room, document.id, document.parentId ?? WORKSPACE_ROOM_ROOT_ID);
+          setWorkspaceRoomNodeOrder(room, document.id, document.order ?? 0);
+        }
+      }
+      for (const nodeId of room.nodes.keys()) {
+        if (!desiredIds.has(nodeId)) deleteWorkspaceRoomNode(room, nodeId);
+      }
+    }, "tabula.workspace.reconcile");
+    return true;
+  };
+
+  const setActiveDocument = (nextDocument: { documentId: string; fileTitle?: string } | null) => {
+    activeDocumentId = nextDocument?.documentId ?? null;
+    currentFileTitle = nextDocument?.fileTitle;
+    awareness.setLocalStateField("cursor", null);
+    setLocalAwareness();
+    setEditorBinding(getEditorBinding(activeDocumentId));
+  };
 
   return {
+    subscribe(listener: () => void) {
+      runtimeListeners.add(listener);
+      return () => runtimeListeners.delete(listener);
+    },
+    getSnapshot() {
+      return runtimeSnapshot;
+    },
     applyLocalText(nextText: string, patches?: readonly TextPatch[]) {
-      if (patches?.length && collaborators.remapSelections(patches, nextText.length)) {
-        publishCollaborators();
-      }
-      const activeTextDocument = getOrCreateTextDocument(activeDocumentId);
-      adapters.text.applyLocalText(activeTextDocument, nextText, patches);
-      if (nextText.length < LARGE_DOCUMENT_CHAR_THRESHOLD) {
-        getWorkspaceUpdateBuffer(activeDocumentId, activeTextDocument).flush();
-      }
+      if (!activeDocumentId) return false;
+      const text = getWorkspaceRoomDocument(room, activeDocumentId);
+      if (!text) return false;
+      const currentText = text.toString();
+      const patchedText = patches?.length ? applyTextPatchesToString(currentText, patches) : nextText;
+      const byteDelta = utf8Encoder.encode(nextText).byteLength -
+        (documentByteLengths.get(activeDocumentId) ?? utf8Encoder.encode(currentText).byteLength);
+      if (!canApplyTextByteDelta(byteDelta)) return false;
+      room.doc.transact(() => {
+        if (patches?.length && patchedText === nextText) applyTextPatches(text, patches);
+        else if (text.toString() !== nextText) {
+          if (text.length) text.delete(0, text.length);
+          if (nextText) text.insert(0, nextText);
+        }
+      }, "tabula.text.local");
+      return true;
     },
-    applyLocalTextPatches(patches: readonly TextPatch[], docLength?: number) {
-      if (patches.length === 0) {
-        return;
-      }
-      if (typeof docLength === "number" && collaborators.remapSelections(patches, docLength)) {
-        publishCollaborators();
-      }
-      adapters.text.applyLocalTextPatches(getOrCreateTextDocument(activeDocumentId), patches);
+    applyLocalTextPatches(patches: readonly TextPatch[]) {
+      if (patches.length === 0) return true;
+      if (!activeDocumentId) return false;
+      const text = getWorkspaceRoomDocument(room, activeDocumentId);
+      if (!text) return false;
+      const currentText = text.toString();
+      const nextText = applyTextPatchesToString(currentText, patches);
+      if (nextText === null) return false;
+      const byteDelta = utf8Encoder.encode(nextText).byteLength -
+        (documentByteLengths.get(activeDocumentId) ?? utf8Encoder.encode(currentText).byteLength);
+      if (!canApplyTextByteDelta(byteDelta)) return false;
+      room.doc.transact(() => applyTextPatches(text, patches), "tabula.text.local");
+      return true;
     },
-    setActiveDocument(nextDocument: { documentId: string; fileTitle?: string; initialText?: string }) {
-      activeDocumentId = nextDocument.documentId;
-      if ("fileTitle" in nextDocument) {
-        currentFileTitle = nextDocument.fileTitle ?? currentFileTitle;
-      }
-      getOrCreateTextDocument(nextDocument.documentId, {
-        initialText: emitInitialWorkspaceState ? nextDocument.initialText : undefined,
-        title: nextDocument.fileTitle,
-      });
-      if (nextDocument.fileTitle) {
-        const existingDocument = initialDocumentsById.get(nextDocument.documentId);
-        initialDocumentsById.set(nextDocument.documentId, {
-          id: nextDocument.documentId,
-          title: nextDocument.fileTitle,
-          text: existingDocument?.text ?? nextDocument.initialText ?? "",
-          parentId: existingDocument?.parentId,
-        });
-      }
-      if (emitInitialWorkspaceState) {
-        workspaceDocumentIds?.add(nextDocument.documentId);
-      }
-      schedulePresencePublish();
+    setActiveDocument,
+    setEditorPresenceEnabled(enabled: boolean) {
+      editorPresenceEnabled = enabled;
+      if (!enabled) awareness.setLocalStateField("cursor", null);
     },
-    setWorkspaceDocuments,
-    setPresence(nextPresence: { fileTitle?: string; selection?: LiveSelection }) {
-      if ("fileTitle" in nextPresence) {
-        currentFileTitle = nextPresence.fileTitle ?? currentFileTitle;
-      }
-      if ("selection" in nextPresence) {
-        currentSelection = nextPresence.selection;
-      }
-      schedulePresencePublish();
+    setWorkspaceDocuments(nextDocuments: readonly WorkspaceDocumentSnapshot[], nextFolders?: readonly WorkspaceFolderSnapshot[]) {
+      setWorkspace({ documents: nextDocuments, folders: nextFolders });
     },
     setIdentity(nextIdentity: Collaborator) {
-      currentIdentity = nextIdentity;
-      schedulePresencePublish();
+      currentIdentity = {
+        ...nextIdentity,
+        joinedAt: nextIdentity.joinedAt ?? currentIdentity.joinedAt ?? adapters.clock.nowIso(),
+      };
+      setLocalAwareness();
     },
-    publishRoomEvent(event: RoomEvent) {
-      void emitRoomEvent(event);
+    getEditorBinding: () => getEditorBinding(activeDocumentId),
+    upsertComment(comment: WorkspaceRoomComment) {
+      const current = room.comments.get(comment.id);
+      const currentBody = typeof current?.get("body") === "string" ? current.get("body") as string : "";
+      const currentReplies = current?.get("replies");
+      let currentReplyBytes = 0;
+      if (currentReplies instanceof Y.Map) {
+        currentReplies.forEach((reply) => {
+          if (reply instanceof Y.Map && typeof reply.get("body") === "string") {
+            currentReplyBytes += utf8Encoder.encode(reply.get("body") as string).byteLength;
+          }
+        });
+      }
+      const nextBytes = utf8Encoder.encode(comment.body.trim()).byteLength + comment.replies.reduce(
+        (total, reply) => total + utf8Encoder.encode(reply.body).byteLength,
+        0,
+      );
+      const byteDelta = nextBytes - utf8Encoder.encode(currentBody).byteLength - currentReplyBytes;
+      if (!canApplyTextByteDelta(byteDelta)) return false;
+      let applied = false;
+      room.doc.transact(() => {
+        applied = setWorkspaceRoomComment(room, comment);
+      }, "tabula.comment.upsert");
+      return applied;
+    },
+    deleteComment(commentId: string) {
+      room.doc.transact(() => deleteWorkspaceRoomComment(room, commentId), "tabula.comment.delete");
+    },
+    setCommentResolved(commentId: string, resolved: boolean) {
+      room.doc.transact(() => setWorkspaceRoomCommentResolved(room, commentId, resolved), "tabula.comment.resolve");
+    },
+    addCommentReply(commentId: string, reply: WorkspaceRoomCommentReply) {
+      if (!canApplyTextByteDelta(utf8Encoder.encode(reply.body.trim()).byteLength)) return false;
+      let applied = false;
+      room.doc.transact(() => {
+        applied = addWorkspaceRoomCommentReply(room, commentId, reply);
+      }, "tabula.comment.reply");
+      return applied;
     },
     disconnect() {
-      closedByClient = true;
-      clearPresenceTimer();
-      clearCheckpointSaveTimer();
-      if (heartbeat) {
-        adapters.clock.clearInterval(heartbeat);
-      }
-      for (const unsubscribeTextUpdate of unsubscribeTextUpdates.values()) {
-        unsubscribeTextUpdate();
-      }
-      for (const buffer of workspaceUpdateBuffers.values()) {
-        buffer.clear();
+      if (closed) return;
+      closed = true;
+      abortController.abort();
+      clearCheckpointTimer();
+      if (commentProjectionTimer) adapters.clock.clearTimeout(commentProjectionTimer);
+      commentProjectionTimer = undefined;
+      if (heartbeat) adapters.clock.clearInterval(heartbeat);
+      room.doc.off("update", handleDocumentUpdate);
+      room.documents.unobserve(handleDocumentsChange);
+      room.meta.unobserve(handleWorkspaceStructureChange);
+      room.nodes.unobserveDeep(handleWorkspaceStructureChange);
+      room.comments.unobserveDeep(handleCommentsChange);
+      awareness.off("update", handleAwarenessUpdate);
+      const localState = awareness.getLocalState();
+      if (localState && transport?.connected && roomKey) {
+        removeAwarenessStates(awareness, [awareness.clientID], "tabula.disconnect");
       }
       transport?.disconnect();
-      for (const nextTextDocument of textDocuments.values()) {
-        adapters.text.destroy(nextTextDocument);
-      }
-      onCollaboratorsChange([]);
+      transport = null;
+      chunkAssembler.clear();
+      for (const observer of textObservers.values()) observer.text.unobserve(observer.listener);
+      textObservers.clear();
+      documentByteLengths.clear();
+      documentSizeTrackers.clear();
+      remoteProjectionRevisions.clear();
+      consumedRemoteProjectionRevisions.clear();
+      for (const undoManager of undoManagers.values()) undoManager.destroy();
+      undoManagers.clear();
+      awareness.destroy();
+      room.doc.destroy();
+      runtimeSnapshot = { status: "disconnected", collaborators: [], editorBinding: null };
+      runtimeListeners.forEach((listener) => listener());
+      runtimeListeners.clear();
     },
     flushRecoveryState() {
-      clearCheckpointSaveTimer();
       void saveCheckpointNow();
     },
   };
 };
 
-export type CollabConnection = ReturnType<typeof createCollabConnection>;
+export type WorkspaceRoomRuntime = ReturnType<typeof createWorkspaceRoomRuntime>;

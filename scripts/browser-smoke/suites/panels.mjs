@@ -545,7 +545,7 @@ export async function run(ctx) {
     await waitForShareDialogState(page, { text: "Invite link" });
     await page.keyboard.press("Escape");
     await waitForShareDialogState(page, { open: false });
-    await page.waitForSelector(".tab-item.live.active", { timeout: 5_000 });
+    await page.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])", { timeout: 5_000 });
     expect((await page.getByRole("button", { name: "Comments", exact: true }).count()) === 1, "Comments should become available during live collaboration.");
     await page.getByRole("button", { name: "Comments", exact: true }).click();
     await waitForPanelTab(page, "Comments");
@@ -673,7 +673,8 @@ export async function run(ctx) {
 
     const overflowInitialTabCount = (await getTabs(page)).length;
     for (let index = 0; index < 10; index += 1) {
-      await page.getByTitle("New tab").click();
+      await page.getByTitle("New document").click();
+      await page.getByRole("menuitem", { name: "Shared document" }).click();
     }
     await waitForFileCount(page, overflowInitialTabCount + 10);
 
@@ -774,7 +775,7 @@ export async function run(ctx) {
     expect(overflow.activeCloseCentered, "Close buttons should stay vertically centered inside tabs.");
     expect(overflow.activeTabVisible, "Active overflow tab should remain visible.");
     expect(!overflow.activeCloseVisible, "Close actions should stay hidden until hover or focus.");
-    expect(overflow.addButtonVisible, "New tab button should stay visible when tabs overflow.");
+    expect(overflow.addButtonVisible, "New document button should stay visible when tabs overflow.");
     expect(overflow.tabRowSwitcherAbsent, "All files should live in the right project context panel, not beside the new-tab button.");
     expect(overflow.canScrollLeft, "Overflowing tabs should show that earlier tabs are hidden.");
 
@@ -1097,7 +1098,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New tab").click();
+    await page.getByTitle("New document").click();
     await waitForEditorReady(page, { mode: "edit" });
     const rightFilesInitialTabs = await getTabs(page);
     const rightFilesActiveTitle = rightFilesInitialTabs.find((tab) => tab.active)?.title ?? "";

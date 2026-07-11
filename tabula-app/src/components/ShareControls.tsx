@@ -11,6 +11,7 @@ import type { WorkspaceFile } from "../workspaceStorage";
 
 type ShareControlsProps = {
   activeFile?: WorkspaceFile;
+  roomFile?: WorkspaceFile;
   files: WorkspaceFile[];
   activeText: string;
   language: WorkspaceLanguage;
@@ -37,6 +38,7 @@ type ShareControlsProps = {
 
 export function ShareControls({
   activeFile,
+  roomFile,
   files,
   activeText,
   language,
@@ -67,6 +69,7 @@ export function ShareControls({
       connectionStatus === "disconnected");
   const shareRuntime = useShareDialogRuntime({
     activeFile,
+    roomFile,
     activeText,
     canStartSession: canStartSession && !isLive,
     files,
