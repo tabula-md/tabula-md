@@ -95,6 +95,9 @@ export function useCollaborationConnectionRuntime({
   );
   const [runtime, setRuntime] = useState<WorkspaceRoomRuntime | null>(null);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
+  const [browserOnline, setBrowserOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
   const collabRef = useRef<WorkspaceRoomRuntime | null>(null);
   const workspaceDocumentsRef = useRef(workspaceDocuments);
   const workspaceFoldersRef = useRef(workspaceFolders);
@@ -118,12 +121,24 @@ export function useCollaborationConnectionRuntime({
     getRuntimeSnapshot,
     getRuntimeSnapshot,
   );
-  const connectionStatus = runtime ? runtimeSnapshot.status : preRuntimeConnectionStatus;
+  const runtimeConnectionStatus = runtime ? runtimeSnapshot.status : preRuntimeConnectionStatus;
+  const connectionStatus = isLive && !browserOnline ? "disconnected" : runtimeConnectionStatus;
   const collaborators = runtimeSnapshot.collaborators;
   const editorBinding =
     runtimeSnapshot.editorBinding?.documentId === activeDocument?.id
       ? runtimeSnapshot.editorBinding
       : null;
+
+  useEffect(() => {
+    const handleOnline = () => setBrowserOnline(true);
+    const handleOffline = () => setBrowserOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     workspaceDocumentsRef.current = workspaceDocuments;
@@ -222,11 +237,11 @@ export function useCollaborationConnectionRuntime({
 
   useEffect(() => {
     if (!roomFile?.id || !runtime) return;
-    setFileCollaborationStatus(roomFile.id, runtimeSnapshot.status);
+    setFileCollaborationStatus(roomFile.id, connectionStatus);
   }, [
     roomFile?.id,
     runtime,
-    runtimeSnapshot.status,
+    connectionStatus,
     setFileCollaborationStatus,
   ]);
 

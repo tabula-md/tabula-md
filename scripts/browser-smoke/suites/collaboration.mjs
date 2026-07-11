@@ -259,7 +259,7 @@ export async function run(ctx) {
       expect(typeof stopRoomServer === "function", "Collaboration smoke should be able to stop the room server.");
       expect(typeof startRoomServer === "function", "Collaboration smoke should be able to start the room server.");
       await stopRoomServer();
-      await firstPage.waitForSelector(".share-trigger:not(.live)", { timeout: 8_000 });
+      await firstPage.waitForSelector(".share-trigger.live.reconnecting", { timeout: 8_000 });
       const offlineNoticeCount = await firstPage.locator(".live-room-notice").count();
       expect(offlineNoticeCount === 0, "Recoverable reconnecting state should not show a document-level notice.");
       await firstPage.locator(".share-trigger").click();

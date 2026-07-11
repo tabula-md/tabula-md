@@ -649,6 +649,61 @@ describe("workspace room runtime", () => {
     peer.disconnect();
   });
 
+  it("disambiguates duplicate awareness names and attributes remote workspace changes", async () => {
+    const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const adapters = {
+      ...defaults,
+      createRoomTransport: relay.createRoomTransport,
+      roomCheckpointStore: checkpoints.store,
+      resolveRoomBaseUrl: () => "http://memory-room.test",
+    };
+    const hostOrigins: Array<{ actorId: string; actorName?: string } | undefined> = [];
+    const host = createWorkspaceRoomRuntime({
+      roomId: "room-duplicate-names",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc", title: "README.md", text: "text" }],
+      identity: { id: "z-host", name: "Nimble Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      onTextChange: vi.fn(),
+      onWorkspaceChange: (_snapshot, origin) => hostOrigins.push(origin),
+      adapters,
+    });
+    await vi.waitFor(() => expect(checkpoints.getGeneration("room-duplicate-names")).toBeGreaterThan(0));
+    const peer = createWorkspaceRoomRuntime({
+      roomId: "room-duplicate-names",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: false,
+      identity: { id: "a-peer", name: "Nimble Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      onTextChange: vi.fn(),
+      adapters,
+    });
+
+    await vi.waitFor(() => expect(host.getSnapshot().collaborators).toHaveLength(1));
+    await vi.waitFor(() => {
+      const states = [...(host.getEditorBinding()?.awareness.getStates().values() ?? [])];
+      const presentations = Object.fromEntries(states.map((state) => [state.actor?.id, state.user]));
+      expect(presentations).toMatchObject({
+        "a-peer": { name: "Nimble Human", color: "#2563eb" },
+        "z-host": { name: "Nimble Human 2", color: "#0f766e" },
+      });
+    });
+
+    peer.setWorkspaceDocuments([{ id: "doc", title: "Renamed.md", text: "text" }]);
+    await vi.waitFor(() => expect(hostOrigins).toContainEqual({
+      actorId: "a-peer",
+      actorName: "Nimble Human",
+    }));
+
+    host.disconnect();
+    peer.disconnect();
+  });
+
   it("converges to a valid room with no documents", async () => {
     const relay = createMemoryRoomRelay();
     const checkpoints = createMemoryRoomCheckpointStore();

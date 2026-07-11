@@ -291,9 +291,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
       ...overrides,
       parentId,
-      ...(requestedTitle
-        ? { title: getAvailableFileTitle(state.files, requestedTitle, parentId) }
-        : {}),
+      title: getAvailableFileTitle(state.files, requestedTitle || "Untitled.md", parentId),
     });
     set((currentState) => ({
       ...currentState,

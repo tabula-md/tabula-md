@@ -102,15 +102,30 @@ describe("workspace store", () => {
     expect(useWorkspaceStore.getState().folders.find(({ id }) => id === folder?.id)?.roomId).toBeUndefined();
   });
 
-  it("preserves the generated title when a new file has no title override", () => {
+  it("uses the lowest available temporary title in the current folder", () => {
     initializeWorkspaceStore();
 
     const file = useWorkspaceStore.getState().addFile();
 
-    expect(file.title).toBe("Untitled 2.md");
+    expect(file.title).toBe("Untitled.md");
     expect(useWorkspaceStore.getState().files.find((candidate) => candidate.id === file.id)?.title).toBe(
-      "Untitled 2.md",
+      "Untitled.md",
     );
+
+    const secondFile = useWorkspaceStore.getState().addFile();
+    expect(secondFile.title).toBe("Untitled 2.md");
+  });
+
+  it("allows the same temporary title in different folders", () => {
+    initializeWorkspaceStore();
+    const firstFolder = useWorkspaceStore.getState().addFolder("First");
+    const secondFolder = useWorkspaceStore.getState().addFolder("Second");
+
+    const first = useWorkspaceStore.getState().addFile({ parentId: firstFolder?.id });
+    const second = useWorkspaceStore.getState().addFile({ parentId: secondFolder?.id });
+
+    expect(first.title).toBe("Untitled.md");
+    expect(second.title).toBe("Untitled.md");
   });
 
   it("keeps tab state coherent when closing and deleting active files", () => {

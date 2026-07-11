@@ -299,6 +299,22 @@
 }
 
 @media (max-width: 560px) {
+  .formatting-toolbar {
+    --document-control-height: 48px;
+    --document-control-inner: 44px;
+    padding: 2px;
+    overflow-x: hidden;
+  }
+
+  .formatting-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .formatting-toolbar .toolbar-separator {
+    margin: 0 1px;
+  }
+
   .document-toolbar-row,
   .document-toolbar-row.reading-narrow:not(.split),
   .document-toolbar-row.reading-wide:not(.split) {

@@ -631,7 +631,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     }, [bookmarks, commentAnchors, commentsEnabled]);
 
     return (
-      <div className="markdown-editor-shell">
+      <div className={`markdown-editor-shell ${collaborationBinding ? "collaboration-bound" : ""}`}>
         <div ref={containerRef} className="markdown-editor" aria-label="Editor" />
       </div>
     );

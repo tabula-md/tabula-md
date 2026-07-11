@@ -1681,6 +1681,7 @@ export async function run(ctx) {
         return {
           toolbarVisible: Boolean(toolbar && toolbarRect && toolbarRect.width > 0 && toolbarRect.height > 0),
           toolbarOverflowX: toolbar ? window.getComputedStyle(toolbar).overflowX : "",
+          moreButtonVisible: Boolean(document.querySelector('[data-format-command="more-formatting"]')),
           rowLeft: Math.round(rowRect?.left ?? -1),
           rowRight: Math.round(rowRect?.right ?? -1),
           viewportWidth: window.innerWidth,
@@ -1689,16 +1690,17 @@ export async function run(ctx) {
         };
       });
       expect(mobileToolbar.toolbarVisible, "Formatting toolbar should remain visible on mobile edit screens.");
-      expect(mobileToolbar.primaryCommandCount === 13, "Mobile formatting toolbar should keep the core command set.");
-      expect(mobileToolbar.toolbarOverflowX === "auto", "Mobile formatting toolbar should allow horizontal overflow.");
+      expect(mobileToolbar.primaryCommandCount === 3, "Mobile formatting toolbar should keep only core inline commands visible.");
+      expect(mobileToolbar.moreButtonVisible, "Mobile formatting toolbar should keep More formatting visible.");
+      expect(mobileToolbar.toolbarOverflowX === "hidden", "Mobile formatting toolbar should not hide commands in horizontal overflow.");
       expect(mobileToolbar.rowLeft >= 16, "Mobile formatting toolbar should keep page-edge padding.");
       expect(
         mobileToolbar.rowRight <= mobileToolbar.viewportWidth - 16,
         "Mobile formatting toolbar should not exceed the viewport.",
       );
       expect(
-        mobileToolbar.buttonRects.every((rect) => rect.width === 28 && rect.height === 28),
-        "Mobile formatting toolbar buttons should keep stable icon-button dimensions.",
+        mobileToolbar.buttonRects.every((rect) => rect.width === 44 && rect.height === 44),
+        "Mobile formatting toolbar buttons should provide 44px touch targets.",
       );
       expect(
         mobileToolbar.buttonRects.every((rect, index, rects) => index === 0 || rect.left >= rects[index - 1].right),

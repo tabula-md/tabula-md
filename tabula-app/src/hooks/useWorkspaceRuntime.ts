@@ -444,8 +444,8 @@ export function useWorkspaceRuntime() {
         )?.title;
         showToast(
           nextActiveTitle
-            ? `${deletedActiveFile.title} was deleted. Opened ${nextActiveTitle}.`
-            : `${deletedActiveFile.title} was deleted from the room.`,
+            ? `${origin.actorName ?? "Another participant"} deleted ${deletedActiveFile.title}. Opened ${nextActiveTitle}.`
+            : `${origin.actorName ?? "Another participant"} deleted ${deletedActiveFile.title} from the room.`,
         );
       } else if (addedDocuments.length === 1 && deletedDocuments.length === 0 && renamedDocuments.length === 0) {
         const addedDocument = addedDocuments[0];

@@ -52,6 +52,7 @@ import {
   type WorkspaceRoomSnapshot,
 } from "@tabula-md/tabula";
 import { isEncryptedEnvelope } from "./collabConnectionModel";
+import { getCollaboratorDisplayList } from "./collabCollaborators";
 import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
 import type { CollabRuntimeAdapters } from "./collabRuntimeAdapters";
 import { createCollabSessionState } from "./collabSessionState";
@@ -135,6 +136,7 @@ export type WorkspaceRoomRuntimeSnapshot = {
 
 export type WorkspaceRoomChangeOrigin = {
   actorId: string;
+  actorName?: string;
 };
 
 export type WorkspaceDocumentSnapshot = {
@@ -467,6 +469,28 @@ export const createWorkspaceRoomRuntime = ({
     }, 0);
   };
 
+  const getAwarenessActors = () => {
+    const actors = new Map<string, RoomActor>();
+    awareness.getStates().forEach((state) => {
+      const actor = state?.actor;
+      if (isActor(actor)) actors.set(actor.id, actor);
+    });
+    const localActor = getActor(currentIdentity);
+    actors.set(localActor.id, localActor);
+    return [...actors.values()];
+  };
+
+  const getActorDisplay = (actorId: string) =>
+    getCollaboratorDisplayList(getAwarenessActors()).find((actor) => actor.id === actorId);
+
+  const getSenderActor = (senderId: string) => {
+    for (const state of awareness.getStates().values()) {
+      const actor = state?.actor;
+      if (isActor(actor) && actor.id === senderId) return actor;
+    }
+    return null;
+  };
+
   const publishCollaborators = () => {
     const collaborators: Collaborator[] = [];
     awareness.getStates().forEach((state, clientId) => {
@@ -510,10 +534,13 @@ export const createWorkspaceRoomRuntime = ({
       return;
     }
     hasHydratedWorkspace = true;
-    onWorkspaceChange?.(
-      snapshot,
-      isRemoteSyncOrigin(origin) ? { actorId: origin.senderId } : undefined,
-    );
+    const remoteActor = isRemoteSyncOrigin(origin) ? getSenderActor(origin.senderId) : null;
+    onWorkspaceChange?.(snapshot, isRemoteSyncOrigin(origin)
+      ? {
+          actorId: origin.senderId,
+          actorName: getActorDisplay(origin.senderId)?.name ?? remoteActor?.name,
+        }
+      : undefined);
     refreshTextObservers();
   };
 
@@ -761,10 +788,12 @@ export const createWorkspaceRoomRuntime = ({
 
   const setLocalAwareness = () => {
     const actor = getActor(currentIdentity);
+    const displayActor = getActorDisplay(actor.id) ?? actor;
+    const displayColor = displayActor.color ?? "#2563eb";
     const nextState: Record<string, unknown> = {
       ...awareness.getLocalState(),
       actor,
-      user: { name: actor.name, color: actor.color ?? "#2563eb", colorLight: `${actor.color ?? "#2563eb"}33` },
+      user: { name: displayActor.name, color: displayColor, colorLight: `${displayColor}33` },
       lastSeen: Date.now(),
     };
     if (activeDocumentId) {
@@ -778,14 +807,6 @@ export const createWorkspaceRoomRuntime = ({
     if (!editorPresenceEnabled && awareness.getLocalState()?.cursor != null) {
       awareness.setLocalStateField("cursor", null);
     }
-  };
-
-  const getSenderActor = (senderId: string) => {
-    for (const state of awareness.getStates().values()) {
-      const actor = state?.actor;
-      if (isActor(actor) && actor.id === senderId) return actor;
-    }
-    return null;
   };
 
   const handleSyncMessage = async (packet: RoomWireDataPacket) => {
@@ -1037,6 +1058,20 @@ export const createWorkspaceRoomRuntime = ({
     origin: unknown,
   ) => {
     publishCollaborators();
+    if (origin === REMOTE_AWARENESS_ORIGIN && !closed) {
+      const localState = awareness.getLocalState();
+      const currentUser = localState?.user;
+      const currentDisplayName = currentUser && typeof currentUser === "object"
+        ? (currentUser as Record<string, unknown>).name
+        : undefined;
+      const currentDisplayColor = currentUser && typeof currentUser === "object"
+        ? (currentUser as Record<string, unknown>).color
+        : undefined;
+      const nextDisplay = getActorDisplay(currentIdentity.id) ?? currentIdentity;
+      if (currentDisplayName !== nextDisplay.name || currentDisplayColor !== nextDisplay.color) {
+        setLocalAwareness();
+      }
+    }
     if (origin !== REMOTE_AWARENESS_ORIGIN && !closed) {
       publishAwareness([...changes.added, ...changes.updated, ...changes.removed]);
     }

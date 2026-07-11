@@ -267,3 +267,19 @@ export const formattingToolbarGroupOrder: FormattingToolbarCommandGroup[] = [
 export const getFormattingToolbarCommandsByPlacement = (
   placement: FormattingToolbarCommandPlacement,
 ) => formattingToolbarCommands.filter((command) => command.placement === placement);
+
+const compactPrimaryCommandIds = new Set(["undo", "redo", "bold", "italic", "link"]);
+
+export const getFormattingToolbarLayout = (compact: boolean) => {
+  if (!compact) {
+    return {
+      primary: getFormattingToolbarCommandsByPlacement("primary"),
+      overflow: getFormattingToolbarCommandsByPlacement("overflow"),
+    };
+  }
+
+  return {
+    primary: formattingToolbarCommands.filter((command) => compactPrimaryCommandIds.has(command.id)),
+    overflow: formattingToolbarCommands.filter((command) => !compactPrimaryCommandIds.has(command.id)),
+  };
+};
