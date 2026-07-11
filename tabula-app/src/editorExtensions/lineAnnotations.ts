@@ -2,39 +2,37 @@ import { type Extension, type Text } from "@codemirror/state";
 import { EditorView, gutter, GutterMarker } from "@codemirror/view";
 import {
   getLineNumberForSourcePosition,
-  getLineNumbersForSourceRanges,
   type LineSurfaceSourceLine,
 } from "@tabula-md/tabula";
-import type { MarkdownBookmark, MarkdownCommentAnchor, MarkdownLineActionRequest } from "../markdownEditorTypes";
+import type {
+  MarkdownBookmark,
+  MarkdownEditorInterfaceCopy,
+  MarkdownLineActionRequest,
+} from "../markdownEditorTypes";
 
 type LineAnnotationState = {
   hasBookmark: boolean;
 };
 
-type LineCommentActionState = {
-  lineNumber: number;
-  start: number;
-  end: number;
-  hasComment: boolean;
-  enabled: boolean;
-};
+type EditorLineActionCopy = Pick<
+  MarkdownEditorInterfaceCopy,
+  "bookmarkLine" | "removeLineBookmark"
+>;
 
-type EditorLineActionIcon = "bookmark" | "message-square";
+type EditorLineActionIcon = "bookmark";
 
 type EditorLineActionElementOptions = {
-  action: "bookmark" | "comment";
+  action: "bookmark";
   active: boolean;
   activeLabel: string;
-  activeTitle: string;
+  activeTooltip: string;
   className: string;
   icon: EditorLineActionIcon;
-  inactiveTitle: string;
-  dataset?: Record<string, string>;
+  inactiveTooltip: string;
 };
 
 const LUCIDE_ICON_PATHS: Record<EditorLineActionIcon, string[]> = {
   bookmark: ["m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"],
-  "message-square": ["M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"],
 };
 
 const createLucideSvgIcon = (icon: EditorLineActionIcon) => {
@@ -63,16 +61,15 @@ const createEditorLineActionElement = ({
   action,
   active,
   activeLabel,
-  activeTitle,
+  activeTooltip,
   className,
-  dataset,
   icon,
-  inactiveTitle,
+  inactiveTooltip,
 }: EditorLineActionElementOptions) => {
   const actionElement = active ? document.createElement("button") : document.createElement("span");
   actionElement.className = className;
   actionElement.dataset.lineAction = action;
-  actionElement.title = active ? activeTitle : inactiveTitle;
+  actionElement.dataset.tooltip = active ? activeTooltip : inactiveTooltip;
 
   if (active) {
     (actionElement as HTMLButtonElement).type = "button";
@@ -81,23 +78,24 @@ const createEditorLineActionElement = ({
     actionElement.setAttribute("aria-hidden", "true");
   }
 
-  Object.entries(dataset ?? {}).forEach(([key, value]) => {
-    actionElement.dataset[key] = value;
-  });
   actionElement.append(createLucideSvgIcon(icon));
 
   return actionElement;
 };
 
 class LineAnnotationGutterMarker extends GutterMarker {
-  constructor(private readonly annotationState: LineAnnotationState) {
+  constructor(
+    private readonly annotationState: LineAnnotationState,
+    private readonly copy: EditorLineActionCopy,
+  ) {
     super();
   }
 
   eq(other: GutterMarker) {
     return (
       other instanceof LineAnnotationGutterMarker &&
-      other.annotationState.hasBookmark === this.annotationState.hasBookmark
+      other.annotationState.hasBookmark === this.annotationState.hasBookmark &&
+      other.copy === this.copy
     );
   }
 
@@ -113,21 +111,16 @@ class LineAnnotationGutterMarker extends GutterMarker {
     const bookmarkAction = createEditorLineActionElement({
       action: "bookmark",
       active: this.annotationState.hasBookmark,
-      activeLabel: "Remove line bookmark",
-      activeTitle: "Remove bookmark",
+      activeLabel: this.copy.removeLineBookmark,
+      activeTooltip: this.copy.removeLineBookmark,
       className: "cm-annotation-action bookmark",
       icon: "bookmark",
-      inactiveTitle: "Bookmark line",
+      inactiveTooltip: this.copy.bookmarkLine,
     });
     marker.append(bookmarkAction);
     return marker;
   }
 }
-
-const lineAnnotationMarkers = {
-  empty: new LineAnnotationGutterMarker({ hasBookmark: false }),
-  bookmark: new LineAnnotationGutterMarker({ hasBookmark: true }),
-};
 
 const createLineResolver = (view: EditorView) => (position: number): LineSurfaceSourceLine => {
   const line = view.state.doc.lineAt(position);
@@ -152,16 +145,9 @@ export const getBookmarkLineNumbers = (view: EditorView, bookmarks: MarkdownBook
   );
 };
 
-const getCommentLineNumbers = (view: EditorView, commentAnchors: MarkdownCommentAnchor[]) => {
-  const docLength = view.state.doc.length;
-  return getLineNumbersForSourceRanges({
-    docLength,
-    ranges: commentAnchors.map((anchor) => ({ start: anchor.start, end: anchor.end })),
-    resolveLineAt: createLineResolver(view),
-  });
-};
+type LineAnnotationKind = "empty" | "bookmark";
 
-const getLineAnnotationKind = (lineNumber: number, bookmarkLineNumbers: Set<number>): keyof typeof lineAnnotationMarkers =>
+const getLineAnnotationKind = (lineNumber: number, bookmarkLineNumbers: Set<number>): LineAnnotationKind =>
   bookmarkLineNumbers.has(lineNumber) ? "bookmark" : "empty";
 
 const createBookmarkLineNumberGetter = (bookmarks: MarkdownBookmark[]) => {
@@ -179,38 +165,28 @@ const createBookmarkLineNumberGetter = (bookmarks: MarkdownBookmark[]) => {
   };
 };
 
-const createCommentLineNumberGetter = (commentAnchors: MarkdownCommentAnchor[]) => {
-  let cachedDoc: Text | null = null;
-  let cachedLineNumbers = new Set<number>();
-
-  return (view: EditorView) => {
-    if (cachedDoc === view.state.doc) {
-      return cachedLineNumbers;
-    }
-
-    cachedDoc = view.state.doc;
-    cachedLineNumbers = getCommentLineNumbers(view, commentAnchors);
-    return cachedLineNumbers;
-  };
-};
-
 export const createLineAnnotationGutterExtension = (
-  bookmarks: MarkdownBookmark[] = [],
+  bookmarks: MarkdownBookmark[],
+  copy: EditorLineActionCopy,
   onOpenLineActions?: (request: MarkdownLineActionRequest) => void,
 ): Extension => {
   const getCachedBookmarkLineNumbers = createBookmarkLineNumberGetter(bookmarks);
+  const markers = {
+    empty: new LineAnnotationGutterMarker({ hasBookmark: false }, copy),
+    bookmark: new LineAnnotationGutterMarker({ hasBookmark: true }, copy),
+  };
 
   return gutter({
     class: "cm-annotationGutter",
     renderEmptyElements: true,
     lineMarker(view, line) {
       const lineNumber = view.state.doc.lineAt(line.from).number;
-      return lineAnnotationMarkers[getLineAnnotationKind(lineNumber, getCachedBookmarkLineNumbers(view))];
+      return markers[getLineAnnotationKind(lineNumber, getCachedBookmarkLineNumbers(view))];
     },
     lineMarkerChange(update) {
       return update.docChanged || update.viewportChanged;
     },
-    initialSpacer: () => lineAnnotationMarkers.empty,
+    initialSpacer: () => markers.empty,
     domEventHandlers: {
       click(view, line, event) {
         if (!onOpenLineActions) {
@@ -237,125 +213,6 @@ export const createLineAnnotationGutterExtension = (
           start: docLine.from,
           end: docLine.to,
           hasBookmark: bookmarkLineNumbers.has(docLine.number),
-          hasComment: false,
-        });
-        return true;
-      },
-    },
-  });
-};
-
-class LineCommentGutterMarker extends GutterMarker {
-  constructor(private readonly actionState: LineCommentActionState) {
-    super();
-  }
-
-  eq(other: GutterMarker) {
-    return (
-      other instanceof LineCommentGutterMarker &&
-      other.actionState.lineNumber === this.actionState.lineNumber &&
-      other.actionState.start === this.actionState.start &&
-      other.actionState.end === this.actionState.end &&
-      other.actionState.hasComment === this.actionState.hasComment &&
-      other.actionState.enabled === this.actionState.enabled
-    );
-  }
-
-  toDOM() {
-    const marker = document.createElement("span");
-    marker.className = [
-      "cm-line-comment-marker",
-      !this.actionState.enabled ? "disabled" : "",
-      this.actionState.hasComment ? "has-comment" : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    if (!this.actionState.enabled) {
-      return marker;
-    }
-
-    const action = createEditorLineActionElement({
-      action: "comment",
-      active: this.actionState.hasComment,
-      activeLabel: "Open line comments",
-      activeTitle: "Open comments",
-      className: "cm-annotation-action cm-line-comment-action comment",
-      dataset: {
-        lineNumber: String(this.actionState.lineNumber),
-        lineStart: String(this.actionState.start),
-        lineEnd: String(this.actionState.end),
-      },
-      icon: "message-square",
-      inactiveTitle: "Comment on line",
-    });
-    marker.append(action);
-    return marker;
-  }
-}
-
-const emptyLineCommentMarker = new LineCommentGutterMarker({
-  lineNumber: 0,
-  start: 0,
-  end: 0,
-  hasComment: false,
-  enabled: false,
-});
-
-export const createLineCommentActionExtension = (
-  bookmarks: MarkdownBookmark[] = [],
-  commentAnchors: MarkdownCommentAnchor[] = [],
-  onOpenLineActions?: (request: MarkdownLineActionRequest) => void,
-  enabled = true,
-): Extension => {
-  const getCachedBookmarkLineNumbers = createBookmarkLineNumberGetter(bookmarks);
-  const getCachedCommentLineNumbers = createCommentLineNumberGetter(commentAnchors);
-
-  return gutter({
-    class: "cm-commentGutter",
-    renderEmptyElements: true,
-    side: "after",
-    lineMarker(view, line) {
-      const docLine = view.state.doc.lineAt(line.from);
-      return new LineCommentGutterMarker({
-        lineNumber: docLine.number,
-        start: docLine.from,
-        end: docLine.to,
-        hasComment: enabled && getCachedCommentLineNumbers(view).has(docLine.number),
-        enabled,
-      });
-    },
-    lineMarkerChange(update) {
-      return update.docChanged || update.viewportChanged;
-    },
-    initialSpacer: () => emptyLineCommentMarker,
-    domEventHandlers: {
-      click(view, line, event) {
-        if (!enabled || !onOpenLineActions) {
-          return false;
-        }
-
-        const target = event.target;
-        if (!(target instanceof Element)) {
-          return false;
-        }
-
-        const actionElement = target.closest<HTMLElement>(".cm-line-comment-action[data-line-action='comment']");
-        if (!actionElement) {
-          return false;
-        }
-
-        const docLine = view.state.doc.lineAt(line.from);
-        const bookmarkLineNumbers = getCachedBookmarkLineNumbers(view);
-        const commentLineNumbers = getCachedCommentLineNumbers(view);
-        event.preventDefault();
-        onOpenLineActions({
-          action: "comment",
-          lineNumber: docLine.number,
-          start: docLine.from,
-          end: docLine.to,
-          hasBookmark: bookmarkLineNumbers.has(docLine.number),
-          hasComment: commentLineNumbers.has(docLine.number),
         });
         return true;
       },

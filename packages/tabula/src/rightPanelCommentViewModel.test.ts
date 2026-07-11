@@ -31,7 +31,6 @@ describe("rightPanelCommentViewModel", () => {
       "file-b": [fileComment("open-b", "2026-01-03T00:00:00.000Z")],
     });
 
-    expect(result.openCommentCount).toBe(2);
     expect(result.openCommentGroups.map((group) => group.file.id)).toEqual(["file-a", "file-b"]);
     expect(result.openCommentGroups.flatMap((group) => group.comments.map((comment) => comment.id))).toEqual([
       "open-a",
@@ -41,7 +40,7 @@ describe("rightPanelCommentViewModel", () => {
     expect(result.resolvedCommentGroups[0].comments.map((comment) => comment.id)).toEqual(["resolved-a"]);
   });
 
-  it("models current-file scope labels and counts", () => {
+  it("models current-file scope", () => {
     const activeFile = importedFile("file-a", "Plan.md");
     const openCommentGroups: RightPanelCommentGroup[] = [
       { file: activeFile, comments: [fileComment("open-a", "2026-01-01T00:00:00.000Z")] },
@@ -58,17 +57,12 @@ describe("rightPanelCommentViewModel", () => {
     ];
 
     const result = getRightPanelCommentScopeModel({
-      activeFile,
       activeFileId: activeFile.id,
-      activeFileTitle: activeFile.title,
       openCommentGroups,
       resolvedCommentGroups,
       commentScope: "current",
     });
 
-    expect(result.commentsTitle).toBe("Plan");
-    expect(result.switchLabel).toBe("All comments");
-    expect(result.switchCount).toBe(3);
     expect(result.hideSingleActiveFileHeader).toBe(true);
     expect(result.hasAnyComments).toBe(true);
     expect(result.scopedOpenCommentGroups.map((group) => group.file.id)).toEqual(["file-a"]);
@@ -101,17 +95,12 @@ describe("rightPanelCommentViewModel", () => {
     ];
 
     const result = getRightPanelCommentScopeModel({
-      activeFile: fileB,
       activeFileId: fileB.id,
-      activeFileTitle: fileB.title,
       openCommentGroups,
       resolvedCommentGroups: [],
       commentScope: "all",
     });
 
-    expect(result.commentsTitle).toBe("All comments");
-    expect(result.switchLabel).toBe("Current file");
-    expect(result.switchCount).toBe(1);
     expect(result.hideSingleActiveFileHeader).toBe(false);
     expect(result.scopedOpenCommentGroups.map((group) => group.file.id)).toEqual(["file-a", "file-b"]);
     expect(result.scopedOpenCommentGroups[0].comments.map((comment) => comment.id)).toEqual([

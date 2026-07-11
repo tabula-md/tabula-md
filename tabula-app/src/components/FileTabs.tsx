@@ -6,6 +6,8 @@ import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
 import { NewDocumentButton } from "./NewDocumentButton";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 
 type TabScrollState = {
   canScrollLeft: boolean;
@@ -17,6 +19,7 @@ type FileTabsProps = {
   folders: WorkspaceFolder[];
   activeFile?: WorkspaceFile;
   collaborators: Collaborator[];
+  language: WorkspaceLanguage;
   onAddFile: () => void;
   onSelectFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
@@ -45,6 +48,7 @@ export function FileTabs({
   folders,
   activeFile,
   collaborators,
+  language,
   onAddFile,
   onSelectFile,
   onRenameFile,
@@ -52,6 +56,7 @@ export function FileTabs({
   onReorderFiles,
   onChromeInteraction,
 }: FileTabsProps) {
+  const copy = getWorkspaceInterfaceCopy(language).tabs;
   const [tabScrollState, setTabScrollState] = useState<TabScrollState>(emptyTabScrollState);
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState("");
@@ -182,13 +187,20 @@ export function FileTabs({
     }
 
     const handleScroll = () => updateTabScrollState();
+    const handleResize = () => {
+      scrollActiveTabIntoView("auto");
+      updateTabScrollState();
+    };
+    const resizeObserver = new ResizeObserver(handleResize);
     element.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll);
+    resizeObserver.observe(element);
     updateTabScrollState();
 
     return () => {
       element.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
+      resizeObserver.disconnect();
     };
   }, [files.length]);
 
@@ -215,14 +227,14 @@ export function FileTabs({
       <button
         className="tab-scroll-button"
         type="button"
-        title="Scroll tabs left"
-        aria-label="Scroll tabs left"
+        aria-label={copy.scrollLeft}
+        data-tooltip={copy.scrollLeft}
         disabled={!tabScrollState.canScrollLeft}
         onClick={() => scrollTabsBy(-1)}
       >
         <ChevronLeft size={14} />
       </button>
-      <div className="tabs-scroll" ref={tabsScrollRef} role="tablist" aria-label="Open documents">
+      <div className="tabs-scroll" ref={tabsScrollRef} role="tablist" aria-label={copy.openDocuments}>
         {files.map((file, fileIndex) => {
           const isActiveFile = file.id === activeFile?.id;
           const isRenaming = file.id === renamingFileId;
@@ -277,7 +289,7 @@ export function FileTabs({
                         cancelRenamingFile();
                       }
                     }}
-                    aria-label={`Rename ${tabLabel.fullPath}`}
+                    aria-label={copy.renameDocument(tabLabel.fullPath)}
                   />
                 </div>
               ) : (
@@ -324,8 +336,10 @@ export function FileTabs({
                     <span
                       className="tab-presence-avatars"
                       role="img"
-                      aria-label={`${allDocumentCollaborators.map((collaborator) => collaborator.name).join(", ")} in this document`}
-                      title={allDocumentCollaborators.map((collaborator) => collaborator.name).join(", ")}
+                      aria-label={copy.collaboratorsInDocument(
+                        allDocumentCollaborators.map((collaborator) => collaborator.name).join(", "),
+                      )}
+                      data-tooltip={allDocumentCollaborators.map((collaborator) => collaborator.name).join(", ")}
                     >
                       {documentCollaborators.map((collaborator) => (
                         <span
@@ -352,11 +366,11 @@ export function FileTabs({
                   <button
                     className="tab-action-button close"
                     type="button"
-                    title="Close tab"
-                    aria-label={`Close ${tabLabel.fullPath}`}
+                    aria-label={copy.closeDocument(tabLabel.fullPath)}
+                    data-tooltip={copy.close}
                     onClick={() => onCloseFile(file.id)}
                   >
-                    <X size={12} />
+                    <X size={14} />
                   </button>
                 </div>
               )}
@@ -367,13 +381,14 @@ export function FileTabs({
       <div className="tabbar-actions">
         <NewDocumentButton
           buttonClassName="add-tab-button"
+          label={copy.newDocument}
           onCreate={onAddFile}
         />
         <button
           className="tab-scroll-button"
           type="button"
-          title="Scroll tabs right"
-          aria-label="Scroll tabs right"
+          aria-label={copy.scrollRight}
+          data-tooltip={copy.scrollRight}
           disabled={!tabScrollState.canScrollRight}
           onClick={() => scrollTabsBy(1)}
         >

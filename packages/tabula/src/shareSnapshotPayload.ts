@@ -56,8 +56,6 @@ export type ShareSnapshotComment = {
   authorColor?: string;
   quote?: string;
   sourceQuote?: string;
-  prefix?: string;
-  suffix?: string;
   selectionStart?: number;
   selectionEnd?: number;
   resolved?: boolean;
@@ -254,8 +252,6 @@ const toShareSnapshotComment = (comment: ShareSnapshotComment): ShareSnapshotCom
   ...(comment.authorColor ? { authorColor: comment.authorColor } : {}),
   ...(comment.quote ? { quote: comment.quote } : {}),
   ...(comment.sourceQuote ? { sourceQuote: comment.sourceQuote } : {}),
-  ...(comment.prefix ? { prefix: comment.prefix } : {}),
-  ...(comment.suffix ? { suffix: comment.suffix } : {}),
   ...(typeof comment.selectionStart === "number" ? { selectionStart: comment.selectionStart } : {}),
   ...(typeof comment.selectionEnd === "number" ? { selectionEnd: comment.selectionEnd } : {}),
   ...(typeof comment.resolved === "boolean" ? { resolved: comment.resolved } : {}),
@@ -307,8 +303,6 @@ const validateComment = (value: unknown): ShareSnapshotComment => {
     ...optionalString(value.authorColor, "authorColor"),
     ...optionalString(value.quote, "quote"),
     ...optionalString(value.sourceQuote, "sourceQuote"),
-    ...optionalString(value.prefix, "prefix"),
-    ...optionalString(value.suffix, "suffix"),
     ...optionalNumber(value.selectionStart, "selectionStart"),
     ...optionalNumber(value.selectionEnd, "selectionEnd"),
     ...optionalBoolean(value.resolved, "resolved"),

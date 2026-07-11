@@ -8,6 +8,16 @@ import type {
   TextChange,
   TextPatch,
 } from "@tabula-md/tabula";
+import type { WorkspaceSurfaceCopy } from "./workspaceSurfaceLocale";
+
+export type MarkdownEditorInterfaceCopy = Pick<
+  WorkspaceSurfaceCopy,
+  | "startWriting"
+  | "bookmarkLine"
+  | "removeLineBookmark"
+  | "activeComment"
+  | "openComment"
+>;
 
 export type MarkdownEditorHandle = {
   canRedo: () => boolean;
@@ -51,12 +61,11 @@ export type MarkdownBookmark = {
 };
 
 export type MarkdownLineActionRequest = {
-  action: "bookmark" | "comment";
+  action: "bookmark";
   lineNumber: number;
   start: number;
   end: number;
   hasBookmark: boolean;
-  hasComment: boolean;
 };
 
 export type MarkdownSelectionActionPosition = {
@@ -65,6 +74,8 @@ export type MarkdownSelectionActionPosition = {
 };
 
 export type MarkdownEditorProps = {
+  ariaLabel?: string;
+  interfaceCopy: MarkdownEditorInterfaceCopy;
   fileId: string;
   value: string;
   largeDocumentMode: boolean;

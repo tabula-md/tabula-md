@@ -11,6 +11,11 @@ npm run dev
 
 Open `http://localhost:5173`.
 
+## Interface Design
+
+Read [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) before changing workspace chrome,
+toolbars, menus, popovers, or project panels.
+
 ## Useful Commands
 
 ```sh

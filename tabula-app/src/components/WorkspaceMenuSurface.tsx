@@ -4,9 +4,10 @@ import type {
   WorkspaceLanguage,
   WorkspaceTheme,
 } from "../hooks/useWorkspacePreferences";
+import { getWorkspaceMenuCopy } from "../workspaceLocale";
+import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 
 export type WorkspaceMenuSurfaceProps = {
-  canExportCurrentFile: boolean;
   importInputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
   language: WorkspaceLanguage;
@@ -17,18 +18,14 @@ export type WorkspaceMenuSurfaceProps = {
   onChangeLanguage: (language: WorkspaceLanguage) => void;
   onChangeTheme: (theme: WorkspaceTheme) => void;
   onCloseChrome: () => void;
-  onDownloadFile: () => void;
-  onDownloadProject: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
   onImportProjectChange: ChangeEventHandler<HTMLInputElement>;
   onOpenAbout: () => void;
-  onOpenCollaboration: () => void;
   onOpenHelp: () => void;
   onTogglePreferences: () => void;
 };
 
 export function WorkspaceMenuSurface({
-  canExportCurrentFile,
   importInputRef,
   isOpen,
   language,
@@ -39,15 +36,14 @@ export function WorkspaceMenuSurface({
   onChangeLanguage,
   onChangeTheme,
   onCloseChrome,
-  onDownloadFile,
-  onDownloadProject,
   onImportFileChange,
   onImportProjectChange,
   onOpenAbout,
-  onOpenCollaboration,
   onOpenHelp,
   onTogglePreferences,
 }: WorkspaceMenuSurfaceProps) {
+  const copy = getWorkspaceMenuCopy(language);
+  const interfaceCopy = getWorkspaceInterfaceCopy(language);
   return (
     <>
       <input
@@ -56,7 +52,7 @@ export function WorkspaceMenuSurface({
         type="file"
         accept=".md,.markdown,text/markdown,text/plain"
         onChange={onImportFileChange}
-        aria-label="Open Markdown file"
+        aria-label={interfaceCopy.projectContext.files.openMarkdown}
       />
       <input
         ref={workspaceImportInputRef}
@@ -64,12 +60,11 @@ export function WorkspaceMenuSurface({
         type="file"
         accept=".json,application/json"
         onChange={onImportProjectChange}
-        aria-label="Restore Tabula backup"
+        aria-label={copy.actions.importProject}
       />
       <WorkspaceMenu
         isOpen={isOpen}
         preferencesOpen={preferencesOpen}
-        canExportCurrentFile={canExportCurrentFile}
         theme={theme}
         language={language}
         onTogglePreferences={onTogglePreferences}
@@ -84,15 +79,6 @@ export function WorkspaceMenuSurface({
           onCloseChrome();
           workspaceImportInputRef.current?.click();
         }}
-        onDownloadFile={() => {
-          onDownloadFile();
-          onCloseChrome();
-        }}
-        onDownloadProject={() => {
-          onDownloadProject();
-          onCloseChrome();
-        }}
-        onOpenCollaboration={onOpenCollaboration}
         onOpenAbout={onOpenAbout}
         onOpenHelp={onOpenHelp}
       />

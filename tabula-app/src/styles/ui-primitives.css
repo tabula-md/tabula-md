@@ -1,0 +1,174 @@
+.ui-menu,
+.ui-popover {
+  z-index: var(--layer-popover);
+  border: 0;
+  border-radius: var(--radius-surface);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-popover);
+  transform-origin: top center;
+  animation: ui-overlay-in var(--motion-popover) ease-out;
+}
+
+.ui-menu {
+  padding: 6px;
+}
+
+.ui-command-menu {
+  display: grid;
+  min-width: 184px;
+}
+
+.ui-command-menu-item {
+  display: grid;
+  grid-template-columns: var(--icon-size-small) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-size-row);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-control);
+  color: var(--text-soft);
+  background: transparent;
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-regular);
+  text-align: left;
+}
+
+.ui-command-menu-item:hover,
+.ui-command-menu-item:focus-visible {
+  color: var(--text-primary);
+  background: var(--surface-muted);
+}
+
+.ui-command-menu-item.danger:hover,
+.ui-command-menu-item.danger:focus-visible {
+  color: var(--danger-text);
+}
+
+.ui-command-menu-icon {
+  display: grid;
+  place-items: center;
+}
+
+.ui-command-menu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-command-menu-trailing {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-ui-caption);
+}
+
+.ui-menu :is([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]) {
+  min-height: var(--control-size-row);
+  border-radius: var(--radius-control);
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-regular);
+}
+
+.ui-modal-layer {
+  z-index: var(--layer-modal);
+  padding: var(--space-5);
+}
+
+.ui-modal {
+  padding: var(--space-5);
+  border: 0;
+  border-radius: var(--radius-modal);
+  background: var(--surface-overlay);
+}
+
+.ui-segmented {
+  min-height: var(--control-size-row);
+  padding: 3px;
+  border-radius: var(--radius-surface);
+  background: var(--surface-muted);
+}
+
+.ui-segmented > button {
+  min-height: var(--control-size-compact);
+  border-radius: var(--radius-control);
+}
+
+.ui-segmented > button[aria-pressed="true"] {
+  color: var(--text-primary);
+  background: var(--surface-active);
+}
+
+.ui-select,
+.ui-select select {
+  min-height: var(--control-size-row);
+}
+
+.ui-select select {
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-muted);
+}
+
+.app-tooltip {
+  position: fixed;
+  z-index: var(--layer-toast);
+  max-width: 248px;
+  padding: 5px 8px;
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-popover);
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-medium);
+  line-height: 1.25;
+  pointer-events: none;
+  white-space: normal;
+  transform: translateX(-50%);
+  animation: app-tooltip-in var(--motion-hover) ease-out;
+}
+
+.app-tooltip.above {
+  transform: translate(-50%, -100%);
+}
+
+@keyframes ui-overlay-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes app-tooltip-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (hover: none) {
+  .app-tooltip {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .ui-menu :is([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]) {
+    min-height: var(--control-size-touch);
+  }
+
+  .ui-segmented,
+  .ui-select,
+  .ui-select select {
+    min-height: var(--control-size-touch);
+  }
+}

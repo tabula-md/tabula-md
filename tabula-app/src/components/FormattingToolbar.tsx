@@ -2,12 +2,13 @@ import {
   Fragment,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { ChevronDown, Heading2, List, MoreHorizontal } from "lucide-react";
+import { ChevronDown, List, MoreHorizontal, Pilcrow, Plus } from "lucide-react";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
 import {
   formattingToolbarGroupOrder,
@@ -15,26 +16,36 @@ import {
   type FormattingToolbarCommand,
   type FormattingToolbarCommandActions,
 } from "../toolbar/formattingCommandRegistry";
+import { useDismissibleMenu } from "../hooks/useDismissibleMenu";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import {
+  getFormattingCommandCopy,
+  type FormattingCommandCopy,
+} from "../toolbar/formattingCommandLocale";
 
 type FormattingToolbarProps = {
   className?: string;
   activeFormats: MarkdownFormatCommand[];
   canRedo: boolean;
   canUndo: boolean;
+  language: WorkspaceLanguage;
   onFormat: (command: MarkdownFormatCommand) => void;
   onRedo: () => void;
   onUndo: () => void;
 };
 
-type FormattingMenuId = "block" | "list" | "overflow";
+type FormattingMenuId = "block" | "list" | "insert" | "overflow";
 
 type GroupedFormattingCommands = {
   group: FormattingToolbarCommand["group"];
-  commands: FormattingToolbarCommand[];
+  commands: LocalizedFormattingCommand[];
 };
 
+type LocalizedFormattingCommand = FormattingToolbarCommand & FormattingCommandCopy;
+
 const groupFormattingCommands = (
-  commands: FormattingToolbarCommand[],
+  commands: LocalizedFormattingCommand[],
 ): GroupedFormattingCommands[] =>
   formattingToolbarGroupOrder
     .map((group) => ({
@@ -50,23 +61,23 @@ const isCompactToolbarViewport = () =>
   typeof window.matchMedia === "function" &&
   window.matchMedia(compactToolbarMediaQuery).matches;
 
-const getCommandTitle = (command: FormattingToolbarCommand) =>
+const getCommandTitle = (command: LocalizedFormattingCommand) =>
   command.shortcut ? `${command.tooltip} (${command.shortcut})` : command.tooltip;
 
 const isCommandDisabled = (
-  command: FormattingToolbarCommand,
+  command: LocalizedFormattingCommand,
   actions: FormattingToolbarCommandActions,
 ) => command.isDisabled?.(actions) ?? false;
 
 const applyToolbarCommand = (
-  command: FormattingToolbarCommand,
+  command: LocalizedFormattingCommand,
   actions: FormattingToolbarCommandActions,
 ) => {
   if (!isCommandDisabled(command, actions)) command.applyCommand(actions);
 };
 
 const renderPrimaryCommand = (
-  command: FormattingToolbarCommand,
+  command: LocalizedFormattingCommand,
   actions: FormattingToolbarCommandActions,
   activeFormats: Set<string>,
 ) => {
@@ -80,8 +91,8 @@ const renderPrimaryCommand = (
       key={command.id}
       className={`tool-button formatting-button formatting-${command.group}-button ${active ? "active" : ""}`}
       type="button"
-      title={getCommandTitle(command)}
       aria-label={command.label}
+      data-tooltip={getCommandTitle(command)}
       aria-pressed={isFormattingCommand ? active : undefined}
       data-format-command={command.id}
       disabled={disabled}
@@ -98,45 +109,71 @@ export function FormattingToolbar({
   activeFormats,
   canRedo,
   canUndo,
+  language,
   onFormat,
   onRedo,
   onUndo,
 }: FormattingToolbarProps) {
+  const copy = getWorkspaceSurfaceCopy(language);
   const [openMenu, setOpenMenu] = useState<FormattingMenuId | null>(null);
   const [compact, setCompact] = useState(isCompactToolbarViewport);
   const [menuStyle, setMenuStyle] = useState<CSSProperties | undefined>();
-  const toolbarRef = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const activeTriggerRef = useRef<HTMLButtonElement | null>(null);
   const triggerRefs = useRef(new Map<FormattingMenuId, HTMLButtonElement>());
   const actions = useMemo<FormattingToolbarCommandActions>(
     () => ({ canRedo, canUndo, onFormat, onRedo, onUndo }),
     [canRedo, canUndo, onFormat, onRedo, onUndo],
   );
   const activeFormatSet = useMemo(() => new Set<string>(activeFormats), [activeFormats]);
-  const layout = useMemo(() => getFormattingToolbarLayout(compact), [compact]);
-  const primaryCommandGroups = useMemo(
-    () => groupFormattingCommands(layout.primary),
-    [layout.primary],
-  );
+  const layout = useMemo(() => {
+    const rawLayout = getFormattingToolbarLayout(compact);
+    const localize = (command: FormattingToolbarCommand): LocalizedFormattingCommand => ({
+      ...command,
+      ...getFormattingCommandCopy(language, command.id),
+    });
+    return {
+      history: rawLayout.history.map(localize),
+      inline: rawLayout.inline.map(localize),
+      block: rawLayout.block.map(localize),
+      list: rawLayout.list.map(localize),
+      insert: rawLayout.insert.map(localize),
+      overflow: rawLayout.overflow.map(localize),
+    };
+  }, [compact, language]);
   const menus = useMemo(
     () => ({
       block: {
         commands: layout.block,
-        icon: Heading2,
-        label: "Block type",
+        icon: Pilcrow,
+        label: copy.blockType,
       },
       list: {
         commands: layout.list,
         icon: List,
-        label: "List type",
+        label: copy.listType,
+      },
+      insert: {
+        commands: layout.insert,
+        icon: Plus,
+        label: copy.insertContent,
       },
       overflow: {
         commands: layout.overflow,
         icon: MoreHorizontal,
-        label: "More formatting",
+        label: copy.moreFormatting,
       },
     }),
-    [layout.block, layout.list, layout.overflow],
+    [
+      copy.blockType,
+      copy.insertContent,
+      copy.listType,
+      copy.moreFormatting,
+      layout.block,
+      layout.insert,
+      layout.list,
+      layout.overflow,
+    ],
   );
 
   useEffect(() => {
@@ -148,42 +185,15 @@ export function FormattingToolbar({
     return () => mediaQuery.removeEventListener("change", updateCompactState);
   }, []);
 
-  const closeMenu = (restoreFocus = false) => {
-    const closingMenu = openMenu;
+  const closeMenu = useCallback(() => {
     setOpenMenu(null);
-    if (restoreFocus && closingMenu) {
-      window.requestAnimationFrame(() => triggerRefs.current.get(closingMenu)?.focus());
-    }
-  };
-
-  const getMenuItems = () =>
-    Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>(".formatting-overflow-item") ?? [])
-      .filter((item) => !item.disabled);
-
-  const focusMenuItem = (targetIndex: number) => {
-    const items = getMenuItems();
-    if (items.length === 0) return;
-    const normalizedIndex = (targetIndex + items.length) % items.length;
-    items[normalizedIndex]?.focus();
-  };
-
-  useEffect(() => {
-    if (!openMenu) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!(event.target instanceof Node) || toolbarRef.current?.contains(event.target)) return;
-      closeMenu();
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [openMenu]);
-
-  useEffect(() => {
-    if (!openMenu) return;
-    const frame = window.requestAnimationFrame(() => focusMenuItem(0));
-    return () => window.cancelAnimationFrame(frame);
-  }, [openMenu]);
+  }, []);
+  const handleMenuKeyDown = useDismissibleMenu({
+    menuRef,
+    onClose: closeMenu,
+    open: openMenu !== null,
+    triggerRef: activeTriggerRef,
+  });
 
   const openFormattingMenu = (menuId: FormattingMenuId) => {
     if (openMenu === menuId) {
@@ -191,7 +201,8 @@ export function FormattingToolbar({
       return;
     }
 
-    const buttonRect = triggerRefs.current.get(menuId)?.getBoundingClientRect();
+    activeTriggerRef.current = triggerRefs.current.get(menuId) ?? null;
+    const buttonRect = activeTriggerRef.current?.getBoundingClientRect();
     if (buttonRect) {
       const menuWidth = 236;
       const viewportWidth = window.innerWidth || menuWidth;
@@ -219,38 +230,15 @@ export function FormattingToolbar({
       openFormattingMenu(menuId);
       return;
     }
-    focusMenuItem(0);
-  };
-
-  const handleMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeMenu(true);
-      return;
-    }
-
-    const items = getMenuItems();
-    const activeIndex = items.findIndex((item) => item === document.activeElement);
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      focusMenuItem(activeIndex + 1);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      focusMenuItem(activeIndex - 1);
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      focusMenuItem(0);
-    } else if (event.key === "End") {
-      event.preventDefault();
-      focusMenuItem(items.length - 1);
-    }
+    menuRef.current?.querySelector<HTMLButtonElement>(".formatting-overflow-item:not(:disabled)")?.focus();
   };
 
   const renderMenu = (menuId: FormattingMenuId) => {
     const menu = menus[menuId];
-    const Icon = menu.icon;
     const menuOpen = openMenu === menuId;
-    const hasActiveCommand = menu.commands.some((command) => activeFormatSet.has(command.id));
+    const activeCommand = menu.commands.find((command) => activeFormatSet.has(command.id));
+    const Icon = activeCommand?.icon ?? menu.icon;
+    const hasActiveCommand = Boolean(activeCommand);
     const groupedCommands = groupFormattingCommands(menu.commands);
 
     return (
@@ -262,8 +250,8 @@ export function FormattingToolbar({
           }}
           className={`tool-button formatting-button formatting-menu-button ${menuOpen || hasActiveCommand ? "active" : ""}`}
           type="button"
-          title={menu.label}
           aria-label={menu.label}
+          data-tooltip={menu.label}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           data-format-command={menuId === "overflow" ? "more-formatting" : `${menuId}-formatting`}
@@ -272,12 +260,12 @@ export function FormattingToolbar({
           onClick={() => openFormattingMenu(menuId)}
         >
           <Icon size={16} />
-          {menuId !== "overflow" && <ChevronDown className="formatting-menu-chevron" size={10} />}
+          {menuId !== "overflow" && <ChevronDown className="formatting-menu-chevron" size={14} />}
         </button>
         {menuOpen && (
           <div
             ref={menuRef}
-            className="formatting-overflow-menu"
+            className="formatting-overflow-menu ui-menu ui-command-menu"
             role="menu"
             aria-label={menu.label}
             style={menuStyle}
@@ -293,20 +281,20 @@ export function FormattingToolbar({
                   return (
                     <button
                       key={command.id}
-                      className={`formatting-overflow-item ${active ? "active" : ""}`}
+                      className={`formatting-overflow-item ui-command-menu-item ${active ? "active" : ""}`}
                       type="button"
                       role="menuitemcheckbox"
                       aria-checked={active}
-                      title={getCommandTitle(command)}
                       data-format-command={command.id}
                       disabled={disabled}
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => {
                         applyToolbarCommand(command, actions);
-                        closeMenu(true);
+                        closeMenu();
+                        window.requestAnimationFrame(() => activeTriggerRef.current?.focus());
                       }}
                     >
-                      <CommandIcon size={15} />
+                      <CommandIcon size={16} />
                       <span>{command.label}</span>
                       {command.shortcut && <kbd>{command.shortcut}</kbd>}
                     </button>
@@ -322,17 +310,16 @@ export function FormattingToolbar({
 
   return (
     <div className={`formatting-row ${className}`}>
-      <nav ref={toolbarRef} className="formatting-toolbar" aria-label="Formatting">
-        {primaryCommandGroups.map(({ group, commands }, groupIndex) => (
-          <Fragment key={group}>
-            {groupIndex > 0 && <span className="toolbar-separator" aria-hidden="true" />}
-            {commands.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
-          </Fragment>
-        ))}
+      <nav className="formatting-toolbar" aria-label={copy.formatting}>
+        {layout.history.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
         <span className="toolbar-separator" aria-hidden="true" />
         {renderMenu("block")}
+        <span className="toolbar-separator" aria-hidden="true" />
+        {layout.inline.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
+        <span className="toolbar-separator" aria-hidden="true" />
         {renderMenu("list")}
-        {renderMenu("overflow")}
+        {layout.insert.length > 0 && renderMenu("insert")}
+        {layout.overflow.length > 0 && renderMenu("overflow")}
       </nav>
     </div>
   );

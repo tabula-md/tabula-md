@@ -9,7 +9,6 @@ import type {
 } from "../markdownEditorTypes";
 import type { CenterPopover, TopPopover } from "../uiTypes";
 import type {
-  FileComment,
   FileViewMode,
   ReadingWidth,
 } from "../workspaceStorage";
@@ -23,18 +22,14 @@ type UseDocumentSurfaceRuntimeOptions = {
   activeDocument: ActiveDocumentRuntime;
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
-  activeOpenComments: FileComment[];
   activeSyncScrolling: boolean;
   activeViewMode: FileViewMode;
   editorRef: RefObject<MarkdownEditorHandle | null>;
-  focusedCommentId: string | null;
-  isLive: boolean;
   searchOpen: boolean;
   selectedCharacterCount: number;
   selectionActionPosition: MarkdownSelectionActionPosition | null;
   shareOpen: boolean;
   splitDividerDragging: boolean;
-  onOpenCommentsPanel: (commentId?: string) => void;
   onSetActiveFileLineNumbers: (isEnabled: boolean) => void;
   onSetActiveFileLineWrapping: (isEnabled: boolean) => void;
   onSetActiveFileReadingWidth: (readingWidth: ReadingWidth) => void;
@@ -49,18 +44,14 @@ export function useDocumentSurfaceRuntime({
   activeDocument,
   activeLineNumbers,
   activeLineWrapping,
-  activeOpenComments,
   activeSyncScrolling,
   activeViewMode,
   editorRef,
-  focusedCommentId,
-  isLive,
   searchOpen,
   selectedCharacterCount,
   selectionActionPosition,
   shareOpen,
   splitDividerDragging,
-  onOpenCommentsPanel,
   onSetActiveFileLineNumbers,
   onSetActiveFileLineWrapping,
   onSetActiveFileReadingWidth,
@@ -73,8 +64,6 @@ export function useDocumentSurfaceRuntime({
   const documentSurface = buildDocumentSurface({
     document: activeDocument,
     hasSelectionActionPosition: Boolean(selectionActionPosition),
-    isLive,
-    openCommentCount: activeOpenComments.length,
     searchOpen,
     selectedCharacterCount,
     shareOpen,
@@ -83,12 +72,9 @@ export function useDocumentSurfaceRuntime({
   const documentWorkbenchRuntime = useDocumentWorkbenchRuntime({
     activeLineNumbers,
     activeLineWrapping,
-    activeOpenComments,
     activeSyncScrolling,
     activeViewMode,
     editorRef,
-    focusedCommentId,
-    onOpenCommentsPanel,
     onSetActiveFileLineNumbers,
     onSetActiveFileLineWrapping,
     onSetActiveFileReadingWidth,

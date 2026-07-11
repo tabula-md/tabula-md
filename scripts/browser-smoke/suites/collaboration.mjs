@@ -208,6 +208,10 @@ export async function run(ctx) {
       (await firstPage.locator(".presence-popover .presence-row").count()) >= 1,
       "Presence popover should list live collaborators.",
     );
+    expect(
+      (await firstPage.locator(".presence-popover").evaluate((popover) => getComputedStyle(popover).borderTopWidth)) === "0px",
+      "Presence popovers should use elevation without a static border.",
+    );
     await firstPage.keyboard.press("Escape");
     await firstPage.locator(".presence-popover").waitFor({ state: "detached" });
 
@@ -273,10 +277,23 @@ export async function run(ctx) {
       await firstPage.keyboard.press("ControlOrMeta+End");
       await firstPage.keyboard.press("Enter");
       await firstPage.keyboard.press("Enter");
-      await firstPage.keyboard.type("Offline edit survived");
+      await firstPage.keyboard.insertText("Offline edit survived");
+      await waitForText(firstPage.locator(".cm-content"), "Offline edit survived");
       await startRoomServer();
+      await firstPage.waitForSelector(".share-trigger.live.connected", { timeout: 20_000 });
+      await secondPage.waitForSelector(".share-trigger.live.connected", { timeout: 20_000 });
       await ensureEditMode(secondPage);
-      await waitForText(secondPage.locator(".cm-content"), "Offline edit survived", 12_000);
+      try {
+        await waitForText(secondPage.locator(".cm-content"), "Offline edit survived", 12_000);
+      } catch (error) {
+        const reconnectDiagnostics = await Promise.all([firstPage, secondPage].map((page) => page.evaluate(() => ({
+          editorText: document.querySelector(".cm-content")?.textContent ?? "",
+          shareClass: document.querySelector(".share-trigger")?.className ?? "",
+          participants: document.querySelector(".presence-summary")?.textContent ?? "",
+          toast: document.querySelector(".app-toast")?.textContent ?? "",
+        }))));
+        throw new Error(`${error.message}\nReconnect diagnostics:\n${JSON.stringify(reconnectDiagnostics, null, 2)}`);
+      }
 
       const wrongRoomKey = roomKey === "A".repeat(43) ? "B".repeat(43) : "A".repeat(43);
       const wrongKeyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });

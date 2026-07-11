@@ -5,8 +5,6 @@ import {
 } from "./documentControlsModel";
 
 const copy: DocumentControlsCopy = {
-  copyCurrentFile: "Copy current file",
-  copyFile: "Copy file",
   documentControlsLabel: "Document controls",
   edit: "Edit",
   editorControls: "Editor controls",
@@ -15,7 +13,6 @@ const copy: DocumentControlsCopy = {
   layoutControls: "Layout controls",
   lineNumbers: "Line Numbers",
   lineWrapping: "Line Wrapping",
-  nothingToCopy: "Add content to copy",
   preview: "Preview",
   search: "Search",
   split: "Split",
@@ -33,7 +30,6 @@ describe("document controls model", () => {
       activeReadingWidth: "wide",
       activeSyncScrolling: true,
       activeViewMode: "edit",
-      canCopyFile: true,
       copy,
     });
 
@@ -69,7 +65,6 @@ describe("document controls model", () => {
       activeReadingWidth: "standard",
       activeSyncScrolling: false,
       activeViewMode: "split",
-      canCopyFile: true,
       copy,
     });
 
@@ -90,12 +85,10 @@ describe("document controls model", () => {
       activeReadingWidth: "narrow",
       activeSyncScrolling: true,
       activeViewMode: "preview",
-      canCopyFile: false,
       copy,
     });
 
     expect(model.controlsLabel).toBe("View controls");
-    expect(model.copyButtonTitle).toBe("Add content to copy");
     expect(model.showEditorToggles).toBe(false);
     expect(model.showSplitToggles).toBe(false);
     expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual(["edit", "split", "preview"]);
@@ -109,7 +102,6 @@ describe("document controls model", () => {
       activeReadingWidth: "standard",
       activeSyncScrolling: true,
       activeViewMode: "edit",
-      canCopyFile: true,
       copy,
     });
 

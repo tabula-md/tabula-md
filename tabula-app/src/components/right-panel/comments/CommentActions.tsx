@@ -1,10 +1,14 @@
-import { Ellipsis, Trash2 } from "lucide-react";
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
+import { CheckCircle2, Ellipsis, RotateCcw, Trash2 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 import type { FileComment } from "../../../workspaceStorage";
+import { useDismissibleMenu } from "../../../hooks/useDismissibleMenu";
+import { CommandMenu, CommandMenuItem } from "../../ui/CommandMenu";
+import type { RightPanelCommentsCopy } from "./types";
 
 type CommentActionsProps = {
   fileId: string;
   comment: FileComment;
+  copy: RightPanelCommentsCopy;
   isReplying: boolean;
   onStartCommentReply: (fileId: string, commentId: string) => void;
   onToggleCommentResolved: (fileId: string, commentId: string) => void;
@@ -14,6 +18,7 @@ type CommentActionsProps = {
 export function CommentActions({
   fileId,
   comment,
+  copy,
   isReplying,
   onStartCommentReply,
   onToggleCommentResolved,
@@ -21,31 +26,20 @@ export function CommentActions({
 }: CommentActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const commentLabel = comment.body.trim().replace(/\s+/g, " ").slice(0, 48) || "Untitled comment";
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const closeFromOutside = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
-    };
-    window.addEventListener("pointerdown", closeFromOutside);
-    return () => {
-      window.removeEventListener("pointerdown", closeFromOutside);
-    };
-  }, [menuOpen]);
-
-  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (!menuOpen || event.key !== "Escape") return;
-    event.preventDefault();
-    event.stopPropagation();
-    setMenuOpen(false);
-  };
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const commentLabel = comment.body.trim().replace(/\s+/g, " ").slice(0, 48) || copy.untitled;
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const handleMenuKeyDown = useDismissibleMenu({
+    menuRef,
+    onClose: closeMenu,
+    open: menuOpen,
+    triggerRef,
+  });
 
   const deleteComment = () => {
     const hasReplies = (comment.replies?.length ?? 0) > 0;
     const confirmed = window.confirm(
-      hasReplies ? "Delete this comment and its replies?" : "Delete this comment?",
+      hasReplies ? copy.deleteWithReplies : copy.deleteOne,
     );
     if (!confirmed) return;
     setMenuOpen(false);
@@ -54,10 +48,8 @@ export function CommentActions({
 
   return (
     <div
-      ref={menuRef}
       className="right-comment-actions"
-      aria-label="Comment actions"
-      onKeyDown={handleKeyDown}
+      aria-label={copy.actions}
     >
       {!comment.resolved && !isReplying && (
         <button
@@ -65,20 +57,15 @@ export function CommentActions({
           type="button"
           onClick={() => onStartCommentReply(fileId, comment.id)}
         >
-          Reply
+          {copy.replyAction}
         </button>
       )}
       <button
-        className="right-comment-action text"
-        type="button"
-        onClick={() => onToggleCommentResolved(fileId, comment.id)}
-      >
-        {comment.resolved ? "Reopen" : "Resolve"}
-      </button>
-      <button
+        ref={triggerRef}
         className="right-comment-more-trigger"
         type="button"
-        aria-label={`More actions for comment: ${commentLabel}`}
+        aria-label={copy.moreActions(commentLabel)}
+        data-tooltip={copy.moreActions(commentLabel)}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((open) => !open)}
@@ -86,12 +73,27 @@ export function CommentActions({
         <Ellipsis size={14} aria-hidden="true" />
       </button>
       {menuOpen && (
-        <div className="right-comment-more-menu" role="menu" aria-label={`Actions for comment: ${commentLabel}`}>
-          <button className="danger" type="button" role="menuitem" onClick={deleteComment}>
-            <Trash2 size={14} aria-hidden="true" />
-            <span>Delete</span>
-          </button>
-        </div>
+        <CommandMenu
+          ref={menuRef}
+          className="right-comment-more-menu"
+          ariaLabel={copy.menuActions(commentLabel)}
+          onKeyDown={handleMenuKeyDown}
+        >
+          <CommandMenuItem
+            icon={comment.resolved ? <RotateCcw size={14} /> : <CheckCircle2 size={14} />}
+            label={comment.resolved ? copy.reopen : copy.resolve}
+            onClick={() => {
+              setMenuOpen(false);
+              onToggleCommentResolved(fileId, comment.id);
+            }}
+          />
+          <CommandMenuItem
+            danger
+            icon={<Trash2 size={14} />}
+            label={copy.delete}
+            onClick={deleteComment}
+          />
+        </CommandMenu>
       )}
     </div>
   );

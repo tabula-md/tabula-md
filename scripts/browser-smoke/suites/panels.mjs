@@ -14,7 +14,6 @@ export async function run(ctx) {
     waitForFileCount,
     waitForPanelTab,
     waitForRenderFrame,
-    waitForShareDialogState,
     withPage,
   } = ctx;
 
@@ -102,8 +101,8 @@ export async function run(ctx) {
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the right project context panel.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New document|Open Markdown file…|Restore Tabula backup…|Download current document|Download workspace ZIP|Live collaboration…|Preferences|About|Help|Follow us|GitHub",
-      "The workspace menu should only expose implemented file, collaboration, preferences, support, and public links.",
+        "New document|Open Markdown file…|Restore Tabula backup…|Preferences|About|Help|Follow us|GitHub",
+      "The workspace menu should expose file entry points, preferences, support, and public links without duplicating Share.",
     );
     const xPublicLink = workbenchPanels.publicLinks.find((link) => link.text === "Follow us");
     expect(xPublicLink?.href === "https://x.com/tabula_md", "Follow us should point to the Tabula X profile.");
@@ -138,7 +137,7 @@ export async function run(ctx) {
     const focusIndex = (label) => workbenchPanels.focusOrder.indexOf(label);
     expect(focusIndex("New document") !== -1, "Keyboard order should include document creation.");
     expect(focusIndex("Open Markdown file…") !== -1, "Keyboard order should include Markdown import.");
-    expect(focusIndex("Live collaboration…") !== -1, "Keyboard order should include live collaboration.");
+    expect(focusIndex("Live collaboration…") === -1, "Live collaboration should have one entry point in Share.");
     expect(focusIndex("Tabula +") === -1, "Workspace menu should keep Tabula + hidden until publishing ships.");
     expect(focusIndex("Preferences") !== -1, "Keyboard order should include Preferences.");
     expect(focusIndex("About") !== -1, "Keyboard order should include About.");
@@ -146,8 +145,7 @@ export async function run(ctx) {
     expect(
       focusIndex("New document") <
         focusIndex("Open Markdown file…") &&
-        focusIndex("Open Markdown file…") < focusIndex("Live collaboration…") &&
-        focusIndex("Live collaboration…") < focusIndex("Preferences") &&
+        focusIndex("Open Markdown file…") < focusIndex("Preferences") &&
         focusIndex("Preferences") < focusIndex("About") &&
         focusIndex("About") < focusIndex("Help"),
       "Workspace menu keyboard order should move from file actions to support actions.",
@@ -330,7 +328,7 @@ export async function run(ctx) {
       const button = document.querySelector('button[aria-label="Open Project Context"]');
       return {
         ariaLabel: button?.getAttribute("aria-label") ?? "",
-        title: button?.getAttribute("title") ?? "",
+        tooltip: button?.getAttribute("data-tooltip") ?? "",
       };
     });
     expect(
@@ -338,8 +336,8 @@ export async function run(ctx) {
       `The right panel toggle should use product-facing terminology. Got: ${rightPanelToggleContract.ariaLabel}`,
     );
     expect(
-      rightPanelToggleContract.title === rightPanelToggleContract.ariaLabel,
-      "The right panel toggle title should match the product-facing terminology.",
+      rightPanelToggleContract.tooltip === rightPanelToggleContract.ariaLabel,
+      "The right panel toggle should expose the shared tooltip copy.",
     );
 
     await openProjectContext(page);
@@ -349,6 +347,7 @@ export async function run(ctx) {
       ariaLabel: document.querySelector(".right-panel")?.getAttribute("aria-label") ?? "",
       sectionsLabel: document.querySelector(".right-panel-tabs")?.getAttribute("aria-label") ?? "",
       tabs: Array.from(document.querySelectorAll(".right-panel-tab")).map((button) => button.getAttribute("aria-label")),
+      visibleTabLabelCount: document.querySelectorAll(".right-panel-tab-label").length,
       headingCount: document.querySelectorAll(".right-panel .right-panel-content h2").length,
       documentCardCount: document.querySelectorAll(".right-panel .panel-document-card").length,
       countPillCount: document.querySelectorAll(".right-panel .panel-count-pill").length,
@@ -414,29 +413,30 @@ export async function run(ctx) {
       "The right panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Files|Outline",
-      "The right panel should keep comments out of local-only documents.",
+      rightPanelState.tabs.join("|") === "Files|Outline|Comments",
+      "The right panel should expose the same Comments workflow in local and live workspaces.",
     );
+    expect(rightPanelState.visibleTabLabelCount === 0, "Project Context tabs should stay icon-only.");
     expect(rightPanelState.bodyText.includes("Project"), "The right panel should expose the project file tree by default.");
     expect(rightPanelState.headingCount === 0, "The right panel should not render large panel headings.");
     expect(rightPanelState.documentCardCount === 0, "The right panel should not use document cards.");
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");
     expect(
-      rightPanelState.fileSearchRow?.inputHeight >= 30 && rightPanelState.fileSearchRow?.inputHeight <= 32,
-      "Right Files search input should use a compact 30-32px control height.",
+      rightPanelState.fileSearchRow?.inputHeight === 34,
+      "Right Files search input should use the shared 34px row height.",
     );
     expect(
       rightPanelState.fileSearchRow?.importButtonWidth === 28 &&
-        rightPanelState.fileSearchRow?.importButtonHeight === 30 &&
+        rightPanelState.fileSearchRow?.importButtonHeight === 28 &&
         rightPanelState.fileSearchRow?.createButtonWidth === 28 &&
-        rightPanelState.fileSearchRow?.createButtonHeight === 30,
-      "Right Files import and new-file controls should sit as compact icon buttons beside search.",
+        rightPanelState.fileSearchRow?.createButtonHeight === 28,
+      "Right Files import and new-file controls should use 28px icon buttons.",
     );
     expect(rightPanelState.fileSearchRow?.inputBorderTopWidth === "0px", "Right Files search input should be borderless.");
     expect(rightPanelState.fileRows.length > 0, "Right Files should render file rows.");
     expect(
-      rightPanelState.fileRows.every((row) => row.height >= 30 && row.height <= 34 && row.fontWeight === "400"),
-      "Right Files rows should stay compact and regular weight.",
+      rightPanelState.fileRows.every((row) => row.height === 34 && row.fontWeight === "400"),
+      "Right Files rows should use the shared 34px row height and regular weight.",
     );
     expect(
       !rightPanelState.fileRows.some((row) => /\b(Preview|Edit|Split|Local|Live|Offline|Connecting)\b/.test(row.text)),
@@ -519,6 +519,8 @@ export async function run(ctx) {
     const restoredKeyboardFileFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
     expect(restoredKeyboardFileFocus === firstKeyboardFileFocus, "ArrowUp on a file row should move focus back.");
 
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await waitForEditorReady(page, { mode: "edit" });
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
     const rightOutlineState = await page.evaluate(() => ({
@@ -538,62 +540,62 @@ export async function run(ctx) {
         rightOutlineState.outlineRows.every((row) => row.height >= 30 && row.height <= 34 && row.fontWeight === "400"),
       "The right panel outline rows should stay compact and regular weight.",
     );
+    await page.getByRole("button", { name: "Start here", exact: true }).click();
+    await waitForRenderFrame(page);
+    expect(
+      (await page.locator('.right-outline-link[aria-current="location"]').count()) === 1,
+      "Outline should identify the heading that contains the editor cursor.",
+    );
+    await page.keyboard.press("ArrowRight");
+    await waitForRenderFrame(page);
 
-    expect((await page.getByRole("button", { name: "Comments", exact: true }).count()) === 0, "Comments should be hidden before live collaboration starts.");
-    await page.locator(".share-trigger").click();
-    await waitForShareDialogState(page, { panel: "Share link" });
-    await page.getByRole("button", { name: "Start session" }).click();
-    await waitForShareDialogState(page, { text: "Invite link" });
-    await page.keyboard.press("Escape");
-    await waitForShareDialogState(page, { open: false });
-    await page.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])", { timeout: 5_000 });
-    expect((await page.getByRole("button", { name: "Comments", exact: true }).count()) === 1, "Comments should become available during live collaboration.");
+    expect((await page.getByRole("button", { name: "Comments", exact: true }).count()) === 1, "Comments should be available in local and live workspaces.");
     await page.getByRole("button", { name: "Comments", exact: true }).click();
     await waitForPanelTab(page, "Comments");
     const emptyCommentsState = await page.evaluate(() => ({
-      contextLabels: Array.from(document.querySelectorAll(".right-comments-context span")).map(
-        (span) => span.textContent?.replace(/\s+/g, " ").trim() ?? "",
-      ),
-      switchButtonText: document.querySelector(".right-comments-switch")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-      switchPressed: document.querySelector(".right-comments-switch")?.getAttribute("aria-pressed") ?? "",
+      contextLabel: document.querySelector(".right-comments-context-label")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       emptyText: document.querySelector(".right-comments-empty")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       inputCount: document.querySelectorAll(".right-comment-input").length,
-      identityInputCount: document.querySelectorAll('[aria-label="Comment author name"]').length,
-      identityInputValue: document.querySelector('[aria-label="Comment author name"]')?.value ?? "",
-      submitText: document.querySelector(".right-comment-submit")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-      submitDisabled: Boolean(document.querySelector(".right-comment-submit:disabled")),
       visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       cardCount: document.querySelectorAll(".right-comment-card").length,
       actionCount: document.querySelectorAll(".right-comment-action").length,
+      navigationCount: document.querySelectorAll(".right-panel-tab small").length,
+      statusCount: document.querySelectorAll(".status-comments-button").length,
+      fileCount: document.querySelectorAll(".right-file-tree-comment-count").length,
     }));
     expect(emptyCommentsState.cardCount === 0, "Comments should start without comment cards.");
     expect(emptyCommentsState.actionCount === 0, "Comment actions should not appear when there are no comments.");
-    expect(Boolean(emptyCommentsState.contextLabels[0]), "Comments should identify the active scope.");
-    expect(!emptyCommentsState.contextLabels[0]?.startsWith("Comments on"), "Comments scope title should avoid repeated helper copy.");
-    expect(!emptyCommentsState.contextLabels[0]?.endsWith(".md"), "Comments should hide .md in the active-file label.");
-    expect(
-      emptyCommentsState.switchButtonText.replace(/\d+$/, "") === "All comments",
-      "Current-file comments should expose All comments as a secondary switch.",
-    );
-    expect(emptyCommentsState.switchPressed === "false", "Comments should default to the current file scope.");
+    expect(Boolean(emptyCommentsState.contextLabel), "Comments should identify the active scope.");
+    expect(!emptyCommentsState.contextLabel.startsWith("Comments on"), "Comments scope title should avoid repeated helper copy.");
+    expect(!emptyCommentsState.contextLabel.endsWith(".md"), "Comments should hide .md in the active-file label.");
+    expect(emptyCommentsState.navigationCount === 0, "Comments navigation should not carry an aggregate count badge.");
+    expect(emptyCommentsState.statusCount === 0, "The status bar should not repeat the comment count.");
+    expect(emptyCommentsState.fileCount === 0, "Files should not repeat comment count badges.");
     expect(
       emptyCommentsState.emptyText.includes("No comments") || emptyCommentsState.visibleText.includes("Resolved ·"),
       "Comments should expose a quiet empty or resolved-only state.",
     );
     expect(
-      emptyCommentsState.emptyText.includes("Select text for an anchored comment, or add a file comment below."),
-      "Current-file empty state should explain both anchored and file comments.",
+      emptyCommentsState.emptyText.includes("Select text to comment on a passage, or add a document comment."),
+      "Current-file empty state should explain anchored and document comments.",
     );
-    expect(emptyCommentsState.inputCount === 1, "Comments composer should keep one focused textarea available.");
-    expect(emptyCommentsState.identityInputCount === 1, "Comments composer should expose the active comment identity.");
-    expect(Boolean(emptyCommentsState.identityInputValue), "Comment identity should start with a usable local name.");
-    expect(emptyCommentsState.submitText === "Comment", "Comments composer should use a direct submit action.");
-    expect(emptyCommentsState.submitDisabled, "Comments composer submit should stay disabled until text is entered.");
+    expect(
+      emptyCommentsState.emptyText.includes("Select text in document"),
+      "The empty state should provide a direct route back to text selection.",
+    );
+    expect(emptyCommentsState.inputCount === 0, "Comments composer should stay closed until the user starts a comment.");
     expect(
       !/\b(Reply|Resolve|Reopen|Delete)\b/.test(emptyCommentsState.visibleText),
       "Comment card actions should not appear when there are no comments.",
     );
 
+    await page.getByRole("button", { name: "Comment scope", exact: true }).click();
+    expect((await page.getByRole("menuitemradio", { name: "Current file", exact: true }).count()) === 1, "Comment scope should offer the current document.");
+    expect((await page.getByRole("menuitemradio", { name: "All comments", exact: true }).count()) === 1, "Comment scope should offer all documents without a permanent segmented control.");
+    await page.keyboard.press("Escape");
+
+    await page.getByRole("button", { name: "Comment on document", exact: true }).click();
+    expect((await page.locator(".right-comment-input").count()) === 1, "Document comment command should open the composer on demand.");
     await page.getByLabel("Comment author name").fill("Local User");
     await page.getByLabel("Comment author name").blur();
     await page.getByLabel("Add comment to README.md").fill("Review this intro.");
@@ -604,24 +606,32 @@ export async function run(ctx) {
       emptyCount: document.querySelectorAll(".right-comments-empty").length,
       fileHeaderCount: document.querySelectorAll(".right-comment-file").length,
       actionText: document.querySelector(".right-comment-actions")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      actionOpacity: (() => {
+        const actions = document.querySelector(".right-comment-actions");
+        return actions instanceof HTMLElement ? getComputedStyle(actions).opacity : "";
+      })(),
       visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       authorText: document.querySelector(".right-comment-meta .right-comment-author strong")?.textContent?.trim() ?? "",
     }));
     expect(commentsAfterAdd.cardCount === 1, "Adding a comment should create one comment card.");
     expect(commentsAfterAdd.emptyCount === 0, "Adding a comment should hide the comments empty state.");
     expect(commentsAfterAdd.fileHeaderCount === 0, "Active-file comments should not repeat the file header.");
-    expect(commentsAfterAdd.actionText === "ReplyResolve", "Comment cards should keep reply and resolve visible without exposing destructive actions.");
+    expect(commentsAfterAdd.actionText === "Reply", "Comment cards should keep Reply as the only inline command.");
+    expect(commentsAfterAdd.actionOpacity === "0", "Comment actions should stay quiet until the row is hovered or focused.");
     expect(commentsAfterAdd.visibleText.includes("Review this intro."), "Added comment should render in the comments panel.");
     expect(commentsAfterAdd.authorText === "Local User", "New comments should use the editable local identity.");
     expect(
-      commentsAfterAdd.actionText.includes("Reply") && commentsAfterAdd.actionText.includes("Resolve"),
-      "Comment card actions should be available without opening a menu.",
+      commentsAfterAdd.actionText === "Reply",
+      "Secondary comment commands should stay in the contextual menu.",
     );
 
+    await page.locator(".right-comment-card").hover();
     const moreCommentActions = page.getByRole("button", { name: /^More actions for comment:/ });
     expect((await moreCommentActions.count()) === 1, "Comment cards should expose a visible more-actions button.");
     await moreCommentActions.click();
+    expect((await page.getByRole("menuitem", { name: "Resolve", exact: true }).count()) === 1, "Resolve should live in the comment actions menu.");
     expect((await page.getByRole("menuitem", { name: "Delete", exact: true }).count()) === 1, "Delete should live in the comment actions menu.");
+    expect((await page.locator(".right-comment-more-menu.ui-command-menu").count()) === 1, "Comment actions should use the shared command-menu surface.");
     await page.keyboard.press("Escape");
     expect((await page.getByRole("menuitem", { name: "Delete", exact: true }).count()) === 0, "Escape should close comment actions.");
 
@@ -642,7 +652,9 @@ export async function run(ctx) {
     expect(commentReplyState.replyAuthorVariant.includes("reply"), "Replies should use the compact author variant.");
     expect(commentReplyState.replyIndent !== "0px", "Replies should be visually nested under the root comment.");
 
-    await page.getByRole("button", { name: "Resolve" }).click();
+    await page.locator(".right-comment-card").hover();
+    await page.getByRole("button", { name: /^More actions for comment:/ }).click();
+    await page.getByRole("menuitem", { name: "Resolve", exact: true }).click();
     await waitForRenderFrame(page);
     const commentsAfterResolve = await page.evaluate(() => ({
       openCardCount: document.querySelectorAll(".right-comment-group:not(.resolved) .right-comment-card").length,
@@ -658,9 +670,11 @@ export async function run(ctx) {
     const resolvedCommentActions = await page.evaluate(() => ({
       actionText: document.querySelector(".right-comment-actions")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
-    expect(resolvedCommentActions.actionText === "Reopen", "Resolved comments should expose reopen while keeping delete in the actions menu.");
+    expect(resolvedCommentActions.actionText === "", "Resolved comments should keep all commands in the actions menu.");
     expect((await page.getByRole("button", { name: /^More actions for comment:/ }).count()) === 1, "Resolved comments should retain their actions menu.");
-    await page.getByRole("button", { name: "Reopen" }).click();
+    await page.locator(".right-comment-card").hover();
+    await page.getByRole("button", { name: /^More actions for comment:/ }).click();
+    await page.getByRole("menuitem", { name: "Reopen", exact: true }).click();
     await waitForRenderFrame(page);
     const commentsAfterReopen = await page.evaluate(() => ({
       openCardCount: document.querySelectorAll(".right-comment-group .right-comment-card:not(.resolved)").length,
@@ -678,7 +692,7 @@ export async function run(ctx) {
 
     const overflowInitialTabCount = (await getTabs(page)).length;
     for (let index = 0; index < 10; index += 1) {
-      await page.getByTitle("New document").click();
+      await page.getByRole("button", { name: "New document", exact: true }).click();
     }
     await waitForFileCount(page, overflowInitialTabCount + 10);
 
@@ -1088,7 +1102,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     const rightFilesInitialTabs = await getTabs(page);
     const rightFilesActiveTitle = rightFilesInitialTabs.find((tab) => tab.active)?.title ?? "";
@@ -1110,7 +1124,7 @@ export async function run(ctx) {
       importCount: document.querySelectorAll('.right-file-import-button[aria-label="Open Markdown file"]').length,
       visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
-    expect(fileActionContract.closeTabCount >= 2, "Right Files should expose close-tab actions for open files.");
+    expect(fileActionContract.closeTabCount === 0, "Right Files should leave tab closing to the document tabs.");
     expect(fileActionContract.moreActionCount >= 2, "Right Files should expose compact more-action menus for project files.");
     expect(fileActionContract.renameCount === 0, "Right Files should hide rename behind a more-action menu.");
     expect(fileActionContract.duplicateCount === 0, "Right Files should hide duplicate behind a more-action menu.");
@@ -1122,26 +1136,6 @@ export async function run(ctx) {
       "Right Files action labels should stay icon-only in visible panel text.",
     );
 
-    await page.getByRole("button", { name: "Close tab README.md" }).click();
-    await waitForRenderFrame(page);
-    const filesAfterCloseTab = await page.evaluate(() => ({
-      hasReadmeRow: Boolean(document.querySelector('.right-file-tree-row.file[title="README.md"]')),
-      hasReadmeTab: Boolean(document.querySelector('.tab-item[data-file-name="README.md"]')),
-      closeReadmeActionCount: document.querySelectorAll('.right-file-action[aria-label="Close tab README.md"]').length,
-    }));
-    expect(filesAfterCloseTab.hasReadmeRow, "Right Files close-tab action should keep the project file row.");
-    expect(!filesAfterCloseTab.hasReadmeTab, "Right Files close-tab action should remove only the open tab.");
-    expect(filesAfterCloseTab.closeReadmeActionCount === 0, "Closed files should no longer show a close-tab action.");
-
-    await page.getByRole("button", { name: "Open README.md" }).click();
-    await waitForRenderFrame(page);
-    const filesAfterReopenClosedTab = await page.evaluate(() => ({
-      hasReadmeTab: Boolean(document.querySelector('.tab-item[data-file-name="README.md"]')),
-      activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
-    }));
-    expect(filesAfterReopenClosedTab.hasReadmeTab, "Selecting a closed file should reopen it as a tab.");
-    expect(filesAfterReopenClosedTab.activeTabTitle === "README.md", "Selecting a closed file should activate the reopened tab.");
-
     await page.getByRole("button", { name: `Open ${rightFilesActiveTitle}` }).click();
     await waitForRenderFrame(page);
 
@@ -1149,6 +1143,7 @@ export async function run(ctx) {
     expect((await page.getByRole("menuitem", { name: "Rename" }).count()) === 1, "Right Files menu should expose rename.");
     expect((await page.getByRole("menuitem", { name: "Duplicate" }).count()) === 1, "Right Files menu should expose duplicate.");
     expect((await page.getByRole("menuitem", { name: "Delete" }).count()) === 1, "Right Files menu should expose delete.");
+    expect((await page.getByText("Move to…", { exact: true }).count()) === 1, "Right Files should name the move destination control.");
     await page.getByRole("menuitem", { name: "Rename" }).click();
     await page.getByRole("textbox", { name: `Rename ${rightFilesActiveTitle} in Files` }).fill("README");
     await page.keyboard.press("Enter");
@@ -1253,10 +1248,10 @@ export async function run(ctx) {
   const mobilePage = await mobileContext.newPage();
   try {
     await mobilePage.goto(baseUrl);
-    await mobilePage.getByTitle("New document").click();
+    await mobilePage.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(mobilePage, { mode: "edit" });
     for (let index = 0; index < 4; index += 1) {
-      await mobilePage.getByTitle("New document").click();
+      await mobilePage.getByRole("button", { name: "New document", exact: true }).click();
     }
     await waitForRenderFrame(mobilePage);
 
@@ -1269,10 +1264,17 @@ export async function run(ctx) {
       return {
         visible: activeRect.left >= tabsRect.left - 1 && activeRect.right <= tabsRect.right + 1,
         label: active.querySelector(".tab-title")?.textContent?.trim() ?? "",
+        visibleScrollButtonCount: Array.from(document.querySelectorAll(".tab-scroll-button")).filter(
+          (button) => button instanceof HTMLElement && getComputedStyle(button).display !== "none",
+        ).length,
       };
     });
     expect(mobileActiveTab?.visible, "Creating a mobile document should keep the active tab visible.");
     expect(mobileActiveTab?.label, "The visible mobile tab should name the active document.");
+    expect(
+      mobileActiveTab?.visibleScrollButtonCount === 0,
+      "Touch layouts should reserve tab width for documents instead of redundant previous/next buttons.",
+    );
 
     await openProjectContext(mobilePage);
     const mobilePanel = await mobilePage.evaluate(() => {
@@ -1280,7 +1282,7 @@ export async function run(ctx) {
       const backdrop = document.querySelector(".right-panel-backdrop");
       const shell = document.querySelector(".file-shell");
       const gutter = document.querySelector(".cm-gutters");
-      const fileAction = document.querySelector(".right-file-action:not(.close)");
+      const fileAction = document.querySelector(".right-file-tree-row.file .right-file-action");
       if (!panel || !backdrop || !shell || !gutter || !fileAction) return null;
       const panelRect = panel.getBoundingClientRect();
       const fileActionRect = fileAction.getBoundingClientRect();
@@ -1293,10 +1295,7 @@ export async function run(ctx) {
         backdropDisplay: getComputedStyle(backdrop).display,
         documentSafeRight: getComputedStyle(shell).getPropertyValue("--document-safe-right").trim(),
         gutterDisplay: getComputedStyle(gutter).display,
-        tabLabels: Array.from(document.querySelectorAll(".right-panel-tab-label")).map((label) => ({
-          text: label.textContent?.trim() ?? "",
-          visible: label.getBoundingClientRect().width > 0,
-        })),
+        visibleTabLabelCount: document.querySelectorAll(".right-panel-tab-label").length,
         fileActionSize: Math.min(fileActionRect.width, fileActionRect.height),
         fileActionOpacity: getComputedStyle(fileAction).opacity,
       };
@@ -1307,16 +1306,17 @@ export async function run(ctx) {
     expect(mobilePanel?.backdropDisplay !== "none", "Mobile Project Context should block the document behind it.");
     expect(mobilePanel?.documentSafeRight === "0px", "Overlay panels should not shrink the document lane.");
     expect(mobilePanel?.gutterDisplay === "none", "Mobile editors should not paint collapsed gutter content.");
-    expect(
-      mobilePanel?.tabLabels.every((label) => label.visible && label.text.length > 0),
-      "Mobile Project Context should name each section instead of showing icon-only tabs.",
-    );
+    expect(mobilePanel?.visibleTabLabelCount === 0, "Mobile Project Context tabs should stay icon-only.");
     expect(
       mobilePanel?.fileActionSize >= 40 && mobilePanel?.fileActionOpacity === "1",
       "Mobile file actions should remain visible with touch-sized targets.",
     );
 
     await mobilePage.getByRole("button", { name: "Create", exact: true }).click();
+    expect(
+      (await mobilePage.locator(".right-file-create-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
+      "Project Context menus should use elevation without a static border.",
+    );
     expect(
       (await mobilePage.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1 &&
         (await mobilePage.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1,

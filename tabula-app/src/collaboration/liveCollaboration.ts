@@ -85,6 +85,8 @@ export type { ParsedRoomLocation, RoomSession, TabulaRoomAvailability } from "./
 
 export type ConnectionStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "failed";
 
+type SendPacketResult = "sent" | "offline" | "failed" | "discarded";
+
 export type LiveSelection = {
   documentId?: string;
   from: number;
@@ -315,7 +317,7 @@ export const createWorkspaceRoomRuntime = ({
   let envelopeVersion = 0;
   let closed = false;
   let hasHydratedWorkspace = false;
-  let outboundQueue = Promise.resolve();
+  let outboundQueue: Promise<SendPacketResult> = Promise.resolve("sent");
   let pendingLocalUpdate: Uint8Array | null = null;
   let localUpdateSendInFlight = false;
   let awarenessSendInFlight = false;
@@ -709,21 +711,25 @@ export const createWorkspaceRoomRuntime = ({
   const sendPacket = (packet: RoomWireDataPacket, volatile = false) => {
     if (packet.type === "sync.message" && packet.payload.byteLength > ROOM_WIRE_MAX_CRDT_STATE_BYTES) {
       notifyCapacityExceeded();
-      return Promise.resolve();
+      return Promise.resolve<SendPacketResult>("discarded");
     }
-    const task = outboundQueue.then(async () => {
-      if (closed || !roomKey || !transport?.connected) return;
+    const task: Promise<SendPacketResult> = outboundQueue.then(async () => {
+      if (closed || !roomKey || !transport?.connected) return "offline";
       const packets = encodeRoomWirePackets(packet, adapters.clock.createId);
       for (const plaintext of packets) {
-        if (closed || !transport?.connected) return;
+        if (closed || !transport?.connected) return "offline";
         envelopeVersion += 1;
         const envelope = await adapters.crypto.encryptEnvelope(roomKey, roomId, "room-event", envelopeVersion, plaintext);
-        if (closed || !transport?.connected) return;
+        if (closed || !transport?.connected) return "offline";
         if (volatile) transport.sendVolatileEnvelope(envelope);
         else transport.sendEnvelope(envelope);
       }
+      return "sent";
     });
-    outboundQueue = task.catch(() => emitInvalidMessage("A live collaboration update could not be sent."));
+    outboundQueue = task.catch(() => {
+      emitInvalidMessage("A live collaboration update could not be sent.");
+      return "failed";
+    });
     return outboundQueue;
   };
 
@@ -770,7 +776,7 @@ export const createWorkspaceRoomRuntime = ({
   };
 
   const flushLocalUpdates = () => {
-    if (closed || localUpdateSendInFlight || !pendingLocalUpdate) return;
+    if (closed || localUpdateSendInFlight || !pendingLocalUpdate || !transport?.connected) return;
     const update = pendingLocalUpdate;
     pendingLocalUpdate = null;
     localUpdateSendInFlight = true;
@@ -780,6 +786,12 @@ export const createWorkspaceRoomRuntime = ({
       type: "sync.message",
       senderId: currentIdentity.id,
       payload: encoding.toUint8Array(encoder),
+    }).then((result) => {
+      if (result === "offline" && !closed) {
+        pendingLocalUpdate = pendingLocalUpdate
+          ? Y.mergeUpdates([update, pendingLocalUpdate])
+          : update;
+      }
     }).finally(() => {
       localUpdateSendInFlight = false;
       flushLocalUpdates();
@@ -978,6 +990,7 @@ export const createWorkspaceRoomRuntime = ({
           setLocalAwareness();
           publishAwareness([awareness.clientID], false);
           sendSyncStep1();
+          flushLocalUpdates();
           if (checkpointGeneration === 0) void saveCheckpointNow();
           else scheduleCheckpointSave();
         },

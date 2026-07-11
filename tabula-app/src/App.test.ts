@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { COMMENT_ANCHOR_CONTEXT_LENGTH, getCommentRangeInText } from "./commentAnchors";
+import { getCommentRangeInText, mapCommentAnchorThroughPatches } from "./commentAnchors";
 import {
   createRoomWorkspaceState,
   createWorkspaceFile,
@@ -405,8 +405,6 @@ describe("project persistence", () => {
             authorColor: "#111111",
             quote: "Quoted source",
             sourceQuote: "Quoted source",
-            prefix: "",
-            suffix: " text.",
             selectionStart: 0,
             selectionEnd: 13,
             resolved: false,
@@ -429,8 +427,6 @@ describe("project persistence", () => {
     expect(restored?.commentsByFileId.local[0]).toMatchObject({
       quote: "Quoted source",
       sourceQuote: "Quoted source",
-      prefix: "",
-      suffix: " text.",
       selectionStart: 0,
       selectionEnd: 13,
       resolved: false,
@@ -448,111 +444,49 @@ describe("project persistence", () => {
 });
 
 describe("comment anchors", () => {
-  it("uses the stored selection range while the quote still matches", () => {
-    const sourceText = "Alpha quoted text omega.";
+  const repeatedText = "line 3 has -firs here\nline 6 has -firs here";
+  const comment = {
+    id: "comment",
+    body: "Review this.",
+    quote: "-firs",
+    sourceQuote: "-firs",
+    selectionStart: 33,
+    selectionEnd: 38,
+    createdAt: "2026-06-14T00:00:00.000Z",
+  };
 
-    expect(
-      getCommentRangeInText(sourceText, {
-        id: "comment",
-        body: "Review this.",
-        quote: "quoted text",
-        prefix: "Alpha ",
-        suffix: " omega.",
-        selectionStart: 6,
-        selectionEnd: 17,
-        createdAt: "2026-06-14T00:00:00.000Z",
-      }),
-    ).toEqual({ start: 6, end: 17 });
+  it("keeps a repeated quote attached to its captured range", () => {
+    expect(getCommentRangeInText(repeatedText, comment)).toEqual({ start: 33, end: 38 });
   });
 
-  it("repairs shifted offsets by matching prefix, quote, and suffix together", () => {
-    const sourceText = "Inserted lead.\nAlpha quoted text omega.";
-
-    expect(
-      getCommentRangeInText(sourceText, {
-        id: "comment",
-        body: "Review this.",
-        quote: "quoted text",
-        prefix: "Alpha ",
-        suffix: " omega.",
-        selectionStart: 6,
-        selectionEnd: 17,
-        createdAt: "2026-06-14T00:00:00.000Z",
-      }),
-    ).toEqual({ start: 21, end: 32 });
+  it("maps a captured range through text inserted before it", () => {
+    const mapped = mapCommentAnchorThroughPatches(
+      comment,
+      [{ from: 0, to: 0, insert: "Intro\n" }],
+      repeatedText.length,
+    );
+    expect(mapped).toMatchObject({ selectionStart: 39, selectionEnd: 44, anchorDetached: false });
   });
 
-  it("chooses the repeated quote with the strongest surrounding context match", () => {
-    const sourceText = "Intro repeated target end.\nBetter prefix target better suffix.";
-
-    expect(
-      getCommentRangeInText(sourceText, {
-        id: "comment",
-        body: "Review this.",
-        quote: "target",
-        prefix: "Better prefix ",
-        suffix: " better suffix.",
-        selectionStart: 0,
-        selectionEnd: 6,
-        createdAt: "2026-06-14T00:00:00.000Z",
-      }),
-    ).toEqual({ start: 41, end: 47 });
+  it("does not absorb text inserted directly outside the captured range", () => {
+    const mapped = mapCommentAnchorThroughPatches(
+      comment,
+      [
+        { from: 33, to: 33, insert: "before " },
+        { from: 38, to: 38, insert: " after" },
+      ],
+      repeatedText.length,
+    );
+    expect(mapped).toMatchObject({ selectionStart: 40, selectionEnd: 45 });
   });
 
-  it("repairs anchors after formatting shifts the stored selection offsets", () => {
-    const sourceText = "**Alpha _target_ omega**";
-
-    expect(
-      getCommentRangeInText(sourceText, {
-        id: "comment",
-        body: "Review this.",
-        quote: "target",
-        prefix: "Alpha _",
-        suffix: "_ omega",
-        selectionStart: 7,
-        selectionEnd: 13,
-        createdAt: "2026-06-14T00:00:00.000Z",
-      }),
-    ).toEqual({ start: 9, end: 15 });
-  });
-
-  it("uses the stored source quote when the rendered quote differs from Markdown source", () => {
-    const sourceText = "Alpha **target** omega.";
-
-    expect(
-      getCommentRangeInText(sourceText, {
-        id: "comment",
-        body: "Review this.",
-        quote: "Alpha target omega",
-        sourceQuote: "Alpha **target** omega",
-        prefix: "",
-        suffix: ".",
-        selectionStart: 0,
-        selectionEnd: 22,
-        createdAt: "2026-06-14T00:00:00.000Z",
-      }),
-    ).toEqual({ start: 0, end: 22 });
-  });
-
-  it("repairs shifted source quote anchors with surrounding source context", () => {
-    const sourceText = "Intro.\nAlpha **target** omega.";
-
-    expect(
-      getCommentRangeInText(sourceText, {
-        id: "comment",
-        body: "Review this.",
-        quote: "Alpha target omega",
-        sourceQuote: "Alpha **target** omega",
-        prefix: "",
-        suffix: ".",
-        selectionStart: 0,
-        selectionEnd: 22,
-        createdAt: "2026-06-14T00:00:00.000Z",
-      }),
-    ).toEqual({ start: 7, end: 29 });
-  });
-
-  it("exports the context length used when creating new anchors", () => {
-    expect(COMMENT_ANCHOR_CONTEXT_LENGTH).toBe(48);
+  it("detaches an anchor when its selected text is deleted", () => {
+    const mapped = mapCommentAnchorThroughPatches(
+      comment,
+      [{ from: 33, to: 38, insert: "" }],
+      repeatedText.length,
+    );
+    expect(mapped).toMatchObject({ anchorDetached: true });
+    expect(getCommentRangeInText(repeatedText, mapped)).toBeNull();
   });
 });

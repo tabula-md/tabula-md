@@ -15,6 +15,8 @@ type WorkspaceMenuCopy = {
     github: string;
   };
   aria: {
+    workspaceMenu: string;
+    workspaceActions: string;
     openX: string;
     openGithub: string;
   };
@@ -43,6 +45,10 @@ type WorkspaceMenuCopy = {
       inviteAgent: string;
       inviteAgentDescription: string;
       retrySession: string;
+      reconnectingTitle: string;
+      reconnectingDescription: string;
+      disconnectedTitle: string;
+      disconnectedDescription: string;
       nameLabel: string;
       nameAria: string;
       anonymousPlaceholder: string;
@@ -100,6 +106,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       github: "GitHub",
     },
     aria: {
+      workspaceMenu: "Workspace menu",
+      workspaceActions: "Workspace actions",
       openX: "Open Tabula.md on X",
       openGithub: "Open Tabula.md on GitHub",
     },
@@ -131,6 +139,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "Copy a room-aware prompt. The room URL is included only when you click.",
         retrySession: "Retry",
+        reconnectingTitle: "Reconnecting to live room",
+        reconnectingDescription: "Changes stay local until the room reconnects.",
+        disconnectedTitle: "Live room disconnected",
+        disconnectedDescription: "Reconnect before inviting people or agents.",
         nameLabel: "Your name",
         nameAria: "Your collaboration name",
         anonymousPlaceholder: "Anonymous",
@@ -172,6 +184,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       github: "GitHub",
     },
     aria: {
+      workspaceMenu: "작업공간 메뉴",
+      workspaceActions: "작업공간 작업",
       openX: "X에서 Tabula.md 열기",
       openGithub: "GitHub에서 Tabula.md 열기",
     },
@@ -203,6 +217,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "room용 프롬프트를 복사합니다. room URL은 이 버튼을 눌렀을 때만 포함됩니다.",
         retrySession: "다시 연결",
+        reconnectingTitle: "실시간 room에 다시 연결하는 중",
+        reconnectingDescription: "다시 연결될 때까지 변경 내용은 이 기기에 유지됩니다.",
+        disconnectedTitle: "실시간 room 연결이 끊어졌습니다",
+        disconnectedDescription: "사람이나 에이전트를 초대하기 전에 다시 연결하세요.",
         nameLabel: "내 이름",
         nameAria: "협업에서 표시할 이름",
         anonymousPlaceholder: "익명",
@@ -244,6 +262,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       github: "GitHub",
     },
     aria: {
+      workspaceMenu: "ワークスペースメニュー",
+      workspaceActions: "ワークスペース操作",
       openX: "X で Tabula.md を開く",
       openGithub: "GitHub で Tabula.md を開く",
     },
@@ -275,6 +295,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "room 用プロンプトをコピーします。room URL はこのボタンを押したときだけ含まれます。",
         retrySession: "再試行",
+        reconnectingTitle: "ライブ共同編集ルームに再接続中",
+        reconnectingDescription: "再接続するまで変更はこの端末に保持されます。",
+        disconnectedTitle: "ライブ共同編集ルームから切断されました",
+        disconnectedDescription: "人やエージェントを招待する前に再接続してください。",
         nameLabel: "あなたの名前",
         nameAria: "共同編集で表示する名前",
         anonymousPlaceholder: "匿名",
@@ -319,6 +343,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       github: "GitHub",
     },
     aria: {
+      workspaceMenu: "工作区菜单",
+      workspaceActions: "工作区操作",
       openX: "在 X 打开 Tabula.md",
       openGithub: "在 GitHub 打开 Tabula.md",
     },
@@ -348,6 +374,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "复制面向 room 的提示。只有点击此按钮时才会包含 room URL。",
         retrySession: "重试",
+        reconnectingTitle: "正在重新连接实时协作房间",
+        reconnectingDescription: "重新连接前，更改会保留在此设备上。",
+        disconnectedTitle: "实时协作房间已断开连接",
+        disconnectedDescription: "邀请用户或代理前请先重新连接。",
         nameLabel: "你的名字",
         nameAria: "协作显示名称",
         anonymousPlaceholder: "匿名",
@@ -388,6 +418,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       github: "GitHub",
     },
     aria: {
+      workspaceMenu: "Menú del espacio",
+      workspaceActions: "Acciones del espacio",
       openX: "Abrir Tabula.md en X",
       openGithub: "Abrir Tabula.md en GitHub",
     },
@@ -419,6 +451,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "Copia un prompt para la sala. La URL de la sala solo se incluye al hacer clic.",
         retrySession: "Reintentar",
+        reconnectingTitle: "Reconectando a la sala en vivo",
+        reconnectingDescription: "Los cambios permanecen en este dispositivo hasta reconectar.",
+        disconnectedTitle: "Sala en vivo desconectada",
+        disconnectedDescription: "Vuelve a conectar antes de invitar a personas o agentes.",
         nameLabel: "Tu nombre",
         nameAria: "Tu nombre de colaboración",
         anonymousPlaceholder: "Anónimo",
@@ -462,6 +498,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       github: "GitHub",
     },
     aria: {
+      workspaceMenu: "Menu de l’espace",
+      workspaceActions: "Actions de l’espace",
       openX: "Ouvrir Tabula.md sur X",
       openGithub: "Ouvrir Tabula.md sur GitHub",
     },
@@ -493,6 +531,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "Copie un prompt pour la room. L'URL de la room est ajoutée seulement au clic.",
         retrySession: "Réessayer",
+        reconnectingTitle: "Reconnexion à l’espace en direct",
+        reconnectingDescription: "Les modifications restent sur cet appareil jusqu’à la reconnexion.",
+        disconnectedTitle: "Espace en direct déconnecté",
+        disconnectedDescription: "Reconnectez-vous avant d’inviter des personnes ou des agents.",
         nameLabel: "Votre nom",
         nameAria: "Votre nom de collaboration",
         anonymousPlaceholder: "Anonyme",
@@ -536,6 +578,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       github: "GitHub",
     },
     aria: {
+      workspaceMenu: "Workspace-Menü",
+      workspaceActions: "Workspace-Aktionen",
       openX: "Tabula.md auf X öffnen",
       openGithub: "Tabula.md auf GitHub öffnen",
     },
@@ -567,6 +611,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "Kopiert einen Room-Prompt. Die Room-URL wird nur beim Klick eingefügt.",
         retrySession: "Erneut versuchen",
+        reconnectingTitle: "Live-Raum wird erneut verbunden",
+        reconnectingDescription: "Änderungen bleiben bis zur Wiederverbindung auf diesem Gerät.",
+        disconnectedTitle: "Verbindung zum Live-Raum getrennt",
+        disconnectedDescription: "Stellen Sie die Verbindung wieder her, bevor Sie Personen oder Agenten einladen.",
         nameLabel: "Dein Name",
         nameAria: "Dein Name für die Zusammenarbeit",
         anonymousPlaceholder: "Anonym",
@@ -611,6 +659,13 @@ export type WorkspaceChromeCopy = {
     openProjectContext: string;
     closeProjectContext: string;
     collaborators: string;
+    agent: string;
+    inWorkspace: string;
+    agentInWorkspace: string;
+    viewing: (name: string) => string;
+    agentViewing: (name: string) => string;
+    line: (lineNumber: number) => string;
+    inThisFile: string;
     liveWith: (names: string) => string;
     liveAs: (name: string) => string;
   };
@@ -620,9 +675,6 @@ export type WorkspaceChromeCopy = {
     split: string;
     edit: string;
     preview: string;
-    copyFile: string;
-    copyCurrentFile: string;
-    nothingToCopy: string;
     editorControls: string;
     viewControls: string;
     layoutControls: string;
@@ -652,8 +704,6 @@ export type WorkspaceChromeCopy = {
     roomOffline: string;
     word: string;
     words: string;
-    comment: string;
-    comments: string;
     line: string;
     lines: string;
     character: string;
@@ -670,6 +720,13 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       openProjectContext: "Open Project Context",
       closeProjectContext: "Close Project Context",
       collaborators: "Collaborators",
+      agent: "Agent",
+      inWorkspace: "In workspace",
+      agentInWorkspace: "Agent in workspace",
+      viewing: (name) => `Viewing ${name}`,
+      agentViewing: (name) => `Agent viewing ${name}`,
+      line: (lineNumber) => `Line ${lineNumber}`,
+      inThisFile: "In this file",
       liveWith: (names) => `Live with ${names}`,
       liveAs: (name) => `Live as ${name}`,
     },
@@ -679,9 +736,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       split: "Split",
       edit: "Edit",
       preview: "Preview",
-      copyFile: "Copy File",
-      copyCurrentFile: "Copy current file",
-      nothingToCopy: "Add content to copy",
       editorControls: "Editor controls",
       viewControls: "View controls",
       layoutControls: "Layout controls",
@@ -711,8 +765,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       roomOffline: "Disconnected",
       word: "word",
       words: "words",
-      comment: "comment",
-      comments: "comments",
       line: "line",
       lines: "lines",
       character: "character",
@@ -727,6 +779,13 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       openProjectContext: "프로젝트 컨텍스트 열기",
       closeProjectContext: "프로젝트 컨텍스트 닫기",
       collaborators: "협업자",
+      agent: "에이전트",
+      inWorkspace: "워크스페이스에 있음",
+      agentInWorkspace: "에이전트가 워크스페이스에 있음",
+      viewing: (name) => `${name} 보는 중`,
+      agentViewing: (name) => `에이전트가 ${name} 보는 중`,
+      line: (lineNumber) => `${lineNumber}줄`,
+      inThisFile: "이 파일에 있음",
       liveWith: (names) => `${names}와 협업 중`,
       liveAs: (name) => `${name}으로 접속 중`,
     },
@@ -736,9 +795,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       split: "분할",
       edit: "편집",
       preview: "미리보기",
-      copyFile: "파일 복사",
-      copyCurrentFile: "현재 파일 복사",
-      nothingToCopy: "복사할 내용을 입력하세요",
       editorControls: "에디터 컨트롤",
       viewControls: "보기 컨트롤",
       layoutControls: "레이아웃 컨트롤",
@@ -768,8 +824,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       roomOffline: "연결 끊김",
       word: "단어",
       words: "단어",
-      comment: "댓글",
-      comments: "댓글",
       line: "줄",
       lines: "줄",
       character: "글자",
@@ -784,6 +838,13 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       openProjectContext: "プロジェクトコンテキストを開く",
       closeProjectContext: "プロジェクトコンテキストを閉じる",
       collaborators: "共同編集者",
+      agent: "エージェント",
+      inWorkspace: "ワークスペース内",
+      agentInWorkspace: "エージェントがワークスペース内にいます",
+      viewing: (name) => `${name} を表示中`,
+      agentViewing: (name) => `エージェントが ${name} を表示中`,
+      line: (lineNumber) => `${lineNumber} 行目`,
+      inThisFile: "このファイル内",
       liveWith: (names) => `${names} と共同編集中`,
       liveAs: (name) => `${name} として参加中`,
     },
@@ -793,9 +854,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       split: "分割",
       edit: "編集",
       preview: "プレビュー",
-      copyFile: "ファイルをコピー",
-      copyCurrentFile: "現在のファイルをコピー",
-      nothingToCopy: "コピーする内容を入力してください",
       editorControls: "エディター設定",
       viewControls: "表示設定",
       layoutControls: "レイアウト設定",
@@ -825,8 +883,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       roomOffline: "切断されました",
       word: "語",
       words: "語",
-      comment: "コメント",
-      comments: "コメント",
       line: "行",
       lines: "行",
       character: "文字",
@@ -841,6 +897,13 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       openProjectContext: "打开项目上下文",
       closeProjectContext: "关闭项目上下文",
       collaborators: "协作者",
+      agent: "代理",
+      inWorkspace: "在工作区中",
+      agentInWorkspace: "代理在工作区中",
+      viewing: (name) => `正在查看 ${name}`,
+      agentViewing: (name) => `代理正在查看 ${name}`,
+      line: (lineNumber) => `第 ${lineNumber} 行`,
+      inThisFile: "在此文件中",
       liveWith: (names) => `正在与 ${names} 协作`,
       liveAs: (name) => `以 ${name} 加入`,
     },
@@ -850,9 +913,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       split: "分屏",
       edit: "编辑",
       preview: "预览",
-      copyFile: "复制文件",
-      copyCurrentFile: "复制当前文件",
-      nothingToCopy: "请输入可复制的内容",
       editorControls: "编辑器控制",
       viewControls: "视图控制",
       layoutControls: "布局控制",
@@ -882,8 +942,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       roomOffline: "已断开连接",
       word: "词",
       words: "词",
-      comment: "评论",
-      comments: "评论",
       line: "行",
       lines: "行",
       character: "字符",
@@ -898,6 +956,13 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       openProjectContext: "Abrir contexto del proyecto",
       closeProjectContext: "Cerrar contexto del proyecto",
       collaborators: "Colaboradores",
+      agent: "Agente",
+      inWorkspace: "En el espacio",
+      agentInWorkspace: "Agente en el espacio",
+      viewing: (name) => `Viendo ${name}`,
+      agentViewing: (name) => `Agente viendo ${name}`,
+      line: (lineNumber) => `Línea ${lineNumber}`,
+      inThisFile: "En este archivo",
       liveWith: (names) => `En vivo con ${names}`,
       liveAs: (name) => `En vivo como ${name}`,
     },
@@ -907,9 +972,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       split: "Dividir",
       edit: "Editar",
       preview: "Vista previa",
-      copyFile: "Copiar archivo",
-      copyCurrentFile: "Copiar archivo actual",
-      nothingToCopy: "Agrega contenido para copiar",
       editorControls: "Controles del editor",
       viewControls: "Controles de vista",
       layoutControls: "Controles de diseño",
@@ -939,8 +1001,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       roomOffline: "Desconectado",
       word: "palabra",
       words: "palabras",
-      comment: "comentario",
-      comments: "comentarios",
       line: "línea",
       lines: "líneas",
       character: "carácter",
@@ -955,6 +1015,13 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       openProjectContext: "Ouvrir le contexte du projet",
       closeProjectContext: "Fermer le contexte du projet",
       collaborators: "Collaborateurs",
+      agent: "Agent",
+      inWorkspace: "Dans l’espace",
+      agentInWorkspace: "Agent dans l’espace",
+      viewing: (name) => `Affiche ${name}`,
+      agentViewing: (name) => `Agent sur ${name}`,
+      line: (lineNumber) => `Ligne ${lineNumber}`,
+      inThisFile: "Dans ce fichier",
       liveWith: (names) => `En direct avec ${names}`,
       liveAs: (name) => `En direct en tant que ${name}`,
     },
@@ -964,9 +1031,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       split: "Scinder",
       edit: "Modifier",
       preview: "Aperçu",
-      copyFile: "Copier le fichier",
-      copyCurrentFile: "Copier le fichier actuel",
-      nothingToCopy: "Ajoutez du contenu à copier",
       editorControls: "Contrôles de l’éditeur",
       viewControls: "Contrôles d’affichage",
       layoutControls: "Contrôles de mise en page",
@@ -996,8 +1060,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       roomOffline: "Déconnecté",
       word: "mot",
       words: "mots",
-      comment: "commentaire",
-      comments: "commentaires",
       line: "ligne",
       lines: "lignes",
       character: "caractère",
@@ -1012,6 +1074,13 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       openProjectContext: "Projektkontext öffnen",
       closeProjectContext: "Projektkontext schließen",
       collaborators: "Mitwirkende",
+      agent: "Agent",
+      inWorkspace: "Im Workspace",
+      agentInWorkspace: "Agent im Workspace",
+      viewing: (name) => `Zeigt ${name} an`,
+      agentViewing: (name) => `Agent zeigt ${name} an`,
+      line: (lineNumber) => `Zeile ${lineNumber}`,
+      inThisFile: "In dieser Datei",
       liveWith: (names) => `Live mit ${names}`,
       liveAs: (name) => `Live als ${name}`,
     },
@@ -1021,9 +1090,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       split: "Teilen",
       edit: "Bearbeiten",
       preview: "Vorschau",
-      copyFile: "Datei kopieren",
-      copyCurrentFile: "Aktuelle Datei kopieren",
-      nothingToCopy: "Inhalt zum Kopieren hinzufügen",
       editorControls: "Editorsteuerung",
       viewControls: "Ansichtssteuerung",
       layoutControls: "Layoutsteuerung",
@@ -1053,8 +1119,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       roomOffline: "Getrennt",
       word: "Wort",
       words: "Wörter",
-      comment: "Kommentar",
-      comments: "Kommentare",
       line: "Zeile",
       lines: "Zeilen",
       character: "Zeichen",

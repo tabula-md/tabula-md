@@ -35,22 +35,22 @@ export function EmptyFileState({
         <p>{copy.tagline}</p>
         <div className="empty-file-actions">
           <button type="button" onClick={onNewFile} className="empty-file-action">
-            <FilePlus2 size={15} />
+            <FilePlus2 size={16} />
             <span>{copy.newFile}</span>
             <span className="empty-file-action-hint">{appShortcutPrefix}+N</span>
           </button>
           <button type="button" onClick={onOpenFile} className="empty-file-action">
-            <Upload size={15} />
+            <Upload size={16} />
             <span>{copy.openFile}</span>
             <span className="empty-file-action-hint">{appShortcutPrefix}+O</span>
           </button>
           <button type="button" onClick={onBrowseFiles} className="empty-file-action">
-            <FolderOpen size={15} />
+            <FolderOpen size={16} />
             <span>{copy.browseFiles}</span>
             <span className="empty-file-action-hint">{appShortcutPrefix}+F</span>
           </button>
           <button type="button" onClick={onOpenHelp} className="empty-file-action">
-            <CircleHelp size={15} />
+            <CircleHelp size={16} />
             <span>{copy.help}</span>
             <span className="empty-file-action-hint">?</span>
           </button>

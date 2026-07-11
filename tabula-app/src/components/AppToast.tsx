@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 
 type AppToastProps = {
+  dismissLabel: string;
   message: string;
   tone?: "error" | "neutral";
   actionLabel?: string;
@@ -12,6 +13,7 @@ type AppToastProps = {
 };
 
 export function AppToast({
+  dismissLabel,
   message,
   tone = "neutral",
   actionLabel,
@@ -63,7 +65,7 @@ export function AppToast({
             {actionLabel}
           </button>
         )}
-        <button className="app-toast-dismiss" type="button" aria-label="Dismiss notification" onClick={onDismiss}>
+        <button className="app-toast-dismiss" type="button" aria-label={dismissLabel} onClick={onDismiss}>
           <X size={14} />
         </button>
       </div>

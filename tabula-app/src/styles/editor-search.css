@@ -1,56 +1,53 @@
 .document-search-row {
   position: relative;
-  z-index: 12;
+  z-index: var(--layer-popover);
   grid-column: 1;
   grid-row: 2;
   display: grid;
   align-items: center;
   width: var(--document-chrome-width);
   min-width: 0;
-  min-height: 40px;
+  min-height: 50px;
   margin-left: var(--document-lane-margin-left);
   margin-right: var(--document-lane-margin-right);
-  padding: 4px 0;
+  padding: 5px 0;
   background: transparent;
 }
 
 .document-search-row.with-replace {
-  min-height: 76px;
+  min-height: 94px;
 }
 
 .document-search-bar {
   display: grid;
-  grid-template-rows: 32px;
+  grid-template-rows: var(--control-size-row);
   gap: 6px;
-  width: 100%;
-  min-height: 32px;
-  padding: 0;
-  border-radius: 0;
+  width: min(100%, 760px);
+  min-height: var(--control-size-row);
+  margin: 0 auto;
+  padding: 4px;
+  border-radius: var(--radius-surface);
   color: var(--text-soft);
-  background: transparent;
+  background: var(--surface-muted);
   box-shadow: none;
 }
 
 .document-search-bar.with-replace {
-  grid-template-rows: repeat(2, 32px);
-  min-height: 70px;
+  grid-template-rows: repeat(2, var(--control-size-row));
+  min-height: 74px;
 }
 
 .document-search-line {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) auto auto auto auto auto auto;
+  grid-template-columns: minmax(160px, 1fr) auto;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  min-height: 32px;
-}
-
-.document-search-line.without-replace-toggle {
-  grid-template-columns: minmax(120px, 1fr) auto auto auto auto;
+  min-height: var(--control-size-row);
 }
 
 .document-replace-line {
-  grid-template-columns: minmax(120px, 1fr) auto auto;
+  grid-template-columns: minmax(160px, 1fr) auto;
 }
 
 .document-search-field {
@@ -59,29 +56,29 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  height: 30px;
-  padding: 0 4px;
+  height: var(--control-size-row);
+  padding: 0 8px;
+  border-radius: var(--radius-control);
   color: var(--text-soft);
-  background: transparent;
+  background: var(--surface-workbench);
 }
 
 .document-search-field input {
   appearance: none;
   width: 100%;
-  height: 30px;
+  height: var(--control-size-row);
   min-width: 0;
   padding: 0;
   border: 0;
-  outline: 0;
   color: var(--text-primary);
   background: transparent;
-  font-size: 13px;
+  font-size: var(--font-ui-body);
 }
 
 .document-search-count {
   min-width: 42px;
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: var(--font-ui-secondary);
   text-align: right;
   white-space: nowrap;
 }
@@ -90,13 +87,17 @@
   min-width: 42px;
 }
 
-.document-search-field-spacer {
-  width: 80px;
-}
-
 .document-search-options {
   display: flex;
   align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.document-search-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 2px;
   min-width: 0;
 }
@@ -109,14 +110,14 @@
   padding: 0;
   color: var(--text-soft);
   background: transparent;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
 }
 
 .document-search-bar .document-search-options .document-search-option {
-  width: 26px;
-  height: 24px;
-  font-size: 12px;
-  font-weight: 680;
+  width: var(--control-size-compact);
+  height: var(--control-size-compact);
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-strong);
   letter-spacing: 0;
 }
 
@@ -194,5 +195,47 @@
 
   .file-shell.with-search-row:not(.with-format-toolbar) .file-status-bar {
     grid-row: 3;
+  }
+}
+
+@media (max-width: 560px) {
+  .document-search-row {
+    min-height: 102px;
+  }
+
+  .document-search-row.with-replace {
+    min-height: 202px;
+  }
+
+  .document-search-line {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: calc(var(--control-size-touch) * 2 + 4px);
+  }
+
+  .document-search-bar,
+  .document-search-field,
+  .document-search-field input {
+    min-height: 0;
+  }
+
+  .document-search-bar.with-replace {
+    grid-template-rows: repeat(2, auto);
+    min-height: 0;
+  }
+
+  .document-search-field,
+  .document-search-field input {
+    height: var(--control-size-touch);
+  }
+
+  .document-search-actions {
+    height: var(--control-size-touch);
+    justify-content: flex-end;
+  }
+
+  .document-search-bar button,
+  .document-search-bar .document-search-options .document-search-option {
+    width: var(--control-size-touch);
+    height: var(--control-size-touch);
   }
 }

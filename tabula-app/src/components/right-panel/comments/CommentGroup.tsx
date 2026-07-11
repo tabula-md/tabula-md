@@ -2,11 +2,12 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { stripMarkdownExtension } from "@tabula-md/tabula";
 import type { FileComment } from "../../../workspaceStorage";
 import { CommentCard } from "./CommentCard";
-import type { FormatCommentDate, RightPanelCommentGroup } from "./types";
+import type { FormatCommentDate, RightPanelCommentGroup, RightPanelCommentsCopy } from "./types";
 
 type CommentGroupProps = {
   group: RightPanelCommentGroup;
   activeFileId: string;
+  copy: RightPanelCommentsCopy;
   hideFileHeader?: boolean;
   variant?: "open" | "resolved";
   activeCommentId?: string | null;
@@ -29,6 +30,7 @@ type CommentGroupProps = {
 export function CommentGroup({
   group,
   activeFileId,
+  copy,
   hideFileHeader = false,
   variant = "open",
   activeCommentId,
@@ -62,9 +64,8 @@ export function CommentGroup({
           aria-expanded={!fileCommentsCollapsed}
           onClick={() => onToggleCommentFileCollapsed(group.file.id)}
         >
-          {fileCommentsCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+          {fileCommentsCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
           <span className="right-row-label">{fileLabel}</span>
-          <small className="right-row-badge">{group.comments.length}</small>
         </button>
       )}
       {!commentsCollapsed && (
@@ -73,6 +74,7 @@ export function CommentGroup({
             <CommentCard
               fileId={group.file.id}
               comment={comment}
+              copy={copy}
               isActive={comment.id === activeCommentId}
               isReplying={activeReplyCommentId === comment.id}
               repliesCollapsed={collapsedReplyIds.has(comment.id)}

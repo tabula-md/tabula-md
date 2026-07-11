@@ -1,6 +1,7 @@
 import {
   type ReactNode,
   type RefObject,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -9,10 +10,8 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Copy,
   Eye,
   ListChecks,
-  MoreHorizontal,
   PencilLine,
   Replace,
   ReplaceAll,
@@ -31,6 +30,8 @@ import {
 } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
+import { useDismissibleMenu } from "../hooks/useDismissibleMenu";
+import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 
 type DocumentControlsProps = {
   activeViewMode: FileViewMode;
@@ -38,11 +39,9 @@ type DocumentControlsProps = {
   activeLineWrapping: boolean;
   activeLineNumbers: boolean;
   activeSyncScrolling: boolean;
-  canCopyFile: boolean;
   centerPopover: CenterPopover;
   language: WorkspaceLanguage;
   searchOpen: boolean;
-  onCopyFile: () => void;
   onSetViewMode: (viewMode: FileViewMode) => void;
   onToggleSearch: () => void;
   onToggleViewOptions: () => void;
@@ -84,11 +83,9 @@ export function DocumentControls({
   activeLineWrapping,
   activeLineNumbers,
   activeSyncScrolling,
-  canCopyFile,
   centerPopover,
   language,
   searchOpen,
-  onCopyFile,
   onSetViewMode,
   onToggleSearch,
   onToggleViewOptions,
@@ -97,9 +94,8 @@ export function DocumentControls({
   onToggleLineWrapping,
   onToggleLineNumbers,
 }: DocumentControlsProps) {
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement | null>(null);
-  const moreButtonRef = useRef<HTMLButtonElement | null>(null);
+  const viewPopoverRef = useRef<HTMLElement | null>(null);
+  const viewButtonRef = useRef<HTMLButtonElement | null>(null);
   const copy = getWorkspaceChromeCopy(language).documentControls;
   const controls = buildDocumentControlsModel({
     activeLineNumbers,
@@ -107,32 +103,18 @@ export function DocumentControls({
     activeReadingWidth,
     activeSyncScrolling,
     activeViewMode,
-    canCopyFile,
     copy,
   });
-
-  useEffect(() => {
-    if (!moreOpen) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!(event.target instanceof Node) || moreRef.current?.contains(event.target)) return;
-      setMoreOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      setMoreOpen(false);
-      window.requestAnimationFrame(() => moreButtonRef.current?.focus());
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [moreOpen]);
+  const closeViewPopover = useCallback(() => {
+    if (centerPopover === "view") onToggleViewOptions();
+  }, [centerPopover, onToggleViewOptions]);
+  useDismissibleMenu({
+    autoFocus: false,
+    menuRef: viewPopoverRef,
+    onClose: closeViewPopover,
+    open: centerPopover === "view",
+    triggerRef: viewButtonRef,
+  });
 
   return (
     <div className="document-controls-wrap">
@@ -143,8 +125,8 @@ export function DocumentControls({
               key={option.viewMode}
               className={`tool-button ${option.active ? "active" : ""}`}
               type="button"
-              title={option.label}
               aria-label={option.label}
+              data-tooltip={option.label}
               aria-pressed={option.active}
               data-view-mode={option.viewMode}
               onClick={() => onSetViewMode(option.viewMode)}
@@ -154,10 +136,13 @@ export function DocumentControls({
           ))}
         </div>
         <button
+          ref={viewButtonRef}
           className={`tool-button ${centerPopover === "view" ? "active" : ""}`}
           type="button"
-          title={controls.controlsLabel}
           aria-label={controls.controlsLabel}
+          data-tooltip={controls.controlsLabel}
+          aria-haspopup="dialog"
+          aria-expanded={centerPopover === "view"}
           onClick={onToggleViewOptions}
         >
           <SlidersHorizontal size={16} />
@@ -165,47 +150,19 @@ export function DocumentControls({
         <button
           className={`tool-button ${searchOpen ? "active" : ""}`}
           type="button"
-          title={controls.searchLabel}
           aria-label={controls.searchLabel}
+          data-tooltip={controls.searchLabel}
           onClick={onToggleSearch}
         >
           <Search size={16} />
         </button>
-        <div className="document-more-menu-wrap" ref={moreRef}>
-          <button
-            ref={moreButtonRef}
-            className={`tool-button ${moreOpen ? "active" : ""}`}
-            type="button"
-            title="More document actions"
-            aria-label="More document actions"
-            aria-haspopup="menu"
-            aria-expanded={moreOpen}
-            onClick={() => setMoreOpen((open) => !open)}
-          >
-            <MoreHorizontal size={16} />
-          </button>
-          {moreOpen && (
-            <div className="document-more-menu" role="menu" aria-label="More document actions">
-              <button
-                type="button"
-                role="menuitem"
-                disabled={!canCopyFile}
-                onClick={() => {
-                  onCopyFile();
-                  setMoreOpen(false);
-                }}
-              >
-                <Copy size={15} />
-                <span>{controls.copyButtonAriaLabel}</span>
-              </button>
-            </div>
-          )}
-        </div>
       </nav>
 
       {centerPopover === "view" && (
         <section
-          className="document-controls-popover editor-controls-popover"
+          ref={viewPopoverRef}
+          className="document-controls-popover editor-controls-popover ui-popover"
+          role="dialog"
           aria-label={controls.controlsLabel}
         >
           <div className="editor-controls-section">
@@ -291,6 +248,7 @@ export function DocumentSearchBar({
   onCloseSearch,
 }: DocumentSearchBarProps) {
   const copy = getWorkspaceChromeCopy(language).documentControls;
+  const surfaceCopy = getWorkspaceSurfaceCopy(language);
   const hasSearchQuery = searchQuery.trim().length > 0;
   const hasSearchError = Boolean(searchError);
   const hasMatches = !hasSearchError && searchMatchCount > 0;
@@ -317,7 +275,7 @@ export function DocumentSearchBar({
       <div className={`document-search-bar ${replaceOpen && replaceAvailable ? "with-replace" : ""}`}>
         <div className={`document-search-line ${replaceAvailable ? "" : "without-replace-toggle"}`}>
           <div className="document-search-field">
-            <Search size={15} />
+            <Search size={16} />
             <input
               type="text"
               role="searchbox"
@@ -340,11 +298,11 @@ export function DocumentSearchBar({
               placeholder={copy.search}
               aria-label={copy.search}
             />
-            <div className="document-search-options" aria-label="Search options">
+            <div className="document-search-options" aria-label={surfaceCopy.searchOptions}>
               <button
                 type="button"
                 className={`document-search-option ${searchOptions.caseSensitive ? "active" : ""}`}
-                title={copy.matchCase}
+                data-tooltip={copy.matchCase}
                 aria-label={copy.matchCase}
                 aria-pressed={searchOptions.caseSensitive}
                 onClick={() => onToggleSearchOption("caseSensitive")}
@@ -354,7 +312,7 @@ export function DocumentSearchBar({
               <button
                 type="button"
                 className={`document-search-option ${searchOptions.wholeWord ? "active" : ""}`}
-                title={copy.matchWholeWord}
+                data-tooltip={copy.matchWholeWord}
                 aria-label={copy.matchWholeWord}
                 aria-pressed={searchOptions.wholeWord}
                 onClick={() => onToggleSearchOption("wholeWord")}
@@ -364,7 +322,7 @@ export function DocumentSearchBar({
               <button
                 type="button"
                 className={`document-search-option ${searchOptions.regexp ? "active" : ""}`}
-                title={copy.useRegularExpression}
+                data-tooltip={copy.useRegularExpression}
                 aria-label={copy.useRegularExpression}
                 aria-pressed={searchOptions.regexp}
                 onClick={() => onToggleSearchOption("regexp")}
@@ -373,65 +331,67 @@ export function DocumentSearchBar({
               </button>
             </div>
           </div>
-          {replaceAvailable && (
+          <div className="document-search-actions">
+            {replaceAvailable && (
+              <button
+                type="button"
+                className={replaceOpen ? "active" : ""}
+                data-tooltip={copy.toggleReplace}
+                aria-label={copy.toggleReplace}
+                aria-pressed={replaceOpen}
+                onClick={() => setReplaceOpen((nextReplaceOpen) => !nextReplaceOpen)}
+              >
+                <Replace size={14} />
+              </button>
+            )}
+            {replaceAvailable && (
+              <button
+                type="button"
+                data-tooltip={copy.selectAllMatches}
+                aria-label={copy.selectAllMatches}
+                disabled={!hasMatches}
+                onClick={onSelectAllSearchMatches}
+              >
+                <ListChecks size={14} />
+              </button>
+            )}
             <button
               type="button"
-              className={replaceOpen ? "active" : ""}
-              title={copy.toggleReplace}
-              aria-label={copy.toggleReplace}
-              aria-pressed={replaceOpen}
-              onClick={() => setReplaceOpen((nextReplaceOpen) => !nextReplaceOpen)}
-            >
-              <Replace size={14} />
-            </button>
-          )}
-          {replaceAvailable && (
-            <button
-              type="button"
-              title={copy.selectAllMatches}
-              aria-label={copy.selectAllMatches}
+              data-tooltip={copy.previousMatch}
+              aria-label={copy.previousMatch}
               disabled={!hasMatches}
-              onClick={onSelectAllSearchMatches}
+              onClick={() => onGoToSearchMatch(-1)}
             >
-              <ListChecks size={14} />
+              <ChevronLeft size={14} />
             </button>
-          )}
-          <button
-            type="button"
-            title={copy.previousMatch}
-            aria-label={copy.previousMatch}
-            disabled={!hasMatches}
-            onClick={() => onGoToSearchMatch(-1)}
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <button
-            type="button"
-            title={copy.nextMatch}
-            aria-label={copy.nextMatch}
-            disabled={!hasMatches}
-            onClick={() => onGoToSearchMatch(1)}
-          >
-            <ChevronRight size={14} />
-          </button>
-          <span className="document-search-count">
-            {hasSearchQuery && hasMatches && activeSearchMatchIndex >= 0
-              ? `${activeSearchMatchIndex + 1}/${searchMatchCount}`
-              : `0/${hasSearchQuery && !hasSearchError ? searchMatchCount : 0}`}
-          </span>
-          <button
-            type="button"
-            title={copy.closeSearch}
-            aria-label={copy.closeSearch}
-            onClick={onCloseSearch}
-          >
-            <X size={14} />
-          </button>
+            <button
+              type="button"
+              data-tooltip={copy.nextMatch}
+              aria-label={copy.nextMatch}
+              disabled={!hasMatches}
+              onClick={() => onGoToSearchMatch(1)}
+            >
+              <ChevronRight size={14} />
+            </button>
+            <span className="document-search-count">
+              {hasSearchQuery && hasMatches && activeSearchMatchIndex >= 0
+                ? `${activeSearchMatchIndex + 1}/${searchMatchCount}`
+                : `0/${hasSearchQuery && !hasSearchError ? searchMatchCount : 0}`}
+            </span>
+            <button
+              type="button"
+              data-tooltip={copy.closeSearch}
+              aria-label={copy.closeSearch}
+              onClick={onCloseSearch}
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
         {replaceOpen && replaceAvailable && (
           <div className="document-search-line document-replace-line">
             <div className="document-search-field">
-              <Replace size={15} />
+              <Replace size={16} />
               <input
                 ref={replaceInputRef}
                 type="text"
@@ -455,26 +415,27 @@ export function DocumentSearchBar({
                 placeholder={copy.replaceWith}
                 aria-label={copy.replaceWith}
               />
-              <span className="document-search-field-spacer" aria-hidden="true" />
             </div>
-            <button
-              type="button"
-              title={copy.replaceMatch}
-              aria-label={copy.replaceMatch}
-              disabled={!hasMatches}
-              onClick={onReplaceCurrentMatch}
-            >
-              <Replace size={14} />
-            </button>
-            <button
-              type="button"
-              title={copy.replaceAllMatches}
-              aria-label={copy.replaceAllMatches}
-              disabled={!hasMatches}
-              onClick={onReplaceAllMatches}
-            >
-              <ReplaceAll size={14} />
-            </button>
+            <div className="document-search-actions document-replace-actions">
+              <button
+                type="button"
+                data-tooltip={copy.replaceMatch}
+                aria-label={copy.replaceMatch}
+                disabled={!hasMatches}
+                onClick={onReplaceCurrentMatch}
+              >
+                <Replace size={14} />
+              </button>
+              <button
+                type="button"
+                data-tooltip={copy.replaceAllMatches}
+                aria-label={copy.replaceAllMatches}
+                disabled={!hasMatches}
+                onClick={onReplaceAllMatches}
+              >
+                <ReplaceAll size={14} />
+              </button>
+            </div>
           </div>
         )}
       </div>

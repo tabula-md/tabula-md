@@ -271,8 +271,7 @@ describe("workspace room runtime", () => {
     expect(connection.getEditorBinding()).toBeNull();
     expect(connection.getSnapshot().editorBinding).toBeNull();
     connection.setActiveDocument({ documentId: "doc-2", fileTitle: "Notes.md" });
-    await waitForTasks();
-    expect(transport.sent.length).toBeGreaterThan(0);
+    await vi.waitFor(() => expect(transport.sent.length).toBeGreaterThan(0));
     expect(connection.getSnapshot().editorBinding?.yText.toString()).toBe("Notes");
     connection.disconnect();
   });
@@ -654,6 +653,56 @@ describe("workspace room runtime", () => {
       expect(last(peerSnapshots)?.documents).toEqual({ "doc-b": "current" });
       expect(last(peerSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(false);
       expect(last(hostSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(false);
+    });
+
+    host.disconnect();
+    peer.disconnect();
+  });
+
+  it("delivers edits made while offline after reconnecting", async () => {
+    const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const adapters = {
+      ...defaults,
+      createRoomTransport: relay.createRoomTransport,
+      roomCheckpointStore: checkpoints.store,
+      resolveRoomBaseUrl: () => "http://memory-room.test",
+    };
+    const host = createWorkspaceRoomRuntime({
+      roomId: "room-offline-edit",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc", title: "README.md", text: "Online" }],
+      identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      onTextChange: vi.fn(),
+      adapters,
+    });
+    await vi.waitFor(() => expect(checkpoints.getGeneration("room-offline-edit")).toBeGreaterThan(0));
+    const peer = createWorkspaceRoomRuntime({
+      roomId: "room-offline-edit",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: false,
+      identity: { id: "peer", name: "Calm Human", color: "#0f766e", lastSeen: 0 },
+      fileTitle: "README.md",
+      onTextChange: vi.fn(),
+      adapters,
+    });
+    await vi.waitFor(() => expect(peer.getEditorBinding()?.yText.toString()).toBe("Online"));
+
+    relay.setOnline("host", false);
+    expect(host.applyLocalTextPatches([{ from: 6, to: 6, insert: " offline" }])).toBe(true);
+    await waitForTasks();
+    expect(host.getEditorBinding()?.yText.toString()).toBe("Online offline");
+    expect(peer.getEditorBinding()?.yText.toString()).toBe("Online");
+
+    relay.setOnline("host", true);
+    await vi.waitFor(() => {
+      expect(host.getSnapshot().status).toBe("connected");
+      expect(peer.getEditorBinding()?.yText.toString()).toBe("Online offline");
     });
 
     host.disconnect();

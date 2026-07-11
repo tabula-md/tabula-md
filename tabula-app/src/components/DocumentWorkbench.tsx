@@ -47,6 +47,8 @@ import {
   type MarkdownPreviewMetadata,
 } from "./MarkdownPreview";
 import { StatusBar } from "./StatusBar";
+import { CommandMenu, CommandMenuItem } from "./ui/CommandMenu";
+import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 
 export type DocumentWorkbenchProps = {
   activeBookmarks: FileBookmark[];
@@ -103,7 +105,6 @@ export type DocumentWorkbenchProps = {
   workspaceRef: RefObject<HTMLElement | null>;
   onBookmarksChange: (bookmarks: MarkdownBookmark[]) => void;
   onCloseSearch: () => void;
-  onCopyFile: () => void;
   onEditorHistoryStateChange: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onEditorScroll: () => void;
   onEditorScrollRatioChange: (ratio: number) => void;
@@ -113,7 +114,6 @@ export type DocumentWorkbenchProps = {
   onGoToSearchMatch: (direction: 1 | -1) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
-  onOpenComments: () => void;
   onOpenSelectionComment: () => void;
   onPreviewKeyUp: () => void;
   onPreviewMouseUp: () => void;
@@ -151,7 +151,7 @@ const getFloatingPopoverStyle = (
   const viewportWidth = window.innerWidth || 1024;
   const left = Math.max(
     12,
-    Math.min(position.clientX, viewportWidth - options.width - 12),
+    Math.min(position.clientX - options.width / 2, viewportWidth - options.width - 12),
   );
   const top = Math.max(72, position.clientY + options.yOffset);
   return {
@@ -215,7 +215,6 @@ export function DocumentWorkbench({
   workspaceRef,
   onBookmarksChange,
   onCloseSearch,
-  onCopyFile,
   onEditorHistoryStateChange,
   onEditorScroll,
   onEditorScrollRatioChange,
@@ -225,7 +224,6 @@ export function DocumentWorkbench({
   onGoToSearchMatch,
   onLineAction,
   onOpenComment,
-  onOpenComments,
   onOpenSelectionComment,
   onPreviewKeyUp,
   onPreviewMouseUp,
@@ -255,6 +253,7 @@ export function DocumentWorkbench({
   onToggleViewOptions,
   onUndo,
 }: DocumentWorkbenchProps) {
+  const copy = getWorkspaceSurfaceCopy(language);
   const shouldRenderPreview = documentSurface.documentControls.activeViewMode !== "edit";
   const activeFormats = useMemo(
     () =>
@@ -310,6 +309,7 @@ export function DocumentWorkbench({
             className={documentSurface.formattingToolbarClassName}
             canUndo={canUndo || editorHistoryCanUndo}
             canRedo={canRedo || editorHistoryCanRedo}
+            language={language}
             activeFormats={activeFormats}
             onFormat={onFormat}
             onUndo={onUndo}
@@ -323,11 +323,9 @@ export function DocumentWorkbench({
           activeLineWrapping={documentSurface.documentControls.activeLineWrapping}
           activeLineNumbers={documentSurface.documentControls.activeLineNumbers}
           activeSyncScrolling={activeSyncScrolling}
-          canCopyFile={documentSurface.documentControls.canCopyFile}
           centerPopover={centerPopover}
           language={language}
           searchOpen={searchOpen}
-          onCopyFile={onCopyFile}
           onSetViewMode={onSetViewMode}
           onToggleSearch={onToggleSearch}
           onToggleViewOptions={onToggleViewOptions}
@@ -372,14 +370,16 @@ export function DocumentWorkbench({
         >
           <MarkdownEditor
             ref={editorRef}
+            ariaLabel={copy.editor}
+            interfaceCopy={copy}
             fileId={activeFile.id}
             value={text}
             largeDocumentMode={largeDocumentMode}
             lineWrapping={effectiveLineWrapping}
             lineNumbers={activeLineNumbers}
             bookmarks={activeBookmarks}
-            commentAnchors={isLive ? activeCommentAnchors : []}
-            commentsEnabled={isLive}
+            commentAnchors={activeCommentAnchors}
+            commentsEnabled
             collaborationBinding={isLive ? collaborationBinding : null}
             activeCommentId={focusedCommentId}
             searchMatches={isSourceSearchActive ? searchMatches : []}
@@ -400,7 +400,7 @@ export function DocumentWorkbench({
             type="button"
             className="split-resize-handle"
             role="separator"
-            aria-label="Resize split view"
+            aria-label={copy.resizeSplitView}
             aria-orientation="vertical"
             aria-valuemin={splitDividerMinValue}
             aria-valuemax={splitDividerMaxValue}
@@ -425,15 +425,16 @@ export function DocumentWorkbench({
           >
             <MarkdownPreview
               ref={previewRef}
+              uiLanguage={language}
               metadata={previewMetadata}
               body={previewBody}
               sourceLineOffset={previewBodySourceLineOffset}
               bodyTextChange={previewBodyTextChange}
               largeDocumentMode={largeDocumentMode}
-              commentAnchors={isLive ? activePreviewCommentAnchors : []}
+              commentAnchors={activePreviewCommentAnchors}
               lineAnnotations={activePreviewLineAnnotations}
               activeCommentId={focusedCommentId}
-              commentsEnabled={isLive}
+              commentsEnabled
               searchQuery={isPreviewSearchActive ? searchQuery : ""}
               searchOptions={searchOptions}
               activeSearchMatchIndex={isPreviewSearchActive ? activeSearchMatchIndex : -1}
@@ -448,25 +449,22 @@ export function DocumentWorkbench({
       </section>
 
       {documentSurface.showSelectionCommentPopover && selectionActionPosition && (
-        <div
+        <CommandMenu
           className="selection-comment-popover"
           style={getFloatingPopoverStyle(selectionActionPosition, {
-            width: 128,
+            width: 164,
             yOffset: 30,
           })}
-          role="toolbar"
-          aria-label="Selection actions"
+          ariaLabel={copy.selectionActions}
         >
-          <button
+          <CommandMenuItem
             className="selection-comment-button"
-            type="button"
+            icon={<MessageSquarePlus size={16} />}
+            label={copy.addComment}
             onMouseDown={(event) => event.preventDefault()}
             onClick={onOpenSelectionComment}
-          >
-            <MessageSquarePlus size={15} />
-            <span>Add comment</span>
-          </button>
-        </div>
+          />
+        </CommandMenu>
       )}
 
       <StatusBar
@@ -476,11 +474,9 @@ export function DocumentWorkbench({
         language={language}
         statusLabel={statusLabel}
         wordCount={documentSurface.statusBar.wordCount}
-        commentCount={documentSurface.statusBar.commentCount}
         cursorPositionLabel={cursorPositionLabel}
         selectedCharacterCount={selectedCharacterCount}
         selectedLineCount={selectedLineCount}
-        onOpenComments={onOpenComments}
       />
     </>
   );

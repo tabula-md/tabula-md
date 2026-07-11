@@ -107,12 +107,11 @@ export type FileCommentReply = {
 export type FileComment = {
   id: string;
   body: string;
+  anchorDetached?: boolean;
   authorName?: string;
   authorColor?: string;
   quote?: string;
   sourceQuote?: string;
-  prefix?: string;
-  suffix?: string;
   selectionStart?: number;
   selectionEnd?: number;
   resolved?: boolean;
@@ -550,12 +549,11 @@ const normalizeFileComments = (comments: unknown): FileComment[] => {
     .map((comment) => ({
       id: getString(comment.id) || randomId(),
       body: getString(comment.body) ?? "",
+      anchorDetached: comment.anchorDetached === true,
       authorName: getString(comment.authorName),
       authorColor: getString(comment.authorColor),
       quote: getString(comment.quote),
       sourceQuote: getString(comment.sourceQuote),
-      prefix: getString(comment.prefix),
-      suffix: getString(comment.suffix),
       selectionStart: getFiniteNumber(comment.selectionStart),
       selectionEnd: getFiniteNumber(comment.selectionEnd),
       resolved: typeof comment.resolved === "boolean" ? comment.resolved : false,

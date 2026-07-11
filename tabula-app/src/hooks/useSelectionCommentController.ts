@@ -8,7 +8,6 @@ import {
   type RefObject,
   type TouchEvent as ReactTouchEvent,
 } from "react";
-import { COMMENT_ANCHOR_CONTEXT_LENGTH } from "../commentAnchors";
 import type { LiveSelection } from "../collaboration";
 import type { MarkdownEditorHandle, MarkdownSelectionActionPosition } from "../components/MarkdownEditor";
 import type { FileViewMode } from "../workspaceStorage";
@@ -29,8 +28,6 @@ export type SelectedMarkdownAnchor = {
   start: number;
   end: number;
   sourceQuote: string;
-  prefix: string;
-  suffix: string;
 };
 
 const getTextOffsetWithinElement = (element: HTMLElement, container: Node, offset: number) => {
@@ -254,13 +251,6 @@ export function useSelectionCommentController({
   const suppressSelectionActionPositionRef = useRef(false);
   const queueAnimationFrameTask = useAnimationFrameTask();
 
-  const selectedMarkdownText =
-    activeViewMode === "preview"
-      ? (previewSelection?.text ?? "")
-      : activeSelection && activeSelection.from !== activeSelection.to
-        ? (editorRef.current?.getSelectedText() ??
-            text.slice(Math.min(activeSelection.from, activeSelection.to), Math.max(activeSelection.from, activeSelection.to))).trim()
-        : "";
   const selectedCharacterCount =
     activeSelection && activeSelection.from !== activeSelection.to ? Math.abs(activeSelection.to - activeSelection.from) : 0;
   const selectedLineCount =
@@ -402,14 +392,11 @@ export function useSelectionCommentController({
     return {
       ...selectionRange,
       sourceQuote: sourceText.slice(selectionRange.start, selectionRange.end),
-      prefix: sourceText.slice(Math.max(0, selectionRange.start - COMMENT_ANCHOR_CONTEXT_LENGTH), selectionRange.start),
-      suffix: sourceText.slice(selectionRange.end, selectionRange.end + COMMENT_ANCHOR_CONTEXT_LENGTH),
     };
   };
 
   return {
     activeSelection,
-    selectedMarkdownText,
     selectedCharacterCount,
     selectedLineCount,
     cursorPositionLabel,

@@ -159,7 +159,7 @@ const selectRoomDocument = async (page, fileName, waitForEditorReady) => {
 const startLiveSession = async ({ baseUrl, firstPage, secondPage, waitForEditorReady }) => {
   await firstPage.goto(baseUrl);
   await firstPage.waitForSelector(".tabbar");
-  await firstPage.getByTitle("New document").click();
+  await firstPage.getByRole("button", { name: "New document", exact: true }).click();
   await waitForEditorReady(firstPage, { mode: "edit" });
   const targetFileName = await firstPage.locator(".tab-item.active").getAttribute("data-file-name");
   if (!targetFileName) {

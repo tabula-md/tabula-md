@@ -4,7 +4,6 @@ import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
 import type { CenterPopover, TopPopover } from "../uiTypes";
 import type {
-  FileComment,
   FileViewMode,
   ReadingWidth,
 } from "../workspaceStorage";
@@ -17,7 +16,6 @@ type DocumentWorkbenchRuntimeHandlers = Pick<
   DocumentWorkbenchProps,
   | "onCloseSearch"
   | "onFormat"
-  | "onOpenComments"
   | "onSetReadingWidth"
   | "onSetViewMode"
   | "onToggleLineNumbers"
@@ -30,12 +28,9 @@ type DocumentWorkbenchRuntimeHandlers = Pick<
 type UseDocumentWorkbenchRuntimeArgs = {
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
-  activeOpenComments: FileComment[];
   activeSyncScrolling: boolean;
   activeViewMode: FileViewMode;
   editorRef: RefObject<MarkdownEditorHandle | null>;
-  focusedCommentId: string | null;
-  onOpenCommentsPanel: (commentId?: string) => void;
   onSetActiveFileLineNumbers: (isEnabled: boolean) => void;
   onSetActiveFileLineWrapping: (isEnabled: boolean) => void;
   onSetActiveFileReadingWidth: (readingWidth: ReadingWidth) => void;
@@ -49,12 +44,9 @@ type UseDocumentWorkbenchRuntimeArgs = {
 export function useDocumentWorkbenchRuntime({
   activeLineNumbers,
   activeLineWrapping,
-  activeOpenComments,
   activeSyncScrolling,
   activeViewMode,
   editorRef,
-  focusedCommentId,
-  onOpenCommentsPanel,
   onSetActiveFileLineNumbers,
   onSetActiveFileLineWrapping,
   onSetActiveFileReadingWidth,
@@ -88,10 +80,6 @@ export function useDocumentWorkbenchRuntime({
     },
     [activeViewMode, closeFloatingDocumentChrome, editorRef],
   );
-
-  const onOpenComments = useCallback(() => {
-    onOpenCommentsPanel(focusedCommentId ?? activeOpenComments[0]?.id);
-  }, [activeOpenComments, focusedCommentId, onOpenCommentsPanel]);
 
   const onSetReadingWidth = useCallback(
     (nextReadingWidth: ReadingWidth) => {
@@ -137,7 +125,6 @@ export function useDocumentWorkbenchRuntime({
   return {
     onCloseSearch,
     onFormat,
-    onOpenComments,
     onSetReadingWidth,
     onSetViewMode,
     onToggleLineNumbers,

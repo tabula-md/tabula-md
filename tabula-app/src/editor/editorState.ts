@@ -18,14 +18,12 @@ import {
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { createCommentAnchorExtension } from "../editorExtensions/commentAnchors";
-import {
-  createLineAnnotationGutterExtension,
-  createLineCommentActionExtension,
-} from "../editorExtensions/lineAnnotations";
+import { createLineAnnotationGutterExtension } from "../editorExtensions/lineAnnotations";
 import { createTextSelectionHighlightExtension } from "../editorExtensions/selectionLayer";
 import type {
   MarkdownBookmark,
   MarkdownCommentAnchor,
+  MarkdownEditorInterfaceCopy,
   MarkdownLineActionRequest,
 } from "../markdownEditorTypes";
 import {
@@ -45,11 +43,11 @@ import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
 
 export type MarkdownEditorCompartments = EditorLayoutCompartments & {
   annotationGutter: Compartment;
-  lineCommentAction: Compartment;
   commentAnchor: Compartment;
   collaboration: Compartment;
   history: Compartment;
   searchHighlight: Compartment;
+  placeholder: Compartment;
 };
 
 export type MarkdownEditorExtensionConfig = {
@@ -63,6 +61,7 @@ export type MarkdownEditorExtensionConfig = {
   collaborationBinding?: CollabEditorBinding | null;
   searchMatches: SearchMatch[];
   activeSearchMatchIndex: number;
+  copy: MarkdownEditorInterfaceCopy;
   updateExtension: Extension;
   onOpenLineActions?: (request: MarkdownLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
@@ -95,36 +94,25 @@ const markdownEditorHighlightStyle = HighlightStyle.define([
 export const createMarkdownEditorCompartments = (): MarkdownEditorCompartments => ({
   ...createEditorLayoutCompartments(),
   annotationGutter: new Compartment(),
-  lineCommentAction: new Compartment(),
   commentAnchor: new Compartment(),
   collaboration: new Compartment(),
   history: new Compartment(),
   searchHighlight: new Compartment(),
+  placeholder: new Compartment(),
 });
 
 export const createEditorAnnotationGutterExtension = (
   bookmarks: MarkdownBookmark[],
+  copy: MarkdownEditorInterfaceCopy,
   onOpenLineActions?: (request: MarkdownLineActionRequest) => void,
-) => createLineAnnotationGutterExtension(bookmarks, onOpenLineActions);
-
-export const createEditorLineCommentActionExtension = (
-  bookmarks: MarkdownBookmark[],
-  commentAnchors: MarkdownCommentAnchor[],
-  commentsEnabled: boolean,
-  onOpenLineActions?: (request: MarkdownLineActionRequest) => void,
-) =>
-  createLineCommentActionExtension(
-    bookmarks,
-    commentsEnabled ? commentAnchors : [],
-    commentsEnabled ? onOpenLineActions : undefined,
-    commentsEnabled,
-  );
+) => createLineAnnotationGutterExtension(bookmarks, copy, onOpenLineActions);
 
 export const createEditorCommentAnchorExtension = (
   commentAnchors: MarkdownCommentAnchor[],
-  activeCommentId?: string | null,
+  activeCommentId: string | null | undefined,
+  copy: MarkdownEditorInterfaceCopy,
   onOpenComment?: (commentId: string) => void,
-) => createCommentAnchorExtension(commentAnchors, activeCommentId, onOpenComment);
+) => createCommentAnchorExtension(commentAnchors, activeCommentId, copy, onOpenComment);
 
 export const createEditorSelectionDisplayExtensions = (): Extension[] => [
   EditorState.allowMultipleSelections.of(true),
@@ -214,6 +202,7 @@ export const createMarkdownEditorExtensions = ({
   collaborationBinding,
   searchMatches,
   activeSearchMatchIndex,
+  copy,
   updateExtension,
   onOpenLineActions,
   onOpenComment,
@@ -227,16 +216,13 @@ export const createMarkdownEditorExtensions = ({
   markdown({ addKeymap: false, pasteURLAsLink: true }),
   createEditorPasteNormalizationExtension(),
   syntaxHighlighting(markdownEditorHighlightStyle, { fallback: true }),
-  placeholder("Start writing..."),
-  compartments.annotationGutter.of(createEditorAnnotationGutterExtension(bookmarks, onOpenLineActions)),
-  compartments.lineCommentAction.of(
-    createEditorLineCommentActionExtension(bookmarks, commentAnchors, commentsEnabled, onOpenLineActions),
-  ),
+  compartments.placeholder.of(placeholder(copy.startWriting)),
+  compartments.annotationGutter.of(createEditorAnnotationGutterExtension(bookmarks, copy, onOpenLineActions)),
   compartments.lineNumbers.of(createEditorLineNumbersExtension(lineNumbers)),
   compartments.wrapping.of(createEditorLineWrappingExtension(lineWrapping)),
   compartments.commentAnchor.of(
     commentsEnabled
-      ? createEditorCommentAnchorExtension(commentAnchors, activeCommentId, onOpenComment)
+      ? createEditorCommentAnchorExtension(commentAnchors, activeCommentId, copy, onOpenComment)
       : [],
   ),
   compartments.collaboration.of(

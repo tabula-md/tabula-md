@@ -46,8 +46,8 @@
 }
 
 .right-file-tree-row.folder .right-file-open-button > svg:first-child {
-  width: 13px;
-  height: 13px;
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
 }
 
 .right-file-open-button {
@@ -89,8 +89,8 @@
 }
 
 .right-file-folder-icon svg {
-  width: 15px;
-  height: 15px;
+  width: var(--icon-size-medium);
+  height: var(--icon-size-medium);
 }
 
 .right-file-document-icon svg {
@@ -106,7 +106,7 @@
   height: 5px;
   border-radius: 50%;
   background: var(--status-dot-connected);
-  box-shadow: 0 0 0 2px var(--surface-panel);
+  box-shadow: 0 0 0 2px var(--surface-workbench);
   pointer-events: none;
 }
 
@@ -122,9 +122,9 @@
   align-items: center;
   justify-content: flex-end;
   gap: 1px;
-  min-width: 52px;
+  min-width: var(--control-size-compact);
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition: opacity var(--motion-hover) ease;
 }
 
 .right-file-tree-row.file:hover .right-file-actions,
@@ -137,10 +137,10 @@
 .right-file-action {
   display: grid;
   place-items: center;
-  width: 25px;
-  height: 25px;
+  width: var(--control-size-compact);
+  height: var(--control-size-compact);
   padding: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   background: transparent;
 }
@@ -166,27 +166,27 @@
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  z-index: 5;
+  z-index: var(--layer-popover);
   display: grid;
-  min-width: 136px;
-  padding: 4px;
-  border-radius: 8px;
-  background: var(--surface-panel);
+  min-width: 184px;
+  padding: 6px;
+  border-radius: var(--radius-surface);
+  background: var(--surface-overlay);
   box-shadow: var(--shadow-popover);
 }
 
 .right-file-action-menu button {
   display: grid;
-  grid-template-columns: 15px minmax(0, 1fr);
+  grid-template-columns: var(--icon-size-small) minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  height: 30px;
-  padding: 0 7px;
-  border-radius: 6px;
+  height: var(--control-size-row);
+  padding: 0 8px;
+  border-radius: var(--radius-control);
   color: var(--text-soft);
   background: transparent;
-  font-size: 12px;
-  font-weight: 400;
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-regular);
   text-align: left;
 }
 
@@ -203,14 +203,14 @@
 
 .right-file-move-field {
   display: grid;
-  grid-template-columns: 15px minmax(0, 1fr);
+  grid-template-columns: var(--icon-size-small) auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   min-width: 0;
-  height: 30px;
-  padding: 0 7px;
+  height: var(--control-size-row);
+  padding: 0 8px;
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: var(--font-ui-secondary);
 }
 
 .right-file-move-field select {
@@ -220,51 +220,35 @@
   color: inherit;
   background: transparent;
   font: inherit;
+  text-align: right;
 }
 
 .right-file-rename-input {
   width: 100%;
   min-width: 0;
-  height: 24px;
+  height: var(--control-size-row);
   padding: 0;
   border: 0;
-  outline: 0;
   color: var(--text-primary);
   background: transparent;
   font: inherit;
-  line-height: 24px;
+  line-height: var(--control-size-row);
 }
 
 .right-file-rename-input::selection {
   background: var(--surface-hover);
 }
 
-.right-file-tree-signals {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--right-tight-gap);
-  min-width: 0;
-}
-
-.right-file-tree-comment-count {
-  background: var(--surface-active);
-}
-
-@media (hover: none), (pointer: coarse), (max-width: 820px) {
+@media (hover: none), (pointer: coarse), (max-width: 560px) {
   .right-file-actions {
-    min-width: 40px;
+    min-width: var(--control-size-touch);
     opacity: 1;
   }
 
   .right-file-action {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-  }
-
-  .right-file-action.close {
-    display: none;
+    width: var(--control-size-touch);
+    height: var(--control-size-touch);
+    border-radius: var(--radius-surface);
   }
 
   .right-file-action-menu {
@@ -273,8 +257,8 @@
 
   .right-file-action-menu button,
   .right-file-move-field {
-    min-height: 40px;
-    height: 40px;
+    min-height: var(--control-size-touch);
+    height: var(--control-size-touch);
     padding: 0 10px;
   }
 }

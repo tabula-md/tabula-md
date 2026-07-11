@@ -28,7 +28,7 @@ export async function run(ctx) {
       url: response.url(),
     }));
 
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.type("\n\n# Export Link Smoke\n\nExport link import body.");
@@ -85,7 +85,7 @@ export async function run(ctx) {
     const firstExportUrl = await page.locator('[aria-label="Export link"]').getAttribute("title");
     expect(Boolean(firstExportUrl), "Export to link should create an Export link URL.");
     await page.getByRole("button", { name: "Close share dialog" }).click();
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await page.locator(".share-trigger").click();
     expect(
       (await page.getByRole("button", { name: "Export to link" }).count()) === 1,
@@ -117,7 +117,7 @@ export async function run(ctx) {
       const secondRequestUrls = [];
       secondPage.on("request", (request) => secondRequestUrls.push(request.url()));
       await secondPage.goto(baseUrl);
-      await secondPage.getByTitle("New document").click();
+      await secondPage.getByRole("button", { name: "New document", exact: true }).click();
       await waitForEditorReady(secondPage, { mode: "edit" });
       await focusMarkdownEditor(secondPage);
       await secondPage.keyboard.type("\n\nLocal draft before import.");

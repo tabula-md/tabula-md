@@ -1,19 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  type TextPatch,
   WORKSPACE_ROOM_MAX_COMMENTS,
   WORKSPACE_ROOM_MAX_COMMENT_LENGTH,
   WORKSPACE_ROOM_MAX_CONTENT_BYTES,
   WORKSPACE_ROOM_MAX_REPLIES,
 } from "@tabula-md/tabula";
 import type { Collaborator } from "../collaboration";
+import { mapCommentAnchorThroughPatches } from "../commentAnchors";
 import type { FileComment, FileCommentReply, WorkspaceFile } from "../workspaceStorage";
 
 export type CommentSelectionAnchor = {
   start: number;
   end: number;
   sourceQuote: string;
-  prefix: string;
-  suffix: string;
 };
 
 type AddFileCommentOptions = {
@@ -146,12 +146,11 @@ export function useFileComments({
     const nextComment: FileComment = {
       id: createId(),
       body: trimmedDraft.slice(0, WORKSPACE_ROOM_MAX_COMMENT_LENGTH),
+      anchorDetached: false,
       authorName: identity.name,
       authorColor: identity.color,
       quote,
       sourceQuote: anchor?.sourceQuote,
-      prefix: anchor?.prefix,
-      suffix: anchor?.suffix,
       selectionStart: anchor?.start,
       selectionEnd: anchor?.end,
       resolved: false,
@@ -180,6 +179,27 @@ export function useFileComments({
     }));
     setFocusedCommentId((currentCommentId) => (currentCommentId === commentId ? null : currentCommentId));
     onCommentDeleted?.(fileId, commentId);
+  };
+
+  const mapFileCommentAnchors = (
+    fileId: string,
+    patches: readonly TextPatch[],
+    oldDocumentLength: number,
+  ) => {
+    if (!fileIds.has(fileId) || patches.length === 0) {
+      return;
+    }
+
+    setCommentsByFileId((currentComments) => {
+      const comments = getFileComments(currentComments, fileId);
+      let changed = false;
+      const nextComments = comments.map((comment) => {
+        const nextComment = mapCommentAnchorThroughPatches(comment, patches, oldDocumentLength);
+        changed = changed || nextComment !== comment;
+        return nextComment;
+      });
+      return changed ? { ...currentComments, [fileId]: nextComments } : currentComments;
+    });
   };
 
   const toggleFileCommentResolved = (fileId: string, commentId: string) => {
@@ -277,6 +297,7 @@ export function useFileComments({
     setFocusedCommentId,
     replaceCommentsByFileId,
     addFileComment,
+    mapFileCommentAnchors,
     deleteFileComment,
     toggleFileCommentResolved,
     startCommentReply,

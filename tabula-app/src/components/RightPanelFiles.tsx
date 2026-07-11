@@ -1,7 +1,8 @@
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  ClipboardCopy,
   Copy,
   Ellipsis,
   File,
@@ -13,14 +14,17 @@ import {
   Plus,
   Trash2,
   Upload,
-  X,
 } from "lucide-react";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
-import { WORKSPACE_ROOT_FOLDER_ID, type FileComment, type WorkspaceFile, type WorkspaceFolder } from "../workspaceStorage";
+import { WORKSPACE_ROOT_FOLDER_ID, type WorkspaceFile, type WorkspaceFolder } from "../workspaceStorage";
 import {
   getWorkspaceFileDisplayTitles,
   getWorkspaceFolderDisplayTitles,
 } from "../workspaceDisplayTitles";
+import { useDismissibleMenu } from "../hooks/useDismissibleMenu";
+import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+
+type RightPanelFilesCopy = WorkspaceInterfaceCopy["projectContext"]["files"];
 
 type FileTreeFolderNode = {
   type: "folder";
@@ -42,12 +46,11 @@ type FileTreeNode = FileTreeFolderNode | FileTreeFileNode;
 type RightPanelFilesProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
-  openFileIds: string[];
   activeFileId: string;
   fileQuery: string;
   isLiveWorkspace: boolean;
-  commentsByFileId: Record<string, FileComment[]>;
   collapsedFolderIds: Set<string>;
+  copy: RightPanelFilesCopy;
   getFileSearchText: (file: WorkspaceFile) => string;
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
@@ -55,11 +58,11 @@ type RightPanelFilesProps = {
   onImportFile: () => void;
   onToggleFolder: (folderId: string) => void;
   onSelectFile: (fileId: string) => void;
-  onCloseFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
   onDeleteFolder: (folderId: string) => void;
+  onCopyFile: (fileId: string) => void;
   onMoveFileToFolder: (fileId: string, folderId: string) => void;
   onMoveFolder: (folderId: string, parentId: string) => void;
   onRenameFolder: (folderId: string, nextTitle: string) => boolean;
@@ -177,12 +180,11 @@ const collectVisibleFileIds = (
 export function RightPanelFiles({
   files,
   folders,
-  openFileIds,
   activeFileId,
   fileQuery,
   isLiveWorkspace,
-  commentsByFileId,
   collapsedFolderIds,
+  copy,
   getFileSearchText,
   onFileQueryChange,
   onNewFile,
@@ -190,11 +192,11 @@ export function RightPanelFiles({
   onImportFile,
   onToggleFolder,
   onSelectFile,
-  onCloseFile,
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
   onDeleteFolder,
+  onCopyFile,
   onMoveFileToFolder,
   onMoveFolder,
   onRenameFolder,
@@ -208,11 +210,11 @@ export function RightPanelFiles({
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
+  const actionMenuRef = useRef<HTMLElement | null>(null);
+  const actionMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const createMenuRef = useRef<HTMLDivElement | null>(null);
   const createButtonRef = useRef<HTMLButtonElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
-  const getFileComments = (fileId: string) => commentsByFileId[fileId] ?? [];
-  const openFileIdSet = new Set(openFileIds);
   const normalizedQuery = fileQuery.trim().toLowerCase();
   const visibleFiles = normalizedQuery
     ? files.filter((file) => getFileSearchText(file).toLowerCase().includes(normalizedQuery))
@@ -236,44 +238,23 @@ export function RightPanelFiles({
     return () => window.cancelAnimationFrame(frame);
   }, [renamingFileId]);
 
-  useEffect(() => {
-    if (!actionMenuFileId && !actionMenuFolderId && !createMenuOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (
-        !(event.target instanceof Element) ||
-        event.target.closest(".right-file-menu-wrap") ||
-        createMenuRef.current?.contains(event.target)
-      ) {
-        return;
-      }
-
-      setActionMenuFileId(null);
-      setActionMenuFolderId(null);
-      setCreateMenuOpen(false);
-    };
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        setActionMenuFileId(null);
-        setActionMenuFolderId(null);
-        if (createMenuOpen) {
-          setCreateMenuOpen(false);
-          window.requestAnimationFrame(() => createButtonRef.current?.focus());
-        }
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [actionMenuFileId, actionMenuFolderId, createMenuOpen]);
+  const closeActionMenu = useCallback(() => {
+    setActionMenuFileId(null);
+    setActionMenuFolderId(null);
+  }, []);
+  const closeCreateMenu = useCallback(() => setCreateMenuOpen(false), []);
+  const handleActionMenuKeyDown = useDismissibleMenu({
+    menuRef: actionMenuRef,
+    onClose: closeActionMenu,
+    open: Boolean(actionMenuFileId || actionMenuFolderId),
+    triggerRef: actionMenuTriggerRef,
+  });
+  const handleCreateMenuKeyDown = useDismissibleMenu({
+    menuRef: createMenuRef,
+    onClose: closeCreateMenu,
+    open: createMenuOpen,
+    triggerRef: createButtonRef,
+  });
 
   const startRenamingFile = (file: WorkspaceFile) => {
     setActionMenuFileId(null);
@@ -394,19 +375,19 @@ export function RightPanelFiles({
               aria-expanded={!folderCollapsed}
               onClick={() => onToggleFolder(node.id)}
             >
-              {folderCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+              {folderCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
               <span
                 className={`right-file-folder-icon ${isRootFolder && hasLiveWorkspace ? "live" : ""}`}
-                title={isRootFolder && hasLiveWorkspace ? "Shared workspace" : undefined}
+                data-tooltip={isRootFolder && hasLiveWorkspace ? copy.sharedWorkspace : undefined}
               >
-                <Folder size={15} />
+                <Folder size={16} />
                 {isRootFolder && hasLiveWorkspace && <span className="right-file-icon-live-dot" aria-hidden="true" />}
               </span>
               {folderIsRenaming ? (
                 <input
                   className="right-file-rename-input"
                   value={renamingFolderTitle}
-                  aria-label={`Rename ${node.name} folder`}
+                  aria-label={copy.renameFolder(node.name)}
                   onClick={(event) => event.stopPropagation()}
                   onChange={(event) => setRenamingFolderTitle(event.target.value)}
                   onBlur={() => {
@@ -426,27 +407,38 @@ export function RightPanelFiles({
               <span className="right-file-actions">
                 <span className="right-file-menu-wrap">
                   <button
-                    className="right-file-action close"
+                    className="right-file-action"
                     type="button"
-                    aria-label={`More actions for ${node.name}`}
-                    onClick={() => setActionMenuFolderId(folderMenuOpen ? null : node.id)}
+                    aria-label={copy.moreActions(node.name)}
+                    data-tooltip={copy.moreActions(node.name)}
+                    onClick={(event) => {
+                      actionMenuTriggerRef.current = event.currentTarget;
+                      setActionMenuFolderId(folderMenuOpen ? null : node.id);
+                    }}
                   >
                     <Ellipsis size={14} />
                   </button>
                   {folderMenuOpen && (
-                    <span className="right-file-action-menu" role="menu" aria-label={`${node.name} actions`}>
+                    <span
+                      ref={actionMenuRef}
+                      className="right-file-action-menu ui-menu ui-command-menu"
+                      role="menu"
+                      aria-label={copy.actions(node.name)}
+                      onKeyDown={handleActionMenuKeyDown}
+                    >
                       <button type="button" role="menuitem" onClick={() => {
                         setActionMenuFolderId(null);
                         createAndRenameFolder(node.id);
                       }}>
-                        <Folder size={13} /><span>New subfolder</span>
+                        <Folder size={14} /><span>{copy.newSubfolder}</span>
                       </button>
                       <button type="button" role="menuitem" onClick={() => { setActionMenuFolderId(null); setRenamingFolderId(node.id); setRenamingFolderTitle(node.name); }}>
-                        <PencilLine size={13} /><span>Rename</span>
+                        <PencilLine size={14} /><span>{copy.rename}</span>
                       </button>
                       <label className="right-file-move-field">
-                        <FolderInput size={13} />
-                        <select value={node.folder.parentId ?? WORKSPACE_ROOT_FOLDER_ID} aria-label={`Move ${node.name}`} onChange={(event) => { onMoveFolder(node.id, event.target.value); setActionMenuFolderId(null); }}>
+                        <FolderInput size={14} />
+                        <span>{copy.moveTo}</span>
+                        <select value={node.folder.parentId ?? WORKSPACE_ROOT_FOLDER_ID} aria-label={copy.move(node.name)} onChange={(event) => { onMoveFolder(node.id, event.target.value); setActionMenuFolderId(null); }}>
                           {folders.filter((folder) => folder.id !== node.id).map((folder) => (
                             <option key={folder.id} value={folder.id}>
                               {folderDisplayTitles.get(folder.id) ?? folder.title}
@@ -455,7 +447,7 @@ export function RightPanelFiles({
                         </select>
                       </label>
                       <button className="danger" type="button" role="menuitem" onClick={() => { setActionMenuFolderId(null); onDeleteFolder(node.id); }}>
-                        <Trash2 size={13} /><span>Delete</span>
+                        <Trash2 size={14} /><span>{copy.delete}</span>
                       </button>
                     </span>
                   )}
@@ -473,9 +465,7 @@ export function RightPanelFiles({
     }
 
     const file = node.file;
-    const openComments = getFileComments(file.id).filter((comment) => !comment.resolved);
     const isActiveFile = file.id === activeFileId;
-    const isOpenFile = openFileIdSet.has(file.id);
     const isRenaming = file.id === renamingFileId;
     const menuOpen = file.id === actionMenuFileId;
 
@@ -496,7 +486,7 @@ export function RightPanelFiles({
                 className="right-file-rename-input"
                 type="text"
                 defaultValue={renamingTitle}
-                aria-label={`Rename ${file.title} in Files`}
+                aria-label={copy.renameInPanel(file.title)}
                 autoComplete="off"
                 spellCheck={false}
                 onBlur={(event) => {
@@ -517,16 +507,6 @@ export function RightPanelFiles({
                   }
                 }}
               />
-              <span className="right-file-tree-signals">
-                {openComments.length > 0 && (
-                  <span
-                    className="right-row-badge right-file-tree-comment-count"
-                    title={`${openComments.length} open comments`}
-                  >
-                    {openComments.length}
-                  </span>
-                )}
-              </span>
             </div>
           ) : (
             <>
@@ -541,68 +521,59 @@ export function RightPanelFiles({
                 className="right-file-open-button"
                 type="button"
                 title={file.title}
-                aria-label={`Open ${file.title}`}
+                aria-label={copy.open(file.title)}
                 onClick={() => onSelectFile(file.id)}
                 onKeyDown={(event) => handleFileKeyDown(event, file.id)}
               >
                 <span
                   className="right-file-document-icon"
-                  title={hasLiveWorkspace ? "Shared in this room" : "Local document"}
+                  data-tooltip={hasLiveWorkspace ? copy.sharedInRoom : copy.localDocument}
                 >
                   <File size={16} />
                 </span>
                 <span className="right-row-label">{getFileDisplayTitle(node.name)}</span>
-                <span className="right-file-tree-signals">
-                  {openComments.length > 0 && (
-                    <span
-                      className="right-row-badge right-file-tree-comment-count"
-                      title={`${openComments.length} open comments`}
-                    >
-                      {openComments.length}
-                    </span>
-                  )}
-                </span>
               </button>
-              <span className="right-file-actions" aria-label={`${file.title} actions`}>
-                {isOpenFile && (
-                  <button
-                    className="right-file-action"
-                    type="button"
-                    title={`Close tab ${file.title}`}
-                    aria-label={`Close tab ${file.title}`}
-                    onClick={() => onCloseFile(file.id)}
-                  >
-                    <X size={13} />
-                  </button>
-                )}
+              <span className="right-file-actions" aria-label={copy.actions(file.title)}>
                 <span className="right-file-menu-wrap">
                   <button
                     className="right-file-action"
                     type="button"
-                    title={`More actions for ${file.title}`}
-                    aria-label={`More actions for ${file.title}`}
+                    aria-label={copy.moreActions(file.title)}
+                    data-tooltip={copy.moreActions(file.title)}
                     aria-haspopup="menu"
                     aria-expanded={menuOpen}
                     onClick={(event) => {
                       event.stopPropagation();
+                      actionMenuTriggerRef.current = event.currentTarget;
                       setActionMenuFileId(menuOpen ? null : file.id);
                     }}
                   >
                     <Ellipsis size={14} />
                   </button>
                   {menuOpen && (
-                    <span className="right-file-action-menu" role="menu" aria-label={`${file.title} actions`}>
+                    <span
+                      ref={actionMenuRef}
+                      className="right-file-action-menu ui-menu ui-command-menu"
+                      role="menu"
+                      aria-label={copy.actions(file.title)}
+                      onKeyDown={handleActionMenuKeyDown}
+                    >
                       <button role="menuitem" type="button" onClick={() => startRenamingFile(file)}>
-                        <PencilLine size={13} />
-                        <span>Rename</span>
+                        <PencilLine size={14} />
+                        <span>{copy.rename}</span>
+                      </button>
+                      <button role="menuitem" type="button" onClick={() => { setActionMenuFileId(null); onCopyFile(file.id); }}>
+                        <ClipboardCopy size={14} />
+                        <span>{copy.copyMarkdown}</span>
                       </button>
                       <button role="menuitem" type="button" onClick={() => duplicateFileFromMenu(file.id)}>
-                        <Copy size={13} />
-                        <span>Duplicate</span>
+                        <Copy size={14} />
+                        <span>{copy.duplicate}</span>
                       </button>
                       <label className="right-file-move-field">
-                        <FolderInput size={13} />
-                        <select value={file.parentId ?? WORKSPACE_ROOT_FOLDER_ID} aria-label={`Move ${file.title}`} onChange={(event) => { onMoveFileToFolder(file.id, event.target.value); setActionMenuFileId(null); }}>
+                        <FolderInput size={14} />
+                        <span>{copy.moveTo}</span>
+                        <select value={file.parentId ?? WORKSPACE_ROOT_FOLDER_ID} aria-label={copy.move(file.title)} onChange={(event) => { onMoveFileToFolder(file.id, event.target.value); setActionMenuFileId(null); }}>
                           {folders.map((folder) => (
                             <option key={folder.id} value={folder.id}>
                               {folderDisplayTitles.get(folder.id) ?? folder.title}
@@ -616,8 +587,8 @@ export function RightPanelFiles({
                         type="button"
                         onClick={() => deleteFileFromMenu(file.id)}
                       >
-                        <Trash2 size={13} />
-                        <span>Delete</span>
+                        <Trash2 size={14} />
+                        <span>{copy.delete}</span>
                       </button>
                     </span>
                   )}
@@ -638,27 +609,27 @@ export function RightPanelFiles({
           className="right-panel-search"
           type="search"
           value={fileQuery}
-          placeholder="Search files"
-          aria-label="Search files"
+          placeholder={copy.search}
+          aria-label={copy.search}
           onChange={(event) => onFileQueryChange(event.target.value)}
           onKeyDown={handleSearchKeyDown}
         />
         <button
           className="right-file-import-button"
           type="button"
-          title="Open Markdown file"
-          aria-label="Open Markdown file"
+          aria-label={copy.openMarkdown}
+          data-tooltip={copy.openMarkdown}
           onClick={onImportFile}
         >
-          <Upload size={15} />
+          <Upload size={16} />
         </button>
-        <div className="right-file-create-menu-wrap" ref={createMenuRef}>
+        <div className="right-file-create-menu-wrap">
           <button
             ref={createButtonRef}
             className={`right-file-create-button ${createMenuOpen ? "active" : ""}`}
             type="button"
-            title="Create"
-            aria-label="Create"
+            aria-label={copy.create}
+            data-tooltip={copy.create}
             aria-haspopup="menu"
             aria-expanded={createMenuOpen}
             onClick={() => setCreateMenuOpen((open) => !open)}
@@ -666,7 +637,13 @@ export function RightPanelFiles({
             <Plus size={16} />
           </button>
           {createMenuOpen && (
-            <div className="right-file-create-menu" role="menu" aria-label="Create in workspace">
+            <div
+              ref={createMenuRef}
+              className="right-file-create-menu ui-menu ui-command-menu"
+              role="menu"
+              aria-label={copy.createInWorkspace}
+              onKeyDown={handleCreateMenuKeyDown}
+            >
               <button
                 type="button"
                 role="menuitem"
@@ -675,8 +652,8 @@ export function RightPanelFiles({
                   onNewFile();
                 }}
               >
-                <FilePlus2 size={15} />
-                <span>New document</span>
+                <FilePlus2 size={16} />
+                <span>{copy.newDocument}</span>
               </button>
               <button
                 type="button"
@@ -686,19 +663,19 @@ export function RightPanelFiles({
                   createAndRenameFolder();
                 }}
               >
-                <FolderPlus size={15} />
-                <span>New folder</span>
+                <FolderPlus size={16} />
+                <span>{copy.newFolder}</span>
               </button>
             </div>
           )}
         </div>
       </div>
       {visibleFiles.length > 0 || fileTreeRoot.children.length > 0 ? (
-        <ol className="right-file-tree" aria-label="Workspace files">
+        <ol className="right-file-tree" aria-label={copy.tree}>
           {renderFileTreeNode(fileTreeRoot, 0)}
         </ol>
       ) : (
-        <p className="right-empty-state">No files found.</p>
+        <p className="right-empty-state">{copy.noneFound}</p>
       )}
     </section>
   );

@@ -1,26 +1,19 @@
-import { useCallback, useMemo, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import { getCommentRangeInText } from "../commentAnchors";
 import {
   formatCommentDate,
   getCommentAnchors,
-  getCommentsInLineRange,
   getPreviewCommentAnchors,
   getPreviewLineAnnotations,
   toggleLineBookmarkInList,
 } from "../commentRuntimeModel";
 import type {
-  MarkdownEditorHandle,
   MarkdownLineActionRequest,
   MarkdownSelectionActionPosition,
 } from "../markdownEditorTypes";
 import type { AppToastState } from "./useAppToast";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";
-import type { FileComment, FileBookmark, FileViewMode, WorkspaceFile } from "../workspaceStorage";
-
-type SetWorkspaceViewMode = (
-  nextViewMode: FileViewMode,
-  options?: { preserveScroll?: boolean; focusEditor?: boolean },
-) => void;
+import type { FileComment, FileBookmark, WorkspaceFile } from "../workspaceStorage";
 
 type QueueEditorTextRange = (
   start: number,
@@ -34,15 +27,22 @@ type ShowToast = (
   action?: Pick<AppToastState, "actionLabel" | "onAction">,
 ) => void;
 
+type PendingSelectionComment = {
+  fileId: string;
+  quote: string;
+  anchor: {
+    start: number;
+    end: number;
+    sourceQuote: string;
+  };
+};
+
 type UseWorkspaceCommentActionsArgs = {
   activeBookmarks: FileBookmark[];
   activeFile?: WorkspaceFile;
   activeFileComments: FileComment[];
   activeOpenComments: FileComment[];
-  activeViewMode: FileViewMode;
-  clearPreviewSelection: () => void;
   commentDraft: string;
-  commentsEnabled: boolean;
   commentInputRef: RefObject<HTMLTextAreaElement | null>;
   createFileComment: (options: {
     fileId: string;
@@ -52,20 +52,15 @@ type UseWorkspaceCommentActionsArgs = {
       start: number;
       end: number;
       sourceQuote: string;
-      prefix: string;
-      suffix: string;
     } | null;
   }) => FileComment | null;
   createId: () => string;
-  editorRef: RefObject<MarkdownEditorHandle | null>;
   files: WorkspaceFile[];
   focusedCommentId: string | null;
   getSelectedMarkdownAnchor: () => {
     start: number;
     end: number;
     sourceQuote: string;
-    prefix: string;
-    suffix: string;
   } | null;
   getSelectedMarkdownExcerpt: () => string;
   previewBody: string;
@@ -76,9 +71,7 @@ type UseWorkspaceCommentActionsArgs = {
   queueEditorTextRange: QueueEditorTextRange;
   selectFile: (fileId: string) => void;
   selectedCharacterCount: number;
-  setActiveFileViewMode: SetWorkspaceViewMode;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
-  setActiveSelection: (selection: { from: number; to: number }) => void;
   setCenterPopover: (popover: null) => void;
   setFocusedCommentId: (commentId: string | null) => void;
   setRightPanelOpen: (isOpen: boolean) => void;
@@ -87,7 +80,6 @@ type UseWorkspaceCommentActionsArgs = {
   setTopPopover: (popover: null) => void;
   showToast: ShowToast;
   startCommentReply: (commentId: string) => void;
-  suppressSelectionActionPositionRef: RefObject<boolean>;
   text: string;
 };
 
@@ -96,14 +88,10 @@ export function useWorkspaceCommentActions({
   activeFile,
   activeFileComments,
   activeOpenComments,
-  activeViewMode,
-  clearPreviewSelection,
   commentDraft,
-  commentsEnabled,
   commentInputRef,
   createFileComment,
   createId,
-  editorRef,
   files,
   focusedCommentId,
   getSelectedMarkdownAnchor,
@@ -117,8 +105,6 @@ export function useWorkspaceCommentActions({
   selectFile,
   selectedCharacterCount,
   setActiveFileBookmarks,
-  setActiveFileViewMode,
-  setActiveSelection,
   setCenterPopover,
   setFocusedCommentId,
   setRightPanelOpen,
@@ -127,9 +113,15 @@ export function useWorkspaceCommentActions({
   setTopPopover,
   showToast,
   startCommentReply,
-  suppressSelectionActionPositionRef,
   text,
 }: UseWorkspaceCommentActionsArgs) {
+  const [selectionCommentPending, setSelectionCommentPending] = useState(false);
+  const [pendingSelectionComment, setPendingSelectionComment] = useState<PendingSelectionComment | null>(null);
+  const consumeSelectionCommentRequest = useCallback(() => setSelectionCommentPending(false), []);
+  const cancelSelectionComment = useCallback(() => {
+    setSelectionCommentPending(false);
+    setPendingSelectionComment(null);
+  }, []);
   const activeCommentAnchors = useMemo(
     () => getCommentAnchors(activeOpenComments, text),
     [activeOpenComments, text],
@@ -149,19 +141,19 @@ export function useWorkspaceCommentActions({
         body: previewBody,
         bodyStartOffset: previewBodyStartOffset,
         bookmarks: activeBookmarks,
-        commentAnchors: activeCommentAnchors,
-        activeCommentId: focusedCommentId,
+        commentAnchors: [],
         includeEmptyLines: !largeDocumentMode,
       }),
-    [activeBookmarks, activeCommentAnchors, focusedCommentId, largeDocumentMode, previewBody, previewBodyStartOffset],
+    [activeBookmarks, largeDocumentMode, previewBody, previewBodyStartOffset],
   );
   const queueAnimationFrameTask = useAnimationFrameTask();
 
-  const openCommentsPanel = useCallback((commentId?: string) => {
-    if (!commentsEnabled) {
-      return;
-    }
+  useEffect(() => {
+    setSelectionCommentPending(false);
+    setPendingSelectionComment(null);
+  }, [activeFile?.id]);
 
+  const openCommentsPanel = useCallback((commentId?: string) => {
     setRightPanelOpen(true);
     setRightPanelView("comments");
     setTopPopover(null);
@@ -177,7 +169,6 @@ export function useWorkspaceCommentActions({
     }
   }, [
     queueAnimationFrameTask,
-    commentsEnabled,
     setCenterPopover,
     setFocusedCommentId,
     setRightPanelOpen,
@@ -185,27 +176,31 @@ export function useWorkspaceCommentActions({
     setTopPopover,
   ]);
 
-  const addFileComment = useCallback(() => {
-    if (!activeFile || !commentsEnabled) {
+  const addFileComment = useCallback((options: { includeSelection?: boolean } = {}) => {
+    if (!activeFile) {
       return;
     }
 
     onBeforeCreateComment?.();
-    const selectionAnchor = getSelectedMarkdownAnchor();
+    const includeSelection = options.includeSelection ?? true;
+    const capturedSelection = includeSelection && pendingSelectionComment?.fileId === activeFile.id
+      ? pendingSelectionComment
+      : null;
     createFileComment({
       fileId: activeFile.id,
       body: commentDraft,
-      quote: getSelectedMarkdownExcerpt() || undefined,
-      anchor: selectionAnchor,
+      quote: capturedSelection?.quote,
+      anchor: capturedSelection?.anchor,
     });
+    if (includeSelection) {
+      setPendingSelectionComment(null);
+    }
   }, [
     activeFile,
     commentDraft,
-    commentsEnabled,
     createFileComment,
-    getSelectedMarkdownAnchor,
-    getSelectedMarkdownExcerpt,
     onBeforeCreateComment,
+    pendingSelectionComment,
   ]);
 
   const startCommentReplyForFile = useCallback((_fileId: string, commentId: string) => {
@@ -252,10 +247,6 @@ export function useWorkspaceCommentActions({
   ]);
 
   const openCommentMarker = useCallback((commentId: string) => {
-    if (!commentsEnabled) {
-      return;
-    }
-
     const comment = activeFileComments.find((fileComment) => fileComment.id === commentId);
     if (!comment) {
       openCommentsPanel(commentId);
@@ -265,22 +256,30 @@ export function useWorkspaceCommentActions({
     if (activeFile) {
       goToFileComment(activeFile.id, comment);
     }
-  }, [activeFile, activeFileComments, commentsEnabled, goToFileComment, openCommentsPanel]);
+  }, [activeFile, activeFileComments, goToFileComment, openCommentsPanel]);
 
   const openSelectionComment = useCallback(() => {
-    if (!commentsEnabled || !selectedCharacterCount) {
+    const anchor = getSelectedMarkdownAnchor();
+    const quote = getSelectedMarkdownExcerpt();
+    if (!activeFile || !selectedCharacterCount || !anchor || !quote) {
       return;
     }
 
+    setPendingSelectionComment({ fileId: activeFile.id, anchor, quote });
+    setFocusedCommentId(null);
     setSelectionActionPosition(null);
     openCommentsPanel();
+    setSelectionCommentPending(true);
     queueAnimationFrameTask(() => commentInputRef.current?.focus());
   }, [
+    activeFile,
     commentInputRef,
-    commentsEnabled,
+    getSelectedMarkdownAnchor,
+    getSelectedMarkdownExcerpt,
     openCommentsPanel,
     queueAnimationFrameTask,
     selectedCharacterCount,
+    setFocusedCommentId,
     setSelectionActionPosition,
   ]);
 
@@ -300,91 +299,26 @@ export function useWorkspaceCommentActions({
     setActiveFileBookmarks(nextBookmarks);
   }, [activeBookmarks, activeFile, createId, setActiveFileBookmarks]);
 
-  const openLineComments = useCallback((lineRange: MarkdownLineActionRequest) => {
-    if (!commentsEnabled) {
-      return;
-    }
-
-    const lineComments = getCommentsInLineRange({
-      comments: activeOpenComments,
-      lineStart: lineRange.start,
-      lineEnd: lineRange.end,
-      sourceText: text,
-    });
-    openCommentsPanel(lineComments[0]?.id);
-  }, [activeOpenComments, commentsEnabled, openCommentsPanel, text]);
-
-  const openLineCommentComposer = useCallback((lineRange: MarkdownLineActionRequest) => {
-    if (!commentsEnabled) {
-      return;
-    }
-
-    const { start, end } = lineRange;
-    if (end <= start) {
-      showToast("Line comments need text on the line.", "error");
-      return;
-    }
-
-    clearPreviewSelection();
-    setActiveSelection({ from: start, to: end });
-    setSelectionActionPosition(null);
-    if (activeViewMode === "preview") {
-      setActiveFileViewMode("edit", { preserveScroll: false, focusEditor: false });
-    }
-
-    queueAnimationFrameTask(() => {
-      suppressSelectionActionPositionRef.current = true;
-      editorRef.current?.setSelectionRange(start, end);
-      suppressSelectionActionPositionRef.current = false;
-      setSelectionActionPosition(null);
-      openCommentsPanel();
-      commentInputRef.current?.focus();
-    });
-  }, [
-    activeViewMode,
-    clearPreviewSelection,
-    commentInputRef,
-    commentsEnabled,
-    editorRef,
-    openCommentsPanel,
-    queueAnimationFrameTask,
-    setActiveFileViewMode,
-    setActiveSelection,
-    setSelectionActionPosition,
-    showToast,
-    suppressSelectionActionPositionRef,
-  ]);
-
   const handleLineAnnotationAction = useCallback((request: MarkdownLineActionRequest) => {
     setSelectionActionPosition(null);
-    if (request.action === "bookmark") {
-      toggleLineBookmark(request);
-      return;
-    }
-
-    if (!commentsEnabled) {
-      return;
-    }
-
-    if (request.hasComment) {
-      openLineComments(request);
-      return;
-    }
-
-    openLineCommentComposer(request);
-  }, [commentsEnabled, openLineCommentComposer, openLineComments, setSelectionActionPosition, toggleLineBookmark]);
+    toggleLineBookmark(request);
+  }, [setSelectionActionPosition, toggleLineBookmark]);
 
   return {
     activeCommentAnchors,
     activePreviewCommentAnchors,
     activePreviewLineAnnotations,
     addFileComment,
+    cancelSelectionComment,
     formatCommentDate,
     goToFileComment,
     handleLineAnnotationAction,
     openCommentMarker,
     openCommentsPanel,
     openSelectionComment,
+    pendingSelectionCommentText: pendingSelectionComment?.quote ?? "",
+    selectionCommentPending,
+    consumeSelectionCommentRequest,
     startCommentReply: startCommentReplyForFile,
   };
 }

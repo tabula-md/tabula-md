@@ -39,20 +39,17 @@
 
 .markdown-editor .cm-comment-mark {
   position: relative;
-  border-bottom: 1px solid var(--editor-comment-mark-border);
-  background: var(--editor-comment-mark-background);
-  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 0;
   cursor: pointer;
 }
 
 .markdown-editor .cm-comment-mark:hover {
-  background: var(--editor-comment-mark-hover-background);
-  border-bottom-color: var(--editor-comment-mark-hover-border);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 .markdown-editor .cm-comment-mark.active {
-  background: var(--editor-comment-mark-hover-background);
-  border-bottom-color: var(--editor-comment-mark-active-border);
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .markdown-editor .cm-scroller {
@@ -66,18 +63,18 @@
 .markdown-editor .cm-gutters {
   position: sticky;
   left: 0;
-  z-index: 2;
+  z-index: var(--layer-chrome);
   flex-shrink: 0;
   isolation: isolate;
   border: 0;
   color: var(--editor-gutter-text);
-  background: var(--surface-panel);
-  box-shadow: 1px 0 0 var(--line-subtle);
+  background: var(--surface-workbench);
+  box-shadow: none;
 }
 
 .markdown-editor .cm-gutters-before,
 .markdown-editor .cm-gutters-after {
-  background: var(--surface-panel);
+  background: var(--surface-workbench);
 }
 
 .markdown-editor .cm-lineNumbers {
@@ -89,13 +86,7 @@
   min-width: var(--editor-bookmark-rail);
 }
 
-.markdown-editor .cm-commentGutter {
-  width: var(--editor-comment-rail);
-  min-width: var(--editor-comment-rail);
-}
-
-.markdown-editor .cm-annotationGutter .cm-gutterElement,
-.markdown-editor .cm-commentGutter .cm-gutterElement {
+.markdown-editor .cm-annotationGutter .cm-gutterElement {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,28 +98,12 @@
   min-width: var(--editor-bookmark-rail);
 }
 
-.markdown-editor .cm-commentGutter .cm-gutterElement {
-  justify-content: flex-end;
-  width: var(--editor-comment-rail);
-  min-width: var(--editor-comment-rail);
-  padding-right: 5px;
-}
-
 .markdown-editor .cm-annotation-marker {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 18px;
-  color: var(--text-muted);
-}
-
-.markdown-editor .cm-line-comment-marker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 18px;
+  width: var(--control-size-compact);
+  height: var(--control-size-compact);
   color: var(--text-muted);
 }
 
@@ -138,10 +113,10 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: var(--control-size-compact);
+  height: var(--control-size-compact);
   padding: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   border: 0;
   color: var(--editor-placeholder-text);
   background: transparent;
@@ -156,21 +131,18 @@
 .markdown-editor .cm-annotation-icon {
   display: block;
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition: opacity var(--motion-hover) ease;
 }
 
-.markdown-editor .cm-annotationGutter:hover .cm-gutterElement:hover .cm-annotation-icon,
-.markdown-editor .cm-commentGutter:hover .cm-gutterElement:hover .cm-annotation-icon {
+.markdown-editor .cm-annotationGutter:hover .cm-gutterElement:hover .cm-annotation-icon {
   opacity: 0.72;
 }
 
-.markdown-editor .cm-annotation-marker.has-bookmark .cm-annotation-action,
-.markdown-editor .cm-line-comment-marker.has-comment .cm-annotation-action {
+.markdown-editor .cm-annotation-marker.has-bookmark .cm-annotation-action {
   color: var(--annotation-active-color);
 }
 
-.markdown-editor .cm-annotation-marker.has-bookmark .cm-annotation-icon,
-.markdown-editor .cm-line-comment-marker.has-comment .cm-annotation-icon {
+.markdown-editor .cm-annotation-marker.has-bookmark .cm-annotation-icon {
   opacity: 1;
 }
 
@@ -186,13 +158,13 @@
 
 .markdown-editor .cm-lineNumbers .cm-activeLineGutter,
 .markdown-editor .cm-activeLineGutter {
-  color: var(--text-soft);
-  background: var(--editor-active-line-background);
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
 }
 
-.markdown-editor .cm-gutters .cm-activeLineGutter {
-  background: color-mix(in srgb, var(--editor-active-line-background) 100%, var(--surface-panel));
-  box-shadow: inset -1px 0 0 var(--line-subtle);
+.markdown-editor .cm-editor.cm-focused .cm-activeLineGutter {
+  color: var(--text-soft);
 }
 
 .markdown-editor .cm-content {
@@ -215,6 +187,11 @@
 }
 
 .markdown-editor .cm-activeLine {
+  background: transparent;
+  background-image: none;
+}
+
+.markdown-editor .cm-editor.cm-focused .cm-activeLine {
   background: var(--editor-active-line-background);
 }
 

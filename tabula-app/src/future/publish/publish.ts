@@ -468,8 +468,6 @@ const toPublishedComments = (
       ...(comment.authorColor ? { authorColor: comment.authorColor } : {}),
       ...(comment.quote ? { quote: comment.quote } : {}),
       ...(comment.sourceQuote ? { sourceQuote: comment.sourceQuote } : {}),
-      ...(comment.prefix ? { prefix: comment.prefix } : {}),
-      ...(comment.suffix ? { suffix: comment.suffix } : {}),
       ...(typeof comment.selectionStart === "number" ? { selectionStart: comment.selectionStart } : {}),
       ...(typeof comment.selectionEnd === "number" ? { selectionEnd: comment.selectionEnd } : {}),
       ...(typeof comment.resolved === "boolean" ? { resolved: comment.resolved } : {}),

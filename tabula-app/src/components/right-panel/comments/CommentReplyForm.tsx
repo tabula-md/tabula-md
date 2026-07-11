@@ -1,8 +1,10 @@
 import { WORKSPACE_ROOM_MAX_COMMENT_LENGTH } from "@tabula-md/tabula";
+import type { RightPanelCommentsCopy } from "./types";
 
 type CommentReplyFormProps = {
   fileId: string;
   commentId: string;
+  copy: RightPanelCommentsCopy;
   draft: string;
   onCancelCommentReply: () => void;
   onReplyDraftChange: (commentId: string, draft: string) => void;
@@ -12,6 +14,7 @@ type CommentReplyFormProps = {
 export function CommentReplyForm({
   fileId,
   commentId,
+  copy,
   draft,
   onCancelCommentReply,
   onReplyDraftChange,
@@ -30,13 +33,13 @@ export function CommentReplyForm({
             onAddCommentReply(fileId, commentId);
           }
         }}
-        placeholder="Reply"
+        placeholder={copy.replyAction}
         rows={2}
-        aria-label="Reply"
+        aria-label={copy.replyAction}
       />
       <div className="right-comment-reply-actions">
         <button className="right-comment-text-button" type="button" onClick={onCancelCommentReply}>
-          Cancel
+          {copy.cancel}
         </button>
         <button
           className="right-comment-submit"
@@ -44,7 +47,7 @@ export function CommentReplyForm({
           disabled={!draft.trim()}
           onClick={() => onAddCommentReply(fileId, commentId)}
         >
-          Reply
+          {copy.replyAction}
         </button>
       </div>
     </div>

@@ -14,24 +14,27 @@ import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspaceSt
 import { RightPanelComments } from "./RightPanelComments";
 import { RightPanelFiles } from "./RightPanelFiles";
 import { RightPanelOutline } from "./RightPanelOutline";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 
 type RightPanelProps = {
   isOpen: boolean;
   view: RightPanelView;
-  commentsEnabled: boolean;
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
-  openFileIds: string[];
   activeFileId: string;
   activeFileTitle: string;
   fileQuery: string;
   isLiveWorkspace: boolean;
+  language: WorkspaceLanguage;
+  activeOutlineHeadingIndex?: number;
   outlineHeadings: MarkdownHeading[];
   commentsByFileId: Record<string, FileComment[]>;
   commentDraft: string;
   identityName: string;
-  selectedText: string;
+  pendingSelectionText: string;
   selectedCharacterCount: number;
+  selectionCommentPending: boolean;
   commentInputRef?: RefObject<HTMLTextAreaElement | null>;
   activeCommentId?: string | null;
   activeReplyCommentId?: string | null;
@@ -44,11 +47,11 @@ type RightPanelProps = {
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
-  onCloseFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
   onDeleteFolder: (folderId: string) => void;
+  onCopyFile: (fileId: string) => void;
   onMoveFileToFolder: (fileId: string, folderId: string) => void;
   onMoveFolder: (folderId: string, parentId: string) => void;
   onRenameFolder: (folderId: string, nextTitle: string) => boolean;
@@ -56,7 +59,7 @@ type RightPanelProps = {
   onCommentDraftChange: (draft: string) => void;
   onIdentityNameChange: (name: string) => void;
   onIdentityNameCommit: () => void;
-  onAddComment: () => void;
+  onAddComment: (options?: { includeSelection?: boolean }) => void;
   onGoToComment: (fileId: string, comment: FileComment) => void;
   onStartCommentReply: (fileId: string, commentId: string) => void;
   onCancelCommentReply: () => void;
@@ -64,26 +67,30 @@ type RightPanelProps = {
   onAddCommentReply: (fileId: string, commentId: string) => void;
   onToggleCommentResolved: (fileId: string, commentId: string) => void;
   onDeleteComment: (fileId: string, commentId: string) => void;
+  onRequestTextSelection: () => void;
+  onSelectionCommentRequestHandled: () => void;
+  onCancelSelectionComment: () => void;
   formatCommentDate: (isoDate: string) => string;
 };
 
 export function RightPanel({
   isOpen,
   view,
-  commentsEnabled,
   files,
   folders,
-  openFileIds,
   activeFileId,
   activeFileTitle,
   fileQuery,
   isLiveWorkspace,
+  language,
+  activeOutlineHeadingIndex,
   outlineHeadings,
   commentsByFileId,
   commentDraft,
   identityName,
-  selectedText,
+  pendingSelectionText,
   selectedCharacterCount,
+  selectionCommentPending,
   commentInputRef,
   activeCommentId,
   activeReplyCommentId,
@@ -96,11 +103,11 @@ export function RightPanel({
   onNewFolder,
   onImportFile,
   onSelectFile,
-  onCloseFile,
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
   onDeleteFolder,
+  onCopyFile,
   onMoveFileToFolder,
   onMoveFolder,
   onRenameFolder,
@@ -116,9 +123,12 @@ export function RightPanel({
   onAddCommentReply,
   onToggleCommentResolved,
   onDeleteComment,
+  onRequestTextSelection,
+  onSelectionCommentRequestHandled,
+  onCancelSelectionComment,
   formatCommentDate,
 }: RightPanelProps) {
-  const visibleCommentsByFileId = commentsEnabled ? commentsByFileId : {};
+  const copy = getWorkspaceInterfaceCopy(language).projectContext;
   const {
     showResolved,
     collapsedReplyIds,
@@ -134,7 +144,7 @@ export function RightPanel({
     activeFileId,
     activeCommentId,
     activeReplyCommentId,
-    commentsByFileId: visibleCommentsByFileId,
+    commentsByFileId,
   });
 
   if (!isOpen) {
@@ -142,46 +152,47 @@ export function RightPanel({
   }
 
   const activeFile = files.find((file) => file.id === activeFileId);
-  const effectiveView = !commentsEnabled && view === "comments" ? "files" : view;
-  const { openCommentGroups, resolvedCommentGroups, openCommentCount } = getRightPanelCommentGroups(
+  const effectiveView = view;
+  const { openCommentGroups, resolvedCommentGroups } = getRightPanelCommentGroups(
     files,
-    visibleCommentsByFileId,
+    commentsByFileId,
   );
   const hasLiveFiles = isLiveWorkspace;
   const renderTab = (
     tabView: RightPanelView,
     label: string,
     icon: ReactNode,
-    count?: number,
     live = false,
   ) => (
     <button
-      className={`right-panel-tab ${effectiveView === tabView ? "active" : ""} ${
-        typeof count === "number" && count > 0 ? "has-count" : ""
-      } ${live ? "live" : ""}`}
+      className={`right-panel-tab ${effectiveView === tabView ? "active" : ""} ${live ? "live" : ""}`}
       type="button"
-      title={label}
       aria-label={label}
+      data-tooltip={label}
       aria-pressed={effectiveView === tabView}
       onClick={() => onSetView(tabView)}
     >
       {icon}
-      <span className="right-panel-tab-label">{label}</span>
       {live && <span className="right-panel-tab-live-dot" aria-hidden="true" />}
-      {typeof count === "number" && count > 0 && <small>{count}</small>}
     </button>
   );
 
   return (
-    <aside className="right-panel" aria-label="Project Context">
+    <aside className="right-panel" aria-label={copy.label}>
       <div className="right-panel-header">
-        <nav className="right-panel-tabs" aria-label="Project context sections">
-          {renderTab("files", "Files", <Folder size={14} />, undefined, hasLiveFiles)}
-          {renderTab("outline", "Outline", <ListTree size={14} />)}
-          {commentsEnabled && renderTab("comments", "Comments", <MessageSquare size={14} />, openCommentCount)}
+        <nav className="right-panel-tabs" aria-label={copy.sections}>
+          {renderTab("files", copy.tabs.files, <Folder size={14} />, hasLiveFiles)}
+          {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
+          {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />)}
         </nav>
-        <button className="right-panel-close" type="button" aria-label="Close Project Context" onClick={onClose}>
-          <X size={17} />
+        <button
+          className="right-panel-close"
+          type="button"
+          aria-label={copy.close}
+          data-tooltip={copy.close}
+          onClick={onClose}
+        >
+          <X size={18} />
         </button>
       </div>
 
@@ -190,11 +201,10 @@ export function RightPanel({
           <RightPanelFiles
             files={files}
             folders={folders}
-            openFileIds={openFileIds}
             activeFileId={activeFileId}
             fileQuery={fileQuery}
             isLiveWorkspace={isLiveWorkspace}
-            commentsByFileId={visibleCommentsByFileId}
+            copy={copy.files}
             collapsedFolderIds={collapsedFileTreeFolderIds}
             getFileSearchText={getFileSearchText}
             onFileQueryChange={onFileQueryChange}
@@ -203,11 +213,11 @@ export function RightPanel({
             onImportFile={onImportFile}
             onToggleFolder={toggleFileTreeFolderCollapsed}
             onSelectFile={onSelectFile}
-            onCloseFile={onCloseFile}
             onRenameFile={onRenameFile}
             onDuplicateFile={onDuplicateFile}
             onDeleteFile={onDeleteFile}
             onDeleteFolder={onDeleteFolder}
+            onCopyFile={onCopyFile}
             onMoveFileToFolder={onMoveFileToFolder}
             onMoveFolder={onMoveFolder}
             onRenameFolder={onRenameFolder}
@@ -217,14 +227,16 @@ export function RightPanel({
         {effectiveView === "outline" && (
           <RightPanelOutline
             activeFileTitle={activeFileTitle}
+            activeHeadingIndex={activeOutlineHeadingIndex}
             outlineHeadings={outlineHeadings}
             collapsedHeadingIds={collapsedOutlineHeadingIds}
+            copy={copy.outline}
             onToggleHeadingCollapsed={toggleOutlineHeadingCollapsed}
             onGoToOutlineHeading={onGoToOutlineHeading}
           />
         )}
 
-        {effectiveView === "comments" && commentsEnabled && (
+        {effectiveView === "comments" && (
           <RightPanelComments
             activeFile={activeFile}
             activeFileId={activeFileId}
@@ -234,14 +246,16 @@ export function RightPanel({
             showResolved={showResolved}
             commentDraft={commentDraft}
             identityName={identityName}
-            selectedText={selectedText}
+            pendingSelectionText={pendingSelectionText}
             selectedCharacterCount={selectedCharacterCount}
+            selectionCommentPending={selectionCommentPending}
             commentInputRef={commentInputRef}
             activeCommentId={activeCommentId}
             activeReplyCommentId={activeReplyCommentId}
             collapsedReplyIds={collapsedReplyIds}
             collapsedCommentFileIds={collapsedCommentFileIds}
             replyDraftByCommentId={replyDraftByCommentId}
+            copy={copy.comments}
             onToggleResolvedSection={toggleResolvedSection}
             onToggleRepliesCollapsed={toggleRepliesCollapsed}
             onToggleCommentFileCollapsed={toggleCommentFileCollapsed}
@@ -256,6 +270,9 @@ export function RightPanel({
             onAddCommentReply={onAddCommentReply}
             onToggleCommentResolved={onToggleCommentResolved}
             onDeleteComment={onDeleteComment}
+            onRequestTextSelection={onRequestTextSelection}
+            onSelectionCommentRequestHandled={onSelectionCommentRequestHandled}
+            onCancelSelectionComment={onCancelSelectionComment}
             formatCommentDate={formatCommentDate}
           />
         )}

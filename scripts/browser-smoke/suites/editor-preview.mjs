@@ -21,10 +21,12 @@ export async function run(ctx) {
     await page.keyboard.press("Escape");
     await waitForShareDialogState(page, { open: false });
     await page.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])", { timeout: 5_000 });
+    await page.waitForSelector(".markdown-editor-shell.collaboration-bound", { timeout: 5_000 });
+    await waitForRenderFrame(page);
   };
 
   const createDocument = async (page) => {
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
   };
 
   const applyFormattingMenuCommand = async (page, menuName, commandName) => {
@@ -42,15 +44,12 @@ export async function run(ctx) {
 
     expect((await page.locator(".cm-lineNumbers").count()) === 1, "Edit mode should show line numbers by default.");
     expect((await page.locator(".cm-activeLine").count()) >= 1, "Edit mode should highlight the active line.");
-    expect((await page.locator(".cm-activeLineGutter").count()) >= 1, "Edit mode should highlight the active line number.");
+    expect((await page.locator(".cm-activeLineGutter").count()) >= 1, "Edit mode should coordinate the active editor row.");
     expect(
       (await page.locator(".cm-annotationGutter .cm-activeLineGutter").count()) >= 1,
-      "Edit mode should include the left annotation gutter in the active line highlight.",
+      "Edit mode should expose the active row to the left annotation rail.",
     );
-    expect(
-      (await page.locator(".cm-commentGutter .cm-activeLineGutter").count()) >= 1,
-      "Edit mode should include the right comment gutter in the active line highlight.",
-    );
+    expect((await page.locator(".cm-commentGutter").count()) === 0, "Edit mode should not reserve a right comment gutter.");
     const editorRailLayout = await page.evaluate(() => {
       const getRect = (selector) => {
         const element = document.querySelector(selector);
@@ -66,50 +65,23 @@ export async function run(ctx) {
         };
       };
       const content = getRect(".cm-content");
-      const activeLine = getRect(".cm-activeLine");
-      const activeCommentGutterLine = getRect(".cm-gutters-after .cm-activeLineGutter");
-      const editor = getRect(".cm-editor");
       const annotationGutter = getRect(".cm-annotationGutter");
       const lineNumberGutter = getRect(".cm-lineNumbers");
-      const commentGutter = getRect(".cm-commentGutter");
       const bookmarkAction = getRect(".cm-annotationGutter .cm-activeLineGutter .cm-annotation-action");
-      const commentAction = getRect(".cm-commentGutter .cm-activeLineGutter .cm-line-comment-action");
 
       return {
         leftRail: (annotationGutter?.width ?? 0) + (lineNumberGutter?.width ?? 0),
-        rightRail: commentGutter?.width ?? 0,
-        lineToCommentGutterGap:
-          activeLine && activeCommentGutterLine ? activeCommentGutterLine.left - activeLine.right : Number.NaN,
-        trailingFrameGap: editor && commentGutter ? editor.right - commentGutter.right : Number.NaN,
         leftActionDistance: content && bookmarkAction ? content.left - (bookmarkAction.left + bookmarkAction.width / 2) : Number.NaN,
-        rightActionDistance:
-          content && commentAction ? commentAction.left + commentAction.width / 2 - content.right : Number.NaN,
       };
     });
-    expect(
-      Math.abs(editorRailLayout.leftRail - editorRailLayout.rightRail) <= 1,
-      "Editor annotation rails should reserve symmetric left and right space.",
-    );
-    expect(
-      Math.abs(editorRailLayout.lineToCommentGutterGap) <= 1,
-      "Active line background should meet the right comment gutter without a visible seam.",
-    );
-    expect(Math.abs(editorRailLayout.trailingFrameGap) <= 1, "Right comment gutter should close the editor frame.");
-    expect(
-      Math.abs(editorRailLayout.leftActionDistance - editorRailLayout.rightActionDistance) <= 4,
-      "Left bookmark and right comment actions should sit at visually balanced distances from the text column.",
-    );
+    expect(editorRailLayout.leftRail > 0, "Editor should retain the left line-number and bookmark rail.");
+    expect(editorRailLayout.leftActionDistance > 0, "Bookmark actions should stay outside the text column.");
     await page.mouse.move(12, 12);
     const activeAnnotationLaneOpacity = await page.evaluate(() => {
       const icon = document.querySelector(".cm-annotationGutter .cm-activeLineGutter .cm-annotation-icon");
       return icon ? getComputedStyle(icon).opacity : "";
     });
     expect(activeAnnotationLaneOpacity === "0", "Annotation lanes should stay hidden until the pointer enters the gutter.");
-    const activeCommentLaneOpacity = await page.evaluate(() => {
-      const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
-      return icon ? getComputedStyle(icon).opacity : "";
-    });
-    expect(activeCommentLaneOpacity === "0", "Comment lanes should stay hidden until the pointer enters the right gutter.");
     const activeTextLinePoint = await page.evaluate(() => {
       const line = document.querySelector(".cm-activeLine");
       if (!(line instanceof HTMLElement)) {
@@ -125,11 +97,6 @@ export async function run(ctx) {
     expect(Boolean(activeTextLinePoint), "The active text line should have a hover point.");
     await page.mouse.move(activeTextLinePoint.x, activeTextLinePoint.y);
     await waitForRenderFrame(page);
-    const textHoveredCommentLaneOpacity = await page.evaluate(() => {
-      const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
-      return icon ? getComputedStyle(icon).opacity : "";
-    });
-    expect(textHoveredCommentLaneOpacity === "0", "Hovering editor text should not reveal the right comment lane.");
     const activeAnnotationPoint = await page.evaluate(() => {
       const line = document.querySelector(".cm-annotationGutter .cm-activeLineGutter");
       if (!(line instanceof HTMLElement)) {
@@ -153,49 +120,12 @@ export async function run(ctx) {
       return icon ? getComputedStyle(icon).opacity : "";
     });
     expect(hoveredAnnotationLaneOpacity !== "0", "Annotation lanes should appear when the pointer enters the gutter.");
-    const activeCommentPoint = await page.evaluate(() => {
-      const line = document.querySelector(".cm-commentGutter .cm-activeLineGutter");
-      if (!(line instanceof HTMLElement)) {
-        return null;
-      }
-
-      const rect = line.getBoundingClientRect();
-      return {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      };
-    });
-    expect(Boolean(activeCommentPoint), "The active line should have a right comment gutter point.");
-    await page.mouse.move(activeCommentPoint.x, activeCommentPoint.y);
-    await page.waitForFunction(() => {
-      const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
-      return icon ? getComputedStyle(icon).opacity !== "0" : false;
-    });
-    const hoveredCommentLaneOpacity = await page.evaluate(() => {
-      const icon = document.querySelector(".cm-commentGutter .cm-activeLineGutter .cm-annotation-icon");
-      return icon ? getComputedStyle(icon).opacity : "";
-    });
-    expect(hoveredCommentLaneOpacity !== "0", "Comment lanes should appear when the pointer enters the right gutter.");
-
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     await page.getByRole("button", { name: "Line numbers" }).click();
     await waitForRenderFrame(page);
     expect((await page.locator(".cm-lineNumbers").count()) === 0, "Line numbers should turn off from Editor controls.");
-    const lineNumberOffRailLayout = await page.evaluate(() => {
-      const getWidth = (selector) => {
-        const element = document.querySelector(selector);
-        return element instanceof Element ? element.getBoundingClientRect().width : 0;
-      };
-
-      return {
-        leftRail: getWidth(".cm-annotationGutter"),
-        rightRail: getWidth(".cm-commentGutter"),
-      };
-    });
-    expect(
-      Math.abs(lineNumberOffRailLayout.leftRail - lineNumberOffRailLayout.rightRail) <= 1,
-      "Editor annotation rails should remain symmetric when line numbers are hidden.",
-    );
+    expect((await page.locator(".cm-annotationGutter").count()) === 1, "Bookmark rail should remain when line numbers are hidden.");
+    expect((await page.locator(".cm-commentGutter").count()) === 0, "Hiding line numbers should not introduce a comment gutter.");
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     await page.getByRole("button", { name: "Line numbers" }).click();
     await waitForRenderFrame(page);
@@ -229,7 +159,8 @@ export async function run(ctx) {
         gutterBoxShadow: gutterStyle?.boxShadow ?? "",
         gutterZIndex: gutterStyle?.zIndex ?? "",
         activeGutterBackground: activeGutterStyle?.backgroundColor ?? "",
-        railElementClassName: railElement instanceof HTMLElement ? railElement.className : "",
+        railElementIsInsideGutters:
+          railElement instanceof Element && Boolean(railElement.closest(".cm-gutters")),
       };
     });
     expect(unwrappedGutterState.scrollLeft > 0, "Wrapping-off editor content should be horizontally scrollable.");
@@ -240,17 +171,16 @@ export async function run(ctx) {
     );
     expect(Number(unwrappedGutterState.gutterZIndex) >= 1, "Line number gutters should stay above scrolled text.");
     expect(
-      unwrappedGutterState.gutterBoxShadow !== "" && unwrappedGutterState.gutterBoxShadow !== "none",
-      "Line number gutters should visually separate from horizontally scrolled text.",
+      unwrappedGutterState.gutterBoxShadow === "none",
+      "Line number gutters should stay borderless while protecting the rail from horizontally scrolled text.",
     );
     expect(
-      String(unwrappedGutterState.railElementClassName).includes("cm-gutter"),
+      unwrappedGutterState.railElementIsInsideGutters,
       "Horizontally scrolled text should not cover the line-number rail.",
     );
     expect(
-      unwrappedGutterState.activeGutterBackground !== "" &&
-        unwrappedGutterState.activeGutterBackground !== "rgba(0, 0, 0, 0)",
-      "Active line number gutters should not expose darker overlapped text underneath.",
+      unwrappedGutterState.activeGutterBackground === "rgba(0, 0, 0, 0)",
+      "Active line styling should remain in the document content instead of duplicating across the gutter rail.",
     );
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     await page.getByRole("button", { name: "Line Wrapping" }).click();
@@ -292,25 +222,6 @@ export async function run(ctx) {
       await page.mouse.click(point.x, point.y);
     };
 
-    const clickLineCommentAction = async (lineNumber) => {
-      const point = await page.evaluate((targetLineNumber) => {
-        const action = document.querySelector(`.cm-line-comment-action[data-line-number="${targetLineNumber}"]`);
-        if (!(action instanceof HTMLElement)) {
-          return null;
-        }
-
-        const rect = action.getBoundingClientRect();
-        return {
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2,
-        };
-      }, lineNumber);
-      expect(Boolean(point), `Line ${lineNumber} should have a right-side comment target.`);
-      await page.mouse.move(point.x, point.y);
-      await waitForRenderFrame(page);
-      await page.mouse.click(point.x, point.y);
-    };
-
     await clickBookmarkLineAction(2);
     await waitForRenderFrame(page);
     const bookmarkedLineState = await page.evaluate(() => ({
@@ -336,66 +247,24 @@ export async function run(ctx) {
     expect(!bookmarkedLineState.lineActionPopoverVisible, "Annotation gutter actions should not open a line action menu.");
     expect(!bookmarkedLineState.statusButtonVisible, "Selection comments should no longer use the status bar action.");
 
-    await clickLineCommentAction(2);
-    await waitForRenderFrame(page);
-    await page.locator(".right-comment-input").fill("Line note");
-    await page.locator(".right-comment-form .right-comment-submit").click();
-    await waitForRenderFrame(page);
-
-    const lineCommentState = await page.evaluate(() => ({
-      commentActions: document.querySelectorAll(".cm-line-comment-marker.has-comment").length,
-      commentActionInRightGutter: Boolean(document.querySelector(".cm-commentGutter .cm-line-comment-marker.has-comment")),
-      commentActionInBody: Boolean(document.querySelector(".cm-line .cm-line-comment-action")),
-      commentColor: (() => {
-        const action = document.querySelector(".cm-line-comment-marker.has-comment .cm-line-comment-action");
-        return action ? getComputedStyle(action).color : "";
-      })(),
-      commentTagName:
-        document.querySelector(".cm-line-comment-marker.has-comment .cm-line-comment-action")?.tagName ?? "",
-      commentAriaLabel:
-        document.querySelector(".cm-line-comment-marker.has-comment .cm-line-comment-action")?.getAttribute("aria-label") ?? "",
-      selectionPopoverVisible: Boolean(document.querySelector(".selection-comment-popover")),
-      markText: document.querySelector(".cm-comment-mark")?.textContent ?? "",
-      panelText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-    }));
-    expect(lineCommentState.commentActions === 1, "A line with a comment should render a right-side comment affordance.");
-    expect(lineCommentState.commentActionInRightGutter, "Line comments should sit in the right gutter.");
-    expect(!lineCommentState.commentActionInBody, "Line comments should not sit inside the editable text body.");
-    expect(lineCommentState.commentColor === "rgb(118, 63, 200)", "Active line comments should use the shared annotation accent.");
-    expect(lineCommentState.commentTagName === "BUTTON", "Active editor line comments should expose a real button.");
-    expect(
-      lineCommentState.commentAriaLabel === "Open line comments",
-      "Active editor line comments should have a useful accessibility label.",
-    );
-    expect(!lineCommentState.selectionPopoverVisible, "Line comments should not also show the selected-text comment popover.");
-    expect(lineCommentState.markText === "beta", "Line comments should anchor to the clicked line text.");
-    expect(lineCommentState.panelText.includes("Line note"), "Line comments should use the existing comments panel.");
-
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await page.waitForSelector(".workspace.preview .preview-line-action.bookmark.has-bookmark", { timeout: 5_000 });
-    await page.waitForSelector(".workspace.preview .preview-line-action.comment.has-comment", { timeout: 5_000 });
     const previewLineGutterState = await page.evaluate(() => {
       const previewDocument = document.querySelector(".workspace.preview .preview-document.with-line-gutters");
       const previewContent = document.querySelector(".workspace.preview .preview-document-content");
       const bookmarkAction = document.querySelector(".workspace.preview .preview-line-action.bookmark.has-bookmark");
-      const commentAction = document.querySelector(".workspace.preview .preview-line-action.comment.has-comment");
       const previewDocumentRect = previewDocument?.getBoundingClientRect();
       const previewContentRect = previewContent?.getBoundingClientRect();
       const bookmarkRect = bookmarkAction?.getBoundingClientRect();
-      const commentRect = commentAction?.getBoundingClientRect();
       return {
         hasPreviewLineGutter: Boolean(previewDocument && previewContent),
         softBreakCount: previewContent?.querySelectorAll("p br").length ?? 0,
         bookmarkColor: bookmarkAction instanceof HTMLElement ? getComputedStyle(bookmarkAction).color : "",
-        commentColor: commentAction instanceof HTMLElement ? getComputedStyle(commentAction).color : "",
         bookmarkTagName: bookmarkAction?.tagName ?? "",
-        commentTagName: commentAction?.tagName ?? "",
         bookmarkAriaLabel: bookmarkAction?.getAttribute("aria-label") ?? "",
-        commentAriaLabel: commentAction?.getAttribute("aria-label") ?? "",
+        commentGutterCount: document.querySelectorAll(".preview-line-gutter.comment").length,
         bookmarkLeftOfContent:
           Boolean(bookmarkRect && previewContentRect) && bookmarkRect.right <= previewContentRect.left + 1,
-        commentRightOfContent:
-          Boolean(commentRect && previewContentRect) && commentRect.left >= previewContentRect.right - 1,
         contentInsideDocument:
           Boolean(previewDocumentRect && previewContentRect) &&
           previewContentRect.left > previewDocumentRect.left &&
@@ -405,20 +274,14 @@ export async function run(ctx) {
     expect(previewLineGutterState.hasPreviewLineGutter, "Preview mode should render line gutters around the document body.");
     expect(previewLineGutterState.softBreakCount >= 2, "Preview line gutters should tolerate preserved soft line breaks.");
     expect(previewLineGutterState.bookmarkColor === "rgb(118, 63, 200)", "Preview bookmarks should use the shared annotation accent.");
-    expect(previewLineGutterState.commentColor === "rgb(118, 63, 200)", "Preview comments should use the shared annotation accent.");
     expect(previewLineGutterState.bookmarkTagName === "BUTTON", "Active preview bookmarks should expose a real button.");
-    expect(previewLineGutterState.commentTagName === "BUTTON", "Active preview comments should expose a real button.");
     expect(
-      previewLineGutterState.bookmarkAriaLabel === "Remove preview line bookmark",
+      previewLineGutterState.bookmarkAriaLabel === "Remove line bookmark",
       "Active preview bookmarks should have a useful accessibility label.",
     );
-    expect(
-      previewLineGutterState.commentAriaLabel === "Open preview line comments",
-      "Active preview comments should have a useful accessibility label.",
-    );
     expect(previewLineGutterState.bookmarkLeftOfContent, "Preview bookmark markers should sit in the left rail outside content.");
-    expect(previewLineGutterState.commentRightOfContent, "Preview comment markers should sit in the right rail outside content.");
-    expect(previewLineGutterState.contentInsideDocument, "Preview line gutters should frame the rendered document content.");
+    expect(previewLineGutterState.commentGutterCount === 0, "Preview should not render a right comment gutter.");
+    expect(previewLineGutterState.contentInsideDocument, "Preview should keep balanced reading insets around content.");
   });
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 760 } });
@@ -571,7 +434,7 @@ export async function run(ctx) {
       "Code block formatting should select the language placeholder first.",
     );
     expect(
-      codeBlockFormatting.primaryFormattingCommandCount === 6,
+      codeBlockFormatting.primaryFormattingCommandCount === 7,
       "Formatting toolbar should keep frequent inline commands and grouped command menus visible.",
     );
     expect(codeBlockFormatting.hasOverflowTrigger, "Formatting toolbar should expose overflow commands through the registry trigger.");
@@ -602,7 +465,7 @@ export async function run(ctx) {
     expect(numberedListFormatting === "1. alpha\n2. beta", "Numbered list toolbar button should number selected lines.");
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("alpha\nbeta");
-    await applyFormattingMenuCommand(page, "More formatting", "Horizontal rule");
+    await applyFormattingMenuCommand(page, "Insert", "Horizontal rule");
     await waitForRenderFrame(page);
     const horizontalRuleFormatting = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
     expect(
@@ -692,7 +555,7 @@ export async function run(ctx) {
       const codeStyle = window.getComputedStyle(code);
       const actionsStyle = actions instanceof HTMLElement ? window.getComputedStyle(actions) : null;
       const surfaceProbe = document.createElement("span");
-      surfaceProbe.style.background = "var(--surface-panel)";
+      surfaceProbe.style.background = "var(--surface-overlay)";
       document.body.append(surfaceProbe);
       const surfacePanelBackground = window.getComputedStyle(surfaceProbe).backgroundColor;
       surfaceProbe.remove();
@@ -702,8 +565,8 @@ export async function run(ctx) {
         actionCount: document.querySelectorAll(".preview-code-action").length,
         actionsOpacity: actionsStyle?.opacity ?? "",
         actionsPointerEvents: actionsStyle?.pointerEvents ?? "",
-        wrapTitle: document.querySelector(".preview-code-action")?.getAttribute("title") ?? "",
-        copyTitle: document.querySelectorAll(".preview-code-action")[1]?.getAttribute("title") ?? "",
+        wrapTooltip: document.querySelector(".preview-code-action")?.getAttribute("data-tooltip") ?? "",
+        copyTooltip: document.querySelectorAll(".preview-code-action")[1]?.getAttribute("data-tooltip") ?? "",
         wrapIconClass: wrapIcon?.getAttribute("class") ?? "",
         wrapOffMarkCount: document.querySelectorAll(".preview-code-action-off-mark").length,
         blockRadius: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).borderRadius : "",
@@ -722,13 +585,13 @@ export async function run(ctx) {
     expect(previewCodeBlock?.actionCount === 2, "Preview code blocks should expose word wrap and copy actions.");
     expect(previewCodeBlock?.actionsOpacity === "0", "Preview code block actions should stay hidden until hover or focus.");
     expect(previewCodeBlock?.actionsPointerEvents === "none", "Hidden preview code block actions should not intercept the document.");
-    expect(previewCodeBlock?.wrapTitle === "Enable word wrap", "Preview code blocks should offer a word wrap control.");
+    expect(previewCodeBlock?.wrapTooltip === "Enable word wrap", "Preview code blocks should offer a word wrap control.");
     expect(
       previewCodeBlock?.wrapIconClass.includes("lucide-wrap-text"),
       "Preview code blocks should show the wrap icon before word wrap is enabled.",
     );
     expect(previewCodeBlock?.wrapOffMarkCount === 0, "Preview code blocks should not show the wrap-off mark before wrapping is enabled.");
-    expect(previewCodeBlock?.copyTitle === "Copy code", "Preview code blocks should offer a copy code control.");
+    expect(previewCodeBlock?.copyTooltip === "Copy code", "Preview code blocks should offer a copy code control.");
     expect(previewCodeBlock?.blockRadius !== "0px", "Preview code block controls should live inside the rounded code surface.");
     expect(previewCodeBlock?.blockBorderWidth === "0px", "Preview code blocks should not draw a document boundary.");
     expect(
@@ -773,14 +636,14 @@ export async function run(ctx) {
       const wrapOffMark = wrapButton?.querySelector(".preview-code-action-off-mark");
       return {
         whiteSpace: code instanceof HTMLElement ? window.getComputedStyle(code).whiteSpace : "",
-        wrapTitle: wrapButton?.getAttribute("title") ?? "",
+        wrapTooltip: wrapButton?.getAttribute("data-tooltip") ?? "",
         wrapPressed: wrapButton?.getAttribute("aria-pressed") ?? "",
         wrapIconClass: wrapIcon?.getAttribute("class") ?? "",
         wrapOffMarkClass: wrapOffMark?.getAttribute("class") ?? "",
       };
     });
     expect(wrappedCodeBlock.whiteSpace === "pre-wrap", "Preview word wrap should wrap code without changing the source.");
-    expect(wrappedCodeBlock.wrapTitle === "Disable word wrap", "Preview word wrap should toggle the tooltip copy.");
+    expect(wrappedCodeBlock.wrapTooltip === "Disable word wrap", "Preview word wrap should toggle the tooltip copy.");
     expect(wrappedCodeBlock.wrapPressed === "true", "Preview word wrap should expose pressed state.");
     expect(
       wrappedCodeBlock.wrapIconClass.includes("lucide-wrap-text") &&
@@ -1043,6 +906,10 @@ export async function run(ctx) {
     await page.keyboard.type("obsolete");
     await page.keyboard.press("Shift+Home");
     await page.getByRole("button", { name: "More formatting", exact: true }).click();
+    expect(
+      (await page.locator(".formatting-overflow-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
+      "Formatting menus should use elevation without a static border.",
+    );
     await page.getByRole("menuitemcheckbox", { name: "Strikethrough", exact: true }).click();
     await waitForRenderFrame(page);
     const afterOverflowInlineCommand = await page.locator(".cm-content").textContent();
@@ -1054,7 +921,7 @@ export async function run(ctx) {
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
-    await page.getByRole("button", { name: "More formatting", exact: true }).click();
+    await page.getByRole("button", { name: "Insert", exact: true }).click();
     await page.getByRole("menuitemcheckbox", { name: "Table", exact: true }).click();
     await waitForRenderFrame(page);
     const afterOverflowInsertCommand = await page.locator(".cm-content").textContent();
@@ -1087,12 +954,9 @@ export async function run(ctx) {
       const editorGutter = document.querySelector(".workspace.split .cm-gutters");
       const editorContent = document.querySelector(".workspace.split .cm-content");
       const activeLine = document.querySelector(".workspace.split .cm-activeLine");
-      const activeCommentGutterLine = document.querySelector(".workspace.split .cm-gutters-after .cm-activeLineGutter");
-      const commentGutter = document.querySelector(".workspace.split .cm-commentGutter");
       const previewDocument = document.querySelector(".workspace.split .preview-document.with-line-gutters");
       const previewContent = document.querySelector(".workspace.split .preview-document-content");
       const previewBookmarkGutter = document.querySelector(".workspace.split .preview-line-gutter.bookmark");
-      const previewCommentGutter = document.querySelector(".workspace.split .preview-line-gutter.comment");
       const previewLineActions = Array.from(document.querySelectorAll(".workspace.split .preview-line-action"));
       const editorLineActions = Array.from(document.querySelectorAll(".workspace.split .cm-annotation-action"));
       const previewParagraph = document.querySelector(".workspace.split .preview-surface p");
@@ -1103,18 +967,12 @@ export async function run(ctx) {
       const previewRect = preview?.getBoundingClientRect();
       const editorGutterRect = editorGutter?.getBoundingClientRect();
       const editorContentRect = editorContent?.getBoundingClientRect();
-      const activeLineRect = activeLine?.getBoundingClientRect();
-      const activeCommentGutterLineRect = activeCommentGutterLine?.getBoundingClientRect();
-      const commentGutterRect = commentGutter?.getBoundingClientRect();
       const previewDocumentRect = previewDocument?.getBoundingClientRect();
       const previewContentRect = previewContent?.getBoundingClientRect();
       const previewBookmarkGutterRect = previewBookmarkGutter?.getBoundingClientRect();
-      const previewCommentGutterRect = previewCommentGutter?.getBoundingClientRect();
       const previewParagraphRect = previewParagraph?.getBoundingClientRect();
       const activeLineStyle = activeLine ? window.getComputedStyle(activeLine) : null;
-      const editorStyle = editor ? window.getComputedStyle(editor) : null;
       const previewStyle = preview ? window.getComputedStyle(preview) : null;
-      const editorScrollbarRail = Number.parseFloat(editorStyle?.paddingRight ?? "0");
       return {
         editorText: document.querySelector(".cm-content")?.textContent ?? "",
         previewStrongText: document.querySelector(".preview-surface strong")?.textContent ?? "",
@@ -1139,12 +997,13 @@ export async function run(ctx) {
           previewParagraphRect.left - previewRect.left <= 54,
         splitPreviewHasInset:
           Boolean(previewStyle) && Number.parseFloat(previewStyle.paddingLeft) >= 14,
-        splitPreviewHasLineGutters:
-          Boolean(previewDocumentRect && previewContentRect && previewBookmarkGutterRect && previewCommentGutterRect) &&
+        splitPreviewHasBookmarkGutter:
+          Boolean(previewDocumentRect && previewContentRect && previewBookmarkGutterRect) &&
           Math.abs(previewBookmarkGutterRect.left - previewDocumentRect.left) <= 1 &&
-          Math.abs(previewBookmarkGutterRect.right - previewContentRect.left) <= 1 &&
-          Math.abs(previewCommentGutterRect.left - previewContentRect.right) <= 1 &&
-          Math.abs(previewCommentGutterRect.right - previewDocumentRect.right) <= 1,
+          Math.abs(previewBookmarkGutterRect.right - previewContentRect.left) <= 1,
+        splitHasNoCommentGutters:
+          !document.querySelector(".workspace.split .cm-commentGutter") &&
+          !document.querySelector(".workspace.split .preview-line-gutter.comment"),
         splitPreviewInactiveGutterIconsHidden:
           previewLineActions.length > 0 &&
           previewLineActions.every((action) => {
@@ -1153,10 +1012,7 @@ export async function run(ctx) {
               return false;
             }
 
-            const isActive =
-              action.classList.contains("has-bookmark") ||
-              action.classList.contains("has-comment") ||
-              action.classList.contains("active");
+            const isActive = action.classList.contains("has-bookmark");
             return isActive || window.getComputedStyle(icon).opacity === "0";
           }),
         splitPreviewInactiveGutterActionsHiddenFromAccessibility:
@@ -1166,10 +1022,7 @@ export async function run(ctx) {
               return false;
             }
 
-            const isActive =
-              action.classList.contains("has-bookmark") ||
-              action.classList.contains("has-comment") ||
-              action.classList.contains("active");
+            const isActive = action.classList.contains("has-bookmark");
             return (
               isActive ||
               (action.tagName === "SPAN" &&
@@ -1184,9 +1037,7 @@ export async function run(ctx) {
               return false;
             }
 
-            const isActive =
-              action.closest(".cm-annotation-marker.has-bookmark") ||
-              action.closest(".cm-line-comment-marker.has-comment");
+            const isActive = action.closest(".cm-annotation-marker.has-bookmark");
             return (
               Boolean(isActive) ||
               (action.tagName === "SPAN" &&
@@ -1198,13 +1049,14 @@ export async function run(ctx) {
         splitReadableColumnsBalanced:
           Boolean(editorContentRect && previewParagraphRect) &&
           Math.abs(editorContentRect.width - previewParagraphRect.width) <= 24,
-        splitActiveLineUsesSolidRow:
-          Boolean(activeLineStyle) && activeLineStyle.backgroundImage === "none",
-        splitActiveLineMeetsCommentGutter:
-          Boolean(activeLineRect && activeCommentGutterLineRect) &&
-          Math.abs(activeCommentGutterLineRect.left - activeLineRect.right) <= 1,
-        splitCommentGutterClosesEditorFrame:
-          Boolean(editorRect && commentGutterRect) && Math.abs(editorRect.right - editorScrollbarRail - commentGutterRect.right) <= 1,
+        splitReadableColumnWidths: {
+          editor: editorContentRect?.width ?? 0,
+          preview: previewParagraphRect?.width ?? 0,
+        },
+        splitActiveLineIsQuietWhileToolbarOwnsFocus:
+          Boolean(activeLineStyle) &&
+          activeLineStyle.backgroundImage === "none" &&
+          activeLineStyle.backgroundColor === "rgba(0, 0, 0, 0)",
       };
     });
     expect(splitFormatting.editorText === "**alpha**", "Split toolbar command should update editor Markdown source.");
@@ -1216,7 +1068,8 @@ export async function run(ctx) {
     expect(splitFormatting.splitEditorContentFollowsGutter, "Split editor content should start after the line number gutter.");
     expect(splitFormatting.splitPreviewContentBreathesFromDivider, "Split preview content should breathe away from the divider.");
     expect(splitFormatting.splitPreviewHasInset, "Split preview should carry pane-specific left inset.");
-    expect(splitFormatting.splitPreviewHasLineGutters, "Split preview should reserve bookmark and comment gutters around content.");
+    expect(splitFormatting.splitPreviewHasBookmarkGutter, "Split preview should reserve only the bookmark gutter beside content.");
+    expect(splitFormatting.splitHasNoCommentGutters, "Split mode should not render editor or preview comment gutters.");
     expect(splitFormatting.splitPreviewInactiveGutterIconsHidden, "Split preview gutter icons should stay hidden until active or hovered.");
     expect(
       splitFormatting.splitPreviewInactiveGutterActionsHiddenFromAccessibility,
@@ -1226,10 +1079,14 @@ export async function run(ctx) {
       splitFormatting.splitEditorInactiveGutterActionsHiddenFromAccessibility,
       "Inactive split editor gutter affordances should stay out of the accessibility tree.",
     );
-    expect(splitFormatting.splitReadableColumnsBalanced, "Split should balance the editor text column with preview content width.");
-    expect(splitFormatting.splitActiveLineUsesSolidRow, "Split active line should use one solid row background.");
-    expect(splitFormatting.splitActiveLineMeetsCommentGutter, "Split active line should meet the right comment gutter without a seam.");
-    expect(splitFormatting.splitCommentGutterClosesEditorFrame, "Split comment gutter should close the editor frame before the scrollbar rail.");
+    expect(
+      splitFormatting.splitReadableColumnsBalanced,
+      `Split should balance the editor text column with preview content width. ${JSON.stringify(splitFormatting.splitReadableColumnWidths)}`,
+    );
+    expect(
+      splitFormatting.splitActiveLineIsQuietWhileToolbarOwnsFocus,
+      "Split active line should stay quiet while a toolbar control owns keyboard focus.",
+    );
 
     const splitResizeInitial = await page.evaluate(() => {
       const handle = document.querySelector(".split-resize-handle");
@@ -1257,6 +1114,7 @@ export async function run(ctx) {
         cursor: handleStyle?.cursor ?? "",
         lineOpacity: handleLineStyle?.opacity ?? "",
         lineWidth: handleLineStyle?.width ?? "",
+        lineHeight: Number.parseFloat(handleLineStyle?.height ?? "0"),
         editorScrollbarGutter: editorStyle?.scrollbarGutter ?? "",
         previewScrollbarGutter: previewStyle?.scrollbarGutter ?? "",
         editorPaddingRight: Number.parseFloat(editorStyle?.paddingRight ?? "0"),
@@ -1265,8 +1123,12 @@ export async function run(ctx) {
     });
     expect(splitResizeInitial.handle && splitResizeInitial.handle.width >= 24, "Split should expose a generous magnetic resize hit area.");
     expect(splitResizeInitial.cursor === "col-resize", "Split resize handle should use the horizontal resize cursor.");
-    expect(Number(splitResizeInitial.lineOpacity) >= 0.4, "Split divider line should remain quietly visible by default.");
+    expect(splitResizeInitial.lineOpacity === "0", "Split divider line should stay hidden until resize interaction.");
     expect(splitResizeInitial.lineWidth === "1px", "Split divider should be a thin line when revealed.");
+    expect(
+      splitResizeInitial.handle && Math.abs(splitResizeInitial.lineHeight - splitResizeInitial.handle.height) <= 1,
+      "Split divider line should span the complete resize hit area height.",
+    );
     expect(
       splitResizeInitial.editorScrollbarGutter === "stable" && splitResizeInitial.previewScrollbarGutter === "stable",
       "Split editor and preview panes should reserve stable scrollbar rails.",
@@ -1574,6 +1436,7 @@ export async function run(ctx) {
             width: Math.round(rect.width),
             height: Math.round(rect.height),
             background: style.backgroundColor,
+            borderTopWidth: style.borderTopWidth,
           };
         };
 
@@ -1627,10 +1490,10 @@ export async function run(ctx) {
       "Switching Edit, Preview, and Split should keep the toolbar rail height consistent.",
     );
     expect(
-      splitAlignment.rail.background === previewAlignment.rail.background &&
-        previewAlignment.rail.background === writeAlignment.rail.background &&
-        writeAlignment.rail.background !== "rgba(0, 0, 0, 0)",
-      "The toolbar rail should provide one consistent surface in Edit, Preview, and Split.",
+      splitAlignment.rail.background === "rgba(0, 0, 0, 0)" &&
+        previewAlignment.rail.background === "rgba(0, 0, 0, 0)" &&
+        writeAlignment.rail.background === "rgba(0, 0, 0, 0)",
+      "The toolbar rail should remain borderless and transparent in every document mode.",
     );
     expect(
       splitAlignment.documentControls.height === previewAlignment.documentControls.height &&
@@ -1639,21 +1502,30 @@ export async function run(ctx) {
       "The visible document controls surface should keep the same 34px background height in every document mode.",
     );
     expect(
-      splitAlignment.documentControls.background === "rgba(0, 0, 0, 0)" &&
-        previewAlignment.documentControls.background === "rgba(0, 0, 0, 0)" &&
-        writeAlignment.documentControls.background === "rgba(0, 0, 0, 0)",
-      "Document controls should sit inside the shared toolbar surface without a second floating background.",
+      splitAlignment.documentControls.background === previewAlignment.documentControls.background &&
+        previewAlignment.documentControls.background === writeAlignment.documentControls.background &&
+        writeAlignment.documentControls.background !== "rgba(0, 0, 0, 0)",
+      "Document controls should use the same quiet surface in every mode.",
     );
     expect(
       splitAlignment.formattingToolbar?.height === 34 &&
         writeAlignment.formattingToolbar?.height === 34 &&
-        splitAlignment.formattingToolbar?.background === "rgba(0, 0, 0, 0)" &&
-        writeAlignment.formattingToolbar?.background === "rgba(0, 0, 0, 0)",
-      "Formatting controls should sit inside the shared toolbar surface without a second floating background.",
+        splitAlignment.formattingToolbar?.background === splitAlignment.documentControls.background &&
+        writeAlignment.formattingToolbar?.background === writeAlignment.documentControls.background,
+      "Formatting and document controls should use matching borderless surfaces.",
+    );
+    expect(
+      [splitAlignment, previewAlignment, writeAlignment].every(
+        (alignment) =>
+          alignment.rail.borderTopWidth === "0px" &&
+          alignment.documentControls.borderTopWidth === "0px" &&
+          (alignment.formattingToolbar?.borderTopWidth ?? "0px") === "0px",
+      ),
+      "Document command chrome should not use static border lines.",
     );
 
     await page.getByRole("button", { name: "Preview", exact: true }).click();
-    await page.locator('button[title="View controls"]').click();
+    await page.getByRole("button", { name: "View controls", exact: true }).click();
     const previewToolbarState = await page.evaluate(() => ({
       formattingToolbarCount: document.querySelectorAll(".formatting-toolbar").length,
       editorControlsText: document.querySelector('.document-controls-popover[aria-label="View controls"]')?.textContent ?? "",
@@ -1772,7 +1644,7 @@ export async function run(ctx) {
           return 0;
         }
 
-        clone.querySelectorAll(".cm-line-comment-action, .cm-widgetBuffer").forEach((element) => element.remove());
+        clone.querySelectorAll(".cm-widgetBuffer").forEach((element) => element.remove());
         clone.style.position = "absolute";
         clone.style.left = "-10000px";
         clone.style.top = "0";
@@ -2157,5 +2029,40 @@ flowchart LR
     expect((await page.locator('a.preview-docs-card[href^="javascript:"]').count()) === 0, "Unsafe card hrefs should be stripped.");
     expect((await page.locator(".preview-surface script").count()) === 0, "Preview should strip script tags from raw HTML.");
     expect((await page.locator('.preview-surface img[src^="javascript:"]').count()) === 0, "Preview should strip unsafe image URLs.");
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await createDocument(page);
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText("# Mobile heading\n\n- [ ] Touch task");
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await waitForEditorReady(page, { mode: "preview" });
+    const mobilePreview = await page.evaluate(() => {
+      const surface = document.querySelector(".workspace.preview .preview-surface");
+      const content = document.querySelector(".workspace.preview .preview-document-content");
+      const anchor = document.querySelector(".preview-heading-anchor");
+      const task = document.querySelector("button.preview-task-checkbox");
+      const surfaceRect = surface?.getBoundingClientRect();
+      const contentRect = content?.getBoundingClientRect();
+      const taskRect = task?.getBoundingClientRect();
+      return {
+        surfaceWidth: Math.round(surfaceRect?.width ?? 0),
+        contentWidth: Math.round(contentRect?.width ?? 0),
+        anchorOpacity: anchor ? window.getComputedStyle(anchor).opacity : "",
+        taskWidth: Math.round(taskRect?.width ?? 0),
+        taskHeight: Math.round(taskRect?.height ?? 0),
+      };
+    });
+    expect(
+      mobilePreview.surfaceWidth >= 350 && mobilePreview.contentWidth >= mobilePreview.surfaceWidth - 8,
+      "Mobile Preview should use the document width without desktop annotation rails.",
+    );
+    expect(mobilePreview.anchorOpacity === "0", "Mobile heading permalinks should stay hidden until focus.");
+    expect(
+      mobilePreview.taskWidth >= 44 && mobilePreview.taskHeight >= 44,
+      "Mobile preview task controls should expose a 44px touch target.",
+    );
   });
 }

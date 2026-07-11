@@ -2,7 +2,6 @@ import { getCommentRangeInText } from "./commentAnchors";
 import type { MarkdownCommentAnchor } from "./markdownEditorTypes";
 import {
   formatCommentDate,
-  getItemsInSourceLineRange,
   getPreviewCommentAnchors,
   getPreviewLineAnnotations,
   isPositionInLineRange,
@@ -33,21 +32,3 @@ export const getCommentAnchors = (
         : null;
     })
     .filter((anchor): anchor is MarkdownCommentAnchor => Boolean(anchor));
-
-export const getCommentsInLineRange = ({
-  comments,
-  lineStart,
-  lineEnd,
-  sourceText,
-}: {
-  comments: FileComment[];
-  lineStart: number;
-  lineEnd: number;
-  sourceText: string;
-}) =>
-  getItemsInSourceLineRange({
-    items: comments,
-    lineStart,
-    lineEnd,
-    resolveRange: (comment) => getCommentRangeInText(sourceText, comment),
-  });

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
+import type { FormattingCommandId } from "./formattingCommandLocale";
 
 export type FormattingToolbarCommandGroup =
   | "history"
@@ -33,7 +34,13 @@ export type FormattingToolbarCommandGroup =
   | "insert"
   | "cleanup";
 
-export type FormattingToolbarCommandPlacement = "primary" | "block" | "list" | "overflow";
+export type FormattingToolbarCommandPlacement =
+  | "history"
+  | "inline"
+  | "block"
+  | "list"
+  | "insert"
+  | "overflow";
 
 export type FormattingToolbarCommandState = {
   canRedo: boolean;
@@ -49,11 +56,9 @@ export type FormattingToolbarCommandActions = FormattingToolbarCommandState & {
 export type ToolbarApplyCommand = (actions: FormattingToolbarCommandActions) => void;
 
 export type FormattingToolbarCommand = {
-  id: string;
+  id: FormattingCommandId;
   group: FormattingToolbarCommandGroup;
   icon: ComponentType<{ size?: number }>;
-  label: string;
-  tooltip: string;
   shortcut?: string;
   placement: FormattingToolbarCommandPlacement;
   applyCommand: ToolbarApplyCommand;
@@ -78,10 +83,8 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     id: "undo",
     group: "history",
     icon: Undo2,
-    label: "Undo",
-    tooltip: "Undo",
     shortcut: "⌘Z",
-    placement: "primary",
+    placement: "history",
     applyCommand: ({ onUndo }) => onUndo(),
     isDisabled: ({ canUndo }) => !canUndo,
   },
@@ -89,10 +92,8 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     id: "redo",
     group: "history",
     icon: Redo2,
-    label: "Redo",
-    tooltip: "Redo",
     shortcut: "⇧⌘Z",
-    placement: "primary",
+    placement: "history",
     applyCommand: ({ onRedo }) => onRedo(),
     isDisabled: ({ canRedo }) => !canRedo,
   },
@@ -100,156 +101,118 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     command: "bold",
     group: "inline",
     icon: Bold,
-    label: "Bold",
-    tooltip: "Bold",
     shortcut: "⌘B",
-    placement: "primary",
+    placement: "inline",
   }),
   createFormattingCommand({
     command: "italic",
     group: "inline",
     icon: Italic,
-    label: "Italic",
-    tooltip: "Italic",
     shortcut: "⌘I",
-    placement: "primary",
+    placement: "inline",
   }),
   createFormattingCommand({
     command: "inline-code",
     group: "inline",
     icon: Code2,
-    label: "Inline code",
-    tooltip: "Inline code",
     shortcut: "⌘E",
-    placement: "primary",
+    placement: "inline",
   }),
   createFormattingCommand({
     command: "link",
     group: "inline",
     icon: Link2,
-    label: "Link",
-    tooltip: "Link",
     shortcut: "⌘K",
-    placement: "primary",
+    placement: "inline",
   }),
   createFormattingCommand({
     command: "heading-1",
     group: "heading",
     icon: Heading1,
-    label: "Heading 1",
-    tooltip: "Heading 1",
     placement: "block",
   }),
   createFormattingCommand({
     command: "heading-2",
     group: "heading",
     icon: Heading2,
-    label: "Heading 2",
-    tooltip: "Heading 2",
     placement: "block",
   }),
   createFormattingCommand({
     command: "heading-3",
     group: "heading",
     icon: Heading3,
-    label: "Heading 3",
-    tooltip: "Heading 3",
     placement: "block",
   }),
   createFormattingCommand({
     command: "bullet-list",
     group: "list",
     icon: List,
-    label: "Bullet list",
-    tooltip: "Bullet list",
     placement: "list",
   }),
   createFormattingCommand({
     command: "numbered-list",
     group: "list",
     icon: ListOrdered,
-    label: "Numbered list",
-    tooltip: "Numbered list",
     placement: "list",
   }),
   createFormattingCommand({
     command: "check-list",
     group: "list",
     icon: CheckSquare,
-    label: "Checklist",
-    tooltip: "Checklist",
     placement: "list",
   }),
   createFormattingCommand({
     command: "quote",
     group: "block",
     icon: Quote,
-    label: "Quote",
-    tooltip: "Quote",
     placement: "block",
   }),
   createFormattingCommand({
     command: "code-block",
     group: "block",
     icon: SquareCode,
-    label: "Code block",
-    tooltip: "Code block",
     placement: "block",
   }),
   createFormattingCommand({
     command: "horizontal-rule",
     group: "block",
     icon: SeparatorHorizontal,
-    label: "Horizontal rule",
-    tooltip: "Horizontal rule",
-    placement: "overflow",
+    placement: "insert",
   }),
   createFormattingCommand({
     command: "strikethrough",
     group: "inline",
     icon: Strikethrough,
-    label: "Strikethrough",
-    tooltip: "Strikethrough",
     placement: "overflow",
   }),
   createFormattingCommand({
     command: "table",
     group: "insert",
     icon: Table2,
-    label: "Table",
-    tooltip: "Insert table",
-    placement: "overflow",
+    placement: "insert",
   }),
   createFormattingCommand({
     command: "image",
     group: "insert",
     icon: Image,
-    label: "Image",
-    tooltip: "Insert image",
-    placement: "overflow",
+    placement: "insert",
   }),
   createFormattingCommand({
     command: "frontmatter",
     group: "insert",
     icon: FileCode2,
-    label: "Frontmatter",
-    tooltip: "Insert frontmatter",
-    placement: "overflow",
+    placement: "insert",
   }),
   createFormattingCommand({
     command: "footnote",
     group: "insert",
     icon: Superscript,
-    label: "Footnote",
-    tooltip: "Insert footnote",
-    placement: "overflow",
+    placement: "insert",
   }),
   createFormattingCommand({
     command: "clear-formatting",
     group: "cleanup",
     icon: Eraser,
-    label: "Clear formatting",
-    tooltip: "Clear formatting",
     placement: "overflow",
   }),
 ];
@@ -268,19 +231,24 @@ export const getFormattingToolbarCommandsByPlacement = (
   placement: FormattingToolbarCommandPlacement,
 ) => formattingToolbarCommands.filter((command) => command.placement === placement);
 
-const compactPrimaryCommandIds = new Set(["undo", "redo", "bold", "italic"]);
+const compactInlineCommandIds = new Set(["bold", "italic"]);
 
 export const getFormattingToolbarLayout = (compact: boolean) => {
+  const inlineCommands = getFormattingToolbarCommandsByPlacement("inline");
+  const insertCommands = getFormattingToolbarCommandsByPlacement("insert");
+  const overflowCommands = getFormattingToolbarCommandsByPlacement("overflow");
   return {
-    primary: compact
-      ? formattingToolbarCommands.filter((command) => compactPrimaryCommandIds.has(command.id))
-      : getFormattingToolbarCommandsByPlacement("primary"),
+    history: getFormattingToolbarCommandsByPlacement("history"),
+    inline: compact
+      ? inlineCommands.filter((command) => compactInlineCommandIds.has(command.id))
+      : inlineCommands,
     block: getFormattingToolbarCommandsByPlacement("block"),
     list: getFormattingToolbarCommandsByPlacement("list"),
+    insert: compact ? [] : insertCommands,
     overflow: compact
-      ? getFormattingToolbarCommandsByPlacement("primary")
-          .filter((command) => !compactPrimaryCommandIds.has(command.id))
-          .concat(getFormattingToolbarCommandsByPlacement("overflow"))
-      : getFormattingToolbarCommandsByPlacement("overflow"),
+      ? inlineCommands
+          .filter((command) => !compactInlineCommandIds.has(command.id))
+          .concat(insertCommands, overflowCommands)
+      : overflowCommands,
   };
 };

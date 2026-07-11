@@ -39,20 +39,26 @@ export async function run(ctx) {
     expect((await page.locator(".intro-action-button").count()) === 0, "The product README should not embed app actions.");
     expect((await page.locator(".tabula-plus-trigger").count()) === 0, "Tabula + should not live in the top-right document chrome.");
     expect((await page.locator(".share-trigger").count()) === 1, "Share should be a single top-right chrome action.");
-    expect((await page.getByRole("button", { name: "More document actions" }).count()) === 1, "Document controls should expose a More menu.");
+    expect((await page.getByRole("button", { name: "More document actions" }).count()) === 0, "Document controls should not expose a single-command More menu.");
     await page.evaluate(() => {
       window.__tabulaClipboard = [];
       navigator.clipboard.writeText = async (text) => {
         window.__tabulaClipboard.push(text);
       };
     });
-    await page.getByRole("button", { name: "More document actions" }).click();
-    await page.getByRole("menuitem", { name: "Copy current file" }).click();
+    await openProjectContext(page);
+    await page.getByRole("button", { name: "More actions for README.md" }).click();
+    expect(
+      (await page.locator(".right-file-action-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
+      "File action menus should use elevation without a static border.",
+    );
+    await page.getByRole("menuitem", { name: "Copy Markdown" }).click();
     const copiedFile = await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "");
     expect(
       copiedFile.includes("Tabula.md is a local-first Markdown workspace"),
-      "Document controls Copy should copy the active file source.",
+      "The Files menu should copy the selected file source.",
     );
+    await page.getByRole("button", { name: "Close Project Context" }).click();
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".publish-trigger").count()) === 0, "Publish should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".blank-document-action").count()) === 0, "The first screen should not show canvas-style onboarding actions.");
@@ -84,7 +90,7 @@ export async function run(ctx) {
       "Compact tab row should leave unused space after the new-tab control instead of pinning it right.",
     );
 
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     let nextTabs = await getTabs(page);
@@ -95,7 +101,7 @@ export async function run(ctx) {
     );
     expect((await page.locator(".intro-action-button").count()) === 0, "Blank writing documents should not show README actions.");
 
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     nextTabs = await getTabs(page);
@@ -103,7 +109,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".share-trigger").click();
@@ -182,12 +188,18 @@ export async function run(ctx) {
       "No-open-file state should keep the branded start screen available.",
     );
 
-    const emptyFontSizes = await page.$$eval(".empty-file-state :is(p, button, span)", (nodes) =>
-      nodes.map((node) => Number.parseFloat(window.getComputedStyle(node).fontSize)),
+    const emptyTypography = await page.$$eval(".empty-file-state :is(p, button, span)", (nodes) =>
+      nodes
+        .filter((node) => !node.classList.contains("tabula-logo"))
+        .map((node) => ({
+          className: node.getAttribute("class") ?? "",
+          fontSize: Number.parseFloat(window.getComputedStyle(node).fontSize),
+          tagName: node.tagName,
+        })),
     );
     expect(
-      emptyFontSizes.every((fontSize) => fontSize >= 14),
-      "No-open-file state should not render text below 14px.",
+      emptyTypography.every(({ fontSize }) => fontSize === 13 || fontSize === 15),
+      `No-open-file state should use the shared 13px body and 15px surface-heading type scale (${JSON.stringify(emptyTypography)}).`,
     );
 
     await page.getByRole("button", { name: "Browse project files" }).click();
@@ -606,6 +618,7 @@ export async function run(ctx) {
 
     const menuSurface = await page.evaluate(() => ({
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
+      menuBorderTopWidth: getComputedStyle(document.querySelector(".workspace-menu-popover")).borderTopWidth,
       menuRows: Array.from(document.querySelectorAll(".workspace-menu-row")).map((button) =>
         button.textContent?.replace(/\s+/g, " ").trim(),
       ),
@@ -619,6 +632,7 @@ export async function run(ctx) {
     }));
 
     expect(menuSurface.menuOpen, "The workspace menu should open from the top-left menu button.");
+    expect(menuSurface.menuBorderTopWidth === "0px", "Workspace menus should use elevation without static borders.");
     expect(menuSurface.templateButtonCount === 0, "Templates should not ship as a visible menu item yet.");
     expect(menuSurface.agentButtonCount === 0, "Agent should not ship as an inert menu item yet.");
     expect(menuSurface.templateSurfaceCount === 0, "Template detail surfaces should be removed until templates are real.");
@@ -668,7 +682,7 @@ export async function run(ctx) {
       "Preview mode should expose Split for direct comparison.",
     );
 
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Edit", "New local tabs should start in Edit mode.");

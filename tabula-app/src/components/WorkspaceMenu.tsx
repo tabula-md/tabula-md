@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import {
   ChevronDown,
   ChevronRight,
-  Download,
-  FileDown,
   FilePlus2,
   FolderOpen,
   HelpCircle,
@@ -14,7 +12,6 @@ import {
   SlidersHorizontal,
   Sun,
   Upload,
-  Users,
 } from "lucide-react";
 import type {
   WorkspaceLanguage,
@@ -28,7 +25,6 @@ import {
 type WorkspaceMenuProps = {
   isOpen: boolean;
   preferencesOpen: boolean;
-  canExportCurrentFile: boolean;
   theme: WorkspaceTheme;
   language: WorkspaceLanguage;
   onTogglePreferences: () => void;
@@ -37,9 +33,6 @@ type WorkspaceMenuProps = {
   onAddFile: () => void;
   onOpenFile: () => void;
   onImportProject: () => void;
-  onDownloadFile: () => void;
-  onDownloadProject: () => void;
-  onOpenCollaboration: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
 };
@@ -115,7 +108,6 @@ function XLogoIcon({ size = 15 }: { size?: number }) {
 export function WorkspaceMenu({
   isOpen,
   preferencesOpen,
-  canExportCurrentFile,
   theme,
   language,
   onTogglePreferences,
@@ -124,9 +116,6 @@ export function WorkspaceMenu({
   onAddFile,
   onOpenFile,
   onImportProject,
-  onDownloadFile,
-  onDownloadProject,
-  onOpenCollaboration,
   onOpenAbout,
   onOpenHelp,
 }: WorkspaceMenuProps) {
@@ -141,14 +130,14 @@ export function WorkspaceMenu({
     options: Array<{ value: Value; label: string; icon?: ReactNode }>,
     onChange: (value: Value) => void,
   ) => (
-    <div className="workspace-preferences-segmented">
+    <div className="workspace-preferences-segmented ui-segmented">
       {options.map((option) => (
         <button
           className={`${currentValue === option.value ? "active" : ""} ${option.icon ? "icon-only" : ""}`}
           type="button"
           key={option.value}
-          title={option.label}
           aria-label={option.label}
+          data-tooltip={option.icon ? option.label : undefined}
           aria-pressed={currentValue === option.value}
           onClick={() => onChange(option.value)}
         >
@@ -162,40 +151,24 @@ export function WorkspaceMenu({
     <section
       className="workspace-menu-popover"
       role="dialog"
-      aria-label="Workspace menu"
+      aria-label={copy.aria.workspaceMenu}
     >
-      <nav className="workspace-menu-list" aria-label="Workspace actions">
-        <MenuRow icon={<FilePlus2 size={15} />} onClick={onAddFile}>
+      <nav className="workspace-menu-list" aria-label={copy.aria.workspaceActions}>
+        <MenuRow icon={<FilePlus2 size={16} />} onClick={onAddFile}>
           {copy.actions.newFile}
         </MenuRow>
-        <MenuRow icon={<FolderOpen size={15} />} onClick={onOpenFile}>
+        <MenuRow icon={<FolderOpen size={16} />} onClick={onOpenFile}>
           {copy.actions.openFile}
         </MenuRow>
-        <MenuRow icon={<Upload size={15} />} onClick={onImportProject}>
+        <MenuRow icon={<Upload size={16} />} onClick={onImportProject}>
           {copy.actions.importProject}
         </MenuRow>
 
         <div className="workspace-menu-divider" role="separator" />
 
         <MenuRow
-          icon={<FileDown size={15} />}
-          disabled={!canExportCurrentFile}
-          onClick={onDownloadFile}
-        >
-          {copy.actions.saveFile}
-        </MenuRow>
-        <MenuRow icon={<Download size={15} />} onClick={onDownloadProject}>
-          {copy.actions.exportProject}
-        </MenuRow>
-        <MenuRow icon={<Users size={15} />} onClick={onOpenCollaboration}>
-          {copy.actions.liveCollaboration}
-        </MenuRow>
-
-        <div className="workspace-menu-divider" role="separator" />
-
-        <MenuRow
           className={preferencesOpen ? "active" : ""}
-          icon={<SlidersHorizontal size={15} />}
+          icon={<SlidersHorizontal size={16} />}
           trailing={
             preferencesOpen ? (
               <ChevronDown size={14} />
@@ -220,17 +193,17 @@ export function WorkspaceMenu({
                   {
                     value: "system",
                     label: copy.preferences.system,
-                    icon: <Monitor size={15} />,
+                    icon: <Monitor size={16} />,
                   },
                   {
                     value: "light",
                     label: copy.preferences.light,
-                    icon: <Sun size={15} />,
+                    icon: <Sun size={16} />,
                   },
                   {
                     value: "dark",
                     label: copy.preferences.dark,
-                    icon: <Moon size={15} />,
+                    icon: <Moon size={16} />,
                   },
                 ],
                 onChangeTheme,
@@ -238,7 +211,7 @@ export function WorkspaceMenu({
             </div>
             <div className="workspace-preferences-setting">
               <span>{copy.preferences.language}</span>
-              <label className="workspace-preferences-select">
+              <label className="workspace-preferences-select ui-select">
                 <select
                   aria-label={copy.preferences.language}
                   value={language}
@@ -259,10 +232,10 @@ export function WorkspaceMenu({
             </div>
           </section>
         )}
-        <MenuRow icon={<Info size={15} />} onClick={onOpenAbout}>
+        <MenuRow icon={<Info size={16} />} onClick={onOpenAbout}>
           {copy.actions.about}
         </MenuRow>
-        <MenuRow icon={<HelpCircle size={15} />} onClick={onOpenHelp}>
+        <MenuRow icon={<HelpCircle size={16} />} onClick={onOpenHelp}>
           {copy.actions.help}
         </MenuRow>
 
@@ -270,14 +243,14 @@ export function WorkspaceMenu({
 
         <MenuLink
           href="https://x.com/tabula_md"
-          icon={<XLogoIcon size={15} />}
+          icon={<XLogoIcon size={16} />}
           ariaLabel={copy.aria.openX}
         >
           {copy.actions.followUs}
         </MenuLink>
         <MenuLink
           href="https://github.com/tabula-md/tabula-md"
-          icon={<Github size={15} />}
+          icon={<Github size={16} />}
           ariaLabel={copy.aria.openGithub}
         >
           {copy.actions.github}

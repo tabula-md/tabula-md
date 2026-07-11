@@ -125,6 +125,7 @@ export function WorkspaceTopChrome({
       folders={folders}
       activeFile={visibleActiveFile}
       collaborators={displayedCollaborators}
+      language={language}
       onAddFile={onAddFile}
       onSelectFile={onSelectFile}
       onRenameFile={onRenameFile}

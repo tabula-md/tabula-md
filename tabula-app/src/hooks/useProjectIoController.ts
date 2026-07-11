@@ -160,12 +160,11 @@ export function useProjectIoController({
   const [emptyDropActive, setEmptyDropActive] = useState(false);
   const queueAnimationFrameTask = useAnimationFrameTask();
 
-  const copyCurrentFile = async () => {
-    const fileSnapshot = getProjectIoBoundaryActiveFileSnapshot({
-      activeFile,
-      getActiveFileSnapshot,
-      onBeforeWorkspaceBoundary,
-    });
+  const copyFile = async (fileId: string) => {
+    onBeforeWorkspaceBoundary?.();
+    const fileSnapshot = fileId === activeFile?.id
+      ? getProjectIoActiveFileSnapshot({ activeFile, getActiveFileSnapshot })
+      : files.find((file) => file.id === fileId);
     if (!fileSnapshot) {
       return;
     }
@@ -336,7 +335,7 @@ export function useProjectIoController({
 
   return {
     emptyDropActive,
-    copyCurrentFile,
+    copyFile,
     downloadCurrentFile,
     downloadProject,
     downloadProjectArchive,

@@ -65,6 +65,28 @@ describe("workspace room CRDT", () => {
     expect(validateWorkspaceRoomLimits(snapshot)).toEqual({ ok: true });
   });
 
+  it("keeps a live comment attached to the exact selected range", () => {
+    const room = createInitialRoom();
+    setWorkspaceRoomComment(room, {
+      id: "comment-1",
+      fileId: "readme",
+      body: "Check this",
+      createdAt: "2026-07-10T00:00:00.000Z",
+      resolved: false,
+      selectionStart: 2,
+      selectionEnd: 7,
+    });
+
+    const document = getWorkspaceRoomDocument(room, "readme");
+    document?.insert(2, "Before ");
+    document?.insert(14, " after");
+
+    const snapshot = getWorkspaceRoomSnapshot(room);
+    const comment = snapshot.commentsByFileId.readme[0];
+    expect(comment).toMatchObject({ selectionStart: 9, selectionEnd: 14 });
+    expect(snapshot.documents.readme.slice(comment.selectionStart, comment.selectionEnd)).toBe("Hello");
+  });
+
   it("converges concurrent structure and text changes without resurrecting deleted nodes", () => {
     const first = createInitialRoom();
     const second = createWorkspaceRoomCrdt({ roomId: "room-1" });

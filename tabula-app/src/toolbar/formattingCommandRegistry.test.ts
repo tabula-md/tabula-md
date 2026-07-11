@@ -7,9 +7,11 @@ import {
 
 describe("formatting command registry", () => {
   it("separates frequent inline, block, list, and overflow commands", () => {
-    expect(getFormattingToolbarCommandsByPlacement("primary").map((command) => command.id)).toEqual([
+    expect(getFormattingToolbarCommandsByPlacement("history").map((command) => command.id)).toEqual([
       "undo",
       "redo",
+    ]);
+    expect(getFormattingToolbarCommandsByPlacement("inline").map((command) => command.id)).toEqual([
       "bold",
       "italic",
       "inline-code",
@@ -27,13 +29,15 @@ describe("formatting command registry", () => {
       "numbered-list",
       "check-list",
     ]);
-    expect(getFormattingToolbarCommandsByPlacement("overflow").map((command) => command.id)).toEqual([
+    expect(getFormattingToolbarCommandsByPlacement("insert").map((command) => command.id)).toEqual([
       "horizontal-rule",
-      "strikethrough",
       "table",
       "image",
       "frontmatter",
       "footnote",
+    ]);
+    expect(getFormattingToolbarCommandsByPlacement("overflow").map((command) => command.id)).toEqual([
+      "strikethrough",
       "clear-formatting",
     ]);
   });
@@ -41,9 +45,11 @@ describe("formatting command registry", () => {
   it("keeps essential commands and More reachable on compact screens", () => {
     const layout = getFormattingToolbarLayout(true);
 
-    expect(layout.primary.map((command) => command.id)).toEqual([
+    expect(layout.history.map((command) => command.id)).toEqual([
       "undo",
       "redo",
+    ]);
+    expect(layout.inline.map((command) => command.id)).toEqual([
       "bold",
       "italic",
     ]);
@@ -59,15 +65,16 @@ describe("formatting command registry", () => {
       "numbered-list",
       "check-list",
     ]);
+    expect(layout.insert).toEqual([]);
     expect(layout.overflow.map((command) => command.id)).toEqual([
       "inline-code",
       "link",
       "horizontal-rule",
-      "strikethrough",
       "table",
       "image",
       "frontmatter",
       "footnote",
+      "strikethrough",
       "clear-formatting",
     ]);
   });
