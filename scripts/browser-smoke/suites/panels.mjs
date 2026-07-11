@@ -1280,8 +1280,10 @@ export async function run(ctx) {
       const backdrop = document.querySelector(".right-panel-backdrop");
       const shell = document.querySelector(".file-shell");
       const gutter = document.querySelector(".cm-gutters");
-      if (!panel || !backdrop || !shell || !gutter) return null;
+      const fileAction = document.querySelector(".right-file-action:not(.close)");
+      if (!panel || !backdrop || !shell || !gutter || !fileAction) return null;
       const panelRect = panel.getBoundingClientRect();
+      const fileActionRect = fileAction.getBoundingClientRect();
       return {
         panelLeft: Math.round(panelRect.left),
         panelRight: Math.round(panelRect.right),
@@ -1291,6 +1293,12 @@ export async function run(ctx) {
         backdropDisplay: getComputedStyle(backdrop).display,
         documentSafeRight: getComputedStyle(shell).getPropertyValue("--document-safe-right").trim(),
         gutterDisplay: getComputedStyle(gutter).display,
+        tabLabels: Array.from(document.querySelectorAll(".right-panel-tab-label")).map((label) => ({
+          text: label.textContent?.trim() ?? "",
+          visible: label.getBoundingClientRect().width > 0,
+        })),
+        fileActionSize: Math.min(fileActionRect.width, fileActionRect.height),
+        fileActionOpacity: getComputedStyle(fileAction).opacity,
       };
     });
     expect(mobilePanel?.panelLeft === 0, "Mobile Project Context should start at the left viewport edge.");
@@ -1299,6 +1307,22 @@ export async function run(ctx) {
     expect(mobilePanel?.backdropDisplay !== "none", "Mobile Project Context should block the document behind it.");
     expect(mobilePanel?.documentSafeRight === "0px", "Overlay panels should not shrink the document lane.");
     expect(mobilePanel?.gutterDisplay === "none", "Mobile editors should not paint collapsed gutter content.");
+    expect(
+      mobilePanel?.tabLabels.every((label) => label.visible && label.text.length > 0),
+      "Mobile Project Context should name each section instead of showing icon-only tabs.",
+    );
+    expect(
+      mobilePanel?.fileActionSize >= 40 && mobilePanel?.fileActionOpacity === "1",
+      "Mobile file actions should remain visible with touch-sized targets.",
+    );
+
+    await mobilePage.getByRole("button", { name: "Create", exact: true }).click();
+    expect(
+      (await mobilePage.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1 &&
+        (await mobilePage.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1,
+      "Files should use one Create menu for documents and folders.",
+    );
+    await mobilePage.keyboard.press("Escape");
 
     await mobilePage.getByRole("button", { name: "Close Project Context" }).click();
     await waitForRenderFrame(mobilePage);

@@ -5,9 +5,12 @@ import {
   Copy,
   Ellipsis,
   File,
+  FilePlus2,
   Folder,
   FolderInput,
+  FolderPlus,
   PencilLine,
+  Plus,
   Trash2,
   Upload,
   X,
@@ -18,8 +21,6 @@ import {
   getWorkspaceFileDisplayTitles,
   getWorkspaceFolderDisplayTitles,
 } from "../workspaceDisplayTitles";
-import { NewDocumentButton } from "./NewDocumentButton";
-import { NewFolderButton } from "./NewFolderButton";
 
 type FileTreeFolderNode = {
   type: "folder";
@@ -204,8 +205,11 @@ export function RightPanelFiles({
   const [actionMenuFolderId, setActionMenuFolderId] = useState<string | null>(null);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renamingFolderTitle, setRenamingFolderTitle] = useState("");
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
+  const createMenuRef = useRef<HTMLDivElement | null>(null);
+  const createButtonRef = useRef<HTMLButtonElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const getFileComments = (fileId: string) => commentsByFileId[fileId] ?? [];
   const openFileIdSet = new Set(openFileIds);
@@ -233,23 +237,33 @@ export function RightPanelFiles({
   }, [renamingFileId]);
 
   useEffect(() => {
-    if (!actionMenuFileId && !actionMenuFolderId) {
+    if (!actionMenuFileId && !actionMenuFolderId && !createMenuOpen) {
       return;
     }
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (!(event.target instanceof Element) || event.target.closest(".right-file-menu-wrap")) {
+      if (
+        !(event.target instanceof Element) ||
+        event.target.closest(".right-file-menu-wrap") ||
+        createMenuRef.current?.contains(event.target)
+      ) {
         return;
       }
 
       setActionMenuFileId(null);
       setActionMenuFolderId(null);
+      setCreateMenuOpen(false);
     };
 
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation();
         setActionMenuFileId(null);
+        setActionMenuFolderId(null);
+        if (createMenuOpen) {
+          setCreateMenuOpen(false);
+          window.requestAnimationFrame(() => createButtonRef.current?.focus());
+        }
       }
     };
 
@@ -259,7 +273,7 @@ export function RightPanelFiles({
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [actionMenuFileId, actionMenuFolderId]);
+  }, [actionMenuFileId, actionMenuFolderId, createMenuOpen]);
 
   const startRenamingFile = (file: WorkspaceFile) => {
     setActionMenuFileId(null);
@@ -412,7 +426,7 @@ export function RightPanelFiles({
               <span className="right-file-actions">
                 <span className="right-file-menu-wrap">
                   <button
-                    className="right-file-action"
+                    className="right-file-action close"
                     type="button"
                     aria-label={`More actions for ${node.name}`}
                     onClick={() => setActionMenuFolderId(folderMenuOpen ? null : node.id)}
@@ -638,15 +652,46 @@ export function RightPanelFiles({
         >
           <Upload size={15} />
         </button>
-        <NewFolderButton
-          buttonClassName="right-file-import-button"
-          onCreate={() => createAndRenameFolder()}
-        />
-        <NewDocumentButton
-          buttonClassName="right-file-create-button"
-          iconSize={15}
-          onCreate={onNewFile}
-        />
+        <div className="right-file-create-menu-wrap" ref={createMenuRef}>
+          <button
+            ref={createButtonRef}
+            className={`right-file-create-button ${createMenuOpen ? "active" : ""}`}
+            type="button"
+            title="Create"
+            aria-label="Create"
+            aria-haspopup="menu"
+            aria-expanded={createMenuOpen}
+            onClick={() => setCreateMenuOpen((open) => !open)}
+          >
+            <Plus size={16} />
+          </button>
+          {createMenuOpen && (
+            <div className="right-file-create-menu" role="menu" aria-label="Create in workspace">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setCreateMenuOpen(false);
+                  onNewFile();
+                }}
+              >
+                <FilePlus2 size={15} />
+                <span>New document</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setCreateMenuOpen(false);
+                  createAndRenameFolder();
+                }}
+              >
+                <FolderPlus size={15} />
+                <span>New folder</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       {visibleFiles.length > 0 || fileTreeRoot.children.length > 0 ? (
         <ol className="right-file-tree" aria-label="Workspace files">

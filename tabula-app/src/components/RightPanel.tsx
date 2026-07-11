@@ -3,7 +3,7 @@ import {
   Folder,
   ListTree,
   MessageSquare,
-  PanelRight,
+  X,
 } from "lucide-react";
 import { getRightPanelCommentGroups } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "../hooks/useRightPanelCollapseState";
@@ -162,9 +162,11 @@ export function RightPanel({
       type="button"
       title={label}
       aria-label={label}
+      aria-pressed={effectiveView === tabView}
       onClick={() => onSetView(tabView)}
     >
       {icon}
+      <span className="right-panel-tab-label">{label}</span>
       {live && <span className="right-panel-tab-live-dot" aria-hidden="true" />}
       {typeof count === "number" && count > 0 && <small>{count}</small>}
     </button>
@@ -179,7 +181,7 @@ export function RightPanel({
           {commentsEnabled && renderTab("comments", "Comments", <MessageSquare size={14} />, openCommentCount)}
         </nav>
         <button className="right-panel-close" type="button" aria-label="Close Project Context" onClick={onClose}>
-          <PanelRight size={16} />
+          <X size={17} />
         </button>
       </div>
 

@@ -250,3 +250,31 @@
 .right-file-tree-comment-count {
   background: var(--surface-active);
 }
+
+@media (hover: none), (pointer: coarse), (max-width: 820px) {
+  .right-file-actions {
+    min-width: 40px;
+    opacity: 1;
+  }
+
+  .right-file-action {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+  }
+
+  .right-file-action.close {
+    display: none;
+  }
+
+  .right-file-action-menu {
+    min-width: 176px;
+  }
+
+  .right-file-action-menu button,
+  .right-file-move-field {
+    min-height: 40px;
+    height: 40px;
+    padding: 0 10px;
+  }
+}
