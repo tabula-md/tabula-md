@@ -1063,6 +1063,7 @@ export function useWorkspaceRuntime() {
     copiedFileId,
     currentUserName: identity.name,
     files,
+    folders,
     identity: presenceIdentity,
     isLive: isLiveChromeVisible,
     isLiveConnected,

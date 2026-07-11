@@ -267,23 +267,6 @@
   border-radius: 8px;
 }
 
-.tab-scroll-button.has-current-tab {
-  color: var(--text-primary);
-  background: var(--surface-muted);
-}
-
-.tab-scroll-button.has-current-tab::after {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--text-primary);
-  content: "";
-  opacity: 0.55;
-}
-
 .tab-scroll-button:disabled {
   cursor: default;
   opacity: 0;

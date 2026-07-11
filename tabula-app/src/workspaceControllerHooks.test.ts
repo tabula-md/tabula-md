@@ -7,6 +7,7 @@ import type { Collaborator } from "./collaboration";
 import {
   createWorkspaceIdentity,
   IDENTITY_KEY,
+  IDENTITY_SESSION_KEY,
   normalizeWorkspaceIdentity,
 } from "./hooks/useWorkspaceIdentity";
 import { createHelpMarkdown, getKeyboardShortcuts } from "./helpMarkdown";
@@ -423,8 +424,10 @@ describe("workspace identity controller", () => {
 
   it("persists a created identity when no stored identity exists", () => {
     const storage = new MemoryStorage();
+    const sessionStorage = new MemoryStorage();
     const identity = createWorkspaceIdentity({
       storage,
+      sessionStorage,
       createId: () => "id-12345",
       now: () => 10,
     });
@@ -436,6 +439,10 @@ describe("workspace identity controller", () => {
       lastSeen: 10,
     });
     expect(JSON.parse(storage.getItem(IDENTITY_KEY) ?? "{}")).toEqual({});
+    expect(JSON.parse(sessionStorage.getItem(IDENTITY_SESSION_KEY) ?? "{}")).toEqual({
+      name: createRoomActorName("human", "id-12345"),
+      color: createRoomActorColor("id-12345"),
+    });
   });
 
   it("uses a tab-scoped actor id while preserving a custom stored name", () => {
@@ -477,6 +484,30 @@ describe("workspace identity controller", () => {
       id: "new-tab",
       name: createRoomActorName("human", "new-tab"),
       color: createRoomActorColor("new-tab"),
+      lastSeen: 20,
+    });
+  });
+
+  it("preserves generated presentation across a same-tab reload", () => {
+    const storage = new MemoryStorage();
+    const sessionStorage = new MemoryStorage();
+    const first = createWorkspaceIdentity({
+      storage,
+      sessionStorage,
+      createId: () => "first-connection",
+      now: () => 10,
+    });
+    const reloaded = createWorkspaceIdentity({
+      storage,
+      sessionStorage,
+      createId: () => "second-connection",
+      now: () => 20,
+    });
+
+    expect(reloaded).toEqual({
+      id: "second-connection",
+      name: first.name,
+      color: first.color,
       lastSeen: 20,
     });
   });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createWorkspaceFile } from "./workspaceStorage";
 import {
   getWorkspaceFileDisplayTitles,
+  getWorkspaceFileTabLabels,
   getWorkspaceFolderDisplayTitles,
 } from "./workspaceDisplayTitles";
 
@@ -37,5 +38,47 @@ describe("workspace display titles", () => {
 
     expect(titles.get("folder-a")).toBe("Notes");
     expect(titles.get("folder-b")).toBe("Notes 2");
+  });
+
+  it("adds the shortest folder location only when open file names collide", () => {
+    const folders = [
+      { id: "workspace-root", title: "Workspace", parentId: null },
+      { id: "planning", title: "Planning", parentId: "workspace-root" },
+    ];
+    const labels = getWorkspaceFileTabLabels([
+      createWorkspaceFile(1, { id: "root", title: "Untitled.md", parentId: "workspace-root" }),
+      createWorkspaceFile(2, { id: "planning-file", title: "Untitled.md", parentId: "planning" }),
+      createWorkspaceFile(3, { id: "readme", title: "README.md", parentId: "workspace-root" }),
+    ], folders);
+
+    expect(labels.get("root")).toEqual({
+      displayTitle: "Workspace/Untitled.md",
+      fullPath: "Workspace/Untitled.md",
+    });
+    expect(labels.get("planning-file")).toEqual({
+      displayTitle: "Planning/Untitled.md",
+      fullPath: "Workspace/Planning/Untitled.md",
+    });
+    expect(labels.get("readme")).toEqual({
+      displayTitle: "README.md",
+      fullPath: "Workspace/README.md",
+    });
+  });
+
+  it("uses enough parent folders to distinguish repeated folder names", () => {
+    const folders = [
+      { id: "workspace-root", title: "Workspace", parentId: null },
+      { id: "a", title: "A", parentId: "workspace-root" },
+      { id: "b", title: "B", parentId: "workspace-root" },
+      { id: "a-notes", title: "Notes", parentId: "a" },
+      { id: "b-notes", title: "Notes", parentId: "b" },
+    ];
+    const labels = getWorkspaceFileTabLabels([
+      createWorkspaceFile(1, { id: "a-file", title: "Plan.md", parentId: "a-notes" }),
+      createWorkspaceFile(2, { id: "b-file", title: "Plan.md", parentId: "b-notes" }),
+    ], folders);
+
+    expect(labels.get("a-file")?.displayTitle).toBe("A/Notes/Plan.md");
+    expect(labels.get("b-file")?.displayTitle).toBe("B/Notes/Plan.md");
   });
 });
