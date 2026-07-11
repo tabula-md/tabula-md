@@ -25,6 +25,8 @@ import {
   getCollaborationEditorHistoryState,
   createMarkdownEditorCompartments,
   createMarkdownEditorExtensions,
+  redoCollaborationHistory,
+  undoCollaborationHistory,
 } from "../editor/editorState";
 import {
   clampEditorPosition,
@@ -403,24 +405,20 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         dispatchEditorSelectionRange(view, from, to);
       },
       undo: () => {
+        const view = viewRef.current;
+        if (!view) return false;
         const binding = collaborationBindingRef.current;
-        if (binding) {
-          if (binding.undoManager.undoStack.length > 0) {
-            binding.undoManager.undo();
-            return true;
-          }
-          return undoEditor(viewRef.current);
-        }
-        return undoEditor(viewRef.current);
+        return binding
+          ? undoCollaborationHistory(view, binding)
+          : undoEditor(view);
       },
       redo: () => {
+        const view = viewRef.current;
+        if (!view) return false;
         const binding = collaborationBindingRef.current;
-        if (binding) {
-          if (canRedoEditor(viewRef.current)) return redoEditor(viewRef.current);
-          binding.undoManager.redo();
-          return true;
-        }
-        return redoEditor(viewRef.current);
+        return binding
+          ? redoCollaborationHistory(view, binding)
+          : redoEditor(view);
       },
     }));
 

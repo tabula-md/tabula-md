@@ -1,5 +1,6 @@
-import { history, undoDepth } from "@codemirror/commands";
-import { Compartment, EditorState } from "@codemirror/state";
+import { history, redoDepth, undo, undoDepth } from "@codemirror/commands";
+import { Compartment, EditorState, type Transaction } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 import { Awareness } from "y-protocols/awareness";
 import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
@@ -8,7 +9,20 @@ import { yCollab } from "y-codemirror.next";
 import {
   createEditorCollaborationExtensions,
   getCollaborationEditorHistoryState,
+  redoCollaborationHistory,
 } from "./editorState";
+
+const createStateOnlyEditorView = (initialState: EditorState) => {
+  let state = initialState;
+  return {
+    get state() {
+      return state;
+    },
+    dispatch(transaction: Transaction) {
+      state = transaction.state;
+    },
+  } as EditorView;
+};
 
 describe("editor collaboration limits", () => {
   it("blocks oversized local edits but always admits a remote Y.Text projection", () => {
@@ -102,6 +116,32 @@ describe("editor collaboration limits", () => {
     });
 
     awareness.destroy();
+    undoManager.destroy();
+    doc.destroy();
+  });
+
+  it("reports collaborative redo only when CodeMirror or Yjs applies a change", () => {
+    let state = EditorState.create({ doc: "A", extensions: history() });
+    state = state.update({ changes: { from: 1, insert: "B" } }).state;
+    const view = createStateOnlyEditorView(state);
+    expect(undo(view)).toBe(true);
+    expect(redoDepth(view.state)).toBe(1);
+
+    const doc = new Y.Doc();
+    const text = doc.getText("document");
+    const undoManager = new Y.UndoManager(text);
+    text.insert(0, "Y");
+    expect(undoManager.undo()).not.toBeNull();
+
+    expect(redoCollaborationHistory(view, { undoManager })).toBe(true);
+    expect(view.state.doc.toString()).toBe("AB");
+    expect(text.toString()).toBe("");
+
+    expect(redoCollaborationHistory(view, { undoManager })).toBe(true);
+    expect(text.toString()).toBe("Y");
+
+    expect(redoCollaborationHistory(view, { undoManager })).toBe(false);
+
     undoManager.destroy();
     doc.destroy();
   });

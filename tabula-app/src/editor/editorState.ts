@@ -134,6 +134,20 @@ export const createEditorSelectionDisplayExtensions = (): Extension[] => [
 
 const utf8Encoder = new TextEncoder();
 
+type CollaborationHistoryBinding = Pick<CollabEditorBinding, "undoManager">;
+
+export const undoCollaborationHistory = (
+  view: Parameters<typeof undo>[0],
+  collaborationBinding: CollaborationHistoryBinding,
+) => collaborationBinding.undoManager.undo() !== null || undo(view);
+
+export const redoCollaborationHistory = (
+  view: Parameters<typeof redo>[0],
+  collaborationBinding: CollaborationHistoryBinding,
+) => redoDepth(view.state) > 0
+  ? redo(view)
+  : collaborationBinding.undoManager.redo() !== null;
+
 export const createEditorCollaborationExtensions = (
   collaborationBinding: NonNullable<MarkdownEditorExtensionConfig["collaborationBinding"]>,
 ): Extension[] => [
@@ -164,32 +178,18 @@ export const createEditorCollaborationExtensions = (
     {
       key: "Mod-z",
       preventDefault: true,
-      run: (view) => {
-        if (collaborationBinding.undoManager.undoStack.length > 0) {
-          collaborationBinding.undoManager.undo();
-          return true;
-        }
-        return undo(view);
-      },
+      run: (view) => undoCollaborationHistory(view, collaborationBinding),
     },
     {
       key: "Mod-y",
       mac: "Mod-Shift-z",
       preventDefault: true,
-      run: (view) => {
-        if (redoDepth(view.state) > 0) return redo(view);
-        collaborationBinding.undoManager.redo();
-        return true;
-      },
+      run: (view) => redoCollaborationHistory(view, collaborationBinding),
     },
     {
       key: "Mod-Shift-z",
       preventDefault: true,
-      run: (view) => {
-        if (redoDepth(view.state) > 0) return redo(view);
-        collaborationBinding.undoManager.redo();
-        return true;
-      },
+      run: (view) => redoCollaborationHistory(view, collaborationBinding),
     },
   ]),
   collaborationBinding.extension,
