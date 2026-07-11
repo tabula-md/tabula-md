@@ -632,8 +632,8 @@ export function RightPanelFiles({
         <button
           className="right-file-import-button"
           type="button"
-          title="Import file"
-          aria-label="Import file"
+          title="Open Markdown file"
+          aria-label="Open Markdown file"
           onClick={onImportFile}
         >
           <Upload size={15} />

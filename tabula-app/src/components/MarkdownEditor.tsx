@@ -15,7 +15,6 @@ import {
   dispatchEditorSelectionRange,
   getEditorSelectionActionPosition,
 } from "../editor/editorLayout";
-import { history } from "@codemirror/commands";
 import { createEditorSearchExtension } from "../editor/editorSearch";
 import {
   createEditorAnnotationGutterExtension,

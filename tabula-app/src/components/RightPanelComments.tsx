@@ -170,7 +170,7 @@ export function RightPanelComments({
             <p>
               {activeFile
                 ? commentScope === "current"
-                  ? "Select text to anchor a note."
+                  ? "Select text for an anchored comment, or add a file comment below."
                   : "Comments from every file appear here."
                 : "Open a file to add or review comments."}
             </p>

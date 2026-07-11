@@ -399,7 +399,7 @@ describe("workspace help markdown", () => {
   it("creates HELP.md with the app shortcut table", () => {
     expect(getKeyboardShortcuts(shortcutLabels)).toContainEqual({
       keys: "Cmd + Option + N",
-      action: "New File",
+      action: "New document",
     });
     expect(createHelpMarkdown(shortcutLabels)).toContain("| Cmd + Option + 2 | Split mode |");
   });

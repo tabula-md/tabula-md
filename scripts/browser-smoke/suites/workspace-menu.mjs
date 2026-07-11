@@ -169,12 +169,12 @@ export async function run(ctx) {
       ) &&
         !emptyChromeState.workspaceText.includes("Start with Markdown.") &&
         !emptyChromeState.workspaceText.includes("Tabula turns Markdowns into collaborative documents for people and agents.") &&
-        emptyChromeState.workspaceText.includes("New File") &&
-        emptyChromeState.workspaceText.includes("Open File") &&
+        emptyChromeState.workspaceText.includes("New document") &&
+        emptyChromeState.workspaceText.includes("Open Markdown file") &&
         emptyChromeState.workspaceText.includes("Browse project files") &&
         emptyChromeState.workspaceText.includes("Help") &&
         !emptyChromeState.workspaceText.includes("Import file") &&
-        !emptyChromeState.workspaceText.includes("Back up workspace") &&
+        !emptyChromeState.workspaceText.includes("Download workspace ZIP") &&
         !emptyChromeState.workspaceText.includes("Project menu") &&
         !emptyChromeState.workspaceText.includes("No file open") &&
         !emptyChromeState.workspaceText.includes("Tabula.md"),
@@ -244,19 +244,19 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await waitForSavedLocally(page);
     let nextTabs = await getTabs(page);
-    expect(nextTabs.length === 1, "New File shortcut from the empty workbench should open one tab.");
-    expect(nextTabs[0]?.active, "New File shortcut from the empty workbench should activate the new tab.");
+    expect(nextTabs.length === 1, "New document shortcut from the empty workbench should open one tab.");
+    expect(nextTabs[0]?.active, "New document shortcut from the empty workbench should activate the new tab.");
 
     await page.locator(".tab-item.active").hover();
     await page.locator(".tab-item.active .tab-action-button.close").click();
     await waitForFileCount(page, 0);
-    await page.locator(".empty-file-actions").getByRole("button", { name: "New File" }).click();
+    await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForFileCount(page, 1);
     await waitForEditorReady(page, { mode: "edit" });
     await waitForSavedLocally(page);
     nextTabs = await getTabs(page);
-    expect(nextTabs.length === 1, "New File from the empty workbench should open one tab.");
-    expect(nextTabs[0]?.active, "New File from the empty workbench should activate the new tab.");
+    expect(nextTabs.length === 1, "New document from the empty workbench should open one tab.");
+    expect(nextTabs[0]?.active, "New document from the empty workbench should activate the new tab.");
     expect((await page.locator(".empty-file-state").count()) === 0, "New file should leave the empty workbench.");
     expect((await page.locator(".document-controls").count()) === 1, "New file should restore file tools.");
     await waitForEditorFocus(page);
@@ -622,8 +622,8 @@ export async function run(ctx) {
     expect(menuSurface.agentButtonCount === 0, "Agent should not ship as an inert menu item yet.");
     expect(menuSurface.templateSurfaceCount === 0, "Template detail surfaces should be removed until templates are real.");
     expect(
-      menuSurface.menuRows.includes("New File") && menuSurface.menuRows.includes("Open File..."),
-      "The menu should keep the must-have file start actions.",
+      menuSurface.menuRows.includes("New document") && menuSurface.menuRows.includes("Open Markdown file…"),
+      "The menu should keep the must-have document start actions.",
     );
 
     await page.mouse.click(760, 420);
@@ -633,12 +633,12 @@ export async function run(ctx) {
     );
 
     await openProjectMenu(page);
-    await page.getByRole("button", { name: "New File", exact: true }).click();
+    await page.locator(".workspace-menu-popover").getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);
-    expect(activeTab?.title.startsWith("Untitled"), "Menu New File should create and activate the next blank document.");
+    expect(activeTab?.title.startsWith("Untitled"), "Menu New document should create and activate the next blank document.");
     expect(!activeTab?.visibleTitle.endsWith(".md"), "New blank tabs should still hide the Markdown extension.");
   });
 

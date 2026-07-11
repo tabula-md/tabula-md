@@ -102,7 +102,7 @@ export async function run(ctx) {
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the right project context panel.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New File|Open File...|Restore workspace backup...|Save File...|Back up workspace...|Live collaboration...|Preferences|About|Help|Follow us|GitHub",
+        "New document|Open Markdown file…|Restore Tabula backup…|Download current document|Download workspace ZIP|Live collaboration…|Preferences|About|Help|Follow us|GitHub",
       "The workspace menu should only expose implemented file, collaboration, preferences, support, and public links.",
     );
     const xPublicLink = workbenchPanels.publicLinks.find((link) => link.text === "Follow us");
@@ -136,18 +136,18 @@ export async function run(ctx) {
       "Workspace menu rows should use one compact row token set.",
     );
     const focusIndex = (label) => workbenchPanels.focusOrder.indexOf(label);
-    expect(focusIndex("New File") !== -1, "Keyboard order should include file creation.");
-    expect(focusIndex("Open File...") !== -1, "Keyboard order should include file import.");
-    expect(focusIndex("Live collaboration...") !== -1, "Keyboard order should include live collaboration.");
+    expect(focusIndex("New document") !== -1, "Keyboard order should include document creation.");
+    expect(focusIndex("Open Markdown file…") !== -1, "Keyboard order should include Markdown import.");
+    expect(focusIndex("Live collaboration…") !== -1, "Keyboard order should include live collaboration.");
     expect(focusIndex("Tabula +") === -1, "Workspace menu should keep Tabula + hidden until publishing ships.");
     expect(focusIndex("Preferences") !== -1, "Keyboard order should include Preferences.");
     expect(focusIndex("About") !== -1, "Keyboard order should include About.");
     expect(focusIndex("Help") !== -1, "Keyboard order should include Help.");
     expect(
-      focusIndex("New File") <
-        focusIndex("Open File...") &&
-        focusIndex("Open File...") < focusIndex("Live collaboration...") &&
-        focusIndex("Live collaboration...") < focusIndex("Preferences") &&
+      focusIndex("New document") <
+        focusIndex("Open Markdown file…") &&
+        focusIndex("Open Markdown file…") < focusIndex("Live collaboration…") &&
+        focusIndex("Live collaboration…") < focusIndex("Preferences") &&
         focusIndex("Preferences") < focusIndex("About") &&
         focusIndex("About") < focusIndex("Help"),
       "Workspace menu keyboard order should move from file actions to support actions.",
@@ -248,7 +248,7 @@ export async function run(ctx) {
     expect(rootPreferences.theme === "dark", "Choosing Dark should update the app theme contract.");
     expect(rootPreferences.themePreference === "dark", "Choosing Dark should persist the selected theme preference.");
     expect(rootPreferences.language === "ko", "Choosing Korean should update the document language contract.");
-    expect(rootPreferences.menuText.includes("새 파일"), "Choosing Korean should update workspace menu copy.");
+    expect(rootPreferences.menuText.includes("새 문서"), "Choosing Korean should update workspace menu copy.");
     await preferencesPanelSurface.locator(".workspace-preferences-select select").selectOption("en");
     await preferencesPanelSurface.getByRole("button", { name: "System", exact: true }).click();
     const restoredPreferences = await page.evaluate(() => ({
@@ -263,7 +263,7 @@ export async function run(ctx) {
     );
     expect(restoredPreferences.themePreference === "system", "Choosing System should preserve the selected preference.");
     expect(restoredPreferences.language === "en", "Choosing English should restore the document language contract.");
-    expect(restoredPreferences.menuText.includes("New File"), "Choosing English should restore workspace menu copy.");
+    expect(restoredPreferences.menuText.includes("New document"), "Choosing English should restore workspace menu copy.");
 
     await page.keyboard.press("Escape");
     await waitForRenderFrame(page);
@@ -271,14 +271,14 @@ export async function run(ctx) {
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       preferencesOpen: Boolean(document.querySelector(".workspace-preferences-panel")),
       newActionsVisible: Array.from(document.querySelectorAll(".workspace-menu-row")).some((button) =>
-        button.textContent?.includes("New File"),
+        button.textContent?.includes("New document"),
       ),
     }));
     expect(preferencesEscapeState.menuOpen, "Escape from Preferences should keep the workspace menu open.");
     expect(!preferencesEscapeState.preferencesOpen, "Escape from Preferences should close only the inline Preferences surface.");
     expect(preferencesEscapeState.newActionsVisible, "Escape from Preferences should leave file creation available.");
 
-    await supportActions.getByRole("button", { name: "New File", exact: true }).click();
+    await supportActions.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     await openProjectMenu(page);
@@ -296,7 +296,7 @@ export async function run(ctx) {
 
     await openProjectMenu(page);
 
-    await page.getByRole("button", { name: "New File", exact: true }).click();
+    await page.locator(".workspace-menu-popover").getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     const newFileState = await page.evaluate(() => ({
@@ -581,12 +581,8 @@ export async function run(ctx) {
       "Comments should expose a quiet empty or resolved-only state.",
     );
     expect(
-      !emptyCommentsState.emptyText.includes("add a file comment below"),
-      "Current-file empty state should stay short and avoid explaining the composer.",
-    );
-    expect(
-      emptyCommentsState.emptyText.includes("Select text to anchor a note."),
-      "Current-file empty state should describe the primary anchored-comment action.",
+      emptyCommentsState.emptyText.includes("Select text for an anchored comment, or add a file comment below."),
+      "Current-file empty state should explain both anchored and file comments.",
     );
     expect(emptyCommentsState.inputCount === 1, "Comments composer should keep one focused textarea available.");
     expect(emptyCommentsState.identityInputCount === 1, "Comments composer should expose the active comment identity.");
@@ -614,13 +610,20 @@ export async function run(ctx) {
     expect(commentsAfterAdd.cardCount === 1, "Adding a comment should create one comment card.");
     expect(commentsAfterAdd.emptyCount === 0, "Adding a comment should hide the comments empty state.");
     expect(commentsAfterAdd.fileHeaderCount === 0, "Active-file comments should not repeat the file header.");
-    expect(commentsAfterAdd.actionText === "ReplyResolveDelete", "Comment cards should expose direct reply, resolve, and delete actions.");
+    expect(commentsAfterAdd.actionText === "ReplyResolve", "Comment cards should keep reply and resolve visible without exposing destructive actions.");
     expect(commentsAfterAdd.visibleText.includes("Review this intro."), "Added comment should render in the comments panel.");
     expect(commentsAfterAdd.authorText === "Local User", "New comments should use the editable local identity.");
     expect(
       commentsAfterAdd.actionText.includes("Reply") && commentsAfterAdd.actionText.includes("Resolve"),
       "Comment card actions should be available without opening a menu.",
     );
+
+    const moreCommentActions = page.getByRole("button", { name: /^More actions for comment:/ });
+    expect((await moreCommentActions.count()) === 1, "Comment cards should expose a visible more-actions button.");
+    await moreCommentActions.click();
+    expect((await page.getByRole("menuitem", { name: "Delete", exact: true }).count()) === 1, "Delete should live in the comment actions menu.");
+    await page.keyboard.press("Escape");
+    expect((await page.getByRole("menuitem", { name: "Delete", exact: true }).count()) === 0, "Escape should close comment actions.");
 
     await page.getByRole("button", { name: "Reply", exact: true }).click();
     await page.locator(".right-comment-reply-form textarea").fill("Reply back.");
@@ -655,7 +658,8 @@ export async function run(ctx) {
     const resolvedCommentActions = await page.evaluate(() => ({
       actionText: document.querySelector(".right-comment-actions")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
-    expect(resolvedCommentActions.actionText === "ReopenDelete", "Resolved comments should expose direct reopen and delete actions.");
+    expect(resolvedCommentActions.actionText === "Reopen", "Resolved comments should expose reopen while keeping delete in the actions menu.");
+    expect((await page.getByRole("button", { name: /^More actions for comment:/ }).count()) === 1, "Resolved comments should retain their actions menu.");
     await page.getByRole("button", { name: "Reopen" }).click();
     await waitForRenderFrame(page);
     const commentsAfterReopen = await page.evaluate(() => ({
@@ -1103,7 +1107,7 @@ export async function run(ctx) {
       duplicateCount: document.querySelectorAll('.right-file-action[aria-label^="Duplicate "]').length,
       deleteCount: document.querySelectorAll('.right-file-action[aria-label^="Delete "]').length,
       openMenuCount: document.querySelectorAll(".right-file-action-menu").length,
-      importCount: document.querySelectorAll('.right-file-import-button[aria-label="Import file"]').length,
+      importCount: document.querySelectorAll('.right-file-import-button[aria-label="Open Markdown file"]').length,
       visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(fileActionContract.closeTabCount >= 2, "Right Files should expose close-tab actions for open files.");
@@ -1114,7 +1118,7 @@ export async function run(ctx) {
     expect(fileActionContract.openMenuCount === 0, "Right Files should keep row menus closed by default.");
     expect(fileActionContract.importCount === 1, "Right Files should expose one file import control.");
     expect(
-      !/\b(Close tab|Rename|Duplicate|Delete|Import file)\b/.test(fileActionContract.visibleText),
+      !/\b(Close tab|Rename|Duplicate|Delete|Open Markdown file)\b/.test(fileActionContract.visibleText),
       "Right Files action labels should stay icon-only in visible panel text.",
     );
 
@@ -1225,7 +1229,7 @@ export async function run(ctx) {
     expect(filesAfterUndoDelete.toastText === "File restored.", "Undo delete should confirm restoration.");
 
     const fileChooserPromise = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: "Import file" }).click();
+    await page.getByRole("button", { name: "Open Markdown file" }).click();
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles([
       {

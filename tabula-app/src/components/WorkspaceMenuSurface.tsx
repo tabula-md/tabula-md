@@ -56,7 +56,7 @@ export function WorkspaceMenuSurface({
         type="file"
         accept=".md,.markdown,text/markdown,text/plain"
         onChange={onImportFileChange}
-        aria-label="Import file"
+        aria-label="Open Markdown file"
       />
       <input
         ref={workspaceImportInputRef}
@@ -64,7 +64,7 @@ export function WorkspaceMenuSurface({
         type="file"
         accept=".json,application/json"
         onChange={onImportProjectChange}
-        aria-label="Restore workspace backup"
+        aria-label="Restore Tabula backup"
       />
       <WorkspaceMenu
         isOpen={isOpen}

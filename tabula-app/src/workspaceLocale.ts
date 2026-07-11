@@ -87,12 +87,12 @@ export const WORKSPACE_LANGUAGE_OPTIONS: Array<{
 const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   en: {
     actions: {
-      newFile: "New File",
-      openFile: "Open File...",
-      importProject: "Restore workspace backup...",
-      saveFile: "Save File...",
-      exportProject: "Back up workspace...",
-      liveCollaboration: "Live collaboration...",
+      newFile: "New document",
+      openFile: "Open Markdown file…",
+      importProject: "Restore Tabula backup…",
+      saveFile: "Download current document",
+      exportProject: "Download workspace ZIP",
+      liveCollaboration: "Live collaboration…",
       preferences: "Preferences",
       about: "About",
       help: "Help",
@@ -113,8 +113,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline:
         "A local-first workspace for files that people and coding agents can share safely.",
-      newFile: "New File",
-      openFile: "Open File",
+      newFile: "New document",
+      openFile: "Open Markdown file",
       browseFiles: "Browse project files",
       help: "Help",
     },
@@ -159,12 +159,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   },
   ko: {
     actions: {
-      newFile: "새 파일",
-      openFile: "파일 열기...",
-      importProject: "워크스페이스 백업 복원...",
-      saveFile: "파일 저장...",
-      exportProject: "워크스페이스 백업...",
-      liveCollaboration: "실시간 협업...",
+      newFile: "새 문서",
+      openFile: "Markdown 파일 열기…",
+      importProject: "Tabula 백업 복원…",
+      saveFile: "현재 문서 다운로드",
+      exportProject: "워크스페이스 ZIP 다운로드",
+      liveCollaboration: "실시간 협업…",
       preferences: "환경설정",
       about: "소개",
       help: "도움말",
@@ -185,8 +185,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline:
         "사람과 코딩 에이전트가 안전하게 공유할 수 있는 로컬 우선 작업공간.",
-      newFile: "새 파일",
-      openFile: "파일 열기",
+      newFile: "새 문서",
+      openFile: "Markdown 파일 열기",
       browseFiles: "프로젝트 파일 보기",
       help: "도움말",
     },
@@ -231,12 +231,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   },
   ja: {
     actions: {
-      newFile: "新規ファイル",
-      openFile: "ファイルを開く...",
-      importProject: "ワークスペースのバックアップを復元...",
-      saveFile: "ファイルを保存...",
-      exportProject: "ワークスペースをバックアップ...",
-      liveCollaboration: "ライブ共同編集...",
+      newFile: "新規ドキュメント",
+      openFile: "Markdownファイルを開く…",
+      importProject: "Tabulaバックアップを復元…",
+      saveFile: "現在のドキュメントをダウンロード",
+      exportProject: "ワークスペースZIPをダウンロード",
+      liveCollaboration: "ライブ共同編集…",
       preferences: "環境設定",
       about: "このアプリについて",
       help: "ヘルプ",
@@ -257,8 +257,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline:
         "人とコーディングエージェントが安全に共有できるローカルファーストのワークスペース。",
-      newFile: "新規ファイル",
-      openFile: "ファイルを開く",
+      newFile: "新規ドキュメント",
+      openFile: "Markdownファイルを開く",
       browseFiles: "プロジェクトファイルを見る",
       help: "ヘルプ",
     },
@@ -306,12 +306,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   },
   zh: {
     actions: {
-      newFile: "新建文件",
-      openFile: "打开文件...",
-      importProject: "恢复工作区备份...",
-      saveFile: "保存文件...",
-      exportProject: "备份工作区...",
-      liveCollaboration: "实时协作...",
+      newFile: "新建文档",
+      openFile: "打开 Markdown 文件…",
+      importProject: "恢复 Tabula 备份…",
+      saveFile: "下载当前文档",
+      exportProject: "下载工作区 ZIP",
+      liveCollaboration: "实时协作…",
       preferences: "偏好设置",
       about: "关于",
       help: "帮助",
@@ -331,8 +331,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     emptyState: {
       tagline: "让人与编码智能体安全共享文件的本地优先工作区。",
-      newFile: "新建文件",
-      openFile: "打开文件",
+      newFile: "新建文档",
+      openFile: "打开 Markdown 文件",
       browseFiles: "浏览项目文件",
       help: "帮助",
     },
@@ -375,12 +375,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   },
   es: {
     actions: {
-      newFile: "Nuevo archivo",
-      openFile: "Abrir archivo...",
-      importProject: "Restaurar copia del espacio...",
-      saveFile: "Guardar archivo...",
-      exportProject: "Crear copia del espacio...",
-      liveCollaboration: "Colaboración en vivo...",
+      newFile: "Nuevo documento",
+      openFile: "Abrir archivo Markdown…",
+      importProject: "Restaurar copia de Tabula…",
+      saveFile: "Descargar documento actual",
+      exportProject: "Descargar ZIP del espacio",
+      liveCollaboration: "Colaboración en vivo…",
       preferences: "Preferencias",
       about: "Acerca de",
       help: "Ayuda",
@@ -401,8 +401,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline:
         "Un espacio local-first para compartir archivos con personas y agentes de código.",
-      newFile: "Nuevo archivo",
-      openFile: "Abrir archivo",
+      newFile: "Nuevo documento",
+      openFile: "Abrir archivo Markdown",
       browseFiles: "Ver archivos del proyecto",
       help: "Ayuda",
     },
@@ -449,12 +449,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   },
   fr: {
     actions: {
-      newFile: "Nouveau fichier",
-      openFile: "Ouvrir un fichier...",
-      importProject: "Restaurer une sauvegarde...",
-      saveFile: "Enregistrer le fichier...",
-      exportProject: "Sauvegarder l’espace...",
-      liveCollaboration: "Collaboration en direct...",
+      newFile: "Nouveau document",
+      openFile: "Ouvrir un fichier Markdown…",
+      importProject: "Restaurer une sauvegarde Tabula…",
+      saveFile: "Télécharger le document actuel",
+      exportProject: "Télécharger le ZIP de l’espace",
+      liveCollaboration: "Collaboration en direct…",
       preferences: "Préférences",
       about: "À propos",
       help: "Aide",
@@ -475,8 +475,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline:
         "Un espace local-first pour partager des fichiers avec des personnes et des agents de code.",
-      newFile: "Nouveau fichier",
-      openFile: "Ouvrir un fichier",
+      newFile: "Nouveau document",
+      openFile: "Ouvrir un fichier Markdown",
       browseFiles: "Parcourir les fichiers",
       help: "Aide",
     },
@@ -523,12 +523,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   },
   de: {
     actions: {
-      newFile: "Neue Datei",
-      openFile: "Datei öffnen...",
-      importProject: "Workspace-Sicherung wiederherstellen...",
-      saveFile: "Datei speichern...",
-      exportProject: "Workspace sichern...",
-      liveCollaboration: "Live-Zusammenarbeit...",
+      newFile: "Neues Dokument",
+      openFile: "Markdown-Datei öffnen…",
+      importProject: "Tabula-Sicherung wiederherstellen…",
+      saveFile: "Aktuelles Dokument herunterladen",
+      exportProject: "Workspace-ZIP herunterladen",
+      liveCollaboration: "Live-Zusammenarbeit…",
       preferences: "Einstellungen",
       about: "Info",
       help: "Hilfe",
@@ -549,8 +549,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline:
         "Ein local-first Workspace zum sicheren Teilen von Dateien mit Menschen und Coding-Agenten.",
-      newFile: "Neue Datei",
-      openFile: "Datei öffnen",
+      newFile: "Neues Dokument",
+      openFile: "Markdown-Datei öffnen",
       browseFiles: "Projektdateien ansehen",
       help: "Hilfe",
     },

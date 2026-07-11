@@ -15,7 +15,7 @@ const getEditorLines = async (page) =>
 const getEditorText = async (page) => (await getEditorLines(page)).join("\n");
 
 const importMarkdownFixture = async (page, markdown, name = "editor-certification.md") => {
-  await page.locator('input[aria-label="Import file"]').setInputFiles({
+  await page.locator('input[aria-label="Open Markdown file"]').setInputFiles({
     name,
     mimeType: "text/markdown",
     buffer: Buffer.from(markdown),

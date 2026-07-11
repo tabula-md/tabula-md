@@ -73,7 +73,7 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await openProjectMenu(page);
     await page
-      .locator('input[aria-label="Import file"]')
+      .locator('input[aria-label="Open Markdown file"]')
       .setInputFiles({
         name: "README.md",
         mimeType: "text/markdown",

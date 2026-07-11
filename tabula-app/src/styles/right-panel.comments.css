@@ -488,12 +488,13 @@
 }
 
 .right-comment-actions {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
-  min-height: 18px;
+  min-height: 24px;
 }
 
 .right-comment-action {
@@ -501,7 +502,7 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  height: 18px;
+  min-height: 24px;
   color: var(--text-muted);
   background: transparent;
   border-radius: 5px;
@@ -512,7 +513,7 @@
 }
 
 .right-comment-action.text {
-  padding: 0;
+  padding: 0 2px;
 }
 
 .right-comment-action svg {
@@ -527,24 +528,72 @@
   background: transparent;
 }
 
-.right-comment-action.danger:hover {
+.right-comment-more-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border-radius: 5px;
+}
+
+.right-comment-more-trigger:hover,
+.right-comment-more-trigger[aria-expanded="true"] {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.right-comment-more-menu {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 132px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-popover);
+}
+
+.right-comment-more-menu button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--text-primary);
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.right-comment-more-menu button:hover {
+  background: var(--surface-hover);
+}
+
+.right-comment-more-menu button.danger {
   color: var(--danger-text);
 }
 
-.right-comment-action.quiet,
-.right-comment-action.danger {
-  opacity: 0;
-}
+@media (pointer: coarse) {
+  .right-comment-action,
+  .right-comment-more-trigger {
+    min-height: 40px;
+  }
 
-.right-comment-card:hover .right-comment-action.quiet,
-.right-comment-card:focus-within .right-comment-action.quiet,
-.right-comment-card:hover .right-comment-action.danger,
-.right-comment-card:focus-within .right-comment-action.danger {
-  opacity: 1;
-}
+  .right-comment-more-trigger {
+    width: 40px;
+    height: 40px;
+  }
 
-.right-comment-card.resolved:not(:hover):not(:focus-within) .right-comment-actions {
-  opacity: 0;
+  .right-comment-more-menu button {
+    min-height: 40px;
+  }
 }
 
 .right-comment-reply-form {

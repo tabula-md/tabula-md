@@ -426,7 +426,7 @@ const installSplitResizeProbe = () => {
 };
 
 const importMarkdownFixture = async (page, markdown, name) => {
-  await page.locator('input[aria-label="Import file"]').setInputFiles({
+  await page.locator('input[aria-label="Open Markdown file"]').setInputFiles({
     name,
     mimeType: "text/markdown",
     buffer: Buffer.from(markdown),
@@ -876,7 +876,7 @@ export async function run(ctx) {
       browser,
       "/",
       async (page) => {
-        await page.locator('input[aria-label="Import file"]').setInputFiles({
+        await page.locator('input[aria-label="Open Markdown file"]').setInputFiles({
           name: fixtureName,
           mimeType: "text/markdown",
           buffer: Buffer.from(plainMarkdown),
@@ -1606,7 +1606,7 @@ export async function run(ctx) {
     browser,
     "/",
     async (page) => {
-      await page.locator('input[aria-label="Import file"]').setInputFiles({
+      await page.locator('input[aria-label="Open Markdown file"]').setInputFiles({
         name: "split-performance.md",
         mimeType: "text/markdown",
         buffer: Buffer.from(longMarkdown),
