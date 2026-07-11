@@ -5,8 +5,6 @@ import {
 } from "./documentControlsModel";
 
 const copy: DocumentControlsCopy = {
-  copyCurrentFile: "Copy current file",
-  copyFile: "Copy file",
   documentControlsLabel: "Document controls",
   edit: "Edit",
   editorControls: "Editor controls",
@@ -15,7 +13,6 @@ const copy: DocumentControlsCopy = {
   layoutControls: "Layout controls",
   lineNumbers: "Line Numbers",
   lineWrapping: "Line Wrapping",
-  nothingToCopy: "Add content to copy",
   preview: "Preview",
   search: "Search",
   split: "Split",
@@ -26,44 +23,48 @@ const copy: DocumentControlsCopy = {
 };
 
 describe("document controls model", () => {
-  it("switches edit mode actions to split and preview", () => {
+  it("keeps all view modes stable and selects edit", () => {
     const model = buildDocumentControlsModel({
       activeLineNumbers: true,
       activeLineWrapping: true,
       activeReadingWidth: "wide",
       activeSyncScrolling: true,
       activeViewMode: "edit",
-      canCopyFile: true,
       copy,
     });
 
     expect(model.controlsLabel).toBe("Editor controls");
     expect(model.showEditorToggles).toBe(true);
     expect(model.showSplitToggles).toBe(false);
-    expect(model.viewModeActions).toEqual([
+    expect(model.viewModeOptions).toEqual([
       {
+        active: true,
+        icon: "edit",
+        label: "Edit",
+        viewMode: "edit",
+      },
+      {
+        active: false,
         icon: "split",
         label: "Split",
-        slot: "split",
         viewMode: "split",
       },
       {
+        active: false,
         icon: "preview",
         label: "Preview",
-        slot: "edit-preview",
         viewMode: "preview",
       },
     ]);
   });
 
-  it("switches split mode back to edit while keeping preview available", () => {
+  it("selects split without changing the view-mode order", () => {
     const model = buildDocumentControlsModel({
       activeLineNumbers: true,
       activeLineWrapping: true,
       activeReadingWidth: "standard",
       activeSyncScrolling: false,
       activeViewMode: "split",
-      canCopyFile: true,
       copy,
     });
 
@@ -73,31 +74,25 @@ describe("document controls model", () => {
       active: false,
       label: "Sync Scrolling",
     });
-    expect(model.viewModeActions.map((action) => action.viewMode)).toEqual([
-      "edit",
-      "preview",
-    ]);
+    expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual(["edit", "split", "preview"]);
+    expect(model.viewModeOptions.map((option) => option.active)).toEqual([false, true, false]);
   });
 
-  it("switches preview mode back to edit and hides editor toggles", () => {
+  it("selects preview and hides editor toggles", () => {
     const model = buildDocumentControlsModel({
       activeLineNumbers: false,
       activeLineWrapping: false,
       activeReadingWidth: "narrow",
       activeSyncScrolling: true,
       activeViewMode: "preview",
-      canCopyFile: false,
       copy,
     });
 
     expect(model.controlsLabel).toBe("View controls");
-    expect(model.copyButtonTitle).toBe("Add content to copy");
     expect(model.showEditorToggles).toBe(false);
     expect(model.showSplitToggles).toBe(false);
-    expect(model.viewModeActions.map((action) => action.viewMode)).toEqual([
-      "split",
-      "edit",
-    ]);
+    expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual(["edit", "split", "preview"]);
+    expect(model.viewModeOptions.map((option) => option.active)).toEqual([false, false, true]);
   });
 
   it("marks exactly one reading width option as active", () => {
@@ -107,7 +102,6 @@ describe("document controls model", () => {
       activeReadingWidth: "standard",
       activeSyncScrolling: true,
       activeViewMode: "edit",
-      canCopyFile: true,
       copy,
     });
 

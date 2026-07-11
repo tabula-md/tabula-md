@@ -4,39 +4,36 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--space-3);
   width: var(--document-chrome-width);
   min-width: 0;
   min-height: 42px;
   margin-left: var(--document-lane-margin-left);
   margin-right: var(--document-lane-margin-right);
-  padding: 5px 12px;
+  padding: var(--space-1) var(--space-3);
   color: var(--text-soft);
   background: var(--app-background);
-  font-size: 13px;
-  font-weight: 400;
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-regular);
 }
 
 .status-bar-right {
   display: flex;
   align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.status-bar-right {
   justify-content: flex-end;
+  gap: var(--space-1);
+  min-width: 0;
 }
 
 .status-save-state,
 .status-cursor-position {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 10px;
+  gap: var(--space-1);
+  min-height: var(--control-size-row);
+  padding: 0 var(--space-2);
   color: var(--text-soft);
-  border-radius: 8px;
+  border-radius: var(--radius-surface);
   white-space: nowrap;
 }
 
@@ -45,46 +42,29 @@
   background: var(--surface-muted);
 }
 
-.status-comments-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  height: 32px;
-  padding: 0 10px;
-  color: var(--text-primary);
-  background: var(--surface-muted);
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 400;
-  white-space: nowrap;
-}
-
-.status-comments-button {
-  color: var(--text-soft);
-  background: transparent;
-}
-
-.status-comments-button:hover {
-  color: var(--text-primary);
-  background: var(--surface-hover);
-}
-
 .status-bar-right > span {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
-  padding: 0 8px;
+  min-height: var(--control-size-row);
+  padding: 0 var(--space-2);
   white-space: nowrap;
 }
 
 @media (max-width: 560px) {
   .file-status-bar {
-    gap: 8px;
+    min-height: 52px;
+    gap: var(--space-2);
     overflow-x: auto;
   }
 
   .status-bar-right {
     flex: 0 0 auto;
+  }
+
+  .status-save-state,
+  .status-cursor-position,
+  .status-bar-right > span {
+    min-height: var(--control-size-touch);
+    height: var(--control-size-touch);
   }
 }

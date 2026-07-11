@@ -180,7 +180,7 @@ export async function run(ctx) {
   };
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(MARKDOWN_PREVIEW_TYPOGRAPHY_FIXTURE);
@@ -298,7 +298,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(VIRTUAL_MARKDOWN_PREVIEW_TYPOGRAPHY_FIXTURE);

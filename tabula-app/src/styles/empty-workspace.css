@@ -28,13 +28,12 @@
 
 .empty-file-center {
   position: relative;
-  z-index: 1;
   display: grid;
   justify-items: center;
   gap: 16px;
   width: min(460px, calc(100% - 48px));
   text-align: center;
-  transform: translateY(-10px);
+  transform: translateY(calc(-1 * var(--space-2)));
 }
 
 .empty-file-brand {
@@ -54,7 +53,7 @@
   max-width: 420px;
   margin: 0;
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: var(--font-ui-heading);
   line-height: 1.5;
 }
 
@@ -69,15 +68,15 @@
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   width: 100%;
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 8px;
+  min-height: var(--control-size-row);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-surface);
   color: var(--text-soft);
   background: transparent;
-  font-size: 14px;
-  font-weight: 400;
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-regular);
   text-align: left;
 }
 
@@ -88,8 +87,8 @@
 .empty-file-action-hint {
   color: var(--text-muted);
   font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 14px;
-  font-weight: 400;
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-regular);
   white-space: nowrap;
 }
 
@@ -99,7 +98,7 @@
 }
 
 .live-room-loading-center {
-  gap: 10px;
+  gap: var(--space-2);
   color: var(--text-muted);
 }
 
@@ -110,7 +109,7 @@
 .live-room-loading-center p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--font-ui-body);
   line-height: 1.4;
 }
 
@@ -121,8 +120,8 @@
 
 .live-room-unavailable-center .live-room-unavailable-title {
   color: var(--text-primary);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--font-ui-heading);
+  font-weight: var(--weight-ui-strong);
 }
 
 .live-room-unavailable-actions {
@@ -134,4 +133,10 @@
 
 .live-room-unavailable-actions .empty-file-action {
   grid-template-columns: 18px minmax(0, 1fr);
+}
+
+@media (max-width: 560px) {
+  .empty-file-action {
+    min-height: var(--control-size-touch);
+  }
 }

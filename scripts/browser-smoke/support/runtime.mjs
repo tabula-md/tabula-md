@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { chromium } from "playwright";
 
@@ -48,6 +49,30 @@ const waitForServer = async (url) => {
   throw new Error(`Timed out waiting for ${url}${lastError ? `: ${lastError.message}` : ""}`);
 };
 
+const assertPortAvailable = (port) => new Promise((resolve, reject) => {
+  const server = net.createServer();
+  server.once("error", () => reject(new Error(`Browser smoke port ${port} is already in use.`)));
+  server.once("listening", () => server.close(resolve));
+  server.listen(port, "127.0.0.1");
+});
+
+const waitForPort = async (port) => {
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    const connected = await new Promise((resolve) => {
+      const socket = net.createConnection({ host: "127.0.0.1", port });
+      socket.once("connect", () => {
+        socket.destroy();
+        resolve(true);
+      });
+      socket.once("error", () => resolve(false));
+    });
+    if (connected) return;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`Timed out waiting for 127.0.0.1:${port}`);
+};
+
 const launchBrowser = async ({ naturalBackgrounding = false } = {}) => {
   const launchOptions = naturalBackgrounding
     ? {}
@@ -90,16 +115,15 @@ const getTabs = async (page) =>
   );
 
 const getViewModeActionLabels = async (page) =>
-  page.$$eval(".document-controls [data-view-mode-action]", (buttons) =>
+  page.$$eval(".document-controls [data-view-mode]", (buttons) =>
     buttons.map((button) => button.getAttribute("aria-label") ?? button.getAttribute("title") ?? ""),
   );
 
 const getViewModeSlots = async (page) =>
-  page.$$eval(".document-controls [data-view-mode-slot]", (items) =>
+  page.$$eval(".document-controls [data-view-mode]", (items) =>
     items.map((item) => ({
-      slot: item.getAttribute("data-view-mode-slot") ?? "",
+      viewMode: item.getAttribute("data-view-mode") ?? "",
       label: item.getAttribute("aria-label") ?? "",
-      action: item.getAttribute("data-view-mode-action") ?? "",
       active: item.getAttribute("aria-pressed") === "true",
     })),
   );
@@ -493,6 +517,10 @@ const spawnJsonServer = async () => {
 };
 
 const spawnFirebaseEmulators = async () => {
+  await Promise.all([
+    assertPortAvailable(firestorePort),
+    assertPortAvailable(firebaseStoragePort),
+  ]);
   const firebaseProcess = spawn(
     isWindows ? "npx.cmd" : "npx",
     [
@@ -508,6 +536,7 @@ const spawnFirebaseEmulators = async () => {
     ],
     {
       cwd: process.cwd(),
+      detached: !isWindows,
       env: { ...process.env },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -517,7 +546,25 @@ const spawnFirebaseEmulators = async () => {
   firebaseProcess.on("error", (error) => {
     throw error;
   });
-  await waitForServer(`http://127.0.0.1:${firestorePort}`);
+  await new Promise((resolve, reject) => {
+    const handleExit = (code) => {
+      reject(new Error(`Firebase emulators exited before becoming ready (code ${code ?? "unknown"}).`));
+    };
+    firebaseProcess.once("exit", handleExit);
+    Promise.all([
+      waitForServer(`http://127.0.0.1:${firestorePort}`),
+      waitForPort(firebaseStoragePort),
+    ]).then(
+      () => {
+        firebaseProcess.off("exit", handleExit);
+        resolve();
+      },
+      (error) => {
+        firebaseProcess.off("exit", handleExit);
+        reject(error);
+      },
+    );
+  });
   return firebaseProcess;
 };
 
@@ -558,12 +605,20 @@ const startLocalServers = async ({ withPublishServer = false, withJsonServer = f
   return { firebaseProcess, roomServer, webServer, publishServer, jsonServer };
 };
 
-const stopProcess = async (childProcess) => {
+const stopProcess = async (childProcess, { processGroup = false } = {}) => {
   if (!childProcess) {
     return;
   }
 
-  childProcess.kill("SIGTERM");
+  if (processGroup && !isWindows && childProcess.pid) {
+    try {
+      process.kill(-childProcess.pid, "SIGTERM");
+    } catch (error) {
+      if (error?.code !== "ESRCH") throw error;
+    }
+  } else {
+    childProcess.kill("SIGTERM");
+  }
   await Promise.race([once(childProcess, "exit"), new Promise((resolve) => setTimeout(resolve, 2_000))]);
 };
 
@@ -651,6 +706,6 @@ export async function runBrowserSmoke(suites) {
     await stopProcess(roomServer);
     await stopProcess(publishServer);
     await stopProcess(jsonServer);
-    await stopProcess(firebaseProcess);
+    await stopProcess(firebaseProcess, { processGroup: true });
   }
 }

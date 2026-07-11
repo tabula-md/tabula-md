@@ -22,8 +22,6 @@ const surface = (
   buildDocumentSurface({
     document: createActiveDocumentRuntime(file()),
     hasSelectionActionPosition: false,
-    isLive: false,
-    openCommentCount: 0,
     searchOpen: false,
     selectedCharacterCount: 0,
     shareOpen: false,
@@ -57,7 +55,7 @@ describe("document surface model", () => {
       centerWorkbenchClassName: "center-workbench has-file view-split reading-wide line-numbers-off line-wrapping-off",
       documentToolbarClassName: "document-toolbar-row split reading-wide with-formatting",
       editorSurfaceClassName: "editor-surface line-numbers-off line-wrapping-off",
-      fileShellClassName: "file-shell view-split reading-wide line-numbers-off line-wrapping-off with-format-toolbar with-search-row",
+      fileShellClassName: "file-shell view-split reading-wide comments-enabled line-numbers-off line-wrapping-off with-format-toolbar with-search-row",
       formattingToolbarClassName: "split reading-wide",
       showFormattingToolbar: true,
       showSplitResizeHandle: true,
@@ -74,24 +72,21 @@ describe("document surface model", () => {
     ).toBe(false);
   });
 
-  it("keeps comments visible only for live documents", () => {
-    expect(surface({ isLive: false, openCommentCount: 3 }).statusBar.commentCount).toBe(0);
-    expect(surface({ isLive: true, openCommentCount: 3 }).statusBar.commentCount).toBe(3);
+  it("keeps comments available for every document", () => {
+    expect(surface().fileShellClassName).toContain("comments-enabled");
   });
 
-  it("shows the selection comment popover only for a live text selection", () => {
+  it("shows the selection comment popover for a positioned text selection", () => {
     expect(
       surface({
         hasSelectionActionPosition: true,
-        isLive: true,
         selectedCharacterCount: 4,
       }).showSelectionCommentPopover,
     ).toBe(true);
 
     expect(
       surface({
-        hasSelectionActionPosition: true,
-        isLive: false,
+        hasSelectionActionPosition: false,
         selectedCharacterCount: 4,
       }).showSelectionCommentPopover,
     ).toBe(false);

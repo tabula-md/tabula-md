@@ -22,10 +22,12 @@ export async function run(ctx) {
     await page.keyboard.press("Escape");
     await waitForShareDialogState(page, { open: false });
     await page.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])", { timeout: 5_000 });
+    await page.waitForSelector(".markdown-editor-shell.collaboration-bound", { timeout: 5_000 });
+    await waitForRenderFrame(page);
   };
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("a\n\nmuch longer selected line\nb");
@@ -231,7 +233,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
@@ -446,7 +448,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
@@ -524,5 +526,42 @@ export async function run(ctx) {
       formattedEditorCommentState.markText === "Alpha **target** omega",
       "Formatted preview comments should preserve the Markdown source anchor.",
     );
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.getByRole("button", { name: "New document", exact: true }).click();
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText("line 3 has -firs here\nline 6 has -firs here");
+    for (let index = 0; index < 5; index += 1) await page.keyboard.press("ArrowLeft");
+    for (let index = 0; index < 5; index += 1) await page.keyboard.press("Shift+ArrowLeft");
+    await waitForSelectionLayer(page, { minSegments: 1 });
+
+    expect(
+      (await page.locator(".selection-comment-popover.ui-popover").count()) === 1,
+      "Selection comments should use the shared lightweight popover surface.",
+    );
+    expect(
+      (await page.getByRole("button", { name: "Add comment", exact: true }).count()) === 1,
+      "A single selection action should be a direct button instead of a one-item menu.",
+    );
+
+    await page.locator(".selection-comment-button").click();
+    await waitForRenderFrame(page);
+    await page.locator(".right-comment-input").fill("Review the second occurrence");
+    await page.locator(".right-comment-form .right-comment-submit").click();
+    await waitForRenderFrame(page);
+
+    const repeatedQuoteState = await page.evaluate(() => {
+      const lines = Array.from(document.querySelectorAll(".cm-line"));
+      return {
+        firstLineMarks: lines[0]?.querySelectorAll(".cm-comment-mark").length ?? -1,
+        secondLineMarks: lines[1]?.querySelectorAll(".cm-comment-mark").length ?? -1,
+        markText: document.querySelector(".cm-comment-mark")?.textContent ?? "",
+      };
+    });
+    expect(repeatedQuoteState.firstLineMarks === 0, "A repeated quote must not attach to its first occurrence.");
+    expect(repeatedQuoteState.secondLineMarks === 1, "A repeated quote must stay on the selected occurrence.");
+    expect(repeatedQuoteState.markText === "-firs", "The selected source range should remain exact after the composer takes focus.");
   });
 }

@@ -47,8 +47,6 @@ export type WorkspaceRoomComment = {
   authorColor?: string;
   quote?: string;
   sourceQuote?: string;
-  prefix?: string;
-  suffix?: string;
   selectionStart?: number;
   selectionEnd?: number;
   resolved: boolean;

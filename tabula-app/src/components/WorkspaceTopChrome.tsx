@@ -9,6 +9,7 @@ import { getCollaboratorDisplayList } from "../collaboration/collabCollaborators
 import {
   isEmptyGeneratedLivePlaceholder,
   type WorkspaceFile,
+  type WorkspaceFolder,
 } from "../workspaceStorage";
 
 type FileTabsProps = ComponentProps<typeof FileTabs>;
@@ -28,6 +29,7 @@ export type WorkspaceTopChromeProps = {
   copied: boolean;
   currentUserName: string;
   files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
   identity: Collaborator;
   isLive: boolean;
   isLiveConnected: boolean;
@@ -67,6 +69,7 @@ export function WorkspaceTopChrome({
   copied,
   currentUserName,
   files,
+  folders,
   identity,
   isLive,
   isLiveConnected,
@@ -119,8 +122,10 @@ export function WorkspaceTopChrome({
   const fileTabs = (
     <FileTabs
       files={visibleOpenFiles}
+      folders={folders}
       activeFile={visibleActiveFile}
       collaborators={displayedCollaborators}
+      language={language}
       onAddFile={onAddFile}
       onSelectFile={onSelectFile}
       onRenameFile={onRenameFile}

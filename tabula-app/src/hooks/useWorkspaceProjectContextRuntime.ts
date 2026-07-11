@@ -1,7 +1,7 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
+  useRef,
   useState,
   type RefObject,
 } from "react";
@@ -11,6 +11,7 @@ import {
   type MarkdownHeading,
 } from "@tabula-md/tabula";
 import type { RightPanelView } from "../uiTypes";
+import type { LiveSelection } from "../collaboration";
 import type {
   FileComment,
   FileViewMode,
@@ -18,6 +19,7 @@ import type {
   WorkspaceFolder,
 } from "../workspaceStorage";
 import { isEmptyGeneratedLivePlaceholder } from "../workspaceStorage";
+import type { WorkspaceLanguage } from "./useWorkspacePreferences";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
@@ -27,11 +29,11 @@ type ProjectContextHandlers = Pick<
   | "onAddComment"
   | "onAddCommentReply"
   | "onCancelCommentReply"
-  | "onCloseFile"
   | "onCommentDraftChange"
   | "onDeleteComment"
   | "onDeleteFile"
   | "onDeleteFolder"
+  | "onCopyFile"
   | "onDuplicateFile"
   | "onIdentityNameChange"
   | "onIdentityNameCommit"
@@ -46,6 +48,7 @@ type ProjectContextHandlers = Pick<
   | "onStartCommentReply"
   | "onToggleCommentResolved"
   | "onGoToComment"
+  | "onRequestTextSelection"
 >;
 
 type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
@@ -53,6 +56,7 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   activeFile?: WorkspaceFile;
   activeFileTitle: string;
   activeReplyCommentId: string | null;
+  activeSelection?: LiveSelection;
   activeViewMode: FileViewMode;
   commentDraft: string;
   commentInputRef: RefObject<HTMLTextAreaElement | null>;
@@ -62,8 +66,8 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   focusTextRange: FocusTextRange;
   identityName: string;
   isLive: boolean;
+  language: WorkspaceLanguage;
   onImportFile: () => void;
-  openFileIds: string[];
   outlineHeadings: MarkdownHeading[];
   parsedMarkdownBody: string;
   previewSurfaceRef: RefObject<HTMLElement | null>;
@@ -71,7 +75,10 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   rightPanelOpen: boolean;
   rightPanelView: RightPanelView;
   selectedCharacterCount: number;
-  selectedText: string;
+  pendingSelectionText: string;
+  selectionCommentPending: boolean;
+  onSelectionCommentRequestHandled: () => void;
+  onCancelSelectionComment: () => void;
   setRightPanelOpen: (isOpen: boolean) => void;
   setRightPanelView: (view: RightPanelView) => void;
   text: string;
@@ -82,6 +89,7 @@ export function useWorkspaceProjectContextRuntime({
   activeFile,
   activeFileTitle,
   activeReplyCommentId,
+  activeSelection,
   activeViewMode,
   commentDraft,
   commentInputRef,
@@ -92,16 +100,18 @@ export function useWorkspaceProjectContextRuntime({
   formatCommentDate,
   identityName,
   isLive,
+  language,
   onAddComment,
   onAddCommentReply,
   onCancelCommentReply,
-  onCloseFile,
   onCommentDraftChange,
   onDeleteComment,
   onDeleteFile,
   onDeleteFolder,
+  onCopyFile,
   onDuplicateFile,
   onGoToComment,
+  onRequestTextSelection,
   onIdentityNameChange,
   onIdentityNameCommit,
   onImportFile,
@@ -115,7 +125,6 @@ export function useWorkspaceProjectContextRuntime({
   onSelectFile,
   onStartCommentReply,
   onToggleCommentResolved,
-  openFileIds,
   outlineHeadings,
   parsedMarkdownBody,
   previewSurfaceRef,
@@ -123,29 +132,48 @@ export function useWorkspaceProjectContextRuntime({
   rightPanelOpen,
   rightPanelView,
   selectedCharacterCount,
-  selectedText,
+  pendingSelectionText,
+  selectionCommentPending,
+  onSelectionCommentRequestHandled,
+  onCancelSelectionComment,
   setRightPanelOpen,
   setRightPanelView,
   text,
 }: UseWorkspaceProjectContextRuntimeOptions) {
   const [fileQuery, setFileQuery] = useState("");
 
-  useEffect(() => {
-    if (!isLive && rightPanelView === "comments") {
-      setRightPanelView("files");
-    }
-  }, [isLive, rightPanelView, setRightPanelView]);
-
   const visibleFiles = useMemo(
     () => files.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
     [files],
   );
-  const visibleOpenFileIds = useMemo(() => {
-    const visibleFileIds = new Set(visibleFiles.map((file) => file.id));
-    return openFileIds.filter((fileId) => visibleFileIds.has(fileId));
-  }, [openFileIds, visibleFiles]);
   const visibleActiveFileId =
     activeFile && !isEmptyGeneratedLivePlaceholder(activeFile) ? activeFile.id : undefined;
+  const outlineCursorRef = useRef({ fileId: visibleActiveFileId, offset: 0 });
+  if (outlineCursorRef.current.fileId !== visibleActiveFileId) {
+    outlineCursorRef.current = { fileId: visibleActiveFileId, offset: 0 };
+  }
+  if (activeViewMode !== "preview" && activeSelection) {
+    outlineCursorRef.current.offset = activeSelection.to;
+  }
+  const outlineCursorOffset = activeViewMode === "preview"
+    ? undefined
+    : outlineCursorRef.current.offset;
+  const activeOutlineHeadingIndex = useMemo(() => {
+    if (outlineCursorOffset === undefined || outlineHeadings.length === 0) {
+      return undefined;
+    }
+
+    const bodyStartOffset = text.indexOf(parsedMarkdownBody);
+    const sourceOffset = Math.max(0, outlineCursorOffset - (bodyStartOffset === -1 ? 0 : bodyStartOffset));
+    let activeIndex: number | undefined;
+    for (let index = 0; index < outlineHeadings.length; index += 1) {
+      if (getLineStartOffset(parsedMarkdownBody, outlineHeadings[index].sourceLineIndex) > sourceOffset) {
+        break;
+      }
+      activeIndex = index;
+    }
+    return activeIndex;
+  }, [outlineCursorOffset, outlineHeadings, parsedMarkdownBody, text]);
   const goToOutlineHeading = useCallback(
     (heading: MarkdownHeading, headingIndex: number) => {
       if (activeViewMode === "preview") {
@@ -182,18 +210,22 @@ export function useWorkspaceProjectContextRuntime({
     isOpen: rightPanelOpen,
     view: rightPanelView,
     isLive,
+    language,
     files: visibleFiles,
     folders,
-    openFileIds: visibleOpenFileIds,
     activeFileId: visibleActiveFileId,
     activeFileTitle,
+    activeOutlineHeadingIndex,
     fileQuery,
     outlineHeadings,
     commentsByFileId,
     commentDraft,
     identityName,
-    selectedText,
+    pendingSelectionText,
     selectedCharacterCount,
+    selectionCommentPending,
+    onSelectionCommentRequestHandled,
+    onCancelSelectionComment,
     commentInputRef,
     activeCommentId,
     activeReplyCommentId,
@@ -205,11 +237,11 @@ export function useWorkspaceProjectContextRuntime({
     onNewFolder,
     onImportFile,
     onSelectFile,
-    onCloseFile,
     onRenameFile,
     onDuplicateFile,
     onDeleteFile,
     onDeleteFolder,
+    onCopyFile,
     onMoveFileToFolder,
     onMoveFolder,
     onRenameFolder,
@@ -225,6 +257,7 @@ export function useWorkspaceProjectContextRuntime({
     onAddCommentReply,
     onToggleCommentResolved,
     onDeleteComment,
+    onRequestTextSelection,
     formatCommentDate,
   };
 

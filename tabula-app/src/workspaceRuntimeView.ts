@@ -7,6 +7,7 @@ import type { WorkspaceProjectContextProps } from "./components/WorkspaceProject
 import type { WorkspaceTopChromeProps } from "./components/WorkspaceTopChrome";
 import type { LiveRoomOpenState } from "./liveRoomOpenState";
 import type { WorkspaceFile } from "./workspaceStorage";
+import type { WorkspaceLanguage } from "./hooks/useWorkspacePreferences";
 
 export type WorkspaceRuntimeWorkbenchProps = Omit<
   DocumentWorkbenchProps,
@@ -21,6 +22,7 @@ export type WorkspaceRuntimeView = {
   emptySurfaceProps: WorkspaceEmptySurfaceProps;
   liveRoomOpenState: LiveRoomOpenState;
   liveRoomLoadingProps: {
+    language: WorkspaceLanguage;
     onOpenLocalWorkspace: () => void;
     onRetry: () => void;
   };
@@ -44,8 +46,14 @@ export function createWorkspaceRuntimeView({
   rightPanelOpen,
   ...view
 }: CreateWorkspaceRuntimeViewOptions): WorkspaceRuntimeView {
+  const splitViewOpen = view.documentSurface.documentControls.activeViewMode === "split";
+
   return {
     ...view,
-    mainPanelClassName: `main-panel ${rightPanelOpen ? "right-panel-open" : ""}`,
+    mainPanelClassName: [
+      "main-panel",
+      rightPanelOpen && "right-panel-open",
+      splitViewOpen && "split-view-open",
+    ].filter(Boolean).join(" "),
   };
 }

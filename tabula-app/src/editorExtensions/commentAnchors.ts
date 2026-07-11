@@ -1,10 +1,11 @@
 import { type Extension } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
-import type { MarkdownCommentAnchor } from "../markdownEditorTypes";
+import type { MarkdownCommentAnchor, MarkdownEditorInterfaceCopy } from "../markdownEditorTypes";
 
 export const createCommentAnchorExtension = (
   commentAnchors: MarkdownCommentAnchor[] = [],
-  activeCommentId?: string | null,
+  activeCommentId: string | null | undefined,
+  copy: Pick<MarkdownEditorInterfaceCopy, "activeComment" | "openComment">,
   onOpenComment?: (commentId: string) => void,
 ): Extension => [
   EditorView.decorations.of((view) => {
@@ -22,7 +23,7 @@ export const createCommentAnchorExtension = (
           class: anchor.id === activeCommentId ? "cm-comment-mark active" : "cm-comment-mark",
           attributes: {
             "data-comment-id": anchor.id,
-            title: anchor.id === activeCommentId ? "Active comment" : "Open comment",
+            "data-tooltip": anchor.id === activeCommentId ? copy.activeComment : copy.openComment,
           },
         }).range(anchor.start, anchor.end),
       );

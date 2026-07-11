@@ -5,8 +5,6 @@ import {
 } from "./documentPrimitives";
 
 export type DocumentControlsCopy = {
-  copyCurrentFile: string;
-  copyFile: string;
   documentControlsLabel: string;
   edit: string;
   editorControls: string;
@@ -15,7 +13,6 @@ export type DocumentControlsCopy = {
   layoutControls: string;
   lineNumbers: string;
   lineWrapping: string;
-  nothingToCopy: string;
   preview: string;
   search: string;
   split: string;
@@ -25,13 +22,12 @@ export type DocumentControlsCopy = {
   viewControls: string;
 };
 
-export type DocumentViewModeSlot = "split" | "edit-preview";
 export type DocumentViewModeIcon = "edit" | "preview" | "split";
 
-export type DocumentViewModeAction = {
+export type DocumentViewModeOption = {
+  active: boolean;
   icon: DocumentViewModeIcon;
   label: string;
-  slot: DocumentViewModeSlot;
   viewMode: FileViewMode;
 };
 
@@ -48,8 +44,6 @@ export type DocumentReadingWidthOption = {
 
 export type DocumentControlsModel = {
   controlsLabel: string;
-  copyButtonAriaLabel: string;
-  copyButtonTitle: string;
   documentControlsLabel: string;
   lineNumbers: DocumentToggleControl;
   lineWrapping: DocumentToggleControl;
@@ -59,7 +53,8 @@ export type DocumentControlsModel = {
   showEditorToggles: boolean;
   showSplitToggles: boolean;
   syncScrolling: DocumentToggleControl;
-  viewModeActions: DocumentViewModeAction[];
+  viewModeLabel: string;
+  viewModeOptions: DocumentViewModeOption[];
 };
 
 export type DocumentControlsModelInput = {
@@ -68,7 +63,6 @@ export type DocumentControlsModelInput = {
   activeReadingWidth: ReadingWidth;
   activeSyncScrolling: boolean;
   activeViewMode: FileViewMode;
-  canCopyFile: boolean;
   copy: DocumentControlsCopy;
 };
 
@@ -87,36 +81,13 @@ const getControlsLabel = (
   return copy.editorControls;
 };
 
-const getViewModeActions = (
+const getViewModeOptions = (
   activeViewMode: FileViewMode,
   copy: DocumentControlsCopy,
-): DocumentViewModeAction[] => [
-  activeViewMode === "split"
-    ? {
-        icon: "edit",
-        label: copy.edit,
-        slot: "split",
-        viewMode: "edit",
-      }
-    : {
-        icon: "split",
-        label: copy.split,
-        slot: "split",
-        viewMode: "split",
-      },
-  activeViewMode === "preview"
-    ? {
-        icon: "edit",
-        label: copy.edit,
-        slot: "edit-preview",
-        viewMode: "edit",
-      }
-    : {
-        icon: "preview",
-        label: copy.preview,
-        slot: "edit-preview",
-        viewMode: "preview",
-      },
+): DocumentViewModeOption[] => [
+  { active: activeViewMode === "edit", icon: "edit", label: copy.edit, viewMode: "edit" },
+  { active: activeViewMode === "split", icon: "split", label: copy.split, viewMode: "split" },
+  { active: activeViewMode === "preview", icon: "preview", label: copy.preview, viewMode: "preview" },
 ];
 
 export const buildDocumentControlsModel = ({
@@ -125,7 +96,6 @@ export const buildDocumentControlsModel = ({
   activeReadingWidth,
   activeSyncScrolling,
   activeViewMode,
-  canCopyFile,
   copy,
 }: DocumentControlsModelInput): DocumentControlsModel => {
   const readingWidthLabels: Record<ReadingWidth, string> = {
@@ -136,8 +106,6 @@ export const buildDocumentControlsModel = ({
 
   return {
     controlsLabel: getControlsLabel(activeViewMode, copy),
-    copyButtonAriaLabel: copy.copyCurrentFile,
-    copyButtonTitle: canCopyFile ? copy.copyFile : copy.nothingToCopy,
     documentControlsLabel: copy.documentControlsLabel,
     lineNumbers: {
       active: activeLineNumbers,
@@ -160,6 +128,7 @@ export const buildDocumentControlsModel = ({
       active: activeSyncScrolling,
       label: copy.syncScrolling,
     },
-    viewModeActions: getViewModeActions(activeViewMode, copy),
+    viewModeLabel: `${copy.documentControlsLabel}: ${copy.edit}, ${copy.split}, ${copy.preview}`,
+    viewModeOptions: getViewModeOptions(activeViewMode, copy),
   };
 };

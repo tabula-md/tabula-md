@@ -1,4 +1,3 @@
-import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { ShareExportPanel } from "./share/ShareExportPanel";
 import { ShareLinkPanel } from "./share/ShareLinkPanel";
@@ -7,6 +6,7 @@ import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { useShareDialogRuntime } from "../hooks/useShareDialogRuntime";
 import type { ConnectionStatus } from "../collaboration";
 import type { WorkspaceFile } from "../workspaceStorage";
+import { ModalSurface } from "./ui/ModalSurface";
 
 type ShareControlsProps = {
   activeFile?: WorkspaceFile;
@@ -78,30 +78,16 @@ export function ShareControls({
     onStopSession,
   });
 
-  return (
-    shareOpen
-      ? createPortal(
-          <div
-            className="share-modal-layer"
-            onMouseDown={(event) => {
-              if (event.currentTarget === event.target) {
-                onCloseShare();
-              }
-            }}
-          >
-            <section
-              className="share-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="share-modal-title"
-            >
+  return shareOpen ? (
+    <ModalSurface ariaLabelledBy="share-modal-title" onClose={onCloseShare}>
               <button
                 className="share-modal-close"
                 type="button"
                 aria-label={shareRuntime.chromeCopy.common.closeShareDialog}
+                data-modal-initial-focus
                 onClick={onCloseShare}
               >
-                <X size={17} />
+                <X size={18} />
               </button>
 
               <h2 className="share-modal-title-hidden" id="share-modal-title">
@@ -142,10 +128,6 @@ export function ShareControls({
                   />
                 </div>
               </section>
-            </section>
-          </div>,
-          document.body,
-        )
-      : null
-  );
+    </ModalSurface>
+  ) : null;
 }

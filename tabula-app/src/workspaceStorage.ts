@@ -107,12 +107,11 @@ export type FileCommentReply = {
 export type FileComment = {
   id: string;
   body: string;
+  anchorDetached?: boolean;
   authorName?: string;
   authorColor?: string;
   quote?: string;
   sourceQuote?: string;
-  prefix?: string;
-  suffix?: string;
   selectionStart?: number;
   selectionEnd?: number;
   resolved?: boolean;
@@ -201,11 +200,11 @@ export const getLiveFileTitle = (roomId: string) => `Shared ${roomId.slice(0, 8)
 const GENERATED_LIVE_FILE_TITLE_PATTERN = /^Shared [A-Za-z0-9_-]{8}\.md$/;
 
 export const isEmptyGeneratedLivePlaceholder = (file: WorkspaceFile) =>
-  file.text.trim() === "" &&
   ((file.roomId && file.title === getLiveFileTitle(file.roomId)) ||
-    (!file.roomId && GENERATED_LIVE_FILE_TITLE_PATTERN.test(file.title)));
+    (!file.roomId && GENERATED_LIVE_FILE_TITLE_PATTERN.test(file.title))) &&
+  file.text.trim() === "";
 
-const pruneEmptyGeneratedLivePlaceholders = (
+export const pruneEmptyGeneratedLivePlaceholders = (
   files: WorkspaceFile[],
   commentsByFileId: Record<string, FileComment[]> = {},
 ) =>
@@ -550,12 +549,11 @@ const normalizeFileComments = (comments: unknown): FileComment[] => {
     .map((comment) => ({
       id: getString(comment.id) || randomId(),
       body: getString(comment.body) ?? "",
+      anchorDetached: comment.anchorDetached === true,
       authorName: getString(comment.authorName),
       authorColor: getString(comment.authorColor),
       quote: getString(comment.quote),
       sourceQuote: getString(comment.sourceQuote),
-      prefix: getString(comment.prefix),
-      suffix: getString(comment.suffix),
       selectionStart: getFiniteNumber(comment.selectionStart),
       selectionEnd: getFiniteNumber(comment.selectionEnd),
       resolved: typeof comment.resolved === "boolean" ? comment.resolved : false,

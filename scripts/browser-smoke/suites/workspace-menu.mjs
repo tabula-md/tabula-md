@@ -39,19 +39,26 @@ export async function run(ctx) {
     expect((await page.locator(".intro-action-button").count()) === 0, "The product README should not embed app actions.");
     expect((await page.locator(".tabula-plus-trigger").count()) === 0, "Tabula + should not live in the top-right document chrome.");
     expect((await page.locator(".share-trigger").count()) === 1, "Share should be a single top-right chrome action.");
-    expect((await page.getByRole("button", { name: "Copy current file" }).count()) === 1, "Copy should be a document controls action.");
+    expect((await page.getByRole("button", { name: "More document actions" }).count()) === 0, "Document controls should not expose a single-command More menu.");
     await page.evaluate(() => {
       window.__tabulaClipboard = [];
       navigator.clipboard.writeText = async (text) => {
         window.__tabulaClipboard.push(text);
       };
     });
-    await page.getByRole("button", { name: "Copy current file" }).click();
+    await openProjectContext(page);
+    await page.getByRole("button", { name: "More actions for README.md" }).click();
+    expect(
+      (await page.locator(".right-file-action-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
+      "File action menus should use elevation without a static border.",
+    );
+    await page.getByRole("menuitem", { name: "Copy Markdown" }).click();
     const copiedFile = await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "");
     expect(
       copiedFile.includes("Tabula.md is a local-first Markdown workspace"),
-      "Document controls Copy should copy the active file source.",
+      "The Files menu should copy the selected file source.",
     );
+    await page.getByRole("button", { name: "Close Project Context" }).click();
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".publish-trigger").count()) === 0, "Publish should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".blank-document-action").count()) === 0, "The first screen should not show canvas-style onboarding actions.");
@@ -83,7 +90,7 @@ export async function run(ctx) {
       "Compact tab row should leave unused space after the new-tab control instead of pinning it right.",
     );
 
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     let nextTabs = await getTabs(page);
@@ -94,7 +101,7 @@ export async function run(ctx) {
     );
     expect((await page.locator(".intro-action-button").count()) === 0, "Blank writing documents should not show README actions.");
 
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     nextTabs = await getTabs(page);
@@ -102,7 +109,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".share-trigger").click();
@@ -169,24 +176,30 @@ export async function run(ctx) {
       ) &&
         !emptyChromeState.workspaceText.includes("Start with Markdown.") &&
         !emptyChromeState.workspaceText.includes("Tabula turns Markdowns into collaborative documents for people and agents.") &&
-        emptyChromeState.workspaceText.includes("New File") &&
-        emptyChromeState.workspaceText.includes("Open File") &&
+        emptyChromeState.workspaceText.includes("New document") &&
+        emptyChromeState.workspaceText.includes("Open Markdown file") &&
         emptyChromeState.workspaceText.includes("Browse project files") &&
         emptyChromeState.workspaceText.includes("Help") &&
         !emptyChromeState.workspaceText.includes("Import file") &&
-        !emptyChromeState.workspaceText.includes("Back up workspace") &&
+        !emptyChromeState.workspaceText.includes("Download workspace ZIP") &&
         !emptyChromeState.workspaceText.includes("Project menu") &&
         !emptyChromeState.workspaceText.includes("No file open") &&
         !emptyChromeState.workspaceText.includes("Tabula.md"),
       "No-open-file state should keep the branded start screen available.",
     );
 
-    const emptyFontSizes = await page.$$eval(".empty-file-state :is(p, button, span)", (nodes) =>
-      nodes.map((node) => Number.parseFloat(window.getComputedStyle(node).fontSize)),
+    const emptyTypography = await page.$$eval(".empty-file-state :is(p, button, span)", (nodes) =>
+      nodes
+        .filter((node) => !node.classList.contains("tabula-logo"))
+        .map((node) => ({
+          className: node.getAttribute("class") ?? "",
+          fontSize: Number.parseFloat(window.getComputedStyle(node).fontSize),
+          tagName: node.tagName,
+        })),
     );
     expect(
-      emptyFontSizes.every((fontSize) => fontSize >= 14),
-      "No-open-file state should not render text below 14px.",
+      emptyTypography.every(({ fontSize }) => fontSize === 13 || fontSize === 15),
+      `No-open-file state should use the shared 13px body and 15px surface-heading type scale (${JSON.stringify(emptyTypography)}).`,
     );
 
     await page.getByRole("button", { name: "Browse project files" }).click();
@@ -244,19 +257,19 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await waitForSavedLocally(page);
     let nextTabs = await getTabs(page);
-    expect(nextTabs.length === 1, "New File shortcut from the empty workbench should open one tab.");
-    expect(nextTabs[0]?.active, "New File shortcut from the empty workbench should activate the new tab.");
+    expect(nextTabs.length === 1, "New document shortcut from the empty workbench should open one tab.");
+    expect(nextTabs[0]?.active, "New document shortcut from the empty workbench should activate the new tab.");
 
     await page.locator(".tab-item.active").hover();
     await page.locator(".tab-item.active .tab-action-button.close").click();
     await waitForFileCount(page, 0);
-    await page.locator(".empty-file-actions").getByRole("button", { name: "New File" }).click();
+    await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForFileCount(page, 1);
     await waitForEditorReady(page, { mode: "edit" });
     await waitForSavedLocally(page);
     nextTabs = await getTabs(page);
-    expect(nextTabs.length === 1, "New File from the empty workbench should open one tab.");
-    expect(nextTabs[0]?.active, "New File from the empty workbench should activate the new tab.");
+    expect(nextTabs.length === 1, "New document from the empty workbench should open one tab.");
+    expect(nextTabs[0]?.active, "New document from the empty workbench should activate the new tab.");
     expect((await page.locator(".empty-file-state").count()) === 0, "New file should leave the empty workbench.");
     expect((await page.locator(".document-controls").count()) === 1, "New file should restore file tools.");
     await waitForEditorFocus(page);
@@ -605,6 +618,7 @@ export async function run(ctx) {
 
     const menuSurface = await page.evaluate(() => ({
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
+      menuBorderTopWidth: getComputedStyle(document.querySelector(".workspace-menu-popover")).borderTopWidth,
       menuRows: Array.from(document.querySelectorAll(".workspace-menu-row")).map((button) =>
         button.textContent?.replace(/\s+/g, " ").trim(),
       ),
@@ -618,12 +632,13 @@ export async function run(ctx) {
     }));
 
     expect(menuSurface.menuOpen, "The workspace menu should open from the top-left menu button.");
+    expect(menuSurface.menuBorderTopWidth === "0px", "Workspace menus should use elevation without static borders.");
     expect(menuSurface.templateButtonCount === 0, "Templates should not ship as a visible menu item yet.");
     expect(menuSurface.agentButtonCount === 0, "Agent should not ship as an inert menu item yet.");
     expect(menuSurface.templateSurfaceCount === 0, "Template detail surfaces should be removed until templates are real.");
     expect(
-      menuSurface.menuRows.includes("New File") && menuSurface.menuRows.includes("Open File..."),
-      "The menu should keep the must-have file start actions.",
+      menuSurface.menuRows.includes("New document") && menuSurface.menuRows.includes("Open Markdown file…"),
+      "The menu should keep the must-have document start actions.",
     );
 
     await page.mouse.click(760, 420);
@@ -633,12 +648,12 @@ export async function run(ctx) {
     );
 
     await openProjectMenu(page);
-    await page.getByRole("button", { name: "New File", exact: true }).click();
+    await page.locator(".workspace-menu-popover").getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);
-    expect(activeTab?.title.startsWith("Untitled"), "Menu New File should create and activate the next blank document.");
+    expect(activeTab?.title.startsWith("Untitled"), "Menu New document should create and activate the next blank document.");
     expect(!activeTab?.visibleTitle.endsWith(".md"), "New blank tabs should still hide the Markdown extension.");
   });
 
@@ -646,45 +661,47 @@ export async function run(ctx) {
     let tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "Preview mode should be reflected in the active tab.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Split", "Edit"]),
-      "Preview mode should expose Split and Edit as the available mode actions.",
+      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Split", "Preview"]),
+      "The view-mode control should keep Edit, Split, and Preview in a stable order.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
-          { slot: "split", label: "Split", action: "split", active: false },
-          { slot: "edit-preview", label: "Edit", action: "edit", active: false },
+          { viewMode: "edit", label: "Edit", active: false },
+          { viewMode: "split", label: "Split", active: false },
+          { viewMode: "preview", label: "Preview", active: true },
         ]),
-      "Preview mode should keep Split reachable and put Edit in the shared Edit/Preview slot.",
+      "Preview mode should select Preview without changing the control positions.",
     );
     expect(
-      (await page.getByRole("button", { name: "Preview", exact: true }).count()) === 0,
-      "The active Preview mode should not also be rendered as a toolbar action.",
+      (await page.getByRole("button", { name: "Preview", exact: true }).getAttribute("aria-pressed")) === "true",
+      "The active Preview mode should remain visible and selected.",
     );
     expect(
       (await page.getByRole("button", { name: "Split", exact: true }).count()) === 1,
       "Preview mode should expose Split for direct comparison.",
     );
 
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Edit", "New local tabs should start in Edit mode.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Split", "Preview"]),
-      "Edit mode should keep Split first and put Preview in the shared Edit/Preview slot.",
+      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Split", "Preview"]),
+      "Edit mode should keep the stable view-mode order.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
-          { slot: "split", label: "Split", action: "split", active: false },
-          { slot: "edit-preview", label: "Preview", action: "preview", active: false },
+          { viewMode: "edit", label: "Edit", active: true },
+          { viewMode: "split", label: "Split", active: false },
+          { viewMode: "preview", label: "Preview", active: false },
         ]),
-      "Edit mode should keep Split in its own slot and put Preview in the shared Edit/Preview slot.",
+      "Edit mode should select Edit without changing the control positions.",
     );
     expect(
-      (await page.getByRole("button", { name: "Edit", exact: true }).count()) === 0,
-      "The active Edit mode should not also be rendered as a toolbar action.",
+      (await page.getByRole("button", { name: "Edit", exact: true }).getAttribute("aria-pressed")) === "true",
+      "The active Edit mode should remain visible and selected.",
     );
 
     await page.getByRole("button", { name: "Split", exact: true }).click();
@@ -692,16 +709,17 @@ export async function run(ctx) {
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Split", "Split should be reachable from Edit mode.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Preview"]),
-      "Split mode should expose Edit and Preview as the available mode actions.",
+      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Split", "Preview"]),
+      "Split mode should keep the stable view-mode order.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
-          { slot: "split", label: "Edit", action: "edit", active: false },
-          { slot: "edit-preview", label: "Preview", action: "preview", active: false },
+          { viewMode: "edit", label: "Edit", active: false },
+          { viewMode: "split", label: "Split", active: true },
+          { viewMode: "preview", label: "Preview", active: false },
         ]),
-      "Split mode should replace the active Split button with direct Edit and Preview actions.",
+      "Split mode should select Split without changing the control positions.",
     );
 
     await page.getByRole("button", { name: "Edit", exact: true }).click();

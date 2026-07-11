@@ -5,6 +5,7 @@ export async function run(ctx) {
   const {
     browser,
     expect,
+    openProjectContext,
     openProjectMenu,
     waitForEditorReady,
     withPage,
@@ -89,7 +90,46 @@ export async function run(ctx) {
       leftSplitLayout.editorContent &&
         leftSplitLayout.previewContent &&
         Math.abs(leftSplitLayout.editorContent.width - leftSplitLayout.previewContent.width) <= 24,
-      "Split should balance the editable text column with the rendered preview content column.",
+      `Split should balance the editable text column with the rendered preview content column (${leftSplitLayout.editorContent?.width ?? "missing"}px editor vs ${leftSplitLayout.previewContent?.width ?? "missing"}px preview).`,
+    );
+
+    await page.setViewportSize({ width: 1050, height: 800 });
+    await openProjectContext(page);
+    const splitWithProjectContext = await page.evaluate(() => {
+      const readRect = (selector) => {
+        const element = document.querySelector(selector);
+        if (!(element instanceof HTMLElement)) return null;
+        const rect = element.getBoundingClientRect();
+        return { width: Math.round(rect.width), height: Math.round(rect.height) };
+      };
+      const mainPanel = document.querySelector(".main-panel");
+      const rightPanel = document.querySelector(".right-panel");
+      const backdrop = document.querySelector(".right-panel-backdrop");
+      const workspace = document.querySelector(".workspace.split");
+      return {
+        mainClass: mainPanel?.className ?? "",
+        mainColumns: mainPanel ? window.getComputedStyle(mainPanel).gridTemplateColumns : "",
+        panelPosition: rightPanel ? window.getComputedStyle(rightPanel).position : "",
+        backdropDisplay: backdrop ? window.getComputedStyle(backdrop).display : "",
+        workspaceDisplay: workspace ? window.getComputedStyle(workspace).display : "",
+        editor: readRect(".workspace.split .editor-surface"),
+        preview: readRect(".workspace.split .preview-surface"),
+      };
+    });
+    expect(
+      splitWithProjectContext.mainClass.includes("split-view-open") &&
+        splitWithProjectContext.mainColumns.split(" ").length === 1,
+      "At compact desktop widths, Project Context should overlay Split instead of shrinking its document lane.",
+    );
+    expect(
+      splitWithProjectContext.panelPosition === "fixed" && splitWithProjectContext.backdropDisplay === "block",
+      "Compact Split should use the shared overlay panel behavior.",
+    );
+    expect(
+      splitWithProjectContext.workspaceDisplay === "grid" &&
+        splitWithProjectContext.editor?.height > 300 &&
+        splitWithProjectContext.preview?.height > 300,
+      "Opening Project Context should keep editor and preview visible side by side.",
     );
   });
 }

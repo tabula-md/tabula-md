@@ -18,8 +18,6 @@ export type DocumentSurfaceDocumentState = {
 export type DocumentSurfaceState = {
   document: DocumentSurfaceDocumentState;
   hasSelectionActionPosition: boolean;
-  isLive: boolean;
-  openCommentCount: number;
   searchOpen: boolean;
   selectedCharacterCount: number;
   shareOpen: boolean;
@@ -29,8 +27,6 @@ export type DocumentSurfaceState = {
 export const buildDocumentSurface = ({
   document,
   hasSelectionActionPosition,
-  isLive,
-  openCommentCount,
   searchOpen,
   selectedCharacterCount,
   shareOpen,
@@ -56,7 +52,6 @@ export const buildDocumentSurface = ({
       activeLineWrapping: document.lineWrapping,
       activeReadingWidth: document.readingWidth,
       activeViewMode: document.viewMode,
-      canCopyFile: document.canCopy,
     },
     documentToolbarClassName: classNames(
       "document-toolbar-row",
@@ -73,6 +68,7 @@ export const buildDocumentSurface = ({
     fileShellClassName: classNames(
       "file-shell",
       document.hasFile ? documentModeClassName : "empty",
+      document.hasFile && "comments-enabled",
       document.hasFile && lineNumbersClassName,
       document.hasFile && lineWrappingClassName,
       document.canFormat && "with-format-toolbar",
@@ -85,8 +81,7 @@ export const buildDocumentSurface = ({
     ),
     showFormattingToolbar: document.canFormat,
     showSelectionCommentPopover: Boolean(
-      isLive &&
-        document.hasFile &&
+      document.hasFile &&
         selectedCharacterCount > 0 &&
         hasSelectionActionPosition,
     ),
@@ -94,7 +89,6 @@ export const buildDocumentSurface = ({
     statusBar: {
       activeFileTitle: document.title,
       activeViewMode: document.viewMode,
-      commentCount: isLive ? openCommentCount : 0,
       wordCount: document.wordCount,
     },
     workspaceClassName: classNames(

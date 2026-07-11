@@ -1,4 +1,4 @@
-import { Check, MessageSquare } from "lucide-react";
+import { Check } from "lucide-react";
 import { getStatusBarSaveState } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
@@ -11,11 +11,9 @@ type StatusBarProps = {
   language: WorkspaceLanguage;
   statusLabel: string;
   wordCount: number;
-  commentCount: number;
   cursorPositionLabel: string;
   selectedCharacterCount: number;
   selectedLineCount: number;
-  onOpenComments: () => void;
 };
 
 export function StatusBar({
@@ -25,14 +23,11 @@ export function StatusBar({
   language,
   statusLabel,
   wordCount,
-  commentCount,
   cursorPositionLabel,
   selectedCharacterCount,
   selectedLineCount,
-  onOpenComments,
 }: StatusBarProps) {
   const copy = getWorkspaceChromeCopy(language).statusBar;
-  const hasComments = commentCount > 0;
   const saveState = getStatusBarSaveState({
     isLive,
     roomOfflineLabel: copy.roomOffline,
@@ -48,7 +43,6 @@ export function StatusBar({
         })`
       : cursorPositionLabel;
   const wordCountLabel = `${wordCount} ${wordCount === 1 ? copy.word : copy.words}`;
-  const commentCountLabel = `${commentCount} ${commentCount === 1 ? copy.comment : copy.comments}`;
   const showCursorPosition = activeViewMode !== "preview" || selectedCharacterCount > 0;
 
   return (
@@ -59,23 +53,13 @@ export function StatusBar({
       <div className="status-bar-right">
         {saveState.visible && (
           <span className="status-save-state">
-            <Check size={13} />
+            <Check size={14} />
             <span>{saveState.label}</span>
           </span>
         )}
         <span>{wordCountLabel}</span>
         {showCursorPosition && (
           <span className="status-cursor-position">{cursorLabel}</span>
-        )}
-        {hasComments && (
-          <button
-            className="status-comments-button"
-            type="button"
-            onClick={onOpenComments}
-          >
-            <MessageSquare size={13} />
-            <span>{commentCountLabel}</span>
-          </button>
         )}
       </div>
     </footer>

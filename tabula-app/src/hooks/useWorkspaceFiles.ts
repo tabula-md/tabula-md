@@ -70,6 +70,7 @@ export function useWorkspaceFiles({
   const selectAdjacentFile = useWorkspaceStore((state) => state.selectAdjacentFile);
   const replaceWorkspace = useWorkspaceStore((state) => state.replaceWorkspace);
   const restoreFile = useWorkspaceStore((state) => state.restoreFile);
+  const restoreFolder = useWorkspaceStore((state) => state.restoreFolder);
   const upsertHelpFile = useWorkspaceStore((state) => state.upsertHelpFile);
   const setActiveFileBookmarks = useWorkspaceStore((state) => state.setActiveFileBookmarks);
   const setActiveFileText = useWorkspaceStore((state) => state.setActiveFileText);
@@ -114,6 +115,7 @@ export function useWorkspaceFiles({
     renameFolder,
     replaceWorkspace,
     restoreFile,
+    restoreFolder,
     upsertHelpFile,
     reorderFiles,
     moveFile,

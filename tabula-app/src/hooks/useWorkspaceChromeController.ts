@@ -55,7 +55,7 @@ export function useWorkspaceChromeController({
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
+      if (event.key !== "Escape" || event.defaultPrevented) {
         return;
       }
 
@@ -121,7 +121,7 @@ export function useWorkspaceChromeController({
 
       const isInsideWorkspaceMenu = Boolean(target.closest(".workspace-menu-popover"));
       const isWorkspaceMenuTrigger = Boolean(target.closest(".workspace-menu-button"));
-      const isInsideEditorControls = Boolean(target.closest(".document-controls-wrap"));
+      const isInsideEditorControls = Boolean(target.closest(".document-controls-wrap, .document-controls-popover"));
       const isInsideSelectionPopover = Boolean(target.closest(".selection-comment-popover"));
 
       if (selectionActionPosition && !isInsideSelectionPopover) {

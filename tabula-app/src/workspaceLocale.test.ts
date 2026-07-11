@@ -23,7 +23,7 @@ describe("workspace locale chrome copy", () => {
     expect(english.emptyState.tagline).toBe(
       "A local-first workspace for files that people and coding agents can share safely.",
     );
-    expect(english.emptyState.newFile).toBe("New File");
+    expect(english.emptyState.newFile).toBe("New document");
     expect(english.share.live.startSession).toBe("Start session");
     expect(english.share.shareable.title).toBe("Export to link");
     expect(english.share.shareable.description).toBe(
@@ -33,7 +33,7 @@ describe("workspace locale chrome copy", () => {
 
     const korean = getWorkspaceMenuCopy("ko");
     expect(korean.actions.preferences).toBe("환경설정");
-    expect(korean.emptyState.openFile).toBe("파일 열기");
+    expect(korean.emptyState.openFile).toBe("Markdown 파일 열기");
     expect(korean.share.live.startSession).toBe("세션 시작");
     expect(korean.share.shareable.title).toBe("링크로 내보내기");
     expect(korean.share.shareable.description).toBe(
