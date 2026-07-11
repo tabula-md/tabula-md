@@ -25,7 +25,6 @@ type RightPanelProps = {
   activeFileId: string;
   activeFileTitle: string;
   fileQuery: string;
-  liveFileIds: readonly string[];
   isLiveWorkspace: boolean;
   outlineHeadings: MarkdownHeading[];
   commentsByFileId: Record<string, FileComment[]>;
@@ -42,11 +41,7 @@ type RightPanelProps = {
   onClose: () => void;
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
-  onNewPrivateFile: () => void;
-  onNewFolder: (parentId?: string, scope?: "shared" | "private") => WorkspaceFolder | undefined;
-  onShareFile: (fileId: string) => void;
-  onMakeLocalFileCopy: (fileId: string) => void;
-  onShareFolder: (folderId: string) => void;
+  onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
   onCloseFile: (fileId: string) => void;
@@ -82,7 +77,6 @@ export function RightPanel({
   activeFileId,
   activeFileTitle,
   fileQuery,
-  liveFileIds,
   isLiveWorkspace,
   outlineHeadings,
   commentsByFileId,
@@ -99,11 +93,7 @@ export function RightPanel({
   onClose,
   onFileQueryChange,
   onNewFile,
-  onNewPrivateFile,
   onNewFolder,
-  onShareFile,
-  onMakeLocalFileCopy,
-  onShareFolder,
   onImportFile,
   onSelectFile,
   onCloseFile,
@@ -201,18 +191,13 @@ export function RightPanel({
             openFileIds={openFileIds}
             activeFileId={activeFileId}
             fileQuery={fileQuery}
-            liveFileIds={liveFileIds}
             isLiveWorkspace={isLiveWorkspace}
             commentsByFileId={visibleCommentsByFileId}
             collapsedFolderIds={collapsedFileTreeFolderIds}
             getFileSearchText={getFileSearchText}
             onFileQueryChange={onFileQueryChange}
             onNewFile={onNewFile}
-            onNewPrivateFile={onNewPrivateFile}
             onNewFolder={onNewFolder}
-            onShareFile={onShareFile}
-            onMakeLocalFileCopy={onMakeLocalFileCopy}
-            onShareFolder={onShareFolder}
             onImportFile={onImportFile}
             onToggleFolder={toggleFileTreeFolderCollapsed}
             onSelectFile={onSelectFile}

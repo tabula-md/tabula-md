@@ -51,7 +51,7 @@ type UseCollaborationConnectionRuntimeOptions = {
   activeDocument?: WorkspaceFile;
   editorPresenceEnabled?: boolean;
   identity: Collaborator;
-  pendingInitialTextRef: MutableRefObject<string | undefined>;
+  pendingRoomStartRef: MutableRefObject<boolean>;
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null; order?: number }[];
   workspaceFolders?: readonly WorkspaceFolderSnapshot[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
@@ -77,7 +77,7 @@ export function useCollaborationConnectionRuntime({
   activeDocument,
   editorPresenceEnabled = true,
   identity,
-  pendingInitialTextRef,
+  pendingRoomStartRef,
   workspaceDocuments = [],
   workspaceFolders = [],
   commentsByFileId,
@@ -141,11 +141,11 @@ export function useCollaborationConnectionRuntime({
     pendingLocalTextQueueRef.current = [];
 
     const target = getLiveRoomConnectionTarget(roomFile);
-    const pendingInitialText = pendingInitialTextRef.current;
+    const pendingRoomStart = pendingRoomStartRef.current;
     const documentSnapshot = workspaceDocumentsRef.current;
     const folderSnapshot = workspaceFoldersRef.current;
-    if (!target || !shouldStartLiveRoomConnection({ file: roomFile, hasPendingInitialText: pendingInitialText !== undefined })) {
-      pendingInitialTextRef.current = undefined;
+    if (!target || !shouldStartLiveRoomConnection({ file: roomFile, hasPendingStart: pendingRoomStart })) {
+      pendingRoomStartRef.current = false;
       const nextStatus = target ? "disconnected" : "idle";
       setPreRuntimeConnectionStatus(nextStatus);
       if (roomFile?.id) {
@@ -154,7 +154,7 @@ export function useCollaborationConnectionRuntime({
       return;
     }
 
-    pendingInitialTextRef.current = undefined;
+    pendingRoomStartRef.current = false;
     setPreRuntimeConnectionStatus("connecting");
     setFileCollaborationStatus(target.fileId, "connecting");
     let disposed = false;
@@ -169,8 +169,7 @@ export function useCollaborationConnectionRuntime({
           documents: documentSnapshot,
           folders: folderSnapshot,
           commentsByFileId,
-          emitInitialWorkspaceState: documentSnapshot.length > 0,
-          initialText: pendingInitialText,
+          emitInitialWorkspaceState: false,
           identity,
           fileTitle: target.fileTitle,
           onTextChange: (documentId, text) => {

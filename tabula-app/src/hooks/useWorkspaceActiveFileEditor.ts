@@ -54,6 +54,7 @@ type UseWorkspaceActiveFileEditorArgs = {
   collaborationBound?: boolean;
   editorDocumentRuntime: WorkspaceEditorDocumentRuntimeOwner;
   editorRef: RefObject<MarkdownEditorHandle | null>;
+  onPendingTextChange?: () => void;
   onVisibleTextChange?: (change?: TextChange) => void;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
   setActiveFileText: (text: string) => void;
@@ -171,6 +172,7 @@ export function useWorkspaceActiveFileEditor({
   collaborationBound = false,
   editorDocumentRuntime,
   editorRef,
+  onPendingTextChange,
   onVisibleTextChange,
   setActiveFileBookmarks,
   setActiveFileText,
@@ -304,6 +306,7 @@ export function useWorkspaceActiveFileEditor({
         onVisibleTextChange?.(change);
       }
       if (!collaborationBound) schedulePendingEditorCommit(change);
+      onPendingTextChange?.();
 
       if (activeFile.roomId && !collaborationBound) {
         applyLocalText(
@@ -331,6 +334,7 @@ export function useWorkspaceActiveFileEditor({
     }
 
     runtime.replaceAll(nextText);
+    onPendingTextChange?.();
     if (activeFile.viewMode !== "edit") {
       onVisibleTextChange?.(change);
     }

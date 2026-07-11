@@ -1,7 +1,6 @@
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { ShareExportPanel } from "./share/ShareExportPanel";
-import { ShareIncludedDocuments } from "./share/ShareIncludedDocuments";
 import { ShareLinkPanel } from "./share/ShareLinkPanel";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
@@ -20,7 +19,6 @@ type ShareControlsProps = {
   connectionStatus: ConnectionStatus;
   isLive: boolean;
   isLiveConnected: boolean;
-  shareExcludedFileIds: readonly string[];
   shareOpen: boolean;
   copied: boolean;
   jsonShare: JsonShareController;
@@ -29,11 +27,10 @@ type ShareControlsProps = {
   onStartSession: () => void;
   onRetrySession: () => void;
   onCopyShareUrl: () => void;
-  onDownloadProjectArchive: (fileIds?: readonly string[]) => void;
+  onDownloadProjectArchive: () => void;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
   onStopSession: () => void;
-  onToggleShareFileExcluded: (fileId: string) => void;
 };
 
 export function ShareControls({
@@ -47,7 +44,6 @@ export function ShareControls({
   connectionStatus,
   isLive,
   isLiveConnected,
-  shareExcludedFileIds,
   shareOpen,
   copied,
   jsonShare,
@@ -60,7 +56,6 @@ export function ShareControls({
   onChangeUserName,
   onCommitUserName,
   onStopSession,
-  onToggleShareFileExcluded,
 }: ShareControlsProps) {
   const showLiveRoomPanel =
     isLive &&
@@ -77,7 +72,6 @@ export function ShareControls({
     isLiveConnected,
     jsonShare,
     language,
-    shareExcludedFileIds,
     shareOpen,
     startSessionUnavailableReason,
     onCloseShare,
@@ -96,7 +90,7 @@ export function ShareControls({
             }}
           >
             <section
-              className={`share-modal ${showLiveRoomPanel ? "share-modal-live" : "share-modal-chooser"}`}
+              className="share-modal"
               role="dialog"
               aria-modal="true"
               aria-labelledby="share-modal-title"
@@ -130,10 +124,9 @@ export function ShareControls({
                       <ShareExportPanel
                         copy={shareRuntime.copy}
                         exportLinkCopied={shareRuntime.exportLinkCopied}
-                        includedFileCount={shareRuntime.includedFileCount}
-                        includedFileIds={shareRuntime.includedFileIds}
                         jsonShare={jsonShare}
                         shareView={shareRuntime.shareView}
+                        workspaceDocumentCount={shareRuntime.workspaceDocumentCount}
                         onCopyShareableLink={shareRuntime.copyShareableLink}
                         onDownloadProjectArchive={onDownloadProjectArchive}
                         onExportToJsonLink={shareRuntime.exportToJsonLink}
@@ -148,18 +141,6 @@ export function ShareControls({
                     onStopSession={shareRuntime.stopSession}
                   />
                 </div>
-
-                {!showLiveRoomPanel && (
-                  <aside className="share-modal-scope-column">
-                    <ShareIncludedDocuments
-                      copy={shareRuntime.copy}
-                      excludedFileIds={shareRuntime.excludedFileIds}
-                      files={files}
-                      includedFileCount={shareRuntime.includedFileCount}
-                      onToggleFileExcluded={onToggleShareFileExcluded}
-                    />
-                  </aside>
-                )}
               </section>
             </section>
           </div>,

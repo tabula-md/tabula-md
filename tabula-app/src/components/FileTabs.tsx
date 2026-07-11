@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, HardDrive, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { Collaborator } from "../collaboration";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
 import type { WorkspaceFile } from "../workspaceStorage";
@@ -18,9 +18,7 @@ type FileTabsProps = {
   files: WorkspaceFile[];
   activeFile?: WorkspaceFile;
   collaborators: Collaborator[];
-  isLiveWorkspace: boolean;
   onAddFile: () => void;
-  onAddPrivateFile: () => void;
   onSelectFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onCloseFile: (fileId: string) => void;
@@ -49,9 +47,7 @@ export function FileTabs({
   files,
   activeFile,
   collaborators,
-  isLiveWorkspace,
   onAddFile,
-  onAddPrivateFile,
   onSelectFile,
   onRenameFile,
   onCloseFile,
@@ -259,7 +255,6 @@ export function FileTabs({
         {files.map((file, fileIndex) => {
           const isActiveFile = file.id === activeFile?.id;
           const isRenaming = file.id === renamingFileId;
-          const isPrivateFile = isLiveWorkspace && !file.roomId;
           const allDocumentCollaborators = getDocumentCollaborators(collaborators, file.id);
           const documentCollaborators = allDocumentCollaborators.slice(0, 2);
           const hiddenCollaboratorCount = allDocumentCollaborators.length - documentCollaborators.length;
@@ -267,7 +262,7 @@ export function FileTabs({
           const tabDisplayTitle = getTabDisplayTitle(displayTitle);
           return (
             <div
-              className={`tab-item ${isActiveFile ? "active" : ""} ${isPrivateFile ? "private" : ""} ${
+              className={`tab-item ${isActiveFile ? "active" : ""} ${
                 draggedFileId === file.id ? "dragging" : ""
               }`}
               role="presentation"
@@ -321,7 +316,7 @@ export function FileTabs({
                   aria-selected={isActiveFile}
                   tabIndex={isActiveFile ? 0 : -1}
                   data-file-id={file.id}
-                  title={isPrivateFile ? `${displayTitle} · Private to this browser` : displayTitle}
+                  title={displayTitle}
                   onMouseDown={(event) => {
                     if (event.detail >= 2) event.preventDefault();
                   }}
@@ -350,11 +345,6 @@ export function FileTabs({
                     }
                   }}
                 >
-                  {isPrivateFile && (
-                    <span className="tab-private-icon" title="Private to this browser" aria-label="Private to this browser">
-                      <HardDrive size={12} />
-                    </span>
-                  )}
                   <span className="tab-title">{tabDisplayTitle}</span>
                   {documentCollaborators.length > 0 && (
                     <span
@@ -403,9 +393,7 @@ export function FileTabs({
       <div className="tabbar-actions">
         <NewDocumentButton
           buttonClassName="add-tab-button"
-          live={isLiveWorkspace}
-          onCreateShared={onAddFile}
-          onCreatePrivate={onAddPrivateFile}
+          onCreate={onAddFile}
         />
         <button
           className={`tab-scroll-button ${tabScrollState.activeTabDirection === "right" ? "has-current-tab" : ""}`}

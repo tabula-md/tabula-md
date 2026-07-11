@@ -148,12 +148,6 @@ export function useWorkspaceFileActions({
 
   const addFile = () => createFile(getLiveRoomFileOverrides(roomFile ?? activeFile));
 
-  const addPrivateFile = () => createFile({
-    roomId: undefined,
-    shareUrl: undefined,
-    connectionStatus: "idle",
-  });
-
   const openHelpFile = () => {
     onBeforeWorkspaceBoundary?.();
     const nextFile = upsertHelpFile(helpMarkdown);
@@ -302,7 +296,6 @@ export function useWorkspaceFileActions({
   return {
     selectFile,
     addFile,
-    addPrivateFile,
     openAboutFile,
     openHelpFile,
     renameWorkspaceFileAction,

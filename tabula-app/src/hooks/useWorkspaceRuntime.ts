@@ -10,12 +10,6 @@ import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { type TextChange, type WorkspaceRoomComment, type WorkspaceRoomSnapshot } from "@tabula-md/tabula";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import { reconcileWorkspaceRoomSnapshot } from "../collaboration/workspaceRoomStateMerge";
-import { getWorkspaceRoomFolders } from "../collaboration/workspaceRoomScope";
-import {
-  applyRoomLocalViewState,
-  mergeRoomLocalWorkspaceState,
-  type RoomLocalWorkspaceState,
-} from "../roomLocalWorkspaceState";
 import {
   createRoomWorkspaceState,
   createWorkspaceFile,
@@ -61,7 +55,6 @@ import { useWorkspaceKeyboardShortcuts } from "./useWorkspaceKeyboardShortcuts";
 import { useWorkspaceMenuRuntime } from "./useWorkspaceMenuRuntime";
 import { useWorkspacePersistenceRuntime } from "./useWorkspacePersistenceRuntime";
 import { useWorkspacePreferences } from "./useWorkspacePreferences";
-import { useRoomLocalWorkspacePersistence } from "./useRoomLocalWorkspacePersistence";
 import { useWorkspaceProjectContextRuntime } from "./useWorkspaceProjectContextRuntime";
 import { useWorkspaceRouteRuntime } from "./useWorkspaceRouteRuntime";
 import { useWorkspaceShareRuntime } from "./useWorkspaceShareRuntime";
@@ -177,14 +170,10 @@ export function useWorkspaceRuntime() {
     resolved: () => undefined,
     replied: () => undefined,
   });
-  const [shareExcludedFileIds, setShareExcludedFileIds] = useState<string[]>([]);
   const failedLiveRoomStartRef = useRef<string | null>(null);
   const [liveRoomOpenTimedOut, setLiveRoomOpenTimedOut] = useState(false);
   const [liveRoomOpenFailure, setLiveRoomOpenFailure] = useState<LiveRoomOpenFailure | null>(null);
   const syncedLiveRoomUrlRef = useRef<string | null>(null);
-  const roomLocalStateRef = useRef<RoomLocalWorkspaceState | null>(null);
-  const roomWorkspaceHydratedRef = useRef(false);
-  const roomLocalViewRestoredRef = useRef(false);
   const persistenceErrorShownRef = useRef(false);
   const activeRoomId = activeRoom?.roomId ?? activeFile?.roomId;
   const activeRoomShareUrl = activeRoom?.shareUrl ?? activeFile?.shareUrl;
@@ -247,8 +236,7 @@ export function useWorkspaceRuntime() {
   });
   const getCollaborationSessionFileSnapshot = useEventCallback(() => {
     const activeSnapshot = getActiveFileSnapshot();
-    if (activeSnapshot && !shareExcludedFileIds.includes(activeSnapshot.id)) return activeSnapshot;
-    return files.find((file) => !shareExcludedFileIds.includes(file.id));
+    return activeSnapshot ?? files[0];
   });
   const getWorkspaceSnapshot = useEventCallback((): WorkspaceState => {
     const workspaceSnapshot = getWorkspaceStoreSnapshot();
@@ -273,17 +261,6 @@ export function useWorkspaceRuntime() {
     if (persistenceErrorShownRef.current) return;
     persistenceErrorShownRef.current = true;
     showToast("Changes couldn’t be saved in this browser.", "error");
-  });
-  const hydrateRoomLocalWorkspace = useEventCallback((state: RoomLocalWorkspaceState) => {
-    if (state.roomId !== activeRoomId) return;
-    roomLocalStateRef.current = state;
-    const currentWorkspace = getWorkspaceSnapshot();
-    replaceWorkspace(mergeRoomLocalWorkspaceState(currentWorkspace, state));
-    replaceCommentsByFileId({
-      ...currentWorkspace.commentsByFileId,
-      ...state.commentsByFileId,
-    });
-    if (roomWorkspaceHydratedRef.current) roomLocalViewRestoredRef.current = true;
   });
   const [visibleTextRevision, setVisibleTextRevision] = useState(0);
   const [visibleTextChange, setVisibleTextChange] = useState<TextChange | null>(null);
@@ -437,26 +414,18 @@ export function useWorkspaceRuntime() {
       snapshot,
       workspaceSnapshot,
     });
-    roomWorkspaceHydratedRef.current = true;
-    const roomLocalState = roomLocalStateRef.current?.roomId === snapshot.roomId
-      ? roomLocalStateRef.current
-      : null;
-    const restoredWorkspace = roomLocalState && !roomLocalViewRestoredRef.current
-      ? applyRoomLocalViewState(nextWorkspace, roomLocalState)
-      : nextWorkspace;
-    if (roomLocalState) roomLocalViewRestoredRef.current = true;
     if (
       activeRoomShareUrl &&
       (activeRoom?.roomId !== snapshot.roomId || activeRoom.shareUrl !== activeRoomShareUrl)
     ) {
       setActiveRoom({ roomId: snapshot.roomId, shareUrl: activeRoomShareUrl });
     }
-    replaceWorkspace(restoredWorkspace);
+    replaceWorkspace(nextWorkspace);
     if (origin) {
       const deletedActiveFile = deletedDocuments.find((file) => file.id === workspaceSnapshot.activeFileId);
       if (deletedActiveFile) {
-        const nextActiveTitle = restoredWorkspace.files.find(
-          (file) => file.id === restoredWorkspace.activeFileId,
+        const nextActiveTitle = nextWorkspace.files.find(
+          (file) => file.id === nextWorkspace.activeFileId,
         )?.title;
         showToast(
           nextActiveTitle
@@ -476,50 +445,28 @@ export function useWorkspaceRuntime() {
         showToast("The shared workspace was updated.");
       }
     }
-    const sharedFileIds = new Set(Object.keys(snapshot.documents));
-    const localComments = Object.fromEntries(
-      Object.entries(commentsByFileId).filter(([fileId]) => !sharedFileIds.has(fileId)),
-    );
     const roomComments = Object.fromEntries(
       Object.entries(snapshot.commentsByFileId).map(([fileId, comments]) => [
         fileId,
         comments.map(({ fileId: _fileId, authorId: _authorId, ...comment }) => comment),
       ]),
     );
-    replaceCommentsByFileId(
-      { ...localComments, ...roomComments },
-      { preserveInteraction: true },
-    );
+    replaceCommentsByFileId(roomComments, { preserveInteraction: true });
   });
   const mergeWorkspaceRoomComments = useEventCallback(
     (roomCommentsByFileId: Record<string, WorkspaceRoomComment[]>) => {
-      const roomId = activeRoomId;
-      if (!roomId) return;
-      const roomFileIds = new Set(
-        files.filter((file) => file.roomId === roomId).map((file) => file.id),
-      );
-      const localComments = Object.fromEntries(
-        Object.entries(commentsByFileId).filter(([fileId]) => !roomFileIds.has(fileId)),
-      );
+      if (!activeRoomId) return;
       const roomComments = Object.fromEntries(
         Object.entries(roomCommentsByFileId).map(([fileId, comments]) => [
           fileId,
           comments.map(({ fileId: _fileId, authorId: _authorId, ...comment }) => comment),
         ]),
       );
-      replaceCommentsByFileId(
-        { ...localComments, ...roomComments },
-        { preserveInteraction: true },
-      );
+      replaceCommentsByFileId(roomComments, { preserveInteraction: true });
     },
   );
   const workspaceShareDocuments = useMemo(
-    () => {
-      const shareCandidateFiles = activeRoomId
-        ? files.filter((file) => file.roomId === activeRoomId)
-        : files.filter((file) => !shareExcludedFileIds.includes(file.id));
-
-      return shareCandidateFiles
+    () => files
         .filter((file) => !isEmptyGeneratedLivePlaceholder(file))
         .map((file) => ({
           id: file.id,
@@ -527,13 +474,12 @@ export function useWorkspaceRuntime() {
           text: file.text,
           parentId: file.parentId,
           order: file.order,
-        }));
-    },
-    [activeRoomId, files, shareExcludedFileIds],
+        })),
+    [files],
   );
   const workspaceShareFolders = useMemo(
-    () => getWorkspaceRoomFolders(workspaceShareDocuments, folders, activeRoomId),
-    [activeRoomId, folders, workspaceShareDocuments],
+    () => folders,
+    [folders],
   );
   const workspaceShareComments = useMemo<Record<string, WorkspaceRoomComment[]>>(() => {
     const documentIds = new Set(workspaceShareDocuments.map((document) => document.id));
@@ -649,25 +595,6 @@ export function useWorkspaceRuntime() {
     setActiveFileText,
     setFileText,
   });
-  const toggleShareFileExcluded = useEventCallback((fileId: string) => {
-    setShareExcludedFileIds((currentFileIds) => {
-      const currentExcludedFileIds = new Set(currentFileIds);
-      if (currentExcludedFileIds.has(fileId)) {
-        return currentFileIds.filter((currentFileId) => currentFileId !== fileId);
-      }
-
-      const includedFileCount = files.filter(
-        (file) => !currentExcludedFileIds.has(file.id),
-      ).length;
-      return includedFileCount <= 1 ? currentFileIds : [...currentFileIds, fileId];
-    });
-  });
-  useEffect(() => {
-    const existingFileIds = new Set(files.map((file) => file.id));
-    setShareExcludedFileIds((currentFileIds) =>
-      currentFileIds.filter((fileId) => existingFileIds.has(fileId)),
-    );
-  }, [files]);
   const localWorkspacePersistence = useWorkspacePersistenceRuntime({
     enabled: localPersistenceEnabled,
     getWorkspaceSnapshot,
@@ -677,14 +604,6 @@ export function useWorkspaceRuntime() {
     workspace: workspacePersistenceSnapshot,
     replaceCommentsByFileId,
     replaceWorkspace,
-  });
-  useRoomLocalWorkspacePersistence({
-    roomId: activeRoomId,
-    ownerId: identity.id,
-    workspace: workspacePersistenceSnapshot,
-    getWorkspaceSnapshot,
-    onHydrate: hydrateRoomLocalWorkspace,
-    onError: handlePersistenceError,
   });
   const { copyShareUrl, jsonShare, startSession, stopSession } =
     useWorkspaceShareRuntime({
@@ -697,7 +616,6 @@ export function useWorkspaceRuntime() {
       folders,
       getActiveFileSnapshot,
       onBeforeWorkspaceBoundary: flushPendingEditorCommit,
-      shareExcludedFileIds,
       resetCollaborationState,
       retryCollaborationConnection,
       setCopiedFileId,
@@ -733,15 +651,8 @@ export function useWorkspaceRuntime() {
     void readIndexedDbWorkspace()
       .then((storedWorkspace) => {
         const nextStoredWorkspace = storedWorkspace ?? finalizeWorkspaceState([], undefined, {}, { includeLocationRoom: false });
-        const roomLocalState = roomLocalStateRef.current;
-        const localWorkspace = roomLocalState
-          ? mergeRoomLocalWorkspaceState(nextStoredWorkspace, roomLocalState)
-          : nextStoredWorkspace;
-        replaceWorkspace(localWorkspace);
-        replaceCommentsByFileId({
-          ...nextStoredWorkspace.commentsByFileId,
-          ...roomLocalState?.commentsByFileId,
-        });
+        replaceWorkspace(nextStoredWorkspace);
+        replaceCommentsByFileId(nextStoredWorkspace.commentsByFileId);
       })
       .catch(handlePersistenceError);
   });
@@ -749,27 +660,33 @@ export function useWorkspaceRuntime() {
     flushPendingEditorCommit();
     void copyShareUrl();
   });
-  const startSessionWithPendingCommit = useEventCallback(() => {
+  const startSessionWithPendingCommit = useEventCallback(async () => {
     flushPendingEditorCommit();
-    const startedSession = startSession();
-    if (!startedSession) {
-      return;
-    }
+    try {
+      const startedSession = await startSession();
+      if (!startedSession) return;
 
-    setLiveRoomOpenFailure(null);
-    setActiveRoom(startedSession);
-    for (const folder of workspaceShareFolders) {
-      if (folder.id !== WORKSPACE_ROOT_FOLDER_ID) {
-        setFolderCollaborationRoom(folder.id, startedSession.roomId);
+      setLocalPersistenceEnabled(false);
+      setLiveRoomOpenFailure(null);
+      setActiveRoom(startedSession);
+      for (const folder of workspaceShareFolders) {
+        if (folder.id !== WORKSPACE_ROOT_FOLDER_ID) {
+          setFolderCollaborationRoom(folder.id, startedSession.roomId);
+        }
       }
-    }
-    const excludedFileIds = new Set(shareExcludedFileIds);
-    for (const file of files) {
-      if (file.id === startedSession.fileId || excludedFileIds.has(file.id)) {
-        continue;
+      for (const file of files) {
+        if (file.id === startedSession.fileId) continue;
+        startFileCollaborationSession(file.id, startedSession.roomId, startedSession.shareUrl);
+        setFileCollaborationStatus(file.id, "idle");
       }
-      startFileCollaborationSession(file.id, startedSession.roomId, startedSession.shareUrl);
-      setFileCollaborationStatus(file.id, "idle");
+    } catch (error) {
+      clientErrorReporter.report({
+        feature: "collaboration",
+        operation: "start-session",
+        error,
+      });
+      setTopPopover(null);
+      showToast("Live collaboration isn’t available right now.", "error");
     }
   });
   const stopSessionWithPendingCommit = useEventCallback(() => {
@@ -844,9 +761,6 @@ export function useWorkspaceRuntime() {
     setCopiedFileId(null);
   });
   const activateRoomWorkspace = useEventCallback((room: LocationRoom) => {
-    roomLocalStateRef.current = null;
-    roomWorkspaceHydratedRef.current = false;
-    roomLocalViewRestoredRef.current = false;
     setLocalPersistenceEnabled(false);
     setLiveRoomOpenFailure(null);
     setActiveRoom(room);
@@ -906,7 +820,6 @@ export function useWorkspaceRuntime() {
   const {
     selectFile,
     addFile,
-    addPrivateFile,
     openAboutFile,
     openHelpFile,
     renameWorkspaceFileAction,
@@ -942,81 +855,12 @@ export function useWorkspaceRuntime() {
     showToast,
     upsertHelpFile,
   });
-  const setFolderPathRoom = useEventCallback((folderId: string | null | undefined, roomId: string) => {
-    const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
-    const visited = new Set<string>();
-    let promotedLocalPath = false;
-    let currentId = folderId ?? WORKSPACE_ROOT_FOLDER_ID;
-    while (currentId !== WORKSPACE_ROOT_FOLDER_ID && !visited.has(currentId)) {
-      visited.add(currentId);
-      if (foldersById.get(currentId)?.roomId !== roomId) promotedLocalPath = true;
-      setFolderCollaborationRoom(currentId, roomId);
-      currentId = foldersById.get(currentId)?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
-    }
-    return promotedLocalPath;
-  });
-  const shareFileInRoom = useEventCallback((fileId: string) => {
-    const file = files.find((candidate) => candidate.id === fileId);
-    if (!file || !activeRoomId || !activeRoomShareUrl || file.roomId === activeRoomId) return;
-    flushPendingEditorCommit();
-    setFolderPathRoom(file.parentId, activeRoomId);
-    startFileCollaborationSession(file.id, activeRoomId, activeRoomShareUrl);
-    setFileCollaborationStatus(file.id, "idle");
-    showToast("Document is now shared in this room.");
-  });
-  const makeLocalFileCopy = useEventCallback((fileId: string) => {
-    const file = files.find((candidate) => candidate.id === fileId);
-    if (!file) return;
-    flushPendingEditorCommit();
-    const nextFile = addFileFromContent(
-      file.title,
-      editorDocumentRuntime.getLatestFileText(file.id, file.text),
-      file.viewMode,
-      {
-        parentId: file.parentId,
-        readingWidth: file.readingWidth,
-        lineWrapping: file.lineWrapping,
-        lineNumbers: file.lineNumbers,
-        bookmarks: file.bookmarks,
-        roomId: undefined,
-        shareUrl: undefined,
-        connectionStatus: "idle",
-      },
-    );
-    showToast(`${nextFile.title} is private to this browser.`);
-  });
-  const shareFolderInRoom = useEventCallback((folderId: string) => {
-    if (!activeRoomId || !activeRoomShareUrl) return;
-    const sharedFolderIds = new Set([folderId]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const folder of folders) {
-        if (!sharedFolderIds.has(folder.id) && folder.parentId && sharedFolderIds.has(folder.parentId)) {
-          sharedFolderIds.add(folder.id);
-          changed = true;
-        }
-      }
-    }
-    setFolderPathRoom(folderId, activeRoomId);
-    for (const sharedFolderId of sharedFolderIds) {
-      setFolderCollaborationRoom(sharedFolderId, activeRoomId);
-    }
-    for (const file of files) {
-      if (!sharedFolderIds.has(file.parentId ?? WORKSPACE_ROOT_FOLDER_ID) || file.roomId === activeRoomId) continue;
-      startFileCollaborationSession(file.id, activeRoomId, activeRoomShareUrl);
-      setFileCollaborationStatus(file.id, "idle");
-    }
-    showToast("Folder is now shared in this room.");
-  });
-  const addScopedFolder = useEventCallback((parentId?: string, scope: "shared" | "private" = "shared") => {
-    const roomId = scope === "shared" ? activeRoomId : undefined;
-    const folder = addWorkspaceFolderAction("New folder", parentId, roomId);
+  const addWorkspaceFolder = useEventCallback((parentId?: string) => {
+    const folder = addWorkspaceFolderAction("New folder", parentId, activeRoomId);
     if (!folder) {
       showToast("Folders can be nested up to 32 levels.", "error");
       return;
     }
-    if (roomId) setFolderPathRoom(folder.parentId, roomId);
     return folder;
   });
   const {
@@ -1110,7 +954,6 @@ export function useWorkspaceRuntime() {
       formatCommentDate,
       identityName: identity.name,
       isLive: isLiveChromeVisible,
-      roomId: activeRoomId,
       onAddComment: addFileComment,
       onAddCommentReply: addFileCommentReply,
       onCancelCommentReply: cancelCommentReply,
@@ -1158,34 +1001,15 @@ export function useWorkspaceRuntime() {
       onIdentityNameCommit: normalizeIdentityName,
       onImportFile: () => importInputRef.current?.click(),
       onNewFile: addFile,
-      onNewPrivateFile: addPrivateFile,
-      onNewFolder: addScopedFolder,
-      onShareFile: shareFileInRoom,
-      onMakeLocalFileCopy: makeLocalFileCopy,
-      onShareFolder: shareFolderInRoom,
+      onNewFolder: addWorkspaceFolder,
       onRenameFile: renameWorkspaceFileAction,
       onRenameFolder: renameFolder,
       onMoveFileToFolder: (fileId, folderId) => {
-        const movingFile = files.find((file) => file.id === fileId);
-        const promotedLocalPath = Boolean(
-          movingFile?.roomId && activeRoomId && setFolderPathRoom(folderId, activeRoomId),
-        );
         moveFileToFolder(fileId, folderId);
-        if (promotedLocalPath) {
-          showToast("The folder path is now shared. Private documents inside it stay local.");
-        }
       },
       onMoveFolder: (folderId, parentId) => {
-        const movingFolder = folders.find((folder) => folder.id === folderId);
         if (!moveFolder(folderId, parentId)) {
           showToast("This folder can’t be moved there.", "error");
-          return;
-        }
-        const promotedLocalPath = Boolean(
-          movingFolder?.roomId && activeRoomId && setFolderPathRoom(parentId, activeRoomId),
-        );
-        if (promotedLocalPath) {
-          showToast("The parent folder path is now shared. Private documents inside it stay local.");
         }
       },
       onReplyDraftChange: updateCommentReplyDraft,
@@ -1222,12 +1046,10 @@ export function useWorkspaceRuntime() {
     openFiles,
     roomFile: collaborationRoomFile,
     rightPanelOpen,
-    shareExcludedFileIds,
     startSessionUnavailableReason,
     topPopover,
     workspaceMenuOpen,
     onAddFile: addFile,
-    onAddPrivateFile: addPrivateFile,
     onChangeUserName: updateIdentityName,
     onCloseFile: closeFile,
     onCommitUserName: normalizeIdentityName,
@@ -1240,7 +1062,6 @@ export function useWorkspaceRuntime() {
     onStopSession: stopSessionWithPendingCommit,
     onRetrySession: retryCollaborationConnection,
     onToggleRightPanel: toggleRightPanel,
-    onToggleShareFileExcluded: toggleShareFileExcluded,
     onToggleWorkspaceMenu: toggleWorkspaceMenu,
     setCenterPopover,
     setPreferencesOpen,

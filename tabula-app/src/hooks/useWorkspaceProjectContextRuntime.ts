@@ -6,7 +6,6 @@ import {
   type RefObject,
 } from "react";
 import type { WorkspaceProjectContextProps } from "../components/WorkspaceProjectContext";
-import { getLiveWorkspaceFileIds } from "../liveWorkspaceScope";
 import {
   getLineStartOffset,
   type MarkdownHeading,
@@ -37,11 +36,7 @@ type ProjectContextHandlers = Pick<
   | "onIdentityNameChange"
   | "onIdentityNameCommit"
   | "onNewFile"
-  | "onNewPrivateFile"
   | "onNewFolder"
-  | "onShareFile"
-  | "onMakeLocalFileCopy"
-  | "onShareFolder"
   | "onReplyDraftChange"
   | "onRenameFile"
   | "onRenameFolder"
@@ -67,7 +62,6 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   focusTextRange: FocusTextRange;
   identityName: string;
   isLive: boolean;
-  roomId?: string;
   onImportFile: () => void;
   openFileIds: string[];
   outlineHeadings: MarkdownHeading[];
@@ -98,7 +92,6 @@ export function useWorkspaceProjectContextRuntime({
   formatCommentDate,
   identityName,
   isLive,
-  roomId,
   onAddComment,
   onAddCommentReply,
   onCancelCommentReply,
@@ -113,11 +106,7 @@ export function useWorkspaceProjectContextRuntime({
   onIdentityNameCommit,
   onImportFile,
   onNewFile,
-  onNewPrivateFile,
   onNewFolder,
-  onShareFile,
-  onMakeLocalFileCopy,
-  onShareFolder,
   onRenameFile,
   onRenameFolder,
   onMoveFileToFolder,
@@ -157,12 +146,6 @@ export function useWorkspaceProjectContextRuntime({
   }, [openFileIds, visibleFiles]);
   const visibleActiveFileId =
     activeFile && !isEmptyGeneratedLivePlaceholder(activeFile) ? activeFile.id : undefined;
-  const liveFileIds = getLiveWorkspaceFileIds({
-    roomId,
-    files: visibleFiles,
-    isLive,
-  });
-
   const goToOutlineHeading = useCallback(
     (heading: MarkdownHeading, headingIndex: number) => {
       if (activeViewMode === "preview") {
@@ -205,7 +188,6 @@ export function useWorkspaceProjectContextRuntime({
     activeFileId: visibleActiveFileId,
     activeFileTitle,
     fileQuery,
-    liveFileIds,
     outlineHeadings,
     commentsByFileId,
     commentDraft,
@@ -220,11 +202,7 @@ export function useWorkspaceProjectContextRuntime({
     onClose: () => setRightPanelOpen(false),
     onFileQueryChange: setFileQuery,
     onNewFile,
-    onNewPrivateFile,
     onNewFolder,
-    onShareFile,
-    onMakeLocalFileCopy,
-    onShareFolder,
     onImportFile,
     onSelectFile,
     onCloseFile,

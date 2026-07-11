@@ -2,13 +2,22 @@ import { trimTrailingSlash } from "@tabula-md/tabula";
 
 export const TABULA_LOCAL_ROOM_PORT = 3002;
 export const TABULA_LOCAL_JSON_PORT = 3004;
+export const TABULA_LOCAL_FIRESTORE_PORT = 8080;
+export const TABULA_LOCAL_FIREBASE_STORAGE_PORT = 9199;
+
+const TABULA_LOCAL_FIREBASE_CONFIG = JSON.stringify({
+  apiKey: "tabula-local",
+  authDomain: "tabula-local.firebaseapp.com",
+  projectId: "tabula-local",
+  storageBucket: "tabula-local.appspot.com",
+  appId: "tabula-local",
+});
 
 export const TABULA_HOSTED_SERVICE_COPY = {
-  roomUnconfiguredMessage:
-    "Live collaboration needs a Tabula Room server. Configure VITE_TABULA_ROOM_URL to start sessions.",
-  jsonShareUnconfiguredMessage: "Export link service is not available.",
+  roomUnconfiguredMessage: "Live collaboration is not available right now.",
+  jsonShareUnconfiguredMessage: "Export link isn’t available right now.",
   roomCheckpointUnconfiguredMessage:
-    "Live room persistence needs Firebase. Configure VITE_TABULA_FIREBASE_CONFIG to restore rooms without an active peer.",
+    "Live collaboration is not available right now.",
 } as const;
 
 export type TabulaServiceConfig = {
@@ -16,6 +25,9 @@ export type TabulaServiceConfig = {
   jsonUrl: string | null;
   errorReportUrl: string | null;
   firebaseConfig: string | null;
+  firebaseEmulatorHost: string | null;
+  firestoreEmulatorPort: number;
+  firebaseStorageEmulatorPort: number;
   publishUrl: string | null;
   plusEnabled: boolean;
   isDev: boolean;
@@ -28,6 +40,9 @@ type TabulaServiceEnv = Partial<
     | "DEV"
     | "VITE_TABULA_ERROR_REPORT_URL"
     | "VITE_TABULA_FIREBASE_CONFIG"
+    | "VITE_TABULA_FIREBASE_EMULATOR_HOST"
+    | "VITE_TABULA_FIRESTORE_EMULATOR_PORT"
+    | "VITE_TABULA_FIREBASE_STORAGE_EMULATOR_PORT"
     | "VITE_TABULA_JSON_URL"
     | "VITE_TABULA_PLUS_ENABLED"
     | "VITE_TABULA_PUBLISH_URL"
@@ -57,18 +72,37 @@ const normalizeServiceUrl = (value?: string | null) => {
 
 const isEnabledFlag = (value?: string) => value === "1" || value === "true";
 
+const readPort = (value: string | undefined, fallback: number) => {
+  const port = Number(value);
+  return Number.isSafeInteger(port) && port > 0 && port <= 65_535 ? port : fallback;
+};
+
 export const getTabulaServiceConfig = (
   env: TabulaServiceEnv = import.meta.env,
-): TabulaServiceConfig => ({
-  roomUrl: normalizeServiceUrl(env.VITE_TABULA_ROOM_URL),
-  jsonUrl: normalizeServiceUrl(env.VITE_TABULA_JSON_URL),
-  errorReportUrl: normalizeServiceUrl(env.VITE_TABULA_ERROR_REPORT_URL),
-  firebaseConfig: env.VITE_TABULA_FIREBASE_CONFIG?.trim() || null,
-  publishUrl: normalizeServiceUrl(env.VITE_TABULA_PUBLISH_URL),
-  plusEnabled: isEnabledFlag(env.VITE_TABULA_PLUS_ENABLED),
-  isDev: env.DEV === true,
-  copy: TABULA_HOSTED_SERVICE_COPY,
-});
+): TabulaServiceConfig => {
+  const firebaseEmulatorHost = env.VITE_TABULA_FIREBASE_EMULATOR_HOST?.trim() || null;
+  return {
+    roomUrl: normalizeServiceUrl(env.VITE_TABULA_ROOM_URL),
+    jsonUrl: normalizeServiceUrl(env.VITE_TABULA_JSON_URL),
+    errorReportUrl: normalizeServiceUrl(env.VITE_TABULA_ERROR_REPORT_URL),
+    firebaseConfig:
+      env.VITE_TABULA_FIREBASE_CONFIG?.trim() ||
+      (env.DEV === true && firebaseEmulatorHost ? TABULA_LOCAL_FIREBASE_CONFIG : null),
+    firebaseEmulatorHost,
+    firestoreEmulatorPort: readPort(
+      env.VITE_TABULA_FIRESTORE_EMULATOR_PORT,
+      TABULA_LOCAL_FIRESTORE_PORT,
+    ),
+    firebaseStorageEmulatorPort: readPort(
+      env.VITE_TABULA_FIREBASE_STORAGE_EMULATOR_PORT,
+      TABULA_LOCAL_FIREBASE_STORAGE_PORT,
+    ),
+    publishUrl: normalizeServiceUrl(env.VITE_TABULA_PUBLISH_URL),
+    plusEnabled: isEnabledFlag(env.VITE_TABULA_PLUS_ENABLED),
+    isDev: env.DEV === true,
+    copy: TABULA_HOSTED_SERVICE_COPY,
+  };
+};
 
 export const tabulaServiceConfig = getTabulaServiceConfig();
 

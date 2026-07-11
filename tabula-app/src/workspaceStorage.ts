@@ -39,7 +39,7 @@ description: A local-first Markdown workspace for files that people and coding a
 
 ${PRODUCT_NAME} is a local-first Markdown workspace for files that people and coding agents can share safely.
 
-No dashboard first. No project ceremony. Open a file, write Markdown, and share only when the file is ready to leave your browser.
+No dashboard first. No project ceremony. Open a workspace, write Markdown, and start a live room when the workspace is ready to collaborate.
 
 ## Start here
 
@@ -55,7 +55,7 @@ No dashboard first. No project ceremony. Open a file, write Markdown, and share 
 ## Storage and sharing
 
 - Local files are saved in this browser.
-- Live rooms sync the included workspace documents through a collaboration session.
+- Live rooms synchronize the workspace tree, Markdown documents, and comments.
 - Export links create an encrypted copy that opens in another local workspace.
 `;
 export const isStarterReadmeText = (text: string) => text === STARTER_README_MARKDOWN;

@@ -100,7 +100,7 @@
   overflow: hidden;
   border-radius: 4px;
   opacity: 1;
-  color: #fff;
+  color: var(--actor-label-text);
   background-color: inherit;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
   font-family: var(--font-sans);

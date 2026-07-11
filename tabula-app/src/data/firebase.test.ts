@@ -9,6 +9,8 @@ const firebaseMocks = vi.hoisted(() => {
   }
   return {
     MockTimestamp,
+    connectFirestoreEmulator: vi.fn(),
+    connectStorageEmulator: vi.fn(),
     deleteObject: vi.fn().mockResolvedValue(undefined),
     doc: vi.fn((_: unknown, ...path: string[]) => ({ path })),
     getApps: vi.fn(() => []),
@@ -27,6 +29,7 @@ const firebaseMocks = vi.hoisted(() => {
 vi.mock("firebase/app", () => ({ getApps: firebaseMocks.getApps, initializeApp: firebaseMocks.initializeApp }));
 vi.mock("firebase/firestore", () => ({
   Timestamp: firebaseMocks.MockTimestamp,
+  connectFirestoreEmulator: firebaseMocks.connectFirestoreEmulator,
   doc: firebaseMocks.doc,
   getDoc: firebaseMocks.getDoc,
   getFirestore: firebaseMocks.getFirestore,
@@ -34,6 +37,7 @@ vi.mock("firebase/firestore", () => ({
   serverTimestamp: firebaseMocks.serverTimestamp,
 }));
 vi.mock("firebase/storage", () => ({
+  connectStorageEmulator: firebaseMocks.connectStorageEmulator,
   deleteObject: firebaseMocks.deleteObject,
   getBytes: firebaseMocks.getBytes,
   getStorage: firebaseMocks.getStorage,

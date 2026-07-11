@@ -25,12 +25,8 @@ export const reconcileWorkspaceRoomSnapshot = ({
   workspaceSnapshot,
 }: ReconcileWorkspaceRoomSnapshotOptions): WorkspaceModelSnapshot => {
   const documentNodes = snapshot.nodes.filter((node) => node.type === "document");
-  const documentIds = new Set(documentNodes.map((node) => node.id));
   const existingFilesById = new Map(workspaceSnapshot.files.map((file) => [file.id, file]));
   const activeRoomShareUrl = activeFile?.roomId === snapshot.roomId ? activeFile.shareUrl : roomShareUrl;
-  const localFiles = workspaceSnapshot.files.filter(
-    (file) => file.roomId !== snapshot.roomId && !documentIds.has(file.id),
-  );
   const sharedFiles = documentNodes.map((node, index) => {
     const existing = existingFilesById.get(node.id);
     const collaboration = {
@@ -56,12 +52,12 @@ export const reconcileWorkspaceRoomSnapshot = ({
           order: node.order,
         });
   });
-  const nextFiles = [...localFiles, ...sharedFiles];
+  const nextFiles = sharedFiles;
   const nextFileIds = new Set(nextFiles.map((file) => file.id));
   const retainedOpenFileIds = workspaceSnapshot.openFileIds.filter((fileId) => nextFileIds.has(fileId));
   const activeFileId = nextFileIds.has(workspaceSnapshot.activeFileId)
     ? workspaceSnapshot.activeFileId
-    : retainedOpenFileIds[0] ?? sharedFiles[0]?.id ?? localFiles[0]?.id ?? "";
+    : retainedOpenFileIds[0] ?? sharedFiles[0]?.id ?? "";
   const openFileIds = activeFileId && !retainedOpenFileIds.includes(activeFileId)
     ? [...retainedOpenFileIds, activeFileId]
     : retainedOpenFileIds;
@@ -78,14 +74,9 @@ export const reconcileWorkspaceRoomSnapshot = ({
   if (!incomingFolders.some((folder) => folder.id === WORKSPACE_ROOT_FOLDER_ID)) {
     incomingFolders.unshift(createWorkspaceRootFolder());
   }
-  const incomingFolderIds = new Set(incomingFolders.map((folder) => folder.id));
-  const localFolders = workspaceSnapshot.folders.filter(
-    (folder) => folder.roomId !== snapshot.roomId && !incomingFolderIds.has(folder.id),
-  );
-
   return {
     files: nextFiles,
-    folders: [...incomingFolders, ...localFolders],
+    folders: incomingFolders,
     openFileIds,
     activeFileId,
   };

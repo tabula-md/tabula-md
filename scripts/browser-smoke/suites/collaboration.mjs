@@ -173,7 +173,7 @@ export async function run(ctx) {
     );
     expect(
       !joinedRoomTabs.some((tab) => tab.fileName === secondaryFileName),
-      "A shared document should not become an open tab until this participant opens it.",
+      "A room document should not become an open tab until this participant opens it.",
     );
     await openFileFromRightPanel(secondPage, secondaryFileName);
     await secondPage.waitForSelector(`.tab-item.active[data-file-name="${secondaryFileName}"]`);
@@ -194,12 +194,6 @@ export async function run(ctx) {
       focusMarkdownEditor,
       waitForEditorReady,
       waitForText,
-    });
-    await runPrivateDocumentSmoke({
-      expect,
-      firstPage,
-      secondPage,
-      roomHash: firstPageUrl.hash,
     });
     await clickTabByFileName(firstPage, "README.md");
     await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
@@ -534,7 +528,6 @@ async function runLiveWorkspaceDocumentCreationSmoke({
   waitForText,
 }) {
   await firstPage.locator(".add-tab-button").click();
-  await firstPage.getByRole("menuitem", { name: "Shared document" }).click();
   await firstPage.waitForFunction(() => {
     const activeTab = document.querySelector(".tab-item.active");
     return activeTab && Boolean(activeTab.getAttribute("data-room-id")) && activeTab.getAttribute("data-file-name") !== "README.md";
@@ -613,54 +606,6 @@ async function runLiveWorkspaceDocumentCreationSmoke({
       `Timed out waiting for remote active document fallback after live delete.\nDeleted target: ${createdFileName} (${createdFileId}) -> ${renamedFileName}\nLocal:\n${JSON.stringify(localDeleteState, null, 2)}\nRemote:\n${JSON.stringify(remoteDeleteState, null, 2)}\n${error.message}`,
     );
   }
-}
-
-async function runPrivateDocumentSmoke({ expect, firstPage, secondPage, roomHash }) {
-  await firstPage.locator(".add-tab-button").click();
-  await firstPage.getByRole("menuitem", { name: "Private document" }).click();
-  await firstPage.waitForSelector('.tab-item.private.active[data-room-id=""]');
-  const privateFileName = await firstPage.locator(".tab-item.private.active").getAttribute("data-file-name");
-  expect(Boolean(privateFileName), "A private document should open as a named local tab.");
-  expect(
-    new URL(firstPage.url()).hash === roomHash,
-    "Opening a private document should keep the live room URL and connection.",
-  );
-  expect(
-    (await firstPage.locator(".share-trigger.live").count()) === 1,
-    "Opening a private document should keep the workspace live.",
-  );
-  const privateText = "Private room-local note";
-  await firstPage.locator(".cm-content").click();
-  await firstPage.keyboard.insertText(privateText);
-  await firstPage.waitForFunction(
-    ({ privateText }) => document.querySelector(".cm-content")?.textContent?.includes(privateText),
-    { privateText },
-  );
-
-  await openFilesPanel(secondPage);
-  expect(
-    (await secondPage.getByRole("button", { name: `Open ${privateFileName}` }).count()) === 0,
-    "Private documents should not appear in another participant's workspace.",
-  );
-
-  await firstPage.reload();
-  await firstPage.waitForSelector(`.tab-item.private[data-file-name="${privateFileName}"]`);
-  await firstPage.waitForSelector(`.tab-item.private.active[data-file-name="${privateFileName}"]`);
-  await firstPage.waitForFunction(
-    ({ privateText }) => document.querySelector(".cm-content")?.textContent?.includes(privateText),
-    { privateText },
-  );
-  expect(
-    new URL(firstPage.url()).hash === roomHash,
-    "Reloading a private room-local tab should keep the room URL.",
-  );
-
-  await clickTabByFileName(firstPage, "README.md");
-  await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
-  expect(
-    (await firstPage.locator(".share-trigger.live").count()) === 1,
-    "Returning to a shared document should not require reconnecting.",
-  );
 }
 
 function wait(ms) {

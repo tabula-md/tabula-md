@@ -258,7 +258,7 @@
   position: relative;
   display: grid;
   gap: 0;
-  width: min(720px, calc(100vw - 48px));
+  width: min(620px, calc(100vw - 48px));
   max-height: calc(100vh - 48px);
   padding: 28px;
   overflow: auto;
@@ -266,10 +266,6 @@
   color: var(--text-primary);
   background: var(--surface-panel);
   box-shadow: var(--shadow-popover);
-}
-
-.share-modal-live {
-  width: min(620px, calc(100vw - 48px));
 }
 
 .share-modal-title-hidden {
@@ -346,9 +342,9 @@
 }
 
 .share-modal-panel.chooser {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 28px;
+  gap: 14px;
   max-height: min(520px, calc(100vh - 128px));
 }
 
@@ -356,8 +352,7 @@
   max-height: min(520px, calc(100vh - 128px));
 }
 
-.share-modal-actions-column,
-.share-modal-scope-column {
+.share-modal-actions-column {
   display: grid;
   align-content: start;
   gap: 14px;
@@ -671,75 +666,6 @@
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.45;
-}
-
-.share-included-documents {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-  padding: 12px;
-  border-radius: 8px;
-  background: var(--surface-muted);
-}
-
-.share-included-documents header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.2;
-}
-
-.share-included-documents header strong {
-  color: var(--text-soft);
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.share-included-document-list {
-  display: grid;
-  gap: 4px;
-  max-height: 152px;
-  overflow: auto;
-  scrollbar-gutter: stable;
-}
-
-.share-included-document-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-  min-height: 28px;
-  padding: 4px 6px;
-  border-radius: 7px;
-  color: var(--text-soft);
-  font-size: 12px;
-}
-
-.share-included-document-row:hover {
-  background: var(--surface-hover);
-}
-
-.share-included-document-row input {
-  margin: 0;
-}
-
-.share-included-document-row span {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-primary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.share-included-document-row small {
-  color: var(--text-muted);
-  font-size: 11px;
-  white-space: nowrap;
 }
 
 .live-room-box {

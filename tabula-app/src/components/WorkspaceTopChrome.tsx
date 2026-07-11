@@ -35,19 +35,17 @@ export type WorkspaceTopChromeProps = {
   openFiles: WorkspaceFile[];
   roomFile?: WorkspaceFile;
   rightPanelOpen: boolean;
-  shareExcludedFileIds: readonly string[];
   shareOpen: boolean;
   startSessionUnavailableReason: string;
   workspaceMenuOpen: boolean;
   onAddFile: FileTabsProps["onAddFile"];
-  onAddPrivateFile: FileTabsProps["onAddPrivateFile"];
   onChangeUserName: (nextName: string) => void;
   onChromeInteraction: NonNullable<FileTabsProps["onChromeInteraction"]>;
   onCloseFile: FileTabsProps["onCloseFile"];
   onCloseShare: () => void;
   onCommitUserName: () => void;
   onCopyShareUrl: () => void;
-  onDownloadProjectArchive: (fileIds?: readonly string[]) => void;
+  onDownloadProjectArchive: () => void;
   onReorderFiles: FileTabsProps["onReorderFiles"];
   onRenameFile: FileTabsProps["onRenameFile"];
   onSelectFile: FileTabsProps["onSelectFile"];
@@ -55,7 +53,6 @@ export type WorkspaceTopChromeProps = {
   onStopSession: () => void;
   onRetrySession: () => void;
   onToggleRightPanel: () => void;
-  onToggleShareFileExcluded: (fileId: string) => void;
   onToggleShare: () => void;
   onToggleWorkspaceMenu: () => void;
 };
@@ -77,12 +74,10 @@ export function WorkspaceTopChrome({
   openFiles,
   roomFile,
   rightPanelOpen,
-  shareExcludedFileIds,
   shareOpen,
   startSessionUnavailableReason,
   workspaceMenuOpen,
   onAddFile,
-  onAddPrivateFile,
   onChangeUserName,
   onChromeInteraction,
   onCloseFile,
@@ -97,7 +92,6 @@ export function WorkspaceTopChrome({
   onStopSession,
   onRetrySession,
   onToggleRightPanel,
-  onToggleShareFileExcluded,
   onToggleShare,
   onToggleWorkspaceMenu,
 }: WorkspaceTopChromeProps) {
@@ -117,9 +111,7 @@ export function WorkspaceTopChrome({
       files={visibleOpenFiles}
       activeFile={visibleActiveFile}
       collaborators={collaborators}
-      isLiveWorkspace={isLive}
       onAddFile={onAddFile}
-      onAddPrivateFile={onAddPrivateFile}
       onSelectFile={onSelectFile}
       onRenameFile={onRenameFile}
       onCloseFile={onCloseFile}
@@ -151,7 +143,6 @@ export function WorkspaceTopChrome({
             connectionStatus={connectionStatus}
             isLive={isLive}
             isLiveConnected={isLiveConnected}
-            shareExcludedFileIds={shareExcludedFileIds}
             shareOpen={shareOpen}
             copied={copied}
             jsonShare={jsonShare}
@@ -164,7 +155,6 @@ export function WorkspaceTopChrome({
             onChangeUserName={onChangeUserName}
             onCommitUserName={onCommitUserName}
             onStopSession={onStopSession}
-            onToggleShareFileExcluded={onToggleShareFileExcluded}
           />
         </Suspense>
       )}

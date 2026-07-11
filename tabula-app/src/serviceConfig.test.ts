@@ -23,11 +23,26 @@ describe("service config", () => {
       jsonUrl: "https://json.tabula.test",
       errorReportUrl: "https://events.tabula.test",
       firebaseConfig: "{\"projectId\":\"tabula-test\"}",
+      firebaseEmulatorHost: null,
+      firestoreEmulatorPort: 8080,
+      firebaseStorageEmulatorPort: 9199,
       publishUrl: "https://publish.tabula.test",
       plusEnabled: true,
       isDev: false,
       copy: TABULA_HOSTED_SERVICE_COPY,
     });
+  });
+
+  it("uses a local Firebase config only when the emulator is explicit", () => {
+    const config = getTabulaServiceConfig({
+      DEV: true,
+      VITE_TABULA_FIREBASE_EMULATOR_HOST: "127.0.0.1",
+    });
+
+    expect(config.firebaseConfig).toContain('"projectId":"tabula-local"');
+    expect(config.firebaseEmulatorHost).toBe("127.0.0.1");
+    expect(config.firestoreEmulatorPort).toBe(8080);
+    expect(config.firebaseStorageEmulatorPort).toBe(9199);
   });
 
   it("keeps local room fallback dev-only", () => {

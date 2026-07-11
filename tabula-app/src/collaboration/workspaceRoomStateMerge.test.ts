@@ -41,7 +41,7 @@ const documentNode = (id: string, title: string, order: number, parentId = "work
 });
 
 describe("reconcileWorkspaceRoomSnapshot", () => {
-  it("replaces room-owned documents while preserving excluded local files and local active selection", () => {
+  it("replaces the whole workspace with the room snapshot", () => {
     const activeFile = file({ id: "readme", title: "README.md", roomId: "room-1", shareUrl: "https://tabula.test/#room=room-1,key", connectionStatus: "connected" });
     const next = reconcileWorkspaceRoomSnapshot({
       activeFile,
@@ -55,13 +55,13 @@ describe("reconcileWorkspaceRoomSnapshot", () => {
       },
     });
 
-    expect(next?.files.map((candidate) => candidate.id)).toEqual(["local", "readme"]);
+    expect(next?.files.map((candidate) => candidate.id)).toEqual(["readme"]);
     expect(next?.files.find((candidate) => candidate.id === "readme")).toMatchObject({
       title: "README renamed.md",
       text: "# Remote",
       roomId: "room-1",
     });
-    expect(next?.activeFileId).toBe("local");
+    expect(next?.activeFileId).toBe("readme");
   });
 
   it("uses the first remaining room document when the local active document is deleted", () => {
@@ -114,24 +114,24 @@ describe("reconcileWorkspaceRoomSnapshot", () => {
     expect(next?.files.map((candidate) => candidate.title)).toEqual(["Plan.md", "Plan.md"]);
   });
 
-  it("accepts an empty room snapshot and removes only room-owned documents", () => {
+  it("accepts an empty room snapshot and removes every document", () => {
     const next = reconcileWorkspaceRoomSnapshot({
-      activeFile: file({ id: "shared", title: "Shared.md", roomId: "room-1" }),
+      activeFile: file({ id: "room-doc", title: "Room.md", roomId: "room-1" }),
       createFile,
       snapshot: snapshot([], {}),
       workspaceSnapshot: {
         folders: [createWorkspaceRootFolder()],
         files: [
-          file({ id: "shared", title: "Shared.md", roomId: "room-1" }),
-          file({ id: "private", title: "Private.md" }),
+          file({ id: "room-doc", title: "Room.md", roomId: "room-1" }),
+          file({ id: "unrelated-local", title: "Local.md" }),
         ],
-        openFileIds: ["shared", "private"],
-        activeFileId: "shared",
+        openFileIds: ["room-doc", "unrelated-local"],
+        activeFileId: "room-doc",
       },
     });
 
-    expect(next.files.map((candidate) => candidate.id)).toEqual(["private"]);
-    expect(next.openFileIds).toEqual(["private"]);
-    expect(next.activeFileId).toBe("private");
+    expect(next.files).toEqual([]);
+    expect(next.openFileIds).toEqual([]);
+    expect(next.activeFileId).toBe("");
   });
 });

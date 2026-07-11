@@ -1,6 +1,7 @@
 import { initializeApp, getApps, type FirebaseOptions } from "firebase/app";
 import {
   Timestamp,
+  connectFirestoreEmulator,
   doc,
   getDoc,
   getFirestore,
@@ -9,6 +10,7 @@ import {
 } from "firebase/firestore";
 import {
   deleteObject,
+  connectStorageEmulator,
   getBytes,
   getStorage,
   ref,
@@ -29,6 +31,7 @@ type FirebaseRoomCheckpointPointer = {
 const firebaseAppName = "tabula-room-checkpoint";
 const roomCheckpointFormatVersion = 2;
 const roomCheckpointCollection = "roomCheckpointPointers";
+const emulatorConnectedApps = new Set<string>();
 
 const throwIfAborted = (signal?: AbortSignal) => {
   if (signal?.aborted) {
@@ -52,6 +55,22 @@ export const createFirebaseRoomCheckpointStore = (
   const app = getApps().find((candidate) => candidate.name === firebaseAppName) ?? initializeApp(config, firebaseAppName);
   const firestore = getFirestore(app);
   const storage = getStorage(app);
+  if (
+    tabulaServiceConfig.firebaseEmulatorHost &&
+    !emulatorConnectedApps.has(app.name)
+  ) {
+    connectFirestoreEmulator(
+      firestore,
+      tabulaServiceConfig.firebaseEmulatorHost,
+      tabulaServiceConfig.firestoreEmulatorPort,
+    );
+    connectStorageEmulator(
+      storage,
+      tabulaServiceConfig.firebaseEmulatorHost,
+      tabulaServiceConfig.firebaseStorageEmulatorPort,
+    );
+    emulatorConnectedApps.add(app.name);
+  }
 
   return {
     enabled: true,
@@ -142,8 +161,8 @@ export const createFirebaseRoomCheckpointStore = (
 const createDisabledFirebaseRoomCheckpointStore = (): RoomCheckpointStore => ({
   enabled: false,
   async loadEncryptedCheckpoint() { return null; },
-  async saveEncryptedCheckpoint(_roomId, request) {
-    return { ok: true, generation: request.expectedGeneration + 1 };
+  async saveEncryptedCheckpoint() {
+    throw new Error("Live room persistence is unavailable.");
   },
 });
 

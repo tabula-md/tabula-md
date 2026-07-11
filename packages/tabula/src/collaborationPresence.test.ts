@@ -109,9 +109,9 @@ describe("collaboration presence labels", () => {
     );
   });
 
-  it("treats a participant without an active shared document as workspace presence", () => {
+  it("treats a participant without an active room document as workspace presence", () => {
     const collaborator: CollaborationCollaborator = {
-      id: "peer-private",
+      id: "peer-workspace",
       name: "Curious Human",
       color: "#2563eb",
       lastSeen: 1,

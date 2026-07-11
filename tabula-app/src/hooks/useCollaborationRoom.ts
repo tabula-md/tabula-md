@@ -7,6 +7,10 @@ import {
 import { getTabulaRoomAvailability } from "../collaboration/collabRoom";
 import { createCollaborationSessionStartRequest } from "../collaboration/collabRuntime";
 import {
+  getRoomCheckpointAvailability,
+  persistInitialWorkspaceRoomCheckpoint,
+} from "../collaboration/roomCheckpointStore";
+import {
   WORKSPACE_ROOM_ROOT_ID,
   WORKSPACE_ROOM_SCHEMA_VERSION,
   validateWorkspaceRoomLimits,
@@ -117,8 +121,10 @@ export function useCollaborationRoom({
   onOpenFailure,
   onCapacityExceeded,
 }: UseCollaborationRoomOptions) {
-  const pendingInitialTextRef = useRef<string | undefined>(undefined);
+  const pendingRoomStartRef = useRef(false);
+  const startInFlightRef = useRef(false);
   const roomAvailability = getTabulaRoomAvailability();
+  const checkpointAvailability = getRoomCheckpointAvailability();
   const startValidation = validateCollaborationStartWorkspace({
     documents: workspaceDocuments ?? [],
     folders: workspaceFolders ?? [],
@@ -141,7 +147,7 @@ export function useCollaborationRoom({
       activeDocument,
       editorPresenceEnabled,
       identity,
-      pendingInitialTextRef,
+      pendingRoomStartRef,
       workspaceDocuments,
       workspaceFolders,
       commentsByFileId,
@@ -155,7 +161,8 @@ export function useCollaborationRoom({
       onCapacityExceeded,
     });
 
-  const startSession = () => {
+  const startSession = async () => {
+    if (startInFlightRef.current) return undefined;
     if (!startValidation.ok) return undefined;
     const sessionFile = getActiveFileSnapshot?.() ?? roomFile;
     const nextSession = createCollaborationSessionStartRequest({
@@ -167,18 +174,39 @@ export function useCollaborationRoom({
       return undefined;
     }
 
-    pendingInitialTextRef.current = nextSession.initialText;
-    startFileCollaborationSession(sessionFile.id, nextSession.roomId, nextSession.shareUrl);
-    return { fileId: sessionFile.id, roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
+    startInFlightRef.current = true;
+    try {
+      const documents = (workspaceDocuments ?? []).map((document) =>
+        document.id === sessionFile.id
+          ? { ...document, text: sessionFile.text }
+          : document,
+      );
+      await persistInitialWorkspaceRoomCheckpoint({
+        roomId: nextSession.roomId,
+        roomKey: nextSession.roomKey,
+        documents,
+        folders: workspaceFolders ?? [],
+        commentsByFileId,
+      });
+      pendingRoomStartRef.current = true;
+      startFileCollaborationSession(sessionFile.id, nextSession.roomId, nextSession.shareUrl);
+      return { fileId: sessionFile.id, roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
+    } finally {
+      startInFlightRef.current = false;
+    }
   };
 
   return {
-    canStartSession: Boolean(roomFile) && roomAvailability.available && startValidation.ok,
+    canStartSession:
+      Boolean(roomFile) &&
+      roomAvailability.available &&
+      checkpointAvailability.available &&
+      startValidation.ok,
     collaborators,
     connectionStatus,
-    startSessionUnavailableReason: startValidation.ok
-      ? roomAvailability.unavailableReason
-      : startValidation.message,
+    startSessionUnavailableReason: !startValidation.ok
+      ? startValidation.message
+      : roomAvailability.unavailableReason || checkpointAvailability.unavailableReason,
     startSession,
     applyLocalText,
     editorBinding,

@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import {
   createWorkspacePersistenceQueue,
-  writeWorkspaceToPrimaryStore,
 } from "../workspacePersistence";
 import type { WorkspaceState } from "../workspaceStorage";
 
@@ -69,9 +68,7 @@ export const useQueuedWorkspacePersistence = (
       latestWorkspace: latestWorkspaceRef.current,
       onBeforePersist: onBeforePersistRef.current,
     });
-    void writeWorkspaceToPrimaryStore(workspaceSnapshot).catch((error: unknown) => {
-      onErrorRef.current?.(error);
-    });
+    queueRef.current?.persistNow(workspaceSnapshot);
   }, [enabled, workspace.activeFileId, workspace.openFileIds]);
 
   useEffect(() => {
@@ -85,10 +82,7 @@ export const useQueuedWorkspacePersistence = (
         latestWorkspace: latestWorkspaceRef.current,
         onBeforePersist: onBeforePersistRef.current,
       });
-      queueRef.current?.cancel();
-      void writeWorkspaceToPrimaryStore(workspaceSnapshot).catch((error: unknown) => {
-        onErrorRef.current?.(error);
-      });
+      queueRef.current?.persistNow(workspaceSnapshot);
     };
 
     const handleVisibilityChange = () => {

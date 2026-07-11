@@ -1,34 +1,25 @@
-import { HardDrive, Plus, Users } from "lucide-react";
-import { ScopedCreateButton } from "./ScopedCreateButton";
+import { Plus } from "lucide-react";
 
 type NewDocumentButtonProps = {
   buttonClassName: string;
   iconSize?: number;
-  live: boolean;
-  onCreateShared: () => void;
-  onCreatePrivate: () => void;
+  onCreate: () => void;
 };
 
 export function NewDocumentButton({
   buttonClassName,
   iconSize = 16,
-  live,
-  onCreateShared,
-  onCreatePrivate,
+  onCreate,
 }: NewDocumentButtonProps) {
   return (
-    <ScopedCreateButton
-      buttonClassName={buttonClassName}
-      live={live}
+    <button
+      className={buttonClassName}
+      type="button"
       title="New document"
-      triggerIcon={<Plus size={iconSize} />}
-      sharedIcon={<Users size={14} />}
-      privateIcon={<HardDrive size={14} />}
-      sharedLabel="Shared document"
-      privateLabel="Private document"
-      menuLabel="New document scope"
-      onCreateShared={onCreateShared}
-      onCreatePrivate={onCreatePrivate}
-    />
+      aria-label="New document"
+      onClick={onCreate}
+    >
+      <Plus size={iconSize} />
+    </button>
   );
 }

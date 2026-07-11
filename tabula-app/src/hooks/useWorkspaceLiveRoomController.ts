@@ -8,7 +8,9 @@ type UseWorkspaceLiveRoomControllerArgs = {
   resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   retryCollaborationConnection: () => void;
   setCopiedFileId: Dispatch<SetStateAction<string | null>>;
-  startCollaborationSession: () => { fileId: string; roomId: string; shareUrl: string } | undefined;
+  startCollaborationSession: () => Promise<
+    { fileId: string; roomId: string; shareUrl: string } | undefined
+  >;
   stopFileCollaborationSession: (fileId: string) => WorkspaceFile | undefined;
 };
 
@@ -20,8 +22,8 @@ export function useWorkspaceLiveRoomController({
   startCollaborationSession,
   stopFileCollaborationSession,
 }: UseWorkspaceLiveRoomControllerArgs) {
-  const startSession = () => {
-    const startedSession = startCollaborationSession();
+  const startSession = async () => {
+    const startedSession = await startCollaborationSession();
     if (!startedSession) {
       return undefined;
     }
