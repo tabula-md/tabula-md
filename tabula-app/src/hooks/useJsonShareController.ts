@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import {
   createJsonShareLink,
   formatJsonShareUrlPreview,
@@ -22,6 +22,7 @@ type UseJsonShareControllerOptions = {
   folders: WorkspaceFolder[];
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
   onBeforeWorkspaceBoundary?: () => void;
+  shareExcludedFileIds: readonly string[];
   showToast: (message: string, tone?: "error" | "neutral") => void;
 };
 
@@ -31,6 +32,7 @@ export type JsonShareController = {
   disabledReason: string;
   exportLink: (fileIds?: readonly string[]) => Promise<boolean>;
   exporting: boolean;
+  reset: () => void;
   url?: string;
   urlPreview: string;
 };
@@ -90,15 +92,18 @@ export function useJsonShareController({
   folders,
   getActiveFileSnapshot,
   onBeforeWorkspaceBoundary,
+  shareExcludedFileIds,
   showToast,
 }: UseJsonShareControllerOptions): JsonShareController {
   const [jsonShareUrl, setJsonShareUrl] = useState<string | undefined>(undefined);
   const [exporting, setExporting] = useState(false);
   const serviceUrl = getConfiguredJsonShareServiceUrl();
 
-  useEffect(() => {
-    setJsonShareUrl(undefined);
-  }, [activeFile?.id]);
+  const reset = useCallback(() => setJsonShareUrl(undefined), []);
+
+  useLayoutEffect(() => {
+    reset();
+  }, [activeFile?.id, activeText, commentsByFileId, files, folders, reset, shareExcludedFileIds]);
 
   const disabledReason = useMemo(() => {
     if (files.length === 0) {
@@ -181,6 +186,7 @@ export function useJsonShareController({
     disabledReason,
     exportLink,
     exporting,
+    reset,
     ...(jsonShareUrl ? { url: jsonShareUrl } : {}),
     urlPreview: jsonShareUrl ? formatJsonShareUrlPreview(jsonShareUrl) : "",
   };

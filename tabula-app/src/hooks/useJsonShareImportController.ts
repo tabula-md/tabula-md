@@ -55,6 +55,7 @@ export function useJsonShareImportController({
   const handledJsonShareRouteRef = useRef<string | null>(null);
   const jsonShareImportCleanupRef = useRef<(() => void) | null>(null);
   const workspaceContentRef = useRef({ files, commentsByFileId });
+  const closeFloatingChromeEvent = useEventCallback(closeFloatingChrome);
 
   useEffect(() => {
     workspaceContentRef.current = { files, commentsByFileId };
@@ -95,6 +96,7 @@ export function useJsonShareImportController({
         return;
       }
       handledJsonShareRouteRef.current = importRoute.routeKey;
+      closeFloatingChromeEvent();
 
       if (importRoute.status === "invalid") {
         clientErrorReporter.report({
@@ -194,7 +196,7 @@ export function useJsonShareImportController({
       jsonShareImportCleanupRef.current = null;
       window.removeEventListener("hashchange", handleHashChange);
     };
-  }, [replaceWorkspaceWithJsonShare, workspaceSource]);
+  }, [closeFloatingChromeEvent, replaceWorkspaceWithJsonShare, workspaceSource]);
 
   return {
     closeJsonShareImport,

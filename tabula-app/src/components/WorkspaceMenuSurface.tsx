@@ -64,7 +64,7 @@ export function WorkspaceMenuSurface({
         type="file"
         accept=".json,application/json"
         onChange={onImportProjectChange}
-        aria-label="Import project file"
+        aria-label="Restore workspace backup"
       />
       <WorkspaceMenu
         isOpen={isOpen}

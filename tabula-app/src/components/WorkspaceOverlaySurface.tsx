@@ -2,6 +2,7 @@ import { AppToast } from "./AppToast";
 import { JsonShareImportDialog } from "./JsonShareImportDialog";
 import type { AppToastState } from "../hooks/useAppToast";
 import type { WorkspaceState } from "../workspaceStorage";
+import { getProjectArchiveEntries } from "../projectArchive";
 
 type JsonShareImportState =
   | { status: "loading" }
@@ -11,6 +12,9 @@ type JsonShareImportState =
 export type WorkspaceOverlaySurfaceProps = {
   jsonShareImport: JsonShareImportState | null;
   toast: AppToastState | null;
+  onDismissToast: () => void;
+  onPauseToast: () => void;
+  onResumeToast: () => void;
   onCloseJsonShareImport: () => void;
   onReplaceWorkspaceWithJsonShare: (workspace: WorkspaceState) => void;
 };
@@ -18,6 +22,9 @@ export type WorkspaceOverlaySurfaceProps = {
 export function WorkspaceOverlaySurface({
   jsonShareImport,
   toast,
+  onDismissToast,
+  onPauseToast,
+  onResumeToast,
   onCloseJsonShareImport,
   onReplaceWorkspaceWithJsonShare,
 }: WorkspaceOverlaySurfaceProps) {
@@ -30,6 +37,9 @@ export function WorkspaceOverlaySurface({
           tone={toast.tone}
           actionLabel={toast.actionLabel}
           onAction={toast.onAction}
+          onDismiss={onDismissToast}
+          onPause={onPauseToast}
+          onResume={onResumeToast}
         />
       )}
       {jsonShareImport && (
@@ -38,6 +48,14 @@ export function WorkspaceOverlaySurface({
           fileCount={
             jsonShareImport.status === "ready"
               ? jsonShareImport.workspace.files.length
+              : undefined
+          }
+          filePaths={
+            jsonShareImport.status === "ready"
+              ? getProjectArchiveEntries(
+                  jsonShareImport.workspace.files,
+                  jsonShareImport.workspace.folders,
+                ).filter((entry) => !entry.path.endsWith("/")).map((entry) => entry.path)
               : undefined
           }
           errorMessage={

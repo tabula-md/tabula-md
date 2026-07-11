@@ -103,6 +103,11 @@
   color: var(--text-muted);
 }
 
+.right-file-folder-icon.mixed .right-file-icon-live-dot {
+  background: var(--surface-panel);
+  border: 1px solid var(--status-dot-connected);
+}
+
 .right-file-icon-live-dot {
   position: absolute;
   right: -1px;

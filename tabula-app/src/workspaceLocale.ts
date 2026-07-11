@@ -92,9 +92,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "New File",
       openFile: "Open File...",
-      importProject: "Import project...",
+      importProject: "Restore workspace backup...",
       saveFile: "Save File...",
-      exportProject: "Export project...",
+      exportProject: "Back up workspace...",
       liveCollaboration: "Live collaboration...",
       preferences: "Preferences",
       about: "About",
@@ -150,7 +150,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Export to link",
         description:
-          "Create a read-only encrypted link to a copy of the included documents.",
+          "Create an encrypted point-in-time copy. Changes do not sync back.",
         noFileReason: "Open a file before exporting to link.",
         exportToLink: "Export to link",
         exporting: "Exporting link",
@@ -168,9 +168,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "새 파일",
       openFile: "파일 열기...",
-      importProject: "프로젝트 가져오기...",
+      importProject: "워크스페이스 백업 복원...",
       saveFile: "파일 저장...",
-      exportProject: "프로젝트 내보내기...",
+      exportProject: "워크스페이스 백업...",
       liveCollaboration: "실시간 협업...",
       preferences: "환경설정",
       about: "소개",
@@ -226,7 +226,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "링크로 내보내기",
         description:
-          "포함된 문서의 읽기 전용 암호화 복사본 링크를 만듭니다.",
+          "암호화된 시점 복사본을 만듭니다. 이후 변경은 원본에 동기화되지 않습니다.",
         noFileReason: "파일을 열면 링크로 내보낼 수 있습니다.",
         exportToLink: "링크로 내보내기",
         exporting: "링크 내보내는 중",
@@ -244,9 +244,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "新規ファイル",
       openFile: "ファイルを開く...",
-      importProject: "プロジェクトを読み込む...",
+      importProject: "ワークスペースのバックアップを復元...",
       saveFile: "ファイルを保存...",
-      exportProject: "プロジェクトを書き出す...",
+      exportProject: "ワークスペースをバックアップ...",
       liveCollaboration: "ライブ共同編集...",
       preferences: "環境設定",
       about: "このアプリについて",
@@ -303,7 +303,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "リンクに書き出し",
         description:
-          "含めたドキュメントの読み取り専用の暗号化コピーへのリンクを作成します。",
+          "暗号化された時点コピーを作成します。以後の変更は元には同期されません。",
         noFileReason:
           "ファイルを開くとリンクに書き出せます。",
         exportToLink: "リンクに書き出し",
@@ -323,9 +323,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "新建文件",
       openFile: "打开文件...",
-      importProject: "导入项目...",
+      importProject: "恢复工作区备份...",
       saveFile: "保存文件...",
-      exportProject: "导出项目...",
+      exportProject: "备份工作区...",
       liveCollaboration: "实时协作...",
       preferences: "偏好设置",
       about: "关于",
@@ -377,7 +377,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       },
       shareable: {
         title: "导出为链接",
-        description: "创建指向已包含文档只读加密副本的链接。",
+        description: "创建加密的时间点副本。之后的更改不会同步回原工作区。",
         noFileReason: "打开文件后即可导出为链接。",
         exportToLink: "导出为链接",
         exporting: "正在导出链接",
@@ -395,9 +395,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "Nuevo archivo",
       openFile: "Abrir archivo...",
-      importProject: "Importar proyecto...",
+      importProject: "Restaurar copia del espacio...",
       saveFile: "Guardar archivo...",
-      exportProject: "Exportar proyecto...",
+      exportProject: "Crear copia del espacio...",
       liveCollaboration: "Colaboración en vivo...",
       preferences: "Preferencias",
       about: "Acerca de",
@@ -454,7 +454,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Exportar a enlace",
         description:
-          "Crea un enlace cifrado y de solo lectura a una copia de los documentos incluidos.",
+          "Crea una copia cifrada en un momento dado. Los cambios no se sincronizan con el original.",
         noFileReason:
           "Abre un archivo antes de exportar a enlace.",
         exportToLink: "Exportar a enlace",
@@ -473,9 +473,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "Nouveau fichier",
       openFile: "Ouvrir un fichier...",
-      importProject: "Importer un projet...",
+      importProject: "Restaurer une sauvegarde...",
       saveFile: "Enregistrer le fichier...",
-      exportProject: "Exporter le projet...",
+      exportProject: "Sauvegarder l’espace...",
       liveCollaboration: "Collaboration en direct...",
       preferences: "Préférences",
       about: "À propos",
@@ -532,7 +532,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Exporter vers un lien",
         description:
-          "Créez un lien chiffré en lecture seule vers une copie des documents inclus.",
+          "Créez une copie chiffrée à un instant donné. Les modifications ne sont pas resynchronisées.",
         noFileReason:
           "Ouvrez un fichier avant d'exporter vers un lien.",
         exportToLink: "Exporter vers un lien",
@@ -551,9 +551,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "Neue Datei",
       openFile: "Datei öffnen...",
-      importProject: "Projekt importieren...",
+      importProject: "Workspace-Sicherung wiederherstellen...",
       saveFile: "Datei speichern...",
-      exportProject: "Projekt exportieren...",
+      exportProject: "Workspace sichern...",
       liveCollaboration: "Live-Zusammenarbeit...",
       preferences: "Einstellungen",
       about: "Info",
@@ -610,7 +610,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "Als Link exportieren",
         description:
-          "Erstelle einen schreibgeschützten verschlüsselten Link zu einer Kopie der enthaltenen Dokumente.",
+          "Erstelle eine verschlüsselte Momentaufnahme. Änderungen werden nicht zurücksynchronisiert.",
         noFileReason:
           "Öffne eine Datei, bevor du als Link exportierst.",
         exportToLink: "Als Link exportieren",

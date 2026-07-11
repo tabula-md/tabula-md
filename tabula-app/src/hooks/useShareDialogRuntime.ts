@@ -100,8 +100,9 @@ export function useShareDialogRuntime({
     if (!shareOpen) {
       setAgentPromptCopied(false);
       setExportLinkCopied(false);
+      jsonShare.reset();
     }
-  }, [shareOpen]);
+  }, [jsonShare, shareOpen]);
 
   useEffect(() => {
     if (!shareOpen) {

@@ -80,8 +80,20 @@ export async function run(ctx) {
       );
     }
 
+    const firstExportUrl = await page.locator('[aria-label="Export link"]').getAttribute("title");
+    expect(Boolean(firstExportUrl), "Export to link should create an Export link URL.");
+    const firstIncludedDocument = page.locator('.share-included-document-row input[type="checkbox"]:not(:disabled)').first();
+    await firstIncludedDocument.uncheck();
+    await page.locator('[aria-label="Export link"]').waitFor({ state: "detached" });
+    expect(
+      (await page.getByRole("button", { name: "Export to link" }).count()) === 1,
+      "Changing the included documents should invalidate the previous Export link.",
+    );
+    await page.getByRole("button", { name: "Export to link" }).click();
+    await page.locator('[aria-label="Export link"]').waitFor({ state: "visible" });
     const exportUrl = await page.locator('[aria-label="Export link"]').getAttribute("title");
     expect(Boolean(exportUrl), "Export to link should create an Export link URL.");
+    expect(exportUrl !== firstExportUrl, "Re-exporting a changed scope should create a new immutable link.");
 
     const parsedExportUrl = new URL(exportUrl);
     const [snapshotId, exportKey] = parsedExportUrl.hash.replace(/^#json=/, "").split(",");
@@ -107,10 +119,18 @@ export async function run(ctx) {
       await secondPage.keyboard.type("\n\nLocal draft before import.");
       await waitForSavedLocally(secondPage);
 
-      await secondPage.goto(`${baseUrl}${parsedExportUrl.hash}`);
-      await waitForText(secondPage.locator(".share-modal"), "Load export link");
-      await waitForText(secondPage.locator(".share-modal"), "Loading this link will replace your current local content.");
-      await secondPage.getByRole("button", { name: "Load export" }).click();
+      await secondPage.locator(".share-trigger").click();
+      await waitForShareDialogState(secondPage, { panel: "Share link" });
+      await secondPage.evaluate((hash) => {
+        window.location.hash = hash;
+      }, parsedExportUrl.hash);
+      await waitForText(secondPage.locator(".share-modal"), "Open export link");
+      expect(
+        (await secondPage.locator('.share-modal[aria-modal="true"]').count()) === 1,
+        "Opening an Export link should replace Share instead of stacking two modals.",
+      );
+      await waitForText(secondPage.locator(".share-modal"), "Opening it replaces this local workspace.");
+      await secondPage.getByRole("button", { name: "Open copy" }).click();
       await secondPage.locator(".share-modal").waitFor({ state: "detached" });
       try {
         await waitForText(secondPage.locator(".cm-content"), "Export link import body.");

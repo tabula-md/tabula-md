@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getLiveWorkspaceFileIds } from "./liveWorkspaceScope";
+import { getLiveFolderScope, getLiveWorkspaceFileIds } from "./liveWorkspaceScope";
 
 const file = (id: string, roomId?: string) => ({ id, roomId });
 
@@ -42,5 +42,32 @@ describe("live workspace scope", () => {
         isLive: true,
       }),
     ).toEqual(["shared"]);
+  });
+
+  it("distinguishes shared, private, and mixed folder contents", () => {
+    const liveFileIds = new Set(["shared"]);
+
+    expect(getLiveFolderScope({
+      descendantFileIds: ["shared"],
+      liveFileIds,
+      isLive: true,
+    })).toBe("shared");
+    expect(getLiveFolderScope({
+      descendantFileIds: ["private"],
+      liveFileIds,
+      isLive: true,
+    })).toBe("private");
+    expect(getLiveFolderScope({
+      folderRoomId: "room-1",
+      descendantFileIds: ["shared", "private"],
+      liveFileIds,
+      isLive: true,
+    })).toBe("mixed");
+    expect(getLiveFolderScope({
+      folderRoomId: "room-1",
+      descendantFileIds: [],
+      liveFileIds,
+      isLive: false,
+    })).toBe("local");
   });
 });
