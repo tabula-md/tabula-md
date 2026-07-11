@@ -14,6 +14,7 @@ export type MarkdownEditorHandle = {
   canUndo: () => boolean;
   format: (command: MarkdownFormatCommand) => boolean;
   focus: (options?: FocusOptions) => void;
+  getActiveFormats: () => MarkdownFormatCommand[];
   getLineCount: () => number;
   getScrollRatio: () => number;
   getViewportLineAnchor: () => EditorViewportAnchor | null;

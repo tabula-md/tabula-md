@@ -36,6 +36,7 @@ import {
   mapBookmarksThroughTransactions,
 } from "../editor/editorTransactions";
 import { runMarkdownFormatCommand } from "../editor/editorInputRules";
+import { getActiveMarkdownFormats } from "../editor/editorFormattingState";
 import type {
   MarkdownBookmark,
   MarkdownCommentAnchor,
@@ -301,6 +302,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
 
         view.focus();
+      },
+      getActiveFormats: () => {
+        const view = viewRef.current;
+        return view ? getActiveMarkdownFormats(view.state) : [];
       },
       getLineCount: () => viewRef.current?.state.doc.lines ?? value.split("\n").length,
       getScrollRatio: () => {

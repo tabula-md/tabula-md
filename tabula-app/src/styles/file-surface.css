@@ -43,10 +43,14 @@
   --document-chrome-width: var(--editor-frame-width);
   --document-lane-margin-left: auto;
   --document-lane-margin-right: auto;
-  --split-preview-inset: 28px;
+  --split-preview-inset: 16px;
+  --split-editor-comment-rail: 32px;
+  --split-editor-frame-rails: calc(
+    var(--editor-left-rail) + var(--split-editor-comment-rail)
+  );
   --split-editor-bias: calc(
     (
-        var(--editor-frame-rails) - var(--split-preview-inset) -
+        var(--split-editor-frame-rails) - var(--split-preview-inset) -
           var(--preview-frame-rails)
       ) /
       2
@@ -113,6 +117,9 @@
   --editor-comment-rail: var(--editor-left-rail);
   --editor-frame-rails: calc(
     var(--editor-left-rail) + var(--editor-comment-rail)
+  );
+  --split-editor-frame-rails: calc(
+    var(--editor-left-rail) + var(--split-editor-comment-rail)
   );
 }
 
@@ -254,16 +261,8 @@
     --document-chrome-width: var(--document-body-width);
   }
 
-  .file-shell:not(.with-format-toolbar) {
-    grid-template-rows: minmax(0, 1fr) 42px;
-  }
-
-  .file-shell:not(.with-format-toolbar) .workspace {
-    grid-row: 1;
-  }
-
-  .file-shell:not(.with-format-toolbar) .file-status-bar {
-    grid-row: 2;
+  .file-shell.with-format-toolbar {
+    grid-template-rows: 88px minmax(0, 1fr) 42px;
   }
 
   .file-shell.view-edit .file-status-bar {
@@ -287,6 +286,10 @@
 }
 
 @media (max-width: 560px) {
+  .file-shell.with-format-toolbar {
+    grid-template-rows: 108px minmax(0, 1fr) 42px;
+  }
+
   .center-workbench,
   .center-workbench.reading-narrow:not(.view-split),
   .center-workbench.reading-wide:not(.view-split),

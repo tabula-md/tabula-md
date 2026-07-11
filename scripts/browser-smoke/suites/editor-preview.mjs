@@ -27,6 +27,11 @@ export async function run(ctx) {
     await page.getByTitle("New document").click();
   };
 
+  const applyFormattingMenuCommand = async (page, menuName, commandName) => {
+    await page.getByRole("button", { name: menuName, exact: true }).click();
+    await page.getByRole("menuitemcheckbox", { name: commandName, exact: true }).click();
+  };
+
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
@@ -542,7 +547,7 @@ export async function run(ctx) {
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("const value = 1;");
     await page.keyboard.press("ControlOrMeta+A");
-    await page.getByRole("button", { name: "Code block", exact: true }).click();
+    await applyFormattingMenuCommand(page, "Block type", "Code block");
     await waitForRenderFrame(page);
     const codeBlockFormatting = await page.evaluate(() => {
       const editorText = Array.from(document.querySelectorAll(".cm-line"))
@@ -566,15 +571,15 @@ export async function run(ctx) {
       "Code block formatting should select the language placeholder first.",
     );
     expect(
-      codeBlockFormatting.primaryFormattingCommandCount === 13,
-      "Formatting toolbar should preserve the complete primary command set.",
+      codeBlockFormatting.primaryFormattingCommandCount === 6,
+      "Formatting toolbar should keep frequent inline commands and grouped command menus visible.",
     );
     expect(codeBlockFormatting.hasOverflowTrigger, "Formatting toolbar should expose overflow commands through the registry trigger.");
 
     await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
-    await page.getByRole("button", { name: "Heading 1", exact: true }).click();
+    await applyFormattingMenuCommand(page, "Block type", "Heading 1");
     await waitForRenderFrame(page);
     const headingOneFormatting = await page.evaluate(() => ({
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
@@ -584,20 +589,20 @@ export async function run(ctx) {
     expect(headingOneFormatting.selectedText === "Heading", "Heading 1 toolbar button should select the placeholder text.");
     await page.keyboard.insertText("Subhead");
     await page.keyboard.press("ControlOrMeta+A");
-    await page.getByRole("button", { name: "Heading 3", exact: true }).click();
+    await applyFormattingMenuCommand(page, "Block type", "Heading 3");
     await waitForRenderFrame(page);
     const headingThreeFormatting = await page.locator(".cm-content").textContent();
     expect(headingThreeFormatting === "### Subhead", "Heading 3 toolbar button should convert selected heading text.");
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("alpha\nbeta");
     await page.keyboard.press("ControlOrMeta+A");
-    await page.getByRole("button", { name: "Numbered list", exact: true }).click();
+    await applyFormattingMenuCommand(page, "List type", "Numbered list");
     await waitForRenderFrame(page);
     const numberedListFormatting = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
     expect(numberedListFormatting === "1. alpha\n2. beta", "Numbered list toolbar button should number selected lines.");
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("alpha\nbeta");
-    await page.getByRole("button", { name: "Horizontal rule", exact: true }).click();
+    await applyFormattingMenuCommand(page, "More formatting", "Horizontal rule");
     await waitForRenderFrame(page);
     const horizontalRuleFormatting = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
     expect(
@@ -997,12 +1002,20 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
     const beforeUndo = await page.locator(".cm-content").textContent();
     expect(beforeUndo === "**plain**", "Toolbar formatting should wrap selected text before undo smoke.");
+    expect(
+      (await page.getByRole("button", { name: "Bold", exact: true }).getAttribute("aria-pressed")) === "true",
+      "The formatting toolbar should reflect the Markdown context at the selection.",
+    );
     await page.getByRole("button", { name: "Undo", exact: true }).click();
     await waitForRenderFrame(page);
     const afterUndo = await page.locator(".cm-content").textContent();
     expect(
       afterUndo === "plain",
       `Undo should revert a formatting command in one step. Actual: ${JSON.stringify(afterUndo)}`,
+    );
+    expect(
+      (await page.getByRole("button", { name: "Bold", exact: true }).getAttribute("aria-pressed")) === "false",
+      "Undoing a format should clear its active toolbar state.",
     );
     await page.getByRole("button", { name: "Redo", exact: true }).click();
     await waitForRenderFrame(page);
@@ -1030,7 +1043,7 @@ export async function run(ctx) {
     await page.keyboard.type("obsolete");
     await page.keyboard.press("Shift+Home");
     await page.getByRole("button", { name: "More formatting", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Strikethrough", exact: true }).click();
+    await page.getByRole("menuitemcheckbox", { name: "Strikethrough", exact: true }).click();
     await waitForRenderFrame(page);
     const afterOverflowInlineCommand = await page.locator(".cm-content").textContent();
     expect(
@@ -1042,7 +1055,7 @@ export async function run(ctx) {
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
     await page.getByRole("button", { name: "More formatting", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Table", exact: true }).click();
+    await page.getByRole("menuitemcheckbox", { name: "Table", exact: true }).click();
     await waitForRenderFrame(page);
     const afterOverflowInsertCommand = await page.locator(".cm-content").textContent();
     expect(
@@ -1122,10 +1135,10 @@ export async function run(ctx) {
           Boolean(editorGutterRect && editorContentRect) && editorContentRect.left >= editorGutterRect.right - 1,
         splitPreviewContentBreathesFromDivider:
           Boolean(previewRect && previewParagraphRect) &&
-          previewParagraphRect.left - previewRect.left >= 52 &&
-          previewParagraphRect.left - previewRect.left <= 66,
+          previewParagraphRect.left - previewRect.left >= 40 &&
+          previewParagraphRect.left - previewRect.left <= 54,
         splitPreviewHasInset:
-          Boolean(previewStyle) && Number.parseFloat(previewStyle.paddingLeft) >= 20,
+          Boolean(previewStyle) && Number.parseFloat(previewStyle.paddingLeft) >= 14,
         splitPreviewHasLineGutters:
           Boolean(previewDocumentRect && previewContentRect && previewBookmarkGutterRect && previewCommentGutterRect) &&
           Math.abs(previewBookmarkGutterRect.left - previewDocumentRect.left) <= 1 &&
@@ -1252,7 +1265,7 @@ export async function run(ctx) {
     });
     expect(splitResizeInitial.handle && splitResizeInitial.handle.width >= 24, "Split should expose a generous magnetic resize hit area.");
     expect(splitResizeInitial.cursor === "col-resize", "Split resize handle should use the horizontal resize cursor.");
-    expect(splitResizeInitial.lineOpacity === "0", "Split divider line should be hidden by default.");
+    expect(Number(splitResizeInitial.lineOpacity) >= 0.4, "Split divider line should remain quietly visible by default.");
     expect(splitResizeInitial.lineWidth === "1px", "Split divider should be a thin line when revealed.");
     expect(
       splitResizeInitial.editorScrollbarGutter === "stable" && splitResizeInitial.previewScrollbarGutter === "stable",
@@ -1614,10 +1627,10 @@ export async function run(ctx) {
       "Switching Edit, Preview, and Split should keep the toolbar rail height consistent.",
     );
     expect(
-      splitAlignment.rail.background === "rgba(0, 0, 0, 0)" &&
-        previewAlignment.rail.background === "rgba(0, 0, 0, 0)" &&
-        writeAlignment.rail.background === "rgba(0, 0, 0, 0)",
-      "The toolbar rail row should stay transparent in Edit, Preview, and Split.",
+      splitAlignment.rail.background === previewAlignment.rail.background &&
+        previewAlignment.rail.background === writeAlignment.rail.background &&
+        writeAlignment.rail.background !== "rgba(0, 0, 0, 0)",
+      "The toolbar rail should provide one consistent surface in Edit, Preview, and Split.",
     );
     expect(
       splitAlignment.documentControls.height === previewAlignment.documentControls.height &&
@@ -1626,17 +1639,17 @@ export async function run(ctx) {
       "The visible document controls surface should keep the same 34px background height in every document mode.",
     );
     expect(
-      splitAlignment.documentControls.background === previewAlignment.documentControls.background &&
-        previewAlignment.documentControls.background === writeAlignment.documentControls.background &&
-        previewAlignment.documentControls.background !== "rgba(0, 0, 0, 0)",
-      "The visible document controls surface should carry the same background in Edit, Preview, and Split.",
+      splitAlignment.documentControls.background === "rgba(0, 0, 0, 0)" &&
+        previewAlignment.documentControls.background === "rgba(0, 0, 0, 0)" &&
+        writeAlignment.documentControls.background === "rgba(0, 0, 0, 0)",
+      "Document controls should sit inside the shared toolbar surface without a second floating background.",
     );
     expect(
       splitAlignment.formattingToolbar?.height === 34 &&
         writeAlignment.formattingToolbar?.height === 34 &&
-        splitAlignment.formattingToolbar?.background === splitAlignment.documentControls.background &&
-        writeAlignment.formattingToolbar?.background === writeAlignment.documentControls.background,
-      "Edit and Split formatting toolbars should use the same 34px surface as the document controls.",
+        splitAlignment.formattingToolbar?.background === "rgba(0, 0, 0, 0)" &&
+        writeAlignment.formattingToolbar?.background === "rgba(0, 0, 0, 0)",
+      "Formatting controls should sit inside the shared toolbar surface without a second floating background.",
     );
 
     await page.getByRole("button", { name: "Preview", exact: true }).click();
@@ -1662,7 +1675,7 @@ export async function run(ctx) {
         const toolbar = document.querySelector(".formatting-toolbar");
         const row = document.querySelector(".formatting-row");
         const primaryCommands = Array.from(document.querySelectorAll(
-          '.formatting-toolbar [data-format-command]:not([data-format-command="undo"]):not([data-format-command="redo"]):not([data-format-command="more-formatting"])',
+          '.formatting-toolbar [data-format-command]:not([aria-haspopup="menu"]):not([data-format-command="undo"]):not([data-format-command="redo"])',
         ));
         const buttons = Array.from(document.querySelectorAll(".formatting-toolbar .formatting-button"));
         const toolbarRect = toolbar?.getBoundingClientRect();
@@ -1690,9 +1703,9 @@ export async function run(ctx) {
         };
       });
       expect(mobileToolbar.toolbarVisible, "Formatting toolbar should remain visible on mobile edit screens.");
-      expect(mobileToolbar.primaryCommandCount === 3, "Mobile formatting toolbar should keep only core inline commands visible.");
+      expect(mobileToolbar.primaryCommandCount === 2, "Mobile formatting toolbar should keep only core inline commands visible.");
       expect(mobileToolbar.moreButtonVisible, "Mobile formatting toolbar should keep More formatting visible.");
-      expect(mobileToolbar.toolbarOverflowX === "hidden", "Mobile formatting toolbar should not hide commands in horizontal overflow.");
+      expect(mobileToolbar.toolbarOverflowX === "auto", "Mobile formatting toolbar should keep all commands reachable by horizontal overflow.");
       expect(mobileToolbar.rowLeft >= 16, "Mobile formatting toolbar should keep page-edge padding.");
       expect(
         mobileToolbar.rowRight <= mobileToolbar.viewportWidth - 16,
@@ -1706,6 +1719,42 @@ export async function run(ctx) {
         mobileToolbar.buttonRects.every((rect, index, rects) => index === 0 || rect.left >= rects[index - 1].right),
         "Mobile formatting toolbar buttons should not overlap.",
       );
+      expect(
+        mobileToolbar.buttonRects.every((rect) => rect.right <= mobileToolbar.rowRight + 1),
+        "Every mobile formatting control, including More, should be visible without horizontal scrolling.",
+      );
+
+      await page.getByRole("button", { name: "Preview", exact: true }).click();
+      await waitForEditorReady(page, { mode: "preview" });
+      expect(
+        (await page.getByRole("button", { name: "Edit", exact: true }).count()) === 1,
+        "Mobile Preview should keep the view-mode control available.",
+      );
+      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      await waitForEditorReady(page, { mode: "edit" });
+
+      await page.setViewportSize({ width: 390, height: 320 });
+      await page.getByRole("button", { name: "More formatting", exact: true }).click();
+      const compactMenuBounds = await page.evaluate(() => {
+        const menu = document.querySelector(".formatting-overflow-menu");
+        const rect = menu?.getBoundingClientRect();
+        return rect
+          ? {
+              top: Math.round(rect.top),
+              bottom: Math.round(rect.bottom),
+              viewportHeight: window.innerHeight,
+              overflowY: window.getComputedStyle(menu).overflowY,
+            }
+          : null;
+      });
+      expect(
+        compactMenuBounds &&
+          compactMenuBounds.top >= 8 &&
+          compactMenuBounds.bottom <= compactMenuBounds.viewportHeight - 8,
+        `Formatting menus should stay inside short mobile viewports. ${JSON.stringify(compactMenuBounds)}`,
+      );
+      expect(compactMenuBounds.overflowY === "auto", "Long formatting menus should scroll instead of clipping.");
+      await page.keyboard.press("Escape");
     },
     { viewport: { width: 390, height: 800 } },
   );

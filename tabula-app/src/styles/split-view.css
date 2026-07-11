@@ -38,6 +38,9 @@
 }
 
 .workspace.split .editor-surface {
+  --editor-comment-rail: var(--split-editor-comment-rail);
+  --editor-frame-rails: calc(var(--editor-left-rail) + var(--editor-comment-rail));
+
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -104,7 +107,7 @@
   width: 1px;
   content: "";
   background: var(--split-handle-line);
-  opacity: 0;
+  opacity: 0.45;
   transform: translateX(-50%);
   transition: opacity 140ms ease;
 }

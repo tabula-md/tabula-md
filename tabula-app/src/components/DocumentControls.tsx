@@ -12,6 +12,7 @@ import {
   Copy,
   Eye,
   ListChecks,
+  MoreHorizontal,
   PencilLine,
   Replace,
   ReplaceAll,
@@ -96,6 +97,9 @@ export function DocumentControls({
   onToggleLineWrapping,
   onToggleLineNumbers,
 }: DocumentControlsProps) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement | null>(null);
+  const moreButtonRef = useRef<HTMLButtonElement | null>(null);
   const copy = getWorkspaceChromeCopy(language).documentControls;
   const controls = buildDocumentControlsModel({
     activeLineNumbers,
@@ -107,33 +111,48 @@ export function DocumentControls({
     copy,
   });
 
+  useEffect(() => {
+    if (!moreOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node) || moreRef.current?.contains(event.target)) return;
+      setMoreOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      setMoreOpen(false);
+      window.requestAnimationFrame(() => moreButtonRef.current?.focus());
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [moreOpen]);
+
   return (
     <div className="document-controls-wrap">
       <nav className="document-controls" aria-label={controls.documentControlsLabel}>
-        {controls.viewModeActions.map((action) => (
-          <button
-            key={action.slot}
-            className="tool-button"
-            type="button"
-            title={action.label}
-            aria-label={action.label}
-            data-view-mode-slot={action.slot}
-            data-view-mode-action={action.viewMode}
-            onClick={() => onSetViewMode(action.viewMode)}
-          >
-            {viewModeIcons[action.icon]}
-          </button>
-        ))}
-        <button
-          className="tool-button"
-          type="button"
-          title={controls.copyButtonTitle}
-          aria-label={controls.copyButtonAriaLabel}
-          disabled={!canCopyFile}
-          onClick={onCopyFile}
-        >
-          <Copy size={16} />
-        </button>
+        <div className="document-view-mode-control" role="group" aria-label={controls.viewModeLabel}>
+          {controls.viewModeOptions.map((option) => (
+            <button
+              key={option.viewMode}
+              className={`tool-button ${option.active ? "active" : ""}`}
+              type="button"
+              title={option.label}
+              aria-label={option.label}
+              aria-pressed={option.active}
+              data-view-mode={option.viewMode}
+              onClick={() => onSetViewMode(option.viewMode)}
+            >
+              {viewModeIcons[option.icon]}
+            </button>
+          ))}
+        </div>
         <button
           className={`tool-button ${centerPopover === "view" ? "active" : ""}`}
           type="button"
@@ -152,6 +171,36 @@ export function DocumentControls({
         >
           <Search size={16} />
         </button>
+        <div className="document-more-menu-wrap" ref={moreRef}>
+          <button
+            ref={moreButtonRef}
+            className={`tool-button ${moreOpen ? "active" : ""}`}
+            type="button"
+            title="More document actions"
+            aria-label="More document actions"
+            aria-haspopup="menu"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((open) => !open)}
+          >
+            <MoreHorizontal size={16} />
+          </button>
+          {moreOpen && (
+            <div className="document-more-menu" role="menu" aria-label="More document actions">
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!canCopyFile}
+                onClick={() => {
+                  onCopyFile();
+                  setMoreOpen(false);
+                }}
+              >
+                <Copy size={15} />
+                <span>{controls.copyButtonAriaLabel}</span>
+              </button>
+            </div>
+          )}
+        </div>
       </nav>
 
       {centerPopover === "view" && (

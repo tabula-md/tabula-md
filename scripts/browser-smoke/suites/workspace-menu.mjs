@@ -39,14 +39,15 @@ export async function run(ctx) {
     expect((await page.locator(".intro-action-button").count()) === 0, "The product README should not embed app actions.");
     expect((await page.locator(".tabula-plus-trigger").count()) === 0, "Tabula + should not live in the top-right document chrome.");
     expect((await page.locator(".share-trigger").count()) === 1, "Share should be a single top-right chrome action.");
-    expect((await page.getByRole("button", { name: "Copy current file" }).count()) === 1, "Copy should be a document controls action.");
+    expect((await page.getByRole("button", { name: "More document actions" }).count()) === 1, "Document controls should expose a More menu.");
     await page.evaluate(() => {
       window.__tabulaClipboard = [];
       navigator.clipboard.writeText = async (text) => {
         window.__tabulaClipboard.push(text);
       };
     });
-    await page.getByRole("button", { name: "Copy current file" }).click();
+    await page.getByRole("button", { name: "More document actions" }).click();
+    await page.getByRole("menuitem", { name: "Copy current file" }).click();
     const copiedFile = await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "");
     expect(
       copiedFile.includes("Tabula.md is a local-first Markdown workspace"),
@@ -646,20 +647,21 @@ export async function run(ctx) {
     let tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "Preview mode should be reflected in the active tab.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Split", "Edit"]),
-      "Preview mode should expose Split and Edit as the available mode actions.",
+      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Split", "Preview"]),
+      "The view-mode control should keep Edit, Split, and Preview in a stable order.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
-          { slot: "split", label: "Split", action: "split", active: false },
-          { slot: "edit-preview", label: "Edit", action: "edit", active: false },
+          { viewMode: "edit", label: "Edit", active: false },
+          { viewMode: "split", label: "Split", active: false },
+          { viewMode: "preview", label: "Preview", active: true },
         ]),
-      "Preview mode should keep Split reachable and put Edit in the shared Edit/Preview slot.",
+      "Preview mode should select Preview without changing the control positions.",
     );
     expect(
-      (await page.getByRole("button", { name: "Preview", exact: true }).count()) === 0,
-      "The active Preview mode should not also be rendered as a toolbar action.",
+      (await page.getByRole("button", { name: "Preview", exact: true }).getAttribute("aria-pressed")) === "true",
+      "The active Preview mode should remain visible and selected.",
     );
     expect(
       (await page.getByRole("button", { name: "Split", exact: true }).count()) === 1,
@@ -671,20 +673,21 @@ export async function run(ctx) {
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Edit", "New local tabs should start in Edit mode.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Split", "Preview"]),
-      "Edit mode should keep Split first and put Preview in the shared Edit/Preview slot.",
+      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Split", "Preview"]),
+      "Edit mode should keep the stable view-mode order.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
-          { slot: "split", label: "Split", action: "split", active: false },
-          { slot: "edit-preview", label: "Preview", action: "preview", active: false },
+          { viewMode: "edit", label: "Edit", active: true },
+          { viewMode: "split", label: "Split", active: false },
+          { viewMode: "preview", label: "Preview", active: false },
         ]),
-      "Edit mode should keep Split in its own slot and put Preview in the shared Edit/Preview slot.",
+      "Edit mode should select Edit without changing the control positions.",
     );
     expect(
-      (await page.getByRole("button", { name: "Edit", exact: true }).count()) === 0,
-      "The active Edit mode should not also be rendered as a toolbar action.",
+      (await page.getByRole("button", { name: "Edit", exact: true }).getAttribute("aria-pressed")) === "true",
+      "The active Edit mode should remain visible and selected.",
     );
 
     await page.getByRole("button", { name: "Split", exact: true }).click();
@@ -692,16 +695,17 @@ export async function run(ctx) {
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Split", "Split should be reachable from Edit mode.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Preview"]),
-      "Split mode should expose Edit and Preview as the available mode actions.",
+      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Split", "Preview"]),
+      "Split mode should keep the stable view-mode order.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
-          { slot: "split", label: "Edit", action: "edit", active: false },
-          { slot: "edit-preview", label: "Preview", action: "preview", active: false },
+          { viewMode: "edit", label: "Edit", active: false },
+          { viewMode: "split", label: "Split", active: true },
+          { viewMode: "preview", label: "Preview", active: false },
         ]),
-      "Split mode should replace the active Split button with direct Edit and Preview actions.",
+      "Split mode should select Split without changing the control positions.",
     );
 
     await page.getByRole("button", { name: "Edit", exact: true }).click();

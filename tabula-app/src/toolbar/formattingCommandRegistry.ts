@@ -33,7 +33,7 @@ export type FormattingToolbarCommandGroup =
   | "insert"
   | "cleanup";
 
-export type FormattingToolbarCommandPlacement = "primary" | "overflow";
+export type FormattingToolbarCommandPlacement = "primary" | "block" | "list" | "overflow";
 
 export type FormattingToolbarCommandState = {
   canRedo: boolean;
@@ -138,7 +138,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     icon: Heading1,
     label: "Heading 1",
     tooltip: "Heading 1",
-    placement: "primary",
+    placement: "block",
   }),
   createFormattingCommand({
     command: "heading-2",
@@ -146,7 +146,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     icon: Heading2,
     label: "Heading 2",
     tooltip: "Heading 2",
-    placement: "primary",
+    placement: "block",
   }),
   createFormattingCommand({
     command: "heading-3",
@@ -154,7 +154,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     icon: Heading3,
     label: "Heading 3",
     tooltip: "Heading 3",
-    placement: "primary",
+    placement: "block",
   }),
   createFormattingCommand({
     command: "bullet-list",
@@ -162,7 +162,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     icon: List,
     label: "Bullet list",
     tooltip: "Bullet list",
-    placement: "primary",
+    placement: "list",
   }),
   createFormattingCommand({
     command: "numbered-list",
@@ -170,7 +170,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     icon: ListOrdered,
     label: "Numbered list",
     tooltip: "Numbered list",
-    placement: "primary",
+    placement: "list",
   }),
   createFormattingCommand({
     command: "check-list",
@@ -178,7 +178,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     icon: CheckSquare,
     label: "Checklist",
     tooltip: "Checklist",
-    placement: "primary",
+    placement: "list",
   }),
   createFormattingCommand({
     command: "quote",
@@ -186,7 +186,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     icon: Quote,
     label: "Quote",
     tooltip: "Quote",
-    placement: "primary",
+    placement: "block",
   }),
   createFormattingCommand({
     command: "code-block",
@@ -194,7 +194,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     icon: SquareCode,
     label: "Code block",
     tooltip: "Code block",
-    placement: "primary",
+    placement: "block",
   }),
   createFormattingCommand({
     command: "horizontal-rule",
@@ -202,7 +202,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     icon: SeparatorHorizontal,
     label: "Horizontal rule",
     tooltip: "Horizontal rule",
-    placement: "primary",
+    placement: "overflow",
   }),
   createFormattingCommand({
     command: "strikethrough",
@@ -268,18 +268,19 @@ export const getFormattingToolbarCommandsByPlacement = (
   placement: FormattingToolbarCommandPlacement,
 ) => formattingToolbarCommands.filter((command) => command.placement === placement);
 
-const compactPrimaryCommandIds = new Set(["undo", "redo", "bold", "italic", "link"]);
+const compactPrimaryCommandIds = new Set(["undo", "redo", "bold", "italic"]);
 
 export const getFormattingToolbarLayout = (compact: boolean) => {
-  if (!compact) {
-    return {
-      primary: getFormattingToolbarCommandsByPlacement("primary"),
-      overflow: getFormattingToolbarCommandsByPlacement("overflow"),
-    };
-  }
-
   return {
-    primary: formattingToolbarCommands.filter((command) => compactPrimaryCommandIds.has(command.id)),
-    overflow: formattingToolbarCommands.filter((command) => !compactPrimaryCommandIds.has(command.id)),
+    primary: compact
+      ? formattingToolbarCommands.filter((command) => compactPrimaryCommandIds.has(command.id))
+      : getFormattingToolbarCommandsByPlacement("primary"),
+    block: getFormattingToolbarCommandsByPlacement("block"),
+    list: getFormattingToolbarCommandsByPlacement("list"),
+    overflow: compact
+      ? getFormattingToolbarCommandsByPlacement("primary")
+          .filter((command) => !compactPrimaryCommandIds.has(command.id))
+          .concat(getFormattingToolbarCommandsByPlacement("overflow"))
+      : getFormattingToolbarCommandsByPlacement("overflow"),
   };
 };

@@ -58,6 +58,7 @@ export type DocumentWorkbenchProps = {
   activePreviewCommentAnchors: MarkdownPreviewCommentAnchor[];
   activePreviewLineAnnotations: MarkdownPreviewLineAnnotation[];
   activeSearchMatchIndex: number;
+  activeSelection?: LiveSelection;
   canRedo: boolean;
   canUndo: boolean;
   centerPopover: CenterPopover;
@@ -169,6 +170,7 @@ export function DocumentWorkbench({
   activePreviewCommentAnchors,
   activePreviewLineAnnotations,
   activeSearchMatchIndex,
+  activeSelection,
   canRedo,
   canUndo,
   centerPopover,
@@ -254,6 +256,13 @@ export function DocumentWorkbench({
   onUndo,
 }: DocumentWorkbenchProps) {
   const shouldRenderPreview = documentSurface.documentControls.activeViewMode !== "edit";
+  const activeFormats = useMemo(
+    () =>
+      documentSurface.documentControls.activeViewMode === "preview" || !activeSelection
+        ? []
+        : editorRef.current?.getActiveFormats() ?? [],
+    [activeSelection, documentSurface.documentControls.activeViewMode, editorRef, text],
+  );
   const suspendLineWrappingForLongLine = useMemo(
     () => activeLineWrapping && hasLongMarkdownLine(text),
     [activeLineWrapping, text],
@@ -301,6 +310,7 @@ export function DocumentWorkbench({
             className={documentSurface.formattingToolbarClassName}
             canUndo={canUndo || editorHistoryCanUndo}
             canRedo={canRedo || editorHistoryCanRedo}
+            activeFormats={activeFormats}
             onFormat={onFormat}
             onUndo={onUndo}
             onRedo={onRedo}

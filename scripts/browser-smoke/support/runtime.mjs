@@ -90,16 +90,15 @@ const getTabs = async (page) =>
   );
 
 const getViewModeActionLabels = async (page) =>
-  page.$$eval(".document-controls [data-view-mode-action]", (buttons) =>
+  page.$$eval(".document-controls [data-view-mode]", (buttons) =>
     buttons.map((button) => button.getAttribute("aria-label") ?? button.getAttribute("title") ?? ""),
   );
 
 const getViewModeSlots = async (page) =>
-  page.$$eval(".document-controls [data-view-mode-slot]", (items) =>
+  page.$$eval(".document-controls [data-view-mode]", (items) =>
     items.map((item) => ({
-      slot: item.getAttribute("data-view-mode-slot") ?? "",
+      viewMode: item.getAttribute("data-view-mode") ?? "",
       label: item.getAttribute("aria-label") ?? "",
-      action: item.getAttribute("data-view-mode-action") ?? "",
       active: item.getAttribute("aria-pressed") === "true",
     })),
   );

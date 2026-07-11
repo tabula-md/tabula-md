@@ -1188,6 +1188,7 @@ export function useWorkspaceRuntime() {
       activePreviewCommentAnchors,
       activePreviewLineAnnotations,
       activeSearchMatchIndex,
+      activeSelection,
       canRedo,
       canUndo,
       centerPopover,

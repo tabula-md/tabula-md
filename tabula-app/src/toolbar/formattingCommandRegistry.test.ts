@@ -6,7 +6,7 @@ import {
 } from "./formattingCommandRegistry";
 
 describe("formatting command registry", () => {
-  it("keeps existing toolbar commands primary and new commands in overflow", () => {
+  it("separates frequent inline, block, list, and overflow commands", () => {
     expect(getFormattingToolbarCommandsByPlacement("primary").map((command) => command.id)).toEqual([
       "undo",
       "redo",
@@ -14,17 +14,21 @@ describe("formatting command registry", () => {
       "italic",
       "inline-code",
       "link",
+    ]);
+    expect(getFormattingToolbarCommandsByPlacement("block").map((command) => command.id)).toEqual([
       "heading-1",
       "heading-2",
       "heading-3",
+      "quote",
+      "code-block",
+    ]);
+    expect(getFormattingToolbarCommandsByPlacement("list").map((command) => command.id)).toEqual([
       "bullet-list",
       "numbered-list",
       "check-list",
-      "quote",
-      "code-block",
-      "horizontal-rule",
     ]);
     expect(getFormattingToolbarCommandsByPlacement("overflow").map((command) => command.id)).toEqual([
+      "horizontal-rule",
       "strikethrough",
       "table",
       "image",
@@ -42,13 +46,30 @@ describe("formatting command registry", () => {
       "redo",
       "bold",
       "italic",
-      "link",
     ]);
-    expect(layout.overflow.map((command) => command.id)).toEqual(
-      formattingToolbarCommands
-        .filter((command) => !["undo", "redo", "bold", "italic", "link"].includes(command.id))
-        .map((command) => command.id),
-    );
+    expect(layout.block.map((command) => command.id)).toEqual([
+      "heading-1",
+      "heading-2",
+      "heading-3",
+      "quote",
+      "code-block",
+    ]);
+    expect(layout.list.map((command) => command.id)).toEqual([
+      "bullet-list",
+      "numbered-list",
+      "check-list",
+    ]);
+    expect(layout.overflow.map((command) => command.id)).toEqual([
+      "inline-code",
+      "link",
+      "horizontal-rule",
+      "strikethrough",
+      "table",
+      "image",
+      "frontmatter",
+      "footnote",
+      "clear-formatting",
+    ]);
   });
 
   it("routes history and Markdown commands through their registered actions", () => {
