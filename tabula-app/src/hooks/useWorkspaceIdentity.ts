@@ -8,19 +8,12 @@ import type { Collaborator } from "../collaboration";
 import { randomId } from "../workspaceStorage";
 
 export const IDENTITY_KEY = "tabula.identity";
-export const IDENTITY_SESSION_KEY = "tabula.identity.session";
 
 let pageActorId: string | null = null;
 
 const getPageActorId = () => {
   if (pageActorId) return pageActorId;
-  try {
-    const storedActorId = window.sessionStorage.getItem(IDENTITY_SESSION_KEY)?.trim();
-    pageActorId = storedActorId || randomId();
-    if (!storedActorId) window.sessionStorage.setItem(IDENTITY_SESSION_KEY, pageActorId);
-  } catch {
-    pageActorId = randomId();
-  }
+  pageActorId = randomId();
   return pageActorId;
 };
 

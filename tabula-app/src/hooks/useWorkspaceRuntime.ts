@@ -11,6 +11,11 @@ import { type TextChange, type WorkspaceRoomComment, type WorkspaceRoomSnapshot 
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import { reconcileWorkspaceRoomSnapshot } from "../collaboration/workspaceRoomStateMerge";
 import {
+  readRoomViewState,
+  restoreRoomWorkspaceView,
+  writeRoomViewState,
+} from "../collaboration/roomViewState";
+import {
   createRoomWorkspaceState,
   createWorkspaceFile,
   finalizeWorkspaceState,
@@ -83,6 +88,7 @@ export function useWorkspaceRuntime() {
     readInitialWorkspaceSnapshot(),
   );
   const initialWorkspace = initialWorkspaceSnapshot.workspace;
+  const restoredRoomViewsRef = useRef(new Set<string>());
   const {
     folders,
     files,
@@ -407,13 +413,22 @@ export function useWorkspaceRuntime() {
       .map((node) => [node.id, node.title, node.parentId, node.order ?? 0])
       .sort(([firstId], [secondId]) => String(firstId).localeCompare(String(secondId)));
     const foldersChanged = JSON.stringify(previousRoomFolderSignature) !== JSON.stringify(nextRoomFolderSignature);
-    const nextWorkspace = reconcileWorkspaceRoomSnapshot({
+    let nextWorkspace = reconcileWorkspaceRoomSnapshot({
       activeFile,
       createFile: createWorkspaceFile,
       roomShareUrl: activeRoomShareUrl,
       snapshot,
       workspaceSnapshot,
     });
+    if (!restoredRoomViewsRef.current.has(snapshot.roomId)) {
+      const roomViewState = readRoomViewState(snapshot.roomId);
+      nextWorkspace = restoreRoomWorkspaceView(nextWorkspace, roomViewState);
+      restoredRoomViewsRef.current.add(snapshot.roomId);
+      if (roomViewState) {
+        setRightPanelView(roomViewState.rightPanelView);
+        setRightPanelOpen(roomViewState.rightPanelOpen);
+      }
+    }
     if (
       activeRoomShareUrl &&
       (activeRoom?.roomId !== snapshot.roomId || activeRoom.shareUrl !== activeRoomShareUrl)
@@ -453,6 +468,15 @@ export function useWorkspaceRuntime() {
     );
     replaceCommentsByFileId(roomComments, { preserveInteraction: true });
   });
+  useEffect(() => {
+    if (!activeRoomId || !files.some((file) => file.roomId === activeRoomId)) return;
+    writeRoomViewState(activeRoomId, {
+      activeDocumentId: activeFileId || undefined,
+      openDocumentIds: openFileIds,
+      rightPanelOpen,
+      rightPanelView,
+    });
+  }, [activeFileId, activeRoomId, files, openFileIds, rightPanelOpen, rightPanelView]);
   const mergeWorkspaceRoomComments = useEventCallback(
     (roomCommentsByFileId: Record<string, WorkspaceRoomComment[]>) => {
       if (!activeRoomId) return;
@@ -761,6 +785,7 @@ export function useWorkspaceRuntime() {
     setCopiedFileId(null);
   });
   const activateRoomWorkspace = useEventCallback((room: LocationRoom) => {
+    restoredRoomViewsRef.current.delete(room.roomId);
     setLocalPersistenceEnabled(false);
     setLiveRoomOpenFailure(null);
     setActiveRoom(room);

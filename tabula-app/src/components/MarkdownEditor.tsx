@@ -22,6 +22,7 @@ import {
   createEditorCollaborationExtensions,
   createEditorCommentAnchorExtension,
   createEditorLineCommentActionExtension,
+  getCollaborationEditorHistoryState,
   createMarkdownEditorCompartments,
   createMarkdownEditorExtensions,
 } from "../editor/editorState";
@@ -171,7 +172,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const emitHistoryState = (view: EditorView) => {
       const binding = collaborationBindingRef.current;
       const nextHistoryState = binding
-        ? { canUndo: binding.undoManager.undoStack.length > 0, canRedo: binding.undoManager.redoStack.length > 0 }
+        ? getCollaborationEditorHistoryState(view.state, binding)
         : getEditorHistoryState(view.state);
       const previousHistoryState = lastHistoryStateRef.current;
       if (
@@ -270,14 +271,18 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
     useImperativeHandle(ref, () => ({
       canRedo: () => {
-        return collaborationBindingRef.current
-          ? collaborationBindingRef.current.undoManager.redoStack.length > 0
-          : canRedoEditor(viewRef.current);
+        const view = viewRef.current;
+        const binding = collaborationBindingRef.current;
+        return view && binding
+          ? getCollaborationEditorHistoryState(view.state, binding).canRedo
+          : canRedoEditor(view);
       },
       canUndo: () => {
-        return collaborationBindingRef.current
-          ? collaborationBindingRef.current.undoManager.undoStack.length > 0
-          : canUndoEditor(viewRef.current);
+        const view = viewRef.current;
+        const binding = collaborationBindingRef.current;
+        return view && binding
+          ? getCollaborationEditorHistoryState(view.state, binding).canUndo
+          : canUndoEditor(view);
       },
       format: (command) => {
         const view = viewRef.current;
@@ -400,14 +405,18 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       undo: () => {
         const binding = collaborationBindingRef.current;
         if (binding) {
-          binding.undoManager.undo();
-          return true;
+          if (binding.undoManager.undoStack.length > 0) {
+            binding.undoManager.undo();
+            return true;
+          }
+          return undoEditor(viewRef.current);
         }
         return undoEditor(viewRef.current);
       },
       redo: () => {
         const binding = collaborationBindingRef.current;
         if (binding) {
+          if (canRedoEditor(viewRef.current)) return redoEditor(viewRef.current);
           binding.undoManager.redo();
           return true;
         }
@@ -538,7 +547,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       view.dispatch({
         effects: [
           compartmentsRef.current.collaboration.reconfigure([]),
-          compartmentsRef.current.history.reconfigure([]),
         ],
       });
       dispatchRemoteTextChange(
@@ -552,10 +560,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
               ? createEditorCollaborationExtensions(collaborationBinding)
               : [],
           ),
-          compartmentsRef.current.history.reconfigure(collaborationBinding ? [] : history()),
         ],
       });
       appliedCollaborationBindingRef.current = collaborationBinding;
+      emitHistoryState(view);
     }, [collaborationBinding, fileId]);
 
     useEffect(() => {
