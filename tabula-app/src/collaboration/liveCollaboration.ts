@@ -1,5 +1,4 @@
 import type { Extension } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
 import * as decoding from "lib0/decoding";
 import * as encoding from "lib0/encoding";
 import * as Y from "yjs";
@@ -10,7 +9,7 @@ import {
   removeAwarenessStates,
 } from "y-protocols/awareness";
 import * as syncProtocol from "y-protocols/sync";
-import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
+import { yCollab } from "y-codemirror.next";
 import {
   addWorkspaceRoomCommentReply,
   applyTextPatches as applyTextPatchesToString,
@@ -558,10 +557,7 @@ export const createWorkspaceRoomRuntime = ({
     }
     return {
       documentId: nextDocumentId,
-      extension: [
-        yCollab(yText, awareness, { undoManager }),
-        keymap.of(yUndoManagerKeymap),
-      ],
+      extension: yCollab(yText, awareness, { undoManager }),
       yText,
       awareness,
       undoManager,

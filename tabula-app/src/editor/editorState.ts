@@ -1,12 +1,19 @@
-import { history } from "@codemirror/commands";
+import {
+  history,
+  redo,
+  redoDepth,
+  undo,
+  undoDepth,
+} from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { bracketMatching, HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { Compartment, EditorState, type Extension } from "@codemirror/state";
+import { Compartment, EditorState, Transaction, type Extension } from "@codemirror/state";
 import {
   drawSelection,
   dropCursor,
   highlightActiveLine,
   highlightActiveLineGutter,
+  keymap,
   placeholder,
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
@@ -130,6 +137,11 @@ const utf8Encoder = new TextEncoder();
 export const createEditorCollaborationExtensions = (
   collaborationBinding: NonNullable<MarkdownEditorExtensionConfig["collaborationBinding"]>,
 ): Extension[] => [
+  EditorState.transactionExtender.of((transaction) =>
+    transaction.docChanged
+      ? { annotations: Transaction.addToHistory.of(false) }
+      : null,
+  ),
   EditorState.transactionFilter.of((transaction) => {
     if (!transaction.docChanged) return transaction;
 
@@ -148,8 +160,48 @@ export const createEditorCollaborationExtensions = (
     return collaborationBinding.canApplyTextByteDelta(byteDelta) ? transaction : [];
   }),
   editorUndoBoundaryFacet.of(() => collaborationBinding.undoManager.stopCapturing()),
+  keymap.of([
+    {
+      key: "Mod-z",
+      preventDefault: true,
+      run: (view) => {
+        if (collaborationBinding.undoManager.undoStack.length > 0) {
+          collaborationBinding.undoManager.undo();
+          return true;
+        }
+        return undo(view);
+      },
+    },
+    {
+      key: "Mod-y",
+      mac: "Mod-Shift-z",
+      preventDefault: true,
+      run: (view) => {
+        if (redoDepth(view.state) > 0) return redo(view);
+        collaborationBinding.undoManager.redo();
+        return true;
+      },
+    },
+    {
+      key: "Mod-Shift-z",
+      preventDefault: true,
+      run: (view) => {
+        if (redoDepth(view.state) > 0) return redo(view);
+        collaborationBinding.undoManager.redo();
+        return true;
+      },
+    },
+  ]),
   collaborationBinding.extension,
 ];
+
+export const getCollaborationEditorHistoryState = (
+  state: EditorState,
+  collaborationBinding: NonNullable<MarkdownEditorExtensionConfig["collaborationBinding"]>,
+) => ({
+  canUndo: collaborationBinding.undoManager.undoStack.length > 0 || undoDepth(state) > 0,
+  canRedo: collaborationBinding.undoManager.redoStack.length > 0 || redoDepth(state) > 0,
+});
 
 export const createMarkdownEditorExtensions = ({
   compartments,
@@ -166,7 +218,7 @@ export const createMarkdownEditorExtensions = ({
   onOpenLineActions,
   onOpenComment,
 }: MarkdownEditorExtensionConfig): Extension[] => [
-  compartments.history.of(collaborationBinding ? [] : history()),
+  compartments.history.of(history()),
   ...createEditorSelectionDisplayExtensions(),
   dropCursor(),
   bracketMatching(),
