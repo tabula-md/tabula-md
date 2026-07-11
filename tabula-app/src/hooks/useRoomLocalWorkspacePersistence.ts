@@ -8,11 +8,6 @@ import {
   writeIndexedDbRoomLocalWorkspace,
 } from "../workspaceIndexedDb";
 import type { WorkspaceState } from "../workspaceStorage";
-import {
-  readRoomLocalWorkspaceFallback,
-  selectLatestRoomLocalWorkspaceState,
-  writeRoomLocalWorkspaceFallback,
-} from "../roomLocalWorkspaceStorage";
 
 const ROOM_LOCAL_SAVE_DELAY_MS = 250;
 
@@ -22,6 +17,7 @@ type UseRoomLocalWorkspacePersistenceOptions = {
   workspace: WorkspaceState;
   getWorkspaceSnapshot: () => WorkspaceState;
   onHydrate: (state: RoomLocalWorkspaceState) => void;
+  onError?: (error: unknown) => void;
 };
 
 export function useRoomLocalWorkspacePersistence({
@@ -30,6 +26,7 @@ export function useRoomLocalWorkspacePersistence({
   workspace,
   getWorkspaceSnapshot,
   onHydrate,
+  onError,
 }: UseRoomLocalWorkspacePersistenceOptions) {
   const [hydratedRoomId, setHydratedRoomId] = useState<string | null>(null);
   const latestWorkspaceRef = useRef(workspace);
@@ -53,17 +50,21 @@ export function useRoomLocalWorkspacePersistence({
     }
     let cancelled = false;
     setHydratedRoomId(null);
-    const fallbackState = readRoomLocalWorkspaceFallback(roomId, ownerId);
-    void readIndexedDbRoomLocalWorkspace(roomId, ownerId).then((indexedDbState) => {
-      if (cancelled) return;
-      const state = selectLatestRoomLocalWorkspaceState(indexedDbState, fallbackState);
-      if (state) onHydrate(state);
-      setHydratedRoomId(roomId);
-    });
+    void readIndexedDbRoomLocalWorkspace(roomId, ownerId)
+      .then((state) => {
+        if (cancelled) return;
+        if (state) onHydrate(state);
+        setHydratedRoomId(roomId);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        onError?.(error);
+        setHydratedRoomId(roomId);
+      });
     return () => {
       cancelled = true;
     };
-  }, [onHydrate, ownerId, roomId]);
+  }, [onError, onHydrate, ownerId, roomId]);
 
   const flush = (targetRoomId = roomId) => {
     if (!targetRoomId || hydratedRoomId !== targetRoomId) return;
@@ -76,10 +77,12 @@ export function useRoomLocalWorkspacePersistence({
       : latestWorkspaceByRoomRef.current.get(targetRoomId);
     if (!roomWorkspace) return;
     const state = createRoomLocalWorkspaceState(targetRoomId, roomWorkspace, ownerId);
-    writeRoomLocalWorkspaceFallback(state);
     saveQueueRef.current = saveQueueRef.current
       .catch(() => undefined)
-      .then(() => writeIndexedDbRoomLocalWorkspace(state));
+      .then(() => writeIndexedDbRoomLocalWorkspace(state))
+      .catch((error: unknown) => {
+        onError?.(error);
+      });
   };
 
   useEffect(() => {

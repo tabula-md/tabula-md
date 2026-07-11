@@ -2,21 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createWorkspacePersistenceQueue,
   DEFAULT_WORKSPACE_PERSISTENCE_DELAY_MS,
-  writeWorkspaceToPrimaryStores,
+  writeWorkspaceToPrimaryStore,
 } from "./workspacePersistence";
 import { getWorkspacePersistenceFlushSnapshot } from "./hooks/useQueuedWorkspacePersistence";
-import {
-  clearStoredWorkspaceIfCurrent,
-  createWorkspaceFile,
-  createWorkspaceRootFolder,
-  createStoredWorkspace,
-  readStoredWorkspace,
-  PROJECT_STORAGE_KEY,
-  PROJECT_STORAGE_MANIFEST_KEY,
-  writeStoredWorkspace,
-  type WorkspaceState,
-  type WorkspaceStorageAdapter,
-} from "./workspaceStorage";
+import { createWorkspaceFile, createWorkspaceRootFolder, type WorkspaceState } from "./workspaceStorage";
 import { writeIndexedDbWorkspace } from "./workspaceIndexedDb";
 
 vi.mock("./workspaceIndexedDb", () => ({
@@ -112,81 +101,14 @@ describe("workspace persistence queue", () => {
   });
 });
 
-describe("workspace storage adapter", () => {
-  it("loads persisted project payloads through the storage adapter", () => {
-    const stored = createStoredWorkspace(createWorkspace("# Restored"));
-    const storage: WorkspaceStorageAdapter = {
-      getItem: () => JSON.stringify(stored),
-      setItem: vi.fn(),
-    };
-
-    expect(readStoredWorkspace(storage)?.files[0]?.text).toBe("# Restored");
-  });
-
-  it("falls back to an empty read when storage throws", () => {
-    const storage: WorkspaceStorageAdapter = {
-      getItem: () => {
-        throw new Error("storage unavailable");
-      },
-      setItem: vi.fn(),
-    };
-
-    expect(readStoredWorkspace(storage)).toBeNull();
-  });
-
-  it("does not clear a newer local fallback after a stale IndexedDB write succeeds", () => {
-    const storage: Record<string, string> = {};
-    const adapter: WorkspaceStorageAdapter = {
-      getItem: (key) => storage[key] ?? null,
-      removeItem: (key) => {
-        delete storage[key];
-      },
-      setItem: (key, value) => {
-        storage[key] = value;
-      },
-    };
-
-    writeStoredWorkspace(createWorkspace("# Latest fallback"), adapter);
-    clearStoredWorkspaceIfCurrent(createWorkspace("# Stale IndexedDB"), adapter);
-
-    expect(readStoredWorkspace(adapter)?.files[0]?.text).toBe("# Latest fallback");
-
-    clearStoredWorkspaceIfCurrent(createWorkspace("# Latest fallback"), adapter);
-
-    expect(readStoredWorkspace(adapter)).toBeNull();
-  });
-});
-
 describe("workspace primary store writes", () => {
   afterEach(() => {
     vi.mocked(writeIndexedDbWorkspace).mockClear();
   });
 
-  it("keeps localStorage writes small while persisting the full workspace to IndexedDB", async () => {
-    const storage: Record<string, string> = {};
-    vi.stubGlobal("window", {
-      localStorage: {
-        getItem: (key: string) => storage[key] ?? null,
-        removeItem: (key: string) => {
-          delete storage[key];
-        },
-        setItem: (key: string, value: string) => {
-          storage[key] = value;
-        },
-      },
-    });
+  it("persists only through the IndexedDB adapter", async () => {
+    await writeWorkspaceToPrimaryStore(createWorkspace("# IndexedDB only"));
 
-    writeWorkspaceToPrimaryStores(createWorkspace("# Mirrored"));
-
-    expect(JSON.parse(storage[PROJECT_STORAGE_MANIFEST_KEY] ?? "{}")).toMatchObject({
-      schema: "tabula.project.manifest",
-      activeFileId: "local",
-      fileCount: 1,
-    });
-    expect(storage[PROJECT_STORAGE_KEY]).toBeUndefined();
-    expect(writeIndexedDbWorkspace).toHaveBeenCalledWith(createWorkspace("# Mirrored"));
-    await Promise.resolve();
-
-    vi.unstubAllGlobals();
+    expect(writeIndexedDbWorkspace).toHaveBeenCalledWith(createWorkspace("# IndexedDB only"));
   });
 });

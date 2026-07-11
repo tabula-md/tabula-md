@@ -25,23 +25,8 @@ export type { FileViewMode, ReadingWidth };
 
 export const PROJECT_STORAGE_VERSION = 6;
 export const WORKSPACE_STORAGE_VERSION = PROJECT_STORAGE_VERSION;
-export const PROJECT_STORAGE_KEY = "tabula.project.v6";
-export const LEGACY_PROJECT_STORAGE_KEY = "tabula.project.v5";
-export const PROJECT_STORAGE_MANIFEST_KEY = "tabula.project.manifest.v1";
 const STARTER_MARKDOWN = "";
 export const README_FILE_ID = "tabula-readme";
-
-export type WorkspaceStorageAdapter = {
-  getItem: (key: string) => string | null;
-  removeItem?: (key: string) => void;
-  setItem: (key: string, value: string) => void;
-};
-
-export const browserWorkspaceStorageAdapter: WorkspaceStorageAdapter = {
-  getItem: (key) => window.localStorage.getItem(key),
-  removeItem: (key) => window.localStorage.removeItem(key),
-  setItem: (key, value) => window.localStorage.setItem(key, value),
-};
 const DEFAULT_README_REFRESH_MARKERS = [
   "It is intentionally Markdown-file-first",
   "## Frontmatter",
@@ -144,7 +129,7 @@ export type WorkspaceState = {
 };
 
 export type InitialWorkspaceSnapshot = {
-  source: "localStorage" | "room" | "starter";
+  source: "room" | "starter";
   room?: LocationRoom;
   workspace: WorkspaceState;
 };
@@ -180,20 +165,6 @@ export type StoredProjectV6 = {
   folders: Record<string, WorkspaceFolder>;
   files: Record<string, StoredWorkspaceFile>;
   commentsByFileId: Record<string, FileComment[]>;
-};
-
-export type StoredProjectV5 = Omit<StoredProjectV6, "version" | "folderOrder" | "folders"> & {
-  version: 5;
-};
-
-export type StoredWorkspaceManifestV1 = {
-  schema: "tabula.project.manifest";
-  version: 1;
-  savedAt: string;
-  activeFileId: string;
-  openFileIds: string[];
-  fileCount: number;
-  commentCount: number;
 };
 
 export type LocationRoom = {
@@ -506,46 +477,6 @@ const normalizeFoldersFromMap = (folders: unknown, folderOrder: unknown): Worksp
   return [createWorkspaceRootFolder(), ...withoutDuplicateRoots];
 };
 
-const stableFolderId = (path: string) => {
-  let hash = 2166136261;
-  for (let index = 0; index < path.length; index += 1) {
-    hash ^= path.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return `folder-${(hash >>> 0).toString(16).padStart(8, "0")}`;
-};
-
-const migrateLegacyFilePaths = (files: WorkspaceFile[]) => {
-  const foldersByPath = new Map<string, WorkspaceFolder>();
-  const migratedFiles = files.map((file) => {
-    const parts = file.title.split(/[\\/]+/).map((part) => part.trim()).filter(Boolean);
-    if (parts.length <= 1) {
-      return { ...file, parentId: WORKSPACE_ROOT_FOLDER_ID };
-    }
-    let parentId = WORKSPACE_ROOT_FOLDER_ID;
-    let path = "";
-    for (const folderTitle of parts.slice(0, -1)) {
-      path = path ? `${path}/${folderTitle}` : folderTitle;
-      let folder = foldersByPath.get(path);
-      if (!folder) {
-        folder = {
-          id: stableFolderId(path.toLowerCase()),
-          title: folderTitle,
-          parentId,
-          order: foldersByPath.size,
-        };
-        foldersByPath.set(path, folder);
-      }
-      parentId = folder.id;
-    }
-    return { ...file, title: normalizeWorkspaceFileTitle(parts.at(-1) ?? file.title), parentId };
-  });
-  return {
-    folders: [createWorkspaceRootFolder(), ...foldersByPath.values()],
-    files: migratedFiles,
-  };
-};
-
 const normalizeWorkspaceTree = (
   files: WorkspaceFile[],
   folders: WorkspaceFolder[],
@@ -740,7 +671,7 @@ export const finalizeWorkspaceState = (
   };
 };
 
-export const migrateWorkspacePayload = (
+export const parseWorkspacePayload = (
   payload: unknown,
   options: { includeLocationRoom?: boolean } = {},
 ): WorkspaceState | null => {
@@ -771,44 +702,7 @@ export const migrateWorkspacePayload = (
     );
   }
 
-  if (payload.version === 5 && payload.schema === "tabula.project" && isRecord(payload.files)) {
-    const migrated = migrateLegacyFilePaths(normalizeFilesFromMap(payload.files, payload.fileOrder));
-    return finalizeWorkspaceState(migrated.files, activeFileId, commentsByFileId, {
-      ...options,
-      folders: migrated.folders,
-      openFileIds,
-    });
-  }
-
   return null;
-};
-
-const readJsonFromStorage = (key: string, storage: WorkspaceStorageAdapter) => {
-  let stored: string | null;
-  try {
-    stored = storage.getItem(key);
-  } catch {
-    return null;
-  }
-
-  if (!stored) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(stored) as unknown;
-  } catch {
-    return null;
-  }
-};
-
-export const readStoredWorkspace = (
-  storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
-): WorkspaceState | null => {
-  return migrateWorkspacePayload(
-    readJsonFromStorage(PROJECT_STORAGE_KEY, storage) ?? readJsonFromStorage(LEGACY_PROJECT_STORAGE_KEY, storage),
-    { includeLocationRoom: false },
-  );
 };
 
 export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {
@@ -817,10 +711,7 @@ export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {
     return { source: "room", room, workspace: createRoomWorkspaceState(room) };
   }
 
-  const storedWorkspace = readStoredWorkspace();
-  return storedWorkspace
-    ? { source: "localStorage", workspace: storedWorkspace }
-    : { source: "starter", workspace: finalizeWorkspaceState([]) };
+  return { source: "starter", workspace: finalizeWorkspaceState([]) };
 };
 
 export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
@@ -875,84 +766,6 @@ export const createStoredWorkspace = ({
     files: Object.fromEntries(storedFiles.map((file) => [file.id, serializeFile(file)])),
     commentsByFileId,
   };
-};
-
-export const getStoredWorkspaceContentSignature = ({
-  folders = [createWorkspaceRootFolder()],
-  files,
-  openFileIds = files.map((file) => file.id),
-  activeFileId,
-  commentsByFileId,
-}: CreateStoredWorkspaceInput) => {
-  const storedFiles = pruneEmptyGeneratedLivePlaceholders(files, commentsByFileId);
-  const storedFileIds = new Set(storedFiles.map((file) => file.id));
-  const nextActiveFileId = storedFileIds.has(activeFileId) ? activeFileId : (storedFiles[0]?.id ?? "");
-
-  return JSON.stringify({
-    version: PROJECT_STORAGE_VERSION,
-    activeFileId: nextActiveFileId,
-    openFileIds: openFileIds.filter(
-      (fileId, index, fileIdList) => storedFileIds.has(fileId) && fileIdList.indexOf(fileId) === index,
-    ),
-    fileOrder: storedFiles.map((file) => file.id),
-    folderOrder: folders.map((folder) => folder.id),
-    folders: Object.fromEntries(folders.map((folder) => [folder.id, { ...folder, roomId: undefined }])),
-    files: Object.fromEntries(storedFiles.map((file) => [file.id, serializeFile(file)])),
-    commentsByFileId,
-  });
-};
-
-export const createStoredWorkspaceManifest = ({
-  files,
-  openFileIds = files.map((file) => file.id),
-  activeFileId,
-  commentsByFileId,
-}: CreateStoredWorkspaceInput): StoredWorkspaceManifestV1 => ({
-  schema: "tabula.project.manifest",
-  version: 1,
-  savedAt: new Date().toISOString(),
-  activeFileId,
-  openFileIds: openFileIds.filter(
-    (fileId, index, fileIdList) => files.some((file) => file.id === fileId) && fileIdList.indexOf(fileId) === index,
-  ),
-  fileCount: files.length,
-  commentCount: Object.values(commentsByFileId).reduce((count, comments) => count + comments.length, 0),
-});
-
-export const writeStoredWorkspace = (
-  workspace: WorkspaceState,
-  storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
-) => {
-  storage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createStoredWorkspace(workspace)));
-};
-
-export const writeStoredWorkspaceManifest = (
-  workspace: WorkspaceState,
-  storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
-) => {
-  storage.setItem(PROJECT_STORAGE_MANIFEST_KEY, JSON.stringify(createStoredWorkspaceManifest(workspace)));
-};
-
-export const clearStoredWorkspace = (
-  storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
-) => {
-  storage.removeItem?.(PROJECT_STORAGE_KEY);
-  storage.removeItem?.(LEGACY_PROJECT_STORAGE_KEY);
-};
-
-export const clearStoredWorkspaceIfCurrent = (
-  workspace: WorkspaceState,
-  storage: WorkspaceStorageAdapter = browserWorkspaceStorageAdapter,
-) => {
-  const storedWorkspace = readStoredWorkspace(storage);
-  if (!storedWorkspace) {
-    clearStoredWorkspace(storage);
-    return;
-  }
-
-  if (getStoredWorkspaceContentSignature(storedWorkspace) === getStoredWorkspaceContentSignature(workspace)) {
-    clearStoredWorkspace(storage);
-  }
 };
 
 export const initialWorkspaceState = (): WorkspaceState => {

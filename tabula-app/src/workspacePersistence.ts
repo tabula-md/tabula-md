@@ -1,9 +1,4 @@
 import type { WorkspaceState } from "./workspaceStorage";
-import {
-  clearStoredWorkspaceIfCurrent,
-  writeStoredWorkspace,
-  writeStoredWorkspaceManifest,
-} from "./workspaceStorage";
 import { writeIndexedDbWorkspace } from "./workspaceIndexedDb";
 
 export const DEFAULT_WORKSPACE_PERSISTENCE_DELAY_MS = 400;
@@ -17,8 +12,9 @@ type WorkspacePersistenceTimers = {
 
 type WorkspacePersistenceQueueOptions = {
   delayMs?: number;
+  onError?: (error: unknown) => void;
   timers?: WorkspacePersistenceTimers;
-  writeWorkspace?: (workspace: WorkspaceState) => void;
+  writeWorkspace?: (workspace: WorkspaceState) => Promise<void> | void;
 };
 
 const defaultTimers: WorkspacePersistenceTimers = {
@@ -28,19 +24,25 @@ const defaultTimers: WorkspacePersistenceTimers = {
 
 export const createWorkspacePersistenceQueue = ({
   delayMs = DEFAULT_WORKSPACE_PERSISTENCE_DELAY_MS,
+  onError,
   timers = defaultTimers,
-  writeWorkspace = writeWorkspaceToPrimaryStores,
+  writeWorkspace = writeWorkspaceToPrimaryStore,
 }: WorkspacePersistenceQueueOptions = {}) => {
   let pendingWorkspace: WorkspaceState | null = null;
   let pendingTimer: TimerHandle | null = null;
 
   const clearPendingTimer = () => {
-    if (!pendingTimer) {
-      return;
-    }
-
+    if (!pendingTimer) return;
     timers.clearTimeout(pendingTimer);
     pendingTimer = null;
+  };
+
+  const persist = (workspace: WorkspaceState) => {
+    try {
+      void Promise.resolve(writeWorkspace(workspace)).catch(onError);
+    } catch (error) {
+      onError?.(error);
+    }
   };
 
   const flush = () => {
@@ -48,11 +50,10 @@ export const createWorkspacePersistenceQueue = ({
       clearPendingTimer();
       return;
     }
-
     const workspace = pendingWorkspace;
     pendingWorkspace = null;
     clearPendingTimer();
-    writeWorkspace(workspace);
+    persist(workspace);
   };
 
   return {
@@ -70,13 +71,5 @@ export const createWorkspacePersistenceQueue = ({
   };
 };
 
-export const writeWorkspaceToPrimaryStores = (workspace: WorkspaceState) => {
-  writeStoredWorkspaceManifest(workspace);
-  void writeIndexedDbWorkspace(workspace)
-    .then(() => {
-      clearStoredWorkspaceIfCurrent(workspace);
-    })
-    .catch(() => {
-      writeStoredWorkspace(workspace);
-    });
-};
+export const writeWorkspaceToPrimaryStore = (workspace: WorkspaceState) =>
+  writeIndexedDbWorkspace(workspace);

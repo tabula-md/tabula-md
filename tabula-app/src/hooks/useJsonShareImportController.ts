@@ -9,13 +9,12 @@ import {
 } from "../share";
 import {
   syncUrlForFile,
-  writeStoredWorkspace,
-  writeStoredWorkspaceManifest,
   type FileComment,
   type InitialWorkspaceSnapshot,
   type WorkspaceFile,
   type WorkspaceState,
 } from "../workspaceStorage";
+import { writeIndexedDbWorkspace } from "../workspaceIndexedDb";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import { useEventCallback } from "./useEventCallback";
 
@@ -34,7 +33,11 @@ type UseJsonShareImportControllerArgs = {
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
   replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
   resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
-  showToast: (message: string, tone?: "neutral" | "error") => void;
+  showToast: (
+    message: string,
+    tone?: "neutral" | "error",
+    action?: { actionLabel?: string; onAction?: () => void },
+  ) => void;
   workspaceSource: InitialWorkspaceSnapshot["source"];
 };
 
@@ -70,19 +73,46 @@ export function useJsonShareImportController({
   });
 
   const replaceWorkspaceWithJsonShare = useEventCallback((workspace: WorkspaceState) => {
+    const previousWorkspace = getWorkspaceSnapshot?.();
     jsonShareImportCleanupRef.current = null;
     handledJsonShareRouteRef.current = null;
     onBeforeWorkspaceBoundary?.();
     const nextActiveFile = replaceWorkspace(workspace);
     replaceCommentsByFileId(workspace.commentsByFileId);
-    writeStoredWorkspaceManifest(workspace);
-    writeStoredWorkspace(workspace);
+    void writeIndexedDbWorkspace(workspace).catch((error: unknown) => {
+      clientErrorReporter.report({
+        feature: "workspace",
+        operation: "persist-export-import",
+        error,
+      });
+      showToast("The copy opened, but it couldn’t be saved in this browser.", "error");
+    });
     clearFileHistory();
     resetCollaborationState(nextActiveFile?.roomId ? "connecting" : "idle");
     closeFloatingChrome();
     syncUrlForFile(nextActiveFile, "replace");
     setJsonShareImport(null);
-    showToast("Export link loaded.");
+    showToast("Export copy opened.", "neutral", previousWorkspace ? {
+      actionLabel: "Undo",
+      onAction: () => {
+        onBeforeWorkspaceBoundary?.();
+        const restoredActiveFile = replaceWorkspace(previousWorkspace);
+        replaceCommentsByFileId(previousWorkspace.commentsByFileId);
+        void writeIndexedDbWorkspace(previousWorkspace).catch((error: unknown) => {
+          clientErrorReporter.report({
+            feature: "workspace",
+            operation: "persist-export-import-undo",
+            error,
+          });
+          showToast("The previous workspace was restored but couldn’t be saved.", "error");
+        });
+        clearFileHistory();
+        resetCollaborationState(restoredActiveFile?.roomId ? "connecting" : "idle");
+        closeFloatingChrome();
+        syncUrlForFile(restoredActiveFile, "replace");
+        showToast("Previous workspace restored.");
+      },
+    } : undefined);
   });
 
   useEffect(() => {

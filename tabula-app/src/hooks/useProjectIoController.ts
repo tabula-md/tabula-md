@@ -4,7 +4,7 @@ import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
 import { createProjectArchive } from "../projectArchive";
 import {
-  migrateWorkspacePayload,
+  parseWorkspacePayload,
   syncUrlForFile,
   type FileComment,
   type WorkspaceFile,
@@ -248,7 +248,7 @@ export function useProjectIoController({
       return;
     }
 
-    const nextWorkspace = migrateWorkspacePayload(parsedWorkspace, { includeLocationRoom: false });
+    const nextWorkspace = parseWorkspacePayload(parsedWorkspace, { includeLocationRoom: false });
     if (!nextWorkspace) {
       showToast(getUnsupportedProjectSchemaMessage(), "error");
       return;

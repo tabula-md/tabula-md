@@ -9,7 +9,7 @@ import {
   finalizeWorkspaceState,
   getRoomFromLocation,
   getLiveFileTitle,
-  migrateWorkspacePayload,
+  parseWorkspacePayload,
   PROJECT_STORAGE_VERSION,
   readInitialWorkspaceSnapshot,
   syncUrlForFile,
@@ -49,23 +49,13 @@ describe("file tab state transitions", () => {
   });
 
   it("starts from a room-only workspace when the URL has a room hash", () => {
-    const storage = new Map<string, string>();
     vi.stubGlobal("window", {
-      localStorage: {
-        getItem: (key: string) => storage.get(key) ?? null,
-        removeItem: (key: string) => storage.delete(key),
-        setItem: (key: string, value: string) => storage.set(key, value),
-      },
       location: {
         origin: "https://tabula.test",
         pathname: "/",
         hash: `#room=browserroom,${VALID_ROOM_KEY}`,
       },
     });
-    storage.set(
-      "tabula.project.v5",
-      JSON.stringify(createStoredWorkspace(finalizeWorkspaceState(ensureDefaultFiles([], { ensureUntitled: true })))),
-    );
 
     const snapshot = readInitialWorkspaceSnapshot();
 
@@ -178,7 +168,7 @@ describe("project persistence", () => {
       activeFileId: "design",
       commentsByFileId: {},
     });
-    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
 
     expect(stored).toMatchObject({
       schema: "tabula.project",
@@ -208,30 +198,6 @@ describe("project persistence", () => {
     ]);
   });
 
-  it("migrates v5 path-like titles into a real v6 folder tree", () => {
-    const legacyFile = createWorkspaceFile(1, {
-      id: "adr",
-      title: "docs/decisions/ADR.md",
-      text: "# Decision",
-    });
-    const restored = migrateWorkspacePayload({
-      schema: "tabula.project",
-      version: 5,
-      savedAt: "2026-07-10T00:00:00.000Z",
-      activeFileId: "adr",
-      openFileIds: ["adr"],
-      fileOrder: ["adr"],
-      files: { adr: legacyFile },
-      commentsByFileId: {},
-    }, { includeLocationRoom: false });
-
-    const docsFolder = restored?.folders.find((folder) => folder.title === "docs");
-    const decisionsFolder = restored?.folders.find((folder) => folder.title === "decisions");
-    expect(docsFolder?.parentId).toBe("workspace-root");
-    expect(decisionsFolder?.parentId).toBe(docsFolder?.id);
-    expect(restored?.files[0]).toMatchObject({ title: "ADR.md", parentId: decisionsFolder?.id });
-  });
-
   it("repairs cyclic v6 folders instead of exposing an unusable tree", () => {
     const stored = createStoredWorkspace({
       folders: [
@@ -243,14 +209,14 @@ describe("project persistence", () => {
       activeFileId: "file",
       commentsByFileId: {},
     });
-    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
 
     expect(restored?.files[0]).toMatchObject({ title: "folder name.md", parentId: "workspace-root" });
     expect(restored?.folders.some((folder) => folder.id !== "workspace-root" && folder.parentId === "workspace-root")).toBe(true);
   });
 
   it("rejects non-Tabula project payloads", () => {
-    const restored = migrateWorkspacePayload(
+    const restored = parseWorkspacePayload(
       {
         schema: "unknown.workspace",
         version: 2,
@@ -273,7 +239,7 @@ describe("project persistence", () => {
       activeFileId: "local",
       commentsByFileId: {},
     });
-    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
 
     expect(restored?.files.map((file) => file.title)).toEqual(["LOCAL.md"]);
     expect(restored?.activeFileId).toBe("local");
@@ -288,7 +254,7 @@ describe("project persistence", () => {
       activeFileId: "blank",
       commentsByFileId: {},
     });
-    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
 
     expect(restored?.files.map((file) => file.title)).toEqual(["README.md", "Untitled.md"]);
     expect(restored?.activeFileId).toBe("tabula-readme");
@@ -313,7 +279,7 @@ describe("project persistence", () => {
       activeFileId: "live",
       commentsByFileId: {},
     });
-    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
     const localFile = restored?.files.find((file) => file.id === "local");
     const liveFile = restored?.files.find((file) => file.id === "live");
 
@@ -354,7 +320,7 @@ describe("project persistence", () => {
       activeFileId: "live-room-empty",
       commentsByFileId: {},
     });
-    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
 
     expect(Object.keys(stored.files)).toEqual(["local"]);
     expect(stored.activeFileId).toBe("local");
@@ -383,7 +349,7 @@ describe("project persistence", () => {
         ],
       },
     });
-    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
 
     expect(Object.keys(stored.files)).toEqual([liveFile.id]);
     expect(restored?.files.map((file) => file.id)).toEqual([liveFile.id]);
@@ -407,7 +373,7 @@ describe("project persistence", () => {
       activeFileId: "broken-live",
       commentsByFileId: {},
     });
-    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
     const brokenFile = restored?.files.find((file) => file.id === "broken-live");
 
     expect(stored.files["broken-live"]).toMatchObject({
@@ -458,7 +424,7 @@ describe("project persistence", () => {
         ],
       },
     });
-    const restored = migrateWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
 
     expect(restored?.commentsByFileId.local[0]).toMatchObject({
       quote: "Quoted source",

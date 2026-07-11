@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
 import type { FileComment, WorkspaceFile, WorkspaceState } from "../workspaceStorage";
+import { useEventCallback } from "./useEventCallback";
 
 type WorkspaceHydrationStatus = "idle" | "pending" | "applied" | "skipped";
 
 type UseIndexedDbWorkspaceHydrationOptions = {
   enabled: boolean;
   initialWorkspace: WorkspaceState;
+  onError?: (error: unknown) => void;
   workspace: WorkspaceState;
   readWorkspace?: () => Promise<WorkspaceState | null>;
   replaceWorkspace: (
@@ -68,6 +70,7 @@ export const shouldDeferIndexedDbWorkspacePersistence = ({
 export const useIndexedDbWorkspaceHydration = ({
   enabled,
   initialWorkspace,
+  onError,
   workspace,
   readWorkspace = readIndexedDbWorkspace,
   replaceWorkspace,
@@ -75,6 +78,9 @@ export const useIndexedDbWorkspaceHydration = ({
 }: UseIndexedDbWorkspaceHydrationOptions) => {
   const [status, setStatus] = useState<WorkspaceHydrationStatus>(enabled ? "pending" : "idle");
   const workspaceRef = useRef(workspace);
+  const onErrorEvent = useEventCallback((error: unknown) => onError?.(error));
+  const replaceCommentsEvent = useEventCallback(replaceCommentsByFileId);
+  const replaceWorkspaceEvent = useEventCallback(replaceWorkspace);
 
   useEffect(() => {
     workspaceRef.current = workspace;
@@ -107,8 +113,8 @@ export const useIndexedDbWorkspaceHydration = ({
           return;
         }
 
-        replaceCommentsByFileId(indexedDbWorkspace.commentsByFileId);
-        replaceWorkspace({
+        replaceCommentsEvent(indexedDbWorkspace.commentsByFileId);
+        replaceWorkspaceEvent({
           files: indexedDbWorkspace.files,
           folders: indexedDbWorkspace.folders,
           openFileIds: indexedDbWorkspace.openFileIds,
@@ -116,8 +122,9 @@ export const useIndexedDbWorkspaceHydration = ({
         });
         setStatus("applied");
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (!cancelled) {
+          onErrorEvent(error);
           setStatus("skipped");
         }
       });
@@ -125,7 +132,7 @@ export const useIndexedDbWorkspaceHydration = ({
     return () => {
       cancelled = true;
     };
-  }, [enabled, initialWorkspace, readWorkspace, replaceCommentsByFileId, replaceWorkspace]);
+  }, [enabled, initialWorkspace, onErrorEvent, readWorkspace, replaceCommentsEvent, replaceWorkspaceEvent]);
 
   return {
     deferPersistence: shouldDeferIndexedDbWorkspacePersistence({

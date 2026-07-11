@@ -24,6 +24,7 @@ export type WorkspaceRuntimeView = {
     onOpenLocalWorkspace: () => void;
     onRetry: () => void;
   };
+  localWorkspaceOpening: boolean;
   mainPanelClassName: string;
   menuSurfaceProps: WorkspaceMenuSurfaceProps;
   overlayProps: WorkspaceOverlaySurfaceProps;

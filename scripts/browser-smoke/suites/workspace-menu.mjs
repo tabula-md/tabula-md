@@ -279,8 +279,8 @@ export async function run(ctx) {
     expect((await page.getByText("Invite agent").count()) === 0, "Share modal should not invite agents before a room exists.");
     expect((await page.getByText("Export to link").count()) > 0, "Share modal should expose link export as a first-class local action.");
     expect(
-      (await page.getByText("Create a read-only encrypted link to a copy of the included documents.").count()) === 1,
-      "Export link should describe read-only encrypted copy export.",
+      (await page.getByText("Create an encrypted point-in-time copy. Changes do not sync back.").count()) === 1,
+      "Export link should describe an independent encrypted copy.",
     );
     expect((await page.getByRole("button", { name: "Export to link" }).count()) === 1, "Share modal should offer export link from the same included documents.");
     expect((await page.getByText(/unavailable in this build/i).count()) === 0, "Share modal should not expose build-status copy to users.");
@@ -388,7 +388,7 @@ export async function run(ctx) {
     expect(shareModalStyle.dividerCount === 0, "Share modal should not use legacy stacked Or dividers.");
     expect(shareModalStyle.shareDividerCount === 1, "Share modal should separate live room and export choices.");
     expect(/included documents/i.test(shareModalStyle.text), "Share modal should make the document scope explicit.");
-    expect(/\bread-only\b/i.test(shareModalStyle.text), "Export link should be described as a read-only copy.");
+    expect(/point-in-time/i.test(shareModalStyle.text), "Export link should be described as an independent point-in-time copy.");
     expect(!/\bpublish\b/i.test(shareModalStyle.text), "Export link should not be described as publishing.");
     const modalPointerState = await page.evaluate(() => {
       const fileShell = document.querySelector(".file-shell");

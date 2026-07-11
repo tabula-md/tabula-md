@@ -7,6 +7,7 @@ type UseWorkspacePersistenceRuntimeOptions = {
   getWorkspaceSnapshot?: () => WorkspaceState;
   initialWorkspace: WorkspaceState;
   onBeforePersist?: () => void;
+  onError?: (error: unknown) => void;
   replaceCommentsByFileId: (
     commentsByFileId: Record<string, FileComment[]>,
   ) => void;
@@ -21,6 +22,7 @@ export function useWorkspacePersistenceRuntime({
   getWorkspaceSnapshot,
   initialWorkspace,
   onBeforePersist,
+  onError,
   replaceCommentsByFileId,
   replaceWorkspace,
   workspace,
@@ -28,6 +30,7 @@ export function useWorkspacePersistenceRuntime({
   const indexedDbHydration = useIndexedDbWorkspaceHydration({
     enabled,
     initialWorkspace,
+    onError,
     workspace,
     replaceCommentsByFileId,
     replaceWorkspace,
@@ -36,6 +39,7 @@ export function useWorkspacePersistenceRuntime({
   useQueuedWorkspacePersistence(workspace, {
     enabled: !indexedDbHydration.deferPersistence,
     getWorkspaceSnapshot,
+    onError,
     onBeforePersist,
   });
 
