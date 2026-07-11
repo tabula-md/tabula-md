@@ -5,6 +5,7 @@ import { TopChrome } from "./TopChrome";
 import type { Collaborator, ConnectionStatus } from "../collaboration";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import { getCollaboratorDisplayList } from "../collaboration/collabCollaborators";
 import {
   isEmptyGeneratedLivePlaceholder,
   type WorkspaceFile,
@@ -105,12 +106,21 @@ export function WorkspaceTopChrome({
   );
   const visibleActiveFile =
     activeFile && !isEmptyGeneratedLivePlaceholder(activeFile) ? activeFile : undefined;
+  const displayedParticipants = useMemo(
+    () => getCollaboratorDisplayList([identity, ...collaborators]),
+    [collaborators, identity],
+  );
+  const displayedIdentity =
+    displayedParticipants.find((participant) => participant.id === identity.id) ?? identity;
+  const displayedCollaborators = displayedParticipants.filter(
+    (participant) => participant.id !== identity.id,
+  );
 
   const fileTabs = (
     <FileTabs
       files={visibleOpenFiles}
       activeFile={visibleActiveFile}
-      collaborators={collaborators}
+      collaborators={displayedCollaborators}
       onAddFile={onAddFile}
       onSelectFile={onSelectFile}
       onRenameFile={onRenameFile}
@@ -124,7 +134,8 @@ export function WorkspaceTopChrome({
   const shareControls = shareSubjectFile ? (
     <>
       <ShareTrigger
-        isLive={isLiveConnected}
+        connectionStatus={connectionStatus}
+        isLive={isLive}
         language={language}
         shareOpen={shareOpen}
         onToggleShare={onToggleShare}
@@ -167,8 +178,8 @@ export function WorkspaceTopChrome({
       rightPanelOpen={rightPanelOpen}
       isLiveConnected={isLiveConnected}
       language={language}
-      identity={identity}
-      collaborators={collaborators}
+      identity={displayedIdentity}
+      collaborators={displayedCollaborators}
       activeText={activeText}
       fileTabs={fileTabs}
       shareControls={shareControls}

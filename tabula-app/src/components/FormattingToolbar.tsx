@@ -11,7 +11,7 @@ import { MoreHorizontal } from "lucide-react";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
 import {
   formattingToolbarGroupOrder,
-  getFormattingToolbarCommandsByPlacement,
+  getFormattingToolbarLayout,
   type FormattingToolbarCommand,
   type FormattingToolbarCommandActions,
 } from "../toolbar/formattingCommandRegistry";
@@ -30,9 +30,6 @@ type GroupedFormattingCommands = {
   commands: FormattingToolbarCommand[];
 };
 
-const primaryCommands = getFormattingToolbarCommandsByPlacement("primary");
-const overflowCommands = getFormattingToolbarCommandsByPlacement("overflow");
-
 const groupFormattingCommands = (
   commands: FormattingToolbarCommand[],
 ): GroupedFormattingCommands[] =>
@@ -43,8 +40,12 @@ const groupFormattingCommands = (
     }))
     .filter(({ commands }) => commands.length > 0);
 
-const primaryCommandGroups = groupFormattingCommands(primaryCommands);
-const overflowCommandGroups = groupFormattingCommands(overflowCommands);
+const compactToolbarMediaQuery = "(max-width: 560px)";
+
+const isCompactToolbarViewport = () =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia(compactToolbarMediaQuery).matches;
 
 const getCommandTitle = (command: FormattingToolbarCommand) =>
   command.shortcut ? `${command.tooltip} (${command.shortcut})` : command.tooltip;
@@ -98,6 +99,7 @@ export function FormattingToolbar({
   onUndo,
 }: FormattingToolbarProps) {
   const [overflowOpen, setOverflowOpen] = useState(false);
+  const [compact, setCompact] = useState(isCompactToolbarViewport);
   const [overflowMenuStyle, setOverflowMenuStyle] = useState<CSSProperties | undefined>();
   const overflowRef = useRef<HTMLDivElement | null>(null);
   const overflowButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -112,6 +114,18 @@ export function FormattingToolbar({
     }),
     [canRedo, canUndo, onFormat, onRedo, onUndo],
   );
+  const { primary, overflow } = useMemo(() => getFormattingToolbarLayout(compact), [compact]);
+  const primaryCommandGroups = useMemo(() => groupFormattingCommands(primary), [primary]);
+  const overflowCommandGroups = useMemo(() => groupFormattingCommands(overflow), [overflow]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia(compactToolbarMediaQuery);
+    const updateCompactState = () => setCompact(mediaQuery.matches);
+    updateCompactState();
+    mediaQuery.addEventListener("change", updateCompactState);
+    return () => mediaQuery.removeEventListener("change", updateCompactState);
+  }, []);
 
   const closeOverflowMenu = (restoreFocus = false) => {
     setOverflowOpen(false);
@@ -241,7 +255,7 @@ export function FormattingToolbar({
             {commands.map((command) => renderPrimaryCommand(command, actions))}
           </Fragment>
         ))}
-        {overflowCommands.length > 0 && (
+        {overflow.length > 0 && (
           <>
             <span className="toolbar-separator" />
             <div className="formatting-overflow" ref={overflowRef}>

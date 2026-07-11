@@ -91,8 +91,14 @@
   display: none;
 }
 
+.markdown-editor-shell.collaboration-bound .cm-scroller {
+  box-sizing: border-box;
+  padding-top: 22px;
+}
+
 .markdown-editor .cm-ySelectionInfo {
-  top: calc(100% + 3px);
+  top: auto;
+  bottom: calc(100% + 2px);
   left: -2px;
   z-index: 8;
   max-width: min(180px, 45vw);
@@ -108,4 +114,23 @@
   line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  pointer-events: none;
+  animation: remote-cursor-label 2.4s ease forwards;
+}
+
+.markdown-editor .cm-ySelectionCaret:hover .cm-ySelectionInfo {
+  opacity: 1;
+  animation: none;
+}
+
+@keyframes remote-cursor-label {
+  0%, 62% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .markdown-editor .cm-ySelectionInfo {
+    opacity: 0;
+    animation: none;
+  }
 }

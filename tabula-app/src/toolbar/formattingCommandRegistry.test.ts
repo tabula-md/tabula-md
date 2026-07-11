@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   formattingToolbarCommands,
   getFormattingToolbarCommandsByPlacement,
+  getFormattingToolbarLayout,
 } from "./formattingCommandRegistry";
 
 describe("formatting command registry", () => {
@@ -31,6 +32,23 @@ describe("formatting command registry", () => {
       "footnote",
       "clear-formatting",
     ]);
+  });
+
+  it("keeps essential commands and More reachable on compact screens", () => {
+    const layout = getFormattingToolbarLayout(true);
+
+    expect(layout.primary.map((command) => command.id)).toEqual([
+      "undo",
+      "redo",
+      "bold",
+      "italic",
+      "link",
+    ]);
+    expect(layout.overflow.map((command) => command.id)).toEqual(
+      formattingToolbarCommands
+        .filter((command) => !["undo", "redo", "bold", "italic", "link"].includes(command.id))
+        .map((command) => command.id),
+    );
   });
 
   it("routes history and Markdown commands through their registered actions", () => {

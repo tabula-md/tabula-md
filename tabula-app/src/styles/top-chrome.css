@@ -89,16 +89,30 @@
   background: var(--surface-hover);
 }
 
-.share-trigger.live {
+.share-trigger.live.connected {
   color: var(--text-primary);
   background: var(--success-soft);
 }
 
-.share-trigger.live:hover,
-.share-trigger.live.active {
+.share-trigger.live.connected:hover,
+.share-trigger.live.connected.active {
   color: var(--text-primary);
   background: var(--success-soft);
   box-shadow: inset 0 0 0 1px rgba(88, 163, 106, 0.26);
+}
+
+.share-trigger.live.reconnecting,
+.share-trigger.live.disconnected {
+  color: var(--text-primary);
+  background: var(--surface-muted);
+}
+
+.share-trigger.live.reconnecting:hover,
+.share-trigger.live.reconnecting.active,
+.share-trigger.live.disconnected:hover,
+.share-trigger.live.disconnected.active {
+  background: var(--surface-hover);
+  box-shadow: inset 0 0 0 1px var(--line-subtle);
 }
 
 .share-live-dot {
@@ -110,6 +124,16 @@
   border-radius: 50%;
   background: var(--status-dot-connected);
   box-shadow: 0 0 0 2px var(--success-soft);
+}
+
+.share-trigger.reconnecting .share-live-dot {
+  background: var(--status-dot-connecting);
+  box-shadow: 0 0 0 2px var(--surface-muted);
+}
+
+.share-trigger.disconnected .share-live-dot {
+  background: var(--status-dot-disconnected);
+  box-shadow: 0 0 0 2px var(--surface-muted);
 }
 
 .share-label-visible {
