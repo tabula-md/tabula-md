@@ -4,12 +4,12 @@ import type {
 } from "react";
 import { EmptyFileState } from "./EmptyFileState";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import type { ShortcutPlatform } from "../keyboardShortcuts";
 
 export type WorkspaceEmptySurfaceProps = {
-  alternateShortcutModifier: string;
   dropActive: boolean;
   language: WorkspaceLanguage;
-  primaryShortcutModifier: string;
+  shortcutPlatform: ShortcutPlatform;
   workspaceRef: RefObject<HTMLElement | null>;
   onBrowseFiles: () => void;
   onDragLeave: DragEventHandler<HTMLElement>;
@@ -21,10 +21,9 @@ export type WorkspaceEmptySurfaceProps = {
 };
 
 export function WorkspaceEmptySurface({
-  alternateShortcutModifier,
   dropActive,
   language,
-  primaryShortcutModifier,
+  shortcutPlatform,
   workspaceRef,
   onBrowseFiles,
   onDragLeave,
@@ -48,8 +47,7 @@ export function WorkspaceEmptySurface({
         onOpenFile={onOpenFile}
         onBrowseFiles={onBrowseFiles}
         onOpenHelp={onOpenHelp}
-        primaryShortcutModifier={primaryShortcutModifier}
-        alternateShortcutModifier={alternateShortcutModifier}
+        shortcutPlatform={shortcutPlatform}
       />
     </section>
   );

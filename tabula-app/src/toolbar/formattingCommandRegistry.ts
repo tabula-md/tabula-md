@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
+import type { SemanticShortcut } from "../keyboardShortcuts";
 import type { FormattingCommandId } from "./formattingCommandLocale";
 
 export type FormattingToolbarCommandGroup =
@@ -59,7 +60,7 @@ export type FormattingToolbarCommand = {
   id: FormattingCommandId;
   group: FormattingToolbarCommandGroup;
   icon: ComponentType<{ size?: number }>;
-  shortcut?: string;
+  shortcut?: SemanticShortcut;
   placement: FormattingToolbarCommandPlacement;
   applyCommand: ToolbarApplyCommand;
   isDisabled?: (state: FormattingToolbarCommandState) => boolean;
@@ -83,7 +84,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     id: "undo",
     group: "history",
     icon: Undo2,
-    shortcut: "⌘Z",
+    shortcut: "Mod+Z",
     placement: "history",
     applyCommand: ({ onUndo }) => onUndo(),
     isDisabled: ({ canUndo }) => !canUndo,
@@ -92,7 +93,7 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     id: "redo",
     group: "history",
     icon: Redo2,
-    shortcut: "⇧⌘Z",
+    shortcut: "Mod+Shift+Z",
     placement: "history",
     applyCommand: ({ onRedo }) => onRedo(),
     isDisabled: ({ canRedo }) => !canRedo,
@@ -101,28 +102,28 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     command: "bold",
     group: "inline",
     icon: Bold,
-    shortcut: "⌘B",
+    shortcut: "Mod+B",
     placement: "inline",
   }),
   createFormattingCommand({
     command: "italic",
     group: "inline",
     icon: Italic,
-    shortcut: "⌘I",
+    shortcut: "Mod+I",
     placement: "inline",
   }),
   createFormattingCommand({
     command: "inline-code",
     group: "inline",
     icon: Code2,
-    shortcut: "⌘E",
+    shortcut: "Mod+E",
     placement: "inline",
   }),
   createFormattingCommand({
     command: "link",
     group: "inline",
     icon: Link2,
-    shortcut: "⌘K",
+    shortcut: "Mod+K",
     placement: "inline",
   }),
   createFormattingCommand({

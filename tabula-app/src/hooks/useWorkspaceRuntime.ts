@@ -5,7 +5,7 @@ import {
   useState,
 } from "react";
 import { createHelpMarkdown } from "../helpMarkdown";
-import { getShortcutLabels } from "../keyboardShortcuts";
+import { getShortcutPlatform } from "../keyboardShortcuts";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { type TextChange, type WorkspaceRoomComment, type WorkspaceRoomSnapshot } from "@tabula-md/tabula";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
@@ -162,7 +162,7 @@ export function useWorkspaceRuntime() {
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
-  const [shortcutLabels] = useState(() => getShortcutLabels());
+  const [shortcutPlatform] = useState(() => getShortcutPlatform());
   const { dismissToast, pauseToast, resumeToast, toast, showToast } = useAppToast();
   const { identity, updateIdentityName, normalizeIdentityName } =
     useWorkspaceIdentity();
@@ -879,7 +879,7 @@ export function useWorkspaceRuntime() {
     deleteWorkspaceFileAction,
     duplicateWorkspaceFile,
     files,
-    helpMarkdown: createHelpMarkdown(shortcutLabels),
+    helpMarkdown: createHelpMarkdown(shortcutPlatform),
     historyByFileId,
     openFileIds,
     onBeforeWorkspaceBoundary: flushPendingEditorCommit,
@@ -1145,10 +1145,9 @@ export function useWorkspaceRuntime() {
     activeFile,
     documentSurface,
     emptySurfaceProps: {
-      alternateShortcutModifier: shortcutLabels.alternate,
       dropActive: emptyDropActive,
       language: workspacePreferences.language,
-      primaryShortcutModifier: shortcutLabels.primary,
+      shortcutPlatform,
       workspaceRef,
       onBrowseFiles: openFilesPanel,
       onDragLeave: handleEmptyWorkspaceDragLeave,

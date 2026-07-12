@@ -11,6 +11,7 @@ import {
   normalizeWorkspaceIdentity,
 } from "./hooks/useWorkspaceIdentity";
 import { createHelpMarkdown, getKeyboardShortcuts } from "./helpMarkdown";
+import { formatShortcut } from "./keyboardShortcuts";
 import {
   DEFAULT_WORKSPACE_PREFERENCES,
   parseWorkspacePreferences,
@@ -394,14 +395,17 @@ describe("workspace active file editor controller", () => {
 });
 
 describe("workspace help markdown", () => {
-  const shortcutLabels = { primary: "Cmd", alternate: "Option" } as const;
-
   it("creates HELP.md with the app shortcut table", () => {
-    expect(getKeyboardShortcuts(shortcutLabels)).toContainEqual({
-      keys: "Cmd + Option + N",
+    expect(getKeyboardShortcuts("apple")).toContainEqual({
+      keys: "⌥⌘N",
       action: "New document",
     });
-    expect(createHelpMarkdown(shortcutLabels)).toContain("| Cmd + Option + 2 | Split mode |");
+    expect(createHelpMarkdown("standard")).toContain("| Ctrl + Alt + 2 | Split mode |");
+  });
+
+  it("formats semantic shortcuts for the current operating system", () => {
+    expect(formatShortcut("Mod+Shift+Z", "apple")).toBe("⇧⌘Z");
+    expect(formatShortcut("Mod+Shift+Z", "standard")).toBe("Ctrl + Shift + Z");
   });
 });
 

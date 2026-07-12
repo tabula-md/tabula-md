@@ -1,31 +1,46 @@
-import type { ShortcutLabels } from "./keyboardShortcuts";
+import {
+  formatShortcut,
+  type SemanticShortcut,
+  type ShortcutPlatform,
+} from "./keyboardShortcuts";
 
-const getAppShortcut = ({ primary, alternate }: ShortcutLabels, key: string) => `${primary} + ${alternate} + ${key}`;
+type HelpShortcut = {
+  action: string;
+  context?: string;
+  gesture?: string;
+  shortcut?: SemanticShortcut;
+};
 
-export const getKeyboardShortcuts = (shortcutLabels: ShortcutLabels) => [
-  { keys: getAppShortcut(shortcutLabels, "N"), action: "New document" },
-  { keys: getAppShortcut(shortcutLabels, "O"), action: "Open Markdown file" },
-  { keys: getAppShortcut(shortcutLabels, "F"), action: "Browse project files" },
-  { keys: "?", action: "Open HELP.md" },
-  { keys: `${shortcutLabels.primary} + B`, action: "Bold" },
-  { keys: `${shortcutLabels.primary} + I`, action: "Italic" },
-  { keys: `${shortcutLabels.primary} + K`, action: "Link" },
-  { keys: `${shortcutLabels.primary} + Shift + 7`, action: "Numbered list" },
-  { keys: `${shortcutLabels.primary} + Shift + 8`, action: "Bullet list" },
-  { keys: `${shortcutLabels.primary} + Shift + 9`, action: "Quote" },
-  { keys: getAppShortcut(shortcutLabels, "1"), action: "Edit mode" },
-  { keys: getAppShortcut(shortcutLabels, "2"), action: "Split mode" },
-  { keys: getAppShortcut(shortcutLabels, "3"), action: "Preview mode" },
-  { keys: getAppShortcut(shortcutLabels, "Left"), action: "Previous file tab" },
-  { keys: getAppShortcut(shortcutLabels, "Right"), action: "Next file tab" },
-  { keys: "Enter in search", action: "Next search match" },
-  { keys: "Shift + Enter in search", action: "Previous search match" },
-  { keys: "Double-click tab", action: "Rename file" },
-  { keys: "Enter", action: "Commit rename" },
-  { keys: "Escape", action: "Cancel rename or close menu" },
+const helpShortcuts: HelpShortcut[] = [
+  { shortcut: "Mod+Alt+N", action: "New document" },
+  { shortcut: "Mod+Alt+O", action: "Open Markdown file" },
+  { shortcut: "Mod+Alt+F", action: "Browse project files" },
+  { shortcut: "?", action: "Open HELP.md" },
+  { shortcut: "Mod+B", action: "Bold" },
+  { shortcut: "Mod+I", action: "Italic" },
+  { shortcut: "Mod+K", action: "Link" },
+  { shortcut: "Mod+Shift+7", action: "Numbered list" },
+  { shortcut: "Mod+Shift+8", action: "Bullet list" },
+  { shortcut: "Mod+Shift+9", action: "Quote" },
+  { shortcut: "Mod+Alt+1", action: "Edit mode" },
+  { shortcut: "Mod+Alt+2", action: "Split mode" },
+  { shortcut: "Mod+Alt+3", action: "Preview mode" },
+  { shortcut: "Mod+Alt+ArrowLeft", action: "Previous file tab" },
+  { shortcut: "Mod+Alt+ArrowRight", action: "Next file tab" },
+  { shortcut: "Enter", context: "in search", action: "Next search match" },
+  { shortcut: "Shift+Enter", context: "in search", action: "Previous search match" },
+  { gesture: "Double-click tab", action: "Rename file" },
+  { shortcut: "Enter", action: "Commit rename" },
+  { shortcut: "Escape", action: "Cancel rename or close menu" },
 ];
 
-export const createHelpMarkdown = (shortcutLabels: ShortcutLabels) => `---
+export const getKeyboardShortcuts = (platform: ShortcutPlatform) =>
+  helpShortcuts.map(({ action, context, gesture, shortcut }) => ({
+    action,
+    keys: gesture ?? `${formatShortcut(shortcut ?? "", platform)}${context ? ` ${context}` : ""}`,
+  }));
+
+export const createHelpMarkdown = (platform: ShortcutPlatform) => `---
 title: HELP
 description: Quick reference for using Tabula.md.
 ---
@@ -57,5 +72,5 @@ description: Quick reference for using Tabula.md.
 
 | Shortcut | Action |
 | --- | --- |
-${getKeyboardShortcuts(shortcutLabels).map((shortcut) => `| ${shortcut.keys} | ${shortcut.action} |`).join("\n")}
+${getKeyboardShortcuts(platform).map((shortcut) => `| ${shortcut.keys} | ${shortcut.action} |`).join("\n")}
 `;
