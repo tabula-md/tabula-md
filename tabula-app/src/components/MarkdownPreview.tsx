@@ -20,10 +20,10 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { Bookmark, Check, Copy, FileText, Slash, WrapText } from "lucide-react";
+import { Check, Copy, FileText, Slash, WrapText } from "lucide-react";
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from "react-markdown";
 import rehypeRaw from "rehype-raw";
-import rehypeSanitize, { defaultSchema, type Options as SanitizeSchema } from "rehype-sanitize";
+import rehypeSanitize from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import remarkBreaks from "remark-breaks";
 import remarkDeflist from "remark-deflist";
@@ -40,8 +40,6 @@ import {
   getMarkdownLineCount,
   getPreviewWindow,
   TABULA_LARGE_DOCUMENT_UX_POLICY,
-  type LineSurfaceAnnotation,
-  type LineSurfaceRow,
   type LineSurfaceSourceBlock,
   type PreviewBlockIndex,
   type PreviewBlockMeasurements,
@@ -67,138 +65,28 @@ import {
   VirtualMarkdownPreview,
   type GetVirtualPreviewBlockRehypePlugins,
 } from "../preview/VirtualMarkdownPreview";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import {
   getWorkspaceSurfaceCopy,
   type WorkspaceSurfaceCopy,
 } from "../workspaceSurfaceLocale";
-
-export type MarkdownPreviewMetadata = {
-  key: string;
-  value: string;
-};
-
-type MarkdownPreviewProps = {
-  metadata: MarkdownPreviewMetadata[];
-  body: string;
-  sourceLineOffset?: number;
-  bodyTextChange?: TextChange | null;
-  largeDocumentMode?: boolean;
-  commentAnchors?: MarkdownPreviewCommentAnchor[];
-  lineAnnotations?: MarkdownPreviewLineAnnotation[];
-  activeCommentId?: string | null;
-  commentsEnabled?: boolean;
-  searchQuery?: string;
-  searchOptions?: SearchOptions;
-  activeSearchMatchIndex?: number;
-  suspendLineMeasurement?: boolean;
-  uiLanguage?: WorkspaceLanguage;
-  onSearchMatchCountChange?: (count: number) => void;
-  onLineAction?: (request: MarkdownPreviewLineActionRequest) => void;
-  onOpenComment?: (commentId: string) => void;
-  onToggleTaskLine?: (sourceLineIndex: number) => void;
-};
-
-export type MarkdownPreviewCommentAnchor = {
-  id: string;
-  start: number;
-  end: number;
-};
-
-export type MarkdownPreviewLineAnnotation = LineSurfaceAnnotation;
-
-export type MarkdownPreviewLineActionRequest = MarkdownPreviewLineAnnotation & {
-  action: "bookmark";
-};
+import {
+  PreviewLineGutter,
+  getPreviewBodyHash,
+  getPreviewWidthBucket,
+  writePreviewLineMeasurementCache,
+  type PreviewLineRailRow,
+} from "../preview/PreviewLineGutter";
+import type {
+  MarkdownPreviewCommentAnchor,
+  MarkdownPreviewLineActionRequest,
+  MarkdownPreviewLineAnnotation,
+  MarkdownPreviewMetadata,
+  MarkdownPreviewProps,
+} from "../preview/markdownPreviewTypes";
+import { BoundedStringCache, replaceAllText } from "../preview/previewRenderCache";
+import { PREVIEW_SANITIZE_SCHEMA } from "../preview/previewSanitizeSchema";
 
 const externalLinkPattern = /^(?:https?:)?\/\//i;
-const PREVIEW_SANITIZE_SCHEMA: SanitizeSchema = {
-  ...defaultSchema,
-  tagNames: [
-    ...(defaultSchema.tagNames ?? []),
-    "card",
-    "cardgroup",
-    "dd",
-    "dl",
-    "dt",
-    "frame",
-    "mark",
-    "section",
-    "sub",
-    "sup",
-    "tabula-card",
-    "tabula-card-group",
-    "tabula-frame",
-  ],
-  attributes: {
-    ...defaultSchema.attributes,
-    a: [
-      ...(defaultSchema.attributes?.a ?? []),
-      "title",
-    ],
-    card: [
-      "href",
-      "icon",
-      "img",
-      "title",
-      "horizontal",
-    ],
-    cardgroup: [
-      "cols",
-    ],
-    frame: [
-      "caption",
-      "hint",
-    ],
-    section: [
-      ...(defaultSchema.attributes?.section ?? []),
-      "ariaLabel",
-      "dataFootnotes",
-    ],
-    "tabula-card": [
-      "href",
-      "icon",
-      "img",
-      "title",
-      "horizontal",
-    ],
-    "tabula-card-group": [
-      "cols",
-    ],
-    "tabula-frame": [
-      "caption",
-      "hint",
-    ],
-    img: [
-      ...(defaultSchema.attributes?.img ?? []),
-      "alt",
-      "dataPath",
-      "height",
-      "title",
-      "width",
-    ],
-  },
-  protocols: {
-    ...defaultSchema.protocols,
-    href: [
-      ...(defaultSchema.protocols?.href ?? []),
-      "http",
-      "https",
-      "mailto",
-    ],
-    img: [
-      ...(defaultSchema.protocols?.img ?? []),
-      "http",
-      "https",
-    ],
-    src: [
-      ...(defaultSchema.protocols?.src ?? []),
-      "data",
-      "http",
-      "https",
-    ],
-  },
-};
 const EMPTY_MARKDOWN_PREVIEW_METADATA: MarkdownPreviewMetadata[] = [];
 const EMPTY_PREVIEW_COMMENT_ANCHORS: MarkdownPreviewCommentAnchor[] = [];
 const EMPTY_PREVIEW_LINE_ANNOTATIONS: MarkdownPreviewLineAnnotation[] = [];
@@ -689,41 +577,10 @@ const loadMermaidRenderer = async (themeConfig: ReturnType<typeof createMermaidT
   return mermaid;
 };
 
-const PREVIEW_MATH_RENDER_CACHE_LIMIT = 256;
-const PREVIEW_MERMAID_RENDER_CACHE_LIMIT = 48;
-const PREVIEW_SYNTAX_RENDER_CACHE_LIMIT = 256;
 const MERMAID_CACHE_ID_PLACEHOLDER = "__TABULA_MERMAID_ID__";
-const katexRenderCache = new Map<string, string>();
-const mermaidSvgCache = new Map<string, string>();
-const syntaxHighlightCache = new Map<string, string>();
-
-const replaceAllText = (value: string, search: string, replacement: string) =>
-  search.length === 0 ? value : value.split(search).join(replacement);
-
-const readBoundedStringCache = (cache: Map<string, string>, key: string) => {
-  const value = cache.get(key);
-  if (value === undefined) {
-    return undefined;
-  }
-
-  cache.delete(key);
-  cache.set(key, value);
-  return value;
-};
-
-const writeBoundedStringCache = (cache: Map<string, string>, key: string, value: string, limit: number) => {
-  cache.delete(key);
-  cache.set(key, value);
-
-  while (cache.size > limit) {
-    const oldestKey = cache.keys().next().value;
-    if (typeof oldestKey !== "string") {
-      return;
-    }
-
-    cache.delete(oldestKey);
-  }
-};
+const katexRenderCache = new BoundedStringCache(256);
+const mermaidSvgCache = new BoundedStringCache(48);
+const syntaxHighlightCache = new BoundedStringCache(256);
 
 const requestPreviewIdleTask = (callback: () => void) => {
   if ("requestIdleCallback" in window) {
@@ -965,7 +822,7 @@ function PreviewMath({ blockProps, copy, displayMode = false, expression }: Prev
       return undefined;
     }
 
-    const cachedHtml = readBoundedStringCache(katexRenderCache, cacheKey);
+    const cachedHtml = katexRenderCache.read(cacheKey);
     if (cachedHtml) {
       setRenderedHtml(cachedHtml);
       setRenderError(null);
@@ -994,7 +851,7 @@ function PreviewMath({ blockProps, copy, displayMode = false, expression }: Prev
       )
       .then((html) => {
         if (!isCancelled) {
-          writeBoundedStringCache(katexRenderCache, cacheKey, html, PREVIEW_MATH_RENDER_CACHE_LIMIT);
+          katexRenderCache.write(cacheKey, html);
           setRenderedHtml(html);
         }
       })
@@ -1068,7 +925,7 @@ function PreviewMermaidDiagram({
 
     const diagramId = diagramIdRef.current ?? `tabula-mermaid-${Date.now()}`;
     const cacheKey = `${mermaidThemeConfig.key}:${trimmedSource}`;
-    const cachedSvg = readBoundedStringCache(mermaidSvgCache, cacheKey);
+    const cachedSvg = mermaidSvgCache.read(cacheKey);
     if (cachedSvg) {
       setRenderedSvg(replaceAllText(cachedSvg, MERMAID_CACHE_ID_PLACEHOLDER, diagramId));
       setRenderError(null);
@@ -1091,7 +948,7 @@ function PreviewMermaidDiagram({
         if (!isCancelled) {
           const sanitizedSvg = sanitizeMermaidSvg(svg);
           const cachedTemplate = replaceAllText(sanitizedSvg, diagramId, MERMAID_CACHE_ID_PLACEHOLDER);
-          writeBoundedStringCache(mermaidSvgCache, cacheKey, cachedTemplate, PREVIEW_MERMAID_RENDER_CACHE_LIMIT);
+          mermaidSvgCache.write(cacheKey, cachedTemplate);
           setRenderedSvg(sanitizedSvg);
         }
       })
@@ -1424,7 +1281,7 @@ function PreviewCodeBlock({ children, copy, searchActive = false, ...props }: Pr
       return undefined;
     }
 
-    const cachedHtml = readBoundedStringCache(syntaxHighlightCache, highlightKey);
+    const cachedHtml = syntaxHighlightCache.read(highlightKey);
     if (cachedHtml) {
       setHighlightedHtml(cachedHtml);
       return undefined;
@@ -1447,7 +1304,7 @@ function PreviewCodeBlock({ children, copy, searchActive = false, ...props }: Pr
       })
       .then((html) => {
         if (!isCancelled && html) {
-          writeBoundedStringCache(syntaxHighlightCache, highlightKey, html, PREVIEW_SYNTAX_RENDER_CACHE_LIMIT);
+          syntaxHighlightCache.write(highlightKey, html);
           setHighlightedHtml(html);
         }
       })
@@ -2071,119 +1928,9 @@ const createMarkdownPreviewComponents = (
   ),
 });
 
-type PreviewLineRailRow = LineSurfaceRow<MarkdownPreviewLineAnnotation>;
-
-const PREVIEW_LINE_MEASUREMENT_WIDTH_BUCKET = 8;
-const PREVIEW_LINE_MEASUREMENT_CACHE_LIMIT = 12;
 const PREVIEW_VIRTUAL_OVERSCAN = 1_200;
 const VIRTUAL_GLOBAL_MARKDOWN_CONTEXT_DELAY_MS = 6_000;
 const VIRTUAL_LINE_MEASUREMENT_SCROLL_IDLE_MS = 140;
-
-const getStringHash = (value: string) => {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = Math.imul(31, hash) + value.charCodeAt(index);
-    hash |= 0;
-  }
-
-  return `${value.length}:${hash.toString(36)}`;
-};
-
-const getWidthBucket = (width: number) =>
-  Math.max(0, Math.round(width / PREVIEW_LINE_MEASUREMENT_WIDTH_BUCKET) * PREVIEW_LINE_MEASUREMENT_WIDTH_BUCKET);
-
-const writePreviewLineMeasurementCache = (
-  cache: Map<string, PreviewLineRailRow[]>,
-  key: string,
-  rows: PreviewLineRailRow[],
-) => {
-  cache.delete(key);
-  cache.set(key, rows);
-
-  while (cache.size > PREVIEW_LINE_MEASUREMENT_CACHE_LIMIT) {
-    const oldestKey = cache.keys().next().value;
-    if (typeof oldestKey !== "string") {
-      return;
-    }
-
-    cache.delete(oldestKey);
-  }
-};
-
-const getPreviewLineButtonLabel = (
-  row: MarkdownPreviewLineAnnotation,
-  copy: Pick<WorkspaceSurfaceCopy, "bookmarkLine" | "removeLineBookmark">,
-) => row.hasBookmark ? copy.removeLineBookmark : copy.bookmarkLine;
-
-function PreviewLineGutter({
-  rows,
-  onLineAction,
-  copy,
-}: {
-  rows: PreviewLineRailRow[];
-  onLineAction: (request: MarkdownPreviewLineActionRequest) => void;
-  copy: WorkspaceSurfaceCopy;
-}) {
-  return (
-    <div
-      className="preview-line-gutter bookmark"
-      aria-label={copy.previewBookmarks}
-    >
-      {rows.map((row) => {
-        const isActive = row.hasBookmark;
-        const className = [
-          "preview-line-action",
-          "bookmark",
-          isActive ? "has-bookmark" : "",
-        ]
-          .filter(Boolean)
-          .join(" ");
-        const label = getPreviewLineButtonLabel(row, copy);
-        const children = <Bookmark className="preview-line-action-icon" size={14} strokeWidth={2} aria-hidden="true" />;
-
-        if (!isActive) {
-          return (
-            <span
-              key={`bookmark-${row.lineNumber}`}
-              className={className}
-              style={{ top: row.top, height: row.height }}
-              aria-hidden="true"
-              data-tooltip={label}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                onLineAction({ ...row, action: "bookmark" });
-              }}
-            >
-              {children}
-            </span>
-          );
-        }
-
-        return (
-          <button
-            key={`bookmark-${row.lineNumber}`}
-            className={className}
-            type="button"
-            style={{ top: row.top, height: row.height }}
-            tabIndex={isActive ? 0 : -1}
-            aria-label={label}
-            data-tooltip={label}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onLineAction({ ...row, action: "bookmark" });
-            }}
-          >
-            {children}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 const createPreviewRehypePlugins = (
   commentAnchorPlugins: MarkdownRehypePlugins,
@@ -2521,7 +2268,7 @@ function MarkdownPreviewComponent({
     }),
     [normalizedSourceLineOffset],
   );
-  const bodyMeasurementKey = useMemo(() => getStringHash(renderableBody), [renderableBody]);
+  const bodyMeasurementKey = useMemo(() => getPreviewBodyHash(renderableBody), [renderableBody]);
   const lineAnnotationsSignature = useMemo(
     () => getLineSurfaceAnnotationsSignature(effectiveLineAnnotations),
     [effectiveLineAnnotations],
@@ -2550,7 +2297,7 @@ function MarkdownPreviewComponent({
       return;
     }
 
-    const widthBucket = getWidthBucket(contentElement.clientWidth);
+    const widthBucket = getPreviewWidthBucket(contentElement.clientWidth);
     const cacheKey = `${bodyMeasurementKey}:${widthBucket}:${lineAnnotationsSignature}`;
     const canUseMeasurementCache = !shouldVirtualizePreview;
     if (canUseMeasurementCache) {

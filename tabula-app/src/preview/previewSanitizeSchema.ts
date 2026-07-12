@@ -1,0 +1,50 @@
+import { defaultSchema, type Options as SanitizeSchema } from "rehype-sanitize";
+
+export const PREVIEW_SANITIZE_SCHEMA: SanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames ?? []),
+    "card",
+    "cardgroup",
+    "dd",
+    "dl",
+    "dt",
+    "frame",
+    "mark",
+    "section",
+    "sub",
+    "sup",
+    "tabula-card",
+    "tabula-card-group",
+    "tabula-frame",
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    a: [...(defaultSchema.attributes?.a ?? []), "title"],
+    card: ["href", "icon", "img", "title", "horizontal"],
+    cardgroup: ["cols"],
+    frame: ["caption", "hint"],
+    section: [
+      ...(defaultSchema.attributes?.section ?? []),
+      "ariaLabel",
+      "dataFootnotes",
+    ],
+    "tabula-card": ["href", "icon", "img", "title", "horizontal"],
+    "tabula-card-group": ["cols"],
+    "tabula-frame": ["caption", "hint"],
+    img: [
+      ...(defaultSchema.attributes?.img ?? []),
+      "alt",
+      "dataPath",
+      "height",
+      "title",
+      "width",
+    ],
+  },
+  protocols: {
+    ...defaultSchema.protocols,
+    href: [...(defaultSchema.protocols?.href ?? []), "http", "https", "mailto"],
+    img: [...(defaultSchema.protocols?.img ?? []), "http", "https"],
+    src: [...(defaultSchema.protocols?.src ?? []), "data", "http", "https"],
+  },
+};

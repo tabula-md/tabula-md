@@ -39,13 +39,13 @@ import type {
 import { DocumentControls, DocumentSearchBar } from "./DocumentControls";
 import { FormattingToolbar } from "./FormattingToolbar";
 import { MarkdownEditor } from "./MarkdownEditor";
-import {
-  MarkdownPreview,
-  type MarkdownPreviewCommentAnchor,
-  type MarkdownPreviewLineActionRequest,
-  type MarkdownPreviewLineAnnotation,
-  type MarkdownPreviewMetadata,
-} from "./MarkdownPreview";
+import { MarkdownPreview } from "./MarkdownPreview";
+import type {
+  MarkdownPreviewCommentAnchor,
+  MarkdownPreviewLineActionRequest,
+  MarkdownPreviewLineAnnotation,
+  MarkdownPreviewMetadata,
+} from "../preview/markdownPreviewTypes";
 import { StatusBar } from "./StatusBar";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 
