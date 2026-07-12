@@ -3,6 +3,7 @@ import { FileTabs } from "./FileTabs";
 import { ShareTrigger } from "./ShareTrigger";
 import { TopChrome } from "./TopChrome";
 import type { Collaborator, ConnectionStatus } from "../collaboration";
+import type { FollowState } from "../collaboration/followModel";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getCollaboratorDisplayList } from "../collaboration/collabCollaborators";
@@ -25,6 +26,7 @@ export type WorkspaceTopChromeProps = {
   activeText: string;
   canStartSession: boolean;
   collaborators: Collaborator[];
+  followState: FollowState;
   connectionStatus: ConnectionStatus;
   copied: boolean;
   currentUserName: string;
@@ -56,6 +58,7 @@ export type WorkspaceTopChromeProps = {
   onStopSession: () => void;
   onRetrySession: () => void;
   onToggleRightPanel: () => void;
+  onToggleFollowing: (actorId: string) => void;
   onToggleShare: () => void;
   onToggleWorkspaceMenu: () => void;
 };
@@ -65,6 +68,7 @@ export function WorkspaceTopChrome({
   activeText,
   canStartSession,
   collaborators,
+  followState,
   connectionStatus,
   copied,
   currentUserName,
@@ -96,6 +100,7 @@ export function WorkspaceTopChrome({
   onStopSession,
   onRetrySession,
   onToggleRightPanel,
+  onToggleFollowing,
   onToggleShare,
   onToggleWorkspaceMenu,
 }: WorkspaceTopChromeProps) {
@@ -185,11 +190,13 @@ export function WorkspaceTopChrome({
       language={language}
       identity={displayedIdentity}
       collaborators={displayedCollaborators}
+      followState={followState}
       activeText={activeText}
       fileTabs={fileTabs}
       shareControls={shareControls}
       onToggleWorkspaceMenu={onToggleWorkspaceMenu}
       onToggleRightPanel={onToggleRightPanel}
+      onToggleFollowing={onToggleFollowing}
     />
   );
 }

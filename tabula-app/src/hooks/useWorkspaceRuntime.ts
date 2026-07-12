@@ -80,6 +80,12 @@ import {
 } from "../liveRoomOpenState";
 import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
+import {
+  canFollowActor,
+  IDLE_FOLLOW_STATE,
+  type FollowState,
+  type FollowStopReason,
+} from "../collaboration/followModel";
 
 const createRoomBootstrapFile = (room: LocationRoom): WorkspaceFile =>
   createWorkspaceFile(1, {
@@ -97,6 +103,8 @@ export function useWorkspaceRuntime() {
   );
   const initialWorkspace = initialWorkspaceSnapshot.workspace;
   const restoredRoomViewsRef = useRef(new Set<string>());
+  const followNavigationGenerationRef = useRef(0);
+  const followNavigationInProgressRef = useRef(false);
   const {
     folders,
     files,
@@ -161,6 +169,7 @@ export function useWorkspaceRuntime() {
   const [activeRoom, setActiveRoom] = useState<LocationRoom | null>(() =>
     initialWorkspaceSnapshot.source === "room" ? (initialWorkspaceSnapshot.room ?? null) : null,
   );
+  const [followState, setFollowState] = useState<FollowState>(IDLE_FOLLOW_STATE);
   const [localPersistenceEnabled, setLocalPersistenceEnabled] = useState(
     () => initialWorkspaceSnapshot.source !== "room",
   );
@@ -587,6 +596,8 @@ export function useWorkspaceRuntime() {
     moveNode: moveRoomNode,
     deleteNode: deleteRoomNode,
     replaceDocumentText: replaceRoomDocumentText,
+    setFollowingActor: setRoomFollowingActor,
+    setViewport: setRoomViewport,
     editorBinding,
     materializeWorkspace: materializeRoomWorkspace,
     upsertComment: upsertRoomComment,
@@ -598,7 +609,10 @@ export function useWorkspaceRuntime() {
   } = useWorkspaceCollaborationRuntime({
     roomFile: collaborationRoomFile,
     activeDocument: activeRoomDocument,
-    editorPresenceEnabled: Boolean(activeRoomDocument) && activeViewMode !== "preview",
+    editorPresenceEnabled:
+      Boolean(activeRoomDocument) &&
+      activeViewMode !== "preview" &&
+      followState.status === "idle",
     getActiveFileSnapshot: getCollaborationSessionFileSnapshot,
     identity,
     workspaceDocuments: workspaceShareDocuments,
@@ -630,6 +644,107 @@ export function useWorkspaceRuntime() {
     }
     if (editorDocumentRuntime.clearAuthoritativeText()) bumpVisibleTextRevision();
   }, [activeDocumentText, activeRoomDocument?.id, editorDocumentRuntime]);
+  const publishCurrentRoomViewport = useEventCallback(() => {
+    const viewport = editorRef.current?.getViewport();
+    setRoomViewport(
+      viewport && activeRoomDocument
+        ? { documentId: activeRoomDocument.id, ...viewport }
+        : null,
+    );
+  });
+  useEffect(() => {
+    if (!editorBinding || !activeRoomDocument || activeViewMode === "preview") {
+      setRoomViewport(null);
+      return;
+    }
+    const frame = window.requestAnimationFrame(publishCurrentRoomViewport);
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeRoomDocument?.id, activeViewMode, editorBinding?.documentId]);
+  const stopFollowing = useEventCallback((reason: FollowStopReason = "manual") => {
+    if (followState.status === "idle") return;
+    setFollowState(IDLE_FOLLOW_STATE);
+    setRoomFollowingActor(null);
+    if (reason === "target-left") showToast("The participant you were following left the room.");
+    if (reason === "target-document-deleted") showToast("The followed document is no longer available.");
+  });
+  const runFollowNavigation = useEventCallback((navigate: () => void) => {
+    const generation = followNavigationGenerationRef.current + 1;
+    followNavigationGenerationRef.current = generation;
+    followNavigationInProgressRef.current = true;
+    navigate();
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (followNavigationGenerationRef.current === generation) {
+          followNavigationInProgressRef.current = false;
+        }
+      });
+    });
+  });
+  const stopFollowingForLocalNavigation = useEventCallback(() => {
+    if (followNavigationInProgressRef.current) return;
+    stopFollowing("local-navigation");
+  });
+  const revealFollowTarget = useEventCallback((target: (typeof collaborators)[number]) => {
+    const documentId = target.activeDocumentId ?? target.selection?.documentId;
+    if (!documentId) return false;
+    if (!files.some((file) => file.id === documentId && file.roomId === activeRoomId)) return false;
+    const selection = target.selection;
+    runFollowNavigation(() => {
+      if (activeFileId !== documentId) selectWorkspaceFileAction(documentId);
+      const viewport = target.viewport;
+      if (viewport?.documentId === documentId) {
+        window.requestAnimationFrame(() =>
+          editorRef.current?.revealViewport(viewport.position, viewport.offset));
+      } else if (selection && (selection.documentId ?? documentId) === documentId) {
+        window.requestAnimationFrame(() => editorRef.current?.revealRange(selection.from, selection.to));
+      }
+    });
+    return true;
+  });
+  const toggleFollowing = useEventCallback((actorId: string) => {
+    if (followState.status === "following" && followState.actorId === actorId) {
+      stopFollowing("manual");
+      return;
+    }
+    if (!canFollowActor({ actorId, collaborators, selfId: identity.id })) {
+      showToast("This participant can’t be followed right now.", "error");
+      return;
+    }
+    const target = collaborators.find((collaborator) => collaborator.id === actorId);
+    if (!target || !revealFollowTarget(target)) {
+      showToast("This participant’s location isn’t available yet.", "error");
+      return;
+    }
+    setFollowState({ status: "following", actorId });
+    setRoomFollowingActor(actorId);
+  });
+  useEffect(() => {
+    if (followState.status !== "following") return;
+    if (!isLive) {
+      stopFollowing("manual");
+      return;
+    }
+    const target = collaborators.find((collaborator) => collaborator.id === followState.actorId);
+    if (!target) {
+      stopFollowing("target-left");
+      return;
+    }
+    if (!canFollowActor({ actorId: target.id, collaborators, selfId: identity.id })) {
+      stopFollowing("cycle");
+      return;
+    }
+    if (!revealFollowTarget(target)) stopFollowing("target-document-deleted");
+  }, [collaborators, files, followState, identity.id, isLive]);
+  useEffect(() => {
+    if (followState.status !== "following") return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      stopFollowing("manual");
+    };
+    window.addEventListener("keydown", handleEscape, true);
+    return () => window.removeEventListener("keydown", handleEscape, true);
+  }, [followState, stopFollowing]);
   const publishRoomDocument = useEventCallback((file: WorkspaceFile) =>
     !file.roomId || createRoomDocument({
       id: file.id,
@@ -750,11 +865,16 @@ export function useWorkspaceRuntime() {
     collaborationBound: Boolean(editorBinding),
     editorDocumentRuntime,
     editorRef,
+    onPendingTextChange: () => stopFollowing("local-edit"),
     onTextPatches: mapFileCommentAnchors,
     onVisibleTextChange: bumpVisibleTextRevision,
     setActiveFileBookmarks,
     setActiveFileText,
     setFileText,
+  });
+  const handleUserWorkspaceBoundary = useEventCallback(() => {
+    stopFollowing("local-navigation");
+    flushPendingEditorCommit();
   });
   const localWorkspacePersistence = useWorkspacePersistenceRuntime({
     enabled: localPersistenceEnabled,
@@ -776,7 +896,7 @@ export function useWorkspaceRuntime() {
       files,
       folders,
       getActiveFileSnapshot,
-      onBeforeWorkspaceBoundary: flushPendingEditorCommit,
+      onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
       resetCollaborationState,
       retryCollaborationConnection,
       setCopiedFileId,
@@ -941,7 +1061,7 @@ export function useWorkspaceRuntime() {
     activeFileId,
     activateRoomFile: activateRoomWorkspace,
     files,
-    onBeforeWorkspaceBoundary: flushPendingEditorCommit,
+    onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
     selectFile: selectWorkspaceFileAction,
     onRouteWorkspaceChange: handleRouteWorkspaceChange,
     onLeaveRoom: () => setActiveRoom(null),
@@ -978,7 +1098,7 @@ export function useWorkspaceRuntime() {
     getActiveFileSnapshot,
     getWorkspaceSnapshot,
     openFileIds,
-    onBeforeWorkspaceBoundary: flushPendingEditorCommit,
+    onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
     preferences: workspacePreferences,
     replaceCommentsByFileId,
     replaceWorkspace,
@@ -1016,7 +1136,7 @@ export function useWorkspaceRuntime() {
     onFileRenamed: renameRoomNode,
     onFileRestored: restoreRoomDocument,
     openFileIds,
-    onBeforeWorkspaceBoundary: flushPendingEditorCommit,
+    onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
     preferences: workspacePreferences,
     queueEditorFocus,
     renameFile,
@@ -1075,7 +1195,7 @@ export function useWorkspaceRuntime() {
     previewBodyStartOffset,
     previewSurfaceRef,
     largeDocumentMode: activeDocument.largeDocumentMode,
-    onBeforeCreateComment: flushPendingEditorCommit,
+    onBeforeCreateComment: handleUserWorkspaceBoundary,
     selectFile,
     selectedCharacterCount,
     setActiveFileBookmarks,
@@ -1254,6 +1374,7 @@ export function useWorkspaceRuntime() {
     currentUserName: identity.name,
     files,
     folders,
+    followState,
     identity: presenceIdentity,
     isLive: isLiveChromeVisible,
     isLiveConnected,
@@ -1278,6 +1399,7 @@ export function useWorkspaceRuntime() {
     onStopSession: stopSessionWithPendingCommit,
     onRetrySession: retryCollaborationConnection,
     onToggleRightPanel: toggleRightPanel,
+    onToggleFollowing: toggleFollowing,
     onToggleWorkspaceMenu: toggleWorkspaceMenu,
     setCenterPopover,
     setPreferencesOpen,
@@ -1422,21 +1544,41 @@ export function useWorkspaceRuntime() {
       onBookmarksChange: updateActiveFileBookmarks,
       onCloseSearch: documentWorkbenchRuntime.onCloseSearch,
       onEditorHistoryStateChange: handleEditorHistoryStateChange,
-      onEditorScroll: handleEditorSurfaceScroll,
-      onEditorScrollRatioChange: handleEditorScrollRatioChange,
+      onEditorScroll: () => {
+        stopFollowingForLocalNavigation();
+        handleEditorSurfaceScroll();
+        publishCurrentRoomViewport();
+      },
+      onEditorScrollRatioChange: (ratio) => {
+        stopFollowingForLocalNavigation();
+        handleEditorScrollRatioChange(ratio);
+        publishCurrentRoomViewport();
+      },
       onEditorSelectionActionPositionChange:
         handleEditorSelectionActionPositionChange,
-      onEditorSelectionChange: handleEditorSelectionChange,
-      onFormat: documentWorkbenchRuntime.onFormat,
+      onEditorSelectionChange: (selection) => {
+        stopFollowingForLocalNavigation();
+        handleEditorSelectionChange(selection);
+      },
+      onFormat: (command) => {
+        stopFollowing("local-edit");
+        documentWorkbenchRuntime.onFormat(command);
+      },
       onGoToSearchMatch: goToSearchMatch,
       onLineAction: handleStableLineAnnotationAction,
       onOpenComment: openStableCommentMarker,
       onOpenSelectionComment: openSelectionComment,
       onPreviewKeyUp: syncPreviewSelection,
       onPreviewMouseUp: syncPreviewSelection,
-      onPreviewScroll: handlePreviewScroll,
+      onPreviewScroll: () => {
+        stopFollowing("local-navigation");
+        handlePreviewScroll();
+      },
       onPreviewTouchEnd: syncPreviewSelection,
-      onRedo: redoActiveFile,
+      onRedo: () => {
+        stopFollowing("local-edit");
+        redoActiveFile();
+      },
       onReplaceAllMatches: replaceAllMatches,
       onReplaceCurrentMatch: replaceCurrentMatch,
       onResetSplitRatio: resetSplitRatio,
@@ -1446,19 +1588,28 @@ export function useWorkspaceRuntime() {
       onSelectAllSearchMatches: selectAllSearchMatches,
       onToggleSearchOption: toggleSearchOption,
       onSetReadingWidth: documentWorkbenchRuntime.onSetReadingWidth,
-      onSetViewMode: setViewModeWithPendingCommit,
+      onSetViewMode: (viewMode) => {
+        stopFollowing("local-navigation");
+        setViewModeWithPendingCommit(viewMode);
+      },
       onSplitDividerKeyDown: handleSplitDividerKeyDown,
       onSplitDividerPointerCancel: endSplitDividerDrag,
       onSplitDividerPointerDown: handleSplitDividerPointerDown,
       onSplitDividerPointerMove: handleSplitDividerPointerMove,
       onSplitDividerPointerUp: endSplitDividerDrag,
-      onTextChange: handleTextChange,
+      onTextChange: (nextText, change) => {
+        stopFollowing("local-edit");
+        handleTextChange(nextText, change);
+      },
       onToggleLineNumbers: documentWorkbenchRuntime.onToggleLineNumbers,
       onToggleLineWrapping: documentWorkbenchRuntime.onToggleLineWrapping,
       onToggleSearch: documentWorkbenchRuntime.onToggleSearch,
       onToggleSyncScrolling: documentWorkbenchRuntime.onToggleSyncScrolling,
       onToggleViewOptions: documentWorkbenchRuntime.onToggleViewOptions,
-      onUndo: undoActiveFile,
+      onUndo: () => {
+        stopFollowing("local-edit");
+        undoActiveFile();
+      },
     },
     rightPanelOpen,
   });

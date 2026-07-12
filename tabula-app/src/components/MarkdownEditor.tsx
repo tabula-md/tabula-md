@@ -58,6 +58,31 @@ type LiveEditorViewState = {
   viewportOffset: number;
 };
 
+const getEditorScrollContext = (view: EditorView) => {
+  const internalScroller = view.scrollDOM;
+  const workspaceScroller = view.dom.closest<HTMLElement>(".workspace");
+  const scrollElement =
+    internalScroller.scrollHeight - internalScroller.clientHeight > 1 || !workspaceScroller
+      ? internalScroller
+      : workspaceScroller;
+  const contentTop = scrollElement === internalScroller
+    ? 0
+    : scrollElement.scrollTop +
+      view.dom.getBoundingClientRect().top -
+      scrollElement.getBoundingClientRect().top;
+  return { contentTop, scrollElement };
+};
+
+const getEditorViewport = (view: EditorView) => {
+  const { contentTop, scrollElement } = getEditorScrollContext(view);
+  const viewportTop = Math.max(0, scrollElement.scrollTop - contentTop);
+  const viewportBlock = view.lineBlockAtHeight(viewportTop);
+  return {
+    offset: viewportTop - viewportBlock.top,
+    position: viewportBlock.from,
+  };
+};
+
 const captureLiveEditorViewState = (
   view: EditorView,
   binding: CollabEditorBinding,
@@ -65,13 +90,12 @@ const captureLiveEditorViewState = (
   const yDoc = binding.yText.doc;
   if (!yDoc) return null;
   const selection = view.state.selection.main;
-  const viewportTop = Math.max(0, view.scrollDOM.scrollTop);
-  const viewportBlock = view.lineBlockAtHeight(viewportTop);
+  const viewport = getEditorViewport(view);
   return {
     selectionAnchor: Y.createRelativePositionFromTypeIndex(binding.yText, selection.anchor),
     selectionHead: Y.createRelativePositionFromTypeIndex(binding.yText, selection.head),
-    viewportAnchor: Y.createRelativePositionFromTypeIndex(binding.yText, viewportBlock.from),
-    viewportOffset: viewportTop - viewportBlock.top,
+    viewportAnchor: Y.createRelativePositionFromTypeIndex(binding.yText, viewport.position),
+    viewportOffset: viewport.offset,
   };
 };
 
@@ -104,23 +128,29 @@ const restoreLiveEditorViewState = (
   const viewportPosition = resolveLivePosition(state.viewportAnchor, binding);
   if (viewportPosition === null) return;
   view.requestMeasure({
-    read: () => view.lineBlockAt(Math.min(viewportPosition, view.state.doc.length)).top + state.viewportOffset,
+    read: () => {
+      const { contentTop } = getEditorScrollContext(view);
+      return contentTop +
+        view.lineBlockAt(Math.min(viewportPosition, view.state.doc.length)).top +
+        state.viewportOffset;
+    },
     write: (scrollTop) => {
-      view.scrollDOM.scrollTop = Math.max(0, scrollTop);
+      getEditorScrollContext(view).scrollElement.scrollTop = Math.max(0, scrollTop);
     },
   });
 };
 
 const getEditorViewportLineAnchor = (view: EditorView): EditorViewportAnchor => {
-  const viewportTop = Math.max(0, view.scrollDOM.scrollTop);
-  const topLineBlock = view.lineBlockAtHeight(viewportTop);
+  const { scrollElement } = getEditorScrollContext(view);
+  const viewport = getEditorViewport(view);
+  const topLineBlock = view.lineBlockAt(viewport.position);
   const topLine = view.state.doc.lineAt(topLineBlock.from);
   const lineOffsetRatio =
     topLineBlock.height <= 0
       ? 0
-      : Math.max(0, Math.min(1, (viewportTop - topLineBlock.top) / topLineBlock.height));
+      : Math.max(0, Math.min(1, viewport.offset / topLineBlock.height));
   const atDocumentEnd =
-    view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight - view.scrollDOM.scrollTop <= 1;
+    scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop <= 1;
 
   return {
     atDocumentEnd,
@@ -295,18 +325,17 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       },
       getLineCount: () => viewRef.current?.state.doc.lines ?? value.split("\n").length,
       getScrollRatio: () => {
-        const scrollElement = viewRef.current?.scrollDOM;
-        return scrollElement ? getScrollRatio(scrollElement) : 0;
+        const view = viewRef.current;
+        return view ? getScrollRatio(getEditorScrollContext(view).scrollElement) : 0;
       },
       getViewportLineAnchor: () => {
         const view = viewRef.current;
         return view ? getEditorViewportLineAnchor(view) : null;
       },
       isScrolledToBottom: () => {
-        const scrollElement = viewRef.current?.scrollDOM;
-        if (!scrollElement) {
-          return false;
-        }
+        const view = viewRef.current;
+        if (!view) return false;
+        const { scrollElement } = getEditorScrollContext(view);
 
         return scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop <= 1;
       },
@@ -319,6 +348,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         const view = viewRef.current;
         const selection = view?.state.selection.main;
         return view && selection ? view.state.sliceDoc(selection.from, selection.to) : "";
+      },
+      getViewport: () => {
+        const view = viewRef.current;
+        return view ? getEditorViewport(view) : null;
       },
       getViewportLineNumber: () => {
         const view = viewRef.current;
@@ -349,10 +382,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
       },
       scrollToRatio: (ratio: number) => {
-        const scrollElement = viewRef.current?.scrollDOM;
-        if (scrollElement) {
-          scrollElementToRatio(scrollElement, ratio);
-        }
+        const view = viewRef.current;
+        if (view) scrollElementToRatio(getEditorScrollContext(view).scrollElement, ratio);
       },
       setSelectionRanges: (ranges) => {
         const view = viewRef.current;
@@ -393,6 +424,20 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
 
         dispatchEditorSelectionRange(view, from, to);
+      },
+      revealViewport: (position: number, offset = 0) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const clampedPosition = Math.max(0, Math.min(position, view.state.doc.length));
+        view.requestMeasure({
+          read: () => {
+            const { contentTop } = getEditorScrollContext(view);
+            return contentTop + view.lineBlockAt(clampedPosition).top + offset;
+          },
+          write: (scrollTop) => {
+            getEditorScrollContext(view).scrollElement.scrollTop = Math.max(0, scrollTop);
+          },
+        });
       },
       undo: () => {
         const view = viewRef.current;

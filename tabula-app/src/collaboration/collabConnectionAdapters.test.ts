@@ -397,6 +397,59 @@ describe("workspace room runtime", () => {
     peer.disconnect();
   });
 
+  it("shares follow and viewport state through encrypted awareness", async () => {
+    const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const adapters = {
+      ...defaults,
+      createRoomTransport: relay.createRoomTransport,
+      roomCheckpointStore: checkpoints.store,
+      resolveRoomBaseUrl: () => "http://room.test",
+    };
+    const host = createWorkspaceRoomRuntime({
+      roomId: "room-follow-awareness",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc", title: "README.md", text: "0123456789" }],
+      identity: { id: "human", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      adapters,
+    });
+    await vi.waitFor(() => expect(checkpoints.getGeneration("room-follow-awareness")).toBeGreaterThan(0));
+    const agent = createWorkspaceRoomRuntime({
+      roomId: "room-follow-awareness",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: false,
+      identity: {
+        id: "agent",
+        name: "Curious Agent",
+        color: "#7c3aed",
+        lastSeen: 0,
+        kind: "agent",
+        client: "tabula-mcp",
+        capabilities: ["presence", "read", "write"],
+      },
+      fileTitle: "README.md",
+      adapters,
+    });
+    await vi.waitFor(() => expect(agent.materializeDocument("doc")).toBe("0123456789"));
+
+    host.setFollowingActor("agent");
+    host.setViewport({ documentId: "doc", position: 7, offset: 4 });
+
+    await vi.waitFor(() => {
+      expect(agent.getSnapshot().collaborators.find(({ id }) => id === "human")).toMatchObject({
+        followingActorId: "agent",
+        viewport: { documentId: "doc", position: 7, offset: 4 },
+      });
+    });
+    host.disconnect();
+    agent.disconnect();
+  });
+
   it("exposes one Y.Doc-backed editor binding per document and emits encrypted incremental packets", async () => {
     const transport = createConnectedTransport();
     const defaults = createDefaultCollabRuntimeAdapters();

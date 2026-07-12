@@ -202,18 +202,60 @@ export async function run(ctx) {
     const roomValue = new URLSearchParams(roomUrl.hash.replace(/^#/, "")).get("room") ?? "";
     const [roomId, roomKey] = roomValue.split(",");
 
-    await firstPage.locator(".sharing-presence").click();
-    await firstPage.waitForSelector(".presence-popover");
-    expect(
-      (await firstPage.locator(".presence-popover .presence-row").count()) >= 1,
-      "Presence popover should list live collaborators.",
+    await clickTabByFileName(secondPage, secondaryFileName);
+    await secondPage.waitForSelector(`.tab-item[data-file-name="${secondaryFileName}"].active`);
+    await focusMarkdownEditor(secondPage);
+    await secondPage.keyboard.press("ControlOrMeta+A");
+    await secondPage.keyboard.insertText(
+      Array.from({ length: 120 }, (_, index) => `Follow viewport line ${index + 1}`).join("\n"),
+    );
+    await secondPage.locator(".workspace").evaluate((workspace) => {
+      const codeMirrorScroller = document.querySelector(".cm-scroller");
+      const scrollOwner = codeMirrorScroller &&
+        codeMirrorScroller.scrollHeight - codeMirrorScroller.clientHeight > 1
+        ? codeMirrorScroller
+        : workspace;
+      scrollOwner.scrollTop = scrollOwner.scrollHeight;
+      scrollOwner.dispatchEvent(new Event("scroll"));
+    });
+    await secondPage.waitForFunction(
+      () => Math.max(
+        document.querySelector(".workspace")?.scrollTop ?? 0,
+        document.querySelector(".cm-scroller")?.scrollTop ?? 0,
+      ) > 0,
+    );
+    const remoteAvatar = firstPage.locator(".sharing-presence .avatar.participant").first();
+    await remoteAvatar.waitFor({ state: "visible" });
+    await firstPage.waitForFunction(
+      ({ secondaryFileName }) =>
+        document.querySelector(".sharing-presence .avatar.participant")
+          ?.getAttribute("data-tooltip")
+          ?.includes(secondaryFileName),
+      { secondaryFileName },
+    );
+    await remoteAvatar.click();
+    await firstPage.waitForSelector(`.tab-item[data-file-name="${secondaryFileName}"].active`);
+    await firstPage.waitForFunction(
+      () => Math.max(
+        document.querySelector(".workspace")?.scrollTop ?? 0,
+        document.querySelector(".cm-scroller")?.scrollTop ?? 0,
+      ) > 0,
     );
     expect(
-      (await firstPage.locator(".presence-popover").evaluate((popover) => getComputedStyle(popover).borderTopWidth)) === "0px",
-      "Presence popovers should use elevation without a static border.",
+      (await remoteAvatar.getAttribute("aria-pressed")) === "true",
+      "Clicking a participant avatar should immediately follow that participant.",
     );
-    await firstPage.keyboard.press("Escape");
-    await firstPage.locator(".presence-popover").waitFor({ state: "detached" });
+    expect(
+      (await firstPage.locator(".presence-popover").count()) === 0,
+      "Participant avatars should not open a separate participant popover.",
+    );
+    await remoteAvatar.click();
+    expect(
+      (await remoteAvatar.getAttribute("aria-pressed")) === "false",
+      "Clicking the followed participant again should stop following.",
+    );
+    await clickTabByFileName(firstPage, "README.md");
+    await clickTabByFileName(secondPage, "README.md");
 
     const restoredContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const restoredPage = await restoredContext.newPage();

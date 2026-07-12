@@ -18,6 +18,7 @@ import type {
   CollabRecoveryEvent,
   ConnectionStatus,
   WorkspaceFolderSnapshot,
+  LiveViewport,
   WorkspaceRoomDocumentCommand,
   WorkspaceRoomFolderCommand,
   WorkspaceRoomRuntimeSnapshot,
@@ -353,6 +354,8 @@ export function useCollaborationConnectionRuntime({
       dispatchWorkspaceCommand({ type: "delete-node", nodeId }),
     replaceDocumentText: (documentId: string, text: string) =>
       dispatchWorkspaceCommand({ type: "replace-document-text", documentId, text }),
+    setFollowingActor: (actorId: string | null) => collabRef.current?.setFollowingActor(actorId),
+    setViewport: (viewport: LiveViewport | null) => collabRef.current?.setViewport(viewport),
     collaborators,
     connectionStatus,
     durability,

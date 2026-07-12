@@ -111,6 +111,12 @@ export type LiveSelection = {
   toLineNumber?: number;
 };
 
+export type LiveViewport = {
+  documentId: string;
+  position: number;
+  offset: number;
+};
+
 export type Collaborator = {
   id: string;
   name: string;
@@ -124,6 +130,8 @@ export type Collaborator = {
   roomId?: string;
   fileTitle?: string;
   selection?: LiveSelection;
+  viewport?: LiveViewport;
+  followingActorId?: string;
 };
 
 export type CollabRecoveryEvent = {
@@ -264,6 +272,28 @@ const getSelectionFromAwarenessState = (
     });
     if (!documentId) return undefined;
     return { documentId, from: Math.min(anchor.index, head.index), to: Math.max(anchor.index, head.index) };
+  } catch {
+    return undefined;
+  }
+};
+
+const getViewportFromAwarenessState = (
+  room: WorkspaceRoomCrdt,
+  state: Record<string, unknown>,
+): LiveViewport | undefined => {
+  const viewport = state.viewport;
+  if (!viewport || typeof viewport !== "object" || Array.isArray(viewport)) return undefined;
+  const raw = viewport as { anchor?: Y.RelativePosition; offset?: unknown };
+  if (!raw.anchor || typeof raw.offset !== "number" || !Number.isFinite(raw.offset)) return undefined;
+  try {
+    const absolute = Y.createAbsolutePositionFromRelativePosition(raw.anchor, room.doc);
+    if (!absolute) return undefined;
+    let documentId: string | undefined;
+    room.documents.forEach((text, id) => {
+      if (text === absolute.type) documentId = id;
+    });
+    if (!documentId) return undefined;
+    return { documentId, position: absolute.index, offset: raw.offset };
   } catch {
     return undefined;
   }
@@ -556,6 +586,8 @@ export const createWorkspaceRoomRuntime = ({
         activeDocumentId: typeof state.activeDocumentId === "string" ? state.activeDocumentId : undefined,
         fileTitle: typeof state.fileTitle === "string" ? state.fileTitle : undefined,
         selection: getSelectionFromAwarenessState(room, state as Record<string, unknown>),
+        viewport: getViewportFromAwarenessState(room, state as Record<string, unknown>),
+        followingActorId: typeof state.followingActorId === "string" ? state.followingActorId : undefined,
         lastSeen: typeof state.lastSeen === "number" ? state.lastSeen : Date.now(),
       });
     });
@@ -1253,6 +1285,7 @@ export const createWorkspaceRoomRuntime = ({
     activeDocumentId = nextDocument?.documentId ?? null;
     currentFileTitle = nextDocument?.fileTitle;
     awareness.setLocalStateField("cursor", null);
+    awareness.setLocalStateField("viewport", null);
     setLocalAwareness();
     if (activeDocumentId && room.comments.size > 0) scheduleCommentProjection();
     refreshActiveEditorBinding();
@@ -1370,7 +1403,28 @@ export const createWorkspaceRoomRuntime = ({
     setActiveDocument,
     setEditorPresenceEnabled(enabled: boolean) {
       editorPresenceEnabled = enabled;
-      if (!enabled) awareness.setLocalStateField("cursor", null);
+      if (!enabled) {
+        awareness.setLocalStateField("cursor", null);
+        awareness.setLocalStateField("viewport", null);
+      }
+    },
+    setViewport(viewport: LiveViewport | null) {
+      if (!viewport || !editorPresenceEnabled) {
+        awareness.setLocalStateField("viewport", null);
+        return;
+      }
+      const text = room.documents.get(viewport.documentId);
+      if (!text) return;
+      awareness.setLocalStateField("viewport", {
+        anchor: Y.createRelativePositionFromTypeIndex(
+          text,
+          Math.max(0, Math.min(viewport.position, text.length)),
+        ),
+        offset: Number.isFinite(viewport.offset) ? viewport.offset : 0,
+      });
+    },
+    setFollowingActor(actorId: string | null) {
+      awareness.setLocalStateField("followingActorId", actorId);
     },
     setIdentity(nextIdentity: Collaborator) {
       currentIdentity = {

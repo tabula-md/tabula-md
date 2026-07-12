@@ -668,6 +668,8 @@ export type WorkspaceChromeCopy = {
     inThisFile: string;
     liveWith: (names: string) => string;
     liveAs: (name: string) => string;
+    follow: (name: string) => string;
+    stopFollowing: (name: string) => string;
   };
   documentControls: {
     documentToolbar: string;
@@ -729,6 +731,8 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       inThisFile: "In this file",
       liveWith: (names) => `Live with ${names}`,
       liveAs: (name) => `Live as ${name}`,
+      follow: (name) => `Follow ${name}`,
+      stopFollowing: (name) => `Stop following ${name}`,
     },
     documentControls: {
       documentToolbar: "Document toolbar",
@@ -788,6 +792,8 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       inThisFile: "이 파일에 있음",
       liveWith: (names) => `${names}와 협업 중`,
       liveAs: (name) => `${name}으로 접속 중`,
+      follow: (name) => `${name} 따라가기`,
+      stopFollowing: (name) => `${name} 따라가기 중지`,
     },
     documentControls: {
       documentToolbar: "문서 툴바",
@@ -847,6 +853,8 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       inThisFile: "このファイル内",
       liveWith: (names) => `${names} と共同編集中`,
       liveAs: (name) => `${name} として参加中`,
+      follow: (name) => `${name} をフォロー`,
+      stopFollowing: (name) => `${name} のフォローを停止`,
     },
     documentControls: {
       documentToolbar: "ドキュメントツールバー",
@@ -906,6 +914,8 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       inThisFile: "在此文件中",
       liveWith: (names) => `正在与 ${names} 协作`,
       liveAs: (name) => `以 ${name} 加入`,
+      follow: (name) => `跟随 ${name}`,
+      stopFollowing: (name) => `停止跟随 ${name}`,
     },
     documentControls: {
       documentToolbar: "文档工具栏",
@@ -965,6 +975,8 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       inThisFile: "En este archivo",
       liveWith: (names) => `En vivo con ${names}`,
       liveAs: (name) => `En vivo como ${name}`,
+      follow: (name) => `Seguir a ${name}`,
+      stopFollowing: (name) => `Dejar de seguir a ${name}`,
     },
     documentControls: {
       documentToolbar: "Barra del documento",
@@ -1024,6 +1036,8 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       inThisFile: "Dans ce fichier",
       liveWith: (names) => `En direct avec ${names}`,
       liveAs: (name) => `En direct en tant que ${name}`,
+      follow: (name) => `Suivre ${name}`,
+      stopFollowing: (name) => `Ne plus suivre ${name}`,
     },
     documentControls: {
       documentToolbar: "Barre du document",
@@ -1083,6 +1097,8 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       inThisFile: "In dieser Datei",
       liveWith: (names) => `Live mit ${names}`,
       liveAs: (name) => `Live als ${name}`,
+      follow: (name) => `${name} folgen`,
+      stopFollowing: (name) => `${name} nicht mehr folgen`,
     },
     documentControls: {
       documentToolbar: "Dokument-Toolbar",
