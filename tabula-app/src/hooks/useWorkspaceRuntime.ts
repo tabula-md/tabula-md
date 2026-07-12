@@ -1473,6 +1473,7 @@ export function useWorkspaceRuntime() {
       replaceAvailable,
       selectedCharacterCount,
       selectedLineCount,
+      saveRevision: localWorkspacePersistence.persistedRevision,
       selectionActionPosition,
       splitDividerDragging,
       splitDividerMaxValue,

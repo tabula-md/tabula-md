@@ -36,12 +36,12 @@ export function useWorkspacePersistenceRuntime({
     replaceWorkspace,
   });
 
-  useQueuedWorkspacePersistence(workspace, {
+  const persistence = useQueuedWorkspacePersistence(workspace, {
     enabled: !indexedDbHydration.deferPersistence,
     getWorkspaceSnapshot,
     onError,
     onBeforePersist,
   });
 
-  return indexedDbHydration;
+  return { ...indexedDbHydration, ...persistence };
 }
