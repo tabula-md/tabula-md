@@ -6,13 +6,11 @@ import {
   Awareness,
   applyAwarenessUpdate,
   encodeAwarenessUpdate,
-  removeAwarenessStates,
 } from "y-protocols/awareness";
 import * as syncProtocol from "y-protocols/sync";
 import {
   addWorkspaceRoomCommentReply,
   applyTextPatches as applyTextPatchesToString,
-  createRoomActor,
   createRoomChunkAssembler,
   createWorkspaceRoomCrdt,
   createWorkspaceRoomDocument,
@@ -27,7 +25,6 @@ import {
   hasRoomCapability,
   initializeWorkspaceRoomCrdt,
   moveWorkspaceRoomNode,
-  parseRoomActor,
   renameWorkspaceRoomNode,
   setWorkspaceRoomComment,
   setWorkspaceRoomCommentResolved,
@@ -39,20 +36,14 @@ import {
   WORKSPACE_ROOM_MAX_DOCUMENTS,
   WORKSPACE_ROOM_MAX_FOLDERS,
   WORKSPACE_ROOM_ROOT_ID,
-  type RoomActor,
-  type RoomActorClient,
-  type RoomActorKind,
-  type RoomCapability,
   type RoomWireDataPacket,
   type EncryptedEnvelope,
   type TextPatch,
   type WorkspaceRoomComment,
   type WorkspaceRoomCommentReply,
-  type WorkspaceRoomCrdt,
   type WorkspaceRoomStructureSnapshot,
 } from "@tabula-md/tabula";
 import { isEncryptedEnvelope } from "./collabConnectionModel";
-import { getCollaboratorDisplayList } from "./collabCollaborators";
 import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
 import type { CollabRuntimeAdapters } from "./collabRuntimeAdapters";
 import { createCollabSessionState } from "./collabSessionState";
@@ -70,6 +61,11 @@ import {
   createCheckpointCoordinator,
   type RoomDurability,
 } from "./runtime/CheckpointCoordinator";
+import {
+  createRoomPresenceController,
+  type Collaborator,
+  type LiveViewport,
+} from "./runtime/RoomPresenceController";
 
 export {
   createRoomSession,
@@ -92,42 +88,13 @@ export type { ParsedRoomLocation, RoomSession, TabulaRoomAvailability } from "./
 
 export type ConnectionStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "failed";
 export type { RoomDurability } from "./runtime/CheckpointCoordinator";
+export type {
+  Collaborator,
+  LiveSelection,
+  LiveViewport,
+} from "./runtime/RoomPresenceController";
 
 type SendPacketResult = "sent" | "offline" | "failed" | "discarded";
-
-export type LiveSelection = {
-  documentId?: string;
-  from: number;
-  to: number;
-  columnNumber?: number;
-  fromLineNumber?: number;
-  lineNumber?: number;
-  selectionEndsWithLineBreak?: boolean;
-  toLineNumber?: number;
-};
-
-export type LiveViewport = {
-  documentId: string;
-  position: number;
-  offset: number;
-};
-
-export type Collaborator = {
-  id: string;
-  name: string;
-  color: string;
-  lastSeen: number;
-  activeDocumentId?: string;
-  kind?: RoomActorKind;
-  client?: RoomActorClient;
-  capabilities?: RoomCapability[];
-  joinedAt?: string;
-  roomId?: string;
-  fileTitle?: string;
-  selection?: LiveSelection;
-  viewport?: LiveViewport;
-  followingActorId?: string;
-};
 
 export type CollabRecoveryEvent = {
   id: string;
@@ -231,65 +198,6 @@ type RemoteSyncOrigin = {
 const isRemoteSyncOrigin = (origin: unknown): origin is RemoteSyncOrigin =>
   Boolean(origin && typeof origin === "object" && (origin as Partial<RemoteSyncOrigin>).type === REMOTE_SYNC_ORIGIN);
 
-const getActor = (identity: Collaborator): RoomActor => createRoomActor({
-  id: identity.id,
-  kind: identity.kind ?? "human",
-  name: identity.name,
-  color: identity.color,
-  client: identity.client ?? "tabula-md",
-  capabilities: identity.capabilities,
-  joinedAt: identity.joinedAt,
-});
-
-const isActor = (value: unknown): value is RoomActor => {
-  return parseRoomActor(value) !== null;
-};
-
-const getSelectionFromAwarenessState = (
-  room: WorkspaceRoomCrdt,
-  state: Record<string, unknown>,
-): LiveSelection | undefined => {
-  const cursor = state.cursor;
-  if (!cursor || typeof cursor !== "object" || Array.isArray(cursor)) return undefined;
-  const raw = cursor as { anchor?: Y.RelativePosition; head?: Y.RelativePosition };
-  if (!raw.anchor || !raw.head) return undefined;
-  try {
-    const anchor = Y.createAbsolutePositionFromRelativePosition(raw.anchor, room.doc);
-    const head = Y.createAbsolutePositionFromRelativePosition(raw.head, room.doc);
-    if (!anchor || !head || anchor.type !== head.type) return undefined;
-    let documentId: string | undefined;
-    room.documents.forEach((text, id) => {
-      if (text === anchor.type) documentId = id;
-    });
-    if (!documentId) return undefined;
-    return { documentId, from: Math.min(anchor.index, head.index), to: Math.max(anchor.index, head.index) };
-  } catch {
-    return undefined;
-  }
-};
-
-const getViewportFromAwarenessState = (
-  room: WorkspaceRoomCrdt,
-  state: Record<string, unknown>,
-): LiveViewport | undefined => {
-  const viewport = state.viewport;
-  if (!viewport || typeof viewport !== "object" || Array.isArray(viewport)) return undefined;
-  const raw = viewport as { anchor?: Y.RelativePosition; offset?: unknown };
-  if (!raw.anchor || typeof raw.offset !== "number" || !Number.isFinite(raw.offset)) return undefined;
-  try {
-    const absolute = Y.createAbsolutePositionFromRelativePosition(raw.anchor, room.doc);
-    if (!absolute) return undefined;
-    let documentId: string | undefined;
-    room.documents.forEach((text, id) => {
-      if (text === absolute.type) documentId = id;
-    });
-    if (!documentId) return undefined;
-    return { documentId, position: absolute.index, offset: raw.offset };
-  } catch {
-    return undefined;
-  }
-};
-
 const applyTextPatches = (text: Y.Text, patches: readonly TextPatch[]) => {
   for (const patch of [...patches].sort((first, second) => second.from - first.from)) {
     const from = Math.max(0, Math.min(patch.from, text.length));
@@ -324,19 +232,22 @@ export const createWorkspaceRoomRuntime = ({
   const awareness = new Awareness(room.doc);
   const chunkAssembler = createRoomChunkAssembler();
   const sessionState = createCollabSessionState();
+  let activeDocumentId: string | null = documentId;
+  const presenceController = createRoomPresenceController({
+    room,
+    roomId,
+    awareness,
+    identity,
+    activeDocumentId,
+    fileTitle,
+    nowIso: adapters.clock.nowIso,
+  });
   const documentRegistry = createRoomDocumentRegistry({ awareness, documents: room.documents });
   const documentProjectionStore = createRoomDocumentProjectionStore(room.documents);
   const structureStore = createRoomStructureStore(room);
   const remoteProjectionRevisions = new Map<string, number>();
   const consumedRemoteProjectionRevisions = new Map<string, number>();
   let activeDocumentLease: RoomDocumentLease | null = null;
-  let activeDocumentId: string | null = documentId;
-  let editorPresenceEnabled = true;
-  let currentFileTitle: string | undefined = fileTitle;
-  let currentIdentity: Collaborator = {
-    ...identity,
-    joinedAt: identity.joinedAt ?? adapters.clock.nowIso(),
-  };
   let roomKey: CryptoKey | null = null;
   let transport: ReturnType<CollabRuntimeAdapters["createRoomTransport"]> | null = null;
   let heartbeat: unknown;
@@ -480,54 +391,8 @@ export const createWorkspaceRoomRuntime = ({
     }, 0);
   };
 
-  const getAwarenessActors = () => {
-    const actors = new Map<string, RoomActor>();
-    awareness.getStates().forEach((state) => {
-      const actor = state?.actor;
-      if (isActor(actor)) actors.set(actor.id, actor);
-    });
-    const localActor = getActor(currentIdentity);
-    actors.set(localActor.id, localActor);
-    return [...actors.values()];
-  };
-
-  const getActorDisplay = (actorId: string) =>
-    getCollaboratorDisplayList(getAwarenessActors()).find((actor) => actor.id === actorId);
-
-  const getSenderActor = (senderId: string) => {
-    for (const state of awareness.getStates().values()) {
-      const actor = state?.actor;
-      if (isActor(actor) && actor.id === senderId) return actor;
-    }
-    return null;
-  };
-
-  const publishCollaborators = () => {
-    const collaborators: Collaborator[] = [];
-    awareness.getStates().forEach((state, clientId) => {
-      if (clientId === awareness.clientID || !state || typeof state !== "object") return;
-      const actor = (state as Record<string, unknown>).actor;
-      if (!isActor(actor) || actor.id === currentIdentity.id || !hasRoomCapability(actor, "presence")) return;
-      collaborators.push({
-        id: actor.id,
-        name: actor.name,
-        color: actor.color ?? "#2563eb",
-        kind: actor.kind,
-        client: actor.client,
-        capabilities: actor.capabilities,
-        joinedAt: actor.joinedAt,
-        roomId,
-        activeDocumentId: typeof state.activeDocumentId === "string" ? state.activeDocumentId : undefined,
-        fileTitle: typeof state.fileTitle === "string" ? state.fileTitle : undefined,
-        selection: getSelectionFromAwarenessState(room, state as Record<string, unknown>),
-        viewport: getViewportFromAwarenessState(room, state as Record<string, unknown>),
-        followingActorId: typeof state.followingActorId === "string" ? state.followingActorId : undefined,
-        lastSeen: typeof state.lastSeen === "number" ? state.lastSeen : Date.now(),
-      });
-    });
-    collaborators.sort((first, second) => first.name.localeCompare(second.name) || first.id.localeCompare(second.id));
-    updateRuntimeSnapshot({ collaborators });
-  };
+  const publishCollaborators = () =>
+    updateRuntimeSnapshot({ collaborators: presenceController.getCollaborators() });
 
   const projectWorkspace = (origin?: unknown) => {
     if (closed) return;
@@ -553,12 +418,14 @@ export const createWorkspaceRoomRuntime = ({
       return;
     }
     hasHydratedWorkspace = true;
-    const remoteActor = isRemoteSyncOrigin(origin) ? getSenderActor(origin.senderId) : null;
+    const remoteActor = isRemoteSyncOrigin(origin)
+      ? presenceController.getSenderActor(origin.senderId)
+      : null;
     if (onWorkspaceStructureChange) {
       onWorkspaceStructureChange(structureStore.getSnapshot(), isRemoteSyncOrigin(origin)
         ? {
             actorId: origin.senderId,
-            actorName: getActorDisplay(origin.senderId)?.name ?? remoteActor?.name,
+            actorName: presenceController.getActorDisplay(origin.senderId)?.name ?? remoteActor?.name,
           }
         : undefined, (documentId) => room.documents.get(documentId)?.toString() ?? null);
     }
@@ -599,16 +466,8 @@ export const createWorkspaceRoomRuntime = ({
     setEditorBinding(activeDocumentLease ? createEditorBinding(activeDocumentLease.resource) : null);
   };
 
-  const getActiveActors = () => {
-    const ids = new Set([currentIdentity.id]);
-    awareness.getStates().forEach((state) => {
-      const actor = state?.actor;
-      if (isActor(actor)) ids.add(actor.id);
-    });
-    return [...ids].sort();
-  };
-
-  const isCheckpointLeader = () => getActiveActors()[0] === currentIdentity.id;
+  const isCheckpointLeader = () =>
+    presenceController.getActiveActorIds()[0] === presenceController.getIdentity().id;
   const checkpointCoordinator = createCheckpointCoordinator({
     room,
     roomId,
@@ -659,7 +518,7 @@ export const createWorkspaceRoomRuntime = ({
     syncProtocol.writeSyncStep1(encoder, room.doc);
     void sendPacket({
       type: "sync.message",
-      senderId: currentIdentity.id,
+      senderId: presenceController.getIdentity().id,
       payload: encoding.toUint8Array(encoder),
     }).finally(() => {
       syncStep1SendInFlight = false;
@@ -680,7 +539,11 @@ export const createWorkspaceRoomRuntime = ({
     pendingAwarenessReliable = false;
     awarenessSendInFlight = true;
     const payload = encodeAwarenessUpdate(awareness, clients);
-    void sendPacket({ type: "awareness.updated", senderId: currentIdentity.id, payload }, volatile)
+    void sendPacket({
+      type: "awareness.updated",
+      senderId: presenceController.getIdentity().id,
+      payload,
+    }, volatile)
       .finally(() => {
         awarenessSendInFlight = false;
         flushAwareness();
@@ -718,7 +581,7 @@ export const createWorkspaceRoomRuntime = ({
     syncProtocol.writeUpdate(encoder, update);
     void sendPacket({
       type: "sync.message",
-      senderId: currentIdentity.id,
+      senderId: presenceController.getIdentity().id,
       payload: encoding.toUint8Array(encoder),
     }).then((result) => {
       if (result !== "sent" && !closed) {
@@ -735,33 +598,10 @@ export const createWorkspaceRoomRuntime = ({
     });
   }
 
-  const setLocalAwareness = () => {
-    const actor = getActor(currentIdentity);
-    const displayActor = getActorDisplay(actor.id) ?? actor;
-    const displayColor = displayActor.color ?? "#2563eb";
-    const nextState: Record<string, unknown> = {
-      ...awareness.getLocalState(),
-      actor,
-      user: { name: displayActor.name, color: displayColor, colorLight: `${displayColor}33` },
-      lastSeen: Date.now(),
-    };
-    if (activeDocumentId) {
-      nextState.activeDocumentId = activeDocumentId;
-      nextState.fileTitle = currentFileTitle;
-    } else {
-      delete nextState.activeDocumentId;
-      delete nextState.fileTitle;
-    }
-    awareness.setLocalState(nextState);
-    if (!editorPresenceEnabled && awareness.getLocalState()?.cursor != null) {
-      awareness.setLocalStateField("cursor", null);
-    }
-  };
-
   const handleSyncMessage = async (packet: RoomWireDataPacket) => {
     const probe = decoding.createDecoder(packet.payload);
     const messageType = decoding.readVarUint(probe);
-    const senderActor = getSenderActor(packet.senderId);
+    const senderActor = presenceController.getSenderActor(packet.senderId);
     if (
       messageType !== syncProtocol.messageYjsSyncStep1 &&
       (!senderActor || !hasRoomCapability(senderActor, "write"))
@@ -777,14 +617,14 @@ export const createWorkspaceRoomRuntime = ({
     if (encoding.length(reply) > 0) {
       await sendPacket({
         type: "sync.message",
-        senderId: currentIdentity.id,
+        senderId: presenceController.getIdentity().id,
         payload: encoding.toUint8Array(reply),
       });
     }
   };
 
   const handleDataPacket = async (packet: RoomWireDataPacket) => {
-    if (packet.senderId === currentIdentity.id) return;
+    if (packet.senderId === presenceController.getIdentity().id) return;
     if (packet.type === "awareness.updated") {
       applyAwarenessUpdate(awareness, packet.payload, REMOTE_AWARENESS_ORIGIN);
       return;
@@ -856,17 +696,6 @@ export const createWorkspaceRoomRuntime = ({
     return false;
   };
 
-  const refreshAwarenessPeers = (peerIds: readonly string[]) => {
-    const allowed = new Set(peerIds);
-    const staleClientIds: number[] = [];
-    awareness.getStates().forEach((state, clientId) => {
-      if (clientId === awareness.clientID) return;
-      const actor = state?.actor;
-      if (isActor(actor) && !allowed.has(actor.id)) staleClientIds.push(clientId);
-    });
-    if (staleClientIds.length > 0) removeAwarenessStates(awareness, staleClientIds, "transport.peers");
-  };
-
   const start = async () => {
     const startConfig = await resolveCollabStartConfig({
       encodedRoomKey,
@@ -884,12 +713,12 @@ export const createWorkspaceRoomRuntime = ({
     syncDocumentMetrics();
     refreshActiveEditorBinding();
     projectWorkspace();
-    setLocalAwareness();
+    presenceController.publishLocalState();
 
     transport = adapters.createRoomTransport({
       baseUrl: startConfig.baseUrl,
       roomId,
-      clientId: currentIdentity.id,
+      clientId: presenceController.getIdentity().id,
       handlers: {
         onConnect: () => { if (!closed) setStatus("connecting"); },
         onJoined: () => {
@@ -897,7 +726,7 @@ export const createWorkspaceRoomRuntime = ({
           const joined = sessionState.markJoined();
           setStatus("connected");
           if (joined.reconnected) emitRecoveryEvent("reconnected", joined.message);
-          setLocalAwareness();
+          presenceController.publishLocalState();
           publishAwareness([awareness.clientID], false);
           sendSyncStep1();
           clearLocalUpdateRetry();
@@ -912,7 +741,7 @@ export const createWorkspaceRoomRuntime = ({
         },
         onMessage: routeEnvelope,
         onPeers: (message) => {
-          refreshAwarenessPeers(message.peers);
+          presenceController.refreshPeers(message.peers);
           publishCollaborators();
         },
         onError: (message) => emitInvalidMessage(message.error || "A collaboration server message was ignored."),
@@ -936,7 +765,7 @@ export const createWorkspaceRoomRuntime = ({
     transport.connect();
     heartbeat = adapters.clock.setInterval(() => {
       if (closed) return;
-      setLocalAwareness();
+      presenceController.publishLocalState();
       publishAwareness();
       chunkAssembler.prune();
     }, AWARENESS_HEARTBEAT_MS);
@@ -1002,18 +831,7 @@ export const createWorkspaceRoomRuntime = ({
     publishCollaborators();
     checkpointCoordinator.handleLeadershipChange(runtimeSnapshot.durability);
     if (origin === REMOTE_AWARENESS_ORIGIN && !closed) {
-      const localState = awareness.getLocalState();
-      const currentUser = localState?.user;
-      const currentDisplayName = currentUser && typeof currentUser === "object"
-        ? (currentUser as Record<string, unknown>).name
-        : undefined;
-      const currentDisplayColor = currentUser && typeof currentUser === "object"
-        ? (currentUser as Record<string, unknown>).color
-        : undefined;
-      const nextDisplay = getActorDisplay(currentIdentity.id) ?? currentIdentity;
-      if (currentDisplayName !== nextDisplay.name || currentDisplayColor !== nextDisplay.color) {
-        setLocalAwareness();
-      }
+      presenceController.reconcileLocalDisplay();
     }
     if (origin !== REMOTE_AWARENESS_ORIGIN && !closed) {
       publishAwareness([...changes.added, ...changes.updated, ...changes.removed]);
@@ -1038,10 +856,7 @@ export const createWorkspaceRoomRuntime = ({
 
   const setActiveDocument = (nextDocument: { documentId: string; fileTitle?: string } | null) => {
     activeDocumentId = nextDocument?.documentId ?? null;
-    currentFileTitle = nextDocument?.fileTitle;
-    awareness.setLocalStateField("cursor", null);
-    awareness.setLocalStateField("viewport", null);
-    setLocalAwareness();
+    presenceController.setActiveDocument(nextDocument);
     if (activeDocumentId && room.comments.size > 0) scheduleCommentProjection();
     refreshActiveEditorBinding();
   };
@@ -1157,36 +972,14 @@ export const createWorkspaceRoomRuntime = ({
     },
     setActiveDocument,
     setEditorPresenceEnabled(enabled: boolean) {
-      editorPresenceEnabled = enabled;
-      if (!enabled) {
-        awareness.setLocalStateField("cursor", null);
-        awareness.setLocalStateField("viewport", null);
-      }
+      presenceController.setEditorPresenceEnabled(enabled);
     },
-    setViewport(viewport: LiveViewport | null) {
-      if (!viewport || !editorPresenceEnabled) {
-        awareness.setLocalStateField("viewport", null);
-        return;
-      }
-      const text = room.documents.get(viewport.documentId);
-      if (!text) return;
-      awareness.setLocalStateField("viewport", {
-        anchor: Y.createRelativePositionFromTypeIndex(
-          text,
-          Math.max(0, Math.min(viewport.position, text.length)),
-        ),
-        offset: Number.isFinite(viewport.offset) ? viewport.offset : 0,
-      });
-    },
+    setViewport: (viewport: LiveViewport | null) => presenceController.setViewport(viewport),
     setFollowingActor(actorId: string | null) {
-      awareness.setLocalStateField("followingActorId", actorId);
+      presenceController.setFollowingActor(actorId);
     },
     setIdentity(nextIdentity: Collaborator) {
-      currentIdentity = {
-        ...nextIdentity,
-        joinedAt: nextIdentity.joinedAt ?? currentIdentity.joinedAt ?? adapters.clock.nowIso(),
-      };
-      setLocalAwareness();
+      presenceController.setIdentity(nextIdentity);
     },
     getEditorBinding: () => runtimeSnapshot.editorBinding,
     materializeDocument(documentId: string) {
@@ -1255,10 +1048,7 @@ export const createWorkspaceRoomRuntime = ({
       room.nodes.unobserveDeep(handleWorkspaceStructureChange);
       room.comments.unobserveDeep(handleCommentsChange);
       awareness.off("update", handleAwarenessUpdate);
-      const localState = awareness.getLocalState();
-      if (localState && transport?.connected && roomKey) {
-        removeAwarenessStates(awareness, [awareness.clientID], "tabula.disconnect");
-      }
+      if (transport?.connected && roomKey) presenceController.clearLocalState();
       transport?.disconnect();
       transport = null;
       pendingLocalUpdate = null;
