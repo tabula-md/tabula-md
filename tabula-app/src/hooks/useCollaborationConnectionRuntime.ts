@@ -79,7 +79,6 @@ type UseCollaborationConnectionRuntimeOptions = {
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null; order?: number }[];
   workspaceFolders?: readonly WorkspaceFolderSnapshot[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
-  setFileText: (fileId: string, text: string) => void;
   setFileCollaborationStatus: (
     fileId: string,
     status: ConnectionStatus,
@@ -89,7 +88,6 @@ type UseCollaborationConnectionRuntimeOptions = {
     fileId: string,
     event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
   ) => void;
-  onRemoteTextChange?: (fileId: string, text: string) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onWorkspaceStructureChange?: (
     snapshot: WorkspaceRoomStructureSnapshot,
@@ -109,10 +107,8 @@ export function useCollaborationConnectionRuntime({
   workspaceDocuments = [],
   workspaceFolders = [],
   commentsByFileId,
-  setFileText,
   setFileCollaborationStatus,
   setFileRecoveryEvent,
-  onRemoteTextChange,
   onCommentsChange,
   onWorkspaceStructureChange,
   onOpenFailure,
@@ -145,6 +141,25 @@ export function useCollaborationConnectionRuntime({
     subscribeToRuntime,
     getRuntimeSnapshot,
     getRuntimeSnapshot,
+  );
+  const activeDocumentId = activeDocument?.id;
+  const subscribeToActiveDocument = useCallback(
+    (listener: () => void) =>
+      runtime && activeDocumentId
+        ? runtime.subscribeDocument(activeDocumentId, listener)
+        : () => undefined,
+    [activeDocumentId, runtime],
+  );
+  const getActiveDocumentSnapshot = useCallback(
+    () => activeDocumentId
+      ? runtime?.getDocumentTextSnapshot(activeDocumentId) ?? activeDocument?.text ?? null
+      : null,
+    [activeDocument?.text, activeDocumentId, runtime],
+  );
+  const activeDocumentText = useSyncExternalStore(
+    subscribeToActiveDocument,
+    getActiveDocumentSnapshot,
+    getActiveDocumentSnapshot,
   );
   const runtimeConnectionStatus = runtime ? runtimeSnapshot.status : preRuntimeConnectionStatus;
   const connectionStatus = isLive && !browserOnline ? "disconnected" : runtimeConnectionStatus;
@@ -209,10 +224,6 @@ export function useCollaborationConnectionRuntime({
           emitInitialWorkspaceState: false,
           identity,
           fileTitle: target.fileTitle,
-          onTextChange: (documentId, text) => {
-            setFileText(documentId, text);
-            onRemoteTextChange?.(documentId, text);
-          },
           onCommentsChange,
           onWorkspaceStructureChange,
           onOpenFailure,
@@ -253,8 +264,6 @@ export function useCollaborationConnectionRuntime({
     connectionKey,
     setFileCollaborationStatus,
     setFileRecoveryEvent,
-    setFileText,
-    onRemoteTextChange,
     onCommentsChange,
     onWorkspaceStructureChange,
     onOpenFailure,
@@ -327,6 +336,7 @@ export function useCollaborationConnectionRuntime({
 
   return {
     applyLocalText,
+    activeDocumentText,
     createDocument: (input: WorkspaceRoomDocumentCommand) =>
       dispatchWorkspaceCommand({ type: "create-document", input }),
     createFolder: (input: WorkspaceRoomFolderCommand) =>

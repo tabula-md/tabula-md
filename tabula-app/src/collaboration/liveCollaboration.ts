@@ -73,6 +73,7 @@ import {
   type RoomDocumentLease,
   type RoomDocumentResource,
 } from "./runtime/RoomDocumentRegistry";
+import { createRoomDocumentProjectionStore } from "./runtime/RoomDocumentProjectionStore";
 import { createRoomStructureStore } from "./runtime/RoomStructureStore";
 
 export {
@@ -192,7 +193,6 @@ type ConnectOptions = {
   emitInitialWorkspaceState: boolean;
   identity: Collaborator;
   fileTitle?: string;
-  onTextChange: (documentId: string, text: string) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onWorkspaceStructureChange?: (
     snapshot: WorkspaceRoomStructureSnapshot,
@@ -287,7 +287,6 @@ export const createWorkspaceRoomRuntime = ({
   emitInitialWorkspaceState,
   identity,
   fileTitle,
-  onTextChange,
   onCommentsChange,
   onWorkspaceStructureChange,
   onRecoveryEvent,
@@ -301,6 +300,7 @@ export const createWorkspaceRoomRuntime = ({
   const chunkAssembler = createRoomChunkAssembler();
   const sessionState = createCollabSessionState();
   const documentRegistry = createRoomDocumentRegistry({ awareness, documents: room.documents });
+  const documentProjectionStore = createRoomDocumentProjectionStore(room.documents);
   const structureStore = createRoomStructureStore(room);
   const documentByteLengths = new Map<string, number>();
   const documentSizeTrackers = new Map<string, Utf8TextSizeTracker>();
@@ -404,7 +404,7 @@ export const createWorkspaceRoomRuntime = ({
   };
 
   const scheduleTextProjection = (documentId: string) => {
-    if (documentId !== activeDocumentId) return;
+    if (!documentProjectionStore.hasSubscribers(documentId)) return;
     pendingTextProjectionIds.add(documentId);
     if (textProjectionTimer || closed) return;
     textProjectionTimer = adapters.clock.setTimeout(() => {
@@ -413,9 +413,7 @@ export const createWorkspaceRoomRuntime = ({
       pendingTextProjectionIds.clear();
       if (closed) return;
       for (const id of documentIds) {
-        if (id !== activeDocumentId) continue;
-        const text = room.documents.get(id);
-        if (text) onTextChange(id, text.toString());
+        documentProjectionStore.refresh(id);
       }
     }, TEXT_PROJECTION_DELAY_MS);
   };
@@ -1154,11 +1152,7 @@ export const createWorkspaceRoomRuntime = ({
     currentFileTitle = nextDocument?.fileTitle;
     awareness.setLocalStateField("cursor", null);
     setLocalAwareness();
-    if (activeDocumentId) {
-      const text = room.documents.get(activeDocumentId);
-      if (text) onTextChange(activeDocumentId, text.toString());
-      if (room.comments.size > 0) scheduleCommentProjection();
-    }
+    if (activeDocumentId && room.comments.size > 0) scheduleCommentProjection();
     refreshActiveEditorBinding();
   };
 
@@ -1215,6 +1209,12 @@ export const createWorkspaceRoomRuntime = ({
     },
     getStructureSnapshot(): WorkspaceRoomStructureSnapshot {
       return structureStore.getSnapshot();
+    },
+    subscribeDocument(documentId: string, listener: () => void) {
+      return documentProjectionStore.subscribe(documentId, listener);
+    },
+    getDocumentTextSnapshot(documentId: string) {
+      return documentProjectionStore.getSnapshot(documentId);
     },
     applyLocalText(nextText: string, patches?: readonly TextPatch[]) {
       if (!activeDocumentId) return false;
@@ -1285,6 +1285,7 @@ export const createWorkspaceRoomRuntime = ({
     getResourceCounts: () => ({
       documentObservers: 1,
       ...documentRegistry.getResourceCounts(),
+      ...documentProjectionStore.getResourceCounts(),
     }),
     upsertComment(comment: WorkspaceRoomComment) {
       const current = room.comments.get(comment.id);
@@ -1358,6 +1359,7 @@ export const createWorkspaceRoomRuntime = ({
       activeDocumentLease?.release();
       activeDocumentLease = null;
       documentRegistry.dispose();
+      documentProjectionStore.clear();
       structureStore.dispose();
       documentByteLengths.clear();
       documentSizeTrackers.clear();

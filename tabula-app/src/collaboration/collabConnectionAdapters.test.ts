@@ -170,7 +170,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "doc-1", title: "README.md", text: "# Hello" }],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
-      onTextChange: vi.fn(),
       adapters: {
         ...defaults,
         crypto: { ...defaults.crypto, importRoomKey },
@@ -215,7 +214,6 @@ describe("workspace room runtime", () => {
         documents: [{ id: "doc", title: "README.md", text: "text" }],
         identity: { id: `human-${index}`, name: "Curious Human", color: "#2563eb", lastSeen: 0 },
         fileTitle: "README.md",
-        onTextChange: vi.fn(),
         adapters: {
           ...defaults,
           clock,
@@ -225,6 +223,7 @@ describe("workspace room runtime", () => {
         },
       });
       await vi.waitFor(() => expect(connection.getSnapshot().status).toBe("connected"));
+      connection.subscribeDocument("doc", vi.fn());
       connection.applyLocalTextPatches([{ from: 4, to: 4, insert: "!" }]);
       expect(activeTimeouts.size).toBeGreaterThan(0);
       connection.disconnect();
@@ -253,7 +252,6 @@ describe("workspace room runtime", () => {
       ],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
-      onTextChange: vi.fn(),
       adapters: {
         ...defaults,
         createRoomTransport: transport.createRoomTransport,
@@ -290,7 +288,6 @@ describe("workspace room runtime", () => {
       ],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "Local.md",
-      onTextChange: vi.fn(),
       adapters: {
         ...defaults,
         createRoomTransport: transport.createRoomTransport,
@@ -326,7 +323,6 @@ describe("workspace room runtime", () => {
       ],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
-      onTextChange: hostTextProjection,
       adapters,
     });
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-active-projection")).toBeGreaterThan(0));
@@ -337,19 +333,22 @@ describe("workspace room runtime", () => {
       emitInitialWorkspaceState: false,
       identity: { id: "human-2", name: "Sharp Human", color: "#7c3aed", lastSeen: 0 },
       fileTitle: "B.md",
-      onTextChange: vi.fn(),
       adapters,
     });
     await vi.waitFor(() => expect(peer.getEditorBinding()?.yText.toString()).toBe("Beta"));
+    const unsubscribeHostDocument = host.subscribeDocument("doc-a", hostTextProjection);
     hostTextProjection.mockClear();
 
     peer.applyLocalTextPatches([{ from: 4, to: 4, insert: " remote" }]);
     await vi.waitFor(() => expect(host.materializeWorkspace().documents["doc-b"]).toBe("Beta remote"));
     await waitForTasks();
 
-    expect(hostTextProjection).not.toHaveBeenCalledWith("doc-b", "Beta remote");
+    expect(hostTextProjection).not.toHaveBeenCalled();
+    unsubscribeHostDocument();
     host.setActiveDocument({ documentId: "doc-b", fileTitle: "B.md" });
-    expect(hostTextProjection).toHaveBeenLastCalledWith("doc-b", "Beta remote");
+    const unsubscribeRemoteDocument = host.subscribeDocument("doc-b", hostTextProjection);
+    expect(host.getDocumentTextSnapshot("doc-b")).toBe("Beta remote");
+    unsubscribeRemoteDocument();
     host.disconnect();
     peer.disconnect();
   });
@@ -370,7 +369,6 @@ describe("workspace room runtime", () => {
       documents,
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "Document 0.md",
-      onTextChange: vi.fn(),
       adapters: {
         ...defaults,
         createRoomTransport: transport.createRoomTransport,
@@ -383,6 +381,8 @@ describe("workspace room runtime", () => {
       activeLeases: 1,
       documentHandles: 1,
       documentObservers: 1,
+      documentProjectionListeners: 0,
+      documentProjectionSnapshots: 0,
       undoManagers: 1,
     });
 
@@ -394,6 +394,8 @@ describe("workspace room runtime", () => {
       activeLeases: 1,
       documentHandles: 8,
       documentObservers: 1,
+      documentProjectionListeners: 0,
+      documentProjectionSnapshots: 0,
       undoManagers: 8,
     });
     runtime.disconnect();
@@ -424,7 +426,6 @@ describe("workspace room runtime", () => {
       ],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
-      onTextChange: vi.fn(),
       onWorkspaceStructureChange: (snapshot) => hostSnapshots.push(snapshot),
       onCommentsChange: (comments) => hostComments.push(comments),
       adapters,
@@ -447,7 +448,6 @@ describe("workspace room runtime", () => {
         capabilities: ["presence", "read", "write"],
       },
       fileTitle: "B.md",
-      onTextChange: vi.fn(),
       onWorkspaceStructureChange: (snapshot) => agentSnapshots.push(snapshot),
       onCommentsChange: (comments) => agentComments.push(comments),
       adapters,
@@ -537,7 +537,6 @@ describe("workspace room runtime", () => {
   it("bounds per-document undo history", async () => {
     const transport = createConnectedTransport();
     const defaults = createDefaultCollabRuntimeAdapters();
-    const onTextChange = vi.fn();
     const runtime = createWorkspaceRoomRuntime({
       roomId: "room-bounded-undo",
       roomKey: VALID_ROOM_KEY,
@@ -546,7 +545,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "doc-a", title: "A.md", text: "" }],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
-      onTextChange,
       adapters: {
         ...defaults,
         createRoomTransport: transport.createRoomTransport,
@@ -555,6 +553,8 @@ describe("workspace room runtime", () => {
       },
     });
     await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe("connected"));
+    const documentProjectionListener = vi.fn();
+    runtime.subscribeDocument("doc-a", documentProjectionListener);
 
     const undoManager = runtime.getEditorBinding()!.undoManager;
     for (let index = 0; index < 150; index += 1) {
@@ -564,7 +564,8 @@ describe("workspace room runtime", () => {
     }
 
     expect(undoManager.undoStack.length).toBeLessThanOrEqual(100);
-    await vi.waitFor(() => expect(onTextChange).toHaveBeenLastCalledWith("doc-a", "x".repeat(150)));
+    await vi.waitFor(() => expect(documentProjectionListener).toHaveBeenCalled());
+    expect(runtime.getDocumentTextSnapshot("doc-a")).toBe("x".repeat(150));
     runtime.disconnect();
   });
 
@@ -587,7 +588,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "doc-a", title: "A.md", text: "" }],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
-      onTextChange: vi.fn(),
       adapters: {
         ...defaults,
         crypto: { ...defaults.crypto, encryptEnvelope },
@@ -625,7 +625,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "doc-a", title: "A.md", text: "" }],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
-      onTextChange: vi.fn(),
       adapters: {
         ...defaults,
         crypto: { ...defaults.crypto, decryptEnvelope },
@@ -672,7 +671,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "doc-a", title: "A.md", text: "" }],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
-      onTextChange: vi.fn(),
       adapters: {
         ...defaults,
         crypto: { ...defaults.crypto, decryptEnvelope },
@@ -725,7 +723,6 @@ describe("workspace room runtime", () => {
       ],
       identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "Delete me.md",
-      onTextChange: vi.fn(),
       onWorkspaceStructureChange: (snapshot) => hostSnapshots.push(snapshot),
       adapters,
     });
@@ -737,7 +734,6 @@ describe("workspace room runtime", () => {
       emitInitialWorkspaceState: false,
       identity: { id: "peer", name: "Calm Human", color: "#0f766e", lastSeen: 0 },
       fileTitle: "Delete me.md",
-      onTextChange: vi.fn(),
       onWorkspaceStructureChange: (snapshot) => peerSnapshots.push(snapshot),
       adapters,
     });
@@ -784,7 +780,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "doc", title: "README.md", text: "Online" }],
       identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
-      onTextChange: vi.fn(),
       adapters,
     });
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-offline-edit")).toBeGreaterThan(0));
@@ -795,7 +790,6 @@ describe("workspace room runtime", () => {
       emitInitialWorkspaceState: false,
       identity: { id: "peer", name: "Calm Human", color: "#0f766e", lastSeen: 0 },
       fileTitle: "README.md",
-      onTextChange: vi.fn(),
       adapters,
     });
     await vi.waitFor(() => expect(peer.getEditorBinding()?.yText.toString()).toBe("Online"));
@@ -835,7 +829,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "doc", title: "README.md", text: "text" }],
       identity: { id: "z-host", name: "Nimble Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
-      onTextChange: vi.fn(),
       onWorkspaceStructureChange: (_snapshot, origin) => hostOrigins.push(origin),
       adapters,
     });
@@ -847,7 +840,6 @@ describe("workspace room runtime", () => {
       emitInitialWorkspaceState: false,
       identity: { id: "a-peer", name: "Nimble Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
-      onTextChange: vi.fn(),
       adapters,
     });
 
@@ -890,7 +882,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "doc-a", title: "A.md", text: "Alpha" }],
       identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
-      onTextChange: vi.fn(),
       adapters,
     });
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-empty")).toBeGreaterThan(0));
@@ -900,7 +891,6 @@ describe("workspace room runtime", () => {
       documentId: "room-bootstrap",
       emitInitialWorkspaceState: false,
       identity: { id: "peer", name: "Calm Human", color: "#0f766e", lastSeen: 0 },
-      onTextChange: vi.fn(),
       onWorkspaceStructureChange: (nextSnapshot) => peerSnapshots.push(nextSnapshot),
       adapters,
     });
@@ -967,7 +957,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "local-doc", title: "Local.md", text: "local" }],
       identity: { id: "leader", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "Local.md",
-      onTextChange: vi.fn(),
       onWorkspaceStructureChange: (snapshot) => snapshots.push(snapshot),
       adapters: {
         ...defaults,
@@ -1010,7 +999,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "readme", title: "README.md", text: "Read me" }],
       identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
-      onTextChange: vi.fn(),
       adapters,
     });
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-commands")).toBeGreaterThan(0));
@@ -1021,7 +1009,6 @@ describe("workspace room runtime", () => {
       emitInitialWorkspaceState: false,
       identity: { id: "peer", name: "Curious Human", color: "#7c3aed", lastSeen: 0 },
       fileTitle: "README.md",
-      onTextChange: vi.fn(),
       adapters,
     });
     await vi.waitFor(() => expect(peer.materializeDocument("readme")).toBe("Read me"));
@@ -1073,7 +1060,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "doc", title: "README.md", text: "original" }],
       identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
-      onTextChange: vi.fn(),
       adapters,
     });
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-read-only")).toBeGreaterThan(0));
@@ -1092,7 +1078,6 @@ describe("workspace room runtime", () => {
         capabilities: ["presence", "read"],
       },
       fileTitle: "README.md",
-      onTextChange: vi.fn(),
       adapters,
     });
     await vi.waitFor(() => expect(reader.getEditorBinding()?.yText.toString()).toBe("original"));

@@ -104,6 +104,25 @@ describe("reconcileWorkspaceRoomStructure", () => {
     expect(next?.activeFileId).toBe("readme");
   });
 
+  it("materializes existing document bodies only at an explicit persistence boundary", () => {
+    const existing = file({ id: "readme", title: "README.md", text: "stale", roomId: "room-1" });
+    const next = reconcileWorkspaceRoomStructure({
+      activeFile: existing,
+      createFile,
+      materializeExistingDocuments: true,
+      readDocumentText: () => "current Yjs text",
+      snapshot: snapshot([documentNode("readme", "README.md", 0)]),
+      workspaceSnapshot: {
+        folders: [createWorkspaceRootFolder()],
+        files: [existing],
+        openFileIds: ["readme"],
+        activeFileId: "readme",
+      },
+    });
+
+    expect(next.files[0].text).toBe("current Yjs text");
+  });
+
   it("keeps canonical duplicate titles unchanged instead of publishing suffixes back into the room", () => {
     const next = reconcileWorkspaceRoomStructure({
       createFile,

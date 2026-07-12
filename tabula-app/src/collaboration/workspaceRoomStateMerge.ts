@@ -12,6 +12,7 @@ type WorkspaceModelSnapshot = Pick<WorkspaceState, "activeFileId" | "files" | "f
 type ReconcileWorkspaceRoomStructureOptions = {
   activeFile?: WorkspaceFile;
   createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
+  materializeExistingDocuments?: boolean;
   readDocumentText: (documentId: string) => string | null;
   roomShareUrl?: string;
   snapshot: WorkspaceRoomStructureSnapshot;
@@ -21,6 +22,7 @@ type ReconcileWorkspaceRoomStructureOptions = {
 export const reconcileWorkspaceRoomStructure = ({
   activeFile,
   createFile,
+  materializeExistingDocuments = false,
   readDocumentText,
   roomShareUrl,
   snapshot,
@@ -41,7 +43,9 @@ export const reconcileWorkspaceRoomStructure = ({
           ...existing,
           ...collaboration,
           title: node.title,
-          text: existing.text,
+          text: materializeExistingDocuments
+            ? readDocumentText(node.id) ?? existing.text
+            : existing.text,
           parentId: node.parentId ?? WORKSPACE_ROOT_FOLDER_ID,
           order: node.order,
         }

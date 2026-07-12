@@ -60,6 +60,17 @@ describe("workspace editor document runtime owner", () => {
     expect(owner.getLatestFileText("file-a", "fallback")).toBe("external commit");
   });
 
+  it("uses a live authoritative projection without writing it into the workspace file", () => {
+    const owner = createWorkspaceEditorDocumentRuntimeOwner();
+    owner.getRuntime({ id: "file-a", text: "stale workspace text" });
+
+    expect(owner.setAuthoritativeText("file-a", "live room text")).toBe(true);
+    expect(owner.getVisibleFileText({ id: "file-a", text: "stale workspace text" })).toBe("live room text");
+    expect(owner.getLatestFileText("file-a", "stale workspace text")).toBe("live room text");
+    expect(owner.clearAuthoritativeText("file-a")).toBe(true);
+    expect(owner.getVisibleFileText({ id: "file-a", text: "local text" })).toBe("local text");
+  });
+
   it("can clear the active runtime boundary", () => {
     const owner = createWorkspaceEditorDocumentRuntimeOwner();
     owner.getRuntime({ id: "file-a", text: "first" }).replaceAll("first pending");

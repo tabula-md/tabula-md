@@ -80,7 +80,6 @@ type UseCollaborationRoomOptions = {
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
   workspaceFolders?: readonly WorkspaceFolderSnapshot[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
-  setFileText: (fileId: string, text: string) => void;
   setFileCollaborationStatus: (
     fileId: string,
     status: ConnectionStatus,
@@ -95,7 +94,6 @@ type UseCollaborationRoomOptions = {
     roomId: string,
     shareUrl: string,
   ) => WorkspaceFile | undefined;
-  onRemoteTextChange?: (fileId: string, text: string) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onWorkspaceStructureChange?: (
     snapshot: WorkspaceRoomStructureSnapshot,
@@ -115,11 +113,9 @@ export function useCollaborationRoom({
   workspaceDocuments,
   workspaceFolders,
   commentsByFileId,
-  setFileText,
   setFileCollaborationStatus,
   setFileRecoveryEvent,
   startFileCollaborationSession,
-  onRemoteTextChange,
   onCommentsChange,
   onWorkspaceStructureChange,
   onOpenFailure,
@@ -136,6 +132,7 @@ export function useCollaborationRoom({
   });
   const {
     applyLocalText,
+    activeDocumentText,
     createDocument,
     createFolder,
     renameNode,
@@ -163,10 +160,8 @@ export function useCollaborationRoom({
       workspaceDocuments,
       workspaceFolders,
       commentsByFileId,
-      setFileText,
       setFileCollaborationStatus,
       setFileRecoveryEvent,
-      onRemoteTextChange,
       onCommentsChange,
       onWorkspaceStructureChange,
       onOpenFailure,
@@ -221,6 +216,7 @@ export function useCollaborationRoom({
       : roomAvailability.unavailableReason || checkpointAvailability.unavailableReason,
     startSession,
     applyLocalText,
+    activeDocumentText,
     createDocument,
     createFolder,
     renameNode,

@@ -7,7 +7,12 @@ import {
 import { createHelpMarkdown } from "../helpMarkdown";
 import { getShortcutLabels } from "../keyboardShortcuts";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
-import { type TextChange, type WorkspaceRoomComment, type WorkspaceRoomStructureSnapshot } from "@tabula-md/tabula";
+import {
+  type TextChange,
+  type WorkspaceRoomComment,
+  type WorkspaceRoomSnapshot,
+  type WorkspaceRoomStructureSnapshot,
+} from "@tabula-md/tabula";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import { reconcileWorkspaceRoomStructure } from "../collaboration/workspaceRoomStateMerge";
 import {
@@ -52,6 +57,7 @@ import { useWorkspaceEditorDocumentRuntimeOwner } from "./editorDocumentRuntimeO
 import { useWorkspaceActiveFileEditor } from "./useWorkspaceActiveFileEditor";
 import { useWorkspaceChromeController } from "./useWorkspaceChromeController";
 import { useWorkspaceCollaborationRuntime } from "./useWorkspaceCollaborationRuntime";
+import { useCollaborationPresenceRuntime } from "./useCollaborationPresenceRuntime";
 import { useWorkspaceCommentActions } from "./useWorkspaceCommentActions";
 import { useWorkspaceDocumentRuntime } from "./useWorkspaceDocumentRuntime";
 import { getLiveRoomFileOverrides, useWorkspaceFileActions } from "./useWorkspaceFileActions";
@@ -179,6 +185,7 @@ export function useWorkspaceRuntime() {
     resolved: () => undefined,
     replied: () => undefined,
   });
+  const materializeRoomWorkspaceRef = useRef<() => WorkspaceRoomSnapshot | undefined>(() => undefined);
   const failedLiveRoomStartRef = useRef<string | null>(null);
   const [liveRoomOpenTimedOut, setLiveRoomOpenTimedOut] = useState(false);
   const [liveRoomOpenFailure, setLiveRoomOpenFailure] = useState<LiveRoomOpenFailure | null>(null);
@@ -264,6 +271,23 @@ export function useWorkspaceRuntime() {
   const getWorkspaceSnapshot = useEventCallback((): WorkspaceState => {
     const workspaceSnapshot = getWorkspaceStoreSnapshot();
     const activeFileSnapshot = getActiveFileSnapshot();
+    const roomSnapshot = activeRoom ? materializeRoomWorkspaceRef.current() : undefined;
+    if (roomSnapshot) {
+      const materializedWorkspace = reconcileWorkspaceRoomStructure({
+        activeFile: activeFileSnapshot,
+        createFile: createWorkspaceFile,
+        materializeExistingDocuments: true,
+        readDocumentText: (documentId) => roomSnapshot.documents[documentId] ?? null,
+        roomShareUrl: activeRoom?.shareUrl,
+        snapshot: roomSnapshot,
+        workspaceSnapshot: {
+          ...workspaceSnapshot,
+          folders,
+          files: workspaceSnapshot.files,
+        },
+      });
+      return { ...materializedWorkspace, commentsByFileId };
+    }
     return {
       ...workspaceSnapshot,
       folders,
@@ -407,6 +431,7 @@ export function useWorkspaceRuntime() {
     snapshot: WorkspaceRoomStructureSnapshot,
     origin?: WorkspaceRoomChangeOrigin,
     readDocumentText: (documentId: string) => string | null = () => null,
+    materializeExistingDocuments: boolean = false,
   ) => {
     if (activeRoomId && snapshot.roomId !== activeRoomId) return;
     const workspaceSnapshot = getWorkspaceSnapshot();
@@ -432,6 +457,7 @@ export function useWorkspaceRuntime() {
     let nextWorkspace = reconcileWorkspaceRoomStructure({
       activeFile,
       createFile: createWorkspaceFile,
+      materializeExistingDocuments,
       readDocumentText,
       roomShareUrl: activeRoomShareUrl,
       snapshot,
@@ -539,11 +565,11 @@ export function useWorkspaceRuntime() {
     collaborators,
     connectionStatus,
     isLive,
-    presenceIdentity,
     startSessionUnavailableReason,
     statusLabel,
     startSession: startCollaborationSession,
     applyLocalText,
+    activeDocumentText,
     createDocument: createRoomDocument,
     createFolder: createRoomFolder,
     renameNode: renameRoomNode,
@@ -561,15 +587,12 @@ export function useWorkspaceRuntime() {
   } = useWorkspaceCollaborationRuntime({
     roomFile: collaborationRoomFile,
     activeDocument: activeRoomDocument,
-    activeSelection: activeRoomDocument ? activeSelection : undefined,
     editorPresenceEnabled: Boolean(activeRoomDocument) && activeViewMode !== "preview",
-    editorDocumentRuntime,
     getActiveFileSnapshot: getCollaborationSessionFileSnapshot,
     identity,
     workspaceDocuments: workspaceShareDocuments,
     workspaceFolders: workspaceShareFolders,
     commentsByFileId: workspaceShareComments,
-    setFileText,
     setFileCollaborationStatus,
     setFileRecoveryEvent,
     startFileCollaborationSession,
@@ -578,6 +601,24 @@ export function useWorkspaceRuntime() {
     onOpenFailure: setLiveRoomOpenFailure,
     onCapacityExceeded: handleRoomCapacityExceeded,
   });
+  materializeRoomWorkspaceRef.current = materializeRoomWorkspace;
+  const presenceIdentity = useCollaborationPresenceRuntime({
+    activeDocumentId: activeRoomDocument?.id,
+    activeSelection: activeRoomDocument ? activeSelection : undefined,
+    fileTitle: activeRoomDocument?.title,
+    identity,
+    isLive,
+    roomId: collaborationRoomFile?.roomId,
+  });
+  useEffect(() => {
+    if (activeRoomDocument && activeDocumentText !== null) {
+      if (editorDocumentRuntime.setAuthoritativeText(activeRoomDocument.id, activeDocumentText)) {
+        bumpVisibleTextRevision();
+      }
+      return;
+    }
+    if (editorDocumentRuntime.clearAuthoritativeText()) bumpVisibleTextRevision();
+  }, [activeDocumentText, activeRoomDocument?.id, editorDocumentRuntime]);
   const publishRoomDocument = useEventCallback((file: WorkspaceFile) =>
     !file.roomId || createRoomDocument({
       id: file.id,
@@ -808,6 +849,7 @@ export function useWorkspaceRuntime() {
         roomSnapshot,
         undefined,
         (documentId) => roomSnapshot.documents[documentId] ?? null,
+        true,
       );
     }
     stopSession();
