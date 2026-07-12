@@ -113,7 +113,7 @@ const selectAllEditorText = async (page, waitForSelectionLayer) => {
     }),
   );
   await page.keyboard.press("ControlOrMeta+A");
-  await waitForSelectionLayer(page, { minSegments: 6 });
+  await waitForSelectionLayer(page);
   const after = await page.evaluate(() =>
     Array.from(document.querySelectorAll(".cm-line")).map((line) => {
       const rect = line.getBoundingClientRect();
@@ -170,12 +170,12 @@ const assertCoreEditorInvariants = async ({
     const activeLine = document.querySelector(".cm-activeLine");
     const activeGutter = document.querySelector(".cm-activeLineGutter");
     return {
-      segmentCount: document.querySelectorAll(".cm-user-selection-segment").length,
+      segmentCount: document.querySelectorAll(".cm-selectionLayer .cm-selectionBackground").length,
       activeLineBackground: activeLine instanceof HTMLElement ? getComputedStyle(activeLine).backgroundColor : "",
       activeGutterBackground: activeGutter instanceof HTMLElement ? getComputedStyle(activeGutter).backgroundColor : "",
     };
   });
-  expect(selectionState.segmentCount >= 6, "Selection layer should render visible segments for a multi-line fixture.");
+  expect(selectionState.segmentCount >= 1, "CodeMirror should render its native selection layer for a multi-line fixture.");
   expect(
     selectionState.activeLineBackground === "rgba(0, 0, 0, 0)" &&
       selectionState.activeGutterBackground === "rgba(0, 0, 0, 0)",

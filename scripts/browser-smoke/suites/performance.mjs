@@ -1855,7 +1855,7 @@ export async function run(ctx) {
       const selectionElapsed = await measureElapsed(async () => {
         await focusMarkdownEditor(page);
         await page.keyboard.press("ControlOrMeta+A");
-        await waitForSelectionLayer(page, { minSegments: 20 });
+        await waitForSelectionLayer(page);
       });
       reportPerformanceMetric("large-editor-selection", { elapsedMs: Math.round(selectionElapsed) });
       expect(
