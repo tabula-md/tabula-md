@@ -2,7 +2,6 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { history } from "@codemirror/commands";
 import { EditorSelection, EditorState, type Transaction } from "@codemirror/state";
 import { EditorView, placeholder as createEditorPlaceholderExtension } from "@codemirror/view";
-import * as Y from "yjs";
 import {
   canRedoEditor,
   canUndoEditor,
@@ -45,16 +44,19 @@ import type {
   MarkdownEditorProps,
 } from "../markdownEditorTypes";
 import type { EditorViewportAnchor } from "../preview/previewSyncTypes";
-import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
+import type {
+  CollabEditorBinding,
+  CollabRelativePosition,
+} from "../collaboration/liveCollaboration";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
 
 const MAX_CACHED_LOCAL_EDITOR_STATES = 20;
 const MAX_CACHED_LIVE_EDITOR_VIEW_STATES = 20;
 
 type LiveEditorViewState = {
-  selectionAnchor: Y.RelativePosition;
-  selectionHead: Y.RelativePosition;
-  viewportAnchor: Y.RelativePosition;
+  selectionAnchor: CollabRelativePosition;
+  selectionHead: CollabRelativePosition;
+  viewportAnchor: CollabRelativePosition;
   viewportOffset: number;
 };
 
@@ -87,27 +89,20 @@ const captureLiveEditorViewState = (
   view: EditorView,
   binding: CollabEditorBinding,
 ): LiveEditorViewState | null => {
-  const yDoc = binding.yText.doc;
-  if (!yDoc) return null;
   const selection = view.state.selection.main;
   const viewport = getEditorViewport(view);
   return {
-    selectionAnchor: Y.createRelativePositionFromTypeIndex(binding.yText, selection.anchor),
-    selectionHead: Y.createRelativePositionFromTypeIndex(binding.yText, selection.head),
-    viewportAnchor: Y.createRelativePositionFromTypeIndex(binding.yText, viewport.position),
+    selectionAnchor: binding.createRelativePosition(selection.anchor),
+    selectionHead: binding.createRelativePosition(selection.head),
+    viewportAnchor: binding.createRelativePosition(viewport.position),
     viewportOffset: viewport.offset,
   };
 };
 
 const resolveLivePosition = (
-  position: Y.RelativePosition,
+  position: CollabRelativePosition,
   binding: CollabEditorBinding,
-) => {
-  const yDoc = binding.yText.doc;
-  if (!yDoc) return null;
-  const absolute = Y.createAbsolutePositionFromRelativePosition(position, yDoc);
-  return absolute?.type === binding.yText ? absolute.index : null;
-};
+) => binding.resolveRelativePosition(position);
 
 const restoreLiveEditorViewState = (
   view: EditorView,

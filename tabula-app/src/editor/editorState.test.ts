@@ -39,6 +39,11 @@ describe("editor collaboration limits", () => {
       awareness,
       undoManager,
       canApplyTextByteDelta,
+      createRelativePosition: (index) => Y.createRelativePositionFromTypeIndex(text, index),
+      resolveRelativePosition: (position) => {
+        const absolute = Y.createAbsolutePositionFromRelativePosition(position, doc);
+        return absolute?.type === text ? absolute.index : null;
+      },
     });
     const state = EditorState.create({ doc: "A", extensions });
 
@@ -72,6 +77,11 @@ describe("editor collaboration limits", () => {
         awareness,
         undoManager,
         canApplyTextByteDelta,
+        createRelativePosition: (index) => Y.createRelativePositionFromTypeIndex(text, index),
+        resolveRelativePosition: (position) => {
+          const absolute = Y.createAbsolutePositionFromRelativePosition(position, doc);
+          return absolute?.type === text ? absolute.index : null;
+        },
         consumeRemoteProjection,
       }),
     });
@@ -107,6 +117,11 @@ describe("editor collaboration limits", () => {
       awareness,
       undoManager,
       canApplyTextByteDelta: () => true,
+      createRelativePosition: (index: number) => Y.createRelativePositionFromTypeIndex(text, index),
+      resolveRelativePosition: (position: Y.RelativePosition) => {
+        const absolute = Y.createAbsolutePositionFromRelativePosition(position, doc);
+        return absolute?.type === text ? absolute.index : null;
+      },
     };
     state = state.update({
       effects: [
