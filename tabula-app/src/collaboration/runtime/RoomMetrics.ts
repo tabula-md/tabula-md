@@ -45,7 +45,7 @@ export const createRoomMetrics = (room: WorkspaceRoomCrdt) => {
       documentSizeTrackers.set(id, tracker);
       documentByteLengths.set(id, tracker.byteLength);
     });
-    for (const id of [...indexedDocumentTexts.keys()]) {
+    for (const id of indexedDocumentTexts.keys()) {
       if (currentDocumentIds.has(id)) continue;
       removedDocumentIds.push(id);
       indexedDocumentTexts.delete(id);

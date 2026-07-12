@@ -56,7 +56,6 @@ export function useWorkspaceFiles({
   const addFile = useWorkspaceStore((state) => state.addFile);
   const addFolder = useWorkspaceStore((state) => state.addFolder);
   const addFileFromContent = useWorkspaceStore((state) => state.addFileFromContent);
-  const activateRoomFile = useWorkspaceStore((state) => state.activateRoomFile);
   const duplicateFile = useWorkspaceStore((state) => state.duplicateFile);
   const renameFile = useWorkspaceStore((state) => state.renameFile);
   const closeFile = useWorkspaceStore((state) => state.closeFile);
@@ -80,11 +79,6 @@ export function useWorkspaceFiles({
   const setActiveFileLineNumbers = useWorkspaceStore((state) => state.setActiveFileLineNumbers);
   const commitActiveFileSplitRatio = useWorkspaceStore((state) => state.commitActiveFileSplitRatio);
   const setFileText = useWorkspaceStore((state) => state.setFileText);
-  const setFileCollaborationStatus = useWorkspaceStore((state) => state.setFileCollaborationStatus);
-  const setFileRecoveryEvent = useWorkspaceStore((state) => state.setFileRecoveryEvent);
-  const setFolderCollaborationRoom = useWorkspaceStore((state) => state.setFolderCollaborationRoom);
-  const startFileCollaborationSession = useWorkspaceStore((state) => state.startFileCollaborationSession);
-  const stopFileCollaborationSession = useWorkspaceStore((state) => state.stopFileCollaborationSession);
 
   const getAvailableFileTitle = (baseTitle: string) => getAvailableWorkspaceFileTitle(files, baseTitle);
 
@@ -103,7 +97,6 @@ export function useWorkspaceFiles({
     addFile,
     addFolder,
     addFileFromContent,
-    activateRoomFile,
     addTemplateFile,
     duplicateFile,
     renameFile,
@@ -128,11 +121,6 @@ export function useWorkspaceFiles({
     setActiveFileLineNumbers,
     commitActiveFileSplitRatio,
     setFileText,
-    setFileCollaborationStatus,
-    setFileRecoveryEvent,
-    setFolderCollaborationRoom,
-    startFileCollaborationSession,
-    stopFileCollaborationSession,
     getAvailableFileTitle,
   };
 }

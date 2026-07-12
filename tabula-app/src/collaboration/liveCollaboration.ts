@@ -188,7 +188,7 @@ const commentsToList = (commentsByFileId: Record<string, WorkspaceRoomComment[]>
 export const createWorkspaceRoomRuntime = ({
   roomId,
   roomKey: encodedRoomKey,
-  documentId = "document",
+  documentId,
   documents = [],
   folders = [],
   commentsByFileId,
@@ -206,7 +206,7 @@ export const createWorkspaceRoomRuntime = ({
   const room = createWorkspaceRoomCrdt({ roomId, initialize: emitInitialWorkspaceState });
   const awareness = new Awareness(room.doc);
   const sessionState = createCollabSessionState();
-  let activeDocumentId: string | null = documentId;
+  let activeDocumentId: string | null = documentId ?? documents[0]?.id ?? null;
   const presenceController = createRoomPresenceController({
     room,
     roomId,
@@ -228,7 +228,6 @@ export const createWorkspaceRoomRuntime = ({
   let textProjectionTimer: unknown;
   let commentProjectionTimer: unknown;
   let closed = false;
-  let hasHydratedWorkspace = false;
   const pendingTextProjectionIds = new Set<string>();
   let lastInvalidMessageNoticeAt = 0;
   let capacityExceededNotified = false;
@@ -283,19 +282,10 @@ export const createWorkspaceRoomRuntime = ({
     updateRuntimeSnapshot({ editorBinding: binding });
 
   if (emitInitialWorkspaceState) {
-    const normalizedDocuments = documents.length > 0
-      ? documents
-      : [{
-          id: documentId,
-          title: fileTitle ?? "Untitled",
-          text: "",
-          parentId: WORKSPACE_ROOM_ROOT_ID,
-          order: 0,
-        }];
     initializeWorkspaceRoomCrdt(room, {
       nodes: [
         ...folders.filter((folder) => folder.id !== WORKSPACE_ROOM_ROOT_ID).map((folder) => ({ ...folder, type: "folder" as const })),
-        ...normalizedDocuments.map((document) => ({
+        ...documents.map((document) => ({
           id: document.id,
           type: "document" as const,
           parentId: document.parentId ?? WORKSPACE_ROOM_ROOT_ID,
@@ -376,7 +366,6 @@ export const createWorkspaceRoomRuntime = ({
       emitInvalidMessage("This live workspace exceeds the supported content limits.");
       return;
     }
-    hasHydratedWorkspace = true;
     const remoteActor = isRemoteSyncOrigin(origin)
       ? presenceController.getSenderActor(origin.senderId)
       : null;

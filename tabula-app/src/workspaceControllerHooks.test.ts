@@ -76,13 +76,10 @@ import {
 import {
   getActiveWorkspaceStatus,
   getWorkspaceFileSearchText,
-  getWorkspaceFileStatus,
   getWorkspaceStatusLabel,
   getMarkdownWordCount,
 } from "@tabula-md/tabula";
-import { isUsableLiveRoomFile, type FileBookmark, type WorkspaceFile } from "./workspaceStorage";
-
-const VALID_ROOM_KEY = "A".repeat(43);
+import type { FileBookmark, WorkspaceFile } from "./workspaceStorage";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -150,12 +147,10 @@ describe("workspace preferences controller", () => {
 });
 
 describe("workspace active file editor controller", () => {
-  const localFile: Pick<WorkspaceFile, "roomId" | "text"> = {
-    roomId: undefined,
+  const localFile: Pick<WorkspaceFile, "text"> = {
     text: "previous",
   };
-  const liveFile: Pick<WorkspaceFile, "roomId" | "text"> = {
-    roomId: "room-1",
+  const liveFile: Pick<WorkspaceFile, "text"> = {
     text: "previous",
   };
   const largeText = "x".repeat(120_000);
@@ -182,6 +177,7 @@ describe("workspace active file editor controller", () => {
     expect(
       getWorkspaceTextChangePolicy({
         activeFile: localFile,
+        isRoomSession: false,
         nextText: "previous!",
         recordHistory: false,
         source: "editor-typing",
@@ -197,6 +193,7 @@ describe("workspace active file editor controller", () => {
     expect(
       getWorkspaceTextChangePolicy({
         activeFile: localFile,
+        isRoomSession: false,
         nextText: largeText,
         recordHistory: false,
         source: "editor-typing",
@@ -212,6 +209,7 @@ describe("workspace active file editor controller", () => {
     expect(
       getWorkspaceTextChangePolicy({
         activeFile: liveFile,
+        isRoomSession: true,
         nextText: largeText,
         recordHistory: false,
         source: "editor-typing",
@@ -273,6 +271,7 @@ describe("workspace active file editor controller", () => {
       expect(
         getWorkspaceTextChangePolicy({
           activeFile: localFile,
+          isRoomSession: false,
           nextText: "x".repeat(docLength),
           recordHistory: false,
           source: "editor-typing",
@@ -325,6 +324,7 @@ describe("workspace active file editor controller", () => {
     expect(
       getWorkspaceTextChangePolicy({
         activeFile: localFile,
+        isRoomSession: false,
         nextText: "replacement",
         source: "coarse-update",
       }),
@@ -337,6 +337,7 @@ describe("workspace active file editor controller", () => {
     expect(
       getWorkspaceTextChangePolicy({
         activeFile: localFile,
+        isRoomSession: false,
         nextText: "replacement",
         recordHistory: false,
         source: "coarse-update",
@@ -345,6 +346,7 @@ describe("workspace active file editor controller", () => {
     expect(
       getWorkspaceTextChangePolicy({
         activeFile: localFile,
+        isRoomSession: false,
         nextText: localFile.text,
         source: "coarse-update",
       }).shouldRecordFallbackHistory,
@@ -352,6 +354,7 @@ describe("workspace active file editor controller", () => {
     expect(
       getWorkspaceTextChangePolicy({
         activeFile: liveFile,
+        isRoomSession: true,
         nextText: "replacement",
         source: "coarse-update",
       }),
@@ -858,39 +861,6 @@ describe("workspace view model", () => {
     expect(getActiveWorkspaceStatus({ isLive: true, connectionStatus: "connected" })).toBe("connected");
   });
 
-  it("derives file status without exposing App component state logic", () => {
-    expect(
-      getWorkspaceFileStatus({
-        file: file(),
-        activeFileId: "file",
-        activeConnectionStatus: "connecting",
-      }),
-    ).toBe("connecting");
-    expect(
-      getWorkspaceFileStatus({
-        file: file({
-          id: "room-file",
-          roomId: "room-1",
-          shareUrl: `https://tabula.md/#room=room-1,${VALID_ROOM_KEY}`,
-        }),
-        activeFileId: "file",
-        activeConnectionStatus: "connected",
-      }),
-    ).toBe("disconnected");
-    expect(
-      getWorkspaceFileStatus({
-        file: file({
-          id: "remote-file",
-          roomId: "room-2",
-          shareUrl: `https://tabula.md/#room=room-2,${VALID_ROOM_KEY}`,
-          connectionStatus: "connected",
-        }),
-        activeFileId: "file",
-        activeConnectionStatus: "idle",
-      }),
-    ).toBe("connected");
-  });
-
   it("builds file search text and word count from Markdown content", () => {
     expect(getWorkspaceFileSearchText(file())).toBe("README.md Product Requirements");
     expect(getMarkdownWordCount(" one\n two   three ")).toBe(3);
@@ -899,9 +869,9 @@ describe("workspace view model", () => {
 });
 
 describe("workspace active file editor controller", () => {
-  it("disables whole-document fallback history for live collaboration files", () => {
-    expect(isFileTextFallbackHistoryEnabled({ roomId: undefined })).toBe(true);
-    expect(isFileTextFallbackHistoryEnabled({ roomId: "room-1" })).toBe(false);
+  it("disables whole-document fallback history for room sessions", () => {
+    expect(isFileTextFallbackHistoryEnabled(false)).toBe(true);
+    expect(isFileTextFallbackHistoryEnabled(true)).toBe(false);
   });
 
   it("records text history with a bounded past stack and clears redo history", () => {
@@ -933,70 +903,6 @@ describe("workspace active file editor controller", () => {
       { id: "negative", position: 0, createdAt: "2026-01-02T00:00:00.000Z" },
       { id: "existing-date", position: 8, createdAt: "2026-01-01T00:00:00.000Z" },
     ]);
-  });
-});
-
-describe("workspace live room contract", () => {
-  const liveFile = (overrides: Partial<WorkspaceFile>): WorkspaceFile => ({
-    id: "live",
-    title: "Live.md",
-    text: "Live",
-    viewMode: "edit",
-    readingWidth: "wide",
-    lineWrapping: true,
-    lineNumbers: true,
-    ...overrides,
-  });
-
-  it("only treats complete canonical room links as usable live rooms", () => {
-    expect(
-      isUsableLiveRoomFile(
-        liveFile({
-          roomId: "room",
-          shareUrl: `https://tabula.md/#room=room,${VALID_ROOM_KEY}`,
-        }),
-      ),
-    ).toBe(true);
-
-    expect(isUsableLiveRoomFile(liveFile({ roomId: "room" }))).toBe(false);
-    expect(
-      isUsableLiveRoomFile(
-        liveFile({
-          roomId: "room",
-          shareUrl: `https://tabula.md/#room=other,${VALID_ROOM_KEY}`,
-        }),
-      ),
-    ).toBe(false);
-    expect(
-      isUsableLiveRoomFile(
-        liveFile({
-          roomId: "room",
-          shareUrl: "https://tabula.md/#room=room,not-a-valid-key",
-        }),
-      ),
-    ).toBe(false);
-  });
-
-  it("reports broken live room metadata as local workspace status", () => {
-    const brokenFile = liveFile({
-      roomId: "room",
-      connectionStatus: "disconnected",
-    });
-
-    expect(
-      getWorkspaceFileStatus({
-        file: brokenFile,
-        activeFileId: "other",
-        activeConnectionStatus: "connected",
-      }),
-    ).toBe("idle");
-
-    expect(
-      getActiveWorkspaceStatus({
-        isLive: isUsableLiveRoomFile(brokenFile),
-        connectionStatus: "disconnected",
-      }),
-    ).toBe("idle");
   });
 });
 

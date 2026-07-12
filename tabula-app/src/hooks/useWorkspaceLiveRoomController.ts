@@ -1,7 +1,11 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ConnectionStatus } from "../collaboration";
 import { getRoomShareLinkView } from "../share";
-import { syncUrlForFile, type LocationRoom, type WorkspaceFile } from "../workspaceStorage";
+import {
+  syncUrlForLocalWorkspace,
+  type LocationRoom,
+  type WorkspaceFile,
+} from "../workspaceStorage";
 
 type UseWorkspaceLiveRoomControllerArgs = {
   activeFile?: WorkspaceFile;
@@ -39,7 +43,7 @@ export function useWorkspaceLiveRoomController({
 
     resetCollaborationState("idle");
     setCopiedFileId(null);
-    syncUrlForFile(undefined);
+    syncUrlForLocalWorkspace();
   };
 
   const copyShareUrl = async () => {

@@ -13,7 +13,7 @@ import { createRoomSession } from "./collabRoom";
 import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 
 export type LiveRoomConnectionTarget = {
-  fileId: string;
+  fileId?: string;
   fileTitle?: string;
   roomId: string;
   roomKey: string;
@@ -45,7 +45,7 @@ export const getLiveRoomConnectionTarget = ({
   room?: LocationRoom | null;
   document?: Pick<WorkspaceFile, "id" | "title">;
 }): LiveRoomConnectionTarget | null => {
-  if (!room || !document?.id) {
+  if (!room) {
     return null;
   }
 
@@ -55,8 +55,8 @@ export const getLiveRoomConnectionTarget = ({
   }
 
   return {
-    fileId: document.id,
-    fileTitle: document.title,
+    fileId: document?.id,
+    fileTitle: document?.title,
     roomId: parsedRoom.roomId,
     roomKey: parsedRoom.roomKey,
     shareUrl: parsedRoom.shareUrl,

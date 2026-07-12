@@ -24,12 +24,12 @@ import {
   createRoomWorkspaceState,
   createWorkspaceFile,
   finalizeWorkspaceState,
-  isEmptyGeneratedLivePlaceholder,
   randomId,
   readInitialWorkspaceSnapshot,
   README_FILE_ID,
   WORKSPACE_ROOT_FOLDER_ID,
-  syncUrlForFile,
+  syncUrlForLocalWorkspace,
+  syncUrlForRoom,
   type FileViewMode,
   type FileComment,
   type FileCommentReply,
@@ -86,16 +86,6 @@ import {
   type FollowState,
   type FollowStopReason,
 } from "../collaboration/followModel";
-
-const createRoomBootstrapFile = (room: LocationRoom): WorkspaceFile =>
-  createWorkspaceFile(1, {
-    id: `room-bootstrap-${room.roomId}`,
-    title: "Workspace",
-    text: "",
-    roomId: room.roomId,
-    shareUrl: room.shareUrl,
-    connectionStatus: "connecting",
-  });
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -196,17 +186,6 @@ export function useWorkspaceRuntime() {
   const syncedLiveRoomUrlRef = useRef<string | null>(null);
   const persistenceErrorShownRef = useRef(false);
   const activeRoomId = activeRoom?.roomId;
-  const activeRoomShareUrl = activeRoom?.shareUrl;
-  const collaborationRoomFile = useMemo(() => {
-    if (!activeRoom) return activeFile;
-    const baseFile = activeFile ?? createRoomBootstrapFile(activeRoom);
-    return {
-      ...baseFile,
-      roomId: activeRoom.roomId,
-      shareUrl: activeRoom.shareUrl,
-      connectionStatus: baseFile.connectionStatus ?? "connecting",
-    };
-  }, [activeFile, activeRoom]);
   const activeRoomDocument = activeRoom ? activeFile : undefined;
   const {
     commentsByFileId,
@@ -234,6 +213,7 @@ export function useWorkspaceRuntime() {
     initialCommentsByFileId: initialWorkspace.commentsByFileId,
     activeFileId: activeFile?.id ?? "",
     files,
+    isRoomSession: Boolean(activeRoom),
     identity,
     createId: randomId,
     onCommentCreated: (fileId, comment) => roomCommentActionsRef.current.created(fileId, comment),
@@ -321,7 +301,6 @@ export function useWorkspaceRuntime() {
     activeSearchMatchIndex,
     activeSelection,
     activeViewMode,
-    clearPreviewSelection,
     cursorPositionLabel,
     editorSurfaceRef,
     endSplitDividerDrag,
@@ -359,7 +338,6 @@ export function useWorkspaceRuntime() {
     selectedLineCount,
     selectionActionPosition,
     setActiveFileViewMode,
-    setActiveSelection,
     setSearchOpen,
     setSearchQuery,
     setReplaceQuery,
@@ -373,7 +351,6 @@ export function useWorkspaceRuntime() {
     splitDividerMinValue,
     splitDividerValue,
     splitWorkspaceStyle,
-    suppressSelectionActionPositionRef,
     syncPreviewSelection,
     text,
     workspaceRef,
@@ -526,9 +503,7 @@ export function useWorkspaceRuntime() {
     },
   );
   const workspaceShareDocuments = useMemo(
-    () => files
-        .filter((file) => !isEmptyGeneratedLivePlaceholder(file))
-        .map((file) => ({
+    () => files.map((file) => ({
           id: file.id,
           title: file.title,
           text: file.text,
@@ -610,7 +585,7 @@ export function useWorkspaceRuntime() {
     fileTitle: activeRoomDocument?.title,
     identity,
     isLive,
-    roomId: collaborationRoomFile?.roomId,
+    roomId: activeRoomId,
   });
   useEffect(() => {
     if (activeRoomDocument && activeDocumentText !== null) {
@@ -837,6 +812,7 @@ export function useWorkspaceRuntime() {
     activeFile,
     applyLocalText,
     collaborationBound: Boolean(editorBinding),
+    isRoomSession: Boolean(activeRoom),
     editorDocumentRuntime,
     editorRef,
     onPendingTextChange: () => stopFollowing("local-edit"),
@@ -901,10 +877,10 @@ export function useWorkspaceRuntime() {
     setActiveRoom(null);
     setLiveRoomOpenFailure(null);
     setLocalPersistenceEnabled(true);
-    syncUrlForFile(undefined, "replace");
+    syncUrlForLocalWorkspace("replace");
     void readIndexedDbWorkspace()
       .then((storedWorkspace) => {
-        const nextStoredWorkspace = storedWorkspace ?? finalizeWorkspaceState([], undefined, {}, { includeLocationRoom: false });
+        const nextStoredWorkspace = storedWorkspace ?? finalizeWorkspaceState([]);
         replaceWorkspace(nextStoredWorkspace);
         replaceCommentsByFileId(nextStoredWorkspace.commentsByFileId);
       })
@@ -946,7 +922,7 @@ export function useWorkspaceRuntime() {
     }
     stopSession();
     resetCollaborationState("idle");
-    syncUrlForFile(undefined, "replace");
+    syncUrlForLocalWorkspace("replace");
     setActiveRoom(null);
     setLiveRoomOpenFailure(null);
     setLocalPersistenceEnabled(true);
@@ -980,20 +956,20 @@ export function useWorkspaceRuntime() {
     }
   }, [activeRoomId, connectionStatus]);
   useEffect(() => {
-    if (!activeRoomId || !activeRoomShareUrl || !collaborationRoomFile) {
+    if (!activeRoom) {
       syncedLiveRoomUrlRef.current = null;
       return;
     }
     if (connectionStatus !== "connected") {
       return;
     }
-    if (syncedLiveRoomUrlRef.current === activeRoomId) {
+    if (syncedLiveRoomUrlRef.current === activeRoom.roomId) {
       return;
     }
 
-    syncedLiveRoomUrlRef.current = activeRoomId;
-    syncUrlForFile(collaborationRoomFile);
-  }, [activeRoomId, activeRoomShareUrl, collaborationRoomFile, connectionStatus]);
+    syncedLiveRoomUrlRef.current = activeRoom.roomId;
+    syncUrlForRoom(activeRoom);
+  }, [activeRoom, activeRoomId, connectionStatus]);
   const handleRouteWorkspaceChange = useEventCallback(() => {
     setTopPopover(null);
     setCenterPopover(null);
@@ -1004,10 +980,10 @@ export function useWorkspaceRuntime() {
     setLocalPersistenceEnabled(false);
     setLiveRoomOpenFailure(null);
     setActiveRoom(room);
-    replaceWorkspace(createRoomWorkspaceState(room));
+    replaceWorkspace(createRoomWorkspaceState());
   });
   useWorkspaceRouteRuntime({
-    activateRoomFile: activateRoomWorkspace,
+    activateRoomWorkspace,
     isRoomSession: Boolean(activeRoom),
     onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
     onRouteWorkspaceChange: handleRouteWorkspaceChange,
@@ -1119,7 +1095,6 @@ export function useWorkspaceRuntime() {
     goToFileComment,
     handleLineAnnotationAction,
     openCommentMarker,
-    openCommentsPanel,
     openSelectionComment,
     pendingSelectionCommentText,
     selectionCommentPending,
@@ -1135,7 +1110,6 @@ export function useWorkspaceRuntime() {
     createFileComment,
     createId: randomId,
     files,
-    focusedCommentId,
     getSelectedMarkdownAnchor,
     getSelectedMarkdownExcerpt,
     previewBody: renderedPreview.body,
@@ -1219,12 +1193,10 @@ export function useWorkspaceRuntime() {
             Object.entries(currentHistory).filter(([fileId]) => !deletedFileIds.has(fileId)),
           ),
         );
-        const deletedActiveFile = deletedFileIds.has(deletedBundle.previousActiveFileId);
-        if (deletedActiveFile) syncUrlForFile(getWorkspaceStoreActiveFile(), "replace");
         showToast("Folder deleted.", "neutral", {
           actionLabel: "Undo",
           onAction: () => {
-            const restoredActiveFile = restoreWorkspaceFolderAction(deletedBundle);
+            restoreWorkspaceFolderAction(deletedBundle);
             if (!restoreRoomFolderBundle(deletedBundle)) {
               deleteRoomNode(folderId);
               deleteWorkspaceFolderAction(folderId);
@@ -1246,7 +1218,6 @@ export function useWorkspaceRuntime() {
               ...currentHistory,
               ...deletedHistory,
             }));
-            if (deletedActiveFile) syncUrlForFile(restoredActiveFile, "replace");
             showToast("Folder restored.");
           },
         });

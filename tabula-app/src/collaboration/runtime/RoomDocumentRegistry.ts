@@ -152,7 +152,7 @@ export const createRoomDocumentRegistry = ({
       disposed = true;
       activeLeases = 0;
       entries.clear();
-      for (const entry of [...allEntries]) destroyEntry(entry);
+      for (const entry of allEntries) destroyEntry(entry);
     },
   };
 };

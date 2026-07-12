@@ -8,7 +8,6 @@ import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getCollaboratorDisplayList } from "../collaboration/collabCollaborators";
 import {
-  isEmptyGeneratedLivePlaceholder,
   type LocationRoom,
   type WorkspaceFile,
   type WorkspaceFolder,
@@ -105,16 +104,6 @@ export function WorkspaceTopChrome({
   onToggleShare,
   onToggleWorkspaceMenu,
 }: WorkspaceTopChromeProps) {
-  const visibleFiles = useMemo(
-    () => files.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
-    [files],
-  );
-  const visibleOpenFiles = useMemo(
-    () => openFiles.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
-    [openFiles],
-  );
-  const visibleActiveFile =
-    activeFile && !isEmptyGeneratedLivePlaceholder(activeFile) ? activeFile : undefined;
   const displayedParticipants = useMemo(
     () => getCollaboratorDisplayList([identity, ...collaborators]),
     [collaborators, identity],
@@ -127,9 +116,9 @@ export function WorkspaceTopChrome({
 
   const fileTabs = (
     <FileTabs
-      files={visibleOpenFiles}
+      files={openFiles}
       folders={folders}
-      activeFile={visibleActiveFile}
+      activeFile={activeFile}
       collaborators={displayedCollaborators}
       roomId={room?.roomId}
       language={language}
@@ -142,8 +131,7 @@ export function WorkspaceTopChrome({
     />
   );
 
-  const shareSubjectFile = activeFile;
-  const shareControls = shareSubjectFile ? (
+  const shareControls = activeFile || room ? (
     <>
       <ShareTrigger
         connectionStatus={connectionStatus}
@@ -156,9 +144,9 @@ export function WorkspaceTopChrome({
       {shareOpen && (
         <Suspense fallback={null}>
           <ShareControls
-            activeFile={shareSubjectFile}
+            activeFile={activeFile}
             room={room}
-            files={visibleFiles}
+            files={files}
             activeText={activeText}
             language={language}
             currentUserName={currentUserName}

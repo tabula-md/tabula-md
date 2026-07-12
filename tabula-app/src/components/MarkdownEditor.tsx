@@ -40,7 +40,6 @@ import { runMarkdownFormatCommand } from "../editor/editorInputRules";
 import { getActiveMarkdownFormats } from "../editor/editorFormattingState";
 import type {
   MarkdownBookmark,
-  MarkdownCommentAnchor,
   MarkdownEditorHandle,
   MarkdownEditorProps,
 } from "../markdownEditorTypes";

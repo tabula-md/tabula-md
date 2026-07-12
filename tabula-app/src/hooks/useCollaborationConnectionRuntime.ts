@@ -181,10 +181,10 @@ export function useCollaborationConnectionRuntime({
 
     const documentSnapshot = workspaceDocumentsRef.current;
     const folderSnapshot = workspaceFoldersRef.current;
-    const bootstrapDocument = activeDocument ?? documentSnapshot[0] ?? (room
-      ? { id: `room-bootstrap-${room.roomId}`, title: "Workspace" }
-      : undefined);
-    const target = getLiveRoomConnectionTarget({ room, document: bootstrapDocument });
+    const target = getLiveRoomConnectionTarget({
+      room,
+      document: activeDocument ?? documentSnapshot[0],
+    });
     if (!target) {
       setPreRuntimeConnectionStatus("idle");
       return;

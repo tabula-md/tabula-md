@@ -9,7 +9,7 @@ import {
   hasMeaningfulWorkspaceContent,
 } from "../share";
 import {
-  syncUrlForFile,
+  syncUrlForLocalWorkspace,
   type FileComment,
   type InitialWorkspaceSnapshot,
   type WorkspaceFile,
@@ -70,7 +70,7 @@ export function useJsonShareImportController({
     jsonShareImportCleanupRef.current = null;
     handledJsonShareRouteRef.current = null;
     setJsonShareImport(null);
-    syncUrlForFile(undefined, "replace");
+    syncUrlForLocalWorkspace("replace");
   });
 
   const replaceWorkspaceWithJsonShare = useEventCallback((workspace: WorkspaceState) => {
@@ -78,7 +78,7 @@ export function useJsonShareImportController({
     jsonShareImportCleanupRef.current = null;
     handledJsonShareRouteRef.current = null;
     onBeforeWorkspaceBoundary?.();
-    const nextActiveFile = replaceWorkspace(workspace);
+    replaceWorkspace(workspace);
     replaceCommentsByFileId(workspace.commentsByFileId);
     void writeIndexedDbWorkspace(workspace).catch((error: unknown) => {
       clientErrorReporter.report({
@@ -91,13 +91,13 @@ export function useJsonShareImportController({
     clearFileHistory();
     resetCollaborationState("idle");
     closeFloatingChrome();
-    syncUrlForFile(nextActiveFile, "replace");
+    syncUrlForLocalWorkspace("replace");
     setJsonShareImport(null);
     showToast("Export copy opened.", "neutral", previousWorkspace ? {
       actionLabel: "Undo",
       onAction: () => {
         onBeforeWorkspaceBoundary?.();
-        const restoredActiveFile = replaceWorkspace(previousWorkspace);
+        replaceWorkspace(previousWorkspace);
         replaceCommentsByFileId(previousWorkspace.commentsByFileId);
         void writeIndexedDbWorkspace(previousWorkspace).catch((error: unknown) => {
           clientErrorReporter.report({
@@ -110,7 +110,7 @@ export function useJsonShareImportController({
         clearFileHistory();
         resetCollaborationState("idle");
         closeFloatingChrome();
-        syncUrlForFile(restoredActiveFile, "replace");
+        syncUrlForLocalWorkspace("replace");
         showToast("Previous workspace restored.");
       },
     } : undefined);

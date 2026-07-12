@@ -52,6 +52,7 @@ type UseWorkspaceActiveFileEditorArgs = {
   activeFile?: WorkspaceFile;
   applyLocalText: (text: string | null, patches?: readonly TextPatch[], options?: { docLength?: number }) => void;
   collaborationBound?: boolean;
+  isRoomSession: boolean;
   editorDocumentRuntime: WorkspaceEditorDocumentRuntimeOwner;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   onPendingTextChange?: () => void;
@@ -65,7 +66,7 @@ type UseWorkspaceActiveFileEditorArgs = {
 export const getActiveFileHistory = (historyByFileId: Record<string, FileHistory>, activeFileId?: string) =>
   activeFileId ? (historyByFileId[activeFileId] ?? EMPTY_FILE_HISTORY) : EMPTY_FILE_HISTORY;
 
-export const isFileTextFallbackHistoryEnabled = (file?: Pick<WorkspaceFile, "roomId">) => !file?.roomId;
+export const isFileTextFallbackHistoryEnabled = (isRoomSession: boolean) => !isRoomSession;
 
 export const recordFileTextHistory = (history: FileHistory | undefined, previousText: string): FileHistory => ({
   past: [...(history?.past ?? []).slice(-(MAX_FILE_HISTORY_ENTRIES - 1)), previousText],
@@ -74,30 +75,31 @@ export const recordFileTextHistory = (history: FileHistory | undefined, previous
 
 export const getWorkspaceTextChangePolicy = ({
   activeFile,
+  isRoomSession,
   nextText,
   recordHistory,
   source,
 }: {
-  activeFile?: Pick<WorkspaceFile, "roomId" | "text">;
+  activeFile?: Pick<WorkspaceFile, "text">;
+  isRoomSession: boolean;
   nextText: string;
   recordHistory?: boolean;
   source: WorkspaceTextChangeSource;
 }): WorkspaceTextChangePolicy => {
   const hasActiveFile = Boolean(activeFile);
   const isEditorTyping = source === "editor-typing";
-  const isLiveCollaborationFile = Boolean(activeFile?.roomId);
   const shouldDeferWorkspaceCommit = hasActiveFile && isEditorTyping;
   const shouldRecordFallbackHistory =
     hasActiveFile &&
     !isEditorTyping &&
     (recordHistory ?? true) &&
-    isFileTextFallbackHistoryEnabled(activeFile) &&
+    isFileTextFallbackHistoryEnabled(isRoomSession) &&
     nextText !== activeFile?.text;
 
   return {
     shouldDeferWorkspaceCommit,
     shouldRecordFallbackHistory,
-    shouldSendCollaborationPatchImmediately: hasActiveFile && isLiveCollaborationFile,
+    shouldSendCollaborationPatchImmediately: hasActiveFile && isRoomSession,
   };
 };
 
@@ -171,6 +173,7 @@ export function useWorkspaceActiveFileEditor({
   activeFile,
   applyLocalText,
   collaborationBound = false,
+  isRoomSession,
   editorDocumentRuntime,
   editorRef,
   onPendingTextChange,
@@ -187,7 +190,7 @@ export function useWorkspaceActiveFileEditor({
   });
   const editorCommitTimerRef = useRef<number | null>(null);
   const activeHistory = getActiveFileHistory(historyByFileId, activeFile?.id);
-  const fallbackHistoryEnabled = isFileTextFallbackHistoryEnabled(activeFile);
+  const fallbackHistoryEnabled = isFileTextFallbackHistoryEnabled(isRoomSession);
   const canUndo = fallbackHistoryEnabled && activeHistory.past.length > 0;
   const canRedo = fallbackHistoryEnabled && activeHistory.future.length > 0;
 
@@ -201,10 +204,10 @@ export function useWorkspaceActiveFileEditor({
   const flushPendingEditorCommit = useCallback(() => {
     cancelPendingEditorCommit();
     const commit = editorDocumentRuntime.flush();
-    if (commit) {
+    if (commit && !isRoomSession) {
       setFileText(commit.fileId, commit.text);
     }
-  }, [cancelPendingEditorCommit, editorDocumentRuntime, setFileText]);
+  }, [cancelPendingEditorCommit, editorDocumentRuntime, isRoomSession, setFileText]);
 
   const schedulePendingEditorCommit = useCallback(
     (change?: Pick<TextChange, "docLength" | "lineCount">) => {
@@ -236,6 +239,8 @@ export function useWorkspaceActiveFileEditor({
       return;
     }
 
+    if (isRoomSession) return;
+
     const runtime = editorDocumentRuntime.getRuntime(activeFile);
     const snapshot = runtime.getSnapshot();
     const pendingCommit: PendingEditorCommit | null = snapshot.pendingCommit
@@ -254,7 +259,7 @@ export function useWorkspaceActiveFileEditor({
     if (!snapshot.pendingCommit && snapshot.committedText !== activeFile.text) {
       runtime.syncCommitted({ fileId: activeFile.id, text: activeFile.text });
     }
-  }, [activeFile?.id, activeFile?.text, cancelPendingEditorCommit, editorDocumentRuntime]);
+  }, [activeFile?.id, activeFile?.text, cancelPendingEditorCommit, editorDocumentRuntime, isRoomSession]);
 
   const updateActiveFileText = (nextText: string, options: { recordHistory?: boolean; patches?: readonly TextPatch[] } = {}) => {
     if (!activeFile) {
@@ -263,6 +268,7 @@ export function useWorkspaceActiveFileEditor({
 
     const policy = getWorkspaceTextChangePolicy({
       activeFile,
+      isRoomSession,
       nextText,
       recordHistory: options.recordHistory,
       source: "coarse-update",
@@ -281,7 +287,7 @@ export function useWorkspaceActiveFileEditor({
       fileId: activeFile.id,
       text: nextText,
     });
-    setActiveFileText(nextText);
+    if (!isRoomSession) setActiveFileText(nextText);
 
     if (policy.shouldSendCollaborationPatchImmediately) {
       applyLocalText(nextText, options.patches);
@@ -295,7 +301,7 @@ export function useWorkspaceActiveFileEditor({
 
     const runtime = editorDocumentRuntime.getRuntime(activeFile);
     const patches = change?.patches ?? [];
-    if (!collaborationBound && patches.length > 0 && typeof change?.docLength === "number") {
+    if (!isRoomSession && !collaborationBound && patches.length > 0 && typeof change?.docLength === "number") {
       const lengthDelta = patches.reduce(
         (total, patch) => total + patch.insert.length - (patch.to - patch.from),
         0,
@@ -318,7 +324,7 @@ export function useWorkspaceActiveFileEditor({
       if (!collaborationBound) schedulePendingEditorCommit(change);
       onPendingTextChange?.();
 
-      if (activeFile.roomId && !collaborationBound) {
+      if (isRoomSession && !collaborationBound) {
         applyLocalText(
           shouldSendFullTextToCollaboration(change) ? (editorRef.current?.getValue() ?? null) : null,
           patches,
@@ -330,6 +336,7 @@ export function useWorkspaceActiveFileEditor({
 
     const policy = getWorkspaceTextChangePolicy({
       activeFile,
+      isRoomSession,
       nextText,
       recordHistory: false,
       source: "editor-typing",

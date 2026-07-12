@@ -5,7 +5,7 @@ import {
 } from "../workspaceStorage";
 
 type UseWorkspaceRouteRuntimeOptions = {
-  activateRoomFile: (room: LocationRoom) => void;
+  activateRoomWorkspace: (room: LocationRoom) => void;
   isRoomSession: boolean;
   onBeforeWorkspaceBoundary?: () => void;
   onLeaveRoom?: () => void;
@@ -13,7 +13,7 @@ type UseWorkspaceRouteRuntimeOptions = {
 };
 
 export function useWorkspaceRouteRuntime({
-  activateRoomFile,
+  activateRoomWorkspace,
   isRoomSession,
   onBeforeWorkspaceBoundary,
   onLeaveRoom,
@@ -22,7 +22,7 @@ export function useWorkspaceRouteRuntime({
   useEffect(() => {
     const activateRoomFromLocation = (room: LocationRoom) => {
       onBeforeWorkspaceBoundary?.();
-      activateRoomFile(room);
+      activateRoomWorkspace(room);
       onRouteWorkspaceChange();
     };
 
@@ -42,7 +42,7 @@ export function useWorkspaceRouteRuntime({
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [
-    activateRoomFile,
+    activateRoomWorkspace,
     isRoomSession,
     onRouteWorkspaceChange,
     onBeforeWorkspaceBoundary,

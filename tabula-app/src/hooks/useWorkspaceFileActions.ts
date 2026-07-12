@@ -10,11 +10,7 @@ import {
   getWorkspaceAboutFileDraft,
   removeRecordKey,
 } from "../workspaceFileRuntimeModel";
-import {
-  syncUrlForFile,
-  type FileComment,
-  type WorkspaceFile,
-} from "../workspaceStorage";
+import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 
 type ShowToast = (
   message: string,
@@ -109,11 +105,6 @@ export function useWorkspaceFileActions({
   showToast,
   upsertHelpFile,
 }: UseWorkspaceFileActionsArgs) {
-  const syncSelectedFileUrl = (file?: WorkspaceFile, mode: "push" | "replace" = "push") => {
-    if (isRoomSession) return;
-    syncUrlForFile(file, mode);
-  };
-
   const selectFile = (fileId: string) => {
     onBeforeWorkspaceBoundary?.();
     const nextFile = selectWorkspaceFileAction(fileId);
@@ -122,7 +113,6 @@ export function useWorkspaceFileActions({
     }
 
     closeFloatingChrome();
-    syncSelectedFileUrl(nextFile);
   };
 
   const createFile = () => {
@@ -137,7 +127,6 @@ export function useWorkspaceFileActions({
       return undefined;
     }
     closeFloatingChrome();
-    syncSelectedFileUrl(nextFile);
     return nextFile;
   };
 
@@ -159,7 +148,6 @@ export function useWorkspaceFileActions({
       return;
     }
     closeFloatingChrome();
-    syncSelectedFileUrl(nextFile);
   };
 
   const openAboutFile = () => {
@@ -183,7 +171,6 @@ export function useWorkspaceFileActions({
 
     selectWorkspaceFileAction(nextFile.id);
     closeFloatingChrome();
-    syncSelectedFileUrl(nextFile);
   };
 
   const renameWorkspaceFileAction = (fileId: string, nextRawTitle: string) => {
@@ -214,7 +201,6 @@ export function useWorkspaceFileActions({
     }
 
     closeFloatingChrome();
-    syncSelectedFileUrl(nextFile);
     showToast("File duplicated.");
   };
 
@@ -249,13 +235,9 @@ export function useWorkspaceFileActions({
 
     if (result.closedActiveFile) {
       closeFloatingChrome();
-
-      if (result.nextActiveFile) {
-        syncSelectedFileUrl(result.nextActiveFile);
-      } else {
+      if (!result.nextActiveFile) {
         if (!isRoomSession) {
           resetCollaborationState("idle");
-          syncSelectedFileUrl(undefined, "replace");
         }
       }
     }
@@ -280,7 +262,7 @@ export function useWorkspaceFileActions({
           return;
         }
         if (shouldActivateRestoredFile) {
-          syncSelectedFileUrl(deletedFile);
+          selectWorkspaceFileAction(deletedFile.id);
         }
         if (deletedComments?.length) {
           replaceCommentsByFileId({
@@ -308,15 +290,10 @@ export function useWorkspaceFileActions({
 
     if (result.closedActiveFile) {
       closeFloatingChrome();
-
-      if (result.nextActiveFile) {
-        syncSelectedFileUrl(result.nextActiveFile);
-        return;
-      }
+      if (result.nextActiveFile) return;
 
       if (!isRoomSession) {
         resetCollaborationState("idle");
-        syncSelectedFileUrl(undefined, "replace");
       }
     }
   };
@@ -326,7 +303,6 @@ export function useWorkspaceFileActions({
     const nextFile = selectAdjacentWorkspaceFileAction(direction);
     if (nextFile) {
       closeFloatingChrome();
-      syncSelectedFileUrl(nextFile);
     }
   };
 

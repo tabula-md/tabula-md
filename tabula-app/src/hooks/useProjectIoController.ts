@@ -6,7 +6,7 @@ import { WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
 import { createProjectArchive } from "../projectArchive";
 import {
   parseWorkspacePayload,
-  syncUrlForFile,
+  syncUrlForLocalWorkspace,
   type FileComment,
   type WorkspaceFile,
   type WorkspaceFolder,
@@ -248,19 +248,19 @@ export function useProjectIoController({
       return;
     }
 
-    const nextWorkspace = parseWorkspacePayload(parsedWorkspace, { includeLocationRoom: false });
+    const nextWorkspace = parseWorkspacePayload(parsedWorkspace);
     if (!nextWorkspace) {
       showToast(getUnsupportedProjectSchemaMessage(), "error");
       return;
     }
 
     onBeforeWorkspaceBoundary?.();
-    const nextActiveFile = replaceWorkspace(nextWorkspace);
+    replaceWorkspace(nextWorkspace);
     replaceCommentsByFileId(nextWorkspace.commentsByFileId);
     clearFileHistory();
     resetCollaborationState("idle");
     onCloseChrome();
-    syncUrlForFile(nextActiveFile);
+    syncUrlForLocalWorkspace();
     showToast("Workspace backup restored.");
   };
 
@@ -268,14 +268,14 @@ export function useProjectIoController({
     const importedText = await file.text();
     const importedFileDraft = createImportedWorkspaceFileDraft(file.name, importedText, preferences);
     onBeforeWorkspaceBoundary?.();
-    const nextFile = addFileFromContent(
+    addFileFromContent(
       importedFileDraft.title,
       importedFileDraft.text,
       importedFileDraft.viewMode,
       importedFileDraft.overrides,
     );
     onCloseChrome();
-    if (!isRoomSession) syncUrlForFile(nextFile);
+    if (!isRoomSession) syncUrlForLocalWorkspace();
 
     queueAnimationFrameTask(() => editorRef.current?.focus());
   };

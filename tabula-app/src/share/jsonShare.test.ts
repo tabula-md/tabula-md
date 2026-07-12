@@ -215,8 +215,8 @@ describe("json share links", () => {
       title: "BRIEF.md",
       text: "# Brief",
       viewMode: "edit",
-      connectionStatus: "idle",
     });
+    expect(Object.keys(workspace.files[0])).not.toContain("connectionStatus");
   });
 
   it("does not treat the default README as content that blocks share-link import", () => {

@@ -69,7 +69,13 @@ describe("collaboration runtime model", () => {
         roomId: "room-1",
         shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
       },
-    })).toBeNull();
+    })).toEqual({
+      fileId: undefined,
+      fileTitle: undefined,
+      roomId: "room-1",
+      roomKey: VALID_ROOM_KEY,
+      shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
+    });
   });
 
   it("only allows session creation when a file exists and room service is configured", () => {

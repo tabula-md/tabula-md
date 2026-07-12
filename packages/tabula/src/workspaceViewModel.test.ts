@@ -2,14 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   getActiveWorkspaceStatus,
   getWorkspaceFileSearchText,
-  getWorkspaceFileStatus,
   getWorkspaceStatusLabel,
-  isUsableWorkspaceRoomFile,
   type WorkspaceViewFile,
 } from "./workspaceViewModel";
-
-const validRoomShareUrl =
-  "https://tabula.md/#room=abcdefghijklmnopqrstuA,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 const file = (overrides: Partial<WorkspaceViewFile> = {}): WorkspaceViewFile => ({
   id: "file-1",
@@ -27,56 +22,6 @@ describe("workspace view model", () => {
     expect(getWorkspaceStatusLabel("idle")).toBe("Local draft");
     expect(getActiveWorkspaceStatus({ isLive: false, connectionStatus: "connected" })).toBe("idle");
     expect(getActiveWorkspaceStatus({ isLive: true, connectionStatus: "connected" })).toBe("connected");
-  });
-
-  it("uses active connection status for the active file", () => {
-    expect(
-      getWorkspaceFileStatus({
-        file: file(),
-        activeFileId: "file-1",
-        activeConnectionStatus: "connected",
-      }),
-    ).toBe("connected");
-  });
-
-  it("keeps non-room files local and room files disconnected by default", () => {
-    expect(
-      getWorkspaceFileStatus({
-        file: file({ id: "local" }),
-        activeFileId: "other",
-        activeConnectionStatus: "connected",
-      }),
-    ).toBe("idle");
-
-    expect(
-      getWorkspaceFileStatus({
-        file: file({
-          id: "room",
-          roomId: "abcdefghijklmnopqrstuA",
-          shareUrl: validRoomShareUrl,
-        }),
-        activeFileId: "other",
-        activeConnectionStatus: "connected",
-      }),
-    ).toBe("disconnected");
-  });
-
-  it("rejects broken room metadata instead of showing live state", () => {
-    const brokenFile = file({
-      id: "room",
-      roomId: "abcdefghijklmnopqrstuA",
-      shareUrl: "https://tabula.md/#room=other,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      connectionStatus: "connected",
-    });
-
-    expect(isUsableWorkspaceRoomFile(brokenFile)).toBe(false);
-    expect(
-      getWorkspaceFileStatus({
-        file: brokenFile,
-        activeFileId: "other",
-        activeConnectionStatus: "connected",
-      }),
-    ).toBe("idle");
   });
 
   it("indexes file name and frontmatter title for file search", () => {

@@ -556,7 +556,5 @@ export type {
 export {
   getActiveWorkspaceStatus,
   getWorkspaceFileSearchText,
-  getWorkspaceFileStatus,
   getWorkspaceStatusLabel,
-  isUsableWorkspaceRoomFile,
 } from "./workspaceViewModel";

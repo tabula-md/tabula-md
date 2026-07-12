@@ -18,7 +18,6 @@ import type {
   WorkspaceFile,
   WorkspaceFolder,
 } from "../workspaceStorage";
-import { isEmptyGeneratedLivePlaceholder } from "../workspaceStorage";
 import type { WorkspaceLanguage } from "./useWorkspacePreferences";
 
 type FocusTextRange = (start: number, end?: number) => void;
@@ -142,12 +141,8 @@ export function useWorkspaceProjectContextRuntime({
 }: UseWorkspaceProjectContextRuntimeOptions) {
   const [fileQuery, setFileQuery] = useState("");
 
-  const visibleFiles = useMemo(
-    () => files.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
-    [files],
-  );
-  const visibleActiveFileId =
-    activeFile && !isEmptyGeneratedLivePlaceholder(activeFile) ? activeFile.id : undefined;
+  const visibleFiles = files;
+  const visibleActiveFileId = activeFile?.id;
   const outlineCursorRef = useRef({ fileId: visibleActiveFileId, offset: 0 });
   if (outlineCursorRef.current.fileId !== visibleActiveFileId) {
     outlineCursorRef.current = { fileId: visibleActiveFileId, offset: 0 };

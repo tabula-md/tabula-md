@@ -33,6 +33,7 @@ type UseFileCommentsOptions = {
   initialCommentsByFileId: Record<string, FileComment[]>;
   activeFileId: string;
   files: WorkspaceFile[];
+  isRoomSession: boolean;
   identity: Collaborator;
   createId: () => string;
   onCommentCreated?: (fileId: string, comment: FileComment) => void;
@@ -46,15 +47,13 @@ const getFileComments = (commentsByFileId: Record<string, FileComment[]>, fileId
 
 const utf8Encoder = new TextEncoder();
 
-const getLiveRoomContentBytes = ({
+const getWorkspaceContentBytes = ({
   commentsByFileId,
   files,
-  roomId,
 }: {
   commentsByFileId: Record<string, FileComment[]>;
   files: WorkspaceFile[];
-  roomId: string;
-}) => files.filter((file) => file.roomId === roomId).reduce(
+}) => files.reduce(
   (total, file) => total + utf8Encoder.encode(file.text).byteLength +
     getFileComments(commentsByFileId, file.id).reduce(
       (commentTotal, comment) => commentTotal + utf8Encoder.encode(comment.body).byteLength +
@@ -68,6 +67,7 @@ export function useFileComments({
   initialCommentsByFileId,
   activeFileId,
   files,
+  isRoomSession,
   identity,
   createId,
   onCommentCreated,
@@ -143,7 +143,7 @@ export function useFileComments({
     if (
       !trimmedDraft ||
       commentCount >= WORKSPACE_ROOM_MAX_COMMENTS ||
-      (targetFile?.roomId && getLiveRoomContentBytes({ commentsByFileId, files, roomId: targetFile.roomId }) +
+      (isRoomSession && targetFile && getWorkspaceContentBytes({ commentsByFileId, files }) +
         utf8Encoder.encode(trimmedDraft).byteLength > WORKSPACE_ROOM_MAX_CONTENT_BYTES)
     ) {
       return null;
@@ -308,11 +308,10 @@ export function useFileComments({
       !trimmedDraft ||
       !comment ||
       (comment.replies?.length ?? 0) >= WORKSPACE_ROOM_MAX_REPLIES ||
-      (targetFile?.roomId &&
-        getLiveRoomContentBytes({
+      (isRoomSession && targetFile &&
+        getWorkspaceContentBytes({
           commentsByFileId,
           files,
-          roomId: targetFile.roomId,
         }) + utf8Encoder.encode(trimmedDraft).byteLength > WORKSPACE_ROOM_MAX_CONTENT_BYTES)
     ) {
       return null;
