@@ -83,6 +83,19 @@ describe("workspace persistence queue", () => {
     expect(queue.hasPending()).toBe(false);
   });
 
+  it("reports a workspace only after its write succeeds", async () => {
+    const persistedWorkspace = createWorkspace("# Saved");
+    const onPersisted = vi.fn();
+    const queue = createWorkspacePersistenceQueue({
+      onPersisted,
+      writeWorkspace: vi.fn().mockResolvedValue(undefined),
+    });
+
+    queue.persistNow(persistedWorkspace);
+
+    await vi.waitFor(() => expect(onPersisted).toHaveBeenCalledWith(persistedWorkspace));
+  });
+
   it("serializes writes and keeps only the latest state while a write is in flight", async () => {
     let finishFirstWrite: (() => void) | undefined;
     const firstWrite = new Promise<void>((resolve) => {

@@ -5,10 +5,7 @@ import {
 } from "../collaboration";
 import { getTabulaRoomAvailability } from "../collaboration/collabRoom";
 import { createCollaborationSessionStartRequest } from "../collaboration/collabRuntime";
-import {
-  getRoomCheckpointAvailability,
-  persistInitialWorkspaceRoomCheckpoint,
-} from "../collaboration/roomCheckpointStore";
+import { getRoomCheckpointAvailability } from "../collaboration/roomCheckpointStore";
 import {
   WORKSPACE_ROOM_ROOT_ID,
   WORKSPACE_ROOM_SCHEMA_VERSION,
@@ -161,6 +158,9 @@ export function useCollaborationRoom({
         document.id === sessionFile.id
           ? { ...document, text: sessionFile.text }
           : document,
+      );
+      const { persistInitialWorkspaceRoomCheckpoint } = await import(
+        "../collaboration/roomCheckpointCrdt"
       );
       await persistInitialWorkspaceRoomCheckpoint({
         roomId: nextSession.roomId,

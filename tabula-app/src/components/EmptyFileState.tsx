@@ -2,6 +2,7 @@ import { CircleHelp, FilePlus2, FolderOpen, Upload } from "lucide-react";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { PRODUCT_NAME } from "../product";
 import { getWorkspaceMenuCopy } from "../workspaceLocale";
+import { formatShortcut, type ShortcutPlatform } from "../keyboardShortcuts";
 import { TabulaLogo } from "./TabulaLogo";
 
 type EmptyFileStateProps = {
@@ -10,8 +11,7 @@ type EmptyFileStateProps = {
   onOpenFile: () => void;
   onBrowseFiles: () => void;
   onOpenHelp: () => void;
-  primaryShortcutModifier: string;
-  alternateShortcutModifier: string;
+  shortcutPlatform: ShortcutPlatform;
 };
 
 export function EmptyFileState({
@@ -20,10 +20,8 @@ export function EmptyFileState({
   onOpenFile,
   onBrowseFiles,
   onOpenHelp,
-  primaryShortcutModifier,
-  alternateShortcutModifier,
+  shortcutPlatform,
 }: EmptyFileStateProps) {
-  const appShortcutPrefix = `${primaryShortcutModifier}+${alternateShortcutModifier}`;
   const copy = getWorkspaceMenuCopy(language).emptyState;
 
   return (
@@ -37,17 +35,17 @@ export function EmptyFileState({
           <button type="button" onClick={onNewFile} className="empty-file-action">
             <FilePlus2 size={16} />
             <span>{copy.newFile}</span>
-            <span className="empty-file-action-hint">{appShortcutPrefix}+N</span>
+            <span className="empty-file-action-hint">{formatShortcut("Mod+Alt+N", shortcutPlatform)}</span>
           </button>
           <button type="button" onClick={onOpenFile} className="empty-file-action">
             <Upload size={16} />
             <span>{copy.openFile}</span>
-            <span className="empty-file-action-hint">{appShortcutPrefix}+O</span>
+            <span className="empty-file-action-hint">{formatShortcut("Mod+Alt+O", shortcutPlatform)}</span>
           </button>
           <button type="button" onClick={onBrowseFiles} className="empty-file-action">
             <FolderOpen size={16} />
             <span>{copy.browseFiles}</span>
-            <span className="empty-file-action-hint">{appShortcutPrefix}+F</span>
+            <span className="empty-file-action-hint">{formatShortcut("Mod+Alt+F", shortcutPlatform)}</span>
           </button>
           <button type="button" onClick={onOpenHelp} className="empty-file-action">
             <CircleHelp size={16} />

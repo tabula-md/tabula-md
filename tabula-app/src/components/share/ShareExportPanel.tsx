@@ -7,6 +7,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { JsonShareController } from "../../hooks/useJsonShareController";
+import { useId } from "react";
 import type { ShareViewModel } from "../../share";
 import type { WorkspaceShareCopy } from "../../workspaceLocale";
 
@@ -31,6 +32,15 @@ export function ShareExportPanel({
   onDownloadProjectArchive,
   onExportToJsonLink,
 }: ShareExportPanelProps) {
+  const linkDescriptionId = useId();
+  const linkDisabledReasonId = useId();
+  const archiveDescriptionId = useId();
+  const exportLinkLabelId = useId();
+  const exportLinkMetadataId = useId();
+  const linkDescribedBy = shareView.shareable.disabledReason
+    ? `${linkDescriptionId} ${linkDisabledReasonId}`
+    : linkDescriptionId;
+
   return (
     <>
       <div className="share-panel-heading">
@@ -49,6 +59,7 @@ export function ShareExportPanel({
             type="button"
             onClick={onExportToJsonLink}
             disabled={!jsonShare.canExport}
+            aria-describedby={linkDescribedBy}
             title={shareView.shareable.disabledReason || undefined}
           >
             {jsonShare.exporting ? <RefreshCw size={16} /> : <Link size={16} />}
@@ -59,38 +70,45 @@ export function ShareExportPanel({
           className="share-modal-secondary"
           type="button"
           disabled={workspaceDocumentCount === 0}
+          aria-describedby={archiveDescriptionId}
           onClick={onDownloadProjectArchive}
         >
           <FolderArchive size={16} />
           <span>{copy.exportPanel.projectArchiveTitle}</span>
         </button>
       </div>
-      <p className="share-modal-muted">
+      <p className="share-modal-muted" id={linkDescriptionId}>
         {copy.shareable.description}
       </p>
-      <p className="share-modal-muted">
+      <p className="share-modal-muted" id={archiveDescriptionId}>
         {copy.exportPanel.projectArchiveDescription}
       </p>
       {shareView.shareable.hasLink && jsonShare.url ? (
         <div className="share-copy-box">
           <div className="share-modal-field">
-            <label>{copy.shareable.linkLabel}</label>
+            <span className="share-modal-field-label" id={exportLinkLabelId}>
+              {copy.shareable.linkLabel}
+            </span>
             <div className="share-modal-link-row">
               <div
                 className="share-link-display"
-                aria-label={copy.shareable.linkLabel}
+                aria-labelledby={exportLinkLabelId}
                 title={jsonShare.url}
               >
                 <span>{jsonShare.urlPreview}</span>
               </div>
-              <button type="button" onClick={onCopyShareableLink}>
+              <button
+                type="button"
+                aria-describedby={exportLinkMetadataId}
+                onClick={onCopyShareableLink}
+              >
                 {exportLinkCopied ? <Check size={18} /> : <Copy size={18} />}
                 <span>
                   {exportLinkCopied ? copy.live.copied : copy.live.copyLink}
                 </span>
               </button>
             </div>
-            <p className="share-modal-muted">
+            <p className="share-modal-muted" id={exportLinkMetadataId}>
               {jsonShare.documentCount} {jsonShare.documentCount === 1 ? "document" : "documents"}
               {jsonShare.expiresAt
                 ? ` · Expires ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(jsonShare.expiresAt))}`
@@ -100,7 +118,7 @@ export function ShareExportPanel({
         </div>
       ) : null}
       {shareView.shareable.disabledReason && (
-        <p className="share-modal-muted">
+        <p className="share-modal-muted" id={linkDisabledReasonId}>
           {shareView.shareable.disabledReason}
         </p>
       )}
