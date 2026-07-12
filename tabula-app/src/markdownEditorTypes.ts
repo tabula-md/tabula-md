@@ -32,6 +32,7 @@ export type MarkdownEditorHandle = {
   getSelectionRange: () => { from: number; to: number };
   getSearchDocument: () => Text | null;
   getSelectedText: () => string;
+  getViewport: () => MarkdownEditorViewport | null;
   getViewportLineNumber: () => number | null;
   getValue: () => string;
   applyLocalTextPatches: (
@@ -41,6 +42,7 @@ export type MarkdownEditorHandle = {
   ) => boolean;
   applyRemoteTextChange: (nextValue: string, patches?: TextPatch[]) => void;
   revealRange: (from: number, to?: number) => void;
+  revealViewport: (position: number, offset?: number) => void;
   scrollToRatio: (ratio: number) => void;
   setSelectionRanges: (ranges: Array<{ from: number; to: number }>) => void;
   setSelectionRange: (from: number, to?: number) => void;
@@ -71,6 +73,11 @@ export type MarkdownLineActionRequest = {
 export type MarkdownSelectionActionPosition = {
   clientX: number;
   clientY: number;
+};
+
+export type MarkdownEditorViewport = {
+  position: number;
+  offset: number;
 };
 
 export type MarkdownEditorProps = {

@@ -37,6 +37,10 @@
   white-space: nowrap;
 }
 
+.status-save-state.attention {
+  color: var(--danger-text);
+}
+
 .status-cursor-position {
   color: var(--text-soft);
   background: var(--surface-muted);

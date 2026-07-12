@@ -249,8 +249,7 @@ export const buildAgentContextExport = (
   const fileIndex = files
     .map((file) => {
       const description = getFileDescription(file);
-      const liveState = file.roomId ? `live:${file.roomId}` : "local";
-      return `| ${file.title} | ${file.viewMode} | ${liveState} | ${getFileWordCount(file)} | ${description} |`;
+      return `| ${file.title} | ${file.viewMode} | ${getFileWordCount(file)} | ${description} |`;
     })
     .join("\n");
   const fileBodies = files
@@ -268,7 +267,6 @@ export const buildAgentContextExport = (
 - Mode: ${file.viewMode}
 - Text width: ${file.readingWidth}
 - Line wrapping: ${file.lineWrapping ? "on" : "off"}
-- State: ${file.roomId ? `live ${file.roomId}` : "local"}
 ${commentsBlock}
 
 ${createCodeFence(file.text)}
@@ -284,8 +282,8 @@ ${createCodeFence(file.text)}
 
 ## File Index
 
-| File | Mode | State | Words | Description |
-| --- | --- | --- | ---: | --- |
+| File | Mode | Words | Description |
+| --- | --- | ---: | --- |
 ${fileIndex}
 
 ${formatOpenComments(files, commentsByFileId)}

@@ -41,28 +41,19 @@ export async function run(ctx) {
       }),
     );
     await page.keyboard.press("ControlOrMeta+A");
-    await waitForSelectionLayer(page, { minSegments: 4 });
+    await waitForSelectionLayer(page);
 
     const selectionSurfaceState = await page.evaluate(() => {
       const activeLine = document.querySelector(".cm-activeLine");
       const activeGutter = document.querySelector(".cm-activeLineGutter");
-      const selectionBackground = document.querySelector(".cm-selectionBackground");
-      const segments = Array.from(document.querySelectorAll(".cm-user-selection-segment"));
-      const textSegments = segments.filter((segment) => !segment.classList.contains("cm-user-selection-bridge"));
-      const lines = Array.from(document.querySelectorAll(".cm-line"));
-      const maxLineWidth = Math.max(...lines.map((line) => line.getBoundingClientRect().width));
-      const segmentRects = textSegments.map((segment) => {
+      const segments = Array.from(document.querySelectorAll(".cm-selectionLayer .cm-selectionBackground"));
+      const segmentRects = segments.map((segment) => {
         const rect = segment.getBoundingClientRect();
         const style = getComputedStyle(segment);
         return {
           width: Math.round(rect.width),
           height: Math.round(rect.height),
           background: style.backgroundColor,
-          className: segment.className,
-          topLeftRadius: style.borderTopLeftRadius,
-          bottomLeftRadius: style.borderBottomLeftRadius,
-          topRightRadius: style.borderTopRightRadius,
-          bottomRightRadius: style.borderBottomRightRadius,
         };
       });
       const lineMetricsAfterSelection = Array.from(document.querySelectorAll(".cm-line")).map((line) => {
@@ -72,22 +63,14 @@ export async function run(ctx) {
           height: Math.round(rect.height),
         };
       });
-      const exposedMiddleLineSegment = segmentRects.find((segment) => segment.width > 180);
-
       return {
         hasSelectionClass: Boolean(document.querySelector(".editor-surface.has-text-selection")),
         activeLineBackground: activeLine instanceof HTMLElement ? getComputedStyle(activeLine).backgroundColor : "",
         activeGutterBackground: activeGutter instanceof HTMLElement ? getComputedStyle(activeGutter).backgroundColor : "",
-        selectionBackground:
-          selectionBackground instanceof HTMLElement ? getComputedStyle(selectionBackground).backgroundColor : "",
         statusText: document.querySelector(".status-cursor-position")?.textContent?.trim() ?? "",
-        segmentCount: textSegments.length,
-        bridgeSegmentCount: segments.filter((segment) => segment.classList.contains("cm-user-selection-bridge")).length,
-        emptySegmentCount: textSegments.filter((segment) => segment.classList.contains("cm-user-selection-empty")).length,
+        segmentCount: segments.length,
         segmentRects,
-        exposedMiddleLineSegment,
         lineMetricsAfterSelection,
-        maxLineWidth: Math.round(maxLineWidth),
       };
     });
     expect(
@@ -100,35 +83,14 @@ export async function run(ctx) {
         selectionSurfaceState.activeGutterBackground === "rgba(0, 0, 0, 0)",
       "Text selection should suppress active-line focus styling.",
     );
-    expect(
-      !selectionSurfaceState.selectionBackground || selectionSurfaceState.selectionBackground === "rgba(0, 0, 0, 0)",
-      "Default full-line selection rectangles should not be visible.",
-    );
-    expect(selectionSurfaceState.segmentCount === 4, "Text selection should render one segment per selected line.");
-    expect(selectionSurfaceState.bridgeSegmentCount > 0, "Text selection should render bridge segments between connected rows.");
+    expect(selectionSurfaceState.segmentCount >= 1, "CodeMirror should render the selected text.");
     expect(
       selectionSurfaceState.segmentRects.every(
         (segment) =>
           segment.background === "rgb(228, 217, 244)" &&
-          segment.width > 0 &&
-          segment.width < selectionSurfaceState.maxLineWidth,
-      ),
-      "Selection segments should wrap selected text with the Tabula purple selection color.",
-    );
-    expect(selectionSurfaceState.emptySegmentCount === 1, "Text selection should cover selected empty lines.");
-    expect(
-      selectionSurfaceState.segmentRects.some(
-        (segment) => segment.className.includes("selection-square-top-left") && segment.topLeftRadius === "0px",
-      ) &&
-        selectionSurfaceState.segmentRects.some(
-          (segment) => segment.className.includes("selection-square-bottom-left") && segment.bottomLeftRadius === "0px",
-        ),
-      "Consecutive selected lines should share adjacent edges instead of rendering as fully separate rounded islands.",
-    );
-    expect(
-      selectionSurfaceState.exposedMiddleLineSegment?.topRightRadius === "4px" &&
-        selectionSurfaceState.exposedMiddleLineSegment?.bottomRightRadius === "4px",
-      "A multi-line selection should keep exposed line ends rounded.",
+          segment.height > 0,
+      ) && selectionSurfaceState.segmentRects.some((segment) => segment.width > 0),
+      `CodeMirror selection rectangles should use the Tabula selection color without changing layout. Actual: ${JSON.stringify(selectionSurfaceState.segmentRects)}`,
     );
     expect(
       selectionSurfaceState.statusText.includes("(4 lines,"),
@@ -150,11 +112,9 @@ export async function run(ctx) {
       }),
     );
     await page.keyboard.press("ControlOrMeta+A");
-    await waitForSelectionLayer(page, { minSegments: 3 });
+    await waitForSelectionLayer(page);
     const wrappedSelectionSurfaceState = await page.evaluate(() => {
-      const segments = Array.from(document.querySelectorAll(".cm-user-selection-segment"));
-      const textSegments = segments.filter((segment) => !segment.classList.contains("cm-user-selection-bridge"));
-      const bridgeSegments = segments.filter((segment) => segment.classList.contains("cm-user-selection-bridge"));
+      const segments = Array.from(document.querySelectorAll(".cm-selectionLayer .cm-selectionBackground"));
       const lines = Array.from(document.querySelectorAll(".cm-line"));
       const lineRects = lines.map((line) => {
         const rect = line.getBoundingClientRect();
@@ -163,7 +123,7 @@ export async function run(ctx) {
           height: Math.round(rect.height),
         };
       });
-      const segmentRects = textSegments
+      const segmentRects = segments
         .map((segment) => {
           const rect = segment.getBoundingClientRect();
           const style = getComputedStyle(segment);
@@ -173,13 +133,10 @@ export async function run(ctx) {
             bottom: Math.round(rect.bottom),
             width: Math.round(rect.width),
             height: Math.round(rect.height),
-            className: segment.className,
-            topLeftRadius: style.borderTopLeftRadius,
-            bottomLeftRadius: style.borderBottomLeftRadius,
+            background: style.backgroundColor,
           };
         })
         .sort((first, second) => first.top - second.top || first.left - second.left);
-      const visualRowCount = new Set(segmentRects.map((segment) => segment.top)).size;
       const noTextSegmentVerticalOverlap = segmentRects.every((segment, index) => {
         const nextSegment = segmentRects[index + 1];
         if (!nextSegment || nextSegment.top === segment.top) {
@@ -188,30 +145,21 @@ export async function run(ctx) {
 
         return nextSegment.top >= segment.bottom - 1;
       });
-      const connectedWrappedRows = segmentRects.some((segment, index) => {
-        const nextSegment = segmentRects[index + 1];
-        if (!nextSegment) {
-          return false;
-        }
-
-        return (
-          Math.abs(segment.left - nextSegment.left) <= 2 &&
-          nextSegment.top > segment.top &&
-          nextSegment.top - segment.top <= Math.max(segment.height, nextSegment.height) * 1.6 &&
-          segment.bottomLeftRadius === "0px" &&
-          nextSegment.topLeftRadius === "0px"
-        );
-      });
-
+      const wrappedLine = lineRects[1];
+      const wrappedSelectionCoversLine = Boolean(
+        wrappedLine && segmentRects.some(
+          (segment) =>
+            segment.top <= wrappedLine.top + 1 &&
+            segment.bottom >= wrappedLine.top + wrappedLine.height - 1,
+        ),
+      );
       return {
         logicalLineCount: lines.length,
-        visualRowCount,
-        bridgeSegmentCount: bridgeSegments.length,
         segmentCount: segmentRects.length,
-        emptySegmentCount: textSegments.filter((segment) => segment.classList.contains("cm-user-selection-empty")).length,
         wrappedLineIsTallerThanSingleRow: lineRects[1]?.height > (lineRects[0]?.height ?? 0) * 1.5,
         noTextSegmentVerticalOverlap,
-        connectedWrappedRows,
+        wrappedSelectionCoversLine,
+        selectionColors: [...new Set(segmentRects.map((segment) => segment.background))],
         lineMetricsAfterSelection: lineRects,
       };
     });
@@ -221,15 +169,13 @@ export async function run(ctx) {
       "Wrapped text selection highlights should not change editor line positions or heights.",
     );
     expect(wrappedSelectionSurfaceState.wrappedLineIsTallerThanSingleRow, "Smoke document should contain a wrapped logical line.");
-    expect(
-      wrappedSelectionSurfaceState.visualRowCount > wrappedSelectionSurfaceState.logicalLineCount,
-      "A wrapped logical line should render selection by visual rows.",
-    );
-    expect(wrappedSelectionSurfaceState.segmentCount >= wrappedSelectionSurfaceState.visualRowCount, "Every visual row should receive a selection segment.");
-    expect(wrappedSelectionSurfaceState.bridgeSegmentCount > 0, "Wrapped visual rows should receive bridge segments.");
+    expect(wrappedSelectionSurfaceState.segmentCount >= 1, "Wrapped text should retain a visible CodeMirror selection.");
+    expect(wrappedSelectionSurfaceState.wrappedSelectionCoversLine, "Selection should cover the full height of a wrapped logical line.");
     expect(wrappedSelectionSurfaceState.noTextSegmentVerticalOverlap, "Wrapped text selection segments should not overlap each other.");
-    expect(wrappedSelectionSurfaceState.emptySegmentCount === 0, "Wrapped lines should not create fake empty-line connector segments.");
-    expect(wrappedSelectionSurfaceState.connectedWrappedRows, "Wrapped visual rows should share adjacent selection edges.");
+    expect(
+      wrappedSelectionSurfaceState.selectionColors.every((color) => color === "rgb(228, 217, 244)"),
+      "Wrapped selection rows should keep the Tabula selection color.",
+    );
   });
 
   await withPage(browser, "/", async (page) => {

@@ -1,41 +1,11 @@
 .markdown-editor .cm-selectionBackground,
 .markdown-editor .cm-focused .cm-selectionBackground {
-  background: transparent !important;
-  background-color: transparent !important;
+  background: var(--editor-selection-background) !important;
+  background-color: var(--editor-selection-background) !important;
 }
 
 .markdown-editor .cm-content ::selection {
-  background: transparent;
-}
-
-.markdown-editor .cm-user-selection-segment {
-  border-radius: 4px;
   background: var(--editor-selection-background);
-  pointer-events: none;
-}
-
-.markdown-editor .cm-user-selection-bridge {
-  border-radius: 0;
-}
-
-.markdown-editor .cm-user-selection-segment.selection-square-top-left {
-  border-top-left-radius: 0;
-}
-
-.markdown-editor .cm-user-selection-segment.selection-square-top-right {
-  border-top-right-radius: 0;
-}
-
-.markdown-editor .cm-user-selection-segment.selection-square-bottom-left {
-  border-bottom-left-radius: 0;
-}
-
-.markdown-editor .cm-user-selection-segment.selection-square-bottom-right {
-  border-bottom-right-radius: 0;
-}
-
-.markdown-editor .cm-user-selection-segment .cm-comment-mark {
-  pointer-events: auto;
 }
 
 .editor-surface.has-text-selection .markdown-editor .cm-activeLine,
@@ -75,14 +45,9 @@
   display: none;
 }
 
-.markdown-editor-shell.collaboration-bound .cm-scroller {
-  box-sizing: border-box;
-  padding-top: 22px;
-}
-
 .markdown-editor .cm-ySelectionInfo {
-  top: auto;
-  bottom: calc(100% + 2px);
+  top: calc(100% + 2px);
+  bottom: auto;
   left: -2px;
   z-index: var(--layer-chrome);
   max-width: min(180px, 45vw);

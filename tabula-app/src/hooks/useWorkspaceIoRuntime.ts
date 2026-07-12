@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import type { ConnectionStatus } from "../collaboration";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import type {
   FileComment,
@@ -12,7 +13,7 @@ import type { WorkspacePreferences } from "./useWorkspacePreferences";
 
 type UseWorkspaceIoRuntimeOptions = {
   activeFile?: WorkspaceFile;
-  roomFile?: WorkspaceFile;
+  isRoomSession: boolean;
   activeFileId: string;
   addFileFromContent: (
     title: string,
@@ -38,7 +39,7 @@ type UseWorkspaceIoRuntimeOptions = {
     workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">,
   ) => WorkspaceFile | undefined;
   resetCollaborationState: (
-    nextStatus: WorkspaceFile["connectionStatus"],
+    nextStatus: ConnectionStatus,
   ) => void;
   showToast: (
     message: string,
@@ -50,7 +51,7 @@ type UseWorkspaceIoRuntimeOptions = {
 
 export function useWorkspaceIoRuntime({
   activeFile,
-  roomFile,
+  isRoomSession,
   activeFileId,
   addFileFromContent,
   clearFileHistory,
@@ -72,7 +73,7 @@ export function useWorkspaceIoRuntime({
 }: UseWorkspaceIoRuntimeOptions) {
   const projectIo = useProjectIoController({
     activeFile,
-    roomFile,
+    isRoomSession,
     activeFileId,
     addFileFromContent,
     commentsByFileId,

@@ -5,19 +5,17 @@ import {
   createWorkspaceFile,
   createStoredWorkspace,
   ensureDefaultFiles,
-  ensureLiveFileForRoom,
   finalizeWorkspaceState,
   getRoomFromLocation,
-  getLiveFileTitle,
   parseWorkspacePayload,
   PROJECT_STORAGE_VERSION,
   readInitialWorkspaceSnapshot,
-  syncUrlForFile,
+  syncUrlForLocalWorkspace,
+  syncUrlForRoom,
   type WorkspaceFile,
 } from "./workspaceStorage";
 
 const VALID_ROOM_KEY = "A".repeat(43);
-const NEXT_VALID_ROOM_KEY = "B".repeat(43);
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -38,10 +36,7 @@ describe("file tab state transitions", () => {
   });
 
   it("opens a shared room as a room session before documents arrive", () => {
-    const workspace = createRoomWorkspaceState({
-      roomId: "browserroom",
-      shareUrl: `http://localhost:5174/#room=browserroom,${VALID_ROOM_KEY}`,
-    });
+    const workspace = createRoomWorkspaceState();
 
     expect(workspace.files).toEqual([]);
     expect(workspace.openFileIds).toEqual([]);
@@ -69,24 +64,6 @@ describe("file tab state transitions", () => {
     expect(snapshot.workspace.activeFileId).toBe("");
   });
 
-  it("reactivates an existing shared room instead of duplicating it", () => {
-    const files = ensureLiveFileForRoom(
-      ensureLiveFileForRoom(ensureDefaultFiles([], { ensureUntitled: true }), {
-        roomId: "room-a",
-        shareUrl: `http://localhost:5174/#room=room-a,${VALID_ROOM_KEY}`,
-      }),
-      {
-        roomId: "room-a",
-        shareUrl: `http://localhost:5174/#room=room-a,${NEXT_VALID_ROOM_KEY}`,
-      },
-    );
-
-    expect(files.filter((file) => file.roomId === "room-a")).toHaveLength(1);
-    expect(files.find((file) => file.roomId === "room-a")?.shareUrl).toBe(
-      `http://localhost:5174/#room=room-a,${NEXT_VALID_ROOM_KEY}`,
-    );
-  });
-
   it("only treats canonical room hashes as live rooms when the client-only key fragment is present", () => {
     vi.stubGlobal("window", {
       location: {
@@ -112,7 +89,7 @@ describe("file tab state transitions", () => {
     });
   });
 
-  it("syncs browser URLs only from valid stored live room share URLs", () => {
+  it("syncs browser URLs from the explicit room session", () => {
     const replaceState = vi.fn();
     vi.stubGlobal("window", {
       location: {
@@ -124,12 +101,15 @@ describe("file tab state transitions", () => {
       },
     });
 
-    syncUrlForFile({ roomId: "room-a", shareUrl: `https://tabula.test/#room=room-a,${VALID_ROOM_KEY}` }, "replace");
+    syncUrlForRoom({
+      roomId: "room-a",
+      shareUrl: `https://tabula.test/#room=room-a,${VALID_ROOM_KEY}`,
+    }, "replace");
 
     expect(replaceState).toHaveBeenCalledWith(null, "", `/#room=room-a,${VALID_ROOM_KEY}`);
   });
 
-  it("does not keep invalid stored live room share URLs in the browser URL", () => {
+  it("returns to the local URL for invalid room sessions", () => {
     const replaceState = vi.fn();
     vi.stubGlobal("window", {
       location: {
@@ -141,16 +121,21 @@ describe("file tab state transitions", () => {
       },
     });
 
-    expect(() => syncUrlForFile({ roomId: "room-a", shareUrl: "not a url" }, "replace")).not.toThrow();
-    syncUrlForFile({ roomId: "room-a", shareUrl: `https://tabula.test/#room=room-b,${VALID_ROOM_KEY}` }, "replace");
+    expect(() => syncUrlForRoom({ roomId: "room-a", shareUrl: "not a url" }, "replace")).not.toThrow();
+    syncUrlForRoom({
+      roomId: "room-a",
+      shareUrl: `https://tabula.test/#room=room-b,${VALID_ROOM_KEY}`,
+    }, "replace");
+    syncUrlForLocalWorkspace("replace");
 
-    expect(replaceState).toHaveBeenCalledTimes(2);
+    expect(replaceState).toHaveBeenCalledTimes(3);
     expect(replaceState).toHaveBeenNthCalledWith(1, null, "", "/");
     expect(replaceState).toHaveBeenNthCalledWith(2, null, "", "/");
+    expect(replaceState).toHaveBeenNthCalledWith(3, null, "", "/");
   });
 
   it("opens a fresh project on the product README", () => {
-    const restored = finalizeWorkspaceState([], undefined, {}, { includeLocationRoom: false });
+    const restored = finalizeWorkspaceState([]);
 
     expect(restored.files.map((file) => file.title)).toEqual(["README.md", "Untitled.md"]);
     expect(restored.activeFileId).toBe(restored.files[0].id);
@@ -168,7 +153,7 @@ describe("project persistence", () => {
       activeFileId: "design",
       commentsByFileId: {},
     });
-    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored);
 
     expect(stored).toMatchObject({
       schema: "tabula.project",
@@ -198,7 +183,7 @@ describe("project persistence", () => {
     ]);
   });
 
-  it("repairs cyclic v6 folders instead of exposing an unusable tree", () => {
+  it("repairs cyclic v7 folders instead of exposing an unusable tree", () => {
     const stored = createStoredWorkspace({
       folders: [
         { id: "workspace-root", title: "Project", parentId: null },
@@ -209,15 +194,14 @@ describe("project persistence", () => {
       activeFileId: "file",
       commentsByFileId: {},
     });
-    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored);
 
     expect(restored?.files[0]).toMatchObject({ title: "folder name.md", parentId: "workspace-root" });
     expect(restored?.folders.some((folder) => folder.id !== "workspace-root" && folder.parentId === "workspace-root")).toBe(true);
   });
 
   it("rejects non-Tabula project payloads", () => {
-    const restored = parseWorkspacePayload(
-      {
+    const restored = parseWorkspacePayload({
         schema: "unknown.workspace",
         version: 2,
         activeDocumentId: "local",
@@ -226,9 +210,7 @@ describe("project persistence", () => {
           local: createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text: "# Local" }),
         },
         commentsByDocumentId: {},
-      },
-      { includeLocationRoom: false },
-    );
+      });
 
     expect(restored).toBeNull();
   });
@@ -239,7 +221,7 @@ describe("project persistence", () => {
       activeFileId: "local",
       commentsByFileId: {},
     });
-    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored);
 
     expect(restored?.files.map((file) => file.title)).toEqual(["LOCAL.md"]);
     expect(restored?.activeFileId).toBe("local");
@@ -254,142 +236,36 @@ describe("project persistence", () => {
       activeFileId: "blank",
       commentsByFileId: {},
     });
-    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored);
 
     expect(restored?.files.map((file) => file.title)).toEqual(["README.md", "Untitled.md"]);
     expect(restored?.activeFileId).toBe("tabula-readme");
   });
 
-  it("preserves live-room text as a local file without persisting room credentials", () => {
+  it("stores only document data and never embeds room credentials", () => {
     const stored = createStoredWorkspace({
       files: [
         createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text: "# Local\n\nDraft" }),
         createWorkspaceFile(2, {
-          id: "live",
-          title: "Shared room.md",
-          text: "# Live",
-          roomId: "room-live",
-          shareUrl: `http://localhost:5174/#room=room-live,${VALID_ROOM_KEY}`,
-          connectionStatus: "connected",
-          lastRecoveryType: "reconnected",
-          lastRecoveryMessage: "Recovered",
-          lastRecoveryAt: "2026-06-11T00:01:00.000Z",
+          id: "notes",
+          title: "Notes.md",
+          text: "# Notes",
         }),
       ],
-      activeFileId: "live",
+      activeFileId: "notes",
       commentsByFileId: {},
     });
-    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
-    const localFile = restored?.files.find((file) => file.id === "local");
-    const liveFile = restored?.files.find((file) => file.id === "live");
+    const restored = parseWorkspacePayload(stored);
+    const serialized = JSON.stringify(stored);
 
-    expect(stored.files["live"]).toMatchObject({
-      title: "Shared room.md",
-      text: "# Live",
-      connectionStatus: "idle",
-    });
-    expect(stored.files["live"]?.roomId).toBeUndefined();
-    expect(stored.files["live"]?.shareUrl).toBeUndefined();
-    expect(stored.files["live"]?.lastRecoveryType).toBeUndefined();
-    expect(stored.files["live"]?.lastRecoveryMessage).toBeUndefined();
-    expect(localFile?.text).toBe("# Local\n\nDraft");
-    expect(liveFile).toMatchObject({
-      title: "Shared room.md",
-      text: "# Live",
-      connectionStatus: "idle",
-    });
-    expect(liveFile?.roomId).toBeUndefined();
-    expect(liveFile?.shareUrl).toBeUndefined();
-    expect(liveFile?.lastRecoveryType).toBeUndefined();
-    expect(liveFile?.lastRecoveryMessage).toBeUndefined();
-  });
-
-  it("drops empty generated live-room placeholders across reloads", () => {
-    const stored = createStoredWorkspace({
-      files: [
-        createWorkspaceFile(1, { id: "local", title: "LOCAL.md", text: "# Local" }),
-        createWorkspaceFile(2, {
-          id: "live-room-empty",
-          title: getLiveFileTitle("dp12Owqb123"),
-          text: "",
-          roomId: "dp12Owqb123",
-          shareUrl: `http://localhost:5174/#room=dp12Owqb123,${VALID_ROOM_KEY}`,
-          connectionStatus: "connecting",
-        }),
-      ],
-      activeFileId: "live-room-empty",
-      commentsByFileId: {},
-    });
-    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
-
-    expect(Object.keys(stored.files)).toEqual(["local"]);
-    expect(stored.activeFileId).toBe("local");
-    expect(restored?.files.map((file) => file.id)).toEqual(["local"]);
-    expect(restored?.activeFileId).toBe("local");
-  });
-
-  it("keeps empty generated live-room placeholders when they have comments", () => {
-    const liveFile = createWorkspaceFile(1, {
-      id: "live-room-commented",
-      title: getLiveFileTitle("dp12Owqb123"),
-      text: "",
-      roomId: "dp12Owqb123",
-      shareUrl: `http://localhost:5174/#room=dp12Owqb123,${VALID_ROOM_KEY}`,
-    });
-    const stored = createStoredWorkspace({
-      files: [liveFile],
-      activeFileId: liveFile.id,
-      commentsByFileId: {
-        [liveFile.id]: [
-          {
-            id: "comment",
-            body: "Keep this placeholder because it has review context.",
-            createdAt: "2026-07-09T00:00:00.000Z",
-          },
-        ],
-      },
-    });
-    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
-
-    expect(Object.keys(stored.files)).toEqual([liveFile.id]);
-    expect(restored?.files.map((file) => file.id)).toEqual([liveFile.id]);
-  });
-
-  it("drops imported live room metadata across reloads", () => {
-    const stored = createStoredWorkspace({
-      files: [
-        createWorkspaceFile(1, {
-          id: "broken-live",
-          title: "Broken.md",
-          text: "# Broken",
-          roomId: "room-live",
-          shareUrl: "https://tabula.test/",
-          connectionStatus: "disconnected",
-          lastRecoveryType: "invalid-message",
-          lastRecoveryMessage: "This room URL is missing its client-only room key.",
-          lastRecoveryAt: "2026-06-11T00:01:00.000Z",
-        }),
-      ],
-      activeFileId: "broken-live",
-      commentsByFileId: {},
-    });
-    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
-    const brokenFile = restored?.files.find((file) => file.id === "broken-live");
-
-    expect(stored.files["broken-live"]).toMatchObject({
-      connectionStatus: "idle",
-    });
-    expect(stored.files["broken-live"]?.roomId).toBeUndefined();
-    expect(stored.files["broken-live"]?.shareUrl).toBeUndefined();
-    expect(stored.files["broken-live"]?.lastRecoveryType).toBeUndefined();
-    expect(stored.files["broken-live"]?.lastRecoveryMessage).toBeUndefined();
-    expect(brokenFile).toMatchObject({
-      connectionStatus: "idle",
-    });
-    expect(brokenFile?.roomId).toBeUndefined();
-    expect(brokenFile?.shareUrl).toBeUndefined();
-    expect(brokenFile?.lastRecoveryType).toBeUndefined();
-    expect(brokenFile?.lastRecoveryMessage).toBeUndefined();
+    expect(restored?.files.map(({ id, text }) => [id, text])).toEqual([
+      ["local", "# Local\n\nDraft"],
+      ["notes", "# Notes"],
+    ]);
+    expect(serialized).not.toContain("roomId");
+    expect(serialized).not.toContain("shareUrl");
+    expect(serialized).not.toContain("connectionStatus");
+    expect(serialized).not.toContain("lastRecovery");
   });
 
   it("preserves comment source ranges across reloads", () => {
@@ -422,7 +298,7 @@ describe("project persistence", () => {
         ],
       },
     });
-    const restored = parseWorkspacePayload(stored, { includeLocationRoom: false });
+    const restored = parseWorkspacePayload(stored);
 
     expect(restored?.commentsByFileId.local[0]).toMatchObject({
       quote: "Quoted source",

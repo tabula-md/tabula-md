@@ -11,7 +11,6 @@ import {
   type FileViewMode,
   type ReadingWidth,
 } from "@tabula-md/tabula";
-import type { CollabRecoveryEvent, ConnectionStatus } from "./collaboration";
 import { PRODUCT_NAME } from "./product";
 
 export {
@@ -23,7 +22,7 @@ export {
 };
 export type { FileViewMode, ReadingWidth };
 
-export const PROJECT_STORAGE_VERSION = 6;
+export const PROJECT_STORAGE_VERSION = 7;
 export const WORKSPACE_STORAGE_VERSION = PROJECT_STORAGE_VERSION;
 const STARTER_MARKDOWN = "";
 export const README_FILE_ID = "tabula-readme";
@@ -78,12 +77,6 @@ export type WorkspaceFile = {
   lineWrapping: boolean;
   lineNumbers: boolean;
   bookmarks?: FileBookmark[];
-  connectionStatus?: ConnectionStatus;
-  roomId?: string;
-  shareUrl?: string;
-  lastRecoveryType?: CollabRecoveryEvent["type"];
-  lastRecoveryMessage?: string;
-  lastRecoveryAt?: string;
 };
 
 export const WORKSPACE_ROOT_FOLDER_ID = "workspace-root";
@@ -93,7 +86,6 @@ export type WorkspaceFolder = {
   title: string;
   parentId: string | null;
   order?: number;
-  roomId?: string;
 };
 
 export type FileCommentReply = {
@@ -145,15 +137,9 @@ export type StoredWorkspaceFile = {
   lineWrapping: boolean;
   lineNumbers: boolean;
   bookmarks?: FileBookmark[];
-  connectionStatus?: ConnectionStatus;
-  roomId?: string;
-  shareUrl?: string;
-  lastRecoveryType?: CollabRecoveryEvent["type"];
-  lastRecoveryMessage?: string;
-  lastRecoveryAt?: string;
 };
 
-export type StoredProjectV6 = {
+export type StoredProjectV7 = {
   schema: "tabula.project";
   version: typeof PROJECT_STORAGE_VERSION;
   savedAt: string;
@@ -193,58 +179,6 @@ export const getRoomFromLocation = (): LocationRoom | null => {
   };
 };
 
-const getLiveFileId = (roomId: string) => `live-${roomId}`;
-
-export const getLiveFileTitle = (roomId: string) => `Shared ${roomId.slice(0, 8)}.md`;
-
-const GENERATED_LIVE_FILE_TITLE_PATTERN = /^Shared [A-Za-z0-9_-]{8}\.md$/;
-
-export const isEmptyGeneratedLivePlaceholder = (file: WorkspaceFile) =>
-  ((file.roomId && file.title === getLiveFileTitle(file.roomId)) ||
-    (!file.roomId && GENERATED_LIVE_FILE_TITLE_PATTERN.test(file.title))) &&
-  file.text.trim() === "";
-
-export const pruneEmptyGeneratedLivePlaceholders = (
-  files: WorkspaceFile[],
-  commentsByFileId: Record<string, FileComment[]> = {},
-) =>
-  files.filter((file) => {
-    const hasComments = (commentsByFileId[file.id] ?? []).length > 0;
-    return hasComments || !isEmptyGeneratedLivePlaceholder(file);
-  });
-
-export const getFileIdForRoom = (files: WorkspaceFile[], roomId: string) =>
-  files.find((file) => file.roomId === roomId)?.id ?? getLiveFileId(roomId);
-
-const getUsableLiveRoom = (roomId?: string, shareUrl?: string) => {
-  if (!roomId || !shareUrl) {
-    return {};
-  }
-
-  const parsedRoom = parseRoomShareUrl(shareUrl);
-  if (!parsedRoom || parsedRoom.roomId !== roomId) {
-    return {};
-  }
-
-  return {
-    roomId: parsedRoom.roomId,
-    shareUrl: parsedRoom.shareUrl,
-  };
-};
-
-export const isUsableLiveRoomFile = (file?: Pick<WorkspaceFile, "roomId" | "shareUrl">) =>
-  Boolean(getUsableLiveRoom(file?.roomId, file?.shareUrl).roomId);
-
-const getFileUrlPath = (file?: Pick<WorkspaceFile, "roomId" | "shareUrl">) => {
-  const liveRoom = getUsableLiveRoom(file?.roomId, file?.shareUrl);
-  if (!liveRoom.roomId || !liveRoom.shareUrl) {
-    return "/";
-  }
-
-  const fileUrl = new URL(liveRoom.shareUrl);
-  return `${fileUrl.pathname}${fileUrl.hash}`;
-};
-
 const syncUrlPath = (nextPath: string, mode: "push" | "replace" = "push") => {
   const currentPath = `${window.location.pathname}${window.location.hash}`;
   if (currentPath === nextPath) {
@@ -259,41 +193,24 @@ const syncUrlPath = (nextPath: string, mode: "push" | "replace" = "push") => {
   window.history.pushState(null, "", nextPath);
 };
 
-export const syncUrlForFile = (
-  file?: Pick<WorkspaceFile, "roomId" | "shareUrl">,
+export const syncUrlForLocalWorkspace = (mode: "push" | "replace" = "push") => {
+  syncUrlPath("/", mode);
+};
+
+export const syncUrlForRoom = (
+  room: LocationRoom,
   mode: "push" | "replace" = "push",
 ) => {
-  syncUrlPath(getFileUrlPath(file), mode);
-};
-
-export const ensureLiveFileForRoom = (files: WorkspaceFile[], room: LocationRoom) => {
-  const existingFile = files.find((file) => file.roomId === room.roomId);
-  if (existingFile) {
-    return files.map((file) =>
-      file.id === existingFile.id
-        ? {
-            ...file,
-            shareUrl: room.shareUrl,
-            connectionStatus: "connecting" as ConnectionStatus,
-          }
-        : file,
-    );
+  const parsedRoom = parseRoomShareUrl(room.shareUrl);
+  if (!parsedRoom || parsedRoom.roomId !== room.roomId) {
+    syncUrlForLocalWorkspace(mode);
+    return;
   }
-
-  const userFileCount = files.filter((file) => file.id !== README_FILE_ID).length;
-  return [
-    ...files,
-    createWorkspaceFile(userFileCount + 1, {
-      id: getLiveFileId(room.roomId),
-      title: getLiveFileTitle(room.roomId),
-      roomId: room.roomId,
-      shareUrl: room.shareUrl,
-      connectionStatus: "connecting",
-    }),
-  ];
+  const roomUrl = new URL(parsedRoom.shareUrl);
+  syncUrlPath(`${roomUrl.pathname}${roomUrl.hash}`, mode);
 };
 
-export const createRoomWorkspaceState = (_room: LocationRoom): WorkspaceState => {
+export const createRoomWorkspaceState = (): WorkspaceState => {
   return {
     folders: [createWorkspaceRootFolder()],
     files: [],
@@ -320,7 +237,6 @@ const createReadmeFile = (): WorkspaceFile => ({
   lineWrapping: true,
   lineNumbers: true,
   bookmarks: [],
-  connectionStatus: "idle",
 });
 
 export const createWorkspaceFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => {
@@ -335,7 +251,6 @@ export const createWorkspaceFile = (index: number, overrides: Partial<WorkspaceF
     lineWrapping: true,
     lineNumbers: true,
     bookmarks: [],
-    connectionStatus: "idle",
     ...overrides,
   };
 };
@@ -361,7 +276,6 @@ export const ensureDefaultFiles = (files: WorkspaceFile[], options: { ensureUnti
         lineWrapping: readmeFile.lineWrapping ?? true,
         lineNumbers: readmeFile.lineNumbers ?? true,
         bookmarks: readmeFile.bookmarks ?? [],
-        connectionStatus: readmeFile.connectionStatus ?? "idle",
       }
     : createReadmeFile();
 
@@ -428,12 +342,6 @@ const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | 
     lineWrapping: typeof value.lineWrapping === "boolean" ? value.lineWrapping : true,
     lineNumbers: typeof value.lineNumbers === "boolean" ? value.lineNumbers : true,
     bookmarks: normalizeFileBookmarks(value.bookmarks, text.length),
-    connectionStatus: "idle",
-    roomId: undefined,
-    shareUrl: undefined,
-    lastRecoveryType: undefined,
-    lastRecoveryMessage: undefined,
-    lastRecoveryAt: undefined,
   };
 };
 
@@ -457,7 +365,6 @@ const normalizeWorkspaceFolder = (value: unknown, fallbackId?: string): Workspac
       ? null
       : (typeof value.parentId === "string" ? value.parentId : WORKSPACE_ROOT_FOLDER_ID),
     order: getFiniteNumber(value.order),
-    roomId: undefined,
   };
 };
 
@@ -607,19 +514,15 @@ export const finalizeWorkspaceState = (
   files: WorkspaceFile[],
   activeFileId?: string,
   commentsByFileId: Record<string, FileComment[]> = {},
-  options: { folders?: WorkspaceFolder[]; includeLocationRoom?: boolean; openFileIds?: string[] } = {},
+  options: { folders?: WorkspaceFolder[]; openFileIds?: string[] } = {},
 ): WorkspaceState => {
   const normalizedTree = normalizeWorkspaceTree(
     files,
     options.folders?.length ? options.folders : [createWorkspaceRootFolder()],
   );
-  const room = options.includeLocationRoom === false ? null : getRoomFromLocation();
-  const prunedFiles = pruneEmptyGeneratedLivePlaceholders(normalizedTree.files, commentsByFileId);
-  let nextFiles = ensureDefaultFiles(prunedFiles, { ensureUntitled: prunedFiles.length === 0 });
-
-  if (room) {
-    nextFiles = ensureLiveFileForRoom(nextFiles, room);
-  }
+  const nextFiles = ensureDefaultFiles(normalizedTree.files, {
+    ensureUntitled: normalizedTree.files.length === 0,
+  });
 
   const fileIds = new Set(nextFiles.map((file) => file.id));
   const storedOpenFileIds = options.openFileIds;
@@ -636,22 +539,16 @@ export const finalizeWorkspaceState = (
     nextFiles.length === 2 &&
     Boolean(defaultReadmeFile) &&
     Boolean(defaultLocalFile) &&
-    !defaultLocalFile?.roomId &&
     defaultLocalFile?.title === "Untitled.md" &&
     defaultLocalFile?.text.trim() === "";
   const storedActiveIsReadme = storedActiveFile ? isDefaultReadmeFile(storedActiveFile) : false;
   const shouldPreferReadmeIntro =
     hasOpenTabs && (!storedActiveFileId || (hasOnlyStarterFiles && Boolean(storedActiveFile) && !storedActiveIsReadme));
-  let nextActiveFileId = room
-    ? getFileIdForRoom(nextFiles, room.roomId)
-    : (shouldPreferReadmeIntro ? defaultReadmeFile?.id : (storedActiveFileId ?? defaultReadmeFile?.id)) ??
-      defaultLocalFile?.id ??
-      nextFiles[0]?.id ??
-      "";
-
-  if (room && nextActiveFileId && !nextOpenFileIds.includes(nextActiveFileId)) {
-    nextOpenFileIds = [...nextOpenFileIds, nextActiveFileId];
-  }
+  let nextActiveFileId =
+    (shouldPreferReadmeIntro ? defaultReadmeFile?.id : (storedActiveFileId ?? defaultReadmeFile?.id)) ??
+    defaultLocalFile?.id ??
+    nextFiles[0]?.id ??
+    "";
 
   if (nextActiveFileId && !nextOpenFileIds.includes(nextActiveFileId)) {
     nextActiveFileId = hasStoredOpenFileIds ? (nextOpenFileIds[0] ?? "") : nextActiveFileId;
@@ -669,10 +566,7 @@ export const finalizeWorkspaceState = (
   };
 };
 
-export const parseWorkspacePayload = (
-  payload: unknown,
-  options: { includeLocationRoom?: boolean } = {},
-): WorkspaceState | null => {
+export const parseWorkspacePayload = (payload: unknown): WorkspaceState | null => {
   if (!isRecord(payload)) {
     return null;
   }
@@ -693,7 +587,6 @@ export const parseWorkspacePayload = (
       activeFileId,
       commentsByFileId,
       {
-        ...options,
         folders: normalizeFoldersFromMap(payload.folders, payload.folderOrder),
         openFileIds,
       },
@@ -706,7 +599,7 @@ export const parseWorkspacePayload = (
 export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {
   const room = getRoomFromLocation();
   if (room) {
-    return { source: "room", room, workspace: createRoomWorkspaceState(room) };
+    return { source: "room", room, workspace: createRoomWorkspaceState() };
   }
 
   return { source: "starter", workspace: finalizeWorkspaceState([]) };
@@ -725,12 +618,6 @@ export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
     lineWrapping: file.lineWrapping,
     lineNumbers: file.lineNumbers,
     bookmarks: file.bookmarks ?? [],
-    connectionStatus: "idle",
-    roomId: undefined,
-    shareUrl: undefined,
-    lastRecoveryType: undefined,
-    lastRecoveryMessage: undefined,
-    lastRecoveryAt: undefined,
   };
 };
 
@@ -745,8 +632,8 @@ export const createStoredWorkspace = ({
   openFileIds = files.map((file) => file.id),
   activeFileId,
   commentsByFileId,
-}: CreateStoredWorkspaceInput): StoredProjectV6 => {
-  const storedFiles = pruneEmptyGeneratedLivePlaceholders(files, commentsByFileId);
+}: CreateStoredWorkspaceInput): StoredProjectV7 => {
+  const storedFiles = files;
   const storedFileIds = new Set(storedFiles.map((file) => file.id));
   const nextActiveFileId = storedFileIds.has(activeFileId) ? activeFileId : (storedFiles[0]?.id ?? "");
 
@@ -760,7 +647,7 @@ export const createStoredWorkspace = ({
     ),
     fileOrder: storedFiles.map((file) => file.id),
     folderOrder: folders.map((folder) => folder.id),
-    folders: Object.fromEntries(folders.map((folder) => [folder.id, { ...folder, roomId: undefined }])),
+    folders: Object.fromEntries(folders.map((folder) => [folder.id, folder])),
     files: Object.fromEntries(storedFiles.map((file) => [file.id, serializeFile(file)])),
     commentsByFileId,
   };

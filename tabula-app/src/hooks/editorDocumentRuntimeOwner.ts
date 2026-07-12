@@ -49,8 +49,9 @@ export const createWorkspaceEditorDocumentRuntimeOwner = (): WorkspaceEditorDocu
     getVisibleFileText(file) {
       const activeRuntime = getRuntime(file);
       const snapshot = activeRuntime.getSnapshot();
-      if (!snapshot.pendingCommit && snapshot.committedText !== file.text) {
-        activeRuntime.syncCommitted({ fileId: file.id, text: file.text });
+      const sourceText = file.text;
+      if (!snapshot.pendingCommit && snapshot.committedText !== sourceText) {
+        activeRuntime.syncCommitted({ fileId: file.id, text: sourceText });
       }
 
       return activeRuntime.getVisibleText();

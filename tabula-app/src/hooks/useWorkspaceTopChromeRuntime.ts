@@ -6,7 +6,8 @@ import type { JsonShareController } from "./useJsonShareController";
 import type { RenameFileResult } from "./useWorkspaceFiles";
 import type { WorkspaceLanguage } from "./useWorkspacePreferences";
 import type { TopPopover } from "../uiTypes";
-import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
+import type { LocationRoom, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
+import type { FollowState } from "../collaboration/followModel";
 
 type SetTopPopover = (popover: TopPopover) => void;
 type SetCenterPopover = (popover: null) => void;
@@ -18,6 +19,7 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   activeText: string;
   canStartSession: boolean;
   collaborators: Collaborator[];
+  followState: FollowState;
   connectionStatus: ConnectionStatus;
   copiedFileId: string | null;
   currentUserName: string;
@@ -29,7 +31,7 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
-  roomFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   rightPanelOpen: boolean;
   startSessionUnavailableReason: string;
   topPopover: TopPopover;
@@ -47,6 +49,7 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   onStopSession: () => void;
   onRetrySession: () => void;
   onToggleRightPanel: () => void;
+  onToggleFollowing: (actorId: string) => void;
   onToggleWorkspaceMenu: () => void;
   setCenterPopover: SetCenterPopover;
   setPreferencesOpen: SetPreferencesOpen;
@@ -59,6 +62,7 @@ export function useWorkspaceTopChromeRuntime({
   activeText,
   canStartSession,
   collaborators,
+  followState,
   connectionStatus,
   copiedFileId,
   currentUserName,
@@ -70,7 +74,7 @@ export function useWorkspaceTopChromeRuntime({
   jsonShare,
   language,
   openFiles,
-  roomFile,
+  room,
   rightPanelOpen,
   startSessionUnavailableReason,
   topPopover,
@@ -88,6 +92,7 @@ export function useWorkspaceTopChromeRuntime({
   onStopSession,
   onRetrySession,
   onToggleRightPanel,
+  onToggleFollowing,
   onToggleWorkspaceMenu,
   setCenterPopover,
   setPreferencesOpen,
@@ -95,7 +100,7 @@ export function useWorkspaceTopChromeRuntime({
   setWorkspaceMenuOpen,
 }: UseWorkspaceTopChromeRuntimeOptions) {
   const shareOpen = topPopover === "share";
-  const copied = copiedFileId === (roomFile ?? activeFile)?.id;
+  const copied = copiedFileId === (activeFile?.id ?? room?.roomId);
 
   const closeDocumentChrome = useCallback(() => {
     setTopPopover(null);
@@ -124,6 +129,7 @@ export function useWorkspaceTopChromeRuntime({
     activeText,
     canStartSession,
     collaborators,
+    followState,
     connectionStatus,
     copied,
     currentUserName,
@@ -135,7 +141,7 @@ export function useWorkspaceTopChromeRuntime({
     jsonShare,
     language,
     openFiles,
-    roomFile,
+    room,
     rightPanelOpen,
     shareOpen,
     startSessionUnavailableReason,
@@ -155,6 +161,7 @@ export function useWorkspaceTopChromeRuntime({
     onStopSession,
     onRetrySession,
     onToggleRightPanel,
+    onToggleFollowing,
     onToggleShare: toggleShare,
     onToggleWorkspaceMenu,
   };

@@ -2,7 +2,6 @@ import { useRef } from "react";
 import {
   type Collaborator,
   type CollabRecoveryEvent,
-  type ConnectionStatus,
 } from "../collaboration";
 import { getTabulaRoomAvailability } from "../collaboration/collabRoom";
 import { createCollaborationSessionStartRequest } from "../collaboration/collabRuntime";
@@ -15,13 +14,12 @@ import {
   WORKSPACE_ROOM_SCHEMA_VERSION,
   validateWorkspaceRoomLimits,
   type WorkspaceRoomComment,
-  type WorkspaceRoomSnapshot,
 } from "@tabula-md/tabula";
 import type {
   WorkspaceFolderSnapshot,
-  WorkspaceRoomChangeOrigin,
 } from "../collaboration/liveCollaboration";
 import type { WorkspaceFile } from "../workspaceStorage";
+import type { RoomWorkspaceSession } from "../workspace/session/WorkspaceSession";
 import { useCollaborationConnectionRuntime } from "./useCollaborationConnectionRuntime";
 
 export const validateCollaborationStartWorkspace = ({
@@ -72,7 +70,7 @@ export const validateCollaborationStartWorkspace = ({
 });
 
 type UseCollaborationRoomOptions = {
-  roomFile?: WorkspaceFile;
+  session?: RoomWorkspaceSession | null;
   activeDocument?: WorkspaceFile;
   editorPresenceEnabled?: boolean;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
@@ -80,30 +78,13 @@ type UseCollaborationRoomOptions = {
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
   workspaceFolders?: readonly WorkspaceFolderSnapshot[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
-  setFileText: (fileId: string, text: string) => void;
-  setFileCollaborationStatus: (
-    fileId: string,
-    status: ConnectionStatus,
-    options?: { requireRoom?: boolean },
-  ) => void;
-  setFileRecoveryEvent: (
-    fileId: string,
-    event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
-  ) => void;
-  startFileCollaborationSession: (
-    fileId: string,
-    roomId: string,
-    shareUrl: string,
-  ) => WorkspaceFile | undefined;
-  onRemoteTextChange?: (fileId: string, text: string) => void;
-  onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
-  onWorkspaceChange?: (snapshot: WorkspaceRoomSnapshot, origin?: WorkspaceRoomChangeOrigin) => void;
+  onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
 };
 
 export function useCollaborationRoom({
-  roomFile,
+  session,
   activeDocument,
   editorPresenceEnabled,
   getActiveFileSnapshot,
@@ -111,17 +92,10 @@ export function useCollaborationRoom({
   workspaceDocuments,
   workspaceFolders,
   commentsByFileId,
-  setFileText,
-  setFileCollaborationStatus,
-  setFileRecoveryEvent,
-  startFileCollaborationSession,
-  onRemoteTextChange,
-  onCommentsChange,
-  onWorkspaceChange,
+  onRecoveryEvent,
   onOpenFailure,
   onCapacityExceeded,
 }: UseCollaborationRoomOptions) {
-  const pendingRoomStartRef = useRef(false);
   const startInFlightRef = useRef(false);
   const roomAvailability = getTabulaRoomAvailability();
   const checkpointAvailability = getRoomCheckpointAvailability();
@@ -132,10 +106,25 @@ export function useCollaborationRoom({
   });
   const {
     applyLocalText,
+    activeDocumentProjection,
+    activeDocumentComments,
+    createDocument,
+    createFolder,
+    renameNode,
+    moveNode,
+    setNodeOrder,
+    deleteNode,
+    replaceDocumentText,
+    setFollowingActor,
+    setViewport,
     collaborators,
     connectionStatus,
+    durability,
     editorBinding,
     materializeWorkspace,
+    materializeDocument,
+    materializeDocumentComments,
+    structureSnapshot,
     upsertComment,
     deleteComment,
     setCommentResolved,
@@ -144,20 +133,11 @@ export function useCollaborationRoom({
     retryConnection,
   } =
     useCollaborationConnectionRuntime({
-      roomFile,
+      session,
       activeDocument,
       editorPresenceEnabled,
       identity,
-      pendingRoomStartRef,
-      workspaceDocuments,
-      workspaceFolders,
-      commentsByFileId,
-      setFileText,
-      setFileCollaborationStatus,
-      setFileRecoveryEvent,
-      onRemoteTextChange,
-      onCommentsChange,
-      onWorkspaceChange,
+      onRecoveryEvent,
       onOpenFailure,
       onCapacityExceeded,
     });
@@ -165,7 +145,7 @@ export function useCollaborationRoom({
   const startSession = async () => {
     if (startInFlightRef.current) return undefined;
     if (!startValidation.ok) return undefined;
-    const sessionFile = getActiveFileSnapshot?.() ?? roomFile;
+    const sessionFile = getActiveFileSnapshot?.() ?? activeDocument;
     const nextSession = createCollaborationSessionStartRequest({
       activeFile: sessionFile,
       origin: window.location.origin,
@@ -189,8 +169,6 @@ export function useCollaborationRoom({
         folders: workspaceFolders ?? [],
         commentsByFileId,
       });
-      pendingRoomStartRef.current = true;
-      startFileCollaborationSession(sessionFile.id, nextSession.roomId, nextSession.shareUrl);
       return { fileId: sessionFile.id, roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
     } finally {
       startInFlightRef.current = false;
@@ -199,19 +177,34 @@ export function useCollaborationRoom({
 
   return {
     canStartSession:
-      Boolean(roomFile) &&
+      Boolean(activeDocument) &&
       roomAvailability.available &&
       checkpointAvailability.available &&
       startValidation.ok,
     collaborators,
     connectionStatus,
+    durability,
     startSessionUnavailableReason: !startValidation.ok
       ? startValidation.message
       : roomAvailability.unavailableReason || checkpointAvailability.unavailableReason,
     startSession,
     applyLocalText,
+    activeDocumentProjection,
+    activeDocumentComments,
+    createDocument,
+    createFolder,
+    renameNode,
+    moveNode,
+    setNodeOrder,
+    deleteNode,
+    replaceDocumentText,
+    setFollowingActor,
+    setViewport,
     editorBinding,
     materializeWorkspace,
+    materializeDocument,
+    materializeDocumentComments,
+    structureSnapshot,
     upsertComment,
     deleteComment,
     setCommentResolved,

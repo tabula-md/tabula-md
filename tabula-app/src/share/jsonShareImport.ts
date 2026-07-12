@@ -21,9 +21,6 @@ export const createWorkspaceFromJsonShareSnapshot = (snapshot: ShareSnapshot): W
       lineWrapping: true,
       lineNumbers: true,
       bookmarks: [],
-      connectionStatus: "idle",
-      roomId: undefined,
-      shareUrl: undefined,
     }),
   );
   const normalizedFiles = files.length > 0 ? files : [createWorkspaceFile(1, { title: "Shared.md" })];
@@ -57,9 +54,6 @@ export const hasMeaningfulWorkspaceContent = ({
   }
 
   return files.some((file) => {
-    if (file.roomId) {
-      return true;
-    }
     if (file.id === README_FILE_ID && file.title === "README.md") {
       return !isStarterReadmeText(file.text);
     }

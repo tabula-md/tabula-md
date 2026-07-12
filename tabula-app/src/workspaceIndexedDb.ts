@@ -2,7 +2,6 @@ import Dexie, { type Table } from "dexie";
 import {
   PROJECT_STORAGE_VERSION,
   finalizeWorkspaceState,
-  pruneEmptyGeneratedLivePlaceholders,
   serializeFile,
   type FileComment,
   type StoredWorkspaceFile,
@@ -11,7 +10,7 @@ import {
   type WorkspaceState,
 } from "./workspaceStorage";
 
-const WORKSPACE_DATABASE_NAME = "tabula-workspace-v7";
+const WORKSPACE_DATABASE_NAME = "tabula-workspace-v8";
 const LOCAL_WORKSPACE_KEY = "current";
 
 export type WorkspaceManifestRecord = {
@@ -67,20 +66,6 @@ class TabulaWorkspaceDb extends Dexie {
       workspaceFiles: "id",
       workspaceFolders: "id",
       workspaceComments: "fileId",
-      roomLocalManifests: "key, roomId, ownerId, savedAt",
-      roomLocalFiles: "key, ownerKey, fileId",
-      roomLocalFolders: "key, ownerKey, id",
-      roomLocalComments: "key, ownerKey, fileId",
-    });
-    this.version(2).stores({
-      workspaceManifests: "key",
-      workspaceFiles: "id",
-      workspaceFolders: "id",
-      workspaceComments: "fileId",
-      roomLocalManifests: null,
-      roomLocalFiles: null,
-      roomLocalFolders: null,
-      roomLocalComments: null,
     });
   }
 }
@@ -111,7 +96,6 @@ const dexieWorkspaceDatabaseAdapter: WorkspaceDatabaseAdapter = {
 
       return finalizeWorkspaceState(files, manifest.activeFileId, commentsByFileId, {
         folders,
-        includeLocationRoom: false,
         openFileIds: manifest.openFileIds,
       });
     },
@@ -176,7 +160,7 @@ export const createWorkspaceWritePlan = (
   workspace: WorkspaceState,
   previous?: SourceTracker,
 ): WorkspaceWritePlan => {
-  const storedFiles = pruneEmptyGeneratedLivePlaceholders(workspace.files, workspace.commentsByFileId);
+  const storedFiles = workspace.files;
   const filesById = new Map(storedFiles.map((file) => [file.id, file]));
   const foldersById = new Map(workspace.folders.map((folder) => [folder.id, folder]));
   const fileOrder = storedFiles.map((file) => file.id);
@@ -211,7 +195,7 @@ export const createWorkspaceWritePlan = (
       .filter((folderId) => previous?.folderRefs.get(folderId) !== foldersById.get(folderId))
       .map((folderId) => ({
         id: folderId,
-        payload: { ...foldersById.get(folderId)!, roomId: undefined },
+        payload: foldersById.get(folderId)!,
       })),
     folderDeletes: getDeletedIds(previous?.folderRefs.keys() ?? [], folderIds),
     commentPuts: [...commentIds]

@@ -63,6 +63,11 @@ export type WorkspaceRoomSnapshot = {
   commentsByFileId: Record<string, WorkspaceRoomComment[]>;
 };
 
+export type WorkspaceRoomStructureSnapshot = Pick<
+  WorkspaceRoomSnapshot,
+  "roomId" | "schemaVersion" | "rootId" | "nodes"
+>;
+
 export type WorkspaceRoomLimitViolation =
   | "content-bytes"
   | "documents"
@@ -94,36 +99,8 @@ const getNodeDepth = (node: WorkspaceRoomNode, nodesById: Map<string, WorkspaceR
 export const validateWorkspaceRoomLimits = (
   snapshot: WorkspaceRoomSnapshot,
 ): WorkspaceRoomLimitResult => {
-  const documents = snapshot.nodes.filter((node) => node.type === "document");
-  const folders = snapshot.nodes.filter(
-    (node) => node.type === "folder" && node.id !== snapshot.rootId,
-  );
-  if (documents.length > WORKSPACE_ROOM_MAX_DOCUMENTS) {
-    return {
-      ok: false,
-      violation: "documents",
-      message: `A live workspace can include up to ${WORKSPACE_ROOM_MAX_DOCUMENTS} documents.`,
-    };
-  }
-  if (folders.length > WORKSPACE_ROOM_MAX_FOLDERS) {
-    return {
-      ok: false,
-      violation: "folders",
-      message: `A live workspace can include up to ${WORKSPACE_ROOM_MAX_FOLDERS} folders.`,
-    };
-  }
-  const nodesById = new Map(snapshot.nodes.map((node) => [node.id, node]));
-  if (
-    snapshot.nodes.some(
-      (node) => getNodeDepth(node, nodesById) > WORKSPACE_ROOM_MAX_TREE_DEPTH,
-    )
-  ) {
-    return {
-      ok: false,
-      violation: "tree-depth",
-      message: `Folder nesting can be up to ${WORKSPACE_ROOM_MAX_TREE_DEPTH} levels deep.`,
-    };
-  }
+  const structureLimits = validateWorkspaceRoomStructureLimits(snapshot);
+  if (!structureLimits.ok) return structureLimits;
   const comments = Object.values(snapshot.commentsByFileId).flat();
   if (comments.length > WORKSPACE_ROOM_MAX_COMMENTS) {
     return {
@@ -166,6 +143,42 @@ export const validateWorkspaceRoomLimits = (
       ok: false,
       violation: "content-bytes",
       message: "A live workspace can contain up to 10 MiB of Markdown and comments.",
+    };
+  }
+  return { ok: true };
+};
+
+export const validateWorkspaceRoomStructureLimits = (
+  snapshot: Pick<WorkspaceRoomStructureSnapshot, "rootId" | "nodes">,
+): WorkspaceRoomLimitResult => {
+  const documents = snapshot.nodes.filter((node) => node.type === "document");
+  const folders = snapshot.nodes.filter(
+    (node) => node.type === "folder" && node.id !== snapshot.rootId,
+  );
+  if (documents.length > WORKSPACE_ROOM_MAX_DOCUMENTS) {
+    return {
+      ok: false,
+      violation: "documents",
+      message: `A live workspace can include up to ${WORKSPACE_ROOM_MAX_DOCUMENTS} documents.`,
+    };
+  }
+  if (folders.length > WORKSPACE_ROOM_MAX_FOLDERS) {
+    return {
+      ok: false,
+      violation: "folders",
+      message: `A live workspace can include up to ${WORKSPACE_ROOM_MAX_FOLDERS} folders.`,
+    };
+  }
+  const nodesById = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  if (
+    snapshot.nodes.some(
+      (node) => getNodeDepth(node, nodesById) > WORKSPACE_ROOM_MAX_TREE_DEPTH,
+    )
+  ) {
+    return {
+      ok: false,
+      violation: "tree-depth",
+      message: `Folder nesting can be up to ${WORKSPACE_ROOM_MAX_TREE_DEPTH} levels deep.`,
     };
   }
   return { ok: true };

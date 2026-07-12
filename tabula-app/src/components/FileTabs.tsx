@@ -19,6 +19,7 @@ type FileTabsProps = {
   folders: WorkspaceFolder[];
   activeFile?: WorkspaceFile;
   collaborators: Collaborator[];
+  roomId?: string;
   language: WorkspaceLanguage;
   onAddFile: () => void;
   onSelectFile: (fileId: string) => void;
@@ -48,6 +49,7 @@ export function FileTabs({
   folders,
   activeFile,
   collaborators,
+  roomId,
   language,
   onAddFile,
   onSelectFile,
@@ -254,7 +256,7 @@ export function FileTabs({
               role="presentation"
               data-file-id={file.id}
               data-file-name={file.title}
-              data-room-id={file.roomId ?? ""}
+              data-room-id={roomId ?? ""}
               data-display-title={tabDisplayTitle}
               data-view-mode={file.viewMode}
               draggable={!isRenaming}

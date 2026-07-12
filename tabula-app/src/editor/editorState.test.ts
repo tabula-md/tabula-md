@@ -85,9 +85,13 @@ describe("editor collaboration limits", () => {
     doc.destroy();
   });
 
-  it("keeps pre-session CodeMirror undo history while Yjs owns new edits", () => {
+  it("removes pre-session CodeMirror history when Yjs becomes authoritative", () => {
     const collaboration = new Compartment();
-    let state = EditorState.create({ doc: "A", extensions: [history(), collaboration.of([])] });
+    const editorHistory = new Compartment();
+    let state = EditorState.create({
+      doc: "A",
+      extensions: [editorHistory.of(history()), collaboration.of([])],
+    });
     state = state.update({ changes: { from: 1, insert: "B" } }).state;
     expect(undoDepth(state)).toBe(1);
 
@@ -105,11 +109,14 @@ describe("editor collaboration limits", () => {
       canApplyTextByteDelta: () => true,
     };
     state = state.update({
-      effects: collaboration.reconfigure(createEditorCollaborationExtensions(binding)),
+      effects: [
+        editorHistory.reconfigure([]),
+        collaboration.reconfigure(createEditorCollaborationExtensions(binding)),
+      ],
     }).state;
-    state = state.update({ changes: { from: 2, insert: "C" } }).state;
+    text.insert(2, "C");
 
-    expect(undoDepth(state)).toBe(1);
+    expect(undoDepth(state)).toBe(0);
     expect(getCollaborationEditorHistoryState(state, binding)).toEqual({
       canUndo: true,
       canRedo: false,
@@ -120,7 +127,7 @@ describe("editor collaboration limits", () => {
     doc.destroy();
   });
 
-  it("reports collaborative redo only when CodeMirror or Yjs applies a change", () => {
+  it("never falls back to CodeMirror redo while Yjs owns history", () => {
     let state = EditorState.create({ doc: "A", extensions: history() });
     state = state.update({ changes: { from: 1, insert: "B" } }).state;
     const view = createStateOnlyEditorView(state);
@@ -130,14 +137,14 @@ describe("editor collaboration limits", () => {
     const doc = new Y.Doc();
     const text = doc.getText("document");
     const undoManager = new Y.UndoManager(text);
+    expect(redoCollaborationHistory(view, { undoManager })).toBe(false);
+    expect(view.state.doc.toString()).toBe("A");
+
     text.insert(0, "Y");
     expect(undoManager.undo()).not.toBeNull();
 
     expect(redoCollaborationHistory(view, { undoManager })).toBe(true);
-    expect(view.state.doc.toString()).toBe("AB");
-    expect(text.toString()).toBe("");
-
-    expect(redoCollaborationHistory(view, { undoManager })).toBe(true);
+    expect(view.state.doc.toString()).toBe("A");
     expect(text.toString()).toBe("Y");
 
     expect(redoCollaborationHistory(view, { undoManager })).toBe(false);
