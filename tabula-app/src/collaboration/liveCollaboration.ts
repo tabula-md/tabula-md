@@ -10,7 +10,6 @@ import {
   deleteWorkspaceRoomComment,
   deleteWorkspaceRoomNode,
   getWorkspaceRoomDocument,
-  getWorkspaceRoomComments,
   getWorkspaceRoomSnapshot,
   initializeWorkspaceRoomCrdt,
   moveWorkspaceRoomNode,
@@ -39,6 +38,7 @@ import {
   type RoomDocumentResource,
 } from "./runtime/RoomDocumentRegistry";
 import { createRoomDocumentProjectionStore } from "./runtime/RoomDocumentProjectionStore";
+import { createRoomCommentsStore } from "./runtime/RoomCommentsStore";
 import { createRoomStructureStore } from "./runtime/RoomStructureStore";
 import { createRoomMetrics } from "./runtime/RoomMetrics";
 import {
@@ -148,7 +148,6 @@ type ConnectOptions = {
   emitInitialWorkspaceState: boolean;
   identity: Collaborator;
   fileTitle?: string;
-  onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
@@ -185,7 +184,6 @@ export const createWorkspaceRoomRuntime = ({
   emitInitialWorkspaceState,
   identity,
   fileTitle,
-  onCommentsChange,
   onRecoveryEvent,
   onOpenFailure,
   onCapacityExceeded,
@@ -207,6 +205,7 @@ export const createWorkspaceRoomRuntime = ({
   });
   const documentRegistry = createRoomDocumentRegistry({ awareness, documents: room.documents });
   const documentProjectionStore = createRoomDocumentProjectionStore(room.documents);
+  const commentsStore = createRoomCommentsStore(room);
   const structureStore = createRoomStructureStore(room);
   const remoteProjectionRevisions = new Map<string, number>();
   const consumedRemoteProjectionRevisions = new Map<string, number>();
@@ -245,10 +244,10 @@ export const createWorkspaceRoomRuntime = ({
   };
 
   const scheduleCommentProjection = () => {
-    if (!onCommentsChange || commentProjectionTimer || closed) return;
+    if (!commentsStore.hasSubscribers() || commentProjectionTimer || closed) return;
     commentProjectionTimer = adapters.clock.setTimeout(() => {
       commentProjectionTimer = undefined;
-      if (!closed) onCommentsChange(getWorkspaceRoomComments(room));
+      if (!closed) commentsStore.refresh();
     }, COMMENT_PROJECTION_DELAY_MS);
   };
 
@@ -528,7 +527,7 @@ export const createWorkspaceRoomRuntime = ({
         remoteProjectionRevisions.set(id, (remoteProjectionRevisions.get(id) ?? 0) + 1);
       }
       scheduleTextProjection(id);
-      if (id === activeDocumentId && room.comments.size > 0) scheduleCommentProjection();
+      if (commentsStore.hasSubscribers(id) && room.comments.size > 0) scheduleCommentProjection();
     }
   };
   const handleWorkspaceStructureChange = () => queueWorkspaceProjection();
@@ -632,6 +631,12 @@ export const createWorkspaceRoomRuntime = ({
     getDocumentTextSnapshot(documentId: string) {
       return documentProjectionStore.getSnapshot(documentId);
     },
+    subscribeComments(documentId: string, listener: () => void) {
+      return commentsStore.subscribe(documentId, listener);
+    },
+    getDocumentCommentsSnapshot(documentId: string) {
+      return commentsStore.getSnapshot(documentId);
+    },
     applyLocalText(nextText: string, patches?: readonly TextPatch[]) {
       if (!activeDocumentId) return false;
       const text = getWorkspaceRoomDocument(room, activeDocumentId);
@@ -696,11 +701,15 @@ export const createWorkspaceRoomRuntime = ({
     materializeDocument(documentId: string) {
       return room.documents.get(documentId)?.toString() ?? null;
     },
+    materializeDocumentComments(documentId: string) {
+      return commentsStore.materialize(documentId);
+    },
     materializeWorkspace: () => getWorkspaceRoomSnapshot(room),
     getResourceCounts: () => ({
       documentObservers: 1,
       ...documentRegistry.getResourceCounts(),
       ...documentProjectionStore.getResourceCounts(),
+      ...commentsStore.getResourceCounts(),
       ...syncController.getResourceCounts(),
     }),
     upsertComment(comment: WorkspaceRoomComment) {
@@ -766,6 +775,7 @@ export const createWorkspaceRoomRuntime = ({
       activeDocumentLease = null;
       documentRegistry.dispose();
       documentProjectionStore.clear();
+      commentsStore.dispose();
       structureStore.dispose();
       roomMetrics.dispose();
       remoteProjectionRevisions.clear();

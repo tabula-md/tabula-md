@@ -20,7 +20,6 @@ type UseWorkspaceCollaborationRuntimeOptions = {
   workspaceFolders?: readonly { id: string; title: string; parentId: string | null; order?: number }[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
-  onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
 };
@@ -35,7 +34,6 @@ export function useWorkspaceCollaborationRuntime({
   workspaceFolders,
   commentsByFileId,
   onRecoveryEvent,
-  onCommentsChange,
   onOpenFailure,
   onCapacityExceeded,
 }: UseWorkspaceCollaborationRuntimeOptions) {
@@ -49,7 +47,6 @@ export function useWorkspaceCollaborationRuntime({
     workspaceFolders,
     commentsByFileId,
     onRecoveryEvent,
-    onCommentsChange,
     onOpenFailure,
     onCapacityExceeded,
   });

@@ -4,6 +4,7 @@ import {
   createWorkspaceRoomCrdt,
   initializeWorkspaceRoomCrdt,
   type EncryptedEnvelope,
+  type WorkspaceRoomComment,
   type WorkspaceRoomStructureSnapshot,
 } from "@tabula-md/tabula";
 import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
@@ -172,6 +173,17 @@ const collectStructureSnapshots = (
 ) => {
   snapshots.push(runtime.getStructureSnapshot());
   return runtime.subscribeStructure(() => snapshots.push(runtime.getStructureSnapshot()));
+};
+
+const collectCommentSnapshots = (
+  runtime: Pick<ReturnType<typeof createWorkspaceRoomRuntime>, "getDocumentCommentsSnapshot" | "subscribeComments">,
+  documentId: string,
+  snapshots: Array<readonly WorkspaceRoomComment[]>,
+) => {
+  snapshots.push(runtime.getDocumentCommentsSnapshot(documentId));
+  return runtime.subscribeComments(documentId, () => {
+    snapshots.push(runtime.getDocumentCommentsSnapshot(documentId));
+  });
 };
 
 describe("workspace room runtime", () => {
@@ -637,8 +649,8 @@ describe("workspace room runtime", () => {
     const defaults = createDefaultCollabRuntimeAdapters();
     const hostSnapshots: WorkspaceRoomStructureSnapshot[] = [];
     const agentSnapshots: WorkspaceRoomStructureSnapshot[] = [];
-    const hostComments: Array<Record<string, unknown[]>> = [];
-    const agentComments: Array<Record<string, unknown[]>> = [];
+    const hostComments: Array<readonly WorkspaceRoomComment[]> = [];
+    const agentComments: Array<readonly WorkspaceRoomComment[]> = [];
     const adapters = {
       ...defaults,
       createRoomTransport: relay.createRoomTransport,
@@ -656,10 +668,10 @@ describe("workspace room runtime", () => {
       ],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
-      onCommentsChange: (comments) => hostComments.push(comments),
       adapters,
     });
     collectStructureSnapshots(host, hostSnapshots);
+    collectCommentSnapshots(host, "doc-a", hostComments);
     await vi.waitFor(() => expect(host.getSnapshot().status).toBe("connected"));
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-convergence")).toBeGreaterThan(0));
 
@@ -678,10 +690,10 @@ describe("workspace room runtime", () => {
         capabilities: ["presence", "read", "write"],
       },
       fileTitle: "B.md",
-      onCommentsChange: (comments) => agentComments.push(comments),
       adapters,
     });
     collectStructureSnapshots(agent, agentSnapshots);
+    collectCommentSnapshots(agent, "doc-a", agentComments);
 
     await vi.waitFor(() => {
       expect(last(agentSnapshots)?.nodes.map(({ id }) => id)).toEqual(expect.arrayContaining([
@@ -735,7 +747,7 @@ describe("workspace room runtime", () => {
       resolved: false,
       replies: [],
     });
-    await vi.waitFor(() => expect(last(agentComments)?.["doc-a"]).toHaveLength(1));
+    await vi.waitFor(() => expect(last(agentComments)).toHaveLength(1));
     agent.addCommentReply("comment-1", {
       id: "reply-1",
       body: "Agent reply",
@@ -744,8 +756,8 @@ describe("workspace room runtime", () => {
       createdAt: "2026-07-10T00:00:01.000Z",
     });
     await vi.waitFor(() => {
-      const hostReply = (last(hostComments)?.["doc-a"]?.[0] as { replies?: unknown[] } | undefined)?.replies;
-      const agentReply = (last(agentComments)?.["doc-a"]?.[0] as { replies?: unknown[] } | undefined)?.replies;
+      const hostReply = last(hostComments)?.[0]?.replies;
+      const agentReply = last(agentComments)?.[0]?.replies;
       expect(hostReply).toHaveLength(1);
       expect(agentReply).toHaveLength(1);
     });

@@ -5,6 +5,7 @@ import type {
 import {
   WORKSPACE_ROOT_FOLDER_ID,
   createWorkspaceRootFolder,
+  type FileComment,
   type WorkspaceFile,
   type WorkspaceFolder,
   type WorkspaceState,
@@ -90,3 +91,24 @@ export const materializeWorkspaceRoomSnapshot = ({
   snapshot,
   documentText: (documentId) => snapshot.documents[documentId] ?? "",
 });
+
+export const projectWorkspaceRoomComments = (
+  commentsByFileId: WorkspaceRoomSnapshot["commentsByFileId"],
+): Record<string, FileComment[]> => Object.fromEntries(
+  Object.entries(commentsByFileId).map(([fileId, comments]) => [
+    fileId,
+    comments.map(({ fileId: _fileId, authorId: _authorId, ...comment }) => {
+      const anchorDetached =
+        typeof comment.selectionStart !== "number" ||
+        typeof comment.selectionEnd !== "number" ||
+        comment.selectionEnd <= comment.selectionStart;
+      return {
+        ...comment,
+        anchorDetached,
+        replies: comment.replies.map(({ authorId: _replyAuthorId, ...reply }) => reply),
+        selectionStart: anchorDetached ? undefined : comment.selectionStart,
+        selectionEnd: anchorDetached ? undefined : comment.selectionEnd,
+      };
+    }),
+  ]),
+);

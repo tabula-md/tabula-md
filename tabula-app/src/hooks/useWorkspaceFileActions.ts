@@ -54,6 +54,7 @@ type UseWorkspaceFileActionsArgs = {
   onFileDeleted?: (file: WorkspaceFile) => boolean;
   onFileRenamed?: (fileId: string, title: string) => boolean;
   onFileRestored?: (file: WorkspaceFile, comments: FileComment[]) => boolean;
+  readFileComments?: (fileId: string) => FileComment[];
   readFileText?: (fileId: string) => string | null;
   preferences: WorkspacePreferences;
   queueEditorFocus: () => void;
@@ -94,6 +95,7 @@ export function useWorkspaceFileActions({
   onFileDeleted,
   onFileRenamed,
   onFileRestored,
+  readFileComments,
   readFileText,
   preferences,
   queueEditorFocus,
@@ -228,7 +230,9 @@ export function useWorkspaceFileActions({
     );
     const previousOpenFileIds = openFileIds;
     const previousActiveFileId = activeFile?.id ?? activeFileId;
-    const deletedComments = commentsByFileId[fileId];
+    const deletedComments = isRoomSession
+      ? readFileComments?.(fileId) ?? []
+      : commentsByFileId[fileId];
     const deletedHistory = historyByFileId[fileId];
     if (isRoomSession && onFileDeleted && !onFileDeleted(deletedFile)) {
       showToast("This document couldn’t be deleted from the live workspace.", "error");

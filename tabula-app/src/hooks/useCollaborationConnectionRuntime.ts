@@ -33,6 +33,7 @@ const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   collaborators: [],
   editorBinding: null,
 };
+const EMPTY_COMMENTS: readonly WorkspaceRoomComment[] = Object.freeze([]);
 
 type PendingWorkspaceCommand =
   | { type: "create-document"; input: WorkspaceRoomDocumentCommand }
@@ -71,7 +72,6 @@ type UseCollaborationConnectionRuntimeOptions = {
   editorPresenceEnabled?: boolean;
   identity: Collaborator;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
-  onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
 };
@@ -82,7 +82,6 @@ export function useCollaborationConnectionRuntime({
   editorPresenceEnabled = true,
   identity,
   onRecoveryEvent,
-  onCommentsChange,
   onOpenFailure,
   onCapacityExceeded,
 }: UseCollaborationConnectionRuntimeOptions) {
@@ -144,6 +143,24 @@ export function useCollaborationConnectionRuntime({
     getActiveDocumentSnapshot,
     getActiveDocumentSnapshot,
   );
+  const subscribeToActiveComments = useCallback(
+    (listener: () => void) =>
+      runtime && activeDocumentId
+        ? runtime.subscribeComments(activeDocumentId, listener)
+        : () => undefined,
+    [activeDocumentId, runtime],
+  );
+  const getActiveCommentsSnapshot = useCallback(
+    () => activeDocumentId
+      ? runtime?.getDocumentCommentsSnapshot(activeDocumentId) ?? EMPTY_COMMENTS
+      : EMPTY_COMMENTS,
+    [activeDocumentId, runtime],
+  );
+  const activeDocumentComments = useSyncExternalStore(
+    subscribeToActiveComments,
+    getActiveCommentsSnapshot,
+    getActiveCommentsSnapshot,
+  );
   const runtimeConnectionStatus = runtime ? runtimeSnapshot.status : preRuntimeConnectionStatus;
   const connectionStatus = isLive && !browserOnline ? "disconnected" : runtimeConnectionStatus;
   const durability = runtimeSnapshot.durability;
@@ -193,7 +210,6 @@ export function useCollaborationConnectionRuntime({
           emitInitialWorkspaceState: false,
           identity,
           fileTitle: target.fileTitle,
-          onCommentsChange,
           onOpenFailure,
           onCapacityExceeded,
           onRecoveryEvent,
@@ -229,7 +245,6 @@ export function useCollaborationConnectionRuntime({
     connectionAttempt,
     connectionKey,
     onRecoveryEvent,
-    onCommentsChange,
     onOpenFailure,
     onCapacityExceeded,
   ]);
@@ -290,6 +305,7 @@ export function useCollaborationConnectionRuntime({
   return {
     applyLocalText,
     activeDocumentText,
+    activeDocumentComments,
     createDocument: (input: WorkspaceRoomDocumentCommand) =>
       dispatchWorkspaceCommand({ type: "create-document", input }),
     createFolder: (input: WorkspaceRoomFolderCommand) =>
@@ -312,6 +328,8 @@ export function useCollaborationConnectionRuntime({
     editorBinding,
     materializeWorkspace: () => collabRef.current?.materializeWorkspace(),
     materializeDocument: (documentId: string) => collabRef.current?.materializeDocument(documentId) ?? null,
+    materializeDocumentComments: (documentId: string) =>
+      collabRef.current?.materializeDocumentComments(documentId) ?? EMPTY_COMMENTS,
     resetConnection,
     retryConnection,
     structureSnapshot,

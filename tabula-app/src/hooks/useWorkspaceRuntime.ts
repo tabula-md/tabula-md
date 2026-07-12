@@ -16,6 +16,7 @@ import {
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import {
   materializeWorkspaceRoomSnapshot,
+  projectWorkspaceRoomComments,
   projectWorkspaceRoomStructure,
 } from "../collaboration/workspaceRoomProjection";
 import {
@@ -263,7 +264,10 @@ export function useWorkspaceRuntime() {
           files: workspaceSnapshot.files,
         },
       });
-      return { ...materializedWorkspace, commentsByFileId };
+      return {
+        ...materializedWorkspace,
+        commentsByFileId: projectWorkspaceRoomComments(roomSnapshot.commentsByFileId),
+      };
     }
     return {
       ...workspaceSnapshot,
@@ -475,29 +479,6 @@ export function useWorkspaceRuntime() {
       rightPanelView,
     });
   }, [activeFileId, activeRoomId, files, openFileIds, rightPanelOpen, rightPanelView]);
-  const mergeWorkspaceRoomComments = useEventCallback(
-    (roomCommentsByFileId: Record<string, WorkspaceRoomComment[]>) => {
-      if (!activeRoomId) return;
-      const roomComments = Object.fromEntries(
-        Object.entries(roomCommentsByFileId).map(([fileId, comments]) => [
-          fileId,
-          comments.map(({ fileId: _fileId, authorId: _authorId, ...comment }) => {
-            const anchorDetached =
-              typeof comment.selectionStart !== "number" ||
-              typeof comment.selectionEnd !== "number" ||
-              comment.selectionEnd <= comment.selectionStart;
-            return {
-              ...comment,
-              anchorDetached,
-              selectionStart: anchorDetached ? undefined : comment.selectionStart,
-              selectionEnd: anchorDetached ? undefined : comment.selectionEnd,
-            };
-          }),
-        ]),
-      );
-      replaceCommentsByFileId(roomComments, { preserveInteraction: true });
-    },
-  );
   const sessionStartDocuments = useMemo(
     () => activeRoom ? [] : files.map((file) => ({
           id: file.id,
@@ -525,6 +506,17 @@ export function useWorkspaceRuntime() {
         }))]),
     );
   }, [commentsByFileId, sessionStartDocuments]);
+  const replaceActiveRoomComments = useEventCallback((
+    documentId: string | undefined,
+    comments: readonly WorkspaceRoomComment[],
+  ) => {
+    replaceCommentsByFileId(
+      documentId
+        ? projectWorkspaceRoomComments({ [documentId]: [...comments] })
+        : {},
+      { preserveInteraction: true },
+    );
+  });
   const handleRoomCapacityExceeded = useEventCallback(() => {
     showToast(
       "This room has reached its collaboration limit. Export a copy and start a new session.",
@@ -541,6 +533,7 @@ export function useWorkspaceRuntime() {
     startSession: startCollaborationSession,
     applyLocalText,
     activeDocumentText,
+    activeDocumentComments,
     createDocument: createRoomDocument,
     createFolder: createRoomFolder,
     renameNode: renameRoomNode,
@@ -552,6 +545,7 @@ export function useWorkspaceRuntime() {
     editorBinding,
     materializeWorkspace: materializeRoomWorkspace,
     materializeDocument: materializeRoomDocument,
+    materializeDocumentComments: materializeRoomDocumentComments,
     structureSnapshot: roomStructureSnapshot,
     upsertComment: upsertRoomComment,
     deleteComment: deleteRoomComment,
@@ -571,7 +565,6 @@ export function useWorkspaceRuntime() {
     workspaceDocuments: sessionStartDocuments,
     workspaceFolders: sessionStartFolders,
     commentsByFileId: sessionStartComments,
-    onCommentsChange: mergeWorkspaceRoomComments,
     onOpenFailure: setLiveRoomOpenFailure,
     onCapacityExceeded: handleRoomCapacityExceeded,
   });
@@ -580,6 +573,10 @@ export function useWorkspaceRuntime() {
     if (!activeRoomId || !roomStructureSnapshot || roomStructureSnapshot.roomId !== activeRoomId) return;
     mergeWorkspaceRoomStructure(roomStructureSnapshot);
   }, [activeRoomId, mergeWorkspaceRoomStructure, roomStructureSnapshot]);
+  useEffect(() => {
+    if (!activeRoomId) return;
+    replaceActiveRoomComments(activeRoomDocument?.id, activeDocumentComments);
+  }, [activeDocumentComments, activeRoomDocument?.id, activeRoomId, replaceActiveRoomComments]);
   const presenceIdentity = useCollaborationPresenceRuntime({
     activeDocumentId: activeRoomDocument?.id,
     activeSelection: activeRoomDocument ? activeSelection : undefined,
@@ -1064,6 +1061,11 @@ export function useWorkspaceRuntime() {
     onFileRenamed: renameRoomNode,
     onFileRestored: restoreRoomDocument,
     readFileText: activeRoom ? materializeRoomDocument : undefined,
+    readFileComments: activeRoom
+      ? (fileId) => projectWorkspaceRoomComments({
+          [fileId]: [...materializeRoomDocumentComments(fileId)],
+        })[fileId] ?? []
+      : undefined,
     openFileIds,
     onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
     preferences: workspacePreferences,
@@ -1204,7 +1206,13 @@ export function useWorkspaceRuntime() {
             }
           : deletedBundle;
         const deletedFileIds = new Set(restorableBundle.files.map(({ item }) => item.id));
-        const deletedComments = deleteCommentsForFiles(deletedFileIds);
+        const locallyDeletedComments = deleteCommentsForFiles(deletedFileIds);
+        const deletedComments = roomSnapshot
+          ? Object.fromEntries(
+              Object.entries(projectWorkspaceRoomComments(roomSnapshot.commentsByFileId))
+                .filter(([fileId]) => deletedFileIds.has(fileId)),
+            )
+          : locallyDeletedComments;
         const deletedHistory = Object.fromEntries(
           Object.entries(historyByFileId).filter(([fileId]) => deletedFileIds.has(fileId)),
         );

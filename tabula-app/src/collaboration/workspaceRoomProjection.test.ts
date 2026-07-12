@@ -5,6 +5,7 @@ import type {
 } from "@tabula-md/tabula";
 import {
   materializeWorkspaceRoomSnapshot,
+  projectWorkspaceRoomComments,
   projectWorkspaceRoomStructure,
 } from "./workspaceRoomProjection";
 import { createWorkspaceRootFolder, type WorkspaceFile } from "../workspaceStorage";
@@ -130,5 +131,38 @@ describe("materializeWorkspaceRoomSnapshot", () => {
       readme: "# README",
       guide: "# Guide",
     });
+  });
+});
+
+describe("projectWorkspaceRoomComments", () => {
+  it("removes room-only actor fields and marks unresolved anchors detached", () => {
+    const comments = projectWorkspaceRoomComments({
+      readme: [{
+        id: "comment-1",
+        fileId: "readme",
+        body: "Review this",
+        authorId: "human-1",
+        authorName: "Curious Human",
+        createdAt: "2026-07-12T00:00:00.000Z",
+        resolved: false,
+        replies: [{
+          id: "reply-1",
+          body: "Done",
+          authorId: "agent-1",
+          authorName: "Curious Agent",
+          createdAt: "2026-07-12T00:00:01.000Z",
+        }],
+      }],
+    });
+
+    expect(comments.readme[0]).toMatchObject({
+      id: "comment-1",
+      anchorDetached: true,
+      authorName: "Curious Human",
+      replies: [{ id: "reply-1", authorName: "Curious Agent" }],
+    });
+    expect(comments.readme[0]).not.toHaveProperty("fileId");
+    expect(comments.readme[0]).not.toHaveProperty("authorId");
+    expect(comments.readme[0].replies?.[0]).not.toHaveProperty("authorId");
   });
 });

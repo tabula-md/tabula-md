@@ -78,7 +78,6 @@ type UseCollaborationRoomOptions = {
   workspaceFolders?: readonly WorkspaceFolderSnapshot[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
-  onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
 };
@@ -93,7 +92,6 @@ export function useCollaborationRoom({
   workspaceFolders,
   commentsByFileId,
   onRecoveryEvent,
-  onCommentsChange,
   onOpenFailure,
   onCapacityExceeded,
 }: UseCollaborationRoomOptions) {
@@ -108,6 +106,7 @@ export function useCollaborationRoom({
   const {
     applyLocalText,
     activeDocumentText,
+    activeDocumentComments,
     createDocument,
     createFolder,
     renameNode,
@@ -123,6 +122,7 @@ export function useCollaborationRoom({
     editorBinding,
     materializeWorkspace,
     materializeDocument,
+    materializeDocumentComments,
     structureSnapshot,
     upsertComment,
     deleteComment,
@@ -137,7 +137,6 @@ export function useCollaborationRoom({
       editorPresenceEnabled,
       identity,
       onRecoveryEvent,
-      onCommentsChange,
       onOpenFailure,
       onCapacityExceeded,
     });
@@ -190,6 +189,7 @@ export function useCollaborationRoom({
     startSession,
     applyLocalText,
     activeDocumentText,
+    activeDocumentComments,
     createDocument,
     createFolder,
     renameNode,
@@ -202,6 +202,7 @@ export function useCollaborationRoom({
     editorBinding,
     materializeWorkspace,
     materializeDocument,
+    materializeDocumentComments,
     structureSnapshot,
     upsertComment,
     deleteComment,

@@ -41,6 +41,8 @@ export async function run(ctx) {
   const secondContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const firstPage = await firstContext.newPage();
   const secondPage = await secondContext.newPage();
+  const firstPageDiagnostics = collectPageDiagnostics(firstPage);
+  const secondPageDiagnostics = collectPageDiagnostics(secondPage);
 
   try {
     await firstPage.goto(baseUrl);
@@ -56,7 +58,17 @@ export async function run(ctx) {
     await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active');
     await firstPage.locator(".share-trigger").click();
     await firstPage.getByRole("button", { name: "Start session" }).click();
-    await firstPage.waitForSelector('.tab-item.active[data-room-id]:not([data-room-id=""])');
+    try {
+      await firstPage.waitForSelector('.tab-item.active[data-room-id]:not([data-room-id=""])');
+    } catch (error) {
+      const state = await getTabDiagnostics(firstPage);
+      throw new Error(
+        `Timed out waiting for the initial live session.\n${JSON.stringify(state, null, 2)}\n${[
+          ...firstPageDiagnostics,
+          ...secondPageDiagnostics,
+        ].join("\n")}\n${error.message}`,
+      );
+    }
     await firstPage.waitForSelector(".share-trigger.live .share-live-dot");
     await firstPage.waitForSelector(".sharing-presence");
     const firstPageUrl = new URL(firstPage.url());
