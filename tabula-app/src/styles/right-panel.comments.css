@@ -97,6 +97,30 @@
   padding-bottom: var(--right-section-gap);
 }
 
+.right-comment-virtual-list {
+  position: relative;
+  width: 100%;
+}
+
+.right-comment-virtual-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.right-comment-virtual-row.comment {
+  padding-bottom: 14px;
+}
+
+.right-comment-virtual-row.comment.resolved {
+  opacity: 0.78;
+}
+
+.right-comment-virtual-row.header {
+  padding-bottom: var(--right-tight-gap);
+}
+
 .right-comments-composer {
   display: grid;
   gap: var(--right-tight-gap);

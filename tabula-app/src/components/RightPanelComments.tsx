@@ -1,5 +1,6 @@
-import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { Check, ListFilter, MessageSquarePlus } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, ChevronRight, ListFilter, MessageSquarePlus } from "lucide-react";
 import {
   getRightPanelCommentScopeModel,
   type CommentScope,
@@ -7,8 +8,8 @@ import {
 } from "@tabula-md/tabula";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 import { CommentComposer } from "./right-panel/comments/CommentComposer";
-import { CommentGroup } from "./right-panel/comments/CommentGroup";
-import { ResolvedCommentsSection } from "./right-panel/comments/ResolvedCommentsSection";
+import { CommentCard } from "./right-panel/comments/CommentCard";
+import { getCommentVirtualRows } from "./right-panel/comments/commentVirtualRows";
 import type { FormatCommentDate } from "./right-panel/comments/types";
 import type { RightPanelCommentsCopy } from "./right-panel/comments/types";
 import { stripMarkdownExtension } from "@tabula-md/tabula";
@@ -98,6 +99,7 @@ export function RightPanelComments({
   const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
   const scopeMenuRef = useRef<HTMLDivElement | null>(null);
   const scopeTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const commentScrollRef = useRef<HTMLDivElement | null>(null);
   const closeScopeMenu = useCallback(() => setScopeMenuOpen(false), []);
   const handleScopeMenuKeyDown = useDismissibleMenu({
     menuRef: scopeMenuRef,
@@ -119,6 +121,31 @@ export function RightPanelComments({
   const currentFileLabel = activeFile
     ? stripMarkdownExtension(activeFileTitle)
     : copy.currentFile;
+  const virtualRows = useMemo(
+    () => getCommentVirtualRows({
+      activeFileId,
+      openCommentGroups: scopedOpenCommentGroups,
+      resolvedCommentGroups: scopedResolvedCommentGroups,
+      hideSingleActiveFileHeader,
+      collapsedCommentFileIds,
+      showResolved,
+    }),
+    [
+      activeFileId,
+      collapsedCommentFileIds,
+      hideSingleActiveFileHeader,
+      scopedOpenCommentGroups,
+      scopedResolvedCommentGroups,
+      showResolved,
+    ],
+  );
+  const commentVirtualizer = useVirtualizer({
+    count: virtualRows.length,
+    getScrollElement: () => commentScrollRef.current,
+    estimateSize: (index) => virtualRows[index]?.type === "comment" ? 128 : 36,
+    getItemKey: (index) => virtualRows[index]?.key ?? index,
+    overscan: 6,
+  });
 
   useEffect(() => {
     if (!activeCommentId) {
@@ -128,6 +155,16 @@ export function RightPanelComments({
     setCommentScope("current");
     setComposerMode(null);
   }, [activeCommentId, activeFileId]);
+
+  useEffect(() => {
+    if (!activeCommentId) return;
+    const activeRowIndex = virtualRows.findIndex(
+      (row) => row.type === "comment" && row.comment.id === activeCommentId,
+    );
+    if (activeRowIndex >= 0) {
+      commentVirtualizer.scrollToIndex(activeRowIndex, { align: "center" });
+    }
+  }, [activeCommentId, commentVirtualizer, virtualRows]);
 
   useEffect(() => {
     setCommentScope("current");
@@ -174,26 +211,6 @@ export function RightPanelComments({
   const openDocumentComposer = () => {
     setCommentScope("current");
     setComposerMode("document");
-  };
-
-  const commentGroupProps = {
-    activeFileId,
-    activeCommentId,
-    activeReplyCommentId,
-    collapsedReplyIds,
-    collapsedCommentFileIds,
-    replyDraftByCommentId,
-    onToggleRepliesCollapsed,
-    onToggleCommentFileCollapsed,
-    onGoToComment,
-    onStartCommentReply,
-    onCancelCommentReply,
-    onReplyDraftChange,
-    onAddCommentReply,
-    onToggleCommentResolved,
-    onDeleteComment,
-    formatCommentDate,
-    copy,
   };
 
   return (
@@ -259,7 +276,7 @@ export function RightPanelComments({
           </span>
         )}
       </div>
-      <div className="right-comments-scroll">
+      <div className="right-comments-scroll" ref={commentScrollRef}>
         {!hasAnyComments && (
           <div className="right-comments-empty" aria-label={copy.none}>
             <span>{activeFile ? copy.none : copy.noFile}</span>
@@ -281,22 +298,92 @@ export function RightPanelComments({
             )}
           </div>
         )}
-        {scopedOpenCommentGroups.map((group) => (
-          <CommentGroup
-            group={group}
-            hideFileHeader={hideSingleActiveFileHeader}
-            variant="open"
-            {...commentGroupProps}
-            key={group.file.id}
-          />
-        ))}
-        <ResolvedCommentsSection
-          resolvedCommentGroups={scopedResolvedCommentGroups}
-          hideSingleActiveFileHeader={hideSingleActiveFileHeader}
-          showResolved={showResolved}
-          onToggleResolvedSection={onToggleResolvedSection}
-          {...commentGroupProps}
-        />
+        {hasAnyComments && (
+          <div
+            className="right-comment-virtual-list"
+            style={{ height: `${commentVirtualizer.getTotalSize()}px` }}
+          >
+            {commentVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = virtualRows[virtualRow.index];
+              if (!row) return null;
+              const virtualStyle = {
+                transform: `translateY(${virtualRow.start}px)`,
+              };
+              if (row.type === "resolved-header") {
+                return (
+                  <div
+                    ref={commentVirtualizer.measureElement}
+                    className="right-comment-virtual-row header"
+                    data-index={virtualRow.index}
+                    key={row.key}
+                    style={virtualStyle}
+                  >
+                    <button
+                      className="right-row right-resolved-comments-header"
+                      type="button"
+                      aria-label={showResolved ? copy.hideResolved : copy.showResolved}
+                      onClick={onToggleResolvedSection}
+                    >
+                      {showResolved ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      <span>{copy.resolved(row.count)}</span>
+                    </button>
+                  </div>
+                );
+              }
+              if (row.type === "group-header") {
+                const collapsed = collapsedCommentFileIds.has(row.group.file.id);
+                return (
+                  <div
+                    ref={commentVirtualizer.measureElement}
+                    className="right-comment-virtual-row header"
+                    data-index={virtualRow.index}
+                    key={row.key}
+                    style={virtualStyle}
+                  >
+                    <button
+                      className={`right-row right-comment-file ${row.group.file.id === activeFileId ? "active" : ""}`}
+                      type="button"
+                      title={row.group.file.title}
+                      aria-expanded={!collapsed}
+                      onClick={() => onToggleCommentFileCollapsed(row.group.file.id)}
+                    >
+                      {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                      <span className="right-row-label">{stripMarkdownExtension(row.group.file.title)}</span>
+                    </button>
+                  </div>
+                );
+              }
+              return (
+                <div
+                  ref={commentVirtualizer.measureElement}
+                  className={`right-comment-virtual-row comment right-comment-group ${row.variant}`}
+                  data-index={virtualRow.index}
+                  key={row.key}
+                  style={virtualStyle}
+                >
+                  <CommentCard
+                    fileId={row.file.id}
+                    comment={row.comment}
+                    copy={copy}
+                    isActive={row.comment.id === activeCommentId}
+                    isReplying={activeReplyCommentId === row.comment.id}
+                    repliesCollapsed={collapsedReplyIds.has(row.comment.id)}
+                    replyDraft={replyDraftByCommentId[row.comment.id] ?? ""}
+                    onToggleRepliesCollapsed={onToggleRepliesCollapsed}
+                    onGoToComment={onGoToComment}
+                    onStartCommentReply={onStartCommentReply}
+                    onCancelCommentReply={onCancelCommentReply}
+                    onReplyDraftChange={onReplyDraftChange}
+                    onAddCommentReply={onAddCommentReply}
+                    onToggleCommentResolved={onToggleCommentResolved}
+                    onDeleteComment={onDeleteComment}
+                    formatCommentDate={formatCommentDate}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
       {activeFile && commentScope === "current" && composerMode && (
         <div className="right-comments-composer">
