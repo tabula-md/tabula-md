@@ -14,6 +14,7 @@ type TopChromeProps = {
   identity: Collaborator;
   collaborators: Collaborator[];
   followState: FollowState;
+  activeDocumentId?: string;
   activeText: string;
   fileTabs: ReactNode;
   shareControls: ReactNode;
@@ -30,6 +31,7 @@ export function TopChrome({
   identity,
   collaborators,
   followState,
+  activeDocumentId,
   activeText,
   fileTabs,
   shareControls,
@@ -53,8 +55,13 @@ export function TopChrome({
           liveCollaborators.map((collaborator) => collaborator.name).join(", "),
         )
       : copy.liveAs(identity.name);
-  const getPresenceLine = (collaborator: Collaborator) =>
-    getLineNumberForSelection(activeText, collaborator.selection);
+  const getPresenceLine = (collaborator: Collaborator) => {
+    const collaboratorDocumentId =
+      collaborator.selection?.documentId ?? collaborator.activeDocumentId;
+    return activeDocumentId && collaboratorDocumentId === activeDocumentId
+      ? getLineNumberForSelection(activeText, collaborator.selection)
+      : undefined;
+  };
   const getTooltip = (collaborator: Collaborator) => {
     const lineNumber = getPresenceLine(collaborator);
     return [

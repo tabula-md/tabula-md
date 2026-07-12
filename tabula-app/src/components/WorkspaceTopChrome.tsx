@@ -181,6 +181,7 @@ export function WorkspaceTopChrome({
       identity={displayedIdentity}
       collaborators={displayedCollaborators}
       followState={followState}
+      activeDocumentId={activeFile?.id}
       activeText={activeText}
       fileTabs={fileTabs}
       shareControls={shareControls}

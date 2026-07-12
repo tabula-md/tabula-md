@@ -7,6 +7,7 @@ import {
   createWorkspaceRoomFolder,
   deleteWorkspaceRoomNode,
   getWorkspaceRoomDocument,
+  getWorkspaceRoomDocumentComments,
   getWorkspaceRoomSnapshot,
   getWorkspaceRoomStructureSnapshot,
   initializeWorkspaceRoomCrdt,
@@ -86,6 +87,39 @@ describe("workspace room CRDT", () => {
     const comment = snapshot.commentsByFileId.readme[0];
     expect(comment).toMatchObject({ selectionStart: 9, selectionEnd: 14 });
     expect(snapshot.documents.readme.slice(comment.selectionStart, comment.selectionEnd)).toBe("Hello");
+  });
+
+  it("resolves comments for one requested document without projecting other documents", () => {
+    const room = createInitialRoom();
+    createWorkspaceRoomDocument(room, {
+      id: "notes",
+      title: "Notes.md",
+      parentId: "docs",
+      markdown: "Notes",
+    });
+    setWorkspaceRoomComment(room, {
+      id: "readme-comment",
+      fileId: "readme",
+      body: "README",
+      createdAt: "2026-07-10T00:00:01.000Z",
+      resolved: false,
+      selectionStart: 0,
+      selectionEnd: 1,
+    });
+    setWorkspaceRoomComment(room, {
+      id: "notes-comment",
+      fileId: "notes",
+      body: "Notes",
+      createdAt: "2026-07-10T00:00:00.000Z",
+      resolved: false,
+      selectionStart: 0,
+      selectionEnd: 1,
+    });
+
+    expect(getWorkspaceRoomDocumentComments(room, "readme")).toEqual([
+      expect.objectContaining({ id: "readme-comment", fileId: "readme" }),
+    ]);
+    expect(getWorkspaceRoomDocumentComments(room, "missing")).toEqual([]);
   });
 
   it("converges concurrent structure and text changes without resurrecting deleted nodes", () => {

@@ -435,6 +435,7 @@ export {
   deleteWorkspaceRoomNode,
   getWorkspaceRoomComments,
   getWorkspaceRoomDocument,
+  getWorkspaceRoomDocumentComments,
   getWorkspaceRoomSnapshot,
   getWorkspaceRoomStructureSnapshot,
   initializeWorkspaceRoomCrdt,

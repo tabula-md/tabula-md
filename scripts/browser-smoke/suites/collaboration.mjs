@@ -251,6 +251,10 @@ export async function run(ctx) {
           ?.includes(secondaryFileName),
       { secondaryFileName },
     );
+    expect(
+      !/\bLine \d+\b/.test((await remoteAvatar.getAttribute("data-tooltip")) ?? ""),
+      "A participant in another document should not show a line number calculated from the current document.",
+    );
     await remoteAvatar.click();
     await firstPage.waitForSelector(`.tab-item[data-file-name="${secondaryFileName}"].active`);
     await firstPage.waitForFunction(

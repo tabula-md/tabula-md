@@ -23,6 +23,7 @@ describe("RoomCommentsStore", () => {
     expect(initial).toEqual([]);
     expect(store.getResourceCounts()).toEqual({
       commentDocuments: 1,
+      commentSnapshots: 1,
       commentSubscriptions: 1,
     });
 
@@ -51,6 +52,11 @@ describe("RoomCommentsStore", () => {
     expect(store.getSnapshot("doc-a")).toBe(projected);
 
     unsubscribe();
+    expect(store.getResourceCounts()).toEqual({
+      commentDocuments: 0,
+      commentSnapshots: 0,
+      commentSubscriptions: 0,
+    });
     store.dispose();
     room.doc.destroy();
   });

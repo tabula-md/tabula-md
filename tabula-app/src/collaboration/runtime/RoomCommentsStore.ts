@@ -1,5 +1,5 @@
 import {
-  getWorkspaceRoomComments,
+  getWorkspaceRoomDocumentComments,
   type WorkspaceRoomComment,
   type WorkspaceRoomCrdt,
 } from "@tabula-md/tabula";
@@ -48,7 +48,7 @@ export const createRoomCommentsStore = (room: WorkspaceRoomCrdt) => {
   let disposed = false;
 
   const readComments = (documentId: string) =>
-    getWorkspaceRoomComments(room)[documentId] ?? EMPTY_COMMENTS;
+    getWorkspaceRoomDocumentComments(room, documentId);
 
   const getEntry = (documentId: string) => {
     let entry = entries.get(documentId);
@@ -71,7 +71,12 @@ export const createRoomCommentsStore = (room: WorkspaceRoomCrdt) => {
       const current = readComments(documentId);
       if (!sameComments(entry.snapshot, current)) entry.snapshot = current;
       entry.listeners.add(listener);
-      return () => entry.listeners.delete(listener);
+      return () => {
+        entry.listeners.delete(listener);
+        if (entry.listeners.size === 0 && entries.get(documentId) === entry) {
+          entries.delete(documentId);
+        }
+      };
     },
 
     getSnapshot(documentId: string) {
@@ -87,11 +92,10 @@ export const createRoomCommentsStore = (room: WorkspaceRoomCrdt) => {
 
     refresh() {
       if (disposed || !hasSubscribers()) return false;
-      const commentsByFileId = getWorkspaceRoomComments(room);
       let changed = false;
       for (const [documentId, entry] of entries) {
         if (entry.listeners.size === 0) continue;
-        const next = commentsByFileId[documentId] ?? EMPTY_COMMENTS;
+        const next = readComments(documentId);
         if (sameComments(entry.snapshot, next)) continue;
         entry.snapshot = next;
         entry.listeners.forEach((listener) => listener());
@@ -105,6 +109,7 @@ export const createRoomCommentsStore = (room: WorkspaceRoomCrdt) => {
       for (const entry of entries.values()) subscriptions += entry.listeners.size;
       return {
         commentDocuments: [...entries.values()].filter((entry) => entry.listeners.size > 0).length,
+        commentSnapshots: entries.size,
         commentSubscriptions: subscriptions,
       };
     },
