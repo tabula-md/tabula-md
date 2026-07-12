@@ -114,6 +114,11 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
+    expect(await page.locator("#root").evaluate((root) => root.inert), "An open modal should make the app root inert.");
+    expect(
+      (await page.locator("#root").getAttribute("aria-hidden")) === "true",
+      "An open modal should hide the background app from assistive technology.",
+    );
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Publish should stay hidden in Share until it ships.");
     expect((await page.getByText("Publish with Tabula +").count()) === 0, "Share should not expose the Tabula + publish boundary yet.");
     expect(
@@ -123,6 +128,11 @@ export async function run(ctx) {
 
     await page.keyboard.press("Escape");
     await waitForShareDialogState(page, { open: false });
+    expect(!(await page.locator("#root").evaluate((root) => root.inert)), "Closing the modal should restore app interaction.");
+    expect(
+      (await page.locator("#root").getAttribute("aria-hidden")) === null,
+      "Closing the modal should restore the app accessibility tree.",
+    );
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "README.md" });
     await page.locator(".share-trigger").click();

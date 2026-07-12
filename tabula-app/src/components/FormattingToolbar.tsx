@@ -13,6 +13,7 @@ import {
 } from "../toolbar/formattingCommandRegistry";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import { formatShortcut } from "../keyboardShortcuts";
 import {
   getFormattingCommandCopy,
   type FormattingCommandCopy,
@@ -57,7 +58,7 @@ const isCompactToolbarViewport = () =>
   window.matchMedia(compactToolbarMediaQuery).matches;
 
 const getCommandTitle = (command: LocalizedFormattingCommand) =>
-  command.shortcut ? `${command.tooltip} (${command.shortcut})` : command.tooltip;
+  command.shortcut ? `${command.tooltip} (${formatShortcut(command.shortcut)})` : command.tooltip;
 
 const isCommandDisabled = (
   command: LocalizedFormattingCommand,
@@ -223,7 +224,7 @@ export function FormattingToolbar({
                     checked={active}
                     icon={<CommandIcon size={16} />}
                     label={command.label}
-                    trailing={command.shortcut ? <kbd>{command.shortcut}</kbd> : undefined}
+                    trailing={command.shortcut ? <kbd>{formatShortcut(command.shortcut)}</kbd> : undefined}
                     data-format-command={command.id}
                     disabled={disabled}
                     onSelect={(event) => {
