@@ -1,13 +1,13 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ConnectionStatus } from "../collaboration";
 import type { WorkspaceShareCopy } from "../workspaceLocale";
-import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
+import type { FileComment, LocationRoom, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { useJsonShareController } from "./useJsonShareController";
 import { useWorkspaceLiveRoomController } from "./useWorkspaceLiveRoomController";
 
 type UseWorkspaceShareRuntimeOptions = {
   activeFile?: WorkspaceFile;
-  roomFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   activeText?: string;
   commentsByFileId: Record<string, FileComment[]>;
   copy: WorkspaceShareCopy;
@@ -26,7 +26,7 @@ type UseWorkspaceShareRuntimeOptions = {
 
 export function useWorkspaceShareRuntime({
   activeFile,
-  roomFile,
+  room,
   activeText,
   commentsByFileId,
   copy,
@@ -52,7 +52,8 @@ export function useWorkspaceShareRuntime({
     showToast,
   });
   const liveRoom = useWorkspaceLiveRoomController({
-    activeFile: roomFile ?? activeFile,
+    activeFile,
+    room,
     resetCollaborationState,
     retryCollaborationConnection,
     setCopiedFileId,

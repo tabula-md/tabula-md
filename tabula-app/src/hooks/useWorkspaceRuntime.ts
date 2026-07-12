@@ -863,7 +863,7 @@ export function useWorkspaceRuntime() {
   const { copyShareUrl, jsonShare, startSession, stopSession } =
     useWorkspaceShareRuntime({
       activeFile,
-      roomFile: collaborationRoomFile,
+      room: activeRoom,
       activeText: text,
       commentsByFileId,
       copy: workspaceShareCopy,
@@ -1033,7 +1033,7 @@ export function useWorkspaceRuntime() {
     replaceWorkspaceWithJsonShare,
   } = useWorkspaceIoRuntime({
     activeFile,
-    roomFile: activeRoom ? collaborationRoomFile : undefined,
+    isRoomSession: Boolean(activeRoom),
     activeFileId,
     addFileFromContent: addRoomAwareFileFromContent,
     clearFileHistory,
@@ -1327,7 +1327,7 @@ export function useWorkspaceRuntime() {
     jsonShare,
     language: workspacePreferences.language,
     openFiles,
-    roomFile: collaborationRoomFile,
+    room: activeRoom,
     rightPanelOpen,
     startSessionUnavailableReason,
     topPopover,

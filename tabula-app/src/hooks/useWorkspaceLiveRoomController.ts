@@ -1,10 +1,11 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ConnectionStatus } from "../collaboration";
 import { getRoomShareLinkView } from "../share";
-import { syncUrlForFile, type WorkspaceFile } from "../workspaceStorage";
+import { syncUrlForFile, type LocationRoom, type WorkspaceFile } from "../workspaceStorage";
 
 type UseWorkspaceLiveRoomControllerArgs = {
   activeFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   retryCollaborationConnection: () => void;
   setCopiedFileId: Dispatch<SetStateAction<string | null>>;
@@ -15,6 +16,7 @@ type UseWorkspaceLiveRoomControllerArgs = {
 
 export function useWorkspaceLiveRoomController({
   activeFile,
+  room,
   resetCollaborationState,
   retryCollaborationConnection,
   setCopiedFileId,
@@ -31,7 +33,7 @@ export function useWorkspaceLiveRoomController({
   };
 
   const stopSession = () => {
-    if (!activeFile?.roomId) {
+    if (!room) {
       return;
     }
 
@@ -41,13 +43,13 @@ export function useWorkspaceLiveRoomController({
   };
 
   const copyShareUrl = async () => {
-    const shareUrlView = getRoomShareLinkView(activeFile?.shareUrl, activeFile?.roomId);
-    if (!activeFile || !shareUrlView.canCopy || !shareUrlView.url) {
+    const shareUrlView = getRoomShareLinkView(room?.shareUrl, room?.roomId);
+    if (!room || !shareUrlView.canCopy || !shareUrlView.url) {
       return;
     }
 
     await navigator.clipboard.writeText(shareUrlView.url);
-    setCopiedFileId(activeFile.id);
+    setCopiedFileId(activeFile?.id ?? room.roomId);
     window.setTimeout(() => setCopiedFileId(null), 1600);
   };
 

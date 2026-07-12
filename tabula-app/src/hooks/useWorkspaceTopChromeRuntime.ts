@@ -6,7 +6,7 @@ import type { JsonShareController } from "./useJsonShareController";
 import type { RenameFileResult } from "./useWorkspaceFiles";
 import type { WorkspaceLanguage } from "./useWorkspacePreferences";
 import type { TopPopover } from "../uiTypes";
-import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
+import type { LocationRoom, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import type { FollowState } from "../collaboration/followModel";
 
 type SetTopPopover = (popover: TopPopover) => void;
@@ -31,7 +31,7 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
-  roomFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   rightPanelOpen: boolean;
   startSessionUnavailableReason: string;
   topPopover: TopPopover;
@@ -74,7 +74,7 @@ export function useWorkspaceTopChromeRuntime({
   jsonShare,
   language,
   openFiles,
-  roomFile,
+  room,
   rightPanelOpen,
   startSessionUnavailableReason,
   topPopover,
@@ -100,7 +100,7 @@ export function useWorkspaceTopChromeRuntime({
   setWorkspaceMenuOpen,
 }: UseWorkspaceTopChromeRuntimeOptions) {
   const shareOpen = topPopover === "share";
-  const copied = copiedFileId === (roomFile ?? activeFile)?.id;
+  const copied = copiedFileId === (activeFile?.id ?? room?.roomId);
 
   const closeDocumentChrome = useCallback(() => {
     setTopPopover(null);
@@ -141,7 +141,7 @@ export function useWorkspaceTopChromeRuntime({
     jsonShare,
     language,
     openFiles,
-    roomFile,
+    room,
     rightPanelOpen,
     shareOpen,
     startSessionUnavailableReason,

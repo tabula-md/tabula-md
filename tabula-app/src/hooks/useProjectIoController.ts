@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent, type DragEvent, type RefObject } from "react";
+import type { ConnectionStatus } from "../collaboration";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
@@ -40,7 +41,7 @@ const downloadBlobFile = (fileName: string, blob: Blob) => {
 
 type UseProjectIoControllerArgs = {
   activeFile?: WorkspaceFile;
-  roomFile?: WorkspaceFile;
+  isRoomSession: boolean;
   activeFileId: string;
   addFileFromContent: (
     title: string,
@@ -59,7 +60,7 @@ type UseProjectIoControllerArgs = {
   preferences: WorkspacePreferences;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
   replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
-  resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
+  resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   showToast: (message: string, tone?: "neutral" | "error", options?: { actionLabel?: string; onAction?: () => void }) => void;
   clearFileHistory: () => void;
   onCloseChrome: () => void;
@@ -138,7 +139,7 @@ export const getProjectIoBoundaryWorkspaceSnapshot = ({
 
 export function useProjectIoController({
   activeFile,
-  roomFile,
+  isRoomSession,
   activeFileId,
   addFileFromContent,
   commentsByFileId,
@@ -234,7 +235,7 @@ export function useProjectIoController({
   };
 
   const importProjectFile = async (file: File) => {
-    if (roomFile?.roomId) {
+    if (isRoomSession) {
       showToast("Stop live collaboration before restoring a workspace backup.", "error");
       return;
     }
@@ -257,7 +258,7 @@ export function useProjectIoController({
     const nextActiveFile = replaceWorkspace(nextWorkspace);
     replaceCommentsByFileId(nextWorkspace.commentsByFileId);
     clearFileHistory();
-    resetCollaborationState(nextActiveFile?.roomId ? "connecting" : "idle");
+    resetCollaborationState("idle");
     onCloseChrome();
     syncUrlForFile(nextActiveFile);
     showToast("Workspace backup restored.");
@@ -274,7 +275,7 @@ export function useProjectIoController({
       importedFileDraft.overrides,
     );
     onCloseChrome();
-    if (!roomFile?.roomId) syncUrlForFile(nextFile);
+    if (!isRoomSession) syncUrlForFile(nextFile);
 
     queueAnimationFrameTask(() => editorRef.current?.focus());
   };

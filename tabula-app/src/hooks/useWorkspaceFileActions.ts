@@ -4,6 +4,7 @@ import type { FileHistory } from "./useWorkspaceActiveFileEditor";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import { getNewFilePreferenceOverrides } from "../workspaceIoModel";
 import type { RenameFileResult } from "@tabula-md/tabula";
+import type { ConnectionStatus } from "../collaboration";
 import {
   findWorkspaceAboutFile,
   getWorkspaceAboutFileDraft,
@@ -61,7 +62,7 @@ type UseWorkspaceFileActionsArgs = {
   queueEditorFocus: () => void;
   renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
-  resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
+  resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   restoreFile: (input: {
     file: WorkspaceFile;
     fileIndex: number;

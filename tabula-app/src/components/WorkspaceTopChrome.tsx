@@ -9,6 +9,7 @@ import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getCollaboratorDisplayList } from "../collaboration/collabCollaborators";
 import {
   isEmptyGeneratedLivePlaceholder,
+  type LocationRoom,
   type WorkspaceFile,
   type WorkspaceFolder,
 } from "../workspaceStorage";
@@ -38,7 +39,7 @@ export type WorkspaceTopChromeProps = {
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
-  roomFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   rightPanelOpen: boolean;
   shareOpen: boolean;
   startSessionUnavailableReason: string;
@@ -80,7 +81,7 @@ export function WorkspaceTopChrome({
   jsonShare,
   language,
   openFiles,
-  roomFile,
+  room,
   rightPanelOpen,
   shareOpen,
   startSessionUnavailableReason,
@@ -130,7 +131,7 @@ export function WorkspaceTopChrome({
       folders={folders}
       activeFile={visibleActiveFile}
       collaborators={displayedCollaborators}
-      roomId={roomFile?.roomId}
+      roomId={room?.roomId}
       language={language}
       onAddFile={onAddFile}
       onSelectFile={onSelectFile}
@@ -141,7 +142,7 @@ export function WorkspaceTopChrome({
     />
   );
 
-  const shareSubjectFile = activeFile ?? roomFile;
+  const shareSubjectFile = activeFile;
   const shareControls = shareSubjectFile ? (
     <>
       <ShareTrigger
@@ -156,7 +157,7 @@ export function WorkspaceTopChrome({
         <Suspense fallback={null}>
           <ShareControls
             activeFile={shareSubjectFile}
-            roomFile={roomFile}
+            room={room}
             files={visibleFiles}
             activeText={activeText}
             language={language}

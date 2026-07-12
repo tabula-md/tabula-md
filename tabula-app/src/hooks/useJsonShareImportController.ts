@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ConnectionStatus } from "../collaboration";
 import {
   getConfiguredJsonShareServiceUrl,
   getJsonShareImportRoute,
@@ -32,7 +33,7 @@ type UseJsonShareImportControllerArgs = {
   onBeforeWorkspaceBoundary?: () => void;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
   replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
-  resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
+  resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   showToast: (
     message: string,
     tone?: "neutral" | "error",
@@ -88,7 +89,7 @@ export function useJsonShareImportController({
       showToast("The copy opened, but it couldn’t be saved in this browser.", "error");
     });
     clearFileHistory();
-    resetCollaborationState(nextActiveFile?.roomId ? "connecting" : "idle");
+    resetCollaborationState("idle");
     closeFloatingChrome();
     syncUrlForFile(nextActiveFile, "replace");
     setJsonShareImport(null);
@@ -107,7 +108,7 @@ export function useJsonShareImportController({
           showToast("The previous workspace was restored but couldn’t be saved.", "error");
         });
         clearFileHistory();
-        resetCollaborationState(restoredActiveFile?.roomId ? "connecting" : "idle");
+        resetCollaborationState("idle");
         closeFloatingChrome();
         syncUrlForFile(restoredActiveFile, "replace");
         showToast("Previous workspace restored.");
