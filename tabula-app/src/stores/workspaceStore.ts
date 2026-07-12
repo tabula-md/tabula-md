@@ -231,7 +231,7 @@ const updateFileInState = (
   };
 };
 
-export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
+export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) => ({
   ...DEFAULT_WORKSPACE_STORE_STATE,
 
   initializeWorkspace: ({ createFile, folders, readmeFileId, ...workspace }) => {
@@ -583,15 +583,26 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 }));
 
-export const getWorkspaceStoreSnapshot = () => getWorkspaceState(useWorkspaceStore.getState());
+export const useWorkspaceStore = createWorkspaceStore();
+export const useRoomWorkspaceStore = createWorkspaceStore();
+export type WorkspaceStoreBinding = ReturnType<typeof createWorkspaceStore>;
 
-export const getWorkspaceStoreOpenFiles = () => getOpenWorkspaceFiles(getWorkspaceStoreSnapshot());
+export const getWorkspaceStoreForMode = (mode: "local" | "room") =>
+  mode === "room" ? useRoomWorkspaceStore : useWorkspaceStore;
 
-export const getWorkspaceStoreActiveFile = () => getActiveWorkspaceFile(getWorkspaceStoreSnapshot());
+export const getWorkspaceStoreSnapshot = (mode: "local" | "room" = "local") =>
+  getWorkspaceState(getWorkspaceStoreForMode(mode).getState());
 
-export const getWorkspaceStoreFolder = (folderId: string) =>
-  useWorkspaceStore.getState().folders.find((folder) => folder.id === folderId);
+export const getWorkspaceStoreOpenFiles = (mode: "local" | "room" = "local") =>
+  getOpenWorkspaceFiles(getWorkspaceStoreSnapshot(mode));
+
+export const getWorkspaceStoreActiveFile = (mode: "local" | "room" = "local") =>
+  getActiveWorkspaceFile(getWorkspaceStoreSnapshot(mode));
+
+export const getWorkspaceStoreFolder = (folderId: string, mode: "local" | "room" = "local") =>
+  getWorkspaceStoreForMode(mode).getState().folders.find((folder) => folder.id === folderId);
 
 export const resetWorkspaceStoreForTests = () => {
   useWorkspaceStore.setState(DEFAULT_WORKSPACE_STORE_STATE);
+  useRoomWorkspaceStore.setState(DEFAULT_WORKSPACE_STORE_STATE);
 };

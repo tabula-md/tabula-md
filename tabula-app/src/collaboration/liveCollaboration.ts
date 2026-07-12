@@ -2,30 +2,14 @@ import type { Extension } from "@codemirror/state";
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
 import {
-  addWorkspaceRoomCommentReply,
-  applyTextPatches as applyTextPatchesToString,
   createWorkspaceRoomCrdt,
-  createWorkspaceRoomDocument,
-  createWorkspaceRoomFolder,
-  deleteWorkspaceRoomComment,
-  deleteWorkspaceRoomNode,
-  getWorkspaceRoomDocument,
-  getWorkspaceRoomSnapshot,
   initializeWorkspaceRoomCrdt,
-  moveWorkspaceRoomNode,
-  renameWorkspaceRoomNode,
-  setWorkspaceRoomComment,
-  setWorkspaceRoomCommentResolved,
-  setWorkspaceRoomNodeOrder,
   validateWorkspaceRoomStructureLimits,
   validateWorkspaceRoomStructure,
   ROOM_WIRE_MAX_CRDT_STATE_BYTES,
-  WORKSPACE_ROOM_MAX_DOCUMENTS,
-  WORKSPACE_ROOM_MAX_FOLDERS,
   WORKSPACE_ROOM_ROOT_ID,
   type TextPatch,
   type WorkspaceRoomComment,
-  type WorkspaceRoomCommentReply,
   type WorkspaceRoomStructureSnapshot,
 } from "@tabula-md/tabula";
 import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
@@ -41,6 +25,7 @@ import { createRoomDocumentProjectionStore } from "./runtime/RoomDocumentProject
 import { createRoomCommentsStore } from "./runtime/RoomCommentsStore";
 import { createRoomStructureStore } from "./runtime/RoomStructureStore";
 import { createRoomMetrics } from "./runtime/RoomMetrics";
+import { createRoomCrdtStore } from "./runtime/RoomCrdtStore";
 import {
   CHECKPOINT_ORIGIN,
   createCheckpointCoordinator,
@@ -83,6 +68,10 @@ export type {
   LiveSelection,
   LiveViewport,
 } from "./runtime/RoomPresenceController";
+export type {
+  WorkspaceRoomDocumentCommand,
+  WorkspaceRoomFolderCommand,
+} from "./runtime/RoomCrdtStore";
 
 export type CollabRecoveryEvent = {
   id: string;
@@ -123,21 +112,6 @@ export type WorkspaceFolderSnapshot = {
   order?: number;
 };
 
-export type WorkspaceRoomDocumentCommand = {
-  id: string;
-  title: string;
-  markdown?: string;
-  parentId?: string | null;
-  order?: number;
-};
-
-export type WorkspaceRoomFolderCommand = {
-  id: string;
-  title: string;
-  parentId?: string | null;
-  order?: number;
-};
-
 type ConnectOptions = {
   roomId: string;
   roomKey: string;
@@ -160,16 +134,6 @@ const COMMENT_PROJECTION_DELAY_MS = 16;
 const INVALID_MESSAGE_NOTICE_INTERVAL_MS = 5_000;
 const CRDT_STATE_SIZE_CHECK_INTERVAL = 500;
 const CRDT_STATE_WARNING_BYTES = Math.floor(ROOM_WIRE_MAX_CRDT_STATE_BYTES * 0.9);
-const utf8Encoder = new TextEncoder();
-
-const applyTextPatches = (text: Y.Text, patches: readonly TextPatch[]) => {
-  for (const patch of [...patches].sort((first, second) => second.from - first.from)) {
-    const from = Math.max(0, Math.min(patch.from, text.length));
-    const to = Math.max(from, Math.min(patch.to, text.length));
-    if (to > from) text.delete(from, to - from);
-    if (patch.insert) text.insert(from, patch.insert);
-  }
-};
 
 const commentsToList = (commentsByFileId: Record<string, WorkspaceRoomComment[]> | undefined) =>
   Object.values(commentsByFileId ?? {}).flat();
@@ -296,6 +260,11 @@ export const createWorkspaceRoomRuntime = ({
   };
   const canApplyTextByteDelta = (byteDelta: number) =>
     roomMetrics.canApplyTextByteDelta(byteDelta);
+  const crdtStore = createRoomCrdtStore({
+    canApplyTextByteDelta,
+    getDocumentByteLength: roomMetrics.getDocumentByteLength,
+    room,
+  });
   structureStore.refresh();
   syncDocumentMetrics();
 
@@ -571,46 +540,6 @@ export const createWorkspaceRoomRuntime = ({
     refreshActiveEditorBinding();
   };
 
-  const canCreateNode = (type: "document" | "folder") => {
-    const structure = structureStore.getSnapshot();
-    const currentCount = structure.nodes.filter((node) => node.type === type).length -
-      (type === "folder" ? 1 : 0);
-    return type === "document"
-      ? currentCount < WORKSPACE_ROOM_MAX_DOCUMENTS
-      : currentCount < WORKSPACE_ROOM_MAX_FOLDERS;
-  };
-
-  const createDocument = (input: WorkspaceRoomDocumentCommand) => {
-    const markdown = input.markdown ?? "";
-    if (
-      !canCreateNode("document") ||
-      !canApplyTextByteDelta(utf8Encoder.encode(markdown).byteLength)
-    ) {
-      return false;
-    }
-    return createWorkspaceRoomDocument(room, { ...input, markdown });
-  };
-
-  const createFolder = (input: WorkspaceRoomFolderCommand) => {
-    if (!canCreateNode("folder")) return false;
-    return createWorkspaceRoomFolder(room, input);
-  };
-
-  const replaceDocumentText = (documentId: string, nextText: string) => {
-    const text = getWorkspaceRoomDocument(room, documentId);
-    if (!text) return false;
-    const currentText = text.toString();
-    if (currentText === nextText) return true;
-    const byteDelta = utf8Encoder.encode(nextText).byteLength -
-      (roomMetrics.getDocumentByteLength(documentId) ?? utf8Encoder.encode(currentText).byteLength);
-    if (!canApplyTextByteDelta(byteDelta)) return false;
-    room.doc.transact(() => {
-      if (text.length) text.delete(0, text.length);
-      if (nextText) text.insert(0, nextText);
-    }, "tabula.text.replace");
-    return true;
-  };
-
   return {
     subscribe(listener: () => void) {
       runtimeListeners.add(listener);
@@ -639,53 +568,20 @@ export const createWorkspaceRoomRuntime = ({
     },
     applyLocalText(nextText: string, patches?: readonly TextPatch[]) {
       if (!activeDocumentId) return false;
-      const text = getWorkspaceRoomDocument(room, activeDocumentId);
-      if (!text) return false;
-      const currentText = text.toString();
-      const patchedText = patches?.length ? applyTextPatchesToString(currentText, patches) : nextText;
-      const byteDelta = utf8Encoder.encode(nextText).byteLength -
-        (roomMetrics.getDocumentByteLength(activeDocumentId) ?? utf8Encoder.encode(currentText).byteLength);
-      if (!canApplyTextByteDelta(byteDelta)) return false;
-      room.doc.transact(() => {
-        if (patches?.length && patchedText === nextText) applyTextPatches(text, patches);
-        else if (text.toString() !== nextText) {
-          if (text.length) text.delete(0, text.length);
-          if (nextText) text.insert(0, nextText);
-        }
-      }, "tabula.text.local");
-      return true;
+      return crdtStore.applyDocumentText(activeDocumentId, nextText, patches ?? []);
     },
     applyLocalTextPatches(patches: readonly TextPatch[]) {
       if (patches.length === 0) return true;
       if (!activeDocumentId) return false;
-      const text = getWorkspaceRoomDocument(room, activeDocumentId);
-      if (!text) return false;
-      const currentText = text.toString();
-      const nextText = applyTextPatchesToString(currentText, patches);
-      if (nextText === null) return false;
-      const byteDelta = utf8Encoder.encode(nextText).byteLength -
-        (roomMetrics.getDocumentByteLength(activeDocumentId) ?? utf8Encoder.encode(currentText).byteLength);
-      if (!canApplyTextByteDelta(byteDelta)) return false;
-      room.doc.transact(() => applyTextPatches(text, patches), "tabula.text.local");
-      return true;
+      return crdtStore.applyDocumentText(activeDocumentId, null, patches);
     },
-    replaceDocumentText,
-    createDocument,
-    createFolder,
-    renameNode(nodeId: string, title: string) {
-      return renameWorkspaceRoomNode(room, nodeId, title);
-    },
-    moveNode(nodeId: string, parentId: string) {
-      return moveWorkspaceRoomNode(room, nodeId, parentId);
-    },
-    setNodeOrder(nodeId: string, order: number) {
-      return setWorkspaceRoomNodeOrder(room, nodeId, order);
-    },
-    deleteNode(nodeId: string) {
-      if (!room.nodes.has(nodeId) || nodeId === WORKSPACE_ROOM_ROOT_ID) return false;
-      deleteWorkspaceRoomNode(room, nodeId);
-      return true;
-    },
+    replaceDocumentText: crdtStore.replaceDocumentText,
+    createDocument: crdtStore.createDocument,
+    createFolder: crdtStore.createFolder,
+    renameNode: crdtStore.renameNode,
+    moveNode: crdtStore.moveNode,
+    setNodeOrder: crdtStore.setNodeOrder,
+    deleteNode: crdtStore.deleteNode,
     setActiveDocument,
     setEditorPresenceEnabled(enabled: boolean) {
       presenceController.setEditorPresenceEnabled(enabled);
@@ -698,13 +594,11 @@ export const createWorkspaceRoomRuntime = ({
       presenceController.setIdentity(nextIdentity);
     },
     getEditorBinding: () => runtimeSnapshot.editorBinding,
-    materializeDocument(documentId: string) {
-      return room.documents.get(documentId)?.toString() ?? null;
-    },
+    materializeDocument: crdtStore.materializeDocument,
     materializeDocumentComments(documentId: string) {
       return commentsStore.materialize(documentId);
     },
-    materializeWorkspace: () => getWorkspaceRoomSnapshot(room),
+    materializeWorkspace: crdtStore.materializeWorkspace,
     getResourceCounts: () => ({
       documentObservers: closed ? 0 : 1,
       ...documentRegistry.getResourceCounts(),
@@ -712,44 +606,10 @@ export const createWorkspaceRoomRuntime = ({
       ...commentsStore.getResourceCounts(),
       ...syncController.getResourceCounts(),
     }),
-    upsertComment(comment: WorkspaceRoomComment) {
-      const current = room.comments.get(comment.id);
-      const currentBody = typeof current?.get("body") === "string" ? current.get("body") as string : "";
-      const currentReplies = current?.get("replies");
-      let currentReplyBytes = 0;
-      if (currentReplies instanceof Y.Map) {
-        currentReplies.forEach((reply) => {
-          if (reply instanceof Y.Map && typeof reply.get("body") === "string") {
-            currentReplyBytes += utf8Encoder.encode(reply.get("body") as string).byteLength;
-          }
-        });
-      }
-      const nextBytes = utf8Encoder.encode(comment.body.trim()).byteLength + comment.replies.reduce(
-        (total, reply) => total + utf8Encoder.encode(reply.body).byteLength,
-        0,
-      );
-      const byteDelta = nextBytes - utf8Encoder.encode(currentBody).byteLength - currentReplyBytes;
-      if (!canApplyTextByteDelta(byteDelta)) return false;
-      let applied = false;
-      room.doc.transact(() => {
-        applied = setWorkspaceRoomComment(room, comment);
-      }, "tabula.comment.upsert");
-      return applied;
-    },
-    deleteComment(commentId: string) {
-      room.doc.transact(() => deleteWorkspaceRoomComment(room, commentId), "tabula.comment.delete");
-    },
-    setCommentResolved(commentId: string, resolved: boolean) {
-      room.doc.transact(() => setWorkspaceRoomCommentResolved(room, commentId, resolved), "tabula.comment.resolve");
-    },
-    addCommentReply(commentId: string, reply: WorkspaceRoomCommentReply) {
-      if (!canApplyTextByteDelta(utf8Encoder.encode(reply.body.trim()).byteLength)) return false;
-      let applied = false;
-      room.doc.transact(() => {
-        applied = addWorkspaceRoomCommentReply(room, commentId, reply);
-      }, "tabula.comment.reply");
-      return applied;
-    },
+    upsertComment: crdtStore.upsertComment,
+    deleteComment: crdtStore.deleteComment,
+    setCommentResolved: crdtStore.setCommentResolved,
+    addCommentReply: crdtStore.addCommentReply,
     disconnect() {
       if (closed) return;
       closed = true;

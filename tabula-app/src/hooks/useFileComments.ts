@@ -7,7 +7,7 @@ import {
   WORKSPACE_ROOM_MAX_REPLIES,
 } from "@tabula-md/tabula";
 import type { Collaborator } from "../collaboration";
-import { mapCommentAnchorThroughPatches } from "../commentAnchors";
+import { mapSessionCommentAnchors } from "../commentAnchorSessionModel";
 import type { FileComment, FileCommentReply, WorkspaceFile } from "../workspaceStorage";
 
 export type CommentSelectionAnchor = {
@@ -249,13 +249,15 @@ export function useFileComments({
 
     setCommentsByFileId((currentComments) => {
       const comments = getFileComments(currentComments, fileId);
-      let changed = false;
-      const nextComments = comments.map((comment) => {
-        const nextComment = mapCommentAnchorThroughPatches(comment, patches, oldDocumentLength);
-        changed = changed || nextComment !== comment;
-        return nextComment;
+      const nextComments = mapSessionCommentAnchors({
+        comments,
+        isRoomSession,
+        oldDocumentLength,
+        patches,
       });
-      return changed ? { ...currentComments, [fileId]: nextComments } : currentComments;
+      return nextComments === comments
+        ? currentComments
+        : { ...currentComments, [fileId]: [...nextComments] };
     });
   };
 

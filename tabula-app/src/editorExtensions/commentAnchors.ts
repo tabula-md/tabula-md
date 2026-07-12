@@ -1,4 +1,4 @@
-import { StateField, type EditorState, type Extension } from "@codemirror/state";
+import { StateEffect, StateField, type EditorState, type Extension } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
 import type { MarkdownCommentAnchor, MarkdownEditorInterfaceCopy } from "../markdownEditorTypes";
 
@@ -30,20 +30,40 @@ const buildCommentDecorations = (
   return Decoration.set(ranges, true);
 };
 
+type CommentAnchorDecorationState = {
+  commentAnchors: MarkdownCommentAnchor[];
+  activeCommentId: string | null | undefined;
+  copy: Pick<MarkdownEditorInterfaceCopy, "activeComment" | "openComment">;
+};
+
+export const setCommentAnchorDecorations = StateEffect.define<CommentAnchorDecorationState>();
+
+export const commentAnchorDecorationField = StateField.define({
+  create: () => Decoration.none,
+  update(current, transaction) {
+    for (const effect of transaction.effects) {
+      if (effect.is(setCommentAnchorDecorations)) {
+        return buildCommentDecorations(
+          transaction.state,
+          effect.value.commentAnchors,
+          effect.value.activeCommentId,
+          effect.value.copy,
+        );
+      }
+    }
+    return current.map(transaction.changes);
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
 export const createCommentAnchorExtension = (
-  commentAnchors: MarkdownCommentAnchor[] = [],
-  activeCommentId: string | null | undefined,
-  copy: Pick<MarkdownEditorInterfaceCopy, "activeComment" | "openComment">,
+  _commentAnchors: MarkdownCommentAnchor[] = [],
+  _activeCommentId: string | null | undefined,
+  _copy: Pick<MarkdownEditorInterfaceCopy, "activeComment" | "openComment">,
   onOpenComment?: (commentId: string) => void,
 ): Extension => {
-  const decorations = StateField.define({
-    create: (state) => buildCommentDecorations(state, commentAnchors, activeCommentId, copy),
-    update: (current, transaction) => current.map(transaction.changes),
-    provide: (field) => EditorView.decorations.from(field),
-  });
-
   return [
-  decorations,
+  commentAnchorDecorationField,
   EditorView.domEventHandlers({
     click(event) {
       const target = event.target;

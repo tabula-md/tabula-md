@@ -51,6 +51,7 @@ import { createWorkspaceRuntimeView } from "../workspaceRuntimeView";
 import {
   getWorkspaceStoreActiveFile,
   getWorkspaceStoreFolder,
+  getWorkspaceStoreForMode,
   getWorkspaceStoreSnapshot,
   type DeletedWorkspaceFolderBundle,
 } from "../stores/workspaceStore";
@@ -85,11 +86,8 @@ import {
 } from "../liveRoomOpenState";
 import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
-import {
-  IDLE_FOLLOW_STATE,
-  type FollowState,
-} from "../collaboration/followModel";
 import { useParticipantFollowController } from "./useParticipantFollowController";
+import { createActiveRoomDocumentProjectionStore } from "../collaboration/runtime/ActiveRoomDocumentProjectionStore";
 import {
   createLocalWorkspaceSession,
   createRoomWorkspaceSession,
@@ -105,6 +103,23 @@ export function useWorkspaceRuntime() {
   );
   const initialWorkspace = initialWorkspaceSnapshot.workspace;
   const restoredRoomViewsRef = useRef(new Set<string>());
+  const workspaceSessionHostRef = useRef<WorkspaceSessionHost | null>(null);
+  if (!workspaceSessionHostRef.current) {
+    const initialRoom = initialWorkspaceSnapshot.source === "room"
+      ? initialWorkspaceSnapshot.room
+      : null;
+    workspaceSessionHostRef.current = createWorkspaceSessionHost(
+      initialRoom ? createRoomWorkspaceSession(initialRoom) : createLocalWorkspaceSession(),
+    );
+  }
+  const workspaceSessionHost = workspaceSessionHostRef.current;
+  const workspaceSession = useSyncExternalStore(
+    workspaceSessionHost.subscribe,
+    workspaceSessionHost.getSnapshot,
+    workspaceSessionHost.getSnapshot,
+  );
+  const activeRoomSession = workspaceSession.mode === "room" ? workspaceSession : null;
+  const activeRoom = activeRoomSession?.room ?? null;
   const {
     folders,
     files,
@@ -145,6 +160,7 @@ export function useWorkspaceRuntime() {
     initialActiveFileId: initialWorkspace.activeFileId,
     readmeFileId: README_FILE_ID,
     createFile: createWorkspaceFile,
+    store: workspaceSession.viewStore,
   });
   const [workspacePreferences, setWorkspacePreferences] =
     useWorkspacePreferences();
@@ -161,28 +177,17 @@ export function useWorkspaceRuntime() {
     workspacePreferences.language,
   ).share;
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
-  const workspaceSessionHostRef = useRef<WorkspaceSessionHost | null>(null);
-  if (!workspaceSessionHostRef.current) {
-    const initialRoom = initialWorkspaceSnapshot.source === "room"
-      ? initialWorkspaceSnapshot.room
-      : null;
-    workspaceSessionHostRef.current = createWorkspaceSessionHost(
-      initialRoom ? createRoomWorkspaceSession(initialRoom) : createLocalWorkspaceSession(),
-    );
-  }
-  const workspaceSessionHost = workspaceSessionHostRef.current;
-  const workspaceSession = useSyncExternalStore(
-    workspaceSessionHost.subscribe,
-    workspaceSessionHost.getSnapshot,
-    workspaceSessionHost.getSnapshot,
+  const followState = useSyncExternalStore(
+    workspaceSession.follow.subscribe,
+    workspaceSession.follow.getSnapshot,
+    workspaceSession.follow.getSnapshot,
   );
-  const activeRoomSession = workspaceSession.mode === "room" ? workspaceSession : null;
-  const activeRoom = activeRoomSession?.room ?? null;
-  const [followState, setFollowState] = useState<FollowState>(IDLE_FOLLOW_STATE);
   const localPersistenceEnabled = workspaceSession.mode === "local";
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const previewRef = useRef<MarkdownPreviewHandle | null>(null);
   const editorDocumentRuntime = useWorkspaceEditorDocumentRuntimeOwner();
+  const [roomDocumentProjectionStore] = useState(() =>
+    createActiveRoomDocumentProjectionStore());
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
@@ -254,7 +259,7 @@ export function useWorkspaceRuntime() {
     });
   });
   const getActiveFileSnapshot = useEventCallback(() => {
-    const latestActiveFile = getWorkspaceStoreActiveFile() ?? activeFile;
+    const latestActiveFile = getWorkspaceStoreActiveFile(workspaceSession.mode) ?? activeFile;
     return latestActiveFile
       ? {
           ...latestActiveFile,
@@ -270,7 +275,7 @@ export function useWorkspaceRuntime() {
     return activeSnapshot ?? files[0];
   });
   const getWorkspaceSnapshot = useEventCallback((): WorkspaceState => {
-    const workspaceSnapshot = getWorkspaceStoreSnapshot();
+    const workspaceSnapshot = getWorkspaceStoreSnapshot(workspaceSession.mode);
     const activeFileSnapshot = getActiveFileSnapshot();
     const roomSnapshot = activeRoom ? materializeRoomWorkspaceRef.current() : undefined;
     if (roomSnapshot) {
@@ -383,6 +388,8 @@ export function useWorkspaceRuntime() {
   } = useWorkspaceDocumentRuntime({
     activeFile,
     editorDocumentRuntime,
+    isRoomSession: Boolean(activeRoom),
+    roomDocumentProjectionStore,
     editorRef,
     previewRef,
     syncScrollingEnabled: workspacePreferences.syncScrolling,
@@ -429,7 +436,7 @@ export function useWorkspaceRuntime() {
   ) => {
     if (activeRoomId && snapshot.roomId !== activeRoomId) return;
     const workspaceSnapshot = {
-      ...getWorkspaceStoreSnapshot(),
+      ...getWorkspaceStoreSnapshot("room"),
       folders,
     };
     const previousRoomFiles = workspaceSnapshot.files;
@@ -606,13 +613,13 @@ export function useWorkspaceRuntime() {
   });
   useEffect(() => {
     if (activeRoomDocument && activeDocumentProjection !== null) {
-      if (editorDocumentRuntime.setAuthoritativeText(activeRoomDocument.id, activeDocumentProjection)) {
+      if (roomDocumentProjectionStore.set(activeRoomDocument.id, activeDocumentProjection)) {
         bumpVisibleTextRevision();
       }
       return;
     }
-    if (editorDocumentRuntime.clearAuthoritativeText()) bumpVisibleTextRevision();
-  }, [activeDocumentProjection, activeRoomDocument?.id, editorDocumentRuntime]);
+    if (roomDocumentProjectionStore.clear()) bumpVisibleTextRevision();
+  }, [activeDocumentProjection, activeRoomDocument?.id, roomDocumentProjectionStore]);
   const publishCurrentRoomViewport = useEventCallback(() => {
     const viewport = editorRef.current?.getViewport();
     setRoomViewport(
@@ -643,7 +650,8 @@ export function useWorkspaceRuntime() {
     isLive,
     roomId: activeRoomId,
     selectDocument: selectWorkspaceFileAction,
-    setFollowState,
+    startFollowState: workspaceSession.follow.start,
+    stopFollowState: workspaceSession.follow.stop,
     setFollowingActor: setRoomFollowingActor,
     showError: (message) => showToast(message, "error"),
     showNotice: showToast,
@@ -841,7 +849,7 @@ export function useWorkspaceRuntime() {
     void readIndexedDbWorkspace()
       .then((storedWorkspace) => {
         const nextStoredWorkspace = storedWorkspace ?? finalizeWorkspaceState([]);
-        replaceWorkspace(nextStoredWorkspace);
+        getWorkspaceStoreForMode("local").getState().replaceWorkspace(nextStoredWorkspace);
         replaceCommentsByFileId(nextStoredWorkspace.commentsByFileId);
       })
       .catch(handlePersistenceError);
@@ -857,8 +865,8 @@ export function useWorkspaceRuntime() {
       if (!startedSession) return;
 
       setLiveRoomOpenFailure(null);
-      replaceWorkspace(clearWorkspaceDocumentBodies({
-        ...getWorkspaceStoreSnapshot(),
+      getWorkspaceStoreForMode("room").getState().replaceWorkspace(clearWorkspaceDocumentBodies({
+        ...getWorkspaceStoreSnapshot("local"),
         folders,
       }));
       workspaceSessionHost.openRoom(startedSession);
@@ -875,7 +883,7 @@ export function useWorkspaceRuntime() {
   const stopSessionWithPendingCommit = useEventCallback(() => {
     flushPendingEditorCommit();
     const localWorkspace = getWorkspaceSnapshot();
-    replaceWorkspace(localWorkspace);
+    getWorkspaceStoreForMode("local").getState().replaceWorkspace(localWorkspace);
     stopSession();
     resetCollaborationState("idle");
     syncUrlForLocalWorkspace("replace");
@@ -933,8 +941,8 @@ export function useWorkspaceRuntime() {
   const activateRoomWorkspace = useEventCallback((room: LocationRoom) => {
     restoredRoomViewsRef.current.delete(room.roomId);
     setLiveRoomOpenFailure(null);
+    getWorkspaceStoreForMode("room").getState().replaceWorkspace(createRoomWorkspaceState());
     workspaceSessionHost.openRoom(room);
-    replaceWorkspace(createRoomWorkspaceState());
   });
   useWorkspaceRouteRuntime({
     activateRoomWorkspace,
@@ -1252,7 +1260,7 @@ export function useWorkspaceRuntime() {
       onRenameFolder: (folderId, title) => {
         const folder = folders.find((candidate) => candidate.id === folderId);
         if (!folder || !renameFolder(folderId, title)) return false;
-        const currentFolder = getWorkspaceStoreFolder(folderId);
+        const currentFolder = getWorkspaceStoreFolder(folderId, workspaceSession.mode);
         if (activeRoom && currentFolder && !renameRoomNode(folderId, currentFolder.title)) {
           renameFolder(folderId, folder.title);
           return false;

@@ -1,8 +1,7 @@
-import { useEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import type { Collaborator } from "../collaboration/liveCollaboration";
 import {
   canFollowActor,
-  IDLE_FOLLOW_STATE,
   type FollowState,
   type FollowStopReason,
 } from "../collaboration/followModel";
@@ -20,7 +19,8 @@ type ParticipantFollowControllerArgs = {
   isLive: boolean;
   roomId?: string;
   selectDocument: (documentId: string) => unknown;
-  setFollowState: Dispatch<SetStateAction<FollowState>>;
+  startFollowState: (actorId: string) => void;
+  stopFollowState: () => void;
   setFollowingActor: (actorId: string | null) => void;
   showError: (message: string) => void;
   showNotice: (message: string) => void;
@@ -36,7 +36,8 @@ export const useParticipantFollowController = ({
   isLive,
   roomId,
   selectDocument,
-  setFollowState,
+  startFollowState,
+  stopFollowState,
   setFollowingActor,
   showError,
   showNotice,
@@ -46,7 +47,7 @@ export const useParticipantFollowController = ({
 
   const stopFollowing = useEventCallback((reason: FollowStopReason = "manual") => {
     if (followState.status === "idle") return;
-    setFollowState(IDLE_FOLLOW_STATE);
+    stopFollowState();
     setFollowingActor(null);
     if (reason === "target-left") showNotice("The participant you were following left the room.");
     if (reason === "target-document-deleted") showNotice("The followed document is no longer available.");
@@ -102,7 +103,7 @@ export const useParticipantFollowController = ({
       showError("This participant’s location isn’t available yet.");
       return;
     }
-    setFollowState({ status: "following", actorId });
+    startFollowState(actorId);
     setFollowingActor(actorId);
   });
 

@@ -1,12 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
 import type { WorkspaceRoomRuntime } from "../../collaboration/liveCollaboration";
-import { createRoomWorkspaceSession } from "./WorkspaceSession";
+import { createLocalWorkspaceSession, createRoomWorkspaceSession } from "./WorkspaceSession";
 import { createWorkspaceSessionHost } from "./WorkspaceSessionHost";
 
 const room = (roomId: string) => ({ roomId, shareUrl: `https://tabula.test/#room=${roomId},${"A".repeat(43)}` });
 const runtime = () => ({ disconnect: vi.fn() }) as unknown as WorkspaceRoomRuntime;
 
 describe("WorkspaceSessionHost", () => {
+  it("gives local and room sessions distinct view stores", () => {
+    const localSession = createLocalWorkspaceSession();
+    const roomSession = createRoomWorkspaceSession(room("view-store"));
+
+    expect(localSession.viewStore).not.toBe(roomSession.viewStore);
+    localSession.viewStore.setState({ files: [] });
+    expect(roomSession.viewStore.getState()).not.toBe(localSession.viewStore.getState());
+
+    localSession.dispose();
+    roomSession.dispose();
+  });
+
   it("publishes runtime attachment and detachment through the room session", () => {
     const session = createRoomWorkspaceSession(room("runtime"));
     const attachedRuntime = runtime();

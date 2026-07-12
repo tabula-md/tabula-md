@@ -67,6 +67,7 @@ export const getActiveFileHistory = (historyByFileId: Record<string, FileHistory
   activeFileId ? (historyByFileId[activeFileId] ?? EMPTY_FILE_HISTORY) : EMPTY_FILE_HISTORY;
 
 export const isFileTextFallbackHistoryEnabled = (isRoomSession: boolean) => !isRoomSession;
+export const shouldUseEditorDocumentRuntime = (isRoomSession: boolean) => !isRoomSession;
 
 export const recordFileTextHistory = (history: FileHistory | undefined, previousText: string): FileHistory => ({
   past: [...(history?.past ?? []).slice(-(MAX_FILE_HISTORY_ENTRIES - 1)), previousText],
@@ -239,7 +240,10 @@ export function useWorkspaceActiveFileEditor({
       return;
     }
 
-    if (isRoomSession) return;
+    if (!shouldUseEditorDocumentRuntime(isRoomSession)) {
+      editorDocumentRuntime.clear();
+      return;
+    }
 
     const runtime = editorDocumentRuntime.getRuntime(activeFile);
     const snapshot = runtime.getSnapshot();
@@ -274,6 +278,12 @@ export function useWorkspaceActiveFileEditor({
       source: "coarse-update",
     });
 
+    if (!shouldUseEditorDocumentRuntime(isRoomSession)) {
+      applyLocalText(nextText, options.patches);
+      onPendingTextChange?.();
+      return;
+    }
+
     if (policy.shouldRecordFallbackHistory) {
       flushPendingEditorCommit();
       setHistoryByFileId((currentHistory) => ({
@@ -299,8 +309,20 @@ export function useWorkspaceActiveFileEditor({
       return;
     }
 
-    const runtime = editorDocumentRuntime.getRuntime(activeFile);
     const patches = change?.patches ?? [];
+    if (isRoomSession) {
+      if (activeFile.viewMode !== "edit") onVisibleTextChange?.(change);
+      onPendingTextChange?.();
+      if (!collaborationBound) {
+        applyLocalText(
+          shouldSendFullTextToCollaboration(change) ? (editorRef.current?.getValue() ?? nextText) : null,
+          patches,
+          { docLength: change?.docLength },
+        );
+      }
+      return;
+    }
+    const runtime = editorDocumentRuntime.getRuntime(activeFile);
     if (!isRoomSession && !collaborationBound && patches.length > 0 && typeof change?.docLength === "number") {
       const lengthDelta = patches.reduce(
         (total, patch) => total + patch.insert.length - (patch.to - patch.from),
@@ -324,13 +346,6 @@ export function useWorkspaceActiveFileEditor({
       if (!collaborationBound) schedulePendingEditorCommit(change);
       onPendingTextChange?.();
 
-      if (isRoomSession && !collaborationBound) {
-        applyLocalText(
-          shouldSendFullTextToCollaboration(change) ? (editorRef.current?.getValue() ?? null) : null,
-          patches,
-          { docLength: change?.docLength },
-        );
-      }
       return;
     }
 
@@ -357,9 +372,6 @@ export function useWorkspaceActiveFileEditor({
     }
     if (!collaborationBound) schedulePendingEditorCommit(change);
 
-    if (policy.shouldSendCollaborationPatchImmediately && !collaborationBound) {
-      applyLocalText(nextText, patches, { docLength: change?.docLength });
-    }
   };
 
   const updateActiveFileBookmarks = (nextBookmarks: MarkdownBookmark[]) => {

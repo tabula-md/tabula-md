@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   resetWorkspaceStoreForTests,
+  useRoomWorkspaceStore,
   useWorkspaceStore,
 } from "./workspaceStore";
 import { createWorkspaceRootFolder, type WorkspaceFile } from "../workspaceStorage";
@@ -53,6 +54,30 @@ describe("workspace store", () => {
     initializeWorkspaceStore();
 
     expect(useWorkspaceStore.getState().folders).toEqual([createWorkspaceRootFolder()]);
+  });
+
+  it("keeps local and room workspace records in separate stores", () => {
+    const { draft } = initializeWorkspaceStore();
+    useRoomWorkspaceStore.getState().initializeWorkspace({
+      folders: [createWorkspaceRootFolder()],
+      files: [{ ...draft, id: "room-draft", text: "" }],
+      openFileIds: ["room-draft"],
+      activeFileId: "room-draft",
+      readmeFileId: "",
+      createFile: createTestFile,
+    });
+
+    useRoomWorkspaceStore.getState().renameFile("room-draft", "Shared.md");
+
+    expect(useRoomWorkspaceStore.getState().files).toEqual([
+      expect.objectContaining({ id: "room-draft", title: "Shared.md", text: "" }),
+    ]);
+    expect(useWorkspaceStore.getState().files).toContainEqual(
+      expect.objectContaining({ id: draft.id, title: draft.title, text: draft.text }),
+    );
+    expect(useWorkspaceStore.getState().files).not.toContainEqual(
+      expect.objectContaining({ id: "room-draft" }),
+    );
   });
 
   it("updates active file text and layout through explicit actions", () => {

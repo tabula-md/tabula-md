@@ -28,6 +28,7 @@ import {
   redoCollaborationHistory,
   undoCollaborationHistory,
 } from "../editor/editorState";
+import { setCommentAnchorDecorations } from "../editorExtensions/commentAnchors";
 import {
   clampEditorPosition,
   dispatchLocalTextPatches,
@@ -657,13 +658,24 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         effects: compartmentsRef.current.commentAnchor.reconfigure(
           commentsEnabled
             ? createEditorCommentAnchorExtension(
-                commentAnchors,
-                activeCommentId,
+                [],
+                null,
                 interfaceCopy,
                 (commentId) => onOpenCommentRef.current?.(commentId),
               )
             : [],
         ),
+      });
+    }, [commentsEnabled]);
+
+    useEffect(() => {
+      if (!commentsEnabled) return;
+      viewRef.current?.dispatch({
+        effects: setCommentAnchorDecorations.of({
+          commentAnchors,
+          activeCommentId,
+          copy: interfaceCopy,
+        }),
       });
     }, [activeCommentId, commentAnchors, commentsEnabled, interfaceCopy]);
 

@@ -56,6 +56,7 @@ import {
   schedulePendingEditorCommitTimer,
   shouldApplyEditorRuntimeVisibleTextPatch,
   shouldCancelPendingEditorCommit,
+  shouldUseEditorDocumentRuntime,
   shouldUseFileTextFallbackHistory,
 } from "./hooks/useWorkspaceActiveFileEditor";
 import { getWorkspaceShortcutAction } from "./hooks/useWorkspaceKeyboardShortcuts";
@@ -872,6 +873,11 @@ describe("workspace active file editor controller", () => {
   it("disables whole-document fallback history for room sessions", () => {
     expect(isFileTextFallbackHistoryEnabled(false)).toBe(true);
     expect(isFileTextFallbackHistoryEnabled(true)).toBe(false);
+  });
+
+  it("never creates a local document runtime for a room session", () => {
+    expect(shouldUseEditorDocumentRuntime(false)).toBe(true);
+    expect(shouldUseEditorDocumentRuntime(true)).toBe(false);
   });
 
   it("records text history with a bounded past stack and clears redo history", () => {
