@@ -382,13 +382,23 @@ describe("workspace room runtime", () => {
       },
     });
     await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe("connected"));
-    expect(runtime.getResourceCounts().undoManagers).toBe(1);
+    expect(runtime.getResourceCounts()).toEqual({
+      activeLeases: 1,
+      documentHandles: 1,
+      documentObservers: 1,
+      undoManagers: 1,
+    });
 
     for (const document of documents.slice(1)) {
       runtime.setActiveDocument({ documentId: document.id, fileTitle: document.title });
     }
 
-    expect(runtime.getResourceCounts()).toEqual({ textObservers: 12, undoManagers: 8 });
+    expect(runtime.getResourceCounts()).toEqual({
+      activeLeases: 1,
+      documentHandles: 8,
+      documentObservers: 1,
+      undoManagers: 8,
+    });
     runtime.disconnect();
   });
 

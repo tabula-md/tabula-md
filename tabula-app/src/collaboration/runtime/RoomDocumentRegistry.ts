@@ -22,6 +22,8 @@ type RoomDocumentEntry = {
   resource: RoomDocumentResource;
   references: number;
   lastUsed: number;
+  retired: boolean;
+  destroyed: boolean;
 };
 
 type RoomDocumentRegistryOptions = {
@@ -52,15 +54,22 @@ export const createRoomDocumentRegistry = ({
   maxUndoStackItems = DEFAULT_MAX_UNDO_STACK_ITEMS,
 }: RoomDocumentRegistryOptions) => {
   const entries = new Map<string, RoomDocumentEntry>();
+  const allEntries = new Set<RoomDocumentEntry>();
   let useSequence = 0;
   let activeLeases = 0;
   let disposed = false;
 
-  const disposeEntry = (documentId: string) => {
-    const entry = entries.get(documentId);
-    if (!entry) return;
+  const destroyEntry = (entry: RoomDocumentEntry) => {
+    if (entry.destroyed) return;
+    entry.destroyed = true;
     entry.resource.undoManager.destroy();
-    entries.delete(documentId);
+    allEntries.delete(entry);
+  };
+
+  const retireEntry = (documentId: string, entry: RoomDocumentEntry) => {
+    if (entries.get(documentId) === entry) entries.delete(documentId);
+    entry.retired = true;
+    if (entry.references === 0) destroyEntry(entry);
   };
 
   const prune = () => {
@@ -69,15 +78,14 @@ export const createRoomDocumentRegistry = ({
         .filter(([, entry]) => entry.references === 0)
         .sort((first, second) => first[1].lastUsed - second[1].lastUsed)[0];
       if (!candidate) return;
-      disposeEntry(candidate[0]);
+      retireEntry(candidate[0], candidate[1]);
     }
   };
 
   const sync = () => {
     for (const [documentId, entry] of entries) {
       if (documents.get(documentId) !== entry.resource.yText) {
-        activeLeases -= entry.references;
-        disposeEntry(documentId);
+        retireEntry(documentId, entry);
       }
     }
     prune();
@@ -90,8 +98,7 @@ export const createRoomDocumentRegistry = ({
       if (!yText) return null;
       let entry = entries.get(documentId);
       if (entry && entry.resource.yText !== yText) {
-        activeLeases -= entry.references;
-        disposeEntry(documentId);
+        retireEntry(documentId, entry);
         entry = undefined;
       }
       if (!entry) {
@@ -105,12 +112,16 @@ export const createRoomDocumentRegistry = ({
           },
           references: 0,
           lastUsed: ++useSequence,
+          retired: false,
+          destroyed: false,
         };
         entries.set(documentId, entry);
+        allEntries.add(entry);
       }
       entry.references += 1;
       entry.lastUsed = ++useSequence;
       activeLeases += 1;
+      prune();
       let released = false;
       return {
         resource: entry.resource,
@@ -118,11 +129,9 @@ export const createRoomDocumentRegistry = ({
           if (released) return;
           released = true;
           activeLeases -= 1;
-          const current = entries.get(documentId);
-          if (current?.resource === entry?.resource) {
-            current.references = Math.max(0, current.references - 1);
-            current.lastUsed = ++useSequence;
-          }
+          entry.references = Math.max(0, entry.references - 1);
+          entry.lastUsed = ++useSequence;
+          if (entry.retired && entry.references === 0) destroyEntry(entry);
           prune();
         },
       };
@@ -134,7 +143,7 @@ export const createRoomDocumentRegistry = ({
       return {
         activeLeases,
         documentHandles: entries.size,
-        undoManagers: entries.size,
+        undoManagers: allEntries.size,
       };
     },
 
@@ -142,7 +151,8 @@ export const createRoomDocumentRegistry = ({
       if (disposed) return;
       disposed = true;
       activeLeases = 0;
-      for (const documentId of [...entries.keys()]) disposeEntry(documentId);
+      entries.clear();
+      for (const entry of [...allEntries]) destroyEntry(entry);
     },
   };
 };
