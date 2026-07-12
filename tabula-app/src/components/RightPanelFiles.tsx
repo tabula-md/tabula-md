@@ -1,4 +1,5 @@
-import { type KeyboardEvent as ReactKeyboardEvent, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
+import { type KeyboardEvent as ReactKeyboardEvent, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -42,6 +43,11 @@ type FileTreeFileNode = {
 };
 
 type FileTreeNode = FileTreeFolderNode | FileTreeFileNode;
+
+export type VisibleFileTreeRow = {
+  node: FileTreeNode;
+  depth: number;
+};
 
 type RightPanelFilesProps = {
   files: WorkspaceFile[];
@@ -158,23 +164,24 @@ export const buildFileTree = (
   return sortFileTree(rootNode);
 };
 
-const collectVisibleFileIds = (
-  node: FileTreeFolderNode,
+export const flattenVisibleFileTree = (
+  root: FileTreeFolderNode,
   collapsedFolderIds: Set<string>,
-  fileIds: string[] = [],
+  rows: VisibleFileTreeRow[] = [],
+  depth = 0,
 ) => {
-  for (const childNode of node.children) {
-    if (childNode.type === "file") {
-      fileIds.push(childNode.file.id);
-      continue;
-    }
-
-    if (!collapsedFolderIds.has(childNode.id)) {
-      collectVisibleFileIds(childNode, collapsedFolderIds, fileIds);
+  rows.push({ node: root, depth });
+  if (!collapsedFolderIds.has(root.id)) {
+    for (const childNode of root.children) {
+      if (childNode.type === "folder") {
+        flattenVisibleFileTree(childNode, collapsedFolderIds, rows, depth + 1);
+      } else {
+        rows.push({ node: childNode, depth: depth + 1 });
+      }
     }
   }
 
-  return fileIds;
+  return rows;
 };
 
 export function RightPanelFiles({
@@ -214,16 +221,43 @@ export function RightPanelFiles({
   const actionMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const createMenuRef = useRef<HTMLDivElement | null>(null);
   const createButtonRef = useRef<HTMLButtonElement | null>(null);
+  const treeScrollRef = useRef<HTMLDivElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const normalizedQuery = fileQuery.trim().toLowerCase();
-  const visibleFiles = normalizedQuery
-    ? files.filter((file) => getFileSearchText(file).toLowerCase().includes(normalizedQuery))
-    : files;
   const hasLiveWorkspace = isLiveWorkspace;
-  const displayTitles = getWorkspaceFileDisplayTitles(files);
-  const folderDisplayTitles = getWorkspaceFolderDisplayTitles(folders);
-  const fileTreeRoot = buildFileTree(visibleFiles, folders, displayTitles, folderDisplayTitles);
-  const visibleFileIds = collectVisibleFileIds(fileTreeRoot, collapsedFolderIds);
+  const { visibleFiles, folderDisplayTitles, fileTreeRoot, visibleRows } = useMemo(() => {
+    const nextVisibleFiles = normalizedQuery
+      ? files.filter((file) => getFileSearchText(file).toLowerCase().includes(normalizedQuery))
+      : files;
+    const nextFolderDisplayTitles = getWorkspaceFolderDisplayTitles(folders);
+    const nextFileTreeRoot = buildFileTree(
+      nextVisibleFiles,
+      folders,
+      getWorkspaceFileDisplayTitles(files),
+      nextFolderDisplayTitles,
+    );
+    return {
+      visibleFiles: nextVisibleFiles,
+      folderDisplayTitles: nextFolderDisplayTitles,
+      fileTreeRoot: nextFileTreeRoot,
+      visibleRows: flattenVisibleFileTree(nextFileTreeRoot, collapsedFolderIds),
+    };
+  }, [collapsedFolderIds, files, folders, getFileSearchText, normalizedQuery]);
+  const visibleFileIds = useMemo(
+    () => visibleRows.flatMap((row) => row.node.type === "file" ? [row.node.file.id] : []),
+    [visibleRows],
+  );
+  const rowIndexByFileId = useMemo(
+    () => new Map(visibleRows.flatMap((row, index) => row.node.type === "file" ? [[row.node.file.id, index] as const] : [])),
+    [visibleRows],
+  );
+  const treeVirtualizer = useVirtualizer({
+    count: visibleRows.length,
+    getScrollElement: () => treeScrollRef.current,
+    estimateSize: () => 36,
+    getItemKey: (index) => visibleRows[index]?.node.id ?? index,
+    overscan: 8,
+  });
 
   useLayoutEffect(() => {
     if (!renamingFileId) {
@@ -298,7 +332,11 @@ export function RightPanelFiles({
 
     const currentIndex = Math.max(0, visibleFileIds.indexOf(fileId));
     const nextIndex = Math.min(visibleFileIds.length - 1, Math.max(0, currentIndex + offset));
-    fileButtonRefs.current.get(visibleFileIds[nextIndex])?.focus();
+    const nextFileId = visibleFileIds[nextIndex];
+    const nextRowIndex = rowIndexByFileId.get(nextFileId);
+    if (nextRowIndex === undefined) return;
+    treeVirtualizer.scrollToIndex(nextRowIndex, { align: "auto" });
+    window.requestAnimationFrame(() => fileButtonRefs.current.get(nextFileId)?.focus());
   };
 
   const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -315,7 +353,9 @@ export function RightPanelFiles({
       const firstFileId = visibleFileIds[0];
       if (firstFileId) {
         event.preventDefault();
-        fileButtonRefs.current.get(firstFileId)?.focus();
+        const firstRowIndex = rowIndexByFileId.get(firstFileId);
+        if (firstRowIndex !== undefined) treeVirtualizer.scrollToIndex(firstRowIndex, { align: "start" });
+        window.requestAnimationFrame(() => fileButtonRefs.current.get(firstFileId)?.focus());
       }
       return;
     }
@@ -356,7 +396,14 @@ export function RightPanelFiles({
     setRenamingFolderTitle(folder.title);
   };
 
-  const renderFileTreeNode = (node: FileTreeNode, depth: number) => {
+  const renderFileTreeNode = (node: FileTreeNode, depth: number, virtualRow: VirtualItem) => {
+    const virtualStyle = {
+      position: "absolute" as const,
+      top: 0,
+      left: 0,
+      width: "100%",
+      transform: `translateY(${virtualRow.start}px)`,
+    };
     if (node.type === "folder") {
       const folderCollapsed = collapsedFolderIds.has(node.id);
       const isRootFolder = node.id === WORKSPACE_ROOT_FOLDER_ID;
@@ -364,7 +411,13 @@ export function RightPanelFiles({
       const folderIsRenaming = renamingFolderId === node.id;
 
       return (
-        <li className="right-file-tree-node folder" key={node.id}>
+        <li
+          ref={treeVirtualizer.measureElement}
+          className="right-file-tree-node folder"
+          data-index={virtualRow.index}
+          key={node.id}
+          style={{ ...virtualStyle, zIndex: folderMenuOpen ? 1 : undefined }}
+        >
           <div
             className="right-row right-file-tree-row folder"
             style={{ paddingLeft: `${depth * RIGHT_TREE_INDENT}px` }}
@@ -455,11 +508,6 @@ export function RightPanelFiles({
               </span>
             )}
           </div>
-          {!folderCollapsed && node.children.length > 0 && (
-            <ol className="right-file-tree-children">
-              {node.children.map((childNode) => renderFileTreeNode(childNode, depth + 1))}
-            </ol>
-          )}
         </li>
       );
     }
@@ -470,7 +518,13 @@ export function RightPanelFiles({
     const menuOpen = file.id === actionMenuFileId;
 
     return (
-      <li className="right-file-tree-node file" key={node.id}>
+      <li
+        ref={treeVirtualizer.measureElement}
+        className="right-file-tree-node file"
+        data-index={virtualRow.index}
+        key={node.id}
+        style={{ ...virtualStyle, zIndex: menuOpen ? 1 : undefined }}
+      >
         <div
           className={`right-row right-file-tree-row file ${isActiveFile ? "active" : ""} ${isRenaming ? "renaming" : ""}`}
           style={{ paddingLeft: `${depth * RIGHT_TREE_INDENT}px` }}
@@ -602,7 +656,7 @@ export function RightPanelFiles({
   };
 
   return (
-    <section className="right-panel-content">
+    <section className="right-panel-content right-files-panel">
       <div className="right-file-search-row">
         <input
           ref={searchInputRef}
@@ -671,9 +725,18 @@ export function RightPanelFiles({
         </div>
       </div>
       {visibleFiles.length > 0 || fileTreeRoot.children.length > 0 ? (
-        <ol className="right-file-tree" aria-label={copy.tree}>
-          {renderFileTreeNode(fileTreeRoot, 0)}
-        </ol>
+        <div className="right-file-tree-scroll" ref={treeScrollRef}>
+          <ol
+            className="right-file-tree virtual"
+            aria-label={copy.tree}
+            style={{ height: `${treeVirtualizer.getTotalSize()}px` }}
+          >
+            {treeVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = visibleRows[virtualRow.index];
+              return row ? renderFileTreeNode(row.node, row.depth, virtualRow) : null;
+            })}
+          </ol>
+        </div>
       ) : (
         <p className="right-empty-state">{copy.noneFound}</p>
       )}

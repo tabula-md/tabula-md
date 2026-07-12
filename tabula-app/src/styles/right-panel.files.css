@@ -7,6 +7,22 @@
   list-style: none;
 }
 
+.right-files-panel {
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.right-file-tree-scroll {
+  min-height: 0;
+  overflow: auto;
+}
+
+.right-file-tree.virtual {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
 .right-file-tree-node {
   position: relative;
   min-width: 0;

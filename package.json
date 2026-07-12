@@ -47,6 +47,7 @@
     "@fontsource/geist-mono": "^5.2.8",
     "@fontsource/geist-sans": "^5.2.5",
     "@lezer/highlight": "^1.2.3",
+    "@tanstack/react-virtual": "^3.14.5",
     "@vitejs/plugin-react": "^5.0.0",
     "dexie": "^4.4.4",
     "fflate": "^0.8.3",

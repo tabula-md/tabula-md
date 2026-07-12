@@ -128,7 +128,8 @@
   background: var(--surface-workbench);
 }
 
-.right-panel-body.comments {
+.right-panel-body.comments,
+.right-panel-body.files {
   overflow: hidden;
 }
 

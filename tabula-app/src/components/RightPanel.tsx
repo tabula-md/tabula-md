@@ -196,7 +196,7 @@ export function RightPanel({
         </button>
       </div>
 
-      <div className={`right-panel-body ${effectiveView === "comments" ? "comments" : ""}`}>
+      <div className={`right-panel-body ${effectiveView}`}>
         {effectiveView === "files" && (
           <RightPanelFiles
             files={files}
