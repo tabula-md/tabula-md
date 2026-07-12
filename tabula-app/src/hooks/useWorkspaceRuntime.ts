@@ -519,7 +519,18 @@ export function useWorkspaceRuntime() {
       const roomComments = Object.fromEntries(
         Object.entries(roomCommentsByFileId).map(([fileId, comments]) => [
           fileId,
-          comments.map(({ fileId: _fileId, authorId: _authorId, ...comment }) => comment),
+          comments.map(({ fileId: _fileId, authorId: _authorId, ...comment }) => {
+            const anchorDetached =
+              typeof comment.selectionStart !== "number" ||
+              typeof comment.selectionEnd !== "number" ||
+              comment.selectionEnd <= comment.selectionStart;
+            return {
+              ...comment,
+              anchorDetached,
+              selectionStart: anchorDetached ? undefined : comment.selectionStart,
+              selectionEnd: anchorDetached ? undefined : comment.selectionEnd,
+            };
+          }),
         ]),
       );
       replaceCommentsByFileId(roomComments, { preserveInteraction: true });

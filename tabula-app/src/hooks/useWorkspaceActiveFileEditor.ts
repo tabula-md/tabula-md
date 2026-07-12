@@ -295,7 +295,7 @@ export function useWorkspaceActiveFileEditor({
 
     const runtime = editorDocumentRuntime.getRuntime(activeFile);
     const patches = change?.patches ?? [];
-    if (patches.length > 0 && typeof change?.docLength === "number") {
+    if (!collaborationBound && patches.length > 0 && typeof change?.docLength === "number") {
       const lengthDelta = patches.reduce(
         (total, patch) => total + patch.insert.length - (patch.to - patch.from),
         0,

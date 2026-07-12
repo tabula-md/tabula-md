@@ -1,6 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { history } from "@codemirror/commands";
 import { EditorSelection, EditorState, type Transaction } from "@codemirror/state";
 import { EditorView, placeholder as createEditorPlaceholderExtension } from "@codemirror/view";
+import * as Y from "yjs";
 import {
   canRedoEditor,
   canUndoEditor,
@@ -43,9 +45,71 @@ import type {
   MarkdownEditorProps,
 } from "../markdownEditorTypes";
 import type { EditorViewportAnchor } from "../preview/previewSyncTypes";
+import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
 
 const MAX_CACHED_LOCAL_EDITOR_STATES = 20;
+const MAX_CACHED_LIVE_EDITOR_VIEW_STATES = 20;
+
+type LiveEditorViewState = {
+  selectionAnchor: Y.RelativePosition;
+  selectionHead: Y.RelativePosition;
+  viewportAnchor: Y.RelativePosition;
+  viewportOffset: number;
+};
+
+const captureLiveEditorViewState = (
+  view: EditorView,
+  binding: CollabEditorBinding,
+): LiveEditorViewState | null => {
+  const yDoc = binding.yText.doc;
+  if (!yDoc) return null;
+  const selection = view.state.selection.main;
+  const viewportTop = Math.max(0, view.scrollDOM.scrollTop);
+  const viewportBlock = view.lineBlockAtHeight(viewportTop);
+  return {
+    selectionAnchor: Y.createRelativePositionFromTypeIndex(binding.yText, selection.anchor),
+    selectionHead: Y.createRelativePositionFromTypeIndex(binding.yText, selection.head),
+    viewportAnchor: Y.createRelativePositionFromTypeIndex(binding.yText, viewportBlock.from),
+    viewportOffset: viewportTop - viewportBlock.top,
+  };
+};
+
+const resolveLivePosition = (
+  position: Y.RelativePosition,
+  binding: CollabEditorBinding,
+) => {
+  const yDoc = binding.yText.doc;
+  if (!yDoc) return null;
+  const absolute = Y.createAbsolutePositionFromRelativePosition(position, yDoc);
+  return absolute?.type === binding.yText ? absolute.index : null;
+};
+
+const restoreLiveEditorViewState = (
+  view: EditorView,
+  binding: CollabEditorBinding,
+  state: LiveEditorViewState | undefined,
+) => {
+  if (!state) return;
+  const anchor = resolveLivePosition(state.selectionAnchor, binding);
+  const head = resolveLivePosition(state.selectionHead, binding);
+  if (anchor !== null && head !== null) {
+    view.dispatch({
+      selection: EditorSelection.single(
+        Math.min(anchor, view.state.doc.length),
+        Math.min(head, view.state.doc.length),
+      ),
+    });
+  }
+  const viewportPosition = resolveLivePosition(state.viewportAnchor, binding);
+  if (viewportPosition === null) return;
+  view.requestMeasure({
+    read: () => view.lineBlockAt(Math.min(viewportPosition, view.state.doc.length)).top + state.viewportOffset,
+    write: (scrollTop) => {
+      view.scrollDOM.scrollTop = Math.max(0, scrollTop);
+    },
+  });
+};
 
 const getEditorViewportLineAnchor = (view: EditorView): EditorViewportAnchor => {
   const viewportTop = Math.max(0, view.scrollDOM.scrollTop);
@@ -103,7 +167,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const containerRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
     const bookmarksRef = useRef<MarkdownBookmark[]>(bookmarks);
-    const commentAnchorsRef = useRef<MarkdownCommentAnchor[]>(commentAnchors);
     const onChangeRef = useRef(onChange);
     const onBookmarksChangeRef = useRef(onBookmarksChange);
     const onHistoryStateChangeRef = useRef(onHistoryStateChange);
@@ -112,13 +175,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const onSelectionChangeRef = useRef(onSelectionChange);
     const onSelectionActionPositionChangeRef = useRef(onSelectionActionPositionChange);
     const onScrollRatioChangeRef = useRef(onScrollRatioChange);
-    const activeCommentIdRef = useRef(activeCommentId);
     const collaborationBindingRef = useRef(collaborationBinding);
     const appliedCollaborationBindingRef = useRef(collaborationBinding);
-    const commentsEnabledRef = useRef(commentsEnabled);
-    const interfaceCopyRef = useRef(interfaceCopy);
     const compartmentsRef = useRef(createMarkdownEditorCompartments());
     const stateByFileIdRef = useRef(new Map<string, EditorState>());
+    const liveViewStateByFileIdRef = useRef(new Map<string, LiveEditorViewState>());
     const lastHistoryStateRef = useRef(EMPTY_EDITOR_HISTORY_STATE);
 
     useEffect(() => {
@@ -128,10 +189,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     useEffect(() => {
       bookmarksRef.current = bookmarks;
     }, [bookmarks]);
-
-    useEffect(() => {
-      commentAnchorsRef.current = commentAnchors;
-    }, [commentAnchors]);
 
     useEffect(() => {
       onBookmarksChangeRef.current = onBookmarksChange;
@@ -160,18 +217,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     useEffect(() => {
       onScrollRatioChangeRef.current = onScrollRatioChange;
     }, [onScrollRatioChange]);
-
-    useEffect(() => {
-      activeCommentIdRef.current = activeCommentId;
-    }, [activeCommentId]);
-
-    useEffect(() => {
-      commentsEnabledRef.current = commentsEnabled;
-    }, [commentsEnabled]);
-
-    useEffect(() => {
-      interfaceCopyRef.current = interfaceCopy;
-    }, [interfaceCopy]);
 
     useEffect(() => {
       collaborationBindingRef.current = collaborationBinding;
@@ -210,64 +255,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         bookmarksRef.current = nextBookmarks;
         onBookmarksChangeRef.current?.(nextBookmarks);
       }
-    };
-
-    const reconfigureCommentDecorations = (view: EditorView, nextCommentAnchors: MarkdownCommentAnchor[]) => {
-      view.dispatch({
-        effects: [
-          compartmentsRef.current.commentAnchor.reconfigure(
-            commentsEnabledRef.current
-              ? createEditorCommentAnchorExtension(
-                  nextCommentAnchors,
-                  activeCommentIdRef.current,
-                  interfaceCopyRef.current,
-                  (commentId) => onOpenCommentRef.current?.(commentId),
-                )
-              : [],
-          ),
-        ],
-      });
-    };
-
-    const mapCommentAnchorsThroughDocumentChange = (view: EditorView, transactions: readonly Transaction[]) => {
-      const currentCommentAnchors = commentAnchorsRef.current;
-      if (currentCommentAnchors.length === 0) {
-        return;
-      }
-
-      const docLength = view.state.doc.length;
-      let changed = false;
-      const nextCommentAnchors = currentCommentAnchors
-        .map((anchor) => {
-          const start = clampEditorPosition(
-            transactions.reduce(
-              (mappedPosition, transaction) => transaction.changes.mapPos(mappedPosition, 1),
-              anchor.start,
-            ),
-            docLength,
-          );
-          const end = clampEditorPosition(
-            transactions.reduce(
-              (mappedPosition, transaction) => transaction.changes.mapPos(mappedPosition, -1),
-              anchor.end,
-            ),
-            docLength,
-          );
-          changed = changed || start !== anchor.start || end !== anchor.end;
-          return { ...anchor, start, end };
-        })
-        .filter((anchor) => anchor.end > anchor.start);
-
-      if (!changed) {
-        return;
-      }
-
-      commentAnchorsRef.current = nextCommentAnchors;
-      queueMicrotask(() => {
-        if (viewRef.current === view) {
-          reconfigureCommentDecorations(view, nextCommentAnchors);
-        }
-      });
     };
 
     useImperativeHandle(ref, () => ({
@@ -472,8 +459,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
 
         mapBookmarksThroughDocumentChange(update.view, update.transactions);
-        mapCommentAnchorsThroughDocumentChange(update.view, update.transactions);
-
         if (!isExternalUpdate) {
           const patches = getEditorTextChangePatches(update.changes);
           onChangeRef.current(null, {
@@ -513,6 +498,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
       viewRef.current = view;
       appliedCollaborationBindingRef.current = collaborationBinding;
+      if (collaborationBinding) {
+        restoreLiveEditorViewState(
+          view,
+          collaborationBinding,
+          liveViewStateByFileIdRef.current.get(fileId),
+        );
+      }
       emitHistoryState(view);
       const handleScroll = () => {
         onScrollRatioChangeRef.current?.(getScrollRatio(view.scrollDOM));
@@ -523,7 +515,19 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         onSelectionChangeRef.current?.(undefined);
         onSelectionActionPositionChangeRef.current?.(null);
         view.scrollDOM.removeEventListener("scroll", handleScroll);
-        if (collaborationBindingRef.current) {
+        const appliedBinding = appliedCollaborationBindingRef.current;
+        if (appliedBinding) {
+          const liveViewState = captureLiveEditorViewState(view, appliedBinding);
+          if (liveViewState) {
+            liveViewStateByFileIdRef.current.delete(fileId);
+            liveViewStateByFileIdRef.current.set(fileId, liveViewState);
+            while (liveViewStateByFileIdRef.current.size > MAX_CACHED_LIVE_EDITOR_VIEW_STATES) {
+              const oldestFileId = liveViewStateByFileIdRef.current.keys().next().value;
+              if (typeof oldestFileId !== "string") break;
+              liveViewStateByFileIdRef.current.delete(oldestFileId);
+            }
+          }
+          appliedBinding.undoManager.stopCapturing();
           stateByFileIdRef.current.delete(fileId);
         } else {
           stateByFileIdRef.current.set(fileId, view.state);
@@ -549,6 +553,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       view.dispatch({
         effects: [
           compartmentsRef.current.collaboration.reconfigure([]),
+          compartmentsRef.current.history.reconfigure([]),
         ],
       });
       dispatchRemoteTextChange(
@@ -562,9 +567,19 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
               ? createEditorCollaborationExtensions(collaborationBinding)
               : [],
           ),
+          compartmentsRef.current.history.reconfigure(
+            collaborationBinding ? [] : history(),
+          ),
         ],
       });
       appliedCollaborationBindingRef.current = collaborationBinding;
+      if (collaborationBinding) {
+        restoreLiveEditorViewState(
+          view,
+          collaborationBinding,
+          liveViewStateByFileIdRef.current.get(fileId),
+        );
+      }
       emitHistoryState(view);
     }, [collaborationBinding, fileId]);
 

@@ -1,16 +1,15 @@
-import { type Extension } from "@codemirror/state";
+import { StateField, type EditorState, type Extension } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
 import type { MarkdownCommentAnchor, MarkdownEditorInterfaceCopy } from "../markdownEditorTypes";
 
-export const createCommentAnchorExtension = (
-  commentAnchors: MarkdownCommentAnchor[] = [],
+const buildCommentDecorations = (
+  state: EditorState,
+  commentAnchors: MarkdownCommentAnchor[],
   activeCommentId: string | null | undefined,
   copy: Pick<MarkdownEditorInterfaceCopy, "activeComment" | "openComment">,
-  onOpenComment?: (commentId: string) => void,
-): Extension => [
-  EditorView.decorations.of((view) => {
-    const docLength = view.state.doc.length;
-    const ranges = commentAnchors
+) => {
+  const docLength = state.doc.length;
+  const ranges = commentAnchors
       .map((anchor) => ({
         ...anchor,
         start: Math.max(0, Math.min(anchor.start, docLength)),
@@ -28,8 +27,23 @@ export const createCommentAnchorExtension = (
         }).range(anchor.start, anchor.end),
       );
 
-    return Decoration.set(ranges, true);
-  }),
+  return Decoration.set(ranges, true);
+};
+
+export const createCommentAnchorExtension = (
+  commentAnchors: MarkdownCommentAnchor[] = [],
+  activeCommentId: string | null | undefined,
+  copy: Pick<MarkdownEditorInterfaceCopy, "activeComment" | "openComment">,
+  onOpenComment?: (commentId: string) => void,
+): Extension => {
+  const decorations = StateField.define({
+    create: (state) => buildCommentDecorations(state, commentAnchors, activeCommentId, copy),
+    update: (current, transaction) => current.map(transaction.changes),
+    provide: (field) => EditorView.decorations.from(field),
+  });
+
+  return [
+  decorations,
   EditorView.domEventHandlers({
     click(event) {
       const target = event.target;
@@ -49,4 +63,5 @@ export const createCommentAnchorExtension = (
       return true;
     },
   }),
-];
+  ];
+};
