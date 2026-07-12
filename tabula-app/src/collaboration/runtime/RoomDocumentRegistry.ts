@@ -6,7 +6,7 @@ import { yCollab } from "y-codemirror.next";
 const DEFAULT_MAX_UNDO_MANAGERS = 8;
 const DEFAULT_MAX_UNDO_STACK_ITEMS = 100;
 
-export type RoomDocumentResource = {
+export type RoomDocumentHandle = {
   documentId: string;
   extension: Extension;
   yText: Y.Text;
@@ -14,12 +14,12 @@ export type RoomDocumentResource = {
 };
 
 export type RoomDocumentLease = {
-  resource: RoomDocumentResource;
+  handle: RoomDocumentHandle;
   release(): void;
 };
 
 type RoomDocumentEntry = {
-  resource: RoomDocumentResource;
+  handle: RoomDocumentHandle;
   references: number;
   lastUsed: number;
   retired: boolean;
@@ -62,7 +62,7 @@ export const createRoomDocumentRegistry = ({
   const destroyEntry = (entry: RoomDocumentEntry) => {
     if (entry.destroyed) return;
     entry.destroyed = true;
-    entry.resource.undoManager.destroy();
+    entry.handle.undoManager.destroy();
     allEntries.delete(entry);
   };
 
@@ -84,7 +84,7 @@ export const createRoomDocumentRegistry = ({
 
   const sync = () => {
     for (const [documentId, entry] of entries) {
-      if (documents.get(documentId) !== entry.resource.yText) {
+      if (documents.get(documentId) !== entry.handle.yText) {
         retireEntry(documentId, entry);
       }
     }
@@ -97,14 +97,14 @@ export const createRoomDocumentRegistry = ({
       const yText = documents.get(documentId);
       if (!yText) return null;
       let entry = entries.get(documentId);
-      if (entry && entry.resource.yText !== yText) {
+      if (entry && entry.handle.yText !== yText) {
         retireEntry(documentId, entry);
         entry = undefined;
       }
       if (!entry) {
         const undoManager = createBoundedUndoManager(yText, maxUndoStackItems);
         entry = {
-          resource: {
+          handle: {
             documentId,
             extension: yCollab(yText, awareness, { undoManager }),
             yText,
@@ -124,7 +124,7 @@ export const createRoomDocumentRegistry = ({
       prune();
       let released = false;
       return {
-        resource: entry.resource,
+        handle: entry.handle,
         release() {
           if (released) return;
           released = true;

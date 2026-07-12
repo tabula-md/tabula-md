@@ -16,7 +16,6 @@
     "build:core": "npm run build -w @tabula-md/tabula",
     "perf:preview-architecture": "npm run build:core && node scripts/preview-architecture-benchmark.mjs",
     "preview": "vite preview --host 0.0.0.0",
-    "pr:handoff": "node scripts/pr-handoff.mjs",
     "surface:check": "node scripts/public-surface-check.mjs",
     "boundary:check": "node scripts/check-boundaries.mjs",
     "test": "vitest run",
@@ -34,8 +33,7 @@
     "test:browser:performance": "npm run test:browser -- --suite=performance",
     "bundle:check": "node scripts/check-bundle-chunks.mjs",
     "test:surface-colors": "node scripts/check-surface-colors.mjs",
-    "lint:fast": "oxlint tabula-app/src packages/tabula/src scripts --deny-warnings",
-    "workflow:status": "node scripts/workflow-status.mjs"
+    "lint:fast": "oxlint tabula-app/src packages/tabula/src scripts --deny-warnings"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

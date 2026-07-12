@@ -23,7 +23,7 @@ describe("room document registry", () => {
     const first = registry.acquire("doc-0");
     const second = registry.acquire("doc-0");
 
-    expect(first?.resource).toBe(second?.resource);
+    expect(first?.handle).toBe(second?.handle);
     expect(registry.getResourceCounts()).toEqual({
       activeLeases: 2,
       documentHandles: 1,
@@ -59,6 +59,31 @@ describe("room document registry", () => {
     doc.destroy();
   });
 
+  it("keeps heavy editor resources bounded across a 500-document workspace", () => {
+    const { doc, documents } = createDocuments(500);
+    const awareness = new Awareness(doc);
+    const registry = createRoomDocumentRegistry({ awareness, documents, maxUndoManagers: 8 });
+
+    for (let index = 0; index < 500; index += 1) {
+      registry.acquire(`doc-${index}`)?.release();
+    }
+
+    expect(registry.getResourceCounts()).toEqual({
+      activeLeases: 0,
+      documentHandles: 8,
+      undoManagers: 8,
+    });
+
+    registry.dispose();
+    expect(registry.getResourceCounts()).toEqual({
+      activeLeases: 0,
+      documentHandles: 0,
+      undoManagers: 0,
+    });
+    awareness.destroy();
+    doc.destroy();
+  });
+
   it("invalidates a resource when its Y.Text identity changes", () => {
     const { doc, documents } = createDocuments(1);
     const awareness = new Awareness(doc);
@@ -71,8 +96,8 @@ describe("room document registry", () => {
     registry.sync();
     const second = registry.acquire("doc-0");
 
-    expect(second?.resource).not.toBe(first?.resource);
-    expect(second?.resource.yText).toBe(replacement);
+    expect(second?.handle).not.toBe(first?.handle);
+    expect(second?.handle.yText).toBe(replacement);
     first?.release();
     second?.release();
     registry.dispose();

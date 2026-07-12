@@ -152,7 +152,7 @@ export function useCollaborationConnectionRuntime({
       : null,
     [activeDocumentId, runtime],
   );
-  const activeDocumentText = useSyncExternalStore(
+  const activeDocumentProjection = useSyncExternalStore(
     subscribeToActiveDocument,
     getActiveDocumentSnapshot,
     getActiveDocumentSnapshot,
@@ -318,7 +318,7 @@ export function useCollaborationConnectionRuntime({
 
   return {
     applyLocalText,
-    activeDocumentText,
+    activeDocumentProjection,
     activeDocumentComments,
     createDocument: (input: WorkspaceRoomDocumentCommand) =>
       dispatchWorkspaceCommand({ type: "create-document", input }),

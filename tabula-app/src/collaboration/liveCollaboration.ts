@@ -35,7 +35,7 @@ import { resolveCollabStartConfig } from "./collabStartConfig";
 import {
   createRoomDocumentRegistry,
   type RoomDocumentLease,
-  type RoomDocumentResource,
+  type RoomDocumentHandle,
 } from "./runtime/RoomDocumentRegistry";
 import { createRoomDocumentProjectionStore } from "./runtime/RoomDocumentProjectionStore";
 import { createRoomCommentsStore } from "./runtime/RoomCommentsStore";
@@ -357,8 +357,8 @@ export const createWorkspaceRoomRuntime = ({
     refreshActiveEditorBinding();
   };
 
-  const createEditorBinding = (resource: RoomDocumentResource): CollabEditorBinding => {
-    const { documentId: nextDocumentId, extension, yText, undoManager } = resource;
+  const createEditorBinding = (handle: RoomDocumentHandle): CollabEditorBinding => {
+    const { documentId: nextDocumentId, extension, yText, undoManager } = handle;
     return {
       documentId: nextDocumentId,
       extension,
@@ -377,18 +377,18 @@ export const createWorkspaceRoomRuntime = ({
   };
 
   const refreshActiveEditorBinding = () => {
-    const currentResource = activeDocumentLease?.resource;
+    const currentHandle = activeDocumentLease?.handle;
     const nextText = activeDocumentId ? room.documents.get(activeDocumentId) : undefined;
     if (
-      currentResource &&
-      currentResource.documentId === activeDocumentId &&
-      currentResource.yText === nextText
+      currentHandle &&
+      currentHandle.documentId === activeDocumentId &&
+      currentHandle.yText === nextText
     ) {
       return;
     }
     activeDocumentLease?.release();
     activeDocumentLease = activeDocumentId ? documentRegistry.acquire(activeDocumentId) : null;
-    setEditorBinding(activeDocumentLease ? createEditorBinding(activeDocumentLease.resource) : null);
+    setEditorBinding(activeDocumentLease ? createEditorBinding(activeDocumentLease.handle) : null);
   };
 
   const isCheckpointLeader = () =>
@@ -706,7 +706,7 @@ export const createWorkspaceRoomRuntime = ({
     },
     materializeWorkspace: () => getWorkspaceRoomSnapshot(room),
     getResourceCounts: () => ({
-      documentObservers: 1,
+      documentObservers: closed ? 0 : 1,
       ...documentRegistry.getResourceCounts(),
       ...documentProjectionStore.getResourceCounts(),
       ...commentsStore.getResourceCounts(),

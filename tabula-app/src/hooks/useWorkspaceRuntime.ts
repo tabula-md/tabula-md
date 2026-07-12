@@ -551,7 +551,7 @@ export function useWorkspaceRuntime() {
     statusLabel,
     startSession: startCollaborationSession,
     applyLocalText,
-    activeDocumentText,
+    activeDocumentProjection,
     activeDocumentComments,
     createDocument: createRoomDocument,
     createFolder: createRoomFolder,
@@ -605,14 +605,14 @@ export function useWorkspaceRuntime() {
     roomId: activeRoomId,
   });
   useEffect(() => {
-    if (activeRoomDocument && activeDocumentText !== null) {
-      if (editorDocumentRuntime.setAuthoritativeText(activeRoomDocument.id, activeDocumentText)) {
+    if (activeRoomDocument && activeDocumentProjection !== null) {
+      if (editorDocumentRuntime.setAuthoritativeText(activeRoomDocument.id, activeDocumentProjection)) {
         bumpVisibleTextRevision();
       }
       return;
     }
     if (editorDocumentRuntime.clearAuthoritativeText()) bumpVisibleTextRevision();
-  }, [activeDocumentText, activeRoomDocument?.id, editorDocumentRuntime]);
+  }, [activeDocumentProjection, activeRoomDocument?.id, editorDocumentRuntime]);
   const publishCurrentRoomViewport = useEventCallback(() => {
     const viewport = editorRef.current?.getViewport();
     setRoomViewport(

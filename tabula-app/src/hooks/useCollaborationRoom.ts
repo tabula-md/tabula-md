@@ -106,7 +106,7 @@ export function useCollaborationRoom({
   });
   const {
     applyLocalText,
-    activeDocumentText,
+    activeDocumentProjection,
     activeDocumentComments,
     createDocument,
     createFolder,
@@ -189,7 +189,7 @@ export function useCollaborationRoom({
       : roomAvailability.unavailableReason || checkpointAvailability.unavailableReason,
     startSession,
     applyLocalText,
-    activeDocumentText,
+    activeDocumentProjection,
     activeDocumentComments,
     createDocument,
     createFolder,

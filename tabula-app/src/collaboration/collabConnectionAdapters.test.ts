@@ -641,7 +641,57 @@ describe("workspace room runtime", () => {
     });
     expect(switchedResources.pendingAwarenessClients).toBeLessThanOrEqual(1);
     runtime.disconnect();
+    expect(runtime.getResourceCounts()).toEqual({
+      activeLeases: 0,
+      commentDocuments: 0,
+      commentSnapshots: 0,
+      commentSubscriptions: 0,
+      documentHandles: 0,
+      documentObservers: 0,
+      documentProjectionListeners: 0,
+      documentProjectionSnapshots: 0,
+      inboundBufferedChars: 0,
+      inboundEnvelopes: 0,
+      pendingAwarenessClients: 0,
+      pendingLocalUpdateBytes: 0,
+      undoManagers: 0,
+    });
   });
+
+  it("keeps 100 one-character edits below 100 KiB for a 1 MiB document", async () => {
+    const relay = createMemoryRoomRelay();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const adapters = {
+      ...defaults,
+      createRoomTransport: relay.createRoomTransport,
+      roomCheckpointStore: createNoopRoomCheckpointStore(),
+      resolveRoomBaseUrl: () => "http://memory-room.test",
+    };
+    const initialText = "a".repeat(1024 * 1024);
+    const host = createWorkspaceRoomRuntime({
+      roomId: "room-large-incremental-edits",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-a",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc-a", title: "A.md", text: initialText }],
+      identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "A.md",
+      adapters,
+    });
+    await vi.waitFor(() => expect(host.getSnapshot().status).toBe("connected"));
+    expect(host.getEditorBinding()?.yText.length).toBe(initialText.length);
+    await waitForTasks();
+    relay.resetSentBytes();
+    for (let index = 0; index < 100; index += 1) {
+      const position = host.getEditorBinding()?.yText.length ?? 0;
+      host.applyLocalTextPatches([{ from: position, to: position, insert: "x" }]);
+    }
+
+    await vi.waitFor(() => expect(relay.getSentCount()).toBeGreaterThan(0));
+    expect(host.getEditorBinding()?.yText.length).toBe(initialText.length + 100);
+    expect(relay.getSentBytes()).toBeLessThan(100 * 1024);
+    host.disconnect();
+  }, 20_000);
 
   it("converges human and agent edits, workspace changes, comments, and presence through one room document", async () => {
     const relay = createMemoryRoomRelay();
@@ -695,6 +745,24 @@ describe("workspace room runtime", () => {
     collectStructureSnapshots(agent, agentSnapshots);
     collectCommentSnapshots(agent, "doc-a", agentComments);
 
+    const customAgent = createWorkspaceRoomRuntime({
+      roomId: "room-convergence",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-a",
+      emitInitialWorkspaceState: false,
+      identity: {
+        id: "agent-2",
+        name: "Sharp Agent",
+        color: "#059669",
+        lastSeen: 0,
+        kind: "agent",
+        client: "custom",
+        capabilities: ["presence", "read", "write"],
+      },
+      fileTitle: "A.md",
+      adapters,
+    });
+
     await vi.waitFor(() => {
       expect(last(agentSnapshots)?.nodes.map(({ id }) => id)).toEqual(expect.arrayContaining([
         "workspace-root", "doc-a", "doc-b",
@@ -703,6 +771,11 @@ describe("workspace room runtime", () => {
       expect(agent.materializeDocument("doc-b")).toBe("Beta");
       expect(host.getSnapshot().collaborators[0]).toMatchObject({ id: "agent-1", kind: "agent" });
       expect(agent.getSnapshot().collaborators[0]).toMatchObject({ id: "human-1", kind: "human" });
+      expect(host.getSnapshot().collaborators).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "agent-1", kind: "agent" }),
+        expect.objectContaining({ id: "agent-2", kind: "agent" }),
+      ]));
+      expect(customAgent.materializeDocument("doc-a")).toBe("Alpha");
     });
 
     host.applyLocalTextPatches([{ from: 5, to: 5, insert: " human" }]);
@@ -735,6 +808,14 @@ describe("workspace room runtime", () => {
         "workspace-root", "folder-1", "doc-a", "doc-b", "doc-c",
       ]));
       expect(host.materializeDocument("doc-c")).toBe("Created by agent");
+      expect(customAgent.materializeDocument("doc-c")).toBe("Created by agent");
+    });
+
+    customAgent.setActiveDocument({ documentId: "doc-c", fileTitle: "C.md" });
+    customAgent.applyLocalTextPatches([{ from: 16, to: 16, insert: " and custom agent" }]);
+    await vi.waitFor(() => {
+      expect(host.materializeDocument("doc-c")).toBe("Created by agent and custom agent");
+      expect(agent.materializeDocument("doc-c")).toBe("Created by agent and custom agent");
     });
 
     host.upsertComment({
@@ -772,8 +853,14 @@ describe("workspace room runtime", () => {
     expect(relay.getSentBytes()).toBeLessThan(100 * 1024);
     expect(relay.getSentCount()).toBeLessThan(10);
 
+    await vi.waitFor(() => {
+      expect(host.materializeWorkspace()).toEqual(agent.materializeWorkspace());
+      expect(agent.materializeWorkspace()).toEqual(customAgent.materializeWorkspace());
+    });
+
     host.disconnect();
     agent.disconnect();
+    customAgent.disconnect();
   });
 
   it("bounds per-document undo history", async () => {
