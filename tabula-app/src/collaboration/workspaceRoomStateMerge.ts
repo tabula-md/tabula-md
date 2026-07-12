@@ -1,4 +1,4 @@
-import type { WorkspaceRoomSnapshot } from "@tabula-md/tabula";
+import type { WorkspaceRoomStructureSnapshot } from "@tabula-md/tabula";
 import {
   WORKSPACE_ROOT_FOLDER_ID,
   createWorkspaceRootFolder,
@@ -9,21 +9,23 @@ import {
 
 type WorkspaceModelSnapshot = Pick<WorkspaceState, "activeFileId" | "files" | "folders" | "openFileIds">;
 
-type ReconcileWorkspaceRoomSnapshotOptions = {
+type ReconcileWorkspaceRoomStructureOptions = {
   activeFile?: WorkspaceFile;
   createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
+  readDocumentText: (documentId: string) => string | null;
   roomShareUrl?: string;
-  snapshot: WorkspaceRoomSnapshot;
+  snapshot: WorkspaceRoomStructureSnapshot;
   workspaceSnapshot: WorkspaceModelSnapshot;
 };
 
-export const reconcileWorkspaceRoomSnapshot = ({
+export const reconcileWorkspaceRoomStructure = ({
   activeFile,
   createFile,
+  readDocumentText,
   roomShareUrl,
   snapshot,
   workspaceSnapshot,
-}: ReconcileWorkspaceRoomSnapshotOptions): WorkspaceModelSnapshot => {
+}: ReconcileWorkspaceRoomStructureOptions): WorkspaceModelSnapshot => {
   const documentNodes = snapshot.nodes.filter((node) => node.type === "document");
   const existingFilesById = new Map(workspaceSnapshot.files.map((file) => [file.id, file]));
   const activeRoomShareUrl = activeFile?.roomId === snapshot.roomId ? activeFile.shareUrl : roomShareUrl;
@@ -39,7 +41,7 @@ export const reconcileWorkspaceRoomSnapshot = ({
           ...existing,
           ...collaboration,
           title: node.title,
-          text: snapshot.documents[node.id] ?? existing.text,
+          text: existing.text,
           parentId: node.parentId ?? WORKSPACE_ROOT_FOLDER_ID,
           order: node.order,
         }
@@ -47,7 +49,7 @@ export const reconcileWorkspaceRoomSnapshot = ({
           ...collaboration,
           id: node.id,
           title: node.title,
-          text: snapshot.documents[node.id] ?? "",
+          text: readDocumentText(node.id) ?? "",
           parentId: node.parentId ?? WORKSPACE_ROOT_FOLDER_ID,
           order: node.order,
         });

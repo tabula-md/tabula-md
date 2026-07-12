@@ -4,7 +4,7 @@ import {
   createWorkspaceRoomCrdt,
   initializeWorkspaceRoomCrdt,
   type EncryptedEnvelope,
-  type WorkspaceRoomSnapshot,
+  type WorkspaceRoomStructureSnapshot,
 } from "@tabula-md/tabula";
 import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
 import { createWorkspaceRoomRuntime } from "./liveCollaboration";
@@ -406,8 +406,8 @@ describe("workspace room runtime", () => {
     const relay = createMemoryRoomRelay();
     const checkpoints = createMemoryRoomCheckpointStore();
     const defaults = createDefaultCollabRuntimeAdapters();
-    const hostSnapshots: WorkspaceRoomSnapshot[] = [];
-    const agentSnapshots: WorkspaceRoomSnapshot[] = [];
+    const hostSnapshots: WorkspaceRoomStructureSnapshot[] = [];
+    const agentSnapshots: WorkspaceRoomStructureSnapshot[] = [];
     const hostComments: Array<Record<string, unknown[]>> = [];
     const agentComments: Array<Record<string, unknown[]>> = [];
     const adapters = {
@@ -428,7 +428,7 @@ describe("workspace room runtime", () => {
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
       onTextChange: vi.fn(),
-      onWorkspaceChange: (snapshot) => hostSnapshots.push(snapshot),
+      onWorkspaceStructureChange: (snapshot) => hostSnapshots.push(snapshot),
       onCommentsChange: (comments) => hostComments.push(comments),
       adapters,
     });
@@ -451,13 +451,17 @@ describe("workspace room runtime", () => {
       },
       fileTitle: "B.md",
       onTextChange: vi.fn(),
-      onWorkspaceChange: (snapshot) => agentSnapshots.push(snapshot),
+      onWorkspaceStructureChange: (snapshot) => agentSnapshots.push(snapshot),
       onCommentsChange: (comments) => agentComments.push(comments),
       adapters,
     });
 
     await vi.waitFor(() => {
-      expect(last(agentSnapshots)?.documents).toEqual({ "doc-a": "Alpha", "doc-b": "Beta" });
+      expect(last(agentSnapshots)?.nodes.map(({ id }) => id)).toEqual(expect.arrayContaining([
+        "workspace-root", "doc-a", "doc-b",
+      ]));
+      expect(agent.materializeDocument("doc-a")).toBe("Alpha");
+      expect(agent.materializeDocument("doc-b")).toBe("Beta");
       expect(host.getSnapshot().collaborators[0]).toMatchObject({ id: "agent-1", kind: "agent" });
       expect(agent.getSnapshot().collaborators[0]).toMatchObject({ id: "human-1", kind: "human" });
     });
@@ -485,7 +489,7 @@ describe("workspace room runtime", () => {
       expect(last(hostSnapshots)?.nodes.map(({ id }) => id)).toEqual(expect.arrayContaining([
         "workspace-root", "folder-1", "doc-a", "doc-b", "doc-c",
       ]));
-      expect(last(hostSnapshots)?.documents["doc-c"]).toBe("Created by agent");
+      expect(host.materializeDocument("doc-c")).toBe("Created by agent");
     });
 
     host.upsertComment({
@@ -705,8 +709,8 @@ describe("workspace room runtime", () => {
       roomCheckpointStore: checkpoints.store,
       resolveRoomBaseUrl: () => "http://memory-room.test",
     };
-    const hostSnapshots: WorkspaceRoomSnapshot[] = [];
-    const peerSnapshots: WorkspaceRoomSnapshot[] = [];
+    const hostSnapshots: WorkspaceRoomStructureSnapshot[] = [];
+    const peerSnapshots: WorkspaceRoomStructureSnapshot[] = [];
     const host = createWorkspaceRoomRuntime({
       roomId: "room-stale-peer",
       roomKey: VALID_ROOM_KEY,
@@ -719,7 +723,7 @@ describe("workspace room runtime", () => {
       identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "Delete me.md",
       onTextChange: vi.fn(),
-      onWorkspaceChange: (snapshot) => hostSnapshots.push(snapshot),
+      onWorkspaceStructureChange: (snapshot) => hostSnapshots.push(snapshot),
       adapters,
     });
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-stale-peer")).toBeGreaterThan(0));
@@ -731,23 +735,29 @@ describe("workspace room runtime", () => {
       identity: { id: "peer", name: "Calm Human", color: "#0f766e", lastSeen: 0 },
       fileTitle: "Delete me.md",
       onTextChange: vi.fn(),
-      onWorkspaceChange: (snapshot) => peerSnapshots.push(snapshot),
+      onWorkspaceStructureChange: (snapshot) => peerSnapshots.push(snapshot),
       adapters,
     });
-    await vi.waitFor(() => expect(last(peerSnapshots)?.documents["doc-a"]).toBe("old"));
+    await vi.waitFor(() => {
+      expect(last(peerSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(true);
+      expect(peer.materializeDocument("doc-a")).toBe("old");
+    });
 
     relay.setOnline("peer", false);
     peer.applyLocalTextPatches([{ from: 3, to: 3, insert: " stale edit" }]);
     host.setWorkspaceDocuments([
       { id: "doc-b", title: "Kept and renamed.md", text: "current", parentId: "workspace-root" },
     ]);
-    await vi.waitFor(() => expect(last(hostSnapshots)?.documents).toEqual({ "doc-b": "current" }));
+    await vi.waitFor(() => {
+      expect(last(hostSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(false);
+      expect(host.materializeDocument("doc-b")).toBe("current");
+    });
 
     relay.setOnline("peer", true);
     await vi.waitFor(() => {
-      expect(last(peerSnapshots)?.documents).toEqual({ "doc-b": "current" });
       expect(last(peerSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(false);
       expect(last(hostSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(false);
+      expect(peer.materializeDocument("doc-b")).toBe("current");
     });
 
     host.disconnect();
@@ -824,7 +834,7 @@ describe("workspace room runtime", () => {
       identity: { id: "z-host", name: "Nimble Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
       onTextChange: vi.fn(),
-      onWorkspaceChange: (_snapshot, origin) => hostOrigins.push(origin),
+      onWorkspaceStructureChange: (_snapshot, origin) => hostOrigins.push(origin),
       adapters,
     });
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-duplicate-names")).toBeGreaterThan(0));
@@ -869,7 +879,7 @@ describe("workspace room runtime", () => {
       roomCheckpointStore: checkpoints.store,
       resolveRoomBaseUrl: () => "http://memory-room.test",
     };
-    const peerSnapshots: WorkspaceRoomSnapshot[] = [];
+    const peerSnapshots: WorkspaceRoomStructureSnapshot[] = [];
     const host = createWorkspaceRoomRuntime({
       roomId: "room-empty",
       roomKey: VALID_ROOM_KEY,
@@ -889,21 +899,27 @@ describe("workspace room runtime", () => {
       emitInitialWorkspaceState: false,
       identity: { id: "peer", name: "Calm Human", color: "#0f766e", lastSeen: 0 },
       onTextChange: vi.fn(),
-      onWorkspaceChange: (nextSnapshot) => peerSnapshots.push(nextSnapshot),
+      onWorkspaceStructureChange: (nextSnapshot) => peerSnapshots.push(nextSnapshot),
       adapters,
     });
 
-    await vi.waitFor(() => expect(last(peerSnapshots)?.documents).toEqual({ "doc-a": "Alpha" }));
+    await vi.waitFor(() => {
+      expect(last(peerSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(true);
+      expect(peer.materializeDocument("doc-a")).toBe("Alpha");
+    });
     host.setWorkspaceDocuments([]);
     await vi.waitFor(() => {
-      expect(last(peerSnapshots)?.documents).toEqual({});
       expect(last(peerSnapshots)?.nodes.map(({ id }) => id)).toEqual(["workspace-root"]);
+      expect(peer.materializeDocument("doc-a")).toBeNull();
     });
 
     peer.setWorkspaceDocuments([
       { id: "doc-b", title: "B.md", text: "Beta", parentId: "workspace-root" },
     ]);
-    await vi.waitFor(() => expect(last(peerSnapshots)?.documents).toEqual({ "doc-b": "Beta" }));
+    await vi.waitFor(() => {
+      expect(last(peerSnapshots)?.nodes.some(({ id }) => id === "doc-b")).toBe(true);
+      expect(peer.materializeDocument("doc-b")).toBe("Beta");
+    });
 
     host.disconnect();
     peer.disconnect();
@@ -937,7 +953,7 @@ describe("workspace room runtime", () => {
     };
     const relay = createMemoryRoomRelay();
     const defaults = createDefaultCollabRuntimeAdapters();
-    const snapshots: WorkspaceRoomSnapshot[] = [];
+    const snapshots: WorkspaceRoomStructureSnapshot[] = [];
     const connection = createWorkspaceRoomRuntime({
       roomId: "room-cas",
       roomKey: VALID_ROOM_KEY,
@@ -947,7 +963,7 @@ describe("workspace room runtime", () => {
       identity: { id: "leader", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "Local.md",
       onTextChange: vi.fn(),
-      onWorkspaceChange: (snapshot) => snapshots.push(snapshot),
+      onWorkspaceStructureChange: (snapshot) => snapshots.push(snapshot),
       adapters: {
         ...defaults,
         createRoomTransport: relay.createRoomTransport,
@@ -960,10 +976,11 @@ describe("workspace room runtime", () => {
     expect(saveEncryptedCheckpoint.mock.calls[0][1].expectedGeneration).toBe(0);
     expect(saveEncryptedCheckpoint.mock.calls[1][1].expectedGeneration).toBe(1);
     await vi.waitFor(() => {
-      expect(last(snapshots)?.documents).toMatchObject({
-        "local-doc": "local",
-        "remote-doc": "remote",
-      });
+      expect(last(snapshots)?.nodes.map(({ id }) => id)).toEqual(expect.arrayContaining([
+        "workspace-root", "local-doc", "remote-doc",
+      ]));
+      expect(connection.materializeDocument("local-doc")).toBe("local");
+      expect(connection.materializeDocument("remote-doc")).toBe("remote");
     });
 
     connection.disconnect();

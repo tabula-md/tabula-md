@@ -10,7 +10,7 @@ import {
 import type {
   WorkspaceRoomComment,
   WorkspaceRoomCommentReply,
-  WorkspaceRoomSnapshot,
+  WorkspaceRoomStructureSnapshot,
   TextPatch,
 } from "@tabula-md/tabula";
 import type {
@@ -67,7 +67,11 @@ type UseCollaborationConnectionRuntimeOptions = {
   ) => void;
   onRemoteTextChange?: (fileId: string, text: string) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
-  onWorkspaceChange?: (snapshot: WorkspaceRoomSnapshot, origin?: WorkspaceRoomChangeOrigin) => void;
+  onWorkspaceStructureChange?: (
+    snapshot: WorkspaceRoomStructureSnapshot,
+    origin: WorkspaceRoomChangeOrigin | undefined,
+    readDocumentText: (documentId: string) => string | null,
+  ) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
 };
@@ -86,7 +90,7 @@ export function useCollaborationConnectionRuntime({
   setFileRecoveryEvent,
   onRemoteTextChange,
   onCommentsChange,
-  onWorkspaceChange,
+  onWorkspaceStructureChange,
   onOpenFailure,
   onCapacityExceeded,
 }: UseCollaborationConnectionRuntimeOptions) {
@@ -192,7 +196,7 @@ export function useCollaborationConnectionRuntime({
             onRemoteTextChange?.(documentId, text);
           },
           onCommentsChange,
-          onWorkspaceChange,
+          onWorkspaceStructureChange,
           onOpenFailure,
           onCapacityExceeded,
           onRecoveryEvent: (event) => setFileRecoveryEvent(target.fileId, getRecoveryEventPatch(event)),
@@ -230,7 +234,7 @@ export function useCollaborationConnectionRuntime({
     setFileText,
     onRemoteTextChange,
     onCommentsChange,
-    onWorkspaceChange,
+    onWorkspaceStructureChange,
     onOpenFailure,
     onCapacityExceeded,
   ]);

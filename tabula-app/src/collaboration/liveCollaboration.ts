@@ -195,7 +195,11 @@ type ConnectOptions = {
   fileTitle?: string;
   onTextChange: (documentId: string, text: string) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
-  onWorkspaceChange?: (snapshot: WorkspaceRoomSnapshot, origin?: WorkspaceRoomChangeOrigin) => void;
+  onWorkspaceStructureChange?: (
+    snapshot: WorkspaceRoomStructureSnapshot,
+    origin: WorkspaceRoomChangeOrigin | undefined,
+    readDocumentText: (documentId: string) => string | null,
+  ) => void;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
@@ -286,7 +290,7 @@ export const createWorkspaceRoomRuntime = ({
   fileTitle,
   onTextChange,
   onCommentsChange,
-  onWorkspaceChange,
+  onWorkspaceStructureChange,
   onRecoveryEvent,
   onOpenFailure,
   onCapacityExceeded,
@@ -576,13 +580,13 @@ export const createWorkspaceRoomRuntime = ({
     }
     hasHydratedWorkspace = true;
     const remoteActor = isRemoteSyncOrigin(origin) ? getSenderActor(origin.senderId) : null;
-    if (onWorkspaceChange) {
-      onWorkspaceChange(getWorkspaceRoomSnapshot(room), isRemoteSyncOrigin(origin)
+    if (onWorkspaceStructureChange) {
+      onWorkspaceStructureChange(structureStore.getSnapshot(), isRemoteSyncOrigin(origin)
         ? {
             actorId: origin.senderId,
             actorName: getActorDisplay(origin.senderId)?.name ?? remoteActor?.name,
           }
-        : undefined);
+        : undefined, (documentId) => room.documents.get(documentId)?.toString() ?? null);
     }
     refreshActiveEditorBinding();
   };

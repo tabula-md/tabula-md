@@ -7,9 +7,9 @@ import {
 import { createHelpMarkdown } from "../helpMarkdown";
 import { getShortcutLabels } from "../keyboardShortcuts";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
-import { type TextChange, type WorkspaceRoomComment, type WorkspaceRoomSnapshot } from "@tabula-md/tabula";
+import { type TextChange, type WorkspaceRoomComment, type WorkspaceRoomStructureSnapshot } from "@tabula-md/tabula";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
-import { reconcileWorkspaceRoomSnapshot } from "../collaboration/workspaceRoomStateMerge";
+import { reconcileWorkspaceRoomStructure } from "../collaboration/workspaceRoomStateMerge";
 import {
   readRoomViewState,
   restoreRoomWorkspaceView,
@@ -401,9 +401,10 @@ export function useWorkspaceRuntime() {
     setCopiedFileId,
     setSelectionActionPosition,
   });
-  const mergeWorkspaceRoomSnapshot = useEventCallback((
-    snapshot: WorkspaceRoomSnapshot,
+  const mergeWorkspaceRoomStructure = useEventCallback((
+    snapshot: WorkspaceRoomStructureSnapshot,
     origin?: WorkspaceRoomChangeOrigin,
+    readDocumentText: (documentId: string) => string | null = () => null,
   ) => {
     if (activeRoomId && snapshot.roomId !== activeRoomId) return;
     const workspaceSnapshot = getWorkspaceSnapshot();
@@ -426,9 +427,10 @@ export function useWorkspaceRuntime() {
       .map((node) => [node.id, node.title, node.parentId, node.order ?? 0])
       .sort(([firstId], [secondId]) => String(firstId).localeCompare(String(secondId)));
     const foldersChanged = JSON.stringify(previousRoomFolderSignature) !== JSON.stringify(nextRoomFolderSignature);
-    let nextWorkspace = reconcileWorkspaceRoomSnapshot({
+    let nextWorkspace = reconcileWorkspaceRoomStructure({
       activeFile,
       createFile: createWorkspaceFile,
+      readDocumentText,
       roomShareUrl: activeRoomShareUrl,
       snapshot,
       workspaceSnapshot,
@@ -473,13 +475,6 @@ export function useWorkspaceRuntime() {
         showToast("The shared workspace was updated.");
       }
     }
-    const roomComments = Object.fromEntries(
-      Object.entries(snapshot.commentsByFileId).map(([fileId, comments]) => [
-        fileId,
-        comments.map(({ fileId: _fileId, authorId: _authorId, ...comment }) => comment),
-      ]),
-    );
-    replaceCommentsByFileId(roomComments, { preserveInteraction: true });
   });
   useEffect(() => {
     if (!activeRoomId || !files.some((file) => file.roomId === activeRoomId)) return;
@@ -570,7 +565,7 @@ export function useWorkspaceRuntime() {
     setFileCollaborationStatus,
     setFileRecoveryEvent,
     startFileCollaborationSession,
-    onWorkspaceChange: mergeWorkspaceRoomSnapshot,
+    onWorkspaceStructureChange: mergeWorkspaceRoomStructure,
     onCommentsChange: mergeWorkspaceRoomComments,
     onOpenFailure: setLiveRoomOpenFailure,
     onCapacityExceeded: handleRoomCapacityExceeded,
@@ -733,7 +728,13 @@ export function useWorkspaceRuntime() {
     const workspaceRoomFileIds = roomId ? files.filter((file) => file.roomId === roomId).map((file) => file.id) : [];
     flushPendingEditorCommit();
     const roomSnapshot = materializeRoomWorkspace();
-    if (roomSnapshot) mergeWorkspaceRoomSnapshot(roomSnapshot);
+    if (roomSnapshot) {
+      mergeWorkspaceRoomStructure(
+        roomSnapshot,
+        undefined,
+        (documentId) => roomSnapshot.documents[documentId] ?? null,
+      );
+    }
     stopSession();
     if (!activeFile?.roomId) {
       resetCollaborationState("idle");

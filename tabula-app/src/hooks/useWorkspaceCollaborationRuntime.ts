@@ -1,4 +1,4 @@
-import type { WorkspaceRoomComment, WorkspaceRoomSnapshot } from "@tabula-md/tabula";
+import type { WorkspaceRoomComment, WorkspaceRoomStructureSnapshot } from "@tabula-md/tabula";
 import type {
   Collaborator,
   CollabRecoveryEvent,
@@ -49,7 +49,11 @@ type UseWorkspaceCollaborationRuntimeOptions = {
     roomId: string,
     shareUrl: string,
   ) => WorkspaceFile | undefined;
-  onWorkspaceChange?: (snapshot: WorkspaceRoomSnapshot, origin?: WorkspaceRoomChangeOrigin) => void;
+  onWorkspaceStructureChange?: (
+    snapshot: WorkspaceRoomStructureSnapshot,
+    origin: WorkspaceRoomChangeOrigin | undefined,
+    readDocumentText: (documentId: string) => string | null,
+  ) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
@@ -92,7 +96,7 @@ export function useWorkspaceCollaborationRuntime({
   setFileCollaborationStatus,
   setFileRecoveryEvent,
   startFileCollaborationSession,
-  onWorkspaceChange,
+  onWorkspaceStructureChange,
   onCommentsChange,
   onOpenFailure,
   onCapacityExceeded,
@@ -122,7 +126,7 @@ export function useWorkspaceCollaborationRuntime({
     setFileRecoveryEvent,
     startFileCollaborationSession,
     onRemoteTextChange: handleRemoteTextChange,
-    onWorkspaceChange,
+    onWorkspaceStructureChange,
     onCommentsChange,
     onOpenFailure,
     onCapacityExceeded,

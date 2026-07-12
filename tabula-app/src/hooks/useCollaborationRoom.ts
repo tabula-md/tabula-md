@@ -15,7 +15,7 @@ import {
   WORKSPACE_ROOM_SCHEMA_VERSION,
   validateWorkspaceRoomLimits,
   type WorkspaceRoomComment,
-  type WorkspaceRoomSnapshot,
+  type WorkspaceRoomStructureSnapshot,
 } from "@tabula-md/tabula";
 import type {
   WorkspaceFolderSnapshot,
@@ -97,7 +97,11 @@ type UseCollaborationRoomOptions = {
   ) => WorkspaceFile | undefined;
   onRemoteTextChange?: (fileId: string, text: string) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
-  onWorkspaceChange?: (snapshot: WorkspaceRoomSnapshot, origin?: WorkspaceRoomChangeOrigin) => void;
+  onWorkspaceStructureChange?: (
+    snapshot: WorkspaceRoomStructureSnapshot,
+    origin: WorkspaceRoomChangeOrigin | undefined,
+    readDocumentText: (documentId: string) => string | null,
+  ) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
 };
@@ -117,7 +121,7 @@ export function useCollaborationRoom({
   startFileCollaborationSession,
   onRemoteTextChange,
   onCommentsChange,
-  onWorkspaceChange,
+  onWorkspaceStructureChange,
   onOpenFailure,
   onCapacityExceeded,
 }: UseCollaborationRoomOptions) {
@@ -157,7 +161,7 @@ export function useCollaborationRoom({
       setFileRecoveryEvent,
       onRemoteTextChange,
       onCommentsChange,
-      onWorkspaceChange,
+      onWorkspaceStructureChange,
       onOpenFailure,
       onCapacityExceeded,
     });
