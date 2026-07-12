@@ -200,11 +200,11 @@ export const getLiveFileTitle = (roomId: string) => `Shared ${roomId.slice(0, 8)
 const GENERATED_LIVE_FILE_TITLE_PATTERN = /^Shared [A-Za-z0-9_-]{8}\.md$/;
 
 export const isEmptyGeneratedLivePlaceholder = (file: WorkspaceFile) =>
-  file.text.trim() === "" &&
   ((file.roomId && file.title === getLiveFileTitle(file.roomId)) ||
-    (!file.roomId && GENERATED_LIVE_FILE_TITLE_PATTERN.test(file.title)));
+    (!file.roomId && GENERATED_LIVE_FILE_TITLE_PATTERN.test(file.title))) &&
+  file.text.trim() === "";
 
-const pruneEmptyGeneratedLivePlaceholders = (
+export const pruneEmptyGeneratedLivePlaceholders = (
   files: WorkspaceFile[],
   commentsByFileId: Record<string, FileComment[]> = {},
 ) =>
