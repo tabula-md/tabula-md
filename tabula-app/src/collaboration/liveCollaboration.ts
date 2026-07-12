@@ -108,11 +108,6 @@ export type WorkspaceRoomRuntimeSnapshot = {
   editorBinding: CollabEditorBinding | null;
 };
 
-export type WorkspaceRoomChangeOrigin = {
-  actorId: string;
-  actorName?: string;
-};
-
 export type WorkspaceDocumentSnapshot = {
   id: string;
   title: string;
@@ -154,11 +149,6 @@ type ConnectOptions = {
   identity: Collaborator;
   fileTitle?: string;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
-  onWorkspaceStructureChange?: (
-    snapshot: WorkspaceRoomStructureSnapshot,
-    origin: WorkspaceRoomChangeOrigin | undefined,
-    readDocumentText: (documentId: string) => string | null,
-  ) => void;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
@@ -196,7 +186,6 @@ export const createWorkspaceRoomRuntime = ({
   identity,
   fileTitle,
   onCommentsChange,
-  onWorkspaceStructureChange,
   onRecoveryEvent,
   onOpenFailure,
   onCapacityExceeded,
@@ -343,7 +332,7 @@ export const createWorkspaceRoomRuntime = ({
   const publishCollaborators = () =>
     updateRuntimeSnapshot({ collaborators: presenceController.getCollaborators() });
 
-  const projectWorkspace = (origin?: unknown) => {
+  const projectWorkspace = () => {
     if (closed) return;
     if (!room.meta.has("schemaVersion")) return;
     const structure = validateWorkspaceRoomStructure(room, roomId);
@@ -365,17 +354,6 @@ export const createWorkspaceRoomRuntime = ({
       setStatus("failed");
       emitInvalidMessage("This live workspace exceeds the supported content limits.");
       return;
-    }
-    const remoteActor = isRemoteSyncOrigin(origin)
-      ? presenceController.getSenderActor(origin.senderId)
-      : null;
-    if (onWorkspaceStructureChange) {
-      onWorkspaceStructureChange(structureStore.getSnapshot(), isRemoteSyncOrigin(origin)
-        ? {
-            actorId: origin.senderId,
-            actorName: presenceController.getActorDisplay(origin.senderId)?.name ?? remoteActor?.name,
-          }
-        : undefined, (documentId) => room.documents.get(documentId)?.toString() ?? null);
     }
     refreshActiveEditorBinding();
   };
@@ -522,18 +500,13 @@ export const createWorkspaceRoomRuntime = ({
   };
 
   let projectionQueued = false;
-  let queuedWorkspaceOrigin: unknown;
-  const queueWorkspaceProjection = (origin?: unknown) => {
+  const queueWorkspaceProjection = () => {
     if (closed) return;
-    if (isRemoteSyncOrigin(origin)) queuedWorkspaceOrigin = origin;
-    else if (queuedWorkspaceOrigin === undefined) queuedWorkspaceOrigin = origin;
     if (projectionQueued) return;
     projectionQueued = true;
     queueMicrotask(() => {
       projectionQueued = false;
-      const nextOrigin = queuedWorkspaceOrigin;
-      queuedWorkspaceOrigin = undefined;
-      if (!closed) projectWorkspace(nextOrigin);
+      if (!closed) projectWorkspace();
     });
   };
   const handleDocumentsChange = (
@@ -548,7 +521,7 @@ export const createWorkspaceRoomRuntime = ({
       }
       documentRegistry.sync();
       refreshActiveEditorBinding();
-      queueWorkspaceProjection(transaction.origin);
+      queueWorkspaceProjection();
     }
     for (const id of metricsChange.changedDocumentIds) {
       if (isRemoteSyncOrigin(transaction.origin) || transaction.origin === CHECKPOINT_ORIGIN) {
@@ -558,8 +531,7 @@ export const createWorkspaceRoomRuntime = ({
       if (id === activeDocumentId && room.comments.size > 0) scheduleCommentProjection();
     }
   };
-  const handleWorkspaceStructureChange = (_event: unknown, transaction: Y.Transaction) =>
-    queueWorkspaceProjection(transaction.origin);
+  const handleWorkspaceStructureChange = () => queueWorkspaceProjection();
   const handleCommentsChange = () => {
     roomMetrics.refreshComments();
     scheduleCommentProjection();

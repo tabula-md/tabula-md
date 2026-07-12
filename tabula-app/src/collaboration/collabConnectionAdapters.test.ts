@@ -166,6 +166,14 @@ const createMemoryRoomRelay = () => {
 
 const last = <Value,>(values: readonly Value[]) => values.at(-1);
 
+const collectStructureSnapshots = (
+  runtime: Pick<ReturnType<typeof createWorkspaceRoomRuntime>, "getStructureSnapshot" | "subscribeStructure">,
+  snapshots: WorkspaceRoomStructureSnapshot[],
+) => {
+  snapshots.push(runtime.getStructureSnapshot());
+  return runtime.subscribeStructure(() => snapshots.push(runtime.getStructureSnapshot()));
+};
+
 describe("workspace room runtime", () => {
   it("does not create a transport after disconnecting during key import", async () => {
     let resolveKey!: (key: CryptoKey) => void;
@@ -648,10 +656,10 @@ describe("workspace room runtime", () => {
       ],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
-      onWorkspaceStructureChange: (snapshot) => hostSnapshots.push(snapshot),
       onCommentsChange: (comments) => hostComments.push(comments),
       adapters,
     });
+    collectStructureSnapshots(host, hostSnapshots);
     await vi.waitFor(() => expect(host.getSnapshot().status).toBe("connected"));
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-convergence")).toBeGreaterThan(0));
 
@@ -670,10 +678,10 @@ describe("workspace room runtime", () => {
         capabilities: ["presence", "read", "write"],
       },
       fileTitle: "B.md",
-      onWorkspaceStructureChange: (snapshot) => agentSnapshots.push(snapshot),
       onCommentsChange: (comments) => agentComments.push(comments),
       adapters,
     });
+    collectStructureSnapshots(agent, agentSnapshots);
 
     await vi.waitFor(() => {
       expect(last(agentSnapshots)?.nodes.map(({ id }) => id)).toEqual(expect.arrayContaining([
@@ -945,9 +953,9 @@ describe("workspace room runtime", () => {
       ],
       identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "Delete me.md",
-      onWorkspaceStructureChange: (snapshot) => hostSnapshots.push(snapshot),
       adapters,
     });
+    collectStructureSnapshots(host, hostSnapshots);
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-stale-peer")).toBeGreaterThan(0));
     const peer = createWorkspaceRoomRuntime({
       roomId: "room-stale-peer",
@@ -956,9 +964,9 @@ describe("workspace room runtime", () => {
       emitInitialWorkspaceState: false,
       identity: { id: "peer", name: "Calm Human", color: "#0f766e", lastSeen: 0 },
       fileTitle: "Delete me.md",
-      onWorkspaceStructureChange: (snapshot) => peerSnapshots.push(snapshot),
       adapters,
     });
+    collectStructureSnapshots(peer, peerSnapshots);
     await vi.waitFor(() => {
       expect(last(peerSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(true);
       expect(peer.materializeDocument("doc-a")).toBe("old");
@@ -1032,7 +1040,7 @@ describe("workspace room runtime", () => {
     peer.disconnect();
   });
 
-  it("disambiguates duplicate awareness names and attributes remote workspace changes", async () => {
+  it("disambiguates duplicate awareness names while preserving canonical actor identity", async () => {
     const relay = createMemoryRoomRelay();
     const checkpoints = createMemoryRoomCheckpointStore();
     const defaults = createDefaultCollabRuntimeAdapters();
@@ -1042,7 +1050,6 @@ describe("workspace room runtime", () => {
       roomCheckpointStore: checkpoints.store,
       resolveRoomBaseUrl: () => "http://memory-room.test",
     };
-    const hostOrigins: Array<{ actorId: string; actorName?: string } | undefined> = [];
     const host = createWorkspaceRoomRuntime({
       roomId: "room-duplicate-names",
       roomKey: VALID_ROOM_KEY,
@@ -1051,7 +1058,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "doc", title: "README.md", text: "text" }],
       identity: { id: "z-host", name: "Nimble Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "README.md",
-      onWorkspaceStructureChange: (_snapshot, origin) => hostOrigins.push(origin),
       adapters,
     });
     await vi.waitFor(() => expect(checkpoints.getGeneration("room-duplicate-names")).toBeGreaterThan(0));
@@ -1076,10 +1082,9 @@ describe("workspace room runtime", () => {
     });
 
     peer.renameNode("doc", "Renamed.md");
-    await vi.waitFor(() => expect(hostOrigins).toContainEqual({
-      actorId: "a-peer",
-      actorName: "Nimble Human",
-    }));
+    await vi.waitFor(() => expect(
+      host.getStructureSnapshot().nodes.find((node) => node.id === "doc")?.title,
+    ).toBe("Renamed.md"));
 
     host.disconnect();
     peer.disconnect();
@@ -1112,9 +1117,9 @@ describe("workspace room runtime", () => {
       roomKey: VALID_ROOM_KEY,
       emitInitialWorkspaceState: false,
       identity: { id: "peer", name: "Calm Human", color: "#0f766e", lastSeen: 0 },
-      onWorkspaceStructureChange: (nextSnapshot) => peerSnapshots.push(nextSnapshot),
       adapters,
     });
+    collectStructureSnapshots(peer, peerSnapshots);
 
     await vi.waitFor(() => {
       expect(last(peerSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(true);
@@ -1178,7 +1183,6 @@ describe("workspace room runtime", () => {
       documents: [{ id: "local-doc", title: "Local.md", text: "local" }],
       identity: { id: "leader", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "Local.md",
-      onWorkspaceStructureChange: (snapshot) => snapshots.push(snapshot),
       adapters: {
         ...defaults,
         createRoomTransport: relay.createRoomTransport,
@@ -1186,6 +1190,7 @@ describe("workspace room runtime", () => {
         resolveRoomBaseUrl: () => "http://memory-room.test",
       },
     });
+    collectStructureSnapshots(connection, snapshots);
 
     await vi.waitFor(() => expect(saveEncryptedCheckpoint).toHaveBeenCalledTimes(2));
     expect(saveEncryptedCheckpoint.mock.calls[0][1].expectedGeneration).toBe(0);
