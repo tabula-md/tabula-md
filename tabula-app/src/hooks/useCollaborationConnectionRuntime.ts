@@ -90,7 +90,6 @@ export function useCollaborationConnectionRuntime({
   const [preRuntimeConnectionStatus, setPreRuntimeConnectionStatus] = useState<ConnectionStatus>(
     () => getInitialCollaborationStatus(room),
   );
-  const [runtime, setRuntime] = useState<WorkspaceRoomRuntime | null>(null);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [browserOnline, setBrowserOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
@@ -100,6 +99,19 @@ export function useCollaborationConnectionRuntime({
   const pendingWorkspaceCommandQueueRef = useRef<PendingWorkspaceCommand[]>([]);
   const isLive = Boolean(session);
   const connectionKey = room ? `workspace:${room.roomId}:${room.shareUrl}` : "idle";
+  const subscribeToSessionRuntime = useCallback(
+    (listener: () => void) => session?.subscribeRuntime(listener) ?? (() => undefined),
+    [session],
+  );
+  const getSessionRuntime = useCallback(
+    () => session?.getRuntime() ?? null,
+    [session],
+  );
+  const runtime = useSyncExternalStore(
+    subscribeToSessionRuntime,
+    getSessionRuntime,
+    getSessionRuntime,
+  );
   const subscribeToRuntime = useCallback(
     (listener: () => void) => runtime?.subscribe(listener) ?? (() => undefined),
     [runtime],
@@ -186,7 +198,6 @@ export function useCollaborationConnectionRuntime({
   useEffect(() => {
     collabRef.current?.disconnect();
     collabRef.current = null;
-    setRuntime(null);
     pendingLocalTextQueueRef.current = [];
     pendingWorkspaceCommandQueueRef.current = [];
 
@@ -220,7 +231,6 @@ export function useCollaborationConnectionRuntime({
         effectRuntime = connection;
         detachRuntime = session?.attachRuntime(connection) ?? (() => undefined);
         collabRef.current = connection;
-        setRuntime(connection);
         const queue = pendingLocalTextQueueRef.current;
         pendingLocalTextQueueRef.current = [];
         for (const pending of queue) {
@@ -242,7 +252,6 @@ export function useCollaborationConnectionRuntime({
       detachRuntime();
       effectRuntime?.disconnect();
       if (collabRef.current === effectRuntime) collabRef.current = null;
-      setRuntime((current) => current === effectRuntime ? null : current);
       pendingLocalTextQueueRef.current = [];
       pendingWorkspaceCommandQueueRef.current = [];
     };
@@ -296,7 +305,6 @@ export function useCollaborationConnectionRuntime({
   const resetConnection = useCallback((nextStatus: ConnectionStatus = "idle") => {
     collabRef.current?.disconnect();
     collabRef.current = null;
-    setRuntime(null);
     pendingLocalTextQueueRef.current = [];
     pendingWorkspaceCommandQueueRef.current = [];
     setPreRuntimeConnectionStatus(nextStatus);

@@ -262,7 +262,7 @@ export function useWorkspaceFileActions({
       onAction: () => {
         const shouldActivateRestoredFile = previousActiveFileId === deletedFile.id;
         restoreFile({
-          file: deletedFile,
+          file: isRoomSession ? { ...deletedFile, text: "" } : deletedFile,
           fileIndex: deletedFileIndex,
           previousOpenFileIds,
           activate: shouldActivateRestoredFile,

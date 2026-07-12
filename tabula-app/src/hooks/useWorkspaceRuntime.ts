@@ -86,11 +86,10 @@ import {
 import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import {
-  canFollowActor,
   IDLE_FOLLOW_STATE,
   type FollowState,
-  type FollowStopReason,
 } from "../collaboration/followModel";
+import { useParticipantFollowController } from "./useParticipantFollowController";
 import {
   createLocalWorkspaceSession,
   createRoomWorkspaceSession,
@@ -106,8 +105,6 @@ export function useWorkspaceRuntime() {
   );
   const initialWorkspace = initialWorkspaceSnapshot.workspace;
   const restoredRoomViewsRef = useRef(new Set<string>());
-  const followNavigationGenerationRef = useRef(0);
-  const followNavigationInProgressRef = useRef(false);
   const {
     folders,
     files,
@@ -632,91 +629,25 @@ export function useWorkspaceRuntime() {
     const frame = window.requestAnimationFrame(publishCurrentRoomViewport);
     return () => window.cancelAnimationFrame(frame);
   }, [activeRoomDocument?.id, activeViewMode, editorBinding?.documentId]);
-  const stopFollowing = useEventCallback((reason: FollowStopReason = "manual") => {
-    if (followState.status === "idle") return;
-    setFollowState(IDLE_FOLLOW_STATE);
-    setRoomFollowingActor(null);
-    if (reason === "target-left") showToast("The participant you were following left the room.");
-    if (reason === "target-document-deleted") showToast("The followed document is no longer available.");
+  const {
+    stopFollowing,
+    stopFollowingForLocalNavigation,
+    toggleFollowing,
+  } = useParticipantFollowController({
+    activeDocumentId: activeFileId,
+    collaborators,
+    editorRef,
+    files,
+    followState,
+    identityId: identity.id,
+    isLive,
+    roomId: activeRoomId,
+    selectDocument: selectWorkspaceFileAction,
+    setFollowState,
+    setFollowingActor: setRoomFollowingActor,
+    showError: (message) => showToast(message, "error"),
+    showNotice: showToast,
   });
-  const runFollowNavigation = useEventCallback((navigate: () => void) => {
-    const generation = followNavigationGenerationRef.current + 1;
-    followNavigationGenerationRef.current = generation;
-    followNavigationInProgressRef.current = true;
-    navigate();
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        if (followNavigationGenerationRef.current === generation) {
-          followNavigationInProgressRef.current = false;
-        }
-      });
-    });
-  });
-  const stopFollowingForLocalNavigation = useEventCallback(() => {
-    if (followNavigationInProgressRef.current) return;
-    stopFollowing("local-navigation");
-  });
-  const revealFollowTarget = useEventCallback((target: (typeof collaborators)[number]) => {
-    const documentId = target.activeDocumentId ?? target.selection?.documentId;
-    if (!documentId) return false;
-    if (!activeRoomId || !files.some((file) => file.id === documentId)) return false;
-    const selection = target.selection;
-    runFollowNavigation(() => {
-      if (activeFileId !== documentId) selectWorkspaceFileAction(documentId);
-      const viewport = target.viewport;
-      if (viewport?.documentId === documentId) {
-        window.requestAnimationFrame(() =>
-          editorRef.current?.revealViewport(viewport.position, viewport.offset));
-      } else if (selection && (selection.documentId ?? documentId) === documentId) {
-        window.requestAnimationFrame(() => editorRef.current?.revealRange(selection.from, selection.to));
-      }
-    });
-    return true;
-  });
-  const toggleFollowing = useEventCallback((actorId: string) => {
-    if (followState.status === "following" && followState.actorId === actorId) {
-      stopFollowing("manual");
-      return;
-    }
-    if (!canFollowActor({ actorId, collaborators, selfId: identity.id })) {
-      showToast("This participant can’t be followed right now.", "error");
-      return;
-    }
-    const target = collaborators.find((collaborator) => collaborator.id === actorId);
-    if (!target || !revealFollowTarget(target)) {
-      showToast("This participant’s location isn’t available yet.", "error");
-      return;
-    }
-    setFollowState({ status: "following", actorId });
-    setRoomFollowingActor(actorId);
-  });
-  useEffect(() => {
-    if (followState.status !== "following") return;
-    if (!isLive) {
-      stopFollowing("manual");
-      return;
-    }
-    const target = collaborators.find((collaborator) => collaborator.id === followState.actorId);
-    if (!target) {
-      stopFollowing("target-left");
-      return;
-    }
-    if (!canFollowActor({ actorId: target.id, collaborators, selfId: identity.id })) {
-      stopFollowing("cycle");
-      return;
-    }
-    if (!revealFollowTarget(target)) stopFollowing("target-document-deleted");
-  }, [collaborators, files, followState, identity.id, isLive]);
-  useEffect(() => {
-    if (followState.status !== "following") return;
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      stopFollowing("manual");
-    };
-    window.addEventListener("keydown", handleEscape, true);
-    return () => window.removeEventListener("keydown", handleEscape, true);
-  }, [followState, stopFollowing]);
   const publishRoomDocument = useEventCallback((file: WorkspaceFile) =>
     !activeRoom || createRoomDocument({
       id: file.id,
@@ -727,7 +658,6 @@ export function useWorkspaceRuntime() {
     }));
   const publishRoomDocumentProjection = useEventCallback((file: WorkspaceFile) => {
     if (!publishRoomDocument(file)) return false;
-    if (activeRoom) setFileText(file.id, "");
     return true;
   });
   const restoreRoomDocument = useEventCallback((file: WorkspaceFile, comments: FileComment[]) => {
@@ -740,7 +670,6 @@ export function useWorkspaceRuntime() {
         replies: comment.replies ?? [],
       });
     }
-    if (activeRoom) setFileText(file.id, "");
     return true;
   });
   const publishRoomFolder = useEventCallback((folder: (typeof folders)[number]) =>
@@ -772,9 +701,6 @@ export function useWorkspaceRuntime() {
     for (const { item: file } of bundle.files) {
       if (!publishRoomDocument(file)) return false;
     }
-    if (activeRoom) {
-      for (const { item: file } of bundle.files) setFileText(file.id, "");
-    }
     return true;
   });
   const addRoomAwareFileFromContent = useEventCallback((
@@ -783,13 +709,17 @@ export function useWorkspaceRuntime() {
     viewMode?: FileViewMode,
     overrides?: Partial<WorkspaceFile>,
   ) => {
-    const nextFile = addFileFromContent(title, fileText, viewMode, overrides);
-    if (activeRoom && !publishRoomDocument(nextFile)) {
+    const nextFile = addFileFromContent(
+      title,
+      activeRoom ? "" : fileText,
+      viewMode,
+      overrides,
+    );
+    if (activeRoom && !publishRoomDocument({ ...nextFile, text: fileText })) {
       deleteWorkspaceFileAction(nextFile.id);
       showToast("This document couldn’t be imported into the live workspace.", "error");
       return nextFile;
     }
-    if (activeRoom) setFileText(nextFile.id, "");
     return nextFile;
   });
   useEffect(() => {
@@ -1067,7 +997,15 @@ export function useWorkspaceRuntime() {
     activeFile,
     isRoomSession: Boolean(activeRoom),
     activeFileId,
-    addFileFromContent,
+    addFileFromContent: (title, fileText, viewMode, overrides) => {
+      const nextFile = addFileFromContent(
+        title,
+        activeRoom ? "" : fileText,
+        viewMode,
+        overrides,
+      );
+      return activeRoom ? { ...nextFile, text: fileText } : nextFile;
+    },
     addWorkspaceFileAction,
     closeFloatingChrome,
     closeWorkspaceFileAction,
@@ -1090,9 +1028,7 @@ export function useWorkspaceRuntime() {
     onFileCreated: publishRoomDocumentProjection,
     onFileContentReplaced: (file) => {
       if (!activeRoom) return true;
-      if (!replaceRoomDocumentText(file.id, file.text)) return false;
-      setFileText(file.id, "");
-      return true;
+      return replaceRoomDocumentText(file.id, file.text);
     },
     onFileDeleted: (file) => !activeRoom || deleteRoomNode(file.id),
     onFileRenamed: renameRoomNode,
@@ -1115,7 +1051,16 @@ export function useWorkspaceRuntime() {
     selectWorkspaceFileAction,
     setHistoryByFileId,
     showToast,
-    upsertHelpFile,
+    upsertHelpFile: activeRoom
+      ? (helpMarkdown) => {
+          const existingHelpFile = files.find(
+            (file) => file.title.trim().toLowerCase() === "help.md",
+          );
+          return existingHelpFile
+            ? { ...existingHelpFile, title: "HELP.md", text: helpMarkdown, viewMode: "preview" }
+            : addFileFromContent("HELP.md", "", "preview");
+        }
+      : upsertHelpFile,
   });
   const addWorkspaceFolder = useEventCallback((parentId?: string) => {
     const folder = addWorkspaceFolderAction("New folder", parentId);
@@ -1261,7 +1206,15 @@ export function useWorkspaceRuntime() {
         showToast("Folder deleted.", "neutral", {
           actionLabel: "Undo",
           onAction: () => {
-            restoreWorkspaceFolderAction(restorableBundle);
+            restoreWorkspaceFolderAction(activeRoom
+              ? {
+                  ...restorableBundle,
+                  files: restorableBundle.files.map((entry) => ({
+                    ...entry,
+                    item: { ...entry.item, text: "" },
+                  })),
+                }
+              : restorableBundle);
             if (!restoreRoomFolderBundle(restorableBundle)) {
               deleteRoomNode(folderId);
               deleteWorkspaceFolderAction(folderId);

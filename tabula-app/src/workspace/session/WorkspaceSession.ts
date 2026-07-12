@@ -1,8 +1,5 @@
 import type { LocationRoom } from "../../workspaceStorage";
-
-type DisposableRoomRuntime = {
-  disconnect(): void;
-};
+import type { WorkspaceRoomRuntime } from "../../collaboration/liveCollaboration";
 
 export type LocalWorkspaceSession = {
   readonly mode: "local";
@@ -12,7 +9,9 @@ export type LocalWorkspaceSession = {
 export type RoomWorkspaceSession = {
   readonly mode: "room";
   readonly room: LocationRoom;
-  attachRuntime(runtime: DisposableRoomRuntime): () => void;
+  attachRuntime(runtime: WorkspaceRoomRuntime): () => void;
+  getRuntime(): WorkspaceRoomRuntime | null;
+  subscribeRuntime(listener: () => void): () => void;
   dispose(): void;
 };
 
@@ -25,7 +24,10 @@ export const createLocalWorkspaceSession = (): LocalWorkspaceSession => ({
 
 export const createRoomWorkspaceSession = (room: LocationRoom): RoomWorkspaceSession => {
   let disposed = false;
-  let runtime: DisposableRoomRuntime | null = null;
+  let runtime: WorkspaceRoomRuntime | null = null;
+  const listeners = new Set<() => void>();
+
+  const publish = () => listeners.forEach((listener) => listener());
 
   return {
     mode: "room",
@@ -38,19 +40,30 @@ export const createRoomWorkspaceSession = (room: LocationRoom): RoomWorkspaceSes
       if (runtime !== nextRuntime) {
         runtime?.disconnect();
         runtime = nextRuntime;
+        publish();
       }
       let detached = false;
       return () => {
         if (detached) return;
         detached = true;
-        if (runtime === nextRuntime) runtime = null;
+        if (runtime === nextRuntime) {
+          runtime = null;
+          publish();
+        }
       };
+    },
+    getRuntime: () => runtime,
+    subscribeRuntime(listener) {
+      if (disposed) return () => undefined;
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
     dispose() {
       if (disposed) return;
       disposed = true;
       runtime?.disconnect();
       runtime = null;
+      listeners.clear();
     },
   };
 };
