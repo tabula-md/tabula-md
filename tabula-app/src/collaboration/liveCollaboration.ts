@@ -54,7 +54,6 @@ import {
   type WorkspaceRoomComment,
   type WorkspaceRoomCommentReply,
   type WorkspaceRoomCrdt,
-  type WorkspaceRoomSnapshot,
   type WorkspaceRoomStructureSnapshot,
 } from "@tabula-md/tabula";
 import { isEncryptedEnvelope } from "./collabConnectionModel";
@@ -1150,77 +1149,6 @@ export const createWorkspaceRoomRuntime = ({
     }
   });
 
-  const setWorkspace = ({
-    documents: nextDocuments,
-    folders: nextFolders = [],
-  }: {
-    documents: readonly WorkspaceDocumentSnapshot[];
-    folders?: readonly WorkspaceFolderSnapshot[];
-  }) => {
-    if (closed || (!emitInitialWorkspaceState && !hasHydratedWorkspace)) return;
-    const candidateIds = [
-      ...nextFolders.filter((folder) => folder.id !== WORKSPACE_ROOM_ROOT_ID).map((folder) => folder.id),
-      ...nextDocuments.map((document) => document.id),
-    ];
-    if (new Set(candidateIds).size !== candidateIds.length) return false;
-    const validationDoc = new Y.Doc();
-    const validationRoom = createWorkspaceRoomCrdt({ roomId, doc: validationDoc });
-    try {
-      const documentIds = new Set(nextDocuments.map((document) => document.id));
-      initializeWorkspaceRoomCrdt(validationRoom, {
-        nodes: [
-          ...nextFolders.filter((folder) => folder.id !== WORKSPACE_ROOM_ROOT_ID).map((folder) => ({
-            ...folder,
-            type: "folder" as const,
-          })),
-          ...nextDocuments.map((document) => ({
-            ...document,
-            type: "document" as const,
-            markdown: room.documents.get(document.id)?.toString() ?? document.text,
-          })),
-        ],
-        comments: commentsToList(getWorkspaceRoomComments(room)).filter((comment) => documentIds.has(comment.fileId)),
-      });
-      const structure = validateWorkspaceRoomStructure(validationRoom, roomId);
-      const limits = structure.ok
-        ? validateWorkspaceRoomLimits(getWorkspaceRoomSnapshot(validationRoom))
-        : structure;
-      if (!limits.ok) {
-        emitInvalidMessage(limits.message);
-        return false;
-      }
-    } finally {
-      validationDoc.destroy();
-    }
-    const desiredIds = new Set<string>([WORKSPACE_ROOM_ROOT_ID]);
-    room.doc.transact(() => {
-      for (const folder of nextFolders) {
-        if (folder.id === WORKSPACE_ROOM_ROOT_ID) continue;
-        desiredIds.add(folder.id);
-        if (!room.nodes.has(folder.id)) createWorkspaceRoomFolder(room, folder);
-        else {
-          renameWorkspaceRoomNode(room, folder.id, folder.title);
-          moveWorkspaceRoomNode(room, folder.id, folder.parentId ?? WORKSPACE_ROOM_ROOT_ID);
-          setWorkspaceRoomNodeOrder(room, folder.id, folder.order ?? 0);
-        }
-      }
-      for (const document of nextDocuments) {
-        desiredIds.add(document.id);
-        if (!room.nodes.has(document.id)) {
-          createWorkspaceRoomDocument(room, { ...document, markdown: document.text });
-        } else {
-          renameWorkspaceRoomNode(room, document.id, document.title);
-          moveWorkspaceRoomNode(room, document.id, document.parentId ?? WORKSPACE_ROOM_ROOT_ID);
-          setWorkspaceRoomNodeOrder(room, document.id, document.order ?? 0);
-        }
-      }
-      for (const nodeId of room.nodes.keys()) {
-        if (!desiredIds.has(nodeId)) deleteWorkspaceRoomNode(room, nodeId);
-      }
-    }, "tabula.workspace.reconcile");
-    return true;
-  };
-
   const setActiveDocument = (nextDocument: { documentId: string; fileTitle?: string } | null) => {
     activeDocumentId = nextDocument?.documentId ?? null;
     currentFileTitle = nextDocument?.fileTitle;
@@ -1257,6 +1185,21 @@ export const createWorkspaceRoomRuntime = ({
   const createFolder = (input: WorkspaceRoomFolderCommand) => {
     if (!canCreateNode("folder")) return false;
     return createWorkspaceRoomFolder(room, input);
+  };
+
+  const replaceDocumentText = (documentId: string, nextText: string) => {
+    const text = getWorkspaceRoomDocument(room, documentId);
+    if (!text) return false;
+    const currentText = text.toString();
+    if (currentText === nextText) return true;
+    const byteDelta = utf8Encoder.encode(nextText).byteLength -
+      (documentByteLengths.get(documentId) ?? utf8Encoder.encode(currentText).byteLength);
+    if (!canApplyTextByteDelta(byteDelta)) return false;
+    room.doc.transact(() => {
+      if (text.length) text.delete(0, text.length);
+      if (nextText) text.insert(0, nextText);
+    }, "tabula.text.replace");
+    return true;
   };
 
   return {
@@ -1305,6 +1248,7 @@ export const createWorkspaceRoomRuntime = ({
       room.doc.transact(() => applyTextPatches(text, patches), "tabula.text.local");
       return true;
     },
+    replaceDocumentText,
     createDocument,
     createFolder,
     renameNode(nodeId: string, title: string) {
@@ -1325,9 +1269,6 @@ export const createWorkspaceRoomRuntime = ({
     setEditorPresenceEnabled(enabled: boolean) {
       editorPresenceEnabled = enabled;
       if (!enabled) awareness.setLocalStateField("cursor", null);
-    },
-    setWorkspaceDocuments(nextDocuments: readonly WorkspaceDocumentSnapshot[], nextFolders?: readonly WorkspaceFolderSnapshot[]) {
-      setWorkspace({ documents: nextDocuments, folders: nextFolders });
     },
     setIdentity(nextIdentity: Collaborator) {
       currentIdentity = {

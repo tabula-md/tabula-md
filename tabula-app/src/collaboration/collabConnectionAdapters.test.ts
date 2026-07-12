@@ -299,10 +299,7 @@ describe("workspace room runtime", () => {
       },
     });
     await waitForTasks();
-    connection.setWorkspaceDocuments([
-      { id: "local-doc", title: "Local renamed.md", text: "Local" },
-      { id: "remote-doc", title: "Remote.md", text: "Remote" },
-    ]);
+    connection.renameNode("local-doc", "Local renamed.md");
     expect(connection.getEditorBinding()?.yText.toString()).toBe("Local");
     connection.disconnect();
   });
@@ -479,11 +476,17 @@ describe("workspace room runtime", () => {
       expect(agent.getEditorBinding()?.yText.toString()).toBe("Alpha human");
     });
 
-    agent.setWorkspaceDocuments([
-      { id: "doc-a", title: "A renamed.md", text: "Alpha human", parentId: "workspace-root", order: 1 },
-      { id: "doc-b", title: "B.md", text: "Beta agent", parentId: "folder-1", order: 2 },
-      { id: "doc-c", title: "C.md", text: "Created by agent", parentId: "folder-1", order: 3 },
-    ], [{ id: "folder-1", title: "Notes", parentId: "workspace-root", order: 1 }]);
+    agent.createFolder({ id: "folder-1", title: "Notes", parentId: "workspace-root", order: 1 });
+    agent.renameNode("doc-a", "A renamed.md");
+    agent.moveNode("doc-b", "folder-1");
+    agent.setNodeOrder("doc-b", 2);
+    agent.createDocument({
+      id: "doc-c",
+      title: "C.md",
+      markdown: "Created by agent",
+      parentId: "folder-1",
+      order: 3,
+    });
     await vi.waitFor(() => {
       expect(last(hostSnapshots)?.nodes.map(({ id }) => id)).toHaveLength(5);
       expect(last(hostSnapshots)?.nodes.map(({ id }) => id)).toEqual(expect.arrayContaining([
@@ -745,9 +748,8 @@ describe("workspace room runtime", () => {
 
     relay.setOnline("peer", false);
     peer.applyLocalTextPatches([{ from: 3, to: 3, insert: " stale edit" }]);
-    host.setWorkspaceDocuments([
-      { id: "doc-b", title: "Kept and renamed.md", text: "current", parentId: "workspace-root" },
-    ]);
+    host.renameNode("doc-b", "Kept and renamed.md");
+    host.deleteNode("doc-a");
     await vi.waitFor(() => {
       expect(last(hostSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(false);
       expect(host.materializeDocument("doc-b")).toBe("current");
@@ -859,7 +861,7 @@ describe("workspace room runtime", () => {
       });
     });
 
-    peer.setWorkspaceDocuments([{ id: "doc", title: "Renamed.md", text: "text" }]);
+    peer.renameNode("doc", "Renamed.md");
     await vi.waitFor(() => expect(hostOrigins).toContainEqual({
       actorId: "a-peer",
       actorName: "Nimble Human",
@@ -907,15 +909,18 @@ describe("workspace room runtime", () => {
       expect(last(peerSnapshots)?.nodes.some(({ id }) => id === "doc-a")).toBe(true);
       expect(peer.materializeDocument("doc-a")).toBe("Alpha");
     });
-    host.setWorkspaceDocuments([]);
+    host.deleteNode("doc-a");
     await vi.waitFor(() => {
       expect(last(peerSnapshots)?.nodes.map(({ id }) => id)).toEqual(["workspace-root"]);
       expect(peer.materializeDocument("doc-a")).toBeNull();
     });
 
-    peer.setWorkspaceDocuments([
-      { id: "doc-b", title: "B.md", text: "Beta", parentId: "workspace-root" },
-    ]);
+    peer.createDocument({
+      id: "doc-b",
+      title: "B.md",
+      markdown: "Beta",
+      parentId: "workspace-root",
+    });
     await vi.waitFor(() => {
       expect(last(peerSnapshots)?.nodes.some(({ id }) => id === "doc-b")).toBe(true);
       expect(peer.materializeDocument("doc-b")).toBe("Beta");

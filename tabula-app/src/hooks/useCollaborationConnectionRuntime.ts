@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -19,6 +18,8 @@ import type {
   CollabRecoveryEvent,
   ConnectionStatus,
   WorkspaceFolderSnapshot,
+  WorkspaceRoomDocumentCommand,
+  WorkspaceRoomFolderCommand,
   WorkspaceRoomRuntimeSnapshot,
   WorkspaceRoomChangeOrigin,
 } from "../collaboration/liveCollaboration";
@@ -32,18 +33,41 @@ import {
 } from "../collaboration/collabRuntime";
 import { isUsableLiveRoomFile, type WorkspaceFile } from "../workspaceStorage";
 
-const getWorkspaceSignature = (
-  documents: readonly { id: string; title: string; parentId?: string | null; order?: number }[],
-  folders: readonly WorkspaceFolderSnapshot[],
-) => JSON.stringify({
-  documents: documents.map(({ id, title, parentId, order }) => [id, title, parentId ?? null, order ?? 0]),
-  folders: folders.map(({ id, title, parentId, order }) => [id, title, parentId, order ?? 0]),
-});
-
 const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   status: "idle",
   collaborators: [],
   editorBinding: null,
+};
+
+type PendingWorkspaceCommand =
+  | { type: "create-document"; input: WorkspaceRoomDocumentCommand }
+  | { type: "create-folder"; input: WorkspaceRoomFolderCommand }
+  | { type: "rename-node"; nodeId: string; title: string }
+  | { type: "move-node"; nodeId: string; parentId: string }
+  | { type: "set-node-order"; nodeId: string; order: number }
+  | { type: "delete-node"; nodeId: string }
+  | { type: "replace-document-text"; documentId: string; text: string };
+
+const applyWorkspaceCommand = (
+  runtime: WorkspaceRoomRuntime,
+  command: PendingWorkspaceCommand,
+) => {
+  switch (command.type) {
+    case "create-document":
+      return runtime.createDocument(command.input);
+    case "create-folder":
+      return runtime.createFolder(command.input);
+    case "rename-node":
+      return runtime.renameNode(command.nodeId, command.title);
+    case "move-node":
+      return runtime.moveNode(command.nodeId, command.parentId);
+    case "set-node-order":
+      return runtime.setNodeOrder(command.nodeId, command.order);
+    case "delete-node":
+      return runtime.deleteNode(command.nodeId);
+    case "replace-document-text":
+      return runtime.replaceDocumentText(command.documentId, command.text);
+  }
 };
 
 type UseCollaborationConnectionRuntimeOptions = {
@@ -106,12 +130,9 @@ export function useCollaborationConnectionRuntime({
   const workspaceDocumentsRef = useRef(workspaceDocuments);
   const workspaceFoldersRef = useRef(workspaceFolders);
   const pendingLocalTextQueueRef = useRef<Array<{ text?: string; patches: readonly TextPatch[] }>>([]);
+  const pendingWorkspaceCommandQueueRef = useRef<PendingWorkspaceCommand[]>([]);
   const isLive = isUsableLiveRoomFile(roomFile);
   const connectionKey = roomFile?.roomId ? `workspace:${roomFile.roomId}:${roomFile.shareUrl ?? ""}` : "idle";
-  const workspaceSignature = useMemo(
-    () => getWorkspaceSignature(workspaceDocuments, workspaceFolders),
-    [workspaceDocuments, workspaceFolders],
-  );
   const subscribeToRuntime = useCallback(
     (listener: () => void) => runtime?.subscribe(listener) ?? (() => undefined),
     [runtime],
@@ -150,14 +171,11 @@ export function useCollaborationConnectionRuntime({
   }, [workspaceDocuments, workspaceFolders]);
 
   useEffect(() => {
-    collabRef.current?.setWorkspaceDocuments(workspaceDocumentsRef.current, workspaceFoldersRef.current);
-  }, [workspaceSignature]);
-
-  useEffect(() => {
     collabRef.current?.disconnect();
     collabRef.current = null;
     setRuntime(null);
     pendingLocalTextQueueRef.current = [];
+    pendingWorkspaceCommandQueueRef.current = [];
 
     const target = getLiveRoomConnectionTarget(roomFile);
     const pendingRoomStart = pendingRoomStartRef.current;
@@ -210,6 +228,9 @@ export function useCollaborationConnectionRuntime({
           if (pending.text !== undefined) connection.applyLocalText(pending.text, pending.patches);
           else connection.applyLocalTextPatches(pending.patches);
         }
+        const workspaceCommands = pendingWorkspaceCommandQueueRef.current;
+        pendingWorkspaceCommandQueueRef.current = [];
+        for (const command of workspaceCommands) applyWorkspaceCommand(connection, command);
       })
       .catch(() => {
         if (disposed) return;
@@ -224,6 +245,7 @@ export function useCollaborationConnectionRuntime({
       if (collabRef.current === effectRuntime) collabRef.current = null;
       setRuntime((current) => current === effectRuntime ? null : current);
       pendingLocalTextQueueRef.current = [];
+      pendingWorkspaceCommandQueueRef.current = [];
       setFileCollaborationStatus(target.fileId, "disconnected", getDisconnectedStatusPatch());
     };
   }, [
@@ -279,11 +301,20 @@ export function useCollaborationConnectionRuntime({
     if (isLive && patches.length > 0) pendingLocalTextQueueRef.current.push({ text: nextText ?? undefined, patches });
   }, [isLive]);
 
+  const dispatchWorkspaceCommand = useCallback((command: PendingWorkspaceCommand) => {
+    const connection = collabRef.current;
+    if (connection) return applyWorkspaceCommand(connection, command);
+    if (!isLive) return false;
+    pendingWorkspaceCommandQueueRef.current.push(command);
+    return true;
+  }, [isLive]);
+
   const resetConnection = useCallback((nextStatus: ConnectionStatus = "idle") => {
     collabRef.current?.disconnect();
     collabRef.current = null;
     setRuntime(null);
     pendingLocalTextQueueRef.current = [];
+    pendingWorkspaceCommandQueueRef.current = [];
     setPreRuntimeConnectionStatus(nextStatus);
   }, []);
 
@@ -296,6 +327,20 @@ export function useCollaborationConnectionRuntime({
 
   return {
     applyLocalText,
+    createDocument: (input: WorkspaceRoomDocumentCommand) =>
+      dispatchWorkspaceCommand({ type: "create-document", input }),
+    createFolder: (input: WorkspaceRoomFolderCommand) =>
+      dispatchWorkspaceCommand({ type: "create-folder", input }),
+    renameNode: (nodeId: string, title: string) =>
+      dispatchWorkspaceCommand({ type: "rename-node", nodeId, title }),
+    moveNode: (nodeId: string, parentId: string) =>
+      dispatchWorkspaceCommand({ type: "move-node", nodeId, parentId }),
+    setNodeOrder: (nodeId: string, order: number) =>
+      dispatchWorkspaceCommand({ type: "set-node-order", nodeId, order }),
+    deleteNode: (nodeId: string) =>
+      dispatchWorkspaceCommand({ type: "delete-node", nodeId }),
+    replaceDocumentText: (documentId: string, text: string) =>
+      dispatchWorkspaceCommand({ type: "replace-document-text", documentId, text }),
     collaborators,
     connectionStatus,
     editorBinding,

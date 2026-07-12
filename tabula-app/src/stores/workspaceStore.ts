@@ -728,6 +728,9 @@ export const getWorkspaceStoreOpenFiles = () => getOpenWorkspaceFiles(getWorkspa
 
 export const getWorkspaceStoreActiveFile = () => getActiveWorkspaceFile(getWorkspaceStoreSnapshot());
 
+export const getWorkspaceStoreFolder = (folderId: string) =>
+  useWorkspaceStore.getState().folders.find((folder) => folder.id === folderId);
+
 export const resetWorkspaceStoreForTests = () => {
   useWorkspaceStore.setState(DEFAULT_WORKSPACE_STORE_STATE);
 };

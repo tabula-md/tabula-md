@@ -234,6 +234,10 @@ export function useProjectIoController({
   };
 
   const importProjectFile = async (file: File) => {
+    if (roomFile?.roomId) {
+      showToast("Stop live collaboration before restoring a workspace backup.", "error");
+      return;
+    }
     let parsedWorkspace: unknown;
 
     try {

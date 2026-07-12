@@ -72,6 +72,11 @@ type UseWorkspaceFileActionsArgs = {
   historyByFileId: Record<string, FileHistory>;
   openFileIds: string[];
   onBeforeWorkspaceBoundary?: () => void;
+  onFileCreated?: (file: WorkspaceFile) => boolean;
+  onFileContentReplaced?: (file: WorkspaceFile) => boolean;
+  onFileDeleted?: (file: WorkspaceFile) => boolean;
+  onFileRenamed?: (fileId: string, title: string) => boolean;
+  onFileRestored?: (file: WorkspaceFile, comments: FileComment[]) => boolean;
   preferences: WorkspacePreferences;
   queueEditorFocus: () => void;
   renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
@@ -106,6 +111,11 @@ export function useWorkspaceFileActions({
   historyByFileId,
   openFileIds,
   onBeforeWorkspaceBoundary,
+  onFileCreated,
+  onFileContentReplaced,
+  onFileDeleted,
+  onFileRenamed,
+  onFileRestored,
   preferences,
   queueEditorFocus,
   renameFile,
@@ -141,6 +151,11 @@ export function useWorkspaceFileActions({
       ...getNewFilePreferenceOverrides(preferences),
       ...collaborationOverrides,
     });
+    if (nextFile.roomId && onFileCreated && !onFileCreated(nextFile)) {
+      deleteWorkspaceFileAction(nextFile.id);
+      showToast("This document couldn’t be added to the live workspace.", "error");
+      return undefined;
+    }
     closeFloatingChrome();
     syncSelectedFileUrl(nextFile);
     return nextFile;
@@ -150,7 +165,24 @@ export function useWorkspaceFileActions({
 
   const openHelpFile = () => {
     onBeforeWorkspaceBoundary?.();
-    const nextFile = upsertHelpFile(helpMarkdown);
+    const existingHelpFile = files.find((file) => file.title.trim().toLowerCase() === "help.md");
+    const nextFile = existingHelpFile
+      ? upsertHelpFile(helpMarkdown)
+      : addFileFromContent(
+          "HELP.md",
+          helpMarkdown,
+          "preview",
+          getLiveRoomFileOverrides(roomFile ?? activeFile),
+        );
+    if (existingHelpFile?.roomId && onFileContentReplaced && !onFileContentReplaced(nextFile)) {
+      showToast("Help couldn’t be refreshed in the live workspace.", "error");
+      return;
+    }
+    if (!existingHelpFile && nextFile.roomId && onFileCreated && !onFileCreated(nextFile)) {
+      deleteWorkspaceFileAction(nextFile.id);
+      showToast("Help couldn’t be added to the live workspace.", "error");
+      return;
+    }
     closeFloatingChrome();
     syncSelectedFileUrl(nextFile);
   };
@@ -165,8 +197,17 @@ export function useWorkspaceFileActions({
         readmeDraft.title,
         readmeDraft.text,
         readmeDraft.viewMode,
-        readmeDraft.overrides,
+        {
+          ...readmeDraft.overrides,
+          ...getLiveRoomFileOverrides(roomFile ?? activeFile),
+        },
       );
+
+    if (!readmeFile && nextFile.roomId && onFileCreated && !onFileCreated(nextFile)) {
+      deleteWorkspaceFileAction(nextFile.id);
+      showToast("About couldn’t be added to the live workspace.", "error");
+      return;
+    }
 
     selectWorkspaceFileAction(nextFile.id);
     closeFloatingChrome();
@@ -174,9 +215,16 @@ export function useWorkspaceFileActions({
   };
 
   const renameWorkspaceFileAction = (fileId: string, nextRawTitle: string) => {
+    const previousTitle = files.find((file) => file.id === fileId)?.title;
     const result = renameFile(fileId, nextRawTitle);
     if (!result.ok) {
       showToast(result.message, "error");
+      return result;
+    }
+    const renamedFile = files.find((file) => file.id === fileId);
+    if (renamedFile?.roomId && onFileRenamed && !onFileRenamed(fileId, result.title)) {
+      if (previousTitle) renameFile(fileId, previousTitle);
+      showToast("This document couldn’t be renamed in the live workspace.", "error");
     }
     return result;
   };
@@ -186,6 +234,11 @@ export function useWorkspaceFileActions({
     queueEditorFocus();
     const nextFile = duplicateWorkspaceFile(fileId);
     if (!nextFile) {
+      return;
+    }
+    if (nextFile.roomId && onFileCreated && !onFileCreated(nextFile)) {
+      deleteWorkspaceFileAction(nextFile.id);
+      showToast("This document couldn’t be duplicated in the live workspace.", "error");
       return;
     }
 
@@ -209,6 +262,10 @@ export function useWorkspaceFileActions({
     const previousActiveFileId = activeFile?.id ?? activeFileId;
     const deletedComments = commentsByFileId[fileId];
     const deletedHistory = historyByFileId[fileId];
+    if (deletedFile.roomId && onFileDeleted && !onFileDeleted(deletedFile)) {
+      showToast("This document couldn’t be deleted from the live workspace.", "error");
+      return;
+    }
     const result = deleteWorkspaceFileAction(fileId);
     if (!result) {
       return;
@@ -242,6 +299,15 @@ export function useWorkspaceFileActions({
           previousOpenFileIds,
           activate: shouldActivateRestoredFile,
         });
+        if (
+          deletedFile.roomId &&
+          onFileRestored &&
+          !onFileRestored(deletedFile, deletedComments ?? [])
+        ) {
+          deleteWorkspaceFileAction(deletedFile.id);
+          showToast("This document couldn’t be restored to the live workspace.", "error");
+          return;
+        }
         if (shouldActivateRestoredFile) {
           syncSelectedFileUrl(deletedFile);
         }
