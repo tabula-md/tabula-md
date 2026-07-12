@@ -7,7 +7,7 @@ import {
   Square,
   Users,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import type { ConnectionStatus } from "../../collaboration";
 import type { ShareViewModel } from "../../share";
 import type {
@@ -54,6 +54,10 @@ export function ShareLinkPanel({
   onStartWorkspaceRoom,
   onStopSession,
 }: ShareLinkPanelProps) {
+  const startDescriptionId = useId();
+  const nameInputId = useId();
+  const inviteLabelId = useId();
+  const agentDescriptionId = useId();
   const canRetrySession = connectionStatus === "disconnected";
   const showTransientLiveStatus = !isLiveConnected && (connectionStatus === "reconnecting" || connectionStatus === "disconnected");
   const connectionCopy = showTransientLiveStatus
@@ -87,13 +91,14 @@ export function ShareLinkPanel({
               className="share-modal-primary"
               type="button"
               disabled={!shareView.live.canStart}
+              aria-describedby={startDescriptionId}
               title={shareView.live.disabledReason || undefined}
               onClick={onStartWorkspaceRoom}
             >
               <Play size={16} />
               <span>{copy.live.startSession}</span>
             </button>
-            <p>{shareView.live.disabledReason || copy.live.startDescription}</p>
+            <p id={startDescriptionId}>{shareView.live.disabledReason || copy.live.startDescription}</p>
           </div>
         )}
 
@@ -109,8 +114,9 @@ export function ShareLinkPanel({
             {isLiveConnected && (
               <>
                 <div className="share-modal-field">
-                  <label>{copy.live.nameLabel}</label>
+                  <label htmlFor={nameInputId}>{copy.live.nameLabel}</label>
                   <input
+                    id={nameInputId}
                     value={currentUserName}
                     aria-label={copy.live.nameAria}
                     placeholder={copy.live.anonymousPlaceholder}
@@ -121,11 +127,13 @@ export function ShareLinkPanel({
                 </div>
 
                 <div className="share-modal-field">
-                  <label>{copy.live.inviteLabel}</label>
+                  <span className="share-modal-field-label" id={inviteLabelId}>
+                    {copy.live.inviteLabel}
+                  </span>
                   <div className="share-modal-link-row">
                     <div
                       className="share-link-display"
-                      aria-label={copy.live.inviteLabel}
+                      aria-labelledby={inviteLabelId}
                       title={shareView.live.link.title}
                     >
                       <span>{shareView.live.link.display}</span>
@@ -149,11 +157,12 @@ export function ShareLinkPanel({
                 <div className="share-live-agent-box">
                   <div>
                     <strong>{copy.live.inviteAgent}</strong>
-                    <p>{copy.live.inviteAgentDescription}</p>
+                    <p id={agentDescriptionId}>{copy.live.inviteAgentDescription}</p>
                   </div>
                   <button
                     className="share-modal-secondary"
                     type="button"
+                    aria-describedby={agentDescriptionId}
                     onClick={onCopyLocalAgentPrompt}
                   >
                     {agentPromptCopied ? <Check size={16} /> : <Bot size={16} />}

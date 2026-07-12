@@ -80,6 +80,8 @@ export type CollabRecoveryEvent = {
   createdAt: string;
 };
 
+export type CollabRelativePosition = Y.RelativePosition;
+
 export type CollabEditorBinding = {
   documentId: string;
   extension: Extension;
@@ -87,6 +89,8 @@ export type CollabEditorBinding = {
   awareness: Awareness;
   undoManager: Y.UndoManager;
   canApplyTextByteDelta: (byteDelta: number) => boolean;
+  createRelativePosition: (index: number) => CollabRelativePosition;
+  resolveRelativePosition: (position: CollabRelativePosition) => number | null;
   consumeRemoteProjection?: () => boolean;
 };
 
@@ -335,6 +339,13 @@ export const createWorkspaceRoomRuntime = ({
       awareness,
       undoManager,
       canApplyTextByteDelta,
+      createRelativePosition: (index) => Y.createRelativePositionFromTypeIndex(yText, index),
+      resolveRelativePosition: (position) => {
+        const yDoc = yText.doc;
+        if (!yDoc) return null;
+        const absolute = Y.createAbsolutePositionFromRelativePosition(position, yDoc);
+        return absolute?.type === yText ? absolute.index : null;
+      },
       consumeRemoteProjection: () => {
         const revision = remoteProjectionRevisions.get(nextDocumentId) ?? 0;
         const consumedRevision = consumedRemoteProjectionRevisions.get(nextDocumentId) ?? 0;

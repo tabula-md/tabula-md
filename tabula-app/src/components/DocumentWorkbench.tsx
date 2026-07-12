@@ -39,13 +39,13 @@ import type {
 import { DocumentControls, DocumentSearchBar } from "./DocumentControls";
 import { FormattingToolbar } from "./FormattingToolbar";
 import { MarkdownEditor } from "./MarkdownEditor";
-import {
-  MarkdownPreview,
-  type MarkdownPreviewCommentAnchor,
-  type MarkdownPreviewLineActionRequest,
-  type MarkdownPreviewLineAnnotation,
-  type MarkdownPreviewMetadata,
-} from "./MarkdownPreview";
+import { MarkdownPreview } from "./MarkdownPreview";
+import type {
+  MarkdownPreviewCommentAnchor,
+  MarkdownPreviewLineActionRequest,
+  MarkdownPreviewLineAnnotation,
+  MarkdownPreviewMetadata,
+} from "../preview/markdownPreviewTypes";
 import { StatusBar } from "./StatusBar";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 
@@ -92,6 +92,7 @@ export type DocumentWorkbenchProps = {
   replaceAvailable: boolean;
   selectedCharacterCount: number;
   selectedLineCount: number;
+  saveRevision: number;
   selectionActionPosition: MarkdownSelectionActionPosition | null;
   splitDividerDragging: boolean;
   splitDividerMaxValue: number;
@@ -202,6 +203,7 @@ export function DocumentWorkbench({
   replaceAvailable,
   selectedCharacterCount,
   selectedLineCount,
+  saveRevision,
   selectionActionPosition,
   splitDividerDragging,
   splitDividerMaxValue,
@@ -469,6 +471,7 @@ export function DocumentWorkbench({
         activeViewMode={documentSurface.statusBar.activeViewMode}
         isLive={isLive}
         language={language}
+        saveRevision={saveRevision}
         statusLabel={statusLabel}
         wordCount={documentSurface.statusBar.wordCount}
         cursorPositionLabel={cursorPositionLabel}

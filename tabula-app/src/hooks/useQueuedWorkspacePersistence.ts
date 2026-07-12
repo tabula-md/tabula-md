@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   createWorkspacePersistenceQueue,
 } from "../workspacePersistence";
@@ -33,12 +33,17 @@ export const useQueuedWorkspacePersistence = (
     onBeforePersist,
   }: UseQueuedWorkspacePersistenceOptions = {},
 ) => {
+  const [persistedRevision, setPersistedRevision] = useState(0);
+  const mountedRef = useRef(true);
   const onErrorRef = useRef(onError);
   const queueRef = useRef<ReturnType<typeof createWorkspacePersistenceQueue> | null>(null);
 
   if (!queueRef.current) {
     queueRef.current = createWorkspacePersistenceQueue({
       onError: (error) => onErrorRef.current?.(error),
+      onPersisted: () => {
+        if (mountedRef.current) setPersistedRevision((revision) => revision + 1);
+      },
     });
   }
   const enabledRef = useRef(enabled);
@@ -60,6 +65,13 @@ export const useQueuedWorkspacePersistence = (
 
     queueRef.current?.schedule(workspace);
   }, [enabled, getWorkspaceSnapshot, onBeforePersist, onError, workspace]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
@@ -96,4 +108,6 @@ export const useQueuedWorkspacePersistence = (
       flushPendingWorkspace();
     };
   }, []);
+
+  return { persistedRevision };
 };

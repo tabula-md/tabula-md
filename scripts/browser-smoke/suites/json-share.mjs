@@ -39,15 +39,20 @@ export async function run(ctx) {
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
     await page.getByRole("button", { name: "Export to link" }).click();
+    const exportLinkDisplay = page.locator(
+      '.share-export-section .share-link-display[aria-labelledby][title]',
+    );
     const exportSamples = [];
     for (let index = 0; index < 80; index += 1) {
-      const sample = await page.evaluate(() => ({
-        hasResult: Boolean(document.querySelector('[aria-label="Export link"]')),
-        modalText: document.querySelector(".share-modal")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-        toastText: document.querySelector(".app-toast")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-      }));
-      exportSamples.push(sample);
-      if (sample.hasResult || (!sample.modalText && sample.toastText)) break;
+      const [hasResult, sample] = await Promise.all([
+        exportLinkDisplay.count().then((count) => count > 0),
+        page.evaluate(() => ({
+          modalText: document.querySelector(".share-modal")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+          toastText: document.querySelector(".app-toast")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+        })),
+      ]);
+      exportSamples.push({ hasResult, ...sample });
+      if (hasResult || (!sample.modalText && sample.toastText)) break;
       await page.waitForTimeout(100);
     }
     if (!exportSamples.at(-1)?.hasResult) {
@@ -82,7 +87,7 @@ export async function run(ctx) {
       );
     }
 
-    const firstExportUrl = await page.locator('[aria-label="Export link"]').getAttribute("title");
+    const firstExportUrl = await exportLinkDisplay.getAttribute("title");
     expect(Boolean(firstExportUrl), "Export to link should create an Export link URL.");
     await page.getByRole("button", { name: "Close share dialog" }).click();
     await page.getByRole("button", { name: "New document", exact: true }).click();
@@ -94,8 +99,8 @@ export async function run(ctx) {
     const exportedActiveFileName = await page.locator(".tab-item.active").getAttribute("data-file-name");
     expect(Boolean(exportedActiveFileName), "Export link smoke should identify the active document.");
     await page.getByRole("button", { name: "Export to link" }).click();
-    await page.locator('[aria-label="Export link"]').waitFor({ state: "visible" });
-    const exportUrl = await page.locator('[aria-label="Export link"]').getAttribute("title");
+    await exportLinkDisplay.waitFor({ state: "visible" });
+    const exportUrl = await exportLinkDisplay.getAttribute("title");
     expect(Boolean(exportUrl), "Export to link should create an Export link URL.");
     expect(exportUrl !== firstExportUrl, "Re-exporting a changed workspace should create a new immutable link.");
 

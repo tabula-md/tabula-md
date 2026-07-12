@@ -13,6 +13,7 @@ type WorkspacePersistenceTimers = {
 type WorkspacePersistenceQueueOptions = {
   delayMs?: number;
   onError?: (error: unknown) => void;
+  onPersisted?: (workspace: WorkspaceState) => void;
   timers?: WorkspacePersistenceTimers;
   writeWorkspace?: (workspace: WorkspaceState) => Promise<void> | void;
 };
@@ -25,6 +26,7 @@ const defaultTimers: WorkspacePersistenceTimers = {
 export const createWorkspacePersistenceQueue = ({
   delayMs = DEFAULT_WORKSPACE_PERSISTENCE_DELAY_MS,
   onError,
+  onPersisted,
   timers = defaultTimers,
   writeWorkspace = writeWorkspaceToPrimaryStore,
 }: WorkspacePersistenceQueueOptions = {}) => {
@@ -54,6 +56,7 @@ export const createWorkspacePersistenceQueue = ({
     writeInFlight = true;
     try {
       void Promise.resolve(writeWorkspace(workspace))
+        .then(() => onPersisted?.(workspace))
         .catch(onError)
         .finally(finishWrite);
     } catch (error) {
