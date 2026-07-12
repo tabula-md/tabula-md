@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronRight, ListFilter, MessageSquarePlus } from "lucide-react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, ListFilter, MessageSquarePlus } from "lucide-react";
 import {
   getRightPanelCommentScopeModel,
   type CommentScope,
@@ -13,7 +13,7 @@ import { getCommentVirtualRows } from "./right-panel/comments/commentVirtualRows
 import type { FormatCommentDate } from "./right-panel/comments/types";
 import type { RightPanelCommentsCopy } from "./right-panel/comments/types";
 import { stripMarkdownExtension } from "@tabula-md/tabula";
-import { useDismissibleMenu } from "../hooks/useDismissibleMenu";
+import { MenuContent, MenuRadioGroup, MenuRadioItem, MenuRoot, MenuTrigger } from "./ui/Menu";
 
 export type RightPanelCommentGroup = CoreRightPanelCommentGroup<WorkspaceFile, FileComment>;
 
@@ -97,16 +97,7 @@ export function RightPanelComments({
   const [commentScope, setCommentScope] = useState<CommentScope>("current");
   const [composerMode, setComposerMode] = useState<"selection" | "document" | null>(null);
   const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
-  const scopeMenuRef = useRef<HTMLDivElement | null>(null);
-  const scopeTriggerRef = useRef<HTMLButtonElement | null>(null);
   const commentScrollRef = useRef<HTMLDivElement | null>(null);
-  const closeScopeMenu = useCallback(() => setScopeMenuOpen(false), []);
-  const handleScopeMenuKeyDown = useDismissibleMenu({
-    menuRef: scopeMenuRef,
-    onClose: closeScopeMenu,
-    open: scopeMenuOpen,
-    triggerRef: scopeTriggerRef,
-  });
   const {
     scopedOpenCommentGroups,
     scopedResolvedCommentGroups,
@@ -231,48 +222,26 @@ export function RightPanelComments({
             >
               <MessageSquarePlus size={14} aria-hidden="true" />
             </button>
-            <span className="right-comments-scope-menu-wrap">
-              <button
-                ref={scopeTriggerRef}
-                className="right-comments-toolbar-action"
-                type="button"
-                aria-label={copy.title}
-                data-tooltip={copy.title}
-                aria-haspopup="menu"
-                aria-expanded={scopeMenuOpen}
-                onClick={() => setScopeMenuOpen((open) => !open)}
-              >
-                <ListFilter size={14} aria-hidden="true" />
-              </button>
-              {scopeMenuOpen && (
-                <div
-                  ref={scopeMenuRef}
-                  className="right-comments-scope-menu ui-menu"
-                  role="menu"
-                  aria-label={copy.title}
-                  onKeyDown={handleScopeMenuKeyDown}
-                >
+            <MenuRoot open={scopeMenuOpen} onOpenChange={setScopeMenuOpen}>
+              <span className="right-comments-scope-menu-wrap">
+                <MenuTrigger asChild>
                   <button
+                    className="right-comments-toolbar-action"
                     type="button"
-                    role="menuitemradio"
-                    aria-checked={commentScope === "current"}
-                    onClick={() => selectScope("current")}
+                    aria-label={copy.title}
+                    data-tooltip={copy.title}
                   >
-                    <Check size={14} aria-hidden="true" />
-                    <span>{copy.currentFile}</span>
+                    <ListFilter size={14} aria-hidden="true" />
                   </button>
-                  <button
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={commentScope === "all"}
-                    onClick={() => selectScope("all")}
-                  >
-                    <Check size={14} aria-hidden="true" />
-                    <span>{copy.all}</span>
-                  </button>
-                </div>
-              )}
-            </span>
+                </MenuTrigger>
+              </span>
+              <MenuContent className="right-comments-scope-menu" ariaLabel={copy.title}>
+                <MenuRadioGroup value={commentScope} onValueChange={(value) => selectScope(value as CommentScope)}>
+                  <MenuRadioItem value="current" label={copy.currentFile} />
+                  <MenuRadioItem value="all" label={copy.all} />
+                </MenuRadioGroup>
+              </MenuContent>
+            </MenuRoot>
           </span>
         )}
       </div>

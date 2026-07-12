@@ -179,64 +179,102 @@
 }
 
 .right-file-action-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: var(--layer-popover);
-  display: grid;
   min-width: 184px;
-  padding: 6px;
-  border-radius: var(--radius-surface);
-  background: var(--surface-overlay);
-  box-shadow: var(--shadow-popover);
 }
 
-.right-file-action-menu button {
+.move-workspace-item-modal {
   display: grid;
-  grid-template-columns: var(--icon-size-small) minmax(0, 1fr);
+  gap: var(--space-3);
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(560px, calc(100vh - 32px));
+}
+
+.move-workspace-item-header {
+  display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.move-workspace-item-header h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--font-ui-heading);
+  font-weight: var(--weight-ui-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.move-workspace-item-header button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--control-size-compact);
+  width: var(--control-size-compact);
+  height: var(--control-size-compact);
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+}
+
+.move-workspace-item-header button:hover,
+.move-workspace-item-header button:focus-visible {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.move-workspace-item-search {
+  width: 100%;
   height: var(--control-size-row);
-  padding: 0 8px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-muted);
+  font: inherit;
+}
+
+.move-workspace-item-list {
+  display: grid;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.move-workspace-item-list button {
+  display: grid;
+  grid-template-columns: var(--icon-size-medium) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-size-row);
+  padding: 0 var(--space-2);
   border-radius: var(--radius-control);
   color: var(--text-soft);
-  background: transparent;
-  font-size: var(--font-ui-secondary);
-  font-weight: var(--weight-ui-regular);
   text-align: left;
 }
 
-.right-file-action-menu button:hover,
-.right-file-action-menu button:focus-visible {
+.move-workspace-item-list button:hover:not(:disabled),
+.move-workspace-item-list button:focus-visible {
   color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.move-workspace-item-list button:disabled {
+  color: var(--text-muted);
   background: var(--surface-muted);
 }
 
-.right-file-action-menu button.danger:hover,
-.right-file-action-menu button.danger:focus-visible {
-  color: var(--danger-text);
+.move-workspace-item-list span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.right-file-move-field {
-  display: grid;
-  grid-template-columns: var(--icon-size-small) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  height: var(--control-size-row);
-  padding: 0 8px;
-  color: var(--text-soft);
+.move-workspace-item-empty {
+  padding: var(--space-2);
+  color: var(--text-muted);
   font-size: var(--font-ui-secondary);
-}
-
-.right-file-move-field select {
-  min-width: 0;
-  width: 100%;
-  border: 0;
-  color: inherit;
-  background: transparent;
-  font: inherit;
-  text-align: right;
 }
 
 .right-file-rename-input {
@@ -271,10 +309,4 @@
     min-width: 176px;
   }
 
-  .right-file-action-menu button,
-  .right-file-move-field {
-    min-height: var(--control-size-touch);
-    height: var(--control-size-touch);
-    padding: 0 10px;
-  }
 }

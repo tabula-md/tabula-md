@@ -538,12 +538,12 @@ export async function run(ctx) {
     await waitForSelectionLayer(page, { minSegments: 1 });
 
     expect(
-      (await page.locator(".selection-comment-popover.ui-command-menu").count()) === 1,
-      "Selection comments should use the shared command-menu surface.",
+      (await page.locator(".selection-comment-popover.ui-popover").count()) === 1,
+      "Selection comments should use the shared lightweight popover surface.",
     );
     expect(
-      (await page.locator(".selection-comment-popover .ui-command-menu-item").count()) === 1,
-      "Selection comments should expose one compact Add comment command.",
+      (await page.getByRole("button", { name: "Add comment", exact: true }).count()) === 1,
+      "A single selection action should be a direct button instead of a one-item menu.",
     );
 
     await page.locator(".selection-comment-button").click();

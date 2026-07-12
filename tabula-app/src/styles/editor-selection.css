@@ -46,7 +46,21 @@
 
 .selection-comment-popover {
   position: fixed;
+  display: grid;
+  grid-template-columns: var(--icon-size-medium) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
   min-width: 164px;
+  min-height: var(--control-size-row);
+  padding: 0 var(--space-3);
+  color: var(--text-primary);
+  font-size: var(--font-ui-body);
+  text-align: left;
+}
+
+.selection-comment-popover:hover,
+.selection-comment-popover:focus-visible {
+  background: var(--surface-hover);
 }
 .markdown-editor .cm-ySelectionCaret {
   border-width: 0 0 0 2px;

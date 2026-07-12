@@ -6,6 +6,10 @@
   background: var(--surface-overlay);
   box-shadow: var(--shadow-popover);
   transform-origin: top center;
+}
+
+.ui-menu[data-state="open"],
+.ui-popover[data-state="open"] {
   animation: ui-overlay-in var(--motion-popover) ease-out;
 }
 
@@ -16,6 +20,8 @@
 .ui-command-menu {
   display: grid;
   min-width: 184px;
+  max-height: var(--radix-dropdown-menu-content-available-height, min(420px, 70vh));
+  overflow-y: auto;
 }
 
 .ui-command-menu-item {
@@ -32,22 +38,45 @@
   font-size: var(--font-ui-secondary);
   font-weight: var(--weight-ui-regular);
   text-align: left;
+  outline: 0;
+  cursor: default;
 }
 
 .ui-command-menu-item:hover,
-.ui-command-menu-item:focus-visible {
+.ui-command-menu-item:focus-visible,
+.ui-command-menu-item[data-highlighted] {
   color: var(--text-primary);
   background: var(--surface-muted);
 }
 
 .ui-command-menu-item.danger:hover,
-.ui-command-menu-item.danger:focus-visible {
+.ui-command-menu-item.danger:focus-visible,
+.ui-command-menu-item.danger[data-highlighted] {
   color: var(--danger-text);
 }
 
 .ui-command-menu-icon {
   display: grid;
   place-items: center;
+  width: var(--icon-size-small);
+  min-height: var(--icon-size-small);
+}
+
+.ui-command-menu-item[data-disabled] {
+  pointer-events: none;
+  opacity: 0.42;
+}
+
+.ui-command-menu-item.active {
+  color: var(--text-primary);
+}
+
+.ui-command-menu-item.radio .ui-command-menu-icon {
+  color: var(--text-primary);
+}
+
+.ui-command-menu [role="group"] + [role="group"] {
+  margin-top: var(--space-2);
 }
 
 .ui-command-menu-label {

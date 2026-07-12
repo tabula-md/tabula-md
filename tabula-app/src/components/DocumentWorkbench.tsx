@@ -47,7 +47,6 @@ import {
   type MarkdownPreviewMetadata,
 } from "./MarkdownPreview";
 import { StatusBar } from "./StatusBar";
-import { CommandMenu, CommandMenuItem } from "./ui/CommandMenu";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 
 export type DocumentWorkbenchProps = {
@@ -449,22 +448,20 @@ export function DocumentWorkbench({
       </section>
 
       {documentSurface.showSelectionCommentPopover && selectionActionPosition && (
-        <CommandMenu
-          className="selection-comment-popover"
+        <button
+          className="selection-comment-popover selection-comment-button ui-popover"
+          type="button"
           style={getFloatingPopoverStyle(selectionActionPosition, {
             width: 164,
             yOffset: 30,
           })}
-          ariaLabel={copy.selectionActions}
+          aria-label={copy.addComment}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onOpenSelectionComment}
         >
-          <CommandMenuItem
-            className="selection-comment-button"
-            icon={<MessageSquarePlus size={16} />}
-            label={copy.addComment}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={onOpenSelectionComment}
-          />
-        </CommandMenu>
+          <MessageSquarePlus size={16} aria-hidden="true" />
+          <span>{copy.addComment}</span>
+        </button>
       )}
 
       <StatusBar

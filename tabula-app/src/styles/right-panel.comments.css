@@ -58,34 +58,7 @@
 }
 
 .right-comments-scope-menu {
-  position: absolute;
-  z-index: var(--layer-popover);
-  top: calc(100% + 4px);
-  right: 0;
   min-width: 164px;
-}
-
-.right-comments-scope-menu button {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  min-height: var(--control-size-row);
-  padding: 0 8px;
-  color: var(--text-primary);
-  border-radius: var(--radius-control);
-  font-size: var(--font-ui-body);
-  text-align: left;
-}
-
-.right-comments-scope-menu button:hover,
-.right-comments-scope-menu button:focus-visible {
-  background: var(--surface-hover);
-}
-
-.right-comments-scope-menu button[aria-checked="false"] svg {
-  opacity: 0;
 }
 
 .right-comments-scroll {
@@ -608,9 +581,7 @@
 }
 
 .right-comment-more-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
+  min-width: 184px;
 }
 
 @media (pointer: coarse) {
@@ -628,9 +599,6 @@
     height: var(--control-size-touch);
   }
 
-  .right-comment-more-menu button {
-    min-height: var(--control-size-touch);
-  }
 }
 
 .right-comment-reply-form {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Menu, PanelRight, Users } from "lucide-react";
 import type { Collaborator } from "../collaboration";
 import {
@@ -7,7 +7,7 @@ import {
 } from "../collaboration/collaborationPresence";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
-import { useDismissibleMenu } from "../hooks/useDismissibleMenu";
+import { PopoverContent, PopoverRoot, PopoverTrigger } from "./ui/Popover";
 
 type TopChromeProps = {
   workspaceMenuOpen: boolean;
@@ -87,23 +87,12 @@ export function TopChrome({
   const currentRoomId = identity.roomId;
   const currentDocumentId = identity.activeDocumentId;
   const [presenceOpen, setPresenceOpen] = useState(false);
-  const presenceButtonRef = useRef<HTMLButtonElement | null>(null);
-  const presencePopoverRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isLiveConnected) {
       setPresenceOpen(false);
     }
   }, [isLiveConnected]);
-
-  const closePresence = useCallback(() => setPresenceOpen(false), []);
-  useDismissibleMenu({
-    autoFocus: false,
-    menuRef: presencePopoverRef,
-    onClose: closePresence,
-    open: presenceOpen,
-    triggerRef: presenceButtonRef,
-  });
 
   return (
     <header className="top-chrome">
@@ -126,41 +115,39 @@ export function TopChrome({
         <div className="top-right-zone">
           {isLiveConnected && (
             <div className="presence-wrap">
-              <button
-                ref={presenceButtonRef}
-                className={`presence sharing-presence ${presenceOpen ? "active" : ""}`}
-                type="button"
-                aria-label={sharingTooltip}
-                aria-expanded={presenceOpen}
-                data-tooltip={sharingTooltip}
-                onClick={() => setPresenceOpen((isOpen) => !isOpen)}
-              >
-                <Users size={16} />
-                <div className="avatars">
-                  <span
-                    className={`avatar self ${identity.kind === "agent" ? "agent" : "human"}`}
-                    style={{ background: identity.color }}
-                    data-tooltip={getTooltip(identity)}
+              <PopoverRoot open={presenceOpen} onOpenChange={setPresenceOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className={`presence sharing-presence ${presenceOpen ? "active" : ""}`}
+                    type="button"
+                    aria-label={sharingTooltip}
+                    data-tooltip={sharingTooltip}
                   >
-                    {getInitial(identity)}
-                  </span>
-                  {collaborators.slice(0, 4).map((collaborator) => (
-                    <span
-                      className={`avatar ${collaborator.kind === "agent" ? "agent" : "human"}`}
-                      key={collaborator.id}
-                      style={{ background: collaborator.color }}
-                      data-tooltip={getTooltip(collaborator)}
-                    >
-                      {getInitial(collaborator)}
-                    </span>
-                  ))}
-                </div>
-              </button>
+                    <Users size={16} />
+                    <div className="avatars">
+                      <span
+                        className={`avatar self ${identity.kind === "agent" ? "agent" : "human"}`}
+                        style={{ background: identity.color }}
+                        data-tooltip={getTooltip(identity)}
+                      >
+                        {getInitial(identity)}
+                      </span>
+                      {collaborators.slice(0, 4).map((collaborator) => (
+                        <span
+                          className={`avatar ${collaborator.kind === "agent" ? "agent" : "human"}`}
+                          key={collaborator.id}
+                          style={{ background: collaborator.color }}
+                          data-tooltip={getTooltip(collaborator)}
+                        >
+                          {getInitial(collaborator)}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                </PopoverTrigger>
 
-              {presenceOpen && (
-                <div
-                  ref={presencePopoverRef}
-                  className="presence-popover ui-popover"
+                <PopoverContent
+                  className="presence-popover"
                   role="dialog"
                   aria-label={copy.collaborators}
                 >
@@ -204,8 +191,8 @@ export function TopChrome({
                       );
                     })}
                   </div>
-                </div>
-              )}
+                </PopoverContent>
+              </PopoverRoot>
             </div>
           )}
 

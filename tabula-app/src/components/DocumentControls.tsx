@@ -1,7 +1,6 @@
 import {
   type ReactNode,
   type RefObject,
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -30,8 +29,8 @@ import {
 } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
-import { useDismissibleMenu } from "../hooks/useDismissibleMenu";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import { PopoverContent, PopoverRoot, PopoverTrigger } from "./ui/Popover";
 
 type DocumentControlsProps = {
   activeViewMode: FileViewMode;
@@ -94,8 +93,6 @@ export function DocumentControls({
   onToggleLineWrapping,
   onToggleLineNumbers,
 }: DocumentControlsProps) {
-  const viewPopoverRef = useRef<HTMLElement | null>(null);
-  const viewButtonRef = useRef<HTMLButtonElement | null>(null);
   const copy = getWorkspaceChromeCopy(language).documentControls;
   const controls = buildDocumentControlsModel({
     activeLineNumbers,
@@ -105,17 +102,6 @@ export function DocumentControls({
     activeViewMode,
     copy,
   });
-  const closeViewPopover = useCallback(() => {
-    if (centerPopover === "view") onToggleViewOptions();
-  }, [centerPopover, onToggleViewOptions]);
-  useDismissibleMenu({
-    autoFocus: false,
-    menuRef: viewPopoverRef,
-    onClose: closeViewPopover,
-    open: centerPopover === "view",
-    triggerRef: viewButtonRef,
-  });
-
   return (
     <div className="document-controls-wrap">
       <nav className="document-controls" aria-label={controls.documentControlsLabel}>
@@ -135,18 +121,87 @@ export function DocumentControls({
             </button>
           ))}
         </div>
-        <button
-          ref={viewButtonRef}
-          className={`tool-button ${centerPopover === "view" ? "active" : ""}`}
-          type="button"
-          aria-label={controls.controlsLabel}
-          data-tooltip={controls.controlsLabel}
-          aria-haspopup="dialog"
-          aria-expanded={centerPopover === "view"}
-          onClick={onToggleViewOptions}
+        <PopoverRoot
+          open={centerPopover === "view"}
+          onOpenChange={(open) => {
+            if (open !== (centerPopover === "view")) onToggleViewOptions();
+          }}
         >
-          <SlidersHorizontal size={16} />
-        </button>
+          <PopoverTrigger asChild>
+            <button
+              className={`tool-button ${centerPopover === "view" ? "active" : ""}`}
+              type="button"
+              aria-label={controls.controlsLabel}
+              data-tooltip={controls.controlsLabel}
+            >
+              <SlidersHorizontal size={16} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="document-controls-popover editor-controls-popover"
+            role="dialog"
+            aria-label={controls.controlsLabel}
+            onOpenAutoFocus={(event) => event.preventDefault()}
+          >
+            <div className="editor-controls-section">
+              {controls.showEditorToggles && (
+                <>
+                  <button
+                    className={`editor-controls-row ${controls.lineNumbers.active ? "active" : ""}`}
+                    type="button"
+                    aria-pressed={controls.lineNumbers.active}
+                    onClick={onToggleLineNumbers}
+                  >
+                    <span className="editor-controls-check">
+                      {controls.lineNumbers.active && <Check size={14} />}
+                    </span>
+                    <span>{controls.lineNumbers.label}</span>
+                  </button>
+                  <button
+                    className={`editor-controls-row ${controls.lineWrapping.active ? "active" : ""}`}
+                    type="button"
+                    aria-pressed={controls.lineWrapping.active}
+                    onClick={onToggleLineWrapping}
+                  >
+                    <span className="editor-controls-check">
+                      {controls.lineWrapping.active && <Check size={14} />}
+                    </span>
+                    <span>{controls.lineWrapping.label}</span>
+                  </button>
+                </>
+              )}
+              {controls.showSplitToggles && (
+                <button
+                  className={`editor-controls-row ${controls.syncScrolling.active ? "active" : ""}`}
+                  type="button"
+                  aria-pressed={controls.syncScrolling.active}
+                  onClick={onToggleSyncScrolling}
+                >
+                  <span className="editor-controls-check">
+                    {controls.syncScrolling.active && <Check size={14} />}
+                  </span>
+                  <span>{controls.syncScrolling.label}</span>
+                </button>
+              )}
+              <div className="editor-controls-width-row">
+                <span>{controls.readingWidthLabel}</span>
+                <div className="editor-width-control" aria-label={controls.readingWidthLabel}>
+                  {controls.readingWidthOptions.map(({ active, label, readingWidth }) => (
+                    <button
+                      key={readingWidth}
+                      className={active ? "active" : ""}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => onSetReadingWidth(readingWidth)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </PopoverRoot>
         <button
           className={`tool-button ${searchOpen ? "active" : ""}`}
           type="button"
@@ -158,72 +213,6 @@ export function DocumentControls({
         </button>
       </nav>
 
-      {centerPopover === "view" && (
-        <section
-          ref={viewPopoverRef}
-          className="document-controls-popover editor-controls-popover ui-popover"
-          role="dialog"
-          aria-label={controls.controlsLabel}
-        >
-          <div className="editor-controls-section">
-            {controls.showEditorToggles && (
-              <>
-                <button
-                  className={`editor-controls-row ${controls.lineNumbers.active ? "active" : ""}`}
-                  type="button"
-                  aria-pressed={controls.lineNumbers.active}
-                  onClick={onToggleLineNumbers}
-                >
-                  <span className="editor-controls-check">
-                    {controls.lineNumbers.active && <Check size={14} />}
-                  </span>
-                  <span>{controls.lineNumbers.label}</span>
-                </button>
-                <button
-                  className={`editor-controls-row ${controls.lineWrapping.active ? "active" : ""}`}
-                  type="button"
-                  aria-pressed={controls.lineWrapping.active}
-                  onClick={onToggleLineWrapping}
-                >
-                  <span className="editor-controls-check">
-                    {controls.lineWrapping.active && <Check size={14} />}
-                  </span>
-                  <span>{controls.lineWrapping.label}</span>
-                </button>
-              </>
-            )}
-            {controls.showSplitToggles && (
-              <button
-                className={`editor-controls-row ${controls.syncScrolling.active ? "active" : ""}`}
-                type="button"
-                aria-pressed={controls.syncScrolling.active}
-                onClick={onToggleSyncScrolling}
-              >
-                <span className="editor-controls-check">
-                  {controls.syncScrolling.active && <Check size={14} />}
-                </span>
-                <span>{controls.syncScrolling.label}</span>
-              </button>
-            )}
-            <div className="editor-controls-width-row">
-              <span>{controls.readingWidthLabel}</span>
-              <div className="editor-width-control" aria-label={controls.readingWidthLabel}>
-                {controls.readingWidthOptions.map(({ active, label, readingWidth }) => (
-                  <button
-                    key={readingWidth}
-                    className={active ? "active" : ""}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => onSetReadingWidth(readingWidth)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
     </div>
   );
 }

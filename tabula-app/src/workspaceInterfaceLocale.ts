@@ -24,6 +24,9 @@ type WorkspaceInterfaceMessages = {
   filesRename: string;
   filesMove: string;
   filesMoveTo: string;
+  filesCloseMoveDialog: string;
+  filesSearchFolders: string;
+  filesNoFoldersFound: string;
   filesDelete: string;
   filesRenameInPanel: string;
   filesOpen: string;
@@ -107,6 +110,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesRename: "Rename",
     filesMove: "Move {{name}}",
     filesMoveTo: "Move to…",
+    filesCloseMoveDialog: "Close move dialog",
+    filesSearchFolders: "Search folders",
+    filesNoFoldersFound: "No folders found.",
     filesDelete: "Delete",
     filesRenameInPanel: "Rename {{name}} in Files",
     filesOpen: "Open {{name}}",
@@ -188,6 +194,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesRename: "이름 바꾸기",
     filesMove: "{{name}} 이동",
     filesMoveTo: "이동…",
+    filesCloseMoveDialog: "이동 창 닫기",
+    filesSearchFolders: "폴더 검색",
+    filesNoFoldersFound: "폴더를 찾을 수 없습니다.",
     filesDelete: "삭제",
     filesRenameInPanel: "파일에서 {{name}} 이름 바꾸기",
     filesOpen: "{{name}} 열기",
@@ -269,6 +278,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesRename: "名前を変更",
     filesMove: "{{name}} を移動",
     filesMoveTo: "移動先…",
+    filesCloseMoveDialog: "移動ダイアログを閉じる",
+    filesSearchFolders: "フォルダを検索",
+    filesNoFoldersFound: "フォルダが見つかりません。",
     filesDelete: "削除",
     filesRenameInPanel: "ファイルで {{name}} の名前を変更",
     filesOpen: "{{name}} を開く",
@@ -350,6 +362,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesRename: "重命名",
     filesMove: "移动 {{name}}",
     filesMoveTo: "移动到…",
+    filesCloseMoveDialog: "关闭移动对话框",
+    filesSearchFolders: "搜索文件夹",
+    filesNoFoldersFound: "未找到文件夹。",
     filesDelete: "删除",
     filesRenameInPanel: "在文件中重命名 {{name}}",
     filesOpen: "打开 {{name}}",
@@ -431,6 +446,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesRename: "Renombrar",
     filesMove: "Mover {{name}}",
     filesMoveTo: "Mover a…",
+    filesCloseMoveDialog: "Cerrar diálogo de mover",
+    filesSearchFolders: "Buscar carpetas",
+    filesNoFoldersFound: "No se encontraron carpetas.",
     filesDelete: "Eliminar",
     filesRenameInPanel: "Renombrar {{name}} en Archivos",
     filesOpen: "Abrir {{name}}",
@@ -512,6 +530,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesRename: "Renommer",
     filesMove: "Déplacer {{name}}",
     filesMoveTo: "Déplacer vers…",
+    filesCloseMoveDialog: "Fermer la fenêtre de déplacement",
+    filesSearchFolders: "Rechercher des dossiers",
+    filesNoFoldersFound: "Aucun dossier trouvé.",
     filesDelete: "Supprimer",
     filesRenameInPanel: "Renommer {{name}} dans Fichiers",
     filesOpen: "Ouvrir {{name}}",
@@ -593,6 +614,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesRename: "Umbenennen",
     filesMove: "{{name}} verschieben",
     filesMoveTo: "Verschieben nach…",
+    filesCloseMoveDialog: "Verschiebedialog schließen",
+    filesSearchFolders: "Ordner suchen",
+    filesNoFoldersFound: "Keine Ordner gefunden.",
     filesDelete: "Löschen",
     filesRenameInPanel: "{{name}} in Dateien umbenennen",
     filesOpen: "{{name}} öffnen",
@@ -697,6 +721,9 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         rename: copy.filesRename,
         move: (name: string) => format(copy.filesMove, { name }),
         moveTo: copy.filesMoveTo,
+        closeMoveDialog: copy.filesCloseMoveDialog,
+        searchFolders: copy.filesSearchFolders,
+        noFoldersFound: copy.filesNoFoldersFound,
         delete: copy.filesDelete,
         renameInPanel: (name: string) => format(copy.filesRenameInPanel, { name }),
         open: (name: string) => format(copy.filesOpen, { name }),

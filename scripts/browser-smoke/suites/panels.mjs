@@ -1161,6 +1161,14 @@ export async function run(ctx) {
     expect((await page.getByRole("menuitem", { name: "Duplicate" }).count()) === 1, "Right Files menu should expose duplicate.");
     expect((await page.getByRole("menuitem", { name: "Delete" }).count()) === 1, "Right Files menu should expose delete.");
     expect((await page.getByText("Move to…", { exact: true }).count()) === 1, "Right Files should name the move destination control.");
+    await page.getByRole("menuitem", { name: "Move to…", exact: true }).click();
+    const moveDialog = page.getByRole("dialog", { name: `Move ${rightFilesActiveTitle}` });
+    expect((await moveDialog.count()) === 1, "Move to should open a dedicated folder picker.");
+    expect((await moveDialog.getByRole("searchbox", { name: "Search folders" }).count()) === 1, "Move picker should support folder search.");
+    expect((await moveDialog.locator("select").count()) === 0, "Move picker should not embed a native select inside the command menu.");
+    await moveDialog.getByRole("button", { name: "Close move dialog" }).click();
+
+    await openRightFileMenu(rightFilesActiveTitle);
     await page.getByRole("menuitem", { name: "Rename" }).click();
     await page.getByRole("textbox", { name: `Rename ${rightFilesActiveTitle} in Files` }).fill("README");
     await page.keyboard.press("Enter");

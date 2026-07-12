@@ -726,17 +726,10 @@
 }
 
 .presence-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: var(--layer-popover);
   display: grid;
   gap: 8px;
   width: 260px;
   padding: 10px;
-  border-radius: var(--radius-surface);
-  background: var(--surface-overlay);
-  box-shadow: var(--shadow-popover);
 }
 
 .presence-popover header {

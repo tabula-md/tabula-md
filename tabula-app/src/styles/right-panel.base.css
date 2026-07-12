@@ -192,37 +192,7 @@
 }
 
 .right-file-create-menu {
-  position: absolute;
-  top: calc(100% + 5px);
-  right: 0;
-  z-index: var(--layer-popover);
-  display: grid;
   width: 168px;
-  padding: 6px;
-  border-radius: var(--radius-surface);
-  background: var(--surface-overlay);
-  box-shadow: var(--shadow-popover);
-}
-
-.right-file-create-menu button {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  min-height: var(--control-size-row);
-  padding: 0 8px;
-  border-radius: var(--radius-control);
-  color: var(--text-soft);
-  background: transparent;
-  font: inherit;
-  font-size: var(--font-ui-body);
-  text-align: left;
-}
-
-.right-file-create-menu button:hover,
-.right-file-create-menu button:focus-visible {
-  color: var(--text-primary);
-  background: var(--surface-muted);
 }
 
 .right-file-import-button:hover,

@@ -1,8 +1,7 @@
 import { CheckCircle2, Ellipsis, RotateCcw, Trash2 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useState } from "react";
 import type { FileComment } from "../../../workspaceStorage";
-import { useDismissibleMenu } from "../../../hooks/useDismissibleMenu";
-import { CommandMenu, CommandMenuItem } from "../../ui/CommandMenu";
+import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../../ui/Menu";
 import type { RightPanelCommentsCopy } from "./types";
 
 type CommentActionsProps = {
@@ -25,21 +24,7 @@ export function CommentActions({
   onDeleteComment,
 }: CommentActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const commentLabel = comment.body.trim().replace(/\s+/g, " ").slice(0, 48) || copy.untitled;
-  const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const handleMenuKeyDown = useDismissibleMenu({
-    menuRef,
-    onClose: closeMenu,
-    open: menuOpen,
-    triggerRef,
-  });
-
-  const deleteComment = () => {
-    setMenuOpen(false);
-    onDeleteComment(fileId, comment.id);
-  };
 
   return (
     <div
@@ -55,41 +40,33 @@ export function CommentActions({
           {copy.replyAction}
         </button>
       )}
-      <button
-        ref={triggerRef}
-        className="right-comment-more-trigger"
-        type="button"
-        aria-label={copy.moreActions(commentLabel)}
-        data-tooltip={copy.moreActions(commentLabel)}
-        aria-haspopup="menu"
-        aria-expanded={menuOpen}
-        onClick={() => setMenuOpen((open) => !open)}
-      >
-        <Ellipsis size={14} aria-hidden="true" />
-      </button>
-      {menuOpen && (
-        <CommandMenu
-          ref={menuRef}
-          className="right-comment-more-menu"
-          ariaLabel={copy.menuActions(commentLabel)}
-          onKeyDown={handleMenuKeyDown}
-        >
-          <CommandMenuItem
+      <MenuRoot open={menuOpen} onOpenChange={setMenuOpen}>
+        <MenuTrigger asChild>
+          <button
+            className="right-comment-more-trigger"
+            type="button"
+            aria-label={copy.moreActions(commentLabel)}
+            data-tooltip={copy.moreActions(commentLabel)}
+          >
+            <Ellipsis size={14} aria-hidden="true" />
+          </button>
+        </MenuTrigger>
+        <MenuContent className="right-comment-more-menu" ariaLabel={copy.menuActions(commentLabel)}>
+          <MenuItem
             icon={comment.resolved ? <RotateCcw size={14} /> : <CheckCircle2 size={14} />}
             label={comment.resolved ? copy.reopen : copy.resolve}
-            onClick={() => {
-              setMenuOpen(false);
+            onSelect={() => {
               onToggleCommentResolved(fileId, comment.id);
             }}
           />
-          <CommandMenuItem
+          <MenuItem
             danger
             icon={<Trash2 size={14} />}
             label={copy.delete}
-            onClick={deleteComment}
+            onSelect={() => onDeleteComment(fileId, comment.id)}
           />
-        </CommandMenu>
-      )}
+        </MenuContent>
+      </MenuRoot>
     </div>
   );
 }
