@@ -187,7 +187,7 @@ const waitForEditorReady = async (page, { mode } = {}) => {
 };
 
 const waitForSavedLocally = async (page) => {
-  await page.waitForFunction(() => document.querySelector(".status-save-state")?.textContent?.includes("Saved locally"));
+  await page.waitForFunction(() => document.querySelector(".status-save-state")?.getAttribute("aria-label") === "Saved locally");
 };
 
 const waitForSelectionLayer = async (page, { minSegments = 1, popoverVisible } = {}) => {

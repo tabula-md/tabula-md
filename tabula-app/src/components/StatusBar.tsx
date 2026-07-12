@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import { useEffect, useState } from "react";
 import { getStatusBarSaveState } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
@@ -9,6 +10,7 @@ type StatusBarProps = {
   activeViewMode: FileViewMode;
   isLive: boolean;
   language: WorkspaceLanguage;
+  saveRevision: number;
   statusLabel: string;
   wordCount: number;
   cursorPositionLabel: string;
@@ -21,6 +23,7 @@ export function StatusBar({
   activeViewMode,
   isLive,
   language,
+  saveRevision,
   statusLabel,
   wordCount,
   cursorPositionLabel,
@@ -44,6 +47,21 @@ export function StatusBar({
       : cursorPositionLabel;
   const wordCountLabel = `${wordCount} ${wordCount === 1 ? copy.word : copy.words}`;
   const showCursorPosition = activeViewMode !== "preview" || selectedCharacterCount > 0;
+  const [showLocalSaveLabel, setShowLocalSaveLabel] = useState(false);
+
+  useEffect(() => {
+    if (isLive || saveRevision === 0) {
+      setShowLocalSaveLabel(false);
+      return;
+    }
+
+    setShowLocalSaveLabel(true);
+    const timer = window.setTimeout(() => setShowLocalSaveLabel(false), 1_500);
+    return () => window.clearTimeout(timer);
+  }, [isLive, saveRevision]);
+
+  const showSaveState = isLive ? saveState.visible : saveRevision > 0;
+  const showSaveLabel = isLive || showLocalSaveLabel;
 
   return (
     <footer
@@ -51,10 +69,15 @@ export function StatusBar({
       aria-label={`Status for ${activeFileTitle}`}
     >
       <div className="status-bar-right">
-        {saveState.visible && (
-          <span className="status-save-state">
-            <Check size={14} />
-            <span>{saveState.label}</span>
+        {showSaveState && (
+          <span
+            className={`status-save-state ${showSaveLabel ? "" : "quiet"}`}
+            role="status"
+            aria-label={saveState.label}
+            data-tooltip={showSaveLabel ? undefined : saveState.label}
+          >
+            <Check size={14} aria-hidden="true" />
+            {showSaveLabel && <span>{saveState.label}</span>}
           </span>
         )}
         <span>{wordCountLabel}</span>

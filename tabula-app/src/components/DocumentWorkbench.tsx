@@ -92,6 +92,7 @@ export type DocumentWorkbenchProps = {
   replaceAvailable: boolean;
   selectedCharacterCount: number;
   selectedLineCount: number;
+  saveRevision: number;
   selectionActionPosition: MarkdownSelectionActionPosition | null;
   splitDividerDragging: boolean;
   splitDividerMaxValue: number;
@@ -202,6 +203,7 @@ export function DocumentWorkbench({
   replaceAvailable,
   selectedCharacterCount,
   selectedLineCount,
+  saveRevision,
   selectionActionPosition,
   splitDividerDragging,
   splitDividerMaxValue,
@@ -469,6 +471,7 @@ export function DocumentWorkbench({
         activeViewMode={documentSurface.statusBar.activeViewMode}
         isLive={isLive}
         language={language}
+        saveRevision={saveRevision}
         statusLabel={statusLabel}
         wordCount={documentSurface.statusBar.wordCount}
         cursorPositionLabel={cursorPositionLabel}

@@ -37,6 +37,13 @@
   white-space: nowrap;
 }
 
+.status-save-state.quiet {
+  justify-content: center;
+  width: var(--control-size-compact);
+  min-height: var(--control-size-compact);
+  padding: 0;
+}
+
 .status-cursor-position {
   color: var(--text-soft);
   background: var(--surface-muted);
