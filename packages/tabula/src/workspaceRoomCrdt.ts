@@ -10,6 +10,7 @@ import {
   type WorkspaceRoomNode,
   type WorkspaceRoomNodeType,
   type WorkspaceRoomSnapshot,
+  type WorkspaceRoomStructureSnapshot,
 } from "./workspaceRoomModel";
 
 export type WorkspaceRoomCrdt = {
@@ -498,29 +499,35 @@ const readReplies = (value: unknown): WorkspaceRoomCommentReply[] => {
 };
 
 export const getWorkspaceRoomSnapshot = (room: WorkspaceRoomCrdt): WorkspaceRoomSnapshot => {
+  const structure = getWorkspaceRoomStructureSnapshot(room);
+  const documents: Record<string, string> = {};
+  for (const node of structure.nodes) {
+    if (node.type === "document") {
+      documents[node.id] = room.documents.get(node.id)?.toString() ?? "";
+    }
+  }
+
+  return {
+    ...structure,
+    documents,
+    commentsByFileId: getWorkspaceRoomComments(room),
+  };
+};
+
+export const getWorkspaceRoomStructureSnapshot = (
+  room: WorkspaceRoomCrdt,
+): WorkspaceRoomStructureSnapshot => {
   const nodes: WorkspaceRoomNode[] = [];
   room.nodes.forEach((node, id) => {
     const parsed = readNode(id, node);
     if (parsed) nodes.push(parsed);
   });
   nodes.sort(compareNodes);
-
-  const documents: Record<string, string> = {};
-  for (const node of nodes) {
-    if (node.type === "document") {
-      documents[node.id] = room.documents.get(node.id)?.toString() ?? "";
-    }
-  }
-
-  const commentsByFileId = getWorkspaceRoomComments(room);
-
   return {
     roomId: asString(room.meta.get("roomId")),
     schemaVersion: WORKSPACE_ROOM_SCHEMA_VERSION,
     rootId: asString(room.meta.get("rootId"), WORKSPACE_ROOM_ROOT_ID),
     nodes,
-    documents,
-    commentsByFileId,
   };
 };
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import {
   addWorkspaceRoomCommentReply,
@@ -8,6 +8,7 @@ import {
   deleteWorkspaceRoomNode,
   getWorkspaceRoomDocument,
   getWorkspaceRoomSnapshot,
+  getWorkspaceRoomStructureSnapshot,
   initializeWorkspaceRoomCrdt,
   moveWorkspaceRoomNode,
   renameWorkspaceRoomNode,
@@ -117,6 +118,23 @@ describe("workspace room CRDT", () => {
     const snapshot = getWorkspaceRoomSnapshot(room);
     expect(snapshot).not.toHaveProperty("activeDocumentId");
     expect(snapshot.nodes.find((node) => node.id === "readme")?.title).toBe("Guide.md");
+  });
+
+  it("projects workspace structure without materializing document bodies", () => {
+    const room = createInitialRoom();
+    const text = getWorkspaceRoomDocument(room, "readme") as Y.Text & { toString(): string };
+    const toString = vi.spyOn(text, "toString");
+
+    const structure = getWorkspaceRoomStructureSnapshot(room);
+
+    expect(structure.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "docs", type: "folder" }),
+      expect.objectContaining({ id: "readme", type: "document" }),
+    ]));
+    expect(structure).not.toHaveProperty("documents");
+    expect(structure).not.toHaveProperty("commentsByFileId");
+    expect(toString).not.toHaveBeenCalled();
+    toString.mockRestore();
   });
 
   it("rejects orphaned nodes and invalid comment content at the shared contract boundary", () => {

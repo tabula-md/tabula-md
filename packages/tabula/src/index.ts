@@ -407,6 +407,7 @@ export type {
   WorkspaceRoomNode,
   WorkspaceRoomNodeType,
   WorkspaceRoomSnapshot,
+  WorkspaceRoomStructureSnapshot,
 } from "./workspaceRoomModel";
 export type {
   WorkspaceRoomCrdt,
@@ -423,6 +424,7 @@ export {
   WORKSPACE_ROOM_ROOT_ID,
   WORKSPACE_ROOM_SCHEMA_VERSION,
   validateWorkspaceRoomLimits,
+  validateWorkspaceRoomStructureLimits,
 } from "./workspaceRoomModel";
 export {
   addWorkspaceRoomCommentReply,
@@ -434,6 +436,7 @@ export {
   getWorkspaceRoomComments,
   getWorkspaceRoomDocument,
   getWorkspaceRoomSnapshot,
+  getWorkspaceRoomStructureSnapshot,
   initializeWorkspaceRoomCrdt,
   moveWorkspaceRoomNode,
   renameWorkspaceRoomNode,
