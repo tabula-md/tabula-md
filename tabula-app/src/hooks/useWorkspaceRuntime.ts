@@ -724,6 +724,11 @@ export function useWorkspaceRuntime() {
       parentId: file.parentId ?? WORKSPACE_ROOT_FOLDER_ID,
       order: file.order,
     }));
+  const publishRoomDocumentProjection = useEventCallback((file: WorkspaceFile) => {
+    if (!publishRoomDocument(file)) return false;
+    if (activeRoom) setFileText(file.id, "");
+    return true;
+  });
   const restoreRoomDocument = useEventCallback((file: WorkspaceFile, comments: FileComment[]) => {
     if (!publishRoomDocument(file)) return false;
     for (const comment of comments) {
@@ -734,6 +739,7 @@ export function useWorkspaceRuntime() {
         replies: comment.replies ?? [],
       });
     }
+    if (activeRoom) setFileText(file.id, "");
     return true;
   });
   const publishRoomFolder = useEventCallback((folder: (typeof folders)[number]) =>
@@ -765,6 +771,9 @@ export function useWorkspaceRuntime() {
     for (const { item: file } of bundle.files) {
       if (!publishRoomDocument(file)) return false;
     }
+    if (activeRoom) {
+      for (const { item: file } of bundle.files) setFileText(file.id, "");
+    }
     return true;
   });
   const addRoomAwareFileFromContent = useEventCallback((
@@ -777,7 +786,9 @@ export function useWorkspaceRuntime() {
     if (activeRoom && !publishRoomDocument(nextFile)) {
       deleteWorkspaceFileAction(nextFile.id);
       showToast("This document couldn’t be imported into the live workspace.", "error");
+      return nextFile;
     }
+    if (activeRoom) setFileText(nextFile.id, "");
     return nextFile;
   });
   useEffect(() => {
@@ -1066,14 +1077,18 @@ export function useWorkspaceRuntime() {
       }
       const duplicatedFile = duplicateWorkspaceFile(fileId);
       if (!duplicatedFile) return undefined;
-      setFileText(duplicatedFile.id, sourceText);
       return { ...duplicatedFile, text: sourceText };
     },
     files,
     helpMarkdown: createHelpMarkdown(shortcutLabels),
     historyByFileId,
-    onFileCreated: publishRoomDocument,
-    onFileContentReplaced: (file) => !activeRoom || replaceRoomDocumentText(file.id, file.text),
+    onFileCreated: publishRoomDocumentProjection,
+    onFileContentReplaced: (file) => {
+      if (!activeRoom) return true;
+      if (!replaceRoomDocumentText(file.id, file.text)) return false;
+      setFileText(file.id, "");
+      return true;
+    },
     onFileDeleted: (file) => !activeRoom || deleteRoomNode(file.id),
     onFileRenamed: renameRoomNode,
     onFileRestored: restoreRoomDocument,
