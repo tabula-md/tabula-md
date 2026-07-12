@@ -40,6 +40,8 @@ import {
   WORKSPACE_ROOM_MAX_COMMENT_LENGTH,
   WORKSPACE_ROOM_MAX_COMMENTS,
   WORKSPACE_ROOM_MAX_CONTENT_BYTES,
+  WORKSPACE_ROOM_MAX_DOCUMENTS,
+  WORKSPACE_ROOM_MAX_FOLDERS,
   WORKSPACE_ROOM_MAX_REPLIES,
   WORKSPACE_ROOM_ROOT_ID,
   type RoomActor,
@@ -163,6 +165,21 @@ export type WorkspaceFolderSnapshot = {
   id: string;
   title: string;
   parentId: string | null;
+  order?: number;
+};
+
+export type WorkspaceRoomDocumentCommand = {
+  id: string;
+  title: string;
+  markdown?: string;
+  parentId?: string | null;
+  order?: number;
+};
+
+export type WorkspaceRoomFolderCommand = {
+  id: string;
+  title: string;
+  parentId?: string | null;
   order?: number;
 };
 
@@ -1213,6 +1230,31 @@ export const createWorkspaceRoomRuntime = ({
     refreshActiveEditorBinding();
   };
 
+  const canCreateNode = (type: "document" | "folder") => {
+    const structure = structureStore.getSnapshot();
+    const currentCount = structure.nodes.filter((node) => node.type === type).length -
+      (type === "folder" ? 1 : 0);
+    return type === "document"
+      ? currentCount < WORKSPACE_ROOM_MAX_DOCUMENTS
+      : currentCount < WORKSPACE_ROOM_MAX_FOLDERS;
+  };
+
+  const createDocument = (input: WorkspaceRoomDocumentCommand) => {
+    const markdown = input.markdown ?? "";
+    if (
+      !canCreateNode("document") ||
+      !canApplyTextByteDelta(utf8Encoder.encode(markdown).byteLength)
+    ) {
+      return false;
+    }
+    return createWorkspaceRoomDocument(room, { ...input, markdown });
+  };
+
+  const createFolder = (input: WorkspaceRoomFolderCommand) => {
+    if (!canCreateNode("folder")) return false;
+    return createWorkspaceRoomFolder(room, input);
+  };
+
   return {
     subscribe(listener: () => void) {
       runtimeListeners.add(listener);
@@ -1259,6 +1301,22 @@ export const createWorkspaceRoomRuntime = ({
       room.doc.transact(() => applyTextPatches(text, patches), "tabula.text.local");
       return true;
     },
+    createDocument,
+    createFolder,
+    renameNode(nodeId: string, title: string) {
+      return renameWorkspaceRoomNode(room, nodeId, title);
+    },
+    moveNode(nodeId: string, parentId: string) {
+      return moveWorkspaceRoomNode(room, nodeId, parentId);
+    },
+    setNodeOrder(nodeId: string, order: number) {
+      return setWorkspaceRoomNodeOrder(room, nodeId, order);
+    },
+    deleteNode(nodeId: string) {
+      if (!room.nodes.has(nodeId) || nodeId === WORKSPACE_ROOM_ROOT_ID) return false;
+      deleteWorkspaceRoomNode(room, nodeId);
+      return true;
+    },
     setActiveDocument,
     setEditorPresenceEnabled(enabled: boolean) {
       editorPresenceEnabled = enabled;
@@ -1275,6 +1333,9 @@ export const createWorkspaceRoomRuntime = ({
       setLocalAwareness();
     },
     getEditorBinding: () => runtimeSnapshot.editorBinding,
+    materializeDocument(documentId: string) {
+      return room.documents.get(documentId)?.toString() ?? null;
+    },
     materializeWorkspace: () => getWorkspaceRoomSnapshot(room),
     getResourceCounts: () => ({
       documentObservers: 1,

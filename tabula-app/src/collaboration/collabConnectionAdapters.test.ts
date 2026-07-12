@@ -970,6 +970,69 @@ describe("workspace room runtime", () => {
     remoteRoom.doc.destroy();
   });
 
+  it("converges explicit workspace commands through Yjs updates", async () => {
+    const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const adapters = {
+      ...defaults,
+      createRoomTransport: relay.createRoomTransport,
+      roomCheckpointStore: checkpoints.store,
+      resolveRoomBaseUrl: () => "http://memory-room.test",
+    };
+    const host = createWorkspaceRoomRuntime({
+      roomId: "room-commands",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "readme",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "readme", title: "README.md", text: "Read me" }],
+      identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      onTextChange: vi.fn(),
+      adapters,
+    });
+    await vi.waitFor(() => expect(checkpoints.getGeneration("room-commands")).toBeGreaterThan(0));
+    const peer = createWorkspaceRoomRuntime({
+      roomId: "room-commands",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "readme",
+      emitInitialWorkspaceState: false,
+      identity: { id: "peer", name: "Curious Human", color: "#7c3aed", lastSeen: 0 },
+      fileTitle: "README.md",
+      onTextChange: vi.fn(),
+      adapters,
+    });
+    await vi.waitFor(() => expect(peer.materializeDocument("readme")).toBe("Read me"));
+
+    expect(host.createFolder({ id: "docs", title: "Docs" })).toBe(true);
+    expect(host.createDocument({
+      id: "guide",
+      title: "Guide.md",
+      parentId: "docs",
+      markdown: "Guide",
+    })).toBe(true);
+    expect(host.renameNode("guide", "Start.md")).toBe(true);
+    expect(host.setNodeOrder("guide", 4)).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(peer.getStructureSnapshot().nodes.find((node) => node.id === "guide")).toMatchObject({
+        title: "Start.md",
+        parentId: "docs",
+        order: 4,
+      });
+      expect(peer.materializeDocument("guide")).toBe("Guide");
+    });
+
+    expect(host.deleteNode("docs")).toBe(true);
+    await vi.waitFor(() => {
+      expect(peer.getStructureSnapshot().nodes.some((node) => node.id === "docs")).toBe(false);
+      expect(peer.getStructureSnapshot().nodes.some((node) => node.id === "guide")).toBe(false);
+    });
+
+    host.disconnect();
+    peer.disconnect();
+  });
+
   it("ignores direct updates from an actor that did not advertise write capability", async () => {
     const relay = createMemoryRoomRelay();
     const checkpoints = createMemoryRoomCheckpointStore();
