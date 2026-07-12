@@ -59,7 +59,6 @@ import {
   shouldUseFileTextFallbackHistory,
 } from "./hooks/useWorkspaceActiveFileEditor";
 import { getWorkspaceShortcutAction } from "./hooks/useWorkspaceKeyboardShortcuts";
-import { getLiveRoomFileOverrides } from "./hooks/useWorkspaceFileActions";
 import {
   findWorkspaceAboutFile,
   getWorkspaceAboutFileDraft,
@@ -1017,22 +1016,6 @@ describe("workspace file actions controller", () => {
 
     expect(removeRecordKey(record, "one")).toEqual({ two: ["b"] });
     expect(removeRecordKey(record, "missing")).toBe(record);
-  });
-
-  it("keeps newly created documents inside the active live workspace room", () => {
-    expect(
-      getLiveRoomFileOverrides({
-        roomId: "room-1",
-        shareUrl: `https://tabula.md/#room=room-1,${VALID_ROOM_KEY}`,
-        connectionStatus: "connected",
-      }),
-    ).toMatchObject({
-      roomId: "room-1",
-      shareUrl: `https://tabula.md/#room=room-1,${VALID_ROOM_KEY}`,
-      connectionStatus: "connected",
-    });
-
-    expect(getLiveRoomFileOverrides({ connectionStatus: "idle" })).toEqual({});
   });
 
   it("restores deleted files and open tab order without duplicating entries", () => {

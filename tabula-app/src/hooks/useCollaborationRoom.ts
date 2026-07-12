@@ -2,7 +2,6 @@ import { useRef } from "react";
 import {
   type Collaborator,
   type CollabRecoveryEvent,
-  type ConnectionStatus,
 } from "../collaboration";
 import { getTabulaRoomAvailability } from "../collaboration/collabRoom";
 import { createCollaborationSessionStartRequest } from "../collaboration/collabRuntime";
@@ -21,7 +20,7 @@ import type {
   WorkspaceFolderSnapshot,
   WorkspaceRoomChangeOrigin,
 } from "../collaboration/liveCollaboration";
-import type { WorkspaceFile } from "../workspaceStorage";
+import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 import { useCollaborationConnectionRuntime } from "./useCollaborationConnectionRuntime";
 
 export const validateCollaborationStartWorkspace = ({
@@ -72,7 +71,7 @@ export const validateCollaborationStartWorkspace = ({
 });
 
 type UseCollaborationRoomOptions = {
-  roomFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   activeDocument?: WorkspaceFile;
   editorPresenceEnabled?: boolean;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
@@ -80,20 +79,7 @@ type UseCollaborationRoomOptions = {
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
   workspaceFolders?: readonly WorkspaceFolderSnapshot[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
-  setFileCollaborationStatus: (
-    fileId: string,
-    status: ConnectionStatus,
-    options?: { requireRoom?: boolean },
-  ) => void;
-  setFileRecoveryEvent: (
-    fileId: string,
-    event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
-  ) => void;
-  startFileCollaborationSession: (
-    fileId: string,
-    roomId: string,
-    shareUrl: string,
-  ) => WorkspaceFile | undefined;
+  onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onWorkspaceStructureChange?: (
     snapshot: WorkspaceRoomStructureSnapshot,
@@ -105,7 +91,7 @@ type UseCollaborationRoomOptions = {
 };
 
 export function useCollaborationRoom({
-  roomFile,
+  room,
   activeDocument,
   editorPresenceEnabled,
   getActiveFileSnapshot,
@@ -113,15 +99,12 @@ export function useCollaborationRoom({
   workspaceDocuments,
   workspaceFolders,
   commentsByFileId,
-  setFileCollaborationStatus,
-  setFileRecoveryEvent,
-  startFileCollaborationSession,
+  onRecoveryEvent,
   onCommentsChange,
   onWorkspaceStructureChange,
   onOpenFailure,
   onCapacityExceeded,
 }: UseCollaborationRoomOptions) {
-  const pendingRoomStartRef = useRef(false);
   const startInFlightRef = useRef(false);
   const roomAvailability = getTabulaRoomAvailability();
   const checkpointAvailability = getRoomCheckpointAvailability();
@@ -155,16 +138,14 @@ export function useCollaborationRoom({
     retryConnection,
   } =
     useCollaborationConnectionRuntime({
-      roomFile,
+      room,
       activeDocument,
       editorPresenceEnabled,
       identity,
-      pendingRoomStartRef,
       workspaceDocuments,
       workspaceFolders,
       commentsByFileId,
-      setFileCollaborationStatus,
-      setFileRecoveryEvent,
+      onRecoveryEvent,
       onCommentsChange,
       onWorkspaceStructureChange,
       onOpenFailure,
@@ -174,7 +155,7 @@ export function useCollaborationRoom({
   const startSession = async () => {
     if (startInFlightRef.current) return undefined;
     if (!startValidation.ok) return undefined;
-    const sessionFile = getActiveFileSnapshot?.() ?? roomFile;
+    const sessionFile = getActiveFileSnapshot?.() ?? activeDocument;
     const nextSession = createCollaborationSessionStartRequest({
       activeFile: sessionFile,
       origin: window.location.origin,
@@ -198,8 +179,6 @@ export function useCollaborationRoom({
         folders: workspaceFolders ?? [],
         commentsByFileId,
       });
-      pendingRoomStartRef.current = true;
-      startFileCollaborationSession(sessionFile.id, nextSession.roomId, nextSession.shareUrl);
       return { fileId: sessionFile.id, roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
     } finally {
       startInFlightRef.current = false;
@@ -208,7 +187,7 @@ export function useCollaborationRoom({
 
   return {
     canStartSession:
-      Boolean(roomFile) &&
+      Boolean(activeDocument) &&
       roomAvailability.available &&
       checkpointAvailability.available &&
       startValidation.ok,

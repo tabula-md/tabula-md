@@ -22,7 +22,6 @@ type UseWorkspaceShareRuntimeOptions = {
   startCollaborationSession: () => Promise<
     { fileId: string; roomId: string; shareUrl: string } | undefined
   >;
-  stopFileCollaborationSession: (fileId: string) => WorkspaceFile | undefined;
 };
 
 export function useWorkspaceShareRuntime({
@@ -40,7 +39,6 @@ export function useWorkspaceShareRuntime({
   setCopiedFileId,
   showToast,
   startCollaborationSession,
-  stopFileCollaborationSession,
 }: UseWorkspaceShareRuntimeOptions) {
   const jsonShare = useJsonShareController({
     activeFile,
@@ -59,7 +57,6 @@ export function useWorkspaceShareRuntime({
     retryCollaborationConnection,
     setCopiedFileId,
     startCollaborationSession,
-    stopFileCollaborationSession,
   });
 
   return {

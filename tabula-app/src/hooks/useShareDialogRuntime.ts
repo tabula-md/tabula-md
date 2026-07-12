@@ -101,7 +101,7 @@ export function useShareDialogRuntime({
   };
 
   const copyLocalAgentPrompt = async () => {
-    const promptActiveFile = activeFile && roomFile?.roomId && activeFile.roomId === roomFile.roomId
+    const promptActiveFile = activeFile
       ? { ...activeFile, text: activeText }
       : roomPromptFiles[0];
     const prompt = buildLocalAgentPrompt({

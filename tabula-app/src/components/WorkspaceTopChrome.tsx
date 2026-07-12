@@ -130,6 +130,7 @@ export function WorkspaceTopChrome({
       folders={folders}
       activeFile={visibleActiveFile}
       collaborators={displayedCollaborators}
+      roomId={roomFile?.roomId}
       language={language}
       onAddFile={onAddFile}
       onSelectFile={onSelectFile}

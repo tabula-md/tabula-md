@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type MutableRefObject,
 } from "react";
 import type {
   WorkspaceRoomComment,
@@ -25,14 +24,10 @@ import type {
   WorkspaceRoomChangeOrigin,
 } from "../collaboration/liveCollaboration";
 import {
-  getDisconnectedStatusPatch,
-  getIdleStatusPatch,
   getInitialCollaborationStatus,
   getLiveRoomConnectionTarget,
-  getRecoveryEventPatch,
-  shouldStartLiveRoomConnection,
 } from "../collaboration/collabRuntime";
-import { isUsableLiveRoomFile, type WorkspaceFile } from "../workspaceStorage";
+import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 
 const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   status: "idle",
@@ -73,23 +68,14 @@ const applyWorkspaceCommand = (
 };
 
 type UseCollaborationConnectionRuntimeOptions = {
-  roomFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   activeDocument?: WorkspaceFile;
   editorPresenceEnabled?: boolean;
   identity: Collaborator;
-  pendingRoomStartRef: MutableRefObject<boolean>;
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null; order?: number }[];
   workspaceFolders?: readonly WorkspaceFolderSnapshot[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
-  setFileCollaborationStatus: (
-    fileId: string,
-    status: ConnectionStatus,
-    options?: { requireRoom?: boolean },
-  ) => void;
-  setFileRecoveryEvent: (
-    fileId: string,
-    event: { type: CollabRecoveryEvent["type"]; message: string; createdAt: string },
-  ) => void;
+  onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onWorkspaceStructureChange?: (
     snapshot: WorkspaceRoomStructureSnapshot,
@@ -101,23 +87,21 @@ type UseCollaborationConnectionRuntimeOptions = {
 };
 
 export function useCollaborationConnectionRuntime({
-  roomFile,
+  room,
   activeDocument,
   editorPresenceEnabled = true,
   identity,
-  pendingRoomStartRef,
   workspaceDocuments = [],
   workspaceFolders = [],
   commentsByFileId,
-  setFileCollaborationStatus,
-  setFileRecoveryEvent,
+  onRecoveryEvent,
   onCommentsChange,
   onWorkspaceStructureChange,
   onOpenFailure,
   onCapacityExceeded,
 }: UseCollaborationConnectionRuntimeOptions) {
   const [preRuntimeConnectionStatus, setPreRuntimeConnectionStatus] = useState<ConnectionStatus>(
-    () => getInitialCollaborationStatus(roomFile),
+    () => getInitialCollaborationStatus(room),
   );
   const [runtime, setRuntime] = useState<WorkspaceRoomRuntime | null>(null);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
@@ -129,8 +113,8 @@ export function useCollaborationConnectionRuntime({
   const workspaceFoldersRef = useRef(workspaceFolders);
   const pendingLocalTextQueueRef = useRef<Array<{ text?: string; patches: readonly TextPatch[] }>>([]);
   const pendingWorkspaceCommandQueueRef = useRef<PendingWorkspaceCommand[]>([]);
-  const isLive = isUsableLiveRoomFile(roomFile);
-  const connectionKey = roomFile?.roomId ? `workspace:${roomFile.roomId}:${roomFile.shareUrl ?? ""}` : "idle";
+  const isLive = Boolean(room);
+  const connectionKey = room ? `workspace:${room.roomId}:${room.shareUrl}` : "idle";
   const subscribeToRuntime = useCallback(
     (listener: () => void) => runtime?.subscribe(listener) ?? (() => undefined),
     [runtime],
@@ -195,23 +179,18 @@ export function useCollaborationConnectionRuntime({
     pendingLocalTextQueueRef.current = [];
     pendingWorkspaceCommandQueueRef.current = [];
 
-    const target = getLiveRoomConnectionTarget(roomFile);
-    const pendingRoomStart = pendingRoomStartRef.current;
     const documentSnapshot = workspaceDocumentsRef.current;
     const folderSnapshot = workspaceFoldersRef.current;
-    if (!target || !shouldStartLiveRoomConnection({ file: roomFile, hasPendingStart: pendingRoomStart })) {
-      pendingRoomStartRef.current = false;
-      const nextStatus = target ? "disconnected" : "idle";
-      setPreRuntimeConnectionStatus(nextStatus);
-      if (roomFile?.id) {
-        setFileCollaborationStatus(roomFile.id, nextStatus, target ? getDisconnectedStatusPatch() : getIdleStatusPatch());
-      }
+    const bootstrapDocument = activeDocument ?? documentSnapshot[0] ?? (room
+      ? { id: `room-bootstrap-${room.roomId}`, title: "Workspace" }
+      : undefined);
+    const target = getLiveRoomConnectionTarget({ room, document: bootstrapDocument });
+    if (!target) {
+      setPreRuntimeConnectionStatus("idle");
       return;
     }
 
-    pendingRoomStartRef.current = false;
     setPreRuntimeConnectionStatus("connecting");
-    setFileCollaborationStatus(target.fileId, "connecting");
     let disposed = false;
     let effectRuntime: WorkspaceRoomRuntime | null = null;
     void import("../collaboration/liveCollaboration")
@@ -231,7 +210,7 @@ export function useCollaborationConnectionRuntime({
           onWorkspaceStructureChange,
           onOpenFailure,
           onCapacityExceeded,
-          onRecoveryEvent: (event) => setFileRecoveryEvent(target.fileId, getRecoveryEventPatch(event)),
+          onRecoveryEvent,
         });
         effectRuntime = connection;
         collabRef.current = connection;
@@ -249,7 +228,6 @@ export function useCollaborationConnectionRuntime({
       .catch(() => {
         if (disposed) return;
         setPreRuntimeConnectionStatus("failed");
-        setFileCollaborationStatus(target.fileId, "failed", getDisconnectedStatusPatch());
         onOpenFailure?.("invalid");
       });
 
@@ -260,27 +238,15 @@ export function useCollaborationConnectionRuntime({
       setRuntime((current) => current === effectRuntime ? null : current);
       pendingLocalTextQueueRef.current = [];
       pendingWorkspaceCommandQueueRef.current = [];
-      setFileCollaborationStatus(target.fileId, "disconnected", getDisconnectedStatusPatch());
     };
   }, [
     connectionAttempt,
     connectionKey,
-    setFileCollaborationStatus,
-    setFileRecoveryEvent,
+    onRecoveryEvent,
     onCommentsChange,
     onWorkspaceStructureChange,
     onOpenFailure,
     onCapacityExceeded,
-  ]);
-
-  useEffect(() => {
-    if (!roomFile?.id || !runtime) return;
-    setFileCollaborationStatus(roomFile.id, connectionStatus);
-  }, [
-    roomFile?.id,
-    runtime,
-    connectionStatus,
-    setFileCollaborationStatus,
   ]);
 
   useEffect(() => collabRef.current?.setIdentity(identity), [identity]);
@@ -291,11 +257,11 @@ export function useCollaborationConnectionRuntime({
 
   useEffect(() => {
     if (!runtime) return;
-    const nextDocument = activeDocument && activeDocument.roomId === roomFile?.roomId
+    const nextDocument = activeDocument && room
       ? { documentId: activeDocument.id, fileTitle: activeDocument.title }
       : null;
     collabRef.current?.setActiveDocument(nextDocument);
-  }, [activeDocument?.id, activeDocument?.roomId, activeDocument?.title, roomFile?.roomId, runtime]);
+  }, [activeDocument?.id, activeDocument?.title, room, runtime]);
 
   useEffect(() => {
     const flush = () => collabRef.current?.flushRecoveryState();
@@ -331,11 +297,10 @@ export function useCollaborationConnectionRuntime({
   }, []);
 
   const retryConnection = useCallback(() => {
-    if (!roomFile?.id || !isUsableLiveRoomFile(roomFile)) return;
+    if (!room) return;
     resetConnection("connecting");
-    setFileCollaborationStatus(roomFile.id, "connecting");
     setConnectionAttempt((attempt) => attempt + 1);
-  }, [roomFile, resetConnection, setFileCollaborationStatus]);
+  }, [room, resetConnection]);
 
   return {
     applyLocalText,

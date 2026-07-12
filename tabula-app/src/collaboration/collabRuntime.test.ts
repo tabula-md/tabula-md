@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { CollabRecoveryEvent, TabulaRoomAvailability } from ".";
+import type { TabulaRoomAvailability } from ".";
 import {
   canStartCollaborationSession,
   createCollaborationPresenceIdentity,
   createCollaborationSessionStartRequest,
-  getDisconnectedStatusPatch,
-  getIdleStatusPatch,
   getInitialCollaborationStatus,
   getLiveRoomConnectionTarget,
-  getRecoveryEventPatch,
-  shouldStartLiveRoomConnection,
 } from "./collabRuntime";
 import type { WorkspaceFile } from "../workspaceStorage";
 
@@ -27,14 +23,15 @@ const file = (overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
 });
 
 describe("collaboration runtime model", () => {
-  it("extracts a connectable live room target from a stored live file", () => {
+  it("extracts a connectable target from room session metadata", () => {
     expect(
-      getLiveRoomConnectionTarget(
-        file({
+      getLiveRoomConnectionTarget({
+        room: {
           roomId: "room-1",
           shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
-        }),
-      ),
+        },
+        document: file(),
+      }),
     ).toEqual({
       fileId: "file-1",
       fileTitle: "README",
@@ -44,102 +41,35 @@ describe("collaboration runtime model", () => {
     });
   });
 
-  it("only derives a connecting initial runtime status from the active room route", () => {
-    const liveFile = file({
+  it("derives connection state from the workspace session, not a file", () => {
+    expect(getInitialCollaborationStatus(null)).toBe("idle");
+    expect(getInitialCollaborationStatus({
       roomId: "room-1",
       shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
-    });
-
-    expect(getInitialCollaborationStatus(file())).toBe("idle");
-    expect(getInitialCollaborationStatus(liveFile, { location: null })).toBe("idle");
-    expect(
-      getInitialCollaborationStatus(liveFile, {
-        location: {
-          origin: "https://tabula.test",
-          pathname: "/",
-          hash: `#room=room-1,${VALID_ROOM_KEY}`,
-        },
-      }),
-    ).toBe("connecting");
-    expect(
-      getInitialCollaborationStatus(
-        file({
-          roomId: "room-1",
-          shareUrl: `https://tabula.test/#room=room-2,${VALID_ROOM_KEY}`,
-        }),
-        {
-          location: {
-            origin: "https://tabula.test",
-            pathname: "/",
-            hash: `#room=room-1,${VALID_ROOM_KEY}`,
-          },
-        },
-      ),
-    ).toBe("idle");
-  });
-
-  it("starts live-room networking only for room routes or explicit session starts", () => {
-    const liveFile = file({
-      roomId: "room-1",
-      shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
-    });
-
-    expect(shouldStartLiveRoomConnection({ file: liveFile, location: null })).toBe(false);
-    expect(
-      shouldStartLiveRoomConnection({
-        file: liveFile,
-        location: {
-          origin: "https://tabula.test",
-          pathname: "/",
-          hash: `#room=room-2,${VALID_ROOM_KEY}`,
-        },
-      }),
-    ).toBe(false);
-    expect(
-      shouldStartLiveRoomConnection({
-        file: liveFile,
-        location: {
-          origin: "https://tabula.test",
-          pathname: "/",
-          hash: `#room=room-1,${VALID_ROOM_KEY}`,
-        },
-      }),
-    ).toBe(true);
-    expect(shouldStartLiveRoomConnection({ file: liveFile, hasPendingStart: true, location: null })).toBe(true);
+    })).toBe("connecting");
   });
 
   it("rejects missing, malformed, and mismatched live room links", () => {
-    expect(getLiveRoomConnectionTarget(undefined)).toBeNull();
-    expect(getLiveRoomConnectionTarget(file({ roomId: "room-1" }))).toBeNull();
-    expect(getLiveRoomConnectionTarget(file({ roomId: "room-1", shareUrl: "not a url" }))).toBeNull();
+    expect(getLiveRoomConnectionTarget({})).toBeNull();
+    expect(getLiveRoomConnectionTarget({
+      room: { roomId: "room-1", shareUrl: "not a url" },
+      document: file(),
+    })).toBeNull();
     expect(
-      getLiveRoomConnectionTarget(
-        file({
+      getLiveRoomConnectionTarget({
+        room: {
           roomId: "room-1",
           shareUrl: `https://tabula.test/#room=room-2,${VALID_ROOM_KEY}`,
-        }),
-      ),
+        },
+        document: file(),
+      }),
     ).toBeNull();
-  });
-
-  it("maps recovery events without leaking transport-specific detail into hooks", () => {
-    const event: CollabRecoveryEvent = {
-      id: "event-1",
-      type: "reconnected",
-      message: "Connection restored and room state was resynced.",
-      createdAt: "2026-06-29T00:02:00.000Z",
-    };
-
-    expect(getRecoveryEventPatch(event)).toEqual({
-      type: "reconnected",
-      message: "Connection restored and room state was resynced.",
-      createdAt: "2026-06-29T00:02:00.000Z",
-    });
-  });
-
-  it("centralizes lifecycle status patches", () => {
-    expect(getIdleStatusPatch()).toEqual({});
-    expect(getDisconnectedStatusPatch()).toEqual({ requireRoom: true });
+    expect(getLiveRoomConnectionTarget({
+      room: {
+        roomId: "room-1",
+        shareUrl: `https://tabula.test/#room=room-1,${VALID_ROOM_KEY}`,
+      },
+    })).toBeNull();
   });
 
   it("only allows session creation when a file exists and room service is configured", () => {

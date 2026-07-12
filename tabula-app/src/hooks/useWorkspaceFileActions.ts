@@ -31,29 +31,9 @@ type CloseFileResult = {
   nextActiveFile?: WorkspaceFile;
 };
 
-export const getLiveRoomFileOverrides = (
-  activeFile?: Pick<
-    WorkspaceFile,
-    "roomId" | "shareUrl" | "connectionStatus"
-  >,
-): Partial<WorkspaceFile> => {
-  if (!activeFile?.roomId || !activeFile.shareUrl) {
-    return {};
-  }
-
-  return {
-    roomId: activeFile.roomId,
-    shareUrl: activeFile.shareUrl,
-    connectionStatus: activeFile.connectionStatus ?? "idle",
-    lastRecoveryType: undefined,
-    lastRecoveryMessage: undefined,
-    lastRecoveryAt: undefined,
-  };
-};
-
 type UseWorkspaceFileActionsArgs = {
   activeFile?: WorkspaceFile;
-  roomFile?: WorkspaceFile;
+  isRoomSession: boolean;
   activeFileId: string;
   addFileFromContent: (
     title: string,
@@ -97,7 +77,7 @@ type UseWorkspaceFileActionsArgs = {
 
 export function useWorkspaceFileActions({
   activeFile,
-  roomFile,
+  isRoomSession,
   activeFileId,
   addFileFromContent,
   addWorkspaceFileAction,
@@ -129,7 +109,7 @@ export function useWorkspaceFileActions({
   upsertHelpFile,
 }: UseWorkspaceFileActionsArgs) {
   const syncSelectedFileUrl = (file?: WorkspaceFile, mode: "push" | "replace" = "push") => {
-    if (roomFile?.roomId && !file?.roomId) return;
+    if (isRoomSession) return;
     syncUrlForFile(file, mode);
   };
 
@@ -144,14 +124,13 @@ export function useWorkspaceFileActions({
     syncSelectedFileUrl(nextFile);
   };
 
-  const createFile = (collaborationOverrides: Partial<WorkspaceFile>) => {
+  const createFile = () => {
     onBeforeWorkspaceBoundary?.();
     queueEditorFocus();
     const nextFile = addWorkspaceFileAction({
       ...getNewFilePreferenceOverrides(preferences),
-      ...collaborationOverrides,
     });
-    if (nextFile.roomId && onFileCreated && !onFileCreated(nextFile)) {
+    if (isRoomSession && onFileCreated && !onFileCreated(nextFile)) {
       deleteWorkspaceFileAction(nextFile.id);
       showToast("This document couldn’t be added to the live workspace.", "error");
       return undefined;
@@ -161,24 +140,19 @@ export function useWorkspaceFileActions({
     return nextFile;
   };
 
-  const addFile = () => createFile(getLiveRoomFileOverrides(roomFile ?? activeFile));
+  const addFile = createFile;
 
   const openHelpFile = () => {
     onBeforeWorkspaceBoundary?.();
     const existingHelpFile = files.find((file) => file.title.trim().toLowerCase() === "help.md");
     const nextFile = existingHelpFile
       ? upsertHelpFile(helpMarkdown)
-      : addFileFromContent(
-          "HELP.md",
-          helpMarkdown,
-          "preview",
-          getLiveRoomFileOverrides(roomFile ?? activeFile),
-        );
-    if (existingHelpFile?.roomId && onFileContentReplaced && !onFileContentReplaced(nextFile)) {
+      : addFileFromContent("HELP.md", helpMarkdown, "preview");
+    if (isRoomSession && existingHelpFile && onFileContentReplaced && !onFileContentReplaced(nextFile)) {
       showToast("Help couldn’t be refreshed in the live workspace.", "error");
       return;
     }
-    if (!existingHelpFile && nextFile.roomId && onFileCreated && !onFileCreated(nextFile)) {
+    if (isRoomSession && !existingHelpFile && onFileCreated && !onFileCreated(nextFile)) {
       deleteWorkspaceFileAction(nextFile.id);
       showToast("Help couldn’t be added to the live workspace.", "error");
       return;
@@ -197,13 +171,10 @@ export function useWorkspaceFileActions({
         readmeDraft.title,
         readmeDraft.text,
         readmeDraft.viewMode,
-        {
-          ...readmeDraft.overrides,
-          ...getLiveRoomFileOverrides(roomFile ?? activeFile),
-        },
+        readmeDraft.overrides,
       );
 
-    if (!readmeFile && nextFile.roomId && onFileCreated && !onFileCreated(nextFile)) {
+    if (isRoomSession && !readmeFile && onFileCreated && !onFileCreated(nextFile)) {
       deleteWorkspaceFileAction(nextFile.id);
       showToast("About couldn’t be added to the live workspace.", "error");
       return;
@@ -221,8 +192,7 @@ export function useWorkspaceFileActions({
       showToast(result.message, "error");
       return result;
     }
-    const renamedFile = files.find((file) => file.id === fileId);
-    if (renamedFile?.roomId && onFileRenamed && !onFileRenamed(fileId, result.title)) {
+    if (isRoomSession && onFileRenamed && !onFileRenamed(fileId, result.title)) {
       if (previousTitle) renameFile(fileId, previousTitle);
       showToast("This document couldn’t be renamed in the live workspace.", "error");
     }
@@ -236,7 +206,7 @@ export function useWorkspaceFileActions({
     if (!nextFile) {
       return;
     }
-    if (nextFile.roomId && onFileCreated && !onFileCreated(nextFile)) {
+    if (isRoomSession && onFileCreated && !onFileCreated(nextFile)) {
       deleteWorkspaceFileAction(nextFile.id);
       showToast("This document couldn’t be duplicated in the live workspace.", "error");
       return;
@@ -262,7 +232,7 @@ export function useWorkspaceFileActions({
     const previousActiveFileId = activeFile?.id ?? activeFileId;
     const deletedComments = commentsByFileId[fileId];
     const deletedHistory = historyByFileId[fileId];
-    if (deletedFile.roomId && onFileDeleted && !onFileDeleted(deletedFile)) {
+    if (isRoomSession && onFileDeleted && !onFileDeleted(deletedFile)) {
       showToast("This document couldn’t be deleted from the live workspace.", "error");
       return;
     }
@@ -282,7 +252,7 @@ export function useWorkspaceFileActions({
       if (result.nextActiveFile) {
         syncSelectedFileUrl(result.nextActiveFile);
       } else {
-        if (!roomFile?.roomId) {
+        if (!isRoomSession) {
           resetCollaborationState("idle");
           syncSelectedFileUrl(undefined, "replace");
         }
@@ -300,7 +270,7 @@ export function useWorkspaceFileActions({
           activate: shouldActivateRestoredFile,
         });
         if (
-          deletedFile.roomId &&
+          isRoomSession &&
           onFileRestored &&
           !onFileRestored(deletedFile, deletedComments ?? [])
         ) {
@@ -343,7 +313,7 @@ export function useWorkspaceFileActions({
         return;
       }
 
-      if (!roomFile?.roomId) {
+      if (!isRoomSession) {
         resetCollaborationState("idle");
         syncSelectedFileUrl(undefined, "replace");
       }

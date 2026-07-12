@@ -1,19 +1,16 @@
 import {
   HUMAN_ROOM_CAPABILITIES,
-  parseRoomLocation,
   parseRoomShareUrl,
-  type RoomRouteLocation,
 } from "@tabula-md/tabula";
 import {
   type Collaborator,
-  type CollabRecoveryEvent,
   type ConnectionStatus,
   type LiveSelection,
   type RoomSession,
   type TabulaRoomAvailability,
 } from "./liveCollaboration";
 import { createRoomSession } from "./collabRoom";
-import type { WorkspaceFile } from "../workspaceStorage";
+import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 
 export type LiveRoomConnectionTarget = {
   fileId: string;
@@ -21,16 +18,6 @@ export type LiveRoomConnectionTarget = {
   roomId: string;
   roomKey: string;
   shareUrl: string;
-};
-
-export type CollaborationStatusPatch = {
-  requireRoom?: boolean;
-};
-
-export type RecoveryEventPatch = {
-  type: CollabRecoveryEvent["type"];
-  message: string;
-  createdAt: string;
 };
 
 export type CollaborationPresenceIdentityInput = {
@@ -51,72 +38,34 @@ export type CollaborationSessionStartRequest = {
 
 type CreateRoomSession = (origin: string) => Pick<RoomSession, "roomId" | "roomKey" | "shareUrl">;
 
-export const getLiveRoomConnectionTarget = (file?: WorkspaceFile): LiveRoomConnectionTarget | null => {
-  if (!file?.id || !file.roomId || !file.shareUrl) {
+export const getLiveRoomConnectionTarget = ({
+  room,
+  document,
+}: {
+  room?: LocationRoom | null;
+  document?: Pick<WorkspaceFile, "id" | "title">;
+}): LiveRoomConnectionTarget | null => {
+  if (!room || !document?.id) {
     return null;
   }
 
-  const parsedRoom = parseRoomShareUrl(file.shareUrl);
-  if (!parsedRoom || parsedRoom.roomId !== file.roomId) {
+  const parsedRoom = parseRoomShareUrl(room.shareUrl);
+  if (!parsedRoom || parsedRoom.roomId !== room.roomId) {
     return null;
   }
 
   return {
-    fileId: file.id,
-    fileTitle: file.title,
+    fileId: document.id,
+    fileTitle: document.title,
     roomId: parsedRoom.roomId,
     roomKey: parsedRoom.roomKey,
     shareUrl: parsedRoom.shareUrl,
   };
 };
 
-const getCurrentRoomLocation = (): RoomRouteLocation | null => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return window.location;
-};
-
-export const shouldStartLiveRoomConnection = ({
-  file,
-  hasPendingStart = false,
-  location,
-}: {
-  file?: WorkspaceFile;
-  hasPendingStart?: boolean;
-  location?: RoomRouteLocation | null;
-}) => {
-  const target = getLiveRoomConnectionTarget(file);
-  if (!target) {
-    return false;
-  }
-
-  if (hasPendingStart) {
-    return true;
-  }
-
-  const roomLocation = location === undefined ? getCurrentRoomLocation() : location;
-  const room = roomLocation ? parseRoomLocation(roomLocation) : null;
-  return Boolean(room && room.roomId === target.roomId && room.roomKey === target.roomKey);
-};
-
 export const getInitialCollaborationStatus = (
-  file?: WorkspaceFile,
-  options: { location?: RoomRouteLocation | null } = {},
-): ConnectionStatus => (shouldStartLiveRoomConnection({ file, location: options.location }) ? "connecting" : "idle");
-
-export const getDisconnectedStatusPatch = (): CollaborationStatusPatch => ({
-  requireRoom: true,
-});
-
-export const getIdleStatusPatch = (): CollaborationStatusPatch => ({});
-
-export const getRecoveryEventPatch = (event: CollabRecoveryEvent): RecoveryEventPatch => ({
-  type: event.type,
-  message: event.message,
-  createdAt: event.createdAt,
-});
+  room?: LocationRoom | null,
+): ConnectionStatus => (room ? "connecting" : "idle");
 
 export const canStartCollaborationSession = ({
   activeFile,

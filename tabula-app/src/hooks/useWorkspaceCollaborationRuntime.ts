@@ -2,13 +2,9 @@ import type { WorkspaceRoomComment, WorkspaceRoomStructureSnapshot } from "@tabu
 import type {
   Collaborator,
   CollabRecoveryEvent,
-  ConnectionStatus,
 } from "../collaboration";
 import type { WorkspaceRoomChangeOrigin } from "../collaboration/liveCollaboration";
-import {
-  isUsableLiveRoomFile,
-  type WorkspaceFile,
-} from "../workspaceStorage";
+import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 import {
   getActiveWorkspaceStatus,
   getWorkspaceStatusLabel,
@@ -16,7 +12,7 @@ import {
 import { useCollaborationRoom } from "./useCollaborationRoom";
 
 type UseWorkspaceCollaborationRuntimeOptions = {
-  roomFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   activeDocument?: WorkspaceFile;
   editorPresenceEnabled?: boolean;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
@@ -24,24 +20,7 @@ type UseWorkspaceCollaborationRuntimeOptions = {
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
   workspaceFolders?: readonly { id: string; title: string; parentId: string | null; order?: number }[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
-  setFileCollaborationStatus: (
-    fileId: string,
-    status: ConnectionStatus,
-    options?: { requireRoom?: boolean },
-  ) => void;
-  setFileRecoveryEvent: (
-    fileId: string,
-    event: {
-      type: CollabRecoveryEvent["type"];
-      message: string;
-      createdAt: string;
-    },
-  ) => void;
-  startFileCollaborationSession: (
-    fileId: string,
-    roomId: string,
-    shareUrl: string,
-  ) => WorkspaceFile | undefined;
+  onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
   onWorkspaceStructureChange?: (
     snapshot: WorkspaceRoomStructureSnapshot,
     origin: WorkspaceRoomChangeOrigin | undefined,
@@ -53,7 +32,7 @@ type UseWorkspaceCollaborationRuntimeOptions = {
 };
 
 export function useWorkspaceCollaborationRuntime({
-  roomFile,
+  room: sessionRoom,
   activeDocument,
   editorPresenceEnabled,
   getActiveFileSnapshot,
@@ -61,16 +40,14 @@ export function useWorkspaceCollaborationRuntime({
   workspaceDocuments,
   workspaceFolders,
   commentsByFileId,
-  setFileCollaborationStatus,
-  setFileRecoveryEvent,
-  startFileCollaborationSession,
+  onRecoveryEvent,
   onWorkspaceStructureChange,
   onCommentsChange,
   onOpenFailure,
   onCapacityExceeded,
 }: UseWorkspaceCollaborationRuntimeOptions) {
-  const room = useCollaborationRoom({
-    roomFile,
+  const collaboration = useCollaborationRoom({
+    room: sessionRoom,
     activeDocument,
     editorPresenceEnabled,
     getActiveFileSnapshot,
@@ -78,24 +55,22 @@ export function useWorkspaceCollaborationRuntime({
     workspaceDocuments,
     workspaceFolders,
     commentsByFileId,
-    setFileCollaborationStatus,
-    setFileRecoveryEvent,
-    startFileCollaborationSession,
+    onRecoveryEvent,
     onWorkspaceStructureChange,
     onCommentsChange,
     onOpenFailure,
     onCapacityExceeded,
   });
-  const isLive = isUsableLiveRoomFile(roomFile);
+  const isLive = Boolean(sessionRoom);
   const activeStatus = getActiveWorkspaceStatus({
     isLive,
-    connectionStatus: room.connectionStatus,
+    connectionStatus: collaboration.connectionStatus,
   });
-  const statusLabel = isLive && activeStatus === "connected" && room.durability === "failed"
+  const statusLabel = isLive && activeStatus === "connected" && collaboration.durability === "failed"
     ? "Changes aren’t backed up"
     : getWorkspaceStatusLabel(activeStatus);
   return {
-    ...room,
+    ...collaboration,
     activeStatus,
     isLive,
     statusLabel,

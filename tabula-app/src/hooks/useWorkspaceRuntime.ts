@@ -60,7 +60,7 @@ import { useWorkspaceCollaborationRuntime } from "./useWorkspaceCollaborationRun
 import { useCollaborationPresenceRuntime } from "./useCollaborationPresenceRuntime";
 import { useWorkspaceCommentActions } from "./useWorkspaceCommentActions";
 import { useWorkspaceDocumentRuntime } from "./useWorkspaceDocumentRuntime";
-import { getLiveRoomFileOverrides, useWorkspaceFileActions } from "./useWorkspaceFileActions";
+import { useWorkspaceFileActions } from "./useWorkspaceFileActions";
 import { useWorkspaceFiles } from "./useWorkspaceFiles";
 import { useWorkspaceIdentity } from "./useWorkspaceIdentity";
 import { useWorkspaceIoRuntime } from "./useWorkspaceIoRuntime";
@@ -138,11 +138,6 @@ export function useWorkspaceRuntime() {
     setActiveFileLineNumbers,
     commitActiveFileSplitRatio,
     setFileText,
-    setFileCollaborationStatus,
-    setFileRecoveryEvent,
-    setFolderCollaborationRoom,
-    startFileCollaborationSession,
-    stopFileCollaborationSession,
   } = useWorkspaceFiles({
     initialFiles: initialWorkspace.files,
     initialFolders: initialWorkspace.folders,
@@ -200,24 +195,19 @@ export function useWorkspaceRuntime() {
   const [liveRoomOpenFailure, setLiveRoomOpenFailure] = useState<LiveRoomOpenFailure | null>(null);
   const syncedLiveRoomUrlRef = useRef<string | null>(null);
   const persistenceErrorShownRef = useRef(false);
-  const activeRoomId = activeRoom?.roomId ?? activeFile?.roomId;
-  const activeRoomShareUrl = activeRoom?.shareUrl ?? activeFile?.shareUrl;
+  const activeRoomId = activeRoom?.roomId;
+  const activeRoomShareUrl = activeRoom?.shareUrl;
   const collaborationRoomFile = useMemo(() => {
     if (!activeRoom) return activeFile;
-    if (activeFile?.roomId === activeRoom.roomId) return activeFile;
-    return files.find((file) => file.roomId === activeRoom.roomId) ?? createRoomBootstrapFile(activeRoom);
-  }, [activeFile, activeRoom, files]);
-  const activeRoomDocument =
-    activeFile?.roomId && activeFile.roomId === activeRoomId ? activeFile : undefined;
-  useEffect(() => {
-    if (activeFile?.roomId && activeFile.shareUrl) {
-      if (activeRoom?.roomId !== activeFile.roomId || activeRoom.shareUrl !== activeFile.shareUrl) {
-        setActiveRoom({ roomId: activeFile.roomId, shareUrl: activeFile.shareUrl });
-      }
-      return;
-    }
-
-  }, [activeFile?.roomId, activeFile?.shareUrl, activeFile?.id, activeRoom]);
+    const baseFile = activeFile ?? createRoomBootstrapFile(activeRoom);
+    return {
+      ...baseFile,
+      roomId: activeRoom.roomId,
+      shareUrl: activeRoom.shareUrl,
+      connectionStatus: baseFile.connectionStatus ?? "connecting",
+    };
+  }, [activeFile, activeRoom]);
+  const activeRoomDocument = activeRoom ? activeFile : undefined;
   const {
     commentsByFileId,
     commentDraft,
@@ -283,11 +273,9 @@ export function useWorkspaceRuntime() {
     const roomSnapshot = activeRoom ? materializeRoomWorkspaceRef.current() : undefined;
     if (roomSnapshot) {
       const materializedWorkspace = reconcileWorkspaceRoomStructure({
-        activeFile: activeFileSnapshot,
         createFile: createWorkspaceFile,
         materializeExistingDocuments: true,
         readDocumentText: (documentId) => roomSnapshot.documents[documentId] ?? null,
-        roomShareUrl: activeRoom?.shareUrl,
         snapshot: roomSnapshot,
         workspaceSnapshot: {
           ...workspaceSnapshot,
@@ -444,7 +432,7 @@ export function useWorkspaceRuntime() {
   ) => {
     if (activeRoomId && snapshot.roomId !== activeRoomId) return;
     const workspaceSnapshot = getWorkspaceSnapshot();
-    const previousRoomFiles = workspaceSnapshot.files.filter((file) => file.roomId === snapshot.roomId);
+    const previousRoomFiles = workspaceSnapshot.files;
     const previousRoomFilesById = new Map(previousRoomFiles.map((file) => [file.id, file]));
     const nextDocumentNodes = snapshot.nodes.filter((node) => node.type === "document");
     const nextDocumentIds = new Set(nextDocumentNodes.map((node) => node.id));
@@ -455,7 +443,7 @@ export function useWorkspaceRuntime() {
       return previous && previous.title !== node.title;
     });
     const previousRoomFolderSignature = workspaceSnapshot.folders
-      .filter((folder) => folder.roomId === snapshot.roomId)
+      .filter((folder) => folder.id !== snapshot.rootId)
       .map((folder) => [folder.id, folder.title, folder.parentId, folder.order ?? 0])
       .sort(([firstId], [secondId]) => String(firstId).localeCompare(String(secondId)));
     const nextRoomFolderSignature = snapshot.nodes
@@ -464,11 +452,9 @@ export function useWorkspaceRuntime() {
       .sort(([firstId], [secondId]) => String(firstId).localeCompare(String(secondId)));
     const foldersChanged = JSON.stringify(previousRoomFolderSignature) !== JSON.stringify(nextRoomFolderSignature);
     let nextWorkspace = reconcileWorkspaceRoomStructure({
-      activeFile,
       createFile: createWorkspaceFile,
       materializeExistingDocuments,
       readDocumentText,
-      roomShareUrl: activeRoomShareUrl,
       snapshot,
       workspaceSnapshot,
     });
@@ -480,12 +466,6 @@ export function useWorkspaceRuntime() {
         setRightPanelView(roomViewState.rightPanelView);
         setRightPanelOpen(roomViewState.rightPanelOpen);
       }
-    }
-    if (
-      activeRoomShareUrl &&
-      (activeRoom?.roomId !== snapshot.roomId || activeRoom.shareUrl !== activeRoomShareUrl)
-    ) {
-      setActiveRoom({ roomId: snapshot.roomId, shareUrl: activeRoomShareUrl });
     }
     replaceWorkspace(nextWorkspace);
     if (origin) {
@@ -514,7 +494,7 @@ export function useWorkspaceRuntime() {
     }
   });
   useEffect(() => {
-    if (!activeRoomId || !files.some((file) => file.roomId === activeRoomId)) return;
+    if (!activeRoomId) return;
     writeRoomViewState(activeRoomId, {
       activeDocumentId: activeFileId || undefined,
       openDocumentIds: openFileIds,
@@ -607,8 +587,8 @@ export function useWorkspaceRuntime() {
     resetCollaborationState,
     retryConnection: retryCollaborationConnection,
   } = useWorkspaceCollaborationRuntime({
-    roomFile: collaborationRoomFile,
-    activeDocument: activeRoomDocument,
+    room: activeRoom,
+    activeDocument: activeFile,
     editorPresenceEnabled:
       Boolean(activeRoomDocument) &&
       activeViewMode !== "preview" &&
@@ -618,9 +598,6 @@ export function useWorkspaceRuntime() {
     workspaceDocuments: workspaceShareDocuments,
     workspaceFolders: workspaceShareFolders,
     commentsByFileId: workspaceShareComments,
-    setFileCollaborationStatus,
-    setFileRecoveryEvent,
-    startFileCollaborationSession,
     onWorkspaceStructureChange: mergeWorkspaceRoomStructure,
     onCommentsChange: mergeWorkspaceRoomComments,
     onOpenFailure: setLiveRoomOpenFailure,
@@ -687,7 +664,7 @@ export function useWorkspaceRuntime() {
   const revealFollowTarget = useEventCallback((target: (typeof collaborators)[number]) => {
     const documentId = target.activeDocumentId ?? target.selection?.documentId;
     if (!documentId) return false;
-    if (!files.some((file) => file.id === documentId && file.roomId === activeRoomId)) return false;
+    if (!activeRoomId || !files.some((file) => file.id === documentId)) return false;
     const selection = target.selection;
     runFollowNavigation(() => {
       if (activeFileId !== documentId) selectWorkspaceFileAction(documentId);
@@ -746,7 +723,7 @@ export function useWorkspaceRuntime() {
     return () => window.removeEventListener("keydown", handleEscape, true);
   }, [followState, stopFollowing]);
   const publishRoomDocument = useEventCallback((file: WorkspaceFile) =>
-    !file.roomId || createRoomDocument({
+    !activeRoom || createRoomDocument({
       id: file.id,
       title: file.title,
       markdown: file.text,
@@ -766,7 +743,7 @@ export function useWorkspaceRuntime() {
     return true;
   });
   const publishRoomFolder = useEventCallback((folder: (typeof folders)[number]) =>
-    !folder.roomId || createRoomFolder({
+    !activeRoom || createRoomFolder({
       id: folder.id,
       title: folder.title,
       parentId: folder.parentId ?? WORKSPACE_ROOT_FOLDER_ID,
@@ -802,11 +779,8 @@ export function useWorkspaceRuntime() {
     viewMode?: FileViewMode,
     overrides?: Partial<WorkspaceFile>,
   ) => {
-    const nextFile = addFileFromContent(title, fileText, viewMode, {
-      ...overrides,
-      ...(activeRoom ? getLiveRoomFileOverrides(collaborationRoomFile) : {}),
-    });
-    if (nextFile.roomId && !publishRoomDocument(nextFile)) {
+    const nextFile = addFileFromContent(title, fileText, viewMode, overrides);
+    if (activeRoom && !publishRoomDocument(nextFile)) {
       deleteWorkspaceFileAction(nextFile.id);
       showToast("This document couldn’t be imported into the live workspace.", "error");
     }
@@ -814,7 +788,7 @@ export function useWorkspaceRuntime() {
   });
   useEffect(() => {
     const isSharedRoomFile = (fileId: string) =>
-      Boolean(activeRoomId && files.some((file) => file.id === fileId && file.roomId === activeRoomId));
+      Boolean(activeRoomId && files.some((file) => file.id === fileId));
     roomCommentActionsRef.current = {
       created: (fileId, comment) => {
         if (!isSharedRoomFile(fileId)) return;
@@ -902,7 +876,6 @@ export function useWorkspaceRuntime() {
       setCopiedFileId,
       showToast,
       startCollaborationSession,
-      stopFileCollaborationSession,
     });
   useEffect(() => {
     if (!activeRoom || activeFile || connectionStatus !== "connected") {
@@ -950,16 +923,6 @@ export function useWorkspaceRuntime() {
       setLocalPersistenceEnabled(false);
       setLiveRoomOpenFailure(null);
       setActiveRoom(startedSession);
-      for (const folder of workspaceShareFolders) {
-        if (folder.id !== WORKSPACE_ROOT_FOLDER_ID) {
-          setFolderCollaborationRoom(folder.id, startedSession.roomId);
-        }
-      }
-      for (const file of files) {
-        if (file.id === startedSession.fileId) continue;
-        startFileCollaborationSession(file.id, startedSession.roomId, startedSession.shareUrl);
-        setFileCollaborationStatus(file.id, "idle");
-      }
     } catch (error) {
       clientErrorReporter.report({
         feature: "collaboration",
@@ -971,8 +934,6 @@ export function useWorkspaceRuntime() {
     }
   });
   const stopSessionWithPendingCommit = useEventCallback(() => {
-    const roomId = activeFile?.roomId ?? activeRoom?.roomId;
-    const workspaceRoomFileIds = roomId ? files.filter((file) => file.roomId === roomId).map((file) => file.id) : [];
     flushPendingEditorCommit();
     const roomSnapshot = materializeRoomWorkspace();
     if (roomSnapshot) {
@@ -984,23 +945,11 @@ export function useWorkspaceRuntime() {
       );
     }
     stopSession();
-    if (!activeFile?.roomId) {
-      resetCollaborationState("idle");
-      syncUrlForFile(undefined, "replace");
-    }
+    resetCollaborationState("idle");
+    syncUrlForFile(undefined, "replace");
     setActiveRoom(null);
     setLiveRoomOpenFailure(null);
     setLocalPersistenceEnabled(true);
-    for (const fileId of workspaceRoomFileIds) {
-      if (fileId !== activeFile?.id) {
-        stopFileCollaborationSession(fileId);
-      }
-    }
-    if (roomId) {
-      for (const folder of folders) {
-        if (folder.roomId === roomId) setFolderCollaborationRoom(folder.id);
-      }
-    }
   });
   useEffect(() => {
     const roomId = activeRoomId;
@@ -1058,13 +1007,11 @@ export function useWorkspaceRuntime() {
     replaceWorkspace(createRoomWorkspaceState(room));
   });
   useWorkspaceRouteRuntime({
-    activeFileId,
     activateRoomFile: activateRoomWorkspace,
-    files,
+    isRoomSession: Boolean(activeRoom),
     onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
-    selectFile: selectWorkspaceFileAction,
     onRouteWorkspaceChange: handleRouteWorkspaceChange,
-    onLeaveRoom: () => setActiveRoom(null),
+    onLeaveRoom: openLocalWorkspaceAfterRoomFailure,
   });
 
   useSelectionActionDismissal({
@@ -1118,7 +1065,7 @@ export function useWorkspaceRuntime() {
     selectAdjacentFile,
   } = useWorkspaceFileActions({
     activeFile,
-    roomFile: activeRoom ? collaborationRoomFile : undefined,
+    isRoomSession: Boolean(activeRoom),
     activeFileId,
     addFileFromContent,
     addWorkspaceFileAction,
@@ -1131,8 +1078,8 @@ export function useWorkspaceRuntime() {
     helpMarkdown: createHelpMarkdown(shortcutLabels),
     historyByFileId,
     onFileCreated: publishRoomDocument,
-    onFileContentReplaced: (file) => !file.roomId || replaceRoomDocumentText(file.id, file.text),
-    onFileDeleted: (file) => !file.roomId || deleteRoomNode(file.id),
+    onFileContentReplaced: (file) => !activeRoom || replaceRoomDocumentText(file.id, file.text),
+    onFileDeleted: (file) => !activeRoom || deleteRoomNode(file.id),
     onFileRenamed: renameRoomNode,
     onFileRestored: restoreRoomDocument,
     openFileIds,
@@ -1150,7 +1097,7 @@ export function useWorkspaceRuntime() {
     upsertHelpFile,
   });
   const addWorkspaceFolder = useEventCallback((parentId?: string) => {
-    const folder = addWorkspaceFolderAction("New folder", parentId, activeRoomId);
+    const folder = addWorkspaceFolderAction("New folder", parentId);
     if (!folder) {
       showToast("Folders can be nested up to 32 levels.", "error");
       return;
@@ -1256,8 +1203,7 @@ export function useWorkspaceRuntime() {
       onDeleteComment: deleteFileCommentWithUndo,
       onDeleteFile: deleteFile,
       onDeleteFolder: (folderId) => {
-        const deletedFolder = folders.find((folder) => folder.id === folderId);
-        if (deletedFolder?.roomId && !deleteRoomNode(folderId)) {
+        if (activeRoom && !deleteRoomNode(folderId)) {
           showToast("This folder couldn’t be deleted from the live workspace.", "error");
           return;
         }
@@ -1318,7 +1264,7 @@ export function useWorkspaceRuntime() {
         const folder = folders.find((candidate) => candidate.id === folderId);
         if (!folder || !renameFolder(folderId, title)) return false;
         const currentFolder = getWorkspaceStoreFolder(folderId);
-        if (folder.roomId && currentFolder && !renameRoomNode(folderId, currentFolder.title)) {
+        if (activeRoom && currentFolder && !renameRoomNode(folderId, currentFolder.title)) {
           renameFolder(folderId, folder.title);
           return false;
         }
@@ -1328,7 +1274,7 @@ export function useWorkspaceRuntime() {
         const file = files.find((candidate) => candidate.id === fileId);
         const previousParentId = file?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
         if (!moveFileToFolder(fileId, folderId)) return;
-        if (file?.roomId && !moveRoomNode(fileId, folderId)) {
+        if (activeRoom && !moveRoomNode(fileId, folderId)) {
           moveFileToFolder(fileId, previousParentId);
           showToast("This document couldn’t be moved in the live workspace.", "error");
         }
@@ -1340,7 +1286,7 @@ export function useWorkspaceRuntime() {
           showToast("This folder can’t be moved there.", "error");
           return;
         }
-        if (folder?.roomId && !moveRoomNode(folderId, parentId)) {
+        if (activeRoom && !moveRoomNode(folderId, parentId)) {
           moveFolder(folderId, previousParentId);
           showToast("This folder couldn’t be moved in the live workspace.", "error");
         }
