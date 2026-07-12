@@ -1,8 +1,9 @@
 import Dexie, { type Table } from "dexie";
 import {
   PROJECT_STORAGE_VERSION,
-  createStoredWorkspace,
   finalizeWorkspaceState,
+  pruneEmptyGeneratedLivePlaceholders,
+  serializeFile,
   type FileComment,
   type StoredWorkspaceFile,
   type WorkspaceFile,
@@ -175,36 +176,47 @@ export const createWorkspaceWritePlan = (
   workspace: WorkspaceState,
   previous?: SourceTracker,
 ): WorkspaceWritePlan => {
-  const stored = createStoredWorkspace(workspace);
-  const filesById = new Map(workspace.files.map((file) => [file.id, file]));
+  const storedFiles = pruneEmptyGeneratedLivePlaceholders(workspace.files, workspace.commentsByFileId);
+  const filesById = new Map(storedFiles.map((file) => [file.id, file]));
   const foldersById = new Map(workspace.folders.map((folder) => [folder.id, folder]));
-  const fileIds = new Set(stored.fileOrder);
-  const folderIds = new Set(stored.folderOrder);
+  const fileOrder = storedFiles.map((file) => file.id);
+  const folderOrder = workspace.folders.map((folder) => folder.id);
+  const fileIds = new Set(fileOrder);
+  const folderIds = new Set(folderOrder);
   const commentIds = new Set(
-    Object.entries(stored.commentsByFileId).filter(([, comments]) => comments.length > 0).map(([fileId]) => fileId),
+    Object.entries(workspace.commentsByFileId)
+      .filter(([fileId, comments]) => fileIds.has(fileId) && comments.length > 0)
+      .map(([fileId]) => fileId),
+  );
+  const activeFileId = fileIds.has(workspace.activeFileId) ? workspace.activeFileId : (fileOrder[0] ?? "");
+  const openFileIds = workspace.openFileIds.filter(
+    (fileId, index, ids) => fileIds.has(fileId) && ids.indexOf(fileId) === index,
   );
 
   return {
     manifest: {
       key: LOCAL_WORKSPACE_KEY,
       version: PROJECT_STORAGE_VERSION,
-      savedAt: stored.savedAt,
-      activeFileId: stored.activeFileId,
-      openFileIds: stored.openFileIds,
-      fileOrder: stored.fileOrder,
-      folderOrder: stored.folderOrder,
+      savedAt: new Date().toISOString(),
+      activeFileId,
+      openFileIds,
+      fileOrder,
+      folderOrder,
     },
-    filePuts: stored.fileOrder
+    filePuts: fileOrder
       .filter((fileId) => previous?.fileRefs.get(fileId) !== filesById.get(fileId))
-      .map((fileId) => ({ id: fileId, payload: stored.files[fileId]! })),
+      .map((fileId) => ({ id: fileId, payload: serializeFile(filesById.get(fileId)!) })),
     fileDeletes: getDeletedIds(previous?.fileRefs.keys() ?? [], fileIds),
-    folderPuts: stored.folderOrder
+    folderPuts: folderOrder
       .filter((folderId) => previous?.folderRefs.get(folderId) !== foldersById.get(folderId))
-      .map((folderId) => ({ id: folderId, payload: stored.folders[folderId]! })),
+      .map((folderId) => ({
+        id: folderId,
+        payload: { ...foldersById.get(folderId)!, roomId: undefined },
+      })),
     folderDeletes: getDeletedIds(previous?.folderRefs.keys() ?? [], folderIds),
     commentPuts: [...commentIds]
       .filter((fileId) => previous?.commentRefs.get(fileId) !== workspace.commentsByFileId[fileId])
-      .map((fileId) => ({ fileId, comments: stored.commentsByFileId[fileId]! })),
+      .map((fileId) => ({ fileId, comments: workspace.commentsByFileId[fileId]! })),
     commentDeletes: getDeletedIds(previous?.commentRefs.keys() ?? [], commentIds),
   };
 };
@@ -216,10 +228,13 @@ export const writeIndexedDbWorkspace = async (
   const plan = createWorkspaceWritePlan(workspace, adapterTrackers.get(adapter));
   await adapter.writeWorkspace(plan);
   const storedIds = new Set(plan.manifest.fileOrder);
+  const storedCommentsByFileId = Object.fromEntries(
+    Object.entries(workspace.commentsByFileId).filter(([fileId]) => storedIds.has(fileId)),
+  );
   adapterTrackers.set(adapter, createSourceTracker(
     workspace.files.filter((file) => storedIds.has(file.id)),
     workspace.folders,
-    workspace.commentsByFileId,
+    storedCommentsByFileId,
   ));
 };
 

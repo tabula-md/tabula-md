@@ -36,11 +36,11 @@ export function ShareTrigger({
         className={`share-button share-trigger ${shareOpen ? "active" : ""} ${liveStatus ? `live ${liveStatus}` : ""}`}
         type="button"
         aria-label={statusLabel}
-        title={statusLabel}
+        data-tooltip={statusLabel}
         aria-expanded={shareOpen}
         onClick={onToggleShare}
       >
-        <Share2 size={15} />
+        <Share2 size={16} />
         {isLive ? <span className="share-live-dot" aria-hidden="true" /> : null}
         <span className="share-label-visible">{copy.trigger}</span>
       </button>

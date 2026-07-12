@@ -30,16 +30,13 @@ type RightPanelCommentGroups<
 > = {
   openCommentGroups: RightPanelCommentGroup<TFile, TComment>[];
   resolvedCommentGroups: RightPanelCommentGroup<TFile, TComment>[];
-  openCommentCount: number;
 };
 
 type RightPanelCommentScopeModelArgs<
   TFile extends RightPanelCommentFile,
   TComment extends RightPanelComment,
 > = {
-  activeFile?: TFile;
   activeFileId: string;
-  activeFileTitle: string;
   openCommentGroups: RightPanelCommentGroup<TFile, TComment>[];
   resolvedCommentGroups: RightPanelCommentGroup<TFile, TComment>[];
   commentScope: CommentScope;
@@ -97,7 +94,6 @@ export const getRightPanelCommentGroups = <
   return {
     openCommentGroups,
     resolvedCommentGroups,
-    openCommentCount: openCommentGroups.reduce((total, group) => total + group.comments.length, 0),
   };
 };
 
@@ -105,9 +101,7 @@ export const getRightPanelCommentScopeModel = <
   TFile extends RightPanelCommentFile,
   TComment extends RightPanelComment,
 >({
-  activeFile,
   activeFileId,
-  activeFileTitle,
   openCommentGroups,
   resolvedCommentGroups,
   commentScope,
@@ -126,20 +120,10 @@ export const getRightPanelCommentScopeModel = <
         ? [activeResolvedCommentGroup]
         : []
       : sortCommentGroupsByActivity(resolvedCommentGroups);
-  const allCommentCount =
-    openCommentGroups.reduce((total, group) => total + group.comments.length, 0) +
-    resolvedCommentGroups.reduce((total, group) => total + group.comments.length, 0);
-  const currentCommentCount =
-    (activeOpenCommentGroup?.comments.length ?? 0) + (activeResolvedCommentGroup?.comments.length ?? 0);
-  const activeCommentFileTitle = activeFile ? stripMarkdownExtension(activeFileTitle) : "No file open";
-
   return {
     scopedOpenCommentGroups,
     scopedResolvedCommentGroups,
     hasAnyComments: scopedOpenCommentGroups.length > 0 || scopedResolvedCommentGroups.length > 0,
     hideSingleActiveFileHeader: commentScope === "current",
-    commentsTitle: commentScope === "all" ? "All comments" : activeCommentFileTitle,
-    switchLabel: commentScope === "all" ? "Current file" : "All comments",
-    switchCount: commentScope === "all" ? currentCommentCount : allCommentCount,
   };
 };

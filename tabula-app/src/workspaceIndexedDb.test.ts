@@ -63,6 +63,32 @@ describe("workspace IndexedDB adapter", () => {
     expect(memory.workspacePlans[1]?.fileDeletes).toEqual([]);
   });
 
+  it("does not read or serialize unchanged file content while planning a later write", async () => {
+    const memory = createMemoryAdapter();
+    const workspace = createWorkspace("# First");
+    const stableFile = createWorkspaceFile(2, { id: "stable", title: "Stable.md", text: "# Stable" });
+    let stableTextReads = 0;
+    Object.defineProperty(stableFile, "text", {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        stableTextReads += 1;
+        return "# Stable";
+      },
+    });
+    workspace.files.push(stableFile);
+
+    await writeIndexedDbWorkspace(workspace, memory.adapter);
+    stableTextReads = 0;
+    workspace.files = workspace.files.map((file) =>
+      file.id === "local" ? { ...file, text: "# Changed" } : file,
+    );
+    await writeIndexedDbWorkspace(workspace, memory.adapter);
+
+    expect(stableTextReads).toBe(0);
+    expect(memory.workspacePlans[1]?.filePuts.map((record) => record.id)).toEqual(["local"]);
+  });
+
   it("reads the current normalized workspace without a legacy fallback", async () => {
     const memory = createMemoryAdapter();
     memory.setWorkspace(createWorkspace("# Restored"));

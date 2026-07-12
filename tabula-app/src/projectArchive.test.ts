@@ -1,8 +1,8 @@
+import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import {
   createProjectArchive,
   createZipArchive,
-  getCrc32,
   getProjectArchiveEntries,
 } from "./projectArchive";
 import {
@@ -11,37 +11,13 @@ import {
   createWorkspaceRootFolder,
 } from "./workspaceStorage";
 
-const textDecoder = new TextDecoder();
-
-const readStoredZipEntries = async (blob: Blob) => {
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  const view = new DataView(bytes.buffer);
-  const entries: Array<{ path: string; content: string }> = [];
-  let offset = 0;
-
-  while (offset + 30 <= bytes.byteLength && view.getUint32(offset, true) === 0x04034b50) {
-    const compressedSize = view.getUint32(offset + 18, true);
-    const pathLength = view.getUint16(offset + 26, true);
-    const extraLength = view.getUint16(offset + 28, true);
-    const pathStart = offset + 30;
-    const contentStart = pathStart + pathLength + extraLength;
-    const contentEnd = contentStart + compressedSize;
-
-    entries.push({
-      path: textDecoder.decode(bytes.slice(pathStart, pathStart + pathLength)),
-      content: textDecoder.decode(bytes.slice(contentStart, contentEnd)),
-    });
-    offset = contentEnd;
-  }
-
-  return entries;
-};
+const readZipEntries = async (blob: Blob) =>
+  Object.entries(unzipSync(new Uint8Array(await blob.arrayBuffer()))).map(([path, content]) => ({
+    path,
+    content: strFromU8(content),
+  }));
 
 describe("project archive", () => {
-  it("computes standard CRC32 values", () => {
-    expect(getCrc32(new TextEncoder().encode("123456789"))).toBe(0xcbf43926);
-  });
-
   it("normalizes project files into deduped Markdown entry paths", () => {
     expect(
       getProjectArchiveEntries([
@@ -60,21 +36,21 @@ describe("project archive", () => {
     ]);
   });
 
-  it("creates an uncompressed zip archive with Markdown files", async () => {
-    const archive = createProjectArchive([
+  it("creates a compressed zip archive with Markdown files", async () => {
+    const archive = await createProjectArchive([
       createWorkspaceFile(1, { title: "README.md", text: "# README" }),
       createWorkspaceFile(2, { title: "Notes.md", text: "한글 Markdown" }),
     ]);
 
     expect(archive.type).toBe("application/zip");
-    await expect(readStoredZipEntries(archive)).resolves.toEqual([
+    await expect(readZipEntries(archive)).resolves.toEqual([
       { path: "README.md", content: "# README" },
       { path: "Notes.md", content: "한글 Markdown" },
     ]);
   });
 
   it("creates zip entries with logical folder structure", async () => {
-    const archive = createProjectArchive(
+    const archive = await createProjectArchive(
       [
         createWorkspaceFile(1, { title: "README.md", text: "# Docs", parentId: "docs" }),
         createWorkspaceFile(2, { title: "ADR 1", text: "# ADR", parentId: "decisions" }),
@@ -86,14 +62,14 @@ describe("project archive", () => {
       ],
     );
 
-    await expect(readStoredZipEntries(archive)).resolves.toEqual([
+    await expect(readZipEntries(archive)).resolves.toEqual([
       { path: "docs/README.md", content: "# Docs" },
       { path: "decisions/ADR 1.md", content: "# ADR" },
     ]);
   });
 
   it("preserves empty logical folders", async () => {
-    const archive = createProjectArchive(
+    const archive = await createProjectArchive(
       [createWorkspaceFile(1, { title: "README.md", text: "# Root" })],
       [
         createWorkspaceRootFolder(),
@@ -101,13 +77,13 @@ describe("project archive", () => {
       ],
     );
 
-    await expect(readStoredZipEntries(archive)).resolves.toEqual([
+    await expect(readZipEntries(archive)).resolves.toEqual([
       { path: "Empty notes/", content: "" },
       { path: "README.md", content: "# Root" },
     ]);
   });
 
   it("supports empty zip archives for defensive callers", async () => {
-    await expect(readStoredZipEntries(createZipArchive([]))).resolves.toEqual([]);
+    await expect(createZipArchive([]).then(readZipEntries)).resolves.toEqual([]);
   });
 });

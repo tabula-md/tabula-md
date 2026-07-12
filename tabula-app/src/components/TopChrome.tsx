@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Menu, PanelRight, Users } from "lucide-react";
 import type { Collaborator } from "../collaboration";
 import {
-  getCollaboratorPresenceDetail,
-  getCollaboratorPresenceLabel,
+  getLineNumberForSelection,
   isCollaboratorInFile,
 } from "../collaboration/collaborationPresence";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
+import { PopoverContent, PopoverRoot, PopoverTrigger } from "./ui/Popover";
 
 type TopChromeProps = {
   workspaceMenuOpen: boolean;
@@ -52,13 +52,41 @@ export function TopChrome({
           liveCollaborators.map((collaborator) => collaborator.name).join(", "),
         )
       : copy.liveAs(identity.name);
-  const getTooltip = (collaborator: Collaborator) =>
-    getCollaboratorPresenceLabel(collaborator, activeText);
+  const getPresenceLine = (collaborator: Collaborator) =>
+    getLineNumberForSelection(activeText, collaborator.selection);
+  const getTooltip = (collaborator: Collaborator) => {
+    const lineNumber = getPresenceLine(collaborator);
+    return [
+      collaborator.name,
+      collaborator.kind === "agent" ? copy.agent : null,
+      collaborator.fileTitle,
+      lineNumber ? copy.line(lineNumber) : null,
+    ].filter(Boolean).join(" · ");
+  };
+  const getPresenceDetail = (collaborator: Collaborator) => {
+    const collaboratorDocumentId = collaborator.activeDocumentId ?? collaborator.selection?.documentId;
+    if (!collaboratorDocumentId && !collaborator.fileTitle) {
+      return collaborator.kind === "agent" ? copy.agentInWorkspace : copy.inWorkspace;
+    }
+    if (!isCollaboratorInFile(
+      collaborator,
+      currentFileTitle,
+      currentRoomId,
+      currentDocumentId,
+    )) {
+      const fileTitle = collaborator.fileTitle ?? copy.inWorkspace;
+      return collaborator.kind === "agent"
+        ? copy.agentViewing(fileTitle)
+        : copy.viewing(fileTitle);
+    }
+    const lineNumber = getPresenceLine(collaborator);
+    const detail = lineNumber ? copy.line(lineNumber) : copy.inThisFile;
+    return collaborator.kind === "agent" ? `${copy.agent} · ${detail}` : detail;
+  };
   const currentFileTitle = identity.fileTitle;
   const currentRoomId = identity.roomId;
   const currentDocumentId = identity.activeDocumentId;
   const [presenceOpen, setPresenceOpen] = useState(false);
-  const presenceRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isLiveConnected) {
@@ -66,41 +94,14 @@ export function TopChrome({
     }
   }, [isLiveConnected]);
 
-  useEffect(() => {
-    if (!presenceOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target instanceof Node ? event.target : null;
-      if (target && presenceRef.current?.contains(target)) {
-        return;
-      }
-
-      setPresenceOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setPresenceOpen(false);
-      }
-    };
-
-    window.addEventListener("pointerdown", handlePointerDown, true);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown, true);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [presenceOpen]);
-
   return (
     <header className="top-chrome">
       <div className="top-left-zone">
         <button
           className={`panel-toggle top-panel-toggle workspace-menu-button ${workspaceMenuOpen ? "active" : ""}`}
           type="button"
-          title={workspaceMenuLabel}
           aria-label={workspaceMenuLabel}
+          data-tooltip={workspaceMenuLabel}
           aria-expanded={workspaceMenuOpen}
           onClick={onToggleWorkspaceMenu}
         >
@@ -113,39 +114,39 @@ export function TopChrome({
 
         <div className="top-right-zone">
           {isLiveConnected && (
-            <div className="presence-wrap" ref={presenceRef}>
-              <button
-                className={`presence sharing-presence ${presenceOpen ? "active" : ""}`}
-                type="button"
-                aria-label={sharingTooltip}
-                aria-expanded={presenceOpen}
-                data-tooltip={sharingTooltip}
-                onClick={() => setPresenceOpen((isOpen) => !isOpen)}
-              >
-                <Users size={15} />
-                <div className="avatars">
-                  <span
-                    className={`avatar self ${identity.kind === "agent" ? "agent" : "human"}`}
-                    style={{ background: identity.color }}
-                    data-tooltip={getTooltip(identity)}
+            <div className="presence-wrap">
+              <PopoverRoot open={presenceOpen} onOpenChange={setPresenceOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className={`presence sharing-presence ${presenceOpen ? "active" : ""}`}
+                    type="button"
+                    aria-label={sharingTooltip}
+                    data-tooltip={sharingTooltip}
                   >
-                    {getInitial(identity)}
-                  </span>
-                  {collaborators.slice(0, 4).map((collaborator) => (
-                    <span
-                      className={`avatar ${collaborator.kind === "agent" ? "agent" : "human"}`}
-                      key={collaborator.id}
-                      style={{ background: collaborator.color }}
-                      data-tooltip={getTooltip(collaborator)}
-                    >
-                      {getInitial(collaborator)}
-                    </span>
-                  ))}
-                </div>
-              </button>
+                    <Users size={16} />
+                    <div className="avatars">
+                      <span
+                        className={`avatar self ${identity.kind === "agent" ? "agent" : "human"}`}
+                        style={{ background: identity.color }}
+                        data-tooltip={getTooltip(identity)}
+                      >
+                        {getInitial(identity)}
+                      </span>
+                      {collaborators.slice(0, 4).map((collaborator) => (
+                        <span
+                          className={`avatar ${collaborator.kind === "agent" ? "agent" : "human"}`}
+                          key={collaborator.id}
+                          style={{ background: collaborator.color }}
+                          data-tooltip={getTooltip(collaborator)}
+                        >
+                          {getInitial(collaborator)}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                </PopoverTrigger>
 
-              {presenceOpen && (
-                <div
+                <PopoverContent
                   className="presence-popover"
                   role="dialog"
                   aria-label={copy.collaborators}
@@ -179,25 +180,19 @@ export function TopChrome({
                             <span>
                               {collaborator.name}
                               {collaborator.kind === "agent" && (
-                                <small className="presence-kind-badge">Agent</small>
+                                <small className="presence-kind-badge">{copy.agent}</small>
                               )}
                             </span>
                             <p className={isCurrentFile ? "" : "other-file"}>
-                              {getCollaboratorPresenceDetail(
-                                collaborator,
-                                activeText,
-                                currentFileTitle,
-                                currentRoomId,
-                                currentDocumentId,
-                              )}
+                              {getPresenceDetail(collaborator)}
                             </p>
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              )}
+                </PopoverContent>
+              </PopoverRoot>
             </div>
           )}
 
@@ -207,8 +202,8 @@ export function TopChrome({
             <button
               className="panel-toggle top-panel-toggle"
               type="button"
-              title={rightPanelLabel}
               aria-label={rightPanelLabel}
+              data-tooltip={rightPanelLabel}
               aria-expanded={rightPanelOpen}
               onClick={onToggleRightPanel}
             >

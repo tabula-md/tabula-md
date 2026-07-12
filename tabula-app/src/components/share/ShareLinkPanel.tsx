@@ -35,17 +35,6 @@ type ShareLinkPanelProps = {
   onStopSession: () => void;
 };
 
-const liveConnectionCopy: Record<Extract<ConnectionStatus, "reconnecting" | "disconnected">, { title: string; description: string }> = {
-  reconnecting: {
-    title: "Reconnecting to live room",
-    description: "Changes stay local until the room reconnects.",
-  },
-  disconnected: {
-    title: "Live room disconnected",
-    description: "Reconnect before inviting people or agents.",
-  },
-};
-
 export function ShareLinkPanel({
   agentPromptCopied,
   chromeCopy,
@@ -67,14 +56,24 @@ export function ShareLinkPanel({
 }: ShareLinkPanelProps) {
   const canRetrySession = connectionStatus === "disconnected";
   const showTransientLiveStatus = !isLiveConnected && (connectionStatus === "reconnecting" || connectionStatus === "disconnected");
-  const connectionCopy = showTransientLiveStatus ? liveConnectionCopy[connectionStatus] : null;
+  const connectionCopy = showTransientLiveStatus
+    ? connectionStatus === "reconnecting"
+      ? {
+          title: copy.live.reconnectingTitle,
+          description: copy.live.reconnectingDescription,
+        }
+      : {
+          title: copy.live.disconnectedTitle,
+          description: copy.live.disconnectedDescription,
+        }
+    : null;
 
   return (
     <>
       <div className="share-link-section">
         <div className="share-panel-heading">
           <span className="share-modal-option-icon">
-            <Users size={17} />
+            <Users size={18} />
           </span>
           <div>
             <h3>{copy.live.title}</h3>
@@ -141,7 +140,7 @@ export function ShareLinkPanel({
                           : copy.live.invalidInviteTitle
                       }
                     >
-                      {copied ? <Check size={17} /> : <Copy size={17} />}
+                      {copied ? <Check size={18} /> : <Copy size={18} />}
                       <span>{copied ? copy.live.copied : copy.live.copyLink}</span>
                     </button>
                   </div>
@@ -173,7 +172,7 @@ export function ShareLinkPanel({
                   type="button"
                   onClick={onRetrySession}
                 >
-                  <RefreshCw size={15} />
+                  <RefreshCw size={16} />
                   <span>{copy.live.retrySession}</span>
                 </button>
               )}

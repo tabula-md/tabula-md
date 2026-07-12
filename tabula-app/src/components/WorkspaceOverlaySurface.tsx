@@ -1,8 +1,11 @@
 import { AppToast } from "./AppToast";
 import { JsonShareImportDialog } from "./JsonShareImportDialog";
+import { TooltipLayer } from "./ui/TooltipLayer";
 import type { AppToastState } from "../hooks/useAppToast";
 import type { WorkspaceState } from "../workspaceStorage";
 import { getProjectArchiveEntries } from "../projectArchive";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 
 type JsonShareImportState =
   | { status: "loading" }
@@ -11,6 +14,7 @@ type JsonShareImportState =
 
 export type WorkspaceOverlaySurfaceProps = {
   jsonShareImport: JsonShareImportState | null;
+  language: WorkspaceLanguage;
   toast: AppToastState | null;
   onDismissToast: () => void;
   onPauseToast: () => void;
@@ -21,6 +25,7 @@ export type WorkspaceOverlaySurfaceProps = {
 
 export function WorkspaceOverlaySurface({
   jsonShareImport,
+  language,
   toast,
   onDismissToast,
   onPauseToast,
@@ -28,11 +33,14 @@ export function WorkspaceOverlaySurface({
   onCloseJsonShareImport,
   onReplaceWorkspaceWithJsonShare,
 }: WorkspaceOverlaySurfaceProps) {
+  const copy = getWorkspaceSurfaceCopy(language);
   return (
     <>
+      <TooltipLayer />
       {toast && (
         <AppToast
           key={toast.id}
+          dismissLabel={copy.dismissNotification}
           message={toast.message}
           tone={toast.tone}
           actionLabel={toast.actionLabel}
@@ -45,6 +53,7 @@ export function WorkspaceOverlaySurface({
       {jsonShareImport && (
         <JsonShareImportDialog
           status={jsonShareImport.status}
+          language={language}
           fileCount={
             jsonShareImport.status === "ready"
               ? jsonShareImport.workspace.files.length

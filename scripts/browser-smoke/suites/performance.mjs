@@ -426,7 +426,7 @@ const installSplitResizeProbe = () => {
 };
 
 const importMarkdownFixture = async (page, markdown, name) => {
-  await page.locator('input[aria-label="Import file"]').setInputFiles({
+  await page.locator('input[aria-label="Open Markdown file"]').setInputFiles({
     name,
     mimeType: "text/markdown",
     buffer: Buffer.from(markdown),
@@ -845,7 +845,7 @@ export async function run(ctx) {
     browser,
     "/",
     async (page) => {
-      await page.getByTitle("New document").click();
+      await page.getByRole("button", { name: "New document", exact: true }).click();
       await waitForEditorReady(page, { mode: "edit" });
       await page.getByRole("button", { name: "Split", exact: true }).click();
       await waitForEditorReady(page, { mode: "split" });
@@ -876,7 +876,7 @@ export async function run(ctx) {
       browser,
       "/",
       async (page) => {
-        await page.locator('input[aria-label="Import file"]').setInputFiles({
+        await page.locator('input[aria-label="Open Markdown file"]').setInputFiles({
           name: fixtureName,
           mimeType: "text/markdown",
           buffer: Buffer.from(plainMarkdown),
@@ -1606,7 +1606,7 @@ export async function run(ctx) {
     browser,
     "/",
     async (page) => {
-      await page.locator('input[aria-label="Import file"]').setInputFiles({
+      await page.locator('input[aria-label="Open Markdown file"]').setInputFiles({
         name: "split-performance.md",
         mimeType: "text/markdown",
         buffer: Buffer.from(longMarkdown),
@@ -1763,7 +1763,7 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseUrl });
-      await page.getByTitle("New document").click();
+      await page.getByRole("button", { name: "New document", exact: true }).click();
       await waitForEditorReady(page, { mode: "edit" });
       await focusMarkdownEditor(page);
       await page.evaluate(installLargePasteProbe);

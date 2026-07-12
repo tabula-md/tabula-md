@@ -35,7 +35,7 @@ export function ShareExportPanel({
     <>
       <div className="share-panel-heading">
         <span className="share-modal-option-icon">
-          <Download size={17} />
+          <Download size={18} />
         </span>
         <div>
           <h3>{copy.exportPanel.title}</h3>
@@ -84,7 +84,7 @@ export function ShareExportPanel({
                 <span>{jsonShare.urlPreview}</span>
               </div>
               <button type="button" onClick={onCopyShareableLink}>
-                {exportLinkCopied ? <Check size={17} /> : <Copy size={17} />}
+                {exportLinkCopied ? <Check size={18} /> : <Copy size={18} />}
                 <span>
                   {exportLinkCopied ? copy.live.copied : copy.live.copyLink}
                 </span>

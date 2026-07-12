@@ -17,7 +17,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     const initialTabCount = (await getTabs(page)).length;
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForFileCount(page, initialTabCount + 1);
     await waitForActiveTab(page, { startsWith: "Untitled" });
     let tabs = await getTabs(page);
@@ -27,7 +27,7 @@ export async function run(ctx) {
       "First created blank file should be active before creating another file.",
     );
 
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForFileCount(page, initialTabCount + 2);
     tabs = await getTabs(page);
     const secondCreatedTitle = tabs.find((tab) => tab.active)?.title ?? "";
@@ -73,7 +73,7 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await openProjectMenu(page);
     await page
-      .locator('input[aria-label="Import file"]')
+      .locator('input[aria-label="Open Markdown file"]')
       .setInputFiles({
         name: "README.md",
         mimeType: "text/markdown",
@@ -469,13 +469,14 @@ export async function run(ctx) {
     expect(
       Math.abs(menuLayout.workspace.x - closedLayout.workspace.x) <= 1 &&
         Math.abs(menuLayout.workspace.width - closedLayout.workspace.width) <=
-          1 &&
-        Math.abs(rightPanelLayout.workspace.x - closedLayout.workspace.x) <=
-          1 &&
-        Math.abs(
-          rightPanelLayout.workspace.width - closedLayout.workspace.width,
-        ) <= 1,
-      "Opening menu surfaces should keep the document workspace viewport stable.",
+          1,
+      "Opening the workspace menu should keep the document workspace viewport stable.",
+    );
+    expect(
+      Math.abs(rightPanelLayout.workspace.x - closedLayout.workspace.x) <= 1 &&
+        rightPanelLayout.workspace.x + rightPanelLayout.workspace.width <= rightPanelLayout.rightPanel.x + 1 &&
+        rightPanelLayout.workspace.width < closedLayout.workspace.width - 200,
+      "Desktop Project Context should occupy its own grid column instead of overlaying the document workspace.",
     );
   });
 
@@ -509,6 +510,9 @@ export async function run(ctx) {
 
         return {
           mainClass: document.querySelector(".main-panel")?.className ?? "",
+          rightPanel: readRect(".right-panel"),
+          rightPanelPosition: window.getComputedStyle(document.querySelector(".right-panel")).position,
+          backdropDisplay: window.getComputedStyle(document.querySelector(".right-panel-backdrop")).display,
           actionRow: readRect(".document-toolbar-row"),
           status: readRect(".file-status-bar"),
           workspace: readRect(".workspace.split"),
@@ -520,41 +524,43 @@ export async function run(ctx) {
 
       expect(
         splitLayout.mainClass.includes("right-panel-open") &&
+          splitLayout.mainClass.includes("split-view-open") &&
           !splitLayout.mainClass.includes("left-panel-open"),
         "Split layout smoke should run with Project Context open and no left side panel.",
       );
       expect(
-        splitLayout.workspace?.display === "block",
-        "Split should stack when Project Context narrows the document safe area.",
+        splitLayout.rightPanelPosition === "fixed" && splitLayout.backdropDisplay === "block",
+        "Project Context should overlay compact desktop Split instead of consuming its document width.",
       );
       expect(
-        splitLayout.workspace?.overflowY === "auto",
-        "Stacked split should use the document workspace as the scroll root.",
+        splitLayout.workspace?.display === "grid",
+        "Split should keep its two-pane grid while Project Context is open.",
       );
       expect(
         splitLayout.editor &&
           splitLayout.preview &&
-          splitLayout.preview.y >
-            splitLayout.editor.y + splitLayout.editor.height - 2,
-        "Stacked split should place the preview below the editor when side panels narrow the safe area.",
+          splitLayout.preview.x >= splitLayout.editor.x + splitLayout.editor.width - 2 &&
+          Math.abs(splitLayout.preview.y - splitLayout.editor.y) <= 1 &&
+          Math.abs(splitLayout.preview.height - splitLayout.editor.height) <= 1,
+        "Compact desktop Split should keep editor and preview side by side.",
       );
       expect(
         splitLayout.actionRow &&
-          splitLayout.editor &&
-          Math.abs(splitLayout.actionRow.x - splitLayout.editor.x) <= 1 &&
-          Math.abs(splitLayout.actionRow.width - splitLayout.editor.width) <= 1,
-        "Stacked split toolbar rail should follow the visible split document width.",
+          splitLayout.workspace &&
+          Math.abs(splitLayout.actionRow.x - splitLayout.workspace.x) <= 1 &&
+          Math.abs(splitLayout.actionRow.width - splitLayout.workspace.width) <= 1,
+        "Split toolbar rail should follow the full two-pane document width.",
       );
       expect(
         splitLayout.status &&
-          splitLayout.editor &&
-          Math.abs(splitLayout.status.x - splitLayout.editor.x) <= 1 &&
-          Math.abs(splitLayout.status.width - splitLayout.editor.width) <= 1,
-        "Stacked split status bar should follow the visible split document width.",
+          splitLayout.workspace &&
+          Math.abs(splitLayout.status.x - splitLayout.workspace.x) <= 1 &&
+          Math.abs(splitLayout.status.width - splitLayout.workspace.width) <= 1,
+        "Split status bar should follow the full two-pane document width.",
       );
       expect(
-        splitLayout.preview && splitLayout.preview.width >= 560,
-        "Stacked split preview should keep enough width for readable frontmatter.",
+        splitLayout.preview && splitLayout.preview.width >= 360,
+        "Split preview should keep enough width for readable frontmatter.",
       );
       expect(
         splitLayout.frontmatterRow && splitLayout.frontmatterRow.height <= 28,

@@ -47,6 +47,7 @@ import {
   type MarkdownPreviewMetadata,
 } from "./MarkdownPreview";
 import { StatusBar } from "./StatusBar";
+import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 
 export type DocumentWorkbenchProps = {
   activeBookmarks: FileBookmark[];
@@ -58,6 +59,7 @@ export type DocumentWorkbenchProps = {
   activePreviewCommentAnchors: MarkdownPreviewCommentAnchor[];
   activePreviewLineAnnotations: MarkdownPreviewLineAnnotation[];
   activeSearchMatchIndex: number;
+  activeSelection?: LiveSelection;
   canRedo: boolean;
   canUndo: boolean;
   centerPopover: CenterPopover;
@@ -102,7 +104,6 @@ export type DocumentWorkbenchProps = {
   workspaceRef: RefObject<HTMLElement | null>;
   onBookmarksChange: (bookmarks: MarkdownBookmark[]) => void;
   onCloseSearch: () => void;
-  onCopyFile: () => void;
   onEditorHistoryStateChange: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onEditorScroll: () => void;
   onEditorScrollRatioChange: (ratio: number) => void;
@@ -112,7 +113,6 @@ export type DocumentWorkbenchProps = {
   onGoToSearchMatch: (direction: 1 | -1) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
-  onOpenComments: () => void;
   onOpenSelectionComment: () => void;
   onPreviewKeyUp: () => void;
   onPreviewMouseUp: () => void;
@@ -150,7 +150,7 @@ const getFloatingPopoverStyle = (
   const viewportWidth = window.innerWidth || 1024;
   const left = Math.max(
     12,
-    Math.min(position.clientX, viewportWidth - options.width - 12),
+    Math.min(position.clientX - options.width / 2, viewportWidth - options.width - 12),
   );
   const top = Math.max(72, position.clientY + options.yOffset);
   return {
@@ -169,6 +169,7 @@ export function DocumentWorkbench({
   activePreviewCommentAnchors,
   activePreviewLineAnnotations,
   activeSearchMatchIndex,
+  activeSelection,
   canRedo,
   canUndo,
   centerPopover,
@@ -213,7 +214,6 @@ export function DocumentWorkbench({
   workspaceRef,
   onBookmarksChange,
   onCloseSearch,
-  onCopyFile,
   onEditorHistoryStateChange,
   onEditorScroll,
   onEditorScrollRatioChange,
@@ -223,7 +223,6 @@ export function DocumentWorkbench({
   onGoToSearchMatch,
   onLineAction,
   onOpenComment,
-  onOpenComments,
   onOpenSelectionComment,
   onPreviewKeyUp,
   onPreviewMouseUp,
@@ -253,7 +252,15 @@ export function DocumentWorkbench({
   onToggleViewOptions,
   onUndo,
 }: DocumentWorkbenchProps) {
+  const copy = getWorkspaceSurfaceCopy(language);
   const shouldRenderPreview = documentSurface.documentControls.activeViewMode !== "edit";
+  const activeFormats = useMemo(
+    () =>
+      documentSurface.documentControls.activeViewMode === "preview" || !activeSelection
+        ? []
+        : editorRef.current?.getActiveFormats() ?? [],
+    [activeSelection, documentSurface.documentControls.activeViewMode, editorRef, text],
+  );
   const suspendLineWrappingForLongLine = useMemo(
     () => activeLineWrapping && hasLongMarkdownLine(text),
     [activeLineWrapping, text],
@@ -301,6 +308,8 @@ export function DocumentWorkbench({
             className={documentSurface.formattingToolbarClassName}
             canUndo={canUndo || editorHistoryCanUndo}
             canRedo={canRedo || editorHistoryCanRedo}
+            language={language}
+            activeFormats={activeFormats}
             onFormat={onFormat}
             onUndo={onUndo}
             onRedo={onRedo}
@@ -313,11 +322,9 @@ export function DocumentWorkbench({
           activeLineWrapping={documentSurface.documentControls.activeLineWrapping}
           activeLineNumbers={documentSurface.documentControls.activeLineNumbers}
           activeSyncScrolling={activeSyncScrolling}
-          canCopyFile={documentSurface.documentControls.canCopyFile}
           centerPopover={centerPopover}
           language={language}
           searchOpen={searchOpen}
-          onCopyFile={onCopyFile}
           onSetViewMode={onSetViewMode}
           onToggleSearch={onToggleSearch}
           onToggleViewOptions={onToggleViewOptions}
@@ -362,14 +369,16 @@ export function DocumentWorkbench({
         >
           <MarkdownEditor
             ref={editorRef}
+            ariaLabel={copy.editor}
+            interfaceCopy={copy}
             fileId={activeFile.id}
             value={text}
             largeDocumentMode={largeDocumentMode}
             lineWrapping={effectiveLineWrapping}
             lineNumbers={activeLineNumbers}
             bookmarks={activeBookmarks}
-            commentAnchors={isLive ? activeCommentAnchors : []}
-            commentsEnabled={isLive}
+            commentAnchors={activeCommentAnchors}
+            commentsEnabled
             collaborationBinding={isLive ? collaborationBinding : null}
             activeCommentId={focusedCommentId}
             searchMatches={isSourceSearchActive ? searchMatches : []}
@@ -390,7 +399,7 @@ export function DocumentWorkbench({
             type="button"
             className="split-resize-handle"
             role="separator"
-            aria-label="Resize split view"
+            aria-label={copy.resizeSplitView}
             aria-orientation="vertical"
             aria-valuemin={splitDividerMinValue}
             aria-valuemax={splitDividerMaxValue}
@@ -415,15 +424,16 @@ export function DocumentWorkbench({
           >
             <MarkdownPreview
               ref={previewRef}
+              uiLanguage={language}
               metadata={previewMetadata}
               body={previewBody}
               sourceLineOffset={previewBodySourceLineOffset}
               bodyTextChange={previewBodyTextChange}
               largeDocumentMode={largeDocumentMode}
-              commentAnchors={isLive ? activePreviewCommentAnchors : []}
+              commentAnchors={activePreviewCommentAnchors}
               lineAnnotations={activePreviewLineAnnotations}
               activeCommentId={focusedCommentId}
-              commentsEnabled={isLive}
+              commentsEnabled
               searchQuery={isPreviewSearchActive ? searchQuery : ""}
               searchOptions={searchOptions}
               activeSearchMatchIndex={isPreviewSearchActive ? activeSearchMatchIndex : -1}
@@ -438,25 +448,20 @@ export function DocumentWorkbench({
       </section>
 
       {documentSurface.showSelectionCommentPopover && selectionActionPosition && (
-        <div
-          className="selection-comment-popover"
+        <button
+          className="selection-comment-popover selection-comment-button ui-popover"
+          type="button"
           style={getFloatingPopoverStyle(selectionActionPosition, {
-            width: 128,
+            width: 164,
             yOffset: 30,
           })}
-          role="toolbar"
-          aria-label="Selection actions"
+          aria-label={copy.addComment}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onOpenSelectionComment}
         >
-          <button
-            className="selection-comment-button"
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={onOpenSelectionComment}
-          >
-            <MessageSquarePlus size={15} />
-            <span>Add comment</span>
-          </button>
-        </div>
+          <MessageSquarePlus size={16} aria-hidden="true" />
+          <span>{copy.addComment}</span>
+        </button>
       )}
 
       <StatusBar
@@ -466,11 +471,9 @@ export function DocumentWorkbench({
         language={language}
         statusLabel={statusLabel}
         wordCount={documentSurface.statusBar.wordCount}
-        commentCount={documentSurface.statusBar.commentCount}
         cursorPositionLabel={cursorPositionLabel}
         selectedCharacterCount={selectedCharacterCount}
         selectedLineCount={selectedLineCount}
-        onOpenComments={onOpenComments}
       />
     </>
   );

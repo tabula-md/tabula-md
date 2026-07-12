@@ -378,9 +378,15 @@ const createReplyMap = (reply: WorkspaceRoomCommentReply) => {
   return map;
 };
 
-const createRelativeAnchor = (text: Y.Text | undefined, index: number | undefined) =>
+const createRelativeAnchor = (text: Y.Text | undefined, index: number | undefined, assoc: number) =>
   text && typeof index === "number"
-    ? Y.encodeRelativePosition(Y.createRelativePositionFromTypeIndex(text, Math.max(0, Math.min(index, text.length))))
+    ? Y.encodeRelativePosition(
+        Y.createRelativePositionFromTypeIndex(
+          text,
+          Math.max(0, Math.min(index, text.length)),
+          assoc,
+        ),
+      )
     : undefined;
 
 export const setWorkspaceRoomComment = (
@@ -411,10 +417,8 @@ export const setWorkspaceRoomComment = (
   if (comment.authorColor) map.set("authorColor", comment.authorColor);
   if (comment.quote) map.set("quote", comment.quote.slice(0, WORKSPACE_ROOM_MAX_COMMENT_LENGTH));
   if (comment.sourceQuote) map.set("sourceQuote", comment.sourceQuote.slice(0, WORKSPACE_ROOM_MAX_COMMENT_LENGTH));
-  if (comment.prefix) map.set("prefix", comment.prefix.slice(0, WORKSPACE_ROOM_MAX_COMMENT_LENGTH));
-  if (comment.suffix) map.set("suffix", comment.suffix.slice(0, WORKSPACE_ROOM_MAX_COMMENT_LENGTH));
-  const anchorStart = createRelativeAnchor(text, comment.selectionStart);
-  const anchorEnd = createRelativeAnchor(text, comment.selectionEnd);
+  const anchorStart = createRelativeAnchor(text, comment.selectionStart, 0);
+  const anchorEnd = createRelativeAnchor(text, comment.selectionEnd, -1);
   if (anchorStart) map.set("anchorStart", anchorStart);
   if (anchorEnd) map.set("anchorEnd", anchorEnd);
   map.set("resolved", comment.resolved);
@@ -541,8 +545,6 @@ export const getWorkspaceRoomComments = (
       authorColor: asOptionalString(comment.get("authorColor")),
       quote: asOptionalString(comment.get("quote")),
       sourceQuote: asOptionalString(comment.get("sourceQuote")),
-      prefix: asOptionalString(comment.get("prefix")),
-      suffix: asOptionalString(comment.get("suffix")),
       selectionStart: readRelativeAnchor(room, comment.get("anchorStart")),
       selectionEnd: readRelativeAnchor(room, comment.get("anchorEnd")),
       resolved: comment.get("resolved") === true,

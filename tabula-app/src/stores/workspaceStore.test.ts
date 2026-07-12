@@ -265,6 +265,47 @@ title: Product Requirements
     expect(useWorkspaceStore.getState().activeFileId).toBe(draft.id);
   });
 
+  it("restores a deleted folder subtree, files, tabs, and active document as one bundle", () => {
+    initializeWorkspaceStore();
+    const planning = useWorkspaceStore.getState().addFolder("Planning");
+    const archive = useWorkspaceStore.getState().addFolder("Archive", planning?.id);
+    const plan = useWorkspaceStore.getState().addFile({
+      id: "plan",
+      title: "Plan.md",
+      parentId: planning?.id,
+    });
+    const notes = useWorkspaceStore.getState().addFile({
+      id: "notes",
+      title: "Notes.md",
+      parentId: archive?.id,
+    });
+    useWorkspaceStore.getState().selectFile(notes.id);
+    const previousFiles = useWorkspaceStore.getState().files.map((file) => file.id);
+    const previousFolders = useWorkspaceStore.getState().folders.map((folder) => folder.id);
+    const previousOpenFileIds = useWorkspaceStore.getState().openFileIds;
+
+    const bundle = useWorkspaceStore.getState().deleteFolder(planning!.id);
+
+    expect(bundle?.files.map(({ item }) => item.id)).toEqual([plan.id, notes.id]);
+    expect(useWorkspaceStore.getState().files).not.toContainEqual(expect.objectContaining({ id: plan.id }));
+    expect(useWorkspaceStore.getState().folders).not.toContainEqual(expect.objectContaining({ id: archive?.id }));
+
+    const createdAfterDelete = useWorkspaceStore.getState().addFile({ id: "after-delete", title: "After.md" });
+    const restoredActiveFile = useWorkspaceStore.getState().restoreFolder(bundle!);
+
+    expect(restoredActiveFile?.id).toBe(notes.id);
+    expect(useWorkspaceStore.getState().files.map((file) => file.id)).toEqual([
+      ...previousFiles,
+      createdAfterDelete.id,
+    ]);
+    expect(useWorkspaceStore.getState().folders.map((folder) => folder.id)).toEqual(previousFolders);
+    expect(useWorkspaceStore.getState().openFileIds).toEqual([
+      ...previousOpenFileIds,
+      createdAfterDelete.id,
+    ]);
+    expect(useWorkspaceStore.getState().activeFileId).toBe(notes.id);
+  });
+
   it("upserts HELP.md without creating duplicate help surfaces", () => {
     initializeWorkspaceStore();
 

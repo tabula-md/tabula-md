@@ -1,10 +1,15 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { MarkdownHeading } from "@tabula-md/tabula";
+import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+
+type RightPanelOutlineCopy = WorkspaceInterfaceCopy["projectContext"]["outline"];
 
 type RightPanelOutlineProps = {
   activeFileTitle: string;
+  activeHeadingIndex?: number;
   outlineHeadings: MarkdownHeading[];
   collapsedHeadingIds: Set<string>;
+  copy: RightPanelOutlineCopy;
   onToggleHeadingCollapsed: (headingId: string) => void;
   onGoToOutlineHeading: (heading: MarkdownHeading, index: number) => void;
 };
@@ -53,8 +58,10 @@ const getVisibleOutlineRows = (headings: MarkdownHeading[], collapsedHeadingIds:
 
 export function RightPanelOutline({
   activeFileTitle,
+  activeHeadingIndex,
   outlineHeadings,
   collapsedHeadingIds,
+  copy,
   onToggleHeadingCollapsed,
   onGoToOutlineHeading,
 }: RightPanelOutlineProps) {
@@ -63,20 +70,20 @@ export function RightPanelOutline({
   return (
     <section className="right-panel-content">
       {outlineRows.length > 0 && (
-        <ol className="right-outline-list" aria-label={`Outline for ${activeFileTitle}`}>
+        <ol className="right-outline-list" aria-label={copy.forFile(activeFileTitle)}>
           {outlineRows.map(({ heading, index, id, hasChildren, isCollapsed }) => (
             <li key={id}>
-              <div className="right-row right-outline-row">
+              <div className={`right-row right-outline-row ${activeHeadingIndex === index ? "active" : ""}`}>
                 {hasChildren ? (
                   <button
                     className="right-outline-toggle"
                     type="button"
-                    title={isCollapsed ? "Expand section" : "Collapse section"}
-                    aria-label={isCollapsed ? "Expand section" : "Collapse section"}
+                    data-tooltip={isCollapsed ? copy.expand : copy.collapse}
+                    aria-label={isCollapsed ? copy.expand : copy.collapse}
                     aria-expanded={!isCollapsed}
                     onClick={() => onToggleHeadingCollapsed(id)}
                   >
-                    {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                    {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                   </button>
                 ) : (
                   <span className="right-outline-toggle-spacer" aria-hidden="true" />
@@ -84,11 +91,10 @@ export function RightPanelOutline({
                 <button
                   className="right-outline-link"
                   type="button"
+                  style={{ paddingLeft: `${Math.max(0, heading.depth - 1) * 12}px` }}
+                  aria-current={activeHeadingIndex === index ? "location" : undefined}
                   onClick={() => onGoToOutlineHeading(heading, index)}
                 >
-                  <span className="right-outline-depth" aria-hidden="true">
-                    {"#".repeat(heading.depth)}
-                  </span>
                   <span className="right-row-label">{heading.text}</span>
                 </button>
               </div>

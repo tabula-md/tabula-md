@@ -1,9 +1,11 @@
 import {
+  createContext,
   forwardRef,
   isValidElement,
   memo,
   startTransition,
   useCallback,
+  useContext,
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
@@ -18,7 +20,7 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { Bookmark, Check, Copy, FileText, MessageSquare, Slash, WrapText } from "lucide-react";
+import { Bookmark, Check, Copy, FileText, Slash, WrapText } from "lucide-react";
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema, type Options as SanitizeSchema } from "rehype-sanitize";
@@ -65,6 +67,11 @@ import {
   VirtualMarkdownPreview,
   type GetVirtualPreviewBlockRehypePlugins,
 } from "../preview/VirtualMarkdownPreview";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import {
+  getWorkspaceSurfaceCopy,
+  type WorkspaceSurfaceCopy,
+} from "../workspaceSurfaceLocale";
 
 export type MarkdownPreviewMetadata = {
   key: string;
@@ -85,6 +92,7 @@ type MarkdownPreviewProps = {
   searchOptions?: SearchOptions;
   activeSearchMatchIndex?: number;
   suspendLineMeasurement?: boolean;
+  uiLanguage?: WorkspaceLanguage;
   onSearchMatchCountChange?: (count: number) => void;
   onLineAction?: (request: MarkdownPreviewLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
@@ -100,7 +108,7 @@ export type MarkdownPreviewCommentAnchor = {
 export type MarkdownPreviewLineAnnotation = LineSurfaceAnnotation;
 
 export type MarkdownPreviewLineActionRequest = MarkdownPreviewLineAnnotation & {
-  action: "bookmark" | "comment";
+  action: "bookmark";
 };
 
 const externalLinkPattern = /^(?:https?:)?\/\//i;
@@ -468,11 +476,13 @@ const MARKDOWN_REMARK_PLUGINS: NonNullable<ReactMarkdownOptions["remarkPlugins"]
 
 type PreviewCodeBlockProps = {
   children?: ReactNode;
+  copy: WorkspaceSurfaceCopy;
   searchActive?: boolean;
 } & HTMLAttributes<HTMLPreElement>;
 
 type PreviewMathProps = {
   blockProps?: HTMLAttributes<HTMLDivElement>;
+  copy: WorkspaceSurfaceCopy;
   displayMode?: boolean;
   expression: string;
 };
@@ -590,7 +600,7 @@ const createMermaidThemeCss = ({
 const createMermaidThemeConfig = () => {
   const textColor = getResolvedCssColor("--text-primary", "#1f1f1f");
   const softTextColor = getResolvedCssColor("--text-soft", "#777777");
-  const panelColor = getResolvedCssColor("--surface-panel", "#ffffff");
+  const panelColor = getResolvedCssColor("--surface-overlay", "#ffffff");
   const mutedSurfaceColor = getResolvedCssColor("--surface-muted", "#f7f7f8");
   const activeSurfaceColor = getResolvedCssColor("--surface-active", panelColor);
   const lineStrongColor = getResolvedCssColor("--line-strong", "#d8d8dc");
@@ -910,9 +920,14 @@ const sanitizeMermaidSvg = (svg: string) => {
 
 type PreviewImageProps = {
   alt?: string;
+  copy?: WorkspaceSurfaceCopy;
   src?: string;
   title?: string;
 };
+
+const PreviewLocaleContext = createContext<WorkspaceSurfaceCopy>(
+  getWorkspaceSurfaceCopy("en"),
+);
 
 type PreviewDocsComponentProps = {
   children?: ReactNode;
@@ -934,7 +949,7 @@ type PreviewDocsRawComponentProps = PreviewDocsComponentProps & {
 
 type MarkdownRehypePlugins = NonNullable<ReactMarkdownOptions["rehypePlugins"]>;
 
-function PreviewMath({ blockProps, displayMode = false, expression }: PreviewMathProps) {
+function PreviewMath({ blockProps, copy, displayMode = false, expression }: PreviewMathProps) {
   const [renderedHtml, setRenderedHtml] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
   const trimmedExpression = expression.trim();
@@ -985,14 +1000,14 @@ function PreviewMath({ blockProps, displayMode = false, expression }: PreviewMat
       })
       .catch((error: unknown) => {
         if (!isCancelled) {
-          setRenderError(error instanceof Error ? error.message : "Could not render math.");
+          setRenderError(error instanceof Error ? error.message : copy.couldNotRenderMath);
         }
       });
 
     return () => {
       isCancelled = true;
     };
-  }, [cacheKey, canRender, displayMode, trimmedExpression]);
+  }, [cacheKey, canRender, copy.couldNotRenderMath, displayMode, trimmedExpression]);
 
   if (displayMode) {
     return (
@@ -1025,8 +1040,10 @@ function PreviewMath({ blockProps, displayMode = false, expression }: PreviewMat
 function PreviewMermaidDiagram({
   source,
   blockProps,
+  copy,
 }: {
   blockProps?: HTMLAttributes<HTMLDivElement>;
+  copy: WorkspaceSurfaceCopy;
   source: string;
 }) {
   const diagramIdRef = useRef<string | null>(null);
@@ -1080,14 +1097,14 @@ function PreviewMermaidDiagram({
       })
       .catch((error: unknown) => {
         if (!isCancelled) {
-          setRenderError(error instanceof Error ? error.message : "Could not render Mermaid diagram.");
+          setRenderError(error instanceof Error ? error.message : copy.couldNotRenderDiagram);
         }
       });
 
     return () => {
       isCancelled = true;
     };
-  }, [canRender, mermaidThemeConfig, source]);
+  }, [canRender, copy.couldNotRenderDiagram, mermaidThemeConfig, source]);
 
   return (
     <div
@@ -1101,13 +1118,15 @@ function PreviewMermaidDiagram({
       ) : renderError ? (
         <pre className="preview-mermaid-fallback"><code>{source.trim()}</code></pre>
       ) : (
-        <div className="preview-diagram-loading">Rendering diagram...</div>
+        <div className="preview-diagram-loading">{copy.renderingDiagram}</div>
       )}
     </div>
   );
 }
 
-function PreviewImage({ alt = "", src, title, ...props }: PreviewImageProps) {
+function PreviewImage({ alt = "", copy: copyProp, src, title, ...props }: PreviewImageProps) {
+  const contextCopy = useContext(PreviewLocaleContext);
+  const copy = copyProp ?? contextCopy;
   const [hasError, setHasError] = useState(false);
   const caption = title || alt;
 
@@ -1125,8 +1144,8 @@ function PreviewImage({ alt = "", src, title, ...props }: PreviewImageProps) {
         onError={() => setHasError(true)}
       />
       {hasError && (
-        <span className="preview-image-fallback" role="img" aria-label={alt || "Image failed to load"}>
-          {alt || "Image failed to load"}
+        <span className="preview-image-fallback" role="img" aria-label={alt || copy.imageFailed}>
+          {alt || copy.imageFailed}
         </span>
       )}
       {caption && <span className="preview-image-caption">{caption}</span>}
@@ -1380,7 +1399,7 @@ const PREVIEW_DOCS_COMPONENTS = {
   ),
 } as unknown as Components;
 
-function PreviewCodeBlock({ children, searchActive = false, ...props }: PreviewCodeBlockProps) {
+function PreviewCodeBlock({ children, copy, searchActive = false, ...props }: PreviewCodeBlockProps) {
   const [isWrapped, setIsWrapped] = useState(false);
   const [copied, setCopied] = useState(false);
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
@@ -1444,11 +1463,11 @@ function PreviewCodeBlock({ children, searchActive = false, ...props }: PreviewC
   }, [canHighlight, codeClassName, codeText, highlightKey, language]);
 
   if (isMathDisplayCode(codeClassName, language)) {
-    return <PreviewMath blockProps={props as HTMLAttributes<HTMLDivElement>} displayMode expression={codeText} />;
+    return <PreviewMath blockProps={props as HTMLAttributes<HTMLDivElement>} copy={copy} displayMode expression={codeText} />;
   }
 
   if (isMermaidCode(language)) {
-    return <PreviewMermaidDiagram blockProps={props as HTMLAttributes<HTMLDivElement>} source={codeText} />;
+    return <PreviewMermaidDiagram blockProps={props as HTMLAttributes<HTMLDivElement>} copy={copy} source={codeText} />;
   }
 
   const copyCode = async () => {
@@ -1470,12 +1489,12 @@ function PreviewCodeBlock({ children, searchActive = false, ...props }: PreviewC
 
   return (
     <div ref={blockRef} className={`preview-code-block ${isWrapped ? "wrapped" : ""}`}>
-      <div className="preview-code-actions" aria-label="Code block actions">
+      <div className="preview-code-actions" aria-label={copy.codeBlockActions}>
         <button
           type="button"
           className={`preview-code-action ${isWrapped ? "active" : ""}`}
-          title={isWrapped ? "Disable word wrap" : "Enable word wrap"}
-          aria-label={isWrapped ? "Disable word wrap" : "Enable word wrap"}
+          data-tooltip={isWrapped ? copy.disableWordWrap : copy.enableWordWrap}
+          aria-label={isWrapped ? copy.disableWordWrap : copy.enableWordWrap}
           aria-pressed={isWrapped}
           onClick={() => setIsWrapped((nextIsWrapped) => !nextIsWrapped)}
         >
@@ -1487,8 +1506,8 @@ function PreviewCodeBlock({ children, searchActive = false, ...props }: PreviewC
         <button
           type="button"
           className="preview-code-action"
-          title={copied ? "Copied" : "Copy code"}
-          aria-label={copied ? "Copied" : "Copy code"}
+          data-tooltip={copied ? copy.copied : copy.copyCode}
+          aria-label={copied ? copy.copied : copy.copyCode}
           onClick={copyCode}
         >
           <CopyIcon size={16} />
@@ -1698,7 +1717,11 @@ const createPreviewSourceLinePlugin = (lineOffset = 0) => () => {
 const PREVIEW_ALERT_REHYPE_PLUGINS = [createPreviewAlertPlugin];
 
 const createPreviewCommentAnchorPlugin =
-  (commentAnchors: MarkdownPreviewCommentAnchor[] = [], activeCommentId?: string | null) => () => {
+  (
+    commentAnchors: MarkdownPreviewCommentAnchor[] = [],
+    activeCommentId: string | null | undefined,
+    copy: Pick<WorkspaceSurfaceCopy, "activeComment" | "openComment">,
+  ) => () => {
     const anchors = commentAnchors
       .filter((anchor) => anchor.end > anchor.start)
       .sort((first, second) => first.start - second.start || first.end - second.end);
@@ -1770,7 +1793,8 @@ const createPreviewCommentAnchorPlugin =
               properties.dataCommentId = segmentAnchor.id;
               properties.role = "button";
               properties.tabIndex = 0;
-              properties.title = segmentAnchor.id === activeCommentId ? "Active comment" : "Open comment";
+              properties.dataTooltip = segmentAnchor.id === activeCommentId ? copy.activeComment : copy.openComment;
+              properties.ariaLabel = segmentAnchor.id === activeCommentId ? copy.activeComment : copy.openComment;
             }
 
             nextChildren.push({
@@ -1910,6 +1934,7 @@ const createMarkdownPreviewComponents = (
   onOpenComment?: (commentId: string) => void,
   onToggleTaskLine?: (sourceLineIndex: number) => void,
   searchActive = false,
+  copy: WorkspaceSurfaceCopy = getWorkspaceSurfaceCopy("en"),
 ): Components => ({
   ...PREVIEW_DOCS_COMPONENTS,
   a: ({ node: _node, href, ...props }) => {
@@ -1921,7 +1946,7 @@ const createMarkdownPreviewComponents = (
     const language = getCodeLanguage(className);
 
     if (language === "math" || hasCodeClass(className, "math-inline")) {
-      return <PreviewMath expression={getNodeText(children)} />;
+      return <PreviewMath copy={copy} expression={getNodeText(children)} />;
     }
 
     return <code className={className} data-language={language} {...props}>{children}</code>;
@@ -1958,7 +1983,7 @@ const createMarkdownPreviewComponents = (
     return (
       <button
         type="button"
-        aria-label={checked ? "Mark task incomplete" : "Mark task complete"}
+        aria-label={checked ? copy.markTaskIncomplete : copy.markTaskComplete}
         aria-pressed={checked}
         className={className}
         data-checked={checked ? "true" : "false"}
@@ -1967,46 +1992,46 @@ const createMarkdownPreviewComponents = (
     );
   },
   img: ({ node: _node, alt, src, title, ...props }) => (
-    <PreviewImage alt={alt} src={src} title={typeof title === "string" ? title : undefined} {...props} />
+    <PreviewImage alt={alt} copy={copy} src={src} title={typeof title === "string" ? title : undefined} {...props} />
   ),
   h1: ({ node: _node, id, children, ...props }) => (
     <h1 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label="Link to section">#</a>}
+      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
       {children}
     </h1>
   ),
   h2: ({ node: _node, id, children, ...props }) => (
     <h2 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label="Link to section">#</a>}
+      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
       {children}
     </h2>
   ),
   h3: ({ node: _node, id, children, ...props }) => (
     <h3 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label="Link to section">#</a>}
+      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
       {children}
     </h3>
   ),
   h4: ({ node: _node, id, children, ...props }) => (
     <h4 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label="Link to section">#</a>}
+      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
       {children}
     </h4>
   ),
   h5: ({ node: _node, id, children, ...props }) => (
     <h5 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label="Link to section">#</a>}
+      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
       {children}
     </h5>
   ),
   h6: ({ node: _node, id, children, ...props }) => (
     <h6 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label="Link to section">#</a>}
+      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
       {children}
     </h6>
   ),
   pre: ({ node: _node, children, ...props }) => (
-    <PreviewCodeBlock searchActive={searchActive} {...props}>{children}</PreviewCodeBlock>
+    <PreviewCodeBlock copy={copy} searchActive={searchActive} {...props}>{children}</PreviewCodeBlock>
   ),
   span: ({ node: _node, className, children, ...props }) => {
     const spanProps = props as typeof props & { "data-comment-id"?: unknown };
@@ -2086,60 +2111,49 @@ const writePreviewLineMeasurementCache = (
 };
 
 const getPreviewLineButtonLabel = (
-  side: "bookmark" | "comment",
   row: MarkdownPreviewLineAnnotation,
-) => {
-  if (side === "bookmark") {
-    return row.hasBookmark ? "Remove preview line bookmark" : "Bookmark preview line";
-  }
-
-  return row.hasComment ? "Open preview line comments" : "Comment on preview line";
-};
+  copy: Pick<WorkspaceSurfaceCopy, "bookmarkLine" | "removeLineBookmark">,
+) => row.hasBookmark ? copy.removeLineBookmark : copy.bookmarkLine;
 
 function PreviewLineGutter({
-  side,
   rows,
   onLineAction,
-  enabled = true,
+  copy,
 }: {
-  side: "bookmark" | "comment";
   rows: PreviewLineRailRow[];
   onLineAction: (request: MarkdownPreviewLineActionRequest) => void;
-  enabled?: boolean;
+  copy: WorkspaceSurfaceCopy;
 }) {
-  const Icon = side === "bookmark" ? Bookmark : MessageSquare;
-
   return (
-    <div className={`preview-line-gutter ${side}`} aria-label={side === "bookmark" ? "Preview bookmarks" : "Preview comments"}>
-      {enabled && rows.map((row) => {
-        const isActive = side === "bookmark" ? row.hasBookmark : row.hasComment;
+    <div
+      className="preview-line-gutter bookmark"
+      aria-label={copy.previewBookmarks}
+    >
+      {rows.map((row) => {
+        const isActive = row.hasBookmark;
         const className = [
           "preview-line-action",
-          side,
-          isActive ? `has-${side === "bookmark" ? "bookmark" : "comment"}` : "",
-          side === "comment" && row.hasActiveComment ? "active" : "",
+          "bookmark",
+          isActive ? "has-bookmark" : "",
         ]
           .filter(Boolean)
           .join(" ");
-        const title =
-          side === "bookmark"
-            ? row.hasBookmark ? "Remove bookmark" : "Bookmark line"
-            : row.hasComment ? "Open comments" : "Comment on line";
-        const children = <Icon className="preview-line-action-icon" size={14} strokeWidth={2} aria-hidden="true" />;
+        const label = getPreviewLineButtonLabel(row, copy);
+        const children = <Bookmark className="preview-line-action-icon" size={14} strokeWidth={2} aria-hidden="true" />;
 
         if (!isActive) {
           return (
             <span
-              key={`${side}-${row.lineNumber}`}
+              key={`bookmark-${row.lineNumber}`}
               className={className}
               style={{ top: row.top, height: row.height }}
               aria-hidden="true"
-              title={title}
+              data-tooltip={label}
               onMouseDown={(event) => event.preventDefault()}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                onLineAction({ ...row, action: side });
+                onLineAction({ ...row, action: "bookmark" });
               }}
             >
               {children}
@@ -2149,18 +2163,18 @@ function PreviewLineGutter({
 
         return (
           <button
-            key={`${side}-${row.lineNumber}`}
+            key={`bookmark-${row.lineNumber}`}
             className={className}
             type="button"
             style={{ top: row.top, height: row.height }}
             tabIndex={isActive ? 0 : -1}
-            aria-label={getPreviewLineButtonLabel(side, row)}
-            title={title}
+            aria-label={label}
+            data-tooltip={label}
             onMouseDown={(event) => event.preventDefault()}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              onLineAction({ ...row, action: side });
+              onLineAction({ ...row, action: "bookmark" });
             }}
           >
             {children}
@@ -2205,11 +2219,13 @@ function MarkdownPreviewComponent({
   searchOptions = DEFAULT_SEARCH_OPTIONS,
   activeSearchMatchIndex = -1,
   suspendLineMeasurement = false,
+  uiLanguage = "en",
   onSearchMatchCountChange,
   onLineAction,
   onOpenComment,
   onToggleTaskLine,
 }: MarkdownPreviewProps, ref: ForwardedRef<MarkdownPreviewHandle>) {
+  const uiCopy = getWorkspaceSurfaceCopy(uiLanguage);
   const documentRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const frontmatterRef = useRef<HTMLElement | null>(null);
@@ -2231,7 +2247,6 @@ function MarkdownPreviewComponent({
   const [frontmatterPreviewHeight, setFrontmatterPreviewHeight] = useState(0);
   const [inlinePreviewBlockMeasurements, setInlinePreviewBlockMeasurements] = useState<PreviewBlockMeasurements>({});
   const showLineGutters = Boolean(onLineAction);
-  const showCommentGutter = showLineGutters;
   const stableCommentAnchors = commentAnchors.length > 0 ? commentAnchors : EMPTY_PREVIEW_COMMENT_ANCHORS;
   const stableLineAnnotations = lineAnnotations.length > 0 ? lineAnnotations : EMPTY_PREVIEW_LINE_ANNOTATIONS;
   const renderableBody = useMemo(() => normalizePreviewDocsComponents(body), [body]);
@@ -2438,12 +2453,17 @@ function MarkdownPreviewComponent({
         (commentId) => onOpenCommentRef.current?.(commentId),
         (sourceLineIndex) => onToggleTaskLineRef.current?.(sourceLineIndex),
         previewSearchActive,
+        uiCopy,
       ),
-    [previewSearchActive],
+    [previewSearchActive, uiCopy],
   );
   const commentAnchorPlugins = useMemo(
-    () => (commentsEnabled ? [createPreviewCommentAnchorPlugin(stableCommentAnchors, activeCommentId)] : []),
-    [activeCommentId, commentsEnabled, stableCommentAnchors],
+    () => (
+      commentsEnabled
+        ? [createPreviewCommentAnchorPlugin(stableCommentAnchors, activeCommentId, uiCopy)]
+        : []
+    ),
+    [activeCommentId, commentsEnabled, stableCommentAnchors, uiCopy],
   );
   const virtualPreviewSearchMatches = useMemo(
     () =>
@@ -2466,7 +2486,7 @@ function MarkdownPreviewComponent({
   const getVirtualBlockRehypePlugins = useCallback<GetVirtualPreviewBlockRehypePlugins>(
     (block, blockCommentAnchors) => {
       const blockCommentPlugins = commentsEnabled
-        ? [createPreviewCommentAnchorPlugin(blockCommentAnchors, activeCommentId)]
+        ? [createPreviewCommentAnchorPlugin(blockCommentAnchors, activeCommentId, uiCopy)]
         : [];
       const blockPreviewSearchPlugin =
         previewSearchActive && shouldVirtualizePreview
@@ -2491,6 +2511,7 @@ function MarkdownPreviewComponent({
       searchOptions,
       searchQuery,
       shouldVirtualizePreview,
+      uiCopy,
       virtualPreviewSearchMatches,
     ],
   );
@@ -2871,16 +2892,17 @@ function MarkdownPreviewComponent({
   ]);
 
   return (
-    <div
-      ref={documentRef}
-      className={`preview-document ${showLineGutters ? "with-line-gutters" : ""} ${shouldVirtualizePreview ? "virtualized" : ""}`}
-      data-preview-index-pending={shouldVirtualizePreview ? String(previewBlockIndexPending) : undefined}
-      data-preview-index-source={shouldVirtualizePreview ? previewBlockIndexSource : "inline"}
-      onPointerMove={handlePreviewPointerMove}
-      onPointerLeave={handlePreviewPointerLeave}
-    >
+    <PreviewLocaleContext.Provider value={uiCopy}>
+      <div
+        ref={documentRef}
+        className={`preview-document ${showLineGutters ? "with-line-gutters" : ""} ${shouldVirtualizePreview ? "virtualized" : ""}`}
+        data-preview-index-pending={shouldVirtualizePreview ? String(previewBlockIndexPending) : undefined}
+        data-preview-index-source={shouldVirtualizePreview ? previewBlockIndexSource : "inline"}
+        onPointerMove={handlePreviewPointerMove}
+        onPointerLeave={handlePreviewPointerLeave}
+      >
       {showLineGutters && onLineAction && (
-        <PreviewLineGutter side="bookmark" rows={lineRailRows} onLineAction={onLineAction} />
+        <PreviewLineGutter rows={lineRailRows} onLineAction={onLineAction} copy={uiCopy} />
       )}
 
       <div ref={contentRef} className="preview-document-content">
@@ -2888,7 +2910,7 @@ function MarkdownPreviewComponent({
           <section
             ref={frontmatterRef}
             className="frontmatter-view"
-            aria-label="Frontmatter"
+            aria-label={uiCopy.frontmatter}
             data-preview-block-start-line={1}
             data-preview-block-end-line={frontmatterEndLine}
             data-preview-line-start={1}
@@ -2927,7 +2949,7 @@ function MarkdownPreviewComponent({
                 className={`preview-placeholder ${TABULA_LARGE_DOCUMENT_UX_POLICY.showTransientPreviewStatus ? "" : "quiet"}`}
                 aria-hidden={!TABULA_LARGE_DOCUMENT_UX_POLICY.showTransientPreviewStatus}
               >
-                {TABULA_LARGE_DOCUMENT_UX_POLICY.showTransientPreviewStatus ? "Preparing preview..." : null}
+                {TABULA_LARGE_DOCUMENT_UX_POLICY.showTransientPreviewStatus ? uiCopy.preparingPreview : null}
               </div>
             )
           ) : (
@@ -2936,18 +2958,16 @@ function MarkdownPreviewComponent({
             </ReactMarkdown>
           )
         ) : (
-          <div className="preview-empty-state" aria-label="Preview">
+          <div className="preview-empty-state" aria-label={uiCopy.preview}>
             <FileText aria-hidden="true" className="preview-empty-state-icon" size={28} strokeWidth={1.8} />
-            <strong>Nothing to preview</strong>
-            <span>Add text to this document to see it here.</span>
+            <strong>{uiCopy.nothingToPreview}</strong>
+            <span>{uiCopy.previewEmptyDescription}</span>
           </div>
         )}
       </div>
 
-      {showCommentGutter && onLineAction && (
-        <PreviewLineGutter side="comment" rows={lineRailRows} onLineAction={onLineAction} enabled={commentsEnabled} />
-      )}
-    </div>
+      </div>
+    </PreviewLocaleContext.Provider>
   );
 }
 
@@ -3039,6 +3059,7 @@ const areMarkdownPreviewPropsEqual = (firstProps: MarkdownPreviewProps, secondPr
   firstProps.activeSearchMatchIndex === secondProps.activeSearchMatchIndex &&
   firstProps.onSearchMatchCountChange === secondProps.onSearchMatchCountChange &&
   firstProps.suspendLineMeasurement === secondProps.suspendLineMeasurement &&
+  firstProps.uiLanguage === secondProps.uiLanguage &&
   firstProps.onLineAction === secondProps.onLineAction &&
   firstProps.onOpenComment === secondProps.onOpenComment &&
   firstProps.onToggleTaskLine === secondProps.onToggleTaskLine &&

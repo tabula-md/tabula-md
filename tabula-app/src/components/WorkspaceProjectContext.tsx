@@ -1,12 +1,13 @@
 import type { ComponentProps } from "react";
 import { RightPanel } from "./RightPanel";
 import { getWorkspaceFileSearchText } from "../workspace";
+import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 
 type RightPanelProps = ComponentProps<typeof RightPanel>;
 
 export type WorkspaceProjectContextProps = Omit<
   RightPanelProps,
-  "activeFileId" | "commentsEnabled" | "getFileSearchText" | "isLiveWorkspace"
+  "activeFileId" | "getFileSearchText" | "isLiveWorkspace"
 > & {
   activeFileId?: string;
   isLive: boolean;
@@ -17,13 +18,23 @@ export function WorkspaceProjectContext({
   isLive,
   ...rightPanelProps
 }: WorkspaceProjectContextProps) {
+  const copy = getWorkspaceInterfaceCopy(rightPanelProps.language).projectContext;
   return (
-    <RightPanel
-      {...rightPanelProps}
-      activeFileId={activeFileId ?? ""}
-      commentsEnabled={isLive}
-      isLiveWorkspace={isLive}
-      getFileSearchText={getWorkspaceFileSearchText}
-    />
+    <>
+      {rightPanelProps.isOpen && (
+        <button
+          className="right-panel-backdrop"
+          type="button"
+          aria-label={copy.dismiss}
+          onClick={rightPanelProps.onClose}
+        />
+      )}
+      <RightPanel
+        {...rightPanelProps}
+        activeFileId={activeFileId ?? ""}
+        isLiveWorkspace={isLive}
+        getFileSearchText={getWorkspaceFileSearchText}
+      />
+    </>
   );
 }

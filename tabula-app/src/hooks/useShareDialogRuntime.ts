@@ -81,21 +81,6 @@ export function useShareDialogRuntime({
     }
   }, [jsonShare, shareOpen]);
 
-  useEffect(() => {
-    if (!shareOpen) {
-      return;
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onCloseShare();
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [onCloseShare, shareOpen]);
-
   const stopSession = () => onStopSession();
 
   const exportToJsonLink = () => {

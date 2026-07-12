@@ -1,25 +1,33 @@
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
+import { type KeyboardEvent as ReactKeyboardEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  ClipboardCopy,
   Copy,
   Ellipsis,
   File,
+  FilePlus2,
   Folder,
   FolderInput,
+  FolderPlus,
   PencilLine,
+  Plus,
   Trash2,
   Upload,
   X,
 } from "lucide-react";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
-import { WORKSPACE_ROOT_FOLDER_ID, type FileComment, type WorkspaceFile, type WorkspaceFolder } from "../workspaceStorage";
+import { WORKSPACE_ROOT_FOLDER_ID, type WorkspaceFile, type WorkspaceFolder } from "../workspaceStorage";
 import {
   getWorkspaceFileDisplayTitles,
   getWorkspaceFolderDisplayTitles,
 } from "../workspaceDisplayTitles";
-import { NewDocumentButton } from "./NewDocumentButton";
-import { NewFolderButton } from "./NewFolderButton";
+import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "./ui/Menu";
+import { ModalSurface } from "./ui/ModalSurface";
+
+type RightPanelFilesCopy = WorkspaceInterfaceCopy["projectContext"]["files"];
 
 type FileTreeFolderNode = {
   type: "folder";
@@ -38,15 +46,19 @@ type FileTreeFileNode = {
 
 type FileTreeNode = FileTreeFolderNode | FileTreeFileNode;
 
+export type VisibleFileTreeRow = {
+  node: FileTreeNode;
+  depth: number;
+};
+
 type RightPanelFilesProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
-  openFileIds: string[];
   activeFileId: string;
   fileQuery: string;
   isLiveWorkspace: boolean;
-  commentsByFileId: Record<string, FileComment[]>;
   collapsedFolderIds: Set<string>;
+  copy: RightPanelFilesCopy;
   getFileSearchText: (file: WorkspaceFile) => string;
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
@@ -54,11 +66,11 @@ type RightPanelFilesProps = {
   onImportFile: () => void;
   onToggleFolder: (folderId: string) => void;
   onSelectFile: (fileId: string) => void;
-  onCloseFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
   onDeleteFolder: (folderId: string) => void;
+  onCopyFile: (fileId: string) => void;
   onMoveFileToFolder: (fileId: string, folderId: string) => void;
   onMoveFolder: (folderId: string, parentId: string) => void;
   onRenameFolder: (folderId: string, nextTitle: string) => boolean;
@@ -154,34 +166,34 @@ export const buildFileTree = (
   return sortFileTree(rootNode);
 };
 
-const collectVisibleFileIds = (
-  node: FileTreeFolderNode,
+export const flattenVisibleFileTree = (
+  root: FileTreeFolderNode,
   collapsedFolderIds: Set<string>,
-  fileIds: string[] = [],
+  rows: VisibleFileTreeRow[] = [],
+  depth = 0,
 ) => {
-  for (const childNode of node.children) {
-    if (childNode.type === "file") {
-      fileIds.push(childNode.file.id);
-      continue;
-    }
-
-    if (!collapsedFolderIds.has(childNode.id)) {
-      collectVisibleFileIds(childNode, collapsedFolderIds, fileIds);
+  rows.push({ node: root, depth });
+  if (!collapsedFolderIds.has(root.id)) {
+    for (const childNode of root.children) {
+      if (childNode.type === "folder") {
+        flattenVisibleFileTree(childNode, collapsedFolderIds, rows, depth + 1);
+      } else {
+        rows.push({ node: childNode, depth: depth + 1 });
+      }
     }
   }
 
-  return fileIds;
+  return rows;
 };
 
 export function RightPanelFiles({
   files,
   folders,
-  openFileIds,
   activeFileId,
   fileQuery,
   isLiveWorkspace,
-  commentsByFileId,
   collapsedFolderIds,
+  copy,
   getFileSearchText,
   onFileQueryChange,
   onNewFile,
@@ -189,11 +201,11 @@ export function RightPanelFiles({
   onImportFile,
   onToggleFolder,
   onSelectFile,
-  onCloseFile,
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
   onDeleteFolder,
+  onCopyFile,
   onMoveFileToFolder,
   onMoveFolder,
   onRenameFolder,
@@ -204,20 +216,75 @@ export function RightPanelFiles({
   const [actionMenuFolderId, setActionMenuFolderId] = useState<string | null>(null);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renamingFolderTitle, setRenamingFolderTitle] = useState("");
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<{
+    type: "file" | "folder";
+    id: string;
+    title: string;
+    parentId: string | null;
+  } | null>(null);
+  const [moveQuery, setMoveQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
+  const treeScrollRef = useRef<HTMLDivElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
-  const getFileComments = (fileId: string) => commentsByFileId[fileId] ?? [];
-  const openFileIdSet = new Set(openFileIds);
   const normalizedQuery = fileQuery.trim().toLowerCase();
-  const visibleFiles = normalizedQuery
-    ? files.filter((file) => getFileSearchText(file).toLowerCase().includes(normalizedQuery))
-    : files;
   const hasLiveWorkspace = isLiveWorkspace;
-  const displayTitles = getWorkspaceFileDisplayTitles(files);
-  const folderDisplayTitles = getWorkspaceFolderDisplayTitles(folders);
-  const fileTreeRoot = buildFileTree(visibleFiles, folders, displayTitles, folderDisplayTitles);
-  const visibleFileIds = collectVisibleFileIds(fileTreeRoot, collapsedFolderIds);
+  const { visibleFiles, folderDisplayTitles, fileTreeRoot, visibleRows } = useMemo(() => {
+    const nextVisibleFiles = normalizedQuery
+      ? files.filter((file) => getFileSearchText(file).toLowerCase().includes(normalizedQuery))
+      : files;
+    const nextFolderDisplayTitles = getWorkspaceFolderDisplayTitles(folders);
+    const nextFileTreeRoot = buildFileTree(
+      nextVisibleFiles,
+      folders,
+      getWorkspaceFileDisplayTitles(files),
+      nextFolderDisplayTitles,
+    );
+    return {
+      visibleFiles: nextVisibleFiles,
+      folderDisplayTitles: nextFolderDisplayTitles,
+      fileTreeRoot: nextFileTreeRoot,
+      visibleRows: flattenVisibleFileTree(nextFileTreeRoot, collapsedFolderIds),
+    };
+  }, [collapsedFolderIds, files, folders, getFileSearchText, normalizedQuery]);
+  const visibleFileIds = useMemo(
+    () => visibleRows.flatMap((row) => row.node.type === "file" ? [row.node.file.id] : []),
+    [visibleRows],
+  );
+  const rowIndexByFileId = useMemo(
+    () => new Map(visibleRows.flatMap((row, index) => row.node.type === "file" ? [[row.node.file.id, index] as const] : [])),
+    [visibleRows],
+  );
+  const treeVirtualizer = useVirtualizer({
+    count: visibleRows.length,
+    getScrollElement: () => treeScrollRef.current,
+    estimateSize: () => 36,
+    getItemKey: (index) => visibleRows[index]?.node.id ?? index,
+    overscan: 8,
+  });
+  const moveFolderOptions = useMemo(() => {
+    const invalidFolderIds = new Set<string>();
+    if (moveTarget?.type === "folder") {
+      invalidFolderIds.add(moveTarget.id);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const folder of folders) {
+          if (folder.parentId && invalidFolderIds.has(folder.parentId) && !invalidFolderIds.has(folder.id)) {
+            invalidFolderIds.add(folder.id);
+            changed = true;
+          }
+        }
+      }
+    }
+    const query = moveQuery.trim().toLowerCase();
+    return folders.filter((folder) => {
+      if (invalidFolderIds.has(folder.id)) return false;
+      if (!query) return true;
+      return (folderDisplayTitles.get(folder.id) ?? folder.title).toLowerCase().includes(query);
+    });
+  }, [folderDisplayTitles, folders, moveQuery, moveTarget]);
 
   useLayoutEffect(() => {
     if (!renamingFileId) {
@@ -231,35 +298,6 @@ export function RightPanelFiles({
 
     return () => window.cancelAnimationFrame(frame);
   }, [renamingFileId]);
-
-  useEffect(() => {
-    if (!actionMenuFileId && !actionMenuFolderId) {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!(event.target instanceof Element) || event.target.closest(".right-file-menu-wrap")) {
-        return;
-      }
-
-      setActionMenuFileId(null);
-      setActionMenuFolderId(null);
-    };
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        setActionMenuFileId(null);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [actionMenuFileId, actionMenuFolderId]);
 
   const startRenamingFile = (file: WorkspaceFile) => {
     setActionMenuFileId(null);
@@ -303,7 +341,11 @@ export function RightPanelFiles({
 
     const currentIndex = Math.max(0, visibleFileIds.indexOf(fileId));
     const nextIndex = Math.min(visibleFileIds.length - 1, Math.max(0, currentIndex + offset));
-    fileButtonRefs.current.get(visibleFileIds[nextIndex])?.focus();
+    const nextFileId = visibleFileIds[nextIndex];
+    const nextRowIndex = rowIndexByFileId.get(nextFileId);
+    if (nextRowIndex === undefined) return;
+    treeVirtualizer.scrollToIndex(nextRowIndex, { align: "auto" });
+    window.requestAnimationFrame(() => fileButtonRefs.current.get(nextFileId)?.focus());
   };
 
   const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -320,7 +362,9 @@ export function RightPanelFiles({
       const firstFileId = visibleFileIds[0];
       if (firstFileId) {
         event.preventDefault();
-        fileButtonRefs.current.get(firstFileId)?.focus();
+        const firstRowIndex = rowIndexByFileId.get(firstFileId);
+        if (firstRowIndex !== undefined) treeVirtualizer.scrollToIndex(firstRowIndex, { align: "start" });
+        window.requestAnimationFrame(() => fileButtonRefs.current.get(firstFileId)?.focus());
       }
       return;
     }
@@ -361,7 +405,29 @@ export function RightPanelFiles({
     setRenamingFolderTitle(folder.title);
   };
 
-  const renderFileTreeNode = (node: FileTreeNode, depth: number) => {
+  const openMoveDialog = (target: NonNullable<typeof moveTarget>) => {
+    setActionMenuFileId(null);
+    setActionMenuFolderId(null);
+    setMoveQuery("");
+    setMoveTarget(target);
+  };
+
+  const moveItemToFolder = (folderId: string) => {
+    if (!moveTarget) return;
+    if (moveTarget.type === "file") onMoveFileToFolder(moveTarget.id, folderId);
+    else onMoveFolder(moveTarget.id, folderId);
+    setMoveTarget(null);
+    setMoveQuery("");
+  };
+
+  const renderFileTreeNode = (node: FileTreeNode, depth: number, virtualRow: VirtualItem) => {
+    const virtualStyle = {
+      position: "absolute" as const,
+      top: 0,
+      left: 0,
+      width: "100%",
+      transform: `translateY(${virtualRow.start}px)`,
+    };
     if (node.type === "folder") {
       const folderCollapsed = collapsedFolderIds.has(node.id);
       const isRootFolder = node.id === WORKSPACE_ROOT_FOLDER_ID;
@@ -369,7 +435,13 @@ export function RightPanelFiles({
       const folderIsRenaming = renamingFolderId === node.id;
 
       return (
-        <li className="right-file-tree-node folder" key={node.id}>
+        <li
+          ref={treeVirtualizer.measureElement}
+          className="right-file-tree-node folder"
+          data-index={virtualRow.index}
+          key={node.id}
+          style={virtualStyle}
+        >
           <div
             className="right-row right-file-tree-row folder"
             style={{ paddingLeft: `${depth * RIGHT_TREE_INDENT}px` }}
@@ -380,19 +452,19 @@ export function RightPanelFiles({
               aria-expanded={!folderCollapsed}
               onClick={() => onToggleFolder(node.id)}
             >
-              {folderCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+              {folderCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
               <span
                 className={`right-file-folder-icon ${isRootFolder && hasLiveWorkspace ? "live" : ""}`}
-                title={isRootFolder && hasLiveWorkspace ? "Shared workspace" : undefined}
+                data-tooltip={isRootFolder && hasLiveWorkspace ? copy.sharedWorkspace : undefined}
               >
-                <Folder size={15} />
+                <Folder size={16} />
                 {isRootFolder && hasLiveWorkspace && <span className="right-file-icon-live-dot" aria-hidden="true" />}
               </span>
               {folderIsRenaming ? (
                 <input
                   className="right-file-rename-input"
                   value={renamingFolderTitle}
-                  aria-label={`Rename ${node.name} folder`}
+                  aria-label={copy.renameFolder(node.name)}
                   onClick={(event) => event.stopPropagation()}
                   onChange={(event) => setRenamingFolderTitle(event.target.value)}
                   onBlur={() => {
@@ -410,63 +482,74 @@ export function RightPanelFiles({
             </button>
             {!isRootFolder && !folderIsRenaming && (
               <span className="right-file-actions">
-                <span className="right-file-menu-wrap">
-                  <button
-                    className="right-file-action"
-                    type="button"
-                    aria-label={`More actions for ${node.name}`}
-                    onClick={() => setActionMenuFolderId(folderMenuOpen ? null : node.id)}
-                  >
-                    <Ellipsis size={14} />
-                  </button>
-                  {folderMenuOpen && (
-                    <span className="right-file-action-menu" role="menu" aria-label={`${node.name} actions`}>
-                      <button type="button" role="menuitem" onClick={() => {
-                        setActionMenuFolderId(null);
-                        createAndRenameFolder(node.id);
-                      }}>
-                        <Folder size={13} /><span>New subfolder</span>
+                <MenuRoot
+                  open={folderMenuOpen}
+                  onOpenChange={(open) => setActionMenuFolderId(open ? node.id : null)}
+                >
+                  <span className="right-file-menu-wrap">
+                    <MenuTrigger asChild>
+                      <button
+                        className="right-file-action"
+                        type="button"
+                        aria-label={copy.moreActions(node.name)}
+                        data-tooltip={copy.moreActions(node.name)}
+                      >
+                        <Ellipsis size={14} />
                       </button>
-                      <button type="button" role="menuitem" onClick={() => { setActionMenuFolderId(null); setRenamingFolderId(node.id); setRenamingFolderTitle(node.name); }}>
-                        <PencilLine size={13} /><span>Rename</span>
-                      </button>
-                      <label className="right-file-move-field">
-                        <FolderInput size={13} />
-                        <select value={node.folder.parentId ?? WORKSPACE_ROOT_FOLDER_ID} aria-label={`Move ${node.name}`} onChange={(event) => { onMoveFolder(node.id, event.target.value); setActionMenuFolderId(null); }}>
-                          {folders.filter((folder) => folder.id !== node.id).map((folder) => (
-                            <option key={folder.id} value={folder.id}>
-                              {folderDisplayTitles.get(folder.id) ?? folder.title}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <button className="danger" type="button" role="menuitem" onClick={() => { setActionMenuFolderId(null); onDeleteFolder(node.id); }}>
-                        <Trash2 size={13} /><span>Delete</span>
-                      </button>
-                    </span>
-                  )}
-                </span>
+                    </MenuTrigger>
+                  </span>
+                  <MenuContent className="right-file-action-menu" ariaLabel={copy.actions(node.name)}>
+                    <MenuItem
+                      icon={<Folder size={14} />}
+                      label={copy.newSubfolder}
+                      onSelect={() => createAndRenameFolder(node.id)}
+                    />
+                    <MenuItem
+                      icon={<PencilLine size={14} />}
+                      label={copy.rename}
+                      onSelect={() => {
+                        setRenamingFolderId(node.id);
+                        setRenamingFolderTitle(node.name);
+                      }}
+                    />
+                    <MenuItem
+                      icon={<FolderInput size={14} />}
+                      label={copy.moveTo}
+                      onSelect={() => openMoveDialog({
+                        type: "folder",
+                        id: node.id,
+                        title: node.name,
+                        parentId: node.folder.parentId,
+                      })}
+                    />
+                    <MenuItem
+                      danger
+                      icon={<Trash2 size={14} />}
+                      label={copy.delete}
+                      onSelect={() => onDeleteFolder(node.id)}
+                    />
+                  </MenuContent>
+                </MenuRoot>
               </span>
             )}
           </div>
-          {!folderCollapsed && node.children.length > 0 && (
-            <ol className="right-file-tree-children">
-              {node.children.map((childNode) => renderFileTreeNode(childNode, depth + 1))}
-            </ol>
-          )}
         </li>
       );
     }
 
     const file = node.file;
-    const openComments = getFileComments(file.id).filter((comment) => !comment.resolved);
     const isActiveFile = file.id === activeFileId;
-    const isOpenFile = openFileIdSet.has(file.id);
     const isRenaming = file.id === renamingFileId;
     const menuOpen = file.id === actionMenuFileId;
 
     return (
-      <li className="right-file-tree-node file" key={node.id}>
+      <li
+        ref={treeVirtualizer.measureElement}
+        className="right-file-tree-node file"
+        data-index={virtualRow.index}
+        key={node.id}
+        style={virtualStyle}
+      >
         <div
           className={`right-row right-file-tree-row file ${isActiveFile ? "active" : ""} ${isRenaming ? "renaming" : ""}`}
           style={{ paddingLeft: `${depth * RIGHT_TREE_INDENT}px` }}
@@ -482,7 +565,7 @@ export function RightPanelFiles({
                 className="right-file-rename-input"
                 type="text"
                 defaultValue={renamingTitle}
-                aria-label={`Rename ${file.title} in Files`}
+                aria-label={copy.renameInPanel(file.title)}
                 autoComplete="off"
                 spellCheck={false}
                 onBlur={(event) => {
@@ -503,16 +586,6 @@ export function RightPanelFiles({
                   }
                 }}
               />
-              <span className="right-file-tree-signals">
-                {openComments.length > 0 && (
-                  <span
-                    className="right-row-badge right-file-tree-comment-count"
-                    title={`${openComments.length} open comments`}
-                  >
-                    {openComments.length}
-                  </span>
-                )}
-              </span>
             </div>
           ) : (
             <>
@@ -527,87 +600,70 @@ export function RightPanelFiles({
                 className="right-file-open-button"
                 type="button"
                 title={file.title}
-                aria-label={`Open ${file.title}`}
+                aria-label={copy.open(file.title)}
                 onClick={() => onSelectFile(file.id)}
                 onKeyDown={(event) => handleFileKeyDown(event, file.id)}
               >
                 <span
                   className="right-file-document-icon"
-                  title={hasLiveWorkspace ? "Shared in this room" : "Local document"}
+                  data-tooltip={hasLiveWorkspace ? copy.sharedInRoom : copy.localDocument}
                 >
                   <File size={16} />
                 </span>
                 <span className="right-row-label">{getFileDisplayTitle(node.name)}</span>
-                <span className="right-file-tree-signals">
-                  {openComments.length > 0 && (
-                    <span
-                      className="right-row-badge right-file-tree-comment-count"
-                      title={`${openComments.length} open comments`}
-                    >
-                      {openComments.length}
-                    </span>
-                  )}
-                </span>
               </button>
-              <span className="right-file-actions" aria-label={`${file.title} actions`}>
-                {isOpenFile && (
-                  <button
-                    className="right-file-action"
-                    type="button"
-                    title={`Close tab ${file.title}`}
-                    aria-label={`Close tab ${file.title}`}
-                    onClick={() => onCloseFile(file.id)}
-                  >
-                    <X size={13} />
-                  </button>
-                )}
-                <span className="right-file-menu-wrap">
-                  <button
-                    className="right-file-action"
-                    type="button"
-                    title={`More actions for ${file.title}`}
-                    aria-label={`More actions for ${file.title}`}
-                    aria-haspopup="menu"
-                    aria-expanded={menuOpen}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setActionMenuFileId(menuOpen ? null : file.id);
-                    }}
-                  >
-                    <Ellipsis size={14} />
-                  </button>
-                  {menuOpen && (
-                    <span className="right-file-action-menu" role="menu" aria-label={`${file.title} actions`}>
-                      <button role="menuitem" type="button" onClick={() => startRenamingFile(file)}>
-                        <PencilLine size={13} />
-                        <span>Rename</span>
-                      </button>
-                      <button role="menuitem" type="button" onClick={() => duplicateFileFromMenu(file.id)}>
-                        <Copy size={13} />
-                        <span>Duplicate</span>
-                      </button>
-                      <label className="right-file-move-field">
-                        <FolderInput size={13} />
-                        <select value={file.parentId ?? WORKSPACE_ROOT_FOLDER_ID} aria-label={`Move ${file.title}`} onChange={(event) => { onMoveFileToFolder(file.id, event.target.value); setActionMenuFileId(null); }}>
-                          {folders.map((folder) => (
-                            <option key={folder.id} value={folder.id}>
-                              {folderDisplayTitles.get(folder.id) ?? folder.title}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+              <span className="right-file-actions" aria-label={copy.actions(file.title)}>
+                <MenuRoot
+                  open={menuOpen}
+                  onOpenChange={(open) => setActionMenuFileId(open ? file.id : null)}
+                >
+                  <span className="right-file-menu-wrap">
+                    <MenuTrigger asChild>
                       <button
-                        className="danger"
-                        role="menuitem"
+                        className="right-file-action"
                         type="button"
-                        onClick={() => deleteFileFromMenu(file.id)}
+                        aria-label={copy.moreActions(file.title)}
+                        data-tooltip={copy.moreActions(file.title)}
+                        onClick={(event) => event.stopPropagation()}
                       >
-                        <Trash2 size={13} />
-                        <span>Delete</span>
+                        <Ellipsis size={14} />
                       </button>
-                    </span>
-                  )}
-                </span>
+                    </MenuTrigger>
+                  </span>
+                  <MenuContent className="right-file-action-menu" ariaLabel={copy.actions(file.title)}>
+                    <MenuItem
+                      icon={<PencilLine size={14} />}
+                      label={copy.rename}
+                      onSelect={() => startRenamingFile(file)}
+                    />
+                    <MenuItem
+                      icon={<ClipboardCopy size={14} />}
+                      label={copy.copyMarkdown}
+                      onSelect={() => onCopyFile(file.id)}
+                    />
+                    <MenuItem
+                      icon={<Copy size={14} />}
+                      label={copy.duplicate}
+                      onSelect={() => duplicateFileFromMenu(file.id)}
+                    />
+                    <MenuItem
+                      icon={<FolderInput size={14} />}
+                      label={copy.moveTo}
+                      onSelect={() => openMoveDialog({
+                        type: "file",
+                        id: file.id,
+                        title: file.title,
+                        parentId: file.parentId ?? null,
+                      })}
+                    />
+                    <MenuItem
+                      danger
+                      icon={<Trash2 size={14} />}
+                      label={copy.delete}
+                      onSelect={() => deleteFileFromMenu(file.id)}
+                    />
+                  </MenuContent>
+                </MenuRoot>
               </span>
             </>
           )}
@@ -617,44 +673,118 @@ export function RightPanelFiles({
   };
 
   return (
-    <section className="right-panel-content">
+    <>
+    <section className="right-panel-content right-files-panel">
       <div className="right-file-search-row">
         <input
           ref={searchInputRef}
           className="right-panel-search"
           type="search"
           value={fileQuery}
-          placeholder="Search files"
-          aria-label="Search files"
+          placeholder={copy.search}
+          aria-label={copy.search}
           onChange={(event) => onFileQueryChange(event.target.value)}
           onKeyDown={handleSearchKeyDown}
         />
         <button
           className="right-file-import-button"
           type="button"
-          title="Import file"
-          aria-label="Import file"
+          aria-label={copy.openMarkdown}
+          data-tooltip={copy.openMarkdown}
           onClick={onImportFile}
         >
-          <Upload size={15} />
+          <Upload size={16} />
         </button>
-        <NewFolderButton
-          buttonClassName="right-file-import-button"
-          onCreate={() => createAndRenameFolder()}
-        />
-        <NewDocumentButton
-          buttonClassName="right-file-create-button"
-          iconSize={15}
-          onCreate={onNewFile}
-        />
+        <MenuRoot open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
+          <div className="right-file-create-menu-wrap">
+            <MenuTrigger asChild>
+              <button
+                className={`right-file-create-button ${createMenuOpen ? "active" : ""}`}
+                type="button"
+                aria-label={copy.create}
+                data-tooltip={copy.create}
+              >
+                <Plus size={16} />
+              </button>
+            </MenuTrigger>
+          </div>
+          <MenuContent className="right-file-create-menu" ariaLabel={copy.createInWorkspace}>
+            <MenuItem icon={<FilePlus2 size={16} />} label={copy.newDocument} onSelect={onNewFile} />
+            <MenuItem
+              icon={<FolderPlus size={16} />}
+              label={copy.newFolder}
+              onSelect={() => createAndRenameFolder()}
+            />
+          </MenuContent>
+        </MenuRoot>
       </div>
       {visibleFiles.length > 0 || fileTreeRoot.children.length > 0 ? (
-        <ol className="right-file-tree" aria-label="Workspace files">
-          {renderFileTreeNode(fileTreeRoot, 0)}
-        </ol>
+        <div className="right-file-tree-scroll" ref={treeScrollRef}>
+          <ol
+            className="right-file-tree virtual"
+            aria-label={copy.tree}
+            style={{ height: `${treeVirtualizer.getTotalSize()}px` }}
+          >
+            {treeVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = visibleRows[virtualRow.index];
+              return row ? renderFileTreeNode(row.node, row.depth, virtualRow) : null;
+            })}
+          </ol>
+        </div>
       ) : (
-        <p className="right-empty-state">No files found.</p>
+        <p className="right-empty-state">{copy.noneFound}</p>
       )}
     </section>
+    {moveTarget && (
+      <ModalSurface
+        ariaLabel={copy.move(moveTarget.title)}
+        className="move-workspace-item-modal"
+        onClose={() => setMoveTarget(null)}
+      >
+        <header className="move-workspace-item-header">
+          <h2>{copy.move(moveTarget.title)}</h2>
+          <button
+            type="button"
+            aria-label={copy.closeMoveDialog}
+            data-tooltip={copy.closeMoveDialog}
+            onClick={() => setMoveTarget(null)}
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </header>
+        <input
+          className="move-workspace-item-search"
+          type="search"
+          value={moveQuery}
+          placeholder={copy.searchFolders}
+          aria-label={copy.searchFolders}
+          data-modal-initial-focus
+          onChange={(event) => setMoveQuery(event.target.value)}
+        />
+        <div className="move-workspace-item-list">
+          {moveFolderOptions.length === 0 && (
+            <p className="move-workspace-item-empty">{copy.noFoldersFound}</p>
+          )}
+          {moveFolderOptions.map((folder) => {
+            const currentFolderId = moveTarget.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
+            const isCurrentFolder = folder.id === currentFolderId;
+            const label = folderDisplayTitles.get(folder.id) ?? folder.title;
+            return (
+              <button
+                className={isCurrentFolder ? "active" : ""}
+                type="button"
+                disabled={isCurrentFolder}
+                onClick={() => moveItemToFolder(folder.id)}
+                key={folder.id}
+              >
+                <Folder size={16} aria-hidden="true" />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </ModalSurface>
+    )}
+    </>
   );
 }

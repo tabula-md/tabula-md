@@ -6,7 +6,7 @@ import type { JsonShareController } from "./useJsonShareController";
 import type { RenameFileResult } from "./useWorkspaceFiles";
 import type { WorkspaceLanguage } from "./useWorkspacePreferences";
 import type { TopPopover } from "../uiTypes";
-import type { WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 
 type SetTopPopover = (popover: TopPopover) => void;
 type SetCenterPopover = (popover: null) => void;
@@ -22,6 +22,7 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   copiedFileId: string | null;
   currentUserName: string;
   files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
   identity: Collaborator;
   isLive: boolean;
   isLiveConnected: boolean;
@@ -62,6 +63,7 @@ export function useWorkspaceTopChromeRuntime({
   copiedFileId,
   currentUserName,
   files,
+  folders,
   identity,
   isLive,
   isLiveConnected,
@@ -126,6 +128,7 @@ export function useWorkspaceTopChromeRuntime({
     copied,
     currentUserName,
     files,
+    folders,
     identity,
     isLive,
     isLiveConnected,

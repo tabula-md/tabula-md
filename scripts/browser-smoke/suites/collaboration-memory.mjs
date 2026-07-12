@@ -151,7 +151,7 @@ export async function run(ctx) {
     await cdpSession.send("HeapProfiler.enable");
     await page.goto(baseUrl);
     await page.waitForSelector(".tabbar");
-    await page.getByTitle("New document").click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
 
     await runLiveCycle({ page, focusMarkdownEditor, cycle: "warmup" });

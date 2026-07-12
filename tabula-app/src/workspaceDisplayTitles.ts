@@ -50,6 +50,76 @@ export const getWorkspaceFileDisplayTitles = (files: readonly WorkspaceFile[]) =
   return displayTitles;
 };
 
+export type WorkspaceFileTabLabel = {
+  displayTitle: string;
+  fullPath: string;
+};
+
+const getFolderPath = (
+  folderId: string | null | undefined,
+  foldersById: ReadonlyMap<string, WorkspaceFolder>,
+) => {
+  const path: string[] = [];
+  const visited = new Set<string>();
+  let currentId = folderId ?? WORKSPACE_ROOT_FOLDER_ID;
+
+  while (currentId && !visited.has(currentId)) {
+    visited.add(currentId);
+    const folder = foldersById.get(currentId);
+    if (!folder) break;
+    path.unshift(folder.title);
+    currentId = folder.parentId ?? "";
+  }
+
+  return path.length > 0 ? path : ["Workspace"];
+};
+
+const getShortestUniqueLocation = (locations: readonly string[][], targetIndex: number) => {
+  const target = locations[targetIndex] ?? ["Workspace"];
+  for (let depth = 1; depth <= target.length; depth += 1) {
+    const candidate = target.slice(-depth).join("/");
+    const isUnique = locations.every(
+      (location, index) => index === targetIndex || location.slice(-depth).join("/") !== candidate,
+    );
+    if (isUnique) return candidate;
+  }
+  return target.join("/");
+};
+
+export const getWorkspaceFileTabLabels = (
+  files: readonly WorkspaceFile[],
+  folders: readonly WorkspaceFolder[],
+) => {
+  const displayTitles = getWorkspaceFileDisplayTitles(files);
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  const groups = new Map<string, WorkspaceFile[]>();
+
+  for (const file of files) {
+    const displayTitle = displayTitles.get(file.id) ?? file.title;
+    const group = groups.get(displayTitle.toLowerCase()) ?? [];
+    group.push(file);
+    groups.set(displayTitle.toLowerCase(), group);
+  }
+
+  const labels = new Map<string, WorkspaceFileTabLabel>();
+  for (const group of groups.values()) {
+    const locations = group.map((file) => getFolderPath(file.parentId, foldersById));
+    group.forEach((file, index) => {
+      const displayTitle = displayTitles.get(file.id) ?? file.title;
+      const location = locations[index] ?? ["Workspace"];
+      labels.set(file.id, {
+        displayTitle:
+          group.length > 1
+            ? `${getShortestUniqueLocation(locations, index)}/${displayTitle}`
+            : displayTitle,
+        fullPath: [...location, displayTitle].join("/"),
+      });
+    });
+  }
+
+  return labels;
+};
+
 export const getWorkspaceFolderDisplayTitles = (folders: readonly WorkspaceFolder[]) => {
   const foldersByParent = new Map<string, WorkspaceFolder[]>();
   for (const folder of folders) {

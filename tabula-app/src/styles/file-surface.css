@@ -1,7 +1,7 @@
 .center-workbench,
 .file-shell {
   --document-reading-max: 860px;
-  --document-workbench-width: 100vw;
+  --document-workbench-width: 100%;
   --document-safe-left: 0px;
   --document-safe-right: 0px;
   --document-safe-width: max(
@@ -17,14 +17,14 @@
   --editor-left-rail: calc(
     var(--editor-bookmark-rail) + var(--editor-line-number-rail)
   );
-  --editor-comment-rail: var(--editor-left-rail);
+  --editor-right-inset: var(--editor-left-rail);
   --editor-frame-rails: calc(
-    var(--editor-left-rail) + var(--editor-comment-rail)
+    var(--editor-left-rail) + var(--editor-right-inset)
   );
   --preview-bookmark-rail: var(--editor-bookmark-rail);
-  --preview-comment-rail: var(--editor-bookmark-rail);
+  --preview-right-inset: var(--editor-bookmark-rail);
   --preview-frame-rails: calc(
-    var(--preview-bookmark-rail) + var(--preview-comment-rail)
+    var(--preview-bookmark-rail) + var(--preview-right-inset)
   );
   --editor-body-width: min(
     var(--document-reading-max),
@@ -43,10 +43,14 @@
   --document-chrome-width: var(--editor-frame-width);
   --document-lane-margin-left: auto;
   --document-lane-margin-right: auto;
-  --split-preview-inset: 28px;
+  --split-preview-inset: 16px;
+  --split-editor-right-inset: 32px;
+  --split-editor-frame-rails: calc(
+    var(--editor-left-rail) + var(--split-editor-right-inset)
+  );
   --split-editor-bias: calc(
     (
-        var(--editor-frame-rails) - var(--split-preview-inset) -
+        var(--split-editor-frame-rails) - var(--split-preview-inset) -
           var(--preview-frame-rails)
       ) /
       2
@@ -63,7 +67,7 @@
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 48px minmax(0, 1fr) 42px;
+  grid-template-rows: 50px minmax(0, 1fr) 42px;
   container-type: inline-size;
   min-width: 0;
   min-height: 0;
@@ -96,13 +100,13 @@
 
 .main-panel.right-panel-open .center-workbench,
 .main-panel.right-panel-open .file-shell {
-  --document-safe-right: var(--right-panel-width);
-  --document-lane-margin-right: calc(var(--right-panel-width) + 36px);
-  --split-safe-right: var(--right-panel-width);
+  --document-safe-right: 0px;
+  --document-lane-margin-right: auto;
+  --split-safe-right: 0px;
 }
 
 .file-shell.with-format-toolbar {
-  grid-template-rows: 48px minmax(0, 1fr) 42px;
+  grid-template-rows: 50px minmax(0, 1fr) 42px;
 }
 
 .center-workbench.line-numbers-off,
@@ -110,9 +114,12 @@
 .editor-surface.line-numbers-off {
   --editor-line-number-rail: 0px;
   --editor-left-rail: var(--editor-bookmark-rail);
-  --editor-comment-rail: var(--editor-left-rail);
+  --editor-right-inset: var(--editor-left-rail);
   --editor-frame-rails: calc(
-    var(--editor-left-rail) + var(--editor-comment-rail)
+    var(--editor-left-rail) + var(--editor-right-inset)
+  );
+  --split-editor-frame-rails: calc(
+    var(--editor-left-rail) + var(--split-editor-right-inset)
   );
 }
 
@@ -218,6 +225,13 @@
 }
 
 @media (max-width: 820px) {
+  .main-panel.right-panel-open .center-workbench,
+  .main-panel.right-panel-open .file-shell {
+    --document-safe-right: 0px;
+    --document-lane-margin-right: auto;
+    --split-safe-right: 0px;
+  }
+
   .center-workbench,
   .center-workbench.reading-narrow:not(.view-split),
   .center-workbench.reading-wide:not(.view-split),
@@ -247,16 +261,8 @@
     --document-chrome-width: var(--document-body-width);
   }
 
-  .file-shell:not(.with-format-toolbar) {
-    grid-template-rows: minmax(0, 1fr) 42px;
-  }
-
-  .file-shell:not(.with-format-toolbar) .workspace {
-    grid-row: 1;
-  }
-
-  .file-shell:not(.with-format-toolbar) .file-status-bar {
-    grid-row: 2;
+  .file-shell.with-format-toolbar {
+    grid-template-rows: 88px minmax(0, 1fr) 42px;
   }
 
   .file-shell.view-edit .file-status-bar {
@@ -280,13 +286,21 @@
 }
 
 @media (max-width: 560px) {
+  .file-shell {
+    grid-template-rows: 52px minmax(0, 1fr) 52px;
+  }
+
+  .file-shell.with-format-toolbar {
+    grid-template-rows: 100px minmax(0, 1fr) 52px;
+  }
+
   .center-workbench,
   .center-workbench.reading-narrow:not(.view-split),
   .center-workbench.reading-wide:not(.view-split),
   .file-shell,
   .file-shell.reading-narrow:not(.view-split),
   .file-shell.reading-wide:not(.view-split) {
-    --document-horizontal-gutter: 36px;
+    --document-horizontal-gutter: 32px;
     --document-body-width: max(
       200px,
       calc(var(--document-safe-width) - var(--document-horizontal-gutter))
@@ -295,7 +309,7 @@
   }
 
   .center-workbench.view-edit {
-    --document-horizontal-gutter: 36px;
+    --document-horizontal-gutter: 32px;
     --document-body-width: max(
       200px,
       calc(var(--document-safe-width) - var(--document-horizontal-gutter))

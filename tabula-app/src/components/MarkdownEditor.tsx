@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorSelection, EditorState, type Transaction } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { EditorView, placeholder as createEditorPlaceholderExtension } from "@codemirror/view";
 import {
   canRedoEditor,
   canUndoEditor,
@@ -15,16 +15,16 @@ import {
   dispatchEditorSelectionRange,
   getEditorSelectionActionPosition,
 } from "../editor/editorLayout";
-import { history } from "@codemirror/commands";
 import { createEditorSearchExtension } from "../editor/editorSearch";
 import {
   createEditorAnnotationGutterExtension,
   createEditorCollaborationExtensions,
   createEditorCommentAnchorExtension,
-  createEditorLineCommentActionExtension,
   getCollaborationEditorHistoryState,
   createMarkdownEditorCompartments,
   createMarkdownEditorExtensions,
+  redoCollaborationHistory,
+  undoCollaborationHistory,
 } from "../editor/editorState";
 import {
   clampEditorPosition,
@@ -35,6 +35,7 @@ import {
   mapBookmarksThroughTransactions,
 } from "../editor/editorTransactions";
 import { runMarkdownFormatCommand } from "../editor/editorInputRules";
+import { getActiveMarkdownFormats } from "../editor/editorFormattingState";
 import type {
   MarkdownBookmark,
   MarkdownCommentAnchor,
@@ -74,8 +75,10 @@ export type {
 
 export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
   (
-    {
-      fileId,
+  {
+    ariaLabel = "Editor",
+      interfaceCopy,
+    fileId,
       value,
       lineWrapping,
       lineNumbers,
@@ -113,6 +116,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const collaborationBindingRef = useRef(collaborationBinding);
     const appliedCollaborationBindingRef = useRef(collaborationBinding);
     const commentsEnabledRef = useRef(commentsEnabled);
+    const interfaceCopyRef = useRef(interfaceCopy);
     const compartmentsRef = useRef(createMarkdownEditorCompartments());
     const stateByFileIdRef = useRef(new Map<string, EditorState>());
     const lastHistoryStateRef = useRef(EMPTY_EDITOR_HISTORY_STATE);
@@ -166,6 +170,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     }, [commentsEnabled]);
 
     useEffect(() => {
+      interfaceCopyRef.current = interfaceCopy;
+    }, [interfaceCopy]);
+
+    useEffect(() => {
       collaborationBindingRef.current = collaborationBinding;
     }, [collaborationBinding]);
 
@@ -212,17 +220,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
               ? createEditorCommentAnchorExtension(
                   nextCommentAnchors,
                   activeCommentIdRef.current,
+                  interfaceCopyRef.current,
                   (commentId) => onOpenCommentRef.current?.(commentId),
                 )
               : [],
-          ),
-          compartmentsRef.current.lineCommentAction.reconfigure(
-            createEditorLineCommentActionExtension(
-              bookmarksRef.current,
-              nextCommentAnchors,
-              commentsEnabledRef.current,
-              (request) => onOpenLineActionsRef.current?.(request),
-            ),
           ),
         ],
       });
@@ -300,6 +301,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
 
         view.focus();
+      },
+      getActiveFormats: () => {
+        const view = viewRef.current;
+        return view ? getActiveMarkdownFormats(view.state) : [];
       },
       getLineCount: () => viewRef.current?.state.doc.lines ?? value.split("\n").length,
       getScrollRatio: () => {
@@ -403,24 +408,20 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         dispatchEditorSelectionRange(view, from, to);
       },
       undo: () => {
+        const view = viewRef.current;
+        if (!view) return false;
         const binding = collaborationBindingRef.current;
-        if (binding) {
-          if (binding.undoManager.undoStack.length > 0) {
-            binding.undoManager.undo();
-            return true;
-          }
-          return undoEditor(viewRef.current);
-        }
-        return undoEditor(viewRef.current);
+        return binding
+          ? undoCollaborationHistory(view, binding)
+          : undoEditor(view);
       },
       redo: () => {
+        const view = viewRef.current;
+        if (!view) return false;
         const binding = collaborationBindingRef.current;
-        if (binding) {
-          if (canRedoEditor(viewRef.current)) return redoEditor(viewRef.current);
-          binding.undoManager.redo();
-          return true;
-        }
-        return redoEditor(viewRef.current);
+        return binding
+          ? redoCollaborationHistory(view, binding)
+          : redoEditor(view);
       },
     }));
 
@@ -493,6 +494,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         collaborationBinding,
         searchMatches,
         activeSearchMatchIndex,
+        copy: interfaceCopy,
         updateExtension,
         onOpenLineActions: (request) => onOpenLineActionsRef.current?.(request),
         onOpenComment: (commentId) => onOpenCommentRef.current?.(commentId),
@@ -595,11 +597,24 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       viewRef.current?.dispatch({
         effects: compartmentsRef.current.commentAnchor.reconfigure(
           commentsEnabled
-            ? createEditorCommentAnchorExtension(commentAnchors, activeCommentId, (commentId) => onOpenCommentRef.current?.(commentId))
+            ? createEditorCommentAnchorExtension(
+                commentAnchors,
+                activeCommentId,
+                interfaceCopy,
+                (commentId) => onOpenCommentRef.current?.(commentId),
+              )
             : [],
         ),
       });
-    }, [activeCommentId, commentAnchors, commentsEnabled]);
+    }, [activeCommentId, commentAnchors, commentsEnabled, interfaceCopy]);
+
+    useEffect(() => {
+      viewRef.current?.dispatch({
+        effects: compartmentsRef.current.placeholder.reconfigure(
+          createEditorPlaceholderExtension(interfaceCopy.startWriting),
+        ),
+      });
+    }, [interfaceCopy.startWriting]);
 
     useEffect(() => {
       viewRef.current?.dispatch({
@@ -612,27 +627,18 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     useEffect(() => {
       viewRef.current?.dispatch({
         effects: compartmentsRef.current.annotationGutter.reconfigure(
-          createEditorAnnotationGutterExtension(bookmarks, (request) => onOpenLineActionsRef.current?.(request)),
-        ),
-      });
-    }, [bookmarks]);
-
-    useEffect(() => {
-      viewRef.current?.dispatch({
-        effects: compartmentsRef.current.lineCommentAction.reconfigure(
-          createEditorLineCommentActionExtension(
+          createEditorAnnotationGutterExtension(
             bookmarks,
-            commentAnchors,
-            commentsEnabled,
+            interfaceCopy,
             (request) => onOpenLineActionsRef.current?.(request),
           ),
         ),
       });
-    }, [bookmarks, commentAnchors, commentsEnabled]);
+    }, [bookmarks, interfaceCopy]);
 
     return (
       <div className={`markdown-editor-shell ${collaborationBinding ? "collaboration-bound" : ""}`}>
-        <div ref={containerRef} className="markdown-editor" aria-label="Editor" />
+        <div ref={containerRef} className="markdown-editor" aria-label={ariaLabel} />
       </div>
     );
   },

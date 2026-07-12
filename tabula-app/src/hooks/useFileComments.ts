@@ -1,19 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  type TextPatch,
   WORKSPACE_ROOM_MAX_COMMENTS,
   WORKSPACE_ROOM_MAX_COMMENT_LENGTH,
   WORKSPACE_ROOM_MAX_CONTENT_BYTES,
   WORKSPACE_ROOM_MAX_REPLIES,
 } from "@tabula-md/tabula";
 import type { Collaborator } from "../collaboration";
+import { mapCommentAnchorThroughPatches } from "../commentAnchors";
 import type { FileComment, FileCommentReply, WorkspaceFile } from "../workspaceStorage";
 
 export type CommentSelectionAnchor = {
   start: number;
   end: number;
   sourceQuote: string;
-  prefix: string;
-  suffix: string;
 };
 
 type AddFileCommentOptions = {
@@ -21,6 +21,12 @@ type AddFileCommentOptions = {
   body: string;
   quote?: string;
   anchor?: CommentSelectionAnchor | null;
+};
+
+export type DeletedFileComment = {
+  comment: FileComment;
+  fileId: string;
+  index: number;
 };
 
 type UseFileCommentsOptions = {
@@ -146,12 +152,11 @@ export function useFileComments({
     const nextComment: FileComment = {
       id: createId(),
       body: trimmedDraft.slice(0, WORKSPACE_ROOM_MAX_COMMENT_LENGTH),
+      anchorDetached: false,
       authorName: identity.name,
       authorColor: identity.color,
       quote,
       sourceQuote: anchor?.sourceQuote,
-      prefix: anchor?.prefix,
-      suffix: anchor?.suffix,
       selectionStart: anchor?.start,
       selectionEnd: anchor?.end,
       resolved: false,
@@ -171,8 +176,13 @@ export function useFileComments({
 
   const deleteFileComment = (fileId: string, commentId: string) => {
     if (!fileIds.has(fileId)) {
-      return;
+      return undefined;
     }
+
+    const comments = getFileComments(commentsByFileId, fileId);
+    const index = comments.findIndex((comment) => comment.id === commentId);
+    const comment = comments[index];
+    if (!comment) return undefined;
 
     setCommentsByFileId((currentComments) => ({
       ...currentComments,
@@ -180,6 +190,73 @@ export function useFileComments({
     }));
     setFocusedCommentId((currentCommentId) => (currentCommentId === commentId ? null : currentCommentId));
     onCommentDeleted?.(fileId, commentId);
+    return { comment, fileId, index } satisfies DeletedFileComment;
+  };
+
+  const restoreFileComment = ({ comment, fileId, index }: DeletedFileComment) => {
+    if (!fileIds.has(fileId)) return false;
+    setCommentsByFileId((currentComments) => {
+      const comments = getFileComments(currentComments, fileId);
+      if (comments.some((candidate) => candidate.id === comment.id)) return currentComments;
+      const nextComments = [...comments];
+      nextComments.splice(Math.min(Math.max(0, index), nextComments.length), 0, comment);
+      return { ...currentComments, [fileId]: nextComments };
+    });
+    onCommentCreated?.(fileId, comment);
+    return true;
+  };
+
+  const deleteCommentsForFiles = (deletedFileIds: ReadonlySet<string>) => {
+    const deletedComments = Object.fromEntries(
+      Object.entries(commentsByFileId).filter(([fileId, comments]) =>
+        deletedFileIds.has(fileId) && comments.length > 0,
+      ),
+    );
+    if (Object.keys(deletedComments).length === 0) return deletedComments;
+    setCommentsByFileId((currentComments) =>
+      Object.fromEntries(
+        Object.entries(currentComments).filter(([fileId]) => !deletedFileIds.has(fileId)),
+      ),
+    );
+    setFocusedCommentId((commentId) =>
+      commentId && Object.values(deletedComments).flat().some((comment) => comment.id === commentId)
+        ? null
+        : commentId,
+    );
+    return deletedComments;
+  };
+
+  const restoreCommentsForFiles = (deletedComments: Record<string, FileComment[]>) => {
+    const restorableEntries = Object.entries(deletedComments).filter(([fileId]) => fileIds.has(fileId));
+    if (restorableEntries.length === 0) return;
+    setCommentsByFileId((currentComments) => ({
+      ...currentComments,
+      ...Object.fromEntries(restorableEntries),
+    }));
+    for (const [fileId, comments] of restorableEntries) {
+      for (const comment of comments) onCommentCreated?.(fileId, comment);
+    }
+  };
+
+  const mapFileCommentAnchors = (
+    fileId: string,
+    patches: readonly TextPatch[],
+    oldDocumentLength: number,
+  ) => {
+    if (!fileIds.has(fileId) || patches.length === 0) {
+      return;
+    }
+
+    setCommentsByFileId((currentComments) => {
+      const comments = getFileComments(currentComments, fileId);
+      let changed = false;
+      const nextComments = comments.map((comment) => {
+        const nextComment = mapCommentAnchorThroughPatches(comment, patches, oldDocumentLength);
+        changed = changed || nextComment !== comment;
+        return nextComment;
+      });
+      return changed ? { ...currentComments, [fileId]: nextComments } : currentComments;
+    });
   };
 
   const toggleFileCommentResolved = (fileId: string, commentId: string) => {
@@ -277,7 +354,11 @@ export function useFileComments({
     setFocusedCommentId,
     replaceCommentsByFileId,
     addFileComment,
+    mapFileCommentAnchors,
     deleteFileComment,
+    restoreFileComment,
+    deleteCommentsForFiles,
+    restoreCommentsForFiles,
     toggleFileCommentResolved,
     startCommentReply,
     cancelCommentReply,

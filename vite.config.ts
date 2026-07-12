@@ -150,7 +150,18 @@ export default defineConfig({
           if (
             normalizedId.includes("/react/") ||
             normalizedId.includes("/react-dom/") ||
-            normalizedId.includes("/scheduler/")
+            normalizedId.includes("/scheduler/") ||
+            normalizedId.includes("/node_modules/@radix-ui/") ||
+            normalizedId.includes("/node_modules/@floating-ui/") ||
+            includesPackage(normalizedId, "react-remove-scroll") ||
+            includesPackage(normalizedId, "react-remove-scroll-bar") ||
+            includesPackage(normalizedId, "react-style-singleton") ||
+            includesPackage(normalizedId, "use-callback-ref") ||
+            includesPackage(normalizedId, "use-sidecar") ||
+            includesPackage(normalizedId, "aria-hidden") ||
+            includesPackage(normalizedId, "detect-node-es") ||
+            includesPackage(normalizedId, "get-nonce") ||
+            includesPackage(normalizedId, "tslib")
           ) {
             return "react-vendor";
           }

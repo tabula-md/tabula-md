@@ -2,22 +2,24 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { Collaborator } from "../collaboration";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
-import type { WorkspaceFile } from "../workspaceStorage";
-import { getWorkspaceFileDisplayTitles } from "../workspaceDisplayTitles";
+import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
+import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
 import { NewDocumentButton } from "./NewDocumentButton";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 
 type TabScrollState = {
   canScrollLeft: boolean;
   canScrollRight: boolean;
-  activeTabOutOfView: boolean;
-  activeTabDirection: "left" | "right" | null;
 };
 
 type FileTabsProps = {
   files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
   activeFile?: WorkspaceFile;
   collaborators: Collaborator[];
+  language: WorkspaceLanguage;
   onAddFile: () => void;
   onSelectFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
@@ -29,8 +31,6 @@ type FileTabsProps = {
 const emptyTabScrollState: TabScrollState = {
   canScrollLeft: false,
   canScrollRight: false,
-  activeTabOutOfView: false,
-  activeTabDirection: null,
 };
 
 const getTabDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
@@ -45,8 +45,10 @@ export const getDocumentCollaborators = (
 
 export function FileTabs({
   files,
+  folders,
   activeFile,
   collaborators,
+  language,
   onAddFile,
   onSelectFile,
   onRenameFile,
@@ -54,13 +56,17 @@ export function FileTabs({
   onReorderFiles,
   onChromeInteraction,
 }: FileTabsProps) {
+  const copy = getWorkspaceInterfaceCopy(language).tabs;
   const [tabScrollState, setTabScrollState] = useState<TabScrollState>(emptyTabScrollState);
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState("");
   const [draggedFileId, setDraggedFileId] = useState<string | null>(null);
   const tabsScrollRef = useRef<HTMLDivElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
-  const displayTitles = useMemo(() => getWorkspaceFileDisplayTitles(files), [files]);
+  const tabLabels = useMemo(
+    () => getWorkspaceFileTabLabels(files, folders),
+    [files, folders],
+  );
 
   const updateTabScrollState = () => {
     const element = tabsScrollRef.current;
@@ -70,27 +76,14 @@ export function FileTabs({
     }
 
     const maxScrollLeft = element.scrollWidth - element.clientWidth;
-    const activeTabElement = element.querySelector<HTMLElement>(".tab-item.active");
-    const scrollRect = element.getBoundingClientRect();
-    const activeRect = activeTabElement?.getBoundingClientRect();
-    const activeTabDirection: TabScrollState["activeTabDirection"] =
-      activeRect && activeRect.right < scrollRect.left + 4
-        ? "left"
-        : activeRect && activeRect.left > scrollRect.right - 4
-          ? "right"
-          : null;
     const nextState = {
       canScrollLeft: element.scrollLeft > 2,
       canScrollRight: element.scrollLeft < maxScrollLeft - 2,
-      activeTabOutOfView: Boolean(activeTabDirection),
-      activeTabDirection,
     };
 
     setTabScrollState((currentState) =>
       currentState.canScrollLeft === nextState.canScrollLeft &&
-      currentState.canScrollRight === nextState.canScrollRight &&
-      currentState.activeTabOutOfView === nextState.activeTabOutOfView &&
-      currentState.activeTabDirection === nextState.activeTabDirection
+      currentState.canScrollRight === nextState.canScrollRight
         ? currentState
         : nextState,
     );
@@ -132,16 +125,6 @@ export function FileTabs({
 
     element.scrollBy({ left: direction * Math.max(240, Math.floor(element.clientWidth * 0.65)), behavior: "smooth" });
     window.setTimeout(updateTabScrollState, 180);
-  };
-
-  const handleTabScrollButtonClick = (direction: -1 | 1) => {
-    const activeDirection = direction === -1 ? "left" : "right";
-    if (tabScrollState.activeTabDirection === activeDirection) {
-      scrollActiveTabIntoView("auto");
-      return;
-    }
-
-    scrollTabsBy(direction);
   };
 
   const startRenamingFile = (file: WorkspaceFile) => {
@@ -192,8 +175,9 @@ export function FileTabs({
     });
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     scrollActiveTabIntoView("auto");
+    updateTabScrollState();
   }, [activeFile?.id, files.length]);
 
   useEffect(() => {
@@ -203,13 +187,20 @@ export function FileTabs({
     }
 
     const handleScroll = () => updateTabScrollState();
+    const handleResize = () => {
+      scrollActiveTabIntoView("auto");
+      updateTabScrollState();
+    };
+    const resizeObserver = new ResizeObserver(handleResize);
     element.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll);
+    resizeObserver.observe(element);
     updateTabScrollState();
 
     return () => {
       element.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
+      resizeObserver.disconnect();
     };
   }, [files.length]);
 
@@ -234,32 +225,27 @@ export function FileTabs({
       }`}
     >
       <button
-        className={`tab-scroll-button ${tabScrollState.activeTabDirection === "left" ? "has-current-tab" : ""}`}
+        className="tab-scroll-button"
         type="button"
-        title={
-          tabScrollState.activeTabDirection === "left" && activeFile
-            ? `Show current tab: ${activeFile.title}`
-            : "Scroll tabs left"
-        }
-        aria-label={
-          tabScrollState.activeTabDirection === "left" && activeFile
-            ? `Show current tab: ${activeFile.title}`
-            : "Scroll tabs left"
-        }
+        aria-label={copy.scrollLeft}
+        data-tooltip={copy.scrollLeft}
         disabled={!tabScrollState.canScrollLeft}
-        onClick={() => handleTabScrollButtonClick(-1)}
+        onClick={() => scrollTabsBy(-1)}
       >
         <ChevronLeft size={14} />
       </button>
-      <div className="tabs-scroll" ref={tabsScrollRef} role="tablist" aria-label="Open documents">
+      <div className="tabs-scroll" ref={tabsScrollRef} role="tablist" aria-label={copy.openDocuments}>
         {files.map((file, fileIndex) => {
           const isActiveFile = file.id === activeFile?.id;
           const isRenaming = file.id === renamingFileId;
           const allDocumentCollaborators = getDocumentCollaborators(collaborators, file.id);
           const documentCollaborators = allDocumentCollaborators.slice(0, 2);
           const hiddenCollaboratorCount = allDocumentCollaborators.length - documentCollaborators.length;
-          const displayTitle = displayTitles.get(file.id) ?? file.title;
-          const tabDisplayTitle = getTabDisplayTitle(displayTitle);
+          const tabLabel = tabLabels.get(file.id) ?? {
+            displayTitle: file.title,
+            fullPath: file.title,
+          };
+          const tabDisplayTitle = getTabDisplayTitle(tabLabel.displayTitle);
           return (
             <div
               className={`tab-item ${isActiveFile ? "active" : ""} ${
@@ -303,7 +289,7 @@ export function FileTabs({
                         cancelRenamingFile();
                       }
                     }}
-                    aria-label={`Rename ${file.title}`}
+                    aria-label={copy.renameDocument(tabLabel.fullPath)}
                   />
                 </div>
               ) : (
@@ -316,7 +302,7 @@ export function FileTabs({
                   aria-selected={isActiveFile}
                   tabIndex={isActiveFile ? 0 : -1}
                   data-file-id={file.id}
-                  title={displayTitle}
+                  title={tabLabel.fullPath}
                   onMouseDown={(event) => {
                     if (event.detail >= 2) event.preventDefault();
                   }}
@@ -350,8 +336,10 @@ export function FileTabs({
                     <span
                       className="tab-presence-avatars"
                       role="img"
-                      aria-label={`${allDocumentCollaborators.map((collaborator) => collaborator.name).join(", ")} in this document`}
-                      title={allDocumentCollaborators.map((collaborator) => collaborator.name).join(", ")}
+                      aria-label={copy.collaboratorsInDocument(
+                        allDocumentCollaborators.map((collaborator) => collaborator.name).join(", "),
+                      )}
+                      data-tooltip={allDocumentCollaborators.map((collaborator) => collaborator.name).join(", ")}
                     >
                       {documentCollaborators.map((collaborator) => (
                         <span
@@ -378,11 +366,11 @@ export function FileTabs({
                   <button
                     className="tab-action-button close"
                     type="button"
-                    title="Close tab"
-                    aria-label={`Close ${file.title}`}
+                    aria-label={copy.closeDocument(tabLabel.fullPath)}
+                    data-tooltip={copy.close}
                     onClick={() => onCloseFile(file.id)}
                   >
-                    <X size={12} />
+                    <X size={14} />
                   </button>
                 </div>
               )}
@@ -393,23 +381,16 @@ export function FileTabs({
       <div className="tabbar-actions">
         <NewDocumentButton
           buttonClassName="add-tab-button"
+          label={copy.newDocument}
           onCreate={onAddFile}
         />
         <button
-          className={`tab-scroll-button ${tabScrollState.activeTabDirection === "right" ? "has-current-tab" : ""}`}
+          className="tab-scroll-button"
           type="button"
-          title={
-            tabScrollState.activeTabDirection === "right" && activeFile
-              ? `Show current tab: ${activeFile.title}`
-              : "Scroll tabs right"
-          }
-          aria-label={
-            tabScrollState.activeTabDirection === "right" && activeFile
-              ? `Show current tab: ${activeFile.title}`
-              : "Scroll tabs right"
-          }
+          aria-label={copy.scrollRight}
+          data-tooltip={copy.scrollRight}
           disabled={!tabScrollState.canScrollRight}
-          onClick={() => handleTabScrollButtonClick(1)}
+          onClick={() => scrollTabsBy(1)}
         >
           <ChevronRight size={14} />
         </button>

@@ -1,10 +1,11 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { CommentGroup } from "./CommentGroup";
-import type { FormatCommentDate, RightPanelCommentGroup } from "./types";
+import type { FormatCommentDate, RightPanelCommentGroup, RightPanelCommentsCopy } from "./types";
 import type { FileComment } from "../../../workspaceStorage";
 
 type ResolvedCommentsSectionProps = {
   activeFileId: string;
+  copy: RightPanelCommentsCopy;
   activeCommentId?: string | null;
   activeReplyCommentId?: string | null;
   collapsedReplyIds: Set<string>;
@@ -28,6 +29,7 @@ type ResolvedCommentsSectionProps = {
 
 export function ResolvedCommentsSection({
   activeFileId,
+  copy,
   activeCommentId,
   activeReplyCommentId,
   collapsedReplyIds,
@@ -49,7 +51,7 @@ export function ResolvedCommentsSection({
   formatCommentDate,
 }: ResolvedCommentsSectionProps) {
   const resolvedCommentCount = resolvedCommentGroups.reduce((total, group) => total + group.comments.length, 0);
-  const resolvedLabel = `Resolved · ${resolvedCommentCount}`;
+  const resolvedLabel = copy.resolved(resolvedCommentCount);
   const shouldHideSingleActiveFileHeader =
     hideSingleActiveFileHeader && resolvedCommentGroups.length === 1 && resolvedCommentGroups[0]?.file.id === activeFileId;
 
@@ -58,14 +60,14 @@ export function ResolvedCommentsSection({
   }
 
   return (
-    <section className="right-resolved-comments" aria-label="Resolved comments">
+    <section className="right-resolved-comments" aria-label={copy.resolvedLabel}>
       <button
         className="right-row right-resolved-comments-header"
         type="button"
-        aria-label={showResolved ? "Hide resolved comments" : "Show resolved comments"}
+        aria-label={showResolved ? copy.hideResolved : copy.showResolved}
         onClick={onToggleResolvedSection}
       >
-        {showResolved ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        {showResolved ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         <span>{resolvedLabel}</span>
       </button>
       {showResolved &&
@@ -75,6 +77,7 @@ export function ResolvedCommentsSection({
             hideFileHeader={shouldHideSingleActiveFileHeader}
             variant="resolved"
             activeFileId={activeFileId}
+            copy={copy}
             activeCommentId={activeCommentId}
             activeReplyCommentId={activeReplyCommentId}
             collapsedReplyIds={collapsedReplyIds}

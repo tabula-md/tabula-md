@@ -15,7 +15,7 @@ const getEditorLines = async (page) =>
 const getEditorText = async (page) => (await getEditorLines(page)).join("\n");
 
 const importMarkdownFixture = async (page, markdown, name = "editor-certification.md") => {
-  await page.locator('input[aria-label="Import file"]').setInputFiles({
+  await page.locator('input[aria-label="Open Markdown file"]').setInputFiles({
     name,
     mimeType: "text/markdown",
     buffer: Buffer.from(markdown),
@@ -196,9 +196,24 @@ const assertCoreEditorInvariants = async ({
   );
   expect(Number(unwrappedLayout.gutterZIndex) >= 1, "Line number gutters should stay above scrolled text.");
   expect(
-    unwrappedLayout.activeGutterBackground !== "" &&
-      unwrappedLayout.activeGutterBackground !== "rgba(0, 0, 0, 0)",
-    "Active line number gutters should not expose text underneath.",
+    unwrappedLayout.activeLineBackground === "rgba(0, 0, 0, 0)",
+    "The editor active line should stay quiet while focus remains on document controls.",
+  );
+  expect(
+    unwrappedLayout.activeGutterBackground === "rgba(0, 0, 0, 0)",
+    "Active-line styling should not duplicate across the line-number gutter.",
+  );
+  await page.locator(".cm-content").focus();
+  await waitForRenderFrame(page);
+  const focusedUnwrappedLayout = await readLineNumberLayout(page);
+  expect(
+    focusedUnwrappedLayout.activeLineBackground !== "" &&
+      focusedUnwrappedLayout.activeLineBackground !== "rgba(0, 0, 0, 0)",
+    "Focused active-line styling should remain visible in the document content.",
+  );
+  expect(
+    focusedUnwrappedLayout.activeGutterBackground === "rgba(0, 0, 0, 0)",
+    "Focused active-line styling should remain confined to document content.",
   );
   await page.getByRole("button", { name: "Editor controls", exact: true }).click();
   await page.getByRole("button", { name: "Line Wrapping" }).click();
@@ -370,7 +385,7 @@ export async function run(ctx) {
   try {
     await firstPage.goto(baseUrl);
     await firstPage.waitForSelector(".tabbar");
-    await firstPage.getByTitle("New document").click();
+    await firstPage.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(firstPage, { mode: "edit" });
     const targetFileName = await firstPage.locator(".tab-item.active").getAttribute("data-file-name");
     expect(Boolean(targetFileName), "The remote cursor target document should be available.");

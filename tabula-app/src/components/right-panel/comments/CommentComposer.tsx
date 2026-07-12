@@ -1,9 +1,11 @@
 import { type RefObject } from "react";
 import { WORKSPACE_ROOM_MAX_COMMENT_LENGTH } from "@tabula-md/tabula";
+import type { RightPanelCommentsCopy } from "./types";
 
 type CommentComposerProps = {
   activeFileTitle: string;
   commentDraft: string;
+  copy: RightPanelCommentsCopy;
   identityName: string;
   selectedText: string;
   selectedCharacterCount: number;
@@ -18,6 +20,7 @@ type CommentComposerProps = {
 export function CommentComposer({
   activeFileTitle,
   commentDraft,
+  copy,
   identityName,
   selectedText,
   selectedCharacterCount,
@@ -36,10 +39,10 @@ export function CommentComposer({
   return (
     <div className={`right-comment-form ${isExpanded ? "expanded" : ""}`}>
       <label className="right-comment-composer-identity">
-        <span>as</span>
+        <span>{copy.as}</span>
         <input
           value={identityName}
-          aria-label="Comment author name"
+          aria-label={copy.authorName}
           maxLength={40}
           onBlur={onIdentityNameCommit}
           onChange={(event) => onIdentityNameChange(event.target.value)}
@@ -57,22 +60,22 @@ export function CommentComposer({
             onAddComment();
           }
         }}
-        placeholder={hasSelection ? "Comment on selected text" : "Add file comment"}
+        placeholder={hasSelection ? copy.selectedPlaceholder : copy.filePlaceholder}
         rows={2}
-        aria-label={`Add comment to ${activeFileTitle}`}
+        aria-label={copy.addTo(activeFileTitle)}
       />
       <div className="right-comment-form-footer">
         {hasSelection && (
           <span className="right-comment-scope">
             {selectedPreview
-              ? `Selected: "${selectedPreview}"`
-              : `${selectedCharacterCount} selected ${selectedCharacterCount === 1 ? "character" : "characters"}`}
+              ? copy.selected(selectedPreview)
+              : copy.selectedCharacters(selectedCharacterCount)}
           </span>
         )}
         <span className="right-comment-form-actions">
           {canCancel && (
             <button className="right-comment-text-button" type="button" onClick={onCancel}>
-              Cancel
+              {copy.cancel}
             </button>
           )}
           <button
@@ -81,7 +84,7 @@ export function CommentComposer({
             disabled={!commentDraft.trim()}
             onClick={onAddComment}
           >
-            Comment
+            {copy.comment}
           </button>
         </span>
       </div>

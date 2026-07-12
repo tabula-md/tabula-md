@@ -55,6 +55,7 @@ type UseWorkspaceActiveFileEditorArgs = {
   editorDocumentRuntime: WorkspaceEditorDocumentRuntimeOwner;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   onPendingTextChange?: () => void;
+  onTextPatches?: (fileId: string, patches: readonly TextPatch[], oldDocumentLength: number) => void;
   onVisibleTextChange?: (change?: TextChange) => void;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
   setActiveFileText: (text: string) => void;
@@ -173,6 +174,7 @@ export function useWorkspaceActiveFileEditor({
   editorDocumentRuntime,
   editorRef,
   onPendingTextChange,
+  onTextPatches,
   onVisibleTextChange,
   setActiveFileBookmarks,
   setActiveFileText,
@@ -292,6 +294,14 @@ export function useWorkspaceActiveFileEditor({
     }
 
     const runtime = editorDocumentRuntime.getRuntime(activeFile);
+    const patches = change?.patches ?? [];
+    if (patches.length > 0 && typeof change?.docLength === "number") {
+      const lengthDelta = patches.reduce(
+        (total, patch) => total + patch.insert.length - (patch.to - patch.from),
+        0,
+      );
+      onTextPatches?.(activeFile.id, patches, change.docLength - lengthDelta);
+    }
     if (nextText === null) {
       const appliedPatchToVisibleText =
         activeFile.viewMode !== "edit" &&
@@ -311,7 +321,7 @@ export function useWorkspaceActiveFileEditor({
       if (activeFile.roomId && !collaborationBound) {
         applyLocalText(
           shouldSendFullTextToCollaboration(change) ? (editorRef.current?.getValue() ?? null) : null,
-          change?.patches,
+          patches,
           { docLength: change?.docLength },
         );
       }
@@ -341,7 +351,7 @@ export function useWorkspaceActiveFileEditor({
     if (!collaborationBound) schedulePendingEditorCommit(change);
 
     if (policy.shouldSendCollaborationPatchImmediately && !collaborationBound) {
-      applyLocalText(nextText, change?.patches, { docLength: change?.docLength });
+      applyLocalText(nextText, patches, { docLength: change?.docLength });
     }
   };
 

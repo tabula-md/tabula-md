@@ -8,6 +8,7 @@ import type { Collaborator } from "../collaboration";
 import { randomId } from "../workspaceStorage";
 
 export const IDENTITY_KEY = "tabula.identity";
+export const IDENTITY_SESSION_KEY = "tabula.identity.session";
 
 let pageActorId: string | null = null;
 
@@ -27,10 +28,14 @@ const isGeneratedName = (name: string) =>
 export const normalizeWorkspaceIdentity = (
   identity: Collaborator,
   now: () => number = Date.now,
+  { preserveGeneratedName = false }: { preserveGeneratedName?: boolean } = {},
 ): Collaborator => {
   const name = identity.name?.trim();
   const kind = identity.kind ?? "human";
-  const nextName = name && !isGeneratedName(name) ? name : createRoomActorName(kind, identity.id);
+  const nextName =
+    name && (preserveGeneratedName || !isGeneratedName(name))
+      ? name
+      : createRoomActorName(kind, identity.id);
 
   return {
     ...identity,
@@ -47,6 +52,16 @@ const writeIdentity = (identity: Collaborator, storage: Storage = window.localSt
   );
 };
 
+const writeSessionIdentity = (
+  identity: Collaborator,
+  storage: Storage = window.sessionStorage,
+) => {
+  storage.setItem(
+    IDENTITY_SESSION_KEY,
+    JSON.stringify({ name: identity.name, color: identity.color }),
+  );
+};
+
 const readStoredJson = (storage: Storage, key: string) => {
   try {
     const stored = storage.getItem(key);
@@ -58,28 +73,42 @@ const readStoredJson = (storage: Storage, key: string) => {
 
 export const createWorkspaceIdentity = ({
   storage = window.localStorage,
+  sessionStorage,
   actorId,
   createId = randomId,
   now = Date.now,
 }: {
   storage?: Storage;
+  sessionStorage?: Storage;
   actorId?: string;
   createId?: () => string;
   now?: () => number;
 } = {}): Collaborator => {
+  const resolvedSessionStorage =
+    sessionStorage ?? (typeof window === "undefined" ? storage : window.sessionStorage);
   const storedProfile = readStoredJson(storage, IDENTITY_KEY);
+  const storedSessionProfile = readStoredJson(resolvedSessionStorage, IDENTITY_SESSION_KEY);
   const id = actorId?.trim() || createId();
   const storedName = typeof storedProfile?.name === "string" ? storedProfile.name.trim() : "";
+  const sessionName =
+    typeof storedSessionProfile?.name === "string" ? storedSessionProfile.name.trim() : "";
+  const sessionColor =
+    typeof storedSessionProfile?.color === "string" ? storedSessionProfile.color.trim() : "";
   const identity = normalizeWorkspaceIdentity(
     {
       id,
-      name: storedName && !isGeneratedName(storedName) ? storedName : createRoomActorName("human", id),
-      color: createRoomActorColor(id),
+      name:
+        storedName && !isGeneratedName(storedName)
+          ? storedName
+          : sessionName || createRoomActorName("human", id),
+      color: sessionColor || createRoomActorColor(id),
       lastSeen: now(),
     },
     now,
+    { preserveGeneratedName: Boolean(sessionName) },
   );
   writeIdentity(identity, storage);
+  writeSessionIdentity(identity, resolvedSessionStorage);
   return identity;
 };
 
@@ -96,6 +125,7 @@ export function useWorkspaceIdentity() {
         lastSeen: Date.now(),
       };
       writeIdentity(updatedIdentity);
+      writeSessionIdentity(updatedIdentity);
       return updatedIdentity;
     });
   };
@@ -104,6 +134,7 @@ export function useWorkspaceIdentity() {
     setIdentity((currentIdentity) => {
       const updatedIdentity = normalizeWorkspaceIdentity(currentIdentity);
       writeIdentity(updatedIdentity);
+      writeSessionIdentity(updatedIdentity);
       return updatedIdentity;
     });
   };

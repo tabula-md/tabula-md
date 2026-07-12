@@ -76,9 +76,8 @@ export type {
   DocumentControlsModelInput,
   DocumentReadingWidthOption,
   DocumentToggleControl,
-  DocumentViewModeAction,
   DocumentViewModeIcon,
-  DocumentViewModeSlot,
+  DocumentViewModeOption,
 } from "./documentControlsModel";
 export { buildDocumentControlsModel } from "./documentControlsModel";
 

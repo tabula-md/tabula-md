@@ -110,6 +110,7 @@ export function useWorkspaceRuntime() {
     renameFolder,
     replaceWorkspace,
     restoreFile,
+    restoreFolder: restoreWorkspaceFolderAction,
     upsertHelpFile,
     reorderFiles,
     selectAdjacentFile: selectAdjacentWorkspaceFileAction,
@@ -211,7 +212,11 @@ export function useWorkspaceRuntime() {
     setFocusedCommentId,
     replaceCommentsByFileId,
     addFileComment: createFileComment,
+    mapFileCommentAnchors,
     deleteFileComment,
+    restoreFileComment,
+    deleteCommentsForFiles,
+    restoreCommentsForFiles,
     toggleFileCommentResolved,
     startCommentReply: beginCommentReply,
     cancelCommentReply,
@@ -227,6 +232,16 @@ export function useWorkspaceRuntime() {
     onCommentDeleted: (fileId, commentId) => roomCommentActionsRef.current.deleted(fileId, commentId),
     onCommentResolved: (fileId, commentId, resolved) => roomCommentActionsRef.current.resolved(fileId, commentId, resolved),
     onCommentReplyCreated: (fileId, commentId, reply) => roomCommentActionsRef.current.replied(fileId, commentId, reply),
+  });
+  const deleteFileCommentWithUndo = useEventCallback((fileId: string, commentId: string) => {
+    const deletedComment = deleteFileComment(fileId, commentId);
+    if (!deletedComment) return;
+    showToast("Comment deleted.", "neutral", {
+      actionLabel: "Undo",
+      onAction: () => {
+        if (restoreFileComment(deletedComment)) showToast("Comment restored.");
+      },
+    });
   });
   const getActiveFileSnapshot = useEventCallback(() => {
     const latestActiveFile = getWorkspaceStoreActiveFile() ?? activeFile;
@@ -319,7 +334,6 @@ export function useWorkspaceRuntime() {
     replaceAvailable,
     selectedCharacterCount,
     selectedLineCount,
-    selectedMarkdownText,
     selectionActionPosition,
     setActiveFileViewMode,
     setActiveSelection,
@@ -379,7 +393,6 @@ export function useWorkspaceRuntime() {
     setRightPanelView,
     closeFloatingChrome,
     openFilesPanel,
-    openSharePanel,
     toggleWorkspaceMenu,
     toggleRightPanel,
   } = useWorkspaceChromeController({
@@ -535,6 +548,7 @@ export function useWorkspaceRuntime() {
     startSession: startCollaborationSession,
     applyLocalText,
     editorBinding,
+    materializeWorkspace: materializeRoomWorkspace,
     upsertComment: upsertRoomComment,
     deleteComment: deleteRoomComment,
     setCommentResolved: setRoomCommentResolved,
@@ -614,6 +628,7 @@ export function useWorkspaceRuntime() {
     collaborationBound: Boolean(editorBinding),
     editorDocumentRuntime,
     editorRef,
+    onTextPatches: mapFileCommentAnchors,
     onVisibleTextChange: bumpVisibleTextRevision,
     setActiveFileBookmarks,
     setActiveFileText,
@@ -717,6 +732,8 @@ export function useWorkspaceRuntime() {
     const roomId = activeFile?.roomId ?? activeRoom?.roomId;
     const workspaceRoomFileIds = roomId ? files.filter((file) => file.roomId === roomId).map((file) => file.id) : [];
     flushPendingEditorCommit();
+    const roomSnapshot = materializeRoomWorkspace();
+    if (roomSnapshot) mergeWorkspaceRoomSnapshot(roomSnapshot);
     stopSession();
     if (!activeFile?.roomId) {
       resetCollaborationState("idle");
@@ -808,9 +825,7 @@ export function useWorkspaceRuntime() {
 
   const {
     closeJsonShareImport,
-    copyCurrentFile,
-    downloadCurrentFile,
-    downloadProject,
+    copyFile,
     downloadProjectArchive,
     emptyDropActive,
     handleEmptyWorkspaceDragLeave,
@@ -893,26 +908,26 @@ export function useWorkspaceRuntime() {
     activePreviewCommentAnchors,
     activePreviewLineAnnotations,
     addFileComment,
+    cancelSelectionComment,
     formatCommentDate,
     goToFileComment,
     handleLineAnnotationAction,
     openCommentMarker,
     openCommentsPanel,
     openSelectionComment,
+    pendingSelectionCommentText,
+    selectionCommentPending,
+    consumeSelectionCommentRequest,
     startCommentReply,
   } = useWorkspaceCommentActions({
     activeBookmarks,
     activeFile,
     activeFileComments,
     activeOpenComments,
-    activeViewMode,
-    clearPreviewSelection,
     commentDraft,
-    commentsEnabled: isLiveConnected,
     commentInputRef,
     createFileComment,
     createId: randomId,
-    editorRef,
     files,
     focusedCommentId,
     getSelectedMarkdownAnchor,
@@ -925,8 +940,6 @@ export function useWorkspaceRuntime() {
     selectFile,
     selectedCharacterCount,
     setActiveFileBookmarks,
-    setActiveFileViewMode,
-    setActiveSelection,
     setCenterPopover,
     setFocusedCommentId,
     setRightPanelOpen,
@@ -935,23 +948,18 @@ export function useWorkspaceRuntime() {
     setTopPopover,
     showToast,
     startCommentReply: beginCommentReply,
-    suppressSelectionActionPositionRef,
     queueEditorTextRange,
     text,
   });
   const { menuSurfaceProps } = useWorkspaceMenuRuntime({
-    activeFile,
     importInputRef,
     isOpen: workspaceMenuOpen,
     onAddFile: addFile,
     onCloseChrome: closeFloatingChrome,
-    onDownloadFile: downloadCurrentFile,
-    onDownloadProject: downloadProject,
     onImportFileChange: handleImportInputChange,
     onImportProjectChange: handleProjectImportInputChange,
     onOpenAbout: openAboutFile,
     onOpenHelp: openHelpFile,
-    openSharePanel,
     preferences: workspacePreferences,
     preferencesOpen,
     setPreferences: setWorkspacePreferences,
@@ -969,6 +977,7 @@ export function useWorkspaceRuntime() {
       activeFile,
       activeFileTitle,
       activeReplyCommentId,
+      activeSelection,
       activeViewMode,
       commentDraft,
       commentInputRef,
@@ -979,48 +988,45 @@ export function useWorkspaceRuntime() {
       formatCommentDate,
       identityName: identity.name,
       isLive: isLiveChromeVisible,
+      language: workspacePreferences.language,
       onAddComment: addFileComment,
       onAddCommentReply: addFileCommentReply,
+      onCancelSelectionComment: cancelSelectionComment,
       onCancelCommentReply: cancelCommentReply,
-      onCloseFile: closeFile,
       onCommentDraftChange: setCommentDraft,
-      onDeleteComment: deleteFileComment,
+      onDeleteComment: deleteFileCommentWithUndo,
       onDeleteFile: deleteFile,
       onDeleteFolder: (folderId) => {
-        const deletedFolderIds = new Set([folderId]);
-        let foundDescendant = true;
-        while (foundDescendant) {
-          foundDescendant = false;
-          for (const folder of folders) {
-            if (
-              !deletedFolderIds.has(folder.id) &&
-              folder.parentId &&
-              deletedFolderIds.has(folder.parentId)
-            ) {
-              deletedFolderIds.add(folder.id);
-              foundDescendant = true;
-            }
-          }
-        }
-        const deletedFileIds = new Set(
-          files
-            .filter((file) => deletedFolderIds.has(file.parentId ?? ""))
-            .map((file) => file.id),
-        );
-        deleteWorkspaceFolderAction(folderId);
-        replaceCommentsByFileId(
-          Object.fromEntries(
-            Object.entries(commentsByFileId).filter(([fileId]) => !deletedFileIds.has(fileId)),
-          ),
+        const deletedBundle = deleteWorkspaceFolderAction(folderId);
+        if (!deletedBundle) return;
+        const deletedFileIds = new Set(deletedBundle.files.map(({ item }) => item.id));
+        const deletedComments = deleteCommentsForFiles(deletedFileIds);
+        const deletedHistory = Object.fromEntries(
+          Object.entries(historyByFileId).filter(([fileId]) => deletedFileIds.has(fileId)),
         );
         setHistoryByFileId((currentHistory) =>
           Object.fromEntries(
             Object.entries(currentHistory).filter(([fileId]) => !deletedFileIds.has(fileId)),
           ),
         );
-        showToast("Folder deleted.");
+        const deletedActiveFile = deletedFileIds.has(deletedBundle.previousActiveFileId);
+        if (deletedActiveFile) syncUrlForFile(getWorkspaceStoreActiveFile(), "replace");
+        showToast("Folder deleted.", "neutral", {
+          actionLabel: "Undo",
+          onAction: () => {
+            const restoredActiveFile = restoreWorkspaceFolderAction(deletedBundle);
+            restoreCommentsForFiles(deletedComments);
+            setHistoryByFileId((currentHistory) => ({
+              ...currentHistory,
+              ...deletedHistory,
+            }));
+            if (deletedActiveFile) syncUrlForFile(restoredActiveFile, "replace");
+            showToast("Folder restored.");
+          },
+        });
       },
       onDuplicateFile: duplicateFile,
+      onCopyFile: copyFile,
       onGoToComment: goToFileComment,
       onIdentityNameChange: updateIdentityName,
       onIdentityNameCommit: normalizeIdentityName,
@@ -1038,10 +1044,10 @@ export function useWorkspaceRuntime() {
         }
       },
       onReplyDraftChange: updateCommentReplyDraft,
+      onRequestTextSelection: () => setRightPanelOpen(false),
       onSelectFile: selectFile,
       onStartCommentReply: startCommentReply,
       onToggleCommentResolved: toggleFileCommentResolved,
-      openFileIds,
       outlineHeadings,
       parsedMarkdownBody: parsedMarkdown.body,
       previewSurfaceRef,
@@ -1049,7 +1055,9 @@ export function useWorkspaceRuntime() {
       rightPanelOpen,
       rightPanelView,
       selectedCharacterCount,
-      selectedText: selectedMarkdownText,
+      pendingSelectionText: pendingSelectionCommentText,
+      selectionCommentPending,
+      onSelectionCommentRequestHandled: consumeSelectionCommentRequest,
       setRightPanelOpen,
       setRightPanelView,
       text,
@@ -1063,6 +1071,7 @@ export function useWorkspaceRuntime() {
     copiedFileId,
     currentUserName: identity.name,
     files,
+    folders,
     identity: presenceIdentity,
     isLive: isLiveChromeVisible,
     isLiveConnected,
@@ -1110,18 +1119,14 @@ export function useWorkspaceRuntime() {
       activeDocument,
       activeLineNumbers,
       activeLineWrapping,
-      activeOpenComments,
       activeSyncScrolling: workspacePreferences.syncScrolling,
       activeViewMode,
       editorRef,
-      focusedCommentId,
-      isLive,
       searchOpen,
       selectedCharacterCount,
       selectionActionPosition,
       shareOpen,
       splitDividerDragging,
-      onOpenCommentsPanel: openCommentsPanel,
       onSetActiveFileLineNumbers: setActiveFileLineNumbers,
       onSetActiveFileLineWrapping: setActiveFileLineWrapping,
       onSetActiveFileReadingWidth: setActiveFileReadingWidth,
@@ -1154,6 +1159,7 @@ export function useWorkspaceRuntime() {
       onOpenHelp: openHelpFile,
     },
     liveRoomLoadingProps: {
+      language: workspacePreferences.language,
       onOpenLocalWorkspace: openLocalWorkspaceAfterRoomFailure,
       onRetry: retryOpeningLiveRoom,
     },
@@ -1168,6 +1174,7 @@ export function useWorkspaceRuntime() {
     menuSurfaceProps,
     overlayProps: {
       jsonShareImport,
+      language: workspacePreferences.language,
       toast,
       onDismissToast: dismissToast,
       onPauseToast: pauseToast,
@@ -1187,6 +1194,7 @@ export function useWorkspaceRuntime() {
       activePreviewCommentAnchors,
       activePreviewLineAnnotations,
       activeSearchMatchIndex,
+      activeSelection,
       canRedo,
       canUndo,
       centerPopover,
@@ -1231,7 +1239,6 @@ export function useWorkspaceRuntime() {
       workspaceRef,
       onBookmarksChange: updateActiveFileBookmarks,
       onCloseSearch: documentWorkbenchRuntime.onCloseSearch,
-      onCopyFile: copyCurrentFile,
       onEditorHistoryStateChange: handleEditorHistoryStateChange,
       onEditorScroll: handleEditorSurfaceScroll,
       onEditorScrollRatioChange: handleEditorScrollRatioChange,
@@ -1242,7 +1249,6 @@ export function useWorkspaceRuntime() {
       onGoToSearchMatch: goToSearchMatch,
       onLineAction: handleStableLineAnnotationAction,
       onOpenComment: openStableCommentMarker,
-      onOpenComments: documentWorkbenchRuntime.onOpenComments,
       onOpenSelectionComment: openSelectionComment,
       onPreviewKeyUp: syncPreviewSelection,
       onPreviewMouseUp: syncPreviewSelection,

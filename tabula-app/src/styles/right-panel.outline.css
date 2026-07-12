@@ -39,26 +39,13 @@
 
 .right-outline-link {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: var(--right-tight-gap);
   min-width: 0;
   height: var(--right-row-height);
   color: inherit;
   background: transparent;
   text-align: left;
-}
-
-.right-outline-depth {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: var(--right-row-height);
-  letter-spacing: 0;
-  white-space: nowrap;
 }
 
 .right-panel-action {
