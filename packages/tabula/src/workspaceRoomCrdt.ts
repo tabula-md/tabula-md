@@ -10,6 +10,7 @@ import {
   type WorkspaceRoomNode,
   type WorkspaceRoomNodeType,
   type WorkspaceRoomSnapshot,
+  type WorkspaceRoomStructureSnapshot,
 } from "./workspaceRoomModel";
 
 export type WorkspaceRoomCrdt = {
@@ -497,30 +498,84 @@ const readReplies = (value: unknown): WorkspaceRoomCommentReply[] => {
   return replies.sort((first, second) => first.createdAt.localeCompare(second.createdAt) || first.id.localeCompare(second.id));
 };
 
+const readComment = (
+  room: WorkspaceRoomCrdt,
+  id: string,
+  comment: Y.Map<unknown>,
+): WorkspaceRoomComment | null => {
+  const fileId = asString(comment.get("fileId"));
+  const body = asString(comment.get("body")).trim();
+  if (!fileId || !body) return null;
+  return {
+    id,
+    fileId,
+    body,
+    authorId: asOptionalString(comment.get("authorId")),
+    authorName: asOptionalString(comment.get("authorName")),
+    authorColor: asOptionalString(comment.get("authorColor")),
+    quote: asOptionalString(comment.get("quote")),
+    sourceQuote: asOptionalString(comment.get("sourceQuote")),
+    selectionStart: readRelativeAnchor(room, comment.get("anchorStart")),
+    selectionEnd: readRelativeAnchor(room, comment.get("anchorEnd")),
+    resolved: comment.get("resolved") === true,
+    createdAt: asString(comment.get("createdAt"), new Date(0).toISOString()),
+    replies: readReplies(comment.get("replies")),
+  };
+};
+
+const sortComments = (comments: WorkspaceRoomComment[]) =>
+  comments.sort((first, second) =>
+    first.createdAt.localeCompare(second.createdAt) || first.id.localeCompare(second.id));
+
+export const getWorkspaceRoomDocumentComments = (
+  room: WorkspaceRoomCrdt,
+  documentId: string,
+): WorkspaceRoomComment[] => {
+  if (
+    room.nodes.get(documentId)?.get("type") !== "document" ||
+    !room.documents.has(documentId)
+  ) {
+    return [];
+  }
+  const comments: WorkspaceRoomComment[] = [];
+  room.comments.forEach((comment, id) => {
+    if (comment.get("fileId") !== documentId) return;
+    const parsed = readComment(room, id, comment);
+    if (parsed) comments.push(parsed);
+  });
+  return sortComments(comments);
+};
+
 export const getWorkspaceRoomSnapshot = (room: WorkspaceRoomCrdt): WorkspaceRoomSnapshot => {
+  const structure = getWorkspaceRoomStructureSnapshot(room);
+  const documents: Record<string, string> = {};
+  for (const node of structure.nodes) {
+    if (node.type === "document") {
+      documents[node.id] = room.documents.get(node.id)?.toString() ?? "";
+    }
+  }
+
+  return {
+    ...structure,
+    documents,
+    commentsByFileId: getWorkspaceRoomComments(room),
+  };
+};
+
+export const getWorkspaceRoomStructureSnapshot = (
+  room: WorkspaceRoomCrdt,
+): WorkspaceRoomStructureSnapshot => {
   const nodes: WorkspaceRoomNode[] = [];
   room.nodes.forEach((node, id) => {
     const parsed = readNode(id, node);
     if (parsed) nodes.push(parsed);
   });
   nodes.sort(compareNodes);
-
-  const documents: Record<string, string> = {};
-  for (const node of nodes) {
-    if (node.type === "document") {
-      documents[node.id] = room.documents.get(node.id)?.toString() ?? "";
-    }
-  }
-
-  const commentsByFileId = getWorkspaceRoomComments(room);
-
   return {
     roomId: asString(room.meta.get("roomId")),
     schemaVersion: WORKSPACE_ROOM_SCHEMA_VERSION,
     rootId: asString(room.meta.get("rootId"), WORKSPACE_ROOM_ROOT_ID),
     nodes,
-    documents,
-    commentsByFileId,
   };
 };
 
@@ -533,28 +588,13 @@ export const getWorkspaceRoomComments = (
   });
   const commentsByFileId: Record<string, WorkspaceRoomComment[]> = {};
   room.comments.forEach((comment, id) => {
-    const fileId = asString(comment.get("fileId"));
-    const body = asString(comment.get("body")).trim();
-    if (!fileId || !body || !documentIds.has(fileId)) return;
-    const nextComment: WorkspaceRoomComment = {
-      id,
-      fileId,
-      body,
-      authorId: asOptionalString(comment.get("authorId")),
-      authorName: asOptionalString(comment.get("authorName")),
-      authorColor: asOptionalString(comment.get("authorColor")),
-      quote: asOptionalString(comment.get("quote")),
-      sourceQuote: asOptionalString(comment.get("sourceQuote")),
-      selectionStart: readRelativeAnchor(room, comment.get("anchorStart")),
-      selectionEnd: readRelativeAnchor(room, comment.get("anchorEnd")),
-      resolved: comment.get("resolved") === true,
-      createdAt: asString(comment.get("createdAt"), new Date(0).toISOString()),
-      replies: readReplies(comment.get("replies")),
-    };
+    const nextComment = readComment(room, id, comment);
+    if (!nextComment || !documentIds.has(nextComment.fileId)) return;
+    const { fileId } = nextComment;
     (commentsByFileId[fileId] ??= []).push(nextComment);
   });
   for (const comments of Object.values(commentsByFileId)) {
-    comments.sort((first, second) => first.createdAt.localeCompare(second.createdAt) || first.id.localeCompare(second.id));
+    sortComments(comments);
   }
   return commentsByFileId;
 };

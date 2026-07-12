@@ -1,6 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { history } from "@codemirror/commands";
 import { EditorSelection, EditorState, type Transaction } from "@codemirror/state";
 import { EditorView, placeholder as createEditorPlaceholderExtension } from "@codemirror/view";
+import * as Y from "yjs";
 import {
   canRedoEditor,
   canUndoEditor,
@@ -26,6 +28,7 @@ import {
   redoCollaborationHistory,
   undoCollaborationHistory,
 } from "../editor/editorState";
+import { setCommentAnchorDecorations } from "../editorExtensions/commentAnchors";
 import {
   clampEditorPosition,
   dispatchLocalTextPatches,
@@ -38,25 +41,116 @@ import { runMarkdownFormatCommand } from "../editor/editorInputRules";
 import { getActiveMarkdownFormats } from "../editor/editorFormattingState";
 import type {
   MarkdownBookmark,
-  MarkdownCommentAnchor,
   MarkdownEditorHandle,
   MarkdownEditorProps,
 } from "../markdownEditorTypes";
 import type { EditorViewportAnchor } from "../preview/previewSyncTypes";
+import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
 
 const MAX_CACHED_LOCAL_EDITOR_STATES = 20;
+const MAX_CACHED_LIVE_EDITOR_VIEW_STATES = 20;
+
+type LiveEditorViewState = {
+  selectionAnchor: Y.RelativePosition;
+  selectionHead: Y.RelativePosition;
+  viewportAnchor: Y.RelativePosition;
+  viewportOffset: number;
+};
+
+const getEditorScrollContext = (view: EditorView) => {
+  const internalScroller = view.scrollDOM;
+  const workspaceScroller = view.dom.closest<HTMLElement>(".workspace");
+  const scrollElement =
+    internalScroller.scrollHeight - internalScroller.clientHeight > 1 || !workspaceScroller
+      ? internalScroller
+      : workspaceScroller;
+  const contentTop = scrollElement === internalScroller
+    ? 0
+    : scrollElement.scrollTop +
+      view.dom.getBoundingClientRect().top -
+      scrollElement.getBoundingClientRect().top;
+  return { contentTop, scrollElement };
+};
+
+const getEditorViewport = (view: EditorView) => {
+  const { contentTop, scrollElement } = getEditorScrollContext(view);
+  const viewportTop = Math.max(0, scrollElement.scrollTop - contentTop);
+  const viewportBlock = view.lineBlockAtHeight(viewportTop);
+  return {
+    offset: viewportTop - viewportBlock.top,
+    position: viewportBlock.from,
+  };
+};
+
+const captureLiveEditorViewState = (
+  view: EditorView,
+  binding: CollabEditorBinding,
+): LiveEditorViewState | null => {
+  const yDoc = binding.yText.doc;
+  if (!yDoc) return null;
+  const selection = view.state.selection.main;
+  const viewport = getEditorViewport(view);
+  return {
+    selectionAnchor: Y.createRelativePositionFromTypeIndex(binding.yText, selection.anchor),
+    selectionHead: Y.createRelativePositionFromTypeIndex(binding.yText, selection.head),
+    viewportAnchor: Y.createRelativePositionFromTypeIndex(binding.yText, viewport.position),
+    viewportOffset: viewport.offset,
+  };
+};
+
+const resolveLivePosition = (
+  position: Y.RelativePosition,
+  binding: CollabEditorBinding,
+) => {
+  const yDoc = binding.yText.doc;
+  if (!yDoc) return null;
+  const absolute = Y.createAbsolutePositionFromRelativePosition(position, yDoc);
+  return absolute?.type === binding.yText ? absolute.index : null;
+};
+
+const restoreLiveEditorViewState = (
+  view: EditorView,
+  binding: CollabEditorBinding,
+  state: LiveEditorViewState | undefined,
+) => {
+  if (!state) return;
+  const anchor = resolveLivePosition(state.selectionAnchor, binding);
+  const head = resolveLivePosition(state.selectionHead, binding);
+  if (anchor !== null && head !== null) {
+    view.dispatch({
+      selection: EditorSelection.single(
+        Math.min(anchor, view.state.doc.length),
+        Math.min(head, view.state.doc.length),
+      ),
+    });
+  }
+  const viewportPosition = resolveLivePosition(state.viewportAnchor, binding);
+  if (viewportPosition === null) return;
+  view.requestMeasure({
+    read: () => {
+      const { contentTop } = getEditorScrollContext(view);
+      return contentTop +
+        view.lineBlockAt(Math.min(viewportPosition, view.state.doc.length)).top +
+        state.viewportOffset;
+    },
+    write: (scrollTop) => {
+      getEditorScrollContext(view).scrollElement.scrollTop = Math.max(0, scrollTop);
+    },
+  });
+};
 
 const getEditorViewportLineAnchor = (view: EditorView): EditorViewportAnchor => {
-  const viewportTop = Math.max(0, view.scrollDOM.scrollTop);
-  const topLineBlock = view.lineBlockAtHeight(viewportTop);
+  const { scrollElement } = getEditorScrollContext(view);
+  const viewport = getEditorViewport(view);
+  const topLineBlock = view.lineBlockAt(viewport.position);
   const topLine = view.state.doc.lineAt(topLineBlock.from);
   const lineOffsetRatio =
     topLineBlock.height <= 0
       ? 0
-      : Math.max(0, Math.min(1, (viewportTop - topLineBlock.top) / topLineBlock.height));
+      : Math.max(0, Math.min(1, viewport.offset / topLineBlock.height));
   const atDocumentEnd =
-    view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight - view.scrollDOM.scrollTop <= 1;
+    scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop <= 1;
 
   return {
     atDocumentEnd,
@@ -103,7 +197,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const containerRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
     const bookmarksRef = useRef<MarkdownBookmark[]>(bookmarks);
-    const commentAnchorsRef = useRef<MarkdownCommentAnchor[]>(commentAnchors);
     const onChangeRef = useRef(onChange);
     const onBookmarksChangeRef = useRef(onBookmarksChange);
     const onHistoryStateChangeRef = useRef(onHistoryStateChange);
@@ -112,13 +205,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const onSelectionChangeRef = useRef(onSelectionChange);
     const onSelectionActionPositionChangeRef = useRef(onSelectionActionPositionChange);
     const onScrollRatioChangeRef = useRef(onScrollRatioChange);
-    const activeCommentIdRef = useRef(activeCommentId);
     const collaborationBindingRef = useRef(collaborationBinding);
     const appliedCollaborationBindingRef = useRef(collaborationBinding);
-    const commentsEnabledRef = useRef(commentsEnabled);
-    const interfaceCopyRef = useRef(interfaceCopy);
     const compartmentsRef = useRef(createMarkdownEditorCompartments());
     const stateByFileIdRef = useRef(new Map<string, EditorState>());
+    const liveViewStateByFileIdRef = useRef(new Map<string, LiveEditorViewState>());
     const lastHistoryStateRef = useRef(EMPTY_EDITOR_HISTORY_STATE);
 
     useEffect(() => {
@@ -128,10 +219,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     useEffect(() => {
       bookmarksRef.current = bookmarks;
     }, [bookmarks]);
-
-    useEffect(() => {
-      commentAnchorsRef.current = commentAnchors;
-    }, [commentAnchors]);
 
     useEffect(() => {
       onBookmarksChangeRef.current = onBookmarksChange;
@@ -160,18 +247,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     useEffect(() => {
       onScrollRatioChangeRef.current = onScrollRatioChange;
     }, [onScrollRatioChange]);
-
-    useEffect(() => {
-      activeCommentIdRef.current = activeCommentId;
-    }, [activeCommentId]);
-
-    useEffect(() => {
-      commentsEnabledRef.current = commentsEnabled;
-    }, [commentsEnabled]);
-
-    useEffect(() => {
-      interfaceCopyRef.current = interfaceCopy;
-    }, [interfaceCopy]);
 
     useEffect(() => {
       collaborationBindingRef.current = collaborationBinding;
@@ -212,64 +287,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       }
     };
 
-    const reconfigureCommentDecorations = (view: EditorView, nextCommentAnchors: MarkdownCommentAnchor[]) => {
-      view.dispatch({
-        effects: [
-          compartmentsRef.current.commentAnchor.reconfigure(
-            commentsEnabledRef.current
-              ? createEditorCommentAnchorExtension(
-                  nextCommentAnchors,
-                  activeCommentIdRef.current,
-                  interfaceCopyRef.current,
-                  (commentId) => onOpenCommentRef.current?.(commentId),
-                )
-              : [],
-          ),
-        ],
-      });
-    };
-
-    const mapCommentAnchorsThroughDocumentChange = (view: EditorView, transactions: readonly Transaction[]) => {
-      const currentCommentAnchors = commentAnchorsRef.current;
-      if (currentCommentAnchors.length === 0) {
-        return;
-      }
-
-      const docLength = view.state.doc.length;
-      let changed = false;
-      const nextCommentAnchors = currentCommentAnchors
-        .map((anchor) => {
-          const start = clampEditorPosition(
-            transactions.reduce(
-              (mappedPosition, transaction) => transaction.changes.mapPos(mappedPosition, 1),
-              anchor.start,
-            ),
-            docLength,
-          );
-          const end = clampEditorPosition(
-            transactions.reduce(
-              (mappedPosition, transaction) => transaction.changes.mapPos(mappedPosition, -1),
-              anchor.end,
-            ),
-            docLength,
-          );
-          changed = changed || start !== anchor.start || end !== anchor.end;
-          return { ...anchor, start, end };
-        })
-        .filter((anchor) => anchor.end > anchor.start);
-
-      if (!changed) {
-        return;
-      }
-
-      commentAnchorsRef.current = nextCommentAnchors;
-      queueMicrotask(() => {
-        if (viewRef.current === view) {
-          reconfigureCommentDecorations(view, nextCommentAnchors);
-        }
-      });
-    };
-
     useImperativeHandle(ref, () => ({
       canRedo: () => {
         const view = viewRef.current;
@@ -308,18 +325,17 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       },
       getLineCount: () => viewRef.current?.state.doc.lines ?? value.split("\n").length,
       getScrollRatio: () => {
-        const scrollElement = viewRef.current?.scrollDOM;
-        return scrollElement ? getScrollRatio(scrollElement) : 0;
+        const view = viewRef.current;
+        return view ? getScrollRatio(getEditorScrollContext(view).scrollElement) : 0;
       },
       getViewportLineAnchor: () => {
         const view = viewRef.current;
         return view ? getEditorViewportLineAnchor(view) : null;
       },
       isScrolledToBottom: () => {
-        const scrollElement = viewRef.current?.scrollDOM;
-        if (!scrollElement) {
-          return false;
-        }
+        const view = viewRef.current;
+        if (!view) return false;
+        const { scrollElement } = getEditorScrollContext(view);
 
         return scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop <= 1;
       },
@@ -332,6 +348,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         const view = viewRef.current;
         const selection = view?.state.selection.main;
         return view && selection ? view.state.sliceDoc(selection.from, selection.to) : "";
+      },
+      getViewport: () => {
+        const view = viewRef.current;
+        return view ? getEditorViewport(view) : null;
       },
       getViewportLineNumber: () => {
         const view = viewRef.current;
@@ -362,10 +382,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
       },
       scrollToRatio: (ratio: number) => {
-        const scrollElement = viewRef.current?.scrollDOM;
-        if (scrollElement) {
-          scrollElementToRatio(scrollElement, ratio);
-        }
+        const view = viewRef.current;
+        if (view) scrollElementToRatio(getEditorScrollContext(view).scrollElement, ratio);
       },
       setSelectionRanges: (ranges) => {
         const view = viewRef.current;
@@ -406,6 +424,20 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
 
         dispatchEditorSelectionRange(view, from, to);
+      },
+      revealViewport: (position: number, offset = 0) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const clampedPosition = Math.max(0, Math.min(position, view.state.doc.length));
+        view.requestMeasure({
+          read: () => {
+            const { contentTop } = getEditorScrollContext(view);
+            return contentTop + view.lineBlockAt(clampedPosition).top + offset;
+          },
+          write: (scrollTop) => {
+            getEditorScrollContext(view).scrollElement.scrollTop = Math.max(0, scrollTop);
+          },
+        });
       },
       undo: () => {
         const view = viewRef.current;
@@ -472,8 +504,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
 
         mapBookmarksThroughDocumentChange(update.view, update.transactions);
-        mapCommentAnchorsThroughDocumentChange(update.view, update.transactions);
-
         if (!isExternalUpdate) {
           const patches = getEditorTextChangePatches(update.changes);
           onChangeRef.current(null, {
@@ -513,6 +543,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
       viewRef.current = view;
       appliedCollaborationBindingRef.current = collaborationBinding;
+      if (collaborationBinding) {
+        restoreLiveEditorViewState(
+          view,
+          collaborationBinding,
+          liveViewStateByFileIdRef.current.get(fileId),
+        );
+      }
       emitHistoryState(view);
       const handleScroll = () => {
         onScrollRatioChangeRef.current?.(getScrollRatio(view.scrollDOM));
@@ -523,7 +560,19 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         onSelectionChangeRef.current?.(undefined);
         onSelectionActionPositionChangeRef.current?.(null);
         view.scrollDOM.removeEventListener("scroll", handleScroll);
-        if (collaborationBindingRef.current) {
+        const appliedBinding = appliedCollaborationBindingRef.current;
+        if (appliedBinding) {
+          const liveViewState = captureLiveEditorViewState(view, appliedBinding);
+          if (liveViewState) {
+            liveViewStateByFileIdRef.current.delete(fileId);
+            liveViewStateByFileIdRef.current.set(fileId, liveViewState);
+            while (liveViewStateByFileIdRef.current.size > MAX_CACHED_LIVE_EDITOR_VIEW_STATES) {
+              const oldestFileId = liveViewStateByFileIdRef.current.keys().next().value;
+              if (typeof oldestFileId !== "string") break;
+              liveViewStateByFileIdRef.current.delete(oldestFileId);
+            }
+          }
+          appliedBinding.undoManager.stopCapturing();
           stateByFileIdRef.current.delete(fileId);
         } else {
           stateByFileIdRef.current.set(fileId, view.state);
@@ -549,6 +598,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       view.dispatch({
         effects: [
           compartmentsRef.current.collaboration.reconfigure([]),
+          compartmentsRef.current.history.reconfigure([]),
         ],
       });
       dispatchRemoteTextChange(
@@ -562,9 +612,19 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
               ? createEditorCollaborationExtensions(collaborationBinding)
               : [],
           ),
+          compartmentsRef.current.history.reconfigure(
+            collaborationBinding ? [] : history(),
+          ),
         ],
       });
       appliedCollaborationBindingRef.current = collaborationBinding;
+      if (collaborationBinding) {
+        restoreLiveEditorViewState(
+          view,
+          collaborationBinding,
+          liveViewStateByFileIdRef.current.get(fileId),
+        );
+      }
       emitHistoryState(view);
     }, [collaborationBinding, fileId]);
 
@@ -598,13 +658,24 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         effects: compartmentsRef.current.commentAnchor.reconfigure(
           commentsEnabled
             ? createEditorCommentAnchorExtension(
-                commentAnchors,
-                activeCommentId,
+                [],
+                null,
                 interfaceCopy,
                 (commentId) => onOpenCommentRef.current?.(commentId),
               )
             : [],
         ),
+      });
+    }, [commentsEnabled]);
+
+    useEffect(() => {
+      if (!commentsEnabled) return;
+      viewRef.current?.dispatch({
+        effects: setCommentAnchorDecorations.of({
+          commentAnchors,
+          activeCommentId,
+          copy: interfaceCopy,
+        }),
       });
     }, [activeCommentId, commentAnchors, commentsEnabled, interfaceCopy]);
 

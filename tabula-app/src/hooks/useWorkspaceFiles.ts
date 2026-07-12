@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
-import { useWorkspaceStore } from "../stores/workspaceStore";
+import {
+  getWorkspaceStoreForMode,
+  type WorkspaceStoreBinding,
+} from "../stores/workspaceStore";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import {
   getActiveWorkspaceFile,
@@ -16,6 +19,7 @@ type UseWorkspaceFilesOptions = {
   initialActiveFileId: string;
   readmeFileId: string;
   createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
+  store: WorkspaceStoreBinding;
 };
 
 export function useWorkspaceFiles({
@@ -25,23 +29,30 @@ export function useWorkspaceFiles({
   initialActiveFileId,
   readmeFileId,
   createFile,
+  store,
 }: UseWorkspaceFilesOptions) {
   useState(() => {
-    useWorkspaceStore.getState().initializeWorkspace({
-      files: initialFiles,
-      folders: initialFolders,
-      openFileIds: initialOpenFileIds,
-      activeFileId: initialActiveFileId,
-      readmeFileId,
-      createFile,
-    });
+    for (const storeMode of ["local", "room"] as const) {
+      const store = getWorkspaceStoreForMode(storeMode);
+      if (store.getState().initialized) continue;
+      store.getState().initializeWorkspace({
+        files: initialFiles,
+        folders: initialFolders,
+        openFileIds: initialOpenFileIds,
+        activeFileId: initialActiveFileId,
+        readmeFileId,
+        createFile,
+      });
+    }
     return true;
   });
 
-  const files = useWorkspaceStore((state) => state.files);
-  const folders = useWorkspaceStore((state) => state.folders);
-  const openFileIds = useWorkspaceStore((state) => state.openFileIds);
-  const activeFileId = useWorkspaceStore((state) => state.activeFileId);
+  const useActiveStore = store;
+
+  const files = useActiveStore((state) => state.files);
+  const folders = useActiveStore((state) => state.folders);
+  const openFileIds = useActiveStore((state) => state.openFileIds);
+  const activeFileId = useActiveStore((state) => state.activeFileId);
   const workspace = useMemo(
     () => ({
       files,
@@ -52,39 +63,33 @@ export function useWorkspaceFiles({
   );
   const openFiles = useMemo(() => getOpenWorkspaceFiles(workspace), [workspace]);
   const activeFile = useMemo(() => getActiveWorkspaceFile(workspace), [workspace]);
-  const selectFile = useWorkspaceStore((state) => state.selectFile);
-  const addFile = useWorkspaceStore((state) => state.addFile);
-  const addFolder = useWorkspaceStore((state) => state.addFolder);
-  const addFileFromContent = useWorkspaceStore((state) => state.addFileFromContent);
-  const activateRoomFile = useWorkspaceStore((state) => state.activateRoomFile);
-  const duplicateFile = useWorkspaceStore((state) => state.duplicateFile);
-  const renameFile = useWorkspaceStore((state) => state.renameFile);
-  const closeFile = useWorkspaceStore((state) => state.closeFile);
-  const deleteFile = useWorkspaceStore((state) => state.deleteFile);
-  const deleteFolder = useWorkspaceStore((state) => state.deleteFolder);
-  const moveFileToFolder = useWorkspaceStore((state) => state.moveFileToFolder);
-  const moveFolder = useWorkspaceStore((state) => state.moveFolder);
-  const renameFolder = useWorkspaceStore((state) => state.renameFolder);
-  const reorderFiles = useWorkspaceStore((state) => state.reorderFiles);
-  const moveFile = useWorkspaceStore((state) => state.moveFile);
-  const selectAdjacentFile = useWorkspaceStore((state) => state.selectAdjacentFile);
-  const replaceWorkspace = useWorkspaceStore((state) => state.replaceWorkspace);
-  const restoreFile = useWorkspaceStore((state) => state.restoreFile);
-  const restoreFolder = useWorkspaceStore((state) => state.restoreFolder);
-  const upsertHelpFile = useWorkspaceStore((state) => state.upsertHelpFile);
-  const setActiveFileBookmarks = useWorkspaceStore((state) => state.setActiveFileBookmarks);
-  const setActiveFileText = useWorkspaceStore((state) => state.setActiveFileText);
-  const setActiveFileViewMode = useWorkspaceStore((state) => state.setActiveFileViewMode);
-  const setActiveFileReadingWidth = useWorkspaceStore((state) => state.setActiveFileReadingWidth);
-  const setActiveFileLineWrapping = useWorkspaceStore((state) => state.setActiveFileLineWrapping);
-  const setActiveFileLineNumbers = useWorkspaceStore((state) => state.setActiveFileLineNumbers);
-  const commitActiveFileSplitRatio = useWorkspaceStore((state) => state.commitActiveFileSplitRatio);
-  const setFileText = useWorkspaceStore((state) => state.setFileText);
-  const setFileCollaborationStatus = useWorkspaceStore((state) => state.setFileCollaborationStatus);
-  const setFileRecoveryEvent = useWorkspaceStore((state) => state.setFileRecoveryEvent);
-  const setFolderCollaborationRoom = useWorkspaceStore((state) => state.setFolderCollaborationRoom);
-  const startFileCollaborationSession = useWorkspaceStore((state) => state.startFileCollaborationSession);
-  const stopFileCollaborationSession = useWorkspaceStore((state) => state.stopFileCollaborationSession);
+  const selectFile = useActiveStore((state) => state.selectFile);
+  const addFile = useActiveStore((state) => state.addFile);
+  const addFolder = useActiveStore((state) => state.addFolder);
+  const addFileFromContent = useActiveStore((state) => state.addFileFromContent);
+  const duplicateFile = useActiveStore((state) => state.duplicateFile);
+  const renameFile = useActiveStore((state) => state.renameFile);
+  const closeFile = useActiveStore((state) => state.closeFile);
+  const deleteFile = useActiveStore((state) => state.deleteFile);
+  const deleteFolder = useActiveStore((state) => state.deleteFolder);
+  const moveFileToFolder = useActiveStore((state) => state.moveFileToFolder);
+  const moveFolder = useActiveStore((state) => state.moveFolder);
+  const renameFolder = useActiveStore((state) => state.renameFolder);
+  const reorderFiles = useActiveStore((state) => state.reorderFiles);
+  const moveFile = useActiveStore((state) => state.moveFile);
+  const selectAdjacentFile = useActiveStore((state) => state.selectAdjacentFile);
+  const replaceWorkspace = useActiveStore((state) => state.replaceWorkspace);
+  const restoreFile = useActiveStore((state) => state.restoreFile);
+  const restoreFolder = useActiveStore((state) => state.restoreFolder);
+  const upsertHelpFile = useActiveStore((state) => state.upsertHelpFile);
+  const setActiveFileBookmarks = useActiveStore((state) => state.setActiveFileBookmarks);
+  const setActiveFileText = useActiveStore((state) => state.setActiveFileText);
+  const setActiveFileViewMode = useActiveStore((state) => state.setActiveFileViewMode);
+  const setActiveFileReadingWidth = useActiveStore((state) => state.setActiveFileReadingWidth);
+  const setActiveFileLineWrapping = useActiveStore((state) => state.setActiveFileLineWrapping);
+  const setActiveFileLineNumbers = useActiveStore((state) => state.setActiveFileLineNumbers);
+  const commitActiveFileSplitRatio = useActiveStore((state) => state.commitActiveFileSplitRatio);
+  const setFileText = useActiveStore((state) => state.setFileText);
 
   const getAvailableFileTitle = (baseTitle: string) => getAvailableWorkspaceFileTitle(files, baseTitle);
 
@@ -103,7 +108,6 @@ export function useWorkspaceFiles({
     addFile,
     addFolder,
     addFileFromContent,
-    activateRoomFile,
     addTemplateFile,
     duplicateFile,
     renameFile,
@@ -128,11 +132,6 @@ export function useWorkspaceFiles({
     setActiveFileLineNumbers,
     commitActiveFileSplitRatio,
     setFileText,
-    setFileCollaborationStatus,
-    setFileRecoveryEvent,
-    setFolderCollaborationRoom,
-    startFileCollaborationSession,
-    stopFileCollaborationSession,
     getAvailableFileTitle,
   };
 }

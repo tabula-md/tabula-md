@@ -4,6 +4,7 @@ import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import type { FileViewMode, WorkspaceFile } from "../workspaceStorage";
 import type { WorkspaceEditorDocumentRuntimeOwner } from "./editorDocumentRuntimeOwner";
+import type { ActiveRoomDocumentProjectionStore } from "../collaboration/runtime/ActiveRoomDocumentProjectionStore";
 import { useActiveDocumentRuntime } from "./useActiveDocumentRuntime";
 import { useEditorSearchController } from "../editor/useEditorSearchController";
 import { useSelectionCommentController } from "./useSelectionCommentController";
@@ -13,6 +14,8 @@ import { useWorkspaceScrollSync } from "./useWorkspaceScrollSync";
 type UseWorkspaceDocumentRuntimeOptions = {
   activeFile?: WorkspaceFile;
   editorDocumentRuntime: WorkspaceEditorDocumentRuntimeOwner;
+  isRoomSession: boolean;
+  roomDocumentProjectionStore: ActiveRoomDocumentProjectionStore;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   previewRef: RefObject<MarkdownPreviewHandle | null>;
   syncScrollingEnabled: boolean;
@@ -25,6 +28,8 @@ type UseWorkspaceDocumentRuntimeOptions = {
 export function useWorkspaceDocumentRuntime({
   activeFile,
   editorDocumentRuntime,
+  isRoomSession,
+  roomDocumentProjectionStore,
   editorRef,
   previewRef,
   syncScrollingEnabled,
@@ -34,8 +39,12 @@ export function useWorkspaceDocumentRuntime({
   onSetWorkspaceFileViewMode,
 }: UseWorkspaceDocumentRuntimeOptions) {
   const visibleText = useMemo(
-    () => (activeFile ? editorDocumentRuntime.getVisibleFileText(activeFile) : ""),
-    [activeFile, editorDocumentRuntime, visibleTextRevision],
+    () => activeFile
+      ? isRoomSession
+        ? roomDocumentProjectionStore.getText(activeFile.id) ?? ""
+        : editorDocumentRuntime.getVisibleFileText(activeFile)
+      : "",
+    [activeFile, editorDocumentRuntime, isRoomSession, roomDocumentProjectionStore, visibleTextRevision],
   );
   const activeDocument = useActiveDocumentRuntime(activeFile, {
     text: visibleText,

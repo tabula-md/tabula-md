@@ -3,11 +3,12 @@ import { FileTabs } from "./FileTabs";
 import { ShareTrigger } from "./ShareTrigger";
 import { TopChrome } from "./TopChrome";
 import type { Collaborator, ConnectionStatus } from "../collaboration";
+import type { FollowState } from "../collaboration/followModel";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getCollaboratorDisplayList } from "../collaboration/collabCollaborators";
 import {
-  isEmptyGeneratedLivePlaceholder,
+  type LocationRoom,
   type WorkspaceFile,
   type WorkspaceFolder,
 } from "../workspaceStorage";
@@ -25,6 +26,7 @@ export type WorkspaceTopChromeProps = {
   activeText: string;
   canStartSession: boolean;
   collaborators: Collaborator[];
+  followState: FollowState;
   connectionStatus: ConnectionStatus;
   copied: boolean;
   currentUserName: string;
@@ -36,7 +38,7 @@ export type WorkspaceTopChromeProps = {
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
-  roomFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   rightPanelOpen: boolean;
   shareOpen: boolean;
   startSessionUnavailableReason: string;
@@ -56,6 +58,7 @@ export type WorkspaceTopChromeProps = {
   onStopSession: () => void;
   onRetrySession: () => void;
   onToggleRightPanel: () => void;
+  onToggleFollowing: (actorId: string) => void;
   onToggleShare: () => void;
   onToggleWorkspaceMenu: () => void;
 };
@@ -65,6 +68,7 @@ export function WorkspaceTopChrome({
   activeText,
   canStartSession,
   collaborators,
+  followState,
   connectionStatus,
   copied,
   currentUserName,
@@ -76,7 +80,7 @@ export function WorkspaceTopChrome({
   jsonShare,
   language,
   openFiles,
-  roomFile,
+  room,
   rightPanelOpen,
   shareOpen,
   startSessionUnavailableReason,
@@ -96,19 +100,10 @@ export function WorkspaceTopChrome({
   onStopSession,
   onRetrySession,
   onToggleRightPanel,
+  onToggleFollowing,
   onToggleShare,
   onToggleWorkspaceMenu,
 }: WorkspaceTopChromeProps) {
-  const visibleFiles = useMemo(
-    () => files.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
-    [files],
-  );
-  const visibleOpenFiles = useMemo(
-    () => openFiles.filter((file) => !isEmptyGeneratedLivePlaceholder(file)),
-    [openFiles],
-  );
-  const visibleActiveFile =
-    activeFile && !isEmptyGeneratedLivePlaceholder(activeFile) ? activeFile : undefined;
   const displayedParticipants = useMemo(
     () => getCollaboratorDisplayList([identity, ...collaborators]),
     [collaborators, identity],
@@ -121,10 +116,11 @@ export function WorkspaceTopChrome({
 
   const fileTabs = (
     <FileTabs
-      files={visibleOpenFiles}
+      files={openFiles}
       folders={folders}
-      activeFile={visibleActiveFile}
+      activeFile={activeFile}
       collaborators={displayedCollaborators}
+      roomId={room?.roomId}
       language={language}
       onAddFile={onAddFile}
       onSelectFile={onSelectFile}
@@ -135,8 +131,7 @@ export function WorkspaceTopChrome({
     />
   );
 
-  const shareSubjectFile = activeFile ?? roomFile;
-  const shareControls = shareSubjectFile ? (
+  const shareControls = activeFile || room ? (
     <>
       <ShareTrigger
         connectionStatus={connectionStatus}
@@ -149,9 +144,9 @@ export function WorkspaceTopChrome({
       {shareOpen && (
         <Suspense fallback={null}>
           <ShareControls
-            activeFile={shareSubjectFile}
-            roomFile={roomFile}
-            files={visibleFiles}
+            activeFile={activeFile}
+            room={room}
+            files={files}
             activeText={activeText}
             language={language}
             currentUserName={currentUserName}
@@ -185,11 +180,14 @@ export function WorkspaceTopChrome({
       language={language}
       identity={displayedIdentity}
       collaborators={displayedCollaborators}
+      followState={followState}
+      activeDocumentId={activeFile?.id}
       activeText={activeText}
       fileTabs={fileTabs}
       shareControls={shareControls}
       onToggleWorkspaceMenu={onToggleWorkspaceMenu}
       onToggleRightPanel={onToggleRightPanel}
+      onToggleFollowing={onToggleFollowing}
     />
   );
 }

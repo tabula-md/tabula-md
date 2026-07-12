@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ConnectionStatus } from "../collaboration";
 import {
   getConfiguredJsonShareServiceUrl,
   getJsonShareImportRoute,
@@ -8,7 +9,7 @@ import {
   hasMeaningfulWorkspaceContent,
 } from "../share";
 import {
-  syncUrlForFile,
+  syncUrlForLocalWorkspace,
   type FileComment,
   type InitialWorkspaceSnapshot,
   type WorkspaceFile,
@@ -32,7 +33,7 @@ type UseJsonShareImportControllerArgs = {
   onBeforeWorkspaceBoundary?: () => void;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
   replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
-  resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
+  resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   showToast: (
     message: string,
     tone?: "neutral" | "error",
@@ -69,7 +70,7 @@ export function useJsonShareImportController({
     jsonShareImportCleanupRef.current = null;
     handledJsonShareRouteRef.current = null;
     setJsonShareImport(null);
-    syncUrlForFile(undefined, "replace");
+    syncUrlForLocalWorkspace("replace");
   });
 
   const replaceWorkspaceWithJsonShare = useEventCallback((workspace: WorkspaceState) => {
@@ -77,7 +78,7 @@ export function useJsonShareImportController({
     jsonShareImportCleanupRef.current = null;
     handledJsonShareRouteRef.current = null;
     onBeforeWorkspaceBoundary?.();
-    const nextActiveFile = replaceWorkspace(workspace);
+    replaceWorkspace(workspace);
     replaceCommentsByFileId(workspace.commentsByFileId);
     void writeIndexedDbWorkspace(workspace).catch((error: unknown) => {
       clientErrorReporter.report({
@@ -88,15 +89,15 @@ export function useJsonShareImportController({
       showToast("The copy opened, but it couldn’t be saved in this browser.", "error");
     });
     clearFileHistory();
-    resetCollaborationState(nextActiveFile?.roomId ? "connecting" : "idle");
+    resetCollaborationState("idle");
     closeFloatingChrome();
-    syncUrlForFile(nextActiveFile, "replace");
+    syncUrlForLocalWorkspace("replace");
     setJsonShareImport(null);
     showToast("Export copy opened.", "neutral", previousWorkspace ? {
       actionLabel: "Undo",
       onAction: () => {
         onBeforeWorkspaceBoundary?.();
-        const restoredActiveFile = replaceWorkspace(previousWorkspace);
+        replaceWorkspace(previousWorkspace);
         replaceCommentsByFileId(previousWorkspace.commentsByFileId);
         void writeIndexedDbWorkspace(previousWorkspace).catch((error: unknown) => {
           clientErrorReporter.report({
@@ -107,9 +108,9 @@ export function useJsonShareImportController({
           showToast("The previous workspace was restored but couldn’t be saved.", "error");
         });
         clearFileHistory();
-        resetCollaborationState(restoredActiveFile?.roomId ? "connecting" : "idle");
+        resetCollaborationState("idle");
         closeFloatingChrome();
-        syncUrlForFile(restoredActiveFile, "replace");
+        syncUrlForLocalWorkspace("replace");
         showToast("Previous workspace restored.");
       },
     } : undefined);

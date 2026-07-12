@@ -7,11 +7,11 @@ import {
   getWorkspaceChromeCopy,
   getWorkspaceMenuCopy,
 } from "../workspaceLocale";
-import type { WorkspaceFile } from "../workspaceStorage";
+import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 
 type UseShareDialogRuntimeOptions = {
   activeFile?: WorkspaceFile;
-  roomFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   activeText: string;
   canStartSession: boolean;
   files: WorkspaceFile[];
@@ -27,7 +27,7 @@ type UseShareDialogRuntimeOptions = {
 
 export function useShareDialogRuntime({
   activeFile,
-  roomFile,
+  room,
   activeText,
   canStartSession,
   files,
@@ -68,8 +68,8 @@ export function useShareDialogRuntime({
     jsonShareDisabledReason: jsonShare.disabledReason,
     jsonShareExporting: jsonShare.exporting,
     jsonShareUrl: jsonShare.url,
-    roomId: roomFile?.roomId ?? activeFile?.roomId,
-    shareUrl: roomFile?.shareUrl ?? activeFile?.shareUrl,
+    roomId: room?.roomId,
+    shareUrl: room?.shareUrl,
     startSessionUnavailableReason,
   });
 
@@ -101,14 +101,14 @@ export function useShareDialogRuntime({
   };
 
   const copyLocalAgentPrompt = async () => {
-    const promptActiveFile = activeFile && roomFile?.roomId && activeFile.roomId === roomFile.roomId
+    const promptActiveFile = activeFile
       ? { ...activeFile, text: activeText }
       : roomPromptFiles[0];
     const prompt = buildLocalAgentPrompt({
       activeFile: promptActiveFile,
       files: roomPromptFiles,
       instruction: "",
-      liveRoomUrl: isLiveConnected ? (roomFile?.shareUrl ?? activeFile?.shareUrl) : undefined,
+      liveRoomUrl: isLiveConnected ? room?.shareUrl : undefined,
       scope: "project",
     });
 

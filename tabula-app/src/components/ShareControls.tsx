@@ -5,12 +5,12 @@ import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { useShareDialogRuntime } from "../hooks/useShareDialogRuntime";
 import type { ConnectionStatus } from "../collaboration";
-import type { WorkspaceFile } from "../workspaceStorage";
+import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 import { ModalSurface } from "./ui/ModalSurface";
 
 type ShareControlsProps = {
   activeFile?: WorkspaceFile;
-  roomFile?: WorkspaceFile;
+  room?: LocationRoom | null;
   files: WorkspaceFile[];
   activeText: string;
   language: WorkspaceLanguage;
@@ -35,7 +35,7 @@ type ShareControlsProps = {
 
 export function ShareControls({
   activeFile,
-  roomFile,
+  room,
   files,
   activeText,
   language,
@@ -64,7 +64,7 @@ export function ShareControls({
       connectionStatus === "disconnected");
   const shareRuntime = useShareDialogRuntime({
     activeFile,
-    roomFile,
+    room,
     activeText,
     canStartSession: canStartSession && !isLive,
     files,

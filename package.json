@@ -16,7 +16,6 @@
     "build:core": "npm run build -w @tabula-md/tabula",
     "perf:preview-architecture": "npm run build:core && node scripts/preview-architecture-benchmark.mjs",
     "preview": "vite preview --host 0.0.0.0",
-    "pr:handoff": "node scripts/pr-handoff.mjs",
     "surface:check": "node scripts/public-surface-check.mjs",
     "boundary:check": "node scripts/check-boundaries.mjs",
     "test": "vitest run",
@@ -29,13 +28,12 @@
     "test:browser:collab": "npm run test:browser -- --suite=collaboration",
     "test:browser:collaboration-editor-torture": "npm run test:browser -- --suite=collaboration-editor-torture",
     "test:browser:collaboration-memory": "npm run test:browser -- --suite=collaboration-memory",
-    "test:browser:collaboration-soak": "VITE_TABULA_ROOM_URL=http://127.0.0.1:3012 npm run build && TABULA_TEST_ROOM_PORT=3012 TABULA_TEST_APP_MODE=preview TABULA_COLLAB_TORTURE_DOC_SIZE=150kb TABULA_COLLAB_TORTURE_SPLIT=1 TABULA_COLLAB_TORTURE_PEER_COUNT=2 TABULA_COLLAB_TORTURE_SOAK_MS=1800000 TABULA_COLLAB_TORTURE_SOAK_INTERVAL_MS=5000 TABULA_COLLAB_TORTURE_WRITER_SWITCH_INTERVAL=12 TABULA_COLLAB_TORTURE_CHECKPOINT_INTERVAL=0 npm run test:browser:collaboration-editor-torture",
+    "test:browser:collaboration-soak": "VITE_TABULA_ROOM_URL=http://127.0.0.1:3012 VITE_TABULA_FIREBASE_CONFIG='{\"apiKey\":\"tabula-local\",\"authDomain\":\"tabula-local.firebaseapp.com\",\"projectId\":\"tabula-local\",\"storageBucket\":\"tabula-local.appspot.com\",\"appId\":\"tabula-local\"}' VITE_TABULA_FIREBASE_EMULATOR_HOST=127.0.0.1 VITE_TABULA_FIRESTORE_EMULATOR_PORT=8080 VITE_TABULA_FIREBASE_STORAGE_EMULATOR_PORT=9199 npm run build && TABULA_TEST_ROOM_PORT=3012 TABULA_TEST_APP_MODE=preview TABULA_COLLAB_TORTURE_DOC_SIZE=150kb TABULA_COLLAB_TORTURE_SPLIT=1 TABULA_COLLAB_TORTURE_PEER_COUNT=3 TABULA_COLLAB_TORTURE_SOAK_MS=300000 TABULA_COLLAB_TORTURE_SOAK_INTERVAL_MS=5000 TABULA_COLLAB_TORTURE_WRITER_SWITCH_INTERVAL=12 TABULA_COLLAB_TORTURE_CHECKPOINT_INTERVAL=0 npm run test:browser:collaboration-editor-torture",
     "test:browser:json-share": "npm run test:browser -- --suite=json-share",
     "test:browser:performance": "npm run test:browser -- --suite=performance",
     "bundle:check": "node scripts/check-bundle-chunks.mjs",
     "test:surface-colors": "node scripts/check-surface-colors.mjs",
-    "lint:fast": "oxlint tabula-app/src packages/tabula/src scripts --deny-warnings",
-    "workflow:status": "node scripts/workflow-status.mjs"
+    "lint:fast": "oxlint tabula-app/src packages/tabula/src scripts --deny-warnings"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

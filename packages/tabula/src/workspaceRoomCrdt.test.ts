@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import {
   addWorkspaceRoomCommentReply,
@@ -7,7 +7,9 @@ import {
   createWorkspaceRoomFolder,
   deleteWorkspaceRoomNode,
   getWorkspaceRoomDocument,
+  getWorkspaceRoomDocumentComments,
   getWorkspaceRoomSnapshot,
+  getWorkspaceRoomStructureSnapshot,
   initializeWorkspaceRoomCrdt,
   moveWorkspaceRoomNode,
   renameWorkspaceRoomNode,
@@ -87,6 +89,39 @@ describe("workspace room CRDT", () => {
     expect(snapshot.documents.readme.slice(comment.selectionStart, comment.selectionEnd)).toBe("Hello");
   });
 
+  it("resolves comments for one requested document without projecting other documents", () => {
+    const room = createInitialRoom();
+    createWorkspaceRoomDocument(room, {
+      id: "notes",
+      title: "Notes.md",
+      parentId: "docs",
+      markdown: "Notes",
+    });
+    setWorkspaceRoomComment(room, {
+      id: "readme-comment",
+      fileId: "readme",
+      body: "README",
+      createdAt: "2026-07-10T00:00:01.000Z",
+      resolved: false,
+      selectionStart: 0,
+      selectionEnd: 1,
+    });
+    setWorkspaceRoomComment(room, {
+      id: "notes-comment",
+      fileId: "notes",
+      body: "Notes",
+      createdAt: "2026-07-10T00:00:00.000Z",
+      resolved: false,
+      selectionStart: 0,
+      selectionEnd: 1,
+    });
+
+    expect(getWorkspaceRoomDocumentComments(room, "readme")).toEqual([
+      expect.objectContaining({ id: "readme-comment", fileId: "readme" }),
+    ]);
+    expect(getWorkspaceRoomDocumentComments(room, "missing")).toEqual([]);
+  });
+
   it("converges concurrent structure and text changes without resurrecting deleted nodes", () => {
     const first = createInitialRoom();
     const second = createWorkspaceRoomCrdt({ roomId: "room-1" });
@@ -117,6 +152,23 @@ describe("workspace room CRDT", () => {
     const snapshot = getWorkspaceRoomSnapshot(room);
     expect(snapshot).not.toHaveProperty("activeDocumentId");
     expect(snapshot.nodes.find((node) => node.id === "readme")?.title).toBe("Guide.md");
+  });
+
+  it("projects workspace structure without materializing document bodies", () => {
+    const room = createInitialRoom();
+    const text = getWorkspaceRoomDocument(room, "readme") as Y.Text & { toString(): string };
+    const toString = vi.spyOn(text, "toString");
+
+    const structure = getWorkspaceRoomStructureSnapshot(room);
+
+    expect(structure.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "docs", type: "folder" }),
+      expect.objectContaining({ id: "readme", type: "document" }),
+    ]));
+    expect(structure).not.toHaveProperty("documents");
+    expect(structure).not.toHaveProperty("commentsByFileId");
+    expect(toString).not.toHaveBeenCalled();
+    toString.mockRestore();
   });
 
   it("rejects orphaned nodes and invalid comment content at the shared contract boundary", () => {

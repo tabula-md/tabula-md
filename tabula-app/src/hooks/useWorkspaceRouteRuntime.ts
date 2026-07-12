@@ -2,24 +2,19 @@ import { useEffect } from "react";
 import {
   getRoomFromLocation,
   type LocationRoom,
-  type WorkspaceFile,
 } from "../workspaceStorage";
 
 type UseWorkspaceRouteRuntimeOptions = {
-  activeFileId: string;
-  activateRoomFile: (room: LocationRoom) => void;
-  files: WorkspaceFile[];
-  selectFile: (fileId: string) => void;
+  activateRoomWorkspace: (room: LocationRoom) => void;
+  isRoomSession: boolean;
   onBeforeWorkspaceBoundary?: () => void;
   onLeaveRoom?: () => void;
   onRouteWorkspaceChange: () => void;
 };
 
 export function useWorkspaceRouteRuntime({
-  activeFileId,
-  activateRoomFile,
-  files,
-  selectFile,
+  activateRoomWorkspace,
+  isRoomSession,
   onBeforeWorkspaceBoundary,
   onLeaveRoom,
   onRouteWorkspaceChange,
@@ -27,7 +22,7 @@ export function useWorkspaceRouteRuntime({
   useEffect(() => {
     const activateRoomFromLocation = (room: LocationRoom) => {
       onBeforeWorkspaceBoundary?.();
-      activateRoomFile(room);
+      activateRoomWorkspace(room);
       onRouteWorkspaceChange();
     };
 
@@ -38,30 +33,19 @@ export function useWorkspaceRouteRuntime({
         return;
       }
 
-      const currentFile = files.find((file) => file.id === activeFileId);
-      if (!currentFile?.roomId) {
-        onLeaveRoom?.();
-        return;
-      }
-
-      const localFile = files.find((file) => !file.roomId) ?? files[0];
-      if (localFile) {
-        onBeforeWorkspaceBoundary?.();
-        onLeaveRoom?.();
-        selectFile(localFile.id);
-        onRouteWorkspaceChange();
-      }
+      if (!isRoomSession) return;
+      onBeforeWorkspaceBoundary?.();
+      onLeaveRoom?.();
+      onRouteWorkspaceChange();
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [
-    activeFileId,
-    activateRoomFile,
-    files,
+    activateRoomWorkspace,
+    isRoomSession,
     onRouteWorkspaceChange,
     onBeforeWorkspaceBoundary,
     onLeaveRoom,
-    selectFile,
   ]);
 }

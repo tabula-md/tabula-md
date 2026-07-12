@@ -26,6 +26,25 @@ describe("room checkpoint crypto", () => {
     await expect(decryptWorkspaceRoomCheckpoint({ encryptedCheckpoint, roomId: "room-2", roomKey })).rejects.toThrow();
   });
 
+  it("does not expose room keys or local paths in checkpoint ciphertext", async () => {
+    const roomKey = generateEncryptionKey();
+    const doc = new Y.Doc();
+    const localPath = "/Users/example/private/launch-plan.md";
+    doc.getText("markdown").insert(0, `${localPath}\nConfidential launch plan`);
+
+    const encryptedCheckpoint = await encryptWorkspaceRoomCheckpoint({
+      roomId: "room-security-boundary",
+      update: Y.encodeStateAsUpdate(doc),
+      roomKey,
+    });
+    const serialized = new TextDecoder().decode(encryptedCheckpoint);
+
+    expect(serialized).not.toContain(localPath);
+    expect(serialized).not.toContain("Confidential launch plan");
+    expect(serialized).not.toContain(roomKey);
+    doc.destroy();
+  });
+
   it("persists a complete encrypted workspace before a live session starts", async () => {
     const roomKey = generateEncryptionKey();
     const saveEncryptedCheckpoint = vi.fn<RoomCheckpointStore["saveEncryptedCheckpoint"]>()

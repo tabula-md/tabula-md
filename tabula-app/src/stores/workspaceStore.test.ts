@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   resetWorkspaceStoreForTests,
+  useRoomWorkspaceStore,
   useWorkspaceStore,
 } from "./workspaceStore";
 import { createWorkspaceRootFolder, type WorkspaceFile } from "../workspaceStorage";
-
-const VALID_ROOM_KEY = "A".repeat(43);
 
 const createTestFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
   id: overrides.id ?? `file-${index}`,
@@ -17,7 +16,6 @@ const createTestFile = (index: number, overrides: Partial<WorkspaceFile> = {}): 
   lineWrapping: overrides.lineWrapping ?? true,
   lineNumbers: overrides.lineNumbers ?? true,
   bookmarks: overrides.bookmarks ?? [],
-  connectionStatus: overrides.connectionStatus ?? "idle",
   ...overrides,
 });
 
@@ -52,10 +50,34 @@ describe("workspace store", () => {
     resetWorkspaceStoreForTests();
   });
 
-  it("keeps the v6 folder tree when the workspace is initialized", () => {
+  it("keeps the v7 folder tree when the workspace is initialized", () => {
     initializeWorkspaceStore();
 
     expect(useWorkspaceStore.getState().folders).toEqual([createWorkspaceRootFolder()]);
+  });
+
+  it("keeps local and room workspace records in separate stores", () => {
+    const { draft } = initializeWorkspaceStore();
+    useRoomWorkspaceStore.getState().initializeWorkspace({
+      folders: [createWorkspaceRootFolder()],
+      files: [{ ...draft, id: "room-draft", text: "" }],
+      openFileIds: ["room-draft"],
+      activeFileId: "room-draft",
+      readmeFileId: "",
+      createFile: createTestFile,
+    });
+
+    useRoomWorkspaceStore.getState().renameFile("room-draft", "Shared.md");
+
+    expect(useRoomWorkspaceStore.getState().files).toEqual([
+      expect.objectContaining({ id: "room-draft", title: "Shared.md", text: "" }),
+    ]);
+    expect(useWorkspaceStore.getState().files).toContainEqual(
+      expect.objectContaining({ id: draft.id, title: draft.title, text: draft.text }),
+    );
+    expect(useWorkspaceStore.getState().files).not.toContainEqual(
+      expect.objectContaining({ id: "room-draft" }),
+    );
   });
 
   it("updates active file text and layout through explicit actions", () => {
@@ -93,13 +115,12 @@ describe("workspace store", () => {
     });
   });
 
-  it("tracks folder room membership independently from open files", () => {
+  it("creates folders without session-specific metadata", () => {
     initializeWorkspaceStore();
-    const folder = useWorkspaceStore.getState().addFolder("Shared notes", undefined, "room-1");
-    expect(folder?.roomId).toBe("room-1");
+    const folder = useWorkspaceStore.getState().addFolder("Notes");
 
-    useWorkspaceStore.getState().setFolderCollaborationRoom(folder!.id);
-    expect(useWorkspaceStore.getState().folders.find(({ id }) => id === folder?.id)?.roomId).toBeUndefined();
+    expect(folder).toMatchObject({ title: "Notes", parentId: "workspace-root" });
+    expect(Object.keys(folder ?? {})).not.toContain("roomId");
   });
 
   it("uses the lowest available temporary title in the current folder", () => {
@@ -158,42 +179,20 @@ describe("workspace store", () => {
     });
   });
 
-  it("duplicates live workspace documents inside the same room", () => {
+  it("duplicates document content and local display preferences", () => {
     const { draft } = initializeWorkspaceStore();
-    const shareUrl = `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`;
-    useWorkspaceStore.getState().startFileCollaborationSession(draft.id, "room-123456", shareUrl);
-    useWorkspaceStore.getState().setFileCollaborationStatus(draft.id, "connected");
 
     const duplicate = useWorkspaceStore.getState().duplicateFile(draft.id);
 
     expect(duplicate).toMatchObject({
-      roomId: "room-123456",
-      shareUrl,
-      connectionStatus: "connected",
+      text: draft.text,
+      viewMode: draft.viewMode,
+      readingWidth: draft.readingWidth,
     });
   });
 
-  it("opens a live room route without creating a placeholder file", () => {
-    initializeWorkspaceStore();
-
-    const liveFile = useWorkspaceStore.getState().activateRoomFile({
-      roomId: "room-123456",
-      shareUrl: `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
-    });
-
-    expect(liveFile).toBeUndefined();
-    expect(useWorkspaceStore.getState().activeFileId).toBe("");
-    expect(useWorkspaceStore.getState().openFileIds).toEqual([]);
-    expect(useWorkspaceStore.getState().files).toEqual([]);
-  });
-
-  it("does not rename live room documents from remote text changes", () => {
+  it("does not derive document titles from text changes", () => {
     const { draft } = initializeWorkspaceStore();
-    useWorkspaceStore.getState().startFileCollaborationSession(
-      draft.id,
-      "room-123456",
-      `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
-    );
 
     useWorkspaceStore.getState().setFileText(
       draft.id,
@@ -206,22 +205,6 @@ title: Product Requirements
     );
 
     expect(useWorkspaceStore.getState().files.find((file) => file.id === draft.id)?.title).toBe("Draft.md");
-  });
-
-  it("keeps user-renamed live room titles when remote text changes", () => {
-    const { draft } = initializeWorkspaceStore();
-    useWorkspaceStore.getState().startFileCollaborationSession(
-      draft.id,
-      "room-123456",
-      `https://tabula.test/#room=room-123456,${VALID_ROOM_KEY}`,
-    );
-
-    useWorkspaceStore.getState().renameFile(draft.id, "Shared Notes");
-    useWorkspaceStore.getState().setFileText(draft.id, "# Product Requirements");
-
-    expect(useWorkspaceStore.getState().files.find((file) => file.id === draft.id)?.title).toBe(
-      "Shared Notes.md",
-    );
   });
 
   it("replaces an imported workspace and returns the next active file", () => {
@@ -322,39 +305,14 @@ title: Product Requirements
     expect(useWorkspaceStore.getState().activeFileId).toBe(helpFile.id);
   });
 
-  it("keeps collaboration updates behind explicit store actions", () => {
+  it("keeps the workspace store free of room session state", () => {
     const { draft } = initializeWorkspaceStore();
 
-    const liveFile = useWorkspaceStore
-      .getState()
-      .startFileCollaborationSession(draft.id, "room-123", `https://tabula.test/#room=room-123,${VALID_ROOM_KEY}`);
     useWorkspaceStore.getState().setFileText(draft.id, "Remote text");
-    useWorkspaceStore.getState().setFileCollaborationStatus(draft.id, "connected");
-    useWorkspaceStore.getState().setFileRecoveryEvent(draft.id, {
-      type: "reconnected",
-      message: "Recovered",
-      createdAt: "2026-06-23T00:00:01.000Z",
-    });
+    const storedFile = useWorkspaceStore.getState().files.find((file) => file.id === draft.id);
 
-    expect(liveFile).toMatchObject({
-      roomId: "room-123",
-      shareUrl: `https://tabula.test/#room=room-123,${VALID_ROOM_KEY}`,
-      connectionStatus: "connecting",
-    });
-    expect(useWorkspaceStore.getState().files.find((file) => file.id === draft.id)).toMatchObject({
-      text: "Remote text",
-      connectionStatus: "connected",
-      lastRecoveryType: "reconnected",
-      lastRecoveryMessage: "Recovered",
-      lastRecoveryAt: "2026-06-23T00:00:01.000Z",
-    });
-
-    useWorkspaceStore.getState().stopFileCollaborationSession(draft.id);
-
-    expect(useWorkspaceStore.getState().files.find((file) => file.id === draft.id)).toMatchObject({
-      roomId: undefined,
-      shareUrl: undefined,
-      connectionStatus: "idle",
-    });
+    expect(storedFile?.text).toBe("Remote text");
+    expect(Object.keys(storedFile ?? {})).not.toContain("roomId");
+    expect(Object.keys(storedFile ?? {})).not.toContain("connectionStatus");
   });
 });

@@ -11,6 +11,7 @@ describe("status bar view model", () => {
       }),
     ).toEqual({
       label: "로컬 저장됨",
+      tone: "saved",
       visible: true,
     });
   });
@@ -20,12 +21,14 @@ describe("status bar view model", () => {
       getStatusBarSaveState({ isLive: true, statusLabel: "Connecting" }),
     ).toEqual({
       label: "Connecting",
+      tone: "saved",
       visible: false,
     });
     expect(
       getStatusBarSaveState({ isLive: true, statusLabel: "Live session" }),
     ).toEqual({
       label: "Live session",
+      tone: "saved",
       visible: false,
     });
   });
@@ -38,6 +41,7 @@ describe("status bar view model", () => {
       }),
     ).toEqual({
       label: "Reconnecting",
+      tone: "attention",
       visible: true,
     });
 
@@ -48,6 +52,7 @@ describe("status bar view model", () => {
       }),
     ).toEqual({
       label: "Connection failed",
+      tone: "attention",
       visible: true,
     });
 
@@ -59,6 +64,15 @@ describe("status bar view model", () => {
       }),
     ).toEqual({
       label: "Room 연결 끊김",
+      tone: "attention",
+      visible: true,
+    });
+
+    expect(
+      getStatusBarSaveState({ isLive: true, statusLabel: "Changes aren’t backed up" }),
+    ).toEqual({
+      label: "Changes aren’t backed up",
+      tone: "attention",
       visible: true,
     });
   });

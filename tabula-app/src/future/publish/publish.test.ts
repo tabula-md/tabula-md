@@ -12,8 +12,6 @@ import {
   unpublishServerPublishedSnapshot,
 } from "./publish";
 
-const VALID_ROOM_KEY = "A".repeat(43);
-
 describe("publish outputs", () => {
   const files: WorkspaceFile[] = [
     createWorkspaceFile(1, {
@@ -184,15 +182,7 @@ Start here.`,
   });
 
   it("creates server-backed publish snapshots with sanitized payload and service URLs", async () => {
-    const liveFiles: WorkspaceFile[] = [
-      {
-        ...files[0],
-        roomId: "room-123",
-        shareUrl: `https://tabula.md/#room=room-123,${VALID_ROOM_KEY}`,
-        connectionStatus: "connected",
-      },
-      files[1],
-    ];
+    const snapshotFiles: WorkspaceFile[] = files;
     const commentsByFileId = {
       prd: [
         {
@@ -269,7 +259,7 @@ Start here.`,
       origin: "https://tabula.md",
       scope: "project",
       ownerName: "Taeha",
-      files: liveFiles,
+      files: snapshotFiles,
       activeFileId: "prd",
       commentsByFileId,
       fetchImpl: fetchMock,

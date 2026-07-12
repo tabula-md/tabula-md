@@ -4,16 +4,13 @@ import type { FileHistory } from "./useWorkspaceActiveFileEditor";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import { getNewFilePreferenceOverrides } from "../workspaceIoModel";
 import type { RenameFileResult } from "@tabula-md/tabula";
+import type { ConnectionStatus } from "../collaboration";
 import {
   findWorkspaceAboutFile,
   getWorkspaceAboutFileDraft,
   removeRecordKey,
 } from "../workspaceFileRuntimeModel";
-import {
-  syncUrlForFile,
-  type FileComment,
-  type WorkspaceFile,
-} from "../workspaceStorage";
+import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 
 type ShowToast = (
   message: string,
@@ -31,29 +28,9 @@ type CloseFileResult = {
   nextActiveFile?: WorkspaceFile;
 };
 
-export const getLiveRoomFileOverrides = (
-  activeFile?: Pick<
-    WorkspaceFile,
-    "roomId" | "shareUrl" | "connectionStatus"
-  >,
-): Partial<WorkspaceFile> => {
-  if (!activeFile?.roomId || !activeFile.shareUrl) {
-    return {};
-  }
-
-  return {
-    roomId: activeFile.roomId,
-    shareUrl: activeFile.shareUrl,
-    connectionStatus: activeFile.connectionStatus ?? "idle",
-    lastRecoveryType: undefined,
-    lastRecoveryMessage: undefined,
-    lastRecoveryAt: undefined,
-  };
-};
-
 type UseWorkspaceFileActionsArgs = {
   activeFile?: WorkspaceFile;
-  roomFile?: WorkspaceFile;
+  isRoomSession: boolean;
   activeFileId: string;
   addFileFromContent: (
     title: string,
@@ -72,11 +49,18 @@ type UseWorkspaceFileActionsArgs = {
   historyByFileId: Record<string, FileHistory>;
   openFileIds: string[];
   onBeforeWorkspaceBoundary?: () => void;
+  onFileCreated?: (file: WorkspaceFile) => boolean;
+  onFileContentReplaced?: (file: WorkspaceFile) => boolean;
+  onFileDeleted?: (file: WorkspaceFile) => boolean;
+  onFileRenamed?: (fileId: string, title: string) => boolean;
+  onFileRestored?: (file: WorkspaceFile, comments: FileComment[]) => boolean;
+  readFileComments?: (fileId: string) => FileComment[];
+  readFileText?: (fileId: string) => string | null;
   preferences: WorkspacePreferences;
   queueEditorFocus: () => void;
   renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
-  resetCollaborationState: (nextStatus: WorkspaceFile["connectionStatus"]) => void;
+  resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   restoreFile: (input: {
     file: WorkspaceFile;
     fileIndex: number;
@@ -92,7 +76,7 @@ type UseWorkspaceFileActionsArgs = {
 
 export function useWorkspaceFileActions({
   activeFile,
-  roomFile,
+  isRoomSession,
   activeFileId,
   addFileFromContent,
   addWorkspaceFileAction,
@@ -106,6 +90,13 @@ export function useWorkspaceFileActions({
   historyByFileId,
   openFileIds,
   onBeforeWorkspaceBoundary,
+  onFileCreated,
+  onFileContentReplaced,
+  onFileDeleted,
+  onFileRenamed,
+  onFileRestored,
+  readFileComments,
+  readFileText,
   preferences,
   queueEditorFocus,
   renameFile,
@@ -118,11 +109,6 @@ export function useWorkspaceFileActions({
   showToast,
   upsertHelpFile,
 }: UseWorkspaceFileActionsArgs) {
-  const syncSelectedFileUrl = (file?: WorkspaceFile, mode: "push" | "replace" = "push") => {
-    if (roomFile?.roomId && !file?.roomId) return;
-    syncUrlForFile(file, mode);
-  };
-
   const selectFile = (fileId: string) => {
     onBeforeWorkspaceBoundary?.();
     const nextFile = selectWorkspaceFileAction(fileId);
@@ -131,28 +117,41 @@ export function useWorkspaceFileActions({
     }
 
     closeFloatingChrome();
-    syncSelectedFileUrl(nextFile);
   };
 
-  const createFile = (collaborationOverrides: Partial<WorkspaceFile>) => {
+  const createFile = () => {
     onBeforeWorkspaceBoundary?.();
     queueEditorFocus();
     const nextFile = addWorkspaceFileAction({
       ...getNewFilePreferenceOverrides(preferences),
-      ...collaborationOverrides,
     });
+    if (isRoomSession && onFileCreated && !onFileCreated(nextFile)) {
+      deleteWorkspaceFileAction(nextFile.id);
+      showToast("This document couldn’t be added to the live workspace.", "error");
+      return undefined;
+    }
     closeFloatingChrome();
-    syncSelectedFileUrl(nextFile);
     return nextFile;
   };
 
-  const addFile = () => createFile(getLiveRoomFileOverrides(roomFile ?? activeFile));
+  const addFile = createFile;
 
   const openHelpFile = () => {
     onBeforeWorkspaceBoundary?.();
-    const nextFile = upsertHelpFile(helpMarkdown);
+    const existingHelpFile = files.find((file) => file.title.trim().toLowerCase() === "help.md");
+    const nextFile = existingHelpFile
+      ? upsertHelpFile(helpMarkdown)
+      : addFileFromContent("HELP.md", helpMarkdown, "preview");
+    if (isRoomSession && existingHelpFile && onFileContentReplaced && !onFileContentReplaced(nextFile)) {
+      showToast("Help couldn’t be refreshed in the live workspace.", "error");
+      return;
+    }
+    if (isRoomSession && !existingHelpFile && onFileCreated && !onFileCreated(nextFile)) {
+      deleteWorkspaceFileAction(nextFile.id);
+      showToast("Help couldn’t be added to the live workspace.", "error");
+      return;
+    }
     closeFloatingChrome();
-    syncSelectedFileUrl(nextFile);
   };
 
   const openAboutFile = () => {
@@ -168,15 +167,26 @@ export function useWorkspaceFileActions({
         readmeDraft.overrides,
       );
 
+    if (isRoomSession && !readmeFile && onFileCreated && !onFileCreated(nextFile)) {
+      deleteWorkspaceFileAction(nextFile.id);
+      showToast("About couldn’t be added to the live workspace.", "error");
+      return;
+    }
+
     selectWorkspaceFileAction(nextFile.id);
     closeFloatingChrome();
-    syncSelectedFileUrl(nextFile);
   };
 
   const renameWorkspaceFileAction = (fileId: string, nextRawTitle: string) => {
+    const previousTitle = files.find((file) => file.id === fileId)?.title;
     const result = renameFile(fileId, nextRawTitle);
     if (!result.ok) {
       showToast(result.message, "error");
+      return result;
+    }
+    if (isRoomSession && onFileRenamed && !onFileRenamed(fileId, result.title)) {
+      if (previousTitle) renameFile(fileId, previousTitle);
+      showToast("This document couldn’t be renamed in the live workspace.", "error");
     }
     return result;
   };
@@ -188,18 +198,31 @@ export function useWorkspaceFileActions({
     if (!nextFile) {
       return;
     }
+    if (isRoomSession && onFileCreated && !onFileCreated(nextFile)) {
+      deleteWorkspaceFileAction(nextFile.id);
+      showToast("This document couldn’t be duplicated in the live workspace.", "error");
+      return;
+    }
 
     closeFloatingChrome();
-    syncSelectedFileUrl(nextFile);
     showToast("File duplicated.");
   };
 
   const deleteFile = (fileId: string) => {
     onBeforeWorkspaceBoundary?.();
-    const deletedFile = files.find((file) => file.id === fileId);
-    if (!deletedFile) {
+    const currentFile = files.find((file) => file.id === fileId);
+    if (!currentFile) {
       return;
     }
+    const roomText = isRoomSession ? readFileText?.(fileId) : undefined;
+    if (isRoomSession && roomText == null) {
+      showToast("This document isn’t ready to delete yet.", "error");
+      return;
+    }
+    const deletedFile: WorkspaceFile = {
+      ...currentFile,
+      text: roomText ?? currentFile.text,
+    };
 
     const deletedFileIndex = Math.max(
       0,
@@ -207,8 +230,14 @@ export function useWorkspaceFileActions({
     );
     const previousOpenFileIds = openFileIds;
     const previousActiveFileId = activeFile?.id ?? activeFileId;
-    const deletedComments = commentsByFileId[fileId];
+    const deletedComments = isRoomSession
+      ? readFileComments?.(fileId) ?? []
+      : commentsByFileId[fileId];
     const deletedHistory = historyByFileId[fileId];
+    if (isRoomSession && onFileDeleted && !onFileDeleted(deletedFile)) {
+      showToast("This document couldn’t be deleted from the live workspace.", "error");
+      return;
+    }
     const result = deleteWorkspaceFileAction(fileId);
     if (!result) {
       return;
@@ -221,13 +250,9 @@ export function useWorkspaceFileActions({
 
     if (result.closedActiveFile) {
       closeFloatingChrome();
-
-      if (result.nextActiveFile) {
-        syncSelectedFileUrl(result.nextActiveFile);
-      } else {
-        if (!roomFile?.roomId) {
+      if (!result.nextActiveFile) {
+        if (!isRoomSession) {
           resetCollaborationState("idle");
-          syncSelectedFileUrl(undefined, "replace");
         }
       }
     }
@@ -237,13 +262,22 @@ export function useWorkspaceFileActions({
       onAction: () => {
         const shouldActivateRestoredFile = previousActiveFileId === deletedFile.id;
         restoreFile({
-          file: deletedFile,
+          file: isRoomSession ? { ...deletedFile, text: "" } : deletedFile,
           fileIndex: deletedFileIndex,
           previousOpenFileIds,
           activate: shouldActivateRestoredFile,
         });
+        if (
+          isRoomSession &&
+          onFileRestored &&
+          !onFileRestored(deletedFile, deletedComments ?? [])
+        ) {
+          deleteWorkspaceFileAction(deletedFile.id);
+          showToast("This document couldn’t be restored to the live workspace.", "error");
+          return;
+        }
         if (shouldActivateRestoredFile) {
-          syncSelectedFileUrl(deletedFile);
+          selectWorkspaceFileAction(deletedFile.id);
         }
         if (deletedComments?.length) {
           replaceCommentsByFileId({
@@ -271,15 +305,10 @@ export function useWorkspaceFileActions({
 
     if (result.closedActiveFile) {
       closeFloatingChrome();
+      if (result.nextActiveFile) return;
 
-      if (result.nextActiveFile) {
-        syncSelectedFileUrl(result.nextActiveFile);
-        return;
-      }
-
-      if (!roomFile?.roomId) {
+      if (!isRoomSession) {
         resetCollaborationState("idle");
-        syncSelectedFileUrl(undefined, "replace");
       }
     }
   };
@@ -289,7 +318,6 @@ export function useWorkspaceFileActions({
     const nextFile = selectAdjacentWorkspaceFileAction(direction);
     if (nextFile) {
       closeFloatingChrome();
-      syncSelectedFileUrl(nextFile);
     }
   };
 

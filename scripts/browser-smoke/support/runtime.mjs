@@ -194,7 +194,7 @@ const waitForSelectionLayer = async (page, { minSegments = 1, popoverVisible } =
   await page.waitForFunction(
     ({ minSegments, popoverVisible }) => {
       const surface = document.querySelector(".editor-surface");
-      const segmentCount = document.querySelectorAll(".cm-user-selection-segment").length;
+      const segmentCount = document.querySelectorAll(".cm-selectionLayer .cm-selectionBackground").length;
       const popover = document.querySelector(".selection-comment-popover");
       const hasPopoverState = popoverVisible === undefined || Boolean(popover) === popoverVisible;
       return surface?.classList.contains("has-text-selection") && segmentCount >= minSegments && hasPopoverState;

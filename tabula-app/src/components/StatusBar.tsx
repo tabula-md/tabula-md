@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, TriangleAlert } from "lucide-react";
 import { getStatusBarSaveState } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
@@ -52,8 +52,8 @@ export function StatusBar({
     >
       <div className="status-bar-right">
         {saveState.visible && (
-          <span className="status-save-state">
-            <Check size={14} />
+          <span className={`status-save-state ${saveState.tone === "attention" ? "attention" : ""}`}>
+            {saveState.tone === "attention" ? <TriangleAlert size={14} /> : <Check size={14} />}
             <span>{saveState.label}</span>
           </span>
         )}

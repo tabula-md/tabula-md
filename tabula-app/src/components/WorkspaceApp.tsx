@@ -7,7 +7,6 @@ import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { WorkspaceLoadingSurface } from "./WorkspaceLoadingSurface";
 import { useWorkspaceRuntime } from "../hooks/useWorkspaceRuntime";
-import { isEmptyGeneratedLivePlaceholder } from "../workspaceStorage";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 
 export function WorkspaceApp() {
@@ -25,11 +24,6 @@ export function WorkspaceApp() {
     workbenchProps,
   } = useWorkspaceRuntime();
   const { activeFile, ...documentWorkbenchProps } = workbenchProps;
-  const activeFileIsLivePlaceholder = Boolean(activeFile && isEmptyGeneratedLivePlaceholder(activeFile));
-  const liveRoomSurfaceState =
-    liveRoomOpenState === "idle" && activeFileIsLivePlaceholder
-      ? "opening"
-      : liveRoomOpenState;
 
   if (localWorkspaceOpening) return <WorkspaceLoadingSurface />;
 
@@ -48,9 +42,9 @@ export function WorkspaceApp() {
             role={activeFile ? "tabpanel" : undefined}
             aria-labelledby={activeFile ? getWorkspaceTabId(activeFile.id) : undefined}
           >
-            {liveRoomOpenState !== "idle" || activeFileIsLivePlaceholder ? (
+            {liveRoomOpenState !== "idle" ? (
               <LiveRoomLoadingSurface
-                state={liveRoomSurfaceState === "idle" ? "opening" : liveRoomSurfaceState}
+                state={liveRoomOpenState}
                 {...liveRoomLoadingProps}
               />
             ) : activeFile ? (

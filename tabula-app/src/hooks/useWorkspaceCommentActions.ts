@@ -56,7 +56,6 @@ type UseWorkspaceCommentActionsArgs = {
   }) => FileComment | null;
   createId: () => string;
   files: WorkspaceFile[];
-  focusedCommentId: string | null;
   getSelectedMarkdownAnchor: () => {
     start: number;
     end: number;
@@ -93,7 +92,6 @@ export function useWorkspaceCommentActions({
   createFileComment,
   createId,
   files,
-  focusedCommentId,
   getSelectedMarkdownAnchor,
   getSelectedMarkdownExcerpt,
   previewBody,

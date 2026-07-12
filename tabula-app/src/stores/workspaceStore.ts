@@ -21,11 +21,9 @@ import {
   type WorkspaceModelState,
 } from "@tabula-md/tabula";
 import {
-  createRoomWorkspaceState,
   randomId,
   WORKSPACE_ROOT_FOLDER_ID,
   type FileBookmark,
-  type LocationRoom,
   type WorkspaceFile,
   type WorkspaceFolder,
 } from "../workspaceStorage";
@@ -59,16 +57,6 @@ export type DeletedWorkspaceFolderBundle = {
   previousOpenFileIds: string[];
 };
 
-type CollaborationStatusOptions = {
-  requireRoom?: boolean;
-};
-
-type RecoveryEventUpdate = {
-  type: NonNullable<WorkspaceFile["lastRecoveryType"]>;
-  message: string;
-  createdAt: string;
-};
-
 type WorkspaceStoreState = WorkspaceModelState<WorkspaceFile> & {
   folders: WorkspaceFolder[];
   createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
@@ -77,7 +65,7 @@ type WorkspaceStoreState = WorkspaceModelState<WorkspaceFile> & {
 };
 
 type WorkspaceStoreActions = {
-  addFolder: (title?: string, parentId?: string, roomId?: string) => WorkspaceFolder | undefined;
+  addFolder: (title?: string, parentId?: string) => WorkspaceFolder | undefined;
   addFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   addFileFromContent: (
     title: string,
@@ -85,7 +73,6 @@ type WorkspaceStoreActions = {
     viewMode?: FileViewMode,
     overrides?: Partial<WorkspaceFile>,
   ) => WorkspaceFile;
-  activateRoomFile: (room: LocationRoom) => WorkspaceFile | undefined;
   closeFile: (fileId: string) => CloseFileResult | undefined;
   commitActiveFileSplitRatio: (splitRatio: number) => void;
   deleteFile: (fileId: string) => CloseFileResult | undefined;
@@ -109,20 +96,7 @@ type WorkspaceStoreActions = {
   setActiveFileReadingWidth: (readingWidth: ReadingWidth) => void;
   setActiveFileText: (text: string) => void;
   setActiveFileViewMode: (viewMode: FileViewMode) => void;
-  setFileCollaborationStatus: (
-    fileId: string,
-    status: NonNullable<WorkspaceFile["connectionStatus"]>,
-    options?: CollaborationStatusOptions,
-  ) => void;
-  setFileRecoveryEvent: (fileId: string, event: RecoveryEventUpdate) => void;
   setFileText: (fileId: string, text: string) => void;
-  setFolderCollaborationRoom: (folderId: string, roomId?: string) => void;
-  startFileCollaborationSession: (
-    fileId: string,
-    roomId: string,
-    shareUrl: string,
-  ) => WorkspaceFile | undefined;
-  stopFileCollaborationSession: (fileId: string) => WorkspaceFile | undefined;
   upsertHelpFile: (helpMarkdown: string) => WorkspaceFile;
 };
 
@@ -140,12 +114,6 @@ const noopCreateFile = (index: number, overrides: Partial<WorkspaceFile> = {}): 
   lineWrapping: overrides.lineWrapping ?? true,
   lineNumbers: overrides.lineNumbers ?? true,
   bookmarks: overrides.bookmarks ?? [],
-  connectionStatus: overrides.connectionStatus ?? "idle",
-  roomId: overrides.roomId,
-  shareUrl: overrides.shareUrl,
-  lastRecoveryType: overrides.lastRecoveryType,
-  lastRecoveryMessage: overrides.lastRecoveryMessage,
-  lastRecoveryAt: overrides.lastRecoveryAt,
 });
 
 const DEFAULT_WORKSPACE_STORE_STATE: WorkspaceStoreState = {
@@ -263,17 +231,7 @@ const updateFileInState = (
   };
 };
 
-const clearCollaborationFields = (file: WorkspaceFile): WorkspaceFile => ({
-  ...file,
-  roomId: undefined,
-  shareUrl: undefined,
-  connectionStatus: "idle",
-  lastRecoveryType: undefined,
-  lastRecoveryMessage: undefined,
-  lastRecoveryAt: undefined,
-});
-
-export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
+export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) => ({
   ...DEFAULT_WORKSPACE_STORE_STATE,
 
   initializeWorkspace: ({ createFile, folders, readmeFileId, ...workspace }) => {
@@ -367,19 +325,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     return nextFile;
   },
 
-  activateRoomFile: (room) => {
-    const roomWorkspace = createRoomWorkspaceState(room);
-    const nextFile = roomWorkspace.files.find((file) => file.id === roomWorkspace.activeFileId);
-
-    set((state) => ({
-      ...state,
-      ...createWorkspaceModelState(roomWorkspace),
-      folders: roomWorkspace.folders,
-    }));
-
-    return nextFile;
-  },
-
   duplicateFile: (fileId) => {
     const state = get();
     const sourceFile = state.files.find((file) => file.id === fileId);
@@ -387,18 +332,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       return undefined;
     }
 
-    const collaborationFields =
-      sourceFile.roomId && sourceFile.shareUrl
-        ? {
-            roomId: sourceFile.roomId,
-            shareUrl: sourceFile.shareUrl,
-            connectionStatus: sourceFile.connectionStatus ?? "idle",
-          }
-        : {
-            connectionStatus: "idle" as const,
-            roomId: undefined,
-            shareUrl: undefined,
-          };
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
       title: getAvailableFileTitle(state.files, sourceFile.title, sourceFile.parentId),
       text: sourceFile.text,
@@ -407,7 +340,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       lineWrapping: sourceFile.lineWrapping,
       lineNumbers: sourceFile.lineNumbers,
       parentId: sourceFile.parentId,
-      ...collaborationFields,
     });
 
     set((currentState) => ({
@@ -538,67 +470,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     set((state) => reduceWorkspace(state, { type: "setActiveFileSplitRatio", splitRatio }));
   },
 
-  setFileCollaborationStatus: (fileId, status, options = {}) => {
-    set((state) =>
-      updateFileInState(state, fileId, (file) => {
-        if (options.requireRoom && !file.roomId) {
-          return file;
-        }
-
-        return {
-          ...file,
-          connectionStatus: status,
-        };
-      }),
-    );
-  },
-
-  setFileRecoveryEvent: (fileId, event) => {
-    set((state) =>
-      updateFileInState(state, fileId, (file) => ({
-        ...file,
-        lastRecoveryType: event.type,
-        lastRecoveryMessage: event.message,
-        lastRecoveryAt: event.createdAt,
-      })),
-    );
-  },
-
-  startFileCollaborationSession: (fileId, roomId, shareUrl) => {
-    let nextFile: WorkspaceFile | undefined;
-
-    set((state) =>
-      updateFileInState(state, fileId, (file) => {
-        nextFile = {
-          ...file,
-          roomId,
-          shareUrl,
-          connectionStatus: "connecting",
-          lastRecoveryType: undefined,
-          lastRecoveryMessage: undefined,
-          lastRecoveryAt: undefined,
-        };
-        return nextFile;
-      }),
-    );
-
-    return nextFile;
-  },
-
-  stopFileCollaborationSession: (fileId) => {
-    let nextFile: WorkspaceFile | undefined;
-
-    set((state) =>
-      updateFileInState(state, fileId, (file) => {
-        nextFile = clearCollaborationFields(file);
-        return nextFile;
-      }),
-    );
-
-    return nextFile;
-  },
-
-  addFolder: (title = "New folder", parentId = WORKSPACE_ROOT_FOLDER_ID, roomId) => {
+  addFolder: (title = "New folder", parentId = WORKSPACE_ROOT_FOLDER_ID) => {
     const state = get();
     const validParentId = state.folders.some((folder) => folder.id === parentId)
       ? parentId
@@ -611,20 +483,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       title: getAvailableFolderTitle(state.folders, title, validParentId),
       parentId: validParentId,
       order: state.folders.filter((candidate) => candidate.parentId === validParentId).length,
-      roomId,
     };
     set((current) => ({ ...current, folders: [...current.folders, folder] }));
     return folder;
-  },
-
-  setFolderCollaborationRoom: (folderId, roomId) => {
-    if (folderId === WORKSPACE_ROOT_FOLDER_ID) return;
-    set((current) => ({
-      ...current,
-      folders: current.folders.map((folder) =>
-        folder.id === folderId ? { ...folder, roomId } : folder,
-      ),
-    }));
   },
 
   renameFolder: (folderId, title) => {
@@ -722,12 +583,26 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 }));
 
-export const getWorkspaceStoreSnapshot = () => getWorkspaceState(useWorkspaceStore.getState());
+export const useWorkspaceStore = createWorkspaceStore();
+export const useRoomWorkspaceStore = createWorkspaceStore();
+export type WorkspaceStoreBinding = ReturnType<typeof createWorkspaceStore>;
 
-export const getWorkspaceStoreOpenFiles = () => getOpenWorkspaceFiles(getWorkspaceStoreSnapshot());
+export const getWorkspaceStoreForMode = (mode: "local" | "room") =>
+  mode === "room" ? useRoomWorkspaceStore : useWorkspaceStore;
 
-export const getWorkspaceStoreActiveFile = () => getActiveWorkspaceFile(getWorkspaceStoreSnapshot());
+export const getWorkspaceStoreSnapshot = (mode: "local" | "room" = "local") =>
+  getWorkspaceState(getWorkspaceStoreForMode(mode).getState());
+
+export const getWorkspaceStoreOpenFiles = (mode: "local" | "room" = "local") =>
+  getOpenWorkspaceFiles(getWorkspaceStoreSnapshot(mode));
+
+export const getWorkspaceStoreActiveFile = (mode: "local" | "room" = "local") =>
+  getActiveWorkspaceFile(getWorkspaceStoreSnapshot(mode));
+
+export const getWorkspaceStoreFolder = (folderId: string, mode: "local" | "room" = "local") =>
+  getWorkspaceStoreForMode(mode).getState().folders.find((folder) => folder.id === folderId);
 
 export const resetWorkspaceStoreForTests = () => {
   useWorkspaceStore.setState(DEFAULT_WORKSPACE_STORE_STATE);
+  useRoomWorkspaceStore.setState(DEFAULT_WORKSPACE_STORE_STATE);
 };

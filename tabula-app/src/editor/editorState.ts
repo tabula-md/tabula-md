@@ -1,9 +1,7 @@
 import {
   history,
   redo,
-  redoDepth,
   undo,
-  undoDepth,
 } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { bracketMatching, HighlightStyle, syntaxHighlighting } from "@codemirror/language";
@@ -19,7 +17,6 @@ import {
 import { tags } from "@lezer/highlight";
 import { createCommentAnchorExtension } from "../editorExtensions/commentAnchors";
 import { createLineAnnotationGutterExtension } from "../editorExtensions/lineAnnotations";
-import { createTextSelectionHighlightExtension } from "../editorExtensions/selectionLayer";
 import type {
   MarkdownBookmark,
   MarkdownCommentAnchor,
@@ -116,7 +113,6 @@ export const createEditorCommentAnchorExtension = (
 
 export const createEditorSelectionDisplayExtensions = (): Extension[] => [
   EditorState.allowMultipleSelections.of(true),
-  // Tabula draws range backgrounds in its custom layer; CodeMirror still owns multiple cursor DOM.
   drawSelection(),
 ];
 
@@ -125,16 +121,14 @@ const utf8Encoder = new TextEncoder();
 type CollaborationHistoryBinding = Pick<CollabEditorBinding, "undoManager">;
 
 export const undoCollaborationHistory = (
-  view: Parameters<typeof undo>[0],
+  _view: Parameters<typeof undo>[0],
   collaborationBinding: CollaborationHistoryBinding,
-) => collaborationBinding.undoManager.undo() !== null || undo(view);
+) => collaborationBinding.undoManager.undo() !== null;
 
 export const redoCollaborationHistory = (
-  view: Parameters<typeof redo>[0],
+  _view: Parameters<typeof redo>[0],
   collaborationBinding: CollaborationHistoryBinding,
-) => redoDepth(view.state) > 0
-  ? redo(view)
-  : collaborationBinding.undoManager.redo() !== null;
+) => collaborationBinding.undoManager.redo() !== null;
 
 export const createEditorCollaborationExtensions = (
   collaborationBinding: NonNullable<MarkdownEditorExtensionConfig["collaborationBinding"]>,
@@ -184,11 +178,11 @@ export const createEditorCollaborationExtensions = (
 ];
 
 export const getCollaborationEditorHistoryState = (
-  state: EditorState,
+  _state: EditorState,
   collaborationBinding: NonNullable<MarkdownEditorExtensionConfig["collaborationBinding"]>,
 ) => ({
-  canUndo: collaborationBinding.undoManager.undoStack.length > 0 || undoDepth(state) > 0,
-  canRedo: collaborationBinding.undoManager.redoStack.length > 0 || redoDepth(state) > 0,
+  canUndo: collaborationBinding.undoManager.undoStack.length > 0,
+  canRedo: collaborationBinding.undoManager.redoStack.length > 0,
 });
 
 export const createMarkdownEditorExtensions = ({
@@ -207,7 +201,7 @@ export const createMarkdownEditorExtensions = ({
   onOpenLineActions,
   onOpenComment,
 }: MarkdownEditorExtensionConfig): Extension[] => [
-  compartments.history.of(history()),
+  compartments.history.of(collaborationBinding ? [] : history()),
   ...createEditorSelectionDisplayExtensions(),
   dropCursor(),
   bracketMatching(),
@@ -230,7 +224,6 @@ export const createMarkdownEditorExtensions = ({
       ? createEditorCollaborationExtensions(collaborationBinding)
       : [],
   ),
-  createTextSelectionHighlightExtension(),
   compartments.searchHighlight.of(createEditorSearchExtension(searchMatches, activeSearchMatchIndex)),
   ...createMarkdownCommandExtensions(),
   updateExtension,
