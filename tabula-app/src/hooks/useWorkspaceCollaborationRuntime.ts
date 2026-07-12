@@ -5,7 +5,7 @@ import type {
   ConnectionStatus,
   LiveSelection,
 } from "../collaboration";
-import type { WorkspaceRoomChangeOrigin } from "../collaboration/liveCollaboration";
+import type { WorkspaceRoomChangeOrigin } from "../collaboration/workspaceRoomRuntimeTypes";
 import {
   isUsableLiveRoomFile,
   type WorkspaceFile,

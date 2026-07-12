@@ -20,7 +20,7 @@ import {
 import type {
   WorkspaceFolderSnapshot,
   WorkspaceRoomChangeOrigin,
-} from "../collaboration/liveCollaboration";
+} from "../collaboration/workspaceRoomRuntimeTypes";
 import type { WorkspaceFile } from "../workspaceStorage";
 import { useCollaborationConnectionRuntime } from "./useCollaborationConnectionRuntime";
 

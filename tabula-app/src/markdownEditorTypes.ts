@@ -2,7 +2,7 @@ import type { LiveSelection } from "./collaboration";
 import type { SearchMatch } from "./editor/editorSearchModel";
 import type { EditorViewportAnchor } from "./preview/previewSyncTypes";
 import type { Text } from "@codemirror/state";
-import type { CollabEditorBinding } from "./collaboration/liveCollaboration";
+import type { CollabEditorBinding } from "./collaboration/workspaceRoomRuntimeTypes";
 import type {
   MarkdownFormatCommand,
   TextChange,

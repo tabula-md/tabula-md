@@ -39,7 +39,7 @@ import {
 import { createEditorPasteNormalizationExtension } from "./editorPaste";
 import { createEditorSearchExtension } from "./editorSearch";
 import type { SearchMatch } from "./editorSearchModel";
-import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
+import type { CollabEditorBinding } from "../collaboration/workspaceRoomRuntimeTypes";
 
 export type MarkdownEditorCompartments = EditorLayoutCompartments & {
   annotationGutter: Compartment;

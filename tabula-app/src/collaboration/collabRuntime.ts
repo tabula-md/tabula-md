@@ -5,13 +5,15 @@ import {
   type RoomRouteLocation,
 } from "@tabula-md/tabula";
 import {
-  type Collaborator,
-  type CollabRecoveryEvent,
-  type ConnectionStatus,
-  type LiveSelection,
   type RoomSession,
   type TabulaRoomAvailability,
-} from "./liveCollaboration";
+} from "./collabRoom";
+import type {
+  Collaborator,
+  CollabRecoveryEvent,
+  ConnectionStatus,
+  LiveSelection,
+} from "./workspaceRoomRuntimeTypes";
 import { createRoomSession } from "./collabRoom";
 import type { WorkspaceFile } from "../workspaceStorage";
 

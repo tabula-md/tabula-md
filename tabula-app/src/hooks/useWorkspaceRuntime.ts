@@ -64,7 +64,7 @@ import { useWorkspaceProjectContextRuntime } from "./useWorkspaceProjectContextR
 import { useWorkspaceRouteRuntime } from "./useWorkspaceRouteRuntime";
 import { useWorkspaceShareRuntime } from "./useWorkspaceShareRuntime";
 import { useWorkspaceTopChromeRuntime } from "./useWorkspaceTopChromeRuntime";
-import type { WorkspaceRoomChangeOrigin } from "../collaboration/liveCollaboration";
+import type { WorkspaceRoomChangeOrigin } from "../collaboration/workspaceRoomRuntimeTypes";
 import {
   getLiveRoomOpenState,
   LIVE_ROOM_OPEN_TIMEOUT_MS,

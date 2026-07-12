@@ -11,3 +11,4 @@ export * from "./liveCollaboration";
 export * from "./roomCheckpointStore";
 export * from "./roomProtocol";
 export * from "./roomTransport";
+export * from "./workspaceRoomRuntimeTypes";

@@ -1,4 +1,3 @@
-import type { Extension } from "@codemirror/state";
 import * as decoding from "lib0/decoding";
 import * as encoding from "lib0/encoding";
 import * as Y from "yjs";
@@ -13,7 +12,6 @@ import { yCollab } from "y-codemirror.next";
 import {
   addWorkspaceRoomCommentReply,
   applyTextPatches as applyTextPatchesToString,
-  createRoomActor,
   createRoomChunkAssembler,
   createWorkspaceRoomCrdt,
   createWorkspaceRoomDocument,
@@ -28,7 +26,6 @@ import {
   hasRoomCapability,
   initializeWorkspaceRoomCrdt,
   moveWorkspaceRoomNode,
-  parseRoomActor,
   renameWorkspaceRoomNode,
   setWorkspaceRoomComment,
   setWorkspaceRoomCommentResolved,
@@ -43,15 +40,11 @@ import {
   WORKSPACE_ROOM_MAX_REPLIES,
   WORKSPACE_ROOM_ROOT_ID,
   type RoomActor,
-  type RoomActorClient,
-  type RoomActorKind,
-  type RoomCapability,
   type RoomWireDataPacket,
   type EncryptedEnvelope,
   type TextPatch,
   type WorkspaceRoomComment,
   type WorkspaceRoomCommentReply,
-  type WorkspaceRoomCrdt,
   type WorkspaceRoomSnapshot,
 } from "@tabula-md/tabula";
 import { isEncryptedEnvelope } from "./collabConnectionModel";
@@ -66,6 +59,25 @@ import {
   ROOM_CHECKPOINT_RETENTION_MS,
 } from "./roomCheckpointStore";
 import { Utf8TextSizeTracker } from "./utf8TextSizeTracker";
+import {
+  applyWorkspaceTextPatches,
+  createBoundedWorkspaceUndoManager,
+} from "./workspaceRoomEditor";
+import {
+  createWorkspaceRoomActor,
+  getSelectionFromAwarenessState,
+  isWorkspaceRoomActor,
+} from "./workspaceRoomPresence";
+import type {
+  CollabEditorBinding,
+  Collaborator,
+  CollabRecoveryEvent,
+  ConnectionStatus,
+  WorkspaceDocumentSnapshot,
+  WorkspaceFolderSnapshot,
+  WorkspaceRoomChangeOrigin,
+  WorkspaceRoomRuntimeSnapshot,
+} from "./workspaceRoomRuntimeTypes";
 
 export {
   createRoomSession,
@@ -86,78 +98,7 @@ export {
 } from "./collabRoom";
 export type { ParsedRoomLocation, RoomSession, TabulaRoomAvailability } from "./collabRoom";
 
-export type ConnectionStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "failed";
-
 type SendPacketResult = "sent" | "offline" | "failed" | "discarded";
-
-export type LiveSelection = {
-  documentId?: string;
-  from: number;
-  to: number;
-  columnNumber?: number;
-  fromLineNumber?: number;
-  lineNumber?: number;
-  selectionEndsWithLineBreak?: boolean;
-  toLineNumber?: number;
-};
-
-export type Collaborator = {
-  id: string;
-  name: string;
-  color: string;
-  lastSeen: number;
-  activeDocumentId?: string;
-  kind?: RoomActorKind;
-  client?: RoomActorClient;
-  capabilities?: RoomCapability[];
-  joinedAt?: string;
-  roomId?: string;
-  fileTitle?: string;
-  selection?: LiveSelection;
-};
-
-export type CollabRecoveryEvent = {
-  id: string;
-  type: "reconnected" | "invalid-message";
-  message: string;
-  createdAt: string;
-};
-
-export type CollabEditorBinding = {
-  documentId: string;
-  extension: Extension;
-  yText: Y.Text;
-  awareness: Awareness;
-  undoManager: Y.UndoManager;
-  canApplyTextByteDelta: (byteDelta: number) => boolean;
-  consumeRemoteProjection?: () => boolean;
-};
-
-export type WorkspaceRoomRuntimeSnapshot = {
-  status: ConnectionStatus;
-  collaborators: Collaborator[];
-  editorBinding: CollabEditorBinding | null;
-};
-
-export type WorkspaceRoomChangeOrigin = {
-  actorId: string;
-  actorName?: string;
-};
-
-export type WorkspaceDocumentSnapshot = {
-  id: string;
-  title: string;
-  text: string;
-  parentId?: string | null;
-  order?: number;
-};
-
-export type WorkspaceFolderSnapshot = {
-  id: string;
-  title: string;
-  parentId: string | null;
-  order?: number;
-};
 
 type ConnectOptions = {
   roomId: string;
@@ -186,7 +127,6 @@ const AWARENESS_HEARTBEAT_MS = 15_000;
 const TEXT_PROJECTION_DELAY_MS = 16;
 const COMMENT_PROJECTION_DELAY_MS = 16;
 const INVALID_MESSAGE_NOTICE_INTERVAL_MS = 5_000;
-const MAX_UNDO_STACK_ITEMS = 100;
 const MAX_UNDO_MANAGERS = 8;
 const MAX_INBOUND_ENVELOPES = 64;
 const MAX_INBOUND_BUFFER_CHARS = 32 * 1024 * 1024;
@@ -195,20 +135,6 @@ const CRDT_STATE_SIZE_CHECK_INTERVAL = 500;
 const CRDT_STATE_WARNING_BYTES = Math.floor(ROOM_WIRE_MAX_CRDT_STATE_BYTES * 0.9);
 const utf8Encoder = new TextEncoder();
 
-const createBoundedUndoManager = (text: Y.Text) => {
-  const undoManager = new Y.UndoManager(text);
-  const trimHistory = () => {
-    if (undoManager.undoStack.length > MAX_UNDO_STACK_ITEMS) {
-      undoManager.undoStack.splice(0, undoManager.undoStack.length - MAX_UNDO_STACK_ITEMS);
-    }
-    if (undoManager.redoStack.length > MAX_UNDO_STACK_ITEMS) {
-      undoManager.redoStack.splice(0, undoManager.redoStack.length - MAX_UNDO_STACK_ITEMS);
-    }
-  };
-  undoManager.on("stack-item-added", trimHistory);
-  return undoManager;
-};
-
 type RemoteSyncOrigin = {
   type: typeof REMOTE_SYNC_ORIGIN;
   senderId: string;
@@ -216,52 +142,6 @@ type RemoteSyncOrigin = {
 
 const isRemoteSyncOrigin = (origin: unknown): origin is RemoteSyncOrigin =>
   Boolean(origin && typeof origin === "object" && (origin as Partial<RemoteSyncOrigin>).type === REMOTE_SYNC_ORIGIN);
-
-const getActor = (identity: Collaborator): RoomActor => createRoomActor({
-  id: identity.id,
-  kind: identity.kind ?? "human",
-  name: identity.name,
-  color: identity.color,
-  client: identity.client ?? "tabula-md",
-  capabilities: identity.capabilities,
-  joinedAt: identity.joinedAt,
-});
-
-const isActor = (value: unknown): value is RoomActor => {
-  return parseRoomActor(value) !== null;
-};
-
-const getSelectionFromAwarenessState = (
-  room: WorkspaceRoomCrdt,
-  state: Record<string, unknown>,
-): LiveSelection | undefined => {
-  const cursor = state.cursor;
-  if (!cursor || typeof cursor !== "object" || Array.isArray(cursor)) return undefined;
-  const raw = cursor as { anchor?: Y.RelativePosition; head?: Y.RelativePosition };
-  if (!raw.anchor || !raw.head) return undefined;
-  try {
-    const anchor = Y.createAbsolutePositionFromRelativePosition(raw.anchor, room.doc);
-    const head = Y.createAbsolutePositionFromRelativePosition(raw.head, room.doc);
-    if (!anchor || !head || anchor.type !== head.type) return undefined;
-    let documentId: string | undefined;
-    room.documents.forEach((text, id) => {
-      if (text === anchor.type) documentId = id;
-    });
-    if (!documentId) return undefined;
-    return { documentId, from: Math.min(anchor.index, head.index), to: Math.max(anchor.index, head.index) };
-  } catch {
-    return undefined;
-  }
-};
-
-const applyTextPatches = (text: Y.Text, patches: readonly TextPatch[]) => {
-  for (const patch of [...patches].sort((first, second) => second.from - first.from)) {
-    const from = Math.max(0, Math.min(patch.from, text.length));
-    const to = Math.max(from, Math.min(patch.to, text.length));
-    if (to > from) text.delete(from, to - from);
-    if (patch.insert) text.insert(from, patch.insert);
-  }
-};
 
 const commentsToList = (commentsByFileId: Record<string, WorkspaceRoomComment[]> | undefined) =>
   Object.values(commentsByFileId ?? {}).flat();
@@ -493,9 +373,9 @@ export const createWorkspaceRoomRuntime = ({
     const actors = new Map<string, RoomActor>();
     awareness.getStates().forEach((state) => {
       const actor = state?.actor;
-      if (isActor(actor)) actors.set(actor.id, actor);
+      if (isWorkspaceRoomActor(actor)) actors.set(actor.id, actor);
     });
-    const localActor = getActor(currentIdentity);
+    const localActor = createWorkspaceRoomActor(currentIdentity);
     actors.set(localActor.id, localActor);
     return [...actors.values()];
   };
@@ -506,7 +386,7 @@ export const createWorkspaceRoomRuntime = ({
   const getSenderActor = (senderId: string) => {
     for (const state of awareness.getStates().values()) {
       const actor = state?.actor;
-      if (isActor(actor) && actor.id === senderId) return actor;
+      if (isWorkspaceRoomActor(actor) && actor.id === senderId) return actor;
     }
     return null;
   };
@@ -516,7 +396,7 @@ export const createWorkspaceRoomRuntime = ({
     awareness.getStates().forEach((state, clientId) => {
       if (clientId === awareness.clientID || !state || typeof state !== "object") return;
       const actor = (state as Record<string, unknown>).actor;
-      if (!isActor(actor) || actor.id === currentIdentity.id || !hasRoomCapability(actor, "presence")) return;
+      if (!isWorkspaceRoomActor(actor) || actor.id === currentIdentity.id || !hasRoomCapability(actor, "presence")) return;
       collaborators.push({
         id: actor.id,
         name: actor.name,
@@ -596,7 +476,7 @@ export const createWorkspaceRoomRuntime = ({
   const getUndoManager = (documentId: string, text: Y.Text) => {
     let undoManager = undoManagers.get(documentId);
     if (!undoManager) {
-      undoManager = createBoundedUndoManager(text);
+      undoManager = createBoundedWorkspaceUndoManager(text);
       undoManagers.set(documentId, undoManager);
     }
     undoManagerUseOrder.set(documentId, ++undoManagerUseSequence);
@@ -638,7 +518,7 @@ export const createWorkspaceRoomRuntime = ({
     const ids = new Set([currentIdentity.id]);
     awareness.getStates().forEach((state) => {
       const actor = state?.actor;
-      if (isActor(actor)) ids.add(actor.id);
+      if (isWorkspaceRoomActor(actor)) ids.add(actor.id);
     });
     return [...ids].sort();
   };
@@ -830,7 +710,7 @@ export const createWorkspaceRoomRuntime = ({
   };
 
   const setLocalAwareness = () => {
-    const actor = getActor(currentIdentity);
+    const actor = createWorkspaceRoomActor(currentIdentity);
     const displayActor = getActorDisplay(actor.id) ?? actor;
     const displayColor = displayActor.color ?? "#2563eb";
     const nextState: Record<string, unknown> = {
@@ -984,7 +864,7 @@ export const createWorkspaceRoomRuntime = ({
     awareness.getStates().forEach((state, clientId) => {
       if (clientId === awareness.clientID) return;
       const actor = state?.actor;
-      if (isActor(actor) && !allowed.has(actor.id)) staleClientIds.push(clientId);
+      if (isWorkspaceRoomActor(actor) && !allowed.has(actor.id)) staleClientIds.push(clientId);
     });
     if (staleClientIds.length > 0) removeAwarenessStates(awareness, staleClientIds, "transport.peers");
   };
@@ -1238,7 +1118,7 @@ export const createWorkspaceRoomRuntime = ({
         (documentByteLengths.get(activeDocumentId) ?? utf8Encoder.encode(currentText).byteLength);
       if (!canApplyTextByteDelta(byteDelta)) return false;
       room.doc.transact(() => {
-        if (patches?.length && patchedText === nextText) applyTextPatches(text, patches);
+        if (patches?.length && patchedText === nextText) applyWorkspaceTextPatches(text, patches);
         else if (text.toString() !== nextText) {
           if (text.length) text.delete(0, text.length);
           if (nextText) text.insert(0, nextText);
@@ -1257,7 +1137,7 @@ export const createWorkspaceRoomRuntime = ({
       const byteDelta = utf8Encoder.encode(nextText).byteLength -
         (documentByteLengths.get(activeDocumentId) ?? utf8Encoder.encode(currentText).byteLength);
       if (!canApplyTextByteDelta(byteDelta)) return false;
-      room.doc.transact(() => applyTextPatches(text, patches), "tabula.text.local");
+      room.doc.transact(() => applyWorkspaceTextPatches(text, patches), "tabula.text.local");
       return true;
     },
     setActiveDocument,

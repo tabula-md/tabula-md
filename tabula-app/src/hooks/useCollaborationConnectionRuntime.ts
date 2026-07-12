@@ -14,14 +14,14 @@ import type {
   TextPatch,
 } from "@tabula-md/tabula";
 import type {
-  WorkspaceRoomRuntime,
   Collaborator,
   CollabRecoveryEvent,
   ConnectionStatus,
   WorkspaceFolderSnapshot,
   WorkspaceRoomRuntimeSnapshot,
   WorkspaceRoomChangeOrigin,
-} from "../collaboration/liveCollaboration";
+} from "../collaboration/workspaceRoomRuntimeTypes";
+import type { WorkspaceRoomRuntime } from "../collaboration/liveCollaboration";
 import {
   getDisconnectedStatusPatch,
   getIdleStatusPatch,

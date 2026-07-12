@@ -18,7 +18,7 @@ import type {
 } from "@tabula-md/tabula";
 import type { CenterPopover } from "../uiTypes";
 import type { LiveSelection } from "../collaboration";
-import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
+import type { CollabEditorBinding } from "../collaboration/workspaceRoomRuntimeTypes";
 import type { SearchMatch, SearchOptions } from "../editor/editorSearchModel";
 import type { SearchTarget } from "../editor/useEditorSearchController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
