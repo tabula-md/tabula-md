@@ -69,8 +69,6 @@ type WorkspaceInterfaceMessages = {
   commentsHideReplies: string;
   commentsGuest: string;
   commentsUntitled: string;
-  commentsDeleteWithReplies: string;
-  commentsDeleteOne: string;
   commentsActions: string;
   commentsReplyAction: string;
   commentsReopen: string;
@@ -154,8 +152,6 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsHideReplies: "Hide {{label}}",
     commentsGuest: "Guest",
     commentsUntitled: "Untitled comment",
-    commentsDeleteWithReplies: "Delete this comment and its replies?",
-    commentsDeleteOne: "Delete this comment?",
     commentsActions: "Comment actions",
     commentsReplyAction: "Reply",
     commentsReopen: "Reopen",
@@ -237,8 +233,6 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsHideReplies: "{{label}} 숨기기",
     commentsGuest: "게스트",
     commentsUntitled: "제목 없는 댓글",
-    commentsDeleteWithReplies: "이 댓글과 답글을 삭제할까요?",
-    commentsDeleteOne: "이 댓글을 삭제할까요?",
     commentsActions: "댓글 작업",
     commentsReplyAction: "답글",
     commentsReopen: "다시 열기",
@@ -320,8 +314,6 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsHideReplies: "{{label}}を非表示",
     commentsGuest: "ゲスト",
     commentsUntitled: "無題のコメント",
-    commentsDeleteWithReplies: "このコメントと返信を削除しますか？",
-    commentsDeleteOne: "このコメントを削除しますか？",
     commentsActions: "コメント操作",
     commentsReplyAction: "返信",
     commentsReopen: "再開",
@@ -403,8 +395,6 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsHideReplies: "隐藏 {{label}}",
     commentsGuest: "访客",
     commentsUntitled: "无标题评论",
-    commentsDeleteWithReplies: "删除此评论及其回复？",
-    commentsDeleteOne: "删除此评论？",
     commentsActions: "评论操作",
     commentsReplyAction: "回复",
     commentsReopen: "重新打开",
@@ -486,8 +476,6 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsHideReplies: "Ocultar {{label}}",
     commentsGuest: "Invitado",
     commentsUntitled: "Comentario sin título",
-    commentsDeleteWithReplies: "¿Eliminar este comentario y sus respuestas?",
-    commentsDeleteOne: "¿Eliminar este comentario?",
     commentsActions: "Acciones del comentario",
     commentsReplyAction: "Responder",
     commentsReopen: "Reabrir",
@@ -569,8 +557,6 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsHideReplies: "Masquer {{label}}",
     commentsGuest: "Invité",
     commentsUntitled: "Commentaire sans titre",
-    commentsDeleteWithReplies: "Supprimer ce commentaire et ses réponses ?",
-    commentsDeleteOne: "Supprimer ce commentaire ?",
     commentsActions: "Actions du commentaire",
     commentsReplyAction: "Répondre",
     commentsReopen: "Rouvrir",
@@ -652,8 +638,6 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsHideReplies: "{{label}} ausblenden",
     commentsGuest: "Gast",
     commentsUntitled: "Unbenannter Kommentar",
-    commentsDeleteWithReplies: "Diesen Kommentar und seine Antworten löschen?",
-    commentsDeleteOne: "Diesen Kommentar löschen?",
     commentsActions: "Kommentaraktionen",
     commentsReplyAction: "Antworten",
     commentsReopen: "Wieder öffnen",
@@ -764,8 +748,6 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         hideReplies: (label: string) => format(copy.commentsHideReplies, { label }),
         guest: copy.commentsGuest,
         untitled: copy.commentsUntitled,
-        deleteWithReplies: copy.commentsDeleteWithReplies,
-        deleteOne: copy.commentsDeleteOne,
         actions: copy.commentsActions,
         replyAction: copy.commentsReplyAction,
         reopen: copy.commentsReopen,

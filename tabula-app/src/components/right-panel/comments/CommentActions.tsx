@@ -37,11 +37,6 @@ export function CommentActions({
   });
 
   const deleteComment = () => {
-    const hasReplies = (comment.replies?.length ?? 0) > 0;
-    const confirmed = window.confirm(
-      hasReplies ? copy.deleteWithReplies : copy.deleteOne,
-    );
-    if (!confirmed) return;
     setMenuOpen(false);
     onDeleteComment(fileId, comment.id);
   };

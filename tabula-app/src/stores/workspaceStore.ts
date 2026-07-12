@@ -47,6 +47,18 @@ type RestoreFileInput = {
   activate: boolean;
 };
 
+type IndexedWorkspaceItem<Item> = {
+  index: number;
+  item: Item;
+};
+
+export type DeletedWorkspaceFolderBundle = {
+  files: IndexedWorkspaceItem<WorkspaceFile>[];
+  folders: IndexedWorkspaceItem<WorkspaceFolder>[];
+  previousActiveFileId: string;
+  previousOpenFileIds: string[];
+};
+
 type CollaborationStatusOptions = {
   requireRoom?: boolean;
 };
@@ -83,11 +95,12 @@ type WorkspaceStoreActions = {
   renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
   reorderFiles: (sourceFileId: string, targetFileId: string) => void;
   replaceWorkspace: (workspace: WorkspaceModelState<WorkspaceFile> & { folders?: WorkspaceFolder[] }) => WorkspaceFile | undefined;
-  deleteFolder: (folderId: string) => void;
+  deleteFolder: (folderId: string) => DeletedWorkspaceFolderBundle | undefined;
   moveFileToFolder: (fileId: string, folderId: string) => boolean;
   moveFolder: (folderId: string, parentId: string) => boolean;
   renameFolder: (folderId: string, title: string) => boolean;
   restoreFile: (input: RestoreFileInput) => WorkspaceFile;
+  restoreFolder: (bundle: DeletedWorkspaceFolderBundle) => WorkspaceFile | undefined;
   selectAdjacentFile: (direction: -1 | 1) => WorkspaceFile | undefined;
   selectFile: (fileId: string) => WorkspaceFile | undefined;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
@@ -213,6 +226,18 @@ const getFolderSubtreeHeight = (folders: WorkspaceFolder[], folderId: string) =>
     maxHeight = Math.max(maxHeight, height);
   }
   return maxHeight;
+};
+
+const restoreIndexedWorkspaceItems = <Item extends { id: string }>(
+  currentItems: readonly Item[],
+  restoredItems: readonly IndexedWorkspaceItem<Item>[],
+) => {
+  const nextItems = [...currentItems];
+  for (const { index, item } of [...restoredItems].sort((first, second) => first.index - second.index)) {
+    if (nextItems.some((candidate) => candidate.id === item.id)) continue;
+    nextItems.splice(Math.min(Math.max(0, index), nextItems.length), 0, item);
+  }
+  return nextItems;
 };
 
 const reduceWorkspace = (
@@ -649,10 +674,21 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   deleteFolder: (folderId) => {
-    if (folderId === WORKSPACE_ROOT_FOLDER_ID) return;
+    if (folderId === WORKSPACE_ROOT_FOLDER_ID) return undefined;
     const state = get();
+    if (!state.folders.some((folder) => folder.id === folderId)) return undefined;
     const deletedFolderIds = getFolderDescendantIds(state.folders, folderId);
     const deletedFileIds = new Set(state.files.filter((file) => deletedFolderIds.has(file.parentId ?? WORKSPACE_ROOT_FOLDER_ID)).map((file) => file.id));
+    const bundle: DeletedWorkspaceFolderBundle = {
+      folders: state.folders.flatMap((folder, index) =>
+        deletedFolderIds.has(folder.id) ? [{ index, item: folder }] : [],
+      ),
+      files: state.files.flatMap((file, index) =>
+        deletedFileIds.has(file.id) ? [{ index, item: file }] : [],
+      ),
+      previousOpenFileIds: [...state.openFileIds],
+      previousActiveFileId: state.activeFileId,
+    };
     const files = state.files.filter((file) => !deletedFileIds.has(file.id));
     const openFileIds = state.openFileIds.filter((fileId) => !deletedFileIds.has(fileId));
     const activeFileId = deletedFileIds.has(state.activeFileId) ? (openFileIds[0] ?? files[0]?.id ?? "") : state.activeFileId;
@@ -663,6 +699,26 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       openFileIds,
       activeFileId,
     }));
+    return bundle;
+  },
+
+  restoreFolder: (bundle) => {
+    const state = get();
+    const folders = restoreIndexedWorkspaceItems(state.folders, bundle.folders);
+    const files = restoreIndexedWorkspaceItems(state.files, bundle.files);
+    const fileIds = new Set(files.map((file) => file.id));
+    const previousOpenFileIds = bundle.previousOpenFileIds.filter((fileId) => fileIds.has(fileId));
+    const openFileIds = [
+      ...previousOpenFileIds,
+      ...state.openFileIds.filter((fileId) => fileIds.has(fileId) && !previousOpenFileIds.includes(fileId)),
+    ];
+    const activeFileId = fileIds.has(bundle.previousActiveFileId)
+      ? bundle.previousActiveFileId
+      : state.activeFileId && fileIds.has(state.activeFileId)
+        ? state.activeFileId
+        : openFileIds[0] ?? files[0]?.id ?? "";
+    set((current) => ({ ...current, folders, files, openFileIds, activeFileId }));
+    return files.find((file) => file.id === activeFileId);
   },
 }));
 

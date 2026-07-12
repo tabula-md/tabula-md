@@ -683,6 +683,23 @@ export async function run(ctx) {
     expect(commentsAfterReopen.openCardCount === 1, "Reopening should return the comment to the open comments list.");
     expect(commentsAfterReopen.resolvedHeaderCount === 0, "Reopening the only resolved comment should hide the resolved row.");
 
+    await page.locator(".right-comment-card").hover();
+    await page.getByRole("button", { name: /^More actions for comment:/ }).click();
+    await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+    await waitForRenderFrame(page);
+    expect((await page.locator(".right-comment-card").count()) === 0, "Deleting a comment should remove its thread without a browser confirmation dialog.");
+    expect((await page.locator(".app-toast-action").textContent()) === "Undo", "Comment deletion should expose the shared Undo action.");
+    await page.locator(".app-toast-action").click();
+    await waitForRenderFrame(page);
+    const restoredCommentState = await page.evaluate(() => ({
+      cardCount: document.querySelectorAll(".right-comment-card").length,
+      replyCount: document.querySelectorAll(".right-comment-reply").length,
+      toastText: document.querySelector(".app-toast")?.textContent?.trim() ?? "",
+    }));
+    expect(restoredCommentState.cardCount === 1, "Undo should restore the deleted comment.");
+    expect(restoredCommentState.replyCount === 1, "Undo should restore the deleted comment replies.");
+    expect(restoredCommentState.toastText === "Comment restored.", "Undo should confirm the restored comment.");
+
     await page.keyboard.press("Escape");
     await waitForRenderFrame(page);
     const rightEscapeState = await page.evaluate(() => ({

@@ -110,6 +110,7 @@ export function useWorkspaceRuntime() {
     renameFolder,
     replaceWorkspace,
     restoreFile,
+    restoreFolder: restoreWorkspaceFolderAction,
     upsertHelpFile,
     reorderFiles,
     selectAdjacentFile: selectAdjacentWorkspaceFileAction,
@@ -213,6 +214,9 @@ export function useWorkspaceRuntime() {
     addFileComment: createFileComment,
     mapFileCommentAnchors,
     deleteFileComment,
+    restoreFileComment,
+    deleteCommentsForFiles,
+    restoreCommentsForFiles,
     toggleFileCommentResolved,
     startCommentReply: beginCommentReply,
     cancelCommentReply,
@@ -228,6 +232,16 @@ export function useWorkspaceRuntime() {
     onCommentDeleted: (fileId, commentId) => roomCommentActionsRef.current.deleted(fileId, commentId),
     onCommentResolved: (fileId, commentId, resolved) => roomCommentActionsRef.current.resolved(fileId, commentId, resolved),
     onCommentReplyCreated: (fileId, commentId, reply) => roomCommentActionsRef.current.replied(fileId, commentId, reply),
+  });
+  const deleteFileCommentWithUndo = useEventCallback((fileId: string, commentId: string) => {
+    const deletedComment = deleteFileComment(fileId, commentId);
+    if (!deletedComment) return;
+    showToast("Comment deleted.", "neutral", {
+      actionLabel: "Undo",
+      onAction: () => {
+        if (restoreFileComment(deletedComment)) showToast("Comment restored.");
+      },
+    });
   });
   const getActiveFileSnapshot = useEventCallback(() => {
     const latestActiveFile = getWorkspaceStoreActiveFile() ?? activeFile;
@@ -977,41 +991,36 @@ export function useWorkspaceRuntime() {
       onCancelSelectionComment: cancelSelectionComment,
       onCancelCommentReply: cancelCommentReply,
       onCommentDraftChange: setCommentDraft,
-      onDeleteComment: deleteFileComment,
+      onDeleteComment: deleteFileCommentWithUndo,
       onDeleteFile: deleteFile,
       onDeleteFolder: (folderId) => {
-        const deletedFolderIds = new Set([folderId]);
-        let foundDescendant = true;
-        while (foundDescendant) {
-          foundDescendant = false;
-          for (const folder of folders) {
-            if (
-              !deletedFolderIds.has(folder.id) &&
-              folder.parentId &&
-              deletedFolderIds.has(folder.parentId)
-            ) {
-              deletedFolderIds.add(folder.id);
-              foundDescendant = true;
-            }
-          }
-        }
-        const deletedFileIds = new Set(
-          files
-            .filter((file) => deletedFolderIds.has(file.parentId ?? ""))
-            .map((file) => file.id),
-        );
-        deleteWorkspaceFolderAction(folderId);
-        replaceCommentsByFileId(
-          Object.fromEntries(
-            Object.entries(commentsByFileId).filter(([fileId]) => !deletedFileIds.has(fileId)),
-          ),
+        const deletedBundle = deleteWorkspaceFolderAction(folderId);
+        if (!deletedBundle) return;
+        const deletedFileIds = new Set(deletedBundle.files.map(({ item }) => item.id));
+        const deletedComments = deleteCommentsForFiles(deletedFileIds);
+        const deletedHistory = Object.fromEntries(
+          Object.entries(historyByFileId).filter(([fileId]) => deletedFileIds.has(fileId)),
         );
         setHistoryByFileId((currentHistory) =>
           Object.fromEntries(
             Object.entries(currentHistory).filter(([fileId]) => !deletedFileIds.has(fileId)),
           ),
         );
-        showToast("Folder deleted.");
+        const deletedActiveFile = deletedFileIds.has(deletedBundle.previousActiveFileId);
+        if (deletedActiveFile) syncUrlForFile(getWorkspaceStoreActiveFile(), "replace");
+        showToast("Folder deleted.", "neutral", {
+          actionLabel: "Undo",
+          onAction: () => {
+            const restoredActiveFile = restoreWorkspaceFolderAction(deletedBundle);
+            restoreCommentsForFiles(deletedComments);
+            setHistoryByFileId((currentHistory) => ({
+              ...currentHistory,
+              ...deletedHistory,
+            }));
+            if (deletedActiveFile) syncUrlForFile(restoredActiveFile, "replace");
+            showToast("Folder restored.");
+          },
+        });
       },
       onDuplicateFile: duplicateFile,
       onCopyFile: copyFile,

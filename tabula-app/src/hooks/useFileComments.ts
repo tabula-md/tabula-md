@@ -23,6 +23,12 @@ type AddFileCommentOptions = {
   anchor?: CommentSelectionAnchor | null;
 };
 
+export type DeletedFileComment = {
+  comment: FileComment;
+  fileId: string;
+  index: number;
+};
+
 type UseFileCommentsOptions = {
   initialCommentsByFileId: Record<string, FileComment[]>;
   activeFileId: string;
@@ -170,8 +176,13 @@ export function useFileComments({
 
   const deleteFileComment = (fileId: string, commentId: string) => {
     if (!fileIds.has(fileId)) {
-      return;
+      return undefined;
     }
+
+    const comments = getFileComments(commentsByFileId, fileId);
+    const index = comments.findIndex((comment) => comment.id === commentId);
+    const comment = comments[index];
+    if (!comment) return undefined;
 
     setCommentsByFileId((currentComments) => ({
       ...currentComments,
@@ -179,6 +190,52 @@ export function useFileComments({
     }));
     setFocusedCommentId((currentCommentId) => (currentCommentId === commentId ? null : currentCommentId));
     onCommentDeleted?.(fileId, commentId);
+    return { comment, fileId, index } satisfies DeletedFileComment;
+  };
+
+  const restoreFileComment = ({ comment, fileId, index }: DeletedFileComment) => {
+    if (!fileIds.has(fileId)) return false;
+    setCommentsByFileId((currentComments) => {
+      const comments = getFileComments(currentComments, fileId);
+      if (comments.some((candidate) => candidate.id === comment.id)) return currentComments;
+      const nextComments = [...comments];
+      nextComments.splice(Math.min(Math.max(0, index), nextComments.length), 0, comment);
+      return { ...currentComments, [fileId]: nextComments };
+    });
+    onCommentCreated?.(fileId, comment);
+    return true;
+  };
+
+  const deleteCommentsForFiles = (deletedFileIds: ReadonlySet<string>) => {
+    const deletedComments = Object.fromEntries(
+      Object.entries(commentsByFileId).filter(([fileId, comments]) =>
+        deletedFileIds.has(fileId) && comments.length > 0,
+      ),
+    );
+    if (Object.keys(deletedComments).length === 0) return deletedComments;
+    setCommentsByFileId((currentComments) =>
+      Object.fromEntries(
+        Object.entries(currentComments).filter(([fileId]) => !deletedFileIds.has(fileId)),
+      ),
+    );
+    setFocusedCommentId((commentId) =>
+      commentId && Object.values(deletedComments).flat().some((comment) => comment.id === commentId)
+        ? null
+        : commentId,
+    );
+    return deletedComments;
+  };
+
+  const restoreCommentsForFiles = (deletedComments: Record<string, FileComment[]>) => {
+    const restorableEntries = Object.entries(deletedComments).filter(([fileId]) => fileIds.has(fileId));
+    if (restorableEntries.length === 0) return;
+    setCommentsByFileId((currentComments) => ({
+      ...currentComments,
+      ...Object.fromEntries(restorableEntries),
+    }));
+    for (const [fileId, comments] of restorableEntries) {
+      for (const comment of comments) onCommentCreated?.(fileId, comment);
+    }
   };
 
   const mapFileCommentAnchors = (
@@ -299,6 +356,9 @@ export function useFileComments({
     addFileComment,
     mapFileCommentAnchors,
     deleteFileComment,
+    restoreFileComment,
+    deleteCommentsForFiles,
+    restoreCommentsForFiles,
     toggleFileCommentResolved,
     startCommentReply,
     cancelCommentReply,
