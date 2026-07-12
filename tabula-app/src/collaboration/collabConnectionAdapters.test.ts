@@ -1110,7 +1110,6 @@ describe("workspace room runtime", () => {
     const peer = createWorkspaceRoomRuntime({
       roomId: "room-empty",
       roomKey: VALID_ROOM_KEY,
-      documentId: "room-bootstrap",
       emitInitialWorkspaceState: false,
       identity: { id: "peer", name: "Calm Human", color: "#0f766e", lastSeen: 0 },
       onWorkspaceStructureChange: (nextSnapshot) => peerSnapshots.push(nextSnapshot),
