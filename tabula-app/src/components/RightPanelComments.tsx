@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ListFilter, MessageSquarePlus } from "lucide-react";
+import { ChevronDown, ChevronRight, ListFilter, MessageSquarePlus, X } from "lucide-react";
 import {
   getRightPanelCommentScopeModel,
   type CommentScope,
@@ -199,7 +199,16 @@ export function RightPanelComments({
     setScopeMenuOpen(false);
   };
 
-  const openDocumentComposer = () => {
+  const toggleDocumentComposer = () => {
+    if (composerMode === "document" && commentScope === "current") {
+      cancelComment();
+      return;
+    }
+
+    if (composerMode === "selection") {
+      onCancelSelectionComment();
+    }
+    onCommentDraftChange("");
     setCommentScope("current");
     setComposerMode("document");
   };
@@ -215,12 +224,16 @@ export function RightPanelComments({
             <button
               className="right-comments-toolbar-action"
               type="button"
-              aria-label={copy.filePlaceholder}
-              data-tooltip={copy.filePlaceholder}
+              aria-label={composerMode === "document" && commentScope === "current" ? copy.cancel : copy.filePlaceholder}
+              data-tooltip={composerMode === "document" && commentScope === "current" ? copy.cancel : copy.filePlaceholder}
               aria-pressed={composerMode === "document" && commentScope === "current"}
-              onClick={openDocumentComposer}
+              onClick={toggleDocumentComposer}
             >
-              <MessageSquarePlus size={14} aria-hidden="true" />
+              {composerMode === "document" && commentScope === "current" ? (
+                <X size={14} aria-hidden="true" />
+              ) : (
+                <MessageSquarePlus size={14} aria-hidden="true" />
+              )}
             </button>
             <MenuRoot open={scopeMenuOpen} onOpenChange={setScopeMenuOpen}>
               <span className="right-comments-scope-menu-wrap">
