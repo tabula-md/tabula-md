@@ -37,12 +37,8 @@ import {
   validateWorkspaceRoomStructure,
   ROOM_WIRE_MAX_CRDT_STATE_BYTES,
   ROOM_WIRE_CHUNK_BYTES,
-  WORKSPACE_ROOM_MAX_COMMENT_LENGTH,
-  WORKSPACE_ROOM_MAX_COMMENTS,
-  WORKSPACE_ROOM_MAX_CONTENT_BYTES,
   WORKSPACE_ROOM_MAX_DOCUMENTS,
   WORKSPACE_ROOM_MAX_FOLDERS,
-  WORKSPACE_ROOM_MAX_REPLIES,
   WORKSPACE_ROOM_ROOT_ID,
   type RoomActor,
   type RoomActorClient,
@@ -67,7 +63,6 @@ import {
   encryptWorkspaceRoomCheckpoint,
   ROOM_CHECKPOINT_RETENTION_MS,
 } from "./roomCheckpointStore";
-import { Utf8TextSizeTracker } from "./utf8TextSizeTracker";
 import {
   createRoomDocumentRegistry,
   type RoomDocumentLease,
@@ -75,6 +70,7 @@ import {
 } from "./runtime/RoomDocumentRegistry";
 import { createRoomDocumentProjectionStore } from "./runtime/RoomDocumentProjectionStore";
 import { createRoomStructureStore } from "./runtime/RoomStructureStore";
+import { createRoomMetrics } from "./runtime/RoomMetrics";
 
 export {
   createRoomSession,
@@ -336,10 +332,6 @@ export const createWorkspaceRoomRuntime = ({
   const documentRegistry = createRoomDocumentRegistry({ awareness, documents: room.documents });
   const documentProjectionStore = createRoomDocumentProjectionStore(room.documents);
   const structureStore = createRoomStructureStore(room);
-  const documentByteLengths = new Map<string, number>();
-  const documentSizeTrackers = new Map<string, Utf8TextSizeTracker>();
-  const indexedDocumentTexts = new Map<string, Y.Text>();
-  const documentIdsByText = new WeakMap<Y.Text, string>();
   const remoteProjectionRevisions = new Map<string, number>();
   const consumedRemoteProjectionRevisions = new Map<string, number>();
   let activeDocumentLease: RoomDocumentLease | null = null;
@@ -389,58 +381,6 @@ export const createWorkspaceRoomRuntime = ({
     editorBinding: null,
   };
   const runtimeListeners = new Set<() => void>();
-  let commentByteLength = 0;
-  let commentsWithinLimits = true;
-  let roomContentByteLength = 0;
-
-  const refreshCommentMetrics = () => {
-    const comments = Object.values(getWorkspaceRoomComments(room)).flat();
-    commentsWithinLimits =
-      comments.length <= WORKSPACE_ROOM_MAX_COMMENTS &&
-      comments.every((comment) =>
-        comment.body.length <= WORKSPACE_ROOM_MAX_COMMENT_LENGTH &&
-        comment.replies.length <= WORKSPACE_ROOM_MAX_REPLIES &&
-        comment.replies.every((reply) => reply.body.length <= WORKSPACE_ROOM_MAX_COMMENT_LENGTH),
-      );
-    commentByteLength = comments.reduce(
-      (total, comment) => total + utf8Encoder.encode(comment.body).byteLength +
-        comment.replies.reduce((replyTotal, reply) => replyTotal + utf8Encoder.encode(reply.body).byteLength, 0),
-      0,
-    );
-  };
-
-  const refreshRoomContentByteLength = () => {
-    roomContentByteLength = commentByteLength;
-    for (const byteLength of documentByteLengths.values()) roomContentByteLength += byteLength;
-  };
-
-  const syncDocumentMetrics = () => {
-    const currentDocumentIds = new Set<string>();
-    room.documents.forEach((text, id) => {
-      currentDocumentIds.add(id);
-      documentIdsByText.set(text, id);
-      if (indexedDocumentTexts.get(id) === text && documentSizeTrackers.has(id)) return;
-      indexedDocumentTexts.set(id, text);
-      const nextTracker = new Utf8TextSizeTracker(text.toString());
-      documentSizeTrackers.set(id, nextTracker);
-      documentByteLengths.set(id, nextTracker.byteLength);
-    });
-    for (const id of [...indexedDocumentTexts.keys()]) {
-      if (currentDocumentIds.has(id)) continue;
-      indexedDocumentTexts.delete(id);
-      documentSizeTrackers.delete(id);
-      documentByteLengths.delete(id);
-      remoteProjectionRevisions.delete(id);
-      consumedRemoteProjectionRevisions.delete(id);
-    }
-    documentRegistry.sync();
-    refreshRoomContentByteLength();
-  };
-
-  const refreshCommentByteLength = () => {
-    refreshCommentMetrics();
-    refreshRoomContentByteLength();
-  };
 
   const scheduleTextProjection = (documentId: string) => {
     if (!documentProjectionStore.hasSubscribers(documentId)) return;
@@ -464,11 +404,6 @@ export const createWorkspaceRoomRuntime = ({
       if (!closed) onCommentsChange(getWorkspaceRoomComments(room));
     }, COMMENT_PROJECTION_DELAY_MS);
   };
-
-  const canApplyTextByteDelta = (byteDelta: number) =>
-    Number.isFinite(byteDelta) &&
-    roomContentByteLength + byteDelta >= 0 &&
-    roomContentByteLength + byteDelta <= WORKSPACE_ROOM_MAX_CONTENT_BYTES;
 
   const updateRuntimeSnapshot = (patch: Partial<WorkspaceRoomRuntimeSnapshot>) => {
     const next = { ...runtimeSnapshot, ...patch };
@@ -513,9 +448,19 @@ export const createWorkspaceRoomRuntime = ({
       comments: commentsToList(commentsByFileId),
     });
   }
+  const roomMetrics = createRoomMetrics(room);
+  const syncDocumentMetrics = () => {
+    const removedDocumentIds = roomMetrics.syncDocuments();
+    for (const id of removedDocumentIds) {
+      remoteProjectionRevisions.delete(id);
+      consumedRemoteProjectionRevisions.delete(id);
+    }
+    documentRegistry.sync();
+  };
+  const canApplyTextByteDelta = (byteDelta: number) =>
+    roomMetrics.canApplyTextByteDelta(byteDelta);
   structureStore.refresh();
   syncDocumentMetrics();
-  refreshCommentByteLength();
 
   const emitRecoveryEvent = (type: CollabRecoveryEvent["type"], message: string) => {
     onRecoveryEvent?.({ id: adapters.clock.createId(), type, message, createdAt: adapters.clock.nowIso() });
@@ -612,7 +557,8 @@ export const createWorkspaceRoomRuntime = ({
       emitInvalidMessage(structureLimits.message);
       return;
     }
-    if (!commentsWithinLimits || roomContentByteLength > WORKSPACE_ROOM_MAX_CONTENT_BYTES) {
+    const metrics = roomMetrics.getSnapshot();
+    if (!metrics.commentsWithinLimits || !canApplyTextByteDelta(0)) {
       setStatus("failed");
       emitInvalidMessage("This live workspace exceeds the supported content limits.");
       return;
@@ -709,7 +655,8 @@ export const createWorkspaceRoomRuntime = ({
     if (!roomKey) return null;
     const structure = validateWorkspaceRoomStructure(room, roomId);
     if (!structure.ok) return null;
-    if (!commentsWithinLimits || roomContentByteLength > WORKSPACE_ROOM_MAX_CONTENT_BYTES) return null;
+    const metrics = roomMetrics.getSnapshot();
+    if (!metrics.commentsWithinLimits || !canApplyTextByteDelta(0)) return null;
     const stateVector = Y.encodeStateVector(room.doc);
     const update = Y.encodeStateAsUpdate(room.doc);
     if (update.byteLength > ROOM_WIRE_MAX_CRDT_STATE_BYTES) {
@@ -1205,32 +1152,28 @@ export const createWorkspaceRoomRuntime = ({
     events: Y.YEvent<Y.AbstractType<unknown>>[],
     transaction: Y.Transaction,
   ) => {
-    const structureChanged = events.some((event) => event.target === room.documents);
-    if (structureChanged) {
-      syncDocumentMetrics();
+    const metricsChange = roomMetrics.applyDocumentEvents(events);
+    if (metricsChange.structureChanged) {
+      for (const id of metricsChange.removedDocumentIds) {
+        remoteProjectionRevisions.delete(id);
+        consumedRemoteProjectionRevisions.delete(id);
+      }
+      documentRegistry.sync();
       refreshActiveEditorBinding();
       queueWorkspaceProjection(transaction.origin);
     }
-    for (const event of events) {
-      if (!(event instanceof Y.YTextEvent)) continue;
-      const text = event.target;
-      const id = documentIdsByText.get(text);
-      if (!id) continue;
-      const tracker = documentSizeTrackers.get(id) ?? new Utf8TextSizeTracker(text.toString());
-      documentSizeTrackers.set(id, tracker);
-      documentByteLengths.set(id, tracker.applyDelta(event.delta));
+    for (const id of metricsChange.changedDocumentIds) {
       if (isRemoteSyncOrigin(transaction.origin) || transaction.origin === CHECKPOINT_ORIGIN) {
         remoteProjectionRevisions.set(id, (remoteProjectionRevisions.get(id) ?? 0) + 1);
       }
       scheduleTextProjection(id);
       if (id === activeDocumentId && room.comments.size > 0) scheduleCommentProjection();
     }
-    refreshRoomContentByteLength();
   };
   const handleWorkspaceStructureChange = (_event: unknown, transaction: Y.Transaction) =>
     queueWorkspaceProjection(transaction.origin);
   const handleCommentsChange = () => {
-    refreshCommentByteLength();
+    roomMetrics.refreshComments();
     scheduleCommentProjection();
   };
 
@@ -1322,7 +1265,7 @@ export const createWorkspaceRoomRuntime = ({
     const currentText = text.toString();
     if (currentText === nextText) return true;
     const byteDelta = utf8Encoder.encode(nextText).byteLength -
-      (documentByteLengths.get(documentId) ?? utf8Encoder.encode(currentText).byteLength);
+      (roomMetrics.getDocumentByteLength(documentId) ?? utf8Encoder.encode(currentText).byteLength);
     if (!canApplyTextByteDelta(byteDelta)) return false;
     room.doc.transact(() => {
       if (text.length) text.delete(0, text.length);
@@ -1358,7 +1301,7 @@ export const createWorkspaceRoomRuntime = ({
       const currentText = text.toString();
       const patchedText = patches?.length ? applyTextPatchesToString(currentText, patches) : nextText;
       const byteDelta = utf8Encoder.encode(nextText).byteLength -
-        (documentByteLengths.get(activeDocumentId) ?? utf8Encoder.encode(currentText).byteLength);
+        (roomMetrics.getDocumentByteLength(activeDocumentId) ?? utf8Encoder.encode(currentText).byteLength);
       if (!canApplyTextByteDelta(byteDelta)) return false;
       room.doc.transact(() => {
         if (patches?.length && patchedText === nextText) applyTextPatches(text, patches);
@@ -1378,7 +1321,7 @@ export const createWorkspaceRoomRuntime = ({
       const nextText = applyTextPatchesToString(currentText, patches);
       if (nextText === null) return false;
       const byteDelta = utf8Encoder.encode(nextText).byteLength -
-        (documentByteLengths.get(activeDocumentId) ?? utf8Encoder.encode(currentText).byteLength);
+        (roomMetrics.getDocumentByteLength(activeDocumentId) ?? utf8Encoder.encode(currentText).byteLength);
       if (!canApplyTextByteDelta(byteDelta)) return false;
       room.doc.transact(() => applyTextPatches(text, patches), "tabula.text.local");
       return true;
@@ -1518,9 +1461,7 @@ export const createWorkspaceRoomRuntime = ({
       documentRegistry.dispose();
       documentProjectionStore.clear();
       structureStore.dispose();
-      documentByteLengths.clear();
-      documentSizeTrackers.clear();
-      indexedDocumentTexts.clear();
+      roomMetrics.dispose();
       remoteProjectionRevisions.clear();
       consumedRemoteProjectionRevisions.clear();
       awareness.destroy();
