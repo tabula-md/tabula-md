@@ -7,7 +7,7 @@ import {
 import { createHelpMarkdown } from "../helpMarkdown";
 import { getShortcutPlatform } from "../keyboardShortcuts";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
-import { type TextChange, type WorkspaceRoomComment } from "@tabula-md/tabula";
+import type { TextChange } from "@tabula-md/tabula";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import {
   createRoomWorkspaceState,
@@ -195,9 +195,9 @@ export function useWorkspaceRuntime() {
   const {
     commentsByFileId,
     commentDraft,
+    focusedCommentId,
     activeReplyCommentId,
     replyDraftByCommentId,
-    focusedCommentId,
     activeFileComments,
     activeOpenComments,
     setCommentDraft,
@@ -290,7 +290,6 @@ export function useWorkspaceRuntime() {
     activeSearchMatchIndex,
     activeSelection,
     activeViewMode,
-    clearPreviewSelection,
     cursorPositionLabel,
     editorSurfaceRef,
     endSplitDividerDrag,
@@ -328,7 +327,6 @@ export function useWorkspaceRuntime() {
     selectedLineCount,
     selectionActionPosition,
     setActiveFileViewMode,
-    setActiveSelection,
     setSearchOpen,
     setSearchQuery,
     setReplaceQuery,
@@ -342,7 +340,6 @@ export function useWorkspaceRuntime() {
     splitDividerMinValue,
     splitDividerValue,
     splitWorkspaceStyle,
-    suppressSelectionActionPositionRef,
     syncPreviewSelection,
     text,
     workspaceRef,
@@ -801,7 +798,6 @@ export function useWorkspaceRuntime() {
     goToFileComment,
     handleLineAnnotationAction,
     openCommentMarker,
-    openCommentsPanel,
     openSelectionComment,
     pendingSelectionCommentText,
     selectionCommentPending,
@@ -817,7 +813,6 @@ export function useWorkspaceRuntime() {
     createFileComment,
     createId: randomId,
     files,
-    focusedCommentId,
     getSelectedMarkdownAnchor,
     getSelectedMarkdownExcerpt,
     previewBody: renderedPreview.body,

@@ -9,9 +9,9 @@ import {
   createNoopRoomCheckpointStore,
   decryptWorkspaceRoomCheckpoint,
   encryptWorkspaceRoomCheckpoint,
-  persistInitialWorkspaceRoomCheckpoint,
   type RoomCheckpointStore,
 } from "./roomCheckpointStore";
+import { persistInitialWorkspaceRoomCheckpoint } from "./roomCheckpointCrdt";
 
 describe("room checkpoint crypto", () => {
   it("encrypts a room-bound Yjs state update without plaintext", async () => {

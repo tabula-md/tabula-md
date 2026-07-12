@@ -78,7 +78,6 @@ import {
 } from "../preview/PreviewLineGutter";
 import type {
   MarkdownPreviewCommentAnchor,
-  MarkdownPreviewLineActionRequest,
   MarkdownPreviewLineAnnotation,
   MarkdownPreviewMetadata,
   MarkdownPreviewProps,
