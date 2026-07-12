@@ -27,9 +27,9 @@ import {
   writeRoomViewState,
 } from "../collaboration/roomViewState";
 import {
+  createStarterWorkspaceState,
   createRoomWorkspaceState,
   createWorkspaceFile,
-  finalizeWorkspaceState,
   randomId,
   readInitialWorkspaceSnapshot,
   README_FILE_ID,
@@ -848,7 +848,7 @@ export function useWorkspaceRuntime() {
     syncUrlForLocalWorkspace("replace");
     void readIndexedDbWorkspace()
       .then((storedWorkspace) => {
-        const nextStoredWorkspace = storedWorkspace ?? finalizeWorkspaceState([]);
+        const nextStoredWorkspace = storedWorkspace ?? createStarterWorkspaceState();
         getWorkspaceStoreForMode("local").getState().replaceWorkspace(nextStoredWorkspace);
         replaceCommentsByFileId(nextStoredWorkspace.commentsByFileId);
       })
@@ -1332,6 +1332,10 @@ export function useWorkspaceRuntime() {
     onAddFile: addFile,
     onChangeUserName: updateIdentityName,
     onCloseFile: closeFile,
+    onShareLoadError: () => {
+      setTopPopover(null);
+      showToast(getWorkspaceMenuCopy(workspacePreferences.language).share.loadError, "error");
+    },
     onCommitUserName: normalizeIdentityName,
     onCopyShareUrl: copyShareUrlWithPendingCommit,
     onDownloadProjectArchive: downloadProjectArchive,

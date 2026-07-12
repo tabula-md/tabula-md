@@ -39,6 +39,10 @@ export default defineConfig({
             return;
           }
 
+          if (normalizedId.includes("/node_modules/yaml/")) {
+            return "markdown-core";
+          }
+
           if (
             normalizedId.includes("/react-markdown/") ||
             normalizedId.includes("/remark-") ||
@@ -57,8 +61,7 @@ export default defineConfig({
             normalizedId.includes("/unist-util-") ||
             normalizedId.includes("/vfile/") ||
             normalizedId.includes("/vfile-message/") ||
-            normalizedId.includes("/web-namespaces/") ||
-            normalizedId.includes("/yaml/")
+            normalizedId.includes("/web-namespaces/")
           ) {
             return "markdown-vendor";
           }

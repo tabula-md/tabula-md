@@ -39,6 +39,7 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   onAddFile: () => void;
   onChangeUserName: (nextName: string) => void;
   onCloseFile: (fileId: string) => void;
+  onShareLoadError: () => void;
   onCommitUserName: () => void;
   onCopyShareUrl: () => void;
   onDownloadProjectArchive: () => void;
@@ -82,6 +83,7 @@ export function useWorkspaceTopChromeRuntime({
   onAddFile,
   onChangeUserName,
   onCloseFile,
+  onShareLoadError,
   onCommitUserName,
   onCopyShareUrl,
   onDownloadProjectArchive,
@@ -151,6 +153,7 @@ export function useWorkspaceTopChromeRuntime({
     onChromeInteraction: closeDocumentChrome,
     onCloseFile,
     onCloseShare: closeShare,
+    onShareLoadError,
     onCommitUserName,
     onCopyShareUrl,
     onDownloadProjectArchive,

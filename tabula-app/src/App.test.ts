@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getCommentRangeInText, mapCommentAnchorThroughPatches } from "./commentAnchors";
 import {
   createRoomWorkspaceState,
+  createStarterWorkspaceState,
   createWorkspaceFile,
   createStoredWorkspace,
   ensureDefaultFiles,
-  finalizeWorkspaceState,
   getRoomFromLocation,
   parseWorkspacePayload,
   PROJECT_STORAGE_VERSION,
@@ -134,11 +134,12 @@ describe("file tab state transitions", () => {
     expect(replaceState).toHaveBeenNthCalledWith(3, null, "", "/");
   });
 
-  it("opens a fresh project on the product README", () => {
-    const restored = finalizeWorkspaceState([]);
+  it("opens a fresh project with the product README available but no open tabs", () => {
+    const restored = createStarterWorkspaceState();
 
-    expect(restored.files.map((file) => file.title)).toEqual(["README.md", "Untitled.md"]);
-    expect(restored.activeFileId).toBe(restored.files[0].id);
+    expect(restored.files.map((file) => file.title)).toEqual(["README.md"]);
+    expect(restored.openFileIds).toEqual([]);
+    expect(restored.activeFileId).toBe("");
   });
 });
 
@@ -227,7 +228,7 @@ describe("project persistence", () => {
     expect(restored?.activeFileId).toBe("local");
   });
 
-  it("keeps the product README before the blank starter project", () => {
+  it("preserves the active blank document in an existing starter project", () => {
     const stored = createStoredWorkspace({
       files: [
         createWorkspaceFile(1, { id: "tabula-readme", title: "README.md", text: "# Guide", viewMode: "preview" }),
@@ -239,7 +240,7 @@ describe("project persistence", () => {
     const restored = parseWorkspacePayload(stored);
 
     expect(restored?.files.map((file) => file.title)).toEqual(["README.md", "Untitled.md"]);
-    expect(restored?.activeFileId).toBe("tabula-readme");
+    expect(restored?.activeFileId).toBe("blank");
   });
 
   it("stores only document data and never embeds room credentials", () => {

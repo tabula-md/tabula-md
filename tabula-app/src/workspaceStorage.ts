@@ -531,22 +531,9 @@ export const finalizeWorkspaceState = (
     ? storedOpenFileIds.filter((fileId, index, fileIdList) => fileIds.has(fileId) && fileIdList.indexOf(fileId) === index)
     : nextFiles.map((file) => file.id);
   const storedActiveFileId = activeFileId && nextFiles.some((file) => file.id === activeFileId) ? activeFileId : undefined;
-  const defaultReadmeFile = nextFiles.find(isDefaultReadmeFile);
-  const defaultLocalFile = nextFiles.find((file) => !isDefaultReadmeFile(file));
-  const storedActiveFile = nextFiles.find((file) => file.id === storedActiveFileId);
-  const hasOpenTabs = nextOpenFileIds.length > 0;
-  const hasOnlyStarterFiles =
-    nextFiles.length === 2 &&
-    Boolean(defaultReadmeFile) &&
-    Boolean(defaultLocalFile) &&
-    defaultLocalFile?.title === "Untitled.md" &&
-    defaultLocalFile?.text.trim() === "";
-  const storedActiveIsReadme = storedActiveFile ? isDefaultReadmeFile(storedActiveFile) : false;
-  const shouldPreferReadmeIntro =
-    hasOpenTabs && (!storedActiveFileId || (hasOnlyStarterFiles && Boolean(storedActiveFile) && !storedActiveIsReadme));
   let nextActiveFileId =
-    (shouldPreferReadmeIntro ? defaultReadmeFile?.id : (storedActiveFileId ?? defaultReadmeFile?.id)) ??
-    defaultLocalFile?.id ??
+    storedActiveFileId ??
+    nextOpenFileIds[0] ??
     nextFiles[0]?.id ??
     "";
 
@@ -565,6 +552,9 @@ export const finalizeWorkspaceState = (
     commentsByFileId,
   };
 };
+
+export const createStarterWorkspaceState = (): WorkspaceState =>
+  finalizeWorkspaceState([createReadmeFile()], undefined, {}, { openFileIds: [] });
 
 export const parseWorkspacePayload = (payload: unknown): WorkspaceState | null => {
   if (!isRecord(payload)) {
@@ -602,7 +592,7 @@ export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {
     return { source: "room", room, workspace: createRoomWorkspaceState() };
   }
 
-  return { source: "starter", workspace: finalizeWorkspaceState([]) };
+  return { source: "starter", workspace: createStarterWorkspaceState() };
 };
 
 export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {

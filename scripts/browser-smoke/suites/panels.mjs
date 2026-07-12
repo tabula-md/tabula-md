@@ -18,6 +18,11 @@ export async function run(ctx) {
   } = ctx;
 
   await withPage(browser, "/", async (page) => {
+    await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
+    await waitForActiveTab(page, { startsWith: "Untitled" });
+    await waitForEditorReady(page, { mode: "edit" });
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await waitForEditorReady(page, { mode: "preview" });
     await openProjectMenu(page);
 
     const workbenchPanels = await page.evaluate(() => ({

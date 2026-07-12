@@ -25,20 +25,18 @@ export async function run(ctx) {
   } = ctx;
 
   await withPage(browser, "/", async (page) => {
+    await page.locator(".empty-file-state").waitFor({ state: "visible" });
     const tabs = await getTabs(page);
-    const activeTab = tabs.find((tab) => tab.active);
-    const previewText = await page.locator(".preview-surface").textContent();
+    const firstScreenText = await page.locator(".empty-file-state").textContent();
 
-    expect(activeTab?.title === "README.md", "Fresh projects should open on the product README.");
-    expect(activeTab?.visibleTitle === "README", "File tabs should omit the .md extension visually.");
-    expect(activeTab?.mode === "Preview", "The product README should open in Preview mode.");
-    expect(previewText?.includes("Tabula.md is a local-first Markdown workspace"), "The first screen should be a product document.");
-    expect(previewText?.includes("No dashboard first."), "The README should explain the product in a short product voice.");
-    expect(!previewText?.includes("## Frontmatter"), "The README first screen should avoid long instructional sections.");
-    expect(!previewText?.includes("```"), "The README first screen should not include code examples.");
-    expect((await page.locator(".intro-action-button").count()) === 0, "The product README should not embed app actions.");
+    expect(tabs.length === 0, "Fresh projects should start without an open document tab.");
+    expect(firstScreenText?.includes("New document"), "The first screen should offer a direct new-document action.");
+    expect(firstScreenText?.includes("Open Markdown file"), "The first screen should offer a direct open-file action.");
+    expect((await page.locator(".preview-surface").count()) === 0, "Fresh projects should not load Preview before it is requested.");
+    expect((await page.getByText("Opening workspace...").count()) === 0, "Local hydration should not flash loading copy.");
+    expect((await page.getByText("Preparing preview...").count()) === 0, "Fresh projects should not flash Preview loading copy.");
     expect((await page.locator(".tabula-plus-trigger").count()) === 0, "Tabula + should not live in the top-right document chrome.");
-    expect((await page.locator(".share-trigger").count()) === 1, "Share should be a single top-right chrome action.");
+    expect((await page.locator(".share-trigger").count()) === 0, "Share should stay hidden until a document is open.");
     expect((await page.getByRole("button", { name: "More document actions" }).count()) === 0, "Document controls should not expose a single-command More menu.");
     await page.evaluate(() => {
       window.__tabulaClipboard = [];
@@ -63,6 +61,13 @@ export async function run(ctx) {
     expect((await page.locator(".publish-trigger").count()) === 0, "Publish should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".blank-document-action").count()) === 0, "The first screen should not show canvas-style onboarding actions.");
     expect((await page.locator(".empty-feature-callout").count()) === 0, "The first screen should not show canvas-style callouts.");
+    await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
+    await waitForActiveTab(page, { exact: "Untitled.md" });
+    await waitForEditorReady(page, { mode: "edit" });
+    let nextTabs = await getTabs(page);
+    expect(nextTabs.find((tab) => tab.active)?.title === "Untitled.md", "The first created document should use the base Untitled name.");
+    expect((await page.locator(".share-trigger").count()) === 1, "Opening a document should expose the Share action.");
+
     const compactTabs = await page.evaluate(() => {
       const lastTab = Array.from(document.querySelectorAll(".tab-item")).at(-1);
       const addButton = document.querySelector(".add-tab-button");
@@ -90,11 +95,6 @@ export async function run(ctx) {
       "Compact tab row should leave unused space after the new-tab control instead of pinning it right.",
     );
 
-    await page.getByRole("button", { name: "New document", exact: true }).click();
-    await waitForActiveTab(page, { startsWith: "Untitled" });
-    await waitForEditorReady(page, { mode: "edit" });
-    let nextTabs = await getTabs(page);
-    expect(nextTabs.find((tab) => tab.active)?.title?.startsWith("Untitled"), "New document should activate a blank document.");
     expect(
       !nextTabs.find((tab) => tab.active)?.visibleTitle.endsWith(".md"),
       "Blank File tabs should omit the .md extension visually.",
@@ -109,7 +109,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.getByRole("button", { name: "New document", exact: true }).click();
+    await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".share-trigger").click();
@@ -133,12 +133,31 @@ export async function run(ctx) {
       (await page.locator("#root").getAttribute("aria-hidden")) === null,
       "Closing the modal should restore the app accessibility tree.",
     );
-    await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
+    await openProjectMenu(page);
+    await page.getByRole("button", { name: "About", exact: true }).click();
     await waitForActiveTab(page, { exact: "README.md" });
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Publish should stay hidden for non-empty files too.");
     expect((await page.locator(".workspace-plus-popover").count()) === 0, "The hidden publish boundary should not open a plus popover.");
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.route("**/src/components/ShareControls.tsx*", (route) => route.abort("failed"));
+    await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
+    await waitForEditorReady(page, { mode: "edit" });
+    await page.getByRole("button", { name: "Share", exact: true }).click();
+    await page.waitForFunction(
+      () => document.querySelector(".app-toast.error")?.textContent?.includes("Couldn’t open sharing."),
+    );
+    expect((await page.locator(".share-modal").count()) === 0, "A failed Share chunk should close the modal surface.");
+    expect(
+      await page.locator(".app-shell").evaluate((shell) => shell.getClientRects().length > 0),
+      "A failed Share chunk should leave the workspace visible and usable.",
+    );
+    await page.getByRole("button", { name: "New document", exact: true }).click();
+    await waitForActiveTab(page, { startsWith: "Untitled" });
+    await waitForEditorReady(page, { mode: "edit" });
   });
 
   await withPage(browser, "/", async (page) => {
@@ -286,6 +305,8 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
+    await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
+    await waitForEditorReady(page, { mode: "edit" });
     await page.evaluate(() => {
       document.documentElement.dataset.theme = "dark";
       document.documentElement.dataset.themePreference = "dark";
@@ -527,6 +548,9 @@ export async function run(ctx) {
     await stopRoomServer();
     try {
       await withPage(browser, "/", async (page) => {
+        await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
+        await waitForActiveTab(page, { startsWith: "Untitled" });
+        await waitForEditorReady(page, { mode: "edit" });
         await page.locator(".share-trigger").click();
         await waitForShareDialogState(page, { panel: "Share link" });
         await page.getByRole("button", { name: "Start session" }).click();
@@ -668,6 +692,9 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
+    await openProjectMenu(page);
+    await page.getByRole("button", { name: "About", exact: true }).click();
+    await waitForActiveTab(page, { exact: "README.md" });
     let tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "Preview mode should be reflected in the active tab.");
     expect(

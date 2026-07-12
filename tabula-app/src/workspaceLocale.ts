@@ -37,6 +37,7 @@ type WorkspaceMenuCopy = {
   share: {
     trigger: string;
     modalTitle: string;
+    loadError: string;
     live: {
       title: string;
       description: string;
@@ -129,6 +130,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "Share",
       modalTitle: "Share",
+      loadError: "Couldn’t open sharing.",
       live: {
         title: "Live collaboration",
         description:
@@ -207,6 +209,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "공유",
       modalTitle: "공유",
+      loadError: "공유를 열지 못했습니다.",
       live: {
         title: "실시간 협업",
         description:
@@ -285,6 +288,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "共有",
       modalTitle: "共有",
+      loadError: "共有を開けませんでした。",
       live: {
         title: "ライブ共同編集",
         description:
@@ -365,6 +369,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "分享",
       modalTitle: "分享",
+      loadError: "无法打开分享。",
       live: {
         title: "实时协作",
         description: "创建用于实时协作的加密 room。",
@@ -441,6 +446,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "Compartir",
       modalTitle: "Compartir",
+      loadError: "No se pudo abrir Compartir.",
       live: {
         title: "Colaboración en vivo",
         description:
@@ -521,6 +527,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "Partager",
       modalTitle: "Partager",
+      loadError: "Impossible d’ouvrir le partage.",
       live: {
         title: "Collaboration en direct",
         description:
@@ -601,6 +608,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "Teilen",
       modalTitle: "Teilen",
+      loadError: "Teilen konnte nicht geöffnet werden.",
       live: {
         title: "Live-Zusammenarbeit",
         description:

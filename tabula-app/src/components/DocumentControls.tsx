@@ -42,6 +42,7 @@ type DocumentControlsProps = {
   language: WorkspaceLanguage;
   searchOpen: boolean;
   onSetViewMode: (viewMode: FileViewMode) => void;
+  onPreparePreview: () => void;
   onToggleSearch: () => void;
   onToggleViewOptions: () => void;
   onSetReadingWidth: (readingWidth: ReadingWidth) => void;
@@ -86,6 +87,7 @@ export function DocumentControls({
   language,
   searchOpen,
   onSetViewMode,
+  onPreparePreview,
   onToggleSearch,
   onToggleViewOptions,
   onSetReadingWidth,
@@ -115,6 +117,8 @@ export function DocumentControls({
               data-tooltip={option.label}
               aria-pressed={option.active}
               data-view-mode={option.viewMode}
+              onFocus={option.viewMode === "edit" ? undefined : onPreparePreview}
+              onPointerEnter={option.viewMode === "edit" ? undefined : onPreparePreview}
               onClick={() => onSetViewMode(option.viewMode)}
             >
               {viewModeIcons[option.icon]}
