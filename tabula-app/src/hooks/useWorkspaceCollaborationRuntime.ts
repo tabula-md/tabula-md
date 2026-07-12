@@ -3,7 +3,8 @@ import type {
   Collaborator,
   CollabRecoveryEvent,
 } from "../collaboration";
-import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceFile } from "../workspaceStorage";
+import type { RoomWorkspaceSession } from "../workspace/session/WorkspaceSession";
 import {
   getActiveWorkspaceStatus,
   getWorkspaceStatusLabel,
@@ -11,7 +12,7 @@ import {
 import { useCollaborationRoom } from "./useCollaborationRoom";
 
 type UseWorkspaceCollaborationRuntimeOptions = {
-  room?: LocationRoom | null;
+  session?: RoomWorkspaceSession | null;
   activeDocument?: WorkspaceFile;
   editorPresenceEnabled?: boolean;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
@@ -25,7 +26,7 @@ type UseWorkspaceCollaborationRuntimeOptions = {
 };
 
 export function useWorkspaceCollaborationRuntime({
-  room: sessionRoom,
+  session,
   activeDocument,
   editorPresenceEnabled,
   getActiveFileSnapshot,
@@ -38,7 +39,7 @@ export function useWorkspaceCollaborationRuntime({
   onCapacityExceeded,
 }: UseWorkspaceCollaborationRuntimeOptions) {
   const collaboration = useCollaborationRoom({
-    room: sessionRoom,
+    session,
     activeDocument,
     editorPresenceEnabled,
     getActiveFileSnapshot,
@@ -50,7 +51,7 @@ export function useWorkspaceCollaborationRuntime({
     onOpenFailure,
     onCapacityExceeded,
   });
-  const isLive = Boolean(sessionRoom);
+  const isLive = Boolean(session);
   const activeStatus = getActiveWorkspaceStatus({
     isLive,
     connectionStatus: collaboration.connectionStatus,

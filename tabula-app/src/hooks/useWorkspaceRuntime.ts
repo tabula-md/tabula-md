@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { createHelpMarkdown } from "../helpMarkdown";
 import { getShortcutLabels } from "../keyboardShortcuts";
@@ -89,6 +90,14 @@ import {
   type FollowState,
   type FollowStopReason,
 } from "../collaboration/followModel";
+import {
+  createLocalWorkspaceSession,
+  createRoomWorkspaceSession,
+} from "../workspace/session/WorkspaceSession";
+import {
+  createWorkspaceSessionHost,
+  type WorkspaceSessionHost,
+} from "../workspace/session/WorkspaceSessionHost";
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -154,13 +163,25 @@ export function useWorkspaceRuntime() {
     workspacePreferences.language,
   ).share;
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
-  const [activeRoom, setActiveRoom] = useState<LocationRoom | null>(() =>
-    initialWorkspaceSnapshot.source === "room" ? (initialWorkspaceSnapshot.room ?? null) : null,
+  const workspaceSessionHostRef = useRef<WorkspaceSessionHost | null>(null);
+  if (!workspaceSessionHostRef.current) {
+    const initialRoom = initialWorkspaceSnapshot.source === "room"
+      ? initialWorkspaceSnapshot.room
+      : null;
+    workspaceSessionHostRef.current = createWorkspaceSessionHost(
+      initialRoom ? createRoomWorkspaceSession(initialRoom) : createLocalWorkspaceSession(),
+    );
+  }
+  const workspaceSessionHost = workspaceSessionHostRef.current;
+  const workspaceSession = useSyncExternalStore(
+    workspaceSessionHost.subscribe,
+    workspaceSessionHost.getSnapshot,
+    workspaceSessionHost.getSnapshot,
   );
+  const activeRoomSession = workspaceSession.mode === "room" ? workspaceSession : null;
+  const activeRoom = activeRoomSession?.room ?? null;
   const [followState, setFollowState] = useState<FollowState>(IDLE_FOLLOW_STATE);
-  const [localPersistenceEnabled, setLocalPersistenceEnabled] = useState(
-    () => initialWorkspaceSnapshot.source !== "room",
-  );
+  const localPersistenceEnabled = workspaceSession.mode === "local";
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const previewRef = useRef<MarkdownPreviewHandle | null>(null);
   const editorDocumentRuntime = useWorkspaceEditorDocumentRuntimeOwner();
@@ -554,7 +575,7 @@ export function useWorkspaceRuntime() {
     resetCollaborationState,
     retryConnection: retryCollaborationConnection,
   } = useWorkspaceCollaborationRuntime({
-    room: activeRoom,
+    session: activeRoomSession,
     activeDocument: activeFile,
     editorPresenceEnabled:
       Boolean(activeRoomDocument) &&
@@ -872,9 +893,8 @@ export function useWorkspaceRuntime() {
     flushPendingEditorCommit();
     stopSession();
     resetCollaborationState("idle");
-    setActiveRoom(null);
+    workspaceSessionHost.openLocal();
     setLiveRoomOpenFailure(null);
-    setLocalPersistenceEnabled(true);
     syncUrlForLocalWorkspace("replace");
     void readIndexedDbWorkspace()
       .then((storedWorkspace) => {
@@ -894,9 +914,8 @@ export function useWorkspaceRuntime() {
       const startedSession = await startSession();
       if (!startedSession) return;
 
-      setLocalPersistenceEnabled(false);
       setLiveRoomOpenFailure(null);
-      setActiveRoom(startedSession);
+      workspaceSessionHost.openRoom(startedSession);
     } catch (error) {
       clientErrorReporter.report({
         feature: "collaboration",
@@ -914,9 +933,8 @@ export function useWorkspaceRuntime() {
     stopSession();
     resetCollaborationState("idle");
     syncUrlForLocalWorkspace("replace");
-    setActiveRoom(null);
+    workspaceSessionHost.openLocal();
     setLiveRoomOpenFailure(null);
-    setLocalPersistenceEnabled(true);
   });
   useEffect(() => {
     const roomId = activeRoomId;
@@ -968,9 +986,8 @@ export function useWorkspaceRuntime() {
   });
   const activateRoomWorkspace = useEventCallback((room: LocationRoom) => {
     restoredRoomViewsRef.current.delete(room.roomId);
-    setLocalPersistenceEnabled(false);
     setLiveRoomOpenFailure(null);
-    setActiveRoom(room);
+    workspaceSessionHost.openRoom(room);
     replaceWorkspace(createRoomWorkspaceState());
   });
   useWorkspaceRouteRuntime({

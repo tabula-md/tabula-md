@@ -25,7 +25,8 @@ import {
   getInitialCollaborationStatus,
   getLiveRoomConnectionTarget,
 } from "../collaboration/collabRuntime";
-import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceFile } from "../workspaceStorage";
+import type { RoomWorkspaceSession } from "../workspace/session/WorkspaceSession";
 
 const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   status: "idle",
@@ -67,7 +68,7 @@ const applyWorkspaceCommand = (
 };
 
 type UseCollaborationConnectionRuntimeOptions = {
-  room?: LocationRoom | null;
+  session?: RoomWorkspaceSession | null;
   activeDocument?: Pick<WorkspaceFile, "id" | "title">;
   editorPresenceEnabled?: boolean;
   identity: Collaborator;
@@ -77,7 +78,7 @@ type UseCollaborationConnectionRuntimeOptions = {
 };
 
 export function useCollaborationConnectionRuntime({
-  room,
+  session,
   activeDocument,
   editorPresenceEnabled = true,
   identity,
@@ -85,6 +86,7 @@ export function useCollaborationConnectionRuntime({
   onOpenFailure,
   onCapacityExceeded,
 }: UseCollaborationConnectionRuntimeOptions) {
+  const room = session?.room;
   const [preRuntimeConnectionStatus, setPreRuntimeConnectionStatus] = useState<ConnectionStatus>(
     () => getInitialCollaborationStatus(room),
   );
@@ -96,7 +98,7 @@ export function useCollaborationConnectionRuntime({
   const collabRef = useRef<WorkspaceRoomRuntime | null>(null);
   const pendingLocalTextQueueRef = useRef<Array<{ text?: string; patches: readonly TextPatch[] }>>([]);
   const pendingWorkspaceCommandQueueRef = useRef<PendingWorkspaceCommand[]>([]);
-  const isLive = Boolean(room);
+  const isLive = Boolean(session);
   const connectionKey = room ? `workspace:${room.roomId}:${room.shareUrl}` : "idle";
   const subscribeToRuntime = useCallback(
     (listener: () => void) => runtime?.subscribe(listener) ?? (() => undefined),
@@ -200,6 +202,7 @@ export function useCollaborationConnectionRuntime({
     setPreRuntimeConnectionStatus("connecting");
     let disposed = false;
     let effectRuntime: WorkspaceRoomRuntime | null = null;
+    let detachRuntime: () => void = () => undefined;
     void import("../collaboration/liveCollaboration")
       .then(({ createWorkspaceRoomRuntime }) => {
         if (disposed) return;
@@ -215,6 +218,7 @@ export function useCollaborationConnectionRuntime({
           onRecoveryEvent,
         });
         effectRuntime = connection;
+        detachRuntime = session?.attachRuntime(connection) ?? (() => undefined);
         collabRef.current = connection;
         setRuntime(connection);
         const queue = pendingLocalTextQueueRef.current;
@@ -235,6 +239,7 @@ export function useCollaborationConnectionRuntime({
 
     return () => {
       disposed = true;
+      detachRuntime();
       effectRuntime?.disconnect();
       if (collabRef.current === effectRuntime) collabRef.current = null;
       setRuntime((current) => current === effectRuntime ? null : current);
@@ -244,6 +249,7 @@ export function useCollaborationConnectionRuntime({
   }, [
     connectionAttempt,
     connectionKey,
+    session,
     onRecoveryEvent,
     onOpenFailure,
     onCapacityExceeded,

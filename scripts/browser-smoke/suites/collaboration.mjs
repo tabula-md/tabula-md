@@ -46,7 +46,13 @@ export async function run(ctx) {
 
   try {
     await firstPage.goto(baseUrl);
-    await firstPage.waitForSelector(".tabbar");
+    try {
+      await firstPage.waitForSelector(".tabbar");
+    } catch (error) {
+      throw new Error(
+        `Timed out waiting for the workspace shell.\n${firstPageDiagnostics.join("\n")}\n${error.message}`,
+      );
+    }
     await firstPage.locator(".add-tab-button").click();
     await firstPage.waitForFunction(() => {
       const activeTab = document.querySelector(".tab-item.active");

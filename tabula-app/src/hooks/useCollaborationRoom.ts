@@ -18,7 +18,8 @@ import {
 import type {
   WorkspaceFolderSnapshot,
 } from "../collaboration/liveCollaboration";
-import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceFile } from "../workspaceStorage";
+import type { RoomWorkspaceSession } from "../workspace/session/WorkspaceSession";
 import { useCollaborationConnectionRuntime } from "./useCollaborationConnectionRuntime";
 
 export const validateCollaborationStartWorkspace = ({
@@ -69,7 +70,7 @@ export const validateCollaborationStartWorkspace = ({
 });
 
 type UseCollaborationRoomOptions = {
-  room?: LocationRoom | null;
+  session?: RoomWorkspaceSession | null;
   activeDocument?: WorkspaceFile;
   editorPresenceEnabled?: boolean;
   getActiveFileSnapshot?: () => WorkspaceFile | undefined;
@@ -83,7 +84,7 @@ type UseCollaborationRoomOptions = {
 };
 
 export function useCollaborationRoom({
-  room,
+  session,
   activeDocument,
   editorPresenceEnabled,
   getActiveFileSnapshot,
@@ -132,7 +133,7 @@ export function useCollaborationRoom({
     retryConnection,
   } =
     useCollaborationConnectionRuntime({
-      room,
+      session,
       activeDocument,
       editorPresenceEnabled,
       identity,
