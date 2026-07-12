@@ -35,6 +35,7 @@ import { isUsableLiveRoomFile, type WorkspaceFile } from "../workspaceStorage";
 
 const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   status: "idle",
+  durability: "unknown",
   collaborators: [],
   editorBinding: null,
 };
@@ -163,6 +164,7 @@ export function useCollaborationConnectionRuntime({
   );
   const runtimeConnectionStatus = runtime ? runtimeSnapshot.status : preRuntimeConnectionStatus;
   const connectionStatus = isLive && !browserOnline ? "disconnected" : runtimeConnectionStatus;
+  const durability = runtimeSnapshot.durability;
   const collaborators = runtimeSnapshot.collaborators;
   const editorBinding =
     runtimeSnapshot.editorBinding?.documentId === activeDocument?.id
@@ -353,6 +355,7 @@ export function useCollaborationConnectionRuntime({
       dispatchWorkspaceCommand({ type: "replace-document-text", documentId, text }),
     collaborators,
     connectionStatus,
+    durability,
     editorBinding,
     materializeWorkspace: () => collabRef.current?.materializeWorkspace(),
     resetConnection,

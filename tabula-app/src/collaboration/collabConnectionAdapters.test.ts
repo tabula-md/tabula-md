@@ -41,6 +41,16 @@ const waitForTasks = async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
 };
 
+const createDeferred = <Value,>() => {
+  let resolve!: (value: Value) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<Value>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, reject, resolve };
+};
+
 const createMemoryRoomCheckpointStore = () => {
   const checkpoints = new Map<string, {
     generation: number;
@@ -236,6 +246,155 @@ describe("workspace room runtime", () => {
     expect(clock.setInterval).toHaveBeenCalledTimes(5);
     expect(clock.clearInterval).toHaveBeenCalledTimes(5);
     expect(clock.clearTimeout).toHaveBeenCalled();
+  });
+
+  it("keeps durability dirty when the room changes during a checkpoint save", async () => {
+    type SaveResult = Awaited<ReturnType<RoomCheckpointStore["saveEncryptedCheckpoint"]>>;
+    const saves: ReturnType<typeof createDeferred<SaveResult>>[] = [];
+    const saveEncryptedCheckpoint = vi.fn<RoomCheckpointStore["saveEncryptedCheckpoint"]>(() => {
+      const deferred = createDeferred<SaveResult>();
+      saves.push(deferred);
+      return deferred.promise;
+    });
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const runtime = createWorkspaceRoomRuntime({
+      roomId: "room-durability-race",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc", title: "README.md", text: "start" }],
+      identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      adapters: {
+        ...defaults,
+        createRoomTransport: transport.createRoomTransport,
+        roomCheckpointStore: {
+          enabled: true,
+          loadEncryptedCheckpoint: async () => null,
+          saveEncryptedCheckpoint,
+        },
+        resolveRoomBaseUrl: () => "http://room.test",
+      },
+    });
+
+    await vi.waitFor(() => expect(saveEncryptedCheckpoint).toHaveBeenCalledTimes(1));
+    expect(runtime.getSnapshot().durability).toBe("saving");
+    saves[0]!.resolve({ ok: true, generation: 1 });
+    await vi.waitFor(() => expect(runtime.getSnapshot().durability).toBe("clean"));
+
+    runtime.applyLocalText("first edit");
+    expect(runtime.getSnapshot().durability).toBe("dirty");
+    runtime.flushRecoveryState();
+    await vi.waitFor(() => expect(saveEncryptedCheckpoint).toHaveBeenCalledTimes(2));
+    expect(runtime.getSnapshot().durability).toBe("saving");
+
+    runtime.applyLocalText("edit during save");
+    expect(runtime.getSnapshot().durability).toBe("dirty");
+    saves[1]!.resolve({ ok: true, generation: 2 });
+    await waitForTasks();
+    expect(runtime.getSnapshot().durability).toBe("dirty");
+
+    runtime.flushRecoveryState();
+    await vi.waitFor(() => expect(saveEncryptedCheckpoint).toHaveBeenCalledTimes(3));
+    saves[2]!.resolve({ ok: true, generation: 3 });
+    await vi.waitFor(() => expect(runtime.getSnapshot().durability).toBe("clean"));
+    runtime.disconnect();
+  });
+
+  it("reports failed durability and recovers after a checkpoint retry", async () => {
+    const saveEncryptedCheckpoint = vi.fn<RoomCheckpointStore["saveEncryptedCheckpoint"]>()
+      .mockRejectedValueOnce(new Error("checkpoint unavailable"))
+      .mockResolvedValueOnce({ ok: true, generation: 1 });
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const runtime = createWorkspaceRoomRuntime({
+      roomId: "room-durability-retry",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc", title: "README.md", text: "start" }],
+      identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      adapters: {
+        ...defaults,
+        createRoomTransport: transport.createRoomTransport,
+        roomCheckpointStore: {
+          enabled: true,
+          loadEncryptedCheckpoint: async () => null,
+          saveEncryptedCheckpoint,
+        },
+        resolveRoomBaseUrl: () => "http://room.test",
+      },
+    });
+
+    await vi.waitFor(() => expect(runtime.getSnapshot().durability).toBe("failed"));
+    runtime.flushRecoveryState();
+    await vi.waitFor(() => expect(runtime.getSnapshot().durability).toBe("clean"));
+    expect(saveEncryptedCheckpoint).toHaveBeenCalledTimes(2);
+    runtime.disconnect();
+  });
+
+  it("retries a reliable local update after one encryption failure", async () => {
+    const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    let failNextEncryption = false;
+    const recoveryEvents: string[] = [];
+    const host = createWorkspaceRoomRuntime({
+      roomId: "room-reliable-retry",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc", title: "README.md", text: "start" }],
+      identity: { id: "host", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      onRecoveryEvent: (event) => recoveryEvents.push(event.message),
+      adapters: {
+        ...defaults,
+        crypto: {
+          ...defaults.crypto,
+          encryptEnvelope: (...args) => {
+            if (failNextEncryption) {
+              failNextEncryption = false;
+              return Promise.reject(new Error("transient encryption failure"));
+            }
+            return defaults.crypto.encryptEnvelope(...args);
+          },
+        },
+        createRoomTransport: relay.createRoomTransport,
+        roomCheckpointStore: checkpoints.store,
+        resolveRoomBaseUrl: () => "http://room.test",
+      },
+    });
+    await vi.waitFor(() => expect(checkpoints.getGeneration("room-reliable-retry")).toBeGreaterThan(0));
+    const peer = createWorkspaceRoomRuntime({
+      roomId: "room-reliable-retry",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: false,
+      identity: { id: "peer", name: "Sharp Human", color: "#7c3aed", lastSeen: 0 },
+      fileTitle: "README.md",
+      adapters: {
+        ...defaults,
+        createRoomTransport: relay.createRoomTransport,
+        roomCheckpointStore: checkpoints.store,
+        resolveRoomBaseUrl: () => "http://room.test",
+      },
+    });
+
+    await vi.waitFor(() => expect(peer.materializeDocument("doc")).toBe("start"));
+    await waitForTasks();
+    failNextEncryption = true;
+    host.applyLocalText("eventually delivered");
+
+    await vi.waitFor(
+      () => expect(peer.materializeDocument("doc")).toBe("eventually delivered"),
+      { timeout: 3_000 },
+    );
+    expect(recoveryEvents).toContain("A live collaboration update could not be sent.");
+    host.disconnect();
+    peer.disconnect();
   });
 
   it("exposes one Y.Doc-backed editor binding per document and emits encrypted incremental packets", async () => {

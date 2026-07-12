@@ -96,6 +96,7 @@ export {
 export type { ParsedRoomLocation, RoomSession, TabulaRoomAvailability } from "./collabRoom";
 
 export type ConnectionStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "failed";
+export type RoomDurability = "clean" | "dirty" | "saving" | "failed" | "unknown";
 
 type SendPacketResult = "sent" | "offline" | "failed" | "discarded";
 
@@ -144,6 +145,7 @@ export type CollabEditorBinding = {
 
 export type WorkspaceRoomRuntimeSnapshot = {
   status: ConnectionStatus;
+  durability: RoomDurability;
   collaborators: Collaborator[];
   editorBinding: CollabEditorBinding | null;
 };
@@ -209,6 +211,8 @@ const REMOTE_SYNC_ORIGIN = Symbol("tabula.remote-sync");
 const REMOTE_AWARENESS_ORIGIN = Symbol("tabula.remote-awareness");
 const CHECKPOINT_ORIGIN = Symbol("tabula.checkpoint");
 const CHECKPOINT_SAVE_DELAY_MS = 5_000;
+const CHECKPOINT_RETRY_BASE_DELAY_MS = 1_000;
+const CHECKPOINT_RETRY_MAX_DELAY_MS = 30_000;
 const AWARENESS_HEARTBEAT_MS = 15_000;
 const TEXT_PROJECTION_DELAY_MS = 16;
 const COMMENT_PROJECTION_DELAY_MS = 16;
@@ -326,12 +330,16 @@ export const createWorkspaceRoomRuntime = ({
   let checkpointGeneration = 0;
   let checkpointSaveInFlight = false;
   let checkpointSaveRequested = false;
+  let checkpointRetryAttempt = 0;
+  let checkpointedStateVector: Uint8Array | null = null;
   let envelopeVersion = 0;
   let closed = false;
   let hasHydratedWorkspace = false;
   let outboundQueue: Promise<SendPacketResult> = Promise.resolve("sent");
   let pendingLocalUpdate: Uint8Array | null = null;
   let localUpdateSendInFlight = false;
+  let localUpdateRetryTimer: unknown;
+  let localUpdateRetryAttempt = 0;
   let awarenessSendInFlight = false;
   let pendingAwarenessReliable = false;
   let syncStep1SendInFlight = false;
@@ -346,6 +354,7 @@ export const createWorkspaceRoomRuntime = ({
   let updatesSinceStateSizeCheck = 0;
   let runtimeSnapshot: WorkspaceRoomRuntimeSnapshot = {
     status: "connecting",
+    durability: adapters.roomCheckpointStore.enabled ? "dirty" : "unknown",
     collaborators: [],
     editorBinding: null,
   };
@@ -435,6 +444,7 @@ export const createWorkspaceRoomRuntime = ({
     const next = { ...runtimeSnapshot, ...patch };
     if (
       next.status === runtimeSnapshot.status &&
+      next.durability === runtimeSnapshot.durability &&
       next.collaborators === runtimeSnapshot.collaborators &&
       next.editorBinding === runtimeSnapshot.editorBinding
     ) {
@@ -660,11 +670,15 @@ export const createWorkspaceRoomRuntime = ({
     checkpointTimer = undefined;
   };
 
+  const stateVectorsEqual = (first: Uint8Array | null, second: Uint8Array) =>
+    Boolean(first && first.byteLength === second.byteLength && first.every((value, index) => value === second[index]));
+
   const persistCurrentCheckpoint = async (expectedGeneration: number) => {
     if (!roomKey) return null;
     const structure = validateWorkspaceRoomStructure(room, roomId);
     if (!structure.ok) return null;
     if (!commentsWithinLimits || roomContentByteLength > WORKSPACE_ROOM_MAX_CONTENT_BYTES) return null;
+    const stateVector = Y.encodeStateVector(room.doc);
     const update = Y.encodeStateAsUpdate(room.doc);
     if (update.byteLength > ROOM_WIRE_MAX_CRDT_STATE_BYTES) {
       notifyCapacityExceeded();
@@ -672,26 +686,61 @@ export const createWorkspaceRoomRuntime = ({
     }
     const encryptedCheckpoint = await encryptWorkspaceRoomCheckpoint({ roomId, update, roomKey });
     if (closed || abortController.signal.aborted) return null;
-    return adapters.roomCheckpointStore.saveEncryptedCheckpoint(roomId, {
+    const result = await adapters.roomCheckpointStore.saveEncryptedCheckpoint(roomId, {
       expectedGeneration,
       encryptedCheckpoint,
       expiresAt: Date.now() + ROOM_CHECKPOINT_RETENTION_MS,
     }, abortController.signal);
+    return { result, stateVector };
+  };
+
+  const scheduleCheckpointRetry = () => {
+    if (closed || !adapters.roomCheckpointStore.enabled || !isCheckpointLeader()) return;
+    clearCheckpointTimer();
+    const delay = Math.min(
+      CHECKPOINT_RETRY_MAX_DELAY_MS,
+      CHECKPOINT_RETRY_BASE_DELAY_MS * (2 ** checkpointRetryAttempt),
+    );
+    checkpointRetryAttempt += 1;
+    checkpointTimer = adapters.clock.setTimeout(() => {
+      checkpointTimer = undefined;
+      void saveCheckpointNow();
+    }, delay);
+  };
+
+  const finishCheckpointSave = (stateVector: Uint8Array) => {
+    checkpointedStateVector = stateVector;
+    checkpointRetryAttempt = 0;
+    const currentStateVector = Y.encodeStateVector(room.doc);
+    if (stateVectorsEqual(checkpointedStateVector, currentStateVector)) {
+      updateRuntimeSnapshot({ durability: "clean" });
+      return;
+    }
+    updateRuntimeSnapshot({ durability: "dirty" });
+    scheduleCheckpointSave();
   };
 
   const saveCheckpointNow = async (): Promise<void> => {
     clearCheckpointTimer();
-    if (closed || !roomKey || !adapters.roomCheckpointStore.enabled || !isCheckpointLeader()) return;
+    if (closed || !roomKey || !adapters.roomCheckpointStore.enabled) return;
+    if (!isCheckpointLeader()) {
+      updateRuntimeSnapshot({ durability: "unknown" });
+      return;
+    }
     if (checkpointSaveInFlight) {
       checkpointSaveRequested = true;
       return;
     }
     checkpointSaveInFlight = true;
+    updateRuntimeSnapshot({ durability: "saving" });
+    let saved = false;
     try {
-      const result = await persistCurrentCheckpoint(checkpointGeneration);
-      if (!result) return;
-      if (result.ok) {
-        checkpointGeneration = result.generation;
+      const persisted = await persistCurrentCheckpoint(checkpointGeneration);
+      if (!persisted) return;
+      if (persisted.result.ok) {
+        checkpointGeneration = persisted.result.generation;
+        finishCheckpointSave(persisted.stateVector);
+        saved = true;
       } else {
         const latest = await adapters.roomCheckpointStore.loadEncryptedCheckpoint(roomId, abortController.signal);
         if (latest?.status === "ready") {
@@ -704,13 +753,21 @@ export const createWorkspaceRoomRuntime = ({
           validateCheckpointUpdate(latestUpdate);
           Y.applyUpdate(room.doc, latestUpdate, CHECKPOINT_ORIGIN);
           const retried = await persistCurrentCheckpoint(checkpointGeneration);
-          if (retried) checkpointGeneration = retried.generation;
+          if (retried?.result.ok) {
+            checkpointGeneration = retried.result.generation;
+            finishCheckpointSave(retried.stateVector);
+            saved = true;
+          }
         }
       }
     } catch {
       if (!abortController.signal.aborted) emitInvalidMessage("The encrypted live room could not be saved.");
     } finally {
       checkpointSaveInFlight = false;
+      if (!saved && !closed && !abortController.signal.aborted) {
+        updateRuntimeSnapshot({ durability: "failed" });
+        scheduleCheckpointRetry();
+      }
       if (checkpointSaveRequested) {
         checkpointSaveRequested = false;
         void saveCheckpointNow();
@@ -719,7 +776,12 @@ export const createWorkspaceRoomRuntime = ({
   };
 
   const scheduleCheckpointSave = () => {
-    if (closed || !roomKey || !adapters.roomCheckpointStore.enabled || !isCheckpointLeader()) return;
+    if (closed || !roomKey || !adapters.roomCheckpointStore.enabled) return;
+    if (!isCheckpointLeader()) {
+      updateRuntimeSnapshot({ durability: "unknown" });
+      return;
+    }
+    updateRuntimeSnapshot({ durability: "dirty" });
     clearCheckpointTimer();
     checkpointTimer = adapters.clock.setTimeout(() => {
       checkpointTimer = undefined;
@@ -794,7 +856,23 @@ export const createWorkspaceRoomRuntime = ({
     flushAwareness();
   };
 
-  const flushLocalUpdates = () => {
+  const clearLocalUpdateRetry = () => {
+    if (!localUpdateRetryTimer) return;
+    adapters.clock.clearTimeout(localUpdateRetryTimer);
+    localUpdateRetryTimer = undefined;
+  };
+
+  function scheduleLocalUpdateRetry() {
+    if (closed || localUpdateRetryTimer) return;
+    const delay = Math.min(30_000, 500 * (2 ** localUpdateRetryAttempt));
+    localUpdateRetryAttempt += 1;
+    localUpdateRetryTimer = adapters.clock.setTimeout(() => {
+      localUpdateRetryTimer = undefined;
+      flushLocalUpdates();
+    }, delay);
+  }
+
+  function flushLocalUpdates() {
     if (closed || localUpdateSendInFlight || !pendingLocalUpdate || !transport?.connected) return;
     const update = pendingLocalUpdate;
     pendingLocalUpdate = null;
@@ -806,16 +884,19 @@ export const createWorkspaceRoomRuntime = ({
       senderId: currentIdentity.id,
       payload: encoding.toUint8Array(encoder),
     }).then((result) => {
-      if (result === "offline" && !closed) {
+      if (result !== "sent" && !closed) {
         pendingLocalUpdate = pendingLocalUpdate
           ? Y.mergeUpdates([update, pendingLocalUpdate])
           : update;
+        if (result === "failed") scheduleLocalUpdateRetry();
+      } else if (result === "sent") {
+        localUpdateRetryAttempt = 0;
       }
     }).finally(() => {
       localUpdateSendInFlight = false;
-      flushLocalUpdates();
+      if (!localUpdateRetryTimer) flushLocalUpdates();
     });
-  };
+  }
 
   const setLocalAwareness = () => {
     const actor = getActor(currentIdentity);
@@ -932,6 +1013,7 @@ export const createWorkspaceRoomRuntime = ({
   const loadCheckpoint = async () => {
     if (!roomKey) return false;
     if (!adapters.roomCheckpointStore.enabled) {
+      updateRuntimeSnapshot({ durability: "unknown" });
       if (emitInitialWorkspaceState) return true;
       onOpenFailure?.("invalid");
       setStatus("failed");
@@ -939,7 +1021,10 @@ export const createWorkspaceRoomRuntime = ({
     }
     const loaded = await adapters.roomCheckpointStore.loadEncryptedCheckpoint(roomId, abortController.signal);
     if (!loaded) {
-      if (emitInitialWorkspaceState) return true;
+      if (emitInitialWorkspaceState) {
+        updateRuntimeSnapshot({ durability: "dirty" });
+        return true;
+      }
       onOpenFailure?.("invalid");
       setStatus("failed");
       return false;
@@ -958,6 +1043,8 @@ export const createWorkspaceRoomRuntime = ({
       });
       validateCheckpointUpdate(update);
       Y.applyUpdate(room.doc, update, CHECKPOINT_ORIGIN);
+      checkpointedStateVector = Y.encodeStateVector(room.doc);
+      updateRuntimeSnapshot({ durability: "clean" });
       return true;
     } catch {
       onOpenFailure?.("unsupported");
@@ -1010,9 +1097,13 @@ export const createWorkspaceRoomRuntime = ({
           setLocalAwareness();
           publishAwareness([awareness.clientID], false);
           sendSyncStep1();
+          clearLocalUpdateRetry();
+          localUpdateRetryAttempt = 0;
           flushLocalUpdates();
           if (checkpointGeneration === 0) void saveCheckpointNow();
-          else scheduleCheckpointSave();
+          else if (!stateVectorsEqual(checkpointedStateVector, Y.encodeStateVector(room.doc))) {
+            scheduleCheckpointSave();
+          }
         },
         onPeerJoined: () => {
           if (closed) return;
@@ -1027,6 +1118,7 @@ export const createWorkspaceRoomRuntime = ({
         onError: (message) => emitInvalidMessage(message.error || "A collaboration server message was ignored."),
         onDisconnect: () => {
           if (closed) return;
+          clearLocalUpdateRetry();
           setStatus(sessionState.markOffline("disconnect").status);
         },
         onConnectError: () => {
@@ -1053,10 +1145,13 @@ export const createWorkspaceRoomRuntime = ({
   const handleDocumentUpdate = (update: Uint8Array, origin: unknown) => {
     if (closed) return;
     scheduleStateSizeCheck();
+    if (origin !== CHECKPOINT_ORIGIN && adapters.roomCheckpointStore.enabled) {
+      if (isCheckpointLeader()) scheduleCheckpointSave();
+      else updateRuntimeSnapshot({ durability: "unknown" });
+    }
     if (isRemoteSyncOrigin(origin) || origin === CHECKPOINT_ORIGIN) return;
     pendingLocalUpdate = pendingLocalUpdate ? Y.mergeUpdates([pendingLocalUpdate, update]) : update;
     flushLocalUpdates();
-    scheduleCheckpointSave();
   };
 
   let projectionQueued = false;
@@ -1112,6 +1207,13 @@ export const createWorkspaceRoomRuntime = ({
     origin: unknown,
   ) => {
     publishCollaborators();
+    if (adapters.roomCheckpointStore.enabled) {
+      if (isCheckpointLeader()) {
+        if (runtimeSnapshot.durability !== "clean") scheduleCheckpointSave();
+      } else if (runtimeSnapshot.durability !== "unknown") {
+        updateRuntimeSnapshot({ durability: "unknown" });
+      }
+    }
     if (origin === REMOTE_AWARENESS_ORIGIN && !closed) {
       const localState = awareness.getLocalState();
       const currentUser = localState?.user;
@@ -1337,6 +1439,7 @@ export const createWorkspaceRoomRuntime = ({
       if (commentProjectionTimer) adapters.clock.clearTimeout(commentProjectionTimer);
       commentProjectionTimer = undefined;
       if (heartbeat) adapters.clock.clearInterval(heartbeat);
+      clearLocalUpdateRetry();
       room.doc.off("update", handleDocumentUpdate);
       room.documents.unobserveDeep(handleDocumentsChange);
       room.meta.unobserve(handleWorkspaceStructureChange);
@@ -1368,7 +1471,12 @@ export const createWorkspaceRoomRuntime = ({
       consumedRemoteProjectionRevisions.clear();
       awareness.destroy();
       room.doc.destroy();
-      runtimeSnapshot = { status: "disconnected", collaborators: [], editorBinding: null };
+      runtimeSnapshot = {
+        status: "disconnected",
+        durability: "unknown",
+        collaborators: [],
+        editorBinding: null,
+      };
       runtimeListeners.forEach((listener) => listener());
       runtimeListeners.clear();
     },

@@ -91,10 +91,13 @@ export function useWorkspaceCollaborationRuntime({
     isLive,
     connectionStatus: room.connectionStatus,
   });
+  const statusLabel = isLive && activeStatus === "connected" && room.durability === "failed"
+    ? "Changes aren’t backed up"
+    : getWorkspaceStatusLabel(activeStatus);
   return {
     ...room,
     activeStatus,
     isLive,
-    statusLabel: getWorkspaceStatusLabel(activeStatus),
+    statusLabel,
   };
 }

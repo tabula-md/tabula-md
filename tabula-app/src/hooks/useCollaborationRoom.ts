@@ -142,6 +142,7 @@ export function useCollaborationRoom({
     replaceDocumentText,
     collaborators,
     connectionStatus,
+    durability,
     editorBinding,
     materializeWorkspace,
     upsertComment,
@@ -211,6 +212,7 @@ export function useCollaborationRoom({
       startValidation.ok,
     collaborators,
     connectionStatus,
+    durability,
     startSessionUnavailableReason: !startValidation.ok
       ? startValidation.message
       : roomAvailability.unavailableReason || checkpointAvailability.unavailableReason,
