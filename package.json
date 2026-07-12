@@ -49,6 +49,7 @@
     "@lezer/highlight": "^1.2.3",
     "@vitejs/plugin-react": "^5.0.0",
     "dexie": "^4.4.4",
+    "fflate": "^0.8.3",
     "firebase": "^12.15.0",
     "katex": "^0.17.0",
     "lib0": "^0.2.117",

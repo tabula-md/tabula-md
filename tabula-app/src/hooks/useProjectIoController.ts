@@ -209,7 +209,7 @@ export function useProjectIoController({
     showToast("Workspace backup downloaded.");
   };
 
-  const downloadProjectArchive = () => {
+  const downloadProjectArchive = async () => {
     try {
       const workspaceSnapshot = getProjectIoBoundaryWorkspaceSnapshot({
         activeFile,
@@ -220,7 +220,7 @@ export function useProjectIoController({
         onBeforeWorkspaceBoundary,
         openFileIds,
       });
-      const archive = createProjectArchive(workspaceSnapshot.files, workspaceSnapshot.folders);
+      const archive = await createProjectArchive(workspaceSnapshot.files, workspaceSnapshot.folders);
       downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
       showToast("Workspace files downloaded.");
     } catch (error) {
