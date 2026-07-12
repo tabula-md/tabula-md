@@ -548,6 +548,7 @@ export function useWorkspaceRuntime() {
     startSession: startCollaborationSession,
     applyLocalText,
     editorBinding,
+    materializeWorkspace: materializeRoomWorkspace,
     upsertComment: upsertRoomComment,
     deleteComment: deleteRoomComment,
     setCommentResolved: setRoomCommentResolved,
@@ -731,6 +732,8 @@ export function useWorkspaceRuntime() {
     const roomId = activeFile?.roomId ?? activeRoom?.roomId;
     const workspaceRoomFileIds = roomId ? files.filter((file) => file.roomId === roomId).map((file) => file.id) : [];
     flushPendingEditorCommit();
+    const roomSnapshot = materializeRoomWorkspace();
+    if (roomSnapshot) mergeWorkspaceRoomSnapshot(roomSnapshot);
     stopSession();
     if (!activeFile?.roomId) {
       resetCollaborationState("idle");

@@ -295,6 +295,7 @@ export function useCollaborationConnectionRuntime({
     collaborators,
     connectionStatus,
     editorBinding,
+    materializeWorkspace: () => collabRef.current?.materializeWorkspace(),
     resetConnection,
     retryConnection,
     upsertComment: (comment: WorkspaceRoomComment) => collabRef.current?.upsertComment(comment),

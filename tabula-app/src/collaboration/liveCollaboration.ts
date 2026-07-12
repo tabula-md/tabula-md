@@ -37,7 +37,10 @@ import {
   validateWorkspaceRoomStructure,
   ROOM_WIRE_MAX_CRDT_STATE_BYTES,
   ROOM_WIRE_CHUNK_BYTES,
+  WORKSPACE_ROOM_MAX_COMMENT_LENGTH,
+  WORKSPACE_ROOM_MAX_COMMENTS,
   WORKSPACE_ROOM_MAX_CONTENT_BYTES,
+  WORKSPACE_ROOM_MAX_REPLIES,
   WORKSPACE_ROOM_ROOT_ID,
   type RoomActor,
   type RoomActorClient,
@@ -184,6 +187,7 @@ const TEXT_PROJECTION_DELAY_MS = 16;
 const COMMENT_PROJECTION_DELAY_MS = 16;
 const INVALID_MESSAGE_NOTICE_INTERVAL_MS = 5_000;
 const MAX_UNDO_STACK_ITEMS = 100;
+const MAX_UNDO_MANAGERS = 8;
 const MAX_INBOUND_ENVELOPES = 64;
 const MAX_INBOUND_BUFFER_CHARS = 32 * 1024 * 1024;
 const MAX_ENCRYPTED_ENVELOPE_CHARS = Math.ceil((ROOM_WIRE_CHUNK_BYTES + 2_048) * 4 / 3);
@@ -286,6 +290,7 @@ export const createWorkspaceRoomRuntime = ({
   const chunkAssembler = createRoomChunkAssembler();
   const sessionState = createCollabSessionState();
   const undoManagers = new Map<string, Y.UndoManager>();
+  const undoManagerUseOrder = new Map<string, number>();
   const documentByteLengths = new Map<string, number>();
   const documentSizeTrackers = new Map<string, Utf8TextSizeTracker>();
   const remoteProjectionRevisions = new Map<string, number>();
@@ -339,14 +344,25 @@ export const createWorkspaceRoomRuntime = ({
   };
   const runtimeListeners = new Set<() => void>();
   let commentByteLength = 0;
+  let commentsWithinLimits = true;
   let roomContentByteLength = 0;
+  let undoManagerUseSequence = 0;
 
-  const getCommentByteLength = () =>
-    Object.values(getWorkspaceRoomComments(room)).flat().reduce(
+  const refreshCommentMetrics = () => {
+    const comments = Object.values(getWorkspaceRoomComments(room)).flat();
+    commentsWithinLimits =
+      comments.length <= WORKSPACE_ROOM_MAX_COMMENTS &&
+      comments.every((comment) =>
+        comment.body.length <= WORKSPACE_ROOM_MAX_COMMENT_LENGTH &&
+        comment.replies.length <= WORKSPACE_ROOM_MAX_REPLIES &&
+        comment.replies.every((reply) => reply.body.length <= WORKSPACE_ROOM_MAX_COMMENT_LENGTH),
+      );
+    commentByteLength = comments.reduce(
       (total, comment) => total + utf8Encoder.encode(comment.body).byteLength +
         comment.replies.reduce((replyTotal, reply) => replyTotal + utf8Encoder.encode(reply.body).byteLength, 0),
       0,
     );
+  };
 
   const refreshRoomContentByteLength = () => {
     roomContentByteLength = commentByteLength;
@@ -365,11 +381,12 @@ export const createWorkspaceRoomRuntime = ({
   };
 
   const refreshCommentByteLength = () => {
-    commentByteLength = getCommentByteLength();
+    refreshCommentMetrics();
     refreshRoomContentByteLength();
   };
 
   const scheduleTextProjection = (documentId: string) => {
+    if (documentId !== activeDocumentId) return;
     pendingTextProjectionIds.add(documentId);
     if (textProjectionTimer || closed) return;
     textProjectionTimer = adapters.clock.setTimeout(() => {
@@ -378,6 +395,7 @@ export const createWorkspaceRoomRuntime = ({
       pendingTextProjectionIds.clear();
       if (closed) return;
       for (const id of documentIds) {
+        if (id !== activeDocumentId) continue;
         const text = room.documents.get(id);
         if (text) onTextChange(id, text.toString());
       }
@@ -554,6 +572,7 @@ export const createWorkspaceRoomRuntime = ({
       textObservers.delete(id);
       undoManagers.get(id)?.destroy();
       undoManagers.delete(id);
+      undoManagerUseOrder.delete(id);
     }
     room.documents.forEach((text, id) => {
       if (textObservers.has(id)) return;
@@ -566,24 +585,38 @@ export const createWorkspaceRoomRuntime = ({
           remoteProjectionRevisions.set(id, (remoteProjectionRevisions.get(id) ?? 0) + 1);
         }
         scheduleTextProjection(id);
-        if (room.comments.size > 0) scheduleCommentProjection();
+        if (id === activeDocumentId && room.comments.size > 0) scheduleCommentProjection();
       };
       text.observe(listener);
       textObservers.set(id, { text, listener });
-      if (!undoManagers.has(id)) undoManagers.set(id, createBoundedUndoManager(text));
     });
     setEditorBinding(getEditorBinding(activeDocumentId));
+  };
+
+  const getUndoManager = (documentId: string, text: Y.Text) => {
+    let undoManager = undoManagers.get(documentId);
+    if (!undoManager) {
+      undoManager = createBoundedUndoManager(text);
+      undoManagers.set(documentId, undoManager);
+    }
+    undoManagerUseOrder.set(documentId, ++undoManagerUseSequence);
+    while (undoManagers.size > MAX_UNDO_MANAGERS) {
+      const oldestDocumentId = [...undoManagerUseOrder.entries()]
+        .filter(([id]) => id !== documentId)
+        .sort((first, second) => first[1] - second[1])[0]?.[0];
+      if (!oldestDocumentId) break;
+      undoManagers.get(oldestDocumentId)?.destroy();
+      undoManagers.delete(oldestDocumentId);
+      undoManagerUseOrder.delete(oldestDocumentId);
+    }
+    return undoManager;
   };
 
   const getEditorBinding = (nextDocumentId?: string | null): CollabEditorBinding | null => {
     if (!nextDocumentId) return null;
     const yText = room.documents.get(nextDocumentId);
     if (!yText) return null;
-    let undoManager = undoManagers.get(nextDocumentId);
-    if (!undoManager) {
-      undoManager = createBoundedUndoManager(yText);
-      undoManagers.set(nextDocumentId, undoManager);
-    }
+    const undoManager = getUndoManager(nextDocumentId, yText);
     return {
       documentId: nextDocumentId,
       extension: yCollab(yText, awareness, { undoManager }),
@@ -641,11 +674,9 @@ export const createWorkspaceRoomRuntime = ({
 
   const persistCurrentCheckpoint = async (expectedGeneration: number) => {
     if (!roomKey) return null;
-    refreshAllDocumentByteLengths();
     const structure = validateWorkspaceRoomStructure(room, roomId);
     if (!structure.ok) return null;
-    const limits = validateWorkspaceRoomLimits(getWorkspaceRoomSnapshot(room));
-    if (!limits.ok) return null;
+    if (!commentsWithinLimits || roomContentByteLength > WORKSPACE_ROOM_MAX_CONTENT_BYTES) return null;
     const update = Y.encodeStateAsUpdate(room.doc);
     if (update.byteLength > ROOM_WIRE_MAX_CRDT_STATE_BYTES) {
       notifyCapacityExceeded();
@@ -1181,6 +1212,11 @@ export const createWorkspaceRoomRuntime = ({
     currentFileTitle = nextDocument?.fileTitle;
     awareness.setLocalStateField("cursor", null);
     setLocalAwareness();
+    if (activeDocumentId) {
+      const text = room.documents.get(activeDocumentId);
+      if (text) onTextChange(activeDocumentId, text.toString());
+      if (room.comments.size > 0) scheduleCommentProjection();
+    }
     setEditorBinding(getEditorBinding(activeDocumentId));
   };
 
@@ -1240,6 +1276,11 @@ export const createWorkspaceRoomRuntime = ({
       setLocalAwareness();
     },
     getEditorBinding: () => getEditorBinding(activeDocumentId),
+    materializeWorkspace: () => getWorkspaceRoomSnapshot(room),
+    getResourceCounts: () => ({
+      textObservers: textObservers.size,
+      undoManagers: undoManagers.size,
+    }),
     upsertComment(comment: WorkspaceRoomComment) {
       const current = room.comments.get(comment.id);
       const currentBody = typeof current?.get("body") === "string" ? current.get("body") as string : "";
@@ -1317,6 +1358,7 @@ export const createWorkspaceRoomRuntime = ({
       consumedRemoteProjectionRevisions.clear();
       for (const undoManager of undoManagers.values()) undoManager.destroy();
       undoManagers.clear();
+      undoManagerUseOrder.clear();
       awareness.destroy();
       room.doc.destroy();
       runtimeSnapshot = { status: "disconnected", collaborators: [], editorBinding: null };

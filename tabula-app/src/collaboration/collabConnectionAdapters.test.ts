@@ -307,6 +307,91 @@ describe("workspace room runtime", () => {
     connection.disconnect();
   });
 
+  it("keeps background text in Yjs until that document becomes active", async () => {
+    const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const adapters = {
+      ...defaults,
+      createRoomTransport: relay.createRoomTransport,
+      roomCheckpointStore: checkpoints.store,
+      resolveRoomBaseUrl: () => "http://memory-room.test",
+    };
+    const hostTextProjection = vi.fn();
+    const host = createWorkspaceRoomRuntime({
+      roomId: "room-active-projection",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-a",
+      emitInitialWorkspaceState: true,
+      documents: [
+        { id: "doc-a", title: "A.md", text: "Alpha" },
+        { id: "doc-b", title: "B.md", text: "Beta" },
+      ],
+      identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "A.md",
+      onTextChange: hostTextProjection,
+      adapters,
+    });
+    await vi.waitFor(() => expect(checkpoints.getGeneration("room-active-projection")).toBeGreaterThan(0));
+    const peer = createWorkspaceRoomRuntime({
+      roomId: "room-active-projection",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-b",
+      emitInitialWorkspaceState: false,
+      identity: { id: "human-2", name: "Sharp Human", color: "#7c3aed", lastSeen: 0 },
+      fileTitle: "B.md",
+      onTextChange: vi.fn(),
+      adapters,
+    });
+    await vi.waitFor(() => expect(peer.getEditorBinding()?.yText.toString()).toBe("Beta"));
+    hostTextProjection.mockClear();
+
+    peer.applyLocalTextPatches([{ from: 4, to: 4, insert: " remote" }]);
+    await vi.waitFor(() => expect(host.materializeWorkspace().documents["doc-b"]).toBe("Beta remote"));
+    await waitForTasks();
+
+    expect(hostTextProjection).not.toHaveBeenCalledWith("doc-b", "Beta remote");
+    host.setActiveDocument({ documentId: "doc-b", fileTitle: "B.md" });
+    expect(hostTextProjection).toHaveBeenLastCalledWith("doc-b", "Beta remote");
+    host.disconnect();
+    peer.disconnect();
+  });
+
+  it("keeps undo managers only for the eight most recently active documents", async () => {
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const documents = Array.from({ length: 12 }, (_, index) => ({
+      id: `doc-${index}`,
+      title: `Document ${index}.md`,
+      text: `Document ${index}`,
+    }));
+    const runtime = createWorkspaceRoomRuntime({
+      roomId: "room-bounded-undo-managers",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-0",
+      emitInitialWorkspaceState: true,
+      documents,
+      identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "Document 0.md",
+      onTextChange: vi.fn(),
+      adapters: {
+        ...defaults,
+        createRoomTransport: transport.createRoomTransport,
+        roomCheckpointStore: createNoopRoomCheckpointStore(),
+        resolveRoomBaseUrl: () => "http://memory-room.test",
+      },
+    });
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe("connected"));
+    expect(runtime.getResourceCounts().undoManagers).toBe(1);
+
+    for (const document of documents.slice(1)) {
+      runtime.setActiveDocument({ documentId: document.id, fileTitle: document.title });
+    }
+
+    expect(runtime.getResourceCounts()).toEqual({ textObservers: 12, undoManagers: 8 });
+    runtime.disconnect();
+  });
+
   it("converges human and agent edits, workspace changes, comments, and presence through one room document", async () => {
     const relay = createMemoryRoomRelay();
     const checkpoints = createMemoryRoomCheckpointStore();
