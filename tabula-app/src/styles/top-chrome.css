@@ -513,7 +513,8 @@
   width: 100%;
 }
 
-.share-modal-field label {
+.share-modal-field label,
+.share-modal-field-label {
   color: var(--text-muted);
   font-size: var(--font-ui-secondary);
   font-weight: var(--weight-ui-regular);

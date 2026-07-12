@@ -24,6 +24,43 @@ const focusableSelector = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
+type BackgroundRootState = {
+  ariaHidden: string | null;
+  element: HTMLElement;
+  inert: boolean;
+};
+
+const modalStack: symbol[] = [];
+let backgroundRootState: BackgroundRootState | null = null;
+
+const registerModal = (modalId: symbol) => {
+  const appRoot = document.getElementById("root");
+  if (modalStack.length === 0 && appRoot) {
+    backgroundRootState = {
+      ariaHidden: appRoot.getAttribute("aria-hidden"),
+      element: appRoot,
+      inert: appRoot.inert,
+    };
+    appRoot.inert = true;
+    appRoot.setAttribute("aria-hidden", "true");
+  }
+  modalStack.push(modalId);
+
+  return () => {
+    const index = modalStack.lastIndexOf(modalId);
+    if (index >= 0) modalStack.splice(index, 1);
+    if (modalStack.length > 0 || !backgroundRootState) return;
+
+    const { ariaHidden, element, inert } = backgroundRootState;
+    element.inert = inert;
+    if (ariaHidden === null) element.removeAttribute("aria-hidden");
+    else element.setAttribute("aria-hidden", ariaHidden);
+    backgroundRootState = null;
+  };
+};
+
+const isTopModal = (modalId: symbol) => modalStack.at(-1) === modalId;
+
 export function ModalSurface({
   ariaLabel,
   ariaLabelledBy,
@@ -33,6 +70,7 @@ export function ModalSurface({
   onClose,
 }: ModalSurfaceProps) {
   const dialogRef = useRef<HTMLElement | null>(null);
+  const modalIdRef = useRef(Symbol("modal"));
   const onCloseRef = useRef(onClose);
 
   onCloseRef.current = onClose;
@@ -41,6 +79,8 @@ export function ModalSurface({
     const previousFocus = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
+    dialogRef.current?.focus();
+    const unregisterModal = registerModal(modalIdRef.current);
     const frame = window.requestAnimationFrame(() => {
       const initialFocus = dialogRef.current?.querySelector<HTMLElement>(
         "[data-modal-initial-focus], button:not([disabled]), input:not([disabled]), select:not([disabled])",
@@ -48,6 +88,7 @@ export function ModalSurface({
       initialFocus?.focus();
     });
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isTopModal(modalIdRef.current)) return;
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -80,12 +121,13 @@ export function ModalSurface({
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", handleKeyDown, true);
+      unregisterModal();
       window.requestAnimationFrame(() => previousFocus?.focus());
     };
   }, []);
 
   const closeFromScrim = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (event.currentTarget === event.target) onClose();
+    if (event.currentTarget === event.target && isTopModal(modalIdRef.current)) onClose();
   };
 
   return createPortal(
