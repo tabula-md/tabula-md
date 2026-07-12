@@ -589,27 +589,37 @@ describe("workspace room runtime", () => {
       },
     });
     await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe("connected"));
-    expect(runtime.getResourceCounts()).toEqual({
+    const initialResources = runtime.getResourceCounts();
+    expect(initialResources).toMatchObject({
       activeLeases: 1,
       documentHandles: 1,
       documentObservers: 1,
       documentProjectionListeners: 0,
       documentProjectionSnapshots: 0,
+      inboundBufferedChars: 0,
+      inboundEnvelopes: 0,
+      pendingLocalUpdateBytes: 0,
       undoManagers: 1,
     });
+    expect(initialResources.pendingAwarenessClients).toBeLessThanOrEqual(1);
 
     for (const document of documents.slice(1)) {
       runtime.setActiveDocument({ documentId: document.id, fileTitle: document.title });
     }
 
-    expect(runtime.getResourceCounts()).toEqual({
+    const switchedResources = runtime.getResourceCounts();
+    expect(switchedResources).toMatchObject({
       activeLeases: 1,
       documentHandles: 8,
       documentObservers: 1,
       documentProjectionListeners: 0,
       documentProjectionSnapshots: 0,
+      inboundBufferedChars: 0,
+      inboundEnvelopes: 0,
+      pendingLocalUpdateBytes: 0,
       undoManagers: 8,
     });
+    expect(switchedResources.pendingAwarenessClients).toBeLessThanOrEqual(1);
     runtime.disconnect();
   });
 

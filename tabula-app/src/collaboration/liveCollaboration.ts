@@ -1,28 +1,17 @@
 import type { Extension } from "@codemirror/state";
-import * as decoding from "lib0/decoding";
-import * as encoding from "lib0/encoding";
 import * as Y from "yjs";
-import {
-  Awareness,
-  applyAwarenessUpdate,
-  encodeAwarenessUpdate,
-} from "y-protocols/awareness";
-import * as syncProtocol from "y-protocols/sync";
+import { Awareness } from "y-protocols/awareness";
 import {
   addWorkspaceRoomCommentReply,
   applyTextPatches as applyTextPatchesToString,
-  createRoomChunkAssembler,
   createWorkspaceRoomCrdt,
   createWorkspaceRoomDocument,
   createWorkspaceRoomFolder,
-  decodeRoomWirePacket,
   deleteWorkspaceRoomComment,
   deleteWorkspaceRoomNode,
-  encodeRoomWirePackets,
   getWorkspaceRoomDocument,
   getWorkspaceRoomComments,
   getWorkspaceRoomSnapshot,
-  hasRoomCapability,
   initializeWorkspaceRoomCrdt,
   moveWorkspaceRoomNode,
   renameWorkspaceRoomNode,
@@ -32,18 +21,14 @@ import {
   validateWorkspaceRoomStructureLimits,
   validateWorkspaceRoomStructure,
   ROOM_WIRE_MAX_CRDT_STATE_BYTES,
-  ROOM_WIRE_CHUNK_BYTES,
   WORKSPACE_ROOM_MAX_DOCUMENTS,
   WORKSPACE_ROOM_MAX_FOLDERS,
   WORKSPACE_ROOM_ROOT_ID,
-  type RoomWireDataPacket,
-  type EncryptedEnvelope,
   type TextPatch,
   type WorkspaceRoomComment,
   type WorkspaceRoomCommentReply,
   type WorkspaceRoomStructureSnapshot,
 } from "@tabula-md/tabula";
-import { isEncryptedEnvelope } from "./collabConnectionModel";
 import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
 import type { CollabRuntimeAdapters } from "./collabRuntimeAdapters";
 import { createCollabSessionState } from "./collabSessionState";
@@ -66,6 +51,11 @@ import {
   type Collaborator,
   type LiveViewport,
 } from "./runtime/RoomPresenceController";
+import {
+  createRoomSyncController,
+  isRemoteSyncOrigin,
+  REMOTE_AWARENESS_ORIGIN,
+} from "./runtime/RoomSyncController";
 
 export {
   createRoomSession,
@@ -93,8 +83,6 @@ export type {
   LiveSelection,
   LiveViewport,
 } from "./runtime/RoomPresenceController";
-
-type SendPacketResult = "sent" | "offline" | "failed" | "discarded";
 
 export type CollabRecoveryEvent = {
   id: string;
@@ -177,26 +165,13 @@ type ConnectOptions = {
   adapters?: CollabRuntimeAdapters;
 };
 
-const REMOTE_SYNC_ORIGIN = Symbol("tabula.remote-sync");
-const REMOTE_AWARENESS_ORIGIN = Symbol("tabula.remote-awareness");
 const AWARENESS_HEARTBEAT_MS = 15_000;
 const TEXT_PROJECTION_DELAY_MS = 16;
 const COMMENT_PROJECTION_DELAY_MS = 16;
 const INVALID_MESSAGE_NOTICE_INTERVAL_MS = 5_000;
-const MAX_INBOUND_ENVELOPES = 64;
-const MAX_INBOUND_BUFFER_CHARS = 32 * 1024 * 1024;
-const MAX_ENCRYPTED_ENVELOPE_CHARS = Math.ceil((ROOM_WIRE_CHUNK_BYTES + 2_048) * 4 / 3);
 const CRDT_STATE_SIZE_CHECK_INTERVAL = 500;
 const CRDT_STATE_WARNING_BYTES = Math.floor(ROOM_WIRE_MAX_CRDT_STATE_BYTES * 0.9);
 const utf8Encoder = new TextEncoder();
-
-type RemoteSyncOrigin = {
-  type: typeof REMOTE_SYNC_ORIGIN;
-  senderId: string;
-};
-
-const isRemoteSyncOrigin = (origin: unknown): origin is RemoteSyncOrigin =>
-  Boolean(origin && typeof origin === "object" && (origin as Partial<RemoteSyncOrigin>).type === REMOTE_SYNC_ORIGIN);
 
 const applyTextPatches = (text: Y.Text, patches: readonly TextPatch[]) => {
   for (const patch of [...patches].sort((first, second) => second.from - first.from)) {
@@ -230,7 +205,6 @@ export const createWorkspaceRoomRuntime = ({
   const abortController = new AbortController();
   const room = createWorkspaceRoomCrdt({ roomId, initialize: emitInitialWorkspaceState });
   const awareness = new Awareness(room.doc);
-  const chunkAssembler = createRoomChunkAssembler();
   const sessionState = createCollabSessionState();
   let activeDocumentId: string | null = documentId;
   const presenceController = createRoomPresenceController({
@@ -249,28 +223,13 @@ export const createWorkspaceRoomRuntime = ({
   const consumedRemoteProjectionRevisions = new Map<string, number>();
   let activeDocumentLease: RoomDocumentLease | null = null;
   let roomKey: CryptoKey | null = null;
-  let transport: ReturnType<CollabRuntimeAdapters["createRoomTransport"]> | null = null;
   let heartbeat: unknown;
   let stateSizeCheckTimer: unknown;
   let textProjectionTimer: unknown;
   let commentProjectionTimer: unknown;
-  let envelopeVersion = 0;
   let closed = false;
   let hasHydratedWorkspace = false;
-  let outboundQueue: Promise<SendPacketResult> = Promise.resolve("sent");
-  let pendingLocalUpdate: Uint8Array | null = null;
-  let localUpdateSendInFlight = false;
-  let localUpdateRetryTimer: unknown;
-  let localUpdateRetryAttempt = 0;
-  let awarenessSendInFlight = false;
-  let pendingAwarenessReliable = false;
-  let syncStep1SendInFlight = false;
-  let syncStep1Pending = false;
-  const pendingAwarenessClients = new Set<number>();
-  const inboundEnvelopes: Array<{ envelope: EncryptedEnvelope; bufferedChars: number }> = [];
   const pendingTextProjectionIds = new Set<string>();
-  let inboundBufferedChars = 0;
-  let inboundProcessing = false;
   let lastInvalidMessageNoticeAt = 0;
   let capacityExceededNotified = false;
   let updatesSinceStateSizeCheck = 0;
@@ -484,208 +443,18 @@ export const createWorkspaceRoomRuntime = ({
     onDurabilityChange: (durability) => updateRuntimeSnapshot({ durability }),
     onSaveError: () => emitInvalidMessage("The encrypted live room could not be saved."),
   });
-
-  const sendPacket = (packet: RoomWireDataPacket, volatile = false) => {
-    if (packet.type === "sync.message" && packet.payload.byteLength > ROOM_WIRE_MAX_CRDT_STATE_BYTES) {
-      notifyCapacityExceeded();
-      return Promise.resolve<SendPacketResult>("discarded");
-    }
-    const task: Promise<SendPacketResult> = outboundQueue.then(async () => {
-      if (closed || !roomKey || !transport?.connected) return "offline";
-      const packets = encodeRoomWirePackets(packet, adapters.clock.createId);
-      for (const plaintext of packets) {
-        if (closed || !transport?.connected) return "offline";
-        envelopeVersion += 1;
-        const envelope = await adapters.crypto.encryptEnvelope(roomKey, roomId, "room-event", envelopeVersion, plaintext);
-        if (closed || !transport?.connected) return "offline";
-        if (volatile) transport.sendVolatileEnvelope(envelope);
-        else transport.sendEnvelope(envelope);
-      }
-      return "sent";
-    });
-    outboundQueue = task.catch(() => {
-      emitInvalidMessage("A live collaboration update could not be sent.");
-      return "failed";
-    });
-    return outboundQueue;
-  };
-
-  const flushSyncStep1 = () => {
-    if (closed || syncStep1SendInFlight || !syncStep1Pending) return;
-    syncStep1Pending = false;
-    syncStep1SendInFlight = true;
-    const encoder = encoding.createEncoder();
-    syncProtocol.writeSyncStep1(encoder, room.doc);
-    void sendPacket({
-      type: "sync.message",
-      senderId: presenceController.getIdentity().id,
-      payload: encoding.toUint8Array(encoder),
-    }).finally(() => {
-      syncStep1SendInFlight = false;
-      flushSyncStep1();
-    });
-  };
-
-  const sendSyncStep1 = () => {
-    syncStep1Pending = true;
-    flushSyncStep1();
-  };
-
-  const flushAwareness = () => {
-    if (closed || awarenessSendInFlight || pendingAwarenessClients.size === 0) return;
-    const clients = [...pendingAwarenessClients];
-    const volatile = !pendingAwarenessReliable;
-    pendingAwarenessClients.clear();
-    pendingAwarenessReliable = false;
-    awarenessSendInFlight = true;
-    const payload = encodeAwarenessUpdate(awareness, clients);
-    void sendPacket({
-      type: "awareness.updated",
-      senderId: presenceController.getIdentity().id,
-      payload,
-    }, volatile)
-      .finally(() => {
-        awarenessSendInFlight = false;
-        flushAwareness();
-      });
-  };
-
-  const publishAwareness = (clients = [awareness.clientID], volatile = true) => {
-    for (const clientId of clients) pendingAwarenessClients.add(clientId);
-    if (!volatile) pendingAwarenessReliable = true;
-    flushAwareness();
-  };
-
-  const clearLocalUpdateRetry = () => {
-    if (!localUpdateRetryTimer) return;
-    adapters.clock.clearTimeout(localUpdateRetryTimer);
-    localUpdateRetryTimer = undefined;
-  };
-
-  function scheduleLocalUpdateRetry() {
-    if (closed || localUpdateRetryTimer) return;
-    const delay = Math.min(30_000, 500 * (2 ** localUpdateRetryAttempt));
-    localUpdateRetryAttempt += 1;
-    localUpdateRetryTimer = adapters.clock.setTimeout(() => {
-      localUpdateRetryTimer = undefined;
-      flushLocalUpdates();
-    }, delay);
-  }
-
-  function flushLocalUpdates() {
-    if (closed || localUpdateSendInFlight || !pendingLocalUpdate || !transport?.connected) return;
-    const update = pendingLocalUpdate;
-    pendingLocalUpdate = null;
-    localUpdateSendInFlight = true;
-    const encoder = encoding.createEncoder();
-    syncProtocol.writeUpdate(encoder, update);
-    void sendPacket({
-      type: "sync.message",
-      senderId: presenceController.getIdentity().id,
-      payload: encoding.toUint8Array(encoder),
-    }).then((result) => {
-      if (result !== "sent" && !closed) {
-        pendingLocalUpdate = pendingLocalUpdate
-          ? Y.mergeUpdates([update, pendingLocalUpdate])
-          : update;
-        if (result === "failed") scheduleLocalUpdateRetry();
-      } else if (result === "sent") {
-        localUpdateRetryAttempt = 0;
-      }
-    }).finally(() => {
-      localUpdateSendInFlight = false;
-      if (!localUpdateRetryTimer) flushLocalUpdates();
-    });
-  }
-
-  const handleSyncMessage = async (packet: RoomWireDataPacket) => {
-    const probe = decoding.createDecoder(packet.payload);
-    const messageType = decoding.readVarUint(probe);
-    const senderActor = presenceController.getSenderActor(packet.senderId);
-    if (
-      messageType !== syncProtocol.messageYjsSyncStep1 &&
-      (!senderActor || !hasRoomCapability(senderActor, "write"))
-    ) return;
-    const decoder = decoding.createDecoder(packet.payload);
-    const reply = encoding.createEncoder();
-    syncProtocol.readSyncMessage(decoder, reply, room.doc, {
-      type: REMOTE_SYNC_ORIGIN,
-      senderId: packet.senderId,
-    } satisfies RemoteSyncOrigin, () => {
-      emitInvalidMessage("A malformed collaboration update was ignored.");
-    });
-    if (encoding.length(reply) > 0) {
-      await sendPacket({
-        type: "sync.message",
-        senderId: presenceController.getIdentity().id,
-        payload: encoding.toUint8Array(reply),
-      });
-    }
-  };
-
-  const handleDataPacket = async (packet: RoomWireDataPacket) => {
-    if (packet.senderId === presenceController.getIdentity().id) return;
-    if (packet.type === "awareness.updated") {
-      applyAwarenessUpdate(awareness, packet.payload, REMOTE_AWARENESS_ORIGIN);
-      return;
-    }
-    await handleSyncMessage(packet);
-  };
-
-  const processEnvelope = async (envelope: EncryptedEnvelope) => {
-    if (closed || !roomKey) return;
-    try {
-      const plaintext = await adapters.crypto.decryptEnvelope(roomKey, envelope);
-      const decoded = decodeRoomWirePacket(plaintext);
-      if (!decoded.ok) {
-        if (decoded.reason === "unsupported") onOpenFailure?.("unsupported");
-        emitInvalidMessage("An unsupported collaboration message was ignored.");
-        return;
-      }
-      if (decoded.packet.type === "sync.chunk") {
-        const assembled = chunkAssembler.push(decoded.packet);
-        if (assembled) await handleDataPacket(assembled);
-      } else {
-        await handleDataPacket(decoded.packet);
-      }
-    } catch {
-      emitInvalidMessage("An encrypted collaboration message could not be opened.");
-    }
-  };
-
-  const drainInboundEnvelopes = async () => {
-    if (inboundProcessing) return;
-    inboundProcessing = true;
-    try {
-      while (!closed && inboundEnvelopes.length > 0) {
-        const next = inboundEnvelopes.shift()!;
-        inboundBufferedChars -= next.bufferedChars;
-        await processEnvelope(next.envelope);
-      }
-    } finally {
-      inboundProcessing = false;
-    }
-  };
-
-  const routeEnvelope = (value: unknown) => {
-    if (closed) return;
-    if (!isEncryptedEnvelope(value) || value.roomId !== roomId || value.kind !== "room-event") {
-      emitInvalidMessage("A collaboration server message was ignored.");
-      return;
-    }
-    const bufferedChars = value.ciphertext.length + value.iv.length;
-    if (
-      value.ciphertext.length > MAX_ENCRYPTED_ENVELOPE_CHARS ||
-      inboundEnvelopes.length >= MAX_INBOUND_ENVELOPES ||
-      inboundBufferedChars + bufferedChars > MAX_INBOUND_BUFFER_CHARS
-    ) {
-      emitInvalidMessage("An oversized collaboration message was ignored.");
-      return;
-    }
-    inboundEnvelopes.push({ envelope: value, bufferedChars });
-    inboundBufferedChars += bufferedChars;
-    void drainInboundEnvelopes();
-  };
+  const syncController = createRoomSyncController({
+    roomId,
+    doc: room.doc,
+    awareness,
+    adapters,
+    isClosed: () => closed,
+    getIdentityId: () => presenceController.getIdentity().id,
+    getSenderActor: presenceController.getSenderActor,
+    onCapacityExceeded: notifyCapacityExceeded,
+    onInvalidMessage: emitInvalidMessage,
+    onUnsupportedMessage: () => onOpenFailure?.("unsupported"),
+  });
 
   const loadCheckpoint = async () => {
     if (!roomKey) return false;
@@ -709,17 +478,14 @@ export const createWorkspaceRoomRuntime = ({
       return;
     }
     roomKey = startConfig.roomKey;
+    syncController.setRoomKey(roomKey);
     if (!(await loadCheckpoint()) || closed || abortController.signal.aborted) return;
     syncDocumentMetrics();
     refreshActiveEditorBinding();
     projectWorkspace();
     presenceController.publishLocalState();
 
-    transport = adapters.createRoomTransport({
-      baseUrl: startConfig.baseUrl,
-      roomId,
-      clientId: presenceController.getIdentity().id,
-      handlers: {
+    syncController.connect(startConfig.baseUrl, {
         onConnect: () => { if (!closed) setStatus("connecting"); },
         onJoined: () => {
           if (closed) return;
@@ -727,19 +493,13 @@ export const createWorkspaceRoomRuntime = ({
           setStatus("connected");
           if (joined.reconnected) emitRecoveryEvent("reconnected", joined.message);
           presenceController.publishLocalState();
-          publishAwareness([awareness.clientID], false);
-          sendSyncStep1();
-          clearLocalUpdateRetry();
-          localUpdateRetryAttempt = 0;
-          flushLocalUpdates();
+          syncController.onJoined();
           checkpointCoordinator.handleJoined();
         },
         onPeerJoined: () => {
           if (closed) return;
-          publishAwareness([awareness.clientID], false);
-          sendSyncStep1();
+          syncController.onPeerJoined();
         },
-        onMessage: routeEnvelope,
         onPeers: (message) => {
           presenceController.refreshPeers(message.peers);
           publishCollaborators();
@@ -747,7 +507,7 @@ export const createWorkspaceRoomRuntime = ({
         onError: (message) => emitInvalidMessage(message.error || "A collaboration server message was ignored."),
         onDisconnect: () => {
           if (closed) return;
-          clearLocalUpdateRetry();
+          syncController.onTransportDisconnected();
           setStatus(sessionState.markOffline("disconnect").status);
         },
         onConnectError: () => {
@@ -755,19 +515,12 @@ export const createWorkspaceRoomRuntime = ({
           const offline = sessionState.markOffline("connect-error");
           setStatus(offline.status);
         },
-      },
     });
-    if (closed || abortController.signal.aborted) {
-      transport.disconnect();
-      transport = null;
-      return;
-    }
-    transport.connect();
     heartbeat = adapters.clock.setInterval(() => {
       if (closed) return;
       presenceController.publishLocalState();
-      publishAwareness();
-      chunkAssembler.prune();
+      syncController.publishAwareness();
+      syncController.pruneChunks();
     }, AWARENESS_HEARTBEAT_MS);
   };
 
@@ -776,8 +529,7 @@ export const createWorkspaceRoomRuntime = ({
     scheduleStateSizeCheck();
     checkpointCoordinator.handleDocumentUpdate(origin);
     if (isRemoteSyncOrigin(origin) || origin === CHECKPOINT_ORIGIN) return;
-    pendingLocalUpdate = pendingLocalUpdate ? Y.mergeUpdates([pendingLocalUpdate, update]) : update;
-    flushLocalUpdates();
+    syncController.handleLocalUpdate(update);
   };
 
   let projectionQueued = false;
@@ -833,9 +585,7 @@ export const createWorkspaceRoomRuntime = ({
     if (origin === REMOTE_AWARENESS_ORIGIN && !closed) {
       presenceController.reconcileLocalDisplay();
     }
-    if (origin !== REMOTE_AWARENESS_ORIGIN && !closed) {
-      publishAwareness([...changes.added, ...changes.updated, ...changes.removed]);
-    }
+    syncController.handleAwarenessUpdate(changes, origin);
   };
 
   room.doc.on("update", handleDocumentUpdate);
@@ -990,6 +740,7 @@ export const createWorkspaceRoomRuntime = ({
       documentObservers: 1,
       ...documentRegistry.getResourceCounts(),
       ...documentProjectionStore.getResourceCounts(),
+      ...syncController.getResourceCounts(),
     }),
     upsertComment(comment: WorkspaceRoomComment) {
       const current = room.comments.get(comment.id);
@@ -1041,23 +792,15 @@ export const createWorkspaceRoomRuntime = ({
       if (commentProjectionTimer) adapters.clock.clearTimeout(commentProjectionTimer);
       commentProjectionTimer = undefined;
       if (heartbeat) adapters.clock.clearInterval(heartbeat);
-      clearLocalUpdateRetry();
       room.doc.off("update", handleDocumentUpdate);
       room.documents.unobserveDeep(handleDocumentsChange);
       room.meta.unobserve(handleWorkspaceStructureChange);
       room.nodes.unobserveDeep(handleWorkspaceStructureChange);
       room.comments.unobserveDeep(handleCommentsChange);
       awareness.off("update", handleAwarenessUpdate);
-      if (transport?.connected && roomKey) presenceController.clearLocalState();
-      transport?.disconnect();
-      transport = null;
-      pendingLocalUpdate = null;
-      pendingAwarenessClients.clear();
-      syncStep1Pending = false;
+      if (syncController.isConnected() && roomKey) presenceController.clearLocalState();
+      syncController.dispose();
       pendingTextProjectionIds.clear();
-      inboundEnvelopes.length = 0;
-      inboundBufferedChars = 0;
-      chunkAssembler.clear();
       activeDocumentLease?.release();
       activeDocumentLease = null;
       documentRegistry.dispose();
