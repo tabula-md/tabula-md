@@ -14,11 +14,9 @@ import {
   WORKSPACE_ROOM_SCHEMA_VERSION,
   validateWorkspaceRoomLimits,
   type WorkspaceRoomComment,
-  type WorkspaceRoomStructureSnapshot,
 } from "@tabula-md/tabula";
 import type {
   WorkspaceFolderSnapshot,
-  WorkspaceRoomChangeOrigin,
 } from "../collaboration/liveCollaboration";
 import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 import { useCollaborationConnectionRuntime } from "./useCollaborationConnectionRuntime";
@@ -81,11 +79,6 @@ type UseCollaborationRoomOptions = {
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
-  onWorkspaceStructureChange?: (
-    snapshot: WorkspaceRoomStructureSnapshot,
-    origin: WorkspaceRoomChangeOrigin | undefined,
-    readDocumentText: (documentId: string) => string | null,
-  ) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
 };
@@ -101,7 +94,6 @@ export function useCollaborationRoom({
   commentsByFileId,
   onRecoveryEvent,
   onCommentsChange,
-  onWorkspaceStructureChange,
   onOpenFailure,
   onCapacityExceeded,
 }: UseCollaborationRoomOptions) {
@@ -130,6 +122,8 @@ export function useCollaborationRoom({
     durability,
     editorBinding,
     materializeWorkspace,
+    materializeDocument,
+    structureSnapshot,
     upsertComment,
     deleteComment,
     setCommentResolved,
@@ -142,12 +136,8 @@ export function useCollaborationRoom({
       activeDocument,
       editorPresenceEnabled,
       identity,
-      workspaceDocuments,
-      workspaceFolders,
-      commentsByFileId,
       onRecoveryEvent,
       onCommentsChange,
-      onWorkspaceStructureChange,
       onOpenFailure,
       onCapacityExceeded,
     });
@@ -211,6 +201,8 @@ export function useCollaborationRoom({
     setViewport,
     editorBinding,
     materializeWorkspace,
+    materializeDocument,
+    structureSnapshot,
     upsertComment,
     deleteComment,
     setCommentResolved,

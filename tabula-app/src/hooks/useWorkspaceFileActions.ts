@@ -54,6 +54,7 @@ type UseWorkspaceFileActionsArgs = {
   onFileDeleted?: (file: WorkspaceFile) => boolean;
   onFileRenamed?: (fileId: string, title: string) => boolean;
   onFileRestored?: (file: WorkspaceFile, comments: FileComment[]) => boolean;
+  readFileText?: (fileId: string) => string | null;
   preferences: WorkspacePreferences;
   queueEditorFocus: () => void;
   renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
@@ -93,6 +94,7 @@ export function useWorkspaceFileActions({
   onFileDeleted,
   onFileRenamed,
   onFileRestored,
+  readFileText,
   preferences,
   queueEditorFocus,
   renameFile,
@@ -206,10 +208,19 @@ export function useWorkspaceFileActions({
 
   const deleteFile = (fileId: string) => {
     onBeforeWorkspaceBoundary?.();
-    const deletedFile = files.find((file) => file.id === fileId);
-    if (!deletedFile) {
+    const currentFile = files.find((file) => file.id === fileId);
+    if (!currentFile) {
       return;
     }
+    const roomText = isRoomSession ? readFileText?.(fileId) : undefined;
+    if (isRoomSession && roomText == null) {
+      showToast("This document isn’t ready to delete yet.", "error");
+      return;
+    }
+    const deletedFile: WorkspaceFile = {
+      ...currentFile,
+      text: roomText ?? currentFile.text,
+    };
 
     const deletedFileIndex = Math.max(
       0,

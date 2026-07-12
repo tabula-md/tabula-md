@@ -1,9 +1,8 @@
-import type { WorkspaceRoomComment, WorkspaceRoomStructureSnapshot } from "@tabula-md/tabula";
+import type { WorkspaceRoomComment } from "@tabula-md/tabula";
 import type {
   Collaborator,
   CollabRecoveryEvent,
 } from "../collaboration";
-import type { WorkspaceRoomChangeOrigin } from "../collaboration/liveCollaboration";
 import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 import {
   getActiveWorkspaceStatus,
@@ -21,11 +20,6 @@ type UseWorkspaceCollaborationRuntimeOptions = {
   workspaceFolders?: readonly { id: string; title: string; parentId: string | null; order?: number }[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
-  onWorkspaceStructureChange?: (
-    snapshot: WorkspaceRoomStructureSnapshot,
-    origin: WorkspaceRoomChangeOrigin | undefined,
-    readDocumentText: (documentId: string) => string | null,
-  ) => void;
   onCommentsChange?: (commentsByFileId: Record<string, WorkspaceRoomComment[]>) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
@@ -41,7 +35,6 @@ export function useWorkspaceCollaborationRuntime({
   workspaceFolders,
   commentsByFileId,
   onRecoveryEvent,
-  onWorkspaceStructureChange,
   onCommentsChange,
   onOpenFailure,
   onCapacityExceeded,
@@ -56,7 +49,6 @@ export function useWorkspaceCollaborationRuntime({
     workspaceFolders,
     commentsByFileId,
     onRecoveryEvent,
-    onWorkspaceStructureChange,
     onCommentsChange,
     onOpenFailure,
     onCapacityExceeded,
