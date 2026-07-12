@@ -4,6 +4,7 @@ import type {
   WorkspaceRoomStructureSnapshot,
 } from "@tabula-md/tabula";
 import {
+  clearWorkspaceDocumentBodies,
   materializeWorkspaceRoomSnapshot,
   projectWorkspaceRoomComments,
   projectWorkspaceRoomStructure,
@@ -46,6 +47,20 @@ const documentNode = (id: string, title: string, order: number, parentId = "work
 });
 
 describe("projectWorkspaceRoomStructure", () => {
+  it("clears local bodies at the Local-to-Room session boundary", () => {
+    const source = {
+      folders: [createWorkspaceRootFolder()],
+      files: [file({ id: "readme", title: "README.md", text: "# README" })],
+      openFileIds: ["readme"],
+      activeFileId: "readme",
+    };
+
+    const next = clearWorkspaceDocumentBodies(source);
+
+    expect(next.files[0].text).toBe("");
+    expect(source.files[0].text).toBe("# README");
+  });
+
   it("projects room metadata without retaining document bodies", () => {
     const next = projectWorkspaceRoomStructure({
       createFile,

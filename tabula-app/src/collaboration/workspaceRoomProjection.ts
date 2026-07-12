@@ -22,6 +22,13 @@ type ProjectWorkspaceRoomOptions = {
   workspaceSnapshot: WorkspaceModelSnapshot;
 };
 
+export const clearWorkspaceDocumentBodies = (
+  workspaceSnapshot: WorkspaceModelSnapshot,
+): WorkspaceModelSnapshot => ({
+  ...workspaceSnapshot,
+  files: workspaceSnapshot.files.map((file) => file.text ? { ...file, text: "" } : file),
+});
+
 const projectWorkspaceRoom = ({
   createFile,
   documentText,

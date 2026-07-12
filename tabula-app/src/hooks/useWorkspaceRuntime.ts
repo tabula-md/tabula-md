@@ -16,6 +16,7 @@ import {
 } from "@tabula-md/tabula";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import {
+  clearWorkspaceDocumentBodies,
   materializeWorkspaceRoomSnapshot,
   projectWorkspaceRoomComments,
   projectWorkspaceRoomStructure,
@@ -926,6 +927,10 @@ export function useWorkspaceRuntime() {
       if (!startedSession) return;
 
       setLiveRoomOpenFailure(null);
+      replaceWorkspace(clearWorkspaceDocumentBodies({
+        ...getWorkspaceStoreSnapshot(),
+        folders,
+      }));
       workspaceSessionHost.openRoom(startedSession);
     } catch (error) {
       clientErrorReporter.report({
