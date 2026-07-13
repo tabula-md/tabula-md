@@ -110,6 +110,47 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
+    await waitForActiveTab(page, { exact: "Untitled.md" });
+    await openProjectMenu(page);
+    expect(
+      (await page.locator('input[type="file"][accept*="json"]').count()) === 0,
+      "The workspace menu should not expose the removed JSON backup importer.",
+    );
+    await page.getByRole("button", { name: "Clear local workspace…", exact: true }).click();
+    await page.getByRole("dialog", { name: "Clear local workspace?" }).waitFor();
+    expect(
+      (await page.getByText("Delete all local documents, folders, and comments. This cannot be undone.").count()) === 1,
+      "Clear workspace should explain its destructive local scope.",
+    );
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Untitled.md" });
+
+    await openProjectMenu(page);
+    await page.getByRole("button", { name: "Clear local workspace…", exact: true }).click();
+    await page.getByRole("button", { name: "Clear workspace", exact: true }).click();
+    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    expect((await page.locator(".tab-item").count()) === 0, "Clearing the workspace should close every document tab.");
+    await page.waitForFunction(
+      () => document.querySelector(".app-toast")?.textContent?.includes("Local workspace cleared."),
+    );
+    await page.reload();
+    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    expect(
+      (await page.locator(".tab-item").count()) === 0,
+      "A cleared workspace should stay empty after an immediate reload.",
+    );
+    await openProjectContext(page);
+    const remainingFiles = await page.locator(".right-file-tree-row.file").evaluateAll((rows) =>
+      rows.map((row) => row.getAttribute("title")),
+    );
+    expect(
+      remainingFiles.length === 1 && remainingFiles[0] === "README.md",
+      "Clearing should restore only the hidden product README.",
+    );
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".share-trigger").click();

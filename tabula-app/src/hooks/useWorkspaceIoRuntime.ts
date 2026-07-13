@@ -76,7 +76,6 @@ export function useWorkspaceIoRuntime({
     isRoomSession,
     activeFileId,
     addFileFromContent,
-    commentsByFileId,
     editorRef,
     files,
     folders,
@@ -85,11 +84,7 @@ export function useWorkspaceIoRuntime({
     openFileIds,
     onBeforeWorkspaceBoundary,
     preferences,
-    replaceCommentsByFileId,
-    replaceWorkspace,
-    resetCollaborationState,
     showToast,
-    clearFileHistory,
     onCloseChrome: closeFloatingChrome,
   });
   const jsonShareImport = useJsonShareImportController({

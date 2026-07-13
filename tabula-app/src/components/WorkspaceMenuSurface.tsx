@@ -1,4 +1,5 @@
-import type { ChangeEventHandler, RefObject } from "react";
+import { useState, type ChangeEventHandler, type RefObject } from "react";
+import { ModalSurface } from "./ui/ModalSurface";
 import { WorkspaceMenu } from "./WorkspaceMenu";
 import type {
   WorkspaceLanguage,
@@ -13,13 +14,13 @@ export type WorkspaceMenuSurfaceProps = {
   language: WorkspaceLanguage;
   preferencesOpen: boolean;
   theme: WorkspaceTheme;
-  workspaceImportInputRef: RefObject<HTMLInputElement | null>;
+  canClearWorkspace: boolean;
   onAddFile: () => void;
   onChangeLanguage: (language: WorkspaceLanguage) => void;
   onChangeTheme: (theme: WorkspaceTheme) => void;
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
-  onImportProjectChange: ChangeEventHandler<HTMLInputElement>;
+  onClearWorkspace: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
   onTogglePreferences: () => void;
@@ -31,19 +32,25 @@ export function WorkspaceMenuSurface({
   language,
   preferencesOpen,
   theme,
-  workspaceImportInputRef,
+  canClearWorkspace,
   onAddFile,
   onChangeLanguage,
   onChangeTheme,
   onCloseChrome,
   onImportFileChange,
-  onImportProjectChange,
+  onClearWorkspace,
   onOpenAbout,
   onOpenHelp,
   onTogglePreferences,
 }: WorkspaceMenuSurfaceProps) {
   const copy = getWorkspaceMenuCopy(language);
   const interfaceCopy = getWorkspaceInterfaceCopy(language);
+  const [clearWorkspaceOpen, setClearWorkspaceOpen] = useState(false);
+  const closeClearWorkspace = () => setClearWorkspaceOpen(false);
+  const confirmClearWorkspace = () => {
+    onClearWorkspace();
+    closeClearWorkspace();
+  };
   return (
     <>
       <input
@@ -53,14 +60,6 @@ export function WorkspaceMenuSurface({
         accept=".md,.markdown,text/markdown,text/plain"
         onChange={onImportFileChange}
         aria-label={interfaceCopy.projectContext.files.openMarkdown}
-      />
-      <input
-        ref={workspaceImportInputRef}
-        className="workspace-file-input"
-        type="file"
-        accept=".json,application/json"
-        onChange={onImportProjectChange}
-        aria-label={copy.actions.importProject}
       />
       <WorkspaceMenu
         isOpen={isOpen}
@@ -75,13 +74,42 @@ export function WorkspaceMenuSurface({
           onCloseChrome();
           importInputRef.current?.click();
         }}
-        onImportProject={() => {
+        onClearWorkspace={canClearWorkspace ? () => {
           onCloseChrome();
-          workspaceImportInputRef.current?.click();
-        }}
+          setClearWorkspaceOpen(true);
+        } : undefined}
         onOpenAbout={onOpenAbout}
         onOpenHelp={onOpenHelp}
       />
+      {clearWorkspaceOpen && canClearWorkspace && (
+        <ModalSurface
+          ariaLabelledBy="clear-workspace-title"
+          className="clear-workspace-modal"
+          onClose={closeClearWorkspace}
+        >
+          <header className="share-modal-header compact">
+            <h2 id="clear-workspace-title">{copy.clearWorkspace.title}</h2>
+            <p>{copy.clearWorkspace.description}</p>
+          </header>
+          <div className="share-modal-actions clear-workspace-actions">
+            <button
+              type="button"
+              className="share-modal-secondary"
+              data-modal-initial-focus
+              onClick={closeClearWorkspace}
+            >
+              {copy.clearWorkspace.cancel}
+            </button>
+            <button
+              type="button"
+              className="share-modal-danger"
+              onClick={confirmClearWorkspace}
+            >
+              {copy.clearWorkspace.confirm}
+            </button>
+          </div>
+        </ModalSurface>
+      )}
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   createWorkspacePersistenceQueue,
 } from "../workspacePersistence";
@@ -109,5 +109,9 @@ export const useQueuedWorkspacePersistence = (
     };
   }, []);
 
-  return { persistedRevision };
+  const persistNow = useCallback((nextWorkspace: WorkspaceState) => {
+    queueRef.current?.persistNow(nextWorkspace);
+  }, []);
+
+  return { persistedRevision, persistNow };
 };

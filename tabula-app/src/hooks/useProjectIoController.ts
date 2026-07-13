@@ -1,13 +1,10 @@
 import { useState, type ChangeEvent, type DragEvent, type RefObject } from "react";
-import type { ConnectionStatus } from "../collaboration";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
 import { createProjectArchive } from "../projectArchive";
 import {
-  parseWorkspacePayload,
   syncUrlForLocalWorkspace,
-  type FileComment,
   type WorkspaceFile,
   type WorkspaceFolder,
   type WorkspaceState,
@@ -15,9 +12,6 @@ import {
 import {
   createCurrentFileDownloadDraft,
   createImportedWorkspaceFileDraft,
-  createWorkspaceProjectDownloadDraft,
-  getUnreadableProjectJsonMessage,
-  getUnsupportedProjectSchemaMessage,
   isSupportedImportFileDescriptor,
 } from "../workspaceIoModel";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
@@ -49,7 +43,6 @@ type UseProjectIoControllerArgs = {
     viewMode?: WorkspaceFile["viewMode"],
     overrides?: Partial<WorkspaceFile>,
   ) => WorkspaceFile;
-  commentsByFileId: Record<string, FileComment[]>;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
@@ -58,11 +51,7 @@ type UseProjectIoControllerArgs = {
   openFileIds: string[];
   onBeforeWorkspaceBoundary?: () => void;
   preferences: WorkspacePreferences;
-  replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
-  replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
-  resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   showToast: (message: string, tone?: "neutral" | "error", options?: { actionLabel?: string; onAction?: () => void }) => void;
-  clearFileHistory: () => void;
   onCloseChrome: () => void;
 };
 
@@ -142,7 +131,6 @@ export function useProjectIoController({
   isRoomSession,
   activeFileId,
   addFileFromContent,
-  commentsByFileId,
   editorRef,
   files,
   folders,
@@ -151,11 +139,7 @@ export function useProjectIoController({
   openFileIds,
   onBeforeWorkspaceBoundary,
   preferences,
-  replaceCommentsByFileId,
-  replaceWorkspace,
-  resetCollaborationState,
   showToast,
-  clearFileHistory,
   onCloseChrome,
 }: UseProjectIoControllerArgs) {
   const [emptyDropActive, setEmptyDropActive] = useState(false);
@@ -189,27 +173,6 @@ export function useProjectIoController({
     showToast("File downloaded.");
   };
 
-  const downloadProject = () => {
-    const workspaceSnapshot = getProjectIoBoundaryWorkspaceSnapshot({
-      activeFile,
-      activeFileId,
-      files,
-      folders,
-      getWorkspaceSnapshot,
-      onBeforeWorkspaceBoundary,
-      openFileIds,
-    });
-    const download = createWorkspaceProjectDownloadDraft({
-      files: workspaceSnapshot.files,
-      folders: workspaceSnapshot.folders,
-      openFileIds: workspaceSnapshot.openFileIds,
-      activeFileId: workspaceSnapshot.activeFileId,
-      commentsByFileId,
-    });
-    downloadTextFile(download.fileName, download.content, download.type);
-    showToast("Workspace backup downloaded.");
-  };
-
   const downloadProjectArchive = async () => {
     try {
       const workspaceSnapshot = getProjectIoBoundaryWorkspaceSnapshot({
@@ -232,36 +195,6 @@ export function useProjectIoController({
       });
       showToast("Couldn’t export to file.", "error");
     }
-  };
-
-  const importProjectFile = async (file: File) => {
-    if (isRoomSession) {
-      showToast("Stop live collaboration before restoring a workspace backup.", "error");
-      return;
-    }
-    let parsedWorkspace: unknown;
-
-    try {
-      parsedWorkspace = JSON.parse(await file.text());
-    } catch {
-      showToast(getUnreadableProjectJsonMessage(), "error");
-      return;
-    }
-
-    const nextWorkspace = parseWorkspacePayload(parsedWorkspace);
-    if (!nextWorkspace) {
-      showToast(getUnsupportedProjectSchemaMessage(), "error");
-      return;
-    }
-
-    onBeforeWorkspaceBoundary?.();
-    replaceWorkspace(nextWorkspace);
-    replaceCommentsByFileId(nextWorkspace.commentsByFileId);
-    clearFileHistory();
-    resetCollaborationState("idle");
-    onCloseChrome();
-    syncUrlForLocalWorkspace();
-    showToast("Workspace backup restored.");
   };
 
   const importFile = async (file: File) => {
@@ -289,17 +222,6 @@ export function useProjectIoController({
     }
 
     void importFile(file);
-  };
-
-  const handleProjectImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    void importProjectFile(file);
   };
 
   const getDroppedImportFile = (event: DragEvent<HTMLElement>) => {
@@ -342,10 +264,8 @@ export function useProjectIoController({
     emptyDropActive,
     copyFile,
     downloadCurrentFile,
-    downloadProject,
     downloadProjectArchive,
     handleImportInputChange,
-    handleProjectImportInputChange,
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDrop,

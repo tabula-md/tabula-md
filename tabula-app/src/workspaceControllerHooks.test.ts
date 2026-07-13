@@ -41,10 +41,7 @@ import { getMagnetizedSplitRatio } from "./hooks/useSplitViewController";
 import {
   createCurrentFileDownloadDraft,
   createImportedWorkspaceFileDraft,
-  createWorkspaceProjectDownloadDraft,
   getNewFilePreferenceOverrides,
-  getUnreadableProjectJsonMessage,
-  getUnsupportedProjectSchemaMessage,
   isSupportedImportFileDescriptor,
 } from "./workspaceIoModel";
 import { createWorkspaceRootFolder } from "./workspaceStorage";
@@ -629,7 +626,7 @@ describe("project IO controller", () => {
     expect(isSupportedImportFileDescriptor({ name: "archive.json", type: "application/json" })).toBe(false);
   });
 
-  it("creates file and project download drafts without DOM side effects", () => {
+  it("creates file download drafts without DOM side effects", () => {
     const activeFile = file("brief", "# Brief");
     const currentFileDownload = createCurrentFileDownloadDraft(activeFile);
 
@@ -639,39 +636,6 @@ describe("project IO controller", () => {
       type: "text/markdown;charset=utf-8",
     });
 
-    const projectDownload = createWorkspaceProjectDownloadDraft({
-      files: [activeFile],
-      openFileIds: [activeFile.id],
-      activeFileId: activeFile.id,
-      commentsByFileId: {
-        [activeFile.id]: [
-          {
-            id: "comment-one",
-            body: "Needs review",
-            createdAt: "2026-06-30T00:00:00.000Z",
-            authorName: "Taeha",
-            resolved: false,
-            replies: [],
-          },
-        ],
-      },
-    });
-
-    expect(projectDownload.fileName).toMatch(/^tabula-project-v\d+\.json$/);
-    expect(projectDownload.type).toBe("application/json");
-    expect(JSON.parse(projectDownload.content)).toMatchObject({
-      activeFileId: activeFile.id,
-      files: {
-        [activeFile.id]: {
-          id: activeFile.id,
-          title: "brief.md",
-          text: "# Brief",
-        },
-      },
-      commentsByFileId: {
-        [activeFile.id]: [{ id: "comment-one", body: "Needs review" }],
-      },
-    });
   });
 
   it("prefers runtime snapshots for file and project IO boundaries", () => {
@@ -787,9 +751,6 @@ describe("project IO controller", () => {
         lineNumbers: true,
       },
     });
-
-    expect(getUnreadableProjectJsonMessage()).toBe("This file is not readable JSON.");
-    expect(getUnsupportedProjectSchemaMessage()).toContain("project v");
   });
 });
 

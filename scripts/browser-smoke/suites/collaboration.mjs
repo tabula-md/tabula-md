@@ -120,6 +120,12 @@ export async function run(ctx) {
       "Self avatar should expose the collaborator name through the custom hover tooltip.",
     );
     await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+    await openProjectMenu(firstPage);
+    expect(
+      (await firstPage.getByRole("button", { name: "Clear local workspace…", exact: true }).count()) === 0,
+      "Live rooms should not expose the local workspace clear action.",
+    );
+    await firstPage.keyboard.press("Escape");
     await clickTabByFileName(firstPage, secondaryFileName);
     await firstPage.waitForFunction(
       ({ secondaryFileName }) => {

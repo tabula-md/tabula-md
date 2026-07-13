@@ -11,7 +11,7 @@ import {
   Moon,
   SlidersHorizontal,
   Sun,
-  Upload,
+  Trash2,
 } from "lucide-react";
 import type {
   WorkspaceLanguage,
@@ -32,7 +32,7 @@ type WorkspaceMenuProps = {
   onChangeLanguage: (language: WorkspaceLanguage) => void;
   onAddFile: () => void;
   onOpenFile: () => void;
-  onImportProject: () => void;
+  onClearWorkspace?: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
 };
@@ -115,7 +115,7 @@ export function WorkspaceMenu({
   onChangeLanguage,
   onAddFile,
   onOpenFile,
-  onImportProject,
+  onClearWorkspace,
   onOpenAbout,
   onOpenHelp,
 }: WorkspaceMenuProps) {
@@ -160,10 +160,6 @@ export function WorkspaceMenu({
         <MenuRow icon={<FolderOpen size={16} />} onClick={onOpenFile}>
           {copy.actions.openFile}
         </MenuRow>
-        <MenuRow icon={<Upload size={16} />} onClick={onImportProject}>
-          {copy.actions.importProject}
-        </MenuRow>
-
         <div className="workspace-menu-divider" role="separator" />
 
         <MenuRow
@@ -255,6 +251,14 @@ export function WorkspaceMenu({
         >
           {copy.actions.github}
         </MenuLink>
+        {onClearWorkspace && (
+          <>
+            <div className="workspace-menu-divider" role="separator" />
+            <MenuRow icon={<Trash2 size={16} />} onClick={onClearWorkspace}>
+              {copy.actions.clearWorkspace}
+            </MenuRow>
+          </>
+        )}
       </nav>
     </section>
   );

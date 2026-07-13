@@ -173,9 +173,8 @@ export function useWorkspaceRuntime() {
   const workspaceChromeCopy = getWorkspaceChromeCopy(
     workspacePreferences.language,
   );
-  const workspaceShareCopy = getWorkspaceMenuCopy(
-    workspacePreferences.language,
-  ).share;
+  const workspaceMenuCopy = getWorkspaceMenuCopy(workspacePreferences.language);
+  const workspaceShareCopy = workspaceMenuCopy.share;
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
   const followState = useSyncExternalStore(
     workspaceSession.follow.subscribe,
@@ -190,7 +189,6 @@ export function useWorkspaceRuntime() {
     createActiveRoomDocumentProjectionStore());
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
-  const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
   const [shortcutPlatform] = useState(() => getShortcutPlatform());
   const { dismissToast, pauseToast, resumeToast, toast, showToast } = useAppToast();
   const { identity, updateIdentityName, normalizeIdentityName } =
@@ -966,7 +964,6 @@ export function useWorkspaceRuntime() {
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDrop,
     handleImportInputChange,
-    handleProjectImportInputChange,
     jsonShareImport,
     replaceWorkspaceWithJsonShare,
   } = useWorkspaceIoRuntime({
@@ -1129,13 +1126,26 @@ export function useWorkspaceRuntime() {
     queueEditorTextRange,
     text,
   });
+  const clearLocalWorkspace = useEventCallback(() => {
+    if (activeRoom) return;
+    handleUserWorkspaceBoundary();
+    const starterWorkspace = createStarterWorkspaceState();
+    replaceWorkspace(starterWorkspace);
+    replaceCommentsByFileId({});
+    clearFileHistory();
+    localWorkspacePersistence.persistNow(starterWorkspace);
+    closeFloatingChrome();
+    syncUrlForLocalWorkspace("replace");
+    showToast(workspaceMenuCopy.clearWorkspace.cleared);
+  });
   const { menuSurfaceProps } = useWorkspaceMenuRuntime({
     importInputRef,
     isOpen: workspaceMenuOpen,
     onAddFile: addFile,
+    canClearWorkspace: !activeRoom,
+    onClearWorkspace: clearLocalWorkspace,
     onCloseChrome: closeFloatingChrome,
     onImportFileChange: handleImportInputChange,
-    onImportProjectChange: handleProjectImportInputChange,
     onOpenAbout: openAboutFile,
     onOpenHelp: openHelpFile,
     preferences: workspacePreferences,
@@ -1143,7 +1153,6 @@ export function useWorkspaceRuntime() {
     setPreferences: setWorkspacePreferences,
     setPreferencesOpen,
     setTopPopover,
-    workspaceImportInputRef,
   });
   const handleStableLineAnnotationAction = useEventCallback(
     handleLineAnnotationAction,
