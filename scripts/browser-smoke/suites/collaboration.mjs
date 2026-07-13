@@ -6,6 +6,7 @@ export async function run(ctx) {
     baseUrl,
     browser,
     expect,
+    externalUrl,
     focusMarkdownEditor,
     openProjectMenu,
     startRoomServer,
@@ -333,7 +334,7 @@ export async function run(ctx) {
     );
     await restoredContext.close();
 
-    {
+    if (!externalUrl) {
       expect(typeof stopRoomServer === "function", "Collaboration smoke should be able to stop the room server.");
       expect(typeof startRoomServer === "function", "Collaboration smoke should be able to start the room server.");
       await stopRoomServer();
@@ -368,7 +369,9 @@ export async function run(ctx) {
         }))));
         throw new Error(`${error.message}\nReconnect diagnostics:\n${JSON.stringify(reconnectDiagnostics, null, 2)}`);
       }
+    }
 
+    {
       const wrongRoomKey = roomKey === "A".repeat(43) ? "B".repeat(43) : "A".repeat(43);
       const wrongKeyContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const wrongKeyPage = await wrongKeyContext.newPage();
