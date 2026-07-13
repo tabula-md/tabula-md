@@ -2,6 +2,7 @@ import type { LocationRoom } from "../../workspaceStorage";
 import {
   createLocalWorkspaceSession,
   createRoomWorkspaceSession,
+  type RoomWorkspaceBootstrap,
   type WorkspaceSession,
 } from "./WorkspaceSession";
 
@@ -30,7 +31,8 @@ export const createWorkspaceSessionHost = (initialSession: WorkspaceSession) => 
     },
     getSnapshot: () => currentSession,
     openLocal: () => replace(createLocalWorkspaceSession()),
-    openRoom: (room: LocationRoom) => replace(createRoomWorkspaceSession(room)),
+    openRoom: (room: LocationRoom, bootstrap?: RoomWorkspaceBootstrap | null) =>
+      replace(createRoomWorkspaceSession(room, bootstrap)),
     dispose() {
       if (disposed) return;
       disposed = true;

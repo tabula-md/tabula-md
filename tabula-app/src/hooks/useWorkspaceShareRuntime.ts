@@ -4,6 +4,7 @@ import type { WorkspaceShareCopy } from "../workspaceLocale";
 import type { FileComment, LocationRoom, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { useJsonShareController } from "./useJsonShareController";
 import { useWorkspaceLiveRoomController } from "./useWorkspaceLiveRoomController";
+import type { StartedWorkspaceRoom } from "./useWorkspaceLiveRoomController";
 
 type UseWorkspaceShareRuntimeOptions = {
   activeFile?: WorkspaceFile;
@@ -20,7 +21,7 @@ type UseWorkspaceShareRuntimeOptions = {
   setCopiedFileId: Dispatch<SetStateAction<string | null>>;
   showToast: (message: string, tone?: "error" | "neutral") => void;
   startCollaborationSession: () => Promise<
-    { fileId: string; roomId: string; shareUrl: string } | undefined
+    StartedWorkspaceRoom | undefined
   >;
 };
 

@@ -867,7 +867,10 @@ export function useWorkspaceRuntime() {
         ...getWorkspaceStoreSnapshot("local"),
         folders,
       }));
-      workspaceSessionHost.openRoom(startedSession);
+      workspaceSessionHost.openRoom(
+        { roomId: startedSession.roomId, shareUrl: startedSession.shareUrl },
+        startedSession.bootstrap,
+      );
     } catch (error) {
       clientErrorReporter.report({
         feature: "collaboration",

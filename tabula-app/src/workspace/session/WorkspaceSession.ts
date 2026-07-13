@@ -7,6 +7,11 @@ import {
 } from "../../stores/workspaceStore";
 import { createFollowStore, type FollowStore } from "./FollowStore";
 
+export type RoomWorkspaceBootstrap = {
+  checkpointUpdate: Uint8Array;
+  generation: number;
+};
+
 export type LocalWorkspaceSession = {
   readonly mode: "local";
   readonly follow: FollowStore;
@@ -19,6 +24,7 @@ export type RoomWorkspaceSession = {
   readonly room: LocationRoom;
   readonly follow: FollowStore;
   readonly viewStore: WorkspaceStoreBinding;
+  takeBootstrap(): RoomWorkspaceBootstrap | null;
   attachRuntime(runtime: WorkspaceRoomRuntime): () => void;
   getRuntime(): WorkspaceRoomRuntime | null;
   subscribeRuntime(listener: () => void): () => void;
@@ -37,9 +43,13 @@ export const createLocalWorkspaceSession = (): LocalWorkspaceSession => {
   };
 };
 
-export const createRoomWorkspaceSession = (room: LocationRoom): RoomWorkspaceSession => {
+export const createRoomWorkspaceSession = (
+  room: LocationRoom,
+  initialBootstrap: RoomWorkspaceBootstrap | null = null,
+): RoomWorkspaceSession => {
   let disposed = false;
   let runtime: WorkspaceRoomRuntime | null = null;
+  let bootstrap = initialBootstrap;
   const listeners = new Set<() => void>();
   const follow = createFollowStore();
 
@@ -50,6 +60,11 @@ export const createRoomWorkspaceSession = (room: LocationRoom): RoomWorkspaceSes
     room,
     follow,
     viewStore: useRoomWorkspaceStore,
+    takeBootstrap() {
+      const nextBootstrap = bootstrap;
+      bootstrap = null;
+      return nextBootstrap;
+    },
     attachRuntime(nextRuntime) {
       if (disposed) {
         nextRuntime.disconnect();
@@ -81,6 +96,7 @@ export const createRoomWorkspaceSession = (room: LocationRoom): RoomWorkspaceSes
       disposed = true;
       runtime?.disconnect();
       runtime = null;
+      bootstrap = null;
       follow.dispose();
       listeners.clear();
     },

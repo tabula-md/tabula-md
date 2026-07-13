@@ -162,14 +162,22 @@ export function useCollaborationRoom({
       const { persistInitialWorkspaceRoomCheckpoint } = await import(
         "../collaboration/roomCheckpointCrdt"
       );
-      await persistInitialWorkspaceRoomCheckpoint({
+      const bootstrap = await persistInitialWorkspaceRoomCheckpoint({
         roomId: nextSession.roomId,
         roomKey: nextSession.roomKey,
         documents,
         folders: workspaceFolders ?? [],
         commentsByFileId,
       });
-      return { fileId: sessionFile.id, roomId: nextSession.roomId, shareUrl: nextSession.shareUrl };
+      return {
+        fileId: sessionFile.id,
+        roomId: nextSession.roomId,
+        shareUrl: nextSession.shareUrl,
+        bootstrap: {
+          checkpointUpdate: bootstrap.checkpointUpdate,
+          generation: bootstrap.generation,
+        },
+      };
     } finally {
       startInFlightRef.current = false;
     }

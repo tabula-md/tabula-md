@@ -1,7 +1,8 @@
-import { lazy, Suspense, useMemo, type ComponentProps } from "react";
+import { useMemo, type ComponentProps } from "react";
 import { FileTabs } from "./FileTabs";
 import { ShareControlsBoundary } from "./ShareControlsBoundary";
 import { ShareTrigger } from "./ShareTrigger";
+import { ShareControls } from "./ShareControls";
 import { TopChrome } from "./TopChrome";
 import type { Collaborator, ConnectionStatus } from "../collaboration";
 import type { FollowState } from "../collaboration/followModel";
@@ -15,12 +16,6 @@ import {
 } from "../workspaceStorage";
 
 type FileTabsProps = ComponentProps<typeof FileTabs>;
-
-const ShareControls = lazy(() =>
-  import("./ShareControls").then(({ ShareControls }) => ({
-    default: ShareControls,
-  })),
-);
 
 export type WorkspaceTopChromeProps = {
   activeFile?: WorkspaceFile;
@@ -146,32 +141,30 @@ export function WorkspaceTopChrome({
 
       {shareOpen && (
         <ShareControlsBoundary onError={onShareLoadError}>
-          <Suspense fallback={null}>
-            <ShareControls
-              activeFile={activeFile}
-              room={room}
-              files={files}
-              activeText={activeText}
-              language={language}
-              currentUserName={currentUserName}
-              canStartSession={canStartSession}
-              connectionStatus={connectionStatus}
-              isLive={isLive}
-              isLiveConnected={isLiveConnected}
-              shareOpen={shareOpen}
-              copied={copied}
-              jsonShare={jsonShare}
-              startSessionUnavailableReason={startSessionUnavailableReason}
-              onCloseShare={onCloseShare}
-              onStartSession={onStartSession}
-              onRetrySession={onRetrySession}
-              onCopyShareUrl={onCopyShareUrl}
-              onDownloadProjectArchive={onDownloadProjectArchive}
-              onChangeUserName={onChangeUserName}
-              onCommitUserName={onCommitUserName}
-              onStopSession={onStopSession}
-            />
-          </Suspense>
+          <ShareControls
+            activeFile={activeFile}
+            room={room}
+            files={files}
+            activeText={activeText}
+            language={language}
+            currentUserName={currentUserName}
+            canStartSession={canStartSession}
+            connectionStatus={connectionStatus}
+            isLive={isLive}
+            isLiveConnected={isLiveConnected}
+            shareOpen={shareOpen}
+            copied={copied}
+            jsonShare={jsonShare}
+            startSessionUnavailableReason={startSessionUnavailableReason}
+            onCloseShare={onCloseShare}
+            onStartSession={onStartSession}
+            onRetrySession={onRetrySession}
+            onCopyShareUrl={onCopyShareUrl}
+            onDownloadProjectArchive={onDownloadProjectArchive}
+            onChangeUserName={onChangeUserName}
+            onCommitUserName={onCommitUserName}
+            onStopSession={onStopSession}
+          />
         </ShareControlsBoundary>
       )}
     </>

@@ -42,6 +42,18 @@ describe("WorkspaceSessionHost", () => {
     expect(listener).toHaveBeenCalledTimes(2);
   });
 
+  it("hands the persisted host checkpoint to the runtime exactly once", () => {
+    const checkpointUpdate = new Uint8Array([1, 2, 3]);
+    const session = createRoomWorkspaceSession(room("bootstrap"), {
+      checkpointUpdate,
+      generation: 1,
+    });
+
+    expect(session.takeBootstrap()).toEqual({ checkpointUpdate, generation: 1 });
+    expect(session.takeBootstrap()).toBeNull();
+    session.dispose();
+  });
+
   it("disconnects the previous runtime once when a room replaces it", () => {
     const session = createRoomWorkspaceSession(room("replace"));
     const firstRuntime = runtime();

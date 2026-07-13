@@ -27,6 +27,11 @@ export type CheckpointLoadResult =
   | { ok: true }
   | { ok: false; reason: "expired" | "invalid" | "unsupported" };
 
+export type InitialRoomCheckpoint = {
+  checkpointUpdate: Uint8Array;
+  generation: number;
+};
+
 type CheckpointCoordinatorOptions = {
   room: WorkspaceRoomCrdt;
   roomId: string;
@@ -235,8 +240,24 @@ export const createCheckpointCoordinator = ({
         onDurabilityChange("unknown");
       }
     },
-    async load(key: CryptoKey, emitInitialWorkspaceState: boolean): Promise<CheckpointLoadResult> {
+    async load(
+      key: CryptoKey,
+      emitInitialWorkspaceState: boolean,
+      initialCheckpoint?: InitialRoomCheckpoint | null,
+    ): Promise<CheckpointLoadResult> {
       roomKey = key;
+      if (initialCheckpoint) {
+        try {
+          validateCheckpointUpdate(initialCheckpoint.checkpointUpdate);
+          Y.applyUpdate(room.doc, initialCheckpoint.checkpointUpdate, CHECKPOINT_ORIGIN);
+          generation = initialCheckpoint.generation;
+          checkpointedStateVector = Y.encodeStateVector(room.doc);
+          onDurabilityChange("clean");
+          return { ok: true };
+        } catch {
+          return { ok: false, reason: "unsupported" };
+        }
+      }
       if (!store.enabled) {
         onDurabilityChange("unknown");
         return emitInitialWorkspaceState ? { ok: true } : { ok: false, reason: "invalid" };

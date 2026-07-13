@@ -187,6 +187,51 @@ const collectCommentSnapshots = (
 };
 
 describe("workspace room runtime", () => {
+  it("uses the persisted host checkpoint without downloading it again", async () => {
+    const roomId = "room-host-bootstrap";
+    const seedDoc = new Y.Doc();
+    const seedRoom = createWorkspaceRoomCrdt({ roomId, doc: seedDoc });
+    initializeWorkspaceRoomCrdt(seedRoom, {
+      nodes: [{
+        id: "doc-1",
+        type: "document",
+        parentId: "workspace-root",
+        title: "README.md",
+        markdown: "# Ready",
+      }],
+      comments: [],
+    });
+    const checkpointUpdate = Y.encodeStateAsUpdate(seedDoc);
+    const loadEncryptedCheckpoint = vi.fn<RoomCheckpointStore["loadEncryptedCheckpoint"]>();
+    const saveEncryptedCheckpoint = vi.fn<RoomCheckpointStore["saveEncryptedCheckpoint"]>();
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const connection = createWorkspaceRoomRuntime({
+      roomId,
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-1",
+      emitInitialWorkspaceState: false,
+      initialCheckpoint: { checkpointUpdate, generation: 1 },
+      identity: { id: "host-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      adapters: {
+        ...defaults,
+        createRoomTransport: transport.createRoomTransport,
+        prepareRoomTransport: async () => undefined,
+        roomCheckpointStore: { enabled: true, loadEncryptedCheckpoint, saveEncryptedCheckpoint },
+        resolveRoomBaseUrl: () => "http://room.test",
+      },
+    });
+
+    await vi.waitFor(() => expect(connection.getSnapshot().status).toBe("connected"));
+    expect(connection.getDocumentTextSnapshot("doc-1")).toBe("# Ready");
+    expect(loadEncryptedCheckpoint).not.toHaveBeenCalled();
+    expect(saveEncryptedCheckpoint).not.toHaveBeenCalled();
+
+    connection.disconnect();
+    seedDoc.destroy();
+  });
+
   it("does not create a transport after disconnecting during key import", async () => {
     let resolveKey!: (key: CryptoKey) => void;
     const importRoomKey = vi.fn(() => new Promise<CryptoKey>((resolve) => { resolveKey = resolve; }));
