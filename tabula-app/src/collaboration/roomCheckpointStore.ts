@@ -1,11 +1,9 @@
-import {
-  decodeEncryptedData,
-  encodeEncryptedData,
-  WORKSPACE_ROOM_SCHEMA_VERSION,
+export {
+  ROOM_CHECKPOINT_RETENTION_MS,
+  decryptWorkspaceRoomCheckpoint,
+  encryptWorkspaceRoomCheckpoint,
 } from "@tabula-md/tabula";
 import { tabulaServiceConfig } from "../serviceConfig";
-
-export const ROOM_CHECKPOINT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type LoadedRoomCheckpoint =
   | {
@@ -38,12 +36,6 @@ export type RoomCheckpointStore = {
     request: SaveRoomCheckpointRequest,
     signal?: AbortSignal,
   ): Promise<SaveRoomCheckpointResult>;
-};
-
-export type RoomCheckpointMetadata = {
-  kind: "workspace-room-crdt";
-  roomId: string;
-  schemaVersion: typeof WORKSPACE_ROOM_SCHEMA_VERSION;
 };
 
 export const createNoopRoomCheckpointStore = (): RoomCheckpointStore => ({
@@ -94,49 +86,3 @@ const createLazyFirebaseRoomCheckpointStore = (firebaseConfig: string): RoomChec
     },
   };
 };
-
-export const encryptWorkspaceRoomCheckpoint = async ({
-  roomId,
-  update,
-  roomKey,
-}: {
-  roomId: string;
-  update: Uint8Array;
-  roomKey: string | CryptoKey;
-}) =>
-  encodeEncryptedData(update, {
-    encryptionKey: roomKey,
-    metadata: {
-      kind: "workspace-room-crdt",
-      roomId,
-      schemaVersion: WORKSPACE_ROOM_SCHEMA_VERSION,
-    } satisfies RoomCheckpointMetadata,
-    additionalData: getRoomCheckpointAdditionalData(roomId),
-  });
-
-export const decryptWorkspaceRoomCheckpoint = async ({
-  encryptedCheckpoint,
-  roomId,
-  roomKey,
-}: {
-  encryptedCheckpoint: Uint8Array;
-  roomId: string;
-  roomKey: string | CryptoKey;
-}) => {
-  const decoded = await decodeEncryptedData<RoomCheckpointMetadata>(encryptedCheckpoint, {
-    decryptionKey: roomKey,
-    additionalData: getRoomCheckpointAdditionalData(roomId),
-  });
-
-  if (
-    decoded.metadata.kind !== "workspace-room-crdt" ||
-    decoded.metadata.roomId !== roomId ||
-    decoded.metadata.schemaVersion !== WORKSPACE_ROOM_SCHEMA_VERSION
-  ) {
-    throw new Error("Room checkpoint failed: unsupported checkpoint metadata");
-  }
-  return decoded.data;
-};
-
-const getRoomCheckpointAdditionalData = (roomId: string) =>
-  new TextEncoder().encode(`tabula.workspace-room-crdt:v${WORKSPACE_ROOM_SCHEMA_VERSION}:${roomId}`);
