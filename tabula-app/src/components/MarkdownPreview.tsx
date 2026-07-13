@@ -1849,42 +1849,6 @@ const createMarkdownPreviewComponents = (
   img: ({ node: _node, alt, src, title, ...props }) => (
     <PreviewImage alt={alt} copy={copy} src={src} title={typeof title === "string" ? title : undefined} {...props} />
   ),
-  h1: ({ node: _node, id, children, ...props }) => (
-    <h1 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h1>
-  ),
-  h2: ({ node: _node, id, children, ...props }) => (
-    <h2 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h2>
-  ),
-  h3: ({ node: _node, id, children, ...props }) => (
-    <h3 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h3>
-  ),
-  h4: ({ node: _node, id, children, ...props }) => (
-    <h4 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h4>
-  ),
-  h5: ({ node: _node, id, children, ...props }) => (
-    <h5 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h5>
-  ),
-  h6: ({ node: _node, id, children, ...props }) => (
-    <h6 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h6>
-  ),
   pre: ({ node: _node, children, ...props }) => (
     <PreviewCodeBlock copy={copy} searchActive={searchActive} {...props}>{children}</PreviewCodeBlock>
   ),

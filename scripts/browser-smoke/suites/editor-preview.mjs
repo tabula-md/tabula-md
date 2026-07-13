@@ -704,11 +704,7 @@ export async function run(ctx) {
         text: frontmatter.textContent ?? "",
         background: frontmatterStyle.backgroundColor,
         borderRadius: frontmatterStyle.borderRadius,
-        bodyHeadingText: Array.from(bodyHeading.childNodes)
-          .filter((node) => !(node instanceof HTMLElement && node.classList.contains("preview-heading-anchor")))
-          .map((node) => node.textContent ?? "")
-          .join("")
-          .trim(),
+        bodyHeadingText: bodyHeading.textContent?.trim() ?? "",
         firstBodyText: firstBodyParagraph.textContent ?? "",
       };
     });
@@ -1983,7 +1979,8 @@ flowchart LR
       );
     };
 
-    expect((await page.locator("h1[id] .preview-heading-anchor").count()) >= 1, "Preview should add heading anchors.");
+    expect((await page.locator("h1[id]").count()) >= 1, "Preview headings should keep stable internal ids.");
+    expect((await page.locator(".preview-heading-anchor").count()) === 0, "Preview headings should not expose URL-changing permalink controls.");
     expect((await page.locator(".markdown-alert.markdown-alert-note").count()) === 1, "Preview should render GitHub-style alert blocks.");
     expect((await page.locator(".markdown-alert-title").filter({ hasText: "NOTE" }).count()) === 1, "Preview alert should include a title.");
     expect((await page.locator("dl dt").filter({ hasText: "Term" }).count()) === 1, "Preview should render definition list terms.");
@@ -2042,7 +2039,6 @@ flowchart LR
     const mobilePreview = await page.evaluate(() => {
       const surface = document.querySelector(".workspace.preview .preview-surface");
       const content = document.querySelector(".workspace.preview .preview-document-content");
-      const anchor = document.querySelector(".preview-heading-anchor");
       const task = document.querySelector("button.preview-task-checkbox");
       const surfaceRect = surface?.getBoundingClientRect();
       const contentRect = content?.getBoundingClientRect();
@@ -2050,7 +2046,8 @@ flowchart LR
       return {
         surfaceWidth: Math.round(surfaceRect?.width ?? 0),
         contentWidth: Math.round(contentRect?.width ?? 0),
-        anchorOpacity: anchor ? window.getComputedStyle(anchor).opacity : "",
+        headingId: document.querySelector(".workspace.preview h1")?.id ?? "",
+        headingPermalinkCount: document.querySelectorAll(".preview-heading-anchor").length,
         taskWidth: Math.round(taskRect?.width ?? 0),
         taskHeight: Math.round(taskRect?.height ?? 0),
       };
@@ -2059,7 +2056,10 @@ flowchart LR
       mobilePreview.surfaceWidth >= 350 && mobilePreview.contentWidth >= mobilePreview.surfaceWidth - 8,
       "Mobile Preview should use the document width without desktop annotation rails.",
     );
-    expect(mobilePreview.anchorOpacity === "0", "Mobile heading permalinks should stay hidden until focus.");
+    expect(
+      mobilePreview.headingId.length > 0 && mobilePreview.headingPermalinkCount === 0,
+      "Mobile headings should keep internal ids without exposing permalink controls.",
+    );
     expect(
       mobilePreview.taskWidth >= 44 && mobilePreview.taskHeight >= 44,
       "Mobile preview task controls should expose a 44px touch target.",

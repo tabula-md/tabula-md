@@ -120,6 +120,16 @@ export async function run(ctx) {
       "Self avatar should expose the collaborator name through the custom hover tooltip.",
     );
     await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+    await waitForEditorReady(firstPage, { mode: "preview" });
+    await firstPage.locator(".preview-surface").hover();
+    expect(
+      (await firstPage.locator(".preview-heading-anchor").count()) === 0,
+      "Live Preview headings should not expose URL-changing permalink controls.",
+    );
+    expect(
+      new URL(firstPage.url()).hash === firstPageUrl.hash,
+      "Interacting with Live Preview should preserve the encrypted live-room fragment.",
+    );
     await clickTabByFileName(firstPage, secondaryFileName);
     await firstPage.waitForFunction(
       ({ secondaryFileName }) => {
