@@ -5,8 +5,9 @@ Core product contracts for Tabula.md.
 This package is intentionally small and browser-service agnostic. It contains
 pure models for Markdown editing, workspace files, document controls, comments,
 status labels, live room links, encrypted Export links, the workspace Yjs
-schema, and binary room packets. It also owns product data, actor, and room
-envelope contracts used by Export links and live recovery. The Tabula
+schema, binary room packets, transport-neutral Yjs sync controller, Awareness
+flow, and encrypted checkpoint format. It also owns product data, actor, and
+room envelope contracts used by Export links and live recovery. The Tabula
 app in `tabula-app` wires these contracts to React, CodeMirror, local storage,
 collaboration transports, hosted recovery, and network services.
 
@@ -20,8 +21,8 @@ Keep in this package:
 - AES-GCM primitives through `globalThis.crypto`.
 - Versioned encrypted data encoding for Export links and recovery blobs.
 - Comment/status/document control view models.
-- Workspace CRDT, binary room protocol, actor, envelope, and presence models
-  that do not require React or a concrete transport.
+- Workspace CRDT, binary room protocol, actor, envelope, sync, Awareness, and
+  checkpoint code that does not require React or a concrete transport.
 - Pure helpers that can be tested without the DOM, React, storage, or network.
 
 Public imports must go through the package root:
@@ -32,6 +33,18 @@ import { parseRoomShareUrl } from "@tabula-md/tabula";
 
 Do not rely on deep source paths. The root `src/index.ts` file is the public
 API list and new modules are private until they are explicitly exported there.
+Both `tabula-app` and `tabula-mcp` must consume this package rather than copying
+or redefining live-room contracts.
+
+Agent clients should use the collaboration-only entrypoint so they do not load
+editor and preview models:
+
+```ts
+import {
+  createWorkspaceRoomCrdt,
+  createWorkspaceRoomSyncController,
+} from "@tabula-md/tabula/collaboration";
+```
 
 Keep outside this package:
 

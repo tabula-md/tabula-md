@@ -1,6 +1,6 @@
 {
   "name": "@tabula-md/tabula",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tabula.md document, workspace CRDT, protocol, and share-link contracts.",
   "license": "MIT",
   "type": "module",
@@ -11,6 +11,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./collaboration": {
+      "types": "./dist/collaboration.d.ts",
+      "import": "./dist/collaboration.js"
     },
     "./data/encryption": {
       "types": "./dist/data/encryption.d.ts",
@@ -47,6 +51,10 @@
   "bugs": {
     "url": "https://github.com/tabula-md/tabula-md/issues"
   },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "keywords": [
     "markdown",
     "local-first",
@@ -55,12 +63,20 @@
     "tabula"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json"
+    "build": "npm run clean && npm run build:types && npm run build:js",
+    "build:js": "vite build --config vite.config.ts",
+    "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
+    "yaml": "^2.9.0"
+  },
+  "peerDependencies": {
     "lib0": "^0.2.117",
     "y-protocols": "^1.0.7",
-    "yjs": "^13.6.0",
-    "yaml": "^2.9.0"
+    "yjs": "^13.6.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
   }
 }

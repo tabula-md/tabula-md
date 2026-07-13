@@ -398,6 +398,23 @@ export {
 } from "./roomBinaryProtocol";
 
 export type {
+  RemoteSyncOrigin,
+  WorkspaceRoomSyncAdapters,
+  WorkspaceRoomSyncClock,
+  WorkspaceRoomSyncController,
+  WorkspaceRoomSyncControllerOptions,
+  WorkspaceRoomSyncCrypto,
+  WorkspaceRoomTransport,
+  WorkspaceRoomTransportHandlers,
+} from "./workspaceRoomSync";
+export {
+  REMOTE_AWARENESS_ORIGIN,
+  REMOTE_SYNC_ORIGIN,
+  createWorkspaceRoomSyncController,
+  isRemoteSyncOrigin,
+} from "./workspaceRoomSync";
+
+export type {
   WorkspaceRoomComment,
   WorkspaceRoomCommentReply,
   WorkspaceRoomDocumentSnapshot,
@@ -446,6 +463,18 @@ export {
   setWorkspaceRoomNodeOrder,
   validateWorkspaceRoomStructure,
 } from "./workspaceRoomCrdt";
+export type {
+  LoadedWorkspaceRoomCheckpoint,
+  SaveWorkspaceRoomCheckpointRequest,
+  SaveWorkspaceRoomCheckpointResult,
+  WorkspaceRoomCheckpointMetadata,
+  WorkspaceRoomCheckpointStore,
+} from "./workspaceRoomCheckpoint";
+export {
+  ROOM_CHECKPOINT_RETENTION_MS,
+  decryptWorkspaceRoomCheckpoint,
+  encryptWorkspaceRoomCheckpoint,
+} from "./workspaceRoomCheckpoint";
 export {
   AGENT_ROOM_CAPABILITIES,
   DEFAULT_ACTOR_COLOR,

@@ -1,0 +1,27 @@
+name: Publish Tabula core
+
+on:
+  push:
+    tags:
+      - "tabula-core-v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm install --global npm@latest
+      - run: npm ci
+      - name: Verify tag matches package version
+        run: test "${GITHUB_REF_NAME#tabula-core-v}" = "$(node -p \"require('./packages/tabula/package.json').version\")"
+      - run: npm run check:core-runtime
+      - run: npm test -- --run packages/tabula/src/room/envelope.test.ts packages/tabula/src/roomBinaryProtocol.test.ts tabula-app/src/collaboration/collabConnectionAdapters.test.ts
+      - run: npm publish --workspace @tabula-md/tabula --access public --provenance
