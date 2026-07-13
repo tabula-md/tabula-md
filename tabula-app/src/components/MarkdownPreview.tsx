@@ -39,7 +39,6 @@ import {
   getLineSurfaceAnnotationsSignature,
   getMarkdownLineCount,
   getPreviewWindow,
-  TABULA_LARGE_DOCUMENT_UX_POLICY,
   type LineSurfaceSourceBlock,
   type PreviewBlockIndex,
   type PreviewBlockMeasurements,
@@ -2691,12 +2690,7 @@ function MarkdownPreviewComponent({
                 viewport={previewViewport}
               />
             ) : (
-              <div
-                className={`preview-placeholder ${TABULA_LARGE_DOCUMENT_UX_POLICY.showTransientPreviewStatus ? "" : "quiet"}`}
-                aria-hidden={!TABULA_LARGE_DOCUMENT_UX_POLICY.showTransientPreviewStatus}
-              >
-                {TABULA_LARGE_DOCUMENT_UX_POLICY.showTransientPreviewStatus ? uiCopy.preparingPreview : null}
-              </div>
+              <div className="preview-placeholder quiet" aria-hidden="true" />
             )
           ) : (
             <ReactMarkdown components={markdownPreviewComponents} rehypePlugins={rehypePlugins} remarkPlugins={MARKDOWN_REMARK_PLUGINS}>

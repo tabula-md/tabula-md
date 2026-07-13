@@ -28,7 +28,6 @@ export type WorkspaceSurfaceCopy = {
   copyCode: string;
   markTaskIncomplete: string;
   markTaskComplete: string;
-  preparingPreview: string;
   linkToSection: string;
   frontmatter: string;
   preview: string;
@@ -59,7 +58,6 @@ export type WorkspaceSurfaceCopy = {
   roomOpeningLabel: string;
   roomOpening: string;
   workspaceOpeningLabel: string;
-  workspaceOpening: string;
 };
 
 const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
@@ -91,7 +89,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "Copy code",
     markTaskIncomplete: "Mark task incomplete",
     markTaskComplete: "Mark task complete",
-    preparingPreview: "Preparing preview...",
     linkToSection: "Link to section",
     frontmatter: "Frontmatter",
     preview: "Preview",
@@ -122,7 +119,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomOpeningLabel: "Opening live room",
     roomOpening: "Opening live room...",
     workspaceOpeningLabel: "Opening workspace",
-    workspaceOpening: "Opening workspace...",
   },
   ko: {
     searchOptions: "검색 옵션",
@@ -152,7 +148,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "코드 복사",
     markTaskIncomplete: "작업을 미완료로 표시",
     markTaskComplete: "작업을 완료로 표시",
-    preparingPreview: "미리보기 준비 중...",
     linkToSection: "섹션 링크",
     frontmatter: "프론트매터",
     preview: "미리보기",
@@ -183,7 +178,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomOpeningLabel: "실시간 room 여는 중",
     roomOpening: "실시간 room 여는 중...",
     workspaceOpeningLabel: "워크스페이스 여는 중",
-    workspaceOpening: "워크스페이스 여는 중...",
   },
   ja: {
     searchOptions: "検索オプション",
@@ -213,7 +207,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "コードをコピー",
     markTaskIncomplete: "タスクを未完了にする",
     markTaskComplete: "タスクを完了にする",
-    preparingPreview: "プレビューを準備中...",
     linkToSection: "セクションへのリンク",
     frontmatter: "フロントマター",
     preview: "プレビュー",
@@ -244,7 +237,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomOpeningLabel: "ライブ共同編集ルームを開いています",
     roomOpening: "ライブ共同編集ルームを開いています...",
     workspaceOpeningLabel: "ワークスペースを開いています",
-    workspaceOpening: "ワークスペースを開いています...",
   },
   zh: {
     searchOptions: "搜索选项",
@@ -274,7 +266,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "复制代码",
     markTaskIncomplete: "标记任务为未完成",
     markTaskComplete: "标记任务为完成",
-    preparingPreview: "正在准备预览...",
     linkToSection: "链接到分区",
     frontmatter: "前置元数据",
     preview: "预览",
@@ -305,7 +296,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomOpeningLabel: "正在打开实时协作房间",
     roomOpening: "正在打开实时协作房间...",
     workspaceOpeningLabel: "正在打开工作区",
-    workspaceOpening: "正在打开工作区...",
   },
   es: {
     searchOptions: "Opciones de búsqueda",
@@ -335,7 +325,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "Copiar código",
     markTaskIncomplete: "Marcar tarea como incompleta",
     markTaskComplete: "Marcar tarea como completa",
-    preparingPreview: "Preparando vista previa...",
     linkToSection: "Enlace a la sección",
     frontmatter: "Metadatos iniciales",
     preview: "Vista previa",
@@ -366,7 +355,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomOpeningLabel: "Abriendo sala en vivo",
     roomOpening: "Abriendo sala en vivo...",
     workspaceOpeningLabel: "Abriendo espacio",
-    workspaceOpening: "Abriendo espacio...",
   },
   fr: {
     searchOptions: "Options de recherche",
@@ -396,7 +384,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "Copier le code",
     markTaskIncomplete: "Marquer la tâche comme incomplète",
     markTaskComplete: "Marquer la tâche comme terminée",
-    preparingPreview: "Préparation de l’aperçu...",
     linkToSection: "Lien vers la section",
     frontmatter: "Métadonnées initiales",
     preview: "Aperçu",
@@ -427,7 +414,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomOpeningLabel: "Ouverture de la salle en direct",
     roomOpening: "Ouverture de la salle en direct...",
     workspaceOpeningLabel: "Ouverture de l’espace",
-    workspaceOpening: "Ouverture de l’espace...",
   },
   de: {
     searchOptions: "Suchoptionen",
@@ -457,7 +443,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "Code kopieren",
     markTaskIncomplete: "Aufgabe als unerledigt markieren",
     markTaskComplete: "Aufgabe als erledigt markieren",
-    preparingPreview: "Vorschau wird vorbereitet...",
     linkToSection: "Link zum Abschnitt",
     frontmatter: "Frontmatter",
     preview: "Vorschau",
@@ -488,7 +473,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomOpeningLabel: "Live-Raum wird geöffnet",
     roomOpening: "Live-Raum wird geöffnet...",
     workspaceOpeningLabel: "Workspace wird geöffnet",
-    workspaceOpening: "Workspace wird geöffnet...",
   },
 };
 

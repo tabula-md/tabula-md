@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, type ComponentProps } from "react";
 import { FileTabs } from "./FileTabs";
+import { ShareControlsBoundary } from "./ShareControlsBoundary";
 import { ShareTrigger } from "./ShareTrigger";
 import { TopChrome } from "./TopChrome";
 import type { Collaborator, ConnectionStatus } from "../collaboration";
@@ -48,6 +49,7 @@ export type WorkspaceTopChromeProps = {
   onChromeInteraction: NonNullable<FileTabsProps["onChromeInteraction"]>;
   onCloseFile: FileTabsProps["onCloseFile"];
   onCloseShare: () => void;
+  onShareLoadError: () => void;
   onCommitUserName: () => void;
   onCopyShareUrl: () => void;
   onDownloadProjectArchive: () => void;
@@ -90,6 +92,7 @@ export function WorkspaceTopChrome({
   onChromeInteraction,
   onCloseFile,
   onCloseShare,
+  onShareLoadError,
   onCommitUserName,
   onCopyShareUrl,
   onDownloadProjectArchive,
@@ -142,32 +145,34 @@ export function WorkspaceTopChrome({
       />
 
       {shareOpen && (
-        <Suspense fallback={null}>
-          <ShareControls
-            activeFile={activeFile}
-            room={room}
-            files={files}
-            activeText={activeText}
-            language={language}
-            currentUserName={currentUserName}
-            canStartSession={canStartSession}
-            connectionStatus={connectionStatus}
-            isLive={isLive}
-            isLiveConnected={isLiveConnected}
-            shareOpen={shareOpen}
-            copied={copied}
-            jsonShare={jsonShare}
-            startSessionUnavailableReason={startSessionUnavailableReason}
-            onCloseShare={onCloseShare}
-            onStartSession={onStartSession}
-            onRetrySession={onRetrySession}
-            onCopyShareUrl={onCopyShareUrl}
-            onDownloadProjectArchive={onDownloadProjectArchive}
-            onChangeUserName={onChangeUserName}
-            onCommitUserName={onCommitUserName}
-            onStopSession={onStopSession}
-          />
-        </Suspense>
+        <ShareControlsBoundary onError={onShareLoadError}>
+          <Suspense fallback={null}>
+            <ShareControls
+              activeFile={activeFile}
+              room={room}
+              files={files}
+              activeText={activeText}
+              language={language}
+              currentUserName={currentUserName}
+              canStartSession={canStartSession}
+              connectionStatus={connectionStatus}
+              isLive={isLive}
+              isLiveConnected={isLiveConnected}
+              shareOpen={shareOpen}
+              copied={copied}
+              jsonShare={jsonShare}
+              startSessionUnavailableReason={startSessionUnavailableReason}
+              onCloseShare={onCloseShare}
+              onStartSession={onStartSession}
+              onRetrySession={onRetrySession}
+              onCopyShareUrl={onCopyShareUrl}
+              onDownloadProjectArchive={onDownloadProjectArchive}
+              onChangeUserName={onChangeUserName}
+              onCommitUserName={onCommitUserName}
+              onStopSession={onStopSession}
+            />
+          </Suspense>
+        </ShareControlsBoundary>
       )}
     </>
   ) : null;

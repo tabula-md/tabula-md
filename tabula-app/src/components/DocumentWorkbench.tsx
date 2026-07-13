@@ -2,7 +2,10 @@ import {
   type CSSProperties,
   type RefObject,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
+  useState,
 } from "react";
 import { MessageSquarePlus } from "lucide-react";
 import {
@@ -39,7 +42,6 @@ import type {
 import { DocumentControls, DocumentSearchBar } from "./DocumentControls";
 import { FormattingToolbar } from "./FormattingToolbar";
 import { MarkdownEditor } from "./MarkdownEditor";
-import { MarkdownPreview } from "./MarkdownPreview";
 import type {
   MarkdownPreviewCommentAnchor,
   MarkdownPreviewLineActionRequest,
@@ -48,6 +50,23 @@ import type {
 } from "../preview/markdownPreviewTypes";
 import { StatusBar } from "./StatusBar";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+
+const importMarkdownPreview = () => import("./MarkdownPreview");
+type MarkdownPreviewComponent = Awaited<ReturnType<typeof importMarkdownPreview>>["MarkdownPreview"];
+let markdownPreviewModulePromise: ReturnType<typeof importMarkdownPreview> | null = null;
+let loadedMarkdownPreview: MarkdownPreviewComponent | null = null;
+
+const loadMarkdownPreview = () => {
+  markdownPreviewModulePromise ??= importMarkdownPreview();
+  return markdownPreviewModulePromise.then((module) => {
+    loadedMarkdownPreview = module.MarkdownPreview;
+    return loadedMarkdownPreview;
+  });
+};
+
+const prepareMarkdownPreview = () => {
+  void loadMarkdownPreview().catch(() => undefined);
+};
 
 export type DocumentWorkbenchProps = {
   activeBookmarks: FileBookmark[];
@@ -255,7 +274,23 @@ export function DocumentWorkbench({
   onUndo,
 }: DocumentWorkbenchProps) {
   const copy = getWorkspaceSurfaceCopy(language);
+  const previewModeRequestRef = useRef(0);
   const shouldRenderPreview = documentSurface.documentControls.activeViewMode !== "edit";
+  const [MarkdownPreview, setMarkdownPreview] = useState<MarkdownPreviewComponent | null>(
+    () => loadedMarkdownPreview,
+  );
+  useEffect(() => {
+    if (!shouldRenderPreview || MarkdownPreview) return;
+    let cancelled = false;
+    void loadMarkdownPreview()
+      .then((component) => {
+        if (!cancelled) setMarkdownPreview(() => component);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [MarkdownPreview, shouldRenderPreview]);
   const activeFormats = useMemo(
     () =>
       documentSurface.documentControls.activeViewMode === "preview" || !activeSelection
@@ -298,6 +333,22 @@ export function DocumentWorkbench({
       patches: [patch],
     });
   }, [editorRef, onTextChange, text]);
+  const handleSetViewMode = useCallback((viewMode: FileViewMode) => {
+    const requestId = previewModeRequestRef.current + 1;
+    previewModeRequestRef.current = requestId;
+    if (viewMode === "edit") {
+      onSetViewMode(viewMode);
+      return;
+    }
+
+    void loadMarkdownPreview()
+      .then((component) => {
+        if (previewModeRequestRef.current !== requestId) return;
+        setMarkdownPreview(() => component);
+        onSetViewMode(viewMode);
+      })
+      .catch(() => undefined);
+  }, [onSetViewMode]);
 
   return (
     <>
@@ -327,7 +378,8 @@ export function DocumentWorkbench({
           centerPopover={centerPopover}
           language={language}
           searchOpen={searchOpen}
-          onSetViewMode={onSetViewMode}
+          onSetViewMode={handleSetViewMode}
+          onPreparePreview={prepareMarkdownPreview}
           onToggleSearch={onToggleSearch}
           onToggleViewOptions={onToggleViewOptions}
           onSetReadingWidth={onSetReadingWidth}
@@ -424,27 +476,29 @@ export function DocumentWorkbench({
             onScroll={onPreviewScroll}
             onTouchEnd={onPreviewTouchEnd}
           >
-            <MarkdownPreview
-              ref={previewRef}
-              uiLanguage={language}
-              metadata={previewMetadata}
-              body={previewBody}
-              sourceLineOffset={previewBodySourceLineOffset}
-              bodyTextChange={previewBodyTextChange}
-              largeDocumentMode={largeDocumentMode}
-              commentAnchors={activePreviewCommentAnchors}
-              lineAnnotations={activePreviewLineAnnotations}
-              activeCommentId={focusedCommentId}
-              commentsEnabled
-              searchQuery={isPreviewSearchActive ? searchQuery : ""}
-              searchOptions={searchOptions}
-              activeSearchMatchIndex={isPreviewSearchActive ? activeSearchMatchIndex : -1}
-              suspendLineMeasurement={splitDividerDragging}
-              onSearchMatchCountChange={onPreviewSearchMatchCountChange}
-              onLineAction={onLineAction as (request: MarkdownPreviewLineActionRequest) => void}
-              onOpenComment={onOpenComment}
-              onToggleTaskLine={handlePreviewTaskToggle}
-            />
+            {MarkdownPreview ? (
+              <MarkdownPreview
+                ref={previewRef}
+                uiLanguage={language}
+                metadata={previewMetadata}
+                body={previewBody}
+                sourceLineOffset={previewBodySourceLineOffset}
+                bodyTextChange={previewBodyTextChange}
+                largeDocumentMode={largeDocumentMode}
+                commentAnchors={activePreviewCommentAnchors}
+                lineAnnotations={activePreviewLineAnnotations}
+                activeCommentId={focusedCommentId}
+                commentsEnabled
+                searchQuery={isPreviewSearchActive ? searchQuery : ""}
+                searchOptions={searchOptions}
+                activeSearchMatchIndex={isPreviewSearchActive ? activeSearchMatchIndex : -1}
+                suspendLineMeasurement={splitDividerDragging}
+                onSearchMatchCountChange={onPreviewSearchMatchCountChange}
+                onLineAction={onLineAction as (request: MarkdownPreviewLineActionRequest) => void}
+                onOpenComment={onOpenComment}
+                onToggleTaskLine={handlePreviewTaskToggle}
+              />
+            ) : null}
           </article>
         )}
       </section>

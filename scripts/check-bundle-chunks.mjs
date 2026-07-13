@@ -17,16 +17,25 @@ const requiredChunkPrefixes = [
   "index-",
   "react-vendor-",
   "vendor-",
-  "markdown-vendor-",
+  "markdown-core-",
   "codemirror-core-",
   "codemirror-extensions-",
   "lezer-vendor-",
   "ShareControls-",
+  "MarkdownPreview-",
   "liveCollaboration-",
   "collab-vendor-",
 ];
 
-const lazyOnlyPrefixes = ["ShareControls-", "liveCollaboration-", "collab-vendor-"];
+const lazyOnlyPrefixes = [
+  "ShareControls-",
+  "MarkdownPreview-",
+  "markdown-vendor-",
+  "syntax-vendor-",
+  "math-vendor-",
+  "liveCollaboration-",
+  "collab-vendor-",
+];
 
 const formatBytes = (bytes) => `${(bytes / 1024).toFixed(1)} KiB`;
 

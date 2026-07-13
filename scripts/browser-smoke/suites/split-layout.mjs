@@ -13,6 +13,8 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await openProjectMenu(page);
+    await page.getByRole("button", { name: "About", exact: true }).click();
+    await openProjectMenu(page);
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
 

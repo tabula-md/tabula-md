@@ -7,6 +7,7 @@ export async function run(ctx) {
     browser,
     expect,
     focusMarkdownEditor,
+    openProjectMenu,
     startRoomServer,
     stopRoomServer,
     waitForEditorReady,
@@ -53,6 +54,9 @@ export async function run(ctx) {
         `Timed out waiting for the workspace shell.\n${firstPageDiagnostics.join("\n")}\n${error.message}`,
       );
     }
+    await openProjectMenu(firstPage);
+    await firstPage.getByRole("button", { name: "About", exact: true }).click();
+    await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active');
     await firstPage.locator(".add-tab-button").click();
     await firstPage.waitForFunction(() => {
       const activeTab = document.querySelector(".tab-item.active");
