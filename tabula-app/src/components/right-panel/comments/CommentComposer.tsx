@@ -32,7 +32,6 @@ export function CommentComposer({
   onAddComment,
 }: CommentComposerProps) {
   const hasSelection = selectedCharacterCount > 0;
-  const canCancel = hasSelection || commentDraft.trim().length > 0;
   const selectedPreview = selectedText.replace(/\s+/g, " ").trim();
   const isExpanded = hasSelection || commentDraft.trim().length > 0;
 
@@ -55,6 +54,11 @@ export function CommentComposer({
         value={commentDraft}
         onChange={(event) => onCommentDraftChange(event.target.value)}
         onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onCancel();
+            return;
+          }
           if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
             event.preventDefault();
             onAddComment();
@@ -73,11 +77,9 @@ export function CommentComposer({
           </span>
         )}
         <span className="right-comment-form-actions">
-          {canCancel && (
-            <button className="right-comment-text-button" type="button" onClick={onCancel}>
-              {copy.cancel}
-            </button>
-          )}
+          <button className="right-comment-text-button" type="button" onClick={onCancel}>
+            {copy.cancel}
+          </button>
           <button
             className="right-comment-submit"
             type="button"

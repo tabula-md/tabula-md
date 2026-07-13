@@ -596,6 +596,26 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: "Comment on document", exact: true }).click();
     expect((await page.locator(".right-comment-input").count()) === 1, "Document comment command should open the composer on demand.");
+    expect(
+      (await page.locator(".right-comment-form .right-comment-text-button").count()) === 1,
+      "An empty document comment composer should always offer Cancel.",
+    );
+    await page.locator(".right-comment-form .right-comment-text-button").click();
+    await waitForRenderFrame(page);
+    expect((await page.locator(".right-comment-input").count()) === 0, "Cancel should close an empty document comment composer.");
+
+    await page.getByRole("button", { name: "Comment on document", exact: true }).click();
+    expect((await page.locator(".right-comment-input").count()) === 1, "Document comment command should reopen the composer.");
+    await page.locator(".right-comments-toolbar").getByRole("button", { name: "Cancel", exact: true }).click();
+    await waitForRenderFrame(page);
+    expect((await page.locator(".right-comment-input").count()) === 0, "The document comment control should close its open composer.");
+
+    await page.getByRole("button", { name: "Comment on document", exact: true }).click();
+    await page.getByLabel("Add comment to README.md").press("Escape");
+    await waitForRenderFrame(page);
+    expect((await page.locator(".right-comment-input").count()) === 0, "Escape should close an empty document comment composer.");
+
+    await page.getByRole("button", { name: "Comment on document", exact: true }).click();
     await page.getByLabel("Comment author name").fill("Local User");
     await page.getByLabel("Comment author name").blur();
     await page.getByLabel("Add comment to README.md").fill("Review this intro.");
