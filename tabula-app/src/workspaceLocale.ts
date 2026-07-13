@@ -4,7 +4,7 @@ type WorkspaceMenuCopy = {
   actions: {
     newFile: string;
     openFile: string;
-    importProject: string;
+    clearWorkspace: string;
     saveFile: string;
     exportProject: string;
     liveCollaboration: string;
@@ -33,6 +33,13 @@ type WorkspaceMenuCopy = {
     openFile: string;
     browseFiles: string;
     help: string;
+  };
+  clearWorkspace: {
+    title: string;
+    description: string;
+    cancel: string;
+    confirm: string;
+    cleared: string;
   };
   share: {
     trigger: string;
@@ -96,7 +103,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "New document",
       openFile: "Open Markdown file…",
-      importProject: "Restore Tabula backup…",
+      clearWorkspace: "Clear local workspace…",
       saveFile: "Download current document",
       exportProject: "Download workspace ZIP",
       liveCollaboration: "Live collaboration…",
@@ -126,6 +133,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       openFile: "Open Markdown file",
       browseFiles: "Browse project files",
       help: "Help",
+    },
+    clearWorkspace: {
+      title: "Clear local workspace?",
+      description: "Delete all local documents, folders, and comments. This cannot be undone.",
+      cancel: "Cancel",
+      confirm: "Clear workspace",
+      cleared: "Local workspace cleared.",
     },
     share: {
       trigger: "Share",
@@ -175,7 +189,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "새 문서",
       openFile: "Markdown 파일 열기…",
-      importProject: "Tabula 백업 복원…",
+      clearWorkspace: "로컬 워크스페이스 비우기…",
       saveFile: "현재 문서 다운로드",
       exportProject: "워크스페이스 ZIP 다운로드",
       liveCollaboration: "실시간 협업…",
@@ -205,6 +219,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       openFile: "Markdown 파일 열기",
       browseFiles: "프로젝트 파일 보기",
       help: "도움말",
+    },
+    clearWorkspace: {
+      title: "로컬 워크스페이스를 비울까요?",
+      description: "이 기기의 모든 문서, 폴더, 댓글을 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
+      cancel: "취소",
+      confirm: "워크스페이스 비우기",
+      cleared: "로컬 워크스페이스를 비웠습니다.",
     },
     share: {
       trigger: "공유",
@@ -254,7 +275,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "新規ドキュメント",
       openFile: "Markdownファイルを開く…",
-      importProject: "Tabulaバックアップを復元…",
+      clearWorkspace: "ローカルワークスペースを消去…",
       saveFile: "現在のドキュメントをダウンロード",
       exportProject: "ワークスペースZIPをダウンロード",
       liveCollaboration: "ライブ共同編集…",
@@ -284,6 +305,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       openFile: "Markdownファイルを開く",
       browseFiles: "プロジェクトファイルを見る",
       help: "ヘルプ",
+    },
+    clearWorkspace: {
+      title: "ローカルワークスペースを消去しますか？",
+      description: "この端末のすべてのドキュメント、フォルダー、コメントを削除します。この操作は元に戻せません。",
+      cancel: "キャンセル",
+      confirm: "ワークスペースを消去",
+      cleared: "ローカルワークスペースを消去しました。",
     },
     share: {
       trigger: "共有",
@@ -336,7 +364,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "新建文档",
       openFile: "打开 Markdown 文件…",
-      importProject: "恢复 Tabula 备份…",
+      clearWorkspace: "清空本地工作区…",
       saveFile: "下载当前文档",
       exportProject: "下载工作区 ZIP",
       liveCollaboration: "实时协作…",
@@ -365,6 +393,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       openFile: "打开 Markdown 文件",
       browseFiles: "浏览项目文件",
       help: "帮助",
+    },
+    clearWorkspace: {
+      title: "清空本地工作区？",
+      description: "删除此设备上的所有文档、文件夹和评论。此操作无法撤销。",
+      cancel: "取消",
+      confirm: "清空工作区",
+      cleared: "本地工作区已清空。",
     },
     share: {
       trigger: "分享",
@@ -412,7 +447,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "Nuevo documento",
       openFile: "Abrir archivo Markdown…",
-      importProject: "Restaurar copia de Tabula…",
+      clearWorkspace: "Vaciar espacio local…",
       saveFile: "Descargar documento actual",
       exportProject: "Descargar ZIP del espacio",
       liveCollaboration: "Colaboración en vivo…",
@@ -442,6 +477,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       openFile: "Abrir archivo Markdown",
       browseFiles: "Ver archivos del proyecto",
       help: "Ayuda",
+    },
+    clearWorkspace: {
+      title: "¿Vaciar el espacio local?",
+      description: "Elimina todos los documentos, carpetas y comentarios locales. Esta acción no se puede deshacer.",
+      cancel: "Cancelar",
+      confirm: "Vaciar espacio",
+      cleared: "Espacio local vaciado.",
     },
     share: {
       trigger: "Compartir",
@@ -493,7 +535,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "Nouveau document",
       openFile: "Ouvrir un fichier Markdown…",
-      importProject: "Restaurer une sauvegarde Tabula…",
+      clearWorkspace: "Effacer l’espace local…",
       saveFile: "Télécharger le document actuel",
       exportProject: "Télécharger le ZIP de l’espace",
       liveCollaboration: "Collaboration en direct…",
@@ -523,6 +565,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       openFile: "Ouvrir un fichier Markdown",
       browseFiles: "Parcourir les fichiers",
       help: "Aide",
+    },
+    clearWorkspace: {
+      title: "Effacer l’espace local ?",
+      description: "Supprime tous les documents, dossiers et commentaires locaux. Cette action est irréversible.",
+      cancel: "Annuler",
+      confirm: "Effacer l’espace",
+      cleared: "Espace local effacé.",
     },
     share: {
       trigger: "Partager",
@@ -574,7 +623,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "Neues Dokument",
       openFile: "Markdown-Datei öffnen…",
-      importProject: "Tabula-Sicherung wiederherstellen…",
+      clearWorkspace: "Lokalen Workspace leeren…",
       saveFile: "Aktuelles Dokument herunterladen",
       exportProject: "Workspace-ZIP herunterladen",
       liveCollaboration: "Live-Zusammenarbeit…",
@@ -604,6 +653,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       openFile: "Markdown-Datei öffnen",
       browseFiles: "Projektdateien ansehen",
       help: "Hilfe",
+    },
+    clearWorkspace: {
+      title: "Lokalen Workspace leeren?",
+      description: "Löscht alle lokalen Dokumente, Ordner und Kommentare. Diese Aktion kann nicht rückgängig gemacht werden.",
+      cancel: "Abbrechen",
+      confirm: "Workspace leeren",
+      cleared: "Lokaler Workspace geleert.",
     },
     share: {
       trigger: "Teilen",

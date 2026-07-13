@@ -18,9 +18,10 @@ type UseWorkspaceMenuRuntimeOptions = {
   importInputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
   onAddFile: () => void;
+  canClearWorkspace: boolean;
+  onClearWorkspace: () => void;
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
-  onImportProjectChange: ChangeEventHandler<HTMLInputElement>;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
   preferences: WorkspacePreferences;
@@ -28,16 +29,16 @@ type UseWorkspaceMenuRuntimeOptions = {
   setPreferences: Dispatch<SetStateAction<WorkspacePreferences>>;
   setPreferencesOpen: Dispatch<SetStateAction<boolean>>;
   setTopPopover: (popover: TopPopover) => void;
-  workspaceImportInputRef: RefObject<HTMLInputElement | null>;
 };
 
 export function useWorkspaceMenuRuntime({
   importInputRef,
   isOpen,
   onAddFile,
+  canClearWorkspace,
+  onClearWorkspace,
   onCloseChrome,
   onImportFileChange,
-  onImportProjectChange,
   onOpenAbout,
   onOpenHelp,
   preferences,
@@ -45,7 +46,6 @@ export function useWorkspaceMenuRuntime({
   setPreferences,
   setPreferencesOpen,
   setTopPopover,
-  workspaceImportInputRef,
 }: UseWorkspaceMenuRuntimeOptions) {
   const setTheme = useCallback((theme: WorkspaceTheme) => {
     setPreferences((currentPreferences) => ({
@@ -73,9 +73,9 @@ export function useWorkspaceMenuRuntime({
       theme: preferences.theme,
       language: preferences.language,
       importInputRef,
-      workspaceImportInputRef,
+      canClearWorkspace,
       onImportFileChange,
-      onImportProjectChange,
+      onClearWorkspace,
       onCloseChrome,
       onTogglePreferences: togglePreferences,
       onChangeTheme: setTheme,
@@ -88,9 +88,10 @@ export function useWorkspaceMenuRuntime({
       importInputRef,
       isOpen,
       onAddFile,
+      canClearWorkspace,
+      onClearWorkspace,
       onCloseChrome,
       onImportFileChange,
-      onImportProjectChange,
       onOpenAbout,
       onOpenHelp,
       preferences.language,
@@ -99,7 +100,6 @@ export function useWorkspaceMenuRuntime({
       setLanguage,
       setTheme,
       togglePreferences,
-      workspaceImportInputRef,
     ],
   );
 
