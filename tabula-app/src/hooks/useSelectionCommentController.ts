@@ -246,6 +246,9 @@ export function useSelectionCommentController({
   const [activeSelection, setActiveSelection] = useState<LiveSelection | undefined>(undefined);
   const [previewSelection, setPreviewSelection] = useState<PreviewSelectionState | null>(null);
   const [selectionActionPosition, setSelectionActionPosition] = useState<MarkdownSelectionActionPosition | null>(null);
+  const activeSelectionRef = useRef<LiveSelection | undefined>(undefined);
+  const pendingEditorSelectionRef = useRef<LiveSelection | undefined>(undefined);
+  const editorSelectionFrameRef = useRef<number | null>(null);
   const previewSelectionRef = useRef<PreviewSelectionState | null>(null);
   const selectionActionPositionRef = useRef<MarkdownSelectionActionPosition | null>(null);
   const suppressSelectionActionPositionRef = useRef(false);
@@ -260,6 +263,10 @@ export function useSelectionCommentController({
   const cursorPositionLabel = getCursorPositionLabel(text, activeSelection?.to ?? 0, activeSelection);
 
   useEffect(() => {
+    activeSelectionRef.current = activeSelection;
+  }, [activeSelection]);
+
+  useEffect(() => {
     previewSelectionRef.current = previewSelection;
   }, [previewSelection]);
 
@@ -268,8 +275,17 @@ export function useSelectionCommentController({
   }, [selectionActionPosition]);
 
   const commitSelectionActionPosition = useCallback((position: MarkdownSelectionActionPosition | null) => {
+    if (areSelectionActionPositionsEqual(selectionActionPositionRef.current, position)) {
+      return;
+    }
     selectionActionPositionRef.current = position;
     setSelectionActionPosition(position);
+  }, []);
+
+  useEffect(() => () => {
+    if (editorSelectionFrameRef.current !== null) {
+      window.cancelAnimationFrame(editorSelectionFrameRef.current);
+    }
   }, []);
 
   useEffect(() => {
@@ -280,9 +296,24 @@ export function useSelectionCommentController({
   }, [activeFileId, activeViewMode]);
 
   const handleEditorSelectionChange = (selection?: LiveSelection) => {
-    previewSelectionRef.current = null;
-    setPreviewSelection(null);
-    setActiveSelection(selection);
+    if (previewSelectionRef.current !== null) {
+      previewSelectionRef.current = null;
+      setPreviewSelection(null);
+    }
+    pendingEditorSelectionRef.current = selection;
+    if (editorSelectionFrameRef.current !== null) {
+      return;
+    }
+
+    editorSelectionFrameRef.current = window.requestAnimationFrame(() => {
+      editorSelectionFrameRef.current = null;
+      const nextSelection = pendingEditorSelectionRef.current;
+      if (areLiveSelectionsEqual(activeSelectionRef.current, nextSelection)) {
+        return;
+      }
+      activeSelectionRef.current = nextSelection;
+      setActiveSelection(nextSelection);
+    });
   };
 
   const handleEditorSelectionActionPositionChange = (position: MarkdownSelectionActionPosition | null) => {
@@ -325,9 +356,13 @@ export function useSelectionCommentController({
         previewSelectionRef.current = committedSelection;
         return committedSelection;
       });
-      setActiveSelection((currentSelection) =>
-        areLiveSelectionsEqual(currentSelection, nextActiveSelection) ? currentSelection : nextActiveSelection,
-      );
+      setActiveSelection((currentSelection) => {
+        const committedSelection = areLiveSelectionsEqual(currentSelection, nextActiveSelection)
+          ? currentSelection
+          : nextActiveSelection;
+        activeSelectionRef.current = committedSelection;
+        return committedSelection;
+      });
       setSelectionActionPosition((currentPosition) => {
         const committedPosition = areSelectionActionPositionsEqual(currentPosition, nextSelectionActionPosition)
           ? currentPosition
