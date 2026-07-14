@@ -136,7 +136,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     emptyState: {
       tagline:
-        "A local-first workspace for files that people and coding agents can share safely.",
+        "A local-first workspace for files that people and agents can share safely.",
       newFile: "New document",
       openFile: "Open Markdown file",
       openWorkspace: "Open workspace",
@@ -229,7 +229,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     emptyState: {
       tagline:
-        "사람과 코딩 에이전트가 안전하게 공유할 수 있는 로컬 우선 작업공간.",
+        "사람과 에이전트가 안전하게 공유할 수 있는 로컬 우선 작업공간.",
       newFile: "새 문서",
       openFile: "Markdown 파일 열기",
       openWorkspace: "워크스페이스 열기",
@@ -322,7 +322,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     emptyState: {
       tagline:
-        "人とコーディングエージェントが安全に共有できるローカルファーストのワークスペース。",
+        "人とエージェントが安全に共有できるローカルファーストのワークスペース。",
       newFile: "新規ドキュメント",
       openFile: "Markdownファイルを開く",
       openWorkspace: "ワークスペースを開く",
@@ -508,7 +508,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     emptyState: {
       tagline:
-        "Un espacio local-first para compartir archivos con personas y agentes de código.",
+        "Un espacio local-first para compartir archivos con personas y agentes.",
       newFile: "Nuevo documento",
       openFile: "Abrir archivo Markdown",
       openWorkspace: "Abrir espacio de trabajo",
@@ -603,7 +603,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     emptyState: {
       tagline:
-        "Un espace local-first pour partager des fichiers avec des personnes et des agents de code.",
+        "Un espace local-first pour partager des fichiers avec des personnes et des agents.",
       newFile: "Nouveau document",
       openFile: "Ouvrir un fichier Markdown",
       openWorkspace: "Ouvrir un espace de travail",
@@ -698,7 +698,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     },
     emptyState: {
       tagline:
-        "Ein local-first Workspace zum sicheren Teilen von Dateien mit Menschen und Coding-Agenten.",
+        "Ein local-first Workspace zum sicheren Teilen von Dateien mit Menschen und Agenten.",
       newFile: "Neues Dokument",
       openFile: "Markdown-Datei öffnen",
       openWorkspace: "Workspace öffnen",

@@ -223,7 +223,7 @@ export const buildLlmsTxt = (files: WorkspaceFile[], activeFileId: string) => {
 
   return `# ${PRODUCT_NAME}
 
-Markdown files prepared for people and coding agents.
+Markdown files prepared for people and agents.
 
 ## Project
 

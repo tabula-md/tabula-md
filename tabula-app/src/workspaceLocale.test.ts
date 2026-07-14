@@ -21,7 +21,7 @@ describe("workspace locale chrome copy", () => {
     const english = getWorkspaceMenuCopy("en");
     expect(english.actions.preferences).toBe("Preferences");
     expect(english.emptyState.tagline).toBe(
-      "A local-first workspace for files that people and coding agents can share safely.",
+      "A local-first workspace for files that people and agents can share safely.",
     );
     expect(english.emptyState.newFile).toBe("New document");
     expect(english.share.live.startSession).toBe("Start session");
