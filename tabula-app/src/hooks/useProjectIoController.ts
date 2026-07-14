@@ -20,6 +20,7 @@ import {
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";
 import { writeIndexedDbWorkspace } from "../workspaceIndexedDb";
+import { getWorkspaceIoCopy } from "../workspaceIoLocale";
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -157,6 +158,7 @@ export function useProjectIoController({
   const [emptyDropActive, setEmptyDropActive] = useState(false);
   const [workspaceArchiveImport, setWorkspaceArchiveImport] = useState<WorkspaceState | null>(null);
   const queueAnimationFrameTask = useAnimationFrameTask();
+  const copy = getWorkspaceIoCopy(preferences.language);
 
   const copyFile = async (fileId: string) => {
     onBeforeWorkspaceBoundary?.();
@@ -168,7 +170,7 @@ export function useProjectIoController({
     }
 
     await navigator.clipboard.writeText(fileSnapshot.text);
-    showToast("File copied.");
+    showToast(copy.fileCopied);
   };
 
   const downloadCurrentFile = () => {
@@ -183,7 +185,7 @@ export function useProjectIoController({
 
     const download = createCurrentFileDownloadDraft(fileSnapshot);
     downloadTextFile(download.fileName, download.content, download.type);
-    showToast("File downloaded.");
+    showToast(copy.fileDownloaded);
   };
 
   const downloadProjectArchive = async () => {
@@ -199,14 +201,14 @@ export function useProjectIoController({
       });
       const archive = await createProjectArchive(workspaceSnapshot.files, workspaceSnapshot.folders);
       downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
-      showToast("Workspace files downloaded.");
+      showToast(copy.workspaceDownloaded);
     } catch (error) {
       clientErrorReporter.report({
         feature: "workspace",
         operation: "export-archive",
         error,
       });
-      showToast("Couldn’t export to file.", "error");
+      showToast(copy.exportFailed, "error");
     }
   };
 
@@ -252,7 +254,7 @@ export function useProjectIoController({
       setWorkspaceArchiveImport(workspace);
     }).catch((error: unknown) => {
       clientErrorReporter.report({ feature: "workspace", operation: "open-archive", error });
-      showToast(error instanceof Error ? error.message : "Couldn’t open this workspace.", "error");
+      showToast(copy.openFailed, "error");
     });
   };
 
@@ -267,7 +269,7 @@ export function useProjectIoController({
     clearFileHistory();
     void writeIndexedDbWorkspace(nextWorkspace).catch((error: unknown) => {
       clientErrorReporter.report({ feature: "workspace", operation: "persist-open-archive", error });
-      showToast("The workspace opened, but it couldn’t be saved in this browser.", "error");
+      showToast(copy.saveOpenedWorkspaceFailed, "error");
     });
     setWorkspaceArchiveImport(null);
     onCloseChrome();
@@ -304,7 +306,7 @@ export function useProjectIoController({
 
     const importedFile = getDroppedImportFile(event);
     if (!importedFile) {
-      showToast("Drop a supported file.", "error");
+      showToast(copy.unsupportedDrop, "error");
       return;
     }
 

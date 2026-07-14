@@ -47,6 +47,7 @@ import {
   getWorkspaceMenuCopy,
 } from "../workspaceLocale";
 import { createWorkspaceRuntimeView } from "../workspaceRuntimeView";
+import { getWorkspaceActionCopy } from "../workspaceActionLocale";
 import {
   getWorkspaceStoreActiveFile,
   getWorkspaceStoreFolder,
@@ -173,6 +174,7 @@ export function useWorkspaceRuntime() {
     workspacePreferences.language,
   );
   const workspaceMenuCopy = getWorkspaceMenuCopy(workspacePreferences.language);
+  const workspaceActionCopy = getWorkspaceActionCopy(workspacePreferences.language);
   const workspaceShareCopy = workspaceMenuCopy.share;
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null);
   const followState = useSyncExternalStore(
@@ -250,10 +252,10 @@ export function useWorkspaceRuntime() {
   const deleteFileCommentWithUndo = useEventCallback((fileId: string, commentId: string) => {
     const deletedComment = deleteFileComment(fileId, commentId);
     if (!deletedComment) return;
-    showToast("Comment deleted.", "neutral", {
-      actionLabel: "Undo",
+    showToast(workspaceActionCopy.commentDeleted, "neutral", {
+      actionLabel: workspaceActionCopy.undo,
       onAction: () => {
-        if (restoreFileComment(deletedComment)) showToast("Comment restored.");
+        if (restoreFileComment(deletedComment)) showToast(workspaceActionCopy.commentRestored);
       },
     });
   });
@@ -311,7 +313,7 @@ export function useWorkspaceRuntime() {
     });
     if (persistenceErrorShownRef.current) return;
     persistenceErrorShownRef.current = true;
-    showToast("Changes couldn’t be saved in this browser.", "error");
+    showToast(workspaceActionCopy.browserSaveFailed, "error");
   });
   const [visibleTextRevision, setVisibleTextRevision] = useState(0);
   const [visibleTextChange, setVisibleTextChange] = useState<TextChange | null>(null);
@@ -490,15 +492,18 @@ export function useWorkspaceRuntime() {
       );
     } else if (addedDocuments.length === 1 && deletedDocuments.length === 0 && renamedDocuments.length === 0) {
       const addedDocument = addedDocuments[0];
-      showToast(`${addedDocument.title} was added to the room.`, "neutral", {
+      showToast(workspaceActionCopy.documentAdded(addedDocument.title), "neutral", {
         actionLabel: "Open",
         onAction: () => selectWorkspaceFileAction(addedDocument.id),
       });
     } else if (renamedDocuments.length === 1 && addedDocuments.length === 0 && deletedDocuments.length === 0) {
       const renamedDocument = renamedDocuments[0];
-      showToast(`${previousRoomFilesById.get(renamedDocument.id)?.title} was renamed to ${renamedDocument.title}.`);
+      showToast(workspaceActionCopy.documentRenamed(
+        previousRoomFilesById.get(renamedDocument.id)?.title ?? renamedDocument.title,
+        renamedDocument.title,
+      ));
     } else if (addedDocuments.length || deletedDocuments.length || renamedDocuments.length || foldersChanged) {
-      showToast("The shared workspace was updated.");
+      showToast(workspaceActionCopy.sharedWorkspaceUpdated);
     }
   });
   useEffect(() => {
@@ -730,7 +735,7 @@ export function useWorkspaceRuntime() {
     );
     if (activeRoom && !publishRoomDocument({ ...nextFile, text: fileText })) {
       deleteWorkspaceFileAction(nextFile.id);
-      showToast("This document couldn’t be imported into the live workspace.", "error");
+      showToast(workspaceActionCopy.importRoomFailed, "error");
       return nextFile;
     }
     return nextFile;
@@ -885,7 +890,7 @@ export function useWorkspaceRuntime() {
         error,
       });
       setTopPopover(null);
-      showToast("Live collaboration isn’t available right now.", "error");
+      showToast(workspaceShareCopy.live.unavailable, "error");
     }
   });
   const stopSessionWithPendingCommit = useEventCallback(() => {
@@ -912,7 +917,7 @@ export function useWorkspaceRuntime() {
 
     failedLiveRoomStartRef.current = roomId;
     setTopPopover(null);
-    showToast("Live collaboration isn’t available right now.", "error");
+    showToast(workspaceShareCopy.live.unavailable, "error");
     stopSessionWithPendingCommit();
   }, [
     activeRoomId,
@@ -1023,7 +1028,7 @@ export function useWorkspaceRuntime() {
       if (!activeRoom) return duplicateWorkspaceFile(fileId);
       const sourceText = materializeRoomDocument(fileId);
       if (sourceText === null) {
-        showToast("This document isn’t ready to duplicate yet.", "error");
+        showToast(workspaceActionCopy.duplicateNotReady, "error");
         return undefined;
       }
       const duplicatedFile = duplicateWorkspaceFile(fileId);
@@ -1054,16 +1059,17 @@ export function useWorkspaceRuntime() {
     selectWorkspaceFileAction,
     setHistoryByFileId,
     showToast,
+    copy: workspaceActionCopy,
   });
   const addWorkspaceFolder = useEventCallback((parentId?: string) => {
     const folder = addWorkspaceFolderAction("New folder", parentId);
     if (!folder) {
-      showToast("Folders can be nested up to 32 levels.", "error");
+      showToast(workspaceActionCopy.folderDepth, "error");
       return;
     }
     if (!publishRoomFolder(folder)) {
       deleteWorkspaceFolderAction(folder.id);
-      showToast("This folder couldn’t be added to the live workspace.", "error");
+      showToast(workspaceActionCopy.folderAddFailed, "error");
       return;
     }
     return folder;
@@ -1113,6 +1119,7 @@ export function useWorkspaceRuntime() {
     startCommentReply: beginCommentReply,
     queueEditorTextRange,
     text,
+    copy: workspaceActionCopy,
   });
   const clearLocalWorkspace = useEventCallback(() => {
     if (activeRoom) return;
@@ -1176,11 +1183,11 @@ export function useWorkspaceRuntime() {
       onDeleteFolder: (folderId) => {
         const roomSnapshot = activeRoom ? materializeRoomWorkspace() : undefined;
         if (activeRoom && !roomSnapshot) {
-          showToast("This folder isn’t ready to delete yet.", "error");
+          showToast(workspaceActionCopy.folderDeleteNotReady, "error");
           return;
         }
         if (activeRoom && !deleteRoomNode(folderId)) {
-          showToast("This folder couldn’t be deleted from the live workspace.", "error");
+          showToast(workspaceActionCopy.folderDeleteFailed, "error");
           return;
         }
         const deletedBundle = deleteWorkspaceFolderAction(folderId);
@@ -1210,8 +1217,8 @@ export function useWorkspaceRuntime() {
             Object.entries(currentHistory).filter(([fileId]) => !deletedFileIds.has(fileId)),
           ),
         );
-        showToast("Folder deleted.", "neutral", {
-          actionLabel: "Undo",
+        showToast(workspaceActionCopy.folderDeleted, "neutral", {
+          actionLabel: workspaceActionCopy.undo,
           onAction: () => {
             restoreWorkspaceFolderAction(activeRoom
               ? {
@@ -1225,7 +1232,7 @@ export function useWorkspaceRuntime() {
             if (!restoreRoomFolderBundle(restorableBundle)) {
               deleteRoomNode(folderId);
               deleteWorkspaceFolderAction(folderId);
-              showToast("This folder couldn’t be restored to the live workspace.", "error");
+              showToast(workspaceActionCopy.folderRestoreFailed, "error");
               return;
             }
             restoreCommentsForFiles(deletedComments);
@@ -1243,7 +1250,7 @@ export function useWorkspaceRuntime() {
               ...currentHistory,
               ...deletedHistory,
             }));
-            showToast("Folder restored.");
+            showToast(workspaceActionCopy.folderRestored);
           },
         });
       },
@@ -1272,19 +1279,19 @@ export function useWorkspaceRuntime() {
         if (!moveFileToFolder(fileId, folderId)) return;
         if (activeRoom && !moveRoomNode(fileId, folderId)) {
           moveFileToFolder(fileId, previousParentId);
-          showToast("This document couldn’t be moved in the live workspace.", "error");
+          showToast(workspaceActionCopy.documentMoveFailed, "error");
         }
       },
       onMoveFolder: (folderId, parentId) => {
         const folder = folders.find((candidate) => candidate.id === folderId);
         const previousParentId = folder?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
         if (!moveFolder(folderId, parentId)) {
-          showToast("This folder can’t be moved there.", "error");
+          showToast(workspaceActionCopy.folderMoveInvalid, "error");
           return;
         }
         if (activeRoom && !moveRoomNode(folderId, parentId)) {
           moveFolder(folderId, previousParentId);
-          showToast("This folder couldn’t be moved in the live workspace.", "error");
+          showToast(workspaceActionCopy.folderMoveFailed, "error");
         }
       },
       onReplyDraftChange: updateCommentReplyDraft,
@@ -1325,7 +1332,9 @@ export function useWorkspaceRuntime() {
     openFiles,
     room: activeRoom,
     rightPanelOpen,
-    startSessionUnavailableReason,
+    startSessionUnavailableReason: canStartSession
+      ? ""
+      : workspaceShareCopy.live.unavailable,
     topPopover,
     workspaceMenuOpen,
     onAddFile: addFile,
