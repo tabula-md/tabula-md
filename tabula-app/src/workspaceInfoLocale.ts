@@ -32,7 +32,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     },
     help: {
       title: "Help",
-      description: "Start with a document, then open project context when you need files, outline, or comments.",
+      description: "Start with a document, then toggle the side panel when you need files, outline, or comments.",
       newDocument: "Create a new document",
       openMarkdown: "Open a Markdown file",
       browseFiles: "Browse workspace files",
@@ -53,7 +53,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     },
     help: {
       title: "도움말",
-      description: "문서에서 시작하고 파일, 개요, 댓글이 필요할 때 프로젝트 컨텍스트를 여세요.",
+      description: "문서에서 시작하고 파일, 개요, 댓글이 필요할 때 사이드 패널을 여세요.",
       newDocument: "새 문서 만들기",
       openMarkdown: "Markdown 파일 열기",
       browseFiles: "워크스페이스 파일 찾아보기",
@@ -74,7 +74,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     },
     help: {
       title: "ヘルプ",
-      description: "ドキュメントから始め、ファイル、アウトライン、コメントが必要なときにプロジェクトコンテキストを開きます。",
+      description: "ドキュメントから始め、ファイル、アウトライン、コメントが必要なときにサイドパネルを開きます。",
       newDocument: "新しいドキュメントを作成",
       openMarkdown: "Markdown ファイルを開く",
       browseFiles: "ワークスペースのファイルを参照",
@@ -95,7 +95,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     },
     help: {
       title: "帮助",
-      description: "从文档开始，需要文件、提纲或评论时再打开项目上下文。",
+      description: "从文档开始，需要文件、提纲或评论时再打开侧边栏。",
       newDocument: "新建文档",
       openMarkdown: "打开 Markdown 文件",
       browseFiles: "浏览工作区文件",
@@ -116,7 +116,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     },
     help: {
       title: "Ayuda",
-      description: "Empieza con un documento y abre el contexto del proyecto cuando necesites archivos, esquema o comentarios.",
+      description: "Empieza con un documento y abre el panel lateral cuando necesites archivos, esquema o comentarios.",
       newDocument: "Crear un documento",
       openMarkdown: "Abrir un archivo Markdown",
       browseFiles: "Explorar archivos del espacio",
@@ -137,7 +137,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     },
     help: {
       title: "Aide",
-      description: "Commencez par un document, puis ouvrez le contexte du projet pour les fichiers, le plan ou les commentaires.",
+      description: "Commencez par un document, puis ouvrez le panneau latéral pour les fichiers, le plan ou les commentaires.",
       newDocument: "Créer un document",
       openMarkdown: "Ouvrir un fichier Markdown",
       browseFiles: "Parcourir les fichiers de l’espace",
@@ -158,7 +158,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     },
     help: {
       title: "Hilfe",
-      description: "Beginnen Sie mit einem Dokument und öffnen Sie den Projektkontext für Dateien, Gliederung oder Kommentare.",
+      description: "Beginnen Sie mit einem Dokument und öffnen Sie die Seitenleiste für Dateien, Gliederung oder Kommentare.",
       newDocument: "Neues Dokument erstellen",
       openMarkdown: "Markdown-Datei öffnen",
       browseFiles: "Workspace-Dateien durchsuchen",

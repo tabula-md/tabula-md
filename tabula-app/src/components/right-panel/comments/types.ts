@@ -6,4 +6,4 @@ export type RightPanelCommentGroup = CoreRightPanelCommentGroup<WorkspaceFile, F
 
 export type FormatCommentDate = (isoDate: string) => string;
 
-export type RightPanelCommentsCopy = WorkspaceInterfaceCopy["projectContext"]["comments"];
+export type RightPanelCommentsCopy = WorkspaceInterfaceCopy["sidePanel"]["comments"];

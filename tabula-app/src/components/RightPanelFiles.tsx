@@ -27,7 +27,7 @@ import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "./ui/Menu";
 import { ModalSurface } from "./ui/ModalSurface";
 
-type RightPanelFilesCopy = WorkspaceInterfaceCopy["projectContext"]["files"];
+type RightPanelFilesCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
 
 type FileTreeFolderNode = {
   type: "folder";

@@ -2,7 +2,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import type { MarkdownHeading } from "@tabula-md/tabula";
 import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 
-type RightPanelOutlineCopy = WorkspaceInterfaceCopy["projectContext"]["outline"];
+type RightPanelOutlineCopy = WorkspaceInterfaceCopy["sidePanel"]["outline"];
 
 type RightPanelOutlineProps = {
   activeFileTitle: string;

@@ -5,7 +5,7 @@ import {
   useState,
   type RefObject,
 } from "react";
-import type { WorkspaceProjectContextProps } from "../components/WorkspaceProjectContext";
+import type { WorkspaceSidePanelProps } from "../components/WorkspaceSidePanel";
 import {
   getLineStartOffset,
   type MarkdownHeading,
@@ -23,7 +23,7 @@ import type { WorkspaceLanguage } from "./useWorkspacePreferences";
 type FocusTextRange = (start: number, end?: number) => void;
 
 type ProjectContextHandlers = Pick<
-  WorkspaceProjectContextProps,
+  WorkspaceSidePanelProps,
   | "formatCommentDate"
   | "onAddComment"
   | "onAddCommentReply"
@@ -201,7 +201,7 @@ export function useWorkspaceProjectContextRuntime({
     ],
   );
 
-  const projectContextProps: WorkspaceProjectContextProps = {
+  const sidePanelProps: WorkspaceSidePanelProps = {
     isOpen: rightPanelOpen,
     view: rightPanelView,
     isLive,
@@ -257,6 +257,6 @@ export function useWorkspaceProjectContextRuntime({
   };
 
   return {
-    projectContextProps,
+    sidePanelProps,
   };
 }

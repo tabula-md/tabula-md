@@ -3,7 +3,6 @@ import {
   Folder,
   ListTree,
   MessageSquare,
-  X,
 } from "lucide-react";
 import { getRightPanelCommentGroups } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "../hooks/useRightPanelCollapseState";
@@ -41,7 +40,6 @@ type RightPanelProps = {
   replyDraftByCommentId: Record<string, string>;
   getFileSearchText: (file: WorkspaceFile) => string;
   onSetView: (view: RightPanelView) => void;
-  onClose: () => void;
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
@@ -97,7 +95,6 @@ export function RightPanel({
   replyDraftByCommentId,
   getFileSearchText,
   onSetView,
-  onClose,
   onFileQueryChange,
   onNewFile,
   onNewFolder,
@@ -128,7 +125,7 @@ export function RightPanel({
   onCancelSelectionComment,
   formatCommentDate,
 }: RightPanelProps) {
-  const copy = getWorkspaceInterfaceCopy(language).projectContext;
+  const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const {
     showResolved,
     collapsedReplyIds,
@@ -185,15 +182,6 @@ export function RightPanel({
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />)}
         </nav>
-        <button
-          className="right-panel-close"
-          type="button"
-          aria-label={copy.close}
-          data-tooltip={copy.close}
-          onClick={onClose}
-        >
-          <X size={18} />
-        </button>
       </div>
 
       <div className={`right-panel-body ${effectiveView}`}>

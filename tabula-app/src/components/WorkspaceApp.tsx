@@ -3,7 +3,7 @@ import { LiveRoomLoadingSurface } from "./LiveRoomLoadingSurface";
 import { WorkspaceEmptySurface } from "./WorkspaceEmptySurface";
 import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";
 import { WorkspaceOverlaySurface } from "./WorkspaceOverlaySurface";
-import { WorkspaceProjectContext } from "./WorkspaceProjectContext";
+import { WorkspaceSidePanel } from "./WorkspaceSidePanel";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { WorkspaceLoadingSurface } from "./WorkspaceLoadingSurface";
 import { useWorkspaceRuntime } from "../hooks/useWorkspaceRuntime";
@@ -19,7 +19,7 @@ export function WorkspaceApp() {
     mainPanelClassName,
     menuSurfaceProps,
     overlayProps,
-    projectContextProps,
+    sidePanelProps,
     topChromeProps,
     workbenchProps,
   } = useWorkspaceRuntime();
@@ -58,7 +58,7 @@ export function WorkspaceApp() {
           </section>
         </section>
 
-        <WorkspaceProjectContext {...projectContextProps} />
+        <WorkspaceSidePanel {...sidePanelProps} />
       </section>
     </main>
   );

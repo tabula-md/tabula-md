@@ -776,8 +776,7 @@ export type WorkspaceChromeCopy = {
   topChrome: {
     openWorkspaceMenu: string;
     closeWorkspaceMenu: string;
-    openProjectContext: string;
-    closeProjectContext: string;
+    toggleSidePanel: string;
     collaborators: string;
     agent: string;
     inWorkspace: string;
@@ -840,8 +839,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Open Workspace menu",
       closeWorkspaceMenu: "Close Workspace menu",
-      openProjectContext: "Open Project Context",
-      closeProjectContext: "Close Project Context",
+      toggleSidePanel: "Toggle side panel",
       collaborators: "Collaborators",
       agent: "Agent",
       inWorkspace: "In workspace",
@@ -902,8 +900,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "작업공간 메뉴 열기",
       closeWorkspaceMenu: "작업공간 메뉴 닫기",
-      openProjectContext: "프로젝트 컨텍스트 열기",
-      closeProjectContext: "프로젝트 컨텍스트 닫기",
+      toggleSidePanel: "사이드 패널 전환",
       collaborators: "협업자",
       agent: "에이전트",
       inWorkspace: "워크스페이스에 있음",
@@ -964,8 +961,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "ワークスペースメニューを開く",
       closeWorkspaceMenu: "ワークスペースメニューを閉じる",
-      openProjectContext: "プロジェクトコンテキストを開く",
-      closeProjectContext: "プロジェクトコンテキストを閉じる",
+      toggleSidePanel: "サイドパネルを切り替える",
       collaborators: "共同編集者",
       agent: "エージェント",
       inWorkspace: "ワークスペース内",
@@ -1026,8 +1022,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "打开工作区菜单",
       closeWorkspaceMenu: "关闭工作区菜单",
-      openProjectContext: "打开项目上下文",
-      closeProjectContext: "关闭项目上下文",
+      toggleSidePanel: "切换侧边栏",
       collaborators: "协作者",
       agent: "代理",
       inWorkspace: "在工作区中",
@@ -1088,8 +1083,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Abrir menú del espacio",
       closeWorkspaceMenu: "Cerrar menú del espacio",
-      openProjectContext: "Abrir contexto del proyecto",
-      closeProjectContext: "Cerrar contexto del proyecto",
+      toggleSidePanel: "Alternar panel lateral",
       collaborators: "Colaboradores",
       agent: "Agente",
       inWorkspace: "En el espacio",
@@ -1150,8 +1144,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Ouvrir le menu de l’espace",
       closeWorkspaceMenu: "Fermer le menu de l’espace",
-      openProjectContext: "Ouvrir le contexte du projet",
-      closeProjectContext: "Fermer le contexte du projet",
+      toggleSidePanel: "Afficher ou masquer le panneau latéral",
       collaborators: "Collaborateurs",
       agent: "Agent",
       inWorkspace: "Dans l’espace",
@@ -1212,8 +1205,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     topChrome: {
       openWorkspaceMenu: "Workspace-Menü öffnen",
       closeWorkspaceMenu: "Workspace-Menü schließen",
-      openProjectContext: "Projektkontext öffnen",
-      closeProjectContext: "Projektkontext schließen",
+      toggleSidePanel: "Seitenleiste ein-/ausblenden",
       collaborators: "Mitwirkende",
       agent: "Agent",
       inWorkspace: "Im Workspace",

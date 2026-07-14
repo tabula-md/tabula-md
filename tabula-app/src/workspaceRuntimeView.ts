@@ -3,7 +3,7 @@ import type { DocumentWorkbenchProps } from "./components/DocumentWorkbench";
 import type { WorkspaceEmptySurfaceProps } from "./components/WorkspaceEmptySurface";
 import type { WorkspaceMenuSurfaceProps } from "./components/WorkspaceMenuSurface";
 import type { WorkspaceOverlaySurfaceProps } from "./components/WorkspaceOverlaySurface";
-import type { WorkspaceProjectContextProps } from "./components/WorkspaceProjectContext";
+import type { WorkspaceSidePanelProps } from "./components/WorkspaceSidePanel";
 import type { WorkspaceTopChromeProps } from "./components/WorkspaceTopChrome";
 import type { LiveRoomOpenState } from "./liveRoomOpenState";
 import type { WorkspaceFile } from "./workspaceStorage";
@@ -30,7 +30,7 @@ export type WorkspaceRuntimeView = {
   mainPanelClassName: string;
   menuSurfaceProps: WorkspaceMenuSurfaceProps;
   overlayProps: WorkspaceOverlaySurfaceProps;
-  projectContextProps: WorkspaceProjectContextProps;
+  sidePanelProps: WorkspaceSidePanelProps;
   topChromeProps: WorkspaceTopChromeProps;
   workbenchProps: WorkspaceRuntimeWorkbenchProps;
 };
