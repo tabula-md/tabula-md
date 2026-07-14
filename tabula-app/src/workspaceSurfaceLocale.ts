@@ -31,7 +31,6 @@ export type WorkspaceSurfaceCopy = {
   frontmatter: string;
   preview: string;
   nothingToPreview: string;
-  previewEmptyDescription: string;
   dismissNotification: string;
   jsonClose: string;
   jsonOpen: string;
@@ -91,7 +90,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Frontmatter",
     preview: "Preview",
     nothingToPreview: "Nothing to preview",
-    previewEmptyDescription: "Add text to this document to see it here.",
     dismissNotification: "Dismiss notification",
     jsonClose: "Close export link dialog",
     jsonOpen: "Open export link",
@@ -149,7 +147,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "프론트매터",
     preview: "미리보기",
     nothingToPreview: "미리 볼 내용이 없습니다",
-    previewEmptyDescription: "이 문서에 텍스트를 추가하면 여기에 표시됩니다.",
     dismissNotification: "알림 닫기",
     jsonClose: "내보내기 링크 창 닫기",
     jsonOpen: "내보내기 링크 열기",
@@ -207,7 +204,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "フロントマター",
     preview: "プレビュー",
     nothingToPreview: "プレビューする内容がありません",
-    previewEmptyDescription: "このドキュメントにテキストを追加すると、ここに表示されます。",
     dismissNotification: "通知を閉じる",
     jsonClose: "エクスポートリンクを閉じる",
     jsonOpen: "エクスポートリンクを開く",
@@ -265,7 +261,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "前置元数据",
     preview: "预览",
     nothingToPreview: "没有可预览的内容",
-    previewEmptyDescription: "在此文档中添加文本后会显示在这里。",
     dismissNotification: "关闭通知",
     jsonClose: "关闭导出链接对话框",
     jsonOpen: "打开导出链接",
@@ -323,7 +318,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Metadatos iniciales",
     preview: "Vista previa",
     nothingToPreview: "Nada que previsualizar",
-    previewEmptyDescription: "Añade texto a este documento para verlo aquí.",
     dismissNotification: "Cerrar notificación",
     jsonClose: "Cerrar diálogo del enlace exportado",
     jsonOpen: "Abrir enlace exportado",
@@ -381,7 +375,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Métadonnées initiales",
     preview: "Aperçu",
     nothingToPreview: "Rien à prévisualiser",
-    previewEmptyDescription: "Ajoutez du texte à ce document pour le voir ici.",
     dismissNotification: "Fermer la notification",
     jsonClose: "Fermer la boîte de dialogue du lien exporté",
     jsonOpen: "Ouvrir le lien exporté",
@@ -439,7 +432,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Frontmatter",
     preview: "Vorschau",
     nothingToPreview: "Nichts für die Vorschau",
-    previewEmptyDescription: "Füge diesem Dokument Text hinzu, um ihn hier zu sehen.",
     dismissNotification: "Benachrichtigung schließen",
     jsonClose: "Dialog des Exportlinks schließen",
     jsonOpen: "Exportlink öffnen",

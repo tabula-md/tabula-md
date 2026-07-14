@@ -20,7 +20,7 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { Check, Copy, FileText, Slash, WrapText } from "lucide-react";
+import { Check, Copy, Slash, WrapText } from "lucide-react";
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
@@ -2690,11 +2690,9 @@ function MarkdownPreviewComponent({
             </ReactMarkdown>
           )
         ) : (
-          <div className="preview-empty-state" aria-label={uiCopy.preview}>
-            <FileText aria-hidden="true" className="preview-empty-state-icon" size={28} strokeWidth={1.8} />
-            <strong>{uiCopy.nothingToPreview}</strong>
-            <span>{uiCopy.previewEmptyDescription}</span>
-          </div>
+          <p className="preview-empty-state" aria-label={uiCopy.preview}>
+            {uiCopy.nothingToPreview}
+          </p>
         )}
       </div>
 

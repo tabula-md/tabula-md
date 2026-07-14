@@ -4,7 +4,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ChevronDown, List, MoreHorizontal, Pilcrow, Plus } from "lucide-react";
+import { BetweenVerticalStart, List, MoreHorizontal, Pilcrow } from "lucide-react";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
 import {
   formattingToolbarGroupOrder,
@@ -149,7 +149,7 @@ export function FormattingToolbar({
       },
       insert: {
         commands: layout.insert,
-        icon: Plus,
+        icon: BetweenVerticalStart,
         label: copy.insertContent,
       },
       overflow: {
@@ -213,10 +213,6 @@ export function FormattingToolbar({
               data-format-command={menuId === "overflow" ? "more-formatting" : `${menuId}-formatting`}
             >
               <Icon size={16} />
-              {menuId === "block" && (
-                <span className="formatting-block-label">{activeCommand?.label ?? menu.label}</span>
-              )}
-              {menuId !== "overflow" && <ChevronDown className="formatting-menu-chevron" size={14} />}
             </button>
           </MenuTrigger>
         </div>
