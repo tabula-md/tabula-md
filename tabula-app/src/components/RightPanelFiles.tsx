@@ -1,12 +1,14 @@
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
-import { type KeyboardEvent as ReactKeyboardEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   ChevronsDownUp,
   ChevronsUpDown,
   ClipboardCopy,
   Copy,
+  CornerUpLeft,
   Ellipsis,
   File,
   FilePlus2,
@@ -76,7 +78,8 @@ type RightPanelFilesProps = {
   onRenameFolder: (folderId: string, nextTitle: string) => boolean;
 };
 
-const RIGHT_TREE_INDENT = 20;
+const RIGHT_TREE_INDENT = 16;
+const MOVE_SEARCH_THRESHOLD = 12;
 
 const getFileDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
 
@@ -208,6 +211,72 @@ export const pruneEmptyFileTreeFolders = (
   return pruneFolder(root) ?? { ...root, children: [] };
 };
 
+type MoveTarget = {
+  type: "file" | "folder";
+  id: string;
+  title: string;
+  parentId: string | null;
+};
+
+export type MoveDestinationRow = {
+  folderId: string;
+  label: string;
+  depth: number;
+  current: boolean;
+  disabled: boolean;
+  root: boolean;
+};
+
+export const getMoveDestinationRows = (
+  folders: WorkspaceFolder[],
+  moveTarget: MoveTarget,
+  folderDisplayTitles = getWorkspaceFolderDisplayTitles(folders),
+  query = "",
+): MoveDestinationRow[] => {
+  const invalidFolderIds = new Set<string>();
+  if (moveTarget.type === "folder") {
+    invalidFolderIds.add(moveTarget.id);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const folder of folders) {
+        if (folder.parentId && invalidFolderIds.has(folder.parentId) && !invalidFolderIds.has(folder.id)) {
+          invalidFolderIds.add(folder.id);
+          changed = true;
+        }
+      }
+    }
+  }
+
+  const currentFolderId = moveTarget.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
+  const tree = buildFileTree([], folders, new Map(), folderDisplayTitles);
+  const folderRows = flattenVisibleFileTree(tree, new Set())
+    .filter((row): row is VisibleFileTreeRow & { node: FileTreeFolderNode } => row.node.type === "folder")
+    .map(({ node, depth }) => ({
+      folderId: node.id,
+      label: node.name,
+      depth,
+      current: node.id === currentFolderId,
+      disabled: invalidFolderIds.has(node.id) || node.id === currentFolderId,
+      root: false,
+    }));
+  const rows: MoveDestinationRow[] = [
+    {
+      folderId: WORKSPACE_ROOT_FOLDER_ID,
+      label: "",
+      depth: 0,
+      current: currentFolderId === WORKSPACE_ROOT_FOLDER_ID,
+      disabled: currentFolderId === WORKSPACE_ROOT_FOLDER_ID,
+      root: true,
+    },
+    ...folderRows,
+  ];
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  return normalizedQuery
+    ? rows.filter((row) => row.root || row.label.toLocaleLowerCase().includes(normalizedQuery))
+    : rows;
+};
+
 export function RightPanelFiles({
   files,
   folders,
@@ -237,12 +306,7 @@ export function RightPanelFiles({
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renamingFolderTitle, setRenamingFolderTitle] = useState("");
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
-  const [moveTarget, setMoveTarget] = useState<{
-    type: "file" | "folder";
-    id: string;
-    title: string;
-    parentId: string | null;
-  } | null>(null);
+  const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [moveQuery, setMoveQuery] = useState("");
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const folderRenameInputRef = useRef<HTMLInputElement | null>(null);
@@ -276,28 +340,13 @@ export function RightPanelFiles({
     getItemKey: (index) => visibleRows[index]?.node.id ?? index,
     overscan: 8,
   });
-  const moveFolderOptions = useMemo(() => {
-    const invalidFolderIds = new Set<string>();
-    if (moveTarget?.type === "folder") {
-      invalidFolderIds.add(moveTarget.id);
-      let changed = true;
-      while (changed) {
-        changed = false;
-        for (const folder of folders) {
-          if (folder.parentId && invalidFolderIds.has(folder.parentId) && !invalidFolderIds.has(folder.id)) {
-            invalidFolderIds.add(folder.id);
-            changed = true;
-          }
-        }
-      }
-    }
-    const query = moveQuery.trim().toLowerCase();
-    return folders.filter((folder) => {
-      if (invalidFolderIds.has(folder.id)) return false;
-      if (!query) return true;
-      return (folderDisplayTitles.get(folder.id) ?? folder.title).toLowerCase().includes(query);
-    });
-  }, [folderDisplayTitles, folders, moveQuery, moveTarget]);
+  const moveFolderOptions = useMemo(
+    () => moveTarget
+      ? getMoveDestinationRows(folders, moveTarget, folderDisplayTitles, moveQuery)
+      : [],
+    [folderDisplayTitles, folders, moveQuery, moveTarget],
+  );
+  const showMoveSearch = folders.length - 1 >= MOVE_SEARCH_THRESHOLD;
   const collapsibleFolderIds = useMemo(
     () => folders
       .filter((folder) => folder.id !== WORKSPACE_ROOT_FOLDER_ID)
@@ -436,6 +485,9 @@ export function RightPanelFiles({
           className="right-file-tree-node folder"
           data-index={virtualRow.index}
           key={node.id}
+          role="treeitem"
+          aria-level={depth + 1}
+          aria-expanded={!folderCollapsed}
           style={virtualStyle}
         >
           <div
@@ -543,6 +595,9 @@ export function RightPanelFiles({
         className="right-file-tree-node file"
         data-index={virtualRow.index}
         key={node.id}
+        role="treeitem"
+        aria-level={depth + 1}
+        aria-selected={isActiveFile}
         style={virtualStyle}
       >
         <div
@@ -552,6 +607,7 @@ export function RightPanelFiles({
         >
           {isRenaming ? (
             <div className="right-file-open-button">
+              <span className="right-file-chevron-spacer" aria-hidden="true" />
               <span className="right-file-document-icon">
                 <File size={16} />
               </span>
@@ -599,6 +655,7 @@ export function RightPanelFiles({
                 onClick={() => onSelectFile(file.id)}
                 onKeyDown={(event) => handleFileKeyDown(event, file.id)}
               >
+                <span className="right-file-chevron-spacer" aria-hidden="true" />
                 <span
                   className="right-file-document-icon"
                   data-tooltip={copy.open(file.title)}
@@ -728,6 +785,7 @@ export function RightPanelFiles({
           <ol
             className="right-file-tree virtual"
             aria-label={copy.tree}
+            role="tree"
             style={{ height: `${treeVirtualizer.getTotalSize()}px` }}
           >
             {treeVirtualizer.getVirtualItems().map((virtualRow) => {
@@ -757,33 +815,38 @@ export function RightPanelFiles({
             <X size={16} aria-hidden="true" />
           </button>
         </header>
-        <input
-          className="move-workspace-item-search"
-          type="search"
-          value={moveQuery}
-          placeholder={copy.searchFolders}
-          aria-label={copy.searchFolders}
-          data-modal-initial-focus
-          onChange={(event) => setMoveQuery(event.target.value)}
-        />
+        {showMoveSearch && (
+          <input
+            className="move-workspace-item-search"
+            type="search"
+            value={moveQuery}
+            placeholder={copy.searchFolders}
+            aria-label={copy.searchFolders}
+            data-modal-initial-focus
+            onChange={(event) => setMoveQuery(event.target.value)}
+          />
+        )}
         <div className="move-workspace-item-list">
           {moveFolderOptions.length === 0 && (
             <p className="move-workspace-item-empty">{copy.noFoldersFound}</p>
           )}
-          {moveFolderOptions.map((folder) => {
-            const currentFolderId = moveTarget.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
-            const isCurrentFolder = folder.id === currentFolderId;
-            const label = folderDisplayTitles.get(folder.id) ?? folder.title;
+          {moveFolderOptions.map((destination) => {
+            const label = destination.root ? copy.topLevel : destination.label;
             return (
               <button
-                className={isCurrentFolder ? "active" : ""}
+                className={`${destination.current ? "current" : ""} ${destination.root ? "root" : ""}`.trim()}
                 type="button"
-                disabled={isCurrentFolder}
-                onClick={() => moveItemToFolder(folder.id)}
-                key={folder.id}
+                disabled={destination.disabled}
+                aria-label={destination.current ? `${label} · ${copy.currentLocation}` : label}
+                onClick={() => moveItemToFolder(destination.folderId)}
+                key={destination.folderId}
+                style={{ "--move-destination-depth": destination.depth } as CSSProperties}
               >
-                <Folder size={16} aria-hidden="true" />
+                {destination.root
+                  ? <CornerUpLeft size={16} aria-hidden="true" />
+                  : <Folder size={16} aria-hidden="true" />}
                 <span>{label}</span>
+                {destination.current && <Check size={14} aria-hidden="true" />}
               </button>
             );
           })}

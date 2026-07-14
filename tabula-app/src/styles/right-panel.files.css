@@ -34,31 +34,22 @@
 
 .right-file-tree-row {
   display: grid;
-  grid-template-columns: var(--right-icon-size) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--right-row-gap);
-  padding: 0 var(--right-row-x) 0 0;
+  gap: 2px;
+  min-height: var(--right-row-height);
+  padding-right: 4px;
+  border-radius: var(--right-row-radius);
   line-height: 1;
 }
 
-.right-file-tree-row.file {
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px;
-  padding-right: 4px;
-}
-
 .right-file-tree-row.folder {
-  grid-template-columns: minmax(0, 1fr) auto;
   color: var(--text-soft);
 }
 
 .right-file-tree-row svg {
   width: var(--right-icon-size);
   height: var(--right-icon-size);
-}
-
-.right-file-tree-row.folder .right-file-open-button {
-  grid-template-columns: var(--right-chevron-size) var(--right-icon-size) minmax(0, 1fr);
 }
 
 .right-file-tree-row.folder .right-file-open-button > svg:first-child {
@@ -68,7 +59,7 @@
 
 .right-file-open-button {
   display: grid;
-  grid-template-columns: var(--right-icon-size) minmax(0, 1fr) auto;
+  grid-template-columns: var(--right-chevron-size) var(--right-icon-size) minmax(0, 1fr);
   align-items: center;
   gap: var(--right-row-gap);
   min-width: 0;
@@ -80,6 +71,11 @@
   font: inherit;
   line-height: 1;
   text-align: left;
+}
+
+.right-file-chevron-spacer {
+  width: var(--right-chevron-size);
+  height: var(--right-chevron-size);
 }
 
 .right-file-open-button:hover,
@@ -224,11 +220,11 @@
 
 .move-workspace-item-list button {
   display: grid;
-  grid-template-columns: var(--icon-size-medium) minmax(0, 1fr);
+  grid-template-columns: var(--icon-size-medium) minmax(0, 1fr) var(--icon-size-small);
   align-items: center;
   gap: var(--space-2);
   min-height: var(--control-size-row);
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-2) 0 calc(var(--space-2) + var(--move-destination-depth, 0) * 16px);
   border-radius: var(--radius-control);
   color: var(--text-soft);
   text-align: left;
@@ -242,7 +238,15 @@
 
 .move-workspace-item-list button:disabled {
   color: var(--text-muted);
-  background: var(--surface-muted);
+  background: transparent;
+}
+
+.move-workspace-item-list button.current {
+  color: var(--text-soft);
+}
+
+.move-workspace-item-list button.root {
+  margin-bottom: var(--space-1);
 }
 
 .move-workspace-item-list span {

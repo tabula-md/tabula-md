@@ -31,6 +31,8 @@ type WorkspaceInterfaceMessages = {
   filesCloseMoveDialog: string;
   filesSearchFolders: string;
   filesNoFoldersFound: string;
+  filesTopLevel: string;
+  filesCurrentLocation: string;
   filesDelete: string;
   filesRenameInPanel: string;
   filesOpen: string;
@@ -124,6 +126,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesCloseMoveDialog: "Close move dialog",
     filesSearchFolders: "Search folders",
     filesNoFoldersFound: "No folders found.",
+    filesTopLevel: "Top level",
+    filesCurrentLocation: "Current location",
     filesDelete: "Delete",
     filesRenameInPanel: "Rename {{name}} in Files",
     filesOpen: "Open {{name}}",
@@ -215,6 +219,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesCloseMoveDialog: "이동 창 닫기",
     filesSearchFolders: "폴더 검색",
     filesNoFoldersFound: "폴더를 찾을 수 없습니다.",
+    filesTopLevel: "최상위",
+    filesCurrentLocation: "현재 위치",
     filesDelete: "삭제",
     filesRenameInPanel: "파일에서 {{name}} 이름 바꾸기",
     filesOpen: "{{name}} 열기",
@@ -306,6 +312,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesCloseMoveDialog: "移動ダイアログを閉じる",
     filesSearchFolders: "フォルダを検索",
     filesNoFoldersFound: "フォルダが見つかりません。",
+    filesTopLevel: "最上位",
+    filesCurrentLocation: "現在の場所",
     filesDelete: "削除",
     filesRenameInPanel: "ファイルで {{name}} の名前を変更",
     filesOpen: "{{name}} を開く",
@@ -397,6 +405,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesCloseMoveDialog: "关闭移动对话框",
     filesSearchFolders: "搜索文件夹",
     filesNoFoldersFound: "未找到文件夹。",
+    filesTopLevel: "顶层",
+    filesCurrentLocation: "当前位置",
     filesDelete: "删除",
     filesRenameInPanel: "在文件中重命名 {{name}}",
     filesOpen: "打开 {{name}}",
@@ -488,6 +498,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesCloseMoveDialog: "Cerrar diálogo de mover",
     filesSearchFolders: "Buscar carpetas",
     filesNoFoldersFound: "No se encontraron carpetas.",
+    filesTopLevel: "Nivel superior",
+    filesCurrentLocation: "Ubicación actual",
     filesDelete: "Eliminar",
     filesRenameInPanel: "Renombrar {{name}} en Archivos",
     filesOpen: "Abrir {{name}}",
@@ -579,6 +591,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesCloseMoveDialog: "Fermer la fenêtre de déplacement",
     filesSearchFolders: "Rechercher des dossiers",
     filesNoFoldersFound: "Aucun dossier trouvé.",
+    filesTopLevel: "Niveau supérieur",
+    filesCurrentLocation: "Emplacement actuel",
     filesDelete: "Supprimer",
     filesRenameInPanel: "Renommer {{name}} dans Fichiers",
     filesOpen: "Ouvrir {{name}}",
@@ -670,6 +684,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesCloseMoveDialog: "Verschiebedialog schließen",
     filesSearchFolders: "Ordner suchen",
     filesNoFoldersFound: "Keine Ordner gefunden.",
+    filesTopLevel: "Oberste Ebene",
+    filesCurrentLocation: "Aktueller Speicherort",
     filesDelete: "Löschen",
     filesRenameInPanel: "{{name}} in Dateien umbenennen",
     filesOpen: "{{name}} öffnen",
@@ -786,6 +802,8 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         closeMoveDialog: copy.filesCloseMoveDialog,
         searchFolders: copy.filesSearchFolders,
         noFoldersFound: copy.filesNoFoldersFound,
+        topLevel: copy.filesTopLevel,
+        currentLocation: copy.filesCurrentLocation,
         delete: copy.filesDelete,
         renameInPanel: (name: string) => format(copy.filesRenameInPanel, { name }),
         open: (name: string) => format(copy.filesOpen, { name }),

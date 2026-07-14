@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildFileTree,
   flattenVisibleFileTree,
+  getMoveDestinationRows,
   pruneEmptyFileTreeFolders,
 } from "./RightPanelFiles";
 import { WORKSPACE_ROOT_FOLDER_ID, createWorkspaceFile, createWorkspaceRootFolder } from "../workspaceStorage";
@@ -44,6 +45,33 @@ describe("right panel file rows", () => {
     expect(flattenVisibleFileTree(prunedTree, new Set()).map(({ node }) => node.id)).toEqual([
       "planning",
       matchingFile.id,
+    ]);
+  });
+
+  it("presents the workspace root as a top-level destination and disables invalid folder moves", () => {
+    const folders = [
+      createWorkspaceRootFolder(),
+      { id: "docs", title: "Docs", parentId: WORKSPACE_ROOT_FOLDER_ID },
+      { id: "drafts", title: "Drafts", parentId: "docs" },
+      { id: "archive", title: "Archive", parentId: WORKSPACE_ROOT_FOLDER_ID },
+    ];
+
+    expect(getMoveDestinationRows(folders, {
+      type: "folder",
+      id: "docs",
+      title: "Docs",
+      parentId: WORKSPACE_ROOT_FOLDER_ID,
+    }).map(({ folderId, depth, current, disabled, root }) => ({
+      folderId,
+      depth,
+      current,
+      disabled,
+      root,
+    }))).toEqual([
+      { folderId: WORKSPACE_ROOT_FOLDER_ID, depth: 0, current: true, disabled: true, root: true },
+      { folderId: "archive", depth: 0, current: false, disabled: false, root: false },
+      { folderId: "docs", depth: 0, current: false, disabled: true, root: false },
+      { folderId: "drafts", depth: 1, current: false, disabled: true, root: false },
     ]);
   });
 });
