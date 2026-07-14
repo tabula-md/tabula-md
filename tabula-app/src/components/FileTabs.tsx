@@ -101,11 +101,14 @@ export function FileTabs({
     const scrollPadding = Math.min(44, Math.floor(element.clientWidth * 0.2));
     const activeLeft = activeTabElement.offsetLeft;
     const activeRight = activeLeft + activeTabElement.offsetWidth;
+    const isTouchLayout = window.matchMedia("(max-width: 560px)").matches;
     const visibleLeft = element.scrollLeft + scrollPadding;
     const visibleRight = element.scrollLeft + element.clientWidth - scrollPadding;
     let nextScrollLeft = visibleLeft;
 
-    if (activeLeft < visibleLeft) {
+    if (isTouchLayout) {
+      nextScrollLeft = activeLeft;
+    } else if (activeLeft < visibleLeft) {
       nextScrollLeft = activeLeft - scrollPadding;
     } else if (activeRight > visibleRight) {
       nextScrollLeft = activeRight - element.clientWidth + scrollPadding;
@@ -379,6 +382,7 @@ export function FileTabs({
             </div>
           );
         })}
+        <span className="tabs-scroll-end-spacer" aria-hidden="true" />
       </div>
       <div className="tabbar-actions">
         <NewDocumentButton

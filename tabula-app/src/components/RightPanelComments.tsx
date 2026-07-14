@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ListFilter, MessageSquarePlus, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ListFilter, MessageSquarePlus } from "lucide-react";
 import {
   getRightPanelCommentScopeModel,
   type CommentScope,
@@ -221,20 +221,17 @@ export function RightPanelComments({
         </span>
         {activeFile && (
           <span className="right-comments-toolbar-actions">
-            <button
-              className="right-comments-toolbar-action"
-              type="button"
-              aria-label={composerMode === "document" && commentScope === "current" ? copy.cancel : copy.filePlaceholder}
-              data-tooltip={composerMode === "document" && commentScope === "current" ? copy.cancel : copy.filePlaceholder}
-              aria-pressed={composerMode === "document" && commentScope === "current"}
-              onClick={toggleDocumentComposer}
-            >
-              {composerMode === "document" && commentScope === "current" ? (
-                <X size={14} aria-hidden="true" />
-              ) : (
+            {composerMode === null && (
+              <button
+                className="right-comments-toolbar-action"
+                type="button"
+                aria-label={copy.filePlaceholder}
+                data-tooltip={copy.filePlaceholder}
+                onClick={toggleDocumentComposer}
+              >
                 <MessageSquarePlus size={14} aria-hidden="true" />
-              )}
-            </button>
+              </button>
+            )}
             <MenuRoot open={scopeMenuOpen} onOpenChange={setScopeMenuOpen}>
               <span className="right-comments-scope-menu-wrap">
                 <MenuTrigger asChild>

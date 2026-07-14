@@ -52,76 +52,80 @@ export function ShareExportPanel({
           <p>{copy.exportPanel.description}</p>
         </div>
       </div>
-      <div className="share-modal-actions" aria-label={copy.exportPanel.title}>
-        {!shareView.shareable.hasLink ? (
-          <button
-            className="share-modal-primary"
-            type="button"
-            onClick={onExportToJsonLink}
-            disabled={!jsonShare.canExport}
-            aria-describedby={linkDescribedBy}
-            title={shareView.shareable.disabledReason || undefined}
-          >
-            {jsonShare.exporting ? <RefreshCw size={16} /> : <Link size={16} />}
-            <span>{shareView.shareable.primaryLabel}</span>
-          </button>
-        ) : null}
-        <button
-          className="share-modal-secondary"
-          type="button"
-          disabled={workspaceDocumentCount === 0}
-          aria-describedby={archiveDescriptionId}
-          onClick={onDownloadProjectArchive}
-        >
-          <FolderArchive size={16} />
-          <span>{copy.exportPanel.projectArchiveTitle}</span>
-        </button>
-      </div>
-      <p className="share-modal-muted" id={linkDescriptionId}>
-        {copy.shareable.description}
-      </p>
-      <p className="share-modal-muted" id={archiveDescriptionId}>
-        {copy.exportPanel.projectArchiveDescription}
-      </p>
-      {shareView.shareable.hasLink && jsonShare.url ? (
-        <div className="share-copy-box">
-          <div className="share-modal-field">
-            <span className="share-modal-field-label" id={exportLinkLabelId}>
-              {copy.shareable.linkLabel}
-            </span>
-            <div className="share-modal-link-row">
-              <div
-                className="share-link-display"
-                aria-labelledby={exportLinkLabelId}
-                title={jsonShare.url}
-              >
-                <span>{jsonShare.urlPreview}</span>
-              </div>
-              <button
-                type="button"
-                aria-describedby={exportLinkMetadataId}
-                onClick={onCopyShareableLink}
-              >
-                {exportLinkCopied ? <Check size={18} /> : <Copy size={18} />}
-                <span>
-                  {exportLinkCopied ? copy.live.copied : copy.live.copyLink}
+      <div className="share-export-options" aria-label={copy.exportPanel.title}>
+        <div className="share-export-option">
+          {!shareView.shareable.hasLink ? (
+            <button
+              className="share-modal-primary"
+              type="button"
+              onClick={onExportToJsonLink}
+              disabled={!jsonShare.canExport}
+              aria-describedby={linkDescribedBy}
+              title={shareView.shareable.disabledReason || undefined}
+            >
+              {jsonShare.exporting ? <RefreshCw size={16} /> : <Link size={16} />}
+              <span>{shareView.shareable.primaryLabel}</span>
+            </button>
+          ) : null}
+          <p className="share-modal-muted" id={linkDescriptionId}>
+            {copy.shareable.description}
+          </p>
+          {shareView.shareable.hasLink && jsonShare.url ? (
+            <div className="share-copy-box">
+              <div className="share-modal-field">
+                <span className="share-modal-field-label" id={exportLinkLabelId}>
+                  {copy.shareable.linkLabel}
                 </span>
-              </button>
+                <div className="share-modal-link-row">
+                  <div
+                    className="share-link-display"
+                    aria-labelledby={exportLinkLabelId}
+                    title={jsonShare.url}
+                  >
+                    <span>{jsonShare.urlPreview}</span>
+                  </div>
+                  <button
+                    type="button"
+                    aria-describedby={exportLinkMetadataId}
+                    onClick={onCopyShareableLink}
+                  >
+                    {exportLinkCopied ? <Check size={18} /> : <Copy size={18} />}
+                    <span>
+                      {exportLinkCopied ? copy.live.copied : copy.live.copyLink}
+                    </span>
+                  </button>
+                </div>
+                <p className="share-modal-muted" id={exportLinkMetadataId}>
+                  {jsonShare.documentCount} {jsonShare.documentCount === 1 ? "document" : "documents"}
+                  {jsonShare.expiresAt
+                    ? ` · Expires ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(jsonShare.expiresAt))}`
+                    : ""}
+                </p>
+              </div>
             </div>
-            <p className="share-modal-muted" id={exportLinkMetadataId}>
-              {jsonShare.documentCount} {jsonShare.documentCount === 1 ? "document" : "documents"}
-              {jsonShare.expiresAt
-                ? ` · Expires ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(jsonShare.expiresAt))}`
-                : ""}
+          ) : null}
+          {shareView.shareable.disabledReason && (
+            <p className="share-modal-muted" id={linkDisabledReasonId}>
+              {shareView.shareable.disabledReason}
             </p>
-          </div>
+          )}
         </div>
-      ) : null}
-      {shareView.shareable.disabledReason && (
-        <p className="share-modal-muted" id={linkDisabledReasonId}>
-          {shareView.shareable.disabledReason}
-        </p>
-      )}
+        <div className="share-export-option">
+          <button
+            className="share-modal-secondary"
+            type="button"
+            disabled={workspaceDocumentCount === 0}
+            aria-describedby={archiveDescriptionId}
+            onClick={onDownloadProjectArchive}
+          >
+            <FolderArchive size={16} />
+            <span>{copy.exportPanel.projectArchiveTitle}</span>
+          </button>
+          <p className="share-modal-muted" id={archiveDescriptionId}>
+            {copy.exportPanel.projectArchiveDescription}
+          </p>
+        </div>
+      </div>
     </>
   );
 }
