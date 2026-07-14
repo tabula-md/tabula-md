@@ -22,13 +22,20 @@ export const readSearchRowLayout = (page) =>
   page.evaluate(() => {
     const controls = document.querySelector(".document-toolbar-row");
     const row = document.querySelector(".document-search-row");
+    const bar = document.querySelector(".document-search-bar");
     const workspace = document.querySelector(".workspace");
-    if (!(controls instanceof HTMLElement) || !(row instanceof HTMLElement) || !(workspace instanceof HTMLElement)) {
+    if (
+      !(controls instanceof HTMLElement) ||
+      !(row instanceof HTMLElement) ||
+      !(bar instanceof HTMLElement) ||
+      !(workspace instanceof HTMLElement)
+    ) {
       return null;
     }
 
     const controlsRect = controls.getBoundingClientRect();
     const rowRect = row.getBoundingClientRect();
+    const barRect = bar.getBoundingClientRect();
     const workspaceRect = workspace.getBoundingClientRect();
     const rowStyle = getComputedStyle(row);
     return {
@@ -37,6 +44,9 @@ export const readSearchRowLayout = (page) =>
       rowTop: Math.round(rowRect.top),
       rowBottom: Math.round(rowRect.bottom),
       rowWidth: Math.round(rowRect.width),
+      barLeft: Math.round(barRect.left),
+      barRight: Math.round(barRect.right),
+      barWidth: Math.round(barRect.width),
       controlsLeft: Math.round(controlsRect.left),
       controlsRight: Math.round(controlsRect.right),
       controlsBottom: Math.round(controlsRect.bottom),

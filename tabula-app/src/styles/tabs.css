@@ -232,11 +232,6 @@
   background: var(--surface-hover);
 }
 
-.tab-item:has(.tab-rename-input:focus-visible) {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
 .tab-item:hover,
 .add-tab-button:hover,
 .tab-scroll-button:not(:disabled):hover {

@@ -34,6 +34,11 @@ export async function run(ctx) {
       "Search row should follow the same text-width layout as the top toolbar.",
     );
     expect(
+      Math.abs(searchRowLayout.barLeft - searchRowLayout.rowLeft) <= 1 &&
+        Math.abs(searchRowLayout.barRight - searchRowLayout.rowRight) <= 1,
+      "Search controls should fill the active document lane instead of using an unrelated fixed width.",
+    );
+    expect(
       searchRowLayout.rowBorderTop === "0px" && searchRowLayout.rowBorderBottom === "0px",
       "Search row should not add splitter-style border lines.",
     );
@@ -53,6 +58,28 @@ export async function run(ctx) {
       "Search row should stay aligned after Text Width changes.",
     );
 
+    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await waitForEditorReady(page, { mode: "split" });
+    const splitSearchAlignment = await page.evaluate(() => {
+      const bar = document.querySelector(".document-search-bar");
+      const editor = document.querySelector(".workspace.split .editor-surface");
+      const barRect = bar?.getBoundingClientRect();
+      const editorRect = editor?.getBoundingClientRect();
+      return {
+        barLeft: Math.round(barRect?.left ?? -1),
+        barRight: Math.round(barRect?.right ?? -1),
+        editorLeft: Math.round(editorRect?.left ?? -2),
+        editorRight: Math.round(editorRect?.right ?? -2),
+      };
+    });
+    expect(
+      Math.abs(splitSearchAlignment.barLeft - splitSearchAlignment.editorLeft) <= 1 &&
+        Math.abs(splitSearchAlignment.barRight - splitSearchAlignment.editorRight) <= 1,
+      "Split Search should align with the source lane it searches instead of spanning both panes.",
+    );
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await waitForEditorReady(page, { mode: "edit" });
+
     const searchInput = page.getByRole("searchbox", { name: "Search" });
     expect((await searchInput.getAttribute("placeholder")) === "Search", "Search input placeholder should be Search.");
     expect((await page.getByLabel("Replace with").count()) === 0, "Replace should stay collapsed by default.");
@@ -61,6 +88,12 @@ export async function run(ctx) {
     expect((await page.getByLabel("Replace with").inputValue()) === "replacement", "Toggle replace should reveal the replace input.");
     await page.getByRole("button", { name: "Toggle replace" }).click();
     expect((await page.getByLabel("Replace with").count()) === 0, "Toggle replace should collapse the replace input.");
+
+    await page.getByRole("button", { name: "Open Workspace menu" }).click();
+    await page.getByRole("button", { name: "Preferences", exact: true }).click();
+    expect((await page.getByRole("button", { name: "Light", exact: true }).count()) === 1, "Workspace preferences should remain interactive above an open Search row.");
+    await page.getByRole("button", { name: "Close Workspace menu" }).click();
+
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     expect((await page.locator(".document-search-row").count()) === 1, "Search should stay open while Editor Controls are opened.");
     expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 1, "Editor Controls should open over the persistent search row.");

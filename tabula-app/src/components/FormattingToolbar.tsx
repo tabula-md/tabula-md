@@ -1,6 +1,7 @@
 import {
-  useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { ChevronDown, List, MoreHorizontal, Pilcrow, Plus } from "lucide-react";
@@ -8,6 +9,7 @@ import type { MarkdownFormatCommand } from "@tabula-md/tabula";
 import {
   formattingToolbarGroupOrder,
   getFormattingToolbarLayout,
+  type FormattingToolbarDensity,
   type FormattingToolbarCommand,
   type FormattingToolbarCommandActions,
 } from "../toolbar/formattingCommandRegistry";
@@ -50,12 +52,11 @@ const groupFormattingCommands = (
     }))
     .filter(({ commands }) => commands.length > 0);
 
-const compactToolbarMediaQuery = "(max-width: 820px)";
-
-const isCompactToolbarViewport = () =>
-  typeof window !== "undefined" &&
-  typeof window.matchMedia === "function" &&
-  window.matchMedia(compactToolbarMediaQuery).matches;
+const getToolbarDensity = (width: number): FormattingToolbarDensity => {
+  if (width >= 520) return "wide";
+  if (width >= 420) return "medium";
+  return "compact";
+};
 
 const getCommandTitle = (command: LocalizedFormattingCommand) =>
   command.shortcut ? `${command.tooltip} (${formatShortcut(command.shortcut)})` : command.tooltip;
@@ -111,15 +112,16 @@ export function FormattingToolbar({
   onUndo,
 }: FormattingToolbarProps) {
   const copy = getWorkspaceSurfaceCopy(language);
+  const rowRef = useRef<HTMLDivElement | null>(null);
   const [openMenu, setOpenMenu] = useState<FormattingMenuId | null>(null);
-  const [compact, setCompact] = useState(isCompactToolbarViewport);
+  const [density, setDensity] = useState<FormattingToolbarDensity>("medium");
   const actions = useMemo<FormattingToolbarCommandActions>(
     () => ({ canRedo, canUndo, onFormat, onRedo, onUndo }),
     [canRedo, canUndo, onFormat, onRedo, onUndo],
   );
   const activeFormatSet = useMemo(() => new Set<string>(activeFormats), [activeFormats]);
   const layout = useMemo(() => {
-    const rawLayout = getFormattingToolbarLayout(compact);
+    const rawLayout = getFormattingToolbarLayout(density);
     const localize = (command: FormattingToolbarCommand): LocalizedFormattingCommand => ({
       ...command,
       ...getFormattingCommandCopy(language, command.id),
@@ -132,7 +134,7 @@ export function FormattingToolbar({
       insert: rawLayout.insert.map(localize),
       overflow: rawLayout.overflow.map(localize),
     };
-  }, [compact, language]);
+  }, [density, language]);
   const menus = useMemo(
     () => ({
       block: {
@@ -168,13 +170,23 @@ export function FormattingToolbar({
     ],
   );
 
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const mediaQuery = window.matchMedia(compactToolbarMediaQuery);
-    const updateCompactState = () => setCompact(mediaQuery.matches);
-    updateCompactState();
-    mediaQuery.addEventListener("change", updateCompactState);
-    return () => mediaQuery.removeEventListener("change", updateCompactState);
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+
+    const updateDensity = (width: number) => {
+      const nextDensity = getToolbarDensity(width);
+      setDensity((currentDensity) => currentDensity === nextDensity ? currentDensity : nextDensity);
+    };
+    updateDensity(row.getBoundingClientRect().width);
+
+    if (typeof ResizeObserver === "undefined") return undefined;
+
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) updateDensity(entry.contentRect.width);
+    });
+    observer.observe(row);
+    return () => observer.disconnect();
   }, []);
 
   const renderMenu = (menuId: FormattingMenuId) => {
@@ -194,13 +206,16 @@ export function FormattingToolbar({
         <div className="formatting-overflow">
           <MenuTrigger asChild>
             <button
-              className={`tool-button formatting-button formatting-menu-button ${menuOpen || hasActiveCommand ? "active" : ""}`}
+              className={`tool-button formatting-button formatting-menu-button formatting-${menuId}-menu-button ${menuOpen || hasActiveCommand ? "active" : ""}`}
               type="button"
               aria-label={menu.label}
               data-tooltip={menu.label}
               data-format-command={menuId === "overflow" ? "more-formatting" : `${menuId}-formatting`}
             >
               <Icon size={16} />
+              {menuId === "block" && (
+                <span className="formatting-block-label">{activeCommand?.label ?? menu.label}</span>
+              )}
               {menuId !== "overflow" && <ChevronDown className="formatting-menu-chevron" size={14} />}
             </button>
           </MenuTrigger>
@@ -243,17 +258,26 @@ export function FormattingToolbar({
   };
 
   return (
-    <div className={`formatting-row ${className}`}>
+    <div ref={rowRef} className={`formatting-row ${className}`} data-density={density}>
       <nav className="formatting-toolbar" aria-label={copy.formatting}>
-        {layout.history.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
-        <span className="toolbar-separator" aria-hidden="true" />
-        {renderMenu("block")}
-        <span className="toolbar-separator" aria-hidden="true" />
-        {layout.inline.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
-        <span className="toolbar-separator" aria-hidden="true" />
-        {renderMenu("list")}
-        {layout.insert.length > 0 && renderMenu("insert")}
-        {layout.overflow.length > 0 && renderMenu("overflow")}
+        <div className="formatting-command-group">
+          {layout.history.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
+        </div>
+        <div className="formatting-command-group">
+          {renderMenu("block")}
+        </div>
+        <div className="formatting-command-group">
+          {layout.inline.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
+        </div>
+        <div className="formatting-command-group">
+          {density === "wide"
+            ? layout.list.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
+            : renderMenu("list")}
+        </div>
+        <div className="formatting-command-group formatting-secondary-group">
+          {layout.insert.length > 0 && renderMenu("insert")}
+          {layout.overflow.length > 0 && renderMenu("overflow")}
+        </div>
       </nav>
     </div>
   );

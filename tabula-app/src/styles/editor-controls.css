@@ -14,7 +14,7 @@
 .document-controls {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
   height: var(--document-control-height);
   padding: 0;
   border-radius: var(--document-control-radius);
@@ -25,9 +25,19 @@
   display: inline-flex;
   align-items: center;
   gap: 1px;
-  padding: 0;
+  padding: 3px;
   border-radius: var(--radius-surface);
-  background: transparent;
+  background: var(--surface-muted);
+}
+
+.document-utility-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--document-control-height);
+  padding: 3px;
+  border-radius: var(--radius-surface);
+  background: var(--surface-muted);
 }
 
 .toolbar-separator {
@@ -155,6 +165,7 @@
   align-items: center;
   justify-content: flex-start;
   justify-self: start;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
 }
@@ -171,17 +182,15 @@
 .formatting-toolbar {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
   max-width: 100%;
   height: var(--document-control-height);
   padding: 3px;
-  overflow-x: auto;
+  overflow: hidden;
   border-radius: var(--document-control-radius);
   background: var(--surface-muted);
-  scrollbar-width: none;
 }
 
-.document-toolbar-row .document-controls,
 .document-toolbar-row.with-formatting .formatting-toolbar {
   height: var(--document-control-height);
   padding: 3px;
@@ -189,8 +198,11 @@
   background: var(--surface-muted);
 }
 
-.formatting-toolbar::-webkit-scrollbar {
-  display: none;
+.formatting-command-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
 }
 
 .formatting-button {
@@ -209,6 +221,34 @@
 .formatting-menu-button:has(.formatting-menu-chevron) {
   width: 34px;
   padding-right: 6px;
+}
+
+.formatting-block-menu-button {
+  justify-content: flex-start;
+  width: auto !important;
+  min-width: 104px;
+  padding: 0 22px 0 8px !important;
+}
+
+.formatting-block-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-regular);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.formatting-row[data-density="compact"] .formatting-block-menu-button {
+  justify-content: center;
+  width: var(--document-control-inner) !important;
+  min-width: var(--document-control-inner);
+  padding: 0 6px 0 0 !important;
+}
+
+.formatting-row[data-density="compact"] .formatting-block-label {
+  display: none;
 }
 
 .formatting-menu-chevron {
@@ -329,7 +369,7 @@
 
   .formatting-toolbar {
     width: 100%;
-    overflow-x: auto;
+    overflow: hidden;
   }
 
   .document-controls .tool-button,
@@ -342,7 +382,23 @@
     width: var(--control-size-touch);
   }
 
+  .formatting-block-menu-button,
+  .formatting-row[data-density="compact"] .formatting-block-menu-button {
+    width: var(--control-size-touch) !important;
+    min-width: var(--control-size-touch);
+    padding: 0 8px 0 0 !important;
+  }
+
+  .formatting-block-label {
+    display: none;
+  }
+
   .document-view-mode-control {
+    padding: 0;
+  }
+
+  .document-utility-controls {
+    height: var(--control-size-touch);
     padding: 0;
   }
 

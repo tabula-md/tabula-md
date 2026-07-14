@@ -1794,8 +1794,36 @@ const createMarkdownPreviewComponents = (
   ...PREVIEW_DOCS_COMPONENTS,
   a: ({ node: _node, href, ...props }) => {
     const isExternal = typeof href === "string" && externalLinkPattern.test(href);
+    const isDocumentSection = typeof href === "string" && href.startsWith("#") && href.length > 1;
 
-    return <a href={href} target={isExternal ? "_blank" : undefined} rel={isExternal ? "noreferrer" : undefined} {...props} />;
+    const handleDocumentSectionClick = isDocumentSection
+      ? (event: MouseEvent<HTMLAnchorElement>) => {
+          event.preventDefault();
+          const previewSurface = event.currentTarget.closest(".preview-surface");
+          const encodedSectionId = href.slice(1);
+          let sectionId = encodedSectionId;
+          try {
+            sectionId = decodeURIComponent(encodedSectionId);
+          } catch {
+            // Keep malformed fragments inert instead of letting a click break preview interaction.
+          }
+          const section = Array.from(previewSurface?.querySelectorAll<HTMLElement>("[id]") ?? [])
+            .find((candidate) => candidate.id === sectionId);
+          if (!section) return;
+
+          section.scrollIntoView({ block: "start" });
+        }
+      : undefined;
+
+    return (
+      <a
+        {...props}
+        href={href}
+        target={isExternal ? "_blank" : undefined}
+        rel={isExternal ? "noreferrer" : undefined}
+        onClick={handleDocumentSectionClick}
+      />
+    );
   },
   code: ({ node: _node, className, children, ...props }) => {
     const language = getCodeLanguage(className);
@@ -1848,42 +1876,6 @@ const createMarkdownPreviewComponents = (
   },
   img: ({ node: _node, alt, src, title, ...props }) => (
     <PreviewImage alt={alt} copy={copy} src={src} title={typeof title === "string" ? title : undefined} {...props} />
-  ),
-  h1: ({ node: _node, id, children, ...props }) => (
-    <h1 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h1>
-  ),
-  h2: ({ node: _node, id, children, ...props }) => (
-    <h2 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h2>
-  ),
-  h3: ({ node: _node, id, children, ...props }) => (
-    <h3 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h3>
-  ),
-  h4: ({ node: _node, id, children, ...props }) => (
-    <h4 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h4>
-  ),
-  h5: ({ node: _node, id, children, ...props }) => (
-    <h5 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h5>
-  ),
-  h6: ({ node: _node, id, children, ...props }) => (
-    <h6 id={id} {...props}>
-      {id && <a className="preview-heading-anchor" href={`#${id}`} aria-label={copy.linkToSection}>#</a>}
-      {children}
-    </h6>
   ),
   pre: ({ node: _node, children, ...props }) => (
     <PreviewCodeBlock copy={copy} searchActive={searchActive} {...props}>{children}</PreviewCodeBlock>

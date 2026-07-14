@@ -30,6 +30,12 @@ export async function run(ctx) {
   };
 
   const applyFormattingMenuCommand = async (page, menuName, commandName) => {
+    const directCommand = page.getByRole("button", { name: commandName, exact: true });
+    if (await directCommand.count()) {
+      await directCommand.click();
+      return;
+    }
+
     await page.getByRole("button", { name: menuName, exact: true }).click();
     await page.getByRole("menuitemcheckbox", { name: commandName, exact: true }).click();
   };
@@ -434,8 +440,8 @@ export async function run(ctx) {
       "Code block formatting should select the language placeholder first.",
     );
     expect(
-      codeBlockFormatting.primaryFormattingCommandCount === 7,
-      "Formatting toolbar should keep frequent inline commands and grouped command menus visible.",
+      codeBlockFormatting.primaryFormattingCommandCount === 9,
+      "Wide formatting lanes should expose block, inline, list, and insert controls without hiding frequent commands.",
     );
     expect(codeBlockFormatting.hasOverflowTrigger, "Formatting toolbar should expose overflow commands through the registry trigger.");
 
@@ -1450,15 +1456,19 @@ export async function run(ctx) {
               readRect(".workspace.edit .editor-surface");
         const rail = readRect(".document-toolbar-row");
         const documentControls = readRect(".document-controls");
+        const viewModeControl = readRect(".document-view-mode-control");
+        const utilityControls = readRect(".document-utility-controls");
         const formattingToolbar = readRect(".formatting-toolbar");
         const status = readRect(".file-status-bar");
-        if (!body || !rail || !documentControls || !status) {
+        if (!body || !rail || !documentControls || !viewModeControl || !utilityControls || !status) {
           return null;
         }
         return {
           body,
           rail,
           documentControls,
+          viewModeControl,
+          utilityControls,
           formattingToolbar,
           status,
         };
@@ -1502,17 +1512,25 @@ export async function run(ctx) {
       "The visible document controls surface should keep the same 34px background height in every document mode.",
     );
     expect(
-      splitAlignment.documentControls.background === previewAlignment.documentControls.background &&
-        previewAlignment.documentControls.background === writeAlignment.documentControls.background &&
-        writeAlignment.documentControls.background !== "rgba(0, 0, 0, 0)",
-      "Document controls should use the same quiet surface in every mode.",
+      splitAlignment.documentControls.background === "rgba(0, 0, 0, 0)" &&
+        previewAlignment.documentControls.background === "rgba(0, 0, 0, 0)" &&
+        writeAlignment.documentControls.background === "rgba(0, 0, 0, 0)",
+      "The document-controls wrapper should remain transparent between command groups.",
+    );
+    expect(
+      [splitAlignment, previewAlignment, writeAlignment].every(
+        (alignment) =>
+          alignment.viewModeControl.background !== "rgba(0, 0, 0, 0)" &&
+          alignment.utilityControls.background === alignment.viewModeControl.background,
+      ),
+      "View modes and document utilities should use matching but distinct quiet surfaces.",
     );
     expect(
       splitAlignment.formattingToolbar?.height === 34 &&
         writeAlignment.formattingToolbar?.height === 34 &&
-        splitAlignment.formattingToolbar?.background === splitAlignment.documentControls.background &&
-        writeAlignment.formattingToolbar?.background === writeAlignment.documentControls.background,
-      "Formatting and document controls should use matching borderless surfaces.",
+        splitAlignment.formattingToolbar?.background === splitAlignment.viewModeControl.background &&
+        writeAlignment.formattingToolbar?.background === writeAlignment.viewModeControl.background,
+      "Formatting and document command groups should use matching borderless surfaces.",
     );
     expect(
       [splitAlignment, previewAlignment, writeAlignment].every(
@@ -1577,7 +1595,7 @@ export async function run(ctx) {
       expect(mobileToolbar.toolbarVisible, "Formatting toolbar should remain visible on mobile edit screens.");
       expect(mobileToolbar.primaryCommandCount === 2, "Mobile formatting toolbar should keep only core inline commands visible.");
       expect(mobileToolbar.moreButtonVisible, "Mobile formatting toolbar should keep More formatting visible.");
-      expect(mobileToolbar.toolbarOverflowX === "auto", "Mobile formatting toolbar should keep all commands reachable by horizontal overflow.");
+      expect(mobileToolbar.toolbarOverflowX === "hidden", "Mobile formatting should use deterministic overflow instead of horizontal scrolling.");
       expect(mobileToolbar.rowLeft >= 16, "Mobile formatting toolbar should keep page-edge padding.");
       expect(
         mobileToolbar.rowRight <= mobileToolbar.viewportWidth - 16,
@@ -1983,7 +2001,8 @@ flowchart LR
       );
     };
 
-    expect((await page.locator("h1[id] .preview-heading-anchor").count()) >= 1, "Preview should add heading anchors.");
+    expect((await page.locator(".preview-surface h1[id]").count()) >= 1, "Preview headings should keep internal section ids.");
+    expect((await page.locator(".preview-heading-anchor").count()) === 0, "Preview headings should not expose permalink controls.");
     expect((await page.locator(".markdown-alert.markdown-alert-note").count()) === 1, "Preview should render GitHub-style alert blocks.");
     expect((await page.locator(".markdown-alert-title").filter({ hasText: "NOTE" }).count()) === 1, "Preview alert should include a title.");
     expect((await page.locator("dl dt").filter({ hasText: "Term" }).count()) === 1, "Preview should render definition list terms.");
@@ -2032,6 +2051,23 @@ flowchart LR
   });
 
   await withPage(browser, "/", async (page) => {
+    await createDocument(page);
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText("# Start here\n\n[Jump to start](#start-here)\n\n[Missing section](#missing-section)");
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await waitForEditorReady(page, { mode: "preview" });
+    const urlBeforeSectionJump = page.url();
+    await page.getByRole("link", { name: "Jump to start", exact: true }).click();
+    await waitForRenderFrame(page);
+    expect(page.url() === urlBeforeSectionJump, "In-document section links should not mutate the Tabula.md URL fragment.");
+    expect((await page.locator("#start-here").count()) === 1, "In-document section links should keep their heading target.");
+    await page.getByRole("link", { name: "Missing section", exact: true }).click();
+    await waitForRenderFrame(page);
+    expect(page.url() === urlBeforeSectionJump, "Missing in-document section links should leave the workspace URL unchanged.");
+  });
+
+  await withPage(browser, "/", async (page) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
@@ -2042,7 +2078,6 @@ flowchart LR
     const mobilePreview = await page.evaluate(() => {
       const surface = document.querySelector(".workspace.preview .preview-surface");
       const content = document.querySelector(".workspace.preview .preview-document-content");
-      const anchor = document.querySelector(".preview-heading-anchor");
       const task = document.querySelector("button.preview-task-checkbox");
       const surfaceRect = surface?.getBoundingClientRect();
       const contentRect = content?.getBoundingClientRect();
@@ -2050,7 +2085,7 @@ flowchart LR
       return {
         surfaceWidth: Math.round(surfaceRect?.width ?? 0),
         contentWidth: Math.round(contentRect?.width ?? 0),
-        anchorOpacity: anchor ? window.getComputedStyle(anchor).opacity : "",
+        headingPermalinkCount: document.querySelectorAll(".preview-heading-anchor").length,
         taskWidth: Math.round(taskRect?.width ?? 0),
         taskHeight: Math.round(taskRect?.height ?? 0),
       };
@@ -2059,7 +2094,7 @@ flowchart LR
       mobilePreview.surfaceWidth >= 350 && mobilePreview.contentWidth >= mobilePreview.surfaceWidth - 8,
       "Mobile Preview should use the document width without desktop annotation rails.",
     );
-    expect(mobilePreview.anchorOpacity === "0", "Mobile heading permalinks should stay hidden until focus.");
+    expect(mobilePreview.headingPermalinkCount === 0, "Mobile headings should not reserve space for permalinks.");
     expect(
       mobilePreview.taskWidth >= 44 && mobilePreview.taskHeight >= 44,
       "Mobile preview task controls should expose a 44px touch target.",

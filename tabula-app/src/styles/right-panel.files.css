@@ -289,6 +289,11 @@
   line-height: var(--control-size-row);
 }
 
+.right-file-rename-input:focus,
+.right-file-rename-input:focus-visible {
+  outline: 0;
+}
+
 .right-file-rename-input::selection {
   background: var(--surface-hover);
 }

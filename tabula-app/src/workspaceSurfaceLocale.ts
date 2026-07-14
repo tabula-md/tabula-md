@@ -28,7 +28,6 @@ export type WorkspaceSurfaceCopy = {
   copyCode: string;
   markTaskIncomplete: string;
   markTaskComplete: string;
-  linkToSection: string;
   frontmatter: string;
   preview: string;
   nothingToPreview: string;
@@ -89,7 +88,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "Copy code",
     markTaskIncomplete: "Mark task incomplete",
     markTaskComplete: "Mark task complete",
-    linkToSection: "Link to section",
     frontmatter: "Frontmatter",
     preview: "Preview",
     nothingToPreview: "Nothing to preview",
@@ -148,7 +146,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "코드 복사",
     markTaskIncomplete: "작업을 미완료로 표시",
     markTaskComplete: "작업을 완료로 표시",
-    linkToSection: "섹션 링크",
     frontmatter: "프론트매터",
     preview: "미리보기",
     nothingToPreview: "미리 볼 내용이 없습니다",
@@ -207,7 +204,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "コードをコピー",
     markTaskIncomplete: "タスクを未完了にする",
     markTaskComplete: "タスクを完了にする",
-    linkToSection: "セクションへのリンク",
     frontmatter: "フロントマター",
     preview: "プレビュー",
     nothingToPreview: "プレビューする内容がありません",
@@ -266,7 +262,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "复制代码",
     markTaskIncomplete: "标记任务为未完成",
     markTaskComplete: "标记任务为完成",
-    linkToSection: "链接到分区",
     frontmatter: "前置元数据",
     preview: "预览",
     nothingToPreview: "没有可预览的内容",
@@ -325,7 +320,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "Copiar código",
     markTaskIncomplete: "Marcar tarea como incompleta",
     markTaskComplete: "Marcar tarea como completa",
-    linkToSection: "Enlace a la sección",
     frontmatter: "Metadatos iniciales",
     preview: "Vista previa",
     nothingToPreview: "Nada que previsualizar",
@@ -384,7 +378,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "Copier le code",
     markTaskIncomplete: "Marquer la tâche comme incomplète",
     markTaskComplete: "Marquer la tâche comme terminée",
-    linkToSection: "Lien vers la section",
     frontmatter: "Métadonnées initiales",
     preview: "Aperçu",
     nothingToPreview: "Rien à prévisualiser",
@@ -443,7 +436,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     copyCode: "Code kopieren",
     markTaskIncomplete: "Aufgabe als unerledigt markieren",
     markTaskComplete: "Aufgabe als erledigt markieren",
-    linkToSection: "Link zum Abschnitt",
     frontmatter: "Frontmatter",
     preview: "Vorschau",
     nothingToPreview: "Nichts für die Vorschau",

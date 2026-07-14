@@ -281,28 +281,6 @@
   font-weight: 680;
 }
 
-.preview-heading-anchor {
-  position: absolute;
-  top: 0.08em;
-  left: -20px;
-  width: 18px;
-  color: var(--text-muted);
-  opacity: 0;
-  text-align: center;
-  text-decoration: none;
-  transition: opacity var(--motion-hover) ease;
-}
-
-.preview-surface h1:hover .preview-heading-anchor,
-.preview-surface h2:hover .preview-heading-anchor,
-.preview-surface h3:hover .preview-heading-anchor,
-.preview-surface h4:hover .preview-heading-anchor,
-.preview-surface h5:hover .preview-heading-anchor,
-.preview-surface h6:hover .preview-heading-anchor,
-.preview-heading-anchor:focus-visible {
-  opacity: 1;
-}
-
 .preview-surface p,
 .preview-surface li {
   color: var(--text-primary);

@@ -43,6 +43,8 @@ export type FormattingToolbarCommandPlacement =
   | "insert"
   | "overflow";
 
+export type FormattingToolbarDensity = "wide" | "medium" | "compact";
+
 export type FormattingToolbarCommandState = {
   canRedo: boolean;
   canUndo: boolean;
@@ -234,22 +236,29 @@ export const getFormattingToolbarCommandsByPlacement = (
 
 const compactInlineCommandIds = new Set(["bold", "italic"]);
 
-export const getFormattingToolbarLayout = (compact: boolean) => {
+export const getFormattingToolbarLayout = (density: FormattingToolbarDensity) => {
+  const historyCommands = getFormattingToolbarCommandsByPlacement("history");
   const inlineCommands = getFormattingToolbarCommandsByPlacement("inline");
   const insertCommands = getFormattingToolbarCommandsByPlacement("insert");
   const overflowCommands = getFormattingToolbarCommandsByPlacement("overflow");
+  const compact = density === "compact";
+  const wide = density === "wide";
+  const hiddenHistoryCommands = compact ? historyCommands.filter((command) => command.id === "redo") : [];
+  const hiddenInlineCommands = compact
+    ? inlineCommands.filter((command) => !compactInlineCommandIds.has(command.id))
+    : [];
+
   return {
-    history: getFormattingToolbarCommandsByPlacement("history"),
+    history: compact
+      ? historyCommands.filter((command) => command.id === "undo")
+      : historyCommands,
     inline: compact
       ? inlineCommands.filter((command) => compactInlineCommandIds.has(command.id))
       : inlineCommands,
     block: getFormattingToolbarCommandsByPlacement("block"),
     list: getFormattingToolbarCommandsByPlacement("list"),
-    insert: compact ? [] : insertCommands,
-    overflow: compact
-      ? inlineCommands
-          .filter((command) => !compactInlineCommandIds.has(command.id))
-          .concat(insertCommands, overflowCommands)
-      : overflowCommands,
+    insert: wide ? insertCommands : [],
+    overflow: hiddenHistoryCommands
+      .concat(hiddenInlineCommands, wide ? [] : insertCommands, overflowCommands),
   };
 };
