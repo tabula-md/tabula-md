@@ -144,8 +144,8 @@ export async function run(ctx) {
       rows.map((row) => row.getAttribute("title")),
     );
     expect(
-      remainingFiles.length === 1 && remainingFiles[0] === "README.md",
-      "Clearing should restore only the hidden product README.",
+      remainingFiles.length === 0,
+      "Clearing should leave the workspace genuinely empty.",
     );
   });
 
@@ -379,6 +379,18 @@ export async function run(ctx) {
     expect((await page.getByRole("button", { name: /File \.md/ }).count()) === 0, "Share modal should not expose a current-file download.");
     expect((await page.getByRole("button", { name: /Copy File/ }).count()) === 0, "Share modal should not copy files from Export.");
     expect((await page.getByRole("button", { name: /Export to file/ }).count()) === 1, "Share modal should export the workspace archive as a file.");
+    const exportOptions = await page.locator(".share-export-option").evaluateAll((options) =>
+      options.map((option) => option.textContent?.replace(/\s+/g, " ").trim() ?? ""),
+    );
+    expect(exportOptions.length === 2, "Link and file exports should have separate semantic rows.");
+    expect(
+      exportOptions[0]?.includes("Export to link") && exportOptions[0]?.includes("encrypted point-in-time copy"),
+      "The link export row should own its encrypted-copy description.",
+    );
+    expect(
+      exportOptions[1]?.includes("Export to file") && exportOptions[1]?.includes("folder structure"),
+      "The file export row should own its local ZIP description.",
+    );
     expect((await page.getByText("Publish project").count()) === 0, "Publish actions should not be available by default.");
     expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish actions should not be on the default Share panel.");
 

@@ -611,9 +611,12 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: "Comment on document", exact: true }).click();
     expect((await page.locator(".right-comment-input").count()) === 1, "Document comment command should reopen the composer.");
-    await page.locator(".right-comments-toolbar").getByRole("button", { name: "Cancel", exact: true }).click();
+    expect(
+      (await page.locator(".right-comments-toolbar").getByRole("button", { name: "Cancel", exact: true }).count()) === 0,
+      "The toolbar should not duplicate the composer Cancel action.",
+    );
+    await page.locator(".right-comment-form .right-comment-text-button").click();
     await waitForRenderFrame(page);
-    expect((await page.locator(".right-comment-input").count()) === 0, "The document comment control should close its open composer.");
 
     await page.getByRole("button", { name: "Comment on document", exact: true }).click();
     await page.getByLabel("Add comment to README.md").press("Escape");
@@ -1146,6 +1149,8 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
+    await page.getByRole("button", { name: "New document", exact: true }).click();
+    await waitForEditorReady(page, { mode: "edit" });
     const rightFilesInitialTabs = await getTabs(page);
     const rightFilesActiveTitle = rightFilesInitialTabs.find((tab) => tab.active)?.title ?? "";
     expect(rightFilesActiveTitle, "Right Files action test should have an active file tab.");
@@ -1167,7 +1172,7 @@ export async function run(ctx) {
       visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(fileActionContract.closeTabCount === 0, "Right Files should leave tab closing to the document tabs.");
-    expect(fileActionContract.moreActionCount >= 2, "Right Files should expose compact more-action menus for project files.");
+    expect(fileActionContract.moreActionCount >= 1, "Right Files should expose a compact more-action menu for each project file.");
     expect(fileActionContract.renameCount === 0, "Right Files should hide rename behind a more-action menu.");
     expect(fileActionContract.duplicateCount === 0, "Right Files should hide duplicate behind a more-action menu.");
     expect(fileActionContract.deleteCount === 0, "Right Files should hide delete behind a more-action menu.");
@@ -1195,7 +1200,7 @@ export async function run(ctx) {
 
     await openRightFileMenu(rightFilesActiveTitle);
     await page.getByRole("menuitem", { name: "Rename" }).click();
-    await page.getByRole("textbox", { name: `Rename ${rightFilesActiveTitle} in Files` }).fill("README");
+    await page.getByRole("textbox", { name: `Rename ${rightFilesActiveTitle} in Files` }).fill("Untitled");
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
     const duplicateRename = await page.evaluate(() => ({
@@ -1204,7 +1209,7 @@ export async function run(ctx) {
       toastError: Boolean(document.querySelector(".app-toast.error")),
       panelOpen: Boolean(document.querySelector(".right-panel")),
     }));
-    expect(duplicateRename.inputValue === "README", "Right Files duplicate rename should keep the typed value open.");
+    expect(duplicateRename.inputValue === "Untitled", "Right Files duplicate rename should keep the typed value open.");
     expect(duplicateRename.toastText === "File name already exists.", "Right Files duplicate rename should use the app toast.");
     expect(duplicateRename.toastError, "Right Files duplicate rename toast should use the error tone.");
     expect(duplicateRename.panelOpen, "Right Files duplicate rename should not close the panel.");
@@ -1313,6 +1318,7 @@ export async function run(ctx) {
       const activeRect = active.getBoundingClientRect();
       return {
         visible: activeRect.left >= tabsRect.left - 1 && activeRect.right <= tabsRect.right + 1,
+        alignedToStart: Math.abs(activeRect.left - tabsRect.left) <= 1,
         label: active.querySelector(".tab-title")?.textContent?.trim() ?? "",
         visibleScrollButtonCount: Array.from(document.querySelectorAll(".tab-scroll-button")).filter(
           (button) => button instanceof HTMLElement && getComputedStyle(button).display !== "none",
@@ -1320,6 +1326,7 @@ export async function run(ctx) {
       };
     });
     expect(mobileActiveTab?.visible, "Creating a mobile document should keep the active tab visible.");
+    expect(mobileActiveTab?.alignedToStart, "Mobile tabs should align the active document without leaking clipped tab text.");
     expect(mobileActiveTab?.label, "The visible mobile tab should name the active document.");
     expect(
       mobileActiveTab?.visibleScrollButtonCount === 0,

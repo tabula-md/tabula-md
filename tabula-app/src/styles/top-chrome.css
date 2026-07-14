@@ -437,6 +437,26 @@
   gap: 10px;
 }
 
+.share-export-options,
+.share-export-option {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+}
+
+.share-export-options {
+  gap: 16px;
+}
+
+.share-export-option {
+  justify-items: start;
+  gap: 6px;
+}
+
+.share-export-option .share-copy-box {
+  width: 100%;
+}
+
 .share-modal-primary,
 .share-modal-secondary,
 .share-modal-danger,
