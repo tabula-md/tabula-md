@@ -64,6 +64,7 @@ import {
   VirtualMarkdownPreview,
   type GetVirtualPreviewBlockRehypePlugins,
 } from "../preview/VirtualMarkdownPreview";
+import { resolveMarkdownHref } from "../preview/markdownHref";
 import {
   getWorkspaceSurfaceCopy,
   type WorkspaceSurfaceCopy,
@@ -84,7 +85,6 @@ import type {
 import { BoundedStringCache, replaceAllText } from "../preview/previewRenderCache";
 import { PREVIEW_SANITIZE_SCHEMA } from "../preview/previewSanitizeSchema";
 
-const externalLinkPattern = /^(?:https?:)?\/\//i;
 const EMPTY_MARKDOWN_PREVIEW_METADATA: MarkdownPreviewMetadata[] = [];
 const EMPTY_PREVIEW_COMMENT_ANCHORS: MarkdownPreviewCommentAnchor[] = [];
 const EMPTY_PREVIEW_LINE_ANNOTATIONS: MarkdownPreviewLineAnnotation[] = [];
@@ -1164,7 +1164,7 @@ function PreviewCard({
   title,
   ...sourceProps
 }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
-  const isExternal = typeof href === "string" && externalLinkPattern.test(href);
+  const resolvedHref = typeof href === "string" ? resolveMarkdownHref(href) : null;
   const isHorizontal = normalizeDocsAttribute(horizontal) === true || normalizeDocsAttribute(horizontal) === "true";
   const cardBody = (
     <>
@@ -1190,9 +1190,9 @@ function PreviewCard({
     <a
       {...sourceProps}
       className={className}
-      href={href}
-      target={isExternal ? "_blank" : undefined}
-      rel={isExternal ? "noreferrer" : undefined}
+      href={resolvedHref?.href}
+      target={resolvedHref?.openInNewTab ? "_blank" : undefined}
+      rel={resolvedHref?.openInNewTab ? "noreferrer" : undefined}
     >
       {cardBody}
     </a>
@@ -1793,14 +1793,14 @@ const createMarkdownPreviewComponents = (
 ): Components => ({
   ...PREVIEW_DOCS_COMPONENTS,
   a: ({ node: _node, href, ...props }) => {
-    const isExternal = typeof href === "string" && externalLinkPattern.test(href);
-    const isDocumentSection = typeof href === "string" && href.startsWith("#") && href.length > 1;
+    const resolvedHref = typeof href === "string" ? resolveMarkdownHref(href) : null;
+    const isDocumentSection = resolvedHref?.kind === "fragment";
 
     const handleDocumentSectionClick = isDocumentSection
       ? (event: MouseEvent<HTMLAnchorElement>) => {
           event.preventDefault();
           const previewSurface = event.currentTarget.closest(".preview-surface");
-          const encodedSectionId = href.slice(1);
+          const encodedSectionId = resolvedHref.href.slice(1);
           let sectionId = encodedSectionId;
           try {
             sectionId = decodeURIComponent(encodedSectionId);
@@ -1818,9 +1818,9 @@ const createMarkdownPreviewComponents = (
     return (
       <a
         {...props}
-        href={href}
-        target={isExternal ? "_blank" : undefined}
-        rel={isExternal ? "noreferrer" : undefined}
+        href={resolvedHref?.href}
+        target={resolvedHref?.openInNewTab ? "_blank" : undefined}
+        rel={resolvedHref?.openInNewTab ? "noreferrer" : undefined}
         onClick={handleDocumentSectionClick}
       />
     );
