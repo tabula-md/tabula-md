@@ -27,6 +27,25 @@ export async function run(ctx) {
   };
 
   await withPage(browser, "/", async (page) => {
+    const diagnostics = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") diagnostics.push(`console.error: ${message.text()}`);
+    });
+    page.on("pageerror", (error) => diagnostics.push(`pageerror: ${error.message}`));
+
+    await page.getByRole("button", { name: "New document", exact: true }).click();
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.type("rapid-input ".repeat(50), { delay: 0 });
+    await waitForRenderFrame(page);
+
+    expect(
+      diagnostics.length === 0,
+      `Rapid editor input should not trigger a React update loop.\n${diagnostics.join("\n")}`,
+    );
+  });
+
+  await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
