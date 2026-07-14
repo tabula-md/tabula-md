@@ -39,17 +39,17 @@
 
 .markdown-editor .cm-comment-mark {
   position: relative;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: color-mix(in srgb, var(--comment-mark) 10%, transparent);
   border-radius: 0;
   cursor: pointer;
 }
 
 .markdown-editor .cm-comment-mark:hover {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  background: color-mix(in srgb, var(--comment-mark) 16%, transparent);
 }
 
 .markdown-editor .cm-comment-mark.active {
-  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  background: color-mix(in srgb, var(--comment-mark) 24%, transparent);
 }
 
 .markdown-editor .cm-scroller {

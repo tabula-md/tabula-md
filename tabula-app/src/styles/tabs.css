@@ -232,8 +232,8 @@
 }
 
 .tab-rename-input::selection {
-  color: var(--text-primary);
-  background: var(--surface-hover);
+  color: var(--selection-text);
+  background: var(--selection-background);
 }
 
 .tab-item:hover,
