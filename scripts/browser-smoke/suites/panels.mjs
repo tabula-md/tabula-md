@@ -7,6 +7,7 @@ export async function run(ctx) {
     browser,
     expect,
     getTabs,
+    openMarkdownFile,
     openProjectContext,
     openProjectMenu,
     waitForActiveTab,
@@ -289,13 +290,16 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
     const aboutState = await page.evaluate(() => ({
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
+      dialogOpen: Boolean(document.querySelector(".workspace-info-modal")),
       activeTab: document.querySelector(".tab-item.active")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
-    expect(!aboutState.menuOpen, "About should close the workspace menu after opening README.md.");
+    expect(!aboutState.menuOpen, "About should close the workspace menu after opening the app dialog.");
+    expect(aboutState.dialogOpen, "About should open an app dialog.");
     expect(
-      aboutState.activeTab.includes("README") && !aboutState.activeTab.includes("Untitled"),
-      "About should open the product README from a different active file.",
+      aboutState.activeTab.includes("Untitled"),
+      "About should leave the active user document unchanged.",
     );
+    await page.getByRole("button", { name: "Close", exact: true }).click();
 
     await openProjectMenu(page);
 
@@ -318,6 +322,7 @@ export async function run(ctx) {
       "New files should keep the default reading width.",
     );
     expect(newFileState.lineNumberGutterCount > 0, "New files should keep line numbers visible by default.");
+    await openMarkdownFile(page);
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "README.md" });
 

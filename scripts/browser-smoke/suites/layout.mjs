@@ -7,6 +7,7 @@ export async function run(ctx) {
     browser,
     expect,
     getTabs,
+    openMarkdownFile,
     openProjectContext,
     openProjectMenu,
     waitForActiveTab,
@@ -50,32 +51,10 @@ export async function run(ctx) {
       "Closing the last active tab should activate the previous file.",
     );
 
-    await openProjectMenu(page);
-    await page.getByRole("button", { name: "About", exact: true }).click();
-    await waitForActiveTab(page, { exact: "README.md" });
-    await page.locator(".tab-item.active").hover();
-    await page.locator(".tab-item.active .tab-action-button.close").click();
-    await waitForFileCount(page, initialTabCount + 1);
-    tabs = await getTabs(page);
-    expect(
-      !tabs.some((tab) => tab.title === "README.md"),
-      "README should be closable like a normal file.",
-    );
-    expect(
-      tabs.length === initialTabCount + 1,
-      "Closing README should leave the remaining open files.",
-    );
-    expect(
-      tabs.some((tab) => tab.active && tab.title !== "README.md"),
-      "Closing active README should activate a remaining file.",
-    );
   });
 
   await withPage(browser, "/", async (page) => {
-    await openProjectMenu(page);
-    await page.getByRole("button", { name: "About", exact: true }).click();
-    await waitForActiveTab(page, { exact: "README.md" });
-    await openProjectMenu(page);
+    await openMarkdownFile(page);
     await page
       .locator('input[aria-label="Open Markdown file"]')
       .setInputFiles({
@@ -120,9 +99,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await openProjectMenu(page);
-    await page.getByRole("button", { name: "About", exact: true }).click();
-    await waitForActiveTab(page, { exact: "README.md" });
+    await openMarkdownFile(page);
     await page.waitForSelector(".file-shell");
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
@@ -171,9 +148,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await openProjectMenu(page);
-    await page.getByRole("button", { name: "About", exact: true }).click();
-    await waitForActiveTab(page, { exact: "README.md" });
+    await openMarkdownFile(page);
     await page.waitForSelector(".file-shell");
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
@@ -231,9 +206,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await openProjectMenu(page);
-    await page.getByRole("button", { name: "About", exact: true }).click();
-    await waitForActiveTab(page, { exact: "README.md" });
+    await openMarkdownFile(page);
     const chrome = await page.evaluate(() => {
       const readRect = (selector) => {
         const element = document.querySelector(selector);
@@ -497,9 +470,7 @@ export async function run(ctx) {
     browser,
     "/",
     async (page) => {
-      await openProjectMenu(page);
-      await page.getByRole("button", { name: "About", exact: true }).click();
-      await waitForActiveTab(page, { exact: "README.md" });
+      await openMarkdownFile(page);
       await openProjectContext(page);
       await page.getByRole("button", { name: "Edit", exact: true }).click();
       await waitForEditorReady(page, { mode: "edit" });

@@ -280,6 +280,7 @@ export async function run(ctx) {
     browser,
     expect,
     focusMarkdownEditor,
+    openMarkdownFile,
     openProjectMenu,
     waitForEditorReady,
     waitForRenderFrame,
@@ -321,8 +322,13 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await openProjectMenu(page);
-    await page.getByRole("button", { name: "About", exact: true }).click();
+    await openMarkdownFile(page, {
+      content: Array.from(
+        { length: 48 },
+        (_, index) => `## Section ${index + 1}\n\nBody paragraph ${index + 1} for scroll synchronization.`,
+      ).join("\n\n"),
+    });
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
     await waitForEditorReady(page, { mode: "preview" });
     await page.waitForSelector(".workspace.preview .preview-surface", { timeout: 5_000 });
     await page.evaluate(() => {

@@ -97,7 +97,6 @@ type WorkspaceStoreActions = {
   setActiveFileText: (text: string) => void;
   setActiveFileViewMode: (viewMode: FileViewMode) => void;
   setFileText: (fileId: string, text: string) => void;
-  upsertHelpFile: (helpMarkdown: string) => WorkspaceFile;
 };
 
 export type WorkspaceStore = WorkspaceStoreState & WorkspaceStoreActions;
@@ -300,30 +299,6 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
     return nextFile;
   },
 
-  upsertHelpFile: (helpMarkdown) => {
-    const existingHelpFile = get().files.find((file) => file.title.trim().toLowerCase() === "help.md");
-    if (!existingHelpFile) {
-      return get().addFileFromContent("HELP.md", helpMarkdown, "preview");
-    }
-
-    const nextFile = {
-      ...existingHelpFile,
-      title: "HELP.md",
-      text: helpMarkdown,
-      viewMode: "preview" as const,
-    };
-
-    set((state) => ({
-      ...state,
-      ...createWorkspaceModelState({
-        files: state.files.map((file) => (file.id === existingHelpFile.id ? nextFile : file)),
-        openFileIds: state.openFileIds,
-        activeFileId: existingHelpFile.id,
-      }),
-    }));
-
-    return nextFile;
-  },
 
   duplicateFile: (fileId) => {
     const state = get();

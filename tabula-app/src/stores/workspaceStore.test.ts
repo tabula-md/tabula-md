@@ -289,22 +289,6 @@ title: Product Requirements
     expect(useWorkspaceStore.getState().activeFileId).toBe(notes.id);
   });
 
-  it("upserts HELP.md without creating duplicate help surfaces", () => {
-    initializeWorkspaceStore();
-
-    const helpFile = useWorkspaceStore.getState().upsertHelpFile("# Help");
-    const updatedHelpFile = useWorkspaceStore.getState().upsertHelpFile("# Updated Help");
-
-    expect(updatedHelpFile.id).toBe(helpFile.id);
-    expect(useWorkspaceStore.getState().files.filter((file) => file.title === "HELP.md")).toHaveLength(1);
-    expect(useWorkspaceStore.getState().files.find((file) => file.id === helpFile.id)).toMatchObject({
-      title: "HELP.md",
-      text: "# Updated Help",
-      viewMode: "preview",
-    });
-    expect(useWorkspaceStore.getState().activeFileId).toBe(helpFile.id);
-  });
-
   it("keeps the workspace store free of room session state", () => {
     const { draft } = initializeWorkspaceStore();
 
