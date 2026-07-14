@@ -68,6 +68,7 @@ import { useCollaborationPresenceRuntime } from "./useCollaborationPresenceRunti
 import { useWorkspaceCommentActions } from "./useWorkspaceCommentActions";
 import { useWorkspaceDocumentRuntime } from "./useWorkspaceDocumentRuntime";
 import { useWorkspaceFileActions } from "./useWorkspaceFileActions";
+import { useWorkspaceFolderActions } from "./useWorkspaceFolderActions";
 import { useWorkspaceFiles } from "./useWorkspaceFiles";
 import { useWorkspaceIdentity } from "./useWorkspaceIdentity";
 import { useWorkspaceIoRuntime } from "./useWorkspaceIoRuntime";
@@ -1061,18 +1062,36 @@ export function useWorkspaceRuntime() {
     showToast,
     copy: workspaceActionCopy,
   });
-  const addWorkspaceFolder = useEventCallback((parentId?: string) => {
-    const folder = addWorkspaceFolderAction("New folder", parentId);
-    if (!folder) {
-      showToast(workspaceActionCopy.folderDepth, "error");
-      return;
-    }
-    if (!publishRoomFolder(folder)) {
-      deleteWorkspaceFolderAction(folder.id);
-      showToast(workspaceActionCopy.folderAddFailed, "error");
-      return;
-    }
-    return folder;
+  const {
+    addWorkspaceFolder,
+    deleteWorkspaceFolder,
+    moveWorkspaceFile,
+    moveWorkspaceFolder,
+    renameWorkspaceFolder,
+  } = useWorkspaceFolderActions({
+    activeRoom: Boolean(activeRoom),
+    copy: workspaceActionCopy,
+    files,
+    folders,
+    historyByFileId,
+    addFolder: addWorkspaceFolderAction,
+    deleteFolder: deleteWorkspaceFolderAction,
+    deleteCommentsForFiles,
+    deleteRoomNode,
+    materializeRoomWorkspace,
+    moveFile: moveFileToFolder,
+    moveFolder,
+    moveRoomNode,
+    publishRoomFolder,
+    readFolder: (folderId) => getWorkspaceStoreFolder(folderId, workspaceSession.mode),
+    renameFolder,
+    renameRoomNode,
+    restoreCommentsForFiles,
+    restoreFolder: restoreWorkspaceFolderAction,
+    restoreRoomFolderBundle,
+    setHistoryByFileId,
+    showToast,
+    upsertRoomComment,
   });
   const {
     activeCommentAnchors,
@@ -1180,80 +1199,7 @@ export function useWorkspaceRuntime() {
       onCommentDraftChange: setCommentDraft,
       onDeleteComment: deleteFileCommentWithUndo,
       onDeleteFile: deleteFile,
-      onDeleteFolder: (folderId) => {
-        const roomSnapshot = activeRoom ? materializeRoomWorkspace() : undefined;
-        if (activeRoom && !roomSnapshot) {
-          showToast(workspaceActionCopy.folderDeleteNotReady, "error");
-          return;
-        }
-        if (activeRoom && !deleteRoomNode(folderId)) {
-          showToast(workspaceActionCopy.folderDeleteFailed, "error");
-          return;
-        }
-        const deletedBundle = deleteWorkspaceFolderAction(folderId);
-        if (!deletedBundle) return;
-        const restorableBundle = roomSnapshot
-          ? {
-              ...deletedBundle,
-              files: deletedBundle.files.map(({ item, ...entry }) => ({
-                ...entry,
-                item: { ...item, text: roomSnapshot.documents[item.id] ?? "" },
-              })),
-            }
-          : deletedBundle;
-        const deletedFileIds = new Set(restorableBundle.files.map(({ item }) => item.id));
-        const locallyDeletedComments = deleteCommentsForFiles(deletedFileIds);
-        const deletedComments = roomSnapshot
-          ? Object.fromEntries(
-              Object.entries(projectWorkspaceRoomComments(roomSnapshot.commentsByFileId))
-                .filter(([fileId]) => deletedFileIds.has(fileId)),
-            )
-          : locallyDeletedComments;
-        const deletedHistory = Object.fromEntries(
-          Object.entries(historyByFileId).filter(([fileId]) => deletedFileIds.has(fileId)),
-        );
-        setHistoryByFileId((currentHistory) =>
-          Object.fromEntries(
-            Object.entries(currentHistory).filter(([fileId]) => !deletedFileIds.has(fileId)),
-          ),
-        );
-        showToast(workspaceActionCopy.folderDeleted, "neutral", {
-          actionLabel: workspaceActionCopy.undo,
-          onAction: () => {
-            restoreWorkspaceFolderAction(activeRoom
-              ? {
-                  ...restorableBundle,
-                  files: restorableBundle.files.map((entry) => ({
-                    ...entry,
-                    item: { ...entry.item, text: "" },
-                  })),
-                }
-              : restorableBundle);
-            if (!restoreRoomFolderBundle(restorableBundle)) {
-              deleteRoomNode(folderId);
-              deleteWorkspaceFolderAction(folderId);
-              showToast(workspaceActionCopy.folderRestoreFailed, "error");
-              return;
-            }
-            restoreCommentsForFiles(deletedComments);
-            for (const [fileId, comments] of Object.entries(deletedComments)) {
-              for (const comment of comments) {
-                upsertRoomComment({
-                  ...comment,
-                  fileId,
-                  resolved: comment.resolved ?? false,
-                  replies: comment.replies ?? [],
-                });
-              }
-            }
-            setHistoryByFileId((currentHistory) => ({
-              ...currentHistory,
-              ...deletedHistory,
-            }));
-            showToast(workspaceActionCopy.folderRestored);
-          },
-        });
-      },
+      onDeleteFolder: deleteWorkspaceFolder,
       onDuplicateFile: duplicateFile,
       onCopyFile: copyFile,
       onGoToComment: goToFileComment,
@@ -1263,37 +1209,9 @@ export function useWorkspaceRuntime() {
       onNewFile: addFile,
       onNewFolder: addWorkspaceFolder,
       onRenameFile: renameWorkspaceFileAction,
-      onRenameFolder: (folderId, title) => {
-        const folder = folders.find((candidate) => candidate.id === folderId);
-        if (!folder || !renameFolder(folderId, title)) return false;
-        const currentFolder = getWorkspaceStoreFolder(folderId, workspaceSession.mode);
-        if (activeRoom && currentFolder && !renameRoomNode(folderId, currentFolder.title)) {
-          renameFolder(folderId, folder.title);
-          return false;
-        }
-        return true;
-      },
-      onMoveFileToFolder: (fileId, folderId) => {
-        const file = files.find((candidate) => candidate.id === fileId);
-        const previousParentId = file?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
-        if (!moveFileToFolder(fileId, folderId)) return;
-        if (activeRoom && !moveRoomNode(fileId, folderId)) {
-          moveFileToFolder(fileId, previousParentId);
-          showToast(workspaceActionCopy.documentMoveFailed, "error");
-        }
-      },
-      onMoveFolder: (folderId, parentId) => {
-        const folder = folders.find((candidate) => candidate.id === folderId);
-        const previousParentId = folder?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
-        if (!moveFolder(folderId, parentId)) {
-          showToast(workspaceActionCopy.folderMoveInvalid, "error");
-          return;
-        }
-        if (activeRoom && !moveRoomNode(folderId, parentId)) {
-          moveFolder(folderId, previousParentId);
-          showToast(workspaceActionCopy.folderMoveFailed, "error");
-        }
-      },
+      onRenameFolder: renameWorkspaceFolder,
+      onMoveFileToFolder: moveWorkspaceFile,
+      onMoveFolder: moveWorkspaceFolder,
       onReplyDraftChange: updateCommentReplyDraft,
       onRequestTextSelection: () => setRightPanelOpen(false),
       onSelectFile: selectFile,
