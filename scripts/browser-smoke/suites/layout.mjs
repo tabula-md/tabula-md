@@ -8,7 +8,7 @@ export async function run(ctx) {
     expect,
     getTabs,
     openMarkdownFile,
-    openProjectContext,
+    ensureSidePanelOpen,
     openProjectMenu,
     waitForActiveTab,
     waitForEditorReady,
@@ -380,7 +380,7 @@ export async function run(ctx) {
     const closedLayout = await page.evaluate(readStableDocumentLayout);
     await openProjectMenu(page);
     const menuLayout = await page.evaluate(readStableDocumentLayout);
-    await openProjectContext(page);
+    await ensureSidePanelOpen(page);
     const rightPanelLayout = await page.evaluate(readStableDocumentLayout);
 
     expect(
@@ -470,8 +470,12 @@ export async function run(ctx) {
     browser,
     "/",
     async (page) => {
-      await openMarkdownFile(page);
-      await openProjectContext(page);
+      await openMarkdownFile(page, {
+        name: "split-frontmatter.md",
+        content:
+          "---\ntitle: Split layout\ndescription: Frontmatter should remain readable beside the editor.\n---\n\n## Start here\n\nSplit layout smoke content.",
+      });
+      await ensureSidePanelOpen(page);
       await page.getByRole("button", { name: "Edit", exact: true }).click();
       await waitForEditorReady(page, { mode: "edit" });
       await page.getByRole("button", { name: "Split", exact: true }).click();
@@ -551,7 +555,7 @@ export async function run(ctx) {
       );
       expect(
         splitLayout.frontmatterRow && splitLayout.frontmatterRow.height <= 28,
-        "Split frontmatter should not wrap into tall one-character columns.",
+        `Split frontmatter should not wrap into tall one-character columns (measured ${splitLayout.frontmatterRow?.height ?? "missing"}px).`,
       );
     },
     { viewport: { width: 1100, height: 800 } },

@@ -6,7 +6,7 @@ export async function run(ctx) {
     browser,
     expect,
     focusMarkdownEditor,
-    closeProjectContext,
+    ensureSidePanelClosed,
     waitForEditorReady,
     waitForRenderFrame,
     waitForSelectionLayer,
@@ -281,7 +281,7 @@ export async function run(ctx) {
         `Actual: ${JSON.stringify(commentAfterOffsetShift.cursorPosition)}`,
     );
 
-    await closeProjectContext(page);
+    await ensureSidePanelClosed(page);
     expect((await page.locator(".right-panel").count()) === 0, "The right panel should close before comment-mark click smoke.");
     const commentMarkPoint = await page.evaluate(() => {
       const mark = document.querySelector(".cm-comment-mark");
@@ -324,7 +324,7 @@ export async function run(ctx) {
     expect(previewCommentMarkState.activeMarkCount === 1, "Preview should reflect the active comment mark.");
     expect(previewCommentMarkState.markText === "target", "Preview comment mark should wrap the rendered quote text.");
 
-    await closeProjectContext(page);
+    await ensureSidePanelClosed(page);
     expect((await page.locator(".right-panel").count()) === 0, "The right panel should close before preview comment-mark click smoke.");
     await page.locator(".preview-comment-mark").click();
     await waitForRenderFrame(page);

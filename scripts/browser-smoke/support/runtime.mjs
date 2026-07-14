@@ -304,9 +304,9 @@ const openProjectMenu = async (page) => {
   }
 };
 
-const openProjectContext = async (page) => {
+const ensureSidePanelOpen = async (page) => {
   if ((await page.locator(".right-panel").count()) === 0) {
-    await page.getByRole("button", { name: "Open Project Context", exact: true }).click();
+    await page.getByRole("button", { name: "Toggle side panel", exact: true }).click();
     await waitForProjectContextState(page, true);
   }
 };
@@ -323,9 +323,9 @@ const openMarkdownFile = async (
   await waitForActiveTab(page, { exact: name });
 };
 
-const closeProjectContext = async (page) => {
+const ensureSidePanelClosed = async (page) => {
   if ((await page.locator(".right-panel").count()) > 0) {
-    await page.getByRole("button", { name: "Close Project Context", exact: true }).click();
+    await page.getByRole("button", { name: "Toggle side panel", exact: true }).click();
     await waitForProjectContextState(page, false);
   }
 };
@@ -371,8 +371,8 @@ const createSmokeContext = (browser, controls = {}) => ({
   getTabs,
   getViewModeActionLabels,
   getViewModeSlots,
-  openProjectContext,
-  closeProjectContext,
+  ensureSidePanelOpen,
+  ensureSidePanelClosed,
   openMarkdownFile,
   openProjectMenu,
   publishDataDir,

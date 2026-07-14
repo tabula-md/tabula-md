@@ -6,7 +6,7 @@ export async function run(ctx) {
     browser,
     expect,
     openMarkdownFile,
-    openProjectContext,
+    ensureSidePanelOpen,
     openProjectMenu,
     waitForEditorReady,
     withPage,
@@ -95,7 +95,7 @@ export async function run(ctx) {
     );
 
     await page.setViewportSize({ width: 1050, height: 800 });
-    await openProjectContext(page);
+    await ensureSidePanelOpen(page);
     const splitWithProjectContext = await page.evaluate(() => {
       const readRect = (selector) => {
         const element = document.querySelector(selector);
