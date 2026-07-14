@@ -207,7 +207,6 @@ export const usePreviewFollowController = ({
     if (!scrollSurface) {
       return false;
     }
-
     const sourceScrollMap = sourceScrollMapRef.current;
     if (sourceScrollMap) {
       pendingFollowAfterMapReadyRef.current = false;
@@ -220,7 +219,18 @@ export const usePreviewFollowController = ({
           viewportHeight: scrollSurface.clientHeight || PREVIEW_VIEWPORT_FALLBACK_HEIGHT,
         },
       );
-      applyPreviewScrollTop(scrollSurface, target.scrollTop);
+      const maximumScrollTop = Math.max(
+        0,
+        scrollSurface.scrollHeight - scrollSurface.clientHeight,
+      );
+      const remainsClampedAtEnd =
+        !sourcePosition.atDocumentEnd &&
+        maximumScrollTop > 0 &&
+        target.scrollTop >= maximumScrollTop - 1;
+      const nextScrollTop = remainsClampedAtEnd
+        ? maximumScrollTop * sourcePosition.sourceProgress
+        : target.scrollTop;
+      applyPreviewScrollTop(scrollSurface, nextScrollTop);
       return true;
     }
 
