@@ -81,7 +81,6 @@ export function useWorkspaceFiles({
   const replaceWorkspace = useActiveStore((state) => state.replaceWorkspace);
   const restoreFile = useActiveStore((state) => state.restoreFile);
   const restoreFolder = useActiveStore((state) => state.restoreFolder);
-  const upsertHelpFile = useActiveStore((state) => state.upsertHelpFile);
   const setActiveFileBookmarks = useActiveStore((state) => state.setActiveFileBookmarks);
   const setActiveFileText = useActiveStore((state) => state.setActiveFileText);
   const setActiveFileViewMode = useActiveStore((state) => state.setActiveFileViewMode);
@@ -120,7 +119,6 @@ export function useWorkspaceFiles({
     replaceWorkspace,
     restoreFile,
     restoreFolder,
-    upsertHelpFile,
     reorderFiles,
     moveFile,
     selectAdjacentFile,

@@ -5,11 +5,7 @@ import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import { getNewFilePreferenceOverrides } from "../workspaceIoModel";
 import type { RenameFileResult } from "@tabula-md/tabula";
 import type { ConnectionStatus } from "../collaboration";
-import {
-  findWorkspaceAboutFile,
-  getWorkspaceAboutFileDraft,
-  removeRecordKey,
-} from "../workspaceFileRuntimeModel";
+import { removeRecordKey } from "../workspaceFileRuntimeModel";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 
 type ShowToast = (
@@ -32,12 +28,6 @@ type UseWorkspaceFileActionsArgs = {
   activeFile?: WorkspaceFile;
   isRoomSession: boolean;
   activeFileId: string;
-  addFileFromContent: (
-    title: string,
-    text: string,
-    viewMode?: WorkspaceFile["viewMode"],
-    overrides?: Partial<WorkspaceFile>,
-  ) => WorkspaceFile;
   addWorkspaceFileAction: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   closeFloatingChrome: () => void;
   closeWorkspaceFileAction: (fileId: string) => CloseFileResult | undefined;
@@ -45,12 +35,10 @@ type UseWorkspaceFileActionsArgs = {
   deleteWorkspaceFileAction: (fileId: string) => DeleteFileResult | undefined;
   duplicateWorkspaceFile: (fileId: string) => WorkspaceFile | undefined;
   files: WorkspaceFile[];
-  helpMarkdown: string;
   historyByFileId: Record<string, FileHistory>;
   openFileIds: string[];
   onBeforeWorkspaceBoundary?: () => void;
   onFileCreated?: (file: WorkspaceFile) => boolean;
-  onFileContentReplaced?: (file: WorkspaceFile) => boolean;
   onFileDeleted?: (file: WorkspaceFile) => boolean;
   onFileRenamed?: (fileId: string, title: string) => boolean;
   onFileRestored?: (file: WorkspaceFile, comments: FileComment[]) => boolean;
@@ -71,14 +59,12 @@ type UseWorkspaceFileActionsArgs = {
   selectWorkspaceFileAction: (fileId: string) => WorkspaceFile | undefined;
   setHistoryByFileId: Dispatch<SetStateAction<Record<string, FileHistory>>>;
   showToast: ShowToast;
-  upsertHelpFile: (helpMarkdown: string) => WorkspaceFile;
 };
 
 export function useWorkspaceFileActions({
   activeFile,
   isRoomSession,
   activeFileId,
-  addFileFromContent,
   addWorkspaceFileAction,
   closeFloatingChrome,
   closeWorkspaceFileAction,
@@ -86,12 +72,10 @@ export function useWorkspaceFileActions({
   deleteWorkspaceFileAction,
   duplicateWorkspaceFile,
   files,
-  helpMarkdown,
   historyByFileId,
   openFileIds,
   onBeforeWorkspaceBoundary,
   onFileCreated,
-  onFileContentReplaced,
   onFileDeleted,
   onFileRenamed,
   onFileRestored,
@@ -107,7 +91,6 @@ export function useWorkspaceFileActions({
   selectWorkspaceFileAction,
   setHistoryByFileId,
   showToast,
-  upsertHelpFile,
 }: UseWorkspaceFileActionsArgs) {
   const selectFile = (fileId: string) => {
     onBeforeWorkspaceBoundary?.();
@@ -135,47 +118,6 @@ export function useWorkspaceFileActions({
   };
 
   const addFile = createFile;
-
-  const openHelpFile = () => {
-    onBeforeWorkspaceBoundary?.();
-    const existingHelpFile = files.find((file) => file.title.trim().toLowerCase() === "help.md");
-    const nextFile = existingHelpFile
-      ? upsertHelpFile(helpMarkdown)
-      : addFileFromContent("HELP.md", helpMarkdown, "preview");
-    if (isRoomSession && existingHelpFile && onFileContentReplaced && !onFileContentReplaced(nextFile)) {
-      showToast("Help couldn’t be refreshed in the live workspace.", "error");
-      return;
-    }
-    if (isRoomSession && !existingHelpFile && onFileCreated && !onFileCreated(nextFile)) {
-      deleteWorkspaceFileAction(nextFile.id);
-      showToast("Help couldn’t be added to the live workspace.", "error");
-      return;
-    }
-    closeFloatingChrome();
-  };
-
-  const openAboutFile = () => {
-    onBeforeWorkspaceBoundary?.();
-    const readmeFile = findWorkspaceAboutFile(files);
-    const readmeDraft = getWorkspaceAboutFileDraft();
-    const nextFile =
-      readmeFile ??
-      addFileFromContent(
-        readmeDraft.title,
-        readmeDraft.text,
-        readmeDraft.viewMode,
-        readmeDraft.overrides,
-      );
-
-    if (isRoomSession && !readmeFile && onFileCreated && !onFileCreated(nextFile)) {
-      deleteWorkspaceFileAction(nextFile.id);
-      showToast("About couldn’t be added to the live workspace.", "error");
-      return;
-    }
-
-    selectWorkspaceFileAction(nextFile.id);
-    closeFloatingChrome();
-  };
 
   const renameWorkspaceFileAction = (fileId: string, nextRawTitle: string) => {
     const previousTitle = files.find((file) => file.id === fileId)?.title;
@@ -324,8 +266,6 @@ export function useWorkspaceFileActions({
   return {
     selectFile,
     addFile,
-    openAboutFile,
-    openHelpFile,
     renameWorkspaceFileAction,
     duplicateFile,
     deleteFile,

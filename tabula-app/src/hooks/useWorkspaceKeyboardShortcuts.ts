@@ -28,7 +28,7 @@ type UseWorkspaceKeyboardShortcutsArgs = {
   addFile: () => void;
   closeFloatingChrome: () => void;
   openFilesPanel: () => void;
-  openHelpFile: () => void;
+  openHelp: () => void;
   openDocumentSearch: () => void;
   selectAdjacentFile: (direction: -1 | 1) => void;
   setActiveFileViewMode: (nextViewMode: FileViewMode) => void;
@@ -115,7 +115,7 @@ export function useWorkspaceKeyboardShortcuts({
   addFile,
   closeFloatingChrome,
   openFilesPanel,
-  openHelpFile,
+  openHelp,
   openDocumentSearch,
   selectAdjacentFile,
   setActiveFileViewMode,
@@ -148,7 +148,7 @@ export function useWorkspaceKeyboardShortcuts({
       }
 
       if (action === "openHelp") {
-        openHelpFile();
+        openHelp();
         return;
       }
 

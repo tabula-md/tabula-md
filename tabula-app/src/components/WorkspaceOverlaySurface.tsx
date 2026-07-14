@@ -6,6 +6,11 @@ import type { WorkspaceState } from "../workspaceStorage";
 import { getProjectArchiveEntries } from "../projectArchive";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import {
+  WorkspaceInfoDialog,
+  type WorkspaceInfoDialogKind,
+} from "./WorkspaceInfoDialog";
+import type { ShortcutPlatform } from "../keyboardShortcuts";
 
 type JsonShareImportState =
   | { status: "loading" }
@@ -13,10 +18,13 @@ type JsonShareImportState =
   | { status: "ready"; workspace: WorkspaceState };
 
 export type WorkspaceOverlaySurfaceProps = {
+  infoDialog: WorkspaceInfoDialogKind | null;
   jsonShareImport: JsonShareImportState | null;
   language: WorkspaceLanguage;
+  shortcutPlatform: ShortcutPlatform;
   toast: AppToastState | null;
   onDismissToast: () => void;
+  onCloseInfoDialog: () => void;
   onPauseToast: () => void;
   onResumeToast: () => void;
   onCloseJsonShareImport: () => void;
@@ -24,10 +32,13 @@ export type WorkspaceOverlaySurfaceProps = {
 };
 
 export function WorkspaceOverlaySurface({
+  infoDialog,
   jsonShareImport,
   language,
+  shortcutPlatform,
   toast,
   onDismissToast,
+  onCloseInfoDialog,
   onPauseToast,
   onResumeToast,
   onCloseJsonShareImport,
@@ -37,6 +48,14 @@ export function WorkspaceOverlaySurface({
   return (
     <>
       <TooltipLayer />
+      {infoDialog && (
+        <WorkspaceInfoDialog
+          kind={infoDialog}
+          language={language}
+          shortcutPlatform={shortcutPlatform}
+          onClose={onCloseInfoDialog}
+        />
+      )}
       {toast && (
         <AppToast
           key={toast.id}

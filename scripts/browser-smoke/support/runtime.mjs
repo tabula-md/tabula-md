@@ -311,6 +311,18 @@ const openProjectContext = async (page) => {
   }
 };
 
+const openMarkdownFile = async (
+  page,
+  { name = "README.md", content = "# Tabula.md\n\nA local-first Markdown workspace." } = {},
+) => {
+  await page.locator('input[aria-label="Open Markdown file"]').setInputFiles({
+    name,
+    mimeType: "text/markdown",
+    buffer: Buffer.from(content),
+  });
+  await waitForActiveTab(page, { exact: name });
+};
+
 const closeProjectContext = async (page) => {
   if ((await page.locator(".right-panel").count()) > 0) {
     await page.getByRole("button", { name: "Close Project Context", exact: true }).click();
@@ -361,6 +373,7 @@ const createSmokeContext = (browser, controls = {}) => ({
   getViewModeSlots,
   openProjectContext,
   closeProjectContext,
+  openMarkdownFile,
   openProjectMenu,
   publishDataDir,
   publishUrl: controls.publishUrl,

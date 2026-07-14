@@ -11,6 +11,7 @@ export async function run(ctx) {
     getTabs,
     getViewModeActionLabels,
     getViewModeSlots,
+    openMarkdownFile,
     openProjectContext,
     openProjectMenu,
     waitForActiveTab,
@@ -176,7 +177,12 @@ export async function run(ctx) {
     );
     await openProjectMenu(page);
     await page.getByRole("button", { name: "About", exact: true }).click();
-    await waitForActiveTab(page, { exact: "README.md" });
+    await page.getByRole("dialog", { name: "About Tabula.md" }).waitFor();
+    expect(
+      (await page.locator('.tab-item[data-file-name="README.md"]').count()) === 0,
+      "About should not create a document in the user's workspace.",
+    );
+    await page.getByRole("button", { name: "Close", exact: true }).click();
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
     expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Publish should stay hidden for non-empty files too.");
@@ -745,8 +751,10 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await openProjectMenu(page);
-    await page.getByRole("button", { name: "About", exact: true }).click();
+    await openMarkdownFile(page, {
+      content: "# Preview fixture\n\nThis document keeps its own view mode.",
+    });
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
     await waitForActiveTab(page, { exact: "README.md" });
     let tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "Preview mode should be reflected in the active tab.");

@@ -10,7 +10,6 @@ import {
   IDENTITY_SESSION_KEY,
   normalizeWorkspaceIdentity,
 } from "./hooks/useWorkspaceIdentity";
-import { createHelpMarkdown, getKeyboardShortcuts } from "./helpMarkdown";
 import { formatShortcut } from "./keyboardShortcuts";
 import {
   DEFAULT_WORKSPACE_PREFERENCES,
@@ -59,8 +58,6 @@ import {
 } from "./hooks/useWorkspaceActiveFileEditor";
 import { getWorkspaceShortcutAction } from "./hooks/useWorkspaceKeyboardShortcuts";
 import {
-  findWorkspaceAboutFile,
-  getWorkspaceAboutFileDraft,
   normalizeWorkspaceFileTitleForLookup,
   removeRecordKey,
   restoreFileToList,
@@ -392,15 +389,7 @@ describe("workspace active file editor controller", () => {
   });
 });
 
-describe("workspace help markdown", () => {
-  it("creates HELP.md with the app shortcut table", () => {
-    expect(getKeyboardShortcuts("apple")).toContainEqual({
-      keys: "⌥⌘N",
-      action: "New document",
-    });
-    expect(createHelpMarkdown("standard")).toContain("| Ctrl + Alt + 2 | Split mode |");
-  });
-
+describe("workspace shortcuts", () => {
   it("formats semantic shortcuts for the current operating system", () => {
     expect(formatShortcut("Mod+Shift+Z", "apple")).toBe("⇧⌘Z");
     expect(formatShortcut("Mod+Shift+Z", "standard")).toBe("Ctrl + Shift + Z");
@@ -914,27 +903,8 @@ describe("workspace file actions controller", () => {
     expect(restoreOpenFileId(["one", "two"], "two", ["one", "two"])).toEqual(["one", "two"]);
   });
 
-  it("resolves the About file from README identity before title fallback", () => {
-    const readmeByTitle = { ...file("title-readme"), title: "README.md" };
-    const readmeById = { ...file("tabula-readme"), title: "About.md" };
-
+  it("normalizes workspace file titles for lookup", () => {
     expect(normalizeWorkspaceFileTitleForLookup({ title: " README.md " })).toBe("readme");
-    expect(findWorkspaceAboutFile([readmeByTitle])?.id).toBe("title-readme");
-    expect(findWorkspaceAboutFile([readmeByTitle, readmeById])?.id).toBe("tabula-readme");
-  });
-
-  it("creates a preview README draft for About when no README exists", () => {
-    expect(getWorkspaceAboutFileDraft()).toMatchObject({
-      title: "README.md",
-      viewMode: "preview",
-      overrides: {
-        id: "tabula-readme",
-        lineNumbers: true,
-        lineWrapping: true,
-        readingWidth: "wide",
-      },
-    });
-    expect(getWorkspaceAboutFileDraft().text).toContain("Tabula.md");
   });
 });
 

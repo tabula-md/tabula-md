@@ -8,6 +8,7 @@ export async function run(ctx) {
     expect,
     externalUrl,
     focusMarkdownEditor,
+    openMarkdownFile,
     openProjectMenu,
     startRoomServer,
     stopRoomServer,
@@ -55,8 +56,9 @@ export async function run(ctx) {
         `Timed out waiting for the workspace shell.\n${firstPageDiagnostics.join("\n")}\n${error.message}`,
       );
     }
-    await openProjectMenu(firstPage);
-    await firstPage.getByRole("button", { name: "About", exact: true }).click();
+    await openMarkdownFile(firstPage, {
+      content: "# Shared workspace\n\nPrimary collaboration document.",
+    });
     await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active');
     await firstPage.locator(".add-tab-button").click();
     await firstPage.waitForFunction(() => {

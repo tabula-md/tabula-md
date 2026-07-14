@@ -5,6 +5,7 @@ export async function run(ctx) {
   const {
     browser,
     expect,
+    openMarkdownFile,
     openProjectContext,
     openProjectMenu,
     waitForEditorReady,
@@ -12,9 +13,7 @@ export async function run(ctx) {
   } = ctx;
 
   await withPage(browser, "/", async (page) => {
-    await openProjectMenu(page);
-    await page.getByRole("button", { name: "About", exact: true }).click();
-    await openProjectMenu(page);
+    await openMarkdownFile(page);
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
 

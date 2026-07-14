@@ -5,7 +5,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { createHelpMarkdown } from "../helpMarkdown";
 import { getShortcutPlatform } from "../keyboardShortcuts";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import {
@@ -96,6 +95,7 @@ import {
   createWorkspaceSessionHost,
   type WorkspaceSessionHost,
 } from "../workspace/session/WorkspaceSessionHost";
+import type { WorkspaceInfoDialogKind } from "../components/WorkspaceInfoDialog";
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -142,7 +142,6 @@ export function useWorkspaceRuntime() {
     replaceWorkspace,
     restoreFile,
     restoreFolder: restoreWorkspaceFolderAction,
-    upsertHelpFile,
     reorderFiles,
     selectAdjacentFile: selectAdjacentWorkspaceFileAction,
     setActiveFileBookmarks,
@@ -190,6 +189,7 @@ export function useWorkspaceRuntime() {
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [shortcutPlatform] = useState(() => getShortcutPlatform());
+  const [infoDialog, setInfoDialog] = useState<WorkspaceInfoDialogKind | null>(null);
   const { dismissToast, pauseToast, resumeToast, toast, showToast } = useAppToast();
   const { identity, updateIdentityName, normalizeIdentityName } =
     useWorkspaceIdentity();
@@ -429,6 +429,12 @@ export function useWorkspaceRuntime() {
     setCopiedFileId,
     setSelectionActionPosition,
   });
+  const openInfoDialog = useEventCallback((kind: WorkspaceInfoDialogKind) => {
+    closeFloatingChrome();
+    setInfoDialog(kind);
+  });
+  const openAbout = useEventCallback(() => openInfoDialog("about"));
+  const openHelp = useEventCallback(() => openInfoDialog("help"));
   const mergeWorkspaceRoomStructure = useEventCallback((
     snapshot: WorkspaceRoomStructureSnapshot,
   ) => {
@@ -994,8 +1000,6 @@ export function useWorkspaceRuntime() {
   const {
     selectFile,
     addFile,
-    openAboutFile,
-    openHelpFile,
     renameWorkspaceFileAction,
     duplicateFile,
     deleteFile,
@@ -1005,15 +1009,6 @@ export function useWorkspaceRuntime() {
     activeFile,
     isRoomSession: Boolean(activeRoom),
     activeFileId,
-    addFileFromContent: (title, fileText, viewMode, overrides) => {
-      const nextFile = addFileFromContent(
-        title,
-        activeRoom ? "" : fileText,
-        viewMode,
-        overrides,
-      );
-      return activeRoom ? { ...nextFile, text: fileText } : nextFile;
-    },
     addWorkspaceFileAction,
     closeFloatingChrome,
     closeWorkspaceFileAction,
@@ -1031,13 +1026,8 @@ export function useWorkspaceRuntime() {
       return { ...duplicatedFile, text: sourceText };
     },
     files,
-    helpMarkdown: createHelpMarkdown(shortcutPlatform),
     historyByFileId,
     onFileCreated: publishRoomDocumentProjection,
-    onFileContentReplaced: (file) => {
-      if (!activeRoom) return true;
-      return replaceRoomDocumentText(file.id, file.text);
-    },
     onFileDeleted: (file) => !activeRoom || deleteRoomNode(file.id),
     onFileRenamed: renameRoomNode,
     onFileRestored: restoreRoomDocument,
@@ -1059,16 +1049,6 @@ export function useWorkspaceRuntime() {
     selectWorkspaceFileAction,
     setHistoryByFileId,
     showToast,
-    upsertHelpFile: activeRoom
-      ? (helpMarkdown) => {
-          const existingHelpFile = files.find(
-            (file) => file.title.trim().toLowerCase() === "help.md",
-          );
-          return existingHelpFile
-            ? { ...existingHelpFile, title: "HELP.md", text: helpMarkdown, viewMode: "preview" }
-            : addFileFromContent("HELP.md", "", "preview");
-        }
-      : upsertHelpFile,
   });
   const addWorkspaceFolder = useEventCallback((parentId?: string) => {
     const folder = addWorkspaceFolderAction("New folder", parentId);
@@ -1149,8 +1129,8 @@ export function useWorkspaceRuntime() {
     onClearWorkspace: clearLocalWorkspace,
     onCloseChrome: closeFloatingChrome,
     onImportFileChange: handleImportInputChange,
-    onOpenAbout: openAboutFile,
-    onOpenHelp: openHelpFile,
+    onOpenAbout: openAbout,
+    onOpenHelp: openHelp,
     preferences: workspacePreferences,
     preferencesOpen,
     setPreferences: setWorkspacePreferences,
@@ -1370,7 +1350,7 @@ export function useWorkspaceRuntime() {
     addFile,
     closeFloatingChrome,
     openFilesPanel,
-    openHelpFile,
+    openHelp,
     openDocumentSearch: openSearchFromCurrentSelection,
     selectAdjacentFile,
     setActiveFileViewMode,
@@ -1418,7 +1398,7 @@ export function useWorkspaceRuntime() {
       onDrop: handleEmptyWorkspaceDrop,
       onNewFile: addFile,
       onOpenFile: () => importInputRef.current?.click(),
-      onOpenHelp: openHelpFile,
+      onOpenHelp: openHelp,
     },
     liveRoomLoadingProps: {
       language: workspacePreferences.language,
@@ -1435,9 +1415,12 @@ export function useWorkspaceRuntime() {
     }),
     menuSurfaceProps,
     overlayProps: {
+      infoDialog,
       jsonShareImport,
       language: workspacePreferences.language,
+      shortcutPlatform,
       toast,
+      onCloseInfoDialog: () => setInfoDialog(null),
       onDismissToast: dismissToast,
       onPauseToast: pauseToast,
       onResumeToast: resumeToast,
