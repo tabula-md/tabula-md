@@ -12,7 +12,7 @@
   grid-template-columns: minmax(0, 1fr) auto var(--control-size-compact);
   align-items: center;
   gap: var(--space-1);
-  min-height: var(--control-size-row);
+  min-height: var(--control-size-touch);
   max-width: min(420px, calc(100vw - 32px));
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-surface);
@@ -83,7 +83,24 @@
   }
 
   .app-toast {
+    grid-template-columns: minmax(0, 1fr) var(--control-size-touch);
     white-space: normal;
+  }
+
+  .app-toast > span {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .app-toast-action {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  .app-toast-dismiss {
+    grid-column: 2;
+    grid-row: 2;
   }
 
   .app-toast-action,

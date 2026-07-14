@@ -331,7 +331,8 @@ export async function run(ctx) {
         blockAfterGaps: Array.from(document.querySelectorAll("[data-preview-block-after-gap]"))
           .slice(0, 6)
           .map((element) => Number(element.getAttribute("data-preview-block-after-gap") ?? "0")),
-        footnoteRefCount: document.querySelectorAll('.preview-surface sup a[href^="#user-content-fn-"]').length,
+        footnoteRefCount: document.querySelectorAll(".preview-surface sup [data-footnote-ref]").length,
+        linkedFootnoteRefCount: document.querySelectorAll('.preview-surface sup a[href^="#user-content-fn-"]').length,
         footnoteSectionCount: document.querySelectorAll("[data-preview-virtual-content] section[data-footnotes]").length,
         footnoteText: document.querySelector(".preview-footnote-collector section[data-footnotes]")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
         headings,
@@ -370,6 +371,10 @@ export async function run(ctx) {
     expect(
       virtualPreviewTypography.footnoteRefCount === 1,
       `Virtualized preview should render the source footnote reference once. Found ${virtualPreviewTypography.footnoteRefCount}.`,
+    );
+    expect(
+      virtualPreviewTypography.linkedFootnoteRefCount === 0,
+      "Footnote references should not create fragment links in the workspace URL.",
     );
     expect(
       virtualPreviewTypography.footnoteSectionCount === 1 &&

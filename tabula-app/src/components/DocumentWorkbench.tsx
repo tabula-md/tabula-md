@@ -54,6 +54,7 @@ import type {
 } from "../preview/markdownPreviewTypes";
 import { StatusBar } from "./StatusBar";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import { ResizeHandle } from "./ui/ResizeHandle";
 
 const importMarkdownPreview = () => import("./MarkdownPreview");
 type MarkdownPreviewComponent = Awaited<ReturnType<typeof importMarkdownPreview>>["MarkdownPreview"];
@@ -411,16 +412,13 @@ export function DocumentWorkbench({
         </article>
 
         {documentSurface.showSplitResizeHandle && (
-          <button
-            type="button"
-            className="vertical-resize-handle split-resize-handle"
-            data-dragging={splitDividerDragging ? "true" : undefined}
-            role="separator"
-            aria-label={copy.resizeSplitView}
-            aria-orientation="vertical"
-            aria-valuemin={splitDividerMinValue}
-            aria-valuemax={splitDividerMaxValue}
-            aria-valuenow={splitDividerValue}
+          <ResizeHandle
+            className="split-resize-handle"
+            dragging={splitDividerDragging}
+            label={copy.resizeSplitView}
+            minimum={splitDividerMinValue}
+            maximum={splitDividerMaxValue}
+            value={splitDividerValue}
             onDoubleClick={onResetSplitRatio}
             onKeyDown={onSplitDividerKeyDown}
             onPointerCancel={onSplitDividerPointerCancel}

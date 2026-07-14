@@ -281,7 +281,6 @@ export async function run(ctx) {
     expect,
     focusMarkdownEditor,
     openMarkdownFile,
-    openProjectMenu,
     waitForEditorReady,
     waitForRenderFrame,
     withPage,

@@ -1,5 +1,14 @@
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
-import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type DragEvent as ReactDragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Check,
   ChevronDown,
@@ -80,6 +89,7 @@ type RightPanelFilesProps = {
 
 const RIGHT_TREE_INDENT = 16;
 const MOVE_SEARCH_THRESHOLD = 12;
+const FOLDER_AUTO_EXPAND_DELAY = 600;
 
 const getFileDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
 
@@ -308,6 +318,10 @@ export function RightPanelFiles({
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [moveQuery, setMoveQuery] = useState("");
+  const [draggedItem, setDraggedItem] = useState<MoveTarget | null>(null);
+  const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null);
+  const autoExpandTimerRef = useRef<number | null>(null);
+  const autoExpandFolderIdRef = useRef<string | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const folderRenameInputRef = useRef<HTMLInputElement | null>(null);
   const treeScrollRef = useRef<HTMLDivElement | null>(null);
@@ -347,6 +361,16 @@ export function RightPanelFiles({
     [folderDisplayTitles, folders, moveQuery, moveTarget],
   );
   const showMoveSearch = folders.length - 1 >= MOVE_SEARCH_THRESHOLD;
+  const validDropFolderIds = useMemo(
+    () => new Set(
+      draggedItem
+        ? getMoveDestinationRows(folders, draggedItem, folderDisplayTitles)
+          .filter((destination) => !destination.disabled)
+          .map((destination) => destination.folderId)
+        : [],
+    ),
+    [draggedItem, folderDisplayTitles, folders],
+  );
   const collapsibleFolderIds = useMemo(
     () => folders
       .filter((folder) => folder.id !== WORKSPACE_ROOT_FOLDER_ID)
@@ -377,6 +401,12 @@ export function RightPanelFiles({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [renamingFolderId]);
+
+  useEffect(() => () => {
+    if (autoExpandTimerRef.current !== null) {
+      window.clearTimeout(autoExpandTimerRef.current);
+    }
+  }, []);
 
   const startRenamingFile = (file: WorkspaceFile) => {
     setActionMenuFileId(null);
@@ -465,6 +495,62 @@ export function RightPanelFiles({
     setMoveQuery("");
   };
 
+  const clearAutoExpandTimer = () => {
+    if (autoExpandTimerRef.current === null) return;
+    window.clearTimeout(autoExpandTimerRef.current);
+    autoExpandTimerRef.current = null;
+    autoExpandFolderIdRef.current = null;
+  };
+
+  const finishDragging = () => {
+    clearAutoExpandTimer();
+    setDraggedItem(null);
+    setDropTargetFolderId(null);
+  };
+
+  const startDragging = (event: ReactDragEvent<HTMLElement>, target: MoveTarget) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", target.id);
+    setDraggedItem(target);
+  };
+
+  const prepareDrop = (
+    event: ReactDragEvent<HTMLElement>,
+    folderId: string,
+    options: { autoExpand?: boolean } = {},
+  ) => {
+    if (!draggedItem || !validDropFolderIds.has(folderId)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "move";
+    setDropTargetFolderId(folderId);
+
+    if (
+      options.autoExpand
+      && collapsedFolderIds.has(folderId)
+      && autoExpandFolderIdRef.current !== folderId
+    ) {
+      clearAutoExpandTimer();
+      autoExpandFolderIdRef.current = folderId;
+      autoExpandTimerRef.current = window.setTimeout(() => {
+        onToggleFolder(folderId);
+        autoExpandTimerRef.current = null;
+        autoExpandFolderIdRef.current = null;
+      }, FOLDER_AUTO_EXPAND_DELAY);
+    } else if (!options.autoExpand || !collapsedFolderIds.has(folderId)) {
+      clearAutoExpandTimer();
+    }
+  };
+
+  const dropItem = (event: ReactDragEvent<HTMLElement>, folderId: string) => {
+    if (!draggedItem || !validDropFolderIds.has(folderId)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (draggedItem.type === "file") onMoveFileToFolder(draggedItem.id, folderId);
+    else onMoveFolder(draggedItem.id, folderId);
+    finishDragging();
+  };
+
   const renderFileTreeNode = (node: FileTreeNode, depth: number, virtualRow: VirtualItem) => {
     const virtualStyle = {
       position: "absolute" as const,
@@ -478,16 +564,28 @@ export function RightPanelFiles({
       const isRootFolder = node.id === WORKSPACE_ROOT_FOLDER_ID;
       const folderMenuOpen = actionMenuFolderId === node.id;
       const folderIsRenaming = renamingFolderId === node.id;
+      const folderIsDragging = draggedItem?.type === "folder" && draggedItem.id === node.id;
+      const folderIsDropTarget = dropTargetFolderId === node.id;
 
       return (
         <li
           ref={treeVirtualizer.measureElement}
-          className="right-file-tree-node folder"
+          className={`right-file-tree-node folder ${folderIsDragging ? "dragging" : ""} ${folderIsDropTarget ? "drop-target" : ""}`.trim()}
           data-index={virtualRow.index}
           key={node.id}
           role="treeitem"
           aria-level={depth + 1}
           aria-expanded={!folderCollapsed}
+          draggable={!folderIsRenaming}
+          onDragStart={(event) => startDragging(event, {
+            type: "folder",
+            id: node.id,
+            title: node.name,
+            parentId: node.folder.parentId,
+          })}
+          onDragEnd={finishDragging}
+          onDragOver={(event) => prepareDrop(event, node.id, { autoExpand: true })}
+          onDrop={(event) => dropItem(event, node.id)}
           style={virtualStyle}
         >
           <div
@@ -588,16 +686,28 @@ export function RightPanelFiles({
     const isActiveFile = file.id === activeFileId;
     const isRenaming = file.id === renamingFileId;
     const menuOpen = file.id === actionMenuFileId;
+    const fileIsDragging = draggedItem?.type === "file" && draggedItem.id === file.id;
+    const fileParentId = file.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
 
     return (
       <li
         ref={treeVirtualizer.measureElement}
-        className="right-file-tree-node file"
+        className={`right-file-tree-node file ${fileIsDragging ? "dragging" : ""}`.trim()}
         data-index={virtualRow.index}
         key={node.id}
         role="treeitem"
         aria-level={depth + 1}
         aria-selected={isActiveFile}
+        draggable={!isRenaming}
+        onDragStart={(event) => startDragging(event, {
+          type: "file",
+          id: file.id,
+          title: file.title,
+          parentId: file.parentId ?? null,
+        })}
+        onDragEnd={finishDragging}
+        onDragOver={(event) => prepareDrop(event, fileParentId)}
+        onDrop={(event) => dropItem(event, fileParentId)}
         style={virtualStyle}
       >
         <div
@@ -781,7 +891,12 @@ export function RightPanelFiles({
             </MenuRoot>
       </div>
       {visibleRows.length > 0 ? (
-        <div className="right-file-tree-scroll" ref={treeScrollRef}>
+        <div
+          className={`right-file-tree-scroll ${dropTargetFolderId === WORKSPACE_ROOT_FOLDER_ID ? "root-drop-target" : ""}`.trim()}
+          ref={treeScrollRef}
+          onDragOver={(event) => prepareDrop(event, WORKSPACE_ROOT_FOLDER_ID)}
+          onDrop={(event) => dropItem(event, WORKSPACE_ROOT_FOLDER_ID)}
+        >
           <ol
             className="right-file-tree virtual"
             aria-label={copy.tree}

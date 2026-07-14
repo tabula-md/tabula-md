@@ -2057,14 +2057,15 @@ flowchart LR
     await page.keyboard.insertText("# Start here\n\n[Jump to start](#start-here)\n\n[Missing section](#missing-section)");
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await waitForEditorReady(page, { mode: "preview" });
-    const urlBeforeSectionJump = page.url();
-    await page.getByRole("link", { name: "Jump to start", exact: true }).click();
-    await waitForRenderFrame(page);
-    expect(page.url() === urlBeforeSectionJump, "In-document section links should not mutate the Tabula.md URL fragment.");
-    expect((await page.locator("#start-here").count()) === 1, "In-document section links should keep their heading target.");
-    await page.getByRole("link", { name: "Missing section", exact: true }).click();
-    await waitForRenderFrame(page);
-    expect(page.url() === urlBeforeSectionJump, "Missing in-document section links should leave the workspace URL unchanged.");
+    expect(
+      (await page.getByRole("link", { name: "Jump to start", exact: true }).count()) === 0,
+      "Fragment-only Markdown destinations should not become preview links.",
+    );
+    const previewText = (await page.locator(".preview-surface").textContent()) ?? "";
+    expect(
+      previewText.includes("Jump to start") && previewText.includes("Missing section"),
+      "Inert Markdown destinations should keep their visible labels.",
+    );
   });
 
   await withPage(browser, "/", async (page) => {

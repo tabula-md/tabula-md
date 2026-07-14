@@ -7,7 +7,6 @@ export async function run(ctx) {
     expect,
     openMarkdownFile,
     ensureSidePanelOpen,
-    openProjectMenu,
     waitForEditorReady,
     withPage,
   } = ctx;
