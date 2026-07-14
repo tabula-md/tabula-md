@@ -26,11 +26,6 @@ export const PROJECT_STORAGE_VERSION = 7;
 export const WORKSPACE_STORAGE_VERSION = PROJECT_STORAGE_VERSION;
 const STARTER_MARKDOWN = "";
 export const README_FILE_ID = "tabula-readme";
-const DEFAULT_README_REFRESH_MARKERS = [
-  "It is intentionally Markdown-file-first",
-  "## Frontmatter",
-  "Markdown bundle",
-];
 export const STARTER_README_MARKDOWN = `---
 title: ${PRODUCT_NAME}
 description: A local-first Markdown workspace for files that people and coding agents can share safely.
@@ -227,18 +222,6 @@ export const createWorkspaceRootFolder = (): WorkspaceFolder => ({
   order: 0,
 });
 
-const createReadmeFile = (): WorkspaceFile => ({
-  id: README_FILE_ID,
-  title: "README.md",
-  text: STARTER_README_MARKDOWN,
-  parentId: WORKSPACE_ROOT_FOLDER_ID,
-  viewMode: "preview",
-  readingWidth: "wide",
-  lineWrapping: true,
-  lineNumbers: true,
-  bookmarks: [],
-});
-
 export const createWorkspaceFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => {
   return {
     id: randomId(),
@@ -253,41 +236,6 @@ export const createWorkspaceFile = (index: number, overrides: Partial<WorkspaceF
     bookmarks: [],
     ...overrides,
   };
-};
-
-const isDefaultReadmeFile = (file: Partial<WorkspaceFile>) => {
-  const normalizedTitle = file.title?.trim().toLowerCase();
-  return file.id === README_FILE_ID || normalizedTitle === "readme.md";
-};
-
-export const ensureDefaultFiles = (files: WorkspaceFile[], options: { ensureUntitled?: boolean } = {}) => {
-  const readmeFile = files.find(isDefaultReadmeFile);
-  const readmeTitle = readmeFile?.title?.trim().toLowerCase();
-  const shouldRefreshReadmeText =
-    !readmeFile?.text || DEFAULT_README_REFRESH_MARKERS.some((marker) => readmeFile.text.includes(marker));
-  const normalizedReadmeFile = readmeFile
-    ? {
-        ...readmeFile,
-        id: README_FILE_ID,
-        title: readmeTitle === "readme.md" ? "README.md" : readmeFile.title,
-        text: shouldRefreshReadmeText ? STARTER_README_MARKDOWN : readmeFile.text,
-        viewMode: readmeFile.viewMode ?? "preview",
-        readingWidth: readmeFile.readingWidth ?? "wide",
-        lineWrapping: readmeFile.lineWrapping ?? true,
-        lineNumbers: readmeFile.lineNumbers ?? true,
-        bookmarks: readmeFile.bookmarks ?? [],
-      }
-    : createReadmeFile();
-
-  if (readmeFile) {
-    return files.map((file) => (file === readmeFile ? normalizedReadmeFile : file));
-  }
-
-  if (files.length > 0) {
-    return files;
-  }
-
-  return options.ensureUntitled ? [normalizedReadmeFile, createWorkspaceFile(1)] : [normalizedReadmeFile];
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -520,9 +468,7 @@ export const finalizeWorkspaceState = (
     files,
     options.folders?.length ? options.folders : [createWorkspaceRootFolder()],
   );
-  const nextFiles = ensureDefaultFiles(normalizedTree.files, {
-    ensureUntitled: normalizedTree.files.length === 0,
-  });
+  const nextFiles = normalizedTree.files;
 
   const fileIds = new Set(nextFiles.map((file) => file.id));
   const storedOpenFileIds = options.openFileIds;
@@ -554,7 +500,7 @@ export const finalizeWorkspaceState = (
 };
 
 export const createStarterWorkspaceState = (): WorkspaceState =>
-  finalizeWorkspaceState([createReadmeFile()], undefined, {}, { openFileIds: [] });
+  finalizeWorkspaceState([], undefined, {}, { openFileIds: [] });
 
 export const parseWorkspacePayload = (payload: unknown): WorkspaceState | null => {
   if (!isRecord(payload)) {

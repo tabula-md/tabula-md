@@ -45,17 +45,7 @@ export async function run(ctx) {
       };
     });
     await openProjectContext(page);
-    await page.getByRole("button", { name: "More actions for README.md" }).click();
-    expect(
-      (await page.locator(".right-file-action-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
-      "File action menus should use elevation without a static border.",
-    );
-    await page.getByRole("menuitem", { name: "Copy Markdown" }).click();
-    const copiedFile = await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "");
-    expect(
-      copiedFile.includes("Tabula.md is a local-first Markdown workspace"),
-      "The Files menu should copy the selected file source.",
-    );
+    expect((await page.locator(".right-file-tree-row.file").count()) === 0, "Fresh projects should contain no hidden files.");
     await page.getByRole("button", { name: "Close Project Context" }).click();
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".publish-trigger").count()) === 0, "Publish should live inside Share, not as a separate top-right action.");
@@ -100,6 +90,16 @@ export async function run(ctx) {
       "Blank File tabs should omit the .md extension visually.",
     );
     expect((await page.locator(".intro-action-button").count()) === 0, "Blank writing documents should not show README actions.");
+
+    await openProjectContext(page);
+    await page.getByRole("button", { name: "More actions for Untitled.md" }).click();
+    expect(
+      (await page.locator(".right-file-action-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
+      "File action menus should use elevation without a static border.",
+    );
+    await page.getByRole("menuitem", { name: "Copy Markdown" }).click();
+    expect((await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "")) === "", "Blank file copy should preserve its source.");
+    await page.getByRole("button", { name: "Close Project Context" }).click();
 
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
@@ -285,8 +285,8 @@ export async function run(ctx) {
     }));
     expect(closedTabFileState.emptyMessageCount === 0, "Closing tabs should not delete project files.");
     expect(
-      closedTabFileState.fileRows.some((row) => row.title === "README.md"),
-      "Files panel should keep README available after all tabs are closed.",
+      closedTabFileState.fileRows.some((row) => row.title === "Untitled.md"),
+      "Files panel should keep user-created documents available after all tabs are closed.",
     );
     expect(
       closedTabFileState.fileRows.every((row) => !row.active),
@@ -311,12 +311,12 @@ export async function run(ctx) {
     if ((await page.locator(".right-panel").count()) === 0) {
       await openProjectContext(page);
     }
-    await page.getByRole("searchbox", { name: "Search files" }).fill("README");
+    await page.getByRole("searchbox", { name: "Search files" }).fill("Untitled");
     await page.keyboard.press("Enter");
-    await waitForActiveTab(page, { exact: "README.md" });
+    await waitForActiveTab(page, { exact: "Untitled.md" });
     const reopenedTabs = await getTabs(page);
     expect(reopenedTabs.length === 1, "Pressing Enter in Files search should reopen the first matching file as a tab.");
-    expect(reopenedTabs[0]?.title === "README.md", "Files search Enter should reopen README.");
+    expect(reopenedTabs[0]?.title === "Untitled.md", "Files search Enter should reopen the user-created document.");
     expect(reopenedTabs[0]?.active, "Reopened file should become active.");
 
     await page.locator(".tab-item.active").hover();
