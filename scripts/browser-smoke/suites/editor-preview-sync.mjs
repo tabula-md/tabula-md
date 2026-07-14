@@ -372,7 +372,7 @@ export async function run(ctx) {
     expect(upwardState.editorScrollTop < bottomState.editorScrollTop, "README editor should scroll upward from the bottom.");
     expect(
       upwardState.previewScrollTop < bottomState.previewScrollTop || bottomState.previewMaxScrollTop <= 0,
-      "README split preview should not remain stuck at the bottom when the editor scrolls upward.",
+      `README split preview should not remain stuck at the bottom when the editor scrolls upward. ${JSON.stringify({ bottomState, upwardState })}`,
     );
   });
 
