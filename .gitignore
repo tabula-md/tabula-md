@@ -1,6 +1,7 @@
 node_modules
 dist
 output/
+.playwright-cli/
 .tabula-collab
 .tabula-room
 .tabula-room-smoke

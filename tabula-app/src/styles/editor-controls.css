@@ -218,46 +218,6 @@
   position: relative;
 }
 
-.formatting-menu-button:has(.formatting-menu-chevron) {
-  width: 34px;
-  padding-right: 6px;
-}
-
-.formatting-block-menu-button {
-  justify-content: flex-start;
-  width: auto !important;
-  min-width: 104px;
-  padding: 0 22px 0 8px !important;
-}
-
-.formatting-block-label {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-primary);
-  font-size: var(--font-ui-body);
-  font-weight: var(--weight-ui-regular);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.formatting-row[data-density="compact"] .formatting-block-menu-button {
-  justify-content: center;
-  width: var(--document-control-inner) !important;
-  min-width: var(--document-control-inner);
-  padding: 0 6px 0 0 !important;
-}
-
-.formatting-row[data-density="compact"] .formatting-block-label {
-  display: none;
-}
-
-.formatting-menu-chevron {
-  position: absolute;
-  right: 2px;
-  bottom: 3px;
-  color: var(--text-muted);
-}
-
 .formatting-overflow-menu {
   gap: 2px;
   width: 236px;
@@ -376,21 +336,6 @@
   .formatting-button {
     width: var(--control-size-touch);
     height: var(--control-size-touch);
-  }
-
-  .formatting-menu-button:has(.formatting-menu-chevron) {
-    width: var(--control-size-touch);
-  }
-
-  .formatting-block-menu-button,
-  .formatting-row[data-density="compact"] .formatting-block-menu-button {
-    width: var(--control-size-touch) !important;
-    min-width: var(--control-size-touch);
-    padding: 0 8px 0 0 !important;
-  }
-
-  .formatting-block-label {
-    display: none;
   }
 
   .document-view-mode-control {
