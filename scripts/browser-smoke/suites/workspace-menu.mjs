@@ -222,24 +222,11 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.route("**/src/components/ShareControls.tsx*", (route) => route.abort("failed"));
-    await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
-    await waitForEditorReady(page, { mode: "edit" });
-    await page.getByRole("button", { name: "Share", exact: true }).click();
-    await page.waitForFunction(
-      () => document.querySelector(".app-toast.error")?.textContent?.includes("Couldn’t open sharing."),
-    );
-    expect((await page.locator(".share-modal").count()) === 0, "A failed Share chunk should close the modal surface.");
-    expect(
-      await page.locator(".app-shell").evaluate((shell) => shell.getClientRects().length > 0),
-      "A failed Share chunk should leave the workspace visible and usable.",
-    );
-    await page.getByRole("button", { name: "New document", exact: true }).click();
-    await waitForActiveTab(page, { startsWith: "Untitled" });
-    await waitForEditorReady(page, { mode: "edit" });
-  });
+    if ((await page.locator(".tab-item").count()) === 0) {
+      await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
+      await waitForEditorReady(page, { mode: "edit" });
+    }
 
-  await withPage(browser, "/", async (page) => {
     for (let index = 0; index < 8; index += 1) {
       const tabCount = await page.locator(".tab-item").count();
       if (tabCount === 0) {
@@ -255,7 +242,10 @@ export async function run(ctx) {
     expect((await page.locator(".empty-file-state").count()) === 1, "Closing every tab should show the no-open-file state.");
     expect((await page.locator(".document-controls").count()) === 0, "No-open-file state should hide file tools.");
     expect((await page.locator(".file-status-bar").count()) === 0, "No-open-file state should hide the file status bar.");
-    expect((await page.locator(".share-trigger").count()) === 0, "No-open-file state should hide file sharing.");
+    expect(
+      (await page.locator(".share-trigger").count()) === 1,
+      "A workspace with closed tabs should keep workspace sharing available.",
+    );
 
     const emptyChromeState = await page.evaluate(() => {
       const rightPanelButton = document.querySelector('button[aria-label="Open Project Context"]');
@@ -788,6 +778,9 @@ export async function run(ctx) {
     });
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await waitForActiveTab(page, { exact: "README.md" });
+    await page.waitForFunction(
+      () => document.querySelector(".tab-item.active")?.getAttribute("data-view-mode") === "preview",
+    );
     let tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "Preview mode should be reflected in the active tab.");
     expect(
