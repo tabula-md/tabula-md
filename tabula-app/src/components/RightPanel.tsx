@@ -44,7 +44,7 @@ type RightPanelProps = {
   onSetView: (view: RightPanelView) => void;
   onOpenSearchResult: (fileId: string, start: number, end: number) => void;
   onToggleSidePanel: () => void;
-  onNewFile: () => void;
+  onNewFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
@@ -209,7 +209,7 @@ export function RightPanel({
             activeFileId={activeFileId}
             copy={copy.files}
             collapsedFolderIds={collapsedFileTreeFolderIds}
-            onNewFile={onNewFile}
+            onNewFile={(parentId) => onNewFile(parentId ? { parentId } : undefined)}
             onNewFolder={onNewFolder}
             onImportFile={onImportFile}
             onToggleFolder={toggleFileTreeFolderCollapsed}

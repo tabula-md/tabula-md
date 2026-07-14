@@ -1184,27 +1184,25 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
 
     await openRightFileMenu(rightFilesActiveTitle);
+    expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "File menus should create a sibling document.");
+    expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "File menus should create a sibling folder.");
     expect((await page.getByRole("menuitem", { name: "Rename" }).count()) === 1, "Right Files menu should expose rename.");
     expect((await page.getByRole("menuitem", { name: "Duplicate" }).count()) === 1, "Right Files menu should expose duplicate.");
     expect((await page.getByRole("menuitem", { name: "Delete" }).count()) === 1, "Right Files menu should expose delete.");
-    expect((await page.getByText("Move to…", { exact: true }).count()) === 1, "Right Files should name the move destination control.");
-    await page.getByRole("menuitem", { name: "Move to…", exact: true }).click();
-    const moveDialog = page.getByRole("dialog", { name: `Move ${rightFilesActiveTitle}` });
-    expect((await moveDialog.count()) === 1, "Move to should open a dedicated folder picker.");
-    expect(
-      (await moveDialog.getByRole("searchbox", { name: "Search folders" }).count()) === 0,
-      "Move picker should not add search chrome for a short destination list.",
-    );
-    expect(
-      (await moveDialog.getByRole("button", { name: "Top level · Current location", exact: true }).count()) === 1,
-      "Move picker should describe the workspace root as Top level instead of a synthetic Project folder.",
-    );
-    expect(
-      (await moveDialog.getByText("Project", { exact: true }).count()) === 0,
-      "Move picker should not expose the internal workspace root as Project.",
-    );
-    expect((await moveDialog.locator("select").count()) === 0, "Move picker should not embed a native select inside the command menu.");
-    await moveDialog.getByRole("button", { name: "Close move dialog" }).click();
+    expect((await page.getByText("Move to…", { exact: true }).count()) === 0, "Files should use drag-and-drop instead of a separate move command.");
+    await page.keyboard.press("Escape");
+
+    await page.getByRole("button", { name: `Open ${rightFilesActiveTitle}` }).click({ button: "right" });
+    expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "Right-clicking a file should expose New document.");
+    expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Right-clicking a file should expose New folder.");
+    expect((await page.getByRole("menuitem", { name: "Rename", exact: true }).count()) === 1, "Right-clicking a file should expose its file actions.");
+    await page.keyboard.press("Escape");
+
+    await page.locator(".right-files-panel").click({ button: "right", position: { x: 20, y: 360 } });
+    expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "Right-clicking the Files panel should create a root document.");
+    expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Right-clicking the Files panel should create a root folder.");
+    expect((await page.getByRole("menuitem", { name: "Rename", exact: true }).count()) === 0, "The Files panel context menu should contain only workspace creation actions.");
+    await page.keyboard.press("Escape");
 
     await openRightFileMenu(rightFilesActiveTitle);
     await page.getByRole("menuitem", { name: "Rename" }).click();
@@ -1312,6 +1310,27 @@ export async function run(ctx) {
     await folderRenameInput.fill("Archive");
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
+    await page.getByRole("button", { name: "More actions for Archive", exact: true }).click();
+    expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "Folder menus should create a document inside the folder.");
+    expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Folder menus should create a folder inside the folder.");
+    expect((await page.getByText("New subfolder", { exact: true }).count()) === 0, "Folder menus should use the shared New folder command name.");
+    await page.getByRole("menuitem", { name: "New document", exact: true }).click();
+    await waitForRenderFrame(page);
+    const folderDocumentState = await page.evaluate(() => {
+      const activeTitle = document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "";
+      const row = Array.from(document.querySelectorAll(".right-file-tree-row.file"))
+        .find((candidate) => candidate.getAttribute("title") === activeTitle);
+      return {
+        activeTitle,
+        level: row?.closest('[role="treeitem"]')?.getAttribute("aria-level") ?? "",
+      };
+    });
+    expect(folderDocumentState.activeTitle, "Creating from a folder menu should open the new document.");
+    expect(folderDocumentState.level === "2", "Creating from a folder menu should place the document inside that folder.");
+    await page.getByRole("button", { name: "More actions for Archive", exact: true }).click({ button: "right" });
+    expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "Right-clicking a folder should expose New document.");
+    expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Right-clicking a folder should expose New folder.");
+    await page.keyboard.press("Escape");
     const importedFileNode = page.locator(".right-file-tree-node.file").filter({ has: page.locator('[title="Panel Import.md"]') });
     const archiveFolderNode = page.locator(".right-file-tree-node.folder").filter({ hasText: "Archive" });
     await importedFileNode.dragTo(archiveFolderNode);
