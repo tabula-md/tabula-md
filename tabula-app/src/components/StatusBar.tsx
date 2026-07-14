@@ -66,7 +66,7 @@ export function StatusBar({
   return (
     <footer
       className="file-status-bar"
-      aria-label={`Status for ${activeFileTitle}`}
+      aria-label={copy.statusFor(activeFileTitle)}
     >
       <div className="status-bar-right">
         {showSaveState && (

@@ -7,6 +7,7 @@ import type { RenameFileResult } from "@tabula-md/tabula";
 import type { ConnectionStatus } from "../collaboration";
 import { removeRecordKey } from "../workspaceFileRuntimeModel";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceActionCopy } from "../workspaceActionLocale";
 
 type ShowToast = (
   message: string,
@@ -59,6 +60,7 @@ type UseWorkspaceFileActionsArgs = {
   selectWorkspaceFileAction: (fileId: string) => WorkspaceFile | undefined;
   setHistoryByFileId: Dispatch<SetStateAction<Record<string, FileHistory>>>;
   showToast: ShowToast;
+  copy: WorkspaceActionCopy;
 };
 
 export function useWorkspaceFileActions({
@@ -91,6 +93,7 @@ export function useWorkspaceFileActions({
   selectWorkspaceFileAction,
   setHistoryByFileId,
   showToast,
+  copy,
 }: UseWorkspaceFileActionsArgs) {
   const selectFile = (fileId: string) => {
     onBeforeWorkspaceBoundary?.();
@@ -110,7 +113,7 @@ export function useWorkspaceFileActions({
     });
     if (isRoomSession && onFileCreated && !onFileCreated(nextFile)) {
       deleteWorkspaceFileAction(nextFile.id);
-      showToast("This document couldn’t be added to the live workspace.", "error");
+      showToast(copy.fileAddFailed, "error");
       return undefined;
     }
     closeFloatingChrome();
@@ -128,7 +131,7 @@ export function useWorkspaceFileActions({
     }
     if (isRoomSession && onFileRenamed && !onFileRenamed(fileId, result.title)) {
       if (previousTitle) renameFile(fileId, previousTitle);
-      showToast("This document couldn’t be renamed in the live workspace.", "error");
+      showToast(copy.fileRenameFailed, "error");
     }
     return result;
   };
@@ -142,12 +145,12 @@ export function useWorkspaceFileActions({
     }
     if (isRoomSession && onFileCreated && !onFileCreated(nextFile)) {
       deleteWorkspaceFileAction(nextFile.id);
-      showToast("This document couldn’t be duplicated in the live workspace.", "error");
+      showToast(copy.fileDuplicateFailed, "error");
       return;
     }
 
     closeFloatingChrome();
-    showToast("File duplicated.");
+    showToast(copy.fileDuplicated);
   };
 
   const deleteFile = (fileId: string) => {
@@ -158,7 +161,7 @@ export function useWorkspaceFileActions({
     }
     const roomText = isRoomSession ? readFileText?.(fileId) : undefined;
     if (isRoomSession && roomText == null) {
-      showToast("This document isn’t ready to delete yet.", "error");
+      showToast(copy.fileDeleteNotReady, "error");
       return;
     }
     const deletedFile: WorkspaceFile = {
@@ -177,7 +180,7 @@ export function useWorkspaceFileActions({
       : commentsByFileId[fileId];
     const deletedHistory = historyByFileId[fileId];
     if (isRoomSession && onFileDeleted && !onFileDeleted(deletedFile)) {
-      showToast("This document couldn’t be deleted from the live workspace.", "error");
+      showToast(copy.fileDeleteFailed, "error");
       return;
     }
     const result = deleteWorkspaceFileAction(fileId);
@@ -199,8 +202,8 @@ export function useWorkspaceFileActions({
       }
     }
 
-    showToast("File deleted.", "neutral", {
-      actionLabel: "Undo",
+    showToast(copy.fileDeleted, "neutral", {
+      actionLabel: copy.undo,
       onAction: () => {
         const shouldActivateRestoredFile = previousActiveFileId === deletedFile.id;
         restoreFile({
@@ -215,7 +218,7 @@ export function useWorkspaceFileActions({
           !onFileRestored(deletedFile, deletedComments ?? [])
         ) {
           deleteWorkspaceFileAction(deletedFile.id);
-          showToast("This document couldn’t be restored to the live workspace.", "error");
+          showToast(copy.fileRestoreFailed, "error");
           return;
         }
         if (shouldActivateRestoredFile) {
@@ -233,7 +236,7 @@ export function useWorkspaceFileActions({
             [deletedFile.id]: deletedHistory,
           }));
         }
-        showToast("File restored.");
+        showToast(copy.fileRestored);
       },
     });
   };

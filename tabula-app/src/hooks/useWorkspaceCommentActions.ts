@@ -14,6 +14,7 @@ import type {
 import type { AppToastState } from "./useAppToast";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";
 import type { FileComment, FileBookmark, WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceActionCopy } from "../workspaceActionLocale";
 
 type QueueEditorTextRange = (
   start: number,
@@ -80,6 +81,7 @@ type UseWorkspaceCommentActionsArgs = {
   showToast: ShowToast;
   startCommentReply: (commentId: string) => void;
   text: string;
+  copy: WorkspaceActionCopy;
 };
 
 export function useWorkspaceCommentActions({
@@ -112,6 +114,7 @@ export function useWorkspaceCommentActions({
   showToast,
   startCommentReply,
   text,
+  copy,
 }: UseWorkspaceCommentActionsArgs) {
   const [selectionCommentPending, setSelectionCommentPending] = useState(false);
   const [pendingSelectionComment, setPendingSelectionComment] = useState<PendingSelectionComment | null>(null);
@@ -219,7 +222,7 @@ export function useWorkspaceCommentActions({
 
     const commentRange = getCommentRangeInText(targetFile.text, comment);
     if (!commentRange) {
-      showToast("Original text not found.", "neutral");
+      showToast(copy.originalTextNotFound, "neutral");
       return;
     }
 

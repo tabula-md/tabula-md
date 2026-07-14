@@ -38,8 +38,6 @@ export type JsonShareController = {
   urlPreview: string;
 };
 
-const EXPORT_LINK_UNAVAILABLE_MESSAGE = "Export link isn’t available right now.";
-
 export const getJsonShareExportFileSnapshot = ({
   activeFile,
   getActiveFileSnapshot,
@@ -130,7 +128,7 @@ export function useJsonShareController({
       return false;
     }
     if (!serviceUrl) {
-      showToast(EXPORT_LINK_UNAVAILABLE_MESSAGE, "error");
+      showToast(copy.shareable.unavailable, "error");
       return false;
     }
 
@@ -155,7 +153,7 @@ export function useJsonShareController({
         commentsByFileId: selectedCommentsByFileId,
       });
       setJsonShareResult({ url, expiresAt, documentCount: selectedFiles.length });
-      showToast("Export link created.");
+      showToast(copy.shareable.created);
       return true;
     } catch (error) {
       clientErrorReporter.report({
@@ -163,7 +161,7 @@ export function useJsonShareController({
         operation: "export",
         error,
       });
-      showToast(getJsonShareExportErrorMessage(error), "error");
+      showToast(getJsonShareExportErrorMessage(error, copy), "error");
       return false;
     } finally {
       setExporting(false);
@@ -175,7 +173,7 @@ export function useJsonShareController({
       return;
     }
     await navigator.clipboard.writeText(jsonShareResult.url);
-    showToast("Export link copied.");
+    showToast(copy.shareable.copied);
   };
 
   return {
@@ -192,13 +190,13 @@ export function useJsonShareController({
   };
 }
 
-const getJsonShareExportErrorMessage = (error: unknown) => {
+const getJsonShareExportErrorMessage = (error: unknown, copy: WorkspaceShareCopy) => {
   if (
     error instanceof TypeError ||
     (error instanceof Error && /failed to fetch|network/i.test(error.message))
   ) {
-    return EXPORT_LINK_UNAVAILABLE_MESSAGE;
+    return copy.shareable.unavailable;
   }
 
-  return "Couldn’t export to link.";
+  return copy.shareable.failed;
 };

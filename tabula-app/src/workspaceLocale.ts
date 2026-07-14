@@ -55,6 +55,7 @@ type WorkspaceMenuCopy = {
       inviteAgent: string;
       inviteAgentDescription: string;
       retrySession: string;
+      unavailable: string;
       reconnectingTitle: string;
       reconnectingDescription: string;
       disconnectedTitle: string;
@@ -75,6 +76,10 @@ type WorkspaceMenuCopy = {
       exportToLink: string;
       exporting: string;
       linkLabel: string;
+      unavailable: string;
+      created: string;
+      copied: string;
+      failed: string;
     };
     exportPanel: {
       title: string;
@@ -159,6 +164,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "Copy a room-aware prompt. The room URL is included only when you click.",
         retrySession: "Retry",
+        unavailable: "Live collaboration isn’t available right now.",
         reconnectingTitle: "Reconnecting to live room",
         reconnectingDescription: "Changes stay local until the room reconnects.",
         disconnectedTitle: "Live room disconnected",
@@ -180,6 +186,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         exportToLink: "Export to link",
         exporting: "Exporting link",
         linkLabel: "Export link",
+        unavailable: "Export to link isn’t available right now.",
+        created: "Export link created.",
+        copied: "Export link copied.",
+        failed: "Couldn’t export to link.",
       },
       exportPanel: {
         title: "Export",
@@ -247,6 +257,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "room용 프롬프트를 복사합니다. room URL은 이 버튼을 눌렀을 때만 포함됩니다.",
         retrySession: "다시 연결",
+        unavailable: "지금은 실시간 협업을 사용할 수 없습니다.",
         reconnectingTitle: "실시간 room에 다시 연결하는 중",
         reconnectingDescription: "다시 연결될 때까지 변경 내용은 이 기기에 유지됩니다.",
         disconnectedTitle: "실시간 room 연결이 끊어졌습니다",
@@ -268,6 +279,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         exportToLink: "링크로 내보내기",
         exporting: "링크 내보내는 중",
         linkLabel: "내보내기 링크",
+        unavailable: "지금은 링크로 내보낼 수 없습니다.",
+        created: "내보내기 링크를 만들었습니다.",
+        copied: "내보내기 링크를 복사했습니다.",
+        failed: "링크로 내보내지 못했습니다.",
       },
       exportPanel: {
         title: "내보내기",
@@ -335,6 +350,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "room 用プロンプトをコピーします。room URL はこのボタンを押したときだけ含まれます。",
         retrySession: "再試行",
+        unavailable: "現在、ライブ共同編集は利用できません。",
         reconnectingTitle: "ライブ共同編集ルームに再接続中",
         reconnectingDescription: "再接続するまで変更はこの端末に保持されます。",
         disconnectedTitle: "ライブ共同編集ルームから切断されました",
@@ -358,6 +374,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         exportToLink: "リンクに書き出し",
         exporting: "リンクを書き出し中",
         linkLabel: "書き出しリンク",
+        unavailable: "現在、リンクへの書き出しは利用できません。",
+        created: "書き出しリンクを作成しました。",
+        copied: "書き出しリンクをコピーしました。",
+        failed: "リンクに書き出せませんでした。",
       },
       exportPanel: {
         title: "書き出し",
@@ -424,6 +444,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "复制面向 room 的提示。只有点击此按钮时才会包含 room URL。",
         retrySession: "重试",
+        unavailable: "实时协作目前不可用。",
         reconnectingTitle: "正在重新连接实时协作房间",
         reconnectingDescription: "重新连接前，更改会保留在此设备上。",
         disconnectedTitle: "实时协作房间已断开连接",
@@ -444,6 +465,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         exportToLink: "导出为链接",
         exporting: "正在导出链接",
         linkLabel: "导出链接",
+        unavailable: "目前无法导出为链接。",
+        created: "已创建导出链接。",
+        copied: "已复制导出链接。",
+        failed: "无法导出为链接。",
       },
       exportPanel: {
         title: "导出",
@@ -511,6 +536,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "Copia un prompt para la sala. La URL de la sala solo se incluye al hacer clic.",
         retrySession: "Reintentar",
+        unavailable: "La colaboración en vivo no está disponible ahora.",
         reconnectingTitle: "Reconectando a la sala en vivo",
         reconnectingDescription: "Los cambios permanecen en este dispositivo hasta reconectar.",
         disconnectedTitle: "Sala en vivo desconectada",
@@ -534,6 +560,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         exportToLink: "Exportar a enlace",
         exporting: "Exportando enlace",
         linkLabel: "Enlace de exportación",
+        unavailable: "La exportación a enlace no está disponible ahora.",
+        created: "Enlace de exportación creado.",
+        copied: "Enlace de exportación copiado.",
+        failed: "No se pudo exportar a un enlace.",
       },
       exportPanel: {
         title: "Exportar",
@@ -601,6 +631,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "Copie un prompt pour la room. L'URL de la room est ajoutée seulement au clic.",
         retrySession: "Réessayer",
+        unavailable: "La collaboration en direct n’est pas disponible actuellement.",
         reconnectingTitle: "Reconnexion à l’espace en direct",
         reconnectingDescription: "Les modifications restent sur cet appareil jusqu’à la reconnexion.",
         disconnectedTitle: "Espace en direct déconnecté",
@@ -624,6 +655,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         exportToLink: "Exporter vers un lien",
         exporting: "Export du lien",
         linkLabel: "Lien d'export",
+        unavailable: "L’export vers un lien n’est pas disponible actuellement.",
+        created: "Lien d’export créé.",
+        copied: "Lien d’export copié.",
+        failed: "Impossible d’exporter vers un lien.",
       },
       exportPanel: {
         title: "Exporter",
@@ -691,6 +726,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         inviteAgentDescription:
           "Kopiert einen Room-Prompt. Die Room-URL wird nur beim Klick eingefügt.",
         retrySession: "Erneut versuchen",
+        unavailable: "Live-Zusammenarbeit ist derzeit nicht verfügbar.",
         reconnectingTitle: "Live-Raum wird erneut verbunden",
         reconnectingDescription: "Änderungen bleiben bis zur Wiederverbindung auf diesem Gerät.",
         disconnectedTitle: "Verbindung zum Live-Raum getrennt",
@@ -714,6 +750,10 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         exportToLink: "Als Link exportieren",
         exporting: "Link wird exportiert",
         linkLabel: "Exportlink",
+        unavailable: "Der Export als Link ist derzeit nicht verfügbar.",
+        created: "Exportlink erstellt.",
+        copied: "Exportlink kopiert.",
+        failed: "Export als Link fehlgeschlagen.",
       },
       exportPanel: {
         title: "Exportieren",
@@ -782,6 +822,7 @@ export type WorkspaceChromeCopy = {
     closeSearch: string;
   };
   statusBar: {
+    statusFor: (title: string) => string;
     savedLocally: string;
     roomOffline: string;
     word: string;
@@ -845,6 +886,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       closeSearch: "Close search",
     },
     statusBar: {
+      statusFor: (title) => `Status for ${title}`,
       savedLocally: "Saved locally",
       roomOffline: "Disconnected",
       word: "word",
@@ -906,6 +948,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       closeSearch: "검색 닫기",
     },
     statusBar: {
+      statusFor: (title) => `${title} 상태`,
       savedLocally: "로컬 저장됨",
       roomOffline: "연결 끊김",
       word: "단어",
@@ -967,6 +1010,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       closeSearch: "検索を閉じる",
     },
     statusBar: {
+      statusFor: (title) => `${title} の状態`,
       savedLocally: "ローカルに保存済み",
       roomOffline: "切断されました",
       word: "語",
@@ -1028,6 +1072,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       closeSearch: "关闭搜索",
     },
     statusBar: {
+      statusFor: (title) => `${title} 的状态`,
       savedLocally: "已本地保存",
       roomOffline: "已断开连接",
       word: "词",
@@ -1089,6 +1134,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       closeSearch: "Cerrar búsqueda",
     },
     statusBar: {
+      statusFor: (title) => `Estado de ${title}`,
       savedLocally: "Guardado localmente",
       roomOffline: "Desconectado",
       word: "palabra",
@@ -1150,6 +1196,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       closeSearch: "Fermer la recherche",
     },
     statusBar: {
+      statusFor: (title) => `État de ${title}`,
       savedLocally: "Enregistré localement",
       roomOffline: "Déconnecté",
       word: "mot",
@@ -1211,6 +1258,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       closeSearch: "Suche schließen",
     },
     statusBar: {
+      statusFor: (title) => `Status für ${title}`,
       savedLocally: "Lokal gespeichert",
       roomOffline: "Getrennt",
       word: "Wort",
