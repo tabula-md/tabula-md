@@ -64,7 +64,7 @@ import {
   VirtualMarkdownPreview,
   type GetVirtualPreviewBlockRehypePlugins,
 } from "../preview/VirtualMarkdownPreview";
-import { resolveMarkdownHref } from "../preview/markdownHref";
+import { classifyMarkdownHref } from "../preview/markdownHref";
 import {
   getWorkspaceSurfaceCopy,
   type WorkspaceSurfaceCopy,
@@ -1164,7 +1164,7 @@ function PreviewCard({
   title,
   ...sourceProps
 }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
-  const resolvedHref = typeof href === "string" ? resolveMarkdownHref(href) : null;
+  const resolvedHref = typeof href === "string" ? classifyMarkdownHref(href) : null;
   const isHorizontal = normalizeDocsAttribute(horizontal) === true || normalizeDocsAttribute(horizontal) === "true";
   const cardBody = (
     <>
@@ -1182,7 +1182,7 @@ function PreviewCard({
   );
   const className = `preview-docs-card ${isHorizontal ? "horizontal" : ""} ${sourceProps.className ?? ""}`.trim();
 
-  if (!href) {
+  if (!href || resolvedHref?.kind !== "external") {
     return <div {...sourceProps} className={className}>{cardBody}</div>;
   }
 
@@ -1793,27 +1793,11 @@ const createMarkdownPreviewComponents = (
 ): Components => ({
   ...PREVIEW_DOCS_COMPONENTS,
   a: ({ node: _node, href, ...props }) => {
-    const resolvedHref = typeof href === "string" ? resolveMarkdownHref(href) : null;
-    const isDocumentSection = resolvedHref?.kind === "fragment";
+    const resolvedHref = typeof href === "string" ? classifyMarkdownHref(href) : null;
 
-    const handleDocumentSectionClick = isDocumentSection
-      ? (event: MouseEvent<HTMLAnchorElement>) => {
-          event.preventDefault();
-          const previewSurface = event.currentTarget.closest(".preview-surface");
-          const encodedSectionId = resolvedHref.href.slice(1);
-          let sectionId = encodedSectionId;
-          try {
-            sectionId = decodeURIComponent(encodedSectionId);
-          } catch {
-            // Keep malformed fragments inert instead of letting a click break preview interaction.
-          }
-          const section = Array.from(previewSurface?.querySelectorAll<HTMLElement>("[id]") ?? [])
-            .find((candidate) => candidate.id === sectionId);
-          if (!section) return;
-
-          section.scrollIntoView({ block: "start" });
-        }
-      : undefined;
+    if (resolvedHref?.kind !== "external") {
+      return <span {...props} />;
+    }
 
     return (
       <a
@@ -1821,7 +1805,6 @@ const createMarkdownPreviewComponents = (
         href={resolvedHref?.href}
         target={resolvedHref?.openInNewTab ? "_blank" : undefined}
         rel={resolvedHref?.openInNewTab ? "noreferrer" : undefined}
-        onClick={handleDocumentSectionClick}
       />
     );
   },
