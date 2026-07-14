@@ -5,7 +5,6 @@ import {
   createStarterWorkspaceState,
   createWorkspaceFile,
   createStoredWorkspace,
-  ensureDefaultFiles,
   getRoomFromLocation,
   parseWorkspacePayload,
   PROJECT_STORAGE_VERSION,
@@ -22,19 +21,6 @@ afterEach(() => {
 });
 
 describe("file tab state transitions", () => {
-  it("opens the product README first and keeps a blank file available", () => {
-    const files = ensureDefaultFiles([], { ensureUntitled: true });
-
-    expect(files.map((file) => file.title)).toEqual(["README.md", "Untitled.md"]);
-    expect(files[0].viewMode).toBe("preview");
-    expect(files[0].text).toContain(
-      "Tabula.md is a local-first Markdown workspace for files that people and coding agents can share safely.",
-    );
-    expect(files[0].text).not.toContain("AI agents can both read");
-    expect(files[1].viewMode).toBe("edit");
-    expect(files[1].text).toBe("");
-  });
-
   it("opens a shared room as a room session before documents arrive", () => {
     const workspace = createRoomWorkspaceState();
 
@@ -134,10 +120,10 @@ describe("file tab state transitions", () => {
     expect(replaceState).toHaveBeenNthCalledWith(3, null, "", "/");
   });
 
-  it("opens a fresh project with the product README available but no open tabs", () => {
+  it("opens a fresh project without hidden workspace documents", () => {
     const restored = createStarterWorkspaceState();
 
-    expect(restored.files.map((file) => file.title)).toEqual(["README.md"]);
+    expect(restored.files).toEqual([]);
     expect(restored.openFileIds).toEqual([]);
     expect(restored.activeFileId).toBe("");
   });
