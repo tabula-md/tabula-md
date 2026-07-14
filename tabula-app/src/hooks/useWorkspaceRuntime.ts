@@ -1174,7 +1174,7 @@ export function useWorkspaceRuntime() {
     handleLineAnnotationAction,
   );
   const openStableCommentMarker = useEventCallback(openCommentMarker);
-  const { projectContextProps } =
+  const { sidePanelProps } =
     useWorkspaceProjectContextRuntime({
       activeCommentId: focusedCommentId,
       activeFile,
@@ -1365,7 +1365,7 @@ export function useWorkspaceRuntime() {
       onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
       onReplaceWorkspaceWithArchive: replaceWorkspaceWithArchive,
     },
-    projectContextProps,
+    sidePanelProps,
     topChromeProps,
     workbenchProps: {
       activeBookmarks,

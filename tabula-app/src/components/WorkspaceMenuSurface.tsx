@@ -63,7 +63,7 @@ export function WorkspaceMenuSurface({
         type="file"
         accept=".md,.markdown,text/markdown,text/plain"
         onChange={onImportFileChange}
-        aria-label={interfaceCopy.projectContext.files.openMarkdown}
+        aria-label={interfaceCopy.sidePanel.files.openMarkdown}
       />
       <input
         ref={workspaceImportInputRef}

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Menu, PanelRight, Users } from "lucide-react";
+import { Menu, PanelRightClose, PanelRightOpen, Users } from "lucide-react";
 import type { Collaborator } from "../collaboration";
 import type { FollowState } from "../collaboration/followModel";
 import { getLineNumberForSelection } from "../collaboration/collaborationPresence";
@@ -43,9 +43,7 @@ export function TopChrome({
   const workspaceMenuLabel = workspaceMenuOpen
     ? copy.closeWorkspaceMenu
     : copy.openWorkspaceMenu;
-  const rightPanelLabel = rightPanelOpen
-    ? copy.closeProjectContext
-    : copy.openProjectContext;
+  const sidePanelLabel = copy.toggleSidePanel;
   const liveCollaborators = isLiveConnected ? [identity, ...collaborators] : [];
   const getInitial = (collaborator: Collaborator) =>
     (collaborator.name || "?").trim().slice(0, 1) || "?";
@@ -133,18 +131,16 @@ export function TopChrome({
 
           {shareControls}
 
-          {!rightPanelOpen && (
-            <button
-              className="panel-toggle top-panel-toggle"
-              type="button"
-              aria-label={rightPanelLabel}
-              data-tooltip={rightPanelLabel}
-              aria-expanded={rightPanelOpen}
-              onClick={onToggleRightPanel}
-            >
-              <PanelRight size={16} />
-            </button>
-          )}
+          <button
+            className={`panel-toggle top-panel-toggle ${rightPanelOpen ? "active" : ""}`}
+            type="button"
+            aria-label={sidePanelLabel}
+            data-tooltip={sidePanelLabel}
+            aria-pressed={rightPanelOpen}
+            onClick={onToggleRightPanel}
+          >
+            {rightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+          </button>
         </div>
       </div>
     </header>
