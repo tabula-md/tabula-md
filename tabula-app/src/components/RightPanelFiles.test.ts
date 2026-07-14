@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildFileTree, flattenVisibleFileTree } from "./RightPanelFiles";
+import {
+  buildFileTree,
+  flattenVisibleFileTree,
+  pruneEmptyFileTreeFolders,
+} from "./RightPanelFiles";
 import { WORKSPACE_ROOT_FOLDER_ID, createWorkspaceFile, createWorkspaceRootFolder } from "../workspaceStorage";
 
 describe("right panel file rows", () => {
@@ -24,6 +28,25 @@ describe("right panel file rows", () => {
       WORKSPACE_ROOT_FOLDER_ID,
       "docs",
       rootFile.id,
+    ]);
+  });
+
+  it("keeps only matching file ancestors while search results are expanded", () => {
+    const matchingFile = createWorkspaceFile(1, { title: "Plan", parentId: "planning" });
+    const tree = buildFileTree(
+      [matchingFile],
+      [
+        createWorkspaceRootFolder(),
+        { id: "planning", title: "Planning", parentId: WORKSPACE_ROOT_FOLDER_ID },
+        { id: "empty", title: "Empty", parentId: WORKSPACE_ROOT_FOLDER_ID },
+      ],
+    );
+    const prunedTree = pruneEmptyFileTreeFolders(tree);
+
+    expect(flattenVisibleFileTree(prunedTree, new Set()).map(({ node }) => node.id)).toEqual([
+      WORKSPACE_ROOT_FOLDER_ID,
+      "planning",
+      matchingFile.id,
     ]);
   });
 });

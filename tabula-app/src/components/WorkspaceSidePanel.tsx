@@ -22,7 +22,7 @@ const readSidePanelWidth = () => {
 
 export type WorkspaceSidePanelProps = Omit<
   RightPanelProps,
-  "activeFileId" | "getFileSearchText" | "isLiveWorkspace"
+  "activeFileId" | "getFileSearchText" | "isLiveWorkspace" | "onToggleSidePanel"
 > & {
   activeFileId?: string;
   isLive: boolean;
@@ -65,6 +65,7 @@ export function WorkspaceSidePanel({
         activeFileId={activeFileId ?? ""}
         isLiveWorkspace={isLive}
         getFileSearchText={getWorkspaceFileSearchText}
+        onToggleSidePanel={onClose}
       />
     </>
   );

@@ -3,6 +3,7 @@ import {
   Folder,
   ListTree,
   MessageSquare,
+  PanelRightClose,
 } from "lucide-react";
 import { getRightPanelCommentGroups } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "../hooks/useRightPanelCollapseState";
@@ -15,6 +16,7 @@ import { RightPanelFiles } from "./RightPanelFiles";
 import { RightPanelOutline } from "./RightPanelOutline";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import { getWorkspaceChromeCopy } from "../workspaceLocale";
 
 type RightPanelProps = {
   isOpen: boolean;
@@ -40,6 +42,7 @@ type RightPanelProps = {
   replyDraftByCommentId: Record<string, string>;
   getFileSearchText: (file: WorkspaceFile) => string;
   onSetView: (view: RightPanelView) => void;
+  onToggleSidePanel: () => void;
   onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
@@ -95,6 +98,7 @@ export function RightPanel({
   replyDraftByCommentId,
   getFileSearchText,
   onSetView,
+  onToggleSidePanel,
   onFileQueryChange,
   onNewFile,
   onNewFolder,
@@ -126,6 +130,7 @@ export function RightPanel({
   formatCommentDate,
 }: RightPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
+  const toggleSidePanelLabel = getWorkspaceChromeCopy(language).topChrome.toggleSidePanel;
   const {
     showResolved,
     collapsedReplyIds,
@@ -136,6 +141,8 @@ export function RightPanel({
     toggleRepliesCollapsed,
     toggleCommentFileCollapsed,
     toggleFileTreeFolderCollapsed,
+    collapseAllFileTreeFolders,
+    expandAllFileTreeFolders,
     toggleOutlineHeadingCollapsed,
   } = useRightPanelCollapseState({
     activeFileId,
@@ -182,6 +189,16 @@ export function RightPanel({
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />)}
         </nav>
+        <button
+          className="side-panel-overlay-toggle"
+          type="button"
+          aria-label={toggleSidePanelLabel}
+          data-tooltip={toggleSidePanelLabel}
+          aria-pressed="true"
+          onClick={onToggleSidePanel}
+        >
+          <PanelRightClose size={16} />
+        </button>
       </div>
 
       <div className={`right-panel-body ${effectiveView}`}>
@@ -200,6 +217,8 @@ export function RightPanel({
             onNewFolder={onNewFolder}
             onImportFile={onImportFile}
             onToggleFolder={toggleFileTreeFolderCollapsed}
+            onCollapseAllFolders={collapseAllFileTreeFolders}
+            onExpandAllFolders={expandAllFileTreeFolders}
             onSelectFile={onSelectFile}
             onRenameFile={onRenameFile}
             onDuplicateFile={onDuplicateFile}
