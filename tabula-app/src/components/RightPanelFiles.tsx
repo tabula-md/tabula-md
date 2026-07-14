@@ -3,6 +3,8 @@ import { type KeyboardEvent as ReactKeyboardEvent, useLayoutEffect, useMemo, use
 import {
   ChevronDown,
   ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
   ClipboardCopy,
   Copy,
   Ellipsis,
@@ -13,6 +15,7 @@ import {
   FolderPlus,
   PencilLine,
   Plus,
+  Search,
   Trash2,
   Upload,
   X,
@@ -65,6 +68,8 @@ type RightPanelFilesProps = {
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
   onToggleFolder: (folderId: string) => void;
+  onCollapseAllFolders: (folderIds: Iterable<string>) => void;
+  onExpandAllFolders: () => void;
   onSelectFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onDuplicateFile: (fileId: string) => void;
@@ -186,6 +191,26 @@ export const flattenVisibleFileTree = (
   return rows;
 };
 
+export const pruneEmptyFileTreeFolders = (
+  root: FileTreeFolderNode,
+): FileTreeFolderNode => {
+  const pruneFolder = (folder: FileTreeFolderNode): FileTreeFolderNode | null => {
+    const children: FileTreeNode[] = [];
+    for (const child of folder.children) {
+      if (child.type === "file") {
+        children.push(child);
+        continue;
+      }
+      const nextFolder = pruneFolder(child);
+      if (nextFolder) children.push(nextFolder);
+    }
+    if (folder.id !== WORKSPACE_ROOT_FOLDER_ID && children.length === 0) return null;
+    return { ...folder, children };
+  };
+
+  return pruneFolder(root) ?? { ...root, children: [] };
+};
+
 export function RightPanelFiles({
   files,
   folders,
@@ -200,6 +225,8 @@ export function RightPanelFiles({
   onNewFolder,
   onImportFile,
   onToggleFolder,
+  onCollapseAllFolders,
+  onExpandAllFolders,
   onSelectFile,
   onRenameFile,
   onDuplicateFile,
@@ -217,6 +244,7 @@ export function RightPanelFiles({
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renamingFolderTitle, setRenamingFolderTitle] = useState("");
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(() => Boolean(fileQuery));
   const [moveTarget, setMoveTarget] = useState<{
     type: "file" | "folder";
     id: string;
@@ -225,7 +253,9 @@ export function RightPanelFiles({
   } | null>(null);
   const [moveQuery, setMoveQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchButtonRef = useRef<HTMLButtonElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
+  const folderRenameInputRef = useRef<HTMLInputElement | null>(null);
   const treeScrollRef = useRef<HTMLDivElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const normalizedQuery = fileQuery.trim().toLowerCase();
@@ -235,17 +265,23 @@ export function RightPanelFiles({
       ? files.filter((file) => getFileSearchText(file).toLowerCase().includes(normalizedQuery))
       : files;
     const nextFolderDisplayTitles = getWorkspaceFolderDisplayTitles(folders);
-    const nextFileTreeRoot = buildFileTree(
+    const unfilteredFileTreeRoot = buildFileTree(
       nextVisibleFiles,
       folders,
       getWorkspaceFileDisplayTitles(files),
       nextFolderDisplayTitles,
     );
+    const nextFileTreeRoot = normalizedQuery
+      ? pruneEmptyFileTreeFolders(unfilteredFileTreeRoot)
+      : unfilteredFileTreeRoot;
+    const effectiveCollapsedFolderIds = normalizedQuery
+      ? new Set<string>()
+      : collapsedFolderIds;
     return {
       visibleFiles: nextVisibleFiles,
       folderDisplayTitles: nextFolderDisplayTitles,
       fileTreeRoot: nextFileTreeRoot,
-      visibleRows: flattenVisibleFileTree(nextFileTreeRoot, collapsedFolderIds),
+      visibleRows: flattenVisibleFileTree(nextFileTreeRoot, effectiveCollapsedFolderIds),
     };
   }, [collapsedFolderIds, files, folders, getFileSearchText, normalizedQuery]);
   const visibleFileIds = useMemo(
@@ -285,6 +321,14 @@ export function RightPanelFiles({
       return (folderDisplayTitles.get(folder.id) ?? folder.title).toLowerCase().includes(query);
     });
   }, [folderDisplayTitles, folders, moveQuery, moveTarget]);
+  const collapsibleFolderIds = useMemo(
+    () => folders
+      .filter((folder) => folder.id !== WORKSPACE_ROOT_FOLDER_ID)
+      .map((folder) => folder.id),
+    [folders],
+  );
+  const allFoldersCollapsed = collapsibleFolderIds.length > 0
+    && collapsibleFolderIds.every((folderId) => collapsedFolderIds.has(folderId));
 
   useLayoutEffect(() => {
     if (!renamingFileId) {
@@ -298,6 +342,27 @@ export function RightPanelFiles({
 
     return () => window.cancelAnimationFrame(frame);
   }, [renamingFileId]);
+
+  useLayoutEffect(() => {
+    if (!renamingFolderId) return;
+    const frame = window.requestAnimationFrame(() => {
+      folderRenameInputRef.current?.focus();
+      folderRenameInputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [renamingFolderId]);
+
+  useLayoutEffect(() => {
+    if (!searchOpen) return;
+    const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [searchOpen]);
+
+  const closeSearch = () => {
+    onFileQueryChange("");
+    setSearchOpen(false);
+    window.requestAnimationFrame(() => searchButtonRef.current?.focus());
+  };
 
   const startRenamingFile = (file: WorkspaceFile) => {
     setActionMenuFileId(null);
@@ -369,10 +434,10 @@ export function RightPanelFiles({
       return;
     }
 
-    if (event.key === "Escape" && fileQuery) {
+    if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      onFileQueryChange("");
+      closeSearch();
     }
   };
 
@@ -389,11 +454,10 @@ export function RightPanelFiles({
       return;
     }
 
-    if (event.key === "Escape" && fileQuery) {
+    if (event.key === "Escape" && searchOpen) {
       event.preventDefault();
       event.stopPropagation();
-      onFileQueryChange("");
-      window.requestAnimationFrame(() => searchInputRef.current?.focus());
+      closeSearch();
     }
   };
 
@@ -429,7 +493,7 @@ export function RightPanelFiles({
       transform: `translateY(${virtualRow.start}px)`,
     };
     if (node.type === "folder") {
-      const folderCollapsed = collapsedFolderIds.has(node.id);
+      const folderCollapsed = normalizedQuery ? false : collapsedFolderIds.has(node.id);
       const isRootFolder = node.id === WORKSPACE_ROOT_FOLDER_ID;
       const folderMenuOpen = actionMenuFolderId === node.id;
       const folderIsRenaming = renamingFolderId === node.id;
@@ -462,6 +526,7 @@ export function RightPanelFiles({
               </span>
               {folderIsRenaming ? (
                 <input
+                  ref={folderRenameInputRef}
                   className="right-file-rename-input"
                   value={renamingFolderTitle}
                   aria-label={copy.renameFolder(node.name)}
@@ -675,48 +740,94 @@ export function RightPanelFiles({
   return (
     <>
     <section className="right-panel-content right-files-panel">
-      <div className="right-file-search-row">
-        <input
-          ref={searchInputRef}
-          className="right-panel-search"
-          type="search"
-          value={fileQuery}
-          placeholder={copy.search}
-          aria-label={copy.search}
-          onChange={(event) => onFileQueryChange(event.target.value)}
-          onKeyDown={handleSearchKeyDown}
-        />
-        <button
-          className="right-file-import-button"
-          type="button"
-          aria-label={copy.openMarkdown}
-          data-tooltip={copy.openMarkdown}
-          onClick={onImportFile}
-        >
-          <Upload size={16} />
-        </button>
-        <MenuRoot open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
-          <div className="right-file-create-menu-wrap">
-            <MenuTrigger asChild>
-              <button
-                className={`right-file-create-button ${createMenuOpen ? "active" : ""}`}
-                type="button"
-                aria-label={copy.create}
-                data-tooltip={copy.create}
-              >
-                <Plus size={16} />
-              </button>
-            </MenuTrigger>
-          </div>
-          <MenuContent className="right-file-create-menu" ariaLabel={copy.createInWorkspace}>
-            <MenuItem icon={<FilePlus2 size={16} />} label={copy.newDocument} onSelect={onNewFile} />
-            <MenuItem
-              icon={<FolderPlus size={16} />}
-              label={copy.newFolder}
-              onSelect={() => createAndRenameFolder()}
+      <div className={`right-file-toolbar ${searchOpen ? "searching" : ""}`}>
+        {searchOpen ? (
+          <>
+            <input
+              ref={searchInputRef}
+              className="right-panel-search"
+              type="search"
+              value={fileQuery}
+              placeholder={copy.search}
+              aria-label={copy.search}
+              onChange={(event) => onFileQueryChange(event.target.value)}
+              onKeyDown={handleSearchKeyDown}
             />
-          </MenuContent>
-        </MenuRoot>
+            <button
+              className="right-file-toolbar-button"
+              type="button"
+              aria-label={copy.closeSearch}
+              data-tooltip={copy.closeSearch}
+              onClick={closeSearch}
+            >
+              <X size={16} />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              ref={searchButtonRef}
+              className="right-file-toolbar-button"
+              type="button"
+              aria-label={copy.search}
+              data-tooltip={copy.search}
+              onClick={() => setSearchOpen(true)}
+            >
+              <Search size={16} />
+            </button>
+            {collapsibleFolderIds.length > 0 && (
+              <button
+                className="right-file-toolbar-button"
+                type="button"
+                aria-label={allFoldersCollapsed ? copy.expandAll : copy.collapseAll}
+                data-tooltip={allFoldersCollapsed ? copy.expandAll : copy.collapseAll}
+                onClick={() => {
+                  if (allFoldersCollapsed) onExpandAllFolders();
+                  else onCollapseAllFolders(collapsibleFolderIds);
+                }}
+              >
+                {allFoldersCollapsed
+                  ? <ChevronsUpDown size={16} />
+                  : <ChevronsDownUp size={16} />}
+              </button>
+            )}
+            <button
+              className="right-file-toolbar-button"
+              type="button"
+              aria-label={copy.openMarkdown}
+              data-tooltip={copy.openMarkdown}
+              onClick={onImportFile}
+            >
+              <Upload size={16} />
+            </button>
+            <MenuRoot open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
+              <div className="right-file-create-menu-wrap">
+                <MenuTrigger asChild>
+                  <button
+                    className={`right-file-toolbar-button ${createMenuOpen ? "active" : ""}`}
+                    type="button"
+                    aria-label={copy.create}
+                    data-tooltip={copy.create}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </MenuTrigger>
+              </div>
+              <MenuContent
+                className="right-file-create-menu"
+                ariaLabel={copy.createInWorkspace}
+                onCloseAutoFocus={(event) => event.preventDefault()}
+              >
+                <MenuItem icon={<FilePlus2 size={16} />} label={copy.newDocument} onSelect={onNewFile} />
+                <MenuItem
+                  icon={<FolderPlus size={16} />}
+                  label={copy.newFolder}
+                  onSelect={() => createAndRenameFolder()}
+                />
+              </MenuContent>
+            </MenuRoot>
+          </>
+        )}
       </div>
       {visibleFiles.length > 0 || fileTreeRoot.children.length > 0 ? (
         <div className="right-file-tree-scroll" ref={treeScrollRef}>

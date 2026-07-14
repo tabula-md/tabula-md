@@ -35,6 +35,9 @@ type WorkspaceInterfaceMessages = {
   filesDuplicate: string;
   filesCopyMarkdown: string;
   filesSearch: string;
+  filesCloseSearch: string;
+  filesCollapseAll: string;
+  filesExpandAll: string;
   filesOpenMarkdown: string;
   filesCreate: string;
   filesCreateInWorkspace: string;
@@ -121,6 +124,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesDuplicate: "Duplicate",
     filesCopyMarkdown: "Copy Markdown",
     filesSearch: "Search files",
+    filesCloseSearch: "Close file search",
+    filesCollapseAll: "Collapse all folders",
+    filesExpandAll: "Expand all folders",
     filesOpenMarkdown: "Open Markdown file",
     filesCreate: "Create",
     filesCreateInWorkspace: "Create in workspace",
@@ -205,6 +211,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesDuplicate: "복제",
     filesCopyMarkdown: "Markdown 복사",
     filesSearch: "파일 검색",
+    filesCloseSearch: "파일 검색 닫기",
+    filesCollapseAll: "모든 폴더 접기",
+    filesExpandAll: "모든 폴더 펼치기",
     filesOpenMarkdown: "Markdown 파일 열기",
     filesCreate: "만들기",
     filesCreateInWorkspace: "워크스페이스에 만들기",
@@ -289,6 +298,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesDuplicate: "複製",
     filesCopyMarkdown: "Markdown をコピー",
     filesSearch: "ファイルを検索",
+    filesCloseSearch: "ファイル検索を閉じる",
+    filesCollapseAll: "すべてのフォルダーを折りたたむ",
+    filesExpandAll: "すべてのフォルダーを展開",
     filesOpenMarkdown: "Markdownファイルを開く",
     filesCreate: "作成",
     filesCreateInWorkspace: "ワークスペースに作成",
@@ -373,6 +385,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesDuplicate: "创建副本",
     filesCopyMarkdown: "复制 Markdown",
     filesSearch: "搜索文件",
+    filesCloseSearch: "关闭文件搜索",
+    filesCollapseAll: "折叠所有文件夹",
+    filesExpandAll: "展开所有文件夹",
     filesOpenMarkdown: "打开 Markdown 文件",
     filesCreate: "创建",
     filesCreateInWorkspace: "在工作区中创建",
@@ -457,6 +472,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesDuplicate: "Duplicar",
     filesCopyMarkdown: "Copiar Markdown",
     filesSearch: "Buscar archivos",
+    filesCloseSearch: "Cerrar búsqueda de archivos",
+    filesCollapseAll: "Contraer todas las carpetas",
+    filesExpandAll: "Expandir todas las carpetas",
     filesOpenMarkdown: "Abrir archivo Markdown",
     filesCreate: "Crear",
     filesCreateInWorkspace: "Crear en el espacio",
@@ -541,6 +559,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesDuplicate: "Dupliquer",
     filesCopyMarkdown: "Copier le Markdown",
     filesSearch: "Rechercher des fichiers",
+    filesCloseSearch: "Fermer la recherche de fichiers",
+    filesCollapseAll: "Replier tous les dossiers",
+    filesExpandAll: "Déplier tous les dossiers",
     filesOpenMarkdown: "Ouvrir un fichier Markdown",
     filesCreate: "Créer",
     filesCreateInWorkspace: "Créer dans l’espace",
@@ -625,6 +646,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     filesDuplicate: "Duplizieren",
     filesCopyMarkdown: "Markdown kopieren",
     filesSearch: "Dateien suchen",
+    filesCloseSearch: "Dateisuche schließen",
+    filesCollapseAll: "Alle Ordner einklappen",
+    filesExpandAll: "Alle Ordner ausklappen",
     filesOpenMarkdown: "Markdown-Datei öffnen",
     filesCreate: "Erstellen",
     filesCreateInWorkspace: "Im Workspace erstellen",
@@ -732,6 +756,9 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         duplicate: copy.filesDuplicate,
         copyMarkdown: copy.filesCopyMarkdown,
         search: copy.filesSearch,
+        closeSearch: copy.filesCloseSearch,
+        collapseAll: copy.filesCollapseAll,
+        expandAll: copy.filesExpandAll,
         openMarkdown: copy.filesOpenMarkdown,
         create: copy.filesCreate,
         createInWorkspace: copy.filesCreateInWorkspace,
