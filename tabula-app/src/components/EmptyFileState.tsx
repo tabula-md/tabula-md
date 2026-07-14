@@ -9,6 +9,7 @@ type EmptyFileStateProps = {
   language: WorkspaceLanguage;
   onNewFile: () => void;
   onOpenFile: () => void;
+  onOpenWorkspace: () => void;
   onBrowseFiles: () => void;
   onOpenHelp: () => void;
   shortcutPlatform: ShortcutPlatform;
@@ -18,6 +19,7 @@ export function EmptyFileState({
   language,
   onNewFile,
   onOpenFile,
+  onOpenWorkspace,
   onBrowseFiles,
   onOpenHelp,
   shortcutPlatform,
@@ -41,6 +43,11 @@ export function EmptyFileState({
             <Upload size={16} />
             <span>{copy.openFile}</span>
             <span className="empty-file-action-hint">{formatShortcut("Mod+Alt+O", shortcutPlatform)}</span>
+          </button>
+          <button type="button" onClick={onOpenWorkspace} className="empty-file-action">
+            <FolderOpen size={16} />
+            <span>{copy.openWorkspace}</span>
+            <span className="empty-file-action-hint" />
           </button>
           <button type="button" onClick={onBrowseFiles} className="empty-file-action">
             <FolderOpen size={16} />

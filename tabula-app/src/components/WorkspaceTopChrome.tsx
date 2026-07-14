@@ -129,7 +129,7 @@ export function WorkspaceTopChrome({
     />
   );
 
-  const shareControls = activeFile || room ? (
+  const shareControls = files.length > 0 || room ? (
     <>
       <ShareTrigger
         connectionStatus={connectionStatus}

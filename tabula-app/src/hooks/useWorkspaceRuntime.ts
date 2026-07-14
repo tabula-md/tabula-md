@@ -188,6 +188,7 @@ export function useWorkspaceRuntime() {
     createActiveRoomDocumentProjectionStore());
   const commentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const workspaceImportInputRef = useRef<HTMLInputElement | null>(null);
   const [shortcutPlatform] = useState(() => getShortcutPlatform());
   const [infoDialog, setInfoDialog] = useState<WorkspaceInfoDialogKind | null>(null);
   const { dismissToast, pauseToast, resumeToast, toast, showToast } = useAppToast();
@@ -966,6 +967,7 @@ export function useWorkspaceRuntime() {
 
   const {
     closeJsonShareImport,
+    closeWorkspaceArchiveImport,
     copyFile,
     downloadProjectArchive,
     emptyDropActive,
@@ -973,7 +975,10 @@ export function useWorkspaceRuntime() {
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDrop,
     handleImportInputChange,
+    handleWorkspaceImportInputChange,
     jsonShareImport,
+    workspaceArchiveImport,
+    replaceWorkspaceWithArchive,
     replaceWorkspaceWithJsonShare,
   } = useWorkspaceIoRuntime({
     activeFile,
@@ -1123,12 +1128,14 @@ export function useWorkspaceRuntime() {
   });
   const { menuSurfaceProps } = useWorkspaceMenuRuntime({
     importInputRef,
+    workspaceImportInputRef,
     isOpen: workspaceMenuOpen,
     onAddFile: addFile,
     canClearWorkspace: !activeRoom,
     onClearWorkspace: clearLocalWorkspace,
     onCloseChrome: closeFloatingChrome,
     onImportFileChange: handleImportInputChange,
+    onImportWorkspaceChange: handleWorkspaceImportInputChange,
     onOpenAbout: openAbout,
     onOpenHelp: openHelp,
     preferences: workspacePreferences,
@@ -1398,6 +1405,7 @@ export function useWorkspaceRuntime() {
       onDrop: handleEmptyWorkspaceDrop,
       onNewFile: addFile,
       onOpenFile: () => importInputRef.current?.click(),
+      onOpenWorkspace: () => workspaceImportInputRef.current?.click(),
       onOpenHelp: openHelp,
     },
     liveRoomLoadingProps: {
@@ -1417,15 +1425,18 @@ export function useWorkspaceRuntime() {
     overlayProps: {
       infoDialog,
       jsonShareImport,
+      workspaceArchiveImport,
       language: workspacePreferences.language,
       shortcutPlatform,
       toast,
       onCloseInfoDialog: () => setInfoDialog(null),
+      onCloseWorkspaceArchiveImport: closeWorkspaceArchiveImport,
       onDismissToast: dismissToast,
       onPauseToast: pauseToast,
       onResumeToast: resumeToast,
       onCloseJsonShareImport: closeJsonShareImport,
       onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
+      onReplaceWorkspaceWithArchive: replaceWorkspaceWithArchive,
     },
     projectContextProps,
     topChromeProps,

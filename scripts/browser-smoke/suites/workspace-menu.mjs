@@ -1,3 +1,5 @@
+import { strToU8, zipSync } from "fflate";
+
 export const id = "workspace";
 export const description = "First screen, tabs, empty state, share, templates, and view-mode chrome.";
 const validRoomKey = "A".repeat(43);
@@ -107,6 +109,36 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     nextTabs = await getTabs(page);
     expect(nextTabs.find((tab) => tab.active)?.mode === "Edit", "New documents should open as blank Edit documents.");
+  });
+
+  await withPage(browser, "/", async (page) => {
+    const workspaceArchive = zipSync({
+      "Planning/Launch notes.md": strToU8("# Launch notes\n\nReady."),
+      "Planning/Research/Questions.md": strToU8("# Questions"),
+    });
+    await page.locator('input[aria-label="Open workspace"]').setInputFiles({
+      name: "tabula-workspace.zip",
+      mimeType: "application/zip",
+      buffer: Buffer.from(workspaceArchive),
+    });
+    await page.getByRole("dialog", { name: "Open workspace" }).waitFor();
+    expect(
+      (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1,
+      "Opening a workspace should preview its logical document paths before replacing local state.",
+    );
+    await page.getByRole("button", { name: "Open workspace", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Launch notes.md" });
+    await waitForEditorReady(page, { mode: "edit" });
+
+    for (let index = 0; index < 2; index += 1) {
+      await page.locator(".tab-item.active").hover();
+      await page.locator(".tab-item.active .tab-action-button.close").click();
+    }
+    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    expect(
+      (await page.locator(".share-trigger").count()) === 1,
+      "Share should remain available when workspace files exist but every document tab is closed.",
+    );
   });
 
   await withPage(browser, "/", async (page) => {
