@@ -93,13 +93,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
   },
 
   setRightPanelOpen: (isOpen) => {
-    set((state) => {
-      const rightPanelOpen = applyUiValueUpdater(state.rightPanelOpen, isOpen);
-      return {
-        rightPanelOpen,
-        searchOpen: rightPanelOpen ? state.searchOpen : false,
-      };
-    });
+    set((state) => ({ rightPanelOpen: applyUiValueUpdater(state.rightPanelOpen, isOpen) }));
   },
 
   setRightPanelView: (view) => {
@@ -132,7 +126,6 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
   toggleRightPanel: () => {
     set((state) => ({
       rightPanelOpen: !state.rightPanelOpen,
-      searchOpen: state.rightPanelOpen ? false : state.searchOpen,
       workspaceMenuOpen: false,
       preferencesOpen: false,
       topPopover: null,

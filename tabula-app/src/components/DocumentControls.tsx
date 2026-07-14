@@ -40,6 +40,7 @@ type DocumentControlsProps = {
   activeSyncScrolling: boolean;
   centerPopover: CenterPopover;
   language: WorkspaceLanguage;
+  searchOpen: boolean;
   onSetViewMode: (viewMode: FileViewMode) => void;
   onPreparePreview: () => void;
   onToggleViewOptions: () => void;
@@ -47,6 +48,7 @@ type DocumentControlsProps = {
   onToggleSyncScrolling: () => void;
   onToggleLineWrapping: () => void;
   onToggleLineNumbers: () => void;
+  onToggleSearch: () => void;
 };
 
 export type DocumentSearchBarProps = {
@@ -84,6 +86,7 @@ export function DocumentControls({
   activeSyncScrolling,
   centerPopover,
   language,
+  searchOpen,
   onSetViewMode,
   onPreparePreview,
   onToggleViewOptions,
@@ -91,6 +94,7 @@ export function DocumentControls({
   onToggleSyncScrolling,
   onToggleLineWrapping,
   onToggleLineNumbers,
+  onToggleSearch,
 }: DocumentControlsProps) {
   const copy = getWorkspaceChromeCopy(language).documentControls;
   const controls = buildDocumentControlsModel({
@@ -123,6 +127,16 @@ export function DocumentControls({
           ))}
         </div>
         <div className="document-utility-controls">
+          <button
+            className={`tool-button ${searchOpen ? "active" : ""}`}
+            type="button"
+            aria-label={copy.search}
+            data-tooltip={copy.search}
+            aria-pressed={searchOpen}
+            onClick={onToggleSearch}
+          >
+            <Search size={16} />
+          </button>
           <PopoverRoot
             open={centerPopover === "view"}
             onOpenChange={(open) => {

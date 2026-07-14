@@ -5,7 +5,6 @@ import {
   type RefObject,
 } from "react";
 import type { WorkspaceSidePanelProps } from "../components/WorkspaceSidePanel";
-import type { DocumentSearchBarProps } from "../components/DocumentControls";
 import {
   getLineStartOffset,
   type MarkdownHeading,
@@ -67,13 +66,13 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   isLive: boolean;
   language: WorkspaceLanguage;
   onImportFile: () => void;
+  onOpenSearchResult: (fileId: string, start: number, end: number) => void;
   outlineHeadings: MarkdownHeading[];
   parsedMarkdownBody: string;
   previewSurfaceRef: RefObject<HTMLElement | null>;
   replyDraftByCommentId: Record<string, string>;
   rightPanelOpen: boolean;
   rightPanelView: RightPanelView;
-  search: Omit<DocumentSearchBarProps, "language">;
   selectedCharacterCount: number;
   pendingSelectionText: string;
   selectionCommentPending: boolean;
@@ -81,7 +80,6 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   onCancelSelectionComment: () => void;
   setRightPanelOpen: (isOpen: boolean) => void;
   setRightPanelView: (view: RightPanelView) => void;
-  setSearchOpen: (isOpen: boolean) => void;
   text: string;
 };
 
@@ -116,6 +114,7 @@ export function useWorkspaceProjectContextRuntime({
   onIdentityNameChange,
   onIdentityNameCommit,
   onImportFile,
+  onOpenSearchResult,
   onNewFile,
   onNewFolder,
   onRenameFile,
@@ -132,7 +131,6 @@ export function useWorkspaceProjectContextRuntime({
   replyDraftByCommentId,
   rightPanelOpen,
   rightPanelView,
-  search,
   selectedCharacterCount,
   pendingSelectionText,
   selectionCommentPending,
@@ -140,7 +138,6 @@ export function useWorkspaceProjectContextRuntime({
   onCancelSelectionComment,
   setRightPanelOpen,
   setRightPanelView,
-  setSearchOpen,
   text,
 }: UseWorkspaceProjectContextRuntimeOptions) {
   const visibleFiles = files;
@@ -203,9 +200,8 @@ export function useWorkspaceProjectContextRuntime({
     ],
   );
   const setPanelView = useCallback((nextView: RightPanelView) => {
-    setSearchOpen(nextView === "search");
     setRightPanelView(nextView);
-  }, [setRightPanelView, setSearchOpen]);
+  }, [setRightPanelView]);
 
   const sidePanelProps: WorkspaceSidePanelProps = {
     isOpen: rightPanelOpen,
@@ -217,7 +213,6 @@ export function useWorkspaceProjectContextRuntime({
     activeFileId: visibleActiveFileId,
     activeFileTitle,
     activeOutlineHeadingIndex,
-    search,
     outlineHeadings,
     commentsByFileId,
     commentDraft,
@@ -232,6 +227,7 @@ export function useWorkspaceProjectContextRuntime({
     activeReplyCommentId,
     replyDraftByCommentId,
     onSetView: setPanelView,
+    onOpenSearchResult,
     onClose: () => setRightPanelOpen(false),
     onNewFile,
     onNewFolder,

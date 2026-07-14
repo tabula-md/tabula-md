@@ -17,6 +17,9 @@ type WorkspaceInterfaceMessages = {
   panelOutline: string;
   panelComments: string;
   panelSearch: string;
+  searchSettings: string;
+  searchNoMatches: string;
+  searchResults: string;
   filesSharedWorkspace: string;
   filesRenameFolder: string;
   filesMoreActions: string;
@@ -107,6 +110,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelOutline: "Outline",
     panelComments: "Comments",
     panelSearch: "Search",
+    searchSettings: "Search settings",
+    searchNoMatches: "No matches found",
+    searchResults: "Search results",
     filesSharedWorkspace: "Shared workspace",
     filesRenameFolder: "Rename {{name}} folder",
     filesMoreActions: "More actions for {{name}}",
@@ -195,6 +201,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelOutline: "개요",
     panelComments: "댓글",
     panelSearch: "검색",
+    searchSettings: "검색 설정",
+    searchNoMatches: "일치하는 결과가 없습니다",
+    searchResults: "검색 결과",
     filesSharedWorkspace: "공유 워크스페이스",
     filesRenameFolder: "{{name}} 폴더 이름 바꾸기",
     filesMoreActions: "{{name}} 추가 작업",
@@ -283,6 +292,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelOutline: "アウトライン",
     panelComments: "コメント",
     panelSearch: "検索",
+    searchSettings: "検索設定",
+    searchNoMatches: "一致する結果はありません",
+    searchResults: "検索結果",
     filesSharedWorkspace: "共有ワークスペース",
     filesRenameFolder: "{{name}} フォルダーの名前を変更",
     filesMoreActions: "{{name}} のその他の操作",
@@ -371,6 +383,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelOutline: "大纲",
     panelComments: "评论",
     panelSearch: "搜索",
+    searchSettings: "搜索设置",
+    searchNoMatches: "未找到匹配项",
+    searchResults: "搜索结果",
     filesSharedWorkspace: "共享工作区",
     filesRenameFolder: "重命名文件夹 {{name}}",
     filesMoreActions: "{{name}} 的更多操作",
@@ -459,6 +474,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelOutline: "Esquema",
     panelComments: "Comentarios",
     panelSearch: "Buscar",
+    searchSettings: "Ajustes de búsqueda",
+    searchNoMatches: "No se encontraron coincidencias",
+    searchResults: "Resultados de búsqueda",
     filesSharedWorkspace: "Espacio compartido",
     filesRenameFolder: "Renombrar carpeta {{name}}",
     filesMoreActions: "Más acciones para {{name}}",
@@ -547,6 +565,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelOutline: "Plan",
     panelComments: "Commentaires",
     panelSearch: "Rechercher",
+    searchSettings: "Paramètres de recherche",
+    searchNoMatches: "Aucun résultat",
+    searchResults: "Résultats de recherche",
     filesSharedWorkspace: "Espace partagé",
     filesRenameFolder: "Renommer le dossier {{name}}",
     filesMoreActions: "Plus d’actions pour {{name}}",
@@ -635,6 +656,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelOutline: "Gliederung",
     panelComments: "Kommentare",
     panelSearch: "Suchen",
+    searchSettings: "Sucheinstellungen",
+    searchNoMatches: "Keine Treffer gefunden",
+    searchResults: "Suchergebnisse",
     filesSharedWorkspace: "Geteilter Workspace",
     filesRenameFolder: "Ordner {{name}} umbenennen",
     filesMoreActions: "Weitere Aktionen für {{name}}",
@@ -744,6 +768,11 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         outline: copy.panelOutline,
         comments: copy.panelComments,
         search: copy.panelSearch,
+      },
+      search: {
+        settings: copy.searchSettings,
+        noMatches: copy.searchNoMatches,
+        results: copy.searchResults,
       },
       files: {
         sharedWorkspace: copy.filesSharedWorkspace,
