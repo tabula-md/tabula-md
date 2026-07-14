@@ -398,6 +398,7 @@ export function DocumentWorkbench({
           searchError={searchError}
           activeSearchMatchIndex={activeSearchMatchIndex}
           replaceAvailable={replaceAvailable}
+          target={searchTarget}
           searchOptions={searchOptions}
           language={language}
           onSearchQueryChange={onSearchQueryChange}

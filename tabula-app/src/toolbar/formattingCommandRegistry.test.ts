@@ -42,12 +42,11 @@ describe("formatting command registry", () => {
     ]);
   });
 
-  it("keeps essential commands and More reachable on compact screens", () => {
-    const layout = getFormattingToolbarLayout(true);
+  it("keeps essential commands and moves every hidden command into More on compact lanes", () => {
+    const layout = getFormattingToolbarLayout("compact");
 
     expect(layout.history.map((command) => command.id)).toEqual([
       "undo",
-      "redo",
     ]);
     expect(layout.inline.map((command) => command.id)).toEqual([
       "bold",
@@ -67,6 +66,7 @@ describe("formatting command registry", () => {
     ]);
     expect(layout.insert).toEqual([]);
     expect(layout.overflow.map((command) => command.id)).toEqual([
+      "redo",
       "inline-code",
       "link",
       "horizontal-rule",
@@ -74,6 +74,44 @@ describe("formatting command registry", () => {
       "image",
       "frontmatter",
       "footnote",
+      "strikethrough",
+      "clear-formatting",
+    ]);
+  });
+
+  it("keeps inline formatting visible and moves insert commands into More on medium lanes", () => {
+    const layout = getFormattingToolbarLayout("medium");
+
+    expect(layout.history.map((command) => command.id)).toEqual(["undo", "redo"]);
+    expect(layout.inline.map((command) => command.id)).toEqual([
+      "bold",
+      "italic",
+      "inline-code",
+      "link",
+    ]);
+    expect(layout.insert).toEqual([]);
+    expect(layout.overflow.map((command) => command.id)).toEqual([
+      "horizontal-rule",
+      "table",
+      "image",
+      "frontmatter",
+      "footnote",
+      "strikethrough",
+      "clear-formatting",
+    ]);
+  });
+
+  it("keeps dedicated insert controls on wide lanes", () => {
+    const layout = getFormattingToolbarLayout("wide");
+
+    expect(layout.insert.map((command) => command.id)).toEqual([
+      "horizontal-rule",
+      "table",
+      "image",
+      "frontmatter",
+      "footnote",
+    ]);
+    expect(layout.overflow.map((command) => command.id)).toEqual([
       "strikethrough",
       "clear-formatting",
     ]);

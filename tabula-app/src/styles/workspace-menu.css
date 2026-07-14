@@ -8,7 +8,7 @@
   position: absolute;
   top: 50px;
   left: var(--space-3);
-  z-index: var(--layer-popover);
+  z-index: var(--layer-modal);
   width: 286px;
   max-width: calc(100vw - 24px);
   padding: 8px;

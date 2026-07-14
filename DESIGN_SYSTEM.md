@@ -79,6 +79,23 @@ These exceptions must not be reused as decoration for containers or cards.
 - Destructive color is reserved for available destructive commands.
 - Keyboard focus always uses the shared two-pixel focus ring. Components may
   not remove it without providing an equally visible semantic replacement.
+- The shared focus ring is neutral rather than brand-colored. Inline rename
+  keeps the existing tab or row surface and relies on its selected text and
+  caret instead of outlining the parent or drawing a separate field.
+
+## Document Commands
+
+- Formatting keeps one stable order: history, block style, inline formatting,
+  lists, insert, then overflow.
+- The formatting surface responds to the width of its document lane, not the
+  browser viewport. Commands moved out of a narrow surface remain available in
+  overflow, and the toolbar never depends on horizontal scrolling.
+- Write, Split, and Preview form one segmented view-mode control. Search and
+  contextual view options form a separate utility group.
+- View options only expose settings that affect the current mode. Search aligns
+  with the source or preview lane it operates on.
+- Preview headings keep internal IDs for Outline and Markdown links but do not
+  expose permalink controls or mutate the app URL fragment.
 
 ## Surfaces And Layers
 

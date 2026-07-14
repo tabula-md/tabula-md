@@ -60,6 +60,7 @@ type DocumentSearchBarProps = {
   searchOptions: SearchOptions;
   activeSearchMatchIndex: number;
   replaceAvailable: boolean;
+  target: "source" | "preview";
   language: WorkspaceLanguage;
   onSearchQueryChange: (query: string) => void;
   onReplaceQueryChange: (query: string) => void;
@@ -125,96 +126,98 @@ export function DocumentControls({
             </button>
           ))}
         </div>
-        <PopoverRoot
-          open={centerPopover === "view"}
-          onOpenChange={(open) => {
-            if (open !== (centerPopover === "view")) onToggleViewOptions();
-          }}
-        >
-          <PopoverTrigger asChild>
-            <button
-              className={`tool-button ${centerPopover === "view" ? "active" : ""}`}
-              type="button"
-              aria-label={controls.controlsLabel}
-              data-tooltip={controls.controlsLabel}
-            >
-              <SlidersHorizontal size={16} />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="document-controls-popover editor-controls-popover"
-            role="dialog"
-            aria-label={controls.controlsLabel}
-            onOpenAutoFocus={(event) => event.preventDefault()}
+        <div className="document-utility-controls">
+          <PopoverRoot
+            open={centerPopover === "view"}
+            onOpenChange={(open) => {
+              if (open !== (centerPopover === "view")) onToggleViewOptions();
+            }}
           >
-            <div className="editor-controls-section">
-              {controls.showEditorToggles && (
-                <>
-                  <button
-                    className={`editor-controls-row ${controls.lineNumbers.active ? "active" : ""}`}
-                    type="button"
-                    aria-pressed={controls.lineNumbers.active}
-                    onClick={onToggleLineNumbers}
-                  >
-                    <span className="editor-controls-check">
-                      {controls.lineNumbers.active && <Check size={14} />}
-                    </span>
-                    <span>{controls.lineNumbers.label}</span>
-                  </button>
-                  <button
-                    className={`editor-controls-row ${controls.lineWrapping.active ? "active" : ""}`}
-                    type="button"
-                    aria-pressed={controls.lineWrapping.active}
-                    onClick={onToggleLineWrapping}
-                  >
-                    <span className="editor-controls-check">
-                      {controls.lineWrapping.active && <Check size={14} />}
-                    </span>
-                    <span>{controls.lineWrapping.label}</span>
-                  </button>
-                </>
-              )}
-              {controls.showSplitToggles && (
-                <button
-                  className={`editor-controls-row ${controls.syncScrolling.active ? "active" : ""}`}
-                  type="button"
-                  aria-pressed={controls.syncScrolling.active}
-                  onClick={onToggleSyncScrolling}
-                >
-                  <span className="editor-controls-check">
-                    {controls.syncScrolling.active && <Check size={14} />}
-                  </span>
-                  <span>{controls.syncScrolling.label}</span>
-                </button>
-              )}
-              <div className="editor-controls-width-row">
-                <span>{controls.readingWidthLabel}</span>
-                <div className="editor-width-control" aria-label={controls.readingWidthLabel}>
-                  {controls.readingWidthOptions.map(({ active, label, readingWidth }) => (
+            <PopoverTrigger asChild>
+              <button
+                className={`tool-button ${centerPopover === "view" ? "active" : ""}`}
+                type="button"
+                aria-label={controls.controlsLabel}
+                data-tooltip={controls.controlsLabel}
+              >
+                <SlidersHorizontal size={16} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="document-controls-popover editor-controls-popover"
+              role="dialog"
+              aria-label={controls.controlsLabel}
+              onOpenAutoFocus={(event) => event.preventDefault()}
+            >
+              <div className="editor-controls-section">
+                {controls.showEditorToggles && (
+                  <>
                     <button
-                      key={readingWidth}
-                      className={active ? "active" : ""}
+                      className={`editor-controls-row ${controls.lineNumbers.active ? "active" : ""}`}
                       type="button"
-                      aria-pressed={active}
-                      onClick={() => onSetReadingWidth(readingWidth)}
+                      aria-pressed={controls.lineNumbers.active}
+                      onClick={onToggleLineNumbers}
                     >
-                      {label}
+                      <span className="editor-controls-check">
+                        {controls.lineNumbers.active && <Check size={14} />}
+                      </span>
+                      <span>{controls.lineNumbers.label}</span>
                     </button>
-                  ))}
+                    <button
+                      className={`editor-controls-row ${controls.lineWrapping.active ? "active" : ""}`}
+                      type="button"
+                      aria-pressed={controls.lineWrapping.active}
+                      onClick={onToggleLineWrapping}
+                    >
+                      <span className="editor-controls-check">
+                        {controls.lineWrapping.active && <Check size={14} />}
+                      </span>
+                      <span>{controls.lineWrapping.label}</span>
+                    </button>
+                  </>
+                )}
+                {controls.showSplitToggles && (
+                  <button
+                    className={`editor-controls-row ${controls.syncScrolling.active ? "active" : ""}`}
+                    type="button"
+                    aria-pressed={controls.syncScrolling.active}
+                    onClick={onToggleSyncScrolling}
+                  >
+                    <span className="editor-controls-check">
+                      {controls.syncScrolling.active && <Check size={14} />}
+                    </span>
+                    <span>{controls.syncScrolling.label}</span>
+                  </button>
+                )}
+                <div className="editor-controls-width-row">
+                  <span>{controls.readingWidthLabel}</span>
+                  <div className="editor-width-control" aria-label={controls.readingWidthLabel}>
+                    {controls.readingWidthOptions.map(({ active, label, readingWidth }) => (
+                      <button
+                        key={readingWidth}
+                        className={active ? "active" : ""}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => onSetReadingWidth(readingWidth)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </PopoverContent>
-        </PopoverRoot>
-        <button
-          className={`tool-button ${searchOpen ? "active" : ""}`}
-          type="button"
-          aria-label={controls.searchLabel}
-          data-tooltip={controls.searchLabel}
-          onClick={onToggleSearch}
-        >
-          <Search size={16} />
-        </button>
+            </PopoverContent>
+          </PopoverRoot>
+          <button
+            className={`tool-button ${searchOpen ? "active" : ""}`}
+            type="button"
+            aria-label={controls.searchLabel}
+            data-tooltip={controls.searchLabel}
+            onClick={onToggleSearch}
+          >
+            <Search size={16} />
+          </button>
+        </div>
       </nav>
 
     </div>
@@ -230,6 +233,7 @@ export function DocumentSearchBar({
   searchOptions,
   activeSearchMatchIndex,
   replaceAvailable,
+  target,
   language,
   onSearchQueryChange,
   onReplaceQueryChange,
@@ -264,7 +268,7 @@ export function DocumentSearchBar({
   }, [replaceOpen]);
 
   return (
-    <section className={`document-search-row ${replaceOpen && replaceAvailable ? "with-replace" : ""}`} aria-label={copy.search}>
+    <section className={`document-search-row search-target-${target} ${replaceOpen && replaceAvailable ? "with-replace" : ""}`} aria-label={copy.search}>
       <div className={`document-search-bar ${replaceOpen && replaceAvailable ? "with-replace" : ""}`}>
         <div className={`document-search-line ${replaceAvailable ? "" : "without-replace-toggle"}`}>
           <div className="document-search-field">

@@ -47,7 +47,7 @@
   --editor-placeholder-text: #b7b7ba;
   --editor-selection-background: #e4d9f4;
   --editor-active-line-background: rgba(0, 0, 0, 0.035);
-  --focus-ring: color-mix(in srgb, var(--accent) 68%, var(--line-strong));
+  --focus-ring: color-mix(in srgb, var(--text-primary) 46%, transparent);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
