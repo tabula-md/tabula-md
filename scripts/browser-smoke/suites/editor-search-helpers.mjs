@@ -20,23 +20,16 @@ export const readEditorText = async (page) =>
 
 export const readSearchRowLayout = (page) =>
   page.evaluate(() => {
-    const panel = document.querySelector(".right-panel");
-    const panelBody = document.querySelector(".right-panel-body.search");
     const row = document.querySelector(".document-search-row");
     const bar = document.querySelector(".document-search-bar");
-    if (
-      !(panel instanceof HTMLElement) ||
-      !(panelBody instanceof HTMLElement) ||
-      !(row instanceof HTMLElement) ||
-      !(bar instanceof HTMLElement)
-    ) {
+    const toolbar = document.querySelector(".document-toolbar-row");
+    if (!(row instanceof HTMLElement) || !(bar instanceof HTMLElement) || !(toolbar instanceof HTMLElement)) {
       return null;
     }
 
-    const panelRect = panel.getBoundingClientRect();
-    const panelBodyRect = panelBody.getBoundingClientRect();
     const rowRect = row.getBoundingClientRect();
     const barRect = bar.getBoundingClientRect();
+    const toolbarRect = toolbar.getBoundingClientRect();
     const rowStyle = getComputedStyle(row);
     return {
       rowLeft: Math.round(rowRect.left),
@@ -47,11 +40,10 @@ export const readSearchRowLayout = (page) =>
       barLeft: Math.round(barRect.left),
       barRight: Math.round(barRect.right),
       barWidth: Math.round(barRect.width),
-      panelLeft: Math.round(panelRect.left),
-      panelRight: Math.round(panelRect.right),
-      panelBodyLeft: Math.round(panelBodyRect.left),
-      panelBodyRight: Math.round(panelBodyRect.right),
-      panelBodyWidth: Math.round(panelBodyRect.width),
+      toolbarLeft: Math.round(toolbarRect.left),
+      toolbarRight: Math.round(toolbarRect.right),
+      rightPanelOpen: Boolean(document.querySelector(".right-panel")),
+      workspaceSearchOpen: Boolean(document.querySelector(".right-panel-body.search")),
       rowPosition: rowStyle.position,
       rowBorderTop: rowStyle.borderTopWidth,
       rowBorderBottom: rowStyle.borderBottomWidth,

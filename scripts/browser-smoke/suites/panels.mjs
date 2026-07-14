@@ -496,15 +496,29 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Close Workspace menu", exact: true }).click();
     await waitForRenderFrame(page);
 
-    await page.getByRole("button", { name: "Search", exact: true }).click();
-    await page.getByRole("searchbox", { name: "Search" }).fill("read");
+    const sidePanelNavigation = page.getByRole("navigation", { name: "Side panel sections" });
+    await sidePanelNavigation.getByRole("button", { name: "Search", exact: true }).click();
+    const workspaceSearch = page.locator(".right-panel-body.search").getByRole("searchbox", { name: "Search" });
+    await workspaceSearch.fill("workspace");
     await waitForRenderFrame(page);
     const searchPanelState = await page.evaluate(() => ({
-      searchRowCount: document.querySelectorAll(".right-panel-body.search .document-search-row").length,
+      searchRowCount: document.querySelectorAll(".right-panel-body.search .right-panel-search-results button").length,
       panelOpen: Boolean(document.querySelector(".right-panel")),
     }));
-    expect(searchPanelState.searchRowCount === 1, "Document Search should render inside the Search panel view.");
-    expect(searchPanelState.panelOpen, "Using document Search should keep the side panel open.");
+    expect(searchPanelState.searchRowCount >= 1, "Workspace Search should render matching files inside the Search panel view.");
+    expect(searchPanelState.panelOpen, "Using Workspace Search should keep the side panel open.");
+    await page.getByRole("button", { name: "Search settings", exact: true }).click();
+    expect(
+      await page.getByRole("button", { name: "Match case", exact: true }).isVisible(),
+      "Workspace Search should expose search settings.",
+    );
+    await page.keyboard.press("Escape");
+    await workspaceSearch.fill("a query that cannot match any workspace document");
+    await waitForRenderFrame(page);
+    expect(
+      await page.getByText("No matches found", { exact: true }).isVisible(),
+      "Workspace Search should show a quiet empty result inside the panel.",
+    );
     await page.getByRole("button", { name: "Files", exact: true }).click();
 
     await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -1177,7 +1191,18 @@ export async function run(ctx) {
     await page.getByRole("menuitem", { name: "Move to…", exact: true }).click();
     const moveDialog = page.getByRole("dialog", { name: `Move ${rightFilesActiveTitle}` });
     expect((await moveDialog.count()) === 1, "Move to should open a dedicated folder picker.");
-    expect((await moveDialog.getByRole("searchbox", { name: "Search folders" }).count()) === 1, "Move picker should support folder search.");
+    expect(
+      (await moveDialog.getByRole("searchbox", { name: "Search folders" }).count()) === 0,
+      "Move picker should not add search chrome for a short destination list.",
+    );
+    expect(
+      (await moveDialog.getByRole("button", { name: "Top level · Current location", exact: true }).count()) === 1,
+      "Move picker should describe the workspace root as Top level instead of a synthetic Project folder.",
+    );
+    expect(
+      (await moveDialog.getByText("Project", { exact: true }).count()) === 0,
+      "Move picker should not expose the internal workspace root as Project.",
+    );
     expect((await moveDialog.locator("select").count()) === 0, "Move picker should not embed a native select inside the command menu.");
     await moveDialog.getByRole("button", { name: "Close move dialog" }).click();
 
@@ -1280,6 +1305,28 @@ export async function run(ctx) {
     expect(filesAfterImport.hasImportedRow, "Right Files import should add the imported Markdown to project files.");
     expect(filesAfterImport.activeTabTitle === "Panel Import.md", "Right Files import should open the imported file as a tab.");
     expect(filesAfterImport.editorText.includes("Imported from Files"), "Right Files import should load the Markdown content.");
+
+    await page.getByRole("button", { name: "Create", exact: true }).click();
+    await page.getByRole("menuitem", { name: "New folder", exact: true }).click();
+    const folderRenameInput = page.locator(".right-file-tree-node.folder .right-file-rename-input");
+    await folderRenameInput.fill("Archive");
+    await page.keyboard.press("Enter");
+    await waitForRenderFrame(page);
+    const importedFileNode = page.locator(".right-file-tree-node.file").filter({ has: page.locator('[title="Panel Import.md"]') });
+    const archiveFolderNode = page.locator(".right-file-tree-node.folder").filter({ hasText: "Archive" });
+    await importedFileNode.dragTo(archiveFolderNode);
+    await waitForRenderFrame(page);
+    const draggedFileState = await page.evaluate(() => {
+      const row = document.querySelector('.right-file-tree-row.file[title="Panel Import.md"]');
+      const treeItem = row?.closest('[role="treeitem"]');
+      return {
+        level: treeItem?.getAttribute("aria-level") ?? "",
+        folderVisible: Array.from(document.querySelectorAll(".right-file-tree-node.folder"))
+          .some((item) => item.textContent?.includes("Archive")),
+      };
+    });
+    expect(draggedFileState.folderVisible, "Right Files should keep the drag destination visible.");
+    expect(draggedFileState.level === "2", "Dragging a file onto a folder should move it one level into the tree.");
   });
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 820 } });

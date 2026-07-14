@@ -13,8 +13,21 @@
 }
 
 .right-file-tree-scroll {
+  position: relative;
   min-height: 0;
   overflow: auto;
+}
+
+.right-file-tree-scroll.root-drop-target::after {
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: 2px;
+  margin: 0 var(--right-row-x);
+  border-radius: 999px;
+  background: var(--focus-ring);
+  content: "";
+  pointer-events: none;
 }
 
 .right-file-tree.virtual {
@@ -26,6 +39,15 @@
 .right-file-tree-node {
   position: relative;
   min-width: 0;
+}
+
+.right-file-tree-node.dragging {
+  opacity: 0.42;
+}
+
+.right-file-tree-node.drop-target .right-file-tree-row {
+  background: var(--surface-active);
+  box-shadow: inset 0 -2px 0 var(--focus-ring);
 }
 
 .right-file-tree-children {

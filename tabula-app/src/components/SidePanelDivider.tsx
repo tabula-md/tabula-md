@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { ResizeHandle } from "./ui/ResizeHandle";
 
 export const DEFAULT_SIDE_PANEL_WIDTH = 288;
 export const MIN_SIDE_PANEL_WIDTH = 240;
@@ -38,24 +39,24 @@ export function SidePanelDivider({
   const resizeFromPointer = (clientX: number) => {
     onWidthChange(clampSidePanelWidth(viewportWidth - clientX, viewportWidth));
   };
-  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     draggingRef.current = true;
     setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
     resizeFromPointer(event.clientX);
   };
-  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+  const handlePointerMove = (event: PointerEvent<HTMLButtonElement>) => {
     if (!draggingRef.current) return;
     resizeFromPointer(event.clientX);
   };
-  const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
+  const handlePointerUp = (event: PointerEvent<HTMLButtonElement>) => {
     draggingRef.current = false;
     setDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   };
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const direction = event.key === "ArrowLeft" ? 1 : -1;
@@ -68,16 +69,13 @@ export function SidePanelDivider({
   };
 
   return (
-    <div
-      className="vertical-resize-handle side-panel-divider"
-      data-dragging={dragging ? "true" : undefined}
-      role="separator"
-      aria-label={label}
-      aria-orientation="vertical"
-      aria-valuemin={MIN_SIDE_PANEL_WIDTH}
-      aria-valuemax={maximumWidth}
-      aria-valuenow={width}
-      tabIndex={0}
+    <ResizeHandle
+      className="side-panel-divider"
+      dragging={dragging}
+      label={label}
+      minimum={MIN_SIDE_PANEL_WIDTH}
+      maximum={maximumWidth}
+      value={width}
       onDoubleClick={() => onWidthChange(DEFAULT_SIDE_PANEL_WIDTH)}
       onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}

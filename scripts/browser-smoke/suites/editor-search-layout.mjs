@@ -1,7 +1,7 @@
 import { readSearchRowLayout } from "./editor-search-helpers.mjs";
 
 export const id = "editor-search-layout";
-export const description = "Find-in-file side panel layout, control chrome, and persistent view behavior.";
+export const description = "Find-in-file document layout, control chrome, and persistent view behavior.";
 
 export async function run(ctx) {
   const {
@@ -24,56 +24,62 @@ export async function run(ctx) {
     await page.waitForSelector(".document-search-row");
     const searchRowLayout = await readSearchRowLayout(page);
     expect(Boolean(searchRowLayout), "Search should render a measurable row.");
-    expect(searchRowLayout.rowPosition === "static", "Search should be part of the side panel flow, not a floating popover.");
     expect(
-      searchRowLayout.rowLeft >= searchRowLayout.panelBodyLeft &&
-        searchRowLayout.rowRight <= searchRowLayout.panelBodyRight,
-      "Search should stay within the side panel body.",
+      searchRowLayout.rowPosition !== "fixed" && searchRowLayout.rowPosition !== "absolute",
+      "Document Search should stay in the document layout instead of floating over content.",
+    );
+    expect(
+      searchRowLayout.rowLeft >= searchRowLayout.toolbarLeft &&
+        searchRowLayout.rowRight <= searchRowLayout.toolbarRight,
+      "Document Search should stay within the document chrome lane.",
     );
     expect(
       Math.abs(searchRowLayout.barLeft - searchRowLayout.rowLeft) <= 1 &&
         Math.abs(searchRowLayout.barRight - searchRowLayout.rowRight) <= 1,
-      "Search controls should fill the Search panel view.",
+      "Document Search controls should fill their document row.",
     );
     expect(
       searchRowLayout.rowBorderTop === "0px" && searchRowLayout.rowBorderBottom === "0px",
       "Search row should not add splitter-style border lines.",
     );
     expect(searchRowLayout.documentControlsSeparators === 0, "Document controls should not use a splitter line.");
+    expect(!searchRowLayout.rightPanelOpen, "Cmd/Ctrl+F should not open the side panel.");
+    expect(!searchRowLayout.workspaceSearchOpen, "Document Search should not activate Workspace Search.");
 
     await page.getByRole("button", { name: "Close search" }).click();
-    expect((await page.locator(".right-panel").count()) === 0, "Closing Search should close the side panel.");
+    expect((await page.locator(".document-search-row").count()) === 0, "Closing Document Search should remove only its row.");
     await page.getByRole("button", { name: "Toggle side panel" }).click();
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     await page.getByRole("button", { name: "Focus" }).click();
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.locator(".document-toolbar-row").getByRole("button", { name: "Search", exact: true }).click();
     await page.waitForSelector(".document-search-row");
     const focusedWidthSearchLayout = await readSearchRowLayout(page);
     expect(Boolean(focusedWidthSearchLayout), "Search row should be measurable after changing text width.");
     expect(
-      focusedWidthSearchLayout.rowLeft >= focusedWidthSearchLayout.panelBodyLeft &&
-        focusedWidthSearchLayout.rowRight <= focusedWidthSearchLayout.panelBodyRight,
-      "Changing document width should not move Search out of the side panel.",
+      focusedWidthSearchLayout.rowLeft >= focusedWidthSearchLayout.toolbarLeft &&
+        focusedWidthSearchLayout.rowRight <= focusedWidthSearchLayout.toolbarRight,
+      "Changing document width should keep Search in the document chrome lane.",
     );
+    expect(focusedWidthSearchLayout.rightPanelOpen, "Opening Document Search should preserve an already open side panel.");
 
     await page.getByRole("button", { name: "Split", exact: true }).click();
     await waitForEditorReady(page, { mode: "split" });
     const splitSearchAlignment = await page.evaluate(() => {
       const bar = document.querySelector(".document-search-bar");
-      const panelBody = document.querySelector(".right-panel-body.search");
+      const row = document.querySelector(".document-search-row");
       const barRect = bar?.getBoundingClientRect();
-      const panelBodyRect = panelBody?.getBoundingClientRect();
+      const rowRect = row?.getBoundingClientRect();
       return {
         barLeft: Math.round(barRect?.left ?? -1),
         barRight: Math.round(barRect?.right ?? -1),
-        panelLeft: Math.round(panelBodyRect?.left ?? -2),
-        panelRight: Math.round(panelBodyRect?.right ?? -2),
+        rowLeft: Math.round(rowRect?.left ?? -2),
+        rowRight: Math.round(rowRect?.right ?? -2),
       };
     });
     expect(
-      splitSearchAlignment.barLeft >= splitSearchAlignment.panelLeft &&
-        splitSearchAlignment.barRight <= splitSearchAlignment.panelRight,
-      "Split view should keep Search inside the side panel instead of either document pane.",
+      splitSearchAlignment.barLeft >= splitSearchAlignment.rowLeft &&
+        splitSearchAlignment.barRight <= splitSearchAlignment.rowRight,
+      "Split view should keep Document Search inside its source or preview lane.",
     );
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
