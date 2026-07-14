@@ -116,17 +116,17 @@
 .preview-surface .preview-comment-mark {
   position: relative;
   border-radius: 0;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: color-mix(in srgb, var(--comment-mark) 10%, transparent);
   cursor: pointer;
 }
 
 .preview-surface .preview-comment-mark:hover,
 .preview-surface .preview-comment-mark:focus-visible {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  background: color-mix(in srgb, var(--comment-mark) 16%, transparent);
 }
 
 .preview-surface .preview-comment-mark.active {
-  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  background: color-mix(in srgb, var(--comment-mark) 24%, transparent);
 }
 
 .frontmatter-view {
@@ -317,22 +317,22 @@
 }
 
 .preview-surface a {
-  color: var(--text-primary);
+  color: var(--text-link);
   text-decoration: underline;
-  text-decoration-color: var(--line-strong);
+  text-decoration-color: currentColor;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
 .preview-surface a:hover {
-  text-decoration-color: var(--text-soft);
+  color: var(--text-link-hover);
 }
 
 .preview-surface mark {
   padding: 0 3px;
   border-radius: 4px;
-  color: var(--text-primary);
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--mark-text);
+  background: var(--mark-background);
 }
 
 .preview-surface sup,

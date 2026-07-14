@@ -200,20 +200,20 @@
 
 .markdown-editor .cm-search-match {
   border-radius: 2px;
-  background: rgba(118, 63, 200, 0.16);
+  background: color-mix(in srgb, var(--search-match) 30%, transparent);
 }
 
 .markdown-editor .cm-search-match.active {
-  background: rgba(118, 63, 200, 0.28);
+  background: color-mix(in srgb, var(--search-match) 52%, transparent);
 }
 
 .preview-surface .preview-search-match {
   border-radius: 2px;
-  background: rgba(118, 63, 200, 0.16);
+  background: color-mix(in srgb, var(--search-match) 30%, transparent);
 }
 
 .preview-surface .preview-search-match.active {
-  background: rgba(118, 63, 200, 0.28);
+  background: color-mix(in srgb, var(--search-match) 52%, transparent);
 }
 
 @media (max-width: 820px) {

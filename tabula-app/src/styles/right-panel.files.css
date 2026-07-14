@@ -295,7 +295,8 @@
 }
 
 .right-file-rename-input::selection {
-  background: var(--surface-hover);
+  color: var(--selection-text);
+  background: var(--selection-background);
 }
 
 @media (hover: none), (pointer: coarse), (max-width: 560px) {
