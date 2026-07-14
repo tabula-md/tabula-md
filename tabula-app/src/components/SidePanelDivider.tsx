@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type PointerEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
 export const DEFAULT_SIDE_PANEL_WIDTH = 288;
 export const MIN_SIDE_PANEL_WIDTH = 240;
@@ -32,6 +32,7 @@ export function SidePanelDivider({
   onWidthChange,
 }: SidePanelDividerProps) {
   const draggingRef = useRef(false);
+  const [dragging, setDragging] = useState(false);
   const viewportWidth = typeof window === "undefined" ? 1440 : window.innerWidth;
   const maximumWidth = getMaximumSidePanelWidth(viewportWidth);
   const resizeFromPointer = (clientX: number) => {
@@ -39,6 +40,7 @@ export function SidePanelDivider({
   };
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     draggingRef.current = true;
+    setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
     resizeFromPointer(event.clientX);
   };
@@ -48,6 +50,7 @@ export function SidePanelDivider({
   };
   const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
     draggingRef.current = false;
+    setDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -66,7 +69,8 @@ export function SidePanelDivider({
 
   return (
     <div
-      className="side-panel-divider"
+      className="vertical-resize-handle side-panel-divider"
+      data-dragging={dragging ? "true" : undefined}
       role="separator"
       aria-label={label}
       aria-orientation="vertical"

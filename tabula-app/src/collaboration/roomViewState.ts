@@ -16,7 +16,7 @@ type RoomWorkspaceView = {
 };
 
 const isRightPanelView = (value: unknown): value is RightPanelView =>
-  value === "files" || value === "outline" || value === "comments";
+  value === "files" || value === "outline" || value === "comments" || value === "search";
 
 const getStorageKey = (roomId: string) => `${ROOM_VIEW_STATE_KEY_PREFIX}:${roomId}`;
 

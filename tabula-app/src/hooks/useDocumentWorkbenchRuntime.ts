@@ -14,13 +14,11 @@ type SetUiValue<T> = (nextValue: ValueUpdater<T>) => void;
 
 type DocumentWorkbenchRuntimeHandlers = Pick<
   DocumentWorkbenchProps,
-  | "onCloseSearch"
   | "onFormat"
   | "onSetReadingWidth"
   | "onSetViewMode"
   | "onToggleLineNumbers"
   | "onToggleLineWrapping"
-  | "onToggleSearch"
   | "onToggleSyncScrolling"
   | "onToggleViewOptions"
 >;
@@ -37,7 +35,6 @@ type UseDocumentWorkbenchRuntimeArgs = {
   onSetActiveFileViewMode: (viewMode: FileViewMode) => void;
   onSetSyncScrolling: (isEnabled: boolean) => void;
   setCenterPopover: SetUiValue<CenterPopover>;
-  setSearchOpen: SetUiValue<boolean>;
   setTopPopover: SetUiValue<TopPopover>;
 };
 
@@ -53,7 +50,6 @@ export function useDocumentWorkbenchRuntime({
   onSetActiveFileViewMode,
   onSetSyncScrolling,
   setCenterPopover,
-  setSearchOpen,
   setTopPopover,
 }: UseDocumentWorkbenchRuntimeArgs): DocumentWorkbenchRuntimeHandlers {
   const closeCenterPopover = useCallback(() => {
@@ -64,10 +60,6 @@ export function useDocumentWorkbenchRuntime({
     setTopPopover(null);
     setCenterPopover(null);
   }, [setCenterPopover, setTopPopover]);
-
-  const onCloseSearch = useCallback(() => {
-    setSearchOpen(false);
-  }, [setSearchOpen]);
 
   const onFormat = useCallback(
     (command: MarkdownFormatCommand) => {
@@ -112,24 +104,17 @@ export function useDocumentWorkbenchRuntime({
     closeCenterPopover();
   }, [activeSyncScrolling, closeCenterPopover, onSetSyncScrolling]);
 
-  const onToggleSearch = useCallback(() => {
-    setSearchOpen((current) => !current);
-    closeFloatingDocumentChrome();
-  }, [closeFloatingDocumentChrome, setSearchOpen]);
-
   const onToggleViewOptions = useCallback(() => {
     setCenterPopover((current) => (current === "view" ? null : "view"));
     setTopPopover(null);
   }, [setCenterPopover, setTopPopover]);
 
   return {
-    onCloseSearch,
     onFormat,
     onSetReadingWidth,
     onSetViewMode,
     onToggleLineNumbers,
     onToggleLineWrapping,
-    onToggleSearch,
     onToggleSyncScrolling,
     onToggleViewOptions,
   };

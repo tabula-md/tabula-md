@@ -114,25 +114,6 @@
   height: var(--right-icon-size);
 }
 
-.right-file-icon-live-dot {
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--status-dot-connected);
-  box-shadow: 0 0 0 2px var(--surface-workbench);
-  pointer-events: none;
-}
-
-.right-row:hover .right-file-icon-live-dot,
-.right-row.active .right-file-icon-live-dot,
-.right-row:focus-within .right-file-icon-live-dot,
-.right-row:focus-visible .right-file-icon-live-dot {
-  box-shadow: 0 0 0 2px var(--surface-muted);
-}
-
 .right-file-actions {
   display: inline-flex;
   align-items: center;

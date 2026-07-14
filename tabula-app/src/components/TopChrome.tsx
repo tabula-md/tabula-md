@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Menu, PanelRightClose, PanelRightOpen, Users } from "lucide-react";
+import { Menu, PanelRightOpen, Users } from "lucide-react";
 import type { Collaborator } from "../collaboration";
 import type { FollowState } from "../collaboration/followModel";
 import { getLineNumberForSelection } from "../collaboration/collaborationPresence";
@@ -131,16 +131,18 @@ export function TopChrome({
 
           {shareControls}
 
-          <button
-            className={`panel-toggle top-panel-toggle ${rightPanelOpen ? "active" : ""}`}
-            type="button"
-            aria-label={sidePanelLabel}
-            data-tooltip={sidePanelLabel}
-            aria-pressed={rightPanelOpen}
-            onClick={onToggleRightPanel}
-          >
-            {rightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-          </button>
+          {!rightPanelOpen && (
+            <button
+              className="panel-toggle top-panel-toggle"
+              type="button"
+              aria-label={sidePanelLabel}
+              data-tooltip={sidePanelLabel}
+              aria-pressed="false"
+              onClick={onToggleRightPanel}
+            >
+              <PanelRightOpen size={16} />
+            </button>
+          )}
         </div>
       </div>
     </header>

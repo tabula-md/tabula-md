@@ -20,7 +20,7 @@ export async function run(ctx) {
     await page.keyboard.insertText("alpha beta\nbeta gamma\nalpha beta");
     await waitForRenderFrame(page);
 
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.keyboard.press("ControlOrMeta+F");
     await page.waitForSelector(".document-search-row");
     const searchInput = page.getByRole("searchbox", { name: "Search" });
     await searchInput.fill("bet");
@@ -54,7 +54,7 @@ export async function run(ctx) {
     await page.keyboard.insertText("foo foo foo");
     await waitForRenderFrame(page);
 
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.keyboard.press("ControlOrMeta+F");
     const searchInput = page.getByRole("searchbox", { name: "Search" });
     await searchInput.fill("foo");
     await waitForRenderFrame(page);

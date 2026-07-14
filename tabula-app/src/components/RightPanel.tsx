@@ -4,6 +4,7 @@ import {
   ListTree,
   MessageSquare,
   PanelRightClose,
+  Search,
 } from "lucide-react";
 import { getRightPanelCommentGroups } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "../hooks/useRightPanelCollapseState";
@@ -17,6 +18,7 @@ import { RightPanelOutline } from "./RightPanelOutline";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
+import { DocumentSearchBar, type DocumentSearchBarProps } from "./DocumentControls";
 
 type RightPanelProps = {
   isOpen: boolean;
@@ -25,7 +27,6 @@ type RightPanelProps = {
   folders: WorkspaceFolder[];
   activeFileId: string;
   activeFileTitle: string;
-  fileQuery: string;
   isLiveWorkspace: boolean;
   language: WorkspaceLanguage;
   activeOutlineHeadingIndex?: number;
@@ -36,14 +37,13 @@ type RightPanelProps = {
   pendingSelectionText: string;
   selectedCharacterCount: number;
   selectionCommentPending: boolean;
+  search: Omit<DocumentSearchBarProps, "language">;
   commentInputRef?: RefObject<HTMLTextAreaElement | null>;
   activeCommentId?: string | null;
   activeReplyCommentId?: string | null;
   replyDraftByCommentId: Record<string, string>;
-  getFileSearchText: (file: WorkspaceFile) => string;
   onSetView: (view: RightPanelView) => void;
   onToggleSidePanel: () => void;
-  onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -81,7 +81,6 @@ export function RightPanel({
   folders,
   activeFileId,
   activeFileTitle,
-  fileQuery,
   isLiveWorkspace,
   language,
   activeOutlineHeadingIndex,
@@ -92,14 +91,13 @@ export function RightPanel({
   pendingSelectionText,
   selectedCharacterCount,
   selectionCommentPending,
+  search,
   commentInputRef,
   activeCommentId,
   activeReplyCommentId,
   replyDraftByCommentId,
-  getFileSearchText,
   onSetView,
   onToggleSidePanel,
-  onFileQueryChange,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -162,14 +160,15 @@ export function RightPanel({
     commentsByFileId,
   );
   const hasLiveFiles = isLiveWorkspace;
+  const hasOpenComments = openCommentGroups.some((group) => group.comments.length > 0);
   const renderTab = (
     tabView: RightPanelView,
     label: string,
     icon: ReactNode,
-    live = false,
+    indicator?: "live" | "comments",
   ) => (
     <button
-      className={`right-panel-tab ${effectiveView === tabView ? "active" : ""} ${live ? "live" : ""}`}
+      className={`right-panel-tab ${effectiveView === tabView ? "active" : ""}`}
       type="button"
       aria-label={label}
       data-tooltip={label}
@@ -177,7 +176,7 @@ export function RightPanel({
       onClick={() => onSetView(tabView)}
     >
       {icon}
-      {live && <span className="right-panel-tab-live-dot" aria-hidden="true" />}
+      {indicator && <span className={`right-panel-tab-status-dot ${indicator}`} aria-hidden="true" />}
     </button>
   );
 
@@ -185,9 +184,10 @@ export function RightPanel({
     <aside className="right-panel" aria-label={copy.label}>
       <div className="right-panel-header">
         <nav className="right-panel-tabs" aria-label={copy.sections}>
-          {renderTab("files", copy.tabs.files, <Folder size={14} />, hasLiveFiles)}
+          {renderTab("files", copy.tabs.files, <Folder size={14} />, hasLiveFiles ? "live" : undefined)}
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
-          {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />)}
+          {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
+          {renderTab("search", copy.tabs.search, <Search size={14} />)}
         </nav>
         <button
           className="side-panel-overlay-toggle"
@@ -207,12 +207,8 @@ export function RightPanel({
             files={files}
             folders={folders}
             activeFileId={activeFileId}
-            fileQuery={fileQuery}
-            isLiveWorkspace={isLiveWorkspace}
             copy={copy.files}
             collapsedFolderIds={collapsedFileTreeFolderIds}
-            getFileSearchText={getFileSearchText}
-            onFileQueryChange={onFileQueryChange}
             onNewFile={onNewFile}
             onNewFolder={onNewFolder}
             onImportFile={onImportFile}
@@ -282,6 +278,10 @@ export function RightPanel({
             onCancelSelectionComment={onCancelSelectionComment}
             formatCommentDate={formatCommentDate}
           />
+        )}
+
+        {effectiveView === "search" && (
+          <DocumentSearchBar {...search} language={language} />
         )}
       </div>
     </aside>

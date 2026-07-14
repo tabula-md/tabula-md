@@ -270,7 +270,7 @@ export async function run(ctx) {
     );
     expect(
       emptyChromeState.workspaceText.includes(
-        "A local-first workspace for files that people and coding agents can share safely.",
+        "A local-first workspace for files that people and agents can share safely.",
       ) &&
         !emptyChromeState.workspaceText.includes("Start with Markdown.") &&
         !emptyChromeState.workspaceText.includes("Tabula turns Markdowns into collaborative documents for people and agents.") &&
@@ -331,7 +331,7 @@ export async function run(ctx) {
     expect(reloadedNoOpenState.tabCount === 0, "Reloading with no open tabs should preserve the openTabs state.");
     expect(
       reloadedNoOpenState.text.includes(
-        "A local-first workspace for files that people and coding agents can share safely.",
+        "A local-first workspace for files that people and agents can share safely.",
       ),
       "Reloading with no open tabs should keep the branded start state.",
     );
@@ -339,12 +339,11 @@ export async function run(ctx) {
     if ((await page.locator(".right-panel").count()) === 0) {
       await ensureSidePanelOpen(page);
     }
-    await page.getByRole("searchbox", { name: "Search files" }).fill("Untitled");
-    await page.keyboard.press("Enter");
+    await page.getByRole("button", { name: "Open Untitled.md" }).click();
     await waitForActiveTab(page, { exact: "Untitled.md" });
     const reopenedTabs = await getTabs(page);
-    expect(reopenedTabs.length === 1, "Pressing Enter in Files search should reopen the first matching file as a tab.");
-    expect(reopenedTabs[0]?.title === "Untitled.md", "Files search Enter should reopen the user-created document.");
+    expect(reopenedTabs.length === 1, "Selecting a file in the side panel should reopen it as a tab.");
+    expect(reopenedTabs[0]?.title === "Untitled.md", "The Files panel should reopen the selected document.");
     expect(reopenedTabs[0]?.active, "Reopened file should become active.");
 
     await page.locator(".tab-item.active").hover();

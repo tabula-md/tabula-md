@@ -16,6 +16,7 @@ type WorkspaceInterfaceMessages = {
   panelFiles: string;
   panelOutline: string;
   panelComments: string;
+  panelSearch: string;
   filesSharedWorkspace: string;
   filesRenameFolder: string;
   filesMoreActions: string;
@@ -105,6 +106,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "Files",
     panelOutline: "Outline",
     panelComments: "Comments",
+    panelSearch: "Search",
     filesSharedWorkspace: "Shared workspace",
     filesRenameFolder: "Rename {{name}} folder",
     filesMoreActions: "More actions for {{name}}",
@@ -192,6 +194,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "파일",
     panelOutline: "개요",
     panelComments: "댓글",
+    panelSearch: "검색",
     filesSharedWorkspace: "공유 워크스페이스",
     filesRenameFolder: "{{name}} 폴더 이름 바꾸기",
     filesMoreActions: "{{name}} 추가 작업",
@@ -279,6 +282,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "ファイル",
     panelOutline: "アウトライン",
     panelComments: "コメント",
+    panelSearch: "検索",
     filesSharedWorkspace: "共有ワークスペース",
     filesRenameFolder: "{{name}} フォルダーの名前を変更",
     filesMoreActions: "{{name}} のその他の操作",
@@ -366,6 +370,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "文件",
     panelOutline: "大纲",
     panelComments: "评论",
+    panelSearch: "搜索",
     filesSharedWorkspace: "共享工作区",
     filesRenameFolder: "重命名文件夹 {{name}}",
     filesMoreActions: "{{name}} 的更多操作",
@@ -453,6 +458,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "Archivos",
     panelOutline: "Esquema",
     panelComments: "Comentarios",
+    panelSearch: "Buscar",
     filesSharedWorkspace: "Espacio compartido",
     filesRenameFolder: "Renombrar carpeta {{name}}",
     filesMoreActions: "Más acciones para {{name}}",
@@ -540,6 +546,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "Fichiers",
     panelOutline: "Plan",
     panelComments: "Commentaires",
+    panelSearch: "Rechercher",
     filesSharedWorkspace: "Espace partagé",
     filesRenameFolder: "Renommer le dossier {{name}}",
     filesMoreActions: "Plus d’actions pour {{name}}",
@@ -627,6 +634,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "Dateien",
     panelOutline: "Gliederung",
     panelComments: "Kommentare",
+    panelSearch: "Suchen",
     filesSharedWorkspace: "Geteilter Workspace",
     filesRenameFolder: "Ordner {{name}} umbenennen",
     filesMoreActions: "Weitere Aktionen für {{name}}",
@@ -735,6 +743,7 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         files: copy.panelFiles,
         outline: copy.panelOutline,
         comments: copy.panelComments,
+        search: copy.panelSearch,
       },
       files: {
         sharedWorkspace: copy.filesSharedWorkspace,

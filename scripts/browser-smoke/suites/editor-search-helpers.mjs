@@ -20,23 +20,23 @@ export const readEditorText = async (page) =>
 
 export const readSearchRowLayout = (page) =>
   page.evaluate(() => {
-    const controls = document.querySelector(".document-toolbar-row");
+    const panel = document.querySelector(".right-panel");
+    const panelBody = document.querySelector(".right-panel-body.search");
     const row = document.querySelector(".document-search-row");
     const bar = document.querySelector(".document-search-bar");
-    const workspace = document.querySelector(".workspace");
     if (
-      !(controls instanceof HTMLElement) ||
+      !(panel instanceof HTMLElement) ||
+      !(panelBody instanceof HTMLElement) ||
       !(row instanceof HTMLElement) ||
-      !(bar instanceof HTMLElement) ||
-      !(workspace instanceof HTMLElement)
+      !(bar instanceof HTMLElement)
     ) {
       return null;
     }
 
-    const controlsRect = controls.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const panelBodyRect = panelBody.getBoundingClientRect();
     const rowRect = row.getBoundingClientRect();
     const barRect = bar.getBoundingClientRect();
-    const workspaceRect = workspace.getBoundingClientRect();
     const rowStyle = getComputedStyle(row);
     return {
       rowLeft: Math.round(rowRect.left),
@@ -47,11 +47,11 @@ export const readSearchRowLayout = (page) =>
       barLeft: Math.round(barRect.left),
       barRight: Math.round(barRect.right),
       barWidth: Math.round(barRect.width),
-      controlsLeft: Math.round(controlsRect.left),
-      controlsRight: Math.round(controlsRect.right),
-      controlsBottom: Math.round(controlsRect.bottom),
-      controlsWidth: Math.round(controlsRect.width),
-      workspaceTop: Math.round(workspaceRect.top),
+      panelLeft: Math.round(panelRect.left),
+      panelRight: Math.round(panelRect.right),
+      panelBodyLeft: Math.round(panelBodyRect.left),
+      panelBodyRight: Math.round(panelBodyRect.right),
+      panelBodyWidth: Math.round(panelBodyRect.width),
       rowPosition: rowStyle.position,
       rowBorderTop: rowStyle.borderTopWidth,
       rowBorderBottom: rowStyle.borderBottomWidth,
