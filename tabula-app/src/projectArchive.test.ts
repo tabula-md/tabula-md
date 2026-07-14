@@ -4,6 +4,7 @@ import {
   createProjectArchive,
   createZipArchive,
   getProjectArchiveEntries,
+  parseProjectArchive,
 } from "./projectArchive";
 import {
   WORKSPACE_ROOT_FOLDER_ID,
@@ -85,5 +86,36 @@ describe("project archive", () => {
 
   it("supports empty zip archives for defensive callers", async () => {
     await expect(createZipArchive([]).then(readZipEntries)).resolves.toEqual([]);
+  });
+
+  it("opens a workspace archive into its logical folder tree", async () => {
+    const archive = await createZipArchive([
+      { path: "Planning/Launch notes.md", content: "# Launch" },
+      { path: "Planning/Research/Questions.markdown", content: "# Questions" },
+    ]);
+    const workspace = await parseProjectArchive(new Uint8Array(await archive.arrayBuffer()), {
+      viewMode: "edit",
+      readingWidth: "standard",
+      lineWrapping: false,
+      lineNumbers: true,
+    });
+
+    expect(workspace.files.map((file) => file.title)).toEqual(["Launch notes.md", "Questions.markdown"]);
+    expect(workspace.folders.map((folder) => folder.title)).toEqual(["Project", "Planning", "Research"]);
+    expect(workspace.files[1]?.parentId).toBe(workspace.folders[2]?.id);
+    expect(workspace.files[0]).toMatchObject({ readingWidth: "standard", lineWrapping: false });
+  });
+
+  it("rejects path traversal and archives without Markdown files", async () => {
+    const traversalArchive = await createZipArchive([{ path: "../secret.md", content: "secret" }]);
+    const textArchive = await createZipArchive([{ path: "notes.txt", content: "not Markdown" }]);
+    const defaults = { viewMode: "edit", readingWidth: "wide", lineWrapping: true, lineNumbers: true } as const;
+
+    await expect(parseProjectArchive(new Uint8Array(await traversalArchive.arrayBuffer()), defaults)).rejects.toThrow(
+      "invalid path",
+    );
+    await expect(parseProjectArchive(new Uint8Array(await textArchive.arrayBuffer()), defaults)).rejects.toThrow(
+      "does not contain any Markdown",
+    );
   });
 });

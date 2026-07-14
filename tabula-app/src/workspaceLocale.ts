@@ -4,6 +4,7 @@ type WorkspaceMenuCopy = {
   actions: {
     newFile: string;
     openFile: string;
+    openWorkspace: string;
     clearWorkspace: string;
     saveFile: string;
     exportProject: string;
@@ -31,6 +32,7 @@ type WorkspaceMenuCopy = {
     tagline: string;
     newFile: string;
     openFile: string;
+    openWorkspace: string;
     browseFiles: string;
     help: string;
   };
@@ -103,6 +105,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "New document",
       openFile: "Open Markdown file…",
+      openWorkspace: "Open workspace…",
       clearWorkspace: "Clear local workspace…",
       saveFile: "Download current document",
       exportProject: "Download workspace ZIP",
@@ -131,6 +134,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         "A local-first workspace for files that people and coding agents can share safely.",
       newFile: "New document",
       openFile: "Open Markdown file",
+      openWorkspace: "Open workspace",
       browseFiles: "Browse project files",
       help: "Help",
     },
@@ -189,6 +193,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "새 문서",
       openFile: "Markdown 파일 열기…",
+      openWorkspace: "워크스페이스 열기…",
       clearWorkspace: "로컬 워크스페이스 비우기…",
       saveFile: "현재 문서 다운로드",
       exportProject: "워크스페이스 ZIP 다운로드",
@@ -217,6 +222,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         "사람과 코딩 에이전트가 안전하게 공유할 수 있는 로컬 우선 작업공간.",
       newFile: "새 문서",
       openFile: "Markdown 파일 열기",
+      openWorkspace: "워크스페이스 열기",
       browseFiles: "프로젝트 파일 보기",
       help: "도움말",
     },
@@ -275,6 +281,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "新規ドキュメント",
       openFile: "Markdownファイルを開く…",
+      openWorkspace: "ワークスペースを開く…",
       clearWorkspace: "ローカルワークスペースを消去…",
       saveFile: "現在のドキュメントをダウンロード",
       exportProject: "ワークスペースZIPをダウンロード",
@@ -303,6 +310,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         "人とコーディングエージェントが安全に共有できるローカルファーストのワークスペース。",
       newFile: "新規ドキュメント",
       openFile: "Markdownファイルを開く",
+      openWorkspace: "ワークスペースを開く",
       browseFiles: "プロジェクトファイルを見る",
       help: "ヘルプ",
     },
@@ -364,6 +372,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "新建文档",
       openFile: "打开 Markdown 文件…",
+      openWorkspace: "打开工作区…",
       clearWorkspace: "清空本地工作区…",
       saveFile: "下载当前文档",
       exportProject: "下载工作区 ZIP",
@@ -391,6 +400,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       tagline: "让人与编码智能体安全共享文件的本地优先工作区。",
       newFile: "新建文档",
       openFile: "打开 Markdown 文件",
+      openWorkspace: "打开工作区",
       browseFiles: "浏览项目文件",
       help: "帮助",
     },
@@ -447,6 +457,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "Nuevo documento",
       openFile: "Abrir archivo Markdown…",
+      openWorkspace: "Abrir espacio de trabajo…",
       clearWorkspace: "Vaciar espacio local…",
       saveFile: "Descargar documento actual",
       exportProject: "Descargar ZIP del espacio",
@@ -475,6 +486,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         "Un espacio local-first para compartir archivos con personas y agentes de código.",
       newFile: "Nuevo documento",
       openFile: "Abrir archivo Markdown",
+      openWorkspace: "Abrir espacio de trabajo",
       browseFiles: "Ver archivos del proyecto",
       help: "Ayuda",
     },
@@ -535,6 +547,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "Nouveau document",
       openFile: "Ouvrir un fichier Markdown…",
+      openWorkspace: "Ouvrir un espace de travail…",
       clearWorkspace: "Effacer l’espace local…",
       saveFile: "Télécharger le document actuel",
       exportProject: "Télécharger le ZIP de l’espace",
@@ -563,6 +576,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         "Un espace local-first pour partager des fichiers avec des personnes et des agents de code.",
       newFile: "Nouveau document",
       openFile: "Ouvrir un fichier Markdown",
+      openWorkspace: "Ouvrir un espace de travail",
       browseFiles: "Parcourir les fichiers",
       help: "Aide",
     },
@@ -623,6 +637,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     actions: {
       newFile: "Neues Dokument",
       openFile: "Markdown-Datei öffnen…",
+      openWorkspace: "Workspace öffnen…",
       clearWorkspace: "Lokalen Workspace leeren…",
       saveFile: "Aktuelles Dokument herunterladen",
       exportProject: "Workspace-ZIP herunterladen",
@@ -651,6 +666,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         "Ein local-first Workspace zum sicheren Teilen von Dateien mit Menschen und Coding-Agenten.",
       newFile: "Neues Dokument",
       openFile: "Markdown-Datei öffnen",
+      openWorkspace: "Workspace öffnen",
       browseFiles: "Projektdateien ansehen",
       help: "Hilfe",
     },

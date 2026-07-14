@@ -10,6 +10,7 @@ import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 
 export type WorkspaceMenuSurfaceProps = {
   importInputRef: RefObject<HTMLInputElement | null>;
+  workspaceImportInputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
   language: WorkspaceLanguage;
   preferencesOpen: boolean;
@@ -20,6 +21,7 @@ export type WorkspaceMenuSurfaceProps = {
   onChangeTheme: (theme: WorkspaceTheme) => void;
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
+  onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
   onClearWorkspace: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
@@ -28,6 +30,7 @@ export type WorkspaceMenuSurfaceProps = {
 
 export function WorkspaceMenuSurface({
   importInputRef,
+  workspaceImportInputRef,
   isOpen,
   language,
   preferencesOpen,
@@ -38,6 +41,7 @@ export function WorkspaceMenuSurface({
   onChangeTheme,
   onCloseChrome,
   onImportFileChange,
+  onImportWorkspaceChange,
   onClearWorkspace,
   onOpenAbout,
   onOpenHelp,
@@ -61,6 +65,14 @@ export function WorkspaceMenuSurface({
         onChange={onImportFileChange}
         aria-label={interfaceCopy.projectContext.files.openMarkdown}
       />
+      <input
+        ref={workspaceImportInputRef}
+        className="workspace-file-input"
+        type="file"
+        accept=".zip,application/zip"
+        onChange={onImportWorkspaceChange}
+        aria-label={copy.actions.openWorkspace.replace("…", "")}
+      />
       <WorkspaceMenu
         isOpen={isOpen}
         preferencesOpen={preferencesOpen}
@@ -74,6 +86,10 @@ export function WorkspaceMenuSurface({
           onCloseChrome();
           importInputRef.current?.click();
         }}
+        onOpenWorkspace={canClearWorkspace ? () => {
+          onCloseChrome();
+          workspaceImportInputRef.current?.click();
+        } : undefined}
         onClearWorkspace={canClearWorkspace ? () => {
           onCloseChrome();
           setClearWorkspaceOpen(true);

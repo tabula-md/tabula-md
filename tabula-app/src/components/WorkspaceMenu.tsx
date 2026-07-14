@@ -32,6 +32,7 @@ type WorkspaceMenuProps = {
   onChangeLanguage: (language: WorkspaceLanguage) => void;
   onAddFile: () => void;
   onOpenFile: () => void;
+  onOpenWorkspace?: () => void;
   onClearWorkspace?: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
@@ -115,6 +116,7 @@ export function WorkspaceMenu({
   onChangeLanguage,
   onAddFile,
   onOpenFile,
+  onOpenWorkspace,
   onClearWorkspace,
   onOpenAbout,
   onOpenHelp,
@@ -160,6 +162,11 @@ export function WorkspaceMenu({
         <MenuRow icon={<FolderOpen size={16} />} onClick={onOpenFile}>
           {copy.actions.openFile}
         </MenuRow>
+        {onOpenWorkspace && (
+          <MenuRow icon={<FolderOpen size={16} />} onClick={onOpenWorkspace}>
+            {copy.actions.openWorkspace}
+          </MenuRow>
+        )}
         <div className="workspace-menu-divider" role="separator" />
 
         <MenuRow

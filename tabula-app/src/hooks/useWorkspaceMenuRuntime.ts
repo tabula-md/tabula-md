@@ -16,12 +16,14 @@ import type {
 
 type UseWorkspaceMenuRuntimeOptions = {
   importInputRef: RefObject<HTMLInputElement | null>;
+  workspaceImportInputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
   onAddFile: () => void;
   canClearWorkspace: boolean;
   onClearWorkspace: () => void;
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
+  onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
   preferences: WorkspacePreferences;
@@ -33,12 +35,14 @@ type UseWorkspaceMenuRuntimeOptions = {
 
 export function useWorkspaceMenuRuntime({
   importInputRef,
+  workspaceImportInputRef,
   isOpen,
   onAddFile,
   canClearWorkspace,
   onClearWorkspace,
   onCloseChrome,
   onImportFileChange,
+  onImportWorkspaceChange,
   onOpenAbout,
   onOpenHelp,
   preferences,
@@ -73,8 +77,10 @@ export function useWorkspaceMenuRuntime({
       theme: preferences.theme,
       language: preferences.language,
       importInputRef,
+      workspaceImportInputRef,
       canClearWorkspace,
       onImportFileChange,
+      onImportWorkspaceChange,
       onClearWorkspace,
       onCloseChrome,
       onTogglePreferences: togglePreferences,
@@ -86,12 +92,14 @@ export function useWorkspaceMenuRuntime({
     }),
     [
       importInputRef,
+      workspaceImportInputRef,
       isOpen,
       onAddFile,
       canClearWorkspace,
       onClearWorkspace,
       onCloseChrome,
       onImportFileChange,
+      onImportWorkspaceChange,
       onOpenAbout,
       onOpenHelp,
       preferences.language,

@@ -76,6 +76,7 @@ export function useWorkspaceIoRuntime({
     isRoomSession,
     activeFileId,
     addFileFromContent,
+    clearFileHistory,
     editorRef,
     files,
     folders,
@@ -84,6 +85,8 @@ export function useWorkspaceIoRuntime({
     openFileIds,
     onBeforeWorkspaceBoundary,
     preferences,
+    replaceCommentsByFileId,
+    replaceWorkspace,
     showToast,
     onCloseChrome: closeFloatingChrome,
   });

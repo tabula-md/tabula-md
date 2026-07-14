@@ -17,6 +17,7 @@ export type WorkspaceEmptySurfaceProps = {
   onDrop: DragEventHandler<HTMLElement>;
   onNewFile: () => void;
   onOpenFile: () => void;
+  onOpenWorkspace: () => void;
   onOpenHelp: () => void;
 };
 
@@ -31,6 +32,7 @@ export function WorkspaceEmptySurface({
   onDrop,
   onNewFile,
   onOpenFile,
+  onOpenWorkspace,
   onOpenHelp,
 }: WorkspaceEmptySurfaceProps) {
   return (
@@ -45,6 +47,7 @@ export function WorkspaceEmptySurface({
         language={language}
         onNewFile={onNewFile}
         onOpenFile={onOpenFile}
+        onOpenWorkspace={onOpenWorkspace}
         onBrowseFiles={onBrowseFiles}
         onOpenHelp={onOpenHelp}
         shortcutPlatform={shortcutPlatform}
