@@ -39,7 +39,11 @@ import type {
   ReadingWidth,
   WorkspaceFile,
 } from "../workspaceStorage";
-import { DocumentControls } from "./DocumentControls";
+import {
+  DocumentControls,
+  DocumentSearchBar,
+  type DocumentSearchBarProps,
+} from "./DocumentControls";
 import { FormattingToolbar } from "./FormattingToolbar";
 import { MarkdownEditor } from "./MarkdownEditor";
 import type {
@@ -85,6 +89,7 @@ export type DocumentWorkbenchProps = {
   collaborationBinding?: CollabEditorBinding | null;
   cursorPositionLabel: string;
   documentSurface: DocumentSurfaceModel;
+  documentSearch: Omit<DocumentSearchBarProps, "language">;
   editorHistoryCanRedo: boolean;
   editorHistoryCanUndo: boolean;
   editorRef: RefObject<MarkdownEditorHandle | null>;
@@ -143,6 +148,7 @@ export type DocumentWorkbenchProps = {
   onSplitDividerPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onTextChange: (nextValue: string | null, change?: TextChange) => void;
   onToggleLineNumbers: () => void;
+  onToggleSearch: () => void;
   onToggleLineWrapping: () => void;
   onToggleSyncScrolling: () => void;
   onToggleViewOptions: () => void;
@@ -182,6 +188,7 @@ export function DocumentWorkbench({
   collaborationBinding,
   cursorPositionLabel,
   documentSurface,
+  documentSearch,
   editorHistoryCanRedo,
   editorHistoryCanUndo,
   editorRef,
@@ -240,6 +247,7 @@ export function DocumentWorkbench({
   onSplitDividerPointerUp,
   onTextChange,
   onToggleLineNumbers,
+  onToggleSearch,
   onToggleLineWrapping,
   onToggleSyncScrolling,
   onToggleViewOptions,
@@ -349,6 +357,7 @@ export function DocumentWorkbench({
           activeSyncScrolling={activeSyncScrolling}
           centerPopover={centerPopover}
           language={language}
+          searchOpen={searchOpen}
           onSetViewMode={handleSetViewMode}
           onPreparePreview={prepareMarkdownPreview}
           onToggleViewOptions={onToggleViewOptions}
@@ -356,8 +365,13 @@ export function DocumentWorkbench({
           onToggleSyncScrolling={onToggleSyncScrolling}
           onToggleLineWrapping={onToggleLineWrapping}
           onToggleLineNumbers={onToggleLineNumbers}
+          onToggleSearch={onToggleSearch}
         />
       </section>
+
+      {searchOpen && (
+        <DocumentSearchBar {...documentSearch} language={language} />
+      )}
 
       <section
         className={documentSurface.workspaceClassName}

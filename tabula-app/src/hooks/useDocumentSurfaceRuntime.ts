@@ -26,6 +26,7 @@ type UseDocumentSurfaceRuntimeOptions = {
   activeViewMode: FileViewMode;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   selectedCharacterCount: number;
+  searchOpen: boolean;
   selectionActionPosition: MarkdownSelectionActionPosition | null;
   shareOpen: boolean;
   splitDividerDragging: boolean;
@@ -46,6 +47,7 @@ export function useDocumentSurfaceRuntime({
   activeViewMode,
   editorRef,
   selectedCharacterCount,
+  searchOpen,
   selectionActionPosition,
   shareOpen,
   splitDividerDragging,
@@ -60,7 +62,7 @@ export function useDocumentSurfaceRuntime({
   const documentSurface = buildDocumentSurface({
     document: activeDocument,
     hasSelectionActionPosition: Boolean(selectionActionPosition),
-    searchOpen: false,
+    searchOpen,
     selectedCharacterCount,
     shareOpen,
     splitDividerDragging,

@@ -1174,10 +1174,14 @@ export function useWorkspaceRuntime() {
     handleLineAnnotationAction,
   );
   const openStableCommentMarker = useEventCallback(openCommentMarker);
-  const openSidePanelSearch = useEventCallback(() => {
-    setRightPanelOpen(true);
-    setRightPanelView("search");
-    openSearchFromCurrentSelection();
+  const openWorkspaceSearchResult = useEventCallback((
+    fileId: string,
+    start: number,
+    end: number,
+  ) => {
+    selectFile(fileId);
+    setWorkspaceFileViewMode("edit");
+    queueEditorTextRange(start, end);
   });
   const { sidePanelProps } =
     useWorkspaceProjectContextRuntime({
@@ -1211,6 +1215,7 @@ export function useWorkspaceRuntime() {
       onIdentityNameChange: updateIdentityName,
       onIdentityNameCommit: normalizeIdentityName,
       onImportFile: () => importInputRef.current?.click(),
+      onOpenSearchResult: openWorkspaceSearchResult,
       onNewFile: addFile,
       onNewFolder: addWorkspaceFolder,
       onRenameFile: renameWorkspaceFileAction,
@@ -1228,32 +1233,12 @@ export function useWorkspaceRuntime() {
       replyDraftByCommentId,
       rightPanelOpen,
       rightPanelView,
-      search: {
-        searchInputRef,
-        searchQuery,
-        replaceQuery,
-        searchMatchCount,
-        searchError,
-        searchOptions,
-        activeSearchMatchIndex,
-        replaceAvailable,
-        target: searchTarget,
-        onSearchQueryChange: setSearchQuery,
-        onReplaceQueryChange: setReplaceQuery,
-        onToggleSearchOption: toggleSearchOption,
-        onGoToSearchMatch: goToSearchMatch,
-        onSelectAllSearchMatches: selectAllSearchMatches,
-        onReplaceCurrentMatch: replaceCurrentMatch,
-        onReplaceAllMatches: replaceAllMatches,
-        onCloseSearch: () => setRightPanelOpen(false),
-      },
       selectedCharacterCount,
       pendingSelectionText: pendingSelectionCommentText,
       selectionCommentPending,
       onSelectionCommentRequestHandled: consumeSelectionCommentRequest,
       setRightPanelOpen,
       setRightPanelView,
-      setSearchOpen,
       text,
     });
   const { shareOpen, topChromeProps } = useWorkspaceTopChromeRuntime({
@@ -1310,7 +1295,7 @@ export function useWorkspaceRuntime() {
     closeFloatingChrome,
     openFilesPanel,
     openHelp,
-    openDocumentSearch: openSidePanelSearch,
+    openDocumentSearch: openSearchFromCurrentSelection,
     selectAdjacentFile,
     setActiveFileViewMode,
     setCenterPopover,
@@ -1325,6 +1310,7 @@ export function useWorkspaceRuntime() {
       activeViewMode,
       editorRef,
       selectedCharacterCount,
+      searchOpen,
       selectionActionPosition,
       shareOpen,
       splitDividerDragging,
@@ -1407,6 +1393,25 @@ export function useWorkspaceRuntime() {
       collaborationBinding: editorBinding,
       cursorPositionLabel,
       documentSurface,
+      documentSearch: {
+        searchInputRef,
+        searchQuery,
+        replaceQuery,
+        searchMatchCount,
+        searchError,
+        searchOptions,
+        activeSearchMatchIndex,
+        replaceAvailable,
+        target: searchTarget,
+        onSearchQueryChange: setSearchQuery,
+        onReplaceQueryChange: setReplaceQuery,
+        onToggleSearchOption: toggleSearchOption,
+        onGoToSearchMatch: goToSearchMatch,
+        onSelectAllSearchMatches: selectAllSearchMatches,
+        onReplaceCurrentMatch: replaceCurrentMatch,
+        onReplaceAllMatches: replaceAllMatches,
+        onCloseSearch: () => setSearchOpen(false),
+      },
       editorHistoryCanRedo: editorHistoryState.canRedo,
       editorHistoryCanUndo: editorHistoryState.canUndo,
       editorRef,
@@ -1492,6 +1497,13 @@ export function useWorkspaceRuntime() {
         handleTextChange(nextText, change);
       },
       onToggleLineNumbers: documentWorkbenchRuntime.onToggleLineNumbers,
+      onToggleSearch: () => {
+        if (searchOpen) {
+          setSearchOpen(false);
+          return;
+        }
+        openSearchFromCurrentSelection();
+      },
       onToggleLineWrapping: documentWorkbenchRuntime.onToggleLineWrapping,
       onToggleSyncScrolling: documentWorkbenchRuntime.onToggleSyncScrolling,
       onToggleViewOptions: documentWorkbenchRuntime.onToggleViewOptions,

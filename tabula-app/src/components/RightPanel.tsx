@@ -18,7 +18,7 @@ import { RightPanelOutline } from "./RightPanelOutline";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
-import { DocumentSearchBar, type DocumentSearchBarProps } from "./DocumentControls";
+import { RightPanelSearch } from "./RightPanelSearch";
 
 type RightPanelProps = {
   isOpen: boolean;
@@ -37,12 +37,12 @@ type RightPanelProps = {
   pendingSelectionText: string;
   selectedCharacterCount: number;
   selectionCommentPending: boolean;
-  search: Omit<DocumentSearchBarProps, "language">;
   commentInputRef?: RefObject<HTMLTextAreaElement | null>;
   activeCommentId?: string | null;
   activeReplyCommentId?: string | null;
   replyDraftByCommentId: Record<string, string>;
   onSetView: (view: RightPanelView) => void;
+  onOpenSearchResult: (fileId: string, start: number, end: number) => void;
   onToggleSidePanel: () => void;
   onNewFile: () => void;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
@@ -91,12 +91,12 @@ export function RightPanel({
   pendingSelectionText,
   selectedCharacterCount,
   selectionCommentPending,
-  search,
   commentInputRef,
   activeCommentId,
   activeReplyCommentId,
   replyDraftByCommentId,
   onSetView,
+  onOpenSearchResult,
   onToggleSidePanel,
   onNewFile,
   onNewFolder,
@@ -281,7 +281,12 @@ export function RightPanel({
         )}
 
         {effectiveView === "search" && (
-          <DocumentSearchBar {...search} language={language} />
+          <RightPanelSearch
+            copy={copy.search}
+            files={files}
+            language={language}
+            onOpenResult={onOpenSearchResult}
+          />
         )}
       </div>
     </aside>
