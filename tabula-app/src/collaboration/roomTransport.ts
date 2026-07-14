@@ -46,7 +46,19 @@ type SocketIoClientModule = {
   io(baseUrl: string, options: { autoConnect: boolean; transports: string[] }): SocketLike;
 };
 
-const loadSocketIoClient = async (): Promise<SocketIoClientModule> => import("socket.io-client");
+let socketIoClientPromise: Promise<SocketIoClientModule> | null = null;
+
+const loadSocketIoClient = (): Promise<SocketIoClientModule> => {
+  socketIoClientPromise ??= import("socket.io-client").catch((error: unknown) => {
+    socketIoClientPromise = null;
+    throw error;
+  });
+  return socketIoClientPromise;
+};
+
+export const preloadRoomTransport = async () => {
+  await loadSocketIoClient();
+};
 
 export const createDefaultRoomTransport: CreateRoomTransport = (options) => createSocketIoRoomTransport(options);
 

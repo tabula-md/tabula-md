@@ -22,6 +22,7 @@ const firebaseMocks = vi.hoisted(() => {
     ref: vi.fn((_: unknown, path: string) => ({ path })),
     runTransaction: vi.fn(),
     serverTimestamp: vi.fn(() => ({ serverTimestamp: true })),
+    setDoc: vi.fn().mockResolvedValue(undefined),
     uploadBytes: vi.fn().mockResolvedValue(undefined),
   };
 });
@@ -35,6 +36,7 @@ vi.mock("firebase/firestore", () => ({
   getFirestore: firebaseMocks.getFirestore,
   runTransaction: firebaseMocks.runTransaction,
   serverTimestamp: firebaseMocks.serverTimestamp,
+  setDoc: firebaseMocks.setDoc,
 }));
 vi.mock("firebase/storage", () => ({
   connectStorageEmulator: firebaseMocks.connectStorageEmulator,
@@ -137,13 +139,8 @@ describe("Firebase room checkpoint store", () => {
     expect(firebaseMocks.getBytes).toHaveBeenCalledTimes(1);
   });
 
-  it("uploads ciphertext then advances the pointer only when generation matches", async () => {
+  it("creates generation one without a transaction read", async () => {
     const encrypted = new Uint8Array([5, 6, 7]);
-    const set = vi.fn();
-    firebaseMocks.runTransaction.mockImplementation(async (_db, callback) => callback({
-      get: vi.fn().mockResolvedValue({ exists: () => false }),
-      set,
-    }));
     const store = createFirebaseRoomCheckpointStore(firebaseConfig);
     await expect(store.saveEncryptedCheckpoint("room-1", {
       expectedGeneration: 0,
@@ -152,9 +149,38 @@ describe("Firebase room checkpoint store", () => {
     })).resolves.toEqual({ ok: true, generation: 1 });
 
     expect(firebaseMocks.uploadBytes).toHaveBeenCalledTimes(1);
-    const written = set.mock.calls[0][1];
+    expect(firebaseMocks.runTransaction).not.toHaveBeenCalled();
+    const written = firebaseMocks.setDoc.mock.calls[0][1];
     expect(written).toMatchObject({ formatVersion: 2, generation: 1, byteLength: 3 });
     expect(written).not.toHaveProperty("roomKey");
     expect(written).not.toHaveProperty("markdown");
+  });
+
+  it("keeps generation updates behind the transaction CAS", async () => {
+    const set = vi.fn();
+    firebaseMocks.runTransaction.mockImplementation(async (_db, callback) => callback({
+      get: vi.fn().mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          formatVersion: 2,
+          generation: 1,
+          blobPath: "roomCheckpoints/room-1/old.bin",
+          byteLength: 3,
+          expiresAt: firebaseMocks.MockTimestamp.fromMillis(Date.now() + 10_000),
+        }),
+      }),
+      set,
+    }));
+    const store = createFirebaseRoomCheckpointStore(firebaseConfig);
+
+    await expect(store.saveEncryptedCheckpoint("room-1", {
+      expectedGeneration: 1,
+      encryptedCheckpoint: new Uint8Array([8, 9, 10]),
+      expiresAt: Date.now() + 10_000,
+    })).resolves.toEqual({ ok: true, generation: 2 });
+
+    expect(firebaseMocks.setDoc).not.toHaveBeenCalled();
+    expect(firebaseMocks.runTransaction).toHaveBeenCalledTimes(1);
+    expect(set.mock.calls[0][1]).toMatchObject({ generation: 2 });
   });
 });

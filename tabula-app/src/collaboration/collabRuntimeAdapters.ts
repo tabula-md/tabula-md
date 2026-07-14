@@ -32,6 +32,7 @@ export type CollabRuntimeAdapters = {
   crypto: CollabCryptoAdapter;
   roomCheckpointStore: RoomCheckpointStore;
   createRoomTransport: CreateRoomTransport;
+  prepareRoomTransport?: () => Promise<void>;
   resolveRoomBaseUrl: () => string | null;
 };
 

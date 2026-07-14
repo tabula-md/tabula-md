@@ -6,6 +6,14 @@ import {
   type LocationRoom,
   type WorkspaceFile,
 } from "../workspaceStorage";
+import type { RoomWorkspaceBootstrap } from "../workspace/session/WorkspaceSession";
+
+export type StartedWorkspaceRoom = {
+  fileId: string;
+  roomId: string;
+  shareUrl: string;
+  bootstrap: RoomWorkspaceBootstrap;
+};
 
 type UseWorkspaceLiveRoomControllerArgs = {
   activeFile?: WorkspaceFile;
@@ -14,7 +22,7 @@ type UseWorkspaceLiveRoomControllerArgs = {
   retryCollaborationConnection: () => void;
   setCopiedFileId: Dispatch<SetStateAction<string | null>>;
   startCollaborationSession: () => Promise<
-    { fileId: string; roomId: string; shareUrl: string } | undefined
+    StartedWorkspaceRoom | undefined
   >;
 };
 

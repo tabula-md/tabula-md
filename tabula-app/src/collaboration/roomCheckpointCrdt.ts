@@ -88,7 +88,11 @@ export const persistInitialWorkspaceRoomCheckpoint = async (
       expiresAt,
     });
     if (!result.ok) throw new Error("The live room already exists.");
-    return { generation: result.generation, expiresAt };
+    return {
+      generation: result.generation,
+      expiresAt,
+      checkpointUpdate: update,
+    };
   } finally {
     doc.destroy();
   }

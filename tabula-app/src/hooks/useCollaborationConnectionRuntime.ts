@@ -222,6 +222,7 @@ export function useCollaborationConnectionRuntime({
           roomKey: target.roomKey,
           documentId: target.fileId,
           emitInitialWorkspaceState: false,
+          initialCheckpoint: session?.takeBootstrap(),
           identity,
           fileTitle: target.fileTitle,
           onOpenFailure,

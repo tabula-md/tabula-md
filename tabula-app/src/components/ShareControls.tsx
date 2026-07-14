@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { X } from "lucide-react";
 import { ShareExportPanel } from "./share/ShareExportPanel";
 import { ShareLinkPanel } from "./share/ShareLinkPanel";
@@ -7,6 +8,7 @@ import { useShareDialogRuntime } from "../hooks/useShareDialogRuntime";
 import type { ConnectionStatus } from "../collaboration";
 import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 import { ModalSurface } from "./ui/ModalSurface";
+import { preloadCollaborationStart } from "../collaboration/preloadCollaboration";
 
 type ShareControlsProps = {
   activeFile?: WorkspaceFile;
@@ -62,6 +64,10 @@ export function ShareControls({
     (isLiveConnected ||
       connectionStatus === "reconnecting" ||
       connectionStatus === "disconnected");
+  useEffect(() => {
+    if (!shareOpen || isLive || !canStartSession) return;
+    void preloadCollaborationStart().catch(() => undefined);
+  }, [canStartSession, isLive, shareOpen]);
   const shareRuntime = useShareDialogRuntime({
     activeFile,
     room,

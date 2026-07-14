@@ -7,6 +7,7 @@ import {
   getFirestore,
   runTransaction,
   serverTimestamp,
+  setDoc,
 } from "firebase/firestore";
 import {
   deleteObject,
@@ -120,10 +121,36 @@ export const createFirebaseRoomCheckpointStore = (
       const blobRef = ref(storage, blobPath);
       await uploadBytes(blobRef, request.encryptedCheckpoint, { contentType: "application/octet-stream" });
       throwIfAborted(signal);
+      const pointerRef = doc(firestore, roomCheckpointCollection, roomId);
+      const createPointer = (generation: number) => ({
+        formatVersion: roomCheckpointFormatVersion,
+        generation,
+        blobPath,
+        byteLength: request.encryptedCheckpoint.byteLength,
+        updatedAt: serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(request.expiresAt),
+      } satisfies FirebaseRoomCheckpointPointer);
       let previousBlobPath: string | null = null;
       try {
+        if (request.expectedGeneration === 0) {
+          try {
+            await setDoc(pointerRef, createPointer(1));
+            return { ok: true, generation: 1 };
+          } catch (error) {
+            throwIfAborted(signal);
+            const existing = await getDoc(pointerRef);
+            if (existing.exists()) {
+              await deleteObject(blobRef).catch(() => undefined);
+              return {
+                ok: false,
+                reason: "conflict",
+                generation: readFirebaseRoomCheckpointPointer(existing.data()).generation,
+              };
+            }
+            throw error;
+          }
+        }
         const result = await runTransaction(firestore, async (transaction) => {
-          const pointerRef = doc(firestore, roomCheckpointCollection, roomId);
           const snapshot = await transaction.get(pointerRef);
           const previous = snapshot.exists() ? readFirebaseRoomCheckpointPointer(snapshot.data()) : null;
           const generation = previous?.generation ?? 0;
@@ -132,14 +159,7 @@ export const createFirebaseRoomCheckpointStore = (
           }
           previousBlobPath = previous?.blobPath ?? null;
           const nextGeneration = generation + 1;
-          transaction.set(pointerRef, {
-            formatVersion: roomCheckpointFormatVersion,
-            generation: nextGeneration,
-            blobPath,
-            byteLength: request.encryptedCheckpoint.byteLength,
-            updatedAt: serverTimestamp(),
-            expiresAt: Timestamp.fromMillis(request.expiresAt),
-          } satisfies FirebaseRoomCheckpointPointer);
+          transaction.set(pointerRef, createPointer(nextGeneration));
           return { ok: true as const, generation: nextGeneration };
         });
         if (!result.ok) {

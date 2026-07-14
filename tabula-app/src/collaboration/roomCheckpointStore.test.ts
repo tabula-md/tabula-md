@@ -55,7 +55,7 @@ describe("room checkpoint crypto", () => {
       saveEncryptedCheckpoint,
     };
 
-    await persistInitialWorkspaceRoomCheckpoint({
+    const persisted = await persistInitialWorkspaceRoomCheckpoint({
       roomId: "room-initial",
       roomKey,
       folders: [{ id: "notes", title: "Notes", parentId: "workspace-root" }],
@@ -85,6 +85,7 @@ describe("room checkpoint crypto", () => {
       roomId: "room-initial",
       roomKey,
     });
+    expect(persisted).toMatchObject({ generation: 1, checkpointUpdate: update });
     const restoredDoc = new Y.Doc();
     const restoredRoom = createWorkspaceRoomCrdt({
       roomId: "room-initial",

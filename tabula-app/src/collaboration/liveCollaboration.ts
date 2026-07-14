@@ -29,6 +29,7 @@ import { createRoomCrdtStore } from "./runtime/RoomCrdtStore";
 import {
   CHECKPOINT_ORIGIN,
   createCheckpointCoordinator,
+  type InitialRoomCheckpoint,
   type RoomDurability,
 } from "./runtime/CheckpointCoordinator";
 import {
@@ -123,6 +124,7 @@ type ConnectOptions = {
   documents?: readonly WorkspaceDocumentSnapshot[];
   folders?: readonly WorkspaceFolderSnapshot[];
   commentsByFileId?: Record<string, WorkspaceRoomComment[]>;
+  initialCheckpoint?: InitialRoomCheckpoint | null;
   emitInitialWorkspaceState: boolean;
   identity: Collaborator;
   fileTitle?: string;
@@ -149,6 +151,7 @@ export const createWorkspaceRoomRuntime = ({
   documents = [],
   folders = [],
   commentsByFileId,
+  initialCheckpoint,
   emitInitialWorkspaceState,
   identity,
   fileTitle,
@@ -404,7 +407,11 @@ export const createWorkspaceRoomRuntime = ({
 
   const loadCheckpoint = async () => {
     if (!roomKey) return false;
-    const result = await checkpointCoordinator.load(roomKey, emitInitialWorkspaceState);
+    const result = await checkpointCoordinator.load(
+      roomKey,
+      emitInitialWorkspaceState,
+      initialCheckpoint,
+    );
     if (result.ok) return true;
     onOpenFailure?.(result.reason);
     setStatus("failed");
@@ -425,7 +432,10 @@ export const createWorkspaceRoomRuntime = ({
     }
     roomKey = startConfig.roomKey;
     syncController.setRoomKey(roomKey);
+    const transportPreparation = adapters.prepareRoomTransport?.().catch(() => undefined);
     if (!(await loadCheckpoint()) || closed || abortController.signal.aborted) return;
+    await transportPreparation;
+    if (closed || abortController.signal.aborted) return;
     syncDocumentMetrics();
     refreshActiveEditorBinding();
     projectWorkspace();
