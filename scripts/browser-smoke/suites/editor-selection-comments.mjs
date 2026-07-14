@@ -106,10 +106,10 @@ export async function run(ctx) {
     expect(
       selectionSurfaceState.segmentRects.every(
         (segment) =>
-          segment.background === "rgb(228, 217, 244)" &&
+          segment.background === "rgb(182, 215, 255)" &&
           segment.height > 0,
       ) && selectionSurfaceState.segmentRects.some((segment) => segment.width > 0),
-      `CodeMirror selection rectangles should use the Tabula selection color without changing layout. Actual: ${JSON.stringify(selectionSurfaceState.segmentRects)}`,
+      `CodeMirror selection rectangles should use the standard blue selection color without changing layout. Actual: ${JSON.stringify(selectionSurfaceState.segmentRects)}`,
     );
     expect(
       selectionSurfaceState.statusText.includes("(4 lines,"),
@@ -192,8 +192,8 @@ export async function run(ctx) {
     expect(wrappedSelectionSurfaceState.wrappedSelectionCoversLine, "Selection should cover the full height of a wrapped logical line.");
     expect(wrappedSelectionSurfaceState.noTextSegmentVerticalOverlap, "Wrapped text selection segments should not overlap each other.");
     expect(
-      wrappedSelectionSurfaceState.selectionColors.every((color) => color === "rgb(228, 217, 244)"),
-      "Wrapped selection rows should keep the Tabula selection color.",
+      wrappedSelectionSurfaceState.selectionColors.every((color) => color === "rgb(182, 215, 255)"),
+      "Wrapped selection rows should keep the standard blue selection color.",
     );
   });
 
