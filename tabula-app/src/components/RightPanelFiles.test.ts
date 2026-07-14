@@ -2,8 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildFileTree,
   flattenVisibleFileTree,
-  getMoveDestinationRows,
-  pruneEmptyFileTreeFolders,
+  getValidDropFolderIds,
 } from "./RightPanelFiles";
 import { WORKSPACE_ROOT_FOLDER_ID, createWorkspaceFile, createWorkspaceRootFolder } from "../workspaceStorage";
 
@@ -30,25 +29,7 @@ describe("right panel file rows", () => {
     ]);
   });
 
-  it("keeps only matching file ancestors while search results are expanded", () => {
-    const matchingFile = createWorkspaceFile(1, { title: "Plan", parentId: "planning" });
-    const tree = buildFileTree(
-      [matchingFile],
-      [
-        createWorkspaceRootFolder(),
-        { id: "planning", title: "Planning", parentId: WORKSPACE_ROOT_FOLDER_ID },
-        { id: "empty", title: "Empty", parentId: WORKSPACE_ROOT_FOLDER_ID },
-      ],
-    );
-    const prunedTree = pruneEmptyFileTreeFolders(tree);
-
-    expect(flattenVisibleFileTree(prunedTree, new Set()).map(({ node }) => node.id)).toEqual([
-      "planning",
-      matchingFile.id,
-    ]);
-  });
-
-  it("presents the workspace root as a top-level destination and disables invalid folder moves", () => {
+  it("allows drag-and-drop only into folders outside the current branch", () => {
     const folders = [
       createWorkspaceRootFolder(),
       { id: "docs", title: "Docs", parentId: WORKSPACE_ROOT_FOLDER_ID },
@@ -56,22 +37,11 @@ describe("right panel file rows", () => {
       { id: "archive", title: "Archive", parentId: WORKSPACE_ROOT_FOLDER_ID },
     ];
 
-    expect(getMoveDestinationRows(folders, {
+    expect([...getValidDropFolderIds(folders, {
       type: "folder",
       id: "docs",
       title: "Docs",
       parentId: WORKSPACE_ROOT_FOLDER_ID,
-    }).map(({ folderId, depth, current, disabled, root }) => ({
-      folderId,
-      depth,
-      current,
-      disabled,
-      root,
-    }))).toEqual([
-      { folderId: WORKSPACE_ROOT_FOLDER_ID, depth: 0, current: true, disabled: true, root: true },
-      { folderId: "archive", depth: 0, current: false, disabled: false, root: false },
-      { folderId: "docs", depth: 0, current: false, disabled: true, root: false },
-      { folderId: "drafts", depth: 1, current: false, disabled: true, root: false },
-    ]);
+    })]).toEqual(["archive"]);
   });
 });

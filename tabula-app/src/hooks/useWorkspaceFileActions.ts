@@ -105,11 +105,12 @@ export function useWorkspaceFileActions({
     closeFloatingChrome();
   };
 
-  const createFile = () => {
+  const createFile = (overrides?: Partial<WorkspaceFile>) => {
     onBeforeWorkspaceBoundary?.();
     queueEditorFocus();
     const nextFile = addWorkspaceFileAction({
       ...getNewFilePreferenceOverrides(preferences),
+      ...overrides,
     });
     if (isRoomSession && onFileCreated && !onFileCreated(nextFile)) {
       deleteWorkspaceFileAction(nextFile.id);
