@@ -152,14 +152,14 @@ export async function run(ctx) {
     await firstPage.getByRole("button", { name: "Close share dialog" }).click();
     await clickTabByFileName(firstPage, "README.md");
     await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
-    await firstPage.getByRole("button", { name: "Open Project Context" }).click();
+    await firstPage.getByRole("button", { name: "Toggle side panel" }).click();
     await firstPage.waitForSelector(".right-panel-tab.live .right-panel-tab-live-dot");
     await firstPage.waitForSelector(".right-file-folder-icon.live .right-file-icon-live-dot");
     expect(
       (await firstPage.locator(".right-file-document-icon .right-file-icon-live-dot").count()) === 0,
       "Live state should be shown once at workspace level, not repeated on every document.",
     );
-    await firstPage.getByRole("button", { name: "Close Project Context" }).click();
+    await firstPage.getByRole("button", { name: "Toggle side panel" }).click();
     await firstPage.locator(".avatar.self").hover();
     await firstPage.waitForFunction(() => {
       const avatar = document.querySelector(".avatar.self");
@@ -709,8 +709,8 @@ function wait(ms) {
 }
 
 async function openFilesPanel(page) {
-  if ((await page.getByRole("button", { name: "Open Project Context" }).count()) > 0) {
-    await page.getByRole("button", { name: "Open Project Context" }).click();
+  if ((await page.locator(".right-panel").count()) === 0) {
+    await page.getByRole("button", { name: "Toggle side panel" }).click();
   }
   if ((await page.getByRole("button", { name: "Files", exact: true }).count()) > 0) {
     await page.getByRole("button", { name: "Files", exact: true }).click();

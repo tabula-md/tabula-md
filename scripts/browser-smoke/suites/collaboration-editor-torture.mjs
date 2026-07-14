@@ -142,8 +142,8 @@ const selectRoomDocument = async (page, fileName, waitForEditorReady) => {
   if ((await tab.count()) === 1) {
     await tab.click();
   } else {
-    const openProjectContext = page.getByRole("button", { name: "Open Project Context" });
-    if ((await openProjectContext.count()) === 1) await openProjectContext.click();
+    const toggleSidePanel = page.getByRole("button", { name: "Toggle side panel" });
+    if ((await toggleSidePanel.count()) === 1) await toggleSidePanel.click();
     const filesTab = page.getByRole("button", { name: "Files", exact: true });
     if ((await filesTab.count()) === 1) await filesTab.click();
     await page.getByRole("button", { name: `Open ${fileName}` }).click();
