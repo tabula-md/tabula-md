@@ -98,36 +98,6 @@
   transform: translateX(-50%);
 }
 
-.split-resize-handle::before {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-  content: "";
-  background: var(--split-handle-line);
-  opacity: 0;
-  transform: translateX(-50%);
-  transition:
-    opacity var(--motion-popover) ease,
-    background-color var(--motion-hover) ease;
-}
-
-.split-resize-handle:hover::before,
-.split-resize-handle:focus-visible::before,
-.workspace.split-resizing .split-resize-handle::before {
-  opacity: 1;
-}
-
-.split-resize-handle:focus-visible::before,
-.workspace.split-resizing .split-resize-handle::before {
-  background: var(--focus-ring);
-}
-
-.split-resize-handle:focus-visible {
-  outline: 0;
-}
-
 .workspace.split-resizing,
 .workspace.split-resizing * {
   cursor: col-resize;

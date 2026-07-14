@@ -39,7 +39,7 @@ import type {
   ReadingWidth,
   WorkspaceFile,
 } from "../workspaceStorage";
-import { DocumentControls, DocumentSearchBar } from "./DocumentControls";
+import { DocumentControls } from "./DocumentControls";
 import { FormattingToolbar } from "./FormattingToolbar";
 import { MarkdownEditor } from "./MarkdownEditor";
 import type {
@@ -99,16 +99,11 @@ export type DocumentWorkbenchProps = {
   previewRef: RefObject<MarkdownPreviewHandle | null>;
   previewMetadata: MarkdownPreviewMetadata[];
   previewSurfaceRef: RefObject<HTMLElement | null>;
-  searchInputRef: RefObject<HTMLInputElement | null>;
   searchMatches: SearchMatch[];
-  searchMatchCount: number;
-  searchError: string | null;
   searchOpen: boolean;
   searchQuery: string;
   searchOptions: SearchOptions;
   searchTarget: SearchTarget;
-  replaceQuery: string;
-  replaceAvailable: boolean;
   selectedCharacterCount: number;
   selectedLineCount: number;
   saveRevision: number;
@@ -123,14 +118,12 @@ export type DocumentWorkbenchProps = {
   toolbarLabel: string;
   workspaceRef: RefObject<HTMLElement | null>;
   onBookmarksChange: (bookmarks: MarkdownBookmark[]) => void;
-  onCloseSearch: () => void;
   onEditorHistoryStateChange: (historyState: { canUndo: boolean; canRedo: boolean }) => void;
   onEditorScroll: () => void;
   onEditorScrollRatioChange: (ratio: number) => void;
   onEditorSelectionActionPositionChange: (position: MarkdownSelectionActionPosition | null) => void;
   onEditorSelectionChange: (selection?: LiveSelection) => void;
   onFormat: (command: MarkdownFormatCommand) => void;
-  onGoToSearchMatch: (direction: 1 | -1) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
   onOpenSelectionComment: () => void;
@@ -139,14 +132,8 @@ export type DocumentWorkbenchProps = {
   onPreviewScroll: () => void;
   onPreviewTouchEnd: () => void;
   onRedo: () => void;
-  onReplaceAllMatches: () => void;
-  onReplaceCurrentMatch: () => void;
   onResetSplitRatio: () => void;
-  onReplaceQueryChange: (query: string) => void;
-  onSearchQueryChange: (query: string) => void;
   onPreviewSearchMatchCountChange: (count: number) => void;
-  onSelectAllSearchMatches: () => void;
-  onToggleSearchOption: (option: keyof SearchOptions) => void;
   onSetReadingWidth: (readingWidth: ReadingWidth) => void;
   onSetViewMode: (viewMode: FileViewMode) => void;
   onSplitDividerKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
@@ -157,7 +144,6 @@ export type DocumentWorkbenchProps = {
   onTextChange: (nextValue: string | null, change?: TextChange) => void;
   onToggleLineNumbers: () => void;
   onToggleLineWrapping: () => void;
-  onToggleSearch: () => void;
   onToggleSyncScrolling: () => void;
   onToggleViewOptions: () => void;
   onUndo: () => void;
@@ -210,16 +196,11 @@ export function DocumentWorkbench({
   previewRef,
   previewMetadata,
   previewSurfaceRef,
-  searchInputRef,
   searchMatches,
-  searchMatchCount,
-  searchError,
   searchOpen,
   searchQuery,
   searchOptions,
   searchTarget,
-  replaceQuery,
-  replaceAvailable,
   selectedCharacterCount,
   selectedLineCount,
   saveRevision,
@@ -234,14 +215,12 @@ export function DocumentWorkbench({
   toolbarLabel,
   workspaceRef,
   onBookmarksChange,
-  onCloseSearch,
   onEditorHistoryStateChange,
   onEditorScroll,
   onEditorScrollRatioChange,
   onEditorSelectionActionPositionChange,
   onEditorSelectionChange,
   onFormat,
-  onGoToSearchMatch,
   onLineAction,
   onOpenComment,
   onOpenSelectionComment,
@@ -250,14 +229,8 @@ export function DocumentWorkbench({
   onPreviewScroll,
   onPreviewTouchEnd,
   onRedo,
-  onReplaceAllMatches,
-  onReplaceCurrentMatch,
   onResetSplitRatio,
-  onReplaceQueryChange,
-  onSearchQueryChange,
   onPreviewSearchMatchCountChange,
-  onSelectAllSearchMatches,
-  onToggleSearchOption,
   onSetReadingWidth,
   onSetViewMode,
   onSplitDividerKeyDown,
@@ -268,7 +241,6 @@ export function DocumentWorkbench({
   onTextChange,
   onToggleLineNumbers,
   onToggleLineWrapping,
-  onToggleSearch,
   onToggleSyncScrolling,
   onToggleViewOptions,
   onUndo,
@@ -377,10 +349,8 @@ export function DocumentWorkbench({
           activeSyncScrolling={activeSyncScrolling}
           centerPopover={centerPopover}
           language={language}
-          searchOpen={searchOpen}
           onSetViewMode={handleSetViewMode}
           onPreparePreview={prepareMarkdownPreview}
-          onToggleSearch={onToggleSearch}
           onToggleViewOptions={onToggleViewOptions}
           onSetReadingWidth={onSetReadingWidth}
           onToggleSyncScrolling={onToggleSyncScrolling}
@@ -388,29 +358,6 @@ export function DocumentWorkbench({
           onToggleLineNumbers={onToggleLineNumbers}
         />
       </section>
-
-      {searchOpen && (
-        <DocumentSearchBar
-          searchInputRef={searchInputRef}
-          searchQuery={searchQuery}
-          replaceQuery={replaceQuery}
-          searchMatchCount={searchMatchCount}
-          searchError={searchError}
-          activeSearchMatchIndex={activeSearchMatchIndex}
-          replaceAvailable={replaceAvailable}
-          target={searchTarget}
-          searchOptions={searchOptions}
-          language={language}
-          onSearchQueryChange={onSearchQueryChange}
-          onToggleSearchOption={onToggleSearchOption}
-          onReplaceQueryChange={onReplaceQueryChange}
-          onGoToSearchMatch={onGoToSearchMatch}
-          onSelectAllSearchMatches={onSelectAllSearchMatches}
-          onReplaceCurrentMatch={onReplaceCurrentMatch}
-          onReplaceAllMatches={onReplaceAllMatches}
-          onCloseSearch={onCloseSearch}
-        />
-      )}
 
       <section
         className={documentSurface.workspaceClassName}
@@ -452,7 +399,8 @@ export function DocumentWorkbench({
         {documentSurface.showSplitResizeHandle && (
           <button
             type="button"
-            className="split-resize-handle"
+            className="vertical-resize-handle split-resize-handle"
+            data-dragging={splitDividerDragging ? "true" : undefined}
             role="separator"
             aria-label={copy.resizeSplitView}
             aria-orientation="vertical"

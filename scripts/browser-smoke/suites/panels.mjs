@@ -367,19 +367,14 @@ export async function run(ctx) {
       countPillCount: document.querySelectorAll(".right-panel .panel-count-pill").length,
       fileToolbar: (() => {
         const row = document.querySelector(".right-file-toolbar");
-        const searchButton = document.querySelector('.right-file-toolbar-button[aria-label="Search files"]');
         const importButton = document.querySelector('.right-file-toolbar-button[aria-label="Open Markdown file"]');
         const createButton = document.querySelector('.right-file-toolbar-button[aria-label="Create"]');
-        if (!row || !searchButton || !importButton || !createButton) {
+        if (!row || !importButton || !createButton) {
           return null;
         }
-        const searchButtonRect = searchButton.getBoundingClientRect();
         const importButtonRect = importButton.getBoundingClientRect();
         const createButtonRect = createButton.getBoundingClientRect();
         return {
-          searchInputCount: document.querySelectorAll(".right-panel-search").length,
-          searchButtonWidth: Math.round(searchButtonRect.width),
-          searchButtonHeight: Math.round(searchButtonRect.height),
           importButtonWidth: Math.round(importButtonRect.width),
           importButtonHeight: Math.round(importButtonRect.height),
           createButtonWidth: Math.round(createButtonRect.width),
@@ -427,22 +422,16 @@ export async function run(ctx) {
       "The side panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Files|Outline|Comments",
-      "The right panel should expose the same Comments workflow in local and live workspaces.",
+      rightPanelState.tabs.join("|") === "Files|Outline|Comments|Search",
+      "The side panel should expose Files, Outline, Comments, and document Search as peer views.",
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
-    expect(rightPanelState.bodyText.includes("Project"), "The right panel should expose the project file tree by default.");
+    expect(!rightPanelState.bodyText.includes("Project"), "Root files should not be wrapped in a synthetic Project folder.");
     expect(rightPanelState.headingCount === 0, "The right panel should not render large panel headings.");
     expect(rightPanelState.documentCardCount === 0, "The right panel should not use document cards.");
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");
     expect(
-      rightPanelState.fileToolbar?.searchInputCount === 0,
-      "Files search should stay hidden until requested.",
-    );
-    expect(
-      rightPanelState.fileToolbar?.searchButtonWidth === 28 &&
-        rightPanelState.fileToolbar?.searchButtonHeight === 28 &&
-        rightPanelState.fileToolbar?.importButtonWidth === 28 &&
+      rightPanelState.fileToolbar?.importButtonWidth === 28 &&
         rightPanelState.fileToolbar?.importButtonHeight === 28 &&
         rightPanelState.fileToolbar?.createButtonWidth === 28 &&
         rightPanelState.fileToolbar?.createButtonHeight === 28,
@@ -507,34 +496,16 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Close Workspace menu", exact: true }).click();
     await waitForRenderFrame(page);
 
-    await page.getByRole("button", { name: "Search files" }).click();
-    await page.getByRole("searchbox", { name: "Search files" }).fill("read");
-    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.getByRole("searchbox", { name: "Search" }).fill("read");
     await waitForRenderFrame(page);
-    const searchEscapeState = await page.evaluate(() => ({
-      searchInputCount: document.querySelectorAll(".right-panel-search").length,
+    const searchPanelState = await page.evaluate(() => ({
+      searchRowCount: document.querySelectorAll(".right-panel-body.search .document-search-row").length,
       panelOpen: Boolean(document.querySelector(".right-panel")),
     }));
-    expect(searchEscapeState.searchInputCount === 0, "Escape should close Files search.");
-    expect(searchEscapeState.panelOpen, "Escape with a Files search query should not close the right panel.");
-
-    await page.getByRole("button", { name: "Search files" }).click();
-    await page.getByRole("searchbox", { name: "Search files" }).focus();
-    await page.keyboard.press("ArrowDown");
-    await waitForRenderFrame(page);
-    const firstKeyboardFileFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
-    expect(firstKeyboardFileFocus.startsWith("Open "), "ArrowDown in Files search should focus the first file row.");
-    await page.keyboard.press("ArrowDown");
-    await waitForRenderFrame(page);
-    const secondKeyboardFileFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
-    expect(
-      secondKeyboardFileFocus.startsWith("Open ") && secondKeyboardFileFocus !== firstKeyboardFileFocus,
-      "ArrowDown on a file row should move focus to the next file row.",
-    );
-    await page.keyboard.press("ArrowUp");
-    await waitForRenderFrame(page);
-    const restoredKeyboardFileFocus = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
-    expect(restoredKeyboardFileFocus === firstKeyboardFileFocus, "ArrowUp on a file row should move focus back.");
+    expect(searchPanelState.searchRowCount === 1, "Document Search should render inside the Search panel view.");
+    expect(searchPanelState.panelOpen, "Using document Search should keep the side panel open.");
+    await page.getByRole("button", { name: "Files", exact: true }).click();
 
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });

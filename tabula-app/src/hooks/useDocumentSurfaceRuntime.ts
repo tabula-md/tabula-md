@@ -25,7 +25,6 @@ type UseDocumentSurfaceRuntimeOptions = {
   activeSyncScrolling: boolean;
   activeViewMode: FileViewMode;
   editorRef: RefObject<MarkdownEditorHandle | null>;
-  searchOpen: boolean;
   selectedCharacterCount: number;
   selectionActionPosition: MarkdownSelectionActionPosition | null;
   shareOpen: boolean;
@@ -36,7 +35,6 @@ type UseDocumentSurfaceRuntimeOptions = {
   onSetActiveFileViewMode: (viewMode: FileViewMode) => void;
   onSetSyncScrolling: (isEnabled: boolean) => void;
   setCenterPopover: SetUiValue<CenterPopover>;
-  setSearchOpen: SetUiValue<boolean>;
   setTopPopover: SetUiValue<TopPopover>;
 };
 
@@ -47,7 +45,6 @@ export function useDocumentSurfaceRuntime({
   activeSyncScrolling,
   activeViewMode,
   editorRef,
-  searchOpen,
   selectedCharacterCount,
   selectionActionPosition,
   shareOpen,
@@ -58,13 +55,12 @@ export function useDocumentSurfaceRuntime({
   onSetActiveFileViewMode,
   onSetSyncScrolling,
   setCenterPopover,
-  setSearchOpen,
   setTopPopover,
 }: UseDocumentSurfaceRuntimeOptions) {
   const documentSurface = buildDocumentSurface({
     document: activeDocument,
     hasSelectionActionPosition: Boolean(selectionActionPosition),
-    searchOpen,
+    searchOpen: false,
     selectedCharacterCount,
     shareOpen,
     splitDividerDragging,
@@ -81,7 +77,6 @@ export function useDocumentSurfaceRuntime({
     onSetActiveFileViewMode,
     onSetSyncScrolling,
     setCenterPopover,
-    setSearchOpen,
     setTopPopover,
   });
 

@@ -2,10 +2,10 @@ import {
   useCallback,
   useMemo,
   useRef,
-  useState,
   type RefObject,
 } from "react";
 import type { WorkspaceSidePanelProps } from "../components/WorkspaceSidePanel";
+import type { DocumentSearchBarProps } from "../components/DocumentControls";
 import {
   getLineStartOffset,
   type MarkdownHeading,
@@ -73,6 +73,7 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   replyDraftByCommentId: Record<string, string>;
   rightPanelOpen: boolean;
   rightPanelView: RightPanelView;
+  search: Omit<DocumentSearchBarProps, "language">;
   selectedCharacterCount: number;
   pendingSelectionText: string;
   selectionCommentPending: boolean;
@@ -80,6 +81,7 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   onCancelSelectionComment: () => void;
   setRightPanelOpen: (isOpen: boolean) => void;
   setRightPanelView: (view: RightPanelView) => void;
+  setSearchOpen: (isOpen: boolean) => void;
   text: string;
 };
 
@@ -130,6 +132,7 @@ export function useWorkspaceProjectContextRuntime({
   replyDraftByCommentId,
   rightPanelOpen,
   rightPanelView,
+  search,
   selectedCharacterCount,
   pendingSelectionText,
   selectionCommentPending,
@@ -137,10 +140,9 @@ export function useWorkspaceProjectContextRuntime({
   onCancelSelectionComment,
   setRightPanelOpen,
   setRightPanelView,
+  setSearchOpen,
   text,
 }: UseWorkspaceProjectContextRuntimeOptions) {
-  const [fileQuery, setFileQuery] = useState("");
-
   const visibleFiles = files;
   const visibleActiveFileId = activeFile?.id;
   const outlineCursorRef = useRef({ fileId: visibleActiveFileId, offset: 0 });
@@ -200,6 +202,10 @@ export function useWorkspaceProjectContextRuntime({
       text,
     ],
   );
+  const setPanelView = useCallback((nextView: RightPanelView) => {
+    setSearchOpen(nextView === "search");
+    setRightPanelView(nextView);
+  }, [setRightPanelView, setSearchOpen]);
 
   const sidePanelProps: WorkspaceSidePanelProps = {
     isOpen: rightPanelOpen,
@@ -211,7 +217,7 @@ export function useWorkspaceProjectContextRuntime({
     activeFileId: visibleActiveFileId,
     activeFileTitle,
     activeOutlineHeadingIndex,
-    fileQuery,
+    search,
     outlineHeadings,
     commentsByFileId,
     commentDraft,
@@ -225,9 +231,8 @@ export function useWorkspaceProjectContextRuntime({
     activeCommentId,
     activeReplyCommentId,
     replyDraftByCommentId,
-    onSetView: setRightPanelView,
+    onSetView: setPanelView,
     onClose: () => setRightPanelOpen(false),
-    onFileQueryChange: setFileQuery,
     onNewFile,
     onNewFolder,
     onImportFile,

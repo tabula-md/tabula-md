@@ -1174,6 +1174,11 @@ export function useWorkspaceRuntime() {
     handleLineAnnotationAction,
   );
   const openStableCommentMarker = useEventCallback(openCommentMarker);
+  const openSidePanelSearch = useEventCallback(() => {
+    setRightPanelOpen(true);
+    setRightPanelView("search");
+    openSearchFromCurrentSelection();
+  });
   const { sidePanelProps } =
     useWorkspaceProjectContextRuntime({
       activeCommentId: focusedCommentId,
@@ -1223,12 +1228,32 @@ export function useWorkspaceRuntime() {
       replyDraftByCommentId,
       rightPanelOpen,
       rightPanelView,
+      search: {
+        searchInputRef,
+        searchQuery,
+        replaceQuery,
+        searchMatchCount,
+        searchError,
+        searchOptions,
+        activeSearchMatchIndex,
+        replaceAvailable,
+        target: searchTarget,
+        onSearchQueryChange: setSearchQuery,
+        onReplaceQueryChange: setReplaceQuery,
+        onToggleSearchOption: toggleSearchOption,
+        onGoToSearchMatch: goToSearchMatch,
+        onSelectAllSearchMatches: selectAllSearchMatches,
+        onReplaceCurrentMatch: replaceCurrentMatch,
+        onReplaceAllMatches: replaceAllMatches,
+        onCloseSearch: () => setRightPanelOpen(false),
+      },
       selectedCharacterCount,
       pendingSelectionText: pendingSelectionCommentText,
       selectionCommentPending,
       onSelectionCommentRequestHandled: consumeSelectionCommentRequest,
       setRightPanelOpen,
       setRightPanelView,
+      setSearchOpen,
       text,
     });
   const { shareOpen, topChromeProps } = useWorkspaceTopChromeRuntime({
@@ -1285,7 +1310,7 @@ export function useWorkspaceRuntime() {
     closeFloatingChrome,
     openFilesPanel,
     openHelp,
-    openDocumentSearch: openSearchFromCurrentSelection,
+    openDocumentSearch: openSidePanelSearch,
     selectAdjacentFile,
     setActiveFileViewMode,
     setCenterPopover,
@@ -1299,7 +1324,6 @@ export function useWorkspaceRuntime() {
       activeSyncScrolling: workspacePreferences.syncScrolling,
       activeViewMode,
       editorRef,
-      searchOpen,
       selectedCharacterCount,
       selectionActionPosition,
       shareOpen,
@@ -1310,7 +1334,6 @@ export function useWorkspaceRuntime() {
       onSetActiveFileViewMode: setActiveFileViewMode,
       onSetSyncScrolling: setSyncScrollingPreference,
       setCenterPopover,
-      setSearchOpen,
       setTopPopover,
     });
   const setViewModeWithPendingCommit = useEventCallback((viewMode: FileViewMode) => {
@@ -1398,16 +1421,11 @@ export function useWorkspaceRuntime() {
       previewRef,
       previewSurfaceRef,
       largeDocumentMode: activeDocument.largeDocumentMode,
-      searchInputRef,
       searchMatches,
-      searchMatchCount,
-      searchError,
       searchOpen,
       searchQuery,
       searchOptions,
       searchTarget,
-      replaceQuery,
-      replaceAvailable,
       selectedCharacterCount,
       selectedLineCount,
       saveRevision: localWorkspacePersistence.persistedRevision,
@@ -1422,7 +1440,6 @@ export function useWorkspaceRuntime() {
       toolbarLabel: workspaceChromeCopy.documentControls.documentToolbar,
       workspaceRef,
       onBookmarksChange: updateActiveFileBookmarks,
-      onCloseSearch: documentWorkbenchRuntime.onCloseSearch,
       onEditorHistoryStateChange: handleEditorHistoryStateChange,
       onEditorScroll: () => {
         stopFollowingForLocalNavigation();
@@ -1444,7 +1461,6 @@ export function useWorkspaceRuntime() {
         stopFollowing("local-edit");
         documentWorkbenchRuntime.onFormat(command);
       },
-      onGoToSearchMatch: goToSearchMatch,
       onLineAction: handleStableLineAnnotationAction,
       onOpenComment: openStableCommentMarker,
       onOpenSelectionComment: openSelectionComment,
@@ -1459,14 +1475,8 @@ export function useWorkspaceRuntime() {
         stopFollowing("local-edit");
         redoActiveFile();
       },
-      onReplaceAllMatches: replaceAllMatches,
-      onReplaceCurrentMatch: replaceCurrentMatch,
       onResetSplitRatio: resetSplitRatio,
-      onReplaceQueryChange: setReplaceQuery,
-      onSearchQueryChange: setSearchQuery,
       onPreviewSearchMatchCountChange,
-      onSelectAllSearchMatches: selectAllSearchMatches,
-      onToggleSearchOption: toggleSearchOption,
       onSetReadingWidth: documentWorkbenchRuntime.onSetReadingWidth,
       onSetViewMode: (viewMode) => {
         stopFollowing("local-navigation");
@@ -1483,7 +1493,6 @@ export function useWorkspaceRuntime() {
       },
       onToggleLineNumbers: documentWorkbenchRuntime.onToggleLineNumbers,
       onToggleLineWrapping: documentWorkbenchRuntime.onToggleLineWrapping,
-      onToggleSearch: documentWorkbenchRuntime.onToggleSearch,
       onToggleSyncScrolling: documentWorkbenchRuntime.onToggleSyncScrolling,
       onToggleViewOptions: documentWorkbenchRuntime.onToggleViewOptions,
       onUndo: () => {

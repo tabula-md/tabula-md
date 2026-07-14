@@ -40,10 +40,8 @@ type DocumentControlsProps = {
   activeSyncScrolling: boolean;
   centerPopover: CenterPopover;
   language: WorkspaceLanguage;
-  searchOpen: boolean;
   onSetViewMode: (viewMode: FileViewMode) => void;
   onPreparePreview: () => void;
-  onToggleSearch: () => void;
   onToggleViewOptions: () => void;
   onSetReadingWidth: (readingWidth: ReadingWidth) => void;
   onToggleSyncScrolling: () => void;
@@ -51,7 +49,7 @@ type DocumentControlsProps = {
   onToggleLineNumbers: () => void;
 };
 
-type DocumentSearchBarProps = {
+export type DocumentSearchBarProps = {
   searchInputRef: RefObject<HTMLInputElement | null>;
   searchQuery: string;
   replaceQuery: string;
@@ -86,10 +84,8 @@ export function DocumentControls({
   activeSyncScrolling,
   centerPopover,
   language,
-  searchOpen,
   onSetViewMode,
   onPreparePreview,
-  onToggleSearch,
   onToggleViewOptions,
   onSetReadingWidth,
   onToggleSyncScrolling,
@@ -208,15 +204,6 @@ export function DocumentControls({
               </div>
             </PopoverContent>
           </PopoverRoot>
-          <button
-            className={`tool-button ${searchOpen ? "active" : ""}`}
-            type="button"
-            aria-label={controls.searchLabel}
-            data-tooltip={controls.searchLabel}
-            onClick={onToggleSearch}
-          >
-            <Search size={16} />
-          </button>
         </div>
       </nav>
 

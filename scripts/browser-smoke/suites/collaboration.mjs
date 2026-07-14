@@ -153,11 +153,10 @@ export async function run(ctx) {
     await clickTabByFileName(firstPage, "README.md");
     await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
     await firstPage.getByRole("button", { name: "Toggle side panel" }).click();
-    await firstPage.waitForSelector(".right-panel-tab.live .right-panel-tab-live-dot");
-    await firstPage.waitForSelector(".right-file-folder-icon.live .right-file-icon-live-dot");
+    await firstPage.waitForSelector(".right-panel-tab .right-panel-tab-status-dot.live");
     expect(
-      (await firstPage.locator(".right-file-document-icon .right-file-icon-live-dot").count()) === 0,
-      "Live state should be shown once at workspace level, not repeated on every document.",
+      (await firstPage.locator(".right-file-icon-live-dot").count()) === 0,
+      "Live state should be shown on the Files tab, not repeated in the file tree.",
     );
     await firstPage.getByRole("button", { name: "Toggle side panel" }).click();
     await firstPage.locator(".avatar.self").hover();

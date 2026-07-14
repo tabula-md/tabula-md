@@ -18,7 +18,7 @@ export async function run(ctx) {
     await page.keyboard.insertText("alpha beta\nbeta gamma\nalpha beta");
     await waitForRenderFrame(page);
 
-    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.keyboard.press("ControlOrMeta+F");
     await page.waitForSelector(".document-search-row");
     const searchInput = page.getByRole("searchbox", { name: "Search" });
     await searchInput.click();
@@ -36,9 +36,10 @@ export async function run(ctx) {
       };
     });
     expect(
-      searchHighlightColors.match.includes("118, 63, 200") &&
-        searchHighlightColors.activeMatch.includes("118, 63, 200"),
-      "Search highlights should use the Tabula purple accent scale.",
+      searchHighlightColors.match !== "" &&
+        searchHighlightColors.match !== "rgba(0, 0, 0, 0)" &&
+        searchHighlightColors.activeMatch !== searchHighlightColors.match,
+      "Search highlights should use the search color and distinguish the active match.",
     );
 
     await page.keyboard.press("Enter");

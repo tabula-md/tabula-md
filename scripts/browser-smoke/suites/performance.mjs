@@ -1841,7 +1841,7 @@ export async function run(ctx) {
       await page.evaluate(() => window.__tabulaLargePasteProbe.restore());
 
       const searchElapsed = await measureElapsed(async () => {
-        await page.getByRole("button", { name: "Search", exact: true }).click();
+        await page.keyboard.press("ControlOrMeta+F");
         await page.getByRole("searchbox", { name: "Search" }).fill("Task 500");
         await page.waitForSelector(".cm-search-match.active", { timeout: LARGE_EDITOR_SEARCH_MAX_MS });
       });

@@ -1,3 +1,33 @@
+.vertical-resize-handle::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  content: "";
+  background: var(--line-strong);
+  opacity: 0;
+  transform: translateX(-50%);
+  transition:
+    opacity var(--motion-popover) ease,
+    background-color var(--motion-hover) ease;
+}
+
+.vertical-resize-handle:hover::before,
+.vertical-resize-handle:focus-visible::before,
+.vertical-resize-handle[data-dragging="true"]::before {
+  opacity: 1;
+}
+
+.vertical-resize-handle:focus-visible::before,
+.vertical-resize-handle[data-dragging="true"]::before {
+  background: var(--focus-ring);
+}
+
+.vertical-resize-handle:focus-visible {
+  outline: 0;
+}
+
 .ui-menu,
 .ui-popover {
   z-index: var(--layer-popover);

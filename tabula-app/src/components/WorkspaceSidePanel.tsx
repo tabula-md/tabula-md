@@ -1,6 +1,5 @@
 import { useLayoutEffect, useState, type ComponentProps } from "react";
 import { RightPanel } from "./RightPanel";
-import { getWorkspaceFileSearchText } from "../workspace";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import {
   clampSidePanelWidth,
@@ -22,7 +21,7 @@ const readSidePanelWidth = () => {
 
 export type WorkspaceSidePanelProps = Omit<
   RightPanelProps,
-  "activeFileId" | "getFileSearchText" | "isLiveWorkspace" | "onToggleSidePanel"
+  "activeFileId" | "isLiveWorkspace" | "onToggleSidePanel"
 > & {
   activeFileId?: string;
   isLive: boolean;
@@ -64,7 +63,6 @@ export function WorkspaceSidePanel({
         {...rightPanelProps}
         activeFileId={activeFileId ?? ""}
         isLiveWorkspace={isLive}
-        getFileSearchText={getWorkspaceFileSearchText}
         onToggleSidePanel={onClose}
       />
     </>

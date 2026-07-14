@@ -19,13 +19,11 @@ describe("right panel file rows", () => {
     );
 
     expect(flattenVisibleFileTree(tree, new Set()).map(({ node, depth }) => [node.id, depth])).toEqual([
-      [WORKSPACE_ROOT_FOLDER_ID, 0],
-      ["docs", 1],
-      [nestedFile.id, 2],
-      [rootFile.id, 1],
+      ["docs", 0],
+      [nestedFile.id, 1],
+      [rootFile.id, 0],
     ]);
     expect(flattenVisibleFileTree(tree, new Set(["docs"])).map(({ node }) => node.id)).toEqual([
-      WORKSPACE_ROOT_FOLDER_ID,
       "docs",
       rootFile.id,
     ]);
@@ -44,7 +42,6 @@ describe("right panel file rows", () => {
     const prunedTree = pruneEmptyFileTreeFolders(tree);
 
     expect(flattenVisibleFileTree(prunedTree, new Set()).map(({ node }) => node.id)).toEqual([
-      WORKSPACE_ROOT_FOLDER_ID,
       "planning",
       matchingFile.id,
     ]);

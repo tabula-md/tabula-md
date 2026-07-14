@@ -15,7 +15,6 @@ import {
   FolderPlus,
   PencilLine,
   Plus,
-  Search,
   Trash2,
   Upload,
   X,
@@ -58,12 +57,8 @@ type RightPanelFilesProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   activeFileId: string;
-  fileQuery: string;
-  isLiveWorkspace: boolean;
   collapsedFolderIds: Set<string>;
   copy: RightPanelFilesCopy;
-  getFileSearchText: (file: WorkspaceFile) => string;
-  onFileQueryChange: (query: string) => void;
   onNewFile: () => void;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -177,13 +172,15 @@ export const flattenVisibleFileTree = (
   rows: VisibleFileTreeRow[] = [],
   depth = 0,
 ) => {
-  rows.push({ node: root, depth });
+  const isVirtualRoot = root.id === WORKSPACE_ROOT_FOLDER_ID;
+  if (!isVirtualRoot) rows.push({ node: root, depth });
   if (!collapsedFolderIds.has(root.id)) {
+    const childDepth = isVirtualRoot ? depth : depth + 1;
     for (const childNode of root.children) {
       if (childNode.type === "folder") {
-        flattenVisibleFileTree(childNode, collapsedFolderIds, rows, depth + 1);
+        flattenVisibleFileTree(childNode, collapsedFolderIds, rows, childDepth);
       } else {
-        rows.push({ node: childNode, depth: depth + 1 });
+        rows.push({ node: childNode, depth: childDepth });
       }
     }
   }
@@ -215,12 +212,8 @@ export function RightPanelFiles({
   files,
   folders,
   activeFileId,
-  fileQuery,
-  isLiveWorkspace,
   collapsedFolderIds,
   copy,
-  getFileSearchText,
-  onFileQueryChange,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -244,7 +237,6 @@ export function RightPanelFiles({
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renamingFolderTitle, setRenamingFolderTitle] = useState("");
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(() => Boolean(fileQuery));
   const [moveTarget, setMoveTarget] = useState<{
     type: "file" | "folder";
     id: string;
@@ -252,38 +244,23 @@ export function RightPanelFiles({
     parentId: string | null;
   } | null>(null);
   const [moveQuery, setMoveQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const searchButtonRef = useRef<HTMLButtonElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const folderRenameInputRef = useRef<HTMLInputElement | null>(null);
   const treeScrollRef = useRef<HTMLDivElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
-  const normalizedQuery = fileQuery.trim().toLowerCase();
-  const hasLiveWorkspace = isLiveWorkspace;
-  const { visibleFiles, folderDisplayTitles, fileTreeRoot, visibleRows } = useMemo(() => {
-    const nextVisibleFiles = normalizedQuery
-      ? files.filter((file) => getFileSearchText(file).toLowerCase().includes(normalizedQuery))
-      : files;
+  const { folderDisplayTitles, visibleRows } = useMemo(() => {
     const nextFolderDisplayTitles = getWorkspaceFolderDisplayTitles(folders);
-    const unfilteredFileTreeRoot = buildFileTree(
-      nextVisibleFiles,
+    const nextFileTreeRoot = buildFileTree(
+      files,
       folders,
       getWorkspaceFileDisplayTitles(files),
       nextFolderDisplayTitles,
     );
-    const nextFileTreeRoot = normalizedQuery
-      ? pruneEmptyFileTreeFolders(unfilteredFileTreeRoot)
-      : unfilteredFileTreeRoot;
-    const effectiveCollapsedFolderIds = normalizedQuery
-      ? new Set<string>()
-      : collapsedFolderIds;
     return {
-      visibleFiles: nextVisibleFiles,
       folderDisplayTitles: nextFolderDisplayTitles,
-      fileTreeRoot: nextFileTreeRoot,
-      visibleRows: flattenVisibleFileTree(nextFileTreeRoot, effectiveCollapsedFolderIds),
+      visibleRows: flattenVisibleFileTree(nextFileTreeRoot, collapsedFolderIds),
     };
-  }, [collapsedFolderIds, files, folders, getFileSearchText, normalizedQuery]);
+  }, [collapsedFolderIds, files, folders]);
   const visibleFileIds = useMemo(
     () => visibleRows.flatMap((row) => row.node.type === "file" ? [row.node.file.id] : []),
     [visibleRows],
@@ -352,18 +329,6 @@ export function RightPanelFiles({
     return () => window.cancelAnimationFrame(frame);
   }, [renamingFolderId]);
 
-  useLayoutEffect(() => {
-    if (!searchOpen) return;
-    const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
-    return () => window.cancelAnimationFrame(frame);
-  }, [searchOpen]);
-
-  const closeSearch = () => {
-    onFileQueryChange("");
-    setSearchOpen(false);
-    window.requestAnimationFrame(() => searchButtonRef.current?.focus());
-  };
-
   const startRenamingFile = (file: WorkspaceFile) => {
     setActionMenuFileId(null);
     setRenamingFileId(file.id);
@@ -413,34 +378,6 @@ export function RightPanelFiles({
     window.requestAnimationFrame(() => fileButtonRefs.current.get(nextFileId)?.focus());
   };
 
-  const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      const firstFileId = visibleFileIds[0];
-      if (firstFileId) {
-        event.preventDefault();
-        onSelectFile(firstFileId);
-      }
-      return;
-    }
-
-    if (event.key === "ArrowDown") {
-      const firstFileId = visibleFileIds[0];
-      if (firstFileId) {
-        event.preventDefault();
-        const firstRowIndex = rowIndexByFileId.get(firstFileId);
-        if (firstRowIndex !== undefined) treeVirtualizer.scrollToIndex(firstRowIndex, { align: "start" });
-        window.requestAnimationFrame(() => fileButtonRefs.current.get(firstFileId)?.focus());
-      }
-      return;
-    }
-
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      closeSearch();
-    }
-  };
-
   const handleFileKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, fileId: string) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -454,11 +391,6 @@ export function RightPanelFiles({
       return;
     }
 
-    if (event.key === "Escape" && searchOpen) {
-      event.preventDefault();
-      event.stopPropagation();
-      closeSearch();
-    }
   };
 
   const createAndRenameFolder = (parentId?: string) => {
@@ -493,7 +425,7 @@ export function RightPanelFiles({
       transform: `translateY(${virtualRow.start}px)`,
     };
     if (node.type === "folder") {
-      const folderCollapsed = normalizedQuery ? false : collapsedFolderIds.has(node.id);
+      const folderCollapsed = collapsedFolderIds.has(node.id);
       const isRootFolder = node.id === WORKSPACE_ROOT_FOLDER_ID;
       const folderMenuOpen = actionMenuFolderId === node.id;
       const folderIsRenaming = renamingFolderId === node.id;
@@ -518,11 +450,9 @@ export function RightPanelFiles({
             >
               {folderCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
               <span
-                className={`right-file-folder-icon ${isRootFolder && hasLiveWorkspace ? "live" : ""}`}
-                data-tooltip={isRootFolder && hasLiveWorkspace ? copy.sharedWorkspace : undefined}
+                className="right-file-folder-icon"
               >
                 <Folder size={16} />
-                {isRootFolder && hasLiveWorkspace && <span className="right-file-icon-live-dot" aria-hidden="true" />}
               </span>
               {folderIsRenaming ? (
                 <input
@@ -671,7 +601,7 @@ export function RightPanelFiles({
               >
                 <span
                   className="right-file-document-icon"
-                  data-tooltip={hasLiveWorkspace ? copy.sharedInRoom : copy.localDocument}
+                  data-tooltip={copy.open(file.title)}
                 >
                   <File size={16} />
                 </span>
@@ -740,41 +670,7 @@ export function RightPanelFiles({
   return (
     <>
     <section className="right-panel-content right-files-panel">
-      <div className={`right-file-toolbar ${searchOpen ? "searching" : ""}`}>
-        {searchOpen ? (
-          <>
-            <input
-              ref={searchInputRef}
-              className="right-panel-search"
-              type="search"
-              value={fileQuery}
-              placeholder={copy.search}
-              aria-label={copy.search}
-              onChange={(event) => onFileQueryChange(event.target.value)}
-              onKeyDown={handleSearchKeyDown}
-            />
-            <button
-              className="right-file-toolbar-button"
-              type="button"
-              aria-label={copy.closeSearch}
-              data-tooltip={copy.closeSearch}
-              onClick={closeSearch}
-            >
-              <X size={16} />
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              ref={searchButtonRef}
-              className="right-file-toolbar-button"
-              type="button"
-              aria-label={copy.search}
-              data-tooltip={copy.search}
-              onClick={() => setSearchOpen(true)}
-            >
-              <Search size={16} />
-            </button>
+      <div className="right-file-toolbar">
             {collapsibleFolderIds.length > 0 && (
               <button
                 className="right-file-toolbar-button"
@@ -826,10 +722,8 @@ export function RightPanelFiles({
                 />
               </MenuContent>
             </MenuRoot>
-          </>
-        )}
       </div>
-      {visibleFiles.length > 0 || fileTreeRoot.children.length > 0 ? (
+      {visibleRows.length > 0 ? (
         <div className="right-file-tree-scroll" ref={treeScrollRef}>
           <ol
             className="right-file-tree virtual"

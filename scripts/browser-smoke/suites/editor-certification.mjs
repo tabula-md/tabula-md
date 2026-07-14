@@ -225,7 +225,7 @@ const assertSearchReplaceInvariants = async ({ expect, page, markdown, waitForRe
   await page.keyboard.insertText(markdown);
   await waitForRenderFrame(page);
 
-  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.keyboard.press("ControlOrMeta+F");
   await page.getByRole("button", { name: "Toggle replace" }).click();
   await page.getByRole("searchbox", { name: "Search" }).fill("https://tabula.md/favicon.svg");
   await page.getByLabel("Replace with").fill("https://example.com/favicon.svg");
