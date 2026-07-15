@@ -2,10 +2,8 @@ import { useState, type ChangeEvent, type DragEvent, type RefObject } from "reac
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
-import {
-  createProjectArchive,
-  parseProjectArchiveFile,
-} from "../projectArchive";
+import { createProjectArchive } from "../projectArchive";
+import { parseWorkspaceFolderFiles } from "../workspaceFolderImport";
 import {
   syncUrlForLocalWorkspace,
   type WorkspaceFile,
@@ -156,7 +154,7 @@ export function useProjectIoController({
   onCloseChrome,
 }: UseProjectIoControllerArgs) {
   const [emptyDropActive, setEmptyDropActive] = useState(false);
-  const [workspaceArchiveImport, setWorkspaceArchiveImport] = useState<WorkspaceState | null>(null);
+  const [workspaceFolderImport, setWorkspaceFolderImport] = useState<WorkspaceState | null>(null);
   const queueAnimationFrameTask = useAnimationFrameTask();
   const copy = getWorkspaceIoCopy(preferences.language);
 
@@ -240,38 +238,38 @@ export function useProjectIoController({
   };
 
   const handleWorkspaceImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const archive = event.target.files?.[0];
+    const selectedFiles = Array.from(event.target.files ?? []);
     event.target.value = "";
-    if (!archive) return;
+    if (selectedFiles.length === 0) return;
 
-    void parseProjectArchiveFile(archive, {
+    void parseWorkspaceFolderFiles(selectedFiles, {
       viewMode: preferences.newFileViewMode,
       readingWidth: preferences.readingWidth,
       lineWrapping: preferences.lineWrapping,
       lineNumbers: preferences.lineNumbers,
     }).then((workspace) => {
       onCloseChrome();
-      setWorkspaceArchiveImport(workspace);
+      setWorkspaceFolderImport(workspace);
     }).catch((error: unknown) => {
-      clientErrorReporter.report({ feature: "workspace", operation: "open-archive", error });
+      clientErrorReporter.report({ feature: "workspace", operation: "open-folder", error });
       showToast(copy.openFailed, "error");
     });
   };
 
-  const closeWorkspaceArchiveImport = () => setWorkspaceArchiveImport(null);
+  const closeWorkspaceFolderImport = () => setWorkspaceFolderImport(null);
 
-  const replaceWorkspaceWithArchive = () => {
-    if (!workspaceArchiveImport || isRoomSession) return;
-    const nextWorkspace = { ...workspaceArchiveImport, commentsByFileId: {} };
+  const replaceWorkspaceWithFolder = () => {
+    if (!workspaceFolderImport || isRoomSession) return;
+    const nextWorkspace = { ...workspaceFolderImport, commentsByFileId: {} };
     onBeforeWorkspaceBoundary?.();
     replaceWorkspace(nextWorkspace);
     replaceCommentsByFileId({});
     clearFileHistory();
     void writeIndexedDbWorkspace(nextWorkspace).catch((error: unknown) => {
-      clientErrorReporter.report({ feature: "workspace", operation: "persist-open-archive", error });
+      clientErrorReporter.report({ feature: "workspace", operation: "persist-open-folder", error });
       showToast(copy.saveOpenedWorkspaceFailed, "error");
     });
-    setWorkspaceArchiveImport(null);
+    setWorkspaceFolderImport(null);
     onCloseChrome();
     syncUrlForLocalWorkspace("replace");
     queueAnimationFrameTask(() => editorRef.current?.focus());
@@ -315,7 +313,7 @@ export function useProjectIoController({
 
   return {
     emptyDropActive,
-    workspaceArchiveImport,
+    workspaceFolderImport,
     copyFile,
     downloadCurrentFile,
     downloadProjectArchive,
@@ -324,7 +322,7 @@ export function useProjectIoController({
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDrop,
-    closeWorkspaceArchiveImport,
-    replaceWorkspaceWithArchive,
+    closeWorkspaceFolderImport,
+    replaceWorkspaceWithFolder,
   };
 }

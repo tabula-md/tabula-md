@@ -74,14 +74,9 @@
   height: var(--right-icon-size);
 }
 
-.right-file-tree-row.folder .right-file-open-button > svg:first-child {
-  width: var(--icon-size-small);
-  height: var(--icon-size-small);
-}
-
 .right-file-open-button {
   display: grid;
-  grid-template-columns: var(--right-chevron-size) var(--right-icon-size) minmax(0, 1fr);
+  grid-template-columns: var(--right-icon-size) minmax(0, 1fr);
   align-items: center;
   gap: var(--right-row-gap);
   min-width: 0;
@@ -93,11 +88,6 @@
   font: inherit;
   line-height: 1;
   text-align: left;
-}
-
-.right-file-chevron-spacer {
-  width: var(--right-chevron-size);
-  height: var(--right-chevron-size);
 }
 
 .right-file-open-button:hover,

@@ -68,7 +68,6 @@ type RightPanelProps = {
   onAddCommentReply: (fileId: string, commentId: string) => void;
   onToggleCommentResolved: (fileId: string, commentId: string) => void;
   onDeleteComment: (fileId: string, commentId: string) => void;
-  onRequestTextSelection: () => void;
   onSelectionCommentRequestHandled: () => void;
   onCancelSelectionComment: () => void;
   formatCommentDate: (isoDate: string) => string;
@@ -122,7 +121,6 @@ export function RightPanel({
   onAddCommentReply,
   onToggleCommentResolved,
   onDeleteComment,
-  onRequestTextSelection,
   onSelectionCommentRequestHandled,
   onCancelSelectionComment,
   formatCommentDate,
@@ -273,7 +271,6 @@ export function RightPanel({
             onAddCommentReply={onAddCommentReply}
             onToggleCommentResolved={onToggleCommentResolved}
             onDeleteComment={onDeleteComment}
-            onRequestTextSelection={onRequestTextSelection}
             onSelectionCommentRequestHandled={onSelectionCommentRequestHandled}
             onCancelSelectionComment={onCancelSelectionComment}
             formatCommentDate={formatCommentDate}

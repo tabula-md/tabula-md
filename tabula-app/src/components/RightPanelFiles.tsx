@@ -9,8 +9,6 @@ import {
   useState,
 } from "react";
 import {
-  ChevronDown,
-  ChevronRight,
   ChevronsDownUp,
   ChevronsUpDown,
   ClipboardCopy,
@@ -19,6 +17,7 @@ import {
   File,
   FilePlus2,
   Folder,
+  FolderOpen,
   FolderPlus,
   PencilLine,
   Plus,
@@ -39,6 +38,7 @@ import {
   ContextMenuTrigger,
 } from "./ui/ContextMenu";
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "./ui/Menu";
+import { PanelEmptyState } from "./right-panel/PanelEmptyState";
 
 type RightPanelFilesCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
 
@@ -487,13 +487,12 @@ export function RightPanelFiles({
       const folderIsDropTarget = dropTargetFolderId === node.id;
 
       return (
-        <ContextMenuRoot>
+        <ContextMenuRoot key={node.id}>
         <ContextMenuTrigger asChild>
         <li
           ref={treeVirtualizer.measureElement}
           className={`right-file-tree-node folder ${folderIsDragging ? "dragging" : ""} ${folderIsDropTarget ? "drop-target" : ""}`.trim()}
           data-index={virtualRow.index}
-          key={node.id}
           role="treeitem"
           aria-level={depth + 1}
           aria-expanded={!folderCollapsed}
@@ -520,11 +519,10 @@ export function RightPanelFiles({
               aria-expanded={!folderCollapsed}
               onClick={() => onToggleFolder(node.id)}
             >
-              {folderCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
               <span
                 className="right-file-folder-icon"
               >
-                <Folder size={16} />
+                {folderCollapsed ? <Folder size={16} /> : <FolderOpen size={16} />}
               </span>
               {folderIsRenaming ? (
                 <input
@@ -635,13 +633,12 @@ export function RightPanelFiles({
     const fileParentId = file.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
 
     return (
-      <ContextMenuRoot>
+      <ContextMenuRoot key={node.id}>
       <ContextMenuTrigger asChild>
       <li
         ref={treeVirtualizer.measureElement}
         className={`right-file-tree-node file ${fileIsDragging ? "dragging" : ""}`.trim()}
         data-index={virtualRow.index}
-        key={node.id}
         role="treeitem"
         aria-level={depth + 1}
         aria-selected={isActiveFile}
@@ -665,7 +662,6 @@ export function RightPanelFiles({
         >
           {isRenaming ? (
             <div className="right-file-open-button">
-              <span className="right-file-chevron-spacer" aria-hidden="true" />
               <span className="right-file-document-icon">
                 <File size={16} />
               </span>
@@ -713,7 +709,6 @@ export function RightPanelFiles({
                 onClick={() => onSelectFile(file.id)}
                 onKeyDown={(event) => handleFileKeyDown(event, file.id)}
               >
-                <span className="right-file-chevron-spacer" aria-hidden="true" />
                 <span
                   className="right-file-document-icon"
                   data-tooltip={copy.open(file.title)}
@@ -894,7 +889,7 @@ export function RightPanelFiles({
           </ol>
         </div>
       ) : (
-        <p className="right-empty-state">{copy.noneFound}</p>
+        <PanelEmptyState>{copy.noneFound}</PanelEmptyState>
       )}
     </section>
     </ContextMenuTrigger>

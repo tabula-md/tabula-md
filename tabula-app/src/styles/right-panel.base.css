@@ -206,7 +206,11 @@
 }
 
 .right-empty-state {
+  margin: 0;
   padding: 6px var(--right-row-x);
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+  line-height: 1.45;
 }
 
 .right-row {

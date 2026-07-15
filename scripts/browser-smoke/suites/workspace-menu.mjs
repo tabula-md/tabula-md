@@ -1,5 +1,3 @@
-import { strToU8, zipSync } from "fflate";
-
 export const id = "workspace";
 export const description = "First screen, tabs, empty state, share, templates, and view-mode chrome.";
 const validRoomKey = "A".repeat(43);
@@ -49,6 +47,28 @@ export async function run(ctx) {
     });
     await ensureSidePanelOpen(page);
     expect((await page.locator(".right-file-tree-row.file").count()) === 0, "Fresh projects should contain no hidden files.");
+    expect(
+      (await page.getByText("No documents yet", { exact: true }).count()) === 1,
+      "An empty Files panel should describe the document state instead of a failed search.",
+    );
+    await page.getByRole("button", { name: "Outline", exact: true }).click();
+    await waitForPanelTab(page, "Outline");
+    expect(
+      (await page.getByText("No headings yet", { exact: true }).count()) === 1,
+      "Outline should remain available with a quiet empty state.",
+    );
+    await page.getByRole("button", { name: "Comments", exact: true }).click();
+    await waitForPanelTab(page, "Comments");
+    expect(
+      (await page.locator(".right-comments-scroll .right-empty-state").getByText("No document open", { exact: true }).count()) === 1,
+      "Comments should remain available without an open document.",
+    );
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await waitForPanelTab(page, "Search");
+    expect(
+      (await page.getByText("No documents yet", { exact: true }).count()) === 1,
+      "Workspace Search should remain available when there are no documents.",
+    );
     await page.getByRole("button", { name: "Toggle side panel" }).click();
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".publish-trigger").count()) === 0, "Publish should live inside Share, not as a separate top-right action.");
@@ -95,6 +115,8 @@ export async function run(ctx) {
     expect((await page.locator(".intro-action-button").count()) === 0, "Blank writing documents should not show README actions.");
 
     await ensureSidePanelOpen(page);
+    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await waitForPanelTab(page, "Files");
     await page.getByRole("button", { name: "More actions for Untitled.md" }).click();
     expect(
       (await page.locator(".right-file-action-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
@@ -112,14 +134,19 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    const workspaceArchive = zipSync({
-      "Planning/Launch notes.md": strToU8("# Launch notes\n\nReady."),
-      "Planning/Research/Questions.md": strToU8("# Questions"),
-    });
-    await page.locator('input[aria-label="Open workspace"]').setInputFiles({
-      name: "tabula-workspace.zip",
-      mimeType: "application/zip",
-      buffer: Buffer.from(workspaceArchive),
+    await page.locator('input[aria-label="Open workspace"]').evaluate((input) => {
+      const dataTransfer = new DataTransfer();
+      const launchNotes = new File(["# Launch notes\n\nReady."], "Launch notes.md", { type: "text/markdown" });
+      const questions = new File(["# Questions"], "Questions.md", { type: "text/markdown" });
+      const ignored = new File(["ignored"], "notes.txt", { type: "text/plain" });
+      Object.defineProperty(launchNotes, "webkitRelativePath", { value: "Workspace/Planning/Launch notes.md" });
+      Object.defineProperty(questions, "webkitRelativePath", { value: "Workspace/Planning/Research/Questions.md" });
+      Object.defineProperty(ignored, "webkitRelativePath", { value: "Workspace/Planning/notes.txt" });
+      dataTransfer.items.add(launchNotes);
+      dataTransfer.items.add(questions);
+      dataTransfer.items.add(ignored);
+      Object.defineProperty(input, "files", { configurable: true, value: dataTransfer.files });
+      input.dispatchEvent(new Event("change", { bubbles: true }));
     });
     await page.getByRole("dialog", { name: "Open workspace" }).waitFor();
     expect(
@@ -127,13 +154,20 @@ export async function run(ctx) {
       "Opening a workspace should preview its logical document paths before replacing local state.",
     );
     await page.getByRole("button", { name: "Open workspace", exact: true }).click();
+    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    expect(
+      (await page.locator(".tab-item").count()) === 0,
+      "Opening a workspace should import its tree without opening every document as a tab.",
+    );
+    await ensureSidePanelOpen(page);
+    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await waitForPanelTab(page, "Files");
+    await page.getByRole("button", { name: "Open Launch notes.md" }).click();
     await waitForActiveTab(page, { exact: "Launch notes.md" });
     await waitForEditorReady(page, { mode: "edit" });
 
-    for (let index = 0; index < 2; index += 1) {
-      await page.locator(".tab-item.active").hover();
-      await page.locator(".tab-item.active .tab-action-button.close").click();
-    }
+    await page.locator(".tab-item.active").hover();
+    await page.locator(".tab-item.active .tab-action-button.close").click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
     expect(
       (await page.locator(".share-trigger").count()) === 1,
