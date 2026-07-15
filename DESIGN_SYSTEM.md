@@ -19,7 +19,10 @@ object; application chrome stays compact, predictable, and subordinate.
 ## Icon-First Commands
 
 - Familiar, repeated workspace commands use icons without persistent labels.
-- Every icon-only command keeps an accessible name and a concise tooltip.
+- Ambiguous icon-only commands keep an accessible name and a concise tooltip.
+  Familiar status indicators, labeled rows, participant avatars, and repeated
+  controls whose purpose is already visible do not duplicate that information
+  in a tooltip.
 - Visible text remains appropriate inside menus, forms, confirmations,
   destructive actions, and unfamiliar one-off workflows.
 - Right-panel Files, Outline, and Comments tabs are icon-only. Aggregate counts
@@ -128,8 +131,10 @@ These exceptions must not be reused as decoration for containers or cards.
 - Hover feedback uses `100ms`, popover transitions use `140ms`, and layout
   transitions use `180ms`.
 - All non-essential motion is disabled when `prefers-reduced-motion` is set.
-- Icon-only commands use the shared tooltip behavior and keep an accessible
-  name. User-facing text and accessible names come from locale copy.
+- Ambiguous icon-only commands use the shared tooltip behavior and keep an
+  accessible name. Pointer hover waits before showing help; keyboard focus may
+  show it immediately, while pointer clicks never leave a tooltip behind.
+  User-facing text and accessible names come from locale copy.
 - `--text-muted` is for supplementary or decorative information, not required
   instructions or primary actions.
 - A painted divider is allowed in a workflow only when it carries a semantic

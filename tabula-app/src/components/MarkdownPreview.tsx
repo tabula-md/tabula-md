@@ -84,6 +84,8 @@ import type {
 } from "../preview/markdownPreviewTypes";
 import { BoundedStringCache, replaceAllText } from "../preview/previewRenderCache";
 import { PREVIEW_SANITIZE_SCHEMA } from "../preview/previewSanitizeSchema";
+import { classifyMarkdownImageSource } from "../preview/markdownImageSource";
+import { transformMarkdownPreviewUrl } from "../preview/markdownPreviewUrl";
 
 const EMPTY_MARKDOWN_PREVIEW_METADATA: MarkdownPreviewMetadata[] = [];
 const EMPTY_PREVIEW_COMMENT_ANCHORS: MarkdownPreviewCommentAnchor[] = [];
@@ -576,9 +578,21 @@ const loadMermaidRenderer = async (themeConfig: ReturnType<typeof createMermaidT
 };
 
 const MERMAID_CACHE_ID_PLACEHOLDER = "__TABULA_MERMAID_ID__";
-const katexRenderCache = new BoundedStringCache(256);
-const mermaidSvgCache = new BoundedStringCache(48);
-const syntaxHighlightCache = new BoundedStringCache(256);
+const katexRenderCache = new BoundedStringCache({
+  maxBytes: 2 * 1024 * 1024,
+  maxEntries: 256,
+  maxEntryBytes: 128 * 1024,
+});
+const mermaidSvgCache = new BoundedStringCache({
+  maxBytes: 4 * 1024 * 1024,
+  maxEntries: 48,
+  maxEntryBytes: 512 * 1024,
+});
+const syntaxHighlightCache = new BoundedStringCache({
+  maxBytes: 8 * 1024 * 1024,
+  maxEntries: 256,
+  maxEntryBytes: 1024 * 1024,
+});
 
 const requestPreviewIdleTask = (callback: () => void) => {
   if ("requestIdleCallback" in window) {
@@ -982,11 +996,20 @@ function PreviewMermaidDiagram({
 function PreviewImage({ alt = "", copy: copyProp, src, title, ...props }: PreviewImageProps) {
   const contextCopy = useContext(PreviewLocaleContext);
   const copy = copyProp ?? contextCopy;
+  const imageSource = useMemo(() => classifyMarkdownImageSource(src), [src]);
   const [hasError, setHasError] = useState(false);
-  const caption = title || alt;
+  useEffect(() => setHasError(false), [imageSource]);
+
+  if (imageSource.kind === "unsupported") {
+    return (
+      <span className="preview-image-unavailable" role="img" aria-label={alt || copy.imageFailed}>
+        {alt || copy.imageFailed}
+      </span>
+    );
+  }
 
   return (
-    <span className={`preview-image-frame ${hasError ? "broken" : ""}`}>
+    <span className={`preview-image-frame ${hasError ? "broken" : ""}`} title={title}>
       <img
         {...props}
         alt={alt}
@@ -994,8 +1017,8 @@ function PreviewImage({ alt = "", copy: copyProp, src, title, ...props }: Previe
         className="preview-image"
         data-load-state={hasError ? "error" : "ready"}
         loading="lazy"
-        src={src}
-        title={title}
+        referrerPolicy={imageSource.kind === "remote" ? "no-referrer" : undefined}
+        src={imageSource.src}
         onError={() => setHasError(true)}
       />
       {hasError && (
@@ -1003,7 +1026,6 @@ function PreviewImage({ alt = "", copy: copyProp, src, title, ...props }: Previe
           {alt || copy.imageFailed}
         </span>
       )}
-      {caption && <span className="preview-image-caption">{caption}</span>}
     </span>
   );
 }
@@ -2104,6 +2126,7 @@ function MarkdownPreviewComponent({
   const {
     capturePreviewViewportAnchorForMeasurement,
     followEditorPosition,
+    getViewportLineAnchor,
     handlePreviewScrollEvent,
   } = usePreviewFollowController({
     documentRef,
@@ -2165,7 +2188,8 @@ function MarkdownPreviewComponent({
 
   useImperativeHandle(ref, () => ({
     followEditorPosition,
-  }), [followEditorPosition]);
+    getViewportLineAnchor,
+  }), [followEditorPosition, getViewportLineAnchor]);
 
   const markdownPreviewComponents = useMemo(
     () =>
@@ -2663,12 +2687,18 @@ function MarkdownPreviewComponent({
                 remarkPlugins={MARKDOWN_REMARK_PLUGINS}
                 sourceLineOffset={normalizedSourceLineOffset}
                 viewport={previewViewport}
+                urlTransform={transformMarkdownPreviewUrl}
               />
             ) : (
               <div className="preview-placeholder quiet" aria-hidden="true" />
             )
           ) : (
-            <ReactMarkdown components={markdownPreviewComponents} rehypePlugins={rehypePlugins} remarkPlugins={MARKDOWN_REMARK_PLUGINS}>
+            <ReactMarkdown
+              components={markdownPreviewComponents}
+              rehypePlugins={rehypePlugins}
+              remarkPlugins={MARKDOWN_REMARK_PLUGINS}
+              urlTransform={transformMarkdownPreviewUrl}
+            >
               {renderableBody}
             </ReactMarkdown>
           )

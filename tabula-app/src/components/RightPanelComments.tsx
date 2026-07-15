@@ -12,6 +12,7 @@ import { CommentCard } from "./right-panel/comments/CommentCard";
 import { getCommentVirtualRows } from "./right-panel/comments/commentVirtualRows";
 import type { FormatCommentDate } from "./right-panel/comments/types";
 import type { RightPanelCommentsCopy } from "./right-panel/comments/types";
+import type { WorkspaceFileTabLabel } from "../workspaceDisplayTitles";
 import { stripMarkdownExtension } from "@tabula-md/tabula";
 import { MenuContent, MenuRadioGroup, MenuRadioItem, MenuRoot, MenuTrigger } from "./ui/Menu";
 import { PanelEmptyState } from "./right-panel/PanelEmptyState";
@@ -22,6 +23,7 @@ type RightPanelCommentsProps = {
   activeFile?: WorkspaceFile;
   activeFileId: string;
   activeFileTitle: string;
+  fileLabels: ReadonlyMap<string, WorkspaceFileTabLabel>;
   openCommentGroups: RightPanelCommentGroup[];
   resolvedCommentGroups: RightPanelCommentGroup[];
   showResolved: boolean;
@@ -60,6 +62,7 @@ export function RightPanelComments({
   activeFile,
   activeFileId,
   activeFileTitle,
+  fileLabels,
   openCommentGroups,
   resolvedCommentGroups,
   showResolved,
@@ -109,7 +112,7 @@ export function RightPanelComments({
     commentScope,
   });
   const currentFileLabel = activeFile
-    ? stripMarkdownExtension(activeFileTitle)
+    ? stripMarkdownExtension(fileLabels.get(activeFile.id)?.displayTitle ?? activeFileTitle)
     : copy.currentFile;
   const virtualRows = useMemo(
     () => getCommentVirtualRows({
@@ -215,7 +218,7 @@ export function RightPanelComments({
   return (
     <section className={`right-panel-content right-comments-panel ${commentScope === "all" ? "all-scope" : "current-scope"}`}>
       <div className="right-comments-toolbar">
-        <span className="right-comments-context-label" title={commentScope === "current" ? activeFileTitle : copy.all}>
+        <span className="right-comments-context-label">
           {activeFile ? (commentScope === "current" ? currentFileLabel : copy.all) : copy.noFile}
         </span>
         {activeFile && (
@@ -303,12 +306,14 @@ export function RightPanelComments({
                     <button
                       className={`right-row right-comment-file ${row.group.file.id === activeFileId ? "active" : ""}`}
                       type="button"
-                      title={row.group.file.title}
+                      aria-label={fileLabels.get(row.group.file.id)?.fullPath ?? row.group.file.title}
                       aria-expanded={!collapsed}
                       onClick={() => onToggleCommentFileCollapsed(row.group.file.id)}
                     >
                       {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                      <span className="right-row-label">{stripMarkdownExtension(row.group.file.title)}</span>
+                      <span className="right-row-label">
+                        {stripMarkdownExtension(fileLabels.get(row.group.file.id)?.fullPath ?? row.group.file.title)}
+                      </span>
                     </button>
                   </div>
                 );

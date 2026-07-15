@@ -22,6 +22,7 @@ type PreviewDomAnchor = PreviewRenderableAnchor & {
 
 type PreviewViewportDomAnchor = {
   lineNumber: number;
+  lineOffsetRatio: number;
   viewportOffsetPx: number;
 };
 
@@ -45,8 +46,11 @@ export const PREVIEW_VIEWPORT_FALLBACK_HEIGHT = 720;
 
 const PREVIEW_ANCHOR_EDGE_PADDING = 32;
 
-export const getPreviewScrollSurface = (documentElement: HTMLElement | null) =>
-  documentElement?.closest<HTMLElement>(".preview-surface") ?? null;
+export const getPreviewScrollSurface = (documentElement: HTMLElement | null) => {
+  const previewSurface = documentElement?.closest<HTMLElement>(".preview-surface") ?? null;
+  const workspace = previewSurface?.closest<HTMLElement>(".workspace") ?? null;
+  return workspace && !workspace.classList.contains("split") ? workspace : previewSurface;
+};
 
 export const getPreviewViewport = (documentElement: HTMLElement | null): PreviewViewport => {
   const scrollSurface = getPreviewScrollSurface(documentElement);
@@ -131,8 +135,12 @@ const readPreviewViewportDomAnchor = (scrollSurface: HTMLElement): PreviewViewpo
         return null;
       }
 
+      const lineCount = Math.max(1, range.endLine - range.startLine + 1);
+      const lineProgress = Math.max(0, Math.min(1, (surfaceRect.top - rect.top) / Math.max(1, rect.height)));
+      const sourceLineProgress = lineProgress * lineCount;
       return {
-        lineNumber: range.startLine,
+        lineNumber: Math.min(range.endLine, range.startLine + Math.floor(sourceLineProgress)),
+        lineOffsetRatio: sourceLineProgress % 1,
         viewportOffsetPx: rect.top - surfaceRect.top,
       };
     })
@@ -207,6 +215,21 @@ export const usePreviewFollowController = ({
     if (!scrollSurface) {
       return false;
     }
+
+    if (!shouldVirtualizePreviewRef.current) {
+      pendingFollowAfterMapReadyRef.current = false;
+      const domAnchor = findNearestPreviewDomAnchor(scrollSurface, position.lineNumber);
+      if (!domAnchor) {
+        return false;
+      }
+
+      applyPreviewScrollTop(
+        scrollSurface,
+        getPreviewDomAnchorScrollTop(scrollSurface, domAnchor.element, position),
+      );
+      return true;
+    }
+
     const sourceScrollMap = sourceScrollMapRef.current;
     if (sourceScrollMap) {
       pendingFollowAfterMapReadyRef.current = false;
@@ -261,6 +284,19 @@ export const usePreviewFollowController = ({
     pendingPreviewViewportAnchorRef.current = null;
     followPreviewPosition(normalizedPosition);
   }, [followPreviewPosition]);
+
+  const getViewportLineAnchor = useCallback((): EditorScrollPosition | null => {
+    const scrollSurface = getPreviewScrollSurface(documentRef.current);
+    if (!scrollSurface) return null;
+    const anchor = readPreviewViewportDomAnchor(scrollSurface);
+    if (!anchor) return null;
+    return {
+      atDocumentEnd:
+        scrollSurface.scrollHeight - scrollSurface.clientHeight - scrollSurface.scrollTop <= 1,
+      lineNumber: anchor.lineNumber,
+      lineOffsetRatio: anchor.lineOffsetRatio,
+    };
+  }, [documentRef]);
 
   const handlePreviewScrollEvent = useCallback((scrollSurface: HTMLElement) => {
     const pendingProgrammaticScrollTop = pendingProgrammaticPreviewScrollTopRef.current;
@@ -349,6 +385,7 @@ export const usePreviewFollowController = ({
   return {
     capturePreviewViewportAnchorForMeasurement,
     followEditorPosition,
+    getViewportLineAnchor,
     handlePreviewScrollEvent,
   };
 };

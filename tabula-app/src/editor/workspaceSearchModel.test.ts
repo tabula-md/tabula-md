@@ -15,6 +15,7 @@ describe("searchWorkspaceFiles", () => {
 
     expect(result.error).toBeNull();
     expect(result.matchCount).toBe(3);
+    expect(result.truncated).toBe(false);
     expect(result.groups.map(({ fileId, matches }) => [fileId, matches.length])).toEqual([
       ["alpha", 1],
       ["beta", 2],
@@ -25,6 +26,16 @@ describe("searchWorkspaceFiles", () => {
     expect(searchWorkspaceFiles(files, "(", {
       ...DEFAULT_SEARCH_OPTIONS,
       regexp: true,
-    })).toMatchObject({ error: expect.any(String), groups: [], matchCount: 0 });
+    })).toMatchObject({ error: expect.any(String), groups: [], matchCount: 0, truncated: false });
+  });
+
+  it("bounds broad queries before they can create an unbounded result tree", () => {
+    const result = searchWorkspaceFiles(
+      [createWorkspaceFile(4, { id: "large", title: "Large.md", text: "a ".repeat(1_000) })],
+      "a",
+      DEFAULT_SEARCH_OPTIONS,
+    );
+    expect(result.matchCount).toBe(100);
+    expect(result.truncated).toBe(true);
   });
 });

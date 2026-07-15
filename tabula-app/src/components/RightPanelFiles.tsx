@@ -683,8 +683,8 @@ export function RightPanelFiles({
       >
         <div
           className={`right-row right-file-tree-row file ${isActiveFile ? "active" : ""} ${isRenaming ? "renaming" : ""}`}
+          data-file-name={file.title}
           style={{ paddingLeft: `${depth * RIGHT_TREE_INDENT}px` }}
-          title={file.title}
         >
           {isRenaming ? (
             <div className="right-file-open-button">
@@ -730,15 +730,11 @@ export function RightPanelFiles({
                 }}
                 className="right-file-open-button"
                 type="button"
-                title={file.title}
                 aria-label={copy.open(file.title)}
                 onClick={() => onSelectFile(file.id)}
                 onKeyDown={(event) => handleFileKeyDown(event, file.id)}
               >
-                <span
-                  className="right-file-document-icon"
-                  data-tooltip={copy.open(file.title)}
-                >
+                <span className="right-file-document-icon">
                   <File size={16} />
                 </span>
                 <span className="right-row-label">{getFileDisplayTitle(node.name)}</span>

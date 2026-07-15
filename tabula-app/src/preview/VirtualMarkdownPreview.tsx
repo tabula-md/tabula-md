@@ -9,6 +9,7 @@ import type { PreviewViewport } from "./usePreviewFollowController";
 
 type MarkdownRehypePlugins = ReactMarkdownOptions["rehypePlugins"];
 type MarkdownRemarkPlugins = ReactMarkdownOptions["remarkPlugins"];
+type MarkdownUrlTransform = ReactMarkdownOptions["urlTransform"];
 
 export type VirtualPreviewCommentAnchor = {
   id: string;
@@ -107,6 +108,7 @@ const VirtualPreviewBlock = memo(function VirtualPreviewBlock({
   afterGap,
   onBlockHeightChange,
   remarkPlugins,
+  urlTransform,
 }: {
   block: PreviewBlock;
   commentsEnabled: boolean;
@@ -119,6 +121,7 @@ const VirtualPreviewBlock = memo(function VirtualPreviewBlock({
   afterGap: number;
   onBlockHeightChange: (block: PreviewBlock, height: number) => void;
   remarkPlugins: MarkdownRemarkPlugins;
+  urlTransform: MarkdownUrlTransform;
 }) {
   const blockRef = useRef<HTMLDivElement | null>(null);
   const blockCommentAnchors = useMemo(
@@ -178,7 +181,12 @@ const VirtualPreviewBlock = memo(function VirtualPreviewBlock({
       data-preview-block-after-gap={afterGap}
       style={{ paddingBottom: afterGap }}
     >
-      <ReactMarkdown components={components} rehypePlugins={blockRehypePlugins} remarkPlugins={remarkPlugins}>
+      <ReactMarkdown
+        components={components}
+        rehypePlugins={blockRehypePlugins}
+        remarkPlugins={remarkPlugins}
+        urlTransform={urlTransform}
+      >
         {blockMarkdown}
       </ReactMarkdown>
     </div>
@@ -191,12 +199,14 @@ function VirtualPreviewFootnotes({
   footnoteReferences,
   rehypePlugins,
   remarkPlugins,
+  urlTransform,
 }: {
   components: Components;
   footnoteDefinitions: string;
   footnoteReferences: string;
   rehypePlugins: MarkdownRehypePlugins;
   remarkPlugins: MarkdownRemarkPlugins;
+  urlTransform: MarkdownUrlTransform;
 }) {
   if (!footnoteDefinitions || !footnoteReferences) {
     return null;
@@ -204,7 +214,12 @@ function VirtualPreviewFootnotes({
 
   return (
     <div className="preview-footnote-collector">
-      <ReactMarkdown components={components} rehypePlugins={rehypePlugins} remarkPlugins={remarkPlugins}>
+      <ReactMarkdown
+        components={components}
+        rehypePlugins={rehypePlugins}
+        remarkPlugins={remarkPlugins}
+        urlTransform={urlTransform}
+      >
         {`${footnoteReferences}\n\n${footnoteDefinitions}`}
       </ReactMarkdown>
     </div>
@@ -226,6 +241,7 @@ export function VirtualMarkdownPreview({
   remarkPlugins,
   sourceLineOffset = 0,
   viewport,
+  urlTransform,
 }: {
   blockIndex: PreviewBlockIndex;
   commentsEnabled: boolean;
@@ -241,6 +257,7 @@ export function VirtualMarkdownPreview({
   remarkPlugins: MarkdownRemarkPlugins;
   sourceLineOffset?: number;
   viewport: PreviewViewport;
+  urlTransform: MarkdownUrlTransform;
 }) {
   const previewWindow = useMemo(
     () => getPreviewWindow(blockIndex, viewport.scrollTop, viewport.viewportHeight, overscan),
@@ -274,6 +291,7 @@ export function VirtualMarkdownPreview({
           afterGap={getPreviewBlockAfterGap(block, blockIndex.blocks, previewWindow.startIndex + visibleBlockIndex)}
           onBlockHeightChange={onBlockHeightChange}
           remarkPlugins={remarkPlugins}
+          urlTransform={urlTransform}
         />
       ))}
       {bottomSpacerHeight > 0 && <div aria-hidden="true" className="preview-virtual-spacer" style={{ height: bottomSpacerHeight }} />}
@@ -283,6 +301,7 @@ export function VirtualMarkdownPreview({
         footnoteReferences={footnoteReferences}
         rehypePlugins={getFootnoteRehypePlugins()}
         remarkPlugins={remarkPlugins}
+        urlTransform={urlTransform}
       />
     </div>
   );

@@ -85,6 +85,7 @@ export function useWorkspaceScrollSync({
     onQueueEditorFocus: queueEditorFocus,
     onSetActiveFileViewMode,
     previewSurfaceRef,
+    previewRef,
     scrollSyncingRef,
     workspaceRef,
   });

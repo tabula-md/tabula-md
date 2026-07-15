@@ -19,6 +19,10 @@ export type SearchResult = {
   matches: SearchMatch[];
 };
 
+export type LimitedSearchResult = SearchResult & {
+  truncated: boolean;
+};
+
 export type EditorSearchReplaceSelection = {
   from: number;
   to: number;
@@ -65,14 +69,15 @@ const createMatchPreview = (doc: Text, from: number, to: number) => {
   return doc.sliceString(previewStart, previewEnd).replace(/\s+/g, " ").trim();
 };
 
-export const getEditorSearchResult = (
+export const getEditorSearchResultWithLimit = (
   text: string | Text,
   query: string,
   options: SearchOptions = DEFAULT_SEARCH_OPTIONS,
-): SearchResult => {
+  maxMatches = Number.POSITIVE_INFINITY,
+): LimitedSearchResult => {
   const normalizedQuery = getNormalizedSearchQuery(query);
   if (!normalizedQuery) {
-    return { error: null, matches: [] };
+    return { error: null, matches: [], truncated: false };
   }
 
   const doc = createSearchDocument(text);
@@ -98,6 +103,7 @@ export const getEditorSearchResult = (
       return {
         error: error instanceof Error ? error.message : "Invalid regular expression.",
         matches: [],
+        truncated: false,
       };
     }
 
@@ -112,9 +118,13 @@ export const getEditorSearchResult = (
         end: to,
         preview: createMatchPreview(doc, from, to),
       });
+      if (matches.length >= maxMatches) {
+        cursor.next();
+        return { error: null, matches, truncated: !cursor.done };
+      }
     }
 
-    return { error: null, matches };
+    return { error: null, matches, truncated: false };
   }
 
   const cursor = new SearchCursor(
@@ -133,9 +143,22 @@ export const getEditorSearchResult = (
       end: to,
       preview: createMatchPreview(doc, from, to),
     });
+    if (matches.length >= maxMatches) {
+      cursor.next();
+      return { error: null, matches, truncated: !cursor.done };
+    }
   }
 
-  return { error: null, matches };
+  return { error: null, matches, truncated: false };
+};
+
+export const getEditorSearchResult = (
+  text: string | Text,
+  query: string,
+  options: SearchOptions = DEFAULT_SEARCH_OPTIONS,
+): SearchResult => {
+  const { error, matches } = getEditorSearchResultWithLimit(text, query, options);
+  return { error, matches };
 };
 
 export const getEditorSearchMatches = (

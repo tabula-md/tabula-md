@@ -14,6 +14,7 @@ import {
   type WorkspaceRoomStructureSnapshot,
 } from "@tabula-md/tabula";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
+import { loadMarkdownPreview } from "../preview/markdownPreviewLoader";
 import {
   clearWorkspaceDocumentBodies,
   materializeWorkspaceRoomSnapshot,
@@ -626,7 +627,9 @@ export function useWorkspaceRuntime() {
       }
       return;
     }
-    if (roomDocumentProjectionStore.clear()) bumpVisibleTextRevision();
+    if (!activeRoomDocument && roomDocumentProjectionStore.clear()) {
+      bumpVisibleTextRevision();
+    }
   }, [activeDocumentProjection, activeRoomDocument?.id, roomDocumentProjectionStore]);
   const publishCurrentRoomViewport = useEventCallback(() => {
     const viewport = editorRef.current?.getViewport();
@@ -851,6 +854,7 @@ export function useWorkspaceRuntime() {
     flushPendingEditorCommit();
     stopSession();
     resetCollaborationState("idle");
+    roomDocumentProjectionStore.clear();
     workspaceSessionHost.openLocal();
     setLiveRoomOpenFailure(null);
     syncUrlForLocalWorkspace("replace");
@@ -873,15 +877,20 @@ export function useWorkspaceRuntime() {
       if (!startedSession) return;
 
       setLiveRoomOpenFailure(null);
-      getWorkspaceStoreForMode("room").getState().replaceWorkspace(clearWorkspaceDocumentBodies({
+      const roomWorkspace = {
         ...getWorkspaceStoreSnapshot("local"),
         folders,
-      }));
+      };
+      roomDocumentProjectionStore.prime(roomWorkspace.files);
+      getWorkspaceStoreForMode("room").getState().replaceWorkspace(
+        clearWorkspaceDocumentBodies(roomWorkspace),
+      );
       workspaceSessionHost.openRoom(
         { roomId: startedSession.roomId, shareUrl: startedSession.shareUrl },
         startedSession.bootstrap,
       );
     } catch (error) {
+      roomDocumentProjectionStore.clear();
       clientErrorReporter.report({
         feature: "collaboration",
         operation: "start-session",
@@ -897,6 +906,7 @@ export function useWorkspaceRuntime() {
     getWorkspaceStoreForMode("local").getState().replaceWorkspace(localWorkspace);
     stopSession();
     resetCollaborationState("idle");
+    roomDocumentProjectionStore.clear();
     syncUrlForLocalWorkspace("replace");
     workspaceSessionHost.openLocal();
     setLiveRoomOpenFailure(null);
@@ -952,6 +962,7 @@ export function useWorkspaceRuntime() {
   const activateRoomWorkspace = useEventCallback((room: LocationRoom) => {
     restoredRoomViewsRef.current.delete(room.roomId);
     setLiveRoomOpenFailure(null);
+    roomDocumentProjectionStore.clear();
     getWorkspaceStoreForMode("room").getState().replaceWorkspace(createRoomWorkspaceState());
     workspaceSessionHost.openRoom(room);
   });
@@ -1285,18 +1296,6 @@ export function useWorkspaceRuntime() {
     setTopPopover,
     setWorkspaceMenuOpen,
   });
-  useWorkspaceKeyboardShortcuts({
-    importInputRef,
-    addFile,
-    closeFloatingChrome,
-    openFilesPanel,
-    openHelp,
-    openDocumentSearch: openSearchFromCurrentSelection,
-    selectAdjacentFile,
-    setActiveFileViewMode,
-    setCenterPopover,
-  });
-
   const { documentSurface, documentWorkbenchRuntime } =
     useDocumentSurfaceRuntime({
       activeDocument,
@@ -1318,9 +1317,31 @@ export function useWorkspaceRuntime() {
       setCenterPopover,
       setTopPopover,
     });
+  const viewModeRequestRef = useRef(0);
   const setViewModeWithPendingCommit = useEventCallback((viewMode: FileViewMode) => {
-    flushPendingEditorCommit();
-    documentWorkbenchRuntime.onSetViewMode(viewMode);
+    const requestId = viewModeRequestRef.current + 1;
+    viewModeRequestRef.current = requestId;
+    const applyViewMode = () => {
+      if (viewModeRequestRef.current !== requestId) return;
+      flushPendingEditorCommit();
+      documentWorkbenchRuntime.onSetViewMode(viewMode);
+    };
+    if (viewMode === "edit") {
+      applyViewMode();
+      return;
+    }
+    void loadMarkdownPreview().then(applyViewMode).catch(() => undefined);
+  });
+  useWorkspaceKeyboardShortcuts({
+    importInputRef,
+    addFile,
+    closeFloatingChrome,
+    openFilesPanel,
+    openHelp,
+    openDocumentSearch: openSearchFromCurrentSelection,
+    selectAdjacentFile,
+    setActiveFileViewMode: setViewModeWithPendingCommit,
+    setCenterPopover,
   });
 
   return createWorkspaceRuntimeView({

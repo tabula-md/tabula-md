@@ -42,6 +42,7 @@ export type MarkdownEditorHandle = {
   ) => boolean;
   applyRemoteTextChange: (nextValue: string, patches?: TextPatch[]) => void;
   revealRange: (from: number, to?: number) => void;
+  revealViewportLineAnchor: (anchor: EditorViewportAnchor) => void;
   revealViewport: (position: number, offset?: number) => void;
   scrollToRatio: (ratio: number) => void;
   setSelectionRanges: (ranges: Array<{ from: number; to: number }>) => void;

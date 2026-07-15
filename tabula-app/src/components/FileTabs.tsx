@@ -308,7 +308,6 @@ export function FileTabs({
                   aria-label={tabLabel.fullPath}
                   tabIndex={isActiveFile ? 0 : -1}
                   data-file-id={file.id}
-                  title={tabLabel.fullPath}
                   onMouseDown={(event) => {
                     if (event.detail >= 2) event.preventDefault();
                   }}
@@ -352,7 +351,6 @@ export function FileTabs({
                       aria-label={copy.collaboratorsInDocument(
                         allDocumentCollaborators.map((collaborator) => collaborator.name).join(", "),
                       )}
-                      data-tooltip={allDocumentCollaborators.map((collaborator) => collaborator.name).join(", ")}
                     >
                       {documentCollaborators.map((collaborator) => (
                         <span

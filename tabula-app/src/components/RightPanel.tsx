@@ -1,4 +1,4 @@
-import { type ReactNode, type RefObject } from "react";
+import { type ReactNode, type RefObject, useMemo } from "react";
 import {
   Folder,
   ListTree,
@@ -19,6 +19,7 @@ import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import { RightPanelSearch } from "./RightPanelSearch";
+import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
 
 type RightPanelProps = {
   isOpen: boolean;
@@ -146,6 +147,10 @@ export function RightPanel({
     activeReplyCommentId,
     commentsByFileId,
   });
+  const fileLabels = useMemo(
+    () => getWorkspaceFileTabLabels(files, folders),
+    [files, folders],
+  );
 
   if (!isOpen) {
     return null;
@@ -242,6 +247,7 @@ export function RightPanel({
             activeFile={activeFile}
             activeFileId={activeFileId}
             activeFileTitle={activeFileTitle}
+            fileLabels={fileLabels}
             openCommentGroups={openCommentGroups}
             resolvedCommentGroups={resolvedCommentGroups}
             showResolved={showResolved}
@@ -281,6 +287,7 @@ export function RightPanel({
           <RightPanelSearch
             copy={copy.search}
             files={files}
+            folders={folders}
             language={language}
             onOpenResult={onOpenSearchResult}
           />

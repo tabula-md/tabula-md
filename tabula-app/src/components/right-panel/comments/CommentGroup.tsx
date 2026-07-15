@@ -60,7 +60,6 @@ export function CommentGroup({
         <button
           className={`right-row right-comment-file ${isActiveFile ? "active" : ""}`}
           type="button"
-          title={group.file.title}
           aria-expanded={!fileCommentsCollapsed}
           onClick={() => onToggleCommentFileCollapsed(group.file.id)}
         >
