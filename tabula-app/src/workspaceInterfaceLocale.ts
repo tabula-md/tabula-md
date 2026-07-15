@@ -46,6 +46,8 @@ type WorkspaceInterfaceMessages = {
   outlineFor: string;
   outlineExpand: string;
   outlineCollapse: string;
+  outlineExpandAll: string;
+  outlineCollapseAll: string;
   outlineNone: string;
   commentsTitle: string;
   commentsAll: string;
@@ -130,6 +132,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     outlineFor: "Outline for {{name}}",
     outlineExpand: "Expand section",
     outlineCollapse: "Collapse section",
+    outlineExpandAll: "Expand all headings",
+    outlineCollapseAll: "Collapse all headings",
     outlineNone: "No headings yet",
     commentsTitle: "Comment scope",
     commentsAll: "All comments",
@@ -212,6 +216,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     outlineFor: "{{name}} 개요",
     outlineExpand: "섹션 펼치기",
     outlineCollapse: "섹션 접기",
+    outlineExpandAll: "모든 제목 펼치기",
+    outlineCollapseAll: "모든 제목 접기",
     outlineNone: "아직 제목이 없습니다",
     commentsTitle: "댓글 범위",
     commentsAll: "모든 댓글",
@@ -294,6 +300,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     outlineFor: "{{name}} のアウトライン",
     outlineExpand: "セクションを展開",
     outlineCollapse: "セクションを折りたたむ",
+    outlineExpandAll: "すべての見出しを展開",
+    outlineCollapseAll: "すべての見出しを折りたたむ",
     outlineNone: "見出しはまだありません",
     commentsTitle: "コメント範囲",
     commentsAll: "すべてのコメント",
@@ -376,6 +384,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     outlineFor: "{{name}} 的大纲",
     outlineExpand: "展开分区",
     outlineCollapse: "折叠分区",
+    outlineExpandAll: "展开所有标题",
+    outlineCollapseAll: "折叠所有标题",
     outlineNone: "暂无标题",
     commentsTitle: "评论范围",
     commentsAll: "所有评论",
@@ -458,6 +468,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     outlineFor: "Esquema de {{name}}",
     outlineExpand: "Expandir sección",
     outlineCollapse: "Contraer sección",
+    outlineExpandAll: "Expandir todos los encabezados",
+    outlineCollapseAll: "Contraer todos los encabezados",
     outlineNone: "Aún no hay encabezados",
     commentsTitle: "Ámbito de comentarios",
     commentsAll: "Todos los comentarios",
@@ -540,6 +552,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     outlineFor: "Plan de {{name}}",
     outlineExpand: "Développer la section",
     outlineCollapse: "Réduire la section",
+    outlineExpandAll: "Développer tous les titres",
+    outlineCollapseAll: "Réduire tous les titres",
     outlineNone: "Aucun titre pour le moment",
     commentsTitle: "Portée des commentaires",
     commentsAll: "Tous les commentaires",
@@ -622,6 +636,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     outlineFor: "Gliederung für {{name}}",
     outlineExpand: "Abschnitt erweitern",
     outlineCollapse: "Abschnitt reduzieren",
+    outlineExpandAll: "Alle Überschriften ausklappen",
+    outlineCollapseAll: "Alle Überschriften einklappen",
     outlineNone: "Noch keine Überschriften",
     commentsTitle: "Kommentarbereich",
     commentsAll: "Alle Kommentare",
@@ -732,6 +748,8 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         forFile: (name: string) => format(copy.outlineFor, { name }),
         expand: copy.outlineExpand,
         collapse: copy.outlineCollapse,
+        expandAll: copy.outlineExpandAll,
+        collapseAll: copy.outlineCollapseAll,
         none: copy.outlineNone,
       },
       comments: {

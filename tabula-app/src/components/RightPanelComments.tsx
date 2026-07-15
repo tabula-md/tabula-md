@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ListFilter, MessageSquarePlus } from "lucide-react";
+import { ChevronDown, ChevronRight, ListFilter, Plus } from "lucide-react";
 import {
   getRightPanelCommentScopeModel,
   type CommentScope,
@@ -230,7 +230,7 @@ export function RightPanelComments({
               data-tooltip={copy.filePlaceholder}
               onClick={toggleDocumentComposer}
             >
-              <MessageSquarePlus size={14} aria-hidden="true" />
+              <Plus size={16} aria-hidden="true" />
             </button>
           )}
           <MenuRoot open={scopeMenuOpen} onOpenChange={setScopeMenuOpen}>

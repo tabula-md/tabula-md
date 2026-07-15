@@ -142,6 +142,8 @@ export function RightPanel({
     collapseAllFileTreeFolders,
     expandAllFileTreeFolders,
     toggleOutlineHeadingCollapsed,
+    collapseAllOutlineHeadings,
+    expandAllOutlineHeadings,
   } = useRightPanelCollapseState({
     activeFileId,
     activeCommentId,
@@ -252,6 +254,8 @@ export function RightPanel({
             collapsedHeadingIds={collapsedOutlineHeadingIds}
             copy={copy.outline}
             onToggleHeadingCollapsed={toggleOutlineHeadingCollapsed}
+            onCollapseAllHeadings={collapseAllOutlineHeadings}
+            onExpandAllHeadings={expandAllOutlineHeadings}
             onGoToOutlineHeading={onGoToOutlineHeading}
           />
         )}
