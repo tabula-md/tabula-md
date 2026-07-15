@@ -149,6 +149,22 @@ describe("workspace store", () => {
     expect(second.title).toBe("Untitled.md");
   });
 
+  it("creates documents from global actions at the workspace root", () => {
+    initializeWorkspaceStore();
+    const folder = useWorkspaceStore.getState().addFolder("Planning");
+    const nestedFile = useWorkspaceStore.getState().addFile({
+      title: "Nested.md",
+      parentId: folder?.id,
+    });
+    useWorkspaceStore.getState().selectFile(nestedFile.id);
+
+    const blankFile = useWorkspaceStore.getState().addFile();
+    const importedFile = useWorkspaceStore.getState().addFileFromContent("Imported.md", "# Imported");
+
+    expect(blankFile.parentId).toBe("workspace-root");
+    expect(importedFile.parentId).toBe("workspace-root");
+  });
+
   it("keeps tab state coherent when closing and deleting active files", () => {
     const { draft } = initializeWorkspaceStore();
     const plan = useWorkspaceStore.getState().addFile({ title: "Plan.md" });

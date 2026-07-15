@@ -268,7 +268,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
 
   addFile: (overrides) => {
     const state = get();
-    const parentId = overrides?.parentId ?? state.files.find((file) => file.id === state.activeFileId)?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
+    const parentId = overrides?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     const requestedTitle = overrides?.title?.trim();
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
       ...overrides,
@@ -284,7 +284,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
 
   addFileFromContent: (title, text, viewMode = "edit", overrides) => {
     const state = get();
-    const parentId = overrides?.parentId ?? state.files.find((file) => file.id === state.activeFileId)?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
+    const parentId = overrides?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
       ...overrides,
       parentId,

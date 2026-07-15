@@ -40,7 +40,7 @@ describe("workspace display titles", () => {
     expect(titles.get("folder-b")).toBe("Notes 2");
   });
 
-  it("adds the shortest folder location only when open file names collide", () => {
+  it("keeps filenames primary and adds separate location context only when names collide", () => {
     const folders = [
       { id: "workspace-root", title: "Workspace", parentId: null },
       { id: "planning", title: "Planning", parentId: "workspace-root" },
@@ -52,16 +52,19 @@ describe("workspace display titles", () => {
     ], folders);
 
     expect(labels.get("root")).toEqual({
-      displayTitle: "Workspace/Untitled.md",
-      fullPath: "Workspace/Untitled.md",
+      displayTitle: "Untitled.md",
+      fullPath: "Untitled.md",
+      locationLabel: "Root",
     });
     expect(labels.get("planning-file")).toEqual({
-      displayTitle: "Planning/Untitled.md",
-      fullPath: "Workspace/Planning/Untitled.md",
+      displayTitle: "Untitled.md",
+      fullPath: "Planning/Untitled.md",
+      locationLabel: "Planning",
     });
     expect(labels.get("readme")).toEqual({
       displayTitle: "README.md",
-      fullPath: "Workspace/README.md",
+      fullPath: "README.md",
+      locationLabel: undefined,
     });
   });
 
@@ -78,7 +81,15 @@ describe("workspace display titles", () => {
       createWorkspaceFile(2, { id: "b-file", title: "Plan.md", parentId: "b-notes" }),
     ], folders);
 
-    expect(labels.get("a-file")?.displayTitle).toBe("A/Notes/Plan.md");
-    expect(labels.get("b-file")?.displayTitle).toBe("B/Notes/Plan.md");
+    expect(labels.get("a-file")).toMatchObject({
+      displayTitle: "Plan.md",
+      fullPath: "A/Notes/Plan.md",
+      locationLabel: "A/Notes",
+    });
+    expect(labels.get("b-file")).toMatchObject({
+      displayTitle: "Plan.md",
+      fullPath: "B/Notes/Plan.md",
+      locationLabel: "B/Notes",
+    });
   });
 });

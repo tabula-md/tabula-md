@@ -305,6 +305,7 @@ export function FileTabs({
                   id={getWorkspaceTabId(file.id)}
                   aria-controls={getWorkspaceTabPanelId(file.id)}
                   aria-selected={isActiveFile}
+                  aria-label={tabLabel.fullPath}
                   tabIndex={isActiveFile ? 0 : -1}
                   data-file-id={file.id}
                   title={tabLabel.fullPath}
@@ -336,7 +337,14 @@ export function FileTabs({
                     }
                   }}
                 >
-                  <span className="tab-title">{tabDisplayTitle}</span>
+                  <span className="tab-document-label">
+                    <span className="tab-title">{tabDisplayTitle}</span>
+                    {tabLabel.locationLabel && (
+                      <span className="tab-location" aria-hidden="true">
+                        {tabLabel.locationLabel}
+                      </span>
+                    )}
+                  </span>
                   {documentCollaborators.length > 0 && (
                     <span
                       className="tab-presence-avatars"

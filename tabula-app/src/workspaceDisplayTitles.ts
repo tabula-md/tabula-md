@@ -53,6 +53,7 @@ export const getWorkspaceFileDisplayTitles = (files: readonly WorkspaceFile[]) =
 export type WorkspaceFileTabLabel = {
   displayTitle: string;
   fullPath: string;
+  locationLabel?: string;
 };
 
 const getFolderPath = (
@@ -63,7 +64,7 @@ const getFolderPath = (
   const visited = new Set<string>();
   let currentId = folderId ?? WORKSPACE_ROOT_FOLDER_ID;
 
-  while (currentId && !visited.has(currentId)) {
+  while (currentId && currentId !== WORKSPACE_ROOT_FOLDER_ID && !visited.has(currentId)) {
     visited.add(currentId);
     const folder = foldersById.get(currentId);
     if (!folder) break;
@@ -71,11 +72,11 @@ const getFolderPath = (
     currentId = folder.parentId ?? "";
   }
 
-  return path.length > 0 ? path : ["Workspace"];
+  return path;
 };
 
 const getShortestUniqueLocation = (locations: readonly string[][], targetIndex: number) => {
-  const target = locations[targetIndex] ?? ["Workspace"];
+  const target = locations[targetIndex] ?? ["Root"];
   for (let depth = 1; depth <= target.length; depth += 1) {
     const candidate = target.slice(-depth).join("/");
     const isUnique = locations.every(
@@ -104,15 +105,17 @@ export const getWorkspaceFileTabLabels = (
   const labels = new Map<string, WorkspaceFileTabLabel>();
   for (const group of groups.values()) {
     const locations = group.map((file) => getFolderPath(file.parentId, foldersById));
+    const displayLocations = locations.map((location) => location.length > 0 ? location : ["Root"]);
     group.forEach((file, index) => {
       const displayTitle = displayTitles.get(file.id) ?? file.title;
-      const location = locations[index] ?? ["Workspace"];
+      const location = locations[index] ?? [];
       labels.set(file.id, {
-        displayTitle:
-          group.length > 1
-            ? `${getShortestUniqueLocation(locations, index)}/${displayTitle}`
-            : displayTitle,
+        displayTitle,
         fullPath: [...location, displayTitle].join("/"),
+        locationLabel:
+          group.length > 1
+            ? getShortestUniqueLocation(displayLocations, index)
+            : undefined,
       });
     });
   }

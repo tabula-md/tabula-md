@@ -1317,6 +1317,10 @@ export async function run(ctx) {
     expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Folder menus should create a folder inside the folder.");
     expect((await page.getByText("New subfolder", { exact: true }).count()) === 0, "Folder menus should use the shared New folder command name.");
     await page.getByRole("menuitem", { name: "New document", exact: true }).click();
+    const folderDocumentRenameInput = page.locator(".right-file-tree-node.file .right-file-rename-input");
+    await folderDocumentRenameInput.waitFor({ state: "visible" });
+    await folderDocumentRenameInput.fill("Archive note");
+    await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
     const folderDocumentState = await page.evaluate(() => {
       const activeTitle = document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "";
@@ -1327,7 +1331,7 @@ export async function run(ctx) {
         level: row?.closest('[role="treeitem"]')?.getAttribute("aria-level") ?? "",
       };
     });
-    expect(folderDocumentState.activeTitle, "Creating from a folder menu should open the new document.");
+    expect(folderDocumentState.activeTitle === "Archive note.md", "Creating from Files should request the document name inline.");
     expect(folderDocumentState.level === "2", "Creating from a folder menu should place the document inside that folder.");
     await page.getByRole("button", { name: "More actions for Archive", exact: true }).click({ button: "right" });
     expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "Right-clicking a folder should expose New document.");
