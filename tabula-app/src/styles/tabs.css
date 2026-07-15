@@ -112,6 +112,28 @@
   white-space: nowrap;
 }
 
+.tab-document-label {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tab-document-label .tab-title {
+  flex: 0 1 auto;
+}
+
+.tab-location {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tab-presence-avatars {
   display: inline-flex;
   flex: none;

@@ -70,7 +70,7 @@ type RightPanelFilesProps = {
   activeFileId: string;
   collapsedFolderIds: Set<string>;
   copy: RightPanelFilesCopy;
-  onNewFile: (parentId?: string) => void;
+  onNewFile: (parentId?: string) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
   onToggleFolder: (folderId: string) => void;
@@ -268,10 +268,12 @@ export function RightPanelFiles({
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null);
   const autoExpandTimerRef = useRef<number | null>(null);
   const autoExpandFolderIdRef = useRef<string | null>(null);
+  const pendingRenameFrameRef = useRef<number | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const folderRenameInputRef = useRef<HTMLInputElement | null>(null);
   const treeScrollRef = useRef<HTMLDivElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+  const filesBeforeCreateRef = useRef<ReadonlySet<string> | null>(null);
   const visibleRows = useMemo(() => {
     const nextFolderDisplayTitles = getWorkspaceFolderDisplayTitles(folders);
     const nextFileTreeRoot = buildFileTree(
@@ -324,6 +326,25 @@ export function RightPanelFiles({
   }, [renamingFileId]);
 
   useLayoutEffect(() => {
+    const filesBeforeCreate = filesBeforeCreateRef.current;
+    if (!filesBeforeCreate) return;
+
+    const pendingFile = files.find((file) => !filesBeforeCreate.has(file.id));
+    if (!pendingFile) return;
+
+    const pendingRowIndex = rowIndexByFileId.get(pendingFile.id);
+    if (!pendingFile || pendingRowIndex === undefined) return;
+
+    filesBeforeCreateRef.current = null;
+    treeVirtualizer.scrollToIndex(pendingRowIndex, { align: "auto" });
+    pendingRenameFrameRef.current = window.requestAnimationFrame(() => {
+      pendingRenameFrameRef.current = null;
+      setRenamingFileId(pendingFile.id);
+      setRenamingTitle(getFileDisplayTitle(pendingFile.title));
+    });
+  }, [files, rowIndexByFileId, treeVirtualizer]);
+
+  useLayoutEffect(() => {
     if (!renamingFolderId) return;
     const frame = window.requestAnimationFrame(() => {
       folderRenameInputRef.current?.focus();
@@ -335,6 +356,9 @@ export function RightPanelFiles({
   useEffect(() => () => {
     if (autoExpandTimerRef.current !== null) {
       window.clearTimeout(autoExpandTimerRef.current);
+    }
+    if (pendingRenameFrameRef.current !== null) {
+      window.cancelAnimationFrame(pendingRenameFrameRef.current);
     }
   }, []);
 
@@ -410,9 +434,11 @@ export function RightPanelFiles({
     setRenamingFolderTitle(folder.title);
   };
 
-  const createDocument = (parentId = WORKSPACE_ROOT_FOLDER_ID) => {
+  const createAndRenameDocument = (parentId = WORKSPACE_ROOT_FOLDER_ID) => {
     if (collapsedFolderIds.has(parentId)) onToggleFolder(parentId);
-    onNewFile(parentId);
+    filesBeforeCreateRef.current = new Set(files.map((file) => file.id));
+    const file = onNewFile(parentId);
+    if (!file) filesBeforeCreateRef.current = null;
   };
 
   const clearAutoExpandTimer = () => {
@@ -567,7 +593,7 @@ export function RightPanelFiles({
                     <MenuItem
                       icon={<FilePlus2 size={14} />}
                       label={copy.newDocument}
-                      onSelect={() => createDocument(node.id)}
+                      onSelect={() => createAndRenameDocument(node.id)}
                     />
                     <MenuItem
                       icon={<FolderPlus size={14} />}
@@ -599,7 +625,7 @@ export function RightPanelFiles({
           <ContextMenuItem
             icon={<FilePlus2 size={14} />}
             label={copy.newDocument}
-            onSelect={() => createDocument(node.id)}
+            onSelect={() => createAndRenameDocument(node.id)}
           />
           <ContextMenuItem
             icon={<FolderPlus size={14} />}
@@ -739,7 +765,7 @@ export function RightPanelFiles({
                     <MenuItem
                       icon={<FilePlus2 size={14} />}
                       label={copy.newDocument}
-                      onSelect={() => createDocument(fileParentId)}
+                      onSelect={() => createAndRenameDocument(fileParentId)}
                     />
                     <MenuItem
                       icon={<FolderPlus size={14} />}
@@ -779,7 +805,7 @@ export function RightPanelFiles({
         <ContextMenuItem
           icon={<FilePlus2 size={14} />}
           label={copy.newDocument}
-          onSelect={() => createDocument(fileParentId)}
+          onSelect={() => createAndRenameDocument(fileParentId)}
         />
         <ContextMenuItem
           icon={<FolderPlus size={14} />}
@@ -860,7 +886,7 @@ export function RightPanelFiles({
                 ariaLabel={copy.createInWorkspace}
                 onCloseAutoFocus={(event) => event.preventDefault()}
               >
-                <MenuItem icon={<FilePlus2 size={16} />} label={copy.newDocument} onSelect={() => createDocument()} />
+                <MenuItem icon={<FilePlus2 size={16} />} label={copy.newDocument} onSelect={() => createAndRenameDocument()} />
                 <MenuItem
                   icon={<FolderPlus size={16} />}
                   label={copy.newFolder}
@@ -897,7 +923,7 @@ export function RightPanelFiles({
       <ContextMenuItem
         icon={<FilePlus2 size={14} />}
         label={copy.newDocument}
-        onSelect={() => createDocument()}
+        onSelect={() => createAndRenameDocument()}
       />
       <ContextMenuItem
         icon={<FolderPlus size={14} />}
