@@ -4,7 +4,7 @@
   grid-column: 1;
   grid-row: 2;
   display: grid;
-  align-items: center;
+  align-items: start;
   width: var(--document-chrome-width);
   min-width: 0;
   min-height: 50px;

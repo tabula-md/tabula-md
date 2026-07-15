@@ -42,7 +42,7 @@ type RightPanelCommentScopeModelArgs<
   commentScope: CommentScope;
 };
 
-export const stripMarkdownExtension = (title: string) => title.replace(/\.md$/i, "");
+export const stripMarkdownExtension = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
 
 const getFileComments = <TComment extends RightPanelComment>(
   commentsByFileId: Record<string, TComment[]>,

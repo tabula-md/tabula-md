@@ -101,7 +101,15 @@ export async function run(ctx) {
       "Document Search pointer focus should not recolor the field or draw an underline.",
     );
     expect((await page.getByLabel("Replace with").count()) === 0, "Replace should stay collapsed by default.");
+    const searchLayoutBeforeReplace = await readSearchRowLayout(page);
     await page.getByRole("button", { name: "Toggle replace" }).click();
+    const searchLayoutWithReplace = await readSearchRowLayout(page);
+    expect(
+      searchLayoutWithReplace.rowTop === searchLayoutBeforeReplace.rowTop &&
+        searchLayoutWithReplace.barTop === searchLayoutBeforeReplace.barTop &&
+        searchLayoutWithReplace.searchLineTop === searchLayoutBeforeReplace.searchLineTop,
+      "Opening Replace should grow below Search without moving the Search row.",
+    );
     await page.getByLabel("Replace with").fill("replacement");
     expect((await page.getByLabel("Replace with").inputValue()) === "replacement", "Toggle replace should reveal the replace input.");
     await page.getByRole("button", { name: "Toggle replace" }).click();

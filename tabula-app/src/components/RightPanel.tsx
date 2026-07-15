@@ -44,7 +44,6 @@ type RightPanelProps = {
   activeReplyCommentId?: string | null;
   replyDraftByCommentId: Record<string, string>;
   onSetView: (view: RightPanelView) => void;
-  onOpenSearchResult: (fileId: string, start: number, end: number) => void;
   onToggleSidePanel: () => void;
   onNewFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
@@ -97,7 +96,6 @@ export function RightPanel({
   activeReplyCommentId,
   replyDraftByCommentId,
   onSetView,
-  onOpenSearchResult,
   onToggleSidePanel,
   onNewFile,
   onNewFolder,
@@ -307,7 +305,7 @@ export function RightPanel({
             files={files}
             folders={folders}
             language={language}
-            onOpenResult={onOpenSearchResult}
+            onSelectFile={onSelectFile}
           />
         )}
       </div>

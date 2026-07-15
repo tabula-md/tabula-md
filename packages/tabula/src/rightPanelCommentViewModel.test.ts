@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getRightPanelCommentGroups,
   getRightPanelCommentScopeModel,
+  stripMarkdownExtension,
   type RightPanelComment,
   type RightPanelCommentFile,
   type RightPanelCommentGroup,
@@ -21,6 +22,12 @@ const fileComment = (id: string, createdAt: string, overrides: Partial<RightPane
 });
 
 describe("rightPanelCommentViewModel", () => {
+  it("strips supported Markdown extensions from display paths", () => {
+    expect(stripMarkdownExtension("Notes/Plan.md")).toBe("Notes/Plan");
+    expect(stripMarkdownExtension("Notes/Plan.markdown")).toBe("Notes/Plan");
+    expect(stripMarkdownExtension("Notes/Plan.txt")).toBe("Notes/Plan.txt");
+  });
+
   it("separates open and resolved comment groups", () => {
     const files = [importedFile("file-a", "Plan.md"), importedFile("file-b", "Notes.md")];
     const result = getRightPanelCommentGroups(files, {

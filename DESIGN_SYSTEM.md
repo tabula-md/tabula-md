@@ -140,6 +140,9 @@ These exceptions must not be reused as decoration for containers or cards.
 - Files and Outline may expose one expand-all or collapse-all command when
   their visible hierarchy contains collapsible rows. The command uses the same
   icon, size, and state grammar in both tabs.
+- Project Context Search finds files by logical name and folder path. It does
+  not search Markdown contents or move the editor selection. Find and Replace
+  inside the active document remains a separate document command.
 - Comments uses a contextual plus command for starting a comment. The panel
   title and accessible name carry the meaning; the icon does not duplicate a
   comment glyph inside another add glyph.
