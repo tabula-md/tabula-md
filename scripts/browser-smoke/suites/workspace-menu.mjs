@@ -48,27 +48,30 @@ export async function run(ctx) {
     await ensureSidePanelOpen(page);
     expect((await page.locator(".right-file-tree-row.file").count()) === 0, "Fresh projects should contain no hidden files.");
     expect(
-      (await page.getByText("No documents yet", { exact: true }).count()) === 1,
+      (await page.locator(".right-panel-body").getByText("No documents yet", { exact: true }).count()) === 1,
       "An empty Files panel should describe the document state instead of a failed search.",
     );
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
     expect(
-      (await page.getByText("No headings yet", { exact: true }).count()) === 1,
-      "Outline should remain available with a quiet empty state.",
+      (await page.locator(".right-panel-body").getByText("No document open", { exact: true }).count()) === 1,
+      "Outline should describe its missing document context.",
     );
+    expect((await page.getByText("No headings yet", { exact: true }).count()) === 0, "Outline should not imply an open document when the workspace is empty.");
     await page.getByRole("button", { name: "Comments", exact: true }).click();
     await waitForPanelTab(page, "Comments");
     expect(
-      (await page.locator(".right-comments-scroll .right-empty-state").getByText("No document open", { exact: true }).count()) === 1,
-      "Comments should remain available without an open document.",
+      (await page.locator(".right-panel-body").getByText("No document open", { exact: true }).count()) === 1,
+      "Comments should describe its missing document context.",
     );
+    expect((await page.locator(".right-comments-toolbar").count()) === 0, "Comments should hide unusable controls in an empty workspace.");
     await page.getByRole("button", { name: "Search", exact: true }).click();
     await waitForPanelTab(page, "Search");
     expect(
-      (await page.getByText("No documents yet", { exact: true }).count()) === 1,
-      "Workspace Search should remain available when there are no documents.",
+      (await page.locator(".right-panel-body").getByText("No documents to search", { exact: true }).count()) === 1,
+      "Workspace Search should describe the unavailable search scope.",
     );
+    expect((await page.locator(".right-panel-search-controls").count()) === 0, "Search should hide unusable controls in an empty workspace.");
     await page.getByRole("button", { name: "Toggle side panel" }).click();
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".publish-trigger").count()) === 0, "Publish should live inside Share, not as a separate top-right action.");
@@ -339,7 +342,7 @@ export async function run(ctx) {
     expect((await page.locator(".right-panel").count()) === 1, "Browse project files should open the right file panel.");
     const closedTabFileState = await page.evaluate(() => ({
       fileRows: Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((row) => ({
-        title: row.getAttribute("title") ?? "",
+        title: row.getAttribute("data-file-name") ?? "",
         text: row.textContent?.replace(/\s+/g, " ").trim() ?? "",
         active: row.classList.contains("active"),
       })),
@@ -353,6 +356,28 @@ export async function run(ctx) {
     expect(
       closedTabFileState.fileRows.every((row) => !row.active),
       "Files panel should not mark an active file when no tab is open.",
+    );
+
+    await page.getByRole("button", { name: "Outline", exact: true }).click();
+    await waitForPanelTab(page, "Outline");
+    expect(
+      (await page.locator(".right-panel-body").getByText("No document open", { exact: true }).count()) === 1,
+      "Outline should describe the missing active document exactly once.",
+    );
+    expect(
+      (await page.getByText("No headings yet", { exact: true }).count()) === 0,
+      "Outline should not describe document contents when no document is open.",
+    );
+
+    await page.getByRole("button", { name: "Comments", exact: true }).click();
+    await waitForPanelTab(page, "Comments");
+    expect(
+      (await page.locator(".right-panel-body").getByText("No document open", { exact: true }).count()) === 1,
+      "Comments should describe the missing active document exactly once.",
+    );
+    expect(
+      (await page.locator(".right-comments-toolbar").count()) === 0,
+      "Comments should not render document actions when no document is open.",
     );
 
     await page.reload();

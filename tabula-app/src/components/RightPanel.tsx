@@ -20,6 +20,7 @@ import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import { RightPanelSearch } from "./RightPanelSearch";
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
+import { PanelEmptyState } from "./right-panel/PanelEmptyState";
 
 type RightPanelProps = {
   isOpen: boolean;
@@ -157,6 +158,7 @@ export function RightPanel({
   }
 
   const activeFile = files.find((file) => file.id === activeFileId);
+  const hasDocuments = files.length > 0;
   const effectiveView = view;
   const { openCommentGroups, resolvedCommentGroups } = getRightPanelCommentGroups(
     files,
@@ -230,7 +232,19 @@ export function RightPanel({
           />
         )}
 
-        {effectiveView === "outline" && (
+        {!activeFile && (effectiveView === "outline" || effectiveView === "comments") && (
+          <section className="right-panel-content">
+            <PanelEmptyState>{copy.noDocumentOpen}</PanelEmptyState>
+          </section>
+        )}
+
+        {!hasDocuments && effectiveView === "search" && (
+          <section className="right-panel-content">
+            <PanelEmptyState>{copy.search.noDocuments}</PanelEmptyState>
+          </section>
+        )}
+
+        {activeFile && effectiveView === "outline" && (
           <RightPanelOutline
             activeFileTitle={activeFileTitle}
             activeHeadingIndex={activeOutlineHeadingIndex}
@@ -242,7 +256,7 @@ export function RightPanel({
           />
         )}
 
-        {effectiveView === "comments" && (
+        {activeFile && effectiveView === "comments" && (
           <RightPanelComments
             activeFile={activeFile}
             activeFileId={activeFileId}
@@ -283,7 +297,7 @@ export function RightPanel({
           />
         )}
 
-        {effectiveView === "search" && (
+        {hasDocuments && effectiveView === "search" && (
           <RightPanelSearch
             copy={copy.search}
             files={files}

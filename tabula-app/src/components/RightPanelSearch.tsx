@@ -164,9 +164,8 @@ export function RightPanelSearch({
         </PopoverRoot>
       </div>
 
-      {files.length === 0 && <PanelEmptyState>{copy.noDocuments}</PanelEmptyState>}
       {!searching && result.error && <p className="right-panel-search-message error">{result.error}</p>}
-      {files.length > 0 && hasQuery && !searching && !result.error && result.matchCount === 0 && (
+      {hasQuery && !searching && !result.error && result.matchCount === 0 && (
         <PanelEmptyState>{copy.noMatches}</PanelEmptyState>
       )}
       {!searching && result.matchCount > 0 && (
