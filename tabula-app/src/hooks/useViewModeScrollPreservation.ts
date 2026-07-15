@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
+import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
 import type { FileViewMode } from "../workspaceStorage";
 import type { SplitScrollSurface } from "./useSplitPreviewFollow";
@@ -10,6 +11,7 @@ type MutableValueRef<T> = {
 
 type ModeScrollAnchor = {
   surface: SplitScrollSurface;
+  position: ReturnType<MarkdownEditorHandle["getViewportLineAnchor"]>;
   ratio: number;
 };
 
@@ -34,6 +36,7 @@ type UseViewModeScrollPreservationArgs = {
   onQueueEditorFocus: (options?: { preventScroll?: boolean }) => void;
   onSetActiveFileViewMode: (nextViewMode: FileViewMode) => void;
   previewSurfaceRef: RefObject<HTMLElement | null>;
+  previewRef: RefObject<MarkdownPreviewHandle | null>;
   scrollSyncingRef: MutableValueRef<boolean>;
   workspaceRef: RefObject<HTMLElement | null>;
 };
@@ -56,6 +59,7 @@ export function useViewModeScrollPreservation({
   onQueueEditorFocus,
   onSetActiveFileViewMode,
   previewSurfaceRef,
+  previewRef,
   scrollSyncingRef,
   workspaceRef,
 }: UseViewModeScrollPreservationArgs) {
@@ -78,11 +82,19 @@ export function useViewModeScrollPreservation({
     const workspace = workspaceRef.current;
 
     if (activeViewMode === "edit") {
-      return { surface: "editor", ratio: workspace ? getScrollRatio(workspace) : 0 };
+      return {
+        surface: "editor",
+        position: editorRef.current?.getViewportLineAnchor() ?? null,
+        ratio: workspace ? getScrollRatio(workspace) : 0,
+      };
     }
 
     if (activeViewMode === "preview") {
-      return { surface: "preview", ratio: workspace ? getScrollRatio(workspace) : 0 };
+      return {
+        surface: "preview",
+        position: previewRef.current?.getViewportLineAnchor() ?? null,
+        ratio: workspace ? getScrollRatio(workspace) : 0,
+      };
     }
 
     if (workspace && isScrollableElement(workspace)) {
@@ -94,6 +106,7 @@ export function useViewModeScrollPreservation({
       if (previewSurface && viewportAnchor >= previewTop) {
         return {
           surface: "preview",
+          position: previewRef.current?.getViewportLineAnchor() ?? null,
           ratio: getSurfaceRatioInWorkspace(previewSurface, workspace),
         };
       }
@@ -101,6 +114,7 @@ export function useViewModeScrollPreservation({
       if (editorSurface) {
         return {
           surface: "editor",
+          position: editorRef.current?.getViewportLineAnchor() ?? null,
           ratio: getSurfaceRatioInWorkspace(editorSurface, workspace),
         };
       }
@@ -110,6 +124,10 @@ export function useViewModeScrollPreservation({
     const sourceElement = getSurfaceElement(sourceSurface);
     return {
       surface: sourceSurface,
+      position:
+        sourceSurface === "editor"
+          ? editorRef.current?.getViewportLineAnchor() ?? null
+          : previewRef.current?.getViewportLineAnchor() ?? null,
       ratio:
         sourceSurface === "editor"
           ? (editorRef.current?.getScrollRatio() ?? 0)
@@ -137,6 +155,15 @@ export function useViewModeScrollPreservation({
   };
 
   const applyModeScrollAnchor = (anchor: ModeScrollAnchor) => {
+    if (anchor.position) {
+      if (activeViewMode !== "preview") {
+        editorRef.current?.revealViewportLineAnchor(anchor.position);
+      }
+      if (activeViewMode !== "edit") {
+        previewRef.current?.followEditorPosition(anchor.position);
+      }
+      return;
+    }
     const workspace = workspaceRef.current;
 
     if (activeViewMode === "split") {
@@ -175,13 +202,12 @@ export function useViewModeScrollPreservation({
 
     const shouldPreserveScroll = options.preserveScroll ?? true;
     const shouldFocusEditor = options.focusEditor ?? (nextViewMode === "edit" && !shouldPreserveScroll);
-    if (nextViewMode === "split") {
-      pendingModeScrollRef.current = null;
-    } else if (nextViewMode !== activeViewMode && shouldPreserveScroll) {
+    if (nextViewMode !== activeViewMode && shouldPreserveScroll) {
+      const anchor = getCurrentModeScrollAnchor();
       pendingModeScrollRef.current = {
         fileId: activeFileId,
         toMode: nextViewMode,
-        anchor: getCurrentModeScrollAnchor(),
+        anchor,
         focusEditor: shouldFocusEditor,
       };
     } else {
@@ -208,14 +234,10 @@ export function useViewModeScrollPreservation({
     scrollSyncingRef.current = true;
     applyModeScrollAnchor(pendingModeScroll.anchor);
     pendingModeScrollRef.current = null;
-
-    if (activeViewMode !== "edit" || !pendingModeScroll.focusEditor) {
-      releaseScrollSync();
-      return;
-    }
-
     const frame = window.requestAnimationFrame(() => {
-      editorRef.current?.focus({ preventScroll: true });
+      if (activeViewMode === "edit" && pendingModeScroll.focusEditor) {
+        editorRef.current?.focus({ preventScroll: true });
+      }
       applyModeScrollAnchor(pendingModeScroll.anchor);
       releaseScrollSync();
     });

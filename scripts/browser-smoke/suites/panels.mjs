@@ -500,7 +500,7 @@ export async function run(ctx) {
     await sidePanelNavigation.getByRole("button", { name: "Search", exact: true }).click();
     const workspaceSearch = page.locator(".right-panel-body.search").getByRole("searchbox", { name: "Search" });
     await workspaceSearch.fill("workspace");
-    await waitForRenderFrame(page);
+    await page.locator(".right-panel-body.search .right-panel-search-results button").first().waitFor({ state: "visible" });
     const searchPanelState = await page.evaluate(() => ({
       searchRowCount: document.querySelectorAll(".right-panel-body.search .right-panel-search-results button").length,
       panelOpen: Boolean(document.querySelector(".right-panel")),
@@ -1230,7 +1230,7 @@ export async function run(ctx) {
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
     let filesAfterRename = await page.evaluate(() => ({
-      hasRenamedRow: Boolean(document.querySelector('.right-file-tree-row.file[title="Right Panel.md"]')),
+      hasRenamedRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Right Panel.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
     }));
     expect(filesAfterRename.hasRenamedRow, "Right Files rename should update the project file row.");
@@ -1240,7 +1240,7 @@ export async function run(ctx) {
     await page.getByRole("menuitem", { name: "Duplicate" }).click();
     await waitForRenderFrame(page);
     const filesAfterDuplicate = await page.evaluate(() => ({
-      hasDuplicateRow: Boolean(document.querySelector('.right-file-tree-row.file[title="Right Panel 2.md"]')),
+      hasDuplicateRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Right Panel 2.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       toastText: document.querySelector(".app-toast")?.textContent?.trim() ?? "",
     }));
@@ -1252,7 +1252,7 @@ export async function run(ctx) {
     await page.getByRole("menuitem", { name: "Delete" }).click();
     await waitForRenderFrame(page);
     const filesAfterDelete = await page.evaluate(() => ({
-      hasDeletedRow: Boolean(document.querySelector('.right-file-tree-row.file[title="Right Panel 2.md"]')),
+      hasDeletedRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Right Panel 2.md"]')),
       hasDeletedTab: Boolean(document.querySelector('.tab-item[data-file-name="Right Panel 2.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       toastText: document.querySelector(".app-toast")?.textContent?.trim() ?? "",
@@ -1270,7 +1270,7 @@ export async function run(ctx) {
     await page.locator(".app-toast-action").click();
     await waitForRenderFrame(page);
     const filesAfterUndoDelete = await page.evaluate(() => ({
-      hasRestoredRow: Boolean(document.querySelector('.right-file-tree-row.file[title="Right Panel 2.md"]')),
+      hasRestoredRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Right Panel 2.md"]')),
       hasRestoredTab: Boolean(document.querySelector('.tab-item[data-file-name="Right Panel 2.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       toastText: document.querySelector(".app-toast")?.textContent?.trim() ?? "",
@@ -1292,7 +1292,7 @@ export async function run(ctx) {
     ]);
     await waitForRenderFrame(page);
     const filesAfterImport = await page.evaluate(() => ({
-      hasImportedRow: Boolean(document.querySelector('.right-file-tree-row.file[title="Panel Import.md"]')),
+      hasImportedRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Panel Import.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
     }));
@@ -1325,7 +1325,7 @@ export async function run(ctx) {
     const folderDocumentState = await page.evaluate(() => {
       const activeTitle = document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "";
       const row = Array.from(document.querySelectorAll(".right-file-tree-row.file"))
-        .find((candidate) => candidate.getAttribute("title") === activeTitle);
+        .find((candidate) => candidate.getAttribute("data-file-name") === activeTitle);
       return {
         activeTitle,
         level: row?.closest('[role="treeitem"]')?.getAttribute("aria-level") ?? "",
@@ -1337,12 +1337,12 @@ export async function run(ctx) {
     expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "Right-clicking a folder should expose New document.");
     expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Right-clicking a folder should expose New folder.");
     await page.keyboard.press("Escape");
-    const importedFileNode = page.locator(".right-file-tree-node.file").filter({ has: page.locator('[title="Panel Import.md"]') });
+    const importedFileNode = page.locator('.right-file-tree-node.file:has(.right-file-tree-row[data-file-name="Panel Import.md"])');
     const archiveFolderNode = page.locator(".right-file-tree-node.folder").filter({ hasText: "Archive" });
     await importedFileNode.dragTo(archiveFolderNode);
     await waitForRenderFrame(page);
     const draggedFileState = await page.evaluate(() => {
-      const row = document.querySelector('.right-file-tree-row.file[title="Panel Import.md"]');
+      const row = document.querySelector('.right-file-tree-row.file[data-file-name="Panel Import.md"]');
       const treeItem = row?.closest('[role="treeitem"]');
       return {
         level: treeItem?.getAttribute("aria-level") ?? "",

@@ -149,7 +149,6 @@ export async function run(ctx) {
           tableCell: readTypography(".preview-surface td"),
           inlineCode: readTypography(".preview-document-content > p code"),
           codeBlock: readTypography(".preview-surface pre code"),
-          imageCaption: readTypography(".preview-image-caption"),
           frameHint: readTypography(".preview-docs-frame-hint"),
           frameCaption: readTypography(".preview-docs-frame figcaption"),
           cardTitle: readTypography(".preview-docs-card-heading strong"),
@@ -227,7 +226,6 @@ export async function run(ctx) {
     expectSupportingText(previewTypography.frontmatterKey, previewTypography.paragraph, "Preview frontmatter keys");
     expectSupportingText(previewTypography.frontmatterValue, previewTypography.paragraph, "Preview frontmatter values");
     expectSupportingText(previewTypography.blockquoteParagraph, previewTypography.paragraph, "Preview blockquotes");
-    expectSupportingText(previewTypography.imageCaption, previewTypography.paragraph, "Preview image captions");
     expectSupportingText(previewTypography.frameHint, previewTypography.paragraph, "Preview Frame hints");
     expectSupportingText(previewTypography.frameCaption, previewTypography.paragraph, "Preview Frame captions");
     expectSupportingText(previewTypography.cardDescription, previewTypography.paragraph, "Preview Card descriptions");

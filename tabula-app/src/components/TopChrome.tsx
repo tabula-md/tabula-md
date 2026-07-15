@@ -89,17 +89,13 @@ export function TopChrome({
 
         <div className="top-right-zone">
           {isLiveConnected && (
-            <div
-              className="presence sharing-presence"
-              aria-label={sharingTooltip}
-              data-tooltip={sharingTooltip}
-            >
+            <div className="presence sharing-presence" aria-label={sharingTooltip}>
               <Users size={16} aria-hidden="true" />
               <div className="avatars" aria-label={copy.collaborators}>
                 <span
                   className={`avatar self ${identity.kind === "agent" ? "agent" : "human"}`}
                   style={{ background: identity.color }}
-                  data-tooltip={getTooltip(identity)}
+                  aria-label={getTooltip(identity)}
                 >
                   {getInitial(identity)}
                 </span>
@@ -118,7 +114,7 @@ export function TopChrome({
                       style={{ background: collaborator.color }}
                       aria-pressed={isFollowing}
                       aria-label={actionLabel}
-                      data-tooltip={`${actionLabel} · ${getTooltip(collaborator)}`}
+                      data-tooltip={actionLabel}
                       onClick={() => onToggleFollowing(collaborator.id)}
                     >
                       {getInitial(collaborator)}

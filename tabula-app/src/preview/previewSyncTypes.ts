@@ -8,4 +8,5 @@ export type SplitPreviewMode =
 
 export type MarkdownPreviewHandle = {
   followEditorPosition: (position: EditorScrollPosition) => void;
+  getViewportLineAnchor: () => EditorScrollPosition | null;
 };

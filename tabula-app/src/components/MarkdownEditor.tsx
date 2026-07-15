@@ -50,7 +50,8 @@ import type {
 } from "../collaboration/liveCollaboration";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
 
-const MAX_CACHED_LOCAL_EDITOR_STATES = 20;
+const MAX_CACHED_LOCAL_EDITOR_STATES = 8;
+const MAX_CACHED_LOCAL_EDITOR_STATE_BYTES = 12 * 1024 * 1024;
 const MAX_CACHED_LIVE_EDITOR_VIEW_STATES = 20;
 
 type LiveEditorViewState = {
@@ -59,6 +60,21 @@ type LiveEditorViewState = {
   viewportAnchor: CollabRelativePosition;
   viewportOffset: number;
 };
+
+type LocalEditorViewState = {
+  selectionAnchor: number;
+  selectionHead: number;
+  viewportOffset: number;
+  viewportPosition: number;
+};
+
+type LocalEditorCacheEntry = {
+  estimatedBytes: number;
+  state: EditorState;
+  viewState: LocalEditorViewState;
+};
+
+const estimateEditorStateBytes = (state: EditorState) => 64 * 1024 + state.doc.length * 4;
 
 const getEditorScrollContext = (view: EditorView) => {
   const internalScroller = view.scrollDOM;
@@ -97,6 +113,42 @@ const captureLiveEditorViewState = (
     viewportAnchor: binding.createRelativePosition(viewport.position),
     viewportOffset: viewport.offset,
   };
+};
+
+const captureLocalEditorViewState = (view: EditorView): LocalEditorViewState => {
+  const selection = view.state.selection.main;
+  const viewport = getEditorViewport(view);
+  return {
+    selectionAnchor: selection.anchor,
+    selectionHead: selection.head,
+    viewportOffset: viewport.offset,
+    viewportPosition: viewport.position,
+  };
+};
+
+const restoreLocalEditorViewState = (
+  view: EditorView,
+  state: LocalEditorViewState | undefined,
+) => {
+  if (!state) return;
+  const docLength = view.state.doc.length;
+  view.dispatch({
+    selection: EditorSelection.single(
+      Math.min(state.selectionAnchor, docLength),
+      Math.min(state.selectionHead, docLength),
+    ),
+  });
+  view.requestMeasure({
+    read: () => {
+      const { contentTop } = getEditorScrollContext(view);
+      return contentTop +
+        view.lineBlockAt(Math.min(state.viewportPosition, docLength)).top +
+        state.viewportOffset;
+    },
+    write: (scrollTop) => {
+      getEditorScrollContext(view).scrollElement.scrollTop = Math.max(0, scrollTop);
+    },
+  });
 };
 
 const resolveLivePosition = (
@@ -203,7 +255,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const collaborationBindingRef = useRef(collaborationBinding);
     const appliedCollaborationBindingRef = useRef(collaborationBinding);
     const compartmentsRef = useRef(createMarkdownEditorCompartments());
-    const stateByFileIdRef = useRef(new Map<string, EditorState>());
+    const stateByFileIdRef = useRef(new Map<string, LocalEditorCacheEntry>());
     const liveViewStateByFileIdRef = useRef(new Map<string, LiveEditorViewState>());
     const lastHistoryStateRef = useRef(EMPTY_EDITOR_HISTORY_STATE);
 
@@ -420,6 +472,30 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
         dispatchEditorSelectionRange(view, from, to);
       },
+      revealViewportLineAnchor: (anchor) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const line = view.state.doc.line(
+          Math.max(1, Math.min(anchor.lineNumber, view.state.doc.lines)),
+        );
+        if (anchor.atDocumentEnd) {
+          getEditorScrollContext(view).scrollElement.scrollTop =
+            getEditorScrollContext(view).scrollElement.scrollHeight;
+          return;
+        }
+        const lineBlock = view.lineBlockAt(line.from);
+        const offset = lineBlock.height * Math.max(0, Math.min(1, anchor.lineOffsetRatio));
+        view.requestMeasure({
+          read: () => {
+            const { contentTop } = getEditorScrollContext(view);
+            return contentTop + lineBlock.top + offset;
+          },
+          write: (scrollTop) => {
+            const scrollElement = getEditorScrollContext(view).scrollElement;
+            scrollElement.scrollTop = Math.max(0, scrollTop);
+          },
+        });
+      },
       revealViewport: (position: number, offset = 0) => {
         const view = viewRef.current;
         if (!view) return;
@@ -524,9 +600,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         onOpenLineActions: (request) => onOpenLineActionsRef.current?.(request),
         onOpenComment: (commentId) => onOpenCommentRef.current?.(commentId),
       });
-      const cachedState = collaborationBinding ? undefined : stateByFileIdRef.current.get(fileId);
+      const cachedEntry = collaborationBinding ? undefined : stateByFileIdRef.current.get(fileId);
+      if (cachedEntry) {
+        stateByFileIdRef.current.delete(fileId);
+        stateByFileIdRef.current.set(fileId, cachedEntry);
+      }
       const state =
-        cachedState ??
+        cachedEntry?.state ??
         EditorState.create({
           doc: collaborationBinding?.yText.toString() ?? value,
           extensions,
@@ -536,6 +616,42 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         parent: containerRef.current,
       });
 
+      if (cachedEntry) {
+        view.dispatch({
+          effects: [
+            compartmentsRef.current.placeholder.reconfigure(
+              createEditorPlaceholderExtension(interfaceCopy.startWriting),
+            ),
+            compartmentsRef.current.annotationGutter.reconfigure(
+              createEditorAnnotationGutterExtension(
+                bookmarks,
+                interfaceCopy,
+                (request) => onOpenLineActionsRef.current?.(request),
+              ),
+            ),
+            compartmentsRef.current.lineNumbers.reconfigure(
+              createEditorLineNumbersExtension(lineNumbers),
+            ),
+            compartmentsRef.current.wrapping.reconfigure(
+              createEditorLineWrappingExtension(lineWrapping),
+            ),
+            compartmentsRef.current.commentAnchor.reconfigure(
+              commentsEnabled
+                ? createEditorCommentAnchorExtension(
+                    commentAnchors,
+                    activeCommentId,
+                    interfaceCopy,
+                    (commentId) => onOpenCommentRef.current?.(commentId),
+                  )
+                : [],
+            ),
+            compartmentsRef.current.searchHighlight.reconfigure(
+              createEditorSearchExtension(searchMatches, activeSearchMatchIndex),
+            ),
+          ],
+        });
+      }
+
       viewRef.current = view;
       appliedCollaborationBindingRef.current = collaborationBinding;
       if (collaborationBinding) {
@@ -544,6 +660,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           collaborationBinding,
           liveViewStateByFileIdRef.current.get(fileId),
         );
+      } else {
+        restoreLocalEditorViewState(view, cachedEntry?.viewState);
       }
       emitHistoryState(view);
       const handleScroll = () => {
@@ -570,10 +688,24 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           appliedBinding.undoManager.stopCapturing();
           stateByFileIdRef.current.delete(fileId);
         } else {
-          stateByFileIdRef.current.set(fileId, view.state);
-          while (stateByFileIdRef.current.size > MAX_CACHED_LOCAL_EDITOR_STATES) {
+          const entry: LocalEditorCacheEntry = {
+            estimatedBytes: estimateEditorStateBytes(view.state),
+            state: view.state,
+            viewState: captureLocalEditorViewState(view),
+          };
+          stateByFileIdRef.current.delete(fileId);
+          stateByFileIdRef.current.set(fileId, entry);
+          let cachedBytes = Array.from(stateByFileIdRef.current.values()).reduce(
+            (total, cached) => total + cached.estimatedBytes,
+            0,
+          );
+          while (
+            stateByFileIdRef.current.size > MAX_CACHED_LOCAL_EDITOR_STATES ||
+            cachedBytes > MAX_CACHED_LOCAL_EDITOR_STATE_BYTES
+          ) {
             const oldestFileId = stateByFileIdRef.current.keys().next().value;
             if (typeof oldestFileId !== "string") break;
+            cachedBytes -= stateByFileIdRef.current.get(oldestFileId)?.estimatedBytes ?? 0;
             stateByFileIdRef.current.delete(oldestFileId);
           }
         }

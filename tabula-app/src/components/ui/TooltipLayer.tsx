@@ -8,7 +8,7 @@ type TooltipState = {
   y: number;
 };
 
-const tooltipDelayMs = 500;
+const tooltipDelayMs = 700;
 const tooltipHalfWidth = 124;
 const viewportPadding = 12;
 
@@ -40,6 +40,7 @@ export function TooltipLayer() {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const timerRef = useRef<number | null>(null);
   const targetRef = useRef<HTMLElement | null>(null);
+  const keyboardNavigationRef = useRef(false);
 
   useEffect(() => {
     const clearTimer = () => {
@@ -63,6 +64,7 @@ export function TooltipLayer() {
       else timerRef.current = window.setTimeout(reveal, delay);
     };
     const handlePointerOver = (event: PointerEvent) => {
+      keyboardNavigationRef.current = false;
       const target = getTooltipTarget(event.target);
       if (!target || target === targetRef.current) return;
       show(target, tooltipDelayMs);
@@ -76,7 +78,7 @@ export function TooltipLayer() {
     };
     const handleFocusIn = (event: FocusEvent) => {
       const target = getTooltipTarget(event.target);
-      if (target) show(target, 0);
+      if (target && keyboardNavigationRef.current) show(target, 0);
     };
     const handleFocusOut = (event: FocusEvent) => {
       const target = targetRef.current;
@@ -86,12 +88,22 @@ export function TooltipLayer() {
       hide();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") hide();
+      if (event.key === "Escape") {
+        hide();
+        return;
+      }
+      if (event.key === "Tab" || event.key.startsWith("Arrow")) {
+        keyboardNavigationRef.current = true;
+      }
+    };
+    const handlePointerDown = () => {
+      keyboardNavigationRef.current = false;
+      hide();
     };
 
     document.addEventListener("pointerover", handlePointerOver, true);
     document.addEventListener("pointerout", handlePointerOut, true);
-    document.addEventListener("pointerdown", hide, true);
+    document.addEventListener("pointerdown", handlePointerDown, true);
     document.addEventListener("focusin", handleFocusIn, true);
     document.addEventListener("focusout", handleFocusOut, true);
     document.addEventListener("keydown", handleKeyDown, true);
@@ -102,7 +114,7 @@ export function TooltipLayer() {
       clearTimer();
       document.removeEventListener("pointerover", handlePointerOver, true);
       document.removeEventListener("pointerout", handlePointerOut, true);
-      document.removeEventListener("pointerdown", hide, true);
+      document.removeEventListener("pointerdown", handlePointerDown, true);
       document.removeEventListener("focusin", handleFocusIn, true);
       document.removeEventListener("focusout", handleFocusOut, true);
       document.removeEventListener("keydown", handleKeyDown, true);

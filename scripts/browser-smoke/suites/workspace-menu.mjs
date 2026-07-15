@@ -409,6 +409,19 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForEditorReady(page, { mode: "edit" });
+    await page.locator(".cm-content").click();
+    await page.keyboard.insertText("Live preview transition stays visible.");
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await page.locator(".preview-surface").getByText("Live preview transition stays visible.").waitFor();
+    await page.evaluate(() => {
+      window.__tabulaSawEmptyPreview = false;
+      window.__tabulaPreviewObserver = new MutationObserver(() => {
+        if (document.body.textContent?.includes("Nothing to preview")) {
+          window.__tabulaSawEmptyPreview = true;
+        }
+      });
+      window.__tabulaPreviewObserver.observe(document.body, { childList: true, subtree: true });
+    });
     await page.evaluate(() => {
       document.documentElement.dataset.theme = "dark";
       document.documentElement.dataset.themePreference = "dark";
@@ -578,6 +591,18 @@ export async function run(ctx) {
     await waitForShareDialogState(page, { panel: "Share link" });
     await page.getByRole("button", { name: "Start session" }).click();
     await page.waitForSelector(".share-link-display");
+    const previewTransition = await page.evaluate(() => {
+      window.__tabulaPreviewObserver?.disconnect();
+      return {
+        sawEmptyPreview: Boolean(window.__tabulaSawEmptyPreview),
+        previewText: document.querySelector(".preview-surface")?.textContent ?? "",
+      };
+    });
+    expect(!previewTransition.sawEmptyPreview, "Starting a live room should not flash the empty Preview state.");
+    expect(
+      previewTransition.previewText.includes("Live preview transition stays visible."),
+      "Starting a live room should preserve the visible Preview until the Yjs projection is ready.",
+    );
     expect(
       new URL(page.url()).hash.startsWith("#room="),
       "Live -> Start session should move the current tab to the canonical room URL.",

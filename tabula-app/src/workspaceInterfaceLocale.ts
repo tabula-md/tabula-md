@@ -21,6 +21,7 @@ type WorkspaceInterfaceMessages = {
   searchNoMatches: string;
   searchNoDocuments: string;
   searchResults: string;
+  searchResultsLimited: string;
   filesSharedWorkspace: string;
   filesRenameFolder: string;
   filesMoreActions: string;
@@ -104,6 +105,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     searchNoMatches: "No matches found",
     searchNoDocuments: "No documents yet",
     searchResults: "Search results",
+    searchResultsLimited: "Showing the first {{count}} matches",
     filesSharedWorkspace: "Shared workspace",
     filesRenameFolder: "Rename {{name}} folder",
     filesMoreActions: "More actions for {{name}}",
@@ -185,6 +187,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     searchNoMatches: "일치하는 결과가 없습니다",
     searchNoDocuments: "아직 문서가 없습니다",
     searchResults: "검색 결과",
+    searchResultsLimited: "처음 {{count}}개 결과를 표시합니다",
     filesSharedWorkspace: "공유 워크스페이스",
     filesRenameFolder: "{{name}} 폴더 이름 바꾸기",
     filesMoreActions: "{{name}} 추가 작업",
@@ -266,6 +269,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     searchNoMatches: "一致する結果はありません",
     searchNoDocuments: "ドキュメントはまだありません",
     searchResults: "検索結果",
+    searchResultsLimited: "最初の{{count}}件を表示しています",
     filesSharedWorkspace: "共有ワークスペース",
     filesRenameFolder: "{{name}} フォルダーの名前を変更",
     filesMoreActions: "{{name}} のその他の操作",
@@ -347,6 +351,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     searchNoMatches: "未找到匹配项",
     searchNoDocuments: "暂无文档",
     searchResults: "搜索结果",
+    searchResultsLimited: "显示前 {{count}} 个结果",
     filesSharedWorkspace: "共享工作区",
     filesRenameFolder: "重命名文件夹 {{name}}",
     filesMoreActions: "{{name}} 的更多操作",
@@ -428,6 +433,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     searchNoMatches: "No se encontraron coincidencias",
     searchNoDocuments: "Aún no hay documentos",
     searchResults: "Resultados de búsqueda",
+    searchResultsLimited: "Mostrando las primeras {{count}} coincidencias",
     filesSharedWorkspace: "Espacio compartido",
     filesRenameFolder: "Renombrar carpeta {{name}}",
     filesMoreActions: "Más acciones para {{name}}",
@@ -509,6 +515,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     searchNoMatches: "Aucun résultat",
     searchNoDocuments: "Aucun document pour le moment",
     searchResults: "Résultats de recherche",
+    searchResultsLimited: "Affichage des {{count}} premiers résultats",
     filesSharedWorkspace: "Espace partagé",
     filesRenameFolder: "Renommer le dossier {{name}}",
     filesMoreActions: "Plus d’actions pour {{name}}",
@@ -590,6 +597,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     searchNoMatches: "Keine Treffer gefunden",
     searchNoDocuments: "Noch keine Dokumente",
     searchResults: "Suchergebnisse",
+    searchResultsLimited: "Die ersten {{count}} Treffer werden angezeigt",
     filesSharedWorkspace: "Geteilter Workspace",
     filesRenameFolder: "Ordner {{name}} umbenennen",
     filesMoreActions: "Weitere Aktionen für {{name}}",
@@ -694,6 +702,7 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         noMatches: copy.searchNoMatches,
         noDocuments: copy.searchNoDocuments,
         results: copy.searchResults,
+        resultsLimited: (count: number) => format(copy.searchResultsLimited, { count }),
       },
       files: {
         sharedWorkspace: copy.filesSharedWorkspace,

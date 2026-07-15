@@ -357,27 +357,130 @@ export async function run(ctx) {
         };
       });
 
+    const readFirstVisibleSourceLine = async (surface) =>
+      page.evaluate((targetSurface) => {
+        const workspace = document.querySelector(".workspace");
+        if (!(workspace instanceof HTMLElement)) return null;
+        const workspaceRect = workspace.getBoundingClientRect();
+        if (targetSurface === "preview") {
+          const blockElements = Array.from(document.querySelectorAll("[data-preview-block-start-line]"));
+          const blocks = blockElements.length > 0
+            ? blockElements
+            : Array.from(document.querySelectorAll("[data-preview-line-start]"));
+          const visible = blocks.find((block) => {
+            const rect = block.getBoundingClientRect();
+            return rect.bottom > workspaceRect.top + 8 && rect.top < workspaceRect.bottom - 8;
+          });
+          if (!(visible instanceof HTMLElement)) return null;
+          const startLine = Number(
+            visible.dataset.previewLineStart ?? visible.dataset.previewBlockStartLine,
+          );
+          const endLine = Number(
+            visible.dataset.previewLineEnd ?? visible.dataset.previewBlockEndLine,
+          );
+          if (!Number.isFinite(startLine) || !Number.isFinite(endLine)) return null;
+          const rect = visible.getBoundingClientRect();
+          const lineCount = Math.max(1, endLine - startLine + 1);
+          const lineProgress = Math.max(
+            0,
+            Math.min(1, (workspaceRect.top - rect.top) / Math.max(1, rect.height)),
+          );
+          return Math.min(endLine, startLine + Math.floor(lineProgress * lineCount));
+        }
+        const lineNumbers = Array.from(document.querySelectorAll(".cm-lineNumbers .cm-gutterElement"));
+        const visible = lineNumbers.find((line) => line.getBoundingClientRect().bottom > workspaceRect.top + 8);
+        const lineNumber = Number(visible?.textContent?.trim());
+        return Number.isFinite(lineNumber) && lineNumber > 0 ? lineNumber : null;
+      }, surface);
+
     const previewBefore = await setWorkspaceRatio(0.62);
     expect(previewBefore && previewBefore.scrollHeight > previewBefore.clientHeight, "Preview should be scrollable for mode transition smoke.");
+    const previewLineBefore = await readFirstVisibleSourceLine("preview");
 
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });
+    await waitForRenderFrame(page);
+    await waitForRenderFrame(page);
     const writeAfter = await readWorkspaceRatio();
+    const editorLineAfterPreview = await readFirstVisibleSourceLine("editor");
     expect(writeAfter, "Edit mode workspace should be measurable.");
     expect(
-      Math.abs(writeAfter.ratio - previewBefore.ratio) < 0.1,
-      "Preview -> Edit should preserve normalized document scroll position.",
+      Math.abs(editorLineAfterPreview - previewLineBefore) <= 4,
+      `Preview -> Edit should preserve the visible Markdown source line (${previewLineBefore} -> ${editorLineAfterPreview}).`,
     );
     expect(writeAfter.topChromeTop === 0, "Mode transition should not move the top chrome.");
     expect(writeAfter.statusTop > 0, "Mode transition should not detach the status row.");
 
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await waitForEditorReady(page, { mode: "preview" });
+    await waitForRenderFrame(page);
+    await waitForRenderFrame(page);
     const previewAfter = await readWorkspaceRatio();
+    const previewLineAfterEdit = await readFirstVisibleSourceLine("preview");
     expect(previewAfter, "Preview mode workspace should be measurable after returning from Edit.");
     expect(
-      Math.abs(previewAfter.ratio - writeAfter.ratio) < 0.1,
-      "Edit -> Preview should preserve normalized document scroll position.",
+      Math.abs(previewLineAfterEdit - previewLineBefore) <= 4,
+      `Edit -> Preview should preserve the visible Markdown source line (${previewLineBefore} -> ${previewLineAfterEdit}).`,
+    );
+
+    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await waitForEditorReady(page, { mode: "split" });
+    expect(
+      Math.abs((await readFirstVisibleSourceLine("editor")) - previewLineBefore) <= 4,
+      "Preview -> Split should preserve the visible Markdown source line.",
+    );
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await createDocument(page);
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText(
+      Array.from({ length: 180 }, (_, index) => `Local tab context line ${index + 1}`).join("\n"),
+    );
+    await page.evaluate(() => {
+      const workspace = document.querySelector(".workspace");
+      if (workspace instanceof HTMLElement) workspace.scrollTop = 1_200;
+    });
+    await waitForRenderFrame(page);
+    const lineBeforeTabSwitch = await page.evaluate(() => {
+      const workspace = document.querySelector(".workspace");
+      if (!(workspace instanceof HTMLElement)) return null;
+      const workspaceTop = workspace.getBoundingClientRect().top;
+      const visible = Array.from(document.querySelectorAll(".cm-lineNumbers .cm-gutterElement"))
+        .find((line) => line.getBoundingClientRect().bottom > workspaceTop + 8);
+      return Number(visible?.textContent?.trim()) || null;
+    });
+    await createDocument(page);
+    await waitForEditorReady(page, { mode: "edit" });
+    await page.locator(".tab-item").first().getByRole("tab").click();
+    await waitForRenderFrame(page);
+    await waitForRenderFrame(page);
+    const lineAfterTabSwitch = await page.evaluate(() => {
+      const workspace = document.querySelector(".workspace");
+      if (!(workspace instanceof HTMLElement)) return null;
+      const workspaceTop = workspace.getBoundingClientRect().top;
+      const visible = Array.from(document.querySelectorAll(".cm-lineNumbers .cm-gutterElement"))
+        .find((line) => line.getBoundingClientRect().bottom > workspaceTop + 8);
+      return Number(visible?.textContent?.trim()) || null;
+    });
+    expect(
+      Math.abs(lineAfterTabSwitch - lineBeforeTabSwitch) <= 1,
+      `Returning to a local tab should restore its viewport (${lineBeforeTabSwitch} -> ${lineAfterTabSwitch}).`,
+    );
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await createDocument(page);
+    await waitForEditorReady(page, { mode: "edit" });
+    const searchButton = page.getByRole("button", { name: "Search", exact: true }).first();
+    await searchButton.hover();
+    await page.locator(".app-tooltip").waitFor({ state: "visible", timeout: 2_000 });
+    await searchButton.click();
+    await waitForRenderFrame(page);
+    expect(
+      (await page.locator(".app-tooltip").count()) === 0,
+      "Pointer activation should dismiss the tooltip instead of reopening it on focus.",
     );
   });
 
@@ -785,6 +888,8 @@ export async function run(ctx) {
         "",
         `![Tiny swatch](${tinyPngDataUrl} "Rendered image")`,
         "",
+        "![Missing local image](./missing.png)",
+        "",
         "> Quoted context",
         ">",
         "> > Nested context",
@@ -811,7 +916,6 @@ export async function run(ctx) {
       const rightAlignedCell = document.querySelector(".preview-surface tbody tr td:last-child");
       const image = document.querySelector(".preview-image");
       const imageFrame = document.querySelector(".preview-image-frame");
-      const imageCaption = document.querySelector(".preview-image-caption");
       const nestedList = document.querySelector(".preview-surface li ul");
       const quoteStyle = quote instanceof HTMLElement ? window.getComputedStyle(quote) : null;
       const nestedQuoteStyle = nestedQuote instanceof HTMLElement ? window.getComputedStyle(nestedQuote) : null;
@@ -833,10 +937,12 @@ export async function run(ctx) {
         tableWrapBackground: tableWrapStyle?.backgroundColor ?? "",
         rightAlignedTextAlign: rightAlignedStyle?.textAlign ?? "",
         imageFrameCount: document.querySelectorAll(".preview-image-frame").length,
+        unavailableImageText: document.querySelector(".preview-image-unavailable")?.textContent?.trim() ?? "",
+        relativeImageRequestCount: document.querySelectorAll('.preview-image[src*="missing.png"]').length,
         imageLoading: image?.getAttribute("loading") ?? "",
         imageMaxWidth: imageStyle?.maxWidth ?? "",
         imageRadius: imageStyle?.borderRadius ?? "",
-        imageCaption: imageCaption?.textContent ?? "",
+        imageCaptionCount: document.querySelectorAll(".preview-image-caption").length,
         nestedListMarginTop: nestedListStyle?.marginTop ?? "",
         imageFrameDisplay: imageFrame instanceof HTMLElement ? window.getComputedStyle(imageFrame).display : "",
       };
@@ -853,13 +959,18 @@ export async function run(ctx) {
     expect(previewGfm.tableWrapBorderWidth === "0px", "Preview tables should not draw an explicit document boundary.");
     expect(previewGfm.tableWrapBackground === "rgb(255, 255, 255)", "Preview tables should not look like filled gray cards.");
     expect(previewGfm.rightAlignedTextAlign === "right", "Preview tables should preserve GFM column alignment.");
-    expect(previewGfm.imageFrameCount === 1, "Preview images should render through the Tabula.md image frame.");
+    expect(
+      previewGfm.imageFrameCount === 1,
+      `Preview images should render through the Tabula.md image frame (${JSON.stringify(previewGfm)}).`,
+    );
+    expect(previewGfm.unavailableImageText === "Missing local image", "Unsupported local images should render a compact unavailable state.");
+    expect(previewGfm.relativeImageRequestCount === 0, "Relative image sources should not resolve against the app origin.");
     expect(previewGfm.imageLoading === "lazy", "Preview images should lazy-load.");
     expect(previewGfm.imageMaxWidth === "100%", "Preview images should not overflow the document width.");
     expect(previewGfm.imageRadius !== "0px", "Preview images should use the document surface radius.");
-    expect(previewGfm.imageCaption === "Rendered image", "Preview images should surface the image title as a caption.");
+    expect(previewGfm.imageCaptionCount === 0, "Preview images should not turn alt or title text into a visible caption.");
     expect(previewGfm.nestedListMarginTop !== "0px", "Nested preview lists should have deliberate vertical spacing.");
-    expect(previewGfm.imageFrameDisplay === "grid", "Standalone preview images should render as block-like document media.");
+    expect(previewGfm.imageFrameDisplay === "block", "Standalone preview images should follow the document flow without a card layout.");
 
     await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
@@ -1898,6 +2009,7 @@ flowchart LR
     await waitForRenderFrame(page);
     await page.waitForSelector(".preview-mermaid-svg svg", { timeout: 15_000 });
     await page.waitForSelector(".preview-math-inline .katex", { timeout: 10_000 });
+    await page.waitForSelector(".preview-math-block .katex-display", { timeout: 10_000 });
     const forceTheme = async (theme) => {
       await page.evaluate((nextTheme) => {
         document.documentElement.setAttribute("data-theme", nextTheme);

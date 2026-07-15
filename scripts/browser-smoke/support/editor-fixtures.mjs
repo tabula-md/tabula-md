@@ -237,7 +237,7 @@ export const buildAsyncPreviewMediaMarkdown = () => {
         "",
         "The delayed image below intentionally changes rendered height after preview has already aligned.",
         "",
-        "![Delayed media anchor](/tabula-delayed-media.svg?case=async-height)",
+        "![Delayed media anchor](https://media.tabula.test/tabula-delayed-media.svg?case=async-height)",
         "",
         "Text immediately after delayed media should remain near the same preview context.",
         "",
