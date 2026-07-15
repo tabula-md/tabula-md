@@ -1,14 +1,14 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Search, SlidersHorizontal } from "lucide-react";
+import { useDeferredValue, useMemo, useState } from "react";
+import { stripMarkdownExtension } from "@tabula-md/tabula";
+import { Check, File, Search, SlidersHorizontal } from "lucide-react";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import {
   DEFAULT_SEARCH_OPTIONS,
   type SearchOptions,
 } from "../editor/editorSearchModel";
 import {
-  searchWorkspaceFiles,
-  type WorkspaceSearchResult,
-} from "../editor/workspaceSearchModel";
+  searchWorkspaceFileNames,
+} from "../editor/workspaceFileSearchModel";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
@@ -21,7 +21,7 @@ type RightPanelSearchProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   language: WorkspaceLanguage;
-  onOpenResult: (fileId: string, start: number, end: number) => void;
+  onSelectFile: (fileId: string) => void;
 };
 
 export function RightPanelSearch({
@@ -29,87 +29,24 @@ export function RightPanelSearch({
   files,
   folders,
   language,
-  onOpenResult,
+  onSelectFile,
 }: RightPanelSearchProps) {
   const labels = getWorkspaceChromeCopy(language).documentControls;
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [options, setOptions] = useState<SearchOptions>(DEFAULT_SEARCH_OPTIONS);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [result, setResult] = useState<WorkspaceSearchResult>(() =>
-    searchWorkspaceFiles([], "", DEFAULT_SEARCH_OPTIONS),
-  );
-  const [searchWorker, setSearchWorker] = useState<Worker | null>(null);
-  const workerFilesRef = useRef(new Map<string, { text: string; title: string }>());
-  const latestRequestIdRef = useRef(0);
   const fileLabels = useMemo(() => getWorkspaceFileTabLabels(files, folders), [files, folders]);
+  const searchEntries = useMemo(() => files.map((file) => ({
+    fileId: file.id,
+    displayPath: stripMarkdownExtension(fileLabels.get(file.id)?.fullPath ?? file.title),
+  })), [fileLabels, files]);
+  const result = useMemo(
+    () => searchWorkspaceFileNames(searchEntries, deferredQuery, options),
+    [deferredQuery, options, searchEntries],
+  );
   const hasQuery = deferredQuery.trim().length > 0;
   const hasActiveOptions = Object.values(options).some(Boolean);
-
-  useEffect(() => {
-    if (typeof Worker === "undefined") return undefined;
-    const worker = new Worker(new URL("../workers/workspaceSearch.worker.ts", import.meta.url), {
-      type: "module",
-    });
-    setSearchWorker(worker);
-    return () => worker.terminate();
-  }, []);
-
-  useEffect(() => {
-    if (!searchWorker) return;
-    const previousFiles = workerFilesRef.current;
-    const nextFiles = new Map<string, { text: string; title: string }>();
-    const changedFiles = files.flatMap((file) => {
-      nextFiles.set(file.id, { text: file.text, title: file.title });
-      const previous = previousFiles.get(file.id);
-      return previous?.text === file.text && previous.title === file.title
-        ? []
-        : [{ id: file.id, text: file.text, title: file.title }];
-    });
-    const removedFileIds = Array.from(previousFiles.keys()).filter((fileId) => !nextFiles.has(fileId));
-    workerFilesRef.current = nextFiles;
-    searchWorker.postMessage({
-      type: "sync-files",
-      fileIds: files.map((file) => file.id),
-      files: changedFiles,
-      removedFileIds,
-    });
-  }, [files, searchWorker]);
-
-  useEffect(() => {
-    const requestId = latestRequestIdRef.current + 1;
-    latestRequestIdRef.current = requestId;
-    if (!hasQuery) {
-      setSearching(false);
-      setResult(searchWorkspaceFiles([], "", options));
-      return;
-    }
-    if (!searchWorker) {
-      setSearching(false);
-      setResult(searchWorkspaceFiles(files, deferredQuery, options));
-      return;
-    }
-    setSearching(true);
-    searchWorker.onmessage = (event: MessageEvent<{ requestId: number; result: WorkspaceSearchResult }>) => {
-      if (event.data.requestId !== latestRequestIdRef.current) return;
-      setResult(event.data.result);
-      setSearching(false);
-    };
-    searchWorker.onerror = () => {
-      if (requestId !== latestRequestIdRef.current) return;
-      setResult(searchWorkspaceFiles(files, deferredQuery, options));
-      setSearching(false);
-    };
-    searchWorker.postMessage({
-      type: "search",
-      options,
-      query: deferredQuery,
-      requestId,
-    });
-    return undefined;
-  }, [deferredQuery, files, hasQuery, options, searchWorker]);
 
   const toggleOption = (option: keyof SearchOptions) => {
     setOptions((current) => ({ ...current, [option]: !current[option] }));
@@ -121,14 +58,15 @@ export function RightPanelSearch({
         <label className="right-panel-search-field">
           <Search size={16} aria-hidden="true" />
           <input
-            ref={inputRef}
-            type="search"
+            type="text"
+            role="searchbox"
+            inputMode="search"
             value={query}
             autoComplete="off"
             spellCheck={false}
-            aria-label={labels.search}
+            aria-label={copy.placeholder}
             aria-invalid={Boolean(result.error)}
-            placeholder={labels.search}
+            placeholder={copy.placeholder}
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
@@ -167,30 +105,24 @@ export function RightPanelSearch({
         </MenuRoot>
       </div>
 
-      {!searching && result.error && <p className="right-panel-search-message error">{result.error}</p>}
-      {hasQuery && !searching && !result.error && result.matchCount === 0 && (
+      {result.error && <p className="right-panel-search-message error">{result.error}</p>}
+      {hasQuery && !result.error && result.files.length === 0 && (
         <PanelEmptyState>{copy.noMatches}</PanelEmptyState>
       )}
-      {!searching && result.matchCount > 0 && (
+      {result.files.length > 0 && (
         <div className="right-panel-search-results" aria-label={copy.results}>
-          {result.groups.map((group) => (
-            <section key={group.fileId} className="right-panel-search-group">
-              <h3>{fileLabels.get(group.fileId)?.fullPath ?? group.fileTitle}</h3>
-              {group.matches.map((match) => (
-                <button
-                  key={`${match.start}:${match.end}`}
-                  type="button"
-                  onClick={() => onOpenResult(group.fileId, match.start, match.end)}
-                >
-                  {match.preview}
-                </button>
-              ))}
-            </section>
+          {result.files.map((file) => (
+            <button
+              className="right-panel-search-result"
+              key={file.fileId}
+              type="button"
+              onClick={() => onSelectFile(file.fileId)}
+            >
+              <File size={16} aria-hidden="true" />
+              <span>{file.displayPath}</span>
+            </button>
           ))}
         </div>
-      )}
-      {!searching && result.truncated && (
-        <p className="right-panel-search-message">{copy.resultsLimited(result.matchCount)}</p>
       )}
     </section>
   );

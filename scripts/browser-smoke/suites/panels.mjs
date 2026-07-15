@@ -498,15 +498,60 @@ export async function run(ctx) {
 
     const sidePanelNavigation = page.getByRole("navigation", { name: "Side panel sections" });
     await sidePanelNavigation.getByRole("button", { name: "Search", exact: true }).click();
-    const workspaceSearch = page.locator(".right-panel-body.search").getByRole("searchbox", { name: "Search" });
-    await workspaceSearch.fill("workspace");
+    const workspaceSearch = page.locator(".right-panel-body.search").getByRole("searchbox", { name: "Search files" });
+    await workspaceSearch.fill("Untitled");
     await page.locator(".right-panel-body.search .right-panel-search-results button").first().waitFor({ state: "visible" });
     const searchPanelState = await page.evaluate(() => ({
       searchRowCount: document.querySelectorAll(".right-panel-body.search .right-panel-search-results button").length,
+      searchInputType: document.querySelector(".right-panel-body.search input")?.getAttribute("type") ?? "",
+      firstResult: (() => {
+        const row = document.querySelector(".right-panel-search-result");
+        const icon = row?.querySelector("svg");
+        const rowStyle = row ? getComputedStyle(row) : null;
+        const iconStyle = icon ? getComputedStyle(icon) : null;
+        return {
+          background: rowStyle?.backgroundColor ?? "",
+          color: rowStyle?.color ?? "",
+          iconColor: iconStyle?.color ?? "",
+          label: row?.textContent?.trim() ?? "",
+          fileIconCount: row?.querySelectorAll(".lucide-file").length ?? 0,
+          fileTextIconCount: row?.querySelectorAll(".lucide-file-text").length ?? 0,
+        };
+      })(),
+      settingsBackground: (() => {
+        const button = document.querySelector(".right-panel-search-settings-trigger");
+        return button ? getComputedStyle(button).backgroundColor : "";
+      })(),
       panelOpen: Boolean(document.querySelector(".right-panel")),
     }));
-    expect(searchPanelState.searchRowCount >= 1, "Workspace Search should render matching files inside the Search panel view.");
+    expect(searchPanelState.searchRowCount >= 1, "Workspace Search should render matching file names inside the Search panel view.");
+    expect(searchPanelState.searchInputType === "text", "Workspace Search should not expose a native search cancel control.");
+    expect(
+      searchPanelState.settingsBackground === "rgba(0, 0, 0, 0)",
+      "Workspace Search settings should stay transparent at rest.",
+    );
+    expect(
+      searchPanelState.firstResult.background === "rgba(0, 0, 0, 0)" &&
+        searchPanelState.firstResult.color === searchPanelState.firstResult.iconColor,
+      "File search results should use primary text and icon color on a transparent row.",
+    );
+    expect(
+      searchPanelState.firstResult.fileIconCount === 1 &&
+        searchPanelState.firstResult.fileTextIconCount === 0,
+      "File search results should use the same file icon as the Files panel.",
+    );
+    expect(
+      !/\.(?:md|markdown)$/i.test(searchPanelState.firstResult.label),
+      "File search results should hide Markdown extensions like the Files panel.",
+    );
     expect(searchPanelState.panelOpen, "Using Workspace Search should keep the side panel open.");
+    await workspaceSearch.fill("workspace");
+    await waitForRenderFrame(page);
+    expect(
+      await page.getByText("No matches found", { exact: true }).isVisible(),
+      "Workspace Search should not match text that exists only inside a document.",
+    );
+    await workspaceSearch.fill("Untitled");
     await workspaceSearch.blur();
     const workspaceSearchSurfaceBeforePointerFocus = await page.locator(".right-panel-search-field").evaluate((field) => {
       const style = window.getComputedStyle(field);

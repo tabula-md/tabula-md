@@ -65,7 +65,6 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   isLive: boolean;
   language: WorkspaceLanguage;
   onImportFile: () => void;
-  onOpenSearchResult: (fileId: string, start: number, end: number) => void;
   outlineHeadings: MarkdownHeading[];
   parsedMarkdownBody: string;
   previewSurfaceRef: RefObject<HTMLElement | null>;
@@ -112,7 +111,6 @@ export function useWorkspaceProjectContextRuntime({
   onIdentityNameChange,
   onIdentityNameCommit,
   onImportFile,
-  onOpenSearchResult,
   onNewFile,
   onNewFolder,
   onRenameFile,
@@ -225,7 +223,6 @@ export function useWorkspaceProjectContextRuntime({
     activeReplyCommentId,
     replyDraftByCommentId,
     onSetView: setPanelView,
-    onOpenSearchResult,
     onClose: () => setRightPanelOpen(false),
     onNewFile,
     onNewFolder,

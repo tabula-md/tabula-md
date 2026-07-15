@@ -29,6 +29,7 @@ export const readSearchRowLayout = (page) =>
 
     const rowRect = row.getBoundingClientRect();
     const barRect = bar.getBoundingClientRect();
+    const searchLineRect = bar.querySelector(".document-search-line")?.getBoundingClientRect();
     const toolbarRect = toolbar.getBoundingClientRect();
     const rowStyle = getComputedStyle(row);
     return {
@@ -39,7 +40,9 @@ export const readSearchRowLayout = (page) =>
       rowWidth: Math.round(rowRect.width),
       barLeft: Math.round(barRect.left),
       barRight: Math.round(barRect.right),
+      barTop: Math.round(barRect.top),
       barWidth: Math.round(barRect.width),
+      searchLineTop: Math.round(searchLineRect?.top ?? -1),
       toolbarLeft: Math.round(toolbarRect.left),
       toolbarRight: Math.round(toolbarRect.right),
       rightPanelOpen: Boolean(document.querySelector(".right-panel")),

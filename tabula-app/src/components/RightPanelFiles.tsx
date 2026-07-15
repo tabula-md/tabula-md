@@ -1,4 +1,5 @@
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
+import { stripMarkdownExtension } from "@tabula-md/tabula";
 import {
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -89,8 +90,6 @@ type RightPanelFilesProps = {
 
 const RIGHT_TREE_INDENT = 16;
 const FOLDER_AUTO_EXPAND_DELAY = 600;
-
-const getFileDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
 
 const compareFileTreeNodes = (firstNode: FileTreeNode, secondNode: FileTreeNode) => {
   if (firstNode.type !== secondNode.type) {
@@ -340,7 +339,7 @@ export function RightPanelFiles({
     pendingRenameFrameRef.current = window.requestAnimationFrame(() => {
       pendingRenameFrameRef.current = null;
       setRenamingFileId(pendingFile.id);
-      setRenamingTitle(getFileDisplayTitle(pendingFile.title));
+      setRenamingTitle(stripMarkdownExtension(pendingFile.title));
     });
   }, [files, rowIndexByFileId, treeVirtualizer]);
 
@@ -365,7 +364,7 @@ export function RightPanelFiles({
   const startRenamingFile = (file: WorkspaceFile) => {
     setActionMenuFileId(null);
     setRenamingFileId(file.id);
-    setRenamingTitle(getFileDisplayTitle(file.title));
+    setRenamingTitle(stripMarkdownExtension(file.title));
   };
 
   const cancelRenamingFile = () => {
@@ -737,7 +736,7 @@ export function RightPanelFiles({
                 <span className="right-file-document-icon">
                   <File size={16} />
                 </span>
-                <span className="right-row-label">{getFileDisplayTitle(node.name)}</span>
+                <span className="right-row-label">{stripMarkdownExtension(node.name)}</span>
               </button>
               <span className="right-file-actions" aria-label={copy.actions(file.title)}>
                 <MenuRoot

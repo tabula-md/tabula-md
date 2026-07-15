@@ -1182,15 +1182,6 @@ export function useWorkspaceRuntime() {
     handleLineAnnotationAction,
   );
   const openStableCommentMarker = useEventCallback(openCommentMarker);
-  const openWorkspaceSearchResult = useEventCallback((
-    fileId: string,
-    start: number,
-    end: number,
-  ) => {
-    selectFile(fileId);
-    setWorkspaceFileViewMode("edit");
-    queueEditorTextRange(start, end);
-  });
   const { sidePanelProps } =
     useWorkspaceProjectContextRuntime({
       activeCommentId: focusedCommentId,
@@ -1223,7 +1214,6 @@ export function useWorkspaceRuntime() {
       onIdentityNameChange: updateIdentityName,
       onIdentityNameCommit: normalizeIdentityName,
       onImportFile: () => importInputRef.current?.click(),
-      onOpenSearchResult: openWorkspaceSearchResult,
       onNewFile: addFile,
       onNewFolder: addWorkspaceFolder,
       onRenameFile: renameWorkspaceFileAction,
