@@ -95,5 +95,8 @@ export function useRightPanelCollapseState({
     expandAllFileTreeFolders: () => setCollapsedFileTreeFolderIds(new Set()),
     toggleOutlineHeadingCollapsed: (headingId: string) =>
       setCollapsedOutlineHeadingIds((currentIds) => toggleSetValue(currentIds, headingId)),
+    collapseAllOutlineHeadings: (headingIds: Iterable<string>) =>
+      setCollapsedOutlineHeadingIds(new Set(headingIds)),
+    expandAllOutlineHeadings: () => setCollapsedOutlineHeadingIds(new Set()),
   };
 }

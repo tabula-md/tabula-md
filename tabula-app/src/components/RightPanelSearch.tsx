@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Check, Search, SlidersHorizontal } from "lucide-react";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import {
   DEFAULT_SEARCH_OPTIONS,
@@ -13,7 +13,7 @@ import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
-import { PopoverContent, PopoverRoot, PopoverTrigger } from "./ui/Popover";
+import { MenuCheckboxItem, MenuContent, MenuRoot, MenuTrigger } from "./ui/Menu";
 import { PanelEmptyState } from "./right-panel/PanelEmptyState";
 
 type RightPanelSearchProps = {
@@ -46,6 +46,7 @@ export function RightPanelSearch({
   const latestRequestIdRef = useRef(0);
   const fileLabels = useMemo(() => getWorkspaceFileTabLabels(files, folders), [files, folders]);
   const hasQuery = deferredQuery.trim().length > 0;
+  const hasActiveOptions = Object.values(options).some(Boolean);
 
   useEffect(() => {
     if (typeof Worker === "undefined") return undefined;
@@ -131,37 +132,39 @@ export function RightPanelSearch({
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        <PopoverRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
-          <PopoverTrigger asChild>
+        <MenuRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <MenuTrigger asChild>
             <button
-              className={settingsOpen ? "active" : ""}
+              className="right-panel-search-settings-trigger"
               type="button"
               aria-label={copy.settings}
               data-tooltip={copy.settings}
-              aria-pressed={settingsOpen}
+              aria-expanded={settingsOpen}
             >
               <SlidersHorizontal size={16} />
+              {hasActiveOptions && (
+                <span className="right-panel-control-status-dot" aria-hidden="true" />
+              )}
             </button>
-          </PopoverTrigger>
-          <PopoverContent className="right-panel-search-settings" aria-label={copy.settings}>
+          </MenuTrigger>
+          <MenuContent className="right-panel-search-settings" ariaLabel={copy.settings}>
             {([
               ["caseSensitive", "Aa", labels.matchCase],
               ["wholeWord", "wd", labels.matchWholeWord],
               ["regexp", ".*", labels.useRegularExpression],
             ] as const).map(([option, abbreviation, label]) => (
-              <button
+              <MenuCheckboxItem
                 key={option}
-                className={options[option] ? "active" : ""}
-                type="button"
-                aria-pressed={options[option]}
-                onClick={() => toggleOption(option)}
-              >
-                <span aria-hidden="true">{abbreviation}</span>
-                <span>{label}</span>
-              </button>
+                checked={options[option]}
+                icon={options[option] ? <Check size={14} /> : undefined}
+                label={label}
+                trailing={<span aria-hidden="true">{abbreviation}</span>}
+                onCheckedChange={() => toggleOption(option)}
+                onSelect={(event) => event.preventDefault()}
+              />
             ))}
-          </PopoverContent>
-        </PopoverRoot>
+          </MenuContent>
+        </MenuRoot>
       </div>
 
       {!searching && result.error && <p className="right-panel-search-message error">{result.error}</p>}

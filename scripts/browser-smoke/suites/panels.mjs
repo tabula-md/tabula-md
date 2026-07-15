@@ -507,10 +507,34 @@ export async function run(ctx) {
     }));
     expect(searchPanelState.searchRowCount >= 1, "Workspace Search should render matching files inside the Search panel view.");
     expect(searchPanelState.panelOpen, "Using Workspace Search should keep the side panel open.");
-    await page.getByRole("button", { name: "Search settings", exact: true }).click();
+    await workspaceSearch.blur();
+    const workspaceSearchSurfaceBeforePointerFocus = await page.locator(".right-panel-search-field").evaluate((field) => {
+      const style = window.getComputedStyle(field);
+      return { background: style.backgroundColor, boxShadow: style.boxShadow };
+    });
+    await workspaceSearch.click();
+    const workspaceSearchSurfaceAfterPointerFocus = await page.locator(".right-panel-search-field").evaluate((field) => {
+      const style = window.getComputedStyle(field);
+      return { background: style.backgroundColor, boxShadow: style.boxShadow };
+    });
     expect(
-      await page.getByRole("button", { name: "Match case", exact: true }).isVisible(),
+      JSON.stringify(workspaceSearchSurfaceAfterPointerFocus) === JSON.stringify(workspaceSearchSurfaceBeforePointerFocus),
+      "Workspace Search pointer focus should not recolor the field or draw an underline.",
+    );
+    await page.getByRole("button", { name: "Search settings", exact: true }).click();
+    const matchCaseSetting = page.getByRole("menuitemcheckbox", { name: "Match case", exact: true });
+    expect(
+      await matchCaseSetting.isVisible(),
       "Workspace Search should expose search settings.",
+    );
+    await matchCaseSetting.click();
+    expect(
+      (await matchCaseSetting.getAttribute("aria-checked")) === "true",
+      "Workspace Search settings should expose persistent options as checked menu items.",
+    );
+    expect(
+      (await page.locator(".right-panel-search-settings-trigger .right-panel-control-status-dot").count()) === 1,
+      "Workspace Search should mark the settings trigger when an option is active.",
     );
     await page.keyboard.press("Escape");
     await workspaceSearch.fill("a query that cannot match any workspace document");
@@ -567,6 +591,11 @@ export async function run(ctx) {
     }));
     expect(emptyCommentsState.cardCount === 0, "Comments should start without comment cards.");
     expect(emptyCommentsState.actionCount === 0, "Comment actions should not appear when there are no comments.");
+    expect(
+      (await page.locator(".right-comments-toolbar-action .lucide-plus").count()) === 1 &&
+        (await page.locator(".right-comments-toolbar-action .lucide-message-square-plus").count()) === 0,
+      "Comments should use the shared contextual plus command.",
+    );
     expect(Boolean(emptyCommentsState.contextLabel), "Comments should identify the active scope.");
     expect(!emptyCommentsState.contextLabel.startsWith("Comments on"), "Comments scope title should avoid repeated helper copy.");
     expect(!emptyCommentsState.contextLabel.endsWith(".md"), "Comments should hide .md in the active-file label.");

@@ -75,11 +75,6 @@
   font-size: var(--font-ui-body);
 }
 
-.document-search-field:focus-within {
-  background: var(--surface-active);
-  box-shadow: inset 0 -2px 0 var(--focus-ring);
-}
-
 .document-search-field input:focus,
 .document-search-field input:focus-visible {
   outline: 0;
@@ -142,8 +137,8 @@
 }
 
 .document-search-bar button.active {
-  color: var(--text-primary);
-  background: var(--surface-muted);
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .document-search-bar button:disabled {

@@ -85,6 +85,15 @@ These exceptions must not be reused as decoration for containers or cards.
 - The shared focus ring is neutral rather than brand-colored. Inline rename
   keeps the existing tab or row surface and relies on its selected text and
   caret instead of outlining the parent or drawing a separate field.
+- Disclosure controls use neutral hover or open-state feedback. Persistent
+  settings are not represented by a faded trigger; they use the control's
+  normal color plus a compact blue status dot.
+- Checkbox-style menu options use a check mark in the shared menu icon slot.
+  Compact inline toggles, such as document-search options, use the formatting
+  toggle treatment of `--accent-soft` and `--accent`.
+- Search fields remain on one stable surface while typing. Focus does not
+  recolor the field or draw an underline; the input caret is the semantic
+  focus indicator for these text-entry controls.
 
 ## Document Commands
 
@@ -125,6 +134,15 @@ These exceptions must not be reused as decoration for containers or cards.
   targets on redundant previous/next tab arrows.
 - Larger document-layout breakpoints may exist for split-view reflow, but they
   do not redefine chrome control sizing.
+
+## Project Context
+
+- Files and Outline may expose one expand-all or collapse-all command when
+  their visible hierarchy contains collapsible rows. The command uses the same
+  icon, size, and state grammar in both tabs.
+- Comments uses a contextual plus command for starting a comment. The panel
+  title and accessible name carry the meaning; the icon does not duplicate a
+  comment glyph inside another add glyph.
 
 ## Motion And Copy
 

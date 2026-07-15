@@ -86,6 +86,20 @@ export async function run(ctx) {
 
     const searchInput = page.getByRole("searchbox", { name: "Search" });
     expect((await searchInput.getAttribute("placeholder")) === "Search", "Search input placeholder should be Search.");
+    await searchInput.blur();
+    const documentSearchSurfaceBeforePointerFocus = await page.locator(".document-search-field").evaluate((field) => {
+      const style = window.getComputedStyle(field);
+      return { background: style.backgroundColor, boxShadow: style.boxShadow };
+    });
+    await searchInput.click();
+    const documentSearchSurfaceAfterPointerFocus = await page.locator(".document-search-field").evaluate((field) => {
+      const style = window.getComputedStyle(field);
+      return { background: style.backgroundColor, boxShadow: style.boxShadow };
+    });
+    expect(
+      JSON.stringify(documentSearchSurfaceAfterPointerFocus) === JSON.stringify(documentSearchSurfaceBeforePointerFocus),
+      "Document Search pointer focus should not recolor the field or draw an underline.",
+    );
     expect((await page.getByLabel("Replace with").count()) === 0, "Replace should stay collapsed by default.");
     await page.getByRole("button", { name: "Toggle replace" }).click();
     await page.getByLabel("Replace with").fill("replacement");

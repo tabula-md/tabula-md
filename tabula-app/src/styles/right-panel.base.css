@@ -151,6 +151,7 @@
 
 .right-panel-body.comments,
 .right-panel-body.files,
+.right-panel-body.outline,
 .right-panel-body.search {
   overflow: hidden;
 }
@@ -176,7 +177,8 @@
   min-width: 0;
 }
 
-.right-file-toolbar-button {
+.right-file-toolbar-button,
+.right-panel-toolbar-button {
   display: grid;
   place-items: center;
   width: var(--right-control-size);
@@ -200,7 +202,9 @@
 
 .right-file-toolbar-button:hover,
 .right-file-toolbar-button:focus-visible,
-.right-file-toolbar-button.active {
+.right-file-toolbar-button.active,
+.right-panel-toolbar-button:hover,
+.right-panel-toolbar-button:focus-visible {
   color: var(--text-primary);
   background: var(--surface-hover);
 }
