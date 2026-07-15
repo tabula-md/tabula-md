@@ -20,7 +20,7 @@ import { PanelEmptyState } from "./right-panel/PanelEmptyState";
 export type RightPanelCommentGroup = CoreRightPanelCommentGroup<WorkspaceFile, FileComment>;
 
 type RightPanelCommentsProps = {
-  activeFile?: WorkspaceFile;
+  activeFile: WorkspaceFile;
   activeFileId: string;
   activeFileTitle: string;
   fileLabels: ReadonlyMap<string, WorkspaceFileTabLabel>;
@@ -111,9 +111,9 @@ export function RightPanelComments({
     resolvedCommentGroups,
     commentScope,
   });
-  const currentFileLabel = activeFile
-    ? stripMarkdownExtension(fileLabels.get(activeFile.id)?.displayTitle ?? activeFileTitle)
-    : copy.currentFile;
+  const currentFileLabel = stripMarkdownExtension(
+    fileLabels.get(activeFile.id)?.displayTitle ?? activeFileTitle,
+  );
   const virtualRows = useMemo(
     () => getCommentVirtualRows({
       activeFileId,
@@ -219,48 +219,44 @@ export function RightPanelComments({
     <section className={`right-panel-content right-comments-panel ${commentScope === "all" ? "all-scope" : "current-scope"}`}>
       <div className="right-comments-toolbar">
         <span className="right-comments-context-label">
-          {activeFile ? (commentScope === "current" ? currentFileLabel : copy.all) : copy.noFile}
+          {commentScope === "current" ? currentFileLabel : copy.all}
         </span>
-        {activeFile && (
-          <span className="right-comments-toolbar-actions">
-            {composerMode === null && (
-              <button
-                className="right-comments-toolbar-action"
-                type="button"
-                aria-label={copy.filePlaceholder}
-                data-tooltip={copy.filePlaceholder}
-                onClick={toggleDocumentComposer}
-              >
-                <MessageSquarePlus size={14} aria-hidden="true" />
-              </button>
-            )}
-            <MenuRoot open={scopeMenuOpen} onOpenChange={setScopeMenuOpen}>
-              <span className="right-comments-scope-menu-wrap">
-                <MenuTrigger asChild>
-                  <button
-                    className="right-comments-toolbar-action"
-                    type="button"
-                    aria-label={copy.title}
-                    data-tooltip={copy.title}
-                  >
-                    <ListFilter size={14} aria-hidden="true" />
-                  </button>
-                </MenuTrigger>
-              </span>
-              <MenuContent className="right-comments-scope-menu" ariaLabel={copy.title}>
-                <MenuRadioGroup value={commentScope} onValueChange={(value) => selectScope(value as CommentScope)}>
-                  <MenuRadioItem value="current" label={copy.currentFile} />
-                  <MenuRadioItem value="all" label={copy.all} />
-                </MenuRadioGroup>
-              </MenuContent>
-            </MenuRoot>
-          </span>
-        )}
+        <span className="right-comments-toolbar-actions">
+          {composerMode === null && (
+            <button
+              className="right-comments-toolbar-action"
+              type="button"
+              aria-label={copy.filePlaceholder}
+              data-tooltip={copy.filePlaceholder}
+              onClick={toggleDocumentComposer}
+            >
+              <MessageSquarePlus size={14} aria-hidden="true" />
+            </button>
+          )}
+          <MenuRoot open={scopeMenuOpen} onOpenChange={setScopeMenuOpen}>
+            <span className="right-comments-scope-menu-wrap">
+              <MenuTrigger asChild>
+                <button
+                  className="right-comments-toolbar-action"
+                  type="button"
+                  aria-label={copy.title}
+                  data-tooltip={copy.title}
+                >
+                  <ListFilter size={14} aria-hidden="true" />
+                </button>
+              </MenuTrigger>
+            </span>
+            <MenuContent className="right-comments-scope-menu" ariaLabel={copy.title}>
+              <MenuRadioGroup value={commentScope} onValueChange={(value) => selectScope(value as CommentScope)}>
+                <MenuRadioItem value="current" label={copy.currentFile} />
+                <MenuRadioItem value="all" label={copy.all} />
+              </MenuRadioGroup>
+            </MenuContent>
+          </MenuRoot>
+        </span>
       </div>
       <div className="right-comments-scroll" ref={commentScrollRef}>
-        {!hasAnyComments && (
-          <PanelEmptyState>{activeFile ? copy.none : copy.noFile}</PanelEmptyState>
-        )}
+        {!hasAnyComments && <PanelEmptyState>{copy.none}</PanelEmptyState>}
         {hasAnyComments && (
           <div
             className="right-comment-virtual-list"
