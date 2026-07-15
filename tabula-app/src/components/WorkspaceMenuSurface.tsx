@@ -69,7 +69,9 @@ export function WorkspaceMenuSurface({
         ref={workspaceImportInputRef}
         className="workspace-file-input"
         type="file"
-        accept=".zip,application/zip"
+        accept=".md,text/markdown"
+        multiple
+        {...{ webkitdirectory: "" }}
         onChange={onImportWorkspaceChange}
         aria-label={copy.actions.openWorkspace.replace("…", "")}
       />

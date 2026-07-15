@@ -14,6 +14,7 @@ import type { FormatCommentDate } from "./right-panel/comments/types";
 import type { RightPanelCommentsCopy } from "./right-panel/comments/types";
 import { stripMarkdownExtension } from "@tabula-md/tabula";
 import { MenuContent, MenuRadioGroup, MenuRadioItem, MenuRoot, MenuTrigger } from "./ui/Menu";
+import { PanelEmptyState } from "./right-panel/PanelEmptyState";
 
 export type RightPanelCommentGroup = CoreRightPanelCommentGroup<WorkspaceFile, FileComment>;
 
@@ -50,7 +51,6 @@ type RightPanelCommentsProps = {
   onAddCommentReply: (fileId: string, commentId: string) => void;
   onToggleCommentResolved: (fileId: string, commentId: string) => void;
   onDeleteComment: (fileId: string, commentId: string) => void;
-  onRequestTextSelection: () => void;
   onSelectionCommentRequestHandled: () => void;
   onCancelSelectionComment: () => void;
   formatCommentDate: FormatCommentDate;
@@ -89,7 +89,6 @@ export function RightPanelComments({
   onAddCommentReply,
   onToggleCommentResolved,
   onDeleteComment,
-  onRequestTextSelection,
   onSelectionCommentRequestHandled,
   onCancelSelectionComment,
   formatCommentDate,
@@ -257,25 +256,7 @@ export function RightPanelComments({
       </div>
       <div className="right-comments-scroll" ref={commentScrollRef}>
         {!hasAnyComments && (
-          <div className="right-comments-empty" aria-label={copy.none}>
-            <span>{activeFile ? copy.none : copy.noFile}</span>
-            <p>
-              {activeFile
-                ? commentScope === "current"
-                  ? copy.noneCurrentDescription
-                  : copy.allDescription
-                : copy.noFileDescription}
-            </p>
-            {activeFile && commentScope === "current" && selectedCharacterCount <= 0 && (
-              <button
-                className="right-comments-select-text"
-                type="button"
-                onClick={onRequestTextSelection}
-              >
-                {copy.selectText}
-              </button>
-            )}
-          </div>
+          <PanelEmptyState>{activeFile ? copy.none : copy.noFile}</PanelEmptyState>
         )}
         {hasAnyComments && (
           <div
@@ -371,7 +352,7 @@ export function RightPanelComments({
             commentDraft={commentDraft}
             identityName={identityName}
             selectedText={composerMode === "selection" ? pendingSelectionText : ""}
-            selectedCharacterCount={composerMode === "selection" ? pendingSelectionText.length : 0}
+            selectedCharacterCount={composerMode === "selection" ? selectedCharacterCount : 0}
             copy={copy}
             commentInputRef={commentInputRef}
             onCancel={cancelComment}

@@ -11,7 +11,7 @@ import {
   type WorkspaceInfoDialogKind,
 } from "./WorkspaceInfoDialog";
 import type { ShortcutPlatform } from "../keyboardShortcuts";
-import { WorkspaceArchiveImportDialog } from "./WorkspaceArchiveImportDialog";
+import { WorkspaceFolderImportDialog } from "./WorkspaceFolderImportDialog";
 
 type JsonShareImportState =
   | { status: "loading" }
@@ -20,36 +20,36 @@ type JsonShareImportState =
 
 export type WorkspaceOverlaySurfaceProps = {
   infoDialog: WorkspaceInfoDialogKind | null;
-  workspaceArchiveImport: WorkspaceState | null;
+  workspaceFolderImport: WorkspaceState | null;
   jsonShareImport: JsonShareImportState | null;
   language: WorkspaceLanguage;
   shortcutPlatform: ShortcutPlatform;
   toast: AppToastState | null;
   onDismissToast: () => void;
   onCloseInfoDialog: () => void;
-  onCloseWorkspaceArchiveImport: () => void;
+  onCloseWorkspaceFolderImport: () => void;
   onPauseToast: () => void;
   onResumeToast: () => void;
   onCloseJsonShareImport: () => void;
   onReplaceWorkspaceWithJsonShare: (workspace: WorkspaceState) => void;
-  onReplaceWorkspaceWithArchive: () => void;
+  onReplaceWorkspaceWithFolder: () => void;
 };
 
 export function WorkspaceOverlaySurface({
   infoDialog,
-  workspaceArchiveImport,
+  workspaceFolderImport,
   jsonShareImport,
   language,
   shortcutPlatform,
   toast,
   onDismissToast,
   onCloseInfoDialog,
-  onCloseWorkspaceArchiveImport,
+  onCloseWorkspaceFolderImport,
   onPauseToast,
   onResumeToast,
   onCloseJsonShareImport,
   onReplaceWorkspaceWithJsonShare,
-  onReplaceWorkspaceWithArchive,
+  onReplaceWorkspaceWithFolder,
 }: WorkspaceOverlaySurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   return (
@@ -63,12 +63,12 @@ export function WorkspaceOverlaySurface({
           onClose={onCloseInfoDialog}
         />
       )}
-      {workspaceArchiveImport && (
-        <WorkspaceArchiveImportDialog
+      {workspaceFolderImport && (
+        <WorkspaceFolderImportDialog
           language={language}
-          workspace={workspaceArchiveImport}
-          onCancel={onCloseWorkspaceArchiveImport}
-          onReplace={onReplaceWorkspaceWithArchive}
+          workspace={workspaceFolderImport}
+          onCancel={onCloseWorkspaceFolderImport}
+          onReplace={onReplaceWorkspaceWithFolder}
         />
       )}
       {toast && (

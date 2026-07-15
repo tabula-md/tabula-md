@@ -3,14 +3,12 @@ import type { MarkdownSelectionActionPosition } from "../markdownEditorTypes";
 import { useWorkspaceUiStore } from "../stores/workspaceUiStore";
 
 type UseWorkspaceChromeControllerArgs = {
-  hasActiveFile: boolean;
   selectionActionPosition: MarkdownSelectionActionPosition | null;
   setCopiedFileId: (fileId: string | null) => void;
   setSelectionActionPosition: (position: MarkdownSelectionActionPosition | null) => void;
 };
 
 export function useWorkspaceChromeController({
-  hasActiveFile,
   selectionActionPosition,
   setCopiedFileId,
   setSelectionActionPosition,
@@ -46,12 +44,6 @@ export function useWorkspaceChromeController({
     setCopiedFileId(null);
     setSelectionActionPosition(null);
   };
-
-  useEffect(() => {
-    if (!hasActiveFile && rightPanelView !== "files") {
-      setRightPanelView("files");
-    }
-  }, [hasActiveFile, rightPanelView]);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {

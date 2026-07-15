@@ -46,7 +46,6 @@ type ProjectContextHandlers = Pick<
   | "onStartCommentReply"
   | "onToggleCommentResolved"
   | "onGoToComment"
-  | "onRequestTextSelection"
 >;
 
 type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
@@ -110,7 +109,6 @@ export function useWorkspaceProjectContextRuntime({
   onCopyFile,
   onDuplicateFile,
   onGoToComment,
-  onRequestTextSelection,
   onIdentityNameChange,
   onIdentityNameCommit,
   onImportFile,
@@ -253,7 +251,6 @@ export function useWorkspaceProjectContextRuntime({
     onAddCommentReply,
     onToggleCommentResolved,
     onDeleteComment,
-    onRequestTextSelection,
     formatCommentDate,
   };
 

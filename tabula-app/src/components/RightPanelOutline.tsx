@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { MarkdownHeading } from "@tabula-md/tabula";
 import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import { PanelEmptyState } from "./right-panel/PanelEmptyState";
 
 type RightPanelOutlineCopy = WorkspaceInterfaceCopy["sidePanel"]["outline"];
 
@@ -69,6 +70,7 @@ export function RightPanelOutline({
 
   return (
     <section className="right-panel-content">
+      {outlineRows.length === 0 && <PanelEmptyState>{copy.none}</PanelEmptyState>}
       {outlineRows.length > 0 && (
         <ol className="right-outline-list" aria-label={copy.forFile(activeFileTitle)}>
           {outlineRows.map(({ heading, index, id, hasChildren, isCollapsed }) => (

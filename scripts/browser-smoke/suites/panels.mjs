@@ -556,7 +556,7 @@ export async function run(ctx) {
     await waitForPanelTab(page, "Comments");
     const emptyCommentsState = await page.evaluate(() => ({
       contextLabel: document.querySelector(".right-comments-context-label")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
-      emptyText: document.querySelector(".right-comments-empty")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      emptyText: document.querySelector(".right-comments-scroll .right-empty-state")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       inputCount: document.querySelectorAll(".right-comment-input").length,
       visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       cardCount: document.querySelectorAll(".right-comment-card").length,
@@ -578,12 +578,8 @@ export async function run(ctx) {
       "Comments should expose a quiet empty or resolved-only state.",
     );
     expect(
-      emptyCommentsState.emptyText.includes("Select text to comment on a passage, or add a document comment."),
-      "Current-file empty state should explain anchored and document comments.",
-    );
-    expect(
-      emptyCommentsState.emptyText.includes("Select text in document"),
-      "The empty state should provide a direct route back to text selection.",
+      emptyCommentsState.emptyText === "No comments yet",
+      "The empty Comments panel should use the same quiet one-line state as the other panel views.",
     );
     expect(emptyCommentsState.inputCount === 0, "Comments composer should stay closed until the user starts a comment.");
     expect(
@@ -628,7 +624,7 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
     const commentsAfterAdd = await page.evaluate(() => ({
       cardCount: document.querySelectorAll(".right-comment-card").length,
-      emptyCount: document.querySelectorAll(".right-comments-empty").length,
+      emptyCount: document.querySelectorAll(".right-comments-scroll .right-empty-state").length,
       fileHeaderCount: document.querySelectorAll(".right-comment-file").length,
       actionText: document.querySelector(".right-comment-actions")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       actionOpacity: (() => {
@@ -1310,6 +1306,12 @@ export async function run(ctx) {
     await folderRenameInput.fill("Archive");
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
+    const archiveFolderToggle = page.locator(".right-file-tree-node.folder").filter({ hasText: "Archive" }).locator(".right-file-open-button");
+    expect((await archiveFolderToggle.locator(".lucide-folder-open").count()) === 1, "Expanded folders should use the open-folder icon.");
+    expect((await archiveFolderToggle.locator(".lucide-chevron-down, .lucide-chevron-right").count()) === 0, "File tree folders should not duplicate state with chevrons.");
+    await archiveFolderToggle.click();
+    expect((await archiveFolderToggle.locator(".lucide-folder").count()) === 1, "Collapsed folders should use the closed-folder icon.");
+    await archiveFolderToggle.click();
     await page.getByRole("button", { name: "More actions for Archive", exact: true }).click();
     expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "Folder menus should create a document inside the folder.");
     expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Folder menus should create a folder inside the folder.");

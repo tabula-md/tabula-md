@@ -10,6 +10,7 @@ import type { WorkspaceFile } from "../workspaceStorage";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { PopoverContent, PopoverRoot, PopoverTrigger } from "./ui/Popover";
+import { PanelEmptyState } from "./right-panel/PanelEmptyState";
 
 type RightPanelSearchProps = {
   copy: WorkspaceInterfaceCopy["sidePanel"]["search"];
@@ -90,9 +91,10 @@ export function RightPanelSearch({
         </PopoverRoot>
       </div>
 
+      {files.length === 0 && <PanelEmptyState>{copy.noDocuments}</PanelEmptyState>}
       {result.error && <p className="right-panel-search-message error">{result.error}</p>}
-      {hasQuery && !result.error && result.matchCount === 0 && (
-        <p className="right-panel-search-message">{copy.noMatches}</p>
+      {files.length > 0 && hasQuery && !result.error && result.matchCount === 0 && (
+        <PanelEmptyState>{copy.noMatches}</PanelEmptyState>
       )}
       {result.matchCount > 0 && (
         <div className="right-panel-search-results" aria-label={copy.results}>
