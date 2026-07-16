@@ -40,6 +40,7 @@ type CreateJsonShareLinkOptions = {
   rootFolderId: string;
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
+  signal?: AbortSignal;
   fetchImpl?: typeof fetch;
 };
 
@@ -66,6 +67,7 @@ export const createJsonShareLink = async ({
   rootFolderId,
   activeFileId,
   commentsByFileId,
+  signal,
   fetchImpl = fetch,
 }: CreateJsonShareLinkOptions) => {
   const payload = createShareSnapshotPayload({
@@ -84,6 +86,7 @@ export const createJsonShareLink = async ({
       "content-type": "application/octet-stream",
     },
     body: toArrayBuffer(encrypted),
+    signal,
   });
 
   if (!response.ok) {

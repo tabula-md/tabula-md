@@ -40,7 +40,7 @@ export async function run(ctx) {
     await waitForShareDialogState(page, { panel: "Share link" });
     await page.getByRole("button", { name: "Export to link" }).click();
     const exportLinkDisplay = page.locator(
-      '.share-export-section .share-link-display[aria-labelledby][title]',
+      '.share-export-result .share-link-display[aria-labelledby][title]',
     );
     const exportSamples = [];
     for (let index = 0; index < 80; index += 1) {
@@ -89,6 +89,13 @@ export async function run(ctx) {
 
     const firstExportUrl = await exportLinkDisplay.getAttribute("title");
     expect(Boolean(firstExportUrl), "Export to link should create an Export link URL.");
+    await page.getByRole("button", { name: "Close share dialog" }).click();
+    await page.locator(".share-trigger").click();
+    expect(
+      (await page.getByRole("button", { name: "Export to link" }).count()) === 1 &&
+        (await page.locator(".share-export-result").count()) === 0,
+      "Reopening Share should return to the live/export chooser instead of preserving the previous result.",
+    );
     await page.getByRole("button", { name: "Close share dialog" }).click();
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await page.locator(".share-trigger").click();

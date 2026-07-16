@@ -20,7 +20,6 @@ type FileTabsProps = ComponentProps<typeof FileTabs>;
 export type WorkspaceTopChromeProps = {
   activeFile?: WorkspaceFile;
   activeText: string;
-  canStartSession: boolean;
   collaborators: Collaborator[];
   followState: FollowState;
   connectionStatus: ConnectionStatus;
@@ -38,7 +37,6 @@ export type WorkspaceTopChromeProps = {
   room?: LocationRoom | null;
   rightPanelOpen: boolean;
   shareOpen: boolean;
-  startSessionUnavailableReason: string;
   workspaceMenuOpen: boolean;
   onAddFile: FileTabsProps["onAddFile"];
   onChangeUserName: (nextName: string) => void;
@@ -63,7 +61,6 @@ export type WorkspaceTopChromeProps = {
 export function WorkspaceTopChrome({
   activeFile,
   activeText,
-  canStartSession,
   collaborators,
   followState,
   connectionStatus,
@@ -81,7 +78,6 @@ export function WorkspaceTopChrome({
   room,
   rightPanelOpen,
   shareOpen,
-  startSessionUnavailableReason,
   workspaceMenuOpen,
   onAddFile,
   onChangeUserName,
@@ -148,7 +144,6 @@ export function WorkspaceTopChrome({
             activeText={activeText}
             language={language}
             currentUserName={currentUserName}
-            canStartSession={canStartSession}
             connectionStatus={connectionStatus}
             isLive={isLive}
             isLiveConnected={isLiveConnected}
@@ -156,7 +151,6 @@ export function WorkspaceTopChrome({
             shareOpen={shareOpen}
             copied={copied}
             jsonShare={jsonShare}
-            startSessionUnavailableReason={startSessionUnavailableReason}
             onCloseShare={onCloseShare}
             onStartSession={onStartSession}
             onRetrySession={onRetrySession}

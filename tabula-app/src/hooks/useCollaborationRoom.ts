@@ -145,7 +145,6 @@ export function useCollaborationRoom({
     if (startInFlightRef.current) return undefined;
     if (!startValidation.ok) return undefined;
     const sessionFile = getSessionFileSnapshot?.() ?? activeDocument;
-    if (!sessionFile) return undefined;
     const nextSession = createCollaborationSessionStartRequest({
       hasWorkspaceDocuments,
       origin: window.location.origin,
@@ -158,7 +157,7 @@ export function useCollaborationRoom({
     startInFlightRef.current = true;
     try {
       const documents = (workspaceDocuments ?? []).map((document) =>
-        document.id === sessionFile.id
+        document.id === sessionFile?.id
           ? { ...document, text: sessionFile.text }
           : document,
       );
@@ -185,19 +184,12 @@ export function useCollaborationRoom({
   };
 
   return {
-    canStartSession:
-      hasWorkspaceDocuments &&
-      roomAvailability.available &&
-      startValidation.ok,
     collaborators,
     connectionStatus,
     durability,
     recoveryMode,
     hydrationStatus,
     hydrationSource,
-    startSessionUnavailableReason: !startValidation.ok
-      ? startValidation.message
-      : roomAvailability.unavailableReason,
     startSession,
     applyLocalText,
     activeDocumentProjection,

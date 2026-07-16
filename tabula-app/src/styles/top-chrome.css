@@ -685,13 +685,27 @@
   flex-wrap: wrap;
 }
 
+.share-live-stop-description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+  line-height: 1.45;
+}
+
 .share-modal-note {
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
+  align-items: start;
   padding-top: 4px;
   color: var(--text-muted);
   font-size: var(--font-ui-secondary);
   line-height: 1.45;
+}
+
+.share-modal-note > svg {
+  margin-top: 1px;
+  color: var(--text-soft);
 }
 
 .share-modal-note p {
@@ -707,6 +721,67 @@
 .share-modal-danger:hover {
   color: var(--danger-text-strong);
   background: var(--danger-background-hover);
+}
+
+.share-export-result-modal {
+  width: min(560px, calc(100vw - 48px));
+}
+
+.share-export-result {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.share-export-result .share-modal-header {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding-right: 38px;
+}
+
+.share-export-result .share-modal-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.share-export-result .share-modal-header p {
+  font-size: var(--font-ui-secondary);
+  line-height: 1.45;
+}
+
+.share-export-preparing {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-size-row);
+  margin: 0;
+  padding: 0 10px;
+  border-radius: var(--radius-surface);
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  font-size: var(--font-ui-body);
+}
+
+.share-confirm-modal {
+  width: min(460px, calc(100vw - 48px));
+}
+
+.share-stop-confirm {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.share-stop-confirm .share-modal-header {
+  gap: var(--space-2);
+}
+
+.share-stop-confirm .share-modal-header p {
+  max-width: 38rem;
+  font-size: var(--font-ui-body);
+  line-height: 1.5;
+}
+
+.share-stop-confirm-actions {
+  justify-content: flex-end;
 }
 
 .presence {

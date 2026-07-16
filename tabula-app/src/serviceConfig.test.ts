@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  TABULA_HOSTED_ROOM_URL,
   TABULA_HOSTED_SERVICE_COPY,
   getTabulaServiceConfig,
   resolveTabulaJsonShareServiceUrl,
@@ -59,6 +60,23 @@ describe("service config", () => {
         location: { hostname: "localhost", protocol: "http:" },
       }),
     ).toBeNull();
+  });
+
+  it("uses the official hosted room service when deployment config is missing", () => {
+    expect(
+      resolveTabulaRoomServiceUrl({
+        configuredUrl: null,
+        isDev: false,
+        location: { hostname: "tabula.md", protocol: "https:" },
+      }),
+    ).toBe(TABULA_HOSTED_ROOM_URL);
+    expect(
+      resolveTabulaRoomServiceUrl({
+        configuredUrl: null,
+        isDev: false,
+        location: { hostname: "www.tabula.md", protocol: "https:" },
+      }),
+    ).toBe(TABULA_HOSTED_ROOM_URL);
   });
 
   it("keeps local export link storage fallback dev-only", () => {

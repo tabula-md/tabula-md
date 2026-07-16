@@ -1,7 +1,28 @@
+import { useEffect } from "react";
 import { Share2 } from "lucide-react";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceMenuCopy } from "../workspaceLocale";
 import type { ConnectionStatus } from "../collaboration";
+import { preloadCollaborationStart } from "../collaboration/preloadCollaboration";
+import {
+  resolveTabulaJsonShareServiceUrl,
+  resolveTabulaRoomServiceUrl,
+} from "../serviceConfig";
+
+const preconnectService = (serviceUrl: string | null) => {
+  if (!serviceUrl) return;
+  try {
+    const origin = new URL(serviceUrl).origin;
+    if (document.head.querySelector(`link[rel="preconnect"][href="${origin}"]`)) return;
+    const link = document.createElement("link");
+    link.rel = "preconnect";
+    link.href = origin;
+    link.crossOrigin = "anonymous";
+    document.head.append(link);
+  } catch {
+    // Invalid deployment configuration is reported when the user starts sharing.
+  }
+};
 
 type ShareTriggerProps = {
   connectionStatus: ConnectionStatus;
@@ -19,6 +40,17 @@ export function ShareTrigger({
   onToggleShare,
 }: ShareTriggerProps) {
   const copy = getWorkspaceMenuCopy(language).share;
+  const prepareCollaboration = () => {
+    preconnectService(resolveTabulaRoomServiceUrl({ location: window.location }));
+    preconnectService(resolveTabulaJsonShareServiceUrl({ location: window.location }));
+    void preloadCollaborationStart().catch(() => undefined);
+  };
+
+  useEffect(() => {
+    const timer = window.setTimeout(prepareCollaboration, 400);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const liveStatus = isLive
     ? connectionStatus === "connected"
       ? "connected"
@@ -37,6 +69,9 @@ export function ShareTrigger({
         type="button"
         aria-label={statusLabel}
         aria-expanded={shareOpen}
+        onFocus={prepareCollaboration}
+        onPointerDown={prepareCollaboration}
+        onPointerEnter={prepareCollaboration}
         onClick={onToggleShare}
       >
         <Share2 size={16} />
