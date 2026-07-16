@@ -10,6 +10,7 @@ const roomPort = Number(process.env.TABULA_TEST_ROOM_PORT ?? 3012);
 const jsonPort = Number(process.env.TABULA_TEST_JSON_PORT ?? 3014);
 const firestorePort = 8080;
 const firebaseStoragePort = 9199;
+const firebaseStartTimeoutMs = Number(process.env.TABULA_TEST_FIREBASE_START_TIMEOUT_MS ?? 120_000);
 const externalUrl = process.env.TABULA_TEST_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${port}`;
 const roomUrl = (process.env.VITE_TABULA_ROOM_URL ?? `http://127.0.0.1:${roomPort}`).replace(/\/$/, "");
@@ -26,8 +27,8 @@ const expect = (condition, message) => {
   }
 };
 
-const waitForServer = async (url) => {
-  const deadline = Date.now() + 20_000;
+const waitForServer = async (url, timeoutMs = 20_000) => {
+  const deadline = Date.now() + timeoutMs;
   let lastError;
 
   while (Date.now() < deadline) {
@@ -53,8 +54,8 @@ const assertPortAvailable = (port) => new Promise((resolve, reject) => {
   server.listen(port, "127.0.0.1");
 });
 
-const waitForPort = async (port) => {
-  const deadline = Date.now() + 20_000;
+const waitForPort = async (port, timeoutMs = 20_000) => {
+  const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const connected = await new Promise((resolve) => {
       const socket = net.createConnection({ host: "127.0.0.1", port });
@@ -404,6 +405,7 @@ const spawnRoomServer = async () => {
           TABULA_ROOM_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
           TABULA_ROOM_MAX_PAYLOAD_BYTES: process.env.TABULA_ROOM_MAX_PAYLOAD_BYTES ?? String(4 * 1024 * 1024),
         },
+        detached: !isWindows,
         shell: true,
         stdio: ["ignore", "pipe", "pipe"],
       })
@@ -416,6 +418,7 @@ const spawnRoomServer = async () => {
             TABULA_ROOM_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
             TABULA_ROOM_MAX_PAYLOAD_BYTES: process.env.TABULA_ROOM_MAX_PAYLOAD_BYTES ?? String(4 * 1024 * 1024),
           },
+          detached: !isWindows,
           stdio: ["ignore", "pipe", "pipe"],
         })
       : null;
@@ -447,6 +450,7 @@ const spawnJsonServer = async () => {
           TABULA_JSON_ALLOWED_ORIGINS: baseUrl,
           TABULA_JSON_DATA_DIR: jsonDataDir,
         },
+        detached: !isWindows,
         shell: true,
         stdio: ["ignore", "pipe", "pipe"],
       })
@@ -459,6 +463,7 @@ const spawnJsonServer = async () => {
             TABULA_JSON_ALLOWED_ORIGINS: baseUrl,
             TABULA_JSON_DATA_DIR: jsonDataDir,
           },
+          detached: !isWindows,
           stdio: ["ignore", "pipe", "pipe"],
         })
       : null;
@@ -502,27 +507,36 @@ const spawnFirebaseEmulators = async () => {
       stdio: ["ignore", "pipe", "pipe"],
     },
   );
-  firebaseProcess.stdout.on("data", () => {});
-  firebaseProcess.stderr.on("data", () => {});
+  let firebaseOutput = "";
+  const captureFirebaseOutput = (chunk) => {
+    firebaseOutput = `${firebaseOutput}${chunk}`.slice(-16_000);
+  };
+  firebaseProcess.stdout.on("data", captureFirebaseOutput);
+  firebaseProcess.stderr.on("data", captureFirebaseOutput);
   firebaseProcess.on("error", (error) => {
     throw error;
   });
   await new Promise((resolve, reject) => {
     const handleExit = (code) => {
-      reject(new Error(`Firebase emulators exited before becoming ready (code ${code ?? "unknown"}).`));
+      const output = firebaseOutput.trim();
+      reject(new Error(
+        `Firebase emulators exited before becoming ready (code ${code ?? "unknown"}).${output ? `\n${output}` : ""}`,
+      ));
     };
     firebaseProcess.once("exit", handleExit);
     Promise.all([
-      waitForServer(`http://127.0.0.1:${firestorePort}`),
-      waitForPort(firebaseStoragePort),
+      waitForServer(`http://127.0.0.1:${firestorePort}`, firebaseStartTimeoutMs),
+      waitForPort(firebaseStoragePort, firebaseStartTimeoutMs),
     ]).then(
       () => {
         firebaseProcess.off("exit", handleExit);
         resolve();
       },
-      (error) => {
+      async (error) => {
         firebaseProcess.off("exit", handleExit);
-        reject(error);
+        await stopProcess(firebaseProcess, { processGroup: true });
+        const output = firebaseOutput.trim();
+        reject(new Error(`${error.message}${output ? `\n${output}` : ""}`));
       },
     );
   });
@@ -542,6 +556,7 @@ const startLocalServers = async ({ withJsonServer = false } = {}) => {
     appServerArgs,
     {
       cwd: process.cwd(),
+      detached: !isWindows,
       env: {
         ...process.env,
         BROWSER: "none",
@@ -618,7 +633,7 @@ export async function runBrowserSmoke(suites) {
           throw new Error("Cannot restart an externally managed Tabula Room server.");
         }
 
-        await stopProcess(roomServer);
+        await stopProcess(roomServer, { processGroup: true });
         roomServer = await spawnRoomServer();
         if (!roomServer) {
           throw new Error("Tabula Room restart did not create a managed server process.");
@@ -639,7 +654,7 @@ export async function runBrowserSmoke(suites) {
           throw new Error("Cannot stop an externally managed Tabula Room server.");
         }
 
-        await stopProcess(roomServer);
+        await stopProcess(roomServer, { processGroup: true });
         roomServer = null;
       },
     });
@@ -654,9 +669,9 @@ export async function runBrowserSmoke(suites) {
       await browser.close();
     }
 
-    await stopProcess(webServer);
-    await stopProcess(roomServer);
-    await stopProcess(jsonServer);
+    await stopProcess(webServer, { processGroup: true });
+    await stopProcess(roomServer, { processGroup: true });
+    await stopProcess(jsonServer, { processGroup: true });
     await stopProcess(firebaseProcess, { processGroup: true });
   }
 }

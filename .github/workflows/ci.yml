@@ -36,8 +36,14 @@ jobs:
       - name: Check surface colors
         run: npm run test:surface-colors
 
+      - name: Lint
+        run: npm run lint:fast
+
       - name: Test
         run: npm test
 
       - name: Build
         run: npm run build
+
+      - name: Check bundle contract
+        run: npm run bundle:check
