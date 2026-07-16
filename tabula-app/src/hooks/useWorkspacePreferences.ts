@@ -1,4 +1,5 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../browserStorage";
 import type { FileViewMode, ReadingWidth } from "../workspaceStorage";
 
 export const WORKSPACE_PREFERENCES_KEY = "tabula.preferences.v1";
@@ -82,9 +83,13 @@ export const parseWorkspacePreferences = (value: unknown): WorkspacePreferences 
   };
 };
 
-export const readWorkspacePreferences = (storage: Storage = window.localStorage): WorkspacePreferences => {
+export const readWorkspacePreferences = (storage?: Pick<Storage, "getItem">): WorkspacePreferences => {
   try {
-    return parseWorkspacePreferences(JSON.parse(storage.getItem(WORKSPACE_PREFERENCES_KEY) ?? "{}"));
+    const value = readBrowserStorage(
+      storage ?? getBrowserStorage("localStorage"),
+      WORKSPACE_PREFERENCES_KEY,
+    );
+    return parseWorkspacePreferences(JSON.parse(value ?? "{}"));
   } catch {
     return DEFAULT_WORKSPACE_PREFERENCES;
   }
@@ -92,9 +97,13 @@ export const readWorkspacePreferences = (storage: Storage = window.localStorage)
 
 export const writeWorkspacePreferences = (
   preferences: WorkspacePreferences,
-  storage: Storage = window.localStorage,
+  storage?: Pick<Storage, "setItem">,
 ) => {
-  storage.setItem(WORKSPACE_PREFERENCES_KEY, JSON.stringify(preferences));
+  return writeBrowserStorage(
+    storage ?? getBrowserStorage("localStorage"),
+    WORKSPACE_PREFERENCES_KEY,
+    JSON.stringify(preferences),
+  );
 };
 
 const getSystemTheme = (): ResolvedWorkspaceTheme => {
@@ -148,11 +157,7 @@ export function useWorkspacePreferences(): [
   }, [workspacePreferences.language]);
 
   useEffect(() => {
-    try {
-      writeWorkspacePreferences(workspacePreferences);
-    } catch {
-      // Preferences are a local convenience, not required for document editing.
-    }
+    writeWorkspacePreferences(workspacePreferences);
   }, [workspacePreferences]);
 
   return [workspacePreferences, setWorkspacePreferences];

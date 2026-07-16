@@ -130,6 +130,7 @@ const createWithPage =
   () =>
   async (browser, path, callback, options = {}) => {
     const context = await browser.newContext({ viewport: options.viewport ?? { width: 1280, height: 800 } });
+    if (options.initScript) await context.addInitScript(options.initScript);
     const page = await context.newPage();
     await page.goto(`${baseUrl}${path}`);
     await page.waitForSelector(".tabbar");

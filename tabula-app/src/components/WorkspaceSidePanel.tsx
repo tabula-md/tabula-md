@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState, type ComponentProps } from "react";
+import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../browserStorage";
 import { RightPanel } from "./RightPanel";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import {
@@ -13,7 +14,10 @@ const SIDE_PANEL_WIDTH_STORAGE_KEY = "tabula-side-panel-width-v1";
 
 const readSidePanelWidth = () => {
   if (typeof window === "undefined") return DEFAULT_SIDE_PANEL_WIDTH;
-  const storedWidth = Number(window.localStorage.getItem(SIDE_PANEL_WIDTH_STORAGE_KEY));
+  const storedWidth = Number(readBrowserStorage(
+    getBrowserStorage("localStorage"),
+    SIDE_PANEL_WIDTH_STORAGE_KEY,
+  ));
   return Number.isFinite(storedWidth) && storedWidth > 0
     ? clampSidePanelWidth(storedWidth, window.innerWidth)
     : DEFAULT_SIDE_PANEL_WIDTH;
@@ -39,7 +43,11 @@ export function WorkspaceSidePanel({
 
   useLayoutEffect(() => {
     document.documentElement.style.setProperty("--side-panel-width", `${width}px`);
-    window.localStorage.setItem(SIDE_PANEL_WIDTH_STORAGE_KEY, String(width));
+    writeBrowserStorage(
+      getBrowserStorage("localStorage"),
+      SIDE_PANEL_WIDTH_STORAGE_KEY,
+      String(width),
+    );
   }, [width]);
 
   return (

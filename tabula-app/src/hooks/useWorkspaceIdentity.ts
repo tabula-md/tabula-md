@@ -4,6 +4,7 @@ import {
   createRoomActorName,
   ROOM_ACTOR_ADJECTIVES,
 } from "@tabula-md/tabula";
+import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../browserStorage";
 import type { Collaborator } from "../collaboration";
 import { randomId } from "../workspaceStorage";
 
@@ -45,8 +46,9 @@ export const normalizeWorkspaceIdentity = (
   };
 };
 
-const writeIdentity = (identity: Collaborator, storage: Storage = window.localStorage) => {
-  storage.setItem(
+const writeIdentity = (identity: Collaborator, storage?: Pick<Storage, "setItem">) => {
+  writeBrowserStorage(
+    storage ?? getBrowserStorage("localStorage"),
     IDENTITY_KEY,
     JSON.stringify(identity.name && !isGeneratedName(identity.name) ? { name: identity.name } : {}),
   );
@@ -54,17 +56,18 @@ const writeIdentity = (identity: Collaborator, storage: Storage = window.localSt
 
 const writeSessionIdentity = (
   identity: Collaborator,
-  storage: Storage = window.sessionStorage,
+  storage?: Pick<Storage, "setItem">,
 ) => {
-  storage.setItem(
+  writeBrowserStorage(
+    storage ?? getBrowserStorage("sessionStorage"),
     IDENTITY_SESSION_KEY,
     JSON.stringify({ name: identity.name, color: identity.color }),
   );
 };
 
-const readStoredJson = (storage: Storage, key: string) => {
+const readStoredJson = (storage: Pick<Storage, "getItem"> | null | undefined, key: string) => {
   try {
-    const stored = storage.getItem(key);
+    const stored = readBrowserStorage(storage, key);
     return stored ? (JSON.parse(stored) as Partial<Collaborator>) : null;
   } catch {
     return null;
@@ -72,21 +75,21 @@ const readStoredJson = (storage: Storage, key: string) => {
 };
 
 export const createWorkspaceIdentity = ({
-  storage = window.localStorage,
+  storage,
   sessionStorage,
   actorId,
   createId = randomId,
   now = Date.now,
 }: {
-  storage?: Storage;
-  sessionStorage?: Storage;
+  storage?: Pick<Storage, "getItem" | "setItem">;
+  sessionStorage?: Pick<Storage, "getItem" | "setItem">;
   actorId?: string;
   createId?: () => string;
   now?: () => number;
 } = {}): Collaborator => {
-  const resolvedSessionStorage =
-    sessionStorage ?? (typeof window === "undefined" ? storage : window.sessionStorage);
-  const storedProfile = readStoredJson(storage, IDENTITY_KEY);
+  const resolvedStorage = storage ?? getBrowserStorage("localStorage");
+  const resolvedSessionStorage = sessionStorage ?? getBrowserStorage("sessionStorage");
+  const storedProfile = readStoredJson(resolvedStorage, IDENTITY_KEY);
   const storedSessionProfile = readStoredJson(resolvedSessionStorage, IDENTITY_SESSION_KEY);
   const id = actorId?.trim() || createId();
   const storedName = typeof storedProfile?.name === "string" ? storedProfile.name.trim() : "";
@@ -107,8 +110,8 @@ export const createWorkspaceIdentity = ({
     now,
     { preserveGeneratedName: Boolean(sessionName) },
   );
-  writeIdentity(identity, storage);
-  writeSessionIdentity(identity, resolvedSessionStorage);
+  writeIdentity(identity, resolvedStorage ?? undefined);
+  writeSessionIdentity(identity, resolvedSessionStorage ?? undefined);
   return identity;
 };
 
