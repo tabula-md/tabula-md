@@ -32,6 +32,7 @@ describe("workspace locale chrome copy", () => {
     expect(english.share.live.startDescription).toBe(
       "The whole workspace joins the encrypted room.",
     );
+    expect(english.share.live.inviteAgent).toBe("Invite an agent");
     expect(english.share.live.securityDescription).toContain(
       "cannot read your documents or comments",
     );

@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { ShareExportPanel } from "./share/ShareExportPanel";
 import { ShareExportResult } from "./share/ShareExportResult";
+import { ShareAgentHandoff } from "./share/ShareAgentHandoff";
 import { ShareLinkPanel } from "./share/ShareLinkPanel";
 import { ShareStopSessionConfirm } from "./share/ShareStopSessionConfirm";
 import type { JsonShareController } from "../hooks/useJsonShareController";
@@ -114,6 +115,31 @@ export function ShareControls({
     );
   }
 
+  if (shareRuntime.view === "agent-handoff") {
+    return (
+      <ModalSurface
+        key="agent-handoff"
+        ariaLabelledBy="share-agent-handoff-title"
+        className="share-agent-handoff-modal"
+        onClose={shareRuntime.closeShare}
+      >
+        <button
+          className="share-modal-close"
+          type="button"
+          aria-label={shareRuntime.chromeCopy.common.closeShareDialog}
+          onClick={shareRuntime.closeShare}
+        >
+          <X size={18} />
+        </button>
+        <ShareAgentHandoff
+          language={language}
+          runtime={shareRuntime.agentHandoff}
+          onBack={shareRuntime.closeAgentHandoff}
+        />
+      </ModalSurface>
+    );
+  }
+
   return (
     <ModalSurface
       key="chooser"
@@ -137,7 +163,6 @@ export function ShareControls({
       <section className={`share-modal-panel ${showLiveRoomPanel ? "live" : "chooser"}`}>
         <div className="share-modal-actions-column">
           <ShareLinkPanel
-            agentPromptCopied={shareRuntime.agentPromptCopied}
             chromeCopy={shareRuntime.chromeCopy}
             copied={copied}
             copy={shareRuntime.copy}
@@ -157,7 +182,7 @@ export function ShareControls({
             }
             onChangeUserName={onChangeUserName}
             onCommitUserName={onCommitUserName}
-            onCopyLocalAgentPrompt={shareRuntime.copyLocalAgentPrompt}
+            onInviteAgent={shareRuntime.openAgentHandoff}
             onCopyShareUrl={onCopyShareUrl}
             onRetrySession={onRetrySession}
             onStartWorkspaceRoom={onStartSession}

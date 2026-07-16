@@ -46,6 +46,7 @@ describe("agent handoff", () => {
       scope: "file",
     });
 
+    expect(request).toContain("Call tabula_read_me first");
     expect(request).toContain("Call tabula_connect_room");
     expect(request).toContain("tabula_apply_workspace_changes");
     expect(request).toContain("Task: Review this and add a conclusion.");

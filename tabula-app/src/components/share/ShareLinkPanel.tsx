@@ -17,7 +17,6 @@ import type {
 } from "../../workspaceLocale";
 
 type ShareLinkPanelProps = {
-  agentPromptCopied: boolean;
   chromeCopy: WorkspaceChromeCopy;
   copied: boolean;
   copy: WorkspaceShareCopy;
@@ -30,7 +29,7 @@ type ShareLinkPanelProps = {
   shareView: ShareViewModel;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
-  onCopyLocalAgentPrompt: () => void;
+  onInviteAgent: () => void;
   onCopyShareUrl: () => void;
   onRetrySession: () => void;
   onStartWorkspaceRoom: () => void;
@@ -38,7 +37,6 @@ type ShareLinkPanelProps = {
 };
 
 export function ShareLinkPanel({
-  agentPromptCopied,
   chromeCopy,
   copied,
   copy,
@@ -51,7 +49,7 @@ export function ShareLinkPanel({
   shareView,
   onChangeUserName,
   onCommitUserName,
-  onCopyLocalAgentPrompt,
+  onInviteAgent,
   onCopyShareUrl,
   onRetrySession,
   onStartWorkspaceRoom,
@@ -170,12 +168,10 @@ export function ShareLinkPanel({
                     className="share-modal-secondary"
                     type="button"
                     aria-describedby={agentDescriptionId}
-                    onClick={onCopyLocalAgentPrompt}
+                    onClick={onInviteAgent}
                   >
-                    {agentPromptCopied ? <Check size={16} /> : <Bot size={16} />}
-                    <span>
-                      {agentPromptCopied ? copy.live.copied : copy.live.inviteAgent}
-                    </span>
+                    <Bot size={16} />
+                    <span>{copy.live.inviteAgent}</span>
                   </button>
                 </div>
               </>
