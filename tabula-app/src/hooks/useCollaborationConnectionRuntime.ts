@@ -214,8 +214,9 @@ export function useCollaborationConnectionRuntime({
     observedSecondActorRef.current = true;
     productAnalytics.report("collaborator_joined", {
       actorKind: secondActor.kind ?? "unknown",
+      roomId: room?.roomId,
     });
-  }, [collaborators, identity.id]);
+  }, [collaborators, identity.id, room?.roomId]);
 
   useEffect(() => {
     collabRef.current?.disconnect();
@@ -253,7 +254,10 @@ export function useCollaborationConnectionRuntime({
           onRemoteDocumentEdit: (actorKind) => {
             if (observedRemoteEditRef.current) return;
             observedRemoteEditRef.current = true;
-            productAnalytics.report("collaborator_edited", { actorKind });
+            productAnalytics.report("collaborator_edited", {
+              actorKind,
+              roomId: target.roomId,
+            });
           },
         });
         effectRuntime = connection;

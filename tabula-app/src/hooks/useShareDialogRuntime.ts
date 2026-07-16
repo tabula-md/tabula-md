@@ -114,7 +114,7 @@ export function useShareDialogRuntime({
     });
 
     await navigator.clipboard.writeText(prompt);
-    productAnalytics.report("agent_invite_copied");
+    productAnalytics.report("agent_invite_copied", { roomId: room?.roomId });
     setAgentPromptCopied(true);
     window.setTimeout(() => setAgentPromptCopied(false), 1200);
   };

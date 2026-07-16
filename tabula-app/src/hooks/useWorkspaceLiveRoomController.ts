@@ -61,7 +61,7 @@ export function useWorkspaceLiveRoomController({
     }
 
     await navigator.clipboard.writeText(shareUrlView.url);
-    productAnalytics.report("room_link_copied");
+    productAnalytics.report("room_link_copied", { roomId: room.roomId });
     setCopiedFileId(activeFile?.id ?? room.roomId);
     window.setTimeout(() => setCopiedFileId(null), 1600);
   };

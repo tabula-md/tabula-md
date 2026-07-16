@@ -896,7 +896,7 @@ export function useWorkspaceRuntime() {
         { roomId: startedSession.roomId, shareUrl: startedSession.shareUrl },
         startedSession.bootstrap,
       );
-      productAnalytics.report("room_created");
+      productAnalytics.report("room_created", { roomId: startedSession.roomId });
     } catch (error) {
       roomDocumentProjectionStore.clear();
       clientErrorReporter.report({
