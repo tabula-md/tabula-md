@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
+import { readWorkspaceWithLegacyMigration } from "../legacyWorkspaceMigration";
 import type { FileComment, WorkspaceFile, WorkspaceState } from "../workspaceStorage";
 import { useEventCallback } from "./useEventCallback";
 
@@ -72,7 +72,7 @@ export const useIndexedDbWorkspaceHydration = ({
   initialWorkspace,
   onError,
   workspace,
-  readWorkspace = readIndexedDbWorkspace,
+  readWorkspace = readWorkspaceWithLegacyMigration,
   replaceWorkspace,
   replaceCommentsByFileId,
 }: UseIndexedDbWorkspaceHydrationOptions) => {

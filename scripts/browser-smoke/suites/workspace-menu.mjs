@@ -40,6 +40,47 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
+    await waitForActiveTab(page, { exact: "Recovered.md" });
+    await waitForEditorReady(page, { mode: "edit" });
+    expect(
+      await page.locator(".cm-content").textContent() === "# Recovered",
+      "A legacy localStorage workspace should reopen from its Markdown source.",
+    );
+    expect(
+      await page.evaluate(() => localStorage.getItem("tabula.project.v6")) === null,
+      "A legacy workspace should be removed only after its IndexedDB migration is verified.",
+    );
+  }, {
+    initScript: () => {
+      const file = {
+        id: "legacy-recovered",
+        title: "Recovered.md",
+        text: "# Recovered",
+        parentId: "workspace-root",
+        viewMode: "edit",
+        readingWidth: "wide",
+        lineWrapping: true,
+        lineNumbers: true,
+        bookmarks: [],
+      };
+      localStorage.setItem("tabula.project.v6", JSON.stringify({
+        schema: "tabula.project",
+        version: 6,
+        savedAt: new Date().toISOString(),
+        activeFileId: file.id,
+        openFileIds: [file.id],
+        fileOrder: [file.id],
+        folderOrder: ["workspace-root"],
+        folders: {
+          "workspace-root": { id: "workspace-root", title: "Project", parentId: null },
+        },
+        files: { [file.id]: file },
+        commentsByFileId: {},
+      }));
+    },
+  });
+
+  await withPage(browser, "/", async (page) => {
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
     const tabs = await getTabs(page);
     const firstScreenText = await page.locator(".empty-file-state").textContent();

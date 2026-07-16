@@ -187,6 +187,37 @@ describe("project persistence", () => {
     expect(restored?.folders.some((folder) => folder.id !== "workspace-root" && folder.parentId === "workspace-root")).toBe(true);
   });
 
+  it("reads v6 workspaces for one-time browser migration", () => {
+    const stored = {
+      ...createStoredWorkspace({
+        files: [createWorkspaceFile(1, { id: "legacy", title: "Legacy.md", text: "# Legacy" })],
+        activeFileId: "legacy",
+        commentsByFileId: {},
+      }),
+      version: 6,
+    };
+
+    expect(parseWorkspacePayload(stored)?.files[0]).toMatchObject({
+      id: "legacy",
+      title: "Legacy.md",
+      text: "# Legacy",
+    });
+  });
+
+  it("restores folder paths from v5 workspace filenames", () => {
+    const current = createStoredWorkspace({
+      files: [createWorkspaceFile(1, { id: "legacy", title: "Planning/Brief.md", text: "# Brief" })],
+      activeFileId: "legacy",
+      commentsByFileId: {},
+    });
+    const { folders: _folders, folderOrder: _folderOrder, ...stored } = current;
+
+    const restored = parseWorkspacePayload({ ...stored, version: 5 });
+
+    expect(restored?.files[0]).toMatchObject({ title: "Brief.md", text: "# Brief" });
+    expect(restored?.folders.some((folder) => folder.title === "Planning")).toBe(true);
+  });
+
   it("rejects non-Tabula project payloads", () => {
     const restored = parseWorkspacePayload({
         schema: "unknown.workspace",

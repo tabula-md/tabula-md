@@ -331,6 +331,50 @@ const normalizeFoldersFromMap = (folders: unknown, folderOrder: unknown): Worksp
   return [createWorkspaceRootFolder(), ...withoutDuplicateRoots];
 };
 
+const stableLegacyFolderId = (path: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < path.length; index += 1) {
+    hash ^= path.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `folder-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+};
+
+const migrateLegacyFilePaths = (files: WorkspaceFile[]) => {
+  const foldersByPath = new Map<string, WorkspaceFolder>();
+  const migratedFiles = files.map((file) => {
+    const parts = file.title.split(/[\\/]+/).map((part) => part.trim()).filter(Boolean);
+    if (parts.length <= 1) return { ...file, parentId: WORKSPACE_ROOT_FOLDER_ID };
+
+    let parentId = WORKSPACE_ROOT_FOLDER_ID;
+    let path = "";
+    for (const folderTitle of parts.slice(0, -1)) {
+      path = path ? `${path}/${folderTitle}` : folderTitle;
+      let folder = foldersByPath.get(path);
+      if (!folder) {
+        folder = {
+          id: stableLegacyFolderId(path.toLowerCase()),
+          title: folderTitle,
+          parentId,
+          order: foldersByPath.size,
+        };
+        foldersByPath.set(path, folder);
+      }
+      parentId = folder.id;
+    }
+    return {
+      ...file,
+      title: normalizeWorkspaceFileTitle(parts.at(-1) ?? file.title),
+      parentId,
+    };
+  });
+
+  return {
+    folders: [createWorkspaceRootFolder(), ...foldersByPath.values()],
+    files: migratedFiles,
+  };
+};
+
 const normalizeWorkspaceTree = (
   files: WorkspaceFile[],
   folders: WorkspaceFolder[],
@@ -511,7 +555,9 @@ export const parseWorkspacePayload = (payload: unknown): WorkspaceState | null =
   const openFileIds = normalizeFileIdList(payload.openFileIds);
   const commentsByFileId = normalizeCommentsByFileId(payload.commentsByFileId);
 
-  const isProjectPayload = payload.version === PROJECT_STORAGE_VERSION && payload.schema === "tabula.project";
+  const isProjectPayload =
+    payload.schema === "tabula.project" &&
+    (payload.version === PROJECT_STORAGE_VERSION || payload.version === 6);
 
   if (isProjectPayload) {
     if (!isRecord(payload.files)) {
@@ -527,6 +573,14 @@ export const parseWorkspacePayload = (payload: unknown): WorkspaceState | null =
         openFileIds,
       },
     );
+  }
+
+  if (payload.version === 5 && payload.schema === "tabula.project" && isRecord(payload.files)) {
+    const migrated = migrateLegacyFilePaths(normalizeFilesFromMap(payload.files, payload.fileOrder));
+    return finalizeWorkspaceState(migrated.files, activeFileId, commentsByFileId, {
+      folders: migrated.folders,
+      openFileIds,
+    });
   }
 
   return null;

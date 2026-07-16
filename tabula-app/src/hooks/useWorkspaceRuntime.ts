@@ -84,7 +84,7 @@ import {
   getLiveRoomOpenState,
   type LiveRoomOpenFailure,
 } from "../liveRoomOpenState";
-import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
+import { readWorkspaceWithLegacyMigration } from "../legacyWorkspaceMigration";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import { productAnalytics } from "../observability/productAnalytics";
 import { useParticipantFollowController } from "./useParticipantFollowController";
@@ -839,7 +839,7 @@ export function useWorkspaceRuntime() {
     workspaceSessionHost.openLocal();
     setLiveRoomOpenFailure(null);
     syncUrlForLocalWorkspace("replace");
-    void readIndexedDbWorkspace()
+    void readWorkspaceWithLegacyMigration()
       .then((storedWorkspace) => {
         const nextStoredWorkspace = storedWorkspace ?? createStarterWorkspaceState();
         getWorkspaceStoreForMode("local").getState().replaceWorkspace(nextStoredWorkspace);
