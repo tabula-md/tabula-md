@@ -140,6 +140,16 @@ describe("workspace preferences controller", () => {
     expect(storage.getItem(WORKSPACE_PREFERENCES_KEY)).toBe(JSON.stringify(preferences));
     expect(readWorkspacePreferences(storage)).toEqual(preferences);
   });
+
+  it("falls back when browser preferences cannot be read or written", () => {
+    const unavailableStorage = {
+      getItem: () => { throw new DOMException("blocked", "SecurityError"); },
+      setItem: () => { throw new DOMException("full", "QuotaExceededError"); },
+    };
+
+    expect(readWorkspacePreferences(unavailableStorage)).toEqual(DEFAULT_WORKSPACE_PREFERENCES);
+    expect(writeWorkspacePreferences(DEFAULT_WORKSPACE_PREFERENCES, unavailableStorage)).toBe(false);
+  });
 });
 
 describe("workspace active file editor controller", () => {
@@ -434,6 +444,20 @@ describe("workspace identity controller", () => {
       name: createRoomActorName("human", "id-12345"),
       color: createRoomActorColor("id-12345"),
     });
+  });
+
+  it("creates an identity when browser storage is unavailable", () => {
+    const unavailableStorage = {
+      getItem: () => { throw new DOMException("blocked", "SecurityError"); },
+      setItem: () => { throw new DOMException("full", "QuotaExceededError"); },
+    };
+
+    expect(() => createWorkspaceIdentity({
+      storage: unavailableStorage,
+      sessionStorage: unavailableStorage,
+      createId: () => "offline-tab",
+      now: () => 10,
+    })).not.toThrow();
   });
 
   it("uses a tab-scoped actor id while preserving a custom stored name", () => {

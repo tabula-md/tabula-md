@@ -27,6 +27,20 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    expect(
+      (await page.getByText("Tabula couldn’t open this workspace.", { exact: true }).count()) === 0,
+      "Browser storage write failures should not replace the workspace with a fatal error.",
+    );
+  }, {
+    initScript: () => {
+      Storage.prototype.setItem = () => {
+        throw new DOMException("Storage quota exceeded", "QuotaExceededError");
+      };
+    },
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.locator(".empty-file-state").waitFor({ state: "visible" });
     const tabs = await getTabs(page);
     const firstScreenText = await page.locator(".empty-file-state").textContent();
 

@@ -1,4 +1,5 @@
 import type { RightPanelView } from "../uiTypes";
+import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../browserStorage";
 
 export const ROOM_VIEW_STATE_KEY_PREFIX = "tabula.room-view.v1";
 
@@ -42,10 +43,13 @@ export const parseRoomViewState = (value: unknown): RoomViewState | null => {
 
 export const readRoomViewState = (
   roomId: string,
-  storage: Pick<Storage, "getItem"> = window.sessionStorage,
+  storage?: Pick<Storage, "getItem">,
 ) => {
   try {
-    const value = storage.getItem(getStorageKey(roomId));
+    const value = readBrowserStorage(
+      storage ?? getBrowserStorage("sessionStorage"),
+      getStorageKey(roomId),
+    );
     return value ? parseRoomViewState(JSON.parse(value)) : null;
   } catch {
     return null;
@@ -55,13 +59,13 @@ export const readRoomViewState = (
 export const writeRoomViewState = (
   roomId: string,
   viewState: RoomViewState,
-  storage: Pick<Storage, "setItem"> = window.sessionStorage,
+  storage?: Pick<Storage, "setItem">,
 ) => {
-  try {
-    storage.setItem(getStorageKey(roomId), JSON.stringify(viewState));
-  } catch {
-    // Room content remains authoritative even when tab-local view state cannot be saved.
-  }
+  writeBrowserStorage(
+    storage ?? getBrowserStorage("sessionStorage"),
+    getStorageKey(roomId),
+    JSON.stringify(viewState),
+  );
 };
 
 export const restoreRoomWorkspaceView = <Workspace extends RoomWorkspaceView>(

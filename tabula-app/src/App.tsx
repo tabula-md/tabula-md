@@ -1,7 +1,12 @@
 import { WorkspaceApp } from "./components/WorkspaceApp";
+import { WorkspaceErrorBoundary } from "./components/WorkspaceErrorBoundary";
 
 function App() {
-  return <WorkspaceApp />;
+  return (
+    <WorkspaceErrorBoundary>
+      <WorkspaceApp />
+    </WorkspaceErrorBoundary>
+  );
 }
 
 export default App;
