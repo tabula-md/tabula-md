@@ -36,6 +36,23 @@ describe("product analytics", () => {
     });
   });
 
+  it("captures content-free agent handoff dimensions", async () => {
+    const capture = vi.fn();
+    const analytics = createProductAnalytics({ client: { capture } });
+
+    analytics.report("agent_request_copied", {
+      agentClient: "claude",
+      handoffMode: "live",
+      roomId: "public-room-id",
+    });
+
+    await vi.waitFor(() => expect(capture).toHaveBeenCalledOnce());
+    expect(capture).toHaveBeenCalledWith("agent_request_copied", expect.objectContaining({
+      agent_client: "claude",
+      handoff_mode: "live",
+    }));
+  });
+
   it("accepts only short content-free acquisition source labels", () => {
     expect(normalizeAcquisitionSource(" ProductHunt ")).toBe("producthunt");
     expect(normalizeAcquisitionSource("hn-launch_1")).toBe("hn-launch_1");
@@ -61,8 +78,10 @@ describe("product analytics", () => {
       $session_id: "session-id",
       $process_person_profile: false,
       app_version: "0.1.0",
+      agent_client: "claude",
       actor_kind: "agent",
       collaboration_id: "collab_safe",
+      handoff_mode: "live",
       is_internal: false,
       acquisition_source: "hn",
       $current_url: "https://tabula.md/#room=roomId,SECRET_KEY",
@@ -75,7 +94,7 @@ describe("product analytics", () => {
     };
     const sanitized = sanitizePostHogProductEvent({
       uuid: "event-uuid",
-      event: "collaborator_edited",
+      event: "agent_request_copied",
       properties: unsafeProperties,
     } as CaptureResult);
     const serialized = JSON.stringify(sanitized);
@@ -86,8 +105,10 @@ describe("product analytics", () => {
       $session_id: "session-id",
       $process_person_profile: false,
       app_version: "0.1.0",
+      agent_client: "claude",
       actor_kind: "agent",
       collaboration_id: "collab_safe",
+      handoff_mode: "live",
       is_internal: false,
       acquisition_source: "hn",
     });

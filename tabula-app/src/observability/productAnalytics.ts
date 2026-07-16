@@ -6,13 +6,27 @@ export type ProductEventName =
   | "room_created"
   | "room_link_copied"
   | "agent_invite_copied"
+  | "agent_handoff_opened"
+  | "agent_client_selected"
+  | "agent_setup_copied"
+  | "agent_request_copied"
+  | "agent_context_copied"
   | "collaborator_joined"
   | "collaborator_edited";
 
 export type ProductEventActorKind = "agent" | "human" | "unknown";
+export type ProductEventAgentClient =
+  | "claude"
+  | "claude-code"
+  | "codex"
+  | "chatgpt"
+  | "other";
+export type ProductEventHandoffMode = "live" | "context";
 
 type ProductEventProperties = {
+  agentClient?: ProductEventAgentClient;
   actorKind?: ProductEventActorKind;
+  handoffMode?: ProductEventHandoffMode;
   roomId?: string;
 };
 
@@ -27,6 +41,11 @@ const PRODUCT_EVENT_NAMES = new Set<ProductEventName>([
   "room_created",
   "room_link_copied",
   "agent_invite_copied",
+  "agent_handoff_opened",
+  "agent_client_selected",
+  "agent_setup_copied",
+  "agent_request_copied",
+  "agent_context_copied",
   "collaborator_joined",
   "collaborator_edited",
 ]);
@@ -55,6 +74,15 @@ const readAcquisitionSource = () => {
 const isProductEventName = (value: string): value is ProductEventName =>
   PRODUCT_EVENT_NAMES.has(value as ProductEventName);
 
+const isProductEventAgentClient = (
+  value: ProductEventAgentClient | undefined,
+): value is ProductEventAgentClient =>
+  value === "claude" ||
+  value === "claude-code" ||
+  value === "codex" ||
+  value === "chatgpt" ||
+  value === "other";
+
 const copyProperty = (
   target: Record<string, unknown>,
   source: CaptureResult["properties"],
@@ -75,8 +103,10 @@ export const sanitizePostHogProductEvent = (event: CaptureResult | null): Captur
     "$session_id",
     "$process_person_profile",
     "app_version",
+    "agent_client",
     "actor_kind",
     "collaboration_id",
+    "handoff_mode",
     "is_internal",
     "acquisition_source",
   ]) {
@@ -123,7 +153,9 @@ export const createProductAnalytics = ({
   report(name: ProductEventName, properties: ProductEventProperties = {}) {
     if (!client) return;
     void (async () => {
+      const agentClient = properties.agentClient;
       const actorKind = properties.actorKind;
+      const handoffMode = properties.handoffMode;
       const collaborationId = properties.roomId
         ? await deriveCollaborationId(properties.roomId)
         : null;
@@ -131,9 +163,15 @@ export const createProductAnalytics = ({
         app_version: appVersion.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 32),
         acquisition_source: normalizeAcquisitionSource(acquisitionSource) ?? "direct",
         is_internal: isInternalAnalyticsSession(),
+        ...(isProductEventAgentClient(agentClient)
+          ? { agent_client: agentClient }
+          : {}),
         ...(collaborationId ? { collaboration_id: collaborationId } : {}),
         ...(actorKind === "agent" || actorKind === "human" || actorKind === "unknown"
           ? { actor_kind: actorKind }
+          : {}),
+        ...(handoffMode === "live" || handoffMode === "context"
+          ? { handoff_mode: handoffMode }
           : {}),
       };
       const loadedClient = "then" in client ? await client : client;
