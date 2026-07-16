@@ -155,6 +155,13 @@ export default defineConfig({
           }
 
           if (
+            includesPackage(normalizedId, "posthog-js") ||
+            normalizedId.includes("/node_modules/@posthog/")
+          ) {
+            return "posthog-vendor";
+          }
+
+          if (
             normalizedId.includes("/react/") ||
             normalizedId.includes("/react-dom/") ||
             normalizedId.includes("/scheduler/") ||

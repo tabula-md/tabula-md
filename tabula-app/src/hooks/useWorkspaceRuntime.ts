@@ -88,6 +88,7 @@ import {
 } from "../liveRoomOpenState";
 import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
+import { productAnalytics } from "../observability/productAnalytics";
 import { useParticipantFollowController } from "./useParticipantFollowController";
 import { createActiveRoomDocumentProjectionStore } from "../collaboration/runtime/ActiveRoomDocumentProjectionStore";
 import {
@@ -895,6 +896,7 @@ export function useWorkspaceRuntime() {
         { roomId: startedSession.roomId, shareUrl: startedSession.shareUrl },
         startedSession.bootstrap,
       );
+      productAnalytics.report("room_created");
     } catch (error) {
       roomDocumentProjectionStore.clear();
       clientErrorReporter.report({

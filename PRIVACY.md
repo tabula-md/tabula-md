@@ -37,6 +37,40 @@ Hosted Export link blobs are retained for a limited window. The current hosted
 service window is 7 days. Tabula.md is in public preview and does not yet
 provide account-based link revoke controls.
 
+## Product Analytics
+
+The official hosted Tabula.md service uses PostHog US Cloud to collect a small
+set of content-free product events and understand whether sharing and
+collaboration workflows succeed. These events can record that a room was
+created, a room link or agent invitation was copied, another participant
+joined, or another participant edited the shared workspace.
+
+Product events contain an ephemeral browser-tab identifier, event time, app
+version, and, when available, whether the other participant is a person or an
+agent. They do not contain Markdown, file or folder names, comments, prompts,
+participant names, room or document identifiers, room keys, snapshot keys,
+URLs, referrers, DOM element details, or URL fragments. The identifier is stored
+in browser session storage and is discarded when that browser tab session ends.
+
+PostHog autocapture, page-view capture, session recording, heatmaps, surveys,
+and persistent person identification are disabled. Tabula.md does not call
+PostHog identify APIs or associate product events with an account or email.
+
+Analytics are disabled by default in the open-source app. A self-hosted build
+sends no product events unless its operator explicitly configures a PostHog
+project key. Operators are responsible for documenting their own deployment and
+retention policy.
+
+## Error Reporting
+
+The official hosted service may send content-free client error reports when a
+configured product operation fails. Reports can contain the app version,
+browser user-agent, URL path without query or fragment, feature and operation
+labels, a coarse error category, and timestamp. Reports do not include raw error
+messages, Markdown, document identifiers, or link fragments and their keys.
+
+Error reporting is also disabled when no reporting endpoint is configured.
+
 ## Reporting Problems
 
 For product bugs, open an issue at

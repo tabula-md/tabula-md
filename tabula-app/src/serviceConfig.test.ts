@@ -11,6 +11,7 @@ describe("service config", () => {
     expect(
       getTabulaServiceConfig({
         DEV: false,
+        VITE_POSTHOG_KEY: " phc_test_key ",
         VITE_TABULA_ERROR_REPORT_URL: "https://events.tabula.test///",
         VITE_TABULA_FIREBASE_CONFIG: "{\"projectId\":\"tabula-test\"}",
         VITE_TABULA_JSON_URL: "https://json.tabula.test///",
@@ -19,6 +20,7 @@ describe("service config", () => {
         VITE_TABULA_ROOM_URL: "https://rooms.tabula.test//",
       }),
     ).toEqual({
+      posthogKey: "phc_test_key",
       roomUrl: "https://rooms.tabula.test",
       jsonUrl: "https://json.tabula.test",
       errorReportUrl: "https://events.tabula.test",

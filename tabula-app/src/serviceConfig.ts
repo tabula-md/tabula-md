@@ -24,6 +24,7 @@ export type TabulaServiceConfig = {
   roomUrl: string | null;
   jsonUrl: string | null;
   errorReportUrl: string | null;
+  posthogKey: string | null;
   firebaseConfig: string | null;
   firebaseEmulatorHost: string | null;
   firestoreEmulatorPort: number;
@@ -39,6 +40,7 @@ type TabulaServiceEnv = Partial<
     ImportMetaEnv,
     | "DEV"
     | "VITE_TABULA_ERROR_REPORT_URL"
+    | "VITE_POSTHOG_KEY"
     | "VITE_TABULA_FIREBASE_CONFIG"
     | "VITE_TABULA_FIREBASE_EMULATOR_HOST"
     | "VITE_TABULA_FIRESTORE_EMULATOR_PORT"
@@ -82,6 +84,7 @@ export const getTabulaServiceConfig = (
 ): TabulaServiceConfig => {
   const firebaseEmulatorHost = env.VITE_TABULA_FIREBASE_EMULATOR_HOST?.trim() || null;
   return {
+    posthogKey: env.VITE_POSTHOG_KEY?.trim() || null,
     roomUrl: normalizeServiceUrl(env.VITE_TABULA_ROOM_URL),
     jsonUrl: normalizeServiceUrl(env.VITE_TABULA_JSON_URL),
     errorReportUrl: normalizeServiceUrl(env.VITE_TABULA_ERROR_REPORT_URL),
