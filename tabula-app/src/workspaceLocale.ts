@@ -165,9 +165,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "End-to-end encrypted. Tabula relays encrypted updates and cannot read your documents or comments.",
         temporarySessionDescription:
           "Temporary session. Keep at least one participant connected.",
-        inviteAgent: "Copy agent prompt",
+        inviteAgent: "Invite an agent",
         inviteAgentDescription:
-          "Copy a room-aware prompt. The room URL is included only when you click.",
+          "Connect Tabula MCP, choose a task, and hand off this live workspace.",
         retrySession: "Retry",
         unavailable: "Live collaboration isn’t available right now.",
         reconnectingTitle: "Reconnecting to live room",
@@ -264,9 +264,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "종단간 암호화됩니다. Tabula는 암호화된 변경만 전달하며 문서나 댓글을 읽을 수 없습니다.",
         temporarySessionDescription:
           "임시 세션입니다. 최소 한 명의 참여자가 연결된 상태를 유지하세요.",
-        inviteAgent: "에이전트 프롬프트 복사",
+        inviteAgent: "에이전트 초대",
         inviteAgentDescription:
-          "room용 프롬프트를 복사합니다. room URL은 이 버튼을 눌렀을 때만 포함됩니다.",
+          "Tabula MCP를 연결하고 작업을 정해 이 실시간 워크스페이스를 전달합니다.",
         retrySession: "다시 연결",
         unavailable: "지금은 실시간 협업을 사용할 수 없습니다.",
         reconnectingTitle: "실시간 room에 다시 연결하는 중",
@@ -363,9 +363,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "エンドツーエンドで暗号化されます。Tabula は暗号化された更新を中継するだけで、文書やコメントを読むことはできません。",
         temporarySessionDescription:
           "一時セッションです。少なくとも1人は接続したままにしてください。",
-        inviteAgent: "エージェント用プロンプトをコピー",
+        inviteAgent: "エージェントを招待",
         inviteAgentDescription:
-          "room 用プロンプトをコピーします。room URL はこのボタンを押したときだけ含まれます。",
+          "Tabula MCP を接続し、タスクを選んでこのライブワークスペースを引き継ぎます。",
         retrySession: "再試行",
         unavailable: "現在、ライブ共同編集は利用できません。",
         reconnectingTitle: "ライブ共同編集ルームに再接続中",
@@ -462,9 +462,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "采用端到端加密。Tabula 只中继加密更新，无法读取你的文档或评论。",
         temporarySessionDescription:
           "这是临时会话。请确保至少一名参与者保持连接。",
-        inviteAgent: "复制智能体提示",
+        inviteAgent: "邀请智能体",
         inviteAgentDescription:
-          "复制面向 room 的提示。只有点击此按钮时才会包含 room URL。",
+          "连接 Tabula MCP，选择任务，并交接此实时工作区。",
         retrySession: "重试",
         unavailable: "实时协作目前不可用。",
         reconnectingTitle: "正在重新连接实时协作房间",
@@ -560,9 +560,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Cifrado de extremo a extremo. Tabula solo retransmite cambios cifrados y no puede leer tus documentos ni comentarios.",
         temporarySessionDescription:
           "Sesión temporal. Mantén al menos un participante conectado.",
-        inviteAgent: "Copiar prompt de agente",
+        inviteAgent: "Invitar a un agente",
         inviteAgentDescription:
-          "Copia un prompt para la sala. La URL de la sala solo se incluye al hacer clic.",
+          "Conecta Tabula MCP, elige una tarea y entrega este espacio de trabajo en vivo.",
         retrySession: "Reintentar",
         unavailable: "La colaboración en vivo no está disponible ahora.",
         reconnectingTitle: "Reconectando a la sala en vivo",
@@ -661,9 +661,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Chiffré de bout en bout. Tabula ne fait que relayer des mises à jour chiffrées et ne peut lire ni vos documents ni vos commentaires.",
         temporarySessionDescription:
           "Session temporaire. Gardez au moins un participant connecté.",
-        inviteAgent: "Copier le prompt agent",
+        inviteAgent: "Inviter un agent",
         inviteAgentDescription:
-          "Copie un prompt pour la room. L'URL de la room est ajoutée seulement au clic.",
+          "Connectez Tabula MCP, choisissez une tâche et transmettez cet espace en direct.",
         retrySession: "Réessayer",
         unavailable: "La collaboration en direct n’est pas disponible actuellement.",
         reconnectingTitle: "Reconnexion à l’espace en direct",
@@ -762,9 +762,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Ende-zu-Ende verschlüsselt. Tabula leitet nur verschlüsselte Änderungen weiter und kann Dokumente oder Kommentare nicht lesen.",
         temporarySessionDescription:
           "Temporäre Sitzung. Mindestens eine Person muss verbunden bleiben.",
-        inviteAgent: "Agent-Prompt kopieren",
+        inviteAgent: "Agent einladen",
         inviteAgentDescription:
-          "Kopiert einen Room-Prompt. Die Room-URL wird nur beim Klick eingefügt.",
+          "Verbinde Tabula MCP, wähle eine Aufgabe und übergib diesen Live-Workspace.",
         retrySession: "Erneut versuchen",
         unavailable: "Live-Zusammenarbeit ist derzeit nicht verfügbar.",
         reconnectingTitle: "Live-Raum wird erneut verbunden",

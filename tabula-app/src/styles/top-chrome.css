@@ -727,6 +727,169 @@
   width: min(560px, calc(100vw - 48px));
 }
 
+.share-agent-handoff-modal {
+  width: min(660px, calc(100vw - 48px));
+}
+
+.share-agent-handoff {
+  display: grid;
+  gap: var(--space-4);
+  max-height: min(680px, calc(100vh - 96px));
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.share-agent-handoff .share-modal-header {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding-right: 38px;
+}
+
+.share-agent-handoff .share-modal-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.share-agent-handoff .share-modal-header p {
+  font-size: var(--font-ui-secondary);
+  line-height: 1.45;
+}
+
+.share-agent-back {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-self: start;
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+}
+
+.share-agent-back:hover {
+  color: var(--text-primary);
+}
+
+.share-modal-field > select,
+.share-modal-field > textarea {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-surface);
+  color: var(--text-primary);
+  background: var(--surface-muted);
+  font: inherit;
+}
+
+.share-modal-field > select {
+  height: var(--control-size-row);
+  padding: 0 10px;
+}
+
+.share-modal-field > textarea {
+  min-height: 84px;
+  padding: 10px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.share-modal-field > select:focus,
+.share-modal-field > textarea:focus {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.share-agent-setup,
+.share-agent-request,
+.share-agent-context-fallback {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-surface);
+  background: var(--surface-muted);
+}
+
+.share-agent-setup > div,
+.share-agent-context-fallback > div {
+  display: grid;
+  gap: 4px;
+}
+
+.share-agent-setup strong,
+.share-agent-context-fallback strong {
+  color: var(--text-primary);
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-strong);
+}
+
+.share-agent-setup p,
+.share-agent-request p,
+.share-agent-context-fallback p,
+.share-agent-room-warning {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+  line-height: 1.45;
+}
+
+.share-agent-setup pre {
+  max-height: 132px;
+  margin: 0;
+  overflow: auto;
+  padding: 10px;
+  border-radius: var(--radius-surface);
+  color: var(--text-soft);
+  background: var(--surface-active);
+  font-family: var(--font-mono);
+  font-size: var(--font-ui-caption);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.share-agent-setup .share-modal-secondary,
+.share-agent-context-fallback .share-modal-secondary {
+  justify-self: start;
+  background: var(--surface-active);
+}
+
+.share-agent-trust-note {
+  padding: 10px;
+  border-radius: var(--radius-surface);
+  background: var(--surface-muted);
+}
+
+.share-agent-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.share-agent-scope legend {
+  width: 100%;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+}
+
+.share-agent-scope label {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--text-soft);
+  font-size: var(--font-ui-body);
+}
+
+.share-agent-request {
+  justify-items: start;
+}
+
+.share-agent-room-warning {
+  color: var(--text-muted);
+}
+
 .share-export-result {
   display: grid;
   gap: var(--space-5);
@@ -931,6 +1094,10 @@
 
   .share-live-agent-box {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .share-agent-handoff {
+    max-height: calc(100vh - 56px);
   }
 
 }
