@@ -22,7 +22,6 @@ export default defineConfig({
         "data/restore": "src/data/restore.ts",
         "room/envelope": "src/room/envelope.ts",
         workbench: "src/workbench/index.ts",
-        "workbench/internal": "src/workbench/internal.ts",
       },
       formats: ["es"],
       cssFileName: "workbench",

@@ -42,9 +42,6 @@
       "types": "./src/workbench/index.d.ts",
       "import": "./dist/workbench.js"
     },
-    "./workbench/internal": {
-      "import": "./dist/workbench/internal.js"
-    },
     "./workbench.css": "./dist/workbench.css"
   },
   "files": [
@@ -79,7 +76,8 @@
     "build": "npm run clean && npm run build:types && npm run build:js",
     "build:js": "vite build --config vite.config.ts",
     "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly",
-    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prepack": "npm run build && node ../../scripts/check-tabula-package.mjs"
   },
   "dependencies": {
     "yaml": "^2.9.0"

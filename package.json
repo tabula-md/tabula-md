@@ -15,6 +15,7 @@
     "build": "tsc && vite build",
     "build:core": "npm run build -w @tabula-md/tabula",
     "check:core-runtime": "npm run build:core && node scripts/check-core-runtime.mjs",
+    "check:core-package": "npm run build:core && node scripts/check-tabula-package.mjs",
     "perf:preview-architecture": "npm run build:core && node scripts/preview-architecture-benchmark.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "surface:check": "node scripts/public-surface-check.mjs",

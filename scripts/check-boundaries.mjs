@@ -230,13 +230,18 @@ const reportAppCoreImports = (sourceFile) => {
       return;
     }
 
-    const isPublishedWorkbenchImport =
-      moduleSpecifier === "@tabula-md/tabula/workbench" ||
-      moduleSpecifier === "@tabula-md/tabula/workbench/internal";
+    const isPublishedWorkbenchImport = moduleSpecifier === "@tabula-md/tabula/workbench";
+    const isPrivateWorkbenchImport = moduleSpecifier === "@tabula-md/tabula-private/workbench";
 
     if (moduleSpecifier.startsWith("@tabula-md/tabula/") && !isPublishedWorkbenchImport) {
       errors.push(
         `${formatLocation(sourceFile, node)}: tabula-app must import @tabula-md/tabula through its public root API or published workbench subpath`,
+      );
+    }
+
+    if (moduleSpecifier.startsWith("@tabula-md/tabula-private/") && !isPrivateWorkbenchImport) {
+      errors.push(
+        `${formatLocation(sourceFile, node)}: tabula-app must use the declared private workbench entrypoint`,
       );
     }
 
