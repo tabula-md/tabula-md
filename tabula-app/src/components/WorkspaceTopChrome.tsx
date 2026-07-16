@@ -138,10 +138,7 @@ export function WorkspaceTopChrome({
       {shareOpen && (
         <ShareControlsBoundary onError={onShareLoadError}>
           <ShareControls
-            activeFile={activeFile}
             room={room}
-            files={files}
-            activeText={activeText}
             language={language}
             currentUserName={currentUserName}
             connectionStatus={connectionStatus}

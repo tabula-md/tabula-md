@@ -643,35 +643,24 @@ export async function run(ctx) {
       "Starting live should keep the Share link panel explanation stable.",
     );
     expect((await page.getByText("Invite an agent").count()) > 0, "Live modal should expose the agent handoff action after a room starts.");
-    await page.getByRole("button", { name: "Invite an agent" }).click();
-    await page.getByRole("heading", { name: "Invite an agent" }).waitFor();
     expect(
       (await page.evaluate(() => window.__tabulaClipboard.length)) === 0,
-      "Opening agent handoff should not copy the bearer-secret room URL.",
+      "Starting a room should not copy an agent invite implicitly.",
     );
     expect(
-      (await page.locator(".share-agent-setup").textContent())?.includes("https://mcp.tabula.md/mcp"),
-      "Claude handoff should explain the hosted MCP connector before copying a room task.",
+      (await page.getByRole("link", { name: "Set up Tabula MCP" }).getAttribute("href")) ===
+        "https://github.com/tabula-md/tabula-mcp#quick-start",
+      "Agent setup should stay outside the per-room invite action.",
     );
-    await page.getByRole("button", { name: "Copy setup" }).click();
-    const copiedSetup = await page.evaluate(() => window.__tabulaClipboard.at(-1));
+    await page.getByRole("button", { name: "Copy invite" }).click();
+    const copiedAgentInvite = await page.evaluate(() => window.__tabulaClipboard.at(-1));
+    expect(copiedAgentInvite.includes("Use your Tabula tools to join this room"), "Agent invite should state the user intent without protocol instructions.");
+    expect(copiedAgentInvite.includes(page.url()), "Agent invite should include the current room URL only after an explicit copy.");
+    expect(!copiedAgentInvite.match(/Task:|Scope:|Target document:|Yjs|binary protocol|Markdown/), "Agent invite should not expose task orchestration, fake scopes, or protocol internals.");
     expect(
-      copiedSetup === "https://mcp.tabula.md/mcp",
-      "Hosted agent setup should copy only the MCP connector URL.",
+      (await page.evaluate(() => window.__tabulaClipboard.length)) === 1,
+      "Agent invitation should require exactly one explicit clipboard action.",
     );
-    await page.getByLabel("What should the agent do?").fill("Review the active document and add a conclusion.");
-    await page.getByRole("button", { name: "Copy room task" }).click();
-    const copiedRoomTask = await page.evaluate(() => window.__tabulaClipboard.at(-1));
-    expect(copiedRoomTask.includes("Call tabula_connect_room"), "Live agent request should use the installed MCP tool contract.");
-    expect(copiedRoomTask.includes("Room URL: "), "Live agent request should include the room invite only on explicit copy.");
-    expect(!copiedRoomTask.includes("Yjs") && !copiedRoomTask.includes("binary protocol"), "Live agent request should hide CRDT protocol internals.");
-    expect(!copiedRoomTask.includes("Live preview transition stays visible."), "Live agent request should not duplicate stale Markdown from the room.");
-    await page.getByRole("button", { name: "Copy context only" }).click();
-    const copiedContext = await page.evaluate(() => window.__tabulaClipboard.at(-1));
-    expect(copiedContext.includes("Live preview transition stays visible."), "Context fallback should include current Markdown.");
-    expect(!copiedContext.includes("Room URL:"), "Context fallback should never include the bearer-secret room URL.");
-    await page.getByRole("button", { name: "Back to Share" }).click();
-    await page.getByText("Live collaboration", { exact: true }).waitFor();
     expect(
       (await page.locator(".share-modal").getByText("Live room", { exact: true }).count()) === 0,
       "Live modal should not show redundant room-state title text.",

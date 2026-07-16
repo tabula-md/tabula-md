@@ -56,6 +56,9 @@ type WorkspaceMenuCopy = {
       temporarySessionDescription: string;
       inviteAgent: string;
       inviteAgentDescription: string;
+      copyAgentInvite: string;
+      setupAgent: string;
+      agentAccessWarning: string;
       retrySession: string;
       unavailable: string;
       reconnectingTitle: string;
@@ -167,7 +170,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Temporary session. Keep at least one participant connected.",
         inviteAgent: "Invite an agent",
         inviteAgentDescription:
-          "Connect Tabula MCP, choose a task, and hand off this live workspace.",
+          "Copy an invite for an AI with Tabula MCP.",
+        copyAgentInvite: "Copy invite",
+        setupAgent: "Set up Tabula MCP",
+        agentAccessWarning:
+          "The room link lets the connected AI edit the whole workspace.",
         retrySession: "Retry",
         unavailable: "Live collaboration isn’t available right now.",
         reconnectingTitle: "Reconnecting to live room",
@@ -266,7 +273,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "임시 세션입니다. 최소 한 명의 참여자가 연결된 상태를 유지하세요.",
         inviteAgent: "에이전트 초대",
         inviteAgentDescription:
-          "Tabula MCP를 연결하고 작업을 정해 이 실시간 워크스페이스를 전달합니다.",
+          "Tabula MCP가 연결된 AI용 초대를 복사합니다.",
+        copyAgentInvite: "초대 복사",
+        setupAgent: "Tabula MCP 설정",
+        agentAccessWarning:
+          "연결된 AI는 room 링크로 전체 워크스페이스를 편집할 수 있습니다.",
         retrySession: "다시 연결",
         unavailable: "지금은 실시간 협업을 사용할 수 없습니다.",
         reconnectingTitle: "실시간 room에 다시 연결하는 중",
@@ -365,7 +376,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "一時セッションです。少なくとも1人は接続したままにしてください。",
         inviteAgent: "エージェントを招待",
         inviteAgentDescription:
-          "Tabula MCP を接続し、タスクを選んでこのライブワークスペースを引き継ぎます。",
+          "Tabula MCP に接続した AI 向けの招待をコピーします。",
+        copyAgentInvite: "招待をコピー",
+        setupAgent: "Tabula MCP を設定",
+        agentAccessWarning:
+          "接続した AI は room リンクでワークスペース全体を編集できます。",
         retrySession: "再試行",
         unavailable: "現在、ライブ共同編集は利用できません。",
         reconnectingTitle: "ライブ共同編集ルームに再接続中",
@@ -464,7 +479,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "这是临时会话。请确保至少一名参与者保持连接。",
         inviteAgent: "邀请智能体",
         inviteAgentDescription:
-          "连接 Tabula MCP，选择任务，并交接此实时工作区。",
+          "为已连接 Tabula MCP 的 AI 复制邀请。",
+        copyAgentInvite: "复制邀请",
+        setupAgent: "设置 Tabula MCP",
+        agentAccessWarning:
+          "连接的 AI 可通过 room 链接编辑整个工作区。",
         retrySession: "重试",
         unavailable: "实时协作目前不可用。",
         reconnectingTitle: "正在重新连接实时协作房间",
@@ -562,7 +581,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Sesión temporal. Mantén al menos un participante conectado.",
         inviteAgent: "Invitar a un agente",
         inviteAgentDescription:
-          "Conecta Tabula MCP, elige una tarea y entrega este espacio de trabajo en vivo.",
+          "Copia una invitación para una IA conectada a Tabula MCP.",
+        copyAgentInvite: "Copiar invitación",
+        setupAgent: "Configurar Tabula MCP",
+        agentAccessWarning:
+          "La IA conectada puede editar todo el espacio con el enlace de la room.",
         retrySession: "Reintentar",
         unavailable: "La colaboración en vivo no está disponible ahora.",
         reconnectingTitle: "Reconectando a la sala en vivo",
@@ -663,7 +686,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Session temporaire. Gardez au moins un participant connecté.",
         inviteAgent: "Inviter un agent",
         inviteAgentDescription:
-          "Connectez Tabula MCP, choisissez une tâche et transmettez cet espace en direct.",
+          "Copiez une invitation pour une IA connectée à Tabula MCP.",
+        copyAgentInvite: "Copier l’invitation",
+        setupAgent: "Configurer Tabula MCP",
+        agentAccessWarning:
+          "L’IA connectée peut modifier tout l’espace avec le lien de la room.",
         retrySession: "Réessayer",
         unavailable: "La collaboration en direct n’est pas disponible actuellement.",
         reconnectingTitle: "Reconnexion à l’espace en direct",
@@ -764,7 +791,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Temporäre Sitzung. Mindestens eine Person muss verbunden bleiben.",
         inviteAgent: "Agent einladen",
         inviteAgentDescription:
-          "Verbinde Tabula MCP, wähle eine Aufgabe und übergib diesen Live-Workspace.",
+          "Kopiere eine Einladung für eine KI mit verbundenem Tabula MCP.",
+        copyAgentInvite: "Einladung kopieren",
+        setupAgent: "Tabula MCP einrichten",
+        agentAccessWarning:
+          "Die verbundene KI kann mit dem Room-Link den gesamten Workspace bearbeiten.",
         retrySession: "Erneut versuchen",
         unavailable: "Live-Zusammenarbeit ist derzeit nicht verfügbar.",
         reconnectingTitle: "Live-Raum wird erneut verbunden",

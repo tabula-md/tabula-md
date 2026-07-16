@@ -1,21 +1,17 @@
 import { X } from "lucide-react";
 import { ShareExportPanel } from "./share/ShareExportPanel";
 import { ShareExportResult } from "./share/ShareExportResult";
-import { ShareAgentHandoff } from "./share/ShareAgentHandoff";
 import { ShareLinkPanel } from "./share/ShareLinkPanel";
 import { ShareStopSessionConfirm } from "./share/ShareStopSessionConfirm";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { useShareDialogRuntime } from "../hooks/useShareDialogRuntime";
 import type { ConnectionStatus, RoomRecoveryMode } from "../collaboration";
-import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
+import type { LocationRoom } from "../workspaceStorage";
 import { ModalSurface } from "./ui/ModalSurface";
 
 type ShareControlsProps = {
-  activeFile?: WorkspaceFile;
   room?: LocationRoom | null;
-  files: WorkspaceFile[];
-  activeText: string;
   language: WorkspaceLanguage;
   currentUserName: string;
   connectionStatus: ConnectionStatus;
@@ -35,10 +31,7 @@ type ShareControlsProps = {
 };
 
 export function ShareControls({
-  activeFile,
   room,
-  files,
-  activeText,
   language,
   currentUserName,
   connectionStatus,
@@ -58,10 +51,7 @@ export function ShareControls({
 }: ShareControlsProps) {
   const showLiveRoomPanel = isLive;
   const shareRuntime = useShareDialogRuntime({
-    activeFile,
     room,
-    activeText,
-    files,
     isLive: showLiveRoomPanel,
     isLiveConnected,
     jsonShare,
@@ -115,31 +105,6 @@ export function ShareControls({
     );
   }
 
-  if (shareRuntime.view === "agent-handoff") {
-    return (
-      <ModalSurface
-        key="agent-handoff"
-        ariaLabelledBy="share-agent-handoff-title"
-        className="share-agent-handoff-modal"
-        onClose={shareRuntime.closeShare}
-      >
-        <button
-          className="share-modal-close"
-          type="button"
-          aria-label={shareRuntime.chromeCopy.common.closeShareDialog}
-          onClick={shareRuntime.closeShare}
-        >
-          <X size={18} />
-        </button>
-        <ShareAgentHandoff
-          language={language}
-          runtime={shareRuntime.agentHandoff}
-          onBack={shareRuntime.closeAgentHandoff}
-        />
-      </ModalSurface>
-    );
-  }
-
   return (
     <ModalSurface
       key="chooser"
@@ -163,6 +128,7 @@ export function ShareControls({
       <section className={`share-modal-panel ${showLiveRoomPanel ? "live" : "chooser"}`}>
         <div className="share-modal-actions-column">
           <ShareLinkPanel
+            agentInviteCopied={shareRuntime.agentInviteCopied}
             chromeCopy={shareRuntime.chromeCopy}
             copied={copied}
             copy={shareRuntime.copy}
@@ -182,7 +148,7 @@ export function ShareControls({
             }
             onChangeUserName={onChangeUserName}
             onCommitUserName={onCommitUserName}
-            onInviteAgent={shareRuntime.openAgentHandoff}
+            onCopyAgentInvite={shareRuntime.copyAgentInvite}
             onCopyShareUrl={onCopyShareUrl}
             onRetrySession={onRetrySession}
             onStartWorkspaceRoom={onStartSession}

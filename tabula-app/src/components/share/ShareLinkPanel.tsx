@@ -2,6 +2,7 @@ import {
   Bot,
   Check,
   Copy,
+  ExternalLink,
   LockKeyhole,
   Play,
   RefreshCw,
@@ -15,8 +16,10 @@ import type {
   WorkspaceChromeCopy,
   WorkspaceShareCopy,
 } from "../../workspaceLocale";
+import { TABULA_MCP_SETUP_URL } from "../../shareAgentHandoff";
 
 type ShareLinkPanelProps = {
+  agentInviteCopied: boolean;
   chromeCopy: WorkspaceChromeCopy;
   copied: boolean;
   copy: WorkspaceShareCopy;
@@ -29,7 +32,7 @@ type ShareLinkPanelProps = {
   shareView: ShareViewModel;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
-  onInviteAgent: () => void;
+  onCopyAgentInvite: () => void;
   onCopyShareUrl: () => void;
   onRetrySession: () => void;
   onStartWorkspaceRoom: () => void;
@@ -37,6 +40,7 @@ type ShareLinkPanelProps = {
 };
 
 export function ShareLinkPanel({
+  agentInviteCopied,
   chromeCopy,
   copied,
   copy,
@@ -49,7 +53,7 @@ export function ShareLinkPanel({
   shareView,
   onChangeUserName,
   onCommitUserName,
-  onInviteAgent,
+  onCopyAgentInvite,
   onCopyShareUrl,
   onRetrySession,
   onStartWorkspaceRoom,
@@ -163,15 +167,29 @@ export function ShareLinkPanel({
                   <div>
                     <strong>{copy.live.inviteAgent}</strong>
                     <p id={agentDescriptionId}>{copy.live.inviteAgentDescription}</p>
+                    <a
+                      className="share-live-agent-setup-link"
+                      href={TABULA_MCP_SETUP_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <span>{copy.live.setupAgent}</span>
+                      <ExternalLink size={13} aria-hidden="true" />
+                    </a>
+                    <p className="share-live-agent-warning">
+                      {copy.live.agentAccessWarning}
+                    </p>
                   </div>
                   <button
                     className="share-modal-secondary"
                     type="button"
                     aria-describedby={agentDescriptionId}
-                    onClick={onInviteAgent}
+                    onClick={onCopyAgentInvite}
                   >
-                    <Bot size={16} />
-                    <span>{copy.live.inviteAgent}</span>
+                    {agentInviteCopied ? <Check size={16} /> : <Bot size={16} />}
+                    <span>
+                      {agentInviteCopied ? copy.live.copied : copy.live.copyAgentInvite}
+                    </span>
                   </button>
                 </div>
               </>

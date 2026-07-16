@@ -1,19 +1,17 @@
 import { useCallback, useRef, useState } from "react";
 import type { JsonShareController } from "./useJsonShareController";
-import { useAgentHandoffRuntime } from "./useAgentHandoffRuntime";
 import type { WorkspaceLanguage } from "./useWorkspacePreferences";
+import { productAnalytics } from "../observability/productAnalytics";
 import { buildShareViewModel } from "../share";
+import { buildAgentInvite } from "../shareAgentHandoff";
 import {
   getWorkspaceChromeCopy,
   getWorkspaceMenuCopy,
 } from "../workspaceLocale";
-import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
+import type { LocationRoom } from "../workspaceStorage";
 
 type UseShareDialogRuntimeOptions = {
-  activeFile?: WorkspaceFile;
   room?: LocationRoom | null;
-  activeText: string;
-  files: WorkspaceFile[];
   isLive: boolean;
   isLiveConnected: boolean;
   jsonShare: JsonShareController;
@@ -23,10 +21,7 @@ type UseShareDialogRuntimeOptions = {
 };
 
 export function useShareDialogRuntime({
-  activeFile,
   room,
-  activeText,
-  files,
   isLive,
   isLiveConnected,
   jsonShare,
@@ -34,21 +29,13 @@ export function useShareDialogRuntime({
   onCloseShare,
   onStopSession,
 }: UseShareDialogRuntimeOptions) {
+  const [agentInviteCopied, setAgentInviteCopied] = useState(false);
   const [exportLinkCopied, setExportLinkCopied] = useState(false);
-  const [view, setView] = useState<
-    "chooser" | "agent-handoff" | "export-result" | "stop-confirm"
-  >("chooser");
+  const [view, setView] = useState<"chooser" | "export-result" | "stop-confirm">("chooser");
   const closedRef = useRef(false);
   const copy = getWorkspaceMenuCopy(language).share;
   const chromeCopy = getWorkspaceChromeCopy(language);
   const shareModalTitle = copy.modalTitle;
-  const agentHandoff = useAgentHandoffRuntime({
-    activeFile,
-    activeText,
-    files,
-    roomId: room?.roomId,
-    roomUrl: isLiveConnected ? room?.shareUrl : undefined,
-  });
   const shareView = buildShareViewModel({
     isLive,
     labels: {
@@ -64,17 +51,19 @@ export function useShareDialogRuntime({
   const closeShare = useCallback(() => {
     closedRef.current = true;
     jsonShare.reset();
-    agentHandoff.reset();
+    setAgentInviteCopied(false);
     setExportLinkCopied(false);
     setView("chooser");
     onCloseShare();
-  }, [agentHandoff, jsonShare, onCloseShare]);
+  }, [jsonShare, onCloseShare]);
 
-  const openAgentHandoff = () => {
-    agentHandoff.open();
-    setView("agent-handoff");
+  const copyAgentInvite = async () => {
+    if (!isLiveConnected || !room?.shareUrl) return;
+    await navigator.clipboard.writeText(buildAgentInvite(room.shareUrl));
+    productAnalytics.report("agent_invite_copied", { roomId: room.roomId });
+    setAgentInviteCopied(true);
+    window.setTimeout(() => setAgentInviteCopied(false), 1200);
   };
-  const closeAgentHandoff = () => setView("chooser");
   const requestStopSession = () => setView("stop-confirm");
   const cancelStopSession = () => setView("chooser");
   const confirmStopSession = () => {
@@ -102,17 +91,16 @@ export function useShareDialogRuntime({
   };
 
   return {
-    agentHandoff,
+    agentInviteCopied,
     chromeCopy,
-    closeAgentHandoff,
     copy,
     cancelStopSession,
     closeShare,
+    copyAgentInvite,
     copyShareableLink,
     confirmStopSession,
     exportLinkCopied,
     exportToJsonLink,
-    openAgentHandoff,
     shareModalTitle,
     shareView,
     requestStopSession,
