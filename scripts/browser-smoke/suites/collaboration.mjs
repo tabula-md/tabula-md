@@ -99,10 +99,10 @@ export async function run(ctx) {
       shareUrl === firstPage.url(),
       "The live invite link should match the current room URL after starting a session.",
     );
-    const sharingPresenceTitle = await firstPage.locator(".sharing-presence").getAttribute("data-tooltip");
+    const sharingPresenceLabel = await firstPage.locator(".sharing-presence").getAttribute("aria-label");
     const sharingPresenceText = await firstPage.locator(".sharing-presence").textContent();
     expect(
-      sharingPresenceTitle?.startsWith("Live"),
+      sharingPresenceLabel?.startsWith("Live"),
       "Sharing presence should keep accessible live-session context without native title UI.",
     );
     expect(
@@ -119,14 +119,23 @@ export async function run(ctx) {
       "Live collaboration status should live in top presence, not the bottom status bar.",
     );
     expect(
-      (await firstPage.locator(".avatar.self").getAttribute("data-tooltip"))?.length > 0,
-      "Self avatar should expose the collaborator name through the custom hover tooltip.",
+      (await firstPage.locator(".avatar.self").getAttribute("aria-label"))?.length > 0,
+      "Self avatar should expose the collaborator name through its accessible label.",
     );
     await firstPage.getByRole("button", { name: "Close share dialog" }).click();
     await openProjectMenu(firstPage);
     expect(
       (await firstPage.getByRole("button", { name: "Clear local workspace…", exact: true }).count()) === 0,
       "Live rooms should not expose the local workspace clear action.",
+    );
+    expect(
+      (await firstPage.getByRole("button", { name: "Import workspace…", exact: true }).count()) === 0,
+      "Live rooms should not replace the shared workspace through folder import.",
+    );
+    expect(
+      (await firstPage.getByRole("button", { name: "Export document (.md)", exact: true }).count()) === 1 &&
+        (await firstPage.getByRole("button", { name: "Export workspace (.zip)", exact: true }).count()) === 1,
+      "Live rooms should allow local document and workspace exports.",
     );
     await firstPage.keyboard.press("Escape");
     await clickTabByFileName(firstPage, secondaryFileName);
@@ -256,16 +265,9 @@ export async function run(ctx) {
     );
     const remoteAvatar = firstPage.locator(".sharing-presence .avatar.participant").first();
     await remoteAvatar.waitFor({ state: "visible" });
-    await firstPage.waitForFunction(
-      ({ secondaryFileName }) =>
-        document.querySelector(".sharing-presence .avatar.participant")
-          ?.getAttribute("data-tooltip")
-          ?.includes(secondaryFileName),
-      { secondaryFileName },
-    );
     expect(
-      !/\bLine \d+\b/.test((await remoteAvatar.getAttribute("data-tooltip")) ?? ""),
-      "A participant in another document should not show a line number calculated from the current document.",
+      (await remoteAvatar.getAttribute("aria-label"))?.length > 0,
+      "Remote participant avatars should expose their follow action through an accessible label.",
     );
     await remoteAvatar.click();
     await firstPage.waitForSelector(`.tab-item[data-file-name="${secondaryFileName}"].active`);
@@ -589,8 +591,8 @@ async function runLiveEditingCorrectnessSmoke({ expect, firstPage, secondPage, f
       remoteLineCount: document.querySelectorAll(".cm-yLineSelection").length,
       remoteSelectionCount: document.querySelectorAll(".cm-ySelection").length,
       presenceText: document.querySelector(".sharing-presence")?.textContent ?? "",
-      collaboratorTooltips: Array.from(document.querySelectorAll(".sharing-presence .avatar:not(.self)")).map(
-        (avatar) => avatar.getAttribute("data-tooltip") ?? "",
+      collaboratorLabels: Array.from(document.querySelectorAll(".sharing-presence .avatar:not(.self)")).map(
+        (avatar) => avatar.getAttribute("aria-label") ?? "",
       ),
       editorText: Array.from(document.querySelectorAll(".cm-content .cm-line")).map(
         (line) => line.textContent ?? "",

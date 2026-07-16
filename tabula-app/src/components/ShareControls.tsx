@@ -29,7 +29,6 @@ type ShareControlsProps = {
   onStartSession: () => void;
   onRetrySession: () => void;
   onCopyShareUrl: () => void;
-  onDownloadProjectArchive: () => void;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
   onStopSession: () => void;
@@ -54,7 +53,6 @@ export function ShareControls({
   onStartSession,
   onRetrySession,
   onCopyShareUrl,
-  onDownloadProjectArchive,
   onChangeUserName,
   onCommitUserName,
   onStopSession,
@@ -118,9 +116,7 @@ export function ShareControls({
                         exportLinkCopied={shareRuntime.exportLinkCopied}
                         jsonShare={jsonShare}
                         shareView={shareRuntime.shareView}
-                        workspaceDocumentCount={shareRuntime.workspaceDocumentCount}
                         onCopyShareableLink={shareRuntime.copyShareableLink}
-                        onDownloadProjectArchive={onDownloadProjectArchive}
                         onExportToJsonLink={shareRuntime.exportToJsonLink}
                       />
                     }

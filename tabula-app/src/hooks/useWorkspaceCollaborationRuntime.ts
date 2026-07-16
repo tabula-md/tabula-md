@@ -15,7 +15,7 @@ type UseWorkspaceCollaborationRuntimeOptions = {
   session?: RoomWorkspaceSession | null;
   activeDocument?: WorkspaceFile;
   editorPresenceEnabled?: boolean;
-  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
+  getSessionFileSnapshot?: () => WorkspaceFile | undefined;
   identity: Collaborator;
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
   workspaceFolders?: readonly { id: string; title: string; parentId: string | null; order?: number }[];
@@ -29,7 +29,7 @@ export function useWorkspaceCollaborationRuntime({
   session,
   activeDocument,
   editorPresenceEnabled,
-  getActiveFileSnapshot,
+  getSessionFileSnapshot,
   identity,
   workspaceDocuments,
   workspaceFolders,
@@ -42,7 +42,7 @@ export function useWorkspaceCollaborationRuntime({
     session,
     activeDocument,
     editorPresenceEnabled,
-    getActiveFileSnapshot,
+    getSessionFileSnapshot,
     identity,
     workspaceDocuments,
     workspaceFolders,

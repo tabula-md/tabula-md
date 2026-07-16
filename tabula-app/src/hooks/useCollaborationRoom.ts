@@ -70,7 +70,7 @@ type UseCollaborationRoomOptions = {
   session?: RoomWorkspaceSession | null;
   activeDocument?: WorkspaceFile;
   editorPresenceEnabled?: boolean;
-  getActiveFileSnapshot?: () => WorkspaceFile | undefined;
+  getSessionFileSnapshot?: () => WorkspaceFile | undefined;
   identity: Collaborator;
   workspaceDocuments?: readonly { id: string; title: string; text: string; parentId?: string | null }[];
   workspaceFolders?: readonly WorkspaceFolderSnapshot[];
@@ -84,7 +84,7 @@ export function useCollaborationRoom({
   session,
   activeDocument,
   editorPresenceEnabled,
-  getActiveFileSnapshot,
+  getSessionFileSnapshot,
   identity,
   workspaceDocuments,
   workspaceFolders,
@@ -96,6 +96,7 @@ export function useCollaborationRoom({
   const startInFlightRef = useRef(false);
   const roomAvailability = getTabulaRoomAvailability();
   const checkpointAvailability = getRoomCheckpointAvailability();
+  const hasWorkspaceDocuments = (workspaceDocuments?.length ?? 0) > 0;
   const startValidation = validateCollaborationStartWorkspace({
     documents: workspaceDocuments ?? [],
     folders: workspaceFolders ?? [],
@@ -142,13 +143,14 @@ export function useCollaborationRoom({
   const startSession = async () => {
     if (startInFlightRef.current) return undefined;
     if (!startValidation.ok) return undefined;
-    const sessionFile = getActiveFileSnapshot?.() ?? activeDocument;
+    const sessionFile = getSessionFileSnapshot?.() ?? activeDocument;
+    if (!sessionFile) return undefined;
     const nextSession = createCollaborationSessionStartRequest({
-      activeFile: sessionFile,
+      hasWorkspaceDocuments,
       origin: window.location.origin,
       roomAvailability,
     });
-    if (!sessionFile || !nextSession) {
+    if (!nextSession) {
       return undefined;
     }
 
@@ -170,7 +172,6 @@ export function useCollaborationRoom({
         commentsByFileId,
       });
       return {
-        fileId: sessionFile.id,
         roomId: nextSession.roomId,
         shareUrl: nextSession.shareUrl,
         bootstrap: {
@@ -185,7 +186,7 @@ export function useCollaborationRoom({
 
   return {
     canStartSession:
-      Boolean(activeDocument) &&
+      hasWorkspaceDocuments &&
       roomAvailability.available &&
       checkpointAvailability.available &&
       startValidation.ok,

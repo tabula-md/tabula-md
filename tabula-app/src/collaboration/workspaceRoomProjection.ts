@@ -60,9 +60,11 @@ const projectWorkspaceRoom = ({
   });
   const fileIds = new Set(files.map((file) => file.id));
   const retainedOpenFileIds = workspaceSnapshot.openFileIds.filter((fileId) => fileIds.has(fileId));
+  const shouldOpenDefaultDocument =
+    Boolean(workspaceSnapshot.activeFileId) || workspaceSnapshot.files.length === 0;
   const activeFileId = fileIds.has(workspaceSnapshot.activeFileId)
     ? workspaceSnapshot.activeFileId
-    : retainedOpenFileIds[0] ?? files[0]?.id ?? "";
+    : retainedOpenFileIds[0] ?? (shouldOpenDefaultDocument ? files[0]?.id : "") ?? "";
   const openFileIds = activeFileId && !retainedOpenFileIds.includes(activeFileId)
     ? [...retainedOpenFileIds, activeFileId]
     : retainedOpenFileIds;

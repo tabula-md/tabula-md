@@ -69,6 +69,9 @@ export const restoreRoomWorkspaceView = <Workspace extends RoomWorkspaceView>(
   viewState: RoomViewState | null,
 ): Workspace => {
   if (!viewState) return workspace;
+  if (!viewState.activeDocumentId && viewState.openDocumentIds.length === 0) {
+    return { ...workspace, activeFileId: "", openFileIds: [] };
+  }
   const documentIds = new Set(workspace.files.map((file) => file.id));
   const openFileIds = viewState.openDocumentIds.filter((id) => documentIds.has(id));
   const activeFileId = viewState.activeDocumentId && documentIds.has(viewState.activeDocumentId)

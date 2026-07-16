@@ -3,11 +3,11 @@ import type { WorkspaceLanguage } from "./hooks/useWorkspacePreferences";
 type WorkspaceMenuCopy = {
   actions: {
     newFile: string;
-    openFile: string;
-    openWorkspace: string;
+    importFile: string;
+    importWorkspace: string;
+    exportFile: string;
+    exportWorkspace: string;
     clearWorkspace: string;
-    saveFile: string;
-    exportProject: string;
     liveCollaboration: string;
     preferences: string;
     about: string;
@@ -81,12 +81,6 @@ type WorkspaceMenuCopy = {
       copied: string;
       failed: string;
     };
-    exportPanel: {
-      title: string;
-      description: string;
-      projectArchiveTitle: string;
-      projectArchiveDescription: string;
-    };
   };
 };
 
@@ -109,11 +103,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
   en: {
     actions: {
       newFile: "New document",
-      openFile: "Open Markdown file…",
-      openWorkspace: "Open workspace…",
+      importFile: "Import document (.md)…",
+      importWorkspace: "Import workspace…",
+      exportFile: "Export document (.md)",
+      exportWorkspace: "Export workspace (.zip)",
       clearWorkspace: "Clear local workspace…",
-      saveFile: "Download current document",
-      exportProject: "Download workspace ZIP",
       liveCollaboration: "Live collaboration…",
       preferences: "Preferences",
       about: "About",
@@ -179,7 +173,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopSession: "Stop session",
       },
       shareable: {
-        title: "Export to link",
+        title: "Export link",
         description:
           "Create an encrypted point-in-time copy. Changes do not sync back.",
         noFileReason: "Open a file before exporting to link.",
@@ -191,22 +185,16 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copied: "Export link copied.",
         failed: "Couldn’t export to link.",
       },
-      exportPanel: {
-        title: "Export",
-        description: "Export the whole workspace as a link or ZIP.",
-        projectArchiveTitle: "Export to file",
-        projectArchiveDescription: "Download the folder structure and Markdown files as a ZIP.",
-      },
     },
   },
   ko: {
     actions: {
       newFile: "새 문서",
-      openFile: "Markdown 파일 열기…",
-      openWorkspace: "워크스페이스 열기…",
+      importFile: "문서 가져오기 (.md)…",
+      importWorkspace: "워크스페이스 가져오기…",
+      exportFile: "문서 내보내기 (.md)",
+      exportWorkspace: "워크스페이스 내보내기 (.zip)",
       clearWorkspace: "로컬 워크스페이스 비우기…",
-      saveFile: "현재 문서 다운로드",
-      exportProject: "워크스페이스 ZIP 다운로드",
       liveCollaboration: "실시간 협업…",
       preferences: "환경설정",
       about: "소개",
@@ -272,7 +260,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopSession: "세션 중지",
       },
       shareable: {
-        title: "링크로 내보내기",
+        title: "내보내기 링크",
         description:
           "암호화된 시점 복사본을 만듭니다. 이후 변경은 원본에 동기화되지 않습니다.",
         noFileReason: "파일을 열면 링크로 내보낼 수 있습니다.",
@@ -284,22 +272,16 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copied: "내보내기 링크를 복사했습니다.",
         failed: "링크로 내보내지 못했습니다.",
       },
-      exportPanel: {
-        title: "내보내기",
-        description: "워크스페이스 전체를 링크 또는 ZIP으로 내보냅니다.",
-        projectArchiveTitle: "파일로 내보내기",
-        projectArchiveDescription: "폴더 구조와 Markdown 파일을 ZIP으로 다운로드합니다.",
-      },
     },
   },
   ja: {
     actions: {
       newFile: "新規ドキュメント",
-      openFile: "Markdownファイルを開く…",
-      openWorkspace: "ワークスペースを開く…",
+      importFile: "ドキュメントを読み込む (.md)…",
+      importWorkspace: "ワークスペースを読み込む…",
+      exportFile: "ドキュメントを書き出す (.md)",
+      exportWorkspace: "ワークスペースを書き出す (.zip)",
       clearWorkspace: "ローカルワークスペースを消去…",
-      saveFile: "現在のドキュメントをダウンロード",
-      exportProject: "ワークスペースZIPをダウンロード",
       liveCollaboration: "ライブ共同編集…",
       preferences: "環境設定",
       about: "このアプリについて",
@@ -366,7 +348,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopSession: "セッションを停止",
       },
       shareable: {
-        title: "リンクに書き出し",
+        title: "書き出しリンク",
         description:
           "暗号化された時点コピーを作成します。以後の変更は元には同期されません。",
         noFileReason:
@@ -379,23 +361,16 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copied: "書き出しリンクをコピーしました。",
         failed: "リンクに書き出せませんでした。",
       },
-      exportPanel: {
-        title: "書き出し",
-        description: "ワークスペース全体をリンクまたは ZIP に書き出します。",
-        projectArchiveTitle: "ファイルに書き出し",
-        projectArchiveDescription:
-          "フォルダー構造と Markdown ファイルを ZIP としてダウンロードします。",
-      },
     },
   },
   zh: {
     actions: {
       newFile: "新建文档",
-      openFile: "打开 Markdown 文件…",
-      openWorkspace: "打开工作区…",
+      importFile: "导入文档 (.md)…",
+      importWorkspace: "导入工作区…",
+      exportFile: "导出文档 (.md)",
+      exportWorkspace: "导出工作区 (.zip)",
       clearWorkspace: "清空本地工作区…",
-      saveFile: "下载当前文档",
-      exportProject: "下载工作区 ZIP",
       liveCollaboration: "实时协作…",
       preferences: "偏好设置",
       about: "关于",
@@ -459,7 +434,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopSession: "停止协作",
       },
       shareable: {
-        title: "导出为链接",
+        title: "导出链接",
         description: "创建加密的时间点副本。之后的更改不会同步回原工作区。",
         noFileReason: "打开文件后即可导出为链接。",
         exportToLink: "导出为链接",
@@ -470,22 +445,16 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copied: "已复制导出链接。",
         failed: "无法导出为链接。",
       },
-      exportPanel: {
-        title: "导出",
-        description: "将整个工作区导出为链接或 ZIP。",
-        projectArchiveTitle: "导出为文件",
-        projectArchiveDescription: "将文件夹结构和 Markdown 文件下载为 ZIP。",
-      },
     },
   },
   es: {
     actions: {
       newFile: "Nuevo documento",
-      openFile: "Abrir archivo Markdown…",
-      openWorkspace: "Abrir espacio de trabajo…",
+      importFile: "Importar documento (.md)…",
+      importWorkspace: "Importar espacio de trabajo…",
+      exportFile: "Exportar documento (.md)",
+      exportWorkspace: "Exportar espacio de trabajo (.zip)",
       clearWorkspace: "Vaciar espacio local…",
-      saveFile: "Descargar documento actual",
-      exportProject: "Descargar ZIP del espacio",
       liveCollaboration: "Colaboración en vivo…",
       preferences: "Preferencias",
       about: "Acerca de",
@@ -552,7 +521,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopSession: "Detener colaboración",
       },
       shareable: {
-        title: "Exportar a enlace",
+        title: "Enlace de exportación",
         description:
           "Crea una copia cifrada en un momento dado. Los cambios no se sincronizan con el original.",
         noFileReason:
@@ -565,22 +534,16 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copied: "Enlace de exportación copiado.",
         failed: "No se pudo exportar a un enlace.",
       },
-      exportPanel: {
-        title: "Exportar",
-        description: "Exporta todo el workspace como enlace o ZIP.",
-        projectArchiveTitle: "Exportar a archivo",
-        projectArchiveDescription: "Descarga la estructura de carpetas y los archivos Markdown como ZIP.",
-      },
     },
   },
   fr: {
     actions: {
       newFile: "Nouveau document",
-      openFile: "Ouvrir un fichier Markdown…",
-      openWorkspace: "Ouvrir un espace de travail…",
+      importFile: "Importer un document (.md)…",
+      importWorkspace: "Importer un espace de travail…",
+      exportFile: "Exporter le document (.md)",
+      exportWorkspace: "Exporter l’espace de travail (.zip)",
       clearWorkspace: "Effacer l’espace local…",
-      saveFile: "Télécharger le document actuel",
-      exportProject: "Télécharger le ZIP de l’espace",
       liveCollaboration: "Collaboration en direct…",
       preferences: "Préférences",
       about: "À propos",
@@ -647,7 +610,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopSession: "Arrêter la session",
       },
       shareable: {
-        title: "Exporter vers un lien",
+        title: "Lien d’export",
         description:
           "Créez une copie chiffrée à un instant donné. Les modifications ne sont pas resynchronisées.",
         noFileReason:
@@ -660,22 +623,16 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copied: "Lien d’export copié.",
         failed: "Impossible d’exporter vers un lien.",
       },
-      exportPanel: {
-        title: "Exporter",
-        description: "Exportez tout le workspace sous forme de lien ou de ZIP.",
-        projectArchiveTitle: "Exporter vers un fichier",
-        projectArchiveDescription: "Téléchargez les dossiers et fichiers Markdown dans un ZIP.",
-      },
     },
   },
   de: {
     actions: {
       newFile: "Neues Dokument",
-      openFile: "Markdown-Datei öffnen…",
-      openWorkspace: "Workspace öffnen…",
+      importFile: "Dokument importieren (.md)…",
+      importWorkspace: "Workspace importieren…",
+      exportFile: "Dokument exportieren (.md)",
+      exportWorkspace: "Workspace exportieren (.zip)",
       clearWorkspace: "Lokalen Workspace leeren…",
-      saveFile: "Aktuelles Dokument herunterladen",
-      exportProject: "Workspace-ZIP herunterladen",
       liveCollaboration: "Live-Zusammenarbeit…",
       preferences: "Einstellungen",
       about: "Info",
@@ -742,7 +699,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         stopSession: "Sitzung beenden",
       },
       shareable: {
-        title: "Als Link exportieren",
+        title: "Exportlink",
         description:
           "Erstelle eine verschlüsselte Momentaufnahme. Änderungen werden nicht zurücksynchronisiert.",
         noFileReason:
@@ -754,12 +711,6 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         created: "Exportlink erstellt.",
         copied: "Exportlink kopiert.",
         failed: "Export als Link fehlgeschlagen.",
-      },
-      exportPanel: {
-        title: "Exportieren",
-        description: "Exportiere den gesamten Workspace als Link oder ZIP.",
-        projectArchiveTitle: "Als Datei exportieren",
-        projectArchiveDescription: "Lade Ordnerstruktur und Markdown-Dateien als ZIP herunter.",
       },
     },
   },

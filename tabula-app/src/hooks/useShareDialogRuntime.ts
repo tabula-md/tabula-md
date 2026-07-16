@@ -125,7 +125,6 @@ export function useShareDialogRuntime({
     copyShareableLink,
     exportLinkCopied,
     exportToJsonLink,
-    workspaceDocumentCount: files.length,
     shareModalTitle,
     shareView,
     stopSession,

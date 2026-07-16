@@ -9,7 +9,6 @@ import {
 import type { RoomWorkspaceBootstrap } from "../workspace/session/WorkspaceSession";
 
 export type StartedWorkspaceRoom = {
-  fileId: string;
   roomId: string;
   shareUrl: string;
   bootstrap: RoomWorkspaceBootstrap;

@@ -115,6 +115,28 @@ describe("projectWorkspaceRoomStructure", () => {
     expect(next.openFileIds).toEqual([]);
     expect(next.activeFileId).toBe("");
   });
+
+  it("preserves an existing workspace with every document tab closed", () => {
+    const next = projectWorkspaceRoomStructure({
+      createFile,
+      snapshot: snapshot([
+        documentNode("readme", "README.md", 0),
+        documentNode("notes", "Notes.md", 1),
+      ]),
+      workspaceSnapshot: {
+        folders: [createWorkspaceRootFolder()],
+        files: [
+          file({ id: "readme", title: "README.md" }),
+          file({ id: "notes", title: "Notes.md" }),
+        ],
+        openFileIds: [],
+        activeFileId: "",
+      },
+    });
+
+    expect(next.openFileIds).toEqual([]);
+    expect(next.activeFileId).toBe("");
+  });
 });
 
 describe("materializeWorkspaceRoomSnapshot", () => {
