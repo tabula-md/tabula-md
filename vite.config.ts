@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 const workspaceRoot = fileURLToPath(new URL(".", import.meta.url));
 const tabulaAppRoot = fileURLToPath(new URL("./tabula-app", import.meta.url));
 const tabulaCoreEntry = fileURLToPath(new URL("./packages/tabula/src/index.ts", import.meta.url));
+const tabulaWorkbenchEntry = fileURLToPath(new URL("./packages/tabula/src/workbench/index.ts", import.meta.url));
+const tabulaWorkbenchInternalEntry = fileURLToPath(new URL("./packages/tabula/src/workbench/internal.ts", import.meta.url));
 
 const includesPackage = (id: string, packageName: string) =>
   id.includes(`/node_modules/${packageName}/`);
@@ -14,9 +16,11 @@ export default defineConfig({
   envDir: workspaceRoot,
   plugins: [react()],
   resolve: {
-    alias: {
-      "@tabula-md/tabula": tabulaCoreEntry,
-    },
+    alias: [
+      { find: "@tabula-md/tabula/workbench/internal", replacement: tabulaWorkbenchInternalEntry },
+      { find: "@tabula-md/tabula/workbench", replacement: tabulaWorkbenchEntry },
+      { find: "@tabula-md/tabula", replacement: tabulaCoreEntry },
+    ],
   },
   server: {
     port: 5173,

@@ -1,8 +1,8 @@
 # @tabula-md/tabula
 
-Core product contracts for Tabula.md.
+Core product contracts for Tabula.md, plus an embeddable document workbench.
 
-This package is intentionally small and browser-service agnostic. It contains
+The root import is intentionally small and browser-service agnostic. It contains
 pure models for Markdown editing, workspace files, document controls, comments,
 status labels, live room links, encrypted Export links, the workspace Yjs
 schema, binary room packets, transport-neutral Yjs sync controller, Awareness
@@ -46,9 +46,9 @@ import {
 } from "@tabula-md/tabula/collaboration";
 ```
 
-Keep outside this package:
+Keep outside the root import:
 
-- React components and hooks.
+- React components and hooks, except for the explicit `./workbench` subpath.
 - CodeMirror extensions and editor refs.
 - Browser storage, file picker, clipboard, and download behavior.
 - Socket.IO, fetch, hosted recovery SDKs, or browser app wiring.
@@ -96,6 +96,15 @@ Subpath exports are available for lower-level integrations:
 ```ts
 import { encryptData } from "@tabula-md/tabula/data/encryption";
 import { createRoomEnvelope } from "@tabula-md/tabula/room";
+```
+
+The reusable Markdown editor and preview surface is available as a separate
+subpath. Hosts own persistence and collaboration transport; the workbench owns
+one document's editing UI.
+
+```tsx
+import { TabulaEmbeddedDocumentWorkbench } from "@tabula-md/tabula/workbench";
+import "@tabula-md/tabula/workbench.css";
 ```
 
 ## Service App Relationship

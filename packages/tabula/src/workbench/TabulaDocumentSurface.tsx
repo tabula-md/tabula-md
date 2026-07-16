@@ -13,34 +13,34 @@ import {
   toggleMarkdownTaskOnLine,
 } from "@tabula-md/tabula";
 import type { DocumentSurfaceModel, TextChange } from "@tabula-md/tabula";
-import type { LiveSelection } from "../collaboration";
-import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
-import type { SearchMatch, SearchOptions } from "../editor/editorSearchModel";
-import type { SearchTarget } from "../editor/useEditorSearchController";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import type { LiveSelection } from "../../../../tabula-app/src/collaboration";
+import type { CollabEditorBinding } from "../../../../tabula-app/src/collaboration/liveCollaboration";
+import type { SearchMatch, SearchOptions } from "../../../../tabula-app/src/editor/editorSearchModel";
+import type { SearchTarget } from "../../../../tabula-app/src/editor/useEditorSearchController";
+import type { WorkspaceLanguage } from "../../../../tabula-app/src/hooks/useWorkspacePreferences";
 import type {
   MarkdownBookmark,
   MarkdownCommentAnchor,
   MarkdownEditorHandle,
   MarkdownLineActionRequest,
   MarkdownSelectionActionPosition,
-} from "../markdownEditorTypes";
-import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
-import type { FileBookmark, WorkspaceFile } from "../workspaceStorage";
-import { MarkdownEditor } from "../components/MarkdownEditor";
-import { ResizeHandle } from "../components/ui/ResizeHandle";
+} from "../../../../tabula-app/src/markdownEditorTypes";
+import type { MarkdownPreviewHandle } from "../../../../tabula-app/src/preview/previewSyncTypes";
+import type { FileBookmark, WorkspaceFile } from "../../../../tabula-app/src/workspaceStorage";
+import { MarkdownEditor } from "../../../../tabula-app/src/components/MarkdownEditor";
+import { ResizeHandle } from "../../../../tabula-app/src/components/ui/ResizeHandle";
 import {
   type MarkdownPreviewCommentAnchor,
   type MarkdownPreviewLineActionRequest,
   type MarkdownPreviewLineAnnotation,
   type MarkdownPreviewMetadata,
-} from "../preview/markdownPreviewTypes";
+} from "../../../../tabula-app/src/preview/markdownPreviewTypes";
 import {
   getLoadedMarkdownPreview,
   loadMarkdownPreview,
   type MarkdownPreviewComponent,
-} from "../preview/markdownPreviewLoader";
-import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+} from "../../../../tabula-app/src/preview/markdownPreviewLoader";
+import { getWorkspaceSurfaceCopy } from "../../../../tabula-app/src/workspaceSurfaceLocale";
 
 /**
  * The shared editor/preview lane used by Tabula workbenches.
@@ -58,6 +58,7 @@ export type TabulaDocumentSurfaceProps = {
   activePreviewCommentAnchors: MarkdownPreviewCommentAnchor[];
   activePreviewLineAnnotations: MarkdownPreviewLineAnnotation[];
   activeSearchMatchIndex: number;
+  commentsEnabled?: boolean;
   collaborationBinding?: CollabEditorBinding | null;
   documentSurface: Pick<
     DocumentSurfaceModel,
@@ -121,6 +122,7 @@ export function TabulaDocumentSurface({
   activePreviewCommentAnchors,
   activePreviewLineAnnotations,
   activeSearchMatchIndex,
+  commentsEnabled = true,
   collaborationBinding,
   documentSurface,
   editorRef,
@@ -240,7 +242,7 @@ export function TabulaDocumentSurface({
           lineNumbers={activeLineNumbers}
           bookmarks={activeBookmarks}
           commentAnchors={activeCommentAnchors}
-          commentsEnabled
+          commentsEnabled={commentsEnabled}
           collaborationBinding={isLive ? collaborationBinding : null}
           activeCommentId={focusedCommentId}
           searchMatches={isSourceSearchActive ? searchMatches : []}
@@ -294,7 +296,7 @@ export function TabulaDocumentSurface({
               commentAnchors={activePreviewCommentAnchors}
               lineAnnotations={activePreviewLineAnnotations}
               activeCommentId={focusedCommentId}
-              commentsEnabled
+              commentsEnabled={commentsEnabled}
               searchQuery={isPreviewSearchActive ? searchQuery : ""}
               searchOptions={searchOptions}
               activeSearchMatchIndex={isPreviewSearchActive ? activeSearchMatchIndex : -1}

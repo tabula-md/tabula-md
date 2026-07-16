@@ -41,6 +41,8 @@ type DocumentControlsProps = {
   centerPopover: CenterPopover;
   language: WorkspaceLanguage;
   searchOpen: boolean;
+  showSearch?: boolean;
+  showSyncScrolling?: boolean;
   onSetViewMode: (viewMode: FileViewMode) => void;
   onPreparePreview: () => void;
   onToggleViewOptions: () => void;
@@ -87,6 +89,8 @@ export function DocumentControls({
   centerPopover,
   language,
   searchOpen,
+  showSearch = true,
+  showSyncScrolling = true,
   onSetViewMode,
   onPreparePreview,
   onToggleViewOptions,
@@ -127,16 +131,18 @@ export function DocumentControls({
           ))}
         </div>
         <div className="document-utility-controls">
-          <button
-            className={`tool-button ${searchOpen ? "active" : ""}`}
-            type="button"
-            aria-label={copy.search}
-            data-tooltip={copy.search}
-            aria-pressed={searchOpen}
-            onClick={onToggleSearch}
-          >
-            <Search size={16} />
-          </button>
+          {showSearch && (
+            <button
+              className={`tool-button ${searchOpen ? "active" : ""}`}
+              type="button"
+              aria-label={copy.search}
+              data-tooltip={copy.search}
+              aria-pressed={searchOpen}
+              onClick={onToggleSearch}
+            >
+              <Search size={16} />
+            </button>
+          )}
           <PopoverRoot
             open={centerPopover === "view"}
             onOpenChange={(open) => {
@@ -186,7 +192,7 @@ export function DocumentControls({
                     </button>
                   </>
                 )}
-                {controls.showSplitToggles && (
+                {showSyncScrolling && controls.showSplitToggles && (
                   <button
                     className={`editor-controls-row ${controls.syncScrolling.active ? "active" : ""}`}
                     type="button"

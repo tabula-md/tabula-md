@@ -1,0 +1,23 @@
+@import "../../../../tabula-app/src/styles/base.css";
+@import "katex/dist/katex.min.css";
+@import "../../../../tabula-app/src/styles/file-surface.css";
+@import "../../../../tabula-app/src/styles/editor-controls.css";
+@import "../../../../tabula-app/src/styles/editor-code.css";
+@import "../../../../tabula-app/src/styles/editor-selection.css";
+@import "../../../../tabula-app/src/styles/split-view.css";
+@import "../../../../tabula-app/src/styles/preview.css";
+@import "../../../../tabula-app/src/styles/ui-primitives.css";
+
+.tabula-embedded-workbench {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.tabula-embedded-workbench .file-shell {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
