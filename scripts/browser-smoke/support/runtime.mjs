@@ -7,16 +7,13 @@ import { chromium } from "playwright";
 
 const port = Number(process.env.TABULA_TEST_PORT ?? 5187);
 const roomPort = Number(process.env.TABULA_TEST_ROOM_PORT ?? 3012);
-const publishPort = Number(process.env.TABULA_TEST_PUBLISH_PORT ?? 3013);
 const jsonPort = Number(process.env.TABULA_TEST_JSON_PORT ?? 3014);
 const firestorePort = 8080;
 const firebaseStoragePort = 9199;
 const externalUrl = process.env.TABULA_TEST_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${port}`;
 const roomUrl = (process.env.VITE_TABULA_ROOM_URL ?? `http://127.0.0.1:${roomPort}`).replace(/\/$/, "");
-const publishUrl = (process.env.VITE_TABULA_PUBLISH_URL ?? `http://127.0.0.1:${publishPort}`).replace(/\/$/, "");
 const jsonUrl = (process.env.VITE_TABULA_JSON_URL ?? `http://127.0.0.1:${jsonPort}`).replace(/\/$/, "");
-const publishDataDir = process.env.TABULA_PUBLISH_DATA_DIR ?? path.join(process.cwd(), ".tabula-publish-smoke");
 const jsonDataDir = process.env.TABULA_JSON_DATA_DIR ?? path.join(process.cwd(), ".tabula-json-smoke");
 const appServerMode = process.env.TABULA_TEST_APP_MODE ?? "dev";
 const isWindows = process.platform === "win32";
@@ -375,8 +372,6 @@ const createSmokeContext = (browser, controls = {}) => ({
   ensureSidePanelClosed,
   openMarkdownFile,
   openProjectMenu,
-  publishDataDir,
-  publishUrl: controls.publishUrl,
   jsonDataDir,
   jsonUrl: controls.jsonUrl,
   restartRoomServer: controls.restartRoomServer,
@@ -437,53 +432,6 @@ const spawnRoomServer = async () => {
   }
 
   return roomServer;
-};
-
-const spawnPublishServer = async () => {
-  const publishRepoDir = process.env.TABULA_PUBLISH_REPO_DIR ?? path.resolve(process.cwd(), "../tabula-publish");
-  const publishCommand = process.env.TABULA_PUBLISH_SERVER_COMMAND;
-  fs.rmSync(publishDataDir, { recursive: true, force: true });
-  const publishServer = publishCommand
-    ? spawn(publishCommand, {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          PORT: String(publishPort),
-          TABULA_PUBLISH_ALLOWED_ORIGINS: baseUrl,
-          TABULA_PUBLISH_APP_PUBLIC_URL: baseUrl,
-          TABULA_PUBLISH_DATA_DIR: publishDataDir,
-          TABULA_PUBLISH_PUBLIC_URL: publishUrl,
-        },
-        shell: true,
-        stdio: ["ignore", "pipe", "pipe"],
-      })
-    : fs.existsSync(path.join(publishRepoDir, "package.json"))
-      ? spawn(isWindows ? "npm.cmd" : "npm", ["run", "dev"], {
-          cwd: publishRepoDir,
-          env: {
-            ...process.env,
-            PORT: String(publishPort),
-            TABULA_PUBLISH_ALLOWED_ORIGINS: baseUrl,
-            TABULA_PUBLISH_APP_PUBLIC_URL: baseUrl,
-            TABULA_PUBLISH_DATA_DIR: publishDataDir,
-            TABULA_PUBLISH_PUBLIC_URL: publishUrl,
-          },
-          stdio: ["ignore", "pipe", "pipe"],
-        })
-      : null;
-
-  if (publishServer) {
-    publishServer.stdout.on("data", () => {});
-    publishServer.stderr.on("data", () => {});
-    publishServer.on("error", (error) => {
-      throw error;
-    });
-    await waitForServer(`${publishUrl}/health`);
-  } else {
-    await waitForServer(`${publishUrl}/health`);
-  }
-
-  return publishServer;
 };
 
 const spawnJsonServer = async () => {
@@ -581,10 +529,9 @@ const spawnFirebaseEmulators = async () => {
   return firebaseProcess;
 };
 
-const startLocalServers = async ({ withPublishServer = false, withJsonServer = false } = {}) => {
+const startLocalServers = async ({ withJsonServer = false } = {}) => {
   const firebaseProcess = await spawnFirebaseEmulators();
   const roomServer = await spawnRoomServer();
-  const publishServer = withPublishServer ? await spawnPublishServer() : null;
   const jsonServer = withJsonServer ? await spawnJsonServer() : null;
   const appServerArgs =
     appServerMode === "preview"
@@ -603,7 +550,6 @@ const startLocalServers = async ({ withPublishServer = false, withJsonServer = f
         VITE_TABULA_FIREBASE_STORAGE_EMULATOR_PORT: String(firebaseStoragePort),
         VITE_TABULA_ROOM_URL: roomUrl,
         ...(withJsonServer ? { VITE_TABULA_JSON_URL: jsonUrl } : {}),
-        ...(withPublishServer ? { VITE_TABULA_PLUS_ENABLED: "1", VITE_TABULA_PUBLISH_URL: publishUrl } : {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -615,7 +561,7 @@ const startLocalServers = async ({ withPublishServer = false, withJsonServer = f
   });
   await waitForServer(baseUrl);
 
-  return { firebaseProcess, roomServer, webServer, publishServer, jsonServer };
+  return { firebaseProcess, roomServer, webServer, jsonServer };
 };
 
 const stopProcess = async (childProcess, { processGroup = false } = {}) => {
@@ -641,9 +587,6 @@ export const smokeConfig = {
   port,
   roomPort,
   roomUrl,
-  publishPort,
-  publishUrl,
-  publishDataDir,
   jsonPort,
   jsonUrl,
   jsonDataDir,
@@ -651,19 +594,16 @@ export const smokeConfig = {
 
 export async function runBrowserSmoke(suites) {
   const selectedSuites = selectSuites(suites);
-  const needsPublishServer = selectedSuites.some((suite) => suite.requiresPublishService);
   const needsJsonServer = selectedSuites.some((suite) => suite.requiresJsonService);
   let webServer;
   let roomServer;
-  let publishServer;
   let jsonServer;
   let firebaseProcess;
   let browser;
 
   try {
     if (!externalUrl) {
-      ({ firebaseProcess, webServer, roomServer, publishServer, jsonServer } = await startLocalServers({
-        withPublishServer: needsPublishServer,
+      ({ firebaseProcess, webServer, roomServer, jsonServer } = await startLocalServers({
         withJsonServer: needsJsonServer,
       }));
     }
@@ -672,7 +612,6 @@ export async function runBrowserSmoke(suites) {
       naturalBackgrounding: selectedSuites.some((suite) => suite.requiresNaturalBackgrounding),
     });
     const context = createSmokeContext(browser, {
-      publishUrl: needsPublishServer ? publishUrl : process.env.VITE_TABULA_PUBLISH_URL?.replace(/\/$/, ""),
       jsonUrl: needsJsonServer ? jsonUrl : process.env.VITE_TABULA_JSON_URL?.replace(/\/$/, ""),
       restartRoomServer: async () => {
         if (!roomServer) {
@@ -717,7 +656,6 @@ export async function runBrowserSmoke(suites) {
 
     await stopProcess(webServer);
     await stopProcess(roomServer);
-    await stopProcess(publishServer);
     await stopProcess(jsonServer);
     await stopProcess(firebaseProcess, { processGroup: true });
   }

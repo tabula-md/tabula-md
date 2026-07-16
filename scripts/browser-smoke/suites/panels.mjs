@@ -147,7 +147,6 @@ export async function run(ctx) {
     expect(focusIndex("Export document (.md)") !== -1, "Keyboard order should include document export.");
     expect(focusIndex("Export workspace (.zip)") !== -1, "Keyboard order should include workspace export.");
     expect(focusIndex("Live collaboration…") === -1, "Live collaboration should have one entry point in Share.");
-    expect(focusIndex("Tabula +") === -1, "Workspace menu should keep Tabula + hidden until publishing ships.");
     expect(focusIndex("Preferences") !== -1, "Keyboard order should include Preferences.");
     expect(focusIndex("About") !== -1, "Keyboard order should include About.");
     expect(focusIndex("Help") !== -1, "Keyboard order should include Help.");
