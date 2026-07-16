@@ -5,7 +5,6 @@ import {
 } from "../collaboration";
 import { getTabulaRoomAvailability } from "../collaboration/collabRoom";
 import { createCollaborationSessionStartRequest } from "../collaboration/collabRuntime";
-import { getRoomCheckpointAvailability } from "../collaboration/roomCheckpointStore";
 import {
   WORKSPACE_ROOM_ROOT_ID,
   WORKSPACE_ROOM_SCHEMA_VERSION,
@@ -95,7 +94,6 @@ export function useCollaborationRoom({
 }: UseCollaborationRoomOptions) {
   const startInFlightRef = useRef(false);
   const roomAvailability = getTabulaRoomAvailability();
-  const checkpointAvailability = getRoomCheckpointAvailability();
   const hasWorkspaceDocuments = (workspaceDocuments?.length ?? 0) > 0;
   const startValidation = validateCollaborationStartWorkspace({
     documents: workspaceDocuments ?? [],
@@ -163,12 +161,11 @@ export function useCollaborationRoom({
           ? { ...document, text: sessionFile.text }
           : document,
       );
-      const { persistInitialWorkspaceRoomCheckpoint } = await import(
+      const { createInitialWorkspaceRoomBootstrap } = await import(
         "../collaboration/roomCheckpointCrdt"
       );
-      const bootstrap = await persistInitialWorkspaceRoomCheckpoint({
+      const bootstrap = createInitialWorkspaceRoomBootstrap({
         roomId: nextSession.roomId,
-        roomKey: nextSession.roomKey,
         documents,
         folders: workspaceFolders ?? [],
         commentsByFileId,
@@ -190,7 +187,6 @@ export function useCollaborationRoom({
     canStartSession:
       hasWorkspaceDocuments &&
       roomAvailability.available &&
-      checkpointAvailability.available &&
       startValidation.ok,
     collaborators,
     connectionStatus,
@@ -199,7 +195,7 @@ export function useCollaborationRoom({
     hydrationSource,
     startSessionUnavailableReason: !startValidation.ok
       ? startValidation.message
-      : roomAvailability.unavailableReason || checkpointAvailability.unavailableReason,
+      : roomAvailability.unavailableReason,
     startSession,
     applyLocalText,
     activeDocumentProjection,

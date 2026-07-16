@@ -252,8 +252,8 @@ export const createCheckpointCoordinator = ({
           validateCheckpointUpdate(initialCheckpoint.checkpointUpdate);
           Y.applyUpdate(room.doc, initialCheckpoint.checkpointUpdate, CHECKPOINT_ORIGIN);
           generation = initialCheckpoint.generation;
-          checkpointedStateVector = Y.encodeStateVector(room.doc);
-          onDurabilityChange("clean");
+          checkpointedStateVector = generation > 0 ? Y.encodeStateVector(room.doc) : null;
+          onDurabilityChange(generation > 0 ? "clean" : "dirty");
           return { status: "loaded", source: "bootstrap" };
         } catch {
           return { status: "unsupported" };

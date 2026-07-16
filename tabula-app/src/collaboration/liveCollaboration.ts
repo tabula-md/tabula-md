@@ -416,6 +416,25 @@ export const createWorkspaceRoomRuntime = ({
     onDurabilityChange: (durability) => updateRuntimeSnapshot({ durability }),
     onSaveError: () => emitInvalidMessage("The encrypted live room could not be saved."),
   });
+  let transportJoined = false;
+  let checkpointLoadSettled = false;
+  let initialPersistenceHandled = false;
+  const requestInitialPersistence = () => {
+    if (
+      initialPersistenceHandled ||
+      !transportJoined ||
+      !checkpointLoadSettled ||
+      runtimeSnapshot.hydrationStatus !== "ready"
+    ) return;
+    initialPersistenceHandled = true;
+    checkpointCoordinator.handleJoined();
+  };
+  const hydrateWorkspace = (source: Exclude<RoomHydrationSource, null>) => {
+    const wasReady = runtimeSnapshot.hydrationStatus === "ready";
+    const hydrated = tryHydrateWorkspace(source);
+    if (hydrated && !wasReady) requestInitialPersistence();
+    return hydrated;
+  };
   const syncController = createRoomSyncController({
     roomId,
     doc: room.doc,
@@ -433,7 +452,7 @@ export const createWorkspaceRoomRuntime = ({
         return;
       }
       queueMicrotask(() => {
-        if (!closed) tryHydrateWorkspace("peer");
+        if (!closed) hydrateWorkspace("peer");
       });
     },
     onUnsupportedMessage: () => onOpenFailure?.("unsupported"),
@@ -441,16 +460,31 @@ export const createWorkspaceRoomRuntime = ({
 
   const loadCheckpoint = async () => {
     if (!roomKey) return { status: "invalid" as const };
-    const result = await checkpointCoordinator.load(
+    return checkpointCoordinator.load(
       roomKey,
       emitInitialWorkspaceState,
       initialCheckpoint,
     );
-    if (result.status === "loaded" || result.status === "missing") return result;
+  };
+
+  const applyCheckpointResult = (
+    result: Awaited<ReturnType<typeof loadCheckpoint>>,
+  ) => {
+    if (result.status === "loaded") {
+      const hydrated = hydrateWorkspace(result.source);
+      requestInitialPersistence();
+      return hydrated;
+    }
+    if (result.status === "missing") {
+      if (runtimeSnapshot.hydrationStatus !== "ready") setHydration("waiting-for-state", null);
+      requestInitialPersistence();
+      return true;
+    }
+    if (runtimeSnapshot.hydrationStatus === "ready") return true;
     onOpenFailure?.(result.status);
     setStatus("failed");
     setHydration("failed", null);
-    return result;
+    return false;
   };
 
   const start = async () => {
@@ -467,17 +501,20 @@ export const createWorkspaceRoomRuntime = ({
     }
     roomKey = startConfig.roomKey;
     syncController.setRoomKey(roomKey);
+    let settledCheckpoint: Awaited<ReturnType<typeof loadCheckpoint>> | null = null;
+    let checkpointApplied = false;
+    const checkpointPromise = loadCheckpoint().then((result) => {
+      checkpointLoadSettled = true;
+      settledCheckpoint = result;
+      return result;
+    });
     const transportPreparation = adapters.prepareRoomTransport?.().catch(() => undefined);
-    const checkpointResult = await loadCheckpoint();
-    if (checkpointResult.status !== "loaded" && checkpointResult.status !== "missing") return;
-    if (checkpointResult.status === "loaded") {
-      if (!tryHydrateWorkspace(checkpointResult.source)) return;
-    } else {
-      setHydration("waiting-for-state", null);
-    }
-    if (closed || abortController.signal.aborted) return;
     await transportPreparation;
     if (closed || abortController.signal.aborted) return;
+    if (settledCheckpoint) {
+      checkpointApplied = true;
+      if (!applyCheckpointResult(settledCheckpoint)) return;
+    }
     syncDocumentMetrics();
     refreshActiveEditorBinding();
     if (runtimeSnapshot.hydrationStatus === "ready") projectWorkspace();
@@ -487,12 +524,14 @@ export const createWorkspaceRoomRuntime = ({
         onConnect: () => { if (!closed) setStatus("connecting"); },
         onJoined: () => {
           if (closed) return;
+          transportJoined = true;
           const joined = sessionState.markJoined();
           setStatus("connected");
           if (joined.reconnected) emitRecoveryEvent("reconnected", joined.message);
           presenceController.publishLocalState();
           syncController.onJoined();
-          checkpointCoordinator.handleJoined();
+          if (initialPersistenceHandled) checkpointCoordinator.handleJoined();
+          else requestInitialPersistence();
         },
         onPeerJoined: () => {
           if (closed) return;
@@ -505,6 +544,7 @@ export const createWorkspaceRoomRuntime = ({
         onError: (message) => emitInvalidMessage(message.error || "A collaboration server message was ignored."),
         onDisconnect: () => {
           if (closed) return;
+          transportJoined = false;
           syncController.onTransportDisconnected();
           setStatus(sessionState.markOffline("disconnect").status);
         },
@@ -520,6 +560,11 @@ export const createWorkspaceRoomRuntime = ({
       syncController.publishAwareness();
       syncController.pruneChunks();
     }, AWARENESS_HEARTBEAT_MS);
+
+    if (checkpointApplied) return;
+    const checkpointResult = await checkpointPromise;
+    if (closed || abortController.signal.aborted) return;
+    applyCheckpointResult(checkpointResult);
   };
 
   const handleDocumentUpdate = (update: Uint8Array, origin: unknown) => {

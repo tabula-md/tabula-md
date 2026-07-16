@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import {
   createWorkspaceRoomCrdt,
@@ -6,12 +6,10 @@ import {
   getWorkspaceRoomSnapshot,
 } from "@tabula-md/tabula";
 import {
-  createNoopRoomCheckpointStore,
   decryptWorkspaceRoomCheckpoint,
   encryptWorkspaceRoomCheckpoint,
-  type RoomCheckpointStore,
 } from "./roomCheckpointStore";
-import { persistInitialWorkspaceRoomCheckpoint } from "./roomCheckpointCrdt";
+import { createInitialWorkspaceRoomBootstrap } from "./roomCheckpointCrdt";
 
 describe("room checkpoint crypto", () => {
   it("encrypts a room-bound Yjs state update without plaintext", async () => {
@@ -45,19 +43,9 @@ describe("room checkpoint crypto", () => {
     doc.destroy();
   });
 
-  it("persists a complete encrypted workspace before a live session starts", async () => {
-    const roomKey = generateEncryptionKey();
-    const saveEncryptedCheckpoint = vi.fn<RoomCheckpointStore["saveEncryptedCheckpoint"]>()
-      .mockResolvedValue({ ok: true, generation: 1 });
-    const store: RoomCheckpointStore = {
-      enabled: true,
-      loadEncryptedCheckpoint: vi.fn(async () => null),
-      saveEncryptedCheckpoint,
-    };
-
-    const persisted = await persistInitialWorkspaceRoomCheckpoint({
+  it("creates a complete unsaved workspace bootstrap before the live room connects", () => {
+    const bootstrap = createInitialWorkspaceRoomBootstrap({
       roomId: "room-initial",
-      roomKey,
       folders: [{ id: "notes", title: "Notes", parentId: "workspace-root" }],
       documents: [
         { id: "readme", title: "README.md", text: "# Secret", parentId: "workspace-root" },
@@ -73,39 +61,20 @@ describe("room checkpoint crypto", () => {
           replies: [],
         }],
       },
-    }, store);
-
-    expect(saveEncryptedCheckpoint).toHaveBeenCalledTimes(1);
-    const request = saveEncryptedCheckpoint.mock.calls[0]![1];
-    expect(request.expectedGeneration).toBe(0);
-    expect(new TextDecoder().decode(request.encryptedCheckpoint)).not.toContain("Secret");
-
-    const update = await decryptWorkspaceRoomCheckpoint({
-      encryptedCheckpoint: request.encryptedCheckpoint,
-      roomId: "room-initial",
-      roomKey,
     });
-    expect(persisted).toMatchObject({ generation: 1, checkpointUpdate: update });
+
+    expect(bootstrap.generation).toBe(0);
     const restoredDoc = new Y.Doc();
     const restoredRoom = createWorkspaceRoomCrdt({
       roomId: "room-initial",
       doc: restoredDoc,
       initialize: false,
     });
-    Y.applyUpdate(restoredDoc, update);
+    Y.applyUpdate(restoredDoc, bootstrap.checkpointUpdate);
     expect(getWorkspaceRoomSnapshot(restoredRoom)).toMatchObject({
       documents: { readme: "# Secret", draft: "Draft" },
       commentsByFileId: { readme: [{ body: "Review this" }] },
     });
     restoredDoc.destroy();
-  });
-
-  it("does not report an unsaved live room as successfully created", async () => {
-    await expect(persistInitialWorkspaceRoomCheckpoint({
-      roomId: "room-disabled",
-      roomKey: generateEncryptionKey(),
-      folders: [],
-      documents: [{ id: "readme", title: "README.md", text: "# Local" }],
-    }, createNoopRoomCheckpointStore())).rejects.toThrow("persistence is unavailable");
   });
 });

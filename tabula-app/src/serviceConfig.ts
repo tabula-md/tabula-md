@@ -16,8 +16,6 @@ const TABULA_LOCAL_FIREBASE_CONFIG = JSON.stringify({
 export const TABULA_HOSTED_SERVICE_COPY = {
   roomUnconfiguredMessage: "Live collaboration is not available right now.",
   jsonShareUnconfiguredMessage: "Export link isn’t available right now.",
-  roomCheckpointUnconfiguredMessage:
-    "Live collaboration is not available right now.",
 } as const;
 
 export type TabulaServiceConfig = {
