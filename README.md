@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://tabula.md">
+    <img src="https://tabula.md/favicon.svg" alt="Tabula.md" width="56" />
+  </a>
+</p>
+
 <h1 align="center">Tabula.md</h1>
 
 <p align="center">
