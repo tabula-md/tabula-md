@@ -649,7 +649,7 @@ export async function run(ctx) {
     );
     expect(
       (await page.getByRole("link", { name: "Set up Tabula MCP" }).getAttribute("href")) ===
-        "https://github.com/tabula-md/tabula-mcp#quick-start",
+        "https://github.com/tabula-md/tabula-mcp#install",
       "Agent setup should stay outside the per-room invite action.",
     );
     await page.getByRole("button", { name: "Copy invite" }).click();
