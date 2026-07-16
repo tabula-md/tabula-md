@@ -131,6 +131,8 @@ const runLiveCycle = async ({ page, focusMarkdownEditor, cycle }) => {
 
   await page.locator(".share-trigger").click();
   await page.getByRole("button", { name: "Stop session" }).click();
+  await page.getByText("Stop live collaboration?", { exact: true }).waitFor({ state: "visible" });
+  await page.getByRole("button", { name: "Stop session" }).click();
   await page.locator(".tab-item[data-room-id]:not([data-room-id=''])").waitFor({ state: "detached" });
   await page.waitForFunction(() => !window.location.hash.startsWith("#room="));
   if ((await page.locator(".share-modal").count()) > 0) {

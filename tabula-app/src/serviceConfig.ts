@@ -4,6 +4,7 @@ export const TABULA_LOCAL_ROOM_PORT = 3002;
 export const TABULA_LOCAL_JSON_PORT = 3004;
 export const TABULA_LOCAL_FIRESTORE_PORT = 8080;
 export const TABULA_LOCAL_FIREBASE_STORAGE_PORT = 9199;
+export const TABULA_HOSTED_ROOM_URL = "https://rooms.tabula.md";
 
 const TABULA_LOCAL_FIREBASE_CONFIG = JSON.stringify({
   apiKey: "tabula-local",
@@ -123,17 +124,24 @@ const resolveLocalServiceUrl = ({
   return `${protocol}//${location.hostname}:${port}`;
 };
 
+const isOfficialHostedLocation = (location?: LocalServiceLocation) =>
+  location?.hostname === "tabula.md" || location?.hostname === "www.tabula.md";
+
 export const resolveTabulaRoomServiceUrl = ({
   configuredUrl = tabulaServiceConfig.roomUrl,
   isDev = tabulaServiceConfig.isDev,
   location,
-}: ResolveTabulaRoomServiceUrlOptions = {}) =>
-  resolveLocalServiceUrl({
-    configuredUrl,
+}: ResolveTabulaRoomServiceUrlOptions = {}) => {
+  const configuredBaseUrl = normalizeServiceUrl(configuredUrl);
+  if (configuredBaseUrl) return configuredBaseUrl;
+  if (isOfficialHostedLocation(location)) return TABULA_HOSTED_ROOM_URL;
+  return resolveLocalServiceUrl({
+    configuredUrl: null,
     isDev,
     location,
     port: TABULA_LOCAL_ROOM_PORT,
   });
+};
 
 export const resolveTabulaJsonShareServiceUrl = ({
   configuredUrl = tabulaServiceConfig.jsonUrl,

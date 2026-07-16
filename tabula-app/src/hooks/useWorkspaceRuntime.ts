@@ -559,7 +559,6 @@ export function useWorkspaceRuntime() {
     );
   });
   const {
-    canStartSession,
     collaborators,
     connectionStatus,
     hydrationStatus,
@@ -856,7 +855,11 @@ export function useWorkspaceRuntime() {
     flushPendingEditorCommit();
     try {
       const startedSession = await startSession();
-      if (!startedSession) return;
+      if (!startedSession) {
+        setTopPopover(null);
+        showToast(workspaceShareCopy.live.unavailable, "error");
+        return;
+      }
 
       setLiveRoomOpenFailure(null);
       const roomWorkspace = {
@@ -1204,7 +1207,6 @@ export function useWorkspaceRuntime() {
   const { shareOpen, topChromeProps } = useWorkspaceTopChromeRuntime({
     activeFile,
     activeText: text,
-    canStartSession,
     collaborators,
     connectionStatus,
     copiedFileId,
@@ -1221,9 +1223,6 @@ export function useWorkspaceRuntime() {
     openFiles,
     room: activeRoom,
     rightPanelOpen,
-    startSessionUnavailableReason: canStartSession
-      ? ""
-      : workspaceShareCopy.live.unavailable,
     topPopover,
     workspaceMenuOpen,
     onAddFile: addRootFile,

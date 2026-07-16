@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createJsonShareLink,
   formatJsonShareUrlPreview,
@@ -94,13 +94,26 @@ export function useJsonShareController({
     documentCount: number;
   }>();
   const [exporting, setExporting] = useState(false);
+  const exportRequestRef = useRef<{ controller: AbortController; id: number } | null>(null);
+  const exportRequestIdRef = useRef(0);
   const serviceUrl = getConfiguredJsonShareServiceUrl();
 
-  const reset = useCallback(() => setJsonShareResult(undefined), []);
+  const reset = useCallback(() => {
+    exportRequestIdRef.current += 1;
+    exportRequestRef.current?.controller.abort();
+    exportRequestRef.current = null;
+    setExporting(false);
+    setJsonShareResult(undefined);
+  }, []);
 
-  useLayoutEffect(() => {
-    reset();
-  }, [activeFile?.id, activeText, commentsByFileId, files, folders, reset]);
+  useEffect(
+    () => () => {
+      exportRequestIdRef.current += 1;
+      exportRequestRef.current?.controller.abort();
+      exportRequestRef.current = null;
+    },
+    [],
+  );
 
   const disabledReason = useMemo(() => {
     if (files.length === 0) {
@@ -110,7 +123,7 @@ export function useJsonShareController({
   }, [copy, files.length]);
 
   const exportLink = async () => {
-    if (exporting || disabledReason) {
+    if (exportRequestRef.current || exporting || disabledReason) {
       if (disabledReason) {
         showToast(disabledReason, "error");
       }
@@ -132,6 +145,11 @@ export function useJsonShareController({
       return false;
     }
 
+    const requestId = exportRequestIdRef.current + 1;
+    exportRequestIdRef.current = requestId;
+    const controller = new AbortController();
+    exportRequestRef.current = { controller, id: requestId };
+    setJsonShareResult(undefined);
     setExporting(true);
     try {
       const selectedFileIds = new Set(selectedFiles.map((file) => file.id));
@@ -151,11 +169,13 @@ export function useJsonShareController({
         rootFolderId: WORKSPACE_ROOT_FOLDER_ID,
         activeFileId: snapshotActiveFileId,
         commentsByFileId: selectedCommentsByFileId,
+        signal: controller.signal,
       });
+      if (exportRequestIdRef.current !== requestId) return false;
       setJsonShareResult({ url, expiresAt, documentCount: selectedFiles.length });
-      showToast(copy.shareable.created);
       return true;
     } catch (error) {
+      if (controller.signal.aborted || isAbortError(error)) return false;
       clientErrorReporter.report({
         feature: "json-share",
         operation: "export",
@@ -164,7 +184,10 @@ export function useJsonShareController({
       showToast(getJsonShareExportErrorMessage(error, copy), "error");
       return false;
     } finally {
-      setExporting(false);
+      if (exportRequestIdRef.current === requestId) {
+        exportRequestRef.current = null;
+        setExporting(false);
+      }
     }
   };
 
@@ -200,3 +223,6 @@ const getJsonShareExportErrorMessage = (error: unknown, copy: WorkspaceShareCopy
 
   return copy.shareable.failed;
 };
+
+const isAbortError = (error: unknown) =>
+  error instanceof DOMException && error.name === "AbortError";

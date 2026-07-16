@@ -52,6 +52,7 @@ type WorkspaceMenuCopy = {
       description: string;
       startSession: string;
       startDescription: string;
+      securityDescription: string;
       temporarySessionDescription: string;
       inviteAgent: string;
       inviteAgentDescription: string;
@@ -69,16 +70,21 @@ type WorkspaceMenuCopy = {
       copyLink: string;
       copied: string;
       stopSession: string;
+      stopDescription: string;
+      stopConfirmTitle: string;
+      stopConfirmDescription: string;
+      cancelStop: string;
+      confirmStop: string;
     };
     shareable: {
       title: string;
       description: string;
       noFileReason: string;
       exportToLink: string;
-      exporting: string;
+      preparing: string;
       linkLabel: string;
+      securityDescription: string;
       unavailable: string;
-      created: string;
       copied: string;
       failed: string;
     };
@@ -155,6 +161,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Create an encrypted room for real-time collaboration.",
         startSession: "Start session",
         startDescription: "The whole workspace joins the encrypted room.",
+        securityDescription:
+          "End-to-end encrypted. Tabula relays encrypted updates and cannot read your documents or comments.",
         temporarySessionDescription:
           "Temporary session. Keep at least one participant connected.",
         inviteAgent: "Copy agent prompt",
@@ -174,6 +182,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copyLink: "Copy link",
         copied: "Copied",
         stopSession: "Stop session",
+        stopDescription:
+          "Stopping disconnects only this browser. Other participants can continue in the room.",
+        stopConfirmTitle: "Stop live collaboration?",
+        stopConfirmDescription:
+          "This browser will leave the room. The shared workspace will replace the local workspace currently saved on this device. Other participants can continue working in the room.",
+        cancelStop: "Cancel",
+        confirmStop: "Stop session",
       },
       shareable: {
         title: "Export link",
@@ -181,10 +196,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Create an encrypted point-in-time copy. Changes do not sync back.",
         noFileReason: "Open a file before exporting to link.",
         exportToLink: "Export to link",
-        exporting: "Exporting link",
+        preparing: "Preparing encrypted link…",
         linkLabel: "Export link",
+        securityDescription:
+          "Encrypted in this browser before upload. The server stores only the encrypted copy; the decryption key stays in the link.",
         unavailable: "Export to link isn’t available right now.",
-        created: "Export link created.",
         copied: "Export link copied.",
         failed: "Couldn’t export to link.",
       },
@@ -244,6 +260,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "실시간 협업을 위한 암호화된 room을 만듭니다.",
         startSession: "세션 시작",
         startDescription: "워크스페이스 전체가 암호화된 room에 들어갑니다.",
+        securityDescription:
+          "종단간 암호화됩니다. Tabula는 암호화된 변경만 전달하며 문서나 댓글을 읽을 수 없습니다.",
         temporarySessionDescription:
           "임시 세션입니다. 최소 한 명의 참여자가 연결된 상태를 유지하세요.",
         inviteAgent: "에이전트 프롬프트 복사",
@@ -263,6 +281,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copyLink: "링크 복사",
         copied: "복사됨",
         stopSession: "세션 중지",
+        stopDescription:
+          "중지하면 이 브라우저만 room에서 나갑니다. 다른 참여자는 계속 협업할 수 있습니다.",
+        stopConfirmTitle: "실시간 협업을 중지할까요?",
+        stopConfirmDescription:
+          "이 브라우저가 room에서 나갑니다. 공유 워크스페이스가 이 기기에 저장된 기존 로컬 워크스페이스를 대신하며, 다른 참여자는 room에서 계속 작업할 수 있습니다.",
+        cancelStop: "취소",
+        confirmStop: "세션 중지",
       },
       shareable: {
         title: "내보내기 링크",
@@ -270,10 +295,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "암호화된 시점 복사본을 만듭니다. 이후 변경은 원본에 동기화되지 않습니다.",
         noFileReason: "파일을 열면 링크로 내보낼 수 있습니다.",
         exportToLink: "링크로 내보내기",
-        exporting: "링크 내보내는 중",
+        preparing: "암호화된 링크 준비 중…",
         linkLabel: "내보내기 링크",
+        securityDescription:
+          "업로드 전에 이 브라우저에서 암호화됩니다. 서버에는 암호화된 복사본만 저장되며 복호화 키는 링크에만 남습니다.",
         unavailable: "지금은 링크로 내보낼 수 없습니다.",
-        created: "내보내기 링크를 만들었습니다.",
         copied: "내보내기 링크를 복사했습니다.",
         failed: "링크로 내보내지 못했습니다.",
       },
@@ -333,6 +359,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "リアルタイム共同編集用の暗号化 room を作成します。",
         startSession: "セッションを開始",
         startDescription: "ワークスペース全体が暗号化 room に参加します。",
+        securityDescription:
+          "エンドツーエンドで暗号化されます。Tabula は暗号化された更新を中継するだけで、文書やコメントを読むことはできません。",
         temporarySessionDescription:
           "一時セッションです。少なくとも1人は接続したままにしてください。",
         inviteAgent: "エージェント用プロンプトをコピー",
@@ -353,6 +381,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copyLink: "リンクをコピー",
         copied: "コピー済み",
         stopSession: "セッションを停止",
+        stopDescription:
+          "停止すると、このブラウザだけが room から退出します。他の参加者はそのまま共同編集を続けられます。",
+        stopConfirmTitle: "ライブ共同編集を停止しますか？",
+        stopConfirmDescription:
+          "このブラウザは room から退出します。共有ワークスペースはこの端末に保存されたローカルワークスペースを置き換え、他の参加者は room で作業を続けられます。",
+        cancelStop: "キャンセル",
+        confirmStop: "セッションを停止",
       },
       shareable: {
         title: "書き出しリンク",
@@ -361,10 +396,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         noFileReason:
           "ファイルを開くとリンクに書き出せます。",
         exportToLink: "リンクに書き出し",
-        exporting: "リンクを書き出し中",
+        preparing: "暗号化リンクを準備中…",
         linkLabel: "書き出しリンク",
+        securityDescription:
+          "アップロード前にこのブラウザで暗号化されます。サーバーには暗号化されたコピーだけが保存され、復号キーはリンク内に残ります。",
         unavailable: "現在、リンクへの書き出しは利用できません。",
-        created: "書き出しリンクを作成しました。",
         copied: "書き出しリンクをコピーしました。",
         failed: "リンクに書き出せませんでした。",
       },
@@ -422,6 +458,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         description: "创建用于实时协作的加密 room。",
         startSession: "启动协作",
         startDescription: "整个工作区会加入加密 room。",
+        securityDescription:
+          "采用端到端加密。Tabula 只中继加密更新，无法读取你的文档或评论。",
         temporarySessionDescription:
           "这是临时会话。请确保至少一名参与者保持连接。",
         inviteAgent: "复制智能体提示",
@@ -441,16 +479,24 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copyLink: "复制链接",
         copied: "已复制",
         stopSession: "停止协作",
+        stopDescription:
+          "停止后仅此浏览器会离开 room，其他参与者仍可继续协作。",
+        stopConfirmTitle: "停止实时协作？",
+        stopConfirmDescription:
+          "此浏览器将离开 room。共享工作区会替换此设备上当前保存的本地工作区，其他参与者仍可在 room 中继续工作。",
+        cancelStop: "取消",
+        confirmStop: "停止协作",
       },
       shareable: {
         title: "导出链接",
         description: "创建加密的时间点副本。之后的更改不会同步回原工作区。",
         noFileReason: "打开文件后即可导出为链接。",
         exportToLink: "导出为链接",
-        exporting: "正在导出链接",
+        preparing: "正在准备加密链接…",
         linkLabel: "导出链接",
+        securityDescription:
+          "上传前会在此浏览器中加密。服务器只保存加密副本，解密密钥仅保留在链接中。",
         unavailable: "目前无法导出为链接。",
-        created: "已创建导出链接。",
         copied: "已复制导出链接。",
         failed: "无法导出为链接。",
       },
@@ -510,6 +556,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Crea una sala cifrada para colaboración en tiempo real.",
         startSession: "Iniciar colaboración",
         startDescription: "Todo el workspace entra en la sala cifrada.",
+        securityDescription:
+          "Cifrado de extremo a extremo. Tabula solo retransmite cambios cifrados y no puede leer tus documentos ni comentarios.",
         temporarySessionDescription:
           "Sesión temporal. Mantén al menos un participante conectado.",
         inviteAgent: "Copiar prompt de agente",
@@ -530,6 +578,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copyLink: "Copiar enlace",
         copied: "Copiado",
         stopSession: "Detener colaboración",
+        stopDescription:
+          "Al detenerla, solo este navegador sale de la sala. Los demás participantes pueden continuar.",
+        stopConfirmTitle: "¿Detener la colaboración en vivo?",
+        stopConfirmDescription:
+          "Este navegador saldrá de la sala. El workspace compartido reemplazará el workspace local guardado en este dispositivo y los demás participantes podrán seguir trabajando en la sala.",
+        cancelStop: "Cancelar",
+        confirmStop: "Detener colaboración",
       },
       shareable: {
         title: "Enlace de exportación",
@@ -538,10 +593,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         noFileReason:
           "Abre un archivo antes de exportar a enlace.",
         exportToLink: "Exportar a enlace",
-        exporting: "Exportando enlace",
+        preparing: "Preparando enlace cifrado…",
         linkLabel: "Enlace de exportación",
+        securityDescription:
+          "Se cifra en este navegador antes de subirlo. El servidor solo guarda la copia cifrada; la clave de descifrado permanece en el enlace.",
         unavailable: "La exportación a enlace no está disponible ahora.",
-        created: "Enlace de exportación creado.",
         copied: "Enlace de exportación copiado.",
         failed: "No se pudo exportar a un enlace.",
       },
@@ -601,6 +657,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Créez une room chiffrée pour collaborer en temps réel.",
         startSession: "Démarrer la session",
         startDescription: "Tout le workspace rejoint la room chiffrée.",
+        securityDescription:
+          "Chiffré de bout en bout. Tabula ne fait que relayer des mises à jour chiffrées et ne peut lire ni vos documents ni vos commentaires.",
         temporarySessionDescription:
           "Session temporaire. Gardez au moins un participant connecté.",
         inviteAgent: "Copier le prompt agent",
@@ -621,6 +679,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copyLink: "Copier le lien",
         copied: "Copié",
         stopSession: "Arrêter la session",
+        stopDescription:
+          "L’arrêt déconnecte uniquement ce navigateur. Les autres participants peuvent continuer dans la room.",
+        stopConfirmTitle: "Arrêter la collaboration en direct ?",
+        stopConfirmDescription:
+          "Ce navigateur quittera la room. Le workspace partagé remplacera le workspace local enregistré sur cet appareil et les autres participants pourront continuer dans la room.",
+        cancelStop: "Annuler",
+        confirmStop: "Arrêter la session",
       },
       shareable: {
         title: "Lien d’export",
@@ -629,10 +694,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         noFileReason:
           "Ouvrez un fichier avant d'exporter vers un lien.",
         exportToLink: "Exporter vers un lien",
-        exporting: "Export du lien",
+        preparing: "Préparation du lien chiffré…",
         linkLabel: "Lien d'export",
+        securityDescription:
+          "Le contenu est chiffré dans ce navigateur avant l’envoi. Le serveur ne conserve que la copie chiffrée ; la clé de déchiffrement reste dans le lien.",
         unavailable: "L’export vers un lien n’est pas disponible actuellement.",
-        created: "Lien d’export créé.",
         copied: "Lien d’export copié.",
         failed: "Impossible d’exporter vers un lien.",
       },
@@ -692,6 +758,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Erstelle einen verschlüsselten Room für Zusammenarbeit in Echtzeit.",
         startSession: "Sitzung starten",
         startDescription: "Der gesamte Workspace tritt dem verschlüsselten Room bei.",
+        securityDescription:
+          "Ende-zu-Ende verschlüsselt. Tabula leitet nur verschlüsselte Änderungen weiter und kann Dokumente oder Kommentare nicht lesen.",
         temporarySessionDescription:
           "Temporäre Sitzung. Mindestens eine Person muss verbunden bleiben.",
         inviteAgent: "Agent-Prompt kopieren",
@@ -712,6 +780,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         copyLink: "Link kopieren",
         copied: "Kopiert",
         stopSession: "Sitzung beenden",
+        stopDescription:
+          "Beim Beenden verlässt nur dieser Browser den Room. Andere Teilnehmende können weiterarbeiten.",
+        stopConfirmTitle: "Live-Zusammenarbeit beenden?",
+        stopConfirmDescription:
+          "Dieser Browser verlässt den Room. Der geteilte Workspace ersetzt den aktuell auf diesem Gerät gespeicherten lokalen Workspace; andere Teilnehmende können im Room weiterarbeiten.",
+        cancelStop: "Abbrechen",
+        confirmStop: "Sitzung beenden",
       },
       shareable: {
         title: "Exportlink",
@@ -720,10 +795,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         noFileReason:
           "Öffne eine Datei, bevor du als Link exportierst.",
         exportToLink: "Als Link exportieren",
-        exporting: "Link wird exportiert",
+        preparing: "Verschlüsselten Link vorbereiten…",
         linkLabel: "Exportlink",
+        securityDescription:
+          "Vor dem Upload wird in diesem Browser verschlüsselt. Der Server speichert nur die verschlüsselte Kopie; der Entschlüsselungsschlüssel bleibt im Link.",
         unavailable: "Der Export als Link ist derzeit nicht verfügbar.",
-        created: "Exportlink erstellt.",
         copied: "Exportlink kopiert.",
         failed: "Export als Link fehlgeschlagen.",
       },

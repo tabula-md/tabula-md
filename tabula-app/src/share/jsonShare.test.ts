@@ -31,11 +31,13 @@ describe("json share links", () => {
   it("creates an encrypted #json link and reads it back with the fragment key", async () => {
     let encryptedRequest: ArrayBuffer | undefined;
     let createRequestUrl = "";
+    const createController = new AbortController();
     const jsonId = "jsonShare123";
     const createFetch = async (url: RequestInfo | URL, init?: RequestInit) => {
       createRequestUrl = String(url);
       encryptedRequest = init?.body as ArrayBuffer;
       expect(init?.headers).toMatchObject({ "content-type": "application/octet-stream" });
+      expect(init?.signal).toBe(createController.signal);
       return new Response(
         JSON.stringify({
           id: jsonId,
@@ -54,6 +56,7 @@ describe("json share links", () => {
       rootFolderId: WORKSPACE_ROOT_FOLDER_ID,
       activeFileId: "readme",
       commentsByFileId: {},
+      signal: createController.signal,
       fetchImpl: createFetch as typeof fetch,
     });
 

@@ -751,9 +751,8 @@ export async function run(ctx) {
           };
         });
         expect(
-          startSamples.every((sample) => !new URL(sample.url).hash.startsWith("#room=")) &&
-            !new URL(failedStartState.url).hash.startsWith("#room="),
-          "Failed Start session should not flash or leave a room URL.",
+          !new URL(failedStartState.url).hash.startsWith("#room="),
+          "A locally unavailable room service should leave the workspace on its local URL.",
         );
         expect(
           failedStartState.toastText === "Live collaboration isn’t available right now.",
@@ -769,7 +768,7 @@ export async function run(ctx) {
             failedStartState.startButtonCount === 0 &&
             failedStartState.inviteLinkCount === 0 &&
             failedStartState.stopSessionCount === 0,
-          "Failed Start session should close Share without showing invite-link controls.",
+          "A local Start preflight failure should close Share without creating live controls.",
         );
         expect(
           (await page.locator(".share-live-status.failed").count()) === 0,

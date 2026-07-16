@@ -29,9 +29,21 @@ describe("workspace locale chrome copy", () => {
     );
     expect(english.emptyState.newFile).toBe("New document");
     expect(english.share.live.startSession).toBe("Start session");
+    expect(english.share.live.startDescription).toBe(
+      "The whole workspace joins the encrypted room.",
+    );
+    expect(english.share.live.securityDescription).toContain(
+      "cannot read your documents or comments",
+    );
+    expect(english.share.live.stopConfirmTitle).toBe(
+      "Stop live collaboration?",
+    );
     expect(english.share.shareable.title).toBe("Export link");
     expect(english.share.shareable.description).toBe(
       "Create an encrypted point-in-time copy. Changes do not sync back.",
+    );
+    expect(english.share.shareable.securityDescription).toContain(
+      "decryption key stays in the link",
     );
     expect(english.share.modalTitle).toBe("Share");
 

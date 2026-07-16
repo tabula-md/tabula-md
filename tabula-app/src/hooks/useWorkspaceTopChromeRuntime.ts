@@ -17,7 +17,6 @@ type SetPreferencesOpen = (isOpen: boolean) => void;
 type UseWorkspaceTopChromeRuntimeOptions = {
   activeFile?: WorkspaceFile;
   activeText: string;
-  canStartSession: boolean;
   collaborators: Collaborator[];
   followState: FollowState;
   connectionStatus: ConnectionStatus;
@@ -34,7 +33,6 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
   rightPanelOpen: boolean;
-  startSessionUnavailableReason: string;
   topPopover: TopPopover;
   workspaceMenuOpen: boolean;
   onAddFile: () => void;
@@ -61,7 +59,6 @@ type UseWorkspaceTopChromeRuntimeOptions = {
 export function useWorkspaceTopChromeRuntime({
   activeFile,
   activeText,
-  canStartSession,
   collaborators,
   followState,
   connectionStatus,
@@ -78,7 +75,6 @@ export function useWorkspaceTopChromeRuntime({
   openFiles,
   room,
   rightPanelOpen,
-  startSessionUnavailableReason,
   topPopover,
   workspaceMenuOpen,
   onAddFile,
@@ -129,7 +125,6 @@ export function useWorkspaceTopChromeRuntime({
   const topChromeProps: WorkspaceTopChromeProps = {
     activeFile,
     activeText,
-    canStartSession,
     collaborators,
     followState,
     connectionStatus,
@@ -147,7 +142,6 @@ export function useWorkspaceTopChromeRuntime({
     room,
     rightPanelOpen,
     shareOpen,
-    startSessionUnavailableReason,
     workspaceMenuOpen,
     onAddFile,
     onChangeUserName,

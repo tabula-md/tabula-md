@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { JsonShareController } from "./useJsonShareController";
 import type { WorkspaceLanguage } from "./useWorkspacePreferences";
 import { buildLocalAgentPrompt } from "../shareAgentHandoff";
@@ -14,14 +14,11 @@ type UseShareDialogRuntimeOptions = {
   activeFile?: WorkspaceFile;
   room?: LocationRoom | null;
   activeText: string;
-  canStartSession: boolean;
   files: WorkspaceFile[];
   isLive: boolean;
   isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
-  shareOpen: boolean;
-  startSessionUnavailableReason: string;
   onCloseShare: () => void;
   onStopSession: () => void;
 };
@@ -30,19 +27,20 @@ export function useShareDialogRuntime({
   activeFile,
   room,
   activeText,
-  canStartSession,
   files,
   isLive,
   isLiveConnected,
   jsonShare,
   language,
-  shareOpen,
-  startSessionUnavailableReason,
   onCloseShare,
   onStopSession,
 }: UseShareDialogRuntimeOptions) {
   const [agentPromptCopied, setAgentPromptCopied] = useState(false);
   const [exportLinkCopied, setExportLinkCopied] = useState(false);
+  const [view, setView] = useState<"chooser" | "export-result" | "stop-confirm">(
+    "chooser",
+  );
+  const closedRef = useRef(false);
   const copy = getWorkspaceMenuCopy(language).share;
   const chromeCopy = getWorkspaceChromeCopy(language);
   const shareModalTitle = copy.modalTitle;
@@ -59,37 +57,41 @@ export function useShareDialogRuntime({
   );
   const roomPromptFiles = promptFiles;
   const shareView = buildShareViewModel({
-    canStartSession,
     isLive,
     labels: {
       exportToLink: copy.shareable.exportToLink,
-      exporting: copy.shareable.exporting,
     },
     jsonShareCanExport: jsonShare.canExport,
     jsonShareDisabledReason: jsonShare.disabledReason,
-    jsonShareExporting: jsonShare.exporting,
     jsonShareUrl: jsonShare.url,
     roomId: room?.roomId,
     shareUrl: room?.shareUrl,
-    startSessionUnavailableReason,
   });
 
-  useEffect(() => {
-    if (!shareOpen) {
-      setAgentPromptCopied(false);
-      setExportLinkCopied(false);
-      jsonShare.reset();
-    }
-  }, [jsonShare, shareOpen]);
+  const closeShare = useCallback(() => {
+    closedRef.current = true;
+    jsonShare.reset();
+    setAgentPromptCopied(false);
+    setExportLinkCopied(false);
+    setView("chooser");
+    onCloseShare();
+  }, [jsonShare, onCloseShare]);
 
-  const stopSession = () => onStopSession();
+  const requestStopSession = () => setView("stop-confirm");
+  const cancelStopSession = () => setView("chooser");
+  const confirmStopSession = () => {
+    onStopSession();
+    closeShare();
+  };
 
   const exportToJsonLink = () => {
+    setView("export-result");
+    setExportLinkCopied(false);
     void jsonShare
       .exportLink()
       .then((exported) => {
-        if (!exported) {
-          onCloseShare();
+        if (!exported && !closedRef.current) {
+          closeShare();
         }
       })
       .finally(() => setExportLinkCopied(false));
@@ -123,12 +125,16 @@ export function useShareDialogRuntime({
     agentPromptCopied,
     chromeCopy,
     copy,
+    cancelStopSession,
+    closeShare,
     copyLocalAgentPrompt,
     copyShareableLink,
+    confirmStopSession,
     exportLinkCopied,
     exportToJsonLink,
     shareModalTitle,
     shareView,
-    stopSession,
+    requestStopSession,
+    view,
   };
 }

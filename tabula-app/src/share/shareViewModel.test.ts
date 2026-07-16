@@ -3,17 +3,13 @@ import { buildShareViewModel } from ".";
 
 const labels = {
   exportToLink: "Export to link",
-  exporting: "Exporting link",
 };
 
 const baseInput = {
-  canStartSession: true,
   isLive: false,
   labels,
   jsonShareCanExport: true,
   jsonShareDisabledReason: "",
-  jsonShareExporting: false,
-  startSessionUnavailableReason: "",
 };
 
 describe("share view model", () => {

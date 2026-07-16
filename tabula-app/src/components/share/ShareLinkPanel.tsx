@@ -2,6 +2,7 @@ import {
   Bot,
   Check,
   Copy,
+  LockKeyhole,
   Play,
   RefreshCw,
   Square,
@@ -93,15 +94,13 @@ export function ShareLinkPanel({
             <button
               className="share-modal-primary"
               type="button"
-              disabled={!shareView.live.canStart}
               aria-describedby={startDescriptionId}
-              title={shareView.live.disabledReason || undefined}
               onClick={onStartWorkspaceRoom}
             >
               <Play size={16} />
               <span>{copy.live.startSession}</span>
             </button>
-            <p id={startDescriptionId}>{shareView.live.disabledReason || copy.live.startDescription}</p>
+            <p id={startDescriptionId}>{copy.live.startDescription}</p>
           </div>
         )}
 
@@ -182,6 +181,8 @@ export function ShareLinkPanel({
               </>
             )}
 
+            <p className="share-live-stop-description">{copy.live.stopDescription}</p>
+
             <div className="share-live-session-actions">
               {canRetrySession && (
                 <button
@@ -204,6 +205,11 @@ export function ShareLinkPanel({
             </div>
           </div>
         )}
+
+        <div className="share-modal-note">
+          <LockKeyhole size={15} aria-hidden="true" />
+          <p>{copy.live.securityDescription}</p>
+        </div>
       </div>
 
       {!isLive && (

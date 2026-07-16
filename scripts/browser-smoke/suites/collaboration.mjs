@@ -70,7 +70,16 @@ export async function run(ctx) {
     await clickTabByFileName(firstPage, "README.md");
     await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active');
     await firstPage.locator(".share-trigger").click();
+    const liveSurfaceStartedAt = Date.now();
     await firstPage.getByRole("button", { name: "Start session" }).click();
+    await firstPage.getByRole("button", { name: "Stop session" }).waitFor({
+      state: "visible",
+      timeout: 1_000,
+    });
+    expect(
+      Date.now() - liveSurfaceStartedAt < 1_000,
+      "Start session should enter the live surface without waiting for relay or checkpoint round trips.",
+    );
     try {
       await firstPage.waitForSelector('.tab-item.active[data-room-id]:not([data-room-id=""])');
     } catch (error) {
@@ -424,6 +433,14 @@ export async function run(ctx) {
         (await firstPage.locator(".share-trigger.live").count()) === 1,
         "The workspace should still be live before stopping the session.",
       );
+      await firstPage.getByRole("button", { name: "Stop session" }).click();
+      await waitForText(firstPage.locator(".share-modal"), "Stop live collaboration?");
+      await firstPage.getByRole("button", { name: "Cancel" }).click();
+      expect(
+        (await firstPage.locator(".share-trigger.live").count()) === 1,
+        "Canceling Stop session should keep the browser in the live room.",
+      );
+      await firstPage.getByRole("button", { name: "Stop session" }).click();
       await firstPage.getByRole("button", { name: "Stop session" }).click();
       await firstPage.locator(".share-trigger.live").waitFor({ state: "detached", timeout: 5_000 });
     }
