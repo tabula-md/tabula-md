@@ -13,7 +13,7 @@ describe("agent handoff", () => {
 
   it("links one-time setup outside the invite flow", () => {
     expect(TABULA_MCP_SETUP_URL).toBe(
-      "https://github.com/tabula-md/tabula-mcp#quick-start",
+      "https://github.com/tabula-md/tabula-mcp#install",
     );
   });
 });
