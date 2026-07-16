@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent, type DragEvent, type RefObject } from "react";
+import posthog from "posthog-js";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import type { MarkdownEditorHandle } from "../markdownEditorTypes";
 import { WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
@@ -183,6 +184,7 @@ export function useProjectIoController({
 
     const download = createCurrentFileDownloadDraft(fileSnapshot);
     downloadTextFile(download.fileName, download.content, download.type);
+    posthog.capture("file_exported");
     showToast(copy.fileDownloaded);
   };
 
@@ -199,6 +201,7 @@ export function useProjectIoController({
       });
       const archive = await createProjectArchive(workspaceSnapshot.files, workspaceSnapshot.folders);
       downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
+      posthog.capture("workspace_exported", { file_count: workspaceSnapshot.files.length });
       showToast(copy.workspaceDownloaded);
     } catch (error) {
       clientErrorReporter.report({
@@ -220,6 +223,7 @@ export function useProjectIoController({
       importedFileDraft.viewMode,
       importedFileDraft.overrides,
     );
+    posthog.capture("file_imported");
     onCloseChrome();
     if (!isRoomSession) syncUrlForLocalWorkspace();
 
@@ -265,6 +269,7 @@ export function useProjectIoController({
     replaceWorkspace(nextWorkspace);
     replaceCommentsByFileId({});
     clearFileHistory();
+    posthog.capture("workspace_folder_imported", { file_count: nextWorkspace.files.length });
     void writeIndexedDbWorkspace(nextWorkspace).catch((error: unknown) => {
       clientErrorReporter.report({ feature: "workspace", operation: "persist-open-folder", error });
       showToast(copy.saveOpenedWorkspaceFailed, "error");

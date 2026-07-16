@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import posthog from "posthog-js";
 import {
   createJsonShareLink,
   formatJsonShareUrlPreview,
@@ -153,6 +154,7 @@ export function useJsonShareController({
         commentsByFileId: selectedCommentsByFileId,
       });
       setJsonShareResult({ url, expiresAt, documentCount: selectedFiles.length });
+      posthog.capture("json_share_link_created", { document_count: selectedFiles.length });
       showToast(copy.shareable.created);
       return true;
     } catch (error) {
@@ -173,6 +175,7 @@ export function useJsonShareController({
       return;
     }
     await navigator.clipboard.writeText(jsonShareResult.url);
+    posthog.capture("json_share_link_copied");
     showToast(copy.shareable.copied);
   };
 

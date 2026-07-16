@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import posthog from "posthog-js";
 import type { ConnectionStatus } from "../collaboration";
 import { getRoomShareLinkView } from "../share";
 import {
@@ -39,6 +40,7 @@ export function useWorkspaceLiveRoomController({
       return undefined;
     }
 
+    posthog.capture("collaboration_session_started");
     setCopiedFileId(null);
     return startedSession;
   };
@@ -48,6 +50,7 @@ export function useWorkspaceLiveRoomController({
       return;
     }
 
+    posthog.capture("collaboration_session_stopped");
     resetCollaborationState("idle");
     setCopiedFileId(null);
     syncUrlForLocalWorkspace();
@@ -60,6 +63,7 @@ export function useWorkspaceLiveRoomController({
     }
 
     await navigator.clipboard.writeText(shareUrlView.url);
+    posthog.capture("collaboration_link_copied");
     setCopiedFileId(activeFile?.id ?? room.roomId);
     window.setTimeout(() => setCopiedFileId(null), 1600);
   };

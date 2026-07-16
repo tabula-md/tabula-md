@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import posthog from "posthog-js";
 import {
   ChevronDown,
   ChevronRight,
@@ -287,7 +288,7 @@ export function WorkspaceMenu({
         {onClearWorkspace && (
           <>
             <div className="workspace-menu-divider" role="separator" />
-            <MenuRow icon={<Trash2 size={16} />} onClick={onClearWorkspace}>
+            <MenuRow icon={<Trash2 size={16} />} onClick={() => { posthog.capture("workspace_cleared"); onClearWorkspace(); }}>
               {copy.actions.clearWorkspace}
             </MenuRow>
           </>

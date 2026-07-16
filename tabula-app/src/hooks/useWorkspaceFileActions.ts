@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import posthog from "posthog-js";
 import type { AppToastState } from "./useAppToast";
 import type { FileHistory } from "./useWorkspaceActiveFileEditor";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
@@ -117,6 +118,7 @@ export function useWorkspaceFileActions({
       showToast(copy.fileAddFailed, "error");
       return undefined;
     }
+    posthog.capture("document_created", { is_room_session: isRoomSession });
     closeFloatingChrome();
     return nextFile;
   };
@@ -133,6 +135,8 @@ export function useWorkspaceFileActions({
     if (isRoomSession && onFileRenamed && !onFileRenamed(fileId, result.title)) {
       if (previousTitle) renameFile(fileId, previousTitle);
       showToast(copy.fileRenameFailed, "error");
+    } else {
+      posthog.capture("document_renamed", { is_room_session: isRoomSession });
     }
     return result;
   };
@@ -150,6 +154,7 @@ export function useWorkspaceFileActions({
       return;
     }
 
+    posthog.capture("document_duplicated", { is_room_session: isRoomSession });
     closeFloatingChrome();
     showToast(copy.fileDuplicated);
   };
@@ -189,6 +194,7 @@ export function useWorkspaceFileActions({
       return;
     }
 
+    posthog.capture("document_deleted", { is_room_session: isRoomSession });
     setHistoryByFileId((currentHistory) => removeRecordKey(currentHistory, fileId));
     if (commentsByFileId[fileId]) {
       replaceCommentsByFileId(removeRecordKey(commentsByFileId, fileId));
