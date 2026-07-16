@@ -10,9 +10,11 @@ import "@fontsource/geist-mono/500.css";
 import "@fontsource/geist-mono/600.css";
 import App from "./App";
 import { syncFaviconWithColorScheme } from "./favicon";
+import { reportAppOpened } from "./observability/productAnalytics";
 import "./styles.css";
 
 syncFaviconWithColorScheme();
+reportAppOpened();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
