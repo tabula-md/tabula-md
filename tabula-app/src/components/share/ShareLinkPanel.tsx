@@ -14,6 +14,7 @@ import type {
   WorkspaceChromeCopy,
   WorkspaceShareCopy,
 } from "../../workspaceLocale";
+import { tabulaServiceConfig } from "../../serviceConfig";
 
 type ShareLinkPanelProps = {
   agentPromptCopied: boolean;
@@ -60,6 +61,7 @@ export function ShareLinkPanel({
   const agentDescriptionId = useId();
   const canRetrySession = connectionStatus === "disconnected";
   const showTransientLiveStatus = !isLiveConnected && (connectionStatus === "reconnecting" || connectionStatus === "disconnected");
+  const showTemporarySession = isLiveConnected && !tabulaServiceConfig.firebaseConfig;
   const connectionCopy = showTransientLiveStatus
     ? connectionStatus === "reconnecting"
       ? {
@@ -104,6 +106,11 @@ export function ShareLinkPanel({
 
         {isLive && (
           <div className="live-room-box">
+            {showTemporarySession && (
+              <div className="share-live-status temporary">
+                <p>{copy.live.temporarySessionDescription}</p>
+              </div>
+            )}
             {connectionCopy && (
               <div className={`share-live-status ${connectionStatus}`}>
                 <strong>{connectionCopy.title}</strong>
