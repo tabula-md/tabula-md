@@ -3,8 +3,12 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = process.cwd();
+// This script runs both from the repository root in CI and from
+// `packages/tabula` during that package's prepack lifecycle. Resolve the
+// repository from this file so the package contract is independent of cwd.
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packageRoot = path.join(root, "packages/tabula");
 const manifest = JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8"));
 
@@ -29,7 +33,12 @@ const packed = spawnSync(
 );
 assert.equal(packed.status, 0, packed.stderr || "npm pack --dry-run failed");
 
-const [packResult] = JSON.parse(packed.stdout);
+const packedResult = JSON.parse(packed.stdout);
+const packResult = Array.isArray(packedResult) ? packedResult[0] : packedResult;
+assert.ok(
+  packResult && typeof packResult === "object" && Array.isArray(packResult.files),
+  "npm pack --json returned an invalid package manifest.",
+);
 const packedFiles = new Set(packResult.files.map(({ path: file }) => file));
 for (const requiredFile of [
   "README.md",
