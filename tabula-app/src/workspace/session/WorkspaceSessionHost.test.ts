@@ -7,6 +7,17 @@ const room = (roomId: string) => ({ roomId, shareUrl: `https://tabula.test/#room
 const runtime = () => ({ disconnect: vi.fn() }) as unknown as WorkspaceRoomRuntime;
 
 describe("WorkspaceSessionHost", () => {
+  it("distinguishes rooms created in this tab from rooms joined by link", () => {
+    const joinedSession = createRoomWorkspaceSession(room("joined"));
+    const createdSession = createRoomWorkspaceSession(room("created"), null, "created");
+
+    expect(joinedSession.origin).toBe("joined");
+    expect(createdSession.origin).toBe("created");
+
+    joinedSession.dispose();
+    createdSession.dispose();
+  });
+
   it("gives local and room sessions distinct view stores", () => {
     const localSession = createLocalWorkspaceSession();
     const roomSession = createRoomWorkspaceSession(room("view-store"));

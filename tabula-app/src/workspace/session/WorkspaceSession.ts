@@ -21,6 +21,7 @@ export type LocalWorkspaceSession = {
 
 export type RoomWorkspaceSession = {
   readonly mode: "room";
+  readonly origin: "created" | "joined";
   readonly room: LocationRoom;
   readonly follow: FollowStore;
   readonly viewStore: WorkspaceStoreBinding;
@@ -46,6 +47,7 @@ export const createLocalWorkspaceSession = (): LocalWorkspaceSession => {
 export const createRoomWorkspaceSession = (
   room: LocationRoom,
   initialBootstrap: RoomWorkspaceBootstrap | null = null,
+  origin: RoomWorkspaceSession["origin"] = "joined",
 ): RoomWorkspaceSession => {
   let disposed = false;
   let runtime: WorkspaceRoomRuntime | null = null;
@@ -57,6 +59,7 @@ export const createRoomWorkspaceSession = (
 
   return {
     mode: "room",
+    origin,
     room,
     follow,
     viewStore: useRoomWorkspaceStore,
