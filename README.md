@@ -1,9 +1,9 @@
 <h1 align="center">Tabula.md</h1>
 
 <p align="center">
-  Local-first Markdown workspace for people and coding agents.
+  A local-first Markdown workspace where people and AI agents can edit the same files.
   <br />
-  Keep Markdown as the handoff format.
+  No account or platform workspace required.
 </p>
 
 <p align="center"><a href="https://tabula.md">Open Tabula.md</a></p>
@@ -12,62 +12,42 @@
   <a href="https://tabula.md" target="_blank" rel="noopener">
     <img
       src=".github/assets/tabula-product-demo.gif"
-      alt="Tabula.md showing an empty workspace, Markdown editing, split preview, and project outline"
+      alt="Tabula.md showing Markdown editing, split preview, files, and outline"
       width="960"
     />
   </a>
 </p>
 
-## About
+## Why Tabula.md
 
-The hosted app at [tabula.md](https://tabula.md) is the reference Tabula.md
-experience. Tabula.md is currently in public preview.
+- Open a Markdown workspace without signing up.
+- Keep Markdown files as the source of truth.
+- Share the whole workspace with one encrypted room link.
+- Let people and AI agents edit through the same collaboration model.
 
-The app is intentionally Markdown-file-first. It does not turn your workspace
-into a database or proprietary document format. Markdown remains the source of
-truth for handoff to teammates, repositories, and coding agents.
-
-This public repository contains the open-source editor, core package, app
-shell, public contracts, and local development workflow. The official hosted
-service is configured separately and is not required to run Tabula.md locally.
+Tabula.md is in public preview. The hosted app at
+[tabula.md](https://tabula.md) is the reference deployment.
 
 ## Features
 
-- Local-first Markdown workspaces.
 - GitHub Flavored Markdown editing and preview.
-- Files, outline, and product comments next to the editor.
-- Dark, light, and system themes.
+- Files, outline, and comments beside the editor.
 - Browser autosave and local restore.
+- Dark, light, and system themes.
 - Encrypted live collaboration by room link.
-- Encrypted Export links for import and handoff.
-
-## Product Targets
-
-- Public preview target: 150KB Markdown files should remain responsive while
-  editing, scrolling, and using split view.
-- Launch target: 1MB Markdown files should keep editor input responsive. For
-  very large files, preview refresh can wait until editing is idle.
-- Collaboration target: 2-5 people editing together for 30 minutes or more.
+- Encrypted Export links for point-in-time handoff.
 
 ## Run Locally
 
-Install dependencies:
-
 ```sh
 npm install
-```
-
-Start the app:
-
-```sh
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:5173`. Local editing works without any hosted service.
+Live collaboration and Export links require their respective optional services.
 
-The app runs locally without hosted services. Configure a room server or
-export link store only when you need live sessions or Export links during local
-development.
+See [Development](DEVELOPMENT.md) for commands and architecture.
 
 ## Related Repositories
 
@@ -76,19 +56,11 @@ development.
 - [`tabula-json`](https://github.com/tabula-md/tabula-json): encrypted Export
   link blob store.
 
-## Security And Privacy
+## Project
 
-Tabula.md keeps plaintext Markdown and link keys in the browser. Collaboration,
-Export link, and live room persistence services receive routing metadata and
-encrypted payloads, not document keys or plaintext content.
-
-See [Privacy](PRIVACY.md) for the public product contract.
-
-Open-source and self-hosted builds have product analytics and client error
-reporting disabled by default. The official hosted service uses a manual-only
-PostHog event contract with autocapture and session recording disabled; it does
-not send Markdown, file names, prompts, room identifiers, URLs, or link
-fragments. See [Privacy](PRIVACY.md) for the collected fields and boundaries.
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
+- [Privacy](PRIVACY.md)
 
 ## Backed By
 

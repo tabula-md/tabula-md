@@ -44,6 +44,10 @@ Live collaboration and encrypted Export links use separate services:
 - `tabula-room`: encrypted websocket relay.
 - `tabula-json`: encrypted Export link blob store.
 
+Firebase checkpoint storage is optional. A room relay is enough for live
+collaboration while at least one participant remains connected. Configuring
+Firebase adds encrypted recovery after every participant disconnects.
+
 ## Live Collaboration Architecture
 
 A live room owns one Yjs document for the entire Markdown workspace:
