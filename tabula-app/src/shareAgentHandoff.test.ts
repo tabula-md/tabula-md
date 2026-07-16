@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildLocalAgentPrompt } from "./shareAgentHandoff";
+import {
+  buildAgentContextPrompt,
+  buildLiveAgentRequest,
+  getAgentClientSetup,
+  TABULA_HOSTED_MCP_URL,
+} from "./shareAgentHandoff";
 import type { WorkspaceFile } from "./workspaceStorage";
 
 const file = (id: string, title: string, text: string): WorkspaceFile => ({
@@ -12,52 +17,59 @@ const file = (id: string, title: string, text: string): WorkspaceFile => ({
   lineNumbers: true,
 });
 
-describe("buildLocalAgentPrompt", () => {
-  it("builds current file handoff context", () => {
-    const prompt = buildLocalAgentPrompt({
-      activeFile: file("readme", "README", "# README\n\nStart here."),
-      files: [file("other", "Other", "Ignore me.")],
-      instruction: "Continue this.",
+describe("agent handoff", () => {
+  it("uses the hosted connector for supported hosted clients", () => {
+    expect(getAgentClientSetup("claude")).toEqual({
+      trust: "hosted",
+      value: TABULA_HOSTED_MCP_URL,
+    });
+    expect(getAgentClientSetup("chatgpt")).toEqual({
+      trust: "hosted",
+      value: TABULA_HOSTED_MCP_URL,
+    });
+  });
+
+  it("provides write-enabled local setup for local agent clients", () => {
+    expect(getAgentClientSetup("claude-code").value).toContain(
+      "claude mcp add tabula -- npx -y @tabula-md/mcp@latest --enable-write",
+    );
+    expect(getAgentClientSetup("codex").value).toContain(
+      "codex mcp add tabula -- npx -y @tabula-md/mcp@latest --enable-write",
+    );
+  });
+
+  it("builds a tool-oriented live request without stale Markdown or protocol internals", () => {
+    const request = buildLiveAgentRequest({
+      activeFile: file("readme", "README.md", "private body"),
+      instruction: "Review this and add a conclusion.",
+      liveRoomUrl: "https://tabula.test/#room=room-1,secret",
       scope: "file",
     });
 
-    expect(prompt).toContain("Task: Continue this.");
-    expect(prompt).toContain("Scope: current document");
-    expect(prompt).toContain("Active document: README (readme)");
-    expect(prompt).toContain("## README");
-    expect(prompt).not.toContain("Other");
+    expect(request).toContain("Call tabula_connect_room");
+    expect(request).toContain("tabula_apply_workspace_changes");
+    expect(request).toContain("Task: Review this and add a conclusion.");
+    expect(request).toContain("Target document: README.md (readme)");
+    expect(request).toContain("Room URL: https://tabula.test/#room=room-1,secret");
+    expect(request).not.toMatch(/private body|Yjs|Awareness|binary protocol|CRDT schema/);
   });
 
-  it("builds project handoff context", () => {
-    const prompt = buildLocalAgentPrompt({
-      activeFile: file("readme", "README", "# README"),
+  it("builds a clearly non-live Markdown context fallback", () => {
+    const prompt = buildAgentContextPrompt({
+      activeFile: file("readme", "README.md", "# README\n\nStart here."),
       files: [
-        file("readme", "README", "# README"),
-        file("design", "DESIGN", "# Design"),
+        file("readme", "README.md", "# README\n\nStart here."),
+        file("design", "DESIGN.md", "# Design"),
       ],
-      instruction: "",
-      scope: "project",
-    });
-
-    expect(prompt).toContain("Task: Help me continue from this context.");
-    expect(prompt).toContain("Scope: current workspace");
-    expect(prompt).toContain("## README");
-    expect(prompt).toContain("## DESIGN");
-  });
-
-  it("adds live room instructions only when a room URL is explicitly provided", () => {
-    const prompt = buildLocalAgentPrompt({
-      activeFile: file("readme", "README", "# README"),
-      files: [file("readme", "README", "# README")],
-      instruction: "",
-      liveRoomUrl: "https://tabula.test/#room=room-1&key=secret",
+      instruction: "Summarize this.",
       scope: "file",
     });
 
-    expect(prompt).toContain("Join this Tabula.md room as an agent actor.");
-    expect(prompt).toContain("Participate as a normal room actor.");
-    expect(prompt).toContain("Use Tabula.md workspace CRDT schema and binary room protocol v2.");
-    expect(prompt).toContain("edit the shared Yjs workspace directly");
-    expect(prompt).toContain("Room URL: https://tabula.test/#room=room-1&key=secret");
+    expect(prompt).toContain("Task: Summarize this.");
+    expect(prompt).toContain("## README.md");
+    expect(prompt).toContain("Start here.");
+    expect(prompt).toContain("will not sync back");
+    expect(prompt).not.toContain("DESIGN.md");
+    expect(prompt).not.toContain("Room URL:");
   });
 });
