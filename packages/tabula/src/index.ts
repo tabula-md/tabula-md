@@ -463,6 +463,8 @@ export {
   setWorkspaceRoomNodeOrder,
   validateWorkspaceRoomStructure,
 } from "./workspaceRoomCrdt";
+export type { WorkspaceRoomBootstrapInput } from "./workspaceRoomBootstrap";
+export { createWorkspaceRoomBootstrap } from "./workspaceRoomBootstrap";
 export type {
   LoadedWorkspaceRoomCheckpoint,
   SaveWorkspaceRoomCheckpointRequest,
