@@ -24,8 +24,9 @@ export const CHECKPOINT_ORIGIN = Symbol("tabula.checkpoint");
 export type RoomDurability = "clean" | "dirty" | "saving" | "failed" | "unknown";
 
 export type CheckpointLoadResult =
-  | { ok: true }
-  | { ok: false; reason: "expired" | "invalid" | "unsupported" };
+  | { status: "loaded"; source: "bootstrap" | "checkpoint" | "local" }
+  | { status: "missing"; storeAvailable: boolean }
+  | { status: "expired" | "invalid" | "unsupported" };
 
 export type InitialRoomCheckpoint = {
   checkpointUpdate: Uint8Array;
@@ -253,25 +254,33 @@ export const createCheckpointCoordinator = ({
           generation = initialCheckpoint.generation;
           checkpointedStateVector = Y.encodeStateVector(room.doc);
           onDurabilityChange("clean");
-          return { ok: true };
+          return { status: "loaded", source: "bootstrap" };
         } catch {
-          return { ok: false, reason: "unsupported" };
+          return { status: "unsupported" };
         }
       }
       if (!store.enabled) {
         onDurabilityChange("unknown");
-        return emitInitialWorkspaceState ? { ok: true } : { ok: false, reason: "invalid" };
+        return emitInitialWorkspaceState
+          ? { status: "loaded", source: "local" }
+          : { status: "missing", storeAvailable: false };
       }
-      const loaded = await store.loadEncryptedCheckpoint(roomId, signal);
+      let loaded: Awaited<ReturnType<RoomCheckpointStore["loadEncryptedCheckpoint"]>>;
+      try {
+        loaded = await store.loadEncryptedCheckpoint(roomId, signal);
+      } catch {
+        onDurabilityChange("failed");
+        return { status: "missing", storeAvailable: true };
+      }
       if (!loaded) {
         if (emitInitialWorkspaceState) {
           onDurabilityChange("dirty");
-          return { ok: true };
+          return { status: "loaded", source: "local" };
         }
-        return { ok: false, reason: "invalid" };
+        return { status: "missing", storeAvailable: true };
       }
       generation = loaded.generation;
-      if (loaded.status === "expired") return { ok: false, reason: "expired" };
+      if (loaded.status === "expired") return { status: "expired" };
       try {
         const update = await decryptWorkspaceRoomCheckpoint({
           encryptedCheckpoint: loaded.encryptedCheckpoint,
@@ -282,9 +291,9 @@ export const createCheckpointCoordinator = ({
         Y.applyUpdate(room.doc, update, CHECKPOINT_ORIGIN);
         checkpointedStateVector = Y.encodeStateVector(room.doc);
         onDurabilityChange("clean");
-        return { ok: true };
+        return { status: "loaded", source: "checkpoint" };
       } catch {
-        return { ok: false, reason: "unsupported" };
+        return { status: "unsupported" };
       }
     },
     saveNow,

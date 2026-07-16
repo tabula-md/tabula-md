@@ -118,6 +118,8 @@ export function useCollaborationRoom({
     collaborators,
     connectionStatus,
     durability,
+    hydrationStatus,
+    hydrationSource,
     editorBinding,
     materializeWorkspace,
     materializeDocument,
@@ -193,6 +195,8 @@ export function useCollaborationRoom({
     collaborators,
     connectionStatus,
     durability,
+    hydrationStatus,
+    hydrationSource,
     startSessionUnavailableReason: !startValidation.ok
       ? startValidation.message
       : roomAvailability.unavailableReason || checkpointAvailability.unavailableReason,

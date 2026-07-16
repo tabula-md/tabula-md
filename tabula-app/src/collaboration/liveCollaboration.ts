@@ -63,6 +63,8 @@ export {
 export type { ParsedRoomLocation, RoomSession, TabulaRoomAvailability } from "./collabRoom";
 
 export type ConnectionStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "failed";
+export type RoomHydrationStatus = "loading-checkpoint" | "waiting-for-state" | "ready" | "failed";
+export type RoomHydrationSource = "bootstrap" | "checkpoint" | "local" | "peer" | null;
 export type { RoomDurability } from "./runtime/CheckpointCoordinator";
 export type {
   Collaborator,
@@ -97,6 +99,8 @@ export type CollabEditorBinding = {
 
 export type WorkspaceRoomRuntimeSnapshot = {
   status: ConnectionStatus;
+  hydrationStatus: RoomHydrationStatus;
+  hydrationSource: RoomHydrationSource;
   durability: RoomDurability;
   collaborators: Collaborator[];
   editorBinding: CollabEditorBinding | null;
@@ -193,6 +197,8 @@ export const createWorkspaceRoomRuntime = ({
   let updatesSinceStateSizeCheck = 0;
   let runtimeSnapshot: WorkspaceRoomRuntimeSnapshot = {
     status: "connecting",
+    hydrationStatus: "loading-checkpoint",
+    hydrationSource: null,
     durability: adapters.roomCheckpointStore.enabled ? "dirty" : "unknown",
     collaborators: [],
     editorBinding: null,
@@ -226,6 +232,8 @@ export const createWorkspaceRoomRuntime = ({
     const next = { ...runtimeSnapshot, ...patch };
     if (
       next.status === runtimeSnapshot.status &&
+      next.hydrationStatus === runtimeSnapshot.hydrationStatus &&
+      next.hydrationSource === runtimeSnapshot.hydrationSource &&
       next.durability === runtimeSnapshot.durability &&
       next.collaborators === runtimeSnapshot.collaborators &&
       next.editorBinding === runtimeSnapshot.editorBinding
@@ -237,6 +245,10 @@ export const createWorkspaceRoomRuntime = ({
   };
 
   const setStatus = (status: ConnectionStatus) => updateRuntimeSnapshot({ status });
+  const setHydration = (
+    hydrationStatus: RoomHydrationStatus,
+    hydrationSource: RoomHydrationSource = runtimeSnapshot.hydrationSource,
+  ) => updateRuntimeSnapshot({ hydrationStatus, hydrationSource });
   const setEditorBinding = (binding: CollabEditorBinding | null) =>
     updateRuntimeSnapshot({ editorBinding: binding });
 
@@ -308,29 +320,39 @@ export const createWorkspaceRoomRuntime = ({
     updateRuntimeSnapshot({ collaborators: presenceController.getCollaborators() });
 
   const projectWorkspace = () => {
-    if (closed) return;
-    if (!room.meta.has("schemaVersion")) return;
+    if (closed || !room.meta.has("schemaVersion")) return false;
     const structure = validateWorkspaceRoomStructure(room, roomId);
     if (!structure.ok) {
       setStatus("failed");
+      setHydration("failed", null);
       onOpenFailure?.("unsupported");
       emitInvalidMessage(structure.message);
-      return;
+      return false;
     }
     structureStore.refresh();
     const structureLimits = validateWorkspaceRoomStructureLimits(structureStore.getSnapshot());
     if (!structureLimits.ok) {
       setStatus("failed");
+      setHydration("failed", null);
       emitInvalidMessage(structureLimits.message);
-      return;
+      return false;
     }
     const metrics = roomMetrics.getSnapshot();
     if (!metrics.commentsWithinLimits || !canApplyTextByteDelta(0)) {
       setStatus("failed");
+      setHydration("failed", null);
       emitInvalidMessage("This live workspace exceeds the supported content limits.");
-      return;
+      return false;
     }
     refreshActiveEditorBinding();
+    return true;
+  };
+
+  const tryHydrateWorkspace = (source: Exclude<RoomHydrationSource, null>) => {
+    if (runtimeSnapshot.hydrationStatus === "failed") return false;
+    if (!projectWorkspace()) return false;
+    if (runtimeSnapshot.hydrationStatus !== "ready") setHydration("ready", source);
+    return true;
   };
 
   const createEditorBinding = (handle: RoomDocumentHandle): CollabEditorBinding => {
@@ -402,20 +424,27 @@ export const createWorkspaceRoomRuntime = ({
     getSenderActor: presenceController.getSenderActor,
     onCapacityExceeded: notifyCapacityExceeded,
     onInvalidMessage: emitInvalidMessage,
+    onRemoteSyncApplied: ({ changed }) => {
+      if (!changed || runtimeSnapshot.hydrationStatus === "ready") return;
+      queueMicrotask(() => {
+        if (!closed) tryHydrateWorkspace("peer");
+      });
+    },
     onUnsupportedMessage: () => onOpenFailure?.("unsupported"),
   });
 
   const loadCheckpoint = async () => {
-    if (!roomKey) return false;
+    if (!roomKey) return { status: "invalid" as const };
     const result = await checkpointCoordinator.load(
       roomKey,
       emitInitialWorkspaceState,
       initialCheckpoint,
     );
-    if (result.ok) return true;
-    onOpenFailure?.(result.reason);
+    if (result.status === "loaded" || result.status === "missing") return result;
+    onOpenFailure?.(result.status);
     setStatus("failed");
-    return false;
+    setHydration("failed", null);
+    return result;
   };
 
   const start = async () => {
@@ -433,12 +462,19 @@ export const createWorkspaceRoomRuntime = ({
     roomKey = startConfig.roomKey;
     syncController.setRoomKey(roomKey);
     const transportPreparation = adapters.prepareRoomTransport?.().catch(() => undefined);
-    if (!(await loadCheckpoint()) || closed || abortController.signal.aborted) return;
+    const checkpointResult = await loadCheckpoint();
+    if (checkpointResult.status !== "loaded" && checkpointResult.status !== "missing") return;
+    if (checkpointResult.status === "loaded") {
+      if (!tryHydrateWorkspace(checkpointResult.source)) return;
+    } else {
+      setHydration("waiting-for-state", null);
+    }
+    if (closed || abortController.signal.aborted) return;
     await transportPreparation;
     if (closed || abortController.signal.aborted) return;
     syncDocumentMetrics();
     refreshActiveEditorBinding();
-    projectWorkspace();
+    if (runtimeSnapshot.hydrationStatus === "ready") projectWorkspace();
     presenceController.publishLocalState();
 
     syncController.connect(startConfig.baseUrl, {
@@ -665,6 +701,8 @@ export const createWorkspaceRoomRuntime = ({
       room.doc.destroy();
       runtimeSnapshot = {
         status: "disconnected",
+        hydrationStatus: "failed",
+        hydrationSource: null,
         durability: "unknown",
         collaborators: [],
         editorBinding: null,

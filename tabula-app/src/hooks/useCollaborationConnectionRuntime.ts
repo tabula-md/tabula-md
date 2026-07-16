@@ -30,6 +30,8 @@ import type { RoomWorkspaceSession } from "../workspace/session/WorkspaceSession
 
 const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   status: "idle",
+  hydrationStatus: "loading-checkpoint",
+  hydrationSource: null,
   durability: "unknown",
   collaborators: [],
   editorBinding: null,
@@ -178,6 +180,8 @@ export function useCollaborationConnectionRuntime({
   const runtimeConnectionStatus = runtime ? runtimeSnapshot.status : preRuntimeConnectionStatus;
   const connectionStatus = isLive && !browserOnline ? "disconnected" : runtimeConnectionStatus;
   const durability = runtimeSnapshot.durability;
+  const hydrationStatus = runtimeSnapshot.hydrationStatus;
+  const hydrationSource = runtimeSnapshot.hydrationSource;
   const collaborators = runtimeSnapshot.collaborators;
   const editorBinding =
     runtimeSnapshot.editorBinding?.documentId === activeDocument?.id
@@ -340,6 +344,8 @@ export function useCollaborationConnectionRuntime({
     collaborators,
     connectionStatus,
     durability,
+    hydrationStatus,
+    hydrationSource,
     editorBinding,
     materializeWorkspace: () => collabRef.current?.materializeWorkspace(),
     materializeDocument: (documentId: string) => collabRef.current?.materializeDocument(documentId) ?? null,

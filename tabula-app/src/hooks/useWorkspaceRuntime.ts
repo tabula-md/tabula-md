@@ -565,6 +565,7 @@ export function useWorkspaceRuntime() {
     canStartSession,
     collaborators,
     connectionStatus,
+    hydrationStatus,
     isLive,
     statusLabel,
     startSession: startCollaborationSession,
@@ -835,7 +836,11 @@ export function useWorkspaceRuntime() {
       startCollaborationSession,
     });
   useEffect(() => {
-    if (!activeRoom || activeFile || connectionStatus !== "connected") {
+    if (
+      !activeRoom ||
+      connectionStatus !== "connected" ||
+      hydrationStatus !== "waiting-for-state"
+    ) {
       setLiveRoomOpenTimedOut(false);
       return;
     }
@@ -845,7 +850,7 @@ export function useWorkspaceRuntime() {
     }, LIVE_ROOM_OPEN_TIMEOUT_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [activeFile, activeRoom, connectionStatus]);
+  }, [activeRoom, connectionStatus, hydrationStatus]);
   const retryOpeningLiveRoom = useEventCallback(() => {
     setLiveRoomOpenTimedOut(false);
     setLiveRoomOpenFailure(null);
@@ -1364,7 +1369,7 @@ export function useWorkspaceRuntime() {
     localWorkspaceOpening: localPersistenceEnabled && localWorkspacePersistence.pending,
     liveRoomOpenState: getLiveRoomOpenState({
       connectionStatus,
-      hasActiveFile: Boolean(activeFile),
+      hydrationStatus,
       hasActiveRoom: Boolean(activeRoom),
       timedOut: liveRoomOpenTimedOut,
       failure: liveRoomOpenFailure,
