@@ -5,8 +5,17 @@ import {
   deriveCollaborationId,
   initializeProductAnalytics,
   normalizeAcquisitionSource,
+  recordHandoffCompletion,
   sanitizePostHogProductEvent,
 } from "./productAnalytics";
+
+const createMemoryStorage = () => {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+  };
+};
 
 describe("product analytics", () => {
   it("is disabled when no hosted PostHog project is configured", async () => {
@@ -14,6 +23,14 @@ describe("product analytics", () => {
     const capture = vi.fn();
     createProductAnalytics().report("room_created");
     expect(capture).not.toHaveBeenCalled();
+
+    const storage = createMemoryStorage();
+    createProductAnalytics({
+      client: Promise.resolve(null),
+      handoffStorage: storage,
+    }).reportHandoffCompleted({ roomId: "private-room", actorKind: "human" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(storage.getItem("tabula.analytics.handoff-history")).toBeNull();
   });
 
   it("captures only the typed event properties", async () => {
@@ -67,6 +84,69 @@ describe("product analytics", () => {
     expect(first).not.toContain("public-room-id");
   });
 
+  it("records one handoff per room and one repeat after 24 hours", async () => {
+    const storage = createMemoryStorage();
+    const firstCollaborationId = await deriveCollaborationId("room-first");
+    const secondCollaborationId = await deriveCollaborationId("room-second");
+    const thirdCollaborationId = await deriveCollaborationId("room-third");
+    const startedAt = Date.UTC(2026, 6, 20, 9);
+
+    expect(recordHandoffCompletion({
+      collaborationId: firstCollaborationId!,
+      now: startedAt,
+      storage,
+    })).toEqual({ firstCompletion: true, repeatHandoff: false });
+    expect(recordHandoffCompletion({
+      collaborationId: firstCollaborationId!,
+      now: startedAt + 1_000,
+      storage,
+    })).toEqual({ firstCompletion: false, repeatHandoff: false });
+    expect(recordHandoffCompletion({
+      collaborationId: secondCollaborationId!,
+      now: startedAt + 23 * 60 * 60 * 1_000,
+      storage,
+    })).toEqual({ firstCompletion: true, repeatHandoff: false });
+    expect(recordHandoffCompletion({
+      collaborationId: thirdCollaborationId!,
+      now: startedAt + 25 * 60 * 60 * 1_000,
+      storage,
+    })).toEqual({ firstCompletion: true, repeatHandoff: true });
+  });
+
+  it("captures explicit handoff and repeat events without a persistent person id", async () => {
+    const capture = vi.fn();
+    const storage = createMemoryStorage();
+    let now = Date.UTC(2026, 6, 20, 9);
+    const analytics = createProductAnalytics({
+      client: { capture },
+      handoffStorage: storage,
+      now: () => now,
+    });
+
+    analytics.reportHandoffCompleted({ roomId: "room-first", actorKind: "human" });
+    await vi.waitFor(() => expect(capture).toHaveBeenCalledTimes(1));
+    analytics.reportHandoffCompleted({ roomId: "room-first", actorKind: "human" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(capture).toHaveBeenCalledTimes(1);
+
+    now += 25 * 60 * 60 * 1_000;
+    analytics.reportHandoffCompleted({ roomId: "room-second", actorKind: "agent" });
+    await vi.waitFor(() => expect(capture).toHaveBeenCalledTimes(3));
+
+    expect(capture.mock.calls.map(([event]) => event)).toEqual([
+      "handoff_completed",
+      "handoff_completed",
+      "repeat_handoff",
+    ]);
+    expect(capture).toHaveBeenLastCalledWith(
+      "repeat_handoff",
+      expect.objectContaining({
+        actor_kind: "agent",
+        collaboration_id: expect.stringMatching(/^collab_/),
+      }),
+    );
+  });
+
   it("drops non-product events and strips URL, document, DOM, and referrer properties", () => {
     const unsafeProperties = {
       token: "phc_test",
@@ -88,7 +168,7 @@ describe("product analytics", () => {
     };
     const sanitized = sanitizePostHogProductEvent({
       uuid: "event-uuid",
-      event: "agent_invite_copied",
+      event: "handoff_completed",
       properties: unsafeProperties,
     } as CaptureResult);
     const serialized = JSON.stringify(sanitized);

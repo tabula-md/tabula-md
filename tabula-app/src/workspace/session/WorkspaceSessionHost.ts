@@ -31,8 +31,11 @@ export const createWorkspaceSessionHost = (initialSession: WorkspaceSession) => 
     },
     getSnapshot: () => currentSession,
     openLocal: () => replace(createLocalWorkspaceSession()),
-    openRoom: (room: LocationRoom, bootstrap?: RoomWorkspaceBootstrap | null) =>
-      replace(createRoomWorkspaceSession(room, bootstrap)),
+    openRoom: (
+      room: LocationRoom,
+      bootstrap?: RoomWorkspaceBootstrap | null,
+      origin?: "created" | "joined",
+    ) => replace(createRoomWorkspaceSession(room, bootstrap, origin)),
     dispose() {
       if (disposed) return;
       disposed = true;

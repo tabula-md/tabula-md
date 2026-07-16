@@ -260,6 +260,12 @@ export function useCollaborationConnectionRuntime({
               actorKind,
               roomId: target.roomId,
             });
+            if (session?.origin === "created") {
+              productAnalytics.reportHandoffCompleted({
+                actorKind,
+                roomId: target.roomId,
+              });
+            }
           },
         });
         effectRuntime = connection;

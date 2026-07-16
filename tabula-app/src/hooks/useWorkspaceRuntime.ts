@@ -873,6 +873,7 @@ export function useWorkspaceRuntime() {
       workspaceSessionHost.openRoom(
         { roomId: startedSession.roomId, shareUrl: startedSession.shareUrl },
         startedSession.bootstrap,
+        "created",
       );
       productAnalytics.report("room_created", { roomId: startedSession.roomId });
     } catch (error) {
