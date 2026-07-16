@@ -171,4 +171,10 @@ export const productAnalytics = createProductAnalytics({
   client: initializeProductAnalytics(),
 });
 
-productAnalytics.report("app_opened");
+let appOpenedReported = false;
+
+export const reportAppOpened = () => {
+  if (appOpenedReported) return;
+  appOpenedReported = true;
+  productAnalytics.report("app_opened");
+};
