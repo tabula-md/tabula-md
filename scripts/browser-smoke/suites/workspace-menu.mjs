@@ -151,12 +151,12 @@ export async function run(ctx) {
       Object.defineProperty(input, "files", { configurable: true, value: dataTransfer.files });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await page.getByRole("dialog", { name: "Open workspace" }).waitFor();
+    await page.getByRole("dialog", { name: "Import workspace" }).waitFor();
     expect(
       (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1,
       "Opening a workspace should preview its logical document paths before replacing local state.",
     );
-    await page.getByRole("button", { name: "Open workspace", exact: true }).click();
+    await page.getByRole("button", { name: "Import workspace", exact: true }).click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
     expect(
       (await page.locator(".tab-item").count()) === 0,
@@ -176,6 +176,18 @@ export async function run(ctx) {
       (await page.locator(".share-trigger").count()) === 1,
       "Share should remain available when workspace files exist but every document tab is closed.",
     );
+    await page.locator(".share-trigger").click();
+    const startSessionButton = page.getByRole("button", { name: "Start session" });
+    expect(
+      await startSessionButton.isEnabled(),
+      "Workspace collaboration should start when documents exist even if every document tab is closed.",
+    );
+    await startSessionButton.click();
+    await page.waitForFunction(() => window.location.hash.startsWith("#room="));
+    expect(
+      (await page.locator(".tab-item").count()) === 0,
+      "Starting workspace collaboration should not force a document tab open.",
+    );
   });
 
   await withPage(browser, "/", async (page) => {
@@ -186,6 +198,30 @@ export async function run(ctx) {
       (await page.locator('input[type="file"][accept*="json"]').count()) === 0,
       "The workspace menu should not expose the removed JSON backup importer.",
     );
+    expect(
+      await page.getByRole("button", { name: "Export document (.md)", exact: true }).isEnabled(),
+      "The workspace menu should export the active document.",
+    );
+    expect(
+      await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).isEnabled(),
+      "The workspace menu should export a ZIP when the workspace has documents.",
+    );
+    const documentDownloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export document (.md)", exact: true }).click();
+    const documentDownload = await documentDownloadPromise;
+    expect(
+      documentDownload.suggestedFilename() === "Untitled.md",
+      "Document export should download the active Markdown file.",
+    );
+    await openProjectMenu(page);
+    const workspaceDownloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).click();
+    const workspaceDownload = await workspaceDownloadPromise;
+    expect(
+      workspaceDownload.suggestedFilename().endsWith(".zip"),
+      "Workspace export should download a ZIP archive.",
+    );
+    await openProjectMenu(page);
     await page.getByRole("button", { name: "Clear local workspace…", exact: true }).click();
     await page.getByRole("dialog", { name: "Clear local workspace?" }).waitFor();
     expect(
@@ -315,8 +351,8 @@ export async function run(ctx) {
         emptyChromeState.workspaceText.includes("Open Markdown file") &&
         emptyChromeState.workspaceText.includes("Browse project files") &&
         emptyChromeState.workspaceText.includes("Help") &&
-        !emptyChromeState.workspaceText.includes("Import file") &&
-        !emptyChromeState.workspaceText.includes("Download workspace ZIP") &&
+        !emptyChromeState.workspaceText.includes("Import document") &&
+        !emptyChromeState.workspaceText.includes("Export workspace") &&
         !emptyChromeState.workspaceText.includes("Project menu") &&
         !emptyChromeState.workspaceText.includes("No file open") &&
         !emptyChromeState.workspaceText.includes("Tabula.md"),
@@ -474,21 +510,17 @@ export async function run(ctx) {
       (await page.getByLabel("Your collaboration name").count()) === 0,
       "Share link should not ask for a name before a session exists.",
     );
-    expect((await page.locator(".share-export-section").getByRole("heading", { name: "Export" }).count()) === 1, "Export actions should live on the single Share screen.");
+    expect((await page.locator(".share-export-section").getByRole("heading", { name: "Export link" }).count()) === 1, "Share should present link export as the alternative to live collaboration.");
     expect((await page.getByRole("button", { name: /File \.md/ }).count()) === 0, "Share modal should not expose a current-file download.");
     expect((await page.getByRole("button", { name: /Copy File/ }).count()) === 0, "Share modal should not copy files from Export.");
-    expect((await page.getByRole("button", { name: /Export to file/ }).count()) === 1, "Share modal should export the workspace archive as a file.");
+    expect((await page.getByRole("button", { name: /Export to file/ }).count()) === 0, "Share should keep local ZIP export in the workspace menu.");
     const exportOptions = await page.locator(".share-export-option").evaluateAll((options) =>
       options.map((option) => option.textContent?.replace(/\s+/g, " ").trim() ?? ""),
     );
-    expect(exportOptions.length === 2, "Link and file exports should have separate semantic rows.");
+    expect(exportOptions.length === 1, "Share should contain only the link export row.");
     expect(
-      exportOptions[0]?.includes("Export to link") && exportOptions[0]?.includes("encrypted point-in-time copy"),
-      "The link export row should own its encrypted-copy description.",
-    );
-    expect(
-      exportOptions[1]?.includes("Export to file") && exportOptions[1]?.includes("folder structure"),
-      "The file export row should own its local ZIP description.",
+      exportOptions[0]?.includes("Export to link"),
+      "The link export row should contain the link action.",
     );
     expect((await page.getByText("Publish project").count()) === 0, "Publish actions should not be available by default.");
     expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish actions should not be on the default Share panel.");
@@ -738,7 +770,11 @@ export async function run(ctx) {
           }
           await page.waitForTimeout(100);
         }
-        await page.waitForSelector(".app-toast", { timeout: 8_000 });
+        try {
+          await page.waitForSelector(".app-toast", { timeout: 8_000 });
+        } catch {
+          throw new Error(`Starting without the room relay should report an action failure.\n${JSON.stringify(startSamples, null, 2)}`);
+        }
 
         const failedStartState = await page.evaluate(() => {
           const toast = document.querySelector(".app-toast");
@@ -835,8 +871,20 @@ export async function run(ctx) {
     expect(menuSurface.agentButtonCount === 0, "Agent should not ship as an inert menu item yet.");
     expect(menuSurface.templateSurfaceCount === 0, "Template detail surfaces should be removed until templates are real.");
     expect(
-      menuSurface.menuRows.includes("New document") && menuSurface.menuRows.includes("Open Markdown file…"),
+      menuSurface.menuRows.includes("New document") && menuSurface.menuRows.includes("Import document (.md)…"),
       "The menu should keep the must-have document start actions.",
+    );
+    expect(
+      menuSurface.menuRows.includes("Export document (.md)") && menuSurface.menuRows.includes("Export workspace (.zip)"),
+      "The workspace menu should own document and workspace export.",
+    );
+    expect(
+      await page.getByRole("button", { name: "Export document (.md)", exact: true }).isDisabled(),
+      "Document export should stay disabled without an active document.",
+    );
+    expect(
+      await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).isDisabled(),
+      "Workspace export should stay disabled while the workspace has no documents.",
     );
 
     await page.mouse.click(760, 420);

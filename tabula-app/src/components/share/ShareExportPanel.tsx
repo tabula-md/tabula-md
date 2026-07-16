@@ -1,8 +1,6 @@
 import {
   Check,
   Copy,
-  Download,
-  FolderArchive,
   Link,
   RefreshCw,
 } from "lucide-react";
@@ -16,9 +14,7 @@ type ShareExportPanelProps = {
   exportLinkCopied: boolean;
   jsonShare: JsonShareController;
   shareView: ShareViewModel;
-  workspaceDocumentCount: number;
   onCopyShareableLink: () => void;
-  onDownloadProjectArchive: () => void;
   onExportToJsonLink: () => void;
 };
 
@@ -27,14 +23,11 @@ export function ShareExportPanel({
   exportLinkCopied,
   jsonShare,
   shareView,
-  workspaceDocumentCount,
   onCopyShareableLink,
-  onDownloadProjectArchive,
   onExportToJsonLink,
 }: ShareExportPanelProps) {
   const linkDescriptionId = useId();
   const linkDisabledReasonId = useId();
-  const archiveDescriptionId = useId();
   const exportLinkLabelId = useId();
   const exportLinkMetadataId = useId();
   const linkDescribedBy = shareView.shareable.disabledReason
@@ -45,14 +38,14 @@ export function ShareExportPanel({
     <>
       <div className="share-panel-heading">
         <span className="share-modal-option-icon">
-          <Download size={18} />
+          <Link size={18} />
         </span>
         <div>
-          <h3>{copy.exportPanel.title}</h3>
-          <p>{copy.exportPanel.description}</p>
+          <h3>{copy.shareable.title}</h3>
+          <p id={linkDescriptionId}>{copy.shareable.description}</p>
         </div>
       </div>
-      <div className="share-export-options" aria-label={copy.exportPanel.title}>
+      <div className="share-export-options" aria-label={copy.shareable.title}>
         <div className="share-export-option">
           {!shareView.shareable.hasLink ? (
             <button
@@ -67,9 +60,6 @@ export function ShareExportPanel({
               <span>{shareView.shareable.primaryLabel}</span>
             </button>
           ) : null}
-          <p className="share-modal-muted" id={linkDescriptionId}>
-            {copy.shareable.description}
-          </p>
           {shareView.shareable.hasLink && jsonShare.url ? (
             <div className="share-copy-box">
               <div className="share-modal-field">
@@ -109,21 +99,6 @@ export function ShareExportPanel({
               {shareView.shareable.disabledReason}
             </p>
           )}
-        </div>
-        <div className="share-export-option">
-          <button
-            className="share-modal-secondary"
-            type="button"
-            disabled={workspaceDocumentCount === 0}
-            aria-describedby={archiveDescriptionId}
-            onClick={onDownloadProjectArchive}
-          >
-            <FolderArchive size={16} />
-            <span>{copy.exportPanel.projectArchiveTitle}</span>
-          </button>
-          <p className="share-modal-muted" id={archiveDescriptionId}>
-            {copy.exportPanel.projectArchiveDescription}
-          </p>
         </div>
       </div>
     </>

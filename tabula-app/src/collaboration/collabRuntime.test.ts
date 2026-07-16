@@ -78,7 +78,7 @@ describe("collaboration runtime model", () => {
     });
   });
 
-  it("only allows session creation when a file exists and room service is configured", () => {
+  it("allows session creation when the workspace has documents and the room service is configured", () => {
     const available: TabulaRoomAvailability = { available: true, baseUrl: "https://rooms.test", unavailableReason: "" };
     const unavailable: TabulaRoomAvailability = {
       available: false,
@@ -86,18 +86,17 @@ describe("collaboration runtime model", () => {
       unavailableReason: "Room server missing.",
     };
 
-    expect(canStartCollaborationSession({ activeFile: file(), roomAvailability: available })).toBe(true);
-    expect(canStartCollaborationSession({ activeFile: undefined, roomAvailability: available })).toBe(false);
-    expect(canStartCollaborationSession({ activeFile: file(), roomAvailability: unavailable })).toBe(false);
+    expect(canStartCollaborationSession({ hasWorkspaceDocuments: true, roomAvailability: available })).toBe(true);
+    expect(canStartCollaborationSession({ hasWorkspaceDocuments: false, roomAvailability: available })).toBe(false);
+    expect(canStartCollaborationSession({ hasWorkspaceDocuments: true, roomAvailability: unavailable })).toBe(false);
   });
 
   it("creates a session start request without leaking browser state into callers", () => {
-    const activeFile = file({ text: "# Draft" });
     const available: TabulaRoomAvailability = { available: true, baseUrl: "https://rooms.test", unavailableReason: "" };
 
     expect(
       createCollaborationSessionStartRequest({
-        activeFile,
+        hasWorkspaceDocuments: true,
         origin: "https://tabula.test",
         roomAvailability: available,
         createSession: (origin) => ({
@@ -116,12 +115,26 @@ describe("collaboration runtime model", () => {
   it("does not create session requests when the room service is unavailable", () => {
     expect(
       createCollaborationSessionStartRequest({
-        activeFile: file(),
+        hasWorkspaceDocuments: true,
         origin: "https://tabula.test",
         roomAvailability: {
           available: false,
           baseUrl: "",
           unavailableReason: "Room server missing.",
+        },
+      }),
+    ).toBeUndefined();
+  });
+
+  it("does not create session requests for an empty workspace", () => {
+    expect(
+      createCollaborationSessionStartRequest({
+        hasWorkspaceDocuments: false,
+        origin: "https://tabula.test",
+        roomAvailability: {
+          available: true,
+          baseUrl: "https://rooms.test",
+          unavailableReason: "",
         },
       }),
     ).toBeUndefined();

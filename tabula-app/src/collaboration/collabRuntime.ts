@@ -68,25 +68,25 @@ export const getInitialCollaborationStatus = (
 ): ConnectionStatus => (room ? "connecting" : "idle");
 
 export const canStartCollaborationSession = ({
-  activeFile,
+  hasWorkspaceDocuments,
   roomAvailability,
 }: {
-  activeFile?: WorkspaceFile;
+  hasWorkspaceDocuments: boolean;
   roomAvailability: TabulaRoomAvailability;
-}) => Boolean(activeFile) && roomAvailability.available;
+}) => hasWorkspaceDocuments && roomAvailability.available;
 
 export const createCollaborationSessionStartRequest = ({
-  activeFile,
+  hasWorkspaceDocuments,
   origin,
   roomAvailability,
   createSession = createRoomSession,
 }: {
-  activeFile?: WorkspaceFile;
+  hasWorkspaceDocuments: boolean;
   origin: string;
   roomAvailability: TabulaRoomAvailability;
   createSession?: CreateRoomSession;
 }): CollaborationSessionStartRequest | undefined => {
-  if (!canStartCollaborationSession({ activeFile, roomAvailability }) || !activeFile) {
+  if (!canStartCollaborationSession({ hasWorkspaceDocuments, roomAvailability })) {
     return undefined;
   }
 

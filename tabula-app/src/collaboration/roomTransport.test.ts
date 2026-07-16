@@ -87,11 +87,13 @@ describe("Socket.IO room transport", () => {
     await vi.waitFor(() => {
       expect(io).toHaveBeenCalledWith("https://rooms.tabula.test", {
         autoConnect: false,
+        timeout: 5_000,
         transports: ["websocket", "polling"],
       });
     });
     expect(io).toHaveBeenCalledWith("https://rooms.tabula.test", {
       autoConnect: false,
+      timeout: 5_000,
       transports: ["websocket", "polling"],
     });
     expect(socketState.socket.on).toHaveBeenCalledWith("connect", expect.any(Function));
@@ -188,6 +190,7 @@ describe("Socket.IO room transport", () => {
     await vi.waitFor(() => {
       expect(io).toHaveBeenCalledWith("https://rooms.tabula.test", {
         autoConnect: false,
+        timeout: 5_000,
         transports: ["websocket", "polling"],
       });
     });

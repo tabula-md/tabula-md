@@ -58,4 +58,18 @@ describe("room view state", () => {
       rightPanelView: "files",
     })).toMatchObject({ activeFileId: "readme", openFileIds: ["readme"] });
   });
+
+  it("restores an explicitly closed room view without opening a default document", () => {
+    const workspace = {
+      files: [{ id: "readme" }, { id: "notes" }],
+      openFileIds: ["readme"],
+      activeFileId: "readme",
+    };
+
+    expect(restoreRoomWorkspaceView(workspace, {
+      openDocumentIds: [],
+      rightPanelOpen: false,
+      rightPanelView: "files",
+    })).toMatchObject({ activeFileId: "", openFileIds: [] });
+  });
 });

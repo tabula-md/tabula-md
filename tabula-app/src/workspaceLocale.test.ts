@@ -20,12 +20,16 @@ describe("workspace locale chrome copy", () => {
   it("localizes Preferences, empty state, and Share chrome together", () => {
     const english = getWorkspaceMenuCopy("en");
     expect(english.actions.preferences).toBe("Preferences");
+    expect(english.actions.importFile).toBe("Import document (.md)…");
+    expect(english.actions.importWorkspace).toBe("Import workspace…");
+    expect(english.actions.exportFile).toBe("Export document (.md)");
+    expect(english.actions.exportWorkspace).toBe("Export workspace (.zip)");
     expect(english.emptyState.tagline).toBe(
       "A local-first workspace for files that people and agents can share safely.",
     );
     expect(english.emptyState.newFile).toBe("New document");
     expect(english.share.live.startSession).toBe("Start session");
-    expect(english.share.shareable.title).toBe("Export to link");
+    expect(english.share.shareable.title).toBe("Export link");
     expect(english.share.shareable.description).toBe(
       "Create an encrypted point-in-time copy. Changes do not sync back.",
     );
@@ -35,7 +39,7 @@ describe("workspace locale chrome copy", () => {
     expect(korean.actions.preferences).toBe("환경설정");
     expect(korean.emptyState.openFile).toBe("Markdown 파일 열기");
     expect(korean.share.live.startSession).toBe("세션 시작");
-    expect(korean.share.shareable.title).toBe("링크로 내보내기");
+    expect(korean.share.shareable.title).toBe("내보내기 링크");
     expect(korean.share.shareable.description).toBe(
       "암호화된 시점 복사본을 만듭니다. 이후 변경은 원본에 동기화되지 않습니다.",
     );

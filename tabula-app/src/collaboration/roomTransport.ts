@@ -43,8 +43,10 @@ type SocketLike = {
 };
 
 type SocketIoClientModule = {
-  io(baseUrl: string, options: { autoConnect: boolean; transports: string[] }): SocketLike;
+  io(baseUrl: string, options: { autoConnect: boolean; timeout: number; transports: string[] }): SocketLike;
 };
+
+const ROOM_INITIAL_CONNECT_TIMEOUT_MS = 5_000;
 
 let socketIoClientPromise: Promise<SocketIoClientModule> | null = null;
 
@@ -76,6 +78,7 @@ export const createSocketIoRoomTransport: CreateRoomTransport = ({ baseUrl, room
       .then(({ io }) => {
         const nextSocket = io(baseUrl, {
           autoConnect: false,
+          timeout: ROOM_INITIAL_CONNECT_TIMEOUT_MS,
           transports: ["websocket", "polling"],
         });
 

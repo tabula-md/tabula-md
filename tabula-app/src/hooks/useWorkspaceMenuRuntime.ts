@@ -20,7 +20,11 @@ type UseWorkspaceMenuRuntimeOptions = {
   isOpen: boolean;
   onAddFile: () => void;
   canClearWorkspace: boolean;
+  canExportFile: boolean;
+  canExportWorkspace: boolean;
   onClearWorkspace: () => void;
+  onExportFile: () => void;
+  onExportWorkspace: () => void;
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
@@ -39,7 +43,11 @@ export function useWorkspaceMenuRuntime({
   isOpen,
   onAddFile,
   canClearWorkspace,
+  canExportFile,
+  canExportWorkspace,
   onClearWorkspace,
+  onExportFile,
+  onExportWorkspace,
   onCloseChrome,
   onImportFileChange,
   onImportWorkspaceChange,
@@ -79,9 +87,13 @@ export function useWorkspaceMenuRuntime({
       importInputRef,
       workspaceImportInputRef,
       canClearWorkspace,
+      canExportFile,
+      canExportWorkspace,
       onImportFileChange,
       onImportWorkspaceChange,
       onClearWorkspace,
+      onExportFile,
+      onExportWorkspace,
       onCloseChrome,
       onTogglePreferences: togglePreferences,
       onChangeTheme: setTheme,
@@ -96,7 +108,11 @@ export function useWorkspaceMenuRuntime({
       isOpen,
       onAddFile,
       canClearWorkspace,
+      canExportFile,
+      canExportWorkspace,
       onClearWorkspace,
+      onExportFile,
+      onExportWorkspace,
       onCloseChrome,
       onImportFileChange,
       onImportWorkspaceChange,

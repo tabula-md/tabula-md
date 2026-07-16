@@ -47,7 +47,6 @@ export type WorkspaceTopChromeProps = {
   onShareLoadError: () => void;
   onCommitUserName: () => void;
   onCopyShareUrl: () => void;
-  onDownloadProjectArchive: () => void;
   onReorderFiles: FileTabsProps["onReorderFiles"];
   onRenameFile: FileTabsProps["onRenameFile"];
   onSelectFile: FileTabsProps["onSelectFile"];
@@ -90,7 +89,6 @@ export function WorkspaceTopChrome({
   onShareLoadError,
   onCommitUserName,
   onCopyShareUrl,
-  onDownloadProjectArchive,
   onReorderFiles,
   onRenameFile,
   onSelectFile,
@@ -160,7 +158,6 @@ export function WorkspaceTopChrome({
             onStartSession={onStartSession}
             onRetrySession={onRetrySession}
             onCopyShareUrl={onCopyShareUrl}
-            onDownloadProjectArchive={onDownloadProjectArchive}
             onChangeUserName={onChangeUserName}
             onCommitUserName={onCommitUserName}
             onStopSession={onStopSession}

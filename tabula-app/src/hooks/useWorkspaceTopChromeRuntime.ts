@@ -42,7 +42,6 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   onShareLoadError: () => void;
   onCommitUserName: () => void;
   onCopyShareUrl: () => void;
-  onDownloadProjectArchive: () => void;
   onReorderFiles: (sourceFileId: string, targetFileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onSelectFile: (fileId: string) => void;
@@ -86,7 +85,6 @@ export function useWorkspaceTopChromeRuntime({
   onShareLoadError,
   onCommitUserName,
   onCopyShareUrl,
-  onDownloadProjectArchive,
   onReorderFiles,
   onRenameFile,
   onSelectFile,
@@ -156,7 +154,6 @@ export function useWorkspaceTopChromeRuntime({
     onShareLoadError,
     onCommitUserName,
     onCopyShareUrl,
-    onDownloadProjectArchive,
     onReorderFiles,
     onRenameFile,
     onSelectFile,

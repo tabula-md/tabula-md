@@ -277,6 +277,7 @@ export function useWorkspaceRuntime() {
     const activeSnapshot = getActiveFileSnapshot();
     return activeSnapshot ?? files[0];
   });
+  const addRootFile = useEventCallback(() => addFile());
   const getWorkspaceSnapshot = useEventCallback((): WorkspaceState => {
     const workspaceSnapshot = getWorkspaceStoreSnapshot(workspaceSession.mode);
     const activeFileSnapshot = getActiveFileSnapshot();
@@ -508,7 +509,7 @@ export function useWorkspaceRuntime() {
     }
   });
   useEffect(() => {
-    if (!activeRoomId) return;
+    if (!activeRoomId || files.length === 0) return;
     writeRoomViewState(activeRoomId, {
       activeDocumentId: activeFileId || undefined,
       openDocumentIds: openFileIds,
@@ -595,7 +596,7 @@ export function useWorkspaceRuntime() {
       Boolean(activeRoomDocument) &&
       activeViewMode !== "preview" &&
       followState.status === "idle",
-    getActiveFileSnapshot: getCollaborationSessionFileSnapshot,
+    getSessionFileSnapshot: getCollaborationSessionFileSnapshot,
     identity,
     workspaceDocuments: sessionStartDocuments,
     workspaceFolders: sessionStartFolders,
@@ -983,6 +984,7 @@ export function useWorkspaceRuntime() {
     closeJsonShareImport,
     closeWorkspaceFolderImport,
     copyFile,
+    downloadCurrentFile,
     downloadProjectArchive,
     emptyDropActive,
     handleEmptyWorkspaceDragLeave,
@@ -1164,9 +1166,13 @@ export function useWorkspaceRuntime() {
     importInputRef,
     workspaceImportInputRef,
     isOpen: workspaceMenuOpen,
-    onAddFile: addFile,
+    onAddFile: addRootFile,
     canClearWorkspace: !activeRoom,
+    canExportFile: Boolean(activeFile),
+    canExportWorkspace: files.length > 0,
     onClearWorkspace: clearLocalWorkspace,
+    onExportFile: downloadCurrentFile,
+    onExportWorkspace: downloadProjectArchive,
     onCloseChrome: closeFloatingChrome,
     onImportFileChange: handleImportInputChange,
     onImportWorkspaceChange: handleWorkspaceImportInputChange,
@@ -1262,7 +1268,7 @@ export function useWorkspaceRuntime() {
       : workspaceShareCopy.live.unavailable,
     topPopover,
     workspaceMenuOpen,
-    onAddFile: addFile,
+    onAddFile: addRootFile,
     onChangeUserName: updateIdentityName,
     onCloseFile: closeFile,
     onShareLoadError: () => {
@@ -1271,7 +1277,6 @@ export function useWorkspaceRuntime() {
     },
     onCommitUserName: normalizeIdentityName,
     onCopyShareUrl: copyShareUrlWithPendingCommit,
-    onDownloadProjectArchive: downloadProjectArchive,
     onReorderFiles: reorderFiles,
     onRenameFile: renameWorkspaceFileAction,
     onSelectFile: selectFile,
@@ -1324,7 +1329,7 @@ export function useWorkspaceRuntime() {
   });
   useWorkspaceKeyboardShortcuts({
     importInputRef,
-    addFile,
+    addFile: addRootFile,
     closeFloatingChrome,
     openFilesPanel,
     openHelp,
@@ -1346,7 +1351,7 @@ export function useWorkspaceRuntime() {
       onDragLeave: handleEmptyWorkspaceDragLeave,
       onDragOver: handleEmptyWorkspaceDragOver,
       onDrop: handleEmptyWorkspaceDrop,
-      onNewFile: addFile,
+      onNewFile: addRootFile,
       onOpenFile: () => importInputRef.current?.click(),
       onOpenWorkspace: () => workspaceImportInputRef.current?.click(),
       onOpenHelp: openHelp,

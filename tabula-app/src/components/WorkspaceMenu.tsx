@@ -2,8 +2,11 @@ import type { ReactNode } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  FileInput,
+  FileOutput,
   FilePlus2,
-  FolderOpen,
+  FolderArchive,
+  FolderInput,
   HelpCircle,
   Github,
   Info,
@@ -31,8 +34,12 @@ type WorkspaceMenuProps = {
   onChangeTheme: (theme: WorkspaceTheme) => void;
   onChangeLanguage: (language: WorkspaceLanguage) => void;
   onAddFile: () => void;
-  onOpenFile: () => void;
-  onOpenWorkspace?: () => void;
+  onImportFile: () => void;
+  onImportWorkspace?: () => void;
+  onExportFile: () => void;
+  onExportWorkspace: () => void;
+  canExportFile: boolean;
+  canExportWorkspace: boolean;
   onClearWorkspace?: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
@@ -115,8 +122,12 @@ export function WorkspaceMenu({
   onChangeTheme,
   onChangeLanguage,
   onAddFile,
-  onOpenFile,
-  onOpenWorkspace,
+  onImportFile,
+  onImportWorkspace,
+  onExportFile,
+  onExportWorkspace,
+  canExportFile,
+  canExportWorkspace,
   onClearWorkspace,
   onOpenAbout,
   onOpenHelp,
@@ -159,14 +170,29 @@ export function WorkspaceMenu({
         <MenuRow icon={<FilePlus2 size={16} />} onClick={onAddFile}>
           {copy.actions.newFile}
         </MenuRow>
-        <MenuRow icon={<FolderOpen size={16} />} onClick={onOpenFile}>
-          {copy.actions.openFile}
+        <MenuRow icon={<FileInput size={16} />} onClick={onImportFile}>
+          {copy.actions.importFile}
         </MenuRow>
-        {onOpenWorkspace && (
-          <MenuRow icon={<FolderOpen size={16} />} onClick={onOpenWorkspace}>
-            {copy.actions.openWorkspace}
+        {onImportWorkspace && (
+          <MenuRow icon={<FolderInput size={16} />} onClick={onImportWorkspace}>
+            {copy.actions.importWorkspace}
           </MenuRow>
         )}
+        <div className="workspace-menu-divider" role="separator" />
+        <MenuRow
+          icon={<FileOutput size={16} />}
+          disabled={!canExportFile}
+          onClick={onExportFile}
+        >
+          {copy.actions.exportFile}
+        </MenuRow>
+        <MenuRow
+          icon={<FolderArchive size={16} />}
+          disabled={!canExportWorkspace}
+          onClick={onExportWorkspace}
+        >
+          {copy.actions.exportWorkspace}
+        </MenuRow>
         <div className="workspace-menu-divider" role="separator" />
 
         <MenuRow
