@@ -1,7 +1,7 @@
 export {
   TabulaDocumentSurface,
   type TabulaDocumentSurfaceProps,
-} from "@tabula-md/tabula/workbench/internal";
+} from "@tabula-md/tabula-private/workbench";
 export {
   TabulaEmbeddedDocumentWorkbench,
   type TabulaEmbeddedDocumentWorkbenchProps,
