@@ -74,7 +74,6 @@ export async function run(ctx) {
     expect((await page.locator(".right-panel-search-controls").count()) === 0, "Search should hide unusable controls in an empty workspace.");
     await page.getByRole("button", { name: "Toggle side panel" }).click();
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
-    expect((await page.locator(".publish-trigger").count()) === 0, "Publish should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".blank-document-action").count()) === 0, "The first screen should not show canvas-style onboarding actions.");
     expect((await page.locator(".empty-feature-callout").count()) === 0, "The first screen should not show canvas-style callouts.");
     await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
@@ -266,8 +265,6 @@ export async function run(ctx) {
       (await page.locator("#root").getAttribute("aria-hidden")) === "true",
       "An open modal should hide the background app from assistive technology.",
     );
-    expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Publish should stay hidden in Share until it ships.");
-    expect((await page.getByText("Publish with Tabula +").count()) === 0, "Share should not expose the Tabula + publish boundary yet.");
     expect(
       (await page.getByText(/Add content to Untitled(?: \d+)? before creating an Export link\./).count()) === 0,
       "Export links should use the whole workspace instead of blocking on the current empty file.",
@@ -290,8 +287,6 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
-    expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Publish should stay hidden for non-empty files too.");
-    expect((await page.locator(".workspace-plus-popover").count()) === 0, "The hidden publish boundary should not open a plus popover.");
   });
 
   await withPage(browser, "/", async (page) => {
@@ -522,41 +517,6 @@ export async function run(ctx) {
       exportOptions[0]?.includes("Export to link"),
       "The link export row should contain the link action.",
     );
-    expect((await page.getByText("Publish project").count()) === 0, "Publish actions should not be available by default.");
-    expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish actions should not be on the default Share panel.");
-
-    expect((await page.getByText("Publish with Tabula +").count()) === 0, "Share should not expose the Plus publish boundary yet.");
-    expect((await page.getByRole("radio", { name: /Current page/ }).count()) === 0, "Publish scope controls should stay hidden.");
-    expect((await page.getByRole("radio", { name: /Project/ }).count()) === 0, "Project publish should stay hidden.");
-    expect((await page.locator('input[aria-label="Publish URL"]').count()) === 0, "Publish should not show a URL before publishing.");
-    expect((await page.locator('[aria-label="Published URLs"]').count()) === 0, "Publish should not show endpoint URLs before publishing.");
-    expect((await page.locator('[aria-label="AI-readable output URLs"]').count()) === 0, "Publish should not show endpoint URLs before publishing.");
-    expect((await page.getByText("No public URL exists yet.").count()) === 0, "Publish should not show an unavailable URL placeholder.");
-    expect((await page.getByText("llms.txt", { exact: true }).count()) === 0, "Publish should hide llms.txt from the human UI.");
-    expect((await page.getByText("llms-full.txt", { exact: true }).count()) === 0, "Publish should hide llms-full.txt from the human UI.");
-    expect((await page.getByText("AI-readable outputs included", { exact: true }).count()) === 0, "Publish should not expose AI output labels.");
-    expect((await page.getByText("Outputs", { exact: true }).count()) === 0, "Publish should not make outputs the headline.");
-    expect((await page.getByText("Project snapshot").count()) === 0, "Publish should not use snapshot-first language.");
-    expect((await page.getByText("Published snapshot").count()) === 0, "Publish should not use snapshot-first language.");
-    expect((await page.getByText("Publishing will index this file.").count()) === 0, "Publish should not repeat the file scope.");
-    expect((await page.getByText(/open files/i).count()) === 0, "Share publish should not describe an open-file bundle.");
-    expect((await page.getByText("For people", { exact: true }).count()) === 0, "Publish should not split people and agent features.");
-    expect((await page.getByText("For agents", { exact: true }).count()) === 0, "Publish should not split people and agent features.");
-    expect((await page.getByRole("button", { name: "Create publish URL" }).count()) === 0, "Publish should not expose fake URL creation.");
-    expect((await page.getByRole("button", { name: "Copy publish URL" }).count()) === 0, "Publish should not copy a URL before publishing.");
-    expect((await page.getByRole("button", { name: "Copy llms.txt URL" }).count()) === 0, "Publish should not copy endpoint URLs before publishing.");
-    expect((await page.getByRole("button", { name: "Copy llms-full.txt URL" }).count()) === 0, "Publish should not copy endpoint URLs before publishing.");
-    expect((await page.getByRole("button", { name: "Copy page" }).count()) === 0, "Publish should not look like a file export panel.");
-    expect((await page.getByRole("button", { name: "Copy llms.txt" }).count()) === 0, "Publish should not expose llms copy actions.");
-    expect((await page.getByRole("button", { name: "Copy llms-full.txt" }).count()) === 0, "Publish should not expose llms copy actions.");
-    expect((await page.getByRole("button", { name: "Download bundle" }).count()) === 0, "Publish should not expose bundle download actions.");
-    expect(
-      (await page.getByRole("button", { name: "Publish current page" }).count()) === 0,
-      "Publish should not create public pages from the visible Share surface yet.",
-    );
-    expect((await page.getByRole("button", { name: "Publish snapshot" }).count()) === 0, "Publish should not expose snapshots as the action.");
-    expect((await page.getByText("Publish not configured").count()) === 0, "Publish should not be a disabled placeholder.");
-    expect((await page.locator(".publish-popover").count()) === 0, "Publish should not use a separate popover.");
     expect((await page.locator(".live-popover").count()) === 0, "Live should not use a separate popover.");
     await waitForShareDialogState(page, { panel: "Share link" });
     const shareModalStyle = await page.evaluate(() => {
@@ -641,10 +601,6 @@ export async function run(ctx) {
         window.__tabulaClipboard.push(text);
       };
     });
-    expect((await page.getByRole("tab", { name: "Publish" }).count()) === 0, "Publish should remain hidden in the Share modal.");
-    expect((await page.getByText("Publish with Tabula +").count()) === 0, "Hidden Publish should not expose Plus copy.");
-    expect((await page.getByRole("button", { name: "Publish current page" }).count()) === 0, "Hidden Publish should not expose publishing actions.");
-
     await waitForShareDialogState(page, { panel: "Share link" });
     await page.getByRole("button", { name: "Start session" }).click();
     await page.waitForSelector(".share-link-display");

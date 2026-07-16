@@ -27,8 +27,6 @@ export type TabulaServiceConfig = {
   firebaseEmulatorHost: string | null;
   firestoreEmulatorPort: number;
   firebaseStorageEmulatorPort: number;
-  publishUrl: string | null;
-  plusEnabled: boolean;
   isDev: boolean;
   copy: typeof TABULA_HOSTED_SERVICE_COPY;
 };
@@ -44,8 +42,6 @@ type TabulaServiceEnv = Partial<
     | "VITE_TABULA_FIRESTORE_EMULATOR_PORT"
     | "VITE_TABULA_FIREBASE_STORAGE_EMULATOR_PORT"
     | "VITE_TABULA_JSON_URL"
-    | "VITE_TABULA_PLUS_ENABLED"
-    | "VITE_TABULA_PUBLISH_URL"
     | "VITE_TABULA_ROOM_URL"
   >
 >;
@@ -69,8 +65,6 @@ const normalizeServiceUrl = (value?: string | null) => {
   const trimmedValue = value?.trim();
   return trimmedValue ? trimTrailingSlash(trimmedValue) : null;
 };
-
-const isEnabledFlag = (value?: string) => value === "1" || value === "true";
 
 const readPort = (value: string | undefined, fallback: number) => {
   const port = Number(value);
@@ -98,8 +92,6 @@ export const getTabulaServiceConfig = (
       env.VITE_TABULA_FIREBASE_STORAGE_EMULATOR_PORT,
       TABULA_LOCAL_FIREBASE_STORAGE_PORT,
     ),
-    publishUrl: normalizeServiceUrl(env.VITE_TABULA_PUBLISH_URL),
-    plusEnabled: isEnabledFlag(env.VITE_TABULA_PLUS_ENABLED),
     isDev: env.DEV === true,
     copy: TABULA_HOSTED_SERVICE_COPY,
   };

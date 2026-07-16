@@ -15,8 +15,6 @@ describe("service config", () => {
         VITE_TABULA_ERROR_REPORT_URL: "https://events.tabula.test///",
         VITE_TABULA_FIREBASE_CONFIG: "{\"projectId\":\"tabula-test\"}",
         VITE_TABULA_JSON_URL: "https://json.tabula.test///",
-        VITE_TABULA_PLUS_ENABLED: "true",
-        VITE_TABULA_PUBLISH_URL: "https://publish.tabula.test/",
         VITE_TABULA_ROOM_URL: "https://rooms.tabula.test//",
       }),
     ).toEqual({
@@ -28,8 +26,6 @@ describe("service config", () => {
       firebaseEmulatorHost: null,
       firestoreEmulatorPort: 8080,
       firebaseStorageEmulatorPort: 9199,
-      publishUrl: "https://publish.tabula.test",
-      plusEnabled: true,
       isDev: false,
       copy: TABULA_HOSTED_SERVICE_COPY,
     });

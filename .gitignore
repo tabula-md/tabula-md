@@ -5,7 +5,6 @@ output/
 .tabula-collab
 .tabula-room
 .tabula-room-smoke
-.tabula-publish-smoke
 .tabula-json-smoke
 .tabula-json-dev
 .DS_Store
