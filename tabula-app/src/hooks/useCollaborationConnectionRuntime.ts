@@ -34,6 +34,7 @@ const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   hydrationStatus: "loading-checkpoint",
   hydrationSource: null,
   durability: "unknown",
+  recoveryMode: "temporary",
   collaborators: [],
   editorBinding: null,
 };
@@ -183,6 +184,7 @@ export function useCollaborationConnectionRuntime({
   const runtimeConnectionStatus = runtime ? runtimeSnapshot.status : preRuntimeConnectionStatus;
   const connectionStatus = isLive && !browserOnline ? "disconnected" : runtimeConnectionStatus;
   const durability = runtimeSnapshot.durability;
+  const recoveryMode = runtimeSnapshot.recoveryMode;
   const hydrationStatus = runtimeSnapshot.hydrationStatus;
   const hydrationSource = runtimeSnapshot.hydrationSource;
   const collaborators = runtimeSnapshot.collaborators;
@@ -371,6 +373,7 @@ export function useCollaborationConnectionRuntime({
     collaborators,
     connectionStatus,
     durability,
+    recoveryMode,
     hydrationStatus,
     hydrationSource,
     editorBinding,

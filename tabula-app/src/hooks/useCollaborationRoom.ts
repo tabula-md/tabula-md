@@ -116,6 +116,7 @@ export function useCollaborationRoom({
     collaborators,
     connectionStatus,
     durability,
+    recoveryMode,
     hydrationStatus,
     hydrationSource,
     editorBinding,
@@ -191,6 +192,7 @@ export function useCollaborationRoom({
     collaborators,
     connectionStatus,
     durability,
+    recoveryMode,
     hydrationStatus,
     hydrationSource,
     startSessionUnavailableReason: !startValidation.ok

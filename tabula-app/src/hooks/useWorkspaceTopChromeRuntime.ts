@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { Collaborator } from "../collaboration";
+import type { Collaborator, RoomRecoveryMode } from "../collaboration";
 import type { ConnectionStatus } from "../collaboration";
 import type { WorkspaceTopChromeProps } from "../components/WorkspaceTopChrome";
 import type { JsonShareController } from "./useJsonShareController";
@@ -28,6 +28,7 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   identity: Collaborator;
   isLive: boolean;
   isLiveConnected: boolean;
+  recoveryMode: RoomRecoveryMode;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
@@ -71,6 +72,7 @@ export function useWorkspaceTopChromeRuntime({
   identity,
   isLive,
   isLiveConnected,
+  recoveryMode,
   jsonShare,
   language,
   openFiles,
@@ -138,6 +140,7 @@ export function useWorkspaceTopChromeRuntime({
     identity,
     isLive,
     isLiveConnected,
+    recoveryMode,
     jsonShare,
     language,
     openFiles,
