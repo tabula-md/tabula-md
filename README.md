@@ -8,6 +8,16 @@
 
 <p align="center"><a href="https://tabula.md">Open Tabula.md</a></p>
 
+<p align="center">
+  <a href="https://tabula.md" target="_blank" rel="noopener">
+    <img
+      src=".github/assets/tabula-product-demo.gif"
+      alt="An agent and a browser editing the same Tabula.md Markdown workspace"
+      width="960"
+    />
+  </a>
+</p>
+
 ## Why Tabula.md
 
 - Open a Markdown workspace without signing up.
