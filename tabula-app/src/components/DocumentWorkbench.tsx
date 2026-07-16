@@ -1,18 +1,9 @@
 import {
   type CSSProperties,
   type RefObject,
-  useCallback,
-  useEffect,
   useMemo,
-  useState,
 } from "react";
 import { MessageSquarePlus } from "lucide-react";
-import {
-  getLineNumberForOffset,
-  getLineStartOffset,
-  hasLongMarkdownLine,
-  toggleMarkdownTaskOnLine,
-} from "@tabula-md/tabula";
 import type {
   DocumentSurfaceModel,
   MarkdownFormatCommand,
@@ -44,22 +35,15 @@ import {
   type DocumentSearchBarProps,
 } from "./DocumentControls";
 import { FormattingToolbar } from "./FormattingToolbar";
-import { MarkdownEditor } from "./MarkdownEditor";
 import type {
   MarkdownPreviewCommentAnchor,
-  MarkdownPreviewLineActionRequest,
   MarkdownPreviewLineAnnotation,
   MarkdownPreviewMetadata,
 } from "../preview/markdownPreviewTypes";
 import { StatusBar } from "./StatusBar";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
-import { ResizeHandle } from "./ui/ResizeHandle";
-import {
-  getLoadedMarkdownPreview,
-  loadMarkdownPreview,
-  prepareMarkdownPreview,
-  type MarkdownPreviewComponent,
-} from "../preview/markdownPreviewLoader";
+import { prepareMarkdownPreview } from "../preview/markdownPreviewLoader";
+import { TabulaDocumentSurface } from "../workbench";
 
 export type DocumentWorkbenchProps = {
   activeBookmarks: FileBookmark[];
@@ -243,23 +227,6 @@ export function DocumentWorkbench({
   onUndo,
 }: DocumentWorkbenchProps) {
   const copy = getWorkspaceSurfaceCopy(language);
-  const shouldRenderPreview = documentSurface.documentControls.activeViewMode !== "edit";
-  const [MarkdownPreview, setMarkdownPreview] = useState<MarkdownPreviewComponent | null>(
-    getLoadedMarkdownPreview,
-  );
-  const ResolvedMarkdownPreview = MarkdownPreview ?? getLoadedMarkdownPreview();
-  useEffect(() => {
-    if (!shouldRenderPreview || ResolvedMarkdownPreview) return;
-    let cancelled = false;
-    void loadMarkdownPreview()
-      .then((component) => {
-        if (!cancelled) setMarkdownPreview(() => component);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [ResolvedMarkdownPreview, shouldRenderPreview]);
   const activeFormats = useMemo(
     () =>
       documentSurface.documentControls.activeViewMode === "preview" || !activeSelection
@@ -267,41 +234,6 @@ export function DocumentWorkbench({
         : editorRef.current?.getActiveFormats() ?? [],
     [activeSelection, documentSurface.documentControls.activeViewMode, editorRef, text],
   );
-  const suspendLineWrappingForLongLine = useMemo(
-    () => activeLineWrapping && hasLongMarkdownLine(text),
-    [activeLineWrapping, text],
-  );
-  const effectiveLineWrapping = activeLineWrapping && !suspendLineWrappingForLongLine;
-  const isSourceSearchActive = searchOpen && searchTarget === "source";
-  const isPreviewSearchActive = searchOpen && searchTarget === "preview";
-  const previewBodySourceLineOffset = useMemo(
-    () => Math.max(0, getLineNumberForOffset(text, previewBodyStartOffset) - 1),
-    [previewBodyStartOffset, text],
-  );
-  const editorSurfaceClassName = suspendLineWrappingForLongLine
-    ? `${documentSurface.editorSurfaceClassName} line-wrapping-suspended`
-    : documentSurface.editorSurfaceClassName;
-  const handlePreviewTaskToggle = useCallback((sourceLineIndex: number) => {
-    const lineStart = getLineStartOffset(text, sourceLineIndex);
-    const edit = toggleMarkdownTaskOnLine(text, lineStart);
-    if (!edit) {
-      return;
-    }
-
-    const applied =
-      editorRef.current?.applyLocalTextPatches([edit.patch], edit.selection, {
-        focus: false,
-        isolateHistory: true,
-      }) ?? false;
-    if (applied) {
-      return;
-    }
-
-    const patch = edit.patch;
-    onTextChange(`${text.slice(0, patch.from)}${patch.insert}${text.slice(patch.to)}`, {
-      patches: [patch],
-    });
-  }, [editorRef, onTextChange, text]);
   return (
     <>
       <section
@@ -345,95 +277,62 @@ export function DocumentWorkbench({
         <DocumentSearchBar {...documentSearch} language={language} />
       )}
 
-      <section
-        className={documentSurface.workspaceClassName}
-        ref={workspaceRef}
-        style={splitWorkspaceStyle}
-      >
-        <article
-          className={editorSurfaceClassName}
-          ref={editorSurfaceRef}
-          onScroll={onEditorScroll}
-        >
-          <MarkdownEditor
-            ref={editorRef}
-            ariaLabel={copy.editor}
-            interfaceCopy={copy}
-            fileId={activeFile.id}
-            value={text}
-            largeDocumentMode={largeDocumentMode}
-            lineWrapping={effectiveLineWrapping}
-            lineNumbers={activeLineNumbers}
-            bookmarks={activeBookmarks}
-            commentAnchors={activeCommentAnchors}
-            commentsEnabled
-            collaborationBinding={isLive ? collaborationBinding : null}
-            activeCommentId={focusedCommentId}
-            searchMatches={isSourceSearchActive ? searchMatches : []}
-            activeSearchMatchIndex={isSourceSearchActive ? activeSearchMatchIndex : -1}
-            onChange={onTextChange}
-            onBookmarksChange={onBookmarksChange}
-            onHistoryStateChange={onEditorHistoryStateChange}
-            onOpenLineActions={onLineAction}
-            onOpenComment={onOpenComment}
-            onSelectionChange={onEditorSelectionChange}
-            onSelectionActionPositionChange={onEditorSelectionActionPositionChange}
-            onScrollRatioChange={onEditorScrollRatioChange}
-          />
-        </article>
-
-        {documentSurface.showSplitResizeHandle && (
-          <ResizeHandle
-            className="split-resize-handle"
-            dragging={splitDividerDragging}
-            label={copy.resizeSplitView}
-            minimum={splitDividerMinValue}
-            maximum={splitDividerMaxValue}
-            value={splitDividerValue}
-            onDoubleClick={onResetSplitRatio}
-            onKeyDown={onSplitDividerKeyDown}
-            onPointerCancel={onSplitDividerPointerCancel}
-            onPointerDown={onSplitDividerPointerDown}
-            onPointerMove={onSplitDividerPointerMove}
-            onPointerUp={onSplitDividerPointerUp}
-          />
-        )}
-
-        {shouldRenderPreview && (
-          <article
-            className="preview-surface"
-            ref={previewSurfaceRef}
-            onKeyUp={onPreviewKeyUp}
-            onMouseUp={onPreviewMouseUp}
-            onScroll={onPreviewScroll}
-            onTouchEnd={onPreviewTouchEnd}
-          >
-            {ResolvedMarkdownPreview ? (
-              <ResolvedMarkdownPreview
-                ref={previewRef}
-                uiLanguage={language}
-                metadata={previewMetadata}
-                body={previewBody}
-                sourceLineOffset={previewBodySourceLineOffset}
-                bodyTextChange={previewBodyTextChange}
-                largeDocumentMode={largeDocumentMode}
-                commentAnchors={activePreviewCommentAnchors}
-                lineAnnotations={activePreviewLineAnnotations}
-                activeCommentId={focusedCommentId}
-                commentsEnabled
-                searchQuery={isPreviewSearchActive ? searchQuery : ""}
-                searchOptions={searchOptions}
-                activeSearchMatchIndex={isPreviewSearchActive ? activeSearchMatchIndex : -1}
-                suspendLineMeasurement={splitDividerDragging}
-                onSearchMatchCountChange={onPreviewSearchMatchCountChange}
-                onLineAction={onLineAction as (request: MarkdownPreviewLineActionRequest) => void}
-                onOpenComment={onOpenComment}
-                onToggleTaskLine={handlePreviewTaskToggle}
-              />
-            ) : null}
-          </article>
-        )}
-      </section>
+      <TabulaDocumentSurface
+        activeBookmarks={activeBookmarks}
+        activeCommentAnchors={activeCommentAnchors}
+        activeFile={activeFile}
+        activeLineNumbers={activeLineNumbers}
+        activeLineWrapping={activeLineWrapping}
+        activePreviewCommentAnchors={activePreviewCommentAnchors}
+        activePreviewLineAnnotations={activePreviewLineAnnotations}
+        activeSearchMatchIndex={activeSearchMatchIndex}
+        collaborationBinding={collaborationBinding}
+        documentSurface={documentSurface}
+        editorRef={editorRef}
+        editorSurfaceRef={editorSurfaceRef}
+        focusedCommentId={focusedCommentId}
+        isLive={isLive}
+        language={language}
+        largeDocumentMode={largeDocumentMode}
+        previewBody={previewBody}
+        previewBodyStartOffset={previewBodyStartOffset}
+        previewBodyTextChange={previewBodyTextChange}
+        previewMetadata={previewMetadata}
+        previewRef={previewRef}
+        previewSurfaceRef={previewSurfaceRef}
+        searchMatches={searchMatches}
+        searchOpen={searchOpen}
+        searchOptions={searchOptions}
+        searchQuery={searchQuery}
+        searchTarget={searchTarget}
+        splitDividerDragging={splitDividerDragging}
+        splitDividerMaxValue={splitDividerMaxValue}
+        splitDividerMinValue={splitDividerMinValue}
+        splitDividerValue={splitDividerValue}
+        splitWorkspaceStyle={splitWorkspaceStyle}
+        text={text}
+        workspaceRef={workspaceRef}
+        onBookmarksChange={onBookmarksChange}
+        onEditorHistoryStateChange={onEditorHistoryStateChange}
+        onEditorScroll={onEditorScroll}
+        onEditorScrollRatioChange={onEditorScrollRatioChange}
+        onEditorSelectionActionPositionChange={onEditorSelectionActionPositionChange}
+        onEditorSelectionChange={onEditorSelectionChange}
+        onLineAction={onLineAction}
+        onOpenComment={onOpenComment}
+        onPreviewKeyUp={onPreviewKeyUp}
+        onPreviewMouseUp={onPreviewMouseUp}
+        onPreviewScroll={onPreviewScroll}
+        onPreviewTouchEnd={onPreviewTouchEnd}
+        onPreviewSearchMatchCountChange={onPreviewSearchMatchCountChange}
+        onResetSplitRatio={onResetSplitRatio}
+        onSplitDividerKeyDown={onSplitDividerKeyDown}
+        onSplitDividerPointerCancel={onSplitDividerPointerCancel}
+        onSplitDividerPointerDown={onSplitDividerPointerDown}
+        onSplitDividerPointerMove={onSplitDividerPointerMove}
+        onSplitDividerPointerUp={onSplitDividerPointerUp}
+        onTextChange={onTextChange}
+      />
 
       {documentSurface.showSelectionCommentPopover && selectionActionPosition && (
         <button
