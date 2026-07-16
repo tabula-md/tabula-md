@@ -37,29 +37,22 @@ Hosted Export link blobs are retained for a limited window. The current hosted
 service window is 7 days. Tabula.md is in public preview and does not yet
 provide account-based link revoke controls.
 
-## Product Analytics
+## Analytics
 
-The official hosted Tabula.md service uses PostHog US Cloud to collect a small
-set of content-free product events and understand whether sharing and
-collaboration workflows succeed. These events can record that a room was
-created, a room link or agent invitation was copied, another participant
-joined, or another participant edited the shared workspace.
+The hosted version of Tabula.md uses PostHog to measure whether sharing and
+collaboration workflows succeed.
 
-Product events contain an ephemeral browser-tab identifier, event time, app
-version, and, when available, whether the other participant is a person or an
-agent. They do not contain Markdown, file or folder names, comments, prompts,
-participant names, room or document identifiers, room keys, snapshot keys,
-URLs, referrers, DOM element details, or URL fragments. The identifier is stored
-in browser session storage and is discarded when that browser tab session ends.
+We collect:
 
-PostHog autocapture, page-view capture, session recording, heatmaps, surveys,
-and persistent person identification are disabled. Tabula.md does not call
-PostHog identify APIs or associate product events with an account or email.
+- anonymous events such as creating, sharing, joining, and editing a room
+- a short referral label when a link includes `?ref=`
+- anonymous identifiers that group events from the same session or room
 
-Analytics are disabled by default in the open-source app. A self-hosted build
-sends no product events unless its operator explicitly configures a PostHog
-project key. Operators are responsible for documenting their own deployment and
-retention policy.
+We do not collect document content, filenames, prompts, room keys, shared URLs,
+or account information.
+
+Analytics are disabled in self-hosted builds unless the operator configures
+them.
 
 ## Error Reporting
 
