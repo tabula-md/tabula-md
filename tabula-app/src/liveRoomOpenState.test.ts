@@ -10,7 +10,7 @@ describe("live room open state", () => {
     expect(
       getLiveRoomOpenState({
         connectionStatus: "idle",
-        hasActiveFile: false,
+        hydrationStatus: "loading-checkpoint",
         hasActiveRoom: false,
         timedOut: true,
       }),
@@ -21,7 +21,7 @@ describe("live room open state", () => {
     expect(
       getLiveRoomOpenState({
         connectionStatus: "connecting",
-        hasActiveFile: false,
+        hydrationStatus: "loading-checkpoint",
         hasActiveRoom: true,
         timedOut: true,
       }),
@@ -33,7 +33,7 @@ describe("live room open state", () => {
     expect(
       getLiveRoomOpenState({
         connectionStatus: "connected",
-        hasActiveFile: false,
+        hydrationStatus: "waiting-for-state",
         hasActiveRoom: true,
         timedOut: true,
       }),
@@ -44,7 +44,7 @@ describe("live room open state", () => {
     expect(
       getLiveRoomOpenState({
         connectionStatus: "connected",
-        hasActiveFile: true,
+        hydrationStatus: "ready",
         hasActiveRoom: true,
         timedOut: true,
       }),
@@ -55,7 +55,7 @@ describe("live room open state", () => {
     expect(
       getLiveRoomOpenState({
         connectionStatus: "failed",
-        hasActiveFile: false,
+        hydrationStatus: "failed",
         hasActiveRoom: true,
         timedOut: false,
         failure: "expired",
@@ -65,7 +65,7 @@ describe("live room open state", () => {
     expect(
       getLiveRoomOpenState({
         connectionStatus: "failed",
-        hasActiveFile: false,
+        hydrationStatus: "failed",
         hasActiveRoom: true,
         timedOut: false,
         failure: "unsupported",

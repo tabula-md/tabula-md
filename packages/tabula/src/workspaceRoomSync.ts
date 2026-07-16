@@ -104,8 +104,13 @@ export type WorkspaceRoomSyncControllerOptions = {
   getSenderActor: (senderId: string) => RoomActor | null;
   onCapacityExceeded: () => void;
   onInvalidMessage: (message: string) => void;
+  onRemoteSyncApplied?: (message: { senderId: string; changed: boolean }) => void;
   onUnsupportedMessage: () => void;
 };
+
+const byteArraysEqual = (first: Uint8Array, second: Uint8Array) =>
+  first.byteLength === second.byteLength &&
+  first.every((value, index) => value === second[index]);
 
 export const createWorkspaceRoomSyncController = ({
   roomId,
@@ -117,6 +122,7 @@ export const createWorkspaceRoomSyncController = ({
   getSenderActor,
   onCapacityExceeded,
   onInvalidMessage,
+  onRemoteSyncApplied,
   onUnsupportedMessage,
 }: WorkspaceRoomSyncControllerOptions) => {
   const chunkAssembler = createRoomChunkAssembler();
@@ -271,11 +277,16 @@ export const createWorkspaceRoomSyncController = ({
     ) return;
     const decoder = decoding.createDecoder(packet.payload);
     const reply = encoding.createEncoder();
+    const previousStateVector = Y.encodeStateVector(doc);
     syncProtocol.readSyncMessage(decoder, reply, doc, {
       type: REMOTE_SYNC_ORIGIN,
       senderId: packet.senderId,
     } satisfies RemoteSyncOrigin, () => {
       onInvalidMessage("A malformed collaboration update was ignored.");
+    });
+    onRemoteSyncApplied?.({
+      senderId: packet.senderId,
+      changed: !byteArraysEqual(previousStateVector, Y.encodeStateVector(doc)),
     });
     if (encoding.length(reply) > 0) {
       await sendPacket({

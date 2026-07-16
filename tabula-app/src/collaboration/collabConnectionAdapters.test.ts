@@ -187,6 +187,76 @@ const collectCommentSnapshots = (
 };
 
 describe("workspace room runtime", () => {
+  it("hydrates from a live peer when no checkpoint store is available", async () => {
+    const relay = createMemoryRoomRelay();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const adapters = {
+      ...defaults,
+      createRoomTransport: relay.createRoomTransport,
+      roomCheckpointStore: createNoopRoomCheckpointStore(),
+      resolveRoomBaseUrl: () => "http://room.test",
+    };
+    const host = createWorkspaceRoomRuntime({
+      roomId: "room-peer-bootstrap",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc", title: "README.md", text: "from live peer" }],
+      identity: { id: "host", name: "Curious Agent", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      adapters,
+    });
+    await vi.waitFor(() => expect(host.getSnapshot()).toMatchObject({
+      status: "connected",
+      hydrationStatus: "ready",
+      hydrationSource: "local",
+    }));
+
+    const peer = createWorkspaceRoomRuntime({
+      roomId: "room-peer-bootstrap",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: false,
+      identity: { id: "peer", name: "Curious Human", color: "#7c3aed", lastSeen: 0 },
+      fileTitle: "README.md",
+      adapters,
+    });
+
+    await vi.waitFor(() => expect(peer.getSnapshot()).toMatchObject({
+      status: "connected",
+      hydrationStatus: "ready",
+      hydrationSource: "peer",
+    }));
+    expect(peer.materializeDocument("doc")).toBe("from live peer");
+
+    host.disconnect();
+    peer.disconnect();
+  });
+
+  it("stays connected while waiting for state when neither checkpoint nor peer exists", async () => {
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const runtime = createWorkspaceRoomRuntime({
+      roomId: "room-waiting-for-state",
+      roomKey: VALID_ROOM_KEY,
+      emitInitialWorkspaceState: false,
+      identity: { id: "peer", name: "Curious Human", color: "#7c3aed", lastSeen: 0 },
+      adapters: {
+        ...defaults,
+        createRoomTransport: transport.createRoomTransport,
+        roomCheckpointStore: createNoopRoomCheckpointStore(),
+        resolveRoomBaseUrl: () => "http://room.test",
+      },
+    });
+
+    await vi.waitFor(() => expect(runtime.getSnapshot()).toMatchObject({
+      status: "connected",
+      hydrationStatus: "waiting-for-state",
+      hydrationSource: null,
+    }));
+    runtime.disconnect();
+  });
+
   it("uses the persisted host checkpoint without downloading it again", async () => {
     const roomId = "room-host-bootstrap";
     const seedDoc = new Y.Doc();
@@ -224,6 +294,10 @@ describe("workspace room runtime", () => {
     });
 
     await vi.waitFor(() => expect(connection.getSnapshot().status).toBe("connected"));
+    expect(connection.getSnapshot()).toMatchObject({
+      hydrationStatus: "ready",
+      hydrationSource: "bootstrap",
+    });
     expect(connection.getDocumentTextSnapshot("doc-1")).toBe("# Ready");
     expect(loadEncryptedCheckpoint).not.toHaveBeenCalled();
     expect(saveEncryptedCheckpoint).not.toHaveBeenCalled();

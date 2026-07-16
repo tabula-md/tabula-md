@@ -1,4 +1,4 @@
-import type { ConnectionStatus } from "./collaboration";
+import type { ConnectionStatus, RoomHydrationStatus } from "./collaboration";
 
 export const LIVE_ROOM_OPEN_TIMEOUT_MS = 8_000;
 
@@ -7,18 +7,18 @@ export type LiveRoomOpenState = "idle" | "opening" | "unavailable" | "expired";
 
 export const getLiveRoomOpenState = ({
   connectionStatus,
-  hasActiveFile,
+  hydrationStatus,
   hasActiveRoom,
   timedOut,
   failure,
 }: {
   connectionStatus: ConnectionStatus;
-  hasActiveFile: boolean;
+  hydrationStatus: RoomHydrationStatus;
   hasActiveRoom: boolean;
   timedOut: boolean;
   failure?: LiveRoomOpenFailure | null;
 }): LiveRoomOpenState => {
-  if (!hasActiveRoom || hasActiveFile) {
+  if (!hasActiveRoom || hydrationStatus === "ready") {
     return "idle";
   }
 
@@ -26,11 +26,11 @@ export const getLiveRoomOpenState = ({
     return "expired";
   }
 
-  if (failure || connectionStatus === "failed") {
+  if (failure || connectionStatus === "failed" || hydrationStatus === "failed") {
     return "unavailable";
   }
 
-  if (timedOut && connectionStatus === "connected") {
+  if (timedOut && connectionStatus === "connected" && hydrationStatus === "waiting-for-state") {
     return "unavailable";
   }
 
