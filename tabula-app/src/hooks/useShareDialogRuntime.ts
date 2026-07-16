@@ -8,6 +8,7 @@ import {
   getWorkspaceMenuCopy,
 } from "../workspaceLocale";
 import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
+import { productAnalytics } from "../observability/productAnalytics";
 
 type UseShareDialogRuntimeOptions = {
   activeFile?: WorkspaceFile;
@@ -113,6 +114,7 @@ export function useShareDialogRuntime({
     });
 
     await navigator.clipboard.writeText(prompt);
+    productAnalytics.report("agent_invite_copied");
     setAgentPromptCopied(true);
     window.setTimeout(() => setAgentPromptCopied(false), 1200);
   };

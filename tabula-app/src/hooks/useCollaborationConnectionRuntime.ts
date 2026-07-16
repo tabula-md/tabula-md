@@ -27,6 +27,7 @@ import {
 } from "../collaboration/collabRuntime";
 import type { WorkspaceFile } from "../workspaceStorage";
 import type { RoomWorkspaceSession } from "../workspace/session/WorkspaceSession";
+import { productAnalytics } from "../observability/productAnalytics";
 
 const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   status: "idle",
@@ -99,6 +100,8 @@ export function useCollaborationConnectionRuntime({
   const collabRef = useRef<WorkspaceRoomRuntime | null>(null);
   const pendingLocalTextQueueRef = useRef<Array<{ text?: string; patches: readonly TextPatch[] }>>([]);
   const pendingWorkspaceCommandQueueRef = useRef<PendingWorkspaceCommand[]>([]);
+  const observedSecondActorRef = useRef(false);
+  const observedRemoteEditRef = useRef(false);
   const isLive = Boolean(session);
   const connectionKey = room ? `workspace:${room.roomId}:${room.shareUrl}` : "idle";
   const subscribeToSessionRuntime = useCallback(
@@ -200,6 +203,21 @@ export function useCollaborationConnectionRuntime({
   }, []);
 
   useEffect(() => {
+    observedSecondActorRef.current = false;
+    observedRemoteEditRef.current = false;
+  }, [connectionKey]);
+
+  useEffect(() => {
+    if (observedSecondActorRef.current) return;
+    const secondActor = collaborators.find((collaborator) => collaborator.id !== identity.id);
+    if (!secondActor) return;
+    observedSecondActorRef.current = true;
+    productAnalytics.report("collaborator_joined", {
+      actorKind: secondActor.kind ?? "unknown",
+    });
+  }, [collaborators, identity.id]);
+
+  useEffect(() => {
     collabRef.current?.disconnect();
     collabRef.current = null;
     pendingLocalTextQueueRef.current = [];
@@ -232,6 +250,11 @@ export function useCollaborationConnectionRuntime({
           onOpenFailure,
           onCapacityExceeded,
           onRecoveryEvent,
+          onRemoteDocumentEdit: (actorKind) => {
+            if (observedRemoteEditRef.current) return;
+            observedRemoteEditRef.current = true;
+            productAnalytics.report("collaborator_edited", { actorKind });
+          },
         });
         effectRuntime = connection;
         detachRuntime = session?.attachRuntime(connection) ?? (() => undefined);

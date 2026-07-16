@@ -135,6 +135,7 @@ type ConnectOptions = {
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
+  onRemoteDocumentEdit?: (actorKind: "agent" | "human" | "unknown") => void;
   adapters?: CollabRuntimeAdapters;
 };
 
@@ -162,6 +163,7 @@ export const createWorkspaceRoomRuntime = ({
   onRecoveryEvent,
   onOpenFailure,
   onCapacityExceeded,
+  onRemoteDocumentEdit,
   adapters = createDefaultCollabRuntimeAdapters(),
 }: ConnectOptions) => {
   const abortController = new AbortController();
@@ -424,8 +426,12 @@ export const createWorkspaceRoomRuntime = ({
     getSenderActor: presenceController.getSenderActor,
     onCapacityExceeded: notifyCapacityExceeded,
     onInvalidMessage: emitInvalidMessage,
-    onRemoteSyncApplied: ({ changed }) => {
-      if (!changed || runtimeSnapshot.hydrationStatus === "ready") return;
+    onRemoteSyncApplied: ({ changed, senderId }) => {
+      if (!changed) return;
+      if (runtimeSnapshot.hydrationStatus === "ready") {
+        onRemoteDocumentEdit?.(presenceController.getSenderActor(senderId)?.kind ?? "unknown");
+        return;
+      }
       queueMicrotask(() => {
         if (!closed) tryHydrateWorkspace("peer");
       });

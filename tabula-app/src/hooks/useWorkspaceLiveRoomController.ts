@@ -7,6 +7,7 @@ import {
   type WorkspaceFile,
 } from "../workspaceStorage";
 import type { RoomWorkspaceBootstrap } from "../workspace/session/WorkspaceSession";
+import { productAnalytics } from "../observability/productAnalytics";
 
 export type StartedWorkspaceRoom = {
   roomId: string;
@@ -60,6 +61,7 @@ export function useWorkspaceLiveRoomController({
     }
 
     await navigator.clipboard.writeText(shareUrlView.url);
+    productAnalytics.report("room_link_copied");
     setCopiedFileId(activeFile?.id ?? room.roomId);
     window.setTimeout(() => setCopiedFileId(null), 1600);
   };

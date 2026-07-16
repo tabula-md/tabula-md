@@ -817,6 +817,7 @@ describe("workspace room runtime", () => {
     const checkpoints = createMemoryRoomCheckpointStore();
     const defaults = createDefaultCollabRuntimeAdapters();
     const hostSnapshots: WorkspaceRoomStructureSnapshot[] = [];
+    const hostRemoteEdits = vi.fn();
     const agentSnapshots: WorkspaceRoomStructureSnapshot[] = [];
     const hostComments: Array<readonly WorkspaceRoomComment[]> = [];
     const agentComments: Array<readonly WorkspaceRoomComment[]> = [];
@@ -837,6 +838,7 @@ describe("workspace room runtime", () => {
       ],
       identity: { id: "human-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
       fileTitle: "A.md",
+      onRemoteDocumentEdit: hostRemoteEdits,
       adapters,
     });
     collectStructureSnapshots(host, hostSnapshots);
@@ -902,6 +904,7 @@ describe("workspace room runtime", () => {
     await vi.waitFor(() => {
       expect(host.getEditorBinding()?.yText.toString()).toBe("Alpha human");
       expect(agent.getEditorBinding()?.yText.toString()).toBe("Beta agent");
+      expect(hostRemoteEdits).toHaveBeenCalledWith("agent");
     });
     host.setActiveDocument({ documentId: "doc-b", fileTitle: "B.md" });
     agent.setActiveDocument({ documentId: "doc-a", fileTitle: "A.md" });

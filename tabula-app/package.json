@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@tabula-md/tabula": "file:../packages/tabula"
+    "@tabula-md/tabula": "file:../packages/tabula",
+    "posthog-js": "^1.402.3"
   }
 }

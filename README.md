@@ -84,6 +84,12 @@ encrypted payloads, not document keys or plaintext content.
 
 See [Privacy](PRIVACY.md) for the public product contract.
 
+Open-source and self-hosted builds have product analytics and client error
+reporting disabled by default. The official hosted service uses a manual-only
+PostHog event contract with autocapture and session recording disabled; it does
+not send Markdown, file names, prompts, room identifiers, URLs, or link
+fragments. See [Privacy](PRIVACY.md) for the collected fields and boundaries.
+
 ## Backed By
 
 Tabula.md is backed by
