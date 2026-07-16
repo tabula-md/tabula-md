@@ -34,10 +34,17 @@ const packed = spawnSync(
 assert.equal(packed.status, 0, packed.stderr || "npm pack --dry-run failed");
 
 const packedResult = JSON.parse(packed.stdout);
-const packResult = Array.isArray(packedResult) ? packedResult[0] : packedResult;
+// npm 11 returns the packed workspace as an array. npm 12 returns a map
+// keyed by workspace name. Accept both, plus the direct package result used by
+// some npm releases, so the release gate stays compatible with npm@latest.
+const packResult = Array.isArray(packedResult)
+  ? packedResult[0]
+  : packedResult?.files
+    ? packedResult
+    : packedResult?.[manifest.name];
 assert.ok(
   packResult && typeof packResult === "object" && Array.isArray(packResult.files),
-  "npm pack --json returned an invalid package manifest.",
+  `npm pack --json did not return a package manifest for ${manifest.name}.`,
 );
 const packedFiles = new Set(packResult.files.map(({ path: file }) => file));
 for (const requiredFile of [
