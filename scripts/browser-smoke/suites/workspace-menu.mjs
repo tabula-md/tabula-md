@@ -150,6 +150,30 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
+    const marker = "Referral navigation keeps this local document.";
+    await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
+    await waitForActiveTab(page, { exact: "Untitled.md" });
+    await waitForEditorReady(page, { mode: "edit" });
+    await page.locator(".cm-content").click();
+    await page.keyboard.insertText(marker);
+    await page.waitForTimeout(600);
+    await waitForSavedLocally(page);
+
+    const referralUrl = new URL(page.url());
+    referralUrl.searchParams.set("ref", "linkedin");
+    await page.goto(referralUrl.toString());
+    await page.waitForSelector(".tabbar");
+    await waitForActiveTab(page, { exact: "Untitled.md" });
+    await waitForEditorReady(page, { mode: "edit" });
+
+    expect(new URL(page.url()).searchParams.get("ref") === "linkedin", "Referral navigation should keep its source label.");
+    expect(
+      (await page.locator(".cm-content").textContent())?.includes(marker),
+      "Referral query navigation should restore the existing local workspace from the same origin.",
+    );
+  });
+
+  await withPage(browser, "/", async (page) => {
     await page.locator('input[aria-label="Open workspace"]').evaluate((input) => {
       const dataTransfer = new DataTransfer();
       const launchNotes = new File(["# Launch notes\n\nReady."], "Launch notes.md", { type: "text/markdown" });
