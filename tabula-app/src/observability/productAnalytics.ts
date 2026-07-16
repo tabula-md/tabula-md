@@ -12,9 +12,13 @@ export type ProductEventActorKind = "agent" | "human" | "unknown";
 
 type ProductEventProperties = {
   actorKind?: ProductEventActorKind;
+  roomId?: string;
 };
 
 type ProductAnalyticsClient = Pick<PostHog, "capture">;
+
+const INTERNAL_ANALYTICS_STORAGE_KEY = "tabula.analytics.internal";
+const COLLABORATION_ID_NAMESPACE = "tabula-product-analytics-v1";
 
 const PRODUCT_EVENT_NAMES = new Set<ProductEventName>([
   "room_created",
@@ -41,10 +45,45 @@ const copyProperty = (
 export const sanitizePostHogProductEvent = (event: CaptureResult | null): CaptureResult | null => {
   if (!event || !isProductEventName(event.event)) return null;
   const properties: Record<string, unknown> = {};
-  for (const key of ["token", "distinct_id", "$session_id", "$process_person_profile", "app_version", "actor_kind"]) {
+  for (const key of [
+    "token",
+    "distinct_id",
+    "$session_id",
+    "$process_person_profile",
+    "app_version",
+    "actor_kind",
+    "collaboration_id",
+    "is_internal",
+  ]) {
     copyProperty(properties, event.properties, key);
   }
   return { ...event, properties } as CaptureResult;
+};
+
+const encodeBase64Url = (bytes: Uint8Array) => {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+};
+
+export const deriveCollaborationId = async (roomId: string): Promise<string | null> => {
+  const normalizedRoomId = roomId.trim();
+  if (!normalizedRoomId || typeof crypto === "undefined" || !crypto.subtle) return null;
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${COLLABORATION_ID_NAMESPACE}:${normalizedRoomId}`),
+  );
+  return `collab_${encodeBase64Url(new Uint8Array(digest).slice(0, 16))}`;
+};
+
+const isInternalAnalyticsSession = () => {
+  if (typeof window === "undefined") return false;
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") return true;
+  try {
+    return window.localStorage.getItem(INTERNAL_ANALYTICS_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
 };
 
 export const createProductAnalytics = ({
@@ -56,18 +95,22 @@ export const createProductAnalytics = ({
 } = {}) => ({
   report(name: ProductEventName, properties: ProductEventProperties = {}) {
     if (!client) return;
-    const actorKind = properties.actorKind;
-    const eventProperties = {
-      app_version: appVersion.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 32),
-      ...(actorKind === "agent" || actorKind === "human" || actorKind === "unknown"
-        ? { actor_kind: actorKind }
-        : {}),
-    };
-    if ("then" in client) {
-      void client.then((loadedClient) => loadedClient?.capture(name, eventProperties));
-      return;
-    }
-    client.capture(name, eventProperties);
+    void (async () => {
+      const actorKind = properties.actorKind;
+      const collaborationId = properties.roomId
+        ? await deriveCollaborationId(properties.roomId)
+        : null;
+      const eventProperties = {
+        app_version: appVersion.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 32),
+        is_internal: isInternalAnalyticsSession(),
+        ...(collaborationId ? { collaboration_id: collaborationId } : {}),
+        ...(actorKind === "agent" || actorKind === "human" || actorKind === "unknown"
+          ? { actor_kind: actorKind }
+          : {}),
+      };
+      const loadedClient = "then" in client ? await client : client;
+      loadedClient?.capture(name, eventProperties);
+    })();
   },
 });
 

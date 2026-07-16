@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { CaptureResult } from "posthog-js";
 import {
   createProductAnalytics,
+  deriveCollaborationId,
   initializeProductAnalytics,
   sanitizePostHogProductEvent,
 } from "./productAnalytics";
@@ -14,18 +15,33 @@ describe("product analytics", () => {
     expect(capture).not.toHaveBeenCalled();
   });
 
-  it("captures only the typed event properties", () => {
+  it("captures only the typed event properties", async () => {
     const capture = vi.fn();
     const analytics = createProductAnalytics({
       appVersion: "0.1.0\nignored",
       client: { capture },
     });
 
-    analytics.report("collaborator_edited", { actorKind: "agent" });
+    analytics.report("collaborator_edited", { actorKind: "agent", roomId: "public-room-id" });
+    await vi.waitFor(() => expect(capture).toHaveBeenCalledOnce());
+    const collaborationId = await deriveCollaborationId("public-room-id");
     expect(capture).toHaveBeenCalledWith("collaborator_edited", {
       app_version: "0.1.0ignored",
       actor_kind: "agent",
+      collaboration_id: collaborationId,
+      is_internal: false,
     });
+  });
+
+  it("derives a stable opaque collaboration id without exposing the room id", async () => {
+    const first = await deriveCollaborationId("public-room-id");
+    const second = await deriveCollaborationId("public-room-id");
+    const different = await deriveCollaborationId("another-room-id");
+
+    expect(first).toBe(second);
+    expect(first).not.toBe(different);
+    expect(first).toMatch(/^collab_[A-Za-z0-9_-]{22}$/);
+    expect(first).not.toContain("public-room-id");
   });
 
   it("drops non-product events and strips URL, document, DOM, and referrer properties", () => {
@@ -36,6 +52,8 @@ describe("product analytics", () => {
       $process_person_profile: false,
       app_version: "0.1.0",
       actor_kind: "agent",
+      collaboration_id: "collab_safe",
+      is_internal: false,
       $current_url: "https://tabula.md/#room=roomId,SECRET_KEY",
       $pathname: "/workspace",
       $referrer: "https://example.com/private",
@@ -58,6 +76,8 @@ describe("product analytics", () => {
       $process_person_profile: false,
       app_version: "0.1.0",
       actor_kind: "agent",
+      collaboration_id: "collab_safe",
+      is_internal: false,
     });
     expect(serialized).not.toMatch(/SECRET_KEY|roomId|private document|private prompt|current_url|referrer|elements/i);
     expect(sanitizePostHogProductEvent({
