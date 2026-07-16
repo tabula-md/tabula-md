@@ -12,6 +12,10 @@ const productDescription =
   "Open a Markdown folder, share one link, and edit together with people or AI—no signup or repository required.";
 const appIndexPath = "tabula-app/index.html";
 const socialCardPath = "tabula-app/public/social-card.png";
+const productDemoPaths = [
+  ".github/assets/tabula-product-demo.gif",
+  ".github/assets/tabula-agent-demo.gif",
+];
 
 const appIndex = readFileSync(appIndexPath, "utf8");
 const requiredAppMetadata = [
@@ -39,6 +43,21 @@ if (!existsSync(socialCardPath)) {
     errors.push(`${socialCardPath}: social sharing card must be a PNG`);
   } else if (socialCard.readUInt32BE(16) !== 1200 || socialCard.readUInt32BE(20) !== 630) {
     errors.push(`${socialCardPath}: social sharing card must be 1200x630`);
+  }
+}
+
+for (const demoPath of productDemoPaths) {
+  if (!existsSync(demoPath)) {
+    errors.push(`${demoPath}: product demo is missing`);
+    continue;
+  }
+
+  const demo = readFileSync(demoPath);
+  const signature = demo.subarray(0, 6).toString("ascii");
+  if (signature !== "GIF87a" && signature !== "GIF89a") {
+    errors.push(`${demoPath}: product demo must be a GIF`);
+  } else if (demo.readUInt16LE(6) !== 960 || demo.readUInt16LE(8) !== 540) {
+    errors.push(`${demoPath}: product demo must be 960x540`);
   }
 }
 

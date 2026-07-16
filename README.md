@@ -36,6 +36,19 @@ Tabula.md is in public preview. The hosted app at
 
 ## Use with an AI agent
 
+Give Codex or another agent a live room link and a concrete task. It joins the
+same workspace, reads the files, and writes Markdown back while you watch.
+
+<p align="center">
+  <a href="https://tabula.md" target="_blank" rel="noopener">
+    <img
+      src=".github/assets/tabula-agent-demo.gif"
+      alt="Codex joining a live Tabula.md room, reading three Markdown files, and creating risks.md"
+      width="960"
+    />
+  </a>
+</p>
+
 Connect Codex:
 
 ```sh
@@ -48,9 +61,10 @@ Connect Claude Code:
 claude mcp add tabula -- npx -y @tabula-md/mcp@latest
 ```
 
-Then create a live session in Tabula.md and give the agent the complete room
-URL with a concrete task. The URL is a bearer secret: anyone with it can join
-and decrypt the session, so do not put it in logs, issues, or public messages.
+After connecting, create a live session in Tabula.md and give the agent the
+complete room URL with a concrete task. The URL is a bearer secret: anyone with
+it can join and decrypt the session, so do not put it in logs, issues, or public
+messages.
 
 See [Tabula.md MCP](https://github.com/tabula-md/tabula-mcp) for Claude Desktop,
 other MCP clients, and self-hosting.
