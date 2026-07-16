@@ -6,6 +6,7 @@ import ts from "typescript";
 const root = process.cwd();
 const coreRoot = path.join(root, "packages/tabula/src");
 const appRoot = path.join(root, "tabula-app/src");
+const coreWorkbenchRoot = path.join(coreRoot, "workbench");
 
 const errors = [];
 
@@ -30,6 +31,11 @@ const forbiddenCoreImports = [
 ];
 
 const toRepoPath = (filePath) => path.relative(root, filePath).replaceAll(path.sep, "/");
+
+const isCoreWorkbenchFile = (filePath) => {
+  const normalizedWorkbenchRoot = `${path.resolve(coreWorkbenchRoot)}${path.sep}`;
+  return path.resolve(filePath).startsWith(normalizedWorkbenchRoot);
+};
 
 const collectSourceFiles = (directory) => {
   if (!existsSync(directory)) {
@@ -224,9 +230,13 @@ const reportAppCoreImports = (sourceFile) => {
       return;
     }
 
-    if (moduleSpecifier.startsWith("@tabula-md/tabula/")) {
+    const isPublishedWorkbenchImport =
+      moduleSpecifier === "@tabula-md/tabula/workbench" ||
+      moduleSpecifier === "@tabula-md/tabula/workbench/internal";
+
+    if (moduleSpecifier.startsWith("@tabula-md/tabula/") && !isPublishedWorkbenchImport) {
       errors.push(
-        `${formatLocation(sourceFile, node)}: tabula-app must import @tabula-md/tabula through its public root API`,
+        `${formatLocation(sourceFile, node)}: tabula-app must import @tabula-md/tabula through its public root API or published workbench subpath`,
       );
     }
 
@@ -247,8 +257,10 @@ const reportAppCoreImports = (sourceFile) => {
 
 for (const filePath of collectSourceFiles(coreRoot)) {
   const sourceFile = parseSourceFile(filePath);
-  reportCoreImportBoundaries(sourceFile);
-  reportCoreBrowserGlobals(sourceFile);
+  if (!isCoreWorkbenchFile(filePath)) {
+    reportCoreImportBoundaries(sourceFile);
+    reportCoreBrowserGlobals(sourceFile);
+  }
 }
 
 for (const filePath of collectSourceFiles(appRoot)) {

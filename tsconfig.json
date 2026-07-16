@@ -13,7 +13,9 @@
     "moduleResolution": "Node",
     "baseUrl": ".",
     "paths": {
-      "@tabula-md/tabula": ["packages/tabula/src/index.ts"]
+      "@tabula-md/tabula": ["packages/tabula/src/index.ts"],
+      "@tabula-md/tabula/workbench": ["packages/tabula/src/workbench/index.ts"],
+      "@tabula-md/tabula/workbench/internal": ["packages/tabula/src/workbench/internal.ts"]
     },
     "resolveJsonModule": true,
     "isolatedModules": true,

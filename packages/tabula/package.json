@@ -1,10 +1,12 @@
 {
   "name": "@tabula-md/tabula",
-  "version": "0.2.0",
-  "description": "Tabula.md document, workspace CRDT, protocol, and share-link contracts.",
+  "version": "0.3.0",
+  "description": "Tabula.md document, workspace CRDT, protocol, share-link, and embeddable workbench contracts.",
   "license": "MIT",
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/workbench.css"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -35,10 +37,21 @@
     "./room": {
       "types": "./dist/room/envelope.d.ts",
       "import": "./dist/room/envelope.js"
-    }
+    },
+    "./workbench": {
+      "types": "./src/workbench/index.d.ts",
+      "import": "./dist/workbench.js"
+    },
+    "./workbench/internal": {
+      "import": "./dist/workbench/internal.js"
+    },
+    "./workbench.css": "./dist/workbench.css"
   },
   "files": [
-    "dist",
+    "dist/**/*.css",
+    "dist/**/*.d.ts",
+    "dist/**/*.js",
+    "src/workbench/index.d.ts",
     "README.md",
     "package.json"
   ],
@@ -73,8 +86,18 @@
   },
   "peerDependencies": {
     "lib0": "^0.2.117",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "vite": "^6.0.0"
