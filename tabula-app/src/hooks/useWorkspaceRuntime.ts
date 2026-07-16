@@ -35,7 +35,6 @@ import {
   README_FILE_ID,
   WORKSPACE_ROOT_FOLDER_ID,
   syncUrlForLocalWorkspace,
-  syncUrlForRoom,
   type FileViewMode,
   type FileComment,
   type FileCommentReply,
@@ -83,7 +82,6 @@ import { useWorkspaceShareRuntime } from "./useWorkspaceShareRuntime";
 import { useWorkspaceTopChromeRuntime } from "./useWorkspaceTopChromeRuntime";
 import {
   getLiveRoomOpenState,
-  LIVE_ROOM_OPEN_TIMEOUT_MS,
   type LiveRoomOpenFailure,
 } from "../liveRoomOpenState";
 import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
@@ -100,6 +98,7 @@ import {
   type WorkspaceSessionHost,
 } from "../workspace/session/WorkspaceSessionHost";
 import type { WorkspaceInfoDialogKind } from "../components/WorkspaceInfoDialog";
+import { useLiveRoomConnectionLifecycle } from "./useLiveRoomConnectionLifecycle";
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -211,10 +210,7 @@ export function useWorkspaceRuntime() {
     replied: () => undefined,
   });
   const materializeRoomWorkspaceRef = useRef<() => WorkspaceRoomSnapshot | undefined>(() => undefined);
-  const failedLiveRoomStartRef = useRef<string | null>(null);
-  const [liveRoomOpenTimedOut, setLiveRoomOpenTimedOut] = useState(false);
   const [liveRoomOpenFailure, setLiveRoomOpenFailure] = useState<LiveRoomOpenFailure | null>(null);
-  const syncedLiveRoomUrlRef = useRef<string | null>(null);
   const persistenceErrorShownRef = useRef(false);
   const activeRoomId = activeRoom?.roomId;
   const activeRoomDocument = activeRoom ? activeFile : undefined;
@@ -778,7 +774,6 @@ export function useWorkspaceRuntime() {
     };
   }, [activeRoomId, addRoomCommentReply, deleteRoomComment, files, setRoomCommentResolved, upsertRoomComment]);
   const isLiveConnected = isLive && connectionStatus === "connected";
-  const isLiveChromeVisible = isLive && !liveRoomOpenFailure && !liveRoomOpenTimedOut;
   const {
     canRedo,
     canUndo,
@@ -837,27 +832,6 @@ export function useWorkspaceRuntime() {
       showToast,
       startCollaborationSession,
     });
-  useEffect(() => {
-    if (
-      !activeRoom ||
-      connectionStatus !== "connected" ||
-      hydrationStatus !== "waiting-for-state"
-    ) {
-      setLiveRoomOpenTimedOut(false);
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setLiveRoomOpenTimedOut(true);
-    }, LIVE_ROOM_OPEN_TIMEOUT_MS);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [activeRoom, connectionStatus, hydrationStatus]);
-  const retryOpeningLiveRoom = useEventCallback(() => {
-    setLiveRoomOpenTimedOut(false);
-    setLiveRoomOpenFailure(null);
-    retryCollaborationConnection();
-  });
   const openLocalWorkspaceAfterRoomFailure = useEventCallback(() => {
     flushPendingEditorCommit();
     stopSession();
@@ -920,49 +894,24 @@ export function useWorkspaceRuntime() {
     workspaceSessionHost.openLocal();
     setLiveRoomOpenFailure(null);
   });
-  useEffect(() => {
-    const roomId = activeRoomId;
-    if (!roomId || connectionStatus !== "failed") {
-      return;
-    }
-    if (activeRoom && !activeFile) {
-      return;
-    }
-    if (failedLiveRoomStartRef.current === roomId) {
-      return;
-    }
-
-    failedLiveRoomStartRef.current = roomId;
+  const handleLiveRoomConnectionFailed = useEventCallback(() => {
     setTopPopover(null);
     showToast(workspaceShareCopy.live.unavailable, "error");
     stopSessionWithPendingCommit();
-  }, [
-    activeRoomId,
+  });
+  const {
+    retryOpeningRoom: retryOpeningLiveRoom,
+    timedOut: liveRoomOpenTimedOut,
+  } = useLiveRoomConnectionLifecycle({
+    activeFileAvailable: Boolean(activeFile),
+    activeRoom,
     connectionStatus,
-    setTopPopover,
-    showToast,
-    stopSessionWithPendingCommit,
-  ]);
-  useEffect(() => {
-    if (connectionStatus === "connected" || !activeRoomId) {
-      failedLiveRoomStartRef.current = null;
-    }
-  }, [activeRoomId, connectionStatus]);
-  useEffect(() => {
-    if (!activeRoom) {
-      syncedLiveRoomUrlRef.current = null;
-      return;
-    }
-    if (connectionStatus !== "connected") {
-      return;
-    }
-    if (syncedLiveRoomUrlRef.current === activeRoom.roomId) {
-      return;
-    }
-
-    syncedLiveRoomUrlRef.current = activeRoom.roomId;
-    syncUrlForRoom(activeRoom);
-  }, [activeRoom, activeRoomId, connectionStatus]);
+    hydrationStatus,
+    onConnectionFailed: handleLiveRoomConnectionFailed,
+    onRetryConnection: retryCollaborationConnection,
+    setFailure: setLiveRoomOpenFailure,
+  });
+  const isLiveChromeVisible = isLive && !liveRoomOpenFailure && !liveRoomOpenTimedOut;
   const handleRouteWorkspaceChange = useEventCallback(() => {
     setTopPopover(null);
     setCenterPopover(null);
