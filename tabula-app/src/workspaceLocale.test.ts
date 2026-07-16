@@ -17,6 +17,18 @@ describe("workspace locale chrome copy", () => {
     ]);
   });
 
+  it("keeps the start message action-first in every language", () => {
+    expect(WORKSPACE_LANGUAGE_OPTIONS.map(({ value }) => getWorkspaceMenuCopy(value).emptyState.tagline)).toEqual([
+      "Open Markdown. Share one link. Edit together.",
+      "Markdown을 여세요. 링크 하나를 공유하고 함께 편집하세요.",
+      "Markdownを開く。リンクを共有して、一緒に編集。",
+      "打开 Markdown。分享一个链接，一起编辑。",
+      "Abre Markdown. Comparte un enlace. Edita en equipo.",
+      "Ouvrez Markdown. Partagez un lien. Modifiez ensemble.",
+      "Markdown öffnen. Einen Link teilen. Gemeinsam bearbeiten.",
+    ]);
+  });
+
   it("localizes Preferences, empty state, and Share chrome together", () => {
     const english = getWorkspaceMenuCopy("en");
     expect(english.actions.preferences).toBe("Preferences");
@@ -25,7 +37,7 @@ describe("workspace locale chrome copy", () => {
     expect(english.actions.exportFile).toBe("Export document (.md)");
     expect(english.actions.exportWorkspace).toBe("Export workspace (.zip)");
     expect(english.emptyState.tagline).toBe(
-      "A local-first workspace for files that people and agents can share safely.",
+      "Open Markdown. Share one link. Edit together.",
     );
     expect(english.emptyState.newFile).toBe("New document");
     expect(english.share.live.startSession).toBe("Start session");

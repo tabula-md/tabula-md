@@ -7,9 +7,9 @@
 <h1 align="center">Tabula.md</h1>
 
 <p align="center">
-  A local-first Markdown workspace where people and AI agents edit the same files.
+  <strong>Share Markdown. Keep it Markdown.</strong>
   <br />
-  No account or platform workspace required.
+  Open a folder, share one link, and edit together—without accounts, repositories, or platform migration.
 </p>
 
 <p align="center"><a href="https://tabula.md">Open Tabula.md</a></p>
@@ -18,7 +18,7 @@
   <a href="https://tabula.md" target="_blank" rel="noopener">
     <img
       src=".github/assets/tabula-product-demo.gif"
-      alt="An agent and a browser editing the same Tabula.md Markdown workspace"
+      alt="A Markdown folder becoming a live Tabula.md room that two people edit together"
       width="960"
     />
   </a>
@@ -26,10 +26,10 @@
 
 ## Why Tabula.md
 
-- Open a Markdown workspace without signing up.
+- Open a Markdown folder without signing up.
 - Keep Markdown files as the source of truth.
 - Share the whole workspace with one encrypted room link.
-- Let people and AI agents edit through the same collaboration model.
+- Edit together in the browser, or invite an AI agent from its own tools.
 
 Tabula.md is in public preview. The hosted app at
 [tabula.md](https://tabula.md) is the reference deployment.

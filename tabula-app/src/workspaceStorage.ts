@@ -28,12 +28,12 @@ const STARTER_MARKDOWN = "";
 export const README_FILE_ID = "tabula-readme";
 export const STARTER_README_MARKDOWN = `---
 title: ${PRODUCT_NAME}
-description: A local-first Markdown workspace for files that people and agents can share safely.
+description: Share Markdown. Keep it Markdown.
 ---
 
-${PRODUCT_NAME} is a local-first Markdown workspace for files that people and agents can share safely.
+Share Markdown. Keep it Markdown.
 
-No dashboard first. No project ceremony. Open a workspace, write Markdown, and start a live room when the workspace is ready to collaborate.
+Open a folder, share one link, and edit together without moving your files into another platform.
 
 ## Start here
 

@@ -23,7 +23,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     close: "Close",
     about: {
       title: "About Tabula.md",
-      description: "A local-first Markdown workspace for files that people and agents can share safely.",
+      description: "Open a Markdown folder, share one link, and edit together with people or AI.",
       points: [
         "Markdown files remain the primary unit of work.",
         "Local work stays in this browser until you export or share it.",
@@ -44,7 +44,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     close: "닫기",
     about: {
       title: "Tabula.md 소개",
-      description: "사람과 에이전트가 파일을 안전하게 공유할 수 있는 로컬 우선 Markdown 워크스페이스입니다.",
+      description: "Markdown 폴더를 열고 링크 하나로 사람이나 AI와 함께 편집하세요.",
       points: [
         "Markdown 파일이 작업의 기본 단위입니다.",
         "내보내거나 공유하기 전까지 로컬 작업은 이 브라우저에 저장됩니다.",
@@ -65,7 +65,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     close: "閉じる",
     about: {
       title: "Tabula.md について",
-      description: "人とエージェントがファイルを安全に共有できる、ローカルファーストの Markdown ワークスペースです。",
+      description: "Markdown フォルダーを開き、リンクを共有して、人や AI と一緒に編集できます。",
       points: [
         "Markdown ファイルが作業の基本単位です。",
         "エクスポートまたは共有するまで、ローカル作業はこのブラウザーに保存されます。",
@@ -86,7 +86,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     close: "关闭",
     about: {
       title: "关于 Tabula.md",
-      description: "一个本地优先的 Markdown 工作区，让用户和代理安全地共享文件。",
+      description: "打开 Markdown 文件夹，分享一个链接，即可与他人或 AI 一起编辑。",
       points: [
         "Markdown 文件是工作的基本单位。",
         "在导出或共享之前，本地工作保存在此浏览器中。",
@@ -107,7 +107,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     close: "Cerrar",
     about: {
       title: "Acerca de Tabula.md",
-      description: "Un espacio Markdown local primero para compartir archivos de forma segura entre personas y agentes.",
+      description: "Abre una carpeta Markdown, comparte un enlace y edita con personas o IA.",
       points: [
         "Los archivos Markdown son la unidad principal de trabajo.",
         "El trabajo local permanece en este navegador hasta que se exporta o comparte.",
@@ -128,7 +128,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     close: "Fermer",
     about: {
       title: "À propos de Tabula.md",
-      description: "Un espace Markdown local-first pour partager des fichiers en toute sécurité entre personnes et agents.",
+      description: "Ouvrez un dossier Markdown, partagez un lien et modifiez-le avec des personnes ou une IA.",
       points: [
         "Les fichiers Markdown restent l’unité de travail principale.",
         "Le travail local reste dans ce navigateur jusqu’à son export ou partage.",
@@ -149,7 +149,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceInfoCopy> = {
     close: "Schließen",
     about: {
       title: "Über Tabula.md",
-      description: "Ein lokal ausgerichteter Markdown-Arbeitsbereich zum sicheren Teilen von Dateien zwischen Menschen und Agenten.",
+      description: "Öffne einen Markdown-Ordner, teile einen Link und bearbeite ihn gemeinsam mit Menschen oder KI.",
       points: [
         "Markdown-Dateien bleiben die zentrale Arbeitseinheit.",
         "Lokale Arbeit bleibt bis zum Export oder Teilen in diesem Browser.",

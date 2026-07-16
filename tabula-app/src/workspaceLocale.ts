@@ -139,8 +139,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Dark",
     },
     emptyState: {
-      tagline:
-        "A local-first workspace for files that people and agents can share safely.",
+      tagline: "Open Markdown. Share one link. Edit together.",
       newFile: "New document",
       openFile: "Open Markdown file",
       openWorkspace: "Open workspace",
@@ -242,8 +241,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "다크",
     },
     emptyState: {
-      tagline:
-        "사람과 에이전트가 안전하게 공유할 수 있는 로컬 우선 작업공간.",
+      tagline: "Markdown을 여세요. 링크 하나를 공유하고 함께 편집하세요.",
       newFile: "새 문서",
       openFile: "Markdown 파일 열기",
       openWorkspace: "워크스페이스 열기",
@@ -345,8 +343,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "ダーク",
     },
     emptyState: {
-      tagline:
-        "人とエージェントが安全に共有できるローカルファーストのワークスペース。",
+      tagline: "Markdownを開く。リンクを共有して、一緒に編集。",
       newFile: "新規ドキュメント",
       openFile: "Markdownファイルを開く",
       openWorkspace: "ワークスペースを開く",
@@ -450,7 +447,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "深色",
     },
     emptyState: {
-      tagline: "让人与编码智能体安全共享文件的本地优先工作区。",
+      tagline: "打开 Markdown。分享一个链接，一起编辑。",
       newFile: "新建文档",
       openFile: "打开 Markdown 文件",
       openWorkspace: "打开工作区",
@@ -550,8 +547,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Oscuro",
     },
     emptyState: {
-      tagline:
-        "Un espacio local-first para compartir archivos con personas y agentes.",
+      tagline: "Abre Markdown. Comparte un enlace. Edita en equipo.",
       newFile: "Nuevo documento",
       openFile: "Abrir archivo Markdown",
       openWorkspace: "Abrir espacio de trabajo",
@@ -655,8 +651,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Sombre",
     },
     emptyState: {
-      tagline:
-        "Un espace local-first pour partager des fichiers avec des personnes et des agents.",
+      tagline: "Ouvrez Markdown. Partagez un lien. Modifiez ensemble.",
       newFile: "Nouveau document",
       openFile: "Ouvrir un fichier Markdown",
       openWorkspace: "Ouvrir un espace de travail",
@@ -760,8 +755,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       dark: "Dunkel",
     },
     emptyState: {
-      tagline:
-        "Ein local-first Workspace zum sicheren Teilen von Dateien mit Menschen und Agenten.",
+      tagline: "Markdown öffnen. Einen Link teilen. Gemeinsam bearbeiten.",
       newFile: "Neues Dokument",
       openFile: "Markdown-Datei öffnen",
       openWorkspace: "Workspace öffnen",

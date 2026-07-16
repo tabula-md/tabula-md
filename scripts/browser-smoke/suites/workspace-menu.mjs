@@ -376,7 +376,7 @@ export async function run(ctx) {
     );
     expect(
       emptyChromeState.workspaceText.includes(
-        "A local-first workspace for files that people and agents can share safely.",
+        "Open Markdown. Share one link. Edit together.",
       ) &&
         !emptyChromeState.workspaceText.includes("Start with Markdown.") &&
         !emptyChromeState.workspaceText.includes("Tabula turns Markdowns into collaborative documents for people and agents.") &&
@@ -459,7 +459,7 @@ export async function run(ctx) {
     expect(reloadedNoOpenState.tabCount === 0, "Reloading with no open tabs should preserve the openTabs state.");
     expect(
       reloadedNoOpenState.text.includes(
-        "A local-first workspace for files that people and agents can share safely.",
+        "Open Markdown. Share one link. Edit together.",
       ),
       "Reloading with no open tabs should keep the branded start state.",
     );
