@@ -9,7 +9,7 @@ const trackedFiles = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" 
 const errors = [];
 
 const productDescription =
-  "A local-first Markdown workspace where people and AI agents edit the same files.";
+  "Open a Markdown folder, share one link, and edit together with people or AI—no signup or repository required.";
 const appIndexPath = "tabula-app/index.html";
 const socialCardPath = "tabula-app/public/social-card.png";
 
