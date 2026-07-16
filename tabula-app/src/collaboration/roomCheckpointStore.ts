@@ -48,13 +48,6 @@ export const createNoopRoomCheckpointStore = (): RoomCheckpointStore => ({
   },
 });
 
-export const getRoomCheckpointAvailability = () => ({
-  available: Boolean(tabulaServiceConfig.firebaseConfig),
-  unavailableReason: tabulaServiceConfig.firebaseConfig
-    ? ""
-    : tabulaServiceConfig.copy.roomCheckpointUnconfiguredMessage,
-});
-
 export const createDefaultRoomCheckpointStore = (): RoomCheckpointStore => {
   if (tabulaServiceConfig.firebaseConfig) {
     return createLazyFirebaseRoomCheckpointStore(tabulaServiceConfig.firebaseConfig);

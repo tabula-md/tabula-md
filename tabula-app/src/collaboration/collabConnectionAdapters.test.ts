@@ -257,6 +257,101 @@ describe("workspace room runtime", () => {
     runtime.disconnect();
   });
 
+  it("connects to the relay while checkpoint recovery is still pending", async () => {
+    const checkpoint = createDeferred<Awaited<ReturnType<RoomCheckpointStore["loadEncryptedCheckpoint"]>>>();
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const runtime = createWorkspaceRoomRuntime({
+      roomId: "room-peer-first",
+      roomKey: VALID_ROOM_KEY,
+      emitInitialWorkspaceState: false,
+      identity: { id: "peer", name: "Curious Human", color: "#7c3aed", lastSeen: 0 },
+      adapters: {
+        ...defaults,
+        createRoomTransport: transport.createRoomTransport,
+        roomCheckpointStore: {
+          enabled: true,
+          loadEncryptedCheckpoint: () => checkpoint.promise,
+          saveEncryptedCheckpoint: vi.fn<RoomCheckpointStore["saveEncryptedCheckpoint"]>(
+            async () => ({ ok: true, generation: 1 }),
+          ),
+        },
+        resolveRoomBaseUrl: () => "http://room.test",
+      },
+    });
+
+    await vi.waitFor(() => expect(runtime.getSnapshot()).toMatchObject({
+      status: "connected",
+      hydrationStatus: "loading-checkpoint",
+    }));
+    checkpoint.resolve(null);
+    await vi.waitFor(() => expect(runtime.getSnapshot()).toMatchObject({
+      status: "connected",
+      hydrationStatus: "waiting-for-state",
+    }));
+    runtime.disconnect();
+  });
+
+  it("waits for checkpoint recovery before persisting state received from a peer", async () => {
+    const relay = createMemoryRoomRelay();
+    const checkpoint = createDeferred<Awaited<ReturnType<RoomCheckpointStore["loadEncryptedCheckpoint"]>>>();
+    const saveEncryptedCheckpoint = vi.fn<RoomCheckpointStore["saveEncryptedCheckpoint"]>(
+      async () => ({ ok: true, generation: 1 }),
+    );
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const host = createWorkspaceRoomRuntime({
+      roomId: "room-peer-first-save",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc", title: "README.md", text: "from connected host" }],
+      identity: { id: "z-host", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      adapters: {
+        ...defaults,
+        createRoomTransport: relay.createRoomTransport,
+        prepareRoomTransport: async () => undefined,
+        roomCheckpointStore: createNoopRoomCheckpointStore(),
+        resolveRoomBaseUrl: () => "http://room.test",
+      },
+    });
+    await vi.waitFor(() => expect(host.getSnapshot().status).toBe("connected"));
+
+    const peer = createWorkspaceRoomRuntime({
+      roomId: "room-peer-first-save",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: false,
+      identity: { id: "a-peer", name: "Curious Agent", color: "#7c3aed", lastSeen: 0 },
+      adapters: {
+        ...defaults,
+        createRoomTransport: relay.createRoomTransport,
+        prepareRoomTransport: async () => undefined,
+        roomCheckpointStore: {
+          enabled: true,
+          loadEncryptedCheckpoint: () => checkpoint.promise,
+          saveEncryptedCheckpoint,
+        },
+        resolveRoomBaseUrl: () => "http://room.test",
+      },
+    });
+
+    await vi.waitFor(() => expect(peer.getSnapshot()).toMatchObject({
+      status: "connected",
+      hydrationStatus: "ready",
+      hydrationSource: "peer",
+    }));
+    expect(peer.materializeDocument("doc")).toBe("from connected host");
+    expect(saveEncryptedCheckpoint).not.toHaveBeenCalled();
+
+    checkpoint.resolve(null);
+    await vi.waitFor(() => expect(saveEncryptedCheckpoint).toHaveBeenCalledTimes(1));
+    expect(saveEncryptedCheckpoint.mock.calls[0]![1].expectedGeneration).toBe(0);
+    await vi.waitFor(() => expect(peer.getSnapshot().durability).toBe("clean"));
+
+    host.disconnect();
+    peer.disconnect();
+  });
+
   it("uses the persisted host checkpoint without downloading it again", async () => {
     const roomId = "room-host-bootstrap";
     const seedDoc = new Y.Doc();
@@ -302,6 +397,62 @@ describe("workspace room runtime", () => {
     expect(loadEncryptedCheckpoint).not.toHaveBeenCalled();
     expect(saveEncryptedCheckpoint).not.toHaveBeenCalled();
 
+    connection.disconnect();
+    seedDoc.destroy();
+  });
+
+  it("opens from an unsaved host bootstrap and persists it after joining", async () => {
+    const roomId = "room-host-background-checkpoint";
+    const seedDoc = new Y.Doc();
+    const seedRoom = createWorkspaceRoomCrdt({ roomId, doc: seedDoc });
+    initializeWorkspaceRoomCrdt(seedRoom, {
+      nodes: [{
+        id: "doc-1",
+        type: "document",
+        parentId: "workspace-root",
+        title: "README.md",
+        markdown: "# Ready now",
+      }],
+      comments: [],
+    });
+    const save = createDeferred<Awaited<ReturnType<RoomCheckpointStore["saveEncryptedCheckpoint"]>>>();
+    const saveEncryptedCheckpoint = vi.fn<RoomCheckpointStore["saveEncryptedCheckpoint"]>(() => save.promise);
+    const loadEncryptedCheckpoint = vi.fn<RoomCheckpointStore["loadEncryptedCheckpoint"]>();
+    const transport = createConnectedTransport();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const connection = createWorkspaceRoomRuntime({
+      roomId,
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc-1",
+      emitInitialWorkspaceState: false,
+      initialCheckpoint: {
+        checkpointUpdate: Y.encodeStateAsUpdate(seedDoc),
+        generation: 0,
+      },
+      identity: { id: "host-1", name: "Curious Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      adapters: {
+        ...defaults,
+        createRoomTransport: transport.createRoomTransport,
+        prepareRoomTransport: async () => undefined,
+        roomCheckpointStore: { enabled: true, loadEncryptedCheckpoint, saveEncryptedCheckpoint },
+        resolveRoomBaseUrl: () => "http://room.test",
+      },
+    });
+
+    await vi.waitFor(() => expect(connection.getSnapshot()).toMatchObject({
+      status: "connected",
+      hydrationStatus: "ready",
+      hydrationSource: "bootstrap",
+      durability: "saving",
+    }));
+    expect(connection.getDocumentTextSnapshot("doc-1")).toBe("# Ready now");
+    expect(loadEncryptedCheckpoint).not.toHaveBeenCalled();
+    expect(saveEncryptedCheckpoint).toHaveBeenCalledTimes(1);
+    expect(saveEncryptedCheckpoint.mock.calls[0]![1].expectedGeneration).toBe(0);
+
+    save.resolve({ ok: true, generation: 1 });
+    await vi.waitFor(() => expect(connection.getSnapshot().durability).toBe("clean"));
     connection.disconnect();
     seedDoc.destroy();
   });
