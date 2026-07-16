@@ -75,6 +75,28 @@ describe("file tab state transitions", () => {
     });
   });
 
+  it("keeps acquisition queries on the local workspace route", () => {
+    const replaceState = vi.fn();
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://tabula.test",
+        pathname: "/",
+        search: "?ref=linkedin",
+        hash: "",
+      },
+      history: {
+        replaceState,
+      },
+    });
+
+    const snapshot = readInitialWorkspaceSnapshot();
+    syncUrlForLocalWorkspace("replace");
+
+    expect(snapshot.source).toBe("starter");
+    expect(getRoomFromLocation()).toBeNull();
+    expect(replaceState).not.toHaveBeenCalled();
+  });
+
   it("syncs browser URLs from the explicit room session", () => {
     const replaceState = vi.fn();
     vi.stubGlobal("window", {
