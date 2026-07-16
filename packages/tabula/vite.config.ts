@@ -1,6 +1,15 @@
 import { defineConfig } from "vite";
+import { fileURLToPath } from "node:url";
+
+const tabulaCoreEntry = fileURLToPath(new URL("./src/index.ts", import.meta.url));
 
 export default defineConfig({
+  resolve: {
+    // The workbench bundles a preview worker from the app source. Resolve that
+    // worker's core import to source while this package's dist output is being
+    // created; a clean release runner has no dist/index.js to resolve yet.
+    alias: [{ find: "@tabula-md/tabula", replacement: tabulaCoreEntry }],
+  },
   build: {
     emptyOutDir: false,
     lib: {
