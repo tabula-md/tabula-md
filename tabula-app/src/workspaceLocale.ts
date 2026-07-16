@@ -52,6 +52,7 @@ type WorkspaceMenuCopy = {
       description: string;
       startSession: string;
       startDescription: string;
+      temporarySessionDescription: string;
       inviteAgent: string;
       inviteAgentDescription: string;
       retrySession: string;
@@ -154,6 +155,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Create an encrypted room for real-time collaboration.",
         startSession: "Start session",
         startDescription: "The whole workspace joins the encrypted room.",
+        temporarySessionDescription:
+          "Temporary session. Keep at least one participant connected.",
         inviteAgent: "Copy agent prompt",
         inviteAgentDescription:
           "Copy a room-aware prompt. The room URL is included only when you click.",
@@ -241,6 +244,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "실시간 협업을 위한 암호화된 room을 만듭니다.",
         startSession: "세션 시작",
         startDescription: "워크스페이스 전체가 암호화된 room에 들어갑니다.",
+        temporarySessionDescription:
+          "임시 세션입니다. 최소 한 명의 참여자가 연결된 상태를 유지하세요.",
         inviteAgent: "에이전트 프롬프트 복사",
         inviteAgentDescription:
           "room용 프롬프트를 복사합니다. room URL은 이 버튼을 눌렀을 때만 포함됩니다.",
@@ -328,6 +333,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "リアルタイム共同編集用の暗号化 room を作成します。",
         startSession: "セッションを開始",
         startDescription: "ワークスペース全体が暗号化 room に参加します。",
+        temporarySessionDescription:
+          "一時セッションです。少なくとも1人は接続したままにしてください。",
         inviteAgent: "エージェント用プロンプトをコピー",
         inviteAgentDescription:
           "room 用プロンプトをコピーします。room URL はこのボタンを押したときだけ含まれます。",
@@ -415,6 +422,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         description: "创建用于实时协作的加密 room。",
         startSession: "启动协作",
         startDescription: "整个工作区会加入加密 room。",
+        temporarySessionDescription:
+          "这是临时会话。请确保至少一名参与者保持连接。",
         inviteAgent: "复制智能体提示",
         inviteAgentDescription:
           "复制面向 room 的提示。只有点击此按钮时才会包含 room URL。",
@@ -501,6 +510,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Crea una sala cifrada para colaboración en tiempo real.",
         startSession: "Iniciar colaboración",
         startDescription: "Todo el workspace entra en la sala cifrada.",
+        temporarySessionDescription:
+          "Sesión temporal. Mantén al menos un participante conectado.",
         inviteAgent: "Copiar prompt de agente",
         inviteAgentDescription:
           "Copia un prompt para la sala. La URL de la sala solo se incluye al hacer clic.",
@@ -590,6 +601,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Créez une room chiffrée pour collaborer en temps réel.",
         startSession: "Démarrer la session",
         startDescription: "Tout le workspace rejoint la room chiffrée.",
+        temporarySessionDescription:
+          "Session temporaire. Gardez au moins un participant connecté.",
         inviteAgent: "Copier le prompt agent",
         inviteAgentDescription:
           "Copie un prompt pour la room. L'URL de la room est ajoutée seulement au clic.",
@@ -679,6 +692,8 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Erstelle einen verschlüsselten Room für Zusammenarbeit in Echtzeit.",
         startSession: "Sitzung starten",
         startDescription: "Der gesamte Workspace tritt dem verschlüsselten Room bei.",
+        temporarySessionDescription:
+          "Temporäre Sitzung. Mindestens eine Person muss verbunden bleiben.",
         inviteAgent: "Agent-Prompt kopieren",
         inviteAgentDescription:
           "Kopiert einen Room-Prompt. Die Room-URL wird nur beim Klick eingefügt.",

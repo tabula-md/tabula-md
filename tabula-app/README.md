@@ -25,6 +25,7 @@ To run against a local room server:
 VITE_TABULA_ROOM_URL=http://localhost:3002 npm run dev
 ```
 
-To enable durable live recovery with the bundled Firebase adapter, also set
-`VITE_TABULA_FIREBASE_CONFIG` to a Firebase Web SDK config JSON string. Without
-it, collaboration remains relay-only after every connected browser tab closes.
+Firebase is optional. Without it, live collaboration works through the relay
+while at least one participant remains connected. Set
+`VITE_TABULA_FIREBASE_CONFIG` to a Firebase Web SDK config JSON string to enable
+encrypted checkpoint recovery after every participant disconnects.
