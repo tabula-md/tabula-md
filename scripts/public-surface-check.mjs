@@ -8,6 +8,40 @@ const trackedFiles = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" 
 
 const errors = [];
 
+const productDescription =
+  "A local-first Markdown workspace where people and AI agents edit the same files.";
+const appIndexPath = "tabula-app/index.html";
+const socialCardPath = "tabula-app/public/social-card.png";
+
+const appIndex = readFileSync(appIndexPath, "utf8");
+const requiredAppMetadata = [
+  `name="description"\n      content="${productDescription}"`,
+  'rel="canonical" href="https://tabula.md/"',
+  'property="og:title" content="Tabula.md"',
+  `property="og:description"\n      content="${productDescription}"`,
+  'property="og:url" content="https://tabula.md/"',
+  'property="og:image" content="https://tabula.md/social-card.png"',
+  'name="twitter:card" content="summary_large_image"',
+  'name="twitter:image" content="https://tabula.md/social-card.png"',
+];
+
+for (const metadata of requiredAppMetadata) {
+  if (!appIndex.includes(metadata)) {
+    errors.push(`${appIndexPath}: missing required sharing metadata ${metadata}`);
+  }
+}
+
+if (!existsSync(socialCardPath)) {
+  errors.push(`${socialCardPath}: social sharing card is missing`);
+} else {
+  const socialCard = readFileSync(socialCardPath);
+  if (socialCard.subarray(1, 4).toString("ascii") !== "PNG") {
+    errors.push(`${socialCardPath}: social sharing card must be a PNG`);
+  } else if (socialCard.readUInt32BE(16) !== 1200 || socialCard.readUInt32BE(20) !== 630) {
+    errors.push(`${socialCardPath}: social sharing card must be 1200x630`);
+  }
+}
+
 const allowedSecretFixturePaths = new Set();
 
 const forbiddenTrackedPaths = new Map([
