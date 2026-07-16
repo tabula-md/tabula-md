@@ -65,6 +65,7 @@ export type { ParsedRoomLocation, RoomSession, TabulaRoomAvailability } from "./
 export type ConnectionStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "failed";
 export type RoomHydrationStatus = "loading-checkpoint" | "waiting-for-state" | "ready" | "failed";
 export type RoomHydrationSource = "bootstrap" | "checkpoint" | "local" | "peer" | null;
+export type RoomRecoveryMode = "durable" | "temporary";
 export type { RoomDurability } from "./runtime/CheckpointCoordinator";
 export type {
   Collaborator,
@@ -102,6 +103,7 @@ export type WorkspaceRoomRuntimeSnapshot = {
   hydrationStatus: RoomHydrationStatus;
   hydrationSource: RoomHydrationSource;
   durability: RoomDurability;
+  recoveryMode: RoomRecoveryMode;
   collaborators: Collaborator[];
   editorBinding: CollabEditorBinding | null;
 };
@@ -202,6 +204,7 @@ export const createWorkspaceRoomRuntime = ({
     hydrationStatus: "loading-checkpoint",
     hydrationSource: null,
     durability: adapters.roomCheckpointStore.enabled ? "dirty" : "unknown",
+    recoveryMode: adapters.roomCheckpointStore.enabled ? "durable" : "temporary",
     collaborators: [],
     editorBinding: null,
   };
@@ -237,6 +240,7 @@ export const createWorkspaceRoomRuntime = ({
       next.hydrationStatus === runtimeSnapshot.hydrationStatus &&
       next.hydrationSource === runtimeSnapshot.hydrationSource &&
       next.durability === runtimeSnapshot.durability &&
+      next.recoveryMode === runtimeSnapshot.recoveryMode &&
       next.collaborators === runtimeSnapshot.collaborators &&
       next.editorBinding === runtimeSnapshot.editorBinding
     ) {
@@ -755,6 +759,7 @@ export const createWorkspaceRoomRuntime = ({
         hydrationStatus: "failed",
         hydrationSource: null,
         durability: "unknown",
+        recoveryMode: runtimeSnapshot.recoveryMode,
         collaborators: [],
         editorBinding: null,
       };

@@ -210,6 +210,7 @@ describe("workspace room runtime", () => {
       status: "connected",
       hydrationStatus: "ready",
       hydrationSource: "local",
+      recoveryMode: "temporary",
     }));
 
     const peer = createWorkspaceRoomRuntime({
@@ -226,6 +227,7 @@ describe("workspace room runtime", () => {
       status: "connected",
       hydrationStatus: "ready",
       hydrationSource: "peer",
+      recoveryMode: "temporary",
     }));
     expect(peer.materializeDocument("doc")).toBe("from live peer");
 
@@ -445,6 +447,7 @@ describe("workspace room runtime", () => {
       hydrationStatus: "ready",
       hydrationSource: "bootstrap",
       durability: "saving",
+      recoveryMode: "durable",
     }));
     expect(connection.getDocumentTextSnapshot("doc-1")).toBe("# Ready now");
     expect(loadEncryptedCheckpoint).not.toHaveBeenCalled();

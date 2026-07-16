@@ -4,7 +4,7 @@ import { ShareControlsBoundary } from "./ShareControlsBoundary";
 import { ShareTrigger } from "./ShareTrigger";
 import { ShareControls } from "./ShareControls";
 import { TopChrome } from "./TopChrome";
-import type { Collaborator, ConnectionStatus } from "../collaboration";
+import type { Collaborator, ConnectionStatus, RoomRecoveryMode } from "../collaboration";
 import type { FollowState } from "../collaboration/followModel";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
@@ -31,6 +31,7 @@ export type WorkspaceTopChromeProps = {
   identity: Collaborator;
   isLive: boolean;
   isLiveConnected: boolean;
+  recoveryMode: RoomRecoveryMode;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
@@ -73,6 +74,7 @@ export function WorkspaceTopChrome({
   identity,
   isLive,
   isLiveConnected,
+  recoveryMode,
   jsonShare,
   language,
   openFiles,
@@ -150,6 +152,7 @@ export function WorkspaceTopChrome({
             connectionStatus={connectionStatus}
             isLive={isLive}
             isLiveConnected={isLiveConnected}
+            recoveryMode={recoveryMode}
             shareOpen={shareOpen}
             copied={copied}
             jsonShare={jsonShare}

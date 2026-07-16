@@ -5,7 +5,7 @@ import { ShareLinkPanel } from "./share/ShareLinkPanel";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { useShareDialogRuntime } from "../hooks/useShareDialogRuntime";
-import type { ConnectionStatus } from "../collaboration";
+import type { ConnectionStatus, RoomRecoveryMode } from "../collaboration";
 import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
 import { ModalSurface } from "./ui/ModalSurface";
 import { preloadCollaborationStart } from "../collaboration/preloadCollaboration";
@@ -21,6 +21,7 @@ type ShareControlsProps = {
   connectionStatus: ConnectionStatus;
   isLive: boolean;
   isLiveConnected: boolean;
+  recoveryMode: RoomRecoveryMode;
   shareOpen: boolean;
   copied: boolean;
   jsonShare: JsonShareController;
@@ -45,6 +46,7 @@ export function ShareControls({
   connectionStatus,
   isLive,
   isLiveConnected,
+  recoveryMode,
   shareOpen,
   copied,
   jsonShare,
@@ -109,6 +111,7 @@ export function ShareControls({
                     connectionStatus={connectionStatus}
                     isLive={showLiveRoomPanel}
                     isLiveConnected={isLiveConnected}
+                    recoveryMode={recoveryMode}
                     shareView={shareRuntime.shareView}
                     exportPanel={
                       <ShareExportPanel

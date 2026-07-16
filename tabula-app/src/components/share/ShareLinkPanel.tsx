@@ -8,13 +8,12 @@ import {
   Users,
 } from "lucide-react";
 import { type ReactNode, useId } from "react";
-import type { ConnectionStatus } from "../../collaboration";
+import type { ConnectionStatus, RoomRecoveryMode } from "../../collaboration";
 import type { ShareViewModel } from "../../share";
 import type {
   WorkspaceChromeCopy,
   WorkspaceShareCopy,
 } from "../../workspaceLocale";
-import { tabulaServiceConfig } from "../../serviceConfig";
 
 type ShareLinkPanelProps = {
   agentPromptCopied: boolean;
@@ -26,6 +25,7 @@ type ShareLinkPanelProps = {
   exportPanel: ReactNode;
   isLive: boolean;
   isLiveConnected: boolean;
+  recoveryMode: RoomRecoveryMode;
   shareView: ShareViewModel;
   onChangeUserName: (nextName: string) => void;
   onCommitUserName: () => void;
@@ -46,6 +46,7 @@ export function ShareLinkPanel({
   exportPanel,
   isLive,
   isLiveConnected,
+  recoveryMode,
   shareView,
   onChangeUserName,
   onCommitUserName,
@@ -61,7 +62,7 @@ export function ShareLinkPanel({
   const agentDescriptionId = useId();
   const canRetrySession = connectionStatus === "disconnected";
   const showTransientLiveStatus = !isLiveConnected && (connectionStatus === "reconnecting" || connectionStatus === "disconnected");
-  const showTemporarySession = isLiveConnected && !tabulaServiceConfig.firebaseConfig;
+  const showTemporarySession = isLiveConnected && recoveryMode === "temporary";
   const connectionCopy = showTransientLiveStatus
     ? connectionStatus === "reconnecting"
       ? {
