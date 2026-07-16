@@ -2,14 +2,25 @@
 
 Core product contracts for Tabula.md, plus an embeddable document workbench.
 
-The root import is intentionally small and browser-service agnostic. It contains
-pure models for Markdown editing, workspace files, document controls, comments,
-status labels, live room links, encrypted Export links, the workspace Yjs
-schema, binary room packets, transport-neutral Yjs sync controller, Awareness
-flow, and encrypted checkpoint format. It also owns product data, actor, and
-room envelope contracts used by Export links and live recovery. The Tabula
-app in `tabula-app` wires these contracts to React, CodeMirror, local storage,
-collaboration transports, hosted recovery, and network services.
+```sh
+npm install @tabula-md/tabula
+```
+
+Use the root package for Markdown and workspace models:
+
+```ts
+import { applyMarkdownFormat, parseRoomShareUrl } from "@tabula-md/tabula";
+```
+
+Use the workbench subpath for the reusable editor and preview:
+
+```tsx
+import { TabulaEmbeddedDocumentWorkbench } from "@tabula-md/tabula/workbench";
+import "@tabula-md/tabula/workbench.css";
+```
+
+The package is browser-service agnostic. Hosts own persistence, collaboration
+transport, and service configuration.
 
 ## Boundary
 
@@ -25,7 +36,7 @@ Keep in this package:
   checkpoint code that does not require React or a concrete transport.
 - Pure helpers that can be tested without the DOM, React, storage, or network.
 
-Public imports must go through the package root:
+Public imports must use a declared package export:
 
 ```ts
 import { parseRoomShareUrl } from "@tabula-md/tabula";
@@ -98,14 +109,8 @@ import { encryptData } from "@tabula-md/tabula/data/encryption";
 import { createRoomEnvelope } from "@tabula-md/tabula/room";
 ```
 
-The reusable Markdown editor and preview surface is available as a separate
-subpath. Hosts own persistence and collaboration transport; the workbench owns
-one document's editing UI.
-
-```tsx
-import { TabulaEmbeddedDocumentWorkbench } from "@tabula-md/tabula/workbench";
-import "@tabula-md/tabula/workbench.css";
-```
+The workbench owns one document's editing UI; the host owns persistence and
+collaboration transport.
 
 ## Service App Relationship
 

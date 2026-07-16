@@ -19,8 +19,6 @@ const forbiddenTrackedPaths = new Map([
   ["TODO.ko.md", "maintainer planning notes belong outside the public repository"],
   ["CURRENT_TODO.md", "maintainer planning notes belong outside the public repository"],
   ["CHANGELOG.md", "release notes should be published through GitHub Releases"],
-  ["CONTRIBUTING.md", "public contribution policy is not ready yet"],
-  ["SECURITY.md", "public security policy is not ready yet"],
   ["scripts/apply-pr-metadata.mjs", "internal PR automation belongs outside the public repository"],
   ["scripts/knowledge-check.mjs", "internal knowledge automation belongs outside the public repository"],
   ["scripts/lib/agent-context.mjs", "internal agent automation belongs outside the public repository"],
@@ -82,6 +80,8 @@ const publicHostedEndpointPattern = /https:\/\/(?:rooms|json|publish)\.tabula\.m
 const publicDocPaths = (path) =>
   path === "README.md" ||
   path === "PRIVACY.md" ||
+  path === "CONTRIBUTING.md" ||
+  path === "SECURITY.md" ||
   path === "TODO.md" ||
   path === "TODO.ko.md" ||
   /^packages\/[^/]+\/README\.md$/.test(path) ||
