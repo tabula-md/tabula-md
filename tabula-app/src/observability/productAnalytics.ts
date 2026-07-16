@@ -2,6 +2,7 @@ import type { CaptureResult, PostHog } from "posthog-js";
 import { tabulaServiceConfig } from "../serviceConfig";
 
 export type ProductEventName =
+  | "app_opened"
   | "room_created"
   | "room_link_copied"
   | "agent_invite_copied"
@@ -19,14 +20,37 @@ type ProductAnalyticsClient = Pick<PostHog, "capture">;
 
 const INTERNAL_ANALYTICS_STORAGE_KEY = "tabula.analytics.internal";
 const COLLABORATION_ID_NAMESPACE = "tabula-product-analytics-v1";
+const ACQUISITION_SOURCE_STORAGE_KEY = "tabula.analytics.acquisition-source";
 
 const PRODUCT_EVENT_NAMES = new Set<ProductEventName>([
+  "app_opened",
   "room_created",
   "room_link_copied",
   "agent_invite_copied",
   "collaborator_joined",
   "collaborator_edited",
 ]);
+
+export const normalizeAcquisitionSource = (value: string | null | undefined) => {
+  const normalized = value?.trim().toLowerCase();
+  return normalized && /^[a-z0-9_-]{1,32}$/.test(normalized) ? normalized : null;
+};
+
+const readAcquisitionSource = () => {
+  if (typeof window === "undefined") return "direct";
+  try {
+    const stored = normalizeAcquisitionSource(
+      window.sessionStorage.getItem(ACQUISITION_SOURCE_STORAGE_KEY),
+    );
+    if (stored) return stored;
+    const source = normalizeAcquisitionSource(new URLSearchParams(window.location.search).get("ref"))
+      ?? "direct";
+    window.sessionStorage.setItem(ACQUISITION_SOURCE_STORAGE_KEY, source);
+    return source;
+  } catch {
+    return "direct";
+  }
+};
 
 const isProductEventName = (value: string): value is ProductEventName =>
   PRODUCT_EVENT_NAMES.has(value as ProductEventName);
@@ -54,6 +78,7 @@ export const sanitizePostHogProductEvent = (event: CaptureResult | null): Captur
     "actor_kind",
     "collaboration_id",
     "is_internal",
+    "acquisition_source",
   ]) {
     copyProperty(properties, event.properties, key);
   }
@@ -88,9 +113,11 @@ const isInternalAnalyticsSession = () => {
 
 export const createProductAnalytics = ({
   appVersion = "0.1.0",
+  acquisitionSource = readAcquisitionSource(),
   client,
 }: {
   appVersion?: string;
+  acquisitionSource?: string;
   client?: ProductAnalyticsClient | null | Promise<ProductAnalyticsClient | null>;
 } = {}) => ({
   report(name: ProductEventName, properties: ProductEventProperties = {}) {
@@ -102,6 +129,7 @@ export const createProductAnalytics = ({
         : null;
       const eventProperties = {
         app_version: appVersion.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 32),
+        acquisition_source: normalizeAcquisitionSource(acquisitionSource) ?? "direct",
         is_internal: isInternalAnalyticsSession(),
         ...(collaborationId ? { collaboration_id: collaborationId } : {}),
         ...(actorKind === "agent" || actorKind === "human" || actorKind === "unknown"
@@ -142,3 +170,5 @@ export const initializeProductAnalytics = async (
 export const productAnalytics = createProductAnalytics({
   client: initializeProductAnalytics(),
 });
+
+productAnalytics.report("app_opened");

@@ -4,6 +4,7 @@ import {
   createProductAnalytics,
   deriveCollaborationId,
   initializeProductAnalytics,
+  normalizeAcquisitionSource,
   sanitizePostHogProductEvent,
 } from "./productAnalytics";
 
@@ -19,6 +20,7 @@ describe("product analytics", () => {
     const capture = vi.fn();
     const analytics = createProductAnalytics({
       appVersion: "0.1.0\nignored",
+      acquisitionSource: "HackerNews",
       client: { capture },
     });
 
@@ -27,10 +29,18 @@ describe("product analytics", () => {
     const collaborationId = await deriveCollaborationId("public-room-id");
     expect(capture).toHaveBeenCalledWith("collaborator_edited", {
       app_version: "0.1.0ignored",
+      acquisition_source: "hackernews",
       actor_kind: "agent",
       collaboration_id: collaborationId,
       is_internal: false,
     });
+  });
+
+  it("accepts only short content-free acquisition source labels", () => {
+    expect(normalizeAcquisitionSource(" ProductHunt ")).toBe("producthunt");
+    expect(normalizeAcquisitionSource("hn-launch_1")).toBe("hn-launch_1");
+    expect(normalizeAcquisitionSource("https://example.com/private?q=secret")).toBeNull();
+    expect(normalizeAcquisitionSource("a".repeat(33))).toBeNull();
   });
 
   it("derives a stable opaque collaboration id without exposing the room id", async () => {
@@ -54,6 +64,7 @@ describe("product analytics", () => {
       actor_kind: "agent",
       collaboration_id: "collab_safe",
       is_internal: false,
+      acquisition_source: "hn",
       $current_url: "https://tabula.md/#room=roomId,SECRET_KEY",
       $pathname: "/workspace",
       $referrer: "https://example.com/private",
@@ -78,6 +89,7 @@ describe("product analytics", () => {
       actor_kind: "agent",
       collaboration_id: "collab_safe",
       is_internal: false,
+      acquisition_source: "hn",
     });
     expect(serialized).not.toMatch(/SECRET_KEY|roomId|private document|private prompt|current_url|referrer|elements/i);
     expect(sanitizePostHogProductEvent({
