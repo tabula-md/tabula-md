@@ -746,6 +746,14 @@ export async function run(ctx) {
           throw new Error(`Starting without the room relay should report an action failure.\n${JSON.stringify(startSamples, null, 2)}`);
         }
 
+        await page.waitForFunction(
+          () =>
+            !window.location.hash.startsWith("#room=") &&
+            document.querySelectorAll(".share-modal").length === 0,
+          undefined,
+          { timeout: 8_000 },
+        );
+
         const failedStartState = await page.evaluate(() => {
           const toast = document.querySelector(".app-toast");
           const toastRect = toast?.getBoundingClientRect();
@@ -777,12 +785,16 @@ export async function run(ctx) {
           "Failed Start session toast text should fit inside the toast.",
         );
         expect(
-          startSamples.every((sample) => sample.inviteLinkCount === 0 && sample.stopSessionCount === 0) &&
-            failedStartState.modalCount === 0 &&
+          failedStartState.modalCount === 0 &&
             failedStartState.startButtonCount === 0 &&
             failedStartState.inviteLinkCount === 0 &&
             failedStartState.stopSessionCount === 0,
-          "A local Start preflight failure should close Share without creating live controls.",
+          "A failed optimistic Start should return to the local workspace and close Share.",
+        );
+        const failedStartTabs = await getTabs(page);
+        expect(
+          failedStartTabs.some((tab) => tab.active && !tab.live && tab.title?.startsWith("Untitled")),
+          "A failed optimistic Start should preserve the active local document.",
         );
         expect(
           (await page.locator(".share-live-status.failed").count()) === 0,
