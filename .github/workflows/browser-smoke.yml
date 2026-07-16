@@ -1,0 +1,73 @@
+name: Browser smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/browser-smoke.yml"
+      - "package-lock.json"
+      - "package.json"
+      - "packages/tabula/**"
+      - "scripts/browser-smoke.mjs"
+      - "scripts/browser-smoke/**"
+      - "tabula-app/**"
+      - "vite.config.ts"
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: browser-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Browser smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout Tabula.md
+        uses: actions/checkout@v4
+
+      - name: Checkout room relay
+        uses: actions/checkout@v4
+        with:
+          repository: tabula-md/tabula-room
+          path: tabula-room
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java for Firebase emulators
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install app dependencies
+        run: npm ci
+
+      - name: Install room dependencies
+        run: npm ci
+        working-directory: tabula-room
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run pull request canary
+        if: github.event_name == 'pull_request'
+        env:
+          TABULA_ROOM_REPO_DIR: ${{ github.workspace }}/tabula-room
+        run: npm run test:browser -- --suite=workspace,collaboration
+
+      - name: Run scheduled suite
+        if: github.event_name != 'pull_request'
+        env:
+          TABULA_ROOM_REPO_DIR: ${{ github.workspace }}/tabula-room
+        run: npm run test:browser
