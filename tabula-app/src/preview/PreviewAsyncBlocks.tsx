@@ -465,6 +465,7 @@ type PreviewImageProps = {
 export const PreviewLocaleContext = createContext<WorkspaceSurfaceCopy>(
   getWorkspaceSurfaceCopy("en"),
 );
+export const PreviewEmbeddedImageSourcesContext = createContext<Readonly<Record<string, string>>>({});
 
 export function PreviewMath({ blockProps, copy, displayMode = false, expression }: PreviewMathProps) {
   const [renderedHtml, setRenderedHtml] = useState<string | null>(null);
@@ -643,8 +644,10 @@ function PreviewMermaidDiagram({
 
 export function PreviewImage({ alt = "", copy: copyProp, src, title, ...props }: PreviewImageProps) {
   const contextCopy = useContext(PreviewLocaleContext);
+  const embeddedImageSources = useContext(PreviewEmbeddedImageSourcesContext);
   const copy = copyProp ?? contextCopy;
-  const imageSource = useMemo(() => classifyMarkdownImageSource(src), [src]);
+  const resolvedSrc = src ? embeddedImageSources[src] ?? src : src;
+  const imageSource = useMemo(() => classifyMarkdownImageSource(resolvedSrc), [resolvedSrc]);
   const [hasError, setHasError] = useState(false);
   useEffect(() => setHasError(false), [imageSource]);
 

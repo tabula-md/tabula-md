@@ -82,6 +82,7 @@ import {
   getNodeText,
   hasCodeClass,
   PreviewCodeBlock,
+  PreviewEmbeddedImageSourcesContext,
   PreviewImage,
   PreviewLocaleContext,
   PreviewMath,
@@ -92,6 +93,10 @@ import {
   getInlinePreviewBlockMeasurements,
   getPreviewMeasurementsAreEqual,
 } from "../preview/previewMeasurements";
+import {
+  getPreviewGlobalMarkdownContext,
+  type PreviewGlobalMarkdownContext,
+} from "../preview/previewGlobalMarkdownContext";
 
 type PreviewDocsComponentProps = {
   children?: ReactNode;
@@ -128,6 +133,15 @@ const getPreviewColumnCount = (cols: number | string | undefined) => {
 };
 
 const normalizePreviewDocsComponents = (markdown: string) => {
+  if (!markdown.includes("<")) {
+    return markdown;
+  }
+
+  const docsComponentPattern = /<\/?(?:CardGroup|Card|Frame)(?=[\s>/])/;
+  if (!docsComponentPattern.test(markdown)) {
+    return markdown;
+  }
+
   let isInFence = false;
   let activeFenceMarker = "";
 
@@ -160,82 +174,6 @@ const normalizePreviewDocsComponents = (markdown: string) => {
         .replace(/<\/?Frame(?=[\s>/])/g, (match) => (match.startsWith("</") ? "</tabula-frame" : "<tabula-frame"));
     })
     .join("");
-};
-
-type PreviewGlobalMarkdownContext = {
-  footnoteDefinitions: string;
-  footnoteReferences: string;
-  referenceDefinitions: string;
-};
-
-const referenceDefinitionLinePattern = /^ {0,3}\[(?!\^)([^\]\n]+)]:\s+\S/;
-const footnoteDefinitionLinePattern = /^ {0,3}\[\^([^\]\n]+)]:/;
-const footnoteContinuationLinePattern = /^(?: {4,}|\t)\S/;
-
-const getPreviewGlobalMarkdownContext = (markdown: string): PreviewGlobalMarkdownContext => {
-  const lines = markdown.split(/\r?\n/);
-  let isInFence = false;
-  let activeFenceMarker = "";
-  const referenceDefinitionLines: string[] = [];
-  const footnoteDefinitionLines: string[] = [];
-  const footnoteLabels: string[] = [];
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})/);
-    if (fenceMatch) {
-      const marker = fenceMatch[1];
-      if (!isInFence) {
-        isInFence = true;
-        activeFenceMarker = marker;
-      } else if (marker[0] === activeFenceMarker[0] && marker.length >= activeFenceMarker.length) {
-        isInFence = false;
-        activeFenceMarker = "";
-      }
-      continue;
-    }
-
-    if (isInFence) {
-      continue;
-    }
-
-    const footnoteDefinitionMatch = line.match(footnoteDefinitionLinePattern);
-    if (footnoteDefinitionMatch) {
-      const footnoteLines = [line];
-      const pendingBlankLines: string[] = [];
-      while (index + 1 < lines.length) {
-        const nextLine = lines[index + 1];
-        if (nextLine.trim().length === 0) {
-          pendingBlankLines.push(nextLine);
-          index += 1;
-          continue;
-        }
-
-        if (footnoteContinuationLinePattern.test(nextLine)) {
-          footnoteLines.push(...pendingBlankLines, nextLine);
-          pendingBlankLines.length = 0;
-          index += 1;
-          continue;
-        }
-
-        break;
-      }
-
-      footnoteDefinitionLines.push(...footnoteLines);
-      footnoteLabels.push(footnoteDefinitionMatch[1]);
-      continue;
-    }
-
-    if (referenceDefinitionLinePattern.test(line)) {
-      referenceDefinitionLines.push(line);
-    }
-  }
-
-  return {
-    footnoteDefinitions: footnoteDefinitionLines.join("\n"),
-    footnoteReferences: footnoteLabels.map((label) => `[^${label}]`).join(" "),
-    referenceDefinitions: referenceDefinitionLines.join("\n"),
-  };
 };
 
 function PreviewFrame({ children, caption, hint, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
@@ -1171,79 +1109,78 @@ function MarkdownPreviewComponent({
 
   return (
     <PreviewLocaleContext.Provider value={uiCopy}>
-      <div
-        ref={documentRef}
-        className={`preview-document ${showLineGutters ? "with-line-gutters" : ""} ${shouldVirtualizePreview ? "virtualized" : ""}`}
-        data-preview-index-pending={shouldVirtualizePreview ? String(previewBlockIndexPending) : undefined}
-        data-preview-index-source={shouldVirtualizePreview ? previewBlockIndexSource : "inline"}
-        onPointerMove={handlePreviewPointerMove}
-        onPointerLeave={handlePreviewPointerLeave}
-      >
-      {showLineGutters && onLineAction && (
-        <PreviewLineGutter rows={lineRailRows} onLineAction={onLineAction} copy={uiCopy} />
-      )}
+      <PreviewEmbeddedImageSourcesContext.Provider value={globalMarkdownContext.embeddedImageSources}>
+        <div
+          ref={documentRef}
+          className={`preview-document ${showLineGutters ? "with-line-gutters" : ""} ${shouldVirtualizePreview ? "virtualized" : ""}`}
+          data-preview-index-pending={shouldVirtualizePreview ? String(previewBlockIndexPending) : undefined}
+          data-preview-index-source={shouldVirtualizePreview ? previewBlockIndexSource : "inline"}
+          onPointerMove={handlePreviewPointerMove}
+          onPointerLeave={handlePreviewPointerLeave}
+        >
+          {showLineGutters && onLineAction && (
+            <PreviewLineGutter rows={lineRailRows} onLineAction={onLineAction} copy={uiCopy} />
+          )}
 
-      <div ref={contentRef} className="preview-document-content">
-        {metadata.length > 0 && (
-          <section
-            ref={frontmatterRef}
-            className="frontmatter-view"
-            aria-label={uiCopy.frontmatter}
-            data-preview-block-start-line={1}
-            data-preview-block-end-line={frontmatterEndLine}
-            data-preview-line-start={1}
-            data-preview-line-end={frontmatterEndLine}
-          >
-            {metadata.map((attribute) => (
-              <div className="frontmatter-row" key={attribute.key}>
-                <span>{attribute.key}</span>
-                <strong>{attribute.value}</strong>
-              </div>
-            ))}
-          </section>
-        )}
+          <div ref={contentRef} className="preview-document-content">
+            {metadata.length > 0 && (
+              <section
+                ref={frontmatterRef}
+                className="frontmatter-view"
+                aria-label={uiCopy.frontmatter}
+                data-preview-block-start-line={1}
+                data-preview-block-end-line={frontmatterEndLine}
+                data-preview-line-start={1}
+                data-preview-line-end={frontmatterEndLine}
+              >
+                {metadata.map((attribute) => (
+                  <div className="frontmatter-row" key={attribute.key}>
+                    <span>{attribute.key}</span>
+                    <strong>{attribute.value}</strong>
+                  </div>
+                ))}
+              </section>
+            )}
 
-        {renderableBody.trim().length > 0 ? (
-          shouldVirtualizePreview ? (
-            virtualPreviewBlockIndex ? (
-              <VirtualMarkdownPreview
-                blockIndex={virtualPreviewBlockIndex}
-                commentsEnabled={commentsEnabled}
-                components={markdownPreviewComponents}
-                commentAnchors={stableCommentAnchors}
-                footnoteDefinitions={globalMarkdownContext.footnoteDefinitions}
-                footnoteReferences={globalMarkdownContext.footnoteReferences}
-                getBlockRehypePlugins={getVirtualBlockRehypePlugins}
-                getFootnoteRehypePlugins={getVirtualFootnoteRehypePlugins}
-                referenceDefinitions={globalMarkdownContext.referenceDefinitions}
-                onBlockHeightChange={handlePreviewBlockHeightChange}
-                overscan={PREVIEW_VIRTUAL_OVERSCAN}
-                remarkPlugins={MARKDOWN_REMARK_PLUGINS}
-                sourceLineOffset={normalizedSourceLineOffset}
-                viewport={previewViewport}
-                urlTransform={transformMarkdownPreviewUrl}
-              />
+            {renderableBody.trim().length > 0 ? (
+              shouldVirtualizePreview ? (
+                virtualPreviewBlockIndex ? (
+                  <VirtualMarkdownPreview
+                    blockIndex={virtualPreviewBlockIndex}
+                    commentsEnabled={commentsEnabled}
+                    components={markdownPreviewComponents}
+                    commentAnchors={stableCommentAnchors}
+                    globalMarkdownContext={globalMarkdownContext}
+                    getBlockRehypePlugins={getVirtualBlockRehypePlugins}
+                    getFootnoteRehypePlugins={getVirtualFootnoteRehypePlugins}
+                    onBlockHeightChange={handlePreviewBlockHeightChange}
+                    overscan={PREVIEW_VIRTUAL_OVERSCAN}
+                    remarkPlugins={MARKDOWN_REMARK_PLUGINS}
+                    sourceLineOffset={normalizedSourceLineOffset}
+                    viewport={previewViewport}
+                    urlTransform={transformMarkdownPreviewUrl}
+                  />
+                ) : (
+                  <div className="preview-placeholder quiet" aria-hidden="true" />
+                )
+              ) : (
+                <ReactMarkdown
+                  components={markdownPreviewComponents}
+                  rehypePlugins={rehypePlugins}
+                  remarkPlugins={MARKDOWN_REMARK_PLUGINS}
+                  urlTransform={transformMarkdownPreviewUrl}
+                >
+                  {renderableBody}
+                </ReactMarkdown>
+              )
             ) : (
-              <div className="preview-placeholder quiet" aria-hidden="true" />
-            )
-          ) : (
-            <ReactMarkdown
-              components={markdownPreviewComponents}
-              rehypePlugins={rehypePlugins}
-              remarkPlugins={MARKDOWN_REMARK_PLUGINS}
-              urlTransform={transformMarkdownPreviewUrl}
-            >
-              {renderableBody}
-            </ReactMarkdown>
-          )
-        ) : (
-          <p className="preview-empty-state" aria-label={uiCopy.preview}>
-            {uiCopy.nothingToPreview}
-          </p>
-        )}
-      </div>
-
-      </div>
+              <p className="preview-empty-state" aria-label={uiCopy.preview}>
+                {uiCopy.nothingToPreview}
+              </p>
+            )}
+          </div>
+        </div>
+      </PreviewEmbeddedImageSourcesContext.Provider>
     </PreviewLocaleContext.Provider>
   );
 }

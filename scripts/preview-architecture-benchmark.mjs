@@ -4,9 +4,9 @@ import {
   createPreviewBlockIndex,
   getPreviewWindow,
   hasGlobalMarkdownSyntax,
-} from "../packages/tabula/dist/previewBlockModel.js";
+} from "../packages/tabula/dist/index.js";
 
-const previewModelUrl = pathToFileURL(fileURLToPath(new URL("../packages/tabula/dist/previewBlockModel.js", import.meta.url))).href;
+const previewModelUrl = pathToFileURL(fileURLToPath(new URL("../packages/tabula/dist/index.js", import.meta.url))).href;
 const workerUrl = new URL("./preview-index-worker.mjs", import.meta.url);
 const viewportHeight = 820;
 const overscan = 900;

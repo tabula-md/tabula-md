@@ -109,6 +109,7 @@ const heavyFenceLanguagePattern = /^(?:mermaid|mmd|math|tex|latex|katex)$/i;
 const frontmatterFencePattern = /^---\s*$/;
 const yamlKeyLinePattern = /^[A-Za-z0-9_-]+:\s*/;
 const footnoteDefinitionLinePattern = /^ {0,3}\[\^[^\]\n]+]:/;
+const footnoteContinuationLinePattern = /^(?: {4,}|\t)\S/;
 const footnoteReferencePattern = /\[\^[^\]\n]+]/;
 const referenceDefinitionLinePattern = /^ {0,3}\[(?!\^)([^\]\n]+)]:\s+\S/;
 const referenceLinkPattern = /\[[^\]\n]+]\[[^\]\n]*]/;
@@ -405,6 +406,8 @@ const startsStructuralBlock = (line: MarkdownLine, nextLine?: MarkdownLine) =>
   thematicLinePattern.test(line.text) ||
   blockquoteLinePattern.test(line.text) ||
   listLinePattern.test(line.text) ||
+  referenceDefinitionLinePattern.test(line.text) ||
+  footnoteDefinitionLinePattern.test(line.text) ||
   htmlLinePattern.test(line.text) ||
   isTableStart(line, nextLine);
 
@@ -661,6 +664,39 @@ const findTableEnd = (lines: MarkdownLine[], startIndex: number) => {
   return lines.length - 1;
 };
 
+const findFootnoteDefinitionEnd = (lines: MarkdownLine[], startIndex: number) => {
+  let endIndex = startIndex;
+  let index = startIndex + 1;
+
+  while (index < lines.length) {
+    if (footnoteContinuationLinePattern.test(lines[index].text)) {
+      endIndex = index;
+      index += 1;
+      continue;
+    }
+
+    if (!isBlankLine(lines[index])) {
+      break;
+    }
+
+    let continuationIndex = index;
+    while (continuationIndex < lines.length && isBlankLine(lines[continuationIndex])) {
+      continuationIndex += 1;
+    }
+    if (
+      continuationIndex >= lines.length ||
+      !footnoteContinuationLinePattern.test(lines[continuationIndex].text)
+    ) {
+      break;
+    }
+
+    endIndex = continuationIndex;
+    index = continuationIndex + 1;
+  }
+
+  return endIndex;
+};
+
 const findParagraphEnd = (lines: MarkdownLine[], startIndex: number) => {
   for (let index = startIndex + 1; index < lines.length; index += 1) {
     if (startsStructuralBlock(lines[index], lines[index + 1])) {
@@ -696,6 +732,14 @@ const resolveBlockRange = (lines: MarkdownLine[], startIndex: number) => {
 
   if (thematicLinePattern.test(line.text)) {
     return { endIndex: startIndex, kind: "thematic" as const };
+  }
+
+  if (referenceDefinitionLinePattern.test(line.text)) {
+    return { endIndex: startIndex, kind: "blank" as const };
+  }
+
+  if (footnoteDefinitionLinePattern.test(line.text)) {
+    return { endIndex: findFootnoteDefinitionEnd(lines, startIndex), kind: "blank" as const };
   }
 
   if (blockquoteLinePattern.test(line.text)) {

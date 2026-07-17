@@ -6,6 +6,11 @@ import {
   type PreviewBlockIndex,
 } from "@tabula-md/tabula";
 import type { PreviewViewport } from "./usePreviewFollowController";
+import {
+  getPreviewBlockGlobalDefinitions,
+  getPreviewFootnoteDefinitions,
+  type PreviewGlobalMarkdownContext,
+} from "./previewGlobalMarkdownContext";
 
 type MarkdownRehypePlugins = ReactMarkdownOptions["rehypePlugins"];
 type MarkdownRemarkPlugins = ReactMarkdownOptions["remarkPlugins"];
@@ -101,9 +106,8 @@ const VirtualPreviewBlock = memo(function VirtualPreviewBlock({
   commentsEnabled,
   components,
   commentAnchors,
-  footnoteDefinitions,
+  globalMarkdownContext,
   getBlockRehypePlugins,
-  referenceDefinitions,
   sourceLineOffset,
   afterGap,
   onBlockHeightChange,
@@ -114,9 +118,8 @@ const VirtualPreviewBlock = memo(function VirtualPreviewBlock({
   commentsEnabled: boolean;
   components: Components;
   commentAnchors: VirtualPreviewCommentAnchor[];
-  footnoteDefinitions: string;
+  globalMarkdownContext: PreviewGlobalMarkdownContext;
   getBlockRehypePlugins: GetVirtualPreviewBlockRehypePlugins;
-  referenceDefinitions: string;
   sourceLineOffset: number;
   afterGap: number;
   onBlockHeightChange: (block: PreviewBlock, height: number) => void;
@@ -133,9 +136,9 @@ const VirtualPreviewBlock = memo(function VirtualPreviewBlock({
     [block, blockCommentAnchors, getBlockRehypePlugins],
   );
   const blockMarkdown = useMemo(() => {
-    const globalDefinitions = [referenceDefinitions, footnoteDefinitions].filter(Boolean).join("\n\n");
+    const globalDefinitions = getPreviewBlockGlobalDefinitions(block.text, globalMarkdownContext);
     return globalDefinitions ? `${block.text}\n\n${globalDefinitions}` : block.text;
-  }, [block.text, footnoteDefinitions, referenceDefinitions]);
+  }, [block.text, globalMarkdownContext]);
 
   useLayoutEffect(() => {
     const element = blockRef.current;
@@ -231,10 +234,8 @@ export function VirtualMarkdownPreview({
   commentsEnabled,
   components,
   commentAnchors,
-  footnoteDefinitions,
-  footnoteReferences,
+  globalMarkdownContext,
   getBlockRehypePlugins,
-  referenceDefinitions,
   getFootnoteRehypePlugins,
   onBlockHeightChange,
   overscan,
@@ -247,11 +248,9 @@ export function VirtualMarkdownPreview({
   commentsEnabled: boolean;
   components: Components;
   commentAnchors: VirtualPreviewCommentAnchor[];
-  footnoteDefinitions: string;
-  footnoteReferences: string;
+  globalMarkdownContext: PreviewGlobalMarkdownContext;
   getBlockRehypePlugins: GetVirtualPreviewBlockRehypePlugins;
   getFootnoteRehypePlugins: () => MarkdownRehypePlugins;
-  referenceDefinitions: string;
   onBlockHeightChange: (block: PreviewBlock, height: number) => void;
   overscan: number;
   remarkPlugins: MarkdownRemarkPlugins;
@@ -269,6 +268,10 @@ export function VirtualMarkdownPreview({
   const bottomSpacerHeight = lastBlock
     ? Math.max(0, blockIndex.totalEstimatedHeight - (lastBlock.estimatedTop + lastBlock.estimatedHeight))
     : 0;
+  const footnoteDefinitions = useMemo(
+    () => getPreviewFootnoteDefinitions(globalMarkdownContext),
+    [globalMarkdownContext],
+  );
 
   return (
     <div
@@ -277,28 +280,29 @@ export function VirtualMarkdownPreview({
       style={{ minHeight: blockIndex.totalEstimatedHeight }}
     >
       {topSpacerHeight > 0 && <div aria-hidden="true" className="preview-virtual-spacer" style={{ height: topSpacerHeight }} />}
-      {previewWindow.blocks.map((block, visibleBlockIndex) => (
-        <VirtualPreviewBlock
-          key={block.id}
-          block={block}
-          commentsEnabled={commentsEnabled}
-          components={components}
-          commentAnchors={commentAnchors}
-          footnoteDefinitions={footnoteDefinitions}
-          getBlockRehypePlugins={getBlockRehypePlugins}
-          referenceDefinitions={referenceDefinitions}
-          sourceLineOffset={sourceLineOffset}
-          afterGap={getPreviewBlockAfterGap(block, blockIndex.blocks, previewWindow.startIndex + visibleBlockIndex)}
-          onBlockHeightChange={onBlockHeightChange}
-          remarkPlugins={remarkPlugins}
-          urlTransform={urlTransform}
-        />
-      ))}
+      {previewWindow.blocks.map((block, visibleBlockIndex) =>
+        block.kind === "blank" ? null : (
+          <VirtualPreviewBlock
+            key={block.id}
+            block={block}
+            commentsEnabled={commentsEnabled}
+            components={components}
+            commentAnchors={commentAnchors}
+            globalMarkdownContext={globalMarkdownContext}
+            getBlockRehypePlugins={getBlockRehypePlugins}
+            sourceLineOffset={sourceLineOffset}
+            afterGap={getPreviewBlockAfterGap(block, blockIndex.blocks, previewWindow.startIndex + visibleBlockIndex)}
+            onBlockHeightChange={onBlockHeightChange}
+            remarkPlugins={remarkPlugins}
+            urlTransform={urlTransform}
+          />
+        ),
+      )}
       {bottomSpacerHeight > 0 && <div aria-hidden="true" className="preview-virtual-spacer" style={{ height: bottomSpacerHeight }} />}
       <VirtualPreviewFootnotes
         components={components}
         footnoteDefinitions={footnoteDefinitions}
-        footnoteReferences={footnoteReferences}
+        footnoteReferences={globalMarkdownContext.footnoteReferences}
         rehypePlugins={getFootnoteRehypePlugins()}
         remarkPlugins={remarkPlugins}
         urlTransform={urlTransform}
