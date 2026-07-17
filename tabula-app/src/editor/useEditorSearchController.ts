@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } fro
 import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
 import {
   DEFAULT_SEARCH_OPTIONS,
-  getEditorSearchMatches,
-  getEditorSearchResult,
+  EDITOR_SEARCH_MATCH_LIMIT,
+  getEditorSearchResultWithLimit,
   replaceAllEditorSearchMatches,
   replaceCurrentEditorSearchMatch,
   type SearchOptions,
@@ -18,6 +18,7 @@ type PreviewSearchMatchCountState = {
   count: number;
   documentText: string;
   key: string | null;
+  truncated: boolean;
 };
 
 type UseEditorSearchControllerOptions = {
@@ -91,11 +92,12 @@ export function useEditorSearchController({
   const [searchQuery, setSearchQuery] = useState("");
   const [replaceQuery, setReplaceQuery] = useState("");
   const [searchOptions, setSearchOptions] = useState<SearchOptions>(DEFAULT_SEARCH_OPTIONS);
-  const [searchDocumentText, setSearchDocumentText] = useState(text);
+  const [, setSearchDocumentRevision] = useState(0);
   const [previewSearchMatchCount, setPreviewSearchMatchCount] = useState<PreviewSearchMatchCountState>({
     count: 0,
     documentText: text,
     key: null,
+    truncated: false,
   });
   const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -109,16 +111,27 @@ export function useEditorSearchController({
     searchOptions,
     searchTarget,
   });
-  const searchDocument = editorRef.current?.getSearchDocument() ?? searchDocumentText;
+  const searchDocument = editorRef.current?.getSearchDocument() ?? text;
   const sourceSearchResult = useMemo(
     () =>
       normalizedSearchQuery && searchTarget === "source"
-        ? getEditorSearchResult(searchDocument, normalizedSearchQuery, searchOptions)
-        : { error: null, matches: [] },
+        ? getEditorSearchResultWithLimit(
+            searchDocument,
+            normalizedSearchQuery,
+            searchOptions,
+            EDITOR_SEARCH_MATCH_LIMIT,
+          )
+        : { error: null, matches: [], truncated: false },
     [normalizedSearchQuery, searchDocument, searchOptions, searchTarget],
   );
   const searchMatches = sourceSearchResult.matches;
   const searchError = sourceSearchResult.error;
+  const searchMatchesTruncated =
+    searchTarget === "source"
+      ? sourceSearchResult.truncated
+      : previewSearchMatchCount.key === previewSearchMatchCountKey && previewSearchMatchCount.documentText === text
+        ? previewSearchMatchCount.truncated
+        : false;
   const searchMatchCount =
     searchTarget === "source"
       ? searchMatches.length
@@ -126,18 +139,6 @@ export function useEditorSearchController({
         ? previewSearchMatchCount.count
         : 0;
   const replaceAvailable = searchTarget === "source";
-
-  useEffect(() => {
-    setSearchDocumentText(text);
-  }, [activeFileId, text]);
-
-  useEffect(() => {
-    if (!searchOpen || !normalizedSearchQuery || searchTarget !== "source") {
-      return;
-    }
-
-    setSearchDocumentText(editorRef.current?.getValue() ?? text);
-  }, [editorRef, normalizedSearchQuery, searchOpen, searchTarget, text]);
 
   useEffect(() => {
     const revealKey =
@@ -219,16 +220,18 @@ export function useEditorSearchController({
     }));
   };
 
-  const handlePreviewSearchMatchCountChange = useCallback((matchCount: number) => {
+  const handlePreviewSearchMatchCountChange = useCallback((matchCount: number, truncated = false) => {
     setPreviewSearchMatchCount((currentMatchCount) => {
       const nextState = {
         count: previewSearchMatchCountKey ? matchCount : 0,
         documentText: text,
         key: previewSearchMatchCountKey,
+        truncated: previewSearchMatchCountKey ? truncated : false,
       };
       return currentMatchCount.count === nextState.count &&
         currentMatchCount.documentText === nextState.documentText &&
-        currentMatchCount.key === nextState.key
+        currentMatchCount.key === nextState.key &&
+        currentMatchCount.truncated === nextState.truncated
         ? currentMatchCount
         : nextState;
     });
@@ -264,7 +267,7 @@ export function useEditorSearchController({
   };
 
   const selectAllSearchMatches = () => {
-    if (searchTarget !== "source" || searchMatches.length === 0 || searchError) {
+    if (searchTarget !== "source" || searchMatches.length === 0 || searchError || searchMatchesTruncated) {
       return;
     }
 
@@ -277,7 +280,12 @@ export function useEditorSearchController({
     }
 
     const currentText = editorRef.current?.getValue() ?? text;
-    const currentMatches = getEditorSearchMatches(currentText, searchQuery.trim(), searchOptions);
+    const currentMatches = getEditorSearchResultWithLimit(
+      currentText,
+      searchQuery.trim(),
+      searchOptions,
+      EDITOR_SEARCH_MATCH_LIMIT,
+    ).matches;
     const currentMatchIndex = activeSearchMatchIndex === -1 ? 0 : activeSearchMatchIndex;
     const edit = replaceCurrentEditorSearchMatch(
       currentText,
@@ -285,6 +293,7 @@ export function useEditorSearchController({
       replaceQuery,
       Math.min(currentMatchIndex, Math.max(0, currentMatches.length - 1)),
       searchOptions,
+      EDITOR_SEARCH_MATCH_LIMIT,
     );
     if (!edit) {
       return;
@@ -296,15 +305,20 @@ export function useEditorSearchController({
     }) ?? false;
     if (applied) {
       const nextText = editorRef.current?.getValue() ?? edit.text;
-      const nextMatches = getEditorSearchMatches(nextText, searchQuery, searchOptions);
+      const nextMatches = getEditorSearchResultWithLimit(
+        nextText,
+        searchQuery,
+        searchOptions,
+        EDITOR_SEARCH_MATCH_LIMIT,
+      ).matches;
       const nextMatchIndex = nextMatches.findIndex((match) => match.start >= edit.selection.to);
       setActiveSearchMatchIndex(nextMatches.length === 0 ? -1 : nextMatchIndex === -1 ? 0 : nextMatchIndex);
-      setSearchDocumentText(nextText);
+      setSearchDocumentRevision((currentRevision) => currentRevision + 1);
     }
   };
 
   const replaceAllMatches = () => {
-    if (!replaceAvailable) {
+    if (!replaceAvailable || searchMatchesTruncated) {
       return;
     }
 
@@ -320,7 +334,7 @@ export function useEditorSearchController({
     }) ?? false;
     if (applied) {
       setActiveSearchMatchIndex(-1);
-      setSearchDocumentText(editorRef.current?.getValue() ?? currentText);
+      setSearchDocumentRevision((currentRevision) => currentRevision + 1);
     }
   };
 
@@ -339,6 +353,7 @@ export function useEditorSearchController({
     searchError,
     searchMatches,
     searchMatchCount,
+    searchMatchesTruncated,
     activeSearchMatchIndex,
     openSearchFromCurrentSelection,
     onPreviewSearchMatchCountChange: handlePreviewSearchMatchCountChange,

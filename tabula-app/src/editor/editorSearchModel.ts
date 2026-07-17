@@ -41,6 +41,8 @@ export const DEFAULT_SEARCH_OPTIONS: SearchOptions = {
   regexp: false,
 };
 
+export const EDITOR_SEARCH_MATCH_LIMIT = 1_000;
+
 const getNormalizedSearchQuery = (query: string) => query.trim();
 
 const createSearchDocument = (text: string | Text) =>
@@ -200,8 +202,9 @@ export const replaceCurrentEditorSearchMatch = (
   replacement: string,
   activeMatchIndex: number,
   options: SearchOptions = DEFAULT_SEARCH_OPTIONS,
+  maxMatches = Number.POSITIVE_INFINITY,
 ): EditorSearchReplaceEdit | null => {
-  const matches = getEditorSearchMatches(text, query, options);
+  const matches = getEditorSearchResultWithLimit(text, query, options, maxMatches).matches;
   if (matches.length === 0) {
     return null;
   }

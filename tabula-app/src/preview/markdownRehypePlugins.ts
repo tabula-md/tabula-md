@@ -4,7 +4,8 @@ import rehypeSlug from "rehype-slug";
 import type { Options as ReactMarkdownOptions } from "react-markdown";
 import {
   DEFAULT_SEARCH_OPTIONS,
-  getEditorSearchMatches,
+  EDITOR_SEARCH_MATCH_LIMIT,
+  getEditorSearchResultWithLimit,
   getSearchQueryError,
   type SearchOptions,
 } from "../editor/editorSearchModel";
@@ -276,7 +277,12 @@ export const createPreviewSearchPlugin = (
               start: Math.max(0, match.start - nodeStart),
             }))
             .filter((match) => match.start < match.end && match.start < value.length && match.end > 0)
-        : getEditorSearchMatches(value, normalizedQuery, searchOptions).map((match, index) => ({
+        : getEditorSearchResultWithLimit(
+            value,
+            normalizedQuery,
+            searchOptions,
+            Math.max(0, EDITOR_SEARCH_MATCH_LIMIT - matchIndex),
+          ).matches.map((match, index) => ({
             end: match.end,
             index,
             start: match.start,
@@ -304,6 +310,7 @@ export const createPreviewSearchPlugin = (
     };
 
     const walk = (node: HastNode, ignored = false) => {
+      if (!options.sourceBackedMatches && matchIndex >= EDITOR_SEARCH_MATCH_LIMIT) return;
       const isIgnored = ignored ||
         (node.type === "element" && typeof node.tagName === "string" && previewSearchIgnoredTags.has(node.tagName));
       if (!node.children || isIgnored) return;

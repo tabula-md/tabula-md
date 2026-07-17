@@ -35,7 +35,8 @@ import {
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import {
   DEFAULT_SEARCH_OPTIONS,
-  getEditorSearchMatches,
+  EDITOR_SEARCH_MATCH_LIMIT,
+  getEditorSearchResultWithLimit,
   getSearchQueryError,
   type SearchOptions,
 } from "../editor/editorSearchModel";
@@ -681,13 +682,19 @@ function MarkdownPreviewComponent({
     ),
     [activeCommentId, commentsEnabled, stableCommentAnchors, uiCopy],
   );
-  const virtualPreviewSearchMatches = useMemo(
+  const virtualPreviewSearchResult = useMemo(
     () =>
       shouldVirtualizePreview && previewSearchActive
-        ? getEditorSearchMatches(renderableBody, searchQuery, searchOptions)
-        : [],
+        ? getEditorSearchResultWithLimit(
+            renderableBody,
+            searchQuery,
+            searchOptions,
+            EDITOR_SEARCH_MATCH_LIMIT,
+          )
+        : { error: null, matches: [], truncated: false },
     [previewSearchActive, renderableBody, searchOptions, searchQuery, shouldVirtualizePreview],
   );
+  const virtualPreviewSearchMatches = virtualPreviewSearchResult.matches;
   const previewSearchPlugin = useMemo(
     () =>
       previewSearchActive && !shouldVirtualizePreview
@@ -1059,7 +1066,10 @@ function MarkdownPreviewComponent({
       previewSearchActive && shouldVirtualizePreview
         ? virtualPreviewSearchMatches.length
         : contentElement?.querySelectorAll(".preview-search-match").length ?? 0;
-    onSearchMatchCountChange?.(previewSearchActive ? nextMatchCount : 0);
+    onSearchMatchCountChange?.(
+      previewSearchActive ? nextMatchCount : 0,
+      previewSearchActive && shouldVirtualizePreview ? virtualPreviewSearchResult.truncated : false,
+    );
 
     if (!previewSearchActive || activeSearchMatchIndex < 0) {
       return undefined;
@@ -1105,6 +1115,7 @@ function MarkdownPreviewComponent({
     renderableBody,
     shouldVirtualizePreview,
     virtualPreviewSearchMatches,
+    virtualPreviewSearchResult.truncated,
   ]);
 
   return (

@@ -138,4 +138,33 @@ export async function run(ctx) {
     expect((await sourceShortcutInput.getAttribute("aria-invalid")) === "true", "Invalid regexp should mark the search input invalid.");
     expect((await page.locator(".document-search-count").textContent()) === "0/0", "Invalid regexp should not report stale matches.");
   });
+
+  await withPage(browser, "/", async (page) => {
+    await page.getByRole("button", { name: "New document", exact: true }).click();
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText("a ".repeat(1_200));
+    await page.keyboard.press("ControlOrMeta+F");
+    const searchInput = page.getByRole("searchbox", { name: "Search" });
+    await searchInput.fill("a");
+    await waitForRenderFrame(page);
+
+    expect(
+      (await page.locator(".document-search-count").textContent()) === "1/1000+",
+      "High-cardinality search should expose the bounded result set.",
+    );
+    expect(
+      await page.getByRole("button", { name: "Select all matches" }).isDisabled(),
+      "Select all should stay disabled when the result set is truncated.",
+    );
+    await page.getByRole("button", { name: "Toggle replace" }).click();
+    expect(
+      await page.getByRole("button", { name: "Replace all" }).isDisabled(),
+      "Replace all should stay disabled when the result set is truncated.",
+    );
+    expect(
+      !(await page.getByRole("button", { name: "Replace match" }).isDisabled()),
+      "Replace current should remain available for a bounded result set.",
+    );
+  });
 }
