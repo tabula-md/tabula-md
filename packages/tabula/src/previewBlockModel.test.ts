@@ -123,6 +123,48 @@ describe("preview block model", () => {
     expect(longLineIndex.blocks.every((block) => block.startLine === 1 && block.endLine === 1)).toBe(true);
   });
 
+  it("keeps large reference definitions intact as zero-height preview structure", () => {
+    const definition = `[image1]: <data:image/png;base64,${"A".repeat(480_000)}>`;
+    const index = createPreviewBlockIndex(["Before.", definition, "After."].join("\n"));
+    const definitionBlock = index.blocks.find((block) => block.startLine === 2);
+
+    expect(definitionBlock).toMatchObject({
+      endLine: 2,
+      estimatedHeight: 0,
+      kind: "blank",
+      startLine: 2,
+      text: definition,
+    });
+    expect(index.blocks.filter((block) => block.startLine === 2)).toHaveLength(1);
+    expect(index.totalEstimatedHeight).toBe(
+      index.blocks
+        .filter((block) => block.startLine !== 2)
+        .reduce((total, block) => total + block.estimatedHeight, 0),
+    );
+  });
+
+  it("keeps multiline footnote definitions out of rendered preview blocks", () => {
+    const index = createPreviewBlockIndex(
+      [
+        "Before[^note].",
+        "[^note]: First line.",
+        "    Continued line.",
+        "",
+        "    Continued paragraph.",
+        "After.",
+      ].join("\n"),
+    );
+    const definitionBlock = index.blocks.find((block) => block.startLine === 2);
+
+    expect(definitionBlock).toMatchObject({
+      endLine: 5,
+      estimatedHeight: 0,
+      kind: "blank",
+    });
+    expect(definitionBlock?.text).toContain("Continued paragraph.");
+    expect(index.blocks.at(-1)?.text).toBe("After.");
+  });
+
   it("returns a visible block window with overscan", () => {
     const markdown = Array.from({ length: 200 }, (_, index) => `Line ${index + 1}`).join("\n\n");
     const blockIndex = createPreviewBlockIndex(markdown);
