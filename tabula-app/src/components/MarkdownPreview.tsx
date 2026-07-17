@@ -98,6 +98,7 @@ import {
   getPreviewGlobalMarkdownContext,
   type PreviewGlobalMarkdownContext,
 } from "../preview/previewGlobalMarkdownContext";
+import { normalizePreviewDocsComponents } from "../preview/previewDocsCompatibility";
 
 type PreviewDocsComponentProps = {
   children?: ReactNode;
@@ -112,6 +113,7 @@ type PreviewDocsComponentProps = {
 };
 
 type PreviewDocsRawComponentProps = PreviewDocsComponentProps & {
+  "data-component-name"?: string;
   "data-preview-line-end"?: number | string;
   "data-preview-line-start"?: number | string;
   node?: unknown;
@@ -133,50 +135,6 @@ const getPreviewColumnCount = (cols: number | string | undefined) => {
   return Math.max(1, Math.min(4, Math.round(parsedColumns)));
 };
 
-const normalizePreviewDocsComponents = (markdown: string) => {
-  if (!markdown.includes("<")) {
-    return markdown;
-  }
-
-  const docsComponentPattern = /<\/?(?:CardGroup|Card|Frame)(?=[\s>/])/;
-  if (!docsComponentPattern.test(markdown)) {
-    return markdown;
-  }
-
-  let isInFence = false;
-  let activeFenceMarker = "";
-
-  return markdown
-    .split(/(\r?\n)/)
-    .map((segment) => {
-      if (segment === "\n" || segment === "\r\n") {
-        return segment;
-      }
-
-      const fenceMatch = segment.match(/^ {0,3}(`{3,}|~{3,})/);
-      if (fenceMatch) {
-        const marker = fenceMatch[1];
-        if (!isInFence) {
-          isInFence = true;
-          activeFenceMarker = marker;
-        } else if (marker[0] === activeFenceMarker[0] && marker.length >= activeFenceMarker.length) {
-          isInFence = false;
-          activeFenceMarker = "";
-        }
-      }
-
-      if (isInFence) {
-        return segment;
-      }
-
-      return segment
-        .replace(/<\/?CardGroup(?=[\s>/])/g, (match) => (match.startsWith("</") ? "</tabula-card-group" : "<tabula-card-group"))
-        .replace(/<\/?Card(?=[\s>/])/g, (match) => (match.startsWith("</") ? "</tabula-card" : "<tabula-card"))
-        .replace(/<\/?Frame(?=[\s>/])/g, (match) => (match.startsWith("</") ? "</tabula-frame" : "<tabula-frame"));
-    })
-    .join("");
-};
-
 function PreviewFrame({ children, caption, hint, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
   return (
     <figure {...sourceProps} className={`preview-docs-frame ${sourceProps.className ?? ""}`.trim()}>
@@ -184,6 +142,23 @@ function PreviewFrame({ children, caption, hint, ...sourceProps }: PreviewDocsCo
       <div className="preview-docs-frame-body">{children}</div>
       {caption && <figcaption>{caption}</figcaption>}
     </figure>
+  );
+}
+
+function PreviewUnsupportedComponent({
+  children,
+  "data-component-name": componentName = "Component",
+  ...sourceProps
+}: PreviewDocsRawComponentProps & HTMLAttributes<HTMLElement>) {
+  return (
+    <aside
+      {...sourceProps}
+      className={`preview-unsupported-component ${sourceProps.className ?? ""}`.trim()}
+      data-component-name={componentName}
+    >
+      <code className="preview-unsupported-component-label">{`<${componentName}>`}</code>
+      {children && <div className="preview-unsupported-component-body">{children}</div>}
+    </aside>
   );
 }
 
@@ -297,6 +272,9 @@ const PREVIEW_DOCS_COMPONENTS = {
     >
       {children}
     </PreviewFrame>
+  ),
+  "tabula-unsupported-component": ({ node: _node, ...props }: PreviewDocsRawComponentProps) => (
+    <PreviewUnsupportedComponent {...props} />
   ),
 } as unknown as Components;
 

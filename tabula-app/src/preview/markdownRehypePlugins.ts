@@ -11,6 +11,7 @@ import {
 } from "../editor/editorSearchModel";
 import type { MarkdownPreviewCommentAnchor } from "./markdownPreviewTypes";
 import { PREVIEW_SANITIZE_SCHEMA } from "./previewSanitizeSchema";
+import { PREVIEW_DOCS_BLOCK_TAGS } from "./previewDocsCompatibility";
 import type { WorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 
 type HastNode = {
@@ -30,7 +31,7 @@ export type MarkdownRehypePlugins = NonNullable<ReactMarkdownOptions["rehypePlug
 const previewSourceBlockTags = new Set([
   "blockquote", "card", "cardgroup", "dd", "dl", "dt", "frame", "h1", "h2", "h3",
   "h4", "h5", "h6", "hr", "li", "ol", "p", "pre", "tabula-card", "tabula-card-group",
-  "tabula-frame", "table", "ul",
+  "tabula-frame", "tabula-unsupported-component", "table", "ul",
 ]);
 const ignoredPreviewSourceTags = new Set(["button", "code", "pre"]);
 const ignoredCommentAnchorTags = new Set(["a", "button", "code", "pre"]);
@@ -38,6 +39,38 @@ const previewAlertTypes = new Set(["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTI
 
 const isHastElement = (node: HastNode | undefined, tagName?: string): node is HastNode =>
   node?.type === "element" && (tagName === undefined || node.tagName === tagName);
+
+const isWhitespaceText = (node: HastNode) =>
+  node.type === "text" && (node.value ?? "").trim().length === 0;
+
+export const unwrapPreviewDocsBlockParagraphs = (tree: HastNode) => {
+  const walk = (node: HastNode) => {
+    if (!node.children) return;
+
+    node.children = node.children.map((child) => {
+      if (isHastElement(child, "p")) {
+        const contentChildren = child.children?.filter((candidate) => !isWhitespaceText(candidate)) ?? [];
+        const onlyChild = contentChildren.length === 1 ? contentChildren[0] : undefined;
+        if (
+          isHastElement(onlyChild) &&
+          typeof onlyChild.tagName === "string" &&
+          PREVIEW_DOCS_BLOCK_TAGS.has(onlyChild.tagName)
+        ) {
+          onlyChild.position = child.position ?? onlyChild.position;
+          walk(onlyChild);
+          return onlyChild;
+        }
+      }
+
+      walk(child);
+      return child;
+    });
+  };
+
+  walk(tree);
+};
+
+const createPreviewDocsBlockPlugin = () => unwrapPreviewDocsBlockParagraphs;
 
 const getHastText = (node: HastNode | undefined): string => {
   if (!node) return "";
@@ -340,6 +373,7 @@ export const createPreviewRehypePlugins = (
 ): MarkdownRehypePlugins => [
   rehypeRaw,
   [rehypeSanitize, PREVIEW_SANITIZE_SCHEMA],
+  createPreviewDocsBlockPlugin,
   rehypeSlug,
   createPreviewAlertPlugin,
   createPreviewSourceLinePlugin(lineOffset),
