@@ -58,6 +58,7 @@ export type DocumentSearchBarProps = {
   searchQuery: string;
   replaceQuery: string;
   searchMatchCount: number;
+  searchMatchesTruncated: boolean;
   searchError: string | null;
   searchOptions: SearchOptions;
   activeSearchMatchIndex: number;
@@ -236,6 +237,7 @@ export function DocumentSearchBar({
   searchQuery,
   replaceQuery,
   searchMatchCount,
+  searchMatchesTruncated,
   searchError,
   searchOptions,
   activeSearchMatchIndex,
@@ -256,6 +258,7 @@ export function DocumentSearchBar({
   const hasSearchQuery = searchQuery.trim().length > 0;
   const hasSearchError = Boolean(searchError);
   const hasMatches = !hasSearchError && searchMatchCount > 0;
+  const hasCompleteMatchSet = hasMatches && !searchMatchesTruncated;
   const hasNoSearchResults = hasSearchQuery && !hasSearchError && searchMatchCount === 0;
   const [replaceOpen, setReplaceOpen] = useState(false);
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
@@ -353,7 +356,7 @@ export function DocumentSearchBar({
                 type="button"
                 data-tooltip={copy.selectAllMatches}
                 aria-label={copy.selectAllMatches}
-                disabled={!hasMatches}
+                disabled={!hasCompleteMatchSet}
                 onClick={onSelectAllSearchMatches}
               >
                 <ListChecks size={14} />
@@ -379,8 +382,8 @@ export function DocumentSearchBar({
             </button>
             <span className="document-search-count">
               {hasSearchQuery && hasMatches && activeSearchMatchIndex >= 0
-                ? `${activeSearchMatchIndex + 1}/${searchMatchCount}`
-                : `0/${hasSearchQuery && !hasSearchError ? searchMatchCount : 0}`}
+                ? `${activeSearchMatchIndex + 1}/${searchMatchCount}${searchMatchesTruncated ? "+" : ""}`
+                : `0/${hasSearchQuery && !hasSearchError ? searchMatchCount : 0}${searchMatchesTruncated ? "+" : ""}`}
             </span>
             <button
               type="button"
@@ -434,7 +437,7 @@ export function DocumentSearchBar({
                 type="button"
                 data-tooltip={copy.replaceAllMatches}
                 aria-label={copy.replaceAllMatches}
-                disabled={!hasMatches}
+                disabled={!hasCompleteMatchSet}
                 onClick={onReplaceAllMatches}
               >
                 <ReplaceAll size={14} />

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { Text } from "@codemirror/state";
 import {
+  EDITOR_SEARCH_MATCH_LIMIT,
   getEditorSearchMatches,
   getEditorSearchResult,
+  getEditorSearchResultWithLimit,
   replaceAllEditorSearchMatches,
   replaceCurrentEditorSearchMatch,
 } from "./editorSearchModel";
@@ -50,6 +52,25 @@ describe("editor search model", () => {
     expect(getEditorSearchResult("Alpha", "(", { caseSensitive: false, wholeWord: false, regexp: true })).toEqual({
       error: expect.any(String),
       matches: [],
+    });
+  });
+
+  it("caps high-cardinality results and reports that more matches exist", () => {
+    const result = getEditorSearchResultWithLimit(
+      "a ".repeat(EDITOR_SEARCH_MATCH_LIMIT + 200),
+      "a",
+      undefined,
+      EDITOR_SEARCH_MATCH_LIMIT,
+    );
+
+    expect(result.matches).toHaveLength(EDITOR_SEARCH_MATCH_LIMIT);
+    expect(result.truncated).toBe(true);
+  });
+
+  it("does not report truncation when the limit contains every match", () => {
+    expect(getEditorSearchResultWithLimit("a a a", "a", undefined, 3)).toMatchObject({
+      matches: expect.any(Array),
+      truncated: false,
     });
   });
 

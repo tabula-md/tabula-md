@@ -37,7 +37,7 @@ export type MarkdownPreviewProps = {
   activeSearchMatchIndex?: number;
   suspendLineMeasurement?: boolean;
   uiLanguage?: WorkspaceLanguage;
-  onSearchMatchCountChange?: (count: number) => void;
+  onSearchMatchCountChange?: (count: number, truncated?: boolean) => void;
   onLineAction?: (request: MarkdownPreviewLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
   onToggleTaskLine?: (sourceLineIndex: number) => void;
