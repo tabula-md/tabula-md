@@ -4,12 +4,15 @@ export const PREVIEW_SANITIZE_SCHEMA: SanitizeSchema = {
   ...defaultSchema,
   tagNames: [
     ...(defaultSchema.tagNames ?? []),
+    "abbr",
     "card",
     "cardgroup",
     "dd",
     "dl",
     "dt",
     "frame",
+    "figure",
+    "figcaption",
     "mark",
     "section",
     "sub",
@@ -21,9 +24,11 @@ export const PREVIEW_SANITIZE_SCHEMA: SanitizeSchema = {
   ],
   attributes: {
     ...defaultSchema.attributes,
+    abbr: ["title"],
     a: [...(defaultSchema.attributes?.a ?? []), "title"],
     card: ["href", "icon", "img", "title", "horizontal"],
     cardgroup: ["cols"],
+    details: ["open"],
     frame: ["caption", "hint"],
     section: [
       ...(defaultSchema.attributes?.section ?? []),

@@ -1965,6 +1965,18 @@ $$
 L = \\frac{1}{2} \\rho v^2 S C_L
 $$
 
+\`\`\`latex
+E = mc^2
+\`\`\`
+
+\`\`\`tex
+\\int_0^1 x^2 \\, dx
+\`\`\`
+
+\`\`\`katex
+\\sum_{i=1}^{n} i
+\`\`\`
+
 Footnote reference[^mcp].
 
 [^mcp]: Footnote content.
@@ -2004,6 +2016,16 @@ flowchart LR
 <StatusDot value={ready} />
 
 <custom-widget>The custom HTML explanation must remain readable.</custom-widget>
+
+<details open>
+  <summary>Keyboard shortcut</summary>
+  Press <kbd>Command</kbd> + <kbd>K</kbd> to continue.
+</details>
+
+<figure>
+  <img src="https://example.com/diagram.png" alt="Architecture diagram" />
+  <figcaption><abbr title="Model Context Protocol">MCP</abbr> architecture</figcaption>
+</figure>
 
 <script>window.__tabulaUnsafePreview = true</script>
 <img src="javascript:alert(1)" alt="unsafe image" onerror="window.__tabulaUnsafeImage = true" />`;
@@ -2132,6 +2154,7 @@ flowchart LR
     expect((await page.locator("mark").filter({ hasText: "marked text" }).count()) === 1, "Preview should render marked text syntax.");
     expect((await page.locator(".preview-math-inline .katex").count()) >= 1, "Preview should render inline math with KaTeX.");
     expect((await page.locator(".preview-math-block .katex-display").count()) >= 1, "Preview should render display math with KaTeX.");
+    expect((await page.locator(".preview-math-block .katex-display").count()) >= 4, "Preview should render math, LaTeX, TeX, and KaTeX fences through KaTeX.");
     expect((await page.locator("section[data-footnotes]").count()) === 1, "Preview should render footnotes.");
     expect((await page.locator("pre code.hljs.language-js").count()) === 1, "Preview should syntax highlight fenced code blocks.");
     expect((await page.locator("pre code .hljs-keyword").count()) >= 1, "Preview code highlighting should include token spans.");
@@ -2173,6 +2196,9 @@ flowchart LR
       (await page.locator('.preview-unsupported-component[data-component-name="StatusDot"]').count()) === 1,
       "Preview should expose an inert fallback for unsupported self-closing components.",
     );
+    expect((await page.locator("details[open] summary").filter({ hasText: "Keyboard shortcut" }).count()) === 1, "Preview should preserve safe disclosure HTML.");
+    expect((await page.locator("kbd").count()) === 2, "Preview should preserve keyboard input HTML.");
+    expect((await page.locator("figure figcaption abbr[title='Model Context Protocol']").count()) === 1, "Preview should preserve static figure and abbreviation HTML.");
     expect(
       (await page.locator('.preview-unsupported-component[data-component-name="custom-widget"]').filter({ hasText: "The custom HTML explanation must remain readable." }).count()) === 1,
       "Preview should preserve unknown custom HTML through the inert fallback.",

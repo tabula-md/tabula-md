@@ -388,8 +388,10 @@ export const getCodeLanguage = (className = "") =>
 export const hasCodeClass = (className: string | undefined, targetClassName: string) =>
   Boolean(className?.split(/\s+/).includes(targetClassName));
 
+export const MATH_FENCE_LANGUAGES = new Set(["katex", "latex", "math", "tex"]);
+
 const isMathDisplayCode = (className: string | undefined, language: string | undefined) =>
-  language === "math" || hasCodeClass(className, "math-display");
+  (language ? MATH_FENCE_LANGUAGES.has(language) : false) || hasCodeClass(className, "math-display");
 
 const isMermaidCode = (language: string | undefined) => language === "mermaid" || language === "mmd";
 
