@@ -213,6 +213,7 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: "Italic", exact: true }).click();
     await waitForSelectionLayer(page, { minSegments: 1 });
+    await page.locator(".selection-comment-button").waitFor({ state: "visible" });
     const selectionAfterToolbarFormat = await page.evaluate(() => ({
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
       selectedText: document.getSelection()?.toString() ?? "",
