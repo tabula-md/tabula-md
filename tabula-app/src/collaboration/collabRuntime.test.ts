@@ -140,7 +140,7 @@ describe("collaboration runtime model", () => {
     ).toBeUndefined();
   });
 
-  it("adds room-scoped presence metadata only while live", () => {
+  it("adds actor metadata only while live", () => {
     const identity = {
       id: "self",
       name: "Ada",
@@ -152,9 +152,6 @@ describe("collaboration runtime model", () => {
       createCollaborationPresenceIdentity({
         identity,
         isLive: false,
-        roomId: "room-1",
-        fileTitle: "README",
-        selection: { from: 1, to: 2 },
       }),
     ).toBe(identity);
 
@@ -162,10 +159,6 @@ describe("collaboration runtime model", () => {
       createCollaborationPresenceIdentity({
         identity,
         isLive: true,
-        activeDocumentId: "readme",
-        roomId: "room-1",
-        fileTitle: "README",
-        selection: { from: 1, to: 2 },
       }),
     ).toEqual({
       ...identity,
@@ -173,22 +166,6 @@ describe("collaboration runtime model", () => {
       client: "tabula-md",
       capabilities: ["presence", "read", "write"],
       joinedAt: "1970-01-01T00:00:00.000Z",
-      activeDocumentId: "readme",
-      roomId: "room-1",
-      fileTitle: "README",
-      selection: { documentId: "readme", from: 1, to: 2 },
-    });
-
-    expect(
-      createCollaborationPresenceIdentity({
-        identity,
-        isLive: true,
-        roomId: "room-1",
-        selection: { from: 1, to: 2 },
-      }),
-    ).toMatchObject({
-      roomId: "room-1",
-      selection: undefined,
     });
   });
 });

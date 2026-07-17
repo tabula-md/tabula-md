@@ -39,6 +39,7 @@ const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   editorBinding: null,
 };
 const EMPTY_COMMENTS: readonly WorkspaceRoomComment[] = Object.freeze([]);
+const VIEWPORT_PRESENCE_DELAY_MS = 100;
 
 type PendingWorkspaceCommand =
   | { type: "create-document"; input: WorkspaceRoomDocumentCommand }
@@ -103,6 +104,8 @@ export function useCollaborationConnectionRuntime({
   const pendingWorkspaceCommandQueueRef = useRef<PendingWorkspaceCommand[]>([]);
   const observedSecondActorRef = useRef(false);
   const observedRemoteEditRef = useRef(false);
+  const pendingViewportRef = useRef<LiveViewport | null>(null);
+  const viewportTimerRef = useRef<number | null>(null);
   const isLive = Boolean(session);
   const connectionKey = room ? `workspace:${room.roomId}:${room.shareUrl}` : "idle";
   const subscribeToSessionRuntime = useCallback(
@@ -193,6 +196,31 @@ export function useCollaborationConnectionRuntime({
       ? runtimeSnapshot.editorBinding
       : null;
 
+  const clearPendingViewport = useCallback(() => {
+    pendingViewportRef.current = null;
+    if (viewportTimerRef.current === null) return;
+    window.clearTimeout(viewportTimerRef.current);
+    viewportTimerRef.current = null;
+  }, []);
+
+  const setViewport = useCallback((viewport: LiveViewport | null) => {
+    if (!viewport) {
+      clearPendingViewport();
+      collabRef.current?.setViewport(null);
+      return;
+    }
+    pendingViewportRef.current = viewport;
+    if (viewportTimerRef.current !== null) return;
+    viewportTimerRef.current = window.setTimeout(() => {
+      viewportTimerRef.current = null;
+      const pendingViewport = pendingViewportRef.current;
+      pendingViewportRef.current = null;
+      if (pendingViewport) collabRef.current?.setViewport(pendingViewport);
+    }, VIEWPORT_PRESENCE_DELAY_MS);
+  }, [clearPendingViewport]);
+
+  useEffect(() => clearPendingViewport, [clearPendingViewport]);
+
   useEffect(() => {
     const handleOnline = () => setBrowserOnline(true);
     const handleOffline = () => setBrowserOnline(false);
@@ -221,6 +249,7 @@ export function useCollaborationConnectionRuntime({
   }, [collaborators, identity.id, room?.roomId]);
 
   useEffect(() => {
+    clearPendingViewport();
     collabRef.current?.disconnect();
     collabRef.current = null;
     pendingLocalTextQueueRef.current = [];
@@ -294,6 +323,7 @@ export function useCollaborationConnectionRuntime({
       if (collabRef.current === effectRuntime) collabRef.current = null;
       pendingLocalTextQueueRef.current = [];
       pendingWorkspaceCommandQueueRef.current = [];
+      clearPendingViewport();
     };
   }, [
     connectionAttempt,
@@ -302,6 +332,7 @@ export function useCollaborationConnectionRuntime({
     onRecoveryEvent,
     onOpenFailure,
     onCapacityExceeded,
+    clearPendingViewport,
   ]);
 
   useEffect(() => collabRef.current?.setIdentity(identity), [identity]);
@@ -343,12 +374,13 @@ export function useCollaborationConnectionRuntime({
   }, [isLive]);
 
   const resetConnection = useCallback((nextStatus: ConnectionStatus = "idle") => {
+    clearPendingViewport();
     collabRef.current?.disconnect();
     collabRef.current = null;
     pendingLocalTextQueueRef.current = [];
     pendingWorkspaceCommandQueueRef.current = [];
     setPreRuntimeConnectionStatus(nextStatus);
-  }, []);
+  }, [clearPendingViewport]);
 
   const retryConnection = useCallback(() => {
     if (!room) return;
@@ -375,7 +407,7 @@ export function useCollaborationConnectionRuntime({
     replaceDocumentText: (documentId: string, text: string) =>
       dispatchWorkspaceCommand({ type: "replace-document-text", documentId, text }),
     setFollowingActor: (actorId: string | null) => collabRef.current?.setFollowingActor(actorId),
-    setViewport: (viewport: LiveViewport | null) => collabRef.current?.setViewport(viewport),
+    setViewport,
     collaborators,
     connectionStatus,
     durability,

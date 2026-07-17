@@ -5,7 +5,6 @@ import {
 import {
   type Collaborator,
   type ConnectionStatus,
-  type LiveSelection,
   type RoomSession,
   type TabulaRoomAvailability,
 } from "./liveCollaboration";
@@ -23,10 +22,6 @@ export type LiveRoomConnectionTarget = {
 export type CollaborationPresenceIdentityInput = {
   identity: Collaborator;
   isLive: boolean;
-  activeDocumentId?: string;
-  roomId?: string;
-  fileTitle?: string;
-  selection?: LiveSelection;
   joinedAt?: string;
 };
 
@@ -101,10 +96,6 @@ export const createCollaborationSessionStartRequest = ({
 export const createCollaborationPresenceIdentity = ({
   identity,
   isLive,
-  activeDocumentId,
-  roomId,
-  fileTitle,
-  selection,
   joinedAt,
 }: CollaborationPresenceIdentityInput): Collaborator =>
   isLive
@@ -114,11 +105,5 @@ export const createCollaborationPresenceIdentity = ({
         client: identity.client ?? "tabula-md",
         capabilities: identity.capabilities ?? [...HUMAN_ROOM_CAPABILITIES],
         joinedAt: identity.joinedAt ?? joinedAt ?? new Date(0).toISOString(),
-        ...(activeDocumentId ? { activeDocumentId } : {}),
-        roomId,
-        ...(fileTitle ? { fileTitle } : {}),
-        selection: selection && activeDocumentId
-          ? { ...selection, documentId: selection.documentId ?? activeDocumentId }
-          : undefined,
       }
     : identity;

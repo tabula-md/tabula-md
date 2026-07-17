@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import {
   createRoomActor,
@@ -155,5 +155,52 @@ describe("RoomPresenceController", () => {
       name: "Sharp Human",
       joinedAt: "2026-07-12T00:00:00.000Z",
     }));
+  });
+
+  it("does not republish awareness for identity fields outside the actor contract", () => {
+    const { awareness, controller } = createRoom();
+    controller.publishLocalState();
+    const listener = vi.fn();
+    awareness.on("update", listener);
+
+    controller.setIdentity({
+      id: "human-1",
+      name: "Curious Human",
+      color: "#2563eb",
+      kind: "human",
+      client: "tabula-md",
+      lastSeen: 999,
+      selection: { documentId: "doc-1", from: 1, to: 4 },
+    });
+    expect(listener).not.toHaveBeenCalled();
+
+    controller.setIdentity({
+      id: "human-1",
+      name: "Sharp Human",
+      color: "#2563eb",
+      kind: "human",
+      client: "tabula-md",
+      lastSeen: 999,
+    });
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("deduplicates unchanged viewport and active-document presence", () => {
+    const { awareness, controller } = createRoom();
+    controller.publishLocalState();
+    const listener = vi.fn();
+    awareness.on("update", listener);
+
+    controller.setActiveDocument({ documentId: "doc-1", fileTitle: "README.md" });
+    expect(listener).not.toHaveBeenCalled();
+
+    const viewport = { documentId: "doc-1", position: 4, offset: 16 };
+    controller.setViewport(viewport);
+    controller.setViewport(viewport);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    controller.setViewport(null);
+    controller.setViewport(null);
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 });
