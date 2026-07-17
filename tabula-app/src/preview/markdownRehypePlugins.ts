@@ -30,8 +30,8 @@ export type MarkdownRehypePlugins = NonNullable<ReactMarkdownOptions["rehypePlug
 
 const previewSourceBlockTags = new Set([
   "blockquote", "card", "cardgroup", "dd", "dl", "dt", "frame", "h1", "h2", "h3",
-  "h4", "h5", "h6", "hr", "li", "ol", "p", "pre", "tabula-card", "tabula-card-group",
-  "tabula-frame", "tabula-unsupported-component", "table", "ul",
+  "h4", "h5", "h6", "hr", "li", "ol", "p", "pre", ...PREVIEW_DOCS_BLOCK_TAGS,
+  "table", "ul",
 ]);
 const ignoredPreviewSourceTags = new Set(["button", "code", "pre"]);
 const ignoredCommentAnchorTags = new Set(["a", "button", "code", "pre"]);

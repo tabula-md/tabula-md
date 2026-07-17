@@ -547,6 +547,113 @@ a.preview-docs-card:hover {
   cursor: help;
 }
 
+.preview-docs-tabs,
+.preview-docs-accordion-group {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.preview-docs-tab {
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  background: var(--surface-overlay);
+  overflow: hidden;
+}
+
+.preview-docs-tab-title,
+.preview-docs-code-group-title {
+  padding: 8px 12px;
+  color: var(--text-soft);
+  background: var(--surface-muted);
+  font-size: var(--preview-secondary-text-size);
+  font-weight: 650;
+}
+
+.preview-docs-tab-body,
+.preview-docs-accordion-body {
+  padding: 12px 14px;
+}
+
+.preview-docs-tab-body > :first-child,
+.preview-docs-accordion-body > :first-child,
+.preview-docs-step-body > :first-child,
+.preview-docs-callout-body > :first-child {
+  margin-top: 0;
+}
+
+.preview-docs-tab-body > :last-child,
+.preview-docs-accordion-body > :last-child,
+.preview-docs-step-body > :last-child,
+.preview-docs-callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+.preview-docs-accordion-group .preview-docs-accordion {
+  margin: 0;
+}
+
+.preview-surface .preview-docs-steps {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0;
+  padding-left: 34px;
+}
+
+.preview-docs-step {
+  padding-left: 6px;
+}
+
+.preview-docs-step-title {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.preview-docs-code-group {
+  margin: 18px 0;
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.preview-docs-code-group-body > .preview-code-block,
+.preview-docs-code-group-body > pre {
+  margin: 0;
+  border-radius: 0;
+}
+
+.preview-docs-callout {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--line-strong);
+  border-radius: 0 8px 8px 0;
+  background: var(--surface-muted);
+}
+
+.preview-docs-callout-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-primary);
+}
+
+.preview-docs-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 7px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 999px;
+  color: var(--text-soft);
+  background: var(--surface-muted);
+  font-size: var(--preview-secondary-text-size);
+  font-weight: 650;
+  line-height: 1.2;
+}
+
 .preview-surface code {
   padding: 2px 5px;
   color: var(--text-primary);

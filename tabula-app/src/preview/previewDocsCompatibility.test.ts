@@ -7,10 +7,20 @@ describe("preview docs compatibility", () => {
       "<CardGroup cols={2}>",
       "<Card title=\"One\">Body</Card>",
       "</CardGroup>",
+      "<Tabs>",
+      "<Tab title=\"TypeScript\">Code</Tab>",
+      "</Tabs>",
+      "<Accordion title=\"Details\">More</Accordion>",
+      "<Steps><Step title=\"Install\">Run it</Step></Steps>",
     ].join("\n"))).toBe([
       "<tabula-card-group cols={2}>",
       "<tabula-card title=\"One\">Body</tabula-card>",
       "</tabula-card-group>",
+      "<tabula-tabs>",
+      "<tabula-tab title=\"TypeScript\">Code</tabula-tab>",
+      "</tabula-tabs>",
+      "<tabula-accordion title=\"Details\">More</tabula-accordion>",
+      "<tabula-steps><tabula-step title=\"Install\">Run it</tabula-step></tabula-steps>",
     ].join("\n"));
   });
 

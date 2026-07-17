@@ -1,9 +1,18 @@
 import { PREVIEW_SANITIZE_SCHEMA } from "./previewSanitizeSchema";
 
 const PREVIEW_DOCS_COMPONENT_TAGS: Readonly<Record<string, string>> = {
+  Accordion: "tabula-accordion",
+  AccordionGroup: "tabula-accordion-group",
+  Badge: "tabula-badge",
   Card: "tabula-card",
   CardGroup: "tabula-card-group",
+  Callout: "tabula-callout",
+  CodeGroup: "tabula-code-group",
   Frame: "tabula-frame",
+  Step: "tabula-step",
+  Steps: "tabula-steps",
+  Tab: "tabula-tab",
+  Tabs: "tabula-tabs",
 };
 
 const PREVIEW_ALLOWED_HTML_TAGS = new Set(PREVIEW_SANITIZE_SCHEMA.tagNames ?? []);
@@ -20,9 +29,17 @@ const PREVIEW_STRIPPED_HTML_TAGS = new Set([
 ]);
 
 export const PREVIEW_DOCS_BLOCK_TAGS = new Set([
+  "tabula-accordion",
+  "tabula-accordion-group",
   "tabula-card",
   "tabula-card-group",
+  "tabula-callout",
+  "tabula-code-group",
   "tabula-frame",
+  "tabula-step",
+  "tabula-steps",
+  "tabula-tab",
+  "tabula-tabs",
   "tabula-unsupported-component",
 ]);
 

@@ -2017,6 +2017,29 @@ flowchart LR
 
 <custom-widget>The custom HTML explanation must remain readable.</custom-widget>
 
+<Tabs>
+  <Tab title="TypeScript">Use the TypeScript client.</Tab>
+  <Tab title="Python">Use the Python client.</Tab>
+</Tabs>
+
+<AccordionGroup>
+  <Accordion title="Authentication" open={true}>Use a bearer token.</Accordion>
+  <Accordion title="Retries">Retry transient failures.</Accordion>
+</AccordionGroup>
+
+<Steps>
+  <Step title="Install">Install the package.</Step>
+  <Step title="Connect">Connect to the room.</Step>
+</Steps>
+
+<CodeGroup title="Client examples">
+  <code>npm install @tabula-md/mcp</code>
+</CodeGroup>
+
+<Callout type="warning" title="Keep the room URL private" icon="lock">Treat it as a bearer secret.</Callout>
+
+Status <Badge type="success">Ready</Badge>
+
 <details open>
   <summary>Keyboard shortcut</summary>
   Press <kbd>Command</kbd> + <kbd>K</kbd> to continue.
@@ -2199,6 +2222,14 @@ flowchart LR
     expect((await page.locator("details[open] summary").filter({ hasText: "Keyboard shortcut" }).count()) === 1, "Preview should preserve safe disclosure HTML.");
     expect((await page.locator("kbd").count()) === 2, "Preview should preserve keyboard input HTML.");
     expect((await page.locator("figure figcaption abbr[title='Model Context Protocol']").count()) === 1, "Preview should preserve static figure and abbreviation HTML.");
+    expect((await page.locator(".preview-docs-tabs .preview-docs-tab").count()) === 2, "Preview should render static docs tabs without executing MDX.");
+    expect((await page.locator(".preview-docs-tab-title").filter({ hasText: "TypeScript" }).count()) === 1, "Preview tabs should preserve labels.");
+    expect((await page.locator(".preview-docs-accordion-group .preview-docs-accordion").count()) === 2, "Preview should render accordion groups.");
+    expect((await page.locator(".preview-docs-accordion[open]").count()) === 1, "Preview should preserve an explicitly open accordion.");
+    expect((await page.locator(".preview-docs-steps .preview-docs-step").count()) === 2, "Preview should render static steps.");
+    expect((await page.locator(".preview-docs-code-group").filter({ hasText: "npm install @tabula-md/mcp" }).count()) === 1, "Preview should preserve code group content.");
+    expect((await page.locator('.preview-docs-callout[data-callout-type="warning"]').count()) === 1, "Preview should render static callouts.");
+    expect((await page.locator('.preview-docs-badge[data-badge-type="success"]').filter({ hasText: "Ready" }).count()) === 1, "Preview should render inline badges.");
     expect(
       (await page.locator('.preview-unsupported-component[data-component-name="custom-widget"]').filter({ hasText: "The custom HTML explanation must remain readable." }).count()) === 1,
       "Preview should preserve unknown custom HTML through the inert fallback.",
