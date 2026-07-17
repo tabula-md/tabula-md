@@ -613,12 +613,8 @@ export function useWorkspaceRuntime() {
     replaceActiveRoomComments(activeRoomDocument?.id, activeDocumentComments);
   }, [activeDocumentComments, activeRoomDocument?.id, activeRoomId, replaceActiveRoomComments]);
   const presenceIdentity = useCollaborationPresenceRuntime({
-    activeDocumentId: activeRoomDocument?.id,
-    activeSelection: activeRoomDocument ? activeSelection : undefined,
-    fileTitle: activeRoomDocument?.title,
     identity,
     isLive,
-    roomId: activeRoomId,
   });
   useEffect(() => {
     if (activeRoomDocument && activeDocumentProjection !== null) {

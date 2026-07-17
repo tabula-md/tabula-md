@@ -72,6 +72,16 @@ const toActor = (identity: Collaborator): RoomActor => createRoomActor({
   joinedAt: identity.joinedAt,
 });
 
+const roomActorsEqual = (first: RoomActor, second: RoomActor) =>
+  first.id === second.id &&
+  first.kind === second.kind &&
+  first.name === second.name &&
+  first.color === second.color &&
+  first.client === second.client &&
+  first.joinedAt === second.joinedAt &&
+  first.capabilities.length === second.capabilities.length &&
+  first.capabilities.every((capability, index) => capability === second.capabilities[index]);
+
 const getDocumentIdForType = (room: WorkspaceRoomCrdt, type: unknown) => {
   let documentId: string | undefined;
   room.documents.forEach((text, id) => {
@@ -138,6 +148,7 @@ export const createRoomPresenceController = ({
   let activeDocumentId = initialActiveDocumentId;
   let fileTitle = initialFileTitle;
   let editorPresenceEnabled = true;
+  let lastViewport: LiveViewport | null = null;
 
   const getActors = () => {
     const actors = new Map<string, RoomActor>();
@@ -250,26 +261,40 @@ export const createRoomPresenceController = ({
       removeAwarenessStates(awareness, [awareness.clientID], "tabula.disconnect");
     },
     setActiveDocument(nextDocument: { documentId: string; fileTitle?: string } | null) {
-      activeDocumentId = nextDocument?.documentId ?? null;
-      fileTitle = nextDocument?.fileTitle;
+      const nextDocumentId = nextDocument?.documentId ?? null;
+      const nextFileTitle = nextDocument?.fileTitle;
+      if (activeDocumentId === nextDocumentId && fileTitle === nextFileTitle) return;
+      activeDocumentId = nextDocumentId;
+      fileTitle = nextFileTitle;
+      lastViewport = null;
       awareness.setLocalStateField("cursor", null);
       awareness.setLocalStateField("viewport", null);
       publishLocalState();
     },
     setEditorPresenceEnabled(enabled: boolean) {
+      if (editorPresenceEnabled === enabled) return;
       editorPresenceEnabled = enabled;
       if (!enabled) {
+        lastViewport = null;
         awareness.setLocalStateField("cursor", null);
         awareness.setLocalStateField("viewport", null);
       }
     },
     setViewport(viewport: LiveViewport | null) {
       if (!viewport || !editorPresenceEnabled) {
+        if (lastViewport === null && awareness.getLocalState()?.viewport == null) return;
+        lastViewport = null;
         awareness.setLocalStateField("viewport", null);
         return;
       }
+      if (
+        lastViewport?.documentId === viewport.documentId &&
+        lastViewport.position === viewport.position &&
+        lastViewport.offset === viewport.offset
+      ) return;
       const text = room.documents.get(viewport.documentId);
       if (!text) return;
+      lastViewport = viewport;
       awareness.setLocalStateField("viewport", {
         anchor: Y.createRelativePositionFromTypeIndex(
           text,
@@ -282,10 +307,12 @@ export const createRoomPresenceController = ({
       awareness.setLocalStateField("followingActorId", actorId);
     },
     setIdentity(nextIdentity: Collaborator) {
-      currentIdentity = {
+      const normalizedIdentity = {
         ...nextIdentity,
         joinedAt: nextIdentity.joinedAt ?? currentIdentity.joinedAt ?? nowIso(),
       };
+      if (roomActorsEqual(toActor(currentIdentity), toActor(normalizedIdentity))) return;
+      currentIdentity = normalizedIdentity;
       publishLocalState();
     },
   };

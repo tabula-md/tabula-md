@@ -142,7 +142,7 @@ type ConnectOptions = {
 };
 
 const AWARENESS_HEARTBEAT_MS = 15_000;
-const TEXT_PROJECTION_DELAY_MS = 16;
+const TEXT_PROJECTION_DELAY_MS = 100;
 const COMMENT_PROJECTION_DELAY_MS = 16;
 const INVALID_MESSAGE_NOTICE_INTERVAL_MS = 5_000;
 const CRDT_STATE_SIZE_CHECK_INTERVAL = 500;
@@ -192,6 +192,7 @@ export const createWorkspaceRoomRuntime = ({
   let roomKey: CryptoKey | null = null;
   let heartbeat: unknown;
   let stateSizeCheckTimer: unknown;
+  let stateSizeCheckUsesIdle = false;
   let textProjectionTimer: unknown;
   let commentProjectionTimer: unknown;
   let closed = false;
@@ -314,12 +315,19 @@ export const createWorkspaceRoomRuntime = ({
     updatesSinceStateSizeCheck += 1;
     if (updatesSinceStateSizeCheck < CRDT_STATE_SIZE_CHECK_INTERVAL || stateSizeCheckTimer || closed) return;
     updatesSinceStateSizeCheck = 0;
-    stateSizeCheckTimer = adapters.clock.setTimeout(() => {
+    const runStateSizeCheck = () => {
       stateSizeCheckTimer = undefined;
+      stateSizeCheckUsesIdle = false;
       if (!closed && Y.encodeStateAsUpdate(room.doc).byteLength >= CRDT_STATE_WARNING_BYTES) {
         notifyCapacityExceeded();
       }
-    }, 0);
+    };
+    if (adapters.clock.requestIdleCallback) {
+      stateSizeCheckUsesIdle = true;
+      stateSizeCheckTimer = adapters.clock.requestIdleCallback(runStateSizeCheck, { timeout: 2_000 });
+      return;
+    }
+    stateSizeCheckTimer = adapters.clock.setTimeout(runStateSizeCheck, 0);
   };
 
   const publishCollaborators = () =>
@@ -621,7 +629,12 @@ export const createWorkspaceRoomRuntime = ({
     changes: { added: number[]; updated: number[]; removed: number[] },
     origin: unknown,
   ) => {
-    publishCollaborators();
+    const remotePresenceChanged = [
+      ...changes.added,
+      ...changes.updated,
+      ...changes.removed,
+    ].some((clientId) => clientId !== awareness.clientID);
+    if (remotePresenceChanged) publishCollaborators();
     checkpointCoordinator.handleLeadershipChange(runtimeSnapshot.durability);
     if (origin === REMOTE_AWARENESS_ORIGIN && !closed) {
       presenceController.reconcileLocalDisplay();
@@ -727,8 +740,15 @@ export const createWorkspaceRoomRuntime = ({
       closed = true;
       checkpointCoordinator.dispose();
       abortController.abort();
-      if (stateSizeCheckTimer) adapters.clock.clearTimeout(stateSizeCheckTimer);
+      if (stateSizeCheckTimer) {
+        if (stateSizeCheckUsesIdle && adapters.clock.cancelIdleCallback) {
+          adapters.clock.cancelIdleCallback(stateSizeCheckTimer);
+        } else {
+          adapters.clock.clearTimeout(stateSizeCheckTimer);
+        }
+      }
       stateSizeCheckTimer = undefined;
+      stateSizeCheckUsesIdle = false;
       if (textProjectionTimer) adapters.clock.clearTimeout(textProjectionTimer);
       textProjectionTimer = undefined;
       if (commentProjectionTimer) adapters.clock.clearTimeout(commentProjectionTimer);
