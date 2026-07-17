@@ -12,6 +12,7 @@ import {
   type WorkspaceFolder,
 } from "../workspaceStorage";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
+import { productAnalytics } from "../observability/productAnalytics";
 
 type UseJsonShareControllerOptions = {
   activeFile?: WorkspaceFile;
@@ -173,6 +174,7 @@ export function useJsonShareController({
       });
       if (exportRequestIdRef.current !== requestId) return false;
       setJsonShareResult({ url, expiresAt, documentCount: selectedFiles.length });
+      productAnalytics.report("export_link_created");
       return true;
     } catch (error) {
       if (controller.signal.aborted || isAbortError(error)) return false;

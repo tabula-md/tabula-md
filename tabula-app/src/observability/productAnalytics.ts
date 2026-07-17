@@ -1,20 +1,30 @@
 import type { CaptureResult, PostHog } from "posthog-js";
 import { tabulaServiceConfig } from "../serviceConfig";
 
-export type ProductEventName =
-  | "app_opened"
-  | "room_created"
-  | "room_link_copied"
-  | "agent_invite_copied"
-  | "collaborator_joined"
-  | "collaborator_edited"
-  | "handoff_completed"
-  | "repeat_handoff";
+export const PRODUCT_EVENT_NAMES = [
+  "app_opened",
+  "file_created_or_opened",
+  "edited_30_seconds",
+  "share_opened",
+  "room_created",
+  "room_link_copied",
+  "agent_invite_copied",
+  "collaborator_joined",
+  "collaborator_edited",
+  "handoff_completed",
+  "export_link_created",
+  "export_link_loaded",
+  "repeat_handoff",
+] as const;
+
+export type ProductEventName = (typeof PRODUCT_EVENT_NAMES)[number];
 
 export type ProductEventActorKind = "agent" | "human" | "unknown";
+export type ProductDocumentSource = "folder" | "markdown_file" | "new_document";
 
 type ProductEventProperties = {
   actorKind?: ProductEventActorKind;
+  documentSource?: ProductDocumentSource;
   roomId?: string;
 };
 
@@ -35,16 +45,13 @@ const HANDOFF_REPEAT_MIN_MS = 24 * 60 * 60 * 1000;
 const HANDOFF_REPEAT_WINDOW_MS = 7 * HANDOFF_REPEAT_MIN_MS;
 const MAX_HANDOFF_HISTORY_ENTRIES = 20;
 
-const PRODUCT_EVENT_NAMES = new Set<ProductEventName>([
-  "app_opened",
-  "room_created",
-  "room_link_copied",
-  "agent_invite_copied",
-  "collaborator_joined",
-  "collaborator_edited",
-  "handoff_completed",
-  "repeat_handoff",
+const PRODUCT_EVENT_NAME_SET = new Set<ProductEventName>(PRODUCT_EVENT_NAMES);
+const PRODUCT_DOCUMENT_SOURCES = new Set<ProductDocumentSource>([
+  "folder",
+  "markdown_file",
+  "new_document",
 ]);
+const EDITING_ACTIVATION_THRESHOLD_MS = 30_000;
 
 export const normalizeAcquisitionSource = (value: string | null | undefined) => {
   const normalized = value?.trim().toLowerCase();
@@ -68,7 +75,7 @@ const readAcquisitionSource = () => {
 };
 
 const isProductEventName = (value: string): value is ProductEventName =>
-  PRODUCT_EVENT_NAMES.has(value as ProductEventName);
+  PRODUCT_EVENT_NAME_SET.has(value as ProductEventName);
 
 const copyProperty = (
   target: Record<string, unknown>,
@@ -97,7 +104,39 @@ export const sanitizePostHogProductEvent = (event: CaptureResult | null): Captur
   ]) {
     copyProperty(properties, event.properties, key);
   }
+  const documentSource = event.properties?.document_source;
+  if (
+    typeof documentSource === "string" &&
+    PRODUCT_DOCUMENT_SOURCES.has(documentSource as ProductDocumentSource)
+  ) {
+    properties.document_source = documentSource;
+  }
   return { ...event, properties } as CaptureResult;
+};
+
+export const createEditingActivationTracker = ({
+  now = Date.now,
+  thresholdMs = EDITING_ACTIVATION_THRESHOLD_MS,
+}: {
+  now?: () => number;
+  thresholdMs?: number;
+} = {}) => {
+  let firstEditAt: number | null = null;
+  let reported = false;
+
+  return {
+    recordEdit() {
+      if (reported) return false;
+      const editedAt = now();
+      if (firstEditAt === null) {
+        firstEditAt = editedAt;
+        return false;
+      }
+      if (editedAt - firstEditAt < thresholdMs) return false;
+      reported = true;
+      return true;
+    },
+  };
 };
 
 const encodeBase64Url = (bytes: Uint8Array) => {
@@ -236,6 +275,9 @@ export const createProductAnalytics = ({
       ...(collaborationId ? { collaboration_id: collaborationId } : {}),
       ...(actorKind === "agent" || actorKind === "human" || actorKind === "unknown"
         ? { actor_kind: actorKind }
+        : {}),
+      ...(properties.documentSource && PRODUCT_DOCUMENT_SOURCES.has(properties.documentSource)
+        ? { document_source: properties.documentSource }
         : {}),
     };
     loadedClient.capture(name, eventProperties);

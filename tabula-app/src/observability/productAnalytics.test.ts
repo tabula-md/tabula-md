@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CaptureResult } from "posthog-js";
 import {
+  PRODUCT_EVENT_NAMES,
+  createEditingActivationTracker,
   createProductAnalytics,
   deriveCollaborationId,
   initializeProductAnalytics,
@@ -18,6 +20,24 @@ const createMemoryStorage = () => {
 };
 
 describe("product analytics", () => {
+  it("keeps one explicit privacy-reviewed activation contract", () => {
+    expect(PRODUCT_EVENT_NAMES).toEqual([
+      "app_opened",
+      "file_created_or_opened",
+      "edited_30_seconds",
+      "share_opened",
+      "room_created",
+      "room_link_copied",
+      "agent_invite_copied",
+      "collaborator_joined",
+      "collaborator_edited",
+      "handoff_completed",
+      "export_link_created",
+      "export_link_loaded",
+      "repeat_handoff",
+    ]);
+  });
+
   it("is disabled when no hosted PostHog project is configured", async () => {
     await expect(initializeProductAnalytics(null)).resolves.toBeNull();
     const capture = vi.fn();
@@ -64,6 +84,32 @@ describe("product analytics", () => {
       "agent_invite_copied",
       expect.objectContaining({ collaboration_id: expect.stringMatching(/^collab_/) }),
     );
+  });
+
+  it("captures only a coarse document source", async () => {
+    const capture = vi.fn();
+    const analytics = createProductAnalytics({ client: { capture } });
+
+    analytics.report("file_created_or_opened", { documentSource: "folder" });
+
+    await vi.waitFor(() => expect(capture).toHaveBeenCalledOnce());
+    expect(capture).toHaveBeenCalledWith(
+      "file_created_or_opened",
+      expect.objectContaining({ document_source: "folder" }),
+    );
+  });
+
+  it("reports sustained editing only after a later edit crosses 30 seconds", () => {
+    let now = 1_000;
+    const tracker = createEditingActivationTracker({ now: () => now });
+
+    expect(tracker.recordEdit()).toBe(false);
+    now += 29_999;
+    expect(tracker.recordEdit()).toBe(false);
+    now += 1;
+    expect(tracker.recordEdit()).toBe(true);
+    now += 60_000;
+    expect(tracker.recordEdit()).toBe(false);
   });
 
   it("accepts only short content-free acquisition source labels", () => {
@@ -158,6 +204,7 @@ describe("product analytics", () => {
       collaboration_id: "collab_safe",
       is_internal: false,
       acquisition_source: "hn",
+      document_source: "folder",
       $current_url: "https://tabula.md/#room=roomId,SECRET_KEY",
       $pathname: "/workspace",
       $referrer: "https://example.com/private",
@@ -183,6 +230,7 @@ describe("product analytics", () => {
       collaboration_id: "collab_safe",
       is_internal: false,
       acquisition_source: "hn",
+      document_source: "folder",
     });
     expect(serialized).not.toMatch(/SECRET_KEY|roomId|private document|private prompt|current_url|referrer|elements/i);
     expect(sanitizePostHogProductEvent({
@@ -190,5 +238,13 @@ describe("product analytics", () => {
       event: "$pageview",
       properties: unsafeProperties,
     } as CaptureResult)).toBeNull();
+    expect(sanitizePostHogProductEvent({
+      uuid: "invalid-source-uuid",
+      event: "file_created_or_opened",
+      properties: {
+        ...unsafeProperties,
+        document_source: "private/folder/name",
+      },
+    } as CaptureResult)?.properties).not.toHaveProperty("document_source");
   });
 });
