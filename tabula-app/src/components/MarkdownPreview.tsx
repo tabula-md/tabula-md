@@ -109,10 +109,12 @@ type PreviewDocsComponentProps = {
   href?: string;
   icon?: string;
   img?: string;
+  open?: boolean | string;
   title?: string;
+  type?: string;
 };
 
-type PreviewDocsRawComponentProps = PreviewDocsComponentProps & {
+type PreviewDocsRawComponentProps = PreviewDocsComponentProps & HTMLAttributes<HTMLElement> & {
   "data-component-name"?: string;
   "data-preview-line-end"?: number | string;
   "data-preview-line-start"?: number | string;
@@ -159,6 +161,95 @@ function PreviewUnsupportedComponent({
       <code className="preview-unsupported-component-label">{`<${componentName}>`}</code>
       {children && <div className="preview-unsupported-component-body">{children}</div>}
     </aside>
+  );
+}
+
+function PreviewTabs({ children, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
+  return <div {...sourceProps} className={`preview-docs-tabs ${sourceProps.className ?? ""}`.trim()}>{children}</div>;
+}
+
+function PreviewTab({ children, title, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
+  return (
+    <section {...sourceProps} className={`preview-docs-tab ${sourceProps.className ?? ""}`.trim()}>
+      {title && <div className="preview-docs-tab-title">{title}</div>}
+      <div className="preview-docs-tab-body">{children}</div>
+    </section>
+  );
+}
+
+function PreviewAccordion({
+  children,
+  open,
+  title,
+  ...sourceProps
+}: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
+  const isOpen = normalizeDocsAttribute(open) === true || normalizeDocsAttribute(open) === "true";
+  return (
+    <details {...sourceProps} className={`preview-docs-accordion ${sourceProps.className ?? ""}`.trim()} open={isOpen}>
+      <summary>{title || "Accordion"}</summary>
+      <div className="preview-docs-accordion-body">{children}</div>
+    </details>
+  );
+}
+
+function PreviewSteps({
+  children,
+  ...sourceProps
+}: Omit<PreviewDocsComponentProps, "type"> & HTMLAttributes<HTMLOListElement>) {
+  return <ol {...sourceProps} className={`preview-docs-steps ${sourceProps.className ?? ""}`.trim()}>{children}</ol>;
+}
+
+function PreviewStep({ children, title, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
+  return (
+    <li {...sourceProps} className={`preview-docs-step ${sourceProps.className ?? ""}`.trim()}>
+      {title && <strong className="preview-docs-step-title">{title}</strong>}
+      <div className="preview-docs-step-body">{children}</div>
+    </li>
+  );
+}
+
+function PreviewCodeGroup({ children, title, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
+  return (
+    <section {...sourceProps} className={`preview-docs-code-group ${sourceProps.className ?? ""}`.trim()}>
+      {title && <div className="preview-docs-code-group-title">{title}</div>}
+      <div className="preview-docs-code-group-body">{children}</div>
+    </section>
+  );
+}
+
+function PreviewCallout({
+  children,
+  icon,
+  title,
+  type,
+  ...sourceProps
+}: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
+  return (
+    <aside
+      {...sourceProps}
+      className={`preview-docs-callout ${sourceProps.className ?? ""}`.trim()}
+      data-callout-type={type || "note"}
+    >
+      {(icon || title) && (
+        <div className="preview-docs-callout-title">
+          {icon && <span aria-hidden="true">{icon}</span>}
+          {title && <strong>{title}</strong>}
+        </div>
+      )}
+      <div className="preview-docs-callout-body">{children}</div>
+    </aside>
+  );
+}
+
+function PreviewBadge({ children, title, type, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
+  return (
+    <span
+      {...sourceProps}
+      className={`preview-docs-badge ${sourceProps.className ?? ""}`.trim()}
+      data-badge-type={type || "default"}
+    >
+      {children || title}
+    </span>
   );
 }
 
@@ -221,6 +312,27 @@ function PreviewCard({
 }
 
 const PREVIEW_DOCS_COMPONENTS = {
+  "tabula-accordion": ({ children, open, title, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <PreviewAccordion
+      {...sourceProps}
+      open={typeof open === "string" || typeof open === "boolean" ? open : undefined}
+      title={typeof title === "string" ? title : undefined}
+    >
+      {children}
+    </PreviewAccordion>
+  ),
+  "tabula-accordion-group": ({ children, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <div {...sourceProps} className={`preview-docs-accordion-group ${sourceProps.className ?? ""}`.trim()}>{children}</div>
+  ),
+  "tabula-badge": ({ children, title, type, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <PreviewBadge
+      {...sourceProps}
+      title={typeof title === "string" ? title : undefined}
+      type={typeof type === "string" ? type : undefined}
+    >
+      {children}
+    </PreviewBadge>
+  ),
   card: ({ children, href, icon, img, title, horizontal, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
     <PreviewCard
       {...sourceProps}
@@ -255,6 +367,21 @@ const PREVIEW_DOCS_COMPONENTS = {
       {children}
     </PreviewCardGroup>
   ),
+  "tabula-callout": ({ children, icon, title, type, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <PreviewCallout
+      {...sourceProps}
+      icon={typeof icon === "string" ? icon : undefined}
+      title={typeof title === "string" ? title : undefined}
+      type={typeof type === "string" ? type : undefined}
+    >
+      {children}
+    </PreviewCallout>
+  ),
+  "tabula-code-group": ({ children, title, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <PreviewCodeGroup {...sourceProps} title={typeof title === "string" ? title : undefined}>
+      {children}
+    </PreviewCodeGroup>
+  ),
   frame: ({ children, caption, hint, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
     <PreviewFrame
       {...sourceProps}
@@ -272,6 +399,18 @@ const PREVIEW_DOCS_COMPONENTS = {
     >
       {children}
     </PreviewFrame>
+  ),
+  "tabula-step": ({ children, title, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <PreviewStep {...sourceProps} title={typeof title === "string" ? title : undefined}>{children}</PreviewStep>
+  ),
+  "tabula-steps": ({ children, node: _node, type: _type, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <PreviewSteps {...sourceProps}>{children}</PreviewSteps>
+  ),
+  "tabula-tab": ({ children, title, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <PreviewTab {...sourceProps} title={typeof title === "string" ? title : undefined}>{children}</PreviewTab>
+  ),
+  "tabula-tabs": ({ children, node: _node, ...sourceProps }: PreviewDocsRawComponentProps) => (
+    <PreviewTabs {...sourceProps}>{children}</PreviewTabs>
   ),
   "tabula-unsupported-component": ({ node: _node, ...props }: PreviewDocsRawComponentProps) => (
     <PreviewUnsupportedComponent {...props} />
