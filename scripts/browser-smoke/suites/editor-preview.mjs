@@ -1997,6 +1997,14 @@ flowchart LR
   </Card>
 </CardGroup>
 
+<ChartPanel data={report}>
+  The chart explanation must remain readable.
+</ChartPanel>
+
+<StatusDot value={ready} />
+
+<custom-widget>The custom HTML explanation must remain readable.</custom-widget>
+
 <script>window.__tabulaUnsafePreview = true</script>
 <img src="javascript:alert(1)" alt="unsafe image" onerror="window.__tabulaUnsafeImage = true" />`;
 
@@ -2153,6 +2161,22 @@ flowchart LR
     );
     expect((await page.locator(".preview-docs-card-group").count()) === 1, "Preview should render docs-style CardGroup components.");
     expect((await page.locator(".preview-docs-card").count()) === 2, "Preview should render docs-style Card components.");
+    expect(
+      (await page.locator('.preview-unsupported-component[data-component-name="ChartPanel"]').count()) === 1,
+      "Preview should expose an inert fallback for unsupported container components.",
+    );
+    expect(
+      (await page.locator(".preview-unsupported-component").filter({ hasText: "The chart explanation must remain readable." }).count()) === 1,
+      "Unsupported component fallbacks should preserve readable child content.",
+    );
+    expect(
+      (await page.locator('.preview-unsupported-component[data-component-name="StatusDot"]').count()) === 1,
+      "Preview should expose an inert fallback for unsupported self-closing components.",
+    );
+    expect(
+      (await page.locator('.preview-unsupported-component[data-component-name="custom-widget"]').filter({ hasText: "The custom HTML explanation must remain readable." }).count()) === 1,
+      "Preview should preserve unknown custom HTML through the inert fallback.",
+    );
     expect(
       (await page.locator(".preview-docs-card").filter({ hasText: "Build servers" }).count()) === 1,
       "Preview cards should preserve card titles.",

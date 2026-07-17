@@ -17,6 +17,7 @@ export const PREVIEW_SANITIZE_SCHEMA: SanitizeSchema = {
     "tabula-card",
     "tabula-card-group",
     "tabula-frame",
+    "tabula-unsupported-component",
   ],
   attributes: {
     ...defaultSchema.attributes,
@@ -32,6 +33,7 @@ export const PREVIEW_SANITIZE_SCHEMA: SanitizeSchema = {
     "tabula-card": ["href", "icon", "img", "title", "horizontal"],
     "tabula-card-group": ["cols"],
     "tabula-frame": ["caption", "hint"],
+    "tabula-unsupported-component": ["dataComponentName"],
     img: [
       ...(defaultSchema.attributes?.img ?? []),
       "alt",
