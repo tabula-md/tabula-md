@@ -2,6 +2,7 @@ import {
   buildAsyncPreviewMediaMarkdown,
   buildHtmxSplitPreviewSyncMarkdown,
   buildLargeEditorMarkdown,
+  buildLargeInlineImageReferenceMarkdown,
   buildOneMegabyteEditorMarkdown,
 } from "../support/editor-fixtures.mjs";
 
@@ -55,6 +56,12 @@ const ONE_MEGABYTE_SPLIT_RENDERED_BLOCK_MAX = 120;
 const ONE_MEGABYTE_SPLIT_INITIAL_MAX_MS = 2_500;
 const ONE_MEGABYTE_SPLIT_TYPE_MAX_LONG_TASK_MS = 160;
 const ONE_MEGABYTE_SPLIT_TYPE_MAX_FRAME_GAP_MS = 140;
+const INLINE_IMAGE_REFERENCE_MIN_BYTES = 480_000;
+const INLINE_IMAGE_REFERENCE_MIN_LINES = 640;
+const INLINE_IMAGE_REFERENCE_INITIAL_MAX_MS = 2_500;
+const INLINE_IMAGE_REFERENCE_SCROLL_MAX_MS = 1_000;
+const INLINE_IMAGE_REFERENCE_MAX_LONG_TASK_MS = 160;
+const INLINE_IMAGE_REFERENCE_MAX_SCROLL_HEIGHT = 50_000;
 const HOT_PATH_COMMIT_GUARD_MS = 90;
 const WORKSPACE_LOCAL_STORAGE_PREFIX = "tabula.project";
 const SPLIT_SYNC_UNRELATED_LINE_JUMP_MAX = 160;
@@ -764,6 +771,7 @@ export async function run(ctx) {
   const longMarkdown = buildLongMarkdown();
   const largeEditorMarkdown = buildLargeEditorMarkdown({ sections: 500, paragraphRepeats: 1 });
   const oneMegabyteMarkdown = buildOneMegabyteEditorMarkdown();
+  const inlineImageReferenceMarkdown = buildLargeInlineImageReferenceMarkdown();
   const largePasteMarkdown = buildLargePasteMarkdown();
   const htmlTableDocsMarkdown = buildHtmlTableDocsMarkdown();
   const htmxSplitPreviewSyncMarkdown = buildHtmxSplitPreviewSyncMarkdown();
@@ -778,6 +786,8 @@ export async function run(ctx) {
   const splitLineCount = longMarkdown.split("\n").length;
   const largeEditorLineCount = largeEditorMarkdown.split("\n").length;
   const oneMegabyteByteLength = Buffer.byteLength(oneMegabyteMarkdown, "utf8");
+  const inlineImageReferenceByteLength = Buffer.byteLength(inlineImageReferenceMarkdown, "utf8");
+  const inlineImageReferenceLineCount = inlineImageReferenceMarkdown.split("\n").length;
   const htmlTableDocsByteLength = Buffer.byteLength(htmlTableDocsMarkdown, "utf8");
   const htmlTableDocsWordCount = htmlTableDocsMarkdown.trim().split(/\s+/).length;
   const htmlTableDocsLineCount = htmlTableDocsMarkdown.split("\n").length;
@@ -801,6 +811,11 @@ export async function run(ctx) {
   expect(
     oneMegabyteByteLength >= 1_000_000,
     `One-megabyte editor fixture should be at least 1MB. Actual: ${oneMegabyteByteLength}.`,
+  );
+  expect(
+    inlineImageReferenceByteLength >= INLINE_IMAGE_REFERENCE_MIN_BYTES &&
+      inlineImageReferenceLineCount >= INLINE_IMAGE_REFERENCE_MIN_LINES,
+    `Inline image reference fixture should preserve the reported large Base64 shape. Actual: ${inlineImageReferenceByteLength} bytes, ${inlineImageReferenceLineCount} lines.`,
   );
   expect(
     htmlTableDocsByteLength >= HTML_TABLE_DOC_CHAR_MIN && htmlTableDocsWordCount >= HTML_TABLE_DOC_WORD_MIN,
@@ -830,6 +845,8 @@ export async function run(ctx) {
     splitWordCount: wordCount,
     largeEditorLineCount,
     oneMegabyteByteLength,
+    inlineImageReferenceByteLength,
+    inlineImageReferenceLineCount,
     htmlTableDocsByteLength,
     htmlTableDocsWordCount,
     htmlTableDocsLineCount,
@@ -1963,7 +1980,7 @@ export async function run(ctx) {
       await page.keyboard.press("ControlOrMeta+End");
       await page.evaluate(() => window.__tabulaLargePasteProbe.start());
       const typingElapsed = await measureElapsed(async () => {
-        await page.keyboard.insertText("\none-megabyte-hot-path");
+        await page.keyboard.type("\none-megabyte-hot-path", { delay: 0 });
         await waitForEditorDocumentText(page, "one-megabyte-hot-path", 2_000);
       });
       await page.waitForTimeout(HOT_PATH_COMMIT_GUARD_MS);
@@ -1988,6 +2005,167 @@ export async function run(ctx) {
       expect(
         typingMetrics.projectWrites === 0,
         `1MB typing should not synchronously persist workspace state before the debounce window. Writes: ${typingMetrics.projectWrites}.`,
+      );
+    },
+    { viewport: { width: 1600, height: 900 } },
+  );
+
+  await withPage(
+    browser,
+    "/",
+    async (page) => {
+      await importMarkdownFixture(
+        page,
+        inlineImageReferenceMarkdown,
+        "inline-image-reference-performance.md",
+      );
+      await waitForEditorReady(page, { mode: "edit" });
+      await waitForSavedLocally(page);
+
+      await page.evaluate(installLargePasteProbe);
+      await page.evaluate(() => window.__tabulaLargePasteProbe.start());
+      const initialElapsed = await measureElapsed(async () => {
+        await page.getByRole("button", { name: "Split", exact: true }).click();
+        await waitForEditorReady(page, { mode: "split" });
+        await page.waitForFunction(
+          () => {
+            const image = document.querySelector('.workspace.split .preview-document img[alt="Top image"]');
+            return image instanceof HTMLImageElement && image.complete && image.naturalWidth === 1;
+          },
+          {},
+          { timeout: 8_000 },
+        );
+      });
+      await page.waitForTimeout(100);
+      const initialMetrics = await page.evaluate(() => window.__tabulaLargePasteProbe.stop());
+      await page.evaluate(() => window.__tabulaLargePasteProbe.restore());
+      const initialMaxLongTask = Math.max(0, ...initialMetrics.longTasks);
+      const initialContract = await page.evaluate(() => {
+        const preview = document.querySelector(".workspace.split .preview-document.virtualized");
+        const surface = document.querySelector(".workspace.split .preview-surface");
+        const topImage = preview?.querySelector('img[alt="Top image"]');
+        const previewText = preview?.textContent ?? "";
+        return {
+          blankBlockCount: preview?.querySelectorAll('[data-preview-block-kind="blank"]').length ?? 0,
+          previewIndexSource: preview?.getAttribute("data-preview-index-source"),
+          rawBase64Visible: previewText.includes("iVBORw0KGgo") || /[A-Za-z0-9+/]{200}/.test(previewText),
+          scrollHeight: surface?.scrollHeight ?? 0,
+          topImageHeight: topImage instanceof HTMLImageElement ? topImage.naturalHeight : 0,
+          topImageWidth: topImage instanceof HTMLImageElement ? topImage.naturalWidth : 0,
+        };
+      });
+      reportPerformanceMetric("inline-image-reference-initial", {
+        elapsedMs: Math.round(initialElapsed),
+        maxLongTask: Math.round(initialMaxLongTask),
+        ...initialContract,
+      });
+      expect(
+        initialElapsed < INLINE_IMAGE_REFERENCE_INITIAL_MAX_MS,
+        `Large inline image definitions should not block the first split preview. Elapsed: ${Math.round(initialElapsed)}ms.`,
+      );
+      expect(
+        initialMaxLongTask < INLINE_IMAGE_REFERENCE_MAX_LONG_TASK_MS,
+        `Large inline image definitions should not create a large initial main-thread task. Max long task: ${Math.round(initialMaxLongTask)}ms.`,
+      );
+      expect(
+        initialContract.previewIndexSource === "worker",
+        `Large inline image definitions should retain the worker-built virtual index. Source: ${initialContract.previewIndexSource}.`,
+      );
+      expect(
+        initialContract.topImageWidth === 1 && initialContract.topImageHeight === 1,
+        "Reference-style data images should still render after their definitions are removed from preview blocks.",
+      );
+      expect(
+        !initialContract.rawBase64Visible && initialContract.blankBlockCount === 0,
+        "Reference definitions and raw Base64 should never appear as rendered preview content.",
+      );
+
+      await page.evaluate(installLargePasteProbe);
+      await page.evaluate(() => window.__tabulaLargePasteProbe.start());
+      const scrollElapsed = await measureElapsed(async () => {
+        await page.evaluate(() => {
+          const surface = document.querySelector(".workspace.split .preview-surface");
+          if (!(surface instanceof HTMLElement)) {
+            throw new Error("Split preview surface is unavailable.");
+          }
+          surface.scrollTop = surface.scrollHeight;
+          surface.dispatchEvent(new Event("scroll"));
+        });
+        await page.waitForFunction(
+          () => {
+            const image = document.querySelector('.workspace.split .preview-document img[alt="Bottom image"]');
+            return (
+              image instanceof HTMLImageElement &&
+              image.complete &&
+              image.naturalWidth === 1 &&
+              image.src.length > 400_000
+            );
+          },
+          {},
+          { timeout: 8_000 },
+        );
+      });
+      await page.waitForTimeout(100);
+      const scrollMetrics = await page.evaluate(() => window.__tabulaLargePasteProbe.stop());
+      await page.evaluate(() => window.__tabulaLargePasteProbe.restore());
+      const scrollMaxLongTask = Math.max(0, ...scrollMetrics.longTasks);
+      const bottomContract = await page.evaluate(() => {
+        const preview = document.querySelector(".workspace.split .preview-document.virtualized");
+        const surface = document.querySelector(".workspace.split .preview-surface");
+        const surfaceRect = surface?.getBoundingClientRect();
+        const bottomImage = preview?.querySelector('img[alt="Bottom image"]');
+        const visibleBlockCount = Array.from(
+          preview?.querySelectorAll("[data-preview-virtual-block]") ?? [],
+        ).filter((block) => {
+          const rect = block.getBoundingClientRect();
+          return (
+            surfaceRect !== undefined &&
+            rect.height > 1 &&
+            rect.bottom > surfaceRect.top + 8 &&
+            rect.top < surfaceRect.bottom - 8
+          );
+        }).length;
+        const previewText = preview?.textContent ?? "";
+        return {
+          blankBlockCount: preview?.querySelectorAll('[data-preview-block-kind="blank"]').length ?? 0,
+          bottomImageHeight: bottomImage instanceof HTMLImageElement ? bottomImage.naturalHeight : 0,
+          bottomImageSourceLength: bottomImage instanceof HTMLImageElement ? bottomImage.src.length : 0,
+          bottomImageWidth: bottomImage instanceof HTMLImageElement ? bottomImage.naturalWidth : 0,
+          rawBase64Visible: previewText.includes("iVBORw0KGgo") || /[A-Za-z0-9+/]{200}/.test(previewText),
+          scrollHeight: surface?.scrollHeight ?? 0,
+          visibleBlockCount,
+        };
+      });
+      reportPerformanceMetric("inline-image-reference-bottom", {
+        elapsedMs: Math.round(scrollElapsed),
+        maxLongTask: Math.round(scrollMaxLongTask),
+        ...bottomContract,
+      });
+      expect(
+        scrollElapsed < INLINE_IMAGE_REFERENCE_SCROLL_MAX_MS,
+        `Scrolling to a large referenced image should stay within budget. Elapsed: ${Math.round(scrollElapsed)}ms.`,
+      );
+      expect(
+        scrollMaxLongTask < INLINE_IMAGE_REFERENCE_MAX_LONG_TASK_MS,
+        `Scrolling to a large referenced image should not create a large main-thread task. Max long task: ${Math.round(scrollMaxLongTask)}ms.`,
+      );
+      expect(
+        bottomContract.bottomImageWidth === 1 &&
+          bottomContract.bottomImageHeight === 1 &&
+          bottomContract.bottomImageSourceLength > 400_000,
+        "The large reference-style data image should render at the bottom of the virtual preview.",
+      );
+      expect(
+        !bottomContract.rawBase64Visible && bottomContract.blankBlockCount === 0,
+        "Large reference definitions should remain non-rendering after virtual scrolling.",
+      );
+      expect(
+        bottomContract.visibleBlockCount > 0,
+        "Virtual scrolling should keep rendered Markdown visible at the bottom of the document.",
+      );
+      expect(
+        bottomContract.scrollHeight < INLINE_IMAGE_REFERENCE_MAX_SCROLL_HEIGHT,
+        `Non-rendering image definitions should not inflate preview height. Scroll height: ${bottomContract.scrollHeight}px.`,
       );
     },
     { viewport: { width: 1600, height: 900 } },

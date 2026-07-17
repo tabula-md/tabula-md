@@ -5,10 +5,11 @@ export const EDIT_MODE_DERIVED_STATE_DELAY_MS = 240;
 export const SMALL_HEAVY_PREVIEW_DERIVED_STATE_DELAY_MS = 120;
 export const PREVIEW_MODE_DERIVED_STATE_DELAY_MS = 220;
 export const LARGE_DOCUMENT_DERIVED_STATE_DELAY_MS = 720;
+export const LARGE_DOCUMENT_PREVIEW_BODY_DELAY_MS = 240;
 export const LARGE_DOCUMENT_METADATA_DERIVED_STATE_DELAY_MS = 6_000;
 export const LARGE_DOCUMENT_METADATA_IDLE_TIMEOUT_MS = 10_000;
 export const IMMEDIATE_PREVIEW_MAX_CHARACTERS = 250_000;
-export const PATCHED_PREVIEW_BODY_MAX_CHARACTERS = 768_000;
+export const PATCHED_PREVIEW_BODY_MAX_CHARACTERS = 256_000;
 
 type PreviewDerivationInput = {
   largeDocumentMode: boolean;
@@ -55,7 +56,7 @@ export const getPreviewBodyDerivationDelayMs = ({
   viewMode,
 }: PreviewDerivationInput) => {
   if (largeDocumentMode) {
-    return LARGE_DOCUMENT_DERIVED_STATE_DELAY_MS;
+    return LARGE_DOCUMENT_PREVIEW_BODY_DELAY_MS;
   }
 
   if (viewMode === "edit") {

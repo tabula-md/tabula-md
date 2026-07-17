@@ -21,6 +21,7 @@ import {
   createEditorAnnotationGutterExtension,
   createEditorCollaborationExtensions,
   createEditorCommentAnchorExtension,
+  createEditorMarkdownLanguageExtensions,
   getCollaborationEditorHistoryState,
   createMarkdownEditorCompartments,
   createMarkdownEditorExtensions,
@@ -53,6 +54,7 @@ import { getScrollRatio, scrollElementToRatio } from "../scroll";
 const MAX_CACHED_LOCAL_EDITOR_STATES = 8;
 const MAX_CACHED_LOCAL_EDITOR_STATE_BYTES = 12 * 1024 * 1024;
 const MAX_CACHED_LIVE_EDITOR_VIEW_STATES = 20;
+const LIGHTWEIGHT_EDITOR_CHAR_THRESHOLD = 400_000;
 
 type LiveEditorViewState = {
   selectionAnchor: CollabRelativePosition;
@@ -219,8 +221,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
   {
     ariaLabel = "Editor",
       interfaceCopy,
-    fileId,
+      fileId,
       value,
+      largeDocumentMode,
       lineWrapping,
       lineNumbers,
       bookmarks = [],
@@ -254,10 +257,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const onScrollRatioChangeRef = useRef(onScrollRatioChange);
     const collaborationBindingRef = useRef(collaborationBinding);
     const appliedCollaborationBindingRef = useRef(collaborationBinding);
+    const pendingLocalEchoDocRef = useRef<EditorState["doc"] | null>(null);
     const compartmentsRef = useRef(createMarkdownEditorCompartments());
     const stateByFileIdRef = useRef(new Map<string, LocalEditorCacheEntry>());
     const liveViewStateByFileIdRef = useRef(new Map<string, LiveEditorViewState>());
     const lastHistoryStateRef = useRef(EMPTY_EDITOR_HISTORY_STATE);
+    const lightweightMode = largeDocumentMode && value.length >= LIGHTWEIGHT_EDITOR_CHAR_THRESHOLD;
 
     useEffect(() => {
       onChangeRef.current = onChange;
@@ -576,6 +581,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
         mapBookmarksThroughDocumentChange(update.view, update.transactions);
         if (!isExternalUpdate) {
+          pendingLocalEchoDocRef.current = update.state.doc;
           const patches = getEditorTextChangePatches(update.changes);
           onChangeRef.current(null, {
             docLength: update.state.doc.length,
@@ -591,6 +597,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         bookmarks,
         commentAnchors,
         commentsEnabled,
+        lightweightMode,
         activeCommentId,
         collaborationBinding,
         searchMatches,
@@ -710,6 +717,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           }
         }
         lastHistoryStateRef.current = EMPTY_EDITOR_HISTORY_STATE;
+        pendingLocalEchoDocRef.current = null;
         onHistoryStateChangeRef.current?.(lastHistoryStateRef.current);
         view.destroy();
         viewRef.current = null;
@@ -761,6 +769,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         return;
       }
 
+      const pendingLocalEchoDoc = pendingLocalEchoDocRef.current;
+      if (pendingLocalEchoDoc === view.state.doc && pendingLocalEchoDoc.length === value.length) {
+        pendingLocalEchoDocRef.current = null;
+        return;
+      }
+      pendingLocalEchoDocRef.current = null;
+
       dispatchRemoteTextChange(view, value);
     }, [collaborationBinding, fileId, value]);
 
@@ -779,6 +794,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         ),
       });
     }, [lineNumbers]);
+
+    useEffect(() => {
+      viewRef.current?.dispatch({
+        effects: compartmentsRef.current.language.reconfigure(
+          createEditorMarkdownLanguageExtensions(lightweightMode),
+        ),
+      });
+    }, [lightweightMode]);
 
     useEffect(() => {
       viewRef.current?.dispatch({

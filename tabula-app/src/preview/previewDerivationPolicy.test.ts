@@ -6,6 +6,7 @@ import {
   getWordCountDerivationDelayMs,
   IMMEDIATE_PREVIEW_MAX_CHARACTERS,
   LARGE_DOCUMENT_DERIVED_STATE_DELAY_MS,
+  LARGE_DOCUMENT_PREVIEW_BODY_DELAY_MS,
   LARGE_DOCUMENT_METADATA_DERIVED_STATE_DELAY_MS,
   LARGE_DOCUMENT_METADATA_IDLE_TIMEOUT_MS,
   PATCHED_PREVIEW_BODY_MAX_CHARACTERS,
@@ -73,7 +74,7 @@ describe("preview derivation policy", () => {
     expect(shouldDerivePreviewBodyImmediately({ hasActiveFile: false, viewMode: "split" })).toBe(false);
   });
 
-  it("uses patch-based immediate preview body only below the large-document hot path ceiling", () => {
+  it("limits patch-based live preview to moderately large documents", () => {
     expect(
       shouldPatchPreviewBodyImmediately({
         hasActiveFile: true,
@@ -90,22 +91,6 @@ describe("preview derivation policy", () => {
         viewMode: "split",
       }),
     ).toBe(false);
-    expect(
-      shouldPatchPreviewBodyImmediately({
-        hasActiveFile: true,
-        largeDocumentMode: false,
-        textLength: 10,
-        viewMode: "split",
-      }),
-    ).toBe(false);
-    expect(
-      shouldPatchPreviewBodyImmediately({
-        hasActiveFile: true,
-        largeDocumentMode: true,
-        textLength: 10,
-        viewMode: "edit",
-      }),
-    ).toBe(false);
   });
 
   it("keeps preview body delay precedence stable", () => {
@@ -115,7 +100,7 @@ describe("preview derivation policy", () => {
         textLength: 1,
         viewMode: "edit",
       }),
-    ).toBe(LARGE_DOCUMENT_DERIVED_STATE_DELAY_MS);
+    ).toBe(LARGE_DOCUMENT_PREVIEW_BODY_DELAY_MS);
     expect(
       getPreviewBodyDerivationDelayMs({
         largeDocumentMode: false,

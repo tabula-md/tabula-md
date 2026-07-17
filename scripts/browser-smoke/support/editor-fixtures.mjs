@@ -91,6 +91,77 @@ export const buildOneMegabyteEditorMarkdown = () => {
   return chunks.join("").trimStart();
 };
 
+const TINY_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+
+const PNG_CRC_TABLE = Array.from({ length: 256 }, (_, tableIndex) => {
+  let value = tableIndex;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+  }
+  return value >>> 0;
+});
+
+const getPngCrc32 = (value) => {
+  let crc = 0xffffffff;
+  for (const byte of value) {
+    crc = PNG_CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+};
+
+const createPngTextChunk = (textLength) => {
+  const type = Buffer.from("tEXt");
+  const data = Buffer.from(`Comment\0${"A".repeat(textLength)}`);
+  const chunk = Buffer.alloc(12 + data.length);
+  chunk.writeUInt32BE(data.length, 0);
+  type.copy(chunk, 4);
+  data.copy(chunk, 8);
+  chunk.writeUInt32BE(getPngCrc32(Buffer.concat([type, data])), 8 + data.length);
+  return chunk;
+};
+
+const buildLargePngBase64 = (textLength = 360_000) => {
+  const png = Buffer.from(TINY_PNG_BASE64, "base64");
+  const iendOffset = png.length - 12;
+  return Buffer.concat([
+    png.subarray(0, iendOffset),
+    createPngTextChunk(textLength),
+    png.subarray(iendOffset),
+  ]).toString("base64");
+};
+
+export const buildLargeInlineImageReferenceMarkdown = () => {
+  const largePngBase64 = buildLargePngBase64();
+  const lines = [
+    "# Inline image reference performance",
+    "",
+    "![Top image][small-image]",
+    "",
+  ];
+
+  for (let section = 1; section <= 160; section += 1) {
+    lines.push(
+      `## Image reference section ${section}`,
+      "",
+      `Section ${section} keeps the virtual preview scrollable without rendering reference definitions as body text.`,
+      "",
+    );
+  }
+
+  lines.push(
+    "## Final image",
+    "",
+    "![Bottom image][large-image]",
+    "",
+    `[small-image]: <data:image/png;base64,${TINY_PNG_BASE64}>`,
+    "",
+    `[large-image]: <data:image/png;base64,${largePngBase64}>`,
+  );
+
+  return lines.join("\n");
+};
+
 export const buildHtmxSplitPreviewSyncMarkdown = () => {
   const lines = [
     "# Documentation",
