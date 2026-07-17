@@ -23,6 +23,8 @@ export type PreviewBlockIndexWorkerState = {
 
 type TimeoutHandle = ReturnType<typeof setTimeout>;
 
+type PendingWorkerRequest = PreviewBlockIndexWorkerRequest;
+
 type PreviewBlockIndexWorkerOptions = {
   textChange?: TextChange | null;
 };
@@ -43,6 +45,8 @@ export const usePreviewBlockIndexWorker = (
   const fallbackTimerRef = useRef<TimeoutHandle | null>(null);
   const blockIndexMarkdownRef = useRef("");
   const blockIndexStateRef = useRef<PreviewBlockIndex | null>(null);
+  const inFlightWorkerRequestIdRef = useRef<number | null>(null);
+  const pendingWorkerRequestRef = useRef<PendingWorkerRequest | null>(null);
   const requestIdRef = useRef(0);
   const workerRef = useRef<Worker | null>(null);
   const [state, setState] = useState<PreviewBlockIndexWorkerState>(() => createInitialState());
@@ -54,6 +58,8 @@ export const usePreviewBlockIndexWorker = (
     }
     workerRef.current?.terminate();
     workerRef.current = null;
+    inFlightWorkerRequestIdRef.current = null;
+    pendingWorkerRequestRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -66,6 +72,7 @@ export const usePreviewBlockIndexWorker = (
     }
 
     if (!enabled || markdown.trim().length === 0) {
+      pendingWorkerRequestRef.current = null;
       blockCacheRef.current.clear();
       blockIndexMarkdownRef.current = "";
       blockIndexStateRef.current = null;
@@ -162,22 +169,39 @@ export const usePreviewBlockIndexWorker = (
 
       const worker = workerRef.current;
       worker.onmessage = (event: MessageEvent<PreviewBlockIndexWorkerResponse>) => {
-        if (event.data.id !== requestIdRef.current) {
-          return;
+        if (event.data.id === inFlightWorkerRequestIdRef.current) {
+          inFlightWorkerRequestIdRef.current = null;
         }
-        commitBlockIndex(event.data.blockIndex, "worker", event.data.elapsedMs);
+        if (event.data.id === requestIdRef.current) {
+          commitBlockIndex(event.data.blockIndex, "worker", event.data.elapsedMs);
+        }
+
+        const pendingRequest = pendingWorkerRequestRef.current;
+        if (pendingRequest && inFlightWorkerRequestIdRef.current === null) {
+          pendingWorkerRequestRef.current = null;
+          inFlightWorkerRequestIdRef.current = pendingRequest.id;
+          worker.postMessage(pendingRequest);
+        }
       };
       worker.onerror = () => {
         workerRef.current?.terminate();
         workerRef.current = null;
+        inFlightWorkerRequestIdRef.current = null;
+        pendingWorkerRequestRef.current = null;
         if (requestIdRef.current === requestId) {
           runFallback();
         }
       };
-      worker.postMessage({
+      const nextRequest = {
         id: requestId,
         markdown,
-      } satisfies PreviewBlockIndexWorkerRequest);
+      } satisfies PendingWorkerRequest;
+      if (inFlightWorkerRequestIdRef.current === null) {
+        inFlightWorkerRequestIdRef.current = requestId;
+        worker.postMessage(nextRequest);
+      } else {
+        pendingWorkerRequestRef.current = nextRequest;
+      }
     } catch {
       workerRef.current?.terminate();
       workerRef.current = null;

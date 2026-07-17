@@ -43,6 +43,7 @@ export type MarkdownEditorCompartments = EditorLayoutCompartments & {
   commentAnchor: Compartment;
   collaboration: Compartment;
   history: Compartment;
+  language: Compartment;
   searchHighlight: Compartment;
   placeholder: Compartment;
 };
@@ -54,6 +55,7 @@ export type MarkdownEditorExtensionConfig = {
   bookmarks: MarkdownBookmark[];
   commentAnchors: MarkdownCommentAnchor[];
   commentsEnabled: boolean;
+  lightweightMode: boolean;
   activeCommentId?: string | null;
   collaborationBinding?: CollabEditorBinding | null;
   searchMatches: SearchMatch[];
@@ -94,6 +96,7 @@ export const createMarkdownEditorCompartments = (): MarkdownEditorCompartments =
   commentAnchor: new Compartment(),
   collaboration: new Compartment(),
   history: new Compartment(),
+  language: new Compartment(),
   searchHighlight: new Compartment(),
   placeholder: new Compartment(),
 });
@@ -115,6 +118,14 @@ export const createEditorSelectionDisplayExtensions = (): Extension[] => [
   EditorState.allowMultipleSelections.of(true),
   drawSelection(),
 ];
+
+export const createEditorMarkdownLanguageExtensions = (lightweightMode: boolean): Extension[] =>
+  lightweightMode
+    ? []
+    : [
+        markdown({ addKeymap: false, pasteURLAsLink: true }),
+        syntaxHighlighting(markdownEditorHighlightStyle, { fallback: true }),
+      ];
 
 const utf8Encoder = new TextEncoder();
 
@@ -192,6 +203,7 @@ export const createMarkdownEditorExtensions = ({
   bookmarks,
   commentAnchors,
   commentsEnabled,
+  lightweightMode,
   activeCommentId,
   collaborationBinding,
   searchMatches,
@@ -207,9 +219,8 @@ export const createMarkdownEditorExtensions = ({
   bracketMatching(),
   highlightActiveLine(),
   highlightActiveLineGutter(),
-  markdown({ addKeymap: false, pasteURLAsLink: true }),
+  compartments.language.of(createEditorMarkdownLanguageExtensions(lightweightMode)),
   createEditorPasteNormalizationExtension(),
-  syntaxHighlighting(markdownEditorHighlightStyle, { fallback: true }),
   compartments.placeholder.of(placeholder(copy.startWriting)),
   compartments.annotationGutter.of(createEditorAnnotationGutterExtension(bookmarks, copy, onOpenLineActions)),
   compartments.lineNumbers.of(createEditorLineNumbersExtension(lineNumbers)),

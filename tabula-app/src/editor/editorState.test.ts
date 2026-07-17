@@ -8,6 +8,7 @@ import { yCollab } from "y-codemirror.next";
 
 import {
   createEditorCollaborationExtensions,
+  createEditorMarkdownLanguageExtensions,
   getCollaborationEditorHistoryState,
   redoCollaborationHistory,
 } from "./editorState";
@@ -25,6 +26,11 @@ const createStateOnlyEditorView = (initialState: EditorState) => {
 };
 
 describe("editor collaboration limits", () => {
+  it("drops syntax parsing in lightweight large-document mode", () => {
+    expect(createEditorMarkdownLanguageExtensions(true)).toEqual([]);
+    expect(createEditorMarkdownLanguageExtensions(false).length).toBeGreaterThan(0);
+  });
+
   it("blocks oversized local edits but always admits a remote Y.Text projection", () => {
     const doc = new Y.Doc();
     const text = doc.getText("document");

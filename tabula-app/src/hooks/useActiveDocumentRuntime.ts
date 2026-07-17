@@ -109,6 +109,7 @@ export const useActiveDocumentRuntime = (
   options: { text?: string; textChange?: TextChange | null } = {},
 ) => {
   const activeFileId = activeFile?.id ?? "";
+  const hasActiveFile = Boolean(activeFile);
   const activeText = options.text ?? activeFile?.text ?? "";
   const activeViewMode = activeFile?.viewMode ?? "edit";
   const activePreviewSnapshot = createActiveDocumentPreviewTextSnapshot(activeFile, activeText);
@@ -128,7 +129,7 @@ export const useActiveDocumentRuntime = (
     wordCount: getMarkdownWordCount(activeText),
   }));
   const shouldRenderPreviewImmediately = shouldDeriveImmediatePreviewState({
-    hasActiveFile: Boolean(activeFile),
+    hasActiveFile,
     largeDocumentMode,
     markdownPreviewEligible: immediatePreviewEligible,
     textLength: activeText.length,
@@ -140,46 +141,41 @@ export const useActiveDocumentRuntime = (
   );
   const hasPendingTextChange = Boolean(options.textChange?.patches.length);
   const canPatchPreviewBodyImmediately = shouldPatchPreviewBodyImmediately({
-    hasActiveFile: Boolean(activeFile),
+    hasActiveFile,
     largeDocumentMode,
     textLength: activeText.length,
     viewMode: activeViewMode,
   });
   const patchedPreviewBodyTextChange = useMemo(
-    () =>
-      canPatchPreviewBodyImmediately
-        ? derivePatchedPreviewBodyTextChange({
-            currentFileId: activeFileId,
-            currentText: activeText,
-            previousSnapshot: previousPreviewBodyTextSnapshotRef.current,
-            textChange: options.textChange,
-          })
-        : null,
+    () => canPatchPreviewBodyImmediately
+      ? derivePatchedPreviewBodyTextChange({
+          currentFileId: activeFileId,
+          currentText: activeText,
+          previousSnapshot: previousPreviewBodyTextSnapshotRef.current,
+          textChange: options.textChange,
+        })
+      : null,
     [activeFileId, activeText, canPatchPreviewBodyImmediately, options.textChange],
   );
   const shouldRenderPreviewBodyImmediately = shouldDerivePreviewBodyImmediately({
-    hasActiveFile: Boolean(activeFile),
+    hasActiveFile,
     viewMode: activeViewMode,
   });
   const shouldRenderFullPreviewBodyImmediately =
     shouldRenderPreviewBodyImmediately &&
     !(largeDocumentMode && hasPendingTextChange);
   const immediatePreviewBodyState = useMemo(
-    () => {
-      if (patchedPreviewBodyTextChange) {
-        return {
+    () => patchedPreviewBodyTextChange
+      ? {
           previewBodyStartOffset: patchedPreviewBodyTextChange.previewBodyStartOffset,
           renderedPreview: {
             body: patchedPreviewBodyTextChange.previewBody,
             sourceLineOffset: patchedPreviewBodyTextChange.previewSourceLineOffset,
           },
-        };
-      }
-
-      return shouldRenderFullPreviewBodyImmediately
+        }
+      : shouldRenderFullPreviewBodyImmediately
         ? createPreviewBodyStateFromSnapshot(activePreviewSnapshot)
-        : null;
-    },
+        : null,
     [activePreviewSnapshot, patchedPreviewBodyTextChange, shouldRenderFullPreviewBodyImmediately],
   );
   const previewBodyState =
@@ -208,19 +204,14 @@ export const useActiveDocumentRuntime = (
     text: activeText,
   }), [activeFileId, activeText, previewBodyState]);
   const previewBodyTextChange = useMemo(
-    () => {
-      if (patchedPreviewBodyTextChange) {
-        return patchedPreviewBodyTextChange.textChange;
-      }
-
-      return shouldRenderFullPreviewBodyImmediately
+    () => patchedPreviewBodyTextChange?.textChange ??
+      (shouldRenderFullPreviewBodyImmediately
         ? derivePreviewBodyTextChange({
             currentSnapshot: currentPreviewBodyTextSnapshot,
             previousSnapshot: previousPreviewBodyTextSnapshotRef.current,
             textChange: options.textChange,
           })
-        : null;
-    },
+        : null),
     [
       currentPreviewBodyTextSnapshot,
       options.textChange,
@@ -237,7 +228,7 @@ export const useActiveDocumentRuntime = (
   }, [currentPreviewBodyTextSnapshot]);
 
   useEffect(() => {
-    if (!activeFile) {
+    if (!hasActiveFile) {
       setDeferredPreviewBodyState({
         previewSnapshot: EMPTY_PREVIEW_TEXT_SNAPSHOT,
         previewBodyState: createPreviewBodyStateFromSnapshot(EMPTY_PREVIEW_TEXT_SNAPSHOT),
@@ -252,10 +243,10 @@ export const useActiveDocumentRuntime = (
     const delayMs = getPreviewBodyDerivationDelayMs({
       largeDocumentMode,
       textLength: activeText.length,
-      viewMode: activeFile.viewMode,
+      viewMode: activeViewMode,
     });
     const timer = window.setTimeout(() => {
-      const previewSnapshot = createActiveDocumentPreviewTextSnapshot(activeFile, activeText);
+      const previewSnapshot = createActiveDocumentPreviewTextSnapshot({ id: activeFileId }, activeText);
       setDeferredPreviewBodyState({
         previewSnapshot,
         previewBodyState: createPreviewBodyStateFromSnapshot(previewSnapshot),
@@ -263,10 +254,10 @@ export const useActiveDocumentRuntime = (
     }, delayMs);
 
     return () => window.clearTimeout(timer);
-  }, [activeFile, activeFileId, activeText, immediatePreviewBodyState, immediatePreviewState, largeDocumentMode]);
+  }, [activeFileId, activeText, activeViewMode, hasActiveFile, immediatePreviewBodyState, immediatePreviewState, largeDocumentMode]);
 
   useEffect(() => {
-    if (!activeFile) {
+    if (!hasActiveFile) {
       setDeferredPreviewMetadataState({
         previewSnapshot: EMPTY_PREVIEW_TEXT_SNAPSHOT,
         previewMetadataState: createPreviewMetadataStateFromSnapshot(EMPTY_PREVIEW_TEXT_SNAPSHOT),
@@ -277,7 +268,7 @@ export const useActiveDocumentRuntime = (
     const delayMs = getPreviewMetadataDerivationDelayMs({
       largeDocumentMode,
       textLength: activeText.length,
-      viewMode: activeFile.viewMode,
+      viewMode: activeViewMode,
     });
     let cancelled = false;
     let idleHandle: number | null = null;
@@ -285,7 +276,7 @@ export const useActiveDocumentRuntime = (
       if (cancelled) {
         return;
       }
-      const previewSnapshot = createActiveDocumentPreviewTextSnapshot(activeFile, activeText);
+      const previewSnapshot = createActiveDocumentPreviewTextSnapshot({ id: activeFileId }, activeText);
       const previewMetadataState = createPreviewMetadataStateFromSnapshot(previewSnapshot);
       startTransition(() => {
         if (cancelled) {
@@ -315,10 +306,10 @@ export const useActiveDocumentRuntime = (
         window.cancelIdleCallback(idleHandle);
       }
     };
-  }, [activeFile, activeFileId, activeText, activeViewMode, largeDocumentMode]);
+  }, [activeFileId, activeText, activeViewMode, hasActiveFile, largeDocumentMode]);
 
   useEffect(() => {
-    if (!activeFile) {
+    if (!hasActiveFile) {
       setDeferredWordCountState({
         previewSnapshot: EMPTY_PREVIEW_TEXT_SNAPSHOT,
         wordCount: 0,
@@ -329,11 +320,11 @@ export const useActiveDocumentRuntime = (
     const delayMs = getWordCountDerivationDelayMs({
       largeDocumentMode,
       textLength: activeText.length,
-      viewMode: activeFile.viewMode,
+      viewMode: activeViewMode,
     });
     let cancelled = false;
     const timer = window.setTimeout(() => {
-      const previewSnapshot = createActiveDocumentPreviewTextSnapshot(activeFile, activeText);
+      const previewSnapshot = createActiveDocumentPreviewTextSnapshot({ id: activeFileId }, activeText);
       const wordCount = getMarkdownWordCount(activeText);
       startTransition(() => {
         if (cancelled) {
@@ -350,7 +341,7 @@ export const useActiveDocumentRuntime = (
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [activeFile, activeFileId, activeText, largeDocumentMode]);
+  }, [activeFileId, activeText, activeViewMode, hasActiveFile, largeDocumentMode]);
 
   const editorState = useMemo(
     () => createActiveDocumentEditorRuntime(activeFile, { text: activeText, wordCount }),

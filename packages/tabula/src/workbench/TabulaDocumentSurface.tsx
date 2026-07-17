@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -41,6 +42,38 @@ import {
   type MarkdownPreviewComponent,
 } from "../../../../tabula-app/src/preview/markdownPreviewLoader";
 import { getWorkspaceSurfaceCopy } from "../../../../tabula-app/src/workspaceSurfaceLocale";
+
+const LONG_LINE_RECHECK_DELAY_MS = 240;
+
+const useLongLineWrappingSuspension = (
+  fileId: string,
+  lineWrapping: boolean,
+  text: string,
+) => {
+  const activeFileIdRef = useRef(fileId);
+  const [hasLongLine, setHasLongLine] = useState(() => lineWrapping && hasLongMarkdownLine(text));
+
+  useEffect(() => {
+    if (!lineWrapping) {
+      activeFileIdRef.current = fileId;
+      setHasLongLine(false);
+      return undefined;
+    }
+
+    if (activeFileIdRef.current !== fileId) {
+      activeFileIdRef.current = fileId;
+      setHasLongLine(hasLongMarkdownLine(text));
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setHasLongLine(hasLongMarkdownLine(text));
+    }, LONG_LINE_RECHECK_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [fileId, lineWrapping, text]);
+
+  return lineWrapping && hasLongLine;
+};
 
 /**
  * The shared editor/preview lane used by Tabula workbenches.
@@ -188,9 +221,10 @@ export function TabulaDocumentSurface({
       cancelled = true;
     };
   }, [ResolvedMarkdownPreview, shouldRenderPreview]);
-  const suspendLineWrappingForLongLine = useMemo(
-    () => activeLineWrapping && hasLongMarkdownLine(text),
-    [activeLineWrapping, text],
+  const suspendLineWrappingForLongLine = useLongLineWrappingSuspension(
+    activeFile.id,
+    activeLineWrapping,
+    text,
   );
   const effectiveLineWrapping = activeLineWrapping && !suspendLineWrappingForLongLine;
   const isSourceSearchActive = searchOpen && searchTarget === "source";
