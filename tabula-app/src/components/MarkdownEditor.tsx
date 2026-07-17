@@ -72,11 +72,11 @@ type LocalEditorViewState = {
 
 type LocalEditorCacheEntry = {
   estimatedBytes: number;
-  state: EditorState;
+  state?: EditorState;
   viewState: LocalEditorViewState;
 };
 
-const estimateEditorStateBytes = (state: EditorState) => 64 * 1024 + state.doc.length * 4;
+const estimateEditorStateBytes = (state: EditorState) => 64 * 1024 + state.doc.length * 8;
 
 const getEditorScrollContext = (view: EditorView) => {
   const internalScroller = view.scrollDOM;
@@ -554,6 +554,27 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         });
       };
 
+      const selectionActionMeasureKey = {};
+      let selectionActionMeasureVersion = 0;
+      const emitSelectionActionPosition = (view: EditorView) => {
+        selectionActionMeasureVersion += 1;
+        const measureVersion = selectionActionMeasureVersion;
+        if (view.state.selection.main.empty) {
+          onSelectionActionPositionChangeRef.current?.(null);
+          return;
+        }
+
+        view.requestMeasure({
+          key: selectionActionMeasureKey,
+          read: (measuredView) => getEditorSelectionActionPosition(measuredView),
+          write: (position) => {
+            if (measureVersion === selectionActionMeasureVersion) {
+              onSelectionActionPositionChangeRef.current?.(position);
+            }
+          },
+        });
+      };
+
       const updateExtension = EditorView.updateListener.of((update) => {
         emitHistoryState(update.view);
         const isExternalUpdate = isRemoteEditorUpdate(update.transactions);
@@ -567,11 +588,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
 
         if ((update.selectionSet || update.docChanged || update.focusChanged) && update.view.hasFocus) {
-          const selection = update.state.selection.main;
-          onSelectionActionPositionChangeRef.current?.(
-            selection.empty ? null : getEditorSelectionActionPosition(update.view),
-          );
+          emitSelectionActionPosition(update.view);
         } else if (update.focusChanged && !update.view.hasFocus) {
+          selectionActionMeasureVersion += 1;
           onSelectionActionPositionChangeRef.current?.(null);
         }
 
@@ -608,7 +627,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         onOpenComment: (commentId) => onOpenCommentRef.current?.(commentId),
       });
       const cachedEntry = collaborationBinding ? undefined : stateByFileIdRef.current.get(fileId);
-      if (cachedEntry) {
+      if (cachedEntry?.state) {
         stateByFileIdRef.current.delete(fileId);
         stateByFileIdRef.current.set(fileId, cachedEntry);
       }
@@ -677,6 +696,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       view.scrollDOM.addEventListener("scroll", handleScroll, { passive: true });
 
       return () => {
+        selectionActionMeasureVersion += 1;
         onSelectionChangeRef.current?.(undefined);
         onSelectionActionPositionChangeRef.current?.(null);
         view.scrollDOM.removeEventListener("scroll", handleScroll);
@@ -695,9 +715,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           appliedBinding.undoManager.stopCapturing();
           stateByFileIdRef.current.delete(fileId);
         } else {
+          const shouldRetainEditorState = view.state.doc.length < LIGHTWEIGHT_EDITOR_CHAR_THRESHOLD;
           const entry: LocalEditorCacheEntry = {
-            estimatedBytes: estimateEditorStateBytes(view.state),
-            state: view.state,
+            estimatedBytes: shouldRetainEditorState ? estimateEditorStateBytes(view.state) : 0,
+            state: shouldRetainEditorState ? view.state : undefined,
             viewState: captureLocalEditorViewState(view),
           };
           stateByFileIdRef.current.delete(fileId);

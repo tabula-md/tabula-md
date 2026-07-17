@@ -5,10 +5,11 @@ import {
   type RefObject,
 } from "react";
 import type { WorkspaceSidePanelProps } from "../components/WorkspaceSidePanel";
+import type { MarkdownHeading } from "@tabula-md/tabula";
 import {
-  getLineStartOffset,
-  type MarkdownHeading,
-} from "@tabula-md/tabula";
+  getActiveOutlineHeadingIndex,
+  getOutlineHeadingOffsets,
+} from "../editor/outlineNavigationModel";
 import type { RightPanelView } from "../uiTypes";
 import type { LiveSelection } from "../collaboration";
 import type {
@@ -148,22 +149,22 @@ export function useWorkspaceProjectContextRuntime({
   const outlineCursorOffset = activeViewMode === "preview"
     ? undefined
     : outlineCursorRef.current.offset;
+  const bodyStartOffset = useMemo(() => {
+    const offset = text.indexOf(parsedMarkdownBody);
+    return offset === -1 ? 0 : offset;
+  }, [parsedMarkdownBody, text]);
+  const outlineHeadingOffsets = useMemo(
+    () => getOutlineHeadingOffsets(parsedMarkdownBody, outlineHeadings),
+    [outlineHeadings, parsedMarkdownBody],
+  );
   const activeOutlineHeadingIndex = useMemo(() => {
     if (outlineCursorOffset === undefined || outlineHeadings.length === 0) {
       return undefined;
     }
 
-    const bodyStartOffset = text.indexOf(parsedMarkdownBody);
-    const sourceOffset = Math.max(0, outlineCursorOffset - (bodyStartOffset === -1 ? 0 : bodyStartOffset));
-    let activeIndex: number | undefined;
-    for (let index = 0; index < outlineHeadings.length; index += 1) {
-      if (getLineStartOffset(parsedMarkdownBody, outlineHeadings[index].sourceLineIndex) > sourceOffset) {
-        break;
-      }
-      activeIndex = index;
-    }
-    return activeIndex;
-  }, [outlineCursorOffset, outlineHeadings, parsedMarkdownBody, text]);
+    const sourceOffset = Math.max(0, outlineCursorOffset - bodyStartOffset);
+    return getActiveOutlineHeadingIndex(outlineHeadingOffsets, sourceOffset);
+  }, [bodyStartOffset, outlineCursorOffset, outlineHeadingOffsets, outlineHeadings.length]);
   const goToOutlineHeading = useCallback(
     (heading: MarkdownHeading, headingIndex: number) => {
       if (activeViewMode === "preview") {
@@ -178,10 +179,8 @@ export function useWorkspaceProjectContextRuntime({
         return;
       }
 
-      const bodyStartOffset = text.indexOf(parsedMarkdownBody);
       const targetOffset =
-        (bodyStartOffset === -1 ? 0 : bodyStartOffset) +
-        getLineStartOffset(parsedMarkdownBody, heading.sourceLineIndex);
+        bodyStartOffset + (outlineHeadingOffsets[headingIndex] ?? 0);
       focusTextRange(
         targetOffset,
         targetOffset + heading.text.length + heading.depth + 1,
@@ -189,10 +188,10 @@ export function useWorkspaceProjectContextRuntime({
     },
     [
       activeViewMode,
+      bodyStartOffset,
       focusTextRange,
-      parsedMarkdownBody,
+      outlineHeadingOffsets,
       previewSurfaceRef,
-      text,
     ],
   );
   const setPanelView = useCallback((nextView: RightPanelView) => {
