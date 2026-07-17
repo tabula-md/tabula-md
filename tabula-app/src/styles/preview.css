@@ -500,6 +500,53 @@ a.preview-docs-card:hover {
   margin-bottom: 0;
 }
 
+.preview-surface details {
+  margin: 18px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  background: var(--surface-overlay);
+}
+
+.preview-surface summary {
+  color: var(--text-primary);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.preview-surface details[open] summary {
+  margin-bottom: 10px;
+}
+
+.preview-surface kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface-muted);
+  box-shadow: 0 1px 0 var(--line-strong);
+  font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.preview-surface figure {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin: 22px 0;
+}
+
+.preview-surface figcaption {
+  color: var(--preview-caption-text-color);
+  font-size: var(--preview-secondary-text-size);
+  text-align: center;
+}
+
+.preview-surface abbr[title] {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
 .preview-surface code {
   padding: 2px 5px;
   color: var(--text-primary);
