@@ -174,7 +174,7 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.locator('input[aria-label="Open workspace"]').evaluate((input) => {
+    await page.locator('input[aria-label="Open folder"]').evaluate((input) => {
       const dataTransfer = new DataTransfer();
       const launchNotes = new File(["# Launch notes\n\nReady."], "Launch notes.md", { type: "text/markdown" });
       const questions = new File(["# Questions"], "Questions.md", { type: "text/markdown" });
@@ -188,12 +188,12 @@ export async function run(ctx) {
       Object.defineProperty(input, "files", { configurable: true, value: dataTransfer.files });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await page.getByRole("dialog", { name: "Import workspace" }).waitFor();
+    await page.getByRole("dialog", { name: "Open folder" }).waitFor();
     expect(
       (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1,
       "Opening a workspace should preview its logical document paths before replacing local state.",
     );
-    await page.getByRole("button", { name: "Import workspace", exact: true }).click();
+    await page.getByRole("button", { name: "Open folder", exact: true }).click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
     expect(
       (await page.locator(".tab-item").count()) === 0,
@@ -376,7 +376,7 @@ export async function run(ctx) {
     );
     expect(
       emptyChromeState.workspaceText.includes(
-        "Open Markdown. Share one link. Edit together.",
+        "Open Markdown. Share one link. Edit with people or agents.",
       ) &&
         !emptyChromeState.workspaceText.includes("Start with Markdown.") &&
         !emptyChromeState.workspaceText.includes("Tabula turns Markdowns into collaborative documents for people and agents.") &&
@@ -459,7 +459,7 @@ export async function run(ctx) {
     expect(reloadedNoOpenState.tabCount === 0, "Reloading with no open tabs should preserve the openTabs state.");
     expect(
       reloadedNoOpenState.text.includes(
-        "Open Markdown. Share one link. Edit together.",
+        "Open Markdown. Share one link. Edit with people or agents.",
       ),
       "Reloading with no open tabs should keep the branded start state.",
     );

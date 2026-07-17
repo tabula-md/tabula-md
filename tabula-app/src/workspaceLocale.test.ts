@@ -19,13 +19,13 @@ describe("workspace locale chrome copy", () => {
 
   it("keeps the start message action-first in every language", () => {
     expect(WORKSPACE_LANGUAGE_OPTIONS.map(({ value }) => getWorkspaceMenuCopy(value).emptyState.tagline)).toEqual([
-      "Open Markdown. Share one link. Edit together.",
-      "Markdown을 여세요. 링크 하나를 공유하고 함께 편집하세요.",
-      "Markdownを開く。リンクを共有して、一緒に編集。",
-      "打开 Markdown。分享一个链接，一起编辑。",
-      "Abre Markdown. Comparte un enlace. Edita en equipo.",
-      "Ouvrez Markdown. Partagez un lien. Modifiez ensemble.",
-      "Markdown öffnen. Einen Link teilen. Gemeinsam bearbeiten.",
+      "Open Markdown. Share one link. Edit with people or agents.",
+      "Markdown을 여세요. 링크 하나로 사람이나 에이전트와 함께 편집하세요.",
+      "Markdownを開く。リンクを共有して、人やエージェントと編集。",
+      "打开 Markdown。分享一个链接，与人或智能体一起编辑。",
+      "Abre Markdown. Comparte un enlace. Edita con personas o agentes.",
+      "Ouvrez Markdown. Partagez un lien. Modifiez avec des personnes ou des agents.",
+      "Markdown öffnen. Einen Link teilen. Mit Menschen oder Agenten bearbeiten.",
     ]);
   });
 
@@ -33,11 +33,11 @@ describe("workspace locale chrome copy", () => {
     const english = getWorkspaceMenuCopy("en");
     expect(english.actions.preferences).toBe("Preferences");
     expect(english.actions.importFile).toBe("Import document (.md)…");
-    expect(english.actions.importWorkspace).toBe("Import workspace…");
+    expect(english.actions.importWorkspace).toBe("Open folder…");
     expect(english.actions.exportFile).toBe("Export document (.md)");
     expect(english.actions.exportWorkspace).toBe("Export workspace (.zip)");
     expect(english.emptyState.tagline).toBe(
-      "Open Markdown. Share one link. Edit together.",
+      "Open Markdown. Share one link. Edit with people or agents.",
     );
     expect(english.emptyState.newFile).toBe("New document");
     expect(english.share.live.startSession).toBe("Start session");
@@ -45,6 +45,12 @@ describe("workspace locale chrome copy", () => {
       "The whole workspace joins the encrypted room.",
     );
     expect(english.share.live.inviteAgent).toBe("Invite an agent");
+    expect(english.share.live.inviteAgentDescription).toContain(
+      "what you want changed",
+    );
+    expect(english.share.live.agentAccessWarning).toContain(
+      "hosted MCP can read room content",
+    );
     expect(english.share.live.securityDescription).toContain(
       "cannot read your documents or comments",
     );

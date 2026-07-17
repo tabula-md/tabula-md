@@ -66,6 +66,9 @@ complete room URL with a concrete task. The URL is a bearer secret: anyone with
 it can join and decrypt the session, so do not put it in logs, issues, or public
 messages.
 
+Local MCP keeps its plaintext working state on your device. A hosted MCP is a
+trusted room participant and can read the room content shared with it.
+
 See [Tabula.md MCP](https://github.com/tabula-md/tabula-mcp) for Claude Desktop,
 other MCP clients, and self-hosting.
 

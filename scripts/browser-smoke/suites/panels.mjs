@@ -107,7 +107,7 @@ export async function run(ctx) {
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the side panel.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New document|Import document (.md)…|Import workspace…|Export document (.md)|Export workspace (.zip)|Preferences|About|Help|Follow us|GitHub|Clear local workspace…",
+        "New document|Import document (.md)…|Open folder…|Export document (.md)|Export workspace (.zip)|Preferences|About|Help|Follow us|GitHub|Clear local workspace…",
       "The workspace menu should expose file entry points, preferences, support, and public links without duplicating Share.",
     );
     const xPublicLink = workbenchPanels.publicLinks.find((link) => link.text === "Follow us");
@@ -143,7 +143,7 @@ export async function run(ctx) {
     const focusIndex = (label) => workbenchPanels.focusOrder.indexOf(label);
     expect(focusIndex("New document") !== -1, "Keyboard order should include document creation.");
     expect(focusIndex("Import document (.md)…") !== -1, "Keyboard order should include document import.");
-    expect(focusIndex("Import workspace…") !== -1, "Keyboard order should include workspace import.");
+    expect(focusIndex("Open folder…") !== -1, "Keyboard order should include opening a folder.");
     expect(focusIndex("Export document (.md)") !== -1, "Keyboard order should include document export.");
     expect(focusIndex("Export workspace (.zip)") !== -1, "Keyboard order should include workspace export.");
     expect(focusIndex("Live collaboration…") === -1, "Live collaboration should have one entry point in Share.");
@@ -153,8 +153,8 @@ export async function run(ctx) {
     expect(
       focusIndex("New document") <
         focusIndex("Import document (.md)…") &&
-        focusIndex("Import document (.md)…") < focusIndex("Import workspace…") &&
-        focusIndex("Import workspace…") < focusIndex("Export document (.md)") &&
+        focusIndex("Import document (.md)…") < focusIndex("Open folder…") &&
+        focusIndex("Open folder…") < focusIndex("Export document (.md)") &&
         focusIndex("Export document (.md)") < focusIndex("Export workspace (.zip)") &&
         focusIndex("Export workspace (.zip)") < focusIndex("Preferences") &&
         focusIndex("Preferences") < focusIndex("About") &&

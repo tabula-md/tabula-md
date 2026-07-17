@@ -20,6 +20,11 @@ The room key is kept after the `#` fragment. Browsers use it locally to encrypt
 and decrypt collaboration data. The collaboration service receives room routing
 metadata and encrypted updates, not the room key or plaintext Markdown.
 
+A local Tabula MCP runs as a trusted participant on your device. If you choose
+a hosted MCP, that hosted service is also a trusted participant and can read the
+room content you share with it. This is separate from the ciphertext-only room
+relay.
+
 ## Export Links
 
 Export links use this shape:
