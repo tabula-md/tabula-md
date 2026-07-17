@@ -86,7 +86,10 @@ import {
 } from "../liveRoomOpenState";
 import { readIndexedDbWorkspace } from "../workspaceIndexedDb";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
-import { productAnalytics } from "../observability/productAnalytics";
+import {
+  createEditingActivationTracker,
+  productAnalytics,
+} from "../observability/productAnalytics";
 import { useParticipantFollowController } from "./useParticipantFollowController";
 import { createActiveRoomDocumentProjectionStore } from "../collaboration/runtime/ActiveRoomDocumentProjectionStore";
 import {
@@ -187,6 +190,7 @@ export function useWorkspaceRuntime() {
   const localPersistenceEnabled = workspaceSession.mode === "local";
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const previewRef = useRef<MarkdownPreviewHandle | null>(null);
+  const editingActivationTrackerRef = useRef(createEditingActivationTracker());
   const editorDocumentRuntime = useWorkspaceEditorDocumentRuntimeOwner();
   const [roomDocumentProjectionStore] = useState(() =>
     createActiveRoomDocumentProjectionStore());
@@ -274,7 +278,15 @@ export function useWorkspaceRuntime() {
     const activeSnapshot = getActiveFileSnapshot();
     return activeSnapshot ?? files[0];
   });
-  const addRootFile = useEventCallback(() => addFile());
+  const addRootFile = useEventCallback(() => {
+    const createdFile = addFile();
+    if (createdFile) {
+      productAnalytics.report("file_created_or_opened", {
+        documentSource: "new_document",
+      });
+    }
+    return createdFile;
+  });
   const getWorkspaceSnapshot = useEventCallback((): WorkspaceState => {
     const workspaceSnapshot = getWorkspaceStoreSnapshot(workspaceSession.mode);
     const activeFileSnapshot = getActiveFileSnapshot();
@@ -1235,6 +1247,7 @@ export function useWorkspaceRuntime() {
     onReorderFiles: reorderFiles,
     onRenameFile: renameWorkspaceFileAction,
     onSelectFile: selectFile,
+    onShareOpened: () => productAnalytics.report("share_opened"),
     onStartSession: startSessionWithPendingCommit,
     onStopSession: stopSessionWithPendingCommit,
     onRetrySession: retryCollaborationConnection,
@@ -1462,6 +1475,9 @@ export function useWorkspaceRuntime() {
       onSplitDividerPointerUp: endSplitDividerDrag,
       onTextChange: (nextText, change) => {
         stopFollowing("local-edit");
+        if (editingActivationTrackerRef.current.recordEdit()) {
+          productAnalytics.report("edited_30_seconds");
+        }
         handleTextChange(nextText, change);
       },
       onToggleLineNumbers: documentWorkbenchRuntime.onToggleLineNumbers,

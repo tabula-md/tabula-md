@@ -17,6 +17,7 @@ import {
 } from "../workspaceStorage";
 import { writeIndexedDbWorkspace } from "../workspaceIndexedDb";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
+import { productAnalytics } from "../observability/productAnalytics";
 import { useEventCallback } from "./useEventCallback";
 
 export type PendingJsonShareImport =
@@ -80,6 +81,7 @@ export function useJsonShareImportController({
     onBeforeWorkspaceBoundary?.();
     replaceWorkspace(workspace);
     replaceCommentsByFileId(workspace.commentsByFileId);
+    productAnalytics.report("export_link_loaded");
     void writeIndexedDbWorkspace(workspace).catch((error: unknown) => {
       clientErrorReporter.report({
         feature: "workspace",

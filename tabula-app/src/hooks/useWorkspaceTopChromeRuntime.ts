@@ -44,6 +44,7 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   onReorderFiles: (sourceFileId: string, targetFileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onSelectFile: (fileId: string) => void;
+  onShareOpened: () => void;
   onStartSession: () => void;
   onStopSession: () => void;
   onRetrySession: () => void;
@@ -86,6 +87,7 @@ export function useWorkspaceTopChromeRuntime({
   onReorderFiles,
   onRenameFile,
   onSelectFile,
+  onShareOpened,
   onStartSession,
   onStopSession,
   onRetrySession,
@@ -110,6 +112,7 @@ export function useWorkspaceTopChromeRuntime({
   }, [setTopPopover]);
 
   const toggleShare = useCallback(() => {
+    if (!shareOpen) onShareOpened();
     setTopPopover(shareOpen ? null : "share");
     setCenterPopover(null);
     setWorkspaceMenuOpen(false);
@@ -119,6 +122,7 @@ export function useWorkspaceTopChromeRuntime({
     setPreferencesOpen,
     setTopPopover,
     setWorkspaceMenuOpen,
+    onShareOpened,
     shareOpen,
   ]);
 

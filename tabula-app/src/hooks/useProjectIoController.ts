@@ -19,6 +19,7 @@ import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";
 import { writeIndexedDbWorkspace } from "../workspaceIndexedDb";
 import { getWorkspaceIoCopy } from "../workspaceIoLocale";
+import { productAnalytics } from "../observability/productAnalytics";
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -220,6 +221,9 @@ export function useProjectIoController({
       importedFileDraft.viewMode,
       importedFileDraft.overrides,
     );
+    productAnalytics.report("file_created_or_opened", {
+      documentSource: "markdown_file",
+    });
     onCloseChrome();
     if (!isRoomSession) syncUrlForLocalWorkspace();
 
@@ -263,6 +267,9 @@ export function useProjectIoController({
     const nextWorkspace = { ...workspaceFolderImport, commentsByFileId: {} };
     onBeforeWorkspaceBoundary?.();
     replaceWorkspace(nextWorkspace);
+    productAnalytics.report("file_created_or_opened", {
+      documentSource: "folder",
+    });
     replaceCommentsByFileId({});
     clearFileHistory();
     void writeIndexedDbWorkspace(nextWorkspace).catch((error: unknown) => {
