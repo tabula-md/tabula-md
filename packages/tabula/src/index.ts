@@ -368,6 +368,7 @@ export { getRoomShareLinkView } from "./shareLinkViewModel";
 
 export type {
   RoomActor,
+  RoomActorAttribution,
   RoomActorClient,
   RoomActorKind,
   RoomCapability,
@@ -461,6 +462,7 @@ export {
   setWorkspaceRoomComment,
   setWorkspaceRoomCommentResolved,
   setWorkspaceRoomNodeOrder,
+  touchWorkspaceRoomNode,
   validateWorkspaceRoomStructure,
 } from "./workspaceRoomCrdt";
 export type { WorkspaceRoomBootstrapInput } from "./workspaceRoomBootstrap";
@@ -494,6 +496,8 @@ export {
   isRoomCapability,
   normalizeRoomCapabilities,
   parseRoomActor,
+  parseRoomActorAttribution,
+  toRoomActorAttribution,
 } from "./roomCollaboration";
 
 export type {

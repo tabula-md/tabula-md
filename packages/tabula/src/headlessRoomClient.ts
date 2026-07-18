@@ -3,6 +3,7 @@ import { Awareness, removeAwarenessStates } from "y-protocols/awareness";
 import { getCrypto, importEncryptionKey } from "./data/encryption";
 import {
   parseRoomActor,
+  toRoomActorAttribution,
   type RoomActor,
 } from "./roomCollaboration";
 import {
@@ -33,6 +34,7 @@ import {
   renameWorkspaceRoomNode,
   setWorkspaceRoomComment,
   setWorkspaceRoomCommentResolved,
+  touchWorkspaceRoomNode,
   validateWorkspaceRoomStructure,
   type WorkspaceRoomCrdt,
 } from "./workspaceRoomCrdt";
@@ -217,6 +219,7 @@ export const createHeadlessRoomClientRuntime = ({
   if (!parsedRoom) throw new Error("A valid private Tabula Room URL is required.");
   const actor = parseRoomActor(rawActor);
   if (!actor) throw new Error("A valid Tabula Room actor is required.");
+  const attribution = toRoomActorAttribution(actor);
   if (initialWorkspace && initialWorkspace.roomId !== parsedRoom.roomId) {
     throw new Error("The initial workspace belongs to a different Room.");
   }
@@ -573,6 +576,7 @@ export const createHeadlessRoomClientRuntime = ({
       if (patch.to > patch.from) text.delete(patch.from, patch.to - patch.from);
       if (patch.insert) text.insert(patch.from, patch.insert);
     }
+    touchWorkspaceRoomNode(draftRoom, change.documentId, attribution);
     return sha256Text(change.markdown);
   };
 
@@ -587,6 +591,8 @@ export const createHeadlessRoomClientRuntime = ({
             parentId: change.parentId ?? WORKSPACE_ROOM_ROOT_ID,
             title: change.title,
             order: Math.max(0, ...getWorkspaceRoomStructureSnapshot(draftRoom).nodes.map((node) => node.order)) + 1,
+            createdBy: attribution,
+            updatedBy: attribution,
           });
           if (!created) throw new Error("Workspace folder could not be created.");
           results.push({ type: change.type, folderId });
@@ -600,6 +606,8 @@ export const createHeadlessRoomClientRuntime = ({
             title: change.title,
             order: Math.max(0, ...getWorkspaceRoomStructureSnapshot(draftRoom).nodes.map((node) => node.order)) + 1,
             markdown: change.markdown ?? "",
+            createdBy: attribution,
+            updatedBy: attribution,
           });
           if (!created) throw new Error("Workspace document could not be created.");
           results.push({ type: change.type, documentId });
@@ -614,12 +622,24 @@ export const createHeadlessRoomClientRuntime = ({
           break;
         case "node.update":
           await assertExpectedNode(draftRoom, change.nodeId, change.expected);
-          if (change.title !== undefined && !renameWorkspaceRoomNode(draftRoom, change.nodeId, change.title)) {
+          if (change.title !== undefined && !renameWorkspaceRoomNode(
+            draftRoom,
+            change.nodeId,
+            change.title,
+            undefined,
+            attribution,
+          )) {
             throw new Error("Workspace node could not be renamed.");
           }
           if (
             change.parentId !== undefined &&
-            !moveWorkspaceRoomNode(draftRoom, change.nodeId, change.parentId ?? WORKSPACE_ROOM_ROOT_ID)
+            !moveWorkspaceRoomNode(
+              draftRoom,
+              change.nodeId,
+              change.parentId ?? WORKSPACE_ROOM_ROOT_ID,
+              undefined,
+              attribution,
+            )
           ) {
             throw new Error("Workspace node could not be moved.");
           }

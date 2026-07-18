@@ -21,6 +21,12 @@ const createStore = () => {
   const store = createRoomCrdtStore({
     canApplyTextByteDelta: metrics.canApplyTextByteDelta,
     getDocumentByteLength: metrics.getDocumentByteLength,
+    getAttribution: () => ({
+      id: "human-1",
+      kind: "human",
+      name: "Curious Human",
+      client: "tabula-md",
+    }),
     room,
   });
   return { metrics, room, store };
@@ -48,7 +54,14 @@ describe("RoomCrdtStore", () => {
 
     const snapshot = store.materializeWorkspace();
     expect(snapshot.nodes).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: "notes", title: "Ideas.md", parentId: "docs", order: 4 }),
+      expect.objectContaining({
+        id: "notes",
+        title: "Ideas.md",
+        parentId: "docs",
+        order: 4,
+        createdBy: expect.objectContaining({ id: "human-1", kind: "human" }),
+        updatedBy: expect.objectContaining({ id: "human-1", kind: "human" }),
+      }),
     ]));
     expect(snapshot.nodes.some((node) => node.id === "archive")).toBe(false);
     metrics.dispose();
@@ -62,6 +75,10 @@ describe("RoomCrdtStore", () => {
       { from: 5, to: 5, insert: " world" },
     ])).toBe(true);
     expect(store.materializeDocument("readme")).toBe("Hello world");
+    expect(store.materializeWorkspace().nodes.find((node) => node.id === "readme")?.updatedBy).toMatchObject({
+      id: "human-1",
+      kind: "human",
+    });
     expect(store.applyDocumentText("readme", null, [
       { from: 50, to: 50, insert: "invalid" },
     ])).toBe(false);

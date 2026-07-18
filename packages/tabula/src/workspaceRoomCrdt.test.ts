@@ -15,6 +15,7 @@ import {
   renameWorkspaceRoomNode,
   setWorkspaceRoomComment,
   setWorkspaceRoomCommentResolved,
+  touchWorkspaceRoomNode,
 } from "./workspaceRoomCrdt";
 import {
   validateWorkspaceRoomLimits,
@@ -152,6 +153,26 @@ describe("workspace room CRDT", () => {
     const snapshot = getWorkspaceRoomSnapshot(room);
     expect(snapshot).not.toHaveProperty("activeDocumentId");
     expect(snapshot.nodes.find((node) => node.id === "readme")?.title).toBe("Guide.md");
+  });
+
+  it("preserves bounded creator and last-editor attribution in Room state", () => {
+    const room = createWorkspaceRoomCrdt({ roomId: "room-attribution" });
+    const creator = { id: "human-1", kind: "human" as const, name: "Curious Human", client: "tabula-md" as const };
+    const editor = { id: "agent-1", kind: "agent" as const, name: "Patient Agent", client: "tabula-mcp" as const };
+    expect(createWorkspaceRoomDocument(room, {
+      id: "brief",
+      title: "Brief.md",
+      markdown: "Draft",
+      createdBy: creator,
+      updatedBy: creator,
+    })).toBe(true);
+    expect(touchWorkspaceRoomNode(room, "brief", editor, "2026-07-19T00:00:00.000Z")).toBe(true);
+
+    expect(getWorkspaceRoomSnapshot(room).nodes.find((node) => node.id === "brief")).toMatchObject({
+      createdBy: creator,
+      updatedBy: editor,
+      updatedAt: "2026-07-19T00:00:00.000Z",
+    });
   });
 
   it("projects workspace structure without materializing document bodies", () => {
