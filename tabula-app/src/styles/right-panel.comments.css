@@ -236,10 +236,6 @@
   gap: var(--right-tight-gap);
 }
 
-.right-comment-group.compact {
-  gap: 8px;
-}
-
 .right-comment-file {
   display: grid;
   grid-template-columns: var(--right-chevron-size) minmax(0, 1fr);
@@ -595,13 +591,6 @@
   display: flex;
   justify-content: flex-end;
   gap: 9px;
-}
-
-.right-resolved-comments {
-  display: grid;
-  gap: 4px;
-  margin-top: 4px;
-  padding-top: 2px;
 }
 
 .right-resolved-comments-header {
