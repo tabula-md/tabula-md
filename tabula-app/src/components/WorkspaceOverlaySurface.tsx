@@ -3,7 +3,7 @@ import { JsonShareImportDialog } from "./JsonShareImportDialog";
 import { TooltipLayer } from "./ui/TooltipLayer";
 import type { AppToastState } from "../hooks/useAppToast";
 import type { WorkspaceState } from "../workspaceStorage";
-import { getProjectArchiveEntries } from "../projectArchive";
+import { getWorkspaceArchiveEntries } from "../workspaceArchive";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 import {
@@ -95,7 +95,7 @@ export function WorkspaceOverlaySurface({
           }
           filePaths={
             jsonShareImport.status === "ready"
-              ? getProjectArchiveEntries(
+              ? getWorkspaceArchiveEntries(
                   jsonShareImport.workspace.files,
                   jsonShareImport.workspace.folders,
                 ).filter((entry) => !entry.path.endsWith("/")).map((entry) => entry.path)

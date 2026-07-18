@@ -1,10 +1,10 @@
 import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import {
-  createProjectArchive,
+  createWorkspaceArchive,
   createZipArchive,
-  getProjectArchiveEntries,
-} from "./projectArchive";
+  getWorkspaceArchiveEntries,
+} from "./workspaceArchive";
 import {
   WORKSPACE_ROOT_FOLDER_ID,
   createWorkspaceFile,
@@ -17,10 +17,10 @@ const readZipEntries = async (blob: Blob) =>
     content: strFromU8(content),
   }));
 
-describe("project archive", () => {
-  it("normalizes project files into deduped Markdown entry paths", () => {
+describe("workspace archive", () => {
+  it("normalizes workspace files into deduped Markdown entry paths", () => {
     expect(
-      getProjectArchiveEntries([
+      getWorkspaceArchiveEntries([
         createWorkspaceFile(1, { title: "Design", text: "# Design" }),
         createWorkspaceFile(2, { title: "Design.md", text: "# Second" }),
         createWorkspaceFile(3, { title: "../bad/name?.markdown", text: "# Third" }),
@@ -37,7 +37,7 @@ describe("project archive", () => {
   });
 
   it("creates a compressed zip archive with Markdown files", async () => {
-    const archive = await createProjectArchive([
+    const archive = await createWorkspaceArchive([
       createWorkspaceFile(1, { title: "README.md", text: "# README" }),
       createWorkspaceFile(2, { title: "Notes.md", text: "한글 Markdown" }),
     ]);
@@ -50,7 +50,7 @@ describe("project archive", () => {
   });
 
   it("creates zip entries with logical folder structure", async () => {
-    const archive = await createProjectArchive(
+    const archive = await createWorkspaceArchive(
       [
         createWorkspaceFile(1, { title: "README.md", text: "# Docs", parentId: "docs" }),
         createWorkspaceFile(2, { title: "ADR 1", text: "# ADR", parentId: "decisions" }),
@@ -69,7 +69,7 @@ describe("project archive", () => {
   });
 
   it("preserves empty logical folders", async () => {
-    const archive = await createProjectArchive(
+    const archive = await createWorkspaceArchive(
       [createWorkspaceFile(1, { title: "README.md", text: "# Root" })],
       [
         createWorkspaceRootFolder(),

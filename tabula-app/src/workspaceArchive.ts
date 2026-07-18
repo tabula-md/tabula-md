@@ -41,7 +41,7 @@ const getFolderPath = (folderId: string | null | undefined, foldersById: Map<str
   return parts;
 };
 
-export const getProjectArchiveEntries = (files: WorkspaceFile[], folders: WorkspaceFolder[] = []): ZipEntrySource[] => {
+export const getWorkspaceArchiveEntries = (files: WorkspaceFile[], folders: WorkspaceFolder[] = []): ZipEntrySource[] => {
   const pathCounts = new Map<string, number>();
   const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
   const foldersWithDocuments = new Set<string>();
@@ -95,5 +95,5 @@ export const createZipArchive = (entries: ZipEntrySource[]) =>
     });
   });
 
-export const createProjectArchive = (files: WorkspaceFile[], folders: WorkspaceFolder[] = []) =>
-  createZipArchive(getProjectArchiveEntries(files, folders));
+export const createWorkspaceArchive = (files: WorkspaceFile[], folders: WorkspaceFolder[] = []) =>
+  createZipArchive(getWorkspaceArchiveEntries(files, folders));

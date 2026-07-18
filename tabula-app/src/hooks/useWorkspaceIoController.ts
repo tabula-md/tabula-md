@@ -8,7 +8,7 @@ import type {
   WorkspaceState,
 } from "../workspaceStorage";
 import { useJsonShareImportController } from "./useJsonShareImportController";
-import { useProjectIoController } from "./useProjectIoController";
+import { useWorkspaceFileIoController } from "./useWorkspaceFileIoController";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 
 type UseWorkspaceIoControllerOptions = {
@@ -71,7 +71,7 @@ export function useWorkspaceIoController({
   showToast,
   workspaceSource,
 }: UseWorkspaceIoControllerOptions) {
-  const projectIo = useProjectIoController({
+  const workspaceFileIo = useWorkspaceFileIoController({
     activeFile,
     isRoomSession,
     activeFileId,
@@ -105,7 +105,7 @@ export function useWorkspaceIoController({
   });
 
   return {
-    ...projectIo,
+    ...workspaceFileIo,
     ...jsonShareImport,
   };
 }
