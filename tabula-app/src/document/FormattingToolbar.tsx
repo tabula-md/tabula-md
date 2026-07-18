@@ -13,14 +13,14 @@ import {
   type FormattingToolbarCommand,
   type FormattingToolbarCommandActions,
 } from "../toolbar/formattingCommandRegistry";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
-import { formatShortcut } from "../keyboardShortcuts";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
+import { formatShortcut } from "../workspace/keyboardShortcuts";
 import {
   getFormattingCommandCopy,
   type FormattingCommandCopy,
 } from "../toolbar/formattingCommandLocale";
-import { MenuCheckboxItem, MenuContent, MenuGroup, MenuRoot, MenuTrigger } from "../components/ui/Menu";
+import { MenuCheckboxItem, MenuContent, MenuGroup, MenuRoot, MenuTrigger } from "../ui/Menu";
 
 type FormattingToolbarProps = {
   className?: string;

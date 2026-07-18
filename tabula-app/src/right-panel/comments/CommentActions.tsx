@@ -1,7 +1,7 @@
 import { CheckCircle2, Ellipsis, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
-import type { FileComment } from "../../workspaceStorage";
-import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../../components/ui/Menu";
+import type { FileComment } from "../../workspace/workspaceStorage";
+import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../../ui/Menu";
 import type { RightPanelCommentsCopy } from "./types";
 
 type CommentActionsProps = {

@@ -10,8 +10,8 @@ import {
 } from "react";
 import type { LiveSelection } from "../collaboration/liveCollaboration";
 import type { MarkdownEditorHandle, MarkdownSelectionActionPosition } from "./MarkdownEditor";
-import type { FileViewMode } from "../workspaceStorage";
-import { useAnimationFrameTask } from "../hooks/useAnimationFrameTask";
+import type { FileViewMode } from "../workspace/workspaceStorage";
+import { useAnimationFrameTask } from "../shared/useAnimationFrameTask";
 
 type PreviewSelectionState = {
   from: number;

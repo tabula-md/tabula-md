@@ -16,11 +16,11 @@ import {
   type InitialWorkspaceSnapshot,
   type WorkspaceFile,
   type WorkspaceState,
-} from "../workspaceStorage";
-import { writeIndexedDbWorkspace } from "../workspaceIndexedDb";
+} from "../workspace/workspaceStorage";
+import { writeIndexedDbWorkspace } from "../workspace/persistence/workspaceIndexedDb";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import { productAnalytics } from "../observability/productAnalytics";
-import { useEventCallback } from "../hooks/useEventCallback";
+import { useEventCallback } from "../shared/useEventCallback";
 
 export type PendingJsonShareImport =
   | { status: "loading"; route: JsonShareRoute }

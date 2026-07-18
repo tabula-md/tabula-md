@@ -1,9 +1,9 @@
 import { Check, TriangleAlert } from "lucide-react";
 import { getStatusBarSaveState } from "@tabula-md/tabula";
 import { useEffect, useState } from "react";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import { getWorkspaceChromeCopy } from "../workspaceLocale";
-import type { FileViewMode } from "../workspaceStorage";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
+import type { FileViewMode } from "../workspace/workspaceStorage";
 
 interface StatusBarProps {
   activeFileTitle: string;

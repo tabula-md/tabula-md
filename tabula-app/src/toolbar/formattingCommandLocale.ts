@@ -1,5 +1,5 @@
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 
 export type FormattingCommandId = "undo" | "redo" | MarkdownFormatCommand;
 

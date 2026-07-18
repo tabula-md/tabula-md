@@ -1,4 +1,4 @@
-import type { LocationRoom } from "../../workspaceStorage";
+import type { LocationRoom } from "../workspaceStorage";
 import {
   createLocalWorkspaceSession,
   createRoomWorkspaceSession,

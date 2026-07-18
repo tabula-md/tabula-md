@@ -7,6 +7,7 @@ const root = process.cwd();
 const coreRoot = path.join(root, "packages/tabula/src");
 const appRoot = path.join(root, "tabula-app/src");
 const coreWorkbenchRoot = path.join(coreRoot, "workbench");
+const retiredAppDirectories = ["components", "hooks", "stores"];
 
 const errors = [];
 
@@ -62,6 +63,16 @@ const collectSourceFiles = (directory) => {
   visit(directory);
   return files.sort();
 };
+
+for (const directoryName of retiredAppDirectories) {
+  const directory = path.join(appRoot, directoryName);
+  const files = collectSourceFiles(directory);
+  if (files.length > 0) {
+    errors.push(
+      `${toRepoPath(directory)}: keep app modules with their feature, or use ui/shared for feature-neutral primitives`,
+    );
+  }
+}
 
 const parseSourceFile = (filePath) => {
   const text = readFileSync(filePath, "utf8");

@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
-import type { SemanticShortcut } from "../keyboardShortcuts";
+import type { SemanticShortcut } from "../workspace/keyboardShortcuts";
 import type { FormattingCommandId } from "./formattingCommandLocale";
 
 export type FormattingToolbarCommandGroup =

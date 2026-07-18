@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "./MarkdownEditor";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
-import type { FileViewMode } from "../workspaceStorage";
+import type { FileViewMode } from "../workspace/workspaceStorage";
 import type { SplitScrollSurface } from "./useSplitPreviewFollow";
 
 type MutableValueRef<T> = {

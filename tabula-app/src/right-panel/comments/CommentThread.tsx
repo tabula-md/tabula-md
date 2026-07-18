@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { FileCommentReply } from "../../workspaceStorage";
+import type { FileCommentReply } from "../../workspace/workspaceStorage";
 import { CommentAuthor } from "./CommentAuthor";
 import type { FormatCommentDate, RightPanelCommentsCopy } from "./types";
 

@@ -9,7 +9,7 @@ import {
   projectWorkspaceRoomComments,
   projectWorkspaceRoomStructure,
 } from "./workspaceRoomProjection";
-import { createWorkspaceRootFolder, type WorkspaceFile } from "../workspaceStorage";
+import { createWorkspaceRootFolder, type WorkspaceFile } from "../workspace/workspaceStorage";
 
 const file = (overrides: Partial<WorkspaceFile> & Pick<WorkspaceFile, "id" | "title">): WorkspaceFile => ({
   text: "",

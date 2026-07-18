@@ -1,10 +1,10 @@
-import type { LocationRoom } from "../../workspaceStorage";
+import type { LocationRoom } from "../workspaceStorage";
 import type { WorkspaceRoomRuntime } from "../../collaboration/liveCollaboration";
 import {
   useRoomWorkspaceStore,
   useWorkspaceStore,
   type WorkspaceStoreBinding,
-} from "../../stores/workspaceStore";
+} from "../state/workspaceStore";
 import { createFollowStore, type FollowStore } from "./FollowStore";
 
 export type RoomWorkspaceBootstrap = {

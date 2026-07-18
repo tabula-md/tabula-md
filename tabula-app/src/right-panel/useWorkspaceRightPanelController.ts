@@ -10,15 +10,15 @@ import {
   getActiveOutlineHeadingIndex,
   getOutlineHeadingOffsets,
 } from "../editor/outlineNavigationModel";
-import type { RightPanelView } from "../uiTypes";
+import type { RightPanelView } from "../ui/uiTypes";
 import type { LiveSelection } from "../collaboration/liveCollaboration";
 import type {
   FileComment,
   FileViewMode,
   WorkspaceFile,
   WorkspaceFolder,
-} from "../workspaceStorage";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+} from "../workspace/workspaceStorage";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 
 type FocusTextRange = (start: number, end?: number) => void;
 

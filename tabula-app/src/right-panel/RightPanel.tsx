@@ -8,18 +8,18 @@ import {
 } from "lucide-react";
 import { getRightPanelCommentGroups } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
-import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
+import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { MarkdownHeading } from "@tabula-md/tabula";
-import type { RightPanelView } from "../uiTypes";
-import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
+import type { RightPanelView } from "../ui/uiTypes";
+import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
 import { RightPanelComments } from "./RightPanelComments";
 import { RightPanelFiles } from "./RightPanelFiles";
 import { RightPanelOutline } from "./RightPanelOutline";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
-import { getWorkspaceChromeCopy } from "../workspaceLocale";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
+import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { RightPanelSearch } from "./RightPanelSearch";
-import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
+import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelProps = {

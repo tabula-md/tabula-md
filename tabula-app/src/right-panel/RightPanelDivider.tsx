@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { ResizeHandle } from "../components/ui/ResizeHandle";
+import { ResizeHandle } from "../ui/ResizeHandle";
 
 export const DEFAULT_RIGHT_PANEL_WIDTH = 288;
 export const MIN_RIGHT_PANEL_WIDTH = 240;

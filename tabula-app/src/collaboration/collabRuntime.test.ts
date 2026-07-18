@@ -7,7 +7,7 @@ import {
   getInitialCollaborationStatus,
   getLiveRoomConnectionTarget,
 } from "./collabRuntime";
-import type { WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceFile } from "../workspace/workspaceStorage";
 
 const VALID_ROOM_KEY = "A".repeat(43);
 

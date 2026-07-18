@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState, type ComponentProps } from "react";
 import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../browserStorage";
 import { RightPanel } from "./RightPanel";
-import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import {
   clampRightPanelWidth,
   DEFAULT_RIGHT_PANEL_WIDTH,

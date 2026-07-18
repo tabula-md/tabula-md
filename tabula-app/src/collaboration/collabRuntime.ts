@@ -9,7 +9,7 @@ import {
   type TabulaRoomAvailability,
 } from "./liveCollaboration";
 import { createRoomSession } from "./collabRoom";
-import type { LocationRoom, WorkspaceFile } from "../workspaceStorage";
+import type { LocationRoom, WorkspaceFile } from "../workspace/workspaceStorage";
 
 export type LiveRoomConnectionTarget = {
   fileId?: string;

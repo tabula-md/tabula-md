@@ -4,7 +4,7 @@ import {
   type EditorDocumentRuntime,
   type EditorDocumentRuntimeFlushResult,
 } from "@tabula-md/tabula";
-import type { WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceFile } from "../workspace/workspaceStorage";
 
 type EditorDocumentRuntimeFile = Pick<WorkspaceFile, "id" | "text">;
 

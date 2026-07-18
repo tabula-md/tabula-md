@@ -6,7 +6,7 @@ import type {
 import type {
   FileBookmark,
   WorkspaceFile,
-} from "../workspaceStorage";
+} from "../workspace/workspaceStorage";
 import {
   LARGE_DOCUMENT_CHAR_THRESHOLD,
   LARGE_DOCUMENT_LINE_THRESHOLD,

@@ -4,7 +4,7 @@ import {
   flattenVisibleFileTree,
   getValidDropFolderIds,
 } from "./fileTreeModel";
-import { WORKSPACE_ROOT_FOLDER_ID, createWorkspaceFile, createWorkspaceRootFolder } from "../workspaceStorage";
+import { WORKSPACE_ROOT_FOLDER_ID, createWorkspaceFile, createWorkspaceRootFolder } from "../workspace/workspaceStorage";
 
 describe("right panel file rows", () => {
   it("flattens only expanded tree branches into virtual rows", () => {

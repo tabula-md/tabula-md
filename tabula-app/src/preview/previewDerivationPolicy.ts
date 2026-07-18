@@ -1,5 +1,5 @@
 import { LIVE_PREVIEW_CHAR_THRESHOLD } from "@tabula-md/tabula";
-import type { FileViewMode } from "../workspaceStorage";
+import type { FileViewMode } from "../workspace/workspaceStorage";
 
 export const EDIT_MODE_DERIVED_STATE_DELAY_MS = 240;
 export const SMALL_HEAVY_PREVIEW_DERIVED_STATE_DELAY_MS = 120;

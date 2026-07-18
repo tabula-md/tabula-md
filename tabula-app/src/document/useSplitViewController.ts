@@ -13,7 +13,7 @@ import {
   MIN_SPLIT_EDITOR_RATIO,
   type FileViewMode,
 } from "@tabula-md/tabula";
-import { useWorkspaceUiStore } from "../stores/workspaceUiStore";
+import { useWorkspaceUiStore } from "../workspace/state/workspaceUiStore";
 
 const SPLIT_RESIZE_KEYBOARD_STEP = 0.02;
 const SPLIT_CENTER_SNAP_THRESHOLD = 0.025;

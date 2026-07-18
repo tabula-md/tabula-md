@@ -1,6 +1,6 @@
 import { Bookmark } from "lucide-react";
 import type { LineSurfaceRow } from "@tabula-md/tabula";
-import type { WorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import type { WorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 import type {
   MarkdownPreviewLineActionRequest,
   MarkdownPreviewLineAnnotation,

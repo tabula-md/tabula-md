@@ -19,7 +19,7 @@ import {
   SplitSquareHorizontal,
   X,
 } from "lucide-react";
-import type { CenterPopover } from "../uiTypes";
+import type { CenterPopover } from "../ui/uiTypes";
 import type { SearchOptions } from "../editor/editorSearchModel";
 import {
   buildDocumentControlsModel,
@@ -27,10 +27,10 @@ import {
   type ReadingWidth,
   type DocumentViewModeIcon,
 } from "@tabula-md/tabula";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import { getWorkspaceChromeCopy } from "../workspaceLocale";
-import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
-import { PopoverContent, PopoverRoot, PopoverTrigger } from "../components/ui/Popover";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
+import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
+import { PopoverContent, PopoverRoot, PopoverTrigger } from "../ui/Popover";
 
 type DocumentControlsProps = {
   activeViewMode: FileViewMode;

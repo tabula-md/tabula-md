@@ -6,7 +6,7 @@ import {
   type FileComment,
   type WorkspaceFile,
   type WorkspaceState,
-} from "../workspaceStorage";
+} from "../workspace/workspaceStorage";
 
 export const createWorkspaceFromJsonShareSnapshot = (snapshot: ShareSnapshot): WorkspaceState => {
   const files = snapshot.files.map((file, index) =>
