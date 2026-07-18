@@ -674,11 +674,19 @@ export async function run(ctx) {
     expect(
       (await page.getByRole("link", { name: "Set up Tabula MCP" }).getAttribute("href")) ===
         "https://github.com/tabula-md/tabula-mcp#install",
-      "Agent setup should stay outside the per-room invite action.",
+      "Human-readable agent setup docs should remain available from Share.",
     );
     await page.getByRole("button", { name: "Copy invite" }).click();
     const copiedAgentInvite = await page.evaluate(() => window.__tabulaClipboard.at(-1));
     expect(copiedAgentInvite.includes("Use your Tabula tools to join this room"), "Agent invite should state the user intent without protocol instructions.");
+    expect(
+      copiedAgentInvite.includes("https://tabula.md/agent-install.txt"),
+      "Agent invite should recover through the official setup runbook when Tabula tools are missing.",
+    );
+    expect(
+      copiedAgentInvite.includes("paste this invite again"),
+      "Agent invite should explain how to resume after a client restart.",
+    );
     expect(copiedAgentInvite.includes(page.url()), "Agent invite should include the current room URL only after an explicit copy.");
     expect(!copiedAgentInvite.match(/Task:|Scope:|Target document:|Yjs|binary protocol|Markdown/), "Agent invite should not expose task orchestration, fake scopes, or protocol internals.");
     expect(
