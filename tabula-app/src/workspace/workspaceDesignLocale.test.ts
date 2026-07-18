@@ -54,6 +54,7 @@ describe("workspace design locale contracts", () => {
       expect(surface.jsonMore(2).trim()).not.toBe("");
       expect(workspace.tabs.renameDocument("Plan.md").trim()).not.toBe("");
       expect(workspace.sidePanel.files.open("Plan.md").trim()).not.toBe("");
+      expect(workspace.sidePanel.comments.emptyHint.trim()).not.toBe("");
       expect(workspace.sidePanel.comments.selectedCharacters(2).trim()).not.toBe("");
     }
   });
