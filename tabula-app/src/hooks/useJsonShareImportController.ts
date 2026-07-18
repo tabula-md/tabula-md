@@ -5,9 +5,11 @@ import {
   getJsonShareImportRoute,
   readJsonShareSnapshot,
   type JsonShareRoute,
+} from "../share/jsonShare";
+import {
   createWorkspaceFromJsonShareSnapshot,
   hasMeaningfulWorkspaceContent,
-} from "../share";
+} from "../share/jsonShareImport";
 import {
   syncUrlForLocalWorkspace,
   type FileComment,

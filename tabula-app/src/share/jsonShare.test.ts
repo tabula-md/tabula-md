@@ -5,9 +5,9 @@ import {
   getJsonShareRoute,
   parseJsonShareFromHash,
   readJsonShareSnapshot,
-} from ".";
+} from "./jsonShare";
 import { createWorkspaceFromJsonShareSnapshot, hasMeaningfulWorkspaceContent } from "./jsonShareImport";
-import { SHARE_SNAPSHOT_SCHEMA_VERSION, type ShareSnapshot } from "./shareSnapshotPayload";
+import { SHARE_SNAPSHOT_SCHEMA_VERSION, type ShareSnapshot } from "@tabula-md/tabula";
 import {
   STARTER_README_MARKDOWN,
   WORKSPACE_ROOT_FOLDER_ID,

@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
+import { getRoomShareLinkView } from "@tabula-md/tabula";
 import type { ConnectionStatus } from "../collaboration";
-import { getRoomShareLinkView } from "../share";
 import {
   syncUrlForLocalWorkspace,
   type LocationRoom,

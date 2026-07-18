@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getRoomShareLinkView } from ".";
+import { getRoomShareLinkView } from "@tabula-md/tabula";
 
 const VALID_ROOM_KEY = "A".repeat(43);
 

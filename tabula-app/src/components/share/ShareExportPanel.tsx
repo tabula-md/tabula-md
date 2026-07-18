@@ -1,7 +1,7 @@
 import { Link, LockKeyhole } from "lucide-react";
+import type { ShareViewModel } from "@tabula-md/tabula";
 import type { JsonShareController } from "../../hooks/useJsonShareController";
 import { useId } from "react";
-import type { ShareViewModel } from "../../share";
 import type { WorkspaceShareCopy } from "../../workspaceLocale";
 
 type ShareExportPanelProps = {

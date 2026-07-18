@@ -1,4 +1,4 @@
-import type { ShareSnapshot } from "./shareSnapshotPayload";
+import type { ShareSnapshot } from "@tabula-md/tabula";
 import {
   createWorkspaceFile,
   isStarterReadmeText,
