@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - run: npm install --global npm@latest
+      - run: npm install --global npm@11.12.1
       - run: npm ci
       - name: Verify tag matches package version
         run: test "${GITHUB_REF_NAME#tabula-core-v}" = "$(node -p "require('./packages/tabula/package.json').version")"
