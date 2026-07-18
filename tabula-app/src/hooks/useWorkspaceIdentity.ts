@@ -5,7 +5,7 @@ import {
   ROOM_ACTOR_ADJECTIVES,
 } from "@tabula-md/tabula";
 import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../browserStorage";
-import type { Collaborator } from "../collaboration";
+import type { Collaborator } from "../collaboration/liveCollaboration";
 import { randomId } from "../workspaceStorage";
 
 export const IDENTITY_KEY = "tabula.identity";

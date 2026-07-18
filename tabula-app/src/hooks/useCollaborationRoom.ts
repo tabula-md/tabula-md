@@ -2,7 +2,7 @@ import { useRef } from "react";
 import {
   type Collaborator,
   type CollabRecoveryEvent,
-} from "../collaboration";
+} from "../collaboration/liveCollaboration";
 import { getTabulaRoomAvailability } from "../collaboration/collabRoom";
 import { createCollaborationSessionStartRequest } from "../collaboration/collabRuntime";
 import {

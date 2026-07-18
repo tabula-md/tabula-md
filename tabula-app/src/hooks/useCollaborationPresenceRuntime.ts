@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { type Collaborator } from "../collaboration";
+import type { Collaborator } from "../collaboration/liveCollaboration";
 import { createCollaborationPresenceIdentity } from "../collaboration/collabRuntime";
 
 type UseCollaborationPresenceRuntimeOptions = {

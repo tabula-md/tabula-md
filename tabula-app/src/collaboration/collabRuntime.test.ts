@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TabulaRoomAvailability } from ".";
+import type { TabulaRoomAvailability } from "./collabRoom";
 import {
   canStartCollaborationSession,
   createCollaborationPresenceIdentity,

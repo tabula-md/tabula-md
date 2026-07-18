@@ -1,6 +1,9 @@
 import { useCallback } from "react";
-import type { Collaborator, RoomRecoveryMode } from "../collaboration";
-import type { ConnectionStatus } from "../collaboration";
+import type {
+  Collaborator,
+  ConnectionStatus,
+  RoomRecoveryMode,
+} from "../collaboration/liveCollaboration";
 import type { WorkspaceTopChromeProps } from "../components/WorkspaceTopChrome";
 import type { JsonShareController } from "./useJsonShareController";
 import type { RenameFileResult } from "./useWorkspaceFiles";

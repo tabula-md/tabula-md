@@ -8,7 +8,7 @@ import {
   type RefObject,
   type TouchEvent as ReactTouchEvent,
 } from "react";
-import type { LiveSelection } from "../collaboration";
+import type { LiveSelection } from "../collaboration/liveCollaboration";
 import type { MarkdownEditorHandle, MarkdownSelectionActionPosition } from "../components/MarkdownEditor";
 import type { FileViewMode } from "../workspaceStorage";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";

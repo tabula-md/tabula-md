@@ -2,7 +2,7 @@ import type { WorkspaceRoomComment } from "@tabula-md/tabula";
 import type {
   Collaborator,
   CollabRecoveryEvent,
-} from "../collaboration";
+} from "../collaboration/liveCollaboration";
 import type { WorkspaceFile } from "../workspaceStorage";
 import type { RoomWorkspaceSession } from "../workspace/session/WorkspaceSession";
 import {

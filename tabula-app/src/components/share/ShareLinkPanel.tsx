@@ -11,7 +11,10 @@ import {
 } from "lucide-react";
 import type { ShareViewModel } from "@tabula-md/tabula";
 import { type ReactNode, useId } from "react";
-import type { ConnectionStatus, RoomRecoveryMode } from "../../collaboration";
+import type {
+  ConnectionStatus,
+  RoomRecoveryMode,
+} from "../../collaboration/liveCollaboration";
 import type {
   WorkspaceChromeCopy,
   WorkspaceShareCopy,

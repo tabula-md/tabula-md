@@ -4,7 +4,11 @@ import { ShareControlsBoundary } from "./ShareControlsBoundary";
 import { ShareTrigger } from "./ShareTrigger";
 import { ShareControls } from "./ShareControls";
 import { TopChrome } from "./TopChrome";
-import type { Collaborator, ConnectionStatus, RoomRecoveryMode } from "../collaboration";
+import type {
+  Collaborator,
+  ConnectionStatus,
+  RoomRecoveryMode,
+} from "../collaboration/liveCollaboration";
 import type { FollowState } from "../collaboration/followModel";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";

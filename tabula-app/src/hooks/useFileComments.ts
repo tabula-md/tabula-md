@@ -6,7 +6,7 @@ import {
   WORKSPACE_ROOM_MAX_CONTENT_BYTES,
   WORKSPACE_ROOM_MAX_REPLIES,
 } from "@tabula-md/tabula";
-import type { Collaborator } from "../collaboration";
+import type { Collaborator } from "../collaboration/liveCollaboration";
 import { mapSessionCommentAnchors } from "../commentAnchorSessionModel";
 import type { FileComment, FileCommentReply, WorkspaceFile } from "../workspaceStorage";
 

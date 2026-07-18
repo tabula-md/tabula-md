@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ConnectionStatus } from "../collaboration";
+import type { ConnectionStatus } from "../collaboration/liveCollaboration";
 import {
   getConfiguredJsonShareServiceUrl,
   getJsonShareImportRoute,

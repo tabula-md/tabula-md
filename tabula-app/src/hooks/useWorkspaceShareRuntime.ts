@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { ConnectionStatus } from "../collaboration";
+import type { ConnectionStatus } from "../collaboration/liveCollaboration";
 import type { WorkspaceShareCopy } from "../workspaceLocale";
 import type { FileComment, LocationRoom, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { useJsonShareController } from "./useJsonShareController";
