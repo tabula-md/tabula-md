@@ -11,7 +11,7 @@ import { useJsonShareImportController } from "./useJsonShareImportController";
 import { useProjectIoController } from "./useProjectIoController";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 
-type UseWorkspaceIoRuntimeOptions = {
+type UseWorkspaceIoControllerOptions = {
   activeFile?: WorkspaceFile;
   isRoomSession: boolean;
   activeFileId: string;
@@ -49,7 +49,7 @@ type UseWorkspaceIoRuntimeOptions = {
   workspaceSource: InitialWorkspaceSnapshot["source"];
 };
 
-export function useWorkspaceIoRuntime({
+export function useWorkspaceIoController({
   activeFile,
   isRoomSession,
   activeFileId,
@@ -70,7 +70,7 @@ export function useWorkspaceIoRuntime({
   resetCollaborationState,
   showToast,
   workspaceSource,
-}: UseWorkspaceIoRuntimeOptions) {
+}: UseWorkspaceIoControllerOptions) {
   const projectIo = useProjectIoController({
     activeFile,
     isRoomSession,

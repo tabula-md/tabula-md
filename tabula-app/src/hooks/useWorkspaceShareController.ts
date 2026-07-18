@@ -6,7 +6,7 @@ import { useJsonShareController } from "./useJsonShareController";
 import { useWorkspaceLiveRoomController } from "./useWorkspaceLiveRoomController";
 import type { StartedWorkspaceRoom } from "./useWorkspaceLiveRoomController";
 
-type UseWorkspaceShareRuntimeOptions = {
+type UseWorkspaceShareControllerOptions = {
   activeFile?: WorkspaceFile;
   room?: LocationRoom | null;
   activeText?: string;
@@ -25,7 +25,7 @@ type UseWorkspaceShareRuntimeOptions = {
   >;
 };
 
-export function useWorkspaceShareRuntime({
+export function useWorkspaceShareController({
   activeFile,
   room,
   activeText,
@@ -40,7 +40,7 @@ export function useWorkspaceShareRuntime({
   setCopiedFileId,
   showToast,
   startCollaborationSession,
-}: UseWorkspaceShareRuntimeOptions) {
+}: UseWorkspaceShareControllerOptions) {
   const jsonShare = useJsonShareController({
     activeFile,
     activeText,

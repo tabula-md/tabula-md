@@ -2,15 +2,15 @@ import { useMemo, useRef } from "react";
 import type { Collaborator } from "../collaboration/liveCollaboration";
 import { createCollaborationPresenceIdentity } from "../collaboration/collabRuntime";
 
-type UseCollaborationPresenceRuntimeOptions = {
+type UseCollaborationPresenceIdentityOptions = {
   identity: Collaborator;
   isLive: boolean;
 };
 
-export function useCollaborationPresenceRuntime({
+export function useCollaborationPresenceIdentity({
   identity,
   isLive,
-}: UseCollaborationPresenceRuntimeOptions) {
+}: UseCollaborationPresenceIdentityOptions) {
   const joinedAtRef = useRef(new Date().toISOString());
 
   return useMemo(

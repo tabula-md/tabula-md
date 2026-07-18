@@ -17,7 +17,7 @@ type SetCenterPopover = (popover: null) => void;
 type SetWorkspaceMenuOpen = (isOpen: boolean) => void;
 type SetPreferencesOpen = (isOpen: boolean) => void;
 
-type UseWorkspaceTopChromeRuntimeOptions = {
+type UseWorkspaceTopChromeControllerOptions = {
   activeFile?: WorkspaceFile;
   activeText: string;
   collaborators: Collaborator[];
@@ -60,7 +60,7 @@ type UseWorkspaceTopChromeRuntimeOptions = {
   setWorkspaceMenuOpen: SetWorkspaceMenuOpen;
 };
 
-export function useWorkspaceTopChromeRuntime({
+export function useWorkspaceTopChromeController({
   activeFile,
   activeText,
   collaborators,
@@ -101,7 +101,7 @@ export function useWorkspaceTopChromeRuntime({
   setPreferencesOpen,
   setTopPopover,
   setWorkspaceMenuOpen,
-}: UseWorkspaceTopChromeRuntimeOptions) {
+}: UseWorkspaceTopChromeControllerOptions) {
   const shareOpen = topPopover === "share";
   const copied = copiedFileId === (activeFile?.id ?? room?.roomId);
 

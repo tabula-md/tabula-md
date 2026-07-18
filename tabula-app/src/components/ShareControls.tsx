@@ -5,7 +5,7 @@ import { ShareLinkPanel } from "./share/ShareLinkPanel";
 import { ShareStopSessionConfirm } from "./share/ShareStopSessionConfirm";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import { useShareDialogRuntime } from "../hooks/useShareDialogRuntime";
+import { useShareDialogController } from "../hooks/useShareDialogController";
 import type { ConnectionStatus, RoomRecoveryMode } from "../collaboration/liveCollaboration";
 import type { LocationRoom } from "../workspaceStorage";
 import { ModalSurface } from "./ui/ModalSurface";
@@ -50,7 +50,7 @@ export function ShareControls({
   onStopSession,
 }: ShareControlsProps) {
   const showLiveRoomPanel = isLive;
-  const shareRuntime = useShareDialogRuntime({
+  const shareController = useShareDialogController({
     room,
     isLive: showLiveRoomPanel,
     isLiveConnected,
@@ -62,44 +62,44 @@ export function ShareControls({
 
   if (!shareOpen) return null;
 
-  if (shareRuntime.view === "stop-confirm") {
+  if (shareController.view === "stop-confirm") {
     return (
       <ModalSurface
         key="stop-confirm"
         ariaLabelledBy="share-stop-session-title"
         className="share-confirm-modal"
-        onClose={shareRuntime.cancelStopSession}
+        onClose={shareController.cancelStopSession}
       >
         <ShareStopSessionConfirm
-          copy={shareRuntime.copy}
-          onCancel={shareRuntime.cancelStopSession}
-          onConfirm={shareRuntime.confirmStopSession}
+          copy={shareController.copy}
+          onCancel={shareController.cancelStopSession}
+          onConfirm={shareController.confirmStopSession}
         />
       </ModalSurface>
     );
   }
 
-  if (shareRuntime.view === "export-result") {
+  if (shareController.view === "export-result") {
     return (
       <ModalSurface
         key="export-result"
         ariaLabelledBy="share-export-result-title"
         className="share-export-result-modal"
-        onClose={shareRuntime.closeShare}
+        onClose={shareController.closeShare}
       >
         <button
           className="share-modal-close"
           type="button"
-          aria-label={shareRuntime.chromeCopy.common.closeShareDialog}
-          onClick={shareRuntime.closeShare}
+          aria-label={shareController.chromeCopy.common.closeShareDialog}
+          onClick={shareController.closeShare}
         >
           <X size={18} />
         </button>
         <ShareExportResult
-          copy={shareRuntime.copy}
-          exportLinkCopied={shareRuntime.exportLinkCopied}
+          copy={shareController.copy}
+          exportLinkCopied={shareController.exportLinkCopied}
           jsonShare={jsonShare}
-          onCopyShareableLink={shareRuntime.copyShareableLink}
+          onCopyShareableLink={shareController.copyShareableLink}
         />
       </ModalSurface>
     );
@@ -109,50 +109,50 @@ export function ShareControls({
     <ModalSurface
       key="chooser"
       ariaLabelledBy="share-modal-title"
-      onClose={shareRuntime.closeShare}
+      onClose={shareController.closeShare}
     >
       <button
         className="share-modal-close"
         type="button"
-        aria-label={shareRuntime.chromeCopy.common.closeShareDialog}
+        aria-label={shareController.chromeCopy.common.closeShareDialog}
         data-modal-initial-focus
-        onClick={shareRuntime.closeShare}
+        onClick={shareController.closeShare}
       >
         <X size={18} />
       </button>
 
       <h2 className="share-modal-title-hidden" id="share-modal-title">
-        {shareRuntime.shareModalTitle}
+        {shareController.shareModalTitle}
       </h2>
 
       <section className={`share-modal-panel ${showLiveRoomPanel ? "live" : "chooser"}`}>
         <div className="share-modal-actions-column">
           <ShareLinkPanel
-            agentInviteCopied={shareRuntime.agentInviteCopied}
-            chromeCopy={shareRuntime.chromeCopy}
+            agentInviteCopied={shareController.agentInviteCopied}
+            chromeCopy={shareController.chromeCopy}
             copied={copied}
-            copy={shareRuntime.copy}
+            copy={shareController.copy}
             currentUserName={currentUserName}
             connectionStatus={connectionStatus}
             isLive={showLiveRoomPanel}
             isLiveConnected={isLiveConnected}
             recoveryMode={recoveryMode}
-            shareView={shareRuntime.shareView}
+            shareView={shareController.shareView}
             exportPanel={
               <ShareExportPanel
-                copy={shareRuntime.copy}
+                copy={shareController.copy}
                 jsonShare={jsonShare}
-                shareView={shareRuntime.shareView}
-                onExportToJsonLink={shareRuntime.exportToJsonLink}
+                shareView={shareController.shareView}
+                onExportToJsonLink={shareController.exportToJsonLink}
               />
             }
             onChangeUserName={onChangeUserName}
             onCommitUserName={onCommitUserName}
-            onCopyAgentInvite={shareRuntime.copyAgentInvite}
+            onCopyAgentInvite={shareController.copyAgentInvite}
             onCopyShareUrl={onCopyShareUrl}
             onRetrySession={onRetrySession}
             onStartWorkspaceRoom={onStartSession}
-            onStopSession={shareRuntime.requestStopSession}
+            onStopSession={shareController.requestStopSession}
           />
         </div>
       </section>
