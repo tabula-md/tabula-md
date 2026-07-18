@@ -45,5 +45,8 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check published core package
+        run: npm run check:core-runtime && node scripts/check-tabula-package.mjs
+
       - name: Check bundle contract
         run: npm run bundle:check
