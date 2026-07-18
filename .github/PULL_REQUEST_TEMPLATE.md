@@ -1,25 +1,11 @@
-## Summary
+## Why
 
 -
 
-## Review Focus
+## What
 
 -
 
-## Implementation Notes
+## Verify
 
 -
-
-## Validation
-
-- Automated:
-- Manual:
-- Not run:
-
-## Risk
-
--
-
-## Evidence
-
-- Screenshots/video:

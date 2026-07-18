@@ -5,6 +5,10 @@ Thanks for helping improve Tabula.md.
 ## Before You Start
 
 - Use GitHub Issues for bugs and focused feature proposals.
+- Documentation fixes and small, well-understood bug fixes are welcome as pull
+  requests.
+- Discuss product behavior, new features, and architecture changes in an issue
+  before writing code. Large unsolicited changes may be closed without review.
 - Keep pull requests small and limited to one reviewable concern.
 - Do not include document content, room links, keys, or other private data in
   issues, logs, screenshots, or fixtures.
@@ -30,5 +34,5 @@ are listed in [Development](DEVELOPMENT.md).
 
 ## Pull Requests
 
-Explain the problem, the change, how you validated it, and any remaining risk.
-Include screenshots or recordings only when the change is visual.
+Explain why the change is needed, what changed, and how you verified it. Include
+screenshots or recordings only when the change is visual.
