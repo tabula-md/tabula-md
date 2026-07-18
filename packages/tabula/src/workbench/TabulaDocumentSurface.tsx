@@ -13,8 +13,11 @@ import {
   hasLongMarkdownLine,
   toggleMarkdownTaskOnLine,
 } from "@tabula-md/tabula";
-import type { DocumentSurfaceModel, TextChange } from "@tabula-md/tabula";
-import type { LiveSelection } from "../../../../tabula-app/src/collaboration";
+import type {
+  CollaborationLiveSelection,
+  DocumentSurfaceModel,
+  TextChange,
+} from "@tabula-md/tabula";
 import type { CollabEditorBinding } from "../../../../tabula-app/src/collaboration/liveCollaboration";
 import type { SearchMatch, SearchOptions } from "../../../../tabula-app/src/editor/editorSearchModel";
 import type { SearchTarget } from "../../../../tabula-app/src/editor/useEditorSearchController";
@@ -129,7 +132,7 @@ export type TabulaDocumentSurfaceProps = {
   onEditorScroll: () => void;
   onEditorScrollRatioChange: (ratio: number) => void;
   onEditorSelectionActionPositionChange: (position: MarkdownSelectionActionPosition | null) => void;
-  onEditorSelectionChange: (selection?: LiveSelection) => void;
+  onEditorSelectionChange: (selection?: CollaborationLiveSelection) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
   onPreviewKeyUp: () => void;
