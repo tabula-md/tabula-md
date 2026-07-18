@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -10,6 +11,10 @@ const indexHtmlPath = path.join(distDir, "index.html");
 
 const maxInitialChunkBytes = 500 * 1024;
 const warnInitialChunkBytes = 400 * 1024;
+const maxInitialBundleBytes = 2 * 1024 * 1024;
+const warnInitialBundleBytes = 1_800 * 1024;
+const maxInitialBundleGzipBytes = 650 * 1024;
+const warnInitialBundleGzipBytes = 600 * 1024;
 const maxLazyChunkBytes = 750 * 1024;
 const warnLazyChunkBytes = 600 * 1024;
 
@@ -77,6 +82,34 @@ for (const chunk of jsChunks) {
   }
 }
 
+const initialChunks = jsChunks.filter((chunk) => indexHtml.includes(chunk.file));
+const initialBundleBytes = initialChunks.reduce((total, chunk) => total + chunk.bytes, 0);
+const initialBundleGzipBytes = (
+  await Promise.all(
+    initialChunks.map(async (chunk) => gzipSync(await readFile(path.join(assetsDir, chunk.file))).byteLength),
+  )
+).reduce((total, bytes) => total + bytes, 0);
+
+if (initialBundleBytes > maxInitialBundleBytes) {
+  failures.push(
+    `Initial JavaScript is ${formatBytes(initialBundleBytes)}; total limit is ${formatBytes(maxInitialBundleBytes)}.`,
+  );
+} else if (initialBundleBytes > warnInitialBundleBytes) {
+  warnings.push(
+    `Initial JavaScript is ${formatBytes(initialBundleBytes)}; total warning threshold is ${formatBytes(warnInitialBundleBytes)}.`,
+  );
+}
+
+if (initialBundleGzipBytes > maxInitialBundleGzipBytes) {
+  failures.push(
+    `Initial JavaScript gzip size is ${formatBytes(initialBundleGzipBytes)}; total limit is ${formatBytes(maxInitialBundleGzipBytes)}.`,
+  );
+} else if (initialBundleGzipBytes > warnInitialBundleGzipBytes) {
+  warnings.push(
+    `Initial JavaScript gzip size is ${formatBytes(initialBundleGzipBytes)}; total warning threshold is ${formatBytes(warnInitialBundleGzipBytes)}.`,
+  );
+}
+
 for (const prefix of requiredChunkPrefixes) {
   if (!jsChunks.some((chunk) => chunk.file.startsWith(prefix))) {
     failures.push(`Expected a ${prefix}*.js bundle chunk, but none was emitted.`);
@@ -96,6 +129,9 @@ console.log("Bundle chunks:");
 for (const chunk of sortedChunks) {
   console.log(`- ${chunk.file}: ${formatBytes(chunk.bytes)}`);
 }
+console.log(
+  `Initial JavaScript total: ${formatBytes(initialBundleBytes)} raw, ${formatBytes(initialBundleGzipBytes)} gzip (${initialChunks.length} chunks).`,
+);
 
 if (warnings.length > 0) {
   console.warn("\nBundle warnings:");
