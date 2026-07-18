@@ -30,7 +30,7 @@ import {
 import {
   restoreFileToList,
   restoreOpenFileId,
-} from "../workspaceFileRuntimeModel";
+} from "@tabula-md/tabula";
 
 type WorkspaceStoreInitialization = WorkspaceModelState<WorkspaceFile> & {
   folders: WorkspaceFolder[];
