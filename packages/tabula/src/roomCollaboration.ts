@@ -1,6 +1,6 @@
 export type RoomActorKind = "human" | "agent";
 
-export type RoomActorClient = "tabula-md" | "tabula-mcp" | "custom";
+export type RoomActorClient = "tabula-md" | "tabula-mcp" | "tabula-cli" | "custom";
 
 export type RoomCapability = "presence" | "read" | "write";
 
@@ -74,7 +74,7 @@ const isRoomActorKind = (value: unknown): value is RoomActorKind =>
   value === "human" || value === "agent";
 
 const isRoomActorClient = (value: unknown): value is RoomActorClient =>
-  value === "tabula-md" || value === "tabula-mcp" || value === "custom";
+  value === "tabula-md" || value === "tabula-mcp" || value === "tabula-cli" || value === "custom";
 
 export const isRoomCapability = (value: unknown): value is RoomCapability =>
   value === "presence" || value === "read" || value === "write";

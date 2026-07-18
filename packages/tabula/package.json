@@ -38,6 +38,10 @@
       "types": "./dist/room/envelope.d.ts",
       "import": "./dist/room/envelope.js"
     },
+    "./room-client": {
+      "types": "./dist/roomClient.d.ts",
+      "import": "./dist/roomClient.js"
+    },
     "./workbench": {
       "types": "./src/workbench/index.d.ts",
       "import": "./dist/workbench.js"
