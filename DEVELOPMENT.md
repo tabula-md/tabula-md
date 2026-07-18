@@ -16,6 +16,27 @@ Open `http://localhost:5173`.
 Read [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) before changing workspace chrome,
 toolbars, menus, popovers, or project panels.
 
+## Code Vocabulary
+
+Use `workspace` for the full file tree, `file` for a stored Markdown node, and
+`document` for the active editing projection. Product copy calls real-time
+sharing a `live session`; `room` is the protocol and transport object behind
+it. Use `Export link` in product surfaces and reserve `JSON` or `snapshot` for
+implementation contracts.
+
+Names should describe ownership and lifetime:
+
+- `Model` and `ViewModel` are pure derivations.
+- `Store` owns mutable state and subscriptions.
+- `Controller` coordinates commands and side effects.
+- `Runtime` owns a long-lived resource with an explicit lifecycle.
+- `Adapter` connects a domain contract to browser, storage, or network I/O.
+- `Surface` is a substantial presentational UI boundary.
+
+Keep new modules with their product feature. Import core contracts directly
+from a declared `@tabula-md/tabula` entrypoint; do not add pass-through
+re-export files or broad barrels only to preserve an old local import path.
+
 ## Useful Commands
 
 ```sh
