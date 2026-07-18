@@ -6,7 +6,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { getShortcutPlatform } from "../keyboardShortcuts";
-import type { MarkdownEditorHandle } from "../markdownEditorTypes";
+import type { MarkdownEditorHandle } from "../document/markdownEditorTypes";
 import {
   type TextChange,
   type WorkspaceRoomComment,
@@ -56,17 +56,17 @@ import {
   type DeletedWorkspaceFolderBundle,
 } from "../stores/workspaceStore";
 import { useAppToast } from "./useAppToast";
-import { useDocumentSurfaceController } from "./useDocumentSurfaceController";
+import { useDocumentSurfaceController } from "../document/useDocumentSurfaceController";
 import { useEventCallback } from "./useEventCallback";
 import { useFileComments } from "./useFileComments";
-import { useSelectionActionDismissal } from "./useSelectionActionDismissal";
-import { useWorkspaceEditorDocumentRuntimeOwner } from "./editorDocumentRuntimeOwner";
-import { useWorkspaceActiveFileEditor } from "./useWorkspaceActiveFileEditor";
+import { useSelectionActionDismissal } from "../document/useSelectionActionDismissal";
+import { useWorkspaceEditorDocumentRuntimeOwner } from "../document/editorDocumentRuntimeOwner";
+import { useWorkspaceActiveFileEditor } from "../document/useWorkspaceActiveFileEditor";
 import { useWorkspaceChromeController } from "./useWorkspaceChromeController";
 import { useWorkspaceCollaborationRuntime } from "./useWorkspaceCollaborationRuntime";
 import { useCollaborationPresenceIdentity } from "./useCollaborationPresenceIdentity";
 import { useWorkspaceCommentActions } from "./useWorkspaceCommentActions";
-import { useWorkspaceDocumentRuntime } from "./useWorkspaceDocumentRuntime";
+import { useWorkspaceDocumentRuntime } from "../document/useWorkspaceDocumentRuntime";
 import { useWorkspaceFileActions } from "./useWorkspaceFileActions";
 import { useWorkspaceFolderActions } from "./useWorkspaceFolderActions";
 import { useWorkspaceFiles } from "./useWorkspaceFiles";

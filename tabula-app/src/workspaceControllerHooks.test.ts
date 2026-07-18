@@ -21,7 +21,7 @@ import {
 import {
   getCursorPositionLabel,
   getSelectionLineCount,
-} from "./hooks/useSelectionCommentController";
+} from "./document/useSelectionCommentController";
 import {
   getWorkspaceFileIoActiveFileSnapshot,
   getWorkspaceFileIoBoundaryActiveFileSnapshot,
@@ -35,8 +35,8 @@ import {
 import {
   createActiveDocumentPreviewTextSnapshot,
   createPreviewStateFromSnapshot,
-} from "./hooks/useActiveDocumentRuntime";
-import { getMagnetizedSplitRatio } from "./hooks/useSplitViewController";
+} from "./document/useActiveDocumentRuntime";
+import { getMagnetizedSplitRatio } from "./document/useSplitViewController";
 import {
   createCurrentFileDownloadDraft,
   createImportedWorkspaceFileDraft,
@@ -55,7 +55,7 @@ import {
   shouldCancelPendingEditorCommit,
   shouldUseEditorDocumentRuntime,
   shouldUseFileTextFallbackHistory,
-} from "./hooks/useWorkspaceActiveFileEditor";
+} from "./document/useWorkspaceActiveFileEditor";
 import { getWorkspaceShortcutAction } from "./hooks/useWorkspaceKeyboardShortcuts";
 import {
   normalizeWorkspaceFileTitleForLookup,

@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import type { ConnectionStatus } from "../collaboration/liveCollaboration";
-import type { MarkdownEditorHandle } from "../markdownEditorTypes";
+import type { MarkdownEditorHandle } from "../document/markdownEditorTypes";
 import type {
   FileComment,
   InitialWorkspaceSnapshot,

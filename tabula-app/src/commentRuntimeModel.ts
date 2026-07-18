@@ -1,5 +1,5 @@
 import { getCommentRangeInText } from "./commentAnchors";
-import type { MarkdownCommentAnchor } from "./markdownEditorTypes";
+import type { MarkdownCommentAnchor } from "./document/markdownEditorTypes";
 import {
   formatCommentDate,
   getPreviewCommentAnchors,

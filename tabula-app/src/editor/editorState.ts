@@ -22,7 +22,7 @@ import type {
   MarkdownCommentAnchor,
   MarkdownEditorInterfaceCopy,
   MarkdownLineActionRequest,
-} from "../markdownEditorTypes";
+} from "../document/markdownEditorTypes";
 import {
   createMarkdownCommandExtensions,
   editorUndoBoundaryFacet,

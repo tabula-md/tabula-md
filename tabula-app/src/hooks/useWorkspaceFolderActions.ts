@@ -5,7 +5,7 @@ import type { DeletedWorkspaceFolderBundle } from "../stores/workspaceStore";
 import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { WORKSPACE_ROOT_FOLDER_ID } from "../workspaceStorage";
 import type { WorkspaceActionCopy } from "../workspaceActionLocale";
-import type { FileHistory } from "./useWorkspaceActiveFileEditor";
+import type { FileHistory } from "../document/useWorkspaceActiveFileEditor";
 import { useEventCallback } from "./useEventCallback";
 
 type ShowToast = (

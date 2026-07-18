@@ -1,4 +1,4 @@
-const importMarkdownPreview = () => import("../components/MarkdownPreview");
+const importMarkdownPreview = () => import("../document/MarkdownPreview");
 
 export type MarkdownPreviewComponent = Awaited<
   ReturnType<typeof importMarkdownPreview>

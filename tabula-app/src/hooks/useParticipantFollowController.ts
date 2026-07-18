@@ -5,7 +5,7 @@ import {
   type FollowState,
   type FollowStopReason,
 } from "../collaboration/followModel";
-import type { MarkdownEditorHandle } from "../markdownEditorTypes";
+import type { MarkdownEditorHandle } from "../document/markdownEditorTypes";
 import type { WorkspaceFile } from "../workspaceStorage";
 import { useEventCallback } from "./useEventCallback";
 

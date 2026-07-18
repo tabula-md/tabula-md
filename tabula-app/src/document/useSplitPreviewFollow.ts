@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
-import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
+import type { MarkdownEditorHandle } from "./MarkdownEditor";
 import type {
   EditorViewportAnchor,
   MarkdownPreviewHandle,

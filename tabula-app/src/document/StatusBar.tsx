@@ -5,7 +5,7 @@ import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import type { FileViewMode } from "../workspaceStorage";
 
-type StatusBarProps = {
+interface StatusBarProps {
   activeFileTitle: string;
   activeViewMode: FileViewMode;
   isLive: boolean;
@@ -16,7 +16,7 @@ type StatusBarProps = {
   cursorPositionLabel: string;
   selectedCharacterCount: number;
   selectedLineCount: number;
-};
+}
 
 export function StatusBar({
   activeFileTitle,

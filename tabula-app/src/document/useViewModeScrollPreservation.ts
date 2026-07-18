@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type RefObject } from "react";
-import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
+import type { MarkdownEditorHandle } from "./MarkdownEditor";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import { getScrollRatio, scrollElementToRatio } from "../scroll";
 import type { FileViewMode } from "../workspaceStorage";

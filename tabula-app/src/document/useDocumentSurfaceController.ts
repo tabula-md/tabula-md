@@ -6,7 +6,7 @@ import {
 import type {
   MarkdownEditorHandle,
   MarkdownSelectionActionPosition,
-} from "../markdownEditorTypes";
+} from "./markdownEditorTypes";
 import type { CenterPopover, TopPopover } from "../uiTypes";
 import type {
   FileViewMode,

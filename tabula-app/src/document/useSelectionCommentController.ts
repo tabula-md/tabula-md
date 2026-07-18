@@ -9,9 +9,9 @@ import {
   type TouchEvent as ReactTouchEvent,
 } from "react";
 import type { LiveSelection } from "../collaboration/liveCollaboration";
-import type { MarkdownEditorHandle, MarkdownSelectionActionPosition } from "../components/MarkdownEditor";
+import type { MarkdownEditorHandle, MarkdownSelectionActionPosition } from "./MarkdownEditor";
 import type { FileViewMode } from "../workspaceStorage";
-import { useAnimationFrameTask } from "./useAnimationFrameTask";
+import { useAnimationFrameTask } from "../hooks/useAnimationFrameTask";
 
 type PreviewSelectionState = {
   from: number;

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from "react";
-import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
+import type { MarkdownEditorHandle } from "./MarkdownEditor";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import { useWorkspaceUiStore } from "../stores/workspaceUiStore";
 import type { FileViewMode } from "../workspaceStorage";

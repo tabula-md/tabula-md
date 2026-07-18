@@ -89,10 +89,10 @@ const getPreviewMetadataState = ({
   parsedMarkdown,
 });
 
-type DeferredPreviewBodyState = {
+interface DeferredPreviewBodyState {
   previewSnapshot: ActiveDocumentPreviewTextSnapshot;
   previewBodyState: ActiveDocumentPreviewBodyRuntime;
-};
+}
 
 type DeferredPreviewMetadataState = {
   previewSnapshot: ActiveDocumentPreviewTextSnapshot;

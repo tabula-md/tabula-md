@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type DragEvent, type RefObject } from "react";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
-import type { MarkdownEditorHandle } from "../markdownEditorTypes";
+import type { MarkdownEditorHandle } from "../document/markdownEditorTypes";
 import { WORKSPACE_EXPORT_FILE_PREFIX } from "../product";
 import { createWorkspaceArchive } from "../workspaceArchive";
 import { parseWorkspaceFolderFiles } from "../workspaceFolderImport";

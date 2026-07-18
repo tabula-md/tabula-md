@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { MarkdownSelectionActionPosition } from "../markdownEditorTypes";
+import type { MarkdownSelectionActionPosition } from "../document/markdownEditorTypes";
 import { useWorkspaceUiStore } from "../stores/workspaceUiStore";
 
 type UseWorkspaceChromeControllerArgs = {

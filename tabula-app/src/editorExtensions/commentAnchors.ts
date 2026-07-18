@@ -1,6 +1,6 @@
 import { StateEffect, StateField, type EditorState, type Extension } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
-import type { MarkdownCommentAnchor, MarkdownEditorInterfaceCopy } from "../markdownEditorTypes";
+import type { MarkdownCommentAnchor, MarkdownEditorInterfaceCopy } from "../document/markdownEditorTypes";
 
 const buildCommentDecorations = (
   state: EditorState,

@@ -43,7 +43,7 @@ import type {
   MarkdownBookmark,
   MarkdownEditorHandle,
   MarkdownEditorProps,
-} from "../markdownEditorTypes";
+} from "./markdownEditorTypes";
 import type { EditorViewportAnchor } from "../preview/previewSyncTypes";
 import type {
   CollabEditorBinding,
@@ -214,7 +214,7 @@ export type {
   MarkdownEditorHandle,
   MarkdownLineActionRequest,
   MarkdownSelectionActionPosition,
-} from "../markdownEditorTypes";
+} from "./markdownEditorTypes";
 
 export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
   (

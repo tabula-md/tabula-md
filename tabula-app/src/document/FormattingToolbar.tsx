@@ -20,7 +20,7 @@ import {
   getFormattingCommandCopy,
   type FormattingCommandCopy,
 } from "../toolbar/formattingCommandLocale";
-import { MenuCheckboxItem, MenuContent, MenuGroup, MenuRoot, MenuTrigger } from "./ui/Menu";
+import { MenuCheckboxItem, MenuContent, MenuGroup, MenuRoot, MenuTrigger } from "../components/ui/Menu";
 
 type FormattingToolbarProps = {
   className?: string;

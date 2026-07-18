@@ -11,14 +11,14 @@ import {
   toggleLineBookmarkInList,
   type FileViewMode,
 } from "@tabula-md/tabula";
-import { DocumentControls } from "../../../../tabula-app/src/components/DocumentControls";
-import { useSplitPreviewFollow } from "../../../../tabula-app/src/hooks/useSplitPreviewFollow";
-import { useSplitViewController } from "../../../../tabula-app/src/hooks/useSplitViewController";
+import { DocumentControls } from "../../../../tabula-app/src/document/DocumentControls";
+import { useSplitPreviewFollow } from "../../../../tabula-app/src/document/useSplitPreviewFollow";
+import { useSplitViewController } from "../../../../tabula-app/src/document/useSplitViewController";
 import type { WorkspaceLanguage } from "../../../../tabula-app/src/hooks/useWorkspacePreferences";
 import type {
   MarkdownBookmark,
   MarkdownEditorHandle,
-} from "../../../../tabula-app/src/markdownEditorTypes";
+} from "../../../../tabula-app/src/document/markdownEditorTypes";
 import type { MarkdownPreviewHandle } from "../../../../tabula-app/src/preview/previewSyncTypes";
 import type { CenterPopover } from "../../../../tabula-app/src/uiTypes";
 import type { FileBookmark } from "../../../../tabula-app/src/workspaceStorage";
