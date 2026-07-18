@@ -1,14 +1,14 @@
 import { useCallback, useRef, useState } from "react";
 import { buildShareViewModel } from "@tabula-md/tabula";
 import type { JsonShareController } from "./useJsonShareController";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { productAnalytics } from "../observability/productAnalytics";
 import { buildAgentInvite } from "./shareAgentHandoff";
 import {
   getWorkspaceChromeCopy,
   getWorkspaceMenuCopy,
-} from "../workspaceLocale";
-import type { LocationRoom } from "../workspaceStorage";
+} from "../workspace/workspaceLocale";
+import type { LocationRoom } from "../workspace/workspaceStorage";
 
 type UseShareDialogControllerOptions = {
   room?: LocationRoom | null;

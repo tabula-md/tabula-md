@@ -26,7 +26,7 @@ import {
   shouldDerivePreviewBodyImmediately,
   shouldPatchPreviewBodyImmediately,
 } from "../preview/previewDerivationPolicy";
-import type { WorkspaceFile } from "../workspaceStorage";
+import type { WorkspaceFile } from "../workspace/workspaceStorage";
 
 export type ActiveDocumentPreviewTextSnapshot = {
   fileId: string;

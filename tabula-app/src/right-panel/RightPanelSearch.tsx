@@ -1,7 +1,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { stripMarkdownExtension } from "@tabula-md/tabula";
 import { Check, File, Search, SlidersHorizontal } from "lucide-react";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import {
   DEFAULT_SEARCH_OPTIONS,
   type SearchOptions,
@@ -9,11 +9,11 @@ import {
 import {
   searchWorkspaceFileNames,
 } from "../editor/workspaceFileSearchModel";
-import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
-import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
-import { getWorkspaceChromeCopy } from "../workspaceLocale";
-import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
-import { MenuCheckboxItem, MenuContent, MenuRoot, MenuTrigger } from "../components/ui/Menu";
+import type { WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
+import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
+import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
+import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
+import { MenuCheckboxItem, MenuContent, MenuRoot, MenuTrigger } from "../ui/Menu";
 import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelSearchProps = {

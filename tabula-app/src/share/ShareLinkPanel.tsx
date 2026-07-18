@@ -18,7 +18,7 @@ import type {
 import type {
   WorkspaceChromeCopy,
   WorkspaceShareCopy,
-} from "../workspaceLocale";
+} from "../workspace/workspaceLocale";
 import { TABULA_MCP_SETUP_URL } from "./shareAgentHandoff";
 
 type ShareLinkPanelProps = {

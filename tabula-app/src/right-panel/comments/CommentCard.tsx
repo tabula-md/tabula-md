@@ -1,4 +1,4 @@
-import type { FileComment } from "../../workspaceStorage";
+import type { FileComment } from "../../workspace/workspaceStorage";
 import { CommentActions } from "./CommentActions";
 import { CommentAuthor } from "./CommentAuthor";
 import { CommentReplyForm } from "./CommentReplyForm";

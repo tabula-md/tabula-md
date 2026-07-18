@@ -4,7 +4,7 @@ import type {
   EditorViewportAnchor,
   MarkdownPreviewHandle,
 } from "../preview/previewSyncTypes";
-import type { FileViewMode } from "../workspaceStorage";
+import type { FileViewMode } from "../workspace/workspaceStorage";
 
 export type SplitScrollSurface = "editor" | "preview";
 

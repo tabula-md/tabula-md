@@ -9,12 +9,12 @@ import type {
   MarkdownFormatCommand,
   TextChange,
 } from "@tabula-md/tabula";
-import type { CenterPopover } from "../uiTypes";
+import type { CenterPopover } from "../ui/uiTypes";
 import type { LiveSelection } from "../collaboration/liveCollaboration";
 import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
 import type { SearchMatch, SearchOptions } from "../editor/editorSearchModel";
 import type { SearchTarget } from "../editor/useEditorSearchController";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import type {
   MarkdownCommentAnchor,
   MarkdownBookmark,
@@ -28,7 +28,7 @@ import type {
   FileViewMode,
   ReadingWidth,
   WorkspaceFile,
-} from "../workspaceStorage";
+} from "../workspace/workspaceStorage";
 import {
   DocumentControls,
   DocumentSearchBar,
@@ -41,9 +41,9 @@ import type {
   MarkdownPreviewMetadata,
 } from "../preview/markdownPreviewTypes";
 import { StatusBar } from "./StatusBar";
-import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 import { prepareMarkdownPreview } from "../preview/markdownPreviewLoader";
-import { TabulaDocumentSurface } from "../workbench";
+import { TabulaDocumentSurface } from "../workbench/index";
 
 export type DocumentWorkbenchProps = {
   activeBookmarks: FileBookmark[];

@@ -7,11 +7,11 @@ import type {
   MarkdownEditorHandle,
   MarkdownSelectionActionPosition,
 } from "./markdownEditorTypes";
-import type { CenterPopover, TopPopover } from "../uiTypes";
+import type { CenterPopover, TopPopover } from "../ui/uiTypes";
 import type {
   FileViewMode,
   ReadingWidth,
-} from "../workspaceStorage";
+} from "../workspace/workspaceStorage";
 import { useDocumentWorkbenchController } from "./useDocumentWorkbenchController";
 
 type ValueUpdater<T> = T | ((currentValue: T) => T);

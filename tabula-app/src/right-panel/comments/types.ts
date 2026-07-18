@@ -1,6 +1,6 @@
 import type { RightPanelCommentGroup as CoreRightPanelCommentGroup } from "@tabula-md/tabula";
-import type { FileComment, WorkspaceFile } from "../../workspaceStorage";
-import type { WorkspaceInterfaceCopy } from "../../workspaceInterfaceLocale";
+import type { FileComment, WorkspaceFile } from "../../workspace/workspaceStorage";
+import type { WorkspaceInterfaceCopy } from "../../workspace/workspaceInterfaceLocale";
 
 export type RightPanelCommentGroup = CoreRightPanelCommentGroup<WorkspaceFile, FileComment>;
 

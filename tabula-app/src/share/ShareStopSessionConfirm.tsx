@@ -1,4 +1,4 @@
-import type { WorkspaceShareCopy } from "../workspaceLocale";
+import type { WorkspaceShareCopy } from "../workspace/workspaceLocale";
 
 type ShareStopSessionConfirmProps = {
   copy: WorkspaceShareCopy;

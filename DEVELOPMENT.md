@@ -37,6 +37,17 @@ Keep new modules with their product feature. Import core contracts directly
 from a declared `@tabula-md/tabula` entrypoint; do not add pass-through
 re-export files or broad barrels only to preserve an old local import path.
 
+The app is organized by ownership rather than React artifact type:
+
+- `workspace`: application shell, local workspace state, persistence, and I/O.
+- `document`, `right-panel`, `share`, `comments`, and `collaboration`: product
+  capabilities that evolve independently.
+- `ui`: feature-neutral visual primitives.
+- `shared`: small feature-neutral React utilities.
+
+Do not recreate top-level `components`, `hooks`, or `stores` directories. The
+boundary check rejects source files placed there.
+
 ## Useful Commands
 
 ```sh

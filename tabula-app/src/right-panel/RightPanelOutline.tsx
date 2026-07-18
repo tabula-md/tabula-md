@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import type { MarkdownHeading } from "@tabula-md/tabula";
-import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelOutlineCopy = WorkspaceInterfaceCopy["sidePanel"]["outline"];

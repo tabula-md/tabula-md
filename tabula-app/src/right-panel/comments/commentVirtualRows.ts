@@ -1,4 +1,4 @@
-import type { FileComment, WorkspaceFile } from "../../workspaceStorage";
+import type { FileComment, WorkspaceFile } from "../../workspace/workspaceStorage";
 import type { RightPanelCommentGroup } from "./types";
 
 export type CommentVirtualRow =

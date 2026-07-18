@@ -57,7 +57,7 @@ import { classifyMarkdownHref } from "../preview/markdownHref";
 import {
   getWorkspaceSurfaceCopy,
   type WorkspaceSurfaceCopy,
-} from "../workspaceSurfaceLocale";
+} from "../workspace/workspaceSurfaceLocale";
 import {
   PreviewLineGutter,
   getPreviewBodyHash,

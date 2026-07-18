@@ -3,7 +3,7 @@ import type {
   TextChange,
 } from "@tabula-md/tabula";
 import type { SearchOptions } from "../editor/editorSearchModel";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 
 export type MarkdownPreviewMetadata = {
   key: string;

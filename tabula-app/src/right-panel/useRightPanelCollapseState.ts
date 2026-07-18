@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { FileComment } from "../workspaceStorage";
+import type { FileComment } from "../workspace/workspaceStorage";
 
 type UseRightPanelCollapseStateOptions = {
   activeFileId: string;

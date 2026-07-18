@@ -1,7 +1,7 @@
 import { AlertTriangle, FileArchive, Loader2, X } from "lucide-react";
-import { ModalSurface } from "../components/ui/ModalSurface";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import { ModalSurface } from "../ui/ModalSurface";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 
 type JsonShareImportDialogProps = {
   errorMessage?: string;

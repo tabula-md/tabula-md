@@ -12,7 +12,7 @@ import {
 import type { MarkdownPreviewCommentAnchor } from "./markdownPreviewTypes";
 import { PREVIEW_SANITIZE_SCHEMA } from "./previewSanitizeSchema";
 import { PREVIEW_DOCS_BLOCK_TAGS } from "./previewDocsCompatibility";
-import type { WorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import type { WorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 
 type HastNode = {
   type?: string;

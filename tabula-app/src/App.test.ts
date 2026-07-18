@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getCommentRangeInText, mapCommentAnchorThroughPatches } from "./commentAnchors";
+import { getCommentRangeInText, mapCommentAnchorThroughPatches } from "./comments/commentAnchors";
 import {
   createRoomWorkspaceState,
   createStarterWorkspaceState,
@@ -12,7 +12,7 @@ import {
   syncUrlForLocalWorkspace,
   syncUrlForRoom,
   type WorkspaceFile,
-} from "./workspaceStorage";
+} from "./workspace/workspaceStorage";
 
 const VALID_ROOM_KEY = "A".repeat(43);
 

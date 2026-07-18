@@ -25,8 +25,8 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
-import { WORKSPACE_ROOT_FOLDER_ID, type WorkspaceFile, type WorkspaceFolder } from "../workspaceStorage";
+import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
+import { WORKSPACE_ROOT_FOLDER_ID, type WorkspaceFile, type WorkspaceFolder } from "../workspace/workspaceStorage";
 import {
   buildFileTree,
   flattenVisibleFileTree,
@@ -34,14 +34,14 @@ import {
   type DraggedTreeItem,
   type FileTreeNode,
 } from "./fileTreeModel";
-import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuRoot,
   ContextMenuTrigger,
-} from "../components/ui/ContextMenu";
-import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../components/ui/Menu";
+} from "../ui/ContextMenu";
+import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../ui/Menu";
 import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelFilesCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];

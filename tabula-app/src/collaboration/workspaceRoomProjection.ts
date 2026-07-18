@@ -9,7 +9,7 @@ import {
   type WorkspaceFile,
   type WorkspaceFolder,
   type WorkspaceState,
-} from "../workspaceStorage";
+} from "../workspace/workspaceStorage";
 
 type WorkspaceModelSnapshot = Pick<
   WorkspaceState,

@@ -4,13 +4,13 @@ import {
   formatJsonShareUrlPreview,
   getConfiguredJsonShareServiceUrl,
 } from "./jsonShare";
-import type { WorkspaceShareCopy } from "../workspaceLocale";
+import type { WorkspaceShareCopy } from "../workspace/workspaceLocale";
 import {
   WORKSPACE_ROOT_FOLDER_ID,
   type FileComment,
   type WorkspaceFile,
   type WorkspaceFolder,
-} from "../workspaceStorage";
+} from "../workspace/workspaceStorage";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import { productAnalytics } from "../observability/productAnalytics";
 

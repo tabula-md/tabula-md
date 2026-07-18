@@ -4,11 +4,11 @@ import { ShareExportResult } from "./ShareExportResult";
 import { ShareLinkPanel } from "./ShareLinkPanel";
 import { ShareStopSessionConfirm } from "./ShareStopSessionConfirm";
 import type { JsonShareController } from "./useJsonShareController";
-import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { useShareDialogController } from "./useShareDialogController";
 import type { ConnectionStatus, RoomRecoveryMode } from "../collaboration/liveCollaboration";
-import type { LocationRoom } from "../workspaceStorage";
-import { ModalSurface } from "../components/ui/ModalSurface";
+import type { LocationRoom } from "../workspace/workspaceStorage";
+import { ModalSurface } from "../ui/ModalSurface";
 
 type ShareControlsProps = {
   room?: LocationRoom | null;

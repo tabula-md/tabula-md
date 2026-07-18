@@ -2,11 +2,11 @@ import { useCallback, type RefObject } from "react";
 import type { DocumentWorkbenchProps } from "./DocumentWorkbench";
 import type { MarkdownEditorHandle } from "./markdownEditorTypes";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
-import type { CenterPopover, TopPopover } from "../uiTypes";
+import type { CenterPopover, TopPopover } from "../ui/uiTypes";
 import type {
   FileViewMode,
   ReadingWidth,
-} from "../workspaceStorage";
+} from "../workspace/workspaceStorage";
 
 type ValueUpdater<T> = T | ((currentValue: T) => T);
 

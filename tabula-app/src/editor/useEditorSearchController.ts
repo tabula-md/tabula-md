@@ -8,9 +8,9 @@ import {
   replaceCurrentEditorSearchMatch,
   type SearchOptions,
 } from "./editorSearchModel";
-import { useAnimationFrameTask } from "../hooks/useAnimationFrameTask";
-import { useWorkspaceUiStore } from "../stores/workspaceUiStore";
-import type { FileViewMode } from "../workspaceStorage";
+import { useAnimationFrameTask } from "../shared/useAnimationFrameTask";
+import { useWorkspaceUiStore } from "../workspace/state/workspaceUiStore";
+import type { FileViewMode } from "../workspace/workspaceStorage";
 
 export type SearchTarget = "source" | "preview";
 

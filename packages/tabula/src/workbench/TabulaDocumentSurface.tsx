@@ -21,7 +21,7 @@ import type {
 import type { CollabEditorBinding } from "../../../../tabula-app/src/collaboration/liveCollaboration";
 import type { SearchMatch, SearchOptions } from "../../../../tabula-app/src/editor/editorSearchModel";
 import type { SearchTarget } from "../../../../tabula-app/src/editor/useEditorSearchController";
-import type { WorkspaceLanguage } from "../../../../tabula-app/src/hooks/useWorkspacePreferences";
+import type { WorkspaceLanguage } from "../../../../tabula-app/src/workspace/state/useWorkspacePreferences";
 import type {
   MarkdownBookmark,
   MarkdownCommentAnchor,
@@ -30,9 +30,9 @@ import type {
   MarkdownSelectionActionPosition,
 } from "../../../../tabula-app/src/document/markdownEditorTypes";
 import type { MarkdownPreviewHandle } from "../../../../tabula-app/src/preview/previewSyncTypes";
-import type { FileBookmark, WorkspaceFile } from "../../../../tabula-app/src/workspaceStorage";
+import type { FileBookmark, WorkspaceFile } from "../../../../tabula-app/src/workspace/workspaceStorage";
 import { MarkdownEditor } from "../../../../tabula-app/src/document/MarkdownEditor";
-import { ResizeHandle } from "../../../../tabula-app/src/components/ui/ResizeHandle";
+import { ResizeHandle } from "../../../../tabula-app/src/ui/ResizeHandle";
 import {
   type MarkdownPreviewCommentAnchor,
   type MarkdownPreviewLineActionRequest,
@@ -44,7 +44,7 @@ import {
   loadMarkdownPreview,
   type MarkdownPreviewComponent,
 } from "../../../../tabula-app/src/preview/markdownPreviewLoader";
-import { getWorkspaceSurfaceCopy } from "../../../../tabula-app/src/workspaceSurfaceLocale";
+import { getWorkspaceSurfaceCopy } from "../../../../tabula-app/src/workspace/workspaceSurfaceLocale";
 
 const LONG_LINE_RECHECK_DELAY_MS = 240;
 

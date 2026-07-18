@@ -2,7 +2,7 @@ import { useCallback, useMemo, type RefObject } from "react";
 import type { TextChange } from "@tabula-md/tabula";
 import type { MarkdownEditorHandle } from "./markdownEditorTypes";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
-import type { FileViewMode, WorkspaceFile } from "../workspaceStorage";
+import type { FileViewMode, WorkspaceFile } from "../workspace/workspaceStorage";
 import type { WorkspaceEditorDocumentRuntimeOwner } from "./editorDocumentRuntimeOwner";
 import type { ActiveRoomDocumentProjectionStore } from "../collaboration/runtime/ActiveRoomDocumentProjectionStore";
 import { useActiveDocumentRuntime } from "./useActiveDocumentRuntime";

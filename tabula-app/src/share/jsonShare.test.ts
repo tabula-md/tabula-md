@@ -13,7 +13,7 @@ import {
   WORKSPACE_ROOT_FOLDER_ID,
   createWorkspaceRootFolder,
   type WorkspaceFile,
-} from "../workspaceStorage";
+} from "../workspace/workspaceStorage";
 
 const folders = [createWorkspaceRootFolder()];
 

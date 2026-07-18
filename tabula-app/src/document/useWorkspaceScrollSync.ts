@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { MarkdownEditorHandle } from "./MarkdownEditor";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
-import { useWorkspaceUiStore } from "../stores/workspaceUiStore";
-import type { FileViewMode } from "../workspaceStorage";
+import { useWorkspaceUiStore } from "../workspace/state/workspaceUiStore";
+import type { FileViewMode } from "../workspace/workspaceStorage";
 import { useSplitPreviewFollow } from "./useSplitPreviewFollow";
 import { useViewModeScrollPreservation } from "./useViewModeScrollPreservation";
 

@@ -1,4 +1,4 @@
-import type { RightPanelView } from "../uiTypes";
+import type { RightPanelView } from "../ui/uiTypes";
 import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../browserStorage";
 
 export const ROOM_VIEW_STATE_KEY_PREFIX = "tabula.room-view.v1";

@@ -8,7 +8,7 @@ import type {
   TextChange,
   TextPatch,
 } from "@tabula-md/tabula";
-import type { WorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import type { WorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 
 export type MarkdownEditorInterfaceCopy = Pick<
   WorkspaceSurfaceCopy,

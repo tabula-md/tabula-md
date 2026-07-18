@@ -18,7 +18,7 @@ import {
   type ShareSnapshotPayload,
 } from "@tabula-md/tabula";
 import { resolveTabulaJsonShareServiceUrl } from "../serviceConfig";
-import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
+import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
 
 export {
   createJsonShareUrl,

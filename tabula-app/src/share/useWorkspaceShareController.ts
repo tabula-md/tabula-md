@@ -1,10 +1,10 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ConnectionStatus } from "../collaboration/liveCollaboration";
-import type { WorkspaceShareCopy } from "../workspaceLocale";
-import type { FileComment, LocationRoom, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
+import type { WorkspaceShareCopy } from "../workspace/workspaceLocale";
+import type { FileComment, LocationRoom, WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
 import { useJsonShareController } from "./useJsonShareController";
-import { useWorkspaceLiveRoomController } from "../hooks/useWorkspaceLiveRoomController";
-import type { StartedWorkspaceRoom } from "../hooks/useWorkspaceLiveRoomController";
+import { useWorkspaceLiveRoomController } from "../collaboration/useWorkspaceLiveRoomController";
+import type { StartedWorkspaceRoom } from "../collaboration/useWorkspaceLiveRoomController";
 
 type UseWorkspaceShareControllerOptions = {
   activeFile?: WorkspaceFile;

@@ -12,7 +12,7 @@ import {
 import { Check, Copy, Slash, WrapText } from "lucide-react";
 import { BoundedStringCache, replaceAllText } from "./previewRenderCache";
 import { classifyMarkdownImageSource } from "./markdownImageSource";
-import { getWorkspaceSurfaceCopy, type WorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
+import { getWorkspaceSurfaceCopy, type WorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 
 export const getNodeText = (node: ReactNode): string => {
   if (typeof node === "string" || typeof node === "number") {

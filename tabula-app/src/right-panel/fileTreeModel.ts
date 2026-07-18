@@ -1,5 +1,5 @@
-import { WORKSPACE_ROOT_FOLDER_ID, type WorkspaceFile, type WorkspaceFolder } from "../workspaceStorage";
-import { getWorkspaceFileDisplayTitles, getWorkspaceFolderDisplayTitles } from "../workspaceDisplayTitles";
+import { WORKSPACE_ROOT_FOLDER_ID, type WorkspaceFile, type WorkspaceFolder } from "../workspace/workspaceStorage";
+import { getWorkspaceFileDisplayTitles, getWorkspaceFolderDisplayTitles } from "../workspace/workspaceDisplayTitles";
 
 type FileTreeFolderNode = {
   type: "folder";
