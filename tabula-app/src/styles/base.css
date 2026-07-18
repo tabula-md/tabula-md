@@ -87,8 +87,7 @@
   --motion-hover: 100ms;
   --motion-popover: 140ms;
   --motion-layout: 180ms;
-  --side-panel-width: 288px;
-  --right-panel-width: var(--side-panel-width);
+  --right-panel-width: 288px;
   font-family:
     "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;

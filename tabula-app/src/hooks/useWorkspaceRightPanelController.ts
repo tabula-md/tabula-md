@@ -4,7 +4,7 @@ import {
   useRef,
   type RefObject,
 } from "react";
-import type { WorkspaceSidePanelProps } from "../components/WorkspaceSidePanel";
+import type { WorkspaceRightPanelProps } from "../components/WorkspaceRightPanel";
 import type { MarkdownHeading } from "@tabula-md/tabula";
 import {
   getActiveOutlineHeadingIndex,
@@ -22,8 +22,8 @@ import type { WorkspaceLanguage } from "./useWorkspacePreferences";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
-type ProjectContextHandlers = Pick<
-  WorkspaceSidePanelProps,
+type RightPanelHandlers = Pick<
+  WorkspaceRightPanelProps,
   | "formatCommentDate"
   | "onAddComment"
   | "onAddCommentReply"
@@ -49,7 +49,7 @@ type ProjectContextHandlers = Pick<
   | "onGoToComment"
 >;
 
-type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
+type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & {
   activeCommentId: string | null;
   activeFile?: WorkspaceFile;
   activeFileTitle: string;
@@ -82,7 +82,7 @@ type UseWorkspaceProjectContextRuntimeOptions = ProjectContextHandlers & {
   text: string;
 };
 
-export function useWorkspaceProjectContextRuntime({
+export function useWorkspaceRightPanelController({
   activeCommentId,
   activeFile,
   activeFileTitle,
@@ -136,7 +136,7 @@ export function useWorkspaceProjectContextRuntime({
   setRightPanelOpen,
   setRightPanelView,
   text,
-}: UseWorkspaceProjectContextRuntimeOptions) {
+}: UseWorkspaceRightPanelControllerOptions) {
   const visibleFiles = files;
   const visibleActiveFileId = activeFile?.id;
   const outlineCursorRef = useRef({ fileId: visibleActiveFileId, offset: 0 });
@@ -198,7 +198,7 @@ export function useWorkspaceProjectContextRuntime({
     setRightPanelView(nextView);
   }, [setRightPanelView]);
 
-  const sidePanelProps: WorkspaceSidePanelProps = {
+  const rightPanelProps: WorkspaceRightPanelProps = {
     isOpen: rightPanelOpen,
     view: rightPanelView,
     isLive,
@@ -251,6 +251,6 @@ export function useWorkspaceProjectContextRuntime({
   };
 
   return {
-    sidePanelProps,
+    rightPanelProps,
   };
 }
