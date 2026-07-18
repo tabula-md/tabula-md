@@ -49,6 +49,16 @@ same workspace, reads the files, and writes Markdown back while you watch.
   </a>
 </p>
 
+For agent-guided setup, paste this into Claude Code, Codex, or another
+shell-capable agent:
+
+```text
+Set up Tabula MCP for this client by following every step at:
+https://tabula.md/agent-install.txt
+```
+
+Or configure a supported local client directly.
+
 Connect Codex:
 
 ```sh

@@ -1,0 +1,47 @@
+# Tabula.md MCP setup for agents
+
+You are setting up Tabula.md MCP for the user. Follow every numbered step in
+order. Do not claim that Tabula tools are available until you verify the client
+configuration. Do not ask for a room URL during setup.
+
+1. Identify the current client as Claude Code, Codex, Claude Desktop, or
+   another MCP client. If you cannot determine it, ask the user.
+
+2. Explain the trust choice before changing settings:
+   - Local MCP is preferred. The MCP process and its plaintext working state
+     stay on the user's device, while the model provider receives content
+     returned through tools.
+   - Hosted MCP is a trusted plaintext room participant. It receives the room
+     secret and the Markdown that the agent reads or edits.
+
+3. If the client is Claude Code or Codex, prefer Local MCP. Inspect the current
+   MCP configuration first. If an official `tabula` server is already present,
+   skip to verification. Do not overwrite a different existing server. Confirm
+   that `npx` is available; if it is not, tell the user that Node.js is required
+   and stop. Tell the user which client setting you will change and ask for
+   approval.
+
+4. After approval, configure Local MCP for the detected client:
+   - Claude Code:
+     `claude mcp add tabula -- npx -y @tabula-md/mcp@latest`
+   - Codex:
+     `codex mcp add tabula -- npx -y @tabula-md/mcp@latest`
+
+5. Verify that the client configuration lists a `tabula` MCP server. Use the
+   client's MCP listing command if available. If the current session cannot
+   load newly added tools, tell the user to restart the client and paste their
+   room invite again. Do not pretend to join a room without Tabula tools.
+
+6. If the client is Claude Desktop, tell the user to download and install the
+   official extension, then fully restart Claude Desktop:
+   https://github.com/tabula-md/tabula-mcp/releases/latest/download/tabula-mcp.mcpb
+
+7. For another client, first determine whether it supports a local stdio MCP
+   server or a Streamable HTTP MCP server. Prefer the local command
+   `npx -y @tabula-md/mcp@latest` when the client supports stdio. Only after the
+   user accepts the hosted trust boundary, use this Streamable HTTP endpoint:
+   https://mcp.tabula.md/mcp
+
+8. Finish by stating which connection was configured, whether a restart is
+   required, and how the user can verify that Tabula tools are visible.
+   Do not install unrelated skills, hooks, or global packages.

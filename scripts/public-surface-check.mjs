@@ -11,6 +11,7 @@ const errors = [];
 const productDescription =
   "Open a Markdown folder, share one link, and edit together with people or AI—no signup or repository required.";
 const appIndexPath = "tabula-app/index.html";
+const agentInstallPath = "tabula-app/public/agent-install.txt";
 const socialCardPath = "tabula-app/public/social-card.png";
 const productDemoPaths = [
   ".github/assets/tabula-product-demo.gif",
@@ -32,6 +33,24 @@ const requiredAppMetadata = [
 for (const metadata of requiredAppMetadata) {
   if (!appIndex.includes(metadata)) {
     errors.push(`${appIndexPath}: missing required sharing metadata ${metadata}`);
+  }
+}
+
+if (!existsSync(agentInstallPath)) {
+  errors.push(`${agentInstallPath}: agent setup runbook is missing`);
+} else {
+  const agentInstall = readFileSync(agentInstallPath, "utf8");
+  for (const requiredInstruction of [
+    "Do not ask for a room URL during setup.",
+    "claude mcp add tabula -- npx -y @tabula-md/mcp@latest",
+    "codex mcp add tabula -- npx -y @tabula-md/mcp@latest",
+    "https://github.com/tabula-md/tabula-mcp/releases/latest/download/tabula-mcp.mcpb",
+    "https://mcp.tabula.md/mcp",
+    "Do not install unrelated skills, hooks, or global packages.",
+  ]) {
+    if (!agentInstall.includes(requiredInstruction)) {
+      errors.push(`${agentInstallPath}: missing required setup contract ${requiredInstruction}`);
+    }
   }
 }
 
