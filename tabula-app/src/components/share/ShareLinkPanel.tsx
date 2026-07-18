@@ -9,9 +9,9 @@ import {
   Square,
   Users,
 } from "lucide-react";
+import type { ShareViewModel } from "@tabula-md/tabula";
 import { type ReactNode, useId } from "react";
 import type { ConnectionStatus, RoomRecoveryMode } from "../../collaboration";
-import type { ShareViewModel } from "../../share";
 import type {
   WorkspaceChromeCopy,
   WorkspaceShareCopy,

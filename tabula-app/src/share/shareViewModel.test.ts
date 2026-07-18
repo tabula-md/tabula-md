@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildShareViewModel } from ".";
+import { buildShareViewModel } from "@tabula-md/tabula";
 
 const labels = {
   exportToLink: "Export to link",

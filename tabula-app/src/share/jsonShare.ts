@@ -6,19 +6,17 @@ import {
   JSON_SHARE_KEY_BYTES,
   JSON_SHARE_API_PREFIX,
   JSON_SHARE_POST_PATH,
+  createShareSnapshot,
+  createShareSnapshotPayload,
   parseShareSnapshot,
   serializeShareSnapshot,
   toArrayBuffer,
   trimTrailingSlash,
   validateJsonShareCreateResponse,
   type JsonShareRoute,
-} from "@tabula-md/tabula";
-import {
-  createShareSnapshot,
-  createShareSnapshotPayload,
   type ShareSnapshot,
   type ShareSnapshotPayload,
-} from "./shareSnapshotPayload";
+} from "@tabula-md/tabula";
 import { resolveTabulaJsonShareServiceUrl } from "../serviceConfig";
 import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 
