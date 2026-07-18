@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { ConnectionStatus, RoomHydrationStatus } from "../collaboration";
+import type {
+  ConnectionStatus,
+  RoomHydrationStatus,
+} from "../collaboration/liveCollaboration";
 import {
   LIVE_ROOM_OPEN_TIMEOUT_MS,
   type LiveRoomOpenFailure,

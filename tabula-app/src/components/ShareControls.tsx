@@ -6,7 +6,7 @@ import { ShareStopSessionConfirm } from "./share/ShareStopSessionConfirm";
 import type { JsonShareController } from "../hooks/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { useShareDialogRuntime } from "../hooks/useShareDialogRuntime";
-import type { ConnectionStatus, RoomRecoveryMode } from "../collaboration";
+import type { ConnectionStatus, RoomRecoveryMode } from "../collaboration/liveCollaboration";
 import type { LocationRoom } from "../workspaceStorage";
 import { ModalSurface } from "./ui/ModalSurface";
 

@@ -3,7 +3,7 @@ import {
   createRoomActorColor,
   createRoomActorName,
 } from "@tabula-md/tabula";
-import type { Collaborator } from "./collaboration";
+import type { Collaborator } from "./collaboration/liveCollaboration";
 import {
   createWorkspaceIdentity,
   IDENTITY_KEY,

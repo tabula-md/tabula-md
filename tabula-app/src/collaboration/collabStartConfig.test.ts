@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ROOM_UNCONFIGURED_MESSAGE } from ".";
+import { ROOM_UNCONFIGURED_MESSAGE } from "./collabRoom";
 import { resolveCollabStartConfig } from "./collabStartConfig";
 
 describe("collaboration start config", () => {

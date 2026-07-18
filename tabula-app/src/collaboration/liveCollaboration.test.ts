@@ -12,7 +12,7 @@ import {
   parseRoomKeyFromHash,
   parseRoomShareUrl,
   resolveTabulaRoomBaseUrl,
-} from ".";
+} from "./collabRoom";
 
 const VALID_ROOM_KEY = "A".repeat(43);
 

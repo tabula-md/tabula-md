@@ -11,7 +11,7 @@ import {
   getOutlineHeadingOffsets,
 } from "../editor/outlineNavigationModel";
 import type { RightPanelView } from "../uiTypes";
-import type { LiveSelection } from "../collaboration";
+import type { LiveSelection } from "../collaboration/liveCollaboration";
 import type {
   FileComment,
   FileViewMode,

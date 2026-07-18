@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Share2 } from "lucide-react";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceMenuCopy } from "../workspaceLocale";
-import type { ConnectionStatus } from "../collaboration";
+import type { ConnectionStatus } from "../collaboration/liveCollaboration";
 import { preloadCollaborationStart } from "../collaboration/preloadCollaboration";
 import {
   resolveTabulaJsonShareServiceUrl,

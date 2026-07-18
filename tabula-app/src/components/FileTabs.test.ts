@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Collaborator } from "../collaboration";
+import type { Collaborator } from "../collaboration/liveCollaboration";
 import { getDocumentCollaborators } from "./FileTabs";
 
 const collaborator = (id: string, activeDocumentId?: string): Collaborator => ({

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Menu, PanelRightOpen, Users } from "lucide-react";
-import type { Collaborator } from "../collaboration";
+import type { Collaborator } from "../collaboration/liveCollaboration";
 import type { FollowState } from "../collaboration/followModel";
 import { getLineNumberForSelection } from "../collaboration/collaborationPresence";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";

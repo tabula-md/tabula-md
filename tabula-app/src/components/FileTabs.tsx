@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import type { Collaborator } from "../collaboration";
+import type { Collaborator } from "../collaboration/liveCollaboration";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";

@@ -1,4 +1,7 @@
-import type { ConnectionStatus, RoomHydrationStatus } from "./collaboration";
+import type {
+  ConnectionStatus,
+  RoomHydrationStatus,
+} from "./collaboration/liveCollaboration";
 
 export const LIVE_ROOM_OPEN_TIMEOUT_MS = 8_000;
 

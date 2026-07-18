@@ -1,4 +1,4 @@
-import type { LiveSelection } from "./collaboration";
+import type { LiveSelection } from "./collaboration/liveCollaboration";
 import type { SearchMatch } from "./editor/editorSearchModel";
 import type { EditorViewportAnchor } from "./preview/previewSyncTypes";
 import type { Text } from "@codemirror/state";
