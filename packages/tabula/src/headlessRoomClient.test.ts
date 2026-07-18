@@ -194,13 +194,30 @@ describe("headless Room client", () => {
       await waitFor(() => first.getState().collaborators.length === 1);
       expect(first.getState().collaborators[0]?.actor.id).toBe("second-agent");
 
+      first.setPresence({
+        activeDocumentId: "brief",
+        fileTitle: "brief.md",
+        selection: { documentId: "brief", from: 2, to: 7 },
+      });
+      await waitFor(() => second.getState().collaborators[0]?.selection?.from === 2);
+
       const brief = await second.readDocument("brief");
       await second.writeDocument({
         documentId: "brief",
-        markdown: "# Brief\n\nEdited by the second agent.\n",
+        markdown: "New # Brief\n\nEdited by the second agent.\n",
         expectedRevision: brief.revision,
+        preferredPatches: [
+          { from: 0, to: 0, insert: "New " },
+          { from: brief.markdown.length, to: brief.markdown.length, insert: "\nEdited by the second agent.\n" },
+        ],
       });
       await waitFor(() => first.getWorkspaceSnapshot().documents.brief?.includes("second agent") === true);
+      await waitFor(() => second.getState().collaborators[0]?.selection?.from === 6);
+      expect(second.getState().collaborators[0]?.selection).toEqual({
+        documentId: "brief",
+        from: 6,
+        to: 11,
+      });
       await expect(first.writeDocument({
         documentId: "brief",
         markdown: "# Stale overwrite\n",
@@ -231,6 +248,62 @@ describe("headless Room client", () => {
       await waitFor(() => !second.getWorkspaceSnapshot().nodes.some((node) => node.id === "brief"));
     } finally {
       await Promise.all([first.disconnect(), second.disconnect()]);
+    }
+  });
+
+  it("applies multi-node changes atomically", async () => {
+    const client = await createClient({
+      relay: new FakeRoomRelay(),
+      actorId: "batch-agent",
+      initial: initialWorkspace(),
+    });
+
+    try {
+      await client.connect();
+      await expect(client.applyChanges([
+        { type: "folder.create", folderId: "research", title: "Research" },
+        {
+          type: "document.create",
+          documentId: "notes",
+          parentId: "research",
+          title: "notes.md",
+          markdown: "# Notes\n",
+        },
+        { type: "node.update", nodeId: "missing", title: "missing.md" },
+      ])).rejects.toThrow("Workspace node was not found: missing");
+
+      expect(client.getWorkspaceSnapshot().nodes.some((node) => node.id === "research")).toBe(false);
+      expect(client.getWorkspaceSnapshot().nodes.some((node) => node.id === "notes")).toBe(false);
+
+      const results = await client.applyChanges([
+        { type: "folder.create", folderId: "research", title: "Research" },
+        {
+          type: "document.create",
+          documentId: "notes",
+          parentId: "research",
+          title: "notes.md",
+          markdown: "# Notes\n",
+        },
+        {
+          type: "document.create",
+          documentId: "sources",
+          parentId: "research",
+          title: "sources.md",
+          markdown: "# Sources\n",
+        },
+      ]);
+
+      expect(results).toEqual([
+        { type: "folder.create", folderId: "research" },
+        { type: "document.create", documentId: "notes" },
+        { type: "document.create", documentId: "sources" },
+      ]);
+      expect(client.getWorkspaceSnapshot().documents).toMatchObject({
+        notes: "# Notes\n",
+        sources: "# Sources\n",
+      });
+    } finally {
+      await client.disconnect();
     }
   });
 

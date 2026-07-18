@@ -6,6 +6,10 @@ import {
   type RoomActor,
 } from "./roomCollaboration";
 import {
+  getTextPatchesForChange,
+  type TextPatch,
+} from "./textPatches";
+import {
   parseRoomShareUrl,
   ROOM_KEY_BYTES,
 } from "./roomShareLinkModel";
@@ -72,7 +76,14 @@ export type HeadlessRoomCollaborator = {
   actor: RoomActor;
   activeDocumentId?: string;
   fileTitle?: string;
+  selection?: HeadlessRoomSelection;
   lastSeen: number;
+};
+
+export type HeadlessRoomSelection = {
+  documentId: string;
+  from: number;
+  to: number;
 };
 
 export type HeadlessRoomClientState = {
@@ -101,6 +112,46 @@ export type HeadlessRoomExpectedNode = {
   revision?: string;
 };
 
+export type HeadlessRoomChange =
+  | { type: "folder.create"; folderId?: string; parentId?: string | null; title: string }
+  | {
+    type: "document.create";
+    documentId?: string;
+    parentId?: string | null;
+    title: string;
+    markdown?: string;
+  }
+  | {
+    type: "document.write";
+    documentId: string;
+    markdown: string;
+    expectedRevision: string;
+    preferredPatches?: readonly TextPatch[];
+  }
+  | {
+    type: "node.update";
+    nodeId: string;
+    title?: string;
+    parentId?: string | null;
+    expected?: HeadlessRoomExpectedNode;
+  }
+  | { type: "node.delete"; nodeId: string; expected?: HeadlessRoomExpectedNode }
+  | { type: "comment.upsert"; comment: WorkspaceRoomComment }
+  | { type: "comment.reply"; commentId: string; reply: WorkspaceRoomCommentReply }
+  | { type: "comment.resolve"; commentId: string; resolved: boolean }
+  | { type: "comment.delete"; commentId: string };
+
+export type HeadlessRoomChangeResult =
+  | { type: "folder.create"; folderId: string }
+  | { type: "document.create"; documentId: string }
+  | { type: "document.write"; documentId: string; revision: string }
+  | { type: "node.update"; nodeId: string }
+  | { type: "node.delete"; nodeId: string }
+  | { type: "comment.upsert"; commentId: string }
+  | { type: "comment.reply"; commentId: string; replyId: string }
+  | { type: "comment.resolve"; commentId: string; resolved: boolean }
+  | { type: "comment.delete"; commentId: string };
+
 export type HeadlessRoomClient = ReturnType<typeof createHeadlessRoomClientRuntime>;
 
 const disabledCheckpointStore: WorkspaceRoomCheckpointStore = {
@@ -124,6 +175,35 @@ const getActorFromAwareness = (awareness: Awareness, actorId: string) => {
 
 const flattenComments = (snapshot: WorkspaceRoomSnapshot) =>
   Object.values(snapshot.commentsByFileId).flat();
+
+const getDocumentIdForType = (room: WorkspaceRoomCrdt, type: unknown) => {
+  let documentId: string | undefined;
+  room.documents.forEach((text, id) => {
+    if (text === type) documentId = id;
+  });
+  return documentId;
+};
+
+const readPresenceSelection = (
+  room: WorkspaceRoomCrdt,
+  presence: Record<string, unknown>,
+): HeadlessRoomSelection | undefined => {
+  const cursor = presence.cursor;
+  if (!cursor || typeof cursor !== "object" || Array.isArray(cursor)) return undefined;
+  const raw = cursor as { anchor?: Y.RelativePosition; head?: Y.RelativePosition };
+  if (!raw.anchor || !raw.head) return undefined;
+  try {
+    const anchor = Y.createAbsolutePositionFromRelativePosition(raw.anchor, room.doc);
+    const head = Y.createAbsolutePositionFromRelativePosition(raw.head, room.doc);
+    if (!anchor || !head || anchor.type !== head.type) return undefined;
+    const documentId = getDocumentIdForType(room, anchor.type);
+    return documentId
+      ? { documentId, from: Math.min(anchor.index, head.index), to: Math.max(anchor.index, head.index) }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 export const createHeadlessRoomClientRuntime = ({
   roomUrl,
@@ -197,6 +277,7 @@ export const createHeadlessRoomClientRuntime = ({
         actor: collaborator,
         activeDocumentId: typeof presence?.activeDocumentId === "string" ? presence.activeDocumentId : undefined,
         fileTitle: typeof presence?.fileTitle === "string" ? presence.fileTitle : undefined,
+        selection: readPresenceSelection(room, presence as Record<string, unknown>),
         lastSeen: typeof presence?.lastSeen === "number" ? presence.lastSeen : Date.now(),
       });
     });
@@ -480,6 +561,101 @@ export const createHeadlessRoomClientRuntime = ({
     }
   };
 
+  const applyTextChange = async (
+    draftRoom: WorkspaceRoomCrdt,
+    change: Extract<HeadlessRoomChange, { type: "document.write" }>,
+  ) => {
+    await assertExpectedNode(draftRoom, change.documentId, { revision: change.expectedRevision });
+    const text = draftRoom.documents.get(change.documentId);
+    if (!text) throw new Error(`Workspace document was not found: ${change.documentId}`);
+    const patches = getTextPatchesForChange(text.toString(), change.markdown, change.preferredPatches);
+    for (const patch of [...patches].sort((left, right) => right.from - left.from || right.to - left.to)) {
+      if (patch.to > patch.from) text.delete(patch.from, patch.to - patch.from);
+      if (patch.insert) text.insert(patch.from, patch.insert);
+    }
+    return sha256Text(change.markdown);
+  };
+
+  const applyChanges = (changes: readonly HeadlessRoomChange[]) => mutateWorkspace(async (draftRoom) => {
+    const results: HeadlessRoomChangeResult[] = [];
+    for (const change of changes) {
+      switch (change.type) {
+        case "folder.create": {
+          const folderId = change.folderId ?? adapters.clock.createId();
+          const created = createWorkspaceRoomFolder(draftRoom, {
+            id: folderId,
+            parentId: change.parentId ?? WORKSPACE_ROOM_ROOT_ID,
+            title: change.title,
+            order: Math.max(0, ...getWorkspaceRoomStructureSnapshot(draftRoom).nodes.map((node) => node.order)) + 1,
+          });
+          if (!created) throw new Error("Workspace folder could not be created.");
+          results.push({ type: change.type, folderId });
+          break;
+        }
+        case "document.create": {
+          const documentId = change.documentId ?? adapters.clock.createId();
+          const created = createWorkspaceRoomDocument(draftRoom, {
+            id: documentId,
+            parentId: change.parentId ?? WORKSPACE_ROOM_ROOT_ID,
+            title: change.title,
+            order: Math.max(0, ...getWorkspaceRoomStructureSnapshot(draftRoom).nodes.map((node) => node.order)) + 1,
+            markdown: change.markdown ?? "",
+          });
+          if (!created) throw new Error("Workspace document could not be created.");
+          results.push({ type: change.type, documentId });
+          break;
+        }
+        case "document.write":
+          results.push({
+            type: change.type,
+            documentId: change.documentId,
+            revision: await applyTextChange(draftRoom, change),
+          });
+          break;
+        case "node.update":
+          await assertExpectedNode(draftRoom, change.nodeId, change.expected);
+          if (change.title !== undefined && !renameWorkspaceRoomNode(draftRoom, change.nodeId, change.title)) {
+            throw new Error("Workspace node could not be renamed.");
+          }
+          if (
+            change.parentId !== undefined &&
+            !moveWorkspaceRoomNode(draftRoom, change.nodeId, change.parentId ?? WORKSPACE_ROOM_ROOT_ID)
+          ) {
+            throw new Error("Workspace node could not be moved.");
+          }
+          results.push({ type: change.type, nodeId: change.nodeId });
+          break;
+        case "node.delete":
+          await assertExpectedNode(draftRoom, change.nodeId, change.expected);
+          deleteWorkspaceRoomNode(draftRoom, change.nodeId);
+          results.push({ type: change.type, nodeId: change.nodeId });
+          break;
+        case "comment.upsert":
+          if (!setWorkspaceRoomComment(draftRoom, change.comment)) {
+            throw new Error("Workspace comment could not be saved.");
+          }
+          results.push({ type: change.type, commentId: change.comment.id });
+          break;
+        case "comment.reply":
+          if (!addWorkspaceRoomCommentReply(draftRoom, change.commentId, change.reply)) {
+            throw new Error("Workspace comment reply could not be saved.");
+          }
+          results.push({ type: change.type, commentId: change.commentId, replyId: change.reply.id });
+          break;
+        case "comment.resolve":
+          if (!draftRoom.comments.has(change.commentId)) throw new Error("Workspace comment was not found.");
+          setWorkspaceRoomCommentResolved(draftRoom, change.commentId, change.resolved);
+          results.push({ type: change.type, commentId: change.commentId, resolved: change.resolved });
+          break;
+        case "comment.delete":
+          deleteWorkspaceRoomComment(draftRoom, change.commentId);
+          results.push({ type: change.type, commentId: change.commentId });
+          break;
+      }
+    }
+    return results;
+  });
+
   const connect = async ({ waitForStateMs = 5_000 }: { waitForStateMs?: number } = {}) => {
     if (connectedOnce || status !== "idle") throw new Error("This headless Room client has already connected.");
     connectedOnce = true;
@@ -561,92 +737,78 @@ export const createHeadlessRoomClientRuntime = ({
       const markdown = text.toString();
       return { ...node, markdown, revision: await sha256Text(markdown) };
     },
-    createFolder(input: { folderId?: string; parentId?: string | null; title: string }) {
-      return mutateWorkspace((draftRoom) => {
-        const folderId = input.folderId ?? adapters.clock.createId();
-        const created = createWorkspaceRoomFolder(draftRoom, {
-          id: folderId,
-          parentId: input.parentId ?? WORKSPACE_ROOM_ROOT_ID,
-          title: input.title,
-          order: Math.max(0, ...getWorkspaceRoomStructureSnapshot(draftRoom).nodes.map((node) => node.order)) + 1,
-        });
-        if (!created) throw new Error("Workspace folder could not be created.");
-        return { folderId };
-      });
+    applyChanges,
+    async createFolder(input: { folderId?: string; parentId?: string | null; title: string }) {
+      const [result] = await applyChanges([{ type: "folder.create", ...input }]);
+      if (result?.type !== "folder.create") throw new Error("Workspace folder result was not returned.");
+      return { folderId: result.folderId };
     },
-    createDocument(input: { documentId?: string; parentId?: string | null; title: string; markdown?: string }) {
-      return mutateWorkspace((draftRoom) => {
-        const documentId = input.documentId ?? adapters.clock.createId();
-        const created = createWorkspaceRoomDocument(draftRoom, {
-          id: documentId,
-          parentId: input.parentId ?? WORKSPACE_ROOM_ROOT_ID,
-          title: input.title,
-          order: Math.max(0, ...getWorkspaceRoomStructureSnapshot(draftRoom).nodes.map((node) => node.order)) + 1,
-          markdown: input.markdown ?? "",
-        });
-        if (!created) throw new Error("Workspace document could not be created.");
-        return { documentId };
-      });
+    async createDocument(input: {
+      documentId?: string;
+      parentId?: string | null;
+      title: string;
+      markdown?: string;
+    }) {
+      const [result] = await applyChanges([{ type: "document.create", ...input }]);
+      if (result?.type !== "document.create") throw new Error("Workspace document result was not returned.");
+      return { documentId: result.documentId };
     },
-    writeDocument(input: { documentId: string; markdown: string; expectedRevision: string }) {
-      return mutateWorkspace(async (draftRoom) => {
-        await assertExpectedNode(draftRoom, input.documentId, { revision: input.expectedRevision });
-        const text = draftRoom.documents.get(input.documentId);
-        if (!text) throw new Error(`Workspace document was not found: ${input.documentId}`);
-        text.delete(0, text.length);
-        if (input.markdown) text.insert(0, input.markdown);
-      });
+    async writeDocument(input: {
+      documentId: string;
+      markdown: string;
+      expectedRevision: string;
+      preferredPatches?: readonly TextPatch[];
+    }) {
+      const [result] = await applyChanges([{ type: "document.write", ...input }]);
+      if (result?.type !== "document.write") throw new Error("Workspace document result was not returned.");
+      return { revision: result.revision };
     },
     renameNode(input: { nodeId: string; title: string; expected?: HeadlessRoomExpectedNode }) {
-      return mutateWorkspace(async (draftRoom) => {
-        await assertExpectedNode(draftRoom, input.nodeId, input.expected);
-        if (!renameWorkspaceRoomNode(draftRoom, input.nodeId, input.title)) {
-          throw new Error("Workspace node could not be renamed.");
-        }
-      });
+      return applyChanges([{ type: "node.update", ...input }]).then(() => undefined);
     },
     moveNode(input: { nodeId: string; parentId: string | null; expected?: HeadlessRoomExpectedNode }) {
-      return mutateWorkspace(async (draftRoom) => {
-        await assertExpectedNode(draftRoom, input.nodeId, input.expected);
-        if (!moveWorkspaceRoomNode(draftRoom, input.nodeId, input.parentId ?? WORKSPACE_ROOM_ROOT_ID)) {
-          throw new Error("Workspace node could not be moved.");
-        }
-      });
+      return applyChanges([{ type: "node.update", ...input }]).then(() => undefined);
     },
     deleteNode(input: { nodeId: string; expected?: HeadlessRoomExpectedNode }) {
-      return mutateWorkspace(async (draftRoom) => {
-        await assertExpectedNode(draftRoom, input.nodeId, input.expected);
-        deleteWorkspaceRoomNode(draftRoom, input.nodeId);
-      });
+      return applyChanges([{ type: "node.delete", ...input }]).then(() => undefined);
     },
     upsertComment(comment: WorkspaceRoomComment) {
-      return mutateWorkspace((draftRoom) => {
-        if (!setWorkspaceRoomComment(draftRoom, comment)) throw new Error("Workspace comment could not be saved.");
-      });
+      return applyChanges([{ type: "comment.upsert", comment }]).then(() => undefined);
     },
     addCommentReply(commentId: string, reply: WorkspaceRoomCommentReply) {
-      return mutateWorkspace((draftRoom) => {
-        if (!addWorkspaceRoomCommentReply(draftRoom, commentId, reply)) {
-          throw new Error("Workspace comment reply could not be saved.");
-        }
-      });
+      return applyChanges([{ type: "comment.reply", commentId, reply }]).then(() => undefined);
     },
     setCommentResolved(commentId: string, resolved: boolean) {
-      return mutateWorkspace((draftRoom) => {
-        if (!draftRoom.comments.has(commentId)) throw new Error("Workspace comment was not found.");
-        setWorkspaceRoomCommentResolved(draftRoom, commentId, resolved);
-      });
+      return applyChanges([{ type: "comment.resolve", commentId, resolved }]).then(() => undefined);
     },
     deleteComment(commentId: string) {
-      return mutateWorkspace((draftRoom) => {
-        deleteWorkspaceRoomComment(draftRoom, commentId);
-      });
+      return applyChanges([{ type: "comment.delete", commentId }]).then(() => undefined);
     },
-    setPresence(input: { activeDocumentId?: string; fileTitle?: string } = {}) {
+    setPresence(input: {
+      activeDocumentId?: string;
+      fileTitle?: string;
+      selection?: HeadlessRoomSelection;
+    } = {}) {
       activeDocumentId = input.activeDocumentId;
       const current = { ...awareness.getLocalState() } as Record<string, unknown>;
       if (input.fileTitle) current.fileTitle = input.fileTitle;
       else delete current.fileTitle;
+      if (input.selection) {
+        const text = room.documents.get(input.selection.documentId);
+        if (!text) throw new Error(`Workspace document was not found: ${input.selection.documentId}`);
+        current.cursor = {
+          anchor: Y.createRelativePositionFromTypeIndex(
+            text,
+            Math.max(0, Math.min(input.selection.from, text.length)),
+          ),
+          head: Y.createRelativePositionFromTypeIndex(
+            text,
+            Math.max(0, Math.min(input.selection.to, text.length)),
+          ),
+        };
+      } else {
+        delete current.cursor;
+      }
       awareness.setLocalState(current);
       publishPresence();
     },
