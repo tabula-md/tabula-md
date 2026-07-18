@@ -63,6 +63,32 @@ import {
 } from "@tabula-md/tabula/collaboration";
 ```
 
+Hosts that need a connected, UI-free Room participant should use the headless
+client entrypoint. The host injects its relay transport and optional encrypted
+checkpoint store; the client owns Room-key handling, CRDT state, hydration,
+presence, validated workspace changes, and reconnect-safe sync state.
+
+```ts
+import {
+  createHeadlessRoomClient,
+  createHeadlessRoomSyncAdapters,
+} from "@tabula-md/tabula/room-client";
+
+const client = await createHeadlessRoomClient({
+  roomUrl,
+  roomServerUrl,
+  actor,
+  adapters: createHeadlessRoomSyncAdapters({ createRoomTransport }),
+  checkpointStore,
+});
+
+await client.connect();
+const workspace = client.getWorkspaceSnapshot();
+```
+
+The headless client never logs or exposes the private Room URL or key. Local
+filesystem paths, MCP tool contracts, and UI state remain host concerns.
+
 Keep outside the root import:
 
 - React components and hooks, except for the explicit `./workbench` subpath.

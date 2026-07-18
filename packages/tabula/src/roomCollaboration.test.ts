@@ -30,6 +30,11 @@ describe("room actor contract", () => {
     expect(createRoomActorColor("human-1")).toBe(createRoomActorColor("human-1"));
   });
 
+  it("preserves the official CLI client identity", () => {
+    const actor = createRoomActor({ id: "cli-1", kind: "agent", client: "tabula-cli" });
+    expect(parseRoomActor(actor)?.client).toBe("tabula-cli");
+  });
+
   it("parses only the binary protocol awareness actor shape", () => {
     const actor = createRoomActor({
       id: "peer-1",

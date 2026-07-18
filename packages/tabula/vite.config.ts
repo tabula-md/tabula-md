@@ -21,6 +21,7 @@ export default defineConfig({
         "data/json": "src/data/json.ts",
         "data/restore": "src/data/restore.ts",
         "room/envelope": "src/room/envelope.ts",
+        roomClient: "src/roomClient.ts",
         workbench: "src/workbench/index.ts",
       },
       formats: ["es"],

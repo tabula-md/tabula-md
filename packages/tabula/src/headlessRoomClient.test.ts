@@ -1,0 +1,269 @@
+import { describe, expect, it } from "vitest";
+import { encodeBase64Url } from "./data/base64Url";
+import {
+  createHeadlessRoomClient,
+  createHeadlessRoomSyncAdapters,
+} from "./roomClient";
+import { createRoomActor } from "./roomCollaboration";
+import type { EncryptedEnvelope } from "./roomProtocol";
+import type {
+  LoadedWorkspaceRoomCheckpoint,
+  SaveWorkspaceRoomCheckpointRequest,
+  WorkspaceRoomCheckpointStore,
+} from "./workspaceRoomCheckpoint";
+import type { WorkspaceRoomSnapshot } from "./workspaceRoomModel";
+import type {
+  WorkspaceRoomTransport,
+  WorkspaceRoomTransportHandlers,
+} from "./workspaceRoomSync";
+
+class FakeRoomRelay {
+  private readonly peers = new Map<string, {
+    roomId: string;
+    handlers: WorkspaceRoomTransportHandlers;
+    isConnected: () => boolean;
+  }>();
+
+  private connectedPeers(roomId: string) {
+    return [...this.peers.entries()].filter(([, peer]) => peer.roomId === roomId && peer.isConnected());
+  }
+
+  createTransport = ({
+    roomId,
+    clientId,
+    handlers,
+  }: {
+    baseUrl: string;
+    roomId: string;
+    clientId: string;
+    handlers: WorkspaceRoomTransportHandlers;
+  }): WorkspaceRoomTransport => {
+    let connected = false;
+    const transport = {
+      get connected() {
+        return connected;
+      },
+      connect: () => {
+        if (connected) return;
+        const existing = this.connectedPeers(roomId);
+        connected = true;
+        handlers.onConnect();
+        handlers.onJoined({ roomId, clientId, peerCount: existing.length });
+        existing.forEach(([, peer]) => peer.handlers.onPeerJoined({ roomId, clientId }));
+        this.publishPeers(roomId);
+      },
+      sendEnvelope: (envelope: EncryptedEnvelope) => {
+        queueMicrotask(() => {
+          this.connectedPeers(roomId).forEach(([peerId, peer]) => {
+            if (peerId !== clientId) {
+              peer.handlers.onMessage(envelope);
+            }
+          });
+        });
+      },
+      sendVolatileEnvelope: (envelope: EncryptedEnvelope) => {
+        queueMicrotask(() => {
+          this.connectedPeers(roomId).forEach(([peerId, peer]) => {
+            if (peerId !== clientId) {
+              peer.handlers.onMessage(envelope);
+            }
+          });
+        });
+      },
+      disconnect: () => {
+        if (!connected) return;
+        connected = false;
+        this.peers.delete(clientId);
+        handlers.onDisconnect();
+        this.publishPeers(roomId);
+      },
+    };
+    this.peers.set(clientId, { roomId, handlers, isConnected: () => connected });
+    return transport;
+  };
+
+  private publishPeers(roomId: string) {
+    const connected = this.connectedPeers(roomId);
+    const peerIds = connected.map(([peerId]) => peerId);
+    connected.forEach(([, peer]) => peer.handlers.onPeers({ roomId, peers: peerIds }));
+  }
+}
+
+class MemoryCheckpointStore implements WorkspaceRoomCheckpointStore {
+  readonly enabled = true;
+  value: LoadedWorkspaceRoomCheckpoint | null = null;
+
+  async loadEncryptedCheckpoint() {
+    return this.value;
+  }
+
+  async saveEncryptedCheckpoint(_roomId: string, request: SaveWorkspaceRoomCheckpointRequest) {
+    const currentGeneration = this.value?.generation ?? 0;
+    if (request.expectedGeneration !== currentGeneration) {
+      return { ok: false as const, reason: "conflict" as const, generation: currentGeneration };
+    }
+    this.value = {
+      status: "ready",
+      generation: currentGeneration + 1,
+      encryptedCheckpoint: request.encryptedCheckpoint,
+      expiresAt: request.expiresAt,
+    };
+    return { ok: true as const, generation: currentGeneration + 1 };
+  }
+}
+
+const roomId = "headless-room";
+const roomKey = encodeBase64Url(new Uint8Array(32).fill(7));
+const roomUrl = `https://tabula.md/#room=${roomId},${roomKey}`;
+const timestamp = "2026-07-18T00:00:00.000Z";
+
+const initialWorkspace = (): WorkspaceRoomSnapshot => ({
+  roomId,
+  schemaVersion: 2,
+  rootId: "workspace-root",
+  nodes: [
+    {
+      id: "workspace-root",
+      type: "folder",
+      parentId: null,
+      title: "Workspace",
+      order: 0,
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    },
+    {
+      id: "brief",
+      type: "document",
+      parentId: "workspace-root",
+      title: "brief.md",
+      order: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  ],
+  documents: { brief: "# Brief\n" },
+  commentsByFileId: {},
+});
+
+const createClient = ({
+  relay,
+  actorId,
+  initial,
+  checkpointStore,
+}: {
+  relay: FakeRoomRelay;
+  actorId: string;
+  initial?: WorkspaceRoomSnapshot;
+  checkpointStore?: WorkspaceRoomCheckpointStore;
+}) => createHeadlessRoomClient({
+  roomUrl,
+  roomServerUrl: "https://room.test",
+  actor: createRoomActor({
+    id: actorId,
+    kind: "agent",
+    client: "tabula-cli",
+    name: actorId,
+  }),
+  adapters: createHeadlessRoomSyncAdapters({ createRoomTransport: relay.createTransport }),
+  checkpointStore,
+  initialWorkspace: initial,
+});
+
+const waitFor = async (condition: () => boolean, timeoutMs = 2_000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (condition()) return;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error("Timed out waiting for headless Room state.");
+};
+
+describe("headless Room client", () => {
+  it("synchronizes workspace operations, comments, and presence between clients", async () => {
+    const relay = new FakeRoomRelay();
+    const first = await createClient({ relay, actorId: "first-agent", initial: initialWorkspace() });
+    const second = await createClient({ relay, actorId: "second-agent" });
+
+    try {
+      await first.connect();
+      await second.connect({ waitForStateMs: 500 });
+      expect(second.getState().lastError).toBeUndefined();
+      await waitFor(() => second.getState().hydrationStatus === "ready");
+      expect(second.getWorkspaceSnapshot().documents.brief).toBe("# Brief\n");
+      const staleBrief = await first.readDocument("brief");
+      await waitFor(() => first.getState().collaborators.length === 1);
+      expect(first.getState().collaborators[0]?.actor.id).toBe("second-agent");
+
+      const brief = await second.readDocument("brief");
+      await second.writeDocument({
+        documentId: "brief",
+        markdown: "# Brief\n\nEdited by the second agent.\n",
+        expectedRevision: brief.revision,
+      });
+      await waitFor(() => first.getWorkspaceSnapshot().documents.brief?.includes("second agent") === true);
+      await expect(first.writeDocument({
+        documentId: "brief",
+        markdown: "# Stale overwrite\n",
+        expectedRevision: staleBrief.revision,
+      })).rejects.toThrow("changed before the operation");
+
+      const { folderId } = await second.createFolder({ folderId: "research", title: "Research" });
+      await second.moveNode({ nodeId: "brief", parentId: folderId });
+      await second.renameNode({ nodeId: "brief", title: "review.md" });
+      await waitFor(() => first.getWorkspaceSnapshot().nodes.some(
+        (node) => node.id === "brief" && node.parentId === "research" && node.title === "review.md",
+      ));
+
+      await second.upsertComment({
+        id: "comment-1",
+        fileId: "brief",
+        body: "Please verify this section.",
+        resolved: false,
+        createdAt: timestamp,
+        replies: [],
+      });
+      await waitFor(() => first.getWorkspaceSnapshot().commentsByFileId.brief?.length === 1);
+      await first.setCommentResolved("comment-1", true);
+      await waitFor(() => second.getWorkspaceSnapshot().commentsByFileId.brief?.[0]?.resolved === true);
+
+      const current = await first.readDocument("brief");
+      await first.deleteNode({ nodeId: "brief", expected: { revision: current.revision } });
+      await waitFor(() => !second.getWorkspaceSnapshot().nodes.some((node) => node.id === "brief"));
+    } finally {
+      await Promise.all([first.disconnect(), second.disconnect()]);
+    }
+  });
+
+  it("restores a validated encrypted checkpoint without a live peer", async () => {
+    const checkpointStore = new MemoryCheckpointStore();
+    const relay = new FakeRoomRelay();
+    const writer = await createClient({
+      relay,
+      actorId: "checkpoint-writer",
+      initial: initialWorkspace(),
+      checkpointStore,
+    });
+
+    await writer.connect();
+    await writer.flushCheckpoint();
+    expect(checkpointStore.value?.status).toBe("ready");
+    expect(new TextDecoder().decode(
+      checkpointStore.value?.status === "ready" ? checkpointStore.value.encryptedCheckpoint : new Uint8Array(),
+    )).not.toContain("# Brief");
+    await writer.disconnect();
+
+    const restored = await createClient({
+      relay: new FakeRoomRelay(),
+      actorId: "checkpoint-reader",
+      checkpointStore,
+    });
+    try {
+      const state = await restored.connect({ waitForStateMs: 0 });
+      expect(state.hydrationStatus).toBe("ready");
+      expect(state.checkpointStatus).toBe("loaded");
+      expect(restored.getWorkspaceSnapshot().documents.brief).toBe("# Brief\n");
+    } finally {
+      await restored.disconnect();
+    }
+  });
+});

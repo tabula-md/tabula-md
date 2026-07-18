@@ -54,6 +54,8 @@ for (const requiredFile of [
   "dist/index.d.ts",
   "dist/collaboration.js",
   "dist/collaboration.d.ts",
+  "dist/roomClient.js",
+  "dist/roomClient.d.ts",
   "dist/workbench.js",
   "dist/workbench.css",
   "src/workbench/index.d.ts",
