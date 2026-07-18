@@ -61,7 +61,7 @@
     "firebase": "^12.15.0",
     "katex": "^0.17.0",
     "lib0": "^0.2.117",
-    "lucide-react": "^0.468.0",
+    "lucide-react": "^1.25.0",
     "mermaid": "^11.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
