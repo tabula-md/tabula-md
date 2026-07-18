@@ -5,7 +5,7 @@ import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import { getNewFilePreferenceOverrides } from "../workspaceIoModel";
 import type { RenameFileResult } from "@tabula-md/tabula";
 import type { ConnectionStatus } from "../collaboration/liveCollaboration";
-import { removeRecordKey } from "../workspaceFileRuntimeModel";
+import { removeRecordKey } from "@tabula-md/tabula";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
 import type { WorkspaceActionCopy } from "../workspaceActionLocale";
 

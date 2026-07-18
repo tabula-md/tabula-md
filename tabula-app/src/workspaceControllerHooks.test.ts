@@ -62,7 +62,7 @@ import {
   removeRecordKey,
   restoreFileToList,
   restoreOpenFileId,
-} from "./workspaceFileRuntimeModel";
+} from "@tabula-md/tabula";
 import {
   formatCommentDate,
   getPreviewCommentAnchors,
