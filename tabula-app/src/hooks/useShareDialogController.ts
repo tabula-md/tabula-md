@@ -10,7 +10,7 @@ import {
 } from "../workspaceLocale";
 import type { LocationRoom } from "../workspaceStorage";
 
-type UseShareDialogRuntimeOptions = {
+type UseShareDialogControllerOptions = {
   room?: LocationRoom | null;
   isLive: boolean;
   isLiveConnected: boolean;
@@ -20,7 +20,7 @@ type UseShareDialogRuntimeOptions = {
   onStopSession: () => void;
 };
 
-export function useShareDialogRuntime({
+export function useShareDialogController({
   room,
   isLive,
   isLiveConnected,
@@ -28,7 +28,7 @@ export function useShareDialogRuntime({
   language,
   onCloseShare,
   onStopSession,
-}: UseShareDialogRuntimeOptions) {
+}: UseShareDialogControllerOptions) {
   const [agentInviteCopied, setAgentInviteCopied] = useState(false);
   const [exportLinkCopied, setExportLinkCopied] = useState(false);
   const [view, setView] = useState<"chooser" | "export-result" | "stop-confirm">("chooser");

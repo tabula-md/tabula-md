@@ -64,22 +64,22 @@ import { useWorkspaceEditorDocumentRuntimeOwner } from "./editorDocumentRuntimeO
 import { useWorkspaceActiveFileEditor } from "./useWorkspaceActiveFileEditor";
 import { useWorkspaceChromeController } from "./useWorkspaceChromeController";
 import { useWorkspaceCollaborationRuntime } from "./useWorkspaceCollaborationRuntime";
-import { useCollaborationPresenceRuntime } from "./useCollaborationPresenceRuntime";
+import { useCollaborationPresenceIdentity } from "./useCollaborationPresenceIdentity";
 import { useWorkspaceCommentActions } from "./useWorkspaceCommentActions";
 import { useWorkspaceDocumentRuntime } from "./useWorkspaceDocumentRuntime";
 import { useWorkspaceFileActions } from "./useWorkspaceFileActions";
 import { useWorkspaceFolderActions } from "./useWorkspaceFolderActions";
 import { useWorkspaceFiles } from "./useWorkspaceFiles";
 import { useWorkspaceIdentity } from "./useWorkspaceIdentity";
-import { useWorkspaceIoRuntime } from "./useWorkspaceIoRuntime";
+import { useWorkspaceIoController } from "./useWorkspaceIoController";
 import { useWorkspaceKeyboardShortcuts } from "./useWorkspaceKeyboardShortcuts";
-import { useWorkspaceMenuRuntime } from "./useWorkspaceMenuRuntime";
+import { useWorkspaceMenuController } from "./useWorkspaceMenuController";
 import { useWorkspacePersistenceRuntime } from "./useWorkspacePersistenceRuntime";
 import { useWorkspacePreferences } from "./useWorkspacePreferences";
 import { useWorkspaceProjectContextRuntime } from "./useWorkspaceProjectContextRuntime";
 import { useWorkspaceRouteRuntime } from "./useWorkspaceRouteRuntime";
-import { useWorkspaceShareRuntime } from "./useWorkspaceShareRuntime";
-import { useWorkspaceTopChromeRuntime } from "./useWorkspaceTopChromeRuntime";
+import { useWorkspaceShareController } from "./useWorkspaceShareController";
+import { useWorkspaceTopChromeController } from "./useWorkspaceTopChromeController";
 import {
   getLiveRoomOpenState,
   type LiveRoomOpenFailure,
@@ -624,7 +624,7 @@ export function useWorkspaceRuntime() {
     if (!activeRoomId) return;
     replaceActiveRoomComments(activeRoomDocument?.id, activeDocumentComments);
   }, [activeDocumentComments, activeRoomDocument?.id, activeRoomId, replaceActiveRoomComments]);
-  const presenceIdentity = useCollaborationPresenceRuntime({
+  const presenceIdentity = useCollaborationPresenceIdentity({
     identity,
     isLive,
   });
@@ -824,7 +824,7 @@ export function useWorkspaceRuntime() {
     replaceWorkspace,
   });
   const { copyShareUrl, jsonShare, startSession, stopSession } =
-    useWorkspaceShareRuntime({
+    useWorkspaceShareController({
       activeFile,
       room: activeRoom,
       activeText: text,
@@ -966,7 +966,7 @@ export function useWorkspaceRuntime() {
     workspaceFolderImport,
     replaceWorkspaceWithFolder,
     replaceWorkspaceWithJsonShare,
-  } = useWorkspaceIoRuntime({
+  } = useWorkspaceIoController({
     activeFile,
     isRoomSession: Boolean(activeRoom),
     activeFileId,
@@ -1132,7 +1132,7 @@ export function useWorkspaceRuntime() {
     syncUrlForLocalWorkspace("replace");
     showToast(workspaceMenuCopy.clearWorkspace.cleared);
   });
-  const { menuSurfaceProps } = useWorkspaceMenuRuntime({
+  const { menuSurfaceProps } = useWorkspaceMenuController({
     importInputRef,
     workspaceImportInputRef,
     isOpen: workspaceMenuOpen,
@@ -1214,7 +1214,7 @@ export function useWorkspaceRuntime() {
       setRightPanelView,
       text,
     });
-  const { shareOpen, topChromeProps } = useWorkspaceTopChromeRuntime({
+  const { shareOpen, topChromeProps } = useWorkspaceTopChromeController({
     activeFile,
     activeText: text,
     collaborators,

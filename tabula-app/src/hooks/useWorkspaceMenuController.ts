@@ -14,7 +14,7 @@ import type {
   WorkspaceTheme,
 } from "./useWorkspacePreferences";
 
-type UseWorkspaceMenuRuntimeOptions = {
+type UseWorkspaceMenuControllerOptions = {
   importInputRef: RefObject<HTMLInputElement | null>;
   workspaceImportInputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
@@ -37,7 +37,7 @@ type UseWorkspaceMenuRuntimeOptions = {
   setTopPopover: (popover: TopPopover) => void;
 };
 
-export function useWorkspaceMenuRuntime({
+export function useWorkspaceMenuController({
   importInputRef,
   workspaceImportInputRef,
   isOpen,
@@ -58,7 +58,7 @@ export function useWorkspaceMenuRuntime({
   setPreferences,
   setPreferencesOpen,
   setTopPopover,
-}: UseWorkspaceMenuRuntimeOptions) {
+}: UseWorkspaceMenuControllerOptions) {
   const setTheme = useCallback((theme: WorkspaceTheme) => {
     setPreferences((currentPreferences) => ({
       ...currentPreferences,
