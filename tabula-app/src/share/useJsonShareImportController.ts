@@ -5,11 +5,11 @@ import {
   getJsonShareImportRoute,
   readJsonShareSnapshot,
   type JsonShareRoute,
-} from "../share/jsonShare";
+} from "./jsonShare";
 import {
   createWorkspaceFromJsonShareSnapshot,
   hasMeaningfulWorkspaceContent,
-} from "../share/jsonShareImport";
+} from "./jsonShareImport";
 import {
   syncUrlForLocalWorkspace,
   type FileComment,
@@ -20,7 +20,7 @@ import {
 import { writeIndexedDbWorkspace } from "../workspaceIndexedDb";
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import { productAnalytics } from "../observability/productAnalytics";
-import { useEventCallback } from "./useEventCallback";
+import { useEventCallback } from "../hooks/useEventCallback";
 
 export type PendingJsonShareImport =
   | { status: "loading"; route: JsonShareRoute }

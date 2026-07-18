@@ -19,11 +19,7 @@ describe("agent handoff", () => {
   });
 
   it("keeps human setup docs separate from the agent setup runbook", () => {
-    expect(TABULA_AGENT_INSTALL_URL).toBe(
-      "https://tabula.md/agent-install.txt",
-    );
-    expect(TABULA_MCP_SETUP_URL).toBe(
-      "https://github.com/tabula-md/tabula-mcp#install",
-    );
+    expect(TABULA_AGENT_INSTALL_URL).toBe("https://tabula.md/agent-install.txt");
+    expect(TABULA_MCP_SETUP_URL).toBe("https://github.com/tabula-md/tabula-mcp#install");
   });
 });

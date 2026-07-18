@@ -9,7 +9,10 @@ type ShareControlsBoundaryState = {
   failed: boolean;
 };
 
-export class ShareControlsBoundary extends Component<ShareControlsBoundaryProps, ShareControlsBoundaryState> {
+export class ShareControlsBoundary extends Component<
+  ShareControlsBoundaryProps,
+  ShareControlsBoundaryState
+> {
   state: ShareControlsBoundaryState = { failed: false };
 
   static getDerivedStateFromError(): ShareControlsBoundaryState {

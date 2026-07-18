@@ -5,7 +5,7 @@ import type {
   RoomRecoveryMode,
 } from "../collaboration/liveCollaboration";
 import type { WorkspaceTopChromeProps } from "../components/WorkspaceTopChrome";
-import type { JsonShareController } from "./useJsonShareController";
+import type { JsonShareController } from "../share/useJsonShareController";
 import type { RenameFileResult } from "./useWorkspaceFiles";
 import type { WorkspaceLanguage } from "./useWorkspacePreferences";
 import type { TopPopover } from "../uiTypes";

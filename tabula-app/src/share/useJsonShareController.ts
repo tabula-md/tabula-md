@@ -3,7 +3,7 @@ import {
   createJsonShareLink,
   formatJsonShareUrlPreview,
   getConfiguredJsonShareServiceUrl,
-} from "../share/jsonShare";
+} from "./jsonShare";
 import type { WorkspaceShareCopy } from "../workspaceLocale";
 import {
   WORKSPACE_ROOT_FOLDER_ID,

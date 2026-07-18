@@ -1,5 +1,5 @@
 import { AppToast } from "./AppToast";
-import { JsonShareImportDialog } from "./JsonShareImportDialog";
+import { JsonShareImportDialog } from "../share/JsonShareImportDialog";
 import { TooltipLayer } from "./ui/TooltipLayer";
 import type { AppToastState } from "../hooks/useAppToast";
 import type { WorkspaceState } from "../workspaceStorage";

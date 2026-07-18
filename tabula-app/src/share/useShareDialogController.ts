@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 import { buildShareViewModel } from "@tabula-md/tabula";
 import type { JsonShareController } from "./useJsonShareController";
-import type { WorkspaceLanguage } from "./useWorkspacePreferences";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { productAnalytics } from "../observability/productAnalytics";
-import { buildAgentInvite } from "../shareAgentHandoff";
+import { buildAgentInvite } from "./shareAgentHandoff";
 import {
   getWorkspaceChromeCopy,
   getWorkspaceMenuCopy,

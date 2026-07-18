@@ -31,7 +31,7 @@ import {
 import {
   getJsonShareExportFileSnapshot,
   getJsonShareExportWorkspaceFiles,
-} from "./hooks/useJsonShareController";
+} from "./share/useJsonShareController";
 import {
   createActiveDocumentPreviewTextSnapshot,
   createPreviewStateFromSnapshot,

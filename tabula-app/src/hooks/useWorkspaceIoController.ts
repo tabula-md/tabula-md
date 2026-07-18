@@ -7,7 +7,7 @@ import type {
   WorkspaceFile,
   WorkspaceState,
 } from "../workspaceStorage";
-import { useJsonShareImportController } from "./useJsonShareImportController";
+import { useJsonShareImportController } from "../share/useJsonShareImportController";
 import { useWorkspaceFileIoController } from "./useWorkspaceFileIoController";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 

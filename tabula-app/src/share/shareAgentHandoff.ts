@@ -1,7 +1,5 @@
-export const TABULA_MCP_SETUP_URL =
-  "https://github.com/tabula-md/tabula-mcp#install";
-export const TABULA_AGENT_INSTALL_URL =
-  "https://tabula.md/agent-install.txt";
+export const TABULA_MCP_SETUP_URL = "https://github.com/tabula-md/tabula-mcp#install";
+export const TABULA_AGENT_INSTALL_URL = "https://tabula.md/agent-install.txt";
 
 export const buildAgentInvite = (liveRoomUrl: string) => [
   "Use your Tabula tools to join this room and work with me.",

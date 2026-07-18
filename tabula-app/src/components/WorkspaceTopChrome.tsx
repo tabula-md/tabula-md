@@ -1,8 +1,8 @@
 import { useMemo, type ComponentProps } from "react";
 import { FileTabs } from "./FileTabs";
-import { ShareControlsBoundary } from "./ShareControlsBoundary";
-import { ShareTrigger } from "./ShareTrigger";
-import { ShareControls } from "./ShareControls";
+import { ShareControlsBoundary } from "../share/ShareControlsBoundary";
+import { ShareTrigger } from "../share/ShareTrigger";
+import { ShareControls } from "../share/ShareControls";
 import { TopChrome } from "./TopChrome";
 import type {
   Collaborator,
@@ -10,7 +10,7 @@ import type {
   RoomRecoveryMode,
 } from "../collaboration/liveCollaboration";
 import type { FollowState } from "../collaboration/followModel";
-import type { JsonShareController } from "../hooks/useJsonShareController";
+import type { JsonShareController } from "../share/useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getCollaboratorDisplayList } from "../collaboration/collabCollaborators";
 import {

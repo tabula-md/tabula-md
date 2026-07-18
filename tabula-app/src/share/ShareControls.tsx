@@ -1,14 +1,14 @@
 import { X } from "lucide-react";
-import { ShareExportPanel } from "./share/ShareExportPanel";
-import { ShareExportResult } from "./share/ShareExportResult";
-import { ShareLinkPanel } from "./share/ShareLinkPanel";
-import { ShareStopSessionConfirm } from "./share/ShareStopSessionConfirm";
-import type { JsonShareController } from "../hooks/useJsonShareController";
+import { ShareExportPanel } from "./ShareExportPanel";
+import { ShareExportResult } from "./ShareExportResult";
+import { ShareLinkPanel } from "./ShareLinkPanel";
+import { ShareStopSessionConfirm } from "./ShareStopSessionConfirm";
+import type { JsonShareController } from "./useJsonShareController";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import { useShareDialogController } from "../hooks/useShareDialogController";
+import { useShareDialogController } from "./useShareDialogController";
 import type { ConnectionStatus, RoomRecoveryMode } from "../collaboration/liveCollaboration";
 import type { LocationRoom } from "../workspaceStorage";
-import { ModalSurface } from "./ui/ModalSurface";
+import { ModalSurface } from "../components/ui/ModalSurface";
 
 type ShareControlsProps = {
   room?: LocationRoom | null;
