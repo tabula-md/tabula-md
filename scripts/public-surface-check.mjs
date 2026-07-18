@@ -17,7 +17,7 @@ const productDemoPaths = [
   ".github/assets/tabula-product-demo.gif",
   ".github/assets/tabula-agent-demo.gif",
 ];
-const contributorContractPaths = ["AGENTS.md", "WORKFLOW.md"];
+const contributorContractPaths = ["AGENTS.md", "CLAUDE.md", "WORKFLOW.md"];
 
 for (const contractPath of contributorContractPaths) {
   if (!existsSync(contractPath)) {
@@ -53,6 +53,14 @@ if (existsSync("WORKFLOW.md")) {
     if (!workflow.includes(requiredInstruction)) {
       errors.push(`WORKFLOW.md: missing workflow contract ${requiredInstruction}`);
     }
+  }
+}
+
+if (existsSync("CLAUDE.md")) {
+  const claudeEntry = readFileSync("CLAUDE.md", "utf8").trim();
+  const expectedClaudeEntry = "# Claude Code\n\n@AGENTS.md\n@WORKFLOW.md";
+  if (claudeEntry !== expectedClaudeEntry) {
+    errors.push("CLAUDE.md: keep the public Claude entrypoint limited to AGENTS.md and WORKFLOW.md imports");
   }
 }
 
@@ -121,7 +129,6 @@ for (const demoPath of productDemoPaths) {
 const allowedSecretFixturePaths = new Set();
 
 const forbiddenTrackedPaths = new Map([
-  ["CLAUDE.md", "local agent instructions do not belong in the public repository"],
   ["WORKFLOW.ko.md", "maintainer workflow belongs outside the public repository"],
   ["TODO.md", "maintainer planning notes belong outside the public repository"],
   ["TODO.ko.md", "maintainer planning notes belong outside the public repository"],
