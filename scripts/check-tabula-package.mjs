@@ -56,11 +56,29 @@ for (const requiredFile of [
   "dist/collaboration.d.ts",
   "dist/roomClient.js",
   "dist/roomClient.d.ts",
+  "dist/share-link.js",
+  "dist/jsonShareLinkModel.d.ts",
+  "dist/text-patches.js",
+  "dist/textPatches.d.ts",
+  "dist/workspace-limits.js",
+  "dist/workspaceLimits.d.ts",
   "dist/workbench.js",
   "dist/workbench.css",
   "src/workbench/index.d.ts",
 ]) {
   assert.ok(packedFiles.has(requiredFile), `Packed artifact is missing: ${requiredFile}`);
+}
+
+const nodeSafeContracts = [
+  ["./dist/share-link.js", ["getJsonShareImportRoute", "JSON_SHARE_API_PREFIX"]],
+  ["./dist/text-patches.js", ["getTextPatchesForChange"]],
+  ["./dist/workspace-limits.js", ["WORKSPACE_ROOM_MAX_CONTENT_BYTES", "WORKSPACE_ROOM_MAX_DOCUMENTS"]],
+];
+for (const [specifier, names] of nodeSafeContracts) {
+  const module = await import(new URL(`../packages/tabula/${specifier}`, import.meta.url));
+  for (const name of names) {
+    assert.ok(name in module, `Node-safe package contract ${specifier} is missing ${name}`);
+  }
 }
 assert.ok(
   !packedFiles.has("dist/workbench/internal.js"),
