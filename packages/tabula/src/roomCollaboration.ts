@@ -14,6 +14,8 @@ export type RoomActor = {
   joinedAt: string;
 };
 
+export type RoomActorAttribution = Pick<RoomActor, "id" | "kind" | "name" | "client">;
+
 export const HUMAN_ROOM_CAPABILITIES: readonly RoomCapability[] = [
   "presence",
   "read",
@@ -189,5 +191,36 @@ export const parseRoomActor = (value: unknown): RoomActor | null => {
     client: value.client,
     capabilities: [...new Set(capabilities)],
     joinedAt: value.joinedAt,
+  };
+};
+
+export const toRoomActorAttribution = (
+  actor: Pick<RoomActor, "id" | "kind" | "name" | "client">,
+): RoomActorAttribution => ({
+  id: actor.id,
+  kind: actor.kind,
+  name: actor.name,
+  client: actor.client,
+});
+
+export const parseRoomActorAttribution = (value: unknown): RoomActorAttribution | undefined => {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "string" ||
+    value.id.trim() === "" ||
+    value.id.trim().length > ROOM_ACTOR_MAX_ID_LENGTH ||
+    !isRoomActorKind(value.kind) ||
+    typeof value.name !== "string" ||
+    value.name.trim() === "" ||
+    value.name.trim().length > ROOM_ACTOR_MAX_NAME_LENGTH ||
+    !isRoomActorClient(value.client)
+  ) {
+    return undefined;
+  }
+  return {
+    id: value.id.trim(),
+    kind: value.kind,
+    name: value.name.trim(),
+    client: value.client,
   };
 };

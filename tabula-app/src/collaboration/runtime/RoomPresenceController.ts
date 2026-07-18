@@ -189,6 +189,7 @@ export const createRoomPresenceController = ({
 
   return {
     getIdentity: () => currentIdentity,
+    getRoomActor: () => toActor(currentIdentity),
     getActorDisplay,
     getSenderActor(senderId: string) {
       for (const state of awareness.getStates().values()) {

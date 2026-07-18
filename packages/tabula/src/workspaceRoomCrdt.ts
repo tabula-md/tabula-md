@@ -1,5 +1,9 @@
 import * as Y from "yjs";
 import {
+  parseRoomActorAttribution,
+  type RoomActorAttribution,
+} from "./roomCollaboration";
+import {
   WORKSPACE_ROOM_MAX_COMMENTS,
   WORKSPACE_ROOM_MAX_COMMENT_LENGTH,
   WORKSPACE_ROOM_MAX_REPLIES,
@@ -33,6 +37,8 @@ type InitialWorkspaceRoomNode = {
   order?: number;
   createdAt?: string;
   updatedAt?: string;
+  createdBy?: RoomActorAttribution;
+  updatedBy?: RoomActorAttribution;
   markdown?: string;
 };
 
@@ -62,6 +68,8 @@ const createNodeMap = ({
   order = 0,
   createdAt = new Date().toISOString(),
   updatedAt = createdAt,
+  createdBy,
+  updatedBy = createdBy,
 }: InitialWorkspaceRoomNode) => {
   const node = new Y.Map<unknown>();
   node.set("id", id);
@@ -71,6 +79,8 @@ const createNodeMap = ({
   node.set("order", order);
   node.set("createdAt", createdAt);
   node.set("updatedAt", updatedAt);
+  if (createdBy) node.set("createdBy", createdBy);
+  if (updatedBy) node.set("updatedBy", updatedBy);
   return node;
 };
 
@@ -81,6 +91,8 @@ const readNode = (id: string, node: Y.Map<unknown>): WorkspaceRoomNode | null =>
   }
 
   const parentValue = node.get("parentId");
+  const createdBy = parseRoomActorAttribution(node.get("createdBy"));
+  const updatedBy = parseRoomActorAttribution(node.get("updatedBy"));
   return {
     id,
     type,
@@ -89,6 +101,8 @@ const readNode = (id: string, node: Y.Map<unknown>): WorkspaceRoomNode | null =>
     order: asNumber(node.get("order")),
     createdAt: asString(node.get("createdAt"), new Date(0).toISOString()),
     updatedAt: asString(node.get("updatedAt"), new Date(0).toISOString()),
+    ...(createdBy ? { createdBy } : {}),
+    ...(updatedBy ? { updatedBy } : {}),
   };
 };
 
@@ -304,6 +318,7 @@ export const renameWorkspaceRoomNode = (
   nodeId: string,
   title: string,
   updatedAt = new Date().toISOString(),
+  updatedBy?: RoomActorAttribution,
 ) => {
   const node = room.nodes.get(nodeId);
   if (!node) {
@@ -315,6 +330,7 @@ export const renameWorkspaceRoomNode = (
   room.doc.transact(() => {
     node.set("title", normalizedTitle);
     node.set("updatedAt", updatedAt);
+    if (updatedBy) node.set("updatedBy", updatedBy);
   }, "tabula.node.rename");
   return true;
 };
@@ -338,6 +354,7 @@ export const moveWorkspaceRoomNode = (
   nodeId: string,
   parentId: string,
   updatedAt = new Date().toISOString(),
+  updatedBy?: RoomActorAttribution,
 ) => {
   const node = room.nodes.get(nodeId);
   const parent = room.nodes.get(parentId);
@@ -348,6 +365,7 @@ export const moveWorkspaceRoomNode = (
   room.doc.transact(() => {
     node.set("parentId", parentId);
     node.set("updatedAt", updatedAt);
+    if (updatedBy) node.set("updatedBy", updatedBy);
   }, "tabula.node.move");
   return true;
 };
@@ -357,6 +375,7 @@ export const setWorkspaceRoomNodeOrder = (
   nodeId: string,
   order: number,
   updatedAt = new Date().toISOString(),
+  updatedBy?: RoomActorAttribution,
 ) => {
   const node = room.nodes.get(nodeId);
   if (!node || !Number.isFinite(order)) return false;
@@ -364,7 +383,23 @@ export const setWorkspaceRoomNodeOrder = (
   room.doc.transact(() => {
     node.set("order", order);
     node.set("updatedAt", updatedAt);
+    if (updatedBy) node.set("updatedBy", updatedBy);
   }, "tabula.node.order");
+  return true;
+};
+
+export const touchWorkspaceRoomNode = (
+  room: WorkspaceRoomCrdt,
+  nodeId: string,
+  updatedBy?: RoomActorAttribution,
+  updatedAt = new Date().toISOString(),
+) => {
+  const node = room.nodes.get(nodeId);
+  if (!node) return false;
+  room.doc.transact(() => {
+    node.set("updatedAt", updatedAt);
+    if (updatedBy) node.set("updatedBy", updatedBy);
+  }, "tabula.node.touch");
   return true;
 };
 

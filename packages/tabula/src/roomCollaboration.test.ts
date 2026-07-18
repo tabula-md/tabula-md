@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   createRoomActor,
+  parseRoomActorAttribution,
+  toRoomActorAttribution,
   createRoomActorColor,
   createRoomActorName,
   normalizeRoomCapabilities,
@@ -51,6 +53,25 @@ describe("room actor contract", () => {
     expect(parseRoomActor({ ...actor, name: "x".repeat(41) })).toBeNull();
     expect(parseRoomActor({ ...actor, joinedAt: "not-a-date" })).toBeNull();
     expect(parseRoomActor({ id: "peer-1" })).toBeNull();
+  });
+
+  it("stores a bounded actor snapshot for durable change attribution", () => {
+    const actor = createRoomActor({
+      id: "agent-1",
+      kind: "agent",
+      name: "Patient Agent",
+      client: "tabula-mcp",
+    });
+    const attribution = toRoomActorAttribution(actor);
+
+    expect(attribution).toEqual({
+      id: "agent-1",
+      kind: "agent",
+      name: "Patient Agent",
+      client: "tabula-mcp",
+    });
+    expect(parseRoomActorAttribution(attribution)).toEqual(attribution);
+    expect(parseRoomActorAttribution({ ...attribution, kind: "robot" })).toBeUndefined();
   });
 
   it("defaults missing capabilities but rejects unsupported wire capabilities", () => {

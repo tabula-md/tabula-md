@@ -230,6 +230,16 @@ describe("headless Room client", () => {
       await waitFor(() => first.getWorkspaceSnapshot().nodes.some(
         (node) => node.id === "brief" && node.parentId === "research" && node.title === "review.md",
       ));
+      expect(first.getWorkspaceSnapshot().nodes.find((node) => node.id === "brief")?.updatedBy).toMatchObject({
+        id: "second-agent",
+        kind: "agent",
+        client: "tabula-cli",
+      });
+      expect(first.getWorkspaceSnapshot().nodes.find((node) => node.id === "research")?.createdBy).toMatchObject({
+        id: "second-agent",
+        kind: "agent",
+        client: "tabula-cli",
+      });
 
       await second.upsertComment({
         id: "comment-1",

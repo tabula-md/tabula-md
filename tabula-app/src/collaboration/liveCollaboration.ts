@@ -4,6 +4,7 @@ import { Awareness } from "y-protocols/awareness";
 import {
   createWorkspaceRoomCrdt,
   createCollabSessionState,
+  createRoomActor,
   initializeWorkspaceRoomCrdt,
   validateWorkspaceRoomStructureLimits,
   validateWorkspaceRoomStructure,
@@ -12,6 +13,7 @@ import {
   type TextPatch,
   type WorkspaceRoomComment,
   type WorkspaceRoomStructureSnapshot,
+  toRoomActorAttribution,
 } from "@tabula-md/tabula";
 import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
 import type { CollabRuntimeAdapters } from "./collabRuntimeAdapters";
@@ -170,6 +172,15 @@ export const createWorkspaceRoomRuntime = ({
 }: ConnectOptions) => {
   const abortController = new AbortController();
   const room = createWorkspaceRoomCrdt({ roomId, initialize: emitInitialWorkspaceState });
+  const initialAttribution = toRoomActorAttribution(createRoomActor({
+    id: identity.id,
+    kind: identity.kind ?? "human",
+    name: identity.name,
+    color: identity.color,
+    client: identity.client ?? "tabula-md",
+    capabilities: identity.capabilities,
+    joinedAt: identity.joinedAt,
+  }));
   const awareness = new Awareness(room.doc);
   const sessionState = createCollabSessionState();
   let activeDocumentId: string | null = documentId ?? documents[0]?.id ?? null;
@@ -262,7 +273,12 @@ export const createWorkspaceRoomRuntime = ({
   if (emitInitialWorkspaceState) {
     initializeWorkspaceRoomCrdt(room, {
       nodes: [
-        ...folders.filter((folder) => folder.id !== WORKSPACE_ROOM_ROOT_ID).map((folder) => ({ ...folder, type: "folder" as const })),
+        ...folders.filter((folder) => folder.id !== WORKSPACE_ROOM_ROOT_ID).map((folder) => ({
+          ...folder,
+          type: "folder" as const,
+          createdBy: initialAttribution,
+          updatedBy: initialAttribution,
+        })),
         ...documents.map((document) => ({
           id: document.id,
           type: "document" as const,
@@ -270,6 +286,8 @@ export const createWorkspaceRoomRuntime = ({
           title: document.title,
           order: document.order,
           markdown: document.text,
+          createdBy: initialAttribution,
+          updatedBy: initialAttribution,
         })),
       ],
       comments: commentsToList(commentsByFileId),
@@ -289,6 +307,7 @@ export const createWorkspaceRoomRuntime = ({
   const crdtStore = createRoomCrdtStore({
     canApplyTextByteDelta,
     getDocumentByteLength: roomMetrics.getDocumentByteLength,
+    getAttribution: () => toRoomActorAttribution(presenceController.getRoomActor()),
     room,
   });
   structureStore.refresh();

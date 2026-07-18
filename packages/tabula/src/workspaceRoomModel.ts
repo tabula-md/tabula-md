@@ -1,3 +1,5 @@
+import type { RoomActorAttribution } from "./roomCollaboration";
+
 export const WORKSPACE_ROOM_SCHEMA_VERSION = 2;
 export const WORKSPACE_ROOM_ROOT_ID = "workspace-root";
 export const WORKSPACE_ROOM_MAX_CONTENT_BYTES = 10 * 1024 * 1024;
@@ -18,6 +20,8 @@ export type WorkspaceRoomNode = {
   order: number;
   createdAt: string;
   updatedAt: string;
+  createdBy?: RoomActorAttribution;
+  updatedBy?: RoomActorAttribution;
 };
 
 export type WorkspaceRoomDocumentSnapshot = WorkspaceRoomNode & {
