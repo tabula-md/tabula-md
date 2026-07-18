@@ -10,7 +10,7 @@ import type {
   TextChange,
 } from "@tabula-md/tabula";
 import type { CenterPopover } from "../uiTypes";
-import type { LiveSelection } from "../collaboration";
+import type { LiveSelection } from "../collaboration/liveCollaboration";
 import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
 import type { SearchMatch, SearchOptions } from "../editor/editorSearchModel";
 import type { SearchTarget } from "../editor/useEditorSearchController";
