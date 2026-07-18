@@ -1,4 +1,5 @@
 export const id = "workspace";
+export const requiresRoomService = true;
 export const description = "First screen, tabs, empty state, share, templates, and view-mode chrome.";
 const validRoomKey = "A".repeat(43);
 
