@@ -15,7 +15,10 @@ Product guardrails:
 
 ## Workflow
 
-- Follow `WORKFLOW.md` for scope, validation, and Graphite usage.
+- Read and follow `WORKFLOW.md` before modifying files or Git state.
+- Before writing, confirm that the session owns its branch and worktree. Shared
+  checkouts and remote branches follow the ownership and handoff rules in
+  `WORKFLOW.md`.
 - Keep one reviewable concern per pull request.
 - Use a stack only when changes are genuinely dependent.
 
