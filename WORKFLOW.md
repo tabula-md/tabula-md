@@ -18,15 +18,16 @@ This is the compact execution contract for this repository.
 - Each branch and worktree has one branch owner at a time. Only that owner may
   modify and submit it. A Graphite stack may span multiple owners and
   worktrees; each owner treats every other owner's branches as read-only.
+- A write-capable task uses a named branch. A detached worktree is read-only
+  until the task receives or creates a branch.
 - Before writing, inspect `git status --short --branch` and
   `git worktree list`. Stop and report if the checkout contains unrelated
   changes or its ownership is unclear.
-- A branch owner may create, modify, submit, synchronize, and restack work they
-  own. Stop before an operation that would modify, reorder, or delete another
-  owner's branch.
-- Only the repository owner or an explicitly authorized maintainer may merge,
-  reshape a stack across owners, delete shared branches, or clean shared
-  worktrees.
+- A branch owner may create, modify, submit, and run targeted Graphite
+  operations that affect only their branch. Stop before an operation that
+  would modify, reorder, or delete another owner's branch.
+- A maintainer owns merge, repository-wide synchronization, cross-owner stack
+  changes, branch deletion, and shared-worktree cleanup.
 - Before handing work to another session, stop the previous branch owner and
   leave a clean commit or an explicit description of remaining local changes.
 
@@ -67,8 +68,9 @@ explicit parent instead of waiting for the parent to merge:
 gt create codex/short-kebab-slug --onto parent-branch --all -m "type(scope): summary"
 ```
 
-Submit only the current review concern. Submit a draft early when exposing the
-dependency or review shape would help collaboration:
+`--no-stack` submits the current branch and any required downstack ancestors,
+but excludes descendants. Submit a draft early when exposing the dependency or
+review shape would help collaboration:
 
 ```sh
 gt submit --no-stack --ai
@@ -89,20 +91,26 @@ reviewed before its parent merges.
 
 A trusted remote session with repository and Graphite access may own and
 submit its branch directly. Otherwise it hands off its branch or commit
-reference, completed validation, and known risks to a trusted local
-maintainer. Use `gt get` to fetch an existing stack and `gt freeze` when a
-foreign downstack branch should remain read-only locally.
+reference, completed validation, and known risks to a maintainer.
 
-A branch owner may run `gt sync`, `gt restack`, `gt modify`, and `gt submit`
-when every affected branch is theirs. The repository owner or an explicitly
-authorized maintainer handles cross-owner stack changes, Graphite Stack Merge,
-and repository-wide cleanup such as `gt sync --delete-all`. For importing,
-reorganizing, navigating, or recovering a stack, use Graphite's official
+When building on another owner's branch, fetch only the needed downstack and
+restack only the owned branch:
+
+```sh
+gt get parent-branch --downstack --no-restack --no-checkout
+gt restack --only --branch owned-branch
+```
+
+Fetched foreign branches remain read-only; use `gt freeze` when an existing
+local branch needs that protection. A maintainer handles `gt sync`,
+cross-owner stack changes, Graphite Stack Merge, and repository-wide cleanup
+such as `gt sync --delete-all`. For importing, reorganizing, navigating, or
+recovering a stack, use Graphite's official
 [command cheatsheet](https://graphite.com/docs/cheatsheet). Prefer Graphite
 commands over raw Git rebases or branch mutations for tracked branches.
 
 For a single pull request when Graphite is unavailable, GitHub CLI is an
-acceptable fallback. Sync Graphite after it recovers.
+acceptable fallback. A maintainer reconciles Graphite after it recovers.
 
 ## Public Review
 
