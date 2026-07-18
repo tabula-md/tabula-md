@@ -12,7 +12,7 @@ type ValueUpdater<T> = T | ((currentValue: T) => T);
 
 type SetUiValue<T> = (nextValue: ValueUpdater<T>) => void;
 
-type DocumentWorkbenchRuntimeHandlers = Pick<
+type DocumentWorkbenchController = Pick<
   DocumentWorkbenchProps,
   | "onFormat"
   | "onSetReadingWidth"
@@ -23,7 +23,7 @@ type DocumentWorkbenchRuntimeHandlers = Pick<
   | "onToggleViewOptions"
 >;
 
-type UseDocumentWorkbenchRuntimeArgs = {
+type UseDocumentWorkbenchControllerOptions = {
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
   activeSyncScrolling: boolean;
@@ -38,7 +38,7 @@ type UseDocumentWorkbenchRuntimeArgs = {
   setTopPopover: SetUiValue<TopPopover>;
 };
 
-export function useDocumentWorkbenchRuntime({
+export function useDocumentWorkbenchController({
   activeLineNumbers,
   activeLineWrapping,
   activeSyncScrolling,
@@ -51,7 +51,7 @@ export function useDocumentWorkbenchRuntime({
   onSetSyncScrolling,
   setCenterPopover,
   setTopPopover,
-}: UseDocumentWorkbenchRuntimeArgs): DocumentWorkbenchRuntimeHandlers {
+}: UseDocumentWorkbenchControllerOptions): DocumentWorkbenchController {
   const closeCenterPopover = useCallback(() => {
     setCenterPopover(null);
   }, [setCenterPopover]);
