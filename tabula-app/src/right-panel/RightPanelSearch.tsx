@@ -13,8 +13,8 @@ import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
-import { MenuCheckboxItem, MenuContent, MenuRoot, MenuTrigger } from "./ui/Menu";
-import { PanelEmptyState } from "./right-panel/PanelEmptyState";
+import { MenuCheckboxItem, MenuContent, MenuRoot, MenuTrigger } from "../components/ui/Menu";
+import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelSearchProps = {
   copy: WorkspaceInterfaceCopy["sidePanel"]["search"];

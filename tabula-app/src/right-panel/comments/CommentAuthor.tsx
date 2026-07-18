@@ -1,4 +1,4 @@
-import type { FormatCommentDate, RightPanelCommentsCopy } from "./types";
+import { type FormatCommentDate, type RightPanelCommentsCopy } from "./types";
 
 type CommentAuthorProps = {
   authorName?: string;

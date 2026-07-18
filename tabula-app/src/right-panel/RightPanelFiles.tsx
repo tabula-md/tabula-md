@@ -33,16 +33,16 @@ import {
   getValidDropFolderIds,
   type DraggedTreeItem,
   type FileTreeNode,
-} from "./right-panel/fileTreeModel";
+} from "./fileTreeModel";
 import type { WorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuRoot,
   ContextMenuTrigger,
-} from "./ui/ContextMenu";
-import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "./ui/Menu";
-import { PanelEmptyState } from "./right-panel/PanelEmptyState";
+} from "../components/ui/ContextMenu";
+import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../components/ui/Menu";
+import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelFilesCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
 

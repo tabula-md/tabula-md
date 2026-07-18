@@ -7,7 +7,7 @@ import {
   Search,
 } from "lucide-react";
 import { getRightPanelCommentGroups } from "@tabula-md/tabula";
-import { useRightPanelCollapseState } from "../hooks/useRightPanelCollapseState";
+import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
 import type { RenameFileResult } from "../hooks/useWorkspaceFiles";
 import type { MarkdownHeading } from "@tabula-md/tabula";
 import type { RightPanelView } from "../uiTypes";
@@ -20,7 +20,7 @@ import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import { RightPanelSearch } from "./RightPanelSearch";
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
-import { PanelEmptyState } from "./right-panel/PanelEmptyState";
+import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelProps = {
   isOpen: boolean;

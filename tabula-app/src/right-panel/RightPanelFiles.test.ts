@@ -3,7 +3,7 @@ import {
   buildFileTree,
   flattenVisibleFileTree,
   getValidDropFolderIds,
-} from "./right-panel/fileTreeModel";
+} from "./fileTreeModel";
 import { WORKSPACE_ROOT_FOLDER_ID, createWorkspaceFile, createWorkspaceRootFolder } from "../workspaceStorage";
 
 describe("right panel file rows", () => {

@@ -16,7 +16,7 @@ const heading = (
   sourceLineIndex,
 });
 
-describe("right panel outline", () => {
+describe("right panel outline rows", () => {
   it("returns only headings that own nested descendants", () => {
     const overview = heading(2, "Overview", 0);
     const details = heading(3, "Details", 2);

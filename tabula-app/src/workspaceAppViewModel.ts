@@ -3,7 +3,7 @@ import type { DocumentWorkbenchProps } from "./document/DocumentWorkbench";
 import type { WorkspaceEmptySurfaceProps } from "./components/WorkspaceEmptySurface";
 import type { WorkspaceMenuSurfaceProps } from "./components/WorkspaceMenuSurface";
 import type { WorkspaceOverlaySurfaceProps } from "./components/WorkspaceOverlaySurface";
-import type { WorkspaceRightPanelProps } from "./components/WorkspaceRightPanel";
+import type { WorkspaceRightPanelProps } from "./right-panel/WorkspaceRightPanel";
 import type { WorkspaceTopChromeProps } from "./components/WorkspaceTopChrome";
 import type { LiveRoomOpenState } from "./liveRoomOpenState";
 import type { WorkspaceFile } from "./workspaceStorage";

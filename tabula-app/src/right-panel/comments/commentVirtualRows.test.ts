@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createWorkspaceFile } from "../../../workspaceStorage";
+import { createWorkspaceFile } from "../../workspaceStorage";
 import { getCommentVirtualRows } from "./commentVirtualRows";
 
 const comment = (id: string, resolved = false) => ({
