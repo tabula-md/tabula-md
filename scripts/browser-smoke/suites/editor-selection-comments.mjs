@@ -1,4 +1,5 @@
 export const id = "editor-selection-comments";
+export const requiresRoomService = true;
 export const description = "Text selection surfaces, selection comments, and editor/preview comment anchors.";
 
 export async function run(ctx) {

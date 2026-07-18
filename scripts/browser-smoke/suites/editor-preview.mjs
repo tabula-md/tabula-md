@@ -1,4 +1,5 @@
 export const id = "editor-preview";
+export const requiresRoomService = true;
 export const description = "Editor chrome, Markdown preview rendering, toolbar behavior, and source editing.";
 
 export async function run(ctx) {

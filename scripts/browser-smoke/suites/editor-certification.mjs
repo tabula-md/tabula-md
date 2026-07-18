@@ -1,6 +1,7 @@
 import { buildEditorCertificationMarkdown } from "../support/editor-fixtures.mjs";
 
 export const id = "editor-certification";
+export const requiresRoomService = true;
 export const description = "Editor foundation certification for Markdown text, selection, layout, undo, narrow viewports, and remote cursor invariants.";
 
 const getEditorLines = async (page) =>

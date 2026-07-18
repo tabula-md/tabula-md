@@ -4,6 +4,7 @@ import {
 } from "../support/editor-fixtures.mjs";
 
 export const id = "collaboration-editor-torture";
+export const requiresRoomService = true;
 export const description = "Deterministic live collaboration editor torture smoke.";
 
 const longParagraph = Array.from({ length: 120 }, (_, index) => `long-segment-${index + 1}`).join(" ");

@@ -1,4 +1,5 @@
 export const id = "collaboration-memory";
+export const requiresRoomService = true;
 export const description = "Live collaboration connect/disconnect heap regression smoke.";
 
 const CONNECT_DISCONNECT_CYCLES = 5;

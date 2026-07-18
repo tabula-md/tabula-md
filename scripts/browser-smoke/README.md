@@ -19,6 +19,10 @@ npm run test:browser -- --suite=editor-preview
 TABULA_BROWSER_SMOKE_SUITE=panels npm run test:browser
 ```
 
+Focused suites start only the services they exercise. Editor, layout, and
+panel suites do not require a room checkout or Firebase emulator. Suites that
+start a live session declare their room dependency in the suite module.
+
 Run a deployed collaboration path by pointing the smoke runner at your app and room service:
 
 ```sh

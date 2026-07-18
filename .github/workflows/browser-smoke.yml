@@ -36,6 +36,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: tabula-md/tabula-room
+          # Pull requests use the known-compatible relay; scheduled runs test room main.
+          ref: ${{ github.event_name == 'pull_request' && '44cc9d5f87b770e7e5097af83aa445c8234950bd' || 'main' }}
           path: tabula-room
 
       - name: Set up Node
@@ -43,12 +45,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-
-      - name: Set up Java for Firebase emulators
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
 
       - name: Install app dependencies
         run: npm ci

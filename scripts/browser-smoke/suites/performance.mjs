@@ -7,6 +7,7 @@ import {
 } from "../support/editor-fixtures.mjs";
 
 export const id = "performance";
+export const requiresRoomService = true;
 export const description = "Long-document split resize hot-path regression checks.";
 
 const LARGE_SPLIT_LINE_COUNT = 3_000;

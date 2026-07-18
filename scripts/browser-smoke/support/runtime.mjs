@@ -1,16 +1,12 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import fs from "node:fs";
-import net from "node:net";
 import path from "node:path";
 import { chromium } from "playwright";
 
 const port = Number(process.env.TABULA_TEST_PORT ?? 5187);
 const roomPort = Number(process.env.TABULA_TEST_ROOM_PORT ?? 3012);
 const jsonPort = Number(process.env.TABULA_TEST_JSON_PORT ?? 3014);
-const firestorePort = 8080;
-const firebaseStoragePort = 9199;
-const firebaseStartTimeoutMs = Number(process.env.TABULA_TEST_FIREBASE_START_TIMEOUT_MS ?? 120_000);
 const externalUrl = process.env.TABULA_TEST_URL;
 const baseUrl = externalUrl ?? `http://127.0.0.1:${port}`;
 const roomUrl = (process.env.VITE_TABULA_ROOM_URL ?? `http://127.0.0.1:${roomPort}`).replace(/\/$/, "");
@@ -45,30 +41,6 @@ const waitForServer = async (url, timeoutMs = 20_000) => {
   }
 
   throw new Error(`Timed out waiting for ${url}${lastError ? `: ${lastError.message}` : ""}`);
-};
-
-const assertPortAvailable = (port) => new Promise((resolve, reject) => {
-  const server = net.createServer();
-  server.once("error", () => reject(new Error(`Browser smoke port ${port} is already in use.`)));
-  server.once("listening", () => server.close(resolve));
-  server.listen(port, "127.0.0.1");
-});
-
-const waitForPort = async (port, timeoutMs = 20_000) => {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const connected = await new Promise((resolve) => {
-      const socket = net.createConnection({ host: "127.0.0.1", port });
-      socket.once("connect", () => {
-        socket.destroy();
-        resolve(true);
-      });
-      socket.once("error", () => resolve(false));
-    });
-    if (connected) return;
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error(`Timed out waiting for 127.0.0.1:${port}`);
 };
 
 const launchBrowser = async ({ naturalBackgrounding = false } = {}) => {
@@ -483,70 +455,8 @@ const spawnJsonServer = async () => {
   return jsonServer;
 };
 
-const spawnFirebaseEmulators = async () => {
-  await Promise.all([
-    assertPortAvailable(firestorePort),
-    assertPortAvailable(firebaseStoragePort),
-  ]);
-  const firebaseProcess = spawn(
-    isWindows ? "npx.cmd" : "npx",
-    [
-      "--yes",
-      "firebase-tools@15.22.4",
-      "emulators:start",
-      "--only",
-      "firestore,storage",
-      "--project",
-      "tabula-local",
-      "--config",
-      "scripts/browser-smoke/fixtures/firebase/firebase.json",
-    ],
-    {
-      cwd: process.cwd(),
-      detached: !isWindows,
-      env: { ...process.env },
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-  let firebaseOutput = "";
-  const captureFirebaseOutput = (chunk) => {
-    firebaseOutput = `${firebaseOutput}${chunk}`.slice(-16_000);
-  };
-  firebaseProcess.stdout.on("data", captureFirebaseOutput);
-  firebaseProcess.stderr.on("data", captureFirebaseOutput);
-  firebaseProcess.on("error", (error) => {
-    throw error;
-  });
-  await new Promise((resolve, reject) => {
-    const handleExit = (code) => {
-      const output = firebaseOutput.trim();
-      reject(new Error(
-        `Firebase emulators exited before becoming ready (code ${code ?? "unknown"}).${output ? `\n${output}` : ""}`,
-      ));
-    };
-    firebaseProcess.once("exit", handleExit);
-    Promise.all([
-      waitForServer(`http://127.0.0.1:${firestorePort}`, firebaseStartTimeoutMs),
-      waitForPort(firebaseStoragePort, firebaseStartTimeoutMs),
-    ]).then(
-      () => {
-        firebaseProcess.off("exit", handleExit);
-        resolve();
-      },
-      async (error) => {
-        firebaseProcess.off("exit", handleExit);
-        await stopProcess(firebaseProcess, { processGroup: true });
-        const output = firebaseOutput.trim();
-        reject(new Error(`${error.message}${output ? `\n${output}` : ""}`));
-      },
-    );
-  });
-  return firebaseProcess;
-};
-
-const startLocalServers = async ({ withJsonServer = false } = {}) => {
-  const firebaseProcess = await spawnFirebaseEmulators();
-  const roomServer = await spawnRoomServer();
+const startLocalServers = async ({ withJsonServer = false, withRoomServer = false } = {}) => {
+  const roomServer = withRoomServer ? await spawnRoomServer() : null;
   const jsonServer = withJsonServer ? await spawnJsonServer() : null;
   const appServerArgs =
     appServerMode === "preview"
@@ -561,10 +471,7 @@ const startLocalServers = async ({ withJsonServer = false } = {}) => {
       env: {
         ...process.env,
         BROWSER: "none",
-        VITE_TABULA_FIREBASE_EMULATOR_HOST: "127.0.0.1",
-        VITE_TABULA_FIRESTORE_EMULATOR_PORT: String(firestorePort),
-        VITE_TABULA_FIREBASE_STORAGE_EMULATOR_PORT: String(firebaseStoragePort),
-        VITE_TABULA_ROOM_URL: roomUrl,
+        ...(withRoomServer ? { VITE_TABULA_ROOM_URL: roomUrl } : {}),
         ...(withJsonServer ? { VITE_TABULA_JSON_URL: jsonUrl } : {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -577,7 +484,7 @@ const startLocalServers = async ({ withJsonServer = false } = {}) => {
   });
   await waitForServer(baseUrl);
 
-  return { firebaseProcess, roomServer, webServer, jsonServer };
+  return { roomServer, webServer, jsonServer };
 };
 
 const stopProcess = async (childProcess, { processGroup = false } = {}) => {
@@ -611,16 +518,17 @@ export const smokeConfig = {
 export async function runBrowserSmoke(suites) {
   const selectedSuites = selectSuites(suites);
   const needsJsonServer = selectedSuites.some((suite) => suite.requiresJsonService);
+  const needsRoomServer = selectedSuites.some((suite) => suite.requiresRoomService);
   let webServer;
   let roomServer;
   let jsonServer;
-  let firebaseProcess;
   let browser;
 
   try {
     if (!externalUrl) {
-      ({ firebaseProcess, webServer, roomServer, jsonServer } = await startLocalServers({
+      ({ webServer, roomServer, jsonServer } = await startLocalServers({
         withJsonServer: needsJsonServer,
+        withRoomServer: needsRoomServer,
       }));
     }
 
@@ -673,6 +581,5 @@ export async function runBrowserSmoke(suites) {
     await stopProcess(webServer, { processGroup: true });
     await stopProcess(roomServer, { processGroup: true });
     await stopProcess(jsonServer, { processGroup: true });
-    await stopProcess(firebaseProcess, { processGroup: true });
   }
 }

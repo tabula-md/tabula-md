@@ -1,4 +1,5 @@
 export const id = "collaboration-lifecycle";
+export const requiresRoomService = true;
 export const description = "Live room recovery after a real browser page freeze.";
 export const hiddenFeature = true;
 export const requiresNaturalBackgrounding = true;

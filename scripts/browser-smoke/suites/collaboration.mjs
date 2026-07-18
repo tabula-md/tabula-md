@@ -1,4 +1,5 @@
 export const id = "collaboration";
+export const requiresRoomService = true;
 export const description = "Live collaboration room synchronization smoke.";
 
 export async function run(ctx) {
