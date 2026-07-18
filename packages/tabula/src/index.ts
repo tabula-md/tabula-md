@@ -6,14 +6,14 @@ export type {
   ActiveDocumentPreviewRuntime,
   ActiveDocumentRuntime,
   DocumentBookmark,
-} from "./activeDocumentRuntime";
+} from "./document/activeDocumentRuntime";
 export {
   createActiveDocumentEditorRuntime,
   createActiveDocumentPreviewBodyRuntime,
   createActiveDocumentPreviewMetadataRuntime,
   createActiveDocumentPreviewRuntime,
   createActiveDocumentRuntime,
-} from "./activeDocumentRuntime";
+} from "./document/activeDocumentRuntime";
 
 export type {
   CollaborationCollaborator,
@@ -78,15 +78,15 @@ export type {
   DocumentToggleControl,
   DocumentViewModeIcon,
   DocumentViewModeOption,
-} from "./documentControlsModel";
-export { buildDocumentControlsModel } from "./documentControlsModel";
+} from "./document/documentControlsModel";
+export { buildDocumentControlsModel } from "./document/documentControlsModel";
 
-export { getMarkdownWordCount } from "./documentMetrics";
+export { getMarkdownWordCount } from "./document/documentMetrics";
 
 export type {
   FileViewMode,
   ReadingWidth,
-} from "./documentPrimitives";
+} from "./document/documentPrimitives";
 export {
   DEFAULT_SPLIT_EDITOR_RATIO,
   FILE_VIEW_MODES,
@@ -94,14 +94,14 @@ export {
   MIN_SPLIT_EDITOR_RATIO,
   READING_WIDTHS,
   clampSplitEditorRatio,
-} from "./documentPrimitives";
+} from "./document/documentPrimitives";
 
 export type {
   DocumentSurfaceDocumentState,
   DocumentSurfaceModel,
   DocumentSurfaceState,
-} from "./documentSurfaceModel";
-export { buildDocumentSurface } from "./documentSurfaceModel";
+} from "./document/documentSurfaceModel";
+export { buildDocumentSurface } from "./document/documentSurfaceModel";
 
 export type {
   DocumentBufferTextReader,
@@ -110,7 +110,7 @@ export type {
   EditorDocumentRuntimeFlushResult,
   EditorDocumentRuntimeSnapshot,
   PendingDocumentBufferCommit,
-} from "./documentBuffer";
+} from "./document/documentBuffer";
 export {
   createEditorDocumentRuntime,
   createDocumentBufferTextState,
@@ -118,7 +118,7 @@ export {
   getDocumentBufferVisibleText,
   resolvePendingDocumentBufferText,
   shouldCancelPendingDocumentBufferCommit,
-} from "./documentBuffer";
+} from "./document/documentBuffer";
 
 export type {
   JsonShareCreateResponse,
@@ -519,8 +519,8 @@ export type {
 } from "./shareViewModel";
 export { buildShareViewModel } from "./shareViewModel";
 
-export type { StatusBarSaveState } from "./statusBarViewModel";
-export { getStatusBarSaveState } from "./statusBarViewModel";
+export type { StatusBarSaveState } from "./document/statusBarViewModel";
+export { getStatusBarSaveState } from "./document/statusBarViewModel";
 
 export type { TextChange, TextPatch } from "./textPatches";
 export {

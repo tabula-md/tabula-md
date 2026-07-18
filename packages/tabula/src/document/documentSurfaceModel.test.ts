@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createActiveDocumentRuntime } from "./activeDocumentRuntime";
 import { buildDocumentSurface } from "./documentSurfaceModel";
-import type { WorkspaceModelFile } from "./workspaceModel";
+import type { WorkspaceModelFile } from "../workspaceModel";
 
 const file = (
   overrides: Partial<WorkspaceModelFile> = {},
