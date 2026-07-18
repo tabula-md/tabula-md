@@ -1,14 +1,14 @@
-import type { WorkspaceRoomComment } from "@tabula-md/tabula";
+import {
+  getActiveWorkspaceStatus,
+  getWorkspaceStatusLabel,
+  type WorkspaceRoomComment,
+} from "@tabula-md/tabula";
 import type {
   Collaborator,
   CollabRecoveryEvent,
 } from "../collaboration/liveCollaboration";
 import type { WorkspaceFile } from "../workspaceStorage";
 import type { RoomWorkspaceSession } from "../workspace/session/WorkspaceSession";
-import {
-  getActiveWorkspaceStatus,
-  getWorkspaceStatusLabel,
-} from "../workspace";
 import { useCollaborationRoom } from "./useCollaborationRoom";
 
 type UseWorkspaceCollaborationRuntimeOptions = {
