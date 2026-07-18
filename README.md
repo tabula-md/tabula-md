@@ -127,6 +127,10 @@ See [Development](DEVELOPMENT.md) for commands and architecture.
 
 ## Project
 
+- [Documentation](docs/README.md)
+- [Live collaboration](docs/live-collaboration.md)
+- [Export links](docs/shareable-links.md)
+- [Self-hosting](docs/self-hosting.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
 - [Privacy](PRIVACY.md)

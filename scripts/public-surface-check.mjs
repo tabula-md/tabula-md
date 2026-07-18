@@ -17,6 +17,44 @@ const productDemoPaths = [
   ".github/assets/tabula-product-demo.gif",
   ".github/assets/tabula-agent-demo.gif",
 ];
+const contributorContractPaths = ["AGENTS.md", "WORKFLOW.md"];
+
+for (const contractPath of contributorContractPaths) {
+  if (!existsSync(contractPath)) {
+    errors.push(`${contractPath}: public contributor contract is missing`);
+  }
+}
+
+if (existsSync("AGENTS.md")) {
+  const agentGuide = readFileSync("AGENTS.md", "utf8");
+  for (const requiredInstruction of [
+    "Tabula.md",
+    "WORKFLOW.md",
+    "npm test",
+    "npm run build",
+    'use "Comments", not',
+  ]) {
+    if (!agentGuide.includes(requiredInstruction)) {
+      errors.push(`AGENTS.md: missing contributor guidance ${requiredInstruction}`);
+    }
+  }
+}
+
+if (existsSync("WORKFLOW.md")) {
+  const workflow = readFileSync("WORKFLOW.md", "utf8");
+  for (const requiredInstruction of [
+    "one reviewable concern",
+    "git diff --check",
+    "gt create",
+    "**Why:**",
+    "**What:**",
+    "**Verify:**",
+  ]) {
+    if (!workflow.includes(requiredInstruction)) {
+      errors.push(`WORKFLOW.md: missing workflow contract ${requiredInstruction}`);
+    }
+  }
+}
 
 const appIndex = readFileSync(appIndexPath, "utf8");
 const requiredAppMetadata = [
@@ -83,9 +121,7 @@ for (const demoPath of productDemoPaths) {
 const allowedSecretFixturePaths = new Set();
 
 const forbiddenTrackedPaths = new Map([
-  ["AGENTS.md", "local agent instructions do not belong in the public repository"],
   ["CLAUDE.md", "local agent instructions do not belong in the public repository"],
-  ["WORKFLOW.md", "maintainer workflow belongs outside the public repository"],
   ["WORKFLOW.ko.md", "maintainer workflow belongs outside the public repository"],
   ["TODO.md", "maintainer planning notes belong outside the public repository"],
   ["TODO.ko.md", "maintainer planning notes belong outside the public repository"],
@@ -116,7 +152,6 @@ const forbiddenTrackedPrefixes = new Map([
   [".codex/", "local agent hooks do not belong in the public repository"],
   [".linear/", "private tracker templates do not belong in the public repository"],
   [".release/", "private release templates do not belong in the public repository"],
-  ["docs/", "maintainer docs belong outside the public repository"],
   ["knowledge/", "maintainer knowledge bundles belong outside the public repository"],
   ["firebase-project/", "provider-specific project scaffolding belongs outside the public repository"],
 ]);
