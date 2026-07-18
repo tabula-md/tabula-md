@@ -44,7 +44,7 @@ type RightPanelProps = {
   activeReplyCommentId?: string | null;
   replyDraftByCommentId: Record<string, string>;
   onSetView: (view: RightPanelView) => void;
-  onToggleSidePanel: () => void;
+  onClose: () => void;
   onNewFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -96,7 +96,7 @@ export function RightPanel({
   activeReplyCommentId,
   replyDraftByCommentId,
   onSetView,
-  onToggleSidePanel,
+  onClose,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -126,7 +126,7 @@ export function RightPanel({
   formatCommentDate,
 }: RightPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
-  const toggleSidePanelLabel = getWorkspaceChromeCopy(language).topChrome.toggleSidePanel;
+  const closePanelLabel = getWorkspaceChromeCopy(language).topChrome.toggleSidePanel;
   const {
     showResolved,
     collapsedReplyIds,
@@ -195,12 +195,12 @@ export function RightPanel({
           {renderTab("search", copy.tabs.search, <Search size={14} />)}
         </nav>
         <button
-          className="side-panel-overlay-toggle"
+          className="right-panel-overlay-toggle"
           type="button"
-          aria-label={toggleSidePanelLabel}
-          data-tooltip={toggleSidePanelLabel}
+          aria-label={closePanelLabel}
+          data-tooltip={closePanelLabel}
           aria-pressed="true"
-          onClick={onToggleSidePanel}
+          onClick={onClose}
         >
           <PanelRightClose size={16} />
         </button>

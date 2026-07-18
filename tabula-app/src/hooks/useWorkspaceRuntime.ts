@@ -76,7 +76,7 @@ import { useWorkspaceKeyboardShortcuts } from "./useWorkspaceKeyboardShortcuts";
 import { useWorkspaceMenuController } from "./useWorkspaceMenuController";
 import { useWorkspacePersistenceRuntime } from "./useWorkspacePersistenceRuntime";
 import { useWorkspacePreferences } from "./useWorkspacePreferences";
-import { useWorkspaceProjectContextRuntime } from "./useWorkspaceProjectContextRuntime";
+import { useWorkspaceRightPanelController } from "./useWorkspaceRightPanelController";
 import { useWorkspaceRouteRuntime } from "./useWorkspaceRouteRuntime";
 import { useWorkspaceShareController } from "./useWorkspaceShareController";
 import { useWorkspaceTopChromeController } from "./useWorkspaceTopChromeController";
@@ -1158,8 +1158,8 @@ export function useWorkspaceRuntime() {
     handleLineAnnotationAction,
   );
   const openStableCommentMarker = useEventCallback(openCommentMarker);
-  const { sidePanelProps } =
-    useWorkspaceProjectContextRuntime({
+  const { rightPanelProps } =
+    useWorkspaceRightPanelController({
       activeCommentId: focusedCommentId,
       activeFile,
       activeFileTitle,
@@ -1354,7 +1354,7 @@ export function useWorkspaceRuntime() {
       onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
       onReplaceWorkspaceWithFolder: replaceWorkspaceWithFolder,
     },
-    sidePanelProps,
+    rightPanelProps,
     topChromeProps,
     workbenchProps: {
       activeBookmarks,

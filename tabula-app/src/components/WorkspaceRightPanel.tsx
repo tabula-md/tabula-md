@@ -3,49 +3,49 @@ import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../b
 import { RightPanel } from "./RightPanel";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import {
-  clampSidePanelWidth,
-  DEFAULT_SIDE_PANEL_WIDTH,
-  SidePanelDivider,
-} from "./SidePanelDivider";
+  clampRightPanelWidth,
+  DEFAULT_RIGHT_PANEL_WIDTH,
+  RightPanelDivider,
+} from "./RightPanelDivider";
 
 type RightPanelProps = ComponentProps<typeof RightPanel>;
 
-const SIDE_PANEL_WIDTH_STORAGE_KEY = "tabula-side-panel-width-v1";
+const RIGHT_PANEL_WIDTH_STORAGE_KEY = "tabula-side-panel-width-v1";
 
-const readSidePanelWidth = () => {
-  if (typeof window === "undefined") return DEFAULT_SIDE_PANEL_WIDTH;
+const readRightPanelWidth = () => {
+  if (typeof window === "undefined") return DEFAULT_RIGHT_PANEL_WIDTH;
   const storedWidth = Number(readBrowserStorage(
     getBrowserStorage("localStorage"),
-    SIDE_PANEL_WIDTH_STORAGE_KEY,
+    RIGHT_PANEL_WIDTH_STORAGE_KEY,
   ));
   return Number.isFinite(storedWidth) && storedWidth > 0
-    ? clampSidePanelWidth(storedWidth, window.innerWidth)
-    : DEFAULT_SIDE_PANEL_WIDTH;
+    ? clampRightPanelWidth(storedWidth, window.innerWidth)
+    : DEFAULT_RIGHT_PANEL_WIDTH;
 };
 
-export type WorkspaceSidePanelProps = Omit<
+export type WorkspaceRightPanelProps = Omit<
   RightPanelProps,
-  "activeFileId" | "isLiveWorkspace" | "onToggleSidePanel"
+  "activeFileId" | "isLiveWorkspace" | "onClose"
 > & {
   activeFileId?: string;
   isLive: boolean;
   onClose: () => void;
 };
 
-export function WorkspaceSidePanel({
+export function WorkspaceRightPanel({
   activeFileId,
   isLive,
   onClose,
   ...rightPanelProps
-}: WorkspaceSidePanelProps) {
-  const [width, setWidth] = useState(readSidePanelWidth);
+}: WorkspaceRightPanelProps) {
+  const [width, setWidth] = useState(readRightPanelWidth);
   const copy = getWorkspaceInterfaceCopy(rightPanelProps.language).sidePanel;
 
   useLayoutEffect(() => {
-    document.documentElement.style.setProperty("--side-panel-width", `${width}px`);
+    document.documentElement.style.setProperty("--right-panel-width", `${width}px`);
     writeBrowserStorage(
       getBrowserStorage("localStorage"),
-      SIDE_PANEL_WIDTH_STORAGE_KEY,
+      RIGHT_PANEL_WIDTH_STORAGE_KEY,
       String(width),
     );
   }, [width]);
@@ -60,7 +60,7 @@ export function WorkspaceSidePanel({
             aria-label={copy.dismiss}
             onClick={onClose}
           />
-          <SidePanelDivider
+          <RightPanelDivider
             label={copy.resize}
             width={width}
             onWidthChange={setWidth}
@@ -71,7 +71,7 @@ export function WorkspaceSidePanel({
         {...rightPanelProps}
         activeFileId={activeFileId ?? ""}
         isLiveWorkspace={isLive}
-        onToggleSidePanel={onClose}
+        onClose={onClose}
       />
     </>
   );
