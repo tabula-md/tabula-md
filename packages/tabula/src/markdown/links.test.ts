@@ -4,7 +4,7 @@ import {
   getMarkdownLinks,
   isSafeMarkdownLinkUrl,
   updateMarkdownLinkUrl,
-} from "./markdown/links";
+} from "./links";
 
 describe("markdown links", () => {
   it("detects inline link source ranges", () => {

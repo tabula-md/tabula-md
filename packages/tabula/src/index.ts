@@ -211,7 +211,7 @@ export type {
   MarkdownHeading,
   ParsedFrontmatter,
   PreviewBody,
-} from "./markdown";
+} from "./markdown/parse";
 export {
   getLineNumberForOffset,
   getLineStartOffset,
@@ -220,7 +220,7 @@ export {
   getOutlineHeadingsFromMarkdown,
   getPreviewBody,
   parseFrontmatter,
-} from "./markdown";
+} from "./markdown/parse";
 
 export type {
   PreviewBlock,
@@ -285,10 +285,10 @@ export {
 export type {
   MarkdownRangeEdit,
   MarkdownRangeSelection,
-} from "./markdownEditing";
+} from "./markdown/editing";
 export {
   getMarkdownIndentEdit,
-} from "./markdownEditing";
+} from "./markdown/editing";
 
 export type {
   MarkdownLink,
@@ -316,8 +316,8 @@ export type {
   MarkdownFormatCommand,
   MarkdownFormatResult,
   MarkdownFormatSelection,
-} from "./markdownFormatting";
-export { applyMarkdownFormat } from "./markdownFormatting";
+} from "./markdown/formatting";
+export { applyMarkdownFormat } from "./markdown/formatting";
 
 export type {
   CommentScope,

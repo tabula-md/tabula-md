@@ -1,7 +1,7 @@
 import { isMap, isScalar, parseDocument } from "yaml";
 
 export type ParsedFrontmatter = {
-  attributes: Array<{ key: string; value: string }>;
+  attributes: { key: string; value: string }[];
   body: string;
 };
 

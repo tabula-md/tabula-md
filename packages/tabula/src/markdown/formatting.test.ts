@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyMarkdownFormat, type MarkdownFormatCommand } from "./markdownFormatting";
+import { applyMarkdownFormat, type MarkdownFormatCommand } from "./formatting";
 
 describe("markdown formatting commands", () => {
   it("wraps selected text with bold markers", () => {

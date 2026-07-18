@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getMarkdownIndentEdit } from "./markdownEditing";
+import { getMarkdownIndentEdit } from "./editing";
 
 describe("markdown editing input rules", () => {
   it("indents the current list item on Tab", () => {

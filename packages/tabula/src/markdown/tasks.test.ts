@@ -4,7 +4,7 @@ import {
   getMarkdownTaskMarkers,
   toggleMarkdownTaskAtOffset,
   toggleMarkdownTaskOnLine,
-} from "./markdown/tasks";
+} from "./tasks";
 
 describe("markdown task markers", () => {
   it("detects checklist marker ranges", () => {
