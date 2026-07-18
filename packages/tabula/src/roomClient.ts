@@ -4,6 +4,8 @@ import type {
 
 export type {
   HeadlessRoomCheckpointStatus,
+  HeadlessRoomChange,
+  HeadlessRoomChangeResult,
   HeadlessRoomClient,
   HeadlessRoomClientOptions,
   HeadlessRoomClientState,
@@ -11,6 +13,7 @@ export type {
   HeadlessRoomConnectionStatus,
   HeadlessRoomExpectedNode,
   HeadlessRoomHydrationStatus,
+  HeadlessRoomSelection,
 } from "./headlessRoomClient.js";
 export type {
   LoadedWorkspaceRoomCheckpoint,
