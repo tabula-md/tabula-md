@@ -14,6 +14,8 @@ import {
   ROOM_ID_BYTES,
   ROOM_KEY_BYTES,
   type ParsedRoomLocation,
+  type EncryptedEnvelope,
+  type EnvelopeKind,
   type RoomSession,
 } from "@tabula-md/tabula";
 import {
@@ -21,7 +23,6 @@ import {
   tabulaServiceConfig,
   type RoomServiceLocation,
 } from "../serviceConfig";
-import type { EncryptedEnvelope, EnvelopeKind } from "./roomProtocol";
 
 type ResolveTabulaRoomUrlOptions = {
   configuredUrl?: string | null;

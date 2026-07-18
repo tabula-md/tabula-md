@@ -1,4 +1,4 @@
-import type { EncryptedEnvelope, EnvelopeKind } from "./roomProtocol";
+import type { EncryptedEnvelope, EnvelopeKind } from "@tabula-md/tabula";
 import type { RoomCheckpointStore } from "./roomCheckpointStore";
 import type { CreateRoomTransport } from "./roomTransport";
 
