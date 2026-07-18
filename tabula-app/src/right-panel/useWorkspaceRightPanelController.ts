@@ -4,7 +4,7 @@ import {
   useRef,
   type RefObject,
 } from "react";
-import type { WorkspaceRightPanelProps } from "../components/WorkspaceRightPanel";
+import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
 import type { MarkdownHeading } from "@tabula-md/tabula";
 import {
   getActiveOutlineHeadingIndex,
@@ -18,7 +18,7 @@ import type {
   WorkspaceFile,
   WorkspaceFolder,
 } from "../workspaceStorage";
-import type { WorkspaceLanguage } from "./useWorkspacePreferences";
+import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 
 type FocusTextRange = (start: number, end?: number) => void;
 

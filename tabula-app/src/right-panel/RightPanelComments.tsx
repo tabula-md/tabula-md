@@ -7,15 +7,15 @@ import {
   type RightPanelCommentGroup as CoreRightPanelCommentGroup,
 } from "@tabula-md/tabula";
 import type { FileComment, WorkspaceFile } from "../workspaceStorage";
-import { CommentComposer } from "./right-panel/comments/CommentComposer";
-import { CommentCard } from "./right-panel/comments/CommentCard";
-import { getCommentVirtualRows } from "./right-panel/comments/commentVirtualRows";
-import type { FormatCommentDate } from "./right-panel/comments/types";
-import type { RightPanelCommentsCopy } from "./right-panel/comments/types";
+import { CommentComposer } from "./comments/CommentComposer";
+import { CommentCard } from "./comments/CommentCard";
+import { getCommentVirtualRows } from "./comments/commentVirtualRows";
+import type { FormatCommentDate } from "./comments/types";
+import type { RightPanelCommentsCopy } from "./comments/types";
 import type { WorkspaceFileTabLabel } from "../workspaceDisplayTitles";
 import { stripMarkdownExtension } from "@tabula-md/tabula";
-import { MenuContent, MenuRadioGroup, MenuRadioItem, MenuRoot, MenuTrigger } from "./ui/Menu";
-import { PanelEmptyState } from "./right-panel/PanelEmptyState";
+import { MenuContent, MenuRadioGroup, MenuRadioItem, MenuRoot, MenuTrigger } from "../components/ui/Menu";
+import { PanelEmptyState } from "./PanelEmptyState";
 
 export type RightPanelCommentGroup = CoreRightPanelCommentGroup<WorkspaceFile, FileComment>;
 

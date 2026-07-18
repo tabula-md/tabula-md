@@ -1,4 +1,4 @@
-import { type RefObject } from "react";
+import type { RefObject } from "react";
 import { WORKSPACE_ROOM_MAX_COMMENT_LENGTH } from "@tabula-md/tabula";
 import type { RightPanelCommentsCopy } from "./types";
 

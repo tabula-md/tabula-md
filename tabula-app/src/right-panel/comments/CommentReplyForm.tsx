@@ -1,7 +1,7 @@
 import { WORKSPACE_ROOM_MAX_COMMENT_LENGTH } from "@tabula-md/tabula";
 import type { RightPanelCommentsCopy } from "./types";
 
-type CommentReplyFormProps = {
+interface CommentReplyFormProps {
   fileId: string;
   commentId: string;
   copy: RightPanelCommentsCopy;
@@ -9,7 +9,7 @@ type CommentReplyFormProps = {
   onCancelCommentReply: () => void;
   onReplyDraftChange: (commentId: string, draft: string) => void;
   onAddCommentReply: (fileId: string, commentId: string) => void;
-};
+}
 
 export function CommentReplyForm({
   fileId,

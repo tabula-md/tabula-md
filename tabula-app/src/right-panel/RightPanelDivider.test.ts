@@ -6,7 +6,7 @@ import {
   MIN_RIGHT_PANEL_WIDTH,
 } from "./RightPanelDivider";
 
-describe("right panel width", () => {
+describe("right panel divider width", () => {
   it("keeps the right panel within its desktop bounds", () => {
     expect(clampRightPanelWidth(100, 1440)).toBe(MIN_RIGHT_PANEL_WIDTH);
     expect(clampRightPanelWidth(900, 1440)).toBe(MAX_RIGHT_PANEL_WIDTH);

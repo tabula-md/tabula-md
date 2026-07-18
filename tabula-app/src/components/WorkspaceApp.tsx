@@ -3,7 +3,7 @@ import { LiveRoomLoadingSurface } from "./LiveRoomLoadingSurface";
 import { WorkspaceEmptySurface } from "./WorkspaceEmptySurface";
 import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";
 import { WorkspaceOverlaySurface } from "./WorkspaceOverlaySurface";
-import { WorkspaceRightPanel } from "./WorkspaceRightPanel";
+import { WorkspaceRightPanel } from "../right-panel/WorkspaceRightPanel";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { WorkspaceLoadingSurface } from "./WorkspaceLoadingSurface";
 import { useWorkspaceRuntime } from "../hooks/useWorkspaceRuntime";

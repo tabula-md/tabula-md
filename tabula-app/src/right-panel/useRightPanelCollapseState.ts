@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FileComment } from "../workspaceStorage";
 
-type UseRightPanelCollapseStateArgs = {
+type UseRightPanelCollapseStateOptions = {
   activeFileId: string;
   activeCommentId?: string | null;
   activeReplyCommentId?: string | null;
@@ -23,7 +23,7 @@ export function useRightPanelCollapseState({
   activeCommentId,
   activeReplyCommentId,
   commentsByFileId,
-}: UseRightPanelCollapseStateArgs) {
+}: UseRightPanelCollapseStateOptions) {
   const [showResolved, setShowResolved] = useState(false);
   const [collapsedReplyIds, setCollapsedReplyIds] = useState<Set<string>>(() => new Set());
   const [collapsedCommentFileIds, setCollapsedCommentFileIds] = useState<Set<string>>(() => new Set());
