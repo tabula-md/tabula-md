@@ -640,9 +640,9 @@ export async function run(ctx) {
     expect(emptyCommentsState.cardCount === 0, "Comments should start without comment cards.");
     expect(emptyCommentsState.actionCount === 0, "Comment actions should not appear when there are no comments.");
     expect(
-      (await page.locator(".right-comments-toolbar-action .lucide-plus").count()) === 1 &&
-        (await page.locator(".right-comments-toolbar-action .lucide-message-square-plus").count()) === 0,
-      "Comments should use the shared contextual plus command.",
+      (await page.locator(".right-comments-toolbar-action .lucide-plus").count()) === 0 &&
+        (await page.locator(".right-comments-empty-state .lucide-message-square-plus").count()) === 1,
+      "Empty Comments should replace the ambiguous toolbar plus with an instructional action.",
     );
     expect(Boolean(emptyCommentsState.contextLabel), "Comments should identify the active scope.");
     expect(!emptyCommentsState.contextLabel.startsWith("Comments on"), "Comments scope title should avoid repeated helper copy.");
@@ -655,8 +655,9 @@ export async function run(ctx) {
       "Comments should expose a quiet empty or resolved-only state.",
     );
     expect(
-      emptyCommentsState.emptyText === "No comments yet",
-      "The empty Comments panel should use the same quiet one-line state as the other panel views.",
+      emptyCommentsState.emptyText.includes("Select text to comment on a passage") &&
+        emptyCommentsState.emptyText.includes("Comment on document"),
+      "The empty Comments panel should explain selection comments and expose a document comment action.",
     );
     expect(emptyCommentsState.inputCount === 0, "Comments composer should stay closed until the user starts a comment.");
     expect(

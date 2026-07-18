@@ -55,6 +55,7 @@ type WorkspaceInterfaceMessages = {
   commentsShowCurrent: string;
   commentsShowAll: string;
   commentsNone: string;
+  commentsEmptyHint: string;
   panelNoDocumentOpen: string;
   commentsAs: string;
   commentsAuthorName: string;
@@ -141,6 +142,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsShowCurrent: "Show current file comments",
     commentsShowAll: "Show all comments",
     commentsNone: "No comments yet",
+    commentsEmptyHint:
+      "Select text to comment on a passage, or comment on the whole document.",
     panelNoDocumentOpen: "No document open",
     commentsAs: "as",
     commentsAuthorName: "Comment author name",
@@ -225,6 +228,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsShowCurrent: "현재 파일 댓글 보기",
     commentsShowAll: "모든 댓글 보기",
     commentsNone: "아직 댓글이 없습니다",
+    commentsEmptyHint:
+      "텍스트를 선택해 특정 부분에 댓글을 달거나 문서 전체에 댓글을 남겨보세요.",
     panelNoDocumentOpen: "열린 문서 없음",
     commentsAs: "작성자",
     commentsAuthorName: "댓글 작성자 이름",
@@ -309,6 +314,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsShowCurrent: "現在のファイルのコメントを表示",
     commentsShowAll: "すべてのコメントを表示",
     commentsNone: "コメントはまだありません",
+    commentsEmptyHint:
+      "テキストを選択して特定の箇所にコメントするか、文書全体にコメントできます。",
     panelNoDocumentOpen: "ドキュメントが開かれていません",
     commentsAs: "投稿者",
     commentsAuthorName: "コメント投稿者名",
@@ -393,6 +400,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsShowCurrent: "显示当前文件评论",
     commentsShowAll: "显示所有评论",
     commentsNone: "暂无评论",
+    commentsEmptyHint: "选择文本可评论具体内容，也可以评论整个文档。",
     panelNoDocumentOpen: "没有打开的文档",
     commentsAs: "作者",
     commentsAuthorName: "评论作者姓名",
@@ -477,6 +485,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsShowCurrent: "Mostrar comentarios del archivo actual",
     commentsShowAll: "Mostrar todos los comentarios",
     commentsNone: "Aún no hay comentarios",
+    commentsEmptyHint:
+      "Selecciona texto para comentar un fragmento o comenta todo el documento.",
     panelNoDocumentOpen: "No hay documento abierto",
     commentsAs: "como",
     commentsAuthorName: "Nombre del autor del comentario",
@@ -561,6 +571,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsShowCurrent: "Afficher les commentaires du fichier actuel",
     commentsShowAll: "Afficher tous les commentaires",
     commentsNone: "Aucun commentaire pour le moment",
+    commentsEmptyHint:
+      "Sélectionnez du texte pour commenter un passage, ou commentez l’ensemble du document.",
     panelNoDocumentOpen: "Aucun document ouvert",
     commentsAs: "en tant que",
     commentsAuthorName: "Nom de l’auteur du commentaire",
@@ -645,6 +657,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     commentsShowCurrent: "Kommentare der aktuellen Datei anzeigen",
     commentsShowAll: "Alle Kommentare anzeigen",
     commentsNone: "Noch keine Kommentare",
+    commentsEmptyHint:
+      "Wähle Text aus, um eine Stelle zu kommentieren, oder kommentiere das gesamte Dokument.",
     panelNoDocumentOpen: "Kein Dokument geöffnet",
     commentsAs: "als",
     commentsAuthorName: "Name des Kommentarautors",
@@ -759,6 +773,7 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         showCurrent: copy.commentsShowCurrent,
         showAll: copy.commentsShowAll,
         none: copy.commentsNone,
+        emptyHint: copy.commentsEmptyHint,
         as: copy.commentsAs,
         authorName: copy.commentsAuthorName,
         selectedPlaceholder: copy.commentsSelectedPlaceholder,

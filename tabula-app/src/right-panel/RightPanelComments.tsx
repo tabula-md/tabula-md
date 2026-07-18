@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ListFilter, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, ListFilter, MessageSquarePlus, Plus } from "lucide-react";
 import {
   getRightPanelCommentScopeModel,
   type CommentScope,
@@ -15,7 +15,6 @@ import type { RightPanelCommentsCopy } from "./comments/types";
 import type { WorkspaceFileTabLabel } from "../workspace/workspaceDisplayTitles";
 import { stripMarkdownExtension } from "@tabula-md/tabula";
 import { MenuContent, MenuRadioGroup, MenuRadioItem, MenuRoot, MenuTrigger } from "../ui/Menu";
-import { PanelEmptyState } from "./PanelEmptyState";
 
 export type RightPanelCommentGroup = CoreRightPanelCommentGroup<WorkspaceFile, FileComment>;
 
@@ -222,7 +221,7 @@ export function RightPanelComments({
           {commentScope === "current" ? currentFileLabel : copy.all}
         </span>
         <span className="right-comments-toolbar-actions">
-          {composerMode === null && (
+          {composerMode === null && hasAnyComments && (
             <button
               className="right-comments-toolbar-action"
               type="button"
@@ -256,7 +255,20 @@ export function RightPanelComments({
         </span>
       </div>
       <div className="right-comments-scroll" ref={commentScrollRef}>
-        {!hasAnyComments && <PanelEmptyState>{copy.none}</PanelEmptyState>}
+        {!hasAnyComments && composerMode === null && (
+          <div className="right-empty-state right-comments-empty-state">
+            <MessageSquarePlus size={18} aria-hidden="true" />
+            <p className="right-comments-empty-title">{copy.none}</p>
+            <p className="right-comments-empty-hint">{copy.emptyHint}</p>
+            <button
+              className="right-comments-empty-action"
+              type="button"
+              onClick={toggleDocumentComposer}
+            >
+              {copy.filePlaceholder}
+            </button>
+          </div>
+        )}
         {hasAnyComments && (
           <div
             className="right-comment-virtual-list"
