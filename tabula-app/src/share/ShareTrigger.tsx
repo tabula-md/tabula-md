@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import { Share2 } from "lucide-react";
+import { useEffect } from "react";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceMenuCopy } from "../workspaceLocale";
 import type { ConnectionStatus } from "../collaboration/liveCollaboration";

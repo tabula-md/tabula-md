@@ -3,8 +3,8 @@ import type { ConnectionStatus } from "../collaboration/liveCollaboration";
 import type { WorkspaceShareCopy } from "../workspaceLocale";
 import type { FileComment, LocationRoom, WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import { useJsonShareController } from "./useJsonShareController";
-import { useWorkspaceLiveRoomController } from "./useWorkspaceLiveRoomController";
-import type { StartedWorkspaceRoom } from "./useWorkspaceLiveRoomController";
+import { useWorkspaceLiveRoomController } from "../hooks/useWorkspaceLiveRoomController";
+import type { StartedWorkspaceRoom } from "../hooks/useWorkspaceLiveRoomController";
 
 type UseWorkspaceShareControllerOptions = {
   activeFile?: WorkspaceFile;

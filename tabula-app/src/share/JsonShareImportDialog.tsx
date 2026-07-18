@@ -1,5 +1,5 @@
 import { AlertTriangle, FileArchive, Loader2, X } from "lucide-react";
-import { ModalSurface } from "./ui/ModalSurface";
+import { ModalSurface } from "../components/ui/ModalSurface";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 

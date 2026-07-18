@@ -1,6 +1,6 @@
 import { Check, Copy, Link, LockKeyhole } from "lucide-react";
-import type { JsonShareController } from "../../hooks/useJsonShareController";
-import type { WorkspaceShareCopy } from "../../workspaceLocale";
+import type { JsonShareController } from "./useJsonShareController";
+import type { WorkspaceShareCopy } from "../workspaceLocale";
 
 type ShareExportResultProps = {
   copy: WorkspaceShareCopy;

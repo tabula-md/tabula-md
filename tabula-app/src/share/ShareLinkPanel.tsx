@@ -14,12 +14,12 @@ import { type ReactNode, useId } from "react";
 import type {
   ConnectionStatus,
   RoomRecoveryMode,
-} from "../../collaboration/liveCollaboration";
+} from "../collaboration/liveCollaboration";
 import type {
   WorkspaceChromeCopy,
   WorkspaceShareCopy,
-} from "../../workspaceLocale";
-import { TABULA_MCP_SETUP_URL } from "../../shareAgentHandoff";
+} from "../workspaceLocale";
+import { TABULA_MCP_SETUP_URL } from "./shareAgentHandoff";
 
 type ShareLinkPanelProps = {
   agentInviteCopied: boolean;

@@ -78,7 +78,7 @@ import { useWorkspacePersistenceRuntime } from "./useWorkspacePersistenceRuntime
 import { useWorkspacePreferences } from "./useWorkspacePreferences";
 import { useWorkspaceRightPanelController } from "../right-panel/useWorkspaceRightPanelController";
 import { useWorkspaceRouteRuntime } from "./useWorkspaceRouteRuntime";
-import { useWorkspaceShareController } from "./useWorkspaceShareController";
+import { useWorkspaceShareController } from "../share/useWorkspaceShareController";
 import { useWorkspaceTopChromeController } from "./useWorkspaceTopChromeController";
 import {
   getLiveRoomOpenState,
