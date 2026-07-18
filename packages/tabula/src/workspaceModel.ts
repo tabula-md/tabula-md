@@ -2,7 +2,7 @@ import {
   clampSplitEditorRatio,
   type FileViewMode,
   type ReadingWidth,
-} from "./documentPrimitives";
+} from "./document/documentPrimitives";
 
 export type WorkspaceModelFile = {
   id: string;

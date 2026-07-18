@@ -1,4 +1,4 @@
-import { type FileViewMode, type ReadingWidth } from "./documentPrimitives";
+import { type FileViewMode, type ReadingWidth } from "./document/documentPrimitives";
 import { normalizeWorkspaceFileTitle } from "./workspaceModel";
 
 export type WorkspaceFilePreferenceDefaults<

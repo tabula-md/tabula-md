@@ -1,4 +1,4 @@
-import { applyTextPatches, type TextPatch } from "./textPatches";
+import { applyTextPatches, type TextPatch } from "../textPatches";
 
 export type PendingDocumentBufferCommit = {
   fileId: string;

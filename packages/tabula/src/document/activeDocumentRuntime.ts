@@ -12,9 +12,9 @@ import {
   type MarkdownHeading,
   type ParsedFrontmatter,
   type PreviewBody,
-} from "./markdown/parse";
+} from "../markdown/parse";
 import { getMarkdownWordCount } from "./documentMetrics";
-import { isLargeMarkdownDocument } from "./previewBlockModel";
+import { isLargeMarkdownDocument } from "../previewBlockModel";
 
 export type DocumentBookmark = {
   id: string;
