@@ -9,14 +9,14 @@ import type { LiveRoomOpenState } from "./liveRoomOpenState";
 import type { WorkspaceFile } from "./workspaceStorage";
 import type { WorkspaceLanguage } from "./hooks/useWorkspacePreferences";
 
-export type WorkspaceRuntimeWorkbenchProps = Omit<
+export type WorkspaceAppWorkbenchProps = Omit<
   DocumentWorkbenchProps,
   "activeFile"
 > & {
   activeFile?: WorkspaceFile;
 };
 
-export type WorkspaceRuntimeView = {
+export type WorkspaceAppViewModel = {
   activeFile?: WorkspaceFile;
   documentSurface: DocumentSurfaceModel;
   emptySurfaceProps: WorkspaceEmptySurfaceProps;
@@ -32,20 +32,20 @@ export type WorkspaceRuntimeView = {
   overlayProps: WorkspaceOverlaySurfaceProps;
   sidePanelProps: WorkspaceSidePanelProps;
   topChromeProps: WorkspaceTopChromeProps;
-  workbenchProps: WorkspaceRuntimeWorkbenchProps;
+  workbenchProps: WorkspaceAppWorkbenchProps;
 };
 
-type CreateWorkspaceRuntimeViewOptions = Omit<
-  WorkspaceRuntimeView,
+type CreateWorkspaceAppViewModelOptions = Omit<
+  WorkspaceAppViewModel,
   "mainPanelClassName"
 > & {
   rightPanelOpen: boolean;
 };
 
-export function createWorkspaceRuntimeView({
+export function createWorkspaceAppViewModel({
   rightPanelOpen,
   ...view
-}: CreateWorkspaceRuntimeViewOptions): WorkspaceRuntimeView {
+}: CreateWorkspaceAppViewModelOptions): WorkspaceAppViewModel {
   const splitViewOpen = view.documentSurface.documentControls.activeViewMode === "split";
 
   return {

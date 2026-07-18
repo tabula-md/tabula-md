@@ -46,7 +46,7 @@ import {
   getWorkspaceChromeCopy,
   getWorkspaceMenuCopy,
 } from "../workspaceLocale";
-import { createWorkspaceRuntimeView } from "../workspaceRuntimeView";
+import { createWorkspaceAppViewModel } from "../workspaceAppViewModel";
 import { getWorkspaceActionCopy } from "../workspaceActionLocale";
 import {
   getWorkspaceStoreActiveFile,
@@ -1307,7 +1307,7 @@ export function useWorkspaceRuntime() {
     setCenterPopover,
   });
 
-  return createWorkspaceRuntimeView({
+  return createWorkspaceAppViewModel({
     activeFile,
     documentSurface,
     emptySurfaceProps: {
