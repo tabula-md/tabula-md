@@ -56,7 +56,7 @@ import {
   type DeletedWorkspaceFolderBundle,
 } from "../stores/workspaceStore";
 import { useAppToast } from "./useAppToast";
-import { useDocumentSurfaceRuntime } from "./useDocumentSurfaceRuntime";
+import { useDocumentSurfaceController } from "./useDocumentSurfaceController";
 import { useEventCallback } from "./useEventCallback";
 import { useFileComments } from "./useFileComments";
 import { useSelectionActionDismissal } from "./useSelectionActionDismissal";
@@ -1260,7 +1260,7 @@ export function useWorkspaceRuntime() {
     setWorkspaceMenuOpen,
   });
   const { documentSurface, documentWorkbenchController } =
-    useDocumentSurfaceRuntime({
+    useDocumentSurfaceController({
       activeDocument,
       activeLineNumbers,
       activeLineWrapping,
