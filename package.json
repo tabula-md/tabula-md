@@ -48,6 +48,7 @@
     "@codemirror/view": "^6.43.1",
     "@fontsource/geist-mono": "^5.2.8",
     "@fontsource/geist-sans": "^5.2.5",
+    "@lezer/common": "^1.5.2",
     "@lezer/highlight": "^1.2.3",
     "@radix-ui/react-context-menu": "^2.3.3",
     "@radix-ui/react-dropdown-menu": "^2.1.20",
