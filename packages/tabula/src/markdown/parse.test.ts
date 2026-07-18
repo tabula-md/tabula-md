@@ -5,7 +5,7 @@ import {
   getOutlineHeadingsFromMarkdown,
   getPreviewBody,
   parseFrontmatter,
-} from "./markdown";
+} from "./parse";
 
 describe("markdown document model", () => {
   it("parses valid frontmatter without hiding body headings", () => {

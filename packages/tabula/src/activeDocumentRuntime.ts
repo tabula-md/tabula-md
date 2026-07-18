@@ -12,7 +12,7 @@ import {
   type MarkdownHeading,
   type ParsedFrontmatter,
   type PreviewBody,
-} from "./markdown";
+} from "./markdown/parse";
 import { getMarkdownWordCount } from "./documentMetrics";
 import { isLargeMarkdownDocument } from "./previewBlockModel";
 

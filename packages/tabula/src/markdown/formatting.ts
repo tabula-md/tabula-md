@@ -29,11 +29,11 @@ export type MarkdownFormatResult = {
   selection: MarkdownFormatSelection;
 };
 
-type InlineWrapOptions = {
+interface InlineWrapOptions {
   prefix: string;
   suffix?: string;
   placeholder: string;
-};
+}
 
 const clampOffset = (offset: number, textLength: number) => Math.max(0, Math.min(offset, textLength));
 

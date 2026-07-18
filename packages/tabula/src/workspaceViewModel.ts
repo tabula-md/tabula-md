@@ -1,4 +1,4 @@
-import { parseFrontmatter } from "./markdown";
+import { parseFrontmatter } from "./markdown/parse";
 
 export type WorkspaceConnectionStatus =
   | "idle"
