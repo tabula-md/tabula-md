@@ -1,14 +1,14 @@
-import type { LiveSelection } from "./collaboration/liveCollaboration";
-import type { SearchMatch } from "./editor/editorSearchModel";
-import type { EditorViewportAnchor } from "./preview/previewSyncTypes";
+import type { LiveSelection } from "../collaboration/liveCollaboration";
+import type { SearchMatch } from "../editor/editorSearchModel";
+import type { EditorViewportAnchor } from "../preview/previewSyncTypes";
 import type { Text } from "@codemirror/state";
-import type { CollabEditorBinding } from "./collaboration/liveCollaboration";
+import type { CollabEditorBinding } from "../collaboration/liveCollaboration";
 import type {
   MarkdownFormatCommand,
   TextChange,
   TextPatch,
 } from "@tabula-md/tabula";
-import type { WorkspaceSurfaceCopy } from "./workspaceSurfaceLocale";
+import type { WorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 
 export type MarkdownEditorInterfaceCopy = Pick<
   WorkspaceSurfaceCopy,

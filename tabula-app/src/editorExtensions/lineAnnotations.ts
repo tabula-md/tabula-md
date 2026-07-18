@@ -8,7 +8,7 @@ import type {
   MarkdownBookmark,
   MarkdownEditorInterfaceCopy,
   MarkdownLineActionRequest,
-} from "../markdownEditorTypes";
+} from "../document/markdownEditorTypes";
 
 type LineAnnotationState = {
   hasBookmark: boolean;

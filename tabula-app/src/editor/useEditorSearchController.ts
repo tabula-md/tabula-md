@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import type { MarkdownEditorHandle } from "../components/MarkdownEditor";
+import type { MarkdownEditorHandle } from "../document/MarkdownEditor";
 import {
   DEFAULT_SEARCH_OPTIONS,
   EDITOR_SEARCH_MATCH_LIMIT,

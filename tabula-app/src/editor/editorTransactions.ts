@@ -5,7 +5,7 @@ import {
 } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { getTextPatchesForChange, type TextPatch } from "@tabula-md/tabula";
-import type { MarkdownBookmark } from "../markdownEditorTypes";
+import type { MarkdownBookmark } from "../document/markdownEditorTypes";
 
 export const clampEditorPosition = (position: number, docLength: number) =>
   Math.max(0, Math.min(position, docLength));

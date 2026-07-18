@@ -2,7 +2,7 @@ import { type RefObject, useCallback, useEffect, useRef, useState } from "react"
 import type {
   MarkdownBookmark,
   MarkdownEditorHandle,
-} from "../components/MarkdownEditor";
+} from "./MarkdownEditor";
 import type {
   FileBookmark,
   WorkspaceFile,

@@ -1,5 +1,5 @@
 import type { DocumentSurfaceModel } from "@tabula-md/tabula";
-import type { DocumentWorkbenchProps } from "./components/DocumentWorkbench";
+import type { DocumentWorkbenchProps } from "./document/DocumentWorkbench";
 import type { WorkspaceEmptySurfaceProps } from "./components/WorkspaceEmptySurface";
 import type { WorkspaceMenuSurfaceProps } from "./components/WorkspaceMenuSurface";
 import type { WorkspaceOverlaySurfaceProps } from "./components/WorkspaceOverlaySurface";

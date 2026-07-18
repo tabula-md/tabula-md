@@ -28,10 +28,10 @@ import type {
   MarkdownEditorHandle,
   MarkdownLineActionRequest,
   MarkdownSelectionActionPosition,
-} from "../../../../tabula-app/src/markdownEditorTypes";
+} from "../../../../tabula-app/src/document/markdownEditorTypes";
 import type { MarkdownPreviewHandle } from "../../../../tabula-app/src/preview/previewSyncTypes";
 import type { FileBookmark, WorkspaceFile } from "../../../../tabula-app/src/workspaceStorage";
-import { MarkdownEditor } from "../../../../tabula-app/src/components/MarkdownEditor";
+import { MarkdownEditor } from "../../../../tabula-app/src/document/MarkdownEditor";
 import { ResizeHandle } from "../../../../tabula-app/src/components/ui/ResizeHandle";
 import {
   type MarkdownPreviewCommentAnchor,

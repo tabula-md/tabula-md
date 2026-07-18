@@ -1,4 +1,4 @@
-import { DocumentWorkbench } from "./DocumentWorkbench";
+import { DocumentWorkbench } from "../document/DocumentWorkbench";
 import { LiveRoomLoadingSurface } from "./LiveRoomLoadingSurface";
 import { WorkspaceEmptySurface } from "./WorkspaceEmptySurface";
 import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";

@@ -10,7 +10,7 @@ import {
 import type {
   MarkdownLineActionRequest,
   MarkdownSelectionActionPosition,
-} from "../markdownEditorTypes";
+} from "../document/markdownEditorTypes";
 import type { AppToastState } from "./useAppToast";
 import { useAnimationFrameTask } from "./useAnimationFrameTask";
 import type { FileComment, FileBookmark, WorkspaceFile } from "../workspaceStorage";

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { MarkdownSelectionActionPosition } from "../markdownEditorTypes";
+import type { MarkdownSelectionActionPosition } from "./markdownEditorTypes";
 
 type UseSelectionActionDismissalOptions = {
   selectionActionPosition: MarkdownSelectionActionPosition | null;

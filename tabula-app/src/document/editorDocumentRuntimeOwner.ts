@@ -8,13 +8,13 @@ import type { WorkspaceFile } from "../workspaceStorage";
 
 type EditorDocumentRuntimeFile = Pick<WorkspaceFile, "id" | "text">;
 
-export type WorkspaceEditorDocumentRuntimeOwner = {
+export interface WorkspaceEditorDocumentRuntimeOwner {
   clear(): void;
   flush(): EditorDocumentRuntimeFlushResult | null;
   getLatestFileText(fileId: string, fallbackText: string): string;
   getRuntime(file: EditorDocumentRuntimeFile): EditorDocumentRuntime;
   getVisibleFileText(file: EditorDocumentRuntimeFile): string;
-};
+}
 
 export const createWorkspaceEditorDocumentRuntimeOwner = (): WorkspaceEditorDocumentRuntimeOwner => {
   let runtime: EditorDocumentRuntime | null = null;

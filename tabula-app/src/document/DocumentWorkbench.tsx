@@ -21,7 +21,7 @@ import type {
   MarkdownEditorHandle,
   MarkdownLineActionRequest,
   MarkdownSelectionActionPosition,
-} from "../markdownEditorTypes";
+} from "./markdownEditorTypes";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import type {
   FileBookmark,

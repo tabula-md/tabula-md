@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { AppToastState } from "./useAppToast";
-import type { FileHistory } from "./useWorkspaceActiveFileEditor";
+import type { FileHistory } from "../document/useWorkspaceActiveFileEditor";
 import type { WorkspacePreferences } from "./useWorkspacePreferences";
 import { getNewFilePreferenceOverrides } from "../workspaceIoModel";
 import type { RenameFileResult } from "@tabula-md/tabula";

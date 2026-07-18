@@ -3,7 +3,7 @@ import {
   EditorView,
   lineNumbers as codeMirrorLineNumbers,
 } from "@codemirror/view";
-import type { MarkdownSelectionActionPosition } from "../markdownEditorTypes";
+import type { MarkdownSelectionActionPosition } from "../document/markdownEditorTypes";
 import { clampEditorPosition } from "./editorTransactions";
 
 export type EditorLayoutCompartments = {

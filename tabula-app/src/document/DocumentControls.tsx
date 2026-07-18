@@ -30,7 +30,7 @@ import {
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
-import { PopoverContent, PopoverRoot, PopoverTrigger } from "./ui/Popover";
+import { PopoverContent, PopoverRoot, PopoverTrigger } from "../components/ui/Popover";
 
 type DocumentControlsProps = {
   activeViewMode: FileViewMode;

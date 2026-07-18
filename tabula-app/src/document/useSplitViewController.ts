@@ -25,7 +25,7 @@ export const getMagnetizedSplitRatio = (nextSplitRatio: number) => {
     : clampedRatio;
 };
 
-type UseSplitViewControllerArgs = {
+type UseSplitViewControllerOptions = {
   activeViewMode: FileViewMode;
   activeSplitRatio: number;
   workspaceRef: RefObject<HTMLElement | null>;
@@ -39,7 +39,7 @@ export function useSplitViewController({
   workspaceRef,
   editorSurfaceRef,
   onSetSplitRatio,
-}: UseSplitViewControllerArgs) {
+}: UseSplitViewControllerOptions) {
   const splitDividerDragging = useWorkspaceUiStore((state) => state.splitDragging);
   const setSplitDividerDragging = useWorkspaceUiStore((state) => state.setSplitDragging);
   const dragFrameRef = useRef<number | null>(null);

@@ -1,6 +1,6 @@
 import { useCallback, type RefObject } from "react";
-import type { DocumentWorkbenchProps } from "../components/DocumentWorkbench";
-import type { MarkdownEditorHandle } from "../markdownEditorTypes";
+import type { DocumentWorkbenchProps } from "./DocumentWorkbench";
+import type { MarkdownEditorHandle } from "./markdownEditorTypes";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
 import type { CenterPopover, TopPopover } from "../uiTypes";
 import type {

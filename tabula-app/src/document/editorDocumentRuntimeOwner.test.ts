@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createWorkspaceEditorDocumentRuntimeOwner } from "./editorDocumentRuntimeOwner";
 
-describe("workspace editor document runtime owner", () => {
+describe("editor document runtime owner", () => {
   it("reuses the runtime for the active file and exposes the latest runtime text", () => {
     const owner = createWorkspaceEditorDocumentRuntimeOwner();
     const runtime = owner.getRuntime({ id: "file-a", text: "committed" });
