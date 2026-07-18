@@ -1259,7 +1259,7 @@ export function useWorkspaceRuntime() {
     setTopPopover,
     setWorkspaceMenuOpen,
   });
-  const { documentSurface, documentWorkbenchRuntime } =
+  const { documentSurface, documentWorkbenchController } =
     useDocumentSurfaceRuntime({
       activeDocument,
       activeLineNumbers,
@@ -1287,7 +1287,7 @@ export function useWorkspaceRuntime() {
     const applyViewMode = () => {
       if (viewModeRequestRef.current !== requestId) return;
       flushPendingEditorCommit();
-      documentWorkbenchRuntime.onSetViewMode(viewMode);
+      documentWorkbenchController.onSetViewMode(viewMode);
     };
     if (viewMode === "edit") {
       applyViewMode();
@@ -1445,7 +1445,7 @@ export function useWorkspaceRuntime() {
       },
       onFormat: (command) => {
         stopFollowing("local-edit");
-        documentWorkbenchRuntime.onFormat(command);
+        documentWorkbenchController.onFormat(command);
       },
       onLineAction: handleStableLineAnnotationAction,
       onOpenComment: openStableCommentMarker,
@@ -1463,7 +1463,7 @@ export function useWorkspaceRuntime() {
       },
       onResetSplitRatio: resetSplitRatio,
       onPreviewSearchMatchCountChange,
-      onSetReadingWidth: documentWorkbenchRuntime.onSetReadingWidth,
+      onSetReadingWidth: documentWorkbenchController.onSetReadingWidth,
       onSetViewMode: (viewMode) => {
         stopFollowing("local-navigation");
         setViewModeWithPendingCommit(viewMode);
@@ -1480,7 +1480,7 @@ export function useWorkspaceRuntime() {
         }
         handleTextChange(nextText, change);
       },
-      onToggleLineNumbers: documentWorkbenchRuntime.onToggleLineNumbers,
+      onToggleLineNumbers: documentWorkbenchController.onToggleLineNumbers,
       onToggleSearch: () => {
         if (searchOpen) {
           setSearchOpen(false);
@@ -1488,9 +1488,9 @@ export function useWorkspaceRuntime() {
         }
         openSearchFromCurrentSelection();
       },
-      onToggleLineWrapping: documentWorkbenchRuntime.onToggleLineWrapping,
-      onToggleSyncScrolling: documentWorkbenchRuntime.onToggleSyncScrolling,
-      onToggleViewOptions: documentWorkbenchRuntime.onToggleViewOptions,
+      onToggleLineWrapping: documentWorkbenchController.onToggleLineWrapping,
+      onToggleSyncScrolling: documentWorkbenchController.onToggleSyncScrolling,
+      onToggleViewOptions: documentWorkbenchController.onToggleViewOptions,
       onUndo: () => {
         stopFollowing("local-edit");
         undoActiveFile();

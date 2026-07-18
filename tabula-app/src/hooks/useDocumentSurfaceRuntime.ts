@@ -12,7 +12,7 @@ import type {
   FileViewMode,
   ReadingWidth,
 } from "../workspaceStorage";
-import { useDocumentWorkbenchRuntime } from "./useDocumentWorkbenchRuntime";
+import { useDocumentWorkbenchController } from "./useDocumentWorkbenchController";
 
 type ValueUpdater<T> = T | ((currentValue: T) => T);
 
@@ -67,7 +67,7 @@ export function useDocumentSurfaceRuntime({
     shareOpen,
     splitDividerDragging,
   });
-  const documentWorkbenchRuntime = useDocumentWorkbenchRuntime({
+  const documentWorkbenchController = useDocumentWorkbenchController({
     activeLineNumbers,
     activeLineWrapping,
     activeSyncScrolling,
@@ -84,6 +84,6 @@ export function useDocumentSurfaceRuntime({
 
   return {
     documentSurface,
-    documentWorkbenchRuntime,
+    documentWorkbenchController,
   };
 }
