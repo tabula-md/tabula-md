@@ -1,6 +1,6 @@
 import { FolderOpen, X } from "lucide-react";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
-import { getProjectArchiveEntries } from "../projectArchive";
+import { getWorkspaceArchiveEntries } from "../workspaceArchive";
 import { getWorkspaceFolderImportCopy } from "../workspaceFolderImportLocale";
 import type { WorkspaceState } from "../workspaceStorage";
 import { ModalSurface } from "./ui/ModalSurface";
@@ -19,7 +19,7 @@ export function WorkspaceFolderImportDialog({
   onReplace,
 }: WorkspaceFolderImportDialogProps) {
   const copy = getWorkspaceFolderImportCopy(language);
-  const paths = getProjectArchiveEntries(workspace.files, workspace.folders)
+  const paths = getWorkspaceArchiveEntries(workspace.files, workspace.folders)
     .filter((entry) => !entry.path.endsWith("/"))
     .map((entry) => entry.path);
 

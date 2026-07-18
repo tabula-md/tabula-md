@@ -23,11 +23,11 @@ import {
   getSelectionLineCount,
 } from "./hooks/useSelectionCommentController";
 import {
-  getProjectIoActiveFileSnapshot,
-  getProjectIoBoundaryActiveFileSnapshot,
-  getProjectIoBoundaryWorkspaceSnapshot,
-  getProjectIoWorkspaceSnapshot,
-} from "./hooks/useProjectIoController";
+  getWorkspaceFileIoActiveFileSnapshot,
+  getWorkspaceFileIoBoundaryActiveFileSnapshot,
+  getWorkspaceFileIoBoundaryWorkspaceSnapshot,
+  getWorkspaceFileIoWorkspaceSnapshot,
+} from "./hooks/useWorkspaceFileIoController";
 import {
   getJsonShareExportFileSnapshot,
   getJsonShareExportWorkspaceFiles,
@@ -605,7 +605,7 @@ describe("active document preview runtime", () => {
   });
 });
 
-describe("project IO controller", () => {
+describe("workspace file IO controller", () => {
   const file = (id: string, text = id): WorkspaceFile => ({
     id,
     title: `${id}.md`,
@@ -662,13 +662,13 @@ describe("project IO controller", () => {
     };
 
     expect(
-      getProjectIoActiveFileSnapshot({
+      getWorkspaceFileIoActiveFileSnapshot({
         activeFile: staleActiveFile,
         getActiveFileSnapshot: () => runtimeActiveFile,
       }),
     ).toBe(runtimeActiveFile);
     expect(
-      getProjectIoWorkspaceSnapshot({
+      getWorkspaceFileIoWorkspaceSnapshot({
         activeFile: staleActiveFile,
         activeFileId: staleActiveFile.id,
         files: [staleActiveFile],
@@ -700,14 +700,14 @@ describe("project IO controller", () => {
     });
 
     expect(
-      getProjectIoBoundaryActiveFileSnapshot({
+      getWorkspaceFileIoBoundaryActiveFileSnapshot({
         activeFile: staleActiveFile,
         getActiveFileSnapshot,
         onBeforeWorkspaceBoundary,
       }),
     ).toBe(runtimeActiveFile);
     expect(
-      getProjectIoBoundaryWorkspaceSnapshot({
+      getWorkspaceFileIoBoundaryWorkspaceSnapshot({
         activeFile: staleActiveFile,
         activeFileId: staleActiveFile.id,
         files: [staleActiveFile],
