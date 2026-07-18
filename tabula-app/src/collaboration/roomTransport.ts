@@ -1,4 +1,4 @@
-import type { EncryptedEnvelope, RoomJoinedMessage, RoomPeersMessage } from "./roomProtocol";
+import type { EncryptedEnvelope, RoomJoinedMessage, RoomPeersMessage } from "@tabula-md/tabula";
 
 export type RoomTransportHandlers = {
   onConnect: () => void;

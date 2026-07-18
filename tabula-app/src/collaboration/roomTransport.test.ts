@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { EncryptedEnvelope } from "./roomProtocol";
+import type { EncryptedEnvelope } from "@tabula-md/tabula";
 
 const socketState = vi.hoisted(() => {
   const handlers = new Map<string, (...args: unknown[]) => void>();

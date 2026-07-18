@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
 import {
   createWorkspaceRoomCrdt,
+  createCollabSessionState,
   initializeWorkspaceRoomCrdt,
   validateWorkspaceRoomStructureLimits,
   validateWorkspaceRoomStructure,
@@ -14,7 +15,6 @@ import {
 } from "@tabula-md/tabula";
 import { createDefaultCollabRuntimeAdapters } from "./collabDefaultAdapters";
 import type { CollabRuntimeAdapters } from "./collabRuntimeAdapters";
-import { createCollabSessionState } from "./collabSessionState";
 import { resolveCollabStartConfig } from "./collabStartConfig";
 import {
   createRoomDocumentRegistry,

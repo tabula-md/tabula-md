@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Menu, PanelRightOpen, Users } from "lucide-react";
+import { getLineNumberForPresenceSelection as getLineNumberForSelection } from "@tabula-md/tabula";
 import type { Collaborator } from "../collaboration/liveCollaboration";
 import type { FollowState } from "../collaboration/followModel";
-import { getLineNumberForSelection } from "../collaboration/collaborationPresence";
 import type { WorkspaceLanguage } from "../hooks/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 
