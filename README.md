@@ -26,13 +26,17 @@
 
 ## Why Tabula.md
 
-- Open a Markdown folder without signing up.
-- Keep Markdown files as the source of truth.
+- Import a Markdown folder into the browser without signing up.
+- Keep the workspace portable as Markdown files.
 - Share the whole workspace with one encrypted room link.
 - Edit together in the browser, or invite an AI agent from its own tools.
 
 Tabula.md is in public preview. The hosted app at
 [tabula.md](https://tabula.md) is the reference deployment.
+
+Opening a folder imports its Markdown files into this browser. Tabula.md does
+not modify or stay synchronized with the original folder; export a document or
+workspace when you want the files back on disk.
 
 ## Use with an AI agent
 
