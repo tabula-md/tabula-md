@@ -18,7 +18,7 @@ type ValueUpdater<T> = T | ((currentValue: T) => T);
 
 type SetUiValue<T> = (nextValue: ValueUpdater<T>) => void;
 
-type UseDocumentSurfaceRuntimeOptions = {
+type UseDocumentSurfaceControllerOptions = {
   activeDocument: ActiveDocumentRuntime;
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
@@ -39,7 +39,7 @@ type UseDocumentSurfaceRuntimeOptions = {
   setTopPopover: SetUiValue<TopPopover>;
 };
 
-export function useDocumentSurfaceRuntime({
+export function useDocumentSurfaceController({
   activeDocument,
   activeLineNumbers,
   activeLineWrapping,
@@ -58,7 +58,7 @@ export function useDocumentSurfaceRuntime({
   onSetSyncScrolling,
   setCenterPopover,
   setTopPopover,
-}: UseDocumentSurfaceRuntimeOptions) {
+}: UseDocumentSurfaceControllerOptions) {
   const documentSurface = buildDocumentSurface({
     document: activeDocument,
     hasSelectionActionPosition: Boolean(selectionActionPosition),
