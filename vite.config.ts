@@ -1,6 +1,7 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
+import { createBuildInfoPlugin } from "./scripts/build-info.mjs";
 
 const workspaceRoot = fileURLToPath(new URL(".", import.meta.url));
 const tabulaAppRoot = fileURLToPath(new URL("./tabula-app", import.meta.url));
@@ -14,7 +15,7 @@ const includesPackage = (id: string, packageName: string) =>
 export default defineConfig({
   root: tabulaAppRoot,
   envDir: workspaceRoot,
-  plugins: [react()],
+  plugins: [react(), createBuildInfoPlugin()],
   resolve: {
     alias: [
       { find: "@tabula-md/tabula-private/workbench", replacement: tabulaPrivateWorkbenchEntry },

@@ -16,6 +16,7 @@
     "dev:local": "VITE_TABULA_FIREBASE_EMULATOR_HOST=127.0.0.1 vite --host 0.0.0.0",
     "dev:firebase": "npx --yes firebase-tools@15.22.4 emulators:start --project tabula-local --config scripts/browser-smoke/fixtures/firebase/firebase.json",
     "build": "tsc && vite build",
+    "check:build-info": "node scripts/check-build-info.mjs",
     "build:core": "npm run build -w @tabula-md/tabula",
     "check:core-runtime": "npm run build:core && node scripts/check-core-runtime.mjs",
     "check:core-package": "npm run build:core && node scripts/check-tabula-package.mjs",

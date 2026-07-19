@@ -6,3 +6,7 @@
 
 /404.html
   Cache-Control: no-store
+
+/.well-known/tabula-build.json
+  Cache-Control: no-store
+  Content-Type: application/json; charset=utf-8

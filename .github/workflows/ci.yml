@@ -45,6 +45,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check build provenance
+        run: npm run check:build-info
+
       - name: Check published core package
         run: npm run check:core-runtime && node scripts/check-tabula-package.mjs
 
