@@ -18,6 +18,8 @@ import type {
 } from "./workspaceRoomSync";
 
 class FakeRoomRelay {
+  constructor(private readonly dropEnvelopes = false) {}
+
   private readonly peers = new Map<string, {
     roomId: string;
     handlers: WorkspaceRoomTransportHandlers;
@@ -53,6 +55,7 @@ class FakeRoomRelay {
         this.publishPeers(roomId);
       },
       sendEnvelope: (envelope: EncryptedEnvelope) => {
+        if (this.dropEnvelopes) return;
         queueMicrotask(() => {
           this.connectedPeers(roomId).forEach(([peerId, peer]) => {
             if (peerId !== clientId) {
@@ -62,6 +65,7 @@ class FakeRoomRelay {
         });
       },
       sendVolatileEnvelope: (envelope: EncryptedEnvelope) => {
+        if (this.dropEnvelopes) return;
         queueMicrotask(() => {
           this.connectedPeers(roomId).forEach(([peerId, peer]) => {
             if (peerId !== clientId) {
@@ -186,9 +190,13 @@ describe("headless Room client", () => {
 
     try {
       await first.connect();
-      await second.connect({ waitForStateMs: 500 });
+      await second.connect({ waitForStateMs: 500, waitForPresenceMs: 500 });
       expect(second.getState().lastError).toBeUndefined();
       await waitFor(() => second.getState().hydrationStatus === "ready");
+      expect(second.getState()).toMatchObject({
+        presenceStatus: "ready",
+        connectedPeerCount: 1,
+      });
       expect(second.getWorkspaceSnapshot().documents.brief).toBe("# Brief\n");
       const staleBrief = await first.readDocument("brief");
       await waitFor(() => first.getState().collaborators.length === 1);
@@ -256,6 +264,43 @@ describe("headless Room client", () => {
       const current = await first.readDocument("brief");
       await first.deleteNode({ nodeId: "brief", expected: { revision: current.revision } });
       await waitFor(() => !second.getWorkspaceSnapshot().nodes.some((node) => node.id === "brief"));
+      await second.disconnect();
+      await waitFor(() => first.getState().connectedPeerCount === 0);
+      expect(first.getState()).toMatchObject({
+        presenceStatus: "ready",
+        connectedPeerCount: 0,
+        collaborators: [],
+      });
+    } finally {
+      await Promise.all([first.disconnect(), second.disconnect()]);
+    }
+  });
+
+  it("reports degraded presence instead of claiming zero collaborators before awareness converges", async () => {
+    const checkpointStore = new MemoryCheckpointStore();
+    const relay = new FakeRoomRelay(true);
+    const first = await createClient({
+      relay,
+      actorId: "presence-writer",
+      initial: initialWorkspace(),
+      checkpointStore,
+    });
+    const second = await createClient({
+      relay,
+      actorId: "presence-reader",
+      checkpointStore,
+    });
+
+    try {
+      await first.connect();
+      await first.flushCheckpoint();
+      const state = await second.connect({ waitForStateMs: 0, waitForPresenceMs: 10 });
+      expect(state).toMatchObject({
+        hydrationStatus: "ready",
+        presenceStatus: "degraded",
+        connectedPeerCount: 1,
+        collaborators: [],
+      });
     } finally {
       await Promise.all([first.disconnect(), second.disconnect()]);
     }

@@ -1,6 +1,6 @@
 {
   "name": "@tabula-md/tabula",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Tabula.md document, workspace CRDT, protocol, share-link, and embeddable workbench contracts.",
   "license": "MIT",
   "type": "module",

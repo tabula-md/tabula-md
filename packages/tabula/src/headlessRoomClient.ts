@@ -67,6 +67,8 @@ export type HeadlessRoomConnectionStatus =
 
 export type HeadlessRoomHydrationStatus = "waiting-for-state" | "ready" | "failed";
 
+export type HeadlessRoomPresenceStatus = "pending" | "ready" | "degraded";
+
 export type HeadlessRoomCheckpointStatus =
   | "disabled"
   | "missing"
@@ -93,6 +95,8 @@ export type HeadlessRoomClientState = {
   actor: RoomActor;
   status: HeadlessRoomConnectionStatus;
   hydrationStatus: HeadlessRoomHydrationStatus;
+  presenceStatus: HeadlessRoomPresenceStatus;
+  connectedPeerCount: number;
   checkpointStatus: HeadlessRoomCheckpointStatus;
   collaborators: HeadlessRoomCollaborator[];
   version: number;
@@ -258,8 +262,15 @@ export const createHeadlessRoomClientRuntime = ({
     resolve: (status: HeadlessRoomHydrationStatus) => void;
     timer: unknown;
   }>();
+  const presenceWaiters = new Set<{
+    resolve: (status: HeadlessRoomPresenceStatus) => void;
+    timer: unknown;
+  }>();
   let status: HeadlessRoomConnectionStatus = "idle";
   let hydrationStatus: HeadlessRoomHydrationStatus = initialWorkspace ? "ready" : "waiting-for-state";
+  let presenceStatus: HeadlessRoomPresenceStatus = "pending";
+  let peerRosterReceived = false;
+  let connectedPeerIds = new Set<string>();
   let checkpointStatus: HeadlessRoomCheckpointStatus = checkpointStore.enabled ? "missing" : "disabled";
   let lastError = "";
   let version = initialWorkspace ? 1 : 0;
@@ -288,11 +299,41 @@ export const createHeadlessRoomClientRuntime = ({
       left.actor.name.localeCompare(right.actor.name) || left.actor.id.localeCompare(right.actor.id));
   };
 
+  const connectedRemotePeerIds = () => [...connectedPeerIds].filter((peerId) => peerId !== actor.id);
+
+  const presentRemoteActorIds = () => new Set(collaborators().map((collaborator) => collaborator.actor.id));
+
+  const presenceConverged = () => {
+    if (!peerRosterReceived) return false;
+    const present = presentRemoteActorIds();
+    return connectedRemotePeerIds().every((peerId) => present.has(peerId));
+  };
+
+  const settlePresence = (result: HeadlessRoomPresenceStatus) => {
+    presenceWaiters.forEach((waiter) => {
+      adapters.clock.clearTimeout(waiter.timer);
+      waiter.resolve(result);
+    });
+    presenceWaiters.clear();
+  };
+
+  const updatePresenceStatus = () => {
+    const next = presenceConverged()
+      ? "ready"
+      : presenceStatus === "degraded" ? "degraded" : "pending";
+    if (next === presenceStatus) return false;
+    presenceStatus = next;
+    if (next === "ready") settlePresence(next);
+    return true;
+  };
+
   const getState = (): HeadlessRoomClientState => ({
     roomId,
     actor,
     status,
     hydrationStatus,
+    presenceStatus,
+    connectedPeerCount: connectedRemotePeerIds().length,
     checkpointStatus,
     collaborators: collaborators(),
     version,
@@ -498,6 +539,7 @@ export const createHeadlessRoomClientRuntime = ({
     origin: unknown,
   ) => {
     syncController.handleAwarenessUpdate(changes, origin);
+    updatePresenceStatus();
     emit();
   });
   publishPresence();
@@ -511,6 +553,24 @@ export const createHeadlessRoomClientRuntime = ({
       }, Math.min(30_000, Math.max(0, timeoutMs)));
       const waiter = { resolve, timer };
       hydrationWaiters.add(waiter);
+    });
+  };
+
+  const waitForPresence = (timeoutMs: number): Promise<HeadlessRoomPresenceStatus> => {
+    updatePresenceStatus();
+    if (presenceStatus !== "pending" || timeoutMs <= 0) return Promise.resolve(presenceStatus);
+    return new Promise((resolve) => {
+      const timer = adapters.clock.setTimeout(() => {
+        presenceWaiters.delete(waiter);
+        if (presenceStatus === "pending") {
+          presenceStatus = "degraded";
+          settlePresence(presenceStatus);
+          emit();
+        }
+        resolve(presenceStatus);
+      }, Math.min(30_000, Math.max(0, timeoutMs)));
+      const waiter = { resolve, timer };
+      presenceWaiters.add(waiter);
     });
   };
 
@@ -676,7 +736,10 @@ export const createHeadlessRoomClientRuntime = ({
     return results;
   });
 
-  const connect = async ({ waitForStateMs = 5_000 }: { waitForStateMs?: number } = {}) => {
+  const connect = async ({
+    waitForStateMs = 5_000,
+    waitForPresenceMs = 0,
+  }: { waitForStateMs?: number; waitForPresenceMs?: number } = {}) => {
     if (connectedOnce || status !== "idle") throw new Error("This headless Room client has already connected.");
     connectedOnce = true;
     status = "connecting";
@@ -703,7 +766,10 @@ export const createHeadlessRoomClientRuntime = ({
           },
           onPeerJoined: () => syncController.onPeerJoined(),
           onPeers: (message) => {
+            peerRosterReceived = true;
+            connectedPeerIds = new Set(message.peers);
             removeStalePresence(message.peers);
+            updatePresenceStatus();
             emit();
           },
           onError: (message) => setError(message.error ?? "Room relay error."),
@@ -723,6 +789,7 @@ export const createHeadlessRoomClientRuntime = ({
         syncController.connect(roomServerUrl, handlers);
       });
       await waitForHydration(waitForStateMs);
+      await waitForPresence(waitForPresenceMs);
       return getState();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Live Room connection failed.", true);
@@ -742,6 +809,7 @@ export const createHeadlessRoomClientRuntime = ({
     },
     getState,
     waitForHydration,
+    waitForPresence,
     getWorkspaceSnapshot() {
       assertReadable();
       return getWorkspaceRoomSnapshot(room);
@@ -851,6 +919,12 @@ export const createHeadlessRoomClientRuntime = ({
         waiter.resolve(hydrationStatus);
       });
       hydrationWaiters.clear();
+      presenceWaiters.forEach((waiter) => {
+        adapters.clock.clearTimeout(waiter.timer);
+        waiter.resolve(presenceStatus);
+      });
+      presenceWaiters.clear();
+      connectedPeerIds.clear();
       emit();
       listeners.clear();
       doc.destroy();
