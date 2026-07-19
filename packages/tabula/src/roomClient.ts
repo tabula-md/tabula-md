@@ -13,6 +13,7 @@ export type {
   HeadlessRoomConnectionStatus,
   HeadlessRoomExpectedNode,
   HeadlessRoomHydrationStatus,
+  HeadlessRoomPresenceStatus,
   HeadlessRoomSelection,
 } from "./headlessRoomClient.js";
 export type {
