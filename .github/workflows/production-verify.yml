@@ -1,0 +1,47 @@
+name: Production verify
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: tabula-md-production-verify
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify deployed main
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for the Cloudflare Pages Git deployment
+        env:
+          TABULA_EXPECTED_BUILD_COMMIT: ${{ github.sha }}
+          TABULA_PRODUCTION_ORIGIN: https://tabula.md
+        run: npm run verify:production
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke the deployed workspace
+        env:
+          TABULA_TEST_URL: https://tabula.md
+        run: npm run test:browser -- --suite=workspace

@@ -17,6 +17,8 @@
     "dev:firebase": "npx --yes firebase-tools@15.22.4 emulators:start --project tabula-local --config scripts/browser-smoke/fixtures/firebase/firebase.json",
     "build": "tsc && vite build",
     "check:build-info": "node scripts/check-build-info.mjs",
+    "test:production-deploy": "node --test scripts/production-deployment.test.mjs",
+    "verify:production": "node scripts/verify-production-deployment.mjs",
     "build:core": "npm run build -w @tabula-md/tabula",
     "check:core-runtime": "npm run build:core && node scripts/check-core-runtime.mjs",
     "check:core-package": "npm run build:core && node scripts/check-tabula-package.mjs",
