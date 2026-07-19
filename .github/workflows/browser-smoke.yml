@@ -30,10 +30,10 @@ jobs:
 
     steps:
       - name: Checkout Tabula.md
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Checkout room relay
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: tabula-md/tabula-room
           # Pull requests use the known-compatible relay; scheduled runs test room main.
@@ -41,7 +41,7 @@ jobs:
           path: tabula-room
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
