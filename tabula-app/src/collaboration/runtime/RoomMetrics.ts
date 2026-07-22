@@ -83,6 +83,9 @@ export const createRoomMetrics = (room: WorkspaceRoomCrdt) => {
     const removedDocumentIds = structureChanged ? syncDocuments() : [];
     const changedDocumentIds = new Set<string>();
     for (const event of events) {
+      if (event.target === room.documents && event instanceof Y.YMapEvent) {
+        for (const id of event.keysChanged) changedDocumentIds.add(id);
+      }
       if (!(event instanceof Y.YTextEvent)) continue;
       const text = event.target;
       const id = documentIdsByText.get(text);
