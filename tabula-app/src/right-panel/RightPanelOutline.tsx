@@ -126,7 +126,7 @@ export function RightPanelOutline({
                   <button
                     className="right-outline-link"
                     type="button"
-                    style={{ paddingLeft: `${Math.max(0, heading.depth - 1) * 12}px` }}
+                    style={{ paddingLeft: `${Math.max(0, heading.depth - 1) * 16}px` }}
                     aria-current={activeHeadingIndex === index ? "location" : undefined}
                     onClick={() => onGoToOutlineHeading(heading, index)}
                   >

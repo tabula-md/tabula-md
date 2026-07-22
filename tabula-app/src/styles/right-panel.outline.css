@@ -36,7 +36,7 @@
   display: grid;
   grid-template-columns: var(--right-chevron-size) minmax(0, 1fr);
   align-items: center;
-  gap: var(--right-tight-gap);
+  gap: 12px;
   padding: 0 6px;
 }
 
