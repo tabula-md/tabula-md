@@ -5,6 +5,6 @@
   "type": "module",
   "dependencies": {
     "@tabula-md/tabula": "file:../packages/tabula",
-    "posthog-js": "^1.402.3"
+    "posthog-js": "^1.406.2"
   }
 }
