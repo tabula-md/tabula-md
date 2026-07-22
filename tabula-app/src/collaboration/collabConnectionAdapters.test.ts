@@ -389,16 +389,25 @@ describe("workspace room runtime", () => {
         resolveRoomBaseUrl: () => "http://room.test",
       },
     });
+    const documentProjectionListener = vi.fn();
+    const unsubscribeDocumentProjection = connection.subscribeDocument(
+      "doc-1",
+      documentProjectionListener,
+    );
+
+    expect(connection.getDocumentTextSnapshot("doc-1")).toBeNull();
 
     await vi.waitFor(() => expect(connection.getSnapshot().status).toBe("connected"));
     expect(connection.getSnapshot()).toMatchObject({
       hydrationStatus: "ready",
       hydrationSource: "bootstrap",
     });
+    await vi.waitFor(() => expect(documentProjectionListener).toHaveBeenCalled());
     expect(connection.getDocumentTextSnapshot("doc-1")).toBe("# Ready");
     expect(loadEncryptedCheckpoint).not.toHaveBeenCalled();
     expect(saveEncryptedCheckpoint).not.toHaveBeenCalled();
 
+    unsubscribeDocumentProjection();
     connection.disconnect();
     seedDoc.destroy();
   });

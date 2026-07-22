@@ -621,6 +621,7 @@ export const createWorkspaceRoomRuntime = ({
     transaction: Y.Transaction,
   ) => {
     const metricsChange = roomMetrics.applyDocumentEvents(events);
+    const removedDocumentIds = new Set(metricsChange.removedDocumentIds);
     if (metricsChange.structureChanged) {
       for (const id of metricsChange.removedDocumentIds) {
         remoteProjectionRevisions.delete(id);
@@ -631,7 +632,10 @@ export const createWorkspaceRoomRuntime = ({
       queueWorkspaceProjection();
     }
     for (const id of metricsChange.changedDocumentIds) {
-      if (isRemoteSyncOrigin(transaction.origin) || transaction.origin === CHECKPOINT_ORIGIN) {
+      if (
+        !removedDocumentIds.has(id) &&
+        (isRemoteSyncOrigin(transaction.origin) || transaction.origin === CHECKPOINT_ORIGIN)
+      ) {
         remoteProjectionRevisions.set(id, (remoteProjectionRevisions.get(id) ?? 0) + 1);
       }
       scheduleTextProjection(id);

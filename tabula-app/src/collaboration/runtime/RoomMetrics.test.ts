@@ -37,6 +37,41 @@ describe("RoomMetrics", () => {
     room.doc.destroy();
   });
 
+  it("reports document map insertions, replacements, and deletions as projection changes", () => {
+    const room = createWorkspaceRoomCrdt({ roomId: "map-changes" });
+    const metrics = createRoomMetrics(room);
+    const changes: ReturnType<typeof metrics.applyDocumentEvents>[] = [];
+    const observer = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
+      changes.push(metrics.applyDocumentEvents(events));
+    };
+    room.documents.observeDeep(observer);
+
+    room.documents.set("a", new Y.Text("# Heading"));
+    expect(changes.at(-1)).toMatchObject({
+      changedDocumentIds: ["a"],
+      removedDocumentIds: [],
+      structureChanged: true,
+    });
+
+    room.documents.set("a", new Y.Text("# Replaced"));
+    expect(changes.at(-1)).toMatchObject({
+      changedDocumentIds: ["a"],
+      removedDocumentIds: [],
+      structureChanged: true,
+    });
+
+    room.documents.delete("a");
+    expect(changes.at(-1)).toMatchObject({
+      changedDocumentIds: ["a"],
+      removedDocumentIds: ["a"],
+      structureChanged: true,
+    });
+
+    room.documents.unobserveDeep(observer);
+    metrics.dispose();
+    room.doc.destroy();
+  });
+
   it("includes comments in the bounded room content budget", () => {
     const room = createWorkspaceRoomCrdt({ roomId: "comment-metrics" });
     initializeWorkspaceRoomCrdt(room, {
