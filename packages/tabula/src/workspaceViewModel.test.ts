@@ -17,6 +17,7 @@ describe("workspace view model", () => {
   it("labels connection states for user-facing chrome", () => {
     expect(getWorkspaceStatusLabel("connected")).toBe("Live session");
     expect(getWorkspaceStatusLabel("reconnecting")).toBe("Reconnecting");
+    expect(getWorkspaceStatusLabel("suspended")).toBe("Session paused");
     expect(getWorkspaceStatusLabel("disconnected")).toBe("Disconnected");
     expect(getWorkspaceStatusLabel("failed")).toBe("Connection failed");
     expect(getWorkspaceStatusLabel("idle")).toBe("Local draft");

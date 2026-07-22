@@ -5,6 +5,7 @@ export type WorkspaceConnectionStatus =
   | "connecting"
   | "connected"
   | "reconnecting"
+  | "suspended"
   | "disconnected"
   | "failed";
 
@@ -20,6 +21,7 @@ export const getWorkspaceStatusLabel = (status: WorkspaceConnectionStatus) =>
     connecting: "Connecting",
     connected: "Live session",
     reconnecting: "Reconnecting",
+    suspended: "Session paused",
     disconnected: "Disconnected",
     failed: "Connection failed",
   })[status];

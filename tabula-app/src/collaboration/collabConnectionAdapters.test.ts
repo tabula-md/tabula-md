@@ -1699,4 +1699,57 @@ describe("workspace room runtime", () => {
     host.disconnect();
     reader.disconnect();
   });
+
+  it("suspends only the transport and resumes with local CRDT changes intact", async () => {
+    const relay = createMemoryRoomRelay();
+    const checkpoints = createMemoryRoomCheckpointStore();
+    const defaults = createDefaultCollabRuntimeAdapters();
+    const adapters = {
+      ...defaults,
+      createRoomTransport: relay.createRoomTransport,
+      roomCheckpointStore: checkpoints.store,
+      resolveRoomBaseUrl: () => "http://memory-room.test",
+    };
+    const host = createWorkspaceRoomRuntime({
+      roomId: "room-suspend-resume",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: true,
+      documents: [{ id: "doc", title: "README.md", text: "base" }],
+      identity: { id: "host", name: "Steady Human", color: "#2563eb", lastSeen: 0 },
+      fileTitle: "README.md",
+      adapters,
+    });
+    await vi.waitFor(() => expect(host.getSnapshot()).toMatchObject({
+      status: "connected",
+      durability: "clean",
+      recoveryMode: "durable",
+    }));
+    const peer = createWorkspaceRoomRuntime({
+      roomId: "room-suspend-resume",
+      roomKey: VALID_ROOM_KEY,
+      documentId: "doc",
+      emitInitialWorkspaceState: false,
+      identity: { id: "peer", name: "Patient Human", color: "#16a34a", lastSeen: 0 },
+      fileTitle: "README.md",
+      adapters,
+    });
+    await vi.waitFor(() => expect(peer.materializeDocument("doc")).toBe("base"));
+
+    expect(host.suspend()).toBe(true);
+    expect(host.getSnapshot()).toMatchObject({ status: "suspended", collaborators: [] });
+    expect(host.suspend()).toBe(false);
+
+    expect(host.applyLocalTextPatches([{ from: 4, to: 4, insert: " local" }])).toBe(true);
+    expect(host.materializeDocument("doc")).toBe("base local");
+    expect(peer.materializeDocument("doc")).toBe("base");
+
+    expect(host.resume()).toBe(true);
+    expect(host.resume()).toBe(false);
+    await vi.waitFor(() => expect(peer.materializeDocument("doc")).toBe("base local"));
+    expect(host.getSnapshot().status).toBe("connected");
+
+    host.disconnect();
+    peer.disconnect();
+  });
 });

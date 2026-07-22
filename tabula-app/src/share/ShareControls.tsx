@@ -14,9 +14,9 @@ type ShareControlsProps = {
   room?: LocationRoom | null;
   language: WorkspaceLanguage;
   currentUserName: string;
+  canStartSession: boolean;
   connectionStatus: ConnectionStatus;
   isLive: boolean;
-  isLiveConnected: boolean;
   recoveryMode: RoomRecoveryMode;
   shareOpen: boolean;
   copied: boolean;
@@ -34,9 +34,9 @@ export function ShareControls({
   room,
   language,
   currentUserName,
+  canStartSession,
   connectionStatus,
   isLive,
-  isLiveConnected,
   recoveryMode,
   shareOpen,
   copied,
@@ -53,7 +53,6 @@ export function ShareControls({
   const shareController = useShareDialogController({
     room,
     isLive: showLiveRoomPanel,
-    isLiveConnected,
     jsonShare,
     language,
     onCloseShare,
@@ -133,9 +132,9 @@ export function ShareControls({
             copied={copied}
             copy={shareController.copy}
             currentUserName={currentUserName}
+            canStartSession={canStartSession}
             connectionStatus={connectionStatus}
             isLive={showLiveRoomPanel}
-            isLiveConnected={isLiveConnected}
             recoveryMode={recoveryMode}
             shareView={shareController.shareView}
             exportPanel={

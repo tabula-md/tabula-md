@@ -73,13 +73,22 @@ export async function run(ctx) {
     await firstPage.locator(".share-trigger").click();
     const liveSurfaceStartedAt = Date.now();
     await firstPage.getByRole("button", { name: "Start session" }).click();
-    await firstPage.getByRole("button", { name: "Stop session" }).waitFor({
+    await firstPage.locator('.share-link-display[title*="#room="]').waitFor({
       state: "visible",
       timeout: 1_000,
     });
     expect(
       Date.now() - liveSurfaceStartedAt < 1_000,
-      "Start session should enter the live surface without waiting for relay or checkpoint round trips.",
+      "Start session should show the complete invite surface without waiting for the room transport.",
+    );
+    const initialLivePanel = await firstPage.locator(".share-modal-panel.live").evaluate((panel) => ({
+      height: panel.getBoundingClientRect().height,
+      text: panel.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    }));
+    const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
+    expect(
+      Boolean(shareUrl && new URL(shareUrl).pathname === "/" && new URL(shareUrl).hash.startsWith("#room=")),
+      "Live sessions should expose the canonical hash room invite link immediately.",
     );
     try {
       await firstPage.waitForSelector('.tab-item.active[data-room-id]:not([data-room-id=""])');
@@ -92,22 +101,28 @@ export async function run(ctx) {
         ].join("\n")}\n${error.message}`,
       );
     }
-    await firstPage.waitForSelector(".share-trigger.live .share-live-dot");
-    await firstPage.waitForSelector(".sharing-presence");
     const firstPageUrl = new URL(firstPage.url());
     expect(
       firstPageUrl.pathname === "/" && firstPageUrl.hash.startsWith("#room="),
       "Starting a live session should move the current tab to the canonical room URL.",
     );
-    await waitForText(firstPage.locator(".share-modal"), "Invite link");
-    const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
-    expect(
-      Boolean(shareUrl && new URL(shareUrl).pathname === "/" && new URL(shareUrl).hash.startsWith("#room=")),
-      "Live sessions should expose the canonical hash room invite link.",
-    );
     expect(
       shareUrl === firstPage.url(),
       "The live invite link should match the current room URL after starting a session.",
+    );
+    await firstPage.waitForSelector(".share-trigger.live.connected");
+    await firstPage.waitForSelector(".sharing-presence");
+    const connectedLivePanel = await firstPage.locator(".share-modal-panel.live").evaluate((panel) => ({
+      height: panel.getBoundingClientRect().height,
+      text: panel.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    }));
+    expect(
+      Math.abs(connectedLivePanel.height - initialLivePanel.height) <= 1,
+      "The complete Share panel should keep its height while the room transport connects.",
+    );
+    expect(
+      connectedLivePanel.text === initialLivePanel.text,
+      "The complete Share panel should keep the same content while the room transport connects.",
     );
     const sharingPresenceLabel = await firstPage.locator(".sharing-presence").getAttribute("aria-label");
     const sharingPresenceText = await firstPage.locator(".sharing-presence").textContent();
@@ -156,7 +171,7 @@ export async function run(ctx) {
       },
       { secondaryFileName },
     );
-    await firstPage.waitForSelector(".share-trigger.live .share-live-dot");
+    await firstPage.waitForSelector(".share-trigger.live.connected");
     expect(
       new URL(firstPage.url()).hash === firstPageUrl.hash,
       "Switching to another included workspace document should keep the same live room URL.",
@@ -354,11 +369,13 @@ export async function run(ctx) {
       await firstPage.waitForSelector(".share-trigger.live.reconnecting", { timeout: 8_000 });
       const offlineNoticeCount = await firstPage.locator(".live-room-notice").count();
       expect(offlineNoticeCount === 0, "Recoverable reconnecting state should not show a document-level notice.");
+      await firstPage.waitForFunction(
+        () => document.querySelector(".app-toast")?.textContent?.includes("Reconnecting to live room"),
+      );
       await firstPage.locator(".share-trigger").click();
-      await firstPage.waitForSelector(".share-live-status.reconnecting");
       expect(
-        (await firstPage.locator(".share-modal .live-room-status").count()) === 0,
-        "Recoverable reconnecting state should not show routine status copy in Share.",
+        (await firstPage.locator(".share-live-status, .share-modal .live-room-status").count()) === 0,
+        "Recoverable reconnecting state should stay out of Share.",
       );
       await firstPage.getByRole("button", { name: "Close share dialog" }).click();
       await focusMarkdownEditor(firstPage);
@@ -370,6 +387,9 @@ export async function run(ctx) {
       await startRoomServer();
       await firstPage.waitForSelector(".share-trigger.live.connected", { timeout: 20_000 });
       await secondPage.waitForSelector(".share-trigger.live.connected", { timeout: 20_000 });
+      await firstPage.waitForFunction(
+        () => document.querySelector(".app-toast")?.textContent?.includes("Live room reconnected"),
+      );
       await ensureEditMode(secondPage);
       try {
         await waitForText(secondPage.locator(".cm-content"), "Offline edit survived", 12_000);

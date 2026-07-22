@@ -282,8 +282,12 @@ export function useWorkspaceRoomController({
     comments.replaceCommentsByFileId,
   ]);
 
+  const localPresenceIdentity = useMemo(
+    () => ({ ...identity, presenceState: collaboration.localPresenceState }),
+    [collaboration.localPresenceState, identity],
+  );
   const presenceIdentity = useCollaborationPresenceIdentity({
-    identity,
+    identity: localPresenceIdentity,
     isLive: collaboration.isLive,
   });
   useEffect(() => {

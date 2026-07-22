@@ -54,9 +54,11 @@ export function ShareTrigger({
   const liveStatus = isLive
     ? connectionStatus === "connected"
       ? "connected"
-      : connectionStatus === "connecting" || connectionStatus === "reconnecting"
-        ? "reconnecting"
-        : "disconnected"
+      : connectionStatus === "suspended"
+        ? "suspended"
+        : connectionStatus === "connecting" || connectionStatus === "reconnecting"
+          ? "reconnecting"
+          : "disconnected"
     : null;
   const statusLabel = liveStatus
     ? `${copy.trigger}: ${liveStatus === "connected" ? "live collaboration active" : liveStatus}`
@@ -75,7 +77,6 @@ export function ShareTrigger({
         onClick={onToggleShare}
       >
         <Share2 size={16} />
-        {isLive ? <span className="share-live-dot" aria-hidden="true" /> : null}
         <span className="share-label-visible">{copy.trigger}</span>
       </button>
     </div>

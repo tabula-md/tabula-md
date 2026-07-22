@@ -88,16 +88,17 @@
 
 .share-trigger.live.connected {
   color: var(--text-primary);
-  background: transparent;
+  background: var(--success-soft);
 }
 
 .share-trigger.live.connected:hover,
 .share-trigger.live.connected.active {
   color: var(--text-primary);
-  background: var(--surface-hover);
+  background: color-mix(in srgb, var(--success) 18%, var(--surface-hover));
 }
 
 .share-trigger.live.reconnecting,
+.share-trigger.live.suspended,
 .share-trigger.live.disconnected {
   color: var(--text-primary);
   background: var(--surface-muted);
@@ -105,30 +106,11 @@
 
 .share-trigger.live.reconnecting:hover,
 .share-trigger.live.reconnecting.active,
+.share-trigger.live.suspended:hover,
+.share-trigger.live.suspended.active,
 .share-trigger.live.disconnected:hover,
 .share-trigger.live.disconnected.active {
   background: var(--surface-hover);
-}
-
-.share-live-dot {
-  position: absolute;
-  top: 7px;
-  left: 21px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--status-dot-connected);
-  box-shadow: 0 0 0 2px var(--success-soft);
-}
-
-.share-trigger.reconnecting .share-live-dot {
-  background: var(--status-dot-connecting);
-  box-shadow: 0 0 0 2px var(--surface-muted);
-}
-
-.share-trigger.disconnected .share-live-dot {
-  background: var(--status-dot-disconnected);
-  box-shadow: 0 0 0 2px var(--surface-muted);
 }
 
 .share-label-visible {
@@ -614,32 +596,6 @@
   background: var(--surface-muted);
 }
 
-.share-live-status {
-  display: grid;
-  gap: 4px;
-  padding: 10px;
-  border-radius: var(--radius-surface);
-  background: var(--surface-active);
-}
-
-.share-live-status.disconnected {
-  background: var(--danger-background);
-}
-
-.share-live-status strong {
-  color: var(--text-primary);
-  font-size: var(--font-ui-body);
-  font-weight: var(--weight-ui-strong);
-  line-height: 1.25;
-}
-
-.share-live-status p {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: var(--font-ui-secondary);
-  line-height: 1.35;
-}
-
 .live-room-box .share-link-display,
 .live-room-box .share-modal-field > input,
 .live-room-box .share-modal-primary,
@@ -850,6 +806,16 @@
 
 .sharing-presence .avatar.agent {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--surface-overlay) 72%, transparent);
+}
+
+.sharing-presence .avatar.idle {
+  filter: saturate(0.55);
+  opacity: 0.68;
+}
+
+.sharing-presence .avatar.away {
+  filter: saturate(0.25);
+  opacity: 0.42;
 }
 
 .sharing-presence .avatar.participant {

@@ -129,7 +129,7 @@ export function WorkspaceTopChrome({
     />
   );
 
-  const shareControls = files.length > 0 || room ? (
+  const shareControls = (
     <>
       <ShareTrigger
         connectionStatus={connectionStatus}
@@ -145,9 +145,9 @@ export function WorkspaceTopChrome({
             room={room}
             language={language}
             currentUserName={currentUserName}
+            canStartSession={files.length > 0}
             connectionStatus={connectionStatus}
             isLive={isLive}
-            isLiveConnected={isLiveConnected}
             recoveryMode={recoveryMode}
             shareOpen={shareOpen}
             copied={copied}
@@ -163,7 +163,7 @@ export function WorkspaceTopChrome({
         </ShareControlsBoundary>
       )}
     </>
-  ) : null;
+  );
 
   return (
     <TopChrome

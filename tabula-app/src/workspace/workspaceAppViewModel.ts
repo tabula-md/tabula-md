@@ -24,7 +24,6 @@ export type WorkspaceAppViewModel = {
   liveRoomLoadingProps: {
     language: WorkspaceLanguage;
     onOpenLocalWorkspace: () => void;
-    onRetry: () => void;
   };
   localWorkspaceOpening: boolean;
   mainPanelClassName: string;

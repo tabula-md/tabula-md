@@ -1,4 +1,4 @@
-import { FolderOpen, Link2, UsersRound } from "lucide-react";
+import { FolderOpen, UsersRound } from "lucide-react";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspaceSurfaceLocale";
 
@@ -6,14 +6,12 @@ export type LiveRoomLoadingSurfaceProps = {
   language: WorkspaceLanguage;
   state?: "opening" | "unavailable" | "expired";
   onOpenLocalWorkspace?: () => void;
-  onRetry?: () => void;
 };
 
 export function LiveRoomLoadingSurface({
   language,
   state = "opening",
   onOpenLocalWorkspace,
-  onRetry,
 }: LiveRoomLoadingSurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   if (state === "expired") {
@@ -40,10 +38,6 @@ export function LiveRoomLoadingSurface({
           <p className="live-room-unavailable-title">{copy.roomUnavailableTitle}</p>
           <p>{copy.roomUnavailableDescription}</p>
           <div className="live-room-unavailable-actions">
-            <button type="button" className="empty-file-action" onClick={onRetry}>
-              <Link2 size={16} aria-hidden="true" />
-              <span>{copy.tryAgain}</span>
-            </button>
             <button type="button" className="empty-file-action" onClick={onOpenLocalWorkspace}>
               <FolderOpen size={16} aria-hidden="true" />
               <span>{copy.openLocalWorkspace}</span>

@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -465,7 +466,6 @@ export function useWorkspaceRuntime() {
     jsonShare,
     liveRoomOpenTimedOut,
     openLocalWorkspaceAfterRoomFailure,
-    retryOpeningLiveRoom,
     startSession: startSessionWithPendingCommit,
     stopSession: stopSessionWithPendingCommit,
   } = useWorkspaceLiveSessionController({
@@ -487,6 +487,21 @@ export function useWorkspaceRuntime() {
     text,
     workspace: workspaceFiles,
   });
+  const liveRoomOpenState = getLiveRoomOpenState({
+    connectionStatus,
+    hydrationStatus,
+    hasActiveRoom: Boolean(activeRoom),
+    timedOut: liveRoomOpenTimedOut,
+    failure: liveRoomOpenFailure,
+  });
+  useEffect(() => {
+    if (
+      topPopover === "share" &&
+      (liveRoomOpenState === "unavailable" || liveRoomOpenState === "expired")
+    ) {
+      openLocalWorkspaceAfterRoomFailure();
+    }
+  }, [liveRoomOpenState, openLocalWorkspaceAfterRoomFailure, topPopover]);
 
   useSelectionActionDismissal({
     selectionActionPosition,
@@ -781,7 +796,12 @@ export function useWorkspaceRuntime() {
     onReorderFiles: reorderFiles,
     onRenameFile: renameWorkspaceFileAction,
     onSelectFile: selectFile,
-    onShareOpened: () => productAnalytics.report("share_opened"),
+    onShareOpened: () => {
+      if (liveRoomOpenState === "unavailable" || liveRoomOpenState === "expired") {
+        openLocalWorkspaceAfterRoomFailure();
+      }
+      productAnalytics.report("share_opened");
+    },
     onStartSession: startSessionWithPendingCommit,
     onStopSession: stopSessionWithPendingCommit,
     onRetrySession: retryCollaborationConnection,
@@ -878,16 +898,9 @@ export function useWorkspaceRuntime() {
     liveRoomLoadingProps: {
       language: workspacePreferences.language,
       onOpenLocalWorkspace: openLocalWorkspaceAfterRoomFailure,
-      onRetry: retryOpeningLiveRoom,
     },
     localWorkspaceOpening: localPersistenceEnabled && localWorkspacePersistence.pending,
-    liveRoomOpenState: getLiveRoomOpenState({
-      connectionStatus,
-      hydrationStatus,
-      hasActiveRoom: Boolean(activeRoom),
-      timedOut: liveRoomOpenTimedOut,
-      failure: liveRoomOpenFailure,
-    }),
+    liveRoomOpenState,
     menuSurfaceProps,
     overlayProps: {
       infoDialog,

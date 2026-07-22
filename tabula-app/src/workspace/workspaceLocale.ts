@@ -52,6 +52,7 @@ type WorkspaceMenuCopy = {
       description: string;
       startSession: string;
       startDescription: string;
+      emptyStartDescription: string;
       securityDescription: string;
       temporarySessionDescription: string;
       inviteAgent: string;
@@ -62,9 +63,9 @@ type WorkspaceMenuCopy = {
       retrySession: string;
       unavailable: string;
       reconnectingTitle: string;
-      reconnectingDescription: string;
+      reconnectedTitle: string;
+      pausedDescription: string;
       disconnectedTitle: string;
-      disconnectedDescription: string;
       nameLabel: string;
       nameAria: string;
       anonymousPlaceholder: string;
@@ -163,6 +164,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Create an encrypted room for real-time collaboration.",
         startSession: "Start session",
         startDescription: "The whole workspace joins the encrypted room.",
+        emptyStartDescription: "Add a document to start a session.",
         securityDescription:
           "End-to-end encrypted. Tabula relays encrypted updates and cannot read your documents or comments.",
         temporarySessionDescription:
@@ -177,9 +179,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         retrySession: "Retry",
         unavailable: "Live collaboration isn’t available right now.",
         reconnectingTitle: "Reconnecting to live room",
-        reconnectingDescription: "Changes stay local until the room reconnects.",
+        reconnectedTitle: "Live room reconnected",
+        pausedDescription: "It reconnects automatically when you return.",
         disconnectedTitle: "Live room disconnected",
-        disconnectedDescription: "Reconnect before inviting people or agents.",
         nameLabel: "Your name",
         nameAria: "Your collaboration name",
         anonymousPlaceholder: "Anonymous",
@@ -265,6 +267,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "실시간 협업을 위한 암호화된 room을 만듭니다.",
         startSession: "세션 시작",
         startDescription: "워크스페이스 전체가 암호화된 room에 들어갑니다.",
+        emptyStartDescription: "문서를 추가하면 세션을 시작할 수 있습니다.",
         securityDescription:
           "종단간 암호화됩니다. Tabula는 암호화된 변경만 전달하며 문서나 댓글을 읽을 수 없습니다.",
         temporarySessionDescription:
@@ -279,9 +282,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         retrySession: "다시 연결",
         unavailable: "지금은 실시간 협업을 사용할 수 없습니다.",
         reconnectingTitle: "실시간 room에 다시 연결하는 중",
-        reconnectingDescription: "다시 연결될 때까지 변경 내용은 이 기기에 유지됩니다.",
+        reconnectedTitle: "실시간 room에 다시 연결했습니다",
+        pausedDescription: "돌아오면 자동으로 다시 연결됩니다.",
         disconnectedTitle: "실시간 room 연결이 끊어졌습니다",
-        disconnectedDescription: "사람이나 에이전트를 초대하기 전에 다시 연결하세요.",
         nameLabel: "내 이름",
         nameAria: "협업에서 표시할 이름",
         anonymousPlaceholder: "익명",
@@ -367,6 +370,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "リアルタイム共同編集用の暗号化 room を作成します。",
         startSession: "セッションを開始",
         startDescription: "ワークスペース全体が暗号化 room に参加します。",
+        emptyStartDescription: "ドキュメントを追加するとセッションを開始できます。",
         securityDescription:
           "エンドツーエンドで暗号化されます。Tabula は暗号化された更新を中継するだけで、文書やコメントを読むことはできません。",
         temporarySessionDescription:
@@ -381,9 +385,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         retrySession: "再試行",
         unavailable: "現在、ライブ共同編集は利用できません。",
         reconnectingTitle: "ライブ共同編集ルームに再接続中",
-        reconnectingDescription: "再接続するまで変更はこの端末に保持されます。",
+        reconnectedTitle: "ライブ共同編集ルームに再接続しました",
+        pausedDescription: "戻ると自動的に再接続します。",
         disconnectedTitle: "ライブ共同編集ルームから切断されました",
-        disconnectedDescription: "人やエージェントを招待する前に再接続してください。",
         nameLabel: "あなたの名前",
         nameAria: "共同編集で表示する名前",
         anonymousPlaceholder: "匿名",
@@ -470,6 +474,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         description: "创建用于实时协作的加密 room。",
         startSession: "启动协作",
         startDescription: "整个工作区会加入加密 room。",
+        emptyStartDescription: "添加文档后即可启动协作。",
         securityDescription:
           "采用端到端加密。Tabula 只中继加密更新，无法读取你的文档或评论。",
         temporarySessionDescription:
@@ -484,9 +489,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         retrySession: "重试",
         unavailable: "实时协作目前不可用。",
         reconnectingTitle: "正在重新连接实时协作房间",
-        reconnectingDescription: "重新连接前，更改会保留在此设备上。",
+        reconnectedTitle: "已重新连接实时协作房间",
+        pausedDescription: "返回时会自动重新连接。",
         disconnectedTitle: "实时协作房间已断开连接",
-        disconnectedDescription: "邀请用户或代理前请先重新连接。",
         nameLabel: "你的名字",
         nameAria: "协作显示名称",
         anonymousPlaceholder: "匿名",
@@ -571,6 +576,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Crea una sala cifrada para colaboración en tiempo real.",
         startSession: "Iniciar colaboración",
         startDescription: "Todo el workspace entra en la sala cifrada.",
+        emptyStartDescription: "Añade un documento para iniciar una sesión.",
         securityDescription:
           "Cifrado de extremo a extremo. Tabula solo retransmite cambios cifrados y no puede leer tus documentos ni comentarios.",
         temporarySessionDescription:
@@ -585,9 +591,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         retrySession: "Reintentar",
         unavailable: "La colaboración en vivo no está disponible ahora.",
         reconnectingTitle: "Reconectando a la sala en vivo",
-        reconnectingDescription: "Los cambios permanecen en este dispositivo hasta reconectar.",
+        reconnectedTitle: "Sala en vivo reconectada",
+        pausedDescription: "Se reconecta automáticamente cuando vuelvas.",
         disconnectedTitle: "Sala en vivo desconectada",
-        disconnectedDescription: "Vuelve a conectar antes de invitar a personas o agentes.",
         nameLabel: "Tu nombre",
         nameAria: "Tu nombre de colaboración",
         anonymousPlaceholder: "Anónimo",
@@ -675,6 +681,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Créez une room chiffrée pour collaborer en temps réel.",
         startSession: "Démarrer la session",
         startDescription: "Tout le workspace rejoint la room chiffrée.",
+        emptyStartDescription: "Ajoutez un document pour démarrer une session.",
         securityDescription:
           "Chiffré de bout en bout. Tabula ne fait que relayer des mises à jour chiffrées et ne peut lire ni vos documents ni vos commentaires.",
         temporarySessionDescription:
@@ -689,9 +696,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         retrySession: "Réessayer",
         unavailable: "La collaboration en direct n’est pas disponible actuellement.",
         reconnectingTitle: "Reconnexion à l’espace en direct",
-        reconnectingDescription: "Les modifications restent sur cet appareil jusqu’à la reconnexion.",
+        reconnectedTitle: "Espace en direct reconnecté",
+        pausedDescription: "La reconnexion est automatique à votre retour.",
         disconnectedTitle: "Espace en direct déconnecté",
-        disconnectedDescription: "Reconnectez-vous avant d’inviter des personnes ou des agents.",
         nameLabel: "Votre nom",
         nameAria: "Votre nom de collaboration",
         anonymousPlaceholder: "Anonyme",
@@ -779,6 +786,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Erstelle einen verschlüsselten Room für Zusammenarbeit in Echtzeit.",
         startSession: "Sitzung starten",
         startDescription: "Der gesamte Workspace tritt dem verschlüsselten Room bei.",
+        emptyStartDescription: "Füge ein Dokument hinzu, um eine Sitzung zu starten.",
         securityDescription:
           "Ende-zu-Ende verschlüsselt. Tabula leitet nur verschlüsselte Änderungen weiter und kann Dokumente oder Kommentare nicht lesen.",
         temporarySessionDescription:
@@ -793,9 +801,9 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         retrySession: "Erneut versuchen",
         unavailable: "Live-Zusammenarbeit ist derzeit nicht verfügbar.",
         reconnectingTitle: "Live-Raum wird erneut verbunden",
-        reconnectingDescription: "Änderungen bleiben bis zur Wiederverbindung auf diesem Gerät.",
+        reconnectedTitle: "Live-Raum wieder verbunden",
+        pausedDescription: "Bei deiner Rückkehr wird die Verbindung automatisch wiederhergestellt.",
         disconnectedTitle: "Verbindung zum Live-Raum getrennt",
-        disconnectedDescription: "Stellen Sie die Verbindung wieder her, bevor Sie Personen oder Agenten einladen.",
         nameLabel: "Dein Name",
         nameAria: "Dein Name für die Zusammenarbeit",
         anonymousPlaceholder: "Anonym",
@@ -846,6 +854,9 @@ export type WorkspaceChromeCopy = {
     toggleSidePanel: string;
     collaborators: string;
     agent: string;
+    active: string;
+    idle: string;
+    away: string;
     inWorkspace: string;
     agentInWorkspace: string;
     viewing: (name: string) => string;
@@ -911,6 +922,9 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       toggleSidePanel: "Toggle side panel",
       collaborators: "Collaborators",
       agent: "Agent",
+      active: "Active",
+      idle: "Idle",
+      away: "Away",
       inWorkspace: "In workspace",
       agentInWorkspace: "Agent in workspace",
       viewing: (name) => `Viewing ${name}`,
@@ -974,6 +988,9 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       toggleSidePanel: "사이드 패널 전환",
       collaborators: "협업자",
       agent: "에이전트",
+      active: "활동 중",
+      idle: "자리 비움",
+      away: "다른 곳에 있음",
       inWorkspace: "워크스페이스에 있음",
       agentInWorkspace: "에이전트가 워크스페이스에 있음",
       viewing: (name) => `${name} 보는 중`,
@@ -1037,6 +1054,9 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       toggleSidePanel: "サイドパネルを切り替える",
       collaborators: "共同編集者",
       agent: "エージェント",
+      active: "アクティブ",
+      idle: "アイドル",
+      away: "離席中",
       inWorkspace: "ワークスペース内",
       agentInWorkspace: "エージェントがワークスペース内にいます",
       viewing: (name) => `${name} を表示中`,
@@ -1100,6 +1120,9 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       toggleSidePanel: "切换侧边栏",
       collaborators: "协作者",
       agent: "代理",
+      active: "活跃",
+      idle: "空闲",
+      away: "离开",
       inWorkspace: "在工作区中",
       agentInWorkspace: "代理在工作区中",
       viewing: (name) => `正在查看 ${name}`,
@@ -1163,6 +1186,9 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       toggleSidePanel: "Alternar panel lateral",
       collaborators: "Colaboradores",
       agent: "Agente",
+      active: "Activo",
+      idle: "Inactivo",
+      away: "Ausente",
       inWorkspace: "En el espacio",
       agentInWorkspace: "Agente en el espacio",
       viewing: (name) => `Viendo ${name}`,
@@ -1226,6 +1252,9 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       toggleSidePanel: "Afficher ou masquer le panneau latéral",
       collaborators: "Collaborateurs",
       agent: "Agent",
+      active: "Actif",
+      idle: "Inactif",
+      away: "Absent",
       inWorkspace: "Dans l’espace",
       agentInWorkspace: "Agent dans l’espace",
       viewing: (name) => `Affiche ${name}`,
@@ -1289,6 +1318,9 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       toggleSidePanel: "Seitenleiste ein-/ausblenden",
       collaborators: "Mitwirkende",
       agent: "Agent",
+      active: "Aktiv",
+      idle: "Inaktiv",
+      away: "Abwesend",
       inWorkspace: "Im Workspace",
       agentInWorkspace: "Agent im Workspace",
       viewing: (name) => `Zeigt ${name} an`,

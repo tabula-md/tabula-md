@@ -9,8 +9,14 @@ export type CollaborationConnectionStatus =
   | "connecting"
   | "connected"
   | "reconnecting"
+  | "suspended"
   | "disconnected"
   | "failed";
+
+export type RoomPresenceState = "active" | "idle" | "away";
+
+export const readRoomPresenceState = (value: unknown): RoomPresenceState =>
+  value === "idle" || value === "away" ? value : "active";
 
 export type CollaborationLiveSelection = {
   documentId?: string;
@@ -28,6 +34,7 @@ export type CollaborationCollaborator = {
   name: string;
   color: string;
   lastSeen: number;
+  presenceState?: RoomPresenceState;
   activeDocumentId?: string;
   kind?: RoomActorKind;
   client?: RoomActorClient;

@@ -52,7 +52,18 @@ export async function run(ctx) {
     expect((await page.getByText("Opening workspace...").count()) === 0, "Local hydration should not flash loading copy.");
     expect((await page.getByText("Preparing preview...").count()) === 0, "Fresh projects should not flash Preview loading copy.");
     expect((await page.locator(".tabula-plus-trigger").count()) === 0, "Tabula + should not live in the top-right document chrome.");
-    expect((await page.locator(".share-trigger").count()) === 0, "Share should stay hidden until a document is open.");
+    expect((await page.locator(".share-trigger").count()) === 1, "Share should keep a stable place in the chrome when the workspace is empty.");
+    await page.locator(".share-trigger").click();
+    const emptyStartSessionButton = page.getByRole("button", { name: "Start session" });
+    expect(
+      await emptyStartSessionButton.isDisabled(),
+      "An empty workspace should keep Start session visible but unavailable.",
+    );
+    expect(
+      (await page.getByText("Add a document to start a session.", { exact: true }).count()) === 1,
+      "The empty Share panel should explain the disabled action in its existing description line.",
+    );
+    await page.getByRole("button", { name: "Close share dialog" }).click();
     expect((await page.getByRole("button", { name: "More document actions" }).count()) === 0, "Document controls should not expose a single-command More menu.");
     await page.evaluate(() => {
       window.__tabulaClipboard = [];
@@ -643,6 +654,7 @@ export async function run(ctx) {
     await waitForShareDialogState(page, { panel: "Share link" });
     await page.getByRole("button", { name: "Start session" }).click();
     await page.waitForSelector(".share-link-display");
+    await page.waitForFunction(() => window.location.hash.startsWith("#room="));
     const previewTransition = await page.evaluate(() => {
       window.__tabulaPreviewObserver?.disconnect();
       return {
@@ -664,8 +676,8 @@ export async function run(ctx) {
       "Starting live should keep the Share link panel heading stable.",
     );
     expect(
-      (await page.getByText("Create an encrypted room for real-time collaboration.").count()) > 0,
-      "Starting live should keep the Share link panel explanation stable.",
+      (await page.locator(".share-panel-heading > div > p").count()) === 1,
+      "Starting live should keep one concise Share link panel explanation.",
     );
     expect((await page.getByText("Invite an agent").count()) > 0, "Live modal should expose the agent handoff action after a room starts.");
     expect(
@@ -848,8 +860,8 @@ export async function run(ctx) {
           "A failed optimistic Start should preserve the active local document.",
         );
         expect(
-          (await page.locator(".share-live-status.failed").count()) === 0,
-          "Failed Start session should not leave a failed live-room card in Share.",
+          (await page.locator(".share-live-status").count()) === 0,
+          "Share should not render a connection-status card.",
         );
       });
     } finally {
@@ -876,6 +888,29 @@ export async function run(ctx) {
     expect(
       page.url().endsWith(`/#room=browserroom,${validRoomKey}`),
       "Opening a room should keep the room URL active.",
+    );
+    await page.getByText("This live room can’t be opened.", { exact: true }).waitFor({
+      state: "visible",
+      timeout: 10_000,
+    });
+    expect(
+      (await page.getByRole("button", { name: "Try again", exact: true }).count()) === 0,
+      "An unavailable room should not offer a retry loop while automatic recovery is already running.",
+    );
+    expect(
+      (await page.locator(".share-trigger").getAttribute("aria-label")) === "Share",
+      "An unavailable room should no longer present Share as an active disconnected session.",
+    );
+    await page.locator(".share-trigger").click();
+    await page.getByRole("dialog", { name: "Share" }).waitFor();
+    expect(
+      (await page.getByRole("button", { name: "Start session", exact: true }).count()) === 1 &&
+        (await page.getByRole("button", { name: "Stop session", exact: true }).count()) === 0,
+      "Share should leave the unavailable room and open the normal sharing flow.",
+    );
+    expect(
+      !page.url().includes("#room="),
+      "Opening Share from an unavailable room should return to the local workspace URL.",
     );
   });
 

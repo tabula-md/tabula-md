@@ -59,6 +59,22 @@ reads, while the separate Room relay remains ciphertext-only.
 Capabilities are cooperative client policy. A modified client holding the room
 key can still forge encrypted writes; signed write tokens are not implemented.
 
+### Presence And Inactivity
+
+Humans and agents publish the same ephemeral Awareness state: `active`, `idle`,
+or `away`. Browser participants become idle after one minute without local
+activity and away as soon as the tab is hidden. Activity makes them active
+again. Headless clients may publish the same states from their own execution
+lifecycle.
+
+A browser with no meaningful local or remote room activity for 15 minutes
+suspends only its transport. Suspension requires a clean durable encrypted
+checkpoint. The in-memory Y.Doc and editor binding remain available, so local
+changes made while suspended are queued by the CRDT sync layer. Returning to
+the tab or interacting with the workspace reconnects and synchronizes them.
+Temporary rooms and rooms whose checkpoint is dirty or failed remain connected.
+Stopping a session is still an explicit action and leaves room mode entirely.
+
 ## Encrypted Transport
 
 `tabula-room` relays opaque encrypted envelopes. The outer envelope is version

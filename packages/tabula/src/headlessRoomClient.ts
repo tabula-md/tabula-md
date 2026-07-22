@@ -1,5 +1,9 @@
 import * as Y from "yjs";
 import { Awareness, removeAwarenessStates } from "y-protocols/awareness";
+import {
+  readRoomPresenceState,
+  type RoomPresenceState,
+} from "./collaborationTypes";
 import { getCrypto, importEncryptionKey } from "./data/encryption";
 import {
   parseRoomActor,
@@ -78,6 +82,7 @@ export type HeadlessRoomCheckpointStatus =
 
 export type HeadlessRoomCollaborator = {
   actor: RoomActor;
+  presenceState: RoomPresenceState;
   activeDocumentId?: string;
   fileTitle?: string;
   selection?: HeadlessRoomSelection;
@@ -280,6 +285,7 @@ export const createHeadlessRoomClientRuntime = ({
   let checkpointInFlight: Promise<void> | null = null;
   let connectedOnce = false;
   let activeDocumentId: string | undefined;
+  let presenceState: RoomPresenceState = "active";
 
   const collaborators = (): HeadlessRoomCollaborator[] => {
     const result: HeadlessRoomCollaborator[] = [];
@@ -289,6 +295,7 @@ export const createHeadlessRoomClientRuntime = ({
       if (!collaborator || collaborator.id === actor.id || !collaborator.capabilities.includes("presence")) return;
       result.push({
         actor: collaborator,
+        presenceState: readRoomPresenceState(presence?.presenceState),
         activeDocumentId: typeof presence?.activeDocumentId === "string" ? presence.activeDocumentId : undefined,
         fileTitle: typeof presence?.fileTitle === "string" ? presence.fileTitle : undefined,
         selection: readPresenceSelection(room, presence as Record<string, unknown>),
@@ -385,11 +392,17 @@ export const createHeadlessRoomClientRuntime = ({
     const next: Record<string, unknown> = {
       ...awareness.getLocalState(),
       actor,
+      presenceState,
       user: { name: actor.name, color: actor.color, colorLight: `${actor.color}33` },
       lastSeen: Date.now(),
     };
     if (activeDocumentId) next.activeDocumentId = activeDocumentId;
     else delete next.activeDocumentId;
+    if (presenceState === "away") {
+      next.cursor = null;
+      next.viewport = null;
+      next.followingActorId = null;
+    }
     awareness.setLocalState(next);
   };
 
@@ -876,8 +889,10 @@ export const createHeadlessRoomClientRuntime = ({
       activeDocumentId?: string;
       fileTitle?: string;
       selection?: HeadlessRoomSelection;
+      presenceState?: RoomPresenceState;
     } = {}) {
       activeDocumentId = input.activeDocumentId;
+      presenceState = input.presenceState ?? presenceState;
       const current = { ...awareness.getLocalState() } as Record<string, unknown>;
       if (input.fileTitle) current.fileTitle = input.fileTitle;
       else delete current.fileTitle;
