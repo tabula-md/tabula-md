@@ -38,7 +38,11 @@ export async function run(ctx) {
 
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
-    await page.getByRole("button", { name: "Export to link" }).click();
+    const chooserModalRect = await page.locator(".share-modal").evaluate((modal) => {
+      const rect = modal.getBoundingClientRect();
+      return { height: rect.height, width: rect.width };
+    });
+    await page.getByRole("button", { name: "Create link" }).click();
     const exportLinkDisplay = page.locator(
       '.share-export-result .share-link-display[aria-labelledby][title]',
     );
@@ -87,12 +91,36 @@ export async function run(ctx) {
       );
     }
 
+    expect(
+      (await page.getByText(
+        "Create an encrypted point-in-time copy. Changes do not sync back.",
+        { exact: true },
+      ).count()) === 1,
+      "Creating an export link should preserve the mode description from the chooser.",
+    );
+    expect(
+      (await page.locator(".share-result-details").count()) === 1 &&
+        (await page.locator(".share-result-context").count()) === 1 &&
+        (await page.locator(".share-result-link-field").count()) === 1 &&
+        (await page.locator(".share-result-details > .share-modal-note").count()) === 1,
+      "Export results should use the same result structure as live collaboration.",
+    );
+    const exportModalRect = await page.locator(".share-modal").evaluate((modal) => {
+      const rect = modal.getBoundingClientRect();
+      return { height: rect.height, width: rect.width };
+    });
+    expect(
+      Math.abs(exportModalRect.width - chooserModalRect.width) <= 1 &&
+        Math.abs(exportModalRect.height - chooserModalRect.height) <= 1,
+      "Creating an export link should not resize the Share panel shell.",
+    );
+
     const firstExportUrl = await exportLinkDisplay.getAttribute("title");
     expect(Boolean(firstExportUrl), "Export to link should create an Export link URL.");
     await page.getByRole("button", { name: "Close share dialog" }).click();
     await page.locator(".share-trigger").click();
     expect(
-      (await page.getByRole("button", { name: "Export to link" }).count()) === 1 &&
+      (await page.getByRole("button", { name: "Create link" }).count()) === 1 &&
         (await page.locator(".share-export-result").count()) === 0,
       "Reopening Share should return to the live/export chooser instead of preserving the previous result.",
     );
@@ -100,12 +128,12 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await page.locator(".share-trigger").click();
     expect(
-      (await page.getByRole("button", { name: "Export to link" }).count()) === 1,
+      (await page.getByRole("button", { name: "Create link" }).count()) === 1,
       "Changing the workspace should invalidate the previous Export link.",
     );
     const exportedActiveFileName = await page.locator(".tab-item.active").getAttribute("data-file-name");
     expect(Boolean(exportedActiveFileName), "Export link smoke should identify the active document.");
-    await page.getByRole("button", { name: "Export to link" }).click();
+    await page.getByRole("button", { name: "Create link" }).click();
     await exportLinkDisplay.waitFor({ state: "visible" });
     const exportUrl = await exportLinkDisplay.getAttribute("title");
     expect(Boolean(exportUrl), "Export to link should create an Export link URL.");

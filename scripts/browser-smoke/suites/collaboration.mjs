@@ -177,7 +177,7 @@ export async function run(ctx) {
       "Switching to another included workspace document should keep the same live room URL.",
     );
     await firstPage.locator(".share-trigger").click();
-    await waitForText(firstPage.locator(".share-modal"), "Invite link");
+    await waitForText(firstPage.locator(".share-modal"), "Share link");
     const untitledShareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
     expect(
       untitledShareUrl === firstPage.url(),

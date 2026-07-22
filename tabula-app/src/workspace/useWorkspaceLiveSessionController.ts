@@ -152,9 +152,9 @@ export function useWorkspaceLiveSessionController({
 
   const openLocalWorkspaceAfterRoomFailure = useEventCallback(() => {
     flushPendingEditorCommit();
-    stopSession();
     room.resetCollaborationState("idle");
     roomDocumentProjectionStore.clear();
+    setCopiedFileId(null);
     sessionHost.openLocal();
     setLiveRoomOpenFailure(null);
     syncUrlForLocalWorkspace("replace");

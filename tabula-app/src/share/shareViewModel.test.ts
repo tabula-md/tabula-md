@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildShareViewModel } from "@tabula-md/tabula";
 
 const labels = {
-  exportToLink: "Export to link",
+  exportToLink: "Create link",
 };
 
 const baseInput = {
@@ -29,7 +29,7 @@ describe("share view model", () => {
     });
 
     expect(viewModel.shareable.status).toBe("exported");
-    expect(viewModel.shareable.primaryLabel).toBe("Export to link");
+    expect(viewModel.shareable.primaryLabel).toBe("Create link");
     expect(JSON.stringify(viewModel.shareable).toLowerCase()).not.toContain(
       "publish",
     );

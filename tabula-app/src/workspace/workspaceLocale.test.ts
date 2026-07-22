@@ -41,9 +41,13 @@ describe("workspace locale chrome copy", () => {
     );
     expect(english.emptyState.newFile).toBe("New document");
     expect(english.share.live.startSession).toBe("Start session");
-    expect(english.share.live.startDescription).toBe(
-      "The whole workspace joins the encrypted room.",
+    expect(english.share.live.description).toBe(
+      "Collaborate on the whole workspace in an encrypted live room.",
     );
+    expect(english.share.nothingToShare).toBe(
+      "Nothing to share yet. Create or open a document first.",
+    );
+    expect(english.share.chooserSecurityDescription).toContain("Tabula.md");
     expect(english.share.live.inviteAgent).toBe("Invite an agent");
     expect(english.share.live.inviteAgentDescription).toContain(
       "what you want changed",
@@ -51,8 +55,12 @@ describe("workspace locale chrome copy", () => {
     expect(english.share.live.agentAccessWarning).toContain(
       "hosted MCP can read room content",
     );
-    expect(english.share.live.securityDescription).toContain(
-      "cannot read your documents or comments",
+    expect(english.share.live.resultDescription).toBe(
+      "Changes sync in real time.",
+    );
+    expect(english.share.shareLinkLabel).toBe("Share link");
+    expect(english.share.workspaceSummary(2)).toBe(
+      "Whole workspace · 2 documents · comments included",
     );
     expect(english.share.live.stopConfirmTitle).toBe(
       "Stop live collaboration?",
@@ -61,8 +69,12 @@ describe("workspace locale chrome copy", () => {
     expect(english.share.shareable.description).toBe(
       "Create an encrypted point-in-time copy. Changes do not sync back.",
     );
-    expect(english.share.shareable.securityDescription).toContain(
-      "decryption key stays in the link",
+    expect(english.share.shareable.exportToLink).toBe("Create link");
+    expect(english.share.shareable.resultDescription).toBe(
+      "Snapshot created. Changes do not sync.",
+    );
+    expect(english.share.shareable.snapshotMetadata("Jul 30, 2026")).toBe(
+      "Snapshot · Expires Jul 30, 2026",
     );
     expect(english.share.modalTitle).toBe("Share");
 

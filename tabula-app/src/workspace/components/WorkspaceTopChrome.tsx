@@ -29,7 +29,7 @@ export type WorkspaceTopChromeProps = {
   connectionStatus: ConnectionStatus;
   copied: boolean;
   currentUserName: string;
-  files: WorkspaceFile[];
+  documentCount: number;
   folders: WorkspaceFolder[];
   identity: Collaborator;
   isLive: boolean;
@@ -70,7 +70,7 @@ export function WorkspaceTopChrome({
   connectionStatus,
   copied,
   currentUserName,
-  files,
+  documentCount,
   folders,
   identity,
   isLive,
@@ -145,7 +145,7 @@ export function WorkspaceTopChrome({
             room={room}
             language={language}
             currentUserName={currentUserName}
-            canStartSession={files.length > 0}
+            documentCount={documentCount}
             connectionStatus={connectionStatus}
             isLive={isLive}
             recoveryMode={recoveryMode}

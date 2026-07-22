@@ -47,13 +47,15 @@ type WorkspaceMenuCopy = {
     trigger: string;
     modalTitle: string;
     loadError: string;
+    nothingToShare: string;
+    chooserSecurityDescription: string;
+    shareLinkLabel: string;
+    workspaceSummary: (documentCount: number) => string;
     live: {
       title: string;
       description: string;
+      resultDescription: string;
       startSession: string;
-      startDescription: string;
-      emptyStartDescription: string;
-      securityDescription: string;
       temporarySessionDescription: string;
       inviteAgent: string;
       inviteAgentDescription: string;
@@ -69,7 +71,6 @@ type WorkspaceMenuCopy = {
       nameLabel: string;
       nameAria: string;
       anonymousPlaceholder: string;
-      inviteLabel: string;
       invalidInviteTitle: string;
       copyLink: string;
       copied: string;
@@ -83,11 +84,11 @@ type WorkspaceMenuCopy = {
     shareable: {
       title: string;
       description: string;
+      resultDescription: string;
+      snapshotMetadata: (formattedExpiry?: string) => string;
       noFileReason: string;
       exportToLink: string;
       preparing: string;
-      linkLabel: string;
-      securityDescription: string;
       unavailable: string;
       copied: string;
       failed: string;
@@ -158,15 +159,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       trigger: "Share",
       modalTitle: "Share",
       loadError: "Couldn’t open sharing.",
+      nothingToShare:
+        "Nothing to share yet. Create or open a document first.",
+      chooserSecurityDescription:
+        "Encrypted in your browser. Tabula.md cannot read shared content.",
+      shareLinkLabel: "Share link",
+      workspaceSummary: (documentCount) =>
+        `Whole workspace · ${documentCount} ${documentCount === 1 ? "document" : "documents"} · comments included`,
       live: {
         title: "Live collaboration",
         description:
-          "Create an encrypted room for real-time collaboration.",
+          "Collaborate on the whole workspace in an encrypted live room.",
+        resultDescription: "Changes sync in real time.",
         startSession: "Start session",
-        startDescription: "The whole workspace joins the encrypted room.",
-        emptyStartDescription: "Add a document to start a session.",
-        securityDescription:
-          "End-to-end encrypted. Tabula relays encrypted updates and cannot read your documents or comments.",
         temporarySessionDescription:
           "Temporary session. Keep at least one participant connected.",
         inviteAgent: "Invite an agent",
@@ -185,7 +190,6 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         nameLabel: "Your name",
         nameAria: "Your collaboration name",
         anonymousPlaceholder: "Anonymous",
-        inviteLabel: "Invite link",
         invalidInviteTitle: "This live room does not have a valid invite link.",
         copyLink: "Copy link",
         copied: "Copied",
@@ -202,12 +206,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Export link",
         description:
           "Create an encrypted point-in-time copy. Changes do not sync back.",
+        resultDescription: "Snapshot created. Changes do not sync.",
+        snapshotMetadata: (formattedExpiry) =>
+          formattedExpiry ? `Snapshot · Expires ${formattedExpiry}` : "Snapshot",
         noFileReason: "Open a file before exporting to link.",
-        exportToLink: "Export to link",
+        exportToLink: "Create link",
         preparing: "Preparing encrypted link…",
-        linkLabel: "Export link",
-        securityDescription:
-          "Encrypted in this browser before upload. The server stores only the encrypted copy; the decryption key stays in the link.",
         unavailable: "Export to link isn’t available right now.",
         copied: "Export link copied.",
         failed: "Couldn’t export to link.",
@@ -261,15 +265,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       trigger: "공유",
       modalTitle: "공유",
       loadError: "공유를 열지 못했습니다.",
+      nothingToShare:
+        "아직 공유할 내용이 없습니다. 먼저 문서를 만들거나 여세요.",
+      chooserSecurityDescription:
+        "브라우저에서 암호화되며 Tabula.md는 공유 내용을 읽을 수 없습니다.",
+      shareLinkLabel: "공유 링크",
+      workspaceSummary: (documentCount) =>
+        `전체 워크스페이스 · 문서 ${documentCount}개 · 댓글 포함`,
       live: {
         title: "실시간 협업",
         description:
-          "실시간 협업을 위한 암호화된 room을 만듭니다.",
+          "워크스페이스 전체를 암호화된 라이브 세션에서 함께 편집합니다.",
+        resultDescription: "변경 사항이 실시간으로 동기화됩니다.",
         startSession: "세션 시작",
-        startDescription: "워크스페이스 전체가 암호화된 room에 들어갑니다.",
-        emptyStartDescription: "문서를 추가하면 세션을 시작할 수 있습니다.",
-        securityDescription:
-          "종단간 암호화됩니다. Tabula는 암호화된 변경만 전달하며 문서나 댓글을 읽을 수 없습니다.",
         temporarySessionDescription:
           "임시 세션입니다. 최소 한 명의 참여자가 연결된 상태를 유지하세요.",
         inviteAgent: "에이전트 초대",
@@ -288,7 +296,6 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         nameLabel: "내 이름",
         nameAria: "협업에서 표시할 이름",
         anonymousPlaceholder: "익명",
-        inviteLabel: "초대 링크",
         invalidInviteTitle: "이 실시간 room에는 유효한 초대 링크가 없습니다.",
         copyLink: "링크 복사",
         copied: "복사됨",
@@ -305,12 +312,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "내보내기 링크",
         description:
           "암호화된 시점 복사본을 만듭니다. 이후 변경은 원본에 동기화되지 않습니다.",
+        resultDescription: "스냅샷을 만들었습니다. 이후 변경은 동기화되지 않습니다.",
+        snapshotMetadata: (formattedExpiry) =>
+          formattedExpiry ? `스냅샷 · ${formattedExpiry} 만료` : "스냅샷",
         noFileReason: "파일을 열면 링크로 내보낼 수 있습니다.",
-        exportToLink: "링크로 내보내기",
+        exportToLink: "링크 만들기",
         preparing: "암호화된 링크 준비 중…",
-        linkLabel: "내보내기 링크",
-        securityDescription:
-          "업로드 전에 이 브라우저에서 암호화됩니다. 서버에는 암호화된 복사본만 저장되며 복호화 키는 링크에만 남습니다.",
         unavailable: "지금은 링크로 내보낼 수 없습니다.",
         copied: "내보내기 링크를 복사했습니다.",
         failed: "링크로 내보내지 못했습니다.",
@@ -364,15 +371,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       trigger: "共有",
       modalTitle: "共有",
       loadError: "共有を開けませんでした。",
+      nothingToShare:
+        "まだ共有できる内容がありません。まずドキュメントを作成するか開いてください。",
+      chooserSecurityDescription:
+        "ブラウザーで暗号化されるため、Tabula.md は共有内容を読み取れません。",
+      shareLinkLabel: "共有リンク",
+      workspaceSummary: (documentCount) =>
+        `ワークスペース全体 · ドキュメント${documentCount}件 · コメントを含む`,
       live: {
         title: "ライブ共同編集",
         description:
-          "リアルタイム共同編集用の暗号化 room を作成します。",
+          "ワークスペース全体を暗号化されたライブセッションで共同編集します。",
+        resultDescription: "変更はリアルタイムで同期されます。",
         startSession: "セッションを開始",
-        startDescription: "ワークスペース全体が暗号化 room に参加します。",
-        emptyStartDescription: "ドキュメントを追加するとセッションを開始できます。",
-        securityDescription:
-          "エンドツーエンドで暗号化されます。Tabula は暗号化された更新を中継するだけで、文書やコメントを読むことはできません。",
         temporarySessionDescription:
           "一時セッションです。少なくとも1人は接続したままにしてください。",
         inviteAgent: "エージェントを招待",
@@ -391,7 +402,6 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         nameLabel: "あなたの名前",
         nameAria: "共同編集で表示する名前",
         anonymousPlaceholder: "匿名",
-        inviteLabel: "招待リンク",
         invalidInviteTitle:
           "このライブ room には有効な招待リンクがありません。",
         copyLink: "リンクをコピー",
@@ -409,13 +419,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "書き出しリンク",
         description:
           "暗号化された時点コピーを作成します。以後の変更は元には同期されません。",
+        resultDescription: "スナップショットを作成しました。以後の変更は同期されません。",
+        snapshotMetadata: (formattedExpiry) =>
+          formattedExpiry ? `スナップショット · ${formattedExpiry} に期限切れ` : "スナップショット",
         noFileReason:
           "ファイルを開くとリンクに書き出せます。",
-        exportToLink: "リンクに書き出し",
+        exportToLink: "リンクを作成",
         preparing: "暗号化リンクを準備中…",
-        linkLabel: "書き出しリンク",
-        securityDescription:
-          "アップロード前にこのブラウザで暗号化されます。サーバーには暗号化されたコピーだけが保存され、復号キーはリンク内に残ります。",
         unavailable: "現在、リンクへの書き出しは利用できません。",
         copied: "書き出しリンクをコピーしました。",
         failed: "リンクに書き出せませんでした。",
@@ -469,14 +479,17 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       trigger: "分享",
       modalTitle: "分享",
       loadError: "无法打开分享。",
+      nothingToShare: "暂无可分享的内容。请先创建或打开一个文档。",
+      chooserSecurityDescription:
+        "内容会在浏览器中加密，Tabula.md 无法读取共享内容。",
+      shareLinkLabel: "分享链接",
+      workspaceSummary: (documentCount) =>
+        `整个工作区 · ${documentCount} 个文档 · 包含评论`,
       live: {
         title: "实时协作",
-        description: "创建用于实时协作的加密 room。",
+        description: "在加密的实时协作中共同编辑整个工作区。",
+        resultDescription: "更改会实时同步。",
         startSession: "启动协作",
-        startDescription: "整个工作区会加入加密 room。",
-        emptyStartDescription: "添加文档后即可启动协作。",
-        securityDescription:
-          "采用端到端加密。Tabula 只中继加密更新，无法读取你的文档或评论。",
         temporarySessionDescription:
           "这是临时会话。请确保至少一名参与者保持连接。",
         inviteAgent: "邀请智能体",
@@ -495,7 +508,6 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         nameLabel: "你的名字",
         nameAria: "协作显示名称",
         anonymousPlaceholder: "匿名",
-        inviteLabel: "邀请链接",
         invalidInviteTitle: "此实时 room 没有有效的邀请链接。",
         copyLink: "复制链接",
         copied: "已复制",
@@ -511,12 +523,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       shareable: {
         title: "导出链接",
         description: "创建加密的时间点副本。之后的更改不会同步回原工作区。",
+        resultDescription: "快照已创建。之后的更改不会同步。",
+        snapshotMetadata: (formattedExpiry) =>
+          formattedExpiry ? `快照 · ${formattedExpiry} 到期` : "快照",
         noFileReason: "打开文件后即可导出为链接。",
-        exportToLink: "导出为链接",
+        exportToLink: "创建链接",
         preparing: "正在准备加密链接…",
-        linkLabel: "导出链接",
-        securityDescription:
-          "上传前会在此浏览器中加密。服务器只保存加密副本，解密密钥仅保留在链接中。",
         unavailable: "目前无法导出为链接。",
         copied: "已复制导出链接。",
         failed: "无法导出为链接。",
@@ -570,15 +582,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       trigger: "Compartir",
       modalTitle: "Compartir",
       loadError: "No se pudo abrir Compartir.",
+      nothingToShare:
+        "Aún no hay nada que compartir. Crea o abre un documento primero.",
+      chooserSecurityDescription:
+        "Se cifra en tu navegador. Tabula.md no puede leer el contenido compartido.",
+      shareLinkLabel: "Enlace para compartir",
+      workspaceSummary: (documentCount) =>
+        `Todo el espacio · ${documentCount} ${documentCount === 1 ? "documento" : "documentos"} · comentarios incluidos`,
       live: {
         title: "Colaboración en vivo",
         description:
-          "Crea una sala cifrada para colaboración en tiempo real.",
+          "Colabora en todo el espacio de trabajo en una sala cifrada.",
+        resultDescription: "Los cambios se sincronizan en tiempo real.",
         startSession: "Iniciar colaboración",
-        startDescription: "Todo el workspace entra en la sala cifrada.",
-        emptyStartDescription: "Añade un documento para iniciar una sesión.",
-        securityDescription:
-          "Cifrado de extremo a extremo. Tabula solo retransmite cambios cifrados y no puede leer tus documentos ni comentarios.",
         temporarySessionDescription:
           "Sesión temporal. Mantén al menos un participante conectado.",
         inviteAgent: "Invitar a un agente",
@@ -597,7 +613,6 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         nameLabel: "Tu nombre",
         nameAria: "Tu nombre de colaboración",
         anonymousPlaceholder: "Anónimo",
-        inviteLabel: "Enlace de invitación",
         invalidInviteTitle:
           "Esta sala en vivo no tiene un enlace de invitación válido.",
         copyLink: "Copiar enlace",
@@ -615,13 +630,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Enlace de exportación",
         description:
           "Crea una copia cifrada en un momento dado. Los cambios no se sincronizan con el original.",
+        resultDescription: "Instantánea creada. Los cambios no se sincronizan.",
+        snapshotMetadata: (formattedExpiry) =>
+          formattedExpiry ? `Instantánea · Caduca el ${formattedExpiry}` : "Instantánea",
         noFileReason:
           "Abre un archivo antes de exportar a enlace.",
-        exportToLink: "Exportar a enlace",
+        exportToLink: "Crear enlace",
         preparing: "Preparando enlace cifrado…",
-        linkLabel: "Enlace de exportación",
-        securityDescription:
-          "Se cifra en este navegador antes de subirlo. El servidor solo guarda la copia cifrada; la clave de descifrado permanece en el enlace.",
         unavailable: "La exportación a enlace no está disponible ahora.",
         copied: "Enlace de exportación copiado.",
         failed: "No se pudo exportar a un enlace.",
@@ -675,15 +690,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       trigger: "Partager",
       modalTitle: "Partager",
       loadError: "Impossible d’ouvrir le partage.",
+      nothingToShare:
+        "Rien à partager pour le moment. Créez ou ouvrez d’abord un document.",
+      chooserSecurityDescription:
+        "Chiffré dans votre navigateur. Tabula.md ne peut pas lire le contenu partagé.",
+      shareLinkLabel: "Lien de partage",
+      workspaceSummary: (documentCount) =>
+        `Tout l’espace · ${documentCount} ${documentCount === 1 ? "document" : "documents"} · commentaires inclus`,
       live: {
         title: "Collaboration en direct",
         description:
-          "Créez une room chiffrée pour collaborer en temps réel.",
+          "Collaborez en direct sur tout l’espace de travail dans une session chiffrée.",
+        resultDescription: "Les modifications sont synchronisées en temps réel.",
         startSession: "Démarrer la session",
-        startDescription: "Tout le workspace rejoint la room chiffrée.",
-        emptyStartDescription: "Ajoutez un document pour démarrer une session.",
-        securityDescription:
-          "Chiffré de bout en bout. Tabula ne fait que relayer des mises à jour chiffrées et ne peut lire ni vos documents ni vos commentaires.",
         temporarySessionDescription:
           "Session temporaire. Gardez au moins un participant connecté.",
         inviteAgent: "Inviter un agent",
@@ -702,7 +721,6 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         nameLabel: "Votre nom",
         nameAria: "Votre nom de collaboration",
         anonymousPlaceholder: "Anonyme",
-        inviteLabel: "Lien d'invitation",
         invalidInviteTitle:
           "Cette room en direct n'a pas de lien d'invitation valide.",
         copyLink: "Copier le lien",
@@ -720,13 +738,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Lien d’export",
         description:
           "Créez une copie chiffrée à un instant donné. Les modifications ne sont pas resynchronisées.",
+        resultDescription: "Instantané créé. Les modifications ne sont pas synchronisées.",
+        snapshotMetadata: (formattedExpiry) =>
+          formattedExpiry ? `Instantané · Expire le ${formattedExpiry}` : "Instantané",
         noFileReason:
           "Ouvrez un fichier avant d'exporter vers un lien.",
-        exportToLink: "Exporter vers un lien",
+        exportToLink: "Créer un lien",
         preparing: "Préparation du lien chiffré…",
-        linkLabel: "Lien d'export",
-        securityDescription:
-          "Le contenu est chiffré dans ce navigateur avant l’envoi. Le serveur ne conserve que la copie chiffrée ; la clé de déchiffrement reste dans le lien.",
         unavailable: "L’export vers un lien n’est pas disponible actuellement.",
         copied: "Lien d’export copié.",
         failed: "Impossible d’exporter vers un lien.",
@@ -780,15 +798,19 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       trigger: "Teilen",
       modalTitle: "Teilen",
       loadError: "Teilen konnte nicht geöffnet werden.",
+      nothingToShare:
+        "Noch nichts zum Teilen vorhanden. Erstelle oder öffne zuerst ein Dokument.",
+      chooserSecurityDescription:
+        "Im Browser verschlüsselt. Tabula.md kann geteilte Inhalte nicht lesen.",
+      shareLinkLabel: "Freigabelink",
+      workspaceSummary: (documentCount) =>
+        `Gesamter Workspace · ${documentCount} ${documentCount === 1 ? "Dokument" : "Dokumente"} · Kommentare enthalten`,
       live: {
         title: "Live-Zusammenarbeit",
         description:
-          "Erstelle einen verschlüsselten Room für Zusammenarbeit in Echtzeit.",
+          "Arbeite in einer verschlüsselten Live-Sitzung am gesamten Workspace zusammen.",
+        resultDescription: "Änderungen werden in Echtzeit synchronisiert.",
         startSession: "Sitzung starten",
-        startDescription: "Der gesamte Workspace tritt dem verschlüsselten Room bei.",
-        emptyStartDescription: "Füge ein Dokument hinzu, um eine Sitzung zu starten.",
-        securityDescription:
-          "Ende-zu-Ende verschlüsselt. Tabula leitet nur verschlüsselte Änderungen weiter und kann Dokumente oder Kommentare nicht lesen.",
         temporarySessionDescription:
           "Temporäre Sitzung. Mindestens eine Person muss verbunden bleiben.",
         inviteAgent: "Agent einladen",
@@ -807,7 +829,6 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         nameLabel: "Dein Name",
         nameAria: "Dein Name für die Zusammenarbeit",
         anonymousPlaceholder: "Anonym",
-        inviteLabel: "Einladungslink",
         invalidInviteTitle:
           "Dieser Live-Room hat keinen gültigen Einladungslink.",
         copyLink: "Link kopieren",
@@ -825,13 +846,13 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
         title: "Exportlink",
         description:
           "Erstelle eine verschlüsselte Momentaufnahme. Änderungen werden nicht zurücksynchronisiert.",
+        resultDescription: "Momentaufnahme erstellt. Änderungen werden nicht synchronisiert.",
+        snapshotMetadata: (formattedExpiry) =>
+          formattedExpiry ? `Momentaufnahme · Läuft am ${formattedExpiry} ab` : "Momentaufnahme",
         noFileReason:
           "Öffne eine Datei, bevor du als Link exportierst.",
-        exportToLink: "Als Link exportieren",
+        exportToLink: "Link erstellen",
         preparing: "Verschlüsselten Link vorbereiten…",
-        linkLabel: "Exportlink",
-        securityDescription:
-          "Vor dem Upload wird in diesem Browser verschlüsselt. Der Server speichert nur die verschlüsselte Kopie; der Entschlüsselungsschlüssel bleibt im Link.",
         unavailable: "Der Export als Link ist derzeit nicht verfügbar.",
         copied: "Exportlink kopiert.",
         failed: "Export als Link fehlgeschlagen.",

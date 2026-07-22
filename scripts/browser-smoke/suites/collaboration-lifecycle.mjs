@@ -26,7 +26,7 @@ export async function run(ctx) {
     expect(Boolean(activeFileName), "Lifecycle smoke requires an active room document.");
     await hostPage.locator(".share-trigger").click();
     await hostPage.getByRole("button", { name: "Start session" }).click();
-    await waitForText(hostPage.locator(".share-modal"), "Invite link");
+    await waitForText(hostPage.locator(".share-modal"), "Share link");
     const shareUrl = await hostPage.locator(".share-link-display").getAttribute("title");
     expect(Boolean(shareUrl), "Lifecycle smoke requires a room invite link.");
     await hostPage.getByRole("button", { name: "Close share dialog" }).click();
