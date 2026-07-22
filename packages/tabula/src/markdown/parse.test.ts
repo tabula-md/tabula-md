@@ -97,9 +97,12 @@ Body`;
   });
 
   it("extracts outline headings from preview body line positions", () => {
-    expect(getOutlineHeadings(getPreviewBody("\n# Intro\n\n## Scope"))).toEqual([
-      { depth: 1, text: "Intro", lineIndex: 1, sourceLineIndex: 1 },
-      { depth: 2, text: "Scope", lineIndex: 3, sourceLineIndex: 3 },
+    expect(getOutlineHeadings({
+      body: "\n# Intro\n\n```markdown\n## Example\n```\n\n## Scope",
+      sourceLineOffset: 4,
+    })).toEqual([
+      { depth: 1, text: "Intro", lineIndex: 1, sourceLineIndex: 5 },
+      { depth: 2, text: "Scope", lineIndex: 7, sourceLineIndex: 11 },
     ]);
   });
 
@@ -107,6 +110,34 @@ Body`;
     expect(getOutlineHeadingsFromMarkdown("\n# Intro\n\n## Scope\n\n#### Hidden")).toEqual([
       { depth: 1, text: "Intro", lineIndex: 1, sourceLineIndex: 1 },
       { depth: 2, text: "Scope", lineIndex: 3, sourceLineIndex: 3 },
+    ]);
+  });
+
+  it("excludes headings inside backtick and tilde fenced code blocks", () => {
+    const markdown = [
+      "# Document",
+      "",
+      "```markdown",
+      "# Code heading",
+      "## Nested code heading",
+      "```",
+      "",
+      "## Visible",
+      "",
+      "~~~md",
+      "### Tilde code heading",
+      "~~~~",
+      "",
+      "### Also visible",
+      "",
+      "```markdown",
+      "# Heading in an unclosed fence",
+    ].join("\r\n");
+
+    expect(getOutlineHeadingsFromMarkdown(markdown)).toEqual([
+      { depth: 1, text: "Document", lineIndex: 0, sourceLineIndex: 0 },
+      { depth: 2, text: "Visible", lineIndex: 7, sourceLineIndex: 7 },
+      { depth: 3, text: "Also visible", lineIndex: 13, sourceLineIndex: 13 },
     ]);
   });
 });

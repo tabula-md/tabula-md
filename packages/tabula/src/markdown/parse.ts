@@ -17,8 +17,34 @@ export type MarkdownHeading = {
   sourceLineIndex: number;
 };
 
+type MarkdownFence = {
+  character: string;
+  length: number;
+};
+
 const frontmatterOpeningDelimiterPattern = /^---\s*$/;
 const frontmatterClosingDelimiterPattern = /^(?:---|\.\.\.)\s*$/;
+
+const getOpeningMarkdownFence = (line: string): MarkdownFence | null => {
+  const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+  if (!match || (match[1][0] === "`" && match[2].includes("`"))) {
+    return null;
+  }
+
+  return {
+    character: match[1][0],
+    length: match[1].length,
+  };
+};
+
+const closesMarkdownFence = (line: string, fence: MarkdownFence) => {
+  const match = line.match(/^ {0,3}(`{3,}|~{3,})[\t ]*$/);
+  return Boolean(
+    match
+      && match[1][0] === fence.character
+      && match[1].length >= fence.length,
+  );
+};
 
 const getLineBreakLength = (text: string, lineBreakIndex: number) =>
   text.startsWith("\r\n", lineBreakIndex) ? 2 : 1;
@@ -129,26 +155,12 @@ export const getMarkdownDocumentTitle = (markdown: string) => {
   return headingTitle || "";
 };
 
-export const getOutlineHeadings = (previewBody: PreviewBody): MarkdownHeading[] =>
-  previewBody.body
-    .split("\n")
-    .map((line, lineIndex) => {
-      const match = line.match(/^(#{1,3})\s+(.+)$/);
-      if (!match) {
-        return null;
-      }
-
-      return {
-        depth: match[1].length,
-        text: match[2].replace(/\s+#+\s*$/, "").trim(),
-        lineIndex,
-        sourceLineIndex: lineIndex + previewBody.sourceLineOffset,
-      };
-    })
-    .filter((heading): heading is MarkdownHeading => Boolean(heading?.text));
-
-export const getOutlineHeadingsFromMarkdown = (markdown: string): MarkdownHeading[] => {
+const collectOutlineHeadings = (
+  markdown: string,
+  sourceLineOffset: number,
+): MarkdownHeading[] => {
   const headings: MarkdownHeading[] = [];
+  let openFence: MarkdownFence | null = null;
   let lineIndex = 0;
   let lineStart = 0;
 
@@ -161,16 +173,24 @@ export const getOutlineHeadingsFromMarkdown = (markdown: string): MarkdownHeadin
           ? lineBreakIndex - 1
           : lineBreakIndex;
     const line = markdown.slice(lineStart, lineEnd);
-    const match = line.match(/^(#{1,3})\s+(.+)$/);
+    const match = openFence ? null : line.match(/^(#{1,3})\s+(.+)$/);
 
-    if (match) {
+    if (openFence) {
+      if (closesMarkdownFence(line, openFence)) {
+        openFence = null;
+      }
+    } else {
+      openFence = getOpeningMarkdownFence(line);
+    }
+
+    if (!openFence && match) {
       const text = match[2].replace(/\s+#+\s*$/, "").trim();
       if (text) {
         headings.push({
           depth: match[1].length,
           text,
           lineIndex,
-          sourceLineIndex: lineIndex,
+          sourceLineIndex: lineIndex + sourceLineOffset,
         });
       }
     }
@@ -185,6 +205,12 @@ export const getOutlineHeadingsFromMarkdown = (markdown: string): MarkdownHeadin
 
   return headings;
 };
+
+export const getOutlineHeadings = (previewBody: PreviewBody): MarkdownHeading[] =>
+  collectOutlineHeadings(previewBody.body, previewBody.sourceLineOffset);
+
+export const getOutlineHeadingsFromMarkdown = (markdown: string): MarkdownHeading[] =>
+  collectOutlineHeadings(markdown, 0);
 
 export const getLineStartOffset = (markdown: string, targetLineIndex: number) => {
   const lines = markdown.split("\n");
