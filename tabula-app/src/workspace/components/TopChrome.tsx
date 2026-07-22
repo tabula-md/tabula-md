@@ -62,9 +62,11 @@ export function TopChrome({
   };
   const getTooltip = (collaborator: Collaborator) => {
     const lineNumber = getPresenceLine(collaborator);
+    const presenceLabel = copy[collaborator.presenceState ?? "active"];
     return [
       collaborator.name,
       collaborator.kind === "agent" ? copy.agent : null,
+      presenceLabel,
       collaborator.fileTitle,
       lineNumber ? copy.line(lineNumber) : null,
     ].filter(Boolean).join(" · ");
@@ -93,9 +95,10 @@ export function TopChrome({
               <Users size={16} aria-hidden="true" />
               <div className="avatars" aria-label={copy.collaborators}>
                 <span
-                  className={`avatar self ${identity.kind === "agent" ? "agent" : "human"}`}
+                  className={`avatar self ${identity.kind === "agent" ? "agent" : "human"} ${identity.presenceState ?? "active"}`}
                   style={{ background: identity.color }}
                   aria-label={getTooltip(identity)}
+                  data-tooltip={getTooltip(identity)}
                 >
                   {getInitial(identity)}
                 </span>
@@ -108,13 +111,13 @@ export function TopChrome({
                     : copy.follow(collaborator.name);
                   return (
                     <button
-                      className={`avatar participant ${collaborator.kind === "agent" ? "agent" : "human"} ${isFollowing ? "following" : ""}`}
+                      className={`avatar participant ${collaborator.kind === "agent" ? "agent" : "human"} ${collaborator.presenceState ?? "active"} ${isFollowing ? "following" : ""}`}
                       key={collaborator.id}
                       type="button"
                       style={{ background: collaborator.color }}
                       aria-pressed={isFollowing}
-                      aria-label={actionLabel}
-                      data-tooltip={actionLabel}
+                      aria-label={`${actionLabel}. ${getTooltip(collaborator)}`}
+                      data-tooltip={`${getTooltip(collaborator)} · ${actionLabel}`}
                       onClick={() => onToggleFollowing(collaborator.id)}
                     >
                       {getInitial(collaborator)}

@@ -44,6 +44,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   onShareLoadError: () => void;
   onCommitUserName: () => void;
   onCopyShareUrl: () => void;
+  onEmptyShare: () => void;
   onReorderFiles: (sourceFileId: string, targetFileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onSelectFile: (fileId: string) => void;
@@ -87,6 +88,7 @@ export function useWorkspaceTopChromeController({
   onShareLoadError,
   onCommitUserName,
   onCopyShareUrl,
+  onEmptyShare,
   onReorderFiles,
   onRenameFile,
   onSelectFile,
@@ -115,7 +117,17 @@ export function useWorkspaceTopChromeController({
   }, [setTopPopover]);
 
   const toggleShare = useCallback(() => {
-    if (!shareOpen) onShareOpened();
+    if (!shareOpen) {
+      onShareOpened();
+      if (!isLive && files.length === 0) {
+        onEmptyShare();
+        setTopPopover(null);
+        setCenterPopover(null);
+        setWorkspaceMenuOpen(false);
+        setPreferencesOpen(false);
+        return;
+      }
+    }
     setTopPopover(shareOpen ? null : "share");
     setCenterPopover(null);
     setWorkspaceMenuOpen(false);
@@ -125,6 +137,9 @@ export function useWorkspaceTopChromeController({
     setPreferencesOpen,
     setTopPopover,
     setWorkspaceMenuOpen,
+    files.length,
+    isLive,
+    onEmptyShare,
     onShareOpened,
     shareOpen,
   ]);
@@ -137,7 +152,7 @@ export function useWorkspaceTopChromeController({
     connectionStatus,
     copied,
     currentUserName,
-    files,
+    documentCount: files.length,
     folders,
     identity,
     isLive,

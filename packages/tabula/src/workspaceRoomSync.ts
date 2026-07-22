@@ -376,6 +376,11 @@ export const createWorkspaceRoomSyncController = ({
       transport = nextTransport;
       nextTransport.connect();
     },
+    disconnectTransport() {
+      clearLocalUpdateRetry();
+      transport?.disconnect();
+      transport = null;
+    },
     isConnected: () => Boolean(transport?.connected),
     onJoined() {
       publishAwareness([awareness.clientID], false);

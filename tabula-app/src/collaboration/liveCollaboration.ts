@@ -11,6 +11,7 @@ import {
   ROOM_WIRE_MAX_CRDT_STATE_BYTES,
   WORKSPACE_ROOM_ROOT_ID,
   type TextPatch,
+  type RoomPresenceState,
   type WorkspaceRoomComment,
   type WorkspaceRoomStructureSnapshot,
   toRoomActorAttribution,
@@ -64,7 +65,14 @@ export {
 } from "./collabRoom";
 export type { ParsedRoomLocation, RoomSession, TabulaRoomAvailability } from "./collabRoom";
 
-export type ConnectionStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "failed";
+export type ConnectionStatus =
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "suspended"
+  | "disconnected"
+  | "failed";
 export type RoomHydrationStatus = "loading-checkpoint" | "waiting-for-state" | "ready" | "failed";
 export type RoomHydrationSource = "bootstrap" | "checkpoint" | "local" | "peer" | null;
 export type RoomRecoveryMode = "durable" | "temporary";
@@ -139,6 +147,7 @@ type ConnectOptions = {
   onRecoveryEvent?: (event: CollabRecoveryEvent) => void;
   onOpenFailure?: (reason: "expired" | "invalid" | "unsupported") => void;
   onCapacityExceeded?: () => void;
+  onRoomActivity?: () => void;
   onRemoteDocumentEdit?: (actorKind: "agent" | "human" | "unknown") => void;
   adapters?: CollabRuntimeAdapters;
 };
@@ -167,6 +176,7 @@ export const createWorkspaceRoomRuntime = ({
   onRecoveryEvent,
   onOpenFailure,
   onCapacityExceeded,
+  onRoomActivity,
   onRemoteDocumentEdit,
   adapters = createDefaultCollabRuntimeAdapters(),
 }: ConnectOptions) => {
@@ -207,6 +217,8 @@ export const createWorkspaceRoomRuntime = ({
   let textProjectionTimer: unknown;
   let commentProjectionTimer: unknown;
   let closed = false;
+  let transportSuspended = false;
+  let roomBaseUrl: string | null = null;
   const pendingTextProjectionIds = new Set<string>();
   let lastInvalidMessageNoticeAt = 0;
   let capacityExceededNotified = false;
@@ -479,6 +491,7 @@ export const createWorkspaceRoomRuntime = ({
     onRemoteSyncApplied: ({ changed, senderId }) => {
       if (!changed) return;
       if (runtimeSnapshot.hydrationStatus === "ready") {
+        onRoomActivity?.();
         onRemoteDocumentEdit?.(presenceController.getSenderActor(senderId)?.kind ?? "unknown");
         return;
       }
@@ -488,6 +501,53 @@ export const createWorkspaceRoomRuntime = ({
     },
     onUnsupportedMessage: () => onOpenFailure?.("unsupported"),
   });
+
+  const transportHandlers: Parameters<typeof syncController.connect>[1] = {
+    onConnect: () => { if (!closed) setStatus("connecting"); },
+    onJoined: () => {
+      if (closed) return;
+      transportJoined = true;
+      const joined = sessionState.markJoined();
+      setStatus("connected");
+      if (joined.reconnected) emitRecoveryEvent("reconnected", joined.message);
+      presenceController.publishLocalState();
+      syncController.onJoined();
+      if (initialPersistenceHandled) checkpointCoordinator.handleJoined();
+      else requestInitialPersistence();
+    },
+    onPeerJoined: () => {
+      if (closed) return;
+      onRoomActivity?.();
+      syncController.onPeerJoined();
+    },
+    onPeers: (message) => {
+      presenceController.refreshPeers(message.peers);
+      publishCollaborators();
+    },
+    onError: (message) =>
+      emitInvalidMessage(message.error || "A collaboration server message was ignored."),
+    onDisconnect: () => {
+      if (closed) return;
+      transportJoined = false;
+      syncController.onTransportDisconnected();
+      if (transportSuspended) {
+        setStatus("suspended");
+        return;
+      }
+      setStatus(sessionState.markOffline("disconnect").status);
+    },
+    onConnectError: () => {
+      if (closed || transportSuspended) return;
+      const offline = sessionState.markOffline("connect-error");
+      setStatus(offline.status);
+    },
+  };
+
+  const connectRoomTransport = () => {
+    if (!roomBaseUrl || closed || transportSuspended) return false;
+    syncController.connect(roomBaseUrl, transportHandlers);
+    return true;
+  };
 
   const loadCheckpoint = async () => {
     if (!roomKey) return { status: "invalid" as const };
@@ -531,6 +591,7 @@ export const createWorkspaceRoomRuntime = ({
       return;
     }
     roomKey = startConfig.roomKey;
+    roomBaseUrl = startConfig.baseUrl;
     syncController.setRoomKey(roomKey);
     let settledCheckpoint: Awaited<ReturnType<typeof loadCheckpoint>> | null = null;
     let checkpointApplied = false;
@@ -551,42 +612,9 @@ export const createWorkspaceRoomRuntime = ({
     if (runtimeSnapshot.hydrationStatus === "ready") projectWorkspace();
     presenceController.publishLocalState();
 
-    syncController.connect(startConfig.baseUrl, {
-        onConnect: () => { if (!closed) setStatus("connecting"); },
-        onJoined: () => {
-          if (closed) return;
-          transportJoined = true;
-          const joined = sessionState.markJoined();
-          setStatus("connected");
-          if (joined.reconnected) emitRecoveryEvent("reconnected", joined.message);
-          presenceController.publishLocalState();
-          syncController.onJoined();
-          if (initialPersistenceHandled) checkpointCoordinator.handleJoined();
-          else requestInitialPersistence();
-        },
-        onPeerJoined: () => {
-          if (closed) return;
-          syncController.onPeerJoined();
-        },
-        onPeers: (message) => {
-          presenceController.refreshPeers(message.peers);
-          publishCollaborators();
-        },
-        onError: (message) => emitInvalidMessage(message.error || "A collaboration server message was ignored."),
-        onDisconnect: () => {
-          if (closed) return;
-          transportJoined = false;
-          syncController.onTransportDisconnected();
-          setStatus(sessionState.markOffline("disconnect").status);
-        },
-        onConnectError: () => {
-          if (closed) return;
-          const offline = sessionState.markOffline("connect-error");
-          setStatus(offline.status);
-        },
-    });
+    connectRoomTransport();
     heartbeat = adapters.clock.setInterval(() => {
-      if (closed) return;
+      if (closed || transportSuspended) return;
       presenceController.publishLocalState();
       syncController.publishAwareness();
       syncController.pruneChunks();
@@ -734,12 +762,37 @@ export const createWorkspaceRoomRuntime = ({
     setEditorPresenceEnabled(enabled: boolean) {
       presenceController.setEditorPresenceEnabled(enabled);
     },
+    setPresenceState(state: RoomPresenceState) {
+      presenceController.setPresenceState(state);
+    },
     setViewport: (viewport: LiveViewport | null) => presenceController.setViewport(viewport),
     setFollowingActor(actorId: string | null) {
       presenceController.setFollowingActor(actorId);
     },
     setIdentity(nextIdentity: Collaborator) {
       presenceController.setIdentity(nextIdentity);
+    },
+    suspend() {
+      if (
+        closed ||
+        transportSuspended ||
+        runtimeSnapshot.status !== "connected" ||
+        runtimeSnapshot.recoveryMode !== "durable" ||
+        runtimeSnapshot.durability !== "clean"
+      ) return false;
+      transportSuspended = true;
+      presenceController.clearLocalState();
+      syncController.disconnectTransport();
+      transportJoined = false;
+      updateRuntimeSnapshot({ status: "suspended", collaborators: [] });
+      return true;
+    },
+    resume() {
+      if (closed || !transportSuspended || !roomBaseUrl) return false;
+      transportSuspended = false;
+      setStatus("connecting");
+      presenceController.publishLocalState();
+      return connectRoomTransport();
     },
     getEditorBinding: () => runtimeSnapshot.editorBinding,
     materializeDocument: crdtStore.materializeDocument,
@@ -761,6 +814,8 @@ export const createWorkspaceRoomRuntime = ({
     disconnect() {
       if (closed) return;
       closed = true;
+      transportSuspended = false;
+      roomBaseUrl = null;
       checkpointCoordinator.dispose();
       abortController.abort();
       if (stateSizeCheckTimer) {

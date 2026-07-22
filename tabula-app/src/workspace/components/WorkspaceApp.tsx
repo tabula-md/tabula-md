@@ -25,7 +25,14 @@ export function WorkspaceApp() {
   } = useWorkspaceRuntime();
   const { activeFile, ...documentWorkbenchProps } = workbenchProps;
 
-  if (localWorkspaceOpening) return <WorkspaceLoadingSurface />;
+  if (localWorkspaceOpening) {
+    return (
+      <>
+        <WorkspaceOverlaySurface {...overlayProps} />
+        <WorkspaceLoadingSurface />
+      </>
+    );
+  }
 
   return (
     <main className="app-shell">
@@ -42,11 +49,8 @@ export function WorkspaceApp() {
             role={activeFile ? "tabpanel" : undefined}
             aria-labelledby={activeFile ? getWorkspaceTabId(activeFile.id) : undefined}
           >
-            {liveRoomOpenState !== "idle" ? (
-              <LiveRoomLoadingSurface
-                state={liveRoomOpenState}
-                {...liveRoomLoadingProps}
-              />
+            {liveRoomOpenState === "opening" ? (
+              <LiveRoomLoadingSurface {...liveRoomLoadingProps} />
             ) : activeFile ? (
               <DocumentWorkbench
                 {...documentWorkbenchProps}

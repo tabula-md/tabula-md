@@ -156,6 +156,16 @@
   line-height: 1;
 }
 
+.tab-presence-avatar.idle {
+  filter: saturate(0.55);
+  opacity: 0.68;
+}
+
+.tab-presence-avatar.away {
+  filter: saturate(0.25);
+  opacity: 0.42;
+}
+
 .tab-presence-overflow {
   display: grid;
   place-items: center;

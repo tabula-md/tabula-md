@@ -13,7 +13,6 @@ import type { LocationRoom } from "../workspace/workspaceStorage";
 type UseShareDialogControllerOptions = {
   room?: LocationRoom | null;
   isLive: boolean;
-  isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   onCloseShare: () => void;
@@ -23,7 +22,6 @@ type UseShareDialogControllerOptions = {
 export function useShareDialogController({
   room,
   isLive,
-  isLiveConnected,
   jsonShare,
   language,
   onCloseShare,
@@ -58,7 +56,7 @@ export function useShareDialogController({
   }, [jsonShare, onCloseShare]);
 
   const copyAgentInvite = async () => {
-    if (!isLiveConnected || !room?.shareUrl) return;
+    if (!room?.shareUrl) return;
     await navigator.clipboard.writeText(buildAgentInvite(room.shareUrl));
     productAnalytics.report("agent_invite_copied", { roomId: room.roomId });
     setAgentInviteCopied(true);

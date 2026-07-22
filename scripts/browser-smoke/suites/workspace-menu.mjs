@@ -52,7 +52,19 @@ export async function run(ctx) {
     expect((await page.getByText("Opening workspace...").count()) === 0, "Local hydration should not flash loading copy.");
     expect((await page.getByText("Preparing preview...").count()) === 0, "Fresh projects should not flash Preview loading copy.");
     expect((await page.locator(".tabula-plus-trigger").count()) === 0, "Tabula + should not live in the top-right document chrome.");
-    expect((await page.locator(".share-trigger").count()) === 0, "Share should stay hidden until a document is open.");
+    expect((await page.locator(".share-trigger").count()) === 1, "Share should keep a stable place in the chrome when the workspace is empty.");
+    await page.locator(".share-trigger").click();
+    expect(
+      (await page.locator(".share-modal").count()) === 0,
+      "An empty workspace should explain the missing document before opening Share.",
+    );
+    expect(
+      (await page.getByText(
+        "Nothing to share yet. Create or open a document first.",
+        { exact: true },
+      ).count()) === 1,
+      "An empty workspace should show a direct next-step toast.",
+    );
     expect((await page.getByRole("button", { name: "More document actions" }).count()) === 0, "Document controls should not expose a single-command More menu.");
     await page.evaluate(() => {
       window.__tabulaClipboard = [];
@@ -531,12 +543,12 @@ export async function run(ctx) {
     expect((await page.getByText("Live collaboration").count()) > 0, "Share modal should default to live collaboration.");
     expect((await page.locator(".share-included-documents").count()) === 0, "Share modal should not expose document-level sharing scope.");
     expect((await page.getByText("Invite agent").count()) === 0, "Share modal should not invite agents before a room exists.");
-    expect((await page.getByText("Export to link").count()) > 0, "Share modal should expose link export as a first-class local action.");
+    expect((await page.getByText("Create link").count()) > 0, "Share modal should expose link export as a first-class local action.");
     expect(
       (await page.getByText("Create an encrypted point-in-time copy. Changes do not sync back.").count()) === 1,
       "Export link should describe an independent encrypted copy.",
     );
-    expect((await page.getByRole("button", { name: "Export to link" }).count()) === 1, "Share modal should export the whole workspace to a link.");
+    expect((await page.getByRole("button", { name: "Create link" }).count()) === 1, "Share modal should export the whole workspace to a link.");
     expect((await page.getByText(/unavailable in this build/i).count()) === 0, "Share modal should not expose build-status copy to users.");
     expect((await page.getByText("Not live").count()) === 0, "Share link should not show redundant pre-live state text.");
     expect((await page.getByRole("button", { name: "Start session" }).count()) === 1, "Share should start a workspace room.");
@@ -553,7 +565,7 @@ export async function run(ctx) {
     );
     expect(exportOptions.length === 1, "Share should contain only the link export row.");
     expect(
-      exportOptions[0]?.includes("Export to link"),
+      exportOptions[0]?.includes("Create link"),
       "The link export row should contain the link action.",
     );
     expect((await page.locator(".live-popover").count()) === 0, "Live should not use a separate popover.");
@@ -562,13 +574,18 @@ export async function run(ctx) {
       const modal = document.querySelector(".share-modal");
       const title = document.querySelector("#share-modal-title");
       const primaryButton = document.querySelector(".share-modal-primary");
+      const exportSection = document.querySelector(".share-export-section");
+      const chooserNote = document.querySelector(".share-chooser-note");
       const tabs = document.querySelector(".share-modal-tabs");
       const activeTab = document.querySelector(".share-modal-tabs button.active");
       const modalStyle = modal ? window.getComputedStyle(modal) : null;
       const titleStyle = title ? window.getComputedStyle(title) : null;
       const primaryStyle = primaryButton ? window.getComputedStyle(primaryButton) : null;
+      const exportSectionStyle = exportSection ? window.getComputedStyle(exportSection) : null;
+      const chooserNoteStyle = chooserNote ? window.getComputedStyle(chooserNote) : null;
       const tabsStyle = tabs ? window.getComputedStyle(tabs) : null;
       const activeTabStyle = activeTab ? window.getComputedStyle(activeTab) : null;
+      const modalRect = modal?.getBoundingClientRect();
 
       return {
         text: modal?.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -585,6 +602,14 @@ export async function run(ctx) {
         activeTabBackground: activeTabStyle?.backgroundColor ?? "none",
         dividerCount: modal?.querySelectorAll(".share-modal-divider").length ?? 0,
         shareDividerCount: modal?.querySelectorAll(".share-section-divider").length ?? 0,
+        chooserOrCount: modal?.querySelectorAll(".share-chooser-or").length ?? 0,
+        exportBorderLeftWidth: exportSectionStyle?.borderLeftWidth ?? "",
+        noteBorderTopWidth: chooserNoteStyle?.borderTopWidth ?? "",
+        liveIconCount: modal?.querySelectorAll(".share-live-section .lucide-radio").length ?? 0,
+        exportHeadingIconCount: modal?.querySelectorAll(".share-export-section .lucide-file-output").length ?? 0,
+        exportActionIconCount: modal?.querySelectorAll(".share-export-option .lucide-link").length ?? 0,
+        modalHeight: modalRect?.height ?? 0,
+        modalWidth: modalRect?.width ?? 0,
       };
     });
     expect(shareModalStyle.titleText === "Share", "Share modal title should not depend on the current file.");
@@ -613,7 +638,19 @@ export async function run(ctx) {
     expect(Number.parseFloat(shareModalStyle.primaryMinHeight) <= 38, "Share modal actions should keep compact row height.");
     expect(shareModalStyle.tabCount === 0, "Share modal should not expose legacy purpose tabs.");
     expect(shareModalStyle.dividerCount === 0, "Share modal should not use legacy stacked Or dividers.");
-    expect(shareModalStyle.shareDividerCount === 1, "Share modal should separate live room and export choices.");
+    expect(shareModalStyle.shareDividerCount === 0, "Share choices should not use a ruled divider.");
+    expect(shareModalStyle.chooserOrCount === 1, "Share modal should keep a quiet Or label between choices.");
+    expect(
+      shareModalStyle.exportBorderLeftWidth === "0px" &&
+        shareModalStyle.noteBorderTopWidth === "0px",
+      "Share choices and the security note should remain unboxed and rule-free.",
+    );
+    expect(
+      shareModalStyle.liveIconCount === 1 &&
+        shareModalStyle.exportHeadingIconCount === 1 &&
+        shareModalStyle.exportActionIconCount === 1,
+      "Live, export mode, and export action should use distinct semantic icons.",
+    );
     expect(/whole workspace/i.test(shareModalStyle.text), "Share modal should make the whole-workspace contract explicit.");
     expect(/point-in-time/i.test(shareModalStyle.text), "Export link should be described as an independent point-in-time copy.");
     expect(!/\bpublish\b/i.test(shareModalStyle.text), "Export link should not be described as publishing.");
@@ -643,6 +680,16 @@ export async function run(ctx) {
     await waitForShareDialogState(page, { panel: "Share link" });
     await page.getByRole("button", { name: "Start session" }).click();
     await page.waitForSelector(".share-link-display");
+    await page.waitForFunction(() => window.location.hash.startsWith("#room="));
+    const liveModalRect = await page.locator(".share-modal").evaluate((modal) => {
+      const rect = modal.getBoundingClientRect();
+      return { height: rect.height, width: rect.width };
+    });
+    expect(
+      Math.abs(liveModalRect.width - shareModalStyle.modalWidth) <= 1 &&
+        Math.abs(liveModalRect.height - shareModalStyle.modalHeight) <= 1,
+      "Starting a live session should not resize the Share panel shell.",
+    );
     const previewTransition = await page.evaluate(() => {
       window.__tabulaPreviewObserver?.disconnect();
       return {
@@ -664,8 +711,24 @@ export async function run(ctx) {
       "Starting live should keep the Share link panel heading stable.",
     );
     expect(
-      (await page.getByText("Create an encrypted room for real-time collaboration.").count()) > 0,
-      "Starting live should keep the Share link panel explanation stable.",
+      (await page.locator(".share-mode-header > div > p").count()) === 1 &&
+        (await page.getByText(
+          "Collaborate on the whole workspace in an encrypted live room.",
+          { exact: true },
+        ).count()) === 1,
+      "Starting live should preserve the mode heading and description from the chooser.",
+    );
+    expect(
+      (await page.getByText(/Whole workspace · \d+ documents? · comments included/).count()) === 1 &&
+        (await page.getByText("Share link", { exact: true }).count()) === 1,
+      "Live results should expose the shared workspace scope and common link label.",
+    );
+    expect(
+      (await page.locator(".share-result-details").count()) === 1 &&
+        (await page.locator(".share-result-context").count()) === 1 &&
+        (await page.locator(".share-result-link-field").count()) === 1 &&
+        (await page.locator(".share-result-details > .share-modal-note").count()) === 1,
+      "Live results should use the shared result structure.",
     );
     expect((await page.getByText("Invite an agent").count()) > 0, "Live modal should expose the agent handoff action after a room starts.");
     expect(
@@ -733,21 +796,29 @@ export async function run(ctx) {
       "Live modal should keep the full hash room URL in the invite-link title.",
     );
     const liveLinkLayout = await page.evaluate(() => {
-      const roomBox = document.querySelector(".live-room-box");
+      const linkField = document.querySelector(".share-result-link-field");
+      const linkLabel = document.querySelector(".share-result-link-field .share-modal-field-label");
       const linkRow = document.querySelector(".share-modal-link-row");
       const linkPreview = document.querySelector(".share-link-display");
       const copyButton = document.querySelector(".share-modal-link-row button");
+      const nameInput = document.querySelector(".share-live-name-row input");
 
       return {
-        roomWidth: roomBox?.getBoundingClientRect().width ?? 0,
+        fieldWidth: linkField?.getBoundingClientRect().width ?? 0,
+        labelWidth: linkLabel?.getBoundingClientRect().width ?? 0,
         rowWidth: linkRow?.getBoundingClientRect().width ?? 0,
         linkWidth: linkPreview?.getBoundingClientRect().width ?? 0,
         buttonWidth: copyButton?.getBoundingClientRect().width ?? 0,
+        nameInputWidth: nameInput?.getBoundingClientRect().width ?? 0,
       };
     });
     expect(
-      liveLinkLayout.rowWidth >= liveLinkLayout.roomWidth - 24,
-      "Live invite-link row should use the available card width.",
+      liveLinkLayout.rowWidth >= liveLinkLayout.fieldWidth - liveLinkLayout.labelWidth - 24,
+      "Live invite-link row should use the control column after the shared field label.",
+    );
+    expect(
+      Math.abs(liveLinkLayout.rowWidth - liveLinkLayout.nameInputWidth) <= 2,
+      "Live link and name controls should align to the same field column.",
     );
     expect(
       liveLinkLayout.linkWidth > liveLinkLayout.buttonWidth,
@@ -848,8 +919,8 @@ export async function run(ctx) {
           "A failed optimistic Start should preserve the active local document.",
         );
         expect(
-          (await page.locator(".share-live-status.failed").count()) === 0,
-          "Failed Start session should not leave a failed live-room card in Share.",
+          (await page.locator(".share-live-status").count()) === 0,
+          "Share should not render a connection-status card.",
         );
       });
     } finally {
@@ -876,6 +947,27 @@ export async function run(ctx) {
     expect(
       page.url().endsWith(`/#room=browserroom,${validRoomKey}`),
       "Opening a room should keep the room URL active.",
+    );
+    await page.locator(".app-toast").getByText("This live room can’t be opened.", { exact: true }).waitFor({
+      state: "visible",
+      timeout: 10_000,
+    });
+    expect(
+      (await page.locator(".live-room-loading-surface").count()) === 0 &&
+        (await page.locator(".live-room-unavailable-center").count()) === 0,
+      "An unavailable room should return to the local workspace instead of rendering a full-screen failure.",
+    );
+    expect(
+      (await page.getByRole("button", { name: "Try again", exact: true }).count()) === 0,
+      "An unavailable room toast should not offer a retry loop.",
+    );
+    expect(
+      (await page.locator(".share-trigger").getAttribute("aria-label")) === "Share",
+      "An unavailable room should no longer present Share as an active disconnected session.",
+    );
+    expect(
+      !page.url().includes("#room="),
+      "An unavailable room should be removed from the URL automatically.",
     );
   });
 

@@ -5,10 +5,8 @@ import type {
 } from "./liveCollaboration";
 import {
   LIVE_ROOM_OPEN_TIMEOUT_MS,
-  type LiveRoomOpenFailure,
 } from "./liveRoomOpenState";
 import { syncUrlForRoom, type LocationRoom } from "../workspace/workspaceStorage";
-import { useEventCallback } from "../shared/useEventCallback";
 
 type UseLiveRoomConnectionLifecycleOptions = {
   activeFileAvailable: boolean;
@@ -16,8 +14,6 @@ type UseLiveRoomConnectionLifecycleOptions = {
   connectionStatus: ConnectionStatus;
   hydrationStatus: RoomHydrationStatus;
   onConnectionFailed: () => void;
-  onRetryConnection: () => void;
-  setFailure: (failure: LiveRoomOpenFailure | null) => void;
 };
 
 export function useLiveRoomConnectionLifecycle({
@@ -26,8 +22,6 @@ export function useLiveRoomConnectionLifecycle({
   connectionStatus,
   hydrationStatus,
   onConnectionFailed,
-  onRetryConnection,
-  setFailure,
 }: UseLiveRoomConnectionLifecycleOptions) {
   const failedRoomIdRef = useRef<string | null>(null);
   const syncedRoomUrlRef = useRef<string | null>(null);
@@ -46,12 +40,6 @@ export function useLiveRoomConnectionLifecycle({
     const timeoutId = window.setTimeout(() => setTimedOut(true), LIVE_ROOM_OPEN_TIMEOUT_MS);
     return () => window.clearTimeout(timeoutId);
   }, [activeRoom, connectionStatus, hydrationStatus]);
-
-  const retryOpeningRoom = useEventCallback(() => {
-    setTimedOut(false);
-    setFailure(null);
-    onRetryConnection();
-  });
 
   useEffect(() => {
     const roomId = activeRoom?.roomId;
@@ -80,7 +68,6 @@ export function useLiveRoomConnectionLifecycle({
   }, [activeRoom, connectionStatus]);
 
   return {
-    retryOpeningRoom,
     timedOut,
   };
 }

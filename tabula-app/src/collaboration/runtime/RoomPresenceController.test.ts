@@ -88,6 +88,7 @@ describe("RoomPresenceController", () => {
         offset: 24,
       },
       followingActorId: "human-1",
+      presenceState: "idle",
       lastSeen: 90,
     });
     applyAwarenessUpdate(
@@ -103,7 +104,37 @@ describe("RoomPresenceController", () => {
       selection: { documentId: "doc-1", from: 2, to: 5 },
       viewport: { documentId: "doc-1", position: 7, offset: 24 },
       followingActorId: "human-1",
+      presenceState: "idle",
     })]);
+  });
+
+  it("defaults legacy peers to active and publishes state transitions once", () => {
+    const { awareness, controller, room } = createRoom();
+    const remoteAwareness = createRemotePeer(room).awareness;
+    remoteAwareness.setLocalState({
+      actor: createRoomActor({ id: "human-2", kind: "human", name: "Legacy Human" }),
+    });
+    applyAwarenessUpdate(
+      awareness,
+      encodeAwarenessUpdate(remoteAwareness, [remoteAwareness.clientID]),
+      "test",
+    );
+    expect(controller.getCollaborators()[0]?.presenceState).toBe("active");
+
+    controller.publishLocalState();
+    awareness.setLocalStateField("cursor", { anchor: "test" });
+    awareness.setLocalStateField("viewport", { anchor: "test" });
+    const listener = vi.fn();
+    awareness.on("update", listener);
+    controller.setPresenceState("away");
+    controller.setPresenceState("away");
+
+    expect(awareness.getLocalState()).toEqual(expect.objectContaining({
+      presenceState: "away",
+      cursor: null,
+      viewport: null,
+    }));
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it("publishes local document state and clears cursor presence outside the editor", () => {

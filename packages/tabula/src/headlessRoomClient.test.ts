@@ -205,9 +205,14 @@ describe("headless Room client", () => {
       first.setPresence({
         activeDocumentId: "brief",
         fileTitle: "brief.md",
+        presenceState: "idle",
         selection: { documentId: "brief", from: 2, to: 7 },
       });
-      await waitFor(() => second.getState().collaborators[0]?.selection?.from === 2);
+      await waitFor(() => {
+        const collaborator = second.getState().collaborators[0];
+        return collaborator?.selection?.from === 2 && collaborator.presenceState === "idle";
+      });
+      expect(second.getState().collaborators[0]?.presenceState).toBe("idle");
 
       const brief = await second.readDocument("brief");
       await second.writeDocument({

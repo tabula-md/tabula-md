@@ -28,6 +28,7 @@ import {
 import type { WorkspaceFile } from "../workspace/workspaceStorage";
 import type { RoomWorkspaceSession } from "../workspace/session/WorkspaceSession";
 import { productAnalytics } from "../observability/productAnalytics";
+import { useRoomActivityLifecycle } from "./useRoomActivityLifecycle";
 
 const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   status: "idle",
@@ -185,7 +186,9 @@ export function useCollaborationConnectionRuntime({
     getActiveCommentsSnapshot,
   );
   const runtimeConnectionStatus = runtime ? runtimeSnapshot.status : preRuntimeConnectionStatus;
-  const connectionStatus = isLive && !browserOnline ? "disconnected" : runtimeConnectionStatus;
+  const connectionStatus: ConnectionStatus = runtimeConnectionStatus === "suspended"
+    ? "suspended"
+    : isLive && !browserOnline ? "disconnected" : runtimeConnectionStatus;
   const durability = runtimeSnapshot.durability;
   const recoveryMode = runtimeSnapshot.recoveryMode;
   const hydrationStatus = runtimeSnapshot.hydrationStatus;
@@ -195,6 +198,17 @@ export function useCollaborationConnectionRuntime({
     runtimeSnapshot.editorBinding?.documentId === activeDocument?.id
       ? runtimeSnapshot.editorBinding
       : null;
+
+  const { markRoomActivity, presenceState } = useRoomActivityLifecycle({
+    connectionStatus,
+    durability,
+    enabled: isLive,
+    lifecycleKey: connectionKey,
+    recoveryMode,
+    onPresenceStateChange: (state) => collabRef.current?.setPresenceState(state),
+    onResume: () => { collabRef.current?.resume(); },
+    onSuspend: () => collabRef.current?.suspend() ?? false,
+  });
 
   const clearPendingViewport = useCallback(() => {
     pendingViewportRef.current = null;
@@ -281,6 +295,7 @@ export function useCollaborationConnectionRuntime({
           fileTitle: target.fileTitle,
           onOpenFailure,
           onCapacityExceeded,
+          onRoomActivity: markRoomActivity,
           onRecoveryEvent,
           onRemoteDocumentEdit: (actorKind) => {
             if (observedRemoteEditRef.current) return;
@@ -332,6 +347,7 @@ export function useCollaborationConnectionRuntime({
     onRecoveryEvent,
     onOpenFailure,
     onCapacityExceeded,
+    markRoomActivity,
     clearPendingViewport,
   ]);
 
@@ -414,6 +430,7 @@ export function useCollaborationConnectionRuntime({
     recoveryMode,
     hydrationStatus,
     hydrationSource,
+    localPresenceState: presenceState,
     editorBinding,
     materializeWorkspace: () => collabRef.current?.materializeWorkspace(),
     materializeDocument: (documentId: string) => collabRef.current?.materializeDocument(documentId) ?? null,

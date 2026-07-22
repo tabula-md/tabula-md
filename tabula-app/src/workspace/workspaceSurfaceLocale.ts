@@ -52,7 +52,6 @@ export type WorkspaceSurfaceCopy = {
   roomUnavailableTitle: string;
   roomUnavailableDescription: string;
   openLocalWorkspace: string;
-  tryAgain: string;
   roomOpeningLabel: string;
   roomOpening: string;
   workspaceOpeningLabel: string;
@@ -111,7 +110,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomUnavailableTitle: "This live room can’t be opened.",
     roomUnavailableDescription: "No saved workspace was found, and no participant is currently sharing it.",
     openLocalWorkspace: "Open local workspace",
-    tryAgain: "Try again",
     roomOpeningLabel: "Opening live room",
     roomOpening: "Opening live room...",
     workspaceOpeningLabel: "Opening workspace",
@@ -168,7 +166,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomUnavailableTitle: "이 실시간 room을 열 수 없습니다.",
     roomUnavailableDescription: "저장된 워크스페이스가 없고 현재 공유 중인 참여자도 없습니다.",
     openLocalWorkspace: "로컬 워크스페이스 열기",
-    tryAgain: "다시 시도",
     roomOpeningLabel: "실시간 room 여는 중",
     roomOpening: "실시간 room 여는 중...",
     workspaceOpeningLabel: "워크스페이스 여는 중",
@@ -225,7 +222,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomUnavailableTitle: "このライブ共同編集ルームを開けません。",
     roomUnavailableDescription: "保存済みワークスペースがなく、現在共有している参加者もいません。",
     openLocalWorkspace: "ローカルワークスペースを開く",
-    tryAgain: "再試行",
     roomOpeningLabel: "ライブ共同編集ルームを開いています",
     roomOpening: "ライブ共同編集ルームを開いています...",
     workspaceOpeningLabel: "ワークスペースを開いています",
@@ -282,7 +278,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomUnavailableTitle: "无法打开此实时协作房间。",
     roomUnavailableDescription: "未找到保存的工作区，当前也没有参与者在共享。",
     openLocalWorkspace: "打开本地工作区",
-    tryAgain: "重试",
     roomOpeningLabel: "正在打开实时协作房间",
     roomOpening: "正在打开实时协作房间...",
     workspaceOpeningLabel: "正在打开工作区",
@@ -339,7 +334,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomUnavailableTitle: "No se puede abrir esta sala en vivo.",
     roomUnavailableDescription: "No se encontró un espacio guardado y ningún participante lo está compartiendo.",
     openLocalWorkspace: "Abrir espacio local",
-    tryAgain: "Reintentar",
     roomOpeningLabel: "Abriendo sala en vivo",
     roomOpening: "Abriendo sala en vivo...",
     workspaceOpeningLabel: "Abriendo espacio",
@@ -396,7 +390,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomUnavailableTitle: "Cette salle en direct ne peut pas être ouverte.",
     roomUnavailableDescription: "Aucun espace sauvegardé n’a été trouvé et aucun participant ne le partage actuellement.",
     openLocalWorkspace: "Ouvrir l’espace local",
-    tryAgain: "Réessayer",
     roomOpeningLabel: "Ouverture de la salle en direct",
     roomOpening: "Ouverture de la salle en direct...",
     workspaceOpeningLabel: "Ouverture de l’espace",
@@ -453,7 +446,6 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     roomUnavailableTitle: "Dieser Live-Raum kann nicht geöffnet werden.",
     roomUnavailableDescription: "Es wurde kein gespeicherter Workspace gefunden und aktuell teilt ihn kein Teilnehmer.",
     openLocalWorkspace: "Lokalen Workspace öffnen",
-    tryAgain: "Erneut versuchen",
     roomOpeningLabel: "Live-Raum wird geöffnet",
     roomOpening: "Live-Raum wird geöffnet...",
     workspaceOpeningLabel: "Workspace wird geöffnet",

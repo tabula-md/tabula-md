@@ -14,9 +14,9 @@ type ShareControlsProps = {
   room?: LocationRoom | null;
   language: WorkspaceLanguage;
   currentUserName: string;
+  documentCount: number;
   connectionStatus: ConnectionStatus;
   isLive: boolean;
-  isLiveConnected: boolean;
   recoveryMode: RoomRecoveryMode;
   shareOpen: boolean;
   copied: boolean;
@@ -34,9 +34,9 @@ export function ShareControls({
   room,
   language,
   currentUserName,
+  documentCount,
   connectionStatus,
   isLive,
-  isLiveConnected,
   recoveryMode,
   shareOpen,
   copied,
@@ -53,7 +53,6 @@ export function ShareControls({
   const shareController = useShareDialogController({
     room,
     isLive: showLiveRoomPanel,
-    isLiveConnected,
     jsonShare,
     language,
     onCloseShare,
@@ -84,7 +83,7 @@ export function ShareControls({
       <ModalSurface
         key="export-result"
         ariaLabelledBy="share-export-result-title"
-        className="share-export-result-modal"
+        className="share-main-modal share-export-result-modal"
         onClose={shareController.closeShare}
       >
         <button
@@ -109,6 +108,7 @@ export function ShareControls({
     <ModalSurface
       key="chooser"
       ariaLabelledBy="share-modal-title"
+      className={`share-main-modal ${showLiveRoomPanel ? "share-live-result-modal" : "share-chooser-modal"}`}
       onClose={shareController.closeShare}
     >
       <button
@@ -133,9 +133,9 @@ export function ShareControls({
             copied={copied}
             copy={shareController.copy}
             currentUserName={currentUserName}
+            documentCount={documentCount}
             connectionStatus={connectionStatus}
             isLive={showLiveRoomPanel}
-            isLiveConnected={isLiveConnected}
             recoveryMode={recoveryMode}
             shareView={shareController.shareView}
             exportPanel={

@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -82,6 +83,7 @@ import {
 } from "./useWorkspaceRoomController";
 import { useWorkspaceLiveSessionController } from "./useWorkspaceLiveSessionController";
 import { useWorkspaceWorkbenchSurfaceController } from "../document/useWorkspaceWorkbenchSurfaceController";
+import { getWorkspaceSurfaceCopy } from "./workspaceSurfaceLocale";
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -465,7 +467,6 @@ export function useWorkspaceRuntime() {
     jsonShare,
     liveRoomOpenTimedOut,
     openLocalWorkspaceAfterRoomFailure,
-    retryOpeningLiveRoom,
     startSession: startSessionWithPendingCommit,
     stopSession: stopSessionWithPendingCommit,
   } = useWorkspaceLiveSessionController({
@@ -487,6 +488,39 @@ export function useWorkspaceRuntime() {
     text,
     workspace: workspaceFiles,
   });
+  const liveRoomOpenState = getLiveRoomOpenState({
+    connectionStatus,
+    hydrationStatus,
+    hasActiveRoom: Boolean(activeRoom),
+    timedOut: liveRoomOpenTimedOut,
+    failure: liveRoomOpenFailure,
+  });
+  const handledRoomOpenFailureRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (liveRoomOpenState !== "unavailable" && liveRoomOpenState !== "expired") {
+      if (!activeRoom) handledRoomOpenFailureRef.current = null;
+      return;
+    }
+
+    const roomId = activeRoom?.roomId;
+    if (!roomId || handledRoomOpenFailureRef.current === roomId) return;
+    handledRoomOpenFailureRef.current = roomId;
+
+    const surfaceCopy = getWorkspaceSurfaceCopy(workspacePreferences.language);
+    showToast(
+      liveRoomOpenState === "expired"
+        ? surfaceCopy.roomExpiredTitle
+        : surfaceCopy.roomUnavailableTitle,
+      "error",
+    );
+    openLocalWorkspaceAfterRoomFailure();
+  }, [
+    activeRoom,
+    liveRoomOpenState,
+    openLocalWorkspaceAfterRoomFailure,
+    showToast,
+    workspacePreferences.language,
+  ]);
 
   useSelectionActionDismissal({
     selectionActionPosition,
@@ -778,10 +812,17 @@ export function useWorkspaceRuntime() {
     },
     onCommitUserName: normalizeIdentityName,
     onCopyShareUrl: copyShareUrlWithPendingCommit,
+    onEmptyShare: () => {
+      showToast(
+        getWorkspaceMenuCopy(workspacePreferences.language).share.nothingToShare,
+      );
+    },
     onReorderFiles: reorderFiles,
     onRenameFile: renameWorkspaceFileAction,
     onSelectFile: selectFile,
-    onShareOpened: () => productAnalytics.report("share_opened"),
+    onShareOpened: () => {
+      productAnalytics.report("share_opened");
+    },
     onStartSession: startSessionWithPendingCommit,
     onStopSession: stopSessionWithPendingCommit,
     onRetrySession: retryCollaborationConnection,
@@ -877,17 +918,9 @@ export function useWorkspaceRuntime() {
     },
     liveRoomLoadingProps: {
       language: workspacePreferences.language,
-      onOpenLocalWorkspace: openLocalWorkspaceAfterRoomFailure,
-      onRetry: retryOpeningLiveRoom,
     },
     localWorkspaceOpening: localPersistenceEnabled && localWorkspacePersistence.pending,
-    liveRoomOpenState: getLiveRoomOpenState({
-      connectionStatus,
-      hydrationStatus,
-      hasActiveRoom: Boolean(activeRoom),
-      timedOut: liveRoomOpenTimedOut,
-      failure: liveRoomOpenFailure,
-    }),
+    liveRoomOpenState,
     menuSurfaceProps,
     overlayProps: {
       infoDialog,

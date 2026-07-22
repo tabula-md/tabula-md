@@ -3,10 +3,12 @@ import {
   createRoomActor,
   hasRoomCapability,
   parseRoomActor,
+  readRoomPresenceState,
   type RoomActor,
   type RoomActorClient,
   type RoomActorKind,
   type RoomCapability,
+  type RoomPresenceState,
   type WorkspaceRoomCrdt,
 } from "@tabula-md/tabula";
 import {
@@ -37,6 +39,7 @@ export type Collaborator = {
   name: string;
   color: string;
   lastSeen: number;
+  presenceState?: RoomPresenceState;
   activeDocumentId?: string;
   kind?: RoomActorKind;
   client?: RoomActorClient;
@@ -148,6 +151,7 @@ export const createRoomPresenceController = ({
   let activeDocumentId = initialActiveDocumentId;
   let fileTitle = initialFileTitle;
   let editorPresenceEnabled = true;
+  let presenceState: RoomPresenceState = identity.presenceState ?? "active";
   let lastViewport: LiveViewport | null = null;
 
   const getActors = () => {
@@ -171,6 +175,7 @@ export const createRoomPresenceController = ({
     const nextState: Record<string, unknown> = {
       ...awareness.getLocalState(),
       actor,
+      presenceState,
       user: { name: displayActor.name, color: displayColor, colorLight: `${displayColor}33` },
       lastSeen: now(),
     };
@@ -180,6 +185,11 @@ export const createRoomPresenceController = ({
     } else {
       delete nextState.activeDocumentId;
       delete nextState.fileTitle;
+    }
+    if (presenceState === "away") {
+      nextState.cursor = null;
+      nextState.viewport = null;
+      nextState.followingActorId = null;
     }
     awareness.setLocalState(nextState);
     if (!editorPresenceEnabled && awareness.getLocalState()?.cursor != null) {
@@ -219,6 +229,7 @@ export const createRoomPresenceController = ({
           capabilities: actor.capabilities,
           joinedAt: actor.joinedAt,
           roomId,
+          presenceState: readRoomPresenceState(state.presenceState),
           activeDocumentId: typeof state.activeDocumentId === "string" ? state.activeDocumentId : undefined,
           fileTitle: typeof state.fileTitle === "string" ? state.fileTitle : undefined,
           selection: getSelection(room, state as Record<string, unknown>),
@@ -280,6 +291,14 @@ export const createRoomPresenceController = ({
         awareness.setLocalStateField("cursor", null);
         awareness.setLocalStateField("viewport", null);
       }
+    },
+    setPresenceState(nextState: RoomPresenceState) {
+      if (presenceState === nextState) return;
+      presenceState = nextState;
+      if (nextState === "away") {
+        lastViewport = null;
+      }
+      publishLocalState();
     },
     setViewport(viewport: LiveViewport | null) {
       if (!viewport || !editorPresenceEnabled) {

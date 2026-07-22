@@ -19,7 +19,9 @@ export type {
   CollaborationCollaborator,
   CollaborationConnectionStatus,
   CollaborationLiveSelection,
+  RoomPresenceState,
 } from "./collaborationTypes";
+export { readRoomPresenceState } from "./collaborationTypes";
 
 export type {
   CollaboratorRegistry,

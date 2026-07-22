@@ -393,7 +393,7 @@ export async function run(ctx) {
     await firstPage.locator(".share-trigger").click();
     await waitForShareDialogState(firstPage, { panel: "Share link" });
     await firstPage.getByRole("button", { name: "Start session" }).click();
-    await waitForShareDialogState(firstPage, { text: "Invite link" });
+    await waitForShareDialogState(firstPage, { text: "Share link" });
     const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
     await firstPage.getByRole("button", { name: "Close share dialog" }).click();
 

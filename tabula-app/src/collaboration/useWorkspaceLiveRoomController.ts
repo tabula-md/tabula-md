@@ -2,7 +2,6 @@ import type { Dispatch, SetStateAction } from "react";
 import { getRoomShareLinkView } from "@tabula-md/tabula";
 import type { ConnectionStatus } from "./liveCollaboration";
 import {
-  syncUrlForLocalWorkspace,
   type LocationRoom,
   type WorkspaceFile,
 } from "../workspace/workspaceStorage";
@@ -51,7 +50,6 @@ export function useWorkspaceLiveRoomController({
 
     resetCollaborationState("idle");
     setCopiedFileId(null);
-    syncUrlForLocalWorkspace();
   };
 
   const copyShareUrl = async () => {

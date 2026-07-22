@@ -29,7 +29,7 @@ export type WorkspaceTopChromeProps = {
   connectionStatus: ConnectionStatus;
   copied: boolean;
   currentUserName: string;
-  files: WorkspaceFile[];
+  documentCount: number;
   folders: WorkspaceFolder[];
   identity: Collaborator;
   isLive: boolean;
@@ -70,7 +70,7 @@ export function WorkspaceTopChrome({
   connectionStatus,
   copied,
   currentUserName,
-  files,
+  documentCount,
   folders,
   identity,
   isLive,
@@ -129,7 +129,7 @@ export function WorkspaceTopChrome({
     />
   );
 
-  const shareControls = files.length > 0 || room ? (
+  const shareControls = (
     <>
       <ShareTrigger
         connectionStatus={connectionStatus}
@@ -145,9 +145,9 @@ export function WorkspaceTopChrome({
             room={room}
             language={language}
             currentUserName={currentUserName}
+            documentCount={documentCount}
             connectionStatus={connectionStatus}
             isLive={isLive}
-            isLiveConnected={isLiveConnected}
             recoveryMode={recoveryMode}
             shareOpen={shareOpen}
             copied={copied}
@@ -163,7 +163,7 @@ export function WorkspaceTopChrome({
         </ShareControlsBoundary>
       )}
     </>
-  ) : null;
+  );
 
   return (
     <TopChrome

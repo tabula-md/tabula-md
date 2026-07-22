@@ -1,8 +1,9 @@
-import { Link, LockKeyhole } from "lucide-react";
+import { FileOutput, Link } from "lucide-react";
 import type { ShareViewModel } from "@tabula-md/tabula";
 import type { JsonShareController } from "./useJsonShareController";
 import { useId } from "react";
 import type { WorkspaceShareCopy } from "../workspace/workspaceLocale";
+import { ShareModeHeader } from "./ShareModeHeader";
 
 type ShareExportPanelProps = {
   copy: WorkspaceShareCopy;
@@ -25,15 +26,13 @@ export function ShareExportPanel({
 
   return (
     <>
-      <div className="share-panel-heading">
-        <span className="share-modal-option-icon">
-          <Link size={18} />
-        </span>
-        <div>
-          <h3>{copy.shareable.title}</h3>
-          <p id={linkDescriptionId}>{copy.shareable.description}</p>
-        </div>
-      </div>
+      <ShareModeHeader
+        description={copy.shareable.description}
+        descriptionId={linkDescriptionId}
+        headingLevel={3}
+        icon={<FileOutput size={18} />}
+        title={copy.shareable.title}
+      />
       <div className="share-export-options" aria-label={copy.shareable.title}>
         <div className="share-export-option">
           <button
@@ -53,10 +52,6 @@ export function ShareExportPanel({
             </p>
           )}
         </div>
-      </div>
-      <div className="share-modal-note">
-        <LockKeyhole size={15} aria-hidden="true" />
-        <p>{copy.shareable.securityDescription}</p>
       </div>
     </>
   );

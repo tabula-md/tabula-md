@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { useEventCallback } from "../shared/useEventCallback";
 import type { useAppToast } from "../ui/useAppToast";
 import {
@@ -89,6 +89,11 @@ export function useWorkspaceLiveSessionController({
 }: UseWorkspaceLiveSessionControllerOptions) {
   const activeRoomSession = sessionHost.getSnapshot();
   const activeRoom = activeRoomSession.mode === "room" ? activeRoomSession.room : null;
+  const previousRoomConnectionRef = useRef<{
+    recovering: boolean;
+    roomId: string;
+    status: WorkspaceRoomController["connectionStatus"];
+  } | null>(null);
   const { copyShareUrl, jsonShare, startSession, stopSession } =
     useWorkspaceShareController({
       activeFile: workspace.activeFile,
@@ -107,11 +112,49 @@ export function useWorkspaceLiveSessionController({
       startCollaborationSession: room.startSession,
     });
 
+  useEffect(() => {
+    const roomId = activeRoom?.roomId;
+    const status = room.connectionStatus;
+    const previous = previousRoomConnectionRef.current;
+    if (!roomId) {
+      previousRoomConnectionRef.current = null;
+      return;
+    }
+    if (!previous || previous.roomId !== roomId) {
+      previousRoomConnectionRef.current = { recovering: false, roomId, status };
+      return;
+    }
+
+    let recovering = previous.recovering;
+    if (previous.status === status) return;
+    if (status === "reconnecting" && previous.status === "connected") {
+      recovering = true;
+      showToast(copy.live.reconnectingTitle);
+    } else if (
+      status === "disconnected" &&
+      (previous.status === "connected" || previous.status === "reconnecting")
+    ) {
+      recovering = true;
+      showToast(copy.live.disconnectedTitle, "error");
+    } else if (status === "connected" && recovering) {
+      recovering = false;
+      showToast(copy.live.reconnectedTitle);
+    }
+    previousRoomConnectionRef.current = { recovering, roomId, status };
+  }, [
+    activeRoom?.roomId,
+    copy.live.disconnectedTitle,
+    copy.live.reconnectedTitle,
+    copy.live.reconnectingTitle,
+    room.connectionStatus,
+    showToast,
+  ]);
+
   const openLocalWorkspaceAfterRoomFailure = useEventCallback(() => {
     flushPendingEditorCommit();
-    stopSession();
     room.resetCollaborationState("idle");
     roomDocumentProjectionStore.clear();
+    setCopiedFileId(null);
     sessionHost.openLocal();
     setLiveRoomOpenFailure(null);
     syncUrlForLocalWorkspace("replace");
@@ -178,17 +221,12 @@ export function useWorkspaceLiveSessionController({
     showToast(copy.live.unavailable, "error");
     stopSessionWithPendingCommit();
   });
-  const {
-    retryOpeningRoom,
-    timedOut,
-  } = useLiveRoomConnectionLifecycle({
+  const { timedOut } = useLiveRoomConnectionLifecycle({
     activeFileAvailable: Boolean(workspace.activeFile),
     activeRoom,
     connectionStatus: room.connectionStatus,
     hydrationStatus: room.hydrationStatus,
     onConnectionFailed: handleLiveRoomConnectionFailed,
-    onRetryConnection: room.retryConnection,
-    setFailure: setLiveRoomOpenFailure,
   });
   const handleRouteWorkspaceChange = useEventCallback(() => {
     chrome.setTopPopover(null);
@@ -212,11 +250,14 @@ export function useWorkspaceLiveSessionController({
 
   return {
     copyShareUrl: copyShareUrlWithPendingCommit,
-    isLiveChromeVisible: room.isLive && !liveRoomOpenFailure && !timedOut,
+    isLiveChromeVisible:
+      room.isLive &&
+      room.hydrationStatus === "ready" &&
+      !liveRoomOpenFailure &&
+      !timedOut,
     jsonShare,
     liveRoomOpenTimedOut: timedOut,
     openLocalWorkspaceAfterRoomFailure,
-    retryOpeningLiveRoom: retryOpeningRoom,
     startSession: startSessionWithPendingCommit,
     stopSession: stopSessionWithPendingCommit,
   };

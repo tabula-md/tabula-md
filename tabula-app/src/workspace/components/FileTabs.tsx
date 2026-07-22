@@ -354,7 +354,7 @@ export function FileTabs({
                     >
                       {documentCollaborators.map((collaborator) => (
                         <span
-                          className="tab-presence-avatar"
+                          className={`tab-presence-avatar ${collaborator.presenceState ?? "active"}`}
                           key={collaborator.id}
                           style={{ background: collaborator.color }}
                           aria-hidden="true"
