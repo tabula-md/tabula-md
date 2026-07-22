@@ -81,7 +81,7 @@ export type {
 } from "./document/documentControlsModel";
 export { buildDocumentControlsModel } from "./document/documentControlsModel";
 
-export { getMarkdownWordCount } from "./document/documentMetrics";
+export { getApproximateTokenCount, getMarkdownWordCount } from "./document/documentMetrics";
 
 export type {
   FileViewMode,

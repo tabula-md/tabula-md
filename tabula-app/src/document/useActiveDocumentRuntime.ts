@@ -4,6 +4,7 @@ import {
   createActiveDocumentPreviewBodyRuntime,
   createActiveDocumentPreviewMetadataRuntime,
   createActiveDocumentPreviewRuntime,
+  getApproximateTokenCount,
   getMarkdownWordCount,
   isLargeMarkdownDocument,
   shouldUseImmediateMarkdownPreview,
@@ -99,7 +100,8 @@ type DeferredPreviewMetadataState = {
   previewMetadataState: ActiveDocumentPreviewMetadataRuntime;
 };
 
-type DeferredWordCountState = {
+type DeferredDocumentMetricsState = {
+  approximateTokenCount: number;
   previewSnapshot: ActiveDocumentPreviewTextSnapshot;
   wordCount: number;
 };
@@ -124,7 +126,8 @@ export const useActiveDocumentRuntime = (
     previewSnapshot: activePreviewSnapshot,
     previewMetadataState: createPreviewMetadataStateFromSnapshot(activePreviewSnapshot),
   }));
-  const [deferredWordCountState, setDeferredWordCountState] = useState<DeferredWordCountState>(() => ({
+  const [deferredDocumentMetricsState, setDeferredDocumentMetricsState] = useState<DeferredDocumentMetricsState>(() => ({
+    approximateTokenCount: getApproximateTokenCount(activeText),
     previewSnapshot: activePreviewSnapshot,
     wordCount: getMarkdownWordCount(activeText),
   }));
@@ -219,8 +222,13 @@ export const useActiveDocumentRuntime = (
       shouldRenderFullPreviewBodyImmediately,
     ],
   );
-  const wordCount = deferredWordCountState.previewSnapshot.fileId === activeFileId
-    ? deferredWordCountState.wordCount
+  const hasCurrentDocumentMetrics =
+    deferredDocumentMetricsState.previewSnapshot.fileId === activeFileId;
+  const approximateTokenCount = hasCurrentDocumentMetrics
+    ? deferredDocumentMetricsState.approximateTokenCount
+    : 0;
+  const wordCount = hasCurrentDocumentMetrics
+    ? deferredDocumentMetricsState.wordCount
     : 0;
 
   useEffect(() => {
@@ -310,7 +318,8 @@ export const useActiveDocumentRuntime = (
 
   useEffect(() => {
     if (!hasActiveFile) {
-      setDeferredWordCountState({
+      setDeferredDocumentMetricsState({
+        approximateTokenCount: 0,
         previewSnapshot: EMPTY_PREVIEW_TEXT_SNAPSHOT,
         wordCount: 0,
       });
@@ -325,12 +334,14 @@ export const useActiveDocumentRuntime = (
     let cancelled = false;
     const timer = window.setTimeout(() => {
       const previewSnapshot = createActiveDocumentPreviewTextSnapshot({ id: activeFileId }, activeText);
+      const approximateTokenCount = getApproximateTokenCount(activeText);
       const wordCount = getMarkdownWordCount(activeText);
       startTransition(() => {
         if (cancelled) {
           return;
         }
-        setDeferredWordCountState({
+        setDeferredDocumentMetricsState({
+          approximateTokenCount,
           previewSnapshot,
           wordCount,
         });
@@ -344,7 +355,11 @@ export const useActiveDocumentRuntime = (
   }, [activeFileId, activeText, activeViewMode, hasActiveFile, largeDocumentMode]);
 
   const editorState = useMemo(
-    () => createActiveDocumentEditorRuntime(activeFile, { text: activeText, wordCount }),
+    () => createActiveDocumentEditorRuntime(activeFile, {
+      approximateTokenCount,
+      text: activeText,
+      wordCount,
+    }),
     [
       activeFile?.bookmarks,
       activeFile?.lineNumbers,
@@ -354,6 +369,7 @@ export const useActiveDocumentRuntime = (
       activeText,
       activeFile?.title,
       activeFile?.viewMode,
+      approximateTokenCount,
       wordCount,
     ],
   );

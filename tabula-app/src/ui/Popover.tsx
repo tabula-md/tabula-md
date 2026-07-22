@@ -2,6 +2,7 @@ import * as RadixPopover from "@radix-ui/react-popover";
 import type { ComponentPropsWithoutRef } from "react";
 
 export const PopoverRoot = RadixPopover.Root;
+export const PopoverAnchor = RadixPopover.Anchor;
 export const PopoverTrigger = RadixPopover.Trigger;
 
 type PopoverContentProps = ComponentPropsWithoutRef<typeof RadixPopover.Content>;

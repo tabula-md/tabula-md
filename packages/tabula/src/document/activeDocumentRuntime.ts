@@ -13,7 +13,7 @@ import {
   type ParsedFrontmatter,
   type PreviewBody,
 } from "../markdown/parse";
-import { getMarkdownWordCount } from "./documentMetrics";
+import { getApproximateTokenCount, getMarkdownWordCount } from "./documentMetrics";
 import { isLargeMarkdownDocument } from "../previewBlockModel";
 
 export type DocumentBookmark = {
@@ -50,6 +50,7 @@ export type ActiveDocumentRuntime = {
   text: string;
   title: string;
   viewMode: FileViewMode;
+  approximateTokenCount: number;
   wordCount: number;
 };
 
@@ -75,6 +76,7 @@ export type ActiveDocumentPreviewMetadataRuntime = Pick<
 
 export type ActiveDocumentRuntimeOptions = {
   text?: string;
+  approximateTokenCount?: number;
   wordCount?: number;
 };
 
@@ -110,6 +112,8 @@ export const createActiveDocumentEditorRuntime = (
   const lineNumbers = activeFile?.lineNumbers ?? true;
   const bookmarks = activeFile?.bookmarks ?? [];
   const title = activeFile?.title ?? "No file open";
+  const approximateTokenCount =
+    options.approximateTokenCount ?? getApproximateTokenCount(text);
   const wordCount = options.wordCount ?? getMarkdownWordCount(text);
   const hasFile = Boolean(activeFile);
   const largeDocumentMode = isLargeMarkdownDocument(text);
@@ -127,6 +131,7 @@ export const createActiveDocumentEditorRuntime = (
     text,
     title,
     viewMode,
+    approximateTokenCount,
     wordCount,
   };
 };

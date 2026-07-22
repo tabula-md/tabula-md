@@ -358,7 +358,9 @@ export function DocumentWorkbench({
         language={language}
         saveRevision={saveRevision}
         statusLabel={statusLabel}
+        approximateTokenCount={documentSurface.statusBar.approximateTokenCount}
         wordCount={documentSurface.statusBar.wordCount}
+        characterCount={text.length}
         cursorPositionLabel={cursorPositionLabel}
         selectedCharacterCount={selectedCharacterCount}
         selectedLineCount={selectedLineCount}

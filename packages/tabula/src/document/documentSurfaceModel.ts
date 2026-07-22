@@ -12,6 +12,7 @@ export type DocumentSurfaceDocumentState = {
   readingWidth: ReadingWidth;
   title: string;
   viewMode: FileViewMode;
+  approximateTokenCount: number;
   wordCount: number;
 };
 
@@ -89,6 +90,7 @@ export const buildDocumentSurface = ({
     statusBar: {
       activeFileTitle: document.title,
       activeViewMode: document.viewMode,
+      approximateTokenCount: document.approximateTokenCount,
       wordCount: document.wordCount,
     },
     workspaceClassName: classNames(
