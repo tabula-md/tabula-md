@@ -76,6 +76,13 @@ describe("document surface model", () => {
     expect(surface().fileShellClassName).toContain("comments-enabled");
   });
 
+  it("exposes document metrics to the status bar", () => {
+    expect(surface().statusBar).toMatchObject({
+      approximateTokenCount: 3,
+      wordCount: 2,
+    });
+  });
+
   it("shows the selection comment popover for a positioned text selection", () => {
     expect(
       surface({

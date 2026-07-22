@@ -891,8 +891,10 @@ export type WorkspaceChromeCopy = {
     statusFor: (title: string) => string;
     savedLocally: string;
     roomOffline: string;
+    statistics: string;
     word: string;
     words: string;
+    tokens: string;
     line: string;
     lines: string;
     character: string;
@@ -954,8 +956,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       statusFor: (title) => `Status for ${title}`,
       savedLocally: "Saved locally",
       roomOffline: "Disconnected",
+      statistics: "Document statistics",
       word: "word",
       words: "words",
+      tokens: "tokens",
       line: "line",
       lines: "lines",
       character: "character",
@@ -1015,8 +1019,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       statusFor: (title) => `${title} 상태`,
       savedLocally: "로컬 저장됨",
       roomOffline: "연결 끊김",
+      statistics: "문서 통계",
       word: "단어",
       words: "단어",
+      tokens: "토큰",
       line: "줄",
       lines: "줄",
       character: "글자",
@@ -1076,8 +1082,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       statusFor: (title) => `${title} の状態`,
       savedLocally: "ローカルに保存済み",
       roomOffline: "切断されました",
+      statistics: "ドキュメント統計",
       word: "語",
       words: "語",
+      tokens: "トークン",
       line: "行",
       lines: "行",
       character: "文字",
@@ -1137,8 +1145,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       statusFor: (title) => `${title} 的状态`,
       savedLocally: "已本地保存",
       roomOffline: "已断开连接",
+      statistics: "文档统计",
       word: "词",
       words: "词",
+      tokens: "词元",
       line: "行",
       lines: "行",
       character: "字符",
@@ -1198,8 +1208,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       statusFor: (title) => `Estado de ${title}`,
       savedLocally: "Guardado localmente",
       roomOffline: "Desconectado",
+      statistics: "Estadísticas del documento",
       word: "palabra",
       words: "palabras",
+      tokens: "tokens",
       line: "línea",
       lines: "líneas",
       character: "carácter",
@@ -1259,8 +1271,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       statusFor: (title) => `État de ${title}`,
       savedLocally: "Enregistré localement",
       roomOffline: "Déconnecté",
+      statistics: "Statistiques du document",
       word: "mot",
       words: "mots",
+      tokens: "jetons",
       line: "ligne",
       lines: "lignes",
       character: "caractère",
@@ -1320,8 +1334,10 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       statusFor: (title) => `Status für ${title}`,
       savedLocally: "Lokal gespeichert",
       roomOffline: "Getrennt",
+      statistics: "Dokumentstatistik",
       word: "Wort",
       words: "Wörter",
+      tokens: "Tokens",
       line: "Zeile",
       lines: "Zeilen",
       character: "Zeichen",

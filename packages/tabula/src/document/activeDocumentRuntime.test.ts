@@ -29,6 +29,7 @@ describe("active document runtime", () => {
       text: "",
       title: "No file open",
       viewMode: "edit",
+      approximateTokenCount: 0,
       wordCount: 0,
     });
   });
@@ -54,6 +55,7 @@ describe("active document runtime", () => {
       splitRatio: 0.72,
       title: "README.md",
       viewMode: "edit",
+      approximateTokenCount: 4,
       wordCount: 3,
     });
     expect(runtime.bookmarks).toHaveLength(1);
@@ -74,6 +76,7 @@ describe("active document runtime", () => {
       text: "# Runtime visible text\n\nPending words",
       title: "Runtime.md",
       viewMode: "split",
+      approximateTokenCount: 10,
       wordCount: 6,
     });
     expect(runtime.outlineHeadings).toEqual([
