@@ -146,9 +146,9 @@
 
 .right-comment-form {
   display: grid;
-  gap: 3px;
+  gap: 5px;
   margin-bottom: 0;
-  padding: 7px var(--right-row-x) 6px;
+  padding: 8px var(--right-row-x) 7px;
   border-radius: var(--right-row-radius);
   background: var(--surface-muted);
 }
@@ -170,19 +170,27 @@
   width: min(120px, 45vw);
   min-width: 0;
   height: var(--control-size-compact);
-  padding: 0 6px;
+  margin: 0;
+  padding: 0;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 0;
+  appearance: none;
+  outline: 0;
+  outline-offset: 0;
   color: var(--text-soft);
   background: transparent;
+  caret-color: var(--text-primary);
   font: inherit;
   line-height: var(--control-size-compact);
 }
 
 .right-comment-composer-identity input:hover,
+.right-comment-composer-identity input:focus,
 .right-comment-composer-identity input:focus-visible {
   color: var(--text-primary);
-  background: var(--surface-active);
+  background: transparent;
+  outline: 0;
+  outline-offset: 0;
 }
 
 .right-comment-input {
@@ -190,10 +198,14 @@
   min-height: var(--control-size-row);
   padding: 0;
   border: 0;
+  appearance: none;
+  outline: 0;
+  outline-offset: 0;
   resize: none;
   color: var(--text-primary);
   background: transparent;
   border-radius: 0;
+  caret-color: var(--text-primary);
   font-size: var(--font-ui-secondary);
   font-weight: var(--weight-ui-regular);
   line-height: 1.45;
@@ -212,6 +224,14 @@
 .right-comment-input:focus,
 .right-comment-input:focus-visible {
   background: transparent;
+  outline: 0;
+  outline-offset: 0;
+}
+
+.right-comment-composer-identity input::selection,
+.right-comment-input::selection {
+  color: var(--selection-text);
+  background: var(--selection-background);
 }
 
 .right-comment-form-footer {
