@@ -585,6 +585,13 @@ export {
   workspaceReducer,
 } from "./workspaceModel";
 
+export type { WorkspacePathSegmentIssue } from "./workspacePath";
+export {
+  WORKSPACE_PATH_SEGMENT_MAX_LENGTH,
+  getWorkspacePathSegmentIssue,
+  isWorkspacePathSegment,
+} from "./workspacePath";
+
 export type {
   WorkspaceConnectionStatus,
   WorkspaceViewFile,

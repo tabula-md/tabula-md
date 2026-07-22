@@ -3,6 +3,7 @@ import {
   WORKSPACE_ROOM_MAX_DOCUMENTS,
   WORKSPACE_ROOM_MAX_FOLDERS,
   WORKSPACE_ROOM_MAX_TREE_DEPTH,
+  getWorkspacePathSegmentIssue,
 } from "@tabula-md/tabula";
 import {
   WORKSPACE_ROOT_FOLDER_ID,
@@ -34,11 +35,8 @@ const textDecoder = new TextDecoder("utf-8", { fatal: true });
 
 const parseRelativePath = (file: File) => {
   const rawPath = file.webkitRelativePath || file.name;
-  const segments = rawPath.replace(/\\/g, "/").split("/").filter(Boolean);
-  if (
-    segments.length === 0 ||
-    segments.some((segment) => segment === "." || segment === ".." || segment.includes("\0"))
-  ) {
+  const segments = rawPath.split("/");
+  if (segments.length === 0 || segments.some((segment) => getWorkspacePathSegmentIssue(segment))) {
     throw new Error("This workspace folder contains an invalid path.");
   }
   return segments;

@@ -1,4 +1,5 @@
 import { strToU8, zip } from "fflate";
+import { getWorkspacePathSegmentIssue } from "@tabula-md/tabula";
 import {
   WORKSPACE_ROOT_FOLDER_ID,
   type WorkspaceFile,
@@ -10,21 +11,10 @@ export type ZipEntrySource = {
   content: string;
 };
 
-const normalizeArchivePathSegment = (title: string, fallback: string) => {
-  const cleanedTitle = title
-    .trim()
-    .replace(/[/\\?%*:|"<>]/g, "-")
-    .replace(/\s+/g, " ")
-    .replace(/^\.+/, "")
-    .replace(/^-+/, "")
-    .slice(0, 120);
-  return cleanedTitle || fallback;
-};
-
-const normalizeArchiveFileName = (title: string) => {
-  const baseName = normalizeArchivePathSegment(title, "Untitled");
-
-  return /\.(?:md|markdown)$/i.test(baseName) ? baseName : `${baseName}.md`;
+const requireArchivePathSegment = (title: string) => {
+  const issue = getWorkspacePathSegmentIssue(title);
+  if (issue) throw new Error(`Workspace export failed: invalid path segment (${issue}).`);
+  return title;
 };
 
 const getFolderPath = (folderId: string | null | undefined, foldersById: Map<string, WorkspaceFolder>) => {
@@ -34,15 +24,18 @@ const getFolderPath = (folderId: string | null | undefined, foldersById: Map<str
   while (currentId && currentId !== WORKSPACE_ROOT_FOLDER_ID && !visited.has(currentId)) {
     visited.add(currentId);
     const folder = foldersById.get(currentId);
-    if (!folder) break;
-    parts.unshift(normalizeArchivePathSegment(folder.title, "Folder"));
+    if (!folder) throw new Error("Workspace export failed: missing parent folder.");
+    parts.unshift(requireArchivePathSegment(folder.title));
     currentId = folder.parentId;
+  }
+  if (currentId && currentId !== WORKSPACE_ROOT_FOLDER_ID) {
+    throw new Error("Workspace export failed: cyclic folder path.");
   }
   return parts;
 };
 
 export const getWorkspaceArchiveEntries = (files: WorkspaceFile[], folders: WorkspaceFolder[] = []): ZipEntrySource[] => {
-  const pathCounts = new Map<string, number>();
+  const archivePaths = new Set<string>();
   const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
   const foldersWithDocuments = new Set<string>();
   for (const file of files) {
@@ -62,27 +55,28 @@ export const getWorkspaceArchiveEntries = (files: WorkspaceFile[], folders: Work
     }))
     .filter((entry) => entry.path !== "/");
 
-  const fileEntries = files.map((file) => {
-    const archivePath = [...getFolderPath(file.parentId, foldersById), normalizeArchiveFileName(file.title)].join("/");
-    const normalizedKey = archivePath.toLowerCase();
-    const count = pathCounts.get(normalizedKey) ?? 0;
-    pathCounts.set(normalizedKey, count + 1);
-
-    const dedupedPath =
-      count === 0
-        ? archivePath
-        : archivePath.replace(/(\.(?:md|markdown))$/i, ` ${count + 1}$1`);
-
+  const entries = [...emptyFolderEntries, ...files.map((file) => {
+    const archivePath = [...getFolderPath(file.parentId, foldersById), requireArchivePathSegment(file.title)].join("/");
     return {
-      path: dedupedPath,
+      path: archivePath,
       content: file.text,
     };
-  });
-  return [...emptyFolderEntries, ...fileEntries];
+  })];
+  for (const entry of entries) {
+    if (archivePaths.has(entry.path)) {
+      throw new Error(`Workspace export failed: duplicate path ${entry.path}.`);
+    }
+    archivePaths.add(entry.path);
+  }
+  return entries;
 };
 
 export const createZipArchive = (entries: ZipEntrySource[]) =>
   new Promise<Blob>((resolve, reject) => {
+    if (new Set(entries.map((entry) => entry.path)).size !== entries.length) {
+      reject(new Error("Workspace export failed: duplicate archive path."));
+      return;
+    }
     const source = Object.fromEntries(entries.map((entry) => [entry.path, strToU8(entry.content)]));
 
     zip(source, { level: 6 }, (error, bytes) => {
