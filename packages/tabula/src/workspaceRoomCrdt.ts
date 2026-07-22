@@ -16,6 +16,10 @@ import {
   type WorkspaceRoomSnapshot,
   type WorkspaceRoomStructureSnapshot,
 } from "./workspaceRoomModel";
+import {
+  WORKSPACE_PATH_SEGMENT_MAX_LENGTH,
+  isWorkspacePathSegment,
+} from "./workspacePath";
 
 export type WorkspaceRoomCrdt = {
   doc: Y.Doc;
@@ -56,8 +60,10 @@ const asOptionalString = (value: unknown) =>
   typeof value === "string" && value.length > 0 ? value : undefined;
 
 const normalizeTitle = (title: string, fallback: string) => {
+  if (isWorkspacePathSegment(title)) return title;
   const normalized = title.trim().split("\0").join(" ").replace(/[/\\]/g, " ").replace(/\s+/g, " ");
-  return normalized && normalized !== "." && normalized !== ".." ? normalized.slice(0, 120) : fallback;
+  const bounded = normalized.slice(0, WORKSPACE_PATH_SEGMENT_MAX_LENGTH);
+  return isWorkspacePathSegment(bounded) ? bounded : fallback;
 };
 
 const createNodeMap = ({
