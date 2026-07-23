@@ -70,14 +70,14 @@ type RightPanelFilesProps = {
   onCollapseAllFolders: (folderIds: Iterable<string>) => void;
   onExpandAllFolders: () => void;
   onSelectFile: (fileId: string) => void;
-  onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
+  onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onCopyFile: (fileId: string) => void;
-  onMoveFileToFolder: (fileId: string, folderId: string) => void;
-  onMoveFolder: (folderId: string, parentId: string) => void;
-  onRenameFolder: (folderId: string, nextTitle: string) => boolean;
+  onMoveFileToFolder: (fileId: string, folderId: string) => Promise<void>;
+  onMoveFolder: (folderId: string, parentId: string) => Promise<void>;
+  onRenameFolder: (folderId: string, nextTitle: string) => Promise<boolean>;
 };
 
 const RIGHT_TREE_INDENT = 16;
@@ -230,8 +230,8 @@ export function RightPanelFiles({
     setRenamingTitle("");
   };
 
-  const commitRenamingFile = (fileId: string, nextTitle: string) => {
-    const result = onRenameFile(fileId, nextTitle);
+  const commitRenamingFile = async (fileId: string, nextTitle: string) => {
+    const result = await onRenameFile(fileId, nextTitle);
     if (result.ok) {
       cancelRenamingFile();
       return true;
@@ -348,8 +348,8 @@ export function RightPanelFiles({
     if (!draggedItem || !validDropFolderIds.has(folderId)) return;
     event.preventDefault();
     event.stopPropagation();
-    if (draggedItem.type === "file") onMoveFileToFolder(draggedItem.id, folderId);
-    else onMoveFolder(draggedItem.id, folderId);
+    if (draggedItem.type === "file") void onMoveFileToFolder(draggedItem.id, folderId);
+    else void onMoveFolder(draggedItem.id, folderId);
     finishDragging();
   };
 
@@ -415,11 +415,11 @@ export function RightPanelFiles({
                   aria-label={copy.renameFolder(node.name)}
                   onClick={(event) => event.stopPropagation()}
                   onChange={(event) => setRenamingFolderTitle(event.target.value)}
-                  onBlur={() => {
-                    if (onRenameFolder(node.id, renamingFolderTitle)) setRenamingFolderId(null);
+                  onBlur={async () => {
+                    if (await onRenameFolder(node.id, renamingFolderTitle)) setRenamingFolderId(null);
                   }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && onRenameFolder(node.id, renamingFolderTitle)) setRenamingFolderId(null);
+                  onKeyDown={async (event) => {
+                    if (event.key === "Enter" && await onRenameFolder(node.id, renamingFolderTitle)) setRenamingFolderId(null);
                     if (event.key === "Escape") setRenamingFolderId(null);
                   }}
                   autoFocus

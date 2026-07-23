@@ -56,7 +56,7 @@ describe("workspace store", () => {
     expect(useWorkspaceStore.getState().folders).toEqual([createWorkspaceRootFolder()]);
   });
 
-  it("keeps local and room workspace records in separate stores", () => {
+  it("keeps local and room workspace records in separate stores", async () => {
     const { draft } = initializeWorkspaceStore();
     useRoomWorkspaceStore.getState().initializeWorkspace({
       folders: [createWorkspaceRootFolder()],
@@ -67,7 +67,7 @@ describe("workspace store", () => {
       createFile: createTestFile,
     });
 
-    useRoomWorkspaceStore.getState().renameFile("room-draft", "Shared.md");
+    await useRoomWorkspaceStore.getState().renameFile("room-draft", "Shared.md");
 
     expect(useRoomWorkspaceStore.getState().files).toEqual([
       expect.objectContaining({ id: "room-draft", title: "Shared.md", text: "" }),
@@ -181,18 +181,66 @@ describe("workspace store", () => {
     expect(useWorkspaceStore.getState().openFileIds).not.toContain(draft.id);
   });
 
-  it("normalizes rename requests and rejects duplicate titles", () => {
+  it("normalizes rename requests and rejects duplicate titles", async () => {
     const { draft } = initializeWorkspaceStore();
     const plan = useWorkspaceStore.getState().addFile({ title: "Plan.md" });
 
-    expect(useWorkspaceStore.getState().renameFile(plan.id, "Roadmap")).toEqual({
+    expect(await useWorkspaceStore.getState().renameFile(plan.id, "Roadmap")).toEqual({
       ok: true,
       title: "Roadmap.md",
     });
-    expect(useWorkspaceStore.getState().renameFile(draft.id, "Roadmap.md")).toMatchObject({
+    expect(await useWorkspaceStore.getState().renameFile(draft.id, "Roadmap.md")).toMatchObject({
       ok: false,
       reason: "duplicate",
     });
+  });
+
+  it("maintains internal links across file and folder path changes", async () => {
+    const store = useWorkspaceStore.getState();
+    const root = createWorkspaceRootFolder();
+    const docs = { id: "docs", title: "docs", parentId: root.id };
+    const guide = { id: "guide-folder", title: "guide", parentId: root.id };
+    const start = createTestFile(1, {
+      id: "start",
+      title: "Start.md",
+      parentId: docs.id,
+      text: "[Guide](../guide/Guide.md)",
+    });
+    const guideFile = createTestFile(2, {
+      id: "guide",
+      title: "Guide.md",
+      parentId: guide.id,
+      text: "[Start](../docs/Start.md)",
+    });
+    store.replaceWorkspace({
+      files: [start, guideFile],
+      folders: [root, docs, guide],
+      openFileIds: [start.id],
+      activeFileId: start.id,
+    });
+
+    expect(await useWorkspaceStore.getState().renameFolder(guide.id, "handbook")).toBe(true);
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === start.id)?.text)
+      .toBe("[Guide](../handbook/Guide.md)");
+
+    expect(await useWorkspaceStore.getState().moveFileToFolder(start.id, root.id)).toBe(true);
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === start.id)?.text)
+      .toBe("[Guide](handbook/Guide.md)");
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === guideFile.id)?.text)
+      .toBe("[Start](../Start.md)");
+
+    expect(await useWorkspaceStore.getState().renameFile(guideFile.id, "Reference.md")).toMatchObject({
+      ok: true,
+      title: "Reference.md",
+    });
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === start.id)?.text)
+      .toBe("[Guide](handbook/Reference.md)");
+
+    expect(await useWorkspaceStore.getState().moveFolder(guide.id, docs.id)).toBe(true);
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === start.id)?.text)
+      .toBe("[Guide](docs/handbook/Reference.md)");
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === guideFile.id)?.text)
+      .toBe("[Start](../../Start.md)");
   });
 
   it("duplicates document content and local display preferences", () => {

@@ -20,17 +20,18 @@ type UseWorkspaceFolderActionsOptions = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   historyByFileId: Record<string, FileHistory>;
+  onBeforeWorkspaceBoundary?: () => void;
   addFolder: (title?: string, parentId?: string) => WorkspaceFolder | undefined;
   deleteFolder: (folderId: string) => DeletedWorkspaceFolderBundle | undefined;
   deleteCommentsForFiles: (fileIds: Set<string>) => Record<string, FileComment[]>;
   deleteRoomNode: (nodeId: string) => boolean;
   materializeRoomWorkspace: () => WorkspaceRoomSnapshot | undefined;
-  moveFile: (fileId: string, folderId: string) => boolean;
-  moveFolder: (folderId: string, parentId: string) => boolean;
+  moveFile: (fileId: string, folderId: string) => Promise<boolean>;
+  moveFolder: (folderId: string, parentId: string) => Promise<boolean>;
   moveRoomNode: (nodeId: string, parentId: string) => boolean;
   publishRoomFolder: (folder: WorkspaceFolder) => boolean;
   readFolder: (folderId: string) => WorkspaceFolder | undefined;
-  renameFolder: (folderId: string, title: string) => boolean;
+  renameFolder: (folderId: string, title: string) => Promise<boolean>;
   renameRoomNode: (nodeId: string, title: string) => boolean;
   restoreCommentsForFiles: (comments: Record<string, FileComment[]>) => void;
   restoreFolder: (bundle: DeletedWorkspaceFolderBundle) => WorkspaceFile | undefined;
@@ -46,6 +47,7 @@ export function useWorkspaceFolderActions({
   files,
   folders,
   historyByFileId,
+  onBeforeWorkspaceBoundary,
   addFolder,
   deleteFolder,
   deleteCommentsForFiles,
@@ -149,36 +151,39 @@ export function useWorkspaceFolderActions({
     });
   });
 
-  const renameWorkspaceFolder = useEventCallback((folderId: string, title: string) => {
+  const renameWorkspaceFolder = useEventCallback(async (folderId: string, title: string) => {
+    onBeforeWorkspaceBoundary?.();
     const folder = folders.find((candidate) => candidate.id === folderId);
-    if (!folder || !renameFolder(folderId, title)) return false;
+    if (!folder || !await renameFolder(folderId, title)) return false;
     const currentFolder = readFolder(folderId);
     if (activeRoom && currentFolder && !renameRoomNode(folderId, currentFolder.title)) {
-      renameFolder(folderId, folder.title);
+      await renameFolder(folderId, folder.title);
       return false;
     }
     return true;
   });
 
-  const moveWorkspaceFile = useEventCallback((fileId: string, folderId: string) => {
+  const moveWorkspaceFile = useEventCallback(async (fileId: string, folderId: string) => {
+    onBeforeWorkspaceBoundary?.();
     const file = files.find((candidate) => candidate.id === fileId);
     const previousParentId = file?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
-    if (!moveFile(fileId, folderId)) return;
+    if (!await moveFile(fileId, folderId)) return;
     if (activeRoom && !moveRoomNode(fileId, folderId)) {
-      moveFile(fileId, previousParentId);
+      await moveFile(fileId, previousParentId);
       showToast(copy.documentMoveFailed, "error");
     }
   });
 
-  const moveWorkspaceFolder = useEventCallback((folderId: string, parentId: string) => {
+  const moveWorkspaceFolder = useEventCallback(async (folderId: string, parentId: string) => {
+    onBeforeWorkspaceBoundary?.();
     const folder = folders.find((candidate) => candidate.id === folderId);
     const previousParentId = folder?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
-    if (!moveFolder(folderId, parentId)) {
+    if (!await moveFolder(folderId, parentId)) {
       showToast(copy.folderMoveInvalid, "error");
       return;
     }
     if (activeRoom && !moveRoomNode(folderId, parentId)) {
-      moveFolder(folderId, previousParentId);
+      await moveFolder(folderId, previousParentId);
       showToast(copy.folderMoveFailed, "error");
     }
   });

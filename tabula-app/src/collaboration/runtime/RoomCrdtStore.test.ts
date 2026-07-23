@@ -33,7 +33,7 @@ const createStore = () => {
 };
 
 describe("RoomCrdtStore", () => {
-  it("owns room structure commands without materializing document bodies", () => {
+  it("owns room structure commands and inspects bodies only for path changes", () => {
     const { metrics, room, store } = createStore();
     const readme = getWorkspaceRoomDocument(room, "readme") as Y.Text & { toString(): string };
     const toString = vi.spyOn(readme, "toString");
@@ -45,12 +45,13 @@ describe("RoomCrdtStore", () => {
       parentId: "archive",
       markdown: "Notes",
     })).toBe(true);
+    expect(toString).not.toHaveBeenCalled();
     expect(store.renameNode("notes", "Ideas.md")).toBe(true);
     expect(store.moveNode("notes", "docs")).toBe(true);
     expect(store.setNodeOrder("notes", 4)).toBe(true);
     expect(store.deleteNode("archive")).toBe(true);
     expect(store.deleteNode(WORKSPACE_ROOM_ROOT_ID)).toBe(false);
-    expect(toString).not.toHaveBeenCalled();
+    expect(toString).toHaveBeenCalled();
 
     const snapshot = store.materializeWorkspace();
     expect(snapshot.nodes).toEqual(expect.arrayContaining([
@@ -64,6 +65,51 @@ describe("RoomCrdtStore", () => {
       }),
     ]));
     expect(snapshot.nodes.some((node) => node.id === "archive")).toBe(false);
+    metrics.dispose();
+    room.doc.destroy();
+  });
+
+  it("maintains links in the same CRDT operation as rename and move", () => {
+    const { metrics, room, store } = createStore();
+    expect(store.createDocument({
+      id: "index",
+      title: "index.md",
+      markdown: "[Readme](Docs/README.md)",
+    })).toBe(true);
+
+    expect(store.renameNode("docs", "Handbook")).toBe(true);
+    expect(store.materializeDocument("index"))
+      .toBe("[Readme](Handbook/README.md)");
+
+    expect(store.moveNode("readme", WORKSPACE_ROOM_ROOT_ID)).toBe(true);
+    expect(store.materializeDocument("index"))
+      .toBe("[Readme](README.md)");
+
+    expect(store.renameNode("readme", "Start Here.md")).toBe(true);
+    expect(store.materializeDocument("index"))
+      .toBe("[Readme](Start%20Here.md)");
+    metrics.dispose();
+    room.doc.destroy();
+  });
+
+  it("rolls back a path mutation when maintained links exceed room capacity", () => {
+    const { metrics, room, store } = createStore();
+    expect(store.createDocument({
+      id: "index",
+      title: "index.md",
+      markdown: "[Readme](Docs/README.md)",
+    })).toBe(true);
+    const limitedStore = createRoomCrdtStore({
+      canApplyTextByteDelta: (delta) => delta <= 0,
+      getDocumentByteLength: metrics.getDocumentByteLength,
+      room,
+    });
+
+    expect(limitedStore.renameNode("docs", "Much Longer Handbook")).toBe(false);
+    expect(limitedStore.materializeWorkspace().nodes.find((node) => node.id === "docs")?.title)
+      .toBe("Docs");
+    expect(limitedStore.materializeDocument("index"))
+      .toBe("[Readme](Docs/README.md)");
     metrics.dispose();
     room.doc.destroy();
   });

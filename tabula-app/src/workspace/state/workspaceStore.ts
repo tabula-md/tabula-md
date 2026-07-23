@@ -31,6 +31,7 @@ import {
   restoreFileToList,
   restoreOpenFileId,
 } from "@tabula-md/tabula";
+import { maintainWorkspaceKnowledgePaths } from "../workspaceKnowledgeModel";
 
 type WorkspaceStoreInitialization = WorkspaceModelState<WorkspaceFile> & {
   folders: WorkspaceFolder[];
@@ -79,13 +80,13 @@ type WorkspaceStoreActions = {
   duplicateFile: (fileId: string) => WorkspaceFile | undefined;
   initializeWorkspace: (initialization: WorkspaceStoreInitialization) => void;
   moveFile: (fileId: string, direction: -1 | 1) => void;
-  renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
+  renameFile: (fileId: string, nextRawTitle: string) => Promise<RenameFileResult>;
   reorderFiles: (sourceFileId: string, targetFileId: string) => void;
   replaceWorkspace: (workspace: WorkspaceModelState<WorkspaceFile> & { folders?: WorkspaceFolder[] }) => WorkspaceFile | undefined;
   deleteFolder: (folderId: string) => DeletedWorkspaceFolderBundle | undefined;
-  moveFileToFolder: (fileId: string, folderId: string) => boolean;
-  moveFolder: (folderId: string, parentId: string) => boolean;
-  renameFolder: (folderId: string, title: string) => boolean;
+  moveFileToFolder: (fileId: string, folderId: string) => Promise<boolean>;
+  moveFolder: (folderId: string, parentId: string) => Promise<boolean>;
+  renameFolder: (folderId: string, title: string) => Promise<boolean>;
   restoreFile: (input: RestoreFileInput) => WorkspaceFile;
   restoreFolder: (bundle: DeletedWorkspaceFolderBundle) => WorkspaceFile | undefined;
   selectAdjacentFile: (direction: -1 | 1) => WorkspaceFile | undefined;
@@ -324,24 +325,37 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
     return nextFile;
   },
 
-  renameFile: (fileId, nextRawTitle) => {
-    const state = get();
-    const file = state.files.find((candidate) => candidate.id === fileId);
-    const siblingState = {
-      ...getWorkspaceState(state),
-      files: state.files.filter(
-        (candidate) =>
-          candidate.id === fileId ||
-          (candidate.parentId ?? WORKSPACE_ROOT_FOLDER_ID) ===
-            (file?.parentId ?? WORKSPACE_ROOT_FOLDER_ID),
-      ),
-    };
-    const { result } = renameWorkspaceFile(siblingState, fileId, nextRawTitle);
-    if (result.ok) {
-      set((state) => reduceWorkspace(state, { type: "renameFile", fileId, title: nextRawTitle }));
-    }
+  renameFile: async (fileId, nextRawTitle) => {
+    while (true) {
+      const state = get();
+      const file = state.files.find((candidate) => candidate.id === fileId);
+      const siblingState = {
+        ...getWorkspaceState(state),
+        files: state.files.filter(
+          (candidate) =>
+            candidate.id === fileId ||
+            (candidate.parentId ?? WORKSPACE_ROOT_FOLDER_ID) ===
+              (file?.parentId ?? WORKSPACE_ROOT_FOLDER_ID),
+        ),
+      };
+      const { result } = renameWorkspaceFile(siblingState, fileId, nextRawTitle);
+      if (!result.ok) return result;
 
-    return result;
+      const maintained = await maintainWorkspaceKnowledgePaths(
+        state,
+        reduceWorkspace(state, { type: "renameFile", fileId, title: nextRawTitle }),
+      );
+      const latest = get();
+      if (latest.files !== state.files || latest.folders !== state.folders) {
+        continue;
+      }
+      set((current) => ({
+        ...current,
+        files: maintained.state.files,
+        folders: maintained.state.folders,
+      }));
+      return result;
+    }
   },
 
   closeFile: (fileId) => {
@@ -463,50 +477,84 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
     return folder;
   },
 
-  renameFolder: (folderId, title) => {
-    const state = get();
-    const folder = state.folders.find((candidate) => candidate.id === folderId);
-    const normalizedTitle = title.trim().split("\0").join(" ").replace(/[/\\]/g, " ").replace(/\s+/g, " ");
-    if (!folder || folder.id === WORKSPACE_ROOT_FOLDER_ID || !normalizedTitle) return false;
-    if (state.folders.some((candidate) =>
-      candidate.id !== folderId && candidate.parentId === folder.parentId && candidate.title.toLowerCase() === normalizedTitle.toLowerCase()
-    )) return false;
-    set((current) => ({
-      ...current,
-      folders: current.folders.map((candidate) => candidate.id === folderId ? { ...candidate, title: normalizedTitle } : candidate),
-    }));
-    return true;
+  renameFolder: async (folderId, title) => {
+    while (true) {
+      const state = get();
+      const folder = state.folders.find((candidate) => candidate.id === folderId);
+      const normalizedTitle = title.trim().split("\0").join(" ").replace(/[/\\]/g, " ").replace(/\s+/g, " ");
+      if (!folder || folder.id === WORKSPACE_ROOT_FOLDER_ID || !normalizedTitle) return false;
+      if (state.folders.some((candidate) =>
+        candidate.id !== folderId && candidate.parentId === folder.parentId && candidate.title.toLowerCase() === normalizedTitle.toLowerCase()
+      )) return false;
+      const maintained = await maintainWorkspaceKnowledgePaths(state, {
+        ...state,
+        folders: state.folders.map((candidate) =>
+          candidate.id === folderId ? { ...candidate, title: normalizedTitle } : candidate
+        ),
+      });
+      const latest = get();
+      if (latest.files !== state.files || latest.folders !== state.folders) continue;
+      set((current) => ({
+        ...current,
+        files: maintained.state.files,
+        folders: maintained.state.folders,
+      }));
+      return true;
+    }
   },
 
-  moveFileToFolder: (fileId, folderId) => {
-    const state = get();
-    const file = state.files.find((candidate) => candidate.id === fileId);
-    if (!file || !state.folders.some((folder) => folder.id === folderId)) return false;
-    if (state.files.some((candidate) =>
-      candidate.id !== fileId &&
-      (candidate.parentId ?? WORKSPACE_ROOT_FOLDER_ID) === folderId &&
-      candidate.title.toLowerCase() === file.title.toLowerCase()
-    )) return false;
-    set((current) => updateFileInState(current, fileId, (file) => ({ ...file, parentId: folderId })));
-    return true;
+  moveFileToFolder: async (fileId, folderId) => {
+    while (true) {
+      const state = get();
+      const file = state.files.find((candidate) => candidate.id === fileId);
+      if (!file || !state.folders.some((folder) => folder.id === folderId)) return false;
+      if (state.files.some((candidate) =>
+        candidate.id !== fileId &&
+        (candidate.parentId ?? WORKSPACE_ROOT_FOLDER_ID) === folderId &&
+        candidate.title.toLowerCase() === file.title.toLowerCase()
+      )) return false;
+      const maintained = await maintainWorkspaceKnowledgePaths(
+        state,
+        updateFileInState(state, fileId, (file) => ({ ...file, parentId: folderId })),
+      );
+      const latest = get();
+      if (latest.files !== state.files || latest.folders !== state.folders) continue;
+      set((current) => ({
+        ...current,
+        files: maintained.state.files,
+        folders: maintained.state.folders,
+      }));
+      return true;
+    }
   },
 
-  moveFolder: (folderId, parentId) => {
-    const state = get();
-    const movingFolder = state.folders.find((folder) => folder.id === folderId);
-    if (!movingFolder || folderId === WORKSPACE_ROOT_FOLDER_ID || !state.folders.some((folder) => folder.id === parentId)) return false;
-    if (getFolderDescendantIds(state.folders, folderId).has(parentId)) return false;
-    if (getFolderDepth(state.folders, parentId) + 1 + getFolderSubtreeHeight(state.folders, folderId) > WORKSPACE_ROOM_MAX_TREE_DEPTH) return false;
-    if (state.folders.some((folder) =>
-      folder.id !== folderId &&
-      folder.parentId === parentId &&
-      folder.title.toLowerCase() === movingFolder.title.toLowerCase()
-    )) return false;
-    set((current) => ({
-      ...current,
-      folders: current.folders.map((folder) => folder.id === folderId ? { ...folder, parentId } : folder),
-    }));
-    return true;
+  moveFolder: async (folderId, parentId) => {
+    while (true) {
+      const state = get();
+      const movingFolder = state.folders.find((folder) => folder.id === folderId);
+      if (!movingFolder || folderId === WORKSPACE_ROOT_FOLDER_ID || !state.folders.some((folder) => folder.id === parentId)) return false;
+      if (getFolderDescendantIds(state.folders, folderId).has(parentId)) return false;
+      if (getFolderDepth(state.folders, parentId) + 1 + getFolderSubtreeHeight(state.folders, folderId) > WORKSPACE_ROOM_MAX_TREE_DEPTH) return false;
+      if (state.folders.some((folder) =>
+        folder.id !== folderId &&
+        folder.parentId === parentId &&
+        folder.title.toLowerCase() === movingFolder.title.toLowerCase()
+      )) return false;
+      const maintained = await maintainWorkspaceKnowledgePaths(state, {
+        ...state,
+        folders: state.folders.map((folder) =>
+          folder.id === folderId ? { ...folder, parentId } : folder
+        ),
+      });
+      const latest = get();
+      if (latest.files !== state.files || latest.folders !== state.folders) continue;
+      set((current) => ({
+        ...current,
+        files: maintained.state.files,
+        folders: maintained.state.folders,
+      }));
+      return true;
+    }
   },
 
   deleteFolder: (folderId) => {

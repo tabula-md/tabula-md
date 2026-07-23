@@ -1,10 +1,22 @@
 import {
   createWorkspaceKnowledgeIndex,
+  planWorkspaceKnowledgeMaintenance,
   removeWorkspaceDocumentFromKnowledgeIndex,
   updateWorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeIndex,
+  type WorkspaceKnowledgeMaintenancePlan,
   type WorkspaceSourceDocument,
 } from "@tabula-md/tabula";
+import { getWorkspaceKnowledgeDocuments } from "./workspaceKnowledgeModel";
+import type { WorkspaceFile, WorkspaceFolder } from "./workspaceStorage";
+
+const EMPTY_WORKSPACE_KNOWLEDGE_MAINTENANCE_PLAN: WorkspaceKnowledgeMaintenancePlan =
+  Object.freeze({
+    updates: Object.freeze([]),
+    updatedDocumentCount: 0,
+    updatedLinkCount: 0,
+    skippedLinkCount: 0,
+  });
 
 export const reconcileWorkspaceKnowledgeIndex = (
   current: WorkspaceKnowledgeIndex | undefined,
@@ -42,4 +54,51 @@ export const reconcileWorkspaceKnowledgeIndex = (
   }
 
   return next;
+};
+
+export const getWorkspaceKnowledgeMaintenancePlan = (
+  previousDocuments: readonly WorkspaceSourceDocument[],
+  nextDocuments: readonly WorkspaceSourceDocument[],
+): WorkspaceKnowledgeMaintenancePlan =>
+  planWorkspaceKnowledgeMaintenance(previousDocuments, nextDocuments);
+
+type WorkspaceKnowledgePathState = {
+  files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
+};
+
+export const maintainWorkspaceKnowledgePaths = <
+  TState extends WorkspaceKnowledgePathState,
+>(
+  previous: TState,
+  next: TState,
+): { state: TState; plan: WorkspaceKnowledgeMaintenancePlan } => {
+  let plan: WorkspaceKnowledgeMaintenancePlan;
+  try {
+    plan = getWorkspaceKnowledgeMaintenancePlan(
+      getWorkspaceKnowledgeDocuments(previous.files, previous.folders),
+      getWorkspaceKnowledgeDocuments(next.files, next.folders),
+    );
+  } catch {
+    return {
+      state: next,
+      plan: EMPTY_WORKSPACE_KNOWLEDGE_MAINTENANCE_PLAN,
+    };
+  }
+  if (plan.updates.length === 0) {
+    return { state: next, plan };
+  }
+  const markdownByDocumentId = new Map(
+    plan.updates.map((update) => [update.documentId, update.markdown]),
+  );
+  return {
+    state: {
+      ...next,
+      files: next.files.map((file) => {
+        const markdown = markdownByDocumentId.get(file.id);
+        return typeof markdown === "string" ? { ...file, text: markdown } : file;
+      }),
+    },
+    plan,
+  };
 };
