@@ -10,6 +10,8 @@ type UseRightPanelCollapseStateOptions = {
 
 export type RightPanelLinkSection = "outgoing" | "backlinks";
 
+const emptyCollapsedOutlineHeadingIds = new Set<string>();
+
 const toggleSetValue = <Value,>(currentIds: Set<Value>, id: Value) => {
   const nextIds = new Set(currentIds);
   if (nextIds.has(id)) {
@@ -33,12 +35,17 @@ export function useRightPanelCollapseState({
   const [collapsedLinkSections, setCollapsedLinkSections] = useState<Set<RightPanelLinkSection>>(
     () => new Set(),
   );
-  const [collapsedOutlineHeadingIds, setCollapsedOutlineHeadingIds] = useState<Set<string>>(() => new Set());
+  const [
+    collapsedOutlineHeadingIdsByFileId,
+    setCollapsedOutlineHeadingIdsByFileId,
+  ] = useState<Map<string, Set<string>>>(() => new Map());
+  const collapsedOutlineHeadingIds =
+    collapsedOutlineHeadingIdsByFileId.get(activeFileId) ??
+    emptyCollapsedOutlineHeadingIds;
 
   useEffect(() => {
     setShowResolved(false);
     setCollapsedReplyIds(new Set());
-    setCollapsedOutlineHeadingIds(new Set());
   }, [activeFileId]);
 
   useEffect(() => {
@@ -102,9 +109,31 @@ export function useRightPanelCollapseState({
     toggleLinkSectionCollapsed: (section: RightPanelLinkSection) =>
       setCollapsedLinkSections((currentSections) => toggleSetValue(currentSections, section)),
     toggleOutlineHeadingCollapsed: (headingId: string) =>
-      setCollapsedOutlineHeadingIds((currentIds) => toggleSetValue(currentIds, headingId)),
+      setCollapsedOutlineHeadingIdsByFileId((currentByFileId) => {
+        const nextByFileId = new Map(currentByFileId);
+        nextByFileId.set(
+          activeFileId,
+          toggleSetValue(
+            currentByFileId.get(activeFileId) ?? new Set<string>(),
+            headingId,
+          ),
+        );
+        return nextByFileId;
+      }),
     collapseAllOutlineHeadings: (headingIds: Iterable<string>) =>
-      setCollapsedOutlineHeadingIds(new Set(headingIds)),
-    expandAllOutlineHeadings: () => setCollapsedOutlineHeadingIds(new Set()),
+      setCollapsedOutlineHeadingIdsByFileId((currentByFileId) => {
+        const nextByFileId = new Map(currentByFileId);
+        nextByFileId.set(activeFileId, new Set(headingIds));
+        return nextByFileId;
+      }),
+    expandAllOutlineHeadings: () =>
+      setCollapsedOutlineHeadingIdsByFileId((currentByFileId) => {
+        if (!currentByFileId.has(activeFileId)) {
+          return currentByFileId;
+        }
+        const nextByFileId = new Map(currentByFileId);
+        nextByFileId.delete(activeFileId);
+        return nextByFileId;
+      }),
   };
 }

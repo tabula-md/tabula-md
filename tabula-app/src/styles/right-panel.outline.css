@@ -37,7 +37,7 @@
   grid-template-columns: var(--right-chevron-size) minmax(0, 1fr);
   align-items: center;
   gap: var(--right-tight-gap);
-  padding: 0 6px;
+  padding-right: var(--right-row-x);
 }
 
 .right-outline-toggle,
@@ -56,6 +56,14 @@
 .right-outline-toggle:hover,
 .right-outline-toggle:focus-visible {
   color: var(--text-primary);
+}
+
+.right-outline-chevron {
+  transition: transform var(--motion-hover) ease;
+}
+
+.right-outline-chevron.collapsed {
+  transform: rotate(-90deg);
 }
 
 .right-outline-link {
