@@ -111,38 +111,38 @@ export function RightPanelOutline({
           <ol className="right-outline-list" aria-label={copy.forFile(activeFileTitle)}>
             {outlineRows.map(({ heading, index, id, hasChildren, isCollapsed }) => (
               <li key={id}>
-                <button
-                  className={`right-row right-outline-row right-outline-link ${activeHeadingIndex === index ? "active" : ""}`}
-                  type="button"
+                <div
+                  className={`right-row right-outline-row ${activeHeadingIndex === index ? "active" : ""}`}
                   style={{
                     paddingLeft: `calc(var(--right-row-x) + ${Math.max(0, heading.depth - 1) * 12}px)`,
                   }}
-                  data-tooltip={
-                    hasChildren
-                      ? isCollapsed ? copy.expand : copy.collapse
-                      : undefined
-                  }
-                  aria-current={activeHeadingIndex === index ? "location" : undefined}
-                  aria-expanded={hasChildren ? !isCollapsed : undefined}
-                  onClick={() => {
-                    onGoToOutlineHeading(heading, index);
-                    if (hasChildren) {
-                      onToggleHeadingCollapsed(id);
-                    }
-                  }}
                 >
                   {hasChildren ? (
-                    <span className="right-outline-disclosure" aria-hidden="true">
+                    <button
+                      className="right-outline-toggle"
+                      type="button"
+                      data-tooltip={isCollapsed ? copy.expand : copy.collapse}
+                      aria-label={isCollapsed ? copy.expand : copy.collapse}
+                      aria-expanded={!isCollapsed}
+                      onClick={() => onToggleHeadingCollapsed(id)}
+                    >
                       <ChevronDown
                         className={`right-outline-chevron ${isCollapsed ? "collapsed" : ""}`}
                         size={14}
                       />
-                    </span>
+                    </button>
                   ) : (
-                    <span className="right-outline-disclosure" aria-hidden="true" />
+                    <span className="right-outline-toggle-spacer" aria-hidden="true" />
                   )}
-                  <span className="right-row-label">{heading.text}</span>
-                </button>
+                  <button
+                    className="right-outline-link"
+                    type="button"
+                    aria-current={activeHeadingIndex === index ? "location" : undefined}
+                    onClick={() => onGoToOutlineHeading(heading, index)}
+                  >
+                    <span className="right-row-label">{heading.text}</span>
+                  </button>
+                </div>
               </li>
             ))}
           </ol>
