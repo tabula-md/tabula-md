@@ -766,6 +766,70 @@ export async function run(ctx) {
         rightOutlineState.outlineRows.every((row) => row.height >= 30 && row.height <= 34 && row.fontWeight === "400"),
       "The right panel outline rows should stay compact and regular weight.",
     );
+    const rootOutlineHeading = page.getByRole("button", {
+      name: "Tabula.md",
+      exact: true,
+    });
+    const childOutlineHeading = page.getByRole("button", {
+      name: "Start here",
+      exact: true,
+    });
+    const rootOutlineRow = page.locator(".right-outline-row").filter({
+      has: rootOutlineHeading,
+    });
+    const rootOutlineLabelBox = await rootOutlineHeading.boundingBox();
+    const childOutlineLabelBox = await childOutlineHeading.boundingBox();
+    expect(
+      rootOutlineLabelBox && childOutlineLabelBox &&
+        Math.abs(childOutlineLabelBox.x - rootOutlineLabelBox.x - 12) <= 1,
+      "Outline hierarchy should indent the complete heading row by one stable step.",
+    );
+    const rootOutlineToggle = rootOutlineRow.getByRole("button", {
+      name: "Collapse section",
+      exact: true,
+    });
+    expect(
+      (await rootOutlineToggle.locator(".right-outline-chevron").count()) === 1 &&
+        (await rootOutlineToggle.locator(".lucide-chevron-right").count()) === 0,
+      "Outline disclosure should rotate one chevron instead of swapping icon shapes.",
+    );
+    await rootOutlineToggle.click();
+    expect(
+      (await childOutlineHeading.count()) === 0 &&
+        (await rootOutlineRow.locator(".right-outline-toggle").getAttribute("aria-expanded")) === "false",
+      "Collapsing an outline heading should hide its descendants.",
+    );
+    await page.getByRole("button", { name: "Links", exact: true }).click();
+    await waitForPanelTab(page, "Links");
+    await page.getByRole("button", { name: "Outline", exact: true }).click();
+    await waitForPanelTab(page, "Outline");
+    const persistedRootOutlineRow = page.locator(".right-outline-row").filter({
+      has: page.getByRole("button", { name: "Tabula.md", exact: true }),
+    });
+    const persistedRootOutlineToggle = persistedRootOutlineRow.getByRole("button", {
+      name: "Expand section",
+      exact: true,
+    });
+    expect(
+      (await persistedRootOutlineToggle.count()) === 1 &&
+        (await childOutlineHeading.count()) === 0,
+      "Outline collapse state should survive switching between right-panel tabs.",
+    );
+    await page.locator(
+      '.tab-item:not([data-file-name="README.md"]) .tab-select-button',
+    ).first().click();
+    await waitForActiveTab(page, { startsWith: "Untitled" });
+    await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
+    await waitForActiveTab(page, { exact: "README.md" });
+    expect(
+      (await page.getByRole("button", {
+        name: "Expand section",
+        exact: true,
+      }).count()) > 0 &&
+        (await childOutlineHeading.count()) === 0,
+      "Outline collapse state should be restored when returning to a document.",
+    );
+    await persistedRootOutlineToggle.click();
     await page.getByRole("button", { name: "Start here", exact: true }).click();
     await waitForRenderFrame(page);
     expect(
