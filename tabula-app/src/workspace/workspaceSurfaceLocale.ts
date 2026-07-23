@@ -31,6 +31,8 @@ export type WorkspaceSurfaceCopy = {
   frontmatter: string;
   preview: string;
   nothingToPreview: string;
+  brokenWorkspaceLink: (target: string) => string;
+  ambiguousWorkspaceLink: (target: string) => string;
   dismissNotification: string;
   jsonClose: string;
   jsonOpen: string;
@@ -90,6 +92,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Frontmatter",
     preview: "Preview",
     nothingToPreview: "Nothing to preview",
+    brokenWorkspaceLink: (target) => `Broken workspace link: ${target}`,
+    ambiguousWorkspaceLink: (target) => `Ambiguous workspace link: ${target}`,
     dismissNotification: "Dismiss notification",
     jsonClose: "Close export link dialog",
     jsonOpen: "Open export link",
@@ -147,6 +151,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "프론트매터",
     preview: "미리보기",
     nothingToPreview: "미리 볼 내용이 없습니다",
+    brokenWorkspaceLink: (target) => `깨진 워크스페이스 링크: ${target}`,
+    ambiguousWorkspaceLink: (target) => `대상이 모호한 워크스페이스 링크: ${target}`,
     dismissNotification: "알림 닫기",
     jsonClose: "내보내기 링크 창 닫기",
     jsonOpen: "내보내기 링크 열기",
@@ -204,6 +210,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "フロントマター",
     preview: "プレビュー",
     nothingToPreview: "プレビューする内容がありません",
+    brokenWorkspaceLink: (target) => `壊れたワークスペースリンク: ${target}`,
+    ambiguousWorkspaceLink: (target) => `あいまいなワークスペースリンク: ${target}`,
     dismissNotification: "通知を閉じる",
     jsonClose: "エクスポートリンクを閉じる",
     jsonOpen: "エクスポートリンクを開く",
@@ -261,6 +269,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "前置元数据",
     preview: "预览",
     nothingToPreview: "没有可预览的内容",
+    brokenWorkspaceLink: (target) => `失效的工作区链接：${target}`,
+    ambiguousWorkspaceLink: (target) => `目标不明确的工作区链接：${target}`,
     dismissNotification: "关闭通知",
     jsonClose: "关闭导出链接对话框",
     jsonOpen: "打开导出链接",
@@ -318,6 +328,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Metadatos iniciales",
     preview: "Vista previa",
     nothingToPreview: "Nada que previsualizar",
+    brokenWorkspaceLink: (target) => `Enlace roto del espacio de trabajo: ${target}`,
+    ambiguousWorkspaceLink: (target) => `Enlace ambiguo del espacio de trabajo: ${target}`,
     dismissNotification: "Cerrar notificación",
     jsonClose: "Cerrar diálogo del enlace exportado",
     jsonOpen: "Abrir enlace exportado",
@@ -375,6 +387,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Métadonnées initiales",
     preview: "Aperçu",
     nothingToPreview: "Rien à prévisualiser",
+    brokenWorkspaceLink: (target) => `Lien d’espace de travail rompu : ${target}`,
+    ambiguousWorkspaceLink: (target) => `Lien d’espace de travail ambigu : ${target}`,
     dismissNotification: "Fermer la notification",
     jsonClose: "Fermer la boîte de dialogue du lien exporté",
     jsonOpen: "Ouvrir le lien exporté",
@@ -432,6 +446,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Frontmatter",
     preview: "Vorschau",
     nothingToPreview: "Nichts für die Vorschau",
+    brokenWorkspaceLink: (target) => `Defekter Workspace-Link: ${target}`,
+    ambiguousWorkspaceLink: (target) => `Mehrdeutiger Workspace-Link: ${target}`,
     dismissNotification: "Benachrichtigung schließen",
     jsonClose: "Dialog des Exportlinks schließen",
     jsonOpen: "Exportlink öffnen",

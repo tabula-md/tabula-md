@@ -470,7 +470,10 @@ const createMarkdownPreviewComponents = (
     }
 
     if (workspaceLink?.status === "broken" || workspaceLink?.status === "ambiguous") {
-      const statusLabel = workspaceLink.status === "broken" ? "Broken" : "Ambiguous";
+      const linkTarget = workspaceTarget ?? "";
+      const statusTitle = workspaceLink.status === "broken"
+        ? copy.brokenWorkspaceLink(linkTarget)
+        : copy.ambiguousWorkspaceLink(linkTarget);
       return (
         <span
           {...props}
@@ -478,7 +481,7 @@ const createMarkdownPreviewComponents = (
           data-workspace-link-relation={workspaceLink.relation}
           data-workspace-link-syntax={workspaceLink.syntax}
           data-workspace-link-status={workspaceLink.status}
-          title={props.title ?? `${statusLabel} workspace link: ${href ?? ""}`}
+          title={props.title ?? statusTitle}
         />
       );
     }
