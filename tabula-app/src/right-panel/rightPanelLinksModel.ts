@@ -15,10 +15,8 @@ export type RightPanelResolvedLinkGroup = {
 export type RightPanelLinksModel = {
   outgoing: readonly RightPanelResolvedLinkGroup[];
   backlinks: readonly RightPanelResolvedLinkGroup[];
-  broken: readonly WorkspaceKnowledgeLink[];
-  ambiguous: readonly WorkspaceKnowledgeLink[];
   external: readonly WorkspaceKnowledgeLink[];
-  hasLinks: boolean;
+  issues: readonly WorkspaceKnowledgeLink[];
 };
 
 const groupResolvedLinks = (
@@ -72,17 +70,14 @@ export const getRightPanelLinksModel = (
     (link) => link.sourceDocumentId,
     false,
   );
-  const broken = outgoingLinks.filter((link) => link.status === "broken");
-  const ambiguous = outgoingLinks.filter((link) => link.status === "ambiguous");
   const external = outgoingLinks.filter((link) => link.status === "external");
+  const issues = outgoingLinks.filter((link) =>
+    link.status === "broken" || link.status === "ambiguous");
 
   return {
     outgoing,
     backlinks,
-    broken,
-    ambiguous,
     external,
-    hasLinks:
-      outgoing.length + backlinks.length + broken.length + ambiguous.length + external.length > 0,
+    issues,
   };
 };

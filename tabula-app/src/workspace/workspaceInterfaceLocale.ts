@@ -57,7 +57,9 @@ type WorkspaceInterfaceMessages = {
   linksBroken: string;
   linksAmbiguous: string;
   linksExternal: string;
-  linksNone: string;
+  linksIssues: string;
+  linksOutgoingNone: string;
+  linksBacklinksNone: string;
   linksUnavailable: string;
   linksOpen: string;
   linksCandidates: string;
@@ -166,7 +168,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksBroken: "Broken",
     linksAmbiguous: "Ambiguous",
     linksExternal: "External",
-    linksNone: "No links in this document",
+    linksIssues: "Issues",
+    linksOutgoingNone: "No outgoing links yet.",
+    linksBacklinksNone: "No documents link here yet.",
     linksUnavailable: "Links are unavailable while file paths conflict",
     linksOpen: "Open {{name}}",
     linksCandidates: "{{count}} candidates",
@@ -274,7 +278,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksBroken: "끊어진 링크",
     linksAmbiguous: "모호한 링크",
     linksExternal: "외부 링크",
-    linksNone: "이 문서에는 링크가 없습니다",
+    linksIssues: "문제",
+    linksOutgoingNone: "아직 나가는 링크가 없습니다.",
+    linksBacklinksNone: "아직 이 문서를 가리키는 문서가 없습니다.",
     linksUnavailable: "파일 경로 충돌을 해결하면 링크를 확인할 수 있습니다",
     linksOpen: "{{name}} 열기",
     linksCandidates: "후보 {{count}}개",
@@ -382,7 +388,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksBroken: "壊れたリンク",
     linksAmbiguous: "曖昧なリンク",
     linksExternal: "外部リンク",
-    linksNone: "このドキュメントにはリンクがありません",
+    linksIssues: "問題",
+    linksOutgoingNone: "発信リンクはまだありません。",
+    linksBacklinksNone: "このドキュメントへのリンクはまだありません。",
     linksUnavailable: "ファイルパスの競合を解消するとリンクを確認できます",
     linksOpen: "{{name}} を開く",
     linksCandidates: "候補 {{count}} 件",
@@ -490,7 +498,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksBroken: "失效链接",
     linksAmbiguous: "歧义链接",
     linksExternal: "外部链接",
-    linksNone: "此文档中没有链接",
+    linksIssues: "问题",
+    linksOutgoingNone: "暂无出站链接。",
+    linksBacklinksNone: "暂无文档链接到此处。",
     linksUnavailable: "解决文件路径冲突后即可查看链接",
     linksOpen: "打开 {{name}}",
     linksCandidates: "{{count}} 个候选项",
@@ -597,7 +607,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksBroken: "Rotos",
     linksAmbiguous: "Ambiguos",
     linksExternal: "Externos",
-    linksNone: "Este documento no contiene enlaces",
+    linksIssues: "Problemas",
+    linksOutgoingNone: "Aún no hay enlaces salientes.",
+    linksBacklinksNone: "Ningún documento enlaza aquí todavía.",
     linksUnavailable: "Resuelve los conflictos de rutas para ver los enlaces",
     linksOpen: "Abrir {{name}}",
     linksCandidates: "{{count}} candidatos",
@@ -705,7 +717,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksBroken: "Rompu",
     linksAmbiguous: "Ambigus",
     linksExternal: "Externes",
-    linksNone: "Ce document ne contient aucun lien",
+    linksIssues: "Problèmes",
+    linksOutgoingNone: "Aucun lien sortant pour le moment.",
+    linksBacklinksNone: "Aucun document ne pointe encore ici.",
     linksUnavailable: "Résolvez les conflits de chemins pour afficher les liens",
     linksOpen: "Ouvrir {{name}}",
     linksCandidates: "{{count}} candidats",
@@ -813,7 +827,9 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksBroken: "Defekt",
     linksAmbiguous: "Mehrdeutig",
     linksExternal: "Extern",
-    linksNone: "Dieses Dokument enthält keine Links",
+    linksIssues: "Probleme",
+    linksOutgoingNone: "Noch keine ausgehenden Links.",
+    linksBacklinksNone: "Noch keine Dokumente verlinken hierher.",
     linksUnavailable: "Löse die Dateipfadkonflikte, um Links anzuzeigen",
     linksOpen: "{{name}} öffnen",
     linksCandidates: "{{count}} Kandidaten",
@@ -951,7 +967,9 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         broken: copy.linksBroken,
         ambiguous: copy.linksAmbiguous,
         external: copy.linksExternal,
-        none: copy.linksNone,
+        issues: copy.linksIssues,
+        outgoingNone: copy.linksOutgoingNone,
+        backlinksNone: copy.linksBacklinksNone,
         unavailable: copy.linksUnavailable,
         open: (name: string) => format(copy.linksOpen, { name }),
         candidates: (count: number) => format(copy.linksCandidates, { count }),

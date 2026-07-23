@@ -46,16 +46,34 @@ describe("right panel links model", () => {
     }))).toEqual([
       { documentId: "backlink", relation: "link", mentionCount: 2 },
     ]);
-    expect(model.broken.map((link) => link.target)).toEqual(["Missing.md"]);
-    expect(model.ambiguous[0]?.candidateDocumentIds).toEqual(["shared-a", "shared-b"]);
     expect(model.external.map((link) => link.target)).toEqual(["https://tabula.md"]);
-    expect(model.hasLinks).toBe(true);
+    expect(model.issues.map(({ status, target, candidateDocumentIds }) => ({
+      status,
+      target,
+      candidateDocumentIds,
+    }))).toEqual([
+      {
+        status: "ambiguous",
+        target: "Shared",
+        candidateDocumentIds: ["shared-a", "shared-b"],
+      },
+      {
+        status: "broken",
+        target: "Missing.md",
+        candidateDocumentIds: undefined,
+      },
+    ]);
   });
 
-  it("returns a quiet empty model for a document without relationships", () => {
+  it("keeps the two relationship directions empty without inventing issues", () => {
     const index = createWorkspaceKnowledgeIndex([
       { id: "empty", path: "Empty.md", markdown: "# Empty" },
     ]);
-    expect(getRightPanelLinksModel(index, "empty").hasLinks).toBe(false);
+    expect(getRightPanelLinksModel(index, "empty")).toEqual({
+      outgoing: [],
+      backlinks: [],
+      external: [],
+      issues: [],
+    });
   });
 });

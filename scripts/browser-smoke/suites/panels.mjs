@@ -558,8 +558,12 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
     expect(
-      await page.getByText("No links in this document", { exact: true }).isVisible(),
-      "Links should expose a quiet empty state for an unlinked document.",
+      await page.getByRole("heading", { name: /^Outgoing\s+0$/ }).isVisible() &&
+        await page.getByText("No outgoing links yet.", { exact: true }).isVisible() &&
+        await page.getByRole("heading", { name: /^Backlinks\s+0$/ }).isVisible() &&
+        await page.getByText("No documents link here yet.", { exact: true }).isVisible() &&
+        (await page.locator('.right-links-section[aria-label="Issues"]').count()) === 0,
+      "Links should preserve both relationship directions at zero without inventing an issue.",
     );
     await page.getByRole("button", { name: "Graph", exact: true }).click();
     await waitForPanelTab(page, "Graph");
@@ -1766,6 +1770,18 @@ export async function run(ctx) {
       (await page.locator("button.right-links-row .lucide-file").count()) > 0 &&
         (await page.locator("button.right-links-row .lucide-file-text").count()) === 0,
       "Resolved document links should use the same file icon as the Files panel.",
+    );
+    const outgoingSection = page.locator('.right-links-section[aria-label="Outgoing"]');
+    const issuesSection = page.locator('.right-links-section[aria-label="Issues"]');
+    expect(
+      (await outgoingSection.getByText("Email owner", { exact: true }).count()) === 1 &&
+        (await outgoingSection.getByText("External", { exact: true }).count()) === 1,
+      "External destinations should remain part of the outgoing relationship section.",
+    );
+    expect(
+      (await issuesSection.getByText("Missing guide", { exact: true }).count()) === 1 &&
+        (await issuesSection.getByText("Broken", { exact: true }).count()) > 0,
+      "Unresolved destinations should appear in a conditional Issues section.",
     );
 
     await page.getByRole("button", { name: "Open Guide.md", exact: true }).first().click();
