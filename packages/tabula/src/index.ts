@@ -477,6 +477,8 @@ export type {
   WorkspaceRoomCheckpointStore,
 } from "./workspaceRoomCheckpoint";
 export {
+  ROOM_CHECKPOINT_MAX_SAVE_DELAY_MS,
+  ROOM_CHECKPOINT_QUIET_SAVE_DELAY_MS,
   ROOM_CHECKPOINT_RETENTION_MS,
   decryptWorkspaceRoomCheckpoint,
   encryptWorkspaceRoomCheckpoint,

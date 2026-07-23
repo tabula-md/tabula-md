@@ -29,6 +29,7 @@ import type { WorkspaceFile } from "../workspace/workspaceStorage";
 import type { RoomWorkspaceSession } from "../workspace/session/WorkspaceSession";
 import { productAnalytics } from "../observability/productAnalytics";
 import { useRoomActivityLifecycle } from "./useRoomActivityLifecycle";
+import { shouldPreventRoomUnload } from "./roomUnloadProtection";
 
 const EMPTY_RUNTIME_SNAPSHOT: WorkspaceRoomRuntimeSnapshot = {
   status: "idle",
@@ -370,6 +371,24 @@ export function useCollaborationConnectionRuntime({
     window.addEventListener("pagehide", flush);
     return () => window.removeEventListener("pagehide", flush);
   }, []);
+
+  const preventRoomUnload = shouldPreventRoomUnload({
+    collaboratorCount: collaborators.length,
+    durability,
+    hydrationStatus,
+    isLive,
+    recoveryMode,
+  });
+  useEffect(() => {
+    if (!preventRoomUnload) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      collabRef.current?.flushRecoveryState();
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [preventRoomUnload]);
 
   const applyLocalText = useCallback((nextText: string | null, patches: readonly TextPatch[] = []) => {
     const connection = collabRef.current;

@@ -19,6 +19,8 @@ import {
   ROOM_KEY_BYTES,
 } from "./roomShareLinkModel";
 import {
+  ROOM_CHECKPOINT_MAX_SAVE_DELAY_MS,
+  ROOM_CHECKPOINT_QUIET_SAVE_DELAY_MS,
   ROOM_CHECKPOINT_RETENTION_MS,
   decryptWorkspaceRoomCheckpoint,
   encryptWorkspaceRoomCheckpoint,
@@ -59,7 +61,6 @@ import {
 
 const HEADLESS_CHECKPOINT_ORIGIN = Symbol("tabula.headless-checkpoint");
 const HEADLESS_LOCAL_ORIGIN = Symbol("tabula.headless-local");
-const CHECKPOINT_DELAY_MS = 5_000;
 
 export type HeadlessRoomConnectionStatus =
   | "idle"
@@ -281,8 +282,10 @@ export const createHeadlessRoomClientRuntime = ({
   let version = initialWorkspace ? 1 : 0;
   let roomKey: CryptoKey | null = null;
   let checkpointGeneration = 0;
-  let checkpointTimer: unknown;
+  let checkpointQuietTimer: unknown;
+  let checkpointMaxTimer: unknown;
   let checkpointInFlight: Promise<void> | null = null;
+  let checkpointSaveRequested = false;
   let connectedOnce = false;
   let activeDocumentId: string | undefined;
   let presenceState: RoomPresenceState = "active";
@@ -309,6 +312,16 @@ export const createHeadlessRoomClientRuntime = ({
   const connectedRemotePeerIds = () => [...connectedPeerIds].filter((peerId) => peerId !== actor.id);
 
   const presentRemoteActorIds = () => new Set(collaborators().map((collaborator) => collaborator.actor.id));
+
+  const isCheckpointLeader = () => {
+    const actorIds = new Set([actor.id]);
+    awareness.getStates().forEach((presence) => {
+      const presentActor = parseRoomActor(presence?.actor);
+      if (presentActor) actorIds.add(presentActor.id);
+    });
+    return [...actorIds].sort()[0] === actor.id;
+  };
+  let wasCheckpointLeader = isCheckpointLeader();
 
   const presenceConverged = () => {
     if (!peerRosterReceived) return false;
@@ -439,54 +452,80 @@ export const createHeadlessRoomClientRuntime = ({
     return roomKey;
   };
 
-  const saveCheckpoint = async () => {
-    if (!checkpointStore.enabled || status === "closed" || hydrationStatus !== "ready") return;
-    if (checkpointInFlight) return checkpointInFlight;
-    checkpointInFlight = (async () => {
-      try {
-        const key = await ensureRoomKey();
-        const save = async (expectedGeneration: number) => checkpointStore.saveEncryptedCheckpoint(roomId, {
-          expectedGeneration,
-          encryptedCheckpoint: await encryptWorkspaceRoomCheckpoint({
-            roomId,
-            update: Y.encodeStateAsUpdate(doc),
-            roomKey: key,
-          }),
-          expiresAt: Date.now() + ROOM_CHECKPOINT_RETENTION_MS,
-        });
-        let result = await save(checkpointGeneration);
-        if (!result.ok) {
-          const latest = await checkpointStore.loadEncryptedCheckpoint(roomId);
-          if (latest?.status === "ready") {
-            const checkpointDoc = new Y.Doc();
-            try {
-              Y.applyUpdate(checkpointDoc, Y.encodeStateAsUpdate(doc));
-              Y.applyUpdate(checkpointDoc, await decryptWorkspaceRoomCheckpoint({
-                encryptedCheckpoint: latest.encryptedCheckpoint,
-                roomId,
-                roomKey: key,
-              }));
-              const checkpointRoom = createWorkspaceRoomCrdt({ roomId, doc: checkpointDoc, initialize: false });
-              const valid = validateWorkspaceRoomStructure(checkpointRoom, roomId);
-              if (!valid.ok) throw new Error(valid.message);
-              const limits = validateWorkspaceRoomLimits(getWorkspaceRoomSnapshot(checkpointRoom));
-              if (!limits.ok) throw new Error(limits.message);
-              Y.applyUpdate(doc, Y.encodeStateAsUpdate(checkpointDoc, Y.encodeStateVector(doc)), HEADLESS_CHECKPOINT_ORIGIN);
-            } finally {
-              checkpointDoc.destroy();
-            }
-            checkpointGeneration = latest.generation;
-            result = await save(latest.generation);
+  const clearCheckpointTimers = () => {
+    if (checkpointQuietTimer) adapters.clock.clearTimeout(checkpointQuietTimer);
+    if (checkpointMaxTimer) adapters.clock.clearTimeout(checkpointMaxTimer);
+    checkpointQuietTimer = undefined;
+    checkpointMaxTimer = undefined;
+  };
+
+  const canPersistCheckpoint = () =>
+    checkpointStore.enabled && status !== "closed" && hydrationStatus === "ready";
+
+  const persistCheckpoint = async () => {
+    try {
+      const key = await ensureRoomKey();
+      const save = async (expectedGeneration: number) => checkpointStore.saveEncryptedCheckpoint(roomId, {
+        expectedGeneration,
+        encryptedCheckpoint: await encryptWorkspaceRoomCheckpoint({
+          roomId,
+          update: Y.encodeStateAsUpdate(doc),
+          roomKey: key,
+        }),
+        expiresAt: Date.now() + ROOM_CHECKPOINT_RETENTION_MS,
+      });
+      let result = await save(checkpointGeneration);
+      if (!result.ok) {
+        const latest = await checkpointStore.loadEncryptedCheckpoint(roomId);
+        if (latest?.status === "ready") {
+          const checkpointDoc = new Y.Doc();
+          try {
+            Y.applyUpdate(checkpointDoc, Y.encodeStateAsUpdate(doc));
+            Y.applyUpdate(checkpointDoc, await decryptWorkspaceRoomCheckpoint({
+              encryptedCheckpoint: latest.encryptedCheckpoint,
+              roomId,
+              roomKey: key,
+            }));
+            const checkpointRoom = createWorkspaceRoomCrdt({ roomId, doc: checkpointDoc, initialize: false });
+            const valid = validateWorkspaceRoomStructure(checkpointRoom, roomId);
+            if (!valid.ok) throw new Error(valid.message);
+            const limits = validateWorkspaceRoomLimits(getWorkspaceRoomSnapshot(checkpointRoom));
+            if (!limits.ok) throw new Error(limits.message);
+            Y.applyUpdate(doc, Y.encodeStateAsUpdate(checkpointDoc, Y.encodeStateVector(doc)), HEADLESS_CHECKPOINT_ORIGIN);
+          } finally {
+            checkpointDoc.destroy();
           }
+          checkpointGeneration = latest.generation;
+          result = await save(latest.generation);
         }
-        if (!result.ok) throw new Error("Room checkpoint changed during save.");
-        checkpointGeneration = result.generation;
-        checkpointStatus = "saved";
-        emit();
-      } catch (error) {
-        checkpointStatus = "failed";
-        setError(error instanceof Error ? error.message : "Room checkpoint could not be saved.");
       }
+      if (!result.ok) throw new Error("Room checkpoint changed during save.");
+      checkpointGeneration = result.generation;
+      checkpointStatus = "saved";
+      emit();
+    } catch (error) {
+      checkpointStatus = "failed";
+      setError(error instanceof Error ? error.message : "Room checkpoint could not be saved.");
+    }
+  };
+
+  const saveCheckpoint = async () => {
+    clearCheckpointTimers();
+    if (!canPersistCheckpoint()) return;
+    if (!isCheckpointLeader()) return;
+    if (checkpointInFlight) {
+      checkpointSaveRequested = true;
+      return checkpointInFlight;
+    }
+    checkpointInFlight = (async () => {
+      do {
+        checkpointSaveRequested = false;
+        await persistCheckpoint();
+      } while (
+        checkpointSaveRequested &&
+        canPersistCheckpoint() &&
+        isCheckpointLeader()
+      );
     })().finally(() => {
       checkpointInFlight = null;
     });
@@ -494,12 +533,18 @@ export const createHeadlessRoomClientRuntime = ({
   };
 
   const scheduleCheckpoint = () => {
-    if (!checkpointStore.enabled || hydrationStatus !== "ready" || status === "closed") return;
-    if (checkpointTimer) adapters.clock.clearTimeout(checkpointTimer);
-    checkpointTimer = adapters.clock.setTimeout(() => {
-      checkpointTimer = undefined;
+    if (!canPersistCheckpoint()) return;
+    if (!isCheckpointLeader()) return;
+    if (checkpointQuietTimer) adapters.clock.clearTimeout(checkpointQuietTimer);
+    checkpointQuietTimer = adapters.clock.setTimeout(() => {
+      checkpointQuietTimer = undefined;
       void saveCheckpoint();
-    }, CHECKPOINT_DELAY_MS);
+    }, ROOM_CHECKPOINT_QUIET_SAVE_DELAY_MS);
+    if (checkpointMaxTimer) return;
+    checkpointMaxTimer = adapters.clock.setTimeout(() => {
+      checkpointMaxTimer = undefined;
+      void saveCheckpoint();
+    }, ROOM_CHECKPOINT_MAX_SAVE_DELAY_MS);
   };
 
   const loadCheckpoint = async () => {
@@ -553,6 +598,10 @@ export const createHeadlessRoomClientRuntime = ({
   ) => {
     syncController.handleAwarenessUpdate(changes, origin);
     updatePresenceStatus();
+    const checkpointLeader = isCheckpointLeader();
+    if (checkpointLeader && !wasCheckpointLeader) scheduleCheckpoint();
+    if (!checkpointLeader && wasCheckpointLeader) clearCheckpointTimers();
+    wasCheckpointLeader = checkpointLeader;
     emit();
   });
   publishPresence();
@@ -916,14 +965,12 @@ export const createHeadlessRoomClientRuntime = ({
       publishPresence();
     },
     async flushCheckpoint() {
-      if (checkpointTimer) adapters.clock.clearTimeout(checkpointTimer);
-      checkpointTimer = undefined;
+      clearCheckpointTimers();
       await saveCheckpoint();
     },
     async disconnect() {
       if (status === "closed") return;
-      if (checkpointTimer) adapters.clock.clearTimeout(checkpointTimer);
-      checkpointTimer = undefined;
+      clearCheckpointTimers();
       await saveCheckpoint();
       status = "closed";
       removeAwarenessStates(awareness, [awareness.clientID], "tabula.headless-disconnect");

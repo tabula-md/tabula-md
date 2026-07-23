@@ -13,6 +13,7 @@ import type {
 } from "./workspaceRoomCheckpoint";
 import type { WorkspaceRoomSnapshot } from "./workspaceRoomModel";
 import type {
+  WorkspaceRoomSyncClock,
   WorkspaceRoomTransport,
   WorkspaceRoomTransportHandlers,
 } from "./workspaceRoomSync";
@@ -95,6 +96,7 @@ class FakeRoomRelay {
 
 class MemoryCheckpointStore implements WorkspaceRoomCheckpointStore {
   readonly enabled = true;
+  saveCount = 0;
   value: LoadedWorkspaceRoomCheckpoint | null = null;
 
   async loadEncryptedCheckpoint() {
@@ -102,6 +104,7 @@ class MemoryCheckpointStore implements WorkspaceRoomCheckpointStore {
   }
 
   async saveEncryptedCheckpoint(_roomId: string, request: SaveWorkspaceRoomCheckpointRequest) {
+    this.saveCount += 1;
     const currentGeneration = this.value?.generation ?? 0;
     if (request.expectedGeneration !== currentGeneration) {
       return { ok: false as const, reason: "conflict" as const, generation: currentGeneration };
@@ -113,6 +116,44 @@ class MemoryCheckpointStore implements WorkspaceRoomCheckpointStore {
       expiresAt: request.expiresAt,
     };
     return { ok: true as const, generation: currentGeneration + 1 };
+  }
+}
+
+class ManualClock implements WorkspaceRoomSyncClock {
+  private now = 0;
+  private nextId = 1;
+  private readonly timers = new Map<number, { callback: () => void; dueAt: number }>();
+
+  clearTimeout(handle: unknown) {
+    this.timers.delete(handle as number);
+  }
+
+  setTimeout(callback: () => void, delayMs: number) {
+    const id = this.nextId;
+    this.nextId += 1;
+    this.timers.set(id, { callback, dueAt: this.now + delayMs });
+    return id;
+  }
+
+  createId() {
+    const id = `manual-${this.nextId}`;
+    this.nextId += 1;
+    return id;
+  }
+
+  advanceBy(durationMs: number) {
+    const target = this.now + durationMs;
+    while (true) {
+      const next = [...this.timers.entries()]
+        .filter(([, timer]) => timer.dueAt <= target)
+        .sort((left, right) => left[1].dueAt - right[1].dueAt || left[0] - right[0])[0];
+      if (!next) break;
+      const [id, timer] = next;
+      this.timers.delete(id);
+      this.now = timer.dueAt;
+      timer.callback();
+    }
+    this.now = target;
   }
 }
 
@@ -154,11 +195,13 @@ const createClient = ({
   actorId,
   initial,
   checkpointStore,
+  clock,
 }: {
   relay: FakeRoomRelay;
   actorId: string;
   initial?: WorkspaceRoomSnapshot;
   checkpointStore?: WorkspaceRoomCheckpointStore;
+  clock?: WorkspaceRoomSyncClock;
 }) => createHeadlessRoomClient({
   roomUrl,
   roomServerUrl: "https://room.test",
@@ -168,7 +211,7 @@ const createClient = ({
     client: "tabula-cli",
     name: actorId,
   }),
-  adapters: createHeadlessRoomSyncAdapters({ createRoomTransport: relay.createTransport }),
+  adapters: createHeadlessRoomSyncAdapters({ createRoomTransport: relay.createTransport, clock }),
   checkpointStore,
   initialWorkspace: initial,
 });
@@ -397,6 +440,70 @@ describe("headless Room client", () => {
       expect(restored.getWorkspaceSnapshot().documents.brief).toBe("# Brief\n");
     } finally {
       await restored.disconnect();
+    }
+  });
+
+  it("allows only the lowest actor id to persist a room checkpoint", async () => {
+    const checkpointStore = new MemoryCheckpointStore();
+    const relay = new FakeRoomRelay();
+    const follower = await createClient({
+      relay,
+      actorId: "z-follower",
+      initial: initialWorkspace(),
+      checkpointStore,
+    });
+    const leader = await createClient({
+      relay,
+      actorId: "a-leader",
+      checkpointStore,
+    });
+
+    try {
+      await follower.connect();
+      await leader.connect({ waitForStateMs: 500, waitForPresenceMs: 500 });
+      await waitFor(() =>
+        follower.getState().collaborators.length === 1 &&
+        leader.getState().collaborators.length === 1);
+      checkpointStore.saveCount = 0;
+
+      await Promise.all([follower.flushCheckpoint(), leader.flushCheckpoint()]);
+
+      expect(checkpointStore.saveCount).toBe(1);
+    } finally {
+      await Promise.all([follower.disconnect(), leader.disconnect()]);
+    }
+  });
+
+  it("persists continuous headless edits within twenty seconds", async () => {
+    const checkpointStore = new MemoryCheckpointStore();
+    const relay = new FakeRoomRelay();
+    const clock = new ManualClock();
+    const client = await createClient({
+      relay,
+      actorId: "checkpoint-leader",
+      initial: initialWorkspace(),
+      checkpointStore,
+      clock,
+    });
+
+    try {
+      await client.connect();
+      checkpointStore.saveCount = 0;
+      for (let index = 0; index < 5; index += 1) {
+        const current = await client.readDocument("brief");
+        await client.writeDocument({
+          documentId: "brief",
+          markdown: `${current.markdown}edit-${index}\n`,
+          expectedRevision: current.revision,
+        });
+        if (index < 4) clock.advanceBy(4_000);
+      }
+      expect(checkpointStore.saveCount).toBe(0);
+
+      clock.advanceBy(4_000);
+      await waitFor(() => checkpointStore.saveCount === 1);
+    } finally {
+      await client.disconnect();
     }
   });
 });
