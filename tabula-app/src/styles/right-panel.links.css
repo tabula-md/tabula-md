@@ -28,13 +28,13 @@
   align-items: center;
   gap: var(--right-tight-gap);
   width: 100%;
-  min-height: 24px;
+  min-height: var(--right-row-height);
   padding: 0 var(--right-row-x);
   color: var(--text-soft);
   border-radius: var(--right-row-radius);
   background: transparent;
-  font-size: var(--font-ui-secondary);
-  font-weight: var(--weight-ui-medium);
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-regular);
   text-align: left;
 }
 

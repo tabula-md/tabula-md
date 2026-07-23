@@ -774,44 +774,39 @@ export async function run(ctx) {
       name: "Start here",
       exact: true,
     });
-    const rootOutlineRow = page.locator(".right-outline-row").filter({
-      has: rootOutlineHeading,
-    });
-    const rootOutlineLabelBox = await rootOutlineHeading.boundingBox();
-    const childOutlineLabelBox = await childOutlineHeading.boundingBox();
+    const rootOutlineLabelBox = await rootOutlineHeading
+      .locator(".right-row-label").boundingBox();
+    const childOutlineLabelBox = await childOutlineHeading
+      .locator(".right-row-label").boundingBox();
     expect(
       rootOutlineLabelBox && childOutlineLabelBox &&
         Math.abs(childOutlineLabelBox.x - rootOutlineLabelBox.x - 12) <= 1,
       "Outline hierarchy should indent the complete heading row by one stable step.",
     );
-    const rootOutlineToggle = rootOutlineRow.getByRole("button", {
-      name: "Collapse section",
-      exact: true,
-    });
     expect(
-      (await rootOutlineToggle.locator(".right-outline-chevron").count()) === 1 &&
-        (await rootOutlineToggle.locator(".lucide-chevron-right").count()) === 0,
-      "Outline disclosure should rotate one chevron instead of swapping icon shapes.",
+      (await rootOutlineHeading.locator(".right-outline-chevron").count()) === 1 &&
+        (await rootOutlineHeading.locator(".lucide-chevron-right").count()) === 0 &&
+        (await rootOutlineHeading.getAttribute("aria-expanded")) === "true",
+      "A collapsible outline heading should expose one rotating chevron on the heading row.",
     );
-    await rootOutlineToggle.click();
+    await rootOutlineHeading.click();
+    await waitForRenderFrame(page);
     expect(
       (await childOutlineHeading.count()) === 0 &&
-        (await rootOutlineRow.locator(".right-outline-toggle").getAttribute("aria-expanded")) === "false",
-      "Collapsing an outline heading should hide its descendants.",
+        (await rootOutlineHeading.getAttribute("aria-expanded")) === "false" &&
+        (await rootOutlineHeading.getAttribute("aria-current")) === "location",
+      "Clicking a collapsible outline row should navigate to it and hide its descendants.",
     );
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
-    const persistedRootOutlineRow = page.locator(".right-outline-row").filter({
-      has: page.getByRole("button", { name: "Tabula.md", exact: true }),
-    });
-    const persistedRootOutlineToggle = persistedRootOutlineRow.getByRole("button", {
-      name: "Expand section",
+    const persistedRootOutlineHeading = page.getByRole("button", {
+      name: "Tabula.md",
       exact: true,
     });
     expect(
-      (await persistedRootOutlineToggle.count()) === 1 &&
+      (await persistedRootOutlineHeading.getAttribute("aria-expanded")) === "false" &&
         (await childOutlineHeading.count()) === 0,
       "Outline collapse state should survive switching between right-panel tabs.",
     );
@@ -822,14 +817,12 @@ export async function run(ctx) {
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "README.md" });
     expect(
-      (await page.getByRole("button", {
-        name: "Expand section",
-        exact: true,
-      }).count()) > 0 &&
+      (await persistedRootOutlineHeading.getAttribute("aria-expanded")) === "false" &&
         (await childOutlineHeading.count()) === 0,
       "Outline collapse state should be restored when returning to a document.",
     );
-    await persistedRootOutlineToggle.click();
+    await persistedRootOutlineHeading.click();
+    await waitForRenderFrame(page);
     await page.getByRole("button", { name: "Start here", exact: true }).click();
     await waitForRenderFrame(page);
     expect(
@@ -1367,11 +1360,32 @@ export async function run(ctx) {
       typeof manualScrollResult === "number" && manualScrollResult > (manualScrollButton?.scrollLeft ?? 0),
       "Clicking the right tab arrow should advance the tab strip.",
     );
+    await page.locator(".tabs-scroll").evaluate((tabsScroll) =>
+      new Promise((resolve) => {
+        let previousScrollLeft = tabsScroll.scrollLeft;
+        let stableFrameCount = 0;
+        let frameCount = 0;
+        const checkScrollSettled = () => {
+          const nextScrollLeft = tabsScroll.scrollLeft;
+          stableFrameCount = Math.abs(nextScrollLeft - previousScrollLeft) < 0.01
+            ? stableFrameCount + 1
+            : 0;
+          previousScrollLeft = nextScrollLeft;
+          frameCount += 1;
+          if (stableFrameCount >= 4 || frameCount >= 120) {
+            resolve();
+            return;
+          }
+          requestAnimationFrame(checkScrollSettled);
+        };
+        requestAnimationFrame(checkScrollSettled);
+      }),
+    );
 
     if ((await page.locator(".right-panel").count()) === 0) {
       await ensureSidePanelOpen(page);
     }
-    await page.waitForTimeout(300);
+    await waitForRenderFrame(page);
     const overflowPanelDivider = page.getByRole("separator", {
       name: "Resize side panel",
       exact: true,

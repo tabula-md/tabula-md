@@ -68,6 +68,26 @@ export async function run(ctx) {
         (await topLevelRows.count()) === 4,
       "Outgoing should count unique visible targets rather than raw link mentions.",
     );
+    const relationshipHeadingStyle = await outgoing.locator(
+      ".right-links-section-toggle",
+    ).evaluate((heading) => {
+      const style = window.getComputedStyle(heading);
+      return {
+        fontSize: style.fontSize,
+        fontWeight: style.fontWeight,
+        height: Math.round(heading.getBoundingClientRect().height),
+      };
+    });
+    const targetTitleFontSize = await topLevelRows.first()
+      .locator(".right-links-row-title")
+      .evaluate((title) => window.getComputedStyle(title).fontSize);
+    expect(
+      relationshipHeadingStyle.height >= 30 &&
+        relationshipHeadingStyle.height <= 34 &&
+        relationshipHeadingStyle.fontSize === targetTitleFontSize &&
+        relationshipHeadingStyle.fontWeight === "400",
+      "Relationship headings should use the regular body-sized right-panel row treatment.",
+    );
     expect(
       (await topLevelRows.locator(".right-links-row-title").count()) === 4 &&
         (await topLevelRows.locator(".right-links-row-target").count()) === 4,

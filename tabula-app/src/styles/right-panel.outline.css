@@ -40,22 +40,18 @@
   padding-right: var(--right-row-x);
 }
 
-.right-outline-toggle,
-.right-outline-toggle-spacer {
+.right-outline-disclosure {
   display: grid;
   place-items: center;
   width: var(--right-chevron-size);
   height: var(--right-row-height);
-}
-
-.right-outline-toggle {
   color: var(--text-muted);
-  background: transparent;
 }
 
-.right-outline-toggle:hover,
-.right-outline-toggle:focus-visible {
-  color: var(--text-primary);
+.right-outline-row:hover .right-outline-disclosure,
+.right-outline-row:focus-visible .right-outline-disclosure,
+.right-outline-row.active .right-outline-disclosure {
+  color: inherit;
 }
 
 .right-outline-chevron {
@@ -67,9 +63,6 @@
 }
 
 .right-outline-link {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
   min-width: 0;
   height: var(--right-row-height);
   color: inherit;
