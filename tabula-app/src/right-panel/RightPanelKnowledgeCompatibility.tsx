@@ -9,13 +9,16 @@ import {
   FileText,
   TriangleAlert,
 } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 
 type RightPanelKnowledgeCompatibilityProps = {
   copy: KnowledgeCompatibilityCopy;
   documentCount: number;
   report?: OkfCompatibilityReport;
+  activeFileId: string;
   onSelectFile: (fileId: string) => void;
+  onSetActiveFileOkfType: (conceptType: string) => boolean;
 };
 
 type CompatibilityIssueSectionProps = {
@@ -23,15 +26,29 @@ type CompatibilityIssueSectionProps = {
   issues: readonly OkfCompatibilityIssue[];
   label: string;
   severity: "error" | "warning";
+  activeFileId: string;
+  conceptTypeDraft: string;
+  onConceptTypeDraftChange: (draft: string) => void;
   onSelectFile: (fileId: string) => void;
+  onSetActiveFileOkfType: (conceptType: string) => boolean;
 };
+
+const conceptTypeIssueCodes = new Set<OkfCompatibilityIssue["code"]>([
+  "concept_frontmatter_missing",
+  "concept_type_missing",
+  "concept_type_invalid",
+]);
 
 function CompatibilityIssueSection({
   copy,
   issues,
   label,
   severity,
+  activeFileId,
+  conceptTypeDraft,
+  onConceptTypeDraftChange,
   onSelectFile,
+  onSetActiveFileOkfType,
 }: CompatibilityIssueSectionProps) {
   if (issues.length === 0) return null;
   const Icon = severity === "error" ? CircleAlert : TriangleAlert;
@@ -42,22 +59,58 @@ function CompatibilityIssueSection({
         <span>{issues.length}</span>
       </h3>
       <div className="right-compatibility-issue-list">
-        {issues.map((issue, index) => (
-          <button
-            key={`${issue.documentId}:${issue.code}:${issue.value ?? ""}:${index}`}
-            className={`right-compatibility-issue-row ${severity}`}
-            type="button"
-            aria-label={copy.openDocument(issue.path)}
-            onClick={() => onSelectFile(issue.documentId)}
-          >
-            <Icon size={15} aria-hidden="true" />
-            <span className="right-compatibility-issue-text">
-              <span className="right-compatibility-issue-title">{copy.issue(issue)}</span>
-              <span className="right-compatibility-issue-path">{issue.path}</span>
-            </span>
-            <FileText size={14} aria-hidden="true" />
-          </button>
-        ))}
+        {issues.map((issue, index) => {
+          const isActive = issue.documentId === activeFileId;
+          const canSetConceptType = isActive && conceptTypeIssueCodes.has(issue.code);
+          const submitConceptType = (event: FormEvent<HTMLFormElement>) => {
+            event.preventDefault();
+            const type = conceptTypeDraft.trim();
+            if (type && onSetActiveFileOkfType(type)) onConceptTypeDraftChange("");
+          };
+          return (
+            <div
+              key={`${issue.documentId}:${issue.code}:${issue.value ?? ""}:${index}`}
+              className={`right-compatibility-issue-item ${isActive ? "active" : ""}`.trim()}
+            >
+              <button
+                className={`right-compatibility-issue-row ${severity}`}
+                type="button"
+                aria-label={copy.openDocument(issue.path)}
+                aria-current={isActive ? "page" : undefined}
+                onClick={() => onSelectFile(issue.documentId)}
+              >
+                <Icon size={15} aria-hidden="true" />
+                <span className="right-compatibility-issue-text">
+                  <span className="right-compatibility-issue-title">{copy.issue(issue)}</span>
+                  <span className="right-compatibility-issue-path">{issue.path}</span>
+                </span>
+                <FileText size={14} aria-hidden="true" />
+              </button>
+              {canSetConceptType && (
+                <form className="right-compatibility-type-form" onSubmit={submitConceptType}>
+                  <label>
+                    <span>{copy.conceptTypeLabel}</span>
+                    <input
+                      type="text"
+                      value={conceptTypeDraft}
+                      placeholder={copy.conceptTypePlaceholder}
+                      aria-label={copy.conceptTypeLabel}
+                      autoComplete="off"
+                      spellCheck={false}
+                      onChange={(event) => onConceptTypeDraftChange(event.target.value)}
+                    />
+                  </label>
+                  <p>{copy.conceptTypeHelp}</p>
+                  <button type="submit" disabled={!conceptTypeDraft.trim()}>
+                    {issue.code === "concept_frontmatter_missing"
+                      ? copy.addFrontmatterAndType
+                      : copy.setConceptType}
+                  </button>
+                </form>
+              )}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -67,8 +120,12 @@ export function RightPanelKnowledgeCompatibility({
   copy,
   documentCount,
   report,
+  activeFileId,
   onSelectFile,
+  onSetActiveFileOkfType,
 }: RightPanelKnowledgeCompatibilityProps) {
+  const [conceptTypeDraft, setConceptTypeDraft] = useState("");
+  useEffect(() => setConceptTypeDraft(""), [activeFileId]);
   const version = report?.targetVersion ?? OKF_TARGET_VERSION;
   const requiredIssues = report?.issues.filter((issue) => issue.severity === "error") ?? [];
   const warningIssues = report?.issues.filter((issue) => issue.severity === "warning") ?? [];
@@ -115,14 +172,22 @@ export function RightPanelKnowledgeCompatibility({
         issues={requiredIssues}
         label={copy.requiredSection}
         severity="error"
+        activeFileId={activeFileId}
+        conceptTypeDraft={conceptTypeDraft}
+        onConceptTypeDraftChange={setConceptTypeDraft}
         onSelectFile={onSelectFile}
+        onSetActiveFileOkfType={onSetActiveFileOkfType}
       />
       <CompatibilityIssueSection
         copy={copy}
         issues={warningIssues}
         label={copy.warningSection}
         severity="warning"
+        activeFileId={activeFileId}
+        conceptTypeDraft={conceptTypeDraft}
+        onConceptTypeDraftChange={setConceptTypeDraft}
         onSelectFile={onSelectFile}
+        onSetActiveFileOkfType={onSetActiveFileOkfType}
       />
 
       <p className="right-compatibility-footnote">{copy.unchanged}</p>

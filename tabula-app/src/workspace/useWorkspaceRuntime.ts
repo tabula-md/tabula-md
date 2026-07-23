@@ -8,6 +8,7 @@ import {
 import { getShortcutPlatform } from "./keyboardShortcuts";
 import type { MarkdownEditorHandle } from "../document/markdownEditorTypes";
 import {
+  setOkfConceptType,
   type TextChange,
   type WorkspaceRoomSnapshot,
 } from "@tabula-md/tabula";
@@ -443,9 +444,22 @@ export function useWorkspaceRuntime() {
   const {
     clearFileHistory,
     flushPendingEditorCommit,
+    getLatestFileText,
     historyByFileId,
     setHistoryByFileId,
+    updateActiveFileText,
   } = activeFileEditor;
+  const setActiveFileOkfType = useEventCallback((conceptType: string) => {
+    if (!activeFile) return false;
+    flushPendingEditorCommit();
+    const currentText = getLatestFileText(activeFile.id, activeFile.text);
+    const result = setOkfConceptType(currentText, conceptType);
+    if (!result.ok) return false;
+    if (!result.changed) return true;
+    mapFileCommentAnchors(activeFile.id, result.patches, currentText.length);
+    updateActiveFileText(result.markdown, { patches: result.patches });
+    return true;
+  });
   const handleUserWorkspaceBoundary = useEventCallback(() => {
     stopFollowing("local-navigation");
     flushPendingEditorCommit();
@@ -766,6 +780,7 @@ export function useWorkspaceRuntime() {
       onMoveFolder: moveWorkspaceFolder,
       onReplyDraftChange: updateCommentReplyDraft,
       onSelectFile: selectFile,
+      onSetActiveFileOkfType: setActiveFileOkfType,
       onStartCommentReply: startCommentReply,
       onToggleCommentResolved: toggleFileCommentResolved,
       outlineHeadings,

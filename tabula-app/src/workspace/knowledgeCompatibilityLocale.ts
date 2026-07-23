@@ -20,6 +20,11 @@ type KnowledgeCompatibilityMessages = {
   requiredSection: string;
   warningSection: string;
   openDocument: string;
+  conceptTypeLabel: string;
+  conceptTypePlaceholder: string;
+  conceptTypeHelp: string;
+  addFrontmatterAndType: string;
+  setConceptType: string;
   issues: Record<OkfCompatibilityIssueCode, string>;
 };
 
@@ -37,6 +42,11 @@ export type KnowledgeCompatibilityCopy = {
   requiredSection: string;
   warningSection: string;
   openDocument: (path: string) => string;
+  conceptTypeLabel: string;
+  conceptTypePlaceholder: string;
+  conceptTypeHelp: string;
+  addFrontmatterAndType: string;
+  setConceptType: string;
   issue: (issue: OkfCompatibilityIssue) => string;
 };
 
@@ -64,7 +74,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     back: "Back to workspace files",
     title: "Knowledge base compatibility",
     description: "Checks this Markdown workspace against the Open Knowledge Format.",
-    unchanged: "This check does not change your files.",
+    unchanged: "The check is read-only. Files change only when you choose an action.",
     unavailable: "Resolve file path conflicts to run this check.",
     noDocuments: "No Markdown documents to check",
     compatible: "Compatible with OKF {{version}}",
@@ -75,6 +85,11 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     requiredSection: "Required changes",
     warningSection: "Portability warnings",
     openDocument: "Open {{path}}",
+    conceptTypeLabel: "Concept type",
+    conceptTypePlaceholder: "policy, runbook, decision",
+    conceptTypeHelp: "Use a stable category that people and agents can reuse.",
+    addFrontmatterAndType: "Add frontmatter and type",
+    setConceptType: "Set concept type",
     issues: enIssues,
   },
   ko: {
@@ -82,7 +97,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     back: "워크스페이스 파일로 돌아가기",
     title: "지식베이스 호환성",
     description: "현재 Markdown 워크스페이스를 Open Knowledge Format 기준으로 검사합니다.",
-    unchanged: "검사 과정에서 파일을 변경하지 않습니다.",
+    unchanged: "검사 자체는 읽기 전용이며, 액션을 선택할 때만 파일이 변경됩니다.",
     unavailable: "파일 경로 충돌을 해결하면 검사를 실행할 수 있습니다.",
     noDocuments: "검사할 Markdown 문서가 없습니다",
     compatible: "OKF {{version}} 호환",
@@ -93,6 +108,11 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     requiredSection: "필수 수정",
     warningSection: "이식성 경고",
     openDocument: "{{path}} 열기",
+    conceptTypeLabel: "Concept type",
+    conceptTypePlaceholder: "policy, runbook, decision",
+    conceptTypeHelp: "사람과 agent가 반복해서 사용할 수 있는 일관된 분류를 입력하세요.",
+    addFrontmatterAndType: "Frontmatter와 type 추가",
+    setConceptType: "Concept type 설정",
     issues: {
       concept_frontmatter_missing: "YAML frontmatter 추가",
       concept_frontmatter_invalid: "잘못된 YAML frontmatter 수정",
@@ -116,7 +136,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     back: "ワークスペースファイルに戻る",
     title: "ナレッジベースの互換性",
     description: "この Markdown ワークスペースを Open Knowledge Format に照らして確認します。",
-    unchanged: "この確認でファイルは変更されません。",
+    unchanged: "確認自体は読み取り専用です。操作を選んだ場合のみファイルが変更されます。",
     unavailable: "ファイルパスの競合を解消すると確認できます。",
     noDocuments: "確認する Markdown ドキュメントがありません",
     compatible: "OKF {{version}} と互換",
@@ -127,6 +147,11 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     requiredSection: "必須の変更",
     warningSection: "移植性の警告",
     openDocument: "{{path}} を開く",
+    conceptTypeLabel: "Concept type",
+    conceptTypePlaceholder: "policy, runbook, decision",
+    conceptTypeHelp: "人と agent が再利用できる一貫した分類を入力してください。",
+    addFrontmatterAndType: "Frontmatter と type を追加",
+    setConceptType: "Concept type を設定",
     issues: {
       concept_frontmatter_missing: "YAML frontmatter を追加",
       concept_frontmatter_invalid: "不正な YAML frontmatter を修正",
@@ -150,7 +175,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     back: "返回工作区文件",
     title: "知识库兼容性",
     description: "按照 Open Knowledge Format 检查此 Markdown 工作区。",
-    unchanged: "此检查不会更改文件。",
+    unchanged: "检查本身为只读；只有选择操作时才会更改文件。",
     unavailable: "解决文件路径冲突后即可运行检查。",
     noDocuments: "没有可检查的 Markdown 文档",
     compatible: "兼容 OKF {{version}}",
@@ -161,6 +186,11 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     requiredSection: "必需修改",
     warningSection: "可移植性警告",
     openDocument: "打开 {{path}}",
+    conceptTypeLabel: "Concept type",
+    conceptTypePlaceholder: "policy, runbook, decision",
+    conceptTypeHelp: "请输入可供人员和 agent 重复使用的稳定分类。",
+    addFrontmatterAndType: "添加 frontmatter 和 type",
+    setConceptType: "设置 concept type",
     issues: {
       concept_frontmatter_missing: "添加 YAML frontmatter",
       concept_frontmatter_invalid: "修复无效的 YAML frontmatter",
@@ -184,7 +214,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     back: "Volver a los archivos del espacio",
     title: "Compatibilidad de la base de conocimiento",
     description: "Comprueba este espacio Markdown con Open Knowledge Format.",
-    unchanged: "La comprobación no modifica los archivos.",
+    unchanged: "La comprobación es de solo lectura. Los archivos solo cambian al elegir una acción.",
     unavailable: "Resuelve los conflictos de rutas para ejecutar la comprobación.",
     noDocuments: "No hay documentos Markdown que comprobar",
     compatible: "Compatible con OKF {{version}}",
@@ -195,6 +225,11 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     requiredSection: "Cambios obligatorios",
     warningSection: "Avisos de portabilidad",
     openDocument: "Abrir {{path}}",
+    conceptTypeLabel: "Tipo de concepto",
+    conceptTypePlaceholder: "policy, runbook, decision",
+    conceptTypeHelp: "Usa una categoría estable que personas y agentes puedan reutilizar.",
+    addFrontmatterAndType: "Añadir frontmatter y type",
+    setConceptType: "Definir el tipo de concepto",
     issues: {
       concept_frontmatter_missing: "Añadir frontmatter YAML",
       concept_frontmatter_invalid: "Corregir el frontmatter YAML no válido",
@@ -218,7 +253,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     back: "Revenir aux fichiers de l’espace",
     title: "Compatibilité de la base de connaissances",
     description: "Vérifie cet espace Markdown selon l’Open Knowledge Format.",
-    unchanged: "Cette vérification ne modifie pas les fichiers.",
+    unchanged: "La vérification est en lecture seule. Les fichiers ne changent que si vous choisissez une action.",
     unavailable: "Résolvez les conflits de chemins pour lancer la vérification.",
     noDocuments: "Aucun document Markdown à vérifier",
     compatible: "Compatible avec OKF {{version}}",
@@ -229,6 +264,11 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     requiredSection: "Modifications requises",
     warningSection: "Avertissements de portabilité",
     openDocument: "Ouvrir {{path}}",
+    conceptTypeLabel: "Type de concept",
+    conceptTypePlaceholder: "policy, runbook, decision",
+    conceptTypeHelp: "Utilisez une catégorie stable et réutilisable par les personnes et les agents.",
+    addFrontmatterAndType: "Ajouter le frontmatter et le type",
+    setConceptType: "Définir le type de concept",
     issues: {
       concept_frontmatter_missing: "Ajouter un frontmatter YAML",
       concept_frontmatter_invalid: "Corriger le frontmatter YAML invalide",
@@ -252,7 +292,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     back: "Zurück zu den Workspace-Dateien",
     title: "Kompatibilität der Wissensbasis",
     description: "Prüft diesen Markdown-Workspace gegen das Open Knowledge Format.",
-    unchanged: "Die Prüfung verändert keine Dateien.",
+    unchanged: "Die Prüfung ist schreibgeschützt. Dateien ändern sich nur nach Auswahl einer Aktion.",
     unavailable: "Lösen Sie Pfadkonflikte, um die Prüfung auszuführen.",
     noDocuments: "Keine Markdown-Dokumente zum Prüfen",
     compatible: "Kompatibel mit OKF {{version}}",
@@ -263,6 +303,11 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     requiredSection: "Erforderliche Änderungen",
     warningSection: "Portabilitätswarnungen",
     openDocument: "{{path}} öffnen",
+    conceptTypeLabel: "Konzepttyp",
+    conceptTypePlaceholder: "policy, runbook, decision",
+    conceptTypeHelp: "Verwenden Sie eine stabile Kategorie, die Menschen und Agents wiederverwenden können.",
+    addFrontmatterAndType: "Frontmatter und type hinzufügen",
+    setConceptType: "Konzepttyp festlegen",
     issues: {
       concept_frontmatter_missing: "YAML-Frontmatter hinzufügen",
       concept_frontmatter_invalid: "Ungültiges YAML-Frontmatter korrigieren",
@@ -315,6 +360,11 @@ export const getKnowledgeCompatibilityCopy = (
     requiredSection: copy.requiredSection,
     warningSection: copy.warningSection,
     openDocument: (path) => formatMessage(copy.openDocument, { path }),
+    conceptTypeLabel: copy.conceptTypeLabel,
+    conceptTypePlaceholder: copy.conceptTypePlaceholder,
+    conceptTypeHelp: copy.conceptTypeHelp,
+    addFrontmatterAndType: copy.addFrontmatterAndType,
+    setConceptType: copy.setConceptType,
     issue: (issue) => formatMessage(copy.issues[issue.code], {
       value: issue.value ?? "",
     }),
