@@ -1538,6 +1538,7 @@ export async function run(ctx) {
     const fileActionContract = await page.evaluate(() => ({
       closeTabCount: document.querySelectorAll('.right-file-action[aria-label^="Close tab "]').length,
       moreActionCount: document.querySelectorAll('.right-file-action[aria-label^="More actions for "]').length,
+      copyMarkdownCount: document.querySelectorAll('.right-file-action[aria-label^="Copy Markdown: "]').length,
       renameCount: document.querySelectorAll('.right-file-action[aria-label^="Rename "]').length,
       duplicateCount: document.querySelectorAll('.right-file-action[aria-label^="Duplicate "]').length,
       deleteCount: document.querySelectorAll('.right-file-action[aria-label^="Delete "]').length,
@@ -1547,6 +1548,7 @@ export async function run(ctx) {
     }));
     expect(fileActionContract.closeTabCount === 0, "Right Files should leave tab closing to the document tabs.");
     expect(fileActionContract.moreActionCount >= 1, "Right Files should expose a compact more-action menu for each project file.");
+    expect(fileActionContract.copyMarkdownCount >= 1, "File rows should expose Copy Markdown as their primary hover action.");
     expect(fileActionContract.renameCount === 0, "Right Files should hide rename behind a more-action menu.");
     expect(fileActionContract.duplicateCount === 0, "Right Files should hide duplicate behind a more-action menu.");
     expect(fileActionContract.deleteCount === 0, "Right Files should hide delete behind a more-action menu.");
@@ -1688,6 +1690,10 @@ export async function run(ctx) {
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
     const archiveFolderToggle = page.locator(".right-file-tree-node.folder").filter({ hasText: "Archive" }).locator(".right-file-open-button");
+    expect(
+      (await page.locator('.right-file-action[aria-label="New document: Archive"]').count()) === 1,
+      "Folder rows should expose New document as their primary hover action.",
+    );
     expect((await archiveFolderToggle.locator(".lucide-folder-open").count()) === 1, "Expanded folders should use the open-folder icon.");
     expect((await archiveFolderToggle.locator(".lucide-chevron-down, .lucide-chevron-right").count()) === 0, "File tree folders should not duplicate state with chevrons.");
     await archiveFolderToggle.click();

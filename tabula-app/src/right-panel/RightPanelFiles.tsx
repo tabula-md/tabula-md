@@ -425,6 +425,15 @@ export function RightPanelFiles({
             </button>
             {!isRootFolder && !folderIsRenaming && (
               <span className="right-file-actions">
+                <button
+                  className="right-file-action"
+                  type="button"
+                  aria-label={`${copy.newDocument}: ${node.name}`}
+                  data-tooltip={copy.newDocument}
+                  onClick={() => createAndRenameDocument(node.id)}
+                >
+                  <FilePlus2 size={14} />
+                </button>
                 <MenuRoot
                   open={folderMenuOpen}
                   onOpenChange={(open) => setActionMenuFolderId(open ? node.id : null)}
@@ -592,6 +601,15 @@ export function RightPanelFiles({
                 <span className="right-row-label">{stripMarkdownExtension(node.name)}</span>
               </button>
               <span className="right-file-actions" aria-label={copy.actions(file.title)}>
+                <button
+                  className="right-file-action"
+                  type="button"
+                  aria-label={`${copy.copyMarkdown}: ${file.title}`}
+                  data-tooltip={copy.copyMarkdown}
+                  onClick={() => onCopyFile(file.id)}
+                >
+                  <ClipboardCopy size={14} />
+                </button>
                 <MenuRoot
                   open={menuOpen}
                   onOpenChange={(open) => setActionMenuFileId(open ? file.id : null)}
