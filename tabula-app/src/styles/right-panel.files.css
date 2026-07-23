@@ -133,9 +133,8 @@
 }
 
 .right-file-tree-row.file:hover .right-file-actions,
-.right-file-tree-row.file:focus-within .right-file-actions,
 .right-file-tree-row.folder:hover .right-file-actions,
-.right-file-tree-row.folder:focus-within .right-file-actions {
+.right-file-actions:has(.right-file-action:focus-visible) {
   opacity: 1;
 }
 

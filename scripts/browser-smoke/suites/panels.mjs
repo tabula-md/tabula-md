@@ -1541,7 +1541,7 @@ export async function run(ctx) {
       copyMarkdownCount: document.querySelectorAll('.right-file-action[aria-label^="Copy Markdown: "]').length,
       renameCount: document.querySelectorAll('.right-file-action[aria-label^="Rename "]').length,
       duplicateCount: document.querySelectorAll('.right-file-action[aria-label^="Duplicate "]').length,
-      deleteCount: document.querySelectorAll('.right-file-action[aria-label^="Delete "]').length,
+      deleteCount: document.querySelectorAll('.right-file-action[aria-label^="Delete: "]').length,
       openMenuCount: document.querySelectorAll(".right-file-action-menu").length,
       importCount: document.querySelectorAll('.right-file-toolbar-button[aria-label="Open Markdown file"]').length,
       visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -1549,9 +1549,9 @@ export async function run(ctx) {
     expect(fileActionContract.closeTabCount === 0, "Right Files should leave tab closing to the document tabs.");
     expect(fileActionContract.moreActionCount >= 1, "Right Files should expose a compact more-action menu for each project file.");
     expect(fileActionContract.copyMarkdownCount >= 1, "File rows should expose Copy Markdown as their primary hover action.");
+    expect(fileActionContract.deleteCount >= 1, "File rows should expose Delete as a direct hover action.");
     expect(fileActionContract.renameCount === 0, "Right Files should hide rename behind a more-action menu.");
     expect(fileActionContract.duplicateCount === 0, "Right Files should hide duplicate behind a more-action menu.");
-    expect(fileActionContract.deleteCount === 0, "Right Files should hide delete behind a more-action menu.");
     expect(fileActionContract.openMenuCount === 0, "Right Files should keep row menus closed by default.");
     expect(fileActionContract.importCount === 1, "Right Files should expose one file import control.");
     expect(
@@ -1561,6 +1561,20 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: `Open ${rightFilesActiveTitle}` }).click();
     await waitForRenderFrame(page);
+    await page.getByRole("button", { name: `Copy Markdown: ${rightFilesActiveTitle}` }).click();
+    await page.getByRole("region", { name: "Document toolbar" }).hover();
+    await page.waitForFunction((actionLabel) => {
+      const button = Array.from(document.querySelectorAll(".right-file-action"))
+        .find((candidate) => candidate.getAttribute("aria-label") === actionLabel);
+      const actions = button?.closest(".right-file-actions");
+      return actions ? getComputedStyle(actions).opacity === "0" : false;
+    }, `More actions for ${rightFilesActiveTitle}`);
+    expect(
+      (await page.getByRole("button", { name: `More actions for ${rightFilesActiveTitle}` }).evaluate(
+        (button) => getComputedStyle(button.closest(".right-file-actions")).opacity,
+      )) === "0",
+      "Pointer-activated file actions should hide after the pointer leaves the row.",
+    );
 
     await openRightFileMenu(rightFilesActiveTitle);
     expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "File menus should create a sibling document.");
