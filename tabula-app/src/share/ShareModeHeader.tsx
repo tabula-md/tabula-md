@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 type ShareModeHeaderProps = {
   description: string;
@@ -18,9 +18,20 @@ export function ShareModeHeader({
   title,
 }: ShareModeHeaderProps) {
   const Heading = headingLevel === 2 ? "h2" : "h3";
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => headerRef.current?.focus(), 50);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   return (
-    <header className="share-mode-header">
+    <header
+      ref={headerRef}
+      className="share-mode-header"
+      data-modal-initial-focus
+      tabIndex={-1}
+    >
       <span className="share-modal-option-icon" aria-hidden="true">
         {icon}
       </span>

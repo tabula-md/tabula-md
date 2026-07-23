@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import type {
   Collaborator,
   ConnectionStatus,
-  RoomRecoveryMode,
 } from "../collaboration/liveCollaboration";
 import type { WorkspaceTopChromeProps } from "./components/WorkspaceTopChrome";
 import type { JsonShareController } from "../share/useJsonShareController";
@@ -28,9 +27,9 @@ type UseWorkspaceTopChromeControllerOptions = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   identity: Collaborator;
+  isStartingLive: boolean;
   isLive: boolean;
   isLiveConnected: boolean;
-  recoveryMode: RoomRecoveryMode;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
@@ -42,6 +41,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   onChangeUserName: (nextName: string) => void;
   onCloseFile: (fileId: string) => void;
   onShareLoadError: () => void;
+  onShareCopyFailed: () => void;
   onCommitUserName: () => void;
   onCopyShareUrl: () => void;
   onEmptyShare: () => void;
@@ -72,9 +72,9 @@ export function useWorkspaceTopChromeController({
   files,
   folders,
   identity,
+  isStartingLive,
   isLive,
   isLiveConnected,
-  recoveryMode,
   jsonShare,
   language,
   openFiles,
@@ -86,6 +86,7 @@ export function useWorkspaceTopChromeController({
   onChangeUserName,
   onCloseFile,
   onShareLoadError,
+  onShareCopyFailed,
   onCommitUserName,
   onCopyShareUrl,
   onEmptyShare,
@@ -152,12 +153,11 @@ export function useWorkspaceTopChromeController({
     connectionStatus,
     copied,
     currentUserName,
-    documentCount: files.length,
     folders,
     identity,
+    isStartingLive,
     isLive,
     isLiveConnected,
-    recoveryMode,
     jsonShare,
     language,
     openFiles,
@@ -171,6 +171,7 @@ export function useWorkspaceTopChromeController({
     onCloseFile,
     onCloseShare: closeShare,
     onShareLoadError,
+    onShareCopyFailed,
     onCommitUserName,
     onCopyShareUrl,
     onReorderFiles,

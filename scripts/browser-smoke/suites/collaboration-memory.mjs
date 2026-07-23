@@ -120,7 +120,7 @@ const runLiveCycle = async ({ page, focusMarkdownEditor, cycle }) => {
   await page.getByRole("button", { name: "Start session" }).click();
   await page.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
   await page.waitForSelector(".sharing-presence");
-  await page.getByRole("button", { name: "Close share dialog" }).click();
+  await page.keyboard.press("Escape");
 
   await focusMarkdownEditor(page);
   await page.keyboard.press("ControlOrMeta+End");
@@ -131,13 +131,13 @@ const runLiveCycle = async ({ page, focusMarkdownEditor, cycle }) => {
   );
 
   await page.locator(".share-trigger").click();
-  await page.getByRole("button", { name: "Stop session" }).click();
-  await page.getByText("Stop live collaboration?", { exact: true }).waitFor({ state: "visible" });
-  await page.getByRole("button", { name: "Stop session" }).click();
+  await page.getByRole("button", { name: "Leave room" }).click();
+  await page.getByText("Leave live collaboration?", { exact: true }).waitFor({ state: "visible" });
+  await page.getByRole("button", { name: "Leave room" }).click();
   await page.locator(".tab-item[data-room-id]:not([data-room-id=''])").waitFor({ state: "detached" });
   await page.waitForFunction(() => !window.location.hash.startsWith("#room="));
   if ((await page.locator(".share-modal").count()) > 0) {
-    await page.getByRole("button", { name: "Close share dialog" }).click();
+    await page.keyboard.press("Escape");
     await page.locator(".share-modal").waitFor({ state: "detached" });
   }
 };
@@ -181,7 +181,7 @@ export async function run(ctx) {
       (await page.locator(".cm-content").count()) === 1 &&
         (await page.locator(".sharing-presence").count()) === 0 &&
         (await page.locator(".cm-ySelectionCaret").count()) === 0,
-      "Stopping the final session should leave one local editor and no collaboration presence DOM.",
+      "Leaving the final session should leave one local editor and no collaboration presence DOM.",
     );
     expect(
       finalLifecycle.listenerBalance - baselineLifecycle.listenerBalance <= MAX_LISTENER_BALANCE_GROWTH,

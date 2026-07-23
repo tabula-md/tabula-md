@@ -41,40 +41,32 @@ describe("workspace locale chrome copy", () => {
     );
     expect(english.emptyState.newFile).toBe("New document");
     expect(english.share.live.startSession).toBe("Start session");
+    expect(english.share.live.title).toBe("Open a live collaboration room");
     expect(english.share.live.description).toBe(
-      "Collaborate on the whole workspace in an encrypted live room.",
+      "This private room keeps the workspace’s documents and comments in sync while people are connected. You can also invite an agent with the prompt.",
     );
     expect(english.share.nothingToShare).toBe(
       "Nothing to share yet. Create or open a document first.",
     );
-    expect(english.share.chooserSecurityDescription).toContain("Tabula.md");
-    expect(english.share.live.inviteAgent).toBe("Invite an agent");
-    expect(english.share.live.inviteAgentDescription).toContain(
-      "what you want changed",
-    );
-    expect(english.share.live.agentAccessWarning).toContain(
-      "hosted MCP can read room content",
-    );
-    expect(english.share.live.resultDescription).toBe(
-      "Changes sync in real time.",
+    expect(english.share.chooserSecurityDescription).toBe(
+      "Your workspace is encrypted before it leaves this browser. Only people with the link can open it—not even our servers can read it.",
     );
     expect(english.share.shareLinkLabel).toBe("Share link");
-    expect(english.share.workspaceSummary(2)).toBe(
-      "Whole workspace · 2 documents · comments included",
-    );
     expect(english.share.live.stopConfirmTitle).toBe(
-      "Stop live collaboration?",
+      "Leave live collaboration?",
     );
-    expect(english.share.shareable.title).toBe("Export link");
+    expect(english.share.live.stopSession).toBe("Leave room");
+    expect(english.share.live.copyAgentInvite).toBe("Copy prompt");
+    expect(getWorkspaceMenuCopy("ko").share.live.statusLabel("connected")).toBe(
+      "실시간 협업 중",
+    );
+    expect(english.share.shareable.title).toBe("Share a snapshot by link");
     expect(english.share.shareable.description).toBe(
-      "Create an encrypted point-in-time copy. Changes do not sync back.",
+      "Create an encrypted copy of the workspace, including comments. People with the link can open that snapshot, but later changes won’t sync.",
     );
     expect(english.share.shareable.exportToLink).toBe("Create link");
-    expect(english.share.shareable.resultDescription).toBe(
-      "Snapshot created. Changes do not sync.",
-    );
-    expect(english.share.shareable.snapshotMetadata("Jul 30, 2026")).toBe(
-      "Snapshot · Expires Jul 30, 2026",
+    expect(english.share.shareable.expiryDescription("Jul 30, 2026")).toBe(
+      "Expires Jul 30, 2026",
     );
     expect(english.share.modalTitle).toBe("Share");
 
@@ -82,9 +74,9 @@ describe("workspace locale chrome copy", () => {
     expect(korean.actions.preferences).toBe("환경설정");
     expect(korean.emptyState.openFile).toBe("Markdown 파일 열기");
     expect(korean.share.live.startSession).toBe("세션 시작");
-    expect(korean.share.shareable.title).toBe("내보내기 링크");
+    expect(korean.share.shareable.title).toBe("스냅샷 링크로 공유하기");
     expect(korean.share.shareable.description).toBe(
-      "암호화된 시점 복사본을 만듭니다. 이후 변경은 원본에 동기화되지 않습니다.",
+      "댓글을 포함한 워크스페이스의 암호화된 복사본을 만듭니다. 링크를 가진 사람은 스냅샷을 열 수 있지만 이후 변경 사항은 동기화되지 않습니다.",
     );
     expect(korean.share.modalTitle).toBe("공유");
   });

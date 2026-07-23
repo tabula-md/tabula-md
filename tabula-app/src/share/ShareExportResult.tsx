@@ -38,15 +38,16 @@ export function ShareExportResult({
       <ShareResultDetails
         copied={exportLinkCopied}
         copy={copy}
-        documentCount={jsonShare.documentCount}
         link={jsonShare.url ? {
           canCopy: true,
           display: jsonShare.urlPreview,
-          title: jsonShare.url,
         } : undefined}
-        metadata={copy.shareable.snapshotMetadata(formattedExpiry)}
+        metadata={
+          formattedExpiry
+            ? copy.shareable.expiryDescription(formattedExpiry)
+            : undefined
+        }
         onCopyLink={onCopyShareableLink}
-        preparingText={copy.shareable.preparing}
       />
     </section>
   );

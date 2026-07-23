@@ -1,4 +1,4 @@
-import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useEventCallback } from "../shared/useEventCallback";
 import type { useAppToast } from "../ui/useAppToast";
 import {
@@ -89,6 +89,8 @@ export function useWorkspaceLiveSessionController({
 }: UseWorkspaceLiveSessionControllerOptions) {
   const activeRoomSession = sessionHost.getSnapshot();
   const activeRoom = activeRoomSession.mode === "room" ? activeRoomSession.room : null;
+  const [isStartingLive, setIsStartingLive] = useState(false);
+  const pendingCreatedRoomIdRef = useRef<string | null>(null);
   const previousRoomConnectionRef = useRef<{
     recovering: boolean;
     roomId: string;
@@ -149,8 +151,31 @@ export function useWorkspaceLiveSessionController({
     room.connectionStatus,
     showToast,
   ]);
+  useEffect(() => {
+    const pendingRoomId = pendingCreatedRoomIdRef.current;
+    if (
+      !isStartingLive ||
+      !pendingRoomId ||
+      activeRoom?.roomId !== pendingRoomId ||
+      room.connectionStatus !== "connected" ||
+      room.hydrationStatus !== "ready"
+    ) {
+      return;
+    }
+
+    pendingCreatedRoomIdRef.current = null;
+    setIsStartingLive(false);
+    productAnalytics.report("room_created", { roomId: pendingRoomId });
+  }, [
+    activeRoom?.roomId,
+    isStartingLive,
+    room.connectionStatus,
+    room.hydrationStatus,
+  ]);
 
   const openLocalWorkspaceAfterRoomFailure = useEventCallback(() => {
+    pendingCreatedRoomIdRef.current = null;
+    setIsStartingLive(false);
     flushPendingEditorCommit();
     room.resetCollaborationState("idle");
     roomDocumentProjectionStore.clear();
@@ -166,20 +191,35 @@ export function useWorkspaceLiveSessionController({
       })
       .catch(handlePersistenceError);
   });
-  const copyShareUrlWithPendingCommit = useEventCallback(() => {
+  const copyShareUrlWithPendingCommit = useEventCallback(async () => {
     flushPendingEditorCommit();
-    void copyShareUrl();
+    try {
+      await copyShareUrl();
+    } catch (error) {
+      clientErrorReporter.report({
+        feature: "collaboration",
+        operation: "copy-room-link",
+        error,
+      });
+      showToast(copy.copyFailed, "error");
+    }
   });
   const startSessionWithPendingCommit = useEventCallback(async () => {
+    if (isStartingLive) return;
+
+    pendingCreatedRoomIdRef.current = null;
+    setIsStartingLive(true);
     flushPendingEditorCommit();
     try {
       const startedSession = await startSession();
       if (!startedSession) {
+        setIsStartingLive(false);
         chrome.setTopPopover(null);
         showToast(copy.live.unavailable, "error");
         return;
       }
 
+      pendingCreatedRoomIdRef.current = startedSession.roomId;
       setLiveRoomOpenFailure(null);
       const roomWorkspace = {
         ...getWorkspaceStoreSnapshot("local"),
@@ -194,8 +234,9 @@ export function useWorkspaceLiveSessionController({
         startedSession.bootstrap,
         "created",
       );
-      productAnalytics.report("room_created", { roomId: startedSession.roomId });
     } catch (error) {
+      pendingCreatedRoomIdRef.current = null;
+      setIsStartingLive(false);
       roomDocumentProjectionStore.clear();
       clientErrorReporter.report({
         feature: "collaboration",
@@ -207,6 +248,8 @@ export function useWorkspaceLiveSessionController({
     }
   });
   const stopSessionWithPendingCommit = useEventCallback(() => {
+    pendingCreatedRoomIdRef.current = null;
+    setIsStartingLive(false);
     flushPendingEditorCommit();
     getWorkspaceStoreForMode("local").getState().replaceWorkspace(getWorkspaceSnapshot());
     stopSession();
@@ -234,6 +277,8 @@ export function useWorkspaceLiveSessionController({
     setCopiedFileId(null);
   });
   const activateRoomWorkspace = useEventCallback((nextRoom: LocationRoom) => {
+    pendingCreatedRoomIdRef.current = null;
+    setIsStartingLive(false);
     room.resetRoomView(nextRoom.roomId);
     setLiveRoomOpenFailure(null);
     roomDocumentProjectionStore.clear();
@@ -250,9 +295,11 @@ export function useWorkspaceLiveSessionController({
 
   return {
     copyShareUrl: copyShareUrlWithPendingCommit,
+    isStartingLive,
     isLiveChromeVisible:
       room.isLive &&
       room.hydrationStatus === "ready" &&
+      !isStartingLive &&
       !liveRoomOpenFailure &&
       !timedOut,
     jsonShare,

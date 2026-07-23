@@ -7,7 +7,6 @@ import { TopChrome } from "./TopChrome";
 import type {
   Collaborator,
   ConnectionStatus,
-  RoomRecoveryMode,
 } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
 import type { JsonShareController } from "../../share/useJsonShareController";
@@ -29,12 +28,11 @@ export type WorkspaceTopChromeProps = {
   connectionStatus: ConnectionStatus;
   copied: boolean;
   currentUserName: string;
-  documentCount: number;
   folders: WorkspaceFolder[];
   identity: Collaborator;
+  isStartingLive: boolean;
   isLive: boolean;
   isLiveConnected: boolean;
-  recoveryMode: RoomRecoveryMode;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   openFiles: WorkspaceFile[];
@@ -48,6 +46,7 @@ export type WorkspaceTopChromeProps = {
   onCloseFile: FileTabsProps["onCloseFile"];
   onCloseShare: () => void;
   onShareLoadError: () => void;
+  onShareCopyFailed: () => void;
   onCommitUserName: () => void;
   onCopyShareUrl: () => void;
   onReorderFiles: FileTabsProps["onReorderFiles"];
@@ -70,12 +69,11 @@ export function WorkspaceTopChrome({
   connectionStatus,
   copied,
   currentUserName,
-  documentCount,
   folders,
   identity,
+  isStartingLive,
   isLive,
   isLiveConnected,
-  recoveryMode,
   jsonShare,
   language,
   openFiles,
@@ -89,6 +87,7 @@ export function WorkspaceTopChrome({
   onCloseFile,
   onCloseShare,
   onShareLoadError,
+  onShareCopyFailed,
   onCommitUserName,
   onCopyShareUrl,
   onReorderFiles,
@@ -145,14 +144,14 @@ export function WorkspaceTopChrome({
             room={room}
             language={language}
             currentUserName={currentUserName}
-            documentCount={documentCount}
             connectionStatus={connectionStatus}
+            isStartingLive={isStartingLive}
             isLive={isLive}
-            recoveryMode={recoveryMode}
             shareOpen={shareOpen}
             copied={copied}
             jsonShare={jsonShare}
             onCloseShare={onCloseShare}
+            onCopyFailed={onShareCopyFailed}
             onStartSession={onStartSession}
             onRetrySession={onRetrySession}
             onCopyShareUrl={onCopyShareUrl}

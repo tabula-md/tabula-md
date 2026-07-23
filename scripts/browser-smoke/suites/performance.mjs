@@ -2232,8 +2232,8 @@ export async function run(ctx) {
     await firstPage.locator(".share-trigger").click();
     await firstPage.getByRole("button", { name: "Start session" }).click();
     await firstPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
-    const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
-    await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+    const shareUrl = firstPage.url();
+    await firstPage.keyboard.press("Escape");
 
     const roomUrl = new URL(shareUrl);
     await secondPage.goto(`${baseUrl}${roomUrl.pathname}${roomUrl.hash}`);

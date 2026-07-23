@@ -35,6 +35,12 @@ export async function run(ctx) {
     await waitForSavedLocally(page);
     const contentFileName = await page.locator(".tab-item.active").getAttribute("data-file-name");
     expect(Boolean(contentFileName), "Export link smoke should identify the document containing the test body.");
+    await page.evaluate(() => {
+      window.__tabulaCopiedLink = "";
+      navigator.clipboard.writeText = async (text) => {
+        window.__tabulaCopiedLink = text;
+      };
+    });
 
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
@@ -44,7 +50,7 @@ export async function run(ctx) {
     });
     await page.getByRole("button", { name: "Create link" }).click();
     const exportLinkDisplay = page.locator(
-      '.share-export-result .share-link-display[aria-labelledby][title]',
+      ".share-export-result .share-link-display[aria-labelledby]",
     );
     const exportSamples = [];
     for (let index = 0; index < 80; index += 1) {
@@ -93,17 +99,23 @@ export async function run(ctx) {
 
     expect(
       (await page.getByText(
-        "Create an encrypted point-in-time copy. Changes do not sync back.",
+        "Create an encrypted copy of the workspace, including comments. People with the link can open that snapshot, but later changes won’t sync.",
         { exact: true },
       ).count()) === 1,
       "Creating an export link should preserve the mode description from the chooser.",
     );
     expect(
       (await page.locator(".share-result-details").count()) === 1 &&
-        (await page.locator(".share-result-context").count()) === 1 &&
         (await page.locator(".share-result-link-field").count()) === 1 &&
-        (await page.locator(".share-result-details > .share-modal-note").count()) === 1,
+        (await page.locator(".share-result-footer").count()) === 1 &&
+        (await page.locator(".share-result-main").evaluate(
+          (main) => main.firstElementChild?.classList.contains("share-result-link-field"),
+        )),
       "Export results should use the same result structure as live collaboration.",
+    );
+    expect(
+      (await page.locator(".share-result-meta").textContent())?.startsWith("Expires "),
+      "Export results should place only the expiry directly below the link.",
     );
     const exportModalRect = await page.locator(".share-modal").evaluate((modal) => {
       const rect = modal.getBoundingClientRect();
@@ -115,16 +127,33 @@ export async function run(ctx) {
       "Creating an export link should not resize the Share panel shell.",
     );
 
-    const firstExportUrl = await exportLinkDisplay.getAttribute("title");
+    await page.evaluate(() => {
+      navigator.clipboard.writeText = async () => {
+        throw new DOMException("Clipboard permission denied", "NotAllowedError");
+      };
+    });
+    await page.getByRole("button", { name: "Copy link" }).click();
+    await waitForText(page.locator(".app-toast"), "Couldn’t copy. Try again.");
+    expect(
+      (await page.locator(".share-export-result").count()) === 1,
+      "A rejected clipboard write should keep the Export link result available.",
+    );
+    await page.evaluate(() => {
+      navigator.clipboard.writeText = async (text) => {
+        window.__tabulaCopiedLink = text;
+      };
+    });
+    await page.getByRole("button", { name: "Copy link" }).click();
+    const firstExportUrl = await page.evaluate(() => window.__tabulaCopiedLink);
     expect(Boolean(firstExportUrl), "Export to link should create an Export link URL.");
-    await page.getByRole("button", { name: "Close share dialog" }).click();
+    await page.keyboard.press("Escape");
     await page.locator(".share-trigger").click();
     expect(
       (await page.getByRole("button", { name: "Create link" }).count()) === 1 &&
         (await page.locator(".share-export-result").count()) === 0,
       "Reopening Share should return to the live/export chooser instead of preserving the previous result.",
     );
-    await page.getByRole("button", { name: "Close share dialog" }).click();
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await page.locator(".share-trigger").click();
     expect(
@@ -135,7 +164,8 @@ export async function run(ctx) {
     expect(Boolean(exportedActiveFileName), "Export link smoke should identify the active document.");
     await page.getByRole("button", { name: "Create link" }).click();
     await exportLinkDisplay.waitFor({ state: "visible" });
-    const exportUrl = await exportLinkDisplay.getAttribute("title");
+    await page.getByRole("button", { name: "Copy link" }).click();
+    const exportUrl = await page.evaluate(() => window.__tabulaCopiedLink);
     expect(Boolean(exportUrl), "Export to link should create an Export link URL.");
     expect(exportUrl !== firstExportUrl, "Re-exporting a changed workspace should create a new immutable link.");
 
@@ -212,6 +242,46 @@ export async function run(ctx) {
     } finally {
       await secondContext.close();
     }
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.getByRole("button", { name: "New document", exact: true }).click();
+    await waitForEditorReady(page, { mode: "edit" });
+    await page.route(`${jsonUrl}/**`, (route) => route.abort());
+    await page.locator(".share-trigger").click();
+    await waitForShareDialogState(page, { panel: "Share link" });
+    await page.evaluate(() => {
+      window.__tabulaSawExportResult = false;
+      window.__tabulaExportObserver = new MutationObserver(() => {
+        if (document.querySelector(".share-export-result")) {
+          window.__tabulaSawExportResult = true;
+        }
+      });
+      window.__tabulaExportObserver.observe(document.body, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    });
+
+    await page.getByRole("button", { name: "Create link" }).click();
+    await page.waitForSelector(".app-toast");
+    const failedExportState = await page.evaluate(() => {
+      window.__tabulaExportObserver?.disconnect();
+      return {
+        modalCount: document.querySelectorAll(".share-modal").length,
+        sawResult: Boolean(window.__tabulaSawExportResult),
+        toastText: document.querySelector(".app-toast")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      };
+    });
+    expect(
+      !failedExportState.sawResult && failedExportState.modalCount === 0,
+      "A failed Export link request should close Share without flashing a result surface.",
+    );
+    expect(
+      failedExportState.toastText === "Export to link isn’t available right now.",
+      "A failed Export link request should use short toast feedback.",
+    );
   });
 }
 

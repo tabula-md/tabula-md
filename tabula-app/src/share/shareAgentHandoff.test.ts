@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildAgentInvite,
   TABULA_AGENT_INSTALL_URL,
-  TABULA_MCP_SETUP_URL,
 } from "./shareAgentHandoff";
 
 describe("agent handoff", () => {
@@ -17,9 +16,7 @@ describe("agent handoff", () => {
     expect(invite).toContain("https://tabula.test/#room=room-1,secret");
     expect(invite).not.toMatch(/Task:|Scope:|Target document:|Yjs|binary protocol|Markdown/);
   });
-
-  it("keeps human setup docs separate from the agent setup runbook", () => {
+  it("keeps the agent recovery runbook on the product domain", () => {
     expect(TABULA_AGENT_INSTALL_URL).toBe("https://tabula.md/agent-install.txt");
-    expect(TABULA_MCP_SETUP_URL).toBe("https://github.com/tabula-md/tabula-mcp#install");
   });
 });

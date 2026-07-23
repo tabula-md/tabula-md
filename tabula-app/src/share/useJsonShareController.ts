@@ -28,7 +28,7 @@ type UseJsonShareControllerOptions = {
 
 export type JsonShareController = {
   canExport: boolean;
-  copyLink: () => Promise<void>;
+  copyLink: () => Promise<boolean>;
   disabledReason: string;
   documentCount: number;
   expiresAt?: string;
@@ -195,10 +195,20 @@ export function useJsonShareController({
 
   const copyLink = async () => {
     if (!jsonShareResult?.url) {
-      return;
+      return false;
     }
-    await navigator.clipboard.writeText(jsonShareResult.url);
-    showToast(copy.shareable.copied);
+    try {
+      await navigator.clipboard.writeText(jsonShareResult.url);
+      return true;
+    } catch (error) {
+      clientErrorReporter.report({
+        feature: "json-share",
+        operation: "copy-link",
+        error,
+      });
+      showToast(copy.copyFailed, "error");
+      return false;
+    }
   };
 
   return {

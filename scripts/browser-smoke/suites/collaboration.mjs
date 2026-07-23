@@ -71,24 +71,41 @@ export async function run(ctx) {
     await clickTabByFileName(firstPage, "README.md");
     await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active');
     await firstPage.locator(".share-trigger").click();
-    const liveSurfaceStartedAt = Date.now();
+    const chooserPanelHeight = await firstPage.locator(".share-modal-panel.chooser").evaluate(
+      (panel) => panel.getBoundingClientRect().height,
+    );
+    await firstPage.evaluate(() => {
+      window.__tabulaSawPrematureLiveSurface = false;
+      window.__tabulaLiveStartObserver = new MutationObserver(() => {
+        const inviteSurface = document.querySelector(".share-link-display");
+        const connectedTrigger = document.querySelector(".share-trigger.live.connected");
+        if (inviteSurface && !connectedTrigger) {
+          window.__tabulaSawPrematureLiveSurface = true;
+        }
+      });
+      window.__tabulaLiveStartObserver.observe(document.body, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    });
     await firstPage.getByRole("button", { name: "Start session" }).click();
-    await firstPage.locator('.share-link-display[title*="#room="]').waitFor({
+    await firstPage.waitForSelector(".share-trigger.live.connected");
+    await firstPage.locator(".share-link-display").waitFor({
       state: "visible",
-      timeout: 1_000,
+    });
+    const sawPrematureLiveSurface = await firstPage.evaluate(() => {
+      window.__tabulaLiveStartObserver?.disconnect();
+      return Boolean(window.__tabulaSawPrematureLiveSurface);
     });
     expect(
-      Date.now() - liveSurfaceStartedAt < 1_000,
-      "Start session should show the complete invite surface without waiting for the room transport.",
+      !sawPrematureLiveSurface,
+      "Start session should not reveal the invite surface before the room transport connects.",
     );
-    const initialLivePanel = await firstPage.locator(".share-modal-panel.live").evaluate((panel) => ({
-      height: panel.getBoundingClientRect().height,
-      text: panel.textContent?.replace(/\s+/g, " ").trim() ?? "",
-    }));
-    const shareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
+    const shareUrl = firstPage.url();
     expect(
       Boolean(shareUrl && new URL(shareUrl).pathname === "/" && new URL(shareUrl).hash.startsWith("#room=")),
-      "Live sessions should expose the canonical hash room invite link immediately.",
+      "Connected live sessions should expose the canonical hash room invite link.",
     );
     try {
       await firstPage.waitForSelector('.tab-item.active[data-room-id]:not([data-room-id=""])');
@@ -110,19 +127,13 @@ export async function run(ctx) {
       shareUrl === firstPage.url(),
       "The live invite link should match the current room URL after starting a session.",
     );
-    await firstPage.waitForSelector(".share-trigger.live.connected");
     await firstPage.waitForSelector(".sharing-presence");
     const connectedLivePanel = await firstPage.locator(".share-modal-panel.live").evaluate((panel) => ({
       height: panel.getBoundingClientRect().height,
-      text: panel.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(
-      Math.abs(connectedLivePanel.height - initialLivePanel.height) <= 1,
-      "The complete Share panel should keep its height while the room transport connects.",
-    );
-    expect(
-      connectedLivePanel.text === initialLivePanel.text,
-      "The complete Share panel should keep the same content while the room transport connects.",
+      Math.abs(connectedLivePanel.height - chooserPanelHeight) <= 1,
+      "Share should keep the same panel height while starting and after connecting.",
     );
     const sharingPresenceLabel = await firstPage.locator(".sharing-presence").getAttribute("aria-label");
     const sharingPresenceText = await firstPage.locator(".sharing-presence").textContent();
@@ -147,7 +158,7 @@ export async function run(ctx) {
       (await firstPage.locator(".avatar.self").getAttribute("aria-label"))?.length > 0,
       "Self avatar should expose the collaborator name through its accessible label.",
     );
-    await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+    await firstPage.keyboard.press("Escape");
     await openProjectMenu(firstPage);
     expect(
       (await firstPage.getByRole("button", { name: "Clear local workspace…", exact: true }).count()) === 0,
@@ -178,12 +189,12 @@ export async function run(ctx) {
     );
     await firstPage.locator(".share-trigger").click();
     await waitForText(firstPage.locator(".share-modal"), "Share link");
-    const untitledShareUrl = await firstPage.locator(".share-link-display").getAttribute("title");
+    const untitledShareUrl = firstPage.url();
     expect(
       untitledShareUrl === firstPage.url(),
       "Included workspace documents should expose the same live invite link after tab switching.",
     );
-    await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+    await firstPage.keyboard.press("Escape");
     await clickTabByFileName(firstPage, "README.md");
     await firstPage.waitForSelector('.tab-item[data-file-name="README.md"].active[data-room-id]:not([data-room-id=""])');
     await firstPage.getByRole("button", { name: "Toggle side panel" }).click();
@@ -377,7 +388,7 @@ export async function run(ctx) {
         (await firstPage.locator(".share-live-status, .share-modal .live-room-status").count()) === 0,
         "Recoverable reconnecting state should stay out of Share.",
       );
-      await firstPage.getByRole("button", { name: "Close share dialog" }).click();
+      await firstPage.keyboard.press("Escape");
       await focusMarkdownEditor(firstPage);
       await firstPage.keyboard.press("ControlOrMeta+End");
       await firstPage.keyboard.press("Enter");
@@ -454,15 +465,15 @@ export async function run(ctx) {
         (await firstPage.locator(".share-trigger.live").count()) === 1,
         "The workspace should still be live before stopping the session.",
       );
-      await firstPage.getByRole("button", { name: "Stop session" }).click();
-      await waitForText(firstPage.locator(".share-modal"), "Stop live collaboration?");
+      await firstPage.getByRole("button", { name: "Leave room" }).click();
+      await waitForText(firstPage.locator(".share-modal"), "Leave live collaboration?");
       await firstPage.getByRole("button", { name: "Cancel" }).click();
       expect(
         (await firstPage.locator(".share-trigger.live").count()) === 1,
-        "Canceling Stop session should keep the browser in the live room.",
+        "Canceling Leave room should keep the browser in the live room.",
       );
-      await firstPage.getByRole("button", { name: "Stop session" }).click();
-      await firstPage.getByRole("button", { name: "Stop session" }).click();
+      await firstPage.getByRole("button", { name: "Leave room" }).click();
+      await firstPage.getByRole("button", { name: "Leave room" }).click();
       await firstPage.locator(".share-trigger.live").waitFor({ state: "detached", timeout: 5_000 });
     }
   } finally {

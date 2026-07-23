@@ -21,6 +21,8 @@ import { writeIndexedDbWorkspace } from "../workspace/persistence/workspaceIndex
 import { clientErrorReporter } from "../observability/clientErrorReporting";
 import { productAnalytics } from "../observability/productAnalytics";
 import { useEventCallback } from "../shared/useEventCallback";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 
 export type PendingJsonShareImport =
   | { status: "loading"; route: JsonShareRoute }
@@ -33,6 +35,7 @@ type UseJsonShareImportControllerArgs = {
   commentsByFileId: Record<string, FileComment[]>;
   files: WorkspaceFile[];
   getWorkspaceSnapshot?: () => WorkspaceState;
+  language: WorkspaceLanguage;
   onBeforeWorkspaceBoundary?: () => void;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
   replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
@@ -51,6 +54,7 @@ export function useJsonShareImportController({
   commentsByFileId,
   files,
   getWorkspaceSnapshot,
+  language,
   onBeforeWorkspaceBoundary,
   replaceCommentsByFileId,
   replaceWorkspace,
@@ -58,6 +62,7 @@ export function useJsonShareImportController({
   showToast,
   workspaceSource,
 }: UseJsonShareImportControllerArgs) {
+  const copy = getWorkspaceSurfaceCopy(language);
   const [jsonShareImport, setJsonShareImport] = useState<PendingJsonShareImport | null>(null);
   const handledJsonShareRouteRef = useRef<string | null>(null);
   const jsonShareImportCleanupRef = useRef<(() => void) | null>(null);
@@ -90,15 +95,15 @@ export function useJsonShareImportController({
         operation: "persist-export-import",
         error,
       });
-      showToast("The copy opened, but it couldn’t be saved in this browser.", "error");
+      showToast(copy.jsonSaveFailed, "error");
     });
     clearFileHistory();
     resetCollaborationState("idle");
     closeFloatingChrome();
     syncUrlForLocalWorkspace("replace");
     setJsonShareImport(null);
-    showToast("Export copy opened.", "neutral", previousWorkspace ? {
-      actionLabel: "Undo",
+    showToast(copy.jsonOpened, "neutral", previousWorkspace ? {
+      actionLabel: copy.jsonUndo,
       onAction: () => {
         onBeforeWorkspaceBoundary?.();
         replaceWorkspace(previousWorkspace);
@@ -109,13 +114,13 @@ export function useJsonShareImportController({
             operation: "persist-export-import-undo",
             error,
           });
-          showToast("The previous workspace was restored but couldn’t be saved.", "error");
+          showToast(copy.jsonRestoreSaveFailed, "error");
         });
         clearFileHistory();
         resetCollaborationState("idle");
         closeFloatingChrome();
         syncUrlForLocalWorkspace("replace");
-        showToast("Previous workspace restored.");
+        showToast(copy.jsonRestored);
       },
     } : undefined);
   });

@@ -147,10 +147,7 @@ export function useWorkspaceRoomController({
     );
   }, [comments.commentsByFileId, sessionStartDocuments]);
   const handleRoomCapacityExceeded = useEventCallback(() => {
-    showToast(
-      "This room has reached its collaboration limit. Export a copy and start a new session.",
-      "error",
-    );
+    showToast(copy.roomCapacityExceeded, "error");
   });
   const collaboration = useWorkspaceCollaborationRuntime({
     session: activeRoomSession,

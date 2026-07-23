@@ -96,6 +96,7 @@ export function useWorkspaceIoController({
     commentsByFileId,
     files,
     getWorkspaceSnapshot,
+    language: preferences.language,
     onBeforeWorkspaceBoundary,
     replaceCommentsByFileId,
     replaceWorkspace,
