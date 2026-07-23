@@ -1,0 +1,184 @@
+.right-file-toolbar-button.compatibility.error:not(.active) {
+  color: var(--danger-text);
+}
+
+.right-file-toolbar-button.compatibility.warning:not(.active) {
+  color: var(--attention);
+}
+
+.right-file-toolbar-button.compatibility.success:not(.active) {
+  color: var(--success);
+}
+
+.right-compatibility-scroll {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-height: 0;
+  padding-bottom: var(--right-row-x);
+  overflow: auto;
+}
+
+.right-compatibility-header {
+  display: grid;
+  gap: 5px;
+  padding: 0 var(--right-row-x);
+}
+
+.right-compatibility-heading-row {
+  display: flex;
+  align-items: center;
+  gap: var(--right-tight-gap);
+}
+
+.right-compatibility-heading-row h2 {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-medium);
+}
+
+.right-compatibility-standard {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-ui-caption);
+  line-height: 1.2;
+}
+
+.right-compatibility-status {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--right-tight-gap);
+  margin: 0 var(--right-row-x);
+  padding: 10px;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-surface);
+  color: var(--text-soft);
+  background: var(--surface-muted);
+}
+
+.right-compatibility-status.error {
+  color: var(--danger-text);
+  background: var(--danger-background);
+}
+
+.right-compatibility-status.success {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.right-compatibility-status > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.right-compatibility-status strong {
+  color: inherit;
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-medium);
+  line-height: 1.35;
+}
+
+.right-compatibility-status small {
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+  line-height: 1.35;
+}
+
+.right-compatibility-issue-section {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.right-compatibility-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--right-tight-gap);
+  min-height: 24px;
+  margin: 0;
+  padding: 0 var(--right-row-x);
+  color: var(--text-soft);
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-medium);
+}
+
+.right-compatibility-section-title span:last-child {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-ui-regular);
+}
+
+.right-compatibility-issue-list {
+  display: grid;
+  gap: 2px;
+}
+
+.right-compatibility-issue-row {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: var(--right-tight-gap);
+  width: 100%;
+  min-height: 46px;
+  padding: 5px var(--right-row-x);
+  border-radius: var(--right-row-radius);
+  color: var(--text-muted);
+  background: transparent;
+  text-align: left;
+}
+
+.right-compatibility-issue-row:hover,
+.right-compatibility-issue-row:focus-visible {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.right-compatibility-issue-row.error > svg:first-child {
+  color: var(--danger-text);
+}
+
+.right-compatibility-issue-row.warning > svg:first-child {
+  color: var(--attention);
+}
+
+.right-compatibility-issue-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.right-compatibility-issue-title,
+.right-compatibility-issue-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-compatibility-issue-title {
+  color: var(--text-primary);
+  font-size: var(--font-ui-body);
+}
+
+.right-compatibility-issue-path {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-ui-secondary);
+}
+
+.right-compatibility-footnote {
+  padding: 0 var(--right-row-x);
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+}
