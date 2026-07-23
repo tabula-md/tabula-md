@@ -151,6 +151,7 @@
 
 .right-panel-body.comments,
 .right-panel-body.files,
+.right-panel-body.links,
 .right-panel-body.outline,
 .right-panel-body.search {
   overflow: hidden;
