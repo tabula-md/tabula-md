@@ -116,12 +116,17 @@
   display: inline-flex;
   flex: 1 1 auto;
   align-items: baseline;
-  gap: 4px;
+  gap: 8px;
   min-width: 0;
 }
 
 .tab-document-label .tab-title {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
+}
+
+.tab-document-label.has-location .tab-title {
+  flex: 0 0 auto;
+  max-width: 64%;
 }
 
 .tab-location {
@@ -130,6 +135,7 @@
   overflow: hidden;
   color: var(--text-muted);
   font-size: var(--font-ui-caption);
+  text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

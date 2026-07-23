@@ -61,6 +61,8 @@ type WorkspaceInterfaceMessages = {
   linksUnavailable: string;
   linksOpen: string;
   linksCandidates: string;
+  linksEmbed: string;
+  linksMentions: string;
   graphFor: string;
   graphTitle: string;
   graphSummary: string;
@@ -168,14 +170,16 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "Links are unavailable while file paths conflict",
     linksOpen: "Open {{name}}",
     linksCandidates: "{{count}} candidates",
-    graphFor: "Local graph for {{name}}",
-    graphTitle: "Local graph",
+    linksEmbed: "Embed",
+    linksMentions: "{{count}} mentions",
+    graphFor: "Workspace graph, current document: {{name}}",
+    graphTitle: "Workspace graph",
     graphSummary: "{{documents}} docs · {{links}} links",
     graphNone: "No connected documents",
     graphUnavailable: "Graph is unavailable while file paths conflict",
     graphOpen: "Open {{name}}",
     graphCurrent: "Current document: {{name}}",
-    graphTruncated: "Showing {{visible}} of {{total}} nearby documents",
+    graphTruncated: "Showing {{visible}} of {{total}} documents",
     commentsTitle: "Comment scope",
     commentsAll: "All comments",
     commentsCurrentFile: "Current file",
@@ -274,6 +278,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "파일 경로 충돌을 해결하면 링크를 확인할 수 있습니다",
     linksOpen: "{{name}} 열기",
     linksCandidates: "후보 {{count}}개",
+    linksEmbed: "임베드",
+    linksMentions: "{{count}}회 언급",
     graphFor: "{{name}}의 로컬 그래프",
     graphTitle: "로컬 그래프",
     graphSummary: "문서 {{documents}} · 링크 {{links}}",
@@ -380,6 +386,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "ファイルパスの競合を解消するとリンクを確認できます",
     linksOpen: "{{name}} を開く",
     linksCandidates: "候補 {{count}} 件",
+    linksEmbed: "埋め込み",
+    linksMentions: "{{count}} 件の参照",
     graphFor: "{{name}} のローカルグラフ",
     graphTitle: "ローカルグラフ",
     graphSummary: "文書 {{documents}} · リンク {{links}}",
@@ -486,6 +494,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "解决文件路径冲突后即可查看链接",
     linksOpen: "打开 {{name}}",
     linksCandidates: "{{count}} 个候选项",
+    linksEmbed: "嵌入",
+    linksMentions: "{{count}} 次引用",
     graphFor: "{{name}} 的局部关系图",
     graphTitle: "局部关系图",
     graphSummary: "文档 {{documents}} · 链接 {{links}}",
@@ -591,6 +601,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "Resuelve los conflictos de rutas para ver los enlaces",
     linksOpen: "Abrir {{name}}",
     linksCandidates: "{{count}} candidatos",
+    linksEmbed: "Inserción",
+    linksMentions: "{{count}} menciones",
     graphFor: "Grafo local de {{name}}",
     graphTitle: "Grafo local",
     graphSummary: "{{documents}} docs · {{links}} enlaces",
@@ -697,6 +709,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "Résolvez les conflits de chemins pour afficher les liens",
     linksOpen: "Ouvrir {{name}}",
     linksCandidates: "{{count}} candidats",
+    linksEmbed: "Intégration",
+    linksMentions: "{{count}} mentions",
     graphFor: "Graphe local de {{name}}",
     graphTitle: "Graphe local",
     graphSummary: "{{documents}} docs · {{links}} liens",
@@ -803,6 +817,8 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "Löse die Dateipfadkonflikte, um Links anzuzeigen",
     linksOpen: "{{name}} öffnen",
     linksCandidates: "{{count}} Kandidaten",
+    linksEmbed: "Einbettung",
+    linksMentions: "{{count}} Erwähnungen",
     graphFor: "Lokaler Graph für {{name}}",
     graphTitle: "Lokaler Graph",
     graphSummary: "{{documents}} Dok. · {{links}} Links",
@@ -939,6 +955,8 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         unavailable: copy.linksUnavailable,
         open: (name: string) => format(copy.linksOpen, { name }),
         candidates: (count: number) => format(copy.linksCandidates, { count }),
+        embed: copy.linksEmbed,
+        mentions: (count: number) => format(copy.linksMentions, { count }),
       },
       graph: {
         forFile: (name: string) => format(copy.graphFor, { name }),
