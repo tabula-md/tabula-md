@@ -10,7 +10,10 @@ describe("preview sanitize schema", () => {
       "figure",
       "kbd",
       "summary",
+      "tabula-workspace-embed",
     ]));
+    expect(PREVIEW_SANITIZE_SCHEMA.attributes?.["tabula-workspace-embed"])
+      .toContain("dataWorkspaceEmbedTarget");
     expect(PREVIEW_SANITIZE_SCHEMA.attributes?.details).toContain("open");
     expect(PREVIEW_SANITIZE_SCHEMA.tagNames).not.toEqual(expect.arrayContaining([
       "iframe",

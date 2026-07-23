@@ -194,7 +194,10 @@ export function useWorkspaceRightPanelController({
       if (activeViewMode === "preview") {
         const renderedHeadings = Array.from(
           previewSurfaceRef.current?.querySelectorAll("h1, h2, h3") ?? [],
-        ).filter((heading) => !heading.closest(".frontmatter-view"));
+        ).filter((heading) =>
+          !heading.closest(".frontmatter-view") &&
+          !heading.closest(".preview-workspace-embed-body")
+        );
         const renderedHeading = renderedHeadings[headingIndex];
         renderedHeading?.scrollIntoView({
           block: "start",

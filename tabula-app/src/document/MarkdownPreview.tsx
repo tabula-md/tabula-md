@@ -5,11 +5,13 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type ComponentType,
   type ForwardedRef,
   type HTMLAttributes,
   type KeyboardEvent,
@@ -70,6 +72,7 @@ import type {
   MarkdownPreviewLineAnnotation,
   MarkdownPreviewMetadata,
   MarkdownPreviewProps,
+  MarkdownPreviewWorkspaceDocument,
   MarkdownPreviewWorkspaceLink,
 } from "../preview/markdownPreviewTypes";
 import { transformMarkdownPreviewUrl } from "../preview/markdownPreviewUrl";
@@ -100,6 +103,10 @@ import {
   type PreviewGlobalMarkdownContext,
 } from "../preview/previewGlobalMarkdownContext";
 import { normalizePreviewDocsComponents } from "../preview/previewDocsCompatibility";
+import {
+  getWorkspaceEmbedMarkdown,
+  MAX_WORKSPACE_EMBED_DEPTH,
+} from "../preview/workspacePreviewEmbeds";
 
 type PreviewDocsComponentProps = {
   children?: ReactNode;
@@ -120,6 +127,14 @@ type PreviewDocsRawComponentProps = PreviewDocsComponentProps & HTMLAttributes<H
   "data-preview-line-end"?: number | string;
   "data-preview-line-start"?: number | string;
   node?: unknown;
+};
+
+type PreviewWorkspaceEmbedRawProps = PreviewDocsRawComponentProps & {
+  "data-workspace-embed-target"?: unknown;
+};
+
+type MarkdownPreviewComponents = Components & {
+  "tabula-workspace-embed": ComponentType<PreviewWorkspaceEmbedRawProps>;
 };
 
 const EMPTY_MARKDOWN_PREVIEW_METADATA: MarkdownPreviewMetadata[] = [];
@@ -418,6 +433,190 @@ const PREVIEW_DOCS_COMPONENTS = {
   ),
 } as unknown as Components;
 
+type WorkspaceEmbedRenderContext = {
+  ancestorDocumentIds: readonly string[];
+  depth: number;
+  sourceDocumentId?: string;
+};
+
+type PreviewWorkspaceEmbedProps = {
+  target: string;
+  context: WorkspaceEmbedRenderContext;
+  copy: WorkspaceSurfaceCopy;
+  onOpenWorkspaceLink?: MarkdownPreviewProps["onOpenWorkspaceLink"];
+  resolveWorkspaceDocument?: MarkdownPreviewProps["resolveWorkspaceDocument"];
+  resolveWorkspaceLink?: MarkdownPreviewProps["resolveWorkspaceLink"];
+};
+
+const PreviewWorkspaceEmbedStatus = ({
+  kind,
+  message,
+  target,
+}: {
+  kind: "ambiguous" | "broken" | "cycle" | "depth-limit";
+  message: string;
+  target: string;
+}) => (
+  <section
+    className={`preview-workspace-embed status ${kind}`}
+    data-workspace-embed-status={kind}
+    data-workspace-embed-target={target}
+    role="note"
+    title={message}
+  >
+    <span>{message}</span>
+  </section>
+);
+
+const getResolvedWorkspaceEmbedDocument = (
+  workspaceLink: Extract<MarkdownPreviewWorkspaceLink, { status: "resolved" }>,
+  resolveWorkspaceDocument?: MarkdownPreviewProps["resolveWorkspaceDocument"],
+): MarkdownPreviewWorkspaceDocument | undefined =>
+  resolveWorkspaceDocument?.(workspaceLink.targetDocumentId);
+
+function PreviewWorkspaceEmbed({
+  target,
+  context,
+  copy,
+  onOpenWorkspaceLink,
+  resolveWorkspaceDocument,
+  resolveWorkspaceLink,
+}: PreviewWorkspaceEmbedProps) {
+  const embedInstanceId = useId().replace(/[^a-z0-9_-]/gi, "");
+  const workspaceLink = resolveWorkspaceLink?.(
+    target,
+    "wikilink",
+    {
+      relation: "embed",
+      sourceDocumentId: context.sourceDocumentId,
+    },
+  );
+
+  if (!workspaceLink || workspaceLink.status === "broken") {
+    return (
+      <PreviewWorkspaceEmbedStatus
+        kind="broken"
+        message={copy.brokenWorkspaceLink(target)}
+        target={target}
+      />
+    );
+  }
+  if (workspaceLink.status === "ambiguous") {
+    return (
+      <PreviewWorkspaceEmbedStatus
+        kind="ambiguous"
+        message={copy.ambiguousWorkspaceLink(target)}
+        target={target}
+      />
+    );
+  }
+  if (workspaceLink.status !== "resolved") {
+    return (
+      <PreviewWorkspaceEmbedStatus
+        kind="broken"
+        message={copy.brokenWorkspaceLink(target)}
+        target={target}
+      />
+    );
+  }
+  if (context.ancestorDocumentIds.includes(workspaceLink.targetDocumentId)) {
+    return (
+      <PreviewWorkspaceEmbedStatus
+        kind="cycle"
+        message={copy.circularWorkspaceEmbed(target)}
+        target={target}
+      />
+    );
+  }
+  if (context.depth >= MAX_WORKSPACE_EMBED_DEPTH) {
+    return (
+      <PreviewWorkspaceEmbedStatus
+        kind="depth-limit"
+        message={copy.workspaceEmbedDepthLimit(target)}
+        target={target}
+      />
+    );
+  }
+
+  const document = getResolvedWorkspaceEmbedDocument(
+    workspaceLink,
+    resolveWorkspaceDocument,
+  );
+  const embeddedMarkdown = document
+    ? getWorkspaceEmbedMarkdown(document, workspaceLink.fragment)
+    : undefined;
+  if (!document || embeddedMarkdown === undefined) {
+    return (
+      <PreviewWorkspaceEmbedStatus
+        kind="broken"
+        message={copy.brokenWorkspaceLink(target)}
+        target={target}
+      />
+    );
+  }
+
+  const sourceLabel = `${document.path}${
+    workspaceLink.fragment ? `#${workspaceLink.fragment}` : ""
+  }`;
+  const nestedComponents = createMarkdownPreviewComponents(
+    undefined,
+    undefined,
+    onOpenWorkspaceLink,
+    resolveWorkspaceLink,
+    resolveWorkspaceDocument,
+    {
+      ancestorDocumentIds: [
+        ...context.ancestorDocumentIds,
+        workspaceLink.targetDocumentId,
+      ],
+      depth: context.depth + 1,
+      sourceDocumentId: workspaceLink.targetDocumentId,
+    },
+    false,
+    copy,
+  );
+
+  return (
+    <section
+      className="preview-workspace-embed resolved"
+      data-workspace-embed-depth={context.depth + 1}
+      data-workspace-embed-status="resolved"
+      data-workspace-embed-target={target}
+    >
+      <header className="preview-workspace-embed-header">
+        {onOpenWorkspaceLink ? (
+          <button
+            type="button"
+            title={copy.openWorkspaceEmbedSource(sourceLabel)}
+            onClick={() => onOpenWorkspaceLink(workspaceLink)}
+          >
+            {sourceLabel}
+          </button>
+        ) : (
+          <span>{sourceLabel}</span>
+        )}
+      </header>
+      <div className="preview-workspace-embed-body">
+        {embeddedMarkdown.trim().length > 0 ? (
+          <ReactMarkdown
+            components={nestedComponents}
+            rehypePlugins={createPreviewRehypePlugins([], 0, {
+              idPrefix: `tabula-embed-${embedInstanceId}-`,
+              includeSourceLineMetadata: false,
+            })}
+            remarkPlugins={MARKDOWN_REMARK_PLUGINS}
+            urlTransform={transformMarkdownPreviewUrl}
+          >
+            {normalizePreviewDocsComponents(embeddedMarkdown)}
+          </ReactMarkdown>
+        ) : (
+          <p className="preview-empty-state">{copy.nothingToPreview}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 const createMarkdownPreviewComponents = (
   onOpenComment?: (commentId: string) => void,
   onToggleTaskLine?: (sourceLineIndex: number) => void,
@@ -425,10 +624,28 @@ const createMarkdownPreviewComponents = (
     link: Extract<MarkdownPreviewWorkspaceLink, { status: "resolved" }>,
   ) => void,
   resolveWorkspaceLink?: MarkdownPreviewProps["resolveWorkspaceLink"],
+  resolveWorkspaceDocument?: MarkdownPreviewProps["resolveWorkspaceDocument"],
+  workspaceEmbedContext: WorkspaceEmbedRenderContext = {
+    ancestorDocumentIds: [],
+    depth: 0,
+  },
   searchActive = false,
   copy: WorkspaceSurfaceCopy = getWorkspaceSurfaceCopy("en"),
-): Components => ({
+): MarkdownPreviewComponents => ({
   ...PREVIEW_DOCS_COMPONENTS,
+  "tabula-workspace-embed": ({
+    node: _node,
+    "data-workspace-embed-target": target,
+  }: PreviewWorkspaceEmbedRawProps) => (
+    <PreviewWorkspaceEmbed
+      context={workspaceEmbedContext}
+      copy={copy}
+      onOpenWorkspaceLink={onOpenWorkspaceLink}
+      resolveWorkspaceDocument={resolveWorkspaceDocument}
+      resolveWorkspaceLink={resolveWorkspaceLink}
+      target={typeof target === "string" ? target : ""}
+    />
+  ),
   a: ({ node: _node, href, ...props }) => {
     const wikiLinkProps = props as typeof props & {
       "data-wikilink-relation"?: unknown;
@@ -444,6 +661,10 @@ const createMarkdownPreviewComponents = (
         ? resolveWorkspaceLink?.(
             workspaceTarget,
             wikiTarget ? "wikilink" : "markdown",
+            {
+              relation: wikiTarget ? "link" : undefined,
+              sourceDocumentId: workspaceEmbedContext.sourceDocumentId,
+            },
           )
         : undefined;
     const resolvedHref = typeof href === "string" ? classifyMarkdownHref(href) : null;
@@ -616,6 +837,8 @@ function MarkdownPreviewComponent({
   onLineAction,
   onOpenComment,
   onOpenWorkspaceLink,
+  sourceDocumentId,
+  resolveWorkspaceDocument,
   resolveWorkspaceLink,
   onToggleTaskLine,
 }: MarkdownPreviewProps, ref: ForwardedRef<MarkdownPreviewHandle>) {
@@ -850,10 +1073,23 @@ function MarkdownPreviewComponent({
         (sourceLineIndex) => onToggleTaskLineRef.current?.(sourceLineIndex),
         onOpenWorkspaceLink,
         resolveWorkspaceLink,
+        resolveWorkspaceDocument,
+        {
+          ancestorDocumentIds: sourceDocumentId ? [sourceDocumentId] : [],
+          depth: 0,
+          sourceDocumentId,
+        },
         previewSearchActive,
         uiCopy,
       ),
-    [onOpenWorkspaceLink, previewSearchActive, resolveWorkspaceLink, uiCopy],
+    [
+      onOpenWorkspaceLink,
+      previewSearchActive,
+      resolveWorkspaceDocument,
+      resolveWorkspaceLink,
+      sourceDocumentId,
+      uiCopy,
+    ],
   );
   const commentAnchorPlugins = useMemo(
     () => (
@@ -1469,6 +1705,8 @@ const areMarkdownPreviewPropsEqual = (firstProps: MarkdownPreviewProps, secondPr
   firstProps.onLineAction === secondProps.onLineAction &&
   firstProps.onOpenComment === secondProps.onOpenComment &&
   firstProps.onOpenWorkspaceLink === secondProps.onOpenWorkspaceLink &&
+  firstProps.sourceDocumentId === secondProps.sourceDocumentId &&
+  firstProps.resolveWorkspaceDocument === secondProps.resolveWorkspaceDocument &&
   firstProps.resolveWorkspaceLink === secondProps.resolveWorkspaceLink &&
   firstProps.onToggleTaskLine === secondProps.onToggleTaskLine &&
   areSearchOptionsEqual(firstProps.searchOptions, secondProps.searchOptions) &&

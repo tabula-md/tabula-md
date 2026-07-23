@@ -41,6 +41,7 @@ export const PREVIEW_DOCS_BLOCK_TAGS = new Set([
   "tabula-tab",
   "tabula-tabs",
   "tabula-unsupported-component",
+  "tabula-workspace-embed",
 ]);
 
 const docsComponentPattern = /<(\/?)([A-Za-z][A-Za-z0-9.-]*)(?=[\s/>])([^<>]*?)>/g;

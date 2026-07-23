@@ -45,6 +45,7 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   >;
   surface: DocumentSurfaceController;
   toolbarLabel: string;
+  resolveWorkspaceDocument: NonNullable<MarkdownPreviewProps["resolveWorkspaceDocument"]>;
   resolveWorkspaceLink: NonNullable<MarkdownPreviewProps["resolveWorkspaceLink"]>;
 };
 
@@ -65,6 +66,7 @@ export function useWorkspaceWorkbenchSurfaceController({
   room,
   surface,
   toolbarLabel,
+  resolveWorkspaceDocument,
   resolveWorkspaceLink,
 }: UseWorkspaceWorkbenchSurfaceControllerOptions) {
   const editingActivationTrackerRef = useRef(createEditingActivationTracker());
@@ -214,6 +216,7 @@ export function useWorkspaceWorkbenchSurfaceController({
         room.stopFollowing("local-edit");
         editor.undoActiveFile();
       },
+      resolveWorkspaceDocument,
       resolveWorkspaceLink,
     },
   };

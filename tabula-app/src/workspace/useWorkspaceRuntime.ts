@@ -778,13 +778,28 @@ export function useWorkspaceRuntime() {
     () => (
       target: string,
       syntax?: "markdown" | "wikilink",
+      context?: {
+        relation?: "link" | "embed";
+        sourceDocumentId?: string;
+      },
     ) => resolveMarkdownPreviewWorkspaceLink(
       knowledgeIndex,
-      activeFileId,
+      context?.sourceDocumentId ?? activeFileId,
       target,
       syntax,
+      context?.relation,
     ),
     [activeFileId, knowledgeIndex],
+  );
+  const resolveWorkspaceDocument = useMemo(
+    () => (documentId: string) => {
+      const document = knowledgeIndex?.documentsById.get(documentId);
+      const analysis = knowledgeIndex?.analysesByDocumentId.get(documentId);
+      return document && analysis
+        ? { ...document, headings: analysis.headings }
+        : undefined;
+    },
+    [knowledgeIndex],
   );
   const openPreviewWorkspaceLink = useEventCallback((
     link: Extract<MarkdownPreviewWorkspaceLink, { status: "resolved" }>,
@@ -823,7 +838,10 @@ export function useWorkspaceRuntime() {
     const scrollToFragment = () => {
       const target = Array.from(
         previewSurfaceRef.current?.querySelectorAll<HTMLElement>("[id]") ?? [],
-      ).find((element) => element.id === pendingPreviewNavigation.fragment);
+      ).find((element) =>
+        element.id === pendingPreviewNavigation.fragment &&
+        !element.closest(".preview-workspace-embed-body")
+      );
       if (target) {
         target.scrollIntoView({ block: "start", behavior: "smooth" });
         setPendingPreviewNavigation(null);
@@ -950,6 +968,7 @@ export function useWorkspaceRuntime() {
     room: roomController,
     surface: documentSurfaceController,
     toolbarLabel: workspaceChromeCopy.documentControls.documentToolbar,
+    resolveWorkspaceDocument,
     resolveWorkspaceLink,
   });
   useWorkspaceKeyboardShortcuts({

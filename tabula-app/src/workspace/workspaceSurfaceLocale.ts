@@ -33,6 +33,9 @@ export type WorkspaceSurfaceCopy = {
   nothingToPreview: string;
   brokenWorkspaceLink: (target: string) => string;
   ambiguousWorkspaceLink: (target: string) => string;
+  openWorkspaceEmbedSource: (target: string) => string;
+  circularWorkspaceEmbed: (target: string) => string;
+  workspaceEmbedDepthLimit: (target: string) => string;
   dismissNotification: string;
   jsonClose: string;
   jsonOpen: string;
@@ -94,6 +97,9 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     nothingToPreview: "Nothing to preview",
     brokenWorkspaceLink: (target) => `Broken workspace link: ${target}`,
     ambiguousWorkspaceLink: (target) => `Ambiguous workspace link: ${target}`,
+    openWorkspaceEmbedSource: (target) => `Open embedded source: ${target}`,
+    circularWorkspaceEmbed: (target) => `Circular embed stopped: ${target}`,
+    workspaceEmbedDepthLimit: (target) => `Embed depth limit reached: ${target}`,
     dismissNotification: "Dismiss notification",
     jsonClose: "Close export link dialog",
     jsonOpen: "Open export link",
@@ -153,6 +159,9 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     nothingToPreview: "미리 볼 내용이 없습니다",
     brokenWorkspaceLink: (target) => `깨진 워크스페이스 링크: ${target}`,
     ambiguousWorkspaceLink: (target) => `대상이 모호한 워크스페이스 링크: ${target}`,
+    openWorkspaceEmbedSource: (target) => `삽입된 원본 열기: ${target}`,
+    circularWorkspaceEmbed: (target) => `순환 삽입을 중단했습니다: ${target}`,
+    workspaceEmbedDepthLimit: (target) => `삽입 깊이 제한에 도달했습니다: ${target}`,
     dismissNotification: "알림 닫기",
     jsonClose: "내보내기 링크 창 닫기",
     jsonOpen: "내보내기 링크 열기",
@@ -212,6 +221,9 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     nothingToPreview: "プレビューする内容がありません",
     brokenWorkspaceLink: (target) => `壊れたワークスペースリンク: ${target}`,
     ambiguousWorkspaceLink: (target) => `あいまいなワークスペースリンク: ${target}`,
+    openWorkspaceEmbedSource: (target) => `埋め込み元を開く: ${target}`,
+    circularWorkspaceEmbed: (target) => `循環埋め込みを停止しました: ${target}`,
+    workspaceEmbedDepthLimit: (target) => `埋め込みの深さ上限に達しました: ${target}`,
     dismissNotification: "通知を閉じる",
     jsonClose: "エクスポートリンクを閉じる",
     jsonOpen: "エクスポートリンクを開く",
@@ -271,6 +283,9 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     nothingToPreview: "没有可预览的内容",
     brokenWorkspaceLink: (target) => `失效的工作区链接：${target}`,
     ambiguousWorkspaceLink: (target) => `目标不明确的工作区链接：${target}`,
+    openWorkspaceEmbedSource: (target) => `打开嵌入源：${target}`,
+    circularWorkspaceEmbed: (target) => `已停止循环嵌入：${target}`,
+    workspaceEmbedDepthLimit: (target) => `已达到嵌入深度限制：${target}`,
     dismissNotification: "关闭通知",
     jsonClose: "关闭导出链接对话框",
     jsonOpen: "打开导出链接",
@@ -330,6 +345,9 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     nothingToPreview: "Nada que previsualizar",
     brokenWorkspaceLink: (target) => `Enlace roto del espacio de trabajo: ${target}`,
     ambiguousWorkspaceLink: (target) => `Enlace ambiguo del espacio de trabajo: ${target}`,
+    openWorkspaceEmbedSource: (target) => `Abrir fuente incrustada: ${target}`,
+    circularWorkspaceEmbed: (target) => `Se detuvo la inclusión circular: ${target}`,
+    workspaceEmbedDepthLimit: (target) => `Se alcanzó el límite de profundidad: ${target}`,
     dismissNotification: "Cerrar notificación",
     jsonClose: "Cerrar diálogo del enlace exportado",
     jsonOpen: "Abrir enlace exportado",
@@ -389,6 +407,9 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     nothingToPreview: "Rien à prévisualiser",
     brokenWorkspaceLink: (target) => `Lien d’espace de travail rompu : ${target}`,
     ambiguousWorkspaceLink: (target) => `Lien d’espace de travail ambigu : ${target}`,
+    openWorkspaceEmbedSource: (target) => `Ouvrir la source intégrée : ${target}`,
+    circularWorkspaceEmbed: (target) => `Intégration circulaire arrêtée : ${target}`,
+    workspaceEmbedDepthLimit: (target) => `Limite de profondeur atteinte : ${target}`,
     dismissNotification: "Fermer la notification",
     jsonClose: "Fermer la boîte de dialogue du lien exporté",
     jsonOpen: "Ouvrir le lien exporté",
@@ -448,6 +469,9 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     nothingToPreview: "Nichts für die Vorschau",
     brokenWorkspaceLink: (target) => `Defekter Workspace-Link: ${target}`,
     ambiguousWorkspaceLink: (target) => `Mehrdeutiger Workspace-Link: ${target}`,
+    openWorkspaceEmbedSource: (target) => `Eingebettete Quelle öffnen: ${target}`,
+    circularWorkspaceEmbed: (target) => `Zirkuläre Einbettung gestoppt: ${target}`,
+    workspaceEmbedDepthLimit: (target) => `Maximale Einbettungstiefe erreicht: ${target}`,
     dismissNotification: "Benachrichtigung schließen",
     jsonClose: "Dialog des Exportlinks schließen",
     jsonOpen: "Exportlink öffnen",

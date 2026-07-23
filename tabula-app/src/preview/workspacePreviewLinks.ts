@@ -1,4 +1,5 @@
 import type {
+  DocumentLinkRelation,
   DocumentLinkSyntax,
   WorkspaceKnowledgeIndex,
   WorkspaceKnowledgeLink,
@@ -10,22 +11,34 @@ const getMatchingMarkdownLink = (
   sourceDocumentId: string,
   target: string,
   syntax: DocumentLinkSyntax,
+  relation?: DocumentLinkRelation,
 ): WorkspaceKnowledgeLink | undefined =>
   index.outgoingLinksByDocumentId
     .get(sourceDocumentId)
-    ?.find((link) => link.syntax === syntax && link.target === target);
+    ?.find((link) =>
+      link.syntax === syntax &&
+      link.target === target &&
+      (relation === undefined || link.relation === relation)
+    );
 
 export const resolveMarkdownPreviewWorkspaceLink = (
   index: WorkspaceKnowledgeIndex | undefined,
   sourceDocumentId: string | undefined,
   target: string,
   syntax: DocumentLinkSyntax = "markdown",
+  relation?: DocumentLinkRelation,
 ): MarkdownPreviewWorkspaceLink | undefined => {
   if (!index || !sourceDocumentId) {
     return undefined;
   }
 
-  const link = getMatchingMarkdownLink(index, sourceDocumentId, target, syntax);
+  const link = getMatchingMarkdownLink(
+    index,
+    sourceDocumentId,
+    target,
+    syntax,
+    relation,
+  );
   if (!link || link.status === "external") {
     return undefined;
   }

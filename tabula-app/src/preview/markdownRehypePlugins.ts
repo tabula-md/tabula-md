@@ -193,6 +193,44 @@ const createPreviewSourceLinePlugin = (lineOffset = 0) => () => {
   return (tree: HastNode) => walk(tree);
 };
 
+export const namespacePreviewIds = (tree: HastNode, prefix: string) => {
+  const idMap = new Map<string, string>();
+  const collectIds = (node: HastNode) => {
+    const id = node.properties?.id;
+    if (typeof id === "string" && id.length > 0) {
+      idMap.set(id, `${prefix}${id}`);
+    }
+    node.children?.forEach(collectIds);
+  };
+  const rewriteReferences = (node: HastNode) => {
+    if (node.properties) {
+      const id = node.properties.id;
+      if (typeof id === "string" && idMap.has(id)) {
+        node.properties.id = idMap.get(id);
+      }
+      const href = node.properties.href;
+      if (typeof href === "string" && href.startsWith("#")) {
+        const nextId = idMap.get(href.slice(1));
+        if (nextId) node.properties.href = `#${nextId}`;
+      }
+      for (const property of ["ariaDescribedBy", "ariaLabelledBy"]) {
+        const references = node.properties[property];
+        if (typeof references !== "string") continue;
+        node.properties[property] = references
+          .split(/\s+/)
+          .map((reference) => idMap.get(reference) ?? reference)
+          .join(" ");
+      }
+    }
+    node.children?.forEach(rewriteReferences);
+  };
+  collectIds(tree);
+  rewriteReferences(tree);
+};
+
+const createPreviewIdNamespacePlugin = (prefix: string) => () => (tree: HastNode) =>
+  namespacePreviewIds(tree, prefix);
+
 export const createPreviewCommentAnchorPlugin = (
   commentAnchors: MarkdownPreviewCommentAnchor[] = [],
   activeCommentId: string | null | undefined,
@@ -366,6 +404,8 @@ export const createPreviewRehypePlugins = (
   commentAnchorPlugins: MarkdownRehypePlugins,
   lineOffset = 0,
   options: {
+    idPrefix?: string;
+    includeSourceLineMetadata?: boolean;
     previewSearchPlugin?: MarkdownRehypePlugins[number] | null;
     stripFootnoteSection?: boolean;
     stripGeneratedFootnoteReferences?: boolean;
@@ -375,8 +415,11 @@ export const createPreviewRehypePlugins = (
   [rehypeSanitize, PREVIEW_SANITIZE_SCHEMA],
   createPreviewDocsBlockPlugin,
   rehypeSlug,
+  ...(options.idPrefix ? [createPreviewIdNamespacePlugin(options.idPrefix)] : []),
   createPreviewAlertPlugin,
-  createPreviewSourceLinePlugin(lineOffset),
+  ...(options.includeSourceLineMetadata === false
+    ? []
+    : [createPreviewSourceLinePlugin(lineOffset)]),
   ...(options.stripFootnoteSection ? [createStripFootnoteSectionPlugin] : []),
   ...(options.stripGeneratedFootnoteReferences ? [createFootnoteCollectorPlugin] : []),
   ...commentAnchorPlugins,
