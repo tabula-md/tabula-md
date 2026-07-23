@@ -175,6 +175,7 @@ export function useWorkspaceRuntime() {
   const [pendingPreviewNavigation, setPendingPreviewNavigation] = useState<{
     documentId: string;
     fragment: string;
+    sourceLineNumber?: number;
   } | null>(null);
   const editorDocumentRuntime = useWorkspaceEditorDocumentRuntimeOwner();
   const [roomDocumentProjectionStore] = useState(() =>
@@ -819,7 +820,11 @@ export function useWorkspaceRuntime() {
       : "";
     setPendingPreviewNavigation(
       decodedFragment
-        ? { documentId: link.targetDocumentId, fragment: decodedFragment }
+        ? {
+            documentId: link.targetDocumentId,
+            fragment: decodedFragment,
+            sourceLineNumber: link.sourceLineNumber,
+          }
         : null,
     );
 
@@ -851,7 +856,14 @@ export function useWorkspaceRuntime() {
         return;
       }
       attempts += 1;
-      if (attempts < 12) {
+      if (attempts === 1 && pendingPreviewNavigation.sourceLineNumber) {
+        previewRef.current?.followEditorPosition({
+          atDocumentEnd: false,
+          lineNumber: pendingPreviewNavigation.sourceLineNumber,
+          lineOffsetRatio: 0,
+        });
+      }
+      if (attempts < 90) {
         frameId = window.requestAnimationFrame(scrollToFragment);
       } else {
         setPendingPreviewNavigation(null);

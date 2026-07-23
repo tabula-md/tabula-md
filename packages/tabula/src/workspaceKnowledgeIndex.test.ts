@@ -43,6 +43,8 @@ describe("workspace knowledge index", () => {
     expect(analysis.headings).toEqual([
       {
         depth: 1,
+        id: "start-here",
+        sourceLineNumber: 9,
         text: "Start here",
         from: markdown.indexOf("# Start"),
         to: markdown.indexOf("# Start") + "# Start *here*".length,
@@ -133,6 +135,7 @@ describe("workspace knowledge index", () => {
           "[Local query](./Local.md?view=all#setup)",
           "[Architecture](/Architecture.md)",
           "[This section](#intro)",
+          "[Missing section](#missing-section)",
           "[Website](https://tabula.md/docs)",
           "[Email](mailto:hello@tabula.md)",
           "[Missing](Missing.md)",
@@ -160,6 +163,7 @@ describe("workspace knowledge index", () => {
       { label: "Local query", status: "resolved", targetDocumentId: "local", targetPath: "docs/Local.md", fragment: "setup" },
       { label: "Architecture", status: "resolved", targetDocumentId: "architecture", targetPath: "Architecture.md", fragment: undefined },
       { label: "This section", status: "resolved", targetDocumentId: "start", targetPath: "docs/Start.md", fragment: "intro" },
+      { label: "Missing section", status: "broken", targetDocumentId: undefined, targetPath: "docs/Start.md", fragment: "missing-section" },
       { label: "Website", status: "external", targetDocumentId: undefined, targetPath: undefined, fragment: undefined },
       { label: "Email", status: "external", targetDocumentId: undefined, targetPath: undefined, fragment: undefined },
       { label: "Missing", status: "broken", targetDocumentId: undefined, targetPath: "docs/Missing.md", fragment: undefined },
@@ -176,6 +180,7 @@ describe("workspace knowledge index", () => {
       "This section",
     ]);
     expect(index.brokenLinks.map((link) => link.label)).toEqual([
+      "Missing section",
       "Missing",
       "Wrong case",
       "Outside",
@@ -242,7 +247,7 @@ describe("workspace knowledge index", () => {
           "[[local]]",
         ].join("\n"),
       ),
-      document("local", "notes/Local.md", "# Local"),
+      document("local", "notes/Local.md", "# Local\n\n## Part"),
       document("other-local", "archive/Local.md", "# Other local"),
       document("unique", "archive/Unique.markdown", "# Unique"),
       document("shared-a", "a/Shared.md", "# Shared A"),
@@ -262,12 +267,12 @@ describe("workspace knowledge index", () => {
       candidateDocumentIds: link.candidateDocumentIds,
     }))).toEqual([
       { label: "Local", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "local", fragment: undefined, candidateDocumentIds: undefined },
-      { label: "Local#Part", syntax: "wikilink", relation: "embed", status: "resolved", targetDocumentId: "local", fragment: "Part", candidateDocumentIds: undefined },
+      { label: "Local#Part", syntax: "wikilink", relation: "embed", status: "resolved", targetDocumentId: "local", fragment: "part", candidateDocumentIds: undefined },
       { label: "Only one", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "unique", fragment: undefined, candidateDocumentIds: undefined },
       { label: "Shared", syntax: "wikilink", relation: "link", status: "ambiguous", targetDocumentId: undefined, fragment: undefined, candidateDocumentIds: ["shared-a", "shared-b"] },
       { label: "/Architecture", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "architecture", fragment: undefined, candidateDocumentIds: undefined },
       { label: "../API Guide", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "api", fragment: undefined, candidateDocumentIds: undefined },
-      { label: "#Intro", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "start", fragment: "Intro", candidateDocumentIds: undefined },
+      { label: "#Intro", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "start", fragment: "intro", candidateDocumentIds: undefined },
       { label: "Missing", syntax: "wikilink", relation: "link", status: "broken", targetDocumentId: undefined, fragment: undefined, candidateDocumentIds: undefined },
       { label: "local", syntax: "wikilink", relation: "link", status: "broken", targetDocumentId: undefined, fragment: undefined, candidateDocumentIds: undefined },
     ]);
