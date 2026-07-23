@@ -5,7 +5,11 @@ import {
   type RefObject,
 } from "react";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
-import type { MarkdownHeading, WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
+import type {
+  MarkdownHeading,
+  WorkspaceKnowledgeIndex,
+  WorkspaceKnowledgeLink,
+} from "@tabula-md/tabula";
 import {
   getActiveOutlineHeadingIndex,
   getOutlineHeadingOffsets,
@@ -47,6 +51,7 @@ type RightPanelHandlers = Pick<
   | "onRenameFolder"
   | "onMoveFileToFolder"
   | "onMoveFolder"
+  | "onResolveAmbiguousLink"
   | "onSelectFile"
   | "onSetActiveFileOkfType"
   | "onStartCommentReply"
@@ -124,6 +129,7 @@ export function useWorkspaceRightPanelController({
   onMoveFileToFolder,
   onMoveFolder,
   onReplyDraftChange,
+  onResolveAmbiguousLink,
   onSelectFile,
   onSetActiveFileOkfType,
   onStartCommentReply,
@@ -224,6 +230,10 @@ export function useWorkspaceRightPanelController({
   const setPanelView = useCallback((nextView: RightPanelView) => {
     setRightPanelView(nextView);
   }, [setRightPanelView]);
+  const focusLinkSource = useCallback(
+    (link: WorkspaceKnowledgeLink) => focusTextRange(link.from, link.to),
+    [focusTextRange],
+  );
 
   const rightPanelProps: WorkspaceRightPanelProps = {
     isOpen: rightPanelOpen,
@@ -255,6 +265,8 @@ export function useWorkspaceRightPanelController({
     onNewFolder,
     onImportFile,
     onSelectFile,
+    onFocusLinkSource: focusLinkSource,
+    onResolveAmbiguousLink,
     onSetActiveFileOkfType,
     onRenameFile,
     onDuplicateFile,

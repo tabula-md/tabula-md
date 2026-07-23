@@ -66,19 +66,14 @@
   border-radius: var(--right-row-radius);
   color: var(--text-soft);
   background: transparent;
+  text-decoration: none;
   text-align: left;
 }
 
-button.right-links-row:hover,
-button.right-links-row:focus-visible,
-.right-links-candidate:hover,
-.right-links-candidate:focus-visible {
+.right-links-row:hover,
+.right-links-row:focus-visible {
   color: var(--text-primary);
   background: var(--surface-hover);
-}
-
-.right-links-row.static {
-  min-height: 38px;
 }
 
 .right-links-kind-icon {
@@ -102,8 +97,7 @@ button.right-links-row:focus-visible,
 }
 
 .right-links-row-title,
-.right-links-row-target,
-.right-links-candidate {
+.right-links-row-target {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -121,18 +115,12 @@ button.right-links-row:focus-visible,
   font-size: var(--font-ui-secondary);
 }
 
-.right-links-ambiguous-item {
+.right-links-target-with-resolver {
   display: grid;
   gap: 2px;
 }
 
-.right-links-candidate-count {
-  padding: 0 var(--right-row-x) 0 calc(var(--right-row-x) + var(--right-icon-size) + var(--right-tight-gap));
-  color: var(--text-muted);
-  font-size: var(--font-ui-secondary);
-}
-
-.right-links-candidates {
+.right-links-resolver {
   display: grid;
   gap: 1px;
   margin-left: calc(var(--right-row-x) + var(--right-icon-size));
@@ -140,42 +128,7 @@ button.right-links-row:focus-visible,
   border-left: 1px solid var(--line-subtle);
 }
 
-.right-links-candidate {
-  display: grid;
-  grid-template-columns: var(--right-icon-size) minmax(0, 1fr);
-  align-content: center;
-  align-items: center;
-  gap: var(--right-tight-gap);
-  width: 100%;
+.right-links-resolver-option {
   min-height: 38px;
-  padding: 4px var(--right-row-x);
-  border-radius: var(--right-row-radius);
-  color: var(--text-soft);
-  background: transparent;
-  font-size: var(--font-ui-secondary);
-  text-align: left;
-}
-
-.right-links-candidate-text {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.right-links-candidate-text span,
-.right-links-candidate small {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.right-links-candidate-text span {
-  color: var(--text-primary);
-}
-
-.right-links-candidate small {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--font-ui-caption);
+  padding-block: 4px;
 }

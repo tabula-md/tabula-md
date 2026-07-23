@@ -30,6 +30,7 @@
     "test:browser:editor-certification": "npm run test:browser -- --suite=editor-certification",
     "test:browser:layout": "npm run test:browser -- --suite=layout",
     "test:browser:panels": "npm run test:browser -- --suite=panels",
+    "test:browser:knowledge": "npm run test:browser -- --suite=knowledge-links",
     "test:browser:collab": "npm run test:browser -- --suite=collaboration",
     "test:browser:collaboration-editor-torture": "npm run test:browser -- --suite=collaboration-editor-torture",
     "test:browser:collaboration-memory": "npm run test:browser -- --suite=collaboration-memory",

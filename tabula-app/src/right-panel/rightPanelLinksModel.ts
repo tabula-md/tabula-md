@@ -1,55 +1,47 @@
 import type {
-  DocumentLinkRelation,
   WorkspaceKnowledgeIndex,
   WorkspaceKnowledgeLink,
 } from "@tabula-md/tabula";
 
-export type RightPanelResolvedLinkGroup = {
-  documentId: string;
-  relation: DocumentLinkRelation;
-  fragment?: string;
+export type RightPanelLinkTargetGroup = {
+  key: string;
+  status: WorkspaceKnowledgeLink["status"];
+  link: WorkspaceKnowledgeLink;
   links: readonly WorkspaceKnowledgeLink[];
-  mentionCount: number;
+  documentId?: string;
+};
+
+export type RightPanelDocumentLinkGroup = {
+  documentId: string;
+  links: readonly WorkspaceKnowledgeLink[];
 };
 
 export type RightPanelLinksModel = {
-  outgoing: readonly RightPanelResolvedLinkGroup[];
-  backlinks: readonly RightPanelResolvedLinkGroup[];
-  external: readonly WorkspaceKnowledgeLink[];
-  issues: readonly WorkspaceKnowledgeLink[];
+  outgoing: readonly RightPanelLinkTargetGroup[];
+  backlinks: readonly RightPanelDocumentLinkGroup[];
 };
 
-const groupResolvedLinks = (
+const groupDocumentLinks = (
   links: readonly WorkspaceKnowledgeLink[],
   getDocumentId: (link: WorkspaceKnowledgeLink) => string | undefined,
-  includeFragment: boolean,
 ) => {
-  const groupsByKey = new Map<string, {
+  const groupsByDocumentId = new Map<string, {
     documentId: string;
-    relation: DocumentLinkRelation;
-    fragment?: string;
     links: WorkspaceKnowledgeLink[];
   }>();
 
   for (const link of links) {
     const documentId = getDocumentId(link);
     if (!documentId) continue;
-    const fragment = includeFragment ? link.fragment : undefined;
-    const key = `${documentId}:${link.relation}:${fragment ?? ""}`;
-    const group = groupsByKey.get(key) ?? {
+    const group = groupsByDocumentId.get(documentId) ?? {
       documentId,
-      relation: link.relation,
-      fragment,
       links: [],
     };
     group.links.push(link);
-    groupsByKey.set(key, group);
+    groupsByDocumentId.set(documentId, group);
   }
 
-  return [...groupsByKey.values()].map((group) => ({
-    ...group,
-    mentionCount: group.links.length,
-  }));
+  return [...groupsByDocumentId.values()];
 };
 
 export const getRightPanelLinksModel = (
@@ -57,27 +49,39 @@ export const getRightPanelLinksModel = (
   activeDocumentId: string,
 ): RightPanelLinksModel => {
   const outgoingLinks = index.outgoingLinksByDocumentId.get(activeDocumentId) ?? [];
-  const outgoing = groupResolvedLinks(
-    outgoingLinks.filter((link) =>
-      link.status === "resolved" &&
-      link.targetDocumentId !== activeDocumentId),
-    (link) => link.targetDocumentId,
-    true,
-  );
-  const backlinks = groupResolvedLinks(
+  const outgoingByKey = new Map<string, {
+    key: string;
+    status: WorkspaceKnowledgeLink["status"];
+    link: WorkspaceKnowledgeLink;
+    links: WorkspaceKnowledgeLink[];
+    documentId?: string;
+  }>();
+  for (const link of outgoingLinks) {
+    if (link.status === "resolved" && link.targetDocumentId === activeDocumentId) {
+      continue;
+    }
+    const targetKey = link.status === "resolved"
+      ? `document:${link.targetDocumentId ?? link.target}`
+      : `${link.status}:${link.targetPath ?? link.target}`;
+    const key = `${activeDocumentId}:${targetKey}`;
+    const group = outgoingByKey.get(key) ?? {
+      key,
+      status: link.status,
+      link,
+      links: [],
+      documentId: link.targetDocumentId,
+    };
+    group.links.push(link);
+    outgoingByKey.set(key, group);
+  }
+  const backlinks = groupDocumentLinks(
     (index.backlinksByDocumentId.get(activeDocumentId) ?? [])
       .filter((link) => link.sourceDocumentId !== activeDocumentId),
     (link) => link.sourceDocumentId,
-    false,
   );
-  const external = outgoingLinks.filter((link) => link.status === "external");
-  const issues = outgoingLinks.filter((link) =>
-    link.status === "broken" || link.status === "ambiguous");
 
   return {
-    outgoing,
+    outgoing: [...outgoingByKey.values()],
     backlinks,
-    external,
-    issues,
   };
 };
