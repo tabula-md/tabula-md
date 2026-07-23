@@ -34,7 +34,12 @@ export const PREVIEW_SANITIZE_SCHEMA: SanitizeSchema = {
   attributes: {
     ...defaultSchema.attributes,
     abbr: ["title"],
-    a: [...(defaultSchema.attributes?.a ?? []), "title"],
+    a: [
+      ...(defaultSchema.attributes?.a ?? []),
+      "dataWikilinkRelation",
+      "dataWikilinkTarget",
+      "title",
+    ],
     card: ["href", "icon", "img", "title", "horizontal"],
     cardgroup: ["cols"],
     details: ["open"],

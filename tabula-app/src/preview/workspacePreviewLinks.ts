@@ -1,4 +1,5 @@
 import type {
+  DocumentLinkSyntax,
   WorkspaceKnowledgeIndex,
   WorkspaceKnowledgeLink,
 } from "@tabula-md/tabula";
@@ -7,22 +8,24 @@ import type { MarkdownPreviewWorkspaceLink } from "./markdownPreviewTypes";
 const getMatchingMarkdownLink = (
   index: WorkspaceKnowledgeIndex,
   sourceDocumentId: string,
-  href: string,
+  target: string,
+  syntax: DocumentLinkSyntax,
 ): WorkspaceKnowledgeLink | undefined =>
   index.outgoingLinksByDocumentId
     .get(sourceDocumentId)
-    ?.find((link) => link.syntax === "markdown" && link.target === href);
+    ?.find((link) => link.syntax === syntax && link.target === target);
 
 export const resolveMarkdownPreviewWorkspaceLink = (
   index: WorkspaceKnowledgeIndex | undefined,
   sourceDocumentId: string | undefined,
-  href: string,
+  target: string,
+  syntax: DocumentLinkSyntax = "markdown",
 ): MarkdownPreviewWorkspaceLink | undefined => {
   if (!index || !sourceDocumentId) {
     return undefined;
   }
 
-  const link = getMatchingMarkdownLink(index, sourceDocumentId, href);
+  const link = getMatchingMarkdownLink(index, sourceDocumentId, target, syntax);
   if (!link || link.status === "external") {
     return undefined;
   }
@@ -36,6 +39,8 @@ export const resolveMarkdownPreviewWorkspaceLink = (
       : undefined;
     return {
       status: "resolved",
+      relation: link.relation,
+      syntax: link.syntax,
       targetDocumentId: link.targetDocumentId,
       targetPath: link.targetPath,
       fragment: link.fragment,
@@ -46,6 +51,8 @@ export const resolveMarkdownPreviewWorkspaceLink = (
   if (link.status === "broken" || link.status === "ambiguous") {
     return {
       status: link.status,
+      relation: link.relation,
+      syntax: link.syntax,
       targetPath: link.targetPath,
     };
   }

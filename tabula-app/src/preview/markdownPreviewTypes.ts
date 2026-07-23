@@ -1,4 +1,6 @@
 import type {
+  DocumentLinkRelation,
+  DocumentLinkSyntax,
   LineSurfaceAnnotation,
   TextChange,
 } from "@tabula-md/tabula";
@@ -25,6 +27,8 @@ export type MarkdownPreviewLineActionRequest = MarkdownPreviewLineAnnotation & {
 export type MarkdownPreviewWorkspaceLink =
   | {
       status: "resolved";
+      relation: DocumentLinkRelation;
+      syntax: DocumentLinkSyntax;
       targetDocumentId: string;
       targetPath?: string;
       fragment?: string;
@@ -32,6 +36,8 @@ export type MarkdownPreviewWorkspaceLink =
     }
   | {
       status: "broken" | "ambiguous";
+      relation: DocumentLinkRelation;
+      syntax: DocumentLinkSyntax;
       targetPath?: string;
     };
 
@@ -56,6 +62,9 @@ export type MarkdownPreviewProps = {
   onOpenWorkspaceLink?: (
     link: Extract<MarkdownPreviewWorkspaceLink, { status: "resolved" }>,
   ) => void;
-  resolveWorkspaceLink?: (href: string) => MarkdownPreviewWorkspaceLink | undefined;
+  resolveWorkspaceLink?: (
+    target: string,
+    syntax?: DocumentLinkSyntax,
+  ) => MarkdownPreviewWorkspaceLink | undefined;
   onToggleTaskLine?: (sourceLineIndex: number) => void;
 };
