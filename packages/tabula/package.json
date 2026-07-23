@@ -96,6 +96,7 @@
     "prepack": "npm run build && node ../../scripts/check-tabula-package.mjs"
   },
   "dependencies": {
+    "mdast-util-from-markdown": "^2.0.3",
     "yaml": "^2.9.0"
   },
   "peerDependencies": {

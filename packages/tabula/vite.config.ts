@@ -35,6 +35,7 @@ export default defineConfig({
         "@tabula-md/tabula",
         "lib0/decoding",
         "lib0/encoding",
+        "mdast-util-from-markdown",
         "react",
         "react-dom",
         "react-dom/client",
