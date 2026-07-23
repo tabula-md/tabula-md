@@ -62,6 +62,10 @@ type WorkspaceInterfaceMessages = {
   linksGoToBroken: string;
   linksChooseAmbiguous: string;
   linksResolveWith: string;
+  linksNotFound: string;
+  linksMatchCount: string;
+  linksExpandSection: string;
+  linksCollapseSection: string;
   graphFor: string;
   graphTitle: string;
   graphSummary: string;
@@ -170,6 +174,10 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksGoToBroken: "Document not found — go to source: {{name}}",
     linksChooseAmbiguous: "{{count}} matching documents — choose target for {{name}}",
     linksResolveWith: "Resolve link with {{name}}",
+    linksNotFound: "Not found",
+    linksMatchCount: "{{count}} matches",
+    linksExpandSection: "Expand {{name}}",
+    linksCollapseSection: "Collapse {{name}}",
     graphFor: "Workspace graph, current document: {{name}}",
     graphTitle: "Workspace graph",
     graphSummary: "{{documents}} docs · {{links}} links",
@@ -277,6 +285,10 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksGoToBroken: "문서를 찾을 수 없음 — 원문으로 이동: {{name}}",
     linksChooseAmbiguous: "일치하는 문서 {{count}}개 — {{name}} 대상 선택",
     linksResolveWith: "{{name}} 문서로 링크 확정",
+    linksNotFound: "찾을 수 없음",
+    linksMatchCount: "{{count}}개 일치",
+    linksExpandSection: "{{name}} 펼치기",
+    linksCollapseSection: "{{name}} 접기",
     graphFor: "{{name}}의 로컬 그래프",
     graphTitle: "로컬 그래프",
     graphSummary: "문서 {{documents}} · 링크 {{links}}",
@@ -384,6 +396,10 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksGoToBroken: "ドキュメントが見つかりません — 元の位置へ移動: {{name}}",
     linksChooseAmbiguous: "一致するドキュメント {{count}} 件 — {{name}} のリンク先を選択",
     linksResolveWith: "{{name}} でリンク先を確定",
+    linksNotFound: "見つかりません",
+    linksMatchCount: "{{count}} 件一致",
+    linksExpandSection: "{{name}} を展開",
+    linksCollapseSection: "{{name}} を折りたたむ",
     graphFor: "{{name}} のローカルグラフ",
     graphTitle: "ローカルグラフ",
     graphSummary: "文書 {{documents}} · リンク {{links}}",
@@ -491,6 +507,10 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksGoToBroken: "找不到文档 — 转到原文：{{name}}",
     linksChooseAmbiguous: "{{count}} 个匹配文档 — 为 {{name}} 选择目标",
     linksResolveWith: "将链接确定为 {{name}}",
+    linksNotFound: "未找到",
+    linksMatchCount: "{{count}} 个匹配",
+    linksExpandSection: "展开 {{name}}",
+    linksCollapseSection: "折叠 {{name}}",
     graphFor: "{{name}} 的局部关系图",
     graphTitle: "局部关系图",
     graphSummary: "文档 {{documents}} · 链接 {{links}}",
@@ -597,6 +617,10 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksGoToBroken: "Documento no encontrado — ir al origen: {{name}}",
     linksChooseAmbiguous: "{{count}} documentos coincidentes — elegir destino para {{name}}",
     linksResolveWith: "Resolver el enlace con {{name}}",
+    linksNotFound: "No encontrado",
+    linksMatchCount: "{{count}} coincidencias",
+    linksExpandSection: "Expandir {{name}}",
+    linksCollapseSection: "Contraer {{name}}",
     graphFor: "Grafo local de {{name}}",
     graphTitle: "Grafo local",
     graphSummary: "{{documents}} docs · {{links}} enlaces",
@@ -704,6 +728,10 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksGoToBroken: "Document introuvable — accéder à la source : {{name}}",
     linksChooseAmbiguous: "{{count}} documents correspondants — choisir la cible de {{name}}",
     linksResolveWith: "Résoudre le lien avec {{name}}",
+    linksNotFound: "Introuvable",
+    linksMatchCount: "{{count}} correspondances",
+    linksExpandSection: "Développer {{name}}",
+    linksCollapseSection: "Réduire {{name}}",
     graphFor: "Graphe local de {{name}}",
     graphTitle: "Graphe local",
     graphSummary: "{{documents}} docs · {{links}} liens",
@@ -811,6 +839,10 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksGoToBroken: "Dokument nicht gefunden — zur Quelle gehen: {{name}}",
     linksChooseAmbiguous: "{{count}} passende Dokumente — Ziel für {{name}} auswählen",
     linksResolveWith: "Link mit {{name}} auflösen",
+    linksNotFound: "Nicht gefunden",
+    linksMatchCount: "{{count}} Treffer",
+    linksExpandSection: "{{name}} ausklappen",
+    linksCollapseSection: "{{name}} einklappen",
     graphFor: "Lokaler Graph für {{name}}",
     graphTitle: "Lokaler Graph",
     graphSummary: "{{documents}} Dok. · {{links}} Links",
@@ -949,6 +981,10 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         chooseAmbiguous: (count: number, name: string) =>
           format(copy.linksChooseAmbiguous, { count, name }),
         resolveWith: (name: string) => format(copy.linksResolveWith, { name }),
+        notFound: copy.linksNotFound,
+        matchCount: (count: number) => format(copy.linksMatchCount, { count }),
+        expandSection: (name: string) => format(copy.linksExpandSection, { name }),
+        collapseSection: (name: string) => format(copy.linksCollapseSection, { name }),
       },
       graph: {
         forFile: (name: string) => format(copy.graphFor, { name }),
