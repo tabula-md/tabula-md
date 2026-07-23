@@ -2,6 +2,8 @@ import { decodeEncryptedData, encodeEncryptedData } from "./data/encode";
 import { WORKSPACE_ROOM_SCHEMA_VERSION } from "./workspaceRoomModel";
 
 export const ROOM_CHECKPOINT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+export const ROOM_CHECKPOINT_QUIET_SAVE_DELAY_MS = 5_000;
+export const ROOM_CHECKPOINT_MAX_SAVE_DELAY_MS = 20_000;
 
 export type WorkspaceRoomCheckpointMetadata = {
   kind: "workspace-room-crdt";

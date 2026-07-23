@@ -2,6 +2,8 @@ import * as Y from "yjs";
 import {
   createWorkspaceRoomCrdt,
   getWorkspaceRoomSnapshot,
+  ROOM_CHECKPOINT_MAX_SAVE_DELAY_MS,
+  ROOM_CHECKPOINT_QUIET_SAVE_DELAY_MS,
   ROOM_WIRE_MAX_CRDT_STATE_BYTES,
   validateWorkspaceRoomLimits,
   validateWorkspaceRoomStructure,
@@ -15,7 +17,6 @@ import {
   type RoomCheckpointStore,
 } from "../roomCheckpointStore";
 
-const SAVE_DELAY_MS = 5_000;
 const RETRY_BASE_DELAY_MS = 1_000;
 const RETRY_MAX_DELAY_MS = 30_000;
 
@@ -73,13 +74,37 @@ export const createCheckpointCoordinator = ({
   let saveInFlight = false;
   let saveRequested = false;
   let retryAttempt = 0;
-  let timer: unknown;
+  let quietSaveTimer: unknown;
+  let maxSaveTimer: unknown;
+  let retryTimer: unknown;
   let disposed = false;
 
-  const clearTimer = () => {
-    if (!timer) return;
-    clock.clearTimeout(timer);
-    timer = undefined;
+  const clearQuietSaveTimer = () => {
+    if (!quietSaveTimer) return;
+    clock.clearTimeout(quietSaveTimer);
+    quietSaveTimer = undefined;
+  };
+
+  const clearMaxSaveTimer = () => {
+    if (!maxSaveTimer) return;
+    clock.clearTimeout(maxSaveTimer);
+    maxSaveTimer = undefined;
+  };
+
+  const clearRetryTimer = () => {
+    if (!retryTimer) return;
+    clock.clearTimeout(retryTimer);
+    retryTimer = undefined;
+  };
+
+  const clearSaveTimers = () => {
+    clearQuietSaveTimer();
+    clearMaxSaveTimer();
+  };
+
+  const clearTimers = () => {
+    clearSaveTimers();
+    clearRetryTimer();
   };
 
   const validateCheckpointUpdate = (update: Uint8Array) => {
@@ -125,11 +150,11 @@ export const createCheckpointCoordinator = ({
 
   const scheduleRetry = () => {
     if (disposed || isClosed() || !store.enabled || !isLeader()) return;
-    clearTimer();
+    clearTimers();
     const delay = Math.min(RETRY_MAX_DELAY_MS, RETRY_BASE_DELAY_MS * (2 ** retryAttempt));
     retryAttempt += 1;
-    timer = clock.setTimeout(() => {
-      timer = undefined;
+    retryTimer = clock.setTimeout(() => {
+      retryTimer = undefined;
       void saveNow();
     }, delay);
   };
@@ -142,11 +167,11 @@ export const createCheckpointCoordinator = ({
       return;
     }
     onDurabilityChange("dirty");
-    scheduleSave();
+    scheduleSave(false);
   };
 
   async function saveNow(): Promise<void> {
-    clearTimer();
+    clearTimers();
     if (disposed || isClosed() || !roomKey || !store.enabled) return;
     if (!isLeader()) {
       onDurabilityChange("unknown");
@@ -200,25 +225,33 @@ export const createCheckpointCoordinator = ({
     }
   }
 
-  function scheduleSave() {
+  function scheduleSave(resetQuietTimer = true) {
     if (disposed || isClosed() || !roomKey || !store.enabled) return;
     if (!isLeader()) {
       onDurabilityChange("unknown");
       return;
     }
     onDurabilityChange("dirty");
-    clearTimer();
-    timer = clock.setTimeout(() => {
-      timer = undefined;
+    clearRetryTimer();
+    if (resetQuietTimer || !quietSaveTimer) {
+      clearQuietSaveTimer();
+      quietSaveTimer = clock.setTimeout(() => {
+        quietSaveTimer = undefined;
+        void saveNow();
+      }, ROOM_CHECKPOINT_QUIET_SAVE_DELAY_MS);
+    }
+    if (maxSaveTimer) return;
+    maxSaveTimer = clock.setTimeout(() => {
+      maxSaveTimer = undefined;
       void saveNow();
-    }, SAVE_DELAY_MS);
+    }, ROOM_CHECKPOINT_MAX_SAVE_DELAY_MS);
   }
 
   return {
     dispose() {
       if (disposed) return;
       disposed = true;
-      clearTimer();
+      clearTimers();
       roomKey = null;
     },
     handleDocumentUpdate(origin: unknown) {
@@ -238,6 +271,7 @@ export const createCheckpointCoordinator = ({
       if (isLeader()) {
         if (currentDurability !== "clean") scheduleSave();
       } else if (currentDurability !== "unknown") {
+        clearTimers();
         onDurabilityChange("unknown");
       }
     },
