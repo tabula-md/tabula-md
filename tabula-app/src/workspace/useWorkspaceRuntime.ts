@@ -85,6 +85,11 @@ import {
 import { useWorkspaceLiveSessionController } from "./useWorkspaceLiveSessionController";
 import { useWorkspaceWorkbenchSurfaceController } from "../document/useWorkspaceWorkbenchSurfaceController";
 import { getWorkspaceSurfaceCopy } from "./workspaceSurfaceLocale";
+import type { MarkdownPreviewWorkspaceLink } from "../preview/markdownPreviewTypes";
+import {
+  decodeMarkdownPreviewFragment,
+  resolveMarkdownPreviewWorkspaceLink,
+} from "../preview/workspacePreviewLinks";
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -167,6 +172,10 @@ export function useWorkspaceRuntime() {
   const localPersistenceEnabled = workspaceSession.mode === "local";
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const previewRef = useRef<MarkdownPreviewHandle | null>(null);
+  const [pendingPreviewNavigation, setPendingPreviewNavigation] = useState<{
+    documentId: string;
+    fragment: string;
+  } | null>(null);
   const editorDocumentRuntime = useWorkspaceEditorDocumentRuntimeOwner();
   const [roomDocumentProjectionStore] = useState(() =>
     createActiveRoomDocumentProjectionStore());
@@ -740,7 +749,7 @@ export function useWorkspaceRuntime() {
     setPreferencesOpen,
     setTopPopover,
   });
-  const { rightPanelProps } =
+  const { knowledgeIndex, rightPanelProps } =
     useWorkspaceRightPanelController({
       activeCommentId: focusedCommentId,
       activeFile,
@@ -797,6 +806,66 @@ export function useWorkspaceRuntime() {
       setRightPanelView,
       text,
     });
+  const resolveWorkspaceLink = useMemo(
+    () => (href: string) =>
+      resolveMarkdownPreviewWorkspaceLink(knowledgeIndex, activeFileId, href),
+    [activeFileId, knowledgeIndex],
+  );
+  const openPreviewWorkspaceLink = useEventCallback((
+    link: Extract<MarkdownPreviewWorkspaceLink, { status: "resolved" }>,
+  ) => {
+    const decodedFragment = link.fragment
+      ? decodeMarkdownPreviewFragment(link.fragment)
+      : "";
+    setPendingPreviewNavigation(
+      decodedFragment
+        ? { documentId: link.targetDocumentId, fragment: decodedFragment }
+        : null,
+    );
+
+    if (link.targetDocumentId === activeFileId) {
+      return;
+    }
+
+    selectFile(link.targetDocumentId);
+    setWorkspaceFileViewMode(activeViewMode === "split" ? "split" : "preview");
+  });
+  useEffect(() => {
+    if (
+      !pendingPreviewNavigation ||
+      pendingPreviewNavigation.documentId !== activeFileId ||
+      activeViewMode === "edit"
+    ) {
+      return undefined;
+    }
+
+    let frameId = 0;
+    let attempts = 0;
+    const scrollToFragment = () => {
+      const target = Array.from(
+        previewSurfaceRef.current?.querySelectorAll<HTMLElement>("[id]") ?? [],
+      ).find((element) => element.id === pendingPreviewNavigation.fragment);
+      if (target) {
+        target.scrollIntoView({ block: "start", behavior: "smooth" });
+        setPendingPreviewNavigation(null);
+        return;
+      }
+      attempts += 1;
+      if (attempts < 12) {
+        frameId = window.requestAnimationFrame(scrollToFragment);
+      } else {
+        setPendingPreviewNavigation(null);
+      }
+    };
+    frameId = window.requestAnimationFrame(scrollToFragment);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [
+    activeFileId,
+    activeViewMode,
+    pendingPreviewNavigation,
+    previewSurfaceRef,
+    renderedPreview.body,
+  ]);
   const { shareOpen, topChromeProps } = useWorkspaceTopChromeController({
     activeFile,
     activeText: text,
@@ -901,12 +970,14 @@ export function useWorkspaceRuntime() {
     editorRef,
     focusedCommentId,
     language: workspacePreferences.language,
+    onOpenWorkspaceLink: openPreviewWorkspaceLink,
     onSetViewMode: setViewModeWithPendingCommit,
     persistence: localWorkspacePersistence,
     previewRef,
     room: roomController,
     surface: documentSurfaceController,
     toolbarLabel: workspaceChromeCopy.documentControls.documentToolbar,
+    resolveWorkspaceLink,
   });
   useWorkspaceKeyboardShortcuts({
     importInputRef,
