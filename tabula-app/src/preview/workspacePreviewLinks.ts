@@ -28,11 +28,18 @@ export const resolveMarkdownPreviewWorkspaceLink = (
   }
 
   if (link.status === "resolved" && link.targetDocumentId) {
+    const sourceLineNumber = link.fragment
+      ? index.analysesByDocumentId
+        .get(link.targetDocumentId)
+        ?.headings.find((heading) => heading.id === link.fragment)
+        ?.sourceLineNumber
+      : undefined;
     return {
       status: "resolved",
       targetDocumentId: link.targetDocumentId,
       targetPath: link.targetPath,
       fragment: link.fragment,
+      sourceLineNumber,
     };
   }
 

@@ -1,4 +1,5 @@
 import { fromMarkdown } from "mdast-util-from-markdown";
+import GithubSlugger from "github-slugger";
 import { getMarkdownDocumentTitle, parseFrontmatterData } from "./markdown/parse";
 import { isWorkspacePathSegment } from "./workspacePath";
 
@@ -10,6 +11,8 @@ export type WorkspaceSourceDocument = {
 
 export type DocumentHeadingAnalysis = {
   depth: number;
+  id: string;
+  sourceLineNumber: number;
   text: string;
   from: number;
   to: number;
@@ -67,7 +70,7 @@ type AstNode = {
   depth?: number;
   children?: AstNode[];
   position?: {
-    start: { offset?: number };
+    start: { line?: number; offset?: number };
     end: { offset?: number };
   };
 };
@@ -176,6 +179,8 @@ export const analyzeWorkspaceDocument = (document: WorkspaceSourceDocument): Doc
   const definitions = new Map<string, string>();
   const headings: DocumentHeadingAnalysis[] = [];
   const links: DocumentLinkAnalysis[] = [];
+  const headingSlugger = new GithubSlugger();
+  const bodyLineOffset = document.markdown.slice(0, parsed.bodyOffset).split("\n").length - 1;
 
   visitAst(root, (node) => {
     if (node.type === "definition" && node.identifier && typeof node.url === "string") {
@@ -195,7 +200,13 @@ export const analyzeWorkspaceDocument = (document: WorkspaceSourceDocument): Doc
     if (node.type === "heading" && node.depth) {
       const text = getNodeText(node).trim();
       if (text) {
-        headings.push({ depth: node.depth, text, ...offsets });
+        headings.push({
+          depth: node.depth,
+          id: headingSlugger.slug(text),
+          sourceLineNumber: bodyLineOffset + (node.position?.start.line ?? 1),
+          text,
+          ...offsets,
+        });
       }
       return;
     }
@@ -432,6 +443,62 @@ const resolveWikiTarget = (
       };
 };
 
+const decodeLinkFragment = (fragment: string) => {
+  try {
+    return decodeURIComponent(fragment);
+  } catch {
+    return null;
+  }
+};
+
+const resolveHeadingFragment = (
+  analysis: DocumentAnalysis | undefined,
+  fragment: string,
+  syntax: DocumentLinkSyntax,
+) => {
+  const decodedFragment = decodeLinkFragment(fragment);
+  if (!analysis || decodedFragment === null) {
+    return undefined;
+  }
+
+  if (syntax === "markdown") {
+    return analysis.headings.find((heading) => heading.id === decodedFragment)?.id;
+  }
+
+  const normalizedFragment = decodedFragment.trim().toLocaleLowerCase();
+  return analysis.headings.find((heading) =>
+    heading.id === decodedFragment ||
+    heading.text.trim().toLocaleLowerCase() === normalizedFragment
+  )?.id;
+};
+
+const validateResolvedFragment = (
+  link: DocumentLinkAnalysis,
+  resolution: InternalLinkResolution,
+  analysesByDocumentId: ReadonlyMap<string, DocumentAnalysis>,
+): InternalLinkResolution => {
+  if (
+    resolution.status !== "resolved" ||
+    typeof resolution.fragment === "undefined" ||
+    resolution.fragment === ""
+  ) {
+    return resolution;
+  }
+
+  const fragment = resolveHeadingFragment(
+    analysesByDocumentId.get(resolution.targetDocumentId),
+    resolution.fragment,
+    link.syntax,
+  );
+  return typeof fragment === "string"
+    ? { ...resolution, fragment }
+    : {
+        status: "broken",
+        targetPath: resolution.targetPath,
+        fragment: resolution.fragment,
+      };
+};
+
 const buildKnowledgeIndex = (
   documentsById: Map<string, WorkspaceSourceDocument>,
   analysesByDocumentId: Map<string, DocumentAnalysis>,
@@ -467,9 +534,14 @@ const buildKnowledgeIndex = (
       }
 
       const target = splitLinkTarget(link.target);
-      const resolution = link.syntax === "markdown"
+      const pathResolution = link.syntax === "markdown"
         ? resolveMarkdownTarget(analysis.path, target, documentIdsByPath)
         : resolveWikiTarget(analysis.path, target, documentsById, documentIdsByPath);
+      const resolution = validateResolvedFragment(
+        link,
+        pathResolution,
+        analysesByDocumentId,
+      );
       const resolvedLink: WorkspaceKnowledgeLink = { ...base, ...resolution };
       outgoing.push(resolvedLink);
       if (resolution.status === "resolved" && typeof resolution.targetDocumentId !== "undefined") {

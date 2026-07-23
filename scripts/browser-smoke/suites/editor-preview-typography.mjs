@@ -75,9 +75,14 @@ const VIRTUAL_MARKDOWN_PREVIEW_TYPOGRAPHY_FIXTURE = [
   "#### h4",
   "##### h5",
   "###### h6",
+  "[Jump to far heading](#far-heading)",
   "just text",
   "Virtual preview footnote reference.[^virtual-note]",
   ...Array.from({ length: 850 }, (_, index) => `Virtual preview filler line ${index + 1}.`),
+  "",
+  "## Far heading",
+  "",
+  "The virtualized heading target is mounted on demand.",
   "",
   "[^virtual-note]: Virtual footnote body text.",
 ].join("\n");
@@ -389,5 +394,12 @@ export async function run(ctx) {
       }),
       "Virtualized preview headings should keep compact heading line-height.",
     );
+    await page.getByRole("link", { name: "Jump to far heading", exact: true }).click();
+    await page.waitForFunction(() => {
+      const heading = document.querySelector("#far-heading");
+      if (!(heading instanceof HTMLElement)) return false;
+      const rect = heading.getBoundingClientRect();
+      return rect.bottom > 0 && rect.top < window.innerHeight;
+    });
   });
 }
