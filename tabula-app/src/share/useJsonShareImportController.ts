@@ -217,6 +217,9 @@ export function useJsonShareImportController({
 
       return () => {
         cancelled = true;
+        if (handledJsonShareRouteRef.current === importRoute.routeKey) {
+          handledJsonShareRouteRef.current = null;
+        }
       };
     };
 
