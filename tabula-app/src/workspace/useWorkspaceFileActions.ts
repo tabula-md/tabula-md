@@ -124,6 +124,7 @@ export function useWorkspaceFileActions({
   const addFile = createFile;
 
   const renameWorkspaceFileAction = (fileId: string, nextRawTitle: string) => {
+    onBeforeWorkspaceBoundary?.();
     const previousTitle = files.find((file) => file.id === fileId)?.title;
     const result = renameFile(fileId, nextRawTitle);
     if (!result.ok) {

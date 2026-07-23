@@ -47,6 +47,12 @@ import {
   type WorkspaceRoomSnapshot,
 } from "./workspaceRoomModel";
 import {
+  applyWorkspaceRoomKnowledgeMaintenancePlan,
+  getWorkspaceRoomKnowledgeSnapshot,
+  planWorkspaceRoomKnowledgeMaintenance,
+  type WorkspaceRoomKnowledgeSnapshot,
+} from "./workspaceRoomKnowledgeMaintenance";
+import {
   createWorkspaceRoomSyncController,
   isRemoteSyncOrigin,
   type WorkspaceRoomSyncAdapters,
@@ -642,6 +648,22 @@ export const createHeadlessRoomClientRuntime = ({
 
   const applyChanges = (changes: readonly HeadlessRoomChange[]) => mutateWorkspace(async (draftRoom) => {
     const results: HeadlessRoomChangeResult[] = [];
+    const maintainKnowledgePaths = (previous: WorkspaceRoomKnowledgeSnapshot) => {
+      try {
+        const plan = planWorkspaceRoomKnowledgeMaintenance(
+          previous,
+          getWorkspaceRoomKnowledgeSnapshot(draftRoom),
+        );
+        applyWorkspaceRoomKnowledgeMaintenancePlan(
+          draftRoom,
+          plan,
+          attribution,
+        );
+      } catch {
+        // A pre-existing duplicate path should not make a valid structural
+        // update impossible. The compatibility report will keep surfacing it.
+      }
+    };
     for (const change of changes) {
       switch (change.type) {
         case "folder.create": {
@@ -682,26 +704,31 @@ export const createHeadlessRoomClientRuntime = ({
           break;
         case "node.update":
           await assertExpectedNode(draftRoom, change.nodeId, change.expected);
-          if (change.title !== undefined && !renameWorkspaceRoomNode(
-            draftRoom,
-            change.nodeId,
-            change.title,
-            undefined,
-            attribution,
-          )) {
-            throw new Error("Workspace node could not be renamed.");
+          if (change.title !== undefined) {
+            const previous = getWorkspaceRoomKnowledgeSnapshot(draftRoom);
+            if (!renameWorkspaceRoomNode(
+              draftRoom,
+              change.nodeId,
+              change.title,
+              undefined,
+              attribution,
+            )) {
+              throw new Error("Workspace node could not be renamed.");
+            }
+            maintainKnowledgePaths(previous);
           }
-          if (
-            change.parentId !== undefined &&
-            !moveWorkspaceRoomNode(
+          if (change.parentId !== undefined) {
+            const previous = getWorkspaceRoomKnowledgeSnapshot(draftRoom);
+            if (!moveWorkspaceRoomNode(
               draftRoom,
               change.nodeId,
               change.parentId ?? WORKSPACE_ROOM_ROOT_ID,
               undefined,
               attribution,
-            )
-          ) {
-            throw new Error("Workspace node could not be moved.");
+            )) {
+              throw new Error("Workspace node could not be moved.");
+            }
+            maintainKnowledgePaths(previous);
           }
           results.push({ type: change.type, nodeId: change.nodeId });
           break;

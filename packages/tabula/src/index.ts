@@ -627,6 +627,25 @@ export {
 } from "./workspaceKnowledgeIndex";
 
 export type {
+  WorkspaceKnowledgeMaintenancePlan,
+  WorkspaceKnowledgeMaintenanceUpdate,
+} from "./workspaceKnowledgeMaintenance";
+export {
+  EMPTY_WORKSPACE_KNOWLEDGE_MAINTENANCE_PLAN,
+  planWorkspaceKnowledgeMaintenance,
+} from "./workspaceKnowledgeMaintenance";
+
+export type {
+  WorkspaceRoomKnowledgeSnapshot,
+} from "./workspaceRoomKnowledgeMaintenance";
+export {
+  applyWorkspaceRoomKnowledgeMaintenancePlan,
+  getWorkspaceRoomKnowledgeDocuments,
+  getWorkspaceRoomKnowledgeSnapshot,
+  planWorkspaceRoomKnowledgeMaintenance,
+} from "./workspaceRoomKnowledgeMaintenance";
+
+export type {
   OkfCompatibilityIssue,
   OkfCompatibilityIssueCode,
   OkfCompatibilityIssueSeverity,

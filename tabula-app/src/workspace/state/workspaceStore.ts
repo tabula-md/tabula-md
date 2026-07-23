@@ -31,6 +31,7 @@ import {
   restoreFileToList,
   restoreOpenFileId,
 } from "@tabula-md/tabula";
+import { maintainWorkspaceKnowledgePaths } from "../workspaceKnowledgeModel";
 
 type WorkspaceStoreInitialization = WorkspaceModelState<WorkspaceFile> & {
   folders: WorkspaceFolder[];
@@ -338,7 +339,10 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
     };
     const { result } = renameWorkspaceFile(siblingState, fileId, nextRawTitle);
     if (result.ok) {
-      set((state) => reduceWorkspace(state, { type: "renameFile", fileId, title: nextRawTitle }));
+      set((state) => maintainWorkspaceKnowledgePaths(
+        state,
+        reduceWorkspace(state, { type: "renameFile", fileId, title: nextRawTitle }),
+      ).state);
     }
 
     return result;
@@ -471,10 +475,10 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
     if (state.folders.some((candidate) =>
       candidate.id !== folderId && candidate.parentId === folder.parentId && candidate.title.toLowerCase() === normalizedTitle.toLowerCase()
     )) return false;
-    set((current) => ({
+    set((current) => maintainWorkspaceKnowledgePaths(current, {
       ...current,
       folders: current.folders.map((candidate) => candidate.id === folderId ? { ...candidate, title: normalizedTitle } : candidate),
-    }));
+    }).state);
     return true;
   },
 
@@ -487,7 +491,10 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       (candidate.parentId ?? WORKSPACE_ROOT_FOLDER_ID) === folderId &&
       candidate.title.toLowerCase() === file.title.toLowerCase()
     )) return false;
-    set((current) => updateFileInState(current, fileId, (file) => ({ ...file, parentId: folderId })));
+    set((current) => maintainWorkspaceKnowledgePaths(
+      current,
+      updateFileInState(current, fileId, (file) => ({ ...file, parentId: folderId })),
+    ).state);
     return true;
   },
 
@@ -502,10 +509,10 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       folder.parentId === parentId &&
       folder.title.toLowerCase() === movingFolder.title.toLowerCase()
     )) return false;
-    set((current) => ({
+    set((current) => maintainWorkspaceKnowledgePaths(current, {
       ...current,
       folders: current.folders.map((folder) => folder.id === folderId ? { ...folder, parentId } : folder),
-    }));
+    }).state);
     return true;
   },
 

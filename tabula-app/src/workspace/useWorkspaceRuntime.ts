@@ -646,6 +646,7 @@ export function useWorkspaceRuntime() {
     files,
     folders,
     historyByFileId,
+    onBeforeWorkspaceBoundary: handleUserWorkspaceBoundary,
     addFolder: addWorkspaceFolderAction,
     deleteFolder: deleteWorkspaceFolderAction,
     deleteCommentsForFiles,
