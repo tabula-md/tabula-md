@@ -1,12 +1,13 @@
 import { type ReactNode, type RefObject, useMemo } from "react";
 import {
   Folder,
+  Link2,
   ListTree,
   MessageSquare,
   PanelRightClose,
   Search,
 } from "lucide-react";
-import { getRightPanelCommentGroups } from "@tabula-md/tabula";
+import { getRightPanelCommentGroups, type WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { MarkdownHeading } from "@tabula-md/tabula";
@@ -21,12 +22,14 @@ import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { RightPanelSearch } from "./RightPanelSearch";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
+import { RightPanelLinks } from "./RightPanelLinks";
 
 type RightPanelProps = {
   isOpen: boolean;
   view: RightPanelView;
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
+  knowledgeIndex?: WorkspaceKnowledgeIndex;
   activeFileId: string;
   activeFileTitle: string;
   isLiveWorkspace: boolean;
@@ -79,6 +82,7 @@ export function RightPanel({
   view,
   files,
   folders,
+  knowledgeIndex,
   activeFileId,
   activeFileTitle,
   isLiveWorkspace,
@@ -191,6 +195,7 @@ export function RightPanel({
         <nav className="right-panel-tabs" aria-label={copy.sections}>
           {renderTab("files", copy.tabs.files, <Folder size={14} />, hasLiveFiles ? "live" : undefined)}
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
+          {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
           {renderTab("search", copy.tabs.search, <Search size={14} />)}
         </nav>
@@ -232,7 +237,11 @@ export function RightPanel({
           />
         )}
 
-        {!activeFile && (effectiveView === "outline" || effectiveView === "comments") && (
+        {!activeFile && (
+          effectiveView === "outline" ||
+          effectiveView === "links" ||
+          effectiveView === "comments"
+        ) && (
           <section className="right-panel-content">
             <PanelEmptyState>{copy.noDocumentOpen}</PanelEmptyState>
           </section>
@@ -255,6 +264,17 @@ export function RightPanel({
             onCollapseAllHeadings={collapseAllOutlineHeadings}
             onExpandAllHeadings={expandAllOutlineHeadings}
             onGoToOutlineHeading={onGoToOutlineHeading}
+          />
+        )}
+
+        {activeFile && effectiveView === "links" && (
+          <RightPanelLinks
+            activeFileId={activeFileId}
+            activeFileTitle={activeFileTitle}
+            copy={copy.links}
+            fileLabels={fileLabels}
+            index={knowledgeIndex}
+            onSelectFile={onSelectFile}
           />
         )}
 
