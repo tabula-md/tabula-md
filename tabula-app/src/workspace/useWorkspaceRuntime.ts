@@ -775,8 +775,15 @@ export function useWorkspaceRuntime() {
       text,
     });
   const resolveWorkspaceLink = useMemo(
-    () => (href: string) =>
-      resolveMarkdownPreviewWorkspaceLink(knowledgeIndex, activeFileId, href),
+    () => (
+      target: string,
+      syntax?: "markdown" | "wikilink",
+    ) => resolveMarkdownPreviewWorkspaceLink(
+      knowledgeIndex,
+      activeFileId,
+      target,
+      syntax,
+    ),
     [activeFileId, knowledgeIndex],
   );
   const openPreviewWorkspaceLink = useEventCallback((
