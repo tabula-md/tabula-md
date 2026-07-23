@@ -1,12 +1,5 @@
 import { useState, type ReactNode } from "react";
-import {
-  ArrowUpRight,
-  CornerDownLeft,
-  ExternalLink,
-  File,
-  FileQuestion,
-  FileX2,
-} from "lucide-react";
+import { ArrowUpRight, ChevronDown, CornerDownLeft } from "lucide-react";
 import type { WorkspaceKnowledgeIndex, WorkspaceKnowledgeLink } from "@tabula-md/tabula";
 import { classifyMarkdownHref } from "../preview/markdownHref";
 import type { WorkspaceFileTabLabel } from "../workspace/workspaceDisplayTitles";
@@ -17,12 +10,14 @@ import {
   type RightPanelDocumentLinkGroup,
   type RightPanelLinkTargetGroup,
 } from "./rightPanelLinksModel";
+import type { RightPanelLinkSection } from "./useRightPanelCollapseState";
 
 type RightPanelLinksCopy = WorkspaceInterfaceCopy["sidePanel"]["links"];
 
 type RightPanelLinksProps = {
   activeFileId: string;
   activeFileTitle: string;
+  collapsedSections: ReadonlySet<RightPanelLinkSection>;
   copy: RightPanelLinksCopy;
   fileLabels: ReadonlyMap<string, WorkspaceFileTabLabel>;
   index?: WorkspaceKnowledgeIndex;
@@ -32,15 +27,19 @@ type RightPanelLinksProps = {
     targetPath: string,
   ) => boolean;
   onSelectFile: (fileId: string) => void;
+  onToggleSection: (section: RightPanelLinkSection) => void;
 };
 
 type LinkSectionProps<Item> = {
+  collapsed: boolean;
   icon: ReactNode;
   label: string;
   emptyMessage: string;
   items: readonly Item[];
   getKey: (item: Item) => string;
+  onToggle: () => void;
   renderItem: (item: Item) => ReactNode;
+  toggleLabel: string;
 };
 
 const removeMarkdownExtension = (value: string) =>
@@ -61,25 +60,43 @@ const normalizePageIdentity = (value: string) =>
     .replace(/[\s_-]+/g, "");
 
 function LinkSection<Item>({
+  collapsed,
   icon,
   label,
   emptyMessage,
   items,
   getKey,
+  onToggle,
   renderItem,
+  toggleLabel,
 }: LinkSectionProps<Item>) {
   return (
     <section className="right-links-section" aria-label={label}>
       <h3 className="right-links-section-title">
-        {icon}
-        <span>{label}</span>
-        <span className="right-links-count">{items.length}</span>
+        <button
+          className="right-links-section-toggle"
+          type="button"
+          aria-expanded={!collapsed}
+          aria-label={toggleLabel}
+          onClick={onToggle}
+        >
+          <span className="right-links-section-direction">{icon}</span>
+          <span>{label}</span>
+          <span className="right-links-count">{items.length}</span>
+          <ChevronDown
+            className={`right-links-section-chevron ${collapsed ? "collapsed" : ""}`}
+            size={14}
+            aria-hidden="true"
+          />
+        </button>
       </h3>
-      <div className="right-links-list">
-        {items.length === 0
-          ? <p className="right-links-section-empty">{emptyMessage}</p>
-          : items.map((item) => <div key={getKey(item)}>{renderItem(item)}</div>)}
-      </div>
+      {!collapsed && (
+        <div className="right-links-list">
+          {items.length === 0
+            ? <p className="right-links-section-empty">{emptyMessage}</p>
+            : items.map((item) => <div key={getKey(item)}>{renderItem(item)}</div>)}
+        </div>
+      )}
     </section>
   );
 }
@@ -87,12 +104,14 @@ function LinkSection<Item>({
 export function RightPanelLinks({
   activeFileId,
   activeFileTitle,
+  collapsedSections,
   copy,
   fileLabels,
   index,
   onFocusLinkSource,
   onResolveAmbiguousLink,
   onSelectFile,
+  onToggleSection,
 }: RightPanelLinksProps) {
   const [resolvingLinkKey, setResolvingLinkKey] = useState<string | null>(null);
 
@@ -123,17 +142,16 @@ export function RightPanelLinks({
     };
   };
   const renderRowContents = (
-    icon: ReactNode,
     title: string,
     context: string,
-    iconClassName = "right-links-kind-icon",
+    action?: ReactNode,
   ) => (
     <>
-      <span className={iconClassName}>{icon}</span>
       <span className="right-links-row-text">
         <span className="right-links-row-title">{title}</span>
         <span className="right-links-row-target">{context}</span>
       </span>
+      {action && <span className="right-links-row-action">{action}</span>}
     </>
   );
   const renderDocumentLink = (group: RightPanelDocumentLinkGroup) => {
@@ -147,10 +165,8 @@ export function RightPanelLinks({
         onClick={() => onSelectFile(group.documentId)}
       >
         {renderRowContents(
-          <File size={16} aria-hidden="true" />,
           presentation.title,
           presentation.context,
-          "right-file-document-icon",
         )}
       </button>
     );
@@ -195,10 +211,8 @@ export function RightPanelLinks({
             }}
           >
             {renderRowContents(
-              <File size={16} aria-hidden="true" />,
               presentation.title,
               presentation.context,
-              "right-file-document-icon",
             )}
           </button>
         );
@@ -228,7 +242,6 @@ export function RightPanelLinks({
             aria-label={copy.openExternal(presentation.title)}
           >
             {renderRowContents(
-              <ExternalLink size={16} aria-hidden="true" />,
               presentation.title,
               presentation.context,
             )}
@@ -244,9 +257,9 @@ export function RightPanelLinks({
           onClick={() => onFocusLinkSource(link)}
         >
           {renderRowContents(
-            <FileX2 size={16} aria-hidden="true" />,
             presentation.title,
             presentation.context,
+            copy.notFound,
           )}
         </button>
       );
@@ -268,9 +281,9 @@ export function RightPanelLinks({
             onClick={() => setResolvingLinkKey(isResolving ? null : group.key)}
           >
             {renderRowContents(
-              <FileQuestion size={16} aria-hidden="true" />,
               presentation.title,
               presentation.context,
+              copy.matchCount(link.candidateDocumentIds?.length ?? 0),
             )}
           </button>
           {isResolving && renderAmbiguousResolver(link)}
@@ -287,9 +300,9 @@ export function RightPanelLinks({
         onClick={() => onFocusLinkSource(link)}
       >
         {renderRowContents(
-          <FileX2 size={16} aria-hidden="true" />,
           presentation.title,
           presentation.context,
+          copy.notFound,
         )}
       </button>
     );
@@ -299,20 +312,34 @@ export function RightPanelLinks({
     <section className="right-panel-content right-links-panel" aria-label={copy.forFile(activeFileTitle)}>
       <div className="right-links-scroll">
         <LinkSection
+          collapsed={collapsedSections.has("outgoing")}
           icon={<ArrowUpRight size={14} aria-hidden="true" />}
           label={copy.outgoing}
           emptyMessage={copy.outgoingNone}
           items={model.outgoing}
           getKey={(group) => group.key}
+          onToggle={() => onToggleSection("outgoing")}
           renderItem={renderOutgoingTarget}
+          toggleLabel={
+            collapsedSections.has("outgoing")
+              ? copy.expandSection(copy.outgoing)
+              : copy.collapseSection(copy.outgoing)
+          }
         />
         <LinkSection
+          collapsed={collapsedSections.has("backlinks")}
           icon={<CornerDownLeft size={14} aria-hidden="true" />}
           label={copy.backlinks}
           emptyMessage={copy.backlinksNone}
           items={model.backlinks}
           getKey={(group) => group.documentId}
+          onToggle={() => onToggleSection("backlinks")}
           renderItem={renderDocumentLink}
+          toggleLabel={
+            collapsedSections.has("backlinks")
+              ? copy.expandSection(copy.backlinks)
+              : copy.collapseSection(copy.backlinks)
+          }
         />
       </div>
     </section>

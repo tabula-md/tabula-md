@@ -74,6 +74,54 @@ export async function run(ctx) {
       "Resolved, broken, ambiguous, and external targets should use the same two-line row structure.",
     );
     expect(
+      (await topLevelRows.locator("svg").count()) === 0 &&
+        (await page.locator(".right-links-section-direction svg").count()) === 2 &&
+        (await page.locator(".right-links-section-chevron").count()) === 2,
+      "Relationship headings should keep direction icons while target rows stay icon-free.",
+    );
+    expect(
+      (await outgoing.getByText("Not found", { exact: true }).count()) === 1 &&
+        (await outgoing.getByText("2 matches", { exact: true }).count()) === 1 &&
+        (await outgoing.getByText(/Choose\s*[·•]\s*2/).count()) === 0,
+      "Exceptional rows should use plain parallel states without punctuation-based action badges.",
+    );
+    const outgoingToggle = page.getByRole("button", {
+      name: "Collapse Outgoing",
+      exact: true,
+    });
+    await outgoingToggle.click();
+    expect(
+      (await outgoing.locator(":scope > .right-links-list").count()) === 0 &&
+        (await outgoing.locator(".right-links-count").textContent()) === "4",
+      "Collapsing a relationship should hide its rows while preserving the target count.",
+    );
+    await page.getByRole("button", { name: "Outline", exact: true }).click();
+    await waitForPanelTab(page, "Outline");
+    await page.getByRole("button", { name: "Links", exact: true }).click();
+    await waitForPanelTab(page, "Links");
+    expect(
+      (await page.getByRole("button", {
+        name: "Expand Outgoing",
+        exact: true,
+      }).count()) === 1 &&
+        (await outgoing.locator(":scope > .right-links-list").count()) === 0,
+      "Relationship collapse state should survive switching between right-panel tabs.",
+    );
+    await page.getByRole("button", {
+      name: "Expand Outgoing",
+      exact: true,
+    }).click();
+    const sectionLabelBox = await outgoing.locator(
+      ".right-links-section-toggle > span",
+    ).nth(1).boundingBox();
+    const firstRowTitleBox = await topLevelRows.first()
+      .locator(".right-links-row-title").boundingBox();
+    expect(
+      sectionLabelBox && firstRowTitleBox &&
+        Math.abs(sectionLabelBox.x - firstRowTitleBox.x) <= 1,
+      "Top-level link titles should align with the relationship label, not its icon.",
+    );
+    expect(
       (await page.locator('.right-links-section[aria-label="Issues"]').count()) === 0,
       "Link status should not create a third relationship section.",
     );
@@ -108,6 +156,16 @@ export async function run(ctx) {
     expect(
       (await teamACandidate.count()) === 1 && (await teamBCandidate.count()) === 1,
       "Ambiguous targets should reveal document-shaped candidate rows only on demand.",
+    );
+    const ambiguousTitleBox = await outgoing.getByText("Shared", { exact: true })
+      .first().boundingBox();
+    const candidateTitleBox = await teamACandidate.locator(
+      ".right-links-row-title",
+    ).boundingBox();
+    expect(
+      ambiguousTitleBox && candidateTitleBox &&
+        candidateTitleBox.x > ambiguousTitleBox.x + 8,
+      "Ambiguous candidates should add one visible indentation level beneath their target.",
     );
     await teamACandidate.click();
     await waitForEditorReady(page, { mode: "edit" });

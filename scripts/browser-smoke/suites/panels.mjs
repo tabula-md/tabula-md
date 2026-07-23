@@ -557,10 +557,20 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
+    const emptyOutgoingSection = page.locator('.right-links-section[aria-label="Outgoing"]');
+    const emptyBacklinksSection = page.locator('.right-links-section[aria-label="Backlinks"]');
     expect(
-      await page.getByRole("heading", { name: /^Outgoing\s+0$/ }).isVisible() &&
+      await emptyOutgoingSection.getByRole("button", {
+        name: "Collapse Outgoing",
+        exact: true,
+      }).isVisible() &&
+        (await emptyOutgoingSection.locator(".right-links-count").textContent()) === "0" &&
         await page.getByText("No outgoing links yet.", { exact: true }).isVisible() &&
-        await page.getByRole("heading", { name: /^Backlinks\s+0$/ }).isVisible() &&
+        await emptyBacklinksSection.getByRole("button", {
+          name: "Collapse Backlinks",
+          exact: true,
+        }).isVisible() &&
+        (await emptyBacklinksSection.locator(".right-links-count").textContent()) === "0" &&
         await page.getByText("No documents link here yet.", { exact: true }).isVisible() &&
         (await page.locator('.right-links-section[aria-label="Issues"]').count()) === 0,
       "Links should preserve both relationship directions at zero without inventing an issue.",
@@ -1769,9 +1779,10 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
     expect(
-      (await page.locator("button.right-links-row .lucide-file").count()) > 0 &&
-        (await page.locator("button.right-links-row .lucide-file-text").count()) === 0,
-      "Resolved document links should use the same file icon as the Files panel.",
+      (await page.locator(".right-links-row svg").count()) === 0 &&
+        (await page.locator(".right-links-section-direction svg").count()) === 2 &&
+        (await page.locator(".right-links-section-chevron").count()) === 2,
+      "Link rows should stay icon-free while relationship headings keep their direction icons.",
     );
     const outgoingSection = page.locator('.right-links-section[aria-label="Outgoing"]');
     expect(
@@ -1813,8 +1824,9 @@ export async function run(ctx) {
       exact: true,
     });
     expect(
-      (await missingGuideButton.count()) === 1,
-      "Broken destinations should remain document-shaped rows whose action returns to the source.",
+      (await missingGuideButton.count()) === 1 &&
+        (await missingGuideButton.getByText("Not found", { exact: true }).count()) === 1,
+      "Broken destinations should use a compact text state whose row returns to the source.",
     );
     await missingGuideButton.click();
     await waitForEditorReady(page, { mode: "edit" });
