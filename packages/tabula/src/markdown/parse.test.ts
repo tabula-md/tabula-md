@@ -5,6 +5,7 @@ import {
   getOutlineHeadingsFromMarkdown,
   getPreviewBody,
   parseFrontmatter,
+  parseFrontmatterData,
 } from "./parse";
 
 describe("markdown document model", () => {
@@ -43,6 +44,18 @@ Body`);
     expect(parsed.attributes).toContainEqual({ key: "owner", value: "name: Taeha\nteam: Product" });
     expect(parsed.attributes).toContainEqual({ key: "inline", value: "status: draft\nowner: taeha" });
     expect(parsed.body).toBe("\nBody");
+  });
+
+  it("preserves typed frontmatter data and the body source offset", () => {
+    const markdown = "---\r\ntags: [prd, design]\r\nowner:\r\n  team: Product\r\n---\r\n\r\nBody";
+    const parsed = parseFrontmatterData(markdown);
+
+    expect(parsed.metadata).toEqual({
+      tags: ["prd", "design"],
+      owner: { team: "Product" },
+    });
+    expect(parsed.body).toBe("\r\nBody");
+    expect(parsed.bodyOffset).toBe(markdown.indexOf("\r\nBody"));
   });
 
   it("treats invalid frontmatter as normal markdown text", () => {

@@ -210,6 +210,7 @@ export {
 export type {
   MarkdownHeading,
   ParsedFrontmatter,
+  ParsedFrontmatterData,
   PreviewBody,
 } from "./markdown/parse";
 export {
@@ -220,6 +221,7 @@ export {
   getOutlineHeadingsFromMarkdown,
   getPreviewBody,
   parseFrontmatter,
+  parseFrontmatterData,
 } from "./markdown/parse";
 
 export type {
@@ -601,3 +603,19 @@ export {
   getWorkspaceFileSearchText,
   getWorkspaceStatusLabel,
 } from "./workspaceViewModel";
+
+export type {
+  DocumentAnalysis,
+  DocumentHeadingAnalysis,
+  DocumentLinkAnalysis,
+  WorkspaceKnowledgeIndex,
+  WorkspaceKnowledgeLink,
+  WorkspaceLinkStatus,
+  WorkspaceSourceDocument,
+} from "./workspaceKnowledgeIndex";
+export {
+  analyzeWorkspaceDocument,
+  createWorkspaceKnowledgeIndex,
+  removeWorkspaceDocumentFromKnowledgeIndex,
+  updateWorkspaceKnowledgeIndex,
+} from "./workspaceKnowledgeIndex";
