@@ -2252,13 +2252,15 @@ Status <Badge type="success">Ready</Badge>
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await waitForEditorReady(page, { mode: "preview" });
     expect(
-      (await page.getByRole("link", { name: "Jump to start", exact: true }).count()) === 0,
-      "Fragment-only Markdown destinations should not become preview links.",
+      (await page.getByRole("link", { name: "Jump to start", exact: true }).count()) === 1,
+      "Fragment-only Markdown destinations should become preview links.",
     );
+    await page.getByRole("link", { name: "Jump to start", exact: true }).click();
+    await waitForRenderFrame(page);
     const previewText = (await page.locator(".preview-surface").textContent()) ?? "";
     expect(
       previewText.includes("Jump to start") && previewText.includes("Missing section"),
-      "Inert Markdown destinations should keep their visible labels.",
+      "Workspace Markdown destinations should keep their visible labels.",
     );
   });
 

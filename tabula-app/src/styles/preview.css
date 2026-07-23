@@ -309,6 +309,22 @@
   color: var(--text-link-hover);
 }
 
+.preview-workspace-link {
+  color: var(--text-muted);
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.preview-workspace-link.broken {
+  text-decoration-color: var(--danger-text);
+}
+
+.preview-workspace-link.ambiguous {
+  text-decoration-color: var(--accent);
+}
+
 .preview-surface mark {
   padding: 0 3px;
   border-radius: 4px;

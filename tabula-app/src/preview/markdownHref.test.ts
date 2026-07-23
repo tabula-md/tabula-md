@@ -15,13 +15,20 @@ describe("classifyMarkdownHref", () => {
     });
   });
 
+  it("allows mail links without opening a new browser tab", () => {
+    expect(classifyMarkdownHref("mailto:hello@example.com")).toEqual({
+      href: "mailto:hello@example.com",
+      kind: "external",
+      openInNewTab: false,
+    });
+  });
+
   it.each([
     "www.google.com",
     "docs.example.com/guide#start",
     "//example.com",
     "#start-here",
     "../docs/guide.md",
-    "mailto:hello@example.com",
     "javascript:alert(1)",
   ])("keeps non-HTTP hrefs inert: %s", (href) => {
     expect(classifyMarkdownHref(href)).toEqual({

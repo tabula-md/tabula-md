@@ -38,6 +38,7 @@ import {
   type MarkdownPreviewLineActionRequest,
   type MarkdownPreviewLineAnnotation,
   type MarkdownPreviewMetadata,
+  type MarkdownPreviewProps,
 } from "../../../../tabula-app/src/preview/markdownPreviewTypes";
 import {
   getLoadedMarkdownPreview,
@@ -135,6 +136,7 @@ export type TabulaDocumentSurfaceProps = {
   onEditorSelectionChange: (selection?: CollaborationLiveSelection) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
+  onOpenWorkspaceLink?: MarkdownPreviewProps["onOpenWorkspaceLink"];
   onPreviewKeyUp: () => void;
   onPreviewMouseUp: () => void;
   onPreviewScroll: () => void;
@@ -147,6 +149,7 @@ export type TabulaDocumentSurfaceProps = {
   onSplitDividerPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onSplitDividerPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onTextChange: (nextValue: string | null, change?: TextChange) => void;
+  resolveWorkspaceLink?: MarkdownPreviewProps["resolveWorkspaceLink"];
 };
 
 export function TabulaDocumentSurface({
@@ -193,6 +196,7 @@ export function TabulaDocumentSurface({
   onEditorSelectionChange,
   onLineAction,
   onOpenComment,
+  onOpenWorkspaceLink,
   onPreviewKeyUp,
   onPreviewMouseUp,
   onPreviewScroll,
@@ -205,6 +209,7 @@ export function TabulaDocumentSurface({
   onSplitDividerPointerMove,
   onSplitDividerPointerUp,
   onTextChange,
+  resolveWorkspaceLink,
 }: TabulaDocumentSurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   const shouldRenderPreview = documentSurface.documentControls.activeViewMode !== "edit";
@@ -341,6 +346,8 @@ export function TabulaDocumentSurface({
               onSearchMatchCountChange={onPreviewSearchMatchCountChange}
               onLineAction={onLineAction as (request: MarkdownPreviewLineActionRequest) => void}
               onOpenComment={onOpenComment}
+              onOpenWorkspaceLink={onOpenWorkspaceLink}
+              resolveWorkspaceLink={resolveWorkspaceLink}
               onToggleTaskLine={handlePreviewTaskToggle}
             />
           ) : null}

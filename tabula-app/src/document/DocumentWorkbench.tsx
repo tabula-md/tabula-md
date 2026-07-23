@@ -39,6 +39,7 @@ import type {
   MarkdownPreviewCommentAnchor,
   MarkdownPreviewLineAnnotation,
   MarkdownPreviewMetadata,
+  MarkdownPreviewProps,
 } from "../preview/markdownPreviewTypes";
 import { StatusBar } from "./StatusBar";
 import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
@@ -104,6 +105,7 @@ export type DocumentWorkbenchProps = {
   onFormat: (command: MarkdownFormatCommand) => void;
   onLineAction: (request: MarkdownLineActionRequest) => void;
   onOpenComment: (commentId: string) => void;
+  onOpenWorkspaceLink?: MarkdownPreviewProps["onOpenWorkspaceLink"];
   onOpenSelectionComment: () => void;
   onPreviewKeyUp: () => void;
   onPreviewMouseUp: () => void;
@@ -126,6 +128,7 @@ export type DocumentWorkbenchProps = {
   onToggleSyncScrolling: () => void;
   onToggleViewOptions: () => void;
   onUndo: () => void;
+  resolveWorkspaceLink?: MarkdownPreviewProps["resolveWorkspaceLink"];
 };
 
 const getFloatingPopoverStyle = (
@@ -203,6 +206,7 @@ export function DocumentWorkbench({
   onFormat,
   onLineAction,
   onOpenComment,
+  onOpenWorkspaceLink,
   onOpenSelectionComment,
   onPreviewKeyUp,
   onPreviewMouseUp,
@@ -225,6 +229,7 @@ export function DocumentWorkbench({
   onToggleSyncScrolling,
   onToggleViewOptions,
   onUndo,
+  resolveWorkspaceLink,
 }: DocumentWorkbenchProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   const activeFormats = useMemo(
@@ -320,6 +325,7 @@ export function DocumentWorkbench({
         onEditorSelectionChange={onEditorSelectionChange}
         onLineAction={onLineAction}
         onOpenComment={onOpenComment}
+        onOpenWorkspaceLink={onOpenWorkspaceLink}
         onPreviewKeyUp={onPreviewKeyUp}
         onPreviewMouseUp={onPreviewMouseUp}
         onPreviewScroll={onPreviewScroll}
@@ -332,6 +338,7 @@ export function DocumentWorkbench({
         onSplitDividerPointerMove={onSplitDividerPointerMove}
         onSplitDividerPointerUp={onSplitDividerPointerUp}
         onTextChange={onTextChange}
+        resolveWorkspaceLink={resolveWorkspaceLink}
       />
 
       {documentSurface.showSelectionCommentPopover && selectionActionPosition && (
