@@ -61,7 +61,7 @@ export function ShareTrigger({
           : "disconnected"
     : null;
   const statusLabel = liveStatus
-    ? `${copy.trigger}: ${liveStatus === "connected" ? "live collaboration active" : liveStatus}`
+    ? `${copy.trigger}: ${copy.live.statusLabel(liveStatus)}`
     : copy.trigger;
 
   return (

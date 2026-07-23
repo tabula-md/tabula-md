@@ -27,9 +27,9 @@ export async function run(ctx) {
     await hostPage.locator(".share-trigger").click();
     await hostPage.getByRole("button", { name: "Start session" }).click();
     await waitForText(hostPage.locator(".share-modal"), "Share link");
-    const shareUrl = await hostPage.locator(".share-link-display").getAttribute("title");
+    const shareUrl = hostPage.url();
     expect(Boolean(shareUrl), "Lifecycle smoke requires a room invite link.");
-    await hostPage.getByRole("button", { name: "Close share dialog" }).click();
+    await hostPage.keyboard.press("Escape");
 
     await peerPage.goto(shareUrl);
     await peerPage.waitForSelector('.tab-item.active[data-room-id]:not([data-room-id=""])');

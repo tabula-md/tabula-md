@@ -404,7 +404,6 @@ export function useWorkspaceRuntime() {
     collaborators,
     connectionStatus,
     hydrationStatus,
-    recoveryMode,
     applyLocalText,
     renameNode: renameRoomNode,
     moveNode: moveRoomNode,
@@ -463,6 +462,7 @@ export function useWorkspaceRuntime() {
   });
   const {
     copyShareUrl: copyShareUrlWithPendingCommit,
+    isStartingLive,
     isLiveChromeVisible,
     jsonShare,
     liveRoomOpenTimedOut,
@@ -793,9 +793,9 @@ export function useWorkspaceRuntime() {
     folders,
     followState,
     identity: presenceIdentity,
+    isStartingLive,
     isLive: isLiveChromeVisible,
     isLiveConnected,
-    recoveryMode,
     jsonShare,
     language: workspacePreferences.language,
     openFiles,
@@ -809,6 +809,12 @@ export function useWorkspaceRuntime() {
     onShareLoadError: () => {
       setTopPopover(null);
       showToast(getWorkspaceMenuCopy(workspacePreferences.language).share.loadError, "error");
+    },
+    onShareCopyFailed: () => {
+      showToast(
+        getWorkspaceMenuCopy(workspacePreferences.language).share.copyFailed,
+        "error",
+      );
     },
     onCommitUserName: normalizeIdentityName,
     onCopyShareUrl: copyShareUrlWithPendingCommit,

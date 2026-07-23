@@ -1,4 +1,3 @@
-import { X } from "lucide-react";
 import { ShareExportPanel } from "./ShareExportPanel";
 import { ShareExportResult } from "./ShareExportResult";
 import { ShareLinkPanel } from "./ShareLinkPanel";
@@ -6,22 +5,23 @@ import { ShareStopSessionConfirm } from "./ShareStopSessionConfirm";
 import type { JsonShareController } from "./useJsonShareController";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { useShareDialogController } from "./useShareDialogController";
-import type { ConnectionStatus, RoomRecoveryMode } from "../collaboration/liveCollaboration";
+import type { ConnectionStatus } from "../collaboration/liveCollaboration";
 import type { LocationRoom } from "../workspace/workspaceStorage";
 import { ModalSurface } from "../ui/ModalSurface";
+import { X } from "lucide-react";
 
 type ShareControlsProps = {
   room?: LocationRoom | null;
   language: WorkspaceLanguage;
   currentUserName: string;
-  documentCount: number;
   connectionStatus: ConnectionStatus;
+  isStartingLive: boolean;
   isLive: boolean;
-  recoveryMode: RoomRecoveryMode;
   shareOpen: boolean;
   copied: boolean;
   jsonShare: JsonShareController;
   onCloseShare: () => void;
+  onCopyFailed: () => void;
   onStartSession: () => void;
   onRetrySession: () => void;
   onCopyShareUrl: () => void;
@@ -34,14 +34,14 @@ export function ShareControls({
   room,
   language,
   currentUserName,
-  documentCount,
   connectionStatus,
+  isStartingLive,
   isLive,
-  recoveryMode,
   shareOpen,
   copied,
   jsonShare,
   onCloseShare,
+  onCopyFailed,
   onStartSession,
   onRetrySession,
   onCopyShareUrl,
@@ -56,8 +56,10 @@ export function ShareControls({
     jsonShare,
     language,
     onCloseShare,
+    onCopyFailed,
     onStopSession,
   });
+  const choiceLocked = isStartingLive || jsonShare.exporting;
 
   if (!shareOpen) return null;
 
@@ -87,9 +89,9 @@ export function ShareControls({
         onClose={shareController.closeShare}
       >
         <button
-          className="share-modal-close"
+          className="share-modal-close share-main-mobile-close"
           type="button"
-          aria-label={shareController.chromeCopy.common.closeShareDialog}
+          aria-label={shareController.copy.close}
           onClick={shareController.closeShare}
         >
           <X size={18} />
@@ -112,16 +114,19 @@ export function ShareControls({
       onClose={shareController.closeShare}
     >
       <button
-        className="share-modal-close"
+        className="share-modal-close share-main-mobile-close"
         type="button"
-        aria-label={shareController.chromeCopy.common.closeShareDialog}
-        data-modal-initial-focus
+        aria-label={shareController.copy.close}
         onClick={shareController.closeShare}
       >
         <X size={18} />
       </button>
-
-      <h2 className="share-modal-title-hidden" id="share-modal-title">
+      <h2
+        className="share-modal-title-hidden"
+        data-modal-initial-focus={showLiveRoomPanel ? undefined : true}
+        id="share-modal-title"
+        tabIndex={-1}
+      >
         {shareController.shareModalTitle}
       </h2>
 
@@ -129,19 +134,18 @@ export function ShareControls({
         <div className="share-modal-actions-column">
           <ShareLinkPanel
             agentInviteCopied={shareController.agentInviteCopied}
-            chromeCopy={shareController.chromeCopy}
             copied={copied}
             copy={shareController.copy}
             currentUserName={currentUserName}
-            documentCount={documentCount}
             connectionStatus={connectionStatus}
+            choiceLocked={choiceLocked}
             isLive={showLiveRoomPanel}
-            recoveryMode={recoveryMode}
             shareView={shareController.shareView}
             exportPanel={
               <ShareExportPanel
                 copy={shareController.copy}
                 jsonShare={jsonShare}
+                locked={choiceLocked}
                 shareView={shareController.shareView}
                 onExportToJsonLink={shareController.exportToJsonLink}
               />

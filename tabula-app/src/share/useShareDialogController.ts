@@ -4,11 +4,9 @@ import type { JsonShareController } from "./useJsonShareController";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { productAnalytics } from "../observability/productAnalytics";
 import { buildAgentInvite } from "./shareAgentHandoff";
-import {
-  getWorkspaceChromeCopy,
-  getWorkspaceMenuCopy,
-} from "../workspace/workspaceLocale";
+import { getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
 import type { LocationRoom } from "../workspace/workspaceStorage";
+import { clientErrorReporter } from "../observability/clientErrorReporting";
 
 type UseShareDialogControllerOptions = {
   room?: LocationRoom | null;
@@ -16,6 +14,7 @@ type UseShareDialogControllerOptions = {
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
   onCloseShare: () => void;
+  onCopyFailed: () => void;
   onStopSession: () => void;
 };
 
@@ -25,6 +24,7 @@ export function useShareDialogController({
   jsonShare,
   language,
   onCloseShare,
+  onCopyFailed,
   onStopSession,
 }: UseShareDialogControllerOptions) {
   const [agentInviteCopied, setAgentInviteCopied] = useState(false);
@@ -32,7 +32,6 @@ export function useShareDialogController({
   const [view, setView] = useState<"chooser" | "export-result" | "stop-confirm">("chooser");
   const closedRef = useRef(false);
   const copy = getWorkspaceMenuCopy(language).share;
-  const chromeCopy = getWorkspaceChromeCopy(language);
   const shareModalTitle = copy.modalTitle;
   const shareView = buildShareViewModel({
     isLive,
@@ -57,10 +56,19 @@ export function useShareDialogController({
 
   const copyAgentInvite = async () => {
     if (!room?.shareUrl) return;
-    await navigator.clipboard.writeText(buildAgentInvite(room.shareUrl));
-    productAnalytics.report("agent_invite_copied", { roomId: room.roomId });
-    setAgentInviteCopied(true);
-    window.setTimeout(() => setAgentInviteCopied(false), 1200);
+    try {
+      await navigator.clipboard.writeText(buildAgentInvite(room.shareUrl));
+      productAnalytics.report("agent_invite_copied", { roomId: room.roomId });
+      setAgentInviteCopied(true);
+      window.setTimeout(() => setAgentInviteCopied(false), 1200);
+    } catch (error) {
+      clientErrorReporter.report({
+        feature: "collaboration",
+        operation: "copy-agent-invite",
+        error,
+      });
+      onCopyFailed();
+    }
   };
   const requestStopSession = () => setView("stop-confirm");
   const cancelStopSession = () => setView("chooser");
@@ -70,27 +78,28 @@ export function useShareDialogController({
   };
 
   const exportToJsonLink = () => {
-    setView("export-result");
     setExportLinkCopied(false);
     void jsonShare
       .exportLink()
       .then((exported) => {
-        if (!exported && !closedRef.current) {
-          closeShare();
-        }
+        if (closedRef.current) return;
+        if (exported) setView("export-result");
+        else closeShare();
       })
-      .finally(() => setExportLinkCopied(false));
+      .finally(() => {
+        if (!closedRef.current) setExportLinkCopied(false);
+      });
   };
 
   const copyShareableLink = async () => {
-    await jsonShare.copyLink();
+    const didCopy = await jsonShare.copyLink();
+    if (!didCopy) return;
     setExportLinkCopied(true);
     window.setTimeout(() => setExportLinkCopied(false), 1200);
   };
 
   return {
     agentInviteCopied,
-    chromeCopy,
     copy,
     cancelStopSession,
     closeShare,

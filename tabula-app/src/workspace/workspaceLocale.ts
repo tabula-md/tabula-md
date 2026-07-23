@@ -46,28 +46,26 @@ type WorkspaceMenuCopy = {
   share: {
     trigger: string;
     modalTitle: string;
+    close: string;
+    copyFailed: string;
     loadError: string;
     nothingToShare: string;
     chooserSecurityDescription: string;
     shareLinkLabel: string;
-    workspaceSummary: (documentCount: number) => string;
     live: {
       title: string;
       description: string;
-      resultDescription: string;
       startSession: string;
-      temporarySessionDescription: string;
-      inviteAgent: string;
-      inviteAgentDescription: string;
       copyAgentInvite: string;
-      setupAgent: string;
-      agentAccessWarning: string;
       retrySession: string;
       unavailable: string;
       reconnectingTitle: string;
       reconnectedTitle: string;
       pausedDescription: string;
       disconnectedTitle: string;
+      statusLabel: (
+        status: "connected" | "reconnecting" | "suspended" | "disconnected",
+      ) => string;
       nameLabel: string;
       nameAria: string;
       anonymousPlaceholder: string;
@@ -84,8 +82,7 @@ type WorkspaceMenuCopy = {
     shareable: {
       title: string;
       description: string;
-      resultDescription: string;
-      snapshotMetadata: (formattedExpiry?: string) => string;
+      expiryDescription: (formattedExpiry: string) => string;
       noFileReason: string;
       exportToLink: string;
       preparing: string;
@@ -158,57 +155,52 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "Share",
       modalTitle: "Share",
+      close: "Close Share",
+      copyFailed: "Couldn’t copy. Try again.",
       loadError: "Couldn’t open sharing.",
       nothingToShare:
         "Nothing to share yet. Create or open a document first.",
       chooserSecurityDescription:
-        "Encrypted in your browser. Tabula.md cannot read shared content.",
+        "Your workspace is encrypted before it leaves this browser. Only people with the link can open it—not even our servers can read it.",
       shareLinkLabel: "Share link",
-      workspaceSummary: (documentCount) =>
-        `Whole workspace · ${documentCount} ${documentCount === 1 ? "document" : "documents"} · comments included`,
       live: {
-        title: "Live collaboration",
+        title: "Open a live collaboration room",
         description:
-          "Collaborate on the whole workspace in an encrypted live room.",
-        resultDescription: "Changes sync in real time.",
+          "This private room keeps the workspace’s documents and comments in sync while people are connected. You can also invite an agent with the prompt.",
         startSession: "Start session",
-        temporarySessionDescription:
-          "Temporary session. Keep at least one participant connected.",
-        inviteAgent: "Invite an agent",
-        inviteAgentDescription:
-          "Copy the invite, then tell an AI with Tabula MCP what you want changed.",
-        copyAgentInvite: "Copy invite",
-        setupAgent: "Set up Tabula MCP",
-        agentAccessWarning:
-          "The connected AI can edit the whole workspace. Local MCP runs on your device; hosted MCP can read room content as a participant.",
+        copyAgentInvite: "Copy prompt",
         retrySession: "Retry",
         unavailable: "Live collaboration isn’t available right now.",
         reconnectingTitle: "Reconnecting to live room",
         reconnectedTitle: "Live room reconnected",
         pausedDescription: "It reconnects automatically when you return.",
         disconnectedTitle: "Live room disconnected",
+        statusLabel: (status) => ({
+          connected: "live collaboration active",
+          reconnecting: "reconnecting",
+          suspended: "paused",
+          disconnected: "disconnected",
+        })[status],
         nameLabel: "Your name",
         nameAria: "Your collaboration name",
         anonymousPlaceholder: "Anonymous",
         invalidInviteTitle: "This live room does not have a valid invite link.",
         copyLink: "Copy link",
         copied: "Copied",
-        stopSession: "Stop session",
+        stopSession: "Leave room",
         stopDescription:
-          "Stopping disconnects only this browser. Other participants can continue in the room.",
-        stopConfirmTitle: "Stop live collaboration?",
+          "Leaving disconnects this browser from the room. You’ll keep working with a local copy, and everyone else can continue collaborating.",
+        stopConfirmTitle: "Leave live collaboration?",
         stopConfirmDescription:
-          "This browser will leave the room. The shared workspace will replace the local workspace currently saved on this device. Other participants can continue working in the room.",
+          "You’ll leave the live room and keep the latest workspace on this device as a local copy. Everyone else can continue collaborating.",
         cancelStop: "Cancel",
-        confirmStop: "Stop session",
+        confirmStop: "Leave room",
       },
       shareable: {
-        title: "Export link",
+        title: "Share a snapshot by link",
         description:
-          "Create an encrypted point-in-time copy. Changes do not sync back.",
-        resultDescription: "Snapshot created. Changes do not sync.",
-        snapshotMetadata: (formattedExpiry) =>
-          formattedExpiry ? `Snapshot · Expires ${formattedExpiry}` : "Snapshot",
+          "Create an encrypted copy of the workspace, including comments. People with the link can open that snapshot, but later changes won’t sync.",
+        expiryDescription: (formattedExpiry) => `Expires ${formattedExpiry}`,
         noFileReason: "Open a file before exporting to link.",
         exportToLink: "Create link",
         preparing: "Preparing encrypted link…",
@@ -264,57 +256,52 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "공유",
       modalTitle: "공유",
+      close: "공유 닫기",
+      copyFailed: "복사하지 못했습니다. 다시 시도하세요.",
       loadError: "공유를 열지 못했습니다.",
       nothingToShare:
         "아직 공유할 내용이 없습니다. 먼저 문서를 만들거나 여세요.",
       chooserSecurityDescription:
-        "브라우저에서 암호화되며 Tabula.md는 공유 내용을 읽을 수 없습니다.",
+        "워크스페이스는 이 브라우저를 벗어나기 전에 암호화됩니다. 링크를 가진 사람만 열 수 있으며 서버에서도 내용을 읽을 수 없습니다.",
       shareLinkLabel: "공유 링크",
-      workspaceSummary: (documentCount) =>
-        `전체 워크스페이스 · 문서 ${documentCount}개 · 댓글 포함`,
       live: {
-        title: "실시간 협업",
+        title: "실시간 협업 룸 열기",
         description:
-          "워크스페이스 전체를 암호화된 라이브 세션에서 함께 편집합니다.",
-        resultDescription: "변경 사항이 실시간으로 동기화됩니다.",
+          "비공개 룸에 연결된 동안 워크스페이스의 문서와 댓글이 함께 동기화됩니다. 프롬프트를 보내 에이전트도 초대할 수 있습니다.",
         startSession: "세션 시작",
-        temporarySessionDescription:
-          "임시 세션입니다. 최소 한 명의 참여자가 연결된 상태를 유지하세요.",
-        inviteAgent: "에이전트 초대",
-        inviteAgentDescription:
-          "초대를 복사한 뒤 Tabula MCP가 연결된 AI에게 무엇을 바꿀지 말하세요.",
-        copyAgentInvite: "초대 복사",
-        setupAgent: "Tabula MCP 설정",
-        agentAccessWarning:
-          "연결된 AI는 전체 워크스페이스를 편집할 수 있습니다. 로컬 MCP는 이 기기에서 실행되며, 호스팅 MCP는 참여자로서 room 내용을 읽을 수 있습니다.",
+        copyAgentInvite: "프롬프트 복사",
         retrySession: "다시 연결",
         unavailable: "지금은 실시간 협업을 사용할 수 없습니다.",
-        reconnectingTitle: "실시간 room에 다시 연결하는 중",
-        reconnectedTitle: "실시간 room에 다시 연결했습니다",
+        reconnectingTitle: "실시간 룸에 다시 연결하는 중",
+        reconnectedTitle: "실시간 룸에 다시 연결했습니다",
         pausedDescription: "돌아오면 자동으로 다시 연결됩니다.",
-        disconnectedTitle: "실시간 room 연결이 끊어졌습니다",
+        disconnectedTitle: "실시간 룸 연결이 끊어졌습니다",
+        statusLabel: (status) => ({
+          connected: "실시간 협업 중",
+          reconnecting: "다시 연결하는 중",
+          suspended: "일시 중지됨",
+          disconnected: "연결 끊김",
+        })[status],
         nameLabel: "내 이름",
         nameAria: "협업에서 표시할 이름",
         anonymousPlaceholder: "익명",
-        invalidInviteTitle: "이 실시간 room에는 유효한 초대 링크가 없습니다.",
+        invalidInviteTitle: "이 실시간 룸에는 유효한 초대 링크가 없습니다.",
         copyLink: "링크 복사",
         copied: "복사됨",
-        stopSession: "세션 중지",
+        stopSession: "룸 나가기",
         stopDescription:
-          "중지하면 이 브라우저만 room에서 나갑니다. 다른 참여자는 계속 협업할 수 있습니다.",
-        stopConfirmTitle: "실시간 협업을 중지할까요?",
+          "나가면 이 브라우저만 룸에서 연결이 끊깁니다. 로컬 복사본으로 계속 작업할 수 있고 다른 참여자는 협업을 이어갈 수 있습니다.",
+        stopConfirmTitle: "실시간 협업에서 나갈까요?",
         stopConfirmDescription:
-          "이 브라우저가 room에서 나갑니다. 공유 워크스페이스가 이 기기에 저장된 기존 로컬 워크스페이스를 대신하며, 다른 참여자는 room에서 계속 작업할 수 있습니다.",
+          "실시간 룸에서 나가고 최신 워크스페이스를 이 기기에 로컬 복사본으로 남깁니다. 다른 참여자는 계속 협업할 수 있습니다.",
         cancelStop: "취소",
-        confirmStop: "세션 중지",
+        confirmStop: "룸 나가기",
       },
       shareable: {
-        title: "내보내기 링크",
+        title: "스냅샷 링크로 공유하기",
         description:
-          "암호화된 시점 복사본을 만듭니다. 이후 변경은 원본에 동기화되지 않습니다.",
-        resultDescription: "스냅샷을 만들었습니다. 이후 변경은 동기화되지 않습니다.",
-        snapshotMetadata: (formattedExpiry) =>
-          formattedExpiry ? `스냅샷 · ${formattedExpiry} 만료` : "스냅샷",
+          "댓글을 포함한 워크스페이스의 암호화된 복사본을 만듭니다. 링크를 가진 사람은 스냅샷을 열 수 있지만 이후 변경 사항은 동기화되지 않습니다.",
+        expiryDescription: (formattedExpiry) => `만료: ${formattedExpiry}`,
         noFileReason: "파일을 열면 링크로 내보낼 수 있습니다.",
         exportToLink: "링크 만들기",
         preparing: "암호화된 링크 준비 중…",
@@ -370,58 +357,53 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "共有",
       modalTitle: "共有",
+      close: "共有を閉じる",
+      copyFailed: "コピーできませんでした。もう一度お試しください。",
       loadError: "共有を開けませんでした。",
       nothingToShare:
         "まだ共有できる内容がありません。まずドキュメントを作成するか開いてください。",
       chooserSecurityDescription:
-        "ブラウザーで暗号化されるため、Tabula.md は共有内容を読み取れません。",
+        "ワークスペースはこのブラウザーを離れる前に暗号化されます。リンクを持つ人だけが開くことができ、サーバーも内容を読み取れません。",
       shareLinkLabel: "共有リンク",
-      workspaceSummary: (documentCount) =>
-        `ワークスペース全体 · ドキュメント${documentCount}件 · コメントを含む`,
       live: {
-        title: "ライブ共同編集",
+        title: "ライブ共同編集ルームを開く",
         description:
-          "ワークスペース全体を暗号化されたライブセッションで共同編集します。",
-        resultDescription: "変更はリアルタイムで同期されます。",
+          "非公開ルームへの接続中は、ワークスペースのドキュメントとコメントが同期されます。プロンプトを送ってエージェントも招待できます。",
         startSession: "セッションを開始",
-        temporarySessionDescription:
-          "一時セッションです。少なくとも1人は接続したままにしてください。",
-        inviteAgent: "エージェントを招待",
-        inviteAgentDescription:
-          "招待をコピーし、Tabula MCP に接続した AI に変更内容を伝えます。",
-        copyAgentInvite: "招待をコピー",
-        setupAgent: "Tabula MCP を設定",
-        agentAccessWarning:
-          "接続した AI はワークスペース全体を編集できます。ローカル MCP は端末上で動作し、ホスト型 MCP は参加者として room の内容を読み取れます。",
+        copyAgentInvite: "プロンプトをコピー",
         retrySession: "再試行",
         unavailable: "現在、ライブ共同編集は利用できません。",
         reconnectingTitle: "ライブ共同編集ルームに再接続中",
         reconnectedTitle: "ライブ共同編集ルームに再接続しました",
         pausedDescription: "戻ると自動的に再接続します。",
         disconnectedTitle: "ライブ共同編集ルームから切断されました",
+        statusLabel: (status) => ({
+          connected: "ライブ共同編集が有効",
+          reconnecting: "再接続中",
+          suspended: "一時停止",
+          disconnected: "切断済み",
+        })[status],
         nameLabel: "あなたの名前",
         nameAria: "共同編集で表示する名前",
         anonymousPlaceholder: "匿名",
         invalidInviteTitle:
-          "このライブ room には有効な招待リンクがありません。",
+          "このライブ共同編集ルームには有効な招待リンクがありません。",
         copyLink: "リンクをコピー",
         copied: "コピー済み",
-        stopSession: "セッションを停止",
+        stopSession: "ルームを退出",
         stopDescription:
-          "停止すると、このブラウザだけが room から退出します。他の参加者はそのまま共同編集を続けられます。",
-        stopConfirmTitle: "ライブ共同編集を停止しますか？",
+          "退出すると、このブラウザーだけがルームから切断されます。ローカルコピーで作業を続けられ、他の参加者も共同編集を続けられます。",
+        stopConfirmTitle: "ライブ共同編集から退出しますか？",
         stopConfirmDescription:
-          "このブラウザは room から退出します。共有ワークスペースはこの端末に保存されたローカルワークスペースを置き換え、他の参加者は room で作業を続けられます。",
+          "ライブルームを退出し、最新のワークスペースをこの端末にローカルコピーとして残します。他の参加者は共同編集を続けられます。",
         cancelStop: "キャンセル",
-        confirmStop: "セッションを停止",
+        confirmStop: "ルームを退出",
       },
       shareable: {
-        title: "書き出しリンク",
+        title: "スナップショットをリンクで共有する",
         description:
-          "暗号化された時点コピーを作成します。以後の変更は元には同期されません。",
-        resultDescription: "スナップショットを作成しました。以後の変更は同期されません。",
-        snapshotMetadata: (formattedExpiry) =>
-          formattedExpiry ? `スナップショット · ${formattedExpiry} に期限切れ` : "スナップショット",
+          "コメントを含むワークスペースの暗号化コピーを作成します。リンクを持つ人はスナップショットを開けますが、以後の変更は同期されません。",
+        expiryDescription: (formattedExpiry) => `有効期限 ${formattedExpiry}`,
         noFileReason:
           "ファイルを開くとリンクに書き出せます。",
         exportToLink: "リンクを作成",
@@ -478,54 +460,51 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "分享",
       modalTitle: "分享",
+      close: "关闭分享",
+      copyFailed: "复制失败，请重试。",
       loadError: "无法打开分享。",
       nothingToShare: "暂无可分享的内容。请先创建或打开一个文档。",
       chooserSecurityDescription:
-        "内容会在浏览器中加密，Tabula.md 无法读取共享内容。",
+        "工作区会在离开此浏览器前加密。只有拥有链接的人才能打开，服务器也无法读取内容。",
       shareLinkLabel: "分享链接",
-      workspaceSummary: (documentCount) =>
-        `整个工作区 · ${documentCount} 个文档 · 包含评论`,
       live: {
-        title: "实时协作",
-        description: "在加密的实时协作中共同编辑整个工作区。",
-        resultDescription: "更改会实时同步。",
+        title: "打开实时协作房间",
+        description:
+          "连接到私密房间期间，工作区的文档和评论会保持同步。你也可以发送提示词来邀请智能体。",
         startSession: "启动协作",
-        temporarySessionDescription:
-          "这是临时会话。请确保至少一名参与者保持连接。",
-        inviteAgent: "邀请智能体",
-        inviteAgentDescription:
-          "复制邀请，然后告诉已连接 Tabula MCP 的 AI 需要修改什么。",
-        copyAgentInvite: "复制邀请",
-        setupAgent: "设置 Tabula MCP",
-        agentAccessWarning:
-          "连接的 AI 可以编辑整个工作区。本地 MCP 在您的设备上运行；托管 MCP 可作为参与者读取 room 内容。",
+        copyAgentInvite: "复制提示词",
         retrySession: "重试",
         unavailable: "实时协作目前不可用。",
         reconnectingTitle: "正在重新连接实时协作房间",
         reconnectedTitle: "已重新连接实时协作房间",
         pausedDescription: "返回时会自动重新连接。",
         disconnectedTitle: "实时协作房间已断开连接",
+        statusLabel: (status) => ({
+          connected: "实时协作已启用",
+          reconnecting: "正在重新连接",
+          suspended: "已暂停",
+          disconnected: "已断开连接",
+        })[status],
         nameLabel: "你的名字",
         nameAria: "协作显示名称",
         anonymousPlaceholder: "匿名",
-        invalidInviteTitle: "此实时 room 没有有效的邀请链接。",
+        invalidInviteTitle: "此实时协作空间没有有效的邀请链接。",
         copyLink: "复制链接",
         copied: "已复制",
-        stopSession: "停止协作",
+        stopSession: "离开协作空间",
         stopDescription:
-          "停止后仅此浏览器会离开 room，其他参与者仍可继续协作。",
-        stopConfirmTitle: "停止实时协作？",
+          "离开后仅此浏览器会断开连接。你可以继续使用本地副本，其他参与者仍可继续协作。",
+        stopConfirmTitle: "离开实时协作？",
         stopConfirmDescription:
-          "此浏览器将离开 room。共享工作区会替换此设备上当前保存的本地工作区，其他参与者仍可在 room 中继续工作。",
+          "你将离开实时房间，并在此设备上保留最新工作区的本地副本。其他参与者仍可继续协作。",
         cancelStop: "取消",
-        confirmStop: "停止协作",
+        confirmStop: "离开协作空间",
       },
       shareable: {
-        title: "导出链接",
-        description: "创建加密的时间点副本。之后的更改不会同步回原工作区。",
-        resultDescription: "快照已创建。之后的更改不会同步。",
-        snapshotMetadata: (formattedExpiry) =>
-          formattedExpiry ? `快照 · ${formattedExpiry} 到期` : "快照",
+        title: "通过链接分享快照",
+        description:
+          "创建包含评论的工作区加密副本。拥有链接的人可以打开该快照，但之后的更改不会同步。",
+        expiryDescription: (formattedExpiry) => `到期日 ${formattedExpiry}`,
         noFileReason: "打开文件后即可导出为链接。",
         exportToLink: "创建链接",
         preparing: "正在准备加密链接…",
@@ -581,35 +560,32 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "Compartir",
       modalTitle: "Compartir",
+      close: "Cerrar Compartir",
+      copyFailed: "No se pudo copiar. Inténtalo de nuevo.",
       loadError: "No se pudo abrir Compartir.",
       nothingToShare:
         "Aún no hay nada que compartir. Crea o abre un documento primero.",
       chooserSecurityDescription:
-        "Se cifra en tu navegador. Tabula.md no puede leer el contenido compartido.",
+        "El espacio se cifra antes de salir de este navegador. Solo quienes tengan el enlace pueden abrirlo; ni nuestros servidores pueden leer el contenido.",
       shareLinkLabel: "Enlace para compartir",
-      workspaceSummary: (documentCount) =>
-        `Todo el espacio · ${documentCount} ${documentCount === 1 ? "documento" : "documentos"} · comentarios incluidos`,
       live: {
-        title: "Colaboración en vivo",
+        title: "Abrir una sala de colaboración en vivo",
         description:
-          "Colabora en todo el espacio de trabajo en una sala cifrada.",
-        resultDescription: "Los cambios se sincronizan en tiempo real.",
+          "Esta sala privada mantiene sincronizados los documentos y comentarios mientras haya personas conectadas. También puedes invitar a un agente con el prompt.",
         startSession: "Iniciar colaboración",
-        temporarySessionDescription:
-          "Sesión temporal. Mantén al menos un participante conectado.",
-        inviteAgent: "Invitar a un agente",
-        inviteAgentDescription:
-          "Copia la invitación y dile a una IA con Tabula MCP qué quieres cambiar.",
-        copyAgentInvite: "Copiar invitación",
-        setupAgent: "Configurar Tabula MCP",
-        agentAccessWarning:
-          "La IA conectada puede editar todo el espacio. MCP local se ejecuta en tu dispositivo; MCP alojado puede leer la room como participante.",
+        copyAgentInvite: "Copiar prompt",
         retrySession: "Reintentar",
         unavailable: "La colaboración en vivo no está disponible ahora.",
         reconnectingTitle: "Reconectando a la sala en vivo",
         reconnectedTitle: "Sala en vivo reconectada",
         pausedDescription: "Se reconecta automáticamente cuando vuelvas.",
         disconnectedTitle: "Sala en vivo desconectada",
+        statusLabel: (status) => ({
+          connected: "colaboración en vivo activa",
+          reconnecting: "reconectando",
+          suspended: "en pausa",
+          disconnected: "desconectada",
+        })[status],
         nameLabel: "Tu nombre",
         nameAria: "Tu nombre de colaboración",
         anonymousPlaceholder: "Anónimo",
@@ -617,22 +593,20 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Esta sala en vivo no tiene un enlace de invitación válido.",
         copyLink: "Copiar enlace",
         copied: "Copiado",
-        stopSession: "Detener colaboración",
+        stopSession: "Salir de la sala",
         stopDescription:
-          "Al detenerla, solo este navegador sale de la sala. Los demás participantes pueden continuar.",
-        stopConfirmTitle: "¿Detener la colaboración en vivo?",
+          "Al salir, este navegador se desconecta de la sala. Puedes seguir trabajando con una copia local y los demás pueden continuar colaborando.",
+        stopConfirmTitle: "¿Salir de la colaboración en vivo?",
         stopConfirmDescription:
-          "Este navegador saldrá de la sala. El workspace compartido reemplazará el workspace local guardado en este dispositivo y los demás participantes podrán seguir trabajando en la sala.",
+          "Saldrás de la sala y conservarás el espacio más reciente como copia local en este dispositivo. Los demás pueden continuar colaborando.",
         cancelStop: "Cancelar",
-        confirmStop: "Detener colaboración",
+        confirmStop: "Salir de la sala",
       },
       shareable: {
-        title: "Enlace de exportación",
+        title: "Compartir una instantánea por enlace",
         description:
-          "Crea una copia cifrada en un momento dado. Los cambios no se sincronizan con el original.",
-        resultDescription: "Instantánea creada. Los cambios no se sincronizan.",
-        snapshotMetadata: (formattedExpiry) =>
-          formattedExpiry ? `Instantánea · Caduca el ${formattedExpiry}` : "Instantánea",
+          "Crea una copia cifrada del espacio, incluidos los comentarios. Quienes tengan el enlace pueden abrirla, pero los cambios posteriores no se sincronizan.",
+        expiryDescription: (formattedExpiry) => `Caduca el ${formattedExpiry}`,
         noFileReason:
           "Abre un archivo antes de exportar a enlace.",
         exportToLink: "Crear enlace",
@@ -689,58 +663,53 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "Partager",
       modalTitle: "Partager",
+      close: "Fermer le partage",
+      copyFailed: "Impossible de copier. Réessayez.",
       loadError: "Impossible d’ouvrir le partage.",
       nothingToShare:
         "Rien à partager pour le moment. Créez ou ouvrez d’abord un document.",
       chooserSecurityDescription:
-        "Chiffré dans votre navigateur. Tabula.md ne peut pas lire le contenu partagé.",
+        "L’espace est chiffré avant de quitter ce navigateur. Seules les personnes ayant le lien peuvent l’ouvrir ; même nos serveurs ne peuvent pas lire le contenu.",
       shareLinkLabel: "Lien de partage",
-      workspaceSummary: (documentCount) =>
-        `Tout l’espace · ${documentCount} ${documentCount === 1 ? "document" : "documents"} · commentaires inclus`,
       live: {
-        title: "Collaboration en direct",
+        title: "Ouvrir une salle de collaboration en direct",
         description:
-          "Collaborez en direct sur tout l’espace de travail dans une session chiffrée.",
-        resultDescription: "Les modifications sont synchronisées en temps réel.",
+          "Cette salle privée synchronise les documents et commentaires tant que des personnes sont connectées. Vous pouvez aussi inviter un agent avec le prompt.",
         startSession: "Démarrer la session",
-        temporarySessionDescription:
-          "Session temporaire. Gardez au moins un participant connecté.",
-        inviteAgent: "Inviter un agent",
-        inviteAgentDescription:
-          "Copiez l’invitation, puis indiquez à une IA avec Tabula MCP ce qu’elle doit modifier.",
-        copyAgentInvite: "Copier l’invitation",
-        setupAgent: "Configurer Tabula MCP",
-        agentAccessWarning:
-          "L’IA connectée peut modifier tout l’espace. Le MCP local s’exécute sur votre appareil ; le MCP hébergé peut lire la room en tant que participant.",
+        copyAgentInvite: "Copier le prompt",
         retrySession: "Réessayer",
         unavailable: "La collaboration en direct n’est pas disponible actuellement.",
         reconnectingTitle: "Reconnexion à l’espace en direct",
         reconnectedTitle: "Espace en direct reconnecté",
         pausedDescription: "La reconnexion est automatique à votre retour.",
         disconnectedTitle: "Espace en direct déconnecté",
+        statusLabel: (status) => ({
+          connected: "collaboration en direct active",
+          reconnecting: "reconnexion",
+          suspended: "en pause",
+          disconnected: "déconnectée",
+        })[status],
         nameLabel: "Votre nom",
         nameAria: "Votre nom de collaboration",
         anonymousPlaceholder: "Anonyme",
         invalidInviteTitle:
-          "Cette room en direct n'a pas de lien d'invitation valide.",
+          "Cette salle en direct n’a pas de lien d’invitation valide.",
         copyLink: "Copier le lien",
         copied: "Copié",
-        stopSession: "Arrêter la session",
+        stopSession: "Quitter la salle",
         stopDescription:
-          "L’arrêt déconnecte uniquement ce navigateur. Les autres participants peuvent continuer dans la room.",
-        stopConfirmTitle: "Arrêter la collaboration en direct ?",
+          "Quitter déconnecte ce navigateur de la salle. Vous pouvez continuer avec une copie locale et les autres peuvent poursuivre la collaboration.",
+        stopConfirmTitle: "Quitter la collaboration en direct ?",
         stopConfirmDescription:
-          "Ce navigateur quittera la room. Le workspace partagé remplacera le workspace local enregistré sur cet appareil et les autres participants pourront continuer dans la room.",
+          "Vous quitterez la salle et conserverez l’espace le plus récent comme copie locale sur cet appareil. Les autres peuvent poursuivre la collaboration.",
         cancelStop: "Annuler",
-        confirmStop: "Arrêter la session",
+        confirmStop: "Quitter la salle",
       },
       shareable: {
-        title: "Lien d’export",
+        title: "Partager un instantané par lien",
         description:
-          "Créez une copie chiffrée à un instant donné. Les modifications ne sont pas resynchronisées.",
-        resultDescription: "Instantané créé. Les modifications ne sont pas synchronisées.",
-        snapshotMetadata: (formattedExpiry) =>
-          formattedExpiry ? `Instantané · Expire le ${formattedExpiry}` : "Instantané",
+          "Créez une copie chiffrée de l’espace, commentaires inclus. Les personnes ayant le lien peuvent l’ouvrir, mais les modifications ultérieures ne seront pas synchronisées.",
+        expiryDescription: (formattedExpiry) => `Expire le ${formattedExpiry}`,
         noFileReason:
           "Ouvrez un fichier avant d'exporter vers un lien.",
         exportToLink: "Créer un lien",
@@ -797,35 +766,32 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     share: {
       trigger: "Teilen",
       modalTitle: "Teilen",
+      close: "Teilen schließen",
+      copyFailed: "Kopieren fehlgeschlagen. Versuche es erneut.",
       loadError: "Teilen konnte nicht geöffnet werden.",
       nothingToShare:
         "Noch nichts zum Teilen vorhanden. Erstelle oder öffne zuerst ein Dokument.",
       chooserSecurityDescription:
-        "Im Browser verschlüsselt. Tabula.md kann geteilte Inhalte nicht lesen.",
+        "Der Workspace wird verschlüsselt, bevor er diesen Browser verlässt. Nur Personen mit dem Link können ihn öffnen; auch unsere Server können den Inhalt nicht lesen.",
       shareLinkLabel: "Freigabelink",
-      workspaceSummary: (documentCount) =>
-        `Gesamter Workspace · ${documentCount} ${documentCount === 1 ? "Dokument" : "Dokumente"} · Kommentare enthalten`,
       live: {
-        title: "Live-Zusammenarbeit",
+        title: "Live-Raum für Zusammenarbeit öffnen",
         description:
-          "Arbeite in einer verschlüsselten Live-Sitzung am gesamten Workspace zusammen.",
-        resultDescription: "Änderungen werden in Echtzeit synchronisiert.",
+          "Dieser private Raum hält Dokumente und Kommentare synchron, solange Personen verbunden sind. Du kannst mit dem Prompt auch einen Agenten einladen.",
         startSession: "Sitzung starten",
-        temporarySessionDescription:
-          "Temporäre Sitzung. Mindestens eine Person muss verbunden bleiben.",
-        inviteAgent: "Agent einladen",
-        inviteAgentDescription:
-          "Einladung kopieren und einer KI mit Tabula MCP sagen, was sie ändern soll.",
-        copyAgentInvite: "Einladung kopieren",
-        setupAgent: "Tabula MCP einrichten",
-        agentAccessWarning:
-          "Die verbundene KI kann den gesamten Workspace bearbeiten. Lokales MCP läuft auf deinem Gerät; gehostetes MCP kann den Room-Inhalt als Teilnehmer lesen.",
+        copyAgentInvite: "Prompt kopieren",
         retrySession: "Erneut versuchen",
         unavailable: "Live-Zusammenarbeit ist derzeit nicht verfügbar.",
         reconnectingTitle: "Live-Raum wird erneut verbunden",
         reconnectedTitle: "Live-Raum wieder verbunden",
         pausedDescription: "Bei deiner Rückkehr wird die Verbindung automatisch wiederhergestellt.",
         disconnectedTitle: "Verbindung zum Live-Raum getrennt",
+        statusLabel: (status) => ({
+          connected: "Live-Zusammenarbeit aktiv",
+          reconnecting: "Verbindung wird wiederhergestellt",
+          suspended: "pausiert",
+          disconnected: "getrennt",
+        })[status],
         nameLabel: "Dein Name",
         nameAria: "Dein Name für die Zusammenarbeit",
         anonymousPlaceholder: "Anonym",
@@ -833,22 +799,20 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
           "Dieser Live-Room hat keinen gültigen Einladungslink.",
         copyLink: "Link kopieren",
         copied: "Kopiert",
-        stopSession: "Sitzung beenden",
+        stopSession: "Raum verlassen",
         stopDescription:
-          "Beim Beenden verlässt nur dieser Browser den Room. Andere Teilnehmende können weiterarbeiten.",
-        stopConfirmTitle: "Live-Zusammenarbeit beenden?",
+          "Beim Verlassen wird dieser Browser vom Raum getrennt. Du kannst mit einer lokalen Kopie weiterarbeiten und alle anderen können weiter zusammenarbeiten.",
+        stopConfirmTitle: "Live-Zusammenarbeit verlassen?",
         stopConfirmDescription:
-          "Dieser Browser verlässt den Room. Der geteilte Workspace ersetzt den aktuell auf diesem Gerät gespeicherten lokalen Workspace; andere Teilnehmende können im Room weiterarbeiten.",
+          "Du verlässt den Live-Raum und behältst den aktuellen Workspace als lokale Kopie auf diesem Gerät. Alle anderen können weiter zusammenarbeiten.",
         cancelStop: "Abbrechen",
-        confirmStop: "Sitzung beenden",
+        confirmStop: "Raum verlassen",
       },
       shareable: {
-        title: "Exportlink",
+        title: "Momentaufnahme per Link teilen",
         description:
-          "Erstelle eine verschlüsselte Momentaufnahme. Änderungen werden nicht zurücksynchronisiert.",
-        resultDescription: "Momentaufnahme erstellt. Änderungen werden nicht synchronisiert.",
-        snapshotMetadata: (formattedExpiry) =>
-          formattedExpiry ? `Momentaufnahme · Läuft am ${formattedExpiry} ab` : "Momentaufnahme",
+          "Erstellt eine verschlüsselte Kopie des Workspace einschließlich Kommentaren. Personen mit dem Link können sie öffnen; spätere Änderungen werden nicht synchronisiert.",
+        expiryDescription: (formattedExpiry) => `Läuft am ${formattedExpiry} ab`,
         noFileReason:
           "Öffne eine Datei, bevor du als Link exportierst.",
         exportToLink: "Link erstellen",
@@ -865,10 +829,6 @@ export const getWorkspaceMenuCopy = (language: WorkspaceLanguage) =>
   workspaceMenuCopy[language];
 
 export type WorkspaceChromeCopy = {
-  common: {
-    or: string;
-    closeShareDialog: string;
-  };
   topChrome: {
     openWorkspaceMenu: string;
     closeWorkspaceMenu: string;
@@ -936,7 +896,6 @@ export type WorkspaceChromeCopy = {
 
 const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
   en: {
-    common: { or: "Or", closeShareDialog: "Close share dialog" },
     topChrome: {
       openWorkspaceMenu: "Open Workspace menu",
       closeWorkspaceMenu: "Close Workspace menu",
@@ -1002,7 +961,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
   },
   ko: {
-    common: { or: "또는", closeShareDialog: "공유 창 닫기" },
     topChrome: {
       openWorkspaceMenu: "작업공간 메뉴 열기",
       closeWorkspaceMenu: "작업공간 메뉴 닫기",
@@ -1068,7 +1026,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
   },
   ja: {
-    common: { or: "または", closeShareDialog: "共有ダイアログを閉じる" },
     topChrome: {
       openWorkspaceMenu: "ワークスペースメニューを開く",
       closeWorkspaceMenu: "ワークスペースメニューを閉じる",
@@ -1134,7 +1091,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
   },
   zh: {
-    common: { or: "或", closeShareDialog: "关闭分享对话框" },
     topChrome: {
       openWorkspaceMenu: "打开工作区菜单",
       closeWorkspaceMenu: "关闭工作区菜单",
@@ -1200,7 +1156,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
   },
   es: {
-    common: { or: "O", closeShareDialog: "Cerrar diálogo de compartir" },
     topChrome: {
       openWorkspaceMenu: "Abrir menú del espacio",
       closeWorkspaceMenu: "Cerrar menú del espacio",
@@ -1266,7 +1221,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
   },
   fr: {
-    common: { or: "Ou", closeShareDialog: "Fermer la fenêtre de partage" },
     topChrome: {
       openWorkspaceMenu: "Ouvrir le menu de l’espace",
       closeWorkspaceMenu: "Fermer le menu de l’espace",
@@ -1332,7 +1286,6 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     },
   },
   de: {
-    common: { or: "Oder", closeShareDialog: "Teilen-Dialog schließen" },
     topChrome: {
       openWorkspaceMenu: "Workspace-Menü öffnen",
       closeWorkspaceMenu: "Workspace-Menü schließen",
