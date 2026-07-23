@@ -4,6 +4,7 @@ import {
   getOutlineHeadings,
   getOutlineHeadingsFromMarkdown,
   getPreviewBody,
+  inspectFrontmatterData,
   parseFrontmatter,
   parseFrontmatterData,
 } from "./parse";
@@ -65,6 +66,17 @@ Body`);
       attributes: [],
       body: markdown,
     });
+  });
+
+  it("distinguishes absent, empty, malformed, and unclosed frontmatter", () => {
+    expect(inspectFrontmatterData("# No frontmatter").status).toBe("absent");
+    expect(inspectFrontmatterData("---\n---\n\nBody")).toMatchObject({
+      status: "valid",
+      metadata: {},
+      body: "\nBody",
+    });
+    expect(inspectFrontmatterData("---\ntype: [\n---\n\nBody").status).toBe("invalid");
+    expect(inspectFrontmatterData("---\ntype: Note").status).toBe("invalid");
   });
 
   it("does not treat top horizontal rules as frontmatter without metadata key-values", () => {
