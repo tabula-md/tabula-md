@@ -9,7 +9,9 @@ describe("right panel links model", () => {
         id: "start",
         path: "Start.md",
         markdown: [
+          "# Start",
           "[Target](Target.md)",
+          "[This section](#start)",
           "[[Shared]]",
           "[Missing](Missing.md)",
           "[Website](https://tabula.md)",
