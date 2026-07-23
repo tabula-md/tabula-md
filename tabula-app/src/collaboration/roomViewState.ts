@@ -20,6 +20,7 @@ const isRightPanelView = (value: unknown): value is RightPanelView =>
   value === "files" ||
   value === "outline" ||
   value === "links" ||
+  value === "graph" ||
   value === "comments" ||
   value === "search";
 

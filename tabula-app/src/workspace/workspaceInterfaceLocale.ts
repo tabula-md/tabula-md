@@ -16,6 +16,7 @@ type WorkspaceInterfaceMessages = {
   panelFiles: string;
   panelOutline: string;
   panelLinks: string;
+  panelGraph: string;
   panelComments: string;
   panelSearch: string;
   searchPlaceholder: string;
@@ -60,6 +61,14 @@ type WorkspaceInterfaceMessages = {
   linksUnavailable: string;
   linksOpen: string;
   linksCandidates: string;
+  graphFor: string;
+  graphTitle: string;
+  graphSummary: string;
+  graphNone: string;
+  graphUnavailable: string;
+  graphOpen: string;
+  graphCurrent: string;
+  graphTruncated: string;
   commentsTitle: string;
   commentsAll: string;
   commentsCurrentFile: string;
@@ -114,6 +123,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "Files",
     panelOutline: "Outline",
     panelLinks: "Links",
+    panelGraph: "Graph",
     panelComments: "Comments",
     panelSearch: "Search",
     searchPlaceholder: "Search files",
@@ -158,6 +168,14 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "Links are unavailable while file paths conflict",
     linksOpen: "Open {{name}}",
     linksCandidates: "{{count}} candidates",
+    graphFor: "Local graph for {{name}}",
+    graphTitle: "Local graph",
+    graphSummary: "{{documents}} docs · {{links}} links",
+    graphNone: "No connected documents",
+    graphUnavailable: "Graph is unavailable while file paths conflict",
+    graphOpen: "Open {{name}}",
+    graphCurrent: "Current document: {{name}}",
+    graphTruncated: "Showing {{visible}} of {{total}} nearby documents",
     commentsTitle: "Comment scope",
     commentsAll: "All comments",
     commentsCurrentFile: "Current file",
@@ -211,6 +229,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "파일",
     panelOutline: "개요",
     panelLinks: "링크",
+    panelGraph: "그래프",
     panelComments: "댓글",
     panelSearch: "검색",
     searchPlaceholder: "파일 검색",
@@ -255,6 +274,14 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "파일 경로 충돌을 해결하면 링크를 확인할 수 있습니다",
     linksOpen: "{{name}} 열기",
     linksCandidates: "후보 {{count}}개",
+    graphFor: "{{name}}의 로컬 그래프",
+    graphTitle: "로컬 그래프",
+    graphSummary: "문서 {{documents}} · 링크 {{links}}",
+    graphNone: "연결된 문서가 없습니다",
+    graphUnavailable: "파일 경로 충돌을 해결하면 그래프를 확인할 수 있습니다",
+    graphOpen: "{{name}} 열기",
+    graphCurrent: "현재 문서: {{name}}",
+    graphTruncated: "인접 문서 {{total}}개 중 {{visible}}개 표시",
     commentsTitle: "댓글 범위",
     commentsAll: "모든 댓글",
     commentsCurrentFile: "현재 파일",
@@ -308,6 +335,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "ファイル",
     panelOutline: "アウトライン",
     panelLinks: "リンク",
+    panelGraph: "グラフ",
     panelComments: "コメント",
     panelSearch: "検索",
     searchPlaceholder: "ファイルを検索",
@@ -352,6 +380,14 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "ファイルパスの競合を解消するとリンクを確認できます",
     linksOpen: "{{name}} を開く",
     linksCandidates: "候補 {{count}} 件",
+    graphFor: "{{name}} のローカルグラフ",
+    graphTitle: "ローカルグラフ",
+    graphSummary: "文書 {{documents}} · リンク {{links}}",
+    graphNone: "接続された文書はありません",
+    graphUnavailable: "ファイルパスの競合を解消するとグラフを確認できます",
+    graphOpen: "{{name}} を開く",
+    graphCurrent: "現在の文書: {{name}}",
+    graphTruncated: "近接文書 {{total}} 件中 {{visible}} 件を表示",
     commentsTitle: "コメント範囲",
     commentsAll: "すべてのコメント",
     commentsCurrentFile: "現在のファイル",
@@ -405,6 +441,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "文件",
     panelOutline: "大纲",
     panelLinks: "链接",
+    panelGraph: "关系图",
     panelComments: "评论",
     panelSearch: "搜索",
     searchPlaceholder: "搜索文件",
@@ -449,6 +486,14 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "解决文件路径冲突后即可查看链接",
     linksOpen: "打开 {{name}}",
     linksCandidates: "{{count}} 个候选项",
+    graphFor: "{{name}} 的局部关系图",
+    graphTitle: "局部关系图",
+    graphSummary: "文档 {{documents}} · 链接 {{links}}",
+    graphNone: "没有相连的文档",
+    graphUnavailable: "解决文件路径冲突后即可查看关系图",
+    graphOpen: "打开 {{name}}",
+    graphCurrent: "当前文档：{{name}}",
+    graphTruncated: "显示附近 {{total}} 个文档中的 {{visible}} 个",
     commentsTitle: "评论范围",
     commentsAll: "所有评论",
     commentsCurrentFile: "当前文件",
@@ -501,6 +546,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "Archivos",
     panelOutline: "Esquema",
     panelLinks: "Enlaces",
+    panelGraph: "Grafo",
     panelComments: "Comentarios",
     panelSearch: "Buscar",
     searchPlaceholder: "Buscar archivos",
@@ -545,6 +591,14 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "Resuelve los conflictos de rutas para ver los enlaces",
     linksOpen: "Abrir {{name}}",
     linksCandidates: "{{count}} candidatos",
+    graphFor: "Grafo local de {{name}}",
+    graphTitle: "Grafo local",
+    graphSummary: "{{documents}} docs · {{links}} enlaces",
+    graphNone: "No hay documentos conectados",
+    graphUnavailable: "Resuelve los conflictos de rutas para ver el grafo",
+    graphOpen: "Abrir {{name}}",
+    graphCurrent: "Documento actual: {{name}}",
+    graphTruncated: "Se muestran {{visible}} de {{total}} documentos cercanos",
     commentsTitle: "Ámbito de comentarios",
     commentsAll: "Todos los comentarios",
     commentsCurrentFile: "Archivo actual",
@@ -598,6 +652,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "Fichiers",
     panelOutline: "Plan",
     panelLinks: "Liens",
+    panelGraph: "Graphe",
     panelComments: "Commentaires",
     panelSearch: "Rechercher",
     searchPlaceholder: "Rechercher des fichiers",
@@ -642,6 +697,14 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "Résolvez les conflits de chemins pour afficher les liens",
     linksOpen: "Ouvrir {{name}}",
     linksCandidates: "{{count}} candidats",
+    graphFor: "Graphe local de {{name}}",
+    graphTitle: "Graphe local",
+    graphSummary: "{{documents}} docs · {{links}} liens",
+    graphNone: "Aucun document connecté",
+    graphUnavailable: "Résolvez les conflits de chemins pour afficher le graphe",
+    graphOpen: "Ouvrir {{name}}",
+    graphCurrent: "Document actuel : {{name}}",
+    graphTruncated: "{{visible}} documents proches affichés sur {{total}}",
     commentsTitle: "Portée des commentaires",
     commentsAll: "Tous les commentaires",
     commentsCurrentFile: "Fichier actuel",
@@ -695,6 +758,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelFiles: "Dateien",
     panelOutline: "Gliederung",
     panelLinks: "Links",
+    panelGraph: "Graph",
     panelComments: "Kommentare",
     panelSearch: "Suchen",
     searchPlaceholder: "Dateien suchen",
@@ -739,6 +803,14 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     linksUnavailable: "Löse die Dateipfadkonflikte, um Links anzuzeigen",
     linksOpen: "{{name}} öffnen",
     linksCandidates: "{{count}} Kandidaten",
+    graphFor: "Lokaler Graph für {{name}}",
+    graphTitle: "Lokaler Graph",
+    graphSummary: "{{documents}} Dok. · {{links}} Links",
+    graphNone: "Keine verbundenen Dokumente",
+    graphUnavailable: "Löse die Dateipfadkonflikte, um den Graph anzuzeigen",
+    graphOpen: "{{name}} öffnen",
+    graphCurrent: "Aktuelles Dokument: {{name}}",
+    graphTruncated: "{{visible}} von {{total}} nahen Dokumenten werden angezeigt",
     commentsTitle: "Kommentarbereich",
     commentsAll: "Alle Kommentare",
     commentsCurrentFile: "Aktuelle Datei",
@@ -813,6 +885,7 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         files: copy.panelFiles,
         outline: copy.panelOutline,
         links: copy.panelLinks,
+        graph: copy.panelGraph,
         comments: copy.panelComments,
         search: copy.panelSearch,
       },
@@ -866,6 +939,18 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         unavailable: copy.linksUnavailable,
         open: (name: string) => format(copy.linksOpen, { name }),
         candidates: (count: number) => format(copy.linksCandidates, { count }),
+      },
+      graph: {
+        forFile: (name: string) => format(copy.graphFor, { name }),
+        title: copy.graphTitle,
+        summary: (documents: number, links: number) =>
+          format(copy.graphSummary, { documents, links }),
+        none: copy.graphNone,
+        unavailable: copy.graphUnavailable,
+        open: (name: string) => format(copy.graphOpen, { name }),
+        current: (name: string) => format(copy.graphCurrent, { name }),
+        truncated: (visible: number, total: number) =>
+          format(copy.graphTruncated, { visible, total }),
       },
       comments: {
         title: copy.commentsTitle,
