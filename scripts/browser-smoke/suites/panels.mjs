@@ -783,30 +783,54 @@ export async function run(ctx) {
         Math.abs(childOutlineLabelBox.x - rootOutlineLabelBox.x - 12) <= 1,
       "Outline hierarchy should indent the complete heading row by one stable step.",
     );
+    const rootOutlineRow = page.locator(".right-outline-row").filter({
+      has: rootOutlineHeading,
+    });
+    const rootOutlineToggle = rootOutlineRow.getByRole("button", {
+      name: "Collapse section",
+      exact: true,
+    });
+    const rootOutlineToggleBox = await rootOutlineToggle.boundingBox();
     expect(
-      (await rootOutlineHeading.locator(".right-outline-chevron").count()) === 1 &&
-        (await rootOutlineHeading.locator(".lucide-chevron-right").count()) === 0 &&
-        (await rootOutlineHeading.getAttribute("aria-expanded")) === "true",
-      "A collapsible outline heading should expose one rotating chevron on the heading row.",
+      (await rootOutlineToggle.locator(".right-outline-chevron").count()) === 1 &&
+        (await rootOutlineToggle.locator(".lucide-chevron-right").count()) === 0 &&
+        (await rootOutlineToggle.getAttribute("aria-expanded")) === "true" &&
+        rootOutlineToggleBox &&
+        rootOutlineToggleBox.width >= 28 &&
+        rootOutlineToggleBox.height >= 30,
+      "A collapsible outline heading should expose one rotating chevron with a forgiving hit target.",
     );
     await rootOutlineHeading.click();
     await waitForRenderFrame(page);
     expect(
-      (await childOutlineHeading.count()) === 0 &&
-        (await rootOutlineHeading.getAttribute("aria-expanded")) === "false" &&
+      (await childOutlineHeading.count()) === 1 &&
+        (await rootOutlineToggle.getAttribute("aria-expanded")) === "true" &&
         (await rootOutlineHeading.getAttribute("aria-current")) === "location",
-      "Clicking a collapsible outline row should navigate to it and hide its descendants.",
+      "Clicking an outline heading should navigate without changing its disclosure state.",
+    );
+    await rootOutlineToggle.click();
+    await waitForRenderFrame(page);
+    expect(
+      (await childOutlineHeading.count()) === 0 &&
+        (await rootOutlineRow.locator(".right-outline-toggle").getAttribute("aria-expanded")) === "false",
+      "Clicking the disclosure control should hide the heading descendants.",
     );
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
-    const persistedRootOutlineHeading = page.getByRole("button", {
-      name: "Tabula.md",
+    const persistedRootOutlineRow = page.locator(".right-outline-row").filter({
+      has: page.getByRole("button", {
+        name: "Tabula.md",
+        exact: true,
+      }),
+    });
+    const persistedRootOutlineToggle = persistedRootOutlineRow.getByRole("button", {
+      name: "Expand section",
       exact: true,
     });
     expect(
-      (await persistedRootOutlineHeading.getAttribute("aria-expanded")) === "false" &&
+      (await persistedRootOutlineToggle.getAttribute("aria-expanded")) === "false" &&
         (await childOutlineHeading.count()) === 0,
       "Outline collapse state should survive switching between right-panel tabs.",
     );
@@ -817,11 +841,11 @@ export async function run(ctx) {
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "README.md" });
     expect(
-      (await persistedRootOutlineHeading.getAttribute("aria-expanded")) === "false" &&
+      (await persistedRootOutlineToggle.getAttribute("aria-expanded")) === "false" &&
         (await childOutlineHeading.count()) === 0,
       "Outline collapse state should be restored when returning to a document.",
     );
-    await persistedRootOutlineHeading.click();
+    await persistedRootOutlineToggle.click();
     await waitForRenderFrame(page);
     await page.getByRole("button", { name: "Start here", exact: true }).click();
     await waitForRenderFrame(page);
