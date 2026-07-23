@@ -370,14 +370,18 @@ export async function run(ctx) {
       countPillCount: document.querySelectorAll(".right-panel .panel-count-pill").length,
       fileToolbar: (() => {
         const row = document.querySelector(".right-file-toolbar");
+        const compatibilityButton = document.querySelector('.right-file-toolbar-button[aria-label="Check knowledge base compatibility"]');
         const importButton = document.querySelector('.right-file-toolbar-button[aria-label="Open Markdown file"]');
         const createButton = document.querySelector('.right-file-toolbar-button[aria-label="Create"]');
-        if (!row || !importButton || !createButton) {
+        if (!row || !compatibilityButton || !importButton || !createButton) {
           return null;
         }
+        const compatibilityButtonRect = compatibilityButton.getBoundingClientRect();
         const importButtonRect = importButton.getBoundingClientRect();
         const createButtonRect = createButton.getBoundingClientRect();
         return {
+          compatibilityButtonWidth: Math.round(compatibilityButtonRect.width),
+          compatibilityButtonHeight: Math.round(compatibilityButtonRect.height),
           importButtonWidth: Math.round(importButtonRect.width),
           importButtonHeight: Math.round(importButtonRect.height),
           createButtonWidth: Math.round(createButtonRect.width),
@@ -434,7 +438,9 @@ export async function run(ctx) {
     expect(rightPanelState.documentCardCount === 0, "The right panel should not use document cards.");
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");
     expect(
-      rightPanelState.fileToolbar?.importButtonWidth === 28 &&
+      rightPanelState.fileToolbar?.compatibilityButtonWidth === 28 &&
+        rightPanelState.fileToolbar?.compatibilityButtonHeight === 28 &&
+        rightPanelState.fileToolbar?.importButtonWidth === 28 &&
         rightPanelState.fileToolbar?.importButtonHeight === 28 &&
         rightPanelState.fileToolbar?.createButtonWidth === 28 &&
         rightPanelState.fileToolbar?.createButtonHeight === 28,
@@ -460,6 +466,51 @@ export async function run(ctx) {
     expect(
       rightPanelState.laneGeometry.status.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
       "The side panel should not clip the status bar lane.",
+    );
+
+    const compatibilityActiveFile = (await getTabs(page)).find((tab) => tab.active)?.title ?? "";
+    await page.getByRole("button", { name: "Check knowledge base compatibility", exact: true }).click();
+    await page.locator(".right-compatibility-scroll").waitFor({ state: "visible" });
+    const compatibilityState = await page.evaluate(() => ({
+      title: document.querySelector(".right-compatibility-header h2")?.textContent?.trim() ?? "",
+      standard: document.querySelector(".right-compatibility-standard")?.textContent?.trim() ?? "",
+      status: document.querySelector(".right-compatibility-status strong")?.textContent?.trim() ?? "",
+      issueTitles: Array.from(document.querySelectorAll(".right-compatibility-issue-title"))
+        .map((element) => element.textContent?.trim() ?? ""),
+      issuePaths: Array.from(document.querySelectorAll(".right-compatibility-issue-path"))
+        .map((element) => element.textContent?.trim() ?? ""),
+      fileTreeVisible: document.querySelector(".right-file-tree")?.getBoundingClientRect().height > 0,
+      unchanged: document.querySelector(".right-compatibility-footnote")?.textContent?.trim() ?? "",
+    }));
+    expect(
+      compatibilityState.title === "Knowledge base compatibility" && compatibilityState.standard === "OKF 0.1",
+      "Files should expose OKF as an optional knowledge-base compatibility check.",
+    );
+    expect(
+      /^\d+ required changes?$/.test(compatibilityState.status) &&
+        compatibilityState.issueTitles.length >= 1 &&
+        compatibilityState.issueTitles.every((title) => title === "Add YAML frontmatter") &&
+        compatibilityState.issuePaths.every((path) => path.endsWith(".md")),
+      `The compatibility check should turn OKF requirements into document-specific actions. Got: ${JSON.stringify(compatibilityState)}`,
+    );
+    expect(
+      !compatibilityState.fileTreeVisible && compatibilityState.unchanged === "This check does not change your files.",
+      "The compatibility inspector should replace the Files body without mutating the workspace.",
+    );
+    const activeCompatibilityIssue = page.getByRole("button", {
+      name: `Open ${compatibilityActiveFile}`,
+      exact: true,
+    });
+    expect(
+      compatibilityActiveFile.length > 0 && (await activeCompatibilityIssue.count()) === 1,
+      "The compatibility inspector should expose an action for the active document.",
+    );
+    await activeCompatibilityIssue.click();
+    await waitForRenderFrame(page);
+    expect(
+      (await page.locator(".right-compatibility-scroll").count()) === 0 &&
+        await page.locator(".right-file-tree").isVisible(),
+      "Selecting a compatibility issue should open its document and return to the file tree.",
     );
 
     await page.getByRole("button", { name: "Links", exact: true }).click();

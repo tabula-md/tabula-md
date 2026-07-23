@@ -8,7 +8,11 @@ import {
   PanelRightClose,
   Search,
 } from "lucide-react";
-import { getRightPanelCommentGroups, type WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
+import {
+  getRightPanelCommentGroups,
+  getWorkspaceOkfCompatibility,
+  type WorkspaceKnowledgeIndex,
+} from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { MarkdownHeading } from "@tabula-md/tabula";
@@ -25,6 +29,7 @@ import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
 import { RightPanelLinks } from "./RightPanelLinks";
 import { RightPanelGraph } from "./RightPanelGraph";
+import { getKnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 
 type RightPanelProps = {
   isOpen: boolean;
@@ -158,6 +163,11 @@ export function RightPanel({
     () => getWorkspaceFileTabLabels(files, folders),
     [files, folders],
   );
+  const compatibilityCopy = getKnowledgeCompatibilityCopy(language);
+  const compatibilityReport = useMemo(
+    () => knowledgeIndex ? getWorkspaceOkfCompatibility(knowledgeIndex) : undefined,
+    [knowledgeIndex],
+  );
 
   if (!isOpen) {
     return null;
@@ -221,6 +231,8 @@ export function RightPanel({
             folders={folders}
             activeFileId={activeFileId}
             copy={copy.files}
+            compatibilityCopy={compatibilityCopy}
+            compatibilityReport={compatibilityReport}
             collapsedFolderIds={collapsedFileTreeFolderIds}
             onNewFile={(parentId) => onNewFile(parentId ? { parentId } : undefined)}
             onNewFolder={onNewFolder}
