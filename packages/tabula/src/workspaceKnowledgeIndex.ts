@@ -15,7 +15,12 @@ export type DocumentHeadingAnalysis = {
   to: number;
 };
 
+export type DocumentLinkSyntax = "markdown" | "wikilink";
+export type DocumentLinkRelation = "link" | "embed";
+
 export type DocumentLinkAnalysis = {
+  syntax: DocumentLinkSyntax;
+  relation: DocumentLinkRelation;
   label: string;
   target: string;
   from: number;
@@ -31,7 +36,7 @@ export type DocumentAnalysis = {
   links: readonly DocumentLinkAnalysis[];
 };
 
-export type WorkspaceLinkStatus = "resolved" | "broken" | "external";
+export type WorkspaceLinkStatus = "resolved" | "broken" | "ambiguous" | "external";
 
 export type WorkspaceKnowledgeLink = DocumentLinkAnalysis & {
   sourceDocumentId: string;
@@ -40,6 +45,7 @@ export type WorkspaceKnowledgeLink = DocumentLinkAnalysis & {
   targetDocumentId?: string;
   targetPath?: string;
   fragment?: string;
+  candidateDocumentIds?: readonly string[];
 };
 
 export type WorkspaceKnowledgeIndex = {
@@ -49,6 +55,7 @@ export type WorkspaceKnowledgeIndex = {
   outgoingLinksByDocumentId: ReadonlyMap<string, readonly WorkspaceKnowledgeLink[]>;
   backlinksByDocumentId: ReadonlyMap<string, readonly WorkspaceKnowledgeLink[]>;
   brokenLinks: readonly WorkspaceKnowledgeLink[];
+  ambiguousLinks: readonly WorkspaceKnowledgeLink[];
   externalLinks: readonly WorkspaceKnowledgeLink[];
 };
 
@@ -65,9 +72,13 @@ type AstNode = {
   };
 };
 
-const visitAst = (node: AstNode, visitor: (node: AstNode) => void) => {
-  visitor(node);
-  node.children?.forEach((child) => visitAst(child, visitor));
+const visitAst = (
+  node: AstNode,
+  visitor: (node: AstNode, ancestors: readonly AstNode[]) => void,
+  ancestors: readonly AstNode[] = [],
+) => {
+  visitor(node, ancestors);
+  node.children?.forEach((child) => visitAst(child, visitor, [...ancestors, node]));
 };
 
 const getNodeText = (node: AstNode): string => {
@@ -88,6 +99,77 @@ const getNodeOffsets = (node: AstNode, bodyOffset: number) => {
 const normalizeReferenceIdentifier = (identifier: string) =>
   identifier.trim().replace(/\s+/g, " ").toLowerCase();
 
+const isEscapedAt = (text: string, offset: number) => {
+  let backslashCount = 0;
+  for (let cursor = offset - 1; cursor >= 0 && text[cursor] === "\\"; cursor -= 1) {
+    backslashCount += 1;
+  }
+  return backslashCount % 2 === 1;
+};
+
+const findWikiLinkClose = (text: string, from: number) => {
+  let cursor = text.indexOf("]]", from);
+  while (cursor !== -1 && isEscapedAt(text, cursor)) {
+    cursor = text.indexOf("]]", cursor + 2);
+  }
+  return cursor;
+};
+
+const getWikiLinksFromTextNode = (
+  node: AstNode,
+  body: string,
+  bodyOffset: number,
+): DocumentLinkAnalysis[] => {
+  const offsets = getNodeOffsets(node, 0);
+  if (!offsets) {
+    return [];
+  }
+
+  const source = body.slice(offsets.from, offsets.to);
+  const links: DocumentLinkAnalysis[] = [];
+  let cursor = 0;
+  while (cursor < source.length) {
+    const opening = source.indexOf("[[", cursor);
+    if (opening === -1) {
+      break;
+    }
+    if (isEscapedAt(source, opening)) {
+      cursor = opening + 2;
+      continue;
+    }
+
+    const closing = findWikiLinkClose(source, opening + 2);
+    if (closing === -1) {
+      break;
+    }
+    const content = source.slice(opening + 2, closing);
+    const aliasSeparator = content.indexOf("|");
+    const target = content.slice(0, aliasSeparator === -1 ? undefined : aliasSeparator).trim();
+    if (target && !target.includes("[[")) {
+      const embedMarker = opening > 0 && source[opening - 1] === "!" && !isEscapedAt(source, opening - 1);
+      const linkStart = embedMarker ? opening - 1 : opening;
+      const alias = aliasSeparator === -1 ? "" : content.slice(aliasSeparator + 1).trim();
+      links.push({
+        syntax: "wikilink",
+        relation: embedMarker ? "embed" : "link",
+        label: alias || target,
+        target,
+        from: offsets.from + linkStart + bodyOffset,
+        to: offsets.from + closing + 2 + bodyOffset,
+      });
+    }
+    cursor = closing + 2;
+  }
+  return links;
+};
+
+const wikiLinkIgnoredAncestorTypes = new Set([
+  "image",
+  "imageReference",
+  "link",
+  "linkReference",
+]);
+
 export const analyzeWorkspaceDocument = (document: WorkspaceSourceDocument): DocumentAnalysis => {
   const parsed = parseFrontmatterData(document.markdown);
   const root = fromMarkdown(parsed.body) as AstNode;
@@ -104,7 +186,7 @@ export const analyzeWorkspaceDocument = (document: WorkspaceSourceDocument): Doc
     }
   });
 
-  visitAst(root, (node) => {
+  visitAst(root, (node, ancestors) => {
     const offsets = getNodeOffsets(node, parsed.bodyOffset);
     if (!offsets) {
       return;
@@ -125,7 +207,21 @@ export const analyzeWorkspaceDocument = (document: WorkspaceSourceDocument): Doc
           ? definitions.get(normalizeReferenceIdentifier(node.identifier))
           : undefined;
     if (typeof target === "string") {
-      links.push({ label: getNodeText(node).trim(), target, ...offsets });
+      links.push({
+        syntax: "markdown",
+        relation: "link",
+        label: getNodeText(node).trim(),
+        target,
+        ...offsets,
+      });
+      return;
+    }
+
+    if (
+      node.type === "text" &&
+      !ancestors.some((ancestor) => wikiLinkIgnoredAncestorTypes.has(ancestor.type))
+    ) {
+      links.push(...getWikiLinksFromTextNode(node, parsed.body, parsed.bodyOffset));
     }
   });
 
@@ -189,6 +285,153 @@ const assertWorkspaceSourceDocument = (document: WorkspaceSourceDocument) => {
   }
 };
 
+type InternalLinkResolution =
+  | {
+      status: "resolved";
+      targetDocumentId: string;
+      targetPath: string;
+      fragment?: string;
+    }
+  | {
+      status: "broken";
+      targetPath?: string;
+      fragment?: string;
+    }
+  | {
+      status: "ambiguous";
+      targetPath: string;
+      fragment?: string;
+      candidateDocumentIds: readonly string[];
+    };
+
+const resolveMarkdownTarget = (
+  sourcePath: string,
+  target: ReturnType<typeof splitLinkTarget>,
+  documentIdsByPath: ReadonlyMap<string, string>,
+): InternalLinkResolution => {
+  const targetPath = target.path ? resolvePath(sourcePath, target.path) : sourcePath;
+  const targetDocumentId = targetPath ? documentIdsByPath.get(targetPath) : undefined;
+  return targetPath && typeof targetDocumentId !== "undefined"
+    ? {
+        status: "resolved",
+        targetDocumentId,
+        targetPath,
+        fragment: target.fragment,
+      }
+    : {
+        status: "broken",
+        targetPath: targetPath ?? undefined,
+        fragment: target.fragment,
+      };
+};
+
+const getWikiPathVariants = (path: string) => {
+  const basename = path.split("/").at(-1) ?? "";
+  return /\.[^./]+$/.test(basename) ? [path] : [path, `${path}.md`, `${path}.markdown`];
+};
+
+const getCandidateDocumentIds = (
+  paths: readonly string[],
+  documentIdsByPath: ReadonlyMap<string, string>,
+) => [
+  ...new Set(
+    paths
+      .map((path) => documentIdsByPath.get(path))
+      .filter((id): id is string => typeof id !== "undefined"),
+  ),
+];
+
+const resolveWikiTarget = (
+  sourcePath: string,
+  target: ReturnType<typeof splitLinkTarget>,
+  documentsById: ReadonlyMap<string, WorkspaceSourceDocument>,
+  documentIdsByPath: ReadonlyMap<string, string>,
+): InternalLinkResolution => {
+  if (!target.path) {
+    const targetDocumentId = documentIdsByPath.get(sourcePath);
+    return typeof targetDocumentId !== "undefined"
+      ? {
+          status: "resolved",
+          targetDocumentId,
+          targetPath: sourcePath,
+          fragment: target.fragment,
+        }
+      : { status: "broken", targetPath: sourcePath, fragment: target.fragment };
+  }
+
+  const resolvedBasePath = resolvePath(sourcePath, target.path);
+  if (!resolvedBasePath) {
+    return { status: "broken", fragment: target.fragment };
+  }
+
+  const directCandidateIds = getCandidateDocumentIds(
+    getWikiPathVariants(resolvedBasePath),
+    documentIdsByPath,
+  );
+  if (directCandidateIds.length === 1) {
+    const targetDocumentId = directCandidateIds[0];
+    const targetPath = documentsById.get(targetDocumentId)?.path;
+    if (!targetPath) {
+      return { status: "broken", targetPath: resolvedBasePath, fragment: target.fragment };
+    }
+    return {
+      status: "resolved",
+      targetDocumentId,
+      targetPath,
+      fragment: target.fragment,
+    };
+  }
+  if (directCandidateIds.length > 1) {
+    return {
+      status: "ambiguous",
+      targetPath: resolvedBasePath,
+      fragment: target.fragment,
+      candidateDocumentIds: directCandidateIds,
+    };
+  }
+
+  const isBareTarget = !target.path.includes("/") && !target.path.startsWith(".");
+  if (!isBareTarget) {
+    return {
+      status: "broken",
+      targetPath: resolvedBasePath,
+      fragment: target.fragment,
+    };
+  }
+
+  const resolvedBasename = resolvedBasePath.split("/").at(-1) ?? "";
+  const basenameVariants = new Set(getWikiPathVariants(resolvedBasename));
+  const globalCandidates = [...documentsById.values()]
+    .filter((document) => basenameVariants.has(document.path.split("/").at(-1) ?? ""))
+    .sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0))
+    .map((document) => document.id);
+  if (globalCandidates.length === 1) {
+    const targetDocumentId = globalCandidates[0];
+    const targetPath = documentsById.get(targetDocumentId)?.path;
+    if (!targetPath) {
+      return { status: "broken", targetPath: resolvedBasePath, fragment: target.fragment };
+    }
+    return {
+      status: "resolved",
+      targetDocumentId,
+      targetPath,
+      fragment: target.fragment,
+    };
+  }
+  return globalCandidates.length > 1
+    ? {
+        status: "ambiguous",
+        targetPath: resolvedBasePath,
+        fragment: target.fragment,
+        candidateDocumentIds: globalCandidates,
+      }
+    : {
+        status: "broken",
+        targetPath: resolvedBasePath,
+        fragment: target.fragment,
+      };
+};
+
 const buildKnowledgeIndex = (
   documentsById: Map<string, WorkspaceSourceDocument>,
   analysesByDocumentId: Map<string, DocumentAnalysis>,
@@ -205,6 +448,7 @@ const buildKnowledgeIndex = (
   const outgoingLinksByDocumentId = new Map<string, WorkspaceKnowledgeLink[]>();
   const backlinksByDocumentId = new Map<string, WorkspaceKnowledgeLink[]>();
   const brokenLinks: WorkspaceKnowledgeLink[] = [];
+  const ambiguousLinks: WorkspaceKnowledgeLink[] = [];
   const externalLinks: WorkspaceKnowledgeLink[] = [];
 
   for (const analysis of analysesByDocumentId.values()) {
@@ -223,31 +467,19 @@ const buildKnowledgeIndex = (
       }
 
       const target = splitLinkTarget(link.target);
-      const targetPath = target.path
-        ? resolvePath(analysis.path, target.path)
-        : analysis.path;
-      const targetDocumentId = targetPath ? documentIdsByPath.get(targetPath) : undefined;
-      const resolvedLink: WorkspaceKnowledgeLink = targetPath && targetDocumentId
-        ? {
-            ...base,
-            status: "resolved",
-            targetDocumentId,
-            targetPath,
-            fragment: target.fragment,
-          }
-        : {
-            ...base,
-            status: "broken",
-            targetPath: targetPath ?? undefined,
-            fragment: target.fragment,
-          };
+      const resolution = link.syntax === "markdown"
+        ? resolveMarkdownTarget(analysis.path, target, documentIdsByPath)
+        : resolveWikiTarget(analysis.path, target, documentsById, documentIdsByPath);
+      const resolvedLink: WorkspaceKnowledgeLink = { ...base, ...resolution };
       outgoing.push(resolvedLink);
-      if (targetDocumentId) {
-        const backlinks = backlinksByDocumentId.get(targetDocumentId) ?? [];
+      if (resolution.status === "resolved" && typeof resolution.targetDocumentId !== "undefined") {
+        const backlinks = backlinksByDocumentId.get(resolution.targetDocumentId) ?? [];
         backlinks.push(resolvedLink);
-        backlinksByDocumentId.set(targetDocumentId, backlinks);
-      } else {
+        backlinksByDocumentId.set(resolution.targetDocumentId, backlinks);
+      } else if (resolution.status === "broken") {
         brokenLinks.push(resolvedLink);
+      } else if (resolution.status === "ambiguous") {
+        ambiguousLinks.push(resolvedLink);
       }
     }
     outgoingLinksByDocumentId.set(analysis.documentId, outgoing);
@@ -260,6 +492,7 @@ const buildKnowledgeIndex = (
     outgoingLinksByDocumentId,
     backlinksByDocumentId,
     brokenLinks,
+    ambiguousLinks,
     externalLinks,
   };
 };

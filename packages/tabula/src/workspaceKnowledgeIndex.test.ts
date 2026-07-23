@@ -50,16 +50,73 @@ describe("workspace knowledge index", () => {
     ]);
     expect(analysis.links).toEqual([
       {
+        syntax: "markdown",
+        relation: "link",
         label: "API",
         target: "../API Guide.md",
         from: markdown.indexOf("[API]"),
         to: markdown.indexOf("[API]") + "[API](<../API Guide.md>)".length,
       },
       {
+        syntax: "markdown",
+        relation: "link",
         label: "the architecture",
         target: "/Architecture.md",
         from: markdown.indexOf("[the architecture]"),
         to: markdown.indexOf("[the architecture]") + "[the architecture][arch]".length,
+      },
+    ]);
+  });
+
+  it("extracts wiki links and embeds without indexing escaped or code examples", () => {
+    const markdown = [
+      "---",
+      "example: '[[Frontmatter]]'",
+      "---",
+      "",
+      "[[Page]] and [[docs/Guide#Setup|Setup guide]]",
+      "![[Transclusion]]",
+      "\\[[Escaped]] and `[[Inline code]]`",
+      "[outer [[Nested]]](Target.md)",
+      "```md",
+      "[[Code fence]]",
+      "```",
+    ].join("\r\n");
+
+    const analysis = analyzeWorkspaceDocument(document("start", "Start.md", markdown));
+
+    expect(analysis.links).toEqual([
+      {
+        syntax: "wikilink",
+        relation: "link",
+        label: "Page",
+        target: "Page",
+        from: markdown.indexOf("[[Page]]"),
+        to: markdown.indexOf("[[Page]]") + "[[Page]]".length,
+      },
+      {
+        syntax: "wikilink",
+        relation: "link",
+        label: "Setup guide",
+        target: "docs/Guide#Setup",
+        from: markdown.indexOf("[[docs/Guide"),
+        to: markdown.indexOf("[[docs/Guide") + "[[docs/Guide#Setup|Setup guide]]".length,
+      },
+      {
+        syntax: "wikilink",
+        relation: "embed",
+        label: "Transclusion",
+        target: "Transclusion",
+        from: markdown.indexOf("![[Transclusion]]"),
+        to: markdown.indexOf("![[Transclusion]]") + "![[Transclusion]]".length,
+      },
+      {
+        syntax: "markdown",
+        relation: "link",
+        label: "outer [[Nested]]",
+        target: "Target.md",
+        from: markdown.indexOf("[outer"),
+        to: markdown.indexOf("[outer") + "[outer [[Nested]]](Target.md)".length,
       },
     ]);
   });
@@ -164,6 +221,79 @@ describe("workspace knowledge index", () => {
     expect(changedSource.backlinksByDocumentId.get("stable")?.[0]).toMatchObject({
       sourceDocumentId: "start",
       status: "resolved",
+    });
+  });
+
+  it("resolves wiki paths conservatively and exposes ambiguous basename candidates", () => {
+    const index = createWorkspaceKnowledgeIndex([
+      document(
+        "start",
+        "notes/Start.md",
+        [
+          "# Intro",
+          "[[Local]]",
+          "![[Local#Part]]",
+          "[[Unique|Only one]]",
+          "[[Shared]]",
+          "[[/Architecture]]",
+          "[[../API Guide]]",
+          "[[#Intro]]",
+          "[[Missing]]",
+          "[[local]]",
+        ].join("\n"),
+      ),
+      document("local", "notes/Local.md", "# Local"),
+      document("other-local", "archive/Local.md", "# Other local"),
+      document("unique", "archive/Unique.markdown", "# Unique"),
+      document("shared-a", "a/Shared.md", "# Shared A"),
+      document("shared-b", "b/Shared.markdown", "# Shared B"),
+      document("architecture", "Architecture.md", "# Architecture"),
+      document("api", "API Guide.md", "# API"),
+    ]);
+
+    const outgoing = index.outgoingLinksByDocumentId.get("start") ?? [];
+    expect(outgoing.map((link) => ({
+      label: link.label,
+      syntax: link.syntax,
+      relation: link.relation,
+      status: link.status,
+      targetDocumentId: link.targetDocumentId,
+      fragment: link.fragment,
+      candidateDocumentIds: link.candidateDocumentIds,
+    }))).toEqual([
+      { label: "Local", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "local", fragment: undefined, candidateDocumentIds: undefined },
+      { label: "Local#Part", syntax: "wikilink", relation: "embed", status: "resolved", targetDocumentId: "local", fragment: "Part", candidateDocumentIds: undefined },
+      { label: "Only one", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "unique", fragment: undefined, candidateDocumentIds: undefined },
+      { label: "Shared", syntax: "wikilink", relation: "link", status: "ambiguous", targetDocumentId: undefined, fragment: undefined, candidateDocumentIds: ["shared-a", "shared-b"] },
+      { label: "/Architecture", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "architecture", fragment: undefined, candidateDocumentIds: undefined },
+      { label: "../API Guide", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "api", fragment: undefined, candidateDocumentIds: undefined },
+      { label: "#Intro", syntax: "wikilink", relation: "link", status: "resolved", targetDocumentId: "start", fragment: "Intro", candidateDocumentIds: undefined },
+      { label: "Missing", syntax: "wikilink", relation: "link", status: "broken", targetDocumentId: undefined, fragment: undefined, candidateDocumentIds: undefined },
+      { label: "local", syntax: "wikilink", relation: "link", status: "broken", targetDocumentId: undefined, fragment: undefined, candidateDocumentIds: undefined },
+    ]);
+    expect(index.backlinksByDocumentId.get("local")?.map((link) => link.relation)).toEqual([
+      "link",
+      "embed",
+    ]);
+    expect(index.ambiguousLinks).toHaveLength(1);
+    expect(index.brokenLinks.map((link) => link.target)).toEqual(["Missing", "local"]);
+  });
+
+  it("reclassifies ambiguous wiki links when candidates are removed", () => {
+    const initial = createWorkspaceKnowledgeIndex([
+      document("start", "Start.md", "[[Shared]]"),
+      document("shared-a", "a/Shared.md", "# A"),
+      document("shared-b", "b/Shared.md", "# B"),
+    ]);
+    const sourceAnalysis = initial.analysesByDocumentId.get("start");
+    expect(initial.ambiguousLinks[0]?.candidateDocumentIds).toEqual(["shared-a", "shared-b"]);
+
+    const resolved = removeWorkspaceDocumentFromKnowledgeIndex(initial, "shared-b");
+    expect(resolved.analysesByDocumentId.get("start")).toBe(sourceAnalysis);
+    expect(resolved.ambiguousLinks).toHaveLength(0);
+    expect(resolved.backlinksByDocumentId.get("shared-a")?.[0]).toMatchObject({
+      status: "resolved",
+      sourceDocumentId: "start",
     });
   });
 
