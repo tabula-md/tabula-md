@@ -1647,6 +1647,8 @@ export async function run(ctx) {
         "",
         "[Missing guide](./Missing.md)",
         "",
+        "[Tabula website](https://tabula.md)",
+        "",
         "[Email owner](mailto:owner@example.com)",
       ].join("\n"),
     });
@@ -1772,17 +1774,50 @@ export async function run(ctx) {
       "Resolved document links should use the same file icon as the Files panel.",
     );
     const outgoingSection = page.locator('.right-links-section[aria-label="Outgoing"]');
-    const issuesSection = page.locator('.right-links-section[aria-label="Issues"]');
     expect(
       (await outgoingSection.getByText("Email owner", { exact: true }).count()) === 1 &&
-        (await outgoingSection.getByText("External", { exact: true }).count()) === 1,
-      "External destinations should remain part of the outgoing relationship section.",
+        (await outgoingSection.getByText("Missing guide", { exact: true }).count()) === 1 &&
+        (await page.locator('.right-links-section[aria-label="Issues"]').count()) === 0,
+      "Every outgoing target should stay in one relationship section, including unresolved and external destinations.",
     );
     expect(
-      (await issuesSection.getByText("Missing guide", { exact: true }).count()) === 1 &&
-        (await issuesSection.getByText("Broken", { exact: true }).count()) > 0,
-      "Unresolved destinations should appear in a conditional Issues section.",
+      (await outgoingSection.locator(".right-links-section-title .right-links-count").textContent()) === "6",
+      "Outgoing counts should equal the number of visible target rows rather than raw mentions.",
     );
+    const visibleLinkRows = outgoingSection.locator([
+      ":scope > .right-links-list > div > .right-links-row",
+      ":scope > .right-links-list > div > .right-links-target-with-resolver > .right-links-row",
+    ].join(", "));
+    expect(
+      (await visibleLinkRows.count()) === 6 &&
+        (await visibleLinkRows.locator(".right-links-row-title").count()) === 6 &&
+        (await visibleLinkRows.locator(".right-links-row-target").count()) === 6,
+      "Outgoing targets should share one two-line row structure.",
+    );
+    expect(
+      !(await outgoingSection.locator(".right-links-row-target").allTextContents())
+        .some((text) => text.includes(" · ")),
+      "Link rows should not mix paths, relationship types, and mention counts in a metadata sentence.",
+    );
+    const websiteLink = outgoingSection.getByRole("link", {
+      name: "Open external link Tabula website",
+      exact: true,
+    });
+    expect(
+      (await websiteLink.getAttribute("href")) === "https://tabula.md" &&
+        (await websiteLink.getAttribute("target")) === "_blank",
+      "Safe web destinations should open directly in a new tab.",
+    );
+    const missingGuideButton = outgoingSection.getByRole("button", {
+      name: "Document not found — go to source: Missing guide",
+      exact: true,
+    });
+    expect(
+      (await missingGuideButton.count()) === 1,
+      "Broken destinations should remain document-shaped rows whose action returns to the source.",
+    );
+    await missingGuideButton.click();
+    await waitForEditorReady(page, { mode: "edit" });
 
     await page.getByRole("button", { name: "Open Guide.md", exact: true }).first().click();
     await waitForActiveTab(page, { exact: "Guide.md" });

@@ -31,37 +31,21 @@ describe("right panel links model", () => {
     ]);
 
     const model = getRightPanelLinksModel(index, "start");
-    expect(model.outgoing.map(({ documentId, relation, mentionCount }) => ({
+    expect(model.outgoing.map(({ documentId, status, links }) => ({
       documentId,
-      relation,
-      mentionCount,
-    }))).toEqual([
-      { documentId: "target", relation: "link", mentionCount: 2 },
-      { documentId: "target", relation: "embed", mentionCount: 1 },
-    ]);
-    expect(model.backlinks.map(({ documentId, relation, mentionCount }) => ({
-      documentId,
-      relation,
-      mentionCount,
-    }))).toEqual([
-      { documentId: "backlink", relation: "link", mentionCount: 2 },
-    ]);
-    expect(model.external.map((link) => link.target)).toEqual(["https://tabula.md"]);
-    expect(model.issues.map(({ status, target, candidateDocumentIds }) => ({
       status,
-      target,
-      candidateDocumentIds,
+      mentionCount: links.length,
     }))).toEqual([
-      {
-        status: "ambiguous",
-        target: "Shared",
-        candidateDocumentIds: ["shared-a", "shared-b"],
-      },
-      {
-        status: "broken",
-        target: "Missing.md",
-        candidateDocumentIds: undefined,
-      },
+      { documentId: "target", status: "resolved", mentionCount: 3 },
+      { documentId: undefined, status: "ambiguous", mentionCount: 1 },
+      { documentId: undefined, status: "broken", mentionCount: 1 },
+      { documentId: undefined, status: "external", mentionCount: 1 },
+    ]);
+    expect(model.backlinks.map(({ documentId, links }) => ({
+      documentId,
+      mentionCount: links.length,
+    }))).toEqual([
+      { documentId: "backlink", mentionCount: 2 },
     ]);
   });
 
@@ -72,8 +56,6 @@ describe("right panel links model", () => {
     expect(getRightPanelLinksModel(index, "empty")).toEqual({
       outgoing: [],
       backlinks: [],
-      external: [],
-      issues: [],
     });
   });
 });
