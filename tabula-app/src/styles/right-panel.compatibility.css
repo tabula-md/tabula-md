@@ -124,6 +124,15 @@
   gap: 2px;
 }
 
+.right-compatibility-issue-item {
+  min-width: 0;
+  border-radius: var(--right-row-radius);
+}
+
+.right-compatibility-issue-item.active {
+  background: var(--surface-muted);
+}
+
 .right-compatibility-issue-row {
   display: grid;
   grid-template-columns: 15px minmax(0, 1fr) 14px;
@@ -142,6 +151,10 @@
 .right-compatibility-issue-row:focus-visible {
   color: var(--text-primary);
   background: var(--surface-hover);
+}
+
+.right-compatibility-issue-row[aria-current="page"] {
+  background: var(--surface-muted);
 }
 
 .right-compatibility-issue-row.error > svg:first-child {
@@ -164,6 +177,69 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.right-compatibility-type-form {
+  display: grid;
+  gap: 7px;
+  margin: 0 var(--right-row-x) 8px calc(var(--right-row-x) + 15px + var(--right-tight-gap));
+  padding-top: 8px;
+  border-top: 1px solid var(--line-subtle);
+}
+
+.right-compatibility-type-form label {
+  display: grid;
+  gap: 4px;
+  color: var(--text-soft);
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-medium);
+}
+
+.right-compatibility-type-form input {
+  width: 100%;
+  height: 30px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--right-row-radius);
+  color: var(--text-primary);
+  background: var(--surface-active);
+  font: inherit;
+  font-weight: var(--weight-ui-regular);
+}
+
+.right-compatibility-type-form input:focus-visible {
+  border-color: var(--text-link);
+  outline: 0;
+  box-shadow: 0 0 0 1px var(--text-link);
+}
+
+.right-compatibility-type-form p {
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  line-height: 1.4;
+}
+
+.right-compatibility-type-form button {
+  justify-self: start;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: var(--right-row-radius);
+  color: var(--text-primary);
+  background: var(--surface-active);
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-medium);
+}
+
+.right-compatibility-type-form button:hover,
+.right-compatibility-type-form button:focus-visible {
+  background: var(--surface-hover);
+}
+
+.right-compatibility-type-form button:disabled {
+  color: var(--text-muted);
+  cursor: default;
+  opacity: 0.55;
 }
 
 .right-compatibility-issue-title {

@@ -638,3 +638,10 @@ export {
   OKF_TARGET_VERSION,
   getWorkspaceOkfCompatibility,
 } from "./workspaceOkfCompatibility";
+
+export type {
+  OkfConceptTypeUpdateFailure,
+  OkfConceptTypeUpdateResult,
+  OkfConceptTypeUpdateSuccess,
+} from "./workspaceOkfConceptType";
+export { setOkfConceptType } from "./workspaceOkfConceptType";

@@ -494,8 +494,9 @@ export async function run(ctx) {
       `The compatibility check should turn OKF requirements into document-specific actions. Got: ${JSON.stringify(compatibilityState)}`,
     );
     expect(
-      !compatibilityState.fileTreeVisible && compatibilityState.unchanged === "This check does not change your files.",
-      "The compatibility inspector should replace the Files body without mutating the workspace.",
+      !compatibilityState.fileTreeVisible &&
+        compatibilityState.unchanged === "The check is read-only. Files change only when you choose an action.",
+      "The compatibility inspector should distinguish read-only checks from explicit fixes.",
     );
     const activeCompatibilityIssue = page.getByRole("button", {
       name: `Open ${compatibilityActiveFile}`,
@@ -508,9 +509,27 @@ export async function run(ctx) {
     await activeCompatibilityIssue.click();
     await waitForRenderFrame(page);
     expect(
+      (await page.locator(".right-compatibility-scroll").count()) === 1 &&
+        (await page.getByRole("textbox", { name: "Concept type", exact: true }).count()) === 1,
+      "Selecting a fixable issue should keep its document in context and expose the required type decision.",
+    );
+    await page.getByRole("textbox", { name: "Concept type", exact: true }).fill("note");
+    await page.getByRole("button", { name: "Add frontmatter and type", exact: true }).click();
+    await page.waitForFunction(
+      (expectedCount) => document.querySelectorAll(".right-compatibility-issue-title").length === expectedCount,
+      compatibilityState.issueTitles.length - 1,
+    );
+    expect(
+      (await page.getByRole("button", { name: `Open ${compatibilityActiveFile}`, exact: true }).count()) === 0 &&
+        (await page.getByRole("textbox", { name: "Concept type", exact: true }).count()) === 0,
+      "Applying the selected type should resolve that document's OKF requirement.",
+    );
+    await page.getByRole("button", { name: "Back to workspace files", exact: true }).click();
+    await waitForRenderFrame(page);
+    expect(
       (await page.locator(".right-compatibility-scroll").count()) === 0 &&
         await page.locator(".right-file-tree").isVisible(),
-      "Selecting a compatibility issue should open its document and return to the file tree.",
+      "The compatibility inspector should return to the preserved file tree on request.",
     );
 
     await page.getByRole("button", { name: "Links", exact: true }).click();
