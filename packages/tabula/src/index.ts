@@ -612,6 +612,7 @@ export type {
   DocumentLinkAnalysis,
   DocumentLinkRelation,
   DocumentLinkSyntax,
+  MarkdownWikiLinkToken,
   WorkspaceKnowledgeIndex,
   WorkspaceKnowledgeLink,
   WorkspaceLinkStatus,
@@ -621,6 +622,7 @@ export {
   analyzeWorkspaceDocument,
   createWorkspaceKnowledgeIndex,
   removeWorkspaceDocumentFromKnowledgeIndex,
+  scanMarkdownWikiLinks,
   updateWorkspaceKnowledgeIndex,
 } from "./workspaceKnowledgeIndex";
 

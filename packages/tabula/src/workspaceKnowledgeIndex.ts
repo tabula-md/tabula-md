@@ -21,6 +21,14 @@ export type DocumentHeadingAnalysis = {
 export type DocumentLinkSyntax = "markdown" | "wikilink";
 export type DocumentLinkRelation = "link" | "embed";
 
+export type MarkdownWikiLinkToken = {
+  relation: DocumentLinkRelation;
+  label: string;
+  target: string;
+  from: number;
+  to: number;
+};
+
 export type DocumentLinkAnalysis = {
   syntax: DocumentLinkSyntax;
   relation: DocumentLinkRelation;
@@ -118,6 +126,42 @@ const findWikiLinkClose = (text: string, from: number) => {
   return cursor;
 };
 
+export const scanMarkdownWikiLinks = (text: string): MarkdownWikiLinkToken[] => {
+  const links: MarkdownWikiLinkToken[] = [];
+  let cursor = 0;
+  while (cursor < text.length) {
+    const opening = text.indexOf("[[", cursor);
+    if (opening === -1) {
+      break;
+    }
+    if (isEscapedAt(text, opening)) {
+      cursor = opening + 2;
+      continue;
+    }
+
+    const closing = findWikiLinkClose(text, opening + 2);
+    if (closing === -1) {
+      break;
+    }
+    const content = text.slice(opening + 2, closing);
+    const aliasSeparator = content.indexOf("|");
+    const target = content.slice(0, aliasSeparator === -1 ? undefined : aliasSeparator).trim();
+    if (target && !target.includes("[[")) {
+      const embedMarker = opening > 0 && text[opening - 1] === "!" && !isEscapedAt(text, opening - 1);
+      const alias = aliasSeparator === -1 ? "" : content.slice(aliasSeparator + 1).trim();
+      links.push({
+        relation: embedMarker ? "embed" : "link",
+        label: alias || target,
+        target,
+        from: embedMarker ? opening - 1 : opening,
+        to: closing + 2,
+      });
+    }
+    cursor = closing + 2;
+  }
+  return links;
+};
+
 const getWikiLinksFromTextNode = (
   node: AstNode,
   body: string,
@@ -129,41 +173,12 @@ const getWikiLinksFromTextNode = (
   }
 
   const source = body.slice(offsets.from, offsets.to);
-  const links: DocumentLinkAnalysis[] = [];
-  let cursor = 0;
-  while (cursor < source.length) {
-    const opening = source.indexOf("[[", cursor);
-    if (opening === -1) {
-      break;
-    }
-    if (isEscapedAt(source, opening)) {
-      cursor = opening + 2;
-      continue;
-    }
-
-    const closing = findWikiLinkClose(source, opening + 2);
-    if (closing === -1) {
-      break;
-    }
-    const content = source.slice(opening + 2, closing);
-    const aliasSeparator = content.indexOf("|");
-    const target = content.slice(0, aliasSeparator === -1 ? undefined : aliasSeparator).trim();
-    if (target && !target.includes("[[")) {
-      const embedMarker = opening > 0 && source[opening - 1] === "!" && !isEscapedAt(source, opening - 1);
-      const linkStart = embedMarker ? opening - 1 : opening;
-      const alias = aliasSeparator === -1 ? "" : content.slice(aliasSeparator + 1).trim();
-      links.push({
-        syntax: "wikilink",
-        relation: embedMarker ? "embed" : "link",
-        label: alias || target,
-        target,
-        from: offsets.from + linkStart + bodyOffset,
-        to: offsets.from + closing + 2 + bodyOffset,
-      });
-    }
-    cursor = closing + 2;
-  }
-  return links;
+  return scanMarkdownWikiLinks(source).map((link) => ({
+    syntax: "wikilink",
+    ...link,
+    from: offsets.from + link.from + bodyOffset,
+    to: offsets.from + link.to + bodyOffset,
+  }));
 };
 
 const wikiLinkIgnoredAncestorTypes = new Set([
