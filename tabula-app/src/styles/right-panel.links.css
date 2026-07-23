@@ -120,12 +120,33 @@ button.right-links-row:focus-visible,
 }
 
 .right-links-candidate {
+  display: grid;
+  align-content: center;
+  gap: 1px;
   width: 100%;
-  min-height: 28px;
-  padding: 0 var(--right-row-x);
+  min-height: 38px;
+  padding: 4px var(--right-row-x);
   border-radius: var(--right-row-radius);
   color: var(--text-soft);
   background: transparent;
   font-size: var(--font-ui-secondary);
   text-align: left;
+}
+
+.right-links-candidate span,
+.right-links-candidate small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-links-candidate span {
+  color: var(--text-primary);
+}
+
+.right-links-candidate small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-ui-caption);
 }

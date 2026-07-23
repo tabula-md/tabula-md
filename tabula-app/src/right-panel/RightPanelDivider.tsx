@@ -3,15 +3,11 @@ import { ResizeHandle } from "../ui/ResizeHandle";
 
 export const DEFAULT_RIGHT_PANEL_WIDTH = 288;
 export const MIN_RIGHT_PANEL_WIDTH = 240;
-export const MAX_RIGHT_PANEL_WIDTH = 480;
 const RIGHT_PANEL_WIDTH_STEP = 16;
 const MIN_WORKBENCH_WIDTH = 360;
 
 export const getMaximumRightPanelWidth = (viewportWidth: number) =>
-  Math.max(
-    MIN_RIGHT_PANEL_WIDTH,
-    Math.min(MAX_RIGHT_PANEL_WIDTH, viewportWidth - MIN_WORKBENCH_WIDTH),
-  );
+  Math.max(MIN_RIGHT_PANEL_WIDTH, viewportWidth - MIN_WORKBENCH_WIDTH);
 
 export const clampRightPanelWidth = (width: number, viewportWidth: number) =>
   Math.round(
