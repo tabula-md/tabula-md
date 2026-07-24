@@ -666,7 +666,40 @@ export async function run(ctx) {
 
     const sidePanelNavigation = page.getByRole("navigation", { name: "Side panel sections" });
     await sidePanelNavigation.getByRole("button", { name: "Search", exact: true }).click();
-    const workspaceSearch = page.locator(".right-panel-body.search").getByRole("searchbox", { name: "Search files" });
+    const workspaceSearch = page.locator(".right-panel-body.search").getByRole(
+      "searchbox",
+      { name: "Search documents and metadata" },
+    );
+    await page
+      .locator(".right-panel-body.search")
+      .getByRole("button", { name: "Filters", exact: true })
+      .click();
+    const noteTypeFacet = page
+      .locator(".right-panel-body.search")
+      .getByRole("button", { name: /^note\s+1$/i });
+    expect(
+      (await noteTypeFacet.count()) === 1,
+      "Workspace Search should expose indexed document types as metadata facets.",
+    );
+    await noteTypeFacet.click();
+    expect(
+      (await noteTypeFacet.getAttribute("aria-pressed")) === "true" &&
+        await page.getByRole("button", { name: "Show 1 document", exact: true }).isVisible(),
+      "Selecting a metadata facet should mark it clearly and preview the matching document count.",
+    );
+    await page.getByRole("button", { name: "Show 1 document", exact: true }).click();
+    await page.locator(".right-panel-body.search .right-panel-search-results button").first().waitFor({ state: "visible" });
+    expect(
+      await page.getByRole("button", { name: "Remove Type: note", exact: true }).isVisible() &&
+        await page.getByText("1 document", { exact: true }).isVisible(),
+      "Applied metadata facets should remain visible beside an immediate result summary.",
+    );
+    await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+    await waitForRenderFrame(page);
+    expect(
+      (await page.locator(".right-panel-body.search .right-panel-search-results").count()) === 0,
+      "Clearing metadata facets should return an empty Search view when there is no text query.",
+    );
     await workspaceSearch.fill("Untitled");
     await page.locator(".right-panel-body.search .right-panel-search-results button").first().waitFor({ state: "visible" });
     const searchPanelState = await page.evaluate(() => ({
@@ -701,16 +734,16 @@ export async function run(ctx) {
     expect(
       searchPanelState.firstResult.background === "rgba(0, 0, 0, 0)" &&
         searchPanelState.firstResult.color === searchPanelState.firstResult.iconColor,
-      "File search results should use primary text and icon color on a transparent row.",
+      "Document search results should use primary text and icon color on a transparent row.",
     );
     expect(
       searchPanelState.firstResult.fileIconCount === 1 &&
         searchPanelState.firstResult.fileTextIconCount === 0,
-      "File search results should use the same file icon as the Files panel.",
+      "Document search results should use the same file icon as the Files panel.",
     );
     expect(
       !/\.(?:md|markdown)$/i.test(searchPanelState.firstResult.label),
-      "File search results should hide Markdown extensions like the Files panel.",
+      "Document search results should hide Markdown extensions like the Files panel.",
     );
     expect(searchPanelState.panelOpen, "Using Workspace Search should keep the side panel open.");
     await workspaceSearch.fill("workspace");
