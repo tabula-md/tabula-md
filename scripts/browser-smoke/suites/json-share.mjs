@@ -175,6 +175,36 @@ export async function run(ctx) {
         "Reloading after Export link import should restore the local workspace without reopening import UI.",
       );
 
+      const persistedContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      try {
+        const persistedWorkspacePage = await persistedContext.newPage();
+        await persistedWorkspacePage.goto(baseUrl);
+        await persistedWorkspacePage.getByRole("button", { name: "New document", exact: true }).click();
+        await waitForEditorReady(persistedWorkspacePage, { mode: "edit" });
+        await focusMarkdownEditor(persistedWorkspacePage);
+        await persistedWorkspacePage.keyboard.type("\n\nPersisted draft before hard-navigation import.");
+        await waitForSavedLocally(persistedWorkspacePage);
+        await persistedWorkspacePage.close();
+
+        const hardNavigationPage = await persistedContext.newPage();
+        await hardNavigationPage.goto(exportUrl);
+        await hardNavigationPage.waitForFunction((activeFileName) => {
+          const modalText = document.querySelector(".share-modal")?.textContent ?? "";
+          const importedActiveFile = document.querySelector(
+            `.tab-item.active[data-file-name="${CSS.escape(activeFileName)}"]`,
+          );
+          return modalText.includes("Opening it replaces this local workspace.") || Boolean(importedActiveFile);
+        }, exportedActiveFileName);
+        expect(
+          !(await hardNavigationPage.locator(".share-modal").textContent().catch(() => "")).includes(
+            "Preparing encrypted export.",
+          ),
+          "A hard-navigation Export link should leave the preparing state after IndexedDB hydration changes the workspace source.",
+        );
+      } finally {
+        await persistedContext.close();
+      }
+
       await secondPage.goto(`${baseUrl}/#json=${snapshotId}`);
       await waitForText(secondPage.locator(".share-modal"), "Unable to open link");
       await waitForText(secondPage.locator(".share-modal"), "This export link is missing its client-only key.");
