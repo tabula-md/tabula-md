@@ -70,6 +70,7 @@ import type {
   MarkdownPreviewLineAnnotation,
   MarkdownPreviewMetadata,
   MarkdownPreviewProps,
+  MarkdownPreviewWorkspaceLink,
 } from "../preview/markdownPreviewTypes";
 import { transformMarkdownPreviewUrl } from "../preview/markdownPreviewUrl";
 import { MARKDOWN_REMARK_PLUGINS } from "../preview/markdownRemarkPlugins";
@@ -420,12 +421,44 @@ const PREVIEW_DOCS_COMPONENTS = {
 const createMarkdownPreviewComponents = (
   onOpenComment?: (commentId: string) => void,
   onToggleTaskLine?: (sourceLineIndex: number) => void,
+  onOpenWorkspaceLink?: (
+    link: Extract<MarkdownPreviewWorkspaceLink, { status: "resolved" }>,
+  ) => void,
+  resolveWorkspaceLink?: (href: string) => MarkdownPreviewWorkspaceLink | undefined,
   searchActive = false,
   copy: WorkspaceSurfaceCopy = getWorkspaceSurfaceCopy("en"),
 ): Components => ({
   ...PREVIEW_DOCS_COMPONENTS,
   a: ({ node: _node, href, ...props }) => {
+    const workspaceLink = typeof href === "string" ? resolveWorkspaceLink?.(href) : undefined;
     const resolvedHref = typeof href === "string" ? classifyMarkdownHref(href) : null;
+
+    if (workspaceLink?.status === "resolved" && href && onOpenWorkspaceLink) {
+      return (
+        <a
+          {...props}
+          href={href}
+          data-workspace-link-target={workspaceLink.targetDocumentId}
+          data-workspace-link-status="resolved"
+          onClick={(event) => {
+            event.preventDefault();
+            onOpenWorkspaceLink(workspaceLink);
+          }}
+        />
+      );
+    }
+
+    if (workspaceLink?.status === "broken" || workspaceLink?.status === "ambiguous") {
+      const statusLabel = workspaceLink.status === "broken" ? "Broken" : "Ambiguous";
+      return (
+        <span
+          {...props}
+          className={`preview-workspace-link ${workspaceLink.status} ${props.className ?? ""}`.trim()}
+          data-workspace-link-status={workspaceLink.status}
+          title={props.title ?? `${statusLabel} workspace link: ${href ?? ""}`}
+        />
+      );
+    }
 
     if (resolvedHref?.kind !== "external") {
       return <span {...props} />;
@@ -555,6 +588,8 @@ function MarkdownPreviewComponent({
   onSearchMatchCountChange,
   onLineAction,
   onOpenComment,
+  onOpenWorkspaceLink,
+  resolveWorkspaceLink,
   onToggleTaskLine,
 }: MarkdownPreviewProps, ref: ForwardedRef<MarkdownPreviewHandle>) {
   const uiCopy = getWorkspaceSurfaceCopy(uiLanguage);
@@ -786,10 +821,12 @@ function MarkdownPreviewComponent({
       createMarkdownPreviewComponents(
         (commentId) => onOpenCommentRef.current?.(commentId),
         (sourceLineIndex) => onToggleTaskLineRef.current?.(sourceLineIndex),
+        onOpenWorkspaceLink,
+        resolveWorkspaceLink,
         previewSearchActive,
         uiCopy,
       ),
-    [previewSearchActive, uiCopy],
+    [onOpenWorkspaceLink, previewSearchActive, resolveWorkspaceLink, uiCopy],
   );
   const commentAnchorPlugins = useMemo(
     () => (
@@ -1404,6 +1441,8 @@ const areMarkdownPreviewPropsEqual = (firstProps: MarkdownPreviewProps, secondPr
   firstProps.uiLanguage === secondProps.uiLanguage &&
   firstProps.onLineAction === secondProps.onLineAction &&
   firstProps.onOpenComment === secondProps.onOpenComment &&
+  firstProps.onOpenWorkspaceLink === secondProps.onOpenWorkspaceLink &&
+  firstProps.resolveWorkspaceLink === secondProps.resolveWorkspaceLink &&
   firstProps.onToggleTaskLine === secondProps.onToggleTaskLine &&
   areSearchOptionsEqual(firstProps.searchOptions, secondProps.searchOptions) &&
   arePreviewMetadataEqual(firstProps.metadata, secondProps.metadata) &&

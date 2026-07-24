@@ -1522,7 +1522,19 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await openMarkdownFile(page, {
       name: "Start.md",
-      content: "# Start\n\nContinue in [[Guide.md]].",
+      content: [
+        "# Start",
+        "",
+        "Continue in [[Guide.md]].",
+        "",
+        "[Preview guide](./Guide.md#guide)",
+        "",
+        "[Back to start](#start)",
+        "",
+        "[Missing guide](./Missing.md)",
+        "",
+        "[Email owner](mailto:owner@example.com)",
+      ].join("\n"),
     });
     await openMarkdownFile(page, {
       name: "Guide.md",
@@ -1530,18 +1542,44 @@ export async function run(ctx) {
     });
     await page.locator('.tab-item[data-file-name="Start.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "Start.md" });
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await waitForEditorReady(page, { mode: "preview" });
+    expect(
+      (await page.getByRole("link", { name: "Preview guide", exact: true }).count()) === 1,
+      "Preview should render resolved workspace Markdown destinations as links.",
+    );
+    expect(
+      (await page.getByRole("link", { name: "Back to start", exact: true }).count()) === 1,
+      "Preview should render same-document heading destinations as links.",
+    );
+    await page.getByRole("link", { name: "Back to start", exact: true }).click();
+    await waitForRenderFrame(page);
+    expect(
+      (await page.locator('[data-workspace-link-status="broken"]').filter({ hasText: "Missing guide" }).count()) === 1,
+      "Preview should retain a visible broken state for unresolved workspace destinations.",
+    );
+    expect(
+      (await page.getByRole("link", { name: "Email owner", exact: true }).getAttribute("href")) ===
+        "mailto:owner@example.com",
+      "Preview should preserve safe mail links.",
+    );
+    await page.getByRole("link", { name: "Preview guide", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Guide.md" });
+    await waitForEditorReady(page, { mode: "preview" });
+    await page.locator('.tab-item[data-file-name="Start.md"] .tab-select-button').click();
+    await waitForActiveTab(page, { exact: "Start.md" });
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
 
-    await page.getByRole("button", { name: "Open Guide.md", exact: true }).click();
+    await page.getByRole("button", { name: "Open Guide.md", exact: true }).first().click();
     await waitForActiveTab(page, { exact: "Guide.md" });
     expect(
-      await page.getByRole("button", { name: "Open Start.md", exact: true }).isVisible(),
+      await page.getByRole("button", { name: "Open Start.md", exact: true }).first().isVisible(),
       "Following an outgoing knowledge link should expose its source as a backlink.",
     );
 
-    await page.getByRole("button", { name: "Open Start.md", exact: true }).click();
+    await page.getByRole("button", { name: "Open Start.md", exact: true }).first().click();
     await waitForActiveTab(page, { exact: "Start.md" });
 
     await page.getByRole("button", { name: "Graph", exact: true }).click();
