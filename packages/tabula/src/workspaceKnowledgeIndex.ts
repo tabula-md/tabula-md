@@ -39,11 +39,18 @@ export type DocumentLinkAnalysis = {
   to: number;
 };
 
+export type WorkspaceKnowledgeMetadata = {
+  type?: string;
+  tags: readonly string[];
+  resource?: string;
+};
+
 export type DocumentAnalysis = {
   documentId: string;
   path: string;
   title: string;
   metadata: Record<string, unknown>;
+  knowledgeMetadata: WorkspaceKnowledgeMetadata;
   headings: readonly DocumentHeadingAnalysis[];
   links: readonly DocumentLinkAnalysis[];
 };
@@ -64,6 +71,9 @@ export type WorkspaceKnowledgeIndex = {
   documentsById: ReadonlyMap<string, WorkspaceSourceDocument>;
   documentIdsByPath: ReadonlyMap<string, string>;
   analysesByDocumentId: ReadonlyMap<string, DocumentAnalysis>;
+  documentIdsByType: ReadonlyMap<string, readonly string[]>;
+  documentIdsByTag: ReadonlyMap<string, readonly string[]>;
+  documentIdsByResource: ReadonlyMap<string, readonly string[]>;
   outgoingLinksByDocumentId: ReadonlyMap<string, readonly WorkspaceKnowledgeLink[]>;
   backlinksByDocumentId: ReadonlyMap<string, readonly WorkspaceKnowledgeLink[]>;
   brokenLinks: readonly WorkspaceKnowledgeLink[];
@@ -110,6 +120,37 @@ const getNodeOffsets = (node: AstNode, bodyOffset: number) => {
 
 const normalizeReferenceIdentifier = (identifier: string) =>
   identifier.trim().replace(/\s+/g, " ").toLowerCase();
+
+const getNonEmptyMetadataString = (value: unknown) => {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim();
+  return normalized || undefined;
+};
+
+const getKnowledgeTags = (value: unknown) => {
+  const values = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+  const tags: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of values) {
+    const tag = getNonEmptyMetadataString(candidate);
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    tags.push(tag);
+  }
+  return tags;
+};
+
+const getWorkspaceKnowledgeMetadata = (
+  metadata: Readonly<Record<string, unknown>>,
+): WorkspaceKnowledgeMetadata => {
+  const type = getNonEmptyMetadataString(metadata.type);
+  const resource = getNonEmptyMetadataString(metadata.resource);
+  return {
+    ...(type ? { type } : {}),
+    tags: getKnowledgeTags(metadata.tags),
+    ...(resource ? { resource } : {}),
+  };
+};
 
 const isEscapedAt = (text: string, offset: number) => {
   let backslashCount = 0;
@@ -260,6 +301,7 @@ export const analyzeWorkspaceDocument = (document: WorkspaceSourceDocument): Doc
     path: document.path,
     title: getMarkdownDocumentTitle(document.markdown),
     metadata: parsed.metadata,
+    knowledgeMetadata: getWorkspaceKnowledgeMetadata(parsed.metadata),
     headings,
     links,
   };
@@ -531,6 +573,25 @@ const buildKnowledgeIndex = (
     documentIdsByPath.set(document.path, document.id);
   }
 
+  const documentIdsByType = new Map<string, string[]>();
+  const documentIdsByTag = new Map<string, string[]>();
+  const documentIdsByResource = new Map<string, string[]>();
+  const addMetadataEntry = (
+    entries: Map<string, string[]>,
+    value: string,
+    documentId: string,
+  ) => {
+    const documentIds = entries.get(value) ?? [];
+    documentIds.push(documentId);
+    entries.set(value, documentIds);
+  };
+  for (const analysis of analysesByDocumentId.values()) {
+    const { type, tags, resource } = analysis.knowledgeMetadata;
+    if (type) addMetadataEntry(documentIdsByType, type, analysis.documentId);
+    for (const tag of tags) addMetadataEntry(documentIdsByTag, tag, analysis.documentId);
+    if (resource) addMetadataEntry(documentIdsByResource, resource, analysis.documentId);
+  }
+
   const outgoingLinksByDocumentId = new Map<string, WorkspaceKnowledgeLink[]>();
   const backlinksByDocumentId = new Map<string, WorkspaceKnowledgeLink[]>();
   const brokenLinks: WorkspaceKnowledgeLink[] = [];
@@ -580,6 +641,9 @@ const buildKnowledgeIndex = (
     documentsById,
     documentIdsByPath,
     analysesByDocumentId,
+    documentIdsByType,
+    documentIdsByTag,
+    documentIdsByResource,
     outgoingLinksByDocumentId,
     backlinksByDocumentId,
     brokenLinks,
