@@ -425,8 +425,8 @@ export async function run(ctx) {
       "The side panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Files|Outline|Links|Comments|Search",
-      "The side panel should expose Files, Outline, Links, Comments, and document Search as peer views.",
+      rightPanelState.tabs.join("|") === "Files|Outline|Links|Graph|Comments|Search",
+      "The side panel should expose Files, Outline, Links, Graph, Comments, and document Search as peer views.",
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
     expect(!rightPanelState.bodyText.includes("Project"), "Root files should not be wrapped in a synthetic Project folder.");
@@ -467,6 +467,12 @@ export async function run(ctx) {
     expect(
       await page.getByText("No links in this document", { exact: true }).isVisible(),
       "Links should expose a quiet empty state for an unlinked document.",
+    );
+    await page.getByRole("button", { name: "Graph", exact: true }).click();
+    await waitForPanelTab(page, "Graph");
+    expect(
+      await page.getByText("No connected documents", { exact: true }).isVisible(),
+      "Graph should expose a quiet empty state for an isolated document.",
     );
     await page.getByRole("button", { name: "Files", exact: true }).click();
     await waitForPanelTab(page, "Files");
@@ -1465,6 +1471,17 @@ export async function run(ctx) {
       "Following an outgoing knowledge link should expose its source as a backlink.",
     );
 
+    await page.getByRole("button", { name: "Open Start.md", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Start.md" });
+
+    await page.getByRole("button", { name: "Graph", exact: true }).click();
+    await waitForPanelTab(page, "Graph");
+    expect(
+      await page.getByText("Local graph", { exact: true }).isVisible(),
+      "Graph should identify the active document's local knowledge graph.",
+    );
+    await page.getByRole("button", { name: "Open Guide.md", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Guide.md" });
     await page.getByRole("button", { name: "Open Start.md", exact: true }).click();
     await waitForActiveTab(page, { exact: "Start.md" });
   });

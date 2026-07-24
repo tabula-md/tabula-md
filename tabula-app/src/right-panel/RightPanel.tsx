@@ -4,6 +4,7 @@ import {
   Link2,
   ListTree,
   MessageSquare,
+  Network,
   PanelRightClose,
   Search,
 } from "lucide-react";
@@ -23,6 +24,7 @@ import { RightPanelSearch } from "./RightPanelSearch";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
 import { RightPanelLinks } from "./RightPanelLinks";
+import { RightPanelGraph } from "./RightPanelGraph";
 
 type RightPanelProps = {
   isOpen: boolean;
@@ -196,6 +198,7 @@ export function RightPanel({
           {renderTab("files", copy.tabs.files, <Folder size={14} />, hasLiveFiles ? "live" : undefined)}
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
           {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
+          {renderTab("graph", copy.tabs.graph, <Network size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
           {renderTab("search", copy.tabs.search, <Search size={14} />)}
         </nav>
@@ -240,6 +243,7 @@ export function RightPanel({
         {!activeFile && (
           effectiveView === "outline" ||
           effectiveView === "links" ||
+          effectiveView === "graph" ||
           effectiveView === "comments"
         ) && (
           <section className="right-panel-content">
@@ -272,6 +276,17 @@ export function RightPanel({
             activeFileId={activeFileId}
             activeFileTitle={activeFileTitle}
             copy={copy.links}
+            fileLabels={fileLabels}
+            index={knowledgeIndex}
+            onSelectFile={onSelectFile}
+          />
+        )}
+
+        {activeFile && effectiveView === "graph" && (
+          <RightPanelGraph
+            activeFileId={activeFileId}
+            activeFileTitle={activeFileTitle}
+            copy={copy.graph}
             fileLabels={fileLabels}
             index={knowledgeIndex}
             onSelectFile={onSelectFile}
