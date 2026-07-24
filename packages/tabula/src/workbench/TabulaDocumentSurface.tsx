@@ -149,6 +149,7 @@ export type TabulaDocumentSurfaceProps = {
   onSplitDividerPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onSplitDividerPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onTextChange: (nextValue: string | null, change?: TextChange) => void;
+  resolveWorkspaceDocument?: MarkdownPreviewProps["resolveWorkspaceDocument"];
   resolveWorkspaceLink?: MarkdownPreviewProps["resolveWorkspaceLink"];
 };
 
@@ -209,6 +210,7 @@ export function TabulaDocumentSurface({
   onSplitDividerPointerMove,
   onSplitDividerPointerUp,
   onTextChange,
+  resolveWorkspaceDocument,
   resolveWorkspaceLink,
 }: TabulaDocumentSurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
@@ -347,6 +349,8 @@ export function TabulaDocumentSurface({
               onLineAction={onLineAction as (request: MarkdownPreviewLineActionRequest) => void}
               onOpenComment={onOpenComment}
               onOpenWorkspaceLink={onOpenWorkspaceLink}
+              sourceDocumentId={activeFile.id}
+              resolveWorkspaceDocument={resolveWorkspaceDocument}
               resolveWorkspaceLink={resolveWorkspaceLink}
               onToggleTaskLine={handlePreviewTaskToggle}
             />

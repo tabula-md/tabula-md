@@ -163,24 +163,80 @@ const splitWikiLinkTextNode = (
         value: value.slice(valueCursor, token.valueFrom),
       });
     }
-    nextNodes.push({
-      type: "link",
-      url: token.target,
-      data: {
-        hProperties: {
-          "data-wikilink-relation": token.relation,
-          "data-wikilink-target": token.target,
-        },
-      },
-      position: createPositionFromOffsets(node.position, token.from, token.to),
-      children: [{ type: "text", value: token.label }],
-    });
+    nextNodes.push(
+      token.relation === "embed"
+        ? {
+            type: "workspaceEmbed",
+            data: {
+              hName: "tabula-workspace-embed",
+              hProperties: {
+                "data-workspace-embed-target": token.target,
+              },
+            },
+            position: createPositionFromOffsets(node.position, token.from, token.to),
+          }
+        : {
+            type: "link",
+            url: token.target,
+            data: {
+              hProperties: {
+                "data-wikilink-relation": token.relation,
+                "data-wikilink-target": token.target,
+              },
+            },
+            position: createPositionFromOffsets(node.position, token.from, token.to),
+            children: [{ type: "text", value: token.label }],
+          },
+    );
     valueCursor = token.valueTo;
   }
   if (valueCursor < value.length) {
     nextNodes.push({ type: "text", value: value.slice(valueCursor) });
   }
   return nextNodes;
+};
+
+const splitParagraphsAroundWorkspaceEmbeds = (node: MarkdownAstNode) => {
+  if (!node.children) return;
+
+  const nextChildren: MarkdownAstNode[] = [];
+  for (const child of node.children) {
+    splitParagraphsAroundWorkspaceEmbeds(child);
+    if (
+      child.type !== "paragraph" ||
+      !child.children?.some((candidate) => candidate.type === "workspaceEmbed")
+    ) {
+      nextChildren.push(child);
+      continue;
+    }
+
+    let inlineChildren: MarkdownAstNode[] = [];
+    const flushInlineChildren = () => {
+      if (inlineChildren.length === 0) return;
+      const hasVisibleContent = inlineChildren.some((candidate) =>
+        candidate.type !== "text" || (candidate.value ?? "").trim().length > 0
+      );
+      if (hasVisibleContent) {
+        nextChildren.push({
+          ...child,
+          children: inlineChildren,
+        },
+        );
+      }
+      inlineChildren = [];
+    };
+
+    for (const paragraphChild of child.children) {
+      if (paragraphChild.type === "workspaceEmbed") {
+        flushInlineChildren();
+        nextChildren.push(paragraphChild);
+      } else {
+        inlineChildren.push(paragraphChild);
+      }
+    }
+    flushInlineChildren();
+  }
+  node.children = nextChildren;
 };
 
 export const transformMarkdownWikiLinks = (
@@ -200,6 +256,7 @@ export const transformMarkdownWikiLinks = (
     }
   };
   walk(tree);
+  splitParagraphsAroundWorkspaceEmbeds(tree);
 };
 
 const createRemarkWikiLinkPlugin = () => (

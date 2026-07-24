@@ -1,45 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { unwrapPreviewDocsBlockParagraphs } from "./markdownRehypePlugins";
+import { namespacePreviewIds } from "./markdownRehypePlugins";
+
+type TestNode = {
+  type: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: TestNode[];
+};
 
 describe("preview rehype plugins", () => {
-  it("moves a standalone fallback component out of its generated paragraph", () => {
-    const fallback = {
-      type: "element",
-      tagName: "tabula-unsupported-component",
-      properties: { dataComponentName: "ChartPanel" },
-      children: [],
-    };
-    const tree = {
+  it("namespaces embedded document ids and their local references", () => {
+    const tree: TestNode = {
       type: "root",
-      children: [{
-        type: "element",
-        tagName: "p",
-        properties: {},
-        children: [{ type: "text", value: " " }, fallback],
-      }],
+      children: [
+        {
+          type: "element",
+          tagName: "h2",
+          properties: { id: "decision" },
+          children: [],
+        },
+        {
+          type: "element",
+          tagName: "a",
+          properties: {
+            href: "#decision",
+            ariaDescribedBy: "decision other",
+          },
+          children: [],
+        },
+      ],
     };
+    namespacePreviewIds(tree, "embed-1-");
 
-    unwrapPreviewDocsBlockParagraphs(tree);
-
-    expect(tree.children).toEqual([fallback]);
-  });
-
-  it("leaves inline components inside mixed paragraphs", () => {
-    const tree = {
-      type: "root",
-      children: [{
-        type: "element",
-        tagName: "p",
-        properties: {},
-        children: [
-          { type: "text", value: "Status " },
-          { type: "element", tagName: "tabula-card", properties: {}, children: [] },
-        ],
-      }],
-    };
-
-    unwrapPreviewDocsBlockParagraphs(tree);
-
-    expect(tree.children[0].tagName).toBe("p");
+    expect(tree.children?.[0]?.properties?.id).toBe("embed-1-decision");
+    expect(tree.children?.[1]?.properties).toMatchObject({
+      href: "#embed-1-decision",
+      ariaDescribedBy: "embed-1-decision other",
+    });
   });
 });

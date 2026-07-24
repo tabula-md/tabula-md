@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createElement } from "react";
+import { createElement, type AnchorHTMLAttributes } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import { createPreviewRehypePlugins } from "./markdownRehypePlugins";
 import {
   MARKDOWN_REMARK_PLUGINS,
@@ -11,7 +11,7 @@ import {
 type MarkdownTree = Parameters<typeof transformMarkdownWikiLinks>[0];
 
 describe("Markdown wiki-link remark transform", () => {
-  it("turns links, aliases, and embeds into annotated Markdown links", () => {
+  it("turns links into annotated anchors and embeds into block nodes", () => {
     const markdown = "\\[[Escaped]] and [[Page|Alias]] plus ![[Embed]]";
     const tree: MarkdownTree = {
       type: "root",
@@ -30,7 +30,9 @@ describe("Markdown wiki-link remark transform", () => {
 
     transformMarkdownWikiLinks(tree, markdown);
 
-    expect(tree.children?.[0]?.children).toEqual([
+    expect(tree.children).toEqual([{
+      type: "paragraph",
+      children: [
       { type: "text", value: "[[Escaped]] and " },
       {
         type: "link",
@@ -48,21 +50,45 @@ describe("Markdown wiki-link remark transform", () => {
         children: [{ type: "text", value: "Alias" }],
       },
       { type: "text", value: " plus " },
-      {
-        type: "link",
-        url: "Embed",
-        data: {
-          hProperties: {
-            "data-wikilink-relation": "embed",
-            "data-wikilink-target": "Embed",
-          },
+      ],
+    }, {
+      type: "workspaceEmbed",
+      data: {
+        hName: "tabula-workspace-embed",
+        hProperties: {
+          "data-workspace-embed-target": "Embed",
         },
-        position: {
-          start: { offset: markdown.indexOf("![[Embed]]") },
-          end: { offset: markdown.length },
-        },
-        children: [{ type: "text", value: "Embed" }],
       },
+      position: {
+        start: { offset: markdown.indexOf("![[Embed]]") },
+        end: { offset: markdown.length },
+      },
+    }]);
+  });
+
+  it("splits inline prose around embeds into valid block siblings", () => {
+    const markdown = "Before ![[Guide]] after";
+    const tree: MarkdownTree = {
+      type: "root",
+      children: [{
+        type: "paragraph",
+        children: [{
+          type: "text",
+          value: markdown,
+          position: {
+            start: { offset: 0 },
+            end: { offset: markdown.length },
+          },
+        }],
+      }],
+    };
+
+    transformMarkdownWikiLinks(tree, markdown);
+
+    expect(tree.children?.map((node) => node.type)).toEqual([
+      "paragraph",
+      "workspaceEmbed",
+      "paragraph",
     ]);
   });
 
@@ -91,17 +117,28 @@ describe("Markdown wiki-link remark transform", () => {
     ]);
   });
 
-  it("passes wiki-link targets and relations through React Markdown", () => {
+  it("passes wiki-link and embed targets through React Markdown", () => {
     let receivedProps: Record<string, unknown> | undefined;
+    let receivedEmbedProps: Record<string, unknown> | undefined;
     const html = renderToStaticMarkup(createElement(
       ReactMarkdown,
       {
         components: {
-          a: ({ node: _node, ...props }) => {
+          a: ({
+            node: _node,
+            ...props
+          }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) => {
             receivedProps = props;
             return createElement("a", props);
           },
-        },
+          "tabula-workspace-embed": ({ node: _node, ...props }: {
+            node?: unknown;
+            [key: string]: unknown;
+          }) => {
+            receivedEmbedProps = props;
+            return createElement("section", props);
+          },
+        } as unknown as Components,
         rehypePlugins: createPreviewRehypePlugins([]),
         remarkPlugins: MARKDOWN_REMARK_PLUGINS,
       },
@@ -109,14 +146,17 @@ describe("Markdown wiki-link remark transform", () => {
     ));
 
     expect(receivedProps).toMatchObject({
-      "data-wikilink-relation": "embed",
-      "data-wikilink-target": "Guide.md",
+      "data-wikilink-relation": "link",
+      "data-wikilink-target": "Guide.md#Guide",
+    });
+    expect(receivedEmbedProps).toMatchObject({
+      "data-workspace-embed-target": "Guide.md",
     });
     expect(html).toContain(
       '<a href="Guide.md#Guide" data-wikilink-relation="link" data-wikilink-target="Guide.md#Guide">Wiki guide</a>',
     );
     expect(html).toContain(
-      '<a href="Guide.md" data-wikilink-relation="embed" data-wikilink-target="Guide.md">Embedded guide</a>',
+      '<section data-workspace-embed-target="Guide.md"></section>',
     );
   });
 });

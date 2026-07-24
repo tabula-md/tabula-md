@@ -30,6 +30,7 @@ export const PREVIEW_SANITIZE_SCHEMA: SanitizeSchema = {
     "tabula-tab",
     "tabula-tabs",
     "tabula-unsupported-component",
+    "tabula-workspace-embed",
   ],
   attributes: {
     ...defaultSchema.attributes,
@@ -62,6 +63,7 @@ export const PREVIEW_SANITIZE_SCHEMA: SanitizeSchema = {
     "tabula-tab": ["title"],
     "tabula-tabs": [],
     "tabula-unsupported-component": ["dataComponentName"],
+    "tabula-workspace-embed": ["dataWorkspaceEmbedTarget"],
     img: [
       ...(defaultSchema.attributes?.img ?? []),
       "alt",

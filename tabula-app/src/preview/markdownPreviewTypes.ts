@@ -1,4 +1,5 @@
 import type {
+  DocumentHeadingAnalysis,
   DocumentLinkRelation,
   DocumentLinkSyntax,
   LineSurfaceAnnotation,
@@ -41,6 +42,13 @@ export type MarkdownPreviewWorkspaceLink =
       targetPath?: string;
     };
 
+export type MarkdownPreviewWorkspaceDocument = {
+  id: string;
+  path: string;
+  markdown: string;
+  headings: readonly DocumentHeadingAnalysis[];
+};
+
 export type MarkdownPreviewProps = {
   metadata: MarkdownPreviewMetadata[];
   body: string;
@@ -62,9 +70,17 @@ export type MarkdownPreviewProps = {
   onOpenWorkspaceLink?: (
     link: Extract<MarkdownPreviewWorkspaceLink, { status: "resolved" }>,
   ) => void;
+  sourceDocumentId?: string;
+  resolveWorkspaceDocument?: (
+    documentId: string,
+  ) => MarkdownPreviewWorkspaceDocument | undefined;
   resolveWorkspaceLink?: (
     target: string,
     syntax?: DocumentLinkSyntax,
+    context?: {
+      relation?: DocumentLinkRelation;
+      sourceDocumentId?: string;
+    },
   ) => MarkdownPreviewWorkspaceLink | undefined;
   onToggleTaskLine?: (sourceLineIndex: number) => void;
 };
