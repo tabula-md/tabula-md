@@ -52,6 +52,8 @@ describe("workspace design locale contracts", () => {
       expect(staticCopy.every((message) => message.trim().length > 0)).toBe(true);
       expect(surface.jsonContains(2).trim()).not.toBe("");
       expect(surface.jsonMore(2).trim()).not.toBe("");
+      expect(surface.brokenWorkspaceLink("Missing.md")).toContain("Missing.md");
+      expect(surface.ambiguousWorkspaceLink("Shared")).toContain("Shared");
       expect(workspace.tabs.renameDocument("Plan.md").trim()).not.toBe("");
       expect(workspace.sidePanel.files.open("Plan.md").trim()).not.toBe("");
       expect(workspace.sidePanel.comments.emptyHint.trim()).not.toBe("");

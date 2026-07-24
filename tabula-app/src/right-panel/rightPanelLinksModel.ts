@@ -14,8 +14,12 @@ export const getRightPanelLinksModel = (
   activeDocumentId: string,
 ): RightPanelLinksModel => {
   const outgoingLinks = index.outgoingLinksByDocumentId.get(activeDocumentId) ?? [];
-  const outgoing = outgoingLinks.filter((link) => link.status === "resolved");
-  const backlinks = index.backlinksByDocumentId.get(activeDocumentId) ?? [];
+  const outgoing = outgoingLinks.filter((link) =>
+    link.status === "resolved" &&
+    link.targetDocumentId !== activeDocumentId
+  );
+  const backlinks = (index.backlinksByDocumentId.get(activeDocumentId) ?? [])
+    .filter((link) => link.sourceDocumentId !== activeDocumentId);
   const broken = outgoingLinks.filter((link) => link.status === "broken");
   const ambiguous = outgoingLinks.filter((link) => link.status === "ambiguous");
   const external = outgoingLinks.filter((link) => link.status === "external");
