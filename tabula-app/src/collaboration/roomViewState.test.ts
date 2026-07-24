@@ -38,6 +38,14 @@ describe("room view state", () => {
     expect(parseRoomViewState({ openDocumentIds: "all", rightPanelView: "files" })).toBeNull();
   });
 
+  it("restores the links panel as tab-local room state", () => {
+    expect(parseRoomViewState({
+      openDocumentIds: ["readme"],
+      rightPanelOpen: true,
+      rightPanelView: "links",
+    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "links" });
+  });
+
   it("restores valid tabs and falls back when the saved active document was deleted", () => {
     const workspace = {
       files: [{ id: "readme" }, { id: "notes" }],

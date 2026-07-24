@@ -19,6 +19,8 @@ import type {
   WorkspaceFolder,
 } from "../workspace/workspaceStorage";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
+import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIndex";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
@@ -139,6 +141,11 @@ export function useWorkspaceRightPanelController({
 }: UseWorkspaceRightPanelControllerOptions) {
   const visibleFiles = files;
   const visibleActiveFileId = activeFile?.id;
+  const knowledgeDocuments = useMemo(
+    () => getWorkspaceKnowledgeDocuments(visibleFiles, folders),
+    [folders, visibleFiles],
+  );
+  const knowledgeIndex = useWorkspaceKnowledgeIndex(knowledgeDocuments);
   const outlineCursorRef = useRef({ fileId: visibleActiveFileId, offset: 0 });
   if (outlineCursorRef.current.fileId !== visibleActiveFileId) {
     outlineCursorRef.current = { fileId: visibleActiveFileId, offset: 0 };
@@ -205,6 +212,7 @@ export function useWorkspaceRightPanelController({
     language,
     files: visibleFiles,
     folders,
+    knowledgeIndex,
     activeFileId: visibleActiveFileId,
     activeFileTitle,
     activeOutlineHeadingIndex,

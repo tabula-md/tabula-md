@@ -425,8 +425,8 @@ export async function run(ctx) {
       "The side panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Files|Outline|Comments|Search",
-      "The side panel should expose Files, Outline, Comments, and document Search as peer views.",
+      rightPanelState.tabs.join("|") === "Files|Outline|Links|Comments|Search",
+      "The side panel should expose Files, Outline, Links, Comments, and document Search as peer views.",
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
     expect(!rightPanelState.bodyText.includes("Project"), "Root files should not be wrapped in a synthetic Project folder.");
@@ -461,6 +461,15 @@ export async function run(ctx) {
       rightPanelState.laneGeometry.status.right <= rightPanelState.laneGeometry.rightPanel.left - 20,
       "The side panel should not clip the status bar lane.",
     );
+
+    await page.getByRole("button", { name: "Links", exact: true }).click();
+    await waitForPanelTab(page, "Links");
+    expect(
+      await page.getByText("No links in this document", { exact: true }).isVisible(),
+      "Links should expose a quiet empty state for an unlinked document.",
+    );
+    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await waitForPanelTab(page, "Files");
 
     await openProjectMenu(page);
     const dualPanelGeometry = await page.evaluate(() => {
@@ -1430,6 +1439,34 @@ export async function run(ctx) {
     });
     expect(draggedFileState.folderVisible, "Right Files should keep the drag destination visible.");
     expect(draggedFileState.level === "2", "Dragging a file onto a folder should move it one level into the tree.");
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.getByRole("button", { name: "New document", exact: true }).click();
+    await waitForEditorReady(page, { mode: "edit" });
+    await openMarkdownFile(page, {
+      name: "Start.md",
+      content: "# Start\n\nContinue in [[Guide.md]].",
+    });
+    await openMarkdownFile(page, {
+      name: "Guide.md",
+      content: "# Guide\n\nLinked from Start.",
+    });
+    await page.locator('.tab-item[data-file-name="Start.md"] .tab-select-button').click();
+    await waitForActiveTab(page, { exact: "Start.md" });
+    await ensureSidePanelOpen(page);
+    await page.getByRole("button", { name: "Links", exact: true }).click();
+    await waitForPanelTab(page, "Links");
+
+    await page.getByRole("button", { name: "Open Guide.md", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Guide.md" });
+    expect(
+      await page.getByRole("button", { name: "Open Start.md", exact: true }).isVisible(),
+      "Following an outgoing knowledge link should expose its source as a backlink.",
+    );
+
+    await page.getByRole("button", { name: "Open Start.md", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Start.md" });
   });
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 820 } });

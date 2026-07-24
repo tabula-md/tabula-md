@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createWorkspaceFile } from "./workspaceStorage";
 import {
   getWorkspaceFileDisplayTitles,
+  getWorkspaceFilePaths,
   getWorkspaceFileTabLabels,
   getWorkspaceFolderDisplayTitles,
 } from "./workspaceDisplayTitles";
@@ -91,5 +92,21 @@ describe("workspace display titles", () => {
       fullPath: "B/Notes/Plan.md",
       locationLabel: "B/Notes",
     });
+  });
+
+  it("builds exact source paths without applying display-only suffixes", () => {
+    const folders = [
+      { id: "workspace-root", title: "Workspace", parentId: null },
+      { id: "knowledge", title: "Knowledge  Base", parentId: "workspace-root" },
+    ];
+    const files = [
+      createWorkspaceFile(1, { id: "first", title: "Guide.MD", parentId: "knowledge" }),
+      createWorkspaceFile(2, { id: "second", title: "Guide.MD", parentId: "knowledge" }),
+    ];
+
+    expect(getWorkspaceFilePaths(files, folders)).toEqual(new Map([
+      ["first", "Knowledge  Base/Guide.MD"],
+      ["second", "Knowledge  Base/Guide.MD"],
+    ]));
   });
 });
