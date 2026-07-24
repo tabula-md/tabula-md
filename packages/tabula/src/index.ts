@@ -210,6 +210,7 @@ export {
 } from "./lineSurfaceModel";
 
 export type {
+  FrontmatterInspection,
   MarkdownHeading,
   ParsedFrontmatter,
   ParsedFrontmatterData,
@@ -222,6 +223,7 @@ export {
   getOutlineHeadings,
   getOutlineHeadingsFromMarkdown,
   getPreviewBody,
+  inspectFrontmatterData,
   parseFrontmatter,
   parseFrontmatterData,
 } from "./markdown/parse";
@@ -625,3 +627,18 @@ export {
   removeWorkspaceDocumentFromKnowledgeIndex,
   updateWorkspaceKnowledgeIndex,
 } from "./workspaceKnowledgeIndex";
+
+export type {
+  OkfCompatibilityIssue,
+  OkfCompatibilityIssueCode,
+  OkfCompatibilityIssueSeverity,
+  OkfCompatibilityReport,
+  OkfCompatibilityStatus,
+  OkfDocumentCompatibility,
+  OkfDocumentRole,
+  OkfDocumentStatus,
+} from "./workspaceOkfCompatibility";
+export {
+  OKF_TARGET_VERSION,
+  getWorkspaceOkfCompatibility,
+} from "./workspaceOkfCompatibility";
