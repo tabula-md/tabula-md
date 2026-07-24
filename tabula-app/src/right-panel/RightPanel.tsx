@@ -371,6 +371,7 @@ export function RightPanel({
             copy={copy.search}
             files={files}
             folders={folders}
+            index={knowledgeIndex}
             language={language}
             onSelectFile={onSelectFile}
           />
