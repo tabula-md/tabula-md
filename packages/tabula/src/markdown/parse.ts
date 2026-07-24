@@ -11,6 +11,10 @@ export type ParsedFrontmatterData = {
   bodyOffset: number;
 };
 
+export type FrontmatterInspection = ParsedFrontmatterData & {
+  status: "absent" | "valid" | "invalid";
+};
+
 export type PreviewBody = {
   body: string;
   sourceLineOffset: number;
@@ -91,36 +95,64 @@ const getFrontmatterBlock = (markdown: string) => {
 
 export const getPreviewBody = (body: string): PreviewBody => ({ body, sourceLineOffset: 0 });
 
-export const parseFrontmatterData = (markdown: string): ParsedFrontmatterData => {
+export const inspectFrontmatterData = (markdown: string): FrontmatterInspection => {
   const frontmatterBlock = getFrontmatterBlock(markdown);
   if (!frontmatterBlock) {
-    return { metadata: {}, body: markdown, bodyOffset: 0 };
+    return {
+      status: frontmatterOpeningDelimiterPattern.test(markdown.split(/\r?\n/, 1)[0] ?? "")
+        ? "invalid"
+        : "absent",
+      metadata: {},
+      body: markdown,
+      bodyOffset: 0,
+    };
   }
 
   const document = parseDocument(frontmatterBlock.rawFrontmatter, { prettyErrors: false });
-  if (document.errors.length > 0 || !isMap(document.contents)) {
-    return { metadata: {}, body: markdown, bodyOffset: 0 };
+  if (document.errors.length > 0) {
+    return { status: "invalid", metadata: {}, body: markdown, bodyOffset: 0 };
+  }
+  if (document.contents === null) {
+    return {
+      status: "valid",
+      metadata: {},
+      body: frontmatterBlock.body,
+      bodyOffset: frontmatterBlock.bodyOffset,
+    };
+  }
+  if (!isMap(document.contents)) {
+    return { status: "invalid", metadata: {}, body: markdown, bodyOffset: 0 };
   }
 
   const entries: [string, unknown][] = [];
   for (const item of document.contents.items) {
     if (!isScalar(item.key)) {
-      return { metadata: {}, body: markdown, bodyOffset: 0 };
+      return { status: "invalid", metadata: {}, body: markdown, bodyOffset: 0 };
     }
 
     const key = formatYamlMetadataValue(item.key.value).trim();
     if (!key) {
-      return { metadata: {}, body: markdown, bodyOffset: 0 };
+      return { status: "invalid", metadata: {}, body: markdown, bodyOffset: 0 };
     }
 
     entries.push([key, item.value?.toJSON() ?? null]);
   }
 
-  return entries.length > 0
+  return {
+    status: "valid",
+    metadata: Object.fromEntries(entries),
+    body: frontmatterBlock.body,
+    bodyOffset: frontmatterBlock.bodyOffset,
+  };
+};
+
+export const parseFrontmatterData = (markdown: string): ParsedFrontmatterData => {
+  const inspected = inspectFrontmatterData(markdown);
+  return inspected.status === "valid" && Object.keys(inspected.metadata).length > 0
     ? {
-        metadata: Object.fromEntries(entries),
-        body: frontmatterBlock.body,
-        bodyOffset: frontmatterBlock.bodyOffset,
+        metadata: inspected.metadata,
+        body: inspected.body,
+        bodyOffset: inspected.bodyOffset,
       }
     : { metadata: {}, body: markdown, bodyOffset: 0 };
 };
