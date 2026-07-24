@@ -7,6 +7,7 @@ describe("workspace Room bootstrap", () => {
   it("creates one validated Yjs update that another Room participant can hydrate", () => {
     const { update } = createWorkspaceRoomBootstrap({
       roomId: "room-bootstrap",
+      workspaceName: "company-wiki",
       folders: [{ id: "research", title: "Research", parentId: "workspace-root" }],
       documents: [{
         id: "brief",
@@ -27,6 +28,7 @@ describe("workspace Room bootstrap", () => {
     expect(getWorkspaceRoomSnapshot(restoredRoom)).toMatchObject({
       documents: { brief: "# Brief\n" },
       nodes: expect.arrayContaining([
+        expect.objectContaining({ id: "workspace-root", title: "company-wiki" }),
         expect.objectContaining({ id: "research", type: "folder" }),
         expect.objectContaining({ id: "brief", type: "document", parentId: "research" }),
       ]),

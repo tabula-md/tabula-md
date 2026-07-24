@@ -4,12 +4,14 @@ import {
   createWorkspaceRoomCrdt,
   getWorkspaceRoomSnapshot,
   initializeWorkspaceRoomCrdt,
+  renameWorkspaceRoomNode,
   validateWorkspaceRoomStructure,
 } from "./workspaceRoomCrdt";
 import { WORKSPACE_ROOM_ROOT_ID, validateWorkspaceRoomLimits, type WorkspaceRoomComment } from "./workspaceRoomModel";
 
 export type WorkspaceRoomBootstrapInput = {
   roomId: string;
+  workspaceName?: string;
   documents: readonly {
     id: string;
     title: string;
@@ -33,6 +35,7 @@ export type WorkspaceRoomBootstrapInput = {
  */
 export const createWorkspaceRoomBootstrap = ({
   roomId,
+  workspaceName,
   documents,
   folders,
   commentsByFileId = {},
@@ -40,6 +43,14 @@ export const createWorkspaceRoomBootstrap = ({
   const doc = new Y.Doc();
   const room = createWorkspaceRoomCrdt({ roomId, doc });
   try {
+    if (workspaceName) {
+      renameWorkspaceRoomNode(
+        room,
+        WORKSPACE_ROOM_ROOT_ID,
+        workspaceName,
+        new Date(0).toISOString(),
+      );
+    }
     initializeWorkspaceRoomCrdt(room, {
       nodes: [
         ...folders

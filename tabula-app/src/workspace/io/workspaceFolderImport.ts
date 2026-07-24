@@ -42,23 +42,29 @@ const parseRelativePath = (file: File) => {
   return segments;
 };
 
-const stripSelectedRoot = (entries: FolderImportEntry[]) => {
+const extractSelectedRoot = (entries: FolderImportEntry[]) => {
   const selectedRoot = entries[0]?.segments[0];
   const hasSharedRoot = Boolean(
     selectedRoot &&
       entries.every((entry) => entry.file.webkitRelativePath && entry.segments.length > 1 && entry.segments[0] === selectedRoot),
   );
-  return entries.map((entry) => ({
-    ...entry,
-    segments: hasSharedRoot ? entry.segments.slice(1) : entry.segments,
-  }));
+  return {
+    entries: entries.map((entry) => ({
+      ...entry,
+      segments: hasSharedRoot ? entry.segments.slice(1) : entry.segments,
+    })),
+    selectedRoot: hasSharedRoot ? selectedRoot : undefined,
+  };
 };
 
 export const parseWorkspaceFolderFiles = async (
   selectedFiles: readonly File[],
   defaults: WorkspaceFolderImportDefaults,
 ): Promise<WorkspaceState> => {
-  const entries = stripSelectedRoot(
+  const {
+    entries,
+    selectedRoot,
+  } = extractSelectedRoot(
     selectedFiles
       .map((file) => ({ file, segments: parseRelativePath(file) }))
       .filter(({ segments }) => markdownFilePattern.test(segments.at(-1) ?? ""))
@@ -72,7 +78,7 @@ export const parseWorkspaceFolderFiles = async (
     throw new Error(`A workspace can contain up to ${WORKSPACE_ROOM_MAX_DOCUMENTS} documents.`);
   }
 
-  const folders: WorkspaceFolder[] = [createWorkspaceRootFolder()];
+  const folders: WorkspaceFolder[] = [createWorkspaceRootFolder(selectedRoot)];
   const files: WorkspaceFile[] = [];
   const folderIdsByPath = new Map<string, string>([["", WORKSPACE_ROOT_FOLDER_ID]]);
   let contentBytes = 0;

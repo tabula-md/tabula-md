@@ -76,6 +76,7 @@ export type WorkspaceFile = {
 };
 
 export const WORKSPACE_ROOT_FOLDER_ID = "workspace-root";
+export const DEFAULT_WORKSPACE_NAME = "Project";
 
 export type WorkspaceFolder = {
   id: string;
@@ -216,12 +217,26 @@ export const createRoomWorkspaceState = (): WorkspaceState => {
   };
 };
 
-export const createWorkspaceRootFolder = (): WorkspaceFolder => ({
+export const normalizeWorkspaceName = (
+  value: string,
+  fallback = DEFAULT_WORKSPACE_NAME,
+) => {
+  const normalized = value.trim();
+  return isWorkspacePathSegment(normalized) ? normalized : fallback;
+};
+
+export const createWorkspaceRootFolder = (
+  title = DEFAULT_WORKSPACE_NAME,
+): WorkspaceFolder => ({
   id: WORKSPACE_ROOT_FOLDER_ID,
-  title: "Project",
+  title: normalizeWorkspaceName(title),
   parentId: null,
   order: 0,
 });
+
+export const getWorkspaceName = (folders: readonly WorkspaceFolder[]) =>
+  folders.find((folder) => folder.id === WORKSPACE_ROOT_FOLDER_ID)?.title ??
+  DEFAULT_WORKSPACE_NAME;
 
 export const createWorkspaceFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => {
   return {
@@ -326,14 +341,16 @@ const normalizeFoldersFromMap = (folders: unknown, folderOrder: unknown): Worksp
   const normalized = ids
     .map((id) => normalizeWorkspaceFolder(folders[id], id))
     .filter((folder): folder is WorkspaceFolder => Boolean(folder));
+  const root = normalized.find((folder) => folder.id === WORKSPACE_ROOT_FOLDER_ID);
   const withoutDuplicateRoots = normalized.filter((folder) => folder.id !== WORKSPACE_ROOT_FOLDER_ID);
-  return [createWorkspaceRootFolder(), ...withoutDuplicateRoots];
+  return [createWorkspaceRootFolder(root?.title), ...withoutDuplicateRoots];
 };
 
 const normalizeWorkspaceTree = (
   files: WorkspaceFile[],
   folders: WorkspaceFolder[],
 ) => {
+  const root = createWorkspaceRootFolder(getWorkspaceName(folders));
   const uniqueFolders = new Map<string, WorkspaceFolder>();
   for (const folder of folders) {
     if (!folder.id || folder.id === WORKSPACE_ROOT_FOLDER_ID || uniqueFolders.has(folder.id)) continue;
@@ -343,10 +360,10 @@ const normalizeWorkspaceTree = (
     });
   }
   const foldersById = new Map<string, WorkspaceFolder>([
-    [WORKSPACE_ROOT_FOLDER_ID, createWorkspaceRootFolder()],
+    [WORKSPACE_ROOT_FOLDER_ID, root],
     ...uniqueFolders,
   ]);
-  const normalizedFolders = [createWorkspaceRootFolder()];
+  const normalizedFolders = [root];
   for (const folder of uniqueFolders.values()) {
     let parentId = folder.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     if (!foldersById.has(parentId) || parentId === folder.id) parentId = WORKSPACE_ROOT_FOLDER_ID;

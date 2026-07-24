@@ -81,6 +81,7 @@ describe("projectWorkspaceRoomStructure", () => {
 
     expect(next.files.map((candidate) => candidate.id)).toEqual(["readme", "remote"]);
     expect(next.files.map((candidate) => candidate.text)).toEqual(["", ""]);
+    expect(next.folders[0]?.title).toBe("Workspace");
     expect(next.files[0].title).toBe("README renamed.md");
     expect(next.activeFileId).toBe("readme");
     expect(next.openFileIds).toEqual(["readme"]);

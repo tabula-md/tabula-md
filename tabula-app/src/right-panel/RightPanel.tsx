@@ -87,6 +87,7 @@ type RightPanelProps = {
   onMoveFileToFolder: (fileId: string, folderId: string) => Promise<void>;
   onMoveFolder: (folderId: string, parentId: string) => Promise<void>;
   onRenameFolder: (folderId: string, nextTitle: string) => Promise<boolean>;
+  onRenameWorkspace: (nextTitle: string) => boolean;
   onGoToOutlineHeading: (heading: MarkdownHeading, index: number) => void;
   onCommentDraftChange: (draft: string) => void;
   onIdentityNameChange: (name: string) => void;
@@ -143,6 +144,7 @@ export function RightPanel({
   onMoveFileToFolder,
   onMoveFolder,
   onRenameFolder,
+  onRenameWorkspace,
   onGoToOutlineHeading,
   onCommentDraftChange,
   onIdentityNameChange,
@@ -275,6 +277,7 @@ export function RightPanel({
             onMoveFileToFolder={onMoveFileToFolder}
             onMoveFolder={onMoveFolder}
             onRenameFolder={onRenameFolder}
+            onRenameWorkspace={onRenameWorkspace}
           />
         )}
 
