@@ -18,7 +18,9 @@ describe("workspace knowledge index", () => {
     const markdown = [
       "---",
       "title: Product Guide",
+      "type: Guide",
       "tags: [docs, product]",
+      "resource: ' https://example.com/products/guide '",
       "owner:",
       "  team: Core",
       "example: '[Not a link](Private.md)'",
@@ -36,15 +38,22 @@ describe("workspace knowledge index", () => {
     expect(analysis.title).toBe("Product Guide");
     expect(analysis.metadata).toEqual({
       title: "Product Guide",
+      type: "Guide",
       tags: ["docs", "product"],
+      resource: " https://example.com/products/guide ",
       owner: { team: "Core" },
       example: "[Not a link](Private.md)",
+    });
+    expect(analysis.knowledgeMetadata).toEqual({
+      type: "Guide",
+      tags: ["docs", "product"],
+      resource: "https://example.com/products/guide",
     });
     expect(analysis.headings).toEqual([
       {
         depth: 1,
         id: "start-here",
-        sourceLineNumber: 9,
+        sourceLineNumber: 11,
         text: "Start here",
         from: markdown.indexOf("# Start"),
         to: markdown.indexOf("# Start") + "# Start *here*".length,
@@ -68,6 +77,69 @@ describe("workspace knowledge index", () => {
         from: markdown.indexOf("[the architecture]"),
         to: markdown.indexOf("[the architecture]") + "[the architecture][arch]".length,
       },
+    ]);
+  });
+
+  it("indexes type, tags, and resource as normalized knowledge metadata", () => {
+    const index = createWorkspaceKnowledgeIndex([
+      document(
+        "runbook",
+        "runbooks/Checkout.md",
+        [
+          "---",
+          "type: ' Runbook '",
+          "tags: [oncall, ' checkout ', oncall, 42, '']",
+          "resource: ' https://github.com/acme/checkout '",
+          "---",
+          "# Checkout",
+        ].join("\n"),
+      ),
+      document(
+        "playbook",
+        "playbooks/Payments.md",
+        [
+          "---",
+          "type: Runbook",
+          "tags: payments",
+          "resource: https://github.com/acme/checkout",
+          "---",
+          "# Payments",
+        ].join("\n"),
+      ),
+      document(
+        "unstructured",
+        "Notes.md",
+        [
+          "---",
+          "type: 42",
+          "tags: { team: Core }",
+          "resource: false",
+          "---",
+          "# Notes",
+        ].join("\n"),
+      ),
+    ]);
+
+    expect(index.analysesByDocumentId.get("runbook")?.knowledgeMetadata).toEqual({
+      type: "Runbook",
+      tags: ["oncall", "checkout"],
+      resource: "https://github.com/acme/checkout",
+    });
+    expect(index.analysesByDocumentId.get("playbook")?.knowledgeMetadata).toEqual({
+      type: "Runbook",
+      tags: ["payments"],
+      resource: "https://github.com/acme/checkout",
+    });
+    expect(index.analysesByDocumentId.get("unstructured")?.knowledgeMetadata).toEqual({
+      tags: [],
+    });
+    expect(index.documentIdsByType.get("Runbook")).toEqual(["runbook", "playbook"]);
+    expect(index.documentIdsByTag.get("oncall")).toEqual(["runbook"]);
+    expect(index.documentIdsByTag.get("checkout")).toEqual(["runbook"]);
+    expect(index.documentIdsByTag.get("payments")).toEqual(["playbook"]);
+    expect(index.documentIdsByResource.get("https://github.com/acme/checkout")).toEqual([
+      "runbook",
+      "playbook",
     ]);
   });
 
@@ -220,7 +292,11 @@ describe("workspace knowledge index", () => {
 
     const changedSource = updateWorkspaceKnowledgeIndex(
       withoutTarget,
-      document("start", "docs/Start.md", "[Stable](/Stable.md)"),
+      document(
+        "start",
+        "docs/Start.md",
+        "---\ntype: Guide\ntags: [stable]\nresource: urn:tabula:stable\n---\n\n[Stable](/Stable.md)",
+      ),
     );
     expect(changedSource.analysesByDocumentId.get("start")).not.toBe(startAnalysis);
     expect(changedSource.analysesByDocumentId.get("stable")).toBe(stableAnalysis);
@@ -228,6 +304,26 @@ describe("workspace knowledge index", () => {
       sourceDocumentId: "start",
       status: "resolved",
     });
+    expect(changedSource.documentIdsByType.get("Guide")).toEqual(["start"]);
+    expect(changedSource.documentIdsByTag.get("stable")).toEqual(["start"]);
+    expect(changedSource.documentIdsByResource.get("urn:tabula:stable")).toEqual(["start"]);
+
+    const changedMetadata = updateWorkspaceKnowledgeIndex(
+      changedSource,
+      document("start", "docs/Start.md", "---\ntype: Reference\ntags: [current]\n---\n"),
+    );
+    expect(changedMetadata.documentIdsByType.has("Guide")).toBe(false);
+    expect(changedMetadata.documentIdsByTag.has("stable")).toBe(false);
+    expect(changedMetadata.documentIdsByResource.has("urn:tabula:stable")).toBe(false);
+    expect(changedMetadata.documentIdsByType.get("Reference")).toEqual(["start"]);
+    expect(changedMetadata.documentIdsByTag.get("current")).toEqual(["start"]);
+
+    const withoutMetadataDocument = removeWorkspaceDocumentFromKnowledgeIndex(
+      changedMetadata,
+      "start",
+    );
+    expect(withoutMetadataDocument.documentIdsByType.has("Reference")).toBe(false);
+    expect(withoutMetadataDocument.documentIdsByTag.has("current")).toBe(false);
   });
 
   it("resolves wiki paths conservatively and exposes ambiguous basename candidates", () => {
