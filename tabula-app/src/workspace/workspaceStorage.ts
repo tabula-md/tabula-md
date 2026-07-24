@@ -5,6 +5,7 @@ import {
   MAX_SPLIT_EDITOR_RATIO,
   MIN_SPLIT_EDITOR_RATIO,
   normalizeWorkspaceFileTitle,
+  isWorkspacePathSegment,
   parseRoomLocation,
   parseRoomShareUrl,
   READING_WIDTHS,
@@ -301,14 +302,12 @@ const normalizeWorkspaceFolder = (value: unknown, fallbackId?: string): Workspac
   if (!id) {
     return null;
   }
+  const title = getString(value.title) ?? "";
   return {
     id,
-    title: (getString(value.title) ?? "")
-      .trim()
-      .split("\0")
-      .join(" ")
-      .replace(/[/\\]/g, " ")
-      .replace(/\s+/g, " ") || (id === WORKSPACE_ROOT_FOLDER_ID ? "Project" : "Folder"),
+    title: isWorkspacePathSegment(title)
+      ? title
+      : (id === WORKSPACE_ROOT_FOLDER_ID ? "Project" : "Folder"),
     parentId: id === WORKSPACE_ROOT_FOLDER_ID
       ? null
       : (typeof value.parentId === "string" ? value.parentId : WORKSPACE_ROOT_FOLDER_ID),
@@ -340,7 +339,7 @@ const normalizeWorkspaceTree = (
     if (!folder.id || folder.id === WORKSPACE_ROOT_FOLDER_ID || uniqueFolders.has(folder.id)) continue;
     uniqueFolders.set(folder.id, {
       ...folder,
-      title: folder.title.trim().split("\0").join(" ").replace(/[/\\]/g, " ").replace(/\s+/g, " ") || "Folder",
+      title: isWorkspacePathSegment(folder.title) ? folder.title : "Folder",
     });
   }
   const foldersById = new Map<string, WorkspaceFolder>([
@@ -369,7 +368,9 @@ const normalizeWorkspaceTree = (
     folders: normalizedFolders,
     files: files.map((file) => ({
       ...file,
-      title: normalizeWorkspaceFileTitle(file.title),
+      title: isWorkspacePathSegment(file.title)
+        ? file.title
+        : normalizeWorkspaceFileTitle(file.title),
       parentId: foldersById.has(file.parentId ?? "")
         ? file.parentId
         : WORKSPACE_ROOT_FOLDER_ID,

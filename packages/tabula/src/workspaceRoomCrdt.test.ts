@@ -34,6 +34,21 @@ const createInitialRoom = (roomId = "room-1") => {
 };
 
 describe("workspace room CRDT", () => {
+  it("preserves exact safe folder and document path segments", () => {
+    const room = createWorkspaceRoomCrdt({ roomId: "exact-paths" });
+    initializeWorkspaceRoomCrdt(room, {
+      nodes: [
+        { id: "research", type: "folder", title: "Research  Notes", parentId: WORKSPACE_ROOM_ROOT_ID },
+        { id: "guide", type: "document", title: "API?  Guide.MD", parentId: "research", markdown: "# Guide" },
+      ],
+    });
+
+    expect(getWorkspaceRoomStructureSnapshot(room).nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "research", title: "Research  Notes" }),
+      expect.objectContaining({ id: "guide", title: "API?  Guide.MD" }),
+    ]));
+  });
+
   it("stores folders, document text, and comments in one Y.Doc", () => {
     const room = createInitialRoom();
     setWorkspaceRoomComment(room, {

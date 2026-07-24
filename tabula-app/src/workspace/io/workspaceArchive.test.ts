@@ -18,22 +18,31 @@ const readZipEntries = async (blob: Blob) =>
   }));
 
 describe("workspace archive", () => {
-  it("normalizes workspace files into deduped Markdown entry paths", () => {
+  it("preserves exact safe file names, extensions, and case", () => {
     expect(
       getWorkspaceArchiveEntries([
-        createWorkspaceFile(1, { title: "Design", text: "# Design" }),
-        createWorkspaceFile(2, { title: "Design.md", text: "# Second" }),
-        createWorkspaceFile(3, { title: "../bad/name?.markdown", text: "# Third" }),
-        createWorkspaceFile(4, { title: "docs/Guide", text: "# Guide" }),
-        createWorkspaceFile(5, { title: "docs/Guide.md", text: "# Guide 2" }),
+        createWorkspaceFile(1, { title: "Design.md", text: "# Design" }),
+        createWorkspaceFile(2, { title: "design.md", text: "# Lowercase" }),
+        createWorkspaceFile(3, { title: "Draft?  v1.markdown", text: "# Draft" }),
+        createWorkspaceFile(4, { title: "No extension", text: "# Exact" }),
       ]),
     ).toEqual([
       { path: "Design.md", content: "# Design" },
-      { path: "Design 2.md", content: "# Second" },
-      { path: "bad-name-.markdown", content: "# Third" },
-      { path: "docs-Guide.md", content: "# Guide" },
-      { path: "docs-Guide 2.md", content: "# Guide 2" },
+      { path: "design.md", content: "# Lowercase" },
+      { path: "Draft?  v1.markdown", content: "# Draft" },
+      { path: "No extension", content: "# Exact" },
     ]);
+  });
+
+  it("rejects unsafe or duplicate paths instead of silently rewriting them", () => {
+    expect(() => getWorkspaceArchiveEntries([
+      createWorkspaceFile(1, { title: "Design.md", text: "# First" }),
+      createWorkspaceFile(2, { title: "Design.md", text: "# Second" }),
+    ])).toThrow("duplicate path Design.md");
+
+    expect(() => getWorkspaceArchiveEntries([
+      createWorkspaceFile(1, { title: "docs/Guide.md", text: "# Guide" }),
+    ])).toThrow("invalid path segment");
   });
 
   it("creates a compressed zip archive with Markdown files", async () => {
@@ -53,7 +62,7 @@ describe("workspace archive", () => {
     const archive = await createWorkspaceArchive(
       [
         createWorkspaceFile(1, { title: "README.md", text: "# Docs", parentId: "docs" }),
-        createWorkspaceFile(2, { title: "ADR 1", text: "# ADR", parentId: "decisions" }),
+        createWorkspaceFile(2, { title: "ADR 1.md", text: "# ADR", parentId: "decisions" }),
       ],
       [
         createWorkspaceRootFolder(),
@@ -85,5 +94,12 @@ describe("workspace archive", () => {
 
   it("supports empty zip archives for defensive callers", async () => {
     await expect(createZipArchive([]).then(readZipEntries)).resolves.toEqual([]);
+  });
+
+  it("rejects duplicate raw zip entries instead of overwriting content", async () => {
+    await expect(createZipArchive([
+      { path: "README.md", content: "first" },
+      { path: "README.md", content: "second" },
+    ])).rejects.toThrow("duplicate archive path");
   });
 });

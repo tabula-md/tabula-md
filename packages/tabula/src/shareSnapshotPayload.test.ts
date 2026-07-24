@@ -9,6 +9,19 @@ import { WORKSPACE_ROOM_MAX_DOCUMENTS } from "./workspaceRoomModel";
 const root = { id: "workspace-root", title: "Project", parentId: null, order: 0 };
 
 describe("share snapshot payload", () => {
+  it("preserves exact safe path segments", () => {
+    const payload = createShareSnapshotPayload({
+      rootFolderId: root.id,
+      folders: [root, { id: "docs", title: "Research  Notes", parentId: root.id, order: 1 }],
+      files: [{ id: "readme", title: "API?  Guide.MD", text: "# Hello", parentId: "docs" }],
+      activeFileId: "readme",
+      commentsByFileId: {},
+    });
+
+    expect(payload.folders[1]?.title).toBe("Research  Notes");
+    expect(payload.files[0]?.title).toBe("API?  Guide.MD");
+  });
+
   it("keeps selected files and their logical folder ancestors", () => {
     const payload = createShareSnapshotPayload({
       rootFolderId: root.id,
