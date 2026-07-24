@@ -32,12 +32,14 @@ describe("workspace preview links", () => {
       targetDocumentId: "middle",
       targetPath: "graph/middle.md",
       fragment: "decision",
+      sourceLineNumber: 3,
     });
     expect(resolveMarkdownPreviewWorkspaceLink(index, "start", "#start")).toEqual({
       status: "resolved",
       targetDocumentId: "start",
       targetPath: "graph/start.md",
       fragment: "start",
+      sourceLineNumber: 1,
     });
   });
 

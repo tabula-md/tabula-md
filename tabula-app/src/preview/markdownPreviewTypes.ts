@@ -28,6 +28,7 @@ export type MarkdownPreviewWorkspaceLink =
       targetDocumentId: string;
       targetPath?: string;
       fragment?: string;
+      sourceLineNumber?: number;
     }
   | {
       status: "broken" | "ambiguous";

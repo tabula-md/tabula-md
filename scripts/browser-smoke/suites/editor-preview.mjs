@@ -2255,6 +2255,10 @@ Status <Badge type="success">Ready</Badge>
       (await page.getByRole("link", { name: "Jump to start", exact: true }).count()) === 1,
       "Fragment-only Markdown destinations should become preview links.",
     );
+    expect(
+      (await page.locator('[data-workspace-link-status="broken"]').filter({ hasText: "Missing section" }).count()) === 1,
+      "Missing heading destinations should render as broken workspace links.",
+    );
     await page.getByRole("link", { name: "Jump to start", exact: true }).click();
     await waitForRenderFrame(page);
     const previewText = (await page.locator(".preview-surface").textContent()) ?? "";
