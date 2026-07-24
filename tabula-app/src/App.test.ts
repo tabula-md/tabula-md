@@ -4,6 +4,7 @@ import {
   createRoomWorkspaceState,
   createStarterWorkspaceState,
   createWorkspaceFile,
+  createWorkspaceRootFolder,
   createStoredWorkspace,
   getRoomFromLocation,
   parseWorkspacePayload,
@@ -207,6 +208,17 @@ describe("project persistence", () => {
 
     expect(restored?.files[0]).toMatchObject({ title: "folder name.md", parentId: "workspace-root" });
     expect(restored?.folders.some((folder) => folder.id !== "workspace-root" && folder.parentId === "workspace-root")).toBe(true);
+  });
+
+  it("preserves the workspace name across project persistence", () => {
+    const stored = createStoredWorkspace({
+      folders: [createWorkspaceRootFolder("company-wiki")],
+      files: [createWorkspaceFile(1, { id: "readme", title: "README.md" })],
+      activeFileId: "readme",
+      commentsByFileId: {},
+    });
+
+    expect(parseWorkspacePayload(stored)?.folders[0]?.title).toBe("company-wiki");
   });
 
   it("rejects non-Tabula project payloads", () => {

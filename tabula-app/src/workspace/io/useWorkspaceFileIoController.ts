@@ -1,10 +1,10 @@
 import { useState, type ChangeEvent, type DragEvent, type RefObject } from "react";
 import { clientErrorReporter } from "../../observability/clientErrorReporting";
 import type { MarkdownEditorHandle } from "../../document/markdownEditorTypes";
-import { WORKSPACE_EXPORT_FILE_PREFIX } from "../../product";
 import { createWorkspaceArchive } from "./workspaceArchive";
 import { parseWorkspaceFolderFiles } from "./workspaceFolderImport";
 import {
+  getWorkspaceName,
   syncUrlForLocalWorkspace,
   type WorkspaceFile,
   type WorkspaceFolder,
@@ -199,7 +199,7 @@ export function useWorkspaceFileIoController({
         openFileIds,
       });
       const archive = await createWorkspaceArchive(workspaceSnapshot.files, workspaceSnapshot.folders);
-      downloadBlobFile(`${WORKSPACE_EXPORT_FILE_PREFIX}.zip`, archive);
+      downloadBlobFile(`${getWorkspaceName(workspaceSnapshot.folders)}.zip`, archive);
       showToast(copy.workspaceDownloaded);
     } catch (error) {
       clientErrorReporter.report({

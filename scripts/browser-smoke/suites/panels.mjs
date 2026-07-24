@@ -420,6 +420,10 @@ export async function run(ctx) {
           status: rectOf(".file-status-bar"),
         };
       })(),
+      workspaceName: document.querySelector(".right-file-workspace-name")?.textContent?.trim() ?? "",
+      syntheticRootRowCount: Array.from(document.querySelectorAll(".right-file-tree-node.folder"))
+        .filter((row) => row.querySelector(".right-row-label")?.textContent?.trim() === "Project")
+        .length,
       bodyText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(rightPanelState.open, "The right panel should open from the top-right panel toggle.");
@@ -433,7 +437,16 @@ export async function run(ctx) {
       `The side panel should expose Files, Outline, Links, Graph, Comments, and document Search as peer views. Found: ${rightPanelState.tabs.join("|")}`,
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
-    expect(!rightPanelState.bodyText.includes("Project"), "Root files should not be wrapped in a synthetic Project folder.");
+    expect(rightPanelState.workspaceName === "Project", "Files should identify the current workspace.");
+    expect(rightPanelState.syntheticRootRowCount === 0, "Root files should not be wrapped in a synthetic Project folder.");
+    await page.getByRole("button", { name: "Rename Project in Files", exact: true }).click();
+    const workspaceNameInput = page.getByRole("textbox", { name: "Rename Project in Files", exact: true });
+    await workspaceNameInput.fill("knowledge-feature-lab");
+    await workspaceNameInput.press("Enter");
+    expect(
+      (await page.getByRole("button", { name: "Rename knowledge-feature-lab in Files", exact: true }).count()) === 1,
+      "Files should rename the workspace identity without adding a root folder row.",
+    );
     expect(rightPanelState.headingCount === 0, "The right panel should not render large panel headings.");
     expect(rightPanelState.documentCardCount === 0, "The right panel should not use document cards.");
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");

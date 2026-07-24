@@ -92,6 +92,23 @@ describe("RoomCrdtStore", () => {
     room.doc.destroy();
   });
 
+  it("shares the workspace name without changing document paths", () => {
+    const { metrics, room, store } = createStore();
+    expect(store.createDocument({
+      id: "index",
+      title: "index.md",
+      markdown: "[Readme](Docs/README.md)",
+    })).toBe(true);
+
+    expect(store.renameNode(WORKSPACE_ROOM_ROOT_ID, "company-wiki")).toBe(true);
+    expect(store.materializeWorkspace().nodes.find(
+      (node) => node.id === WORKSPACE_ROOM_ROOT_ID,
+    )?.title).toBe("company-wiki");
+    expect(store.materializeDocument("index")).toBe("[Readme](Docs/README.md)");
+    metrics.dispose();
+    room.doc.destroy();
+  });
+
   it("rolls back a path mutation when maintained links exceed room capacity", () => {
     const { metrics, room, store } = createStore();
     expect(store.createDocument({

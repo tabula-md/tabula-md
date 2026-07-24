@@ -166,6 +166,9 @@ export function useCollaborationRoom({
       );
       const bootstrap = createInitialWorkspaceRoomBootstrap({
         roomId: nextSession.roomId,
+        workspaceName: workspaceFolders?.find(
+          (folder) => folder.id === WORKSPACE_ROOM_ROOT_ID,
+        )?.title,
         documents,
         folders: workspaceFolders ?? [],
         commentsByFileId,

@@ -32,7 +32,12 @@ import {
   Upload,
 } from "lucide-react";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
-import { WORKSPACE_ROOT_FOLDER_ID, type WorkspaceFile, type WorkspaceFolder } from "../workspace/workspaceStorage";
+import {
+  getWorkspaceName,
+  WORKSPACE_ROOT_FOLDER_ID,
+  type WorkspaceFile,
+  type WorkspaceFolder,
+} from "../workspace/workspaceStorage";
 import {
   buildFileTree,
   flattenVisibleFileTree,
@@ -78,6 +83,7 @@ type RightPanelFilesProps = {
   onMoveFileToFolder: (fileId: string, folderId: string) => void;
   onMoveFolder: (folderId: string, parentId: string) => void;
   onRenameFolder: (folderId: string, nextTitle: string) => boolean;
+  onRenameWorkspace: (nextTitle: string) => boolean;
 };
 
 const RIGHT_TREE_INDENT = 16;
@@ -111,7 +117,11 @@ export function RightPanelFiles({
   onMoveFileToFolder,
   onMoveFolder,
   onRenameFolder,
+  onRenameWorkspace,
 }: RightPanelFilesProps) {
+  const workspaceName = getWorkspaceName(folders);
+  const [renamingWorkspace, setRenamingWorkspace] = useState(false);
+  const [renamingWorkspaceTitle, setRenamingWorkspaceTitle] = useState("");
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState("");
   const [actionMenuFileId, setActionMenuFileId] = useState<string | null>(null);
@@ -127,6 +137,7 @@ export function RightPanelFiles({
   const pendingRenameFrameRef = useRef<number | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const folderRenameInputRef = useRef<HTMLInputElement | null>(null);
+  const workspaceRenameInputRef = useRef<HTMLInputElement | null>(null);
   const treeScrollRef = useRef<HTMLDivElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const filesBeforeCreateRef = useRef<ReadonlySet<string> | null>(null);
@@ -202,6 +213,15 @@ export function RightPanelFiles({
   }, [files, rowIndexByFileId, treeVirtualizer]);
 
   useLayoutEffect(() => {
+    if (!renamingWorkspace) return;
+    const frame = window.requestAnimationFrame(() => {
+      workspaceRenameInputRef.current?.focus();
+      workspaceRenameInputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [renamingWorkspace]);
+
+  useLayoutEffect(() => {
     if (!renamingFolderId) return;
     const frame = window.requestAnimationFrame(() => {
       folderRenameInputRef.current?.focus();
@@ -223,6 +243,28 @@ export function RightPanelFiles({
     setActionMenuFileId(null);
     setRenamingFileId(file.id);
     setRenamingTitle(stripMarkdownExtension(file.title));
+  };
+
+  const startRenamingWorkspace = () => {
+    setRenamingWorkspaceTitle(workspaceName);
+    setRenamingWorkspace(true);
+  };
+
+  const cancelRenamingWorkspace = () => {
+    setRenamingWorkspace(false);
+    setRenamingWorkspaceTitle("");
+  };
+
+  const commitRenamingWorkspace = () => {
+    if (onRenameWorkspace(renamingWorkspaceTitle)) {
+      cancelRenamingWorkspace();
+      return true;
+    }
+    window.setTimeout(() => {
+      workspaceRenameInputRef.current?.focus();
+      workspaceRenameInputRef.current?.select();
+    }, 0);
+    return false;
   };
 
   const cancelRenamingFile = () => {
@@ -736,6 +778,33 @@ export function RightPanelFiles({
     <ContextMenuTrigger asChild>
     <section className="right-panel-content right-files-panel">
       <div className="right-file-toolbar">
+        <div className="right-file-workspace-identity">
+          {renamingWorkspace ? (
+            <input
+              ref={workspaceRenameInputRef}
+              className="right-file-workspace-name-input"
+              value={renamingWorkspaceTitle}
+              aria-label={copy.renameInPanel(workspaceName)}
+              onChange={(event) => setRenamingWorkspaceTitle(event.target.value)}
+              onBlur={commitRenamingWorkspace}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") commitRenamingWorkspace();
+                if (event.key === "Escape") cancelRenamingWorkspace();
+              }}
+            />
+          ) : (
+            <button
+              className="right-file-workspace-name"
+              type="button"
+              aria-label={copy.renameInPanel(workspaceName)}
+              data-tooltip={copy.rename}
+              onClick={startRenamingWorkspace}
+            >
+              {workspaceName}
+            </button>
+          )}
+        </div>
+        <div className="right-file-toolbar-actions">
             <button
               className={`right-file-toolbar-button compatibility ${compatibilityTone} ${compatibilityOpen ? "active" : ""}`.trim()}
               type="button"
@@ -797,6 +866,7 @@ export function RightPanelFiles({
                 />
               </MenuContent>
             </MenuRoot>
+        </div>
       </div>
       {compatibilityOpen && (
         <RightPanelKnowledgeCompatibility

@@ -49,6 +49,7 @@ type RightPanelHandlers = Pick<
   | "onReplyDraftChange"
   | "onRenameFile"
   | "onRenameFolder"
+  | "onRenameWorkspace"
   | "onMoveFileToFolder"
   | "onMoveFolder"
   | "onResolveAmbiguousLink"
@@ -126,6 +127,7 @@ export function useWorkspaceRightPanelController({
   onNewFolder,
   onRenameFile,
   onRenameFolder,
+  onRenameWorkspace,
   onMoveFileToFolder,
   onMoveFolder,
   onReplyDraftChange,
@@ -276,6 +278,7 @@ export function useWorkspaceRightPanelController({
     onMoveFileToFolder,
     onMoveFolder,
     onRenameFolder,
+    onRenameWorkspace,
     onGoToOutlineHeading: goToOutlineHeading,
     onCommentDraftChange,
     onIdentityNameChange,

@@ -75,6 +75,7 @@ export function useWorkspaceFiles({
   const moveFileToFolder = useActiveStore((state) => state.moveFileToFolder);
   const moveFolder = useActiveStore((state) => state.moveFolder);
   const renameFolder = useActiveStore((state) => state.renameFolder);
+  const renameWorkspace = useActiveStore((state) => state.renameWorkspace);
   const reorderFiles = useActiveStore((state) => state.reorderFiles);
   const moveFile = useActiveStore((state) => state.moveFile);
   const selectAdjacentFile = useActiveStore((state) => state.selectAdjacentFile);
@@ -116,6 +117,7 @@ export function useWorkspaceFiles({
     moveFileToFolder,
     moveFolder,
     renameFolder,
+    renameWorkspace,
     replaceWorkspace,
     restoreFile,
     restoreFolder,
