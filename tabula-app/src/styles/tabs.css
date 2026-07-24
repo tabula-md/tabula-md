@@ -320,6 +320,7 @@
 .tabbar:not(.can-scroll-left):not(.can-scroll-right) .tabbar-actions > .tab-scroll-button {
   flex-basis: 0;
   width: 0;
+  padding: 0;
   overflow: hidden;
 }
 
@@ -330,18 +331,13 @@
 }
 
 @media (max-width: 560px) {
+  .tabbar {
+    gap: 4px;
+  }
+
   .tabs-scroll,
-  .tab-item,
-  .tab-select-button {
-    height: var(--control-size-touch);
-  }
-
-  .tab-item {
-    flex-basis: 112px;
-  }
-
-  .tabs-scroll-end-spacer {
-    flex-basis: calc(100% - 112px);
+  .tabbar > .tab-scroll-button {
+    display: none;
   }
 
   .add-tab-button,

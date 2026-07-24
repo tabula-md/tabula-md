@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { Collaborator } from "../../collaboration/liveCollaboration";
 import type { RenameFileResult } from "../state/useWorkspaceFiles";
@@ -21,6 +28,7 @@ type FileTabsProps = {
   collaborators: Collaborator[];
   roomId?: string;
   language: WorkspaceLanguage;
+  leadingControl?: ReactNode;
   onAddFile: () => void;
   onSelectFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
@@ -51,6 +59,7 @@ export function FileTabs({
   collaborators,
   roomId,
   language,
+  leadingControl,
   onAddFile,
   onSelectFile,
   onRenameFile,
@@ -226,6 +235,7 @@ export function FileTabs({
         tabScrollState.canScrollRight ? "can-scroll-right" : ""
       }`}
     >
+      {leadingControl}
       <button
         className="tab-scroll-button"
         type="button"

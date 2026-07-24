@@ -53,6 +53,7 @@ export function useWorkspaceFiles({
   const folders = useActiveStore((state) => state.folders);
   const openFileIds = useActiveStore((state) => state.openFileIds);
   const activeFileId = useActiveStore((state) => state.activeFileId);
+  const lastClosedTab = useActiveStore((state) => state.lastClosedTab);
   const workspace = useMemo(
     () => ({
       files,
@@ -63,12 +64,21 @@ export function useWorkspaceFiles({
   );
   const openFiles = useMemo(() => getOpenWorkspaceFiles(workspace), [workspace]);
   const activeFile = useMemo(() => getActiveWorkspaceFile(workspace), [workspace]);
+  const lastClosedFile = useMemo(
+    () =>
+      lastClosedTab && !openFileIds.includes(lastClosedTab.fileId)
+        ? files.find((file) => file.id === lastClosedTab.fileId)
+        : undefined,
+    [files, lastClosedTab, openFileIds],
+  );
   const selectFile = useActiveStore((state) => state.selectFile);
   const addFile = useActiveStore((state) => state.addFile);
   const addFolder = useActiveStore((state) => state.addFolder);
   const addFileFromContent = useActiveStore((state) => state.addFileFromContent);
   const duplicateFile = useActiveStore((state) => state.duplicateFile);
   const renameFile = useActiveStore((state) => state.renameFile);
+  const closeAllFiles = useActiveStore((state) => state.closeAllFiles);
+  const closeOtherFiles = useActiveStore((state) => state.closeOtherFiles);
   const closeFile = useActiveStore((state) => state.closeFile);
   const deleteFile = useActiveStore((state) => state.deleteFile);
   const deleteFolder = useActiveStore((state) => state.deleteFolder);
@@ -82,6 +92,7 @@ export function useWorkspaceFiles({
   const replaceWorkspace = useActiveStore((state) => state.replaceWorkspace);
   const restoreFile = useActiveStore((state) => state.restoreFile);
   const restoreFolder = useActiveStore((state) => state.restoreFolder);
+  const reopenLastClosedFile = useActiveStore((state) => state.reopenLastClosedFile);
   const setActiveFileBookmarks = useActiveStore((state) => state.setActiveFileBookmarks);
   const setActiveFileText = useActiveStore((state) => state.setActiveFileText);
   const setActiveFileViewMode = useActiveStore((state) => state.setActiveFileViewMode);
@@ -104,6 +115,7 @@ export function useWorkspaceFiles({
     openFileIds,
     activeFileId,
     activeFile,
+    lastClosedFile,
     selectFile,
     addFile,
     addFolder,
@@ -111,6 +123,8 @@ export function useWorkspaceFiles({
     addTemplateFile,
     duplicateFile,
     renameFile,
+    closeAllFiles,
+    closeOtherFiles,
     closeFile,
     deleteFile,
     deleteFolder,
@@ -121,6 +135,7 @@ export function useWorkspaceFiles({
     replaceWorkspace,
     restoreFile,
     restoreFolder,
+    reopenLastClosedFile,
     reorderFiles,
     moveFile,
     selectAdjacentFile,

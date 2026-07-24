@@ -280,6 +280,52 @@ export const closeWorkspaceFile = <TFile extends WorkspaceModelFile>(
   };
 };
 
+export const closeAllWorkspaceFiles = <TFile extends WorkspaceModelFile>(
+  state: WorkspaceModelState<TFile>,
+): WorkspaceModelState<TFile> => ({
+  ...state,
+  openFileIds: [],
+  activeFileId: "",
+});
+
+export const closeOtherWorkspaceFiles = <TFile extends WorkspaceModelFile>(
+  state: WorkspaceModelState<TFile>,
+  fileId: string,
+): WorkspaceModelState<TFile> => {
+  if (!state.openFileIds.includes(fileId)) {
+    return state;
+  }
+
+  return {
+    ...state,
+    openFileIds: [fileId],
+    activeFileId: fileId,
+  };
+};
+
+export const reopenWorkspaceFile = <TFile extends WorkspaceModelFile>(
+  state: WorkspaceModelState<TFile>,
+  fileId: string,
+  openIndex: number,
+): WorkspaceModelState<TFile> => {
+  if (!state.files.some((file) => file.id === fileId)) {
+    return state;
+  }
+
+  const nextOpenFileIds = state.openFileIds.filter((openFileId) => openFileId !== fileId);
+  nextOpenFileIds.splice(
+    Math.min(Math.max(0, openIndex), nextOpenFileIds.length),
+    0,
+    fileId,
+  );
+
+  return {
+    ...state,
+    openFileIds: nextOpenFileIds,
+    activeFileId: fileId,
+  };
+};
+
 export const deleteWorkspaceFile = <TFile extends WorkspaceModelFile>(
   state: WorkspaceModelState<TFile>,
   fileId: string,

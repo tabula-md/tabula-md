@@ -142,6 +142,37 @@ export async function run(ctx) {
       !nextTabs.find((tab) => tab.active)?.visibleTitle.endsWith(".md"),
       "Blank File tabs should omit the .md extension visually.",
     );
+    expect(
+      (await page.getByRole("button", { name: "Manage open tabs", exact: true }).count()) === 1,
+      "Open-tab management should stay available with a single document.",
+    );
+    await page.getByRole("button", { name: "Manage open tabs", exact: true }).click();
+    await page.locator(".open-tabs-menu").waitFor({ state: "visible" });
+    expect(
+      (await page.getByRole("menuitemradio", { name: "Untitled", exact: true }).count()) === 1,
+      "Open-tab management should list the current document.",
+    );
+    expect(
+      await page.getByRole("menuitem", { name: "Close other", exact: true }).isDisabled(),
+      "Close other should be unavailable when only one document is open.",
+    );
+    expect(
+      await page.getByRole("menuitem", { name: "Reopen last closed", exact: true }).isDisabled(),
+      "Reopen should be unavailable before any tab has been closed.",
+    );
+    const openTabsMenuOrder = await page.locator(".open-tabs-menu")
+      .locator('[role="menuitem"], [role="menuitemradio"]')
+      .allTextContents();
+    expect(
+      openTabsMenuOrder.map((label) => label.trim()).join("|") ===
+        "Close other|Close all|Reopen last closed|Untitled",
+      "Tab management should lead with concise actions, then list open documents.",
+    );
+    expect(
+      (await page.locator(".open-tabs-menu [role='separator']").count()) === 1,
+      "Tab management should separate actions from the open-document list.",
+    );
+    await page.keyboard.press("Escape");
     expect((await page.locator(".intro-action-button").count()) === 0, "Blank writing documents should not show README actions.");
 
     await ensureSidePanelOpen(page);
@@ -161,6 +192,68 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     nextTabs = await getTabs(page);
     expect(nextTabs.find((tab) => tab.active)?.mode === "Edit", "New documents should open as blank Edit documents.");
+    expect(
+      (await page.locator(".tabbar").getByRole("button", { name: "Manage open tabs", exact: true }).count()) === 1 &&
+        (await page.locator(".top-right-zone").getByRole("button", { name: "Manage open tabs", exact: true }).count()) === 0,
+      "Open-tab management should lead the tab strip instead of sitting with workspace actions.",
+    );
+    const tabManagementPosition = await page.evaluate(() => {
+      const tabbar = document.querySelector(".tabbar");
+      const trigger = tabbar?.querySelector(".open-tabs-trigger");
+      const firstTab = tabbar?.querySelector(".tab-item");
+      const triggerRect = trigger?.getBoundingClientRect();
+      const firstTabRect = firstTab?.getBoundingClientRect();
+      return Boolean(
+        tabbar &&
+        trigger &&
+        firstTab &&
+        tabbar.firstElementChild === trigger &&
+        triggerRect &&
+        firstTabRect &&
+        triggerRect.right <= firstTabRect.left &&
+        firstTabRect.left - triggerRect.right <= 12,
+      );
+    });
+    expect(
+      tabManagementPosition,
+      "Open-tab management should sit immediately before the first tab.",
+    );
+    await page.getByRole("button", { name: "Manage open tabs", exact: true }).click();
+    await page.locator(".open-tabs-menu").waitFor({ state: "visible" });
+    expect(
+      (await page.getByRole("menuitemradio").count()) === 2,
+      "Open-tab management should list every open document.",
+    );
+    await page.getByRole("menuitemradio", { name: "Untitled", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Untitled.md" });
+
+    await page.getByRole("button", { name: "Manage open tabs", exact: true }).click();
+    await page.locator(".open-tabs-menu").waitFor({ state: "visible" });
+    await page.getByRole("menuitem", { name: "Close other", exact: true }).click();
+    expect((await page.locator(".tab-item").count()) === 1, "Close other should preserve only the active document.");
+
+    await page.getByRole("button", { name: "Manage open tabs", exact: true }).click();
+    await page.locator(".open-tabs-menu").waitFor({ state: "visible" });
+    await page.getByRole("menuitem", { name: "Reopen last closed", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Untitled 2.md" });
+    expect((await page.locator(".tab-item").count()) === 2, "Reopen should restore the most recently closed tab.");
+
+    await page.getByRole("button", { name: "Manage open tabs", exact: true }).click();
+    await page.locator(".open-tabs-menu").waitFor({ state: "visible" });
+    await page.getByRole("menuitem", { name: "Close all", exact: true }).click();
+    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    expect((await page.locator(".tab-item").count()) === 0, "Close all tabs should clear the open-document state.");
+    expect(
+      (await page.getByRole("button", { name: "Manage open tabs", exact: true }).count()) === 1,
+      "Tab management should remain available after closing all tabs so the last tab can be reopened.",
+    );
+    await ensureSidePanelOpen(page);
+    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await waitForPanelTab(page, "Files");
+    expect(
+      (await page.locator(".right-file-tree-row.file").count()) === 2,
+      "Close all tabs should leave the workspace documents available in Files.",
+    );
   });
 
   await withPage(browser, "/", async (page) => {

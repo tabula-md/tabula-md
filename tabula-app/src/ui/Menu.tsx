@@ -18,6 +18,7 @@ export function MenuRoot({ children, onOpenChange, ...props }: MenuRootProps) {
 export const MenuTrigger = DropdownMenu.Trigger;
 export const MenuGroup = DropdownMenu.Group;
 export const MenuRadioGroup = DropdownMenu.RadioGroup;
+export const MenuSeparator = DropdownMenu.Separator;
 export const MenuSub = DropdownMenu.Sub;
 
 type MenuContentProps = ComponentPropsWithoutRef<typeof DropdownMenu.Content> & {

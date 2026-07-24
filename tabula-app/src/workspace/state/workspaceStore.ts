@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import {
   addWorkspaceFile,
+  closeAllWorkspaceFiles,
+  closeOtherWorkspaceFiles,
   closeWorkspaceFile,
   createWorkspaceModelState,
   deleteWorkspaceFile,
@@ -9,6 +11,7 @@ import {
   getOpenWorkspaceFiles,
   renameWorkspaceFile,
   reorderOpenWorkspaceFile,
+  reopenWorkspaceFile,
   selectAdjacentWorkspaceFile,
   selectWorkspaceFile,
   WORKSPACE_ROOM_MAX_TREE_DEPTH,
@@ -63,6 +66,10 @@ type WorkspaceStoreState = WorkspaceModelState<WorkspaceFile> & {
   folders: WorkspaceFolder[];
   createFile: (index: number, overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
   initialized: boolean;
+  lastClosedTab: {
+    fileId: string;
+    openIndex: number;
+  } | null;
   readmeFileId: string;
 };
 
@@ -75,6 +82,8 @@ type WorkspaceStoreActions = {
     viewMode?: FileViewMode,
     overrides?: Partial<WorkspaceFile>,
   ) => WorkspaceFile;
+  closeAllFiles: () => void;
+  closeOtherFiles: () => void;
   closeFile: (fileId: string) => CloseFileResult | undefined;
   commitActiveFileSplitRatio: (splitRatio: number) => void;
   deleteFile: (fileId: string) => CloseFileResult | undefined;
@@ -91,6 +100,7 @@ type WorkspaceStoreActions = {
   renameWorkspace: (title: string) => boolean;
   restoreFile: (input: RestoreFileInput) => WorkspaceFile;
   restoreFolder: (bundle: DeletedWorkspaceFolderBundle) => WorkspaceFile | undefined;
+  reopenLastClosedFile: () => WorkspaceFile | undefined;
   selectAdjacentFile: (direction: -1 | 1) => WorkspaceFile | undefined;
   selectFile: (fileId: string) => WorkspaceFile | undefined;
   setActiveFileBookmarks: (bookmarks: FileBookmark[]) => void;
@@ -124,6 +134,7 @@ const DEFAULT_WORKSPACE_STORE_STATE: WorkspaceStoreState = {
   files: [],
   folders: [],
   initialized: false,
+  lastClosedTab: null,
   openFileIds: [],
   readmeFileId: "",
 };
@@ -242,6 +253,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       createFile,
       folders,
       initialized: true,
+      lastClosedTab: null,
       readmeFileId,
     });
   },
@@ -252,6 +264,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       ...state,
       ...nextWorkspace,
       folders: workspace.folders ?? state.folders,
+      lastClosedTab: null,
     }));
 
     return getActiveWorkspaceFile(nextWorkspace);
@@ -265,7 +278,10 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       return undefined;
     }
 
-    set((state) => reduceWorkspace(state, { type: "selectFile", fileId }));
+    set((state) => ({
+      ...reduceWorkspace(state, { type: "selectFile", fileId }),
+      lastClosedTab: state.lastClosedTab?.fileId === fileId ? null : state.lastClosedTab,
+    }));
     return nextFile;
   },
 
@@ -361,13 +377,91 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
   },
 
   closeFile: (fileId) => {
-    const next = closeWorkspaceFile(getWorkspaceState(get()), fileId);
+    const currentState = get();
+    const openIndex = currentState.openFileIds.indexOf(fileId);
+    const next = closeWorkspaceFile(getWorkspaceState(currentState), fileId);
     if (!next) {
       return undefined;
     }
 
-    set((state) => reduceWorkspace(state, { type: "closeFile", fileId }));
+    set((state) => ({
+      ...state,
+      ...next.state,
+      lastClosedTab: { fileId, openIndex },
+    }));
     return next.result;
+  },
+
+  closeAllFiles: () => {
+    const state = get();
+    const fileId =
+      (state.openFileIds.includes(state.activeFileId) && state.activeFileId) ||
+      state.openFileIds.at(-1);
+    if (!fileId) {
+      return;
+    }
+
+    set((state) => ({
+      ...state,
+      ...closeAllWorkspaceFiles(getWorkspaceState(state)),
+      lastClosedTab: {
+        fileId,
+        openIndex: state.openFileIds.indexOf(fileId),
+      },
+    }));
+  },
+
+  closeOtherFiles: () => {
+    const state = get();
+    if (!state.activeFileId || state.openFileIds.length <= 1) {
+      return;
+    }
+
+    const lastClosedFileId = state.openFileIds
+      .filter((fileId) => fileId !== state.activeFileId)
+      .at(-1);
+    if (!lastClosedFileId) {
+      return;
+    }
+    const activeOpenIndex = state.openFileIds.indexOf(state.activeFileId);
+    const lastClosedOpenIndex = state.openFileIds.indexOf(lastClosedFileId);
+
+    set((currentState) => ({
+      ...currentState,
+      ...closeOtherWorkspaceFiles(
+        getWorkspaceState(currentState),
+        currentState.activeFileId,
+      ),
+      lastClosedTab: {
+        fileId: lastClosedFileId,
+        openIndex: lastClosedOpenIndex < activeOpenIndex ? 0 : 1,
+      },
+    }));
+  },
+
+  reopenLastClosedFile: () => {
+    const state = get();
+    const closedTab = state.lastClosedTab;
+    if (!closedTab) {
+      return undefined;
+    }
+
+    const file = state.files.find((candidate) => candidate.id === closedTab.fileId);
+    if (!file) {
+      set({ lastClosedTab: null });
+      return undefined;
+    }
+
+    set((currentState) => ({
+      ...currentState,
+      ...reopenWorkspaceFile(
+        getWorkspaceState(currentState),
+        closedTab.fileId,
+        closedTab.openIndex,
+      ),
+      lastClosedTab: null,
+    }));
+    return file;
   },
 
   deleteFile: (fileId) => {
@@ -376,7 +470,10 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       return undefined;
     }
 
-    set((state) => reduceWorkspace(state, { type: "deleteFile", fileId }));
+    set((state) => ({
+      ...reduceWorkspace(state, { type: "deleteFile", fileId }),
+      lastClosedTab: state.lastClosedTab?.fileId === fileId ? null : state.lastClosedTab,
+    }));
     return next.result;
   },
 
@@ -601,6 +698,10 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       files,
       openFileIds,
       activeFileId,
+      lastClosedTab:
+        current.lastClosedTab && deletedFileIds.has(current.lastClosedTab.fileId)
+          ? null
+          : current.lastClosedTab,
     }));
     return bundle;
   },

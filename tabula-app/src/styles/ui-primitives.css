@@ -109,6 +109,12 @@
   margin-top: var(--space-2);
 }
 
+.ui-command-menu-separator {
+  height: 1px;
+  margin: 5px var(--space-2);
+  background: color-mix(in srgb, var(--border-subtle) 58%, transparent);
+}
+
 .ui-command-menu-label {
   min-width: 0;
   overflow: hidden;

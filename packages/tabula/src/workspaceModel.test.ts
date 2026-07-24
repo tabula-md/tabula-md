@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   addWorkspaceFile,
+  closeAllWorkspaceFiles,
+  closeOtherWorkspaceFiles,
   closeWorkspaceFile,
   createWorkspaceModelState,
   deleteWorkspaceFile,
   normalizeWorkspaceFileTitle,
   renameWorkspaceFile,
+  reopenWorkspaceFile,
   selectAdjacentWorkspaceFile,
   workspaceReducer,
   type WorkspaceModelFile,
@@ -75,6 +78,41 @@ describe("workspace model", () => {
     });
     expect(result?.state.openFileIds).toEqual(["readme", "two"]);
     expect(result?.state.activeFileId).toBe("two");
+  });
+
+  it("closes every tab without deleting workspace files", () => {
+    const state = createState({
+      openFileIds: ["readme", "one", "two"],
+      activeFileId: "one",
+    });
+    const result = closeAllWorkspaceFiles(state);
+
+    expect(result.files).toEqual(state.files);
+    expect(result.openFileIds).toEqual([]);
+    expect(result.activeFileId).toBe("");
+  });
+
+  it("closes every tab except the selected document", () => {
+    const state = createState({
+      openFileIds: ["readme", "one", "two"],
+      activeFileId: "one",
+    });
+    const result = closeOtherWorkspaceFiles(state, "one");
+
+    expect(result.files).toEqual(state.files);
+    expect(result.openFileIds).toEqual(["one"]);
+    expect(result.activeFileId).toBe("one");
+  });
+
+  it("reopens a closed tab at its previous position", () => {
+    const state = createState({
+      openFileIds: ["readme", "two"],
+      activeFileId: "two",
+    });
+    const result = reopenWorkspaceFile(state, "one", 1);
+
+    expect(result.openFileIds).toEqual(["readme", "one", "two"]);
+    expect(result.activeFileId).toBe("one");
   });
 
   it("deletes the active file and removes it from tabs", () => {

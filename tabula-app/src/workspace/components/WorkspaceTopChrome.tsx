@@ -12,6 +12,7 @@ import type { FollowState } from "../../collaboration/followModel";
 import type { JsonShareController } from "../../share/useJsonShareController";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getCollaboratorDisplayList } from "../../collaboration/collabCollaborators";
+import { OpenTabsMenu } from "./OpenTabsMenu";
 import {
   type LocationRoom,
   type WorkspaceFile,
@@ -35,6 +36,7 @@ export type WorkspaceTopChromeProps = {
   isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
+  lastClosedFile?: WorkspaceFile;
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
   rightPanelOpen: boolean;
@@ -43,6 +45,8 @@ export type WorkspaceTopChromeProps = {
   onAddFile: FileTabsProps["onAddFile"];
   onChangeUserName: (nextName: string) => void;
   onChromeInteraction: NonNullable<FileTabsProps["onChromeInteraction"]>;
+  onCloseAllFiles: () => void;
+  onCloseOtherFiles: () => void;
   onCloseFile: FileTabsProps["onCloseFile"];
   onCloseShare: () => void;
   onShareLoadError: () => void;
@@ -51,6 +55,7 @@ export type WorkspaceTopChromeProps = {
   onCopyShareUrl: () => void;
   onReorderFiles: FileTabsProps["onReorderFiles"];
   onRenameFile: FileTabsProps["onRenameFile"];
+  onReopenLastClosedFile: () => void;
   onSelectFile: FileTabsProps["onSelectFile"];
   onStartSession: () => void;
   onStopSession: () => void;
@@ -76,6 +81,7 @@ export function WorkspaceTopChrome({
   isLiveConnected,
   jsonShare,
   language,
+  lastClosedFile,
   openFiles,
   room,
   rightPanelOpen,
@@ -84,6 +90,8 @@ export function WorkspaceTopChrome({
   onAddFile,
   onChangeUserName,
   onChromeInteraction,
+  onCloseAllFiles,
+  onCloseOtherFiles,
   onCloseFile,
   onCloseShare,
   onShareLoadError,
@@ -92,6 +100,7 @@ export function WorkspaceTopChrome({
   onCopyShareUrl,
   onReorderFiles,
   onRenameFile,
+  onReopenLastClosedFile,
   onSelectFile,
   onStartSession,
   onStopSession,
@@ -119,6 +128,20 @@ export function WorkspaceTopChrome({
       collaborators={displayedCollaborators}
       roomId={room?.roomId}
       language={language}
+      leadingControl={
+        <OpenTabsMenu
+          activeFile={activeFile}
+          folders={folders}
+          language={language}
+          lastClosedFile={lastClosedFile}
+          openFiles={openFiles}
+          onCloseAllFiles={onCloseAllFiles}
+          onCloseOtherFiles={onCloseOtherFiles}
+          onOpen={onChromeInteraction}
+          onReopenLastClosedFile={onReopenLastClosedFile}
+          onSelectFile={onSelectFile}
+        />
+      }
       onAddFile={onAddFile}
       onSelectFile={onSelectFile}
       onRenameFile={onRenameFile}
