@@ -64,6 +64,7 @@ describe("workspace knowledge index", () => {
         relation: "link",
         label: "the architecture",
         target: "/Architecture.md",
+        referenceIdentifier: "arch",
         from: markdown.indexOf("[the architecture]"),
         to: markdown.indexOf("[the architecture]") + "[the architecture][arch]".length,
       },

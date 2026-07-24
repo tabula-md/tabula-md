@@ -47,7 +47,7 @@ type UseWorkspaceFileActionsArgs = {
   readFileText?: (fileId: string) => string | null;
   preferences: WorkspacePreferences;
   queueEditorFocus: () => void;
-  renameFile: (fileId: string, nextRawTitle: string) => RenameFileResult;
+  renameFile: (fileId: string, nextRawTitle: string) => Promise<RenameFileResult>;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
   resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   restoreFile: (input: {
@@ -123,15 +123,16 @@ export function useWorkspaceFileActions({
 
   const addFile = createFile;
 
-  const renameWorkspaceFileAction = (fileId: string, nextRawTitle: string) => {
+  const renameWorkspaceFileAction = async (fileId: string, nextRawTitle: string) => {
+    onBeforeWorkspaceBoundary?.();
     const previousTitle = files.find((file) => file.id === fileId)?.title;
-    const result = renameFile(fileId, nextRawTitle);
+    const result = await renameFile(fileId, nextRawTitle);
     if (!result.ok) {
       showToast(result.message, "error");
       return result;
     }
     if (isRoomSession && onFileRenamed && !onFileRenamed(fileId, result.title)) {
-      if (previousTitle) renameFile(fileId, previousTitle);
+      if (previousTitle) await renameFile(fileId, previousTitle);
       showToast(copy.fileRenameFailed, "error");
     }
     return result;

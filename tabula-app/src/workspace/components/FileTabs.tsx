@@ -23,7 +23,7 @@ type FileTabsProps = {
   language: WorkspaceLanguage;
   onAddFile: () => void;
   onSelectFile: (fileId: string) => void;
-  onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
+  onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onCloseFile: (fileId: string) => void;
   onReorderFiles: (sourceFileId: string, targetFileId: string) => void;
   onChromeInteraction?: () => void;
@@ -138,12 +138,12 @@ export function FileTabs({
     onChromeInteraction?.();
   };
 
-  const commitRenamingFile = (nextRawTitle = renamingTitle) => {
+  const commitRenamingFile = async (nextRawTitle = renamingTitle) => {
     if (!renamingFileId) {
       return;
     }
 
-    const result = onRenameFile(renamingFileId, nextRawTitle);
+    const result = await onRenameFile(renamingFileId, nextRawTitle);
     if (!result.ok) {
       window.requestAnimationFrame(() => {
         const input = renameInputRef.current;
