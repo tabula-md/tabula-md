@@ -27,7 +27,7 @@ describe("workspace folder import", () => {
     ], defaults);
 
     expect(workspace.files.map((file) => file.title)).toEqual(["Launch notes.md", "Questions.md"]);
-    expect(workspace.folders.map((folder) => folder.title)).toEqual(["Project", "Planning", "Research"]);
+    expect(workspace.folders.map((folder) => folder.title)).toEqual(["Selected workspace", "Planning", "Research"]);
     expect(workspace.files[1]?.parentId).toBe(workspace.folders[2]?.id);
     expect(workspace.files[0]).toMatchObject({ readingWidth: "standard", lineWrapping: false });
     expect(workspace.openFileIds).toEqual([]);

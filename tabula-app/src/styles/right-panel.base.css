@@ -173,10 +173,54 @@
 
 .right-file-toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: var(--right-tight-gap);
   align-items: center;
   min-width: 0;
+}
+
+.right-file-workspace-identity {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.right-file-workspace-name,
+.right-file-workspace-name-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: var(--right-control-size);
+  padding: 0 var(--right-row-x);
+  overflow: hidden;
+  border: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  line-height: var(--right-control-size);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-file-workspace-name {
+  border-radius: var(--right-row-radius);
+}
+
+.right-file-workspace-name:hover,
+.right-file-workspace-name:focus-visible {
+  background: var(--surface-hover);
+}
+
+.right-file-workspace-name-input:focus,
+.right-file-workspace-name-input:focus-visible {
+  outline: 0;
+}
+
+.right-file-toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--right-tight-gap);
 }
 
 .right-file-toolbar-button,

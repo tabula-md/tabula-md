@@ -256,8 +256,8 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Export workspace (.zip)", exact: true }).click();
     const workspaceDownload = await workspaceDownloadPromise;
     expect(
-      workspaceDownload.suggestedFilename().endsWith(".zip"),
-      "Workspace export should download a ZIP archive.",
+      workspaceDownload.suggestedFilename() === "Project.zip",
+      "Workspace export should use the workspace identity as the ZIP filename.",
     );
     await openProjectMenu(page);
     await page.getByRole("button", { name: "Clear local workspace…", exact: true }).click();

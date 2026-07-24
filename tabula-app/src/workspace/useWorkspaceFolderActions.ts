@@ -32,6 +32,7 @@ type UseWorkspaceFolderActionsOptions = {
   publishRoomFolder: (folder: WorkspaceFolder) => boolean;
   readFolder: (folderId: string) => WorkspaceFolder | undefined;
   renameFolder: (folderId: string, title: string) => boolean;
+  renameWorkspace: (title: string) => boolean;
   renameRoomNode: (nodeId: string, title: string) => boolean;
   restoreCommentsForFiles: (comments: Record<string, FileComment[]>) => void;
   restoreFolder: (bundle: DeletedWorkspaceFolderBundle) => WorkspaceFile | undefined;
@@ -59,6 +60,7 @@ export function useWorkspaceFolderActions({
   publishRoomFolder,
   readFolder,
   renameFolder,
+  renameWorkspace,
   renameRoomNode,
   restoreCommentsForFiles,
   restoreFolder,
@@ -163,6 +165,18 @@ export function useWorkspaceFolderActions({
     return true;
   });
 
+  const renameWorkspaceName = useEventCallback((title: string) => {
+    onBeforeWorkspaceBoundary?.();
+    const root = folders.find((folder) => folder.id === WORKSPACE_ROOT_FOLDER_ID);
+    if (!root || !renameWorkspace(title)) return false;
+    const currentRoot = readFolder(WORKSPACE_ROOT_FOLDER_ID);
+    if (activeRoom && currentRoot && !renameRoomNode(WORKSPACE_ROOT_FOLDER_ID, currentRoot.title)) {
+      renameWorkspace(root.title);
+      return false;
+    }
+    return true;
+  });
+
   const moveWorkspaceFile = useEventCallback((fileId: string, folderId: string) => {
     onBeforeWorkspaceBoundary?.();
     const file = files.find((candidate) => candidate.id === fileId);
@@ -194,5 +208,6 @@ export function useWorkspaceFolderActions({
     moveWorkspaceFile,
     moveWorkspaceFolder,
     renameWorkspaceFolder,
+    renameWorkspaceName,
   };
 }

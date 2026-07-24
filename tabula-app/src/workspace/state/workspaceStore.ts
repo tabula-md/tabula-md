@@ -21,6 +21,7 @@ import {
   type WorkspaceModelState,
 } from "@tabula-md/tabula";
 import {
+  normalizeWorkspaceName,
   randomId,
   WORKSPACE_ROOT_FOLDER_ID,
   type FileBookmark,
@@ -87,6 +88,7 @@ type WorkspaceStoreActions = {
   moveFileToFolder: (fileId: string, folderId: string) => boolean;
   moveFolder: (folderId: string, parentId: string) => boolean;
   renameFolder: (folderId: string, title: string) => boolean;
+  renameWorkspace: (title: string) => boolean;
   restoreFile: (input: RestoreFileInput) => WorkspaceFile;
   restoreFolder: (bundle: DeletedWorkspaceFolderBundle) => WorkspaceFile | undefined;
   selectAdjacentFile: (direction: -1 | 1) => WorkspaceFile | undefined;
@@ -479,6 +481,23 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       ...current,
       folders: current.folders.map((candidate) => candidate.id === folderId ? { ...candidate, title: normalizedTitle } : candidate),
     }).state);
+    return true;
+  },
+
+  renameWorkspace: (title) => {
+    const state = get();
+    const root = state.folders.find((folder) => folder.id === WORKSPACE_ROOT_FOLDER_ID);
+    const normalizedTitle = normalizeWorkspaceName(title, "");
+    if (!root || !normalizedTitle) return false;
+    if (root.title === normalizedTitle) return true;
+    set((current) => ({
+      ...current,
+      folders: current.folders.map((folder) =>
+        folder.id === WORKSPACE_ROOT_FOLDER_ID
+          ? { ...folder, title: normalizedTitle }
+          : folder,
+      ),
+    }));
     return true;
   },
 
