@@ -162,7 +162,10 @@ export async function run(ctx) {
       "Workspace menu keyboard order should move from file actions to support actions.",
     );
     expect(workbenchPanels.statusVisible, "The document status bar should remain visible.");
-    expect(workbenchPanels.panelToggleCount === 2, "Top chrome should keep both menu and side panel toggles visible.");
+    expect(
+      workbenchPanels.panelToggleCount === 3,
+      "Top chrome should keep workspace, tab, and side-panel controls visible.",
+    );
     expect(workbenchPanels.bottomPanelCount === 0, "The bottom panel should stay removed; status bar owns bottom status.");
     expect(
       workbenchPanels.laneGeometry.menu.width <= 320,
@@ -2094,26 +2097,44 @@ export async function run(ctx) {
     }
     await waitForRenderFrame(mobilePage);
 
-    const mobileActiveTab = await mobilePage.evaluate(() => {
+    const mobileTabSwitcher = await mobilePage.evaluate(() => {
       const tabs = document.querySelector(".tabs-scroll");
       const active = document.querySelector(".tab-item.active");
-      if (!tabs || !active) return null;
-      const tabsRect = tabs.getBoundingClientRect();
-      const activeRect = active.getBoundingClientRect();
+      const trigger = document.querySelector(".open-tabs-trigger");
+      const triggerTitle = trigger?.querySelector(".open-tabs-trigger-title");
+      const share = document.querySelector(".share-trigger");
+      if (!tabs || !active || !trigger || !triggerTitle || !share) return null;
+      const triggerRect = trigger.getBoundingClientRect();
+      const shareRect = share.getBoundingClientRect();
       return {
-        visible: activeRect.left >= tabsRect.left - 1 && activeRect.right <= tabsRect.right + 1,
-        alignedToStart: Math.abs(activeRect.left - tabsRect.left) <= 1,
-        label: active.querySelector(".tab-title")?.textContent?.trim() ?? "",
+        tabsHidden: getComputedStyle(tabs).display === "none",
+        activeLabel: active.querySelector(".tab-title")?.textContent?.trim() ?? "",
+        triggerLabel: triggerTitle.textContent?.trim() ?? "",
+        triggerVisible: triggerRect.width > 44 && triggerRect.right <= shareRect.left,
+        shareIsTouchSized:
+          Math.round(shareRect.width) === 44 && Math.round(shareRect.height) === 44,
+        shareInsideViewport: shareRect.right <= window.innerWidth,
         visibleScrollButtonCount: Array.from(document.querySelectorAll(".tab-scroll-button")).filter(
           (button) => button instanceof HTMLElement && getComputedStyle(button).display !== "none",
         ).length,
       };
     });
-    expect(mobileActiveTab?.visible, "Creating a mobile document should keep the active tab visible.");
-    expect(mobileActiveTab?.alignedToStart, "Mobile tabs should align the active document without leaking clipped tab text.");
-    expect(mobileActiveTab?.label, "The visible mobile tab should name the active document.");
+    expect(mobileTabSwitcher?.tabsHidden, "Mobile layouts should replace the horizontal tab strip with one compact switcher.");
     expect(
-      mobileActiveTab?.visibleScrollButtonCount === 0,
+      mobileTabSwitcher?.activeLabel &&
+        mobileTabSwitcher?.triggerLabel === mobileTabSwitcher.activeLabel,
+      "The mobile tab switcher should name the active document.",
+    );
+    expect(
+      mobileTabSwitcher?.triggerVisible,
+      "The mobile tab switcher should fit before the workspace actions.",
+    );
+    expect(
+      mobileTabSwitcher?.shareIsTouchSized && mobileTabSwitcher?.shareInsideViewport,
+      "Mobile Share should remain a fixed touch-sized icon inside the viewport.",
+    );
+    expect(
+      mobileTabSwitcher?.visibleScrollButtonCount === 0,
       "Touch layouts should reserve tab width for documents instead of redundant previous/next buttons.",
     );
 

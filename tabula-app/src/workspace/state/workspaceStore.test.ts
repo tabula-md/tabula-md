@@ -181,6 +181,51 @@ describe("workspace store", () => {
     expect(useWorkspaceStore.getState().openFileIds).not.toContain(draft.id);
   });
 
+  it("closes every tab without removing workspace files", () => {
+    const { readme, draft } = initializeWorkspaceStore();
+
+    useWorkspaceStore.getState().closeAllFiles();
+
+    expect(useWorkspaceStore.getState().files).toEqual([readme, draft]);
+    expect(useWorkspaceStore.getState().openFileIds).toEqual([]);
+    expect(useWorkspaceStore.getState().activeFileId).toBe("");
+
+    expect(useWorkspaceStore.getState().reopenLastClosedFile()).toEqual(draft);
+    expect(useWorkspaceStore.getState().openFileIds).toEqual([draft.id]);
+    expect(useWorkspaceStore.getState().activeFileId).toBe(draft.id);
+  });
+
+  it("closes other tabs and can reopen the last one at its previous position", () => {
+    const { readme, draft } = initializeWorkspaceStore();
+    const plan = useWorkspaceStore.getState().addFile({ title: "Plan.md" });
+
+    useWorkspaceStore.getState().closeOtherFiles();
+
+    expect(useWorkspaceStore.getState().openFileIds).toEqual([plan.id]);
+    expect(useWorkspaceStore.getState().activeFileId).toBe(plan.id);
+
+    expect(useWorkspaceStore.getState().reopenLastClosedFile()).toEqual(draft);
+    expect(useWorkspaceStore.getState().openFileIds).toEqual([draft.id, plan.id]);
+    expect(useWorkspaceStore.getState().activeFileId).toBe(draft.id);
+    expect(useWorkspaceStore.getState().files).toEqual([readme, draft, plan]);
+  });
+
+  it("reopens an individually closed tab in its prior tab position", () => {
+    const { readme, draft } = initializeWorkspaceStore();
+    const plan = useWorkspaceStore.getState().addFile({ title: "Plan.md" });
+
+    useWorkspaceStore.getState().closeFile(draft.id);
+    expect(useWorkspaceStore.getState().openFileIds).toEqual([readme.id, plan.id]);
+
+    useWorkspaceStore.getState().reopenLastClosedFile();
+    expect(useWorkspaceStore.getState().openFileIds).toEqual([
+      readme.id,
+      draft.id,
+      plan.id,
+    ]);
+    expect(useWorkspaceStore.getState().activeFileId).toBe(draft.id);
+  });
+
   it("normalizes rename requests and rejects duplicate titles", async () => {
     const { draft } = initializeWorkspaceStore();
     const plan = useWorkspaceStore.getState().addFile({ title: "Plan.md" });

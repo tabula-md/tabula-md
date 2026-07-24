@@ -7,7 +7,11 @@ type WorkspaceInterfaceMessages = {
   tabsCollaboratorsInDocument: string;
   tabsCloseDocument: string;
   tabsClose: string;
+  tabsCloseAll: string;
+  tabsCloseOthers: string;
+  tabsManage: string;
   tabsNewDocument: string;
+  tabsReopenLastClosed: string;
   tabsScrollRight: string;
   panelDismiss: string;
   panelLabel: string;
@@ -133,7 +137,11 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     tabsCollaboratorsInDocument: "{{names}} in this document",
     tabsCloseDocument: "Close {{name}}",
     tabsClose: "Close tab",
+    tabsCloseAll: "Close all",
+    tabsCloseOthers: "Close other",
+    tabsManage: "Manage open tabs",
     tabsNewDocument: "New document",
+    tabsReopenLastClosed: "Reopen last closed",
     tabsScrollRight: "Scroll tabs right",
     panelDismiss: "Dismiss side panel",
     panelLabel: "Side panel",
@@ -258,7 +266,11 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     tabsCollaboratorsInDocument: "이 문서에 {{names}} 참여 중",
     tabsCloseDocument: "{{name}} 닫기",
     tabsClose: "탭 닫기",
+    tabsCloseAll: "모두 닫기",
+    tabsCloseOthers: "다른 탭 닫기",
+    tabsManage: "열린 탭 관리",
     tabsNewDocument: "새 문서",
+    tabsReopenLastClosed: "마지막 닫은 탭 열기",
     tabsScrollRight: "탭을 오른쪽으로 스크롤",
     panelDismiss: "사이드 패널 닫기",
     panelLabel: "사이드 패널",
@@ -383,7 +395,11 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     tabsCollaboratorsInDocument: "このドキュメントに {{names}} が参加中",
     tabsCloseDocument: "{{name}} を閉じる",
     tabsClose: "タブを閉じる",
+    tabsCloseAll: "すべて閉じる",
+    tabsCloseOthers: "他を閉じる",
+    tabsManage: "開いているタブを管理",
     tabsNewDocument: "新規ドキュメント",
+    tabsReopenLastClosed: "最後に閉じたタブを開く",
     tabsScrollRight: "タブを右へスクロール",
     panelDismiss: "サイドパネルを閉じる",
     panelLabel: "サイドパネル",
@@ -508,7 +524,11 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     tabsCollaboratorsInDocument: "{{names}} 正在此文档中",
     tabsCloseDocument: "关闭 {{name}}",
     tabsClose: "关闭标签页",
+    tabsCloseAll: "全部关闭",
+    tabsCloseOthers: "关闭其他",
+    tabsManage: "管理已打开的标签页",
     tabsNewDocument: "新建文档",
+    tabsReopenLastClosed: "重新打开上次关闭项",
     tabsScrollRight: "向右滚动标签页",
     panelDismiss: "关闭侧边栏",
     panelLabel: "侧边栏",
@@ -632,7 +652,11 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     tabsCollaboratorsInDocument: "{{names}} en este documento",
     tabsCloseDocument: "Cerrar {{name}}",
     tabsClose: "Cerrar pestaña",
+    tabsCloseAll: "Cerrar todas",
+    tabsCloseOthers: "Cerrar las demás",
+    tabsManage: "Gestionar pestañas abiertas",
     tabsNewDocument: "Nuevo documento",
+    tabsReopenLastClosed: "Reabrir la última cerrada",
     tabsScrollRight: "Desplazar pestañas a la derecha",
     panelDismiss: "Cerrar panel lateral",
     panelLabel: "Panel lateral",
@@ -757,7 +781,11 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     tabsCollaboratorsInDocument: "{{names}} dans ce document",
     tabsCloseDocument: "Fermer {{name}}",
     tabsClose: "Fermer l’onglet",
+    tabsCloseAll: "Tout fermer",
+    tabsCloseOthers: "Fermer les autres",
+    tabsManage: "Gérer les onglets ouverts",
     tabsNewDocument: "Nouveau document",
+    tabsReopenLastClosed: "Rouvrir le dernier fermé",
     tabsScrollRight: "Faire défiler les onglets à droite",
     panelDismiss: "Fermer le panneau latéral",
     panelLabel: "Panneau latéral",
@@ -882,7 +910,11 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     tabsCollaboratorsInDocument: "{{names}} in diesem Dokument",
     tabsCloseDocument: "{{name}} schließen",
     tabsClose: "Tab schließen",
+    tabsCloseAll: "Alle schließen",
+    tabsCloseOthers: "Andere schließen",
+    tabsManage: "Geöffnete Tabs verwalten",
     tabsNewDocument: "Neues Dokument",
+    tabsReopenLastClosed: "Zuletzt geschlossenen öffnen",
     tabsScrollRight: "Tabs nach rechts scrollen",
     panelDismiss: "Seitenleiste schließen",
     panelLabel: "Seitenleiste",
@@ -1025,7 +1057,11 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
       collaboratorsInDocument: (names: string) => format(copy.tabsCollaboratorsInDocument, { names }),
       closeDocument: (name: string) => format(copy.tabsCloseDocument, { name }),
       close: copy.tabsClose,
+      closeAll: copy.tabsCloseAll,
+      closeOthers: copy.tabsCloseOthers,
+      manage: copy.tabsManage,
       newDocument: copy.tabsNewDocument,
+      reopenLastClosed: copy.tabsReopenLastClosed,
       scrollRight: copy.tabsScrollRight,
     },
     sidePanel: {

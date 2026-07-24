@@ -30,6 +30,8 @@ type UseWorkspaceFileActionsArgs = {
   isRoomSession: boolean;
   activeFileId: string;
   addWorkspaceFileAction: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile;
+  closeAllWorkspaceFilesAction: () => void;
+  closeOtherWorkspaceFilesAction: () => void;
   closeFloatingChrome: () => void;
   closeWorkspaceFileAction: (fileId: string) => CloseFileResult | undefined;
   commentsByFileId: Record<string, FileComment[]>;
@@ -50,6 +52,7 @@ type UseWorkspaceFileActionsArgs = {
   renameFile: (fileId: string, nextRawTitle: string) => Promise<RenameFileResult>;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
   resetCollaborationState: (nextStatus: ConnectionStatus) => void;
+  reopenLastClosedWorkspaceFileAction: () => WorkspaceFile | undefined;
   restoreFile: (input: {
     file: WorkspaceFile;
     fileIndex: number;
@@ -68,6 +71,8 @@ export function useWorkspaceFileActions({
   isRoomSession,
   activeFileId,
   addWorkspaceFileAction,
+  closeAllWorkspaceFilesAction,
+  closeOtherWorkspaceFilesAction,
   closeFloatingChrome,
   closeWorkspaceFileAction,
   commentsByFileId,
@@ -88,6 +93,7 @@ export function useWorkspaceFileActions({
   renameFile,
   replaceCommentsByFileId,
   resetCollaborationState,
+  reopenLastClosedWorkspaceFileAction,
   restoreFile,
   selectAdjacentWorkspaceFileAction,
   selectWorkspaceFileAction,
@@ -260,6 +266,38 @@ export function useWorkspaceFileActions({
     }
   };
 
+  const closeAllFiles = () => {
+    if (openFileIds.length === 0) {
+      return;
+    }
+
+    onBeforeWorkspaceBoundary?.();
+    closeAllWorkspaceFilesAction();
+    closeFloatingChrome();
+    if (!isRoomSession) {
+      resetCollaborationState("idle");
+    }
+  };
+
+  const closeOtherFiles = () => {
+    if (openFileIds.length <= 1) {
+      return;
+    }
+
+    onBeforeWorkspaceBoundary?.();
+    closeOtherWorkspaceFilesAction();
+    closeFloatingChrome();
+  };
+
+  const reopenLastClosedFile = () => {
+    onBeforeWorkspaceBoundary?.();
+    queueEditorFocus();
+    const reopenedFile = reopenLastClosedWorkspaceFileAction();
+    if (reopenedFile) {
+      closeFloatingChrome();
+    }
+  };
+
   const selectAdjacentFile = (direction: -1 | 1) => {
     onBeforeWorkspaceBoundary?.();
     const nextFile = selectAdjacentWorkspaceFileAction(direction);
@@ -274,7 +312,10 @@ export function useWorkspaceFileActions({
     renameWorkspaceFileAction,
     duplicateFile,
     deleteFile,
+    closeAllFiles,
+    closeOtherFiles,
     closeFile,
+    reopenLastClosedFile,
     selectAdjacentFile,
   };
 }

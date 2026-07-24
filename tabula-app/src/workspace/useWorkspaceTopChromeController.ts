@@ -32,6 +32,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   isLiveConnected: boolean;
   jsonShare: JsonShareController;
   language: WorkspaceLanguage;
+  lastClosedFile?: WorkspaceFile;
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
   rightPanelOpen: boolean;
@@ -39,6 +40,8 @@ type UseWorkspaceTopChromeControllerOptions = {
   workspaceMenuOpen: boolean;
   onAddFile: () => void;
   onChangeUserName: (nextName: string) => void;
+  onCloseAllFiles: () => void;
+  onCloseOtherFiles: () => void;
   onCloseFile: (fileId: string) => void;
   onShareLoadError: () => void;
   onShareCopyFailed: () => void;
@@ -47,6 +50,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   onEmptyShare: () => void;
   onReorderFiles: (sourceFileId: string, targetFileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
+  onReopenLastClosedFile: () => void;
   onSelectFile: (fileId: string) => void;
   onShareOpened: () => void;
   onStartSession: () => void;
@@ -77,6 +81,7 @@ export function useWorkspaceTopChromeController({
   isLiveConnected,
   jsonShare,
   language,
+  lastClosedFile,
   openFiles,
   room,
   rightPanelOpen,
@@ -84,6 +89,8 @@ export function useWorkspaceTopChromeController({
   workspaceMenuOpen,
   onAddFile,
   onChangeUserName,
+  onCloseAllFiles,
+  onCloseOtherFiles,
   onCloseFile,
   onShareLoadError,
   onShareCopyFailed,
@@ -92,6 +99,7 @@ export function useWorkspaceTopChromeController({
   onEmptyShare,
   onReorderFiles,
   onRenameFile,
+  onReopenLastClosedFile,
   onSelectFile,
   onShareOpened,
   onStartSession,
@@ -160,6 +168,7 @@ export function useWorkspaceTopChromeController({
     isLiveConnected,
     jsonShare,
     language,
+    lastClosedFile,
     openFiles,
     room,
     rightPanelOpen,
@@ -168,6 +177,8 @@ export function useWorkspaceTopChromeController({
     onAddFile,
     onChangeUserName,
     onChromeInteraction: closeDocumentChrome,
+    onCloseAllFiles,
+    onCloseOtherFiles,
     onCloseFile,
     onCloseShare: closeShare,
     onShareLoadError,
@@ -176,6 +187,7 @@ export function useWorkspaceTopChromeController({
     onCopyShareUrl,
     onReorderFiles,
     onRenameFile,
+    onReopenLastClosedFile,
     onSelectFile,
     onStartSession,
     onStopSession,

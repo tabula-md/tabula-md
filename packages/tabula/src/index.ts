@@ -578,6 +578,8 @@ export type {
 } from "./workspaceModel";
 export {
   addWorkspaceFile,
+  closeAllWorkspaceFiles,
+  closeOtherWorkspaceFiles,
   closeWorkspaceFile,
   createWorkspaceModelState,
   deleteWorkspaceFile,
@@ -586,6 +588,7 @@ export {
   getOpenWorkspaceFiles,
   normalizeWorkspaceFileTitle,
   renameWorkspaceFile,
+  reopenWorkspaceFile,
   reorderOpenWorkspaceFile,
   selectAdjacentWorkspaceFile,
   selectWorkspaceFile,
