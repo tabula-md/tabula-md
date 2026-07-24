@@ -208,7 +208,9 @@ const waitForShareDialogState = async (page, { open = true, panel, text } = {}) 
 const waitForPanelTab = async (page, label) => {
   await page.locator(".right-panel").waitFor({ state: "visible" });
   await page.waitForFunction(
-    ({ label }) => document.querySelector(".right-panel-tab.active")?.getAttribute("aria-label") === label,
+    ({ label }) =>
+      document.querySelector(".right-panel-tab.active")?.getAttribute("aria-label") === label &&
+      !document.querySelector('.right-panel-body [aria-busy="true"]'),
     { label },
   );
 };

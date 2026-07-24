@@ -1,12 +1,47 @@
-import type { WorkspaceKnowledgeIndex, WorkspaceKnowledgeLink } from "@tabula-md/tabula";
+import type {
+  WorkspaceKnowledgeIndex,
+  WorkspaceKnowledgeLink,
+} from "@tabula-md/tabula";
+
+export type RightPanelLinkTargetGroup = {
+  key: string;
+  status: WorkspaceKnowledgeLink["status"];
+  link: WorkspaceKnowledgeLink;
+  links: readonly WorkspaceKnowledgeLink[];
+  documentId?: string;
+};
+
+export type RightPanelDocumentLinkGroup = {
+  documentId: string;
+  links: readonly WorkspaceKnowledgeLink[];
+};
 
 export type RightPanelLinksModel = {
-  outgoing: readonly WorkspaceKnowledgeLink[];
-  backlinks: readonly WorkspaceKnowledgeLink[];
-  broken: readonly WorkspaceKnowledgeLink[];
-  ambiguous: readonly WorkspaceKnowledgeLink[];
-  external: readonly WorkspaceKnowledgeLink[];
-  hasLinks: boolean;
+  outgoing: readonly RightPanelLinkTargetGroup[];
+  backlinks: readonly RightPanelDocumentLinkGroup[];
+};
+
+const groupDocumentLinks = (
+  links: readonly WorkspaceKnowledgeLink[],
+  getDocumentId: (link: WorkspaceKnowledgeLink) => string | undefined,
+) => {
+  const groupsByDocumentId = new Map<string, {
+    documentId: string;
+    links: WorkspaceKnowledgeLink[];
+  }>();
+
+  for (const link of links) {
+    const documentId = getDocumentId(link);
+    if (!documentId) continue;
+    const group = groupsByDocumentId.get(documentId) ?? {
+      documentId,
+      links: [],
+    };
+    group.links.push(link);
+    groupsByDocumentId.set(documentId, group);
+  }
+
+  return [...groupsByDocumentId.values()];
 };
 
 export const getRightPanelLinksModel = (
@@ -14,23 +49,39 @@ export const getRightPanelLinksModel = (
   activeDocumentId: string,
 ): RightPanelLinksModel => {
   const outgoingLinks = index.outgoingLinksByDocumentId.get(activeDocumentId) ?? [];
-  const outgoing = outgoingLinks.filter((link) =>
-    link.status === "resolved" &&
-    link.targetDocumentId !== activeDocumentId
+  const outgoingByKey = new Map<string, {
+    key: string;
+    status: WorkspaceKnowledgeLink["status"];
+    link: WorkspaceKnowledgeLink;
+    links: WorkspaceKnowledgeLink[];
+    documentId?: string;
+  }>();
+  for (const link of outgoingLinks) {
+    if (link.status === "resolved" && link.targetDocumentId === activeDocumentId) {
+      continue;
+    }
+    const targetKey = link.status === "resolved"
+      ? `document:${link.targetDocumentId ?? link.target}`
+      : `${link.status}:${link.targetPath ?? link.target}`;
+    const key = `${activeDocumentId}:${targetKey}`;
+    const group = outgoingByKey.get(key) ?? {
+      key,
+      status: link.status,
+      link,
+      links: [],
+      documentId: link.targetDocumentId,
+    };
+    group.links.push(link);
+    outgoingByKey.set(key, group);
+  }
+  const backlinks = groupDocumentLinks(
+    (index.backlinksByDocumentId.get(activeDocumentId) ?? [])
+      .filter((link) => link.sourceDocumentId !== activeDocumentId),
+    (link) => link.sourceDocumentId,
   );
-  const backlinks = (index.backlinksByDocumentId.get(activeDocumentId) ?? [])
-    .filter((link) => link.sourceDocumentId !== activeDocumentId);
-  const broken = outgoingLinks.filter((link) => link.status === "broken");
-  const ambiguous = outgoingLinks.filter((link) => link.status === "ambiguous");
-  const external = outgoingLinks.filter((link) => link.status === "external");
 
   return {
-    outgoing,
+    outgoing: [...outgoingByKey.values()],
     backlinks,
-    broken,
-    ambiguous,
-    external,
-    hasLinks:
-      outgoing.length + backlinks.length + broken.length + ambiguous.length + external.length > 0,
   };
 };

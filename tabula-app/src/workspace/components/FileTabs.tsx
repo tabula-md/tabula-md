@@ -192,10 +192,7 @@ export function FileTabs({
     }
 
     const handleScroll = () => updateTabScrollState();
-    const handleResize = () => {
-      scrollActiveTabIntoView("auto");
-      updateTabScrollState();
-    };
+    const handleResize = () => updateTabScrollState();
     const resizeObserver = new ResizeObserver(handleResize);
     element.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll);
@@ -306,6 +303,7 @@ export function FileTabs({
                   aria-controls={getWorkspaceTabPanelId(file.id)}
                   aria-selected={isActiveFile}
                   aria-label={tabLabel.fullPath}
+                  title={tabLabel.fullPath}
                   tabIndex={isActiveFile ? 0 : -1}
                   data-file-id={file.id}
                   onMouseDown={(event) => {
@@ -336,7 +334,11 @@ export function FileTabs({
                     }
                   }}
                 >
-                  <span className="tab-document-label">
+                  <span
+                    className={`tab-document-label${
+                      tabLabel.locationLabel ? " has-location" : ""
+                    }`}
+                  >
                     <span className="tab-title">{tabDisplayTitle}</span>
                     {tabLabel.locationLabel && (
                       <span className="tab-location" aria-hidden="true">

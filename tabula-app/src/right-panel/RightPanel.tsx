@@ -1,4 +1,4 @@
-import { type ReactNode, type RefObject, useMemo } from "react";
+import { Suspense, lazy, type ReactNode, type RefObject, useMemo } from "react";
 import {
   Folder,
   Link2,
@@ -12,24 +12,38 @@ import {
   getRightPanelCommentGroups,
   getWorkspaceOkfCompatibility,
   type WorkspaceKnowledgeIndex,
+  type WorkspaceKnowledgeLink,
 } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { MarkdownHeading } from "@tabula-md/tabula";
 import type { RightPanelView } from "../ui/uiTypes";
 import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
-import { RightPanelComments } from "./RightPanelComments";
 import { RightPanelFiles } from "./RightPanelFiles";
 import { RightPanelOutline } from "./RightPanelOutline";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
-import { RightPanelSearch } from "./RightPanelSearch";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
-import { RightPanelLinks } from "./RightPanelLinks";
-import { RightPanelGraph } from "./RightPanelGraph";
 import { getKnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
+
+const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => ({
+  default: module.RightPanelLinks,
+})));
+const RightPanelGraph = lazy(() => import("./RightPanelGraph").then((module) => ({
+  default: module.RightPanelGraph,
+})));
+const RightPanelComments = lazy(() => import("./RightPanelComments").then((module) => ({
+  default: module.RightPanelComments,
+})));
+const RightPanelSearch = lazy(() => import("./RightPanelSearch").then((module) => ({
+  default: module.RightPanelSearch,
+})));
+
+const panelFallback = (
+  <section className="right-panel-content" aria-busy="true" />
+);
 
 type RightPanelProps = {
   isOpen: boolean;
@@ -59,6 +73,11 @@ type RightPanelProps = {
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
+  onFocusLinkSource: (link: WorkspaceKnowledgeLink) => void;
+  onResolveAmbiguousLink: (
+    link: WorkspaceKnowledgeLink,
+    targetPath: string,
+  ) => boolean;
   onSetActiveFileOkfType: (conceptType: string) => boolean;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onDuplicateFile: (fileId: string) => void;
@@ -113,6 +132,8 @@ export function RightPanel({
   onNewFolder,
   onImportFile,
   onSelectFile,
+  onFocusLinkSource,
+  onResolveAmbiguousLink,
   onSetActiveFileOkfType,
   onRenameFile,
   onDuplicateFile,
@@ -145,6 +166,7 @@ export function RightPanel({
     collapsedReplyIds,
     collapsedCommentFileIds,
     collapsedFileTreeFolderIds,
+    collapsedLinkSections,
     collapsedOutlineHeadingIds,
     toggleResolvedSection,
     toggleRepliesCollapsed,
@@ -152,6 +174,7 @@ export function RightPanel({
     toggleFileTreeFolderCollapsed,
     collapseAllFileTreeFolders,
     expandAllFileTreeFolders,
+    toggleLinkSectionCollapsed,
     toggleOutlineHeadingCollapsed,
     collapseAllOutlineHeadings,
     expandAllOutlineHeadings,
@@ -287,76 +310,88 @@ export function RightPanel({
         )}
 
         {activeFile && effectiveView === "links" && (
-          <RightPanelLinks
-            activeFileId={activeFileId}
-            activeFileTitle={activeFileTitle}
-            copy={copy.links}
-            fileLabels={fileLabels}
-            index={knowledgeIndex}
-            onSelectFile={onSelectFile}
-          />
+          <Suspense fallback={panelFallback}>
+            <RightPanelLinks
+              activeFileId={activeFileId}
+              activeFileTitle={activeFileTitle}
+              collapsedSections={collapsedLinkSections}
+              copy={copy.links}
+              fileLabels={fileLabels}
+              index={knowledgeIndex}
+              onFocusLinkSource={onFocusLinkSource}
+              onResolveAmbiguousLink={onResolveAmbiguousLink}
+              onSelectFile={onSelectFile}
+              onToggleSection={toggleLinkSectionCollapsed}
+            />
+          </Suspense>
         )}
 
         {activeFile && effectiveView === "graph" && (
-          <RightPanelGraph
-            activeFileId={activeFileId}
-            activeFileTitle={activeFileTitle}
-            copy={copy.graph}
-            fileLabels={fileLabels}
-            index={knowledgeIndex}
-            onSelectFile={onSelectFile}
-          />
+          <Suspense fallback={panelFallback}>
+            <RightPanelGraph
+              activeFileId={activeFileId}
+              activeFileTitle={activeFileTitle}
+              copy={copy.graph}
+              fileLabels={fileLabels}
+              index={knowledgeIndex}
+              onSelectFile={onSelectFile}
+            />
+          </Suspense>
         )}
 
         {activeFile && effectiveView === "comments" && (
-          <RightPanelComments
-            activeFile={activeFile}
-            activeFileId={activeFileId}
-            activeFileTitle={activeFileTitle}
-            fileLabels={fileLabels}
-            openCommentGroups={openCommentGroups}
-            resolvedCommentGroups={resolvedCommentGroups}
-            showResolved={showResolved}
-            commentDraft={commentDraft}
-            identityName={identityName}
-            pendingSelectionText={pendingSelectionText}
-            selectedCharacterCount={selectedCharacterCount}
-            selectionCommentPending={selectionCommentPending}
-            commentInputRef={commentInputRef}
-            activeCommentId={activeCommentId}
-            activeReplyCommentId={activeReplyCommentId}
-            collapsedReplyIds={collapsedReplyIds}
-            collapsedCommentFileIds={collapsedCommentFileIds}
-            replyDraftByCommentId={replyDraftByCommentId}
-            copy={copy.comments}
-            onToggleResolvedSection={toggleResolvedSection}
-            onToggleRepliesCollapsed={toggleRepliesCollapsed}
-            onToggleCommentFileCollapsed={toggleCommentFileCollapsed}
-            onCommentDraftChange={onCommentDraftChange}
-            onIdentityNameChange={onIdentityNameChange}
-            onIdentityNameCommit={onIdentityNameCommit}
-            onAddComment={onAddComment}
-            onGoToComment={onGoToComment}
-            onStartCommentReply={onStartCommentReply}
-            onCancelCommentReply={onCancelCommentReply}
-            onReplyDraftChange={onReplyDraftChange}
-            onAddCommentReply={onAddCommentReply}
-            onToggleCommentResolved={onToggleCommentResolved}
-            onDeleteComment={onDeleteComment}
-            onSelectionCommentRequestHandled={onSelectionCommentRequestHandled}
-            onCancelSelectionComment={onCancelSelectionComment}
-            formatCommentDate={formatCommentDate}
-          />
+          <Suspense fallback={panelFallback}>
+            <RightPanelComments
+              activeFile={activeFile}
+              activeFileId={activeFileId}
+              activeFileTitle={activeFileTitle}
+              fileLabels={fileLabels}
+              openCommentGroups={openCommentGroups}
+              resolvedCommentGroups={resolvedCommentGroups}
+              showResolved={showResolved}
+              commentDraft={commentDraft}
+              identityName={identityName}
+              pendingSelectionText={pendingSelectionText}
+              selectedCharacterCount={selectedCharacterCount}
+              selectionCommentPending={selectionCommentPending}
+              commentInputRef={commentInputRef}
+              activeCommentId={activeCommentId}
+              activeReplyCommentId={activeReplyCommentId}
+              collapsedReplyIds={collapsedReplyIds}
+              collapsedCommentFileIds={collapsedCommentFileIds}
+              replyDraftByCommentId={replyDraftByCommentId}
+              copy={copy.comments}
+              onToggleResolvedSection={toggleResolvedSection}
+              onToggleRepliesCollapsed={toggleRepliesCollapsed}
+              onToggleCommentFileCollapsed={toggleCommentFileCollapsed}
+              onCommentDraftChange={onCommentDraftChange}
+              onIdentityNameChange={onIdentityNameChange}
+              onIdentityNameCommit={onIdentityNameCommit}
+              onAddComment={onAddComment}
+              onGoToComment={onGoToComment}
+              onStartCommentReply={onStartCommentReply}
+              onCancelCommentReply={onCancelCommentReply}
+              onReplyDraftChange={onReplyDraftChange}
+              onAddCommentReply={onAddCommentReply}
+              onToggleCommentResolved={onToggleCommentResolved}
+              onDeleteComment={onDeleteComment}
+              onSelectionCommentRequestHandled={onSelectionCommentRequestHandled}
+              onCancelSelectionComment={onCancelSelectionComment}
+              formatCommentDate={formatCommentDate}
+            />
+          </Suspense>
         )}
 
         {hasDocuments && effectiveView === "search" && (
-          <RightPanelSearch
-            copy={copy.search}
-            files={files}
-            folders={folders}
-            language={language}
-            onSelectFile={onSelectFile}
-          />
+          <Suspense fallback={panelFallback}>
+            <RightPanelSearch
+              copy={copy.search}
+              files={files}
+              folders={folders}
+              language={language}
+              onSelectFile={onSelectFile}
+            />
+          </Suspense>
         )}
       </div>
     </aside>

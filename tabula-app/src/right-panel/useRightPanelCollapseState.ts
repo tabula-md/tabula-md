@@ -8,7 +8,11 @@ type UseRightPanelCollapseStateOptions = {
   commentsByFileId: Record<string, FileComment[]>;
 };
 
-const toggleSetValue = (currentIds: Set<string>, id: string) => {
+export type RightPanelLinkSection = "outgoing" | "backlinks";
+
+const emptyCollapsedOutlineHeadingIds = new Set<string>();
+
+const toggleSetValue = <Value,>(currentIds: Set<Value>, id: Value) => {
   const nextIds = new Set(currentIds);
   if (nextIds.has(id)) {
     nextIds.delete(id);
@@ -28,12 +32,20 @@ export function useRightPanelCollapseState({
   const [collapsedReplyIds, setCollapsedReplyIds] = useState<Set<string>>(() => new Set());
   const [collapsedCommentFileIds, setCollapsedCommentFileIds] = useState<Set<string>>(() => new Set());
   const [collapsedFileTreeFolderIds, setCollapsedFileTreeFolderIds] = useState<Set<string>>(() => new Set());
-  const [collapsedOutlineHeadingIds, setCollapsedOutlineHeadingIds] = useState<Set<string>>(() => new Set());
+  const [collapsedLinkSections, setCollapsedLinkSections] = useState<Set<RightPanelLinkSection>>(
+    () => new Set(),
+  );
+  const [
+    collapsedOutlineHeadingIdsByFileId,
+    setCollapsedOutlineHeadingIdsByFileId,
+  ] = useState<Map<string, Set<string>>>(() => new Map());
+  const collapsedOutlineHeadingIds =
+    collapsedOutlineHeadingIdsByFileId.get(activeFileId) ??
+    emptyCollapsedOutlineHeadingIds;
 
   useEffect(() => {
     setShowResolved(false);
     setCollapsedReplyIds(new Set());
-    setCollapsedOutlineHeadingIds(new Set());
   }, [activeFileId]);
 
   useEffect(() => {
@@ -82,6 +94,7 @@ export function useRightPanelCollapseState({
     collapsedReplyIds,
     collapsedCommentFileIds,
     collapsedFileTreeFolderIds,
+    collapsedLinkSections,
     collapsedOutlineHeadingIds,
     toggleResolvedSection: () => setShowResolved((isVisible) => !isVisible),
     toggleRepliesCollapsed: (commentId: string) =>
@@ -93,10 +106,34 @@ export function useRightPanelCollapseState({
     collapseAllFileTreeFolders: (folderIds: Iterable<string>) =>
       setCollapsedFileTreeFolderIds(new Set(folderIds)),
     expandAllFileTreeFolders: () => setCollapsedFileTreeFolderIds(new Set()),
+    toggleLinkSectionCollapsed: (section: RightPanelLinkSection) =>
+      setCollapsedLinkSections((currentSections) => toggleSetValue(currentSections, section)),
     toggleOutlineHeadingCollapsed: (headingId: string) =>
-      setCollapsedOutlineHeadingIds((currentIds) => toggleSetValue(currentIds, headingId)),
+      setCollapsedOutlineHeadingIdsByFileId((currentByFileId) => {
+        const nextByFileId = new Map(currentByFileId);
+        nextByFileId.set(
+          activeFileId,
+          toggleSetValue(
+            currentByFileId.get(activeFileId) ?? new Set<string>(),
+            headingId,
+          ),
+        );
+        return nextByFileId;
+      }),
     collapseAllOutlineHeadings: (headingIds: Iterable<string>) =>
-      setCollapsedOutlineHeadingIds(new Set(headingIds)),
-    expandAllOutlineHeadings: () => setCollapsedOutlineHeadingIds(new Set()),
+      setCollapsedOutlineHeadingIdsByFileId((currentByFileId) => {
+        const nextByFileId = new Map(currentByFileId);
+        nextByFileId.set(activeFileId, new Set(headingIds));
+        return nextByFileId;
+      }),
+    expandAllOutlineHeadings: () =>
+      setCollapsedOutlineHeadingIdsByFileId((currentByFileId) => {
+        if (!currentByFileId.has(activeFileId)) {
+          return currentByFileId;
+        }
+        const nextByFileId = new Map(currentByFileId);
+        nextByFileId.delete(activeFileId);
+        return nextByFileId;
+      }),
   };
 }

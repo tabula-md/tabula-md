@@ -437,6 +437,29 @@ export async function run(ctx) {
     expect(rightPanelState.headingCount === 0, "The right panel should not render large panel headings.");
     expect(rightPanelState.documentCardCount === 0, "The right panel should not use document cards.");
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");
+    const rightPanelDivider = page.getByRole("separator", {
+      name: "Resize side panel",
+      exact: true,
+    });
+    expect(
+      (await rightPanelDivider.getAttribute("aria-valuemax")) === "920",
+      "The side panel maximum should follow the viewport while preserving 360px for the workbench.",
+    );
+    await rightPanelDivider.focus();
+    for (let step = 0; step < 45; step += 1) {
+      await rightPanelDivider.press("ArrowLeft");
+    }
+    await page.waitForFunction(
+      () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 920,
+    );
+    expect(
+      (await rightPanelDivider.getAttribute("aria-valuenow")) === "920",
+      "Keyboard resizing should reach the viewport-derived side-panel maximum.",
+    );
+    await rightPanelDivider.dblclick();
+    await page.waitForFunction(
+      () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 288,
+    );
     expect(
       rightPanelState.fileToolbar?.compatibilityButtonWidth === 28 &&
         rightPanelState.fileToolbar?.compatibilityButtonHeight === 28 &&
@@ -534,15 +557,59 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
+    const emptyOutgoingSection = page.locator('.right-links-section[aria-label="Outgoing"]');
+    const emptyBacklinksSection = page.locator('.right-links-section[aria-label="Backlinks"]');
     expect(
-      await page.getByText("No links in this document", { exact: true }).isVisible(),
-      "Links should expose a quiet empty state for an unlinked document.",
+      await emptyOutgoingSection.getByRole("button", {
+        name: "Collapse Outgoing",
+        exact: true,
+      }).isVisible() &&
+        (await emptyOutgoingSection.locator(".right-links-count").textContent()) === "0" &&
+        await page.getByText("No outgoing links yet.", { exact: true }).isVisible() &&
+        await emptyBacklinksSection.getByRole("button", {
+          name: "Collapse Backlinks",
+          exact: true,
+        }).isVisible() &&
+        (await emptyBacklinksSection.locator(".right-links-count").textContent()) === "0" &&
+        await page.getByText("No documents link here yet.", { exact: true }).isVisible() &&
+        (await page.locator('.right-links-section[aria-label="Issues"]').count()) === 0,
+      "Links should preserve both relationship directions at zero without inventing an issue.",
     );
     await page.getByRole("button", { name: "Graph", exact: true }).click();
     await waitForPanelTab(page, "Graph");
     expect(
-      await page.getByText("No connected documents", { exact: true }).isVisible(),
-      "Graph should expose a quiet empty state for an isolated document.",
+      (await page.getByText("Workspace graph", { exact: true }).count()) === 0 &&
+        (await page.getByText(/\d+ docs? · \d+ links?/, { exact: true }).count()) === 1 &&
+        (await page.locator(".right-graph-node").count()) > 1,
+      "Graph should preserve its workspace map and compact metadata without repeating the active tab title.",
+    );
+    const originalGraphDocumentId = await page
+      .locator(".right-graph-node.active")
+      .getAttribute("data-document-id");
+    const orphanGraphNode = page.locator(".right-graph-node.depth-2").first();
+    const orphanDocumentId = await orphanGraphNode.getAttribute("data-document-id");
+    expect(
+      typeof orphanDocumentId === "string" && orphanDocumentId.length > 0,
+      "The workspace graph should expose isolated document identities.",
+    );
+    await orphanGraphNode.locator(".right-graph-node-hit-target").click();
+    await page.waitForFunction(
+      (documentId) =>
+        document.querySelector(
+          `.right-graph-node.active[data-document-id="${CSS.escape(documentId)}"]`,
+        ) !== null,
+      orphanDocumentId,
+    );
+    await page
+      .locator(`.right-graph-node[data-document-id="${originalGraphDocumentId}"]`)
+      .locator(".right-graph-node-hit-target")
+      .click();
+    await page.waitForFunction(
+      (documentId) =>
+        document.querySelector(
+          `.right-graph-node.active[data-document-id="${CSS.escape(documentId)}"]`,
+        ) !== null,
+      originalGraphDocumentId,
     );
     await page.getByRole("button", { name: "Files", exact: true }).click();
     await waitForPanelTab(page, "Files");
@@ -699,6 +766,87 @@ export async function run(ctx) {
         rightOutlineState.outlineRows.every((row) => row.height >= 30 && row.height <= 34 && row.fontWeight === "400"),
       "The right panel outline rows should stay compact and regular weight.",
     );
+    const rootOutlineHeading = page.getByRole("button", {
+      name: "Tabula.md",
+      exact: true,
+    });
+    const childOutlineHeading = page.getByRole("button", {
+      name: "Start here",
+      exact: true,
+    });
+    const rootOutlineLabelBox = await rootOutlineHeading
+      .locator(".right-row-label").boundingBox();
+    const childOutlineLabelBox = await childOutlineHeading
+      .locator(".right-row-label").boundingBox();
+    expect(
+      rootOutlineLabelBox && childOutlineLabelBox &&
+        Math.abs(childOutlineLabelBox.x - rootOutlineLabelBox.x - 12) <= 1,
+      "Outline hierarchy should indent the complete heading row by one stable step.",
+    );
+    const rootOutlineRow = page.locator(".right-outline-row").filter({
+      has: rootOutlineHeading,
+    });
+    const rootOutlineToggle = rootOutlineRow.getByRole("button", {
+      name: "Collapse section",
+      exact: true,
+    });
+    const rootOutlineToggleBox = await rootOutlineToggle.boundingBox();
+    expect(
+      (await rootOutlineToggle.locator(".right-outline-chevron").count()) === 1 &&
+        (await rootOutlineToggle.locator(".lucide-chevron-right").count()) === 0 &&
+        (await rootOutlineToggle.getAttribute("aria-expanded")) === "true" &&
+        rootOutlineToggleBox &&
+        rootOutlineToggleBox.width >= 28 &&
+        rootOutlineToggleBox.height >= 30,
+      "A collapsible outline heading should expose one rotating chevron with a forgiving hit target.",
+    );
+    await rootOutlineHeading.click();
+    await waitForRenderFrame(page);
+    expect(
+      (await childOutlineHeading.count()) === 1 &&
+        (await rootOutlineToggle.getAttribute("aria-expanded")) === "true" &&
+        (await rootOutlineHeading.getAttribute("aria-current")) === "location",
+      "Clicking an outline heading should navigate without changing its disclosure state.",
+    );
+    await rootOutlineToggle.click();
+    await waitForRenderFrame(page);
+    expect(
+      (await childOutlineHeading.count()) === 0 &&
+        (await rootOutlineRow.locator(".right-outline-toggle").getAttribute("aria-expanded")) === "false",
+      "Clicking the disclosure control should hide the heading descendants.",
+    );
+    await page.getByRole("button", { name: "Links", exact: true }).click();
+    await waitForPanelTab(page, "Links");
+    await page.getByRole("button", { name: "Outline", exact: true }).click();
+    await waitForPanelTab(page, "Outline");
+    const persistedRootOutlineRow = page.locator(".right-outline-row").filter({
+      has: page.getByRole("button", {
+        name: "Tabula.md",
+        exact: true,
+      }),
+    });
+    const persistedRootOutlineToggle = persistedRootOutlineRow.getByRole("button", {
+      name: "Expand section",
+      exact: true,
+    });
+    expect(
+      (await persistedRootOutlineToggle.getAttribute("aria-expanded")) === "false" &&
+        (await childOutlineHeading.count()) === 0,
+      "Outline collapse state should survive switching between right-panel tabs.",
+    );
+    await page.locator(
+      '.tab-item:not([data-file-name="README.md"]) .tab-select-button',
+    ).first().click();
+    await waitForActiveTab(page, { startsWith: "Untitled" });
+    await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
+    await waitForActiveTab(page, { exact: "README.md" });
+    expect(
+      (await persistedRootOutlineToggle.getAttribute("aria-expanded")) === "false" &&
+        (await childOutlineHeading.count()) === 0,
+      "Outline collapse state should be restored when returning to a document.",
+    );
+    await persistedRootOutlineToggle.click();
+    await waitForRenderFrame(page);
     await page.getByRole("button", { name: "Start here", exact: true }).click();
     await waitForRenderFrame(page);
     expect(
@@ -1236,9 +1384,79 @@ export async function run(ctx) {
       typeof manualScrollResult === "number" && manualScrollResult > (manualScrollButton?.scrollLeft ?? 0),
       "Clicking the right tab arrow should advance the tab strip.",
     );
+    await page.locator(".tabs-scroll").evaluate((tabsScroll) =>
+      new Promise((resolve) => {
+        let previousScrollLeft = tabsScroll.scrollLeft;
+        let stableFrameCount = 0;
+        let frameCount = 0;
+        const checkScrollSettled = () => {
+          const nextScrollLeft = tabsScroll.scrollLeft;
+          stableFrameCount = Math.abs(nextScrollLeft - previousScrollLeft) < 0.01
+            ? stableFrameCount + 1
+            : 0;
+          previousScrollLeft = nextScrollLeft;
+          frameCount += 1;
+          if (stableFrameCount >= 4 || frameCount >= 120) {
+            resolve();
+            return;
+          }
+          requestAnimationFrame(checkScrollSettled);
+        };
+        requestAnimationFrame(checkScrollSettled);
+      }),
+    );
 
     if ((await page.locator(".right-panel").count()) === 0) {
       await ensureSidePanelOpen(page);
+    }
+    await waitForRenderFrame(page);
+    const overflowPanelDivider = page.getByRole("separator", {
+      name: "Resize side panel",
+      exact: true,
+    });
+    const overflowDividerBox = await overflowPanelDivider.boundingBox();
+    expect(overflowDividerBox, "The desktop side-panel divider should be available for resizing.");
+    if (overflowDividerBox) {
+      await page.evaluate(() => {
+        const tabsScroll = document.querySelector(".tabs-scroll");
+        window.__tabulaResizeScrollSamples = tabsScroll
+          ? [tabsScroll.scrollLeft]
+          : [];
+        window.__tabulaResizeObserver = tabsScroll
+          ? new ResizeObserver(() => {
+              window.__tabulaResizeScrollSamples.push(tabsScroll.scrollLeft);
+            })
+          : null;
+        window.__tabulaResizeObserver?.observe(tabsScroll);
+      });
+      await page.mouse.move(
+        overflowDividerBox.x + overflowDividerBox.width / 2,
+        overflowDividerBox.y + overflowDividerBox.height / 2,
+      );
+      await page.mouse.down();
+      await page.mouse.move(580, overflowDividerBox.y + overflowDividerBox.height / 2, {
+        steps: 12,
+      });
+      await page.mouse.up();
+      await page.waitForTimeout(180);
+      const resizeScrollSamples = await page.evaluate(() => {
+        window.__tabulaResizeObserver?.disconnect();
+        const tabsScroll = document.querySelector(".tabs-scroll");
+        const samples = window.__tabulaResizeScrollSamples ?? [];
+        if (tabsScroll) samples.push(tabsScroll.scrollLeft);
+        delete window.__tabulaResizeObserver;
+        delete window.__tabulaResizeScrollSamples;
+        return samples;
+      });
+      expect(
+        resizeScrollSamples.length > 1 &&
+          Math.max(...resizeScrollSamples) - Math.min(...resizeScrollSamples) <= 1,
+        "Resizing the side panel should not repeatedly realign and jiggle the document tabs.",
+      );
+      await overflowPanelDivider.dblclick();
+      await page.waitForFunction(
+        () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 288,
+      );
     }
     await page.getByRole("button", { name: "Files", exact: true }).click();
     const switcher = await page.evaluate(() => {
@@ -1320,18 +1538,20 @@ export async function run(ctx) {
     const fileActionContract = await page.evaluate(() => ({
       closeTabCount: document.querySelectorAll('.right-file-action[aria-label^="Close tab "]').length,
       moreActionCount: document.querySelectorAll('.right-file-action[aria-label^="More actions for "]').length,
+      copyMarkdownCount: document.querySelectorAll('.right-file-action[aria-label^="Copy Markdown: "]').length,
       renameCount: document.querySelectorAll('.right-file-action[aria-label^="Rename "]').length,
       duplicateCount: document.querySelectorAll('.right-file-action[aria-label^="Duplicate "]').length,
-      deleteCount: document.querySelectorAll('.right-file-action[aria-label^="Delete "]').length,
+      deleteCount: document.querySelectorAll('.right-file-action[aria-label^="Delete: "]').length,
       openMenuCount: document.querySelectorAll(".right-file-action-menu").length,
       importCount: document.querySelectorAll('.right-file-toolbar-button[aria-label="Open Markdown file"]').length,
       visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(fileActionContract.closeTabCount === 0, "Right Files should leave tab closing to the document tabs.");
     expect(fileActionContract.moreActionCount >= 1, "Right Files should expose a compact more-action menu for each project file.");
+    expect(fileActionContract.copyMarkdownCount >= 1, "File rows should expose Copy Markdown as their primary hover action.");
+    expect(fileActionContract.deleteCount >= 1, "File rows should expose Delete as a direct hover action.");
     expect(fileActionContract.renameCount === 0, "Right Files should hide rename behind a more-action menu.");
     expect(fileActionContract.duplicateCount === 0, "Right Files should hide duplicate behind a more-action menu.");
-    expect(fileActionContract.deleteCount === 0, "Right Files should hide delete behind a more-action menu.");
     expect(fileActionContract.openMenuCount === 0, "Right Files should keep row menus closed by default.");
     expect(fileActionContract.importCount === 1, "Right Files should expose one file import control.");
     expect(
@@ -1341,6 +1561,20 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: `Open ${rightFilesActiveTitle}` }).click();
     await waitForRenderFrame(page);
+    await page.getByRole("button", { name: `Copy Markdown: ${rightFilesActiveTitle}` }).click();
+    await page.getByRole("region", { name: "Document toolbar" }).hover();
+    await page.waitForFunction((actionLabel) => {
+      const button = Array.from(document.querySelectorAll(".right-file-action"))
+        .find((candidate) => candidate.getAttribute("aria-label") === actionLabel);
+      const actions = button?.closest(".right-file-actions");
+      return actions ? getComputedStyle(actions).opacity === "0" : false;
+    }, `More actions for ${rightFilesActiveTitle}`);
+    expect(
+      (await page.getByRole("button", { name: `More actions for ${rightFilesActiveTitle}` }).evaluate(
+        (button) => getComputedStyle(button.closest(".right-file-actions")).opacity,
+      )) === "0",
+      "Pointer-activated file actions should hide after the pointer leaves the row.",
+    );
 
     await openRightFileMenu(rightFilesActiveTitle);
     expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "File menus should create a sibling document.");
@@ -1470,6 +1704,10 @@ export async function run(ctx) {
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
     const archiveFolderToggle = page.locator(".right-file-tree-node.folder").filter({ hasText: "Archive" }).locator(".right-file-open-button");
+    expect(
+      (await page.locator('.right-file-action[aria-label="New document: Archive"]').count()) === 1,
+      "Folder rows should expose New document as their primary hover action.",
+    );
     expect((await archiveFolderToggle.locator(".lucide-folder-open").count()) === 1, "Expanded folders should use the open-folder icon.");
     expect((await archiveFolderToggle.locator(".lucide-chevron-down, .lucide-chevron-right").count()) === 0, "File tree folders should not duplicate state with chevrons.");
     await archiveFolderToggle.click();
@@ -1540,6 +1778,8 @@ export async function run(ctx) {
         "[Back to start](#start)",
         "",
         "[Missing guide](./Missing.md)",
+        "",
+        "[Tabula website](https://tabula.md)",
         "",
         "[Email owner](mailto:owner@example.com)",
       ].join("\n"),
@@ -1660,6 +1900,58 @@ export async function run(ctx) {
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
+    expect(
+      (await page.locator(".right-links-row svg").count()) === 0 &&
+        (await page.locator(".right-links-section-direction svg").count()) === 2 &&
+        (await page.locator(".right-links-section-chevron").count()) === 2,
+      "Link rows should stay icon-free while relationship headings keep their direction icons.",
+    );
+    const outgoingSection = page.locator('.right-links-section[aria-label="Outgoing"]');
+    expect(
+      (await outgoingSection.getByText("Email owner", { exact: true }).count()) === 1 &&
+        (await outgoingSection.getByText("Missing guide", { exact: true }).count()) === 1 &&
+        (await page.locator('.right-links-section[aria-label="Issues"]').count()) === 0,
+      "Every outgoing target should stay in one relationship section, including unresolved and external destinations.",
+    );
+    expect(
+      (await outgoingSection.locator(".right-links-section-title .right-links-count").textContent()) === "6",
+      "Outgoing counts should equal the number of visible target rows rather than raw mentions.",
+    );
+    const visibleLinkRows = outgoingSection.locator([
+      ":scope > .right-links-list > div > .right-links-row",
+      ":scope > .right-links-list > div > .right-links-target-with-resolver > .right-links-row",
+    ].join(", "));
+    expect(
+      (await visibleLinkRows.count()) === 6 &&
+        (await visibleLinkRows.locator(".right-links-row-title").count()) === 6 &&
+        (await visibleLinkRows.locator(".right-links-row-target").count()) === 6,
+      "Outgoing targets should share one two-line row structure.",
+    );
+    expect(
+      !(await outgoingSection.locator(".right-links-row-target").allTextContents())
+        .some((text) => text.includes(" · ")),
+      "Link rows should not mix paths, relationship types, and mention counts in a metadata sentence.",
+    );
+    const websiteLink = outgoingSection.getByRole("link", {
+      name: "Open external link Tabula website",
+      exact: true,
+    });
+    expect(
+      (await websiteLink.getAttribute("href")) === "https://tabula.md" &&
+        (await websiteLink.getAttribute("target")) === "_blank",
+      "Safe web destinations should open directly in a new tab.",
+    );
+    const missingGuideButton = outgoingSection.getByRole("button", {
+      name: "Document not found — go to source: Missing guide",
+      exact: true,
+    });
+    expect(
+      (await missingGuideButton.count()) === 1 &&
+        (await missingGuideButton.getByText("Not found", { exact: true }).count()) === 1,
+      "Broken destinations should use a compact text state whose row returns to the source.",
+    );
+    await missingGuideButton.click();
+    await waitForEditorReady(page, { mode: "edit" });
 
     await page.getByRole("button", { name: "Open Guide.md", exact: true }).first().click();
     await waitForActiveTab(page, { exact: "Guide.md" });
@@ -1673,13 +1965,73 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: "Graph", exact: true }).click();
     await waitForPanelTab(page, "Graph");
+    await page.locator(
+      '.right-graph-canvas[data-graph-simulation-state="settled"]',
+    ).waitFor();
     expect(
-      await page.getByText("Local graph", { exact: true }).isVisible(),
-      "Graph should identify the active document's local knowledge graph.",
+      (await page.getByText("Workspace graph", { exact: true }).count()) === 0 &&
+        (await page.getByText(/\d+ docs? · \d+ links?/, { exact: true }).count()) === 1,
+      "Graph should expose compact metadata without repeating the Graph tab title.",
     );
-    await page.getByRole("button", { name: "Open Guide.md", exact: true }).click();
+    const guideGraphNode = page.locator(
+      '.right-graph-node[aria-label="Open Guide.md"]',
+    );
+    const guideGraphHitTarget = guideGraphNode.locator(
+      ".right-graph-node-hit-target",
+    );
+    const guideGraphMarker = guideGraphNode.locator(
+      ".right-graph-node-marker",
+    );
+    const guideHitBox = await guideGraphHitTarget.boundingBox();
+    const guideMarkerBox = await guideGraphMarker.boundingBox();
+    expect(
+      guideHitBox && guideMarkerBox,
+      "Graph nodes should expose both a forgiving click target and a visible marker.",
+    );
+    if (guideHitBox && guideMarkerBox) {
+      await page.mouse.move(
+        guideHitBox.x + guideHitBox.width - 1,
+        guideHitBox.y + guideHitBox.height / 2,
+      );
+      await waitForRenderFrame(page);
+      expect(
+        !(await guideGraphNode.getAttribute("class"))?.includes("hovered"),
+        "The invisible click target should not trigger the node's visual hover state.",
+      );
+      await page.mouse.move(
+        guideMarkerBox.x + guideMarkerBox.width / 2,
+        guideMarkerBox.y + guideMarkerBox.height / 2,
+      );
+      await waitForRenderFrame(page);
+      expect(
+        (await guideGraphNode.getAttribute("class"))?.includes("hovered"),
+        "The visible graph marker should trigger the node's visual hover state.",
+      );
+
+      const initialX = Number(await guideGraphMarker.getAttribute("cx"));
+      const initialY = Number(await guideGraphMarker.getAttribute("cy"));
+      await page.mouse.down();
+      await page.mouse.move(
+        guideMarkerBox.x + guideMarkerBox.width / 2 + 24,
+        guideMarkerBox.y + guideMarkerBox.height / 2 + 12,
+        { steps: 4 },
+      );
+      await page.mouse.up();
+      await waitForRenderFrame(page);
+      const draggedX = Number(await guideGraphMarker.getAttribute("cx"));
+      const draggedY = Number(await guideGraphMarker.getAttribute("cy"));
+      expect(
+        Math.hypot(draggedX - initialX, draggedY - initialY) > 1,
+        "Dragging a graph node should move it through the live force simulation.",
+      );
+      await waitForActiveTab(page, { exact: "Start.md" });
+    }
+
+    await guideGraphHitTarget.click();
     await waitForActiveTab(page, { exact: "Guide.md" });
-    await page.getByRole("button", { name: "Open Start.md", exact: true }).click();
+    await page.locator(
+      '.right-graph-node[aria-label="Open Start.md"] .right-graph-node-hit-target',
+    ).click();
     await waitForActiveTab(page, { exact: "Start.md" });
   });
 
