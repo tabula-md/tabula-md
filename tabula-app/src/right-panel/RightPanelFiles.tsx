@@ -501,7 +501,11 @@ export function RightPanelFiles({
                       </button>
                     </MenuTrigger>
                   </span>
-                  <MenuContent className="right-file-action-menu" ariaLabel={copy.actions(node.name)}>
+                  <MenuContent
+                    className="right-file-action-menu"
+                    ariaLabel={copy.actions(node.name)}
+                    onCloseAutoFocus={(event) => event.preventDefault()}
+                  >
                     <MenuItem
                       icon={<FilePlus2 size={14} />}
                       label={copy.newDocument}
@@ -533,7 +537,11 @@ export function RightPanelFiles({
           </div>
         </li>
         </ContextMenuTrigger>
-        <ContextMenuContent className="right-file-action-menu" ariaLabel={copy.actions(node.name)}>
+        <ContextMenuContent
+          className="right-file-action-menu"
+          ariaLabel={copy.actions(node.name)}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
           <ContextMenuItem
             icon={<FilePlus2 size={14} />}
             label={copy.newDocument}
@@ -696,7 +704,11 @@ export function RightPanelFiles({
                       </button>
                     </MenuTrigger>
                   </span>
-                  <MenuContent className="right-file-action-menu" ariaLabel={copy.actions(file.title)}>
+                  <MenuContent
+                    className="right-file-action-menu"
+                    ariaLabel={copy.actions(file.title)}
+                    onCloseAutoFocus={(event) => event.preventDefault()}
+                  >
                     <MenuItem
                       icon={<FilePlus2 size={14} />}
                       label={copy.newDocument}
@@ -736,7 +748,11 @@ export function RightPanelFiles({
         </div>
       </li>
       </ContextMenuTrigger>
-      <ContextMenuContent className="right-file-action-menu" ariaLabel={copy.actions(file.title)}>
+      <ContextMenuContent
+        className="right-file-action-menu"
+        ariaLabel={copy.actions(file.title)}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
         <ContextMenuItem
           icon={<FilePlus2 size={14} />}
           label={copy.newDocument}
@@ -903,7 +919,11 @@ export function RightPanelFiles({
       ) : null}
     </section>
     </ContextMenuTrigger>
-    <ContextMenuContent className="right-file-action-menu" ariaLabel={copy.createInWorkspace}>
+    <ContextMenuContent
+      className="right-file-action-menu"
+      ariaLabel={copy.createInWorkspace}
+      onCloseAutoFocus={(event) => event.preventDefault()}
+    >
       <ContextMenuItem
         icon={<FilePlus2 size={14} />}
         label={copy.newDocument}

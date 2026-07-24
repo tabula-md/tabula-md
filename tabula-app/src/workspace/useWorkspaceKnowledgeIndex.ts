@@ -3,38 +3,64 @@ import {
   useRef,
   useState,
 } from "react";
-import type {
-  WorkspaceKnowledgeIndex,
-  WorkspaceSourceDocument,
-} from "@tabula-md/tabula";
+import type { WorkspaceSourceDocument } from "@tabula-md/tabula";
+import type { WorkspaceKnowledgeState } from "./workspaceKnowledgeWorkerClient";
+
+const KNOWLEDGE_SYNC_DEBOUNCE_MS = 80;
+const INITIAL_KNOWLEDGE_STATE: WorkspaceKnowledgeState = {
+  elapsedMs: null,
+  pending: true,
+  revision: 0,
+  source: "none",
+};
 
 export const useWorkspaceKnowledgeIndex = (
   documents: readonly WorkspaceSourceDocument[],
 ) => {
-  const indexRef = useRef<WorkspaceKnowledgeIndex | undefined>(undefined);
-  const [index, setIndex] = useState<WorkspaceKnowledgeIndex>();
+  const [snapshot, setSnapshot] = useState(INITIAL_KNOWLEDGE_STATE);
+  const hasRequestedIndexRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
-    void import("./workspaceKnowledgeRuntime")
-      .then(({ reconcileWorkspaceKnowledgeIndex }) => {
+    let unsubscribe: (() => void) | undefined;
+    let timeout: number | undefined;
+
+    void import("./workspaceKnowledgeWorkerClient")
+      .then(({ workspaceKnowledgeWorkerClient }) => {
         if (cancelled) return;
-        const next = reconcileWorkspaceKnowledgeIndex(
-          indexRef.current,
-          documents,
+        const updateSnapshot = () => {
+          if (!cancelled) setSnapshot(workspaceKnowledgeWorkerClient.getSnapshot());
+        };
+        unsubscribe = workspaceKnowledgeWorkerClient.subscribe(updateSnapshot);
+        const currentSnapshot = workspaceKnowledgeWorkerClient.getSnapshot();
+        if (currentSnapshot.index) setSnapshot(currentSnapshot);
+
+        const debounceMs = hasRequestedIndexRef.current
+          ? KNOWLEDGE_SYNC_DEBOUNCE_MS
+          : 0;
+        hasRequestedIndexRef.current = true;
+        timeout = window.setTimeout(
+          () => workspaceKnowledgeWorkerClient.sync(documents),
+          debounceMs,
         );
-        indexRef.current = next;
-        setIndex(next);
       })
       .catch(() => {
-        if (cancelled) return;
-        indexRef.current = undefined;
-        setIndex(undefined);
+        if (!cancelled) {
+          setSnapshot({
+            elapsedMs: null,
+            pending: false,
+            revision: 0,
+            source: "fallback",
+          });
+        }
       });
+
     return () => {
       cancelled = true;
+      unsubscribe?.();
+      if (timeout !== undefined) window.clearTimeout(timeout);
     };
   }, [documents]);
 
-  return index;
+  return snapshot;
 };

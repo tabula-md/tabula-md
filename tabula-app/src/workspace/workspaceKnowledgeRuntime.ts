@@ -3,6 +3,8 @@ import {
   planWorkspaceKnowledgeMaintenance,
   removeWorkspaceDocumentFromKnowledgeIndex,
   updateWorkspaceKnowledgeIndex,
+  getWorkspaceOkfCompatibility,
+  type OkfCompatibilityReport,
   type WorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeMaintenancePlan,
   type WorkspaceSourceDocument,
@@ -55,6 +57,35 @@ export const reconcileWorkspaceKnowledgeIndex = (
 
   return next;
 };
+
+export const createKnowledgeIndex = (
+  documents: readonly WorkspaceSourceDocument[],
+): WorkspaceKnowledgeIndex => createWorkspaceKnowledgeIndex(documents);
+
+export const updateKnowledgeIndex = (
+  current: WorkspaceKnowledgeIndex,
+  removedDocumentIds: readonly string[],
+  upsertedDocuments: readonly WorkspaceSourceDocument[],
+): WorkspaceKnowledgeIndex => {
+  let next = current;
+  for (const documentId of removedDocumentIds) {
+    next = removeWorkspaceDocumentFromKnowledgeIndex(next, documentId);
+  }
+  for (const document of upsertedDocuments) {
+    next = updateWorkspaceKnowledgeIndex(next, document);
+  }
+  return next;
+};
+
+export const getKnowledgeCompatibility = (
+  index: WorkspaceKnowledgeIndex,
+): OkfCompatibilityReport => getWorkspaceOkfCompatibility(index);
+
+export const getKnowledgeMaintenancePlan = (
+  previousDocuments: readonly WorkspaceSourceDocument[],
+  nextDocuments: readonly WorkspaceSourceDocument[],
+): WorkspaceKnowledgeMaintenancePlan =>
+  planWorkspaceKnowledgeMaintenance(previousDocuments, nextDocuments);
 
 export const getWorkspaceKnowledgeMaintenancePlan = (
   previousDocuments: readonly WorkspaceSourceDocument[],

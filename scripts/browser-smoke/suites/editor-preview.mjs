@@ -2454,6 +2454,11 @@ Status <Badge type="success">Ready</Badge>
     await page.keyboard.insertText("# Start here\n\n[Jump to start](#start-here)\n\n[Missing section](#missing-section)");
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await waitForEditorReady(page, { mode: "preview" });
+    await page.getByRole("link", { name: "Jump to start", exact: true })
+      .waitFor({ state: "visible" });
+    await page.locator('[data-workspace-link-status="broken"]')
+      .filter({ hasText: "Missing section" })
+      .waitFor({ state: "visible" });
     expect(
       (await page.getByRole("link", { name: "Jump to start", exact: true }).count()) === 1,
       "Fragment-only Markdown destinations should become preview links.",

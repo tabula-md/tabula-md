@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import {
   getRightPanelCommentGroups,
-  getWorkspaceOkfCompatibility,
+  type OkfCompatibilityReport,
   type WorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeLink,
 } from "@tabula-md/tabula";
@@ -51,6 +51,9 @@ type RightPanelProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   knowledgeIndex?: WorkspaceKnowledgeIndex;
+  knowledgeCompatibilityReport?: OkfCompatibilityReport;
+  knowledgeIndexPending: boolean;
+  knowledgeIndexSource: "none" | "worker" | "fallback";
   activeFileId: string;
   activeFileTitle: string;
   isLiveWorkspace: boolean;
@@ -111,6 +114,9 @@ export function RightPanel({
   files,
   folders,
   knowledgeIndex,
+  knowledgeCompatibilityReport,
+  knowledgeIndexPending,
+  knowledgeIndexSource,
   activeFileId,
   activeFileTitle,
   isLiveWorkspace,
@@ -191,10 +197,6 @@ export function RightPanel({
     [files, folders],
   );
   const compatibilityCopy = getKnowledgeCompatibilityCopy(language);
-  const compatibilityReport = useMemo(
-    () => knowledgeIndex ? getWorkspaceOkfCompatibility(knowledgeIndex) : undefined,
-    [knowledgeIndex],
-  );
 
   if (!isOpen) {
     return null;
@@ -229,7 +231,11 @@ export function RightPanel({
   );
 
   return (
-    <aside className="right-panel" aria-label={copy.label}>
+    <aside
+      className="right-panel"
+      aria-label={copy.label}
+      data-knowledge-index-source={knowledgeIndexSource}
+    >
       <div className="right-panel-header">
         <nav className="right-panel-tabs" aria-label={copy.sections}>
           {renderTab("files", copy.tabs.files, <Folder size={14} />, hasLiveFiles ? "live" : undefined)}
@@ -259,7 +265,7 @@ export function RightPanel({
             activeFileId={activeFileId}
             copy={copy.files}
             compatibilityCopy={compatibilityCopy}
-            compatibilityReport={compatibilityReport}
+            compatibilityReport={knowledgeCompatibilityReport}
             onSetActiveFileOkfType={onSetActiveFileOkfType}
             collapsedFolderIds={collapsedFileTreeFolderIds}
             onNewFile={(parentId) => onNewFile(parentId ? { parentId } : undefined)}
@@ -312,7 +318,10 @@ export function RightPanel({
           />
         )}
 
-        {activeFile && effectiveView === "links" && (
+        {activeFile && effectiveView === "links" && knowledgeIndexPending && !knowledgeIndex &&
+          panelFallback}
+
+        {activeFile && effectiveView === "links" && (!knowledgeIndexPending || knowledgeIndex) && (
           <Suspense fallback={panelFallback}>
             <RightPanelLinks
               activeFileId={activeFileId}
@@ -329,7 +338,10 @@ export function RightPanel({
           </Suspense>
         )}
 
-        {activeFile && effectiveView === "graph" && (
+        {activeFile && effectiveView === "graph" && knowledgeIndexPending && !knowledgeIndex &&
+          panelFallback}
+
+        {activeFile && effectiveView === "graph" && (!knowledgeIndexPending || knowledgeIndex) && (
           <Suspense fallback={panelFallback}>
             <RightPanelGraph
               activeFileId={activeFileId}
@@ -385,7 +397,10 @@ export function RightPanel({
           </Suspense>
         )}
 
-        {hasDocuments && effectiveView === "search" && (
+        {hasDocuments && effectiveView === "search" && knowledgeIndexPending && !knowledgeIndex &&
+          panelFallback}
+
+        {hasDocuments && effectiveView === "search" && (!knowledgeIndexPending || knowledgeIndex) && (
           <Suspense fallback={panelFallback}>
             <RightPanelSearch
               copy={copy.search}

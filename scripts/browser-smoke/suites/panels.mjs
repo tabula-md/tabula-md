@@ -747,7 +747,9 @@ export async function run(ctx) {
     );
     expect(searchPanelState.panelOpen, "Using Workspace Search should keep the side panel open.");
     await workspaceSearch.fill("workspace");
-    await waitForRenderFrame(page);
+    await page.getByText("No matches found", { exact: true }).waitFor({
+      state: "visible",
+    });
     expect(
       await page.getByText("No matches found", { exact: true }).isVisible(),
       "Workspace Search should not match text that exists only inside a document.",

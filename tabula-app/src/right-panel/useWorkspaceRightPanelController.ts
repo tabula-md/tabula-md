@@ -154,7 +154,12 @@ export function useWorkspaceRightPanelController({
     () => getWorkspaceKnowledgeDocuments(visibleFiles, folders),
     [folders, visibleFiles],
   );
-  const knowledgeIndex = useWorkspaceKnowledgeIndex(knowledgeDocuments);
+  const {
+    compatibilityReport: knowledgeCompatibilityReport,
+    index: knowledgeIndex,
+    pending: knowledgeIndexPending,
+    source: knowledgeIndexSource,
+  } = useWorkspaceKnowledgeIndex(knowledgeDocuments);
   const outlineCursorRef = useRef({ fileId: visibleActiveFileId, offset: 0 });
   if (outlineCursorRef.current.fileId !== visibleActiveFileId) {
     outlineCursorRef.current = { fileId: visibleActiveFileId, offset: 0 };
@@ -229,6 +234,9 @@ export function useWorkspaceRightPanelController({
     files: visibleFiles,
     folders,
     knowledgeIndex,
+    knowledgeCompatibilityReport,
+    knowledgeIndexPending,
+    knowledgeIndexSource,
     activeFileId: visibleActiveFileId,
     activeFileTitle,
     activeOutlineHeadingIndex,
