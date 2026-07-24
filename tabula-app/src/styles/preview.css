@@ -309,6 +309,17 @@
   color: var(--text-link-hover);
 }
 
+.preview-surface a.preview-wikilink {
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.preview-surface a.preview-wikilink.embed {
+  border-radius: 4px;
+  background: var(--surface-hover);
+  padding: 1px 4px;
+}
+
 .preview-workspace-link {
   color: var(--text-muted);
   text-decoration-line: underline;

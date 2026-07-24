@@ -430,7 +430,7 @@ export async function run(ctx) {
     );
     expect(
       rightPanelState.tabs.join("|") === "Files|Outline|Links|Graph|Comments|Search",
-      "The side panel should expose Files, Outline, Links, Graph, Comments, and document Search as peer views.",
+      `The side panel should expose Files, Outline, Links, Graph, Comments, and document Search as peer views. Found: ${rightPanelState.tabs.join("|")}`,
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
     expect(!rightPanelState.bodyText.includes("Project"), "Root files should not be wrapped in a synthetic Project folder.");
@@ -1525,7 +1525,11 @@ export async function run(ctx) {
       content: [
         "# Start",
         "",
-        "Continue in [[Guide.md]].",
+        "Continue in [[Guide.md#Guide|Wiki guide]].",
+        "",
+        "Embed ![[Guide.md|Embedded guide]].",
+        "",
+        "Broken [[Missing Wiki]].",
         "",
         "[Preview guide](./Guide.md#guide)",
         "",
@@ -1552,6 +1556,39 @@ export async function run(ctx) {
       (await page.getByRole("link", { name: "Back to start", exact: true }).count()) === 1,
       "Preview should render same-document heading destinations as links.",
     );
+    const wikiGuideLinkCount = await page.getByRole("link", {
+      name: "Wiki guide",
+      exact: true,
+    }).count();
+    const previewLinkDiagnostics = await page.locator(
+      ".preview-surface a, .preview-surface [data-wikilink-target]",
+    ).evaluateAll((links) =>
+      links.map((link) => ({
+        href: link.getAttribute("href"),
+        status: link.getAttribute("data-workspace-link-status"),
+        syntax: link.getAttribute("data-workspace-link-syntax"),
+        text: link.textContent,
+        wikiTarget: link.getAttribute("data-wikilink-target"),
+      })));
+    expect(
+      wikiGuideLinkCount === 1,
+      `Preview should render resolved wiki-link aliases as links. Found: ${JSON.stringify(previewLinkDiagnostics)}`,
+    );
+    expect(
+      (await page.getByRole("link", { name: "Embedded guide", exact: true })
+        .getAttribute("data-workspace-link-relation")) === "embed",
+      "Preview should preserve wiki embed relationships as navigable references.",
+    );
+    expect(
+      (await page.locator('[data-workspace-link-status="broken"][data-workspace-link-syntax="wikilink"]')
+        .filter({ hasText: "Missing Wiki" }).count()) === 1,
+      "Preview should expose broken wiki links with the same status as the Links panel.",
+    );
+    await page.getByRole("link", { name: "Wiki guide", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Guide.md" });
+    await waitForEditorReady(page, { mode: "preview" });
+    await page.locator('.tab-item[data-file-name="Start.md"] .tab-select-button').click();
+    await waitForActiveTab(page, { exact: "Start.md" });
     await page.getByRole("link", { name: "Back to start", exact: true }).click();
     await waitForRenderFrame(page);
     expect(

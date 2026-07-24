@@ -424,20 +424,41 @@ const createMarkdownPreviewComponents = (
   onOpenWorkspaceLink?: (
     link: Extract<MarkdownPreviewWorkspaceLink, { status: "resolved" }>,
   ) => void,
-  resolveWorkspaceLink?: (href: string) => MarkdownPreviewWorkspaceLink | undefined,
+  resolveWorkspaceLink?: MarkdownPreviewProps["resolveWorkspaceLink"],
   searchActive = false,
   copy: WorkspaceSurfaceCopy = getWorkspaceSurfaceCopy("en"),
 ): Components => ({
   ...PREVIEW_DOCS_COMPONENTS,
   a: ({ node: _node, href, ...props }) => {
-    const workspaceLink = typeof href === "string" ? resolveWorkspaceLink?.(href) : undefined;
+    const wikiLinkProps = props as typeof props & {
+      "data-wikilink-relation"?: unknown;
+      "data-wikilink-target"?: unknown;
+    };
+    const wikiTarget =
+      typeof wikiLinkProps["data-wikilink-target"] === "string"
+        ? wikiLinkProps["data-wikilink-target"]
+        : undefined;
+    const workspaceTarget = wikiTarget ?? href;
+    const workspaceLink =
+      typeof workspaceTarget === "string"
+        ? resolveWorkspaceLink?.(
+            workspaceTarget,
+            wikiTarget ? "wikilink" : "markdown",
+          )
+        : undefined;
     const resolvedHref = typeof href === "string" ? classifyMarkdownHref(href) : null;
+    const wikiLinkClassName = wikiTarget
+      ? `preview-wikilink ${workspaceLink?.relation ?? "link"} ${props.className ?? ""}`.trim()
+      : props.className;
 
     if (workspaceLink?.status === "resolved" && href && onOpenWorkspaceLink) {
       return (
         <a
           {...props}
+          className={wikiLinkClassName}
           href={href}
+          data-workspace-link-relation={workspaceLink.relation}
+          data-workspace-link-syntax={workspaceLink.syntax}
           data-workspace-link-target={workspaceLink.targetDocumentId}
           data-workspace-link-status="resolved"
           onClick={(event) => {
@@ -453,7 +474,9 @@ const createMarkdownPreviewComponents = (
       return (
         <span
           {...props}
-          className={`preview-workspace-link ${workspaceLink.status} ${props.className ?? ""}`.trim()}
+          className={`preview-workspace-link ${workspaceLink.status} ${wikiLinkClassName ?? ""}`.trim()}
+          data-workspace-link-relation={workspaceLink.relation}
+          data-workspace-link-syntax={workspaceLink.syntax}
           data-workspace-link-status={workspaceLink.status}
           title={props.title ?? `${statusLabel} workspace link: ${href ?? ""}`}
         />
@@ -467,6 +490,7 @@ const createMarkdownPreviewComponents = (
     return (
       <a
         {...props}
+        className={wikiLinkClassName}
         href={resolvedHref?.href}
         target={resolvedHref?.openInNewTab ? "_blank" : undefined}
         rel={resolvedHref?.openInNewTab ? "noreferrer" : undefined}
