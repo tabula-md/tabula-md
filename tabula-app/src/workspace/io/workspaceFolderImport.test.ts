@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getWorkspaceArchiveEntries } from "./workspaceArchive";
 import { parseWorkspaceFolderFiles } from "./workspaceFolderImport";
 
 const defaults = {
@@ -41,6 +42,25 @@ describe("workspace folder import", () => {
     ], defaults);
 
     expect(workspace.files.map((file) => file.title)).toEqual(["README.md"]);
+  });
+
+  it("round-trips exact relative paths, case, spacing, and Markdown text", async () => {
+    const text = "---\r\ntype: Concept\r\n---\r\n\r\n# Attention\r\n";
+    const workspace = await parseWorkspaceFolderFiles([
+      createFolderFile("Knowledge  Base/Concepts/Attention.MD", text),
+      createFolderFile("Knowledge  Base/Concepts/attention.md", "# lowercase"),
+    ], defaults);
+
+    expect(getWorkspaceArchiveEntries(workspace.files, workspace.folders)).toEqual([
+      { path: "Knowledge  Base/Concepts/attention.md", content: "# lowercase" },
+      { path: "Knowledge  Base/Concepts/Attention.MD", content: text },
+    ]);
+  });
+
+  it("rejects unsupported path segments instead of normalizing them", async () => {
+    await expect(parseWorkspaceFolderFiles([
+      createFolderFile("Docs\\Guide.md", "# Guide"),
+    ], defaults)).rejects.toThrow("invalid path");
   });
 
   it("rejects folders without Markdown documents", async () => {

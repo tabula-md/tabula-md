@@ -7,6 +7,7 @@ import {
   WORKSPACE_ROOM_MAX_REPLIES,
   WORKSPACE_ROOM_MAX_TREE_DEPTH,
 } from "./workspaceRoomModel";
+import { isWorkspacePathSegment } from "./workspacePath";
 
 export const SHARE_SNAPSHOT_SCHEMA_VERSION = 2;
 const textEncoder = new TextEncoder();
@@ -369,8 +370,8 @@ const requireIdentifier = (value: unknown, fieldName: string) => {
 };
 
 const requireTitle = (value: unknown, fieldName: string) => {
-  const text = requireBoundedString(value, fieldName, 120).trim();
-  if (!text || text === "." || text === ".." || text.includes("\0") || /[/\\]/.test(text)) {
+  const text = requireString(value, fieldName);
+  if (!isWorkspacePathSegment(text)) {
     throw new Error(`Share link failed: invalid ${fieldName}`);
   }
   return text;
