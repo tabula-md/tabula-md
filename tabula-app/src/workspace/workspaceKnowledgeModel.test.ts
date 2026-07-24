@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createWorkspaceFile, createWorkspaceRootFolder } from "./workspaceStorage";
 import {
   getWorkspaceKnowledgeDocuments,
-  reconcileWorkspaceKnowledgeIndex,
 } from "./workspaceKnowledgeModel";
+import { reconcileWorkspaceKnowledgeIndex } from "./workspaceKnowledgeRuntime";
 
 describe("workspace knowledge model", () => {
   it("uses exact workspace paths when resolving links", () => {
