@@ -5,7 +5,7 @@ import {
   type RefObject,
 } from "react";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
-import type { MarkdownHeading } from "@tabula-md/tabula";
+import type { MarkdownHeading, WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import {
   getActiveOutlineHeadingIndex,
   getOutlineHeadingOffsets,
@@ -19,6 +19,10 @@ import type {
   WorkspaceFolder,
 } from "../workspace/workspaceStorage";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import {
+  getWorkspaceKnowledgeDocuments,
+  reconcileWorkspaceKnowledgeIndex,
+} from "../workspace/workspaceKnowledgeModel";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
@@ -139,6 +143,24 @@ export function useWorkspaceRightPanelController({
 }: UseWorkspaceRightPanelControllerOptions) {
   const visibleFiles = files;
   const visibleActiveFileId = activeFile?.id;
+  const knowledgeDocuments = useMemo(
+    () => getWorkspaceKnowledgeDocuments(visibleFiles, folders),
+    [folders, visibleFiles],
+  );
+  const knowledgeIndexRef = useRef<WorkspaceKnowledgeIndex | undefined>(undefined);
+  const knowledgeIndex = useMemo(() => {
+    try {
+      const next = reconcileWorkspaceKnowledgeIndex(
+        knowledgeIndexRef.current,
+        knowledgeDocuments,
+      );
+      knowledgeIndexRef.current = next;
+      return next;
+    } catch {
+      knowledgeIndexRef.current = undefined;
+      return undefined;
+    }
+  }, [knowledgeDocuments]);
   const outlineCursorRef = useRef({ fileId: visibleActiveFileId, offset: 0 });
   if (outlineCursorRef.current.fileId !== visibleActiveFileId) {
     outlineCursorRef.current = { fileId: visibleActiveFileId, offset: 0 };
@@ -205,6 +227,7 @@ export function useWorkspaceRightPanelController({
     language,
     files: visibleFiles,
     folders,
+    knowledgeIndex,
     activeFileId: visibleActiveFileId,
     activeFileTitle,
     activeOutlineHeadingIndex,

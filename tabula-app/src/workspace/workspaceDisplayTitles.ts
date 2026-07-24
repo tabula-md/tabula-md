@@ -75,6 +75,17 @@ const getFolderPath = (
   return path;
 };
 
+export const getWorkspaceFilePaths = (
+  files: readonly WorkspaceFile[],
+  folders: readonly WorkspaceFolder[],
+) => {
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  return new Map(files.map((file) => [
+    file.id,
+    [...getFolderPath(file.parentId, foldersById), file.title].join("/"),
+  ]));
+};
+
 const getShortestUniqueLocation = (locations: readonly string[][], targetIndex: number) => {
   const target = locations[targetIndex] ?? ["Root"];
   for (let depth = 1; depth <= target.length; depth += 1) {
