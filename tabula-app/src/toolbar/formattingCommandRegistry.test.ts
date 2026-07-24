@@ -15,7 +15,9 @@ describe("formatting command registry", () => {
       "bold",
       "italic",
       "inline-code",
+      "inline-math",
       "link",
+      "strikethrough",
     ]);
     expect(getFormattingToolbarCommandsByPlacement("block").map((command) => command.id)).toEqual([
       "heading-1",
@@ -30,16 +32,23 @@ describe("formatting command registry", () => {
       "check-list",
     ]);
     expect(getFormattingToolbarCommandsByPlacement("insert").map((command) => command.id)).toEqual([
-      "horizontal-rule",
       "table",
+      "horizontal-rule",
       "image",
-      "frontmatter",
       "footnote",
+      "frontmatter",
     ]);
-    expect(getFormattingToolbarCommandsByPlacement("overflow").map((command) => command.id)).toEqual([
-      "strikethrough",
+    expect(getFormattingToolbarCommandsByPlacement("component").map((command) => command.id)).toEqual([
+      "math-block",
+      "mermaid",
+      "callout",
+      "accordion",
+      "tabs",
+    ]);
+    expect(getFormattingToolbarCommandsByPlacement("cleanup").map((command) => command.id)).toEqual([
       "clear-formatting",
     ]);
+    expect(getFormattingToolbarCommandsByPlacement("overflow")).toEqual([]);
   });
 
   it("keeps essential commands and moves every hidden command into More on compact lanes", () => {
@@ -68,18 +77,24 @@ describe("formatting command registry", () => {
     expect(layout.overflow.map((command) => command.id)).toEqual([
       "redo",
       "inline-code",
+      "inline-math",
       "link",
-      "horizontal-rule",
-      "table",
-      "image",
-      "frontmatter",
-      "footnote",
       "strikethrough",
+      "table",
+      "horizontal-rule",
+      "image",
+      "footnote",
+      "frontmatter",
+      "math-block",
+      "mermaid",
+      "callout",
+      "accordion",
+      "tabs",
       "clear-formatting",
     ]);
   });
 
-  it("keeps inline formatting visible and moves insert commands into More on medium lanes", () => {
+  it("keeps inline formatting and the insert menu visible on medium lanes", () => {
     const layout = getFormattingToolbarLayout("medium");
 
     expect(layout.history.map((command) => command.id)).toEqual(["undo", "redo"]);
@@ -87,35 +102,69 @@ describe("formatting command registry", () => {
       "bold",
       "italic",
       "inline-code",
+      "inline-math",
       "link",
-    ]);
-    expect(layout.insert).toEqual([]);
-    expect(layout.overflow.map((command) => command.id)).toEqual([
-      "horizontal-rule",
-      "table",
-      "image",
-      "frontmatter",
-      "footnote",
       "strikethrough",
-      "clear-formatting",
     ]);
+    expect(layout.insert.map((command) => command.id)).toEqual([
+      "table",
+      "horizontal-rule",
+      "image",
+      "footnote",
+      "frontmatter",
+    ]);
+    expect(layout.component.map((command) => command.id)).toEqual([
+      "math-block",
+      "mermaid",
+      "callout",
+      "accordion",
+      "tabs",
+    ]);
+    expect(layout.cleanup.map((command) => command.id)).toEqual(["clear-formatting"]);
+    expect(layout.overflow).toEqual([]);
   });
 
   it("keeps dedicated insert controls on wide lanes", () => {
     const layout = getFormattingToolbarLayout("wide");
 
     expect(layout.insert.map((command) => command.id)).toEqual([
-      "horizontal-rule",
       "table",
+      "horizontal-rule",
       "image",
-      "frontmatter",
       "footnote",
+      "frontmatter",
     ]);
-    expect(layout.overflow.map((command) => command.id)).toEqual([
-      "strikethrough",
-      "clear-formatting",
+    expect(layout.component.map((command) => command.id)).toEqual([
+      "math-block",
+      "mermaid",
+      "callout",
+      "accordion",
+      "tabs",
     ]);
+    expect(layout.cleanup.map((command) => command.id)).toEqual(["clear-formatting"]);
+    expect(layout.overflow).toEqual([]);
   });
+
+  it.each(["compact", "medium", "wide"] as const)(
+    "renders every registered command exactly once at %s density",
+    (density) => {
+      const layout = getFormattingToolbarLayout(density);
+      const renderedIds = [
+        ...layout.history,
+        ...layout.inline,
+        ...layout.block,
+        ...layout.list,
+        ...layout.insert,
+        ...layout.component,
+        ...layout.cleanup,
+        ...layout.overflow,
+      ].map((command) => command.id);
+      const registeredIds = formattingToolbarCommands.map((command) => command.id);
+
+      expect(renderedIds).toHaveLength(new Set(renderedIds).size);
+      expect([...renderedIds].sort()).toEqual([...registeredIds].sort());
+    },
+  );
 
   it("routes history and Markdown commands through their registered actions", () => {
     const onFormat = vi.fn();

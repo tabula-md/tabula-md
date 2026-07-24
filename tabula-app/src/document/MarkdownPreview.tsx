@@ -1,9 +1,12 @@
 import {
+  Children,
   forwardRef,
+  isValidElement,
   memo,
   startTransition,
   useCallback,
   useEffect,
+  useId,
   useImperativeHandle,
   useLayoutEffect,
   useMemo,
@@ -165,7 +168,85 @@ function PreviewUnsupportedComponent({
 }
 
 function PreviewTabs({ children, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
-  return <div {...sourceProps} className={`preview-docs-tabs ${sourceProps.className ?? ""}`.trim()}>{children}</div>;
+  const tabsId = useId();
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const tabButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const tabs = Children.toArray(children).flatMap((child, index) => {
+    if (!isValidElement<PreviewDocsComponentProps>(child)) return [];
+
+    const rawTitle = normalizeDocsAttribute(child.props.title);
+    if (typeof rawTitle !== "string" || rawTitle.length === 0) return [];
+
+    return [{
+      content: child.props.children,
+      key: child.key ?? index,
+      title: rawTitle,
+    }];
+  });
+  const safeActiveTabIndex = Math.min(activeTabIndex, Math.max(0, tabs.length - 1));
+  const activeTab = tabs[safeActiveTabIndex];
+
+  useEffect(() => {
+    if (activeTabIndex !== safeActiveTabIndex) setActiveTabIndex(safeActiveTabIndex);
+  }, [activeTabIndex, safeActiveTabIndex]);
+
+  const focusTab = (index: number) => {
+    setActiveTabIndex(index);
+    window.requestAnimationFrame(() => tabButtonRefs.current[index]?.focus());
+  };
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowLeft") nextIndex = (index - 1 + tabs.length) % tabs.length;
+    if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = tabs.length - 1;
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    focusTab(nextIndex);
+  };
+
+  if (!activeTab) {
+    return <div {...sourceProps} className={`preview-docs-tabs ${sourceProps.className ?? ""}`.trim()}>{children}</div>;
+  }
+
+  return (
+    <section {...sourceProps} className={`preview-docs-tabs ${sourceProps.className ?? ""}`.trim()}>
+      <div className="preview-docs-tab-list" role="tablist" aria-label="Tabs">
+        {tabs.map((tab, index) => {
+          const selected = index === safeActiveTabIndex;
+          return (
+            <button
+              key={tab.key}
+              ref={(element) => {
+                tabButtonRefs.current[index] = element;
+              }}
+              type="button"
+              className="preview-docs-tab-trigger"
+              id={`${tabsId}-tab-${index}`}
+              role="tab"
+              aria-controls={`${tabsId}-panel-${index}`}
+              aria-selected={selected}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => setActiveTabIndex(index)}
+              onKeyDown={(event) => handleTabKeyDown(event, index)}
+            >
+              {tab.title}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        className="preview-docs-tab-panel"
+        id={`${tabsId}-panel-${safeActiveTabIndex}`}
+        role="tabpanel"
+        aria-labelledby={`${tabsId}-tab-${safeActiveTabIndex}`}
+      >
+        {activeTab.content}
+      </div>
+    </section>
+  );
 }
 
 function PreviewTab({ children, title, ...sourceProps }: PreviewDocsComponentProps & HTMLAttributes<HTMLElement>) {
@@ -186,7 +267,10 @@ function PreviewAccordion({
   const isOpen = normalizeDocsAttribute(open) === true || normalizeDocsAttribute(open) === "true";
   return (
     <details {...sourceProps} className={`preview-docs-accordion ${sourceProps.className ?? ""}`.trim()} open={isOpen}>
-      <summary>{title || "Accordion"}</summary>
+      <summary>
+        <span className="preview-docs-accordion-chevron" aria-hidden="true" />
+        <span>{title || "Accordion"}</span>
+      </summary>
       <div className="preview-docs-accordion-body">{children}</div>
     </details>
   );

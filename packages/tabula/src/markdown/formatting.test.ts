@@ -34,6 +34,17 @@ describe("markdown formatting commands", () => {
     });
   });
 
+  it("wraps selected text with inline math markers", () => {
+    expect(applyMarkdownFormat("x + y", { from: 0, to: 5 }, "inline-math")).toEqual({
+      text: "$x + y$",
+      selection: { from: 1, to: 6 },
+    });
+    expect(applyMarkdownFormat("", { from: 0, to: 0 }, "inline-math")).toEqual({
+      text: "$formula$",
+      selection: { from: 1, to: 8 },
+    });
+  });
+
   it("supports strikethrough wrappers", () => {
     expect(applyMarkdownFormat("obsolete", { from: 0, to: 8 }, "strikethrough")).toEqual({
       text: "~~obsolete~~",
@@ -192,10 +203,50 @@ describe("markdown formatting commands", () => {
     });
   });
 
+  it("inserts display math blocks and selects the expression", () => {
+    expect(applyMarkdownFormat("", { from: 0, to: 0 }, "math-block")).toEqual({
+      text: "$$\nformula\n$$",
+      selection: { from: 3, to: 10 },
+    });
+  });
+
+  it("inserts Mermaid blocks and selects the diagram body", () => {
+    expect(applyMarkdownFormat("", { from: 0, to: 0 }, "mermaid")).toEqual({
+      text: "```mermaid\ngraph TD\n  A --> B\n```",
+      selection: { from: 22, to: 29 },
+    });
+  });
+
   it("inserts table blocks and selects the first heading", () => {
     expect(applyMarkdownFormat("", { from: 0, to: 0 }, "table")).toEqual({
       text: "| Column 1 | Column 2 |\n| --- | --- |\n| Value 1 | Value 2 |",
       selection: { from: 2, to: 10 },
+    });
+  });
+
+  it("inserts supported docs components and selects their editable content", () => {
+    expect(applyMarkdownFormat("", { from: 0, to: 0 }, "callout")).toEqual({
+      text: '<Callout type="note" title="Note">\nContent\n</Callout>',
+      selection: { from: 35, to: 42 },
+    });
+    expect(applyMarkdownFormat("", { from: 0, to: 0 }, "accordion")).toEqual({
+      text: '<Accordion title="Details">\nContent\n</Accordion>',
+      selection: { from: 28, to: 35 },
+    });
+    expect(applyMarkdownFormat("", { from: 0, to: 0 }, "tabs")).toEqual({
+      text: '<Tabs>\n<Tab title="Tab 1">Content</Tab>\n<Tab title="Tab 2">Content</Tab>\n</Tabs>',
+      selection: { from: 26, to: 33 },
+    });
+  });
+
+  it("uses selected text as the body of supported block inserts", () => {
+    expect(applyMarkdownFormat("Important", { from: 0, to: 9 }, "callout")).toEqual({
+      text: '<Callout type="note" title="Note">\nImportant\n</Callout>',
+      selection: { from: 35, to: 44 },
+    });
+    expect(applyMarkdownFormat("x^2", { from: 0, to: 3 }, "math-block")).toEqual({
+      text: "$$\nx^2\n$$",
+      selection: { from: 3, to: 6 },
     });
   });
 
@@ -228,6 +279,7 @@ describe("markdown formatting commands", () => {
       "italic",
       "strikethrough",
       "inline-code",
+      "inline-math",
       "link",
       "image",
       "quote",
@@ -239,12 +291,17 @@ describe("markdown formatting commands", () => {
       "check-list",
       "horizontal-rule",
       "code-block",
+      "math-block",
+      "mermaid",
       "table",
+      "callout",
+      "accordion",
+      "tabs",
       "frontmatter",
       "footnote",
       "clear-formatting",
     ];
 
-    expect(commands).toHaveLength(19);
+    expect(commands).toHaveLength(25);
   });
 });

@@ -15,10 +15,20 @@ describe("classifyMarkdownImageSource", () => {
     );
   });
 
-  it.each(["", "image.png", "./image.png", "/image.png", "javascript:alert(1)"])(
-    "does not resolve unsupported source %j against the app origin",
+  it("recognizes the toolbar URL placeholder", () => {
+    expect(classifyMarkdownImageSource("image-url")).toEqual({
+      kind: "placeholder",
+    });
+  });
+
+  it.each(["image.png", "./image.png", "/image.png"])(
+    "keeps local source %j distinct from remote failures",
     (src) => {
-      expect(classifyMarkdownImageSource(src)).toEqual({ kind: "unsupported" });
+      expect(classifyMarkdownImageSource(src)).toEqual({ kind: "local" });
     },
   );
+
+  it.each(["", "javascript:alert(1)"])("rejects unsupported source %j", (src) => {
+    expect(classifyMarkdownImageSource(src)).toEqual({ kind: "unsupported" });
+  });
 });

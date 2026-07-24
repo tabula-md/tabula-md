@@ -4,6 +4,7 @@ export type WorkspaceSurfaceCopy = {
   searchOptions: string;
   formatting: string;
   blockType: string;
+  components: string;
   insertContent: string;
   listType: string;
   moreFormatting: string;
@@ -21,6 +22,7 @@ export type WorkspaceSurfaceCopy = {
   couldNotRenderMath: string;
   couldNotRenderDiagram: string;
   imageFailed: string;
+  localImageUnavailable: string;
   codeBlockActions: string;
   disableWordWrap: string;
   enableWordWrap: string;
@@ -67,6 +69,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     searchOptions: "Search options",
     formatting: "Formatting",
     blockType: "Block type",
+    components: "Components",
     insertContent: "Insert",
     listType: "List type",
     moreFormatting: "More formatting",
@@ -84,6 +87,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     couldNotRenderMath: "Could not render math.",
     couldNotRenderDiagram: "Could not render Mermaid diagram.",
     imageFailed: "Image failed to load",
+    localImageUnavailable: "Local image unavailable",
     codeBlockActions: "Code block actions",
     disableWordWrap: "Disable word wrap",
     enableWordWrap: "Enable word wrap",
@@ -128,6 +132,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     searchOptions: "검색 옵션",
     formatting: "서식",
     blockType: "블록 유형",
+    components: "컴포넌트",
     insertContent: "삽입",
     listType: "목록 유형",
     moreFormatting: "추가 서식",
@@ -145,6 +150,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     couldNotRenderMath: "수식을 렌더링하지 못했습니다.",
     couldNotRenderDiagram: "Mermaid 다이어그램을 렌더링하지 못했습니다.",
     imageFailed: "이미지를 불러오지 못했습니다",
+    localImageUnavailable: "로컬 이미지를 표시할 수 없습니다",
     codeBlockActions: "코드 블록 작업",
     disableWordWrap: "자동 줄 바꿈 끄기",
     enableWordWrap: "자동 줄 바꿈 켜기",
@@ -189,6 +195,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     searchOptions: "検索オプション",
     formatting: "書式",
     blockType: "ブロック形式",
+    components: "コンポーネント",
     insertContent: "挿入",
     listType: "リスト形式",
     moreFormatting: "その他の書式",
@@ -206,6 +213,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     couldNotRenderMath: "数式を描画できませんでした。",
     couldNotRenderDiagram: "Mermaid 図を描画できませんでした。",
     imageFailed: "画像を読み込めませんでした",
+    localImageUnavailable: "ローカル画像を表示できません",
     codeBlockActions: "コードブロック操作",
     disableWordWrap: "折り返しを無効にする",
     enableWordWrap: "折り返しを有効にする",
@@ -250,6 +258,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     searchOptions: "搜索选项",
     formatting: "格式",
     blockType: "块类型",
+    components: "组件",
     insertContent: "插入",
     listType: "列表类型",
     moreFormatting: "更多格式",
@@ -267,6 +276,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     couldNotRenderMath: "无法渲染公式。",
     couldNotRenderDiagram: "无法渲染 Mermaid 图表。",
     imageFailed: "图片加载失败",
+    localImageUnavailable: "无法显示本地图片",
     codeBlockActions: "代码块操作",
     disableWordWrap: "关闭自动换行",
     enableWordWrap: "开启自动换行",
@@ -311,6 +321,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     searchOptions: "Opciones de búsqueda",
     formatting: "Formato",
     blockType: "Tipo de bloque",
+    components: "Componentes",
     insertContent: "Insertar",
     listType: "Tipo de lista",
     moreFormatting: "Más formato",
@@ -328,6 +339,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     couldNotRenderMath: "No se pudo renderizar la fórmula.",
     couldNotRenderDiagram: "No se pudo renderizar el diagrama Mermaid.",
     imageFailed: "No se pudo cargar la imagen",
+    localImageUnavailable: "No se puede mostrar la imagen local",
     codeBlockActions: "Acciones del bloque de código",
     disableWordWrap: "Desactivar ajuste de línea",
     enableWordWrap: "Activar ajuste de línea",
@@ -372,6 +384,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     searchOptions: "Options de recherche",
     formatting: "Mise en forme",
     blockType: "Type de bloc",
+    components: "Composants",
     insertContent: "Insérer",
     listType: "Type de liste",
     moreFormatting: "Plus de mise en forme",
@@ -389,6 +402,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     couldNotRenderMath: "Impossible de rendre la formule.",
     couldNotRenderDiagram: "Impossible de rendre le diagramme Mermaid.",
     imageFailed: "Échec du chargement de l’image",
+    localImageUnavailable: "Impossible d’afficher l’image locale",
     codeBlockActions: "Actions du bloc de code",
     disableWordWrap: "Désactiver le retour à la ligne",
     enableWordWrap: "Activer le retour à la ligne",
@@ -433,6 +447,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     searchOptions: "Suchoptionen",
     formatting: "Formatierung",
     blockType: "Blocktyp",
+    components: "Komponenten",
     insertContent: "Einfügen",
     listType: "Listentyp",
     moreFormatting: "Weitere Formatierung",
@@ -450,6 +465,7 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     couldNotRenderMath: "Formel konnte nicht gerendert werden.",
     couldNotRenderDiagram: "Mermaid-Diagramm konnte nicht gerendert werden.",
     imageFailed: "Bild konnte nicht geladen werden",
+    localImageUnavailable: "Lokales Bild kann nicht angezeigt werden",
     codeBlockActions: "Codeblock-Aktionen",
     disableWordWrap: "Zeilenumbruch deaktivieren",
     enableWordWrap: "Zeilenumbruch aktivieren",

@@ -1,6 +1,7 @@
 import {
   Bold,
   CheckSquare,
+  ChevronRight,
   Code2,
   Eraser,
   FileCode2,
@@ -12,14 +13,19 @@ import {
   Link2,
   List,
   ListOrdered,
+  MessageSquareWarning,
+  PanelTop,
   Quote,
+  Radical,
   Redo2,
   SeparatorHorizontal,
+  Sigma,
   SquareCode,
   Strikethrough,
   Superscript,
   Table2,
   Undo2,
+  Workflow,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
@@ -33,6 +39,7 @@ export type FormattingToolbarCommandGroup =
   | "list"
   | "block"
   | "insert"
+  | "component"
   | "cleanup";
 
 export type FormattingToolbarCommandPlacement =
@@ -41,6 +48,8 @@ export type FormattingToolbarCommandPlacement =
   | "block"
   | "list"
   | "insert"
+  | "component"
+  | "cleanup"
   | "overflow";
 
 export type FormattingToolbarDensity = "wide" | "medium" | "compact";
@@ -122,6 +131,12 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     placement: "inline",
   }),
   createFormattingCommand({
+    command: "inline-math",
+    group: "inline",
+    icon: Radical,
+    placement: "inline",
+  }),
+  createFormattingCommand({
     command: "link",
     group: "inline",
     icon: Link2,
@@ -177,21 +192,51 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     placement: "block",
   }),
   createFormattingCommand({
-    command: "horizontal-rule",
-    group: "block",
-    icon: SeparatorHorizontal,
-    placement: "insert",
+    command: "math-block",
+    group: "component",
+    icon: Sigma,
+    placement: "component",
+  }),
+  createFormattingCommand({
+    command: "mermaid",
+    group: "component",
+    icon: Workflow,
+    placement: "component",
+  }),
+  createFormattingCommand({
+    command: "callout",
+    group: "component",
+    icon: MessageSquareWarning,
+    placement: "component",
+  }),
+  createFormattingCommand({
+    command: "accordion",
+    group: "component",
+    icon: ChevronRight,
+    placement: "component",
+  }),
+  createFormattingCommand({
+    command: "tabs",
+    group: "component",
+    icon: PanelTop,
+    placement: "component",
   }),
   createFormattingCommand({
     command: "strikethrough",
     group: "inline",
     icon: Strikethrough,
-    placement: "overflow",
+    placement: "inline",
   }),
   createFormattingCommand({
     command: "table",
     group: "insert",
     icon: Table2,
+    placement: "insert",
+  }),
+  createFormattingCommand({
+    command: "horizontal-rule",
+    group: "block",
+    icon: SeparatorHorizontal,
     placement: "insert",
   }),
   createFormattingCommand({
@@ -201,22 +246,22 @@ export const formattingToolbarCommands: FormattingToolbarCommand[] = [
     placement: "insert",
   }),
   createFormattingCommand({
-    command: "frontmatter",
-    group: "insert",
-    icon: FileCode2,
-    placement: "insert",
-  }),
-  createFormattingCommand({
     command: "footnote",
     group: "insert",
     icon: Superscript,
     placement: "insert",
   }),
   createFormattingCommand({
+    command: "frontmatter",
+    group: "insert",
+    icon: FileCode2,
+    placement: "insert",
+  }),
+  createFormattingCommand({
     command: "clear-formatting",
     group: "cleanup",
     icon: Eraser,
-    placement: "overflow",
+    placement: "cleanup",
   }),
 ];
 
@@ -227,6 +272,7 @@ export const formattingToolbarGroupOrder: FormattingToolbarCommandGroup[] = [
   "list",
   "block",
   "insert",
+  "component",
   "cleanup",
 ];
 
@@ -240,9 +286,10 @@ export const getFormattingToolbarLayout = (density: FormattingToolbarDensity) =>
   const historyCommands = getFormattingToolbarCommandsByPlacement("history");
   const inlineCommands = getFormattingToolbarCommandsByPlacement("inline");
   const insertCommands = getFormattingToolbarCommandsByPlacement("insert");
+  const componentCommands = getFormattingToolbarCommandsByPlacement("component");
+  const cleanupCommands = getFormattingToolbarCommandsByPlacement("cleanup");
   const overflowCommands = getFormattingToolbarCommandsByPlacement("overflow");
   const compact = density === "compact";
-  const wide = density === "wide";
   const hiddenHistoryCommands = compact ? historyCommands.filter((command) => command.id === "redo") : [];
   const hiddenInlineCommands = compact
     ? inlineCommands.filter((command) => !compactInlineCommandIds.has(command.id))
@@ -257,8 +304,16 @@ export const getFormattingToolbarLayout = (density: FormattingToolbarDensity) =>
       : inlineCommands,
     block: getFormattingToolbarCommandsByPlacement("block"),
     list: getFormattingToolbarCommandsByPlacement("list"),
-    insert: wide ? insertCommands : [],
+    insert: compact ? [] : insertCommands,
+    component: compact ? [] : componentCommands,
+    cleanup: compact ? [] : cleanupCommands,
     overflow: hiddenHistoryCommands
-      .concat(hiddenInlineCommands, wide ? [] : insertCommands, overflowCommands),
+      .concat(
+        hiddenInlineCommands,
+        compact ? insertCommands : [],
+        compact ? componentCommands : [],
+        compact ? cleanupCommands : [],
+        overflowCommands,
+      ),
   };
 };
