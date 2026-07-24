@@ -6,6 +6,7 @@ import {
 import {
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -81,6 +82,10 @@ type RightPanelFilesProps = {
 
 const RIGHT_TREE_INDENT = 16;
 const FOLDER_AUTO_EXPAND_DELAY = 600;
+
+const releasePointerActionFocus = (event: ReactMouseEvent<HTMLButtonElement>) => {
+  if (event.detail > 0) event.currentTarget.blur();
+};
 
 export function RightPanelFiles({
   files,
@@ -425,6 +430,18 @@ export function RightPanelFiles({
             </button>
             {!isRootFolder && !folderIsRenaming && (
               <span className="right-file-actions">
+                <button
+                  className="right-file-action"
+                  type="button"
+                  aria-label={`${copy.newDocument}: ${node.name}`}
+                  data-tooltip={copy.newDocument}
+                  onClick={(event) => {
+                    createAndRenameDocument(node.id);
+                    releasePointerActionFocus(event);
+                  }}
+                >
+                  <FilePlus2 size={14} />
+                </button>
                 <MenuRoot
                   open={folderMenuOpen}
                   onOpenChange={(open) => setActionMenuFolderId(open ? node.id : null)}
@@ -436,6 +453,7 @@ export function RightPanelFiles({
                         type="button"
                         aria-label={copy.moreActions(node.name)}
                         data-tooltip={copy.moreActions(node.name)}
+                        onClick={releasePointerActionFocus}
                       >
                         <Ellipsis size={14} />
                       </button>
@@ -592,6 +610,30 @@ export function RightPanelFiles({
                 <span className="right-row-label">{stripMarkdownExtension(node.name)}</span>
               </button>
               <span className="right-file-actions" aria-label={copy.actions(file.title)}>
+                <button
+                  className="right-file-action"
+                  type="button"
+                  aria-label={`${copy.copyMarkdown}: ${file.title}`}
+                  data-tooltip={copy.copyMarkdown}
+                  onClick={(event) => {
+                    onCopyFile(file.id);
+                    releasePointerActionFocus(event);
+                  }}
+                >
+                  <ClipboardCopy size={14} />
+                </button>
+                <button
+                  className="right-file-action danger"
+                  type="button"
+                  aria-label={`${copy.delete}: ${file.title}`}
+                  data-tooltip={copy.delete}
+                  onClick={(event) => {
+                    releasePointerActionFocus(event);
+                    deleteFileFromMenu(file.id);
+                  }}
+                >
+                  <Trash2 size={14} />
+                </button>
                 <MenuRoot
                   open={menuOpen}
                   onOpenChange={(open) => setActionMenuFileId(open ? file.id : null)}
@@ -603,7 +645,10 @@ export function RightPanelFiles({
                         type="button"
                         aria-label={copy.moreActions(file.title)}
                         data-tooltip={copy.moreActions(file.title)}
-                        onClick={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          releasePointerActionFocus(event);
+                        }}
                       >
                         <Ellipsis size={14} />
                       </button>

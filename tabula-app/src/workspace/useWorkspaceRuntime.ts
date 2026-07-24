@@ -8,8 +8,10 @@ import {
 import { getShortcutPlatform } from "./keyboardShortcuts";
 import type { MarkdownEditorHandle } from "../document/markdownEditorTypes";
 import {
+  applyTextPatches,
   setOkfConceptType,
   type TextChange,
+  type WorkspaceKnowledgeLink,
   type WorkspaceRoomSnapshot,
 } from "@tabula-md/tabula";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
@@ -89,6 +91,7 @@ import {
   decodeMarkdownPreviewFragment,
   resolveMarkdownPreviewWorkspaceLink,
 } from "../preview/workspacePreviewLinks";
+import { getAmbiguousWorkspaceLinkResolutionEdit } from "./workspaceLinkResolution";
 
 export function useWorkspaceRuntime() {
   const [initialWorkspaceSnapshot] = useState(() =>
@@ -474,6 +477,27 @@ export function useWorkspaceRuntime() {
     stopFollowing("local-navigation");
     flushPendingEditorCommit();
   });
+  const resolveAmbiguousWorkspaceLink = useEventCallback((
+    link: WorkspaceKnowledgeLink,
+    targetPath: string,
+  ) => {
+    if (!activeFile || activeFile.id !== link.sourceDocumentId) return false;
+    handleUserWorkspaceBoundary();
+    const currentText = getLatestFileText(activeFile.id, activeFile.text);
+    const edit = getAmbiguousWorkspaceLinkResolutionEdit(
+      currentText,
+      link,
+      targetPath,
+    );
+    if (!edit) return false;
+    const patches = [edit.patch];
+    const nextText = applyTextPatches(currentText, patches);
+    if (nextText === null) return false;
+    mapFileCommentAnchors(activeFile.id, patches, currentText.length);
+    updateActiveFileText(nextText, { patches });
+    focusTextRange(edit.selection.from, edit.selection.to);
+    return true;
+  });
   const localWorkspacePersistence = useWorkspacePersistenceRuntime({
     enabled: localPersistenceEnabled,
     getWorkspaceSnapshot,
@@ -756,6 +780,7 @@ export function useWorkspaceRuntime() {
       onMoveFileToFolder: moveWorkspaceFile,
       onMoveFolder: moveWorkspaceFolder,
       onReplyDraftChange: updateCommentReplyDraft,
+      onResolveAmbiguousLink: resolveAmbiguousWorkspaceLink,
       onSelectFile: selectFile,
       onSetActiveFileOkfType: setActiveFileOkfType,
       onStartCommentReply: startCommentReply,

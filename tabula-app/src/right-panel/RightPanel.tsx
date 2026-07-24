@@ -12,6 +12,7 @@ import {
   getRightPanelCommentGroups,
   getWorkspaceOkfCompatibility,
   type WorkspaceKnowledgeIndex,
+  type WorkspaceKnowledgeLink,
 } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
@@ -59,6 +60,11 @@ type RightPanelProps = {
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
+  onFocusLinkSource: (link: WorkspaceKnowledgeLink) => void;
+  onResolveAmbiguousLink: (
+    link: WorkspaceKnowledgeLink,
+    targetPath: string,
+  ) => boolean;
   onSetActiveFileOkfType: (conceptType: string) => boolean;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onDuplicateFile: (fileId: string) => void;
@@ -113,6 +119,8 @@ export function RightPanel({
   onNewFolder,
   onImportFile,
   onSelectFile,
+  onFocusLinkSource,
+  onResolveAmbiguousLink,
   onSetActiveFileOkfType,
   onRenameFile,
   onDuplicateFile,
@@ -145,6 +153,7 @@ export function RightPanel({
     collapsedReplyIds,
     collapsedCommentFileIds,
     collapsedFileTreeFolderIds,
+    collapsedLinkSections,
     collapsedOutlineHeadingIds,
     toggleResolvedSection,
     toggleRepliesCollapsed,
@@ -152,6 +161,7 @@ export function RightPanel({
     toggleFileTreeFolderCollapsed,
     collapseAllFileTreeFolders,
     expandAllFileTreeFolders,
+    toggleLinkSectionCollapsed,
     toggleOutlineHeadingCollapsed,
     collapseAllOutlineHeadings,
     expandAllOutlineHeadings,
@@ -290,10 +300,14 @@ export function RightPanel({
           <RightPanelLinks
             activeFileId={activeFileId}
             activeFileTitle={activeFileTitle}
+            collapsedSections={collapsedLinkSections}
             copy={copy.links}
             fileLabels={fileLabels}
             index={knowledgeIndex}
+            onFocusLinkSource={onFocusLinkSource}
+            onResolveAmbiguousLink={onResolveAmbiguousLink}
             onSelectFile={onSelectFile}
+            onToggleSection={toggleLinkSectionCollapsed}
           />
         )}
 

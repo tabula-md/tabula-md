@@ -1,15 +1,3 @@
-.right-file-toolbar-button.compatibility.error:not(.active) {
-  color: var(--danger-text);
-}
-
-.right-file-toolbar-button.compatibility.warning:not(.active) {
-  color: var(--attention);
-}
-
-.right-file-toolbar-button.compatibility.success:not(.active) {
-  color: var(--success);
-}
-
 .right-compatibility-scroll {
   display: grid;
   align-content: start;
@@ -57,22 +45,21 @@
   grid-template-columns: 17px minmax(0, 1fr);
   align-items: start;
   gap: var(--right-tight-gap);
-  margin: 0 var(--right-row-x);
-  padding: 10px;
-  border: 1px solid var(--line-subtle);
-  border-radius: var(--radius-surface);
+  margin: 0;
+  padding: 0 var(--right-row-x);
   color: var(--text-soft);
-  background: var(--surface-muted);
 }
 
-.right-compatibility-status.error {
-  color: var(--danger-text);
-  background: var(--danger-background);
+.right-compatibility-status > svg {
+  color: var(--text-muted);
 }
 
-.right-compatibility-status.success {
+.right-compatibility-status.error > svg {
+  color: var(--attention);
+}
+
+.right-compatibility-status.success > svg {
   color: var(--success);
-  background: var(--success-soft);
 }
 
 .right-compatibility-status > span {
@@ -158,11 +145,11 @@
 }
 
 .right-compatibility-issue-row.error > svg:first-child {
-  color: var(--danger-text);
+  color: var(--attention);
 }
 
 .right-compatibility-issue-row.warning > svg:first-child {
-  color: var(--attention);
+  color: var(--text-muted);
 }
 
 .right-compatibility-issue-text {
@@ -183,8 +170,7 @@
   display: grid;
   gap: 7px;
   margin: 0 var(--right-row-x) 8px calc(var(--right-row-x) + 15px + var(--right-tight-gap));
-  padding-top: 8px;
-  border-top: 1px solid var(--line-subtle);
+  padding-top: 4px;
 }
 
 .right-compatibility-type-form label {
@@ -197,21 +183,15 @@
 
 .right-compatibility-type-form input {
   width: 100%;
-  height: 30px;
+  height: 34px;
   min-width: 0;
   padding: 0 8px;
-  border: 1px solid var(--line-strong);
+  border: 0;
   border-radius: var(--right-row-radius);
   color: var(--text-primary);
-  background: var(--surface-active);
+  background: var(--surface-muted);
   font: inherit;
   font-weight: var(--weight-ui-regular);
-}
-
-.right-compatibility-type-form input:focus-visible {
-  border-color: var(--text-link);
-  outline: 0;
-  box-shadow: 0 0 0 1px var(--text-link);
 }
 
 .right-compatibility-type-form p {

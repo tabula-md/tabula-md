@@ -30,6 +30,7 @@
     "test:browser:editor-certification": "npm run test:browser -- --suite=editor-certification",
     "test:browser:layout": "npm run test:browser -- --suite=layout",
     "test:browser:panels": "npm run test:browser -- --suite=panels",
+    "test:browser:knowledge": "npm run test:browser -- --suite=knowledge-links",
     "test:browser:collab": "npm run test:browser -- --suite=collaboration",
     "test:browser:collaboration-editor-torture": "npm run test:browser -- --suite=collaboration-editor-torture",
     "test:browser:collaboration-memory": "npm run test:browser -- --suite=collaboration-memory",
@@ -55,6 +56,7 @@
     "@radix-ui/react-popover": "^1.1.19",
     "@tanstack/react-virtual": "^3.14.5",
     "@vitejs/plugin-react": "^5.0.0",
+    "d3-force": "^3.0.0",
     "dexie": "^4.4.4",
     "fflate": "^0.8.3",
     "firebase": "^12.15.0",
@@ -82,6 +84,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@types/d3-force": "^3.0.10",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
