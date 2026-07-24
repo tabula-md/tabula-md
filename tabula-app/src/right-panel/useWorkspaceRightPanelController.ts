@@ -48,6 +48,7 @@ type RightPanelHandlers = Pick<
   | "onMoveFileToFolder"
   | "onMoveFolder"
   | "onSelectFile"
+  | "onSetActiveFileOkfType"
   | "onStartCommentReply"
   | "onToggleCommentResolved"
   | "onGoToComment"
@@ -124,6 +125,7 @@ export function useWorkspaceRightPanelController({
   onMoveFolder,
   onReplyDraftChange,
   onSelectFile,
+  onSetActiveFileOkfType,
   onStartCommentReply,
   onToggleCommentResolved,
   outlineHeadings,
@@ -250,6 +252,7 @@ export function useWorkspaceRightPanelController({
     onNewFolder,
     onImportFile,
     onSelectFile,
+    onSetActiveFileOkfType,
     onRenameFile,
     onDuplicateFile,
     onDeleteFile,

@@ -59,6 +59,7 @@ type RightPanelProps = {
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
+  onSetActiveFileOkfType: (conceptType: string) => boolean;
   onRenameFile: (fileId: string, nextTitle: string) => RenameFileResult;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
@@ -112,6 +113,7 @@ export function RightPanel({
   onNewFolder,
   onImportFile,
   onSelectFile,
+  onSetActiveFileOkfType,
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
@@ -233,6 +235,7 @@ export function RightPanel({
             copy={copy.files}
             compatibilityCopy={compatibilityCopy}
             compatibilityReport={compatibilityReport}
+            onSetActiveFileOkfType={onSetActiveFileOkfType}
             collapsedFolderIds={collapsedFileTreeFolderIds}
             onNewFile={(parentId) => onNewFile(parentId ? { parentId } : undefined)}
             onNewFolder={onNewFolder}
