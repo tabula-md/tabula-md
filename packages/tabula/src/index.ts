@@ -619,6 +619,7 @@ export type {
   MarkdownWikiLinkToken,
   WorkspaceKnowledgeIndex,
   WorkspaceKnowledgeLink,
+  WorkspaceKnowledgeMetadata,
   WorkspaceLinkStatus,
   WorkspaceSourceDocument,
 } from "./workspaceKnowledgeIndex";
