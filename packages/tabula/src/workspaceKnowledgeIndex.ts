@@ -9,6 +9,12 @@ export type WorkspaceSourceDocument = {
   markdown: string;
 };
 
+export type WorkspaceDocumentPathChange = {
+  documentId: string;
+  previousPath: string;
+  nextPath: string;
+};
+
 export type DocumentHeadingAnalysis = {
   depth: number;
   id: string;
@@ -688,5 +694,37 @@ export const removeWorkspaceDocumentFromKnowledgeIndex = (
   const analysesByDocumentId = new Map(index.analysesByDocumentId);
   documentsById.delete(documentId);
   analysesByDocumentId.delete(documentId);
+  return buildKnowledgeIndex(documentsById, analysesByDocumentId);
+};
+
+export const updateWorkspaceKnowledgeIndexPaths = (
+  index: WorkspaceKnowledgeIndex,
+  pathChanges: readonly WorkspaceDocumentPathChange[],
+): WorkspaceKnowledgeIndex => {
+  if (pathChanges.length === 0) return index;
+
+  const changesByDocumentId = new Map(
+    pathChanges.map((change) => [change.documentId, change]),
+  );
+  if (changesByDocumentId.size !== pathChanges.length) {
+    throw new Error("Duplicate workspace knowledge path change.");
+  }
+
+  const documentsById = new Map(index.documentsById);
+  const analysesByDocumentId = new Map(index.analysesByDocumentId);
+  for (const change of pathChanges) {
+    const document = documentsById.get(change.documentId);
+    const analysis = analysesByDocumentId.get(change.documentId);
+    if (!document || !analysis || document.path !== change.previousPath) {
+      throw new Error(`Knowledge path changed from an unexpected path: ${change.documentId}`);
+    }
+    const nextDocument = { ...document, path: change.nextPath };
+    assertWorkspaceSourceDocument(nextDocument);
+    documentsById.set(change.documentId, nextDocument);
+    analysesByDocumentId.set(change.documentId, {
+      ...analysis,
+      path: change.nextPath,
+    });
+  }
   return buildKnowledgeIndex(documentsById, analysesByDocumentId);
 };

@@ -2,6 +2,7 @@ import type {
   OkfCompatibilityReport,
   WorkspaceKnowledgeIndex,
   WorkspaceKnowledgeMaintenancePlan,
+  WorkspaceKnowledgePathChange,
   WorkspaceSourceDocument,
 } from "@tabula-md/tabula";
 import type {
@@ -67,6 +68,16 @@ const documentsMatch = (
   first.markdown === second.markdown,
 );
 
+const documentsDifferOnlyByPath = (
+  previousDocumentsById: KnowledgeDocumentsById,
+  nextDocumentsById: KnowledgeDocumentsById,
+) =>
+  previousDocumentsById.size === nextDocumentsById.size &&
+  [...previousDocumentsById.values()].every((previousDocument) => {
+    const nextDocument = nextDocumentsById.get(previousDocument.id);
+    return nextDocument?.markdown === previousDocument.markdown;
+  });
+
 export const getWorkspaceKnowledgeSyncDelta = (
   previousDocumentsById: KnowledgeDocumentsById,
   nextDocumentsById: KnowledgeDocumentsById,
@@ -79,6 +90,21 @@ export const getWorkspaceKnowledgeSyncDelta = (
   );
   return { removedDocumentIds, upsertedDocuments };
 };
+
+export const getWorkspaceKnowledgePathChanges = (
+  previousDocumentsById: KnowledgeDocumentsById,
+  nextDocumentsById: KnowledgeDocumentsById,
+): WorkspaceKnowledgePathChange[] =>
+  [...previousDocumentsById.values()].flatMap((previousDocument) => {
+    const nextDocument = nextDocumentsById.get(previousDocument.id);
+    return nextDocument && nextDocument.path !== previousDocument.path
+      ? [{
+          documentId: previousDocument.id,
+          previousPath: previousDocument.path,
+          nextPath: nextDocument.path,
+        }]
+      : [];
+  });
 
 const hydrateTransferIndex = (
   index: WorkspaceKnowledgeIndex,
@@ -101,6 +127,7 @@ class WorkspaceKnowledgeWorkerClient {
     revision: 0,
   };
   private listeners = new Set<() => void>();
+  private syncIdleResolvers = new Set<() => void>();
   private maintenanceResolvers = new Map<number, MaintenanceResolver>();
   private nextRequestId = 1;
   private pendingSync?: SyncTarget;
@@ -146,27 +173,67 @@ class WorkspaceKnowledgeWorkerClient {
     }
 
     try {
+      await this.waitForSyncIdle();
+      if (this.workerFailed) {
+        return this.runMaintenanceFallback(previousDocuments, nextDocuments);
+      }
+      const previousDocumentsById = toDocumentMap(previousDocuments);
+      const nextDocumentsById = toDocumentMap(nextDocuments);
+      if (!documentsDifferOnlyByPath(previousDocumentsById, nextDocumentsById)) {
+        return this.runMaintenanceFallback(previousDocuments, nextDocuments);
+      }
+      const pathChanges = getWorkspaceKnowledgePathChanges(
+        previousDocumentsById,
+        nextDocumentsById,
+      );
+      if (pathChanges.length === 0) return EMPTY_MAINTENANCE_PLAN;
+      const reset = this.committedDocumentsById.size === 0;
+      const delta = reset
+        ? {
+            removedDocumentIds: [] as string[],
+            upsertedDocuments: [...previousDocumentsById.values()],
+          }
+        : getWorkspaceKnowledgeSyncDelta(
+            this.committedDocumentsById,
+            previousDocumentsById,
+          );
       const worker = this.getWorker();
       const requestId = this.nextRequestId++;
+      this.committedDocumentsById = previousDocumentsById;
       const response = await new Promise<WorkspaceKnowledgeMaintenanceResponse>(
         (resolve, reject) => {
           this.maintenanceResolvers.set(requestId, { resolve, reject });
           worker.postMessage({
             kind: "maintenance",
             requestId,
-            previousDocuments,
-            nextDocuments,
+            reset,
+            ...delta,
+            pathChanges,
           } satisfies WorkspaceKnowledgeWorkerRequest);
         },
       );
       return response.plan;
     } catch {
+      this.handleWorkerFailure();
       return this.runMaintenanceFallback(previousDocuments, nextDocuments);
     }
   }
 
   private emit() {
     this.listeners.forEach((listener) => listener());
+  }
+
+  private waitForSyncIdle() {
+    if (!this.inFlightSync && !this.pendingSync) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      this.syncIdleResolvers.add(resolve);
+    });
+  }
+
+  private resolveSyncIdle() {
+    if (this.inFlightSync || this.pendingSync) return;
+    for (const resolve of this.syncIdleResolvers) resolve();
+    this.syncIdleResolvers.clear();
   }
 
   private setState(nextState: WorkspaceKnowledgeState) {
@@ -232,9 +299,7 @@ class WorkspaceKnowledgeWorkerClient {
     }
     if (response.kind === "error") {
       if (response.operation === "maintenance") {
-        const resolver = this.maintenanceResolvers.get(response.requestId);
-        this.maintenanceResolvers.delete(response.requestId);
-        resolver?.reject(new Error(response.message));
+        this.handleWorkerFailure();
         return;
       }
       if (this.inFlightSync?.requestId === response.requestId) {
@@ -265,6 +330,7 @@ class WorkspaceKnowledgeWorkerClient {
       });
     }
     if (pending) this.sendSync(pending);
+    else this.resolveSyncIdle();
   }
 
   private commitUnchangedTarget(target: SyncTarget) {
@@ -279,6 +345,7 @@ class WorkspaceKnowledgeWorkerClient {
     const pending = this.pendingSync;
     this.pendingSync = undefined;
     if (pending) this.sendSync(pending);
+    else this.resolveSyncIdle();
   }
 
   private handleWorkerFailure() {
@@ -293,6 +360,7 @@ class WorkspaceKnowledgeWorkerClient {
     const failedTarget = this.pendingSync ?? this.inFlightSync;
     this.inFlightSync = undefined;
     this.pendingSync = undefined;
+    this.resolveSyncIdle();
     if (failedTarget) void this.runSyncFallback(failedTarget);
   }
 

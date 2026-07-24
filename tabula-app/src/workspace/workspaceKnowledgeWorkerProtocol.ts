@@ -2,6 +2,7 @@ import type {
   OkfCompatibilityReport,
   WorkspaceKnowledgeIndex,
   WorkspaceKnowledgeMaintenancePlan,
+  WorkspaceKnowledgePathChange,
   WorkspaceSourceDocument,
 } from "@tabula-md/tabula";
 
@@ -17,8 +18,10 @@ export type WorkspaceKnowledgeSyncRequest = {
 export type WorkspaceKnowledgeMaintenanceRequest = {
   kind: "maintenance";
   requestId: number;
-  previousDocuments: readonly WorkspaceSourceDocument[];
-  nextDocuments: readonly WorkspaceSourceDocument[];
+  reset: boolean;
+  removedDocumentIds: readonly string[];
+  upsertedDocuments: readonly WorkspaceSourceDocument[];
+  pathChanges: readonly WorkspaceKnowledgePathChange[];
 };
 
 export type WorkspaceKnowledgeWorkerRequest =
