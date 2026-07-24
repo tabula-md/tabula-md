@@ -1527,7 +1527,11 @@ export async function run(ctx) {
         "",
         "Continue in [[Guide.md#Guide|Wiki guide]].",
         "",
-        "Embed ![[Guide.md|Embedded guide]].",
+        "![[Guide.md]]",
+        "",
+        "![[Guide.md#Details]]",
+        "",
+        "![[Missing Embed]]",
         "",
         "Broken [[Missing Wiki]].",
         "",
@@ -1542,7 +1546,25 @@ export async function run(ctx) {
     });
     await openMarkdownFile(page, {
       name: "Guide.md",
-      content: "# Guide\n\nLinked from Start.",
+      content: [
+        "# Guide",
+        "",
+        "Linked from Start.",
+        "",
+        "## Details",
+        "",
+        "Section-only content.",
+        "",
+        "### Nested detail",
+        "",
+        "Nested section content.",
+        "",
+        "## Other",
+        "",
+        "Excluded from the section embed.",
+        "",
+        "![[Start.md]]",
+      ].join("\n"),
     });
     await page.locator('.tab-item[data-file-name="Start.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "Start.md" });
@@ -1574,10 +1596,40 @@ export async function run(ctx) {
       wikiGuideLinkCount === 1,
       `Preview should render resolved wiki-link aliases as links. Found: ${JSON.stringify(previewLinkDiagnostics)}`,
     );
+    const wholeDocumentEmbed = page.locator(
+      '.preview-workspace-embed[data-workspace-embed-target="Guide.md"]',
+    );
+    const sectionEmbed = page.locator(
+      '.preview-workspace-embed[data-workspace-embed-target="Guide.md#Details"]',
+    );
     expect(
-      (await page.getByRole("link", { name: "Embedded guide", exact: true })
-        .getAttribute("data-workspace-link-relation")) === "embed",
-      "Preview should preserve wiki embed relationships as navigable references.",
+      (await wholeDocumentEmbed.getAttribute("data-workspace-embed-status")) === "resolved",
+      "Preview should transclude a resolved whole-document wiki embed.",
+    );
+    expect(
+      (await wholeDocumentEmbed.locator(".preview-workspace-embed-body")
+        .getByText("Excluded from the section embed.", { exact: true }).count()) === 1,
+      "Whole-document embeds should render the complete source body.",
+    );
+    expect(
+      (await sectionEmbed.locator(".preview-workspace-embed-body")
+        .getByText("Section-only content.", { exact: true }).count()) === 1 &&
+      (await sectionEmbed.locator(".preview-workspace-embed-body")
+        .getByText("Nested section content.", { exact: true }).count()) === 1 &&
+      (await sectionEmbed.locator(".preview-workspace-embed-body")
+        .getByText("Excluded from the section embed.", { exact: true }).count()) === 0,
+      "Heading embeds should include nested headings and stop at the next peer heading.",
+    );
+    expect(
+      (await wholeDocumentEmbed.locator('[data-workspace-embed-status="cycle"]').count()) === 1,
+      "Nested embeds should stop when they would re-enter an ancestor document.",
+    );
+    expect(
+      (await page.locator(
+        '.preview-workspace-embed[data-workspace-embed-target="Missing Embed"]' +
+        '[data-workspace-embed-status="broken"]',
+      ).count()) === 1,
+      "Preview should expose unresolved embeds as broken instead of rendering stale content.",
     );
     expect(
       (await page.locator('[data-workspace-link-status="broken"][data-workspace-link-syntax="wikilink"]')

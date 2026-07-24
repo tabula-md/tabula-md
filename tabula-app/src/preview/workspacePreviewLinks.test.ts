@@ -17,6 +17,7 @@ const index = createWorkspaceKnowledgeIndex([
       "[External](https://example.com)",
       "[Email](mailto:hello@example.com)",
       "[[middle#Decision|Wiki middle]]",
+      "![[middle#Decision]]",
       "[[Missing Wiki]]",
       "[[Shared]]",
     ].join("\n\n"),
@@ -95,6 +96,23 @@ describe("workspace preview links", () => {
       relation: "link",
       syntax: "wikilink",
       targetPath: "graph/Shared",
+    });
+  });
+
+  it("distinguishes an embed from a link with the same wiki target", () => {
+    expect(
+      resolveMarkdownPreviewWorkspaceLink(
+        index,
+        "start",
+        "middle#Decision",
+        "wikilink",
+        "embed",
+      ),
+    ).toMatchObject({
+      status: "resolved",
+      relation: "embed",
+      targetDocumentId: "middle",
+      fragment: "decision",
     });
   });
 

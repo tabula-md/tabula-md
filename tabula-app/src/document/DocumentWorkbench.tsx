@@ -128,6 +128,7 @@ export type DocumentWorkbenchProps = {
   onToggleSyncScrolling: () => void;
   onToggleViewOptions: () => void;
   onUndo: () => void;
+  resolveWorkspaceDocument?: MarkdownPreviewProps["resolveWorkspaceDocument"];
   resolveWorkspaceLink?: MarkdownPreviewProps["resolveWorkspaceLink"];
 };
 
@@ -229,6 +230,7 @@ export function DocumentWorkbench({
   onToggleSyncScrolling,
   onToggleViewOptions,
   onUndo,
+  resolveWorkspaceDocument,
   resolveWorkspaceLink,
 }: DocumentWorkbenchProps) {
   const copy = getWorkspaceSurfaceCopy(language);
@@ -338,6 +340,7 @@ export function DocumentWorkbench({
         onSplitDividerPointerMove={onSplitDividerPointerMove}
         onSplitDividerPointerUp={onSplitDividerPointerUp}
         onTextChange={onTextChange}
+        resolveWorkspaceDocument={resolveWorkspaceDocument}
         resolveWorkspaceLink={resolveWorkspaceLink}
       />
 

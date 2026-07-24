@@ -314,12 +314,6 @@
   text-underline-offset: 3px;
 }
 
-.preview-surface a.preview-wikilink.embed {
-  border-radius: 4px;
-  background: var(--surface-hover);
-  padding: 1px 4px;
-}
-
 .preview-workspace-link {
   color: var(--text-muted);
   text-decoration-line: underline;
@@ -334,6 +328,87 @@
 
 .preview-workspace-link.ambiguous {
   text-decoration-color: var(--accent);
+}
+
+.preview-workspace-embed {
+  margin: 1.5rem 0;
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--line-strong);
+  background: transparent;
+}
+
+.preview-workspace-embed-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+  line-height: 1.4;
+}
+
+.preview-workspace-embed-header button {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-workspace-embed-header button:hover {
+  color: var(--text-link-hover);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.preview-workspace-embed-header button:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.preview-workspace-embed-body {
+  min-width: 0;
+}
+
+.preview-workspace-embed-body > :first-child {
+  margin-top: 0;
+}
+
+.preview-workspace-embed-body > :last-child {
+  margin-bottom: 0;
+}
+
+.preview-workspace-embed.status {
+  padding: 2px 0 2px var(--space-3);
+  border-left-width: 2px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: var(--font-ui-secondary);
+  line-height: 1.45;
+}
+
+.preview-workspace-embed.status.broken,
+.preview-workspace-embed.status.cycle,
+.preview-workspace-embed.status.depth-limit {
+  border-left-color: color-mix(in srgb, var(--danger-text) 65%, var(--line-strong));
+  color: var(--danger-text);
+}
+
+.preview-workspace-embed.status.ambiguous {
+  border-left-color: color-mix(in srgb, var(--accent) 65%, var(--line-strong));
+}
+
+.preview-workspace-embed-body .preview-workspace-embed {
+  margin: 1rem 0;
+  border-left-color: var(--line-subtle);
 }
 
 .preview-surface mark {
