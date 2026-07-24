@@ -61,6 +61,7 @@ type RightPanelFilesProps = {
   copy: RightPanelFilesCopy;
   compatibilityCopy: KnowledgeCompatibilityCopy;
   compatibilityReport?: OkfCompatibilityReport;
+  onSetActiveFileOkfType: (conceptType: string) => boolean;
   onNewFile: (parentId?: string) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -89,6 +90,7 @@ export function RightPanelFiles({
   copy,
   compatibilityCopy,
   compatibilityReport,
+  onSetActiveFileOkfType,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -756,10 +758,9 @@ export function RightPanelFiles({
           copy={compatibilityCopy}
           documentCount={files.length}
           report={compatibilityReport}
-          onSelectFile={(fileId) => {
-            setCompatibilityOpen(false);
-            onSelectFile(fileId);
-          }}
+          activeFileId={activeFileId}
+          onSelectFile={onSelectFile}
+          onSetActiveFileOkfType={onSetActiveFileOkfType}
         />
       )}
       {visibleRows.length > 0 ? (

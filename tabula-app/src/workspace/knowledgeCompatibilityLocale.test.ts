@@ -32,6 +32,9 @@ describe("knowledge compatibility copy", () => {
       expect(copy.compatible("0.1")).toContain("0.1");
       expect(copy.requiredChanges(1)).toContain("1");
       expect(copy.portabilityWarnings(2)).toContain("2");
+      expect(copy.conceptTypeLabel.trim()).not.toBe("");
+      expect(copy.addFrontmatterAndType.trim()).not.toBe("");
+      expect(copy.setConceptType.trim()).not.toBe("");
 
       for (const code of issueCodes) {
         const issue: OkfCompatibilityIssue = {
