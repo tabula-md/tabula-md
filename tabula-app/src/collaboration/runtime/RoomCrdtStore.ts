@@ -1,14 +1,17 @@
 import * as Y from "yjs";
 import {
   addWorkspaceRoomCommentReply,
+  applyWorkspaceRoomKnowledgeMaintenancePlan,
   applyTextPatches as applyTextPatchesToString,
   createWorkspaceRoomDocument,
   createWorkspaceRoomFolder,
   deleteWorkspaceRoomComment,
   deleteWorkspaceRoomNode,
   getWorkspaceRoomDocument,
+  getWorkspaceRoomKnowledgeSnapshot,
   getWorkspaceRoomSnapshot,
   moveWorkspaceRoomNode,
+  planWorkspaceRoomKnowledgeMaintenance,
   renameWorkspaceRoomNode,
   setWorkspaceRoomComment,
   setWorkspaceRoomCommentResolved,
@@ -18,6 +21,7 @@ import {
   WORKSPACE_ROOM_MAX_FOLDERS,
   WORKSPACE_ROOM_ROOT_ID,
   type TextPatch,
+  type WorkspaceKnowledgeMaintenancePlan,
   type WorkspaceRoomComment,
   type WorkspaceRoomCommentReply,
   type WorkspaceRoomCrdt,
@@ -68,6 +72,60 @@ export const createRoomCrdtStore = ({
     return type === "document"
       ? count < WORKSPACE_ROOM_MAX_DOCUMENTS
       : count < WORKSPACE_ROOM_MAX_FOLDERS;
+  };
+
+  const restoreNodeFields = (
+    node: Y.Map<unknown>,
+    previousFields: ReadonlyMap<string, unknown>,
+  ) => {
+    for (const key of node.keys()) {
+      if (!previousFields.has(key)) node.delete(key);
+    }
+    for (const [key, value] of previousFields) node.set(key, value);
+  };
+
+  const applyKnowledgePathMutation = (
+    nodeId: string,
+    mutate: (updatedAt: string, updatedBy?: RoomActorAttribution) => boolean,
+  ) => {
+    const node = room.nodes.get(nodeId);
+    if (!node) return false;
+    const previousFields = new Map(node.entries());
+    const previousSnapshot = getWorkspaceRoomKnowledgeSnapshot(room);
+    const updatedAt = new Date().toISOString();
+    const updatedBy = getAttribution();
+    let applied = false;
+    room.doc.transact(() => {
+      if (!mutate(updatedAt, updatedBy)) return;
+      let plan: WorkspaceKnowledgeMaintenancePlan;
+      try {
+        plan = planWorkspaceRoomKnowledgeMaintenance(
+          previousSnapshot,
+          getWorkspaceRoomKnowledgeSnapshot(room),
+        );
+      } catch {
+        applied = true;
+        return;
+      }
+      const byteDelta = plan.updates.reduce((total, update) => {
+        const previousByteLength =
+          getDocumentByteLength(update.documentId) ??
+          utf8Encoder.encode(previousSnapshot.documents[update.documentId] ?? "").byteLength;
+        return total + utf8Encoder.encode(update.markdown).byteLength - previousByteLength;
+      }, 0);
+      if (byteDelta > 0 && !canApplyTextByteDelta(byteDelta)) {
+        restoreNodeFields(node, previousFields);
+        return;
+      }
+      applied = applyWorkspaceRoomKnowledgeMaintenancePlan(
+        room,
+        plan,
+        updatedBy,
+        updatedAt,
+      );
+      if (!applied) restoreNodeFields(node, previousFields);
+    }, "tabula.knowledge.refactor");
+    return applied;
   };
 
   const replaceDocumentText = (documentId: string, nextText: string) => {
@@ -136,9 +194,17 @@ export const createRoomCrdtStore = ({
       });
     },
     renameNode: (nodeId: string, title: string) =>
-      renameWorkspaceRoomNode(room, nodeId, title, undefined, getAttribution()),
+      applyKnowledgePathMutation(
+        nodeId,
+        (updatedAt, updatedBy) =>
+          renameWorkspaceRoomNode(room, nodeId, title, updatedAt, updatedBy),
+      ),
     moveNode: (nodeId: string, parentId: string) =>
-      moveWorkspaceRoomNode(room, nodeId, parentId, undefined, getAttribution()),
+      applyKnowledgePathMutation(
+        nodeId,
+        (updatedAt, updatedBy) =>
+          moveWorkspaceRoomNode(room, nodeId, parentId, updatedAt, updatedBy),
+      ),
     setNodeOrder: (nodeId: string, order: number) =>
       setWorkspaceRoomNodeOrder(room, nodeId, order, undefined, getAttribution()),
     deleteNode(nodeId: string) {

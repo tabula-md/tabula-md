@@ -34,6 +34,7 @@ export type DocumentLinkAnalysis = {
   relation: DocumentLinkRelation;
   label: string;
   target: string;
+  referenceIdentifier?: string;
   from: number;
   to: number;
 };
@@ -238,6 +239,9 @@ export const analyzeWorkspaceDocument = (document: WorkspaceSourceDocument): Doc
         relation: "link",
         label: getNodeText(node).trim(),
         target,
+        ...(node.type === "linkReference" && node.identifier
+          ? { referenceIdentifier: normalizeReferenceIdentifier(node.identifier) }
+          : {}),
         ...offsets,
       });
       return;

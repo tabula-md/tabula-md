@@ -232,6 +232,11 @@ describe("headless Room client", () => {
         expectedRevision: staleBrief.revision,
       })).rejects.toThrow("changed before the operation");
 
+      await second.createDocument({
+        documentId: "index",
+        title: "index.md",
+        markdown: "[Brief](brief.md)",
+      });
       const { folderId } = await second.createFolder({ folderId: "research", title: "Research" });
       await second.moveNode({ nodeId: "brief", parentId: folderId });
       await second.renameNode({ nodeId: "brief", title: "review.md" });
@@ -248,6 +253,9 @@ describe("headless Room client", () => {
         kind: "agent",
         client: "tabula-cli",
       });
+      await waitFor(() =>
+        first.getWorkspaceSnapshot().documents.index === "[Brief](Research/review.md)"
+      );
 
       await second.upsertComment({
         id: "comment-1",

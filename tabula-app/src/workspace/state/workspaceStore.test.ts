@@ -195,6 +195,54 @@ describe("workspace store", () => {
     });
   });
 
+  it("maintains internal links across file and folder path changes", () => {
+    const store = useWorkspaceStore.getState();
+    const root = createWorkspaceRootFolder();
+    const docs = { id: "docs", title: "docs", parentId: root.id };
+    const guide = { id: "guide-folder", title: "guide", parentId: root.id };
+    const start = createTestFile(1, {
+      id: "start",
+      title: "Start.md",
+      parentId: docs.id,
+      text: "[Guide](../guide/Guide.md)",
+    });
+    const guideFile = createTestFile(2, {
+      id: "guide",
+      title: "Guide.md",
+      parentId: guide.id,
+      text: "[Start](../docs/Start.md)",
+    });
+    store.replaceWorkspace({
+      files: [start, guideFile],
+      folders: [root, docs, guide],
+      openFileIds: [start.id],
+      activeFileId: start.id,
+    });
+
+    expect(useWorkspaceStore.getState().renameFolder(guide.id, "handbook")).toBe(true);
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === start.id)?.text)
+      .toBe("[Guide](../handbook/Guide.md)");
+
+    expect(useWorkspaceStore.getState().moveFileToFolder(start.id, root.id)).toBe(true);
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === start.id)?.text)
+      .toBe("[Guide](handbook/Guide.md)");
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === guideFile.id)?.text)
+      .toBe("[Start](../Start.md)");
+
+    expect(useWorkspaceStore.getState().renameFile(guideFile.id, "Reference.md")).toMatchObject({
+      ok: true,
+      title: "Reference.md",
+    });
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === start.id)?.text)
+      .toBe("[Guide](handbook/Reference.md)");
+
+    expect(useWorkspaceStore.getState().moveFolder(guide.id, docs.id)).toBe(true);
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === start.id)?.text)
+      .toBe("[Guide](docs/handbook/Reference.md)");
+    expect(useWorkspaceStore.getState().files.find((file) => file.id === guideFile.id)?.text)
+      .toBe("[Start](../../Start.md)");
+  });
+
   it("duplicates document content and local display preferences", () => {
     const { draft } = initializeWorkspaceStore();
 

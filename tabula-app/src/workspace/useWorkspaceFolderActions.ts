@@ -20,6 +20,7 @@ type UseWorkspaceFolderActionsOptions = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   historyByFileId: Record<string, FileHistory>;
+  onBeforeWorkspaceBoundary?: () => void;
   addFolder: (title?: string, parentId?: string) => WorkspaceFolder | undefined;
   deleteFolder: (folderId: string) => DeletedWorkspaceFolderBundle | undefined;
   deleteCommentsForFiles: (fileIds: Set<string>) => Record<string, FileComment[]>;
@@ -46,6 +47,7 @@ export function useWorkspaceFolderActions({
   files,
   folders,
   historyByFileId,
+  onBeforeWorkspaceBoundary,
   addFolder,
   deleteFolder,
   deleteCommentsForFiles,
@@ -150,6 +152,7 @@ export function useWorkspaceFolderActions({
   });
 
   const renameWorkspaceFolder = useEventCallback((folderId: string, title: string) => {
+    onBeforeWorkspaceBoundary?.();
     const folder = folders.find((candidate) => candidate.id === folderId);
     if (!folder || !renameFolder(folderId, title)) return false;
     const currentFolder = readFolder(folderId);
@@ -161,6 +164,7 @@ export function useWorkspaceFolderActions({
   });
 
   const moveWorkspaceFile = useEventCallback((fileId: string, folderId: string) => {
+    onBeforeWorkspaceBoundary?.();
     const file = files.find((candidate) => candidate.id === fileId);
     const previousParentId = file?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     if (!moveFile(fileId, folderId)) return;
@@ -171,6 +175,7 @@ export function useWorkspaceFolderActions({
   });
 
   const moveWorkspaceFolder = useEventCallback((folderId: string, parentId: string) => {
+    onBeforeWorkspaceBoundary?.();
     const folder = folders.find((candidate) => candidate.id === folderId);
     const previousParentId = folder?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     if (!moveFolder(folderId, parentId)) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createWorkspaceFile, createWorkspaceRootFolder } from "./workspaceStorage";
 import {
   getWorkspaceKnowledgeDocuments,
+  maintainWorkspaceKnowledgePaths,
   reconcileWorkspaceKnowledgeIndex,
 } from "./workspaceKnowledgeModel";
 
@@ -59,5 +60,45 @@ describe("workspace knowledge model", () => {
     ]);
     expect(pathsSwapped.documentsById.get("a")?.path).toBe("B.md");
     expect(pathsSwapped.documentsById.get("b")?.path).toBe("A.md");
+  });
+
+  it("applies maintained Markdown to the next workspace structure", () => {
+    const root = createWorkspaceRootFolder();
+    const previous = {
+      folders: [
+        root,
+        { id: "docs", title: "docs", parentId: root.id },
+        { id: "guide", title: "guide", parentId: root.id },
+      ],
+      files: [
+        createWorkspaceFile(1, {
+          id: "start",
+          title: "Start.md",
+          parentId: "docs",
+          text: "[Guide](../guide/Guide.md)",
+        }),
+        createWorkspaceFile(2, {
+          id: "guide-file",
+          title: "Guide.md",
+          parentId: "guide",
+          text: "# Guide",
+        }),
+      ],
+    };
+    const next = {
+      ...previous,
+      folders: previous.folders.map((folder) =>
+        folder.id === "guide" ? { ...folder, title: "handbook" } : folder
+      ),
+    };
+
+    const maintained = maintainWorkspaceKnowledgePaths(previous, next);
+
+    expect(maintained.plan).toMatchObject({
+      updatedDocumentCount: 1,
+      updatedLinkCount: 1,
+    });
+    expect(maintained.state.files.find((file) => file.id === "start")?.text)
+      .toBe("[Guide](../handbook/Guide.md)");
   });
 });
