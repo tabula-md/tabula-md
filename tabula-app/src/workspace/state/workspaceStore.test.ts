@@ -243,6 +243,36 @@ describe("workspace store", () => {
       .toBe("[Start](../../Start.md)");
   });
 
+  it("renames the virtual workspace root without changing document paths", () => {
+    initializeWorkspaceStore();
+    const root = createWorkspaceRootFolder();
+    const docs = { id: "docs", title: "docs", parentId: root.id };
+    useWorkspaceStore.getState().replaceWorkspace({
+      folders: [root, docs],
+      files: [
+        createTestFile(1, {
+          id: "index",
+          title: "index.md",
+          text: "[Guide](docs/guide.md)",
+          parentId: root.id,
+        }),
+        createTestFile(2, {
+          id: "guide",
+          title: "guide.md",
+          text: "# Guide",
+          parentId: docs.id,
+        }),
+      ],
+      openFileIds: ["index"],
+      activeFileId: "index",
+    });
+
+    expect(useWorkspaceStore.getState().renameWorkspace("company-wiki")).toBe(true);
+    expect(useWorkspaceStore.getState().folders[0]?.title).toBe("company-wiki");
+    expect(useWorkspaceStore.getState().files[0]?.text).toBe("[Guide](docs/guide.md)");
+    expect(useWorkspaceStore.getState().renameWorkspace("invalid/name")).toBe(false);
+  });
+
   it("duplicates document content and local display preferences", () => {
     const { draft } = initializeWorkspaceStore();
 

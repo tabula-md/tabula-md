@@ -5,6 +5,7 @@ import {
 
 export type InitialWorkspaceRoomBootstrapInput = {
   roomId: string;
+  workspaceName?: string;
   documents: readonly {
     id: string;
     title: string;
@@ -24,6 +25,7 @@ export type InitialWorkspaceRoomBootstrapInput = {
 export const createInitialWorkspaceRoomBootstrap = (
   {
     roomId,
+    workspaceName,
     documents,
     folders,
     commentsByFileId = {},
@@ -31,6 +33,7 @@ export const createInitialWorkspaceRoomBootstrap = (
 ) => {
   const { update } = createWorkspaceRoomBootstrap({
     roomId,
+    workspaceName,
     documents: documents.map((document) => ({
       ...document,
       markdown: document.text,
