@@ -4,6 +4,10 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import remarkSupersub from "remark-supersub";
 import type { Options as ReactMarkdownOptions } from "react-markdown";
+import {
+  scanMarkdownWikiLinks,
+  type MarkdownWikiLinkToken,
+} from "@tabula-md/tabula";
 
 type MarkdownAstPosition = {
   start?: { offset?: number };
@@ -13,6 +17,7 @@ type MarkdownAstPosition = {
 type MarkdownAstNode = {
   type?: string;
   value?: string;
+  url?: string;
   data?: Record<string, unknown>;
   position?: MarkdownAstPosition;
   children?: MarkdownAstNode[];
@@ -20,6 +25,16 @@ type MarkdownAstNode = {
 
 const MARK_INLINE_PATTERN = "==";
 const markdownMarkIgnoredNodeTypes = new Set(["code", "html", "inlineCode", "yaml"]);
+const markdownWikiLinkIgnoredNodeTypes = new Set([
+  "code",
+  "html",
+  "image",
+  "imageReference",
+  "inlineCode",
+  "link",
+  "linkReference",
+  "yaml",
+]);
 
 const createPositionFromOffsets = (
   sourcePosition: MarkdownAstPosition | undefined,
@@ -103,11 +118,103 @@ const createRemarkMarkPlugin = () => (tree: MarkdownAstNode) => {
   walk(tree);
 };
 
+type MappedWikiLinkToken = MarkdownWikiLinkToken & {
+  valueFrom: number;
+  valueTo: number;
+};
+
+const mapWikiLinkTokensToRenderedText = (
+  source: string,
+  value: string,
+): MappedWikiLinkToken[] => {
+  const mapped: MappedWikiLinkToken[] = [];
+  let valueCursor = 0;
+  for (const token of scanMarkdownWikiLinks(source)) {
+    const markup = source.slice(token.from, token.to);
+    const valueFrom = value.indexOf(markup, valueCursor);
+    if (valueFrom === -1) continue;
+    const valueTo = valueFrom + markup.length;
+    mapped.push({ ...token, valueFrom, valueTo });
+    valueCursor = valueTo;
+  }
+  return mapped;
+};
+
+const splitWikiLinkTextNode = (
+  node: MarkdownAstNode,
+  markdown: string,
+): MarkdownAstNode[] | null => {
+  const value = node.value ?? "";
+  const sourceStart = node.position?.start?.offset;
+  const sourceEnd = node.position?.end?.offset;
+  const source =
+    typeof sourceStart === "number" && typeof sourceEnd === "number"
+      ? markdown.slice(sourceStart, sourceEnd)
+      : value;
+  const tokens = mapWikiLinkTokensToRenderedText(source, value);
+  if (tokens.length === 0) return null;
+
+  const nextNodes: MarkdownAstNode[] = [];
+  let valueCursor = 0;
+  for (const token of tokens) {
+    if (token.valueFrom > valueCursor) {
+      nextNodes.push({
+        type: "text",
+        value: value.slice(valueCursor, token.valueFrom),
+      });
+    }
+    nextNodes.push({
+      type: "link",
+      url: token.target,
+      data: {
+        hProperties: {
+          "data-wikilink-relation": token.relation,
+          "data-wikilink-target": token.target,
+        },
+      },
+      position: createPositionFromOffsets(node.position, token.from, token.to),
+      children: [{ type: "text", value: token.label }],
+    });
+    valueCursor = token.valueTo;
+  }
+  if (valueCursor < value.length) {
+    nextNodes.push({ type: "text", value: value.slice(valueCursor) });
+  }
+  return nextNodes;
+};
+
+export const transformMarkdownWikiLinks = (
+  tree: MarkdownAstNode,
+  markdown: string,
+) => {
+  const walk = (node: MarkdownAstNode) => {
+    if (!node.children || markdownWikiLinkIgnoredNodeTypes.has(node.type ?? "")) return;
+    for (let index = node.children.length - 1; index >= 0; index -= 1) {
+      const child = node.children[index];
+      if (child.type === "text") {
+        const replacementNodes = splitWikiLinkTextNode(child, markdown);
+        if (replacementNodes) node.children.splice(index, 1, ...replacementNodes);
+      } else {
+        walk(child);
+      }
+    }
+  };
+  walk(tree);
+};
+
+const createRemarkWikiLinkPlugin = () => (
+  tree: MarkdownAstNode,
+  file: { value?: unknown },
+) => {
+  transformMarkdownWikiLinks(tree, typeof file.value === "string" ? file.value : "");
+};
+
 export const MARKDOWN_REMARK_PLUGINS: NonNullable<ReactMarkdownOptions["remarkPlugins"]> = [
   remarkMath,
   remarkSupersub,
   [remarkGfm, { singleTilde: false }],
   remarkDeflist,
   createRemarkMarkPlugin,
+  createRemarkWikiLinkPlugin,
   remarkBreaks,
 ];
