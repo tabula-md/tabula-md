@@ -5,6 +5,12 @@ export type ParsedFrontmatter = {
   body: string;
 };
 
+export type ParsedFrontmatterData = {
+  metadata: Record<string, unknown>;
+  body: string;
+  bodyOffset: number;
+};
+
 export type PreviewBody = {
   body: string;
   sourceLineOffset: number;
@@ -70,6 +76,7 @@ const getFrontmatterBlock = (markdown: string) => {
       return {
         rawFrontmatter: markdown.slice(rawStart, cursor).replace(/\r?\n$/, ""),
         body: markdown.slice(bodyStart),
+        bodyOffset: bodyStart,
       };
     }
 
@@ -84,35 +91,49 @@ const getFrontmatterBlock = (markdown: string) => {
 
 export const getPreviewBody = (body: string): PreviewBody => ({ body, sourceLineOffset: 0 });
 
-export const parseFrontmatter = (markdown: string): ParsedFrontmatter => {
+export const parseFrontmatterData = (markdown: string): ParsedFrontmatterData => {
   const frontmatterBlock = getFrontmatterBlock(markdown);
   if (!frontmatterBlock) {
-    return { attributes: [], body: markdown };
+    return { metadata: {}, body: markdown, bodyOffset: 0 };
   }
 
   const document = parseDocument(frontmatterBlock.rawFrontmatter, { prettyErrors: false });
   if (document.errors.length > 0 || !isMap(document.contents)) {
-    return { attributes: [], body: markdown };
+    return { metadata: {}, body: markdown, bodyOffset: 0 };
   }
 
-  const attributes: ParsedFrontmatter["attributes"] = [];
+  const entries: [string, unknown][] = [];
   for (const item of document.contents.items) {
     if (!isScalar(item.key)) {
-      return { attributes: [], body: markdown };
+      return { metadata: {}, body: markdown, bodyOffset: 0 };
     }
 
     const key = formatYamlMetadataValue(item.key.value).trim();
     if (!key) {
-      return { attributes: [], body: markdown };
+      return { metadata: {}, body: markdown, bodyOffset: 0 };
     }
 
-    attributes.push({
-      key,
-      value: formatYamlMetadataValue(item.value?.toJSON()),
-    });
+    entries.push([key, item.value?.toJSON() ?? null]);
   }
 
-  return attributes.length > 0 ? { attributes, body: frontmatterBlock.body } : { attributes: [], body: markdown };
+  return entries.length > 0
+    ? {
+        metadata: Object.fromEntries(entries),
+        body: frontmatterBlock.body,
+        bodyOffset: frontmatterBlock.bodyOffset,
+      }
+    : { metadata: {}, body: markdown, bodyOffset: 0 };
+};
+
+export const parseFrontmatter = (markdown: string): ParsedFrontmatter => {
+  const parsed = parseFrontmatterData(markdown);
+  return {
+    attributes: Object.entries(parsed.metadata).map(([key, value]) => ({
+      key,
+      value: formatYamlMetadataValue(value),
+    })),
+    body: parsed.body,
+  };
 };
 
 export const getMarkdownDocumentTitle = (markdown: string) => {
