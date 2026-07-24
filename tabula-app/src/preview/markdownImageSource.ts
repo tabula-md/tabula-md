@@ -1,5 +1,7 @@
 export type MarkdownImageSource =
   | { kind: "embedded" | "remote"; src: string }
+  | { kind: "local" }
+  | { kind: "placeholder" }
   | { kind: "unsupported" };
 
 const supportedEmbeddedImagePattern =
@@ -10,6 +12,7 @@ export const classifyMarkdownImageSource = (
 ): MarkdownImageSource => {
   const src = value?.trim();
   if (!src) return { kind: "unsupported" };
+  if (src === "image-url") return { kind: "placeholder" };
   if (supportedEmbeddedImagePattern.test(src)) {
     return { kind: "embedded", src };
   }
@@ -19,6 +22,6 @@ export const classifyMarkdownImageSource = (
       ? { kind: "remote", src: url.href }
       : { kind: "unsupported" };
   } catch {
-    return { kind: "unsupported" };
+    return { kind: "local" };
   }
 };

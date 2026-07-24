@@ -182,7 +182,7 @@
 .formatting-toolbar {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
   max-width: 100%;
   height: var(--document-control-height);
   padding: 3px;
@@ -205,6 +205,19 @@
   flex: 0 0 auto;
 }
 
+.formatting-group-divider {
+  flex: 0 0 0.5px;
+  width: 0.5px;
+  height: 12px;
+  margin: 0 5px;
+  background: var(--line-subtle);
+  opacity: 0.55;
+}
+
+.formatting-cleanup-group {
+  margin-left: var(--space-1);
+}
+
 .formatting-button {
   flex: 0 0 auto;
 }
@@ -216,6 +229,11 @@
 
 .formatting-menu-button {
   position: relative;
+}
+
+.formatting-button[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .formatting-overflow-menu {

@@ -4,7 +4,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { BetweenVerticalStart, List, MoreHorizontal, Pilcrow } from "lucide-react";
+import { Blocks, List, MoreHorizontal, Pilcrow, Plus } from "lucide-react";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
 import {
   formattingToolbarGroupOrder,
@@ -33,7 +33,7 @@ type FormattingToolbarProps = {
   onUndo: () => void;
 };
 
-type FormattingMenuId = "block" | "list" | "insert" | "overflow";
+type FormattingMenuId = "block" | "list" | "insert" | "component" | "overflow";
 
 type GroupedFormattingCommands = {
   group: FormattingToolbarCommand["group"];
@@ -53,7 +53,7 @@ const groupFormattingCommands = (
     .filter(({ commands }) => commands.length > 0);
 
 const getToolbarDensity = (width: number): FormattingToolbarDensity => {
-  if (width >= 520) return "wide";
+  if (width >= 860) return "wide";
   if (width >= 420) return "medium";
   return "compact";
 };
@@ -81,7 +81,7 @@ const renderPrimaryCommand = (
   const Icon = command.icon;
   const disabled = isCommandDisabled(command, actions);
   const active = activeFormats.has(command.id);
-  const isFormattingCommand = command.group !== "history";
+  const isFormattingCommand = command.group !== "history" && command.group !== "cleanup";
 
   return (
     <button
@@ -132,6 +132,8 @@ export function FormattingToolbar({
       block: rawLayout.block.map(localize),
       list: rawLayout.list.map(localize),
       insert: rawLayout.insert.map(localize),
+      component: rawLayout.component.map(localize),
+      cleanup: rawLayout.cleanup.map(localize),
       overflow: rawLayout.overflow.map(localize),
     };
   }, [density, language]);
@@ -149,8 +151,13 @@ export function FormattingToolbar({
       },
       insert: {
         commands: layout.insert,
-        icon: BetweenVerticalStart,
+        icon: Plus,
         label: copy.insertContent,
+      },
+      component: {
+        commands: layout.component,
+        icon: Blocks,
+        label: copy.components,
       },
       overflow: {
         commands: layout.overflow,
@@ -160,10 +167,12 @@ export function FormattingToolbar({
     }),
     [
       copy.blockType,
+      copy.components,
       copy.insertContent,
       copy.listType,
       copy.moreFormatting,
       layout.block,
+      layout.component,
       layout.insert,
       layout.list,
       layout.overflow,
@@ -193,7 +202,7 @@ export function FormattingToolbar({
     const menu = menus[menuId];
     const menuOpen = openMenu === menuId;
     const activeCommand = menu.commands.find((command) => activeFormatSet.has(command.id));
-    const Icon = activeCommand?.icon ?? menu.icon;
+    const Icon = menuId === "overflow" ? menu.icon : activeCommand?.icon ?? menu.icon;
     const hasActiveCommand = Boolean(activeCommand);
     const groupedCommands = groupFormattingCommands(menu.commands);
 
@@ -259,19 +268,38 @@ export function FormattingToolbar({
         <div className="formatting-command-group">
           {layout.history.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
         </div>
+        <span className="formatting-group-divider" aria-hidden="true" />
         <div className="formatting-command-group">
-          {renderMenu("block")}
+          {density === "wide"
+            ? layout.block.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
+            : renderMenu("block")}
         </div>
+        <span className="formatting-group-divider" aria-hidden="true" />
         <div className="formatting-command-group">
           {layout.inline.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
         </div>
+        <span className="formatting-group-divider" aria-hidden="true" />
         <div className="formatting-command-group">
           {density === "wide"
             ? layout.list.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
             : renderMenu("list")}
         </div>
+        <span className="formatting-group-divider" aria-hidden="true" />
         <div className="formatting-command-group formatting-secondary-group">
-          {layout.insert.length > 0 && renderMenu("insert")}
+          {density === "wide"
+            ? layout.insert.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
+            : layout.insert.length > 0 && renderMenu("insert")}
+          {density !== "compact" && layout.insert.length > 0 && layout.component.length > 0 && (
+            <span className="formatting-group-divider" aria-hidden="true" />
+          )}
+          {density === "wide"
+            ? layout.component.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))
+            : layout.component.length > 0 && renderMenu("component")}
+          {layout.cleanup.length > 0 && (
+            <div className="formatting-command-group formatting-cleanup-group">
+              {layout.cleanup.map((command) => renderPrimaryCommand(command, actions, activeFormatSet))}
+            </div>
+          )}
           {layout.overflow.length > 0 && renderMenu("overflow")}
         </div>
       </nav>

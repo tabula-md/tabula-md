@@ -30,17 +30,6 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "New document", exact: true }).click();
   };
 
-  const applyFormattingMenuCommand = async (page, menuName, commandName) => {
-    const directCommand = page.getByRole("button", { name: commandName, exact: true });
-    if (await directCommand.count()) {
-      await directCommand.click();
-      return;
-    }
-
-    await page.getByRole("button", { name: menuName, exact: true }).click();
-    await page.getByRole("menuitemcheckbox", { name: commandName, exact: true }).click();
-  };
-
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
@@ -520,7 +509,7 @@ export async function run(ctx) {
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("const value = 1;");
     await page.keyboard.press("ControlOrMeta+A");
-    await applyFormattingMenuCommand(page, "Block type", "Code block");
+    await page.getByRole("button", { name: "Code block", exact: true }).click();
     await waitForRenderFrame(page);
     const codeBlockFormatting = await page.evaluate(() => {
       const editorText = Array.from(document.querySelectorAll(".cm-line"))
@@ -533,6 +522,26 @@ export async function run(ctx) {
           '.formatting-toolbar [data-format-command]:not([data-format-command="undo"]):not([data-format-command="redo"]):not([data-format-command="more-formatting"])',
         ).length,
         hasOverflowTrigger: Boolean(document.querySelector('.formatting-toolbar [data-format-command="more-formatting"]')),
+        groupDividerCount: document.querySelectorAll(".formatting-group-divider").length,
+        groupDividerStyle: (() => {
+          const divider = document.querySelector(".formatting-group-divider");
+          if (!(divider instanceof HTMLElement)) return null;
+          const style = window.getComputedStyle(divider);
+          return {
+            height: style.height,
+            opacity: style.opacity,
+            width: style.width,
+          };
+        })(),
+        lastPrimaryCommand:
+          Array.from(document.querySelectorAll(
+            '.formatting-toolbar [data-format-command]:not([aria-haspopup="menu"])',
+          )).at(-1)?.getAttribute("data-format-command") ?? "",
+        visibleToolbarText: Array.from(document.querySelectorAll(
+          ".formatting-toolbar button, .document-controls button",
+        )).some((button) => (button.textContent ?? "").trim().length > 0),
+        activeViewModeShadow:
+          window.getComputedStyle(document.querySelector(".document-view-mode-button.active")).boxShadow,
       };
     });
     expect(
@@ -544,15 +553,40 @@ export async function run(ctx) {
       "Code block formatting should select the language placeholder first.",
     );
     expect(
-      codeBlockFormatting.primaryFormattingCommandCount === 9,
-      "Wide formatting lanes should expose block, inline, list, and insert controls without hiding frequent commands.",
+      codeBlockFormatting.primaryFormattingCommandCount === 25,
+      "Wide formatting lanes should expose every supported Markdown command directly.",
     );
-    expect(codeBlockFormatting.hasOverflowTrigger, "Formatting toolbar should expose overflow commands through the registry trigger.");
+    expect(
+      !codeBlockFormatting.hasOverflowTrigger,
+      "Wide formatting lanes should expose all commands without a redundant More trigger.",
+    );
+    expect(
+      codeBlockFormatting.groupDividerCount === 5,
+      "Wide formatting lanes should separate command families with five quiet dividers.",
+    );
+    expect(
+      codeBlockFormatting.groupDividerStyle?.width === "0.5px" &&
+        codeBlockFormatting.groupDividerStyle.height === "12px" &&
+        codeBlockFormatting.groupDividerStyle.opacity === "0.55",
+      "Formatting group dividers should stay visually quiet.",
+    );
+    expect(
+      codeBlockFormatting.lastPrimaryCommand === "clear-formatting",
+      "Clear formatting should remain visible as the final secondary toolbar action.",
+    );
+    expect(
+      !codeBlockFormatting.visibleToolbarText,
+      "Document toolbar controls should remain icon-only at every width.",
+    );
+    expect(
+      codeBlockFormatting.activeViewModeShadow === "none",
+      "The active view mode should use the quiet surface state without a drop shadow.",
+    );
 
     await createDocument(page);
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
-    await applyFormattingMenuCommand(page, "Block type", "Heading 1");
+    await page.getByRole("button", { name: "Heading 1", exact: true }).click();
     await waitForRenderFrame(page);
     const headingOneFormatting = await page.evaluate(() => ({
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
@@ -562,20 +596,20 @@ export async function run(ctx) {
     expect(headingOneFormatting.selectedText === "Heading", "Heading 1 toolbar button should select the placeholder text.");
     await page.keyboard.insertText("Subhead");
     await page.keyboard.press("ControlOrMeta+A");
-    await applyFormattingMenuCommand(page, "Block type", "Heading 3");
+    await page.getByRole("button", { name: "Heading 3", exact: true }).click();
     await waitForRenderFrame(page);
     const headingThreeFormatting = await page.locator(".cm-content").textContent();
     expect(headingThreeFormatting === "### Subhead", "Heading 3 toolbar button should convert selected heading text.");
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("alpha\nbeta");
     await page.keyboard.press("ControlOrMeta+A");
-    await applyFormattingMenuCommand(page, "List type", "Numbered list");
+    await page.getByRole("button", { name: "Numbered list", exact: true }).click();
     await waitForRenderFrame(page);
     const numberedListFormatting = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
     expect(numberedListFormatting === "1. alpha\n2. beta", "Numbered list toolbar button should number selected lines.");
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("alpha\nbeta");
-    await applyFormattingMenuCommand(page, "Insert", "Horizontal rule");
+    await page.getByRole("button", { name: "Horizontal rule", exact: true }).click();
     await waitForRenderFrame(page);
     const horizontalRuleFormatting = Array.from(await page.locator(".cm-line").allTextContents()).join("\n");
     expect(
@@ -889,6 +923,8 @@ export async function run(ctx) {
         "",
         `![Tiny swatch](${tinyPngDataUrl} "Rendered image")`,
         "",
+        "![Pending image](image-url)",
+        "",
         "![Missing local image](./missing.png)",
         "",
         "> Quoted context",
@@ -914,6 +950,9 @@ export async function run(ctx) {
       const quote = document.querySelector(".preview-surface blockquote");
       const nestedQuote = document.querySelector(".preview-surface blockquote blockquote");
       const tableWrap = document.querySelector(".preview-table-wrap");
+      const table = document.querySelector(".preview-surface table");
+      const tableHeaderCell = document.querySelector(".preview-surface thead th");
+      const tableBodyCell = document.querySelector(".preview-surface tbody td");
       const rightAlignedCell = document.querySelector(".preview-surface tbody tr td:last-child");
       const image = document.querySelector(".preview-image");
       const imageFrame = document.querySelector(".preview-image-frame");
@@ -921,6 +960,9 @@ export async function run(ctx) {
       const quoteStyle = quote instanceof HTMLElement ? window.getComputedStyle(quote) : null;
       const nestedQuoteStyle = nestedQuote instanceof HTMLElement ? window.getComputedStyle(nestedQuote) : null;
       const tableWrapStyle = tableWrap instanceof HTMLElement ? window.getComputedStyle(tableWrap) : null;
+      const tableStyle = table instanceof HTMLElement ? window.getComputedStyle(table) : null;
+      const tableHeaderCellStyle = tableHeaderCell instanceof HTMLElement ? window.getComputedStyle(tableHeaderCell) : null;
+      const tableBodyCellStyle = tableBodyCell instanceof HTMLElement ? window.getComputedStyle(tableBodyCell) : null;
       const rightAlignedStyle = rightAlignedCell instanceof HTMLElement ? window.getComputedStyle(rightAlignedCell) : null;
       const imageStyle = image instanceof HTMLElement ? window.getComputedStyle(image) : null;
       const nestedListStyle = nestedList instanceof HTMLElement ? window.getComputedStyle(nestedList) : null;
@@ -936,9 +978,26 @@ export async function run(ctx) {
         tableWrapRadius: tableWrapStyle?.borderRadius ?? "",
         tableWrapBorderWidth: tableWrapStyle?.borderTopWidth ?? "",
         tableWrapBackground: tableWrapStyle?.backgroundColor ?? "",
+        tableBorderSpacing: tableStyle?.borderSpacing ?? "",
+        tableHeaderCellBackground: tableHeaderCellStyle?.backgroundColor ?? "",
+        tableHeaderCellRadius: tableHeaderCellStyle?.borderRadius ?? "",
+        tableHeaderFontWeight: tableHeaderCellStyle?.fontWeight ?? "",
+        tableHeaderLineHeight: tableHeaderCellStyle?.lineHeight ?? "",
+        tableBodyCellBackground: tableBodyCellStyle?.backgroundColor ?? "",
+        tableBodyCellRadius: tableBodyCellStyle?.borderRadius ?? "",
+        tableBodyLineHeight: tableBodyCellStyle?.lineHeight ?? "",
         rightAlignedTextAlign: rightAlignedStyle?.textAlign ?? "",
         imageFrameCount: document.querySelectorAll(".preview-image-frame").length,
-        unavailableImageText: document.querySelector(".preview-image-unavailable")?.textContent?.trim() ?? "",
+        placeholderImageVisible: (document.querySelector(".preview-surface")?.textContent ?? "").includes("Pending image"),
+        unavailableImageTitle:
+          document.querySelector(".preview-image-unavailable .preview-image-error-title")?.textContent?.trim() ?? "",
+        unavailableImageAlt:
+          document.querySelector(".preview-image-unavailable .preview-image-error-alt")?.textContent?.trim() ?? "",
+        unavailableImageHasIcon: Boolean(document.querySelector(".preview-image-unavailable svg")),
+        unavailableImageBackground:
+          document.querySelector(".preview-image-unavailable") instanceof HTMLElement
+            ? window.getComputedStyle(document.querySelector(".preview-image-unavailable")).backgroundColor
+            : "",
         relativeImageRequestCount: document.querySelectorAll('.preview-image[src*="missing.png"]').length,
         imageLoading: image?.getAttribute("loading") ?? "",
         imageMaxWidth: imageStyle?.maxWidth ?? "",
@@ -956,15 +1015,40 @@ export async function run(ctx) {
     expect(previewGfm.taskCheckboxCount === 2, "Preview checklists should render consistent non-native check indicators.");
     expect(previewGfm.checkedTaskCheckboxCount === 1, "Preview checklists should preserve checked task state.");
     expect(previewGfm.nativeTaskInputCount === 0, "Preview checklists should not expose interactive native checkboxes.");
-    expect(previewGfm.tableWrapRadius !== "0px", "Preview tables should sit in the document surface system.");
+    expect(previewGfm.tableWrapRadius === "0px", "Preview tables should not add an outer card shape.");
     expect(previewGfm.tableWrapBorderWidth === "0px", "Preview tables should not draw an explicit document boundary.");
-    expect(previewGfm.tableWrapBackground === "rgb(255, 255, 255)", "Preview tables should not look like filled gray cards.");
+    expect(previewGfm.tableWrapBackground === "rgba(0, 0, 0, 0)", "Preview table wrappers should stay transparent.");
+    expect(previewGfm.tableBorderSpacing === "4px", "Preview tables should use the spacing scale as their quiet grid.");
+    expect(
+      previewGfm.tableHeaderCellBackground === "rgb(247, 247, 248)" &&
+        previewGfm.tableBodyCellBackground !== previewGfm.tableHeaderCellBackground,
+      "Preview table values should use a quieter surface than the header.",
+    );
+    expect(
+      previewGfm.tableHeaderCellRadius === "7px" && previewGfm.tableBodyCellRadius === "7px",
+      "Preview table cells should use the control radius token.",
+    );
+    expect(previewGfm.tableHeaderFontWeight === "500", "Preview table headers should use quiet weight contrast.");
+    expect(
+      previewGfm.tableHeaderLineHeight === "27.2px" && previewGfm.tableBodyLineHeight === "27.2px",
+      "Preview table text should share the document line-height.",
+    );
     expect(previewGfm.rightAlignedTextAlign === "right", "Preview tables should preserve GFM column alignment.");
     expect(
       previewGfm.imageFrameCount === 1,
       `Preview images should render through the Tabula.md image frame (${JSON.stringify(previewGfm)}).`,
     );
-    expect(previewGfm.unavailableImageText === "Missing local image", "Unsupported local images should render a compact unavailable state.");
+    expect(!previewGfm.placeholderImageVisible, "The toolbar image placeholder should stay out of Preview until it has a URL.");
+    expect(
+      previewGfm.unavailableImageTitle === "Local image unavailable" &&
+        previewGfm.unavailableImageAlt === "— Missing local image" &&
+        previewGfm.unavailableImageHasIcon,
+      "Unsupported local images should explain the failure and preserve their alt text.",
+    );
+    expect(
+      previewGfm.unavailableImageBackground === "rgba(0, 0, 0, 0)",
+      "Image failures should read as document status rather than a text badge.",
+    );
     expect(previewGfm.relativeImageRequestCount === 0, "Relative image sources should not resolve against the app origin.");
     expect(previewGfm.imageLoading === "lazy", "Preview images should lazy-load.");
     expect(previewGfm.imageMaxWidth === "100%", "Preview images should not overflow the document width.");
@@ -1007,46 +1091,72 @@ export async function run(ctx) {
         document
           .querySelector('.formatting-toolbar [data-format-command="bold"]')
           ?.getAttribute("aria-label") ?? "",
-      moreFormattingExpanded:
+      tableCommand:
         document
-          .querySelector('.formatting-toolbar [data-format-command="more-formatting"]')
-          ?.getAttribute("aria-expanded") ?? "",
+          .querySelector('.formatting-toolbar [data-format-command="table"]')
+          ?.getAttribute("aria-label") ?? "",
     }));
     expect(toolbarRegistryState.boldCommand === "Bold", "Primary toolbar commands should expose stable registry ids.");
     expect(
-      toolbarRegistryState.moreFormattingExpanded === "false",
-      "Overflow formatting command should expose a stable registry trigger.",
+      toolbarRegistryState.tableCommand === "Table",
+      "Wide insert commands should expose stable registry ids.",
     );
+    for (const label of [
+      "Inline math",
+      "Math block",
+      "Mermaid diagram",
+      "Callout",
+      "Accordion",
+      "Tabs",
+    ]) {
+      expect(
+        (await page.getByRole("button", { name: label, exact: true }).count()) === 1,
+        `Wide formatting lanes should expose the supported ${label} command directly.`,
+      );
+    }
 
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
     await page.keyboard.type("obsolete");
     await page.keyboard.press("Shift+Home");
-    await page.getByRole("button", { name: "More formatting", exact: true }).click();
-    expect(
-      (await page.locator(".formatting-overflow-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
-      "Formatting menus should use elevation without a static border.",
-    );
-    await page.getByRole("menuitemcheckbox", { name: "Strikethrough", exact: true }).click();
+    await page.getByRole("button", { name: "Strikethrough", exact: true }).click();
     await waitForRenderFrame(page);
-    const afterOverflowInlineCommand = await page.locator(".cm-content").textContent();
+    const afterInlineCommand = await page.locator(".cm-content").textContent();
     expect(
-      afterOverflowInlineCommand === "~~obsolete~~",
-      "Overflow formatting commands should apply to the current editor selection.",
+      afterInlineCommand === "~~obsolete~~",
+      "Wide formatting lanes should apply secondary inline commands directly.",
     );
 
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
-    await page.getByRole("button", { name: "Insert", exact: true }).click();
-    await page.getByRole("menuitemcheckbox", { name: "Table", exact: true }).click();
+    await page.getByRole("button", { name: "Table", exact: true }).click();
     await waitForRenderFrame(page);
     const afterOverflowInsertCommand = await page.locator(".cm-content").textContent();
     expect(
       afterOverflowInsertCommand.startsWith("| Column 1 | Column 2 |"),
       "Overflow insert commands should apply through the same toolbar command path.",
     );
+
+    await focusMarkdownEditor(page);
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("Backspace");
+    await page.getByRole("button", { name: "Callout", exact: true }).click();
+    await waitForRenderFrame(page);
+    expect(
+      Array.from(await page.locator(".cm-line").allTextContents()).join("\n") ===
+        '<Callout type="note" title="Note">\nContent\n</Callout>',
+      "Supported component commands should insert editable source templates.",
+    );
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await waitForEditorReady(page, { mode: "preview" });
+    expect(
+      (await page.locator(".preview-docs-callout").filter({ hasText: "Content" }).count()) === 1,
+      "Inserted component templates should render through the existing preview support.",
+    );
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await waitForEditorReady(page, { mode: "edit" });
 
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+A");
@@ -1726,6 +1836,21 @@ export async function run(ctx) {
         "Every mobile formatting control, including More, should be visible without horizontal scrolling.",
       );
 
+      const compactMoreButton = page.getByRole("button", { name: "More formatting", exact: true });
+      const compactMoreIconBefore = await compactMoreButton.locator("svg").getAttribute("class");
+      await compactMoreButton.click();
+      expect(
+        (await page.locator(".formatting-overflow-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
+        "Formatting menus should use elevation without a static border.",
+      );
+      await page.getByRole("menuitemcheckbox", { name: "Strikethrough", exact: true }).click();
+      await waitForRenderFrame(page);
+      const compactMoreIconAfter = await compactMoreButton.locator("svg").getAttribute("class");
+      expect(
+        compactMoreIconAfter === compactMoreIconBefore && compactMoreIconAfter?.includes("lucide-ellipsis"),
+        "Compact More formatting should keep a stable ellipsis icon after applying a hidden command.",
+      );
+
       await page.getByRole("button", { name: "Preview", exact: true }).click();
       await waitForEditorReady(page, { mode: "preview" });
       expect(
@@ -2223,13 +2348,91 @@ Status <Badge type="success">Ready</Badge>
     expect((await page.locator("details[open] summary").filter({ hasText: "Keyboard shortcut" }).count()) === 1, "Preview should preserve safe disclosure HTML.");
     expect((await page.locator("kbd").count()) === 2, "Preview should preserve keyboard input HTML.");
     expect((await page.locator("figure figcaption abbr[title='Model Context Protocol']").count()) === 1, "Preview should preserve static figure and abbreviation HTML.");
-    expect((await page.locator(".preview-docs-tabs .preview-docs-tab").count()) === 2, "Preview should render static docs tabs without executing MDX.");
-    expect((await page.locator(".preview-docs-tab-title").filter({ hasText: "TypeScript" }).count()) === 1, "Preview tabs should preserve labels.");
+    const previewTabs = page.locator(".preview-docs-tabs");
+    expect((await previewTabs.getByRole("tab").count()) === 2, "Preview should render supported docs tabs as one tablist.");
+    expect(
+      (await previewTabs.getByRole("tabpanel").count()) === 1 &&
+        (await previewTabs.getByRole("tabpanel").textContent()).includes("TypeScript client"),
+      "Preview tabs should show only the selected panel.",
+    );
+    await previewTabs.getByRole("tab", { name: "Python", exact: true }).click();
+    expect(
+      (await previewTabs.getByRole("tab", { name: "Python", exact: true }).getAttribute("aria-selected")) === "true" &&
+        (await previewTabs.getByRole("tabpanel").textContent()).includes("Python client"),
+      "Preview tab triggers should switch the active panel.",
+    );
+    await page.keyboard.press("ArrowLeft");
+    expect(
+      (await previewTabs.getByRole("tab", { name: "TypeScript", exact: true }).getAttribute("aria-selected")) === "true",
+      "Preview tabs should support standard arrow-key navigation.",
+    );
     expect((await page.locator(".preview-docs-accordion-group .preview-docs-accordion").count()) === 2, "Preview should render accordion groups.");
     expect((await page.locator(".preview-docs-accordion[open]").count()) === 1, "Preview should preserve an explicitly open accordion.");
     expect((await page.locator(".preview-docs-steps .preview-docs-step").count()) === 2, "Preview should render static steps.");
     expect((await page.locator(".preview-docs-code-group").filter({ hasText: "npm install @tabula-md/mcp" }).count()) === 1, "Preview should preserve code group content.");
     expect((await page.locator('.preview-docs-callout[data-callout-type="warning"]').count()) === 1, "Preview should render static callouts.");
+    const quietComponentSurfaces = await page.evaluate(() => {
+      const readStyle = (selector) => {
+        const element = document.querySelector(selector);
+        if (!(element instanceof HTMLElement)) return null;
+        const style = window.getComputedStyle(element);
+        return {
+          background: style.backgroundColor,
+          borderLeftWidth: style.borderLeftWidth,
+          borderTopWidth: style.borderTopWidth,
+        };
+      };
+      const readTypeStyle = (selector) => {
+        const element = document.querySelector(selector);
+        if (!(element instanceof HTMLElement)) return null;
+        const style = window.getComputedStyle(element);
+        return {
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+        };
+      };
+      return {
+        accordion: readStyle(".preview-docs-accordion"),
+        accordionTitle: readTypeStyle(".preview-docs-accordion > summary"),
+        callout: readStyle(".preview-docs-callout"),
+        calloutTitle: readTypeStyle(".preview-docs-callout-title strong"),
+        math: readStyle(".preview-math-block"),
+        selectedTab: readTypeStyle('.preview-docs-tab-trigger[aria-selected="true"]'),
+        unselectedTab: readTypeStyle('.preview-docs-tab-trigger[aria-selected="false"]'),
+        visibleTabPanels: document.querySelectorAll(".preview-docs-tabs [role='tabpanel']").length,
+      };
+    });
+    expect(
+      quietComponentSurfaces.accordion?.borderTopWidth === "0px",
+      "Preview accordions should use a quiet row instead of an outlined card.",
+    );
+    expect(
+      quietComponentSurfaces.callout?.borderLeftWidth === "2px",
+      "Preview callouts should keep one restrained context rule.",
+    );
+    expect(
+      quietComponentSurfaces.math?.borderTopWidth === "0px" &&
+        quietComponentSurfaces.math?.background === "rgba(0, 0, 0, 0)",
+      "Preview display math should remain in the document flow without a card surface.",
+    );
+    expect(
+      quietComponentSurfaces.visibleTabPanels === 1,
+      "Preview tabs should not stack inactive panels.",
+    );
+    expect(
+      quietComponentSurfaces.calloutTitle?.fontSize === "16px" &&
+        quietComponentSurfaces.calloutTitle.fontWeight === "500" &&
+        quietComponentSurfaces.accordionTitle?.fontSize === "16px" &&
+        quietComponentSurfaces.accordionTitle.fontWeight === "500",
+      "Preview component labels should use the document type scale with quiet emphasis.",
+    );
+    expect(
+      quietComponentSurfaces.selectedTab?.fontSize === "16px" &&
+        quietComponentSurfaces.selectedTab.fontWeight === "500" &&
+        quietComponentSurfaces.unselectedTab?.fontSize === "16px" &&
+        quietComponentSurfaces.unselectedTab.fontWeight === "400",
+      "Preview tabs should distinguish selection with one restrained weight step.",
+    );
     expect((await page.locator('.preview-docs-badge[data-badge-type="success"]').filter({ hasText: "Ready" }).count()) === 1, "Preview should render inline badges.");
     expect(
       (await page.locator('.preview-unsupported-component[data-component-name="custom-widget"]').filter({ hasText: "The custom HTML explanation must remain readable." }).count()) === 1,

@@ -11,11 +11,11 @@ import {
   ChevronRight,
   Eye,
   ListChecks,
+  MoreHorizontal,
   PencilLine,
   Replace,
   ReplaceAll,
   Search,
-  SlidersHorizontal,
   SplitSquareHorizontal,
   X,
 } from "lucide-react";
@@ -117,7 +117,7 @@ export function DocumentControls({
           {controls.viewModeOptions.map((option) => (
             <button
               key={option.viewMode}
-              className={`tool-button ${option.active ? "active" : ""}`}
+              className={`tool-button document-view-mode-button ${option.active ? "active" : ""}`}
               type="button"
               aria-label={option.label}
               data-tooltip={option.label}
@@ -152,12 +152,12 @@ export function DocumentControls({
           >
             <PopoverTrigger asChild>
               <button
-                className={`tool-button ${centerPopover === "view" ? "active" : ""}`}
+                className={`tool-button document-options-button ${centerPopover === "view" ? "active" : ""}`}
                 type="button"
                 aria-label={controls.controlsLabel}
                 data-tooltip={controls.controlsLabel}
               >
-                <SlidersHorizontal size={16} />
+                <MoreHorizontal size={16} />
               </button>
             </PopoverTrigger>
             <PopoverContent

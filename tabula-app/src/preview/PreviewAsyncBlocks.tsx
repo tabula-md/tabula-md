@@ -9,7 +9,7 @@ import {
   type HTMLAttributes,
   type ReactNode,
 } from "react";
-import { Check, Copy, Slash, WrapText } from "lucide-react";
+import { Check, Copy, ImageOff, Slash, WrapText } from "lucide-react";
 import { BoundedStringCache, replaceAllText } from "./previewRenderCache";
 import { classifyMarkdownImageSource } from "./markdownImageSource";
 import { getWorkspaceSurfaceCopy, type WorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
@@ -653,10 +653,22 @@ export function PreviewImage({ alt = "", copy: copyProp, src, title, ...props }:
   const [hasError, setHasError] = useState(false);
   useEffect(() => setHasError(false), [imageSource]);
 
-  if (imageSource.kind === "unsupported") {
+  if (imageSource.kind === "placeholder") {
+    return null;
+  }
+
+  if (imageSource.kind === "local" || imageSource.kind === "unsupported") {
+    const errorLabel = imageSource.kind === "local" ? copy.localImageUnavailable : copy.imageFailed;
     return (
-      <span className="preview-image-unavailable" role="img" aria-label={alt || copy.imageFailed}>
-        {alt || copy.imageFailed}
+      <span
+        className="preview-image-error preview-image-unavailable"
+        data-image-state={imageSource.kind}
+        role="img"
+        aria-label={alt ? `${errorLabel}: ${alt}` : errorLabel}
+      >
+        <ImageOff aria-hidden="true" size={16} />
+        <span className="preview-image-error-title">{errorLabel}</span>
+        {alt && <span className="preview-image-error-alt">— {alt}</span>}
       </span>
     );
   }
@@ -675,8 +687,15 @@ export function PreviewImage({ alt = "", copy: copyProp, src, title, ...props }:
         onError={() => setHasError(true)}
       />
       {hasError && (
-        <span className="preview-image-fallback" role="img" aria-label={alt || copy.imageFailed}>
-          {alt || copy.imageFailed}
+        <span
+          className="preview-image-error preview-image-fallback"
+          data-image-state="failed"
+          role="img"
+          aria-label={alt ? `${copy.imageFailed}: ${alt}` : copy.imageFailed}
+        >
+          <ImageOff aria-hidden="true" size={16} />
+          <span className="preview-image-error-title">{copy.imageFailed}</span>
+          {alt && <span className="preview-image-error-alt">— {alt}</span>}
         </span>
       )}
     </span>

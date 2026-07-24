@@ -3,6 +3,7 @@ export type MarkdownFormatCommand =
   | "italic"
   | "strikethrough"
   | "inline-code"
+  | "inline-math"
   | "link"
   | "image"
   | "quote"
@@ -14,7 +15,12 @@ export type MarkdownFormatCommand =
   | "check-list"
   | "horizontal-rule"
   | "code-block"
+  | "math-block"
+  | "mermaid"
   | "table"
+  | "callout"
+  | "accordion"
+  | "tabs"
   | "frontmatter"
   | "footnote"
   | "clear-formatting";
@@ -341,6 +347,57 @@ const insertTable = (text: string, selection: MarkdownFormatSelection) =>
     "Column 1".length,
   );
 
+const insertSelectedBlock = (
+  text: string,
+  selection: MarkdownFormatSelection,
+  prefix: string,
+  placeholder: string,
+  suffix: string,
+) => {
+  const { from, to } = normalizeSelection(text, selection);
+  const content = text.slice(from, to) || placeholder;
+  return insertBlockAtSelection(
+    text,
+    selection,
+    `${prefix}${content}${suffix}`,
+    prefix.length,
+    content.length,
+  );
+};
+
+const insertMathBlock = (text: string, selection: MarkdownFormatSelection) =>
+  insertSelectedBlock(text, selection, "$$\n", "formula", "\n$$");
+
+const insertMermaid = (text: string, selection: MarkdownFormatSelection) =>
+  insertSelectedBlock(text, selection, "```mermaid\ngraph TD\n  ", "A --> B", "\n```");
+
+const insertCallout = (text: string, selection: MarkdownFormatSelection) =>
+  insertSelectedBlock(
+    text,
+    selection,
+    '<Callout type="note" title="Note">\n',
+    "Content",
+    "\n</Callout>",
+  );
+
+const insertAccordion = (text: string, selection: MarkdownFormatSelection) =>
+  insertSelectedBlock(
+    text,
+    selection,
+    '<Accordion title="Details">\n',
+    "Content",
+    "\n</Accordion>",
+  );
+
+const insertTabs = (text: string, selection: MarkdownFormatSelection) =>
+  insertSelectedBlock(
+    text,
+    selection,
+    '<Tabs>\n<Tab title="Tab 1">',
+    "Content",
+    '</Tab>\n<Tab title="Tab 2">Content</Tab>\n</Tabs>',
+  );
+
 const insertFrontmatter = (text: string, selection: MarkdownFormatSelection) => {
   const { from, to } = normalizeSelection(text, selection);
   const insertion = "---\ntitle: Untitled\n---\n\n";
@@ -407,6 +464,8 @@ export const applyMarkdownFormat = (
       return wrapInlineSelection(text, selection, { prefix: "~~", placeholder: "struck text" });
     case "inline-code":
       return wrapInlineSelection(text, selection, { prefix: "`", placeholder: "code" });
+    case "inline-math":
+      return wrapInlineSelection(text, selection, { prefix: "$", placeholder: "formula" });
     case "link":
       return insertLink(text, selection);
     case "image":
@@ -429,8 +488,18 @@ export const applyMarkdownFormat = (
       return applyHorizontalRule(text, selection);
     case "code-block":
       return applyCodeBlock(text, selection);
+    case "math-block":
+      return insertMathBlock(text, selection);
+    case "mermaid":
+      return insertMermaid(text, selection);
     case "table":
       return insertTable(text, selection);
+    case "callout":
+      return insertCallout(text, selection);
+    case "accordion":
+      return insertAccordion(text, selection);
+    case "tabs":
+      return insertTabs(text, selection);
     case "frontmatter":
       return insertFrontmatter(text, selection);
     case "footnote":
