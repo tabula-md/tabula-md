@@ -608,6 +608,8 @@ export type {
   DocumentAnalysis,
   DocumentHeadingAnalysis,
   DocumentLinkAnalysis,
+  DocumentLinkRelation,
+  DocumentLinkSyntax,
   WorkspaceKnowledgeIndex,
   WorkspaceKnowledgeLink,
   WorkspaceLinkStatus,
