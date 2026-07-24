@@ -46,6 +46,14 @@ describe("room view state", () => {
     })).toMatchObject({ rightPanelOpen: true, rightPanelView: "links" });
   });
 
+  it("restores the graph panel as tab-local room state", () => {
+    expect(parseRoomViewState({
+      openDocumentIds: ["readme"],
+      rightPanelOpen: true,
+      rightPanelView: "graph",
+    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "graph" });
+  });
+
   it("restores valid tabs and falls back when the saved active document was deleted", () => {
     const workspace = {
       files: [{ id: "readme" }, { id: "notes" }],
