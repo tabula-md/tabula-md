@@ -57,6 +57,11 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
+    expect(
+      (await page.locator(".right-panel").getAttribute("data-knowledge-index-source")) ===
+        "worker",
+      "Knowledge links should be indexed by the browser worker rather than the main-thread fallback.",
+    );
 
     const outgoing = page.locator('.right-links-section[aria-label="Outgoing"]');
     const topLevelRows = outgoing.locator([

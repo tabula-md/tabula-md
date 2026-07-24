@@ -8,6 +8,11 @@ const tabulaAppRoot = fileURLToPath(new URL("./tabula-app", import.meta.url));
 const tabulaCoreEntry = fileURLToPath(new URL("./packages/tabula/src/index.ts", import.meta.url));
 const tabulaWorkbenchEntry = fileURLToPath(new URL("./packages/tabula/src/workbench/index.ts", import.meta.url));
 const tabulaPrivateWorkbenchEntry = fileURLToPath(new URL("./packages/tabula/src/workbench/internal.ts", import.meta.url));
+// Vite otherwise selects this package's DOM entry inside module workers, where
+// its import-time `document.createElement` call crashes before indexing starts.
+const workerSafeNamedCharacterReferenceEntry = fileURLToPath(
+  new URL("./node_modules/decode-named-character-reference/index.js", import.meta.url),
+);
 
 const includesPackage = (id: string, packageName: string) =>
   id.includes(`/node_modules/${packageName}/`);
@@ -18,6 +23,10 @@ export default defineConfig({
   plugins: [react(), createBuildInfoPlugin()],
   resolve: {
     alias: [
+      {
+        find: "decode-named-character-reference",
+        replacement: workerSafeNamedCharacterReferenceEntry,
+      },
       { find: "@tabula-md/tabula-private/workbench", replacement: tabulaPrivateWorkbenchEntry },
       { find: "@tabula-md/tabula/workbench", replacement: tabulaWorkbenchEntry },
       { find: "@tabula-md/tabula", replacement: tabulaCoreEntry },
@@ -49,6 +58,8 @@ export default defineConfig({
           }
 
           if (
+            includesPackage(normalizedId, "character-entities") ||
+            includesPackage(normalizedId, "decode-named-character-reference") ||
             normalizedId.includes("/react-markdown/") ||
             normalizedId.includes("/remark-") ||
             normalizedId.includes("/rehype-") ||

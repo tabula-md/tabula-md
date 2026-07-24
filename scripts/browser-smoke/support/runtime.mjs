@@ -213,6 +213,9 @@ const waitForPanelTab = async (page, label) => {
       !document.querySelector('.right-panel-body [aria-busy="true"]'),
     { label },
   );
+  await page.waitForFunction(
+    () => !document.querySelector('.right-panel-body [aria-busy="true"]'),
+  );
 };
 
 const waitForWorkspaceMenuState = async (page, open = true) => {

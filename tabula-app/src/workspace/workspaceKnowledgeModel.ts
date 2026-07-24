@@ -2,6 +2,14 @@ import type { WorkspaceKnowledgeMaintenancePlan, WorkspaceSourceDocument } from 
 import { getWorkspaceFilePaths } from "./workspaceDisplayTitles";
 import type { WorkspaceFile, WorkspaceFolder } from "./workspaceStorage";
 
+const EMPTY_WORKSPACE_KNOWLEDGE_MAINTENANCE_PLAN: WorkspaceKnowledgeMaintenancePlan =
+  Object.freeze({
+    updates: Object.freeze([]),
+    updatedDocumentCount: 0,
+    updatedLinkCount: 0,
+    skippedLinkCount: 0,
+  });
+
 export const getWorkspaceKnowledgeDocuments = (
   files: readonly WorkspaceFile[],
   folders: readonly WorkspaceFolder[],
@@ -24,6 +32,35 @@ export const maintainWorkspaceKnowledgePaths = async <
   previous: TState,
   next: TState,
 ): Promise<{ state: TState; plan: WorkspaceKnowledgeMaintenancePlan }> => {
-  const runtime = await import("./workspaceKnowledgeRuntime");
-  return runtime.maintainWorkspaceKnowledgePaths(previous, next);
+  let plan: WorkspaceKnowledgeMaintenancePlan;
+  try {
+    const { workspaceKnowledgeWorkerClient } = await import(
+      "./workspaceKnowledgeWorkerClient"
+    );
+    plan = await workspaceKnowledgeWorkerClient.planMaintenance(
+      getWorkspaceKnowledgeDocuments(previous.files, previous.folders),
+      getWorkspaceKnowledgeDocuments(next.files, next.folders),
+    );
+  } catch {
+    return {
+      state: next,
+      plan: EMPTY_WORKSPACE_KNOWLEDGE_MAINTENANCE_PLAN,
+    };
+  }
+  if (plan.updates.length === 0) {
+    return { state: next, plan };
+  }
+  const markdownByDocumentId = new Map(
+    plan.updates.map((update) => [update.documentId, update.markdown]),
+  );
+  return {
+    state: {
+      ...next,
+      files: next.files.map((file) => {
+        const markdown = markdownByDocumentId.get(file.id);
+        return typeof markdown === "string" ? { ...file, text: markdown } : file;
+      }),
+    },
+    plan,
+  };
 };

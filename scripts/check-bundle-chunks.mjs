@@ -33,6 +33,8 @@ const requiredChunkPrefixes = [
   "room-transport-vendor-",
   "posthog-vendor-",
   "workspaceKnowledgeRuntime-",
+  "workspaceKnowledgeWorkerClient-",
+  "workspaceKnowledgeWorker-",
 ];
 
 const lazyOnlyPrefixes = [
@@ -46,6 +48,8 @@ const lazyOnlyPrefixes = [
   "room-transport-vendor-",
   "posthog-vendor-",
   "workspaceKnowledgeRuntime-",
+  "workspaceKnowledgeWorkerClient-",
+  "workspaceKnowledgeWorker-",
 ];
 
 const formatBytes = (bytes) => `${(bytes / 1024).toFixed(1)} KiB`;
