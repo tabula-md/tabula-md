@@ -11,6 +11,7 @@ import type { useWorkspacePersistenceRuntime } from "../workspace/persistence/us
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import type { WorkspaceFile } from "../workspace/workspaceStorage";
 import type { CenterPopover } from "../ui/uiTypes";
+import type { MarkdownPreviewProps } from "../preview/markdownPreviewTypes";
 
 type DocumentRuntime = ReturnType<typeof useWorkspaceDocumentRuntime>;
 type ActiveFileEditor = ReturnType<typeof useWorkspaceActiveFileEditor>;
@@ -30,6 +31,7 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   focusedCommentId: string | null;
   language: WorkspaceLanguage;
   onSetViewMode: (viewMode: WorkspaceFile["viewMode"]) => void;
+  onOpenWorkspaceLink: NonNullable<MarkdownPreviewProps["onOpenWorkspaceLink"]>;
   persistence: Pick<WorkspacePersistence, "persistedRevision">;
   previewRef: RefObject<MarkdownPreviewHandle | null>;
   room: Pick<
@@ -43,6 +45,7 @@ type UseWorkspaceWorkbenchSurfaceControllerOptions = {
   >;
   surface: DocumentSurfaceController;
   toolbarLabel: string;
+  resolveWorkspaceLink: NonNullable<MarkdownPreviewProps["resolveWorkspaceLink"]>;
 };
 
 export function useWorkspaceWorkbenchSurfaceController({
@@ -55,12 +58,14 @@ export function useWorkspaceWorkbenchSurfaceController({
   editorRef,
   focusedCommentId,
   language,
+  onOpenWorkspaceLink,
   onSetViewMode,
   persistence,
   previewRef,
   room,
   surface,
   toolbarLabel,
+  resolveWorkspaceLink,
 }: UseWorkspaceWorkbenchSurfaceControllerOptions) {
   const editingActivationTrackerRef = useRef(createEditingActivationTracker());
   const { documentWorkbenchController, documentSurface } = surface;
@@ -159,6 +164,7 @@ export function useWorkspaceWorkbenchSurfaceController({
       },
       onLineAction: comments.handleLineAnnotationAction,
       onOpenComment: comments.openCommentMarker,
+      onOpenWorkspaceLink,
       onOpenSelectionComment: comments.openSelectionComment,
       onPreviewKeyUp: document.syncPreviewSelection,
       onPreviewMouseUp: document.syncPreviewSelection,
@@ -208,6 +214,7 @@ export function useWorkspaceWorkbenchSurfaceController({
         room.stopFollowing("local-edit");
         editor.undoActiveFile();
       },
+      resolveWorkspaceLink,
     },
   };
 }

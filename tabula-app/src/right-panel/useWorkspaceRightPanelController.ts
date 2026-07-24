@@ -262,6 +262,7 @@ export function useWorkspaceRightPanelController({
   };
 
   return {
+    knowledgeIndex,
     rightPanelProps,
   };
 }

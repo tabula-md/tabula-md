@@ -22,6 +22,18 @@ export type MarkdownPreviewLineActionRequest = MarkdownPreviewLineAnnotation & {
   action: "bookmark";
 };
 
+export type MarkdownPreviewWorkspaceLink =
+  | {
+      status: "resolved";
+      targetDocumentId: string;
+      targetPath?: string;
+      fragment?: string;
+    }
+  | {
+      status: "broken" | "ambiguous";
+      targetPath?: string;
+    };
+
 export type MarkdownPreviewProps = {
   metadata: MarkdownPreviewMetadata[];
   body: string;
@@ -40,5 +52,9 @@ export type MarkdownPreviewProps = {
   onSearchMatchCountChange?: (count: number, truncated?: boolean) => void;
   onLineAction?: (request: MarkdownPreviewLineActionRequest) => void;
   onOpenComment?: (commentId: string) => void;
+  onOpenWorkspaceLink?: (
+    link: Extract<MarkdownPreviewWorkspaceLink, { status: "resolved" }>,
+  ) => void;
+  resolveWorkspaceLink?: (href: string) => MarkdownPreviewWorkspaceLink | undefined;
   onToggleTaskLine?: (sourceLineIndex: number) => void;
 };
