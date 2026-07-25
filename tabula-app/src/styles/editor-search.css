@@ -1,6 +1,6 @@
 .document-search-row {
   position: relative;
-  z-index: var(--layer-popover);
+  z-index: var(--layer-chrome);
   grid-column: 1;
   grid-row: 2;
   display: grid;
@@ -25,10 +25,9 @@
   width: 100%;
   min-height: var(--control-size-row);
   margin: 0 auto;
-  padding: 4px;
-  border-radius: var(--radius-surface);
+  padding: 4px 0;
   color: var(--text-soft);
-  background: var(--surface-muted);
+  background: transparent;
   box-shadow: none;
 }
 
@@ -60,7 +59,7 @@
   padding: 0 8px;
   border-radius: var(--radius-control);
   color: var(--text-soft);
-  background: var(--surface-workbench);
+  background: var(--surface-muted);
 }
 
 .document-search-field input {
