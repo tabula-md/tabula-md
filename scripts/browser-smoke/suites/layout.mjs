@@ -231,6 +231,7 @@ export async function run(ctx) {
         panelToggles: readRect(".top-panel-toggle"),
         workspaceMenu: readRect(".workspace-menu-popover"),
         centerWorkbench: readRect(".center-workbench"),
+        fileShell: readRect(".file-shell"),
         toolbar: readRect(".document-controls"),
         toolbarWrap: readRect(".document-controls-wrap"),
         share: readRect(".share-trigger"),
@@ -252,6 +253,7 @@ export async function run(ctx) {
       tabs: chrome.tabs,
       panelToggles: chrome.panelToggles,
       centerWorkbench: chrome.centerWorkbench,
+      fileShell: chrome.fileShell,
       toolbar: chrome.toolbar,
       toolbarWrap: chrome.toolbarWrap,
       share: chrome.share,
@@ -337,8 +339,15 @@ export async function run(ctx) {
       "Document status should sit below the writing workspace.",
     );
     expect(
-      chrome.status.y >= chrome.workspace.y + chrome.workspace.height - 1,
-      "Document status should be a bottom layout row, not an overlay.",
+      chrome.status.y + chrome.status.height <=
+        chrome.fileShell.y + chrome.fileShell.height + 1,
+      "Document status should remain anchored to the bottom layout row.",
+    );
+    const statusFadeOverlap =
+      chrome.workspace.y + chrome.workspace.height - chrome.status.y;
+    expect(
+      statusFadeOverlap >= 24 && statusFadeOverlap <= 32,
+      "The writing viewport should extend behind the status fade without covering the status row.",
     );
     expect(
       chrome.toolbarWrap.y > chrome.tabs.y + chrome.tabs.height,

@@ -128,16 +128,45 @@
 }
 
 .workspace {
+  --workspace-top-fade-shift: 0px;
+  --workspace-bottom-fade-shift: 0px;
+  --workspace-overflow-mask: linear-gradient(
+    180deg,
+    transparent calc(-80px + var(--workspace-top-fade-shift)),
+    rgb(0 0 0 / 3%) calc(-70px + var(--workspace-top-fade-shift)),
+    rgb(0 0 0 / 12%) calc(-58px + var(--workspace-top-fade-shift)),
+    rgb(0 0 0 / 30%) calc(-44px + var(--workspace-top-fade-shift)),
+    rgb(0 0 0 / 56%) calc(-30px + var(--workspace-top-fade-shift)),
+    rgb(0 0 0 / 80%) calc(-18px + var(--workspace-top-fade-shift)),
+    rgb(0 0 0 / 94%) calc(-8px + var(--workspace-top-fade-shift)),
+    black var(--workspace-top-fade-shift),
+    black calc(100% - var(--workspace-bottom-fade-shift)),
+    rgb(0 0 0 / 94%) calc(100% + 8px - var(--workspace-bottom-fade-shift)),
+    rgb(0 0 0 / 80%) calc(100% + 18px - var(--workspace-bottom-fade-shift)),
+    rgb(0 0 0 / 56%) calc(100% + 30px - var(--workspace-bottom-fade-shift)),
+    rgb(0 0 0 / 30%) calc(100% + 44px - var(--workspace-bottom-fade-shift)),
+    rgb(0 0 0 / 12%) calc(100% + 58px - var(--workspace-bottom-fade-shift)),
+    rgb(0 0 0 / 3%) calc(100% + 70px - var(--workspace-bottom-fade-shift)),
+    transparent calc(100% + 80px - var(--workspace-bottom-fade-shift))
+  );
   grid-column: 1;
   grid-row: 2;
   min-width: 0;
   min-height: 0;
+  margin-top: -28px;
+  margin-bottom: -28px;
+  padding-top: 28px;
+  padding-bottom: 28px;
   overflow-x: hidden;
   overflow-y: auto;
   overflow-anchor: none;
   overscroll-behavior: contain;
   background: var(--app-background);
   scrollbar-gutter: stable;
+  mask-image: var(--workspace-overflow-mask);
+  mask-size: 100% 100%;
+  -webkit-mask-image: var(--workspace-overflow-mask);
+  -webkit-mask-size: 100% 100%;
 }
 
 .file-shell.with-format-toolbar .workspace {

@@ -48,6 +48,58 @@ import {
 import { getWorkspaceSurfaceCopy } from "../../../../tabula-app/src/workspace/workspaceSurfaceLocale";
 
 const LONG_LINE_RECHECK_DELAY_MS = 240;
+const WORKSPACE_FADE_REVEAL_DISTANCE_PX = 64;
+const WORKSPACE_FADE_TRAVEL_PX = 108;
+
+const useWorkspaceScrollFade = (workspaceRef: RefObject<HTMLElement | null>) => {
+  useEffect(() => {
+    const element = workspaceRef.current;
+    if (!element) return undefined;
+
+    let animationFrame = 0;
+    const update = () => {
+      const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+      const remainingScroll = Math.max(0, maxScrollTop - element.scrollTop);
+      const topProgress = Math.min(
+        1,
+        Math.max(0, element.scrollTop) / WORKSPACE_FADE_REVEAL_DISTANCE_PX,
+      );
+      const bottomProgress = Math.min(
+        1,
+        remainingScroll / WORKSPACE_FADE_REVEAL_DISTANCE_PX,
+      );
+      element.style.setProperty(
+        "--workspace-top-fade-shift",
+        `${topProgress * WORKSPACE_FADE_TRAVEL_PX}px`,
+      );
+      element.style.setProperty(
+        "--workspace-bottom-fade-shift",
+        `${bottomProgress * WORKSPACE_FADE_TRAVEL_PX}px`,
+      );
+    };
+    const scheduleUpdate = () => {
+      if (animationFrame) return;
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = 0;
+        update();
+      });
+    };
+
+    scheduleUpdate();
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    resizeObserver.observe(element);
+    Array.from(element.children).forEach((child) => resizeObserver.observe(child));
+    element.addEventListener("scroll", scheduleUpdate, { passive: true });
+
+    return () => {
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+      resizeObserver.disconnect();
+      element.removeEventListener("scroll", scheduleUpdate);
+      element.style.removeProperty("--workspace-top-fade-shift");
+      element.style.removeProperty("--workspace-bottom-fade-shift");
+    };
+  }, [workspaceRef]);
+};
 
 const useLongLineWrappingSuspension = (
   fileId: string,
@@ -239,6 +291,7 @@ export function TabulaDocumentSurface({
   const effectiveLineWrapping = activeLineWrapping && !suspendLineWrappingForLongLine;
   const isSourceSearchActive = searchOpen && searchTarget === "source";
   const isPreviewSearchActive = searchOpen && searchTarget === "preview";
+  useWorkspaceScrollFade(workspaceRef);
   const previewBodySourceLineOffset = useMemo(
     () => Math.max(0, getLineNumberForOffset(text, previewBodyStartOffset) - 1),
     [previewBodyStartOffset, text],

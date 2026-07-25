@@ -22,6 +22,8 @@
   min-height: 100%;
   margin-left: var(--document-lane-margin-left);
   margin-right: var(--document-lane-margin-right);
+  padding-top: 0;
+  padding-bottom: 0;
   overflow: hidden;
 }
 
@@ -31,7 +33,7 @@
   height: 100%;
   min-height: 0;
   margin: 0;
-  padding: 18px 0 40px;
+  padding: 46px 0 68px;
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -128,6 +130,8 @@
 
   .workspace.split {
     display: block;
+    padding-top: 28px;
+    padding-bottom: 28px;
     overflow-x: hidden;
     overflow-y: auto;
   }
@@ -174,6 +178,8 @@
 
   .workspace.split {
     display: block;
+    padding-top: 28px;
+    padding-bottom: 28px;
     overflow: auto;
   }
 
