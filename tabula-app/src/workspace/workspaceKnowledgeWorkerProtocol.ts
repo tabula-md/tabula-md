@@ -5,6 +5,9 @@ import type {
   WorkspaceKnowledgePathChange,
   WorkspaceSourceDocument,
 } from "@tabula-md/tabula";
+import type {
+  WorkspaceKnowledgeIndexDelta,
+} from "./workspaceKnowledgeWorkerDelta";
 
 export type WorkspaceKnowledgeSyncRequest = {
   kind: "sync";
@@ -18,9 +21,6 @@ export type WorkspaceKnowledgeSyncRequest = {
 export type WorkspaceKnowledgeMaintenanceRequest = {
   kind: "maintenance";
   requestId: number;
-  reset: boolean;
-  removedDocumentIds: readonly string[];
-  upsertedDocuments: readonly WorkspaceSourceDocument[];
   pathChanges: readonly WorkspaceKnowledgePathChange[];
 };
 
@@ -33,6 +33,15 @@ export type WorkspaceKnowledgeSnapshotResponse = {
   requestId: number;
   revision: number;
   index: WorkspaceKnowledgeIndex;
+  compatibilityReport: OkfCompatibilityReport;
+  elapsedMs: number;
+};
+
+export type WorkspaceKnowledgeDeltaResponse = {
+  kind: "delta";
+  requestId: number;
+  revision: number;
+  delta: WorkspaceKnowledgeIndexDelta;
   compatibilityReport: OkfCompatibilityReport;
   elapsedMs: number;
 };
@@ -53,5 +62,6 @@ export type WorkspaceKnowledgeErrorResponse = {
 
 export type WorkspaceKnowledgeWorkerResponse =
   | WorkspaceKnowledgeSnapshotResponse
+  | WorkspaceKnowledgeDeltaResponse
   | WorkspaceKnowledgeMaintenanceResponse
   | WorkspaceKnowledgeErrorResponse;
