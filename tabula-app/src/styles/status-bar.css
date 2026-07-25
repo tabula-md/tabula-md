@@ -1,4 +1,6 @@
 .file-status-bar {
+  position: relative;
+  z-index: var(--layer-chrome);
   grid-column: 1;
   grid-row: 3;
   display: flex;
