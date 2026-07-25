@@ -563,12 +563,46 @@ const validateResolvedFragment = (
         status: "broken",
         targetPath: resolution.targetPath,
         fragment: resolution.fragment,
-      };
+    };
+};
+
+const resolveDocumentLinks = (
+  analysis: DocumentAnalysis,
+  documentsById: ReadonlyMap<string, WorkspaceSourceDocument>,
+  documentIdsByPath: ReadonlyMap<string, string>,
+  analysesByDocumentId: ReadonlyMap<string, DocumentAnalysis>,
+): WorkspaceKnowledgeLink[] => {
+  const outgoing: WorkspaceKnowledgeLink[] = [];
+  for (const link of analysis.links) {
+    const base = {
+      ...link,
+      sourceDocumentId: analysis.documentId,
+      sourcePath: analysis.path,
+    };
+    if (externalTargetPattern.test(link.target)) {
+      outgoing.push({ ...base, status: "external" });
+      continue;
+    }
+
+    const target = splitLinkTarget(link.target);
+    const pathResolution = link.syntax === "markdown"
+      ? resolveMarkdownTarget(analysis.path, target, documentIdsByPath)
+      : resolveWikiTarget(analysis.path, target, documentsById, documentIdsByPath);
+    const resolution = validateResolvedFragment(
+      link,
+      pathResolution,
+      analysesByDocumentId,
+    );
+    outgoing.push({ ...base, ...resolution });
+  }
+  return outgoing;
 };
 
 const buildKnowledgeIndex = (
   documentsById: Map<string, WorkspaceSourceDocument>,
   analysesByDocumentId: Map<string, DocumentAnalysis>,
+  reusableIndex?: WorkspaceKnowledgeIndex,
+  documentIdsToResolve?: ReadonlySet<string>,
 ): WorkspaceKnowledgeIndex => {
   const documentIdsByPath = new Map<string, string>();
   for (const document of documentsById.values()) {
@@ -598,46 +632,34 @@ const buildKnowledgeIndex = (
     if (resource) addMetadataEntry(documentIdsByResource, resource, analysis.documentId);
   }
 
-  const outgoingLinksByDocumentId = new Map<string, WorkspaceKnowledgeLink[]>();
+  const outgoingLinksByDocumentId =
+    new Map<string, readonly WorkspaceKnowledgeLink[]>();
   const backlinksByDocumentId = new Map<string, WorkspaceKnowledgeLink[]>();
   const brokenLinks: WorkspaceKnowledgeLink[] = [];
   const ambiguousLinks: WorkspaceKnowledgeLink[] = [];
   const externalLinks: WorkspaceKnowledgeLink[] = [];
 
   for (const analysis of analysesByDocumentId.values()) {
-    const outgoing: WorkspaceKnowledgeLink[] = [];
-    for (const link of analysis.links) {
-      const base = {
-        ...link,
-        sourceDocumentId: analysis.documentId,
-        sourcePath: analysis.path,
-      };
-      if (externalTargetPattern.test(link.target)) {
-        const externalLink: WorkspaceKnowledgeLink = { ...base, status: "external" };
-        outgoing.push(externalLink);
-        externalLinks.push(externalLink);
-        continue;
-      }
-
-      const target = splitLinkTarget(link.target);
-      const pathResolution = link.syntax === "markdown"
-        ? resolveMarkdownTarget(analysis.path, target, documentIdsByPath)
-        : resolveWikiTarget(analysis.path, target, documentsById, documentIdsByPath);
-      const resolution = validateResolvedFragment(
-        link,
-        pathResolution,
-        analysesByDocumentId,
-      );
-      const resolvedLink: WorkspaceKnowledgeLink = { ...base, ...resolution };
-      outgoing.push(resolvedLink);
-      if (resolution.status === "resolved" && typeof resolution.targetDocumentId !== "undefined") {
-        const backlinks = backlinksByDocumentId.get(resolution.targetDocumentId) ?? [];
-        backlinks.push(resolvedLink);
-        backlinksByDocumentId.set(resolution.targetDocumentId, backlinks);
-      } else if (resolution.status === "broken") {
-        brokenLinks.push(resolvedLink);
-      } else if (resolution.status === "ambiguous") {
-        ambiguousLinks.push(resolvedLink);
+    const reusableOutgoing = reusableIndex && !documentIdsToResolve?.has(analysis.documentId)
+      ? reusableIndex.outgoingLinksByDocumentId.get(analysis.documentId)
+      : undefined;
+    const outgoing = reusableOutgoing ?? resolveDocumentLinks(
+      analysis,
+      documentsById,
+      documentIdsByPath,
+      analysesByDocumentId,
+    );
+    for (const link of outgoing) {
+      if (link.status === "resolved" && typeof link.targetDocumentId !== "undefined") {
+        const backlinks = backlinksByDocumentId.get(link.targetDocumentId) ?? [];
+        backlinks.push(link);
+        backlinksByDocumentId.set(link.targetDocumentId, backlinks);
+      } else if (link.status === "broken") {
+        brokenLinks.push(link);
+      } else if (link.status === "ambiguous") {
+        ambiguousLinks.push(link);
+      } else if (link.status === "external") {
+        externalLinks.push(link);
       }
     }
     outgoingLinksByDocumentId.set(analysis.documentId, outgoing);
@@ -674,6 +696,35 @@ export const createWorkspaceKnowledgeIndex = (
   return buildKnowledgeIndex(documentsById, analysesByDocumentId);
 };
 
+const headingsMatch = (
+  previous: readonly DocumentHeadingAnalysis[],
+  next: readonly DocumentHeadingAnalysis[],
+) =>
+  previous.length === next.length &&
+  previous.every((heading, index) =>
+    heading.id === next[index]?.id &&
+    heading.text === next[index]?.text
+  );
+
+const getDocumentIdsAffectedByHeadingChange = (
+  index: WorkspaceKnowledgeIndex,
+  document: WorkspaceSourceDocument,
+) => {
+  const affected = new Set([document.id]);
+  for (const backlink of index.backlinksByDocumentId.get(document.id) ?? []) {
+    affected.add(backlink.sourceDocumentId);
+  }
+  for (const brokenLink of index.brokenLinks) {
+    if (
+      brokenLink.targetPath === document.path &&
+      typeof brokenLink.fragment !== "undefined"
+    ) {
+      affected.add(brokenLink.sourceDocumentId);
+    }
+  }
+  return affected;
+};
+
 export const updateWorkspaceKnowledgeIndex = (
   index: WorkspaceKnowledgeIndex,
   document: WorkspaceSourceDocument,
@@ -681,8 +732,28 @@ export const updateWorkspaceKnowledgeIndex = (
   assertWorkspaceSourceDocument(document);
   const documentsById = new Map(index.documentsById);
   const analysesByDocumentId = new Map(index.analysesByDocumentId);
+  const previousDocument = documentsById.get(document.id);
+  const previousAnalysis = analysesByDocumentId.get(document.id);
+  const nextAnalysis = analyzeWorkspaceDocument(document);
   documentsById.set(document.id, document);
-  analysesByDocumentId.set(document.id, analyzeWorkspaceDocument(document));
+  analysesByDocumentId.set(document.id, nextAnalysis);
+  if (
+    previousDocument?.path === document.path &&
+    previousAnalysis
+  ) {
+    const documentIdsToResolve = headingsMatch(
+      previousAnalysis.headings,
+      nextAnalysis.headings,
+    )
+      ? new Set([document.id])
+      : getDocumentIdsAffectedByHeadingChange(index, document);
+    return buildKnowledgeIndex(
+      documentsById,
+      analysesByDocumentId,
+      index,
+      documentIdsToResolve,
+    );
+  }
   return buildKnowledgeIndex(documentsById, analysesByDocumentId);
 };
 
