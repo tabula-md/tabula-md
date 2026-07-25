@@ -27,7 +27,7 @@
   gap: 1px;
   padding: 3px;
   border-radius: var(--radius-surface);
-  background: var(--surface-muted);
+  background: transparent;
 }
 
 .document-utility-controls {
@@ -37,7 +37,12 @@
   height: var(--document-control-height);
   padding: 3px;
   border-radius: var(--radius-surface);
-  background: var(--surface-muted);
+  background: transparent;
+}
+
+.document-search-toggle.active {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .toolbar-separator {
@@ -188,14 +193,14 @@
   padding: 3px;
   overflow: hidden;
   border-radius: var(--document-control-radius);
-  background: var(--surface-muted);
+  background: transparent;
 }
 
 .document-toolbar-row.with-formatting .formatting-toolbar {
   height: var(--document-control-height);
   padding: 3px;
   border-radius: var(--document-control-radius);
-  background: var(--surface-muted);
+  background: transparent;
 }
 
 .formatting-command-group {

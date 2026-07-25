@@ -2138,16 +2138,24 @@ export async function run(ctx) {
       "Touch layouts should reserve tab width for documents instead of redundant previous/next buttons.",
     );
 
+    await mobilePage.getByRole("button", { name: "Search", exact: true }).click();
+    await mobilePage.locator(".document-search-row").waitFor({ state: "visible" });
     await ensureSidePanelOpen(mobilePage);
     const mobilePanel = await mobilePage.evaluate(() => {
       const panel = document.querySelector(".right-panel");
       const backdrop = document.querySelector(".right-panel-backdrop");
+      const documentSearch = document.querySelector(".document-search-row");
       const shell = document.querySelector(".file-shell");
       const gutter = document.querySelector(".cm-gutters");
       const fileAction = document.querySelector(".right-file-tree-row.file .right-file-action");
-      if (!panel || !backdrop || !shell || !gutter || !fileAction) return null;
+      if (!panel || !backdrop || !documentSearch || !shell || !gutter || !fileAction) return null;
       const panelRect = panel.getBoundingClientRect();
+      const searchRect = documentSearch.getBoundingClientRect();
       const fileActionRect = fileAction.getBoundingClientRect();
+      const elementOverSearch = document.elementFromPoint(
+        searchRect.left + searchRect.width / 2,
+        searchRect.top + searchRect.height / 2,
+      );
       return {
         panelLeft: Math.round(panelRect.left),
         panelRight: Math.round(panelRect.right),
@@ -2160,9 +2168,23 @@ export async function run(ctx) {
         visibleTabLabelCount: document.querySelectorAll(".right-panel-tab-label").length,
         fileActionSize: Math.min(fileActionRect.width, fileActionRect.height),
         fileActionOpacity: getComputedStyle(fileAction).opacity,
+        documentSearchPreserved: getComputedStyle(documentSearch).display !== "none",
+        documentSearchOccluded: !documentSearch.contains(elementOverSearch),
+        documentSearchLayer: Number.parseInt(getComputedStyle(documentSearch).zIndex, 10),
+        panelLayer: Number.parseInt(getComputedStyle(panel).zIndex, 10),
       };
     });
     expect(mobilePanel?.panelLeft === 0, "The mobile side panel should start at the left viewport edge.");
+    expect(
+      mobilePanel?.documentSearchPreserved &&
+        mobilePanel.documentSearchOccluded &&
+        mobilePanel.documentSearchLayer < mobilePanel.panelLayer,
+      "The mobile side panel should cover document search without discarding its state.",
+    );
+    expect(
+      await mobilePage.getByRole("button", { name: "Close side panel", exact: true }).isVisible(),
+      "The mobile panel close control should describe its current action.",
+    );
     expect(mobilePanel?.panelRight === mobilePanel?.viewportWidth, "The mobile side panel should fill the viewport width.");
     expect(mobilePanel?.panelHeight === mobilePanel?.viewportHeight, "The mobile side panel should fill the viewport height.");
     expect(mobilePanel?.backdropDisplay !== "none", "The mobile side panel should block the document behind it.");
@@ -2188,7 +2210,7 @@ export async function run(ctx) {
 
     await mobilePage
       .getByRole("complementary", { name: "Side panel" })
-      .getByRole("button", { name: "Toggle side panel" })
+      .getByRole("button", { name: "Close side panel" })
       .click();
     await waitForRenderFrame(mobilePage);
     expect((await mobilePage.locator(".right-panel-backdrop").count()) === 0, "Closing the side panel should remove its backdrop.");

@@ -134,7 +134,7 @@ export function DocumentControls({
         <div className="document-utility-controls">
           {showSearch && (
             <button
-              className={`tool-button ${searchOpen ? "active" : ""}`}
+              className={`tool-button document-search-toggle ${searchOpen ? "active" : ""}`}
               type="button"
               aria-label={copy.search}
               data-tooltip={copy.search}

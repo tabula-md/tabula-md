@@ -301,7 +301,10 @@ const openMarkdownFile = async (
 
 const ensureSidePanelClosed = async (page) => {
   if ((await page.locator(".right-panel").count()) > 0) {
-    await page.getByRole("button", { name: "Toggle side panel", exact: true }).click();
+    await page
+      .locator(".right-panel")
+      .getByRole("button", { name: "Close side panel", exact: true })
+      .click();
     await waitForProjectContextState(page, false);
   }
 };

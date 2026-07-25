@@ -168,7 +168,7 @@ export function RightPanel({
   formatCommentDate,
 }: RightPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
-  const closePanelLabel = getWorkspaceChromeCopy(language).topChrome.toggleSidePanel;
+  const closePanelLabel = getWorkspaceChromeCopy(language).topChrome.closeSidePanel;
   const {
     showResolved,
     collapsedReplyIds,
