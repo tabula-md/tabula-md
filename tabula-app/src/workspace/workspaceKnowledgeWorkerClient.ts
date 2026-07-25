@@ -6,12 +6,16 @@ import type {
   WorkspaceSourceDocument,
 } from "@tabula-md/tabula";
 import type {
+  WorkspaceKnowledgeDeltaResponse,
   WorkspaceKnowledgeMaintenanceResponse,
   WorkspaceKnowledgeSnapshotResponse,
   WorkspaceKnowledgeSyncRequest,
   WorkspaceKnowledgeWorkerRequest,
   WorkspaceKnowledgeWorkerResponse,
 } from "./workspaceKnowledgeWorkerProtocol";
+import {
+  applyWorkspaceKnowledgeIndexDelta,
+} from "./workspaceKnowledgeWorkerDelta";
 
 export type WorkspaceKnowledgeState = {
   compatibilityReport?: OkfCompatibilityReport;
@@ -121,6 +125,7 @@ const hydrateTransferIndex = (
 
 class WorkspaceKnowledgeWorkerClient {
   private committedDocumentsById: KnowledgeDocumentsById = new Map();
+  private committedIndex?: WorkspaceKnowledgeIndex;
   private inFlightSync?: InFlightSync;
   private latestTarget: SyncTarget = {
     documentsById: new Map(),
@@ -187,27 +192,25 @@ class WorkspaceKnowledgeWorkerClient {
         nextDocumentsById,
       );
       if (pathChanges.length === 0) return EMPTY_MAINTENANCE_PLAN;
-      const reset = this.committedDocumentsById.size === 0;
-      const delta = reset
-        ? {
-            removedDocumentIds: [] as string[],
-            upsertedDocuments: [...previousDocumentsById.values()],
-          }
-        : getWorkspaceKnowledgeSyncDelta(
-            this.committedDocumentsById,
-            previousDocumentsById,
-          );
+      const delta = getWorkspaceKnowledgeSyncDelta(
+        this.committedDocumentsById,
+        previousDocumentsById,
+      );
+      if (
+        !this.committedIndex ||
+        delta.removedDocumentIds.length > 0 ||
+        delta.upsertedDocuments.length > 0
+      ) {
+        return this.runMaintenanceFallback(previousDocuments, nextDocuments);
+      }
       const worker = this.getWorker();
       const requestId = this.nextRequestId++;
-      this.committedDocumentsById = previousDocumentsById;
       const response = await new Promise<WorkspaceKnowledgeMaintenanceResponse>(
         (resolve, reject) => {
           this.maintenanceResolvers.set(requestId, { resolve, reject });
           worker.postMessage({
             kind: "maintenance",
             requestId,
-            reset,
-            ...delta,
             pathChanges,
           } satisfies WorkspaceKnowledgeWorkerRequest);
         },
@@ -307,13 +310,29 @@ class WorkspaceKnowledgeWorkerClient {
       }
       return;
     }
-    this.handleSnapshot(response);
+    this.handleSyncResponse(response);
   }
 
-  private handleSnapshot(response: WorkspaceKnowledgeSnapshotResponse) {
+  private handleSyncResponse(
+    response: WorkspaceKnowledgeSnapshotResponse | WorkspaceKnowledgeDeltaResponse,
+  ) {
     const inFlight = this.inFlightSync;
     if (!inFlight || response.requestId !== inFlight.requestId) return;
 
+    const nextIndex = response.kind === "snapshot"
+      ? hydrateTransferIndex(response.index, inFlight.documentsById)
+      : this.committedIndex
+        ? applyWorkspaceKnowledgeIndexDelta(
+            this.committedIndex,
+            response.delta,
+            inFlight.documentsById,
+          )
+        : undefined;
+    if (!nextIndex) {
+      this.handleWorkerFailure();
+      return;
+    }
+    this.committedIndex = nextIndex;
     this.committedDocumentsById = inFlight.documentsById;
     this.inFlightSync = undefined;
     const pending = this.pendingSync;
@@ -323,7 +342,7 @@ class WorkspaceKnowledgeWorkerClient {
       this.setState({
         compatibilityReport: response.compatibilityReport,
         elapsedMs: response.elapsedMs,
-        index: hydrateTransferIndex(response.index, inFlight.documentsById),
+        index: nextIndex,
         pending: false,
         revision: response.revision,
         source: "worker",
@@ -376,6 +395,7 @@ class WorkspaceKnowledgeWorkerClient {
         return;
       }
       this.committedDocumentsById = target.documentsById;
+      this.committedIndex = index;
       this.setState({
         compatibilityReport: runtime.getKnowledgeCompatibility(index),
         elapsedMs: performance.now() - startedAt,

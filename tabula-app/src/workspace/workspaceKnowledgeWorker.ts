@@ -8,6 +8,9 @@ import {
   getKnowledgeIndexMaintenancePlan,
   updateKnowledgeIndex,
 } from "./workspaceKnowledgeRuntime";
+import {
+  createWorkspaceKnowledgeIndexDelta,
+} from "./workspaceKnowledgeWorkerDelta";
 import type {
   WorkspaceKnowledgeWorkerRequest,
   WorkspaceKnowledgeWorkerResponse,
@@ -37,13 +40,9 @@ workerScope.onmessage = (event) => {
   const startedAt = performance.now();
   try {
     if (request.kind === "maintenance") {
-      knowledgeIndex = request.reset || !knowledgeIndex
-        ? createKnowledgeIndex(request.upsertedDocuments)
-        : updateKnowledgeIndex(
-            knowledgeIndex,
-            request.removedDocumentIds,
-            request.upsertedDocuments,
-          );
+      if (!knowledgeIndex) {
+        throw new Error("Knowledge index is not ready.");
+      }
       workerScope.postMessage({
         kind: "maintenance",
         requestId: request.requestId,
@@ -53,21 +52,39 @@ workerScope.onmessage = (event) => {
       return;
     }
 
-    knowledgeIndex = request.reset || !knowledgeIndex
+    const previousIndex = knowledgeIndex;
+    knowledgeIndex = request.reset || !previousIndex
       ? createKnowledgeIndex(request.upsertedDocuments)
       : updateKnowledgeIndex(
-          knowledgeIndex,
+          previousIndex,
           request.removedDocumentIds,
           request.upsertedDocuments,
         );
-    workerScope.postMessage({
-      kind: "snapshot",
+    const responseBase = {
       requestId: request.requestId,
       revision: request.revision,
-      index: createTransferIndex(knowledgeIndex),
       compatibilityReport: getKnowledgeCompatibility(knowledgeIndex),
-      elapsedMs: performance.now() - startedAt,
-    });
+    };
+    if (request.reset || !previousIndex) {
+      const index = createTransferIndex(knowledgeIndex);
+      workerScope.postMessage({
+        kind: "snapshot",
+        ...responseBase,
+        index,
+        elapsedMs: performance.now() - startedAt,
+      });
+    } else {
+      const delta = createWorkspaceKnowledgeIndexDelta(
+        previousIndex,
+        knowledgeIndex,
+      );
+      workerScope.postMessage({
+        kind: "delta",
+        ...responseBase,
+        delta,
+        elapsedMs: performance.now() - startedAt,
+      });
+    }
   } catch (error) {
     workerScope.postMessage({
       kind: "error",
