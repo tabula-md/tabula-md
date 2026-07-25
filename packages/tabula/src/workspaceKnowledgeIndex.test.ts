@@ -327,6 +327,48 @@ describe("workspace knowledge index", () => {
     expect(withoutMetadataDocument.documentIdsByTag.has("current")).toBe(false);
   });
 
+  it("reuses unrelated link resolutions when document content changes", () => {
+    const initial = createWorkspaceKnowledgeIndex([
+      document("changed", "Changed.md", "# Before"),
+      document("source", "Source.md", "[Stable](Stable.md)"),
+      document("stable", "Stable.md", "# Stable"),
+    ]);
+    const sourceLinks = initial.outgoingLinksByDocumentId.get("source");
+
+    const next = updateWorkspaceKnowledgeIndex(
+      initial,
+      document("changed", "Changed.md", "# After"),
+    );
+
+    expect(next.outgoingLinksByDocumentId.get("source")).toBe(sourceLinks);
+    expect(next.backlinksByDocumentId.get("stable")).toEqual(
+      initial.backlinksByDocumentId.get("stable"),
+    );
+  });
+
+  it("re-resolves inbound fragment links when target headings change", () => {
+    const initial = createWorkspaceKnowledgeIndex([
+      document(
+        "source",
+        "Source.md",
+        "[Old](Guide.md#part)\n[[Guide#New|New section]]",
+      ),
+      document("guide", "Guide.md", "# Guide\n\n## Part"),
+    ]);
+    expect(initial.outgoingLinksByDocumentId.get("source")?.map((link) => link.status))
+      .toEqual(["resolved", "broken"]);
+
+    const next = updateWorkspaceKnowledgeIndex(
+      initial,
+      document("guide", "Guide.md", "# Guide\n\n## New"),
+    );
+
+    expect(next.outgoingLinksByDocumentId.get("source")?.map((link) => link.status))
+      .toEqual(["broken", "resolved"]);
+    expect(next.backlinksByDocumentId.get("guide")?.map((link) => link.label))
+      .toEqual(["New section"]);
+  });
+
   it("reuses document analyses when only paths change", () => {
     const initial = createWorkspaceKnowledgeIndex([
       document("start", "docs/Start.md", "[Guide](../guide/Guide.md)"),
