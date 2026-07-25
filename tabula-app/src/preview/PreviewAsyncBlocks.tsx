@@ -794,6 +794,7 @@ export function PreviewCodeBlock({ children, copy, searchActive = false, ...prop
   return (
     <div ref={blockRef} className={`preview-code-block ${isWrapped ? "wrapped" : ""}`}>
       <div className="preview-code-actions" aria-label={copy.codeBlockActions}>
+        {language && <span className="preview-code-language">{language}</span>}
         <button
           type="button"
           className={`preview-code-action ${isWrapped ? "active" : ""}`}
