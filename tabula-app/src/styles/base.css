@@ -5,6 +5,7 @@
   --surface-overlay: #ffffff;
   --app-background: var(--surface-workbench);
   --surface-muted: #f7f7f8;
+  --surface-code: #f7f7f8;
   --surface-hover: #eeeeef;
   --surface-active: #ffffff;
   --line-subtle: #eeeeef;
@@ -101,6 +102,7 @@
   --surface-overlay: #19191a;
   --app-background: var(--surface-workbench);
   --surface-muted: #232325;
+  --surface-code: #171719;
   --surface-hover: #2d2d30;
   --surface-active: #303034;
   --line-subtle: #333337;

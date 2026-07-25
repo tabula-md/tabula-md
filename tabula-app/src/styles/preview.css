@@ -904,7 +904,7 @@ a.preview-docs-card:hover {
 .preview-surface code {
   padding: 2px 5px;
   color: var(--text-primary);
-  background: var(--surface-muted);
+  background: var(--surface-code);
   border-radius: 5px;
   font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 1em;
@@ -913,7 +913,7 @@ a.preview-docs-card:hover {
 .preview-code-block {
   position: relative;
   margin: 18px 0;
-  background: var(--surface-overlay);
+  background: var(--surface-code);
   border-radius: 8px;
 }
 
@@ -932,6 +932,17 @@ a.preview-docs-card:hover {
     transform var(--motion-hover) ease;
 }
 
+.preview-code-language {
+  align-self: center;
+  margin-right: 2px;
+  color: var(--text-muted);
+  font-family: "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: var(--preview-code-label-size);
+  font-weight: var(--weight-ui-medium);
+  line-height: 1;
+  text-transform: lowercase;
+}
+
 .preview-code-block:hover .preview-code-actions,
 .preview-code-block:focus-within .preview-code-actions {
   opacity: 1;
@@ -945,7 +956,7 @@ a.preview-docs-card:hover {
   width: var(--control-size-compact);
   height: var(--control-size-compact);
   color: var(--text-soft);
-  background: color-mix(in srgb, var(--surface-overlay) 86%, transparent);
+  background: color-mix(in srgb, var(--surface-code) 86%, transparent);
   border-radius: var(--radius-pill);
 }
 
@@ -981,7 +992,7 @@ a.preview-docs-card:hover {
   position: relative;
   overflow: auto;
   margin: 0;
-  padding: 42px 16px 14px;
+  padding: 16px;
   background: transparent;
   border-radius: inherit;
   font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -1003,21 +1014,8 @@ a.preview-docs-card:hover {
   white-space: pre;
 }
 
-.preview-surface pre code[data-language]::before {
-  position: absolute;
-  top: 18px;
-  left: 16px;
-  color: var(--text-muted);
-  font-family: "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: var(--preview-code-label-size);
-  font-weight: 500;
-  line-height: 1;
-  text-transform: uppercase;
-  content: attr(data-language);
-}
-
 .preview-surface pre code.hljs {
-  color: var(--text-primary);
+  color: color-mix(in srgb, var(--accent) 30%, var(--text-primary));
 }
 
 .preview-surface .hljs-keyword,

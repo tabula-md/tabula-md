@@ -681,6 +681,7 @@ export async function run(ctx) {
     await page.keyboard.insertText("```ts\nconst value = 1;\n```");
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await page.waitForSelector(".preview-surface pre code", { timeout: 5_000 });
+    await page.waitForSelector(".preview-surface pre code.hljs", { timeout: 5_000 });
     await page.mouse.move(0, 0);
     await page.waitForFunction(() => {
       const actions = document.querySelector(".preview-code-actions");
@@ -699,13 +700,18 @@ export async function run(ctx) {
       const codeStyle = window.getComputedStyle(code);
       const actionsStyle = actions instanceof HTMLElement ? window.getComputedStyle(actions) : null;
       const surfaceProbe = document.createElement("span");
-      surfaceProbe.style.background = "var(--surface-overlay)";
+      surfaceProbe.style.background = "var(--surface-code)";
       document.body.append(surfaceProbe);
-      const surfacePanelBackground = window.getComputedStyle(surfaceProbe).backgroundColor;
+      const codeSurfaceBackground = window.getComputedStyle(surfaceProbe).backgroundColor;
+      surfaceProbe.style.background = "var(--surface-workbench)";
+      const workbenchBackground = window.getComputedStyle(surfaceProbe).backgroundColor;
+      surfaceProbe.style.color = "var(--text-primary)";
+      const primaryTextColor = window.getComputedStyle(surfaceProbe).color;
       surfaceProbe.remove();
       return {
         text: code.textContent ?? "",
         language: code.dataset.language ?? "",
+        visibleLanguage: document.querySelector(".preview-code-language")?.textContent ?? "",
         actionCount: document.querySelectorAll(".preview-code-action").length,
         actionsOpacity: actionsStyle?.opacity ?? "",
         actionsPointerEvents: actionsStyle?.pointerEvents ?? "",
@@ -716,16 +722,22 @@ export async function run(ctx) {
         blockRadius: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).borderRadius : "",
         blockBorderWidth: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).borderTopWidth : "",
         blockBackground: codeBlock instanceof HTMLElement ? window.getComputedStyle(codeBlock).backgroundColor : "",
-        surfacePanelBackground,
+        codeSurfaceBackground,
+        workbenchBackground,
         preBackground: preStyle.backgroundColor,
         preRadius: preStyle.borderRadius,
+        prePaddingTop: preStyle.paddingTop,
+        prePaddingBottom: preStyle.paddingBottom,
         codeDisplay: codeStyle.display,
+        codeColor: codeStyle.color,
+        primaryTextColor,
         ligatures: codeStyle.fontVariantLigatures,
         whiteSpace: codeStyle.whiteSpace,
       };
     });
     expect(previewCodeBlock?.text.includes("const value = 1;"), "Preview should render fenced code block contents.");
     expect(previewCodeBlock?.language === "ts", "Preview should preserve fenced code block language metadata.");
+    expect(previewCodeBlock?.visibleLanguage === "ts", "Preview should show the code language with the hover actions.");
     expect(previewCodeBlock?.actionCount === 2, "Preview code blocks should expose word wrap and copy actions.");
     expect(previewCodeBlock?.actionsOpacity === "0", "Preview code block actions should stay hidden until hover or focus.");
     expect(previewCodeBlock?.actionsPointerEvents === "none", "Hidden preview code block actions should not intercept the document.");
@@ -739,10 +751,22 @@ export async function run(ctx) {
     expect(previewCodeBlock?.blockRadius !== "0px", "Preview code block controls should live inside the rounded code surface.");
     expect(previewCodeBlock?.blockBorderWidth === "0px", "Preview code blocks should not draw a document boundary.");
     expect(
-      previewCodeBlock?.blockBackground === previewCodeBlock?.surfacePanelBackground,
-      "Preview code blocks should stay quieter than filled gray cards.",
+      previewCodeBlock?.prePaddingTop === previewCodeBlock?.prePaddingBottom,
+      "Preview code blocks should use balanced vertical padding.",
+    );
+    expect(
+      previewCodeBlock?.blockBackground === previewCodeBlock?.codeSurfaceBackground,
+      "Preview code blocks should use the dedicated code surface.",
+    );
+    expect(
+      previewCodeBlock?.blockBackground !== previewCodeBlock?.workbenchBackground,
+      "Preview code blocks should remain visible against the document surface.",
     );
     expect(previewCodeBlock?.codeDisplay === "block", "Preview code blocks should render as stable block code.");
+    expect(
+      previewCodeBlock?.codeColor !== previewCodeBlock?.primaryTextColor,
+      "Recognized code languages should have a subtle syntax base tint.",
+    );
     expect(previewCodeBlock?.ligatures === "none", "Preview code blocks should preserve source-like character rendering.");
     expect(previewCodeBlock?.whiteSpace === "pre", "Preview code blocks should preserve source whitespace by default.");
     await page.locator(".preview-code-block").hover();
