@@ -624,6 +624,7 @@ export type {
   WorkspaceKnowledgeLink,
   WorkspaceKnowledgeMetadata,
   WorkspaceLinkStatus,
+  WorkspaceDocumentPathChange,
   WorkspaceSourceDocument,
 } from "./workspaceKnowledgeIndex";
 export {
@@ -632,14 +633,17 @@ export {
   removeWorkspaceDocumentFromKnowledgeIndex,
   scanMarkdownWikiLinks,
   updateWorkspaceKnowledgeIndex,
+  updateWorkspaceKnowledgeIndexPaths,
 } from "./workspaceKnowledgeIndex";
 
 export type {
   WorkspaceKnowledgeMaintenancePlan,
+  WorkspaceKnowledgePathChange,
   WorkspaceKnowledgeMaintenanceUpdate,
 } from "./workspaceKnowledgeMaintenance";
 export {
   EMPTY_WORKSPACE_KNOWLEDGE_MAINTENANCE_PLAN,
+  planWorkspaceKnowledgeIndexMaintenance,
   planWorkspaceKnowledgeMaintenance,
 } from "./workspaceKnowledgeMaintenance";
 

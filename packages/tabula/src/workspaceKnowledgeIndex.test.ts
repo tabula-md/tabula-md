@@ -4,6 +4,7 @@ import {
   createWorkspaceKnowledgeIndex,
   removeWorkspaceDocumentFromKnowledgeIndex,
   updateWorkspaceKnowledgeIndex,
+  updateWorkspaceKnowledgeIndexPaths,
   type WorkspaceSourceDocument,
 } from "./workspaceKnowledgeIndex";
 
@@ -324,6 +325,29 @@ describe("workspace knowledge index", () => {
     );
     expect(withoutMetadataDocument.documentIdsByType.has("Reference")).toBe(false);
     expect(withoutMetadataDocument.documentIdsByTag.has("current")).toBe(false);
+  });
+
+  it("reuses document analyses when only paths change", () => {
+    const initial = createWorkspaceKnowledgeIndex([
+      document("start", "docs/Start.md", "[Guide](../guide/Guide.md)"),
+      document("guide", "guide/Guide.md", "# Guide"),
+    ]);
+    const startAnalysis = initial.analysesByDocumentId.get("start");
+    const guideAnalysis = initial.analysesByDocumentId.get("guide");
+
+    const moved = updateWorkspaceKnowledgeIndexPaths(initial, [{
+      documentId: "guide",
+      previousPath: "guide/Guide.md",
+      nextPath: "handbook/Guide.md",
+    }]);
+
+    expect(moved.analysesByDocumentId.get("start")).toBe(startAnalysis);
+    expect(moved.analysesByDocumentId.get("guide")).toMatchObject({
+      ...guideAnalysis,
+      path: "handbook/Guide.md",
+    });
+    expect(moved.analysesByDocumentId.get("guide")?.links).toBe(guideAnalysis?.links);
+    expect(moved.brokenLinks).toHaveLength(1);
   });
 
   it("resolves wiki paths conservatively and exposes ambiguous basename candidates", () => {

@@ -5,7 +5,7 @@ import type {
 import {
   createKnowledgeIndex,
   getKnowledgeCompatibility,
-  getKnowledgeMaintenancePlan,
+  getKnowledgeIndexMaintenancePlan,
   updateKnowledgeIndex,
 } from "./workspaceKnowledgeRuntime";
 import type {
@@ -37,13 +37,17 @@ workerScope.onmessage = (event) => {
   const startedAt = performance.now();
   try {
     if (request.kind === "maintenance") {
+      knowledgeIndex = request.reset || !knowledgeIndex
+        ? createKnowledgeIndex(request.upsertedDocuments)
+        : updateKnowledgeIndex(
+            knowledgeIndex,
+            request.removedDocumentIds,
+            request.upsertedDocuments,
+          );
       workerScope.postMessage({
         kind: "maintenance",
         requestId: request.requestId,
-        plan: getKnowledgeMaintenancePlan(
-          request.previousDocuments,
-          request.nextDocuments,
-        ),
+        plan: getKnowledgeIndexMaintenancePlan(knowledgeIndex, request.pathChanges),
         elapsedMs: performance.now() - startedAt,
       });
       return;

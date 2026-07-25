@@ -1,5 +1,6 @@
 import {
   createWorkspaceKnowledgeIndex,
+  planWorkspaceKnowledgeIndexMaintenance,
   planWorkspaceKnowledgeMaintenance,
   removeWorkspaceDocumentFromKnowledgeIndex,
   updateWorkspaceKnowledgeIndex,
@@ -7,6 +8,7 @@ import {
   type OkfCompatibilityReport,
   type WorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeMaintenancePlan,
+  type WorkspaceKnowledgePathChange,
   type WorkspaceSourceDocument,
 } from "@tabula-md/tabula";
 import { getWorkspaceKnowledgeDocuments } from "./workspaceKnowledgeModel";
@@ -86,6 +88,12 @@ export const getKnowledgeMaintenancePlan = (
   nextDocuments: readonly WorkspaceSourceDocument[],
 ): WorkspaceKnowledgeMaintenancePlan =>
   planWorkspaceKnowledgeMaintenance(previousDocuments, nextDocuments);
+
+export const getKnowledgeIndexMaintenancePlan = (
+  index: WorkspaceKnowledgeIndex,
+  pathChanges: readonly WorkspaceKnowledgePathChange[],
+): WorkspaceKnowledgeMaintenancePlan =>
+  planWorkspaceKnowledgeIndexMaintenance(index, pathChanges);
 
 export const getWorkspaceKnowledgeMaintenancePlan = (
   previousDocuments: readonly WorkspaceSourceDocument[],

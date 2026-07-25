@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  planWorkspaceKnowledgeIndexMaintenance,
   planWorkspaceKnowledgeMaintenance,
 } from "./workspaceKnowledgeMaintenance";
 import {
@@ -9,6 +10,7 @@ import {
   planWorkspaceRoomKnowledgeMaintenance,
 } from "./workspaceRoomKnowledgeMaintenance";
 import type { WorkspaceSourceDocument } from "./workspaceKnowledgeIndex";
+import { createWorkspaceKnowledgeIndex } from "./workspaceKnowledgeIndex";
 import {
   createWorkspaceRoomCrdt,
   getWorkspaceRoomSnapshot,
@@ -111,6 +113,34 @@ describe("workspace knowledge maintenance", () => {
       updatedLinkCount: 0,
       skippedLinkCount: 0,
     });
+  });
+
+  it("produces the same plan from an existing index and path changes", () => {
+    const source = "[Guide](../guide/Guide.md)\n[[../guide/Guide|Wiki]]";
+    const previous = [
+      document("start", "docs/Start.md", source),
+      document("guide", "guide/Guide.md", "# Guide"),
+    ];
+    const next = [
+      document("start", "archive/Start.md", source),
+      document("guide", "handbook/Core Guide.md", "# Guide"),
+    ];
+
+    expect(planWorkspaceKnowledgeIndexMaintenance(
+      createWorkspaceKnowledgeIndex(previous),
+      [
+        {
+          documentId: "start",
+          previousPath: "docs/Start.md",
+          nextPath: "archive/Start.md",
+        },
+        {
+          documentId: "guide",
+          previousPath: "guide/Guide.md",
+          nextPath: "handbook/Core Guide.md",
+        },
+      ],
+    )).toEqual(planWorkspaceKnowledgeMaintenance(previous, next));
   });
 
   it("leaves broken, ambiguous, and external links unchanged", () => {

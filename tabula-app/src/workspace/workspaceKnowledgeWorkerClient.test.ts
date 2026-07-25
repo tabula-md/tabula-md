@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { WorkspaceSourceDocument } from "@tabula-md/tabula";
-import { getWorkspaceKnowledgeSyncDelta } from "./workspaceKnowledgeWorkerClient";
+import {
+  getWorkspaceKnowledgePathChanges,
+  getWorkspaceKnowledgeSyncDelta,
+} from "./workspaceKnowledgeWorkerClient";
 
 const document = (
   id: string,
@@ -41,5 +44,26 @@ describe("workspace knowledge worker client", () => {
       new Map([[previous.id, previous]]),
       new Map([[next.id, next]]),
     ).upsertedDocuments).toEqual([next]);
+  });
+
+  it("sends only changed paths for knowledge maintenance", () => {
+    const unchanged = document("same", "Same.md", "# Same");
+    const previous = document("guide", "docs/Guide.md", "# Guide");
+    const next = document("guide", "handbook/Guide.md", "# Guide");
+
+    expect(getWorkspaceKnowledgePathChanges(
+      new Map([
+        [unchanged.id, unchanged],
+        [previous.id, previous],
+      ]),
+      new Map([
+        [unchanged.id, unchanged],
+        [next.id, next],
+      ]),
+    )).toEqual([{
+      documentId: "guide",
+      previousPath: "docs/Guide.md",
+      nextPath: "handbook/Guide.md",
+    }]);
   });
 });

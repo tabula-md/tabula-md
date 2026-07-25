@@ -4,8 +4,11 @@ import { applyTextPatches, type TextPatch } from "./textPatches";
 import {
   createWorkspaceKnowledgeIndex,
   type DocumentLinkAnalysis,
+  type WorkspaceDocumentPathChange,
+  type WorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeLink,
   type WorkspaceSourceDocument,
+  updateWorkspaceKnowledgeIndexPaths,
 } from "./workspaceKnowledgeIndex";
 
 export type WorkspaceKnowledgeMaintenanceUpdate = {
@@ -21,6 +24,8 @@ export type WorkspaceKnowledgeMaintenancePlan = {
   updatedLinkCount: number;
   skippedLinkCount: number;
 };
+
+export type WorkspaceKnowledgePathChange = WorkspaceDocumentPathChange;
 
 export const EMPTY_WORKSPACE_KNOWLEDGE_MAINTENANCE_PLAN: WorkspaceKnowledgeMaintenancePlan =
   Object.freeze({
@@ -50,6 +55,11 @@ type PendingPatch = {
   patch: TextPatch;
   linkCount: number;
 };
+
+const EMPTY_DEFINITION_RANGES: ReadonlyMap<
+  string,
+  Pick<TextPatch, "from" | "to">
+> = new Map();
 
 const normalizeReferenceIdentifier = (identifier: string) =>
   identifier.trim().replace(/\s+/g, " ").toLowerCase();
@@ -299,26 +309,23 @@ const getMatchingLink = (
   link.relation === previous.relation
 );
 
-export const planWorkspaceKnowledgeMaintenance = (
-  previousDocuments: readonly WorkspaceSourceDocument[],
-  nextDocuments: readonly WorkspaceSourceDocument[],
+const planWorkspaceKnowledgeMaintenanceFromIndexes = (
+  previousIndex: WorkspaceKnowledgeIndex,
+  nextIndex: WorkspaceKnowledgeIndex,
 ): WorkspaceKnowledgeMaintenancePlan => {
-  const previousIndex = createWorkspaceKnowledgeIndex(previousDocuments);
-  const nextIndex = createWorkspaceKnowledgeIndex(nextDocuments);
-  const nextDocumentsById = new Map(
-    nextDocuments.map((document) => [document.id, document]),
-  );
   const updates: WorkspaceKnowledgeMaintenanceUpdate[] = [];
   let skippedLinkCount = 0;
 
-  for (const previousDocument of previousDocuments) {
-    const nextDocument = nextDocumentsById.get(previousDocument.id);
+  for (const previousDocument of previousIndex.documentsById.values()) {
+    const nextDocument = nextIndex.documentsById.get(previousDocument.id);
     if (!nextDocument) continue;
     const previousLinks =
       previousIndex.outgoingLinksByDocumentId.get(previousDocument.id) ?? [];
     const nextLinks =
       nextIndex.outgoingLinksByDocumentId.get(previousDocument.id) ?? [];
-    const definitionRanges = getDefinitionTargetPatches(previousDocument.markdown);
+    let definitionRanges:
+      | ReadonlyMap<string, Pick<TextPatch, "from" | "to">>
+      | undefined;
     const pendingPatches = new Map<string, PendingPatch>();
 
     for (const previousLink of previousLinks) {
@@ -328,7 +335,7 @@ export const planWorkspaceKnowledgeMaintenance = (
       ) {
         continue;
       }
-      const nextTargetDocument = nextDocumentsById.get(
+      const nextTargetDocument = nextIndex.documentsById.get(
         previousLink.targetDocumentId,
       );
       if (!nextTargetDocument) continue;
@@ -345,7 +352,9 @@ export const planWorkspaceKnowledgeMaintenance = (
         nextTargetDocument.path,
       );
       const patch = getLinkTargetPatch({
-        definitionRanges,
+        definitionRanges: previousLink.referenceIdentifier
+          ? (definitionRanges ??= getDefinitionTargetPatches(previousDocument.markdown))
+          : EMPTY_DEFINITION_RANGES,
         link: previousLink,
         markdown: previousDocument.markdown,
         nextTarget,
@@ -397,3 +406,25 @@ export const planWorkspaceKnowledgeMaintenance = (
     skippedLinkCount,
   };
 };
+
+export const planWorkspaceKnowledgeIndexMaintenance = (
+  previousIndex: WorkspaceKnowledgeIndex,
+  pathChanges: readonly WorkspaceKnowledgePathChange[],
+): WorkspaceKnowledgeMaintenancePlan => {
+  if (pathChanges.length === 0) {
+    return EMPTY_WORKSPACE_KNOWLEDGE_MAINTENANCE_PLAN;
+  }
+  return planWorkspaceKnowledgeMaintenanceFromIndexes(
+    previousIndex,
+    updateWorkspaceKnowledgeIndexPaths(previousIndex, pathChanges),
+  );
+};
+
+export const planWorkspaceKnowledgeMaintenance = (
+  previousDocuments: readonly WorkspaceSourceDocument[],
+  nextDocuments: readonly WorkspaceSourceDocument[],
+): WorkspaceKnowledgeMaintenancePlan =>
+  planWorkspaceKnowledgeMaintenanceFromIndexes(
+    createWorkspaceKnowledgeIndex(previousDocuments),
+    createWorkspaceKnowledgeIndex(nextDocuments),
+  );
