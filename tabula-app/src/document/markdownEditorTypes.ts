@@ -17,6 +17,9 @@ export type MarkdownEditorInterfaceCopy = Pick<
   | "removeLineBookmark"
   | "activeComment"
   | "openComment"
+  | "imageFailed"
+  | "markTaskComplete"
+  | "markTaskIncomplete"
 >;
 
 export type MarkdownEditorHandle = {
@@ -89,6 +92,7 @@ export type MarkdownEditorProps = {
   largeDocumentMode: boolean;
   lineWrapping: boolean;
   lineNumbers: boolean;
+  visualEditing?: boolean;
   bookmarks?: MarkdownBookmark[];
   commentAnchors?: MarkdownCommentAnchor[];
   commentsEnabled?: boolean;

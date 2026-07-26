@@ -14,6 +14,17 @@
   background: transparent;
 }
 
+.editor-surface.has-text-selection
+  .markdown-editor
+  .cm-visual-editor
+  :is(
+    .cm-visual-inline-code,
+    .cm-visual-source-block,
+    .cm-visual-selected-code
+  ) {
+  background: transparent;
+}
+
 .selection-comment-popover {
   position: fixed;
   display: grid;

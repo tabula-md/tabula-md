@@ -15,6 +15,7 @@ import {
   getMarkdownIndentEdit,
   type MarkdownFormatCommand,
 } from "@tabula-md/tabula";
+import { revealEditorVisualSelection } from "./editorVisualEffects";
 
 const getMinimalTextChanges = (currentText: string, nextText: string) => {
   if (currentText === nextText) {
@@ -72,6 +73,7 @@ export const runMarkdownFormatCommand = (view: EditorView, command: MarkdownForm
 
   if (result.text === currentText) {
     view.dispatch({
+      effects: revealEditorVisualSelection.of(null),
       selection: selectionRange,
       scrollIntoView: true,
     });
@@ -84,6 +86,7 @@ export const runMarkdownFormatCommand = (view: EditorView, command: MarkdownForm
   stopCapturing?.();
   view.dispatch({
     changes,
+    effects: revealEditorVisualSelection.of(null),
     selection: selectionRange,
     scrollIntoView: true,
     annotations: isolateHistory.of("full"),

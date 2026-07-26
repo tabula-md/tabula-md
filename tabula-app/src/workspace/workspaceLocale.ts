@@ -855,6 +855,7 @@ export type WorkspaceChromeCopy = {
     documentControlsLabel: string;
     split: string;
     edit: string;
+    visual: string;
     preview: string;
     editorControls: string;
     viewControls: string;
@@ -923,6 +924,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentControlsLabel: "Document controls",
       split: "Split",
       edit: "Edit",
+      visual: "Visual",
       preview: "Preview",
       editorControls: "Editor controls",
       viewControls: "View controls",
@@ -989,6 +991,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentControlsLabel: "문서 컨트롤",
       split: "분할",
       edit: "편집",
+      visual: "비주얼",
       preview: "미리보기",
       editorControls: "에디터 컨트롤",
       viewControls: "보기 컨트롤",
@@ -1055,6 +1058,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentControlsLabel: "ドキュメント操作",
       split: "分割",
       edit: "編集",
+      visual: "ビジュアル",
       preview: "プレビュー",
       editorControls: "エディター設定",
       viewControls: "表示設定",
@@ -1121,6 +1125,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentControlsLabel: "文档控制",
       split: "分屏",
       edit: "编辑",
+      visual: "可视化",
       preview: "预览",
       editorControls: "编辑器控制",
       viewControls: "视图控制",
@@ -1187,6 +1192,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentControlsLabel: "Controles del documento",
       split: "Dividir",
       edit: "Editar",
+      visual: "Visual",
       preview: "Vista previa",
       editorControls: "Controles del editor",
       viewControls: "Controles de vista",
@@ -1253,6 +1259,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentControlsLabel: "Contrôles du document",
       split: "Scinder",
       edit: "Modifier",
+      visual: "Visuel",
       preview: "Aperçu",
       editorControls: "Contrôles de l’éditeur",
       viewControls: "Contrôles d’affichage",
@@ -1319,6 +1326,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       documentControlsLabel: "Dokumentsteuerung",
       split: "Teilen",
       edit: "Bearbeiten",
+      visual: "Visuell",
       preview: "Vorschau",
       editorControls: "Editorsteuerung",
       viewControls: "Ansichtssteuerung",

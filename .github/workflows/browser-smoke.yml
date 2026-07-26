@@ -60,7 +60,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           TABULA_ROOM_REPO_DIR: ${{ github.workspace }}/tabula-room
-        run: npm run test:browser -- --suite=workspace,collaboration
+        run: npm run test:browser -- --suite=workspace,editor-visual,collaboration
 
       - name: Run scheduled suite
         if: github.event_name != 'pull_request'

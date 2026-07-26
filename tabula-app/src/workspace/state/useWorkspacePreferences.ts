@@ -46,7 +46,7 @@ const isWorkspaceLanguage = (value: unknown): value is WorkspaceLanguage =>
   SUPPORTED_WORKSPACE_LANGUAGES.includes(value as WorkspaceLanguage);
 
 const isFileViewMode = (value: unknown): value is FileViewMode =>
-  value === "edit" || value === "split" || value === "preview";
+  value === "visual" || value === "edit" || value === "split" || value === "preview";
 
 const isReadingWidth = (value: unknown): value is ReadingWidth =>
   value === "narrow" || value === "standard" || value === "wide";

@@ -901,7 +901,8 @@ export function useWorkspaceRuntime() {
     if (
       !pendingPreviewNavigation ||
       pendingPreviewNavigation.documentId !== activeFileId ||
-      activeViewMode === "edit"
+      activeViewMode === "edit" ||
+      activeViewMode === "visual"
     ) {
       return undefined;
     }
@@ -1035,7 +1036,7 @@ export function useWorkspaceRuntime() {
       flushPendingEditorCommit();
       documentWorkbenchController.onSetViewMode(viewMode);
     };
-    if (viewMode === "edit") {
+    if (viewMode === "edit" || viewMode === "visual") {
       applyViewMode();
       return;
     }

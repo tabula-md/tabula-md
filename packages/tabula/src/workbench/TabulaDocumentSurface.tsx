@@ -266,7 +266,9 @@ export function TabulaDocumentSurface({
   resolveWorkspaceLink,
 }: TabulaDocumentSurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
-  const shouldRenderPreview = documentSurface.documentControls.activeViewMode !== "edit";
+  const shouldRenderPreview =
+    documentSurface.documentControls.activeViewMode === "split" ||
+    documentSurface.documentControls.activeViewMode === "preview";
   const [MarkdownPreview, setMarkdownPreview] = useState<MarkdownPreviewComponent | null>(
     getLoadedMarkdownPreview,
   );
@@ -336,7 +338,11 @@ export function TabulaDocumentSurface({
           value={text}
           largeDocumentMode={largeDocumentMode}
           lineWrapping={effectiveLineWrapping}
-          lineNumbers={activeLineNumbers}
+          lineNumbers={
+            activeLineNumbers &&
+            documentSurface.documentControls.activeViewMode !== "visual"
+          }
+          visualEditing={documentSurface.documentControls.activeViewMode === "visual"}
           bookmarks={activeBookmarks}
           commentAnchors={activeCommentAnchors}
           commentsEnabled={commentsEnabled}

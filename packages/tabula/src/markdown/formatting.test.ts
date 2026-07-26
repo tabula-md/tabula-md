@@ -255,12 +255,45 @@ describe("markdown formatting commands", () => {
       text: "---\ntitle: Untitled\n---\n\nBody",
       selection: { from: 11, to: 19 },
     });
+    expect(applyMarkdownFormat("Body", { from: 4, to: 4 }, "frontmatter")).toEqual({
+      text: "---\ntitle: Untitled\n---\n\nBody",
+      selection: { from: 11, to: 19 },
+    });
+    expect(
+      applyMarkdownFormat(
+        "---\ntitle: Existing\n---\n\nBody",
+        { from: 30, to: 30 },
+        "frontmatter",
+      ),
+    ).toEqual({
+      text: "---\ntitle: Existing\n---\n\nBody",
+      selection: { from: 11, to: 19 },
+    });
+    expect(
+      applyMarkdownFormat("---\ntags: [one]\n...\nBody", { from: 25, to: 25 }, "frontmatter"),
+    ).toEqual({
+      text: "---\ntitle: Untitled\ntags: [one]\n...\nBody",
+      selection: { from: 11, to: 19 },
+    });
   });
 
-  it("inserts footnotes and selects the footnote body", () => {
+  it("keeps referenced text, appends a footnote definition, and selects its body", () => {
     expect(applyMarkdownFormat("remember", { from: 0, to: 8 }, "footnote")).toEqual({
-      text: "[^1]\n\n[^1]: remember",
-      selection: { from: 12, to: 20 },
+      text: "remember[^1]\n\n[^1]: note",
+      selection: { from: 20, to: 24 },
+    });
+  });
+
+  it("assigns a free numeric label when the document already has footnotes", () => {
+    expect(
+      applyMarkdownFormat(
+        "First[^1]\n\n[^1]: Existing",
+        { from: 5, to: 5 },
+        "footnote",
+      ),
+    ).toEqual({
+      text: "First[^2][^1]\n\n[^1]: Existing\n\n[^2]: note",
+      selection: { from: 37, to: 41 },
     });
   });
 

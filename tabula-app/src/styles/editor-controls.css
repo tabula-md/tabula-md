@@ -152,7 +152,7 @@
   height: 50px;
   padding: var(--space-2) 0;
   border-radius: 0;
-  background: var(--app-background);
+  background: transparent;
 }
 
 .document-toolbar-row.with-formatting {
@@ -160,7 +160,8 @@
   justify-items: stretch;
 }
 
-.file-shell.view-edit .document-toolbar-row {
+.file-shell.view-edit .document-toolbar-row,
+.file-shell.view-visual .document-toolbar-row {
   width: var(--editor-frame-width);
 }
 
@@ -302,7 +303,8 @@
     width: var(--document-chrome-width);
   }
 
-  .file-shell.view-edit .document-toolbar-row {
+  .file-shell.view-edit .document-toolbar-row,
+  .file-shell.view-visual .document-toolbar-row {
     width: var(--document-chrome-width);
   }
 
@@ -382,7 +384,8 @@
     margin-right: var(--document-lane-margin-right);
   }
 
-  .file-shell.view-edit .document-toolbar-row {
+  .file-shell.view-edit .document-toolbar-row,
+  .file-shell.view-visual .document-toolbar-row {
     width: var(--document-chrome-width);
   }
 }

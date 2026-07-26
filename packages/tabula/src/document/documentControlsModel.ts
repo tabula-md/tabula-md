@@ -19,10 +19,11 @@ export type DocumentControlsCopy = {
   standardWidth: string;
   syncScrolling: string;
   textWidth: string;
+  visual: string;
   viewControls: string;
 };
 
-export type DocumentViewModeIcon = "edit" | "preview" | "split";
+export type DocumentViewModeIcon = "edit" | "preview" | "split" | "visual";
 
 export type DocumentViewModeOption = {
   active: boolean;
@@ -85,9 +86,10 @@ const getViewModeOptions = (
   activeViewMode: FileViewMode,
   copy: DocumentControlsCopy,
 ): DocumentViewModeOption[] => [
+  { active: activeViewMode === "visual", icon: "visual", label: copy.visual, viewMode: "visual" },
   { active: activeViewMode === "edit", icon: "edit", label: copy.edit, viewMode: "edit" },
-  { active: activeViewMode === "split", icon: "split", label: copy.split, viewMode: "split" },
   { active: activeViewMode === "preview", icon: "preview", label: copy.preview, viewMode: "preview" },
+  { active: activeViewMode === "split", icon: "split", label: copy.split, viewMode: "split" },
 ];
 
 export const buildDocumentControlsModel = ({
@@ -128,7 +130,7 @@ export const buildDocumentControlsModel = ({
       active: activeSyncScrolling,
       label: copy.syncScrolling,
     },
-    viewModeLabel: `${copy.documentControlsLabel}: ${copy.edit}, ${copy.split}, ${copy.preview}`,
+    viewModeLabel: copy.documentControlsLabel,
     viewModeOptions: getViewModeOptions(activeViewMode, copy),
   };
 };

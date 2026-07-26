@@ -398,23 +398,71 @@ const insertTabs = (text: string, selection: MarkdownFormatSelection) =>
     '</Tab>\n<Tab title="Tab 2">Content</Tab>\n</Tabs>',
   );
 
-const insertFrontmatter = (text: string, selection: MarkdownFormatSelection) => {
-  const { from, to } = normalizeSelection(text, selection);
-  const insertion = "---\ntitle: Untitled\n---\n\n";
-  const selectionFrom = "title: ".length + 4;
-  if (from === 0 && to === 0) {
-    return replaceTextRange(text, 0, 0, insertion, selectionFrom, selectionFrom + "Untitled".length);
+const insertFrontmatter = (text: string, _selection: MarkdownFormatSelection) => {
+  const existingFrontmatter =
+    /^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)(?:\r?\n|$)/.exec(text);
+  if (existingFrontmatter) {
+    const contentFrom = existingFrontmatter[0].indexOf(existingFrontmatter[1]);
+    const title = /^(?: {0,3})title:[ \t]*(.*)$/m.exec(existingFrontmatter[1]);
+    if (title) {
+      const titleFrom = contentFrom +
+        title.index +
+        title[0].length -
+        title[1].length;
+      return {
+        text,
+        selection: {
+          from: titleFrom,
+          to: titleFrom + title[1].length,
+        },
+      };
+    }
+    return replaceTextRange(
+      text,
+      contentFrom,
+      contentFrom,
+      "title: Untitled\n",
+      contentFrom + 7,
+      contentFrom + 15,
+    );
   }
 
-  return insertBlockAtSelection(text, selection, "---\ntitle: Untitled\n---", "title: ".length + 4, "Untitled".length);
+  return replaceTextRange(
+    text,
+    0,
+    0,
+    "---\ntitle: Untitled\n---\n\n",
+    11,
+    19,
+  );
+};
+
+const getNextFootnoteLabel = (text: string) => {
+  let index = 1;
+  while (text.includes(`[^${index}]`)) index += 1;
+  return String(index);
 };
 
 const insertFootnote = (text: string, selection: MarkdownFormatSelection) => {
-  const { from, to } = normalizeSelection(text, selection);
-  const selectedText = text.slice(from, to) || "note";
-  const insertion = `[^1]\n\n[^1]: ${selectedText}`;
-  const selectionFrom = from + insertion.length - selectedText.length;
-  return replaceTextRange(text, from, to, insertion, selectionFrom, selectionFrom + selectedText.length);
+  const { to } = normalizeSelection(text, selection);
+  const label = getNextFootnoteLabel(text);
+  const reference = `[^${label}]`;
+  const textWithReference =
+    `${text.slice(0, to)}${reference}${text.slice(to)}`;
+  const separator = textWithReference.endsWith("\n\n")
+    ? ""
+    : textWithReference.endsWith("\n")
+      ? "\n"
+      : "\n\n";
+  const nextText = `${textWithReference}${separator}[^${label}]: note`;
+
+  return {
+    text: nextText,
+    selection: {
+      from: nextText.length - 4,
+      to: nextText.length,
+    },
+  };
 };
 
 const clearInlineFormatting = (value: string) =>

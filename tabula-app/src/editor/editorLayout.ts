@@ -1,4 +1,8 @@
-import { Compartment, type Extension } from "@codemirror/state";
+import {
+  Compartment,
+  type Extension,
+  type StateEffect,
+} from "@codemirror/state";
 import {
   EditorView,
   lineNumbers as codeMirrorLineNumbers,
@@ -45,12 +49,16 @@ export const dispatchEditorSelectionRange = (
   view: EditorView,
   from: number,
   to = from,
-  options: { focus?: boolean } = {},
+  options: {
+    effects?: StateEffect<unknown> | readonly StateEffect<unknown>[];
+    focus?: boolean;
+  } = {},
 ) => {
   const docLength = view.state.doc.length;
   const selectionFrom = clampEditorPosition(from, docLength);
   const selectionTo = clampEditorPosition(to, docLength);
   view.dispatch({
+    effects: options.effects,
     selection: { anchor: selectionFrom, head: selectionTo },
     scrollIntoView: true,
   });

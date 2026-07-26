@@ -92,7 +92,11 @@ export function useWorkspaceScrollSync({
 
   useLayoutEffect(() => {
     const pendingEditorCommand = pendingEditorCommandRef.current;
-    if (!pendingEditorCommand || !activeFileId || activeViewMode !== "edit") {
+    if (
+      !pendingEditorCommand ||
+      !activeFileId ||
+      (activeViewMode !== "edit" && activeViewMode !== "visual")
+    ) {
       return;
     }
 

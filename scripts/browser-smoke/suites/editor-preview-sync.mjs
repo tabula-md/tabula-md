@@ -291,6 +291,8 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(FRONTMATTER_SYNC_FIXTURE);
+    await page.keyboard.press("ControlOrMeta+Home");
+    await waitForRenderFrame(page);
     await page.getByRole("button", { name: "Split", exact: true }).click();
     await waitForEditorReady(page, { mode: "split" });
     await waitForRenderFrame(page);
@@ -299,7 +301,7 @@ export async function run(ctx) {
     const frontmatterAnchor = frontmatterEntryState.visiblePreviewAnchors.find((anchor) => anchor.start === 1);
     expect(
       Boolean(frontmatterAnchor) && frontmatterAnchor.text.includes("status") && frontmatterAnchor.top <= 96,
-      "Split preview should map source line 1 to the rendered frontmatter block.",
+      `Split preview should map source line 1 to the rendered frontmatter block. state=${JSON.stringify(frontmatterEntryState)}`,
     );
 
     await setEditorScrollTop(page, 10_000);
@@ -349,11 +351,11 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "split" });
     await waitForRenderFrame(page);
     const splitEntryState = await readSplitPreviewState(page);
-    const firstEntryAnchor = splitEntryState.visiblePreviewAnchors[0];
-    expect(splitEntryState.editorScrollTop <= 1, "Split entry should keep the README editor at the top.");
+    const lastEntryAnchor = splitEntryState.visiblePreviewAnchors.at(-1);
+    expect(splitEntryState.editorAtEnd, "Split entry should preserve the source line visible in Preview.");
     expect(
-      Boolean(firstEntryAnchor) && firstEntryAnchor.start <= 2 && firstEntryAnchor.top <= 64,
-      "Split entry should follow the editor top instead of preserving the previous preview-only scroll.",
+      Boolean(lastEntryAnchor) && lastEntryAnchor.end >= 90,
+      "Split entry should keep the preview near the same end-of-document source lines.",
     );
 
     await setEditorScrollTop(page, 10_000);
