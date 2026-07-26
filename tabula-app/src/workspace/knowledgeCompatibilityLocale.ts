@@ -1,6 +1,8 @@
 import type {
   OkfCompatibilityIssue,
   OkfCompatibilityIssueCode,
+  WorkspaceKnowledgeHealthIssue,
+  WorkspaceKnowledgeHealthIssueCode,
 } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 
@@ -47,7 +49,377 @@ export type KnowledgeCompatibilityCopy = {
   conceptTypeHelp: string;
   addFrontmatterAndType: string;
   setConceptType: string;
+  safeFixes: string;
+  safeFixesDescription: string;
+  includeChange: string;
+  suggestedFromFolder: (type: string) => string;
+  suggestedFromPath: (type: string) => string;
+  typeDecisionRequired: string;
+  invalidYamlRequiresManualFix: string;
+  selectedChanges: (count: number) => string;
+  applySelected: string;
+  before: string;
+  after: string;
+  planChanged: string;
+  portableLinks: string;
+  portableLinksDescription: string;
+  convertibleLinks: (count: number) => string;
+  skippedLinks: (count: number) => string;
+  markdownLinks: string;
+  convertSelected: string;
+  metadataGuidance: string;
+  metadataGuidanceDescription: string;
+  metadataFields: Record<"description" | "tags" | "resource", string>;
+  indexes: string;
+  indexesDescription: string;
+  indexStates: Record<"missing" | "generated" | "curated", string>;
+  indexContents: (conceptCount: number, directoryCount: number) => string;
+  generatedCandidate: string;
+  currentIndex: string;
+  createIndex: string;
+  updateGeneratedIndex: string;
+  replaceCuratedIndex: string;
+  replaceCuratedWarning: string;
+  confirmReplace: string;
+  cancel: string;
+  upToDate: string;
+  healthTitle: string;
+  healthDescription: string;
+  healthHealthy: string;
+  healthAttention: (count: number) => string;
+  healthNotices: (count: number) => string;
+  healthAttentionSection: string;
+  healthNoticeSection: string;
+  healthIssue: (issue: WorkspaceKnowledgeHealthIssue) => string;
+  verificationReview: string;
+  verificationReviewDescription: string;
+  generatedBy: string;
+  generatedAt: string;
+  latestVerification: string;
+  unknownActor: string;
+  unknownDate: string;
+  evidence: string;
+  verificationNeedsEvidence: string;
+  verificationAttestation: string;
+  changesSinceTracking: string;
+  noTrackedChanges: string;
+  trackingRequiredForDiff: string;
+  openDocumentAction: string;
+  recordVerification: (name: string) => string;
+  verificationFailed: string;
+  knowledgeChanges: string;
+  knowledgeChangesDescription: string;
+  knowledgeChangesNotTracked: string;
+  startTracking: string;
+  noKnowledgeChanges: string;
+  trackingSince: (capturedAt: string) => string;
+  changeSummary: (added: number, modified: number, deleted: number) => string;
+  changeKinds: Record<"added" | "modified" | "deleted", string>;
+  currentLog: string;
+  generatedLog: string;
+  createLog: string;
+  updateLog: string;
+  logBlocked: string;
+  maintenanceImpact: string;
+  maintenanceImpactSummary: (introduced: number, resolved: number) => string;
+  noMaintenanceImpact: string;
+  introducedMaintenance: string;
+  resolvedMaintenance: string;
   issue: (issue: OkfCompatibilityIssue) => string;
+};
+
+type KnowledgeConformanceActionMessages = {
+  safeFixes: string;
+  safeFixesDescription: string;
+  includeChange: string;
+  suggestedFromFolder: string;
+  suggestedFromPath: string;
+  typeDecisionRequired: string;
+  invalidYamlRequiresManualFix: string;
+  selectedChanges: string;
+  applySelected: string;
+  before: string;
+  after: string;
+  planChanged: string;
+  portableLinks: string;
+  portableLinksDescription: string;
+  convertibleLinks: string;
+  skippedLinks: string;
+  markdownLinks: string;
+  convertSelected: string;
+  metadataGuidance: string;
+  metadataGuidanceDescription: string;
+  metadataFields: Record<"description" | "tags" | "resource", string>;
+  indexes: string;
+  indexesDescription: string;
+  indexStates: Record<"missing" | "generated" | "curated", string>;
+  indexContents: string;
+  generatedCandidate: string;
+  currentIndex: string;
+  createIndex: string;
+  updateGeneratedIndex: string;
+  replaceCuratedIndex: string;
+  replaceCuratedWarning: string;
+  confirmReplace: string;
+  cancel: string;
+  upToDate: string;
+  healthTitle: string;
+  healthDescription: string;
+  healthHealthy: string;
+  healthAttention: string;
+  healthNotices: string;
+  healthAttentionSection: string;
+  healthNoticeSection: string;
+  healthIssues: Record<WorkspaceKnowledgeHealthIssueCode, string>;
+  verificationReview: string;
+  verificationReviewDescription: string;
+  generatedBy: string;
+  generatedAt: string;
+  latestVerification: string;
+  unknownActor: string;
+  unknownDate: string;
+  evidence: string;
+  verificationNeedsEvidence: string;
+  verificationAttestation: string;
+  changesSinceTracking: string;
+  noTrackedChanges: string;
+  trackingRequiredForDiff: string;
+  openDocumentAction: string;
+  recordVerification: string;
+  verificationFailed: string;
+  knowledgeChanges: string;
+  knowledgeChangesDescription: string;
+  knowledgeChangesNotTracked: string;
+  startTracking: string;
+  noKnowledgeChanges: string;
+  trackingSince: string;
+  changeSummary: string;
+  changeKinds: Record<"added" | "modified" | "deleted", string>;
+  currentLog: string;
+  generatedLog: string;
+  createLog: string;
+  updateLog: string;
+  logBlocked: string;
+  maintenanceImpact: string;
+  maintenanceImpactSummary: string;
+  noMaintenanceImpact: string;
+  introducedMaintenance: string;
+  resolvedMaintenance: string;
+};
+
+const actionCopies: Partial<Record<WorkspaceLanguage, KnowledgeConformanceActionMessages>> & {
+  en: KnowledgeConformanceActionMessages;
+} = {
+  en: {
+    safeFixes: "Review fixes",
+    safeFixesDescription: "Choose the concept types to add. Nothing is applied until you review the diff.",
+    includeChange: "Include this change",
+    suggestedFromFolder: "Suggested from this folder: {{type}}",
+    suggestedFromPath: "Suggested from the document path: {{type}}",
+    typeDecisionRequired: "Choose a concept type before including this change.",
+    invalidYamlRequiresManualFix: "Invalid YAML must be fixed in the document first.",
+    selectedChanges: "{{count}} selected",
+    applySelected: "Apply selected",
+    before: "Before",
+    after: "After",
+    planChanged: "The workspace changed. Review the fixes again.",
+    portableLinks: "Portable links",
+    portableLinksDescription: "Convert only resolved page links. Broken, ambiguous, and embedded wikilinks stay unchanged.",
+    convertibleLinks: "{{count}} resolved links",
+    skippedLinks: "{{count}} left unchanged",
+    markdownLinks: "Markdown links",
+    convertSelected: "Convert selected",
+    metadataGuidance: "Metadata guidance",
+    metadataGuidanceDescription: "Optional fields improve retrieval and provenance but are not required for OKF compatibility.",
+    metadataFields: {
+      description: "description",
+      tags: "tags",
+      resource: "resource",
+    },
+    indexes: "Indexes",
+    indexesDescription: "Preview indexes derived from concept metadata. Curated indexes are never replaced automatically.",
+    indexStates: {
+      missing: "Missing",
+      generated: "Generated",
+      curated: "Curated",
+    },
+    indexContents: "{{conceptCount}} files, {{directoryCount}} directories",
+    generatedCandidate: "Generated candidate",
+    currentIndex: "Current index",
+    createIndex: "Create index",
+    updateGeneratedIndex: "Update generated index",
+    replaceCuratedIndex: "Replace curated index…",
+    replaceCuratedWarning: "This replaces human-written index content with the generated candidate.",
+    confirmReplace: "Replace index",
+    cancel: "Cancel",
+    upToDate: "Up to date",
+    healthTitle: "Knowledge health",
+    healthDescription: "Operational signals that do not affect OKF compatibility.",
+    healthHealthy: "No maintenance signals",
+    healthAttention: "{{count}} needs attention",
+    healthNotices: "{{count}} notices",
+    healthAttentionSection: "Needs attention",
+    healthNoticeSection: "Notices",
+    healthIssues: {
+      stale: "Refresh after {{value}}",
+      deprecated_referenced: "Deprecated concept still has {{value}} references",
+      unverified_generated: "Generated content has not been verified",
+      verification_outdated: "Verification predates generation at {{value}}",
+      provenance_missing: "Agent-generated content has no source",
+      orphan_concept: "Concept has no relationships",
+      relationship_broken: "Relationship target does not exist: {{value}}",
+      relationship_ambiguous: "Relationship target is ambiguous: {{value}}",
+      canonical_resource_shared: "Canonical resource is shared by multiple concepts: {{value}}",
+      source_id_duplicate: "Source id is duplicated: {{value}}",
+      source_resource_duplicate: "Source resource is duplicated: {{value}}",
+      source_reference_missing: "Citation has no matching source: {{value}}",
+      source_unused: "Declared source is not cited: {{value}}",
+      optional_metadata_invalid: "Optional metadata is malformed: {{value}}",
+    },
+    verificationReview: "Human review",
+    verificationReviewDescription: "Inspect provenance and tracked changes before recording that a person verified generated knowledge.",
+    generatedBy: "Generated by",
+    generatedAt: "Generated at",
+    latestVerification: "Latest verification",
+    unknownActor: "Unknown producer",
+    unknownDate: "Unknown time",
+    evidence: "Evidence",
+    verificationNeedsEvidence: "Add a source or canonical resource before recording verification.",
+    verificationAttestation: "I compared this document with the sources listed above.",
+    changesSinceTracking: "Changes since tracking",
+    noTrackedChanges: "No document changes since tracking began.",
+    trackingRequiredForDiff: "Start knowledge tracking to compare this document with a known baseline.",
+    openDocumentAction: "Open document",
+    recordVerification: "Record as {{name}}",
+    verificationFailed: "The document changed. Review it again before recording verification.",
+    knowledgeChanges: "Knowledge changes",
+    knowledgeChangesDescription: "Review changes since this workspace was opened, then write a deterministic OKF log entry.",
+    knowledgeChangesNotTracked: "Start from the current workspace to track later additions, edits, moves, and deletions.",
+    startTracking: "Start tracking changes",
+    noKnowledgeChanges: "No knowledge changes",
+    trackingSince: "Tracking since {{date}}",
+    changeSummary: "{{added}} added, {{modified}} updated, {{deleted}} removed",
+    changeKinds: {
+      added: "Added",
+      modified: "Updated",
+      deleted: "Removed",
+    },
+    currentLog: "Current log",
+    generatedLog: "Log candidate",
+    createLog: "Create log",
+    updateLog: "Update log",
+    logBlocked: "Fix the existing log structure before adding this entry.",
+    maintenanceImpact: "Maintenance impact",
+    maintenanceImpactSummary: "{{introduced}} introduced, {{resolved}} resolved",
+    noMaintenanceImpact: "No maintenance signals changed",
+    introducedMaintenance: "Introduced",
+    resolvedMaintenance: "Resolved",
+  },
+  ko: {
+    safeFixes: "수정 검토",
+    safeFixesDescription: "추가할 concept type을 선택하세요. diff를 확인하고 적용하기 전에는 파일이 바뀌지 않습니다.",
+    includeChange: "이 변경 포함",
+    suggestedFromFolder: "같은 폴더 기준 제안: {{type}}",
+    suggestedFromPath: "문서 경로 기준 제안: {{type}}",
+    typeDecisionRequired: "변경에 포함하기 전에 concept type을 결정하세요.",
+    invalidYamlRequiresManualFix: "잘못된 YAML은 먼저 문서에서 직접 수정해야 합니다.",
+    selectedChanges: "{{count}}개 선택",
+    applySelected: "선택 항목 적용",
+    before: "변경 전",
+    after: "변경 후",
+    planChanged: "워크스페이스가 변경되었습니다. 수정안을 다시 검토하세요.",
+    portableLinks: "이식 가능한 링크",
+    portableLinksDescription: "대상이 확정된 문서 링크만 변환합니다. 깨진 링크, 모호한 링크와 embed는 그대로 둡니다.",
+    convertibleLinks: "확정된 링크 {{count}}개",
+    skippedLinks: "{{count}}개 유지",
+    markdownLinks: "Markdown 링크",
+    convertSelected: "선택 항목 변환",
+    metadataGuidance: "Metadata 보완",
+    metadataGuidanceDescription: "선택 항목입니다. 검색과 출처 추적에는 도움이 되지만 OKF 호환의 필수 조건은 아닙니다.",
+    metadataFields: {
+      description: "description",
+      tags: "tags",
+      resource: "resource",
+    },
+    indexes: "Index",
+    indexesDescription: "concept metadata에서 만든 index를 먼저 확인합니다. 사람이 편집한 index는 자동으로 덮어쓰지 않습니다.",
+    indexStates: {
+      missing: "없음",
+      generated: "생성됨",
+      curated: "직접 편집됨",
+    },
+    indexContents: "파일 {{conceptCount}}개, 하위 폴더 {{directoryCount}}개",
+    generatedCandidate: "생성 후보",
+    currentIndex: "현재 index",
+    createIndex: "Index 생성",
+    updateGeneratedIndex: "생성된 index 갱신",
+    replaceCuratedIndex: "직접 편집한 index 교체…",
+    replaceCuratedWarning: "사람이 작성한 index 내용을 생성 후보로 교체합니다.",
+    confirmReplace: "Index 교체",
+    cancel: "취소",
+    upToDate: "최신 상태",
+    healthTitle: "Knowledge health",
+    healthDescription: "OKF 호환 여부와 별개로 유지보수가 필요한 운영 신호입니다.",
+    healthHealthy: "유지보수 신호 없음",
+    healthAttention: "확인 필요 {{count}}개",
+    healthNotices: "참고 {{count}}개",
+    healthAttentionSection: "확인 필요",
+    healthNoticeSection: "참고",
+    healthIssues: {
+      stale: "{{value}} 이후 갱신 필요",
+      deprecated_referenced: "폐기된 concept를 아직 {{value}}곳에서 참조",
+      unverified_generated: "생성된 내용을 아직 검증하지 않음",
+      verification_outdated: "{{value}} 생성 이후 다시 검증해야 함",
+      provenance_missing: "Agent가 생성했지만 출처가 없음",
+      orphan_concept: "다른 concept와 연결되지 않음",
+      relationship_broken: "관계 대상 문서가 없음: {{value}}",
+      relationship_ambiguous: "관계 대상을 하나로 결정할 수 없음: {{value}}",
+      canonical_resource_shared: "여러 concept가 같은 canonical resource를 사용함: {{value}}",
+      source_id_duplicate: "Source id가 중복됨: {{value}}",
+      source_resource_duplicate: "Source resource가 중복됨: {{value}}",
+      source_reference_missing: "인용에 해당하는 source가 없음: {{value}}",
+      source_unused: "등록했지만 인용하지 않은 source: {{value}}",
+      optional_metadata_invalid: "선택 metadata 형식이 잘못됨: {{value}}",
+    },
+    verificationReview: "사람 검증",
+    verificationReviewDescription: "생성된 지식의 출처와 추적된 변경을 확인한 뒤 사람의 검증 기록을 남깁니다.",
+    generatedBy: "생성 주체",
+    generatedAt: "생성 시각",
+    latestVerification: "최근 검증",
+    unknownActor: "생성 주체 알 수 없음",
+    unknownDate: "시각 알 수 없음",
+    evidence: "근거",
+    verificationNeedsEvidence: "검증을 기록하기 전에 source 또는 canonical resource를 추가하세요.",
+    verificationAttestation: "위 근거 자료와 이 문서의 내용을 직접 대조했습니다.",
+    changesSinceTracking: "추적 이후 변경",
+    noTrackedChanges: "변경 추적을 시작한 이후 문서 변경이 없습니다.",
+    trackingRequiredForDiff: "기준 상태와 비교하려면 먼저 지식 변경 추적을 시작하세요.",
+    openDocumentAction: "문서 열기",
+    recordVerification: "{{name}} 이름으로 검증 기록",
+    verificationFailed: "문서가 변경되었습니다. 다시 확인한 뒤 검증을 기록하세요.",
+    knowledgeChanges: "지식 변경",
+    knowledgeChangesDescription: "워크스페이스를 연 뒤의 변경을 검토하고, 실제 변경분으로 OKF log 항목을 만듭니다.",
+    knowledgeChangesNotTracked: "현재 상태를 기준점으로 저장하면 이후 추가·수정·이동·삭제를 추적합니다.",
+    startTracking: "변경 추적 시작",
+    noKnowledgeChanges: "지식 변경 없음",
+    trackingSince: "{{date}}부터 추적 중",
+    changeSummary: "추가 {{added}}, 수정 {{modified}}, 삭제 {{deleted}}",
+    changeKinds: {
+      added: "추가",
+      modified: "수정",
+      deleted: "삭제",
+    },
+    currentLog: "현재 log",
+    generatedLog: "Log 후보",
+    createLog: "Log 생성",
+    updateLog: "Log 갱신",
+    logBlocked: "이 항목을 추가하려면 기존 log 구조를 먼저 수정해야 합니다.",
+    maintenanceImpact: "유지보수 영향",
+    maintenanceImpactSummary: "새 문제 {{introduced}}, 해결 {{resolved}}",
+    noMaintenanceImpact: "변경된 유지보수 신호 없음",
+    introducedMaintenance: "새로 발생",
+    resolvedMaintenance: "해결됨",
+  },
 };
 
 const enIssues: Record<OkfCompatibilityIssueCode, string> = {
@@ -340,6 +712,7 @@ export const getKnowledgeCompatibilityCopy = (
   language: WorkspaceLanguage,
 ): KnowledgeCompatibilityCopy => {
   const copy = copies[language];
+  const actions = actionCopies[language] ?? actionCopies.en;
   return {
     open: copy.open,
     back: copy.back,
@@ -365,6 +738,97 @@ export const getKnowledgeCompatibilityCopy = (
     conceptTypeHelp: copy.conceptTypeHelp,
     addFrontmatterAndType: copy.addFrontmatterAndType,
     setConceptType: copy.setConceptType,
+    safeFixes: actions.safeFixes,
+    safeFixesDescription: actions.safeFixesDescription,
+    includeChange: actions.includeChange,
+    suggestedFromFolder: (type) => formatMessage(actions.suggestedFromFolder, { type }),
+    suggestedFromPath: (type) => formatMessage(actions.suggestedFromPath, { type }),
+    typeDecisionRequired: actions.typeDecisionRequired,
+    invalidYamlRequiresManualFix: actions.invalidYamlRequiresManualFix,
+    selectedChanges: (count) => formatMessage(actions.selectedChanges, { count }),
+    applySelected: actions.applySelected,
+    before: actions.before,
+    after: actions.after,
+    planChanged: actions.planChanged,
+    portableLinks: actions.portableLinks,
+    portableLinksDescription: actions.portableLinksDescription,
+    convertibleLinks: (count) => formatMessage(actions.convertibleLinks, { count }),
+    skippedLinks: (count) => formatMessage(actions.skippedLinks, { count }),
+    markdownLinks: actions.markdownLinks,
+    convertSelected: actions.convertSelected,
+    metadataGuidance: actions.metadataGuidance,
+    metadataGuidanceDescription: actions.metadataGuidanceDescription,
+    metadataFields: actions.metadataFields,
+    indexes: actions.indexes,
+    indexesDescription: actions.indexesDescription,
+    indexStates: actions.indexStates,
+    indexContents: (conceptCount, directoryCount) =>
+      language === "ko"
+        ? formatMessage(actions.indexContents, { conceptCount, directoryCount })
+        : `${conceptCount} ${conceptCount === 1 ? "file" : "files"}, ${
+            directoryCount
+          } ${directoryCount === 1 ? "directory" : "directories"}`,
+    generatedCandidate: actions.generatedCandidate,
+    currentIndex: actions.currentIndex,
+    createIndex: actions.createIndex,
+    updateGeneratedIndex: actions.updateGeneratedIndex,
+    replaceCuratedIndex: actions.replaceCuratedIndex,
+    replaceCuratedWarning: actions.replaceCuratedWarning,
+    confirmReplace: actions.confirmReplace,
+    cancel: actions.cancel,
+    upToDate: actions.upToDate,
+    healthTitle: actions.healthTitle,
+    healthDescription: actions.healthDescription,
+    healthHealthy: actions.healthHealthy,
+    healthAttention: (count) => formatMessage(actions.healthAttention, { count }),
+    healthNotices: (count) => formatMessage(actions.healthNotices, { count }),
+    healthAttentionSection: actions.healthAttentionSection,
+    healthNoticeSection: actions.healthNoticeSection,
+    healthIssue: (issue) => formatMessage(actions.healthIssues[issue.code], {
+      value: issue.value ?? "",
+    }),
+    verificationReview: actions.verificationReview,
+    verificationReviewDescription: actions.verificationReviewDescription,
+    generatedBy: actions.generatedBy,
+    generatedAt: actions.generatedAt,
+    latestVerification: actions.latestVerification,
+    unknownActor: actions.unknownActor,
+    unknownDate: actions.unknownDate,
+    evidence: actions.evidence,
+    verificationNeedsEvidence: actions.verificationNeedsEvidence,
+    verificationAttestation: actions.verificationAttestation,
+    changesSinceTracking: actions.changesSinceTracking,
+    noTrackedChanges: actions.noTrackedChanges,
+    trackingRequiredForDiff: actions.trackingRequiredForDiff,
+    openDocumentAction: actions.openDocumentAction,
+    recordVerification: (name) => formatMessage(actions.recordVerification, { name }),
+    verificationFailed: actions.verificationFailed,
+    knowledgeChanges: actions.knowledgeChanges,
+    knowledgeChangesDescription: actions.knowledgeChangesDescription,
+    knowledgeChangesNotTracked: actions.knowledgeChangesNotTracked,
+    startTracking: actions.startTracking,
+    noKnowledgeChanges: actions.noKnowledgeChanges,
+    trackingSince: (capturedAt) => formatMessage(actions.trackingSince, {
+      date: capturedAt.slice(0, 10),
+    }),
+    changeSummary: (added, modified, deleted) => formatMessage(
+      actions.changeSummary,
+      { added, modified, deleted },
+    ),
+    changeKinds: actions.changeKinds,
+    currentLog: actions.currentLog,
+    generatedLog: actions.generatedLog,
+    createLog: actions.createLog,
+    updateLog: actions.updateLog,
+    logBlocked: actions.logBlocked,
+    maintenanceImpact: actions.maintenanceImpact,
+    maintenanceImpactSummary: (introduced, resolved) => formatMessage(
+      actions.maintenanceImpactSummary,
+      { introduced, resolved },
+    ),
+    noMaintenanceImpact: actions.noMaintenanceImpact,
+    introducedMaintenance: actions.introducedMaintenance,
+    resolvedMaintenance: actions.resolvedMaintenance,
     issue: (issue) => formatMessage(copy.issues[issue.code], {
       value: issue.value ?? "",
     }),

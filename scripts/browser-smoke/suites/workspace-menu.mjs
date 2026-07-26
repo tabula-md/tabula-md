@@ -302,6 +302,19 @@ export async function run(ctx) {
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
     await page.getByRole("dialog", { name: "Open folder" }).waitFor();
+    const detectedWorkspace = page.getByRole("region", {
+      name: "Detected workspace",
+    });
+    expect(
+      await detectedWorkspace.getByText("Plain Markdown", {
+        exact: true,
+      }).isVisible() &&
+        await detectedWorkspace.getByText(
+          "0 support files preserved. 1 unsupported file skipped",
+          { exact: true },
+        ).isVisible(),
+      "Folder import should explain a plain Markdown workspace and skipped files before replacing local state.",
+    );
     expect(
       (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1,
       "Opening a workspace should preview its logical document paths before replacing local state.",

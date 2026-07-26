@@ -8,5 +8,30 @@ describe("workspace folder import copy", () => {
     expect(copy.title).toBe("Open folder");
     expect(copy.description).toContain("saves a copy in this browser");
     expect(copy.description).toContain("not changed or kept in sync");
+    expect(copy.description).toContain("recognized workspace metadata");
+    expect(copy.contains(2, 1)).toBe("2 files · 1 folder");
+  });
+
+  it("explains the detected standard separately from producer conventions", () => {
+    const copy = getWorkspaceFolderImportCopy("en");
+    const profile = {
+      format: "okf",
+      okfVersion: "0.1",
+      conventions: ["openwiki"],
+      linkSyntaxes: ["markdown-links"],
+      evidence: [{ code: "okf-version", value: "0.1" }],
+      preservedSupportFileCount: 1,
+      ignoredFileCount: 2,
+    } as const;
+
+    expect(copy.format(profile)).toBe("OKF 0.1");
+    expect(profile.conventions.map(copy.convention)).toEqual(["OpenWiki"]);
+    expect(profile.linkSyntaxes.map(copy.linkSyntax)).toEqual(["Markdown links"]);
+    expect(copy.fileHandling(1, 2)).toBe(
+      "1 support file preserved. 2 unsupported files skipped",
+    );
+    expect(copy.evidence(profile.evidence[0])).toBe(
+      "Root index declares OKF 0.1.",
+    );
   });
 });

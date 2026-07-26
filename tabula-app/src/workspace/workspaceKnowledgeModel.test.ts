@@ -35,6 +35,32 @@ describe("workspace knowledge model", () => {
     });
   });
 
+  it("excludes preserved support files from the knowledge index", () => {
+    const root = createWorkspaceRootFolder();
+    const documents = getWorkspaceKnowledgeDocuments([
+      createWorkspaceFile(1, {
+        id: "index",
+        title: "index.md",
+        parentId: root.id,
+        text: "# Wiki",
+      }),
+      createWorkspaceFile(2, {
+        id: "run-state",
+        title: ".last-update.json",
+        parentId: root.id,
+        text: '{"command":"update"}',
+      }),
+    ], [root]);
+
+    expect(documents).toEqual([
+      {
+        id: "index",
+        path: "index.md",
+        markdown: "# Wiki",
+      },
+    ]);
+  });
+
   it("re-analyzes only changed documents and safely handles path swaps", () => {
     const initial = reconcileWorkspaceKnowledgeIndex(undefined, [
       { id: "a", path: "A.md", markdown: "[[B.md]]" },

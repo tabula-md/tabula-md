@@ -1,22 +1,26 @@
 import type {
   DocumentAnalysis,
+  OkfLifecycleStatus,
+  OkfTrustTier,
   WorkspaceKnowledgeIndex,
   WorkspaceKnowledgeLink,
   WorkspaceSourceDocument,
 } from "@tabula-md/tabula";
 
-type MapDelta<Value> = {
-  removedKeys: readonly string[];
-  upsertedEntries: readonly (readonly [string, Value])[];
+type MapDelta<Key extends string, Value> = {
+  removedKeys: readonly Key[];
+  upsertedEntries: readonly (readonly [Key, Value])[];
 };
 
 export type WorkspaceKnowledgeIndexDelta = {
-  analysesByDocumentId: MapDelta<DocumentAnalysis>;
-  documentIdsByType: MapDelta<readonly string[]>;
-  documentIdsByTag: MapDelta<readonly string[]>;
-  documentIdsByResource: MapDelta<readonly string[]>;
-  outgoingLinksByDocumentId: MapDelta<readonly WorkspaceKnowledgeLink[]>;
-  backlinksByDocumentId: MapDelta<readonly WorkspaceKnowledgeLink[]>;
+  analysesByDocumentId: MapDelta<string, DocumentAnalysis>;
+  documentIdsByType: MapDelta<string, readonly string[]>;
+  documentIdsByTag: MapDelta<string, readonly string[]>;
+  documentIdsByResource: MapDelta<string, readonly string[]>;
+  documentIdsByStatus: MapDelta<OkfLifecycleStatus, readonly string[]>;
+  documentIdsByTrustTier: MapDelta<OkfTrustTier, readonly string[]>;
+  outgoingLinksByDocumentId: MapDelta<string, readonly WorkspaceKnowledgeLink[]>;
+  backlinksByDocumentId: MapDelta<string, readonly WorkspaceKnowledgeLink[]>;
   brokenLinks?: readonly WorkspaceKnowledgeLink[];
   ambiguousLinks?: readonly WorkspaceKnowledgeLink[];
   externalLinks?: readonly WorkspaceKnowledgeLink[];
@@ -60,11 +64,11 @@ const linkArraysEqual = (
   right: readonly WorkspaceKnowledgeLink[],
 ) => arraysEqual(left, right, linksEqual);
 
-const createMapDelta = <Value>(
-  previous: ReadonlyMap<string, Value>,
-  next: ReadonlyMap<string, Value>,
+const createMapDelta = <Key extends string, Value>(
+  previous: ReadonlyMap<Key, Value>,
+  next: ReadonlyMap<Key, Value>,
   valuesEqual: (left: Value, right: Value) => boolean,
-): MapDelta<Value> => ({
+): MapDelta<Key, Value> => ({
   removedKeys: [...previous.keys()].filter((key) => !next.has(key)),
   upsertedEntries: [...next].filter(([key, value]) => {
     const previousValue = previous.get(key);
@@ -97,6 +101,16 @@ export const createWorkspaceKnowledgeIndexDelta = (
     next.documentIdsByResource,
     stringsEqual,
   ),
+  documentIdsByStatus: createMapDelta(
+    previous.documentIdsByStatus,
+    next.documentIdsByStatus,
+    stringsEqual,
+  ),
+  documentIdsByTrustTier: createMapDelta(
+    previous.documentIdsByTrustTier,
+    next.documentIdsByTrustTier,
+    stringsEqual,
+  ),
   outgoingLinksByDocumentId: createMapDelta(
     previous.outgoingLinksByDocumentId,
     next.outgoingLinksByDocumentId,
@@ -118,9 +132,9 @@ export const createWorkspaceKnowledgeIndexDelta = (
     : {}),
 });
 
-const applyMapDelta = <Value>(
-  previous: ReadonlyMap<string, Value>,
-  delta: MapDelta<Value>,
+const applyMapDelta = <Key extends string, Value>(
+  previous: ReadonlyMap<Key, Value>,
+  delta: MapDelta<Key, Value>,
 ) => {
   const next = new Map(previous);
   for (const key of delta.removedKeys) next.delete(key);
@@ -152,6 +166,14 @@ export const applyWorkspaceKnowledgeIndexDelta = (
   documentIdsByResource: applyMapDelta(
     previous.documentIdsByResource,
     delta.documentIdsByResource,
+  ),
+  documentIdsByStatus: applyMapDelta(
+    previous.documentIdsByStatus,
+    delta.documentIdsByStatus,
+  ),
+  documentIdsByTrustTier: applyMapDelta(
+    previous.documentIdsByTrustTier,
+    delta.documentIdsByTrustTier,
   ),
   outgoingLinksByDocumentId: applyMapDelta(
     previous.outgoingLinksByDocumentId,

@@ -1,18 +1,29 @@
 import { Suspense, lazy, type ReactNode, type RefObject, useMemo } from "react";
 import {
   Folder,
+  LibraryBig,
   Link2,
   ListTree,
   MessageSquare,
-  Network,
   PanelRightClose,
   Search,
 } from "lucide-react";
 import {
+  createWorkspaceKnowledgeIndex,
+  getWorkspaceKnowledgeHealth,
+  getWorkspaceKnowledgeHealthDelta,
   getRightPanelCommentGroups,
+  planWorkspaceOkfConformance,
+  type OkfConceptRepairUpdate,
   type OkfCompatibilityReport,
+  type OkfIndexCandidate,
+  type OkfWikilinkRepairUpdate,
+  type WorkspaceKnowledgeBaseline,
+  type WorkspaceKnowledgeHealthDelta,
+  type WorkspaceKnowledgeHealthIssue,
   type WorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeLink,
+  type WorkspaceOkfLogCandidate,
 } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
@@ -31,14 +42,14 @@ import { getKnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibili
 const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => ({
   default: module.RightPanelLinks,
 })));
-const RightPanelGraph = lazy(() => import("./RightPanelGraph").then((module) => ({
-  default: module.RightPanelGraph,
-})));
 const RightPanelComments = lazy(() => import("./RightPanelComments").then((module) => ({
   default: module.RightPanelComments,
 })));
 const RightPanelSearch = lazy(() => import("./RightPanelSearch").then((module) => ({
   default: module.RightPanelSearch,
+})));
+const RightPanelKnowledge = lazy(() => import("./RightPanelKnowledge").then((module) => ({
+  default: module.RightPanelKnowledge,
 })));
 
 const panelFallback = (
@@ -54,6 +65,9 @@ type RightPanelProps = {
   knowledgeCompatibilityReport?: OkfCompatibilityReport;
   knowledgeIndexPending: boolean;
   knowledgeIndexSource: "none" | "worker" | "fallback";
+  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
+  knowledgeCompatibilityOpenRequest: number;
+  knowledgeLogCandidate?: WorkspaceOkfLogCandidate;
   activeFileId: string;
   activeFileTitle: string;
   isLiveWorkspace: boolean;
@@ -76,12 +90,19 @@ type RightPanelProps = {
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
+  onSelectKnowledgeHealthIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
   onFocusLinkSource: (link: WorkspaceKnowledgeLink) => void;
   onResolveAmbiguousLink: (
     link: WorkspaceKnowledgeLink,
     targetPath: string,
   ) => boolean;
   onSetActiveFileOkfType: (conceptType: string) => boolean;
+  onApplyOkfConceptRepairs: (updates: readonly OkfConceptRepairUpdate[]) => boolean;
+  onApplyOkfWikilinkRepairs: (updates: readonly OkfWikilinkRepairUpdate[]) => boolean;
+  onVerifyKnowledgeDocument: (documentId: string, verifiedBy: string) => boolean;
+  onMaterializeOkfIndex: (candidate: OkfIndexCandidate) => boolean;
+  onMaterializeOkfLog: (candidate: WorkspaceOkfLogCandidate) => boolean;
+  onStartKnowledgeTracking: () => boolean;
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
@@ -117,6 +138,9 @@ export function RightPanel({
   knowledgeCompatibilityReport,
   knowledgeIndexPending,
   knowledgeIndexSource,
+  knowledgeBaseline,
+  knowledgeCompatibilityOpenRequest,
+  knowledgeLogCandidate,
   activeFileId,
   activeFileTitle,
   isLiveWorkspace,
@@ -139,9 +163,16 @@ export function RightPanel({
   onNewFolder,
   onImportFile,
   onSelectFile,
+  onSelectKnowledgeHealthIssue,
   onFocusLinkSource,
   onResolveAmbiguousLink,
   onSetActiveFileOkfType,
+  onApplyOkfConceptRepairs,
+  onApplyOkfWikilinkRepairs,
+  onVerifyKnowledgeDocument,
+  onMaterializeOkfIndex,
+  onMaterializeOkfLog,
+  onStartKnowledgeTracking,
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
@@ -197,7 +228,31 @@ export function RightPanel({
     [files, folders],
   );
   const compatibilityCopy = getKnowledgeCompatibilityCopy(language);
-
+  const compatibilityReport = knowledgeCompatibilityReport;
+  const knowledgeHealthReport = useMemo(
+    () => knowledgeIndex ? getWorkspaceKnowledgeHealth(knowledgeIndex) : undefined,
+    [knowledgeIndex],
+  );
+  const knowledgeHealthDelta = useMemo<WorkspaceKnowledgeHealthDelta | undefined>(
+    () => {
+      if (!knowledgeBaseline || !knowledgeIndex) return undefined;
+      try {
+        return getWorkspaceKnowledgeHealthDelta(
+          createWorkspaceKnowledgeIndex(knowledgeBaseline.documents),
+          knowledgeIndex,
+        );
+      } catch {
+        return undefined;
+      }
+    },
+    [knowledgeBaseline, knowledgeIndex],
+  );
+  const conformancePlan = useMemo(
+    () => knowledgeIndex && compatibilityReport
+      ? planWorkspaceOkfConformance(knowledgeIndex, compatibilityReport)
+      : undefined,
+    [compatibilityReport, knowledgeIndex],
+  );
   if (!isOpen) {
     return null;
   }
@@ -241,9 +296,9 @@ export function RightPanel({
           {renderTab("files", copy.tabs.files, <Folder size={14} />, hasLiveFiles ? "live" : undefined)}
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
           {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
-          {renderTab("graph", copy.tabs.graph, <Network size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
           {renderTab("search", copy.tabs.search, <Search size={14} />)}
+          {renderTab("knowledge", copy.tabs.knowledge, <LibraryBig size={14} />)}
         </nav>
         <button
           className="right-panel-overlay-toggle"
@@ -264,9 +319,6 @@ export function RightPanel({
             folders={folders}
             activeFileId={activeFileId}
             copy={copy.files}
-            compatibilityCopy={compatibilityCopy}
-            compatibilityReport={knowledgeCompatibilityReport}
-            onSetActiveFileOkfType={onSetActiveFileOkfType}
             collapsedFolderIds={collapsedFileTreeFolderIds}
             onNewFile={(parentId) => onNewFile(parentId ? { parentId } : undefined)}
             onNewFolder={onNewFolder}
@@ -290,7 +342,6 @@ export function RightPanel({
         {!activeFile && (
           effectiveView === "outline" ||
           effectiveView === "links" ||
-          effectiveView === "graph" ||
           effectiveView === "comments"
         ) && (
           <section className="right-panel-content">
@@ -334,22 +385,6 @@ export function RightPanel({
               onResolveAmbiguousLink={onResolveAmbiguousLink}
               onSelectFile={onSelectFile}
               onToggleSection={toggleLinkSectionCollapsed}
-            />
-          </Suspense>
-        )}
-
-        {activeFile && effectiveView === "graph" && knowledgeIndexPending && !knowledgeIndex &&
-          panelFallback}
-
-        {activeFile && effectiveView === "graph" && (!knowledgeIndexPending || knowledgeIndex) && (
-          <Suspense fallback={panelFallback}>
-            <RightPanelGraph
-              activeFileId={activeFileId}
-              activeFileTitle={activeFileTitle}
-              copy={copy.graph}
-              fileLabels={fileLabels}
-              index={knowledgeIndex}
-              onSelectFile={onSelectFile}
             />
           </Suspense>
         )}
@@ -409,6 +444,36 @@ export function RightPanel({
               index={knowledgeIndex}
               language={language}
               onSelectFile={onSelectFile}
+            />
+          </Suspense>
+        )}
+
+        {effectiveView === "knowledge" && (
+          <Suspense fallback={panelFallback}>
+            <RightPanelKnowledge
+              activeFileId={activeFileId}
+              activeFileTitle={activeFileTitle}
+              noDocumentCopy={copy.noDocumentOpen}
+              compatibilityCopy={compatibilityCopy}
+              compatibilityReport={compatibilityReport}
+              conformancePlan={conformancePlan}
+              healthDelta={knowledgeHealthDelta}
+              healthReport={knowledgeHealthReport}
+              knowledgeBaseline={knowledgeBaseline}
+              knowledgeCompatibilityOpenRequest={knowledgeCompatibilityOpenRequest}
+              knowledgeLogCandidate={knowledgeLogCandidate}
+              index={knowledgeIndex}
+              language={language}
+              onApplyConceptRepairs={onApplyOkfConceptRepairs}
+              onApplyWikilinkRepairs={onApplyOkfWikilinkRepairs}
+              onVerifyKnowledgeDocument={onVerifyKnowledgeDocument}
+              identityName={identityName}
+              onMaterializeIndex={onMaterializeOkfIndex}
+              onMaterializeLog={onMaterializeOkfLog}
+              onSelectFile={onSelectFile}
+              onSelectHealthIssue={onSelectKnowledgeHealthIssue}
+              onSetActiveFileOkfType={onSetActiveFileOkfType}
+              onStartKnowledgeTracking={onStartKnowledgeTracking}
             />
           </Suspense>
         )}

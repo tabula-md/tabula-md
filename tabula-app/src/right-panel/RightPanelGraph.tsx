@@ -1,18 +1,43 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
-import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
+import type {
+  OkfFreshness,
+  OkfLifecycleStatus,
+  OkfTrustTier,
+  WorkspaceKnowledgeIndex,
+} from "@tabula-md/tabula";
+import {
+  Check,
+  ExternalLink,
+  ListFilter,
+} from "lucide-react";
 import type { WorkspaceFileTabLabel } from "../workspace/workspaceDisplayTitles";
 import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
+import {
+  MenuCheckboxItem,
+  MenuContent,
+  MenuItem,
+  MenuRoot,
+  MenuSub,
+  MenuSubContent,
+  MenuSubTrigger,
+  MenuTrigger,
+} from "../ui/Menu";
 import { PanelEmptyState } from "./PanelEmptyState";
 import {
   getRightPanelGraphLayout,
   getRightPanelGraphModel,
+  type RightPanelGraphDocumentRole,
+  type RightPanelGraphFilters,
   type RightPanelGraphLayoutNode,
+  type RightPanelGraphNode,
+  type RightPanelGraphScope,
 } from "./rightPanelGraphModel";
 import { useRightPanelGraphSimulation } from "./useRightPanelGraphSimulation";
 
@@ -23,19 +48,58 @@ type RightPanelGraphProps = {
   activeFileTitle: string;
   copy: RightPanelGraphCopy;
   fileLabels: ReadonlyMap<string, WorkspaceFileTabLabel>;
+  filters?: RightPanelGraphFilters;
   index?: WorkspaceKnowledgeIndex;
   onSelectFile: (fileId: string) => void;
+  scopeOverride?: RightPanelGraphScope;
 };
 
 const GRAPH_NODE_RADIUS = 2.8;
 const GRAPH_RELATED_NODE_RADIUS = 3.4;
 const GRAPH_ACTIVE_NODE_RADIUS = 4.8;
 const GRAPH_LABEL_SECTOR_COUNT = 4;
+const GRAPH_TYPE_COLOR_COUNT = 6;
 
 const removeMarkdownExtension = (value: string) => value.replace(/\.(?:md|markdown)$/i, "");
 
 const compactNodeLabel = (value: string, maxLength: number) =>
   value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
+
+const getTypeColorIndex = (type: string | undefined) => {
+  if (!type) return undefined;
+  let hash = 0;
+  for (const character of type) {
+    hash = (hash * 31 + character.codePointAt(0)!) >>> 0;
+  }
+  return hash % GRAPH_TYPE_COLOR_COUNT;
+};
+
+const getOpenableResource = (resource: string | undefined) => {
+  if (!resource) return undefined;
+  try {
+    const url = new URL(resource);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const getMetadataFacets = <TValue extends string>(
+  nodes: readonly RightPanelGraphNode[],
+  getValues: (node: RightPanelGraphNode) => readonly TValue[],
+) => {
+  const counts = new Map<TValue, number>();
+  for (const node of nodes) {
+    for (const value of getValues(node)) {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+  }
+  return [...counts]
+    .map(([value, count]) => ({ value, count }))
+    .sort((first, second) => first.value.localeCompare(second.value));
+};
 
 const getNodeRadius = (node: RightPanelGraphLayoutNode) =>
   node.depth === 0
@@ -124,13 +188,133 @@ export function RightPanelGraph({
   activeFileTitle,
   copy,
   fileLabels,
+  filters: controlledFilters,
   index,
   onSelectFile,
+  scopeOverride,
 }: RightPanelGraphProps) {
-  const model = useMemo(
-    () => index ? getRightPanelGraphModel(index, activeFileId) : undefined,
+  const [scope, setScope] = useState<RightPanelGraphScope>("local");
+  const [selectedDocumentId, setSelectedDocumentId] = useState(activeFileId);
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(() => new Set());
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(() => new Set());
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<OkfLifecycleStatus>>(
+    () => new Set(),
+  );
+  const [selectedTrustTiers, setSelectedTrustTiers] = useState<Set<OkfTrustTier>>(
+    () => new Set(),
+  );
+  const [selectedFreshness, setSelectedFreshness] = useState<Set<OkfFreshness>>(
+    () => new Set(),
+  );
+  const unfilteredConceptModel = useMemo(
+    () => index
+      ? getRightPanelGraphModel(index, activeFileId, { scope: "concept" })
+      : undefined,
     [activeFileId, index],
   );
+  const typeFacets = useMemo(
+    () => getMetadataFacets(
+      unfilteredConceptModel?.nodes ?? [],
+      (node) => node.type ? [node.type] : [],
+    ),
+    [unfilteredConceptModel],
+  );
+  const tagFacets = useMemo(
+    () => getMetadataFacets(
+      unfilteredConceptModel?.nodes ?? [],
+      (node) => node.tags,
+    ),
+    [unfilteredConceptModel],
+  );
+  const statusFacets = useMemo(
+    () => getMetadataFacets(
+      unfilteredConceptModel?.nodes ?? [],
+      (node) => node.isTypedConcept ? [node.status] : [],
+    ),
+    [unfilteredConceptModel],
+  );
+  const trustFacets = useMemo(
+    () => getMetadataFacets(
+      unfilteredConceptModel?.nodes ?? [],
+      (node) => node.isTypedConcept ? [node.trustTier] : [],
+    ),
+    [unfilteredConceptModel],
+  );
+  const freshnessFacets = useMemo(
+    () => getMetadataFacets(
+      unfilteredConceptModel?.nodes ?? [],
+      (node) => node.isTypedConcept ? [node.freshness] : [],
+    ),
+    [unfilteredConceptModel],
+  );
+  useEffect(() => {
+    const available = new Set(typeFacets.map((facet) => facet.value));
+    setSelectedTypes((current) => {
+      const next = new Set([...current].filter((value) => available.has(value)));
+      return next.size === current.size ? current : next;
+    });
+  }, [typeFacets]);
+  useEffect(() => {
+    const available = new Set(tagFacets.map((facet) => facet.value));
+    setSelectedTags((current) => {
+      const next = new Set([...current].filter((value) => available.has(value)));
+      return next.size === current.size ? current : next;
+    });
+  }, [tagFacets]);
+  useEffect(() => {
+    const available = new Set(statusFacets.map((facet) => facet.value));
+    setSelectedStatuses((current) => {
+      const next = new Set([...current].filter((value) => available.has(value)));
+      return next.size === current.size ? current : next;
+    });
+  }, [statusFacets]);
+  useEffect(() => {
+    const available = new Set(trustFacets.map((facet) => facet.value));
+    setSelectedTrustTiers((current) => {
+      const next = new Set([...current].filter((value) => available.has(value)));
+      return next.size === current.size ? current : next;
+    });
+  }, [trustFacets]);
+  useEffect(() => {
+    const available = new Set(freshnessFacets.map((facet) => facet.value));
+    setSelectedFreshness((current) => {
+      const next = new Set([...current].filter((value) => available.has(value)));
+      return next.size === current.size ? current : next;
+    });
+  }, [freshnessFacets]);
+  const internalFilters = useMemo(
+    () => ({
+      types: selectedTypes,
+      tags: selectedTags,
+      statuses: selectedStatuses,
+      trustTiers: selectedTrustTiers,
+      freshness: selectedFreshness,
+    }),
+    [
+      selectedFreshness,
+      selectedStatuses,
+      selectedTags,
+      selectedTrustTiers,
+      selectedTypes,
+    ],
+  );
+  const effectiveScope: RightPanelGraphScope = scopeOverride ?? scope;
+  const effectiveFilters = controlledFilters ?? internalFilters;
+  const model = useMemo(
+    () => index
+      ? getRightPanelGraphModel(index, activeFileId, {
+        scope: effectiveScope,
+        filters: effectiveFilters,
+      })
+      : undefined,
+    [activeFileId, effectiveFilters, effectiveScope, index],
+  );
+  useEffect(() => {
+    setSelectedDocumentId((currentDocumentId) =>
+      model?.nodes.some((node) => node.documentId === currentDocumentId)
+        ? currentDocumentId
+        : model?.nodes[0]?.documentId ?? activeFileId);
+  }, [activeFileId, model]);
   const fallbackLayout = useMemo(
     () => model ? getRightPanelGraphLayout(model) : [],
     [model],
@@ -155,6 +339,9 @@ export function RightPanelGraph({
   );
   const [hoveredDocumentId, setHoveredDocumentId] = useState<string>();
   const pointerDragRef = useRef<GraphPointerDrag | undefined>(undefined);
+  const hasVisibleActiveNode = Boolean(
+    model?.nodes.some((node) => node.documentId === activeFileId),
+  );
   const visibleLabelDocumentIds = useMemo(() => {
     if (!model) return new Set<string>();
     const linkWeightByDocumentId = new Map<string, number>();
@@ -175,7 +362,7 @@ export function RightPanelGraph({
     );
     const candidatesBySector = new Map<number, RightPanelGraphLayoutNode[]>();
     for (const node of model.nodes) {
-      if (node.depth !== 1) continue;
+      if (hasVisibleActiveNode ? node.depth !== 1 : false) continue;
       const layoutNode = layoutByDocumentId.get(node.documentId);
       if (!layoutNode) continue;
       const angle = Math.atan2(layoutNode.y - 50, layoutNode.x - 50);
@@ -195,7 +382,7 @@ export function RightPanelGraph({
           Math.hypot(first.x - 50, first.y - 50) ||
         first.path.localeCompare(second.path))[0].documentId);
     return new Set(selectedDocumentIds);
-  }, [activeFileId, layout, model]);
+  }, [activeFileId, hasVisibleActiveNode, layout, model]);
 
   if (!index || !model) {
     return (
@@ -205,18 +392,36 @@ export function RightPanelGraph({
     );
   }
 
-  if (!model.hasConnections) {
-    return (
-      <section
-        className="right-panel-content right-graph-panel"
-        aria-label={copy.forFile(activeFileTitle)}
-      >
-        <PanelEmptyState>{copy.none}</PanelEmptyState>
-      </section>
-    );
-  }
-
   const layoutByDocumentId = new Map(layout.map((node) => [node.documentId, node]));
+  const hasFilters = selectedTypes.size > 0 ||
+    selectedTags.size > 0 ||
+    selectedStatuses.size > 0 ||
+    selectedTrustTiers.size > 0 ||
+    selectedFreshness.size > 0;
+  const hasAvailableFilters = typeFacets.length > 0 ||
+    tagFacets.length > 0 ||
+    statusFacets.length > 0 ||
+    trustFacets.length > 0 ||
+    freshnessFacets.length > 0;
+  const isEmpty = model.nodes.length === 0;
+  const toggleFacet = <TValue extends string>(
+    setSelected: (updater: (current: Set<TValue>) => Set<TValue>) => void,
+    value: TValue,
+  ) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
+  const clearFilters = () => {
+    setSelectedTypes(new Set());
+    setSelectedTags(new Set());
+    setSelectedStatuses(new Set());
+    setSelectedTrustTiers(new Set());
+    setSelectedFreshness(new Set());
+  };
   const getDocumentLabel = (documentId: string) => {
     const fileLabel = fileLabels.get(documentId);
     if (fileLabel) {
@@ -240,10 +445,12 @@ export function RightPanelGraph({
   const activateDocument = (documentId: string) => {
     if (documentId !== activeFileId) onSelectFile(documentId);
   };
+  const inspectionMode = Boolean(scopeOverride);
   const handleNodeKeyDown = (event: KeyboardEvent<SVGGElement>, documentId: string) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    activateDocument(documentId);
+    if (inspectionMode) setSelectedDocumentId(documentId);
+    else activateDocument(documentId);
   };
   const handleNodePointerDown = (
     event: PointerEvent<SVGGElement>,
@@ -304,18 +511,208 @@ export function RightPanelGraph({
     pointerDragRef.current = undefined;
     stopDragging(documentId);
     if (event.type === "pointerup" && !pointerDrag.hasMoved) {
-      activateDocument(documentId);
+      if (inspectionMode) setSelectedDocumentId(documentId);
+      else activateDocument(documentId);
     }
   };
+  const selectedGraphNode = model.nodes.find(
+    (node) => node.documentId === selectedDocumentId,
+  );
+  const selectedGraphResource = getOpenableResource(selectedGraphNode?.resource);
+  const getRoleLabel = (role: RightPanelGraphDocumentRole) => copy.roles[role];
 
   return (
     <section
       className="right-panel-content right-graph-panel"
       aria-label={copy.forFile(activeFileTitle)}
     >
-      <div className="right-graph-meta">
-        {copy.summary(model.totalNodeCount, model.totalLinkCount)}
+      <div className="right-graph-toolbar">
+        {!scopeOverride && (
+          <div className="right-graph-scope" role="group" aria-label={copy.scope}>
+          <button
+            type="button"
+            aria-pressed={scope === "local"}
+            onClick={() => setScope("local")}
+          >
+            {copy.local}
+          </button>
+          <button
+            type="button"
+            aria-pressed={scope === "workspace"}
+            onClick={() => setScope("workspace")}
+          >
+            {copy.workspace}
+          </button>
+          <button
+            type="button"
+            aria-pressed={scope === "concept"}
+            onClick={() => setScope("concept")}
+          >
+            {copy.concepts}
+          </button>
+          </div>
+        )}
+        <div className="right-graph-toolbar-meta">
+          <span>
+            {effectiveScope === "concept"
+              ? copy.conceptSummary(model.totalNodeCount, model.totalLinkCount)
+              : copy.summary(model.totalNodeCount, model.totalLinkCount)}
+          </span>
+          {!controlledFilters &&
+            effectiveScope === "concept" && hasAvailableFilters && (
+            <MenuRoot>
+              <MenuTrigger asChild>
+                <button
+                  className="right-graph-filter-trigger"
+                  type="button"
+                  aria-label={copy.filters}
+                  data-tooltip={copy.filters}
+                >
+                  <ListFilter size={15} aria-hidden="true" />
+                  {hasFilters && (
+                    <span className="right-panel-control-status-dot" aria-hidden="true" />
+                  )}
+                </button>
+              </MenuTrigger>
+              <MenuContent className="right-graph-filter-menu" ariaLabel={copy.filters}>
+                {typeFacets.length > 0 && (
+                  <MenuSub>
+                    <MenuSubTrigger
+                      label={copy.types}
+                      trailing={<span>{selectedTypes.size || typeFacets.length}</span>}
+                    />
+                    <MenuSubContent
+                      ariaLabel={copy.types}
+                      className="right-graph-filter-menu"
+                    >
+                      {typeFacets.map((facet) => (
+                        <MenuCheckboxItem
+                          key={facet.value}
+                          checked={selectedTypes.has(facet.value)}
+                          icon={selectedTypes.has(facet.value) ? <Check size={14} /> : undefined}
+                          label={facet.value}
+                          trailing={<span>{facet.count}</span>}
+                          onCheckedChange={() => toggleFacet(setSelectedTypes, facet.value)}
+                          onSelect={(event) => event.preventDefault()}
+                        />
+                      ))}
+                    </MenuSubContent>
+                  </MenuSub>
+                )}
+                {tagFacets.length > 0 && (
+                  <MenuSub>
+                    <MenuSubTrigger
+                      label={copy.tags}
+                      trailing={<span>{selectedTags.size || tagFacets.length}</span>}
+                    />
+                    <MenuSubContent
+                      ariaLabel={copy.tags}
+                      className="right-graph-filter-menu"
+                    >
+                      {tagFacets.map((facet) => (
+                        <MenuCheckboxItem
+                          key={facet.value}
+                          checked={selectedTags.has(facet.value)}
+                          icon={selectedTags.has(facet.value) ? <Check size={14} /> : undefined}
+                          label={facet.value}
+                          trailing={<span>{facet.count}</span>}
+                          onCheckedChange={() => toggleFacet(setSelectedTags, facet.value)}
+                          onSelect={(event) => event.preventDefault()}
+                        />
+                      ))}
+                    </MenuSubContent>
+                  </MenuSub>
+                )}
+                {statusFacets.length > 0 && (
+                  <MenuSub>
+                    <MenuSubTrigger
+                      label="Status"
+                      trailing={<span>{selectedStatuses.size || statusFacets.length}</span>}
+                    />
+                    <MenuSubContent
+                      ariaLabel="Status"
+                      className="right-graph-filter-menu"
+                    >
+                      {statusFacets.map((facet) => (
+                        <MenuCheckboxItem
+                          key={facet.value}
+                          checked={selectedStatuses.has(facet.value)}
+                          icon={selectedStatuses.has(facet.value) ? <Check size={14} /> : undefined}
+                          label={facet.value}
+                          trailing={<span>{facet.count}</span>}
+                          onCheckedChange={() =>
+                            toggleFacet(setSelectedStatuses, facet.value)}
+                          onSelect={(event) => event.preventDefault()}
+                        />
+                      ))}
+                    </MenuSubContent>
+                  </MenuSub>
+                )}
+                {trustFacets.length > 0 && (
+                  <MenuSub>
+                    <MenuSubTrigger
+                      label="Trust"
+                      trailing={<span>{selectedTrustTiers.size || trustFacets.length}</span>}
+                    />
+                    <MenuSubContent
+                      ariaLabel="Trust"
+                      className="right-graph-filter-menu"
+                    >
+                      {trustFacets.map((facet) => (
+                        <MenuCheckboxItem
+                          key={facet.value}
+                          checked={selectedTrustTiers.has(facet.value)}
+                          icon={selectedTrustTiers.has(facet.value) ? <Check size={14} /> : undefined}
+                          label={facet.value}
+                          trailing={<span>{facet.count}</span>}
+                          onCheckedChange={() =>
+                            toggleFacet(setSelectedTrustTiers, facet.value)}
+                          onSelect={(event) => event.preventDefault()}
+                        />
+                      ))}
+                    </MenuSubContent>
+                  </MenuSub>
+                )}
+                {freshnessFacets.length > 0 && (
+                  <MenuSub>
+                    <MenuSubTrigger
+                      label="Freshness"
+                      trailing={<span>{selectedFreshness.size || freshnessFacets.length}</span>}
+                    />
+                    <MenuSubContent
+                      ariaLabel="Freshness"
+                      className="right-graph-filter-menu"
+                    >
+                      {freshnessFacets.map((facet) => (
+                        <MenuCheckboxItem
+                          key={facet.value}
+                          checked={selectedFreshness.has(facet.value)}
+                          icon={selectedFreshness.has(facet.value) ? <Check size={14} /> : undefined}
+                          label={facet.value}
+                          trailing={<span>{facet.count}</span>}
+                          onCheckedChange={() =>
+                            toggleFacet(setSelectedFreshness, facet.value)}
+                          onSelect={(event) => event.preventDefault()}
+                        />
+                      ))}
+                    </MenuSubContent>
+                  </MenuSub>
+                )}
+                <MenuItem
+                  disabled={!hasFilters}
+                  label={copy.clearFilters}
+                  onSelect={clearFilters}
+                />
+              </MenuContent>
+            </MenuRoot>
+          )}
+        </div>
       </div>
+      {isEmpty ? (
+        <PanelEmptyState>
+          {effectiveScope === "concept" ? copy.noConcepts : copy.none}
+        </PanelEmptyState>
+      ) : (
       <svg
         className="right-graph-canvas"
         viewBox="0 0 100 100"
@@ -352,12 +749,13 @@ export function RightPanelGraph({
               <path
                 key={`${edge.sourceDocumentId}:${edge.targetDocumentId}`}
                 d={getEdgePath(source, target)}
-                className={`right-graph-edge${
+                className={`right-graph-edge ${edge.kind}${
                   edge.sourceDocumentId === activeFileId ||
                   edge.targetDocumentId === activeFileId
                     ? " connected"
                     : ""
                 }`}
+                data-edge-kind={edge.kind}
                 markerEnd="url(#right-graph-arrow)"
                 style={{ strokeWidth: 0.65 + Math.min(0.85, Math.log2(edge.linkCount) * 0.3) }}
                 vectorEffect="non-scaling-stroke"
@@ -368,19 +766,25 @@ export function RightPanelGraph({
         <g className="right-graph-nodes">
           {layout.map((node) => {
             const isActive = node.documentId === activeFileId;
-            const isLabelVisible = visibleLabelDocumentIds.has(node.documentId);
+            const isSelected = node.documentId === selectedDocumentId;
+            const isLabelVisible =
+              isActive || visibleLabelDocumentIds.has(node.documentId);
             const documentLabel = getDocumentLabel(node.documentId);
             const labelPlacement = getLabelPlacement(node);
+            const typeColorIndex = getTypeColorIndex(node.type);
             return (
               <g
                 key={node.documentId}
                 className={`right-graph-node depth-${node.depth}${
                   isActive ? " active" : ""
+                }${isSelected ? " selected" : ""
+                } role-${node.role}${
+                  typeColorIndex === undefined ? "" : ` type-${typeColorIndex}`
                 }${isLabelVisible ? " label-visible" : ""}${
                   hoveredDocumentId === node.documentId ? " hovered" : ""
                 }${draggingDocumentId === node.documentId ? " dragging" : ""}`}
-                role={isActive ? "img" : "button"}
-                tabIndex={isActive ? undefined : 0}
+                role={inspectionMode || !isActive ? "button" : "img"}
+                tabIndex={inspectionMode || !isActive ? 0 : undefined}
                 data-document-id={node.documentId}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={
@@ -398,7 +802,13 @@ export function RightPanelGraph({
                 onPointerCancel={(event) =>
                   handleNodePointerEnd(event, node.documentId)}
               >
-                <title>{documentLabel.fullPath}</title>
+                <title>
+                  {[
+                    documentLabel.fullPath,
+                    node.type ?? getRoleLabel(node.role),
+                    node.description,
+                  ].filter(Boolean).join("\n")}
+                </title>
                 <circle
                   className="right-graph-node-hit-target"
                   cx={node.x}
@@ -436,6 +846,88 @@ export function RightPanelGraph({
           })}
         </g>
       </svg>
+      )}
+      {selectedGraphNode && !isEmpty && (
+        <aside className="right-graph-detail" aria-label={selectedGraphNode.title}>
+          <div className="right-graph-detail-title">
+            <span>{selectedGraphNode.title}</span>
+            <span>{selectedGraphNode.type ?? getRoleLabel(selectedGraphNode.role)}</span>
+          </div>
+          {selectedGraphNode.description && (
+            <p>{selectedGraphNode.description}</p>
+          )}
+          {selectedGraphNode.role === "concept" && selectedGraphNode.isTypedConcept && (
+            <dl className="right-graph-detail-metadata">
+              <div>
+                <dt>Status</dt>
+                <dd>{selectedGraphNode.status}</dd>
+              </div>
+              <div>
+                <dt>Trust</dt>
+                <dd>{selectedGraphNode.trustTier}</dd>
+              </div>
+              <div>
+                <dt>Freshness</dt>
+                <dd>
+                  {selectedGraphNode.freshness}
+                  {selectedGraphNode.staleAfter && ` · ${selectedGraphNode.staleAfter}`}
+                </dd>
+              </div>
+              {selectedGraphNode.sources.length > 0 && (
+                <div>
+                  <dt>Sources</dt>
+                  <dd>{selectedGraphNode.sources.length}</dd>
+                </div>
+              )}
+              {selectedGraphNode.generated && (
+                <div>
+                  <dt>Generated</dt>
+                  <dd>{selectedGraphNode.generated.by} · {selectedGraphNode.generated.at}</dd>
+                </div>
+              )}
+              {selectedGraphNode.verified.length > 0 && (
+                <div>
+                  <dt>Verified</dt>
+                  <dd>
+                    {selectedGraphNode.verified.at(-1)?.by} ·{" "}
+                    {selectedGraphNode.verified.at(-1)?.at}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          )}
+          {selectedGraphNode.tags.length > 0 && (
+            <div className="right-graph-detail-tags">
+              {selectedGraphNode.tags.map((tag) => <span key={tag}>{tag}</span>)}
+            </div>
+          )}
+          {selectedGraphNode.resource && (
+            selectedGraphResource ? (
+              <a
+                className="right-graph-detail-resource"
+                href={selectedGraphResource}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={copy.openResource}
+              >
+                <span>{selectedGraphNode.resource}</span>
+                <ExternalLink size={13} aria-hidden="true" />
+              </a>
+            ) : (
+              <span className="right-graph-detail-resource">
+                {selectedGraphNode.resource}
+              </span>
+            )
+          )}
+          <button
+            className="right-graph-detail-open"
+            type="button"
+            onClick={() => activateDocument(selectedGraphNode.documentId)}
+          >
+            {copy.open(getDocumentLabel(selectedGraphNode.documentId).accessibleLabel)}
+          </button>
+        </aside>
+      )}
       {model.isTruncated && (
         <p className="right-graph-truncated">
           {copy.truncated(model.nodes.length, model.totalNodeCount)}

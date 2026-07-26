@@ -12,6 +12,9 @@ import {
 } from "./WorkspaceInfoDialog";
 import type { ShortcutPlatform } from "../keyboardShortcuts";
 import { WorkspaceFolderImportDialog } from "./WorkspaceFolderImportDialog";
+import { WorkspaceExportReviewDialog } from "./WorkspaceExportReviewDialog";
+import type { WorkspaceExportReview } from "../io/workspaceExportReviewModel";
+import type { WorkspaceFolderImportDraft } from "../io/workspaceFolderImport";
 
 type JsonShareImportState =
   | { status: "loading" }
@@ -20,7 +23,8 @@ type JsonShareImportState =
 
 export type WorkspaceOverlaySurfaceProps = {
   infoDialog: WorkspaceInfoDialogKind | null;
-  workspaceFolderImport: WorkspaceState | null;
+  workspaceFolderImport: WorkspaceFolderImportDraft | null;
+  workspaceExportReview: WorkspaceExportReview | null;
   jsonShareImport: JsonShareImportState | null;
   language: WorkspaceLanguage;
   shortcutPlatform: ShortcutPlatform;
@@ -28,16 +32,20 @@ export type WorkspaceOverlaySurfaceProps = {
   onDismissToast: () => void;
   onCloseInfoDialog: () => void;
   onCloseWorkspaceFolderImport: () => void;
+  onCloseWorkspaceExportReview: () => void;
   onPauseToast: () => void;
   onResumeToast: () => void;
   onCloseJsonShareImport: () => void;
   onReplaceWorkspaceWithJsonShare: (workspace: WorkspaceState) => void;
   onReplaceWorkspaceWithFolder: () => void;
+  onConfirmWorkspaceExport: () => void;
+  onReviewWorkspaceExportIssues: () => void;
 };
 
 export function WorkspaceOverlaySurface({
   infoDialog,
   workspaceFolderImport,
+  workspaceExportReview,
   jsonShareImport,
   language,
   shortcutPlatform,
@@ -45,11 +53,14 @@ export function WorkspaceOverlaySurface({
   onDismissToast,
   onCloseInfoDialog,
   onCloseWorkspaceFolderImport,
+  onCloseWorkspaceExportReview,
   onPauseToast,
   onResumeToast,
   onCloseJsonShareImport,
   onReplaceWorkspaceWithJsonShare,
   onReplaceWorkspaceWithFolder,
+  onConfirmWorkspaceExport,
+  onReviewWorkspaceExportIssues,
 }: WorkspaceOverlaySurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   return (
@@ -66,9 +77,19 @@ export function WorkspaceOverlaySurface({
       {workspaceFolderImport && (
         <WorkspaceFolderImportDialog
           language={language}
-          workspace={workspaceFolderImport}
+          workspace={workspaceFolderImport.workspace}
+          profile={workspaceFolderImport.profile}
           onCancel={onCloseWorkspaceFolderImport}
           onReplace={onReplaceWorkspaceWithFolder}
+        />
+      )}
+      {workspaceExportReview && (
+        <WorkspaceExportReviewDialog
+          language={language}
+          review={workspaceExportReview}
+          onCancel={onCloseWorkspaceExportReview}
+          onExport={onConfirmWorkspaceExport}
+          onReviewIssues={onReviewWorkspaceExportIssues}
         />
       )}
       {toast && (

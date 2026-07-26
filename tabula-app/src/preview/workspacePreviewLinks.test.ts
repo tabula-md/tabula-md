@@ -16,6 +16,7 @@ const index = createWorkspaceKnowledgeIndex([
       "[Missing](./missing.md)",
       "[External](https://example.com)",
       "[Email](mailto:hello@example.com)",
+      "[Directory](section/)",
       "[[middle#Decision|Wiki middle]]",
       "![[middle#Decision]]",
       "[[Missing Wiki]]",
@@ -26,6 +27,11 @@ const index = createWorkspaceKnowledgeIndex([
     id: "middle",
     path: "graph/middle.md",
     markdown: "# Middle\n\n## Decision",
+  },
+  {
+    id: "section-index",
+    path: "graph/section/index.md",
+    markdown: "# Section",
   },
   { id: "shared-a", path: "team-a/Shared.md", markdown: "# Shared A" },
   { id: "shared-b", path: "team-b/Shared.md", markdown: "# Shared B" },
@@ -50,6 +56,15 @@ describe("workspace preview links", () => {
       targetPath: "graph/start.md",
       fragment: "start",
       sourceLineNumber: 1,
+    });
+    expect(resolveMarkdownPreviewWorkspaceLink(index, "start", "section/")).toEqual({
+      status: "resolved",
+      relation: "link",
+      syntax: "markdown",
+      targetDocumentId: "section-index",
+      targetPath: "graph/section/index.md",
+      fragment: undefined,
+      sourceLineNumber: undefined,
     });
   });
 

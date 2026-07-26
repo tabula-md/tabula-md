@@ -2,7 +2,10 @@ import { useState, type ChangeEvent, type DragEvent, type RefObject } from "reac
 import { clientErrorReporter } from "../../observability/clientErrorReporting";
 import type { MarkdownEditorHandle } from "../../document/markdownEditorTypes";
 import { createWorkspaceArchive } from "./workspaceArchive";
-import { parseWorkspaceFolderFiles } from "./workspaceFolderImport";
+import {
+  parseWorkspaceFolderImport,
+  type WorkspaceFolderImportDraft,
+} from "./workspaceFolderImport";
 import {
   getWorkspaceName,
   syncUrlForLocalWorkspace,
@@ -20,6 +23,15 @@ import { useAnimationFrameTask } from "../../shared/useAnimationFrameTask";
 import { writeIndexedDbWorkspace } from "../persistence/workspaceIndexedDb";
 import { getWorkspaceIoCopy } from "./workspaceIoLocale";
 import { productAnalytics } from "../../observability/productAnalytics";
+import {
+  captureWorkspaceKnowledgeBaseline,
+  type WorkspaceKnowledgeBaseline,
+} from "@tabula-md/tabula";
+import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
+import {
+  getWorkspaceExportReview,
+  type WorkspaceExportReview,
+} from "./workspaceExportReviewModel";
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -57,6 +69,8 @@ type UseWorkspaceFileIoControllerArgs = {
   onBeforeWorkspaceBoundary?: () => void;
   preferences: WorkspacePreferences;
   replaceCommentsByFileId: (commentsByFileId: WorkspaceState["commentsByFileId"]) => void;
+  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
+  replaceKnowledgeBaseline: (baseline?: WorkspaceKnowledgeBaseline) => void;
   replaceWorkspace: (
     workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">,
   ) => WorkspaceFile | undefined;
@@ -150,12 +164,19 @@ export function useWorkspaceFileIoController({
   onBeforeWorkspaceBoundary,
   preferences,
   replaceCommentsByFileId,
+  knowledgeBaseline,
+  replaceKnowledgeBaseline,
   replaceWorkspace,
   showToast,
   onCloseChrome,
 }: UseWorkspaceFileIoControllerArgs) {
   const [emptyDropActive, setEmptyDropActive] = useState(false);
-  const [workspaceFolderImport, setWorkspaceFolderImport] = useState<WorkspaceState | null>(null);
+  const [workspaceFolderImport, setWorkspaceFolderImport] =
+    useState<WorkspaceFolderImportDraft | null>(null);
+  const [pendingWorkspaceExport, setPendingWorkspaceExport] = useState<{
+    review: WorkspaceExportReview;
+    snapshot: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">;
+  } | null>(null);
   const queueAnimationFrameTask = useAnimationFrameTask();
   const copy = getWorkspaceIoCopy(preferences.language);
 
@@ -187,17 +208,13 @@ export function useWorkspaceFileIoController({
     showToast(copy.fileDownloaded);
   };
 
-  const downloadWorkspaceArchive = async () => {
+  const exportWorkspaceSnapshot = async (
+    workspaceSnapshot: Pick<
+      WorkspaceState,
+      "files" | "folders" | "openFileIds" | "activeFileId"
+    >,
+  ) => {
     try {
-      const workspaceSnapshot = getWorkspaceFileIoBoundaryWorkspaceSnapshot({
-        activeFile,
-        activeFileId,
-        files,
-        folders,
-        getWorkspaceSnapshot,
-        onBeforeWorkspaceBoundary,
-        openFileIds,
-      });
       const archive = await createWorkspaceArchive(workspaceSnapshot.files, workspaceSnapshot.folders);
       downloadBlobFile(`${getWorkspaceName(workspaceSnapshot.folders)}.zip`, archive);
       showToast(copy.workspaceDownloaded);
@@ -209,6 +226,34 @@ export function useWorkspaceFileIoController({
       });
       showToast(copy.exportFailed, "error");
     }
+  };
+  const downloadWorkspaceArchive = () => {
+    const workspaceSnapshot = getWorkspaceFileIoBoundaryWorkspaceSnapshot({
+      activeFile,
+      activeFileId,
+      files,
+      folders,
+      getWorkspaceSnapshot,
+      onBeforeWorkspaceBoundary,
+      openFileIds,
+    });
+    const review = getWorkspaceExportReview(
+      workspaceSnapshot.files,
+      workspaceSnapshot.folders,
+      knowledgeBaseline,
+    );
+    if (!review) {
+      void exportWorkspaceSnapshot(workspaceSnapshot);
+      return;
+    }
+    setPendingWorkspaceExport({ review, snapshot: workspaceSnapshot });
+  };
+  const closeWorkspaceExportReview = () => setPendingWorkspaceExport(null);
+  const confirmWorkspaceArchiveExport = () => {
+    if (!pendingWorkspaceExport) return;
+    const { snapshot } = pendingWorkspaceExport;
+    setPendingWorkspaceExport(null);
+    void exportWorkspaceSnapshot(snapshot);
   };
 
   const importFile = async (file: File) => {
@@ -246,14 +291,14 @@ export function useWorkspaceFileIoController({
     event.target.value = "";
     if (selectedFiles.length === 0) return;
 
-    void parseWorkspaceFolderFiles(selectedFiles, {
+    void parseWorkspaceFolderImport(selectedFiles, {
       viewMode: preferences.newFileViewMode,
       readingWidth: preferences.readingWidth,
       lineWrapping: preferences.lineWrapping,
       lineNumbers: preferences.lineNumbers,
-    }).then((workspace) => {
+    }).then((draft) => {
       onCloseChrome();
-      setWorkspaceFolderImport(workspace);
+      setWorkspaceFolderImport(draft);
     }).catch((error: unknown) => {
       clientErrorReporter.report({ feature: "workspace", operation: "open-folder", error });
       showToast(copy.openFailed, "error");
@@ -264,9 +309,20 @@ export function useWorkspaceFileIoController({
 
   const replaceWorkspaceWithFolder = () => {
     if (!workspaceFolderImport || isRoomSession) return;
-    const nextWorkspace = { ...workspaceFolderImport, commentsByFileId: {} };
+    const knowledgeBaseline = captureWorkspaceKnowledgeBaseline(
+      getWorkspaceKnowledgeDocuments(
+        workspaceFolderImport.workspace.files,
+        workspaceFolderImport.workspace.folders,
+      ),
+    );
+    const nextWorkspace = {
+      ...workspaceFolderImport.workspace,
+      commentsByFileId: {},
+      knowledgeBaseline,
+    };
     onBeforeWorkspaceBoundary?.();
     replaceWorkspace(nextWorkspace);
+    replaceKnowledgeBaseline(knowledgeBaseline);
     productAnalytics.report("file_created_or_opened", {
       documentSource: "folder",
     });
@@ -321,9 +377,12 @@ export function useWorkspaceFileIoController({
   return {
     emptyDropActive,
     workspaceFolderImport,
+    workspaceExportReview: pendingWorkspaceExport?.review ?? null,
     copyFile,
     downloadCurrentFile,
     downloadWorkspaceArchive,
+    closeWorkspaceExportReview,
+    confirmWorkspaceArchiveExport,
     handleImportInputChange,
     handleWorkspaceImportInputChange,
     handleEmptyWorkspaceDragOver,

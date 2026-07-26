@@ -28,7 +28,7 @@ describe("workspace OKF compatibility", () => {
     ]));
 
     expect(report).toMatchObject({
-      targetVersion: "0.1",
+      targetVersion: "0.2",
       declaredVersion: "0.1",
       status: "conformant",
       conceptCount: 1,
@@ -97,7 +97,7 @@ describe("workspace OKF compatibility", () => {
     ]);
   });
 
-  it("keeps portability guidance as warnings instead of false conformance failures", () => {
+  it("supports OKF 0.1 and 0.2 while keeping portability guidance as warnings", () => {
     const report = getWorkspaceOkfCompatibility(createWorkspaceKnowledgeIndex([
       {
         id: "index",
@@ -116,14 +116,40 @@ describe("workspace OKF compatibility", () => {
       status: "conformant",
       declaredVersion: "0.2",
       errorCount: 0,
-      warningCount: 4,
+      warningCount: 3,
       ignoredDocumentCount: 1,
     });
     expect(report.issues.map((issue) => issue.code)).toEqual([
       "wikilink_syntax",
       "nonstandard_markdown_extension",
-      "unsupported_okf_version",
       "root_index_extra_metadata",
     ]);
+  });
+
+  it("warns on undeclared future versions without rejecting readable bundles", () => {
+    const report = getWorkspaceOkfCompatibility(createWorkspaceKnowledgeIndex([
+      {
+        id: "index",
+        path: "index.md",
+        markdown: "---\nokf_version: \"9.0\"\n---\n\n# Catalog",
+      },
+      {
+        id: "concept",
+        path: "Concept.md",
+        markdown: "---\ntype: Note\n---\n\n# Concept",
+      },
+    ]));
+
+    expect(report).toMatchObject({
+      status: "conformant",
+      targetVersion: "0.2",
+      declaredVersion: "9.0",
+      errorCount: 0,
+      warningCount: 1,
+    });
+    expect(report.issues[0]).toMatchObject({
+      code: "unsupported_okf_version",
+      value: "9.0",
+    });
   });
 });

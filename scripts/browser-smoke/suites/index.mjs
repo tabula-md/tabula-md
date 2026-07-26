@@ -15,6 +15,7 @@ import * as splitLayout from "./split-layout.mjs";
 import * as layout from "./layout.mjs";
 import * as panels from "./panels.mjs";
 import * as knowledgeLinks from "./knowledge-links.mjs";
+import * as okfConcepts from "./okf-concepts.mjs";
 import * as collaboration from "./collaboration.mjs";
 import * as collaborationEditorTorture from "./collaboration-editor-torture.mjs";
 import * as collaborationMemory from "./collaboration-memory.mjs";
@@ -40,6 +41,7 @@ export const suites = [
   layout,
   panels,
   knowledgeLinks,
+  okfConcepts,
   collaboration,
   collaborationEditorTorture,
   collaborationMemory,

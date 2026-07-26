@@ -1,15 +1,56 @@
-import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
+import {
+  getOkfFreshness,
+  type OkfActorEvent,
+  type OkfFreshness,
+  type OkfLifecycleStatus,
+  type OkfSource,
+  type OkfTrustTier,
+  type WorkspaceKnowledgeIndex,
+} from "@tabula-md/tabula";
+
+export type RightPanelGraphScope = "local" | "workspace" | "concept";
+export type RightPanelGraphDocumentRole = "concept" | "index" | "log";
+export type RightPanelGraphEdgeKind = "relationship" | "navigation";
+
+export type RightPanelGraphFilters = {
+  types: ReadonlySet<string>;
+  tags: ReadonlySet<string>;
+  statuses?: ReadonlySet<OkfLifecycleStatus>;
+  trustTiers?: ReadonlySet<OkfTrustTier>;
+  freshness?: ReadonlySet<OkfFreshness>;
+};
+
+export type RightPanelGraphOptions = {
+  scope?: RightPanelGraphScope;
+  filters?: RightPanelGraphFilters;
+  today?: string;
+};
 
 export type RightPanelGraphNode = {
   documentId: string;
   path: string;
   depth: number;
+  role: RightPanelGraphDocumentRole;
+  isTypedConcept: boolean;
+  title: string;
+  description?: string;
+  type?: string;
+  tags: readonly string[];
+  resource?: string;
+  sources: readonly OkfSource[];
+  generated?: OkfActorEvent;
+  verified: readonly OkfActorEvent[];
+  status: OkfLifecycleStatus;
+  staleAfter?: string;
+  freshness: OkfFreshness;
+  trustTier: OkfTrustTier;
 };
 
 export type RightPanelGraphEdge = {
   sourceDocumentId: string;
   targetDocumentId: string;
   linkCount: number;
+  kind: RightPanelGraphEdgeKind;
 };
 
 export type RightPanelGraphModel = {
@@ -36,19 +77,72 @@ const GRAPH_LAYOUT_MAX = 91;
 const getDocumentSortKey = (index: WorkspaceKnowledgeIndex, documentId: string) =>
   index.documentsById.get(documentId)?.path ?? documentId;
 
+const getDocumentRole = (path: string): RightPanelGraphDocumentRole => {
+  const fileName = path.split("/").at(-1)?.toLocaleLowerCase();
+  if (fileName === "index.md") return "index";
+  if (fileName === "log.md") return "log";
+  return "concept";
+};
+
+const matchesConceptFilters = (
+  node: RightPanelGraphNode,
+  filters: RightPanelGraphFilters | undefined,
+) => {
+  if (!filters) return true;
+  if (filters.types.size > 0 && (!node.type || !filters.types.has(node.type))) {
+    return false;
+  }
+  if (
+    filters.tags.size > 0 &&
+    ![...filters.tags].every((tag) => node.tags.includes(tag))
+  ) {
+    return false;
+  }
+  if (
+    filters.statuses?.size &&
+    (!node.isTypedConcept || !filters.statuses.has(node.status))
+  ) {
+    return false;
+  }
+  if (
+    filters.trustTiers?.size &&
+    (!node.isTypedConcept || !filters.trustTiers.has(node.trustTier))
+  ) {
+    return false;
+  }
+  if (
+    filters.freshness?.size &&
+    (!node.isTypedConcept || !filters.freshness.has(node.freshness))
+  ) {
+    return false;
+  }
+  return true;
+};
+
 const incrementEdgeCount = (
-  edgeCountsBySourceId: Map<string, Map<string, number>>,
+  edgeCountsBySourceId: Map<string, Map<string, {
+    count: number;
+    kind: RightPanelGraphEdgeKind;
+  }>>,
   sourceDocumentId: string,
   targetDocumentId: string,
+  kind: RightPanelGraphEdgeKind,
 ) => {
-  const targetCounts = edgeCountsBySourceId.get(sourceDocumentId) ?? new Map<string, number>();
-  targetCounts.set(targetDocumentId, (targetCounts.get(targetDocumentId) ?? 0) + 1);
+  const targetCounts = edgeCountsBySourceId.get(sourceDocumentId) ?? new Map();
+  const current = targetCounts.get(targetDocumentId);
+  targetCounts.set(targetDocumentId, {
+    count: (current?.count ?? 0) + 1,
+    kind: current?.kind === "navigation" || kind === "navigation"
+      ? "navigation"
+      : "relationship",
+  });
   edgeCountsBySourceId.set(sourceDocumentId, targetCounts);
 };
 
 export const getRightPanelGraphModel = (
   index: WorkspaceKnowledgeIndex,
   activeDocumentId: string,
+  options: RightPanelGraphOptions = {},
 ): RightPanelGraphModel => {
   const activeDocument = index.documentsById.get(activeDocumentId);
   if (!activeDocument) {
@@ -62,8 +156,46 @@ export const getRightPanelGraphModel = (
     };
   }
 
+  const scope = options.scope ?? "workspace";
+  const allNodes = [...index.documentsById.values()]
+    .map((document): RightPanelGraphNode => {
+      const analysis = index.analysesByDocumentId.get(document.id);
+      const metadata = analysis?.knowledgeMetadata;
+      return {
+        documentId: document.id,
+        path: document.path,
+        depth: 2,
+        role: getDocumentRole(document.path),
+        isTypedConcept: Boolean(metadata?.type),
+        title: analysis?.title ?? document.path.split("/").at(-1) ?? document.path,
+        ...(metadata?.description ? { description: metadata.description } : {}),
+        ...(metadata?.type ? { type: metadata.type } : {}),
+        tags: metadata?.tags ?? [],
+        ...(metadata?.resource ? { resource: metadata.resource } : {}),
+        sources: metadata?.sources ?? [],
+        ...(metadata?.generated ? { generated: metadata.generated } : {}),
+        verified: metadata?.verified ?? [],
+        status: metadata?.status ?? "stable",
+        ...(metadata?.staleAfter ? { staleAfter: metadata.staleAfter } : {}),
+        freshness: metadata ? getOkfFreshness(metadata, options.today) : "current",
+        trustTier: metadata?.trustTier ?? "unverified",
+      };
+    });
+  const candidateNodes = allNodes.filter((node) =>
+    (scope !== "concept" || node.role === "concept") &&
+    matchesConceptFilters(node, options.filters));
+  const candidateDocumentIds = new Set(candidateNodes.map((node) => node.documentId));
+  const visibleActiveDocumentId = candidateDocumentIds.has(activeDocumentId)
+    ? activeDocumentId
+    : undefined;
+  const rolesByDocumentId = new Map(
+    allNodes.map((node) => [node.documentId, node.role]),
+  );
   const adjacentDocumentIds = new Set<string>();
-  const edgeCountsBySourceId = new Map<string, Map<string, number>>();
+  const edgeCountsBySourceId = new Map<string, Map<string, {
+    count: number;
+    kind: RightPanelGraphEdgeKind;
+  }>>();
 
   for (const [sourceDocumentId, links] of index.outgoingLinksByDocumentId) {
     for (const link of links) {
@@ -71,40 +203,67 @@ export const getRightPanelGraphModel = (
       if (
         !targetDocumentId ||
         targetDocumentId === sourceDocumentId ||
-        !index.documentsById.has(targetDocumentId)
+        !candidateDocumentIds.has(sourceDocumentId) ||
+        !candidateDocumentIds.has(targetDocumentId)
       ) {
         continue;
       }
 
-      if (sourceDocumentId === activeDocumentId) {
+      if (sourceDocumentId === visibleActiveDocumentId) {
         adjacentDocumentIds.add(targetDocumentId);
-      } else if (targetDocumentId === activeDocumentId) {
+      } else if (targetDocumentId === visibleActiveDocumentId) {
         adjacentDocumentIds.add(sourceDocumentId);
       }
 
-      incrementEdgeCount(edgeCountsBySourceId, sourceDocumentId, targetDocumentId);
+      const kind =
+        rolesByDocumentId.get(sourceDocumentId) === "concept" &&
+        rolesByDocumentId.get(targetDocumentId) === "concept"
+          ? "relationship"
+          : "navigation";
+      incrementEdgeCount(
+        edgeCountsBySourceId,
+        sourceDocumentId,
+        targetDocumentId,
+        kind,
+      );
     }
   }
 
-  const nodes = [...index.documentsById.keys()]
-    .sort((firstId, secondId) =>
+  const visibleNodes = scope === "local"
+    ? candidateNodes.filter((node) =>
+      node.documentId === visibleActiveDocumentId ||
+      adjacentDocumentIds.has(node.documentId))
+    : candidateNodes;
+  const visibleDocumentIds = new Set(visibleNodes.map((node) => node.documentId));
+  const nodes = visibleNodes
+    .sort((first, second) =>
       compareText(
-        getDocumentSortKey(index, firstId),
-        getDocumentSortKey(index, secondId),
+        getDocumentSortKey(index, first.documentId),
+        getDocumentSortKey(index, second.documentId),
       ))
-    .map((documentId) => ({
-      documentId,
-      path: index.documentsById.get(documentId)?.path ?? documentId,
-      depth: documentId === activeDocumentId
+    .map((node) => ({
+      ...node,
+      depth: node.documentId === visibleActiveDocumentId
         ? 0
-        : adjacentDocumentIds.has(documentId)
+        : adjacentDocumentIds.has(node.documentId)
           ? 1
           : 2,
     }));
   const edges: RightPanelGraphEdge[] = [];
   for (const [sourceDocumentId, targetCounts] of edgeCountsBySourceId) {
-    for (const [targetDocumentId, linkCount] of targetCounts) {
-      edges.push({ sourceDocumentId, targetDocumentId, linkCount });
+    for (const [targetDocumentId, { count, kind }] of targetCounts) {
+      if (
+        !visibleDocumentIds.has(sourceDocumentId) ||
+        !visibleDocumentIds.has(targetDocumentId)
+      ) {
+        continue;
+      }
+      edges.push({
+        sourceDocumentId,
+        targetDocumentId,
+        linkCount: count,
+        kind,
+      });
     }
   }
   edges.sort((first, second) =>

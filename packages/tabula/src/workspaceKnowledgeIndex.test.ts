@@ -20,6 +20,7 @@ describe("workspace knowledge index", () => {
       "---",
       "title: Product Guide",
       "type: Guide",
+      "description: ' How to ship the product safely. '",
       "tags: [docs, product]",
       "resource: ' https://example.com/products/guide '",
       "owner:",
@@ -40,6 +41,7 @@ describe("workspace knowledge index", () => {
     expect(analysis.metadata).toEqual({
       title: "Product Guide",
       type: "Guide",
+      description: " How to ship the product safely. ",
       tags: ["docs", "product"],
       resource: " https://example.com/products/guide ",
       owner: { team: "Core" },
@@ -47,14 +49,19 @@ describe("workspace knowledge index", () => {
     });
     expect(analysis.knowledgeMetadata).toEqual({
       type: "Guide",
+      description: "How to ship the product safely.",
       tags: ["docs", "product"],
       resource: "https://example.com/products/guide",
+      sources: [],
+      verified: [],
+      status: "stable",
+      trustTier: "unverified",
     });
     expect(analysis.headings).toEqual([
       {
         depth: 1,
         id: "start-here",
-        sourceLineNumber: 11,
+        sourceLineNumber: 12,
         text: "Start here",
         from: markdown.indexOf("# Start"),
         to: markdown.indexOf("# Start") + "# Start *here*".length,
@@ -81,7 +88,7 @@ describe("workspace knowledge index", () => {
     ]);
   });
 
-  it("indexes type, tags, and resource as normalized knowledge metadata", () => {
+  it("indexes description, type, tags, and resource as normalized knowledge metadata", () => {
     const index = createWorkspaceKnowledgeIndex([
       document(
         "runbook",
@@ -89,6 +96,7 @@ describe("workspace knowledge index", () => {
         [
           "---",
           "type: ' Runbook '",
+          "description: ' Respond to checkout incidents. '",
           "tags: [oncall, ' checkout ', oncall, 42, '']",
           "resource: ' https://github.com/acme/checkout '",
           "---",
@@ -123,16 +131,29 @@ describe("workspace knowledge index", () => {
 
     expect(index.analysesByDocumentId.get("runbook")?.knowledgeMetadata).toEqual({
       type: "Runbook",
+      description: "Respond to checkout incidents.",
       tags: ["oncall", "checkout"],
       resource: "https://github.com/acme/checkout",
+      sources: [],
+      verified: [],
+      status: "stable",
+      trustTier: "unverified",
     });
     expect(index.analysesByDocumentId.get("playbook")?.knowledgeMetadata).toEqual({
       type: "Runbook",
       tags: ["payments"],
       resource: "https://github.com/acme/checkout",
+      sources: [],
+      verified: [],
+      status: "stable",
+      trustTier: "unverified",
     });
     expect(index.analysesByDocumentId.get("unstructured")?.knowledgeMetadata).toEqual({
       tags: [],
+      sources: [],
+      verified: [],
+      status: "stable",
+      trustTier: "unverified",
     });
     expect(index.documentIdsByType.get("Runbook")).toEqual(["runbook", "playbook"]);
     expect(index.documentIdsByTag.get("oncall")).toEqual(["runbook"]);
@@ -142,6 +163,76 @@ describe("workspace knowledge index", () => {
       "runbook",
       "playbook",
     ]);
+    expect(index.documentIdsByStatus.get("stable")).toEqual([
+      "runbook",
+      "playbook",
+      "unstructured",
+    ]);
+    expect(index.documentIdsByTrustTier.get("unverified")).toEqual([
+      "runbook",
+      "playbook",
+      "unstructured",
+    ]);
+  });
+
+  it("normalizes OKF 0.2 provenance, trust, lifecycle, and freshness metadata", () => {
+    const analysis = analyzeWorkspaceDocument(document(
+      "metric",
+      "metrics/revenue.md",
+      [
+        "---",
+        "type: Metric",
+        "status: draft",
+        "stale_after: 2026-09-23",
+        "generated: { by: reference_agent/gemini, at: 2026-07-20T10:00:00Z }",
+        "verified: { by: human:taeha, at: 2026-07-24T09:00:00Z }",
+        "sources:",
+        "  - id: policy",
+        "    resource: https://example.com/policy",
+        "    title: Revenue policy",
+        "    author: team:finance",
+        "    usage_count: 120",
+        "    last_modified: 2026-07-19",
+        "---",
+        "",
+        "# Revenue",
+      ].join("\n"),
+    ));
+
+    expect(analysis.knowledgeMetadata).toEqual({
+      type: "Metric",
+      tags: [],
+      sources: [{
+        id: "policy",
+        resource: "https://example.com/policy",
+        title: "Revenue policy",
+        author: "team:finance",
+        usageCount: 120,
+        lastModified: "2026-07-19",
+      }],
+      generated: {
+        by: "reference_agent/gemini",
+        at: "2026-07-20T10:00:00Z",
+      },
+      generatedAt: "2026-07-20T10:00:00Z",
+      verified: [{
+        by: "human:taeha",
+        at: "2026-07-24T09:00:00Z",
+      }],
+      status: "draft",
+      staleAfter: "2026-09-23",
+      trustTier: "human-reviewed",
+    });
+  });
+
+  it("uses legacy timestamp only when generated.at is absent", () => {
+    const analysis = analyzeWorkspaceDocument(document(
+      "legacy",
+      "legacy.md",
+      "---\ntype: Reference\ntimestamp: 2026-07-01T00:00:00Z\n---\n",
+    ));
+    expect(analysis.knowledgeMetadata.generated).toBeUndefined();
+    expect(analysis.knowledgeMetadata.generatedAt).toBe("2026-07-01T00:00:00Z");
   });
 
   it("extracts wiki links and embeds without indexing escaped or code examples", () => {
@@ -216,12 +307,16 @@ describe("workspace knowledge index", () => {
           "[Wrong case](../api%20guide.md)",
           "[Outside](../../outside.md)",
           "[Encoded slash](..%2FArchitecture.md)",
+          "[Section directory](section/)",
+          "[Root directory](/)",
         ].join("\n"),
       ),
       document("api", "API Guide.md", "# API"),
       document("local", "docs/Local.md", "# Local\n\n## Setup"),
       document("percent", "docs/100% Notes.md", "[Local](Local.md)"),
       document("architecture", "Architecture.md", "# Architecture"),
+      document("section-index", "docs/section/index.md", "# Section"),
+      document("root-index", "index.md", "# Root"),
     ]);
 
     const outgoing = index.outgoingLinksByDocumentId.get("start") ?? [];
@@ -244,6 +339,8 @@ describe("workspace knowledge index", () => {
       { label: "Wrong case", status: "broken", targetDocumentId: undefined, targetPath: "api guide.md", fragment: undefined },
       { label: "Outside", status: "broken", targetDocumentId: undefined, targetPath: undefined, fragment: undefined },
       { label: "Encoded slash", status: "broken", targetDocumentId: undefined, targetPath: undefined, fragment: undefined },
+      { label: "Section directory", status: "resolved", targetDocumentId: "section-index", targetPath: "docs/section/index.md", fragment: undefined },
+      { label: "Root directory", status: "resolved", targetDocumentId: "root-index", targetPath: "index.md", fragment: undefined },
     ]);
     expect(index.backlinksByDocumentId.get("local")?.map((link) => link.label)).toEqual([
       "Local",

@@ -627,6 +627,41 @@ export type {
   WorkspaceDocumentPathChange,
   WorkspaceSourceDocument,
 } from "./workspaceKnowledgeIndex";
+export type {
+  OkfActorEvent,
+  OkfFreshness,
+  OkfLifecycleStatus,
+  OkfSource,
+  OkfTrustTier,
+} from "./workspaceOkfMetadata";
+export {
+  getOkfFreshness,
+  getOkfTrustTier,
+  normalizeWorkspaceKnowledgeMetadata,
+} from "./workspaceOkfMetadata";
+export type {
+  WorkspaceKnowledgeHealthIssue,
+  WorkspaceKnowledgeHealthIssueCode,
+  WorkspaceKnowledgeHealthDelta,
+  WorkspaceKnowledgeHealthOptions,
+  WorkspaceKnowledgeHealthReport,
+} from "./workspaceKnowledgeHealth";
+export {
+  getWorkspaceKnowledgeHealth,
+  getWorkspaceKnowledgeHealthDelta,
+} from "./workspaceKnowledgeHealth";
+export type {
+  WorkspaceKnowledgeBaseline,
+  WorkspaceKnowledgeChange,
+  WorkspaceKnowledgeChangeSet,
+  WorkspaceKnowledgeMetadataChange,
+  WorkspaceOkfLogCandidate,
+} from "./workspaceKnowledgeChanges";
+export {
+  captureWorkspaceKnowledgeBaseline,
+  getWorkspaceKnowledgeChangeSet,
+  planWorkspaceOkfLog,
+} from "./workspaceKnowledgeChanges";
 export {
   analyzeWorkspaceDocument,
   createWorkspaceKnowledgeIndex,
@@ -668,6 +703,7 @@ export type {
   OkfDocumentStatus,
 } from "./workspaceOkfCompatibility";
 export {
+  OKF_SUPPORTED_VERSIONS,
   OKF_TARGET_VERSION,
   getWorkspaceOkfCompatibility,
 } from "./workspaceOkfCompatibility";
@@ -678,3 +714,35 @@ export type {
   OkfConceptTypeUpdateSuccess,
 } from "./workspaceOkfConceptType";
 export { setOkfConceptType } from "./workspaceOkfConceptType";
+
+export type {
+  OkfVerificationUpdateFailure,
+  OkfVerificationUpdateResult,
+  OkfVerificationUpdateSuccess,
+} from "./workspaceOkfVerification";
+export { appendOkfVerification } from "./workspaceOkfVerification";
+
+export type {
+  OkfConceptRepairCandidate,
+  OkfConceptRepairChoice,
+  OkfConceptRepairFailure,
+  OkfConceptRepairPlan,
+  OkfConceptRepairUpdate,
+  OkfIndexCandidate,
+  OkfIndexCandidateState,
+  OkfMetadataSuggestion,
+  OkfOptionalMetadataField,
+  OkfRepairDiffLine,
+  OkfTypeSuggestion,
+  OkfTypeSuggestionSource,
+  OkfWikilinkRepairCandidate,
+  OkfWikilinkRepairUpdate,
+  WorkspaceOkfConformancePlan,
+} from "./workspaceOkfConformance";
+export {
+  getOkfRepairDiff,
+  planOkfConceptRepairs,
+  planOkfWikilinkRepairs,
+  planWorkspaceOkfConformance,
+  TABULA_GENERATED_OKF_INDEX_MARKER,
+} from "./workspaceOkfConformance";

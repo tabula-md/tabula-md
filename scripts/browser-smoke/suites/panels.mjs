@@ -1,6 +1,26 @@
 export const id = "panels";
 export const description = "Project menu, files, outline, comments, switcher, and right-panel file actions.";
 
+const openExportPreflight = async (page, openProjectMenu) => {
+  await openProjectMenu(page);
+  await page.getByRole("button", {
+    name: "Export workspace (.zip)",
+    exact: true,
+  }).click();
+  const exportReview = page.getByRole("dialog", {
+    name: "Review workspace export",
+  });
+  await exportReview.waitFor();
+  await exportReview.getByRole("button", {
+    name: "Review issues",
+    exact: true,
+  }).click();
+  await page.getByRole("heading", {
+    name: "Knowledge base compatibility",
+    exact: true,
+  }).waitFor();
+};
+
 export async function run(ctx) {
   const {
     baseUrl,
@@ -373,18 +393,14 @@ export async function run(ctx) {
       countPillCount: document.querySelectorAll(".right-panel .panel-count-pill").length,
       fileToolbar: (() => {
         const row = document.querySelector(".right-file-toolbar");
-        const compatibilityButton = document.querySelector('.right-file-toolbar-button[aria-label="Check knowledge base compatibility"]');
         const importButton = document.querySelector('.right-file-toolbar-button[aria-label="Open Markdown file"]');
         const createButton = document.querySelector('.right-file-toolbar-button[aria-label="Create"]');
-        if (!row || !compatibilityButton || !importButton || !createButton) {
+        if (!row || !importButton || !createButton) {
           return null;
         }
-        const compatibilityButtonRect = compatibilityButton.getBoundingClientRect();
         const importButtonRect = importButton.getBoundingClientRect();
         const createButtonRect = createButton.getBoundingClientRect();
         return {
-          compatibilityButtonWidth: Math.round(compatibilityButtonRect.width),
-          compatibilityButtonHeight: Math.round(compatibilityButtonRect.height),
           importButtonWidth: Math.round(importButtonRect.width),
           importButtonHeight: Math.round(importButtonRect.height),
           createButtonWidth: Math.round(createButtonRect.width),
@@ -436,8 +452,8 @@ export async function run(ctx) {
       "The side panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Files|Outline|Links|Graph|Comments|Search",
-      `The side panel should expose Files, Outline, Links, Graph, Comments, and document Search as peer views. Found: ${rightPanelState.tabs.join("|")}`,
+      rightPanelState.tabs.join("|") === "Files|Outline|Links|Comments|Search|Knowledge",
+      `The side panel should separate workspace search from active-document knowledge. Found: ${rightPanelState.tabs.join("|")}`,
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
     expect(rightPanelState.workspaceName === "Project", "Files should identify the current workspace.");
@@ -477,9 +493,7 @@ export async function run(ctx) {
       () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 288,
     );
     expect(
-      rightPanelState.fileToolbar?.compatibilityButtonWidth === 28 &&
-        rightPanelState.fileToolbar?.compatibilityButtonHeight === 28 &&
-        rightPanelState.fileToolbar?.importButtonWidth === 28 &&
+      rightPanelState.fileToolbar?.importButtonWidth === 28 &&
         rightPanelState.fileToolbar?.importButtonHeight === 28 &&
         rightPanelState.fileToolbar?.createButtonWidth === 28 &&
         rightPanelState.fileToolbar?.createButtonHeight === 28,
@@ -507,68 +521,38 @@ export async function run(ctx) {
       "The side panel should not clip the status bar lane.",
     );
 
-    const compatibilityActiveFile = (await getTabs(page)).find((tab) => tab.active)?.title ?? "";
-    await page.getByRole("button", { name: "Check knowledge base compatibility", exact: true }).click();
-    await page.locator(".right-compatibility-scroll").waitFor({ state: "visible" });
-    const compatibilityState = await page.evaluate(() => ({
-      title: document.querySelector(".right-compatibility-header h2")?.textContent?.trim() ?? "",
-      standard: document.querySelector(".right-compatibility-standard")?.textContent?.trim() ?? "",
-      status: document.querySelector(".right-compatibility-status strong")?.textContent?.trim() ?? "",
-      issueTitles: Array.from(document.querySelectorAll(".right-compatibility-issue-title"))
-        .map((element) => element.textContent?.trim() ?? ""),
-      issuePaths: Array.from(document.querySelectorAll(".right-compatibility-issue-path"))
-        .map((element) => element.textContent?.trim() ?? ""),
-      fileTreeVisible: document.querySelector(".right-file-tree")?.getBoundingClientRect().height > 0,
-      unchanged: document.querySelector(".right-compatibility-footnote")?.textContent?.trim() ?? "",
-    }));
-    expect(
-      compatibilityState.title === "Knowledge base compatibility" && compatibilityState.standard === "OKF 0.1",
-      "Files should expose OKF as an optional knowledge-base compatibility check.",
-    );
-    expect(
-      /^\d+ required changes?$/.test(compatibilityState.status) &&
-        compatibilityState.issueTitles.length >= 1 &&
-        compatibilityState.issueTitles.every((title) => title === "Add YAML frontmatter") &&
-        compatibilityState.issuePaths.every((path) => path.endsWith(".md")),
-      `The compatibility check should turn OKF requirements into document-specific actions. Got: ${JSON.stringify(compatibilityState)}`,
-    );
-    expect(
-      !compatibilityState.fileTreeVisible &&
-        compatibilityState.unchanged === "The check is read-only. Files change only when you choose an action.",
-      "The compatibility inspector should distinguish read-only checks from explicit fixes.",
-    );
-    const activeCompatibilityIssue = page.getByRole("button", {
-      name: `Open ${compatibilityActiveFile}`,
-      exact: true,
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await page.locator(".right-panel-knowledge").waitFor({
+      state: "visible",
     });
     expect(
-      compatibilityActiveFile.length > 0 && (await activeCompatibilityIssue.count()) === 1,
-      "The compatibility inspector should expose an action for the active document.",
-    );
-    await activeCompatibilityIssue.click();
-    await waitForRenderFrame(page);
-    expect(
-      (await page.locator(".right-compatibility-scroll").count()) === 1 &&
-        (await page.getByRole("textbox", { name: "Concept type", exact: true }).count()) === 1,
-      "Selecting a fixable issue should keep its document in context and expose the required type decision.",
-    );
-    await page.getByRole("textbox", { name: "Concept type", exact: true }).fill("note");
-    await page.getByRole("button", { name: "Add frontmatter and type", exact: true }).click();
-    await page.waitForFunction(
-      (expectedCount) => document.querySelectorAll(".right-compatibility-issue-title").length === expectedCount,
-      compatibilityState.issueTitles.length - 1,
+      (await page.getByRole("button", {
+        name: "Review workspace",
+        exact: true,
+      }).count()) === 0 &&
+        (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0,
+      "Knowledge should stay focused on the active document during editing.",
     );
     expect(
-      (await page.getByRole("button", { name: `Open ${compatibilityActiveFile}`, exact: true }).count()) === 0 &&
-        (await page.getByRole("textbox", { name: "Concept type", exact: true }).count()) === 0,
-      "Applying the selected type should resolve that document's OKF requirement.",
+      (await page.locator(".right-compatibility-scroll").count()) === 0,
+      "Compatibility repair controls should not interrupt ordinary Markdown editing.",
     );
-    await page.getByRole("button", { name: "Back to workspace files", exact: true }).click();
-    await waitForRenderFrame(page);
+
+    await page.getByRole("navigation", {
+      name: "Side panel sections",
+    }).getByRole("button", { name: "Search", exact: true }).click();
+    await page.getByRole("searchbox", {
+      name: "Search documents and metadata",
+      exact: true,
+    }).waitFor({ state: "visible" });
     expect(
-      (await page.locator(".right-compatibility-scroll").count()) === 0 &&
-        await page.locator(".right-file-tree").isVisible(),
-      "The compatibility inspector should return to the preserved file tree on request.",
+      await page.getByRole("searchbox", {
+        name: "Search documents and metadata",
+        exact: true,
+      }).isVisible() &&
+        await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
+        (await page.locator(".right-knowledge-context").count()) === 0,
+      "Search should be an independent workspace retrieval surface.",
     );
 
     await page.getByRole("button", { name: "Links", exact: true }).click();
@@ -591,41 +575,9 @@ export async function run(ctx) {
         (await page.locator('.right-links-section[aria-label="Issues"]').count()) === 0,
       "Links should preserve both relationship directions at zero without inventing an issue.",
     );
-    await page.getByRole("button", { name: "Graph", exact: true }).click();
-    await waitForPanelTab(page, "Graph");
     expect(
-      (await page.getByText("Workspace graph", { exact: true }).count()) === 0 &&
-        (await page.getByText(/\d+ docs? · \d+ links?/, { exact: true }).count()) === 1 &&
-        (await page.locator(".right-graph-node").count()) > 1,
-      "Graph should preserve its workspace map and compact metadata without repeating the active tab title.",
-    );
-    const originalGraphDocumentId = await page
-      .locator(".right-graph-node.active")
-      .getAttribute("data-document-id");
-    const orphanGraphNode = page.locator(".right-graph-node.depth-2").first();
-    const orphanDocumentId = await orphanGraphNode.getAttribute("data-document-id");
-    expect(
-      typeof orphanDocumentId === "string" && orphanDocumentId.length > 0,
-      "The workspace graph should expose isolated document identities.",
-    );
-    await orphanGraphNode.locator(".right-graph-node-hit-target").click();
-    await page.waitForFunction(
-      (documentId) =>
-        document.querySelector(
-          `.right-graph-node.active[data-document-id="${CSS.escape(documentId)}"]`,
-        ) !== null,
-      orphanDocumentId,
-    );
-    await page
-      .locator(`.right-graph-node[data-document-id="${originalGraphDocumentId}"]`)
-      .locator(".right-graph-node-hit-target")
-      .click();
-    await page.waitForFunction(
-      (documentId) =>
-        document.querySelector(
-          `.right-graph-node.active[data-document-id="${CSS.escape(documentId)}"]`,
-        ) !== null,
-      originalGraphDocumentId,
+      (await page.getByRole("button", { name: "Open map", exact: true }).count()) === 0,
+      "Links should stay focused on the active document instead of owning a workspace map action.",
     );
     await page.getByRole("button", { name: "Files", exact: true }).click();
     await waitForPanelTab(page, "Files");
@@ -668,131 +620,17 @@ export async function run(ctx) {
     await waitForRenderFrame(page);
 
     const sidePanelNavigation = page.getByRole("navigation", { name: "Side panel sections" });
-    await sidePanelNavigation.getByRole("button", { name: "Search", exact: true }).click();
-    const workspaceSearch = page.locator(".right-panel-body.search").getByRole(
-      "searchbox",
-      { name: "Search documents and metadata" },
-    );
-    await page
-      .locator(".right-panel-body.search")
-      .getByRole("button", { name: "Filters", exact: true })
-      .click();
-    const noteTypeFacet = page
-      .locator(".right-panel-body.search")
-      .getByRole("button", { name: /^note\s+1$/i });
+    await sidePanelNavigation.getByRole("button", { name: "Knowledge", exact: true }).click();
     expect(
-      (await noteTypeFacet.count()) === 1,
-      "Workspace Search should expose indexed document types as metadata facets.",
-    );
-    await noteTypeFacet.click();
-    expect(
-      (await noteTypeFacet.getAttribute("aria-pressed")) === "true" &&
-        await page.getByRole("button", { name: "Show 1 document", exact: true }).isVisible(),
-      "Selecting a metadata facet should mark it clearly and preview the matching document count.",
-    );
-    await page.getByRole("button", { name: "Show 1 document", exact: true }).click();
-    await page.locator(".right-panel-body.search .right-panel-search-results button").first().waitFor({ state: "visible" });
-    expect(
-      await page.getByRole("button", { name: "Remove Type: note", exact: true }).isVisible() &&
-        await page.getByText("1 document", { exact: true }).isVisible(),
-      "Applied metadata facets should remain visible beside an immediate result summary.",
-    );
-    await page.getByRole("button", { name: "Clear filters", exact: true }).click();
-    await waitForRenderFrame(page);
-    expect(
-      (await page.locator(".right-panel-body.search .right-panel-search-results").count()) === 0,
-      "Clearing metadata facets should return an empty Search view when there is no text query.",
-    );
-    await workspaceSearch.fill("Untitled");
-    await page.locator(".right-panel-body.search .right-panel-search-results button").first().waitFor({ state: "visible" });
-    const searchPanelState = await page.evaluate(() => ({
-      searchRowCount: document.querySelectorAll(".right-panel-body.search .right-panel-search-results button").length,
-      searchInputType: document.querySelector(".right-panel-body.search input")?.getAttribute("type") ?? "",
-      firstResult: (() => {
-        const row = document.querySelector(".right-panel-search-result");
-        const icon = row?.querySelector("svg");
-        const rowStyle = row ? getComputedStyle(row) : null;
-        const iconStyle = icon ? getComputedStyle(icon) : null;
-        return {
-          background: rowStyle?.backgroundColor ?? "",
-          color: rowStyle?.color ?? "",
-          iconColor: iconStyle?.color ?? "",
-          label: row?.textContent?.trim() ?? "",
-          fileIconCount: row?.querySelectorAll(".lucide-file").length ?? 0,
-          fileTextIconCount: row?.querySelectorAll(".lucide-file-text").length ?? 0,
-        };
-      })(),
-      settingsBackground: (() => {
-        const button = document.querySelector(".right-panel-search-settings-trigger");
-        return button ? getComputedStyle(button).backgroundColor : "";
-      })(),
-      panelOpen: Boolean(document.querySelector(".right-panel")),
-    }));
-    expect(searchPanelState.searchRowCount >= 1, "Workspace Search should render matching file names inside the Search panel view.");
-    expect(searchPanelState.searchInputType === "text", "Workspace Search should not expose a native search cancel control.");
-    expect(
-      searchPanelState.settingsBackground === "rgba(0, 0, 0, 0)",
-      "Workspace Search settings should stay transparent at rest.",
-    );
-    expect(
-      searchPanelState.firstResult.background === "rgba(0, 0, 0, 0)" &&
-        searchPanelState.firstResult.color === searchPanelState.firstResult.iconColor,
-      "Document search results should use primary text and icon color on a transparent row.",
-    );
-    expect(
-      searchPanelState.firstResult.fileIconCount === 1 &&
-        searchPanelState.firstResult.fileTextIconCount === 0,
-      "Document search results should use the same file icon as the Files panel.",
-    );
-    expect(
-      !/\.(?:md|markdown)$/i.test(searchPanelState.firstResult.label),
-      "Document search results should hide Markdown extensions like the Files panel.",
-    );
-    expect(searchPanelState.panelOpen, "Using Workspace Search should keep the side panel open.");
-    await workspaceSearch.fill("workspace");
-    await page.getByText("No matches found", { exact: true }).waitFor({
-      state: "visible",
-    });
-    expect(
-      await page.getByText("No matches found", { exact: true }).isVisible(),
-      "Workspace Search should not match text that exists only inside a document.",
-    );
-    await workspaceSearch.fill("Untitled");
-    await workspaceSearch.blur();
-    const workspaceSearchSurfaceBeforePointerFocus = await page.locator(".right-panel-search-field").evaluate((field) => {
-      const style = window.getComputedStyle(field);
-      return { background: style.backgroundColor, boxShadow: style.boxShadow };
-    });
-    await workspaceSearch.click();
-    const workspaceSearchSurfaceAfterPointerFocus = await page.locator(".right-panel-search-field").evaluate((field) => {
-      const style = window.getComputedStyle(field);
-      return { background: style.backgroundColor, boxShadow: style.boxShadow };
-    });
-    expect(
-      JSON.stringify(workspaceSearchSurfaceAfterPointerFocus) === JSON.stringify(workspaceSearchSurfaceBeforePointerFocus),
-      "Workspace Search pointer focus should not recolor the field or draw an underline.",
-    );
-    await page.getByRole("button", { name: "Search settings", exact: true }).click();
-    const matchCaseSetting = page.getByRole("menuitemcheckbox", { name: "Match case", exact: true });
-    expect(
-      await matchCaseSetting.isVisible(),
-      "Workspace Search should expose search settings.",
-    );
-    await matchCaseSetting.click();
-    expect(
-      (await matchCaseSetting.getAttribute("aria-checked")) === "true",
-      "Workspace Search settings should expose persistent options as checked menu items.",
-    );
-    expect(
-      (await page.locator(".right-panel-search-settings-trigger .right-panel-control-status-dot").count()) === 1,
-      "Workspace Search should mark the settings trigger when an option is active.",
-    );
-    await page.keyboard.press("Escape");
-    await workspaceSearch.fill("a query that cannot match any workspace document");
-    await waitForRenderFrame(page);
-    expect(
-      await page.getByText("No matches found", { exact: true }).isVisible(),
-      "Workspace Search should show a quiet empty result inside the panel.",
+      await page.locator(".right-knowledge-context").isVisible() &&
+        (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
+        (await page.getByRole("button", {
+          name: "Review workspace",
+          exact: true,
+        }).count()) === 0 &&
+        (await page.locator(".right-panel-search-field").count()) === 0 &&
+         (await page.locator(".right-graph-panel").count()) === 0,
+       "Knowledge should remain a stable active-document context instead of a catalog or dashboard.",
     );
     await page.getByRole("button", { name: "Files", exact: true }).click();
 
@@ -2014,76 +1852,71 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Open Start.md", exact: true }).first().click();
     await waitForActiveTab(page, { exact: "Start.md" });
 
-    await page.getByRole("button", { name: "Graph", exact: true }).click();
-    await waitForPanelTab(page, "Graph");
-    await page.locator(
-      '.right-graph-canvas[data-graph-simulation-state="settled"]',
-    ).waitFor();
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await page.getByRole("heading", { name: "Start", exact: true }).waitFor({
+      state: "visible",
+    });
     expect(
-      (await page.getByText("Workspace graph", { exact: true }).count()) === 0 &&
-        (await page.getByText(/\d+ docs? · \d+ links?/, { exact: true }).count()) === 1,
-      "Graph should expose compact metadata without repeating the Graph tab title.",
+      await page.getByRole("heading", { name: "Start", exact: true }).isVisible() &&
+        (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
+        (await page.locator(".right-graph-panel").count()) === 0,
+      "Knowledge should keep the active document in context without opening a graph.",
     );
-    const guideGraphNode = page.locator(
-      '.right-graph-node[aria-label="Open Guide.md"]',
-    );
-    const guideGraphHitTarget = guideGraphNode.locator(
-      ".right-graph-node-hit-target",
-    );
-    const guideGraphMarker = guideGraphNode.locator(
-      ".right-graph-node-marker",
-    );
-    const guideHitBox = await guideGraphHitTarget.boundingBox();
-    const guideMarkerBox = await guideGraphMarker.boundingBox();
+
+    await openExportPreflight(page, openProjectMenu);
+    const rootIndexCandidate = page.locator(".right-compatibility-index-item > button")
+      .filter({ has: page.locator("strong", { hasText: /^index\.md$/ }) });
+    await rootIndexCandidate.click();
     expect(
-      guideHitBox && guideMarkerBox,
-      "Graph nodes should expose both a forgiving click target and a visible marker.",
+      await page.getByText("Generated candidate", { exact: true }).isVisible() &&
+        await page.getByRole("button", { name: "Create index", exact: true }).isVisible() &&
+        (await page.locator(".right-compatibility-index-preview pre").textContent())
+          ?.includes("tabula.md:generated-okf-index"),
+      "A missing index should remain virtual until its generated Markdown is reviewed.",
     );
-    if (guideHitBox && guideMarkerBox) {
-      await page.mouse.move(
-        guideHitBox.x + guideHitBox.width - 1,
-        guideHitBox.y + guideHitBox.height / 2,
-      );
-      await waitForRenderFrame(page);
-      expect(
-        !(await guideGraphNode.getAttribute("class"))?.includes("hovered"),
-        "The invisible click target should not trigger the node's visual hover state.",
-      );
-      await page.mouse.move(
-        guideMarkerBox.x + guideMarkerBox.width / 2,
-        guideMarkerBox.y + guideMarkerBox.height / 2,
-      );
-      await waitForRenderFrame(page);
-      expect(
-        (await guideGraphNode.getAttribute("class"))?.includes("hovered"),
-        "The visible graph marker should trigger the node's visual hover state.",
-      );
-
-      const initialX = Number(await guideGraphMarker.getAttribute("cx"));
-      const initialY = Number(await guideGraphMarker.getAttribute("cy"));
-      await page.mouse.down();
-      await page.mouse.move(
-        guideMarkerBox.x + guideMarkerBox.width / 2 + 24,
-        guideMarkerBox.y + guideMarkerBox.height / 2 + 12,
-        { steps: 4 },
-      );
-      await page.mouse.up();
-      await waitForRenderFrame(page);
-      const draggedX = Number(await guideGraphMarker.getAttribute("cx"));
-      const draggedY = Number(await guideGraphMarker.getAttribute("cy"));
-      expect(
-        Math.hypot(draggedX - initialX, draggedY - initialY) > 1,
-        "Dragging a graph node should move it through the live force simulation.",
-      );
-      await waitForActiveTab(page, { exact: "Start.md" });
-    }
-
-    await guideGraphHitTarget.click();
-    await waitForActiveTab(page, { exact: "Guide.md" });
-    await page.locator(
-      '.right-graph-node[aria-label="Open Start.md"] .right-graph-node-hit-target',
-    ).click();
-    await waitForActiveTab(page, { exact: "Start.md" });
+    const createIndexButton = page.getByRole("button", {
+      name: "Create index",
+      exact: true,
+    });
+    const createIndexColors = await createIndexButton.evaluate((button) => {
+      const buttonStyle = getComputedStyle(button);
+      const probe = document.createElement("span");
+      probe.style.color = "var(--text-inverse)";
+      probe.style.backgroundColor = "var(--text-primary)";
+      document.body.append(probe);
+      const probeStyle = getComputedStyle(probe);
+      const colors = {
+        expectedColor: probeStyle.color,
+        expectedBackground: probeStyle.backgroundColor,
+      };
+      probe.remove();
+      return {
+        color: buttonStyle.color,
+        expectedColor: colors.expectedColor,
+        background: buttonStyle.backgroundColor,
+        expectedBackground: colors.expectedBackground,
+      };
+    });
+    expect(
+      createIndexColors.color === createIndexColors.expectedColor &&
+        createIndexColors.background === createIndexColors.expectedBackground,
+      `Primary compatibility actions should keep visible inverse text. Got: ${
+        JSON.stringify(createIndexColors)
+      }`,
+    );
+    await createIndexButton.click();
+    await page.waitForFunction(() =>
+      Array.from(document.querySelectorAll(".right-compatibility-index-list strong"))
+        .some((element) => element.textContent?.trim() === "index.md")
+      && document.querySelector(".right-compatibility-index-action")?.textContent
+        ?.includes("Up to date")
+    );
+    expect(
+      await rootIndexCandidate.getByText("Generated", { exact: true }).isVisible() &&
+        await page.getByText("Up to date", { exact: true }).isVisible() &&
+        (await page.getByRole("button", { name: "Create index", exact: true }).count()) === 0,
+      "Materializing a reviewed index should create a managed index without touching curated content.",
+    );
   });
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 820 } });

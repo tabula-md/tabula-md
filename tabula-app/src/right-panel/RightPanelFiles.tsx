@@ -1,7 +1,6 @@
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 import {
   stripMarkdownExtension,
-  type OkfCompatibilityReport,
 } from "@tabula-md/tabula";
 import {
   type DragEvent as ReactDragEvent,
@@ -14,14 +13,12 @@ import {
   useState,
 } from "react";
 import {
-  ArrowLeft,
   ChevronsDownUp,
   ChevronsUpDown,
   ClipboardCopy,
   Copy,
   Ellipsis,
   File,
-  FileCheck2,
   FilePlus2,
   Folder,
   FolderOpen,
@@ -54,8 +51,6 @@ import {
 } from "../ui/ContextMenu";
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../ui/Menu";
 import { PanelEmptyState } from "./PanelEmptyState";
-import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
-import { RightPanelKnowledgeCompatibility } from "./RightPanelKnowledgeCompatibility";
 
 type RightPanelFilesCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
 
@@ -65,9 +60,6 @@ type RightPanelFilesProps = {
   activeFileId: string;
   collapsedFolderIds: Set<string>;
   copy: RightPanelFilesCopy;
-  compatibilityCopy: KnowledgeCompatibilityCopy;
-  compatibilityReport?: OkfCompatibilityReport;
-  onSetActiveFileOkfType: (conceptType: string) => boolean;
   onNewFile: (parentId?: string) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -99,9 +91,6 @@ export function RightPanelFiles({
   activeFileId,
   collapsedFolderIds,
   copy,
-  compatibilityCopy,
-  compatibilityReport,
-  onSetActiveFileOkfType,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -129,7 +118,6 @@ export function RightPanelFiles({
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renamingFolderTitle, setRenamingFolderTitle] = useState("");
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
-  const [compatibilityOpen, setCompatibilityOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState<DraggedTreeItem | null>(null);
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null);
   const autoExpandTimerRef = useRef<number | null>(null);
@@ -172,14 +160,6 @@ export function RightPanelFiles({
   );
   const allFoldersCollapsed = collapsibleFolderIds.length > 0
     && collapsibleFolderIds.every((folderId) => collapsedFolderIds.has(folderId));
-  const compatibilityTone = files.length === 0 || !compatibilityReport
-    ? "neutral"
-    : compatibilityReport.errorCount > 0
-      ? "error"
-      : compatibilityReport.warningCount > 0
-        ? "warning"
-        : "success";
-
   useLayoutEffect(() => {
     if (!renamingFileId) {
       return;
@@ -821,16 +801,6 @@ export function RightPanelFiles({
           )}
         </div>
         <div className="right-file-toolbar-actions">
-            <button
-              className={`right-file-toolbar-button compatibility ${compatibilityTone} ${compatibilityOpen ? "active" : ""}`.trim()}
-              type="button"
-              aria-label={compatibilityOpen ? compatibilityCopy.back : compatibilityCopy.open}
-              data-tooltip={compatibilityOpen ? compatibilityCopy.back : compatibilityCopy.open}
-              aria-pressed={compatibilityOpen}
-              onClick={() => setCompatibilityOpen((open) => !open)}
-            >
-              {compatibilityOpen ? <ArrowLeft size={16} /> : <FileCheck2 size={16} />}
-            </button>
             {collapsibleFolderIds.length > 0 && (
               <button
                 className="right-file-toolbar-button"
@@ -884,20 +854,9 @@ export function RightPanelFiles({
             </MenuRoot>
         </div>
       </div>
-      {compatibilityOpen && (
-        <RightPanelKnowledgeCompatibility
-          copy={compatibilityCopy}
-          documentCount={files.length}
-          report={compatibilityReport}
-          activeFileId={activeFileId}
-          onSelectFile={onSelectFile}
-          onSetActiveFileOkfType={onSetActiveFileOkfType}
-        />
-      )}
       {visibleRows.length > 0 ? (
         <div
           className={`right-file-tree-scroll ${dropTargetFolderId === WORKSPACE_ROOT_FOLDER_ID ? "root-drop-target" : ""}`.trim()}
-          hidden={compatibilityOpen}
           ref={treeScrollRef}
           onDragOver={(event) => prepareDrop(event, WORKSPACE_ROOT_FOLDER_ID)}
           onDrop={(event) => dropItem(event, WORKSPACE_ROOT_FOLDER_ID)}
@@ -914,9 +873,9 @@ export function RightPanelFiles({
             })}
           </ol>
         </div>
-      ) : !compatibilityOpen ? (
+      ) : (
         <PanelEmptyState>{copy.noneFound}</PanelEmptyState>
-      ) : null}
+      )}
     </section>
     </ContextMenuTrigger>
     <ContextMenuContent

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { WorkspaceKnowledgeBaseline } from "@tabula-md/tabula";
 import { readIndexedDbWorkspace } from "./workspaceIndexedDb";
 import type { FileComment, WorkspaceFile, WorkspaceState } from "../workspaceStorage";
 import { useEventCallback } from "../../shared/useEventCallback";
@@ -15,6 +16,7 @@ type UseIndexedDbWorkspaceHydrationOptions = {
     workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">,
   ) => void;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
+  replaceKnowledgeBaseline: (baseline?: WorkspaceKnowledgeBaseline) => void;
 };
 
 type ShouldApplyIndexedDbWorkspaceHydrationInput = {
@@ -32,6 +34,7 @@ export const getWorkspaceHydrationSignature = (workspace: WorkspaceState) =>
     commentsByFileId: workspace.commentsByFileId,
     files: stableFiles(workspace.files),
     folders: workspace.folders,
+    knowledgeBaseline: workspace.knowledgeBaseline,
     openFileIds: workspace.openFileIds,
   });
 
@@ -75,11 +78,13 @@ export const useIndexedDbWorkspaceHydration = ({
   readWorkspace = readIndexedDbWorkspace,
   replaceWorkspace,
   replaceCommentsByFileId,
+  replaceKnowledgeBaseline,
 }: UseIndexedDbWorkspaceHydrationOptions) => {
   const [status, setStatus] = useState<WorkspaceHydrationStatus>(enabled ? "pending" : "idle");
   const workspaceRef = useRef(workspace);
   const onErrorEvent = useEventCallback((error: unknown) => onError?.(error));
   const replaceCommentsEvent = useEventCallback(replaceCommentsByFileId);
+  const replaceKnowledgeBaselineEvent = useEventCallback(replaceKnowledgeBaseline);
   const replaceWorkspaceEvent = useEventCallback(replaceWorkspace);
 
   useEffect(() => {
@@ -114,6 +119,7 @@ export const useIndexedDbWorkspaceHydration = ({
         }
 
         replaceCommentsEvent(indexedDbWorkspace.commentsByFileId);
+        replaceKnowledgeBaselineEvent(indexedDbWorkspace.knowledgeBaseline);
         replaceWorkspaceEvent({
           files: indexedDbWorkspace.files,
           folders: indexedDbWorkspace.folders,
@@ -132,7 +138,15 @@ export const useIndexedDbWorkspaceHydration = ({
     return () => {
       cancelled = true;
     };
-  }, [enabled, initialWorkspace, onErrorEvent, readWorkspace, replaceCommentsEvent, replaceWorkspaceEvent]);
+  }, [
+    enabled,
+    initialWorkspace,
+    onErrorEvent,
+    readWorkspace,
+    replaceCommentsEvent,
+    replaceKnowledgeBaselineEvent,
+    replaceWorkspaceEvent,
+  ]);
 
   return {
     deferPersistence: shouldDeferIndexedDbWorkspacePersistence({

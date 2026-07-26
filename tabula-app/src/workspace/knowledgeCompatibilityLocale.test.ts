@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type {
   OkfCompatibilityIssue,
   OkfCompatibilityIssueCode,
+  WorkspaceKnowledgeHealthIssue,
+  WorkspaceKnowledgeHealthIssueCode,
 } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 import { getKnowledgeCompatibilityCopy } from "./knowledgeCompatibilityLocale";
@@ -24,6 +26,17 @@ const issueCodes: OkfCompatibilityIssueCode[] = [
   "nonstandard_markdown_extension",
   "wikilink_syntax",
 ];
+const healthIssueCodes: WorkspaceKnowledgeHealthIssueCode[] = [
+  "stale",
+  "deprecated_referenced",
+  "unverified_generated",
+  "verification_outdated",
+  "provenance_missing",
+  "orphan_concept",
+  "source_reference_missing",
+  "source_unused",
+  "optional_metadata_invalid",
+];
 
 describe("knowledge compatibility copy", () => {
   it("provides resolved status and issue instructions in every workspace language", () => {
@@ -35,6 +48,9 @@ describe("knowledge compatibility copy", () => {
       expect(copy.conceptTypeLabel.trim()).not.toBe("");
       expect(copy.addFrontmatterAndType.trim()).not.toBe("");
       expect(copy.setConceptType.trim()).not.toBe("");
+      expect(copy.healthTitle.trim()).not.toBe("");
+      expect(copy.healthAttention(2)).toContain("2");
+      expect(copy.healthNotices(3)).toContain("3");
 
       for (const code of issueCodes) {
         const issue: OkfCompatibilityIssue = {
@@ -46,6 +62,17 @@ describe("knowledge compatibility copy", () => {
         };
         expect(copy.issue(issue)).not.toContain("{{");
         expect(copy.issue(issue).trim()).not.toBe("");
+      }
+      for (const code of healthIssueCodes) {
+        const issue: WorkspaceKnowledgeHealthIssue = {
+          code,
+          severity: "attention",
+          documentId: "document",
+          path: "concept.md",
+          value: "sample",
+        };
+        expect(copy.healthIssue(issue)).not.toContain("{{");
+        expect(copy.healthIssue(issue).trim()).not.toBe("");
       }
     }
   });

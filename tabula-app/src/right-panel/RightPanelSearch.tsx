@@ -7,31 +7,36 @@ import {
   type SetStateAction,
 } from "react";
 import {
+  getOkfFreshness,
   stripMarkdownExtension,
+  type OkfFreshness,
+  type OkfLifecycleStatus,
+  type OkfTrustTier,
   type WorkspaceKnowledgeIndex,
 } from "@tabula-md/tabula";
 import {
   ArrowLeft,
   Check,
   ExternalLink,
-  File,
   ListFilter,
   Search,
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import {
   DEFAULT_SEARCH_OPTIONS,
   type SearchOptions,
 } from "../editor/editorSearchModel";
 import {
   searchWorkspaceFiles,
+  type WorkspaceFileSearchEntry,
 } from "../editor/workspaceFileSearchModel";
+import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
-import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
+import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
+import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { MenuCheckboxItem, MenuContent, MenuRoot, MenuTrigger } from "../ui/Menu";
 import { PanelEmptyState } from "./PanelEmptyState";
 
@@ -51,16 +56,27 @@ type MetadataFacet = {
 
 type MetadataFacetSectionProps = {
   facets: readonly MetadataFacet[];
+  emptyMessage: string;
   label: string;
   selected: ReadonlySet<string>;
   onToggleFacet: (value: string) => void;
 };
 
-const getMetadataFacets = (
-  documentIdsByValue: ReadonlyMap<string, readonly string[]> | undefined,
-) => [...(documentIdsByValue ?? [])]
-  .map(([value, documentIds]) => ({ value, count: documentIds.length }))
-  .sort((first, second) => first.value.localeCompare(second.value));
+const getMetadataFacets = <TValue extends string>(
+  entries: readonly WorkspaceFileSearchEntry[],
+  getValue: (entry: WorkspaceFileSearchEntry) => TValue | readonly TValue[] | undefined,
+) => {
+  const counts = new Map<TValue, number>();
+  for (const entry of entries) {
+    const values = getValue(entry);
+    for (const value of Array.isArray(values) ? values : values ? [values] : []) {
+      counts.set(value as TValue, (counts.get(value as TValue) ?? 0) + 1);
+    }
+  }
+  return [...counts]
+    .map(([value, count]) => ({ value, count }))
+    .sort((first, second) => first.value.localeCompare(second.value));
+};
 
 const getOpenableResource = (resource: string | undefined) => {
   if (!resource) return undefined;
@@ -74,16 +90,18 @@ const getOpenableResource = (resource: string | undefined) => {
 
 function MetadataFacetSection({
   facets,
+  emptyMessage,
   label,
   selected,
   onToggleFacet,
 }: MetadataFacetSectionProps) {
-  if (facets.length === 0) return null;
   return (
     <section className="right-panel-search-facet-section" aria-label={label}>
       <h3>{label}</h3>
       <div className="right-panel-search-facet-list">
-        {facets.map((facet) => (
+        {facets.length === 0 ? (
+          <p className="right-panel-search-facet-empty">{emptyMessage}</p>
+        ) : facets.map((facet) => (
           <button
             className="right-panel-search-facet"
             type="button"
@@ -112,6 +130,7 @@ export function RightPanelSearch({
   onSelectFile,
 }: RightPanelSearchProps) {
   const labels = getWorkspaceChromeCopy(language).documentControls;
+  const metadataCopy = getKnowledgePanelCopy(language);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [options, setOptions] = useState<SearchOptions>(DEFAULT_SEARCH_OPTIONS);
@@ -119,57 +138,132 @@ export function RightPanelSearch({
   const [filterViewOpen, setFilterViewOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(() => new Set());
   const [selectedTags, setSelectedTags] = useState<Set<string>>(() => new Set());
-  const fileLabels = useMemo(() => getWorkspaceFileTabLabels(files, folders), [files, folders]);
-  const searchEntries = useMemo(() => files.map((file) => ({
-    fileId: file.id,
-    displayPath: stripMarkdownExtension(fileLabels.get(file.id)?.fullPath ?? file.title),
-    ...index?.analysesByDocumentId.get(file.id)?.knowledgeMetadata,
-  })), [fileLabels, files, index]);
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<OkfLifecycleStatus>>(
+    () => new Set(),
+  );
+  const [selectedTrustTiers, setSelectedTrustTiers] = useState<Set<OkfTrustTier>>(
+    () => new Set(),
+  );
+  const [selectedFreshness, setSelectedFreshness] = useState<Set<OkfFreshness>>(
+    () => new Set(),
+  );
+  const fileLabels = useMemo(
+    () => getWorkspaceFileTabLabels(files, folders),
+    [files, folders],
+  );
+  const conceptFiles = useMemo(() => files.filter((file) => {
+    const path = index?.documentsById.get(file.id)?.path;
+    if (!path) return false;
+    const basename = path.split("/").at(-1)?.toLocaleLowerCase();
+    return basename !== "index.md" && basename !== "log.md";
+  }), [files, index]);
+  const searchEntries = useMemo(
+    () => conceptFiles.map((file): WorkspaceFileSearchEntry => {
+      const analysis = index?.analysesByDocumentId.get(file.id);
+      const metadata = analysis?.knowledgeMetadata;
+      return {
+        fileId: file.id,
+        displayPath: stripMarkdownExtension(
+          fileLabels.get(file.id)?.fullPath ?? file.title,
+        ),
+        title: analysis?.title,
+        description: metadata?.description,
+        type: metadata?.type,
+        tags: metadata?.tags,
+        resource: metadata?.resource,
+        sourceValues: metadata?.sources.flatMap((source) => [
+          source.id,
+          source.title,
+          source.author,
+          source.resource,
+        ].filter((value): value is string => Boolean(value))),
+        generatedBy: metadata?.generated?.by,
+        verifiedBy: metadata?.verified.map((event) => event.by),
+        status: metadata?.type ? metadata.status : undefined,
+        trustTier: metadata?.type ? metadata.trustTier : undefined,
+        freshness: metadata?.type ? getOkfFreshness(metadata) : undefined,
+        markdown: file.text,
+      };
+    }),
+    [conceptFiles, fileLabels, index],
+  );
   const typeFacets = useMemo(
-    () => getMetadataFacets(index?.documentIdsByType),
-    [index],
+    () => getMetadataFacets(searchEntries, (entry) => entry.type),
+    [searchEntries],
   );
   const tagFacets = useMemo(
-    () => getMetadataFacets(index?.documentIdsByTag),
-    [index],
+    () => getMetadataFacets(searchEntries, (entry) => entry.tags),
+    [searchEntries],
   );
-  useEffect(() => {
-    const available = new Set(typeFacets.map((facet) => facet.value));
-    setSelectedTypes((current) => {
-      const next = new Set([...current].filter((value) => available.has(value)));
-      return next.size === current.size ? current : next;
-    });
-  }, [typeFacets]);
-  useEffect(() => {
-    const available = new Set(tagFacets.map((facet) => facet.value));
-    setSelectedTags((current) => {
-      const next = new Set([...current].filter((value) => available.has(value)));
-      return next.size === current.size ? current : next;
-    });
-  }, [tagFacets]);
+  const statusFacets = useMemo(
+    () => getMetadataFacets(searchEntries, (entry) => entry.status),
+    [searchEntries],
+  );
+  const trustFacets = useMemo(
+    () => getMetadataFacets(searchEntries, (entry) => entry.trustTier),
+    [searchEntries],
+  );
+  const freshnessFacets = useMemo(
+    () => getMetadataFacets(searchEntries, (entry) => entry.freshness),
+    [searchEntries],
+  );
   const filters = useMemo(
-    () => ({ types: selectedTypes, tags: selectedTags }),
-    [selectedTags, selectedTypes],
+    () => ({
+      types: selectedTypes,
+      tags: selectedTags,
+      statuses: selectedStatuses,
+      trustTiers: selectedTrustTiers,
+      freshness: selectedFreshness,
+    }),
+    [
+      selectedFreshness,
+      selectedStatuses,
+      selectedTags,
+      selectedTrustTiers,
+      selectedTypes,
+    ],
   );
   const result = useMemo(
     () => searchWorkspaceFiles(searchEntries, deferredQuery, options, filters),
     [deferredQuery, filters, options, searchEntries],
   );
   const hasQuery = deferredQuery.trim().length > 0;
-  const hasFilters = selectedTypes.size > 0 || selectedTags.size > 0;
+  const hasFilters = selectedTypes.size > 0 ||
+    selectedTags.size > 0 ||
+    selectedStatuses.size > 0 ||
+    selectedTrustTiers.size > 0 ||
+    selectedFreshness.size > 0;
+  const visibleEntries = hasQuery || hasFilters ? result.files : searchEntries;
   const hasActiveOptions = Object.values(options).some(Boolean);
-  const hasMetadataFacets = typeFacets.length > 0 || tagFacets.length > 0;
 
-  useEffect(() => {
-    if (!hasMetadataFacets) setFilterViewOpen(false);
-  }, [hasMetadataFacets]);
-
-  const toggleOption = (option: keyof SearchOptions) => {
-    setOptions((current) => ({ ...current, [option]: !current[option] }));
+  const keepAvailable = <TValue extends string>(
+    values: readonly MetadataFacet[],
+    setSelected: Dispatch<SetStateAction<Set<TValue>>>,
+  ) => {
+    const available = new Set(values.map((facet) => facet.value));
+    setSelected((current) => {
+      const next = new Set([...current].filter((value) => available.has(value)));
+      return next.size === current.size ? current : next;
+    });
   };
-  const toggleFacet = (
-    setSelected: Dispatch<SetStateAction<Set<string>>>,
-    value: string,
+  useEffect(() => keepAvailable(typeFacets, setSelectedTypes), [typeFacets]);
+  useEffect(() => keepAvailable(tagFacets, setSelectedTags), [tagFacets]);
+  useEffect(
+    () => keepAvailable(statusFacets, setSelectedStatuses),
+    [statusFacets],
+  );
+  useEffect(
+    () => keepAvailable(trustFacets, setSelectedTrustTiers),
+    [trustFacets],
+  );
+  useEffect(
+    () => keepAvailable(freshnessFacets, setSelectedFreshness),
+    [freshnessFacets],
+  );
+
+  const toggleFacet = <TValue extends string>(
+    setSelected: Dispatch<SetStateAction<Set<TValue>>>,
+    value: TValue,
   ) => {
     setSelected((current) => {
       const next = new Set(current);
@@ -178,9 +272,9 @@ export function RightPanelSearch({
       return next;
     });
   };
-  const removeFacet = (
-    setSelected: Dispatch<SetStateAction<Set<string>>>,
-    value: string,
+  const removeFacet = <TValue extends string>(
+    setSelected: Dispatch<SetStateAction<Set<TValue>>>,
+    value: TValue,
   ) => {
     setSelected((current) => {
       const next = new Set(current);
@@ -191,6 +285,30 @@ export function RightPanelSearch({
   const clearFilters = () => {
     setSelectedTypes(new Set());
     setSelectedTags(new Set());
+    setSelectedStatuses(new Set());
+    setSelectedTrustTiers(new Set());
+    setSelectedFreshness(new Set());
+  };
+  const toggleOption = (option: keyof SearchOptions) => {
+    setOptions((current) => ({ ...current, [option]: !current[option] }));
+  };
+  const facetChip = (
+    prefix: string,
+    value: string,
+    onRemove: () => void,
+  ) => {
+    const label = `${prefix}: ${value}`;
+    return (
+      <button
+        type="button"
+        key={label}
+        aria-label={copy.removeFilter(label)}
+        onClick={onRemove}
+      >
+        <span>{label}</span>
+        <X size={12} aria-hidden="true" />
+      </button>
+    );
   };
 
   return (
@@ -222,27 +340,47 @@ export function RightPanelSearch({
           </header>
           <div className="right-panel-search-filter-scroll">
             <MetadataFacetSection
+              emptyMessage={copy.noFacetValues}
               facets={typeFacets}
               label={copy.types}
               selected={selectedTypes}
               onToggleFacet={(value) => toggleFacet(setSelectedTypes, value)}
             />
             <MetadataFacetSection
+              emptyMessage={copy.noFacetValues}
               facets={tagFacets}
               label={copy.tags}
               selected={selectedTags}
               onToggleFacet={(value) => toggleFacet(setSelectedTags, value)}
             />
+            <MetadataFacetSection
+              emptyMessage={copy.noFacetValues}
+              facets={statusFacets}
+              label={metadataCopy.status}
+              selected={selectedStatuses}
+              onToggleFacet={(value) =>
+                toggleFacet(setSelectedStatuses, value as OkfLifecycleStatus)}
+            />
+            <MetadataFacetSection
+              emptyMessage={copy.noFacetValues}
+              facets={trustFacets}
+              label={metadataCopy.trust}
+              selected={selectedTrustTiers}
+              onToggleFacet={(value) =>
+                toggleFacet(setSelectedTrustTiers, value as OkfTrustTier)}
+            />
+            <MetadataFacetSection
+              emptyMessage={copy.noFacetValues}
+              facets={freshnessFacets}
+              label={metadataCopy.freshness}
+              selected={selectedFreshness}
+              onToggleFacet={(value) =>
+                toggleFacet(setSelectedFreshness, value as OkfFreshness)}
+            />
           </div>
           <footer className="right-panel-search-filter-footer">
-            <button
-              type="button"
-              disabled={!hasQuery && !hasFilters}
-              onClick={() => setFilterViewOpen(false)}
-            >
-              {!hasQuery && !hasFilters
-                ? copy.chooseFilters
-                : copy.showDocuments(result.files.length)}
+            <button type="button" onClick={() => setFilterViewOpen(false)}>
+              {copy.showDocuments(visibleEntries.length)}
             </button>
           </footer>
         </>
@@ -269,7 +407,6 @@ export function RightPanelSearch({
               type="button"
               aria-label={copy.filters}
               data-tooltip={copy.filters}
-              disabled={!hasMetadataFacets}
               onClick={() => setFilterViewOpen(true)}
             >
               <ListFilter size={16} aria-hidden="true" />
@@ -316,34 +453,21 @@ export function RightPanelSearch({
             {hasFilters && (
               <div className="right-panel-search-active-filters" aria-label={copy.filters}>
                 <div className="right-panel-search-filter-chips">
-                  {[...selectedTypes].map((value) => {
-                    const label = copy.typeFilter(value);
-                    return (
-                      <button
-                        type="button"
-                        key={`type:${value}`}
-                        aria-label={copy.removeFilter(label)}
-                        onClick={() => removeFacet(setSelectedTypes, value)}
-                      >
-                        <span>{label}</span>
-                        <X size={12} aria-hidden="true" />
-                      </button>
-                    );
-                  })}
-                  {[...selectedTags].map((value) => {
-                    const label = copy.tagFilter(value);
-                    return (
-                      <button
-                        type="button"
-                        key={`tag:${value}`}
-                        aria-label={copy.removeFilter(label)}
-                        onClick={() => removeFacet(setSelectedTags, value)}
-                      >
-                        <span>{label}</span>
-                        <X size={12} aria-hidden="true" />
-                      </button>
-                    );
-                  })}
+                  {[...selectedTypes].map((value) =>
+                    facetChip(copy.types.slice(0, -1), value, () =>
+                      removeFacet(setSelectedTypes, value)))}
+                  {[...selectedTags].map((value) =>
+                    facetChip(copy.tags.slice(0, -1), value, () =>
+                      removeFacet(setSelectedTags, value)))}
+                  {[...selectedStatuses].map((value) =>
+                    facetChip(metadataCopy.status, value, () =>
+                      removeFacet(setSelectedStatuses, value)))}
+                  {[...selectedTrustTiers].map((value) =>
+                    facetChip(metadataCopy.trust, value, () =>
+                      removeFacet(setSelectedTrustTiers, value)))}
+                  {[...selectedFreshness].map((value) =>
+                    facetChip(metadataCopy.freshness, value, () =>
+                      removeFacet(setSelectedFreshness, value)))}
                 </div>
                 <button
                   className="right-panel-search-clear-filters"
@@ -355,45 +479,63 @@ export function RightPanelSearch({
               </div>
             )}
 
-            {result.error && <p className="right-panel-search-message error">{result.error}</p>}
-            {(hasQuery || hasFilters) && !result.error && result.files.length > 0 && (
-              <p className="right-panel-search-result-count">
-                {copy.documentCount(result.files.length)}
-              </p>
+            {result.error && (
+              <p className="right-panel-search-message error">{result.error}</p>
             )}
-            {(hasQuery || hasFilters) && !result.error && result.files.length === 0 && (
+            {(hasQuery || hasFilters) && !result.error && visibleEntries.length === 0 && (
               <PanelEmptyState>{copy.noMatches}</PanelEmptyState>
             )}
-            {result.files.length > 0 && (
-              <div className="right-panel-search-results" aria-label={copy.results}>
-                {result.files.map((file) => {
-                  const resource = getOpenableResource(file.resource);
-                  return (
-                    <div className="right-panel-search-result-row" key={file.fileId}>
-                      <button
-                        className="right-panel-search-result"
-                        type="button"
-                        onClick={() => onSelectFile(file.fileId)}
-                      >
-                        <File size={16} aria-hidden="true" />
-                        <span>{file.displayPath}</span>
-                      </button>
-                      {resource && (
-                        <a
-                          className="right-panel-search-resource"
-                          href={resource}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={copy.openResource(file.displayPath)}
-                          data-tooltip={copy.openResource(file.displayPath)}
+            {visibleEntries.length > 0 && (
+              <>
+                <p className="right-panel-search-result-count">
+                  {copy.documentCount(visibleEntries.length)}
+                </p>
+                <div className="right-panel-search-results" aria-label={copy.results}>
+                  {visibleEntries.map((file) => {
+                    const resource = getOpenableResource(file.resource);
+                    const title = file.title?.trim() ||
+                      file.displayPath.split("/").at(-1) ||
+                      file.displayPath;
+                    return (
+                      <div className="right-panel-search-result-row" key={file.fileId}>
+                        <button
+                          className="right-panel-search-result"
+                          type="button"
+                          aria-label={file.displayPath}
+                          onClick={() => onSelectFile(file.fileId)}
                         >
-                          <ExternalLink size={14} aria-hidden="true" />
-                        </a>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                          <span className="right-panel-search-result-copy">
+                            <span className="right-panel-search-result-title">{title}</span>
+                            <span className="right-panel-search-result-path">
+                              {file.displayPath}
+                            </span>
+                            {file.description && (
+                              <span className="right-panel-search-result-description">
+                                {file.description}
+                              </span>
+                            )}
+                            <span className="right-panel-search-result-metadata">
+                              {file.type || copy.untyped}
+                            </span>
+                          </span>
+                        </button>
+                        {resource && (
+                          <a
+                            className="right-panel-search-resource"
+                            href={resource}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={copy.openResource(file.displayPath)}
+                            data-tooltip={copy.openResource(file.displayPath)}
+                          >
+                            <ExternalLink size={14} aria-hidden="true" />
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         </>

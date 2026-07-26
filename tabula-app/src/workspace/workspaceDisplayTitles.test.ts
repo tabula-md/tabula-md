@@ -5,6 +5,7 @@ import {
   getWorkspaceFilePaths,
   getWorkspaceFileTabLabels,
   getWorkspaceFolderDisplayTitles,
+  getWorkspaceFolderPaths,
 } from "./workspaceDisplayTitles";
 
 describe("workspace display titles", () => {
@@ -107,6 +108,18 @@ describe("workspace display titles", () => {
     expect(getWorkspaceFilePaths(files, folders)).toEqual(new Map([
       ["first", "Knowledge  Base/Guide.MD"],
       ["second", "Knowledge  Base/Guide.MD"],
+    ]));
+  });
+
+  it("maps root and nested folders to their logical paths", () => {
+    expect(getWorkspaceFolderPaths([
+      { id: "workspace-root", title: "Company wiki", parentId: null },
+      { id: "docs", title: "docs", parentId: "workspace-root" },
+      { id: "api", title: "api", parentId: "docs" },
+    ])).toEqual(new Map([
+      ["workspace-root", ""],
+      ["docs", "docs"],
+      ["api", "docs/api"],
     ]));
   });
 });

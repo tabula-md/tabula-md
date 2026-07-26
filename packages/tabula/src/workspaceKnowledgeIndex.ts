@@ -2,6 +2,14 @@ import { fromMarkdown } from "mdast-util-from-markdown";
 import GithubSlugger from "github-slugger";
 import { getMarkdownDocumentTitle, parseFrontmatterData } from "./markdown/parse";
 import { isWorkspacePathSegment } from "./workspacePath";
+import {
+  normalizeWorkspaceKnowledgeMetadata,
+  type OkfLifecycleStatus,
+  type OkfTrustTier,
+  type WorkspaceKnowledgeMetadata,
+} from "./workspaceOkfMetadata";
+
+export type { WorkspaceKnowledgeMetadata } from "./workspaceOkfMetadata";
 
 export type WorkspaceSourceDocument = {
   id: string;
@@ -45,12 +53,6 @@ export type DocumentLinkAnalysis = {
   to: number;
 };
 
-export type WorkspaceKnowledgeMetadata = {
-  type?: string;
-  tags: readonly string[];
-  resource?: string;
-};
-
 export type DocumentAnalysis = {
   documentId: string;
   path: string;
@@ -80,6 +82,8 @@ export type WorkspaceKnowledgeIndex = {
   documentIdsByType: ReadonlyMap<string, readonly string[]>;
   documentIdsByTag: ReadonlyMap<string, readonly string[]>;
   documentIdsByResource: ReadonlyMap<string, readonly string[]>;
+  documentIdsByStatus: ReadonlyMap<OkfLifecycleStatus, readonly string[]>;
+  documentIdsByTrustTier: ReadonlyMap<OkfTrustTier, readonly string[]>;
   outgoingLinksByDocumentId: ReadonlyMap<string, readonly WorkspaceKnowledgeLink[]>;
   backlinksByDocumentId: ReadonlyMap<string, readonly WorkspaceKnowledgeLink[]>;
   brokenLinks: readonly WorkspaceKnowledgeLink[];
@@ -126,37 +130,6 @@ const getNodeOffsets = (node: AstNode, bodyOffset: number) => {
 
 const normalizeReferenceIdentifier = (identifier: string) =>
   identifier.trim().replace(/\s+/g, " ").toLowerCase();
-
-const getNonEmptyMetadataString = (value: unknown) => {
-  if (typeof value !== "string") return undefined;
-  const normalized = value.trim();
-  return normalized || undefined;
-};
-
-const getKnowledgeTags = (value: unknown) => {
-  const values = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
-  const tags: string[] = [];
-  const seen = new Set<string>();
-  for (const candidate of values) {
-    const tag = getNonEmptyMetadataString(candidate);
-    if (!tag || seen.has(tag)) continue;
-    seen.add(tag);
-    tags.push(tag);
-  }
-  return tags;
-};
-
-const getWorkspaceKnowledgeMetadata = (
-  metadata: Readonly<Record<string, unknown>>,
-): WorkspaceKnowledgeMetadata => {
-  const type = getNonEmptyMetadataString(metadata.type);
-  const resource = getNonEmptyMetadataString(metadata.resource);
-  return {
-    ...(type ? { type } : {}),
-    tags: getKnowledgeTags(metadata.tags),
-    ...(resource ? { resource } : {}),
-  };
-};
 
 const isEscapedAt = (text: string, offset: number) => {
   let backslashCount = 0;
@@ -307,7 +280,7 @@ export const analyzeWorkspaceDocument = (document: WorkspaceSourceDocument): Doc
     path: document.path,
     title: getMarkdownDocumentTitle(document.markdown),
     metadata: parsed.metadata,
-    knowledgeMetadata: getWorkspaceKnowledgeMetadata(parsed.metadata),
+    knowledgeMetadata: normalizeWorkspaceKnowledgeMetadata(parsed.metadata),
     headings,
     links,
   };
@@ -387,7 +360,12 @@ const resolveMarkdownTarget = (
   target: ReturnType<typeof splitLinkTarget>,
   documentIdsByPath: ReadonlyMap<string, string>,
 ): InternalLinkResolution => {
-  const targetPath = target.path ? resolvePath(sourcePath, target.path) : sourcePath;
+  const targetPath = target.path
+    ? resolvePath(
+        sourcePath,
+        target.path.endsWith("/") ? `${target.path}index.md` : target.path,
+      )
+    : sourcePath;
   const targetDocumentId = targetPath ? documentIdsByPath.get(targetPath) : undefined;
   return targetPath && typeof targetDocumentId !== "undefined"
     ? {
@@ -616,9 +594,11 @@ const buildKnowledgeIndex = (
   const documentIdsByType = new Map<string, string[]>();
   const documentIdsByTag = new Map<string, string[]>();
   const documentIdsByResource = new Map<string, string[]>();
-  const addMetadataEntry = (
-    entries: Map<string, string[]>,
-    value: string,
+  const documentIdsByStatus = new Map<OkfLifecycleStatus, string[]>();
+  const documentIdsByTrustTier = new Map<OkfTrustTier, string[]>();
+  const addMetadataEntry = <TValue extends string>(
+    entries: Map<TValue, string[]>,
+    value: TValue,
     documentId: string,
   ) => {
     const documentIds = entries.get(value) ?? [];
@@ -626,10 +606,18 @@ const buildKnowledgeIndex = (
     entries.set(value, documentIds);
   };
   for (const analysis of analysesByDocumentId.values()) {
-    const { type, tags, resource } = analysis.knowledgeMetadata;
+    const {
+      type,
+      tags,
+      resource,
+      status,
+      trustTier,
+    } = analysis.knowledgeMetadata;
     if (type) addMetadataEntry(documentIdsByType, type, analysis.documentId);
     for (const tag of tags) addMetadataEntry(documentIdsByTag, tag, analysis.documentId);
     if (resource) addMetadataEntry(documentIdsByResource, resource, analysis.documentId);
+    addMetadataEntry(documentIdsByStatus, status, analysis.documentId);
+    addMetadataEntry(documentIdsByTrustTier, trustTier, analysis.documentId);
   }
 
   const outgoingLinksByDocumentId =
@@ -672,6 +660,8 @@ const buildKnowledgeIndex = (
     documentIdsByType,
     documentIdsByTag,
     documentIdsByResource,
+    documentIdsByStatus,
+    documentIdsByTrustTier,
     outgoingLinksByDocumentId,
     backlinksByDocumentId,
     brokenLinks,

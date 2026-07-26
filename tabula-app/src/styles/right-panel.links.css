@@ -1,6 +1,7 @@
 .right-links-panel {
   --right-links-section-indent: calc(14px + var(--right-tight-gap));
 
+  grid-template-rows: minmax(0, 1fr);
   height: 100%;
   min-height: 0;
 }
