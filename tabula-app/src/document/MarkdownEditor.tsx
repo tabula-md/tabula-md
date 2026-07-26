@@ -17,6 +17,7 @@ import {
   getEditorSelectionActionPosition,
 } from "../editor/editorLayout";
 import { createEditorSearchExtension } from "../editor/editorSearch";
+import { revealEditorVisualSelection } from "../editor/editorVisualEffects";
 import {
   createEditorAnnotationGutterExtension,
   createEditorCollaborationExtensions,
@@ -226,6 +227,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       largeDocumentMode,
       lineWrapping,
       lineNumbers,
+      visualEditing = false,
       bookmarks = [],
       commentAnchors = [],
       commentsEnabled = true,
@@ -262,7 +264,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const stateByFileIdRef = useRef(new Map<string, LocalEditorCacheEntry>());
     const liveViewStateByFileIdRef = useRef(new Map<string, LiveEditorViewState>());
     const lastHistoryStateRef = useRef(EMPTY_EDITOR_HISTORY_STATE);
-    const lightweightMode = largeDocumentMode && value.length >= LIGHTWEIGHT_EDITOR_CHAR_THRESHOLD;
+    const lightweightMode =
+      !visualEditing &&
+      largeDocumentMode &&
+      value.length >= LIGHTWEIGHT_EDITOR_CHAR_THRESHOLD;
 
     useEffect(() => {
       onChangeRef.current = onChange;
@@ -456,6 +461,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         }
 
         view.dispatch({
+          effects: revealEditorVisualSelection.of(null),
           selection: EditorSelection.create(selectionRanges),
           scrollIntoView: true,
         });
@@ -467,7 +473,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           return;
         }
 
-        dispatchEditorSelectionRange(view, from, to, { focus: true });
+        dispatchEditorSelectionRange(view, from, to, {
+          effects: revealEditorVisualSelection.of(null),
+          focus: true,
+        });
       },
       revealRange: (from: number, to = from) => {
         const view = viewRef.current;
@@ -475,7 +484,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           return;
         }
 
-        dispatchEditorSelectionRange(view, from, to);
+        dispatchEditorSelectionRange(view, from, to, {
+          effects: revealEditorVisualSelection.of(null),
+        });
       },
       revealViewportLineAnchor: (anchor) => {
         const view = viewRef.current;
@@ -674,6 +685,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
             compartmentsRef.current.searchHighlight.reconfigure(
               createEditorSearchExtension(searchMatches, activeSearchMatchIndex),
             ),
+            compartmentsRef.current.visualMode.reconfigure(
+              [],
+            ),
           ],
         });
       }
@@ -815,6 +829,31 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         ),
       });
     }, [lineNumbers]);
+
+    useEffect(() => {
+      const view = viewRef.current;
+      if (!view) return;
+
+      if (!visualEditing) {
+        view.dispatch({
+          effects: compartmentsRef.current.visualMode.reconfigure([]),
+        });
+        return;
+      }
+
+      let cancelled = false;
+      void import("../editor/editorVisualMode").then(({ createEditorVisualModeExtension }) => {
+        if (cancelled) return;
+        view.dispatch({
+          effects: compartmentsRef.current.visualMode.reconfigure(
+            createEditorVisualModeExtension(interfaceCopy),
+          ),
+        });
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [fileId, interfaceCopy, visualEditing]);
 
     useEffect(() => {
       viewRef.current?.dispatch({

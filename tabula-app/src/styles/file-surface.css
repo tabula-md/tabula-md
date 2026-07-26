@@ -87,7 +87,8 @@
   --document-body-width: var(--editor-body-width);
 }
 
-.center-workbench.view-edit {
+.center-workbench.view-edit,
+.center-workbench.view-visual {
   --document-body-width: var(--editor-body-width);
   --document-chrome-width: var(--editor-frame-width);
 }
@@ -123,7 +124,8 @@
   );
 }
 
-.file-shell.view-edit .file-status-bar {
+.file-shell.view-edit .file-status-bar,
+.file-shell.view-visual .file-status-bar {
   width: var(--editor-frame-width);
 }
 
@@ -211,6 +213,7 @@
 }
 
 .workspace.edit .preview-surface,
+.workspace.visual .preview-surface,
 .workspace.preview .editor-surface {
   display: none;
 }
@@ -219,16 +222,20 @@
   display: block;
 }
 
-.workspace.edit:not(.split) .editor-surface {
+.workspace.edit:not(.split) .editor-surface,
+.workspace.visual:not(.split) .editor-surface {
   width: var(--editor-frame-width);
 }
 
-.workspace.edit:not(.split) .markdown-editor .cm-content {
+.workspace.edit:not(.split) .markdown-editor .cm-content,
+.workspace.visual:not(.split) .markdown-editor .cm-content {
   flex: 0 0 calc(100% - var(--editor-frame-rails));
   width: calc(100% - var(--editor-frame-rails));
 }
 
 .workspace.edit:not(.split) .editor-surface.line-wrapping-off .markdown-editor .cm-content,
+.workspace.visual:not(.split) .editor-surface.line-wrapping-off .markdown-editor .cm-content,
+.workspace.visual:not(.split) .editor-surface.line-wrapping-suspended .markdown-editor .cm-content,
 .workspace.edit:not(.split) .editor-surface.line-wrapping-suspended .markdown-editor .cm-content {
   flex-basis: max-content;
   width: max-content;
@@ -240,7 +247,8 @@
   width: var(--document-body-width);
 }
 
-.workspace.edit.reading-narrow:not(.split) .editor-surface {
+.workspace.edit.reading-narrow:not(.split) .editor-surface,
+.workspace.visual.reading-narrow:not(.split) .editor-surface {
   width: var(--editor-frame-width);
 }
 
@@ -249,7 +257,8 @@
   width: var(--document-body-width);
 }
 
-.workspace.edit.reading-wide:not(.split) .editor-surface {
+.workspace.edit.reading-wide:not(.split) .editor-surface,
+.workspace.visual.reading-wide:not(.split) .editor-surface {
   width: var(--editor-frame-width);
 }
 

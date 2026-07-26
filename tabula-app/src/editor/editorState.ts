@@ -4,7 +4,12 @@ import {
   undo,
 } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
-import { bracketMatching, HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import {
+  bracketMatching,
+  HighlightStyle,
+  LanguageDescription,
+  syntaxHighlighting,
+} from "@codemirror/language";
 import { Compartment, EditorState, Transaction, type Extension } from "@codemirror/state";
 import {
   drawSelection,
@@ -15,6 +20,7 @@ import {
   placeholder,
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
+import { GFM } from "@lezer/markdown";
 import { createCommentAnchorExtension } from "../editorExtensions/commentAnchors";
 import { createLineAnnotationGutterExtension } from "../editorExtensions/lineAnnotations";
 import type {
@@ -46,6 +52,7 @@ export type MarkdownEditorCompartments = EditorLayoutCompartments & {
   language: Compartment;
   searchHighlight: Compartment;
   placeholder: Compartment;
+  visualMode: Compartment;
 };
 
 export type MarkdownEditorExtensionConfig = {
@@ -90,6 +97,23 @@ const markdownEditorHighlightStyle = HighlightStyle.define([
   { tag: tags.punctuation, color: "var(--editor-syntax-punctuation)", textDecoration: "none" },
 ]);
 
+const markdownCodeLanguages = [
+  LanguageDescription.of({
+    alias: ["js", "jsx"],
+    name: "JavaScript",
+    load: () => import("@codemirror/lang-javascript").then(({ javascript }) =>
+      javascript({ jsx: true })
+    ),
+  }),
+  LanguageDescription.of({
+    alias: ["ts", "tsx"],
+    name: "TypeScript",
+    load: () => import("@codemirror/lang-javascript").then(({ javascript }) =>
+      javascript({ jsx: true, typescript: true })
+    ),
+  }),
+];
+
 export const createMarkdownEditorCompartments = (): MarkdownEditorCompartments => ({
   ...createEditorLayoutCompartments(),
   annotationGutter: new Compartment(),
@@ -99,6 +123,7 @@ export const createMarkdownEditorCompartments = (): MarkdownEditorCompartments =
   language: new Compartment(),
   searchHighlight: new Compartment(),
   placeholder: new Compartment(),
+  visualMode: new Compartment(),
 });
 
 export const createEditorAnnotationGutterExtension = (
@@ -123,7 +148,12 @@ export const createEditorMarkdownLanguageExtensions = (lightweightMode: boolean)
   lightweightMode
     ? []
     : [
-        markdown({ addKeymap: false, pasteURLAsLink: true }),
+        markdown({
+          addKeymap: false,
+          codeLanguages: markdownCodeLanguages,
+          pasteURLAsLink: true,
+          extensions: [GFM],
+        }),
         syntaxHighlighting(markdownEditorHighlightStyle, { fallback: true }),
       ];
 
@@ -225,6 +255,7 @@ export const createMarkdownEditorExtensions = ({
   compartments.annotationGutter.of(createEditorAnnotationGutterExtension(bookmarks, copy, onOpenLineActions)),
   compartments.lineNumbers.of(createEditorLineNumbersExtension(lineNumbers)),
   compartments.wrapping.of(createEditorLineWrappingExtension(lineWrapping)),
+  compartments.visualMode.of([]),
   compartments.commentAnchor.of(
     commentsEnabled
       ? createEditorCommentAnchorExtension(commentAnchors, activeCommentId, copy, onOpenComment)

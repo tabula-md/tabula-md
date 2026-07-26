@@ -1458,3 +1458,7 @@ button.preview-task-checkbox.checked::after {
     gap: 4px;
   }
 }
+
+.preview-surface :is(em, i) {
+  font-synthesis: style;
+}

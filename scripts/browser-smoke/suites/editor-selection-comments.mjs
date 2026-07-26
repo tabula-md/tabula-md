@@ -247,10 +247,18 @@ export async function run(ctx) {
       markText: document.querySelector(".cm-comment-mark")?.textContent ?? "",
       quoteText: document.querySelector(".right-comment-quote")?.textContent ?? "",
       cardCount: document.querySelectorAll(".right-comment-card").length,
+      activeCardCount: document.querySelectorAll(".right-comment-card.active").length,
+      markIds: Array.from(document.querySelectorAll(".cm-comment-mark"))
+        .map((element) => element.getAttribute("data-comment-id")),
+      cardIds: Array.from(document.querySelectorAll(".right-comment-card"))
+        .map((element) => element.getAttribute("data-comment-id")),
       panelTab: document.querySelector(".right-panel-tab.active")?.getAttribute("aria-label") ?? "",
     }));
     expect(commentAfterCreate.markCount === 1, "Creating a selection comment should render one editor comment mark.");
-    expect(commentAfterCreate.activeMarkCount === 1, "The newly created selection comment should activate its editor mark.");
+    expect(
+      commentAfterCreate.activeMarkCount === 1,
+      `The newly created selection comment should activate its editor mark. state=${JSON.stringify(commentAfterCreate)}`,
+    );
     expect(commentAfterCreate.markText === "target", "The editor comment mark should wrap the selected quote.");
     expect(commentAfterCreate.quoteText === "target", "The comment panel should preserve the selected quote.");
     expect(commentAfterCreate.cardCount === 1, "The comment panel should show the created comment.");

@@ -1175,6 +1175,7 @@ export async function run(ctx) {
     );
     await page.getByRole("button", { name: "Preview", exact: true }).click();
     await waitForEditorReady(page, { mode: "preview" });
+    await page.waitForSelector(".preview-docs-callout", { timeout: 5_000 });
     expect(
       (await page.locator(".preview-docs-callout").filter({ hasText: "Content" }).count()) === 1,
       "Inserted component templates should render through the existing preview support.",
@@ -1766,17 +1767,17 @@ export async function run(ctx) {
     expect(
       [splitAlignment, previewAlignment, writeAlignment].every(
         (alignment) =>
-          alignment.viewModeControl.background !== "rgba(0, 0, 0, 0)" &&
+          alignment.viewModeControl.background === "rgba(0, 0, 0, 0)" &&
           alignment.utilityControls.background === alignment.viewModeControl.background,
       ),
-      "View modes and document utilities should use matching but distinct quiet surfaces.",
+      "View modes and document utilities should remain transparent until an individual command is active.",
     );
     expect(
       splitAlignment.formattingToolbar?.height === 34 &&
         writeAlignment.formattingToolbar?.height === 34 &&
-        splitAlignment.formattingToolbar?.background === splitAlignment.viewModeControl.background &&
-        writeAlignment.formattingToolbar?.background === writeAlignment.viewModeControl.background,
-      "Formatting and document command groups should use matching borderless surfaces.",
+        splitAlignment.formattingToolbar?.background === "rgba(0, 0, 0, 0)" &&
+        writeAlignment.formattingToolbar?.background === "rgba(0, 0, 0, 0)",
+      "Formatting and document command groups should remain borderless and transparent.",
     );
     expect(
       [splitAlignment, previewAlignment, writeAlignment].every(

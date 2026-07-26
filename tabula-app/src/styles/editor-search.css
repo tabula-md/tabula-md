@@ -154,7 +154,8 @@
   grid-template-rows: 50px auto minmax(0, 1fr) 42px;
 }
 
-.file-shell.view-edit .document-search-row {
+.file-shell.view-edit .document-search-row,
+.file-shell.view-visual .document-search-row {
   width: var(--editor-frame-width);
 }
 

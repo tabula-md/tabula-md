@@ -7,6 +7,7 @@ import {
 } from "react";
 import {
   Check,
+  Code2,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -76,9 +77,10 @@ export type DocumentSearchBarProps = {
 };
 
 const viewModeIcons: Record<DocumentViewModeIcon, ReactNode> = {
-  edit: <PencilLine size={16} />,
+  edit: <Code2 size={16} />,
   preview: <Eye size={16} />,
   split: <SplitSquareHorizontal size={16} />,
+  visual: <PencilLine size={16} />,
 };
 
 export function DocumentControls({
@@ -123,8 +125,8 @@ export function DocumentControls({
               data-tooltip={option.label}
               aria-pressed={option.active}
               data-view-mode={option.viewMode}
-              onFocus={option.viewMode === "edit" ? undefined : onPreparePreview}
-              onPointerEnter={option.viewMode === "edit" ? undefined : onPreparePreview}
+              onFocus={option.viewMode === "preview" || option.viewMode === "split" ? onPreparePreview : undefined}
+              onPointerEnter={option.viewMode === "preview" || option.viewMode === "split" ? onPreparePreview : undefined}
               onClick={() => onSetViewMode(option.viewMode)}
             >
               {viewModeIcons[option.icon]}

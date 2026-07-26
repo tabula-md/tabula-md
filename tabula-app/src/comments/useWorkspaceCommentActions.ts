@@ -187,12 +187,15 @@ export function useWorkspaceCommentActions({
     const capturedSelection = includeSelection && pendingSelectionComment?.fileId === activeFile.id
       ? pendingSelectionComment
       : null;
-    createFileComment({
+    const createdComment = createFileComment({
       fileId: activeFile.id,
       body: commentDraft,
       quote: capturedSelection?.quote,
       anchor: capturedSelection?.anchor,
     });
+    if (createdComment) {
+      openCommentsPanel(createdComment.id);
+    }
     if (includeSelection) {
       setPendingSelectionComment(null);
     }
@@ -201,6 +204,7 @@ export function useWorkspaceCommentActions({
     commentDraft,
     createFileComment,
     onBeforeCreateComment,
+    openCommentsPanel,
     pendingSelectionComment,
   ]);
 

@@ -311,7 +311,9 @@ export function useWorkspaceActiveFileEditor({
 
     const patches = change?.patches ?? [];
     if (isRoomSession) {
-      if (activeFile.viewMode !== "edit") onVisibleTextChange?.(change);
+      if (activeFile.viewMode === "split" || activeFile.viewMode === "preview") {
+        onVisibleTextChange?.(change);
+      }
       onPendingTextChange?.();
       if (!collaborationBound) {
         applyLocalText(
@@ -332,7 +334,7 @@ export function useWorkspaceActiveFileEditor({
     }
     if (nextText === null) {
       const appliedPatchToVisibleText =
-        activeFile.viewMode !== "edit" &&
+        (activeFile.viewMode === "split" || activeFile.viewMode === "preview") &&
         shouldApplyEditorRuntimeVisibleTextPatch(change) &&
         runtime.applyPatch(change?.patches ?? []);
       if (!appliedPatchToVisibleText) {
@@ -340,7 +342,7 @@ export function useWorkspaceActiveFileEditor({
           readText: () => editorRef.current?.getValue(),
         });
       }
-      if (activeFile.viewMode !== "edit") {
+      if (activeFile.viewMode === "split" || activeFile.viewMode === "preview") {
         onVisibleTextChange?.(change);
       }
       if (!collaborationBound) schedulePendingEditorCommit(change);
@@ -367,7 +369,7 @@ export function useWorkspaceActiveFileEditor({
 
     runtime.replaceAll(nextText);
     onPendingTextChange?.();
-    if (activeFile.viewMode !== "edit") {
+    if (activeFile.viewMode === "split" || activeFile.viewMode === "preview") {
       onVisibleTextChange?.(change);
     }
     if (!collaborationBound) schedulePendingEditorCommit(change);

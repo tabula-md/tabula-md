@@ -81,7 +81,7 @@ export function useViewModeScrollPreservation({
   const getCurrentModeScrollAnchor = (): ModeScrollAnchor => {
     const workspace = workspaceRef.current;
 
-    if (activeViewMode === "edit") {
+    if (activeViewMode === "edit" || activeViewMode === "visual") {
       return {
         surface: "editor",
         position: editorRef.current?.getViewportLineAnchor() ?? null,
@@ -159,7 +159,7 @@ export function useViewModeScrollPreservation({
       if (activeViewMode !== "preview") {
         editorRef.current?.revealViewportLineAnchor(anchor.position);
       }
-      if (activeViewMode !== "edit") {
+      if (activeViewMode === "split" || activeViewMode === "preview") {
         previewRef.current?.followEditorPosition(anchor.position);
       }
       return;
@@ -201,7 +201,9 @@ export function useViewModeScrollPreservation({
     }
 
     const shouldPreserveScroll = options.preserveScroll ?? true;
-    const shouldFocusEditor = options.focusEditor ?? (nextViewMode === "edit" && !shouldPreserveScroll);
+    const shouldFocusEditor =
+      options.focusEditor ??
+      ((nextViewMode === "edit" || nextViewMode === "visual") && !shouldPreserveScroll);
     if (nextViewMode !== activeViewMode && shouldPreserveScroll) {
       const anchor = getCurrentModeScrollAnchor();
       pendingModeScrollRef.current = {
@@ -235,7 +237,10 @@ export function useViewModeScrollPreservation({
     applyModeScrollAnchor(pendingModeScroll.anchor);
     pendingModeScrollRef.current = null;
     const frame = window.requestAnimationFrame(() => {
-      if (activeViewMode === "edit" && pendingModeScroll.focusEditor) {
+      if (
+        (activeViewMode === "edit" || activeViewMode === "visual") &&
+        pendingModeScroll.focusEditor
+      ) {
         editorRef.current?.focus({ preventScroll: true });
       }
       applyModeScrollAnchor(pendingModeScroll.anchor);

@@ -19,10 +19,35 @@ const copy: DocumentControlsCopy = {
   standardWidth: "Standard",
   syncScrolling: "Sync Scrolling",
   textWidth: "Text Width",
+  visual: "Visual",
   viewControls: "View controls",
 };
 
 describe("document controls model", () => {
+  it("offers Visual before the source and reading modes", () => {
+    const model = buildDocumentControlsModel({
+      activeLineNumbers: true,
+      activeLineWrapping: true,
+      activeReadingWidth: "wide",
+      activeSyncScrolling: true,
+      activeViewMode: "visual",
+      copy,
+    });
+
+    expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual([
+      "visual",
+      "edit",
+      "preview",
+      "split",
+    ]);
+    expect(model.viewModeOptions.map((option) => option.active)).toEqual([
+      true,
+      false,
+      false,
+      false,
+    ]);
+  });
+
   it("keeps all view modes stable and selects edit", () => {
     const model = buildDocumentControlsModel({
       activeLineNumbers: true,
@@ -38,6 +63,12 @@ describe("document controls model", () => {
     expect(model.showSplitToggles).toBe(false);
     expect(model.viewModeOptions).toEqual([
       {
+        active: false,
+        icon: "visual",
+        label: "Visual",
+        viewMode: "visual",
+      },
+      {
         active: true,
         icon: "edit",
         label: "Edit",
@@ -45,15 +76,15 @@ describe("document controls model", () => {
       },
       {
         active: false,
-        icon: "split",
-        label: "Split",
-        viewMode: "split",
-      },
-      {
-        active: false,
         icon: "preview",
         label: "Preview",
         viewMode: "preview",
+      },
+      {
+        active: false,
+        icon: "split",
+        label: "Split",
+        viewMode: "split",
       },
     ]);
   });
@@ -74,8 +105,18 @@ describe("document controls model", () => {
       active: false,
       label: "Sync Scrolling",
     });
-    expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual(["edit", "split", "preview"]);
-    expect(model.viewModeOptions.map((option) => option.active)).toEqual([false, true, false]);
+    expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual([
+      "visual",
+      "edit",
+      "preview",
+      "split",
+    ]);
+    expect(model.viewModeOptions.map((option) => option.active)).toEqual([
+      false,
+      false,
+      false,
+      true,
+    ]);
   });
 
   it("selects preview and hides editor toggles", () => {
@@ -91,8 +132,18 @@ describe("document controls model", () => {
     expect(model.controlsLabel).toBe("View controls");
     expect(model.showEditorToggles).toBe(false);
     expect(model.showSplitToggles).toBe(false);
-    expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual(["edit", "split", "preview"]);
-    expect(model.viewModeOptions.map((option) => option.active)).toEqual([false, false, true]);
+    expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual([
+      "visual",
+      "edit",
+      "preview",
+      "split",
+    ]);
+    expect(model.viewModeOptions.map((option) => option.active)).toEqual([
+      false,
+      false,
+      true,
+      false,
+    ]);
   });
 
   it("marks exactly one reading width option as active", () => {

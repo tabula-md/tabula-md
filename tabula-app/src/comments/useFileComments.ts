@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type TextPatch,
   WORKSPACE_ROOM_MAX_COMMENTS,
@@ -81,6 +81,7 @@ export function useFileComments({
   const [activeReplyCommentId, setActiveReplyCommentId] = useState<string | null>(null);
   const [replyDraftByCommentId, setReplyDraftByCommentId] = useState<Record<string, string>>({});
   const [focusedCommentId, setFocusedCommentId] = useState<string | null>(null);
+  const optimisticCommentIdsRef = useRef(new Set<string>());
 
   const activeFileComments = useMemo(
     () => (activeFileId ? getFileComments(commentsByFileId, activeFileId) : []),
@@ -109,6 +110,7 @@ export function useFileComments({
   ) => {
     setCommentsByFileId(nextCommentsByFileId);
     if (!options.preserveInteraction) {
+      optimisticCommentIdsRef.current.clear();
       resetCommentInteraction();
       return;
     }
@@ -116,15 +118,21 @@ export function useFileComments({
     const commentIds = new Set(
       Object.values(nextCommentsByFileId).flat().map((comment) => comment.id),
     );
+    for (const commentId of commentIds) {
+      optimisticCommentIdsRef.current.delete(commentId);
+    }
+    const interactionCommentExists = (commentId: string) =>
+      commentIds.has(commentId) || optimisticCommentIdsRef.current.has(commentId);
     setFocusedCommentId((commentId) =>
-      commentId && commentIds.has(commentId) ? commentId : null,
+      commentId && interactionCommentExists(commentId) ? commentId : null,
     );
     setActiveReplyCommentId((commentId) =>
-      commentId && commentIds.has(commentId) ? commentId : null,
+      commentId && interactionCommentExists(commentId) ? commentId : null,
     );
     setReplyDraftByCommentId((currentDrafts) =>
       Object.fromEntries(
-        Object.entries(currentDrafts).filter(([commentId]) => commentIds.has(commentId)),
+        Object.entries(currentDrafts).filter(([commentId]) =>
+          interactionCommentExists(commentId)),
       ),
     );
   };
@@ -168,6 +176,9 @@ export function useFileComments({
       ...currentComments,
       [fileId]: [nextComment, ...getFileComments(currentComments, fileId)],
     }));
+    if (isRoomSession) {
+      optimisticCommentIdsRef.current.add(nextComment.id);
+    }
     setFocusedCommentId(nextComment.id);
     setCommentDraft("");
     onCommentCreated?.(fileId, nextComment);
@@ -184,6 +195,7 @@ export function useFileComments({
     const comment = comments[index];
     if (!comment) return undefined;
 
+    optimisticCommentIdsRef.current.delete(commentId);
     setCommentsByFileId((currentComments) => ({
       ...currentComments,
       [fileId]: getFileComments(currentComments, fileId).filter((comment) => comment.id !== commentId),

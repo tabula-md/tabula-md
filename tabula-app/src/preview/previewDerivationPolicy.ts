@@ -17,6 +17,9 @@ type PreviewDerivationInput = {
   viewMode: FileViewMode;
 };
 
+const isEditorOnlyViewMode = (viewMode: FileViewMode) =>
+  viewMode === "edit" || viewMode === "visual";
+
 type ImmediatePreviewDerivationInput = PreviewDerivationInput & {
   hasActiveFile: boolean;
   markdownPreviewEligible: boolean;
@@ -29,7 +32,7 @@ export const shouldDeriveImmediatePreviewState = ({
   viewMode,
 }: ImmediatePreviewDerivationInput) =>
   hasActiveFile &&
-  viewMode !== "edit" &&
+  !isEditorOnlyViewMode(viewMode) &&
   textLength <= IMMEDIATE_PREVIEW_MAX_CHARACTERS &&
   markdownPreviewEligible;
 
@@ -37,7 +40,7 @@ export const shouldDerivePreviewBodyImmediately = ({
   hasActiveFile,
   viewMode,
 }: Pick<ImmediatePreviewDerivationInput, "hasActiveFile" | "viewMode">) =>
-  hasActiveFile && viewMode !== "edit";
+  hasActiveFile && !isEditorOnlyViewMode(viewMode);
 
 export const shouldPatchPreviewBodyImmediately = ({
   hasActiveFile,
@@ -47,7 +50,7 @@ export const shouldPatchPreviewBodyImmediately = ({
 }: Pick<ImmediatePreviewDerivationInput, "hasActiveFile" | "largeDocumentMode" | "textLength" | "viewMode">) =>
   hasActiveFile &&
   largeDocumentMode &&
-  viewMode !== "edit" &&
+  !isEditorOnlyViewMode(viewMode) &&
   textLength <= PATCHED_PREVIEW_BODY_MAX_CHARACTERS;
 
 export const getPreviewBodyDerivationDelayMs = ({
@@ -59,7 +62,7 @@ export const getPreviewBodyDerivationDelayMs = ({
     return LARGE_DOCUMENT_PREVIEW_BODY_DELAY_MS;
   }
 
-  if (viewMode === "edit") {
+  if (isEditorOnlyViewMode(viewMode)) {
     return EDIT_MODE_DERIVED_STATE_DELAY_MS;
   }
 
@@ -77,7 +80,7 @@ export const getPreviewMetadataDerivationDelayMs = ({
     return LARGE_DOCUMENT_METADATA_DERIVED_STATE_DELAY_MS;
   }
 
-  if (viewMode === "edit") {
+  if (isEditorOnlyViewMode(viewMode)) {
     return EDIT_MODE_DERIVED_STATE_DELAY_MS;
   }
 
@@ -91,7 +94,7 @@ export const getWordCountDerivationDelayMs = ({
   textLength,
   viewMode,
 }: PreviewDerivationInput) => {
-  if (viewMode === "edit") {
+  if (isEditorOnlyViewMode(viewMode)) {
     return EDIT_MODE_DERIVED_STATE_DELAY_MS;
   }
 
