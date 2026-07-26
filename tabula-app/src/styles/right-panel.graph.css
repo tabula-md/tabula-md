@@ -1,22 +1,7 @@
 .right-graph-panel {
-  --graph-type-0: #5c78a8;
-  --graph-type-1: #7d68a6;
-  --graph-type-2: #4d8977;
-  --graph-type-3: #a06d55;
-  --graph-type-4: #92743e;
-  --graph-type-5: #8b617d;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   height: 100%;
   min-height: 0;
-}
-
-:root[data-theme="dark"] .right-graph-panel {
-  --graph-type-0: #82a5dc;
-  --graph-type-1: #aa91d5;
-  --graph-type-2: #72b9a1;
-  --graph-type-3: #d09272;
-  --graph-type-4: #c7a35c;
-  --graph-type-5: #bd84aa;
 }
 
 .right-graph-scope {

@@ -26,6 +26,12 @@
   --mark-text: #3b3100;
   --comment-mark: #763fc8;
   --search-match: #f2b84b;
+  --graph-type-0: #5c78a8;
+  --graph-type-1: #7d68a6;
+  --graph-type-2: #4d8977;
+  --graph-type-3: #a06d55;
+  --graph-type-4: #92743e;
+  --graph-type-5: #8b617d;
   --success: #15803d;
   --success-soft: #eef8f1;
   --attention: #6f5740;
@@ -122,6 +128,12 @@
   --mark-text: #fff3bf;
   --comment-mark: #a77af0;
   --search-match: #d29922;
+  --graph-type-0: #82a5dc;
+  --graph-type-1: #aa91d5;
+  --graph-type-2: #72b9a1;
+  --graph-type-3: #d09272;
+  --graph-type-4: #c7a35c;
+  --graph-type-5: #bd84aa;
   --success: #65d48a;
   --success-soft: rgba(101, 212, 138, 0.14);
   --attention: #d7b78d;

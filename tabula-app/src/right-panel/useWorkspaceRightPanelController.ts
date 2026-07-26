@@ -9,7 +9,6 @@ import type {
   MarkdownHeading,
   WorkspaceKnowledgeBaseline,
   WorkspaceKnowledgeLink,
-  WorkspaceOkfLogCandidate,
 } from "@tabula-md/tabula";
 import {
   getActiveOutlineHeadingIndex,
@@ -80,7 +79,6 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & {
   folders: WorkspaceFolder[];
   knowledgeBaseline?: WorkspaceKnowledgeBaseline;
   knowledgeCompatibilityOpenRequest: number;
-  knowledgeLogCandidate?: WorkspaceOkfLogCandidate;
   focusTextRange: FocusTextRange;
   identityName: string;
   isLive: boolean;
@@ -116,7 +114,6 @@ export function useWorkspaceRightPanelController({
   folders,
   knowledgeBaseline,
   knowledgeCompatibilityOpenRequest,
-  knowledgeLogCandidate,
   focusTextRange,
   formatCommentDate,
   identityName,
@@ -261,7 +258,6 @@ export function useWorkspaceRightPanelController({
     knowledgeIndexSource,
     knowledgeBaseline,
     knowledgeCompatibilityOpenRequest,
-    knowledgeLogCandidate,
     activeFileId: visibleActiveFileId,
     activeFileTitle,
     activeOutlineHeadingIndex,

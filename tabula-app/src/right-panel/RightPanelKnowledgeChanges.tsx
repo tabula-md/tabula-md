@@ -22,7 +22,7 @@ export function RightPanelKnowledgeChanges({
   candidate?: WorkspaceOkfLogCandidate;
   copy: KnowledgeCompatibilityCopy;
   healthDelta?: WorkspaceKnowledgeHealthDelta;
-  onMaterialize: (candidate: WorkspaceOkfLogCandidate) => boolean;
+  onMaterialize: (candidate: WorkspaceOkfLogCandidate) => Promise<boolean>;
   onSelectIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
   onSelectFile: (fileId: string) => void;
   onStartTracking: () => boolean;
@@ -41,8 +41,8 @@ export function RightPanelKnowledgeChanges({
   const startTracking = () => {
     if (!onStartTracking()) setApplyFailed(true);
   };
-  const materialize = () => {
-    if (!candidate || !onMaterialize(candidate)) {
+  const materialize = async () => {
+    if (!candidate || !await onMaterialize(candidate)) {
       setApplyFailed(true);
     }
   };

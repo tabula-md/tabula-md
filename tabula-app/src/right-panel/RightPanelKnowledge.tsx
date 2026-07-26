@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  createWorkspaceKnowledgeIndex,
+  getWorkspaceKnowledgeHealth,
+  getWorkspaceKnowledgeHealthDelta,
+  planWorkspaceOkfLog,
+  planWorkspaceOkfConformance,
   type OkfCompatibilityReport,
   type OkfConceptRepairUpdate,
   type OkfIndexCandidate,
   type OkfWikilinkRepairUpdate,
   type WorkspaceKnowledgeBaseline,
-  type WorkspaceKnowledgeHealthDelta,
   type WorkspaceKnowledgeHealthIssue,
-  type WorkspaceKnowledgeHealthReport,
   type WorkspaceKnowledgeIndex,
-  type WorkspaceOkfConformancePlan,
   type WorkspaceOkfLogCandidate,
 } from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
-import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
+import { getKnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { KnowledgeReviewDialog } from "./KnowledgeReviewDialog";
 import { RightPanelKnowledgeCompatibility } from "./RightPanelKnowledgeCompatibility";
@@ -27,21 +29,16 @@ type RightPanelKnowledgeProps = {
   activeFileId: string;
   activeFileTitle: string;
   noDocumentCopy: string;
-  compatibilityCopy: KnowledgeCompatibilityCopy;
   compatibilityReport?: OkfCompatibilityReport;
-  conformancePlan?: WorkspaceOkfConformancePlan;
-  healthDelta?: WorkspaceKnowledgeHealthDelta;
-  healthReport?: WorkspaceKnowledgeHealthReport;
   knowledgeBaseline?: WorkspaceKnowledgeBaseline;
   knowledgeCompatibilityOpenRequest: number;
-  knowledgeLogCandidate?: WorkspaceOkfLogCandidate;
   index?: WorkspaceKnowledgeIndex;
   language: WorkspaceLanguage;
   identityName: string;
   onApplyConceptRepairs: (updates: readonly OkfConceptRepairUpdate[]) => boolean;
   onApplyWikilinkRepairs: (updates: readonly OkfWikilinkRepairUpdate[]) => boolean;
   onMaterializeIndex: (candidate: OkfIndexCandidate) => boolean;
-  onMaterializeLog: (candidate: WorkspaceOkfLogCandidate) => boolean;
+  onMaterializeLog: (candidate: WorkspaceOkfLogCandidate) => Promise<boolean>;
   onSelectFile: (fileId: string) => void;
   onSelectHealthIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
   onSetActiveFileOkfType: (conceptType: string) => boolean;
@@ -53,14 +50,9 @@ export function RightPanelKnowledge({
   activeFileId,
   activeFileTitle,
   noDocumentCopy,
-  compatibilityCopy,
   compatibilityReport,
-  conformancePlan,
-  healthDelta,
-  healthReport,
   knowledgeBaseline,
   knowledgeCompatibilityOpenRequest,
-  knowledgeLogCandidate,
   index,
   language,
   onApplyConceptRepairs,
@@ -75,7 +67,41 @@ export function RightPanelKnowledge({
   identityName,
 }: RightPanelKnowledgeProps) {
   const knowledgeCopy = getKnowledgePanelCopy(language);
+  const compatibilityCopy = getKnowledgeCompatibilityCopy(language);
   const [exportPreflightOpen, setExportPreflightOpen] = useState(false);
+  const healthReport = useMemo(
+    () => index ? getWorkspaceKnowledgeHealth(index) : undefined,
+    [index],
+  );
+  const healthDelta = useMemo(
+    () => {
+      if (!knowledgeBaseline || !index) return undefined;
+      try {
+        return getWorkspaceKnowledgeHealthDelta(
+          createWorkspaceKnowledgeIndex(knowledgeBaseline.documents),
+          index,
+        );
+      } catch {
+        return undefined;
+      }
+    },
+    [index, knowledgeBaseline],
+  );
+  const conformancePlan = useMemo(
+    () => index && compatibilityReport
+      ? planWorkspaceOkfConformance(index, compatibilityReport)
+      : undefined,
+    [compatibilityReport, index],
+  );
+  const knowledgeLogCandidate = useMemo(
+    () => knowledgeBaseline && index
+      ? planWorkspaceOkfLog(
+          knowledgeBaseline,
+          [...index.documentsById.values()],
+        )
+      : undefined,
+    [index, knowledgeBaseline],
+  );
   const verificationCount = useMemo(() => new Set(
     healthReport?.issues
       .filter((issue) => KNOWLEDGE_VERIFICATION_ISSUE_CODES.has(issue.code))

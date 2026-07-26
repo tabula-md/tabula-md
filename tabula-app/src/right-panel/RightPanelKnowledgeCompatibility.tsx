@@ -53,7 +53,7 @@ type RightPanelKnowledgeCompatibilityProps = {
   onApplyConceptRepairs: (updates: readonly OkfConceptRepairUpdate[]) => boolean;
   onApplyWikilinkRepairs: (updates: readonly OkfWikilinkRepairUpdate[]) => boolean;
   onMaterializeIndex: (candidate: OkfIndexCandidate) => boolean;
-  onMaterializeLog: (candidate: WorkspaceOkfLogCandidate) => boolean;
+  onMaterializeLog: (candidate: WorkspaceOkfLogCandidate) => Promise<boolean>;
   onStartKnowledgeTracking: () => boolean;
   onVerifyKnowledgeDocument: (documentId: string, verifiedBy: string) => boolean;
   layout?: "panel" | "workspace";

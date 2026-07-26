@@ -4,11 +4,10 @@ import {
   type WorkspaceKnowledgeIndex,
   type WorkspaceSourceDocument,
 } from "./workspaceKnowledgeIndex";
+import type { WorkspaceKnowledgeBaseline } from "./workspaceKnowledgeBaseline";
 
-export type WorkspaceKnowledgeBaseline = {
-  capturedAt: string;
-  documents: readonly WorkspaceSourceDocument[];
-};
+export type { WorkspaceKnowledgeBaseline } from "./workspaceKnowledgeBaseline";
+export { captureWorkspaceKnowledgeBaseline } from "./workspaceKnowledgeBaseline";
 
 export type WorkspaceKnowledgeMetadataChange = {
   field:
@@ -122,14 +121,6 @@ const getDocumentTitle = (
 ) => index.analysesByDocumentId.get(documentId)?.title ||
   fallbackPath.split("/").at(-1)?.replace(/\.(?:md|markdown)$/i, "") ||
   fallbackPath;
-
-export const captureWorkspaceKnowledgeBaseline = (
-  documents: readonly WorkspaceSourceDocument[],
-  capturedAt = new Date().toISOString(),
-): WorkspaceKnowledgeBaseline => ({
-  capturedAt,
-  documents: documents.map((document) => ({ ...document })),
-});
 
 export const getWorkspaceKnowledgeChangeSet = (
   baseline: WorkspaceKnowledgeBaseline,

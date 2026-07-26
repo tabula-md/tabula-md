@@ -23,10 +23,7 @@ import {
   isPreservedWorkspaceSupportPath,
 } from "./workspaceSupportFile";
 import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
-import {
-  detectWorkspaceImportProfile,
-  type WorkspaceImportProfile,
-} from "./workspaceImportProfile";
+import type { WorkspaceImportProfile } from "./workspaceImportProfile";
 
 export type WorkspaceFolderImportDefaults = {
   viewMode: FileViewMode;
@@ -166,6 +163,9 @@ export const parseWorkspaceFolderImport = async (
       ? [{ path, text: file.text }]
       : [];
   });
+  const { detectWorkspaceImportProfile } = await import(
+    "./workspaceImportProfile"
+  );
   return {
     workspace,
     profile: detectWorkspaceImportProfile({

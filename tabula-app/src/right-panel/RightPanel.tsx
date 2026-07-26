@@ -9,17 +9,12 @@ import {
   Search,
 } from "lucide-react";
 import {
-  createWorkspaceKnowledgeIndex,
-  getWorkspaceKnowledgeHealth,
-  getWorkspaceKnowledgeHealthDelta,
   getRightPanelCommentGroups,
-  planWorkspaceOkfConformance,
   type OkfConceptRepairUpdate,
   type OkfCompatibilityReport,
   type OkfIndexCandidate,
   type OkfWikilinkRepairUpdate,
   type WorkspaceKnowledgeBaseline,
-  type WorkspaceKnowledgeHealthDelta,
   type WorkspaceKnowledgeHealthIssue,
   type WorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeLink,
@@ -37,7 +32,6 @@ import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
-import { getKnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 
 const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => ({
   default: module.RightPanelLinks,
@@ -67,7 +61,6 @@ type RightPanelProps = {
   knowledgeIndexSource: "none" | "worker" | "fallback";
   knowledgeBaseline?: WorkspaceKnowledgeBaseline;
   knowledgeCompatibilityOpenRequest: number;
-  knowledgeLogCandidate?: WorkspaceOkfLogCandidate;
   activeFileId: string;
   activeFileTitle: string;
   isLiveWorkspace: boolean;
@@ -101,7 +94,7 @@ type RightPanelProps = {
   onApplyOkfWikilinkRepairs: (updates: readonly OkfWikilinkRepairUpdate[]) => boolean;
   onVerifyKnowledgeDocument: (documentId: string, verifiedBy: string) => boolean;
   onMaterializeOkfIndex: (candidate: OkfIndexCandidate) => boolean;
-  onMaterializeOkfLog: (candidate: WorkspaceOkfLogCandidate) => boolean;
+  onMaterializeOkfLog: (candidate: WorkspaceOkfLogCandidate) => Promise<boolean>;
   onStartKnowledgeTracking: () => boolean;
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onDuplicateFile: (fileId: string) => void;
@@ -140,7 +133,6 @@ export function RightPanel({
   knowledgeIndexSource,
   knowledgeBaseline,
   knowledgeCompatibilityOpenRequest,
-  knowledgeLogCandidate,
   activeFileId,
   activeFileTitle,
   isLiveWorkspace,
@@ -226,32 +218,6 @@ export function RightPanel({
   const fileLabels = useMemo(
     () => getWorkspaceFileTabLabels(files, folders),
     [files, folders],
-  );
-  const compatibilityCopy = getKnowledgeCompatibilityCopy(language);
-  const compatibilityReport = knowledgeCompatibilityReport;
-  const knowledgeHealthReport = useMemo(
-    () => knowledgeIndex ? getWorkspaceKnowledgeHealth(knowledgeIndex) : undefined,
-    [knowledgeIndex],
-  );
-  const knowledgeHealthDelta = useMemo<WorkspaceKnowledgeHealthDelta | undefined>(
-    () => {
-      if (!knowledgeBaseline || !knowledgeIndex) return undefined;
-      try {
-        return getWorkspaceKnowledgeHealthDelta(
-          createWorkspaceKnowledgeIndex(knowledgeBaseline.documents),
-          knowledgeIndex,
-        );
-      } catch {
-        return undefined;
-      }
-    },
-    [knowledgeBaseline, knowledgeIndex],
-  );
-  const conformancePlan = useMemo(
-    () => knowledgeIndex && compatibilityReport
-      ? planWorkspaceOkfConformance(knowledgeIndex, compatibilityReport)
-      : undefined,
-    [compatibilityReport, knowledgeIndex],
   );
   if (!isOpen) {
     return null;
@@ -454,14 +420,9 @@ export function RightPanel({
               activeFileId={activeFileId}
               activeFileTitle={activeFileTitle}
               noDocumentCopy={copy.noDocumentOpen}
-              compatibilityCopy={compatibilityCopy}
-              compatibilityReport={compatibilityReport}
-              conformancePlan={conformancePlan}
-              healthDelta={knowledgeHealthDelta}
-              healthReport={knowledgeHealthReport}
+              compatibilityReport={knowledgeCompatibilityReport}
               knowledgeBaseline={knowledgeBaseline}
               knowledgeCompatibilityOpenRequest={knowledgeCompatibilityOpenRequest}
-              knowledgeLogCandidate={knowledgeLogCandidate}
               index={knowledgeIndex}
               language={language}
               onApplyConceptRepairs={onApplyOkfConceptRepairs}

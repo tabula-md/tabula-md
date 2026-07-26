@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { AppToast } from "../../ui/AppToast";
 import { JsonShareImportDialog } from "../../share/JsonShareImportDialog";
 import { TooltipLayer } from "../../ui/TooltipLayer";
@@ -11,10 +12,19 @@ import {
   type WorkspaceInfoDialogKind,
 } from "./WorkspaceInfoDialog";
 import type { ShortcutPlatform } from "../keyboardShortcuts";
-import { WorkspaceFolderImportDialog } from "./WorkspaceFolderImportDialog";
-import { WorkspaceExportReviewDialog } from "./WorkspaceExportReviewDialog";
 import type { WorkspaceExportReview } from "../io/workspaceExportReviewModel";
 import type { WorkspaceFolderImportDraft } from "../io/workspaceFolderImport";
+
+const WorkspaceFolderImportDialog = lazy(() =>
+  import("./WorkspaceFolderImportDialog").then((module) => ({
+    default: module.WorkspaceFolderImportDialog,
+  }))
+);
+const WorkspaceExportReviewDialog = lazy(() =>
+  import("./WorkspaceExportReviewDialog").then((module) => ({
+    default: module.WorkspaceExportReviewDialog,
+  }))
+);
 
 type JsonShareImportState =
   | { status: "loading" }
@@ -75,22 +85,26 @@ export function WorkspaceOverlaySurface({
         />
       )}
       {workspaceFolderImport && (
-        <WorkspaceFolderImportDialog
-          language={language}
-          workspace={workspaceFolderImport.workspace}
-          profile={workspaceFolderImport.profile}
-          onCancel={onCloseWorkspaceFolderImport}
-          onReplace={onReplaceWorkspaceWithFolder}
-        />
+        <Suspense fallback={null}>
+          <WorkspaceFolderImportDialog
+            language={language}
+            workspace={workspaceFolderImport.workspace}
+            profile={workspaceFolderImport.profile}
+            onCancel={onCloseWorkspaceFolderImport}
+            onReplace={onReplaceWorkspaceWithFolder}
+          />
+        </Suspense>
       )}
       {workspaceExportReview && (
-        <WorkspaceExportReviewDialog
-          language={language}
-          review={workspaceExportReview}
-          onCancel={onCloseWorkspaceExportReview}
-          onExport={onConfirmWorkspaceExport}
-          onReviewIssues={onReviewWorkspaceExportIssues}
-        />
+        <Suspense fallback={null}>
+          <WorkspaceExportReviewDialog
+            language={language}
+            review={workspaceExportReview}
+            onCancel={onCloseWorkspaceExportReview}
+            onExport={onConfirmWorkspaceExport}
+            onReviewIssues={onReviewWorkspaceExportIssues}
+          />
+        </Suspense>
       )}
       {toast && (
         <AppToast

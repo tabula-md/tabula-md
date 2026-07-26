@@ -11,7 +11,6 @@ import {
   applyTextPatches,
   appendOkfVerification,
   captureWorkspaceKnowledgeBaseline,
-  planWorkspaceOkfLog,
   setOkfConceptType,
   type OkfConceptRepairUpdate,
   type OkfIndexCandidate,
@@ -418,15 +417,6 @@ export function useWorkspaceRuntime() {
       openFileIds,
     ],
   );
-  const knowledgeLogCandidate = useMemo(
-    () => knowledgeBaseline
-      ? planWorkspaceOkfLog(
-          knowledgeBaseline,
-          getWorkspaceKnowledgeDocuments(files, folders),
-        )
-      : undefined,
-    [files, folders, knowledgeBaseline],
-  );
   const {
     topPopover,
     setTopPopover,
@@ -613,7 +603,7 @@ export function useWorkspaceRuntime() {
     ));
     return true;
   });
-  const materializeOkfLog = useEventCallback((
+  const materializeOkfLog = useEventCallback(async (
     candidate: WorkspaceOkfLogCandidate,
   ) => {
     if (!knowledgeBaseline || activeRoom || !candidate.markdown) return false;
@@ -622,6 +612,9 @@ export function useWorkspaceRuntime() {
     const currentDocuments = getWorkspaceKnowledgeDocuments(
       snapshot.files,
       snapshot.folders,
+    );
+    const { planWorkspaceOkfLog } = await import(
+      "./workspaceKnowledgeChangesRuntime"
     );
     const currentCandidate = planWorkspaceOkfLog(
       knowledgeBaseline,
@@ -1055,7 +1048,6 @@ export function useWorkspaceRuntime() {
       folders,
       knowledgeBaseline,
       knowledgeCompatibilityOpenRequest,
-      knowledgeLogCandidate,
       focusTextRange,
       formatCommentDate,
       identityName: identity.name,

@@ -28,10 +28,7 @@ import {
   type WorkspaceKnowledgeBaseline,
 } from "@tabula-md/tabula";
 import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
-import {
-  getWorkspaceExportReview,
-  type WorkspaceExportReview,
-} from "./workspaceExportReviewModel";
+import type { WorkspaceExportReview } from "./workspaceExportReviewModel";
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -227,7 +224,7 @@ export function useWorkspaceFileIoController({
       showToast(copy.exportFailed, "error");
     }
   };
-  const downloadWorkspaceArchive = () => {
+  const downloadWorkspaceArchive = async () => {
     const workspaceSnapshot = getWorkspaceFileIoBoundaryWorkspaceSnapshot({
       activeFile,
       activeFileId,
@@ -237,6 +234,9 @@ export function useWorkspaceFileIoController({
       onBeforeWorkspaceBoundary,
       openFileIds,
     });
+    const { getWorkspaceExportReview } = await import(
+      "./workspaceExportReviewModel"
+    );
     const review = getWorkspaceExportReview(
       workspaceSnapshot.files,
       workspaceSnapshot.folders,

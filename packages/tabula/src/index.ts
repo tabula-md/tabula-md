@@ -652,13 +652,17 @@ export {
 } from "./workspaceKnowledgeHealth";
 export type {
   WorkspaceKnowledgeBaseline,
+} from "./workspaceKnowledgeBaseline";
+export {
+  captureWorkspaceKnowledgeBaseline,
+} from "./workspaceKnowledgeBaseline";
+export type {
   WorkspaceKnowledgeChange,
   WorkspaceKnowledgeChangeSet,
   WorkspaceKnowledgeMetadataChange,
   WorkspaceOkfLogCandidate,
 } from "./workspaceKnowledgeChanges";
 export {
-  captureWorkspaceKnowledgeBaseline,
   getWorkspaceKnowledgeChangeSet,
   planWorkspaceOkfLog,
 } from "./workspaceKnowledgeChanges";
