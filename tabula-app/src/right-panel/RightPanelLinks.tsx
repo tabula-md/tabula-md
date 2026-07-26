@@ -1,5 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { ArrowUpRight, ChevronDown, CornerDownLeft } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronDown,
+  CornerDownLeft,
+} from "lucide-react";
 import type { WorkspaceKnowledgeIndex, WorkspaceKnowledgeLink } from "@tabula-md/tabula";
 import { classifyMarkdownHref } from "../preview/markdownHref";
 import type { WorkspaceFileTabLabel } from "../workspace/workspaceDisplayTitles";

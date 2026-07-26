@@ -4,8 +4,9 @@ import {
 } from "./markdown/parse";
 import type { WorkspaceKnowledgeIndex } from "./workspaceKnowledgeIndex";
 
-/** Canonical draft: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md */
-export const OKF_TARGET_VERSION = "0.1";
+/** Canonical specification: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md */
+export const OKF_TARGET_VERSION = "0.2";
+export const OKF_SUPPORTED_VERSIONS = ["0.1", OKF_TARGET_VERSION] as const;
 
 export type OkfDocumentRole = "concept" | "index" | "log" | "unsupported";
 export type OkfDocumentStatus = "conformant" | "nonconformant" | "ignored";
@@ -222,7 +223,7 @@ export const getWorkspaceOkfCompatibility = (
             ));
           } else {
             declaredVersion = version.trim();
-            if (declaredVersion !== OKF_TARGET_VERSION) {
+            if (!(OKF_SUPPORTED_VERSIONS as readonly string[]).includes(declaredVersion)) {
               issues.push(createIssue(
                 document.id,
                 document.path,

@@ -5,10 +5,11 @@ import {
   type WorkspaceFile,
   type WorkspaceFolder,
 } from "../workspaceStorage";
+import { decodeBinaryWorkspaceSupportFile } from "./workspaceSupportFile";
 
 export type ZipEntrySource = {
   path: string;
-  content: string;
+  content: string | Uint8Array;
 };
 
 const requireArchivePathSegment = (title: string) => {
@@ -59,7 +60,7 @@ export const getWorkspaceArchiveEntries = (files: WorkspaceFile[], folders: Work
     const archivePath = [...getFolderPath(file.parentId, foldersById), requireArchivePathSegment(file.title)].join("/");
     return {
       path: archivePath,
-      content: file.text,
+      content: decodeBinaryWorkspaceSupportFile(archivePath, file.text) ?? file.text,
     };
   })];
   for (const entry of entries) {
@@ -77,7 +78,10 @@ export const createZipArchive = (entries: ZipEntrySource[]) =>
       reject(new Error("Workspace export failed: duplicate archive path."));
       return;
     }
-    const source = Object.fromEntries(entries.map((entry) => [entry.path, strToU8(entry.content)]));
+    const source = Object.fromEntries(entries.map((entry) => [
+      entry.path,
+      typeof entry.content === "string" ? strToU8(entry.content) : entry.content,
+    ]));
 
     zip(source, { level: 6 }, (error, bytes) => {
       if (error) {

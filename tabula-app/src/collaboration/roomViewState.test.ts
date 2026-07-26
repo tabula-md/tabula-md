@@ -46,12 +46,26 @@ describe("room view state", () => {
     })).toMatchObject({ rightPanelOpen: true, rightPanelView: "links" });
   });
 
-  it("restores the graph panel as tab-local room state", () => {
+  it("restores search and knowledge as separate panel views", () => {
+    expect(parseRoomViewState({
+      openDocumentIds: ["readme"],
+      rightPanelOpen: true,
+      rightPanelView: "search",
+    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "search" });
+
+    expect(parseRoomViewState({
+      openDocumentIds: ["readme"],
+      rightPanelOpen: true,
+      rightPanelView: "knowledge",
+    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "knowledge" });
+  });
+
+  it("migrates the retired graph panel to links", () => {
     expect(parseRoomViewState({
       openDocumentIds: ["readme"],
       rightPanelOpen: true,
       rightPanelView: "graph",
-    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "graph" });
+    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "links" });
   });
 
   it("restores valid tabs and falls back when the saved active document was deleted", () => {

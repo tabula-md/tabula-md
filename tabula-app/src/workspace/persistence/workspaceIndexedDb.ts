@@ -1,4 +1,5 @@
 import Dexie, { type Table } from "dexie";
+import type { WorkspaceKnowledgeBaseline } from "@tabula-md/tabula";
 import {
   PROJECT_STORAGE_VERSION,
   finalizeWorkspaceState,
@@ -38,6 +39,11 @@ export type WorkspaceCommentRecord = {
   comments: FileComment[];
 };
 
+export type WorkspaceKnowledgeBaselineRecord = {
+  key: typeof LOCAL_WORKSPACE_KEY;
+  payload: WorkspaceKnowledgeBaseline;
+};
+
 export type WorkspaceWritePlan = {
   manifest: WorkspaceManifestRecord;
   filePuts: WorkspaceFileRecord[];
@@ -46,6 +52,8 @@ export type WorkspaceWritePlan = {
   folderDeletes: string[];
   commentPuts: WorkspaceCommentRecord[];
   commentDeletes: string[];
+  knowledgeBaselinePut?: WorkspaceKnowledgeBaselineRecord;
+  deleteKnowledgeBaseline: boolean;
 };
 
 export type WorkspaceDatabaseAdapter = {
@@ -59,6 +67,7 @@ class TabulaWorkspaceDb extends Dexie {
   workspaceFiles!: Table<WorkspaceFileRecord, string>;
   workspaceFolders!: Table<WorkspaceFolderRecord, string>;
   workspaceComments!: Table<WorkspaceCommentRecord, string>;
+  workspaceKnowledgeBaselines!: Table<WorkspaceKnowledgeBaselineRecord, string>;
   constructor() {
     super(WORKSPACE_DATABASE_NAME);
     this.version(1).stores({
@@ -66,6 +75,13 @@ class TabulaWorkspaceDb extends Dexie {
       workspaceFiles: "id",
       workspaceFolders: "id",
       workspaceComments: "fileId",
+    });
+    this.version(2).stores({
+      workspaceManifests: "key",
+      workspaceFiles: "id",
+      workspaceFolders: "id",
+      workspaceComments: "fileId",
+      workspaceKnowledgeBaselines: "key",
     });
   }
 }
@@ -79,14 +95,16 @@ const dexieWorkspaceDatabaseAdapter: WorkspaceDatabaseAdapter = {
     workspaceIndexedDb.workspaceFiles,
     workspaceIndexedDb.workspaceFolders,
     workspaceIndexedDb.workspaceComments,
+    workspaceIndexedDb.workspaceKnowledgeBaselines,
     async () => {
       const manifest = await workspaceIndexedDb.workspaceManifests.get(LOCAL_WORKSPACE_KEY);
       if (!manifest || manifest.version !== PROJECT_STORAGE_VERSION) return null;
 
-      const [fileRecords, folderRecords, commentRecords] = await Promise.all([
+      const [fileRecords, folderRecords, commentRecords, knowledgeBaselineRecord] = await Promise.all([
         workspaceIndexedDb.workspaceFiles.bulkGet(manifest.fileOrder),
         workspaceIndexedDb.workspaceFolders.bulkGet(manifest.folderOrder),
         workspaceIndexedDb.workspaceComments.bulkGet(manifest.fileOrder),
+        workspaceIndexedDb.workspaceKnowledgeBaselines.get(LOCAL_WORKSPACE_KEY),
       ]);
       const files = fileRecords.flatMap((record) => record ? [record.payload] : []);
       const folders = folderRecords.flatMap((record) => record ? [record.payload] : []);
@@ -97,6 +115,7 @@ const dexieWorkspaceDatabaseAdapter: WorkspaceDatabaseAdapter = {
       return finalizeWorkspaceState(files, manifest.activeFileId, commentsByFileId, {
         folders,
         openFileIds: manifest.openFileIds,
+        knowledgeBaseline: knowledgeBaselineRecord?.payload,
       });
     },
   ),
@@ -106,6 +125,7 @@ const dexieWorkspaceDatabaseAdapter: WorkspaceDatabaseAdapter = {
     workspaceIndexedDb.workspaceFiles,
     workspaceIndexedDb.workspaceFolders,
     workspaceIndexedDb.workspaceComments,
+    workspaceIndexedDb.workspaceKnowledgeBaselines,
     async () => {
       if (plan.filePuts.length) await workspaceIndexedDb.workspaceFiles.bulkPut(plan.filePuts);
       if (plan.fileDeletes.length) await workspaceIndexedDb.workspaceFiles.bulkDelete(plan.fileDeletes);
@@ -113,6 +133,11 @@ const dexieWorkspaceDatabaseAdapter: WorkspaceDatabaseAdapter = {
       if (plan.folderDeletes.length) await workspaceIndexedDb.workspaceFolders.bulkDelete(plan.folderDeletes);
       if (plan.commentPuts.length) await workspaceIndexedDb.workspaceComments.bulkPut(plan.commentPuts);
       if (plan.commentDeletes.length) await workspaceIndexedDb.workspaceComments.bulkDelete(plan.commentDeletes);
+      if (plan.knowledgeBaselinePut) {
+        await workspaceIndexedDb.workspaceKnowledgeBaselines.put(plan.knowledgeBaselinePut);
+      } else if (plan.deleteKnowledgeBaseline) {
+        await workspaceIndexedDb.workspaceKnowledgeBaselines.delete(LOCAL_WORKSPACE_KEY);
+      }
       await workspaceIndexedDb.workspaceManifests.put(plan.manifest);
     },
   ),
@@ -122,12 +147,14 @@ const dexieWorkspaceDatabaseAdapter: WorkspaceDatabaseAdapter = {
     workspaceIndexedDb.workspaceFiles,
     workspaceIndexedDb.workspaceFolders,
     workspaceIndexedDb.workspaceComments,
+    workspaceIndexedDb.workspaceKnowledgeBaselines,
     async () => {
       await Promise.all([
         workspaceIndexedDb.workspaceManifests.clear(),
         workspaceIndexedDb.workspaceFiles.clear(),
         workspaceIndexedDb.workspaceFolders.clear(),
         workspaceIndexedDb.workspaceComments.clear(),
+        workspaceIndexedDb.workspaceKnowledgeBaselines.clear(),
       ]);
     },
   ),
@@ -137,6 +164,7 @@ type SourceTracker = {
   fileRefs: Map<string, WorkspaceFile>;
   folderRefs: Map<string, WorkspaceFolder>;
   commentRefs: Map<string, FileComment[]>;
+  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
 };
 
 const adapterTrackers = new WeakMap<WorkspaceDatabaseAdapter, SourceTracker>();
@@ -145,12 +173,14 @@ const createSourceTracker = (
   files: readonly WorkspaceFile[],
   folders: readonly WorkspaceFolder[],
   commentsByFileId: Record<string, FileComment[]>,
+  knowledgeBaseline?: WorkspaceKnowledgeBaseline,
 ): SourceTracker => ({
   fileRefs: new Map(files.map((file) => [file.id, file])),
   folderRefs: new Map(folders.map((folder) => [folder.id, folder])),
   commentRefs: new Map(
     Object.entries(commentsByFileId).filter(([, comments]) => comments.length > 0),
   ),
+  knowledgeBaseline,
 });
 
 const getDeletedIds = (previousIds: Iterable<string>, currentIds: ReadonlySet<string>) =>
@@ -202,6 +232,16 @@ export const createWorkspaceWritePlan = (
       .filter((fileId) => previous?.commentRefs.get(fileId) !== workspace.commentsByFileId[fileId])
       .map((fileId) => ({ fileId, comments: workspace.commentsByFileId[fileId]! })),
     commentDeletes: getDeletedIds(previous?.commentRefs.keys() ?? [], commentIds),
+    knowledgeBaselinePut:
+      workspace.knowledgeBaseline
+      && previous?.knowledgeBaseline !== workspace.knowledgeBaseline
+        ? {
+            key: LOCAL_WORKSPACE_KEY,
+            payload: workspace.knowledgeBaseline,
+          }
+        : undefined,
+    deleteKnowledgeBaseline:
+      !workspace.knowledgeBaseline && Boolean(previous?.knowledgeBaseline),
   };
 };
 
@@ -219,6 +259,7 @@ export const writeIndexedDbWorkspace = async (
     workspace.files.filter((file) => storedIds.has(file.id)),
     workspace.folders,
     storedCommentsByFileId,
+    workspace.knowledgeBaseline,
   ));
 };
 
@@ -231,6 +272,7 @@ export const readIndexedDbWorkspace = async (
       workspace.files,
       workspace.folders,
       workspace.commentsByFileId,
+      workspace.knowledgeBaseline,
     ));
   }
   return workspace;

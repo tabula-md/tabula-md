@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { captureWorkspaceKnowledgeBaseline } from "@tabula-md/tabula";
 import {
   getWorkspaceHydrationSignature,
   shouldDeferIndexedDbWorkspacePersistence,
@@ -42,6 +43,25 @@ describe("IndexedDB workspace hydration", () => {
         indexedDbWorkspace,
       }),
     ).toBe(false);
+  });
+
+  it("hydrates maintenance state even when the document content still matches the starter", () => {
+    const initialWorkspace = createWorkspace("");
+    const indexedDbWorkspace = {
+      ...createWorkspace(""),
+      knowledgeBaseline: captureWorkspaceKnowledgeBaseline([{
+        id: "local",
+        path: "LOCAL.md",
+        markdown: "",
+      }], "2026-07-25T00:00:00.000Z"),
+    };
+
+    expect(shouldApplyIndexedDbWorkspaceHydration({
+      enabled: true,
+      currentWorkspace: initialWorkspace,
+      initialWorkspace,
+      indexedDbWorkspace,
+    })).toBe(true);
   });
 
   it("skips hydration when disabled or when IndexedDB has no workspace", () => {

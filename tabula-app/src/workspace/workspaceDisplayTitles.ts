@@ -75,6 +75,18 @@ const getFolderPath = (
   return path;
 };
 
+export const getWorkspaceFolderPaths = (
+  folders: readonly WorkspaceFolder[],
+) => {
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  return new Map(folders.map((folder) => [
+    folder.id,
+    folder.id === WORKSPACE_ROOT_FOLDER_ID
+      ? ""
+      : getFolderPath(folder.id, foldersById).join("/"),
+  ]));
+};
+
 export const getWorkspaceFilePaths = (
   files: readonly WorkspaceFile[],
   folders: readonly WorkspaceFolder[],

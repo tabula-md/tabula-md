@@ -15,11 +15,16 @@ export const getWorkspaceKnowledgeDocuments = (
   folders: readonly WorkspaceFolder[],
 ): WorkspaceSourceDocument[] => {
   const paths = getWorkspaceFilePaths(files, folders);
-  return files.map((file) => ({
-    id: file.id,
-    path: paths.get(file.id) ?? file.title,
-    markdown: file.text,
-  }));
+  return files.flatMap((file) => {
+    const path = paths.get(file.id) ?? file.title;
+    return /\.md$/i.test(path)
+      ? [{
+          id: file.id,
+          path,
+          markdown: file.text,
+        }]
+      : [];
+  });
 };
 type WorkspaceKnowledgePathState = {
   files: WorkspaceFile[];

@@ -1,5 +1,6 @@
 import { useIndexedDbWorkspaceHydration } from "./useIndexedDbWorkspaceHydration";
 import { useQueuedWorkspacePersistence } from "./useQueuedWorkspacePersistence";
+import type { WorkspaceKnowledgeBaseline } from "@tabula-md/tabula";
 import type { FileComment, WorkspaceState } from "../workspaceStorage";
 
 type UseWorkspacePersistenceRuntimeOptions = {
@@ -11,6 +12,7 @@ type UseWorkspacePersistenceRuntimeOptions = {
   replaceCommentsByFileId: (
     commentsByFileId: Record<string, FileComment[]>,
   ) => void;
+  replaceKnowledgeBaseline: (baseline?: WorkspaceKnowledgeBaseline) => void;
   replaceWorkspace: (
     workspace: Pick<WorkspaceState, "activeFileId" | "files" | "folders" | "openFileIds">,
   ) => void;
@@ -24,6 +26,7 @@ export function useWorkspacePersistenceRuntime({
   onBeforePersist,
   onError,
   replaceCommentsByFileId,
+  replaceKnowledgeBaseline,
   replaceWorkspace,
   workspace,
 }: UseWorkspacePersistenceRuntimeOptions) {
@@ -33,6 +36,7 @@ export function useWorkspacePersistenceRuntime({
     onError,
     workspace,
     replaceCommentsByFileId,
+    replaceKnowledgeBaseline,
     replaceWorkspace,
   });
 

@@ -17,6 +17,13 @@ import {
   type WorkspaceFolder,
   type WorkspaceState,
 } from "../workspaceStorage";
+import {
+  encodeBinaryWorkspaceSupportFile,
+  isMarkdownWorkspacePath,
+  isPreservedWorkspaceSupportPath,
+} from "./workspaceSupportFile";
+import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
+import type { WorkspaceImportProfile } from "./workspaceImportProfile";
 
 export type WorkspaceFolderImportDefaults = {
   viewMode: FileViewMode;
@@ -30,8 +37,21 @@ type FolderImportEntry = {
   segments: string[];
 };
 
-const markdownFilePattern = /\.md$/i;
+export type WorkspaceFolderImportDraft = {
+  workspace: WorkspaceState;
+  profile: WorkspaceImportProfile;
+};
+
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
+
+const decodeImportedFile = (bytes: Uint8Array, path: string) => {
+  if (isMarkdownWorkspacePath(path)) return textDecoder.decode(bytes);
+  try {
+    return textDecoder.decode(bytes);
+  } catch {
+    return encodeBinaryWorkspaceSupportFile(bytes);
+  }
+};
 
 const parseRelativePath = (file: File) => {
   const rawPath = file.webkitRelativePath || file.name;
@@ -57,25 +77,31 @@ const extractSelectedRoot = (entries: FolderImportEntry[]) => {
   };
 };
 
-export const parseWorkspaceFolderFiles = async (
+export const parseWorkspaceFolderImport = async (
   selectedFiles: readonly File[],
   defaults: WorkspaceFolderImportDefaults,
-): Promise<WorkspaceState> => {
+): Promise<WorkspaceFolderImportDraft> => {
+  const parsedEntries = selectedFiles
+    .map((file) => ({ file, segments: parseRelativePath(file) }))
+    .sort((first, second) =>
+      first.segments.join("/").localeCompare(second.segments.join("/")));
   const {
-    entries,
+    entries: normalizedEntries,
     selectedRoot,
-  } = extractSelectedRoot(
-    selectedFiles
-      .map((file) => ({ file, segments: parseRelativePath(file) }))
-      .filter(({ segments }) => markdownFilePattern.test(segments.at(-1) ?? ""))
-      .sort((first, second) => first.segments.join("/").localeCompare(second.segments.join("/"))),
+  } = extractSelectedRoot(parsedEntries);
+  const entries = normalizedEntries.filter(({ segments }) =>
+    isMarkdownWorkspacePath(segments.at(-1) ?? "")
+    || isPreservedWorkspaceSupportPath(segments)
   );
-
-  if (entries.length === 0) {
+  if (
+    !entries.some(({ segments }) =>
+      isMarkdownWorkspacePath(segments.at(-1) ?? ""))
+  ) {
     throw new Error("This workspace folder does not contain any Markdown files.");
   }
+
   if (entries.length > WORKSPACE_ROOM_MAX_DOCUMENTS) {
-    throw new Error(`A workspace can contain up to ${WORKSPACE_ROOM_MAX_DOCUMENTS} documents.`);
+    throw new Error(`A workspace can contain up to ${WORKSPACE_ROOM_MAX_DOCUMENTS} files.`);
   }
 
   const folders: WorkspaceFolder[] = [createWorkspaceRootFolder(selectedRoot)];
@@ -111,12 +137,12 @@ export const parseWorkspaceFolderFiles = async (
     const bytes = new Uint8Array(await file.arrayBuffer());
     contentBytes += bytes.byteLength;
     if (contentBytes > WORKSPACE_ROOM_MAX_CONTENT_BYTES) {
-      throw new Error("The Markdown content in this workspace folder is too large.");
+      throw new Error("The file content in this workspace folder is too large.");
     }
     files.push(createWorkspaceFile(files.length + 1, {
       id: randomId(),
       title: segments.at(-1) ?? file.name,
-      text: textDecoder.decode(bytes),
+      text: decodeImportedFile(bytes, segments.join("/")),
       parentId: ensureFolder(segments.slice(0, -1)),
       viewMode: defaults.viewMode,
       readingWidth: defaults.readingWidth,
@@ -125,8 +151,38 @@ export const parseWorkspaceFolderFiles = async (
     }));
   }
 
-  return finalizeWorkspaceState(files, undefined, {}, {
+  const workspace = finalizeWorkspaceState(files, undefined, {}, {
     folders,
     openFileIds: [],
   });
+  const importedPaths = entries.map(({ segments }) => segments.join("/"));
+  const supportFiles = entries.flatMap(({ segments }, index) => {
+    const path = segments.join("/");
+    const file = files[index];
+    return file && !isMarkdownWorkspacePath(path)
+      ? [{ path, text: file.text }]
+      : [];
+  });
+  const { detectWorkspaceImportProfile } = await import(
+    "./workspaceImportProfile"
+  );
+  return {
+    workspace,
+    profile: detectWorkspaceImportProfile({
+      documents: getWorkspaceKnowledgeDocuments(
+        workspace.files,
+        workspace.folders,
+      ),
+      supportFiles,
+      sourcePaths: normalizedEntries.map(({ segments }) => segments.join("/")),
+      importedPaths,
+    }),
+  };
 };
+
+export const parseWorkspaceFolderFiles = async (
+  selectedFiles: readonly File[],
+  defaults: WorkspaceFolderImportDefaults,
+): Promise<WorkspaceState> => (
+  await parseWorkspaceFolderImport(selectedFiles, defaults)
+).workspace;

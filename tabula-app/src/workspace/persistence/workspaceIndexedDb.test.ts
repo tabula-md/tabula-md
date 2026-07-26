@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { captureWorkspaceKnowledgeBaseline } from "@tabula-md/tabula";
 import {
   deleteIndexedDbWorkspace,
   readIndexedDbWorkspace,
@@ -14,6 +15,15 @@ const createWorkspace = (text: string): WorkspaceState => ({
   openFileIds: ["local"],
   activeFileId: "local",
   commentsByFileId: {},
+});
+
+const withKnowledgeBaseline = (workspace: WorkspaceState): WorkspaceState => ({
+  ...workspace,
+  knowledgeBaseline: captureWorkspaceKnowledgeBaseline([{
+    id: "local",
+    path: "LOCAL.md",
+    markdown: workspace.files[0]?.text ?? "",
+  }], "2026-07-25T00:00:00.000Z"),
 });
 
 const createMemoryAdapter = () => {
@@ -61,6 +71,34 @@ describe("workspace IndexedDB adapter", () => {
 
     expect(memory.workspacePlans[1]?.filePuts.map((record) => record.id)).toEqual(["local"]);
     expect(memory.workspacePlans[1]?.fileDeletes).toEqual([]);
+  });
+
+  it("persists the knowledge baseline separately and skips unchanged writes", async () => {
+    const memory = createMemoryAdapter();
+    const workspace = withKnowledgeBaseline(createWorkspace("# First"));
+
+    await writeIndexedDbWorkspace(workspace, memory.adapter);
+    await writeIndexedDbWorkspace(workspace, memory.adapter);
+
+    expect(memory.workspacePlans[0]?.knowledgeBaselinePut?.payload).toEqual(
+      workspace.knowledgeBaseline,
+    );
+    expect(memory.workspacePlans[0]?.deleteKnowledgeBaseline).toBe(false);
+    expect(memory.workspacePlans[1]?.knowledgeBaselinePut).toBeUndefined();
+    expect(memory.workspacePlans[1]?.deleteKnowledgeBaseline).toBe(false);
+  });
+
+  it("deletes a previously persisted knowledge baseline when tracking is cleared", async () => {
+    const memory = createMemoryAdapter();
+    const trackedWorkspace = withKnowledgeBaseline(createWorkspace("# First"));
+
+    await writeIndexedDbWorkspace(trackedWorkspace, memory.adapter);
+    await writeIndexedDbWorkspace(
+      { ...trackedWorkspace, knowledgeBaseline: undefined },
+      memory.adapter,
+    );
+
+    expect(memory.workspacePlans[1]?.deleteKnowledgeBaseline).toBe(true);
   });
 
   it("does not read or serialize unchanged file content while planning a later write", async () => {

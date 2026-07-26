@@ -23,6 +23,11 @@ import { productAnalytics } from "../observability/productAnalytics";
 import { useEventCallback } from "../shared/useEventCallback";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
+import {
+  captureWorkspaceKnowledgeBaseline,
+  type WorkspaceKnowledgeBaseline,
+} from "@tabula-md/tabula";
+import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
 
 export type PendingJsonShareImport =
   | { status: "loading"; route: JsonShareRoute }
@@ -38,6 +43,7 @@ type UseJsonShareImportControllerArgs = {
   language: WorkspaceLanguage;
   onBeforeWorkspaceBoundary?: () => void;
   replaceCommentsByFileId: (commentsByFileId: Record<string, FileComment[]>) => void;
+  replaceKnowledgeBaseline: (baseline?: WorkspaceKnowledgeBaseline) => void;
   replaceWorkspace: (workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">) => WorkspaceFile | undefined;
   resetCollaborationState: (nextStatus: ConnectionStatus) => void;
   showToast: (
@@ -57,6 +63,7 @@ export function useJsonShareImportController({
   language,
   onBeforeWorkspaceBoundary,
   replaceCommentsByFileId,
+  replaceKnowledgeBaseline,
   replaceWorkspace,
   resetCollaborationState,
   showToast,
@@ -83,13 +90,18 @@ export function useJsonShareImportController({
 
   const replaceWorkspaceWithJsonShare = useEventCallback((workspace: WorkspaceState) => {
     const previousWorkspace = getWorkspaceSnapshot?.();
+    const knowledgeBaseline = captureWorkspaceKnowledgeBaseline(
+      getWorkspaceKnowledgeDocuments(workspace.files, workspace.folders),
+    );
+    const nextWorkspace = { ...workspace, knowledgeBaseline };
     jsonShareImportCleanupRef.current = null;
     handledJsonShareRouteRef.current = null;
     onBeforeWorkspaceBoundary?.();
-    replaceWorkspace(workspace);
-    replaceCommentsByFileId(workspace.commentsByFileId);
+    replaceWorkspace(nextWorkspace);
+    replaceCommentsByFileId(nextWorkspace.commentsByFileId);
+    replaceKnowledgeBaseline(knowledgeBaseline);
     productAnalytics.report("export_link_loaded");
-    void writeIndexedDbWorkspace(workspace).catch((error: unknown) => {
+    void writeIndexedDbWorkspace(nextWorkspace).catch((error: unknown) => {
       clientErrorReporter.report({
         feature: "workspace",
         operation: "persist-export-import",
@@ -108,6 +120,7 @@ export function useJsonShareImportController({
         onBeforeWorkspaceBoundary?.();
         replaceWorkspace(previousWorkspace);
         replaceCommentsByFileId(previousWorkspace.commentsByFileId);
+        replaceKnowledgeBaseline(previousWorkspace.knowledgeBaseline);
         void writeIndexedDbWorkspace(previousWorkspace).catch((error: unknown) => {
           clientErrorReporter.report({
             feature: "workspace",

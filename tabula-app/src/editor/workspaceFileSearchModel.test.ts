@@ -7,16 +7,30 @@ describe("searchWorkspaceFiles", () => {
     {
       fileId: "alpha",
       displayPath: "Notes/Alpha",
+      title: "Checkout operations",
+      description: "How responders mitigate failed payments",
       type: "Runbook",
       tags: ["oncall", "payments"],
       resource: "https://github.com/acme/payments",
+      sourceValues: ["policy", "Finance policy", "team:finance"],
+      generatedBy: "agent:research",
+      verifiedBy: ["human:taeha"],
+      status: "stable" as const,
+      trustTier: "human-reviewed" as const,
+      freshness: "current" as const,
+      markdown: "# Operations\n\nRestart the settlement worker.",
     },
     {
       fileId: "beta",
       displayPath: "Planning/Beta",
+      title: "Payment retry decision",
       type: "Decision",
       tags: ["payments"],
       resource: "urn:tabula:planning",
+      status: "draft" as const,
+      trustTier: "unverified" as const,
+      freshness: "stale" as const,
+      markdown: "# Decision\n\nUse exponential backoff.",
     },
     { fileId: "other", displayPath: "Other" },
   ];
@@ -28,9 +42,15 @@ describe("searchWorkspaceFiles", () => {
       .toEqual([files[0]]);
   });
 
-  it("does not search Markdown content", () => {
-    expect(searchWorkspaceFiles(files, "workspace body", DEFAULT_SEARCH_OPTIONS).files)
-      .toEqual([]);
+  it("searches concept titles, descriptions, and Markdown content", () => {
+    expect(searchWorkspaceFiles(files, "checkout operations", DEFAULT_SEARCH_OPTIONS).files)
+      .toEqual([files[0]]);
+    expect(searchWorkspaceFiles(files, "mitigate failed", DEFAULT_SEARCH_OPTIONS).files)
+      .toEqual([files[0]]);
+    expect(searchWorkspaceFiles(files, "settlement worker", DEFAULT_SEARCH_OPTIONS).files)
+      .toEqual([files[0]]);
+    expect(searchWorkspaceFiles(files, "exponential backoff", DEFAULT_SEARCH_OPTIONS).files)
+      .toEqual([files[1]]);
   });
 
   it("searches normalized knowledge metadata", () => {
@@ -42,6 +62,27 @@ describe("searchWorkspaceFiles", () => {
       .toEqual([files[0]]);
     expect(searchWorkspaceFiles(files, "urn:tabula", DEFAULT_SEARCH_OPTIONS).files)
       .toEqual([files[1]]);
+    expect(searchWorkspaceFiles(files, "Finance policy", DEFAULT_SEARCH_OPTIONS).files)
+      .toEqual([files[0]]);
+    expect(searchWorkspaceFiles(files, "human:taeha", DEFAULT_SEARCH_OPTIONS).files)
+      .toEqual([files[0]]);
+  });
+
+  it("filters lifecycle, trust, and freshness metadata", () => {
+    expect(searchWorkspaceFiles(files, "", DEFAULT_SEARCH_OPTIONS, {
+      types: new Set(),
+      tags: new Set(),
+      statuses: new Set(["stable"]),
+      trustTiers: new Set(["human-reviewed"]),
+      freshness: new Set(["current"]),
+    }).files).toEqual([files[0]]);
+    expect(searchWorkspaceFiles(files, "", DEFAULT_SEARCH_OPTIONS, {
+      types: new Set(),
+      tags: new Set(),
+      statuses: new Set(["draft"]),
+      trustTiers: new Set(["unverified"]),
+      freshness: new Set(["stale"]),
+    }).files).toEqual([files[1]]);
   });
 
   it("combines type facets with all selected tag facets", () => {

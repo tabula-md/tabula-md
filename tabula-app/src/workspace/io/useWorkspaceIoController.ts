@@ -10,6 +10,7 @@ import type {
 import { useJsonShareImportController } from "../../share/useJsonShareImportController";
 import { useWorkspaceFileIoController } from "./useWorkspaceFileIoController";
 import type { WorkspacePreferences } from "../state/useWorkspacePreferences";
+import type { WorkspaceKnowledgeBaseline } from "@tabula-md/tabula";
 
 type UseWorkspaceIoControllerOptions = {
   activeFile?: WorkspaceFile;
@@ -32,9 +33,11 @@ type UseWorkspaceIoControllerOptions = {
   openFileIds: string[];
   onBeforeWorkspaceBoundary?: () => void;
   preferences: WorkspacePreferences;
+  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
   replaceCommentsByFileId: (
     commentsByFileId: Record<string, FileComment[]>,
   ) => void;
+  replaceKnowledgeBaseline: (baseline?: WorkspaceKnowledgeBaseline) => void;
   replaceWorkspace: (
     workspace: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">,
   ) => WorkspaceFile | undefined;
@@ -65,7 +68,9 @@ export function useWorkspaceIoController({
   openFileIds,
   onBeforeWorkspaceBoundary,
   preferences,
+  knowledgeBaseline,
   replaceCommentsByFileId,
+  replaceKnowledgeBaseline,
   replaceWorkspace,
   resetCollaborationState,
   showToast,
@@ -85,7 +90,9 @@ export function useWorkspaceIoController({
     openFileIds,
     onBeforeWorkspaceBoundary,
     preferences,
+    knowledgeBaseline,
     replaceCommentsByFileId,
+    replaceKnowledgeBaseline,
     replaceWorkspace,
     showToast,
     onCloseChrome: closeFloatingChrome,
@@ -99,6 +106,7 @@ export function useWorkspaceIoController({
     language: preferences.language,
     onBeforeWorkspaceBoundary,
     replaceCommentsByFileId,
+    replaceKnowledgeBaseline,
     replaceWorkspace,
     resetCollaborationState,
     showToast,

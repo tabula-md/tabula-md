@@ -11,6 +11,7 @@ import {
   READING_WIDTHS,
   type FileViewMode,
   type ReadingWidth,
+  type WorkspaceKnowledgeBaseline,
 } from "@tabula-md/tabula";
 import { PRODUCT_NAME } from "../product";
 
@@ -114,6 +115,7 @@ export type WorkspaceState = {
   openFileIds: string[];
   activeFileId: string;
   commentsByFileId: Record<string, FileComment[]>;
+  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
 };
 
 export type InitialWorkspaceSnapshot = {
@@ -480,7 +482,11 @@ export const finalizeWorkspaceState = (
   files: WorkspaceFile[],
   activeFileId?: string,
   commentsByFileId: Record<string, FileComment[]> = {},
-  options: { folders?: WorkspaceFolder[]; openFileIds?: string[] } = {},
+  options: {
+    folders?: WorkspaceFolder[];
+    openFileIds?: string[];
+    knowledgeBaseline?: WorkspaceKnowledgeBaseline;
+  } = {},
 ): WorkspaceState => {
   const normalizedTree = normalizeWorkspaceTree(
     files,
@@ -514,6 +520,9 @@ export const finalizeWorkspaceState = (
     openFileIds: nextOpenFileIds,
     activeFileId: nextActiveFileId,
     commentsByFileId,
+    ...(options.knowledgeBaseline
+      ? { knowledgeBaseline: options.knowledgeBaseline }
+      : {}),
   };
 };
 
