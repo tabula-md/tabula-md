@@ -6,7 +6,6 @@ import {
   WidgetType,
 } from "@codemirror/view";
 import {
-  EditorSelection,
   Prec,
   StateEffect,
   StateField,
@@ -28,12 +27,16 @@ import {
 } from "./editorVisualModeModel";
 import {
   findEditorVisualMappedBlockAt,
-  findEditorVisualMappedBlockOnLine,
   getEditorVisualBlockEntryPosition,
   getEditorVisualPointerPosition,
   getEditorVisualSourceMap,
   readEditorVisualPointerTextPoint,
 } from "./editorVisualPositionMapping";
+import {
+  type EditorVisualBlockStop,
+  normalizeEditorVisualNativeMove,
+  resolveEditorVisualVerticalMove,
+} from "./editorVisualNavigation";
 import { revealEditorVisualSelection } from "./editorVisualEffects";
 import {
   destroyEditorVisualMarkdown,
@@ -261,6 +264,7 @@ const visualSourceHighlightStyle = HighlightStyle.define([
 
 type EditorVisualInteraction = {
   editing: EditorVisualBlockRange | null;
+  stopped: EditorVisualBlockStop | null;
 };
 
 const setVisualInteraction = StateEffect.define<Partial<EditorVisualInteraction>>();
@@ -309,7 +313,7 @@ const editSource = (
 ) => {
   view.dispatch({
     effects: [
-      setVisualInteraction.of({ editing: block }),
+      setVisualInteraction.of({ editing: block, stopped: null }),
       EditorView.scrollIntoView(anchor, {
         y: "nearest",
         yMargin: VISUAL_CURSOR_SAFE_MARGIN,
@@ -324,63 +328,59 @@ const moveByVisualLine = (
   view: EditorView,
   forward: boolean,
   replacements: readonly EditorVisualReplacement[],
-  editingBlock: EditorVisualBlockRange | null,
+  interaction: EditorVisualInteraction,
 ) => {
   const selection = view.state.selection.main;
-  if (!selection.empty) return false;
-  const currentLine = view.state.doc.lineAt(selection.head);
-  const adjacentLineNumber = currentLine.number + (forward ? 1 : -1);
-  if (adjacentLineNumber < 1 || adjacentLineNumber > view.state.doc.lines) return false;
-  const block = findEditorVisualMappedBlockOnLine(
+  const move = resolveEditorVisualVerticalMove(
     view.state,
+    selection,
+    forward,
     replacements,
-    adjacentLineNumber,
+    interaction.editing,
+    interaction.stopped,
   );
-  if (block) {
+  if (move.kind === "unhandled") return false;
+  if (move.kind === "block-entry") {
     editSource(
       view,
-      { from: block.from, to: block.to },
-      getEditorVisualBlockEntryPosition(
-        view.state,
-        block,
-        forward,
-        selection.head - currentLine.from,
-      ),
+      { from: move.block.from, to: move.block.to },
+      move.anchor,
     );
-  } else if (
-    editingBlock &&
-    currentLine.from <= editingBlock.to &&
-    currentLine.to >= editingBlock.from
-  ) {
-    const adjacentLine = view.state.doc.line(adjacentLineNumber);
-    const column = selection.head - currentLine.from;
-    const nextSelection = EditorSelection.cursor(
-      Math.min(adjacentLine.to, adjacentLine.from + column),
-      forward ? 1 : -1,
-    );
+  } else if (move.kind === "block-stop") {
     view.dispatch({
-      selection: view.state.selection.replaceRange(nextSelection),
-      effects: EditorView.scrollIntoView(nextSelection.head, {
-        y: "nearest",
-        yMargin: VISUAL_CURSOR_SAFE_MARGIN,
+      effects: setVisualInteraction.of({
+        editing: null,
+        stopped: {
+          forward: move.forward,
+          from: move.block.from,
+          goalColumn: move.goalColumn,
+          to: move.block.to,
+        },
       }),
+      selection: { anchor: move.anchor },
+    });
+    view.focus();
+  } else if (move.kind === "logical-line") {
+    view.dispatch({
+      effects: [
+        setVisualInteraction.of({ stopped: null }),
+        EditorView.scrollIntoView(move.selection.head, {
+          y: "nearest",
+          yMargin: VISUAL_CURSOR_SAFE_MARGIN,
+        }),
+      ],
+      selection: view.state.selection.replaceRange(move.selection),
     });
   } else {
     const moved = view.moveVertically(selection, forward);
-    if (moved.head === selection.head) return false;
-    const movedLine = view.state.doc.lineAt(moved.head);
-    const nextSelection = movedLine.number === currentLine.number
-      ? moved
-      : (() => {
-          const adjacentLine = view.state.doc.line(adjacentLineNumber);
-          const column = selection.head - currentLine.from;
-          return EditorSelection.cursor(
-            Math.min(adjacentLine.to, adjacentLine.from + column),
-            forward ? 1 : -1,
-            undefined,
-            moved.goalColumn,
-          );
-        })();
+    const nextSelection = normalizeEditorVisualNativeMove(
+      view.state,
+      selection,
+      moved,
+      move.adjacentLineNumber,
+      forward,
+    );
+    if (!nextSelection) return false;
     view.dispatch({
       selection: view.state.selection.replaceRange(nextSelection),
       effects: EditorView.scrollIntoView(nextSelection.head, {
@@ -1403,12 +1403,28 @@ const mapBlock = (
     }
   : block;
 
+const mapStoppedBlock = (
+  block: EditorVisualBlockStop | null,
+  transaction: Transaction,
+): EditorVisualBlockStop | null => {
+  const mapped = mapBlock(block, transaction);
+  return mapped && block
+    ? {
+        ...mapped,
+        forward: block.forward,
+        goalColumn: block.goalColumn,
+      }
+    : null;
+};
+
 const updateVisualInteraction = (
   value: EditorVisualInteraction,
   transaction: Transaction,
 ): EditorVisualInteraction => {
   let editing = mapBlock(value.editing, transaction);
+  let stopped = mapStoppedBlock(value.stopped, transaction);
   let explicitlyEdited = false;
+  let explicitlyStopped = false;
   let revealSelection = false;
 
   for (const effect of transaction.effects) {
@@ -1416,6 +1432,10 @@ const updateVisualInteraction = (
       if ("editing" in effect.value) {
         editing = effect.value.editing ?? null;
         explicitlyEdited = true;
+      }
+      if ("stopped" in effect.value) {
+        stopped = effect.value.stopped ?? null;
+        explicitlyStopped = true;
       }
       continue;
     }
@@ -1434,11 +1454,19 @@ const updateVisualInteraction = (
     explicitlyEdited = true;
   }
 
+  if (editing) stopped = null;
   if (editing && !explicitlyEdited) {
     const selection = transaction.state.selection.main;
     if (selection.to < editing.from || selection.from > editing.to) editing = null;
   }
-  return { editing };
+  if (
+    stopped &&
+    !explicitlyStopped &&
+    !transaction.startState.selection.eq(transaction.state.selection)
+  ) {
+    stopped = null;
+  }
+  return { editing, stopped };
 };
 
 export const createEditorVisualModeExtension = (
@@ -1447,7 +1475,7 @@ export const createEditorVisualModeExtension = (
 ) => {
   const interactionField = StateField.define<EditorVisualInteraction>({
     create() {
-      return { editing: null };
+      return { editing: null, stopped: null };
     },
     update: updateVisualInteraction,
   });
@@ -1464,12 +1492,26 @@ export const createEditorVisualModeExtension = (
       const previousEditing =
         transaction.startState.field(interactionField, false)?.editing ?? null;
       const nextEditing = transaction.state.field(interactionField, false)?.editing ?? null;
+      const previousStopped =
+        transaction.startState.field(interactionField, false)?.stopped ?? null;
+      const nextStopped =
+        transaction.state.field(interactionField, false)?.stopped ?? null;
       const editingChanged =
         previousEditing?.from !== nextEditing?.from ||
         previousEditing?.to !== nextEditing?.to;
+      const stoppedChanged =
+        previousStopped?.from !== nextStopped?.from ||
+        previousStopped?.to !== nextStopped?.to ||
+        previousStopped?.forward !== nextStopped?.forward ||
+        previousStopped?.goalColumn !== nextStopped?.goalColumn;
       const selectionChanged =
         !transaction.startState.selection.eq(transaction.state.selection);
-      if (!transaction.docChanged && !editingChanged && !selectionChanged) {
+      if (
+        !transaction.docChanged &&
+        !editingChanged &&
+        !stoppedChanged &&
+        !selectionChanged
+      ) {
         return value;
       }
       return buildVisualDecorationSets(
@@ -1493,7 +1535,7 @@ export const createEditorVisualModeExtension = (
           view,
           true,
           view.state.field(decorationField).replacements,
-          view.state.field(interactionField).editing,
+          view.state.field(interactionField),
         ),
     },
     {
@@ -1503,7 +1545,7 @@ export const createEditorVisualModeExtension = (
           view,
           false,
           view.state.field(decorationField).replacements,
-          view.state.field(interactionField).editing,
+          view.state.field(interactionField),
         ),
     },
     {
