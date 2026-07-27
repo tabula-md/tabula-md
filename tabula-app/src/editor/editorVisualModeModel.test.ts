@@ -455,6 +455,29 @@ describe("editor visual mode model", () => {
     ).toBe(false);
   });
 
+  it("uses the complete Markdown source as the canonical select-all surface", () => {
+    const doc = [
+      "# Selection",
+      "",
+      "![Diagram](https://example.com/image.png)",
+      "",
+      "```mermaid",
+      "graph TD",
+      "  A --> B",
+      "```",
+      "",
+      "$$",
+      "x^2 + y^2",
+      "$$",
+    ].join("\n");
+    const model = buildEditorVisualModel(
+      createState(doc, { anchor: 0, head: doc.length }),
+    );
+
+    expect(model.replacements).toEqual([]);
+    expect(model.hiddenRanges).toEqual([]);
+  });
+
   it.each([
     ["separator", "---"],
     ["image", "![Diagram](https://example.com/image.png)"],
