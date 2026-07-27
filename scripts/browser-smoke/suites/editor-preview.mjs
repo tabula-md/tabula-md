@@ -1,10 +1,24 @@
 export const id = "editor-preview";
 export const requiresRoomService = true;
 export const description = "Editor chrome, Markdown preview rendering, toolbar behavior, and source editing.";
+export const scenarios = [
+  "keeps editor rails and line controls coherent across modes",
+  "keeps bookmarks aligned between editor and preview",
+  "hides editor gutters on mobile",
+  "preserves the visible source while changing modes",
+  "restores each local tab's viewport",
+  "dismisses toolbar tooltips after activation",
+  "applies formatting commands without losing editor state",
+  "keeps the mobile formatting toolbar usable",
+  "renders Markdown source tokens at their natural width",
+  "normalizes source editing and pasted line endings",
+  "renders and sanitizes the supported Markdown preview",
+  "resolves fragment and workspace links in preview",
+  "keeps mobile preview content and controls usable",
+];
 
 export async function run(ctx) {
   const {
-    baseUrl,
     browser,
     expect,
     focusMarkdownEditor,
@@ -280,25 +294,20 @@ export async function run(ctx) {
     expect(previewLineGutterState.contentInsideDocument, "Preview should keep balanced reading insets around content.");
   });
 
-  const mobileContext = await browser.newContext({ viewport: { width: 390, height: 760 } });
-  const mobilePage = await mobileContext.newPage();
-  try {
-    await mobilePage.goto(baseUrl);
-    await createDocument(mobilePage);
-    await waitForEditorReady(mobilePage, { mode: "edit" });
-    await focusMarkdownEditor(mobilePage);
-    await mobilePage.keyboard.insertText("mobile\nwrite");
-    await waitForRenderFrame(mobilePage);
-    const mobileGutterDisplays = await mobilePage
+  await withPage(browser, "/", async (page) => {
+    await createDocument(page);
+    await waitForEditorReady(page, { mode: "edit" });
+    await focusMarkdownEditor(page);
+    await page.keyboard.insertText("mobile\nwrite");
+    await waitForRenderFrame(page);
+    const mobileGutterDisplays = await page
       .locator(".cm-gutters")
       .evaluateAll((gutters) => gutters.map((gutter) => getComputedStyle(gutter).display));
     expect(
       mobileGutterDisplays.length > 0 && mobileGutterDisplays.every((display) => display === "none"),
       "Mobile write mode should hide editor gutters.",
     );
-  } finally {
-    await mobileContext.close();
-  }
+  }, { viewport: { width: 390, height: 760 } });
 
   await withPage(browser, "/", async (page) => {
     await createDocument(page);

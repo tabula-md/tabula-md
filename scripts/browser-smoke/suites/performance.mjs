@@ -9,6 +9,24 @@ import {
 export const id = "performance";
 export const requiresRoomService = true;
 export const description = "Long-document split resize hot-path regression checks.";
+export const scenarios = [
+  "updates a small split preview immediately",
+  "keeps a multiline 10k-word split document responsive",
+  "keeps a single-line 10k-word split document responsive",
+  "keeps HTML-heavy virtual preview interactions responsive",
+  "preserves split alignment while delayed media loads",
+  "limits work to visible virtual preview blocks",
+  "keeps source and preview aligned near a long document's end",
+  "keeps a large Korean split document responsive",
+  "keeps long-document split resizing within budget",
+  "keeps a large paste within budget",
+  "keeps large-editor typing, search, selection, and preview within budget",
+  "opens a one-megabyte document preview within budget",
+  "opens and edits a one-megabyte split document within budget",
+  "keeps a large inline image reference virtualized",
+  "preserves global Markdown syntax in virtual preview",
+  "attaches remote presence to a large collaborative document",
+];
 
 const LARGE_SPLIT_LINE_COUNT = 3_000;
 const MIN_SPLIT_FIXTURE_WORDS = 14_000;
@@ -1790,10 +1808,10 @@ export async function run(ctx) {
       const pasteElapsed = await measureElapsed(async () => {
         await page.evaluate(() => window.__tabulaLargePasteProbe.start());
         await page.keyboard.press(`${process.platform === "darwin" ? "Meta" : "Control"}+V`);
-        await page.waitForFunction(
-          ({ wordCount }) => document.querySelector(".file-status-bar")?.textContent?.includes(`${wordCount} words`),
-          { wordCount: LARGE_PASTE_WORDS },
-          { timeout: LARGE_PASTE_MAX_ELAPSED_MS },
+        await waitForEditorDocumentText(
+          page,
+          `paste-latency-${LARGE_PASTE_WORDS}`,
+          LARGE_PASTE_MAX_ELAPSED_MS,
         );
       });
 
@@ -1801,7 +1819,6 @@ export async function run(ctx) {
       const metrics = await page.evaluate(() => window.__tabulaLargePasteProbe.stop());
       const editModeDom = await page.evaluate(() => ({
         hasPreviewSurface: Boolean(document.querySelector(".preview-surface")),
-        status: document.querySelector(".file-status-bar")?.textContent ?? "",
       }));
       await page.evaluate(() => window.__tabulaLargePasteProbe.restore());
 
@@ -1813,7 +1830,7 @@ export async function run(ctx) {
       });
       expect(
         pasteElapsed < LARGE_PASTE_MAX_ELAPSED_MS,
-        `Pasting ${LARGE_PASTE_WORDS.toLocaleString()} words should update editor status within budget. Elapsed: ${Math.round(pasteElapsed)}ms.`,
+        `Pasting ${LARGE_PASTE_WORDS.toLocaleString()} words should update the editor document within budget. Elapsed: ${Math.round(pasteElapsed)}ms.`,
       );
       expect(
         maxLongTask < LARGE_PASTE_MAX_LONG_TASK_MS,
@@ -2084,16 +2101,15 @@ export async function run(ctx) {
       await page.evaluate(installLargePasteProbe);
       await page.evaluate(() => window.__tabulaLargePasteProbe.start());
       const scrollElapsed = await measureElapsed(async () => {
-        await page.evaluate(() => {
-          const surface = document.querySelector(".workspace.split .preview-surface");
-          if (!(surface instanceof HTMLElement)) {
-            throw new Error("Split preview surface is unavailable.");
-          }
-          surface.scrollTop = surface.scrollHeight;
-          surface.dispatchEvent(new Event("scroll"));
-        });
         await page.waitForFunction(
           () => {
+            const surface = document.querySelector(".workspace.split .preview-surface");
+            if (!(surface instanceof HTMLElement)) {
+              return false;
+            }
+            // Virtual block measurements can extend the scroll range after the
+            // first jump, so keep following the real bottom until it settles.
+            surface.scrollTop = surface.scrollHeight;
             const image = document.querySelector('.workspace.split .preview-document img[alt="Bottom image"]');
             return (
               image instanceof HTMLImageElement &&
@@ -2219,60 +2235,58 @@ export async function run(ctx) {
     { viewport: { width: 1440, height: 900 } },
   );
 
-  const firstContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  const secondContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  const firstPage = await firstContext.newPage();
-  const secondPage = await secondContext.newPage();
+  await withPage(browser, "/", async (firstPage) => {
+    const secondContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const secondPage = await secondContext.newPage();
+    try {
+      await importMarkdownFixture(firstPage, largeEditorMarkdown, "large-presence-performance.md");
+      await waitForEditorReady(firstPage, { mode: "edit" });
+      await firstPage.locator(".share-trigger").click();
+      await firstPage.getByRole("button", { name: "Start session" }).click();
+      await firstPage.waitForSelector(".share-trigger.live.connected");
+      await firstPage.waitForFunction(() => window.location.hash.startsWith("#room="));
+      const shareUrl = firstPage.url();
+      await firstPage.keyboard.press("Escape");
 
-  try {
-    await firstPage.goto(baseUrl);
-    await firstPage.waitForSelector(".tabbar");
-    await importMarkdownFixture(firstPage, largeEditorMarkdown, "large-presence-performance.md");
-    await waitForEditorReady(firstPage, { mode: "edit" });
-    await firstPage.locator(".share-trigger").click();
-    await firstPage.getByRole("button", { name: "Start session" }).click();
-    await firstPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
-    const shareUrl = firstPage.url();
-    await firstPage.keyboard.press("Escape");
+      const roomUrl = new URL(shareUrl);
+      await secondPage.goto(`${baseUrl}${roomUrl.pathname}${roomUrl.hash}`);
+      await secondPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
+      if ((await secondPage.locator('.tab-item[data-file-name="large-presence-performance.md"]').count()) === 0) {
+        await secondPage.getByRole("button", { name: "Toggle side panel" }).click();
+        await secondPage.getByRole("button", { name: "Files", exact: true }).click();
+        await secondPage.getByRole("button", { name: "Open large-presence-performance.md" }).click();
+      }
+      await waitForEditorReady(secondPage, { mode: "edit" });
+      await Promise.all([
+        firstPage.waitForFunction(
+          () => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 1,
+          {},
+          { timeout: REMOTE_PRESENCE_MAX_MS },
+        ),
+        secondPage.waitForFunction(
+          () => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 1,
+          {},
+          { timeout: REMOTE_PRESENCE_MAX_MS },
+        ),
+      ]);
 
-    const roomUrl = new URL(shareUrl);
-    await secondPage.goto(`${baseUrl}${roomUrl.pathname}${roomUrl.hash}`);
-    await secondPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
-    if ((await secondPage.locator('.tab-item[data-file-name="large-presence-performance.md"]').count()) === 0) {
-      await secondPage.getByRole("button", { name: "Toggle side panel" }).click();
-      await secondPage.getByRole("button", { name: "Files", exact: true }).click();
-      await secondPage.getByRole("button", { name: "Open large-presence-performance.md" }).click();
+      const presenceElapsed = await measureElapsed(async () => {
+        await focusMarkdownEditor(firstPage);
+        await firstPage.keyboard.press("ControlOrMeta+End");
+        await focusMarkdownEditor(secondPage);
+        await secondPage.keyboard.press("ControlOrMeta+End");
+        await secondPage.keyboard.insertText("\nremote-presence-performance");
+        await focusMarkdownEditor(firstPage);
+        await firstPage.keyboard.press("ControlOrMeta+End");
+        await waitForEditorDocumentText(firstPage, "remote-presence-performance", REMOTE_PRESENCE_MAX_MS);
+      });
+      reportPerformanceMetric("large-collaboration-presence", { elapsedMs: Math.round(presenceElapsed) });
+      expect(
+        presenceElapsed < REMOTE_PRESENCE_MAX_MS,
+        `Remote presence and text sync should attach within budget for a large file. Elapsed: ${Math.round(presenceElapsed)}ms.`,
+      );
+    } finally {
+      await secondContext.close();
     }
-    await waitForEditorReady(secondPage, { mode: "edit" });
-    await Promise.all([
-      firstPage.waitForFunction(
-        () => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 1,
-        {},
-        { timeout: REMOTE_PRESENCE_MAX_MS },
-      ),
-      secondPage.waitForFunction(
-        () => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 1,
-        {},
-        { timeout: REMOTE_PRESENCE_MAX_MS },
-      ),
-    ]);
-
-    const presenceElapsed = await measureElapsed(async () => {
-      await focusMarkdownEditor(firstPage);
-      await firstPage.keyboard.press("ControlOrMeta+End");
-      await focusMarkdownEditor(secondPage);
-      await secondPage.keyboard.press("ControlOrMeta+End");
-      await secondPage.keyboard.insertText("\nremote-presence-performance");
-      await focusMarkdownEditor(firstPage);
-      await firstPage.keyboard.press("ControlOrMeta+End");
-      await waitForEditorDocumentText(firstPage, "remote-presence-performance", REMOTE_PRESENCE_MAX_MS);
-    });
-    reportPerformanceMetric("large-collaboration-presence", { elapsedMs: Math.round(presenceElapsed) });
-    expect(
-      presenceElapsed < REMOTE_PRESENCE_MAX_MS,
-      `Remote presence and text sync should attach within budget for a large file. Elapsed: ${Math.round(presenceElapsed)}ms.`,
-    );
-  } finally {
-    await Promise.all([firstContext.close(), secondContext.close()]);
-  }
+  }, { viewport: { width: 1280, height: 800 } });
 }

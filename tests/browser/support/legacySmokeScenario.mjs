@@ -1,10 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { createSmokeContext } from "../../../scripts/browser-smoke/support/runtime.mjs";
 
-export const registerLegacySmokeScenarios = (suite) => {
+export const registerLegacySmokeScenarios = (suite, { tag, timeout } = {}) => {
   test.describe(suite.description, () => {
     suite.scenarios.forEach((name, scenarioIndex) => {
-      test(name, async ({ browser, page }) => {
+      const details = tag ? { tag } : {};
+      test(name, details, async ({ browser, page }) => {
+        if (timeout) {
+          test.setTimeout(timeout);
+        }
         let currentScenarioIndex = 0;
         let scenarioRan = false;
         const context = createSmokeContext(browser, {

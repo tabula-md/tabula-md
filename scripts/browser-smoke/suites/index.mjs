@@ -1,5 +1,4 @@
 import * as workspace from "./workspace-menu.mjs";
-import * as editorPreview from "./editor-preview.mjs";
 import * as editorPreviewSync from "./editor-preview-sync.mjs";
 import * as editorPreviewTypography from "./editor-preview-typography.mjs";
 import * as editorSearch from "./editor-search.mjs";
@@ -19,11 +18,9 @@ import * as collaborationEditorTorture from "./collaboration-editor-torture.mjs"
 import * as collaborationMemory from "./collaboration-memory.mjs";
 import * as collaborationLifecycle from "./collaboration-lifecycle.mjs";
 import * as jsonShare from "./json-share.mjs";
-import * as performance from "./performance.mjs";
 
 export const suites = [
   workspace,
-  editorPreview,
   editorPreviewSync,
   editorPreviewTypography,
   editorSearch,
@@ -43,5 +40,4 @@ export const suites = [
   collaborationMemory,
   collaborationLifecycle,
   jsonShare,
-  performance,
 ];

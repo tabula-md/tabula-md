@@ -58,7 +58,14 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright harness
+      - name: Run Playwright pull request canary
+        if: github.event_name == 'pull_request'
+        run: npm run test:browser:playwright:canary
+
+      - name: Run Playwright extended suite
+        if: github.event_name != 'pull_request'
+        env:
+          TABULA_ROOM_REPO_DIR: ${{ github.workspace }}/tabula-room
         run: npm run test:browser:playwright
 
       - name: Run pull request canary
