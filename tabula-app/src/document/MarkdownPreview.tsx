@@ -729,7 +729,7 @@ const createMarkdownPreviewComponents = (
       target={typeof target === "string" ? target : ""}
     />
   ),
-  a: ({ node: _node, href, ...props }) => {
+  a: ({ node: _node, href, children, ...props }) => {
     const wikiLinkProps = props as typeof props & {
       "data-wikilink-relation"?: unknown;
       "data-wikilink-target"?: unknown;
@@ -754,12 +754,20 @@ const createMarkdownPreviewComponents = (
     const wikiLinkClassName = wikiTarget
       ? `preview-wikilink ${workspaceLink?.relation ?? "link"} ${props.className ?? ""}`.trim()
       : props.className;
+    const isCurrentDocumentFragment =
+      typeof workspaceTarget === "string" && workspaceTarget.trim().startsWith("#");
+    const resolvedWorkspaceLinkClassName =
+      workspaceLink?.status === "resolved" && !isCurrentDocumentFragment
+        ? `preview-workspace-link resolved ${wikiLinkClassName ?? ""}`.trim()
+        : isCurrentDocumentFragment
+          ? `preview-heading-link ${wikiLinkClassName ?? ""}`.trim()
+          : wikiLinkClassName;
 
     if (workspaceLink?.status === "resolved" && href && onOpenWorkspaceLink) {
       return (
         <a
           {...props}
-          className={wikiLinkClassName}
+          className={resolvedWorkspaceLinkClassName}
           href={href}
           data-workspace-link-relation={workspaceLink.relation}
           data-workspace-link-syntax={workspaceLink.syntax}
@@ -769,7 +777,9 @@ const createMarkdownPreviewComponents = (
             event.preventDefault();
             onOpenWorkspaceLink(workspaceLink);
           }}
-        />
+        >
+          {children}
+        </a>
       );
     }
 
@@ -786,22 +796,27 @@ const createMarkdownPreviewComponents = (
           data-workspace-link-syntax={workspaceLink.syntax}
           data-workspace-link-status={workspaceLink.status}
           title={props.title ?? statusTitle}
-        />
+        >
+          {children}
+        </span>
       );
     }
 
     if (resolvedHref?.kind !== "external") {
-      return <span {...props} />;
+      return <span {...props}>{children}</span>;
     }
 
     return (
       <a
         {...props}
-        className={wikiLinkClassName}
+        className={`preview-external-link ${wikiLinkClassName ?? ""}`.trim()}
         href={resolvedHref?.href}
         target={resolvedHref?.openInNewTab ? "_blank" : undefined}
         rel={resolvedHref?.openInNewTab ? "noreferrer" : undefined}
-      />
+      >
+        {children}
+        <span className="preview-external-link-mark" aria-hidden="true">↗</span>
+      </a>
     );
   },
   code: ({ node: _node, className, children, ...props }) => {

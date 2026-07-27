@@ -243,6 +243,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       onSelectionChange,
       onSelectionActionPositionChange,
       onScrollRatioChange,
+      resolveWorkspaceLink,
     },
     ref,
   ) => {
@@ -846,14 +847,17 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         if (cancelled) return;
         view.dispatch({
           effects: compartmentsRef.current.visualMode.reconfigure(
-            createEditorVisualModeExtension(interfaceCopy),
+            createEditorVisualModeExtension(interfaceCopy, {
+              resolveWorkspaceLink,
+              sourceDocumentId: fileId,
+            }),
           ),
         });
       });
       return () => {
         cancelled = true;
       };
-    }, [fileId, interfaceCopy, visualEditing]);
+    }, [fileId, interfaceCopy, resolveWorkspaceLink, visualEditing]);
 
     useEffect(() => {
       viewRef.current?.dispatch({

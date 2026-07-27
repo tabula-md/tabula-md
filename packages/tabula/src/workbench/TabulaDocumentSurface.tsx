@@ -358,6 +358,7 @@ export function TabulaDocumentSurface({
           onSelectionChange={onEditorSelectionChange}
           onSelectionActionPositionChange={onEditorSelectionActionPositionChange}
           onScrollRatioChange={onEditorScrollRatioChange}
+          resolveWorkspaceLink={resolveWorkspaceLink}
         />
       </article>
 

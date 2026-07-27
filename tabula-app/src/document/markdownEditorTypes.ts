@@ -9,6 +9,7 @@ import type {
   TextPatch,
 } from "@tabula-md/tabula";
 import type { WorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
+import type { MarkdownPreviewProps } from "../preview/markdownPreviewTypes";
 
 export type MarkdownEditorInterfaceCopy = Pick<
   WorkspaceSurfaceCopy,
@@ -108,4 +109,5 @@ export type MarkdownEditorProps = {
   onSelectionChange?: (selection?: LiveSelection) => void;
   onSelectionActionPositionChange?: (position: MarkdownSelectionActionPosition | null) => void;
   onScrollRatioChange?: (ratio: number) => void;
+  resolveWorkspaceLink?: MarkdownPreviewProps["resolveWorkspaceLink"];
 };

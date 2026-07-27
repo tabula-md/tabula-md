@@ -234,7 +234,7 @@ export async function run(ctx) {
       statusButtonVisible: Boolean(document.querySelector(".status-comment-button")),
     }));
     expect(bookmarkedLineState.bookmarkMarkers === 1, "Bookmarking a line should render a bookmark marker in the gutter.");
-    expect(bookmarkedLineState.bookmarkColor === "rgb(118, 63, 200)", "Active bookmarks should use the shared annotation accent.");
+    expect(bookmarkedLineState.bookmarkColor === "rgb(9, 105, 218)", "Active bookmarks should use the shared annotation accent.");
     expect(bookmarkedLineState.bookmarkTagName === "BUTTON", "Active editor bookmarks should expose a real button.");
     expect(
       bookmarkedLineState.bookmarkAriaLabel === "Remove line bookmark",
@@ -269,7 +269,7 @@ export async function run(ctx) {
     });
     expect(previewLineGutterState.hasPreviewLineGutter, "Preview mode should render line gutters around the document body.");
     expect(previewLineGutterState.softBreakCount >= 2, "Preview line gutters should tolerate preserved soft line breaks.");
-    expect(previewLineGutterState.bookmarkColor === "rgb(118, 63, 200)", "Preview bookmarks should use the shared annotation accent.");
+    expect(previewLineGutterState.bookmarkColor === "rgb(9, 105, 218)", "Preview bookmarks should use the shared annotation accent.");
     expect(previewLineGutterState.bookmarkTagName === "BUTTON", "Active preview bookmarks should expose a real button.");
     expect(
       previewLineGutterState.bookmarkAriaLabel === "Remove line bookmark",

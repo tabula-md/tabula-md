@@ -61,7 +61,115 @@
 
 .markdown-editor .cm-visual-editor .cm-visual-link {
   text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 72%, transparent);
   text-underline-offset: 0.15em;
+  transition:
+    color var(--motion-hover) ease,
+    text-decoration-color var(--motion-hover) ease;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-external::after {
+  display: inline-block;
+  margin-left: 0.16em;
+  color: currentColor;
+  content: "↗";
+  font-size: 0.72em;
+  line-height: 1;
+  text-decoration: none;
+  transform: translateY(-0.18em);
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-external:hover {
+  color: var(--text-link-hover);
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-heading {
+  color: var(--text-link);
+  text-decoration: none;
+}
+
+.markdown-editor
+  .cm-visual-editor
+  .cm-visual-link:has(.cm-visual-workspace-link-heading),
+.markdown-editor
+  .cm-visual-editor
+  .cm-visual-link:has(.cm-visual-workspace-link-resolved),
+.markdown-editor
+  .cm-visual-editor
+  .cm-visual-link:has(.cm-visual-workspace-link-broken),
+.markdown-editor
+  .cm-visual-editor
+  .cm-visual-link:has(.cm-visual-workspace-link-ambiguous),
+.markdown-editor
+  .cm-visual-editor
+  .cm-visual-workspace-link-heading
+  .cm-visual-link,
+.markdown-editor
+  .cm-visual-editor
+  .cm-visual-workspace-link-resolved
+  .cm-visual-link,
+.markdown-editor
+  .cm-visual-editor
+  .cm-visual-workspace-link-broken
+  .cm-visual-link,
+.markdown-editor
+  .cm-visual-editor
+  .cm-visual-workspace-link-ambiguous
+  .cm-visual-link {
+  text-decoration: none;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-heading:hover {
+  color: var(--text-link-hover);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-resolved {
+  padding: 0 0.12em;
+  border-radius: 3px;
+  background: transparent;
+  box-decoration-break: clone;
+  color: var(--accent);
+  text-decoration: none;
+  -webkit-box-decoration-break: clone;
+  transition:
+    color var(--motion-hover) ease,
+    background-color var(--motion-hover) ease;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-resolved:hover {
+  background: var(--accent-soft);
+  color: var(--text-link-hover);
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-broken,
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-ambiguous {
+  color: var(--text-muted);
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-broken {
+  text-decoration-color: var(--danger-text);
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-ambiguous {
+  text-decoration-color: var(--accent);
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-broken:hover {
+  background: var(--danger-background);
+  color: var(--danger-text-strong);
+}
+
+.markdown-editor .cm-visual-editor .cm-visual-workspace-link-ambiguous:hover {
+  background: var(--accent-soft);
+  color: var(--text-link-hover);
 }
 
 .markdown-editor .cm-visual-editor .cm-visual-inline-code {
