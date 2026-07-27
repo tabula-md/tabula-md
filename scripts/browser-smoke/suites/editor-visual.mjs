@@ -1,6 +1,21 @@
 export const id = "editor-visual";
 export const description =
   "Visual Markdown rendering, atomic block navigation, source reveal, and selection.";
+export const scenarios = [
+  "renders atomic blocks and preserves keyboard navigation",
+  "renders consistent code block styles",
+  "reveals math source without layout jumps",
+  "keeps wrapped image source editable on narrow screens",
+  "reveals separator source as plain Markdown",
+  "maps pointer clicks to safe source cursors",
+  "reveals inline Markdown source without style leaks",
+  "inserts inline toolbar syntax into editable source",
+  "keeps the cursor visible through long documents",
+  "renders supported Markdown and MDX components",
+  "navigates long documents without mounting every widget",
+  "keeps toolbar insertions editable in Visual mode",
+  "virtualizes large Visual documents",
+];
 
 const NAVIGATION_FIXTURE = [
   "before",

@@ -1,6 +1,5 @@
 import * as workspace from "./workspace-menu.mjs";
 import * as editorPreview from "./editor-preview.mjs";
-import * as editorVisual from "./editor-visual.mjs";
 import * as editorPreviewSync from "./editor-preview-sync.mjs";
 import * as editorPreviewTypography from "./editor-preview-typography.mjs";
 import * as editorSearch from "./editor-search.mjs";
@@ -26,7 +25,6 @@ import * as performance from "./performance.mjs";
 export const suites = [
   workspace,
   editorPreview,
-  editorVisual,
   editorPreviewSync,
   editorPreviewTypography,
   editorSearch,
