@@ -234,6 +234,27 @@ export {
 } from "./markdown/parse";
 
 export type {
+  BlockInteractionPolicy,
+  MarkdownPresentationDocument,
+  PresentationBlock,
+  PresentationBlockType,
+  PresentationFootnote,
+  PresentationInlineType,
+  PresentationLinkKind,
+  PresentationLinkReference,
+  PresentationNode,
+  PresentationNodeData,
+  PresentationNodeType,
+  PresentationPlacement,
+  PresentationReferenceDefinition,
+  ReferenceIndex,
+  SourceRange,
+} from "./markdown/presentation";
+export {
+  createMarkdownPresentationDocument,
+} from "./markdown/presentation";
+
+export type {
   PreviewBlock,
   PreviewBlockIndex,
   PreviewBlockMeasurements,
