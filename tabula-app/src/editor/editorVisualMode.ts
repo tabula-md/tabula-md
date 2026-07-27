@@ -13,8 +13,9 @@ import {
   type EditorState,
   type Transaction,
 } from "@codemirror/state";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
+import type { SyntaxNode } from "@lezer/common";
 import {
   buildEditorVisualModel,
   findEditorVisualReplacementInRange,
@@ -28,6 +29,11 @@ import {
   mountEditorVisualMarkdown,
   mountEditorVisualMarkdownTable,
 } from "./editorVisualMarkdown";
+import type {
+  MarkdownPreviewProps,
+  MarkdownPreviewWorkspaceLink,
+} from "../preview/markdownPreviewTypes";
+import { classifyMarkdownHref } from "../preview/markdownHref";
 
 let visualDiagramId = 0;
 let mermaidRuntimePromise: Promise<typeof import("mermaid").default> | null = null;
@@ -60,6 +66,129 @@ export type EditorVisualModeCopy = {
   imageFailed: string;
   markTaskComplete: string;
   markTaskIncomplete: string;
+};
+
+type EditorVisualModeOptions = {
+  resolveWorkspaceLink?: MarkdownPreviewProps["resolveWorkspaceLink"];
+  sourceDocumentId?: string;
+};
+
+type EditorVisualWorkspaceLinkRange = {
+  from: number;
+  status: MarkdownPreviewWorkspaceLink["status"] | "external" | "heading";
+  to: number;
+};
+
+const getDirectLinkChildren = (node: SyntaxNode) => {
+  const children: SyntaxNode[] = [];
+  for (let child = node.firstChild; child; child = child.nextSibling) {
+    children.push(child);
+  }
+  return children;
+};
+
+const normalizeLinkReferenceLabel = (label: string) =>
+  label.trim().replace(/^\[/, "").replace(/\]$/, "").trim().toLowerCase();
+
+export const getEditorVisualWorkspaceLinkRanges = (
+  state: EditorState,
+  options: EditorVisualModeOptions,
+): EditorVisualWorkspaceLinkRange[] => {
+  const { resolveWorkspaceLink, sourceDocumentId } = options;
+
+  const references = new Map<string, string>();
+  syntaxTree(state).iterate({
+    enter(reference) {
+      if (reference.name !== "LinkReference") return;
+      const children = getDirectLinkChildren(reference.node);
+      const label = children.find((child) => child.name === "LinkLabel");
+      const url = children.find((child) => child.name === "URL");
+      if (!label || !url) return;
+      references.set(
+        normalizeLinkReferenceLabel(state.doc.sliceString(label.from, label.to)),
+        state.doc.sliceString(url.from, url.to),
+      );
+    },
+  });
+
+  const ranges: EditorVisualWorkspaceLinkRange[] = [];
+  syntaxTree(state).iterate({
+    enter(reference) {
+      if (reference.name !== "Link" || reference.node.parent?.name === "Image") return;
+      const node = reference.node;
+      const children = getDirectLinkChildren(node);
+      const marks = children.filter((child) => child.name === "LinkMark");
+      const url = children.find((child) => child.name === "URL");
+      const referenceLabel = children.find((child) => child.name === "LinkLabel");
+      const isWikiLink =
+        node.from > 0 &&
+        node.to < state.doc.length &&
+        state.doc.sliceString(node.from - 1, node.from + 1) === "[[" &&
+        state.doc.sliceString(node.to - 1, node.to + 1) === "]]";
+
+      let target: string | undefined;
+      let syntax: "markdown" | "wikilink" = "markdown";
+      if (url) {
+        target = state.doc.sliceString(url.from, url.to);
+      } else if (referenceLabel) {
+        target = references.get(
+          normalizeLinkReferenceLabel(
+            state.doc.sliceString(referenceLabel.from, referenceLabel.to),
+          ),
+        );
+      } else if (isWikiLink) {
+        syntax = "wikilink";
+        target = state.doc
+          .sliceString(node.from + 1, node.to - 1)
+          .split("|", 1)[0]
+          ?.trim();
+      }
+
+      const labelFrom = marks[0]?.to;
+      const labelTo = marks[1]?.from;
+      if (
+        !target ||
+        labelFrom === undefined ||
+        labelTo === undefined ||
+        labelFrom >= labelTo
+      ) {
+        return;
+      }
+
+      const overlapsSelection = state.selection.ranges.some((selection) =>
+        !selection.empty && selection.from < labelTo && selection.to > labelFrom);
+      if (overlapsSelection) return;
+      const normalizedTarget = target.trim();
+      if (classifyMarkdownHref(normalizedTarget).kind === "external") {
+        ranges.push({
+          from: labelFrom,
+          status: "external",
+          to: labelTo,
+        });
+        return;
+      }
+      if (normalizedTarget.startsWith("#")) {
+        ranges.push({
+          from: labelFrom,
+          status: "heading",
+          to: labelTo,
+        });
+        return;
+      }
+      if (!resolveWorkspaceLink || !sourceDocumentId) return;
+      const workspaceLink = resolveWorkspaceLink(target, syntax, {
+        relation: "link",
+        sourceDocumentId,
+      });
+      if (!workspaceLink) return;
+      ranges.push({
+        from: labelFrom,
+        status: workspaceLink.status,
+        to: labelTo,
+      });
+    },
+  });
+  return ranges;
 };
 
 const visualSourceLabels: Partial<Record<EditorVisualReplacement["kind"], string>> = {
@@ -1289,6 +1418,7 @@ const buildVisualDecorationSets = (
   state: EditorState,
   interaction: EditorVisualInteraction,
   copy: EditorVisualModeCopy,
+  options: EditorVisualModeOptions,
 ): EditorVisualDecorationSets => {
   const model = buildEditorVisualModel(
     state,
@@ -1301,9 +1431,15 @@ const buildVisualDecorationSets = (
     Decoration.replace({}).range(from, to));
   const replacementRanges = model.replacements.map((replacement) =>
     createReplacementDecoration(replacement, copy).range(replacement.from, replacement.to));
+  const workspaceLinkRanges = getEditorVisualWorkspaceLinkRanges(state, options).map(
+    ({ from, status, to }) =>
+      Decoration.mark({
+        class: `cm-visual-workspace-link cm-visual-workspace-link-${status}`,
+      }).range(from, to),
+  );
   return {
     decorations: Decoration.set(
-      [...lineRanges, ...hiddenRanges, ...replacementRanges],
+      [...lineRanges, ...hiddenRanges, ...replacementRanges, ...workspaceLinkRanges],
       true,
     ),
     atomicRanges: Decoration.set(
@@ -1362,7 +1498,10 @@ const updateVisualInteraction = (
   return { editing };
 };
 
-export const createEditorVisualModeExtension = (copy: EditorVisualModeCopy) => {
+export const createEditorVisualModeExtension = (
+  copy: EditorVisualModeCopy,
+  options: EditorVisualModeOptions = {},
+) => {
   const interactionField = StateField.define<EditorVisualInteraction>({
     create() {
       return { editing: null };
@@ -1371,7 +1510,12 @@ export const createEditorVisualModeExtension = (copy: EditorVisualModeCopy) => {
   });
   const decorationField = StateField.define<EditorVisualDecorationSets>({
     create(state) {
-      return buildVisualDecorationSets(state, state.field(interactionField), copy);
+      return buildVisualDecorationSets(
+        state,
+        state.field(interactionField),
+        copy,
+        options,
+      );
     },
     update(value, transaction) {
       const previousEditing =
@@ -1389,6 +1533,7 @@ export const createEditorVisualModeExtension = (copy: EditorVisualModeCopy) => {
         transaction.state,
         transaction.state.field(interactionField),
         copy,
+        options,
       );
     },
     provide: (field) => [

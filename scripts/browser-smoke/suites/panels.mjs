@@ -1707,6 +1707,145 @@ export async function run(ctx) {
       (await page.getByRole("link", { name: "Back to start", exact: true }).count()) === 1,
       "Preview should render same-document heading destinations as links.",
     );
+    expect(
+      (await page.getByRole("link", { name: "Tabula website", exact: true })
+        .locator(".preview-external-link-mark").textContent()) === "↗",
+      "Preview should distinguish external destinations with an outbound arrow.",
+    );
+    const workspaceLinkStyles = await page.evaluate(() => {
+      const documentLink = [...document.querySelectorAll(".preview-surface a")]
+        .find((link) => link.textContent?.trim() === "Preview guide");
+      const headingLink = [...document.querySelectorAll(".preview-surface a")]
+        .find((link) => link.textContent?.trim() === "Back to start");
+      const documentLinkStyle = documentLink instanceof HTMLElement
+        ? window.getComputedStyle(documentLink)
+        : null;
+      const headingLinkStyle = headingLink instanceof HTMLElement
+        ? window.getComputedStyle(headingLink)
+        : null;
+      return {
+        documentLinkBackground: documentLinkStyle?.backgroundColor ?? "",
+        documentLinkDecoration: documentLinkStyle?.textDecorationLine ?? "",
+        documentLinkStatus: documentLink?.getAttribute("data-workspace-link-status") ?? "",
+        headingLinkBackground: headingLinkStyle?.backgroundColor ?? "",
+        headingLinkDecoration: headingLinkStyle?.textDecorationLine ?? "",
+      };
+    });
+    expect(
+      workspaceLinkStyles.documentLinkStatus === "resolved" &&
+        workspaceLinkStyles.documentLinkBackground === "rgba(0, 0, 0, 0)" &&
+        workspaceLinkStyles.documentLinkDecoration === "none",
+      `Resolved document links should reserve the internal-link surface for hover (${JSON.stringify(workspaceLinkStyles)}).`,
+    );
+    expect(
+      workspaceLinkStyles.headingLinkBackground === "rgba(0, 0, 0, 0)" &&
+        workspaceLinkStyles.headingLinkDecoration === "none",
+      "Same-document heading links should stay quiet until hover.",
+    );
+    await page.getByRole("link", { name: "Preview guide", exact: true }).hover();
+    await page.waitForTimeout(140);
+    const hoveredDocumentLinkStyles = await page.getByRole("link", {
+      name: "Preview guide",
+      exact: true,
+    }).evaluate((link) => {
+      const style = window.getComputedStyle(link);
+      return {
+        background: style.backgroundColor,
+        color: style.color,
+      };
+    });
+    expect(
+      hoveredDocumentLinkStyles.background === "rgb(234, 242, 251)" &&
+        hoveredDocumentLinkStyles.color === "rgb(5, 80, 174)",
+      `Resolved document links should reveal their blue surface and stronger color on hover (${JSON.stringify(hoveredDocumentLinkStyles)}).`,
+    );
+    await page.getByRole("link", { name: "Back to start", exact: true }).hover();
+    await page.waitForTimeout(140);
+    const hoveredHeadingLinkStyles = await page.getByRole("link", {
+      name: "Back to start",
+      exact: true,
+    }).evaluate((link) => {
+      const style = window.getComputedStyle(link);
+      return {
+        color: style.color,
+        decoration: style.textDecorationLine,
+      };
+    });
+    expect(
+      hoveredHeadingLinkStyles.color === "rgb(5, 80, 174)" &&
+        hoveredHeadingLinkStyles.decoration.includes("underline"),
+      `Same-document heading links should gain a stronger color and underline on hover (${JSON.stringify(hoveredHeadingLinkStyles)}).`,
+    );
+    await page.getByRole("button", { name: "Visual", exact: true }).click();
+    await waitForEditorReady(page, { mode: "visual" });
+    await page.evaluate(() => {
+      const content = document.querySelector(".cm-content");
+      const view =
+        content?.cmView?.view ??
+        content?.cmTile?.view ??
+        content?.parentElement?.cmView?.view ??
+        content?.parentElement?.cmTile?.view ??
+        document.querySelector(".cm-editor")?.cmView?.view;
+      const target = view?.state?.doc?.toString?.().indexOf("[Preview guide]") ?? -1;
+      if (!view || target < 0) {
+        throw new Error("Visual workspace-link source was not available.");
+      }
+      view.dispatch({
+        selection: { anchor: target + 2 },
+        scrollIntoView: true,
+      });
+    });
+    await waitForRenderFrame(page);
+    const visualWorkspaceLinkStyles = await page.evaluate(() => {
+      const documentLink = [...document.querySelectorAll(
+        ".cm-visual-workspace-link-resolved",
+      )]
+        .find((link) => link.textContent?.trim() === "Preview guide");
+      const headingLink =
+        [...document.querySelectorAll(".cm-visual-link")]
+          .find((link) => link.textContent?.trim() === "Back to start");
+      const externalLink =
+        [...document.querySelectorAll(".cm-visual-workspace-link-external")]
+          .find((link) => link.textContent?.trim() === "Tabula website");
+      const documentLinkStyle = documentLink instanceof HTMLElement
+        ? window.getComputedStyle(documentLink)
+        : null;
+      const headingLinkStyle = headingLink instanceof HTMLElement
+        ? window.getComputedStyle(headingLink)
+        : null;
+      return {
+        documentLinkBackground: documentLinkStyle?.backgroundColor ?? "",
+        documentLinkDecoration: documentLinkStyle?.textDecorationLine ?? "",
+        documentLinkResolved: Boolean(documentLink),
+        headingLinkBackground: headingLinkStyle?.backgroundColor ?? "",
+        headingLinkDecoration: headingLinkStyle?.textDecorationLine ?? "",
+        headingLinkSemantic:
+          Boolean(
+            headingLink?.classList.contains("cm-visual-workspace-link-heading") ||
+              headingLink?.closest(".cm-visual-workspace-link-heading") ||
+              headingLink?.querySelector(".cm-visual-workspace-link-heading"),
+          ),
+        externalLinkSemantic: Boolean(externalLink),
+      };
+    });
+    expect(
+      visualWorkspaceLinkStyles.documentLinkResolved &&
+        visualWorkspaceLinkStyles.documentLinkBackground === "rgba(0, 0, 0, 0)" &&
+        visualWorkspaceLinkStyles.documentLinkDecoration === "none",
+      `Visual document links should reserve Preview's internal-link surface for hover (${JSON.stringify(visualWorkspaceLinkStyles)}).`,
+    );
+    expect(
+      visualWorkspaceLinkStyles.headingLinkSemantic &&
+        visualWorkspaceLinkStyles.headingLinkBackground === "rgba(0, 0, 0, 0)" &&
+        visualWorkspaceLinkStyles.headingLinkDecoration === "none",
+      `Visual same-document heading links should stay quiet until hover (${JSON.stringify(visualWorkspaceLinkStyles)}).`,
+    );
+    expect(
+      visualWorkspaceLinkStyles.externalLinkSemantic,
+      "Visual should distinguish external destinations with outbound-link semantics.",
+    );
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await waitForEditorReady(page, { mode: "preview" });
     const wikiGuideLinkCount = await page.getByRole("link", {
       name: "Wiki guide",
       exact: true,

@@ -303,15 +303,63 @@
   text-decoration-color: currentColor;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
+  transition:
+    color var(--motion-hover) ease,
+    text-decoration-color var(--motion-hover) ease;
 }
 
 .preview-surface a:hover {
   color: var(--text-link-hover);
 }
 
+.preview-surface a.preview-external-link {
+  text-decoration-color: color-mix(in srgb, currentColor 72%, transparent);
+}
+
+.preview-external-link-mark {
+  display: inline-block;
+  margin-left: 0.16em;
+  color: currentColor;
+  font-size: 0.72em;
+  line-height: 1;
+  text-decoration: none;
+  transform: translateY(-0.18em);
+}
+
+.preview-surface a.preview-heading-link {
+  color: var(--text-link);
+  text-decoration: none;
+}
+
+.preview-surface a.preview-heading-link:hover {
+  color: var(--text-link-hover);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
 .preview-surface a.preview-wikilink {
   text-decoration-style: dotted;
   text-underline-offset: 3px;
+}
+
+.preview-surface a.preview-workspace-link.resolved {
+  padding: 0 0.12em;
+  border-radius: 3px;
+  background: transparent;
+  box-decoration-break: clone;
+  color: var(--accent);
+  text-decoration: none;
+  -webkit-box-decoration-break: clone;
+  transition:
+    color var(--motion-hover) ease,
+    background-color var(--motion-hover) ease;
+}
+
+.preview-surface a.preview-workspace-link.resolved:hover {
+  background: var(--accent-soft);
+  color: var(--text-link-hover);
 }
 
 .preview-workspace-link {
@@ -328,6 +376,16 @@
 
 .preview-workspace-link.ambiguous {
   text-decoration-color: var(--accent);
+}
+
+.preview-workspace-link.broken:hover {
+  background: var(--danger-background);
+  color: var(--danger-text-strong);
+}
+
+.preview-workspace-link.ambiguous:hover {
+  background: var(--accent-soft);
+  color: var(--text-link-hover);
 }
 
 .preview-workspace-embed {
