@@ -1,5 +1,10 @@
 export const id = "panels";
 export const description = "Project menu, files, outline, comments, switcher, and right-panel file actions.";
+export const scenarios = [
+  "exposes project context panels and the document switcher",
+  "runs direct Files actions without leaving the panel",
+  "resolves workspace links and previews in project context",
+];
 
 const openExportPreflight = async (page, openProjectMenu) => {
   await openProjectMenu(page);
@@ -1264,15 +1269,6 @@ export async function run(ctx) {
     expect((await page.locator(".tab-scroll-button.has-current-tab").count()) === 0, "Tab arrows should not carry a second active-document state.");
 
     await page.locator(".tabbar-actions .tab-scroll-button").click();
-    await waitForRenderFrame(page);
-    const manualScrollResult = await page.evaluate(() => {
-      const tabsScroll = document.querySelector(".tabs-scroll");
-      return tabsScroll?.scrollLeft ?? null;
-    });
-    expect(
-      typeof manualScrollResult === "number" && manualScrollResult > (manualScrollButton?.scrollLeft ?? 0),
-      "Clicking the right tab arrow should advance the tab strip.",
-    );
     await page.locator(".tabs-scroll").evaluate((tabsScroll) =>
       new Promise((resolve) => {
         let previousScrollLeft = tabsScroll.scrollLeft;
@@ -1293,6 +1289,14 @@ export async function run(ctx) {
         };
         requestAnimationFrame(checkScrollSettled);
       }),
+    );
+    const manualScrollResult = await page.evaluate(() => {
+      const tabsScroll = document.querySelector(".tabs-scroll");
+      return tabsScroll?.scrollLeft ?? null;
+    });
+    expect(
+      typeof manualScrollResult === "number" && manualScrollResult > (manualScrollButton?.scrollLeft ?? 0),
+      "Clicking the right tab arrow should advance the tab strip after smooth scrolling settles.",
     );
 
     if ((await page.locator(".right-panel").count()) === 0) {

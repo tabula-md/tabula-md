@@ -34,7 +34,7 @@
     "test:browser:visual": "npm run test:browser:playwright -- editor-visual.spec.mjs",
     "test:browser:editor-certification": "npm run test:browser -- --suite=editor-certification",
     "test:browser:layout": "npm run test:browser -- --suite=layout",
-    "test:browser:panels": "npm run test:browser -- --suite=panels",
+    "test:browser:panels": "npm run test:browser:playwright -- panels.spec.mjs",
     "test:browser:knowledge": "npm run test:browser -- --suite=knowledge-links,okf-concepts",
     "test:browser:collab": "npm run test:browser -- --suite=collaboration",
     "test:browser:collaboration-editor-torture": "npm run test:browser -- --suite=collaboration-editor-torture",
