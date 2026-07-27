@@ -28,6 +28,7 @@
     "boundary:check": "node scripts/check-boundaries.mjs",
     "test": "vitest run",
     "test:browser": "node scripts/browser-smoke.mjs",
+    "test:browser:playwright": "playwright test",
     "test:browser:workspace": "npm run test:browser -- --suite=workspace",
     "test:browser:editor": "npm run test:browser -- --suite=editor-preview,editor-visual,editor-preview-sync,editor-preview-typography,editor-search-layout,editor-search-source,editor-search-replace,editor-search-preview,editor-search-focus-history,editor-selection-comments,split-layout",
     "test:browser:visual": "npm run test:browser -- --suite=editor-visual",
@@ -95,6 +96,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@types/d3-force": "^3.0.10",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
