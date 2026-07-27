@@ -1262,15 +1262,17 @@ export async function run(ctx) {
     let tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "Preview mode should be reflected in the active tab.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Split", "Preview"]),
-      "The view-mode control should keep Edit, Split, and Preview in a stable order.",
+      JSON.stringify(await getViewModeActionLabels(page)) ===
+        JSON.stringify(["Visual", "Edit", "Preview", "Split"]),
+      "The view-mode control should keep Visual, Edit, Preview, and Split in a stable order.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
+          { viewMode: "visual", label: "Visual", active: false },
           { viewMode: "edit", label: "Edit", active: false },
-          { viewMode: "split", label: "Split", active: false },
           { viewMode: "preview", label: "Preview", active: true },
+          { viewMode: "split", label: "Split", active: false },
         ]),
       "Preview mode should select Preview without changing the control positions.",
     );
@@ -1288,15 +1290,17 @@ export async function run(ctx) {
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Edit", "New local tabs should start in Edit mode.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Split", "Preview"]),
+      JSON.stringify(await getViewModeActionLabels(page)) ===
+        JSON.stringify(["Visual", "Edit", "Preview", "Split"]),
       "Edit mode should keep the stable view-mode order.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
+          { viewMode: "visual", label: "Visual", active: false },
           { viewMode: "edit", label: "Edit", active: true },
-          { viewMode: "split", label: "Split", active: false },
           { viewMode: "preview", label: "Preview", active: false },
+          { viewMode: "split", label: "Split", active: false },
         ]),
       "Edit mode should select Edit without changing the control positions.",
     );
@@ -1310,15 +1314,17 @@ export async function run(ctx) {
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Split", "Split should be reachable from Edit mode.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) === JSON.stringify(["Edit", "Split", "Preview"]),
+      JSON.stringify(await getViewModeActionLabels(page)) ===
+        JSON.stringify(["Visual", "Edit", "Preview", "Split"]),
       "Split mode should keep the stable view-mode order.",
     );
     expect(
       JSON.stringify(await getViewModeSlots(page)) ===
         JSON.stringify([
+          { viewMode: "visual", label: "Visual", active: false },
           { viewMode: "edit", label: "Edit", active: false },
-          { viewMode: "split", label: "Split", active: true },
           { viewMode: "preview", label: "Preview", active: false },
+          { viewMode: "split", label: "Split", active: true },
         ]),
       "Split mode should select Split without changing the control positions.",
     );
