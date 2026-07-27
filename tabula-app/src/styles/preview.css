@@ -1235,7 +1235,8 @@ a.preview-docs-card:hover {
   margin-bottom: 0;
 }
 
-.preview-surface section[data-footnotes] li:target {
+.preview-surface section[data-footnotes] li:target,
+.preview-surface .preview-footnote-target {
   scroll-margin-block: 30vh;
   animation: preview-footnote-target 1.6s ease-out;
 }
@@ -1243,6 +1244,11 @@ a.preview-docs-card:hover {
 .preview-surface [data-footnote-backref] {
   margin-left: 4px;
   text-decoration: none;
+}
+
+.preview-surface [data-footnote-ref],
+.preview-surface [data-footnote-backref] {
+  cursor: pointer;
 }
 
 @keyframes preview-footnote-target {

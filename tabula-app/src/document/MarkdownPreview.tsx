@@ -731,9 +731,50 @@ const createMarkdownPreviewComponents = (
   ),
   a: ({ node: _node, href, children, ...props }) => {
     const wikiLinkProps = props as typeof props & {
+      "data-footnote-backref"?: unknown;
+      "data-footnote-ref"?: unknown;
       "data-wikilink-relation"?: unknown;
       "data-wikilink-target"?: unknown;
     };
+    const isFootnoteLink =
+      wikiLinkProps["data-footnote-ref"] !== undefined ||
+      wikiLinkProps["data-footnote-backref"] !== undefined;
+    if (isFootnoteLink && typeof href === "string" && href.startsWith("#")) {
+      const activateFootnoteTarget = (link: HTMLAnchorElement) => {
+        const id = decodeURIComponent(href.slice(1));
+        const preview = link.closest(".preview-surface");
+        const target = preview?.querySelector<HTMLElement>(
+          `#${CSS.escape(id)}`,
+        );
+        if (!target) return;
+        target.classList.remove("preview-footnote-target");
+        target.addEventListener(
+          "animationend",
+          () => target.classList.remove("preview-footnote-target"),
+          { once: true },
+        );
+        target.classList.add("preview-footnote-target");
+        target.scrollIntoView({ block: "center" });
+      };
+      return (
+        <a
+          {...props}
+          role="link"
+          tabIndex={0}
+          onClick={(event) => {
+            event.preventDefault();
+            activateFootnoteTarget(event.currentTarget);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            activateFootnoteTarget(event.currentTarget);
+          }}
+        >
+          {children}
+        </a>
+      );
+    }
     const wikiTarget =
       typeof wikiLinkProps["data-wikilink-target"] === "string"
         ? wikiLinkProps["data-wikilink-target"]
