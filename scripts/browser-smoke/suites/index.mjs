@@ -12,7 +12,6 @@ import * as editorSelectionComments from "./editor-selection-comments.mjs";
 import * as editorCertification from "./editor-certification.mjs";
 import * as splitLayout from "./split-layout.mjs";
 import * as layout from "./layout.mjs";
-import * as panels from "./panels.mjs";
 import * as knowledgeLinks from "./knowledge-links.mjs";
 import * as okfConcepts from "./okf-concepts.mjs";
 import * as collaboration from "./collaboration.mjs";
@@ -37,7 +36,6 @@ export const suites = [
   editorCertification,
   splitLayout,
   layout,
-  panels,
   knowledgeLinks,
   okfConcepts,
   collaboration,

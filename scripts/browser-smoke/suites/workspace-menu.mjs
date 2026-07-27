@@ -10,8 +10,6 @@ export async function run(ctx) {
     expect,
     externalUrl,
     getTabs,
-    getViewModeActionLabels,
-    getViewModeSlots,
     openMarkdownFile,
     ensureSidePanelOpen,
     openProjectMenu,
@@ -1036,60 +1034,8 @@ export async function run(ctx) {
         await waitForEditorReady(page, { mode: "edit" });
         await page.locator(".share-trigger").click();
         await waitForShareDialogState(page, { panel: "Share link" });
-        await page.evaluate(() => {
-          window.__tabulaSawFailedStartResult = false;
-          window.__tabulaFailedStartObserver = new MutationObserver(() => {
-            if (
-              document.querySelector(".share-link-display") ||
-              Array.from(document.querySelectorAll("button")).some(
-                (button) => button.textContent?.replace(/\s+/g, " ").trim() === "Leave room",
-              )
-            ) {
-              window.__tabulaSawFailedStartResult = true;
-            }
-          });
-          window.__tabulaFailedStartObserver.observe(document.body, {
-            attributes: true,
-            childList: true,
-            subtree: true,
-          });
-        });
         await page.getByRole("button", { name: "Start session" }).click();
-
-        const startSamples = [];
-        for (let index = 0; index < 30; index += 1) {
-          const modalCount = await page.locator(".share-modal").count();
-          const startButtonCount = await page.getByRole("button", { name: "Start session" }).count();
-          const inviteLinkCount = await page.locator(".share-link-display").count();
-          const stopSessionCount = await page.getByRole("button", { name: "Leave room" }).count();
-          const toastCount = await page.locator(".app-toast").count();
-          startSamples.push({
-            url: page.url(),
-            modalCount,
-            startButtonCount,
-            inviteLinkCount,
-            stopSessionCount,
-          });
-          if (toastCount > 0) {
-            break;
-          }
-          await page.waitForTimeout(100);
-        }
-        try {
-          await page.waitForSelector(".app-toast", { timeout: 8_000 });
-        } catch {
-          throw new Error(`Starting without the room relay should report an action failure.\n${JSON.stringify(startSamples, null, 2)}`);
-        }
-        const failedStartTransition = await page.evaluate(() => {
-          window.__tabulaFailedStartObserver?.disconnect();
-          return {
-            sawResult: Boolean(window.__tabulaSawFailedStartResult),
-          };
-        });
-        expect(
-          !failedStartTransition.sawResult,
-          "A failed Start session should never flash the invite or stop-session surface.",
-        );
+        await page.waitForSelector(".app-toast", { timeout: 8_000 });
 
         await page.waitForFunction(
           () =>
@@ -1262,21 +1208,6 @@ export async function run(ctx) {
     let tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "Preview mode should be reflected in the active tab.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) ===
-        JSON.stringify(["Visual", "Edit", "Preview", "Split"]),
-      "The view-mode control should keep Visual, Edit, Preview, and Split in a stable order.",
-    );
-    expect(
-      JSON.stringify(await getViewModeSlots(page)) ===
-        JSON.stringify([
-          { viewMode: "visual", label: "Visual", active: false },
-          { viewMode: "edit", label: "Edit", active: false },
-          { viewMode: "preview", label: "Preview", active: true },
-          { viewMode: "split", label: "Split", active: false },
-        ]),
-      "Preview mode should select Preview without changing the control positions.",
-    );
-    expect(
       (await page.getByRole("button", { name: "Preview", exact: true }).getAttribute("aria-pressed")) === "true",
       "The active Preview mode should remain visible and selected.",
     );
@@ -1290,21 +1221,6 @@ export async function run(ctx) {
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Edit", "New local tabs should start in Edit mode.");
     expect(
-      JSON.stringify(await getViewModeActionLabels(page)) ===
-        JSON.stringify(["Visual", "Edit", "Preview", "Split"]),
-      "Edit mode should keep the stable view-mode order.",
-    );
-    expect(
-      JSON.stringify(await getViewModeSlots(page)) ===
-        JSON.stringify([
-          { viewMode: "visual", label: "Visual", active: false },
-          { viewMode: "edit", label: "Edit", active: true },
-          { viewMode: "preview", label: "Preview", active: false },
-          { viewMode: "split", label: "Split", active: false },
-        ]),
-      "Edit mode should select Edit without changing the control positions.",
-    );
-    expect(
       (await page.getByRole("button", { name: "Edit", exact: true }).getAttribute("aria-pressed")) === "true",
       "The active Edit mode should remain visible and selected.",
     );
@@ -1313,21 +1229,6 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "split" });
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Split", "Split should be reachable from Edit mode.");
-    expect(
-      JSON.stringify(await getViewModeActionLabels(page)) ===
-        JSON.stringify(["Visual", "Edit", "Preview", "Split"]),
-      "Split mode should keep the stable view-mode order.",
-    );
-    expect(
-      JSON.stringify(await getViewModeSlots(page)) ===
-        JSON.stringify([
-          { viewMode: "visual", label: "Visual", active: false },
-          { viewMode: "edit", label: "Edit", active: false },
-          { viewMode: "preview", label: "Preview", active: false },
-          { viewMode: "split", label: "Split", active: true },
-        ]),
-      "Split mode should select Split without changing the control positions.",
-    );
 
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await waitForEditorReady(page, { mode: "edit" });

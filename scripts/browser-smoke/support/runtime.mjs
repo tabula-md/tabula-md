@@ -84,20 +84,6 @@ const getTabs = async (page) =>
     }),
   );
 
-const getViewModeActionLabels = async (page) =>
-  page.$$eval(".document-controls [data-view-mode]", (buttons) =>
-    buttons.map((button) => button.getAttribute("aria-label") ?? button.getAttribute("title") ?? ""),
-  );
-
-const getViewModeSlots = async (page) =>
-  page.$$eval(".document-controls [data-view-mode]", (items) =>
-    items.map((item) => ({
-      viewMode: item.getAttribute("data-view-mode") ?? "",
-      label: item.getAttribute("aria-label") ?? "",
-      active: item.getAttribute("aria-pressed") === "true",
-    })),
-  );
-
 const createWithPage =
   () =>
   async (browser, path, callback, options = {}) => {
@@ -348,8 +334,6 @@ export const createSmokeContext = (browser, controls = {}) => ({
   externalUrl,
   focusMarkdownEditor,
   getTabs,
-  getViewModeActionLabels,
-  getViewModeSlots,
   ensureSidePanelOpen,
   ensureSidePanelClosed,
   openMarkdownFile,
