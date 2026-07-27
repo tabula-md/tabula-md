@@ -1,0 +1,97 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { selectBrowserSmokeSuites } from "./ci-suite-selection.mjs";
+
+test("keeps only the harness for non-runtime and unit-test changes", () => {
+  const selection = selectBrowserSmokeSuites([
+    "docs/testing.md",
+    "tabula-app/src/editor/editorState.test.ts",
+  ]);
+
+  assert.deepEqual(selection.playwrightFiles, ["harness.spec.ts"]);
+  assert.deepEqual(selection.legacySuites, []);
+  assert.equal(selection.needsRoom, false);
+});
+
+test("selects editor checks without unrelated workspace or collaboration checks", () => {
+  const selection = selectBrowserSmokeSuites([
+    "tabula-app/src/editor/editorVisualMode.ts",
+  ]);
+
+  assert.deepEqual(selection.playwrightFiles, [
+    "harness.spec.ts",
+    "editor-visual.spec.mjs",
+  ]);
+  assert(selection.legacySuites.includes("editor-search-source"));
+  assert(!selection.legacySuites.includes("workspace"));
+  assert(!selection.legacySuites.includes("collaboration"));
+});
+
+test("selects panel and knowledge checks for a knowledge panel change", () => {
+  const selection = selectBrowserSmokeSuites([
+    "tabula-app/src/right-panel/RightPanelKnowledge.tsx",
+  ]);
+
+  assert.deepEqual(selection.playwrightFiles, [
+    "harness.spec.ts",
+    "panels.spec.mjs",
+  ]);
+  assert.deepEqual(selection.legacySuites, ["knowledge-links", "okf-concepts"]);
+});
+
+test("checks out the room relay only for suites that use it", () => {
+  const collaboration = selectBrowserSmokeSuites([
+    "tabula-app/src/collaboration/roomTransport.ts",
+  ]);
+  const preview = selectBrowserSmokeSuites([
+    "tabula-app/src/preview/VirtualMarkdownPreview.tsx",
+  ]);
+
+  assert.deepEqual(collaboration.legacySuites, ["collaboration"]);
+  assert.equal(collaboration.needsRoom, true);
+  assert.equal(preview.needsRoom, true);
+});
+
+test("runs the exact legacy scenario file that changed", () => {
+  const collaboration = selectBrowserSmokeSuites([
+    "scripts/browser-smoke/suites/collaboration-memory.mjs",
+  ]);
+  const editor = selectBrowserSmokeSuites([
+    "scripts/browser-smoke/suites/editor-preview-sync.mjs",
+  ]);
+
+  assert.deepEqual(collaboration.legacySuites, ["collaboration-memory"]);
+  assert.equal(collaboration.needsRoom, true);
+  assert.deepEqual(editor.playwrightFiles, ["harness.spec.ts"]);
+  assert.deepEqual(editor.legacySuites, ["editor-preview-sync"]);
+});
+
+test("runs a changed performance spec only when explicitly selected", () => {
+  const selection = selectBrowserSmokeSuites([
+    "tests/browser/performance.spec.mjs",
+  ]);
+
+  assert.deepEqual(selection.playwrightFiles, [
+    "harness.spec.ts",
+    "performance.spec.mjs",
+  ]);
+  assert.deepEqual(selection.legacySuites, []);
+});
+
+test("falls back to the established PR safety checks for shared or unknown runtime changes", () => {
+  const infrastructure = selectBrowserSmokeSuites(["playwright.config.ts"]);
+  const unknownRuntime = selectBrowserSmokeSuites([
+    "tabula-app/src/new-runtime/UnknownSurface.tsx",
+  ]);
+
+  for (const selection of [infrastructure, unknownRuntime]) {
+    assert.equal(selection.fallbackRun, true);
+    assert.deepEqual(selection.playwrightFiles, [
+      "harness.spec.ts",
+      "editor-visual.spec.mjs",
+      "panels.spec.mjs",
+    ]);
+    assert.deepEqual(selection.legacySuites, ["workspace", "collaboration"]);
+    assert.equal(selection.needsRoom, true);
+  }
+});

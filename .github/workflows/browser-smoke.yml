@@ -33,14 +33,8 @@ jobs:
     steps:
       - name: Checkout Tabula.md
         uses: actions/checkout@v4
-
-      - name: Checkout room relay
-        uses: actions/checkout@v4
         with:
-          repository: tabula-md/tabula-room
-          # Pull requests use the known-compatible relay; scheduled runs test room main.
-          ref: ${{ github.event_name == 'pull_request' && '44cc9d5f87b770e7e5097af83aa445c8234950bd' || 'main' }}
-          path: tabula-room
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -48,19 +42,59 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Verify browser check selection
+        run: node --test scripts/browser-smoke/ci-suite-selection.test.mjs
+
+      - name: Select pull request browser checks
+        id: select
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" |
+            node scripts/browser-smoke/ci-suite-selection.mjs
+
+      - name: Summarize pull request browser checks
+        if: github.event_name == 'pull_request'
+        env:
+          PLAYWRIGHT_FILES: ${{ steps.select.outputs.playwright_files }}
+          LEGACY_SUITES: ${{ steps.select.outputs.legacy_suites }}
+          SELECTION_REASON: ${{ steps.select.outputs.reason }}
+        run: |
+          {
+            echo "### Selected browser checks"
+            echo
+            echo "- Playwright: \`$PLAYWRIGHT_FILES\`"
+            echo "- Legacy suites: \`${LEGACY_SUITES:-none}\`"
+            echo "- Reason: $SELECTION_REASON"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout room relay
+        if: github.event_name != 'pull_request' || steps.select.outputs.needs_room == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: tabula-md/tabula-room
+          # Pull requests use the known-compatible relay; scheduled runs test room main.
+          ref: ${{ github.event_name == 'pull_request' && '44cc9d5f87b770e7e5097af83aa445c8234950bd' || 'main' }}
+          path: tabula-room
+
       - name: Install app dependencies
         run: npm ci
 
       - name: Install room dependencies
+        if: github.event_name != 'pull_request' || steps.select.outputs.needs_room == 'true'
         run: npm ci
         working-directory: tabula-room
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright pull request canary
+      - name: Run selected Playwright checks
         if: github.event_name == 'pull_request'
-        run: npm run test:browser:playwright:canary
+        env:
+          TABULA_ROOM_REPO_DIR: ${{ steps.select.outputs.needs_room == 'true' && format('{0}/tabula-room', github.workspace) || '' }}
+        run: npx playwright test ${{ steps.select.outputs.playwright_files }}
 
       - name: Run Playwright extended suite
         if: github.event_name != 'pull_request'
@@ -68,11 +102,11 @@ jobs:
           TABULA_ROOM_REPO_DIR: ${{ github.workspace }}/tabula-room
         run: npm run test:browser:playwright
 
-      - name: Run pull request canary
-        if: github.event_name == 'pull_request'
+      - name: Run selected legacy checks
+        if: github.event_name == 'pull_request' && steps.select.outputs.legacy_suites != ''
         env:
-          TABULA_ROOM_REPO_DIR: ${{ github.workspace }}/tabula-room
-        run: npm run test:browser -- --suite=workspace,collaboration
+          TABULA_ROOM_REPO_DIR: ${{ steps.select.outputs.needs_room == 'true' && format('{0}/tabula-room', github.workspace) || '' }}
+        run: npm run test:browser -- --suite=${{ steps.select.outputs.legacy_suites }}
 
       - name: Run scheduled suite
         if: github.event_name != 'pull_request'
