@@ -1,6 +1,7 @@
 # Browser Smoke Tests
 
-`npm run test:browser` runs the full browser smoke suite. The entrypoint is intentionally tiny:
+Browser coverage is split between named Playwright scenarios and the remaining
+legacy smoke suites. The legacy entrypoint is intentionally tiny:
 
 - `../browser-smoke.mjs`: starts the suite runner.
 - `support/runtime.mjs`: owns Playwright launch, local server lifecycle, shared assertions, and page helpers.
@@ -12,12 +13,26 @@ Product comfort targets:
 - Launch: 1MB Markdown should keep editor input responsive; large preview refresh can wait for idle time.
 - Collaboration: 2-5 people should be able to edit together for 30 minutes or more.
 
-Run a focused suite while developing:
+Run a focused legacy suite while developing:
 
 ```sh
-npm run test:browser -- --suite=editor-preview
-TABULA_BROWSER_SMOKE_SUITE=panels npm run test:browser
+npm run test:browser -- --suite=workspace
+TABULA_BROWSER_SMOKE_SUITE=collaboration npm run test:browser
 ```
+
+Named Playwright scenarios cover the Visual, Panels, Editor Preview, and
+Performance surfaces:
+
+```bash
+npm run test:browser:playwright:canary
+TABULA_ROOM_REPO_DIR=../tabula-room npm run test:browser:preview
+TABULA_ROOM_REPO_DIR=../tabula-room npm run test:browser:performance
+```
+
+The pull-request canary runs fast correctness checks. Timing budgets and the
+room-dependent editor preview scenarios run in the scheduled extended suite or
+through their focused commands. Playwright retains a trace, screenshot, and
+video when one of these named scenarios fails.
 
 Focused suites start only the services they exercise. Editor, layout, and
 panel suites do not require a room checkout or Firebase emulator. Suites that
@@ -45,7 +60,7 @@ npm run test:browser -- --suite=json-share
 This opens the deployed app, exports a `#json` Export link, opens that link in a separate browser context, confirms
 the replace prompt, and verifies the imported Markdown content.
 
-Suite map:
+Suite map (regardless of runner):
 
 - `workspace`: first screen, tabs, empty state, share, templates, and view-mode chrome.
 - `editor-preview`: editor commands, Markdown preview rendering, toolbar behavior, and comments.

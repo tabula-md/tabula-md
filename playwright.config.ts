@@ -1,7 +1,41 @@
+import fs from "node:fs";
+import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 const externalUrl = process.env.TABULA_TEST_URL?.replace(/\/$/, "");
 const localUrl = "http://127.0.0.1:5187";
+const siblingRoomRepoDir = path.resolve(process.cwd(), "../tabula-room");
+const roomRepoDir =
+  process.env.TABULA_ROOM_REPO_DIR ??
+  (fs.existsSync(path.join(siblingRoomRepoDir, "package.json"))
+    ? siblingRoomRepoDir
+    : undefined);
+const roomUrl = "http://127.0.0.1:3012";
+const localWebServers = [
+  ...(roomRepoDir
+    ? [
+        {
+          command: "npm run dev",
+          cwd: roomRepoDir,
+          env: {
+            PORT: "3012",
+            TABULA_ROOM_ALLOWED_ORIGINS: localUrl,
+            TABULA_ROOM_MAX_PAYLOAD_BYTES: String(4 * 1024 * 1024),
+          },
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+          url: `${roomUrl}/health`,
+        },
+      ]
+    : []),
+  {
+    command: "npm run dev -- --host 127.0.0.1 --port 5187",
+    env: roomRepoDir ? { VITE_TABULA_ROOM_URL: roomUrl } : undefined,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+    url: localUrl,
+  },
+];
 
 export default defineConfig({
   testDir: "./tests/browser",
@@ -24,12 +58,7 @@ export default defineConfig({
   },
   webServer: externalUrl
     ? undefined
-    : {
-        command: "npm run dev -- --host 127.0.0.1 --port 5187",
-        reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
-        url: localUrl,
-      },
+    : localWebServers,
   projects: [
     {
       name: "chromium",
