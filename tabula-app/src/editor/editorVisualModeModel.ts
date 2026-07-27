@@ -9,9 +9,6 @@ import {
   type PresentationBlock,
   type PresentationNode,
 } from "@tabula-md/tabula";
-import { fromMarkdown } from "mdast-util-from-markdown";
-import { gfmFootnoteFromMarkdown } from "mdast-util-gfm-footnote";
-import { gfmFootnote } from "micromark-extension-gfm-footnote";
 
 export type EditorVisualHiddenRange = {
   from: number;
@@ -111,7 +108,6 @@ const getLineClass = (nodeName: string) => {
   return "";
 };
 
-const footnotesByDocument = new WeakMap<object, EditorVisualReplacement[]>();
 const frontmatterByDocument = new WeakMap<object, EditorVisualReplacement | null>();
 const presentationByDocument =
   new WeakMap<object, MarkdownPresentationDocument>();
@@ -337,85 +333,29 @@ const getFrontmatter = (state: EditorState) => {
   return replacement;
 };
 
-type PositionedMarkdownNode = {
-  children?: PositionedMarkdownNode[];
-  identifier?: string;
-  label?: string;
-  position?: {
-    end?: { offset?: number };
-    start?: { offset?: number };
-  };
-  type?: string;
-  value?: string;
-};
-
-const readFootnoteDefinitionBody = (source: string) => {
-  const lines = source.split("\n");
-  const first = (lines.shift() ?? "").replace(
-    /^ {0,3}\[\^[^\]\n]+\]:[ \t]*/,
-    "",
-  );
-  return [
-    first,
-    ...lines.map((line) => line.replace(/^(?: {4}|\t)/, "")),
-  ].join("\n").trimEnd();
-};
-
 const getFootnotes = (state: EditorState) => {
-  const documentKey = state.doc as object;
-  const cached = footnotesByDocument.get(documentKey);
-  if (cached) return cached;
-
   const replacements: EditorVisualReplacement[] = [];
-  try {
-    const source = state.doc.toString();
-    const tree = fromMarkdown(source, {
-      extensions: [gfmFootnote()],
-      mdastExtensions: [gfmFootnoteFromMarkdown()],
-    }) as PositionedMarkdownNode;
-    const references: PositionedMarkdownNode[] = [];
-    const definitions: PositionedMarkdownNode[] = [];
-    const visit = (node: PositionedMarkdownNode) => {
-      if (node.type === "footnoteReference") references.push(node);
-      if (node.type === "footnoteDefinition") definitions.push(node);
-      for (const child of node.children ?? []) visit(child);
-    };
-    visit(tree);
-
-    const indices = new Map<string, number>();
-    for (const reference of references) {
-      const label = reference.identifier ?? reference.label ?? "";
-      if (!indices.has(label)) indices.set(label, indices.size + 1);
-      const from = reference.position?.start?.offset;
-      const to = reference.position?.end?.offset;
-      if (typeof from !== "number" || typeof to !== "number") continue;
+  for (const footnote of getPresentationDocument(state).references.footnotes) {
+    for (const reference of footnote.references) {
       replacements.push({
-        from,
-        index: indices.get(label) ?? 1,
+        from: reference.range.from,
+        index: footnote.index,
         kind: "footnote-reference",
-        label,
-        to,
+        label: footnote.identifier,
+        to: reference.range.to,
       });
     }
-    for (const definition of definitions) {
-      const label = definition.identifier ?? definition.label ?? "";
-      if (!indices.has(label)) indices.set(label, indices.size + 1);
-      const from = definition.position?.start?.offset;
-      const to = definition.position?.end?.offset;
-      if (typeof from !== "number" || typeof to !== "number") continue;
+    if (footnote.definitionRange) {
       replacements.push({
-        body: readFootnoteDefinitionBody(source.slice(from, to)),
-        from,
-        index: indices.get(label) ?? 1,
+        body: footnote.definitionBody ?? "",
+        from: footnote.definitionRange.from,
+        index: footnote.index,
         kind: "footnote-definition",
-        label,
-        to,
+        label: footnote.identifier,
+        to: footnote.definitionRange.to,
       });
     }
-  } catch {
-    // Keep the canonical Markdown source visible when footnote parsing fails.
   }
-  footnotesByDocument.set(documentKey, replacements);
   return replacements;
 };
 

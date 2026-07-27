@@ -81,6 +81,26 @@ describe("Markdown wiki-link remark transform", () => {
     expect(html).toContain('data-presentation-node="diagram"');
   });
 
+  it("links repeated footnotes while visually hiding the generated section heading", () => {
+    const html = renderToStaticMarkup(createElement(
+      ReactMarkdown,
+      {
+        rehypePlugins: createPreviewRehypePlugins([]),
+        remarkPlugins: MARKDOWN_REMARK_PLUGINS,
+      },
+      "Reference[^note], repeated[^note].\n\n[^note]: Shared definition.",
+    ));
+
+    expect(html.match(/data-footnote-ref=""/g)).toHaveLength(2);
+    expect(html.match(/data-footnote-backref=""/g)).toHaveLength(2);
+    expect(html).toContain('data-footnotes=""');
+    expect(html).toContain('href="#user-content-fn-note"');
+    expect(html).toContain('id="user-content-fn-note"');
+    expect(html).toContain("preview-footnote-label");
+    expect(html).toContain('href="#user-content-fnref-note"');
+    expect(html).toContain('href="#user-content-fnref-note-2"');
+  });
+
   it("turns links into annotated anchors and embeds into block nodes", () => {
     const markdown = "\\[[Escaped]] and [[Page|Alias]] plus ![[Embed]]";
     const tree: MarkdownTree = {

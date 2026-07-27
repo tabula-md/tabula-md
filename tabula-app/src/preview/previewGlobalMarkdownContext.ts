@@ -1,6 +1,12 @@
+import {
+  createMarkdownPresentationDocument,
+  type PresentationFootnote,
+} from "@tabula-md/tabula";
+
 export type PreviewMarkdownDefinition = {
   label: string;
   markdown: string;
+  status?: PresentationFootnote["status"];
 };
 
 export type PreviewGlobalMarkdownContext = {
@@ -11,10 +17,7 @@ export type PreviewGlobalMarkdownContext = {
 };
 
 const referenceDefinitionLinePattern = /^ {0,3}\[(?!\^)([^\]\n]+)\]:\s+\S/;
-const footnoteDefinitionLinePattern = /^ {0,3}\[\^([^\]\n]+)\]:/;
-const footnoteContinuationLinePattern = /^(?: {4,}|\t)\S/;
 const bracketLabelPattern = /\[([^\]\n]*)\]/g;
-const footnoteReferencePattern = /\[\^([^\]\n]+)\]/g;
 const embeddedImageDataPattern = /data:image\/(?:avif|gif|jpeg|png|webp);base64,[a-z0-9+/=]+/i;
 const embeddedImageTokenPrefix = "/__tabula_embedded_image__/";
 
@@ -35,25 +38,35 @@ const collectBracketLabels = (markdown: string) => {
 };
 
 const collectFootnoteLabels = (markdown: string) => {
-  const labels = new Set<string>();
-  footnoteReferencePattern.lastIndex = 0;
-  for (const match of markdown.matchAll(footnoteReferencePattern)) {
-    labels.add(normalizeDefinitionLabel(match[1]));
-  }
-  return labels;
+  return new Set(
+    createMarkdownPresentationDocument(markdown).references.footnotes
+      .filter((footnote) => footnote.references.length > 0)
+      .map((footnote) => footnote.identifier),
+  );
 };
 
 export const getPreviewGlobalMarkdownContext = (
   markdown: string,
 ): PreviewGlobalMarkdownContext => {
   const lines = markdown.split(/\r?\n/);
+  const presentation = createMarkdownPresentationDocument(markdown);
   let isInFence = false;
   let activeFenceMarker = "";
   const referenceDefinitions: PreviewMarkdownDefinition[] = [];
-  const footnoteDefinitions: PreviewMarkdownDefinition[] = [];
+  const footnoteDefinitions = presentation.references.footnotes.flatMap(
+    (footnote) => footnote.definitionRange
+      ? [{
+          label: footnote.identifier,
+          markdown: markdown.slice(
+            footnote.definitionRange.from,
+            footnote.definitionRange.to,
+          ),
+          status: footnote.status,
+        }]
+      : [],
+  );
   const embeddedImageSources: Record<string, string> = {};
   const referenceLabels = new Set<string>();
-  const footnoteLabels = new Set<string>();
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
@@ -71,36 +84,6 @@ export const getPreviewGlobalMarkdownContext = (
     }
 
     if (isInFence) {
-      continue;
-    }
-
-    const footnoteDefinitionMatch = line.match(footnoteDefinitionLinePattern);
-    if (footnoteDefinitionMatch) {
-      const footnoteLines = [line];
-      const pendingBlankLines: string[] = [];
-      while (index + 1 < lines.length) {
-        const nextLine = lines[index + 1];
-        if (nextLine.trim().length === 0) {
-          pendingBlankLines.push(nextLine);
-          index += 1;
-          continue;
-        }
-
-        if (footnoteContinuationLinePattern.test(nextLine)) {
-          footnoteLines.push(...pendingBlankLines, nextLine);
-          pendingBlankLines.length = 0;
-          index += 1;
-          continue;
-        }
-
-        break;
-      }
-
-      const label = normalizeDefinitionLabel(footnoteDefinitionMatch[1]);
-      if (!footnoteLabels.has(label)) {
-        footnoteLabels.add(label);
-        footnoteDefinitions.push({ label, markdown: footnoteLines.join("\n") });
-      }
       continue;
     }
 
@@ -127,7 +110,10 @@ export const getPreviewGlobalMarkdownContext = (
   return {
     embeddedImageSources,
     footnoteDefinitions,
-    footnoteReferences: footnoteDefinitions.map(({ label }) => `[^${label}]`).join(" "),
+    footnoteReferences: presentation.references.footnotes
+      .filter((footnote) => footnote.status === "resolved")
+      .map(({ identifier }) => `[^${identifier}]`)
+      .join(" "),
     referenceDefinitions,
   };
 };
@@ -154,4 +140,7 @@ export const getPreviewBlockGlobalDefinitions = (
 
 export const getPreviewFootnoteDefinitions = (
   context: PreviewGlobalMarkdownContext,
-) => context.footnoteDefinitions.map(({ markdown }) => markdown).join("\n");
+) => context.footnoteDefinitions
+  .filter(({ status }) => status !== "unused")
+  .map(({ markdown }) => markdown)
+  .join("\n");

@@ -53,8 +53,34 @@ describe("preview global markdown context", () => {
       "[guide]: https://tabula.md/guide\n\n[^first]: First note with [guide][guide].\n    Continued note.",
     );
     expect(getPreviewBlockGlobalDefinitions("No footnote here.", context)).toBe("");
-    expect(getPreviewFootnoteDefinitions(context)).toContain("[^second]: Second note.");
+    expect(getPreviewFootnoteDefinitions(context)).not.toContain(
+      "[^second]: Second note.",
+    );
+    expect(context.footnoteDefinitions).toContainEqual({
+      label: "second",
+      markdown: "[^second]: Second note.",
+      status: "unused",
+    });
+    expect(context.footnoteReferences).toBe("[^first]");
+  });
+
+  it("uses shared reference ordering when definitions appear first", () => {
+    const context = getPreviewGlobalMarkdownContext([
+      "[^second]: Defined first.",
+      "",
+      "Reference[^first], then second[^second].",
+      "",
+      "[^first]: First by reference.",
+    ].join("\n"));
+
     expect(context.footnoteReferences).toBe("[^first] [^second]");
+    expect(context.footnoteDefinitions.map(({ label, status }) => ({
+      label,
+      status,
+    }))).toEqual([
+      { label: "first", status: "resolved" },
+      { label: "second", status: "resolved" },
+    ]);
   });
 
   it("ignores definitions inside fenced code", () => {

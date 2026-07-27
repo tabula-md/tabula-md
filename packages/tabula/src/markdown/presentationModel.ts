@@ -115,14 +115,22 @@ export type PresentationReferenceDefinition = {
 };
 
 export type PresentationFootnoteReference = {
+  occurrence: number;
   range: SourceRange;
 };
 
+export type PresentationFootnoteStatus =
+  | "missing"
+  | "resolved"
+  | "unused";
+
 export type PresentationFootnote = {
+  definitionBody?: string;
   definitionRange?: SourceRange;
   identifier: string;
   index: number;
   references: readonly PresentationFootnoteReference[];
+  status: PresentationFootnoteStatus;
 };
 
 export type ReferenceIndex = {

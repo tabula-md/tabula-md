@@ -1220,20 +1220,40 @@ a.preview-docs-card:hover {
   line-height: var(--preview-secondary-line-height);
 }
 
-.preview-surface section[data-footnotes] h2 {
-  margin: 0 0 10px;
-  color: var(--preview-caption-text-color);
-  font-size: var(--preview-secondary-text-size);
-  font-weight: var(--preview-caption-font-weight);
+.preview-surface .preview-footnote-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .preview-surface section[data-footnotes] ol {
   margin-bottom: 0;
 }
 
+.preview-surface section[data-footnotes] li:target {
+  scroll-margin-block: 30vh;
+  animation: preview-footnote-target 1.6s ease-out;
+}
+
 .preview-surface [data-footnote-backref] {
   margin-left: 4px;
   text-decoration: none;
+}
+
+@keyframes preview-footnote-target {
+  0%,
+  35% {
+    background: var(--accent-soft);
+  }
+
+  100% {
+    background: transparent;
+  }
 }
 
 .preview-math-inline {
