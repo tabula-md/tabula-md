@@ -15,6 +15,11 @@ type VisualMarkdownRuntime = {
   urlTransform: typeof import("../preview/markdownPreviewUrl").transformMarkdownPreviewUrl;
 };
 
+type VisualMarkdownSourceRange = {
+  from: number;
+  to: number;
+};
+
 const mountsByTarget = new WeakMap<HTMLElement, VisualMarkdownMount>();
 const targetsByOwner = new WeakMap<HTMLElement, Set<HTMLElement>>();
 let runtimePromise: Promise<VisualMarkdownRuntime> | null = null;
@@ -133,6 +138,7 @@ export const mountEditorVisualMarkdownTable = (
   alignments: Array<"left" | "center" | "right" | null>,
   header: string[],
   rows: string[][],
+  cellRanges: VisualMarkdownSourceRange[][],
 ) => {
   const fallback = [header, ...rows].map((row) => row.join(" | ")).join("\n");
   mountEditorVisualReact(owner, target, fallback, (runtime) => {
@@ -144,6 +150,8 @@ export const mountEditorVisualMarkdownTable = (
     ) => runtime.React.createElement(
       tagName,
       {
+        "data-visual-content-from": cellRanges[rowIndex + 1]?.[columnIndex]?.from,
+        "data-visual-content-to": cellRanges[rowIndex + 1]?.[columnIndex]?.to,
         key: `${rowIndex}:${columnIndex}`,
         style: alignments[columnIndex]
           ? { textAlign: alignments[columnIndex] } as CSSProperties
@@ -160,7 +168,18 @@ export const mountEditorVisualMarkdownTable = (
         runtime.React.createElement(
           "tr",
           null,
-          header.map((value, columnIndex) => createCell("th", value, columnIndex, -1)),
+          header.map((value, columnIndex) => runtime.React.createElement(
+            "th",
+            {
+              "data-visual-content-from": cellRanges[0]?.[columnIndex]?.from,
+              "data-visual-content-to": cellRanges[0]?.[columnIndex]?.to,
+              key: `-1:${columnIndex}`,
+              style: alignments[columnIndex]
+                ? { textAlign: alignments[columnIndex] } as CSSProperties
+                : undefined,
+            },
+            createMarkdownElement(runtime, value, true),
+          )),
         ),
       ),
       runtime.React.createElement(

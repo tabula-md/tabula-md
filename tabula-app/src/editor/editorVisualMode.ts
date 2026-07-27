@@ -23,10 +23,17 @@ import {
 import {
   buildEditorVisualModel,
   findEditorVisualReplacementInRange,
-  isEditorVisualNavigableReplacement,
   type EditorVisualBlockRange,
   type EditorVisualReplacement,
 } from "./editorVisualModeModel";
+import {
+  findEditorVisualMappedBlockAt,
+  findEditorVisualMappedBlockOnLine,
+  getEditorVisualBlockEntryPosition,
+  getEditorVisualPointerPosition,
+  getEditorVisualSourceMap,
+  readEditorVisualPointerTextPoint,
+} from "./editorVisualPositionMapping";
 import { revealEditorVisualSelection } from "./editorVisualEffects";
 import {
   destroyEditorVisualMarkdown,
@@ -313,38 +320,6 @@ const editSource = (
   view.focus();
 };
 
-const getVisualBlockEntryAnchor = (
-  state: EditorState,
-  block: EditorVisualBlockRange,
-  forward: boolean,
-  column = 0,
-) => {
-  const position = forward
-    ? block.from
-    : Math.max(block.from, block.to - 1);
-  const line = state.doc.lineAt(position);
-  return Math.min(line.to, line.from + column);
-};
-
-const findIndexedVisualReplacementOnLine = (
-  state: EditorState,
-  replacements: readonly EditorVisualReplacement[],
-  lineNumber: number,
-) => replacements.find((replacement) => {
-  if (!isEditorVisualNavigableReplacement(replacement)) return false;
-  const firstLine = state.doc.lineAt(replacement.from).number;
-  const lastLine = state.doc.lineAt(replacement.to).number;
-  return lineNumber >= firstLine && lineNumber <= lastLine;
-});
-
-const findIndexedVisualReplacementAt = (
-  replacements: readonly EditorVisualReplacement[],
-  position: number,
-) => replacements.find((replacement) =>
-  isEditorVisualNavigableReplacement(replacement) &&
-  position >= replacement.from &&
-  position <= replacement.to);
-
 const moveByVisualLine = (
   view: EditorView,
   forward: boolean,
@@ -356,7 +331,7 @@ const moveByVisualLine = (
   const currentLine = view.state.doc.lineAt(selection.head);
   const adjacentLineNumber = currentLine.number + (forward ? 1 : -1);
   if (adjacentLineNumber < 1 || adjacentLineNumber > view.state.doc.lines) return false;
-  const block = findIndexedVisualReplacementOnLine(
+  const block = findEditorVisualMappedBlockOnLine(
     view.state,
     replacements,
     adjacentLineNumber,
@@ -365,7 +340,7 @@ const moveByVisualLine = (
     editSource(
       view,
       { from: block.from, to: block.to },
-      getVisualBlockEntryAnchor(
+      getEditorVisualBlockEntryPosition(
         view.state,
         block,
         forward,
@@ -417,76 +392,33 @@ const moveByVisualLine = (
   return true;
 };
 
-const getPointerSourceLine = (
-  view: EditorView,
-  block: EditorVisualBlockRange,
-  container: HTMLElement,
-  clientY: number,
-  firstLineNumber = view.state.doc.lineAt(block.from).number,
-  lastLineNumber = view.state.doc.lineAt(block.to).number,
-) => {
-  const first = Math.max(1, firstLineNumber);
-  const last = Math.max(first, Math.min(view.state.doc.lines, lastLineNumber));
-  if (first === last) return view.state.doc.line(first);
-  const rect = container.getBoundingClientRect();
-  const ratio = rect.height <= 0
-    ? 0
-    : Math.max(0, Math.min(0.999_999, (clientY - rect.top) / rect.height));
-  const lineNumber = first + Math.floor(ratio * (last - first + 1));
-  return view.state.doc.line(lineNumber);
-};
-
 const editSourceAtPointer = (
   view: EditorView,
   block: EditorVisualBlockRange,
   container: HTMLElement,
   clientX: number,
   clientY: number,
-  firstLineNumber?: number,
-  lastLineNumber?: number,
 ) => {
-  const targetLine = getPointerSourceLine(
-    view,
-    block,
-    container,
-    clientY,
-    firstLineNumber,
-    lastLineNumber,
+  const replacement = findEditorVisualReplacementInRange(
+    view.state,
+    block.from,
+    block.to,
+  ) ?? block;
+  const rect = container.getBoundingClientRect();
+  const anchor = getEditorVisualPointerPosition(
+    view.state,
+    replacement,
+    {
+      clientX,
+      clientY,
+      height: rect.height,
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+    },
+    readEditorVisualPointerTextPoint(container, clientX, clientY),
   );
-  const expectedDocument = view.state.doc;
-  editSource(view, block, targetLine.from);
-  view.requestMeasure({
-    read: () => {
-      if (view.state.doc !== expectedDocument) return null;
-      const line = view.state.doc.line(targetLine.number);
-      const start = view.coordsAtPos(line.from, 1);
-      const end = view.coordsAtPos(line.to, -1);
-      if (!start || !end) return line.from;
-      const y = (Math.min(start.top, end.top) + Math.max(start.bottom, end.bottom)) / 2;
-      const position = view.posAtCoords({ x: clientX, y }, false);
-      return Math.max(line.from, Math.min(line.to, position));
-    },
-    write: (anchor) => {
-      if (anchor === null) return;
-      queueMicrotask(() => {
-        if (
-          view.state.doc !== expectedDocument ||
-          !view.state.selection.main.empty ||
-          view.state.selection.main.head !== targetLine.from
-        ) {
-          return;
-        }
-        view.dispatch({
-          selection: { anchor },
-          effects: EditorView.scrollIntoView(anchor, {
-            y: "nearest",
-            yMargin: VISUAL_CURSOR_SAFE_MARGIN,
-          }),
-        });
-        view.focus();
-      });
-    },
-  });
+  editSource(view, block, anchor);
 };
 
 const moveIntoVisualBlockHorizontally = (
@@ -498,7 +430,7 @@ const moveIntoVisualBlockHorizontally = (
   if (!selection.empty) return false;
   const target = selection.head + (forward ? 1 : -1);
   if (target < 0 || target > view.state.doc.length) return false;
-  const block = findIndexedVisualReplacementAt(replacements, target);
+  const block = findEditorVisualMappedBlockAt(replacements, target);
   if (!block) return false;
   const crossesIntoBlock = forward
     ? selection.head <= block.from && target >= block.from
@@ -507,7 +439,7 @@ const moveIntoVisualBlockHorizontally = (
   editSource(
     view,
     block,
-    getVisualBlockEntryAnchor(view.state, block, forward),
+    getEditorVisualBlockEntryPosition(view.state, block, forward),
   );
   return true;
 };
@@ -525,18 +457,13 @@ abstract class RevealableBlockWidget extends WidgetType {
     return 96;
   }
 
-  protected pointerSourceLineRange(view: EditorView) {
-    return {
-      first: view.state.doc.lineAt(this.sourceFrom).number,
-      last: view.state.doc.lineAt(this.sourceTo).number,
-    };
-  }
-
   protected makeContainer(view: EditorView, className: string) {
     const container = document.createElement("div");
     container.className = className;
     container.dataset.visualFrom = String(this.sourceFrom);
     container.dataset.visualTo = String(this.sourceTo);
+    container.dataset.visualContentFrom = String(this.sourceFrom);
+    container.dataset.visualContentTo = String(this.sourceTo);
     container.setAttribute("role", "group");
     container.setAttribute("aria-label", this.sourceLabel);
     const block = { from: this.sourceFrom, to: this.sourceTo };
@@ -550,15 +477,12 @@ abstract class RevealableBlockWidget extends WidgetType {
       }
       event.preventDefault();
       event.stopPropagation();
-      const { first, last } = this.pointerSourceLineRange(view);
       editSourceAtPointer(
         view,
         block,
         container,
         event.clientX,
         event.clientY,
-        first,
-        last,
       );
     });
     if (typeof ResizeObserver !== "undefined") {
@@ -722,10 +646,15 @@ class InlineMathWidget extends WidgetType {
     container.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      const replacement = findEditorVisualReplacementInRange(
+        view.state,
+        this.sourceFrom,
+        this.sourceTo,
+      ) ?? { from: this.sourceFrom, to: this.sourceTo };
       editSource(
         view,
         { from: this.sourceFrom, to: this.sourceTo },
-        Math.min(this.sourceTo, this.sourceFrom + 1),
+        getEditorVisualBlockEntryPosition(view.state, replacement, true),
       );
     });
     void getKatexRuntime()
@@ -773,10 +702,15 @@ class FootnoteReferenceWidget extends WidgetType {
     reference.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      const replacement = findEditorVisualReplacementInRange(
+        view.state,
+        this.sourceFrom,
+        this.sourceTo,
+      ) ?? { from: this.sourceFrom, to: this.sourceTo };
       editSource(
         view,
         { from: this.sourceFrom, to: this.sourceTo },
-        Math.min(this.sourceTo, this.sourceFrom + 2),
+        getEditorVisualBlockEntryPosition(view.state, replacement, true),
       );
     });
     return reference;
@@ -830,6 +764,7 @@ class TableWidget extends RevealableBlockWidget {
     sourceTo: number,
     sourceLabel: string,
     readonly alignments: Array<"left" | "center" | "right" | null>,
+    readonly cellRanges: EditorVisualBlockRange[][],
     readonly header: string[],
     readonly rows: string[][],
   ) {
@@ -841,6 +776,7 @@ class TableWidget extends RevealableBlockWidget {
       this.sourceTo === other.sourceTo &&
       this.sourceLabel === other.sourceLabel &&
       JSON.stringify(this.alignments) === JSON.stringify(other.alignments) &&
+      JSON.stringify(this.cellRanges) === JSON.stringify(other.cellRanges) &&
       JSON.stringify(this.header) === JSON.stringify(other.header) &&
       JSON.stringify(this.rows) === JSON.stringify(other.rows);
   }
@@ -860,6 +796,7 @@ class TableWidget extends RevealableBlockWidget {
       this.alignments,
       this.header,
       this.rows,
+      this.cellRanges,
     );
     return container;
   }
@@ -928,6 +865,7 @@ class CodeBlockWidget extends RevealableBlockWidget {
     sourceFrom: number,
     sourceTo: number,
     sourceLabel: string,
+    readonly contentRange: EditorVisualBlockRange,
     readonly code: string,
     readonly language: string,
   ) {
@@ -938,20 +876,14 @@ class CodeBlockWidget extends RevealableBlockWidget {
     return this.sourceFrom === other.sourceFrom &&
       this.sourceTo === other.sourceTo &&
       this.sourceLabel === other.sourceLabel &&
+      this.contentRange.from === other.contentRange.from &&
+      this.contentRange.to === other.contentRange.to &&
       this.code === other.code &&
       this.language === other.language;
   }
 
   get estimatedHeight() {
     return Math.max(104, this.code.split("\n").length * 26.4 + 76.8);
-  }
-
-  protected pointerSourceLineRange(view: EditorView) {
-    const first = view.state.doc.lineAt(this.sourceFrom).number;
-    const last = view.state.doc.lineAt(this.sourceTo).number;
-    return last - first >= 2
-      ? { first: first + 1, last: last - 1 }
-      : { first, last };
   }
 
   toDOM(view: EditorView) {
@@ -967,6 +899,8 @@ class CodeBlockWidget extends RevealableBlockWidget {
     }
     const pre = document.createElement("pre");
     const code = document.createElement("code");
+    code.dataset.visualContentFrom = String(this.contentRange.from);
+    code.dataset.visualContentTo = String(this.contentRange.to);
     code.textContent = this.code;
     pre.append(code);
     container.append(pre);
@@ -1287,6 +1221,7 @@ const createReplacementDecoration = (
           replacement.to,
           sourceLabel,
           replacement.alignments,
+          replacement.cellRanges,
           replacement.header,
           replacement.rows,
         ),
@@ -1356,16 +1291,20 @@ const createReplacementDecoration = (
         ),
       });
     case "code":
+      {
+        const sourceMap = getEditorVisualSourceMap(replacement);
       return Decoration.replace({
         block: true,
         widget: new CodeBlockWidget(
           replacement.from,
           replacement.to,
           sourceLabel,
+          sourceMap.contentRange ?? sourceMap.range,
           replacement.code,
           replacement.language,
         ),
       });
+      }
     case "diagram":
       return Decoration.replace({
         block: true,
