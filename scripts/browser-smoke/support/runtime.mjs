@@ -340,7 +340,7 @@ const selectSuites = (suites) => {
   return suites.filter((suite) => requestedSuites.includes(suite.id));
 };
 
-const createSmokeContext = (browser, controls = {}) => ({
+export const createSmokeContext = (browser, controls = {}) => ({
   appNewFileShortcut,
   baseUrl,
   browser,
@@ -371,7 +371,7 @@ const createSmokeContext = (browser, controls = {}) => ({
   waitForShareDialogState,
   waitForText,
   waitForWorkspaceMenuState,
-  withPage: createWithPage(),
+  withPage: controls.withPage ?? createWithPage(),
 });
 
 const spawnRoomServer = async () => {
