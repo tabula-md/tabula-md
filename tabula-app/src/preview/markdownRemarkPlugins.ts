@@ -5,8 +5,10 @@ import remarkMath from "remark-math";
 import remarkSupersub from "remark-supersub";
 import type { Options as ReactMarkdownOptions } from "react-markdown";
 import {
+  createMarkdownPresentationDocument,
   scanMarkdownWikiLinks,
   type MarkdownWikiLinkToken,
+  type PresentationNode,
 } from "@tabula-md/tabula";
 
 type MarkdownAstPosition = {
@@ -35,6 +37,87 @@ const markdownWikiLinkIgnoredNodeTypes = new Set([
   "linkReference",
   "yaml",
 ]);
+const presentationInlineTypeByAstType = new Map([
+  ["delete", "strikethrough"],
+  ["emphasis", "emphasis"],
+  ["footnoteReference", "footnote-reference"],
+  ["inlineCode", "inline-code"],
+  ["inlineMath", "inline-math"],
+  ["link", "link"],
+  ["linkReference", "link"],
+  ["strong", "strong"],
+]);
+
+const flattenPresentationNodes = (
+  nodes: readonly PresentationNode[],
+): PresentationNode[] => nodes.flatMap((node) => [
+  node,
+  ...flattenPresentationNodes(node.children),
+]);
+
+export const annotateMarkdownPresentation = (
+  tree: MarkdownAstNode,
+  markdown: string,
+) => {
+  const presentation = createMarkdownPresentationDocument(markdown);
+  const nodesByRange = new Map(
+    flattenPresentationNodes(presentation.blocks).map((node) => [
+      `${node.type}:${node.range.from}:${node.range.to}`,
+      node,
+    ]),
+  );
+  const walk = (node: MarkdownAstNode) => {
+    const from = node.position?.start?.offset;
+    const to = node.position?.end?.offset;
+    const presentationType = presentationInlineTypeByAstType.get(
+      node.type ?? "",
+    );
+    if (
+      presentationType &&
+      typeof from === "number" &&
+      typeof to === "number"
+    ) {
+      const presentationNode = nodesByRange.get(
+        `${presentationType}:${from}:${to}`,
+      );
+      if (presentationNode) {
+        const existingProperties = (
+          node.data?.hProperties &&
+          typeof node.data.hProperties === "object"
+        )
+          ? node.data.hProperties as Record<string, unknown>
+          : {};
+        node.data = {
+          ...node.data,
+          hProperties: {
+            ...existingProperties,
+            dataPresentationNode: presentationNode.type,
+            dataSourceFrom: presentationNode.range.from,
+            dataSourceTo: presentationNode.range.to,
+            ...(presentationNode.data?.linkKind
+              ? {
+                  dataPresentationLinkKind:
+                    presentationNode.data.linkKind,
+                }
+              : {}),
+          },
+        };
+      }
+    }
+    node.children?.forEach(walk);
+  };
+  walk(tree);
+};
+
+const createRemarkPresentationPlugin = () => (
+  tree: MarkdownAstNode,
+  file: { value?: unknown },
+) => {
+  annotateMarkdownPresentation(
+    tree,
+    typeof file.value === "string" ? file.value : "",
+  );
+};
 
 const createPositionFromOffsets = (
   sourcePosition: MarkdownAstPosition | undefined,
@@ -270,6 +353,7 @@ export const MARKDOWN_REMARK_PLUGINS: NonNullable<ReactMarkdownOptions["remarkPl
   remarkMath,
   remarkSupersub,
   [remarkGfm, { singleTilde: false }],
+  createRemarkPresentationPlugin,
   remarkDeflist,
   createRemarkMarkPlugin,
   createRemarkWikiLinkPlugin,

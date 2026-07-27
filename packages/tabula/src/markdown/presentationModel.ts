@@ -70,6 +70,7 @@ export type PresentationNodeData = {
   depth?: 1 | 2 | 3 | 4 | 5 | 6;
   identifier?: string;
   language?: string;
+  linkKind?: PresentationLinkKind;
   ordered?: boolean;
   start?: number | null;
   text?: string;
@@ -82,6 +83,7 @@ export type PresentationNode = {
   contentRange?: SourceRange;
   data?: PresentationNodeData;
   id: string;
+  markerRanges: readonly SourceRange[];
   range: SourceRange;
   type: PresentationNodeType;
 };
