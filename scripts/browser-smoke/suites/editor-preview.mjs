@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 export const id = "editor-preview";
 export const requiresRoomService = true;
 export const description = "Editor chrome, Markdown preview rendering, toolbar behavior, and source editing.";
@@ -46,6 +47,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
@@ -196,13 +198,14 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Line Wrapping" }).click();
     await waitForRenderFrame(page);
 
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     expect(!(await page.locator(".cm-lineNumbers").isVisible()), "Preview mode should not show editor line numbers.");
   });
 
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
@@ -257,7 +260,7 @@ export async function run(ctx) {
     expect(!bookmarkedLineState.lineActionPopoverVisible, "Annotation gutter actions should not open a line action menu.");
     expect(!bookmarkedLineState.statusButtonVisible, "Selection comments should no longer use the status bar action.");
 
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await page.waitForSelector(".workspace.preview .preview-line-action.bookmark.has-bookmark", { timeout: 5_000 });
     const previewLineGutterState = await page.evaluate(() => {
       const previewDocument = document.querySelector(".workspace.preview .preview-document.with-line-gutters");
@@ -296,6 +299,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("mobile\nwrite");
@@ -311,6 +315,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     const scrollSmokeMarkdown = Array.from(
@@ -318,7 +323,7 @@ export async function run(ctx) {
       (_, index) => `## Scroll section ${index + 1}\n\nThis paragraph keeps the document tall enough for mode transition scroll checks.`,
     ).join("\n\n");
     await page.keyboard.insertText(scrollSmokeMarkdown);
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
 
     const setWorkspaceRatio = async (ratio) =>
@@ -396,7 +401,7 @@ export async function run(ctx) {
     expect(previewBefore && previewBefore.scrollHeight > previewBefore.clientHeight, "Preview should be scrollable for mode transition smoke.");
     const previewLineBefore = await readFirstVisibleSourceLine("preview");
 
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await waitForRenderFrame(page);
     await waitForRenderFrame(page);
@@ -410,7 +415,7 @@ export async function run(ctx) {
     expect(writeAfter.topChromeTop === 0, "Mode transition should not move the top chrome.");
     expect(writeAfter.statusTop > 0, "Mode transition should not detach the status row.");
 
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await waitForRenderFrame(page);
     await waitForRenderFrame(page);
@@ -422,7 +427,7 @@ export async function run(ctx) {
       `Edit -> Preview should preserve the visible Markdown source line (${previewLineBefore} -> ${previewLineAfterEdit}).`,
     );
 
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     expect(
       Math.abs((await readFirstVisibleSourceLine("editor")) - previewLineBefore) <= 4,
@@ -432,6 +437,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(
@@ -451,6 +457,7 @@ export async function run(ctx) {
       return Number(visible?.textContent?.trim()) || null;
     });
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".tab-item").first().getByRole("tab").click();
     await waitForRenderFrame(page);
@@ -471,6 +478,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     const searchButton = page.getByRole("button", { name: "Search", exact: true }).first();
     await searchButton.hover();
@@ -485,6 +493,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
@@ -514,6 +523,7 @@ export async function run(ctx) {
     expect(emptySelectionFormat.editorFocused, "Empty selection formatting should keep focus in the editor.");
 
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("const value = 1;");
@@ -593,6 +603,7 @@ export async function run(ctx) {
     );
 
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.getByRole("button", { name: "Heading 1", exact: true }).click();
@@ -642,6 +653,7 @@ export async function run(ctx) {
     };
 
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("Open docs");
@@ -657,6 +669,7 @@ export async function run(ctx) {
     );
 
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await pasteIntoEditor("“Title”\r\n\titem\r\n\r\n\r\nnext");
@@ -669,7 +682,7 @@ export async function run(ctx) {
 
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("-o\noo");
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     const softLineBreakState = await page.evaluate(() => {
       const paragraph = document.querySelector(".preview-surface p");
@@ -682,13 +695,13 @@ export async function run(ctx) {
       softLineBreakState.text === "-o\noo" && softLineBreakState.breakCount === 1,
       "Preview should preserve author-entered soft line breaks for reading convenience.",
     );
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
 
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.insertText("```ts\nconst value = 1;\n```");
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await page.waitForSelector(".preview-surface pre code", { timeout: 5_000 });
     await page.waitForSelector(".preview-surface pre code.hljs", { timeout: 5_000 });
     await page.mouse.move(0, 0);
@@ -846,6 +859,7 @@ export async function run(ctx) {
     expect(copiedCodeBlock.copiedText === "const value = 1;", "Preview copy code should copy the raw code contents.");
 
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(
@@ -862,7 +876,7 @@ export async function run(ctx) {
         "The rendered body should remain the focus.",
       ].join("\n"),
     );
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await page.waitForSelector(".frontmatter-view", { timeout: 5_000 });
     const previewFrontmatterSurface = await page.evaluate(() => {
       const frontmatter = document.querySelector(".frontmatter-view");
@@ -899,7 +913,7 @@ export async function run(ctx) {
     expect(previewFrontmatterSurface?.borderRadius !== "0px", "Preview frontmatter should keep the original grouped surface shape.");
     expect(previewFrontmatterSurface?.bodyHeadingText === "Preview Surface Brief", "Preview should render the authored H1 as Markdown.");
     expect(previewFrontmatterSurface?.firstBodyText === "The rendered body should remain the focus.", "Preview should keep body content after the authored H1.");
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     const readPreviewHeadingSourceLine = () =>
       page.evaluate(() => {
@@ -946,6 +960,7 @@ export async function run(ctx) {
     );
 
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     const tinyPngDataUrl =
@@ -976,7 +991,7 @@ export async function run(ctx) {
         "| Alpha | 2 |",
       ].join("\n"),
     );
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await page.waitForSelector(".preview-surface table", { timeout: 5_000 });
     const previewGfm = await page.evaluate(() => {
       const link = document.querySelector('.preview-surface a[href="https://example.com"]');
@@ -1091,6 +1106,7 @@ export async function run(ctx) {
     expect(previewGfm.imageFrameDisplay === "block", "Standalone preview images should follow the document flow without a card layout.");
 
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.type("plain");
@@ -1182,14 +1198,14 @@ export async function run(ctx) {
         '<Callout type="note" title="Note">\nContent\n</Callout>',
       "Supported component commands should insert editable source templates.",
     );
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await page.waitForSelector(".preview-docs-callout", { timeout: 5_000 });
     expect(
       (await page.locator(".preview-docs-callout").filter({ hasText: "Content" }).count()) === 1,
       "Inserted component templates should render through the existing preview support.",
     );
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     await focusMarkdownEditor(page);
@@ -1198,7 +1214,7 @@ export async function run(ctx) {
     await page.keyboard.type("alpha");
     await page.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
     await focusMarkdownEditor(page);
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     await focusMarkdownEditor(page);
     await page.keyboard.press("Shift+Home");
@@ -1570,7 +1586,7 @@ export async function run(ctx) {
       "Split scroll sync should still work with the formatting toolbar row present.",
     );
 
-    await page.getByRole("button", { name: "Layout controls", exact: true }).click();
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     const syncToggleInitialState = await page
       .getByRole("button", { name: "Sync Scrolling", exact: true })
       .getAttribute("aria-pressed");
@@ -1647,7 +1663,7 @@ export async function run(ctx) {
       "Preview manual scroll should never move the editor.",
     );
 
-    await page.getByRole("button", { name: "Layout controls", exact: true }).click();
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     const syncToggleDisabledState = await page
       .getByRole("button", { name: "Sync Scrolling", exact: true })
       .getAttribute("aria-pressed");
@@ -1731,10 +1747,10 @@ export async function run(ctx) {
       });
 
     const splitAlignment = await readDocumentControlAlignment();
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     const previewAlignment = await readDocumentControlAlignment();
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     const writeAlignment = await readDocumentControlAlignment();
 
@@ -1798,11 +1814,11 @@ export async function run(ctx) {
       "Document command chrome should not use static border lines.",
     );
 
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
-    await page.getByRole("button", { name: "View controls", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     const previewToolbarState = await page.evaluate(() => ({
       formattingToolbarCount: document.querySelectorAll(".formatting-toolbar").length,
-      editorControlsText: document.querySelector('.document-controls-popover[aria-label="View controls"]')?.textContent ?? "",
+      editorControlsText: document.querySelector('.document-controls-popover[aria-label="Editor controls"]')?.textContent ?? "",
     }));
     expect(previewToolbarState.formattingToolbarCount === 0, "Preview mode should hide Formatting tools.");
     expect(
@@ -1816,6 +1832,7 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await createDocument(page);
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       const mobileToolbar = await page.evaluate(() => {
         const toolbar = document.querySelector(".formatting-toolbar");
@@ -1885,13 +1902,13 @@ export async function run(ctx) {
         "Compact More formatting should keep a stable ellipsis icon after applying a hidden command.",
       );
 
-      await page.getByRole("button", { name: "Preview", exact: true }).click();
+      await selectDocumentViewMode(page, "Preview");
       await waitForEditorReady(page, { mode: "preview" });
       expect(
-        (await page.getByRole("button", { name: "Edit", exact: true }).count()) === 1,
-        "Mobile Preview should keep the view-mode control available.",
+        (await page.locator('.document-view-mode-control [data-view-mode="preview"][aria-pressed="true"]').count()) === 1,
+        "Mobile Preview should keep the active Preview toggle available.",
       );
-      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
 
       await page.setViewportSize({ width: 390, height: 320 });
@@ -1922,6 +1939,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(["x", "---", "###", "=>", "===", "___"].join("\n"));
@@ -2029,6 +2047,7 @@ export async function run(ctx) {
     };
 
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await replaceEditorText("- item");
     await page.keyboard.press("Enter");
@@ -2214,10 +2233,11 @@ Status <Badge type="success">Ready</Badge>
 <img src="javascript:alert(1)" alt="unsafe image" onerror="window.__tabulaUnsafeImage = true" />`;
 
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(docsMarkdown);
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await waitForRenderFrame(page);
     await page.waitForSelector(".preview-mermaid-svg svg", { timeout: 15_000 });
@@ -2483,10 +2503,11 @@ Status <Badge type="success">Ready</Badge>
 
   await withPage(browser, "/", async (page) => {
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("# Start here\n\n[Jump to start](#start-here)\n\n[Missing section](#missing-section)");
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await page.getByRole("link", { name: "Jump to start", exact: true })
       .waitFor({ state: "visible" });
@@ -2513,10 +2534,11 @@ Status <Badge type="success">Ready</Badge>
   await withPage(browser, "/", async (page) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await createDocument(page);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("# Mobile heading\n\n- [ ] Touch task");
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     const mobilePreview = await page.evaluate(() => {
       const surface = document.querySelector(".workspace.preview .preview-surface");

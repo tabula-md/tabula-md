@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 import {
   buildAsyncPreviewMediaMarkdown,
   buildHtmxSplitPreviewSyncMarkdown,
@@ -882,8 +883,9 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await page.getByRole("button", { name: "New document", exact: true }).click();
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
-      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
       await focusMarkdownEditor(page);
 
@@ -917,9 +919,10 @@ export async function run(ctx) {
           mimeType: "text/markdown",
           buffer: Buffer.from(plainMarkdown),
         });
+        await selectDocumentViewMode(page, "Edit");
         await waitForEditorReady(page, { mode: "edit" });
         await waitForSavedLocally(page);
-        await page.getByRole("button", { name: "Split", exact: true }).click();
+        await selectDocumentViewMode(page, "Split");
         await waitForEditorReady(page, { mode: "split" });
         await page.waitForSelector(".workspace.split [data-preview-virtual-block]", { timeout: 8_000 });
         await waitForRenderFrame(page);
@@ -992,9 +995,10 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await importMarkdownFixture(page, htmlTableDocsMarkdown, "html-table-docs-performance.md");
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
-      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
       await page.waitForSelector(".workspace.split [data-preview-virtual-block]", { timeout: 8_000 });
       await waitForRenderFrame(page);
@@ -1183,9 +1187,10 @@ export async function run(ctx) {
         });
       });
       await importMarkdownFixture(page, asyncPreviewMediaMarkdown, "async-preview-media.md");
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
-      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
       await page.waitForSelector(".workspace.split [data-preview-virtual-block]", { timeout: 8_000 });
       await waitForRenderFrame(page);
@@ -1244,9 +1249,10 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await importMarkdownFixture(page, htmlTableDocsMarkdown, "html-table-docs-visible-preview.md");
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
-      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
       await page.waitForSelector(".workspace.split [data-preview-virtual-block]", { timeout: 8_000 });
       await waitForRenderFrame(page);
@@ -1305,9 +1311,10 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await importMarkdownFixture(page, htmxSplitPreviewSyncMarkdown, "htmx-split-preview-sync.md");
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
-      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
       await page.waitForSelector(".workspace.split [data-preview-virtual-block]", { timeout: 8_000 });
       await waitForRenderFrame(page);
@@ -1555,9 +1562,10 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await importMarkdownFixture(page, koreanSplitMarkdown, "korean-split-performance.md");
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
-      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
       await page.waitForSelector(".workspace.split [data-preview-virtual-block]", { timeout: 8_000 });
       await waitForSavedLocally(page);
@@ -1647,9 +1655,10 @@ export async function run(ctx) {
         mimeType: "text/markdown",
         buffer: Buffer.from(longMarkdown),
       });
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
-      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
       await page.waitForSelector(".workspace.split [data-preview-virtual-block]", { timeout: 8_000 });
       await waitForSavedLocally(page);
@@ -1800,6 +1809,7 @@ export async function run(ctx) {
     async (page) => {
       await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseUrl });
       await page.getByRole("button", { name: "New document", exact: true }).click();
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await focusMarkdownEditor(page);
       await page.evaluate(installLargePasteProbe);
@@ -1849,6 +1859,7 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await importMarkdownFixture(page, largeEditorMarkdown, "large-editor-performance.md");
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
       await page.evaluate(installLargePasteProbe);
@@ -1899,7 +1910,7 @@ export async function run(ctx) {
       );
 
       const previewElapsed = await measureElapsed(async () => {
-        await page.getByRole("button", { name: "Preview", exact: true }).click();
+        await selectDocumentViewMode(page, "Preview");
         await waitForEditorReady(page, { mode: "preview" });
       });
       reportPerformanceMetric("large-editor-preview-toggle", { elapsedMs: Math.round(previewElapsed) });
@@ -1916,11 +1927,12 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await importMarkdownFixture(page, oneMegabyteMarkdown, "one-megabyte-performance.md");
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
 
       const previewElapsed = await measureElapsed(async () => {
-        await page.getByRole("button", { name: "Preview", exact: true }).click();
+        await selectDocumentViewMode(page, "Preview");
         await waitForEditorReady(page, { mode: "preview" });
       });
       reportPerformanceMetric("one-megabyte-preview-toggle", { elapsedMs: Math.round(previewElapsed) });
@@ -1937,11 +1949,12 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await importMarkdownFixture(page, oneMegabyteMarkdown, "one-megabyte-split-performance.md");
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
 
       const splitVisibleElapsed = await measureElapsed(async () => {
-        await page.getByRole("button", { name: "Split", exact: true }).click();
+        await selectDocumentViewMode(page, "Split");
         await waitForEditorReady(page, { mode: "split" });
         await page.waitForFunction(
           () => document.querySelectorAll(".workspace.split [data-preview-virtual-block]").length > 0,
@@ -2037,13 +2050,14 @@ export async function run(ctx) {
         inlineImageReferenceMarkdown,
         "inline-image-reference-performance.md",
       );
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
 
       await page.evaluate(installLargePasteProbe);
       await page.evaluate(() => window.__tabulaLargePasteProbe.start());
       const initialElapsed = await measureElapsed(async () => {
-        await page.getByRole("button", { name: "Split", exact: true }).click();
+        await selectDocumentViewMode(page, "Split");
         await waitForEditorReady(page, { mode: "split" });
         await page.waitForFunction(
           () => {
@@ -2193,11 +2207,12 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await importMarkdownFixture(page, globalSyntaxFallbackMarkdown, "global-syntax-virtual.md");
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await waitForSavedLocally(page);
 
       const previewElapsed = await measureElapsed(async () => {
-        await page.getByRole("button", { name: "Preview", exact: true }).click();
+        await selectDocumentViewMode(page, "Preview");
         await waitForEditorReady(page, { mode: "preview" });
         await page.waitForFunction(
           () =>
@@ -2240,6 +2255,7 @@ export async function run(ctx) {
     const secondPage = await secondContext.newPage();
     try {
       await importMarkdownFixture(firstPage, largeEditorMarkdown, "large-presence-performance.md");
+      await selectDocumentViewMode(firstPage, "Edit");
       await waitForEditorReady(firstPage, { mode: "edit" });
       await firstPage.locator(".share-trigger").click();
       await firstPage.getByRole("button", { name: "Start session" }).click();
@@ -2256,6 +2272,7 @@ export async function run(ctx) {
         await secondPage.getByRole("button", { name: "Files", exact: true }).click();
         await secondPage.getByRole("button", { name: "Open large-presence-performance.md" }).click();
       }
+      await selectDocumentViewMode(secondPage, "Edit");
       await waitForEditorReady(secondPage, { mode: "edit" });
       await Promise.all([
         firstPage.waitForFunction(

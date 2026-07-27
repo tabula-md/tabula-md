@@ -4,7 +4,11 @@ import {
   useRoomWorkspaceStore,
   useWorkspaceStore,
 } from "./workspaceStore";
-import { createWorkspaceRootFolder, type WorkspaceFile } from "../workspaceStorage";
+import {
+  createWorkspaceFile,
+  createWorkspaceRootFolder,
+  type WorkspaceFile,
+} from "../workspaceStorage";
 
 const createTestFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
   id: overrides.id ?? `file-${index}`,
@@ -54,6 +58,13 @@ describe("workspace store", () => {
     initializeWorkspaceStore();
 
     expect(useWorkspaceStore.getState().folders).toEqual([createWorkspaceRootFolder()]);
+  });
+
+  it("creates new workspace files in Visual edit by default", () => {
+    expect(createWorkspaceFile(1)).toMatchObject({
+      viewMode: "visual",
+      editingMode: "visual",
+    });
   });
 
   it("keeps local and room workspace records in separate stores", async () => {

@@ -155,6 +155,7 @@ export async function run(ctx) {
     await page.goto(baseUrl);
     await page.waitForSelector(".tabbar");
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     await runLiveCycle({ page, focusMarkdownEditor, cycle: "warmup" });
@@ -209,3 +210,4 @@ export async function run(ctx) {
     await context.close();
   }
 }
+import { selectDocumentViewMode } from "../support/view-mode.mjs";

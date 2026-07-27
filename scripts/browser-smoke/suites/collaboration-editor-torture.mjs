@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 import {
   buildLargeEditorMarkdown,
   buildOneMegabyteEditorMarkdown,
@@ -131,10 +132,7 @@ const waitForEditorText = async (page, expectedText, timeout = 12_000, label = "
 };
 
 const ensureEditMode = async (page, waitForEditorReady) => {
-  const editButton = page.getByRole("button", { name: "Edit", exact: true });
-  if ((await editButton.count()) > 0) {
-    await editButton.click();
-  }
+  await selectDocumentViewMode(page, "Edit");
   await waitForEditorReady(page, { mode: "edit" });
 };
 
@@ -161,6 +159,7 @@ const startLiveSession = async ({ baseUrl, firstPage, secondPage, waitForEditorR
   await firstPage.goto(baseUrl);
   await firstPage.waitForSelector(".tabbar");
   await firstPage.getByRole("button", { name: "New document", exact: true }).click();
+  await selectDocumentViewMode(firstPage, "Edit");
   await waitForEditorReady(firstPage, { mode: "edit" });
   const targetFileName = await firstPage.locator(".tab-item.active").getAttribute("data-file-name");
   if (!targetFileName) {
@@ -240,10 +239,7 @@ const replaceEditorDocumentText = async (page, text) => {
 };
 
 const enableSplitMode = async (page, waitForEditorReady) => {
-  const splitButton = page.getByRole("button", { name: "Split", exact: true });
-  if ((await splitButton.count()) > 0) {
-    await splitButton.click();
-  }
+  await selectDocumentViewMode(page, "Split");
   await waitForEditorReady(page, { mode: "split" });
 };
 

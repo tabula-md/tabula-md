@@ -15,6 +15,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("alpha beta\nbeta gamma\nalpha beta");
@@ -49,6 +50,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("foo foo foo");
@@ -96,3 +98,4 @@ export async function run(ctx) {
     expect(nextReplacementState.focusLabel === "Replace with", "Repeated Enter in replace should not focus the editor.");
   });
 }
+import { selectDocumentViewMode } from "../support/view-mode.mjs";

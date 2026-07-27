@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 import { readSearchRowLayout } from "./editor-search-helpers.mjs";
 
 export const id = "editor-search-layout";
@@ -15,6 +16,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("alpha beta\nbeta gamma\nalpha beta");
@@ -62,7 +64,7 @@ export async function run(ctx) {
     );
     expect(focusedWidthSearchLayout.rightPanelOpen, "Opening Document Search should preserve an already open side panel.");
 
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     const splitSearchAlignment = await page.evaluate(() => {
       const bar = document.querySelector(".document-search-bar");
@@ -81,7 +83,7 @@ export async function run(ctx) {
         splitSearchAlignment.barRight <= splitSearchAlignment.rowRight,
       "Split view should keep Document Search inside its source or preview lane.",
     );
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     const searchInput = page.getByRole("searchbox", { name: "Search" });
@@ -121,11 +123,11 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Close Workspace menu" }).click();
 
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
-    expect((await page.locator(".document-search-row").count()) === 1, "Search should stay open while Editor Controls are opened.");
-    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 1, "Editor Controls should open over the persistent search row.");
+    expect((await page.locator(".document-search-row").count()) === 1, "Search should stay open while Editor controls are opened.");
+    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 1, "Editor controls should open over the persistent search row.");
     await page.locator(".workspace").click({ position: { x: 20, y: 20 } });
     await waitForRenderFrame(page);
-    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 0, "Outside click should close Editor Controls.");
+    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 0, "Outside click should close Editor controls.");
     expect((await page.locator(".document-search-row").count()) === 1, "Outside click should not close Search.");
 
     await page.getByRole("button", { name: "Close search" }).click();
@@ -133,14 +135,14 @@ export async function run(ctx) {
     expect((await page.locator(".document-search-row").count()) === 0, "Closing search should remove the search row.");
 
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
-    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 1, "Editor Controls should open as a popover.");
+    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 1, "Editor controls should open as a popover.");
     await page.locator(".workspace").click({ position: { x: 20, y: 20 } });
     await waitForRenderFrame(page);
-    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 0, "Editor Controls should close on outside click.");
+    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 0, "Editor controls should close on outside click.");
 
     await page.getByRole("button", { name: "Editor controls", exact: true }).click();
     await page.getByRole("button", { name: "Line Wrapping" }).click();
     await waitForRenderFrame(page);
-    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 0, "Editor Controls should close after choosing an action.");
+    expect((await page.locator('.document-controls-popover[aria-label="Editor controls"]').count()) === 0, "Editor controls should close after choosing an action.");
   });
 }

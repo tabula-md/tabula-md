@@ -1,5 +1,8 @@
 import { useCallback, useMemo, type RefObject } from "react";
-import type { TextChange } from "@tabula-md/tabula";
+import {
+  getEditingModeViewMode,
+  type TextChange,
+} from "@tabula-md/tabula";
 import type { MarkdownEditorHandle } from "./markdownEditorTypes";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import type { FileViewMode, WorkspaceFile } from "../workspace/workspaceStorage";
@@ -79,15 +82,23 @@ export function useWorkspaceDocumentRuntime({
   const focusTextRange = useCallback(
     (start: number, end = start) => {
       if (activeViewMode === "preview") {
-        setActiveFileViewMode("edit", {
+        setActiveFileViewMode(
+          getEditingModeViewMode(activeDocument.editingMode),
+          {
           preserveScroll: false,
           focusEditor: false,
-        });
+          },
+        );
       }
 
       queueEditorTextRange(start, end);
     },
-    [activeViewMode, queueEditorTextRange, setActiveFileViewMode],
+    [
+      activeDocument.editingMode,
+      activeViewMode,
+      queueEditorTextRange,
+      setActiveFileViewMode,
+    ],
   );
 
   const search = useEditorSearchController({

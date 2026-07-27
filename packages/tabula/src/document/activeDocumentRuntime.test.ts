@@ -96,6 +96,21 @@ describe("active document runtime", () => {
     });
   });
 
+  it("retains the editing mode behind Preview", () => {
+    expect(
+      createActiveDocumentRuntime(
+        file({
+          viewMode: "preview",
+          editingMode: "visual",
+        }),
+      ).editingMode,
+    ).toBe("visual");
+
+    expect(
+      createActiveDocumentRuntime(file({ viewMode: "preview" })).editingMode,
+    ).toBe("source");
+  });
+
   it("keeps frontmatter parsing and outline data inside the document runtime", () => {
     const text = `---\ntitle: Product Brief\n---\n\n# Intro\n\n## Scope`;
     const runtime = createActiveDocumentRuntime(file({ text }));

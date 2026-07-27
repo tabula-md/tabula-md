@@ -29,6 +29,7 @@ export async function run(ctx) {
     }));
 
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.type("\n\n# Export Link Smoke\n\nExport link import body.");
@@ -188,6 +189,7 @@ export async function run(ctx) {
       secondPage.on("request", (request) => secondRequestUrls.push(request.url()));
       await secondPage.goto(baseUrl);
       await secondPage.getByRole("button", { name: "New document", exact: true }).click();
+      await selectDocumentViewMode(secondPage, "Edit");
       await waitForEditorReady(secondPage, { mode: "edit" });
       await focusMarkdownEditor(secondPage);
       await secondPage.keyboard.type("\n\nLocal draft before import.");
@@ -238,6 +240,7 @@ export async function run(ctx) {
         const persistedWorkspacePage = await persistedContext.newPage();
         await persistedWorkspacePage.goto(baseUrl);
         await persistedWorkspacePage.getByRole("button", { name: "New document", exact: true }).click();
+        await selectDocumentViewMode(persistedWorkspacePage, "Edit");
         await waitForEditorReady(persistedWorkspacePage, { mode: "edit" });
         await focusMarkdownEditor(persistedWorkspacePage);
         await persistedWorkspacePage.keyboard.type("\n\nPersisted draft before hard-navigation import.");
@@ -276,6 +279,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await page.route(`${jsonUrl}/**`, (route) => route.abort());
     await page.locator(".share-trigger").click();
@@ -333,3 +337,4 @@ const waitForJsonHealth = async (jsonUrl) => {
 
   throw new Error(`Timed out waiting for ${jsonUrl}/health${lastError ? `: ${lastError.message}` : ""}`);
 };
+import { selectDocumentViewMode } from "../support/view-mode.mjs";

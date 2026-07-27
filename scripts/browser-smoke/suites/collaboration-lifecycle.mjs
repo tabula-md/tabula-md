@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 export const id = "collaboration-lifecycle";
 export const requiresRoomService = true;
 export const description = "Live room recovery after a real browser page freeze.";
@@ -7,8 +8,7 @@ export const requiresNaturalBackgrounding = true;
 export async function run(ctx) {
   const { baseUrl, browser, expect, focusMarkdownEditor, waitForEditorReady, waitForText } = ctx;
   const ensureEditMode = async (page) => {
-    const editButton = page.getByRole("button", { name: "Edit", exact: true });
-    if ((await editButton.count()) > 0) await editButton.click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
   };
   const hostContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });

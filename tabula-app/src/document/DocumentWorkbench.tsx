@@ -261,6 +261,7 @@ export function DocumentWorkbench({
         )}
 
         <DocumentControls
+          activeEditingMode={documentSurface.documentControls.activeEditingMode}
           activeViewMode={documentSurface.documentControls.activeViewMode}
           activeReadingWidth={documentSurface.documentControls.activeReadingWidth}
           activeLineWrapping={documentSurface.documentControls.activeLineWrapping}

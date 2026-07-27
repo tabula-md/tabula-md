@@ -1,7 +1,9 @@
 import {
   clampSplitEditorRatio,
   DEFAULT_SPLIT_EDITOR_RATIO,
+  FILE_EDITING_MODES,
   FILE_VIEW_MODES,
+  getFileEditingMode,
   MAX_SPLIT_EDITOR_RATIO,
   MIN_SPLIT_EDITOR_RATIO,
   normalizeWorkspaceFileTitle,
@@ -9,6 +11,7 @@ import {
   parseRoomLocation,
   parseRoomShareUrl,
   READING_WIDTHS,
+  type FileEditingMode,
   type FileViewMode,
   type ReadingWidth,
   type WorkspaceKnowledgeBaseline,
@@ -22,7 +25,7 @@ export {
   MIN_SPLIT_EDITOR_RATIO,
   READING_WIDTHS,
 };
-export type { FileViewMode, ReadingWidth };
+export type { FileEditingMode, FileViewMode, ReadingWidth };
 
 export const PROJECT_STORAGE_VERSION = 7;
 export const WORKSPACE_STORAGE_VERSION = PROJECT_STORAGE_VERSION;
@@ -69,6 +72,7 @@ export type WorkspaceFile = {
   parentId?: string | null;
   order?: number;
   viewMode: FileViewMode;
+  editingMode?: FileEditingMode;
   readingWidth: ReadingWidth;
   splitRatio?: number;
   lineWrapping: boolean;
@@ -131,6 +135,7 @@ export type StoredWorkspaceFile = {
   parentId?: string | null;
   order?: number;
   viewMode: FileViewMode;
+  editingMode?: FileEditingMode;
   readingWidth: ReadingWidth;
   splitRatio?: number;
   lineWrapping: boolean;
@@ -241,18 +246,22 @@ export const getWorkspaceName = (folders: readonly WorkspaceFolder[]) =>
   DEFAULT_WORKSPACE_NAME;
 
 export const createWorkspaceFile = (index: number, overrides: Partial<WorkspaceFile> = {}): WorkspaceFile => {
+  const viewMode = overrides.viewMode ?? "visual";
   return {
     id: randomId(),
     title: index === 1 ? "Untitled.md" : `Untitled ${index}.md`,
     text: STARTER_MARKDOWN,
     parentId: WORKSPACE_ROOT_FOLDER_ID,
     order: undefined,
-    viewMode: "edit",
     readingWidth: "wide",
     lineWrapping: true,
     lineNumbers: true,
     bookmarks: [],
     ...overrides,
+    viewMode,
+    editingMode:
+      overrides.editingMode ??
+      getFileEditingMode({ viewMode }),
   };
 };
 
@@ -266,6 +275,12 @@ const getFiniteNumber = (value: unknown) => (typeof value === "number" && Number
 const getFileViewMode = (value: unknown): FileViewMode | undefined =>
   typeof value === "string" && FILE_VIEW_MODES.includes(value as FileViewMode)
     ? (value as FileViewMode)
+    : undefined;
+
+const getFileEditingModeValue = (value: unknown): FileEditingMode | undefined =>
+  typeof value === "string" &&
+  FILE_EDITING_MODES.includes(value as FileEditingMode)
+    ? (value as FileEditingMode)
     : undefined;
 
 const getReadingWidth = (value: unknown): ReadingWidth | undefined =>
@@ -295,6 +310,7 @@ const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | 
 
   const text = getString(value.text) ?? "";
   const splitRatio = getFiniteNumber(value.splitRatio);
+  const viewMode = getFileViewMode(value.viewMode) ?? "edit";
 
   return {
     id: getString(value.id) || randomId(),
@@ -302,7 +318,11 @@ const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | 
     text,
     parentId: typeof value.parentId === "string" ? value.parentId : WORKSPACE_ROOT_FOLDER_ID,
     order: getFiniteNumber(value.order),
-    viewMode: getFileViewMode(value.viewMode) ?? "edit",
+    viewMode,
+    editingMode: getFileEditingMode({
+      editingMode: getFileEditingModeValue(value.editingMode),
+      viewMode,
+    }),
     readingWidth: getReadingWidth(value.readingWidth) ?? "wide",
     splitRatio: splitRatio === undefined ? undefined : clampSplitEditorRatio(splitRatio),
     lineWrapping: typeof value.lineWrapping === "boolean" ? value.lineWrapping : true,
@@ -576,6 +596,7 @@ export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
     parentId: file.parentId ?? WORKSPACE_ROOT_FOLDER_ID,
     order: file.order,
     viewMode: file.viewMode,
+    editingMode: getFileEditingMode(file),
     readingWidth: file.readingWidth,
     splitRatio: typeof file.splitRatio === "number" ? clampSplitEditorRatio(file.splitRatio) : undefined,
     lineWrapping: file.lineWrapping,

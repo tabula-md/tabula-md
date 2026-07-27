@@ -6,73 +6,62 @@ import {
 
 const copy: DocumentControlsCopy = {
   documentControlsLabel: "Document controls",
-  edit: "Edit",
   editorControls: "Editor controls",
   fillWidth: "Fill",
   focusWidth: "Focus",
-  layoutControls: "Layout controls",
   lineNumbers: "Line Numbers",
   lineWrapping: "Line Wrapping",
   preview: "Preview",
   search: "Search",
+  source: "Source edit",
   split: "Split",
   standardWidth: "Standard",
   syncScrolling: "Sync Scrolling",
   textWidth: "Text Width",
-  visual: "Visual",
-  viewControls: "View controls",
+  visual: "Visual edit",
 };
 
-describe("document controls model", () => {
-  it("offers Visual before the source and reading modes", () => {
-    const model = buildDocumentControlsModel({
-      activeLineNumbers: true,
-      activeLineWrapping: true,
-      activeReadingWidth: "wide",
-      activeSyncScrolling: true,
-      activeViewMode: "visual",
-      copy,
-    });
-
-    expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual([
-      "visual",
-      "edit",
-      "preview",
-      "split",
-    ]);
-    expect(model.viewModeOptions.map((option) => option.active)).toEqual([
-      true,
-      false,
-      false,
-      false,
-    ]);
+const buildModel = (
+  activeEditingMode: "visual" | "source",
+  activeViewMode: "visual" | "edit" | "split" | "preview",
+) =>
+  buildDocumentControlsModel({
+    activeEditingMode,
+    activeLineNumbers: true,
+    activeLineWrapping: true,
+    activeReadingWidth: "wide",
+    activeSyncScrolling: true,
+    activeViewMode,
+    copy,
   });
 
-  it("keeps all view modes stable and selects edit", () => {
-    const model = buildDocumentControlsModel({
-      activeLineNumbers: true,
-      activeLineWrapping: true,
-      activeReadingWidth: "wide",
-      activeSyncScrolling: true,
-      activeViewMode: "edit",
-      copy,
-    });
+describe("document controls model", () => {
+  it("offers Visual edit and Preview for visual editing", () => {
+    const model = buildModel("visual", "visual");
 
     expect(model.controlsLabel).toBe("Editor controls");
-    expect(model.showEditorToggles).toBe(true);
-    expect(model.showSplitToggles).toBe(false);
-    expect(model.viewModeOptions).toEqual([
+    expect(model.editingModeOptions).toEqual([
       {
-        active: false,
+        active: true,
+        editingMode: "visual",
         icon: "visual",
-        label: "Visual",
+        label: "Visual edit",
         viewMode: "visual",
       },
       {
-        active: true,
+        active: false,
+        editingMode: "source",
         icon: "edit",
-        label: "Edit",
+        label: "Source edit",
         viewMode: "edit",
+      },
+    ]);
+    expect(model.viewModeOptions).toEqual([
+      {
+        active: true,
+        icon: "visual",
+        label: "Visual edit",
+        viewMode: "visual",
       },
       {
         active: false,
@@ -80,74 +69,44 @@ describe("document controls model", () => {
         label: "Preview",
         viewMode: "preview",
       },
-      {
-        active: false,
-        icon: "split",
-        label: "Split",
-        viewMode: "split",
-      },
     ]);
   });
 
-  it("selects split without changing the view-mode order", () => {
-    const model = buildDocumentControlsModel({
-      activeLineNumbers: true,
-      activeLineWrapping: true,
-      activeReadingWidth: "standard",
-      activeSyncScrolling: false,
-      activeViewMode: "split",
-      copy,
-    });
+  it("keeps Visual as the return editor while Preview is active", () => {
+    const model = buildModel("visual", "preview");
 
-    expect(model.controlsLabel).toBe("Layout controls");
-    expect(model.showSplitToggles).toBe(true);
-    expect(model.syncScrolling).toEqual({
-      active: false,
-      label: "Sync Scrolling",
-    });
-    expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual([
-      "visual",
-      "edit",
-      "preview",
-      "split",
+    expect(model.editingModeOptions[0]?.active).toBe(true);
+    expect(model.viewModeOptions.map(({ active, viewMode }) => ({ active, viewMode }))).toEqual([
+      { active: false, viewMode: "visual" },
+      { active: true, viewMode: "preview" },
     ]);
-    expect(model.viewModeOptions.map((option) => option.active)).toEqual([
-      false,
-      false,
-      false,
-      true,
-    ]);
-  });
-
-  it("selects preview and hides editor toggles", () => {
-    const model = buildDocumentControlsModel({
-      activeLineNumbers: false,
-      activeLineWrapping: false,
-      activeReadingWidth: "narrow",
-      activeSyncScrolling: true,
-      activeViewMode: "preview",
-      copy,
-    });
-
-    expect(model.controlsLabel).toBe("View controls");
     expect(model.showEditorToggles).toBe(false);
-    expect(model.showSplitToggles).toBe(false);
-    expect(model.viewModeOptions.map((option) => option.viewMode)).toEqual([
-      "visual",
-      "edit",
-      "preview",
-      "split",
+  });
+
+  it("offers Source edit, Split, and Preview for source editing", () => {
+    const model = buildModel("source", "edit");
+
+    expect(model.viewModeOptions.map(({ active, viewMode }) => ({ active, viewMode }))).toEqual([
+      { active: true, viewMode: "edit" },
+      { active: false, viewMode: "split" },
+      { active: false, viewMode: "preview" },
     ]);
-    expect(model.viewModeOptions.map((option) => option.active)).toEqual([
-      false,
-      false,
-      true,
-      false,
+  });
+
+  it("marks Split active and exposes sync scrolling", () => {
+    const model = buildModel("source", "split");
+
+    expect(model.viewModeOptions.map(({ active, viewMode }) => ({ active, viewMode }))).toEqual([
+      { active: false, viewMode: "edit" },
+      { active: true, viewMode: "split" },
+      { active: false, viewMode: "preview" },
     ]);
+    expect(model.showSplitToggles).toBe(true);
   });
 
   it("marks exactly one reading width option as active", () => {
     const model = buildDocumentControlsModel({
+      activeEditingMode: "source",
       activeLineNumbers: true,
       activeLineWrapping: true,
       activeReadingWidth: "standard",

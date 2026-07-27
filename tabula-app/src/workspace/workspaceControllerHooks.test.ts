@@ -123,7 +123,7 @@ describe("workspace preferences controller", () => {
     });
   });
 
-  it("reads and writes the persisted workspace preferences contract", () => {
+  it("migrates the persisted new-file mode to Visual edit", () => {
     const storage = new MemoryStorage();
     const preferences = {
       theme: "dark" as const,
@@ -137,8 +137,14 @@ describe("workspace preferences controller", () => {
 
     writeWorkspacePreferences(preferences, storage);
 
-    expect(storage.getItem(WORKSPACE_PREFERENCES_KEY)).toBe(JSON.stringify(preferences));
-    expect(readWorkspacePreferences(storage)).toEqual(preferences);
+    const normalizedPreferences = {
+      ...preferences,
+      newFileViewMode: "visual" as const,
+    };
+    expect(storage.getItem(WORKSPACE_PREFERENCES_KEY)).toBe(
+      JSON.stringify(normalizedPreferences),
+    );
+    expect(readWorkspacePreferences(storage)).toEqual(normalizedPreferences);
   });
 
   it("falls back when browser preferences cannot be read or written", () => {

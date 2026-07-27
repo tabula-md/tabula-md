@@ -140,8 +140,40 @@ describe("workspace model", () => {
       viewMode: "split",
     });
 
-    expect(state.files.find((file) => file.id === "one")?.viewMode).toBe("split");
+    expect(state.files.find((file) => file.id === "one")).toMatchObject({
+      viewMode: "split",
+      editingMode: "source",
+    });
     expect(state.files.find((file) => file.id === "readme")?.viewMode).toBe("edit");
+  });
+
+  it("keeps the selected editing mode while Preview is active", () => {
+    const visualState = createState({
+      files: [createFile("readme", { viewMode: "visual", editingMode: "visual" })],
+      openFileIds: ["readme"],
+      activeFileId: "readme",
+    });
+    const visualPreviewState = workspaceReducer(visualState, {
+      type: "setActiveFileViewMode",
+      viewMode: "preview",
+    });
+    expect(visualPreviewState.files[0]).toMatchObject({
+      viewMode: "preview",
+      editingMode: "visual",
+    });
+
+    const sourceState = workspaceReducer(visualPreviewState, {
+      type: "setActiveFileViewMode",
+      viewMode: "edit",
+    });
+    const sourcePreviewState = workspaceReducer(sourceState, {
+      type: "setActiveFileViewMode",
+      viewMode: "preview",
+    });
+    expect(sourcePreviewState.files[0]).toMatchObject({
+      viewMode: "preview",
+      editingMode: "source",
+    });
   });
 
   it("cycles active file through open tabs", () => {

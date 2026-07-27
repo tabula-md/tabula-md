@@ -3,6 +3,11 @@ import { once } from "node:events";
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
+import {
+  getViewModeActionLabels,
+  getViewModeSlots,
+  selectDocumentViewMode,
+} from "./view-mode.mjs";
 
 const port = Number(process.env.TABULA_TEST_PORT ?? 5187);
 const roomPort = Number(process.env.TABULA_TEST_ROOM_PORT ?? 3012);
@@ -334,6 +339,9 @@ export const createSmokeContext = (browser, controls = {}) => ({
   externalUrl,
   focusMarkdownEditor,
   getTabs,
+  getViewModeActionLabels,
+  getViewModeSlots,
+  selectDocumentViewMode,
   ensureSidePanelOpen,
   ensureSidePanelClosed,
   openMarkdownFile,

@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 import { buildEditorCertificationMarkdown } from "../support/editor-fixtures.mjs";
 
 export const id = "editor-certification";
@@ -277,7 +278,7 @@ const assertTaskAndLinkInvariants = async ({ expect, page, waitForRenderFrame })
   await page.keyboard.insertText(interactionFixture);
   await waitForRenderFrame(page);
 
-  await page.getByRole("button", { name: "Split", exact: true }).click();
+  await selectDocumentViewMode(page, "Split");
   await waitForRenderFrame(page);
   await page.locator(".preview-task-checkbox").first().dispatchEvent("click");
   await waitForRenderFrame(page);
@@ -322,6 +323,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await importMarkdownFixture(page, markdown);
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await assertCoreEditorInvariants({
       expect,
@@ -348,6 +350,7 @@ export async function run(ctx) {
     "/",
     async (page) => {
       await importMarkdownFixture(page, markdown, "editor-certification-narrow.md");
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await focusMarkdownEditor(page);
       await waitForEditorText(page, "한글 IME 기준 문장");
@@ -387,6 +390,7 @@ export async function run(ctx) {
     await firstPage.goto(baseUrl);
     await firstPage.waitForSelector(".tabbar");
     await firstPage.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(firstPage, "Edit");
     await waitForEditorReady(firstPage, { mode: "edit" });
     const targetFileName = await firstPage.locator(".tab-item.active").getAttribute("data-file-name");
     expect(Boolean(targetFileName), "The remote cursor target document should be available.");
@@ -413,6 +417,7 @@ export async function run(ctx) {
         document.querySelector(".tab-item.active")?.getAttribute("data-file-name") === fileName,
       { fileName: targetFileName },
     );
+    await selectDocumentViewMode(secondPage, "Edit");
     await waitForEditorReady(secondPage, { mode: "edit" });
     await firstPage.waitForFunction(() => document.querySelectorAll(".sharing-presence .avatar:not(.self)").length >= 1);
     await focusMarkdownEditor(secondPage);

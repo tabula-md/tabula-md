@@ -362,6 +362,7 @@ export const useActiveDocumentRuntime = (
     }),
     [
       activeFile?.bookmarks,
+      activeFile?.editingMode,
       activeFile?.lineNumbers,
       activeFile?.lineWrapping,
       activeFile?.readingWidth,

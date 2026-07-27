@@ -76,6 +76,7 @@ export type {
   DocumentControlsCopy,
   DocumentControlsModel,
   DocumentControlsModelInput,
+  DocumentEditingModeOption,
   DocumentReadingWidthOption,
   DocumentToggleControl,
   DocumentViewModeIcon,
@@ -86,16 +87,20 @@ export { buildDocumentControlsModel } from "./document/documentControlsModel";
 export { getApproximateTokenCount, getMarkdownWordCount } from "./document/documentMetrics";
 
 export type {
+  FileEditingMode,
   FileViewMode,
   ReadingWidth,
 } from "./document/documentPrimitives";
 export {
   DEFAULT_SPLIT_EDITOR_RATIO,
+  FILE_EDITING_MODES,
   FILE_VIEW_MODES,
   MAX_SPLIT_EDITOR_RATIO,
   MIN_SPLIT_EDITOR_RATIO,
   READING_WIDTHS,
   clampSplitEditorRatio,
+  getEditingModeViewMode,
+  getFileEditingMode,
 } from "./document/documentPrimitives";
 
 export type {

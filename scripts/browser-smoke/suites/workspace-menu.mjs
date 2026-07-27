@@ -1,3 +1,8 @@
+import {
+  getViewModeActionLabels,
+  getViewModeSlots,
+  selectDocumentViewMode,
+} from "../support/view-mode.mjs";
 export const id = "workspace";
 export const requiresRoomService = true;
 export const description = "First screen, tabs, empty state, share, templates, and view-mode chrome.";
@@ -107,6 +112,7 @@ export async function run(ctx) {
     expect((await page.locator(".empty-feature-callout").count()) === 0, "The first screen should not show canvas-style callouts.");
     await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForActiveTab(page, { exact: "Untitled.md" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     let nextTabs = await getTabs(page);
     expect(nextTabs.find((tab) => tab.active)?.title === "Untitled.md", "The first created document should use the base Untitled name.");
@@ -193,6 +199,7 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     nextTabs = await getTabs(page);
     expect(nextTabs.find((tab) => tab.active)?.mode === "Edit", "New documents should open as blank Edit documents.");
@@ -264,6 +271,7 @@ export async function run(ctx) {
     const marker = "Referral navigation keeps this local document.";
     await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForActiveTab(page, { exact: "Untitled.md" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".cm-content").click();
     await page.keyboard.insertText(marker);
@@ -275,6 +283,7 @@ export async function run(ctx) {
     await page.goto(referralUrl.toString());
     await page.waitForSelector(".tabbar");
     await waitForActiveTab(page, { exact: "Untitled.md" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     expect(new URL(page.url()).searchParams.get("ref") === "linkedin", "Referral navigation should keep its source label.");
@@ -328,6 +337,7 @@ export async function run(ctx) {
     await waitForPanelTab(page, "Files");
     await page.getByRole("button", { name: "Open Launch notes.md" }).click();
     await waitForActiveTab(page, { exact: "Launch notes.md" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     await page.locator(".tab-item.active").hover();
@@ -419,6 +429,7 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".share-trigger").click();
     await waitForShareDialogState(page, { panel: "Share link" });
@@ -454,6 +465,7 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     if ((await page.locator(".tab-item").count()) === 0) {
       await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
     }
 
@@ -603,7 +615,7 @@ export async function run(ctx) {
     await waitForFileCount(page, 0);
     await page.keyboard.press(appNewFileShortcut);
     await waitForFileCount(page, 1);
-    await waitForEditorReady(page, { mode: "edit" });
+    await waitForEditorReady(page, { mode: "visual" });
     await waitForSavedLocally(page);
     let nextTabs = await getTabs(page);
     expect(nextTabs.length === 1, "New document shortcut from the empty workbench should open one tab.");
@@ -614,7 +626,7 @@ export async function run(ctx) {
     await waitForFileCount(page, 0);
     await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForFileCount(page, 1);
-    await waitForEditorReady(page, { mode: "edit" });
+    await waitForEditorReady(page, { mode: "visual" });
     await waitForSavedLocally(page);
     nextTabs = await getTabs(page);
     expect(nextTabs.length === 1, "New document from the empty workbench should open one tab.");
@@ -626,10 +638,11 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await page.locator(".cm-content").click();
     await page.keyboard.insertText("Live preview transition stays visible.");
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await page.locator(".preview-surface").getByText("Live preview transition stays visible.").waitFor();
     await page.evaluate(() => {
       window.__tabulaSawEmptyPreview = false;
@@ -1031,6 +1044,7 @@ export async function run(ctx) {
       await withPage(browser, "/", async (page) => {
         await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
         await waitForActiveTab(page, { startsWith: "Untitled" });
+        await selectDocumentViewMode(page, "Edit");
         await waitForEditorReady(page, { mode: "edit" });
         await page.locator(".share-trigger").click();
         await waitForShareDialogState(page, { panel: "Share link" });
@@ -1189,10 +1203,11 @@ export async function run(ctx) {
     await openProjectMenu(page);
     await page.locator(".workspace-menu-popover").getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
-    await waitForEditorReady(page, { mode: "edit" });
+    await waitForEditorReady(page, { mode: "visual" });
     const tabs = await getTabs(page);
     const activeTab = tabs.find((tab) => tab.active);
     expect(activeTab?.title.startsWith("Untitled"), "Menu New document should create and activate the next blank document.");
+    expect(activeTab?.mode === "Visual", "New blank documents should start in Visual edit.");
     expect(!activeTab?.visibleTitle.endsWith(".md"), "New blank tabs should still hide the Markdown extension.");
   });
 
@@ -1200,7 +1215,7 @@ export async function run(ctx) {
     await openMarkdownFile(page, {
       content: "# Preview fixture\n\nThis document keeps its own view mode.",
     });
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForActiveTab(page, { exact: "README.md" });
     await page.waitForFunction(
       () => document.querySelector(".tab-item.active")?.getAttribute("data-view-mode") === "preview",
@@ -1208,29 +1223,80 @@ export async function run(ctx) {
     let tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Preview", "Preview mode should be reflected in the active tab.");
     expect(
-      (await page.getByRole("button", { name: "Preview", exact: true }).getAttribute("aria-pressed")) === "true",
-      "The active Preview mode should remain visible and selected.",
+      JSON.stringify(await getViewModeActionLabels(page)) ===
+        JSON.stringify(["Visual edit", "Preview"]),
+      "Visual editing should expose only Visual edit and Preview toggles.",
     );
     expect(
-      (await page.getByRole("button", { name: "Split", exact: true }).count()) === 1,
-      "Preview mode should expose Split for direct comparison.",
+      JSON.stringify(await getViewModeSlots(page)) ===
+        JSON.stringify([
+          { viewMode: "visual", label: "Visual edit", active: false },
+          { viewMode: "preview", label: "Preview", active: true },
+        ]),
+      "Preview should retain Visual as its return editor.",
     );
+    await page.getByRole("button", { name: "Editor controls", exact: true }).click();
+    expect(
+      JSON.stringify(
+        await page
+          .locator(".document-controls-popover [data-editing-mode]")
+          .evaluateAll((items) =>
+            items.map((item) => ({
+              editingMode: item.getAttribute("data-editing-mode"),
+              active: item.getAttribute("aria-pressed") === "true",
+            })),
+          ),
+      ) ===
+        JSON.stringify([
+          { editingMode: "visual", active: true },
+          { editingMode: "source", active: false },
+        ]),
+      "Editor controls should choose the persistent Visual or Source editing mode.",
+    );
+    await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: "New document", exact: true }).click();
-    await waitForEditorReady(page, { mode: "edit" });
+    await waitForEditorReady(page, { mode: "visual" });
     tabs = await getTabs(page);
-    expect(tabs.find((tab) => tab.active)?.mode === "Edit", "New local tabs should start in Edit mode.");
+    expect(tabs.find((tab) => tab.active)?.mode === "Visual", "New local tabs should start in Visual edit.");
     expect(
-      (await page.getByRole("button", { name: "Edit", exact: true }).getAttribute("aria-pressed")) === "true",
-      "The active Edit mode should remain visible and selected.",
+      JSON.stringify(await getViewModeActionLabels(page)) ===
+        JSON.stringify(["Visual edit", "Preview"]),
+      "New Visual tabs should keep the compact Visual edit and Preview pair.",
     );
 
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
+    await waitForEditorReady(page, { mode: "edit" });
+    expect(
+      JSON.stringify(await getViewModeSlots(page)) ===
+        JSON.stringify([
+          { viewMode: "edit", label: "Source edit", active: true },
+          { viewMode: "split", label: "Split", active: false },
+          { viewMode: "preview", label: "Preview", active: false },
+        ]),
+      "Source editing should expose Source edit, Split, and Preview.",
+    );
+
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Split", "Split should be reachable from Edit mode.");
+    expect(
+      JSON.stringify(await getViewModeActionLabels(page)) ===
+        JSON.stringify(["Source edit", "Split", "Preview"]),
+      "Split should retain the Source editing controls.",
+    );
+    expect(
+      JSON.stringify(await getViewModeSlots(page)) ===
+        JSON.stringify([
+          { viewMode: "edit", label: "Source edit", active: false },
+          { viewMode: "split", label: "Split", active: true },
+          { viewMode: "preview", label: "Preview", active: false },
+        ]),
+      "Split should be selected between Source edit and Preview.",
+    );
 
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     tabs = await getTabs(page);
     expect(tabs.find((tab) => tab.active)?.mode === "Edit", "Pressing Edit from Split should return to Edit mode.");
@@ -1238,13 +1304,13 @@ export async function run(ctx) {
     await page.locator('.tab-item[data-file-name="README.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "README.md" });
     tabs = await getTabs(page);
-    expect(tabs.find((tab) => tab.active)?.mode === "Preview", "README tab should keep its Preview mode.");
+    expect(tabs.find((tab) => tab.active)?.mode === "Preview", "README tab should keep its Preview mode and Visual return editor.");
   });
 
   await withPage(browser, "/", async (page) => {
     await page.setViewportSize({ width: 390, height: 700 });
     await page.getByRole("button", { name: "New document", exact: true }).click();
-    await waitForEditorReady(page, { mode: "edit" });
+    await waitForEditorReady(page, { mode: "visual" });
     await page.locator(".share-trigger").click();
     const mobileClose = page.getByRole("button", { name: "Close Share" });
     expect(await mobileClose.isVisible(), "Mobile Share should expose an explicit close action.");

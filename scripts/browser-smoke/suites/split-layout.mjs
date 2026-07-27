@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 export const id = "split-layout";
 export const description = "Split mode pane geometry, responsive document rails, and mode alignment.";
 
@@ -13,7 +14,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await openMarkdownFile(page);
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     const readLeftPanelModeLayout = () => {
@@ -58,7 +59,7 @@ export async function run(ctx) {
     };
 
     const leftWriteLayout = await page.evaluate(readLeftPanelModeLayout);
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     const leftSplitLayout = await page.evaluate(readLeftPanelModeLayout);
 

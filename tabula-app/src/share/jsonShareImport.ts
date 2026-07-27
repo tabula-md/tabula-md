@@ -16,7 +16,7 @@ export const createWorkspaceFromJsonShareSnapshot = (snapshot: ShareSnapshot): W
       text: file.text ?? "",
       parentId: file.parentId,
       order: file.order,
-      viewMode: "edit",
+      viewMode: "visual",
       readingWidth: "wide",
       lineWrapping: true,
       lineNumbers: true,

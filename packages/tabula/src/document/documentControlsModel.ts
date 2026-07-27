@@ -1,26 +1,26 @@
 import {
   READING_WIDTHS,
+  getEditingModeViewMode,
+  type FileEditingMode,
   type FileViewMode,
   type ReadingWidth,
 } from "./documentPrimitives";
 
 export type DocumentControlsCopy = {
   documentControlsLabel: string;
-  edit: string;
   editorControls: string;
   fillWidth: string;
   focusWidth: string;
-  layoutControls: string;
   lineNumbers: string;
   lineWrapping: string;
   preview: string;
   search: string;
+  source: string;
   split: string;
   standardWidth: string;
   syncScrolling: string;
   textWidth: string;
   visual: string;
-  viewControls: string;
 };
 
 export type DocumentViewModeIcon = "edit" | "preview" | "split" | "visual";
@@ -30,6 +30,14 @@ export type DocumentViewModeOption = {
   icon: DocumentViewModeIcon;
   label: string;
   viewMode: FileViewMode;
+};
+
+export type DocumentEditingModeOption = {
+  active: boolean;
+  editingMode: FileEditingMode;
+  icon: Extract<DocumentViewModeIcon, "edit" | "visual">;
+  label: string;
+  viewMode: Extract<FileViewMode, "edit" | "visual">;
 };
 
 export type DocumentToggleControl = {
@@ -46,6 +54,7 @@ export type DocumentReadingWidthOption = {
 export type DocumentControlsModel = {
   controlsLabel: string;
   documentControlsLabel: string;
+  editingModeOptions: DocumentEditingModeOption[];
   lineNumbers: DocumentToggleControl;
   lineWrapping: DocumentToggleControl;
   readingWidthLabel: string;
@@ -59,6 +68,7 @@ export type DocumentControlsModel = {
 };
 
 export type DocumentControlsModelInput = {
+  activeEditingMode: FileEditingMode;
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
   activeReadingWidth: ReadingWidth;
@@ -67,32 +77,62 @@ export type DocumentControlsModelInput = {
   copy: DocumentControlsCopy;
 };
 
-const getControlsLabel = (
-  activeViewMode: FileViewMode,
+const getEditingModeOptions = (
+  activeEditingMode: FileEditingMode,
   copy: DocumentControlsCopy,
-) => {
-  if (activeViewMode === "preview") {
-    return copy.viewControls;
-  }
-
-  if (activeViewMode === "split") {
-    return copy.layoutControls;
-  }
-
-  return copy.editorControls;
-};
-
-const getViewModeOptions = (
-  activeViewMode: FileViewMode,
-  copy: DocumentControlsCopy,
-): DocumentViewModeOption[] => [
-  { active: activeViewMode === "visual", icon: "visual", label: copy.visual, viewMode: "visual" },
-  { active: activeViewMode === "edit", icon: "edit", label: copy.edit, viewMode: "edit" },
-  { active: activeViewMode === "preview", icon: "preview", label: copy.preview, viewMode: "preview" },
-  { active: activeViewMode === "split", icon: "split", label: copy.split, viewMode: "split" },
+): DocumentEditingModeOption[] => [
+  {
+    active: activeEditingMode === "visual",
+    editingMode: "visual",
+    icon: "visual",
+    label: copy.visual,
+    viewMode: "visual",
+  },
+  {
+    active: activeEditingMode === "source",
+    editingMode: "source",
+    icon: "edit",
+    label: copy.source,
+    viewMode: "edit",
+  },
 ];
 
+const getViewModeOptions = (
+  activeEditingMode: FileEditingMode,
+  activeViewMode: FileViewMode,
+  copy: DocumentControlsCopy,
+): DocumentViewModeOption[] => {
+  const editorViewMode = getEditingModeViewMode(activeEditingMode);
+  const options: DocumentViewModeOption[] = [
+    {
+      active: activeViewMode === editorViewMode,
+      icon: activeEditingMode === "visual" ? "visual" : "edit",
+      label: activeEditingMode === "visual" ? copy.visual : copy.source,
+      viewMode: editorViewMode,
+    },
+  ];
+
+  if (activeEditingMode === "source") {
+    options.push({
+      active: activeViewMode === "split",
+      icon: "split",
+      label: copy.split,
+      viewMode: "split",
+    });
+  }
+
+  options.push({
+    active: activeViewMode === "preview",
+    icon: "preview",
+    label: copy.preview,
+    viewMode: "preview",
+  });
+
+  return options;
+};
+
 export const buildDocumentControlsModel = ({
+  activeEditingMode,
   activeLineNumbers,
   activeLineWrapping,
   activeReadingWidth,
@@ -107,8 +147,9 @@ export const buildDocumentControlsModel = ({
   };
 
   return {
-    controlsLabel: getControlsLabel(activeViewMode, copy),
+    controlsLabel: copy.editorControls,
     documentControlsLabel: copy.documentControlsLabel,
+    editingModeOptions: getEditingModeOptions(activeEditingMode, copy),
     lineNumbers: {
       active: activeLineNumbers,
       label: copy.lineNumbers,
@@ -131,6 +172,10 @@ export const buildDocumentControlsModel = ({
       label: copy.syncScrolling,
     },
     viewModeLabel: copy.documentControlsLabel,
-    viewModeOptions: getViewModeOptions(activeViewMode, copy),
+    viewModeOptions: getViewModeOptions(
+      activeEditingMode,
+      activeViewMode,
+      copy,
+    ),
   };
 };

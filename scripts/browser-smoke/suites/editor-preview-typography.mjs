@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -185,10 +186,11 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(MARKDOWN_PREVIEW_TYPOGRAPHY_FIXTURE);
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await page.waitForSelector(".preview-surface h6", { timeout: 5_000 });
     await page.waitForSelector(".preview-docs-card", { timeout: 5_000 });
@@ -277,7 +279,7 @@ export async function run(ctx) {
       "Preview heading stack should keep H6 directly before the following body content.",
     );
 
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     const splitPreviewTypography = await page.evaluate(() => {
       const readFontSize = (selector) => {
@@ -302,10 +304,11 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(VIRTUAL_MARKDOWN_PREVIEW_TYPOGRAPHY_FIXTURE);
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await page.waitForSelector("[data-preview-virtual-content]", { timeout: 5_000 });
     await page.waitForSelector(".preview-surface h6", { timeout: 5_000 });

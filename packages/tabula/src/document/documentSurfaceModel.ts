@@ -1,4 +1,9 @@
-import type { FileViewMode, ReadingWidth } from "./documentPrimitives";
+import {
+  getFileEditingMode,
+  type FileEditingMode,
+  type FileViewMode,
+  type ReadingWidth,
+} from "./documentPrimitives";
 
 const classNames = (...parts: Array<string | false | undefined>) =>
   parts.filter(Boolean).join(" ");
@@ -12,6 +17,7 @@ export type DocumentSurfaceDocumentState = {
   readingWidth: ReadingWidth;
   title: string;
   viewMode: FileViewMode;
+  editingMode?: FileEditingMode;
   approximateTokenCount: number;
   wordCount: number;
 };
@@ -52,6 +58,7 @@ export const buildDocumentSurface = ({
       activeLineNumbers: document.lineNumbers,
       activeLineWrapping: document.lineWrapping,
       activeReadingWidth: document.readingWidth,
+      activeEditingMode: getFileEditingMode(document),
       activeViewMode: document.viewMode,
     },
     documentToolbarClassName: classNames(
