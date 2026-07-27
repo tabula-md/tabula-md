@@ -6,6 +6,7 @@ import {
   inspectFrontmatterData,
   parseFrontmatter,
   type MarkdownPresentationDocument,
+  type PresentationBlock,
   type PresentationNode,
 } from "@tabula-md/tabula";
 import { fromMarkdown } from "mdast-util-from-markdown";
@@ -110,90 +111,6 @@ const getLineClass = (nodeName: string) => {
   return "";
 };
 
-const splitTableRow = (line: string) => {
-  const trimmed = line.trim().replace(/^\|/, "").replace(/\|$/, "");
-  return trimmed.split(/(?<!\\)\|/).map((cell) => cell.trim().replace(/\\\|/g, "|"));
-};
-
-const getDirectChildren = (node: SyntaxNode) => {
-  const children: SyntaxNode[] = [];
-  for (let child = node.firstChild; child; child = child.nextSibling) children.push(child);
-  return children;
-};
-
-const parseTableNode = (state: EditorState, node: SyntaxNode) => {
-  const readCells = (row: SyntaxNode) => getDirectChildren(row)
-    .filter((child) => child.name === "TableCell")
-    .map((cell) => state.doc.sliceString(cell.from, cell.to).trim());
-  const children = getDirectChildren(node);
-  const header = children.find((child) => child.name === "TableHeader");
-  const delimiter = children.find((child) =>
-    child.name === "TableDelimiter" &&
-    state.doc.sliceString(child.from, child.to).includes("-"));
-  const delimiterCells = splitTableRow(
-    delimiter
-      ? state.doc.sliceString(delimiter.from, delimiter.to)
-      : state.doc.sliceString(node.from, node.to).split("\n")[1] ?? "",
-  );
-  const alignments = delimiterCells.map((cell) => {
-    const trimmed = cell.trim();
-    if (trimmed.startsWith(":") && trimmed.endsWith(":")) return "center";
-    if (trimmed.endsWith(":")) return "right";
-    if (trimmed.startsWith(":")) return "left";
-    return null;
-  });
-  const rows = children
-    .filter((child) => child.name === "TableRow")
-    .map(readCells);
-
-  if (header) return { alignments, header: readCells(header), rows };
-
-  const lines = state.doc.sliceString(node.from, node.to).split("\n");
-  return {
-    alignments,
-    header: splitTableRow(lines[0] ?? ""),
-    rows: lines.slice(2).filter(Boolean).map(splitTableRow),
-  };
-};
-
-const parseImageNode = (state: EditorState, node: SyntaxNode) => {
-  const children = getDirectChildren(node);
-  const marks = children.filter((child) => child.name === "LinkMark");
-  const url = children.find((child) => child.name === "URL");
-  const label = children.find((child) => child.name === "LinkLabel");
-  const altFrom = marks[0]?.to ?? node.from + 2;
-  const altTo = marks[1]?.from ?? altFrom;
-  const alt = state.doc.sliceString(altFrom, altTo);
-
-  if (url) {
-    return {
-      alt,
-      source: state.doc.sliceString(url.from, url.to),
-    };
-  }
-
-  if (!label) return null;
-  const wantedLabel = state.doc.sliceString(label.from, label.to).toLowerCase();
-  let source = "";
-  syntaxTree(state).iterate({
-    enter(reference) {
-      if (reference.name !== "LinkReference") return;
-      const referenceNode = reference.node;
-      const referenceChildren = getDirectChildren(referenceNode);
-      const referenceLabel = referenceChildren.find((child) => child.name === "LinkLabel");
-      const referenceUrl = referenceChildren.find((child) => child.name === "URL");
-      if (
-        referenceLabel &&
-        referenceUrl &&
-        state.doc.sliceString(referenceLabel.from, referenceLabel.to).toLowerCase() === wantedLabel
-      ) {
-        source = state.doc.sliceString(referenceUrl.from, referenceUrl.to);
-      }
-    },
-  });
-  return source ? { alt, source } : null;
-};
-
 const parseCodeBlock = (source: string) => {
   const lines = source.split("\n");
   const opening = /^(`{3,}|~{3,})\s*([^\s`]*)/.exec(lines[0] ?? "");
@@ -208,11 +125,6 @@ const parseCodeBlock = (source: string) => {
     code: lines.slice(1, hasClosingFence ? -1 : undefined).join("\n"),
     language: opening?.[2]?.trim().toLowerCase() ?? "",
   };
-};
-
-const parseMathBlock = (source: string) => {
-  const match = /^\$\$\s*\n?([\s\S]*?)\n?\s*\$\$$/.exec(source.trim());
-  return match?.[1]?.trim() || null;
 };
 
 const parseCallout = (source: string) => {
@@ -468,6 +380,124 @@ const getPresentationNodes = (state: EditorState) => {
   );
   presentationNodesByDocument.set(documentKey, nodes);
   return nodes;
+};
+
+const isPresentationBlock = (
+  node: PresentationNode,
+): node is PresentationBlock => "interaction" in node;
+
+const getTableCellSource = (
+  state: EditorState,
+  cell: PresentationBlock,
+) => state.doc.sliceString(
+  cell.contentRange?.from ?? cell.range.from,
+  cell.contentRange?.to ?? cell.range.to,
+).trim();
+
+const getTableReplacement = (
+  state: EditorState,
+  block: PresentationBlock,
+): EditorVisualReplacement => {
+  const rows = block.children
+    .filter((child): child is PresentationBlock =>
+      isPresentationBlock(child) && child.type === "table-row")
+    .map((row) => row.children
+      .filter((child): child is PresentationBlock =>
+        isPresentationBlock(child) && child.type === "table-cell")
+      .map((cell) => getTableCellSource(state, cell)));
+  return {
+    alignments: [...(block.data?.alignments ?? [])],
+    from: block.range.from,
+    header: rows[0] ?? [],
+    kind: "table",
+    rows: rows.slice(1),
+    to: block.range.to,
+  };
+};
+
+const getPrimaryBlockReplacement = (
+  state: EditorState,
+  node: PresentationNode,
+): EditorVisualReplacement | null => {
+  if (node.type === "image") {
+    return node.data?.url
+      ? {
+          alt: node.data.alt ?? "",
+          block: isPresentationBlock(node),
+          from: node.range.from,
+          kind: "image",
+          source: node.data.url,
+          to: node.range.to,
+        }
+      : null;
+  }
+  if (!isPresentationBlock(node)) return null;
+  if (node.type === "thematic-break") {
+    return {
+      from: node.range.from,
+      kind: "horizontal-rule",
+      to: node.range.to,
+    };
+  }
+  if (node.type === "code-block") {
+    return {
+      code: node.data?.text ?? "",
+      from: node.range.from,
+      kind: "code",
+      language: node.data?.language ?? "",
+      to: node.range.to,
+    };
+  }
+  if (node.type === "display-math") {
+    return {
+      expression: node.data?.text ?? "",
+      from: node.range.from,
+      kind: "math",
+      to: node.range.to,
+    };
+  }
+  if (node.type === "table") return getTableReplacement(state, node);
+  return null;
+};
+
+const addPrimaryBlockReplacements = (
+  model: EditorVisualModel,
+  state: EditorState,
+  visibleRanges: readonly VisibleRange[],
+  editingBlock: EditorVisualBlockRange | null,
+  revealActiveSource: boolean,
+) => {
+  const replacements = getPresentationNodes(state)
+    .map((node) => getPrimaryBlockReplacement(state, node))
+    .filter((replacement): replacement is EditorVisualReplacement =>
+      replacement !== null);
+  for (const replacement of replacements) {
+    if (!isVisible(replacement.from, replacement.to, visibleRanges)) continue;
+    const selectedSource = revealActiveSource &&
+      hasSelectedSource(state, replacement.from, replacement.to);
+    if (
+      replacement.kind === "code" &&
+      (
+        isEditingBlock(editingBlock, replacement.from, replacement.to) ||
+        selectedSource
+      )
+    ) {
+      addCodeSourceBlockClasses(
+        model,
+        state,
+        replacement.from,
+        replacement.to,
+        selectedSource ? "selection" : "editing",
+      );
+    }
+    if (
+      !isEditingBlock(editingBlock, replacement.from, replacement.to) &&
+      !selectedSource
+    ) {
+      model.replacements.push(replacement);
+    }
+  }
+  return replacements;
 };
 
 const getDocsComponents = (state: EditorState) => {
@@ -727,17 +757,6 @@ const walkVisualTree = (
     return;
   }
 
-  if (node.name === "Table" && !isEditingBlock(editingBlock, node.from, node.to)) {
-    if (revealActiveSource && hasSelectedSource(state, node.from, node.to)) return;
-    model.replacements.push({
-      from: node.from,
-      to: node.to,
-      kind: "table",
-      ...parseTableNode(state, node),
-    });
-    return;
-  }
-
   if (node.name === "FencedCode" && !isEditingBlock(editingBlock, node.from, node.to)) {
     if (revealActiveSource && hasSelectedSource(state, node.from, node.to)) {
       addCodeSourceBlockClasses(model, state, node.from, node.to, "selection");
@@ -749,12 +768,6 @@ const walkVisualTree = (
         ? { from: node.from, to: node.to, kind: "diagram", source: codeBlock.code }
         : { from: node.from, to: node.to, kind: "code", ...codeBlock },
     );
-    return;
-  }
-
-  if (node.name === "HorizontalRule" && !isEditingBlock(editingBlock, node.from, node.to)) {
-    if (revealActiveSource && hasSelectedSource(state, node.from, node.to)) return;
-    model.replacements.push({ from: node.from, to: node.to, kind: "horizontal-rule" });
     return;
   }
 
@@ -770,34 +783,6 @@ const walkVisualTree = (
 
   if (node.name === "ListItem") {
     addLineClass(model, state, node.from, node.to, "cm-visual-list-item");
-  }
-
-  if (node.name === "Paragraph" && !isEditingBlock(editingBlock, node.from, node.to)) {
-    const expression = parseMathBlock(source);
-    if (expression) {
-      if (revealActiveSource && hasSelectedSource(state, node.from, node.to)) return;
-      model.replacements.push({ from: node.from, to: node.to, kind: "math", expression });
-      return;
-    }
-
-    const firstChild = node.firstChild;
-    if (firstChild?.name === "Image" && firstChild.from === node.from && firstChild.to === node.to) {
-      const image = parseImageNode(state, firstChild);
-      if (image) {
-        if (revealActiveSource && hasSelectedSource(state, node.from, node.to)) return;
-        model.replacements.push({ from: node.from, to: node.to, kind: "image", block: true, ...image });
-        return;
-      }
-    }
-  }
-
-  if (node.name === "Image" && !isEditingBlock(editingBlock, node.from, node.to)) {
-    const image = parseImageNode(state, node);
-    if (image) {
-      if (revealActiveSource && hasSelectedSource(state, node.from, node.to)) return;
-      model.replacements.push({ from: node.from, to: node.to, kind: "image", block: false, ...image });
-      return;
-    }
   }
 
   if (
@@ -884,6 +869,13 @@ export const buildEditorVisualModel = (
       revealActiveSource,
     ),
   ];
+  parsedReplacements.push(...addPrimaryBlockReplacements(
+    model,
+    state,
+    visibleRanges,
+    editingBlock,
+    revealActiveSource,
+  ));
   const frontmatter = getFrontmatter(state);
   if (frontmatter) {
     parsedReplacements.push(frontmatter);

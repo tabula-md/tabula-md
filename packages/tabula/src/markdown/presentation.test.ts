@@ -149,6 +149,58 @@ describe("Markdown presentation document", () => {
     expect(references.footnotes[1].definitionRange).toBeUndefined();
   });
 
+  it("keeps primary block data and source ranges in one shared model", () => {
+    const source = [
+      "---",
+      "",
+      "![Sample](https://example.com/sample.png)",
+      "",
+      "```ts",
+      "const ready = true;",
+      "```",
+      "",
+      "| Name | State |",
+      "| :--- | ---: |",
+      "| Tabula | Ready |",
+    ].join("\n");
+    const document = createMarkdownPresentationDocument(source);
+    const image = document.blocks.find((block) => block.type === "image");
+    const code = document.blocks.find((block) => block.type === "code-block");
+    const table = document.blocks.find((block) => block.type === "table");
+
+    expect(document.blocks.map((block) => block.type)).toEqual([
+      "thematic-break",
+      "blank-line",
+      "image",
+      "blank-line",
+      "code-block",
+      "blank-line",
+      "table",
+    ]);
+    expect(image?.data).toMatchObject({
+      alt: "Sample",
+      url: "https://example.com/sample.png",
+    });
+    expect(code?.data).toMatchObject({
+      language: "ts",
+      text: "const ready = true;",
+    });
+    expect(
+      code?.contentRange &&
+        source.slice(code.contentRange.from, code.contentRange.to),
+    ).toBe("const ready = true;");
+    expect(table?.data?.alignments).toEqual(["left", "right"]);
+    expect(table?.children.map((row) =>
+      row.children.map((cell) =>
+        source.slice(
+          cell.contentRange?.from ?? cell.range.from,
+          cell.contentRange?.to ?? cell.range.to,
+        ).trim()))).toEqual([
+      ["Name", "State"],
+      ["Tabula", "Ready"],
+    ]);
+  });
+
   it("models docs components as semantic blocks without UI objects", () => {
     const source = [
       '<Callout type="warning" title="Canonical source">',
