@@ -31,7 +31,7 @@ export type WorkspacePreferences = {
 export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferences = {
   theme: "system",
   language: "en",
-  newFileViewMode: "edit",
+  newFileViewMode: "visual",
   readingWidth: "wide",
   lineWrapping: true,
   lineNumbers: true,
@@ -44,9 +44,6 @@ const isWorkspaceTheme = (value: unknown): value is WorkspaceTheme =>
 const isWorkspaceLanguage = (value: unknown): value is WorkspaceLanguage =>
   typeof value === "string" &&
   SUPPORTED_WORKSPACE_LANGUAGES.includes(value as WorkspaceLanguage);
-
-const isFileViewMode = (value: unknown): value is FileViewMode =>
-  value === "visual" || value === "edit" || value === "split" || value === "preview";
 
 const isReadingWidth = (value: unknown): value is ReadingWidth =>
   value === "narrow" || value === "standard" || value === "wide";
@@ -62,9 +59,10 @@ export const parseWorkspacePreferences = (value: unknown): WorkspacePreferences 
     language: isWorkspaceLanguage(partialPreferences.language)
       ? partialPreferences.language
       : DEFAULT_WORKSPACE_PREFERENCES.language,
-    newFileViewMode: isFileViewMode(partialPreferences.newFileViewMode)
-      ? partialPreferences.newFileViewMode
-      : DEFAULT_WORKSPACE_PREFERENCES.newFileViewMode,
+    // Editing mode is now an explicit per-document choice. New documents
+    // always begin in Visual edit, including for preferences saved before
+    // this distinction existed.
+    newFileViewMode: DEFAULT_WORKSPACE_PREFERENCES.newFileViewMode,
     readingWidth: isReadingWidth(partialPreferences.readingWidth)
       ? partialPreferences.readingWidth
       : DEFAULT_WORKSPACE_PREFERENCES.readingWidth,
@@ -102,7 +100,7 @@ export const writeWorkspacePreferences = (
   return writeBrowserStorage(
     storage ?? getBrowserStorage("localStorage"),
     WORKSPACE_PREFERENCES_KEY,
-    JSON.stringify(preferences),
+    JSON.stringify(parseWorkspacePreferences(preferences)),
   );
 };
 

@@ -1,6 +1,8 @@
 import {
   clampSplitEditorRatio,
   DEFAULT_SPLIT_EDITOR_RATIO,
+  getFileEditingMode,
+  type FileEditingMode,
   type FileViewMode,
   type ReadingWidth,
 } from "./documentPrimitives";
@@ -26,6 +28,7 @@ export type ActiveDocumentFile = {
   title: string;
   text: string;
   viewMode: FileViewMode;
+  editingMode?: FileEditingMode;
   readingWidth: ReadingWidth;
   splitRatio?: number;
   lineWrapping: boolean;
@@ -50,6 +53,7 @@ export type ActiveDocumentRuntime = {
   text: string;
   title: string;
   viewMode: FileViewMode;
+  editingMode: FileEditingMode;
   approximateTokenCount: number;
   wordCount: number;
 };
@@ -106,6 +110,10 @@ export const createActiveDocumentEditorRuntime = (
 ): ActiveDocumentEditorRuntime => {
   const text = options.text ?? activeFile?.text ?? "";
   const viewMode = activeFile?.viewMode ?? "edit";
+  const editingMode = getFileEditingMode({
+    editingMode: activeFile?.editingMode,
+    viewMode,
+  });
   const readingWidth = activeFile?.readingWidth ?? "wide";
   const splitRatio = clampSplitEditorRatio(activeFile?.splitRatio ?? DEFAULT_SPLIT_EDITOR_RATIO);
   const lineWrapping = activeFile?.lineWrapping ?? true;
@@ -123,6 +131,7 @@ export const createActiveDocumentEditorRuntime = (
     canCopy: text.trim().length > 0,
     canFormat: hasFile && viewMode !== "preview",
     hasFile,
+    editingMode,
     largeDocumentMode,
     lineNumbers,
     lineWrapping,

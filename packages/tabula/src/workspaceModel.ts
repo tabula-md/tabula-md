@@ -1,5 +1,7 @@
 import {
   clampSplitEditorRatio,
+  getFileEditingMode,
+  type FileEditingMode,
   type FileViewMode,
   type ReadingWidth,
 } from "./document/documentPrimitives";
@@ -9,6 +11,7 @@ export type WorkspaceModelFile = {
   title: string;
   text: string;
   viewMode: FileViewMode;
+  editingMode?: FileEditingMode;
   readingWidth: ReadingWidth;
   splitRatio?: number;
   lineWrapping: boolean;
@@ -477,7 +480,15 @@ export const workspaceReducer = <TFile extends WorkspaceModelFile>(
       );
     case "setActiveFileViewMode":
       return updateActiveWorkspaceFile(state, (file) =>
-        updateWorkspaceFileFields(file, { viewMode: action.viewMode }),
+        updateWorkspaceFileFields(file, {
+          viewMode: action.viewMode,
+          editingMode:
+            action.viewMode === "visual"
+              ? "visual"
+              : action.viewMode === "edit" || action.viewMode === "split"
+                ? "source"
+                : getFileEditingMode(file),
+        }),
       );
     case "setActiveFileReadingWidth":
       return updateActiveWorkspaceFile(state, (file) =>

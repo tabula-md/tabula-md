@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 export const id = "editor-search-preview";
 export const description = "Rendered Markdown preview search target, count, options, and highlight behavior.";
 
@@ -13,6 +14,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText([
@@ -26,7 +28,7 @@ export async function run(ctx) {
       "| --- | --- |",
       "| target | full |",
     ].join("\n"));
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
 
     await page.evaluate(() => {

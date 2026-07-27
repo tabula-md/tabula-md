@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 export const id = "layout";
 export const description =
   "Tab persistence, import collision, document chrome, split layout, and side-panel alignment.";
@@ -63,6 +64,7 @@ export async function run(ctx) {
         buffer: Buffer.from("# Imported README\n\nImported body."),
       });
     await waitForActiveTab(page, { exact: "README 2.md" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     const importedState = await page.evaluate(() => {
       const activeTab = document.querySelector(".tab-item.active");
@@ -101,7 +103,7 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await openMarkdownFile(page);
     await page.waitForSelector(".file-shell");
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     const measureContentWidth = () => {
@@ -124,14 +126,15 @@ export async function run(ctx) {
         .getByRole("button", { name: "Editor controls", exact: true })
         .click();
       await page.getByRole("button", { name: widthLabel, exact: true }).click();
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       const editLayout = await page.evaluate(measureContentWidth);
 
-      await page.getByRole("button", { name: "Preview", exact: true }).click();
+      await selectDocumentViewMode(page, "Preview");
       await waitForEditorReady(page, { mode: "preview" });
       const previewLayout = await page.evaluate(measureContentWidth);
 
-      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
 
       expect(
@@ -150,7 +153,7 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await openMarkdownFile(page);
     await page.waitForSelector(".file-shell");
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     const measureDocumentControls = () =>
@@ -173,13 +176,13 @@ export async function run(ctx) {
 
     const editControls = await measureDocumentControls();
 
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     const previewControls = await measureDocumentControls();
 
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     const splitControls = await measureDocumentControls();
 
@@ -485,9 +488,9 @@ export async function run(ctx) {
           "---\ntitle: Split layout\ndescription: Frontmatter should remain readable beside the editor.\n---\n\n## Start here\n\nSplit layout smoke content.",
       });
       await ensureSidePanelOpen(page);
-      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
-      await page.getByRole("button", { name: "Split", exact: true }).click();
+      await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
 
       const splitLayout = await page.evaluate(() => {

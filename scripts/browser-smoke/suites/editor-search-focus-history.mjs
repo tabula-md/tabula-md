@@ -13,6 +13,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("Agent anchor\n\nWorking line");
@@ -60,6 +61,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("editor undo base");
@@ -134,3 +136,4 @@ export async function run(ctx) {
     expect(undoIsolationState.replaceValue === replaceValueAfterUndo, "Undo in Editor should not undo the replace query.");
   });
 }
+import { selectDocumentViewMode } from "../support/view-mode.mjs";

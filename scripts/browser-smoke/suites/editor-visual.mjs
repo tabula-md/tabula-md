@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 export const id = "editor-visual";
 export const description =
   "Visual Markdown rendering, atomic block navigation, source reveal, and selection.";
@@ -210,7 +211,7 @@ const observeRuntimeErrors = (page) => {
 };
 
 const enterVisualMode = async (page, waitForEditorReady) => {
-  await page.getByRole("button", { name: "Visual", exact: true }).click();
+  await selectDocumentViewMode(page, "Visual");
   await waitForEditorReady(page, { mode: "visual" });
   await page.waitForSelector(".cm-visual-editor");
 };
@@ -232,6 +233,7 @@ export async function run(ctx) {
       name: "visual-navigation.md",
       content: NAVIGATION_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     await page.getByRole("group", { name: "Edit code block Markdown" }).waitFor();
@@ -277,7 +279,7 @@ export async function run(ctx) {
       JSON.stringify(renderedCodeStyle) === JSON.stringify(sourceCodeStyle),
       `Rendered and editable code should share their base font and color. rendered=${JSON.stringify(renderedCodeStyle)} source=${JSON.stringify(sourceCodeStyle)}`,
     );
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await enterVisualMode(page, waitForEditorReady);
     await focusMarkdownEditor(page);
@@ -360,7 +362,7 @@ export async function run(ctx) {
       "Moving from revealed image Markdown should preserve the following blank line and restore rendering.",
     );
 
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     expect((await page.locator('img[alt="Sample"]').count()) === 1, "Preview should retain the image.");
     await enterVisualMode(page, waitForEditorReady);
@@ -391,7 +393,7 @@ export async function run(ctx) {
     );
 
     for (let index = 0; index < 12; index += 1) {
-      await page.getByRole("button", { name: "Preview", exact: true }).click();
+      await selectDocumentViewMode(page, "Preview");
       await waitForEditorReady(page, { mode: "preview" });
       await enterVisualMode(page, waitForEditorReady);
     }
@@ -407,6 +409,7 @@ export async function run(ctx) {
       name: "visual-code-style.md",
       content: CODE_STYLE_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     const codeBlocks = page.getByRole("group", { name: "Edit code block Markdown" });
@@ -548,6 +551,7 @@ export async function run(ctx) {
       name: "visual-math.md",
       content: MATH_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     const math = page.getByRole("group", { name: /Edit math Markdown/ });
@@ -588,6 +592,7 @@ export async function run(ctx) {
       name: "visual-wrapped-image.md",
       content: WRAPPED_IMAGE_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     await focusMarkdownEditor(page);
@@ -628,6 +633,7 @@ export async function run(ctx) {
       name: "visual-separator.md",
       content: SEPARATOR_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     const separator = page.getByRole("group", { name: "Edit separator Markdown" });
@@ -670,6 +676,7 @@ export async function run(ctx) {
       name: "visual-pointer.md",
       content: POINTER_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     const inlineClickPoint = await page.evaluate(() => {
@@ -765,6 +772,7 @@ export async function run(ctx) {
       name: "visual-inline-source.md",
       content: INLINE_SOURCE_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     await page.waitForSelector(".cm-visual-inline-math .katex");
@@ -807,7 +815,7 @@ export async function run(ctx) {
       footnoteDefinitionHeight <= 40,
       `A one-line footnote definition should not retain paragraph margins. height=${footnoteDefinitionHeight}`,
     );
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     const previewItalicStyle = await page.locator(".preview-surface em").evaluate(
       (element) => {
@@ -913,6 +921,7 @@ export async function run(ctx) {
       name: "visual-inline-toolbar.md",
       content: INLINE_TOOLBAR_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     await focusMarkdownEditor(page);
@@ -955,6 +964,7 @@ export async function run(ctx) {
       name: "visual-cursor-scroll.md",
       content: SCROLL_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     await focusMarkdownEditor(page);
@@ -1011,6 +1021,7 @@ export async function run(ctx) {
       name: "visual-components.mdx",
       content: COMPONENT_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     await page.waitForSelector(".cm-visual-inline-math .katex");
@@ -1056,6 +1067,7 @@ export async function run(ctx) {
       name: "visual-long-navigation.md",
       content: LONG_NAVIGATION_FIXTURE,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     await focusMarkdownEditor(page);
@@ -1120,6 +1132,7 @@ export async function run(ctx) {
       name: "visual-toolbar-inserts.md",
       content: "",
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
 
@@ -1168,7 +1181,7 @@ export async function run(ctx) {
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
 
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     const source = (await page.locator(".cm-line").allTextContents()).join("\n");
     for (const expected of [
@@ -1256,6 +1269,7 @@ export async function run(ctx) {
       name: "visual-large.md",
       content: largeDocument,
     });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await enterVisualMode(page, waitForEditorReady);
     const renderedHeadingCount = await page.locator(".cm-visual-heading").count();

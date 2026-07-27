@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -120,6 +121,7 @@ export async function run(ctx) {
       exact: true,
     }).click();
     await waitForActiveTab(page, { exact: "runtime.md" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     const sidePanelNavigation = page.getByRole("navigation", {
@@ -385,6 +387,7 @@ export async function run(ctx) {
     await page.getByRole("button").filter({
       hasText: "Refresh after 2020-01-01",
     }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await page.waitForFunction(() =>
       window.getSelection()?.toString() === "stale_after: 2020-01-01"
@@ -395,12 +398,13 @@ export async function run(ctx) {
       ),
       "Knowledge metadata signals should select the exact frontmatter field.",
     );
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await openExportPreflight(page, openProjectMenu);
     await page.getByRole("button").filter({
       hasText: "Relationship target does not exist: missing.md",
     }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await page.waitForFunction(() =>
       window.getSelection()?.toString() === "[Missing](missing.md)"

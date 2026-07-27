@@ -7,6 +7,7 @@ import {
 import {
   buildDocumentSurface,
   createActiveDocumentRuntime,
+  getFileEditingMode,
   getPreviewLineAnnotations,
   toggleLineBookmarkInList,
   type FileViewMode,
@@ -61,7 +62,7 @@ export function TabulaEmbeddedDocumentWorkbench({
   markdown,
   title,
   language = "en",
-  initialViewMode = "split",
+  initialViewMode = "visual",
   onMarkdownChange,
   onSelectedTextChange,
   onViewModeChange,
@@ -73,6 +74,9 @@ export function TabulaEmbeddedDocumentWorkbench({
   const previewRef = useRef<MarkdownPreviewHandle | null>(null);
   const scrollSyncingRef = useRef(false);
   const [viewMode, setViewMode] = useState<FileViewMode>(initialViewMode);
+  const [editingMode, setEditingMode] = useState(() =>
+    getFileEditingMode({ viewMode: initialViewMode }),
+  );
   const [readingWidth, setReadingWidth] = useState<"narrow" | "standard" | "wide">("wide");
   const [lineWrapping, setLineWrapping] = useState(true);
   const [lineNumbers, setLineNumbers] = useState(true);
@@ -91,13 +95,14 @@ export function TabulaEmbeddedDocumentWorkbench({
         title,
         text: markdown,
         viewMode,
+        editingMode,
         readingWidth,
         splitRatio,
         lineWrapping,
         lineNumbers,
         bookmarks,
       }),
-    [bookmarks, lineNumbers, lineWrapping, markdown, readingWidth, splitRatio, title, viewMode],
+    [bookmarks, editingMode, lineNumbers, lineWrapping, markdown, readingWidth, splitRatio, title, viewMode],
   );
   const documentSurface = useMemo(
     () =>
@@ -139,6 +144,11 @@ export function TabulaEmbeddedDocumentWorkbench({
   );
 
   const setDocumentViewMode = (nextViewMode: FileViewMode) => {
+    if (nextViewMode === "visual") {
+      setEditingMode("visual");
+    } else if (nextViewMode === "edit" || nextViewMode === "split") {
+      setEditingMode("source");
+    }
     setViewMode(nextViewMode);
     onViewModeChange?.(nextViewMode);
   };
@@ -148,6 +158,7 @@ export function TabulaEmbeddedDocumentWorkbench({
       <section className={documentSurface.fileShellClassName}>
         <section className={documentSurface.documentToolbarClassName} aria-label="Document controls">
           <DocumentControls
+            activeEditingMode={editingMode}
             activeViewMode={viewMode}
             activeReadingWidth={readingWidth}
             activeLineWrapping={lineWrapping}

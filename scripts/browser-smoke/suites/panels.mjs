@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 export const id = "panels";
 export const description = "Project menu, files, outline, comments, switcher, and right-panel file actions.";
 export const scenarios = [
@@ -46,8 +47,9 @@ export async function run(ctx) {
   await withPage(browser, "/", async (page) => {
     await page.locator(".empty-file-actions").getByRole("button", { name: "New document" }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await openProjectMenu(page);
 
@@ -317,6 +319,7 @@ export async function run(ctx) {
 
     await supportActions.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await openProjectMenu(page);
     await page.getByRole("button", { name: "About", exact: true }).click();
@@ -338,6 +341,7 @@ export async function run(ctx) {
 
     await page.locator(".workspace-menu-popover").getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     const newFileState = await page.evaluate(() => ({
       fileShellClasses: document.querySelector(".file-shell")?.className ?? "",
@@ -639,7 +643,7 @@ export async function run(ctx) {
     );
     await page.getByRole("button", { name: "Files", exact: true }).click();
 
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
@@ -1415,8 +1419,10 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     const rightFilesInitialTabs = await getTabs(page);
     const rightFilesActiveTitle = rightFilesInitialTabs.find((tab) => tab.active)?.title ?? "";
@@ -1650,6 +1656,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await openMarkdownFile(page, {
       name: "Start.md",
@@ -1701,7 +1708,7 @@ export async function run(ctx) {
     });
     await page.locator('.tab-item[data-file-name="Start.md"] .tab-select-button').click();
     await waitForActiveTab(page, { exact: "Start.md" });
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     expect(
       (await page.getByRole("link", { name: "Preview guide", exact: true }).count()) === 1,
@@ -1983,6 +1990,7 @@ export async function run(ctx) {
       "Broken destinations should use a compact text state whose row returns to the source.",
     );
     await missingGuideButton.click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     await page.getByRole("button", { name: "Open Guide.md", exact: true }).first().click();
@@ -2067,6 +2075,7 @@ export async function run(ctx) {
   try {
     await mobilePage.goto(baseUrl);
     await mobilePage.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(mobilePage, "Edit");
     await waitForEditorReady(mobilePage, { mode: "edit" });
     for (let index = 0; index < 4; index += 1) {
       await mobilePage.getByRole("button", { name: "New document", exact: true }).click();

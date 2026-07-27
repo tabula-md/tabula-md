@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 export const id = "collaboration";
 export const requiresRoomService = true;
 export const description = "Live collaboration room synchronization smoke.";
@@ -18,10 +19,7 @@ export async function run(ctx) {
   } = ctx;
 
   const ensureEditMode = async (page) => {
-    const editButton = page.getByRole("button", { name: "Edit", exact: true });
-    if ((await editButton.count()) > 0) {
-      await editButton.click();
-    }
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
   };
 
@@ -692,6 +690,7 @@ async function runLiveWorkspaceDocumentCreationSmoke({
   );
   await openFileFromRightPanel(secondPage, createdFileName);
   await secondPage.waitForSelector(`.tab-item.active[data-file-name="${createdFileName}"]`);
+  await selectDocumentViewMode(secondPage, "Edit");
   await waitForEditorReady(secondPage, { mode: "edit" });
   await focusMarkdownEditor(firstPage);
   await wait(250);

@@ -54,6 +54,7 @@ export async function run(ctx) {
     await waitForPanelTab(page, "Files");
     await page.getByRole("button", { name: "Open Start.md", exact: true }).click();
     await waitForActiveTab(page, { exact: "Start.md" });
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
@@ -193,6 +194,7 @@ export async function run(ctx) {
       "Ambiguous candidates should add one visible indentation level beneath their target.",
     );
     await teamACandidate.click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     expect(
       (await page.locator(".cm-content").textContent())?.includes("[[/team-a/Shared]]"),
@@ -212,6 +214,7 @@ export async function run(ctx) {
       "A broken target should stay in Outgoing and offer source navigation.",
     );
     await missingGuide.click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     await outgoing.getByRole("button", { name: "Open Guide.md", exact: true }).click();
@@ -223,3 +226,4 @@ export async function run(ctx) {
     );
   });
 }
+import { selectDocumentViewMode } from "../support/view-mode.mjs";

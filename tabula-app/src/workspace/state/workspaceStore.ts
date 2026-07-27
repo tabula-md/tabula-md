@@ -8,6 +8,7 @@ import {
   deleteWorkspaceFile,
   getActiveWorkspaceFile,
   getAvailableWorkspaceFileTitle,
+  getFileEditingMode,
   getOpenWorkspaceFiles,
   renameWorkspaceFile,
   reorderOpenWorkspaceFile,
@@ -120,7 +121,10 @@ const noopCreateFile = (index: number, overrides: Partial<WorkspaceFile> = {}): 
   text: overrides.text ?? "",
   parentId: overrides.parentId,
   order: overrides.order,
-  viewMode: overrides.viewMode ?? "edit",
+  viewMode: overrides.viewMode ?? "visual",
+  editingMode:
+    overrides.editingMode ??
+    getFileEditingMode({ viewMode: overrides.viewMode ?? "visual" }),
   readingWidth: overrides.readingWidth ?? "wide",
   splitRatio: overrides.splitRatio,
   lineWrapping: overrides.lineWrapping ?? true,
@@ -301,7 +305,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
     return nextFile;
   },
 
-  addFileFromContent: (title, text, viewMode = "edit", overrides) => {
+  addFileFromContent: (title, text, viewMode = "visual", overrides) => {
     const state = get();
     const parentId = overrides?.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
     const nextFile = state.createFile(getNextUserFileIndex(state.files, state.readmeFileId), {
@@ -330,6 +334,7 @@ export const createWorkspaceStore = () => create<WorkspaceStore>()((set, get) =>
       title: getAvailableFileTitle(state.files, sourceFile.title, sourceFile.parentId),
       text: sourceFile.text,
       viewMode: sourceFile.viewMode,
+      editingMode: getFileEditingMode(sourceFile),
       readingWidth: sourceFile.readingWidth,
       lineWrapping: sourceFile.lineWrapping,
       lineNumbers: sourceFile.lineNumbers,

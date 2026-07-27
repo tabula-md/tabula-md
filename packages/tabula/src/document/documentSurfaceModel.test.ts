@@ -83,6 +83,22 @@ describe("document surface model", () => {
     });
   });
 
+  it("exposes the editor selected behind Preview", () => {
+    expect(
+      surface({
+        document: createActiveDocumentRuntime(
+          file({
+            viewMode: "preview",
+            editingMode: "visual",
+          }),
+        ),
+      }).documentControls,
+    ).toMatchObject({
+      activeEditingMode: "visual",
+      activeViewMode: "preview",
+    });
+  });
+
   it("shows the selection comment popover for a positioned text selection", () => {
     expect(
       surface({

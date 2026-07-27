@@ -217,7 +217,8 @@ describe("json share links", () => {
       id: "brief",
       title: "BRIEF.md",
       text: "# Brief",
-      viewMode: "edit",
+      viewMode: "visual",
+      editingMode: "visual",
     });
     expect(Object.keys(workspace.files[0])).not.toContain("connectionStatus");
   });

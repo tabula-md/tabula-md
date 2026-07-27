@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 export const id = "editor-preview-sync";
 export const description = "Split preview scroll ownership and source-anchor follow behavior.";
 
@@ -288,12 +289,13 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(FRONTMATTER_SYNC_FIXTURE);
     await page.keyboard.press("ControlOrMeta+Home");
     await waitForRenderFrame(page);
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     await waitForRenderFrame(page);
 
@@ -329,7 +331,7 @@ export async function run(ctx) {
         (_, index) => `## Section ${index + 1}\n\nBody paragraph ${index + 1} for scroll synchronization.`,
       ).join("\n\n"),
     });
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await page.waitForSelector(".workspace.preview .preview-surface", { timeout: 5_000 });
     await page.evaluate(() => {
@@ -347,7 +349,7 @@ export async function run(ctx) {
     });
     expect(previewOnlyScrollTop > 0, "Starter README preview should be scrolled before split-entry regression check.");
 
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     await waitForRenderFrame(page);
     const splitEntryState = await readSplitPreviewState(page);
@@ -379,10 +381,11 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(INLINE_MDX_SCROLL_TRANSFER_FIXTURE);
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     await waitForRenderFrame(page);
     await page.waitForFunction(() => {
@@ -434,10 +437,11 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(LONG_SCROLL_TRANSFER_FIXTURE);
-    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await selectDocumentViewMode(page, "Split");
     await waitForEditorReady(page, { mode: "split" });
     await waitForRenderFrame(page);
     await page.waitForFunction(() => {

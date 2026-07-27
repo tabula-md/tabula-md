@@ -1,3 +1,4 @@
+import { selectDocumentViewMode } from "../support/view-mode.mjs";
 export const id = "editor-selection-comments";
 export const requiresRoomService = true;
 export const description = "Text selection surfaces, selection comments, and editor/preview comment anchors.";
@@ -35,6 +36,7 @@ export async function run(ctx) {
     page.on("pageerror", (error) => diagnostics.push(`pageerror: ${error.message}`));
 
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.type("rapid-input ".repeat(50), { delay: 0 });
@@ -48,6 +50,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("a\n\nmuch longer selected line\nb");
@@ -200,6 +203,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
@@ -321,7 +325,7 @@ export async function run(ctx) {
     expect(commentMarkClickState.activeMarks === 1, "Clicking a comment mark should keep the source mark active.");
     expect(commentMarkClickState.quoteText === "target", "Clicking a shifted comment mark should still resolve the original quote.");
 
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await page.waitForSelector(".preview-comment-mark", { timeout: 5_000 });
     const previewCommentMarkState = await page.evaluate(() => ({
       markCount: document.querySelectorAll(".preview-comment-mark").length,
@@ -424,11 +428,12 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await startLiveSession(page);
     await focusMarkdownEditor(page);
     await page.keyboard.type("Alpha **target** omega.");
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await selectDocumentViewMode(page, "Preview");
     await page.waitForSelector(".preview-source-text", { timeout: 5_000 });
 
     const previewFormattedSelection = await page.evaluate(() => {
@@ -490,7 +495,7 @@ export async function run(ctx) {
       "Preview comments across formatting should render in the comments panel.",
     );
 
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     const formattedEditorCommentState = await page.evaluate(() => ({
       markCount: document.querySelectorAll(".cm-comment-mark").length,
@@ -505,6 +510,7 @@ export async function run(ctx) {
 
   await withPage(browser, "/", async (page) => {
     await page.getByRole("button", { name: "New document", exact: true }).click();
+    await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText("line 3 has -firs here\nline 6 has -firs here");

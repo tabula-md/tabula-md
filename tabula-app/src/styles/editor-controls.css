@@ -66,6 +66,35 @@
   gap: 2px;
 }
 
+.editing-mode-options {
+  display: grid;
+  gap: 2px;
+}
+
+.editing-mode-option-icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-soft);
+}
+
+.editing-mode-option.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.editing-mode-option.active .editing-mode-option-icon {
+  color: currentColor;
+}
+
+.editor-controls-divider {
+  height: 1px;
+  margin: 6px 8px;
+  background: var(--line-subtle);
+  opacity: 0.55;
+}
+
 .editor-controls-row {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr) auto;
@@ -363,12 +392,12 @@
     height: var(--control-size-touch);
   }
 
-  .document-view-mode-control {
+  .document-utility-controls {
+    height: var(--control-size-touch);
     padding: 0;
   }
 
-  .document-utility-controls {
-    height: var(--control-size-touch);
+  .document-view-mode-control {
     padding: 0;
   }
 
