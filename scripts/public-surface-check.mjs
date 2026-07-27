@@ -28,7 +28,8 @@ for (const contractPath of contributorContractPaths) {
 if (existsSync("AGENTS.md")) {
   const agentGuide = readFileSync("AGENTS.md", "utf8");
   for (const requiredInstruction of [
-    "Tabula.md",
+    "Use `Tabula` as the product name.",
+    "Use `tabula.md` only when referring to the domain or URL.",
     "WORKFLOW.md",
     "npm test",
     "npm run build",
