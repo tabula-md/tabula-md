@@ -251,4 +251,28 @@ describe("Markdown presentation document", () => {
       /className|react|widget|domNode/i,
     );
   });
+
+  it("normalizes blockquote callouts into the shared semantic model", () => {
+    const source = [
+      "> [!WARNING] Canonical source",
+      "> Keep Markdown as the source of truth.",
+    ].join("\n");
+    const callout = createMarkdownPresentationDocument(source).blocks[0];
+
+    expect(callout).toMatchObject({
+      data: {
+        attributes: {
+          title: "Canonical source",
+          type: "warning",
+        },
+        text: "Keep Markdown as the source of truth.",
+      },
+      interaction: {
+        atomicWhenInactive: true,
+        revealSourceWhenActive: true,
+      },
+      range: { from: 0, to: source.length },
+      type: "callout",
+    });
+  });
 });

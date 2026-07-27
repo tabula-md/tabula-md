@@ -56,6 +56,31 @@ describe("Markdown wiki-link remark transform", () => {
     expect(html).toContain('data-presentation-node="table"');
   });
 
+  it("annotates Preview rich blocks with the shared presentation model", () => {
+    const markdown = [
+      "> [!NOTE] Shared callout",
+      "> Body",
+      "",
+      "$$",
+      "x^2",
+      "$$",
+      "",
+      "```mermaid",
+      "flowchart LR",
+      "A --> B",
+      "```",
+    ].join("\n");
+    const html = renderToStaticMarkup(createElement(
+      ReactMarkdown,
+      { remarkPlugins: MARKDOWN_REMARK_PLUGINS },
+      markdown,
+    ));
+
+    expect(html).toContain('data-presentation-node="callout"');
+    expect(html).toContain('data-presentation-node="display-math"');
+    expect(html).toContain('data-presentation-node="diagram"');
+  });
+
   it("turns links into annotated anchors and embeds into block nodes", () => {
     const markdown = "\\[[Escaped]] and [[Page|Alias]] plus ![[Embed]]";
     const tree: MarkdownTree = {

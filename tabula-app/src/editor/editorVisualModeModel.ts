@@ -111,241 +111,6 @@ const getLineClass = (nodeName: string) => {
   return "";
 };
 
-const parseCodeBlock = (source: string) => {
-  const lines = source.split("\n");
-  const opening = /^(`{3,}|~{3,})\s*([^\s`]*)/.exec(lines[0] ?? "");
-  const fence = opening?.[1] ?? "";
-  const closingPattern = fence
-    ? new RegExp(`^\\s*${fence[0]}{${fence.length},}\\s*$`)
-    : null;
-  const hasClosingFence = Boolean(
-    closingPattern && lines.length > 1 && closingPattern.test(lines.at(-1) ?? ""),
-  );
-  return {
-    code: lines.slice(1, hasClosingFence ? -1 : undefined).join("\n"),
-    language: opening?.[2]?.trim().toLowerCase() ?? "",
-  };
-};
-
-const parseCallout = (source: string) => {
-  const lines = source.split("\n").map((line) => line.replace(/^\s*>\s?/, ""));
-  const marker = /^\[!([A-Za-z-]+)\]\s*(.*)$/.exec(lines[0] ?? "");
-  if (!marker) return null;
-  const calloutType = marker[1].toLowerCase();
-  return {
-    body: lines.slice(1).join("\n").trim(),
-    calloutType,
-    title: marker[2].trim() || calloutType,
-  };
-};
-
-type DocsComponentName = "Accordion" | "Callout" | "Tab" | "Tabs";
-
-type DocsComponentNode = {
-  attributes: Map<string, string>;
-  children: DocsComponentNode[];
-  closeFrom: number;
-  from: number;
-  name: DocsComponentName;
-  openTo: number;
-  to: number;
-};
-
-type OpenDocsComponent = Omit<DocsComponentNode, "closeFrom" | "to">;
-
-const DOCS_COMPONENT_NAMES = new Set<DocsComponentName>([
-  "Accordion",
-  "Callout",
-  "Tab",
-  "Tabs",
-]);
-
-const getFencedCodeRanges = (source: string) => {
-  const ranges: Array<{ from: number; to: number }> = [];
-  let open: { character: string; from: number; length: number } | null = null;
-  let offset = 0;
-  for (const line of source.split("\n")) {
-    if (!open) {
-      const opening = /^ {0,3}(`{3,}|~{3,})/.exec(line);
-      if (opening) {
-        open = {
-          character: opening[1][0],
-          from: offset,
-          length: opening[1].length,
-        };
-      }
-    } else {
-      const closing = new RegExp(
-        `^ {0,3}${open.character === "`" ? "`" : "~"}{${open.length},}[ \\t]*$`,
-      );
-      if (closing.test(line)) {
-        ranges.push({ from: open.from, to: offset + line.length });
-        open = null;
-      }
-    }
-    offset += line.length + 1;
-  }
-  if (open) ranges.push({ from: open.from, to: source.length });
-  return ranges;
-};
-
-const isInsideRange = (
-  position: number,
-  ranges: readonly { from: number; to: number }[],
-) => ranges.some((range) => position >= range.from && position <= range.to);
-
-const findTagEnd = (source: string, from: number) => {
-  let quote: "'" | '"' | null = null;
-  for (let index = from; index < source.length; index += 1) {
-    const character = source[index];
-    if (quote) {
-      if (character === quote && source[index - 1] !== "\\") quote = null;
-      continue;
-    }
-    if (character === "'" || character === '"') {
-      quote = character;
-      continue;
-    }
-    if (character === ">") return index + 1;
-  }
-  return null;
-};
-
-const parseDocsComponentAttributes = (source: string) => {
-  const attributes = new Map<string, string>();
-  const pattern = /([A-Za-z_:][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
-  for (const match of source.matchAll(pattern)) {
-    attributes.set(match[1], match[2] ?? match[3] ?? "");
-  }
-  return attributes;
-};
-
-const isFlowTagStart = (source: string, position: number) => {
-  const lineStart = source.lastIndexOf("\n", position - 1) + 1;
-  return /^ {0,3}$/.test(source.slice(lineStart, position));
-};
-
-const parseDocsComponentNodes = (source: string) => {
-  const fencedCodeRanges = getFencedCodeRanges(source);
-  const roots: DocsComponentNode[] = [];
-  const stack: OpenDocsComponent[] = [];
-  let cursor = 0;
-
-  while (cursor < source.length) {
-    const from = source.indexOf("<", cursor);
-    if (from < 0) break;
-    cursor = from + 1;
-    if (isInsideRange(from, fencedCodeRanges)) continue;
-
-    const to = findTagEnd(source, cursor);
-    if (to === null) break;
-    const rawTag = source.slice(from + 1, to - 1);
-    const match = /^\s*(\/?)\s*([A-Za-z][\w.-]*)([\s\S]*?)\s*(\/?)\s*$/.exec(rawTag);
-    if (!match || !DOCS_COMPONENT_NAMES.has(match[2] as DocsComponentName)) {
-      cursor = to;
-      continue;
-    }
-
-    const closing = match[1] === "/";
-    const selfClosing = match[4] === "/";
-    const name = match[2] as DocsComponentName;
-    if (!closing && !isFlowTagStart(source, from)) {
-      cursor = to;
-      continue;
-    }
-
-    if (closing) {
-      const open = stack.at(-1);
-      if (!open || open.name !== name) {
-        cursor = to;
-        continue;
-      }
-      stack.pop();
-      const node: DocsComponentNode = {
-        ...open,
-        closeFrom: from,
-        to,
-      };
-      const parent = stack.at(-1);
-      if (parent) parent.children.push(node);
-      else roots.push(node);
-    } else if (!selfClosing) {
-      stack.push({
-        attributes: parseDocsComponentAttributes(match[3]),
-        children: [],
-        from,
-        name,
-        openTo: to,
-      });
-    }
-    cursor = to;
-  }
-
-  return roots;
-};
-
-const parseDocsComponents = (source: string): EditorVisualReplacement[] => {
-  const parseComponent = (
-    component: DocsComponentNode,
-  ): EditorVisualReplacement | null => {
-    const { from, to } = component;
-    const body = source.slice(component.openTo, component.closeFrom).trim();
-
-    if (component.name === "Callout") {
-      const typeAttribute = component.attributes.get("type");
-      const titleAttribute = component.attributes.get("title");
-      const calloutType = typeAttribute?.toLowerCase() || "note";
-      return {
-        body,
-        calloutType,
-        from,
-        kind: "callout",
-        title: titleAttribute || calloutType,
-        to,
-      };
-    }
-
-    if (component.name === "Accordion") {
-      const titleAttribute = component.attributes.get("title");
-      return {
-        body,
-        from,
-        kind: "accordion",
-        title: titleAttribute || "Details",
-        to,
-      };
-    }
-
-    if (component.name === "Tabs") {
-      const tabs = component.children
-        .filter((tab) => tab.name === "Tab")
-        .map((tab, index) => {
-          const titleAttribute = tab.attributes.get("title");
-          return {
-            body: source.slice(tab.openTo, tab.closeFrom).trim(),
-            title: titleAttribute || `Tab ${index + 1}`,
-          };
-        });
-      if (tabs.length > 0) return { from, kind: "tabs", tabs, to };
-    }
-
-    return null;
-  };
-
-  const replacements: EditorVisualReplacement[] = [];
-  const visit = (element: DocsComponentNode) => {
-    const replacement = parseComponent(element);
-    if (replacement) {
-      replacements.push(replacement);
-      return;
-    }
-    for (const child of element.children) visit(child);
-  };
-  for (const element of parseDocsComponentNodes(source)) visit(element);
-  return replacements;
-};
-
-const docsComponentsByDocument = new WeakMap<object, EditorVisualReplacement[]>();
 const footnotesByDocument = new WeakMap<object, EditorVisualReplacement[]>();
 const frontmatterByDocument = new WeakMap<object, EditorVisualReplacement | null>();
 const presentationByDocument =
@@ -415,7 +180,15 @@ const getTableReplacement = (
   };
 };
 
-const getPrimaryBlockReplacement = (
+const getBlockBody = (
+  state: EditorState,
+  node: PresentationBlock,
+) => node.data?.text ?? state.doc.sliceString(
+  node.contentRange?.from ?? node.range.from,
+  node.contentRange?.to ?? node.range.to,
+).trim();
+
+const getVisualBlockReplacement = (
   state: EditorState,
   node: PresentationNode,
 ): EditorVisualReplacement | null => {
@@ -448,6 +221,14 @@ const getPrimaryBlockReplacement = (
       to: node.range.to,
     };
   }
+  if (node.type === "diagram") {
+    return {
+      from: node.range.from,
+      kind: "diagram",
+      source: node.data?.text ?? "",
+      to: node.range.to,
+    };
+  }
   if (node.type === "display-math") {
     return {
       expression: node.data?.text ?? "",
@@ -456,11 +237,48 @@ const getPrimaryBlockReplacement = (
       to: node.range.to,
     };
   }
+  if (node.type === "callout") {
+    const type = node.data?.attributes?.type?.toLowerCase() || "note";
+    return {
+      body: getBlockBody(state, node),
+      calloutType: type,
+      from: node.range.from,
+      kind: "callout",
+      title: node.data?.attributes?.title || type,
+      to: node.range.to,
+    };
+  }
+  if (node.type === "accordion") {
+    return {
+      body: getBlockBody(state, node),
+      from: node.range.from,
+      kind: "accordion",
+      title: node.data?.attributes?.title || "Details",
+      to: node.range.to,
+    };
+  }
+  if (node.type === "tabs") {
+    const tabs = node.children
+      .filter((child): child is PresentationBlock =>
+        isPresentationBlock(child) && child.type === "tab")
+      .map((tab, index) => ({
+        body: getBlockBody(state, tab),
+        title: tab.data?.attributes?.title || `Tab ${index + 1}`,
+      }));
+    return tabs.length > 0
+      ? {
+          from: node.range.from,
+          kind: "tabs",
+          tabs,
+          to: node.range.to,
+        }
+      : null;
+  }
   if (node.type === "table") return getTableReplacement(state, node);
   return null;
 };
 
-const addPrimaryBlockReplacements = (
+const addPresentationBlockReplacements = (
   model: EditorVisualModel,
   state: EditorState,
   visibleRanges: readonly VisibleRange[],
@@ -468,7 +286,7 @@ const addPrimaryBlockReplacements = (
   revealActiveSource: boolean,
 ) => {
   const replacements = getPresentationNodes(state)
-    .map((node) => getPrimaryBlockReplacement(state, node))
+    .map((node) => getVisualBlockReplacement(state, node))
     .filter((replacement): replacement is EditorVisualReplacement =>
       replacement !== null);
   for (const replacement of replacements) {
@@ -497,15 +315,6 @@ const addPrimaryBlockReplacements = (
       model.replacements.push(replacement);
     }
   }
-  return replacements;
-};
-
-const getDocsComponents = (state: EditorState) => {
-  const documentKey = state.doc as object;
-  const cached = docsComponentsByDocument.get(documentKey);
-  if (cached) return cached;
-  const replacements = parseDocsComponents(state.doc.toString());
-  docsComponentsByDocument.set(documentKey, replacements);
   return replacements;
 };
 
@@ -658,26 +467,6 @@ const addPresentationInlineRanges = (
   }
 };
 
-const addComponentReplacements = (
-  model: EditorVisualModel,
-  state: EditorState,
-  visibleRanges: readonly VisibleRange[],
-  editingBlock: EditorVisualBlockRange | null,
-  revealActiveSource: boolean,
-) => {
-  const replacements = getDocsComponents(state);
-  for (const replacement of replacements) {
-    if (!isVisible(replacement.from, replacement.to, visibleRanges)) continue;
-    if (
-      !isEditingBlock(editingBlock, replacement.from, replacement.to) &&
-      !(revealActiveSource && hasSelectedSource(state, replacement.from, replacement.to))
-    ) {
-      model.replacements.push(replacement);
-    }
-  }
-  return replacements;
-};
-
 const addLineClass = (
   model: EditorVisualModel,
   state: EditorState,
@@ -757,27 +546,7 @@ const walkVisualTree = (
     return;
   }
 
-  if (node.name === "FencedCode" && !isEditingBlock(editingBlock, node.from, node.to)) {
-    if (revealActiveSource && hasSelectedSource(state, node.from, node.to)) {
-      addCodeSourceBlockClasses(model, state, node.from, node.to, "selection");
-      return;
-    }
-    const codeBlock = parseCodeBlock(source);
-    model.replacements.push(
-      codeBlock.language === "mermaid"
-        ? { from: node.from, to: node.to, kind: "diagram", source: codeBlock.code }
-        : { from: node.from, to: node.to, kind: "code", ...codeBlock },
-    );
-    return;
-  }
-
   if (node.name === "Blockquote") {
-    const callout = parseCallout(source);
-    if (callout && !isEditingBlock(editingBlock, node.from, node.to)) {
-      if (revealActiveSource && hasSelectedSource(state, node.from, node.to)) return;
-      model.replacements.push({ from: node.from, to: node.to, kind: "callout", ...callout });
-      return;
-    }
     addLineClass(model, state, node.from, node.to, "cm-visual-quote");
   }
 
@@ -860,22 +629,13 @@ export const buildEditorVisualModel = (
   revealActiveSource = true,
 ): EditorVisualModel => {
   const model: EditorVisualModel = { hiddenRanges: [], lines: [], replacements: [] };
-  const parsedReplacements = [
-    ...addComponentReplacements(
-      model,
-      state,
-      visibleRanges,
-      editingBlock,
-      revealActiveSource,
-    ),
-  ];
-  parsedReplacements.push(...addPrimaryBlockReplacements(
+  const parsedReplacements = addPresentationBlockReplacements(
     model,
     state,
     visibleRanges,
     editingBlock,
     revealActiveSource,
-  ));
+  );
   const frontmatter = getFrontmatter(state);
   if (frontmatter) {
     parsedReplacements.push(frontmatter);

@@ -16,10 +16,10 @@ describe("preview docs compatibility", () => {
       "<tabula-card-group cols={2}>",
       "<tabula-card title=\"One\">Body</tabula-card>",
       "</tabula-card-group>",
-      "<tabula-tabs>",
-      "<tabula-tab title=\"TypeScript\">Code</tabula-tab>",
+      '<tabula-tabs data-presentation-node="tabs" data-source-from="64" data-source-to="113">',
+      '<tabula-tab title="TypeScript" data-presentation-node="tab" data-source-from="71" data-source-to="105">Code</tabula-tab>',
       "</tabula-tabs>",
-      "<tabula-accordion title=\"Details\">More</tabula-accordion>",
+      '<tabula-accordion title="Details" data-presentation-node="accordion" data-source-from="114" data-source-to="157">More</tabula-accordion>',
       "<tabula-steps><tabula-step title=\"Install\">Run it</tabula-step></tabula-steps>",
     ].join("\n"));
   });

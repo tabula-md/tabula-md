@@ -484,6 +484,12 @@ export async function run(ctx) {
         line.classList.contains("cm-visual-source-code"));
       const inlineCodeMarks = codeLines.flatMap((line) =>
         Array.from(line.querySelectorAll(".cm-visual-inline-code")));
+      const mermaidSourceLines = [
+        "```mermaid",
+        "graph TD",
+        "  A --> B",
+        "```",
+      ].filter((text) => lines.some((line) => line.textContent === text));
       const heading = lines.find((line) => line.textContent === "## Code styles");
       const headingText = heading?.firstChild;
       const headingRange = document.createRange();
@@ -504,6 +510,7 @@ export async function run(ctx) {
         : Number.NaN;
       return {
         codeLineCount: codeLines.length,
+        mermaidSourceLineCount: mermaidSourceLines.length,
         inlineCodeMarkCount: inlineCodeMarks.length,
         styledInlineCodeMarkCount: inlineCodeMarks.filter((mark) => {
           const style = getComputedStyle(mark);
@@ -525,8 +532,9 @@ export async function run(ctx) {
       };
     });
     expect(
-      selectAllState.codeLineCount === 13 &&
-        selectAllState.selectedCodeLineCount === 13 &&
+      selectAllState.codeLineCount === 9 &&
+        selectAllState.selectedCodeLineCount === 9 &&
+        selectAllState.mermaidSourceLineCount === 4 &&
         selectAllState.sourceBlockLineCount === 0 &&
         selectAllState.opaqueCodeLineCount === 0 &&
         selectAllState.inlineCodeMarkCount > 0 &&
