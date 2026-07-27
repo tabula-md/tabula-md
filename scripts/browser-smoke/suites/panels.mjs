@@ -1787,7 +1787,7 @@ export async function run(ctx) {
         hoveredHeadingLinkStyles.decoration.includes("underline"),
       `Same-document heading links should gain a stronger color and underline on hover (${JSON.stringify(hoveredHeadingLinkStyles)}).`,
     );
-    await page.getByRole("button", { name: "Visual", exact: true }).click();
+    await page.getByRole("button", { name: "Visual edit", exact: true }).click();
     await waitForEditorReady(page, { mode: "visual" });
     await page.evaluate(() => {
       const content = document.querySelector(".cm-content");
