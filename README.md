@@ -1,67 +1,90 @@
 <p align="center">
   <a href="https://tabula.md">
-    <img src="https://tabula.md/favicon.svg" alt="Tabula.md" width="56" />
+    <img src="https://tabula.md/favicon.svg" alt="Tabula" width="56" />
   </a>
 </p>
 
-<h1 align="center">Tabula.md</h1>
+<h1 align="center">Tabula</h1>
 
 <p align="center">
-  <strong>Share Markdown. Keep it Markdown.</strong>
+  <strong>Real-time collaboration for Markdown knowledge bases and LLM wikis.</strong>
   <br />
-  Open a folder, share one link, and edit together—without accounts, repositories, or platform migration.
+  Open an existing workspace, edit the same files with people and AI agents,
+  and export portable Markdown when the work is done.
 </p>
 
-<p align="center"><a href="https://tabula.md">Open Tabula.md</a></p>
+<p align="center"><a href="https://tabula.md">Open Tabula</a></p>
 
 <p align="center">
   <a href="https://tabula.md" target="_blank" rel="noopener">
     <img
       src=".github/assets/tabula-product-demo.gif"
-      alt="A Markdown folder becoming a live Tabula.md room that two people edit together"
+      alt="A Markdown knowledge base opened as a live collaborative Tabula workspace"
       width="960"
     />
   </a>
 </p>
 
-## Why Tabula.md
+## Why Tabula
 
-- Import a Markdown folder into the browser without signing up.
-- Keep the workspace portable as Markdown files.
-- Share the whole workspace with one encrypted room link.
-- Edit together in the browser, or invite an AI agent from its own tools.
+AI agents can create and maintain specifications, runbooks, codebase wikis,
+and other knowledge across many linked Markdown files.
 
-Tabula.md is in public preview. The hosted app at
+When another person needs to review or correct that work, moving the files into
+another document platform disconnects them from their Markdown structure. A
+pull request or file attachment turns the work into a sequence of snapshots.
+
+Tabula opens the existing folder as an encrypted, real-time workspace.
+
+- Import a Markdown knowledge base without signing up.
+- Invite people with one encrypted room link.
+- Let AI agents work in the same files through MCP.
+- Navigate links, backlinks, Wikilinks, and embedded documents.
+- Search content and frontmatter metadata.
+- Review compatibility and maintenance issues before export.
+- Return the workspace as portable Markdown files.
+
+Tabula is in public preview. The hosted app at
 [tabula.md](https://tabula.md) is the reference deployment.
 
-Opening a folder imports its Markdown files into this browser. Tabula.md does
-not modify or stay synchronized with the original folder; export a document or
-workspace when you want the files back on disk.
+Opening a folder creates a working copy in the browser. Tabula does not modify
+or continuously synchronize with the original local folder. Export a document
+or workspace when you want the files back on disk.
 
-## Use with an AI agent
+## Knowledge workspace support
 
-Give Codex or another agent a live room link and a concrete task. It joins the
-same workspace, reads the files, and writes Markdown back while you watch.
+Tabula works with ordinary Markdown folders and linked Markdown wikis. It also
+recognizes conventions used by OKF-compatible and OpenWiki workspaces.
 
-<p align="center">
-  <a href="https://tabula.md" target="_blank" rel="noopener">
-    <img
-      src=".github/assets/tabula-agent-demo.gif"
-      alt="Codex joining a live Tabula.md room, reading three Markdown files, and creating risks.md"
-      width="960"
-    />
-  </a>
-</p>
+- Markdown links, heading fragments, Wikilinks, aliases, and embeds
+- Outgoing links, backlinks, broken links, and ambiguous targets
+- Full-text and metadata-aware search
+- Type, tags, status, trust, freshness, ownership, and sources
+- Human verification metadata
+- OKF compatibility checks
+- Index and `log.md` suggestions
+- Review before workspace export
 
-For agent-guided setup, paste this into Claude Code, Codex, or another
-shell-capable agent:
+Tabula recognizes Obsidian-style linking conventions but does not claim to
+preserve every Obsidian plugin or `.obsidian` configuration. Unknown
+frontmatter fields are preserved instead of being discarded.
+
+## Collaborate with people and AI agents
+
+Create a live session and share the complete room URL with the people who need
+to participate. Everyone in the room can edit the same files, leave comments,
+and see updates in real time.
+
+Codex, Claude, and other MCP-capable agents can join the same workspace.
+
+For agent-guided setup, paste this into a shell-capable agent:
 
 ```text
 Set up Tabula MCP for this client by following every step at:
 https://tabula.md/agent-install.txt
 ```
 
-Or configure a supported local client directly.
+Or configure a supported client directly.
 
 Connect Codex:
 
@@ -75,59 +98,83 @@ Connect Claude Code:
 claude mcp add tabula -- npx -y @tabula-md/mcp@latest
 ```
 
-After connecting, create a live session in Tabula.md and give the agent the
-complete room URL with a concrete task. The URL is a bearer secret: anyone with
-it can join and decrypt the session, so do not put it in logs, issues, or public
-messages.
+After connecting, create a live session and give the agent the complete room
+URL with a concrete task.
 
-Local MCP keeps its plaintext working state on your device. A hosted MCP is a
-trusted room participant and can read the room content shared with it.
+The room URL is a bearer secret. Anyone with it can join and decrypt the
+session, so do not put it in logs, public issues, or public messages.
 
-See [Tabula.md MCP](https://github.com/tabula-md/tabula-mcp) for Claude Desktop,
+See [Tabula MCP](https://github.com/tabula-md/tabula-mcp) for Claude Desktop,
 other MCP clients, and self-hosting.
 
 ## Features
 
-- GitHub Flavored Markdown editing and preview.
-- Files, outline, and comments beside the editor.
-- Browser autosave and local restore.
-- Dark, light, and system themes.
-- Encrypted live collaboration by room link.
-- Encrypted copy links for point-in-time handoff.
+- Source, Visual, Split, and Preview editing modes
+- Files, Outline, Links, Comments, Search, and Knowledge panels
+- GitHub Flavored Markdown
+- Browser autosave and local restore
+- Encrypted real-time collaboration
+- Encrypted export links
+- Document and workspace export
+- Dark, light, and system themes
 
-## How the pieces fit
+## Run locally
 
-```text
-Person in Tabula.md ─┐
-                     ├─ same encrypted live session
-Agent through MCP ───┘
-          │
-          ├─ tabula-room: encrypted realtime relay
-          └─ tabula-json: encrypted copy-link storage
-```
-
-Tabula.md is the product surface. The other repositories provide the agent
-connection and encrypted infrastructure behind sharing.
-
-## Run Locally
+Install dependencies and start the development server:
 
 ```sh
 npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. Local editing works without any hosted service.
-Live collaboration and copy links require their respective optional services.
+Open [http://localhost:5173](http://localhost:5173).
 
-See [Development](DEVELOPMENT.md) for commands and architecture.
+Local editing works without any hosted service. Live collaboration and export
+links require their respective optional services.
 
-## Related Repositories
+To connect the app to a local room server running on port `3002`:
+
+```sh
+VITE_TABULA_ROOM_URL=http://localhost:3002 npm run dev
+```
+
+## Test and build
+
+```sh
+npm test
+npm run build
+npm run test:browser
+```
+
+Focused browser suites are available when changing a specific surface:
+
+```sh
+npm run test:browser:workspace
+npm run test:browser:editor
+npm run test:browser:layout
+npm run test:browser:panels
+npm run test:browser:collab
+```
+
+See [Development](DEVELOPMENT.md) for the complete development and validation
+workflow.
+
+## Repository structure
+
+| Path | Role |
+| --- | --- |
+| `tabula-app` | React and Vite application, editor, preview, panels, persistence, and collaboration client |
+| `packages/tabula` | Reusable Markdown workspace, knowledge index, and collaboration primitives |
+| `scripts` | Repository checks, browser smoke suites, and development utilities |
+| `docs` | Product, architecture, collaboration, and self-hosting documentation |
+
+## Related repositories
 
 | Repository | Role |
 | --- | --- |
-| [`tabula-mcp`](https://github.com/tabula-md/tabula-mcp) | Connect Codex, Claude, and other MCP clients to shared Tabula.md workspaces. |
-| [`tabula-room`](https://github.com/tabula-md/tabula-room) | Encrypted realtime relay for Tabula.md live sessions. |
-| [`tabula-json`](https://github.com/tabula-md/tabula-json) | Encrypted snapshot store for Tabula.md copy links. |
+| [`tabula-mcp`](https://github.com/tabula-md/tabula-mcp) | Connects Codex, Claude, and other MCP clients to live Tabula workspaces |
+| [`tabula-room`](https://github.com/tabula-md/tabula-room) | Encrypted real-time relay for live sessions |
+| [`tabula-json`](https://github.com/tabula-md/tabula-json) | Encrypted snapshot storage for export links |
 
 ## Project
 
@@ -139,9 +186,9 @@ See [Development](DEVELOPMENT.md) for commands and architecture.
 - [Security](SECURITY.md)
 - [Privacy](PRIVACY.md)
 
-## Backed By
+## Backed by
 
-Tabula.md is backed by
+Tabula is backed by
 [Marker Inc Korea](https://github.com/Marker-Inc-Korea).
 
 ## License

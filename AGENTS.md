@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Tabula.md is a local-first Markdown workspace for writing, previewing,
+Tabula is a local-first Markdown workspace for writing, previewing,
 commenting, and handing off Markdown files to people or AI agents.
 
 Product guardrails:
@@ -11,7 +11,8 @@ Product guardrails:
 - Do not turn the first screen into a dashboard, database, or marketing page.
 - Treat the right panel as project context: Files, Outline, Comments.
 - Comments are product comments, not a separate notes system.
-- Use `Tabula.md` in product copy and `Tabula` only as internal shorthand.
+- Use `Tabula` as the product name.
+- Use `tabula.md` only when referring to the domain or URL.
 
 ## Workflow
 
