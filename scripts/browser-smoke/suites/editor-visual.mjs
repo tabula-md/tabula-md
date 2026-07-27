@@ -709,25 +709,18 @@ export async function run(ctx) {
     await page.mouse.move(codeClickPoint.x, codeClickPoint.y);
     await page.mouse.down();
     await waitForRenderFrame(page);
-    const activatingCursorOpacity = await page.locator(".cm-cursor").evaluate(
+    const primaryCursor = page.locator(".cm-cursor-primary");
+    const activatingCursorOpacity = await primaryCursor.evaluate(
       (cursor) => getComputedStyle(cursor).opacity,
     );
     await page.mouse.up();
-    const releasedCursor = await page.locator(".cm-cursor").evaluate((cursor) => {
-      const style = getComputedStyle(cursor);
-      return {
-        height: cursor.getBoundingClientRect().height,
-        opacity: style.opacity,
-      };
+    await page.waitForFunction(() => {
+      const cursor = document.querySelector(".cm-cursor-primary");
+      return cursor instanceof HTMLElement && getComputedStyle(cursor).opacity !== "0";
     });
-    await waitForRenderFrame(page);
-    const settledCursor = await page.locator(".cm-cursor").evaluate((cursor) => {
-      const style = getComputedStyle(cursor);
-      return {
-        height: cursor.getBoundingClientRect().height,
-        opacity: style.opacity,
-      };
-    });
+    const settledCursorHeight = await primaryCursor.evaluate(
+      (cursor) => cursor.getBoundingClientRect().height,
+    );
     const pointerPosition = await readCursorPosition(page);
     expect(
       pointerPosition.line === 7,
@@ -742,9 +735,8 @@ export async function run(ctx) {
       `Pointer entry should hide CodeMirror's temporary block-height cursor. opacity=${activatingCursorOpacity}`,
     );
     expect(
-      releasedCursor.opacity === "0" &&
-        (settledCursor.opacity === "0" || settledCursor.height <= 48),
-      `Pointer release should keep block-height cursor geometry hidden until it settles. released=${JSON.stringify(releasedCursor)} settled=${JSON.stringify(settledCursor)}`,
+      settledCursorHeight <= 48,
+      `Pointer release should reveal only a settled line-height cursor. height=${settledCursorHeight}`,
     );
     expect(
       runtimeErrors.length === 0,
