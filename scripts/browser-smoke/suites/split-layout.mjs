@@ -18,6 +18,7 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
 
     const readLeftPanelModeLayout = () => {
+      const workspace = document.querySelector(".workspace");
       const readRect = (selector) => {
         const element = document.querySelector(selector);
         if (!element) {
@@ -44,6 +45,10 @@ export async function run(ctx) {
       };
 
       return {
+        scrollbarGutter:
+          workspace instanceof HTMLElement
+            ? Math.max(0, workspace.offsetWidth - workspace.clientWidth)
+            : 0,
         workspaceClass: document.querySelector(".workspace")?.className ?? "",
         body:
           readRect(".workspace.split") ??
@@ -65,26 +70,42 @@ export async function run(ctx) {
 
     for (const [name, layout] of Object.entries({ leftWriteLayout, leftSplitLayout })) {
       expect(layout.body && layout.rail && layout.status, `${name} should expose document body chrome.`);
+      const bodyCenter = layout.body.x + layout.body.width / 2;
+      const railCenter = layout.rail.x + layout.rail.width / 2;
+      const bodyCenterTolerance = Math.ceil(layout.scrollbarGutter / 2) + 1;
+      const bodyWidthTolerance = layout.scrollbarGutter + 1;
       expect(
-        Math.abs(layout.body.x - layout.rail.x) <= 1 &&
-          Math.abs(layout.body.width - layout.rail.width) <= 1 &&
+        Math.abs(bodyCenter - railCenter) <= bodyCenterTolerance &&
+          Math.abs(layout.body.width - layout.rail.width) <= bodyWidthTolerance &&
           Math.abs(layout.status.x - layout.rail.x) <= 1 &&
           Math.abs(layout.status.width - layout.rail.width) <= 1,
-        `${name} rail and status should align to the document lane.`,
+        `${name} rail and status should align to the document lane ` +
+          `(body ${layout.body.x}/${layout.body.width}, rail ${layout.rail.x}/${layout.rail.width}, ` +
+          `status ${layout.status.x}/${layout.status.width}, scrollbar gutter ${layout.scrollbarGutter}).`,
       );
     }
+    const modeSwitchGutter = Math.max(
+      leftWriteLayout.scrollbarGutter,
+      leftSplitLayout.scrollbarGutter,
+    );
+    const leftWriteCenter = leftWriteLayout.body.x + leftWriteLayout.body.width / 2;
+    const leftSplitCenter = leftSplitLayout.body.x + leftSplitLayout.body.width / 2;
     expect(
       leftSplitLayout.workspaceClass.includes("split") &&
         leftSplitLayout.body.display === "grid" &&
-        Math.abs(leftSplitLayout.body.x - leftWriteLayout.body.x) <= 1 &&
-        Math.abs(leftSplitLayout.body.width - leftWriteLayout.body.width) <= 1,
-      "Opening the workspace menu should not move or stack the document when switching Edit to Split.",
+        Math.abs(leftSplitCenter - leftWriteCenter) <= Math.ceil(modeSwitchGutter / 2) + 1 &&
+        Math.abs(leftSplitLayout.body.width - leftWriteLayout.body.width) <= modeSwitchGutter + 1,
+      "Opening the workspace menu should not move or stack the document when switching Edit to Split " +
+        `(edit ${leftWriteLayout.body.x}/${leftWriteLayout.body.width}, ` +
+        `split ${leftSplitLayout.body.x}/${leftSplitLayout.body.width}, ` +
+        `scrollbar gutter ${modeSwitchGutter}).`,
     );
     expect(
       leftSplitLayout.editor &&
         leftSplitLayout.preview &&
         leftSplitLayout.editor.width > leftSplitLayout.preview.width &&
-        Math.abs(leftSplitLayout.editor.width + leftSplitLayout.preview.width - leftWriteLayout.body.width) <= 1,
+        Math.abs(leftSplitLayout.editor.width + leftSplitLayout.preview.width - leftWriteLayout.body.width) <=
+          modeSwitchGutter + 1,
       "Split should keep one document lane while giving the editor pane rail-aware width.",
     );
     expect(
