@@ -24,6 +24,7 @@ type WorkspaceInterfaceMessages = {
   panelComments: string;
   panelSearch: string;
   panelKnowledge: string;
+  panelKnowledgeDescription: string;
   searchPlaceholder: string;
   searchSettings: string;
   searchFilters: string;
@@ -185,6 +186,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelComments: "Comments",
     panelSearch: "Search",
     panelKnowledge: "Knowledge",
+    panelKnowledgeDescription: "Review document knowledge, links, and workspace health",
     searchPlaceholder: "Search documents and metadata",
     searchSettings: "Search settings",
     searchFilters: "Filters",
@@ -345,6 +347,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelComments: "댓글",
     panelSearch: "검색",
     panelKnowledge: "지식",
+    panelKnowledgeDescription: "문서 지식, 링크, 워크스페이스 상태 검토",
     searchPlaceholder: "문서 및 메타데이터 검색",
     searchSettings: "검색 설정",
     searchFilters: "필터",
@@ -505,6 +508,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelComments: "コメント",
     panelSearch: "検索",
     panelKnowledge: "ナレッジ",
+    panelKnowledgeDescription: "ドキュメントの知識、リンク、ワークスペースの状態を確認",
     searchPlaceholder: "ドキュメントとメタデータを検索",
     searchSettings: "検索設定",
     searchFilters: "フィルター",
@@ -665,6 +669,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelComments: "评论",
     panelSearch: "搜索",
     panelKnowledge: "知识",
+    panelKnowledgeDescription: "查看文档知识、链接和工作区状态",
     searchPlaceholder: "搜索文档和元数据",
     searchSettings: "搜索设置",
     searchFilters: "筛选条件",
@@ -824,6 +829,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelComments: "Comentarios",
     panelSearch: "Buscar",
     panelKnowledge: "Conocimiento",
+    panelKnowledgeDescription: "Revisar conocimiento, enlaces y estado del espacio",
     searchPlaceholder: "Buscar documentos y metadatos",
     searchSettings: "Ajustes de búsqueda",
     searchFilters: "Filtros",
@@ -984,6 +990,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelComments: "Commentaires",
     panelSearch: "Recherche",
     panelKnowledge: "Connaissances",
+    panelKnowledgeDescription: "Examiner les connaissances, les liens et l’état de l’espace",
     searchPlaceholder: "Rechercher des documents et métadonnées",
     searchSettings: "Paramètres de recherche",
     searchFilters: "Filtres",
@@ -1144,6 +1151,7 @@ const messages: Record<WorkspaceLanguage, WorkspaceInterfaceMessages> = {
     panelComments: "Kommentare",
     panelSearch: "Suche",
     panelKnowledge: "Wissen",
+    panelKnowledgeDescription: "Wissen, Links und Workspace-Status des Dokuments prüfen",
     searchPlaceholder: "Dokumente und Metadaten suchen",
     searchSettings: "Sucheinstellungen",
     searchFilters: "Filter",
@@ -1326,6 +1334,7 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
         search: copy.panelSearch,
         knowledge: copy.panelKnowledge,
       },
+      knowledgeDescription: copy.panelKnowledgeDescription,
       noDocumentOpen: copy.panelNoDocumentOpen,
       search: {
         placeholder: copy.searchPlaceholder,
@@ -1364,6 +1373,7 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
       },
       files: {
         sharedWorkspace: copy.filesSharedWorkspace,
+        currentDocument: copy.panelFiles,
         renameFolder: (name: string) => format(copy.filesRenameFolder, { name }),
         moreActions: (name: string) => format(copy.filesMoreActions, { name }),
         actions: (name: string) => format(copy.filesActions, { name }),

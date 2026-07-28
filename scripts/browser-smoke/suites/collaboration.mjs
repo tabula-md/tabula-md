@@ -201,10 +201,7 @@ export async function run(ctx) {
       (await firstPage.locator(".right-file-icon-live-dot").count()) === 0,
       "Live state should be shown on the Files tab, not repeated in the file tree.",
     );
-    await firstPage
-      .getByRole("complementary", { name: "Side panel" })
-      .getByRole("button", { name: "Close side panel", exact: true })
-      .click();
+    await firstPage.locator(".right-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
     await firstPage.locator(".avatar.self").hover();
     await firstPage.waitForFunction(() => {
       const avatar = document.querySelector(".avatar.self");

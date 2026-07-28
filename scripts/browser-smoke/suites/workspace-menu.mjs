@@ -103,10 +103,7 @@ export async function run(ctx) {
       "Workspace Search should describe the unavailable search scope.",
     );
     expect((await page.locator(".right-panel-search-controls").count()) === 0, "Search should hide unusable controls in an empty workspace.");
-    await page
-      .getByRole("complementary", { name: "Side panel" })
-      .getByRole("button", { name: "Close side panel", exact: true })
-      .click();
+    await page.locator(".right-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".blank-document-action").count()) === 0, "The first screen should not show canvas-style onboarding actions.");
     expect((await page.locator(".empty-feature-callout").count()) === 0, "The first screen should not show canvas-style callouts.");
@@ -192,10 +189,7 @@ export async function run(ctx) {
     );
     await page.getByRole("menuitem", { name: "Copy Markdown" }).click();
     expect((await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "")) === "", "Blank file copy should preserve its source.");
-    await page
-      .getByRole("complementary", { name: "Side panel" })
-      .getByRole("button", { name: "Close side panel", exact: true })
-      .click();
+    await page.locator(".right-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
 
     await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });

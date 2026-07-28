@@ -24,6 +24,29 @@ const focusableSelector = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
+export const keepFocusInside = (event: KeyboardEvent, root: HTMLElement) => {
+  if (event.key !== "Tab") return;
+
+  const focusable = Array.from(
+    root.querySelectorAll<HTMLElement>(focusableSelector),
+  ).filter((element) => element.offsetParent !== null);
+  if (focusable.length === 0) {
+    event.preventDefault();
+    root.focus();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last?.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first?.focus();
+  }
+};
+
 type BackgroundRootState = {
   ariaHidden: string | null;
   element: HTMLElement;
@@ -95,26 +118,7 @@ export function ModalSurface({
         onCloseRef.current();
         return;
       }
-      if (event.key !== "Tab" || !dialogRef.current) return;
-
-      const focusable = Array.from(
-        dialogRef.current.querySelectorAll<HTMLElement>(focusableSelector),
-      ).filter((element) => !element.hasAttribute("disabled") && element.offsetParent !== null);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        dialogRef.current.focus();
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
+      if (dialogRef.current) keepFocusInside(event, dialogRef.current);
     };
 
     document.addEventListener("keydown", handleKeyDown, true);
