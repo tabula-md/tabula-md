@@ -1602,6 +1602,8 @@ export async function run(ctx) {
       hasImportedRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Panel Import.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
+      tabTitleLeft: document.querySelector('.tab-item[data-file-name="Panel Import.md"] .tab-title')
+        ?.getBoundingClientRect().left ?? 0,
     }));
     expect(filesAfterImport.hasImportedRow, "Right Files import should add the imported Markdown to project files.");
     expect(filesAfterImport.activeTabTitle === "Panel Import.md", "Right Files import should open the imported file as a tab.");
@@ -1650,6 +1652,37 @@ export async function run(ctx) {
     await page.keyboard.press("Escape");
     const importedFileNode = page.locator('.right-file-tree-node.file:has(.right-file-tree-row[data-file-name="Panel Import.md"])');
     const archiveFolderNode = page.locator(".right-file-tree-node.folder").filter({ hasText: "Archive" });
+    const folderDropFeedback = await archiveFolderNode.evaluate((node) => {
+      node.classList.add("drop-target");
+      const row = node.querySelector(".right-file-tree-row");
+      const style = row ? getComputedStyle(row) : null;
+      const result = {
+        backgroundColor: style?.backgroundColor ?? "",
+        boxShadow: style?.boxShadow ?? "",
+      };
+      node.classList.remove("drop-target");
+      return result;
+    });
+    const rootDropFeedback = await page.locator(".right-file-tree-scroll").evaluate((node) => {
+      node.classList.add("root-drop-target");
+      const style = getComputedStyle(node);
+      const afterStyle = getComputedStyle(node, "::after");
+      const result = {
+        backgroundColor: style.backgroundColor,
+        afterContent: afterStyle.content,
+      };
+      node.classList.remove("root-drop-target");
+      return result;
+    });
+    expect(
+      folderDropFeedback.backgroundColor !== "rgba(0, 0, 0, 0)" && folderDropFeedback.boxShadow === "none",
+      "Folder drop feedback should highlight the row without drawing an insertion line.",
+    );
+    expect(
+      rootDropFeedback.backgroundColor !== "rgba(0, 0, 0, 0)"
+        && (rootDropFeedback.afterContent === "none" || rootDropFeedback.afterContent === "normal"),
+      "Root drop feedback should highlight the empty tree area without drawing a bottom line.",
+    );
     await importedFileNode.dragTo(archiveFolderNode);
     await waitForRenderFrame(page);
     const draggedFileState = await page.evaluate(() => {
@@ -1659,10 +1692,22 @@ export async function run(ctx) {
         level: treeItem?.getAttribute("aria-level") ?? "",
         folderVisible: Array.from(document.querySelectorAll(".right-file-tree-node.folder"))
           .some((item) => item.textContent?.includes("Archive")),
+        tabLocation: document.querySelector('.tab-item[data-file-name="Panel Import.md"] .tab-location')
+          ?.textContent?.trim() ?? "",
+        tabTitleLeft: document.querySelector('.tab-item[data-file-name="Panel Import.md"] .tab-title')
+          ?.getBoundingClientRect().left ?? 0,
       };
     });
     expect(draggedFileState.folderVisible, "Right Files should keep the drag destination visible.");
     expect(draggedFileState.level === "2", "Dragging a file onto a folder should move it one level into the tree.");
+    expect(
+      draggedFileState.tabLocation === "Archive",
+      "Moving an open document into a folder should update its tab location immediately.",
+    );
+    expect(
+      Math.abs(draggedFileState.tabTitleLeft - filesAfterImport.tabTitleLeft) < 1,
+      "Adding a folder location should not shift the document title within its tab.",
+    );
   });
 
   await withPage(browser, "/", async (page) => {

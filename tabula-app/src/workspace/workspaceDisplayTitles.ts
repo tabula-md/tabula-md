@@ -99,7 +99,7 @@ export const getWorkspaceFilePaths = (
 };
 
 const getShortestUniqueLocation = (locations: readonly string[][], targetIndex: number) => {
-  const target = locations[targetIndex] ?? ["Root"];
+  const target = locations[targetIndex] ?? [];
   for (let depth = 1; depth <= target.length; depth += 1) {
     const candidate = target.slice(-depth).join("/");
     const isUnique = locations.every(
@@ -128,7 +128,6 @@ export const getWorkspaceFileTabLabels = (
   const labels = new Map<string, WorkspaceFileTabLabel>();
   for (const group of groups.values()) {
     const locations = group.map((file) => getFolderPath(file.parentId, foldersById));
-    const displayLocations = locations.map((location) => location.length > 0 ? location : ["Root"]);
     group.forEach((file, index) => {
       const displayTitle = displayTitles.get(file.id) ?? file.title;
       const location = locations[index] ?? [];
@@ -136,8 +135,8 @@ export const getWorkspaceFileTabLabels = (
         displayTitle,
         fullPath: [...location, displayTitle].join("/"),
         locationLabel:
-          group.length > 1
-            ? getShortestUniqueLocation(displayLocations, index)
+          location.length > 0
+            ? getShortestUniqueLocation(locations, index)
             : undefined,
       });
     });
