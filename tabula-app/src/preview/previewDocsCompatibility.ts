@@ -1,3 +1,7 @@
+import {
+  createMarkdownPresentationDocument,
+  type PresentationNode,
+} from "@tabula-md/tabula";
 import { PREVIEW_SANITIZE_SCHEMA } from "./previewSanitizeSchema";
 
 const PREVIEW_DOCS_COMPONENT_TAGS: Readonly<Record<string, string>> = {
@@ -46,11 +50,51 @@ export const PREVIEW_DOCS_BLOCK_TAGS = new Set([
 
 const docsComponentPattern = /<(\/?)([A-Za-z][A-Za-z0-9.-]*)(?=[\s/>])([^<>]*?)>/g;
 
-const normalizeDocsComponentTags = (source: string) =>
-  source.replace(docsComponentPattern, (match, closing: string, name: string, suffix: string) => {
+const flattenPresentationNodes = (
+  nodes: readonly PresentationNode[],
+): PresentationNode[] => nodes.flatMap((node) => [
+  node,
+  ...flattenPresentationNodes(node.children),
+]);
+
+const getPresentationComponentsByOffset = (source: string) => {
+  const components = new Map<number, PresentationNode>();
+  for (const node of flattenPresentationNodes(
+    createMarkdownPresentationDocument(source).blocks,
+  )) {
+    if (
+      node.type === "accordion" ||
+      node.type === "callout" ||
+      node.type === "tab" ||
+      node.type === "tabs"
+    ) {
+      components.set(node.range.from, node);
+    }
+  }
+  return components;
+};
+
+const normalizeDocsComponentTags = (
+  source: string,
+  sourceOffset: number,
+  presentationComponents: ReadonlyMap<number, PresentationNode>,
+) =>
+  source.replace(docsComponentPattern, (
+    match,
+    closing: string,
+    name: string,
+    suffix: string,
+    matchOffset: number,
+  ) => {
     const supportedTagName = PREVIEW_DOCS_COMPONENT_TAGS[name];
     if (supportedTagName) {
-      return `<${closing}${supportedTagName}${suffix}>`;
+      const presentation = closing
+        ? undefined
+        : presentationComponents.get(sourceOffset + matchOffset);
+      const annotation = presentation
+        ? ` data-presentation-node="${presentation.type}" data-source-from="${presentation.range.from}" data-source-to="${presentation.range.to}"`
+        : "";
+      return `<${closing}${supportedTagName}${suffix}${annotation}>`;
     }
 
     const htmlTagName = name.toLowerCase();
@@ -70,17 +114,29 @@ const normalizeDocsComponentTags = (source: string) =>
     return selfClosing ? `${openingTag}</tabula-unsupported-component>` : openingTag;
   });
 
-const normalizeOutsideInlineCode = (line: string) => {
+const normalizeOutsideInlineCode = (
+  line: string,
+  lineOffset: number,
+  presentationComponents: ReadonlyMap<number, PresentationNode>,
+) => {
   let cursor = 0;
   let normalized = "";
 
   while (cursor < line.length) {
     const codeStart = line.indexOf("`", cursor);
     if (codeStart === -1) {
-      return normalized + normalizeDocsComponentTags(line.slice(cursor));
+      return normalized + normalizeDocsComponentTags(
+        line.slice(cursor),
+        lineOffset + cursor,
+        presentationComponents,
+      );
     }
 
-    normalized += normalizeDocsComponentTags(line.slice(cursor, codeStart));
+    normalized += normalizeDocsComponentTags(
+      line.slice(cursor, codeStart),
+      lineOffset + cursor,
+      presentationComponents,
+    );
     let markerEnd = codeStart + 1;
     while (line[markerEnd] === "`") markerEnd += 1;
     const marker = line.slice(codeStart, markerEnd);
@@ -101,10 +157,14 @@ export const normalizePreviewDocsComponents = (markdown: string) => {
 
   let isInFence = false;
   let activeFenceMarker = "";
+  let sourceOffset = 0;
+  const presentationComponents = getPresentationComponentsByOffset(markdown);
 
   return markdown
     .split(/(\r?\n)/)
     .map((segment) => {
+      const segmentOffset = sourceOffset;
+      sourceOffset += segment.length;
       if (segment === "\n" || segment === "\r\n") return segment;
 
       const fenceMatch = segment.match(/^ {0,3}(`{3,}|~{3,})/);
@@ -120,7 +180,13 @@ export const normalizePreviewDocsComponents = (markdown: string) => {
         return segment;
       }
 
-      return isInFence ? segment : normalizeOutsideInlineCode(segment);
+      return isInFence
+        ? segment
+        : normalizeOutsideInlineCode(
+            segment,
+            segmentOffset,
+            presentationComponents,
+          );
     })
     .join("");
 };

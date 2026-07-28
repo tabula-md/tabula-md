@@ -38,6 +38,7 @@ const markdownWikiLinkIgnoredNodeTypes = new Set([
   "yaml",
 ]);
 const presentationTypesByAstType = new Map<string, readonly string[]>([
+  ["blockquote", ["callout", "blockquote"]],
   ["code", ["code-block", "diagram"]],
   ["delete", ["strikethrough"]],
   ["emphasis", ["emphasis"]],
@@ -48,6 +49,7 @@ const presentationTypesByAstType = new Map<string, readonly string[]>([
   ["inlineMath", ["inline-math"]],
   ["link", ["link"]],
   ["linkReference", ["link"]],
+  ["math", ["display-math"]],
   ["strong", ["strong"]],
   ["table", ["table"]],
   ["thematicBreak", ["thematic-break"]],

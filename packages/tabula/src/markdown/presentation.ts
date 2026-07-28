@@ -56,10 +56,6 @@ const parserOptions = {
 };
 
 const externalLinkPattern = /^(?:[a-z][a-z\d+.-]*:|\/\/)/i;
-const componentOpeningPattern = /^ {0,3}<(Accordion|Callout|Tabs)\b([^>]*)>/;
-const componentBlockPattern =
-  /^ {0,3}<(Accordion|Callout|Tabs)\b[^>]*>[\s\S]*?^ {0,3}<\/\1>[ \t]*$/gm;
-const tabPattern = /<Tab\b([^>]*)>([\s\S]*?)<\/Tab>/g;
 
 const atomicBlockTypes = new Set<PresentationBlockType>([
   "accordion",
@@ -382,6 +378,24 @@ const getFencedContentRange = (
       };
 };
 
+const parseCalloutBlock = (
+  source: string,
+  range: SourceRange,
+  baseOffset: number,
+) => {
+  const lines = sliceRange(source, range, baseOffset)
+    .split("\n")
+    .map((line) => line.replace(/^ {0,3}>[ \t]?/, ""));
+  const marker = /^\[!([A-Za-z-]+)\][ \t]*(.*)$/.exec(lines[0] ?? "");
+  if (!marker) return null;
+  const type = marker[1].toLowerCase();
+  return {
+    body: lines.slice(1).join("\n").trim(),
+    title: marker[2].trim() || type,
+    type,
+  };
+};
+
 const mapBlockNode = (
   node: MarkdownAstNode,
   source: string,
@@ -450,6 +464,24 @@ const mapBlockNode = (
     });
   }
 
+  if (node.type === "blockquote") {
+    const callout = parseCalloutBlock(source, range, baseOffset);
+    if (callout) {
+      return createBlock({
+        children: blockChildren(),
+        data: {
+          attributes: {
+            title: callout.title,
+            type: callout.type,
+          },
+          text: callout.body,
+        },
+        range,
+        type: "callout",
+      });
+    }
+  }
+
   const blockTypeByAstType: Partial<Record<string, PresentationBlockType>> = {
     blockquote: "blockquote",
     definition: "reference-definition",
@@ -501,32 +533,156 @@ const parseAstBlocks = (
     .filter((block): block is PresentationBlock => block !== null);
 };
 
+type PresentationComponentName = "Accordion" | "Callout" | "Tab" | "Tabs";
+
+type PresentationComponentSource = {
+  attributes: Readonly<Record<string, string>>;
+  children: PresentationComponentSource[];
+  closeFrom: number;
+  from: number;
+  name: PresentationComponentName;
+  openTo: number;
+  to: number;
+};
+
+type OpenPresentationComponent = Omit<
+  PresentationComponentSource,
+  "closeFrom" | "to"
+>;
+
+const presentationComponentNames = new Set<PresentationComponentName>([
+  "Accordion",
+  "Callout",
+  "Tab",
+  "Tabs",
+]);
+
+const findComponentTagEnd = (source: string, from: number) => {
+  let quote: "'" | '"' | null = null;
+  for (let index = from; index < source.length; index += 1) {
+    const character = source[index];
+    if (quote) {
+      if (character === quote && source[index - 1] !== "\\") quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      continue;
+    }
+    if (character === ">") return index + 1;
+  }
+  return null;
+};
+
+const isComponentFlowTag = (source: string, position: number) => {
+  const lineStart = source.lastIndexOf("\n", position - 1) + 1;
+  return /^ {0,3}$/.test(source.slice(lineStart, position));
+};
+
+const getComponentSources = (
+  source: string,
+  baseOffset: number,
+  astBlocks: readonly PresentationBlock[],
+) => {
+  const codeRanges = astBlocks
+    .filter((block) =>
+      block.type === "code-block" || block.type === "diagram")
+    .map((block) => ({
+      from: block.range.from - baseOffset,
+      to: block.range.to - baseOffset,
+    }));
+  const isInCode = (position: number) => codeRanges.some((range) =>
+    position >= range.from && position < range.to);
+  const roots: PresentationComponentSource[] = [];
+  const stack: OpenPresentationComponent[] = [];
+  let cursor = 0;
+
+  while (cursor < source.length) {
+    const from = source.indexOf("<", cursor);
+    if (from < 0) break;
+    cursor = from + 1;
+    if (isInCode(from)) continue;
+
+    const to = findComponentTagEnd(source, cursor);
+    if (to === null) break;
+    const rawTag = source.slice(from + 1, to - 1);
+    const match =
+      /^\s*(\/?)\s*([A-Za-z][\w.-]*)([\s\S]*?)\s*(\/?)\s*$/.exec(rawTag);
+    if (
+      !match ||
+      !presentationComponentNames.has(match[2] as PresentationComponentName)
+    ) {
+      cursor = to;
+      continue;
+    }
+
+    const closing = match[1] === "/";
+    const selfClosing = match[4] === "/";
+    const name = match[2] as PresentationComponentName;
+    if (!closing && !isComponentFlowTag(source, from)) {
+      cursor = to;
+      continue;
+    }
+
+    if (closing) {
+      const open = stack.at(-1);
+      if (!open || open.name !== name) {
+        cursor = to;
+        continue;
+      }
+      stack.pop();
+      const component: PresentationComponentSource = {
+        ...open,
+        closeFrom: baseOffset + from,
+        to: baseOffset + to,
+      };
+      const parent = stack.at(-1);
+      if (parent) parent.children.push(component);
+      else roots.push(component);
+    } else if (!selfClosing) {
+      stack.push({
+        attributes: parseAttributes(match[3]),
+        children: [],
+        from: baseOffset + from,
+        name,
+        openTo: baseOffset + to,
+      });
+    }
+    cursor = to;
+  }
+
+  return roots.filter((component) => component.name !== "Tab");
+};
+
 const createComponentBlock = (
   source: string,
-  range: SourceRange,
+  component: PresentationComponentSource,
   definitions: ReadonlyMap<string, PresentationReferenceDefinition>,
 ): PresentationBlock | null => {
-  const componentSource = source.slice(range.from, range.to);
-  const opening = componentOpeningPattern.exec(componentSource);
-  if (!opening) return null;
-  const type = opening[1].toLowerCase() as "accordion" | "callout" | "tabs";
-  const attributes = parseAttributes(opening[2]);
-  const closeFrom = componentSource.lastIndexOf(`</${opening[1]}>`);
-  const innerFrom = range.from + opening[0].length;
-  const innerTo = closeFrom === -1 ? range.to : range.from + closeFrom;
+  if (component.name === "Tab") return null;
+  const type = component.name.toLowerCase() as
+    | "accordion"
+    | "callout"
+    | "tabs";
+  const innerFrom = component.openTo;
+  const innerTo = component.closeFrom;
   let children: PresentationBlock[];
 
   if (type === "tabs") {
-    children = [...componentSource.matchAll(tabPattern)].map((match) => {
-      const matchFrom = range.from + (match.index ?? 0);
-      const openLength = match[0].indexOf(">") + 1;
-      const contentFrom = matchFrom + openLength;
-      const contentTo = contentFrom + match[2].length;
+    children = component.children
+      .filter((child) => child.name === "Tab")
+      .map((tab) => {
+      const contentFrom = tab.openTo;
+      const contentTo = tab.closeFrom;
       return createBlock({
-        children: parseAstBlocks(match[2], contentFrom, definitions),
+        children: parseAstBlocks(
+          source.slice(contentFrom, contentTo),
+          contentFrom,
+          definitions,
+        ),
         contentRange: { from: contentFrom, to: contentTo },
-        data: { attributes: parseAttributes(match[1]) },
-        range: { from: matchFrom, to: matchFrom + match[0].length },
+        data: { attributes: tab.attributes },
+        range: { from: tab.from, to: tab.to },
         type: "tab",
       });
     });
@@ -541,26 +697,11 @@ const createComponentBlock = (
   return createBlock({
     children,
     contentRange: { from: innerFrom, to: innerTo },
-    data: { attributes },
-    range,
+    data: { attributes: component.attributes },
+    range: { from: component.from, to: component.to },
     type,
   });
 };
-
-const getComponentRanges = (
-  source: string,
-  baseOffset: number,
-  astBlocks: readonly PresentationBlock[],
-) => [...source.matchAll(componentBlockPattern)]
-  .map((match) => ({
-    from: baseOffset + (match.index ?? 0),
-    to: baseOffset + (match.index ?? 0) + match[0].length,
-  }))
-  .filter((range) =>
-    !astBlocks.some((block) =>
-      (block.type === "code-block" || block.type === "diagram")
-      && range.from >= block.range.from
-      && range.to <= block.range.to));
 
 const createBlankLineBlocks = (
   source: string,
@@ -705,10 +846,10 @@ export const createMarkdownPresentationDocument = (
   const astBlocks = (tree.children ?? [])
     .map((node) => mapBlockNode(node, body, bodyOffset, definitions))
     .filter((block): block is PresentationBlock => block !== null);
-  const componentBlocks = getComponentRanges(body, bodyOffset, astBlocks)
-    .map((range) => createComponentBlock(
+  const componentBlocks = getComponentSources(body, bodyOffset, astBlocks)
+    .map((component) => createComponentBlock(
       source,
-      range,
+      component,
       definitions,
     ))
     .filter((block): block is PresentationBlock => block !== null);
