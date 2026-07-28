@@ -37,15 +37,20 @@ const markdownWikiLinkIgnoredNodeTypes = new Set([
   "linkReference",
   "yaml",
 ]);
-const presentationInlineTypeByAstType = new Map([
-  ["delete", "strikethrough"],
-  ["emphasis", "emphasis"],
-  ["footnoteReference", "footnote-reference"],
-  ["inlineCode", "inline-code"],
-  ["inlineMath", "inline-math"],
-  ["link", "link"],
-  ["linkReference", "link"],
-  ["strong", "strong"],
+const presentationTypesByAstType = new Map<string, readonly string[]>([
+  ["code", ["code-block", "diagram"]],
+  ["delete", ["strikethrough"]],
+  ["emphasis", ["emphasis"]],
+  ["footnoteReference", ["footnote-reference"]],
+  ["image", ["image"]],
+  ["imageReference", ["image"]],
+  ["inlineCode", ["inline-code"]],
+  ["inlineMath", ["inline-math"]],
+  ["link", ["link"]],
+  ["linkReference", ["link"]],
+  ["strong", ["strong"]],
+  ["table", ["table"]],
+  ["thematicBreak", ["thematic-break"]],
 ]);
 
 const flattenPresentationNodes = (
@@ -60,26 +65,25 @@ export const annotateMarkdownPresentation = (
   markdown: string,
 ) => {
   const presentation = createMarkdownPresentationDocument(markdown);
-  const nodesByRange = new Map(
-    flattenPresentationNodes(presentation.blocks).map((node) => [
-      `${node.type}:${node.range.from}:${node.range.to}`,
-      node,
-    ]),
-  );
+  const nodesByRange = new Map<string, PresentationNode[]>();
+  for (const node of flattenPresentationNodes(presentation.blocks)) {
+    const key = `${node.range.from}:${node.range.to}`;
+    nodesByRange.set(key, [...(nodesByRange.get(key) ?? []), node]);
+  }
   const walk = (node: MarkdownAstNode) => {
     const from = node.position?.start?.offset;
     const to = node.position?.end?.offset;
-    const presentationType = presentationInlineTypeByAstType.get(
+    const presentationTypes = presentationTypesByAstType.get(
       node.type ?? "",
     );
     if (
-      presentationType &&
+      presentationTypes &&
       typeof from === "number" &&
       typeof to === "number"
     ) {
-      const presentationNode = nodesByRange.get(
-        `${presentationType}:${from}:${to}`,
-      );
+      const presentationNode = nodesByRange
+        .get(`${from}:${to}`)
+        ?.find((candidate) => presentationTypes.includes(candidate.type));
       if (presentationNode) {
         const existingProperties = (
           node.data?.hProperties &&

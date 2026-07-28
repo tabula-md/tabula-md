@@ -30,6 +30,32 @@ describe("Markdown wiki-link remark transform", () => {
     );
   });
 
+  it("annotates Preview primary blocks with the shared presentation model", () => {
+    const markdown = [
+      "---",
+      "",
+      "![sample](https://example.com/sample.png)",
+      "",
+      "```ts",
+      "const ready = true;",
+      "```",
+      "",
+      "| A | B |",
+      "| - | - |",
+      "| 1 | 2 |",
+    ].join("\n");
+    const html = renderToStaticMarkup(createElement(
+      ReactMarkdown,
+      { remarkPlugins: MARKDOWN_REMARK_PLUGINS },
+      markdown,
+    ));
+
+    expect(html).toContain('data-presentation-node="thematic-break"');
+    expect(html).toContain('data-presentation-node="image"');
+    expect(html).toContain('data-presentation-node="code-block"');
+    expect(html).toContain('data-presentation-node="table"');
+  });
+
   it("turns links into annotated anchors and embeds into block nodes", () => {
     const markdown = "\\[[Escaped]] and [[Page|Alias]] plus ![[Embed]]";
     const tree: MarkdownTree = {
