@@ -42,7 +42,7 @@ describe("workspace display titles", () => {
     expect(titles.get("folder-b")).toBe("Notes 2");
   });
 
-  it("keeps filenames primary and adds separate location context only when names collide", () => {
+  it("keeps root filenames unqualified and disambiguates matching names with folder context", () => {
     const folders = [
       { id: "workspace-root", title: "Workspace", parentId: null },
       { id: "planning", title: "Planning", parentId: "workspace-root" },
@@ -56,7 +56,7 @@ describe("workspace display titles", () => {
     expect(labels.get("root")).toEqual({
       displayTitle: "Untitled.md",
       fullPath: "Untitled.md",
-      locationLabel: "Root",
+      locationLabel: undefined,
     });
     expect(labels.get("planning-file")).toEqual({
       displayTitle: "Untitled.md",
@@ -67,6 +67,30 @@ describe("workspace display titles", () => {
       displayTitle: "README.md",
       fullPath: "README.md",
       locationLabel: undefined,
+    });
+  });
+
+  it("updates a tab's location context when a root file moves into a folder", () => {
+    const folders = [
+      { id: "workspace-root", title: "Workspace", parentId: null },
+      { id: "planning", title: "Planning", parentId: "workspace-root" },
+    ];
+    const rootFile = createWorkspaceFile(1, {
+      id: "plan",
+      title: "Plan.md",
+      parentId: "workspace-root",
+    });
+
+    expect(getWorkspaceFileTabLabels([rootFile], folders).get("plan")).toMatchObject({
+      fullPath: "Plan.md",
+      locationLabel: undefined,
+    });
+
+    expect(getWorkspaceFileTabLabels([
+      { ...rootFile, parentId: "planning" },
+    ], folders).get("plan")).toMatchObject({
+      fullPath: "Planning/Plan.md",
+      locationLabel: "Planning",
     });
   });
 

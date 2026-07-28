@@ -343,9 +343,14 @@ export function RightPanelFiles({
     folderId: string,
     options: { autoExpand?: boolean } = {},
   ) => {
-    if (!draggedItem || !validDropFolderIds.has(folderId)) return;
-    event.preventDefault();
+    if (!draggedItem) return;
     event.stopPropagation();
+    if (!validDropFolderIds.has(folderId)) {
+      clearAutoExpandTimer();
+      setDropTargetFolderId(null);
+      return;
+    }
+    event.preventDefault();
     event.dataTransfer.dropEffect = "move";
     setDropTargetFolderId(folderId);
 
@@ -366,13 +371,35 @@ export function RightPanelFiles({
     }
   };
 
-  const dropItem = (event: ReactDragEvent<HTMLElement>, folderId: string) => {
-    if (!draggedItem || !validDropFolderIds.has(folderId)) return;
-    event.preventDefault();
+  const rejectDrop = (event: ReactDragEvent<HTMLElement>) => {
     event.stopPropagation();
+    clearAutoExpandTimer();
+    setDropTargetFolderId(null);
+  };
+
+  const eventTargetsTreeNode = (event: ReactDragEvent<HTMLElement>) => (
+    event.target instanceof Element
+    && event.target.closest(".right-file-tree-node") !== null
+  );
+
+  const prepareRootDrop = (event: ReactDragEvent<HTMLElement>) => {
+    if (eventTargetsTreeNode(event)) return;
+    prepareDrop(event, WORKSPACE_ROOT_FOLDER_ID);
+  };
+
+  const dropItem = (event: ReactDragEvent<HTMLElement>, folderId: string) => {
+    if (!draggedItem) return;
+    event.stopPropagation();
+    if (!validDropFolderIds.has(folderId)) return;
+    event.preventDefault();
     if (draggedItem.type === "file") void onMoveFileToFolder(draggedItem.id, folderId);
     else void onMoveFolder(draggedItem.id, folderId);
     finishDragging();
+  };
+
+  const dropItemAtRoot = (event: ReactDragEvent<HTMLElement>) => {
+    if (eventTargetsTreeNode(event)) return;
+    dropItem(event, WORKSPACE_ROOT_FOLDER_ID);
   };
 
   const renderFileTreeNode = (node: FileTreeNode, depth: number, virtualRow: VirtualItem) => {
@@ -576,8 +603,7 @@ export function RightPanelFiles({
           parentId: file.parentId ?? null,
         })}
         onDragEnd={finishDragging}
-        onDragOver={(event) => prepareDrop(event, fileParentId)}
-        onDrop={(event) => dropItem(event, fileParentId)}
+        onDragOver={rejectDrop}
         onContextMenu={(event) => event.stopPropagation()}
         style={virtualStyle}
       >
@@ -858,8 +884,8 @@ export function RightPanelFiles({
         <div
           className={`right-file-tree-scroll ${dropTargetFolderId === WORKSPACE_ROOT_FOLDER_ID ? "root-drop-target" : ""}`.trim()}
           ref={treeScrollRef}
-          onDragOver={(event) => prepareDrop(event, WORKSPACE_ROOT_FOLDER_ID)}
-          onDrop={(event) => dropItem(event, WORKSPACE_ROOT_FOLDER_ID)}
+          onDragOver={prepareRootDrop}
+          onDrop={dropItemAtRoot}
         >
           <ol
             className="right-file-tree virtual"
