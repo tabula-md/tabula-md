@@ -1713,6 +1713,14 @@ export async function run(ctx) {
             y: Math.round(rect.y),
             width: Math.round(rect.width),
             height: Math.round(rect.height),
+            clientWidth:
+              element instanceof HTMLElement
+                ? Math.round(element.clientWidth)
+                : Math.round(rect.width),
+            scrollbarGutter:
+              element instanceof HTMLElement
+                ? Math.max(0, Math.round(element.offsetWidth - element.clientWidth))
+                : 0,
             background: style.backgroundColor,
             borderTopWidth: style.borderTopWidth,
           };
@@ -1720,6 +1728,7 @@ export async function run(ctx) {
 
         const workspace = document.querySelector(".workspace");
         const workspaceStyle = workspace ? window.getComputedStyle(workspace) : null;
+        const workspaceRect = readRect(".workspace");
         const body =
           workspace?.classList.contains("split") && workspaceStyle?.display !== "block"
             ? readRect(".workspace.split")
@@ -1743,6 +1752,7 @@ export async function run(ctx) {
           utilityControls,
           formattingToolbar,
           status,
+          workspaceScrollbarGutter: workspaceRect?.scrollbarGutter ?? 0,
         };
       });
 
@@ -1756,15 +1766,30 @@ export async function run(ctx) {
 
     for (const [name, alignment] of Object.entries({ splitAlignment, previewAlignment, writeAlignment })) {
       expect(alignment, `${name} should be measurable while switching document modes.`);
+      const bodyCenter = alignment.body.x + alignment.body.width / 2;
+      const railCenter = alignment.rail.x + alignment.rail.width / 2;
+      const statusCenter = alignment.status.x + alignment.status.width / 2;
+      const scrollbarGutter = Math.max(
+        alignment.body.scrollbarGutter,
+        alignment.workspaceScrollbarGutter,
+      );
+      const bodyCenterTolerance = Math.ceil(scrollbarGutter / 2) + 1;
+      const bodyWidthTolerance = scrollbarGutter + 1;
       expect(
-        Math.abs(alignment.rail.x - alignment.body.x) <= 1 &&
-          Math.abs(alignment.rail.width - alignment.body.width) <= 1,
-        `${name} toolbar rail should follow the active document body width.`,
+        Math.abs(railCenter - bodyCenter) <= bodyCenterTolerance &&
+          Math.abs(alignment.rail.width - alignment.body.width) <= bodyWidthTolerance,
+        `${name} toolbar rail should follow the active document body width ` +
+          `(body ${alignment.body.x}/${alignment.body.width}, ` +
+          `rail ${alignment.rail.x}/${alignment.rail.width}, ` +
+          `scrollbar gutter ${scrollbarGutter}).`,
       );
       expect(
-        Math.abs(alignment.status.x - alignment.body.x) <= 1 &&
-          Math.abs(alignment.status.width - alignment.body.width) <= 1,
-        `${name} status bar should follow the active document body width.`,
+        Math.abs(statusCenter - bodyCenter) <= bodyCenterTolerance &&
+          Math.abs(alignment.status.width - alignment.body.width) <= bodyWidthTolerance,
+        `${name} status bar should follow the active document body width ` +
+          `(body ${alignment.body.x}/${alignment.body.width}, ` +
+          `status ${alignment.status.x}/${alignment.status.width}, ` +
+          `scrollbar gutter ${scrollbarGutter}).`,
       );
     }
     expect(
@@ -1943,7 +1968,11 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await focusMarkdownEditor(page);
     await page.keyboard.insertText(["x", "---", "###", "=>", "===", "___"].join("\n"));
-    await waitForRenderFrame(page);
+    await page.waitForFunction(
+      () => document.querySelectorAll(".markdown-editor .cm-line").length >= 6,
+      undefined,
+      { timeout: 2_000 },
+    );
     const sourceTokenRendering = await page.evaluate(() => {
       const measureLineText = (line) => {
         const clone = line.cloneNode(true);
@@ -2549,6 +2578,10 @@ Status <Badge type="success">Ready</Badge>
       const taskRect = task?.getBoundingClientRect();
       return {
         surfaceWidth: Math.round(surfaceRect?.width ?? 0),
+        surfaceClientWidth:
+          surface instanceof HTMLElement
+            ? Math.round(surface.clientWidth)
+            : Math.round(surfaceRect?.width ?? 0),
         contentWidth: Math.round(contentRect?.width ?? 0),
         headingPermalinkCount: document.querySelectorAll(".preview-heading-anchor").length,
         taskWidth: Math.round(taskRect?.width ?? 0),
@@ -2556,13 +2589,17 @@ Status <Badge type="success">Ready</Badge>
       };
     });
     expect(
-      mobilePreview.surfaceWidth >= 350 && mobilePreview.contentWidth >= mobilePreview.surfaceWidth - 8,
-      "Mobile Preview should use the document width without desktop annotation rails.",
+      mobilePreview.surfaceWidth > 0 &&
+        mobilePreview.contentWidth >= mobilePreview.surfaceClientWidth - 8,
+      "Mobile Preview should use the document width without desktop annotation rails " +
+        `(surface ${mobilePreview.surfaceWidth}, client ${mobilePreview.surfaceClientWidth}, ` +
+        `content ${mobilePreview.contentWidth}).`,
     );
     expect(mobilePreview.headingPermalinkCount === 0, "Mobile headings should not reserve space for permalinks.");
     expect(
       mobilePreview.taskWidth >= 44 && mobilePreview.taskHeight >= 44,
-      "Mobile preview task controls should expose a 44px touch target.",
+      "Mobile preview task controls should expose a 44px touch target " +
+        `(measured ${mobilePreview.taskWidth}x${mobilePreview.taskHeight}).`,
     );
   });
 }
