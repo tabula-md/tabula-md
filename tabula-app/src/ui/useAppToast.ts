@@ -9,8 +9,16 @@ export type AppToastState = {
 };
 
 const DEFAULT_TOAST_DURATION_MS = 3200;
-const ERROR_TOAST_DURATION_MS = 5000;
 const ACTION_TOAST_DURATION_MS = 10_000;
+
+export const getAppToastDuration = (
+  tone: AppToastState["tone"],
+  hasAction: boolean,
+) => {
+  if (tone === "error") return null;
+  if (hasAction) return ACTION_TOAST_DURATION_MS;
+  return DEFAULT_TOAST_DURATION_MS;
+};
 
 export function useAppToast() {
   const [toast, setToast] = useState<AppToastState | null>(null);
@@ -62,14 +70,14 @@ export function useAppToast() {
     const toastId = toastIdRef.current + 1;
     toastIdRef.current = toastId;
     setToast({ id: toastId, message, tone, ...action });
-    scheduleDismiss(
-      toastId,
-      action?.onAction
-        ? ACTION_TOAST_DURATION_MS
-        : tone === "error"
-          ? ERROR_TOAST_DURATION_MS
-          : DEFAULT_TOAST_DURATION_MS,
-    );
+    const duration = getAppToastDuration(tone, Boolean(action?.onAction));
+    if (duration === null) {
+      clearToastTimer();
+      remainingDurationRef.current = 0;
+      toastDeadlineRef.current = 0;
+    } else {
+      scheduleDismiss(toastId, duration);
+    }
   };
 
   useEffect(() => {
