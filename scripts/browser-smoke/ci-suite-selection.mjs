@@ -29,6 +29,16 @@ const LEGACY = {
 const PLAYWRIGHT_GROUP_ORDER = ["visual", "preview", "panels"];
 const FALLBACK_PLAYWRIGHT_GROUPS = ["visual", "panels"];
 const FALLBACK_LEGACY_GROUPS = ["workspace", "collaboration"];
+const ROOM_PLAYWRIGHT_GROUPS = new Set(["preview", "performance"]);
+const ROOM_LEGACY_SUITES = new Set([
+  "workspace",
+  "editor-selection-comments",
+  "editor-certification",
+  "collaboration",
+  "collaboration-editor-torture",
+  "collaboration-memory",
+  "collaboration-lifecycle",
+]);
 const FULL_RUN_PATHS = [
   ".github/workflows/browser-smoke.yml",
   "package.json",
@@ -238,9 +248,8 @@ export function selectBrowserSmokeSuites(changedPaths) {
   ];
   const legacy = [...legacySuites];
   const needsRoom =
-    playwrightGroups.has("preview") ||
-    legacy.includes("workspace") ||
-    legacy.some((suite) => suite.startsWith("collaboration"));
+    [...playwrightGroups].some((group) => ROOM_PLAYWRIGHT_GROUPS.has(group)) ||
+    legacy.some((suite) => ROOM_LEGACY_SUITES.has(suite));
 
   return {
     playwrightFiles,

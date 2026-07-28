@@ -23,8 +23,10 @@ test("selects editor checks without unrelated workspace or collaboration checks"
     "editor-visual.spec.mjs",
   ]);
   assert(selection.legacySuites.includes("editor-search-source"));
+  assert(selection.legacySuites.includes("editor-selection-comments"));
   assert(!selection.legacySuites.includes("workspace"));
   assert(!selection.legacySuites.includes("collaboration"));
+  assert.equal(selection.needsRoom, true);
 });
 
 test("selects panel and knowledge checks for a knowledge panel change", () => {
@@ -75,6 +77,7 @@ test("runs a changed performance spec only when explicitly selected", () => {
     "harness.spec.ts",
     "performance.spec.mjs",
   ]);
+  assert.equal(selection.needsRoom, true);
   assert.deepEqual(selection.legacySuites, []);
 });
 
