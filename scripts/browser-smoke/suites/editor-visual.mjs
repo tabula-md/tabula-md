@@ -252,6 +252,7 @@ export async function run(ctx) {
     await page.keyboard.press("ControlOrMeta+Home");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
     await waitForRenderFrame(page);
     const sourceCodeHeight = await page.evaluate(() => {
       const lines = Array.from(document.querySelectorAll(
@@ -285,7 +286,7 @@ export async function run(ctx) {
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+Home");
     const downwardStates = [];
-    for (let index = 0; index < 8; index += 1) {
+    for (let index = 0; index < 10; index += 1) {
       await page.keyboard.press("ArrowDown");
       await waitForRenderFrame(page);
       downwardStates.push({
@@ -299,10 +300,12 @@ export async function run(ctx) {
     expect(
       JSON.stringify(downwardStates) === JSON.stringify([
         { codeRendered: 1, imageRendered: 1, line: 2 },
+        { codeRendered: 1, imageRendered: 1, line: 3 },
         { codeRendered: 0, imageRendered: 1, line: 3 },
         { codeRendered: 0, imageRendered: 1, line: 4 },
         { codeRendered: 0, imageRendered: 1, line: 5 },
         { codeRendered: 1, imageRendered: 1, line: 6 },
+        { codeRendered: 1, imageRendered: 1, line: 7 },
         { codeRendered: 1, imageRendered: 0, line: 7 },
         { codeRendered: 1, imageRendered: 1, line: 8 },
         { codeRendered: 1, imageRendered: 1, line: 9 },
@@ -312,7 +315,7 @@ export async function run(ctx) {
 
     await page.keyboard.press("ControlOrMeta+End");
     const upwardStates = [];
-    for (let index = 0; index < 8; index += 1) {
+    for (let index = 0; index < 10; index += 1) {
       await page.keyboard.press("ArrowUp");
       await waitForRenderFrame(page);
       upwardStates.push({
@@ -326,8 +329,10 @@ export async function run(ctx) {
     expect(
       JSON.stringify(upwardStates) === JSON.stringify([
         { codeRendered: 1, imageRendered: 1, line: 8 },
+        { codeRendered: 1, imageRendered: 1, line: 7 },
         { codeRendered: 1, imageRendered: 0, line: 7 },
         { codeRendered: 1, imageRendered: 1, line: 6 },
+        { codeRendered: 1, imageRendered: 1, line: 5 },
         { codeRendered: 0, imageRendered: 1, line: 5 },
         { codeRendered: 0, imageRendered: 1, line: 4 },
         { codeRendered: 0, imageRendered: 1, line: 3 },
@@ -337,7 +342,7 @@ export async function run(ctx) {
       `Visual ArrowUp should reveal a block's Markdown on entry, traverse every source line, and restore rendering on exit. states=${JSON.stringify(upwardStates)}`,
     );
 
-    for (let index = 0; index < 5; index += 1) {
+    for (let index = 0; index < 6; index += 1) {
       await page.keyboard.press("ArrowDown");
       await waitForRenderFrame(page);
     }
@@ -570,6 +575,7 @@ export async function run(ctx) {
     await page.keyboard.press("ControlOrMeta+Home");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
     await waitForRenderFrame(page);
     const sourceMathHeight = await page.evaluate(() => {
       const lines = Array.from(document.querySelectorAll(".cm-line"));
@@ -605,6 +611,7 @@ export async function run(ctx) {
     await enterVisualMode(page, waitForEditorReady);
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+Home");
+    await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
     await waitForRenderFrame(page);
@@ -649,6 +656,7 @@ export async function run(ctx) {
     const renderedSeparatorHeight = (await separator.boundingBox())?.height;
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+Home");
+    await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
     await waitForRenderFrame(page);
@@ -1104,7 +1112,7 @@ export async function run(ctx) {
     const initialImageRendered =
       await page.getByRole("group", { name: "Edit image Markdown" }).count();
     const upwardStates = [];
-    for (let index = 0; index < 4; index += 1) {
+    for (let index = 0; index < 6; index += 1) {
       await page.keyboard.press("ArrowUp");
       await waitForRenderFrame(page);
       upwardStates.push({
@@ -1126,6 +1134,12 @@ export async function run(ctx) {
         },
         {
           codeRendered: initialCodeRendered,
+          imageRendered: initialImageRendered,
+          line: finalLine - 2,
+          visible: true,
+        },
+        {
+          codeRendered: initialCodeRendered,
           imageRendered: initialImageRendered - 1,
           line: finalLine - 2,
           visible: true,
@@ -1134,6 +1148,12 @@ export async function run(ctx) {
           codeRendered: initialCodeRendered,
           imageRendered: initialImageRendered,
           line: finalLine - 3,
+          visible: true,
+        },
+        {
+          codeRendered: initialCodeRendered,
+          imageRendered: initialImageRendered,
+          line: finalLine - 4,
           visible: true,
         },
         {
