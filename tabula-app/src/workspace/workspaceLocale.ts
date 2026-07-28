@@ -167,7 +167,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       nothingToShare:
         "Nothing to share yet. Create or open a document first.",
       chooserSecurityDescription:
-        "Your workspace is encrypted before it leaves this browser. Only people with the link can open it—not even our servers can read it.",
+        "Your workspace is encrypted before it leaves this browser. Only people with the link can open it—not even Tabula.md’s servers can read it.",
       shareLinkLabel: "Share link",
       live: {
         title: "Open a live collaboration room",
@@ -271,7 +271,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       nothingToShare:
         "아직 공유할 내용이 없습니다. 먼저 문서를 만들거나 여세요.",
       chooserSecurityDescription:
-        "워크스페이스는 이 브라우저를 벗어나기 전에 암호화됩니다. 링크를 가진 사람만 열 수 있으며 서버에서도 내용을 읽을 수 없습니다.",
+        "워크스페이스는 이 브라우저를 벗어나기 전에 암호화됩니다. 링크를 가진 사람만 열 수 있으며 Tabula.md 서버에서도 내용을 읽을 수 없습니다.",
       shareLinkLabel: "공유 링크",
       live: {
         title: "실시간 협업 룸 열기",
@@ -375,7 +375,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       nothingToShare:
         "まだ共有できる内容がありません。まずドキュメントを作成するか開いてください。",
       chooserSecurityDescription:
-        "ワークスペースはこのブラウザーを離れる前に暗号化されます。リンクを持つ人だけが開くことができ、サーバーも内容を読み取れません。",
+        "ワークスペースはこのブラウザーを離れる前に暗号化されます。リンクを持つ人だけが開くことができ、Tabula.md のサーバーも内容を読み取れません。",
       shareLinkLabel: "共有リンク",
       live: {
         title: "ライブ共同編集ルームを開く",
@@ -480,7 +480,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       loadError: "无法打开分享。",
       nothingToShare: "暂无可分享的内容。请先创建或打开一个文档。",
       chooserSecurityDescription:
-        "工作区会在离开此浏览器前加密。只有拥有链接的人才能打开，服务器也无法读取内容。",
+        "工作区会在离开此浏览器前加密。只有拥有链接的人才能打开，Tabula.md 的服务器也无法读取内容。",
       shareLinkLabel: "分享链接",
       live: {
         title: "打开实时协作房间",
@@ -584,7 +584,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       nothingToShare:
         "Aún no hay nada que compartir. Crea o abre un documento primero.",
       chooserSecurityDescription:
-        "El espacio se cifra antes de salir de este navegador. Solo quienes tengan el enlace pueden abrirlo; ni nuestros servidores pueden leer el contenido.",
+        "El espacio se cifra antes de salir de este navegador. Solo quienes tengan el enlace pueden abrirlo; ni los servidores de Tabula.md pueden leer el contenido.",
       shareLinkLabel: "Enlace para compartir",
       live: {
         title: "Abrir una sala de colaboración en vivo",
@@ -690,7 +690,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       nothingToShare:
         "Rien à partager pour le moment. Créez ou ouvrez d’abord un document.",
       chooserSecurityDescription:
-        "L’espace est chiffré avant de quitter ce navigateur. Seules les personnes ayant le lien peuvent l’ouvrir ; même nos serveurs ne peuvent pas lire le contenu.",
+        "L’espace est chiffré avant de quitter ce navigateur. Seules les personnes ayant le lien peuvent l’ouvrir ; même les serveurs de Tabula.md ne peuvent pas lire le contenu.",
       shareLinkLabel: "Lien de partage",
       live: {
         title: "Ouvrir une salle de collaboration en direct",
@@ -796,7 +796,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       nothingToShare:
         "Noch nichts zum Teilen vorhanden. Erstelle oder öffne zuerst ein Dokument.",
       chooserSecurityDescription:
-        "Der Workspace wird verschlüsselt, bevor er diesen Browser verlässt. Nur Personen mit dem Link können ihn öffnen; auch unsere Server können den Inhalt nicht lesen.",
+        "Der Workspace wird verschlüsselt, bevor er diesen Browser verlässt. Nur Personen mit dem Link können ihn öffnen; auch die Server von Tabula.md können den Inhalt nicht lesen.",
       shareLinkLabel: "Freigabelink",
       live: {
         title: "Live-Raum für Zusammenarbeit öffnen",

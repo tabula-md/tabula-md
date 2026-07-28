@@ -39,6 +39,7 @@ const ROOM_LEGACY_SUITES = new Set([
   "collaboration-memory",
   "collaboration-lifecycle",
 ]);
+const JSON_LEGACY_SUITES = new Set(["json-share"]);
 const FULL_RUN_PATHS = [
   ".github/workflows/browser-smoke.yml",
   "package.json",
@@ -250,11 +251,13 @@ export function selectBrowserSmokeSuites(changedPaths) {
   const needsRoom =
     [...playwrightGroups].some((group) => ROOM_PLAYWRIGHT_GROUPS.has(group)) ||
     legacy.some((suite) => ROOM_LEGACY_SUITES.has(suite));
+  const needsJson = legacy.some((suite) => JSON_LEGACY_SUITES.has(suite));
 
   return {
     playwrightFiles,
     legacySuites: legacy,
     needsRoom,
+    needsJson,
     fallbackRun,
     reason: reasons.size > 0 ? [...reasons].join("; ") : "no browser runtime changed",
   };
@@ -275,6 +278,7 @@ function writeGithubOutput(selection) {
       `playwright_files=${selection.playwrightFiles.join(" ")}`,
       `legacy_suites=${selection.legacySuites.join(",")}`,
       `needs_room=${selection.needsRoom}`,
+      `needs_json=${selection.needsJson}`,
       `fallback_run=${selection.fallbackRun}`,
       `reason=${selection.reason}`,
       "",
