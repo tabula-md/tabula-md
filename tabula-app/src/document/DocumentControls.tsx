@@ -190,35 +190,63 @@ export function DocumentControls({
               aria-label={controls.controlsLabel}
               onOpenAutoFocus={(event) => event.preventDefault()}
             >
-              <div
-                className="editing-mode-options"
-                role="group"
-                aria-label={controls.controlsLabel}
-              >
-                {controls.editingModeOptions.map((option) => (
-                  <button
-                    key={option.editingMode}
-                    className={`editor-controls-row editing-mode-option ${option.active ? "active" : ""}`}
-                    type="button"
-                    aria-label={option.label}
-                    aria-pressed={option.active}
-                    data-editing-mode={option.editingMode}
-                    onClick={() => onSetViewMode(option.viewMode)}
-                  >
-                    <span className="editing-mode-option-icon">
-                      {viewModeIcons[option.icon]}
-                    </span>
-                    <span>{option.label}</span>
-                    <span className="editor-controls-check">
-                      {option.active && <Check size={14} />}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              <section className="editor-controls-section">
+                <h3 className="editor-controls-heading">{controls.editingModeLabel}</h3>
+                <div
+                  className="editing-mode-options"
+                  role="group"
+                  aria-label={controls.editingModeLabel}
+                >
+                  {controls.editingModeOptions.map((option) => (
+                    <button
+                      key={option.editingMode}
+                      className={`editor-controls-row editing-mode-option ${option.active ? "active" : ""}`}
+                      type="button"
+                      aria-label={option.label}
+                      aria-pressed={option.active}
+                      data-editing-mode={option.editingMode}
+                      onClick={() => onSetViewMode(option.viewMode)}
+                    >
+                      <span className="editing-mode-option-icon">
+                        {viewModeIcons[option.icon]}
+                      </span>
+                      <span>{option.label}</span>
+                      <span className="editor-controls-check">
+                        {option.active && <Check size={14} />}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
               <div className="editor-controls-divider" role="separator" />
-              <div className="editor-controls-section view-controls-settings">
-                {controls.showEditorToggles && (
-                  <>
+              <section className="editor-controls-section">
+                <h3 className="editor-controls-heading">{controls.viewModeLabel}</h3>
+                <div role="group" aria-label={controls.viewModeLabel}>
+                  {controls.viewModeOptions.map((option) => (
+                    <button
+                      key={option.viewMode}
+                      className={`editor-controls-row editor-view-option ${option.active ? "active" : ""}`}
+                      type="button"
+                      aria-pressed={option.active}
+                      data-view-mode-option={option.viewMode}
+                      onClick={() => onSetViewMode(option.viewMode)}
+                    >
+                      <span className="editing-mode-option-icon">
+                        {viewModeIcons[option.icon]}
+                      </span>
+                      <span>{option.label}</span>
+                      <span className="editor-controls-check">
+                        {option.active && <Check size={14} />}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              {controls.showEditorToggles && (
+                <>
+                  <div className="editor-controls-divider" role="separator" />
+                  <section className="editor-controls-section view-controls-settings">
+                    <h3 className="editor-controls-heading">{controls.sourceOptionsLabel}</h3>
                     <button
                       className={`editor-controls-row ${controls.lineNumbers.active ? "active" : ""}`}
                       type="button"
@@ -241,21 +269,25 @@ export function DocumentControls({
                       </span>
                       <span>{controls.lineWrapping.label}</span>
                     </button>
-                  </>
-                )}
-                {showSyncScrolling && controls.showSplitToggles && (
-                  <button
-                    className={`editor-controls-row ${controls.syncScrolling.active ? "active" : ""}`}
-                    type="button"
-                    aria-pressed={controls.syncScrolling.active}
-                    onClick={onToggleSyncScrolling}
-                  >
-                    <span className="editor-controls-check">
-                      {controls.syncScrolling.active && <Check size={14} />}
-                    </span>
-                    <span>{controls.syncScrolling.label}</span>
-                  </button>
-                )}
+                    {showSyncScrolling && controls.showSplitToggles && (
+                      <button
+                        className={`editor-controls-row ${controls.syncScrolling.active ? "active" : ""}`}
+                        type="button"
+                        aria-pressed={controls.syncScrolling.active}
+                        onClick={onToggleSyncScrolling}
+                      >
+                        <span className="editor-controls-check">
+                          {controls.syncScrolling.active && <Check size={14} />}
+                        </span>
+                        <span>{controls.syncScrolling.label}</span>
+                      </button>
+                    )}
+                  </section>
+                </>
+              )}
+              <div className="editor-controls-divider" role="separator" />
+              <section className="editor-controls-section view-controls-settings">
+                <h3 className="editor-controls-heading">{controls.layoutLabel}</h3>
                 <div className="editor-controls-width-row">
                   <span>{controls.readingWidthLabel}</span>
                   <div className="editor-width-control" aria-label={controls.readingWidthLabel}>
@@ -272,7 +304,7 @@ export function DocumentControls({
                     ))}
                   </div>
                 </div>
-              </div>
+              </section>
             </PopoverContent>
           </PopoverRoot>
         </div>

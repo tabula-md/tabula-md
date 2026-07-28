@@ -66,6 +66,14 @@
   gap: 2px;
 }
 
+.editor-controls-heading {
+  margin: 2px 8px 4px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  font-weight: var(--weight-ui-medium);
+  letter-spacing: 0.01em;
+}
+
 .editing-mode-options {
   display: grid;
   gap: 2px;
@@ -80,6 +88,11 @@
 }
 
 .editing-mode-option.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.editor-view-option.active {
   color: var(--accent);
   background: var(--accent-soft);
 }

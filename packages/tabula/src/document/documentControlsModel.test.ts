@@ -6,18 +6,22 @@ import {
 
 const copy: DocumentControlsCopy = {
   documentControlsLabel: "Document controls",
+  editingMode: "Editing mode",
   editorControls: "Editor controls",
   fillWidth: "Fill",
   focusWidth: "Focus",
   lineNumbers: "Line Numbers",
   lineWrapping: "Line Wrapping",
+  layoutControls: "Layout",
   preview: "Preview",
   search: "Search",
   source: "Source edit",
   split: "Split",
   standardWidth: "Standard",
   syncScrolling: "Sync Scrolling",
+  sourceOptions: "Source options",
   textWidth: "Text Width",
+  viewControls: "View",
   visual: "Visual edit",
 };
 
@@ -40,6 +44,10 @@ describe("document controls model", () => {
     const model = buildModel("visual", "visual");
 
     expect(model.controlsLabel).toBe("Editor controls");
+    expect(model.editingModeLabel).toBe("Editing mode");
+    expect(model.viewModeLabel).toBe("View");
+    expect(model.sourceOptionsLabel).toBe("Source options");
+    expect(model.layoutLabel).toBe("Layout");
     expect(model.editingModeOptions).toEqual([
       {
         active: true,
@@ -70,6 +78,7 @@ describe("document controls model", () => {
         viewMode: "preview",
       },
     ]);
+    expect(model.showEditorToggles).toBe(false);
   });
 
   it("keeps Visual as the return editor while Preview is active", () => {

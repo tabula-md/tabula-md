@@ -877,6 +877,7 @@ export type WorkspaceChromeCopy = {
   documentControls: {
     documentToolbar: string;
     documentControlsLabel: string;
+    editingMode: string;
     split: string;
     source: string;
     visual: string;
@@ -884,6 +885,7 @@ export type WorkspaceChromeCopy = {
     editorControls: string;
     viewControls: string;
     layoutControls: string;
+    sourceOptions: string;
     search: string;
     lineNumbers: string;
     lineWrapping: string;
@@ -946,6 +948,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     documentControls: {
       documentToolbar: "Document toolbar",
       documentControlsLabel: "Document controls",
+      editingMode: "Editing mode",
       split: "Split",
       source: "Source edit",
       visual: "Visual edit",
@@ -953,6 +956,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       editorControls: "Editor controls",
       viewControls: "View controls",
       layoutControls: "Layout controls",
+      sourceOptions: "Source options",
       search: "Search",
       lineNumbers: "Line Numbers",
       lineWrapping: "Line Wrapping",
@@ -1013,6 +1017,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     documentControls: {
       documentToolbar: "문서 툴바",
       documentControlsLabel: "문서 컨트롤",
+      editingMode: "편집 모드",
       split: "분할",
       source: "원문 편집",
       visual: "비주얼 편집",
@@ -1020,6 +1025,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       editorControls: "에디터 컨트롤",
       viewControls: "보기 컨트롤",
       layoutControls: "레이아웃 컨트롤",
+      sourceOptions: "원문 옵션",
       search: "검색",
       lineNumbers: "줄 번호",
       lineWrapping: "줄 바꿈",
@@ -1080,6 +1086,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     documentControls: {
       documentToolbar: "ドキュメントツールバー",
       documentControlsLabel: "ドキュメント操作",
+      editingMode: "編集モード",
       split: "分割",
       source: "ソース編集",
       visual: "ビジュアル編集",
@@ -1087,6 +1094,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       editorControls: "エディター設定",
       viewControls: "表示設定",
       layoutControls: "レイアウト設定",
+      sourceOptions: "ソース設定",
       search: "検索",
       lineNumbers: "行番号",
       lineWrapping: "行折り返し",
@@ -1147,6 +1155,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     documentControls: {
       documentToolbar: "文档工具栏",
       documentControlsLabel: "文档控制",
+      editingMode: "编辑模式",
       split: "分屏",
       source: "源码编辑",
       visual: "可视化编辑",
@@ -1154,6 +1163,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       editorControls: "编辑器控制",
       viewControls: "视图控制",
       layoutControls: "布局控制",
+      sourceOptions: "源码选项",
       search: "搜索",
       lineNumbers: "行号",
       lineWrapping: "自动换行",
@@ -1214,6 +1224,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     documentControls: {
       documentToolbar: "Barra del documento",
       documentControlsLabel: "Controles del documento",
+      editingMode: "Modo de edición",
       split: "Dividir",
       source: "Editar fuente",
       visual: "Edición visual",
@@ -1221,6 +1232,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       editorControls: "Controles del editor",
       viewControls: "Controles de vista",
       layoutControls: "Controles de diseño",
+      sourceOptions: "Opciones de fuente",
       search: "Buscar",
       lineNumbers: "Números de línea",
       lineWrapping: "Ajuste de línea",
@@ -1281,6 +1293,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     documentControls: {
       documentToolbar: "Barre du document",
       documentControlsLabel: "Contrôles du document",
+      editingMode: "Mode d’édition",
       split: "Scinder",
       source: "Édition source",
       visual: "Édition visuelle",
@@ -1288,6 +1301,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       editorControls: "Contrôles de l’éditeur",
       viewControls: "Contrôles d’affichage",
       layoutControls: "Contrôles de mise en page",
+      sourceOptions: "Options de la source",
       search: "Rechercher",
       lineNumbers: "Numéros de ligne",
       lineWrapping: "Retour à la ligne",
@@ -1348,6 +1362,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
     documentControls: {
       documentToolbar: "Dokument-Toolbar",
       documentControlsLabel: "Dokumentsteuerung",
+      editingMode: "Bearbeitungsmodus",
       split: "Teilen",
       source: "Quelltext bearbeiten",
       visual: "Visuell bearbeiten",
@@ -1355,6 +1370,7 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
       editorControls: "Editorsteuerung",
       viewControls: "Ansichtssteuerung",
       layoutControls: "Layoutsteuerung",
+      sourceOptions: "Quelltextoptionen",
       search: "Suchen",
       lineNumbers: "Zeilennummern",
       lineWrapping: "Zeilenumbruch",

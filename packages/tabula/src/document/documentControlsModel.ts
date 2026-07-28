@@ -8,18 +8,22 @@ import {
 
 export type DocumentControlsCopy = {
   documentControlsLabel: string;
+  editingMode: string;
   editorControls: string;
   fillWidth: string;
   focusWidth: string;
   lineNumbers: string;
   lineWrapping: string;
+  layoutControls: string;
   preview: string;
   search: string;
   source: string;
   split: string;
   standardWidth: string;
   syncScrolling: string;
+  sourceOptions: string;
   textWidth: string;
+  viewControls: string;
   visual: string;
 };
 
@@ -54,6 +58,7 @@ export type DocumentReadingWidthOption = {
 export type DocumentControlsModel = {
   controlsLabel: string;
   documentControlsLabel: string;
+  editingModeLabel: string;
   editingModeOptions: DocumentEditingModeOption[];
   lineNumbers: DocumentToggleControl;
   lineWrapping: DocumentToggleControl;
@@ -62,8 +67,10 @@ export type DocumentControlsModel = {
   searchLabel: string;
   showEditorToggles: boolean;
   showSplitToggles: boolean;
+  sourceOptionsLabel: string;
   syncScrolling: DocumentToggleControl;
   viewModeLabel: string;
+  layoutLabel: string;
   viewModeOptions: DocumentViewModeOption[];
 };
 
@@ -149,6 +156,7 @@ export const buildDocumentControlsModel = ({
   return {
     controlsLabel: copy.editorControls,
     documentControlsLabel: copy.documentControlsLabel,
+    editingModeLabel: copy.editingMode,
     editingModeOptions: getEditingModeOptions(activeEditingMode, copy),
     lineNumbers: {
       active: activeLineNumbers,
@@ -165,13 +173,16 @@ export const buildDocumentControlsModel = ({
       readingWidth,
     })),
     searchLabel: copy.search,
-    showEditorToggles: activeViewMode !== "preview",
+    showEditorToggles:
+      activeEditingMode === "source" && activeViewMode !== "preview",
     showSplitToggles: activeViewMode === "split",
+    sourceOptionsLabel: copy.sourceOptions,
     syncScrolling: {
       active: activeSyncScrolling,
       label: copy.syncScrolling,
     },
-    viewModeLabel: copy.documentControlsLabel,
+    viewModeLabel: copy.viewControls,
+    layoutLabel: copy.layoutControls,
     viewModeOptions: getViewModeOptions(
       activeEditingMode,
       activeViewMode,
