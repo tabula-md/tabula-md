@@ -380,6 +380,7 @@ export async function run(ctx) {
         right: readRect(".top-right-zone"),
         documentSurface:
           readRect(".workspace.preview .preview-surface") ??
+          readRect(".workspace.visual .editor-surface") ??
           readRect(".workspace.edit .editor-surface") ??
           readRect(".workspace.split"),
         previewSurface: readRect(".preview-surface"),
