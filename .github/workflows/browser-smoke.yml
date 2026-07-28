@@ -79,6 +79,15 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && '44cc9d5f87b770e7e5097af83aa445c8234950bd' || 'main' }}
           path: tabula-room
 
+      - name: Checkout JSON server
+        if: github.event_name != 'pull_request' || steps.select.outputs.needs_json == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: tabula-md/tabula-json
+          # Pull requests use the known-compatible server; scheduled runs test JSON main.
+          ref: ${{ github.event_name == 'pull_request' && '50f0f2d84e8f380b4232b86947d1e75af33a993f' || 'main' }}
+          path: tabula-json
+
       - name: Install app dependencies
         run: npm ci
 
@@ -87,6 +96,11 @@ jobs:
         run: npm ci
         working-directory: tabula-room
 
+      - name: Install JSON server dependencies
+        if: github.event_name != 'pull_request' || steps.select.outputs.needs_json == 'true'
+        run: npm ci
+        working-directory: tabula-json
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
@@ -94,24 +108,28 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           TABULA_ROOM_REPO_DIR: ${{ steps.select.outputs.needs_room == 'true' && format('{0}/tabula-room', github.workspace) || '' }}
+          TABULA_JSON_REPO_DIR: ${{ steps.select.outputs.needs_json == 'true' && format('{0}/tabula-json', github.workspace) || '' }}
         run: npx playwright test ${{ steps.select.outputs.playwright_files }}
 
       - name: Run Playwright extended suite
         if: github.event_name != 'pull_request'
         env:
           TABULA_ROOM_REPO_DIR: ${{ github.workspace }}/tabula-room
+          TABULA_JSON_REPO_DIR: ${{ github.workspace }}/tabula-json
         run: npm run test:browser:playwright
 
       - name: Run selected legacy checks
         if: github.event_name == 'pull_request' && steps.select.outputs.legacy_suites != ''
         env:
           TABULA_ROOM_REPO_DIR: ${{ steps.select.outputs.needs_room == 'true' && format('{0}/tabula-room', github.workspace) || '' }}
+          TABULA_JSON_REPO_DIR: ${{ steps.select.outputs.needs_json == 'true' && format('{0}/tabula-json', github.workspace) || '' }}
         run: npm run test:browser -- --suite=${{ steps.select.outputs.legacy_suites }}
 
       - name: Run scheduled suite
         if: github.event_name != 'pull_request'
         env:
           TABULA_ROOM_REPO_DIR: ${{ github.workspace }}/tabula-room
+          TABULA_JSON_REPO_DIR: ${{ github.workspace }}/tabula-json
         run: npm run test:browser
 
       - name: Upload Playwright failure artifacts

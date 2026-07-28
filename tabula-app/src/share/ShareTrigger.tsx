@@ -70,6 +70,7 @@ export function ShareTrigger({
         className={`share-button share-trigger ${shareOpen ? "active" : ""} ${liveStatus ? `live ${liveStatus}` : ""}`}
         type="button"
         aria-label={statusLabel}
+        data-tooltip={statusLabel}
         aria-expanded={shareOpen}
         onFocus={prepareCollaboration}
         onPointerDown={prepareCollaboration}

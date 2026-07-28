@@ -58,7 +58,7 @@ describe("workspace locale chrome copy", () => {
       "Nothing to share yet. Create or open a document first.",
     );
     expect(english.share.chooserSecurityDescription).toBe(
-      "Your workspace is encrypted before it leaves this browser. Only people with the link can open it—not even our servers can read it.",
+      "Your workspace is encrypted before it leaves this browser. Only people with the link can open it—not even Tabula.md’s servers can read it.",
     );
     expect(english.share.shareLinkLabel).toBe("Share link");
     expect(english.share.live.stopConfirmTitle).toBe(
@@ -88,5 +88,13 @@ describe("workspace locale chrome copy", () => {
       "댓글을 포함한 워크스페이스의 암호화된 복사본을 만듭니다. 링크를 가진 사람은 스냅샷을 열 수 있지만 이후 변경 사항은 동기화되지 않습니다.",
     );
     expect(korean.share.modalTitle).toBe("공유");
+  });
+
+  it("names Tabula.md explicitly in every encrypted-sharing explanation", () => {
+    for (const { value } of WORKSPACE_LANGUAGE_OPTIONS) {
+      expect(getWorkspaceMenuCopy(value).share.chooserSecurityDescription).toContain(
+        "Tabula.md",
+      );
+    }
   });
 });

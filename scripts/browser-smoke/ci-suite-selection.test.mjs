@@ -54,6 +54,19 @@ test("checks out the room relay only for suites that use it", () => {
   assert.equal(preview.needsRoom, true);
 });
 
+test("checks out the JSON server only for JSON sharing checks", () => {
+  const share = selectBrowserSmokeSuites([
+    "tabula-app/src/share/ShareExportResult.tsx",
+  ]);
+  const panels = selectBrowserSmokeSuites([
+    "tabula-app/src/right-panel/RightPanel.tsx",
+  ]);
+
+  assert(share.legacySuites.includes("json-share"));
+  assert.equal(share.needsJson, true);
+  assert.equal(panels.needsJson, false);
+});
+
 test("runs the exact legacy scenario file that changed", () => {
   const collaboration = selectBrowserSmokeSuites([
     "scripts/browser-smoke/suites/collaboration-memory.mjs",
