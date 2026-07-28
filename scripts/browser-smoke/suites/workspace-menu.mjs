@@ -518,8 +518,9 @@ export async function run(ctx) {
         !emptyChromeState.workspaceText.includes("Tabula turns Markdowns into collaborative documents for people and agents.") &&
         emptyChromeState.workspaceText.includes("New document") &&
         emptyChromeState.workspaceText.includes("Open Markdown file") &&
-        emptyChromeState.workspaceText.includes("Browse project files") &&
-        emptyChromeState.workspaceText.includes("Help") &&
+        emptyChromeState.workspaceText.includes("Open folder") &&
+        !emptyChromeState.workspaceText.includes("Browse project files") &&
+        !emptyChromeState.workspaceText.includes("Help") &&
         !emptyChromeState.workspaceText.includes("Import document") &&
         !emptyChromeState.workspaceText.includes("Export workspace") &&
         !emptyChromeState.workspaceText.includes("Project menu") &&
@@ -538,13 +539,13 @@ export async function run(ctx) {
         })),
     );
     expect(
-      emptyTypography.every(({ fontSize }) => fontSize === 13 || fontSize === 15),
-      `No-open-file state should use the shared 13px body and 15px surface-heading type scale (${JSON.stringify(emptyTypography)}).`,
+      emptyTypography.every(({ fontSize }) => fontSize === 12 || fontSize === 13 || fontSize === 15),
+      `No-open-file state should use the shared 12px secondary, 13px body, and 15px surface-heading type scale (${JSON.stringify(emptyTypography)}).`,
     );
 
-    await page.getByRole("button", { name: "Browse project files" }).click();
+    await ensureSidePanelOpen(page);
     await waitForPanelTab(page, "Files");
-    expect((await page.locator(".right-panel").count()) === 1, "Browse project files should open the right file panel.");
+    expect((await page.locator(".right-panel").count()) === 1, "The global side-panel control should open project files.");
     const closedTabFileState = await page.evaluate(() => ({
       fileRows: Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((row) => ({
         title: row.getAttribute("data-file-name") ?? "",

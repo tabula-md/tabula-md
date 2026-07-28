@@ -1,4 +1,4 @@
-import { CircleHelp, FilePlus2, FolderOpen, Upload } from "lucide-react";
+import { FilePlus2, FolderOpen, Upload } from "lucide-react";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { PRODUCT_NAME } from "../../product";
 import { getWorkspaceMenuCopy } from "../workspaceLocale";
@@ -10,8 +10,6 @@ type EmptyFileStateProps = {
   onNewFile: () => void;
   onOpenFile: () => void;
   onOpenWorkspace: () => void;
-  onBrowseFiles: () => void;
-  onOpenHelp: () => void;
   shortcutPlatform: ShortcutPlatform;
 };
 
@@ -20,8 +18,6 @@ export function EmptyFileState({
   onNewFile,
   onOpenFile,
   onOpenWorkspace,
-  onBrowseFiles,
-  onOpenHelp,
   shortcutPlatform,
 }: EmptyFileStateProps) {
   const copy = getWorkspaceMenuCopy(language).emptyState;
@@ -34,30 +30,29 @@ export function EmptyFileState({
         </div>
         <p>{copy.tagline}</p>
         <div className="empty-file-actions">
-          <button type="button" onClick={onNewFile} className="empty-file-action">
+          <button type="button" onClick={onNewFile} className="empty-file-action primary">
             <FilePlus2 size={16} />
-            <span>{copy.newFile}</span>
+            <span className="empty-file-action-copy">
+              <strong>{copy.newFile}</strong>
+              <span>{copy.newFileDescription}</span>
+            </span>
             <span className="empty-file-action-hint">{formatShortcut("Mod+Alt+N", shortcutPlatform)}</span>
           </button>
-          <button type="button" onClick={onOpenFile} className="empty-file-action">
-            <Upload size={16} />
-            <span>{copy.openFile}</span>
-            <span className="empty-file-action-hint">{formatShortcut("Mod+Alt+O", shortcutPlatform)}</span>
-          </button>
-          <button type="button" onClick={onOpenWorkspace} className="empty-file-action">
+          <button type="button" onClick={onOpenWorkspace} className="empty-file-action secondary">
             <FolderOpen size={16} />
-            <span>{copy.openWorkspace}</span>
+            <span className="empty-file-action-copy">
+              <strong>{copy.openWorkspace}</strong>
+              <span>{copy.openWorkspaceDescription}</span>
+            </span>
             <span className="empty-file-action-hint" />
           </button>
-          <button type="button" onClick={onBrowseFiles} className="empty-file-action">
-            <FolderOpen size={16} />
-            <span>{copy.browseFiles}</span>
-            <span className="empty-file-action-hint">{formatShortcut("Mod+Alt+F", shortcutPlatform)}</span>
-          </button>
-          <button type="button" onClick={onOpenHelp} className="empty-file-action">
-            <CircleHelp size={16} />
-            <span>{copy.help}</span>
-            <span className="empty-file-action-hint">?</span>
+          <button type="button" onClick={onOpenFile} className="empty-file-action tertiary">
+            <Upload size={16} />
+            <span className="empty-file-action-copy">
+              <strong>{copy.openFile}</strong>
+              <span>{copy.openFileDescription}</span>
+            </span>
+            <span className="empty-file-action-hint">{formatShortcut("Mod+Alt+O", shortcutPlatform)}</span>
           </button>
         </div>
       </div>
