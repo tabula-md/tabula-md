@@ -11,14 +11,12 @@ export type WorkspaceEmptySurfaceProps = {
   language: WorkspaceLanguage;
   shortcutPlatform: ShortcutPlatform;
   workspaceRef: RefObject<HTMLElement | null>;
-  onBrowseFiles: () => void;
   onDragLeave: DragEventHandler<HTMLElement>;
   onDragOver: DragEventHandler<HTMLElement>;
   onDrop: DragEventHandler<HTMLElement>;
   onNewFile: () => void;
   onOpenFile: () => void;
   onOpenWorkspace: () => void;
-  onOpenHelp: () => void;
 };
 
 export function WorkspaceEmptySurface({
@@ -26,14 +24,12 @@ export function WorkspaceEmptySurface({
   language,
   shortcutPlatform,
   workspaceRef,
-  onBrowseFiles,
   onDragLeave,
   onDragOver,
   onDrop,
   onNewFile,
   onOpenFile,
   onOpenWorkspace,
-  onOpenHelp,
 }: WorkspaceEmptySurfaceProps) {
   return (
     <section
@@ -48,8 +44,6 @@ export function WorkspaceEmptySurface({
         onNewFile={onNewFile}
         onOpenFile={onOpenFile}
         onOpenWorkspace={onOpenWorkspace}
-        onBrowseFiles={onBrowseFiles}
-        onOpenHelp={onOpenHelp}
         shortcutPlatform={shortcutPlatform}
       />
     </section>

@@ -40,6 +40,15 @@ describe("workspace locale chrome copy", () => {
       "Open Markdown. Share one link. Edit with people or agents.",
     );
     expect(english.emptyState.newFile).toBe("New document");
+    expect(english.emptyState.newFileDescription).toBe(
+      "Start a blank Markdown document in this browser.",
+    );
+    expect(english.emptyState.openWorkspaceDescription).toBe(
+      "Work with the Markdown files in a local folder.",
+    );
+    expect(english.emptyState.openFileDescription).toBe(
+      "Open one .md file without creating a project.",
+    );
     expect(english.share.live.startSession).toBe("Start session");
     expect(english.share.live.title).toBe("Open a live collaboration room");
     expect(english.share.live.description).toBe(

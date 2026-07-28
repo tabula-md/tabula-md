@@ -31,8 +31,11 @@ type WorkspaceMenuCopy = {
   emptyState: {
     tagline: string;
     newFile: string;
+    newFileDescription: string;
     openFile: string;
+    openFileDescription: string;
     openWorkspace: string;
+    openWorkspaceDescription: string;
     browseFiles: string;
     help: string;
   };
@@ -140,8 +143,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline: "Open Markdown. Share one link. Edit with people or agents.",
       newFile: "New document",
+      newFileDescription: "Start a blank Markdown document in this browser.",
       openFile: "Open Markdown file",
+      openFileDescription: "Open one .md file without creating a project.",
       openWorkspace: "Open folder",
+      openWorkspaceDescription: "Work with the Markdown files in a local folder.",
       browseFiles: "Browse project files",
       help: "Help",
     },
@@ -241,8 +247,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline: "Markdown을 여세요. 링크 하나로 사람이나 에이전트와 함께 편집하세요.",
       newFile: "새 문서",
+      newFileDescription: "이 브라우저에서 빈 Markdown 문서를 시작합니다.",
       openFile: "Markdown 파일 열기",
+      openFileDescription: "프로젝트를 만들지 않고 .md 파일 하나를 엽니다.",
       openWorkspace: "폴더 열기",
+      openWorkspaceDescription: "로컬 폴더의 Markdown 파일을 함께 관리합니다.",
       browseFiles: "프로젝트 파일 보기",
       help: "도움말",
     },
@@ -342,8 +351,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline: "Markdownを開く。リンクを共有して、人やエージェントと編集。",
       newFile: "新規ドキュメント",
+      newFileDescription: "このブラウザーで空の Markdown ドキュメントを作成します。",
       openFile: "Markdownファイルを開く",
+      openFileDescription: "プロジェクトを作らずに .md ファイルを1つ開きます。",
       openWorkspace: "フォルダーを開く",
+      openWorkspaceDescription: "ローカルフォルダー内の Markdown ファイルを扱います。",
       browseFiles: "プロジェクトファイルを見る",
       help: "ヘルプ",
     },
@@ -445,8 +457,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline: "打开 Markdown。分享一个链接，与人或智能体一起编辑。",
       newFile: "新建文档",
+      newFileDescription: "在此浏览器中创建空白 Markdown 文档。",
       openFile: "打开 Markdown 文件",
+      openFileDescription: "直接打开一个 .md 文件，无需创建项目。",
       openWorkspace: "打开文件夹",
+      openWorkspaceDescription: "处理本地文件夹中的 Markdown 文件。",
       browseFiles: "浏览项目文件",
       help: "帮助",
     },
@@ -545,8 +560,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline: "Abre Markdown. Comparte un enlace. Edita con personas o agentes.",
       newFile: "Nuevo documento",
+      newFileDescription: "Crea un documento Markdown vacío en este navegador.",
       openFile: "Abrir archivo Markdown",
+      openFileDescription: "Abre un archivo .md sin crear un proyecto.",
       openWorkspace: "Abrir carpeta",
+      openWorkspaceDescription: "Trabaja con los archivos Markdown de una carpeta local.",
       browseFiles: "Ver archivos del proyecto",
       help: "Ayuda",
     },
@@ -648,8 +666,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline: "Ouvrez Markdown. Partagez un lien. Modifiez avec des personnes ou des agents.",
       newFile: "Nouveau document",
+      newFileDescription: "Créez un document Markdown vierge dans ce navigateur.",
       openFile: "Ouvrir un fichier Markdown",
+      openFileDescription: "Ouvrez un fichier .md sans créer de projet.",
       openWorkspace: "Ouvrir un dossier",
+      openWorkspaceDescription: "Travaillez avec les fichiers Markdown d’un dossier local.",
       browseFiles: "Parcourir les fichiers",
       help: "Aide",
     },
@@ -751,8 +772,11 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
     emptyState: {
       tagline: "Markdown öffnen. Einen Link teilen. Mit Menschen oder Agenten bearbeiten.",
       newFile: "Neues Dokument",
+      newFileDescription: "Ein leeres Markdown-Dokument in diesem Browser erstellen.",
       openFile: "Markdown-Datei öffnen",
+      openFileDescription: "Eine .md-Datei öffnen, ohne ein Projekt anzulegen.",
       openWorkspace: "Ordner öffnen",
+      openWorkspaceDescription: "Mit Markdown-Dateien in einem lokalen Ordner arbeiten.",
       browseFiles: "Projektdateien ansehen",
       help: "Hilfe",
     },
