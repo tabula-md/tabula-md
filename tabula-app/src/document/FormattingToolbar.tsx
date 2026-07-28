@@ -8,6 +8,7 @@ import { Blocks, List, MoreHorizontal, Pilcrow, Plus } from "lucide-react";
 import type { MarkdownFormatCommand } from "@tabula-md/tabula";
 import {
   formattingToolbarGroupOrder,
+  getFormattingToolbarDensity,
   getFormattingToolbarLayout,
   type FormattingToolbarDensity,
   type FormattingToolbarCommand,
@@ -51,12 +52,6 @@ const groupFormattingCommands = (
       commands: commands.filter((command) => command.group === group),
     }))
     .filter(({ commands }) => commands.length > 0);
-
-const getToolbarDensity = (width: number): FormattingToolbarDensity => {
-  if (width >= 860) return "wide";
-  if (width >= 420) return "medium";
-  return "compact";
-};
 
 const getCommandTitle = (command: LocalizedFormattingCommand) =>
   command.shortcut ? `${command.tooltip} (${formatShortcut(command.shortcut)})` : command.tooltip;
@@ -184,7 +179,7 @@ export function FormattingToolbar({
     if (!row) return;
 
     const updateDensity = (width: number) => {
-      const nextDensity = getToolbarDensity(width);
+      const nextDensity = getFormattingToolbarDensity(width);
       setDensity((currentDensity) => currentDensity === nextDensity ? currentDensity : nextDensity);
     };
     updateDensity(row.getBoundingClientRect().width);

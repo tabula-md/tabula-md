@@ -276,11 +276,18 @@ export const formattingToolbarGroupOrder: FormattingToolbarCommandGroup[] = [
   "cleanup",
 ];
 
+export const getFormattingToolbarDensity = (width: number): FormattingToolbarDensity => {
+  if (width >= 880) return "wide";
+  if (width >= 560) return "medium";
+  return "compact";
+};
+
 export const getFormattingToolbarCommandsByPlacement = (
   placement: FormattingToolbarCommandPlacement,
 ) => formattingToolbarCommands.filter((command) => command.placement === placement);
 
 const compactInlineCommandIds = new Set(["bold", "italic"]);
+const mediumInlineCommandIds = new Set(["bold", "italic", "inline-code", "link"]);
 
 export const getFormattingToolbarLayout = (density: FormattingToolbarDensity) => {
   const historyCommands = getFormattingToolbarCommandsByPlacement("history");
@@ -290,29 +297,35 @@ export const getFormattingToolbarLayout = (density: FormattingToolbarDensity) =>
   const cleanupCommands = getFormattingToolbarCommandsByPlacement("cleanup");
   const overflowCommands = getFormattingToolbarCommandsByPlacement("overflow");
   const compact = density === "compact";
+  const medium = density === "medium";
   const hiddenHistoryCommands = compact ? historyCommands.filter((command) => command.id === "redo") : [];
-  const hiddenInlineCommands = compact
-    ? inlineCommands.filter((command) => !compactInlineCommandIds.has(command.id))
+  const visibleInlineCommandIds = compact
+    ? compactInlineCommandIds
+    : medium
+      ? mediumInlineCommandIds
+      : null;
+  const hiddenInlineCommands = visibleInlineCommandIds
+    ? inlineCommands.filter((command) => !visibleInlineCommandIds.has(command.id))
     : [];
 
   return {
     history: compact
       ? historyCommands.filter((command) => command.id === "undo")
       : historyCommands,
-    inline: compact
-      ? inlineCommands.filter((command) => compactInlineCommandIds.has(command.id))
+    inline: visibleInlineCommandIds
+      ? inlineCommands.filter((command) => visibleInlineCommandIds.has(command.id))
       : inlineCommands,
     block: getFormattingToolbarCommandsByPlacement("block"),
     list: getFormattingToolbarCommandsByPlacement("list"),
     insert: compact ? [] : insertCommands,
     component: compact ? [] : componentCommands,
-    cleanup: compact ? [] : cleanupCommands,
+    cleanup: compact || medium ? [] : cleanupCommands,
     overflow: hiddenHistoryCommands
       .concat(
         hiddenInlineCommands,
         compact ? insertCommands : [],
         compact ? componentCommands : [],
-        compact ? cleanupCommands : [],
+        compact || medium ? cleanupCommands : [],
         overflowCommands,
       ),
   };
