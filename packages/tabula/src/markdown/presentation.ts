@@ -140,23 +140,87 @@ const sliceRange = (
   baseOffset: number,
 ) => source.slice(range.from - baseOffset, range.to - baseOffset);
 
-const getLinkKind = (target: string): PresentationLinkKind =>
+export const classifyPresentationLink = (
+  target: string,
+): PresentationLinkKind =>
   target.startsWith("#")
     ? "internal-heading"
     : externalLinkPattern.test(target)
       ? "external"
       : "internal-document";
 
+const getMarkerRanges = (
+  range: SourceRange,
+  contentRange?: SourceRange,
+): SourceRange[] => {
+  if (!contentRange) return [];
+  return [
+    { from: range.from, to: contentRange.from },
+    { from: contentRange.to, to: range.to },
+  ].filter(({ from, to }) => to > from);
+};
+
+const getLinkMarkerRanges = (
+  source: string,
+  range: SourceRange,
+  contentRange: SourceRange | undefined,
+  baseOffset: number,
+  target: string,
+): SourceRange[] => {
+  if (!contentRange || !target) return getMarkerRanges(range, contentRange);
+  const sourceTargetFrom = source.indexOf(
+    target,
+    contentRange.to - baseOffset,
+  );
+  if (
+    sourceTargetFrom < 0 ||
+    sourceTargetFrom >= range.to - baseOffset
+  ) {
+    return getMarkerRanges(range, contentRange);
+  }
+  const targetRange = {
+    from: sourceTargetFrom + baseOffset,
+    to: sourceTargetFrom + baseOffset + target.length,
+  };
+  return [
+    { from: range.from, to: contentRange.from },
+    { from: contentRange.to, to: targetRange.from },
+    targetRange,
+    { from: targetRange.to, to: range.to },
+  ].filter(({ from, to }) => to > from);
+};
+
+const getDelimitedContentRange = (
+  source: string,
+  range: SourceRange,
+  baseOffset: number,
+  marker: "`" | "$",
+): SourceRange | undefined => {
+  const value = sliceRange(source, range, baseOffset);
+  const opening = value.match(
+    marker === "`" ? /^`+/ : /^\$+/,
+  )?.[0];
+  if (!opening || !value.endsWith(opening) || value.length < opening.length * 2) {
+    return undefined;
+  }
+  return {
+    from: range.from + opening.length,
+    to: range.to - opening.length,
+  };
+};
+
 const createNode = ({
   children = [],
   contentRange,
   data,
+  markerRanges,
   range,
   type,
 }: {
   children?: readonly PresentationNode[];
   contentRange?: SourceRange;
   data?: PresentationNodeData;
+  markerRanges?: readonly SourceRange[];
   range: SourceRange;
   type: PresentationInlineType;
 }): PresentationNode => ({
@@ -164,6 +228,7 @@ const createNode = ({
   ...(contentRange ? { contentRange } : {}),
   ...(data ? { data } : {}),
   id: getNodeId(type, range),
+  markerRanges: markerRanges ?? getMarkerRanges(range, contentRange),
   range,
   type,
 });
@@ -186,6 +251,7 @@ const createBlock = ({
   ...(data ? { data } : {}),
   id: getNodeId(type, range),
   interaction: getBlockInteraction(type),
+  markerRanges: [],
   placement: type === "footnote-definition"
     ? "document-end"
     : "source-position",
@@ -216,9 +282,14 @@ const mapInlineNode = (
   };
   const simpleType = simpleTypeByAstType[node.type];
   if (simpleType) {
+    const delimitedContentRange = node.type === "inlineCode"
+      ? getDelimitedContentRange(source, range, baseOffset, "`")
+      : node.type === "inlineMath"
+        ? getDelimitedContentRange(source, range, baseOffset, "$")
+        : undefined;
     return createNode({
       children,
-      contentRange,
+      contentRange: delimitedContentRange ?? contentRange,
       data: node.value === undefined ? undefined : { text: node.value },
       range,
       type: simpleType,
@@ -226,7 +297,13 @@ const mapInlineNode = (
   }
 
   if (node.type === "footnoteReference") {
+    const value = sliceRange(source, range, baseOffset);
+    const labelFrom = value.indexOf("^") + 1;
+    const labelTo = value.lastIndexOf("]");
     return createNode({
+      contentRange: labelFrom > 0 && labelTo >= labelFrom
+        ? { from: range.from + labelFrom, to: range.from + labelTo }
+        : undefined,
       data: {
         identifier: normalizeIdentifier(node.identifier ?? node.label ?? ""),
       },
@@ -240,15 +317,24 @@ const mapInlineNode = (
       ? normalizeIdentifier(node.identifier ?? "")
       : undefined;
     const definition = identifier ? definitions.get(identifier) : undefined;
+    const target = node.url ?? definition?.url ?? "";
     return createNode({
       children,
       contentRange,
       data: {
         ...(identifier ? { identifier } : {}),
+        linkKind: classifyPresentationLink(target),
         text: getNodeText(node),
         title: node.title ?? definition?.title,
-        url: node.url ?? definition?.url ?? "",
+        url: target,
       },
+      markerRanges: getLinkMarkerRanges(
+        source,
+        range,
+        contentRange,
+        baseOffset,
+        node.type === "link" ? target : "",
+      ),
       range,
       type: "link",
     });
@@ -562,7 +648,7 @@ const collectReferenceIndex = (
         ?? "";
       links.push({
         ...(definitionIdentifier ? { definitionIdentifier } : {}),
-        kind: getLinkKind(target),
+        kind: classifyPresentationLink(target),
         label: getNodeText(node),
         range,
         target,

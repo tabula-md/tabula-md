@@ -59,6 +59,24 @@ describe("Markdown presentation document", () => {
       "table-row",
       "table-cell",
     ]));
+    const strong = nodes.find((node) => node.type === "strong");
+    expect(strong).toMatchObject({
+      contentRange: expect.any(Object),
+      markerRanges: [expect.any(Object), expect.any(Object)],
+    });
+    expect(
+      strong?.markerRanges.map((range) =>
+        source.slice(range.from, range.to)),
+    ).toEqual(["**", "**"]);
+    const inlineCode = nodes.find((node) => node.type === "inline-code");
+    expect(
+      inlineCode?.contentRange &&
+        source.slice(inlineCode.contentRange.from, inlineCode.contentRange.to),
+    ).toBe("code");
+    expect(
+      inlineCode?.markerRanges.map((range) =>
+        source.slice(range.from, range.to)),
+    ).toEqual(["`", "`"]);
     for (const node of nodes) {
       expect(node.range.from).toBeGreaterThanOrEqual(0);
       expect(node.range.to).toBeGreaterThanOrEqual(node.range.from);
@@ -96,6 +114,18 @@ describe("Markdown presentation document", () => {
       { kind: "internal-document", target: "./notes.md" },
       { kind: "internal-heading", target: "#target" },
       { kind: "internal-document", target: "/guide.md" },
+    ]);
+    expect(
+      flattenBlocks(
+        createMarkdownPresentationDocument(source).blocks,
+      )
+        .filter((node) => node.type === "link")
+        .map((node) => node.data?.linkKind),
+    ).toEqual([
+      "external",
+      "internal-document",
+      "internal-heading",
+      "internal-document",
     ]);
     expect(references.definitions).toMatchObject([
       {

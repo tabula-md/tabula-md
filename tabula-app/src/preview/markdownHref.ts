@@ -1,3 +1,5 @@
+import { classifyPresentationLink } from "@tabula-md/tabula";
+
 export type MarkdownHrefKind = "external" | "inert";
 
 export type ResolvedMarkdownHref = {
@@ -11,12 +13,19 @@ const emailUrlPattern = /^mailto:/i;
 
 export const classifyMarkdownHref = (value: string): ResolvedMarkdownHref => {
   const href = value.trim();
+  const presentationKind = classifyPresentationLink(href);
 
-  if (absoluteWebUrlPattern.test(href)) {
+  if (
+    presentationKind === "external" &&
+    absoluteWebUrlPattern.test(href)
+  ) {
     return { href, kind: "external", openInNewTab: true };
   }
 
-  if (emailUrlPattern.test(href)) {
+  if (
+    presentationKind === "external" &&
+    emailUrlPattern.test(href)
+  ) {
     return { href, kind: "external", openInNewTab: false };
   }
 

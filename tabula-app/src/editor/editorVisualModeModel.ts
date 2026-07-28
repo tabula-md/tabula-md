@@ -1,12 +1,16 @@
 import { syntaxTree } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
 import type { SyntaxNode } from "@lezer/common";
-import { inspectFrontmatterData, parseFrontmatter } from "@tabula-md/tabula";
+import {
+  createMarkdownPresentationDocument,
+  inspectFrontmatterData,
+  parseFrontmatter,
+  type MarkdownPresentationDocument,
+  type PresentationNode,
+} from "@tabula-md/tabula";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFootnoteFromMarkdown } from "mdast-util-gfm-footnote";
-import { mathFromMarkdown } from "mdast-util-math";
 import { gfmFootnote } from "micromark-extension-gfm-footnote";
-import { math as mathSyntax } from "micromark-extension-math";
 
 export type EditorVisualHiddenRange = {
   from: number;
@@ -431,8 +435,40 @@ const parseDocsComponents = (source: string): EditorVisualReplacement[] => {
 
 const docsComponentsByDocument = new WeakMap<object, EditorVisualReplacement[]>();
 const footnotesByDocument = new WeakMap<object, EditorVisualReplacement[]>();
-const inlineMathByDocument = new WeakMap<object, EditorVisualReplacement[]>();
 const frontmatterByDocument = new WeakMap<object, EditorVisualReplacement | null>();
+const presentationByDocument =
+  new WeakMap<object, MarkdownPresentationDocument>();
+const presentationNodesByDocument =
+  new WeakMap<object, readonly PresentationNode[]>();
+
+const flattenPresentationNodes = (
+  nodes: readonly PresentationNode[],
+): PresentationNode[] => nodes.flatMap((node) => [
+  node,
+  ...flattenPresentationNodes(node.children),
+]);
+
+const getPresentationDocument = (state: EditorState) => {
+  const documentKey = state.doc as object;
+  const cached = presentationByDocument.get(documentKey);
+  if (cached) return cached;
+  const presentation = createMarkdownPresentationDocument(
+    state.doc.toString(),
+  );
+  presentationByDocument.set(documentKey, presentation);
+  return presentation;
+};
+
+const getPresentationNodes = (state: EditorState) => {
+  const documentKey = state.doc as object;
+  const cached = presentationNodesByDocument.get(documentKey);
+  if (cached) return cached;
+  const nodes = flattenPresentationNodes(
+    getPresentationDocument(state).blocks,
+  );
+  presentationNodesByDocument.set(documentKey, nodes);
+  return nodes;
+};
 
 const getDocsComponents = (state: EditorState) => {
   const documentKey = state.doc as object;
@@ -545,41 +581,14 @@ const getFootnotes = (state: EditorState) => {
 };
 
 const getInlineMath = (state: EditorState) => {
-  const documentKey = state.doc as object;
-  const cached = inlineMathByDocument.get(documentKey);
-  if (cached) return cached;
-
-  const replacements: EditorVisualReplacement[] = [];
-  try {
-    const tree = fromMarkdown(state.doc.toString(), {
-      extensions: [mathSyntax()],
-      mdastExtensions: [mathFromMarkdown()],
-    }) as PositionedMarkdownNode;
-    const visit = (node: PositionedMarkdownNode) => {
-      if (node.type === "inlineMath") {
-        const from = node.position?.start?.offset;
-        const to = node.position?.end?.offset;
-        if (
-          typeof from === "number" &&
-          typeof to === "number" &&
-          typeof node.value === "string"
-        ) {
-          replacements.push({
-            expression: node.value,
-            from,
-            kind: "inline-math",
-            to,
-          });
-        }
-      }
-      for (const child of node.children ?? []) visit(child);
-    };
-    visit(tree);
-  } catch {
-    // Keep the Markdown source visible when math parsing fails.
-  }
-  inlineMathByDocument.set(documentKey, replacements);
-  return replacements;
+  return getPresentationNodes(state)
+    .filter((node) => node.type === "inline-math")
+    .map((node): EditorVisualReplacement => ({
+      expression: node.data?.text ?? "",
+      from: node.range.from,
+      kind: "inline-math",
+      to: node.range.to,
+    }));
 };
 
 const isInsideReplacement = (
@@ -587,6 +596,37 @@ const isInsideReplacement = (
   replacements: readonly EditorVisualReplacement[],
 ) => replacements.some((replacement) =>
   node.from >= replacement.from && node.to <= replacement.to);
+
+const presentationInlineMarkerTypes = new Set([
+  "emphasis",
+  "inline-code",
+  "link",
+  "strikethrough",
+  "strong",
+]);
+
+const addPresentationInlineRanges = (
+  model: EditorVisualModel,
+  state: EditorState,
+  visibleRanges: readonly VisibleRange[],
+  revealActiveSource: boolean,
+) => {
+  for (const node of getPresentationNodes(state)) {
+    if (!presentationInlineMarkerTypes.has(node.type)) continue;
+    if (!isVisible(node.range.from, node.range.to, visibleRanges)) continue;
+    if (
+      revealActiveSource &&
+      isLineActive(state, node.range.from, node.range.to)
+    ) {
+      continue;
+    }
+    const overlapsBlock = model.replacements.some((replacement) =>
+      isEditorVisualNavigableReplacement(replacement) &&
+      node.range.from >= replacement.from &&
+      node.range.to <= replacement.to);
+    if (!overlapsBlock) model.hiddenRanges.push(...node.markerRanges);
+  }
+};
 
 const addComponentReplacements = (
   model: EditorVisualModel,
@@ -788,9 +828,6 @@ const walkVisualTree = (
 
   if (
     node.name === "HeaderMark" ||
-    node.name === "EmphasisMark" ||
-    node.name === "StrikethroughMark" ||
-    node.name === "CodeMark" ||
     node.name === "QuoteMark"
   ) {
     if (!revealActiveSource || !isLineActive(state, node.from, node.to)) {
@@ -803,6 +840,13 @@ const walkVisualTree = (
     node.name === "Link" &&
     !(revealActiveSource && isLineActive(state, node.from, node.to))
   ) {
+    const presentationLink = getPresentationNodes(state).some(
+      (candidate) =>
+        candidate.type === "link" &&
+        candidate.range.from === node.from &&
+        candidate.range.to === node.to,
+    );
+    if (presentationLink) return;
     for (let child = node.firstChild; child; child = child.nextSibling) {
       if (child.name === "LinkMark" || child.name === "URL") {
         model.hiddenRanges.push({ from: child.from, to: child.to });
@@ -888,6 +932,17 @@ export const buildEditorVisualModel = (
       replacement.to <= candidate.to);
     if (!overlapsBlock) model.replacements.push(replacement);
   }
+  addPresentationInlineRanges(
+    model,
+    state,
+    visibleRanges,
+    revealActiveSource,
+  );
+  model.hiddenRanges = model.hiddenRanges.filter(
+    (range, index, ranges) =>
+      ranges.findIndex((candidate) =>
+        candidate.from === range.from && candidate.to === range.to) === index,
+  );
   return model;
 };
 

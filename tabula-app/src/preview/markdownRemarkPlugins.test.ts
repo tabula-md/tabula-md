@@ -11,6 +11,25 @@ import {
 type MarkdownTree = Parameters<typeof transformMarkdownWikiLinks>[0];
 
 describe("Markdown wiki-link remark transform", () => {
+  it("annotates Preview inline nodes with the shared presentation ranges", () => {
+    const markdown = "**bold** and [guide](./guide.md) with $x^2$";
+    const html = renderToStaticMarkup(createElement(
+      ReactMarkdown,
+      { remarkPlugins: MARKDOWN_REMARK_PLUGINS },
+      markdown,
+    ));
+
+    expect(html).toContain(
+      '<strong data-presentation-node="strong" data-source-from="0" data-source-to="8">bold</strong>',
+    );
+    expect(html).toContain(
+      'data-presentation-node="link" data-source-from="13" data-source-to="32" data-presentation-link-kind="internal-document"',
+    );
+    expect(html).toContain(
+      'data-presentation-node="inline-math" data-source-from="38" data-source-to="43"',
+    );
+  });
+
   it("turns links into annotated anchors and embeds into block nodes", () => {
     const markdown = "\\[[Escaped]] and [[Page|Alias]] plus ![[Embed]]";
     const tree: MarkdownTree = {

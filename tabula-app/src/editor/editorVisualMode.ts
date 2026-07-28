@@ -17,6 +17,10 @@ import { HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/lang
 import { tags } from "@lezer/highlight";
 import type { SyntaxNode } from "@lezer/common";
 import {
+  createMarkdownPresentationDocument,
+  type PresentationNode,
+} from "@tabula-md/tabula";
+import {
   buildEditorVisualModel,
   findEditorVisualReplacementInRange,
   isEditorVisualNavigableReplacement,
@@ -87,8 +91,12 @@ const getDirectLinkChildren = (node: SyntaxNode) => {
   return children;
 };
 
-const normalizeLinkReferenceLabel = (label: string) =>
-  label.trim().replace(/^\[/, "").replace(/\]$/, "").trim().toLowerCase();
+const flattenPresentationNodes = (
+  nodes: readonly PresentationNode[],
+): PresentationNode[] => nodes.flatMap((node) => [
+  node,
+  ...flattenPresentationNodes(node.children),
+]);
 
 export const getEditorVisualWorkspaceLinkRanges = (
   state: EditorState,
@@ -96,22 +104,47 @@ export const getEditorVisualWorkspaceLinkRanges = (
 ): EditorVisualWorkspaceLinkRange[] => {
   const { resolveWorkspaceLink, sourceDocumentId } = options;
 
-  const references = new Map<string, string>();
-  syntaxTree(state).iterate({
-    enter(reference) {
-      if (reference.name !== "LinkReference") return;
-      const children = getDirectLinkChildren(reference.node);
-      const label = children.find((child) => child.name === "LinkLabel");
-      const url = children.find((child) => child.name === "URL");
-      if (!label || !url) return;
-      references.set(
-        normalizeLinkReferenceLabel(state.doc.sliceString(label.from, label.to)),
-        state.doc.sliceString(url.from, url.to),
-      );
-    },
-  });
-
   const ranges: EditorVisualWorkspaceLinkRange[] = [];
+  const presentation = createMarkdownPresentationDocument(
+    state.doc.toString(),
+  );
+  for (const node of flattenPresentationNodes(presentation.blocks)) {
+    if (
+      node.type !== "link" ||
+      !node.contentRange ||
+      !node.data?.url
+    ) {
+      continue;
+    }
+    const labelFrom = node.contentRange.from;
+    const labelTo = node.contentRange.to;
+    const overlapsSelection = state.selection.ranges.some((selection) =>
+      !selection.empty && selection.from < labelTo && selection.to > labelFrom);
+    if (overlapsSelection) continue;
+
+    if (node.data.linkKind === "external") {
+      if (classifyMarkdownHref(node.data.url).kind === "external") {
+        ranges.push({ from: labelFrom, status: "external", to: labelTo });
+      }
+      continue;
+    }
+    if (node.data.linkKind === "internal-heading") {
+      ranges.push({ from: labelFrom, status: "heading", to: labelTo });
+      continue;
+    }
+    if (!resolveWorkspaceLink || !sourceDocumentId) continue;
+    const workspaceLink = resolveWorkspaceLink(node.data.url, "markdown", {
+      relation: "link",
+      sourceDocumentId,
+    });
+    if (!workspaceLink) continue;
+    ranges.push({
+      from: labelFrom,
+      status: workspaceLink.status,
+      to: labelTo,
+    });
+  }
+
   syntaxTree(state).iterate({
     enter(reference) {
       if (reference.name !== "Link" || reference.node.parent?.name === "Image") return;
@@ -126,23 +159,11 @@ export const getEditorVisualWorkspaceLinkRanges = (
         state.doc.sliceString(node.from - 1, node.from + 1) === "[[" &&
         state.doc.sliceString(node.to - 1, node.to + 1) === "]]";
 
-      let target: string | undefined;
-      let syntax: "markdown" | "wikilink" = "markdown";
-      if (url) {
-        target = state.doc.sliceString(url.from, url.to);
-      } else if (referenceLabel) {
-        target = references.get(
-          normalizeLinkReferenceLabel(
-            state.doc.sliceString(referenceLabel.from, referenceLabel.to),
-          ),
-        );
-      } else if (isWikiLink) {
-        syntax = "wikilink";
-        target = state.doc
-          .sliceString(node.from + 1, node.to - 1)
-          .split("|", 1)[0]
-          ?.trim();
-      }
+      if (!isWikiLink || url || referenceLabel) return;
+      const target = state.doc
+        .sliceString(node.from + 1, node.to - 1)
+        .split("|", 1)[0]
+        ?.trim();
 
       const labelFrom = marks[0]?.to;
       const labelTo = marks[1]?.from;
@@ -158,25 +179,8 @@ export const getEditorVisualWorkspaceLinkRanges = (
       const overlapsSelection = state.selection.ranges.some((selection) =>
         !selection.empty && selection.from < labelTo && selection.to > labelFrom);
       if (overlapsSelection) return;
-      const normalizedTarget = target.trim();
-      if (classifyMarkdownHref(normalizedTarget).kind === "external") {
-        ranges.push({
-          from: labelFrom,
-          status: "external",
-          to: labelTo,
-        });
-        return;
-      }
-      if (normalizedTarget.startsWith("#")) {
-        ranges.push({
-          from: labelFrom,
-          status: "heading",
-          to: labelTo,
-        });
-        return;
-      }
       if (!resolveWorkspaceLink || !sourceDocumentId) return;
-      const workspaceLink = resolveWorkspaceLink(target, syntax, {
+      const workspaceLink = resolveWorkspaceLink(target, "wikilink", {
         relation: "link",
         sourceDocumentId,
       });

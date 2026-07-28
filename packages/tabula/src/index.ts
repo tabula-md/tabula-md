@@ -251,6 +251,7 @@ export type {
   SourceRange,
 } from "./markdown/presentation";
 export {
+  classifyPresentationLink,
   createMarkdownPresentationDocument,
 } from "./markdown/presentation";
 
