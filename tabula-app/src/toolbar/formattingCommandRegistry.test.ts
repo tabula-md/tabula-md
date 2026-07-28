@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   formattingToolbarCommands,
   getFormattingToolbarCommandsByPlacement,
+  getFormattingToolbarDensity,
   getFormattingToolbarLayout,
 } from "./formattingCommandRegistry";
 
@@ -94,7 +95,7 @@ describe("formatting command registry", () => {
     ]);
   });
 
-  it("keeps inline formatting and the insert menu visible on medium lanes", () => {
+  it("keeps frequent formatting visible and moves less frequent actions into More on medium lanes", () => {
     const layout = getFormattingToolbarLayout("medium");
 
     expect(layout.history.map((command) => command.id)).toEqual(["undo", "redo"]);
@@ -102,9 +103,7 @@ describe("formatting command registry", () => {
       "bold",
       "italic",
       "inline-code",
-      "inline-math",
       "link",
-      "strikethrough",
     ]);
     expect(layout.insert.map((command) => command.id)).toEqual([
       "table",
@@ -120,8 +119,19 @@ describe("formatting command registry", () => {
       "accordion",
       "tabs",
     ]);
-    expect(layout.cleanup.map((command) => command.id)).toEqual(["clear-formatting"]);
-    expect(layout.overflow).toEqual([]);
+    expect(layout.cleanup).toEqual([]);
+    expect(layout.overflow.map((command) => command.id)).toEqual([
+      "inline-math",
+      "strikethrough",
+      "clear-formatting",
+    ]);
+  });
+
+  it("derives density from the formatting row width rather than the viewport", () => {
+    expect(getFormattingToolbarDensity(879)).toBe("medium");
+    expect(getFormattingToolbarDensity(880)).toBe("wide");
+    expect(getFormattingToolbarDensity(559)).toBe("compact");
+    expect(getFormattingToolbarDensity(560)).toBe("medium");
   });
 
   it("keeps dedicated insert controls on wide lanes", () => {
