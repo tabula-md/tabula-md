@@ -120,14 +120,18 @@ export async function run(ctx) {
           const rect = element.getBoundingClientRect();
           return {
             bottom: rect.bottom,
+            clipPath: style.clipPath,
             color: style.color,
             fontSize: Number.parseFloat(style.fontSize),
             fontWeight: Number.parseFloat(style.fontWeight),
+            height: rect.height,
             lineHeight: Number.parseFloat(style.lineHeight),
             marginBottom: Number.parseFloat(style.marginBottom),
             marginTop: Number.parseFloat(style.marginTop),
+            position: style.position,
             text: element.textContent?.replace(/\s+/g, " ").trim() ?? "",
             top: rect.top,
+            width: rect.width,
           };
         };
 
@@ -236,7 +240,14 @@ export async function run(ctx) {
     expectSupportingText(previewTypography.frameHint, previewTypography.paragraph, "Preview Frame hints");
     expectSupportingText(previewTypography.frameCaption, previewTypography.paragraph, "Preview Frame captions");
     expectSupportingText(previewTypography.cardDescription, previewTypography.paragraph, "Preview Card descriptions");
-    expectSupportingText(previewTypography.footnotesHeading, previewTypography.paragraph, "Preview footnote headings");
+    expectPresent(previewTypography.footnotesHeading, "Preview footnote accessibility label");
+    expect(
+      previewTypography.footnotesHeading.position === "absolute" &&
+        previewTypography.footnotesHeading.width <= 1 &&
+        previewTypography.footnotesHeading.height <= 1 &&
+        previewTypography.footnotesHeading.clipPath !== "none",
+      "Preview should keep its generated footnote heading available to assistive technology without displaying it.",
+    );
     expect(
       previewTypography.cardTitle.color === previewTypography.paragraph.color &&
         previewTypography.cardTitle.fontWeight > previewTypography.cardDescription.fontWeight,

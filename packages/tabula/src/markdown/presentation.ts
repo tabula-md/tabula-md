@@ -396,6 +396,18 @@ const parseCalloutBlock = (
   };
 };
 
+const readFootnoteDefinitionBody = (source: string) => {
+  const lines = source.split("\n");
+  const first = (lines.shift() ?? "").replace(
+    /^ {0,3}\[\^[^\]\n]+\]:[ \t]*/,
+    "",
+  );
+  return [
+    first,
+    ...lines.map((line) => line.replace(/^(?: {4}|\t)/, "")),
+  ].join("\n").trimEnd();
+};
+
 const mapBlockNode = (
   node: MarkdownAstNode,
   source: string,
@@ -767,11 +779,18 @@ const collectReferenceIndex = (
   const addFootnoteReference = (identifier: string, range: SourceRange) => {
     const existing = footnotesByIdentifier.get(identifier);
     footnotesByIdentifier.set(identifier, existing
-      ? { ...existing, references: [...existing.references, { range }] }
+      ? {
+          ...existing,
+          references: [
+            ...existing.references,
+            { occurrence: existing.references.length + 1, range },
+          ],
+        }
       : {
           identifier,
           index: footnotesByIdentifier.size + 1,
-          references: [{ range }],
+          references: [{ occurrence: 1, range }],
+          status: "missing",
         });
   };
 
@@ -808,16 +827,33 @@ const collectReferenceIndex = (
           to: from + match[0].length,
         });
       }
-    } else if (node.type === "footnoteDefinition") {
+    }
+  });
+
+  visitAst(tree, (node) => {
+    const range = getNodeRange(node, baseOffset);
+    if (!range) return;
+    if (node.type === "footnoteDefinition") {
       const identifier = normalizeIdentifier(node.identifier ?? node.label ?? "");
       const existing = footnotesByIdentifier.get(identifier);
       footnotesByIdentifier.set(identifier, existing
-        ? { ...existing, definitionRange: range }
+        ? {
+            ...existing,
+            definitionBody: readFootnoteDefinitionBody(
+              sliceRange(source, range, baseOffset),
+            ),
+            definitionRange: range,
+            status: "resolved",
+          }
         : {
+            definitionBody: readFootnoteDefinitionBody(
+              sliceRange(source, range, baseOffset),
+            ),
             definitionRange: range,
             identifier,
             index: footnotesByIdentifier.size + 1,
             references: [],
+            status: "unused",
           });
     }
   });
@@ -892,6 +928,7 @@ export type {
   PresentationBlock,
   PresentationBlockType,
   PresentationFootnote,
+  PresentationFootnoteStatus,
   PresentationInlineType,
   PresentationLinkKind,
   PresentationLinkReference,

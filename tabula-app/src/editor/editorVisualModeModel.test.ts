@@ -7,6 +7,7 @@ import {
   buildEditorVisualModel,
   findEditorVisualReplacementInRange,
   findEditorVisualReplacementOnLine,
+  type EditorVisualReplacement,
 } from "./editorVisualModeModel";
 
 const createState = (
@@ -287,6 +288,52 @@ describe("editor visual mode model", () => {
         index: 2,
         label: "other",
       }),
+    ]);
+  });
+
+  it("uses shared reference order when footnote definitions appear first", () => {
+    const doc = [
+      "[^unused]: Not referenced.",
+      "[^later]: Defined before its reference.",
+      "",
+      "First[^first], later[^later], first again[^first].",
+      "",
+      "[^first]: Referenced twice.",
+    ].join("\n");
+    const replacements = buildEditorVisualModel(
+      createState(doc, doc.indexOf("\n\n[^first]") + 1),
+    ).replacements;
+    const isFootnoteReference = (
+      replacement: EditorVisualReplacement,
+    ): replacement is Extract<
+      EditorVisualReplacement,
+      { kind: "footnote-reference" }
+    > => replacement.kind === "footnote-reference";
+    const isFootnoteDefinition = (
+      replacement: EditorVisualReplacement,
+    ): replacement is Extract<
+      EditorVisualReplacement,
+      { kind: "footnote-definition" }
+    > => replacement.kind === "footnote-definition";
+
+    expect(
+      replacements
+        .filter(isFootnoteReference)
+        .sort((left, right) => left.from - right.from)
+        .map(({ index, label }) => ({ index, label })),
+    ).toEqual([
+      { index: 1, label: "first" },
+      { index: 2, label: "later" },
+      { index: 1, label: "first" },
+    ]);
+    expect(
+      replacements
+        .filter(isFootnoteDefinition)
+        .map(({ index, label }) => ({ index, label })),
+    ).toEqual([
+      { index: 1, label: "first" },
+      { index: 2, label: "later" },
+      { index: 3, label: "unused" },
     ]);
   });
 

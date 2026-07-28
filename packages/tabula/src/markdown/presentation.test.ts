@@ -138,15 +138,60 @@ describe("Markdown presentation document", () => {
     expect(references.footnotes[0]).toMatchObject({
       identifier: "note",
       index: 1,
+      references: [
+        { occurrence: 1, range: expect.any(Object) },
+        { occurrence: 2, range: expect.any(Object) },
+      ],
+      status: "resolved",
     });
     expect(references.footnotes[0].references).toHaveLength(2);
     expect(references.footnotes[0].definitionRange).toBeDefined();
     expect(references.footnotes[1]).toMatchObject({
       identifier: "missing",
       index: 2,
-      references: [{ range: expect.any(Object) }],
+      references: [
+        { occurrence: 1, range: expect.any(Object) },
+      ],
+      status: "missing",
     });
     expect(references.footnotes[1].definitionRange).toBeUndefined();
+  });
+
+  it("numbers footnotes by first reference and marks unused definitions", () => {
+    const source = [
+      "[^unused]: Not referenced.",
+      "[^later]: Defined before its reference.",
+      "",
+      "First[^first], later[^later], first again[^first].",
+      "",
+      "[^first]: Referenced twice.",
+    ].join("\n");
+    const { footnotes } =
+      createMarkdownPresentationDocument(source).references;
+
+    expect(footnotes).toMatchObject([
+      {
+        definitionBody: "Referenced twice.",
+        identifier: "first",
+        index: 1,
+        references: [{ occurrence: 1 }, { occurrence: 2 }],
+        status: "resolved",
+      },
+      {
+        definitionBody: "Defined before its reference.",
+        identifier: "later",
+        index: 2,
+        references: [{ occurrence: 1 }],
+        status: "resolved",
+      },
+      {
+        definitionBody: "Not referenced.",
+        identifier: "unused",
+        index: 3,
+        references: [],
+        status: "unused",
+      },
+    ]);
   });
 
   it("keeps primary block data and source ranges in one shared model", () => {

@@ -174,6 +174,38 @@ const createFootnoteCollectorPlugin = () => (tree: HastNode) => {
   );
 };
 
+const createFootnotePresentationPlugin = () => (tree: HastNode) => {
+  const walk = (node: HastNode) => {
+    const id = node.properties?.id;
+    if (
+      typeof id === "string" &&
+      id.startsWith("user-content-user-content-")
+    ) {
+      node.properties = {
+        ...node.properties,
+        id: id.slice("user-content-".length),
+      };
+    }
+    if (isFootnoteSectionNode(node)) {
+      const heading = node.children?.find((child) =>
+        isHastElement(child, "h2"));
+      if (heading) {
+        heading.properties = {
+          ...heading.properties,
+          className: [
+            ...(Array.isArray(heading.properties?.className)
+              ? heading.properties.className
+              : []),
+            "preview-footnote-label",
+          ],
+        };
+      }
+    }
+    node.children?.forEach(walk);
+  };
+  walk(tree);
+};
+
 const createPreviewSourceLinePlugin = (lineOffset = 0) => () => {
   const walk = (node: HastNode) => {
     if (node.type === "element" && typeof node.tagName === "string" && previewSourceBlockTags.has(node.tagName)) {
@@ -417,6 +449,7 @@ export const createPreviewRehypePlugins = (
   rehypeSlug,
   ...(options.idPrefix ? [createPreviewIdNamespacePlugin(options.idPrefix)] : []),
   createPreviewAlertPlugin,
+  createFootnotePresentationPlugin,
   ...(options.includeSourceLineMetadata === false
     ? []
     : [createPreviewSourceLinePlugin(lineOffset)]),

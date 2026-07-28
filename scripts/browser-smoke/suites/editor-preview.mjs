@@ -2388,6 +2388,27 @@ Status <Badge type="success">Ready</Badge>
     expect((await page.locator(".preview-math-block .katex-display").count()) >= 1, "Preview should render display math with KaTeX.");
     expect((await page.locator(".preview-math-block .katex-display").count()) >= 4, "Preview should render math, LaTeX, TeX, and KaTeX fences through KaTeX.");
     expect((await page.locator("section[data-footnotes]").count()) === 1, "Preview should render footnotes.");
+    await page.locator("[data-footnote-ref]").first().click();
+    await page.waitForSelector("section[data-footnotes] .preview-footnote-target");
+    const footnoteTargetState = await page.evaluate(() => {
+      const target = document.querySelector(
+        "section[data-footnotes] .preview-footnote-target",
+      );
+      if (!(target instanceof HTMLElement)) return null;
+      return {
+        animationName: window.getComputedStyle(target).animationName,
+        text: target.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      };
+    });
+    expect(
+      footnoteTargetState?.text.includes("Footnote content.") &&
+        footnoteTargetState.animationName === "preview-footnote-target",
+      `Preview footnote references should target and highlight their shared definition. state=${JSON.stringify(footnoteTargetState)}`,
+    );
+    await page.locator(
+      "section[data-footnotes] .preview-footnote-target [data-footnote-backref]",
+    ).first().click();
+    await page.waitForSelector("[data-footnote-ref].preview-footnote-target");
     expect((await page.locator("pre code.hljs.language-js").count()) === 1, "Preview should syntax highlight fenced code blocks.");
     expect((await page.locator("pre code .hljs-keyword").count()) >= 1, "Preview code highlighting should include token spans.");
     expect((await page.locator(".preview-table-wrap table").count()) === 1, "Preview should render Markdown tables.");
