@@ -375,6 +375,7 @@ export function DocumentSearchBar({
               aria-invalid={hasSearchError}
               data-empty-result={hasNoSearchResults ? "true" : undefined}
               title={searchError ?? undefined}
+              data-tooltip={searchError ?? undefined}
               onChange={(event) => onSearchQueryChange(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key !== "Enter") {
@@ -462,7 +463,12 @@ export function DocumentSearchBar({
             >
               <ChevronRight size={14} />
             </button>
-            <span className="document-search-count">
+            <span
+              className="document-search-count"
+              role="status"
+              aria-live="polite"
+              aria-label={searchError ?? undefined}
+            >
               {hasSearchQuery && hasMatches && activeSearchMatchIndex >= 0
                 ? `${activeSearchMatchIndex + 1}/${searchMatchCount}${searchMatchesTruncated ? "+" : ""}`
                 : `0/${hasSearchQuery && !hasSearchError ? searchMatchCount : 0}${searchMatchesTruncated ? "+" : ""}`}

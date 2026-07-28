@@ -51,8 +51,13 @@ export function StatusBar({
         })`
       : cursorPositionLabel;
   const formatCount = (count: number) => count.toLocaleString(language);
+  const documentMetricsLabel = [
+    copy.statistics,
+    `${formatCount(wordCount)} ${copy.words}`,
+    `${formatCount(characterCount)} ${copy.characters}`,
+    `~${formatCount(approximateTokenCount)} ${copy.tokens}`,
+  ].join(": ");
   const showCursorPosition = activeViewMode !== "preview" || selectedCharacterCount > 0;
-  const [showLocalSaveLabel, setShowLocalSaveLabel] = useState(false);
   const [showDocumentMetrics, setShowDocumentMetrics] = useState(false);
   const documentMetricsCloseTimerRef = useRef<number | null>(null);
 
@@ -74,21 +79,10 @@ export function StatusBar({
     }, 100);
   };
 
-  useEffect(() => {
-    if (isLive || saveRevision === 0) {
-      setShowLocalSaveLabel(false);
-      return;
-    }
-
-    setShowLocalSaveLabel(true);
-    const timer = window.setTimeout(() => setShowLocalSaveLabel(false), 1_500);
-    return () => window.clearTimeout(timer);
-  }, [isLive, saveRevision]);
-
   useEffect(() => () => clearDocumentMetricsCloseTimer(), []);
 
   const showSaveState = isLive ? saveState.visible : saveRevision > 0;
-  const showSaveLabel = isLive || showLocalSaveLabel;
+  const showSaveLabel = saveState.tone === "attention";
 
   return (
     <footer
@@ -99,7 +93,7 @@ export function StatusBar({
         {showSaveState && (
           <span
             className={`status-save-state ${
-              saveState.tone === "attention" ? "attention" : showSaveLabel ? "" : "quiet"
+              saveState.tone === "attention" ? "attention" : "quiet"
             }`}
             role="status"
             aria-label={saveState.label}
@@ -118,7 +112,8 @@ export function StatusBar({
             <button
               className="status-document-metrics-trigger"
               type="button"
-              aria-label={copy.statistics}
+              aria-label={documentMetricsLabel}
+              data-tooltip={documentMetricsLabel}
               aria-expanded={showDocumentMetrics}
               aria-haspopup="dialog"
               onBlur={closeDocumentMetricsSoon}
