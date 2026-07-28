@@ -10,6 +10,11 @@ import {
   type PresentationNode,
 } from "@tabula-md/tabula";
 
+export type EditorVisualSourceMap = {
+  contentRange?: EditorVisualBlockRange;
+  range: EditorVisualBlockRange;
+};
+
 export type EditorVisualHiddenRange = {
   from: number;
   to: number;
@@ -20,41 +25,42 @@ export type EditorVisualLine = {
   from: number;
 };
 
-export type EditorVisualReplacement =
-  | { from: number; to: number; kind: "bullet"; label: string }
-  | { from: number; to: number; kind: "task"; checked: boolean }
-  | { from: number; to: number; kind: "horizontal-rule" }
-  | { from: number; to: number; kind: "image"; alt: string; source: string; block: boolean }
-  | { from: number; to: number; kind: "footnote-reference"; index: number; label: string }
+type EditorVisualReplacementPayload =
+  | { kind: "bullet"; label: string }
+  | { kind: "task"; checked: boolean }
+  | { kind: "horizontal-rule" }
+  | { kind: "image"; alt: string; source: string; block: boolean }
+  | { kind: "footnote-reference"; index: number; label: string }
   | {
-      from: number;
-      to: number;
       kind: "frontmatter";
       attributes: Array<{ key: string; value: string }>;
     }
   | {
-      from: number;
-      to: number;
       kind: "footnote-definition";
       body: string;
       index: number;
       label: string;
     }
-  | { from: number; to: number; kind: "inline-math"; expression: string }
-  | { from: number; to: number; kind: "math"; expression: string }
-  | { from: number; to: number; kind: "code"; code: string; language: string }
-  | { from: number; to: number; kind: "diagram"; source: string }
+  | { kind: "inline-math"; expression: string }
+  | { kind: "math"; expression: string }
+  | { kind: "code"; code: string; language: string }
+  | { kind: "diagram"; source: string }
   | {
-      from: number;
-      to: number;
       kind: "table";
       alignments: Array<"left" | "center" | "right" | null>;
+      cellRanges: EditorVisualBlockRange[][];
       header: string[];
       rows: string[][];
     }
-  | { from: number; to: number; kind: "callout"; calloutType: string; title: string; body: string }
-  | { from: number; to: number; kind: "accordion"; title: string; body: string }
-  | { from: number; to: number; kind: "tabs"; tabs: Array<{ title: string; body: string }> };
+  | { kind: "callout"; calloutType: string; title: string; body: string }
+  | { kind: "accordion"; title: string; body: string }
+  | { kind: "tabs"; tabs: Array<{ title: string; body: string }> };
+
+export type EditorVisualReplacement = EditorVisualReplacementPayload & {
+  from: number;
+  sourceMap?: EditorVisualSourceMap;
+  to: number;
+};
 
 export type EditorVisualModel = {
   hiddenRanges: EditorVisualHiddenRange[];
@@ -147,6 +153,23 @@ const isPresentationBlock = (
   node: PresentationNode,
 ): node is PresentationBlock => "interaction" in node;
 
+const getPresentationSourceMap = (
+  node: PresentationNode,
+): EditorVisualSourceMap => ({
+  ...(node.contentRange
+    ? {
+        contentRange: {
+          from: node.contentRange.from,
+          to: node.contentRange.to,
+        },
+      }
+    : {}),
+  range: {
+    from: node.range.from,
+    to: node.range.to,
+  },
+});
+
 const getTableCellSource = (
   state: EditorState,
   cell: PresentationBlock,
@@ -159,19 +182,26 @@ const getTableReplacement = (
   state: EditorState,
   block: PresentationBlock,
 ): EditorVisualReplacement => {
-  const rows = block.children
+  const cells = block.children
     .filter((child): child is PresentationBlock =>
       isPresentationBlock(child) && child.type === "table-row")
     .map((row) => row.children
       .filter((child): child is PresentationBlock =>
-        isPresentationBlock(child) && child.type === "table-cell")
-      .map((cell) => getTableCellSource(state, cell)));
+        isPresentationBlock(child) && child.type === "table-cell"));
+  const rows = cells.map((row) =>
+    row.map((cell) => getTableCellSource(state, cell)));
   return {
     alignments: [...(block.data?.alignments ?? [])],
+    cellRanges: cells.map((row) =>
+      row.map((cell) => ({
+        from: cell.contentRange?.from ?? cell.range.from,
+        to: cell.contentRange?.to ?? cell.range.to,
+      }))),
     from: block.range.from,
     header: rows[0] ?? [],
     kind: "table",
     rows: rows.slice(1),
+    sourceMap: getPresentationSourceMap(block),
     to: block.range.to,
   };
 };
@@ -196,6 +226,7 @@ const getVisualBlockReplacement = (
           from: node.range.from,
           kind: "image",
           source: node.data.url,
+          sourceMap: getPresentationSourceMap(node),
           to: node.range.to,
         }
       : null;
@@ -205,6 +236,7 @@ const getVisualBlockReplacement = (
     return {
       from: node.range.from,
       kind: "horizontal-rule",
+      sourceMap: getPresentationSourceMap(node),
       to: node.range.to,
     };
   }
@@ -214,6 +246,7 @@ const getVisualBlockReplacement = (
       from: node.range.from,
       kind: "code",
       language: node.data?.language ?? "",
+      sourceMap: getPresentationSourceMap(node),
       to: node.range.to,
     };
   }
@@ -222,6 +255,7 @@ const getVisualBlockReplacement = (
       from: node.range.from,
       kind: "diagram",
       source: node.data?.text ?? "",
+      sourceMap: getPresentationSourceMap(node),
       to: node.range.to,
     };
   }
@@ -230,6 +264,7 @@ const getVisualBlockReplacement = (
       expression: node.data?.text ?? "",
       from: node.range.from,
       kind: "math",
+      sourceMap: getPresentationSourceMap(node),
       to: node.range.to,
     };
   }
@@ -240,6 +275,7 @@ const getVisualBlockReplacement = (
       calloutType: type,
       from: node.range.from,
       kind: "callout",
+      sourceMap: getPresentationSourceMap(node),
       title: node.data?.attributes?.title || type,
       to: node.range.to,
     };
@@ -249,6 +285,7 @@ const getVisualBlockReplacement = (
       body: getBlockBody(state, node),
       from: node.range.from,
       kind: "accordion",
+      sourceMap: getPresentationSourceMap(node),
       title: node.data?.attributes?.title || "Details",
       to: node.range.to,
     };
@@ -265,6 +302,7 @@ const getVisualBlockReplacement = (
       ? {
           from: node.range.from,
           kind: "tabs",
+          sourceMap: getPresentationSourceMap(node),
           tabs,
           to: node.range.to,
         }
@@ -342,6 +380,13 @@ const getFootnotes = (state: EditorState) => {
         index: footnote.index,
         kind: "footnote-reference",
         label: footnote.identifier,
+        sourceMap: {
+          contentRange: {
+            from: Math.min(reference.range.to, reference.range.from + 2),
+            to: Math.max(reference.range.from, reference.range.to - 1),
+          },
+          range: reference.range,
+        },
         to: reference.range.to,
       });
     }
@@ -352,6 +397,9 @@ const getFootnotes = (state: EditorState) => {
         index: footnote.index,
         kind: "footnote-definition",
         label: footnote.identifier,
+        sourceMap: {
+          range: footnote.definitionRange,
+        },
         to: footnote.definitionRange.to,
       });
     }
@@ -366,6 +414,7 @@ const getInlineMath = (state: EditorState) => {
       expression: node.data?.text ?? "",
       from: node.range.from,
       kind: "inline-math",
+      sourceMap: getPresentationSourceMap(node),
       to: node.range.to,
     }));
 };

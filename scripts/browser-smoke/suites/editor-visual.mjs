@@ -730,12 +730,31 @@ export async function run(ctx) {
 
     const codeBlock = page.getByRole("group", { name: "Edit code block Markdown" });
     await codeBlock.waitFor();
-    const codeRect = await codeBlock.boundingBox();
-    expect(Boolean(codeRect), "Visual code block should expose pointer geometry.");
-    const codeClickPoint = {
-      x: codeRect.x + Math.min(150, Math.max(32, codeRect.width * 0.22)),
-      y: codeRect.y + codeRect.height * 0.82,
-    };
+    const codeClickPoint = await codeBlock.evaluate((block) => {
+      const code = block.querySelector("code");
+      if (!code) return null;
+      const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+      let renderedOffset = 0;
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const index = node.textContent?.indexOf("gamma") ?? -1;
+        if (index >= 0) {
+          const range = document.createRange();
+          range.setStart(node, index + 2);
+          range.setEnd(node, index + 3);
+          const rect = range.getBoundingClientRect();
+          return {
+            column: "const gamma = 3;".indexOf("gamma") + 3,
+            line: 7,
+            renderedOffset: renderedOffset + index + 2,
+            x: (rect.left + rect.right) / 2,
+            y: (rect.top + rect.bottom) / 2,
+          };
+        }
+        renderedOffset += node.textContent?.length ?? 0;
+      }
+      return null;
+    });
+    expect(Boolean(codeClickPoint), "Visual code block should expose exact text geometry.");
     await page.mouse.move(codeClickPoint.x, codeClickPoint.y);
     await page.mouse.down();
     await waitForRenderFrame(page);
@@ -753,12 +772,10 @@ export async function run(ctx) {
     );
     const pointerPosition = await readCursorPosition(page);
     expect(
-      pointerPosition.line === 7,
-      `Clicking the lower code row should edit that source row, not the opening fence. position=${pointerPosition.line}:${pointerPosition.column}`,
-    );
-    expect(
-      pointerPosition.column > 1,
-      `Clicking within rendered code should preserve a horizontal source position. position=${pointerPosition.line}:${pointerPosition.column}`,
+      pointerPosition.line === codeClickPoint.line &&
+        pointerPosition.column >= codeClickPoint.column &&
+        pointerPosition.column <= codeClickPoint.column + 1,
+      `Clicking rendered code text should resolve to the exact underlying Markdown character. expected=${codeClickPoint.line}:${codeClickPoint.column}-${codeClickPoint.column + 1} renderedOffset=${codeClickPoint.renderedOffset} actual=${pointerPosition.line}:${pointerPosition.column}`,
     );
     expect(
       activatingCursorOpacity === "0",
