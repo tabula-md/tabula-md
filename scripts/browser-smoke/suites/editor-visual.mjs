@@ -397,6 +397,37 @@ export async function run(ctx) {
       "Dragging from a visual block into text should create an editor selection.",
     );
 
+    await selectDocumentViewMode(page, "Preview");
+    await waitForEditorReady(page, { mode: "preview" });
+    await enterVisualMode(page, waitForEditorReady);
+    await focusMarkdownEditor(page);
+    await page.keyboard.press("ControlOrMeta+Home");
+    const shiftClickPoint = await page
+      .getByRole("group", { name: "Edit image Markdown" })
+      .boundingBox();
+    expect(Boolean(shiftClickPoint), "Rendered image should expose Shift+Click geometry.");
+    await page.keyboard.down("Shift");
+    await page.mouse.click(
+      shiftClickPoint.x + shiftClickPoint.width / 2,
+      shiftClickPoint.y + shiftClickPoint.height / 2,
+    );
+    await page.keyboard.up("Shift");
+    await waitForRenderFrame(page);
+    expect(
+      (await page.locator(".cm-selectionLayer .cm-selectionBackground").count()) > 0 &&
+        (await page.locator(".cm-content").textContent())?.includes("![Sample]") &&
+        (await page.getByRole("group", { name: "Edit image Markdown" }).count()) === 0,
+      "Shift+Clicking an atomic block should extend one canonical source selection through it.",
+    );
+
+    await page.keyboard.press("ControlOrMeta+Home");
+    await page.keyboard.press("Shift+ArrowDown");
+    await waitForRenderFrame(page);
+    expect(
+      (await page.locator(".cm-selectionLayer .cm-selectionBackground").count()) > 0,
+      "Shift+Arrow should keep selection in CodeMirror's canonical source range.",
+    );
+
     for (let index = 0; index < 12; index += 1) {
       await selectDocumentViewMode(page, "Preview");
       await waitForEditorReady(page, { mode: "preview" });
@@ -483,6 +514,13 @@ export async function run(ctx) {
     await focusMarkdownEditor(page);
     await page.keyboard.press("ControlOrMeta+A");
     await waitForRenderFrame(page);
+    await page.context().grantPermissions(
+      ["clipboard-read", "clipboard-write"],
+      { origin: new URL(page.url()).origin },
+    );
+    await page.keyboard.press("ControlOrMeta+C");
+    const copiedMarkdown = await page.evaluate(() =>
+      navigator.clipboard.readText());
     const selectAllState = await page.evaluate(() => {
       const lines = Array.from(document.querySelectorAll(".cm-line"));
       const codeLines = lines.filter((line) =>
@@ -536,6 +574,10 @@ export async function run(ctx) {
           : null,
       };
     });
+    expect(
+      copiedMarkdown === CODE_STYLE_FIXTURE,
+      `Select all should copy the canonical Markdown source. copied=${JSON.stringify(copiedMarkdown)}`,
+    );
     expect(
       selectAllState.codeLineCount === 9 &&
         selectAllState.selectedCodeLineCount === 9 &&
@@ -718,8 +760,8 @@ export async function run(ctx) {
     await page.mouse.move(inlineClickPoint.x, inlineClickPoint.y);
     await page.mouse.down();
     await waitForRenderFrame(page);
-    const genericPointerCursorOpacity = await page.locator(".cm-cursor").evaluate(
-      (cursor) => getComputedStyle(cursor).opacity,
+    const genericPointerCursorHeight = await page.locator(".cm-cursor-primary").evaluate(
+      (cursor) => cursor.getBoundingClientRect().height,
     );
     await page.mouse.up();
     await waitForRenderFrame(page);
@@ -732,8 +774,8 @@ export async function run(ctx) {
       `Clicking formatted Visual text should resolve to the underlying Markdown character. expected=2:${targetColumn}-${targetColumn + 1} actual=${inlinePosition.line}:${inlinePosition.column}`,
     );
     expect(
-      genericPointerCursorOpacity === "0",
-      `Any Visual pointer selection should hide temporary block-height cursor geometry. opacity=${genericPointerCursorOpacity}`,
+      genericPointerCursorHeight <= 48,
+      `Visual pointer selection should never create block-height cursor geometry. height=${genericPointerCursorHeight}`,
     );
 
     const codeBlock = page.getByRole("group", { name: "Edit code block Markdown" });
@@ -767,14 +809,12 @@ export async function run(ctx) {
     await page.mouse.down();
     await waitForRenderFrame(page);
     const primaryCursor = page.locator(".cm-cursor-primary");
-    const activatingCursorOpacity = await primaryCursor.evaluate(
-      (cursor) => getComputedStyle(cursor).opacity,
+    const pointerDownCursorHeight = await primaryCursor.evaluate(
+      (cursor) => cursor.getBoundingClientRect().height,
     );
     await page.mouse.up();
-    await page.waitForFunction(() => {
-      const cursor = document.querySelector(".cm-cursor-primary");
-      return cursor instanceof HTMLElement && getComputedStyle(cursor).opacity !== "0";
-    });
+    await page.waitForFunction(() =>
+      document.querySelector(".status-cursor-position")?.textContent?.trim().startsWith("7:"));
     const settledCursorHeight = await primaryCursor.evaluate(
       (cursor) => cursor.getBoundingClientRect().height,
     );
@@ -786,8 +826,8 @@ export async function run(ctx) {
       `Clicking rendered code text should resolve to the exact underlying Markdown character. expected=${codeClickPoint.line}:${codeClickPoint.column}-${codeClickPoint.column + 1} renderedOffset=${codeClickPoint.renderedOffset} actual=${pointerPosition.line}:${pointerPosition.column}`,
     );
     expect(
-      activatingCursorOpacity === "0",
-      `Pointer entry should hide CodeMirror's temporary block-height cursor. opacity=${activatingCursorOpacity}`,
+      pointerDownCursorHeight <= 48,
+      `Pointer entry should preserve a line-height cursor before source reveal. height=${pointerDownCursorHeight}`,
     );
     expect(
       settledCursorHeight <= 48,

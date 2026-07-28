@@ -3,9 +3,11 @@ import {
   type DecorationSet,
   EditorView,
   keymap,
+  ViewPlugin,
   WidgetType,
 } from "@codemirror/view";
 import {
+  EditorSelection,
   Prec,
   StateEffect,
   StateField,
@@ -31,6 +33,7 @@ import {
   getEditorVisualPointerPosition,
   getEditorVisualSourceMap,
   readEditorVisualPointerTextPoint,
+  readEditorVisualBlockRange,
 } from "./editorVisualPositionMapping";
 import {
   type EditorVisualBlockStop,
@@ -274,45 +277,11 @@ type EditorVisualInteraction = {
 };
 
 const setVisualInteraction = StateEffect.define<Partial<EditorVisualInteraction>>();
-const VISUAL_POINTER_ACTIVATING_CLASS = "cm-visual-pointer-activating";
 const visualWidgetResizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
 
 const isInteractiveVisualTarget = (target: EventTarget | null) =>
   target instanceof Element &&
   Boolean(target.closest("button, input, a, summary"));
-
-const concealAtomicPointerCursor = (
-  view: EditorView,
-  event: PointerEvent,
-) => {
-  if (event.button !== 0 || isInteractiveVisualTarget(event.target)) return;
-  const pointerSurface =
-    view.dom.closest<HTMLElement>(".markdown-editor") ?? view.dom;
-  pointerSurface.classList.add(VISUAL_POINTER_ACTIVATING_CLASS);
-  const clear = () => {
-    window.removeEventListener("pointerup", clear, true);
-    window.removeEventListener("pointercancel", clear, true);
-    let remainingFrames = 6;
-    const revealWhenStable = () => {
-      requestAnimationFrame(() => {
-        const cursor = view.dom.querySelector(".cm-cursor-primary");
-        const cursorHeight = cursor?.getBoundingClientRect().height ?? 0;
-        if (
-          cursorHeight > EDITOR_VISUAL_CURSOR_SAFE_MARGIN &&
-          remainingFrames > 0
-        ) {
-          remainingFrames -= 1;
-          revealWhenStable();
-          return;
-        }
-        pointerSurface.classList.remove(VISUAL_POINTER_ACTIVATING_CLASS);
-      });
-    };
-    revealWhenStable();
-  };
-  window.addEventListener("pointerup", clear, true);
-  window.addEventListener("pointercancel", clear, true);
-};
 
 const editSource = (
   view: EditorView,
@@ -387,7 +356,7 @@ const moveByVisualLine = (
   return true;
 };
 
-const editSourceAtPointer = (
+const getSourcePositionAtPointer = (
   view: EditorView,
   block: EditorVisualBlockRange,
   container: HTMLElement,
@@ -413,8 +382,193 @@ const editSourceAtPointer = (
     },
     readEditorVisualPointerTextPoint(container, clientX, clientY),
   );
-  editSource(view, block, anchor);
+  return anchor;
 };
+
+type EditorVisualPointerSession = {
+  abortController: AbortController;
+  anchor: number;
+  block: EditorVisualBlockRange;
+  dragging: boolean;
+  pointerId: number;
+  startX: number;
+  startY: number;
+};
+
+const visualPointerSessions = new WeakMap<
+  EditorView,
+  EditorVisualPointerSession
+>();
+const VISUAL_POINTER_DRAG_THRESHOLD = 4;
+
+const getVisualPointerContainer = (target: EventTarget | null) =>
+  target instanceof Element
+    ? target.closest<HTMLElement>("[data-visual-from][data-visual-to]")
+    : null;
+
+const getSourcePositionAtCoords = (
+  view: EditorView,
+  clientX: number,
+  clientY: number,
+) => {
+  const target = document.elementFromPoint(clientX, clientY);
+  const container = getVisualPointerContainer(target);
+  const block = readEditorVisualBlockRange(container);
+  if (container && block) {
+    return getSourcePositionAtPointer(
+      view,
+      block,
+      container,
+      clientX,
+      clientY,
+    );
+  }
+  const mapped = view.posAtCoords({ x: clientX, y: clientY }, false);
+  if (mapped !== null) return mapped;
+  const editorRect = view.dom.getBoundingClientRect();
+  return clientY < editorRect.top ? 0 : view.state.doc.length;
+};
+
+const dispatchEditorVisualSourceSelection = (
+  view: EditorView,
+  anchor: number,
+  head: number,
+) => {
+  dispatchEditorVisualCursor(
+    view,
+    EditorSelection.single(anchor, head),
+    [
+      revealEditorVisualSelection.of(null),
+      setVisualInteraction.of({ editing: null, stopped: null }),
+    ],
+  );
+};
+
+const clearEditorVisualPointerSession = (
+  view: EditorView,
+) => {
+  const session = visualPointerSessions.get(view);
+  if (!session) return;
+  visualPointerSessions.delete(view);
+  session.abortController.abort();
+  if (view.dom.hasPointerCapture?.(session.pointerId)) {
+    view.dom.releasePointerCapture(session.pointerId);
+  }
+};
+
+const startEditorVisualPointerSelection = (
+  view: EditorView,
+  event: PointerEvent,
+  block: EditorVisualBlockRange,
+  container: HTMLElement,
+) => {
+  clearEditorVisualPointerSession(view);
+  const anchor = getSourcePositionAtPointer(
+    view,
+    block,
+    container,
+    event.clientX,
+    event.clientY,
+  );
+  event.preventDefault();
+  event.stopPropagation();
+  view.focus();
+
+  if (event.shiftKey) {
+    dispatchEditorVisualSourceSelection(
+      view,
+      view.state.selection.main.anchor,
+      anchor,
+    );
+    return;
+  }
+
+  const abortController = new AbortController();
+  const session: EditorVisualPointerSession = {
+    abortController,
+    anchor,
+    block,
+    dragging: false,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+  };
+  visualPointerSessions.set(view, session);
+  view.dom.setPointerCapture?.(event.pointerId);
+
+  const updateSelection = (pointerEvent: PointerEvent) => {
+    const active = visualPointerSessions.get(view);
+    if (
+      !active ||
+      !pointerEvent.isPrimary ||
+      pointerEvent.pointerId !== active.pointerId
+    ) {
+      return;
+    }
+    if (!active.dragging) {
+      const distance = Math.hypot(
+        pointerEvent.clientX - active.startX,
+        pointerEvent.clientY - active.startY,
+      );
+      if (distance < VISUAL_POINTER_DRAG_THRESHOLD) return;
+      active.dragging = true;
+    }
+    pointerEvent.preventDefault();
+    dispatchEditorVisualSourceSelection(
+      view,
+      active.anchor,
+      getSourcePositionAtCoords(
+        view,
+        pointerEvent.clientX,
+        pointerEvent.clientY,
+      ),
+    );
+  };
+  const onPointerMove = (pointerEvent: PointerEvent) => {
+    updateSelection(pointerEvent);
+  };
+  const onPointerUp = (pointerEvent: PointerEvent) => {
+    const active = visualPointerSessions.get(view);
+    if (!active || pointerEvent.pointerId !== active.pointerId) return;
+    if (active.dragging) {
+      updateSelection(pointerEvent);
+    }
+    const editBlock = active.dragging ? null : active.block;
+    const editAnchor = active.anchor;
+    clearEditorVisualPointerSession(view);
+    if (editBlock) editSource(view, editBlock, editAnchor);
+  };
+  const onPointerCancel = (pointerEvent: PointerEvent) => {
+    const active = visualPointerSessions.get(view);
+    if (!active || pointerEvent.pointerId !== active.pointerId) return;
+    clearEditorVisualPointerSession(view);
+  };
+  const listenerOptions = {
+    capture: true,
+    signal: abortController.signal,
+  };
+  window.addEventListener("pointermove", onPointerMove, listenerOptions);
+  window.addEventListener("pointerup", onPointerUp, listenerOptions);
+  window.addEventListener("pointercancel", onPointerCancel, listenerOptions);
+  window.addEventListener(
+    "blur",
+    () => clearEditorVisualPointerSession(view),
+    { signal: abortController.signal },
+  );
+  view.dom.addEventListener(
+    "lostpointercapture",
+    () => clearEditorVisualPointerSession(view),
+    { signal: abortController.signal },
+  );
+};
+
+const editorVisualPointerSessionPlugin = ViewPlugin.fromClass(class {
+  constructor(readonly view: EditorView) {}
+
+  destroy() {
+    clearEditorVisualPointerSession(this.view);
+  }
+});
 
 const moveIntoVisualBlockHorizontally = (
   view: EditorView,
@@ -461,25 +615,7 @@ abstract class RevealableBlockWidget extends WidgetType {
     container.dataset.visualContentTo = String(this.sourceTo);
     container.setAttribute("role", "group");
     container.setAttribute("aria-label", this.sourceLabel);
-    const block = { from: this.sourceFrom, to: this.sourceTo };
     container.addEventListener("dragstart", (event) => event.preventDefault());
-    container.addEventListener("click", (event) => {
-      if (
-        event.defaultPrevented ||
-        isInteractiveVisualTarget(event.target)
-      ) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      editSourceAtPointer(
-        view,
-        block,
-        container,
-        event.clientX,
-        event.clientY,
-      );
-    });
     if (typeof ResizeObserver !== "undefined") {
       const observer = new ResizeObserver(() => {
         if (container.isConnected) requestEditorVisualGeometryMeasure(view);
@@ -636,22 +772,10 @@ class InlineMathWidget extends WidgetType {
     const container = document.createElement("span");
     container.className = "cm-visual-inline-math";
     container.textContent = this.expression;
+    container.dataset.visualFrom = String(this.sourceFrom);
+    container.dataset.visualTo = String(this.sourceTo);
     container.setAttribute("role", "group");
     container.setAttribute("aria-label", this.sourceLabel);
-    container.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const replacement = findEditorVisualReplacementInRange(
-        view.state,
-        this.sourceFrom,
-        this.sourceTo,
-      ) ?? { from: this.sourceFrom, to: this.sourceTo };
-      editSource(
-        view,
-        { from: this.sourceFrom, to: this.sourceTo },
-        getEditorVisualBlockEntryPosition(view.state, replacement, true),
-      );
-    });
     void getKatexRuntime()
       .then((katex) => {
         if (!container.isConnected) return;
@@ -688,26 +812,14 @@ class FootnoteReferenceWidget extends WidgetType {
       this.label === other.label;
   }
 
-  toDOM(view: EditorView) {
+  toDOM() {
     const reference = document.createElement("sup");
     reference.className = "cm-visual-footnote-reference";
     reference.textContent = String(this.index);
+    reference.dataset.visualFrom = String(this.sourceFrom);
+    reference.dataset.visualTo = String(this.sourceTo);
     reference.setAttribute("role", "group");
     reference.setAttribute("aria-label", `${this.sourceLabel}: ${this.label}`);
-    reference.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const replacement = findEditorVisualReplacementInRange(
-        view.state,
-        this.sourceFrom,
-        this.sourceTo,
-      ) ?? { from: this.sourceFrom, to: this.sourceTo };
-      editSource(
-        view,
-        { from: this.sourceFrom, to: this.sourceTo },
-        getEditorVisualBlockEntryPosition(view.state, replacement, true),
-      );
-    });
     return reference;
   }
 }
@@ -1562,10 +1674,20 @@ export const createEditorVisualModeExtension = (
         ),
     },
   ]));
-  const pointerCursorGuard = EditorView.domEventHandlers({
+  const pointerSelectionHandler = EditorView.domEventHandlers({
     pointerdown: (event, view) => {
-      concealAtomicPointerCursor(view, event);
-      return false;
+      if (
+        event.button !== 0 ||
+        !event.isPrimary ||
+        isInteractiveVisualTarget(event.target)
+      ) {
+        return false;
+      }
+      const container = getVisualPointerContainer(event.target);
+      const block = readEditorVisualBlockRange(container);
+      if (!container || !block) return false;
+      startEditorVisualPointerSelection(view, event, block, container);
+      return true;
     },
   });
   return [
@@ -1575,7 +1697,8 @@ export const createEditorVisualModeExtension = (
       y: EDITOR_VISUAL_CURSOR_SAFE_MARGIN,
     }),
     syntaxHighlighting(visualSourceHighlightStyle),
-    pointerCursorGuard,
+    pointerSelectionHandler,
+    editorVisualPointerSessionPlugin,
     editorVisualViewportPlugin,
     interactionField,
     navigationKeymap,
