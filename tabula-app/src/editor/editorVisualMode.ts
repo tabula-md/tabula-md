@@ -37,6 +37,12 @@ import {
   normalizeEditorVisualNativeMove,
   resolveEditorVisualVerticalMove,
 } from "./editorVisualNavigation";
+import {
+  dispatchEditorVisualCursor,
+  EDITOR_VISUAL_CURSOR_SAFE_MARGIN,
+  editorVisualViewportPlugin,
+  requestEditorVisualGeometryMeasure,
+} from "./editorVisualViewport";
 import { revealEditorVisualSelection } from "./editorVisualEffects";
 import {
   destroyEditorVisualMarkdown,
@@ -268,7 +274,6 @@ type EditorVisualInteraction = {
 };
 
 const setVisualInteraction = StateEffect.define<Partial<EditorVisualInteraction>>();
-const VISUAL_CURSOR_SAFE_MARGIN = 48;
 const VISUAL_POINTER_ACTIVATING_CLASS = "cm-visual-pointer-activating";
 const visualWidgetResizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
 
@@ -292,7 +297,10 @@ const concealAtomicPointerCursor = (
       requestAnimationFrame(() => {
         const cursor = view.dom.querySelector(".cm-cursor-primary");
         const cursorHeight = cursor?.getBoundingClientRect().height ?? 0;
-        if (cursorHeight > VISUAL_CURSOR_SAFE_MARGIN && remainingFrames > 0) {
+        if (
+          cursorHeight > EDITOR_VISUAL_CURSOR_SAFE_MARGIN &&
+          remainingFrames > 0
+        ) {
           remainingFrames -= 1;
           revealWhenStable();
           return;
@@ -311,17 +319,12 @@ const editSource = (
   block: EditorVisualBlockRange,
   anchor = block.from,
 ) => {
-  view.dispatch({
-    effects: [
-      setVisualInteraction.of({ editing: block, stopped: null }),
-      EditorView.scrollIntoView(anchor, {
-        y: "nearest",
-        yMargin: VISUAL_CURSOR_SAFE_MARGIN,
-      }),
-    ],
-    selection: { anchor },
-  });
-  view.focus();
+  dispatchEditorVisualCursor(
+    view,
+    { anchor },
+    [setVisualInteraction.of({ editing: block, stopped: null })],
+    true,
+  );
 };
 
 const moveByVisualLine = (
@@ -361,16 +364,11 @@ const moveByVisualLine = (
     });
     view.focus();
   } else if (move.kind === "logical-line") {
-    view.dispatch({
-      effects: [
-        setVisualInteraction.of({ stopped: null }),
-        EditorView.scrollIntoView(move.selection.head, {
-          y: "nearest",
-          yMargin: VISUAL_CURSOR_SAFE_MARGIN,
-        }),
-      ],
-      selection: view.state.selection.replaceRange(move.selection),
-    });
+    dispatchEditorVisualCursor(
+      view,
+      view.state.selection.replaceRange(move.selection),
+      [setVisualInteraction.of({ stopped: null })],
+    );
   } else {
     const moved = view.moveVertically(selection, forward);
     const nextSelection = normalizeEditorVisualNativeMove(
@@ -381,13 +379,10 @@ const moveByVisualLine = (
       forward,
     );
     if (!nextSelection) return false;
-    view.dispatch({
-      selection: view.state.selection.replaceRange(nextSelection),
-      effects: EditorView.scrollIntoView(nextSelection.head, {
-        y: "nearest",
-        yMargin: VISUAL_CURSOR_SAFE_MARGIN,
-      }),
-    });
+    dispatchEditorVisualCursor(
+      view,
+      view.state.selection.replaceRange(nextSelection),
+    );
   }
   return true;
 };
@@ -487,7 +482,7 @@ abstract class RevealableBlockWidget extends WidgetType {
     });
     if (typeof ResizeObserver !== "undefined") {
       const observer = new ResizeObserver(() => {
-        if (container.isConnected) view.requestMeasure();
+        if (container.isConnected) requestEditorVisualGeometryMeasure(view);
       });
       observer.observe(container);
       visualWidgetResizeObservers.set(container, observer);
@@ -667,7 +662,7 @@ class InlineMathWidget extends WidgetType {
           throwOnError: false,
           trust: false,
         });
-        view.requestMeasure();
+        requestEditorVisualGeometryMeasure(view);
       })
       .catch(() => undefined);
     return container;
@@ -844,7 +839,7 @@ class ImageWidget extends RevealableBlockWidget {
     image.referrerPolicy = "no-referrer";
     image.addEventListener("load", () => {
       container.classList.add("loaded");
-      view.requestMeasure();
+      requestEditorVisualGeometryMeasure(view);
     }, { once: true });
     image.addEventListener("error", () => {
       container.classList.add("broken");
@@ -853,7 +848,7 @@ class ImageWidget extends RevealableBlockWidget {
       fallback.className = "cm-visual-image-fallback";
       fallback.textContent = this.alt || this.unavailableLabel;
       container.append(fallback);
-      view.requestMeasure();
+      requestEditorVisualGeometryMeasure(view);
     }, { once: true });
     container.append(image);
     return container;
@@ -963,7 +958,7 @@ class MathBlockWidget extends RevealableBlockWidget {
           throwOnError: false,
           trust: false,
         });
-        view.requestMeasure();
+        requestEditorVisualGeometryMeasure(view);
       })
       .catch(() => {
         if (!container.isConnected) return;
@@ -1015,7 +1010,7 @@ class DiagramBlockWidget extends RevealableBlockWidget {
         if (!rendered) return;
         if (!container.isConnected) return;
         container.innerHTML = rendered.svg;
-        view.requestMeasure();
+        requestEditorVisualGeometryMeasure(view);
       })
       .catch(() => container.classList.add("error"));
     return container;
@@ -1577,10 +1572,11 @@ export const createEditorVisualModeExtension = (
     EditorView.editorAttributes.of({ class: "cm-visual-editor" }),
     EditorView.cursorScrollMargin.of({
       x: 5,
-      y: VISUAL_CURSOR_SAFE_MARGIN,
+      y: EDITOR_VISUAL_CURSOR_SAFE_MARGIN,
     }),
     syntaxHighlighting(visualSourceHighlightStyle),
     pointerCursorGuard,
+    editorVisualViewportPlugin,
     interactionField,
     navigationKeymap,
     decorationField,
