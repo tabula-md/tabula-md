@@ -1,7 +1,14 @@
-import { useLayoutEffect, useState, type ComponentProps } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
 import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../browserStorage";
 import { RightPanel } from "./RightPanel";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
+import { keepFocusInside } from "../ui/ModalSurface";
 import {
   clampRightPanelWidth,
   DEFAULT_RIGHT_PANEL_WIDTH,
@@ -11,7 +18,6 @@ import {
 type RightPanelProps = ComponentProps<typeof RightPanel>;
 
 const RIGHT_PANEL_WIDTH_STORAGE_KEY = "tabula-side-panel-width-v1";
-
 const readRightPanelWidth = () => {
   if (typeof window === "undefined") return DEFAULT_RIGHT_PANEL_WIDTH;
   const storedWidth = Number(readBrowserStorage(
@@ -25,7 +31,7 @@ const readRightPanelWidth = () => {
 
 export type WorkspaceRightPanelProps = Omit<
   RightPanelProps,
-  "activeFileId" | "isLiveWorkspace" | "onClose"
+  "activeFileId" | "isLiveWorkspace" | "onClose" | "overlayMode" | "panelRef"
 > & {
   activeFileId?: string;
   isLive: boolean;
@@ -39,7 +45,10 @@ export function WorkspaceRightPanel({
   ...rightPanelProps
 }: WorkspaceRightPanelProps) {
   const [width, setWidth] = useState(readRightPanelWidth);
+  const [overlayMode, setOverlayMode] = useState(false);
+  const panelRef = useRef<HTMLElement | null>(null);
   const copy = getWorkspaceInterfaceCopy(rightPanelProps.language).sidePanel;
+  const panelOpen = rightPanelProps.isOpen;
 
   useLayoutEffect(() => {
     document.documentElement.style.setProperty("--right-panel-width", `${width}px`);
@@ -50,6 +59,71 @@ export function WorkspaceRightPanel({
     );
   }, [width]);
 
+  useLayoutEffect(() => {
+    const mainPanel = document.querySelector(".main-panel");
+    const updateOverlayMode = () => {
+      const splitViewOpen = mainPanel?.classList.contains("split-view-open") ?? false;
+      setOverlayMode(
+        panelOpen
+        && (window.innerWidth <= 820 || (window.innerWidth <= 1160 && splitViewOpen)),
+      );
+    };
+    const splitViewObserver = mainPanel
+      ? new MutationObserver(updateOverlayMode)
+      : null;
+
+    updateOverlayMode();
+    window.addEventListener("resize", updateOverlayMode);
+    if (mainPanel && splitViewObserver) {
+      splitViewObserver.observe(mainPanel, {
+        attributeFilter: ["class"],
+        attributes: true,
+      });
+    }
+    return () => {
+      window.removeEventListener("resize", updateOverlayMode);
+      splitViewObserver?.disconnect();
+    };
+  }, [panelOpen]);
+
+  useEffect(() => {
+    if (!overlayMode || !rightPanelProps.isOpen) return undefined;
+
+    const panel = panelRef.current;
+    if (!panel) return undefined;
+
+    const workbench = document.querySelector<HTMLElement>(".center-workbench");
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    if (workbench) {
+      workbench.inert = true;
+      workbench.setAttribute("aria-hidden", "true");
+    }
+    panel.querySelector<HTMLElement>(".right-panel-tab.active")?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+        return;
+      }
+      keepFocusInside(event, panel);
+    };
+
+    // Nested menus and popovers get the first chance to consume Escape.
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      if (workbench) {
+        workbench.inert = false;
+        workbench.removeAttribute("aria-hidden");
+      }
+      window.requestAnimationFrame(() => previousFocus?.focus());
+    };
+  }, [onClose, overlayMode, rightPanelProps.isOpen]);
+
   return (
     <>
       {rightPanelProps.isOpen && (
@@ -57,6 +131,7 @@ export function WorkspaceRightPanel({
           <button
             className="right-panel-backdrop"
             type="button"
+            tabIndex={-1}
             aria-label={copy.dismiss}
             onClick={onClose}
           />
@@ -71,6 +146,8 @@ export function WorkspaceRightPanel({
         {...rightPanelProps}
         activeFileId={activeFileId ?? ""}
         isLiveWorkspace={isLive}
+        overlayMode={overlayMode}
+        panelRef={panelRef}
         onClose={onClose}
       />
     </>

@@ -1,13 +1,17 @@
+import { lazy, Suspense } from "react";
 import { DocumentWorkbench } from "../../document/DocumentWorkbench";
 import { LiveRoomLoadingSurface } from "./LiveRoomLoadingSurface";
 import { WorkspaceEmptySurface } from "./WorkspaceEmptySurface";
 import { WorkspaceMenuSurface } from "./WorkspaceMenuSurface";
 import { WorkspaceOverlaySurface } from "./WorkspaceOverlaySurface";
-import { WorkspaceRightPanel } from "../../right-panel/WorkspaceRightPanel";
 import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { WorkspaceLoadingSurface } from "./WorkspaceLoadingSurface";
 import { useWorkspaceRuntime } from "../useWorkspaceRuntime";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
+
+const WorkspaceRightPanel = lazy(() => import("../../right-panel/WorkspaceRightPanel").then(
+  ({ WorkspaceRightPanel: Component }) => ({ default: Component }),
+));
 
 export function WorkspaceApp() {
   const {
@@ -62,7 +66,9 @@ export function WorkspaceApp() {
           </section>
         </section>
 
-        <WorkspaceRightPanel {...rightPanelProps} />
+        <Suspense fallback={null}>
+          <WorkspaceRightPanel {...rightPanelProps} />
+        </Suspense>
       </section>
     </main>
   );

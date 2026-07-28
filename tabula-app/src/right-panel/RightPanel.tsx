@@ -120,6 +120,8 @@ type RightPanelProps = {
   onSelectionCommentRequestHandled: () => void;
   onCancelSelectionComment: () => void;
   formatCommentDate: (isoDate: string) => string;
+  overlayMode?: boolean;
+  panelRef?: RefObject<HTMLElement | null>;
 };
 
 export function RightPanel({
@@ -189,6 +191,8 @@ export function RightPanel({
   onSelectionCommentRequestHandled,
   onCancelSelectionComment,
   formatCommentDate,
+  overlayMode = false,
+  panelRef,
 }: RightPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const closePanelLabel = getWorkspaceChromeCopy(language).topChrome.closeSidePanel;
@@ -232,18 +236,21 @@ export function RightPanel({
   );
   const hasLiveFiles = isLiveWorkspace;
   const hasOpenComments = openCommentGroups.some((group) => group.comments.length > 0);
+  const panelTitle = copy.tabs[effectiveView];
   const renderTab = (
     tabView: RightPanelView,
     label: string,
     icon: ReactNode,
     indicator?: "live" | "comments",
+    tooltip = label,
   ) => (
     <button
       className={`right-panel-tab ${effectiveView === tabView ? "active" : ""}`}
       type="button"
       aria-label={label}
-      data-tooltip={label}
+      data-tooltip={tooltip}
       aria-pressed={effectiveView === tabView}
+      aria-controls="right-panel-body"
       onClick={() => onSetView(tabView)}
     >
       {icon}
@@ -253,8 +260,12 @@ export function RightPanel({
 
   return (
     <aside
+      ref={panelRef}
       className="right-panel"
-      aria-label={copy.label}
+      role={overlayMode ? "dialog" : undefined}
+      aria-modal={overlayMode || undefined}
+      aria-label={panelTitle}
+      tabIndex={overlayMode ? -1 : undefined}
       data-knowledge-index-source={knowledgeIndexSource}
     >
       <div className="right-panel-header">
@@ -264,7 +275,13 @@ export function RightPanel({
           {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
           {renderTab("search", copy.tabs.search, <Search size={14} />)}
-          {renderTab("knowledge", copy.tabs.knowledge, <LibraryBig size={14} />)}
+          {renderTab(
+            "knowledge",
+            copy.tabs.knowledge,
+            <LibraryBig size={14} />,
+            undefined,
+            copy.knowledgeDescription,
+          )}
         </nav>
         <button
           className="right-panel-overlay-toggle"
@@ -278,7 +295,7 @@ export function RightPanel({
         </button>
       </div>
 
-      <div className={`right-panel-body ${effectiveView}`}>
+      <div className={`right-panel-body ${effectiveView}`} id="right-panel-body">
         {effectiveView === "files" && (
           <RightPanelFiles
             files={files}
@@ -419,7 +436,7 @@ export function RightPanel({
             <RightPanelKnowledge
               activeFileId={activeFileId}
               activeFileTitle={activeFileTitle}
-              noDocumentCopy={copy.noDocumentOpen}
+              noDocumentCopy={`${copy.tabs.knowledge}: ${copy.noDocumentOpen}`}
               compatibilityReport={knowledgeCompatibilityReport}
               knowledgeBaseline={knowledgeBaseline}
               knowledgeCompatibilityOpenRequest={knowledgeCompatibilityOpenRequest}

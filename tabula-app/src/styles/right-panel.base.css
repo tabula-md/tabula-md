@@ -121,6 +121,17 @@
   background: var(--surface-active);
 }
 
+.right-panel-tab.active::after {
+  position: absolute;
+  right: 8px;
+  bottom: 3px;
+  left: 8px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  content: "";
+}
+
 .right-panel-overlay-toggle {
   display: grid;
   place-items: center;

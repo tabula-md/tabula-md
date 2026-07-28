@@ -394,10 +394,11 @@ export async function run(ctx) {
     const rightPanelState = await page.evaluate(() => ({
       open: Boolean(document.querySelector(".right-panel")),
       ariaLabel: document.querySelector(".right-panel")?.getAttribute("aria-label") ?? "",
+      labelledBy: document.querySelector(".right-panel")?.getAttribute("aria-labelledby") ?? "",
       sectionsLabel: document.querySelector(".right-panel-tabs")?.getAttribute("aria-label") ?? "",
       tabs: Array.from(document.querySelectorAll(".right-panel-tab")).map((button) => button.getAttribute("aria-label")),
       visibleTabLabelCount: document.querySelectorAll(".right-panel-tab-label").length,
-      headingCount: document.querySelectorAll(".right-panel .right-panel-content h2").length,
+      headingCount: document.querySelectorAll(".right-panel > .right-panel-title").length,
       documentCardCount: document.querySelectorAll(".right-panel .panel-document-card").length,
       countPillCount: document.querySelectorAll(".right-panel .panel-count-pill").length,
       fileToolbar: (() => {
@@ -452,10 +453,12 @@ export async function run(ctx) {
       syntheticRootRowCount: Array.from(document.querySelectorAll(".right-file-tree-node.folder"))
         .filter((row) => row.querySelector(".right-row-label")?.textContent?.trim() === "Project")
         .length,
-      bodyText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(rightPanelState.open, "The right panel should open from the top-right panel toggle.");
-    expect(rightPanelState.ariaLabel === "Side panel", "The side panel should use product-facing terminology.");
+    expect(
+      rightPanelState.ariaLabel === "Files" && rightPanelState.labelledBy === "",
+      "The side panel should expose the active section as its accessible name without repeating a visible heading.",
+    );
     expect(
       rightPanelState.sectionsLabel === "Side panel sections",
       "The side panel sections nav should use scoped terminology.",
@@ -475,7 +478,15 @@ export async function run(ctx) {
       (await page.getByRole("button", { name: "Rename knowledge-feature-lab in Files", exact: true }).count()) === 1,
       "Files should rename the workspace identity without adding a root folder row.",
     );
-    expect(rightPanelState.headingCount === 0, "The right panel should not render large panel headings.");
+    expect(
+      rightPanelState.headingCount === 0,
+      "The active tab should identify the section without a redundant visible panel heading.",
+    );
+    expect(
+      rightPanelState.fileRows.filter((row) => row.active).length === 1 &&
+        rightPanelState.fileRows.some((row) => row.active && row.text.includes("README")),
+      "Files should identify the active document through its selected tree row without repeating a label.",
+    );
     expect(rightPanelState.documentCardCount === 0, "The right panel should not use document cards.");
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");
     const rightPanelDivider = page.getByRole("separator", {
@@ -2133,7 +2144,8 @@ export async function run(ctx) {
       const shell = document.querySelector(".file-shell");
       const gutter = document.querySelector(".cm-gutters");
       const fileAction = document.querySelector(".right-file-tree-row.file .right-file-action");
-      if (!panel || !backdrop || !documentSearch || !shell || !gutter || !fileAction) return null;
+      const workbench = document.querySelector(".center-workbench");
+      if (!panel || !backdrop || !documentSearch || !shell || !gutter || !fileAction || !workbench) return null;
       const panelRect = panel.getBoundingClientRect();
       const searchRect = documentSearch.getBoundingClientRect();
       const fileActionRect = fileAction.getBoundingClientRect();
@@ -2151,6 +2163,11 @@ export async function run(ctx) {
         documentSafeRight: getComputedStyle(shell).getPropertyValue("--document-safe-right").trim(),
         gutterDisplay: getComputedStyle(gutter).display,
         visibleTabLabelCount: document.querySelectorAll(".right-panel-tab-label").length,
+        role: panel.getAttribute("role"),
+        ariaModal: panel.getAttribute("aria-modal"),
+        workbenchInert: workbench.hasAttribute("inert"),
+        workbenchAriaHidden: workbench.getAttribute("aria-hidden"),
+        focusInsidePanel: panel.contains(document.activeElement),
         fileActionSize: Math.min(fileActionRect.width, fileActionRect.height),
         fileActionOpacity: getComputedStyle(fileAction).opacity,
         documentSearchPreserved: getComputedStyle(documentSearch).display !== "none",
@@ -2169,6 +2186,14 @@ export async function run(ctx) {
     expect(
       await mobilePage.getByRole("button", { name: "Close side panel", exact: true }).isVisible(),
       "The mobile panel close control should describe its current action.",
+    );
+    expect(
+      mobilePanel?.role === "dialog" &&
+        mobilePanel.ariaModal === "true" &&
+        mobilePanel.workbenchInert &&
+        mobilePanel.workbenchAriaHidden === "true" &&
+        mobilePanel.focusInsidePanel,
+      "Overlay panels should trap focus and make the document behind them inert.",
     );
     expect(mobilePanel?.panelRight === mobilePanel?.viewportWidth, "The mobile side panel should fill the viewport width.");
     expect(mobilePanel?.panelHeight === mobilePanel?.viewportHeight, "The mobile side panel should fill the viewport height.");
@@ -2192,9 +2217,14 @@ export async function run(ctx) {
       "Files should use one Create menu for documents and folders.",
     );
     await mobilePage.keyboard.press("Escape");
+    expect(
+      (await mobilePage.locator(".right-file-create-menu").count()) === 0 &&
+        (await mobilePage.getByRole("dialog", { name: "Files" }).count()) === 1,
+      "Escape should close the nested Create menu before dismissing the side panel.",
+    );
 
     await mobilePage
-      .getByRole("complementary", { name: "Side panel" })
+      .getByRole("dialog", { name: "Files" })
       .getByRole("button", { name: "Close side panel" })
       .click();
     await waitForRenderFrame(mobilePage);
