@@ -207,7 +207,15 @@ export const createMarkdownPreviewComponents = (
       return <PreviewMath copy={copy} expression={getNodeText(children)} />;
     }
 
-    return <code className={className} data-language={language} {...props}>{children}</code>;
+    return (
+      <code
+        className={`ui-selection-aware-inline ${className ?? ""}`.trim()}
+        data-language={language}
+        {...props}
+      >
+        {children}
+      </code>
+    );
   },
   input: ({ node: _node, type, checked, ...props }) => {
     if (type !== "checkbox") {

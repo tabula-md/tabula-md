@@ -97,6 +97,16 @@
   border-radius: var(--radius-surface);
 }
 
+.ui-selection-aware-inline {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.ui-selection-aware-inline::selection {
+  color: var(--selection-text);
+  background: var(--selection-background);
+}
+
 .ui-scroll-fade {
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;

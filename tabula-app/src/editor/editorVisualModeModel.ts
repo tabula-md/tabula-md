@@ -488,6 +488,7 @@ const addCodeSourceBlockClasses = (
   while (position <= last.from) {
     const line = state.doc.lineAt(position);
     const classes = [
+      "ui-selection-aware-inline",
       "cm-visual-source-code",
       surfaceClass,
       line.from === first.from ? `${surfaceClass}-first` : "",
