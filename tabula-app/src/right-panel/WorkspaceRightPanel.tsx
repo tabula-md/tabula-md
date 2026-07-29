@@ -6,6 +6,7 @@ import {
   type ComponentProps,
 } from "react";
 import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../browserStorage";
+import { useEventCallback } from "../shared/useEventCallback";
 import { RightPanel } from "./RightPanel";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { keepFocusInside } from "../ui/ModalSurface";
@@ -47,8 +48,17 @@ export function WorkspaceRightPanel({
   const [width, setWidth] = useState(readRightPanelWidth);
   const [overlayMode, setOverlayMode] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
+  const panelOpenRef = useRef(rightPanelProps.isOpen);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
   const copy = getWorkspaceInterfaceCopy(rightPanelProps.language).sidePanel;
   const panelOpen = rightPanelProps.isOpen;
+  const closePanel = useEventCallback(onClose);
+  if (panelOpen && !panelOpenRef.current && typeof document !== "undefined") {
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+  }
+  panelOpenRef.current = panelOpen;
 
   useLayoutEffect(() => {
     document.documentElement.style.setProperty("--right-panel-width", `${width}px`);
@@ -93,9 +103,6 @@ export function WorkspaceRightPanel({
     if (!panel) return undefined;
 
     const workbench = document.querySelector<HTMLElement>(".center-workbench");
-    const previousFocus = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
     if (workbench) {
       workbench.inert = true;
       workbench.setAttribute("aria-hidden", "true");
@@ -106,7 +113,7 @@ export function WorkspaceRightPanel({
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
-        onClose();
+        closePanel();
         return;
       }
       keepFocusInside(event, panel);
@@ -120,9 +127,14 @@ export function WorkspaceRightPanel({
         workbench.inert = false;
         workbench.removeAttribute("aria-hidden");
       }
-      window.requestAnimationFrame(() => previousFocus?.focus());
+      window.requestAnimationFrame(() => {
+        const restoreTarget = restoreFocusRef.current?.isConnected
+          ? restoreFocusRef.current
+          : document.querySelector<HTMLElement>(".top-right-zone .top-panel-toggle");
+        restoreTarget?.focus();
+      });
     };
-  }, [onClose, overlayMode, rightPanelProps.isOpen]);
+  }, [closePanel, overlayMode, rightPanelProps.isOpen]);
 
   return (
     <>

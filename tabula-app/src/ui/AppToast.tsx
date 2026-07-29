@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 type AppToastProps = {
@@ -29,7 +30,7 @@ export function AppToast({
     else onResume();
   };
 
-  return (
+  return createPortal(
     <div
       className="toast-viewport"
       role={tone === "error" ? "alert" : "status"}
@@ -69,6 +70,7 @@ export function AppToast({
           <X size={14} />
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
