@@ -4,6 +4,7 @@ import {
   useRef,
   type RefObject,
 } from "react";
+import { useStableSurfaceProps } from "../shared/useStableSurfaceProps";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
 import type {
   MarkdownHeading,
@@ -245,7 +246,7 @@ export function useWorkspaceRightPanelController({
     [focusTextRange],
   );
 
-  const rightPanelProps: WorkspaceRightPanelProps = {
+  const rightPanelProps = useStableSurfaceProps<WorkspaceRightPanelProps>({
     isOpen: rightPanelOpen,
     view: rightPanelView,
     isLive,
@@ -312,7 +313,7 @@ export function useWorkspaceRightPanelController({
     onToggleCommentResolved,
     onDeleteComment,
     formatCommentDate,
-  };
+  });
 
   return {
     knowledgeIndex,

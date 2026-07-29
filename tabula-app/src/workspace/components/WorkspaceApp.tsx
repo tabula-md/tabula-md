@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, memo, Suspense } from "react";
 import { DocumentWorkbench } from "../../document/DocumentWorkbench";
 import { LiveRoomLoadingSurface } from "./LiveRoomLoadingSurface";
 import { WorkspaceEmptySurface } from "./WorkspaceEmptySurface";
@@ -9,8 +9,14 @@ import { WorkspaceLoadingSurface } from "./WorkspaceLoadingSurface";
 import { useWorkspaceRuntime } from "../useWorkspaceRuntime";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 
+const MemoDocumentWorkbench = memo(DocumentWorkbench);
+const MemoLiveRoomLoadingSurface = memo(LiveRoomLoadingSurface);
+const MemoWorkspaceEmptySurface = memo(WorkspaceEmptySurface);
+const MemoWorkspaceMenuSurface = memo(WorkspaceMenuSurface);
+const MemoWorkspaceOverlaySurface = memo(WorkspaceOverlaySurface);
+const MemoWorkspaceTopChrome = memo(WorkspaceTopChrome);
 const WorkspaceRightPanel = lazy(() => import("../../right-panel/WorkspaceRightPanel").then(
-  ({ WorkspaceRightPanel: Component }) => ({ default: Component }),
+  ({ WorkspaceRightPanel: Component }) => ({ default: memo(Component) }),
 ));
 
 export function WorkspaceApp() {
@@ -27,7 +33,7 @@ export function WorkspaceApp() {
   if (workspaceSession.localOpening) {
     return (
       <>
-        <WorkspaceOverlaySurface {...overlays.workspace} />
+        <MemoWorkspaceOverlaySurface {...overlays.workspace} />
         <WorkspaceLoadingSurface />
       </>
     );
@@ -35,12 +41,12 @@ export function WorkspaceApp() {
 
   return (
     <main className="app-shell">
-      <WorkspaceOverlaySurface {...overlays.workspace} />
+      <MemoWorkspaceOverlaySurface {...overlays.workspace} />
       <section className={chrome.mainPanelClassName}>
-        <WorkspaceMenuSurface {...chrome.menu} />
+        <MemoWorkspaceMenuSurface {...chrome.menu} />
 
         <section className={documentRuntime.surface.centerWorkbenchClassName}>
-          <WorkspaceTopChrome {...chrome.top} />
+          <MemoWorkspaceTopChrome {...chrome.top} />
 
           <section
             className={documentRuntime.surface.fileShellClassName}
@@ -49,14 +55,14 @@ export function WorkspaceApp() {
             aria-labelledby={activeFile ? getWorkspaceTabId(activeFile.id) : undefined}
           >
             {collaboration.liveRoomOpenState === "opening" ? (
-              <LiveRoomLoadingSurface {...collaboration.loadingSurface} />
+              <MemoLiveRoomLoadingSurface {...collaboration.loadingSurface} />
             ) : activeFile ? (
-              <DocumentWorkbench
+              <MemoDocumentWorkbench
                 {...documentWorkbenchProps}
                 activeFile={activeFile}
               />
             ) : (
-              <WorkspaceEmptySurface {...workspaceSession.emptySurface} />
+              <MemoWorkspaceEmptySurface {...workspaceSession.emptySurface} />
             )}
           </section>
         </section>
