@@ -22,6 +22,73 @@ const getVersion = (payload: JsonRecord) =>
     ? payload.version
     : 0;
 
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((entry) => typeof entry === "string");
+
+const isStoredFile = (value: unknown): value is JsonRecord =>
+  isRecord(value) &&
+  typeof value.id === "string" &&
+  typeof value.title === "string" &&
+  typeof value.text === "string" &&
+  ["visual", "edit", "split", "preview"].includes(String(value.viewMode)) &&
+  (value.editingMode === "source" || value.editingMode === "visual");
+
+const isStoredFolder = (value: unknown): value is JsonRecord =>
+  isRecord(value) &&
+  typeof value.id === "string" &&
+  typeof value.title === "string" &&
+  (value.parentId === null || typeof value.parentId === "string");
+
+export const isCurrentWorkspaceStoragePayload = (
+  value: unknown,
+  currentVersion: number,
+): value is JsonRecord => {
+  if (
+    !isRecord(value) ||
+    value.schema !== PROJECT_SCHEMA ||
+    getVersion(value) !== currentVersion ||
+    !isRecord(value.files) ||
+    !isRecord(value.folders) ||
+    !isRecord(value.commentsByFileId) ||
+    !isStringArray(value.fileOrder) ||
+    !isStringArray(value.folderOrder) ||
+    !isStringArray(value.openFileIds) ||
+    typeof value.savedAt !== "string" ||
+    typeof value.activeFileId !== "string"
+  ) {
+    return false;
+  }
+
+  const fileIds = new Set(Object.keys(value.files));
+  const folderIds = new Set(Object.keys(value.folders));
+  const orderedFileIds = new Set(value.fileOrder);
+  const orderedFolderIds = new Set(value.folderOrder);
+  return (
+    Object.entries(value.files).every(([id, file]) =>
+      isStoredFile(file) &&
+      file.id === id &&
+      (file.parentId === undefined ||
+        file.parentId === null ||
+        typeof file.parentId === "string")) &&
+    Object.entries(value.folders).every(([id, folder]) =>
+      isStoredFolder(folder) &&
+      folder.id === id &&
+      (folder.parentId === null ||
+        (typeof folder.parentId === "string" && folderIds.has(folder.parentId)))) &&
+    orderedFileIds.size === value.fileOrder.length &&
+    orderedFileIds.size === fileIds.size &&
+    value.fileOrder.every((id) => fileIds.has(id)) &&
+    orderedFolderIds.size === value.folderOrder.length &&
+    orderedFolderIds.size === folderIds.size &&
+    value.folderOrder.every((id) => folderIds.has(id)) &&
+    value.openFileIds.every((id) => fileIds.has(id)) &&
+    Object.entries(value.commentsByFileId).every(([id, comments]) =>
+      fileIds.has(id) && Array.isArray(comments)) &&
+    folderIds.has(ROOT_FOLDER_ID) &&
+    (!value.activeFileId || fileIds.has(value.activeFileId))
+  );
+};
+
 const migrateV5ToV6 = (payload: JsonRecord): JsonRecord | null => {
   if (!isRecord(payload.files)) return null;
 
@@ -130,7 +197,7 @@ export const migrateWorkspaceStoragePayload = (
     payload = migrate ? migrate(payload) : null;
   }
 
-  const accepted = payload !== null && getVersion(payload) === currentVersion;
+  const accepted = isCurrentWorkspaceStoragePayload(payload, currentVersion);
   return {
     event: {
       fromVersion,

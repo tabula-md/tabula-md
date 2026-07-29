@@ -68,6 +68,29 @@ describe("workspace storage migrations", () => {
     expect(parseWorkspacePayload(payload)).toBeNull();
   });
 
+  it("rejects current-version payloads that violate storage invariants", () => {
+    const malformed = {
+      ...projectV6,
+      version: PROJECT_STORAGE_VERSION,
+      activeFileId: "missing",
+      openFileIds: ["missing"],
+      files: {
+        guide: {
+          ...projectV6.files.guide,
+          editingMode: "source",
+        },
+      },
+    };
+
+    expect(
+      migrateWorkspaceStoragePayload(malformed, PROJECT_STORAGE_VERSION),
+    ).toMatchObject({
+      event: { status: "rejected" },
+      payload: null,
+    });
+    expect(parseWorkspacePayload(malformed)).toBeNull();
+  });
+
   it("does not expose document data in migration events", () => {
     const { event } = migrateWorkspaceStoragePayload(
       fixtures[1].payload,
