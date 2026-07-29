@@ -17,6 +17,7 @@ import {
   type WorkspaceKnowledgeBaseline,
 } from "@tabula-md/tabula";
 import { PRODUCT_NAME } from "../product";
+import { migrateWorkspaceStoragePayload } from "./workspaceStorageMigrations";
 
 export {
   clampSplitEditorRatio,
@@ -550,33 +551,30 @@ export const createStarterWorkspaceState = (): WorkspaceState =>
   finalizeWorkspaceState([], undefined, {}, { openFileIds: [] });
 
 export const parseWorkspacePayload = (payload: unknown): WorkspaceState | null => {
-  if (!isRecord(payload)) {
+  const migratedPayload = migrateWorkspaceStoragePayload(
+    payload,
+    PROJECT_STORAGE_VERSION,
+  ).payload;
+  if (!migratedPayload) {
     return null;
   }
 
-  const activeFileId = getString(payload.activeFileId);
-  const openFileIds = normalizeFileIdList(payload.openFileIds);
-  const commentsByFileId = normalizeCommentsByFileId(payload.commentsByFileId);
-
-  const isProjectPayload = payload.version === PROJECT_STORAGE_VERSION && payload.schema === "tabula.project";
-
-  if (isProjectPayload) {
-    if (!isRecord(payload.files)) {
-      return null;
-    }
-
-    return finalizeWorkspaceState(
-      normalizeFilesFromMap(payload.files, payload.fileOrder),
-      activeFileId,
-      commentsByFileId,
-      {
-        folders: normalizeFoldersFromMap(payload.folders, payload.folderOrder),
-        openFileIds,
-      },
-    );
+  if (!isRecord(migratedPayload.files)) {
+    return null;
   }
 
-  return null;
+  return finalizeWorkspaceState(
+    normalizeFilesFromMap(migratedPayload.files, migratedPayload.fileOrder),
+    getString(migratedPayload.activeFileId),
+    normalizeCommentsByFileId(migratedPayload.commentsByFileId),
+    {
+      folders: normalizeFoldersFromMap(
+        migratedPayload.folders,
+        migratedPayload.folderOrder,
+      ),
+      openFileIds: normalizeFileIdList(migratedPayload.openFileIds),
+    },
+  );
 };
 
 export const readInitialWorkspaceSnapshot = (): InitialWorkspaceSnapshot => {

@@ -1,0 +1,20 @@
+{
+  "schema": "tabula.project",
+  "version": 5,
+  "savedAt": "2025-01-01T00:00:00.000Z",
+  "activeFileId": "guide",
+  "openFileIds": ["guide"],
+  "fileOrder": ["guide"],
+  "files": {
+    "guide": {
+      "id": "guide",
+      "title": "docs/Guide.md",
+      "text": "# Guide",
+      "viewMode": "edit",
+      "readingWidth": "wide",
+      "lineWrapping": true,
+      "lineNumbers": true
+    }
+  },
+  "commentsByFileId": {}
+}
