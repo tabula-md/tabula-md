@@ -31,6 +31,7 @@ Named Playwright specs are organized by product capability:
 - `storage-restore`: persisted workspace restore and workspace chrome state
 - `collaboration-capability`: live room synchronization
 - `share-capability`: encrypted Export link handoff
+- `accessibility-regression`: viewport, theme, focus, overlay, touch, IME, and reduced-motion matrix
 - `performance`: long-document responsiveness
 
 ```bash

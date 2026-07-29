@@ -42,6 +42,7 @@
     "test:browser:collaboration-editor-torture": "npm run test:browser -- --suite=collaboration-editor-torture",
     "test:browser:collaboration-memory": "npm run test:browser -- --suite=collaboration-memory",
     "test:browser:json-share": "npm run test:browser:playwright -- share-capability.spec.mjs",
+    "test:browser:regression": "node --test scripts/browser-smoke/final-regression-matrix.test.mjs && npm run test:browser:playwright -- harness.spec.ts markdown-parity.spec.mjs visual-interaction.spec.mjs editor-controls.spec.mjs responsive-layout.spec.mjs preview-navigation.spec.mjs right-panels.spec.mjs accessibility-regression.spec.mjs storage-restore.spec.mjs collaboration-capability.spec.mjs share-capability.spec.mjs",
     "test:browser:performance": "npm run test:browser:playwright -- performance.spec.mjs --workers=1",
     "bundle:check": "node scripts/check-bundle-chunks.mjs",
     "test:surface-colors": "node scripts/check-surface-colors.mjs",

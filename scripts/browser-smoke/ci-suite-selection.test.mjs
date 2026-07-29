@@ -119,6 +119,17 @@ test("routes storage and service suites through capability specs", () => {
   assert.equal(share.needsJson, true);
 });
 
+test("selects the final regression matrix without performance checks", () => {
+  const selection = selectBrowserSmokeSuites([
+    "tests/browser/accessibility-regression.spec.mjs",
+  ]);
+
+  assert(selection.playwrightFiles.includes("accessibility-regression.spec.mjs"));
+  assert(!selection.playwrightFiles.includes("performance.spec.mjs"));
+  assert.equal(selection.needsRoom, false);
+  assert.equal(selection.needsJson, false);
+});
+
 test("falls back to the established PR safety checks for shared or unknown runtime changes", () => {
   const infrastructure = selectBrowserSmokeSuites(["playwright.config.ts"]);
   const unknownRuntime = selectBrowserSmokeSuites([
@@ -137,6 +148,7 @@ test("falls back to the established PR safety checks for shared or unknown runti
       "storage-restore.spec.mjs",
       "collaboration-capability.spec.mjs",
       "share-capability.spec.mjs",
+      "accessibility-regression.spec.mjs",
     ]);
     assert.deepEqual(selection.legacySuites, []);
     assert.equal(selection.needsRoom, true);

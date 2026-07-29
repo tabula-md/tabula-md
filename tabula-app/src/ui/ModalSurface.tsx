@@ -95,13 +95,15 @@ export function ModalSurface({
   const dialogRef = useRef<HTMLElement | null>(null);
   const modalIdRef = useRef(Symbol("modal"));
   const onCloseRef = useRef(onClose);
+  const restoreFocusRef = useRef<HTMLElement | null>(
+    typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  );
 
   onCloseRef.current = onClose;
 
   useEffect(() => {
-    const previousFocus = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
     dialogRef.current?.focus();
     const unregisterModal = registerModal(modalIdRef.current);
     const frame = window.requestAnimationFrame(() => {
@@ -126,7 +128,7 @@ export function ModalSurface({
       window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", handleKeyDown, true);
       unregisterModal();
-      window.requestAnimationFrame(() => previousFocus?.focus());
+      window.requestAnimationFrame(() => restoreFocusRef.current?.focus());
     };
   }, []);
 

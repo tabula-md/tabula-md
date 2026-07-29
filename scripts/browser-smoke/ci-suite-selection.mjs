@@ -18,6 +18,7 @@ const PLAYWRIGHT = {
   storage: ["storage-restore.spec.mjs"],
   collaboration: ["collaboration-capability.spec.mjs"],
   share: ["share-capability.spec.mjs"],
+  regression: ["accessibility-regression.spec.mjs"],
 };
 
 const LEGACY = {
@@ -46,6 +47,7 @@ const PLAYWRIGHT_GROUP_ORDER = [
   "storage",
   "collaboration",
   "share",
+  "regression",
   "performance",
 ];
 const FALLBACK_PLAYWRIGHT_GROUPS = [
@@ -54,6 +56,7 @@ const FALLBACK_PLAYWRIGHT_GROUPS = [
   "storage",
   "collaboration",
   "share",
+  "regression",
 ];
 const FALLBACK_LEGACY_GROUPS = [];
 const ROOM_PLAYWRIGHT_GROUPS = new Set([
@@ -173,6 +176,11 @@ export function selectBrowserSmokeSuites(changedPaths) {
         path.endsWith("/suites/json-share.mjs")
       ) {
         addPlaywright("share", "sharing changed");
+      } else if (
+        path.endsWith("/accessibility-regression.spec.mjs") ||
+        path.endsWith("/support/finalRegressionMatrix.mjs")
+      ) {
+        addPlaywright("regression", "final regression matrix changed");
       } else {
         const suiteFile = path.match(/\/suites\/([^/]+)\.mjs$/)?.[1];
         const legacySuite = suiteFile && LEGACY_SUITE_FILES.get(suiteFile);
