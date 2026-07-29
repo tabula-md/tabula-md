@@ -17,11 +17,7 @@
 .editor-surface.has-text-selection
   .markdown-editor
   .cm-visual-editor
-  :is(
-    .cm-visual-inline-code,
-    .cm-visual-source-block,
-    .cm-visual-selected-code
-  ) {
+  .ui-selection-aware-inline {
   background: transparent;
 }
 

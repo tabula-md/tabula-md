@@ -91,8 +91,8 @@ export function WorkspaceFolderImportDialog({
         </div>
       </div>
       <div className="share-modal-actions">
-        <button className="share-modal-secondary" type="button" onClick={onCancel}>{copy.cancel}</button>
-        <button className="share-modal-primary" type="button" data-modal-initial-focus onClick={onReplace}>{copy.open}</button>
+        <button className="ui-modal-action secondary share-modal-secondary" type="button" onClick={onCancel}>{copy.cancel}</button>
+        <button className="ui-modal-action share-modal-primary" type="button" data-modal-initial-focus onClick={onReplace}>{copy.open}</button>
       </div>
     </ModalSurface>
   );

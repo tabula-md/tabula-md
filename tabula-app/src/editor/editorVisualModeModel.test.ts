@@ -435,6 +435,8 @@ describe("editor visual mode model", () => {
 
     expect(model.hiddenRanges).toEqual([]);
     expect(model.lines).toHaveLength(3);
+    expect(model.lines.every(({ className }) =>
+      className.includes("ui-selection-aware-inline"))).toBe(true);
     expect(model.lines[0]?.className).toContain("cm-visual-source-block-first");
     expect(model.lines[1]?.className).toContain("cm-visual-source-code");
     expect(model.lines[2]?.className).toContain("cm-visual-source-block-last");
@@ -448,6 +450,8 @@ describe("editor visual mode model", () => {
       className.includes("cm-visual-source-code"));
 
     expect(codeLines).toHaveLength(3);
+    expect(codeLines.every(({ className }) =>
+      className.includes("ui-selection-aware-inline"))).toBe(true);
     expect(codeLines[0]?.className).toContain("cm-visual-selected-code-first");
     expect(codeLines[2]?.className).toContain("cm-visual-selected-code-last");
     expect(

@@ -132,7 +132,7 @@ export function DocumentControls({
             return (
               <button
                 key={option.viewMode}
-                className={`tool-button document-view-mode-button ${option.active ? "active" : ""}`}
+                className={`ui-icon-button tool-button document-view-mode-button ${option.active ? "active" : ""}`}
                 type="button"
                 aria-label={option.label}
                 data-tooltip={option.label}
@@ -158,7 +158,7 @@ export function DocumentControls({
         <div className="document-utility-controls">
           {showSearch && (
             <button
-              className={`tool-button document-search-toggle ${searchOpen ? "active" : ""}`}
+              className={`ui-icon-button tool-button document-search-toggle ${searchOpen ? "active" : ""}`}
               type="button"
               aria-label={copy.search}
               data-tooltip={copy.search}
@@ -176,7 +176,7 @@ export function DocumentControls({
           >
             <PopoverTrigger asChild>
               <button
-                className={`tool-button document-options-button ${centerPopover === "view" ? "active" : ""}`}
+                className={`ui-icon-button tool-button document-options-button ${centerPopover === "view" ? "active" : ""}`}
                 type="button"
                 aria-label={controls.controlsLabel}
                 data-tooltip={controls.controlsLabel}

@@ -432,7 +432,7 @@ class CodeBlockWidget extends RevealableBlockWidget {
   toDOM(view: EditorView) {
     const container = this.makeContainer(
       view,
-      "cm-visual-block cm-visual-code-block",
+      "ui-code-surface cm-visual-block cm-visual-code-block",
     );
     if (this.language) {
       const language = document.createElement("span");

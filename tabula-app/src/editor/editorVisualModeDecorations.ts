@@ -23,7 +23,10 @@ const visualSourceHighlightStyle = HighlightStyle.define([
   { tag: tags.strikethrough, class: "cm-visual-strikethrough" },
   { tag: tags.link, class: "cm-visual-link" },
   { tag: tags.url, class: "cm-visual-link-url" },
-  { tag: tags.monospace, class: "cm-visual-inline-code" },
+  {
+    tag: tags.monospace,
+    class: "ui-selection-aware-inline cm-visual-inline-code",
+  },
   { tag: tags.keyword, class: "cm-visual-token-keyword" },
   { tag: [tags.atom, tags.bool, tags.number], class: "cm-visual-token-literal" },
   { tag: tags.string, class: "cm-visual-token-string" },

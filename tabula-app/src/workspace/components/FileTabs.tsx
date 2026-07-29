@@ -246,7 +246,7 @@ export function FileTabs({
       >
         <ChevronLeft size={14} />
       </button>
-      <div className="tabs-scroll" ref={tabsScrollRef} role="tablist" aria-label={copy.openDocuments}>
+      <div className="ui-scroll-fade tabs-scroll" ref={tabsScrollRef} role="tablist" aria-label={copy.openDocuments}>
         {files.map((file, fileIndex) => {
           const isActiveFile = file.id === activeFile?.id;
           const isRenaming = file.id === renamingFileId;
