@@ -109,7 +109,8 @@ const waitForText = async (locator, text, timeout = 8_000) => {
   const deadline = Date.now() + timeout;
 
   while (Date.now() < deadline) {
-    if ((await locator.textContent())?.includes(text)) {
+    const content = await locator.first().textContent({ timeout: 250 }).catch(() => null);
+    if (content?.includes(text)) {
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -336,7 +337,7 @@ export const createSmokeContext = (browser, controls = {}) => ({
   baseUrl,
   browser,
   expect,
-  externalUrl,
+  externalUrl: controls.externalUrl ?? externalUrl,
   focusMarkdownEditor,
   getTabs,
   getViewModeActionLabels,

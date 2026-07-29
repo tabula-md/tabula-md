@@ -1,10 +1,23 @@
 import fs from "node:fs";
 
 const PLAYWRIGHT = {
-  visual: "editor-visual.spec.mjs",
-  preview: "editor-preview.spec.mjs",
-  panels: "panels.spec.mjs",
-  performance: "performance.spec.mjs",
+  visual: [
+    "markdown-parity.spec.mjs",
+    "visual-interaction.spec.mjs",
+    "editor-controls.spec.mjs",
+    "responsive-layout.spec.mjs",
+  ],
+  preview: [
+    "markdown-parity.spec.mjs",
+    "preview-navigation.spec.mjs",
+    "editor-controls.spec.mjs",
+    "responsive-layout.spec.mjs",
+  ],
+  panels: ["right-panels.spec.mjs"],
+  performance: ["performance.spec.mjs"],
+  storage: ["storage-restore.spec.mjs"],
+  collaboration: ["collaboration-capability.spec.mjs"],
+  share: ["share-capability.spec.mjs"],
 };
 
 const LEGACY = {
@@ -26,10 +39,30 @@ const LEGACY = {
   share: ["json-share"],
 };
 
-const PLAYWRIGHT_GROUP_ORDER = ["visual", "preview", "panels"];
-const FALLBACK_PLAYWRIGHT_GROUPS = ["visual", "panels"];
-const FALLBACK_LEGACY_GROUPS = ["workspace", "collaboration"];
-const ROOM_PLAYWRIGHT_GROUPS = new Set(["preview", "performance"]);
+const PLAYWRIGHT_GROUP_ORDER = [
+  "visual",
+  "preview",
+  "panels",
+  "storage",
+  "collaboration",
+  "share",
+  "performance",
+];
+const FALLBACK_PLAYWRIGHT_GROUPS = [
+  "visual",
+  "panels",
+  "storage",
+  "collaboration",
+  "share",
+];
+const FALLBACK_LEGACY_GROUPS = [];
+const ROOM_PLAYWRIGHT_GROUPS = new Set([
+  "preview",
+  "performance",
+  "storage",
+  "collaboration",
+]);
+const JSON_PLAYWRIGHT_GROUPS = new Set(["share"]);
 const ROOM_LEGACY_SUITES = new Set([
   "workspace",
   "editor-selection-comments",
@@ -103,17 +136,20 @@ export function selectBrowserSmokeSuites(changedPaths) {
 
     if (path.startsWith("tests/browser/") || path.startsWith("scripts/browser-smoke/")) {
       if (
-        path.endsWith("/editor-visual.spec.mjs") ||
+        path.endsWith("/markdown-parity.spec.mjs") ||
+        path.endsWith("/visual-interaction.spec.mjs") ||
+        path.endsWith("/editor-controls.spec.mjs") ||
+        path.endsWith("/responsive-layout.spec.mjs") ||
         path.endsWith("/suites/editor-visual.mjs")
       ) {
         addPlaywright("visual", "visual editor changed");
       } else if (
-        path.endsWith("/editor-preview.spec.mjs") ||
+        path.endsWith("/preview-navigation.spec.mjs") ||
         path.endsWith("/suites/editor-preview.mjs")
       ) {
         addPlaywright("preview", "preview changed");
       } else if (
-        path.endsWith("/panels.spec.mjs") ||
+        path.endsWith("/right-panels.spec.mjs") ||
         path.endsWith("/suites/panels.mjs")
       ) {
         addPlaywright("panels", "panel behavior changed");
@@ -122,6 +158,21 @@ export function selectBrowserSmokeSuites(changedPaths) {
         path.endsWith("/suites/performance.mjs")
       ) {
         addPlaywright("performance", "performance check changed");
+      } else if (
+        path.endsWith("/storage-restore.spec.mjs") ||
+        path.endsWith("/suites/workspace-menu.mjs")
+      ) {
+        addPlaywright("storage", "storage restore changed");
+      } else if (
+        path.endsWith("/collaboration-capability.spec.mjs") ||
+        path.endsWith("/suites/collaboration.mjs")
+      ) {
+        addPlaywright("collaboration", "collaboration changed");
+      } else if (
+        path.endsWith("/share-capability.spec.mjs") ||
+        path.endsWith("/suites/json-share.mjs")
+      ) {
+        addPlaywright("share", "sharing changed");
       } else {
         const suiteFile = path.match(/\/suites\/([^/]+)\.mjs$/)?.[1];
         const legacySuite = suiteFile && LEGACY_SUITE_FILES.get(suiteFile);
@@ -136,13 +187,13 @@ export function selectBrowserSmokeSuites(changedPaths) {
     }
 
     if (path.startsWith("tabula-app/src/collaboration/") || path.startsWith("packages/tabula/src/room/")) {
-      addLegacy("collaboration", "collaboration runtime changed");
+      addPlaywright("collaboration", "collaboration runtime changed");
       continue;
     }
 
     if (path.startsWith("tabula-app/src/share/")) {
-      addLegacy("collaboration", "sharing changed");
-      addLegacy("share", "sharing changed");
+      addPlaywright("collaboration", "sharing changed");
+      addPlaywright("share", "sharing changed");
       continue;
     }
 
@@ -196,7 +247,7 @@ export function selectBrowserSmokeSuites(changedPaths) {
       path.startsWith("packages/tabula/src/document/") ||
       path.startsWith("packages/tabula/src/data/")
     ) {
-      addLegacy("workspace", "workspace changed");
+      addPlaywright("storage", "workspace changed");
       if (
         /knowledge|Compatibility|workspaceImportProfile|workspaceExportReview/.test(
           path,
@@ -242,22 +293,26 @@ export function selectBrowserSmokeSuites(changedPaths) {
 
   const playwrightFiles = [
     "harness.spec.ts",
-    ...PLAYWRIGHT_GROUP_ORDER.filter((group) => playwrightGroups.has(group)).map(
-      (group) => PLAYWRIGHT[group],
+    ...new Set(
+      PLAYWRIGHT_GROUP_ORDER
+        .filter((group) => playwrightGroups.has(group))
+        .flatMap((group) => PLAYWRIGHT[group]),
     ),
-    ...(playwrightGroups.has("performance") ? [PLAYWRIGHT.performance] : []),
   ];
   const legacy = [...legacySuites];
   const needsRoom =
     [...playwrightGroups].some((group) => ROOM_PLAYWRIGHT_GROUPS.has(group)) ||
     legacy.some((suite) => ROOM_LEGACY_SUITES.has(suite));
   const needsJson = legacy.some((suite) => JSON_LEGACY_SUITES.has(suite));
+  const needsJsonService =
+    [...playwrightGroups].some((group) => JSON_PLAYWRIGHT_GROUPS.has(group)) ||
+    needsJson;
 
   return {
     playwrightFiles,
     legacySuites: legacy,
     needsRoom,
-    needsJson,
+    needsJson: needsJsonService,
     fallbackRun,
     reason: reasons.size > 0 ? [...reasons].join("; ") : "no browser runtime changed",
   };

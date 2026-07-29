@@ -20,7 +20,10 @@ test("selects editor checks without unrelated workspace or collaboration checks"
 
   assert.deepEqual(selection.playwrightFiles, [
     "harness.spec.ts",
-    "editor-visual.spec.mjs",
+    "markdown-parity.spec.mjs",
+    "visual-interaction.spec.mjs",
+    "editor-controls.spec.mjs",
+    "responsive-layout.spec.mjs",
   ]);
   assert(selection.legacySuites.includes("editor-search-source"));
   assert(selection.legacySuites.includes("editor-selection-comments"));
@@ -36,7 +39,7 @@ test("selects panel and knowledge checks for a knowledge panel change", () => {
 
   assert.deepEqual(selection.playwrightFiles, [
     "harness.spec.ts",
-    "panels.spec.mjs",
+    "right-panels.spec.mjs",
   ]);
   assert.deepEqual(selection.legacySuites, ["knowledge-links", "okf-concepts"]);
 });
@@ -49,7 +52,8 @@ test("checks out the room relay only for suites that use it", () => {
     "tabula-app/src/preview/VirtualMarkdownPreview.tsx",
   ]);
 
-  assert.deepEqual(collaboration.legacySuites, ["collaboration"]);
+  assert(collaboration.playwrightFiles.includes("collaboration-capability.spec.mjs"));
+  assert.deepEqual(collaboration.legacySuites, []);
   assert.equal(collaboration.needsRoom, true);
   assert.equal(preview.needsRoom, true);
 });
@@ -62,7 +66,9 @@ test("checks out the JSON server only for JSON sharing checks", () => {
     "tabula-app/src/right-panel/RightPanel.tsx",
   ]);
 
-  assert(share.legacySuites.includes("json-share"));
+  assert(share.playwrightFiles.includes("collaboration-capability.spec.mjs"));
+  assert(share.playwrightFiles.includes("share-capability.spec.mjs"));
+  assert.deepEqual(share.legacySuites, []);
   assert.equal(share.needsJson, true);
   assert.equal(panels.needsJson, false);
 });
@@ -94,6 +100,25 @@ test("runs a changed performance spec only when explicitly selected", () => {
   assert.deepEqual(selection.legacySuites, []);
 });
 
+test("routes storage and service suites through capability specs", () => {
+  const storage = selectBrowserSmokeSuites([
+    "tabula-app/src/workspace/persistence/workspaceIndexedDb.ts",
+  ]);
+  const collaboration = selectBrowserSmokeSuites([
+    "scripts/browser-smoke/suites/collaboration.mjs",
+  ]);
+  const share = selectBrowserSmokeSuites([
+    "scripts/browser-smoke/suites/json-share.mjs",
+  ]);
+
+  assert(storage.playwrightFiles.includes("storage-restore.spec.mjs"));
+  assert(collaboration.playwrightFiles.includes("collaboration-capability.spec.mjs"));
+  assert(share.playwrightFiles.includes("share-capability.spec.mjs"));
+  assert.equal(storage.needsRoom, true);
+  assert.equal(collaboration.needsRoom, true);
+  assert.equal(share.needsJson, true);
+});
+
 test("falls back to the established PR safety checks for shared or unknown runtime changes", () => {
   const infrastructure = selectBrowserSmokeSuites(["playwright.config.ts"]);
   const unknownRuntime = selectBrowserSmokeSuites([
@@ -104,10 +129,17 @@ test("falls back to the established PR safety checks for shared or unknown runti
     assert.equal(selection.fallbackRun, true);
     assert.deepEqual(selection.playwrightFiles, [
       "harness.spec.ts",
-      "editor-visual.spec.mjs",
-      "panels.spec.mjs",
+      "markdown-parity.spec.mjs",
+      "visual-interaction.spec.mjs",
+      "editor-controls.spec.mjs",
+      "responsive-layout.spec.mjs",
+      "right-panels.spec.mjs",
+      "storage-restore.spec.mjs",
+      "collaboration-capability.spec.mjs",
+      "share-capability.spec.mjs",
     ]);
-    assert.deepEqual(selection.legacySuites, ["workspace", "collaboration"]);
+    assert.deepEqual(selection.legacySuites, []);
     assert.equal(selection.needsRoom, true);
+    assert.equal(selection.needsJson, true);
   }
 });
