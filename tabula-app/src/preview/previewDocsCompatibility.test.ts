@@ -40,6 +40,14 @@ describe("preview docs compatibility", () => {
     ].join("\n"));
   });
 
+  it("normalizes docs components that do not need presentation source mapping", () => {
+    expect(normalizePreviewDocsComponents(
+      '<Frame><img src="/diagram.png" alt="Diagram" /></Frame>',
+    )).toBe(
+      '<tabula-frame><img src="/diagram.png" alt="Diagram" /></tabula-frame>',
+    );
+  });
+
   it("leaves allowed and explicitly stripped HTML for the sanitizer", () => {
     const markdown = [
       "<details><summary>More</summary>Body</details>",

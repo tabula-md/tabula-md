@@ -1814,6 +1814,7 @@ export async function run(ctx) {
       await focusMarkdownEditor(page);
       await page.evaluate(installLargePasteProbe);
       await page.evaluate(async (value) => navigator.clipboard.writeText(value), largePasteMarkdown);
+      await focusMarkdownEditor(page);
 
       const pasteElapsed = await measureElapsed(async () => {
         await page.evaluate(() => window.__tabulaLargePasteProbe.start());

@@ -1,7 +1,7 @@
 import {
-  createMarkdownPresentationDocument,
   type PresentationNode,
 } from "@tabula-md/tabula";
+import { getMarkdownPresentationDocument } from "../markdownPresentationCache";
 import { PREVIEW_SANITIZE_SCHEMA } from "./previewSanitizeSchema";
 
 const PREVIEW_DOCS_COMPONENT_TAGS: Readonly<Record<string, string>> = {
@@ -49,6 +49,9 @@ export const PREVIEW_DOCS_BLOCK_TAGS = new Set([
 ]);
 
 const docsComponentPattern = /<(\/?)([A-Za-z][A-Za-z0-9.-]*)(?=[\s/>])([^<>]*?)>/g;
+const presentationMappedComponentPattern =
+  /<(?:Accordion|Callout|Tab|Tabs)(?=[\s/>])/;
+const EMPTY_PRESENTATION_COMPONENTS = new Map<number, PresentationNode>();
 
 const flattenPresentationNodes = (
   nodes: readonly PresentationNode[],
@@ -60,7 +63,7 @@ const flattenPresentationNodes = (
 const getPresentationComponentsByOffset = (source: string) => {
   const components = new Map<number, PresentationNode>();
   for (const node of flattenPresentationNodes(
-    createMarkdownPresentationDocument(source).blocks,
+    getMarkdownPresentationDocument(source).blocks,
   )) {
     if (
       node.type === "accordion" ||
@@ -158,7 +161,9 @@ export const normalizePreviewDocsComponents = (markdown: string) => {
   let isInFence = false;
   let activeFenceMarker = "";
   let sourceOffset = 0;
-  const presentationComponents = getPresentationComponentsByOffset(markdown);
+  const presentationComponents = presentationMappedComponentPattern.test(markdown)
+    ? getPresentationComponentsByOffset(markdown)
+    : EMPTY_PRESENTATION_COMPONENTS;
 
   return markdown
     .split(/(\r?\n)/)

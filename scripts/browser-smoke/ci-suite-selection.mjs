@@ -158,7 +158,8 @@ export function selectBrowserSmokeSuites(changedPaths) {
         addPlaywright("panels", "panel behavior changed");
       } else if (
         path.endsWith("/performance.spec.mjs") ||
-        path.endsWith("/suites/performance.mjs")
+        path.endsWith("/suites/performance.mjs") ||
+        path.endsWith("/suites/workspace-performance.mjs")
       ) {
         addPlaywright("performance", "performance check changed");
       } else if (
@@ -202,6 +203,13 @@ export function selectBrowserSmokeSuites(changedPaths) {
     if (path.startsWith("tabula-app/src/share/")) {
       addPlaywright("collaboration", "sharing changed");
       addPlaywright("share", "sharing changed");
+      continue;
+    }
+
+    if (path === "tabula-app/src/markdownPresentationCache.ts") {
+      addPlaywright("visual", "shared Markdown presentation cache changed");
+      addPlaywright("preview", "shared Markdown presentation cache changed");
+      addPlaywright("performance", "shared Markdown presentation cache changed");
       continue;
     }
 

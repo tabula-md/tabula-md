@@ -5,11 +5,11 @@ import remarkMath from "remark-math";
 import remarkSupersub from "remark-supersub";
 import type { Options as ReactMarkdownOptions } from "react-markdown";
 import {
-  createMarkdownPresentationDocument,
   scanMarkdownWikiLinks,
   type MarkdownWikiLinkToken,
   type PresentationNode,
 } from "@tabula-md/tabula";
+import { getMarkdownPresentationDocument } from "../markdownPresentationCache";
 
 type MarkdownAstPosition = {
   start?: { offset?: number };
@@ -66,7 +66,7 @@ export const annotateMarkdownPresentation = (
   tree: MarkdownAstNode,
   markdown: string,
 ) => {
-  const presentation = createMarkdownPresentationDocument(markdown);
+  const presentation = getMarkdownPresentationDocument(markdown);
   const nodesByRange = new Map<string, PresentationNode[]>();
   for (const node of flattenPresentationNodes(presentation.blocks)) {
     const key = `${node.range.from}:${node.range.to}`;
