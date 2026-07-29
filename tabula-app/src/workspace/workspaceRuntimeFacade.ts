@@ -1,0 +1,72 @@
+import type { DocumentSurfaceModel } from "@tabula-md/tabula";
+import type { DocumentWorkbenchProps } from "../document/DocumentWorkbench";
+import type { LiveRoomOpenState } from "../collaboration/liveRoomOpenState";
+import type { WorkspaceRightPanelProps } from "../right-panel/WorkspaceRightPanel";
+import type { WorkspaceEmptySurfaceProps } from "./components/WorkspaceEmptySurface";
+import type { WorkspaceMenuSurfaceProps } from "./components/WorkspaceMenuSurface";
+import type { WorkspaceOverlaySurfaceProps } from "./components/WorkspaceOverlaySurface";
+import type { WorkspaceTopChromeProps } from "./components/WorkspaceTopChrome";
+import type { WorkspaceFile } from "./workspaceStorage";
+import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
+
+export type WorkspaceAppWorkbenchProps = Omit<
+  DocumentWorkbenchProps,
+  "activeFile"
+> & {
+  activeFile?: WorkspaceFile;
+};
+
+export type WorkspaceRuntimeFacade = {
+  documentRuntime: {
+    surface: DocumentSurfaceModel;
+    workbench: WorkspaceAppWorkbenchProps;
+  };
+  workspaceSession: {
+    emptySurface: WorkspaceEmptySurfaceProps;
+    localOpening: boolean;
+  };
+  chrome: {
+    mainPanelClassName: string;
+    menu: WorkspaceMenuSurfaceProps;
+    top: WorkspaceTopChromeProps;
+  };
+  panels: {
+    right: WorkspaceRightPanelProps;
+  };
+  overlays: {
+    workspace: WorkspaceOverlaySurfaceProps;
+  };
+  collaboration: {
+    liveRoomOpenState: LiveRoomOpenState;
+    loadingSurface: {
+      language: WorkspaceLanguage;
+    };
+  };
+};
+
+export type CreateWorkspaceRuntimeFacadeOptions = Omit<
+  WorkspaceRuntimeFacade,
+  "chrome"
+> & {
+  chrome: Omit<WorkspaceRuntimeFacade["chrome"], "mainPanelClassName">;
+};
+
+export function createWorkspaceRuntimeFacade({
+  chrome,
+  ...runtime
+}: CreateWorkspaceRuntimeFacadeOptions): WorkspaceRuntimeFacade {
+  const splitViewOpen =
+    runtime.documentRuntime.surface.documentControls.activeViewMode === "split";
+
+  return {
+    ...runtime,
+    chrome: {
+      ...chrome,
+      mainPanelClassName: [
+        "main-panel",
+        runtime.panels.right.isOpen && "right-panel-open",
+        splitViewOpen && "split-view-open",
+      ].filter(Boolean).join(" "),
+    },
+  };
+}

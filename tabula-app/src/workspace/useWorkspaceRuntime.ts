@@ -44,7 +44,7 @@ import {
   getWorkspaceChromeCopy,
   getWorkspaceMenuCopy,
 } from "./workspaceLocale";
-import { createWorkspaceAppViewModel } from "./workspaceAppViewModel";
+import { createWorkspaceRuntimeFacade } from "./workspaceRuntimeFacade";
 import { getWorkspaceActionCopy } from "./workspaceActionLocale";
 import {
   getWorkspaceStoreActiveFile,
@@ -1328,50 +1328,61 @@ export function useWorkspaceRuntime() {
     setCenterPopover,
   });
 
-  return createWorkspaceAppViewModel({
-    activeFile,
-    documentSurface,
-    emptySurfaceProps: {
-      dropActive: emptyDropActive,
-      language: workspacePreferences.language,
-      shortcutPlatform,
-      workspaceRef,
-      onDragLeave: handleEmptyWorkspaceDragLeave,
-      onDragOver: handleEmptyWorkspaceDragOver,
-      onDrop: handleEmptyWorkspaceDrop,
-      onNewFile: addRootFile,
-      onOpenFile: () => importInputRef.current?.click(),
-      onOpenWorkspace: () => workspaceImportInputRef.current?.click(),
+  return createWorkspaceRuntimeFacade({
+    documentRuntime: {
+      surface: documentSurface,
+      workbench: workbenchProps,
     },
-    liveRoomLoadingProps: {
-      language: workspacePreferences.language,
+    workspaceSession: {
+      emptySurface: {
+        dropActive: emptyDropActive,
+        language: workspacePreferences.language,
+        shortcutPlatform,
+        workspaceRef,
+        onDragLeave: handleEmptyWorkspaceDragLeave,
+        onDragOver: handleEmptyWorkspaceDragOver,
+        onDrop: handleEmptyWorkspaceDrop,
+        onNewFile: addRootFile,
+        onOpenFile: () => importInputRef.current?.click(),
+        onOpenWorkspace: () => workspaceImportInputRef.current?.click(),
+      },
+      localOpening:
+        localPersistenceEnabled && localWorkspacePersistence.pending,
     },
-    localWorkspaceOpening: localPersistenceEnabled && localWorkspacePersistence.pending,
-    liveRoomOpenState,
-    menuSurfaceProps,
-    overlayProps: {
-      infoDialog,
-      jsonShareImport,
-      workspaceFolderImport,
-      workspaceExportReview,
-      language: workspacePreferences.language,
-      shortcutPlatform,
-      toast,
-      onCloseInfoDialog: () => setInfoDialog(null),
-      onCloseWorkspaceFolderImport: closeWorkspaceFolderImport,
-      onCloseWorkspaceExportReview: closeWorkspaceExportReview,
-      onDismissToast: dismissToast,
-      onPauseToast: pauseToast,
-      onResumeToast: resumeToast,
-      onCloseJsonShareImport: closeJsonShareImport,
-      onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
-      onReplaceWorkspaceWithFolder: replaceWorkspaceWithFolder,
-      onConfirmWorkspaceExport: confirmWorkspaceArchiveExport,
-      onReviewWorkspaceExportIssues: reviewWorkspaceExportIssues,
+    chrome: {
+      menu: menuSurfaceProps,
+      top: topChromeProps,
     },
-    rightPanelProps,
-    topChromeProps,
-    workbenchProps,
-    rightPanelOpen,
+    panels: {
+      right: rightPanelProps,
+    },
+    overlays: {
+      workspace: {
+        infoDialog,
+        jsonShareImport,
+        workspaceFolderImport,
+        workspaceExportReview,
+        language: workspacePreferences.language,
+        shortcutPlatform,
+        toast,
+        onCloseInfoDialog: () => setInfoDialog(null),
+        onCloseWorkspaceFolderImport: closeWorkspaceFolderImport,
+        onCloseWorkspaceExportReview: closeWorkspaceExportReview,
+        onDismissToast: dismissToast,
+        onPauseToast: pauseToast,
+        onResumeToast: resumeToast,
+        onCloseJsonShareImport: closeJsonShareImport,
+        onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
+        onReplaceWorkspaceWithFolder: replaceWorkspaceWithFolder,
+        onConfirmWorkspaceExport: confirmWorkspaceArchiveExport,
+        onReviewWorkspaceExportIssues: reviewWorkspaceExportIssues,
+      },
+    },
+    collaboration: {
+      liveRoomOpenState,
+      loadingSurface: {
+        language: workspacePreferences.language,
+      },
+    },
   });
 }

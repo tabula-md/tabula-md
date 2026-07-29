@@ -15,24 +15,19 @@ const WorkspaceRightPanel = lazy(() => import("../../right-panel/WorkspaceRightP
 
 export function WorkspaceApp() {
   const {
-    documentSurface,
-    emptySurfaceProps,
-    liveRoomLoadingProps,
-    liveRoomOpenState,
-    localWorkspaceOpening,
-    mainPanelClassName,
-    menuSurfaceProps,
-    overlayProps,
-    rightPanelProps,
-    topChromeProps,
-    workbenchProps,
+    collaboration,
+    chrome,
+    documentRuntime,
+    overlays,
+    panels,
+    workspaceSession,
   } = useWorkspaceRuntime();
-  const { activeFile, ...documentWorkbenchProps } = workbenchProps;
+  const { activeFile, ...documentWorkbenchProps } = documentRuntime.workbench;
 
-  if (localWorkspaceOpening) {
+  if (workspaceSession.localOpening) {
     return (
       <>
-        <WorkspaceOverlaySurface {...overlayProps} />
+        <WorkspaceOverlaySurface {...overlays.workspace} />
         <WorkspaceLoadingSurface />
       </>
     );
@@ -40,34 +35,34 @@ export function WorkspaceApp() {
 
   return (
     <main className="app-shell">
-      <WorkspaceOverlaySurface {...overlayProps} />
-      <section className={mainPanelClassName}>
-        <WorkspaceMenuSurface {...menuSurfaceProps} />
+      <WorkspaceOverlaySurface {...overlays.workspace} />
+      <section className={chrome.mainPanelClassName}>
+        <WorkspaceMenuSurface {...chrome.menu} />
 
-        <section className={documentSurface.centerWorkbenchClassName}>
-          <WorkspaceTopChrome {...topChromeProps} />
+        <section className={documentRuntime.surface.centerWorkbenchClassName}>
+          <WorkspaceTopChrome {...chrome.top} />
 
           <section
-            className={documentSurface.fileShellClassName}
+            className={documentRuntime.surface.fileShellClassName}
             id={activeFile ? getWorkspaceTabPanelId(activeFile.id) : undefined}
             role={activeFile ? "tabpanel" : undefined}
             aria-labelledby={activeFile ? getWorkspaceTabId(activeFile.id) : undefined}
           >
-            {liveRoomOpenState === "opening" ? (
-              <LiveRoomLoadingSurface {...liveRoomLoadingProps} />
+            {collaboration.liveRoomOpenState === "opening" ? (
+              <LiveRoomLoadingSurface {...collaboration.loadingSurface} />
             ) : activeFile ? (
               <DocumentWorkbench
                 {...documentWorkbenchProps}
                 activeFile={activeFile}
               />
             ) : (
-              <WorkspaceEmptySurface {...emptySurfaceProps} />
+              <WorkspaceEmptySurface {...workspaceSession.emptySurface} />
             )}
           </section>
         </section>
 
         <Suspense fallback={null}>
-          <WorkspaceRightPanel {...rightPanelProps} />
+          <WorkspaceRightPanel {...panels.right} />
         </Suspense>
       </section>
     </main>
