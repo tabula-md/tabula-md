@@ -244,6 +244,10 @@ export function useWorkspaceRightPanelController({
     (link: WorkspaceKnowledgeLink) => focusTextRange(link.from, link.to),
     [focusTextRange],
   );
+  const closePanel = useCallback(
+    () => setRightPanelOpen(false),
+    [setRightPanelOpen],
+  );
 
   const rightPanelProps: WorkspaceRightPanelProps = {
     isOpen: rightPanelOpen,
@@ -275,7 +279,7 @@ export function useWorkspaceRightPanelController({
     activeReplyCommentId,
     replyDraftByCommentId,
     onSetView: setPanelView,
-    onClose: () => setRightPanelOpen(false),
+    onClose: closePanel,
     onNewFile,
     onNewFolder,
     onImportFile,

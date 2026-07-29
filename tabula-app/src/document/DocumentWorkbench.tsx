@@ -1,6 +1,7 @@
 import {
   type CSSProperties,
   type RefObject,
+  memo,
   useMemo,
 } from "react";
 import { MessageSquarePlus } from "lucide-react";
@@ -45,6 +46,8 @@ import { StatusBar } from "./StatusBar";
 import { getWorkspaceSurfaceCopy } from "../workspace/workspaceSurfaceLocale";
 import { prepareMarkdownPreview } from "../preview/markdownPreviewLoader";
 import { TabulaDocumentSurface } from "../workbench/index";
+
+const MemoStatusBar = memo(StatusBar);
 
 export type DocumentWorkbenchProps = {
   activeBookmarks: FileBookmark[];
@@ -362,7 +365,7 @@ export function DocumentWorkbench({
         </button>
       )}
 
-      <StatusBar
+      <MemoStatusBar
         activeFileTitle={documentSurface.statusBar.activeFileTitle}
         activeViewMode={documentSurface.statusBar.activeViewMode}
         isLive={isLive}
