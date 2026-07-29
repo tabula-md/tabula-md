@@ -10,7 +10,15 @@ const roomRepoDir =
   (fs.existsSync(path.join(siblingRoomRepoDir, "package.json"))
     ? siblingRoomRepoDir
     : undefined);
+const siblingJsonRepoDir = path.resolve(process.cwd(), "../tabula-json");
+const jsonRepoDir =
+  process.env.TABULA_JSON_REPO_DIR ??
+  (fs.existsSync(path.join(siblingJsonRepoDir, "package.json"))
+    ? siblingJsonRepoDir
+    : undefined);
 const roomUrl = "http://127.0.0.1:3012";
+const jsonUrl = "http://127.0.0.1:3014";
+const jsonDataDir = path.resolve(process.cwd(), "output/playwright/json-data");
 const localWebServers = [
   ...(roomRepoDir
     ? [
@@ -28,9 +36,28 @@ const localWebServers = [
         },
       ]
     : []),
+  ...(jsonRepoDir
+    ? [
+        {
+          command: "npm run dev",
+          cwd: jsonRepoDir,
+          env: {
+            PORT: "3014",
+            TABULA_JSON_ALLOWED_ORIGINS: localUrl,
+            TABULA_JSON_DATA_DIR: jsonDataDir,
+          },
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+          url: `${jsonUrl}/health`,
+        },
+      ]
+    : []),
   {
     command: "npm run dev -- --host 127.0.0.1 --port 5187",
-    env: roomRepoDir ? { VITE_TABULA_ROOM_URL: roomUrl } : undefined,
+    env: {
+      ...(roomRepoDir ? { VITE_TABULA_ROOM_URL: roomUrl } : {}),
+      ...(jsonRepoDir ? { VITE_TABULA_JSON_URL: jsonUrl } : {}),
+    },
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     url: localUrl,
@@ -52,6 +79,13 @@ export default defineConfig({
     : "line",
   use: {
     baseURL: externalUrl ?? localUrl,
+    launchOptions: {
+      args: [
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
+      ],
+    },
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
     video: "retain-on-failure",

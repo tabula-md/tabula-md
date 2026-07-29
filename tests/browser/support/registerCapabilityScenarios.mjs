@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { createSmokeContext } from "../../../scripts/browser-smoke/support/runtime.mjs";
+import {
+  createSmokeContext,
+  smokeConfig,
+} from "../../../scripts/browser-smoke/support/runtime.mjs";
 
 export const registerCapabilityScenarios = (
   suite,
@@ -50,5 +53,23 @@ export const registerCapabilityScenarios = (
         ).toBe(true);
       });
     });
+  });
+};
+
+export const registerCapabilitySuite = (
+  suite,
+  { name, tag, timeout } = {},
+) => {
+  const details = tag ? { tag } : {};
+  test(name ?? suite.description, details, async ({ browser }) => {
+    if (timeout) {
+      test.setTimeout(timeout);
+    }
+    await suite.run(createSmokeContext(browser, {
+      // Playwright owns these web-server processes. Mark the app as externally
+      // managed so legacy service scenarios do not try to stop that lifecycle.
+      externalUrl: smokeConfig.externalUrl ?? smokeConfig.baseUrl,
+      jsonUrl: smokeConfig.jsonUrl,
+    }));
   });
 };

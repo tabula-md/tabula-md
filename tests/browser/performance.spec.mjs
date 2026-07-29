@@ -1,7 +1,7 @@
 import * as performance from "../../scripts/browser-smoke/suites/performance.mjs";
-import { registerLegacySmokeScenarios } from "./support/legacySmokeScenario.mjs";
+import { registerCapabilityScenarios } from "./support/registerCapabilityScenarios.mjs";
 
-registerLegacySmokeScenarios(performance, {
+registerCapabilityScenarios(performance, {
   tag: "@performance",
   timeout: 120_000,
 });

@@ -28,6 +28,9 @@ Named Playwright specs are organized by product capability:
 - `editor-controls`: editing modes, toolbar commands, and source behavior
 - `responsive-layout`: mobile editor and preview contracts
 - `right-panels`: Files, Outline, Comments, and project context
+- `storage-restore`: persisted workspace restore and workspace chrome state
+- `collaboration-capability`: live room synchronization
+- `share-capability`: encrypted Export link handoff
 - `performance`: long-document responsiveness
 
 ```bash
