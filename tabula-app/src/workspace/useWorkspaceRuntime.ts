@@ -54,7 +54,6 @@ import {
 import { useAppToast } from "../ui/useAppToast";
 import { useDocumentSurfaceController } from "../document/useDocumentSurfaceController";
 import { useEventCallback } from "../shared/useEventCallback";
-import { useStableSurfaceProps } from "../shared/useStableSurfaceProps";
 import { useFileComments } from "../comments/useFileComments";
 import { useSelectionActionDismissal } from "../document/useSelectionActionDismissal";
 import { useWorkspaceEditorDocumentRuntimeOwner } from "../document/editorDocumentRuntimeOwner";
@@ -1329,46 +1328,24 @@ export function useWorkspaceRuntime() {
     setCenterPopover,
   });
 
-  const emptySurface = useStableSurfaceProps({
-    dropActive: emptyDropActive,
-    language: workspacePreferences.language,
-    shortcutPlatform,
-    workspaceRef,
-    onDragLeave: handleEmptyWorkspaceDragLeave,
-    onDragOver: handleEmptyWorkspaceDragOver,
-    onDrop: handleEmptyWorkspaceDrop,
-    onNewFile: addRootFile,
-    onOpenFile: () => importInputRef.current?.click(),
-    onOpenWorkspace: () => workspaceImportInputRef.current?.click(),
-  });
-  const workspaceOverlay = useStableSurfaceProps({
-    infoDialog,
-    jsonShareImport,
-    workspaceFolderImport,
-    workspaceExportReview,
-    language: workspacePreferences.language,
-    shortcutPlatform,
-    toast,
-    onCloseInfoDialog: () => setInfoDialog(null),
-    onCloseWorkspaceFolderImport: closeWorkspaceFolderImport,
-    onCloseWorkspaceExportReview: closeWorkspaceExportReview,
-    onDismissToast: dismissToast,
-    onPauseToast: pauseToast,
-    onResumeToast: resumeToast,
-    onCloseJsonShareImport: closeJsonShareImport,
-    onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
-    onReplaceWorkspaceWithFolder: replaceWorkspaceWithFolder,
-    onConfirmWorkspaceExport: confirmWorkspaceArchiveExport,
-    onReviewWorkspaceExportIssues: reviewWorkspaceExportIssues,
-  });
-
   return createWorkspaceRuntimeFacade({
     documentRuntime: {
       surface: documentSurface,
       workbench: workbenchProps,
     },
     workspaceSession: {
-      emptySurface,
+      emptySurface: {
+        dropActive: emptyDropActive,
+        language: workspacePreferences.language,
+        shortcutPlatform,
+        workspaceRef,
+        onDragLeave: handleEmptyWorkspaceDragLeave,
+        onDragOver: handleEmptyWorkspaceDragOver,
+        onDrop: handleEmptyWorkspaceDrop,
+        onNewFile: addRootFile,
+        onOpenFile: () => importInputRef.current?.click(),
+        onOpenWorkspace: () => workspaceImportInputRef.current?.click(),
+      },
       localOpening:
         localPersistenceEnabled && localWorkspacePersistence.pending,
     },
@@ -1380,7 +1357,26 @@ export function useWorkspaceRuntime() {
       right: rightPanelProps,
     },
     overlays: {
-      workspace: workspaceOverlay,
+      workspace: {
+        infoDialog,
+        jsonShareImport,
+        workspaceFolderImport,
+        workspaceExportReview,
+        language: workspacePreferences.language,
+        shortcutPlatform,
+        toast,
+        onCloseInfoDialog: () => setInfoDialog(null),
+        onCloseWorkspaceFolderImport: closeWorkspaceFolderImport,
+        onCloseWorkspaceExportReview: closeWorkspaceExportReview,
+        onDismissToast: dismissToast,
+        onPauseToast: pauseToast,
+        onResumeToast: resumeToast,
+        onCloseJsonShareImport: closeJsonShareImport,
+        onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
+        onReplaceWorkspaceWithFolder: replaceWorkspaceWithFolder,
+        onConfirmWorkspaceExport: confirmWorkspaceArchiveExport,
+        onReviewWorkspaceExportIssues: reviewWorkspaceExportIssues,
+      },
     },
     collaboration: {
       liveRoomOpenState,

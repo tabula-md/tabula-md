@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { useStableSurfaceProps } from "../shared/useStableSurfaceProps";
 import type {
   Collaborator,
   ConnectionStatus,
@@ -154,8 +153,7 @@ export function useWorkspaceTopChromeController({
     shareOpen,
   ]);
 
-  const stableJsonShare = useStableSurfaceProps(jsonShare);
-  const topChromeProps = useStableSurfaceProps<WorkspaceTopChromeProps>({
+  const topChromeProps: WorkspaceTopChromeProps = {
     activeFile,
     activeText,
     collaborators,
@@ -168,7 +166,7 @@ export function useWorkspaceTopChromeController({
     isStartingLive,
     isLive,
     isLiveConnected,
-    jsonShare: stableJsonShare,
+    jsonShare,
     language,
     lastClosedFile,
     openFiles,
@@ -198,7 +196,7 @@ export function useWorkspaceTopChromeController({
     onToggleFollowing,
     onToggleShare: toggleShare,
     onToggleWorkspaceMenu,
-  });
+  };
 
   return {
     shareOpen,

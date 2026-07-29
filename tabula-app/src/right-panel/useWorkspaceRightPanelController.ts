@@ -4,7 +4,6 @@ import {
   useRef,
   type RefObject,
 } from "react";
-import { useStableSurfaceProps } from "../shared/useStableSurfaceProps";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
 import type {
   MarkdownHeading,
@@ -245,8 +244,12 @@ export function useWorkspaceRightPanelController({
     (link: WorkspaceKnowledgeLink) => focusTextRange(link.from, link.to),
     [focusTextRange],
   );
+  const closePanel = useCallback(
+    () => setRightPanelOpen(false),
+    [setRightPanelOpen],
+  );
 
-  const rightPanelProps = useStableSurfaceProps<WorkspaceRightPanelProps>({
+  const rightPanelProps: WorkspaceRightPanelProps = {
     isOpen: rightPanelOpen,
     view: rightPanelView,
     isLive,
@@ -276,7 +279,7 @@ export function useWorkspaceRightPanelController({
     activeReplyCommentId,
     replyDraftByCommentId,
     onSetView: setPanelView,
-    onClose: () => setRightPanelOpen(false),
+    onClose: closePanel,
     onNewFile,
     onNewFolder,
     onImportFile,
@@ -313,7 +316,7 @@ export function useWorkspaceRightPanelController({
     onToggleCommentResolved,
     onDeleteComment,
     formatCommentDate,
-  });
+  };
 
   return {
     knowledgeIndex,

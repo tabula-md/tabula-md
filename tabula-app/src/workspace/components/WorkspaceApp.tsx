@@ -9,11 +9,7 @@ import { WorkspaceLoadingSurface } from "./WorkspaceLoadingSurface";
 import { useWorkspaceRuntime } from "../useWorkspaceRuntime";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 
-const MemoDocumentWorkbench = memo(DocumentWorkbench);
-const MemoLiveRoomLoadingSurface = memo(LiveRoomLoadingSurface);
-const MemoWorkspaceEmptySurface = memo(WorkspaceEmptySurface);
 const MemoWorkspaceMenuSurface = memo(WorkspaceMenuSurface);
-const MemoWorkspaceOverlaySurface = memo(WorkspaceOverlaySurface);
 const MemoWorkspaceTopChrome = memo(WorkspaceTopChrome);
 const WorkspaceRightPanel = lazy(() => import("../../right-panel/WorkspaceRightPanel").then(
   ({ WorkspaceRightPanel: Component }) => ({ default: memo(Component) }),
@@ -33,7 +29,7 @@ export function WorkspaceApp() {
   if (workspaceSession.localOpening) {
     return (
       <>
-        <MemoWorkspaceOverlaySurface {...overlays.workspace} />
+        <WorkspaceOverlaySurface {...overlays.workspace} />
         <WorkspaceLoadingSurface />
       </>
     );
@@ -41,7 +37,7 @@ export function WorkspaceApp() {
 
   return (
     <main className="app-shell">
-      <MemoWorkspaceOverlaySurface {...overlays.workspace} />
+      <WorkspaceOverlaySurface {...overlays.workspace} />
       <section className={chrome.mainPanelClassName}>
         <MemoWorkspaceMenuSurface {...chrome.menu} />
 
@@ -55,14 +51,14 @@ export function WorkspaceApp() {
             aria-labelledby={activeFile ? getWorkspaceTabId(activeFile.id) : undefined}
           >
             {collaboration.liveRoomOpenState === "opening" ? (
-              <MemoLiveRoomLoadingSurface {...collaboration.loadingSurface} />
+              <LiveRoomLoadingSurface {...collaboration.loadingSurface} />
             ) : activeFile ? (
-              <MemoDocumentWorkbench
+              <DocumentWorkbench
                 {...documentWorkbenchProps}
                 activeFile={activeFile}
               />
             ) : (
-              <MemoWorkspaceEmptySurface {...workspaceSession.emptySurface} />
+              <WorkspaceEmptySurface {...workspaceSession.emptySurface} />
             )}
           </section>
         </section>

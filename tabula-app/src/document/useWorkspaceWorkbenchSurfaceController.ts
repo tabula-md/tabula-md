@@ -1,5 +1,4 @@
 import { useRef, type RefObject } from "react";
-import { useStableSurfaceProps } from "../shared/useStableSurfaceProps";
 import { createEditingActivationTracker, productAnalytics } from "../observability/productAnalytics";
 import type { MarkdownPreviewHandle } from "../preview/previewSyncTypes";
 import type { useWorkspaceCommentActions } from "../comments/useWorkspaceCommentActions";
@@ -73,27 +72,8 @@ export function useWorkspaceWorkbenchSurfaceController({
   const editingActivationTrackerRef = useRef(createEditingActivationTracker());
   const { documentWorkbenchController, documentSurface } = surface;
 
-  const documentSearch = useStableSurfaceProps({
-    searchInputRef: document.searchInputRef,
-    searchQuery: document.searchQuery,
-    replaceQuery: document.replaceQuery,
-    searchMatchCount: document.searchMatchCount,
-    searchMatchesTruncated: document.searchMatchesTruncated,
-    searchError: document.searchError,
-    searchOptions: document.searchOptions,
-    activeSearchMatchIndex: document.activeSearchMatchIndex,
-    replaceAvailable: document.replaceAvailable,
-    target: document.searchTarget,
-    onSearchQueryChange: document.setSearchQuery,
-    onReplaceQueryChange: document.setReplaceQuery,
-    onToggleSearchOption: document.toggleSearchOption,
-    onGoToSearchMatch: document.goToSearchMatch,
-    onSelectAllSearchMatches: document.selectAllSearchMatches,
-    onReplaceCurrentMatch: document.replaceCurrentMatch,
-    onReplaceAllMatches: document.replaceAllMatches,
-    onCloseSearch: () => document.setSearchOpen(false),
-  });
-  const workbenchProps = useStableSurfaceProps({
+  return {
+    workbenchProps: {
       activeBookmarks: document.activeBookmarks,
       activeCommentAnchors: comments.activeCommentAnchors,
       activeFile,
@@ -110,7 +90,26 @@ export function useWorkspaceWorkbenchSurfaceController({
       collaborationBinding: room.editorBinding,
       cursorPositionLabel: document.cursorPositionLabel,
       documentSurface,
-      documentSearch,
+      documentSearch: {
+        searchInputRef: document.searchInputRef,
+        searchQuery: document.searchQuery,
+        replaceQuery: document.replaceQuery,
+        searchMatchCount: document.searchMatchCount,
+        searchMatchesTruncated: document.searchMatchesTruncated,
+        searchError: document.searchError,
+        searchOptions: document.searchOptions,
+        activeSearchMatchIndex: document.activeSearchMatchIndex,
+        replaceAvailable: document.replaceAvailable,
+        target: document.searchTarget,
+        onSearchQueryChange: document.setSearchQuery,
+        onReplaceQueryChange: document.setReplaceQuery,
+        onToggleSearchOption: document.toggleSearchOption,
+        onGoToSearchMatch: document.goToSearchMatch,
+        onSelectAllSearchMatches: document.selectAllSearchMatches,
+        onReplaceCurrentMatch: document.replaceCurrentMatch,
+        onReplaceAllMatches: document.replaceAllMatches,
+        onCloseSearch: () => document.setSearchOpen(false),
+      },
       editorHistoryCanRedo: editor.editorHistoryState.canRedo,
       editorHistoryCanUndo: editor.editorHistoryState.canUndo,
       editorRef,
@@ -219,9 +218,6 @@ export function useWorkspaceWorkbenchSurfaceController({
       },
       resolveWorkspaceDocument,
       resolveWorkspaceLink,
-  });
-
-  return {
-    workbenchProps,
+    },
   };
 }
