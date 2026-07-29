@@ -23,6 +23,7 @@ import {
   getPreviewMetadataDerivationDelayMs,
   getWordCountDerivationDelayMs,
   LARGE_DOCUMENT_METADATA_IDLE_TIMEOUT_MS,
+  LARGE_DOCUMENT_PREVIEW_BODY_IDLE_TIMEOUT_MS,
   shouldDeriveImmediatePreviewState,
   shouldDerivePreviewBodyImmediately,
   shouldPatchPreviewBodyImmediately,
@@ -253,15 +254,42 @@ export const useActiveDocumentRuntime = (
       textLength: activeText.length,
       viewMode: activeViewMode,
     });
-    const timer = window.setTimeout(() => {
+    let cancelled = false;
+    let idleHandle: number | null = null;
+    const derivePreviewBodyState = () => {
+      if (cancelled) {
+        return;
+      }
       const previewSnapshot = createActiveDocumentPreviewTextSnapshot({ id: activeFileId }, activeText);
-      setDeferredPreviewBodyState({
-        previewSnapshot,
-        previewBodyState: createPreviewBodyStateFromSnapshot(previewSnapshot),
+      const previewBodyState = createPreviewBodyStateFromSnapshot(previewSnapshot);
+      startTransition(() => {
+        if (cancelled) {
+          return;
+        }
+        setDeferredPreviewBodyState({
+          previewSnapshot,
+          previewBodyState,
+        });
       });
+    };
+    const timer = window.setTimeout(() => {
+      if (largeDocumentMode && "requestIdleCallback" in window) {
+        idleHandle = window.requestIdleCallback(derivePreviewBodyState, {
+          timeout: LARGE_DOCUMENT_PREVIEW_BODY_IDLE_TIMEOUT_MS,
+        });
+        return;
+      }
+
+      derivePreviewBodyState();
     }, delayMs);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      if (idleHandle !== null) {
+        window.cancelIdleCallback(idleHandle);
+      }
+    };
   }, [activeFileId, activeText, activeViewMode, hasActiveFile, immediatePreviewBodyState, immediatePreviewState, largeDocumentMode]);
 
   useEffect(() => {
