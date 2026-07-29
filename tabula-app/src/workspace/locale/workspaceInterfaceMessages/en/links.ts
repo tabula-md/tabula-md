@@ -1,0 +1,18 @@
+export const enLinksMessages = {
+  linksFor: "Links for {{name}}",
+  linksOutgoing: "Outgoing",
+  linksBacklinks: "Backlinks",
+  linksOutgoingNone: "No outgoing links yet.",
+  linksBacklinksNone: "No documents link here yet.",
+  linksUnavailable: "Links are unavailable while file paths conflict",
+  linksOpen: "Open {{name}}",
+  linksOpenExternal: "Open external link {{name}}",
+  linksGoToBroken: "Document not found — go to source: {{name}}",
+  linksChooseAmbiguous: "{{count}} matching documents — choose target for {{name}}",
+  linksResolveWith: "Resolve link with {{name}}",
+  linksNotFound: "Not found",
+  linksMatchCount: "{{count}} matches",
+  linksExpandSection: "Expand {{name}}",
+  linksCollapseSection: "Collapse {{name}}",
+  linksOpenMap: "Open map",
+} as const;

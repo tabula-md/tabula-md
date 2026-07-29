@@ -1,0 +1,16 @@
+export const enPanelsMessages = {
+  panelDismiss: "Dismiss side panel",
+  panelLabel: "Side panel",
+  panelSections: "Side panel sections",
+  panelResize: "Resize side panel",
+  panelFiles: "Files",
+  panelOutline: "Outline",
+  panelLinks: "Links",
+  panelGraph: "Graph",
+  panelComments: "Comments",
+  panelSearch: "Search",
+  panelKnowledge: "Knowledge",
+  panelKnowledgeDescription: "Review document knowledge, links, and workspace health",
+  panelNoDocuments: "No documents yet",
+  panelNoDocumentOpen: "No document open",
+} as const;
