@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { captureWorkspaceKnowledgeBaseline } from "@tabula-md/tabula";
 import {
   deleteIndexedDbWorkspace,
+  parseIndexedDbWorkspaceSnapshot,
   readIndexedDbWorkspace,
   writeIndexedDbWorkspace,
   type WorkspaceDatabaseAdapter,
   type WorkspaceWritePlan,
 } from "./workspaceIndexedDb";
 import { createWorkspaceFile, createWorkspaceRootFolder, type WorkspaceState } from "../workspaceStorage";
+import projectV6 from "../__fixtures__/storage/project-v6.json";
 
 const createWorkspace = (text: string): WorkspaceState => ({
   folders: [createWorkspaceRootFolder()],
@@ -48,6 +50,47 @@ const createMemoryAdapter = () => {
 };
 
 describe("workspace IndexedDB adapter", () => {
+  it("hydrates a v6 IndexedDB snapshot before upgrading its manifest", () => {
+    const snapshot = {
+      version: projectV6.version,
+      savedAt: projectV6.savedAt,
+      activeFileId: projectV6.activeFileId,
+      openFileIds: projectV6.openFileIds,
+      fileOrder: projectV6.fileOrder,
+      folderOrder: projectV6.folderOrder,
+      files: projectV6.files,
+      folders: projectV6.folders,
+      commentsByFileId: projectV6.commentsByFileId,
+    };
+    const original = structuredClone(snapshot);
+
+    const result = parseIndexedDbWorkspaceSnapshot(snapshot);
+
+    expect(result.event.status).toBe("migrated");
+    expect(result.workspace?.files[0]).toMatchObject({
+      id: "guide",
+      editingMode: "source",
+    });
+    expect(snapshot).toEqual(original);
+  });
+
+  it("rejects a malformed IndexedDB snapshot before any upgrade write", () => {
+    const result = parseIndexedDbWorkspaceSnapshot({
+      version: 6,
+      savedAt: "2025-06-01T00:00:00.000Z",
+      activeFileId: "missing",
+      openFileIds: ["missing"],
+      fileOrder: ["missing"],
+      folderOrder: ["workspace-root"],
+      files: {},
+      folders: projectV6.folders,
+      commentsByFileId: {},
+    });
+
+    expect(result.event.status).toBe("rejected");
+    expect(result.workspace).toBeNull();
+  });
+
   it("writes normalized file, folder, and manifest records", async () => {
     const memory = createMemoryAdapter();
 

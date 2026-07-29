@@ -1,0 +1,29 @@
+{
+  "schema": "tabula.project",
+  "version": 6,
+  "savedAt": "2025-06-01T00:00:00.000Z",
+  "activeFileId": "guide",
+  "openFileIds": ["guide"],
+  "fileOrder": ["guide"],
+  "folderOrder": ["workspace-root"],
+  "folders": {
+    "workspace-root": {
+      "id": "workspace-root",
+      "title": "Project",
+      "parentId": null,
+      "order": 0
+    }
+  },
+  "files": {
+    "guide": {
+      "id": "guide",
+      "title": "Guide.md",
+      "text": "# Guide",
+      "viewMode": "edit",
+      "readingWidth": "wide",
+      "lineWrapping": true,
+      "lineNumbers": true
+    }
+  },
+  "commentsByFileId": {}
+}

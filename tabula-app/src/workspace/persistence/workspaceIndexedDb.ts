@@ -2,7 +2,7 @@ import Dexie, { type Table } from "dexie";
 import type { WorkspaceKnowledgeBaseline } from "@tabula-md/tabula";
 import {
   PROJECT_STORAGE_VERSION,
-  finalizeWorkspaceState,
+  parseWorkspacePayload,
   serializeFile,
   type FileComment,
   type StoredWorkspaceFile,
@@ -10,6 +10,7 @@ import {
   type WorkspaceFolder,
   type WorkspaceState,
 } from "../workspaceStorage";
+import { migrateWorkspaceStoragePayload } from "../workspaceStorageMigrations";
 
 const WORKSPACE_DATABASE_NAME = "tabula-workspace-v8";
 const LOCAL_WORKSPACE_KEY = "current";
@@ -42,6 +43,48 @@ export type WorkspaceCommentRecord = {
 export type WorkspaceKnowledgeBaselineRecord = {
   key: typeof LOCAL_WORKSPACE_KEY;
   payload: WorkspaceKnowledgeBaseline;
+};
+
+export type IndexedDbWorkspaceSnapshot = {
+  version: number;
+  savedAt: string;
+  activeFileId: string;
+  openFileIds: string[];
+  fileOrder: string[];
+  folderOrder: string[];
+  files: Record<string, unknown>;
+  folders: Record<string, unknown>;
+  commentsByFileId: Record<string, unknown>;
+  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
+};
+
+export const parseIndexedDbWorkspaceSnapshot = (
+  snapshot: IndexedDbWorkspaceSnapshot,
+) => {
+  const migration = migrateWorkspaceStoragePayload({
+    schema: "tabula.project",
+    version: snapshot.version,
+    savedAt: snapshot.savedAt,
+    activeFileId: snapshot.activeFileId,
+    openFileIds: snapshot.openFileIds,
+    fileOrder: snapshot.fileOrder,
+    folderOrder: snapshot.folderOrder,
+    folders: snapshot.folders,
+    files: snapshot.files,
+    commentsByFileId: snapshot.commentsByFileId,
+  }, PROJECT_STORAGE_VERSION);
+  const parsedWorkspace = migration.payload
+    ? parseWorkspacePayload(migration.payload)
+    : null;
+  return {
+    event: migration.event,
+    workspace: parsedWorkspace
+      ? {
+          ...parsedWorkspace,
+          knowledgeBaseline: snapshot.knowledgeBaseline,
+        }
+      : null,
+  };
 };
 
 export type WorkspaceWritePlan = {
@@ -90,7 +133,7 @@ export const workspaceIndexedDb = new TabulaWorkspaceDb();
 
 const dexieWorkspaceDatabaseAdapter: WorkspaceDatabaseAdapter = {
   readWorkspace: () => workspaceIndexedDb.transaction(
-    "r",
+    "rw",
     workspaceIndexedDb.workspaceManifests,
     workspaceIndexedDb.workspaceFiles,
     workspaceIndexedDb.workspaceFolders,
@@ -98,25 +141,72 @@ const dexieWorkspaceDatabaseAdapter: WorkspaceDatabaseAdapter = {
     workspaceIndexedDb.workspaceKnowledgeBaselines,
     async () => {
       const manifest = await workspaceIndexedDb.workspaceManifests.get(LOCAL_WORKSPACE_KEY);
-      if (!manifest || manifest.version !== PROJECT_STORAGE_VERSION) return null;
+      if (!manifest) return null;
+
+      const manifestVersion = Number(manifest.version);
+      const fileOrder = Array.isArray(manifest.fileOrder) ? manifest.fileOrder : [];
+      const folderOrder = Array.isArray(manifest.folderOrder) ? manifest.folderOrder : [];
+      const openFileIds = Array.isArray(manifest.openFileIds) ? manifest.openFileIds : [];
+      if (
+        !Number.isInteger(manifestVersion) ||
+        fileOrder.some((id) => typeof id !== "string") ||
+        folderOrder.some((id) => typeof id !== "string") ||
+        openFileIds.some((id) => typeof id !== "string")
+      ) {
+        return null;
+      }
 
       const [fileRecords, folderRecords, commentRecords, knowledgeBaselineRecord] = await Promise.all([
-        workspaceIndexedDb.workspaceFiles.bulkGet(manifest.fileOrder),
-        workspaceIndexedDb.workspaceFolders.bulkGet(manifest.folderOrder),
-        workspaceIndexedDb.workspaceComments.bulkGet(manifest.fileOrder),
+        workspaceIndexedDb.workspaceFiles.bulkGet(fileOrder),
+        workspaceIndexedDb.workspaceFolders.bulkGet(folderOrder),
+        workspaceIndexedDb.workspaceComments.bulkGet(fileOrder),
         workspaceIndexedDb.workspaceKnowledgeBaselines.get(LOCAL_WORKSPACE_KEY),
       ]);
-      const files = fileRecords.flatMap((record) => record ? [record.payload] : []);
-      const folders = folderRecords.flatMap((record) => record ? [record.payload] : []);
+      const files = Object.fromEntries(
+        fileRecords.flatMap((record) => record ? [[record.id, record.payload] as const] : []),
+      );
+      const folders = Object.fromEntries(
+        folderRecords.flatMap((record) => record ? [[record.id, record.payload] as const] : []),
+      );
       const commentsByFileId = Object.fromEntries(
         commentRecords.flatMap((record) => record ? [[record.fileId, record.comments] as const] : []),
       );
 
-      return finalizeWorkspaceState(files, manifest.activeFileId, commentsByFileId, {
+      const { event, workspace } = parseIndexedDbWorkspaceSnapshot({
+        version: manifestVersion,
+        savedAt: manifest.savedAt,
+        activeFileId: manifest.activeFileId,
+        openFileIds,
+        fileOrder,
+        folderOrder,
         folders,
-        openFileIds: manifest.openFileIds,
+        files,
+        commentsByFileId,
         knowledgeBaseline: knowledgeBaselineRecord?.payload,
       });
+      if (!workspace) return null;
+
+      if (event.status === "migrated") {
+        const nextFileOrder = workspace.files.map((file) => file.id);
+        const nextFolderOrder = workspace.folders.map((folder) => folder.id);
+        await workspaceIndexedDb.workspaceFiles.bulkPut(
+          workspace.files.map((file) => ({ id: file.id, payload: serializeFile(file) })),
+        );
+        await workspaceIndexedDb.workspaceFolders.bulkPut(
+          workspace.folders.map((folder) => ({ id: folder.id, payload: folder })),
+        );
+        await workspaceIndexedDb.workspaceManifests.put({
+          key: LOCAL_WORKSPACE_KEY,
+          version: PROJECT_STORAGE_VERSION,
+          savedAt: manifest.savedAt,
+          activeFileId: workspace.activeFileId,
+          openFileIds: workspace.openFileIds,
+          fileOrder: nextFileOrder,
+          folderOrder: nextFolderOrder,
+        });
+      }
+
+      return workspace;
     },
   ),
   writeWorkspace: (plan) => workspaceIndexedDb.transaction(
