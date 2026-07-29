@@ -20,8 +20,15 @@ npm run test:browser -- --suite=workspace
 TABULA_BROWSER_SMOKE_SUITE=collaboration npm run test:browser
 ```
 
-Named Playwright scenarios cover the Visual, Panels, Editor Preview, and
-Performance surfaces:
+Named Playwright specs are organized by product capability:
+
+- `markdown-parity`: shared Visual and Preview Markdown meaning
+- `visual-interaction`: cursor, selection, atomic blocks, and viewport behavior
+- `preview-navigation`: bookmarks, anchors, and workspace links
+- `editor-controls`: editing modes, toolbar commands, and source behavior
+- `responsive-layout`: mobile editor and preview contracts
+- `right-panels`: Files, Outline, Comments, and project context
+- `performance`: long-document responsiveness
 
 ```bash
 npm run test:browser:playwright:canary
@@ -60,7 +67,7 @@ npm run test:browser -- --suite=json-share
 This opens the deployed app, exports a `#json` Export link, opens that link in a separate browser context, confirms
 the replace prompt, and verifies the imported Markdown content.
 
-Suite map (regardless of runner):
+Capability map (including remaining legacy service suites):
 
 - `workspace`: first screen, tabs, empty state, share, templates, and view-mode chrome.
 - `editor-preview`: editor commands, Markdown preview rendering, toolbar behavior, and comments.

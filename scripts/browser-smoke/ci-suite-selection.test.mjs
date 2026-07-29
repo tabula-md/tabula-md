@@ -20,7 +20,10 @@ test("selects editor checks without unrelated workspace or collaboration checks"
 
   assert.deepEqual(selection.playwrightFiles, [
     "harness.spec.ts",
-    "editor-visual.spec.mjs",
+    "markdown-parity.spec.mjs",
+    "visual-interaction.spec.mjs",
+    "editor-controls.spec.mjs",
+    "responsive-layout.spec.mjs",
   ]);
   assert(selection.legacySuites.includes("editor-search-source"));
   assert(selection.legacySuites.includes("editor-selection-comments"));
@@ -36,7 +39,7 @@ test("selects panel and knowledge checks for a knowledge panel change", () => {
 
   assert.deepEqual(selection.playwrightFiles, [
     "harness.spec.ts",
-    "panels.spec.mjs",
+    "right-panels.spec.mjs",
   ]);
   assert.deepEqual(selection.legacySuites, ["knowledge-links", "okf-concepts"]);
 });
@@ -104,8 +107,11 @@ test("falls back to the established PR safety checks for shared or unknown runti
     assert.equal(selection.fallbackRun, true);
     assert.deepEqual(selection.playwrightFiles, [
       "harness.spec.ts",
-      "editor-visual.spec.mjs",
-      "panels.spec.mjs",
+      "markdown-parity.spec.mjs",
+      "visual-interaction.spec.mjs",
+      "editor-controls.spec.mjs",
+      "responsive-layout.spec.mjs",
+      "right-panels.spec.mjs",
     ]);
     assert.deepEqual(selection.legacySuites, ["workspace", "collaboration"]);
     assert.equal(selection.needsRoom, true);

@@ -1,10 +1,20 @@
 import fs from "node:fs";
 
 const PLAYWRIGHT = {
-  visual: "editor-visual.spec.mjs",
-  preview: "editor-preview.spec.mjs",
-  panels: "panels.spec.mjs",
-  performance: "performance.spec.mjs",
+  visual: [
+    "markdown-parity.spec.mjs",
+    "visual-interaction.spec.mjs",
+    "editor-controls.spec.mjs",
+    "responsive-layout.spec.mjs",
+  ],
+  preview: [
+    "markdown-parity.spec.mjs",
+    "preview-navigation.spec.mjs",
+    "editor-controls.spec.mjs",
+    "responsive-layout.spec.mjs",
+  ],
+  panels: ["right-panels.spec.mjs"],
+  performance: ["performance.spec.mjs"],
 };
 
 const LEGACY = {
@@ -103,17 +113,20 @@ export function selectBrowserSmokeSuites(changedPaths) {
 
     if (path.startsWith("tests/browser/") || path.startsWith("scripts/browser-smoke/")) {
       if (
-        path.endsWith("/editor-visual.spec.mjs") ||
+        path.endsWith("/markdown-parity.spec.mjs") ||
+        path.endsWith("/visual-interaction.spec.mjs") ||
+        path.endsWith("/editor-controls.spec.mjs") ||
+        path.endsWith("/responsive-layout.spec.mjs") ||
         path.endsWith("/suites/editor-visual.mjs")
       ) {
         addPlaywright("visual", "visual editor changed");
       } else if (
-        path.endsWith("/editor-preview.spec.mjs") ||
+        path.endsWith("/preview-navigation.spec.mjs") ||
         path.endsWith("/suites/editor-preview.mjs")
       ) {
         addPlaywright("preview", "preview changed");
       } else if (
-        path.endsWith("/panels.spec.mjs") ||
+        path.endsWith("/right-panels.spec.mjs") ||
         path.endsWith("/suites/panels.mjs")
       ) {
         addPlaywright("panels", "panel behavior changed");
@@ -242,10 +255,12 @@ export function selectBrowserSmokeSuites(changedPaths) {
 
   const playwrightFiles = [
     "harness.spec.ts",
-    ...PLAYWRIGHT_GROUP_ORDER.filter((group) => playwrightGroups.has(group)).map(
-      (group) => PLAYWRIGHT[group],
+    ...new Set(
+      PLAYWRIGHT_GROUP_ORDER
+        .filter((group) => playwrightGroups.has(group))
+        .flatMap((group) => PLAYWRIGHT[group]),
     ),
-    ...(playwrightGroups.has("performance") ? [PLAYWRIGHT.performance] : []),
+    ...(playwrightGroups.has("performance") ? PLAYWRIGHT.performance : []),
   ];
   const legacy = [...legacySuites];
   const needsRoom =

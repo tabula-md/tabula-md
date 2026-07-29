@@ -1,9 +1,21 @@
 import { expect, test } from "@playwright/test";
 import { createSmokeContext } from "../../../scripts/browser-smoke/support/runtime.mjs";
 
-export const registerLegacySmokeScenarios = (suite, { tag, timeout } = {}) => {
+export const registerCapabilityScenarios = (
+  suite,
+  { scenarioNames = suite.scenarios, tag, timeout } = {},
+) => {
+  const requestedScenarios = new Set(scenarioNames);
+  const unknownScenarios = scenarioNames.filter((name) => !suite.scenarios.includes(name));
+  if (unknownScenarios.length > 0) {
+    throw new Error(
+      `Unknown ${suite.id} scenario(s): ${unknownScenarios.join(", ")}`,
+    );
+  }
+
   test.describe(suite.description, () => {
     suite.scenarios.forEach((name, scenarioIndex) => {
+      if (!requestedScenarios.has(name)) return;
       const details = tag ? { tag } : {};
       test(name, details, async ({ browser, page }) => {
         if (timeout) {
