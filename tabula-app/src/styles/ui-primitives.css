@@ -95,7 +95,6 @@
 .ui-code-surface {
   border: 0;
   border-radius: var(--radius-surface);
-  background: var(--surface-workbench);
 }
 
 .ui-scroll-fade {
