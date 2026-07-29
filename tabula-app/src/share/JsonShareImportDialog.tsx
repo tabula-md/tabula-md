@@ -63,7 +63,7 @@ export function JsonShareImportDialog({
               <p>{errorMessage || copy.jsonLoadError}</p>
             </div>
             <div className="share-modal-actions">
-              <button className="share-modal-primary" type="button" onClick={onCancel}>
+              <button className="ui-modal-action share-modal-primary" type="button" onClick={onCancel}>
                 {copy.jsonReturn}
               </button>
             </div>
@@ -90,10 +90,10 @@ export function JsonShareImportDialog({
               </div>
             </div>
             <div className="share-modal-actions">
-              <button className="share-modal-secondary" type="button" onClick={onCancel}>
+              <button className="ui-modal-action secondary share-modal-secondary" type="button" onClick={onCancel}>
                 {copy.jsonCancel}
               </button>
-              <button className="share-modal-primary" type="button" onClick={onReplace}>
+              <button className="ui-modal-action share-modal-primary" type="button" onClick={onReplace}>
                 {copy.jsonOpenCopy}
               </button>
             </div>

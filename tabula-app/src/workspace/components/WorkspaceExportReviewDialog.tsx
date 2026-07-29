@@ -111,7 +111,7 @@ export function WorkspaceExportReviewDialog({
       </div>
 
       <div className="share-modal-actions workspace-export-review-actions">
-        <button className="share-modal-secondary" type="button" onClick={onCancel}>
+        <button className="ui-modal-action secondary share-modal-secondary" type="button" onClick={onCancel}>
           {copy.cancel}
         </button>
         <button

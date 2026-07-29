@@ -5,5 +5,5 @@ type PanelEmptyStateProps = {
 };
 
 export function PanelEmptyState({ children }: PanelEmptyStateProps) {
-  return <p className="right-empty-state">{children}</p>;
+  return <p className="ui-empty-state right-empty-state">{children}</p>;
 }

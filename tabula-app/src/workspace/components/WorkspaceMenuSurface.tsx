@@ -67,7 +67,7 @@ export function WorkspaceMenuSurface({
     <>
       <input
         ref={importInputRef}
-        className="workspace-file-input"
+        className="ui-input-surface workspace-file-input"
         type="file"
         accept=".md,.markdown,text/markdown,text/plain"
         onChange={onImportFileChange}
@@ -75,7 +75,7 @@ export function WorkspaceMenuSurface({
       />
       <input
         ref={workspaceImportInputRef}
-        className="workspace-file-input"
+        className="ui-input-surface workspace-file-input"
         type="file"
         accept=".md,text/markdown"
         multiple

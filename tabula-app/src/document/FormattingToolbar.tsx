@@ -81,7 +81,7 @@ const renderPrimaryCommand = (
   return (
     <button
       key={command.id}
-      className={`tool-button formatting-button formatting-${command.group}-button ${active ? "active" : ""}`}
+      className={`ui-icon-button tool-button formatting-button formatting-${command.group}-button ${active ? "active" : ""}`}
       type="button"
       aria-label={command.label}
       data-tooltip={getCommandTitle(command)}
@@ -210,7 +210,7 @@ export function FormattingToolbar({
         <div className="formatting-overflow">
           <MenuTrigger asChild>
             <button
-              className={`tool-button formatting-button formatting-menu-button formatting-${menuId}-menu-button ${menuOpen || hasActiveCommand ? "active" : ""}`}
+              className={`ui-icon-button tool-button formatting-button formatting-menu-button formatting-${menuId}-menu-button ${menuOpen || hasActiveCommand ? "active" : ""}`}
               type="button"
               aria-label={menu.label}
               data-tooltip={menu.label}

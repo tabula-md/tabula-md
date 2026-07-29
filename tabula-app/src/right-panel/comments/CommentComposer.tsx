@@ -49,7 +49,7 @@ export function CommentComposer({
       </label>
       <textarea
         ref={commentInputRef}
-        className="right-comment-input"
+        className="ui-input-surface right-comment-input"
         maxLength={WORKSPACE_ROOM_MAX_COMMENT_LENGTH}
         value={commentDraft}
         onChange={(event) => onCommentDraftChange(event.target.value)}

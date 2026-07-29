@@ -459,7 +459,7 @@ export function RightPanelFiles({
               {folderIsRenaming ? (
                 <input
                   ref={folderRenameInputRef}
-                  className="right-file-rename-input"
+                  className="ui-input-surface right-file-rename-input"
                   value={renamingFolderTitle}
                   aria-label={copy.renameFolder(node.name)}
                   onClick={(event) => event.stopPropagation()}
@@ -619,7 +619,7 @@ export function RightPanelFiles({
               </span>
               <input
                 ref={renameInputRef}
-                className="right-file-rename-input"
+                className="ui-input-surface right-file-rename-input"
                 type="text"
                 defaultValue={renamingTitle}
                 aria-label={copy.renameInPanel(file.title)}
@@ -804,7 +804,7 @@ export function RightPanelFiles({
           {renamingWorkspace ? (
             <input
               ref={workspaceRenameInputRef}
-              className="right-file-workspace-name-input"
+              className="ui-input-surface right-file-workspace-name-input"
               value={renamingWorkspaceTitle}
               aria-label={copy.renameInPanel(workspaceName)}
               onChange={(event) => setRenamingWorkspaceTitle(event.target.value)}

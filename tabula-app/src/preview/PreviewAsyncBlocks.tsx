@@ -792,12 +792,12 @@ export function PreviewCodeBlock({ children, copy, searchActive = false, ...prop
     .join(" ");
 
   return (
-    <div ref={blockRef} className={`preview-code-block ${isWrapped ? "wrapped" : ""}`}>
+    <div ref={blockRef} className={`ui-code-surface preview-code-block ${isWrapped ? "wrapped" : ""}`}>
       <div className="preview-code-actions" aria-label={copy.codeBlockActions}>
         {language && <span className="preview-code-language">{language}</span>}
         <button
           type="button"
-          className={`preview-code-action ${isWrapped ? "active" : ""}`}
+          className={`ui-icon-button preview-code-action ${isWrapped ? "active" : ""}`}
           data-tooltip={isWrapped ? copy.disableWordWrap : copy.enableWordWrap}
           aria-label={isWrapped ? copy.disableWordWrap : copy.enableWordWrap}
           aria-pressed={isWrapped}
@@ -810,7 +810,7 @@ export function PreviewCodeBlock({ children, copy, searchActive = false, ...prop
         </button>
         <button
           type="button"
-          className="preview-code-action"
+          className="ui-icon-button preview-code-action"
           data-tooltip={copied ? copy.copied : copy.copyCode}
           aria-label={copied ? copy.copied : copy.copyCode}
           onClick={copyCode}

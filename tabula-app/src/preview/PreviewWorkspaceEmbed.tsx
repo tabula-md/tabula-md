@@ -186,7 +186,7 @@ export function PreviewWorkspaceEmbed({
             {normalizePreviewDocsComponents(embeddedMarkdown)}
           </ReactMarkdown>
         ) : (
-          <p className="preview-empty-state">{copy.nothingToPreview}</p>
+          <p className="ui-empty-state preview-empty-state">{copy.nothingToPreview}</p>
         )}
       </div>
     </section>

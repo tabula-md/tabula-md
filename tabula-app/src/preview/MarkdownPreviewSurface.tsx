@@ -718,7 +718,7 @@ function MarkdownPreviewComponent({
                 </ReactMarkdown>
               )
             ) : (
-              <p className="preview-empty-state" aria-label={uiCopy.preview}>
+              <p className="ui-empty-state preview-empty-state" aria-label={uiCopy.preview}>
                 {uiCopy.nothingToPreview}
               </p>
             )}
