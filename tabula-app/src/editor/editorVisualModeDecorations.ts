@@ -5,8 +5,10 @@ import {
   type DecorationSet,
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
+import type { MarkdownPresentationDocument } from "@tabula-md/tabula";
 import {
   buildEditorVisualModel,
+  setEditorVisualPresentationDocument,
   type EditorVisualReplacement,
 } from "./editorVisualModeModel";
 import type { EditorVisualInteraction } from "./editorVisualModeInteraction";
@@ -41,6 +43,7 @@ export const editorVisualSourceHighlighting =
 export type EditorVisualDecorationSets = {
   decorations: DecorationSet;
   atomicRanges: DecorationSet;
+  presentation: MarkdownPresentationDocument;
   replacements: readonly EditorVisualReplacement[];
 };
 
@@ -49,7 +52,9 @@ export const buildEditorVisualDecorationSets = (
   interaction: EditorVisualInteraction,
   copy: EditorVisualModeCopy,
   options: EditorVisualModeOptions,
+  presentation: MarkdownPresentationDocument,
 ): EditorVisualDecorationSets => {
+  setEditorVisualPresentationDocument(state, presentation);
   const model = buildEditorVisualModel(
     state,
     [{ from: 0, to: state.doc.length }],
@@ -77,6 +82,7 @@ export const buildEditorVisualDecorationSets = (
       [...hiddenRanges, ...replacementRanges],
       true,
     ),
+    presentation,
     replacements: model.replacements,
   };
 };
