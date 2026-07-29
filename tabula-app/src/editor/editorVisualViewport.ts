@@ -18,6 +18,7 @@ export type EditorVisualViewportAnchor = {
 type EditorVisualViewportState = {
   anchor: EditorVisualViewportAnchor | null;
   anchorRequest: number;
+  followCursor: boolean;
   pendingMeasure: boolean;
   programmaticScrollTarget: number | null;
   scrollRevision: number;
@@ -31,6 +32,7 @@ const getViewportState = (view: EditorView) => {
   const created = {
     anchor: null,
     anchorRequest: 0,
+    followCursor: true,
     pendingMeasure: false,
     programmaticScrollTarget: null,
     scrollRevision: 0,
@@ -100,7 +102,11 @@ const applyEditorVisualScroll = (
 export const getEditorVisualScrollCorrection = (
   anchor: EditorVisualViewportAnchor | null,
   current: EditorVisualViewportAnchor | null,
-) => anchor === null || current === null || anchor.position !== current.position
+  followCursor = true,
+) => !followCursor ||
+  anchor === null ||
+  current === null ||
+  anchor.position !== current.position
   ? null
   : current.top - anchor.top;
 
@@ -120,6 +126,7 @@ export const getEditorVisualVisibilityCorrection = (
 
 export const rememberEditorVisualViewportAnchor = (view: EditorView) => {
   const viewport = getViewportState(view);
+  if (!viewport.followCursor) return;
   const position = view.state.selection.main.head;
   const request = ++viewport.anchorRequest;
   const revision = viewport.scrollRevision;
@@ -147,6 +154,7 @@ export const requestEditorVisualCursorVisibility = (
   position = view.state.selection.main.head,
 ) => {
   const viewportState = getViewportState(view);
+  if (!viewportState.followCursor) return;
   const revision = viewportState.scrollRevision;
   view.requestMeasure({
     read: () => {
@@ -191,7 +199,7 @@ export const requestEditorVisualCursorVisibility = (
 
 export const requestEditorVisualGeometryMeasure = (view: EditorView) => {
   const viewport = getViewportState(view);
-  if (viewport.pendingMeasure) return;
+  if (!viewport.followCursor || viewport.pendingMeasure) return;
   viewport.pendingMeasure = true;
   const revision = viewport.scrollRevision;
   view.requestMeasure({
@@ -202,6 +210,7 @@ export const requestEditorVisualGeometryMeasure = (view: EditorView) => {
         offset: getEditorVisualScrollCorrection(
           viewport.anchor,
           current,
+          viewport.followCursor,
         ),
         revision,
       };
@@ -259,7 +268,7 @@ export const editorVisualViewportPlugin = ViewPlugin.fromClass(class {
       viewport.programmaticScrollTarget = null;
       viewport.scrollRevision += 1;
       viewport.anchor = null;
-      rememberEditorVisualViewportAnchor(this.view);
+      viewport.followCursor = false;
     };
     this.scrollOwner.addEventListener("scroll", this.handleScroll, {
       passive: true,
@@ -269,6 +278,7 @@ export const editorVisualViewportPlugin = ViewPlugin.fromClass(class {
 
   update(update: ViewUpdate) {
     if (update.selectionSet) {
+      getViewportState(this.view).followCursor = true;
       requestEditorVisualCursorVisibility(this.view);
     }
   }

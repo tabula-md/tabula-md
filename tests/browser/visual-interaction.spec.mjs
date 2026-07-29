@@ -8,6 +8,7 @@ registerCapabilityScenarios(editorVisual, {
     "reveals separator source as plain Markdown",
     "maps pointer clicks to safe source cursors",
     "keeps the cursor visible through long documents",
+    "keeps user-owned Visual scrolling stable while widgets resize",
     "navigates long documents without mounting every widget",
     "virtualizes large Visual documents",
   ],
