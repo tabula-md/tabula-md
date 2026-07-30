@@ -1,0 +1,390 @@
+import {
+  createWorkspaceKnowledgeIndex,
+  getKnowledgeProfileDefinition,
+  getWorkspaceOkfCompatibility,
+  type KnowledgeProfileKind,
+  type WorkspaceKnowledgeIndex,
+  type WorkspaceProfile,
+} from "@tabula-md/tabula";
+import type {
+  WorkspaceImportEvidence,
+  WorkspaceImportProfileInput,
+} from "./workspaceImportProfile";
+
+export type ProfileDetectionConfidence =
+  | "declared"
+  | "strong"
+  | "heuristic";
+
+export type ProfileDiagnostic = {
+  code: "detector-failed" | "inspection-failed";
+  detectorId: string;
+};
+
+export type ProfileDetectionResult = {
+  profileId: string;
+  kind: KnowledgeProfileKind;
+  confidence: ProfileDetectionConfidence;
+  evidence: readonly WorkspaceImportEvidence[];
+  diagnostics: readonly ProfileDiagnostic[];
+  fileCount?: number;
+  version?: string;
+};
+
+export type WorkspaceInspection = WorkspaceImportProfileInput & {
+  knowledgeIndex: WorkspaceKnowledgeIndex | null;
+};
+
+export interface WorkspaceProfileDetector {
+  id: string;
+  detect(input: WorkspaceInspection): ProfileDetectionResult | null;
+}
+
+const getBasename = (path: string) =>
+  path.split("/").at(-1)?.toLocaleLowerCase() ?? "";
+
+const getExtension = (path: string) => {
+  const basename = getBasename(path);
+  const dotIndex = basename.lastIndexOf(".");
+  return dotIndex > 0 ? basename.slice(dotIndex) : "";
+};
+
+const hasPathSegment = (path: string, segment: string) =>
+  path.toLocaleLowerCase().split("/").includes(segment);
+
+const hasOpenWikiStateShape = (text: string) => {
+  try {
+    const value = JSON.parse(text) as unknown;
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return false;
+    }
+    const state = value as Record<string, unknown>;
+    return typeof state.command === "string" &&
+      (
+        typeof state.gitHead === "string" ||
+        typeof state.git_head === "string"
+      ) &&
+      (
+        typeof state.updatedAt === "string" ||
+        typeof state.last_update === "string"
+      );
+  } catch {
+    return false;
+  }
+};
+
+const result = (
+  profileId: string,
+  confidence: ProfileDetectionConfidence,
+  evidence: readonly WorkspaceImportEvidence[],
+  options: { fileCount?: number; version?: string } = {},
+): ProfileDetectionResult => {
+  const definition = getKnowledgeProfileDefinition(profileId);
+  if (!definition) {
+    throw new Error(`Unknown workspace profile detector result: ${profileId}`);
+  }
+  return {
+    profileId,
+    kind: definition.kind,
+    confidence,
+    evidence,
+    diagnostics: [],
+    ...options,
+  };
+};
+
+const getAnalyses = (inspection: WorkspaceInspection) =>
+  inspection.knowledgeIndex
+    ? [...inspection.knowledgeIndex.analysesByDocumentId.values()]
+    : [];
+
+export const WORKSPACE_PROFILE_DETECTORS: readonly WorkspaceProfileDetector[] = [
+  {
+    id: "gfm",
+    detect: (input) => {
+      const fileCount = input.sourcePaths.filter((path) =>
+        [".md", ".markdown"].includes(getExtension(path))).length;
+      return fileCount > 0
+        ? result("gfm", "strong", [{ code: "gfm-files", count: fileCount }], {
+            fileCount,
+          })
+        : null;
+    },
+  },
+  {
+    id: "mdx",
+    detect: (input) => {
+      const fileCount = input.sourcePaths.filter((path) =>
+        getExtension(path) === ".mdx").length;
+      return fileCount > 0
+        ? result("mdx", "declared", [{ code: "mdx-files", count: fileCount }], {
+            fileCount,
+          })
+        : null;
+    },
+  },
+  {
+    id: "obsidian",
+    detect: (input) => {
+      const hasConfig = input.sourcePaths.some((path) =>
+        hasPathSegment(path, ".obsidian"));
+      const wikilinkCount = getAnalyses(input)
+        .flatMap((analysis) => analysis.links)
+        .filter((link) => link.syntax === "wikilink").length;
+      if (!hasConfig && wikilinkCount === 0) return null;
+      return result(
+        "obsidian",
+        hasConfig ? "declared" : "strong",
+        [
+          ...(hasConfig
+            ? [{ code: "obsidian-config" as const }]
+            : []),
+          ...(wikilinkCount > 0
+            ? [{ code: "wikilinks" as const, count: wikilinkCount }]
+            : []),
+        ],
+      );
+    },
+  },
+  {
+    id: "okf",
+    detect: (input) => {
+      if (!input.knowledgeIndex) return null;
+      const version =
+        getWorkspaceOkfCompatibility(input.knowledgeIndex).declaredVersion;
+      const analyses = getAnalyses(input);
+      const typedConceptCount = analyses.filter((analysis) => {
+        const basename = getBasename(analysis.path);
+        return basename !== "index.md" &&
+          basename !== "log.md" &&
+          Boolean(analysis.knowledgeMetadata.type);
+      }).length;
+      const directoryIndexCount = analyses.filter((analysis) =>
+        getBasename(analysis.path) === "index.md" &&
+        analysis.path.toLocaleLowerCase() !== "index.md"
+      ).length;
+      const hasActivityLog = analyses.some((analysis) =>
+        getBasename(analysis.path) === "log.md");
+      return version
+        ? result(
+            `okf-${version}`,
+            "declared",
+            [
+              { code: "okf-version", value: version },
+              ...(typedConceptCount > 0
+                ? [{
+                    code: "typed-concepts" as const,
+                    count: typedConceptCount,
+                  }]
+                : []),
+              ...(directoryIndexCount > 0
+                ? [{
+                    code: "directory-indexes" as const,
+                    count: directoryIndexCount,
+                  }]
+                : []),
+              ...(hasActivityLog
+                ? [{ code: "activity-log" as const }]
+                : []),
+            ],
+            { version },
+          )
+        : null;
+    },
+  },
+  {
+    id: "openwiki",
+    detect: (input) => {
+      const hasState = input.supportFiles.some((file) =>
+        getBasename(file.path) === ".last-update.json" &&
+        hasOpenWikiStateShape(file.text));
+      if (!hasState) return null;
+      const analyses = getAnalyses(input);
+      const directoryIndexCount = analyses.filter((analysis) =>
+        getBasename(analysis.path) === "index.md" &&
+        analysis.path.toLocaleLowerCase() !== "index.md"
+      ).length;
+      const declaredVersion = input.knowledgeIndex
+        ? getWorkspaceOkfCompatibility(input.knowledgeIndex).declaredVersion
+        : undefined;
+      if (!declaredVersion && directoryIndexCount === 0) return null;
+      return result("openwiki", "strong", [
+        { code: "openwiki-state" },
+        ...(directoryIndexCount > 0
+          ? [{ code: "directory-indexes" as const, count: directoryIndexCount }]
+          : []),
+      ]);
+    },
+  },
+  {
+    id: "llm-wiki",
+    detect: (input) => {
+      const hasRawRole = input.sourcePaths.some((path) =>
+        hasPathSegment(path, "raw"));
+      const hasWikiRole = input.sourcePaths.some((path) =>
+        hasPathSegment(path, "wiki"));
+      return hasRawRole && hasWikiRole
+        ? result("llm-wiki", "heuristic", [{ code: "raw-wiki-roles" }])
+        : null;
+    },
+  },
+  {
+    id: "agents-md",
+    detect: (input) => {
+      const fileCount = input.sourcePaths.filter((path) =>
+        getBasename(path) === "agents.md").length;
+      return fileCount > 0
+        ? result(
+            "agents-md",
+            "declared",
+            [{ code: "agents-files", count: fileCount }],
+            { fileCount },
+          )
+        : null;
+    },
+  },
+  {
+    id: "claude-md",
+    detect: (input) => {
+      const fileCount = input.sourcePaths.filter((path) =>
+        getBasename(path) === "claude.md").length;
+      return fileCount > 0
+        ? result(
+            "claude-md",
+            "declared",
+            [{ code: "claude-files", count: fileCount }],
+            { fileCount },
+          )
+        : null;
+    },
+  },
+  {
+    id: "agent-skills",
+    detect: (input) => {
+      const fileCount = input.sourcePaths.filter((path) =>
+        getBasename(path) === "skill.md" &&
+        hasPathSegment(path, "skills")).length;
+      return fileCount > 0
+        ? result(
+            "agent-skills",
+            "declared",
+            [{ code: "skill-files", count: fileCount }],
+            { fileCount },
+          )
+        : null;
+    },
+  },
+  {
+    id: "llms-txt",
+    detect: (input) => {
+      const fileCount = input.sourcePaths.filter((path) =>
+        getBasename(path) === "llms.txt").length;
+      return fileCount > 0
+        ? result(
+            "llms-txt",
+            "declared",
+            [{ code: "llms-files", count: fileCount }],
+            { fileCount },
+          )
+        : null;
+    },
+  },
+];
+
+export const createWorkspaceInspection = (
+  input: WorkspaceImportProfileInput,
+): {
+  inspection: WorkspaceInspection;
+  diagnostics: ProfileDiagnostic[];
+} => {
+  try {
+    return {
+      inspection: {
+        ...input,
+        knowledgeIndex: createWorkspaceKnowledgeIndex(input.documents),
+      },
+      diagnostics: [],
+    };
+  } catch {
+    return {
+      inspection: { ...input, knowledgeIndex: null },
+      diagnostics: [{
+        code: "inspection-failed",
+        detectorId: "workspace-knowledge-index",
+      }],
+    };
+  }
+};
+
+export const runWorkspaceProfileDetectors = (
+  input: WorkspaceImportProfileInput,
+  detectors: readonly WorkspaceProfileDetector[] =
+    WORKSPACE_PROFILE_DETECTORS,
+) => {
+  const { inspection, diagnostics } = createWorkspaceInspection(input);
+  const detections: ProfileDetectionResult[] = [];
+  for (const detector of detectors) {
+    try {
+      const detection = detector.detect(inspection);
+      if (detection) detections.push(detection);
+    } catch {
+      diagnostics.push({
+        code: "detector-failed",
+        detectorId: detector.id,
+      });
+    }
+  }
+  return { detections, diagnostics, inspection };
+};
+
+export const createWorkspaceProfileFromDetections = (
+  detections: readonly ProfileDetectionResult[],
+): WorkspaceProfile => {
+  const syntaxes: WorkspaceProfile["syntaxes"][number][] = [];
+  const conventions: WorkspaceProfile["conventions"][number][] = [];
+  const schemas: WorkspaceProfile["schemas"][number][] = [];
+  const workflows: WorkspaceProfile["workflows"][number][] = [];
+  const agentInstructions:
+    WorkspaceProfile["agentInstructions"][number][] = [];
+  const deliveries: WorkspaceProfile["deliveries"][number][] = [];
+
+  for (const detection of detections) {
+    switch (detection.profileId) {
+      case "gfm":
+      case "mdx":
+        syntaxes.push(detection.profileId);
+        break;
+      case "obsidian":
+      case "openwiki":
+        conventions.push(detection.profileId);
+        break;
+      case "llm-wiki":
+        workflows.push(detection.profileId);
+        break;
+      case "agents-md":
+      case "claude-md":
+      case "agent-skills":
+        agentInstructions.push(detection.profileId);
+        break;
+      case "llms-txt":
+        deliveries.push(detection.profileId);
+        break;
+      default:
+        if (
+          detection.kind === "schema" &&
+          detection.profileId.startsWith("okf-") &&
+          detection.version
+        ) {
+          schemas.push({ id: "okf", version: detection.version });
+        }
+    }
+  }
+  return {
+    syntaxes,
+    conventions,
+    schemas,
+    workflows,
+    agentInstructions,
+    deliveries,
+  };
+};

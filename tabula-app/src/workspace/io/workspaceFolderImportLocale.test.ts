@@ -21,6 +21,8 @@ describe("workspace folder import copy", () => {
       workflows: [],
       agentInstructions: [],
       deliveries: [],
+      detections: [],
+      diagnostics: [],
       linkSyntaxes: ["markdown-links"],
       evidence: [{ code: "okf-version", value: "0.1" }],
       preservedSupportFileCount: 1,

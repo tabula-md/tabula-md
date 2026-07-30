@@ -38,10 +38,10 @@ type RawWorkspaceFolderImportCopy = Omit<
   conventionLabels: Record<WorkspaceConventionProfile, string>;
   linkLabels: Record<WorkspaceImportLinkSyntax, string>;
   fileHandling: (preserved: number, ignored: number) => string;
-  evidenceLabels: Record<
+  evidenceLabels: Partial<Record<
     WorkspaceImportEvidenceCode,
     (value: WorkspaceImportEvidence) => string
-  >;
+  >>;
 };
 
 const count = (value: WorkspaceImportEvidence) => value.count ?? 0;
@@ -294,6 +294,7 @@ export const getWorkspaceFolderImportCopy = (
     convention: (value) => copy.conventionLabels[value],
     linkSyntax: (value) => copy.linkLabels[value],
     fileHandling: copy.fileHandling,
-    evidence: (value) => copy.evidenceLabels[value.code](value),
+    evidence: (value) =>
+      copy.evidenceLabels[value.code]?.(value) ?? value.code,
   };
 };

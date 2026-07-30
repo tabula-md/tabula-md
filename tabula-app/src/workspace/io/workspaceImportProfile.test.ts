@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { detectWorkspaceImportProfile } from "./workspaceImportProfile";
+import { WORKSPACE_PROFILE_DETECTORS } from "./workspaceProfileDetector";
 
 describe("workspace import profile", () => {
   it("separates an OKF declaration from OpenWiki producer conventions", () => {
@@ -64,6 +65,16 @@ describe("workspace import profile", () => {
       { code: "directory-indexes", count: 1 },
       { code: "activity-log" },
       { code: "openwiki-state" },
+    ]));
+    expect(profile.detections).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        profileId: "okf-0.1",
+        confidence: "declared",
+      }),
+      expect.objectContaining({
+        profileId: "openwiki",
+        confidence: "strong",
+      }),
     ]));
   });
 
@@ -150,5 +161,30 @@ describe("workspace import profile", () => {
       agentInstructions: ["agents-md", "agent-skills"],
       deliveries: ["llms-txt"],
     });
+  });
+
+  it("isolates detector failures and keeps the remaining profile results", () => {
+    const profile = detectWorkspaceImportProfile({
+      documents: [
+        { id: "one", path: "One.md", markdown: "# One" },
+      ],
+      supportFiles: [],
+      sourcePaths: ["One.md"],
+      importedPaths: ["One.md"],
+    }, [
+      WORKSPACE_PROFILE_DETECTORS[0]!,
+      {
+        id: "broken-test-detector",
+        detect: () => {
+          throw new Error("broken detector");
+        },
+      },
+    ]);
+
+    expect(profile.syntaxes).toEqual(["gfm"]);
+    expect(profile.diagnostics).toEqual([{
+      code: "detector-failed",
+      detectorId: "broken-test-detector",
+    }]);
   });
 });
