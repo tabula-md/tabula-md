@@ -30,7 +30,7 @@
 
 .right-knowledge-document-heading {
   gap: 3px;
-  padding-top: 3px;
+  padding-top: 16px;
 }
 
 .right-knowledge-document-heading h2,
@@ -54,6 +54,70 @@
   overflow: hidden;
   color: var(--text-muted);
   font-family: var(--font-mono);
+  font-size: var(--font-ui-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-knowledge-passport {
+  display: grid;
+  gap: 8px;
+  padding: 0 var(--right-row-x);
+}
+
+.right-knowledge-passport h3,
+.right-knowledge-passport dl {
+  margin: 0;
+}
+
+.right-knowledge-passport h3 {
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  font-weight: var(--weight-ui-regular);
+}
+
+.right-knowledge-passport dl {
+  display: grid;
+  gap: 1px;
+  padding: 4px 0;
+  border-top: 1px solid var(--line-subtle);
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.right-knowledge-passport dl > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: var(--right-tight-gap);
+  min-height: 42px;
+  padding: 6px 0;
+}
+
+.right-knowledge-passport dt,
+.right-knowledge-passport dd {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-ui-secondary);
+  line-height: 1.4;
+}
+
+.right-knowledge-passport dt {
+  color: var(--text-muted);
+}
+
+.right-knowledge-passport dd {
+  display: grid;
+  align-content: start;
+  gap: 1px;
+}
+
+.right-knowledge-passport strong {
+  color: var(--text-soft);
+  font-weight: var(--weight-ui-regular);
+}
+
+.right-knowledge-passport small {
+  overflow: hidden;
+  color: var(--text-muted);
   font-size: var(--font-ui-caption);
   text-overflow: ellipsis;
   white-space: nowrap;

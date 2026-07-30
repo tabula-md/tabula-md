@@ -1,5 +1,4 @@
 import {
-  getOkfFreshness,
   type WorkspaceKnowledgeHealthIssue,
   type WorkspaceKnowledgeHealthReport,
   type WorkspaceKnowledgeIndex,
@@ -8,6 +7,7 @@ import { ArrowUpRight, ChevronRight } from "lucide-react";
 import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 import type { KnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { PanelEmptyState } from "./PanelEmptyState";
+import { RightPanelKnowledgePassport } from "./RightPanelKnowledgePassport";
 
 const getOpenableResource = (resource: string | undefined) => {
   if (!resource) return undefined;
@@ -88,6 +88,8 @@ export function RightPanelKnowledgeContext({
             <p>{analysis.path}</p>
           </header>
 
+          <RightPanelKnowledgePassport copy={copy} metadata={metadata} />
+
           {metadata.description && (
             <section className="right-knowledge-context-section">
               <h3>{copy.description}</h3>
@@ -101,18 +103,6 @@ export function RightPanelKnowledgeContext({
               <div>
                 <dt>{copy.type}</dt>
                 <dd>{metadata.type ?? copy.notSet}</dd>
-              </div>
-              <div>
-                <dt>{copy.status}</dt>
-                <dd>{metadata.status}</dd>
-              </div>
-              <div>
-                <dt>{copy.trust}</dt>
-                <dd>{metadata.trustTier}</dd>
-              </div>
-              <div>
-                <dt>{copy.freshness}</dt>
-                <dd>{getOkfFreshness(metadata)}</dd>
               </div>
               {owner && (
                 <div>

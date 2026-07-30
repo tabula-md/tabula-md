@@ -678,6 +678,16 @@ export {
   getWorkspaceKnowledgeHealthDelta,
 } from "./workspaceKnowledgeHealth";
 export type {
+  OkfDocumentAttentionSignal,
+  OkfReviewSchedule,
+  WorkspaceKnowledgePosture,
+} from "./workspaceKnowledgePosture";
+export {
+  getOkfDocumentAttentionSignals,
+  getOkfReviewSchedule,
+  getWorkspaceKnowledgePosture,
+} from "./workspaceKnowledgePosture";
+export type {
   WorkspaceKnowledgeBaseline,
 } from "./workspaceKnowledgeBaseline";
 export {

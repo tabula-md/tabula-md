@@ -3,6 +3,7 @@ type: Architecture
 title: Runtime architecture
 description: How application services fit together at runtime.
 tags: [runtime, platform]
+review_policy: quarterly-platform-review
 resource: https://github.com/acme/example/tree/main/src
 timestamp: 2026-07-24T00:00:00Z
 ---
