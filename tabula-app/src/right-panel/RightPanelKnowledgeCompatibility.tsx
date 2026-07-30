@@ -34,6 +34,7 @@ import { RightPanelOkfIndexes } from "./RightPanelOkfIndexes";
 import { RightPanelKnowledgeHealth } from "./RightPanelKnowledgeHealth";
 import { RightPanelKnowledgeChanges } from "./RightPanelKnowledgeChanges";
 import { RightPanelLlmsTxtExport } from "./RightPanelLlmsTxtExport";
+import { RightPanelKnowledgeInterchange } from "./RightPanelKnowledgeInterchange";
 import {
   KNOWLEDGE_VERIFICATION_ISSUE_CODES,
   RightPanelKnowledgeVerification,
@@ -902,6 +903,9 @@ export function RightPanelKnowledgeCompatibility({
       )}
       {knowledgeIndex && (
         <RightPanelLlmsTxtExport copy={copy} index={knowledgeIndex} />
+      )}
+      {knowledgeIndex && (
+        <RightPanelKnowledgeInterchange copy={copy} index={knowledgeIndex} />
       )}
 
       <p className="right-compatibility-footnote">{copy.unchanged}</p>

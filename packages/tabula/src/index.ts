@@ -967,3 +967,19 @@ export type {
 export {
   createFullTextKnowledgeIndexAdapter,
 } from "./derivedKnowledgeIndex";
+
+export type {
+  JsonLdImportCandidate,
+  JsonLdImportPreview,
+  JsonLdValue,
+  KnowledgeInterchangeExport,
+  KnowledgeInterchangeExportOptions,
+  KnowledgeInterchangeLoss,
+  KnowledgeInterchangeLossCode,
+  KnowledgeInterchangeMapping,
+} from "./knowledgeInterchange";
+export {
+  exportWorkspaceJsonLd,
+  exportWorkspaceSkosConceptScheme,
+  previewJsonLdImport,
+} from "./knowledgeInterchange";
