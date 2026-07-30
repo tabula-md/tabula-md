@@ -35,6 +35,14 @@ describe("editor visual viewport anchoring", () => {
     )).toBeNull();
   });
 
+  it("does not restore a cursor anchor after the user takes ownership of scrolling", () => {
+    expect(getEditorVisualScrollCorrection(
+      { position: 42, top: 120 },
+      { position: 42, top: 420 },
+      false,
+    )).toBeNull();
+  });
+
   it("moves only cursors outside the safe viewport margin", () => {
     expect(getEditorVisualVisibilityCorrection(90, 110, 0, 800)).toBe(0);
     expect(getEditorVisualVisibilityCorrection(20, 40, 0, 800)).toBe(-28);

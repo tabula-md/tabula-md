@@ -12,6 +12,7 @@ export const scenarios = [
   "reveals inline Markdown source without style leaks",
   "inserts inline toolbar syntax into editable source",
   "keeps the cursor visible through long documents",
+  "keeps user-owned Visual scrolling stable while widgets resize",
   "renders supported Markdown and MDX components",
   "navigates long documents without mounting every widget",
   "keeps toolbar insertions editable in Visual mode",
@@ -143,6 +144,19 @@ const SCROLL_FIXTURE = Array.from(
   { length: 240 },
   (_, index) => index % 12 === 0 ? `## Section ${index + 1}` : `Body line ${index + 1}`,
 ).join("\n");
+
+const USER_SCROLL_FIXTURE = [
+  "Cursor remains at the document start.",
+  "",
+  "![Delayed visual media](https://tabula.test/tabula-visual-delayed-media.svg)",
+  "",
+  ...Array.from(
+    { length: 320 },
+    (_, index) => index % 12 === 0
+      ? `## Scroll section ${index + 1}`
+      : `Scrollable Visual body line ${index + 1}`,
+  ),
+].join("\n");
 
 const LONG_NAVIGATION_FIXTURE = [
   ...Array.from({ length: 24 }, (_, index) => [
@@ -1085,6 +1099,88 @@ export async function run(ctx) {
     expect(
       runtimeErrors.length === 0,
       `Cursor visibility correction should not emit runtime errors. errors=${runtimeErrors.join(" | ")}`,
+    );
+  });
+
+  await withPage(browser, "/", async (page) => {
+    const runtimeErrors = observeRuntimeErrors(page);
+    let releaseDelayedImage;
+    let markImageFulfilled;
+    let markImageRequested;
+    const delayedImage = new Promise((resolve) => {
+      releaseDelayedImage = resolve;
+    });
+    const imageRequested = new Promise((resolve) => {
+      markImageRequested = resolve;
+    });
+    const imageFulfilled = new Promise((resolve) => {
+      markImageFulfilled = resolve;
+    });
+    await page.route("**/tabula-visual-delayed-media.svg", async (route) => {
+      markImageRequested();
+      await delayedImage;
+      await route.fulfill({
+        status: 200,
+        contentType: "image/svg+xml",
+        body: [
+          '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="980" viewBox="0 0 1200 980">',
+          '<rect width="1200" height="980" fill="#dce6ee"/>',
+          '<text x="80" y="160" font-family="Arial, sans-serif" font-size="64">Delayed Visual media</text>',
+          "</svg>",
+        ].join(""),
+      });
+      markImageFulfilled();
+    });
+    await openMarkdownFile(page, {
+      name: "visual-user-scroll.md",
+      content: USER_SCROLL_FIXTURE,
+    });
+    await selectDocumentViewMode(page, "Edit");
+    await waitForEditorReady(page, { mode: "edit" });
+    await enterVisualMode(page, waitForEditorReady);
+    await imageRequested;
+    await focusMarkdownEditor(page);
+    await page.keyboard.press("ControlOrMeta+Home");
+    await waitForRenderFrame(page);
+    const beforeLoad = await page.evaluate(() => {
+      const workspace = document.querySelector(".workspace.visual");
+      if (!(workspace instanceof HTMLElement)) return null;
+      const maximum = Math.max(0, workspace.scrollHeight - workspace.clientHeight);
+      workspace.scrollTop = maximum * 0.55;
+      workspace.dispatchEvent(new Event("scroll"));
+      return {
+        maximum,
+        scrollTop: workspace.scrollTop,
+      };
+    });
+    expect(
+      Boolean(beforeLoad && beforeLoad.maximum > 1_000 && beforeLoad.scrollTop > 500),
+      `The Visual fixture should expose a meaningful manual scroll range. state=${JSON.stringify(beforeLoad)}`,
+    );
+    releaseDelayedImage();
+    await imageFulfilled;
+    await waitForRenderFrame(page);
+    await page.waitForTimeout(120);
+    const afterLoad = await page.evaluate(() => {
+      const workspace = document.querySelector(".workspace.visual");
+      return workspace instanceof HTMLElement
+        ? {
+            maximum: Math.max(0, workspace.scrollHeight - workspace.clientHeight),
+            scrollTop: workspace.scrollTop,
+          }
+        : null;
+    });
+    expect(
+      Boolean(
+        beforeLoad &&
+        afterLoad &&
+        afterLoad.scrollTop >= beforeLoad.scrollTop * 0.7,
+      ),
+      `Async Visual widget geometry should preserve user-owned scrolling instead of returning to the cursor. before=${JSON.stringify(beforeLoad)} after=${JSON.stringify(afterLoad)}`,
+    );
+    expect(
+      runtimeErrors.length === 0,
+      `User-owned Visual scrolling should not emit runtime errors. errors=${runtimeErrors.join(" | ")}`,
     );
   });
 
