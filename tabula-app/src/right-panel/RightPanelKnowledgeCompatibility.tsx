@@ -762,6 +762,14 @@ export function RightPanelKnowledgeCompatibility({
     : statusTone === "success"
       ? CircleCheck
       : TriangleAlert;
+  const advancedSupportTitle = report?.advancedSupport.level === "advanced"
+    ? copy.supportAdvanced(report.advancedSupport.attestedComputationCount)
+    : report?.advancedSupport.level === "advanced-partial"
+      ? copy.supportAdvancedPartial(
+          report.advancedSupport.unsupportedComputationCount,
+          report.advancedSupport.unsupportedRuntimes.join(", "),
+        )
+      : copy.supportCore;
 
   return (
     <div className={`right-compatibility-scroll ${layout}`}>
@@ -788,6 +796,15 @@ export function RightPanelKnowledgeCompatibility({
           )}
         </span>
       </div>
+
+      {report?.validatedVersion === "0.2" && (
+        <div
+          className={`right-compatibility-support ${report.advancedSupport.level}`}
+          role="status"
+        >
+          <span>{advancedSupportTitle}</span>
+        </div>
+      )}
 
       {knowledgeIndex && (
         <OkfMigrationSection

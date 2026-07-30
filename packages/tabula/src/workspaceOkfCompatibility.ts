@@ -4,6 +4,12 @@ import {
 } from "./markdown/parse";
 import type { WorkspaceKnowledgeIndex } from "./workspaceKnowledgeIndex";
 import {
+  validateOkf02AdvancedContracts,
+  type OkfAdvancedContractOptions,
+  type OkfAdvancedDiagnosticCode,
+  type OkfAdvancedSupportSummary,
+} from "./workspaceOkfAdvancedContracts";
+import {
   createWorkspaceOkfInspection,
   detectWorkspaceOkfVersion,
   getOkfVersionAdapter,
@@ -36,6 +42,7 @@ export type OkfCompatibilityIssueCode =
   | "log_dates_out_of_order"
   | "nonstandard_markdown_extension"
   | "wikilink_syntax"
+  | OkfAdvancedDiagnosticCode
   | OkfVersionDiagnosticCode;
 
 export type OkfCompatibilityIssue = {
@@ -67,6 +74,7 @@ export type OkfCompatibilityReport = {
   ignoredDocumentCount: number;
   errorCount: number;
   warningCount: number;
+  advancedSupport: OkfAdvancedSupportSummary;
   documents: readonly OkfDocumentCompatibility[];
   issues: readonly OkfCompatibilityIssue[];
 };
@@ -143,14 +151,38 @@ const getLogStructureIssues = (
 
 export const getWorkspaceOkfCompatibility = (
   index: WorkspaceKnowledgeIndex,
+  options: OkfAdvancedContractOptions = {},
 ): OkfCompatibilityReport => {
   const bundleInspection = createWorkspaceOkfInspection(index);
   const detection = detectWorkspaceOkfVersion(bundleInspection);
   const versionAdapter = getOkfVersionAdapter(detection.version);
   const versionReport = versionAdapter?.validate(bundleInspection);
+  const advancedReport = detection.version === "0.2"
+    ? validateOkf02AdvancedContracts(index, options)
+    : {
+        diagnostics: [],
+        support: {
+          level: "core" as const,
+          attestedComputationCount: 0,
+          supportedComputationCount: 0,
+          unsupportedComputationCount: 0,
+          unsupportedRuntimes: [],
+        },
+      };
   const strictValidation = Boolean(versionAdapter);
   const versionIssuesByDocumentId = new Map<string, OkfCompatibilityIssue[]>();
   for (const diagnostic of versionReport?.diagnostics ?? []) {
+    const issues = versionIssuesByDocumentId.get(diagnostic.documentId) ?? [];
+    issues.push(createIssue(
+      diagnostic.documentId,
+      diagnostic.path,
+      diagnostic.code,
+      diagnostic.severity,
+      diagnostic.value,
+    ));
+    versionIssuesByDocumentId.set(diagnostic.documentId, issues);
+  }
+  for (const diagnostic of advancedReport.diagnostics) {
     const issues = versionIssuesByDocumentId.get(diagnostic.documentId) ?? [];
     issues.push(createIssue(
       diagnostic.documentId,
@@ -345,6 +377,7 @@ export const getWorkspaceOkfCompatibility = (
     ).length,
     errorCount,
     warningCount,
+    advancedSupport: advancedReport.support,
     documents: documentReports,
     issues,
   };

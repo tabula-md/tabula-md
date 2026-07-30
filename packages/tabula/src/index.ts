@@ -789,6 +789,17 @@ export {
   getOkfMigrationUpdates,
   planOkf01To02Migration,
 } from "./workspaceOkfMigration";
+export type {
+  OkfAdvancedContractOptions,
+  OkfAdvancedContractReport,
+  OkfAdvancedDiagnostic,
+  OkfAdvancedDiagnosticCode,
+  OkfAdvancedSupportLevel,
+  OkfAdvancedSupportSummary,
+} from "./workspaceOkfAdvancedContracts";
+export {
+  validateOkf02AdvancedContracts,
+} from "./workspaceOkfAdvancedContracts";
 
 export type {
   OkfConceptTypeUpdateFailure,

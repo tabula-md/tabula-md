@@ -16,6 +16,7 @@ const INITIAL_KNOWLEDGE_STATE: WorkspaceKnowledgeState = {
 
 export const useWorkspaceKnowledgeIndex = (
   documents: readonly WorkspaceSourceDocument[],
+  availablePaths?: readonly string[],
 ) => {
   const [snapshot, setSnapshot] = useState(INITIAL_KNOWLEDGE_STATE);
   const hasRequestedIndexRef = useRef(false);
@@ -40,7 +41,10 @@ export const useWorkspaceKnowledgeIndex = (
           : 0;
         hasRequestedIndexRef.current = true;
         timeout = window.setTimeout(
-          () => workspaceKnowledgeWorkerClient.sync(documents),
+          () => workspaceKnowledgeWorkerClient.sync(
+            documents,
+            availablePaths ?? documents.map((document) => document.path),
+          ),
           debounceMs,
         );
       })
@@ -60,7 +64,7 @@ export const useWorkspaceKnowledgeIndex = (
       unsubscribe?.();
       if (timeout !== undefined) window.clearTimeout(timeout);
     };
-  }, [documents]);
+  }, [availablePaths, documents]);
 
   return snapshot;
 };

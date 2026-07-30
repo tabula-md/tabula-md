@@ -10,6 +10,21 @@ import { getKnowledgeCompatibilityCopy } from "./knowledgeCompatibilityLocale";
 
 const languages: WorkspaceLanguage[] = ["en", "ko", "ja", "zh", "es", "fr", "de"];
 const issueCodes: OkfCompatibilityIssueCode[] = [
+  "okf_02_attester_invalid",
+  "okf_02_attester_resource_missing",
+  "okf_02_computation_missing",
+  "okf_02_computation_resource_missing",
+  "okf_02_executor_invalid",
+  "okf_02_executor_resource_missing",
+  "okf_02_parameter_duplicate",
+  "okf_02_parameters_invalid",
+  "okf_02_receipt_empty",
+  "okf_02_runtime_missing",
+  "okf_02_runtime_unsupported",
+  "okf_02_source_author_invalid",
+  "okf_02_stale_computation_in_use",
+  "okf_02_usage_window_invalid",
+  "okf_02_usage_window_missing",
   "concept_frontmatter_missing",
   "concept_frontmatter_invalid",
   "concept_type_missing",
@@ -65,6 +80,9 @@ describe("knowledge compatibility copy", () => {
       expect(copy.migrationMissingProducers(4)).toContain("4");
       expect(copy.migrationDeletedFiles(0)).toContain("0");
       expect(copy.migrationDecisions(1)).toContain("1");
+      expect(copy.supportCore.trim()).not.toBe("");
+      expect(copy.supportAdvanced(2)).toContain("2");
+      expect(copy.supportAdvancedPartial(1, "custom")).toContain("custom");
 
       for (const code of issueCodes) {
         const issue: OkfCompatibilityIssue = {

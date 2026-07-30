@@ -14,6 +14,7 @@ export type WorkspaceKnowledgeSyncRequest = {
   requestId: number;
   revision: number;
   reset: boolean;
+  availablePaths: readonly string[];
   removedDocumentIds: readonly string[];
   upsertedDocuments: readonly WorkspaceSourceDocument[];
 };

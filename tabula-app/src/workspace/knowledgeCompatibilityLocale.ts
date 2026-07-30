@@ -1,4 +1,5 @@
 import type {
+  OkfAdvancedDiagnosticCode,
   OkfCompatibilityIssue,
   OkfCompatibilityIssueCode,
   WorkspaceKnowledgeHealthIssue,
@@ -52,6 +53,9 @@ export type KnowledgeCompatibilityCopy = {
   migrationDecisions: (count: number) => string;
   migrationFile: string;
   migrationApply: string;
+  supportCore: string;
+  supportAdvanced: (count: number) => string;
+  supportAdvancedPartial: (count: number, runtimes: string) => string;
   requiredChanges: (count: number) => string;
   portabilityWarnings: (count: number) => string;
   requiredSection: string;
@@ -435,7 +439,26 @@ const actionCopies: Partial<Record<WorkspaceLanguage, KnowledgeConformanceAction
   },
 };
 
+const advancedIssuesEn: Record<OkfAdvancedDiagnosticCode, string> = {
+  okf_02_attester_invalid: "Add a valid attester resource",
+  okf_02_attester_resource_missing: "Restore the attester resource: {{value}}",
+  okf_02_computation_missing: "Add a computation file or an inline Computation code block",
+  okf_02_computation_resource_missing: "Restore the computation file: {{value}}",
+  okf_02_executor_invalid: "Add a valid executor resource",
+  okf_02_executor_resource_missing: "Restore the executor resource: {{value}}",
+  okf_02_parameter_duplicate: "Use each parameter name once: {{value}}",
+  okf_02_parameters_invalid: "Use typed parameters with name, type, and required",
+  okf_02_receipt_empty: "Declare at least one receipt field",
+  okf_02_runtime_missing: "Declare the computation runtime",
+  okf_02_runtime_unsupported: "Runtime is structurally readable but not supported: {{value}}",
+  okf_02_source_author_invalid: "Use an OKF actor identity for the source author: {{value}}",
+  okf_02_stale_computation_in_use: "Refresh this stale computation; {{value}} concepts still use it",
+  okf_02_usage_window_invalid: "Use a valid usage_window date range",
+  okf_02_usage_window_missing: "Add usage_window to frame usage_count",
+};
+
 const enIssues: Record<OkfCompatibilityIssueCode, string> = {
+  ...advancedIssuesEn,
   concept_frontmatter_missing: "Add YAML frontmatter",
   concept_frontmatter_invalid: "Fix invalid YAML frontmatter",
   concept_type_missing: "Add a non-empty type",
@@ -512,6 +535,9 @@ type KnowledgeMigrationMessages = {
   decisions: string;
   file: string;
   apply: string;
+  supportCore: string;
+  supportAdvanced: string;
+  supportAdvancedPartial: string;
 };
 
 const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
@@ -526,6 +552,9 @@ const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
     decisions: "{{count}} decisions needed",
     file: "Migration change",
     apply: "Apply migration",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
   },
   ko: {
     title: "마이그레이션 미리보기",
@@ -538,6 +567,9 @@ const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
     decisions: "수동 결정 {{count}}개",
     file: "마이그레이션 변경",
     apply: "마이그레이션 적용",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · computation {{count}}개",
+    supportAdvancedPartial: "OKF 0.2 advanced · 미지원 {{count}}개 ({{runtimes}})",
   },
   ja: {
     title: "移行プレビュー",
@@ -550,6 +582,9 @@ const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
     decisions: "{{count}} 件の判断が必要",
     file: "移行変更",
     apply: "移行を適用",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
   },
   zh: {
     title: "迁移预览",
@@ -562,6 +597,9 @@ const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
     decisions: "需要 {{count}} 项决定",
     file: "迁移更改",
     apply: "应用迁移",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
   },
   es: {
     title: "Vista previa de migración",
@@ -574,6 +612,9 @@ const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
     decisions: "{{count}} decisiones pendientes",
     file: "Cambio de migración",
     apply: "Aplicar migración",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
   },
   fr: {
     title: "Aperçu de la migration",
@@ -586,6 +627,9 @@ const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
     decisions: "{{count}} décisions nécessaires",
     file: "Modification de migration",
     apply: "Appliquer la migration",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
   },
   de: {
     title: "Migrationsvorschau",
@@ -598,6 +642,9 @@ const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
     decisions: "{{count}} Entscheidungen erforderlich",
     file: "Migrationsänderung",
     apply: "Migration anwenden",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
   },
 };
 
@@ -647,6 +694,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "Frontmatter와 type 추가",
     setConceptType: "Concept type 설정",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "YAML frontmatter 추가",
       concept_frontmatter_invalid: "잘못된 YAML frontmatter 수정",
       concept_type_missing: "비어 있지 않은 type 추가",
@@ -693,6 +741,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "Frontmatter と type を追加",
     setConceptType: "Concept type を設定",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "YAML frontmatter を追加",
       concept_frontmatter_invalid: "不正な YAML frontmatter を修正",
       concept_type_missing: "空でない type を追加",
@@ -739,6 +788,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "添加 frontmatter 和 type",
     setConceptType: "设置 concept type",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "添加 YAML frontmatter",
       concept_frontmatter_invalid: "修复无效的 YAML frontmatter",
       concept_type_missing: "添加非空 type",
@@ -785,6 +835,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "Añadir frontmatter y type",
     setConceptType: "Definir el tipo de concepto",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "Añadir frontmatter YAML",
       concept_frontmatter_invalid: "Corregir el frontmatter YAML no válido",
       concept_type_missing: "Añadir un type no vacío",
@@ -831,6 +882,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "Ajouter le frontmatter et le type",
     setConceptType: "Définir le type de concept",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "Ajouter un frontmatter YAML",
       concept_frontmatter_invalid: "Corriger le frontmatter YAML invalide",
       concept_type_missing: "Ajouter un type non vide",
@@ -877,6 +929,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "Frontmatter und type hinzufügen",
     setConceptType: "Konzepttyp festlegen",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "YAML-Frontmatter hinzufügen",
       concept_frontmatter_invalid: "Ungültiges YAML-Frontmatter korrigieren",
       concept_type_missing: "Einen nicht leeren type hinzufügen",
@@ -946,6 +999,11 @@ export const getKnowledgeCompatibilityCopy = (
       formatMessage(migrationCopy.decisions, { count }),
     migrationFile: migrationCopy.file,
     migrationApply: migrationCopy.apply,
+    supportCore: migrationCopy.supportCore,
+    supportAdvanced: (count) =>
+      formatMessage(migrationCopy.supportAdvanced, { count }),
+    supportAdvancedPartial: (count, runtimes) =>
+      formatMessage(migrationCopy.supportAdvancedPartial, { count, runtimes }),
     requiredChanges: (count) => formatMessage(
       count === 1 ? copy.requiredChange : copy.requiredChanges,
       { count },

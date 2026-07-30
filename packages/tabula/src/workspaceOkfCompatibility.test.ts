@@ -174,4 +174,48 @@ describe("workspace OKF compatibility", () => {
     expect(report.declaredVersion).toBeUndefined();
     expect(index.documentsById.get("concept")?.markdown).toBe(markdown);
   });
+
+  it("surfaces OKF 0.2 advanced support without making soft guidance an error", () => {
+    const report = getWorkspaceOkfCompatibility(createWorkspaceKnowledgeIndex([
+      {
+        id: "index",
+        path: "index.md",
+        markdown: "---\nokf_version: \"0.2\"\n---\n\n# Catalog",
+      },
+      {
+        id: "computation",
+        path: "computations/value.md",
+        markdown: [
+          "---",
+          "type: Attested Computation",
+          "runtime: custom-runtime",
+          "computation: ../references/value.sql",
+          "---",
+        ].join("\n"),
+      },
+    ]), {
+      availablePaths: [
+        "index.md",
+        "computations/value.md",
+        "references/value.sql",
+      ],
+    });
+
+    expect(report).toMatchObject({
+      status: "conformant",
+      errorCount: 0,
+      advancedSupport: {
+        level: "advanced-partial",
+        unsupportedComputationCount: 1,
+        unsupportedRuntimes: ["custom-runtime"],
+      },
+    });
+    expect(report.issues).toContainEqual(expect.objectContaining({
+      code: "okf_02_runtime_unsupported",
+      severity: "warning",
+    }));
+    expect(report.issues).not.toContainEqual(expect.objectContaining({
+      code: "okf_02_computation_resource_missing",
+    }));
+  });
 });
