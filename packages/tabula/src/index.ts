@@ -593,6 +593,7 @@ export {
   createCurrentFileDownloadDraft,
   createImportedWorkspaceFileDraft,
   getNewFilePreferenceOverrides,
+  isMdxImportFileName,
   isSupportedImportFileDescriptor,
 } from "./workspaceIoModel";
 
@@ -701,6 +702,24 @@ export {
   updateWorkspaceKnowledgeIndex,
   updateWorkspaceKnowledgeIndexPaths,
 } from "./workspaceKnowledgeIndex";
+
+export type {
+  MdxAnalysisDiagnostic,
+  MdxAnalysisDiagnosticCode,
+  MdxSourceAnalysis,
+} from "./mdxAnalysis";
+export {
+  analyzeMdxSource,
+} from "./mdxAnalysis";
+export type {
+  MdxSourceRange,
+  MdxSourceRangeKind,
+} from "./mdxSourceSyntax";
+export {
+  REGISTERED_MDX_COMPONENTS,
+  maskMdxSyntax,
+  scanMdxSourceRanges,
+} from "./mdxSourceSyntax";
 
 export type {
   WorkspaceKnowledgeMaintenancePlan,

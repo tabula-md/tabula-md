@@ -86,6 +86,7 @@ const VIRTUAL_LINE_MEASUREMENT_SCROLL_IDLE_MS = 140;
 function MarkdownPreviewComponent({
   metadata = EMPTY_MARKDOWN_PREVIEW_METADATA,
   body,
+  sourceFormat = "markdown",
   sourceLineOffset = 0,
   bodyTextChange,
   largeDocumentMode = false,
@@ -128,7 +129,11 @@ function MarkdownPreviewComponent({
   const showLineGutters = Boolean(onLineAction);
   const stableCommentAnchors = commentAnchors.length > 0 ? commentAnchors : EMPTY_PREVIEW_COMMENT_ANCHORS;
   const stableLineAnnotations = lineAnnotations.length > 0 ? lineAnnotations : EMPTY_PREVIEW_LINE_ANNOTATIONS;
-  const renderableBody = useMemo(() => normalizePreviewDocsComponents(body), [body]);
+  const isMdxSource = sourceFormat === "mdx";
+  const renderableBody = useMemo(
+    () => isMdxSource ? "" : normalizePreviewDocsComponents(body),
+    [body, isMdxSource],
+  );
   const previewSearchActive = Boolean(searchQuery.trim()) && !getSearchQueryError(searchQuery, searchOptions);
   const renderableBodyTextChange = renderableBody === body ? bodyTextChange : null;
   const normalizedSourceLineOffset = Math.max(0, Math.floor(sourceLineOffset));
@@ -686,7 +691,15 @@ function MarkdownPreviewComponent({
               </section>
             )}
 
-            {renderableBody.trim().length > 0 ? (
+            {isMdxSource ? (
+              <section className="mdx-safe-preview" aria-label={uiCopy.mdxPreviewTitle}>
+                <header>
+                  <strong>{uiCopy.mdxPreviewTitle}</strong>
+                  <p>{uiCopy.mdxPreviewDescription}</p>
+                </header>
+                <pre><code>{body}</code></pre>
+              </section>
+            ) : renderableBody.trim().length > 0 ? (
               shouldVirtualizePreview ? (
                 virtualPreviewBlockIndex ? (
                   <VirtualMarkdownPreview

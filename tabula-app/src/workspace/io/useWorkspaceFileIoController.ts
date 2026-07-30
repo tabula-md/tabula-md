@@ -23,6 +23,7 @@ import {
 import {
   createCurrentFileDownloadDraft,
   createImportedWorkspaceFileDraft,
+  isMdxImportFileName,
   isSupportedImportFileDescriptor,
 } from "./workspaceIoModel";
 import type { WorkspacePreferences } from "../state/useWorkspacePreferences";
@@ -314,12 +315,19 @@ export function useWorkspaceFileIoController({
   const importFile = async (file: File) => {
     const importedText = await file.text();
     const importedFileDraft = createImportedWorkspaceFileDraft(file.name, importedText, preferences);
+    const isMdx = isMdxImportFileName(importedFileDraft.title);
     onBeforeWorkspaceBoundary?.();
     addFileFromContent(
       importedFileDraft.title,
       importedFileDraft.text,
-      importedFileDraft.viewMode,
-      importedFileDraft.overrides,
+      isMdx ? "edit" : importedFileDraft.viewMode,
+      isMdx
+        ? {
+            ...importedFileDraft.overrides,
+            viewMode: "edit",
+            editingMode: "source",
+          }
+        : importedFileDraft.overrides,
     );
     productAnalytics.report("file_created_or_opened", {
       documentSource: "markdown_file",

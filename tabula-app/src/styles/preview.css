@@ -68,6 +68,39 @@
   min-width: 0;
 }
 
+.mdx-safe-preview {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.mdx-safe-preview header {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--text-soft);
+  font-size: var(--font-ui-secondary);
+  line-height: 1.45;
+}
+
+.mdx-safe-preview header p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.mdx-safe-preview pre {
+  margin: 0;
+  padding: var(--space-4);
+  overflow: auto;
+  border-radius: var(--radius-surface);
+  background: var(--surface-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mdx-safe-preview code {
+  font-family: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: var(--preview-code-text-size);
+}
+
 .preview-document.virtualized .preview-document-content {
   overflow-anchor: none;
 }

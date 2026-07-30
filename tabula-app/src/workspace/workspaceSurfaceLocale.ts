@@ -33,6 +33,8 @@ export type WorkspaceSurfaceCopy = {
   frontmatter: string;
   preview: string;
   nothingToPreview: string;
+  mdxPreviewTitle: string;
+  mdxPreviewDescription: string;
   brokenWorkspaceLink: (target: string) => string;
   ambiguousWorkspaceLink: (target: string) => string;
   openWorkspaceEmbedSource: (target: string) => string;
@@ -103,6 +105,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Frontmatter",
     preview: "Preview",
     nothingToPreview: "Nothing to preview",
+    mdxPreviewTitle: "MDX source preview",
+    mdxPreviewDescription: "Tabula preserves this MDX source without running imports, expressions, or components.",
     brokenWorkspaceLink: (target) => `Broken workspace link: ${target}`,
     ambiguousWorkspaceLink: (target) => `Ambiguous workspace link: ${target}`,
     openWorkspaceEmbedSource: (target) => `Open embedded source: ${target}`,
@@ -171,6 +175,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "프론트매터",
     preview: "미리보기",
     nothingToPreview: "미리 볼 내용이 없습니다",
+    mdxPreviewTitle: "MDX 원문 미리보기",
+    mdxPreviewDescription: "Tabula는 import, 표현식, 컴포넌트를 실행하지 않고 MDX 원문을 보존합니다.",
     brokenWorkspaceLink: (target) => `깨진 워크스페이스 링크: ${target}`,
     ambiguousWorkspaceLink: (target) => `대상이 모호한 워크스페이스 링크: ${target}`,
     openWorkspaceEmbedSource: (target) => `삽입된 원본 열기: ${target}`,
@@ -239,6 +245,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "フロントマター",
     preview: "プレビュー",
     nothingToPreview: "プレビューする内容がありません",
+    mdxPreviewTitle: "MDXソースプレビュー",
+    mdxPreviewDescription: "Tabulaはimport、式、コンポーネントを実行せず、MDXソースを保持します。",
     brokenWorkspaceLink: (target) => `壊れたワークスペースリンク: ${target}`,
     ambiguousWorkspaceLink: (target) => `あいまいなワークスペースリンク: ${target}`,
     openWorkspaceEmbedSource: (target) => `埋め込み元を開く: ${target}`,
@@ -307,6 +315,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "前置元数据",
     preview: "预览",
     nothingToPreview: "没有可预览的内容",
+    mdxPreviewTitle: "MDX 源码预览",
+    mdxPreviewDescription: "Tabula 会保留 MDX 源码，但不会运行导入、表达式或组件。",
     brokenWorkspaceLink: (target) => `失效的工作区链接：${target}`,
     ambiguousWorkspaceLink: (target) => `目标不明确的工作区链接：${target}`,
     openWorkspaceEmbedSource: (target) => `打开嵌入源：${target}`,
@@ -375,6 +385,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Metadatos iniciales",
     preview: "Vista previa",
     nothingToPreview: "Nada que previsualizar",
+    mdxPreviewTitle: "Vista previa del código MDX",
+    mdxPreviewDescription: "Tabula conserva el código MDX sin ejecutar importaciones, expresiones ni componentes.",
     brokenWorkspaceLink: (target) => `Enlace roto del espacio de trabajo: ${target}`,
     ambiguousWorkspaceLink: (target) => `Enlace ambiguo del espacio de trabajo: ${target}`,
     openWorkspaceEmbedSource: (target) => `Abrir fuente incrustada: ${target}`,
@@ -443,6 +455,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Métadonnées initiales",
     preview: "Aperçu",
     nothingToPreview: "Rien à prévisualiser",
+    mdxPreviewTitle: "Aperçu de la source MDX",
+    mdxPreviewDescription: "Tabula conserve la source MDX sans exécuter les imports, expressions ni composants.",
     brokenWorkspaceLink: (target) => `Lien d’espace de travail rompu : ${target}`,
     ambiguousWorkspaceLink: (target) => `Lien d’espace de travail ambigu : ${target}`,
     openWorkspaceEmbedSource: (target) => `Ouvrir la source intégrée : ${target}`,
@@ -511,6 +525,8 @@ const surfaceCopy: Record<WorkspaceLanguage, WorkspaceSurfaceCopy> = {
     frontmatter: "Frontmatter",
     preview: "Vorschau",
     nothingToPreview: "Nichts für die Vorschau",
+    mdxPreviewTitle: "MDX-Quellvorschau",
+    mdxPreviewDescription: "Tabula bewahrt den MDX-Quelltext, ohne Importe, Ausdrücke oder Komponenten auszuführen.",
     brokenWorkspaceLink: (target) => `Defekter Workspace-Link: ${target}`,
     ambiguousWorkspaceLink: (target) => `Mehrdeutiger Workspace-Link: ${target}`,
     openWorkspaceEmbedSource: (target) => `Eingebettete Quelle öffnen: ${target}`,
