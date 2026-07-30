@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PROJECT_STORAGE_VERSION, parseWorkspacePayload } from "./workspaceStorage";
+import {
+  PROJECT_STORAGE_VERSION,
+  parseWorkspacePayload,
+  serializeFile,
+} from "./workspaceStorage";
 import { migrateWorkspaceStoragePayload } from "./workspaceStorageMigrations";
 import projectV5 from "./__fixtures__/storage/project-v5.json";
 import projectV6 from "./__fixtures__/storage/project-v6.json";
@@ -102,5 +106,27 @@ describe("workspace storage migrations", () => {
       "status",
       "toVersion",
     ]);
+  });
+
+  it("persists artifact metadata without changing legacy Markdown defaults", () => {
+    const workspace = parseWorkspacePayload(fixtures[1].payload);
+    const file = workspace?.files[0];
+    expect(file?.artifact).toBeUndefined();
+    expect(file && serializeFile({
+      ...file,
+      artifact: {
+        kind: "asset",
+        mediaType: "image/png",
+        contentKind: "binary",
+        sourceHash: "sha256:abc",
+        editable: false,
+      },
+    }).artifact).toEqual({
+      kind: "asset",
+      mediaType: "image/png",
+      contentKind: "binary",
+      sourceHash: "sha256:abc",
+      editable: false,
+    });
   });
 });
