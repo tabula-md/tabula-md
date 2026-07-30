@@ -954,3 +954,16 @@ export {
   getExternalArtifactChanges,
   planExternalChangeResolution,
 } from "./workspaceSource";
+
+export type {
+  DerivedKnowledgeIndex,
+  DerivedKnowledgeIndexDelta,
+  KnowledgeIndexAdapter,
+  KnowledgeQuery,
+  KnowledgeResult,
+  KnowledgeSourceRange,
+  KnowledgeSourceReference,
+} from "./derivedKnowledgeIndex";
+export {
+  createFullTextKnowledgeIndexAdapter,
+} from "./derivedKnowledgeIndex";
