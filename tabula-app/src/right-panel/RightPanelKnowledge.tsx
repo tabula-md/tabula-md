@@ -17,11 +17,9 @@ import {
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getKnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
+import { getWorkspaceReview } from "../workspace/io/workspaceExportReviewModel";
 import { KnowledgeReviewDialog } from "./KnowledgeReviewDialog";
 import { RightPanelKnowledgeCompatibility } from "./RightPanelKnowledgeCompatibility";
-import {
-  KNOWLEDGE_VERIFICATION_ISSUE_CODES,
-} from "./RightPanelKnowledgeVerification";
 import { RightPanelKnowledgeContext } from "./RightPanelKnowledgeContext";
 import { PanelEmptyState } from "./PanelEmptyState";
 
@@ -68,7 +66,7 @@ export function RightPanelKnowledge({
 }: RightPanelKnowledgeProps) {
   const knowledgeCopy = getKnowledgePanelCopy(language);
   const compatibilityCopy = getKnowledgeCompatibilityCopy(language);
-  const [exportPreflightOpen, setExportPreflightOpen] = useState(false);
+  const [workspaceReviewOpen, setWorkspaceReviewOpen] = useState(false);
   const healthReport = useMemo(
     () => index ? getWorkspaceKnowledgeHealth(index) : undefined,
     [index],
@@ -102,23 +100,61 @@ export function RightPanelKnowledge({
       : undefined,
     [index, knowledgeBaseline],
   );
-  const verificationCount = useMemo(() => new Set(
-    healthReport?.issues
-      .filter((issue) => KNOWLEDGE_VERIFICATION_ISSUE_CODES.has(issue.code))
-      .map((issue) => issue.documentId) ?? [],
-  ).size, [healthReport]);
+  const workspaceReview = useMemo(
+    () => index
+      ? getWorkspaceReview(index, {
+          baseline: knowledgeBaseline,
+          compatibility: compatibilityReport,
+          health: healthReport,
+        })
+      : undefined,
+    [compatibilityReport, healthReport, index, knowledgeBaseline],
+  );
 
   useEffect(() => {
-    if (knowledgeCompatibilityOpenRequest > 0) setExportPreflightOpen(true);
+    if (knowledgeCompatibilityOpenRequest > 0) setWorkspaceReviewOpen(true);
   }, [knowledgeCompatibilityOpenRequest]);
 
   return (
     <>
-      {activeFileId ? (
-        <section
-          className="right-panel-knowledge"
-          aria-label={knowledgeCopy.documentContext}
-        >
+      <section
+        className="right-panel-knowledge"
+        aria-label={knowledgeCopy.documentContext}
+      >
+        {workspaceReview && (
+          <header
+            className="right-knowledge-workspace-bar"
+            role="region"
+            aria-label={knowledgeCopy.workspaceContext}
+          >
+            <span className="right-knowledge-workspace-summary">
+              <strong>
+                {workspaceReview.declaredVersion
+                  ? knowledgeCopy.workspaceSummary(
+                      workspaceReview.declaredVersion,
+                      workspaceReview.conceptCount,
+                    )
+                  : knowledgeCopy.knowledgeSummary(
+                      workspaceReview.conceptCount,
+                    )}
+              </strong>
+              <small>
+                {workspaceReview.reviewAttentionCount > 0
+                  ? knowledgeCopy.workspaceAttention(
+                      workspaceReview.reviewAttentionCount,
+                    )
+                  : knowledgeCopy.workspaceReady}
+              </small>
+            </span>
+            <button
+              type="button"
+              onClick={() => setWorkspaceReviewOpen(true)}
+            >
+              {knowledgeCopy.reviewWorkspace}
+            </button>
+          </header>
+        )}
+        {activeFileId ? (
           <RightPanelKnowledgeContext
             activeFileId={activeFileId}
             activeFileTitle={activeFileTitle}
@@ -128,23 +164,26 @@ export function RightPanelKnowledge({
             index={index}
             onSelectHealthIssue={onSelectHealthIssue}
           />
-        </section>
-      ) : (
-        <section className="right-panel-content">
-          <PanelEmptyState>{noDocumentCopy}</PanelEmptyState>
-        </section>
-      )}
+        ) : (
+          <section className="right-panel-content">
+            <PanelEmptyState>{noDocumentCopy}</PanelEmptyState>
+          </section>
+        )}
+      </section>
 
-      {exportPreflightOpen && (
+      {workspaceReviewOpen && (
         <KnowledgeReviewDialog
           copy={knowledgeCopy}
-          maintenanceCount={healthReport?.attentionCount ?? 0}
-          requiredCount={compatibilityReport?.errorCount ?? 0}
-          verificationCount={verificationCount}
-          onClose={() => setExportPreflightOpen(false)}
+          changeCount={workspaceReview?.changeCount}
+          maintenanceCount={workspaceReview?.maintenanceAttentionCount ?? 0}
+          requiredCount={workspaceReview?.requiredChangeCount ?? 0}
+          verificationCount={workspaceReview?.verificationCount ?? 0}
+          onClose={() => setWorkspaceReviewOpen(false)}
         >
           <RightPanelKnowledgeCompatibility
             copy={compatibilityCopy}
+            reviewTitle={knowledgeCopy.compatibilityReview}
+            reviewDescription={knowledgeCopy.compatibilityReviewDescription}
             documentCount={index?.documentsById.size ?? 0}
             report={compatibilityReport}
             healthReport={healthReport}
@@ -162,7 +201,7 @@ export function RightPanelKnowledge({
             onSelectFile={onSelectFile}
             onSelectHealthIssue={(issue) => {
               onSelectHealthIssue(issue);
-              setExportPreflightOpen(false);
+              setWorkspaceReviewOpen(false);
             }}
             onSetActiveFileOkfType={onSetActiveFileOkfType}
             onVerifyKnowledgeDocument={onVerifyKnowledgeDocument}

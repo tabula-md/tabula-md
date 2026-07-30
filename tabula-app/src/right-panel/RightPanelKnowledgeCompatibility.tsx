@@ -27,16 +27,18 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
+import {
+  WORKSPACE_REVIEW_VERIFICATION_ISSUE_CODES,
+} from "../workspace/io/workspaceExportReviewModel";
 import { RightPanelOkfIndexes } from "./RightPanelOkfIndexes";
 import { RightPanelKnowledgeHealth } from "./RightPanelKnowledgeHealth";
 import { RightPanelKnowledgeChanges } from "./RightPanelKnowledgeChanges";
-import {
-  KNOWLEDGE_VERIFICATION_ISSUE_CODES,
-  RightPanelKnowledgeVerification,
-} from "./RightPanelKnowledgeVerification";
+import { RightPanelKnowledgeVerification } from "./RightPanelKnowledgeVerification";
 
 type RightPanelKnowledgeCompatibilityProps = {
   copy: KnowledgeCompatibilityCopy;
+  reviewTitle?: string;
+  reviewDescription?: string;
   documentCount: number;
   report?: OkfCompatibilityReport;
   healthReport?: WorkspaceKnowledgeHealthReport;
@@ -506,6 +508,8 @@ function WikilinkRepairSection({
 
 export function RightPanelKnowledgeCompatibility({
   copy,
+  reviewTitle,
+  reviewDescription,
   documentCount,
   healthReport,
   healthDelta,
@@ -554,15 +558,18 @@ export function RightPanelKnowledgeCompatibility({
     : statusTone === "success"
       ? CircleCheck
       : TriangleAlert;
+  const layoutClassName = layout === "workspace"
+    ? "workspace-review"
+    : "panel";
 
   return (
-    <div className={`right-compatibility-scroll ${layout}`}>
+    <div className={`right-compatibility-scroll ${layoutClassName}`}>
       <header className="right-compatibility-header">
         <div className="right-compatibility-heading-row">
-          <h2>{copy.title}</h2>
+          <h2>{reviewTitle ?? copy.title}</h2>
           <span className="right-compatibility-standard">OKF {version}</span>
         </div>
-        <p>{copy.description}</p>
+        <p>{reviewDescription ?? copy.description}</p>
       </header>
 
       <div className={`right-compatibility-status ${statusTone}`} role="status">
@@ -594,7 +601,7 @@ export function RightPanelKnowledgeCompatibility({
           copy={copy}
           report={healthReport}
           onSelectIssue={onSelectHealthIssue}
-          omitCodes={KNOWLEDGE_VERIFICATION_ISSUE_CODES}
+          omitCodes={WORKSPACE_REVIEW_VERIFICATION_ISSUE_CODES}
         />
       )}
 

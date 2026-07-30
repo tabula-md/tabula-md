@@ -1,13 +1,26 @@
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 
 const english = {
-  reviewTitle: "Review export readiness",
+  reviewTitle: "Review workspace",
   reviewDescription:
-    "Resolve portability, evidence, and generated-file concerns before downloading this workspace.",
-  closeReview: "Close export preflight",
+    "Review compatibility, human review, maintenance, changes, indexes, and the activity log across this workspace.",
+  closeReview: "Close workspace review",
+  reviewWorkspace: "Review workspace",
+  workspaceContext: "Workspace knowledge",
+  workspaceSummary: (version: string, count: number) =>
+    `OKF ${version} · ${count} ${count === 1 ? "concept" : "concepts"}`,
+  knowledgeSummary: (count: number) =>
+    `Knowledge workspace · ${count} ${count === 1 ? "concept" : "concepts"}`,
+  workspaceAttention: (count: number) =>
+    `${count} need attention`,
+  workspaceReady: "No required attention",
+  compatibilityReview: "Compatibility",
+  compatibilityReviewDescription:
+    "Required OKF fixes and portability guidance for this Markdown workspace.",
   required: "Required",
   needsReview: "Needs review",
   maintenance: "Maintenance",
+  changes: "Changes",
   documentContext: "Knowledge context",
   notConcept: "This file is preserved in the workspace, but it is not a Markdown knowledge concept.",
   description: "Description",
@@ -35,13 +48,23 @@ const english = {
 };
 
 const korean: typeof english = {
-  reviewTitle: "내보내기 준비 검토",
+  reviewTitle: "워크스페이스 검토",
   reviewDescription:
-    "워크스페이스를 다운로드하기 전에 이식성, 근거 자료, 생성 파일 문제를 확인합니다.",
-  closeReview: "내보내기 사전 검사 닫기",
+    "워크스페이스 전체의 호환성, 사람 검토, 유지보수, 변경 사항, index, 활동 log를 검토합니다.",
+  closeReview: "워크스페이스 검토 닫기",
+  reviewWorkspace: "워크스페이스 검토",
+  workspaceContext: "워크스페이스 지식",
+  workspaceSummary: (version, count) => `OKF ${version} · Concept ${count}개`,
+  knowledgeSummary: (count) => `지식 워크스페이스 · Concept ${count}개`,
+  workspaceAttention: (count) => `${count}개 확인 필요`,
+  workspaceReady: "필수 확인 사항 없음",
+  compatibilityReview: "호환성",
+  compatibilityReviewDescription:
+    "현재 Markdown 워크스페이스의 OKF 필수 수정과 이식성 안내입니다.",
   required: "필수 수정",
   needsReview: "검토 필요",
   maintenance: "유지보수",
+  changes: "변경 사항",
   documentContext: "지식 문맥",
   notConcept: "워크스페이스에는 보존되지만 Markdown 지식 concept는 아닌 파일입니다.",
   description: "설명",

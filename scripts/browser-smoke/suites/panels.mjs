@@ -22,7 +22,7 @@ const openExportPreflight = async (page, openProjectMenu) => {
     exact: true,
   }).click();
   await page.getByRole("heading", {
-    name: "Knowledge base compatibility",
+    name: "Review workspace",
     exact: true,
   }).waitFor();
 };

@@ -2,7 +2,6 @@ import {
   getOkfRepairDiff,
   type WorkspaceKnowledgeBaseline,
   type WorkspaceKnowledgeHealthIssue,
-  type WorkspaceKnowledgeHealthIssueCode,
   type WorkspaceKnowledgeHealthReport,
   type WorkspaceKnowledgeIndex,
 } from "@tabula-md/tabula";
@@ -14,11 +13,9 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
-
-const verificationIssueCodes = new Set<WorkspaceKnowledgeHealthIssueCode>([
-  "unverified_generated",
-  "verification_outdated",
-]);
+import {
+  WORKSPACE_REVIEW_VERIFICATION_ISSUE_CODES,
+} from "../workspace/io/workspaceExportReviewModel";
 
 type VerificationCandidate = {
   issue: WorkspaceKnowledgeHealthIssue;
@@ -62,7 +59,10 @@ export function RightPanelKnowledgeVerification({
   const candidates = useMemo(() => {
     const unique = new Map<string, VerificationCandidate>();
     for (const issue of report.issues) {
-      if (!verificationIssueCodes.has(issue.code) || unique.has(issue.documentId)) continue;
+      if (
+        !WORKSPACE_REVIEW_VERIFICATION_ISSUE_CODES.has(issue.code) ||
+        unique.has(issue.documentId)
+      ) continue;
       unique.set(issue.documentId, {
         issue,
         documentId: issue.documentId,
@@ -254,5 +254,3 @@ export function RightPanelKnowledgeVerification({
     </section>
   );
 }
-
-export const KNOWLEDGE_VERIFICATION_ISSUE_CODES = verificationIssueCodes;

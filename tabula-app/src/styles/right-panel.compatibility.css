@@ -7,14 +7,14 @@
   overflow: auto;
 }
 
-.right-compatibility-scroll.workspace {
+.right-compatibility-scroll.workspace-review {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   height: 100%;
   padding: 0 4px 8px 0;
 }
 
-.right-compatibility-scroll.workspace > :not(
+.right-compatibility-scroll.workspace-review > :not(
   .right-compatibility-header,
   .right-compatibility-status,
   .right-compatibility-footnote
@@ -26,17 +26,17 @@
   background: var(--surface-workbench);
 }
 
-.right-compatibility-scroll.workspace > .right-compatibility-header,
-.right-compatibility-scroll.workspace > .right-compatibility-status,
-.right-compatibility-scroll.workspace > .right-compatibility-footnote {
+.right-compatibility-scroll.workspace-review > .right-compatibility-header,
+.right-compatibility-scroll.workspace-review > .right-compatibility-status,
+.right-compatibility-scroll.workspace-review > .right-compatibility-footnote {
   grid-column: 1 / -1;
 }
 
-.right-compatibility-scroll.workspace > .right-compatibility-header {
+.right-compatibility-scroll.workspace-review > .right-compatibility-header {
   padding: 0;
 }
 
-.right-compatibility-scroll.workspace > .right-compatibility-status {
+.right-compatibility-scroll.workspace-review > .right-compatibility-status {
   padding: 10px 12px;
   border-radius: var(--radius-control);
   background: var(--surface-muted);
@@ -429,13 +429,13 @@
 }
 
 @media (max-width: 760px) {
-  .right-compatibility-scroll.workspace {
+  .right-compatibility-scroll.workspace-review {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .right-compatibility-scroll.workspace > .right-compatibility-header,
-  .right-compatibility-scroll.workspace > .right-compatibility-status,
-  .right-compatibility-scroll.workspace > .right-compatibility-footnote {
+  .right-compatibility-scroll.workspace-review > .right-compatibility-header,
+  .right-compatibility-scroll.workspace-review > .right-compatibility-status,
+  .right-compatibility-scroll.workspace-review > .right-compatibility-footnote {
     grid-column: 1;
   }
 }

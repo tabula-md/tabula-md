@@ -6,6 +6,7 @@ import type { KnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 export function KnowledgeReviewDialog({
   children,
   copy,
+  changeCount,
   maintenanceCount,
   requiredCount,
   verificationCount,
@@ -13,6 +14,7 @@ export function KnowledgeReviewDialog({
 }: {
   children: ReactNode;
   copy: KnowledgePanelCopy;
+  changeCount?: number;
   maintenanceCount: number;
   requiredCount: number;
   verificationCount: number;
@@ -53,6 +55,10 @@ export function KnowledgeReviewDialog({
         <span>
           <strong>{maintenanceCount}</strong>
           {copy.maintenance}
+        </span>
+        <span>
+          <strong>{changeCount ?? "—"}</strong>
+          {copy.changes}
         </span>
       </div>
 

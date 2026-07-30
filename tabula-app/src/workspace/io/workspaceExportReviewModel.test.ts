@@ -50,7 +50,12 @@ describe("workspace export review", () => {
 
     expect(review).toEqual(expect.objectContaining({
       standardVersion: "0.2",
+      declaredVersion: "0.2",
+      conceptCount: 1,
       requiredChangeCount: 0,
+      verificationCount: 0,
+      maintenanceAttentionCount: 2,
+      reviewAttentionCount: 2,
       attentionCount: 2,
     }));
     expect(review).not.toHaveProperty("changeCount");
@@ -63,6 +68,7 @@ describe("workspace export review", () => {
     ], folders);
 
     expect(review?.requiredChangeCount).toBeGreaterThan(0);
+    expect(review).not.toHaveProperty("declaredVersion");
   });
 
   it("counts changes that have not been recorded since the baseline", () => {

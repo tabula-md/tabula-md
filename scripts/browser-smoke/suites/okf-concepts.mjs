@@ -43,7 +43,7 @@ const openExportPreflight = async (page, openProjectMenu) => {
     exact: true,
   }).click();
   await page.getByRole("heading", {
-    name: "Knowledge base compatibility",
+    name: "Review workspace",
     exact: true,
   }).waitFor();
 };
@@ -210,15 +210,44 @@ export async function run(ctx) {
           "https://github.com/acme/example/tree/main/src",
       "The active document context should keep its canonical source actionable.",
     );
+    const workspaceKnowledge = page.getByRole("region", {
+      name: "Workspace knowledge",
+    });
     expect(
-      (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
-        (await page.getByRole("button", {
+      await workspaceKnowledge.getByText(
+        "OKF 0.1 · 3 concepts",
+        { exact: true },
+      ).isVisible() &&
+        await workspaceKnowledge.getByText(
+          /(?:\d+ need attention|No required attention)/,
+        ).isVisible() &&
+        await workspaceKnowledge.getByRole("button", {
           name: "Review workspace",
           exact: true,
-        }).count()) === 0 &&
+        }).isVisible() &&
+        (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
         (await page.locator(".right-graph-panel").count()) === 0,
-      "Knowledge should not expose browse, graph, or review-workspace modes during editing.",
+      "Knowledge should add a compact workspace review entry without becoming a browser or graph.",
     );
+    await workspaceKnowledge.getByRole("button", {
+      name: "Review workspace",
+      exact: true,
+    }).click();
+    await page.getByRole("heading", {
+      name: "Review workspace",
+      exact: true,
+    }).waitFor();
+    expect(
+      await page.getByRole("heading", {
+        name: "Compatibility",
+        exact: true,
+      }).isVisible(),
+      "Workspace review should name compatibility as one review section.",
+    );
+    await page.getByRole("button", {
+      name: "Close workspace review",
+      exact: true,
+    }).click();
 
     await sidePanelNavigation.getByRole("button", {
       name: "Search",
@@ -273,7 +302,7 @@ export async function run(ctx) {
       exact: true,
     }).click();
     await page.getByRole("heading", {
-      name: "Knowledge base compatibility",
+      name: "Review workspace",
       exact: true,
     }).waitFor();
     expect(
@@ -313,7 +342,7 @@ export async function run(ctx) {
       (await page.getByRole("button", { name: "Replace index", exact: true }).count()) === 0,
       "Cancelling curated index replacement should leave the source untouched.",
     );
-    await page.getByRole("button", { name: "Close export preflight", exact: true }).click();
+    await page.getByRole("button", { name: "Close workspace review", exact: true }).click();
     await openProjectMenu(page);
     await page.getByRole("button", {
       name: "Export workspace (.zip)",
@@ -402,7 +431,7 @@ export async function run(ctx) {
       exact: true,
     }).click();
     await page.getByRole("heading", {
-      name: "Review export readiness",
+      name: "Review workspace",
       exact: true,
     }).waitFor();
     const humanReview = page.getByRole("region", { name: "Human review 1" });
