@@ -7,6 +7,7 @@ import {
   IMMEDIATE_PREVIEW_MAX_CHARACTERS,
   LARGE_DOCUMENT_DERIVED_STATE_DELAY_MS,
   LARGE_DOCUMENT_PREVIEW_BODY_DELAY_MS,
+  LARGE_DOCUMENT_PREVIEW_BODY_IDLE_TIMEOUT_MS,
   LARGE_DOCUMENT_METADATA_DERIVED_STATE_DELAY_MS,
   LARGE_DOCUMENT_METADATA_IDLE_TIMEOUT_MS,
   PATCHED_PREVIEW_BODY_MAX_CHARACTERS,
@@ -94,6 +95,7 @@ describe("preview derivation policy", () => {
   });
 
   it("keeps preview body delay precedence stable", () => {
+    expect(LARGE_DOCUMENT_PREVIEW_BODY_IDLE_TIMEOUT_MS).toBe(1_000);
     expect(
       getPreviewBodyDerivationDelayMs({
         largeDocumentMode: true,
