@@ -200,8 +200,32 @@ export async function run(ctx) {
           { exact: true },
         ).isVisible() &&
         await documentKnowledgeContext.getByText("Architecture", { exact: true }).isVisible() &&
-        await documentKnowledgeContext.getByText("runtime, platform", { exact: true }).isVisible(),
+        await documentKnowledgeContext.getByText("runtime, platform", { exact: true }).isVisible() &&
+        await documentKnowledgeContext.getByText(
+          "Additional metadata",
+          { exact: true },
+        ).isVisible() &&
+        await documentKnowledgeContext.getByText(
+          "review_policy",
+          { exact: true },
+        ).isVisible() &&
+        await documentKnowledgeContext.getByText(
+          "quarterly-platform-review",
+          { exact: true },
+        ).isVisible(),
       "Knowledge should explain the active document rather than opening a workspace browser.",
+    );
+    const knowledgePassport = documentKnowledgeContext.getByRole("region", {
+      name: "Knowledge passport",
+    });
+    expect(
+      await knowledgePassport.getByText("Lifecycle", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Stable", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Trust", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Unverified", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Freshness", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Unscheduled", { exact: true }).isVisible(),
+      "Knowledge should keep lifecycle, trust, and freshness as independent document axes.",
     );
     expect(
       (await documentKnowledgeContext.getByRole("link", {
