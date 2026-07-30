@@ -7,6 +7,8 @@ import type {
 } from "./workspaceImportProfile";
 import type {
   KnowledgeProfileKind,
+  LlmWikiArtifactRole,
+  LlmWikiRoleBasis,
   WorkspaceConventionProfile,
 } from "@tabula-md/tabula";
 import type {
@@ -36,6 +38,8 @@ type WorkspaceFolderImportCopy = {
   confidence: (value: ProfileDetectionConfidence) => string;
   profileFileCount: (count: number) => string;
   detectorWarning: (count: number) => string;
+  artifactRole: (value: LlmWikiArtifactRole) => string;
+  roleBasis: (value: LlmWikiRoleBasis) => string;
 };
 
 type RawWorkspaceFolderImportCopy = Omit<
@@ -47,6 +51,8 @@ type RawWorkspaceFolderImportCopy = Omit<
   | "format"
   | "linkSyntax"
   | "profileKind"
+  | "artifactRole"
+  | "roleBasis"
 > & {
   formats: Record<"plain-markdown" | "markdown-wiki" | "okf", string>;
   conventionLabels: Record<WorkspaceConventionProfile, string>;
@@ -58,6 +64,8 @@ type RawWorkspaceFolderImportCopy = Omit<
   >>;
   profileKindLabels: Record<KnowledgeProfileKind, string>;
   confidenceLabels: Record<ProfileDetectionConfidence, string>;
+  artifactRoleLabels: Record<LlmWikiArtifactRole, string>;
+  roleBasisLabels: Record<LlmWikiRoleBasis, string>;
 };
 
 const count = (value: WorkspaceImportEvidence) => value.count ?? 0;
@@ -68,6 +76,8 @@ type ProfileUiCopy = Pick<
   | "detectorWarning"
   | "profileFileCount"
   | "profileKindLabels"
+  | "artifactRoleLabels"
+  | "roleBasisLabels"
 >;
 
 const profileUiCopies: Record<WorkspaceLanguage, ProfileUiCopy> = {
@@ -76,42 +86,56 @@ const profileUiCopies: Record<WorkspaceLanguage, ProfileUiCopy> = {
     confidenceLabels: { declared: "Declared", strong: "Detected", heuristic: "Heuristic" },
     profileFileCount: (value) => `${value} ${value === 1 ? "file" : "files"}`,
     detectorWarning: (value) => `${value} profile ${value === 1 ? "check" : "checks"} could not be completed. Files are still preserved.`,
+    artifactRoleLabels: { "source-material": "Source material", "compiled-knowledge": "Compiled knowledge", "workflow-rules": "Workflow rules" },
+    roleBasisLabels: { explicit: "Explicit rule", heuristic: "Detected from paths" },
   },
   ko: {
     profileKindLabels: { syntax: "문법", convention: "규약", schema: "지식 스키마", workflow: "워크플로", "agent-instruction": "에이전트 지침", delivery: "전달 형식", retrieval: "검색" },
     confidenceLabels: { declared: "명시됨", strong: "감지됨", heuristic: "추정" },
     profileFileCount: (value) => `파일 ${value}개`,
     detectorWarning: (value) => `프로필 검사 ${value}개를 완료하지 못했습니다. 파일은 그대로 보존됩니다.`,
+    artifactRoleLabels: { "source-material": "원본 자료", "compiled-knowledge": "컴파일된 지식", "workflow-rules": "워크플로 규칙" },
+    roleBasisLabels: { explicit: "명시 규칙", heuristic: "경로에서 추정" },
   },
   ja: {
     profileKindLabels: { syntax: "構文", convention: "規約", schema: "知識スキーマ", workflow: "ワークフロー", "agent-instruction": "エージェント指示", delivery: "配布", retrieval: "検索" },
     confidenceLabels: { declared: "宣言済み", strong: "検出", heuristic: "推定" },
     profileFileCount: (value) => `${value} ファイル`,
     detectorWarning: (value) => `${value} 件のプロファイル検査を完了できませんでした。ファイルは保持されます。`,
+    artifactRoleLabels: { "source-material": "ソース資料", "compiled-knowledge": "コンパイル済み知識", "workflow-rules": "ワークフロールール" },
+    roleBasisLabels: { explicit: "明示ルール", heuristic: "パスから推定" },
   },
   zh: {
     profileKindLabels: { syntax: "语法", convention: "约定", schema: "知识架构", workflow: "工作流", "agent-instruction": "代理说明", delivery: "交付", retrieval: "检索" },
     confidenceLabels: { declared: "已声明", strong: "已检测", heuristic: "推测" },
     profileFileCount: (value) => `${value} 个文件`,
     detectorWarning: (value) => `${value} 项配置检查未能完成。文件仍会保留。`,
+    artifactRoleLabels: { "source-material": "源材料", "compiled-knowledge": "编译知识", "workflow-rules": "工作流规则" },
+    roleBasisLabels: { explicit: "显式规则", heuristic: "根据路径推测" },
   },
   es: {
     profileKindLabels: { syntax: "Sintaxis", convention: "Convenciones", schema: "Esquema de conocimiento", workflow: "Flujo de trabajo", "agent-instruction": "Instrucciones del agente", delivery: "Entrega", retrieval: "Recuperación" },
     confidenceLabels: { declared: "Declarado", strong: "Detectado", heuristic: "Heurístico" },
     profileFileCount: (value) => `${value} ${value === 1 ? "archivo" : "archivos"}`,
     detectorWarning: (value) => `No se completaron ${value} comprobaciones de perfil. Los archivos se conservan.`,
+    artifactRoleLabels: { "source-material": "Material fuente", "compiled-knowledge": "Conocimiento compilado", "workflow-rules": "Reglas de flujo" },
+    roleBasisLabels: { explicit: "Regla explícita", heuristic: "Inferido de rutas" },
   },
   fr: {
     profileKindLabels: { syntax: "Syntaxe", convention: "Conventions", schema: "Schéma de connaissances", workflow: "Flux de travail", "agent-instruction": "Instructions d’agent", delivery: "Livraison", retrieval: "Recherche" },
     confidenceLabels: { declared: "Déclaré", strong: "Détecté", heuristic: "Heuristique" },
     profileFileCount: (value) => `${value} fichier${value === 1 ? "" : "s"}`,
     detectorWarning: (value) => `${value} vérification${value === 1 ? "" : "s"} de profil n’ont pas abouti. Les fichiers restent préservés.`,
+    artifactRoleLabels: { "source-material": "Documents source", "compiled-knowledge": "Connaissances compilées", "workflow-rules": "Règles de flux" },
+    roleBasisLabels: { explicit: "Règle explicite", heuristic: "Déduit des chemins" },
   },
   de: {
     profileKindLabels: { syntax: "Syntax", convention: "Konventionen", schema: "Wissensschema", workflow: "Arbeitsablauf", "agent-instruction": "Agentenanweisungen", delivery: "Bereitstellung", retrieval: "Abruf" },
     confidenceLabels: { declared: "Deklariert", strong: "Erkannt", heuristic: "Heuristisch" },
     profileFileCount: (value) => `${value} Datei${value === 1 ? "" : "en"}`,
     detectorWarning: (value) => `${value} Profilprüfung${value === 1 ? "" : "en"} konnten nicht abgeschlossen werden. Dateien bleiben erhalten.`,
+    artifactRoleLabels: { "source-material": "Quellmaterial", "compiled-knowledge": "Kompiliertes Wissen", "workflow-rules": "Workflow-Regeln" },
+    roleBasisLabels: { explicit: "Explizite Regel", heuristic: "Aus Pfaden erkannt" },
   },
 };
 
@@ -123,6 +147,14 @@ const getDefaultEvidenceLabel = (value: WorkspaceImportEvidence) => {
       return `${count(value)} MDX ${count(value) === 1 ? "file" : "files"} found; source editing is used.`;
     case "raw-wiki-roles":
       return "Separate raw and wiki directory roles were found.";
+    case "llm-wiki-source-material":
+      return `${count(value)} source material ${count(value) === 1 ? "artifact" : "artifacts"} found.`;
+    case "llm-wiki-compiled-knowledge":
+      return `${count(value)} agent-maintained knowledge ${count(value) === 1 ? "document" : "documents"} found.`;
+    case "llm-wiki-workflow-rules":
+      return `${count(value)} workflow ${count(value) === 1 ? "rule artifact" : "rule artifacts"} found.`;
+    case "llm-wiki-health-issues":
+      return `${count(value)} knowledge health ${count(value) === 1 ? "signal" : "signals"} need review.`;
     case "agents-files":
       return `${count(value)} AGENTS.md ${count(value) === 1 ? "file" : "files"} found.`;
     case "claude-files":
@@ -398,5 +430,7 @@ export const getWorkspaceFolderImportCopy = (
     confidence: (value) => copy.confidenceLabels[value],
     profileFileCount: copy.profileFileCount,
     detectorWarning: copy.detectorWarning,
+    artifactRole: (value) => copy.artifactRoleLabels[value],
+    roleBasis: (value) => copy.roleBasisLabels[value],
   };
 };

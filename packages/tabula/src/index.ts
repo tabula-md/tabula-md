@@ -800,6 +800,19 @@ export type {
 export {
   validateOkf02AdvancedContracts,
 } from "./workspaceOkfAdvancedContracts";
+export type {
+  LlmWikiArtifactRole,
+  LlmWikiHealthIssue,
+  LlmWikiHealthIssueCode,
+  LlmWikiRoleAssignment,
+  LlmWikiRoleBasis,
+  LlmWikiRoleRule,
+  LlmWikiWorkflowOptions,
+  LlmWikiWorkflowReport,
+} from "./workspaceLlmWikiProfile";
+export {
+  analyzeLlmWikiWorkflow,
+} from "./workspaceLlmWikiProfile";
 
 export type {
   OkfConceptTypeUpdateFailure,

@@ -133,7 +133,7 @@ describe("workspace import profile", () => {
   });
 
   it("represents mixed syntax, workflow, instruction, and delivery profiles together", () => {
-    expect(detectWorkspaceImportProfile({
+    const profile = detectWorkspaceImportProfile({
       documents: [
         { id: "raw", path: "raw/source.md", markdown: "# Source" },
         { id: "wiki", path: "wiki/guide.mdx", markdown: "# Guide" },
@@ -155,12 +155,41 @@ describe("workspace import profile", () => {
         ".agents/skills/review/SKILL.md",
         "llms.txt",
       ],
-    })).toMatchObject({
+    });
+    expect(profile).toMatchObject({
       syntaxes: ["gfm", "mdx"],
       workflows: ["llm-wiki"],
       agentInstructions: ["agents-md", "agent-skills"],
       deliveries: ["llms-txt"],
     });
+    const workflow = profile.detections.find(
+      (detection) => detection.profileId === "llm-wiki",
+    );
+    expect(workflow).toMatchObject({
+      confidence: "heuristic",
+      roleAssignments: expect.arrayContaining([
+        {
+          path: "raw/source.md",
+          role: "source-material",
+          basis: "heuristic",
+        },
+        {
+          path: "wiki/guide.mdx",
+          role: "compiled-knowledge",
+          basis: "heuristic",
+        },
+        {
+          path: "AGENTS.md",
+          role: "workflow-rules",
+          basis: "heuristic",
+        },
+      ]),
+    });
+    expect(workflow?.evidence).toEqual(expect.arrayContaining([
+      { code: "llm-wiki-source-material", count: 1 },
+      { code: "llm-wiki-compiled-knowledge", count: 1 },
+      { code: "llm-wiki-health-issues", count: expect.any(Number) },
+    ]));
   });
 
   it("isolates detector failures and keeps the remaining profile results", () => {

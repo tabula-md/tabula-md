@@ -99,6 +99,36 @@ export function WorkspaceFolderImportDialog({
                           ))}
                         </ul>
                       )}
+                      {detection.roleAssignments && (
+                        <div className="workspace-import-role-groups">
+                          {([
+                            "source-material",
+                            "compiled-knowledge",
+                            "workflow-rules",
+                          ] as const).map((role) => {
+                            const assignments = detection.roleAssignments?.filter(
+                              (assignment) => assignment.role === role,
+                            ) ?? [];
+                            if (assignments.length === 0) return null;
+                            return (
+                              <div key={role}>
+                                <span>{copy.artifactRole(role)}</span>
+                                <ul>
+                                  {assignments.slice(0, 3).map((assignment) => (
+                                    <li key={`${role}:${assignment.path}`}>
+                                      <span>{assignment.path}</span>
+                                      <small>{copy.roleBasis(assignment.basis)}</small>
+                                    </li>
+                                  ))}
+                                  {assignments.length > 3 && (
+                                    <li>{copy.more(assignments.length - 3)}</li>
+                                  )}
+                                </ul>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

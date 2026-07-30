@@ -1,8 +1,10 @@
 import {
+  analyzeLlmWikiWorkflow,
   createWorkspaceKnowledgeIndex,
   getKnowledgeProfileDefinition,
   getWorkspaceOkfCompatibility,
   type KnowledgeProfileKind,
+  type LlmWikiRoleAssignment,
   type WorkspaceKnowledgeIndex,
   type WorkspaceProfile,
 } from "@tabula-md/tabula";
@@ -28,6 +30,8 @@ export type ProfileDetectionResult = {
   evidence: readonly WorkspaceImportEvidence[];
   diagnostics: readonly ProfileDiagnostic[];
   fileCount?: number;
+  healthIssueCount?: number;
+  roleAssignments?: readonly LlmWikiRoleAssignment[];
   version?: string;
 };
 
@@ -77,7 +81,12 @@ const result = (
   profileId: string,
   confidence: ProfileDetectionConfidence,
   evidence: readonly WorkspaceImportEvidence[],
-  options: { fileCount?: number; version?: string } = {},
+  options: {
+    fileCount?: number;
+    healthIssueCount?: number;
+    roleAssignments?: readonly LlmWikiRoleAssignment[];
+    version?: string;
+  } = {},
 ): ProfileDetectionResult => {
   const definition = getKnowledgeProfileDefinition(profileId);
   if (!definition) {
@@ -219,12 +228,38 @@ export const WORKSPACE_PROFILE_DETECTORS: readonly WorkspaceProfileDetector[] = 
   {
     id: "llm-wiki",
     detect: (input) => {
-      const hasRawRole = input.sourcePaths.some((path) =>
-        hasPathSegment(path, "raw"));
-      const hasWikiRole = input.sourcePaths.some((path) =>
-        hasPathSegment(path, "wiki"));
-      return hasRawRole && hasWikiRole
-        ? result("llm-wiki", "heuristic", [{ code: "raw-wiki-roles" }])
+      if (!input.knowledgeIndex) return null;
+      const report = analyzeLlmWikiWorkflow(
+        input.knowledgeIndex,
+        input.sourcePaths,
+      );
+      return report.detected
+        ? result("llm-wiki", "heuristic", [
+            { code: "raw-wiki-roles" },
+            {
+              code: "llm-wiki-source-material",
+              count: report.sourceMaterialCount,
+            },
+            {
+              code: "llm-wiki-compiled-knowledge",
+              count: report.compiledKnowledgeCount,
+            },
+            ...(report.workflowRuleCount > 0
+              ? [{
+                  code: "llm-wiki-workflow-rules" as const,
+                  count: report.workflowRuleCount,
+                }]
+              : []),
+            ...(report.issues.length > 0
+              ? [{
+                  code: "llm-wiki-health-issues" as const,
+                  count: report.issues.length,
+                }]
+              : []),
+          ], {
+            healthIssueCount: report.issues.length,
+            roleAssignments: report.assignments,
+          })
         : null;
     },
   },
