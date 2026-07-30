@@ -575,18 +575,6 @@ export function RightPanelFiles({
             </button>
             {!isRootFolder && !folderIsRenaming && (
               <span className="right-file-actions">
-                <button
-                  className="right-file-action"
-                  type="button"
-                  aria-label={`${copy.newDocument}: ${node.name}`}
-                  data-tooltip={copy.newDocument}
-                  onClick={(event) => {
-                    createAndRenameDocument(node.id);
-                    releasePointerActionFocus(event);
-                  }}
-                >
-                  <FilePlus2 size={14} />
-                </button>
                 <MenuRoot
                   open={folderMenuOpen}
                   onOpenChange={(open) => setActionMenuFolderId(open ? node.id : null)}
@@ -774,30 +762,6 @@ export function RightPanelFiles({
                 />
               )}
               <span className="right-file-actions" aria-label={copy.actions(file.title)}>
-                <button
-                  className="right-file-action"
-                  type="button"
-                  aria-label={`${copy.copyMarkdown}: ${file.title}`}
-                  data-tooltip={copy.copyMarkdown}
-                  onClick={(event) => {
-                    onCopyFile(file.id);
-                    releasePointerActionFocus(event);
-                  }}
-                >
-                  <ClipboardCopy size={14} />
-                </button>
-                <button
-                  className="right-file-action danger"
-                  type="button"
-                  aria-label={`${copy.delete}: ${file.title}`}
-                  data-tooltip={copy.delete}
-                  onClick={(event) => {
-                    releasePointerActionFocus(event);
-                    deleteFileFromMenu(file.id);
-                  }}
-                >
-                  <Trash2 size={14} />
-                </button>
                 <MenuRoot
                   open={menuOpen}
                   onOpenChange={(open) => setActionMenuFileId(open ? file.id : null)}
