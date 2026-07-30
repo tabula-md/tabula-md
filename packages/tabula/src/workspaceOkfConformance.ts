@@ -7,6 +7,7 @@ import type {
   WorkspaceKnowledgeIndex,
   WorkspaceSourceDocument,
 } from "./workspaceKnowledgeIndex";
+import { inspectFrontmatterData } from "./markdown/parse";
 import { applyTextPatches, type TextPatch } from "./textPatches";
 
 export const TABULA_GENERATED_OKF_INDEX_MARKER =
@@ -165,12 +166,30 @@ const getConceptRepairCandidates = (
   report: OkfCompatibilityReport,
 ): OkfConceptRepairCandidate[] => report.documents.flatMap((documentReport) => {
   if (documentReport.role !== "concept") return [];
-  const issueCodes = documentReport.issues
+  const reportedIssueCodes = documentReport.issues
     .map((issue) => issue.code)
     .filter((code) => typeIssueCodes.has(code));
-  if (issueCodes.length === 0) return [];
   const document = index.documentsById.get(documentReport.documentId);
   if (!document) return [];
+  const inspection = inspectFrontmatterData(document.markdown);
+  const inferredIssueCodes: OkfCompatibilityIssueCode[] =
+    inspection.status === "absent"
+      ? ["concept_frontmatter_missing"]
+      : inspection.status === "invalid"
+        ? ["concept_frontmatter_invalid"]
+        : typeof inspection.metadata.type === "undefined"
+          || inspection.metadata.type === null
+          || inspection.metadata.type === ""
+          ? ["concept_type_missing"]
+          : typeof inspection.metadata.type !== "string"
+            ? ["concept_type_invalid"]
+            : inspection.metadata.type.trim()
+              ? []
+              : ["concept_type_missing"];
+  const issueCodes = reportedIssueCodes.length > 0
+    ? reportedIssueCodes
+    : inferredIssueCodes;
+  if (issueCodes.length === 0) return [];
   return [{
     documentId: document.id,
     path: document.path,

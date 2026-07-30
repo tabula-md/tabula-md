@@ -39,6 +39,9 @@ export type KnowledgeCompatibilityCopy = {
   unavailable: string;
   noDocuments: string;
   compatible: (version: string) => string;
+  okfLike: string;
+  markdownOnly: string;
+  futureVersion: (version: string) => string;
   requiredChanges: (count: number) => string;
   portabilityWarnings: (count: number) => string;
   requiredSection: string;
@@ -438,6 +441,54 @@ const enIssues: Record<OkfCompatibilityIssueCode, string> = {
   log_dates_out_of_order: "Put the newest log date first",
   nonstandard_markdown_extension: "Rename this file to use the .md extension",
   wikilink_syntax: "Use Markdown links for OKF portability",
+  okf_01_timestamp_invalid: "Use an ISO 8601 timestamp",
+  okf_02_actor_invalid: "Use an OKF actor identity: {{value}}",
+  okf_02_generated_invalid: "Use valid generated.by and generated.at values",
+  okf_02_sources_invalid: "Fix invalid sources metadata",
+  okf_02_stale_after_invalid: "Use YYYY-MM-DD for stale_after: {{value}}",
+  okf_02_status_invalid: "Use draft, stable, or deprecated for status: {{value}}",
+  okf_02_verified_invalid: "Use valid verified.by and verified.at values",
+};
+
+const detectionCopies: Record<
+  WorkspaceLanguage,
+  { okfLike: string; markdownOnly: string; futureVersion: string }
+> = {
+  en: {
+    okfLike: "OKF-like Markdown (no version declared)",
+    markdownOnly: "Markdown workspace (OKF not declared)",
+    futureVersion: "OKF {{version}} opened in best-effort mode",
+  },
+  ko: {
+    okfLike: "OKF 유사 Markdown (버전 선언 없음)",
+    markdownOnly: "Markdown 워크스페이스 (OKF 선언 없음)",
+    futureVersion: "OKF {{version}}를 최선 지원 모드로 열었습니다",
+  },
+  ja: {
+    okfLike: "OKF 形式に近い Markdown（バージョン宣言なし）",
+    markdownOnly: "Markdown ワークスペース（OKF 宣言なし）",
+    futureVersion: "OKF {{version}} をベストエフォートモードで開きました",
+  },
+  zh: {
+    okfLike: "类似 OKF 的 Markdown（未声明版本）",
+    markdownOnly: "Markdown 工作区（未声明 OKF）",
+    futureVersion: "已以尽力支持模式打开 OKF {{version}}",
+  },
+  es: {
+    okfLike: "Markdown similar a OKF (sin versión declarada)",
+    markdownOnly: "Espacio Markdown (OKF no declarado)",
+    futureVersion: "OKF {{version}} abierto en modo de compatibilidad parcial",
+  },
+  fr: {
+    okfLike: "Markdown de type OKF (sans version déclarée)",
+    markdownOnly: "Espace Markdown (OKF non déclaré)",
+    futureVersion: "OKF {{version}} ouvert en mode de compatibilité partielle",
+  },
+  de: {
+    okfLike: "OKF-ähnliches Markdown (keine Version deklariert)",
+    markdownOnly: "Markdown-Workspace (OKF nicht deklariert)",
+    futureVersion: "OKF {{version}} im Best-Effort-Modus geöffnet",
+  },
 };
 
 const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
@@ -501,6 +552,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "최신 log 날짜를 먼저 배치",
       nonstandard_markdown_extension: "파일 확장자를 .md로 변경",
       wikilink_syntax: "OKF 이식성을 위해 Markdown 링크 사용",
+      okf_01_timestamp_invalid: "timestamp를 ISO 8601 형식으로 변경",
+      okf_02_actor_invalid: "OKF actor 형식 사용: {{value}}",
+      okf_02_generated_invalid: "generated.by와 generated.at 값 수정",
+      okf_02_sources_invalid: "잘못된 sources 메타데이터 수정",
+      okf_02_stale_after_invalid: "stale_after를 YYYY-MM-DD로 변경: {{value}}",
+      okf_02_status_invalid: "status에 draft, stable 또는 deprecated 사용: {{value}}",
+      okf_02_verified_invalid: "verified.by와 verified.at 값 수정",
     },
   },
   ja: {
@@ -540,6 +598,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "最新の log 日付を先頭にする",
       nonstandard_markdown_extension: "拡張子を .md に変更",
       wikilink_syntax: "OKF の移植性のため Markdown リンクを使用",
+      okf_01_timestamp_invalid: "timestamp を ISO 8601 形式にする",
+      okf_02_actor_invalid: "OKF actor 形式を使用: {{value}}",
+      okf_02_generated_invalid: "generated.by と generated.at を修正",
+      okf_02_sources_invalid: "不正な sources メタデータを修正",
+      okf_02_stale_after_invalid: "stale_after を YYYY-MM-DD にする: {{value}}",
+      okf_02_status_invalid: "status は draft、stable、deprecated のいずれかにする: {{value}}",
+      okf_02_verified_invalid: "verified.by と verified.at を修正",
     },
   },
   zh: {
@@ -579,6 +644,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "将最新 log 日期放在最前",
       nonstandard_markdown_extension: "将文件扩展名改为 .md",
       wikilink_syntax: "为确保 OKF 可移植性，请使用 Markdown 链接",
+      okf_01_timestamp_invalid: "将 timestamp 改为 ISO 8601 格式",
+      okf_02_actor_invalid: "使用 OKF actor 格式：{{value}}",
+      okf_02_generated_invalid: "修复 generated.by 和 generated.at",
+      okf_02_sources_invalid: "修复无效的 sources 元数据",
+      okf_02_stale_after_invalid: "将 stale_after 改为 YYYY-MM-DD：{{value}}",
+      okf_02_status_invalid: "status 使用 draft、stable 或 deprecated：{{value}}",
+      okf_02_verified_invalid: "修复 verified.by 和 verified.at",
     },
   },
   es: {
@@ -618,6 +690,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "Poner primero la fecha más reciente del log",
       nonstandard_markdown_extension: "Cambiar la extensión del archivo a .md",
       wikilink_syntax: "Usar enlaces Markdown para la portabilidad de OKF",
+      okf_01_timestamp_invalid: "Usar una marca de tiempo ISO 8601",
+      okf_02_actor_invalid: "Usar una identidad de actor OKF: {{value}}",
+      okf_02_generated_invalid: "Corregir generated.by y generated.at",
+      okf_02_sources_invalid: "Corregir los metadatos sources no válidos",
+      okf_02_stale_after_invalid: "Usar YYYY-MM-DD en stale_after: {{value}}",
+      okf_02_status_invalid: "Usar draft, stable o deprecated en status: {{value}}",
+      okf_02_verified_invalid: "Corregir verified.by y verified.at",
     },
   },
   fr: {
@@ -657,6 +736,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "Placer la date de log la plus récente en premier",
       nonstandard_markdown_extension: "Utiliser l’extension .md pour ce fichier",
       wikilink_syntax: "Utiliser des liens Markdown pour la portabilité OKF",
+      okf_01_timestamp_invalid: "Utiliser un horodatage ISO 8601",
+      okf_02_actor_invalid: "Utiliser une identité d’acteur OKF : {{value}}",
+      okf_02_generated_invalid: "Corriger generated.by et generated.at",
+      okf_02_sources_invalid: "Corriger les métadonnées sources invalides",
+      okf_02_stale_after_invalid: "Utiliser YYYY-MM-DD pour stale_after : {{value}}",
+      okf_02_status_invalid: "Utiliser draft, stable ou deprecated pour status : {{value}}",
+      okf_02_verified_invalid: "Corriger verified.by et verified.at",
     },
   },
   de: {
@@ -696,6 +782,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "Das neueste log-Datum zuerst setzen",
       nonstandard_markdown_extension: "Die Dateiendung in .md ändern",
       wikilink_syntax: "Für OKF-Portabilität Markdown-Links verwenden",
+      okf_01_timestamp_invalid: "Einen ISO-8601-Zeitstempel verwenden",
+      okf_02_actor_invalid: "Eine OKF-Akteurkennung verwenden: {{value}}",
+      okf_02_generated_invalid: "generated.by und generated.at korrigieren",
+      okf_02_sources_invalid: "Ungültige sources-Metadaten korrigieren",
+      okf_02_stale_after_invalid: "Für stale_after YYYY-MM-DD verwenden: {{value}}",
+      okf_02_status_invalid: "Für status draft, stable oder deprecated verwenden: {{value}}",
+      okf_02_verified_invalid: "verified.by und verified.at korrigieren",
     },
   },
 };
@@ -713,6 +806,7 @@ export const getKnowledgeCompatibilityCopy = (
 ): KnowledgeCompatibilityCopy => {
   const copy = copies[language];
   const actions = actionCopies[language] ?? actionCopies.en;
+  const detectionCopy = detectionCopies[language];
   return {
     open: copy.open,
     back: copy.back,
@@ -722,6 +816,10 @@ export const getKnowledgeCompatibilityCopy = (
     unavailable: copy.unavailable,
     noDocuments: copy.noDocuments,
     compatible: (version) => formatMessage(copy.compatible, { version }),
+    okfLike: detectionCopy.okfLike,
+    markdownOnly: detectionCopy.markdownOnly,
+    futureVersion: (version) =>
+      formatMessage(detectionCopy.futureVersion, { version }),
     requiredChanges: (count) => formatMessage(
       count === 1 ? copy.requiredChange : copy.requiredChanges,
       { count },

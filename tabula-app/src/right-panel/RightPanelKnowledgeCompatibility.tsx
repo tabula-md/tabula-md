@@ -539,6 +539,8 @@ export function RightPanelKnowledgeCompatibility({
   const warningIssues = report?.issues.filter((issue) => issue.severity === "warning") ?? [];
   const statusTone = !report || documentCount === 0
     ? "neutral"
+    : report.detection !== "declared"
+      ? "neutral"
     : report.errorCount > 0
       ? "error"
       : "success";
@@ -546,6 +548,12 @@ export function RightPanelKnowledgeCompatibility({
     ? copy.unavailable
     : documentCount === 0
       ? copy.noDocuments
+      : report.detection === "okf-like"
+        ? copy.okfLike
+        : report.detection === "none"
+          ? copy.markdownOnly
+          : report.detection === "future"
+            ? copy.futureVersion(report.declaredVersion ?? version)
       : report.errorCount > 0
         ? copy.requiredChanges(report.errorCount)
         : copy.compatible(version);
@@ -560,7 +568,13 @@ export function RightPanelKnowledgeCompatibility({
       <header className="right-compatibility-header">
         <div className="right-compatibility-heading-row">
           <h2>{copy.title}</h2>
-          <span className="right-compatibility-standard">OKF {version}</span>
+          <span className="right-compatibility-standard">
+            {report?.detection === "okf-like"
+              ? "OKF-like"
+              : report?.detection === "none"
+                ? "Markdown"
+                : `OKF ${version}`}
+          </span>
         </div>
         <p>{copy.description}</p>
       </header>

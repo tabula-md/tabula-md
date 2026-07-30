@@ -757,6 +757,26 @@ export {
   OKF_TARGET_VERSION,
   getWorkspaceOkfCompatibility,
 } from "./workspaceOkfCompatibility";
+export type {
+  OkfBundleDetectionKind,
+  OkfConceptModel,
+  OkfSourceFootnoteLink,
+  OkfVersion,
+  OkfVersionAdapter,
+  OkfVersionDetection,
+  OkfVersionDiagnostic,
+  OkfVersionDiagnosticCode,
+  OkfVersionDiagnosticSeverity,
+  OkfVersionReport,
+  WorkspaceInspection,
+} from "./workspaceOkfVersionAdapters";
+export {
+  OKF_VERSION_ADAPTERS,
+  createWorkspaceOkfInspection,
+  detectWorkspaceOkfVersion,
+  getOkfVersionAdapter,
+  isOkfActor,
+} from "./workspaceOkfVersionAdapters";
 
 export type {
   OkfConceptTypeUpdateFailure,
