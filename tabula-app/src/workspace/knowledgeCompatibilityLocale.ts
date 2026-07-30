@@ -42,6 +42,16 @@ export type KnowledgeCompatibilityCopy = {
   okfLike: string;
   markdownOnly: string;
   futureVersion: (version: string) => string;
+  migrationTitle: string;
+  migrationDescription: string;
+  migrationProducer: string;
+  migrationChangedFiles: (count: number) => string;
+  migrationManualCitations: (count: number) => string;
+  migrationMissingProducers: (count: number) => string;
+  migrationDeletedFiles: (count: number) => string;
+  migrationDecisions: (count: number) => string;
+  migrationFile: string;
+  migrationApply: string;
   requiredChanges: (count: number) => string;
   portabilityWarnings: (count: number) => string;
   requiredSection: string;
@@ -491,6 +501,106 @@ const detectionCopies: Record<
   },
 };
 
+type KnowledgeMigrationMessages = {
+  title: string;
+  description: string;
+  producer: string;
+  changedFiles: string;
+  manualCitations: string;
+  missingProducers: string;
+  deletedFiles: string;
+  decisions: string;
+  file: string;
+  apply: string;
+};
+
+const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
+  en: {
+    title: "Migration preview",
+    description: "Review an explicit OKF 0.1 → 0.2 migration. Nothing changes until you apply selected files.",
+    producer: "Producer identity",
+    changedFiles: "{{count}} files changed",
+    manualCitations: "{{count}} citations need source IDs",
+    missingProducers: "{{count}} files need a producer",
+    deletedFiles: "{{count}} files deleted",
+    decisions: "{{count}} decisions needed",
+    file: "Migration change",
+    apply: "Apply migration",
+  },
+  ko: {
+    title: "마이그레이션 미리보기",
+    description: "OKF 0.1 → 0.2 변경을 검토합니다. 선택한 파일에 명시적으로 적용하기 전에는 아무것도 바뀌지 않습니다.",
+    producer: "생산자 식별자",
+    changedFiles: "변경 파일 {{count}}개",
+    manualCitations: "출처 ID 결정 필요 {{count}}개",
+    missingProducers: "생산자 입력 필요 {{count}}개",
+    deletedFiles: "삭제 파일 {{count}}개",
+    decisions: "수동 결정 {{count}}개",
+    file: "마이그레이션 변경",
+    apply: "마이그레이션 적용",
+  },
+  ja: {
+    title: "移行プレビュー",
+    description: "OKF 0.1 → 0.2 の移行を確認します。選択したファイルを適用するまで変更されません。",
+    producer: "生成者 ID",
+    changedFiles: "{{count}} 件のファイルを変更",
+    manualCitations: "{{count}} 件の引用にソース ID が必要",
+    missingProducers: "{{count}} 件のファイルに生成者が必要",
+    deletedFiles: "{{count}} 件のファイルを削除",
+    decisions: "{{count}} 件の判断が必要",
+    file: "移行変更",
+    apply: "移行を適用",
+  },
+  zh: {
+    title: "迁移预览",
+    description: "检查 OKF 0.1 → 0.2 迁移。应用所选文件前不会发生任何更改。",
+    producer: "生成者标识",
+    changedFiles: "更改 {{count}} 个文件",
+    manualCitations: "{{count}} 条引用需要来源 ID",
+    missingProducers: "{{count}} 个文件需要生成者",
+    deletedFiles: "删除 {{count}} 个文件",
+    decisions: "需要 {{count}} 项决定",
+    file: "迁移更改",
+    apply: "应用迁移",
+  },
+  es: {
+    title: "Vista previa de migración",
+    description: "Revisa la migración explícita de OKF 0.1 → 0.2. Nada cambia hasta aplicar los archivos seleccionados.",
+    producer: "Identidad del productor",
+    changedFiles: "{{count}} archivos modificados",
+    manualCitations: "{{count}} citas necesitan ID de fuente",
+    missingProducers: "{{count}} archivos necesitan productor",
+    deletedFiles: "{{count}} archivos eliminados",
+    decisions: "{{count}} decisiones pendientes",
+    file: "Cambio de migración",
+    apply: "Aplicar migración",
+  },
+  fr: {
+    title: "Aperçu de la migration",
+    description: "Vérifiez la migration explicite OKF 0.1 → 0.2. Rien ne change avant l’application des fichiers sélectionnés.",
+    producer: "Identité du producteur",
+    changedFiles: "{{count}} fichiers modifiés",
+    manualCitations: "{{count}} citations nécessitent un ID de source",
+    missingProducers: "{{count}} fichiers nécessitent un producteur",
+    deletedFiles: "{{count}} fichiers supprimés",
+    decisions: "{{count}} décisions nécessaires",
+    file: "Modification de migration",
+    apply: "Appliquer la migration",
+  },
+  de: {
+    title: "Migrationsvorschau",
+    description: "Prüft die explizite Migration von OKF 0.1 → 0.2. Erst beim Anwenden ausgewählter Dateien werden Änderungen geschrieben.",
+    producer: "Erzeugerkennung",
+    changedFiles: "{{count}} Dateien geändert",
+    manualCitations: "{{count}} Zitate benötigen Quellen-IDs",
+    missingProducers: "{{count}} Dateien benötigen einen Erzeuger",
+    deletedFiles: "{{count}} Dateien gelöscht",
+    decisions: "{{count}} Entscheidungen erforderlich",
+    file: "Migrationsänderung",
+    apply: "Migration anwenden",
+  },
+};
+
 const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
   en: {
     open: "Check knowledge base compatibility",
@@ -807,6 +917,7 @@ export const getKnowledgeCompatibilityCopy = (
   const copy = copies[language];
   const actions = actionCopies[language] ?? actionCopies.en;
   const detectionCopy = detectionCopies[language];
+  const migrationCopy = migrationCopies[language];
   return {
     open: copy.open,
     back: copy.back,
@@ -820,6 +931,21 @@ export const getKnowledgeCompatibilityCopy = (
     markdownOnly: detectionCopy.markdownOnly,
     futureVersion: (version) =>
       formatMessage(detectionCopy.futureVersion, { version }),
+    migrationTitle: migrationCopy.title,
+    migrationDescription: migrationCopy.description,
+    migrationProducer: migrationCopy.producer,
+    migrationChangedFiles: (count) =>
+      formatMessage(migrationCopy.changedFiles, { count }),
+    migrationManualCitations: (count) =>
+      formatMessage(migrationCopy.manualCitations, { count }),
+    migrationMissingProducers: (count) =>
+      formatMessage(migrationCopy.missingProducers, { count }),
+    migrationDeletedFiles: (count) =>
+      formatMessage(migrationCopy.deletedFiles, { count }),
+    migrationDecisions: (count) =>
+      formatMessage(migrationCopy.decisions, { count }),
+    migrationFile: migrationCopy.file,
+    migrationApply: migrationCopy.apply,
     requiredChanges: (count) => formatMessage(
       count === 1 ? copy.requiredChange : copy.requiredChanges,
       { count },

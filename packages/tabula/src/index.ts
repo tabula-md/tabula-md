@@ -777,6 +777,18 @@ export {
   getOkfVersionAdapter,
   isOkfActor,
 } from "./workspaceOkfVersionAdapters";
+export type {
+  OkfMigrationCandidate,
+  OkfMigrationIssue,
+  OkfMigrationIssueCode,
+  OkfMigrationOptions,
+  OkfMigrationPlan,
+  OkfMigrationUpdate,
+} from "./workspaceOkfMigration";
+export {
+  getOkfMigrationUpdates,
+  planOkf01To02Migration,
+} from "./workspaceOkfMigration";
 
 export type {
   OkfConceptTypeUpdateFailure,

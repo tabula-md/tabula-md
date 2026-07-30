@@ -8,6 +8,7 @@ import {
   type OkfCompatibilityReport,
   type OkfConceptRepairUpdate,
   type OkfIndexCandidate,
+  type OkfMigrationUpdate,
   type OkfWikilinkRepairUpdate,
   type WorkspaceKnowledgeBaseline,
   type WorkspaceKnowledgeHealthIssue,
@@ -36,6 +37,7 @@ type RightPanelKnowledgeProps = {
   language: WorkspaceLanguage;
   identityName: string;
   onApplyConceptRepairs: (updates: readonly OkfConceptRepairUpdate[]) => boolean;
+  onApplyMigration: (updates: readonly OkfMigrationUpdate[]) => boolean;
   onApplyWikilinkRepairs: (updates: readonly OkfWikilinkRepairUpdate[]) => boolean;
   onMaterializeIndex: (candidate: OkfIndexCandidate) => boolean;
   onMaterializeLog: (candidate: WorkspaceOkfLogCandidate) => Promise<boolean>;
@@ -56,6 +58,7 @@ export function RightPanelKnowledge({
   index,
   language,
   onApplyConceptRepairs,
+  onApplyMigration,
   onApplyWikilinkRepairs,
   onMaterializeIndex,
   onMaterializeLog,
@@ -155,6 +158,7 @@ export function RightPanelKnowledge({
             knowledgeLogCandidate={knowledgeLogCandidate}
             activeFileId={activeFileId}
             onApplyConceptRepairs={onApplyConceptRepairs}
+            onApplyMigration={onApplyMigration}
             onApplyWikilinkRepairs={onApplyWikilinkRepairs}
             onMaterializeIndex={onMaterializeIndex}
             onMaterializeLog={onMaterializeLog}

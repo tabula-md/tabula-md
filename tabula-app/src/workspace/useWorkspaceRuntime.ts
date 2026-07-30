@@ -14,6 +14,7 @@ import {
   setOkfConceptType,
   type OkfConceptRepairUpdate,
   type OkfIndexCandidate,
+  type OkfMigrationUpdate,
   type OkfWikilinkRepairUpdate,
   type TextChange,
   type TextPatch,
@@ -572,6 +573,9 @@ export function useWorkspaceRuntime() {
   const applyOkfWikilinkRepairs = useEventCallback((
     updates: readonly OkfWikilinkRepairUpdate[],
   ) => applyWorkspaceMarkdownUpdates(updates));
+  const applyOkfMigration = useEventCallback((
+    updates: readonly OkfMigrationUpdate[],
+  ) => applyWorkspaceMarkdownUpdates(updates));
   const verifyKnowledgeDocument = useEventCallback((
     documentId: string,
     verifiedBy: string,
@@ -1092,6 +1096,7 @@ export function useWorkspaceRuntime() {
       onSelectKnowledgeHealthIssue: selectKnowledgeHealthIssue,
       onSetActiveFileOkfType: setActiveFileOkfType,
       onApplyOkfConceptRepairs: applyOkfConceptRepairs,
+      onApplyOkfMigration: applyOkfMigration,
       onApplyOkfWikilinkRepairs: applyOkfWikilinkRepairs,
       onVerifyKnowledgeDocument: verifyKnowledgeDocument,
       onMaterializeOkfIndex: materializeOkfIndex,

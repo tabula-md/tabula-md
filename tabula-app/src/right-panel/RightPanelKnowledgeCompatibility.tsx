@@ -1,7 +1,9 @@
 import {
+  getOkfMigrationUpdates,
   getOkfRepairDiff,
   OKF_SUPPORTED_VERSIONS,
   OKF_TARGET_VERSION,
+  planOkf01To02Migration,
   planOkfConceptRepairs,
   planOkfWikilinkRepairs,
   type OkfCompatibilityIssue,
@@ -9,6 +11,7 @@ import {
   type OkfConceptRepairCandidate,
   type OkfConceptRepairUpdate,
   type OkfIndexCandidate,
+  type OkfMigrationUpdate,
   type OkfWikilinkRepairUpdate,
   type WorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeBaseline,
@@ -51,6 +54,7 @@ type RightPanelKnowledgeCompatibilityProps = {
   onSelectHealthIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
   onSetActiveFileOkfType: (conceptType: string) => boolean;
   onApplyConceptRepairs: (updates: readonly OkfConceptRepairUpdate[]) => boolean;
+  onApplyMigration: (updates: readonly OkfMigrationUpdate[]) => boolean;
   onApplyWikilinkRepairs: (updates: readonly OkfWikilinkRepairUpdate[]) => boolean;
   onMaterializeIndex: (candidate: OkfIndexCandidate) => boolean;
   onMaterializeLog: (candidate: WorkspaceOkfLogCandidate) => Promise<boolean>;
@@ -116,6 +120,201 @@ function CompatibilityIssueSection({
 
 const getCandidateKey = (candidate: OkfConceptRepairCandidate) =>
   `${candidate.documentId}:${candidate.issueCodes.join(",")}:${candidate.beforeMarkdown.length}`;
+
+const getDefaultProducer = (identityName: string) => {
+  const normalized = identityName
+    .trim()
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized ? `human:${normalized}` : "";
+};
+
+function OkfMigrationSection({
+  copy,
+  identityName,
+  index,
+  onApply,
+}: {
+  copy: KnowledgeCompatibilityCopy;
+  identityName: string;
+  index: WorkspaceKnowledgeIndex;
+  onApply: (updates: readonly OkfMigrationUpdate[]) => boolean;
+}) {
+  const [producerBy, setProducerBy] = useState(() => getDefaultProducer(identityName));
+  const plan = useMemo(
+    () => planOkf01To02Migration(index, { producerBy }),
+    [index, producerBy],
+  );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(
+      plan.candidates
+        .filter((candidate) => candidate.changed)
+        .map((candidate) => candidate.documentId),
+    ),
+  );
+  const [previewId, setPreviewId] = useState<string | null>(
+    () => plan.candidates.find((candidate) => candidate.changed)?.documentId ?? null,
+  );
+  const [applyFailed, setApplyFailed] = useState(false);
+  const candidateSignature = plan.candidates
+    .map((candidate) =>
+      `${candidate.documentId}:${candidate.changed}:${candidate.beforeMarkdown.length}:${
+        candidate.markdown.length
+      }`
+    )
+    .join("|");
+
+  useEffect(() => {
+    setSelectedIds((current) => new Set(
+      [...current].filter((documentId) =>
+        plan.candidates.some(
+          (candidate) => candidate.documentId === documentId && candidate.changed,
+        )
+      ),
+    ));
+    setPreviewId((current) =>
+      current && plan.candidates.some((candidate) => candidate.documentId === current)
+        ? current
+        : plan.candidates.find((candidate) => candidate.changed)?.documentId ?? null
+    );
+    setApplyFailed(false);
+  }, [candidateSignature]);
+
+  if (!plan.applicable) return null;
+
+  const updates = getOkfMigrationUpdates(plan, [...selectedIds]);
+  const preview = plan.candidates.find((candidate) => candidate.documentId === previewId)
+    ?? plan.candidates.find((candidate) => candidate.changed);
+  const diff = preview
+    ? getOkfRepairDiff(preview.beforeMarkdown, preview.markdown)
+    : [];
+
+  return (
+    <section className="right-compatibility-repair-section" aria-label={copy.migrationTitle}>
+      <div className="right-compatibility-section-copy">
+        <h3>
+          <span>{copy.migrationTitle}</span>
+          <span>0.1 → 0.2</span>
+        </h3>
+        <p>{copy.migrationDescription}</p>
+      </div>
+      <div className="right-compatibility-repair-editor">
+        <label>
+          <span>{copy.migrationProducer}</span>
+          <input
+            type="text"
+            value={producerBy}
+            placeholder="human:taeha or agent/1.0"
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => {
+              setProducerBy(event.target.value);
+              setApplyFailed(false);
+            }}
+          />
+        </label>
+      </div>
+      <div className="right-compatibility-migration-summary" role="status">
+        <span>{copy.migrationChangedFiles(plan.changedFileCount)}</span>
+        <span>{copy.migrationManualCitations(plan.manualCitationCount)}</span>
+        <span>{copy.migrationMissingProducers(plan.missingProducerCount)}</span>
+        <span>{copy.migrationDeletedFiles(plan.deletedFileCount)}</span>
+      </div>
+      <div className="right-compatibility-repair-list">
+        {plan.candidates.map((candidate) => {
+          const selected = selectedIds.has(candidate.documentId);
+          const isPreviewed = candidate.documentId === preview?.documentId;
+          return (
+            <div
+              className={`right-compatibility-repair-item ${
+                isPreviewed ? "previewed" : ""
+              }`.trim()}
+              key={candidate.documentId}
+            >
+              <div className="right-compatibility-repair-row">
+                <button
+                  className={`right-compatibility-repair-check ${selected ? "selected" : ""}`}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={selected}
+                  aria-label={`${copy.includeChange}: ${candidate.path}`}
+                  disabled={!candidate.changed}
+                  onClick={() => {
+                    setSelectedIds((current) => {
+                      const next = new Set(current);
+                      if (next.has(candidate.documentId)) next.delete(candidate.documentId);
+                      else next.add(candidate.documentId);
+                      return next;
+                    });
+                    setPreviewId(candidate.documentId);
+                    setApplyFailed(false);
+                  }}
+                >
+                  {selected && <Check size={13} aria-hidden="true" />}
+                </button>
+                <button
+                  className="right-compatibility-repair-document"
+                  type="button"
+                  onClick={() => setPreviewId(candidate.documentId)}
+                >
+                  <span className="right-compatibility-issue-title">
+                    {candidate.changed ? copy.migrationFile : copy.upToDate}
+                  </span>
+                  <span className="right-compatibility-issue-path">
+                    {candidate.path}
+                    {candidate.issues.length > 0
+                      ? ` — ${copy.migrationDecisions(candidate.issues.length)}`
+                      : ""}
+                  </span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {preview && (
+        <div className="right-compatibility-diff" aria-label={`${preview.path} diff`}>
+          <div className="right-compatibility-diff-header">
+            <span>{preview.path}</span>
+            <span>OKF 0.2</span>
+          </div>
+          <pre>
+            {diff.map((line, index) => (
+              <code className={line.kind} key={`${line.kind}:${index}`}>
+                <span aria-hidden="true">
+                  {line.kind === "add" ? "+" : line.kind === "remove" ? "−" : " "}
+                </span>
+                {line.text || " "}
+              </code>
+            ))}
+          </pre>
+        </div>
+      )}
+      {updates.length > 0 && (
+        <div className="right-compatibility-apply-row">
+          <span>{copy.selectedChanges(updates.length)}</span>
+          <button
+            type="button"
+            onClick={() => {
+              if (onApply(updates)) {
+                setSelectedIds(new Set());
+                setPreviewId(null);
+                setApplyFailed(false);
+              } else {
+                setApplyFailed(true);
+              }
+            }}
+          >
+            {copy.migrationApply}
+          </button>
+        </div>
+      )}
+      {applyFailed && <p className="right-compatibility-inline-error">{copy.planChanged}</p>}
+    </section>
+  );
+}
 
 function ConceptRepairSection({
   activeFileId,
@@ -519,6 +718,7 @@ export function RightPanelKnowledgeCompatibility({
   onSelectFile,
   onSelectHealthIssue,
   onApplyConceptRepairs,
+  onApplyMigration,
   onApplyWikilinkRepairs,
   onMaterializeIndex,
   onMaterializeLog,
@@ -588,6 +788,15 @@ export function RightPanelKnowledgeCompatibility({
           )}
         </span>
       </div>
+
+      {knowledgeIndex && (
+        <OkfMigrationSection
+          copy={copy}
+          identityName={identityName}
+          index={knowledgeIndex}
+          onApply={onApplyMigration}
+        />
+      )}
 
       {healthReport && knowledgeIndex && (
         <RightPanelKnowledgeVerification

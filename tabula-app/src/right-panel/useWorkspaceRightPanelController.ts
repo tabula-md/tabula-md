@@ -55,6 +55,7 @@ type RightPanelHandlers = Pick<
   | "onSelectKnowledgeHealthIssue"
   | "onSetActiveFileOkfType"
   | "onApplyOkfConceptRepairs"
+  | "onApplyOkfMigration"
   | "onApplyOkfWikilinkRepairs"
   | "onVerifyKnowledgeDocument"
   | "onMaterializeOkfIndex"
@@ -145,6 +146,7 @@ export function useWorkspaceRightPanelController({
   onSelectKnowledgeHealthIssue,
   onSetActiveFileOkfType,
   onApplyOkfConceptRepairs,
+  onApplyOkfMigration,
   onApplyOkfWikilinkRepairs,
   onVerifyKnowledgeDocument,
   onMaterializeOkfIndex,
@@ -289,6 +291,7 @@ export function useWorkspaceRightPanelController({
     onResolveAmbiguousLink,
     onSetActiveFileOkfType,
     onApplyOkfConceptRepairs,
+    onApplyOkfMigration,
     onApplyOkfWikilinkRepairs,
     onVerifyKnowledgeDocument,
     onMaterializeOkfIndex,

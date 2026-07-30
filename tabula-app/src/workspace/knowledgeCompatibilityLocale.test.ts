@@ -58,6 +58,13 @@ describe("knowledge compatibility copy", () => {
       expect(copy.healthTitle.trim()).not.toBe("");
       expect(copy.healthAttention(2)).toContain("2");
       expect(copy.healthNotices(3)).toContain("3");
+      expect(copy.migrationTitle.trim()).not.toBe("");
+      expect(copy.migrationDescription.trim()).not.toBe("");
+      expect(copy.migrationChangedFiles(2)).toContain("2");
+      expect(copy.migrationManualCitations(3)).toContain("3");
+      expect(copy.migrationMissingProducers(4)).toContain("4");
+      expect(copy.migrationDeletedFiles(0)).toContain("0");
+      expect(copy.migrationDecisions(1)).toContain("1");
 
       for (const code of issueCodes) {
         const issue: OkfCompatibilityIssue = {

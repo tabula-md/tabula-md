@@ -13,6 +13,7 @@ import {
   type OkfConceptRepairUpdate,
   type OkfCompatibilityReport,
   type OkfIndexCandidate,
+  type OkfMigrationUpdate,
   type OkfWikilinkRepairUpdate,
   type WorkspaceKnowledgeBaseline,
   type WorkspaceKnowledgeHealthIssue,
@@ -91,6 +92,7 @@ type RightPanelProps = {
   ) => boolean;
   onSetActiveFileOkfType: (conceptType: string) => boolean;
   onApplyOkfConceptRepairs: (updates: readonly OkfConceptRepairUpdate[]) => boolean;
+  onApplyOkfMigration: (updates: readonly OkfMigrationUpdate[]) => boolean;
   onApplyOkfWikilinkRepairs: (updates: readonly OkfWikilinkRepairUpdate[]) => boolean;
   onVerifyKnowledgeDocument: (documentId: string, verifiedBy: string) => boolean;
   onMaterializeOkfIndex: (candidate: OkfIndexCandidate) => boolean;
@@ -162,6 +164,7 @@ export function RightPanel({
   onResolveAmbiguousLink,
   onSetActiveFileOkfType,
   onApplyOkfConceptRepairs,
+  onApplyOkfMigration,
   onApplyOkfWikilinkRepairs,
   onVerifyKnowledgeDocument,
   onMaterializeOkfIndex,
@@ -443,6 +446,7 @@ export function RightPanel({
               index={knowledgeIndex}
               language={language}
               onApplyConceptRepairs={onApplyOkfConceptRepairs}
+              onApplyMigration={onApplyOkfMigration}
               onApplyWikilinkRepairs={onApplyOkfWikilinkRepairs}
               onVerifyKnowledgeDocument={onVerifyKnowledgeDocument}
               identityName={identityName}
