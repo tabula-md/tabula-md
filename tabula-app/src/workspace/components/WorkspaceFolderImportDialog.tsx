@@ -1,30 +1,48 @@
-import { FolderOpen, X } from "lucide-react";
+import { AlertTriangle, FolderInput, X } from "lucide-react";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceArchiveEntries } from "../io/workspaceArchive";
 import { getWorkspaceFolderImportCopy } from "../io/workspaceFolderImportLocale";
 import type { WorkspaceState } from "../workspaceStorage";
 import { ModalSurface } from "../../ui/ModalSurface";
 import type { WorkspaceImportProfile } from "../io/workspaceImportProfile";
+import { isMarkdownWorkspacePath } from "../io/workspaceSupportFile";
 
 type WorkspaceFolderImportDialogProps = {
+  hasCurrentWorkspace: boolean;
   language: WorkspaceLanguage;
   profile: WorkspaceImportProfile;
   workspace: WorkspaceState;
   onCancel: () => void;
+  onExportCurrentWorkspace: () => void;
   onReplace: () => void;
 };
 
 export function WorkspaceFolderImportDialog({
+  hasCurrentWorkspace,
   language,
   profile,
   workspace,
   onCancel,
+  onExportCurrentWorkspace,
   onReplace,
 }: WorkspaceFolderImportDialogProps) {
   const copy = getWorkspaceFolderImportCopy(language);
-  const paths = getWorkspaceArchiveEntries(workspace.files, workspace.folders)
+  const importedPaths = getWorkspaceArchiveEntries(workspace.files, workspace.folders)
     .filter((entry) => !entry.path.endsWith("/"))
     .map((entry) => entry.path);
+  const markdownPaths = importedPaths.filter(isMarkdownWorkspacePath);
+
+  const pathSection = (label: string, paths: readonly string[]) => {
+    if (paths.length === 0) return null;
+    return (
+      <section className="workspace-folder-import-paths">
+        <h3>{label}</h3>
+        <ul className="json-import-files" aria-label={label}>
+          {paths.map((path) => <li key={path}>{path}</li>)}
+        </ul>
+      </section>
+    );
+  };
 
   return (
     <ModalSurface
@@ -61,9 +79,10 @@ export function WorkspaceFolderImportDialog({
             </div>
           )}
           <div>
-            <dt>{copy.files}</dt>
+            <dt>{copy.contents}</dt>
             <dd>
-              {copy.fileHandling(
+              {copy.summary(
+                profile.markdownFileCount,
                 profile.preservedSupportFileCount,
                 profile.ignoredFileCount,
               )}
@@ -81,18 +100,34 @@ export function WorkspaceFolderImportDialog({
         )}
       </section>
       <div className="json-import-copy">
-        <FolderOpen size={18} aria-hidden="true" />
+        <FolderInput size={18} aria-hidden="true" />
         <div>
-          <p>{copy.contains(workspace.files.length, Math.max(0, workspace.folders.length - 1))}</p>
-          <ul className="json-import-files" aria-label={copy.paths}>
-            {paths.slice(0, 5).map((path) => <li key={path}>{path}</li>)}
-            {paths.length > 5 && <li>{copy.more(paths.length - 5)}</li>}
-          </ul>
+          {pathSection(copy.markdownPaths, markdownPaths)}
+          {pathSection(copy.supportPaths, profile.preservedSupportPaths)}
+          {pathSection(copy.excludedPaths, profile.ignoredPaths)}
+          <p className="workspace-folder-import-support-note">
+            {copy.supportNote}
+          </p>
         </div>
       </div>
+      {hasCurrentWorkspace && (
+        <div className="json-import-warning" role="note">
+          <AlertTriangle size={18} aria-hidden="true" />
+          <p>{copy.replacementWarning}</p>
+        </div>
+      )}
       <div className="share-modal-actions">
+        {hasCurrentWorkspace && (
+          <button
+            className="ui-modal-action secondary share-modal-secondary"
+            type="button"
+            onClick={onExportCurrentWorkspace}
+          >
+            {copy.exportCurrentWorkspace}
+          </button>
+        )}
         <button className="ui-modal-action secondary share-modal-secondary" type="button" onClick={onCancel}>{copy.cancel}</button>
-        <button className="ui-modal-action share-modal-primary" type="button" data-modal-initial-focus onClick={onReplace}>{copy.open}</button>
+        <button className="ui-modal-action share-modal-primary" type="button" data-modal-initial-focus onClick={onReplace}>{copy.importAndReplace}</button>
       </div>
     </ModalSurface>
   );

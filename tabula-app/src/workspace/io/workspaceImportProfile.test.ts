@@ -55,6 +55,9 @@ describe("workspace import profile", () => {
       format: "okf",
       okfVersion: "0.1",
       conventions: ["openwiki"],
+      markdownFileCount: 4,
+      preservedSupportPaths: [".last-update.json"],
+      ignoredPaths: ["ignored.ts"],
       preservedSupportFileCount: 1,
       ignoredFileCount: 1,
     });
@@ -94,6 +97,9 @@ describe("workspace import profile", () => {
       format: "markdown-wiki",
       conventions: ["obsidian"],
       linkSyntaxes: ["wikilinks", "embeds"],
+      markdownFileCount: 2,
+      preservedSupportPaths: [],
+      ignoredPaths: [".obsidian/app.json"],
       ignoredFileCount: 1,
     });
     expect(profile.okfVersion).toBeUndefined();
@@ -112,6 +118,9 @@ describe("workspace import profile", () => {
       format: "plain-markdown",
       conventions: [],
       linkSyntaxes: [],
+      markdownFileCount: 2,
+      preservedSupportPaths: [],
+      ignoredPaths: ["notes.txt"],
       preservedSupportFileCount: 0,
       ignoredFileCount: 1,
     });

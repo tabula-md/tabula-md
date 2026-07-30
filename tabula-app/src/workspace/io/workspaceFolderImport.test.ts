@@ -109,6 +109,9 @@ describe("workspace folder import", () => {
       format: "okf",
       okfVersion: "0.1",
       conventions: ["openwiki"],
+      markdownFileCount: 3,
+      preservedSupportPaths: [".last-update.json"],
+      ignoredPaths: ["ignored.json"],
       preservedSupportFileCount: 1,
       ignoredFileCount: 1,
     });
@@ -160,7 +163,7 @@ describe("workspace folder import", () => {
 
   it("round-trips text and binary OKF reference assets without indexing them", async () => {
     const binary = new Uint8Array([0, 255, 10, 128, 64]);
-    const workspace = await parseWorkspaceFolderFiles([
+    const draft = await parseWorkspaceFolderImport([
       createFolderFile("index.md", "# Files"),
       createFolderFile(
         "concept.md",
@@ -170,6 +173,7 @@ describe("workspace folder import", () => {
       createFolderFile("references/diagram.png", binary),
       createFolderFile("source.ts", "not part of the knowledge bundle"),
     ], defaults);
+    const { workspace } = draft;
 
     const archiveEntries = getWorkspaceArchiveEntries(workspace.files, workspace.folders);
     expect(archiveEntries).toEqual(expect.arrayContaining([
@@ -180,6 +184,14 @@ describe("workspace folder import", () => {
     expect(createWorkspaceKnowledgeIndex(
       getWorkspaceKnowledgeDocuments(workspace.files, workspace.folders),
     ).documentsById.size).toBe(2);
+    expect(draft.profile).toMatchObject({
+      markdownFileCount: 2,
+      preservedSupportPaths: [
+        "references/diagram.png",
+        "references/query.sql",
+      ],
+      ignoredPaths: ["source.ts"],
+    });
   });
 
   it("round-trips the OpenWiki fixture byte-for-byte", async () => {

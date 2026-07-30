@@ -248,6 +248,18 @@ export function useWorkspaceFileIoController({
     }
     setPendingWorkspaceExport({ review, snapshot: workspaceSnapshot });
   };
+  const exportCurrentWorkspaceBeforeImport = () => {
+    const workspaceSnapshot = getWorkspaceFileIoBoundaryWorkspaceSnapshot({
+      activeFile,
+      activeFileId,
+      files,
+      folders,
+      getWorkspaceSnapshot,
+      onBeforeWorkspaceBoundary,
+      openFileIds,
+    });
+    void exportWorkspaceSnapshot(workspaceSnapshot);
+  };
   const closeWorkspaceExportReview = () => setPendingWorkspaceExport(null);
   const confirmWorkspaceArchiveExport = () => {
     if (!pendingWorkspaceExport) return;
@@ -381,6 +393,7 @@ export function useWorkspaceFileIoController({
     copyFile,
     downloadCurrentFile,
     downloadWorkspaceArchive,
+    exportCurrentWorkspaceBeforeImport,
     closeWorkspaceExportReview,
     confirmWorkspaceArchiveExport,
     handleImportInputChange,

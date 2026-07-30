@@ -62,7 +62,7 @@ export async function run(ctx) {
   const fixtureEntries = await readFixtureEntries(fixtureRoot);
 
   await withPage(browser, "/", async (page) => {
-    await page.locator('input[aria-label="Open folder"]').evaluate(
+    await page.locator('input[aria-label="Import folder"]').evaluate(
       (input, entries) => {
         const dataTransfer = new DataTransfer();
         for (const entry of entries) {
@@ -89,7 +89,7 @@ export async function run(ctx) {
       },
       fixtureEntries,
     );
-    await page.getByRole("dialog", { name: "Open folder" }).waitFor();
+    await page.getByRole("dialog", { name: "Import folder" }).waitFor();
     const detectedWorkspace = page.getByRole("region", {
       name: "Detected workspace",
     });
@@ -103,7 +103,7 @@ export async function run(ctx) {
         ).isVisible(),
       "Folder import should distinguish the OKF standard from OpenWiki and link conventions.",
     );
-    await page.getByRole("button", { name: "Open folder", exact: true }).click();
+    await page.getByRole("button", { name: "Import and replace", exact: true }).click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
 
     await ensureSidePanelOpen(page);
@@ -175,11 +175,13 @@ export async function run(ctx) {
       exact: true,
     });
     await conceptSearch.fill("dispatches work");
+    const runtimeSearchResult = page.getByRole("button", {
+      name: "architecture/runtime",
+      exact: true,
+    });
+    await runtimeSearchResult.waitFor({ state: "visible", timeout: 5_000 });
     expect(
-      await page.getByRole("button", {
-        name: "architecture/runtime",
-        exact: true,
-      }).isVisible() &&
+      await runtimeSearchResult.isVisible() &&
         (await page.locator(".right-panel-search-result").count()) === 1,
       "Search should retrieve concept body text without turning Knowledge into a catalog.",
     );
@@ -305,7 +307,7 @@ export async function run(ctx) {
         content: "---\ntype: Note\n---\n\n# Target\n\n[Source](source.md)",
       },
     ];
-    await page.locator('input[aria-label="Open folder"]').evaluate(
+    await page.locator('input[aria-label="Import folder"]').evaluate(
       (input, entries) => {
         const dataTransfer = new DataTransfer();
         for (const entry of entries) {
@@ -327,8 +329,8 @@ export async function run(ctx) {
       },
       migrationEntries,
     );
-    await page.getByRole("dialog", { name: "Open folder" }).waitFor();
-    await page.getByRole("button", { name: "Open folder", exact: true }).click();
+    await page.getByRole("dialog", { name: "Import folder" }).waitFor();
+    await page.getByRole("button", { name: "Import and replace", exact: true }).click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
 
     await ensureSidePanelOpen(page);

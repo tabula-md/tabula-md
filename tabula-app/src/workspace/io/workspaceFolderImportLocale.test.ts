@@ -2,14 +2,20 @@ import { describe, expect, it } from "vitest";
 import { getWorkspaceFolderImportCopy } from "./workspaceFolderImportLocale";
 
 describe("workspace folder import copy", () => {
-  it("explains that opening a folder creates a browser copy", () => {
+  it("explains that importing a folder creates an unsynchronized browser copy", () => {
     const copy = getWorkspaceFolderImportCopy("en");
 
-    expect(copy.title).toBe("Open folder");
-    expect(copy.description).toContain("saves a copy in this browser");
-    expect(copy.description).toContain("not changed or kept in sync");
-    expect(copy.description).toContain("recognized workspace metadata");
-    expect(copy.contains(2, 1)).toBe("2 files · 1 folder");
+    expect(copy.title).toBe("Import folder");
+    expect(copy.description).toContain("imports a copy into this browser");
+    expect(copy.description).toContain("not synchronized");
+    expect(copy.replacementWarning).toContain(
+      "replaces the current browser workspace",
+    );
+    expect(copy.exportCurrentWorkspace).toBe("Export current workspace");
+    expect(copy.summary(2, 1, 3)).toBe(
+      "2 Markdown · 1 support · 3 excluded",
+    );
+    expect(copy.supportNote).toContain("references/");
   });
 
   it("explains the detected standard separately from producer conventions", () => {
@@ -20,6 +26,9 @@ describe("workspace folder import copy", () => {
       conventions: ["openwiki"],
       linkSyntaxes: ["markdown-links"],
       evidence: [{ code: "okf-version", value: "0.1" }],
+      markdownFileCount: 3,
+      preservedSupportPaths: ["references/query.sql"],
+      ignoredPaths: ["notes.txt", "source.ts"],
       preservedSupportFileCount: 1,
       ignoredFileCount: 2,
     } as const;
@@ -27,9 +36,6 @@ describe("workspace folder import copy", () => {
     expect(copy.format(profile)).toBe("OKF 0.1");
     expect(profile.conventions.map(copy.convention)).toEqual(["OpenWiki"]);
     expect(profile.linkSyntaxes.map(copy.linkSyntax)).toEqual(["Markdown links"]);
-    expect(copy.fileHandling(1, 2)).toBe(
-      "1 support file preserved. 2 unsupported files skipped",
-    );
     expect(copy.evidence(profile.evidence[0])).toBe(
       "Root index declares OKF 0.1.",
     );

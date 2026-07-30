@@ -98,9 +98,37 @@
 }
 
 .workspace-folder-import-modal {
-  width: min(580px, calc(100vw - 48px));
+  width: min(620px, calc(100vw - 48px));
   max-height: min(720px, calc(100vh - 48px));
   overflow-y: auto;
+}
+
+.workspace-folder-import-paths + .workspace-folder-import-paths {
+  margin-top: var(--space-3);
+}
+
+.workspace-folder-import-paths h3 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  font-weight: var(--weight-ui-medium);
+}
+
+.workspace-folder-import-paths .json-import-files {
+  max-height: 116px;
+  overflow-y: auto;
+}
+
+.workspace-folder-import-support-note {
+  margin-top: var(--space-3) !important;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-subtle);
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+}
+
+.workspace-folder-import-modal .share-modal-actions {
+  flex-wrap: wrap;
 }
 
 .workspace-import-profile {

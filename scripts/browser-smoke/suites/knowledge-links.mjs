@@ -13,7 +13,7 @@ export async function run(ctx) {
   } = ctx;
 
   await withPage(browser, "/", async (page) => {
-    await page.locator('input[aria-label="Open folder"]').evaluate((input) => {
+    await page.locator('input[aria-label="Import folder"]').evaluate((input) => {
       const dataTransfer = new DataTransfer();
       const addMarkdown = (path, markdown) => {
         const name = path.split("/").at(-1);
@@ -45,8 +45,8 @@ export async function run(ctx) {
       });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await page.getByRole("dialog", { name: "Open folder" }).waitFor();
-    await page.getByRole("button", { name: "Open folder", exact: true }).click();
+    await page.getByRole("dialog", { name: "Import folder" }).waitFor();
+    await page.getByRole("button", { name: "Import and replace", exact: true }).click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
 
     await ensureSidePanelOpen(page);

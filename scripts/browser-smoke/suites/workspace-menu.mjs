@@ -288,21 +288,31 @@ export async function run(ctx) {
   });
 
   await withPage(browser, "/", async (page) => {
-    await page.locator('input[aria-label="Open folder"]').evaluate((input) => {
+    await page.keyboard.press(appNewFileShortcut);
+    await waitForActiveTab(page, { exact: "Untitled.md" });
+    await selectDocumentViewMode(page, "Edit");
+    await waitForEditorReady(page, { mode: "edit" });
+    await page.locator(".cm-content").click();
+    await page.keyboard.insertText("# Browser draft");
+
+    await page.locator('input[aria-label="Import folder"]').evaluate((input) => {
       const dataTransfer = new DataTransfer();
       const launchNotes = new File(["# Launch notes\n\nReady."], "Launch notes.md", { type: "text/markdown" });
       const questions = new File(["# Questions"], "Questions.md", { type: "text/markdown" });
+      const query = new File(["SELECT 1;"], "query.sql", { type: "text/plain" });
       const ignored = new File(["ignored"], "notes.txt", { type: "text/plain" });
       Object.defineProperty(launchNotes, "webkitRelativePath", { value: "Workspace/Planning/Launch notes.md" });
       Object.defineProperty(questions, "webkitRelativePath", { value: "Workspace/Planning/Research/Questions.md" });
+      Object.defineProperty(query, "webkitRelativePath", { value: "Workspace/references/query.sql" });
       Object.defineProperty(ignored, "webkitRelativePath", { value: "Workspace/Planning/notes.txt" });
       dataTransfer.items.add(launchNotes);
       dataTransfer.items.add(questions);
+      dataTransfer.items.add(query);
       dataTransfer.items.add(ignored);
       Object.defineProperty(input, "files", { configurable: true, value: dataTransfer.files });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await page.getByRole("dialog", { name: "Open folder" }).waitFor();
+    await page.getByRole("dialog", { name: "Import folder" }).waitFor();
     const detectedWorkspace = page.getByRole("region", {
       name: "Detected workspace",
     });
@@ -311,20 +321,39 @@ export async function run(ctx) {
         exact: true,
       }).isVisible() &&
         await detectedWorkspace.getByText(
-          "0 support files preserved. 1 unsupported file skipped",
+          "2 Markdown · 1 support · 1 excluded",
           { exact: true },
         ).isVisible(),
-      "Folder import should explain a plain Markdown workspace and skipped files before replacing local state.",
+      "Folder import should distinguish Markdown, support, and excluded files before replacing local state.",
     );
     expect(
-      (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1,
-      "Opening a workspace should preview its logical document paths before replacing local state.",
+      (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1 &&
+        (await page.getByText("references/query.sql", { exact: true }).count()) === 1 &&
+        (await page.getByText("Planning/notes.txt", { exact: true }).count()) === 1,
+      "Folder import should preview imported, preserved, and excluded paths before replacing local state.",
     );
-    await page.getByRole("button", { name: "Open folder", exact: true }).click();
+    expect(
+      await page.getByText(
+        "Importing replaces the current browser workspace, including its documents and comments. Export it first if you may need it again.",
+        { exact: true },
+      ).isVisible(),
+      "Folder import should explicitly warn that it replaces the current browser workspace.",
+    );
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", {
+      name: "Export current workspace",
+      exact: true,
+    }).click();
+    const currentWorkspaceDownload = await downloadPromise;
+    expect(
+      (await currentWorkspaceDownload.suggestedFilename()).endsWith(".zip"),
+      "Folder import should let people export the current browser workspace before replacement.",
+    );
+    await page.getByRole("button", { name: "Import and replace", exact: true }).click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
     expect(
       (await page.locator(".tab-item").count()) === 0,
-      "Opening a workspace should import its tree without opening every document as a tab.",
+      "Importing a workspace should preserve its tree without opening every document as a tab.",
     );
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Files", exact: true }).click();
@@ -512,7 +541,7 @@ export async function run(ctx) {
         !emptyChromeState.workspaceText.includes("Tabula turns Markdowns into collaborative documents for people and agents.") &&
         emptyChromeState.workspaceText.includes("New document") &&
         emptyChromeState.workspaceText.includes("Open Markdown file") &&
-        emptyChromeState.workspaceText.includes("Open folder") &&
+        emptyChromeState.workspaceText.includes("Import folder") &&
         !emptyChromeState.workspaceText.includes("Browse project files") &&
         !emptyChromeState.workspaceText.includes("Help") &&
         !emptyChromeState.workspaceText.includes("Import document") &&

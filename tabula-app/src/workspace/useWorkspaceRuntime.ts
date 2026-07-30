@@ -803,6 +803,7 @@ export function useWorkspaceRuntime() {
     downloadCurrentFile,
     downloadWorkspaceArchive,
     emptyDropActive,
+    exportCurrentWorkspaceBeforeImport,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDrop,
@@ -1358,6 +1359,7 @@ export function useWorkspaceRuntime() {
     },
     overlays: {
       workspace: {
+        hasCurrentWorkspace: files.length > 0,
         infoDialog,
         jsonShareImport,
         workspaceFolderImport,
@@ -1368,6 +1370,8 @@ export function useWorkspaceRuntime() {
         onCloseInfoDialog: () => setInfoDialog(null),
         onCloseWorkspaceFolderImport: closeWorkspaceFolderImport,
         onCloseWorkspaceExportReview: closeWorkspaceExportReview,
+        onExportCurrentWorkspaceBeforeImport:
+          exportCurrentWorkspaceBeforeImport,
         onDismissToast: dismissToast,
         onPauseToast: pauseToast,
         onResumeToast: resumeToast,

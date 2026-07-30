@@ -32,6 +32,7 @@ type JsonShareImportState =
   | { status: "ready"; workspace: WorkspaceState };
 
 export type WorkspaceOverlaySurfaceProps = {
+  hasCurrentWorkspace: boolean;
   infoDialog: WorkspaceInfoDialogKind | null;
   workspaceFolderImport: WorkspaceFolderImportDraft | null;
   workspaceExportReview: WorkspaceExportReview | null;
@@ -43,6 +44,7 @@ export type WorkspaceOverlaySurfaceProps = {
   onCloseInfoDialog: () => void;
   onCloseWorkspaceFolderImport: () => void;
   onCloseWorkspaceExportReview: () => void;
+  onExportCurrentWorkspaceBeforeImport: () => void;
   onPauseToast: () => void;
   onResumeToast: () => void;
   onCloseJsonShareImport: () => void;
@@ -53,6 +55,7 @@ export type WorkspaceOverlaySurfaceProps = {
 };
 
 export function WorkspaceOverlaySurface({
+  hasCurrentWorkspace,
   infoDialog,
   workspaceFolderImport,
   workspaceExportReview,
@@ -64,6 +67,7 @@ export function WorkspaceOverlaySurface({
   onCloseInfoDialog,
   onCloseWorkspaceFolderImport,
   onCloseWorkspaceExportReview,
+  onExportCurrentWorkspaceBeforeImport,
   onPauseToast,
   onResumeToast,
   onCloseJsonShareImport,
@@ -87,10 +91,12 @@ export function WorkspaceOverlaySurface({
       {workspaceFolderImport && (
         <Suspense fallback={null}>
           <WorkspaceFolderImportDialog
+            hasCurrentWorkspace={hasCurrentWorkspace}
             language={language}
             workspace={workspaceFolderImport.workspace}
             profile={workspaceFolderImport.profile}
             onCancel={onCloseWorkspaceFolderImport}
+            onExportCurrentWorkspace={onExportCurrentWorkspaceBeforeImport}
             onReplace={onReplaceWorkspaceWithFolder}
           />
         </Suspense>

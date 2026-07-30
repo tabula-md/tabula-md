@@ -38,6 +38,9 @@ export type WorkspaceImportProfile = {
   conventions: readonly WorkspaceImportConvention[];
   linkSyntaxes: readonly WorkspaceImportLinkSyntax[];
   evidence: readonly WorkspaceImportEvidence[];
+  markdownFileCount: number;
+  preservedSupportPaths: readonly string[];
+  ignoredPaths: readonly string[];
   preservedSupportFileCount: number;
   ignoredFileCount: number;
 };
@@ -52,6 +55,23 @@ type WorkspaceImportProfileInput = {
   supportFiles: readonly WorkspaceImportSupportFile[];
   sourcePaths: readonly string[];
   importedPaths: readonly string[];
+};
+
+const getImportFileHandling = (input: WorkspaceImportProfileInput) => {
+  const importedPathSet = new Set(input.importedPaths);
+  const preservedSupportPaths = input.supportFiles
+    .map((file) => file.path)
+    .sort((first, second) => first.localeCompare(second));
+  const ignoredPaths = input.sourcePaths
+    .filter((path) => !importedPathSet.has(path))
+    .sort((first, second) => first.localeCompare(second));
+  return {
+    markdownFileCount: input.documents.length,
+    preservedSupportPaths,
+    ignoredPaths,
+    preservedSupportFileCount: preservedSupportPaths.length,
+    ignoredFileCount: ignoredPaths.length,
+  };
 };
 
 const getBasename = (path: string) =>
@@ -89,11 +109,7 @@ const createFallbackProfile = (
     path.toLocaleLowerCase().split("/").includes(".obsidian"))
     ? [{ code: "obsidian-config" }]
     : [],
-  preservedSupportFileCount: input.supportFiles.length,
-  ignoredFileCount: Math.max(
-    0,
-    input.sourcePaths.length - input.importedPaths.length,
-  ),
+  ...getImportFileHandling(input),
 });
 
 export const detectWorkspaceImportProfile = (
@@ -179,11 +195,7 @@ export const detectWorkspaceImportProfile = (
       conventions,
       linkSyntaxes,
       evidence,
-      preservedSupportFileCount: input.supportFiles.length,
-      ignoredFileCount: Math.max(
-        0,
-        input.sourcePaths.length - input.importedPaths.length,
-      ),
+      ...getImportFileHandling(input),
     };
   } catch {
     return createFallbackProfile(input);
