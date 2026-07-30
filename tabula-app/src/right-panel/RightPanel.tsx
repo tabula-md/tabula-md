@@ -1,4 +1,11 @@
-import { Suspense, lazy, type ReactNode, type RefObject, useMemo } from "react";
+import {
+  Suspense,
+  lazy,
+  type ReactNode,
+  type RefObject,
+  useMemo,
+  useState,
+} from "react";
 import {
   Folder,
   LibraryBig,
@@ -30,6 +37,7 @@ import { RightPanelOutline } from "./RightPanelOutline";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
+import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
 
@@ -195,6 +203,9 @@ export function RightPanel({
   panelRef,
 }: RightPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
+  const knowledgeCopy = getKnowledgePanelCopy(language);
+  const [knowledgeReviewQueueOpenRequest, setKnowledgeReviewQueueOpenRequest] =
+    useState(0);
   const closePanelLabel = getWorkspaceChromeCopy(language).topChrome.closeSidePanel;
   const {
     showResolved,
@@ -302,6 +313,8 @@ export function RightPanel({
             folders={folders}
             activeFileId={activeFileId}
             copy={copy.files}
+            knowledgeIndex={knowledgeIndex}
+            knowledgeStatusCopy={knowledgeCopy}
             collapsedFolderIds={collapsedFileTreeFolderIds}
             onNewFile={(parentId) => onNewFile(parentId ? { parentId } : undefined)}
             onNewFolder={onNewFolder}
@@ -310,6 +323,11 @@ export function RightPanel({
             onCollapseAllFolders={collapseAllFileTreeFolders}
             onExpandAllFolders={expandAllFileTreeFolders}
             onSelectFile={onSelectFile}
+            onReviewKnowledgeFile={(fileId) => {
+              onSelectFile(fileId);
+              onSetView("knowledge");
+              setKnowledgeReviewQueueOpenRequest((request) => request + 1);
+            }}
             onRenameFile={onRenameFile}
             onDuplicateFile={onDuplicateFile}
             onDeleteFile={onDeleteFile}
@@ -440,6 +458,7 @@ export function RightPanel({
               compatibilityReport={knowledgeCompatibilityReport}
               knowledgeBaseline={knowledgeBaseline}
               knowledgeCompatibilityOpenRequest={knowledgeCompatibilityOpenRequest}
+              knowledgeReviewQueueOpenRequest={knowledgeReviewQueueOpenRequest}
               index={knowledgeIndex}
               language={language}
               onApplyConceptRepairs={onApplyOkfConceptRepairs}

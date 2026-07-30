@@ -32,6 +32,7 @@ type RightPanelKnowledgeProps = {
   compatibilityReport?: OkfCompatibilityReport;
   knowledgeBaseline?: WorkspaceKnowledgeBaseline;
   knowledgeCompatibilityOpenRequest: number;
+  knowledgeReviewQueueOpenRequest: number;
   index?: WorkspaceKnowledgeIndex;
   language: WorkspaceLanguage;
   identityName: string;
@@ -53,6 +54,7 @@ export function RightPanelKnowledge({
   compatibilityReport,
   knowledgeBaseline,
   knowledgeCompatibilityOpenRequest,
+  knowledgeReviewQueueOpenRequest,
   index,
   language,
   onApplyConceptRepairs,
@@ -127,6 +129,10 @@ export function RightPanelKnowledge({
   useEffect(() => {
     if (knowledgeCompatibilityOpenRequest > 0) setWorkspaceReviewOpen(true);
   }, [knowledgeCompatibilityOpenRequest]);
+
+  useEffect(() => {
+    if (knowledgeReviewQueueOpenRequest > 0) setReviewQueueOpen(true);
+  }, [knowledgeReviewQueueOpenRequest]);
 
   return (
     <>

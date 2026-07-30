@@ -172,21 +172,87 @@ export async function run(ctx) {
       "OpenWiki run state should survive folder import as a workspace support file.",
     );
     await page.getByRole("button", {
-      name: "Open runtime.md",
+      name: "Knowledge attention legend",
+      exact: true,
+    }).click();
+    const attentionLegend = page.locator(".right-file-knowledge-legend");
+    expect(
+      await attentionLegend.getByText(
+        "Dot: Tabula found knowledge metadata that needs attention.",
+        { exact: true },
+      ).isVisible() &&
+        await attentionLegend.getByText(
+          "No dot: no attention was found, or the file is not an OKF concept.",
+          { exact: true },
+        ).isVisible(),
+      "Files should explain both the presence and absence of a knowledge attention dot.",
+    );
+    await page.keyboard.press("Escape");
+    const runtimeKnowledgeStatus = page.locator(
+      '.right-file-tree-row[data-file-name="runtime.md"] '
+      + ".right-file-knowledge-status",
+    );
+    expect(
+      (await runtimeKnowledgeStatus.count()) === 1 &&
+        (await runtimeKnowledgeStatus.getAttribute("data-knowledge-priority")) ===
+          "attention" &&
+        (await runtimeKnowledgeStatus.getAttribute("aria-label")) ===
+          "runtime.md needs attention: Unverified, No review date",
+      "Files should quietly mark a concept that needs trust and freshness attention.",
+    );
+    await runtimeKnowledgeStatus.hover();
+    await page.locator(".app-tooltip").waitFor({ state: "visible", timeout: 2_000 });
+    expect(
+      (await runtimeKnowledgeStatus.evaluate(
+        (status) => getComputedStyle(status, "::before").opacity,
+      )) === "1" &&
+        (await page.locator(".app-tooltip").textContent()) ===
+          "Unverified\nNo review date",
+      "The file status should become vivid on hover and explain each signal on its own line.",
+    );
+    await runtimeKnowledgeStatus.focus();
+    expect(
+      (await runtimeKnowledgeStatus.evaluate(
+        (status) => getComputedStyle(status, "::before").opacity,
+      )) === "1",
+      "Keyboard focus should strengthen the file status without relying on color alone.",
+    );
+    await runtimeKnowledgeStatus.press("Enter");
+    const attentionDetails = page.locator(".right-file-knowledge-popover");
+    expect(
+      await attentionDetails.getByText("Unverified", { exact: true }).isVisible() &&
+        await attentionDetails.getByText(
+          "No review date",
+          { exact: true },
+        ).isVisible(),
+      "Activating a status should expose the same concerns to keyboard and touch users.",
+    );
+    await attentionDetails.getByRole("button", {
+      name: "Open review queue",
       exact: true,
     }).click();
     await waitForActiveTab(page, { exact: "runtime.md" });
+    await waitForPanelTab(page, "Knowledge");
+    const filesReviewQueue = page.getByRole("region", {
+      name: "Review queue",
+      exact: true,
+    });
+    expect(
+      await filesReviewQueue.locator(
+        '.right-knowledge-queue-row[aria-current="page"]',
+      ).getByText("Runtime architecture", { exact: true }).isVisible(),
+      "A Files attention signal should open the shared queue at that document.",
+    );
+    await filesReviewQueue.getByRole("button", {
+      name: "Back to document",
+      exact: true,
+    }).click();
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
     const sidePanelNavigation = page.getByRole("navigation", {
       name: "Side panel sections",
     });
-    await sidePanelNavigation.getByRole("button", {
-      name: "Knowledge",
-      exact: true,
-    }).click();
-    await waitForPanelTab(page, "Knowledge");
     const documentKnowledgeContext = page.getByRole("region", {
       name: "Knowledge context",
     });

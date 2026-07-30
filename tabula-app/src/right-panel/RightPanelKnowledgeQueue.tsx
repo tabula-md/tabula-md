@@ -1,4 +1,11 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type {
   OkfFreshness,
   OkfLifecycleStatus,
@@ -109,6 +116,7 @@ export function RightPanelKnowledgeQueue({
   const [healthIssues, setHealthIssues] = useState<
     Set<WorkspaceKnowledgeHealthIssueCode>
   >(() => new Set());
+  const rowRefs = useRef(new Map<string, HTMLButtonElement>());
   const filters = useMemo(
     () => createWorkspaceKnowledgeReviewFilters({
       lifecycle,
@@ -147,6 +155,9 @@ export function RightPanelKnowledgeQueue({
   const activeIndex = visibleEntries.findIndex(
     (entry) => entry.documentId === activeFileId,
   );
+  useEffect(() => {
+    rowRefs.current.get(activeFileId)?.scrollIntoView({ block: "nearest" });
+  }, [activeFileId, visibleEntries]);
   const hasFilters = lifecycle.size > 0 ||
     trust.size > 0 ||
     freshness.size > 0 ||
@@ -282,6 +293,10 @@ export function RightPanelKnowledgeQueue({
             : copy.priorityNotice;
           return (
             <button
+              ref={(button) => {
+                if (button) rowRefs.current.set(entry.documentId, button);
+                else rowRefs.current.delete(entry.documentId);
+              }}
               type="button"
               className={`right-knowledge-queue-row ${priorityClass(entry)}`}
               key={entry.documentId}

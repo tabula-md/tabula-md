@@ -82,6 +82,17 @@ const english = {
   noReviewDate: "Unscheduled",
   invalidReviewDate: "Invalid review date",
   unverified: "Unverified",
+  draft: "Draft",
+  deprecated: "Deprecated",
+  fileAttentionLabel: (fileTitle: string, concerns: string) =>
+    `${fileTitle} needs attention: ${concerns}`,
+  fileAttentionLegend: "Knowledge attention legend",
+  attentionDetails: "Attention details",
+  attentionDotMeaning:
+    "Dot: Tabula found knowledge metadata that needs attention.",
+  noAttentionDotMeaning:
+    "No dot: no attention was found, or the file is not an OKF concept.",
+  reviewInKnowledge: "Open review queue",
   documentContext: "Knowledge context",
   knowledgePassport: "Knowledge passport",
   notConcept: "This file is preserved in the workspace, but it is not a Markdown knowledge concept.",
@@ -195,6 +206,17 @@ const korean: typeof english = {
   noReviewDate: "일정 없음",
   invalidReviewDate: "잘못된 검토 날짜",
   unverified: "미검증",
+  draft: "초안",
+  deprecated: "폐기 예정",
+  fileAttentionLabel: (fileTitle, concerns) =>
+    `${fileTitle} 확인 필요: ${concerns}`,
+  fileAttentionLegend: "지식 주의 표시 안내",
+  attentionDetails: "확인할 사항",
+  attentionDotMeaning:
+    "원 표시: Tabula가 확인이 필요한 지식 metadata를 발견했습니다.",
+  noAttentionDotMeaning:
+    "원 없음: 발견된 주의 사항이 없거나 OKF concept가 아닌 파일입니다.",
+  reviewInKnowledge: "검토 큐 열기",
   documentContext: "지식 문맥",
   knowledgePassport: "지식 여권",
   notConcept: "워크스페이스에는 보존되지만 Markdown 지식 concept는 아닌 파일입니다.",
