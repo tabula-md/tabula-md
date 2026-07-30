@@ -136,6 +136,18 @@ const getPresentationDocument = (state: EditorState) => {
   return presentation;
 };
 
+export const setEditorVisualPresentationDocument = (
+  state: EditorState,
+  presentation: MarkdownPresentationDocument,
+) => {
+  const documentKey = state.doc as object;
+  presentationByDocument.set(documentKey, presentation);
+  presentationNodesByDocument.set(
+    documentKey,
+    flattenPresentationNodes(presentation.blocks),
+  );
+};
+
 const getPresentationNodes = (state: EditorState) => {
   const documentKey = state.doc as object;
   const cached = presentationNodesByDocument.get(documentKey);

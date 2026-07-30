@@ -1,4 +1,4 @@
-import { StateField } from "@codemirror/state";
+import { StateField, type Transaction } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
 import {
   buildEditorVisualDecorationSets,
@@ -15,6 +15,11 @@ import {
   EDITOR_VISUAL_CURSOR_SAFE_MARGIN,
   editorVisualViewportPlugin,
 } from "./editorVisualViewport";
+import {
+  getMarkdownPresentationDocument,
+  type MarkdownPresentationChange,
+  updateMarkdownPresentationDocument,
+} from "../markdownPresentationCache";
 import type {
   EditorVisualModeCopy,
   EditorVisualModeOptions,
@@ -22,6 +27,18 @@ import type {
 
 export type { EditorVisualModeCopy } from "./editorVisualModeTypes";
 export { getEditorVisualWorkspaceLinkRanges } from "./editorVisualModeLinks";
+
+const getSinglePresentationChange = (
+  transaction: Transaction,
+): MarkdownPresentationChange | null => {
+  let change: MarkdownPresentationChange | null = null;
+  let changeCount = 0;
+  transaction.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
+    changeCount += 1;
+    change = { fromA, fromB, toA, toB };
+  });
+  return changeCount === 1 ? change : null;
+};
 
 export const createEditorVisualModeExtension = (
   copy: EditorVisualModeCopy,
@@ -35,11 +52,15 @@ export const createEditorVisualModeExtension = (
   });
   const decorationField = StateField.define<EditorVisualDecorationSets>({
     create(state) {
+      const presentation = getMarkdownPresentationDocument(
+        state.doc.toString(),
+      );
       return buildEditorVisualDecorationSets(
         state,
         state.field(interactionField),
         copy,
         options,
+        presentation,
       );
     },
     update(value, transaction) {
@@ -69,11 +90,19 @@ export const createEditorVisualModeExtension = (
       ) {
         return value;
       }
+      const presentation = transaction.docChanged
+        ? updateMarkdownPresentationDocument(
+            value.presentation,
+            transaction.state.doc.toString(),
+            getSinglePresentationChange(transaction),
+          )
+        : value.presentation;
       return buildEditorVisualDecorationSets(
         transaction.state,
         transaction.state.field(interactionField),
         copy,
         options,
+        presentation,
       );
     },
     provide: (field) => [
