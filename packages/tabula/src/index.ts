@@ -792,3 +792,22 @@ export {
   hashWorkspaceArtifactContent,
   isWorkspaceArtifactEditable,
 } from "./workspaceArtifact";
+
+export type {
+  ArtifactChange,
+  ExternalArtifactChange,
+  ExternalChangeResolution,
+  ExternalChangeResult,
+  WorkspaceSnapshot,
+  WorkspaceSource,
+  WorkspaceSourceAdapter,
+  WorkspaceSourceCapabilities,
+  WorkspaceSourceKind,
+  WriteResult,
+} from "./workspaceSource";
+export {
+  createBrowserCopySourceAdapter,
+  createImportedArchiveSourceAdapter,
+  getExternalArtifactChanges,
+  planExternalChangeResolution,
+} from "./workspaceSource";
