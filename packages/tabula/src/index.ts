@@ -829,6 +829,18 @@ export {
   analyzeWorkspaceAgentInstructions,
   getAgentInstructionChanges,
 } from "./workspaceAgentInstructions";
+export type {
+  LlmsTxtExportCandidate,
+  LlmsTxtExportOptions,
+  LlmsTxtExportSection,
+  LlmsTxtValidationIssue,
+  LlmsTxtValidationIssueCode,
+  LlmsTxtValidationReport,
+} from "./workspaceLlmsTxt";
+export {
+  planLlmsTxtExport,
+  validateLlmsTxt,
+} from "./workspaceLlmsTxt";
 
 export type {
   OkfConceptTypeUpdateFailure,

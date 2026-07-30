@@ -56,6 +56,13 @@ export type KnowledgeCompatibilityCopy = {
   supportCore: string;
   supportAdvanced: (count: number) => string;
   supportAdvancedPartial: (count: number, runtimes: string) => string;
+  llmsTitle: string;
+  llmsDescription: string;
+  llmsOptional: string;
+  llmsPrivateExcluded: (count: number) => string;
+  llmsIncluded: (count: number) => string;
+  llmsDownload: string;
+  llmsPreview: string;
   requiredChanges: (count: number) => string;
   portabilityWarnings: (count: number) => string;
   requiredSection: string;
@@ -648,6 +655,39 @@ const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
   },
 };
 
+type KnowledgeDeliveryMessages = {
+  title: string;
+  description: string;
+  optional: string;
+  privateExcluded: string;
+  included: string;
+  download: string;
+  preview: string;
+};
+
+const deliveryCopies: Partial<Record<WorkspaceLanguage, KnowledgeDeliveryMessages>> & {
+  en: KnowledgeDeliveryMessages;
+} = {
+  en: {
+    title: "llms.txt delivery",
+    description: "Select documents for a generated delivery index. The workspace and any existing llms.txt stay unchanged.",
+    optional: "Optional",
+    privateExcluded: "{{count}} private documents excluded by default",
+    included: "{{count}} documents included",
+    download: "Download generated llms.txt",
+    preview: "Generated preview",
+  },
+  ko: {
+    title: "llms.txt 배포",
+    description: "배포용 목차에 넣을 문서를 선택합니다. 워크스페이스와 기존 llms.txt는 변경하지 않습니다.",
+    optional: "선택 사항",
+    privateExcluded: "비공개 문서 {{count}}개 기본 제외",
+    included: "포함 문서 {{count}}개",
+    download: "생성된 llms.txt 다운로드",
+    preview: "생성 미리보기",
+  },
+};
+
 const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
   en: {
     open: "Check knowledge base compatibility",
@@ -971,6 +1011,7 @@ export const getKnowledgeCompatibilityCopy = (
   const actions = actionCopies[language] ?? actionCopies.en;
   const detectionCopy = detectionCopies[language];
   const migrationCopy = migrationCopies[language];
+  const deliveryCopy = deliveryCopies[language] ?? deliveryCopies.en;
   return {
     open: copy.open,
     back: copy.back,
@@ -1004,6 +1045,15 @@ export const getKnowledgeCompatibilityCopy = (
       formatMessage(migrationCopy.supportAdvanced, { count }),
     supportAdvancedPartial: (count, runtimes) =>
       formatMessage(migrationCopy.supportAdvancedPartial, { count, runtimes }),
+    llmsTitle: deliveryCopy.title,
+    llmsDescription: deliveryCopy.description,
+    llmsOptional: deliveryCopy.optional,
+    llmsPrivateExcluded: (count) =>
+      formatMessage(deliveryCopy.privateExcluded, { count }),
+    llmsIncluded: (count) =>
+      formatMessage(deliveryCopy.included, { count }),
+    llmsDownload: deliveryCopy.download,
+    llmsPreview: deliveryCopy.preview,
     requiredChanges: (count) => formatMessage(
       count === 1 ? copy.requiredChange : copy.requiredChanges,
       { count },

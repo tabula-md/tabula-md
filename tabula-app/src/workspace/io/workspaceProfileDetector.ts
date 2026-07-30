@@ -3,6 +3,7 @@ import {
   createWorkspaceKnowledgeIndex,
   getKnowledgeProfileDefinition,
   getWorkspaceOkfCompatibility,
+  validateLlmsTxt,
   type KnowledgeProfileKind,
   type LlmWikiRoleAssignment,
   type WorkspaceKnowledgeIndex,
@@ -312,13 +313,33 @@ export const WORKSPACE_PROFILE_DETECTORS: readonly WorkspaceProfileDetector[] = 
   {
     id: "llms-txt",
     detect: (input) => {
-      const fileCount = input.sourcePaths.filter((path) =>
-        getBasename(path) === "llms.txt").length;
+      const files = input.supportFiles.filter((file) =>
+        getBasename(file.path) === "llms.txt");
+      const fileCount = files.length;
+      const validations = files.map((file) =>
+        validateLlmsTxt(file.text, input.sourcePaths)
+      );
+      const issueCount = validations.reduce(
+        (count, report) => count + report.issues.length,
+        0,
+      );
+      const externalLinkCount = validations.reduce(
+        (count, report) => count + report.externalLinkCount,
+        0,
+      );
       return fileCount > 0
         ? result(
             "llms-txt",
             "declared",
-            [{ code: "llms-files", count: fileCount }],
+            [
+              { code: "llms-files", count: fileCount },
+              ...(issueCount > 0
+                ? [{ code: "llms-validation-issues" as const, count: issueCount }]
+                : []),
+              ...(externalLinkCount > 0
+                ? [{ code: "llms-external-links" as const, count: externalLinkCount }]
+                : []),
+            ],
             { fileCount },
           )
         : null;

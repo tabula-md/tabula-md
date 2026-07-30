@@ -935,6 +935,79 @@
   color: var(--attention);
 }
 
+.right-llms-document-list {
+  display: grid;
+  gap: 2px;
+}
+
+.right-llms-document-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--right-tight-gap);
+  min-height: 42px;
+  padding: 4px var(--right-row-x);
+  border-radius: var(--right-row-radius);
+}
+
+.right-llms-document-row:hover {
+  background: var(--surface-muted);
+}
+
+.right-llms-document-row > span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.right-llms-document-row strong,
+.right-llms-document-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-llms-document-row strong {
+  color: var(--text-soft);
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-regular);
+}
+
+.right-llms-document-row small {
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+}
+
+.right-llms-document-row > button:last-child {
+  min-height: 26px;
+  padding: 0 7px;
+  border-radius: var(--right-row-radius);
+  color: var(--text-muted);
+  background: transparent;
+  font-size: var(--font-ui-caption);
+}
+
+.right-llms-document-row > button:last-child.active {
+  color: var(--text-primary);
+  background: var(--surface-workbench);
+}
+
+.right-llms-preview {
+  display: block;
+  padding: 9px;
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+  font-size: var(--font-ui-caption);
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.right-compatibility-apply-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .right-compatibility-diff {
   display: grid;
   gap: 5px;

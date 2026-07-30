@@ -83,6 +83,10 @@ describe("knowledge compatibility copy", () => {
       expect(copy.supportCore.trim()).not.toBe("");
       expect(copy.supportAdvanced(2)).toContain("2");
       expect(copy.supportAdvancedPartial(1, "custom")).toContain("custom");
+      expect(copy.llmsTitle.trim()).not.toBe("");
+      expect(copy.llmsDescription.trim()).not.toBe("");
+      expect(copy.llmsPrivateExcluded(2)).toContain("2");
+      expect(copy.llmsIncluded(3)).toContain("3");
 
       for (const code of issueCodes) {
         const issue: OkfCompatibilityIssue = {

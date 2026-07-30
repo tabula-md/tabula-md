@@ -33,6 +33,7 @@ import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibi
 import { RightPanelOkfIndexes } from "./RightPanelOkfIndexes";
 import { RightPanelKnowledgeHealth } from "./RightPanelKnowledgeHealth";
 import { RightPanelKnowledgeChanges } from "./RightPanelKnowledgeChanges";
+import { RightPanelLlmsTxtExport } from "./RightPanelLlmsTxtExport";
 import {
   KNOWLEDGE_VERIFICATION_ISSUE_CODES,
   RightPanelKnowledgeVerification,
@@ -898,6 +899,9 @@ export function RightPanelKnowledgeCompatibility({
           onMaterialize={onMaterializeIndex}
           plan={conformancePlan}
         />
+      )}
+      {knowledgeIndex && (
+        <RightPanelLlmsTxtExport copy={copy} index={knowledgeIndex} />
       )}
 
       <p className="right-compatibility-footnote">{copy.unchanged}</p>
