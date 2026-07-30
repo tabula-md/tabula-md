@@ -23,6 +23,8 @@ describe("WorkspaceSessionHost", () => {
     const roomSession = createRoomWorkspaceSession(room("view-store"));
 
     expect(localSession.viewStore).not.toBe(roomSession.viewStore);
+    expect(localSession.source.kind).toBe("browser-copy");
+    expect(roomSession.source.kind).toBe("collaboration-room");
     localSession.viewStore.setState({ files: [] });
     expect(roomSession.viewStore.getState()).not.toBe(localSession.viewStore.getState());
 
