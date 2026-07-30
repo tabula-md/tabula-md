@@ -6,8 +6,12 @@ import type {
   WorkspaceImportProfile,
 } from "./workspaceImportProfile";
 import type {
+  KnowledgeProfileKind,
   WorkspaceConventionProfile,
 } from "@tabula-md/tabula";
+import type {
+  ProfileDetectionConfidence,
+} from "./workspaceProfileDetector";
 
 type WorkspaceFolderImportCopy = {
   close: string;
@@ -28,11 +32,21 @@ type WorkspaceFolderImportCopy = {
   linkSyntax: (value: WorkspaceImportLinkSyntax) => string;
   fileHandling: (preserved: number, ignored: number) => string;
   evidence: (value: WorkspaceImportEvidence) => string;
+  profileKind: (value: KnowledgeProfileKind) => string;
+  confidence: (value: ProfileDetectionConfidence) => string;
+  profileFileCount: (count: number) => string;
+  detectorWarning: (count: number) => string;
 };
 
 type RawWorkspaceFolderImportCopy = Omit<
   WorkspaceFolderImportCopy,
-  "format" | "convention" | "linkSyntax" | "fileHandling" | "evidence"
+  | "confidence"
+  | "convention"
+  | "evidence"
+  | "fileHandling"
+  | "format"
+  | "linkSyntax"
+  | "profileKind"
 > & {
   formats: Record<"plain-markdown" | "markdown-wiki" | "okf", string>;
   conventionLabels: Record<WorkspaceConventionProfile, string>;
@@ -42,12 +56,89 @@ type RawWorkspaceFolderImportCopy = Omit<
     WorkspaceImportEvidenceCode,
     (value: WorkspaceImportEvidence) => string
   >>;
+  profileKindLabels: Record<KnowledgeProfileKind, string>;
+  confidenceLabels: Record<ProfileDetectionConfidence, string>;
 };
 
 const count = (value: WorkspaceImportEvidence) => value.count ?? 0;
 
+type ProfileUiCopy = Pick<
+  RawWorkspaceFolderImportCopy,
+  | "confidenceLabels"
+  | "detectorWarning"
+  | "profileFileCount"
+  | "profileKindLabels"
+>;
+
+const profileUiCopies: Record<WorkspaceLanguage, ProfileUiCopy> = {
+  en: {
+    profileKindLabels: { syntax: "Syntax", convention: "Conventions", schema: "Knowledge schema", workflow: "Workflow", "agent-instruction": "Agent instructions", delivery: "Delivery", retrieval: "Retrieval" },
+    confidenceLabels: { declared: "Declared", strong: "Detected", heuristic: "Heuristic" },
+    profileFileCount: (value) => `${value} ${value === 1 ? "file" : "files"}`,
+    detectorWarning: (value) => `${value} profile ${value === 1 ? "check" : "checks"} could not be completed. Files are still preserved.`,
+  },
+  ko: {
+    profileKindLabels: { syntax: "문법", convention: "규약", schema: "지식 스키마", workflow: "워크플로", "agent-instruction": "에이전트 지침", delivery: "전달 형식", retrieval: "검색" },
+    confidenceLabels: { declared: "명시됨", strong: "감지됨", heuristic: "추정" },
+    profileFileCount: (value) => `파일 ${value}개`,
+    detectorWarning: (value) => `프로필 검사 ${value}개를 완료하지 못했습니다. 파일은 그대로 보존됩니다.`,
+  },
+  ja: {
+    profileKindLabels: { syntax: "構文", convention: "規約", schema: "知識スキーマ", workflow: "ワークフロー", "agent-instruction": "エージェント指示", delivery: "配布", retrieval: "検索" },
+    confidenceLabels: { declared: "宣言済み", strong: "検出", heuristic: "推定" },
+    profileFileCount: (value) => `${value} ファイル`,
+    detectorWarning: (value) => `${value} 件のプロファイル検査を完了できませんでした。ファイルは保持されます。`,
+  },
+  zh: {
+    profileKindLabels: { syntax: "语法", convention: "约定", schema: "知识架构", workflow: "工作流", "agent-instruction": "代理说明", delivery: "交付", retrieval: "检索" },
+    confidenceLabels: { declared: "已声明", strong: "已检测", heuristic: "推测" },
+    profileFileCount: (value) => `${value} 个文件`,
+    detectorWarning: (value) => `${value} 项配置检查未能完成。文件仍会保留。`,
+  },
+  es: {
+    profileKindLabels: { syntax: "Sintaxis", convention: "Convenciones", schema: "Esquema de conocimiento", workflow: "Flujo de trabajo", "agent-instruction": "Instrucciones del agente", delivery: "Entrega", retrieval: "Recuperación" },
+    confidenceLabels: { declared: "Declarado", strong: "Detectado", heuristic: "Heurístico" },
+    profileFileCount: (value) => `${value} ${value === 1 ? "archivo" : "archivos"}`,
+    detectorWarning: (value) => `No se completaron ${value} comprobaciones de perfil. Los archivos se conservan.`,
+  },
+  fr: {
+    profileKindLabels: { syntax: "Syntaxe", convention: "Conventions", schema: "Schéma de connaissances", workflow: "Flux de travail", "agent-instruction": "Instructions d’agent", delivery: "Livraison", retrieval: "Recherche" },
+    confidenceLabels: { declared: "Déclaré", strong: "Détecté", heuristic: "Heuristique" },
+    profileFileCount: (value) => `${value} fichier${value === 1 ? "" : "s"}`,
+    detectorWarning: (value) => `${value} vérification${value === 1 ? "" : "s"} de profil n’ont pas abouti. Les fichiers restent préservés.`,
+  },
+  de: {
+    profileKindLabels: { syntax: "Syntax", convention: "Konventionen", schema: "Wissensschema", workflow: "Arbeitsablauf", "agent-instruction": "Agentenanweisungen", delivery: "Bereitstellung", retrieval: "Abruf" },
+    confidenceLabels: { declared: "Deklariert", strong: "Erkannt", heuristic: "Heuristisch" },
+    profileFileCount: (value) => `${value} Datei${value === 1 ? "" : "en"}`,
+    detectorWarning: (value) => `${value} Profilprüfung${value === 1 ? "" : "en"} konnten nicht abgeschlossen werden. Dateien bleiben erhalten.`,
+  },
+};
+
+const getDefaultEvidenceLabel = (value: WorkspaceImportEvidence) => {
+  switch (value.code) {
+    case "gfm-files":
+      return `${count(value)} Markdown ${count(value) === 1 ? "file" : "files"} found.`;
+    case "mdx-files":
+      return `${count(value)} MDX ${count(value) === 1 ? "file" : "files"} found; source editing is used.`;
+    case "raw-wiki-roles":
+      return "Separate raw and wiki directory roles were found.";
+    case "agents-files":
+      return `${count(value)} AGENTS.md ${count(value) === 1 ? "file" : "files"} found.`;
+    case "claude-files":
+      return `${count(value)} CLAUDE.md ${count(value) === 1 ? "file" : "files"} found.`;
+    case "skill-files":
+      return `${count(value)} Agent Skill ${count(value) === 1 ? "file" : "files"} found.`;
+    case "llms-files":
+      return `${count(value)} llms.txt ${count(value) === 1 ? "file" : "files"} found.`;
+    default:
+      return value.code;
+  }
+};
+
 const copies: Record<WorkspaceLanguage, RawWorkspaceFolderImportCopy> = {
   en: {
+    ...profileUiCopies.en,
     close: "Close folder dialog",
     title: "Open folder",
     description: "Tabula.md saves a copy in this browser and replaces the current local workspace. The original folder is not changed or kept in sync. Markdown documents and recognized workspace metadata are included.",
@@ -91,6 +182,7 @@ const copies: Record<WorkspaceLanguage, RawWorkspaceFolderImportCopy> = {
     },
   },
   ko: {
+    ...profileUiCopies.ko,
     close: "폴더 창 닫기",
     title: "폴더 열기",
     description: "Tabula.md가 이 브라우저에 사본을 저장하고 현재 로컬 워크스페이스를 대체합니다. 원본 폴더는 변경되거나 동기화되지 않습니다.",
@@ -132,6 +224,7 @@ const copies: Record<WorkspaceLanguage, RawWorkspaceFolderImportCopy> = {
     },
   },
   ja: {
+    ...profileUiCopies.ja,
     close: "フォルダーダイアログを閉じる",
     title: "フォルダーを開く",
     description: "Tabula.md はこのブラウザーにコピーを保存し、現在のローカルワークスペースを置き換えます。元のフォルダーは変更も同期もされません。",
@@ -161,6 +254,7 @@ const copies: Record<WorkspaceLanguage, RawWorkspaceFolderImportCopy> = {
     },
   },
   zh: {
+    ...profileUiCopies.zh,
     close: "关闭文件夹对话框",
     title: "打开文件夹",
     description: "Tabula.md 会在此浏览器中保存副本并替换当前本地工作区。原文件夹不会被修改或保持同步。",
@@ -190,6 +284,7 @@ const copies: Record<WorkspaceLanguage, RawWorkspaceFolderImportCopy> = {
     },
   },
   es: {
+    ...profileUiCopies.es,
     close: "Cerrar diálogo de carpeta",
     title: "Abrir carpeta",
     description: "Tabula.md guarda una copia en este navegador y reemplaza el espacio local actual. La carpeta original no se modifica ni se sincroniza.",
@@ -219,6 +314,7 @@ const copies: Record<WorkspaceLanguage, RawWorkspaceFolderImportCopy> = {
     },
   },
   fr: {
+    ...profileUiCopies.fr,
     close: "Fermer la boîte de dialogue du dossier",
     title: "Ouvrir un dossier",
     description: "Tabula.md enregistre une copie dans ce navigateur et remplace l’espace local actuel. Le dossier d’origine n’est ni modifié ni synchronisé.",
@@ -248,6 +344,7 @@ const copies: Record<WorkspaceLanguage, RawWorkspaceFolderImportCopy> = {
     },
   },
   de: {
+    ...profileUiCopies.de,
     close: "Ordnerdialog schließen",
     title: "Ordner öffnen",
     description: "Tabula.md speichert eine Kopie in diesem Browser und ersetzt den aktuellen lokalen Workspace. Der ursprüngliche Ordner wird weder geändert noch synchronisiert.",
@@ -295,6 +392,11 @@ export const getWorkspaceFolderImportCopy = (
     linkSyntax: (value) => copy.linkLabels[value],
     fileHandling: copy.fileHandling,
     evidence: (value) =>
-      copy.evidenceLabels[value.code]?.(value) ?? value.code,
+      copy.evidenceLabels[value.code]?.(value) ??
+      getDefaultEvidenceLabel(value),
+    profileKind: (value) => copy.profileKindLabels[value],
+    confidence: (value) => copy.confidenceLabels[value],
+    profileFileCount: copy.profileFileCount,
+    detectorWarning: copy.detectorWarning,
   };
 };

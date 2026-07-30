@@ -159,16 +159,41 @@
   color: var(--text-primary);
 }
 
-.workspace-import-profile-evidence {
+.workspace-import-profile-detections {
   display: grid;
-  gap: 4px;
+  gap: var(--space-3);
+}
+
+.workspace-import-profile-detection {
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-import-profile-detection strong {
+  font-weight: var(--weight-ui-medium);
+}
+
+.workspace-import-profile-detection small {
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+}
+
+.workspace-import-profile-detection ul {
+  display: grid;
+  gap: 2px;
   margin: 0;
-  padding: var(--space-3) 0 0;
-  border-top: 1px solid var(--line-subtle);
+  padding: 2px 0 0;
   color: var(--text-muted);
   font-size: var(--font-ui-caption);
   line-height: 1.4;
   list-style: none;
+}
+
+.workspace-import-profile-warning {
+  margin: 0;
+  color: var(--text-warning);
+  font-size: var(--font-ui-caption);
+  line-height: 1.4;
 }
 
 .workspace-export-review-modal {

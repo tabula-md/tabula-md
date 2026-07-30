@@ -38,5 +38,11 @@ describe("workspace folder import copy", () => {
     expect(copy.evidence(profile.evidence[0])).toBe(
       "Root index declares OKF 0.1.",
     );
+    expect(copy.profileKind("schema")).toBe("Knowledge schema");
+    expect(copy.confidence("declared")).toBe("Declared");
+    expect(copy.profileFileCount(2)).toBe("2 files");
+    expect(copy.detectorWarning(1)).toContain(
+      "Files are still preserved",
+    );
   });
 });

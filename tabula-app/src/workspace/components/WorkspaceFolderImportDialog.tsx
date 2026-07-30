@@ -1,4 +1,8 @@
 import { FolderOpen, X } from "lucide-react";
+import {
+  getKnowledgeProfileDefinition,
+  type KnowledgeProfileKind,
+} from "@tabula-md/tabula";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceArchiveEntries } from "../io/workspaceArchive";
 import { getWorkspaceFolderImportCopy } from "../io/workspaceFolderImportLocale";
@@ -25,6 +29,18 @@ export function WorkspaceFolderImportDialog({
   const paths = getWorkspaceArchiveEntries(workspace.files, workspace.folders)
     .filter((entry) => !entry.path.endsWith("/"))
     .map((entry) => entry.path);
+  const detectionGroups = profile.detections.reduce(
+    (groups, detection) => {
+      const group = groups.get(detection.kind) ?? [];
+      group.push(detection);
+      groups.set(detection.kind, group);
+      return groups;
+    },
+    new Map<
+      KnowledgeProfileKind,
+      WorkspaceImportProfile["detections"][number][]
+    >(),
+  );
 
   return (
     <ModalSurface
@@ -48,12 +64,47 @@ export function WorkspaceFolderImportDialog({
           <strong>{copy.format(profile)}</strong>
         </div>
         <dl className="workspace-import-profile-fields">
-          {profile.conventions.length > 0 && (
-            <div>
-              <dt>{copy.conventions}</dt>
-              <dd>{profile.conventions.map(copy.convention).join(", ")}</dd>
+          {[...detectionGroups].map(([kind, detections]) => (
+            <div key={kind}>
+              <dt>{copy.profileKind(kind)}</dt>
+              <dd className="workspace-import-profile-detections">
+                {detections.map((detection) => {
+                  const definition = getKnowledgeProfileDefinition(
+                    detection.profileId,
+                  );
+                  return (
+                    <div
+                      className="workspace-import-profile-detection"
+                      key={detection.profileId}
+                    >
+                      <strong>
+                        {definition?.label ?? detection.profileId}
+                      </strong>
+                      <small>
+                        {[
+                          copy.confidence(detection.confidence),
+                          typeof detection.fileCount === "number"
+                            ? copy.profileFileCount(detection.fileCount)
+                            : "",
+                        ].filter(Boolean).join(" · ")}
+                      </small>
+                      {detection.evidence.length > 0 && (
+                        <ul>
+                          {detection.evidence.map((evidence, index) => (
+                            <li
+                              key={`${detection.profileId}:${evidence.code}:${index}`}
+                            >
+                              {copy.evidence(evidence)}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </dd>
             </div>
-          )}
+          ))}
           {profile.linkSyntaxes.length > 0 && (
             <div>
               <dt>{copy.links}</dt>
@@ -70,14 +121,10 @@ export function WorkspaceFolderImportDialog({
             </dd>
           </div>
         </dl>
-        {profile.evidence.length > 0 && (
-          <ul className="workspace-import-profile-evidence">
-            {profile.evidence.slice(0, 4).map((evidence) => (
-              <li key={`${evidence.code}:${evidence.value ?? evidence.count ?? ""}`}>
-                {copy.evidence(evidence)}
-              </li>
-            ))}
-          </ul>
+        {profile.diagnostics.length > 0 && (
+          <p className="workspace-import-profile-warning">
+            {copy.detectorWarning(profile.diagnostics.length)}
+          </p>
         )}
       </section>
       <div className="json-import-copy">
