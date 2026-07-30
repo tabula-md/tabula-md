@@ -1356,7 +1356,10 @@ export async function run(ctx) {
         await page.locator(".cm-visual-footnote-definition").count() === 0,
       `A new footnote should expose one source line with a normal cursor. height=${insertedFootnoteCursorHeight}`,
     );
-    await page.keyboard.type("Footnote body");
+    await page.keyboard.type("Foot");
+    // Cross the deferred local commit while the inserted source block is active.
+    await page.waitForTimeout(240);
+    await page.keyboard.type("note body");
     await page.keyboard.press("ControlOrMeta+End");
     await page.keyboard.press("Enter");
     await page.keyboard.press("Enter");

@@ -258,6 +258,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const onSelectionChangeRef = useRef(onSelectionChange);
     const onSelectionActionPositionChangeRef = useRef(onSelectionActionPositionChange);
     const onScrollRatioChangeRef = useRef(onScrollRatioChange);
+    const resolveWorkspaceLinkRef = useRef(resolveWorkspaceLink);
+    const stableResolveWorkspaceLinkRef = useRef<
+      NonNullable<MarkdownEditorProps["resolveWorkspaceLink"]>
+    >((target, syntax, context) =>
+      resolveWorkspaceLinkRef.current?.(target, syntax, context));
     const collaborationBindingRef = useRef(collaborationBinding);
     const appliedCollaborationBindingRef = useRef(collaborationBinding);
     const pendingLocalEchoDocRef = useRef<EditorState["doc"] | null>(null);
@@ -305,6 +310,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     useEffect(() => {
       onScrollRatioChangeRef.current = onScrollRatioChange;
     }, [onScrollRatioChange]);
+
+    resolveWorkspaceLinkRef.current = resolveWorkspaceLink;
 
     useEffect(() => {
       collaborationBindingRef.current = collaborationBinding;
@@ -848,7 +855,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         view.dispatch({
           effects: compartmentsRef.current.visualMode.reconfigure(
             createEditorVisualModeExtension(interfaceCopy, {
-              resolveWorkspaceLink,
+              resolveWorkspaceLink: stableResolveWorkspaceLinkRef.current,
               sourceDocumentId: fileId,
             }),
           ),
@@ -857,7 +864,13 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       return () => {
         cancelled = true;
       };
-    }, [fileId, interfaceCopy, resolveWorkspaceLink, visualEditing]);
+    }, [
+      fileId,
+      interfaceCopy.imageFailed,
+      interfaceCopy.markTaskComplete,
+      interfaceCopy.markTaskIncomplete,
+      visualEditing,
+    ]);
 
     useEffect(() => {
       viewRef.current?.dispatch({
