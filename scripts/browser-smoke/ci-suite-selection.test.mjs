@@ -100,6 +100,18 @@ test("runs a changed performance spec only when explicitly selected", () => {
   assert.deepEqual(selection.legacySuites, []);
 });
 
+test("runs performance checks for workspace metrics and the shared presentation cache", () => {
+  for (const path of [
+    "scripts/browser-smoke/suites/workspace-performance.mjs",
+    "tabula-app/src/markdownPresentationCache.ts",
+  ]) {
+    const selection = selectBrowserSmokeSuites([path]);
+
+    assert(selection.playwrightFiles.includes("performance.spec.mjs"));
+    assert.equal(selection.needsRoom, true);
+  }
+});
+
 test("routes storage and service suites through capability specs", () => {
   const storage = selectBrowserSmokeSuites([
     "tabula-app/src/workspace/persistence/workspaceIndexedDb.ts",

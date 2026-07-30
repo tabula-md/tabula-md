@@ -1,7 +1,7 @@
 import {
-  createMarkdownPresentationDocument,
   type PresentationFootnote,
 } from "@tabula-md/tabula";
+import { getMarkdownPresentationDocument } from "../markdownPresentationCache";
 
 export type PreviewMarkdownDefinition = {
   label: string;
@@ -39,7 +39,7 @@ const collectBracketLabels = (markdown: string) => {
 
 const collectFootnoteLabels = (markdown: string) => {
   return new Set(
-    createMarkdownPresentationDocument(markdown).references.footnotes
+    getMarkdownPresentationDocument(markdown).references.footnotes
       .filter((footnote) => footnote.references.length > 0)
       .map((footnote) => footnote.identifier),
   );
@@ -49,7 +49,7 @@ export const getPreviewGlobalMarkdownContext = (
   markdown: string,
 ): PreviewGlobalMarkdownContext => {
   const lines = markdown.split(/\r?\n/);
-  const presentation = createMarkdownPresentationDocument(markdown);
+  const presentation = getMarkdownPresentationDocument(markdown);
   let isInFence = false;
   let activeFenceMarker = "";
   const referenceDefinitions: PreviewMarkdownDefinition[] = [];

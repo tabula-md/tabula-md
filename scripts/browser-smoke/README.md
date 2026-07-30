@@ -32,7 +32,7 @@ Named Playwright specs are organized by product capability:
 - `collaboration-capability`: live room synchronization
 - `share-capability`: encrypted Export link handoff
 - `accessibility-regression`: viewport, theme, focus, overlay, touch, IME, and reduced-motion matrix
-- `performance`: long-document responsiveness
+- `performance`: measured long-document, workspace interaction, persistence, and lazy-renderer budgets
 
 ```bash
 npm run test:browser:playwright:canary
@@ -82,7 +82,7 @@ Capability map (including remaining legacy service suites):
 - `collaboration`: local and deployed live-room sync.
 - `collaboration-editor-torture`: deterministic live editing, undo/redo, selection, and optional multi-peer soak.
 - `json-share`: encrypted snapshot export and replace/import.
-- `performance`: long-document editor hot-path, virtual preview, split resize, 1MB Markdown, and multilingual regression checks.
+- `performance`: first input and IndexedDB persistence, view transitions, navigation, lazy renderers, long-document editor hot paths, virtual preview, split resize, 1MB Markdown, and multilingual regression checks.
 
 Run the large-document collaboration soak locally:
 

@@ -2,13 +2,13 @@ import { syntaxTree } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
 import type { SyntaxNode } from "@lezer/common";
 import {
-  createMarkdownPresentationDocument,
   inspectFrontmatterData,
   parseFrontmatter,
   type MarkdownPresentationDocument,
   type PresentationBlock,
   type PresentationNode,
 } from "@tabula-md/tabula";
+import { getMarkdownPresentationDocument } from "../markdownPresentationCache";
 
 export type EditorVisualSourceMap = {
   contentRange?: EditorVisualBlockRange;
@@ -131,9 +131,7 @@ const getPresentationDocument = (state: EditorState) => {
   const documentKey = state.doc as object;
   const cached = presentationByDocument.get(documentKey);
   if (cached) return cached;
-  const presentation = createMarkdownPresentationDocument(
-    state.doc.toString(),
-  );
+  const presentation = getMarkdownPresentationDocument(state.doc.toString());
   presentationByDocument.set(documentKey, presentation);
   return presentation;
 };

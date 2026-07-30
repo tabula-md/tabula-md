@@ -2,9 +2,9 @@ import { syntaxTree } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
 import type { SyntaxNode } from "@lezer/common";
 import {
-  createMarkdownPresentationDocument,
   type PresentationNode,
 } from "@tabula-md/tabula";
+import { getMarkdownPresentationDocument } from "../markdownPresentationCache";
 import { classifyMarkdownHref } from "../preview/markdownHref";
 import type {
   EditorVisualModeOptions,
@@ -33,9 +33,7 @@ export const getEditorVisualWorkspaceLinkRanges = (
   const { resolveWorkspaceLink, sourceDocumentId } = options;
 
   const ranges: EditorVisualWorkspaceLinkRange[] = [];
-  const presentation = createMarkdownPresentationDocument(
-    state.doc.toString(),
-  );
+  const presentation = getMarkdownPresentationDocument(state.doc.toString());
   for (const node of flattenPresentationNodes(presentation.blocks)) {
     if (
       node.type !== "link" ||

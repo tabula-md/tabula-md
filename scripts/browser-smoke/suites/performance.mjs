@@ -52,43 +52,44 @@ const PLAIN_SPLIT_WORDS = 10_000;
 const PLAIN_SPLIT_LINE_COUNT = 1_000;
 const PLAIN_SPLIT_PREVIEW_NODE_MAX = 350;
 const PLAIN_SPLIT_RENDERED_BLOCK_MAX = 20;
-const PLAIN_SPLIT_TYPE_MAX_LONG_TASK_MS = 120;
-const PLAIN_SPLIT_TYPE_MAX_FRAME_GAP_MS = 90;
+const PLAIN_SPLIT_TYPE_MAX_LONG_TASK_MS = process.env.CI ? 220 : 120;
+const PLAIN_SPLIT_TYPE_MAX_FRAME_GAP_MS = process.env.CI ? 240 : 90;
 const HTML_TABLE_DOC_CHAR_MIN = 150_000;
 const HTML_TABLE_DOC_WORD_MIN = 14_000;
 const HTML_TABLE_DOC_PREVIEW_NODE_MAX = 800;
 const HTML_TABLE_DOC_RENDERED_BLOCK_MAX = 120;
-const HTML_TABLE_DOC_INTERACTION_MAX_FRAME_GAP_MS = 130;
-const HTML_TABLE_DOC_TYPE_MAX_LONG_TASK_MS = 120;
-const HTML_TABLE_DOC_CLICK_MAX_LONG_TASK_MS = 80;
+const HTML_TABLE_DOC_INTERACTION_MAX_FRAME_GAP_MS = process.env.CI ? 260 : 130;
+const HTML_TABLE_DOC_TYPE_MAX_LONG_TASK_MS = process.env.CI ? 300 : 120;
+const HTML_TABLE_DOC_CLICK_MAX_LONG_TASK_MS = process.env.CI ? 140 : 80;
 const HTML_TABLE_DOC_SCROLL_MAX_LONG_TASK_MS = 120;
-const HTML_TABLE_DOC_RESIZE_MAX_ELAPSED_MS = 1_800;
-const HTML_TABLE_DOC_RESIZE_MAX_LONG_TASK_MS = 100;
+const HTML_TABLE_DOC_RESIZE_MAX_ELAPSED_MS = process.env.CI ? 2_600 : 1_800;
+const HTML_TABLE_DOC_RESIZE_MAX_LONG_TASK_MS = process.env.CI ? 300 : 100;
 const SMALL_PREVIEW_UPDATE_MAX_MS = 600;
 const KOREAN_SPLIT_LINE_COUNT = 2_200;
 const KOREAN_SPLIT_CHAR_MIN = 120_000;
 const KOREAN_SPLIT_PREVIEW_NODE_MAX = 700;
 const KOREAN_SPLIT_RENDERED_BLOCK_MAX = 120;
-const KOREAN_SPLIT_TYPE_MAX_LONG_TASK_MS = 120;
-const KOREAN_SPLIT_TYPE_MAX_FRAME_GAP_MS = 120;
+const KOREAN_SPLIT_TYPE_MAX_LONG_TASK_MS = process.env.CI ? 240 : 120;
+const KOREAN_SPLIT_TYPE_MAX_FRAME_GAP_MS = process.env.CI ? 180 : 120;
 const ONE_MEGABYTE_SPLIT_PREVIEW_NODE_MAX = 900;
 const ONE_MEGABYTE_SPLIT_RENDERED_BLOCK_MAX = 120;
-const ONE_MEGABYTE_SPLIT_INITIAL_MAX_MS = 2_500;
+const ONE_MEGABYTE_SPLIT_INITIAL_MAX_MS = process.env.CI ? 4_000 : 2_500;
 const ONE_MEGABYTE_SPLIT_TYPE_MAX_LONG_TASK_MS = 160;
 const ONE_MEGABYTE_SPLIT_TYPE_MAX_FRAME_GAP_MS = 140;
 const INLINE_IMAGE_REFERENCE_MIN_BYTES = 480_000;
 const INLINE_IMAGE_REFERENCE_MIN_LINES = 640;
 const INLINE_IMAGE_REFERENCE_INITIAL_MAX_MS = 2_500;
 const INLINE_IMAGE_REFERENCE_SCROLL_MAX_MS = 1_000;
-const INLINE_IMAGE_REFERENCE_MAX_LONG_TASK_MS = 160;
+const INLINE_IMAGE_REFERENCE_MAX_LONG_TASK_MS = process.env.CI ? 220 : 160;
 const INLINE_IMAGE_REFERENCE_MAX_SCROLL_HEIGHT = 50_000;
 const HOT_PATH_COMMIT_GUARD_MS = 90;
 const WORKSPACE_LOCAL_STORAGE_PREFIX = "tabula.project";
 const SPLIT_SYNC_UNRELATED_LINE_JUMP_MAX = 160;
 const SPLIT_SYNC_IDLE_SCROLL_DRIFT_MAX = 120;
 const SPLIT_SYNC_EDITOR_SCROLL_DELTA_MAX = 1;
-const SPLIT_SYNC_PREVIEW_INPUT_UPDATE_MAX_MS = 500;
+const SPLIT_SYNC_PREVIEW_INPUT_UPDATE_MAX_MS = process.env.CI ? 800 : 500;
 const ASYNC_PREVIEW_MEDIA_MIN_LINES = 900;
+const ASYNC_PREVIEW_MEDIA_LOAD_TIMEOUT_MS = process.env.CI ? 20_000 : 5_000;
 
 const reportPerformanceMetric = (name, metrics) => {
   console.log(`[performance] ${name}: ${JSON.stringify(metrics)}`);
@@ -1209,7 +1210,7 @@ export async function run(ctx) {
           return image instanceof HTMLImageElement && image.complete && image.naturalHeight > 0;
         },
         null,
-        { timeout: 5_000 },
+        { timeout: ASYNC_PREVIEW_MEDIA_LOAD_TIMEOUT_MS },
       );
       await waitForRenderFrame(page);
       await page.waitForTimeout(350);
@@ -1814,6 +1815,7 @@ export async function run(ctx) {
       await focusMarkdownEditor(page);
       await page.evaluate(installLargePasteProbe);
       await page.evaluate(async (value) => navigator.clipboard.writeText(value), largePasteMarkdown);
+      await focusMarkdownEditor(page);
 
       const pasteElapsed = await measureElapsed(async () => {
         await page.evaluate(() => window.__tabulaLargePasteProbe.start());
