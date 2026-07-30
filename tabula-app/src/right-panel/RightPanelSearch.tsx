@@ -28,7 +28,9 @@ import {
   type SearchOptions,
 } from "../editor/editorSearchModel";
 import {
+  getMetadataFacets,
   searchWorkspaceFiles,
+  type MetadataFacet,
   type WorkspaceFileSearchEntry,
 } from "../editor/workspaceFileSearchModel";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
@@ -49,33 +51,12 @@ type RightPanelSearchProps = {
   onSelectFile: (fileId: string) => void;
 };
 
-type MetadataFacet = {
-  value: string;
-  count: number;
-};
-
 type MetadataFacetSectionProps = {
   facets: readonly MetadataFacet[];
   emptyMessage: string;
   label: string;
   selected: ReadonlySet<string>;
   onToggleFacet: (value: string) => void;
-};
-
-const getMetadataFacets = <TValue extends string>(
-  entries: readonly WorkspaceFileSearchEntry[],
-  getValue: (entry: WorkspaceFileSearchEntry) => TValue | readonly TValue[] | undefined,
-) => {
-  const counts = new Map<TValue, number>();
-  for (const entry of entries) {
-    const values = getValue(entry);
-    for (const value of Array.isArray(values) ? values : values ? [values] : []) {
-      counts.set(value as TValue, (counts.get(value as TValue) ?? 0) + 1);
-    }
-  }
-  return [...counts]
-    .map(([value, count]) => ({ value, count }))
-    .sort((first, second) => first.value.localeCompare(second.value));
 };
 
 const getOpenableResource = (resource: string | undefined) => {

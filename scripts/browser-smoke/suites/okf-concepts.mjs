@@ -230,6 +230,49 @@ export async function run(ctx) {
       "Knowledge should add a compact workspace review entry without becoming a browser or graph.",
     );
     await workspaceKnowledge.getByRole("button", {
+      name: /Open review queue with \d+ documents?/,
+    }).click();
+    await page.getByRole("heading", {
+      name: "Review queue",
+      exact: true,
+    }).waitFor();
+    const reviewQueue = page.getByRole("region", {
+      name: "Review queue",
+      exact: true,
+    });
+    expect(
+      (await reviewQueue.locator(".right-knowledge-queue-row").count()) === 3 &&
+        await reviewQueue.getByText("Runtime architecture", { exact: true }).isVisible() &&
+        await reviewQueue.getByText("Authentication boundary", { exact: true }).isVisible() &&
+        await reviewQueue.getByText("Deployment runbook", { exact: true }).isVisible(),
+      "The review queue should group every concern into one row per concept document.",
+    );
+    await reviewQueue.getByRole("button", { name: "Filters", exact: true }).click();
+    await reviewQueue.getByRole("button", { name: /^Unverified\s+3$/ }).click();
+    expect(
+      (await reviewQueue.locator(".right-knowledge-queue-row").count()) === 3,
+      "Review queue metadata facets should reuse the same trust vocabulary as Search.",
+    );
+    await reviewQueue.getByLabel("Sort by", { exact: true }).selectOption("path");
+    await reviewQueue.getByRole("button", {
+      name: "Next review document",
+      exact: true,
+    }).click();
+    await waitForActiveTab(page, { exact: "deployment.md" });
+    await reviewQueue.getByRole("button", {
+      name: "Previous review document",
+      exact: true,
+    }).click();
+    await waitForActiveTab(page, { exact: "runtime.md" });
+    await reviewQueue.getByRole("button", {
+      name: "Back to document",
+      exact: true,
+    }).click();
+    await documentKnowledgeContext.getByRole("heading", {
+      name: "Runtime architecture",
+      exact: true,
+    }).waitFor();
+    await workspaceKnowledge.getByRole("button", {
       name: "Review workspace",
       exact: true,
     }).click();

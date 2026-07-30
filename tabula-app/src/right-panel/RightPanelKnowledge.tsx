@@ -18,9 +18,11 @@ import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferenc
 import { getKnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { getWorkspaceReview } from "../workspace/io/workspaceExportReviewModel";
+import { getWorkspaceKnowledgeReviewEntries } from "../workspace/workspaceKnowledgeReviewQueueModel";
 import { KnowledgeReviewDialog } from "./KnowledgeReviewDialog";
 import { RightPanelKnowledgeCompatibility } from "./RightPanelKnowledgeCompatibility";
 import { RightPanelKnowledgeContext } from "./RightPanelKnowledgeContext";
+import { RightPanelKnowledgeQueue } from "./RightPanelKnowledgeQueue";
 import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelKnowledgeProps = {
@@ -67,6 +69,7 @@ export function RightPanelKnowledge({
   const knowledgeCopy = getKnowledgePanelCopy(language);
   const compatibilityCopy = getKnowledgeCompatibilityCopy(language);
   const [workspaceReviewOpen, setWorkspaceReviewOpen] = useState(false);
+  const [reviewQueueOpen, setReviewQueueOpen] = useState(false);
   const healthReport = useMemo(
     () => index ? getWorkspaceKnowledgeHealth(index) : undefined,
     [index],
@@ -110,6 +113,16 @@ export function RightPanelKnowledge({
       : undefined,
     [compatibilityReport, healthReport, index, knowledgeBaseline],
   );
+  const reviewEntries = useMemo(
+    () => {
+      if (!index) return [];
+      return getWorkspaceKnowledgeReviewEntries(index, {
+        ...(compatibilityReport ? { compatibility: compatibilityReport } : {}),
+        ...(healthReport ? { health: healthReport } : {}),
+      });
+    },
+    [compatibilityReport, healthReport, index],
+  );
 
   useEffect(() => {
     if (knowledgeCompatibilityOpenRequest > 0) setWorkspaceReviewOpen(true);
@@ -138,13 +151,16 @@ export function RightPanelKnowledge({
                       workspaceReview.conceptCount,
                     )}
               </strong>
-              <small>
-                {workspaceReview.reviewAttentionCount > 0
-                  ? knowledgeCopy.workspaceAttention(
-                      workspaceReview.reviewAttentionCount,
-                    )
-                  : knowledgeCopy.workspaceReady}
-              </small>
+              {reviewEntries.length > 0 ? (
+                <button
+                  type="button"
+                  className="right-knowledge-workspace-attention"
+                  aria-label={knowledgeCopy.openReviewQueue(reviewEntries.length)}
+                  onClick={() => setReviewQueueOpen(true)}
+                >
+                  {knowledgeCopy.workspaceAttention(reviewEntries.length)}
+                </button>
+              ) : <small>{knowledgeCopy.workspaceReady}</small>}
             </span>
             <button
               type="button"
@@ -154,7 +170,16 @@ export function RightPanelKnowledge({
             </button>
           </header>
         )}
-        {activeFileId ? (
+        {reviewQueueOpen ? (
+          <RightPanelKnowledgeQueue
+            activeFileId={activeFileId}
+            compatibilityCopy={compatibilityCopy}
+            copy={knowledgeCopy}
+            entries={reviewEntries}
+            onBack={() => setReviewQueueOpen(false)}
+            onSelectFile={onSelectFile}
+          />
+        ) : activeFileId ? (
           <RightPanelKnowledgeContext
             activeFileId={activeFileId}
             activeFileTitle={activeFileTitle}

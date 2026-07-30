@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SEARCH_OPTIONS } from "./editorSearchModel";
-import { searchWorkspaceFiles } from "./workspaceFileSearchModel";
+import {
+  getMetadataFacets,
+  searchWorkspaceFiles,
+} from "./workspaceFileSearchModel";
 
 describe("searchWorkspaceFiles", () => {
   const files = [
@@ -116,5 +119,19 @@ describe("searchWorkspaceFiles", () => {
       ...DEFAULT_SEARCH_OPTIONS,
       regexp: true,
     })).toMatchObject({ error: expect.any(String), files: [] });
+  });
+
+  it("builds reusable metadata facet counts", () => {
+    expect(getMetadataFacets(files, (entry) => entry.tags)).toEqual([
+      { value: "oncall", count: 1 },
+      { value: "payments", count: 2 },
+    ]);
+    expect(getMetadataFacets(files, (entry) => [
+      ...(entry.tags ?? []),
+      ...(entry.tags ?? []),
+    ])).toEqual([
+      { value: "oncall", count: 1 },
+      { value: "payments", count: 2 },
+    ]);
   });
 });

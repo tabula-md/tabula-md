@@ -38,6 +38,30 @@ export type WorkspaceFileSearchResult = {
   files: WorkspaceFileSearchEntry[];
 };
 
+export type MetadataFacet<TValue extends string = string> = {
+  value: TValue;
+  count: number;
+};
+
+export const getMetadataFacets = <TEntry, TValue extends string>(
+  entries: readonly TEntry[],
+  getValue: (entry: TEntry) => TValue | readonly TValue[] | undefined,
+): MetadataFacet<TValue>[] => {
+  const counts = new Map<TValue, number>();
+  for (const entry of entries) {
+    const values = getValue(entry);
+    const uniqueValues = new Set(
+      Array.isArray(values) ? values : values ? [values] : [],
+    );
+    for (const value of uniqueValues) {
+      counts.set(value as TValue, (counts.get(value as TValue) ?? 0) + 1);
+    }
+  }
+  return [...counts]
+    .map(([value, count]) => ({ value, count }))
+    .sort((first, second) => first.value.localeCompare(second.value));
+};
+
 export const searchWorkspaceFiles = (
   entries: readonly WorkspaceFileSearchEntry[],
   query: string,
