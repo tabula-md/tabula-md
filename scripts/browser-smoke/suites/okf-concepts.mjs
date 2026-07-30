@@ -59,7 +59,10 @@ export async function run(ctx) {
     waitForPanelTab,
     withPage,
   } = ctx;
-  const fixtureEntries = await readFixtureEntries(fixtureRoot);
+  const fixtureEntries = [
+    ...await readFixtureEntries(fixtureRoot),
+    { path: "scratch.tmp", content: "excluded from the browser copy" },
+  ];
 
   await withPage(browser, "/", async (page) => {
     await page.locator('input[aria-label="Import folder"]').evaluate(
@@ -104,7 +107,59 @@ export async function run(ctx) {
       "Folder import should distinguish the OKF standard from OpenWiki and link conventions.",
     );
     await page.getByRole("button", { name: "Import and replace", exact: true }).click();
-    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    const importResult = page.getByRole("dialog", {
+      name: "OKF workspace imported",
+    });
+    await importResult.waitFor();
+    const resultValue = async (label) =>
+      importResult.getByText(label, { exact: true }).locator("..").locator("dd")
+        .textContent();
+    expect(
+      (await resultValue("Detected format")) === "OKF 0.1" &&
+        (await resultValue("Concepts")) === "3" &&
+        (await resultValue("Directory indexes")) === "2" &&
+        (await resultValue("Activity log")) === "Present" &&
+        (await resultValue("Support files preserved")) === "1" &&
+        (await resultValue("Files excluded")) === "1" &&
+        /^\d+$/.test((await resultValue("Required compatibility fixes")) ?? "") &&
+        /^\d+$/.test((await resultValue("Knowledge health attention")) ?? ""),
+      "OKF import orientation should summarize the detected structure and existing review models.",
+    );
+    expect(
+      await importResult.getByText(
+        "This workspace declares OKF 0.1. Review compatibility before adopting OKF 0.2 metadata and lifecycle practices.",
+        { exact: true },
+      ).isVisible() &&
+        await importResult.getByRole("button", {
+          name: "Review workspace",
+          exact: true,
+        }).isVisible(),
+      "An OKF 0.1 import should explain the 0.2 transition and offer workspace review.",
+    );
+    await importResult.getByRole("button", {
+      name: "Import details",
+      exact: true,
+    }).click();
+    expect(
+      await importResult.getByText(".last-update.json", {
+        exact: true,
+      }).isVisible() &&
+        await importResult.getByText("scratch.tmp", {
+          exact: true,
+        }).isVisible(),
+      "Import details should retain the preserved and excluded file receipt after replacement.",
+    );
+    await importResult.getByRole("button", {
+      name: "Open root index",
+      exact: true,
+    }).click();
+    await waitForActiveTab(page, { exact: "index.md" });
+    expect(
+      (await page.getByRole("dialog", {
+        name: "OKF workspace imported",
+      }).count()) === 0,
+      "Opening the root index should dismiss the one-time import orientation.",
+    );
 
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Files", exact: true }).click();
@@ -331,11 +386,25 @@ export async function run(ctx) {
     );
     await page.getByRole("dialog", { name: "Import folder" }).waitFor();
     await page.getByRole("button", { name: "Import and replace", exact: true }).click();
-    await page.locator(".empty-file-state").waitFor({ state: "visible" });
-
-    await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
-    await openExportPreflight(page, openProjectMenu);
+    const migrationImportResult = page.getByRole("dialog", {
+      name: "OKF workspace imported",
+    });
+    await migrationImportResult.waitFor();
+    expect(
+      (await migrationImportResult.getByText(
+        "This workspace declares OKF 0.1. Review compatibility before adopting OKF 0.2 metadata and lifecycle practices.",
+        { exact: true },
+      ).count()) === 0,
+      "An OKF 0.2 import should not show 0.1 transition guidance.",
+    );
+    await migrationImportResult.getByRole("button", {
+      name: "Review workspace",
+      exact: true,
+    }).click();
+    await page.getByRole("heading", {
+      name: "Review export readiness",
+      exact: true,
+    }).waitFor();
     const humanReview = page.getByRole("region", { name: "Human review 1" });
     await humanReview.locator(".right-compatibility-verification-row").click();
     const evidenceCount = await humanReview.getByText(

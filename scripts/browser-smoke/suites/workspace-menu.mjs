@@ -352,8 +352,11 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Import and replace", exact: true }).click();
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
     expect(
-      (await page.locator(".tab-item").count()) === 0,
-      "Importing a workspace should preserve its tree without opening every document as a tab.",
+      (await page.locator(".tab-item").count()) === 0 &&
+        (await page.getByRole("dialog", {
+          name: "OKF workspace imported",
+        }).count()) === 0,
+      "A plain Markdown import should preserve its tree without opening tabs or adding OKF orientation.",
     );
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Files", exact: true }).click();

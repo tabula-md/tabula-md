@@ -29,6 +29,10 @@ import {
 } from "@tabula-md/tabula";
 import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
 import type { WorkspaceExportReview } from "./workspaceExportReviewModel";
+import {
+  getWorkspaceImportResult,
+  type WorkspaceImportResult,
+} from "./workspaceImportResultModel";
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -170,6 +174,8 @@ export function useWorkspaceFileIoController({
   const [emptyDropActive, setEmptyDropActive] = useState(false);
   const [workspaceFolderImport, setWorkspaceFolderImport] =
     useState<WorkspaceFolderImportDraft | null>(null);
+  const [workspaceImportResult, setWorkspaceImportResult] =
+    useState<WorkspaceImportResult | null>(null);
   const [pendingWorkspaceExport, setPendingWorkspaceExport] = useState<{
     review: WorkspaceExportReview;
     snapshot: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">;
@@ -318,9 +324,11 @@ export function useWorkspaceFileIoController({
   };
 
   const closeWorkspaceFolderImport = () => setWorkspaceFolderImport(null);
+  const closeWorkspaceImportResult = () => setWorkspaceImportResult(null);
 
   const replaceWorkspaceWithFolder = () => {
     if (!workspaceFolderImport || isRoomSession) return;
+    const importResultDraft = workspaceFolderImport;
     const knowledgeBaseline = captureWorkspaceKnowledgeBaseline(
       getWorkspaceKnowledgeDocuments(
         workspaceFolderImport.workspace.files,
@@ -345,6 +353,15 @@ export function useWorkspaceFileIoController({
       showToast(copy.saveOpenedWorkspaceFailed, "error");
     });
     setWorkspaceFolderImport(null);
+    void getWorkspaceImportResult(importResultDraft)
+      .then((result) => setWorkspaceImportResult(result ?? null))
+      .catch((error: unknown) => {
+        clientErrorReporter.report({
+          feature: "workspace",
+          operation: "orient-folder-import",
+          error,
+        });
+      });
     onCloseChrome();
     syncUrlForLocalWorkspace("replace");
     queueAnimationFrameTask(() => editorRef.current?.focus());
@@ -389,6 +406,7 @@ export function useWorkspaceFileIoController({
   return {
     emptyDropActive,
     workspaceFolderImport,
+    workspaceImportResult,
     workspaceExportReview: pendingWorkspaceExport?.review ?? null,
     copyFile,
     downloadCurrentFile,
@@ -402,6 +420,7 @@ export function useWorkspaceFileIoController({
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDrop,
     closeWorkspaceFolderImport,
+    closeWorkspaceImportResult,
     replaceWorkspaceWithFolder,
   };
 }

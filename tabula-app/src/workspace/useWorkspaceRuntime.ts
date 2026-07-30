@@ -798,6 +798,7 @@ export function useWorkspaceRuntime() {
     closeJsonShareImport,
     closeWorkspaceExportReview,
     closeWorkspaceFolderImport,
+    closeWorkspaceImportResult,
     copyFile,
     confirmWorkspaceArchiveExport,
     downloadCurrentFile,
@@ -812,6 +813,7 @@ export function useWorkspaceRuntime() {
     jsonShareImport,
     workspaceExportReview,
     workspaceFolderImport,
+    workspaceImportResult,
     replaceWorkspaceWithFolder,
     replaceWorkspaceWithJsonShare,
   } = useWorkspaceIoController({
@@ -1011,6 +1013,17 @@ export function useWorkspaceRuntime() {
     setRightPanelOpen(true);
     setRightPanelView("knowledge");
     setKnowledgeCompatibilityOpenRequest((current) => current + 1);
+  });
+  const openImportedRootIndex = useEventCallback(() => {
+    const rootIndexDocumentId = workspaceImportResult?.rootIndexDocumentId;
+    closeWorkspaceImportResult();
+    if (rootIndexDocumentId) {
+      selectFile(rootIndexDocumentId);
+    }
+  });
+  const reviewImportedWorkspace = useEventCallback(() => {
+    closeWorkspaceImportResult();
+    reviewWorkspaceExportIssues();
   });
   const { menuSurfaceProps } = useWorkspaceMenuController({
     importInputRef,
@@ -1363,12 +1376,14 @@ export function useWorkspaceRuntime() {
         infoDialog,
         jsonShareImport,
         workspaceFolderImport,
+        workspaceImportResult,
         workspaceExportReview,
         language: workspacePreferences.language,
         shortcutPlatform,
         toast,
         onCloseInfoDialog: () => setInfoDialog(null),
         onCloseWorkspaceFolderImport: closeWorkspaceFolderImport,
+        onCloseWorkspaceImportResult: closeWorkspaceImportResult,
         onCloseWorkspaceExportReview: closeWorkspaceExportReview,
         onExportCurrentWorkspaceBeforeImport:
           exportCurrentWorkspaceBeforeImport,
@@ -1378,6 +1393,8 @@ export function useWorkspaceRuntime() {
         onCloseJsonShareImport: closeJsonShareImport,
         onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
         onReplaceWorkspaceWithFolder: replaceWorkspaceWithFolder,
+        onOpenImportedRootIndex: openImportedRootIndex,
+        onReviewImportedWorkspace: reviewImportedWorkspace,
         onConfirmWorkspaceExport: confirmWorkspaceArchiveExport,
         onReviewWorkspaceExportIssues: reviewWorkspaceExportIssues,
       },
