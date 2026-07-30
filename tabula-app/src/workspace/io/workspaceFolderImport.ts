@@ -3,6 +3,7 @@ import {
   WORKSPACE_ROOM_MAX_DOCUMENTS,
   WORKSPACE_ROOM_MAX_FOLDERS,
   WORKSPACE_ROOM_MAX_TREE_DEPTH,
+  createWorkspaceArtifact,
   getWorkspacePathSegmentIssue,
 } from "@tabula-md/tabula";
 import {
@@ -20,7 +21,6 @@ import {
 import {
   encodeBinaryWorkspaceSupportFile,
   isMarkdownWorkspacePath,
-  isPreservedWorkspaceSupportPath,
 } from "./workspaceSupportFile";
 import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
 import type { WorkspaceImportProfile } from "./workspaceImportProfile";
@@ -44,12 +44,23 @@ export type WorkspaceFolderImportDraft = {
 
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
 
-const decodeImportedFile = (bytes: Uint8Array, path: string) => {
-  if (isMarkdownWorkspacePath(path)) return textDecoder.decode(bytes);
+const decodeImportedFile = (bytes: Uint8Array) => {
   try {
     return textDecoder.decode(bytes);
   } catch {
     return encodeBinaryWorkspaceSupportFile(bytes);
+  }
+};
+
+const getImportedArtifactContent = (bytes: Uint8Array) => {
+  try {
+    return {
+      kind: "text" as const,
+      text: textDecoder.decode(bytes),
+      encoding: "utf-8" as const,
+    };
+  } catch {
+    return { kind: "binary" as const, bytes };
   }
 };
 
@@ -89,10 +100,7 @@ export const parseWorkspaceFolderImport = async (
     entries: normalizedEntries,
     selectedRoot,
   } = extractSelectedRoot(parsedEntries);
-  const entries = normalizedEntries.filter(({ segments }) =>
-    isMarkdownWorkspacePath(segments.at(-1) ?? "")
-    || isPreservedWorkspaceSupportPath(segments)
-  );
+  const entries = normalizedEntries;
   if (
     !entries.some(({ segments }) =>
       isMarkdownWorkspacePath(segments.at(-1) ?? ""))
@@ -139,15 +147,29 @@ export const parseWorkspaceFolderImport = async (
     if (contentBytes > WORKSPACE_ROOM_MAX_CONTENT_BYTES) {
       throw new Error("The file content in this workspace folder is too large.");
     }
+    const id = randomId();
+    const path = segments.join("/");
+    const artifact = await createWorkspaceArtifact({
+      id,
+      path,
+      content: getImportedArtifactContent(bytes),
+    });
     files.push(createWorkspaceFile(files.length + 1, {
-      id: randomId(),
+      id,
       title: segments.at(-1) ?? file.name,
-      text: decodeImportedFile(bytes, segments.join("/")),
+      text: decodeImportedFile(bytes),
       parentId: ensureFolder(segments.slice(0, -1)),
       viewMode: defaults.viewMode,
       readingWidth: defaults.readingWidth,
       lineWrapping: defaults.lineWrapping,
       lineNumbers: defaults.lineNumbers,
+      artifact: {
+        kind: artifact.kind,
+        mediaType: artifact.mediaType,
+        contentKind: artifact.content.kind,
+        sourceHash: artifact.sourceHash,
+        editable: artifact.editable,
+      },
     }));
   }
 

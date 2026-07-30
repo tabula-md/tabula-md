@@ -17,7 +17,7 @@ export const getWorkspaceKnowledgeDocuments = (
   const paths = getWorkspaceFilePaths(files, folders);
   return files.flatMap((file) => {
     const path = paths.get(file.id) ?? file.title;
-    return /\.md$/i.test(path)
+    return /\.(?:md|markdown)$/i.test(path)
       ? [{
           id: file.id,
           path,

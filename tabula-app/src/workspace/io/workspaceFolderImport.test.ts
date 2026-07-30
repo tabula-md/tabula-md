@@ -62,14 +62,63 @@ describe("workspace folder import", () => {
     expect(workspace.activeFileId).toBe("");
   });
 
-  it("includes Markdown documents but ignores unrecognized file types", async () => {
+  it("preserves Markdown documents and unrecognized file types", async () => {
     const workspace = await parseWorkspaceFolderFiles([
       createFolderFile("README.md", "# Readme"),
       createFolderFile("Legacy.markdown", "# Legacy"),
       createFolderFile("notes.txt", "notes"),
     ], defaults);
 
-    expect(workspace.files.map((file) => file.title)).toEqual(["README.md"]);
+    expect(workspace.files.map((file) => file.title)).toEqual([
+      "Legacy.markdown",
+      "notes.txt",
+      "README.md",
+    ]);
+    expect(workspace.files.find((file) => file.title === "notes.txt")?.artifact)
+      .toMatchObject({
+        kind: "support",
+        contentKind: "text",
+        editable: true,
+      });
+  });
+
+  it("round-trips a mixed knowledge workspace path-for-path and byte-for-byte", async () => {
+    const inputs = [
+      { path: "README.md", content: new TextEncoder().encode("# Readme\r\n") },
+      { path: "guide.markdown", content: new TextEncoder().encode("# Guide\n") },
+      { path: "page.mdx", content: new TextEncoder().encode("export const x = 1\n\n# Page\n") },
+      { path: "AGENTS.md", content: new TextEncoder().encode("# Rules\n") },
+      { path: ".obsidian/app.json", content: new TextEncoder().encode('{"vimMode":true}\n') },
+      { path: "references/query.sql", content: new TextEncoder().encode("SELECT 1;\n") },
+      { path: "references/attester.py", content: new TextEncoder().encode("print('ok')\n") },
+      { path: "images/diagram.png", content: new Uint8Array([0, 255, 1, 2, 3]) },
+      { path: "custom.unknown", content: new Uint8Array([128, 129, 130]) },
+    ];
+    const workspace = await parseWorkspaceFolderFiles(
+      inputs.map((input) => createFolderFile(input.path, input.content)),
+      defaults,
+    );
+    const exported = new Map(
+      getWorkspaceArchiveEntries(workspace.files, workspace.folders)
+        .filter((entry) => !entry.path.endsWith("/"))
+        .map((entry) => [
+          entry.path,
+          typeof entry.content === "string"
+            ? new TextEncoder().encode(entry.content)
+            : entry.content,
+        ]),
+    );
+
+    expect([...exported.keys()].sort()).toEqual(
+      inputs.map((input) => input.path).sort(),
+    );
+    for (const input of inputs) {
+      expect(exported.get(input.path)).toEqual(input.content);
+    }
+    expect(workspace.files.find((file) => file.title === "diagram.png")?.artifact)
+      .toMatchObject({ kind: "asset", contentKind: "binary", editable: false });
+    expect(workspace.files.find((file) => file.title === "custom.unknown")?.artifact)
+      .toMatchObject({ kind: "support", contentKind: "binary", editable: false });
   });
 
   it("preserves OpenWiki run state without treating it as a knowledge document", async () => {
@@ -104,13 +153,13 @@ describe("workspace folder import", () => {
     ], defaults);
     const { workspace } = draft;
 
-    expect(workspace.files).toHaveLength(4);
+    expect(workspace.files).toHaveLength(5);
     expect(draft.profile).toMatchObject({
       format: "okf",
       okfVersion: "0.1",
       conventions: ["openwiki"],
-      preservedSupportFileCount: 1,
-      ignoredFileCount: 1,
+      preservedSupportFileCount: 2,
+      ignoredFileCount: 0,
     });
     expect(workspace.files.map((file) => file.title)).toEqual(
       expect.arrayContaining([
@@ -118,10 +167,11 @@ describe("workspace folder import", () => {
         "index.md",
         "index.md",
         "overview.md",
+        "ignored.json",
       ]),
     );
     const archiveEntries = getWorkspaceArchiveEntries(workspace.files, workspace.folders);
-    expect(archiveEntries).toHaveLength(4);
+    expect(archiveEntries).toHaveLength(5);
     expect(archiveEntries).toEqual(expect.arrayContaining([
       { path: ".last-update.json", content: lastUpdate },
       {
@@ -141,6 +191,7 @@ describe("workspace folder import", () => {
         path: "architecture/overview.md",
         content: "---\ntype: Architecture\ntitle: Overview\n---\n\n# Overview",
       },
+      { path: "ignored.json", content: '{"not":"openwiki state"}' },
     ]));
 
     const knowledgeIndex = createWorkspaceKnowledgeIndex(
@@ -176,7 +227,10 @@ describe("workspace folder import", () => {
       { path: "references/query.sql", content: "SELECT 1;\r\n" },
       { path: "references/diagram.png", content: binary },
     ]));
-    expect(archiveEntries.some((entry) => entry.path === "source.ts")).toBe(false);
+    expect(archiveEntries).toContainEqual({
+      path: "source.ts",
+      content: "not part of the knowledge bundle",
+    });
     expect(createWorkspaceKnowledgeIndex(
       getWorkspaceKnowledgeDocuments(workspace.files, workspace.folders),
     ).documentsById.size).toBe(2);
