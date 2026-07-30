@@ -27,6 +27,7 @@ export type WorkspaceSourceCapabilities = {
 export type WorkspaceSnapshot = {
   artifacts: readonly WorkspaceArtifact[];
   capturedAt: string;
+  excludedPaths?: readonly string[];
 };
 
 export type ArtifactChange =
@@ -69,6 +70,9 @@ const nowIso = () => new Date().toISOString();
 const cloneSnapshot = (snapshot: WorkspaceSnapshot): WorkspaceSnapshot => ({
   capturedAt: snapshot.capturedAt,
   artifacts: snapshot.artifacts.map(cloneWorkspaceArtifact),
+  excludedPaths: snapshot.excludedPaths
+    ? [...snapshot.excludedPaths]
+    : undefined,
 });
 
 const readOnlyCapabilities: WorkspaceSourceCapabilities = {

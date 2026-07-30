@@ -20,6 +20,7 @@ import {
 import type {
   LiveFolderConflictReview,
 } from "../io/useWorkspaceFileIoController";
+import { LiveFolderOpeningDialog } from "./LiveFolderOpeningDialog";
 
 const WorkspaceFolderImportDialog = lazy(() =>
   import("./WorkspaceFolderImportDialog").then((module) => ({
@@ -43,6 +44,7 @@ export type WorkspaceOverlaySurfaceProps = {
   workspaceExportReview: WorkspaceExportReview | null;
   jsonShareImport: JsonShareImportState | null;
   liveFolderConflict: LiveFolderConflictReview | null;
+  liveFolderOpening: boolean;
   language: WorkspaceLanguage;
   shortcutPlatform: ShortcutPlatform;
   toast: AppToastState | null;
@@ -68,6 +70,7 @@ export function WorkspaceOverlaySurface({
   workspaceExportReview,
   jsonShareImport,
   liveFolderConflict,
+  liveFolderOpening,
   language,
   shortcutPlatform,
   toast,
@@ -102,12 +105,17 @@ export function WorkspaceOverlaySurface({
         <Suspense fallback={null}>
           <WorkspaceFolderImportDialog
             language={language}
+            excludedPaths={workspaceFolderImport.excludedPaths}
             workspace={workspaceFolderImport.workspace}
             profile={workspaceFolderImport.profile}
+            sourceKind={workspaceFolderImport.sourceKind}
             onCancel={onCloseWorkspaceFolderImport}
             onReplace={onReplaceWorkspaceWithFolder}
           />
         </Suspense>
+      )}
+      {liveFolderOpening && (
+        <LiveFolderOpeningDialog language={language} />
       )}
       {workspaceExportReview && (
         <Suspense fallback={null}>

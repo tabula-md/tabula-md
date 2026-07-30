@@ -148,6 +148,92 @@ describe("live folder source", () => {
       .toEqual(["archive/old.md", "docs/new.md", "README.md"]);
   });
 
+  it("skips generated dependency folders without hiding the exclusion", async () => {
+    const root = new MemoryDirectoryHandle("Project");
+    await put(root, "README.md", "# Project");
+    await put(root, ".obsidian/app.json", '{"vimMode":true}');
+    await put(root, "node_modules/dependency/index.js", "generated");
+    await put(root, ".git/objects/pack", "generated");
+    await put(root, "dist/index.js", "generated");
+
+    const snapshot = await createLiveFolderSourceAdapter(root).readSnapshot();
+
+    expect(snapshot.artifacts.map((item) => item.path)).toEqual([
+      ".obsidian/app.json",
+      "README.md",
+    ]);
+    expect(snapshot.excludedPaths).toEqual([
+      ".git/",
+      "dist/",
+      "node_modules/",
+    ]);
+
+    const draft = await createWorkspaceDraftFromArtifactSnapshot(
+      snapshot,
+      root.name,
+      {
+        viewMode: "edit",
+        readingWidth: "standard",
+        lineWrapping: false,
+        lineNumbers: false,
+      },
+    );
+    expect(draft).toMatchObject({
+      excludedPaths: [".git/", "dist/", "node_modules/"],
+      sourceKind: "live-folder",
+      profile: { ignoredFileCount: 3 },
+    });
+  });
+
+  it("does not apply collaboration-room file limits to a local folder", async () => {
+    const artifacts = await Promise.all(
+      Array.from({ length: 501 }, (_, index) =>
+        textArtifact(`file-${index}`, `notes/file-${index}.md`, `# ${index}`)),
+    );
+
+    const draft = await createWorkspaceDraftFromArtifactSnapshot(
+      {
+        artifacts,
+        capturedAt: "2026-07-30T00:00:00.000Z",
+      },
+      "Project",
+      {
+        viewMode: "edit",
+        readingWidth: "standard",
+        lineWrapping: false,
+        lineNumbers: false,
+      },
+    );
+
+    expect(draft.workspace.files).toHaveLength(501);
+    expect(draft.sourceKind).toBe("live-folder");
+  });
+
+  it("connects an empty folder so its first document can be created in Tabula", async () => {
+    const draft = await createWorkspaceDraftFromArtifactSnapshot(
+      {
+        artifacts: [],
+        capturedAt: "2026-07-30T00:00:00.000Z",
+      },
+      "Empty workspace",
+      {
+        viewMode: "edit",
+        readingWidth: "standard",
+        lineWrapping: false,
+        lineNumbers: false,
+      },
+    );
+
+    expect(draft.workspace.files).toEqual([]);
+    expect(draft.workspace.folders).toEqual([
+      expect.objectContaining({
+        title: "Empty workspace",
+        parentId: null,
+      }),
+    ]);
+    expect(draft.sourceKind).toBe("live-folder");
+  });
+
   it("does not overwrite an externally changed file", async () => {
     const root = new MemoryDirectoryHandle("Project");
     await put(root, "README.md", "# Base");

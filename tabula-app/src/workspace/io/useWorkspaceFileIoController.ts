@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -11,6 +12,7 @@ import type { MarkdownEditorHandle } from "../../document/markdownEditorTypes";
 import { createWorkspaceArchive } from "./workspaceArchive";
 import {
   parseWorkspaceFolderImport,
+  WorkspaceFolderImportError,
   type WorkspaceFolderImportDraft,
 } from "./workspaceFolderImport";
 import {
@@ -66,6 +68,7 @@ const replaceSnapshotArtifact = (
   replacement: WorkspaceSnapshot["artifacts"][number] | null,
 ): WorkspaceSnapshot => ({
   capturedAt: new Date().toISOString(),
+  excludedPaths: snapshot.excludedPaths,
   artifacts: replacement
     ? snapshot.artifacts.map((artifact) =>
         artifact.id === artifactId
@@ -214,6 +217,7 @@ export function useWorkspaceFileIoController({
   const [emptyDropActive, setEmptyDropActive] = useState(false);
   const [workspaceFolderImport, setWorkspaceFolderImport] =
     useState<WorkspaceFolderImportDraft | null>(null);
+  const [liveFolderOpening, setLiveFolderOpening] = useState(false);
   const [pendingWorkspaceExport, setPendingWorkspaceExport] = useState<{
     review: WorkspaceExportReview;
     snapshot: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">;
@@ -381,8 +385,77 @@ export function useWorkspaceFileIoController({
     setWorkspaceSourceKind("browser-copy");
   };
 
+  const flushLiveFolderWorkspace = useCallback(async (
+    filesSnapshot: readonly WorkspaceFile[],
+    foldersSnapshot: readonly WorkspaceFolder[],
+    operation = "write-live-folder",
+  ) => {
+    try {
+      const active = activeLiveFolderRef.current;
+      if (!active || liveFolderConflict) return true;
+      const local = await createArtifactSnapshotFromWorkspace(
+        filesSnapshot,
+        foldersSnapshot,
+      );
+      const plan = getLiveFolderWorkspaceWritePlan(
+        active.baseline,
+        local,
+      );
+      const deletes = plan.deletes.length > 0 &&
+          window.confirm(copy.confirmLiveFolderDelete)
+        ? plan.deletes
+        : [];
+      const changes = [...plan.changes, ...deletes];
+      if (changes.length === 0) return true;
+      const result = await active.adapter.writeChanges?.(changes);
+      if (!result?.ok) {
+        showToast(
+          result?.reason === "permission"
+            ? copy.liveFolderPermissionLost
+            : copy.liveFolderWriteConflict,
+          "error",
+        );
+        return false;
+      }
+      active.baseline = local;
+      return true;
+    } catch (error: unknown) {
+      clientErrorReporter.report({
+        feature: "workspace",
+        operation,
+        error,
+      });
+      showToast(copy.liveFolderWriteFailed, "error");
+      return false;
+    }
+  }, [copy, liveFolderConflict, showToast]);
+
+  const disconnectLiveWorkspaceFolderAndKeepCopy = async () => {
+    let writeSucceeded = true;
+    const filesSnapshot = files;
+    const foldersSnapshot = folders;
+    liveFolderWriteQueueRef.current = liveFolderWriteQueueRef.current
+      .then(async () => {
+        writeSucceeded = await flushLiveFolderWorkspace(
+          filesSnapshot,
+          foldersSnapshot,
+          "disconnect-live-folder",
+        );
+      });
+    await liveFolderWriteQueueRef.current;
+    disconnectLiveWorkspaceFolder();
+    if (writeSucceeded) showToast(copy.liveFolderDisconnected);
+  };
+
   const openLiveWorkspaceFolder = () => {
-    if (isRoomSession || !isLiveFolderSupported()) return;
+    if (
+      isRoomSession ||
+      liveFolderOpening ||
+      !isLiveFolderSupported()
+    ) return;
+    pendingLiveFolderRef.current = null;
+    setLiveFolderOpening(true);
+    onCloseChrome();
     void pickLiveFolderSourceAdapter().then(async (adapter) => {
       if (!adapter) return;
       const sourceSnapshot = await adapter.readSnapshot();
@@ -398,7 +471,6 @@ export function useWorkspaceFileIoController({
         },
       );
       pendingLiveFolderRef.current = { adapter };
-      onCloseChrome();
       setWorkspaceFolderImport(draft);
     }).catch((error: unknown) => {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -407,7 +479,20 @@ export function useWorkspaceFileIoController({
         operation: "open-live-folder",
         error,
       });
-      showToast(copy.openFailed, "error");
+      const message = error instanceof WorkspaceFolderImportError
+          ? {
+            "content-too-large": copy.liveFolderTooLarge,
+            "folder-tree-too-deep": copy.liveFolderTooDeep,
+            "no-markdown": copy.liveFolderOpenFailed,
+            "too-many-files": copy.liveFolderTooManyFiles,
+            "too-many-folders": copy.liveFolderTooManyFolders,
+          }[error.code]
+        : error instanceof DOMException && error.name === "NotAllowedError"
+          ? copy.liveFolderPermissionRequired
+          : copy.liveFolderOpenFailed;
+      showToast(message, "error");
+    }).finally(() => {
+      setLiveFolderOpening(false);
     });
   };
 
@@ -665,51 +750,19 @@ export function useWorkspaceFileIoController({
       const foldersSnapshot = folders;
       liveFolderWriteQueueRef.current = liveFolderWriteQueueRef.current
         .then(async () => {
-          const active = activeLiveFolderRef.current;
-          if (!active) return;
-          const local = await createArtifactSnapshotFromWorkspace(
+          await flushLiveFolderWorkspace(
             filesSnapshot,
             foldersSnapshot,
           );
-          const plan = getLiveFolderWorkspaceWritePlan(
-            active.baseline,
-            local,
-          );
-          const deletes = plan.deletes.length > 0 &&
-              window.confirm(copy.confirmLiveFolderDelete)
-            ? plan.deletes
-            : [];
-          const changes = [...plan.changes, ...deletes];
-          if (changes.length === 0) return;
-          const result = await active.adapter.writeChanges?.(changes);
-          if (!result?.ok) {
-            showToast(
-              result?.reason === "permission"
-                ? copy.liveFolderPermissionLost
-                : copy.liveFolderWriteConflict,
-              "error",
-            );
-            return;
-          }
-          active.baseline = local;
-        })
-        .catch((error: unknown) => {
-          clientErrorReporter.report({
-            feature: "workspace",
-            operation: "write-live-folder",
-            error,
-          });
-          showToast(copy.liveFolderWriteFailed, "error");
         });
     }, 400);
     return () => window.clearTimeout(timer);
   }, [
-    copy,
     files,
+    flushLiveFolderWorkspace,
     folders,
     isRoomSession,
     liveFolderConflict,
-    showToast,
   ]);
 
   useEffect(() => {
@@ -769,6 +822,7 @@ export function useWorkspaceFileIoController({
   return {
     emptyDropActive,
     isLiveFolderSupported: isLiveFolderSupported(),
+    liveFolderOpening,
     liveFolderConflict,
     workspaceFolderImport,
     workspaceSourceKind,
@@ -777,6 +831,7 @@ export function useWorkspaceFileIoController({
     downloadCurrentFile,
     downloadWorkspaceArchive,
     disconnectLiveWorkspaceFolder,
+    disconnectLiveWorkspaceFolderAndKeepCopy,
     closeWorkspaceExportReview,
     confirmWorkspaceArchiveExport,
     handleImportInputChange,

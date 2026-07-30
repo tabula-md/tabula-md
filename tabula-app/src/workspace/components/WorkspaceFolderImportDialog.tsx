@@ -1,4 +1,4 @@
-import { FolderOpen, X } from "lucide-react";
+import { AlertTriangle, FolderOpen, X } from "lucide-react";
 import {
   getKnowledgeProfileDefinition,
   type KnowledgeProfileKind,
@@ -12,7 +12,9 @@ import type { WorkspaceImportProfile } from "../io/workspaceImportProfile";
 
 type WorkspaceFolderImportDialogProps = {
   language: WorkspaceLanguage;
+  excludedPaths: readonly string[];
   profile: WorkspaceImportProfile;
+  sourceKind: "browser-copy" | "live-folder";
   workspace: WorkspaceState;
   onCancel: () => void;
   onReplace: () => void;
@@ -20,7 +22,9 @@ type WorkspaceFolderImportDialogProps = {
 
 export function WorkspaceFolderImportDialog({
   language,
+  excludedPaths,
   profile,
+  sourceKind,
   workspace,
   onCancel,
   onReplace,
@@ -53,12 +57,17 @@ export function WorkspaceFolderImportDialog({
       </button>
       <header className="share-modal-header compact">
         <h2 id="workspace-folder-title">{copy.title}</h2>
-        <p>{copy.description}</p>
+        <p>
+          {sourceKind === "live-folder"
+            ? copy.liveDescription
+            : copy.description}
+        </p>
       </header>
-      <section
-        className="workspace-import-profile"
-        aria-label={copy.profileLabel}
-      >
+      {workspace.files.length > 0 && (
+        <section
+          className="workspace-import-profile"
+          aria-label={copy.profileLabel}
+        >
         <div className="workspace-import-profile-heading">
           <span>{copy.detected}</span>
           <strong>{copy.format(profile)}</strong>
@@ -156,7 +165,8 @@ export function WorkspaceFolderImportDialog({
             {copy.detectorWarning(profile.diagnostics.length)}
           </p>
         )}
-      </section>
+        </section>
+      )}
       <div className="json-import-copy">
         <FolderOpen size={18} aria-hidden="true" />
         <div>
@@ -167,9 +177,27 @@ export function WorkspaceFolderImportDialog({
           </ul>
         </div>
       </div>
+      {excludedPaths.length > 0 && (
+        <div className="json-import-warning">
+          <AlertTriangle size={18} aria-hidden="true" />
+          <div>
+            <p>{copy.excluded(excludedPaths.length)}</p>
+            <ul className="json-import-files" aria-label={copy.excludedPaths}>
+              {excludedPaths.slice(0, 5).map((path) => (
+                <li key={path}>{path}</li>
+              ))}
+              {excludedPaths.length > 5 && (
+                <li>{copy.more(excludedPaths.length - 5)}</li>
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
       <div className="share-modal-actions">
         <button className="ui-modal-action secondary share-modal-secondary" type="button" onClick={onCancel}>{copy.cancel}</button>
-        <button className="ui-modal-action share-modal-primary" type="button" data-modal-initial-focus onClick={onReplace}>{copy.open}</button>
+        <button className="ui-modal-action share-modal-primary" type="button" data-modal-initial-focus onClick={onReplace}>
+          {sourceKind === "live-folder" ? copy.connect : copy.open}
+        </button>
       </div>
     </ModalSurface>
   );

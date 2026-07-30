@@ -6,6 +6,7 @@ import { getWorkspaceArchiveEntries } from "./workspaceArchive";
 import {
   parseWorkspaceFolderFiles,
   parseWorkspaceFolderImport,
+  WorkspaceFolderImportError,
 } from "./workspaceFolderImport";
 import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
 
@@ -314,6 +315,9 @@ describe("workspace folder import", () => {
   it("rejects folders without Markdown documents", async () => {
     await expect(parseWorkspaceFolderFiles([
       createFolderFile("notes.txt", "notes"),
-    ], defaults)).rejects.toThrow("does not contain any Markdown");
+    ], defaults)).rejects.toMatchObject({
+      code: "no-markdown",
+      name: "WorkspaceFolderImportError",
+    } satisfies Partial<WorkspaceFolderImportError>);
   });
 });

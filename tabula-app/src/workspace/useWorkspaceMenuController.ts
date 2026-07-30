@@ -29,6 +29,7 @@ type UseWorkspaceMenuControllerOptions = {
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
   onOpenLiveWorkspace?: () => void;
+  onDisconnectLiveWorkspace?: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
   preferences: WorkspacePreferences;
@@ -53,6 +54,7 @@ export function useWorkspaceMenuController({
   onImportFileChange,
   onImportWorkspaceChange,
   onOpenLiveWorkspace,
+  onDisconnectLiveWorkspace,
   onOpenAbout,
   onOpenHelp,
   preferences,
@@ -94,6 +96,7 @@ export function useWorkspaceMenuController({
       onImportFileChange,
       onImportWorkspaceChange,
       onOpenLiveWorkspace,
+      onDisconnectLiveWorkspace,
       onClearWorkspace,
       onExportFile,
       onExportWorkspace,
@@ -120,6 +123,7 @@ export function useWorkspaceMenuController({
       onImportFileChange,
       onImportWorkspaceChange,
       onOpenLiveWorkspace,
+      onDisconnectLiveWorkspace,
       onOpenAbout,
       onOpenHelp,
       preferences.language,

@@ -6,6 +6,7 @@ type WorkspaceMenuCopy = {
     importFile: string;
     importWorkspace: string;
     openLiveWorkspace: string;
+    disconnectLiveWorkspace: string;
     exportFile: string;
     exportWorkspace: string;
     clearWorkspace: string;
@@ -46,6 +47,12 @@ type WorkspaceMenuCopy = {
     cancel: string;
     confirm: string;
     cleared: string;
+  };
+  disconnectLiveWorkspace: {
+    title: string;
+    description: string;
+    cancel: string;
+    confirm: string;
   };
   share: {
     trigger: string;
@@ -119,6 +126,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "Import document (.md)…",
       importWorkspace: "Open folder…",
       openLiveWorkspace: "Connect local folder…",
+      disconnectLiveWorkspace: "Disconnect local folder…",
       exportFile: "Export document (.md)",
       exportWorkspace: "Export workspace (.zip)",
       clearWorkspace: "Clear local workspace…",
@@ -159,6 +167,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       cancel: "Cancel",
       confirm: "Clear workspace",
       cleared: "Local workspace cleared.",
+    },
+    disconnectLiveWorkspace: {
+      title: "Disconnect local folder?",
+      description: "Tabula will stop reading from and writing to this folder. The current workspace will remain saved in this browser, and files in the folder will not be deleted.",
+      cancel: "Cancel",
+      confirm: "Disconnect folder",
     },
     share: {
       trigger: "Share",
@@ -224,6 +238,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "문서 가져오기 (.md)…",
       importWorkspace: "폴더 열기…",
       openLiveWorkspace: "로컬 폴더 연결…",
+      disconnectLiveWorkspace: "로컬 폴더 연결 해제…",
       exportFile: "문서 내보내기 (.md)",
       exportWorkspace: "워크스페이스 내보내기 (.zip)",
       clearWorkspace: "로컬 워크스페이스 비우기…",
@@ -264,6 +279,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       cancel: "취소",
       confirm: "워크스페이스 비우기",
       cleared: "로컬 워크스페이스를 비웠습니다.",
+    },
+    disconnectLiveWorkspace: {
+      title: "로컬 폴더 연결을 해제할까요?",
+      description: "이 폴더의 변경 감지와 저장을 중단합니다. 현재 워크스페이스는 브라우저에 계속 저장되며 폴더의 파일은 삭제되지 않습니다.",
+      cancel: "취소",
+      confirm: "폴더 연결 해제",
     },
     share: {
       trigger: "공유",
@@ -329,6 +350,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "ドキュメントを読み込む (.md)…",
       importWorkspace: "フォルダーを開く…",
       openLiveWorkspace: "ローカルフォルダーを接続…",
+      disconnectLiveWorkspace: "ローカルフォルダーの接続を解除…",
       exportFile: "ドキュメントを書き出す (.md)",
       exportWorkspace: "ワークスペースを書き出す (.zip)",
       clearWorkspace: "ローカルワークスペースを消去…",
@@ -369,6 +391,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       cancel: "キャンセル",
       confirm: "ワークスペースを消去",
       cleared: "ローカルワークスペースを消去しました。",
+    },
+    disconnectLiveWorkspace: {
+      title: "ローカルフォルダーの接続を解除しますか？",
+      description: "このフォルダーの読み書きを停止します。現在のワークスペースはブラウザーに保存され、フォルダー内のファイルは削除されません。",
+      cancel: "キャンセル",
+      confirm: "接続を解除",
     },
     share: {
       trigger: "共有",
@@ -436,6 +464,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "导入文档 (.md)…",
       importWorkspace: "打开文件夹…",
       openLiveWorkspace: "连接本地文件夹…",
+      disconnectLiveWorkspace: "断开本地文件夹…",
       exportFile: "导出文档 (.md)",
       exportWorkspace: "导出工作区 (.zip)",
       clearWorkspace: "清空本地工作区…",
@@ -476,6 +505,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       cancel: "取消",
       confirm: "清空工作区",
       cleared: "本地工作区已清空。",
+    },
+    disconnectLiveWorkspace: {
+      title: "断开本地文件夹？",
+      description: "Tabula 将停止读取和写入此文件夹。当前工作区仍保存在浏览器中，文件夹内的文件不会被删除。",
+      cancel: "取消",
+      confirm: "断开文件夹",
     },
     share: {
       trigger: "分享",
@@ -540,6 +575,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "Importar documento (.md)…",
       importWorkspace: "Abrir carpeta…",
       openLiveWorkspace: "Conectar carpeta local…",
+      disconnectLiveWorkspace: "Desconectar carpeta local…",
       exportFile: "Exportar documento (.md)",
       exportWorkspace: "Exportar espacio de trabajo (.zip)",
       clearWorkspace: "Vaciar espacio local…",
@@ -580,6 +616,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       cancel: "Cancelar",
       confirm: "Vaciar espacio",
       cleared: "Espacio local vaciado.",
+    },
+    disconnectLiveWorkspace: {
+      title: "¿Desconectar la carpeta local?",
+      description: "Tabula dejará de leer y escribir en esta carpeta. El espacio actual seguirá guardado en el navegador y no se eliminarán archivos de la carpeta.",
+      cancel: "Cancelar",
+      confirm: "Desconectar carpeta",
     },
     share: {
       trigger: "Compartir",
@@ -647,6 +689,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "Importer un document (.md)…",
       importWorkspace: "Ouvrir un dossier…",
       openLiveWorkspace: "Connecter un dossier local…",
+      disconnectLiveWorkspace: "Déconnecter le dossier local…",
       exportFile: "Exporter le document (.md)",
       exportWorkspace: "Exporter l’espace de travail (.zip)",
       clearWorkspace: "Effacer l’espace local…",
@@ -687,6 +730,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       cancel: "Annuler",
       confirm: "Effacer l’espace",
       cleared: "Espace local effacé.",
+    },
+    disconnectLiveWorkspace: {
+      title: "Déconnecter le dossier local ?",
+      description: "Tabula cessera de lire et d’écrire dans ce dossier. L’espace actuel restera enregistré dans le navigateur et aucun fichier du dossier ne sera supprimé.",
+      cancel: "Annuler",
+      confirm: "Déconnecter le dossier",
     },
     share: {
       trigger: "Partager",
@@ -754,6 +803,7 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       importFile: "Dokument importieren (.md)…",
       importWorkspace: "Ordner öffnen…",
       openLiveWorkspace: "Lokalen Ordner verbinden…",
+      disconnectLiveWorkspace: "Lokalen Ordner trennen…",
       exportFile: "Dokument exportieren (.md)",
       exportWorkspace: "Workspace exportieren (.zip)",
       clearWorkspace: "Lokalen Workspace leeren…",
@@ -794,6 +844,12 @@ const workspaceMenuCopy: Record<WorkspaceLanguage, WorkspaceMenuCopy> = {
       cancel: "Abbrechen",
       confirm: "Workspace leeren",
       cleared: "Lokaler Workspace geleert.",
+    },
+    disconnectLiveWorkspace: {
+      title: "Lokalen Ordner trennen?",
+      description: "Tabula liest und schreibt diesen Ordner nicht mehr. Der aktuelle Workspace bleibt im Browser gespeichert und Dateien im Ordner werden nicht gelöscht.",
+      cancel: "Abbrechen",
+      confirm: "Ordner trennen",
     },
     share: {
       trigger: "Teilen",

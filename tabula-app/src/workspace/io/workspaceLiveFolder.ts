@@ -1,4 +1,5 @@
 import {
+  WORKSPACE_ROOM_MAX_TREE_DEPTH,
   createWorkspaceArtifact,
   getExternalArtifactChanges,
   getWorkspaceArtifactBytes,
@@ -20,12 +21,14 @@ import {
   parseWorkspaceFolderImport,
   type WorkspaceFolderImportDefaults,
   type WorkspaceFolderImportDraft,
+  type WorkspaceFolderImportLimits,
 } from "./workspaceFolderImport";
 
 type PermissionStateValue = "denied" | "granted" | "prompt";
 
 export type LiveFolderFile = {
   arrayBuffer(): Promise<ArrayBuffer>;
+  size?: number;
 };
 
 export type LiveFolderWritable = {
@@ -112,29 +115,87 @@ const readFileArtifact = async (
   });
 };
 
+const ignoredDirectoryNames = new Set([
+  ".cache",
+  ".git",
+  ".hg",
+  ".next",
+  ".nuxt",
+  ".pnpm-store",
+  ".svn",
+  ".turbo",
+  ".venv",
+  "__pycache__",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules",
+  "target",
+  "venv",
+]);
+
+const liveFolderImportLimits: WorkspaceFolderImportLimits = {
+  maxContentBytes: 100 * 1024 * 1024,
+  maxFiles: 5_000,
+  maxFolders: 2_000,
+  maxTreeDepth: WORKSPACE_ROOM_MAX_TREE_DEPTH,
+};
+
+const isIgnoredLiveFolderDirectory = (
+  name: string,
+  path: string,
+) =>
+  ignoredDirectoryNames.has(name) ||
+  path === ".yarn/cache" ||
+  path === ".yarn/unplugged";
+
+type LiveFolderReadResult = {
+  artifacts: WorkspaceArtifact[];
+  excludedPaths: string[];
+};
+
 const readDirectoryArtifacts = async (
   directory: LiveFolderDirectoryHandle,
   parentPath = "",
-): Promise<WorkspaceArtifact[]> => {
+): Promise<LiveFolderReadResult> => {
   const artifacts: WorkspaceArtifact[] = [];
+  const excludedPaths: string[] = [];
   for await (const [name, handle] of directory.entries()) {
     const path = parentPath ? `${parentPath}/${name}` : name;
     if (handle.kind === "directory") {
-      artifacts.push(...await readDirectoryArtifacts(handle, path));
+      if (isIgnoredLiveFolderDirectory(name, path)) {
+        excludedPaths.push(`${path}/`);
+        continue;
+      }
+      const nested = await readDirectoryArtifacts(handle, path);
+      artifacts.push(...nested.artifacts);
+      excludedPaths.push(...nested.excludedPaths);
     } else {
-      artifacts.push(await readFileArtifact(handle, path));
+      try {
+        artifacts.push(await readFileArtifact(handle, path));
+      } catch {
+        excludedPaths.push(path);
+      }
     }
   }
-  return artifacts.sort((first, second) =>
-    first.path.localeCompare(second.path));
+  return {
+    artifacts: artifacts.sort((first, second) =>
+      first.path.localeCompare(second.path)),
+    excludedPaths: excludedPaths.sort((first, second) =>
+      first.localeCompare(second)),
+  };
 };
 
 export const readLiveFolderSnapshot = async (
   directory: LiveFolderDirectoryHandle,
-): Promise<WorkspaceSnapshot> => ({
-  artifacts: await readDirectoryArtifacts(directory),
-  capturedAt: new Date().toISOString(),
-});
+): Promise<WorkspaceSnapshot> => {
+  const { artifacts, excludedPaths } = await readDirectoryArtifacts(directory);
+  return {
+    artifacts,
+    capturedAt: new Date().toISOString(),
+    excludedPaths,
+  };
+};
 
 const getParentDirectory = async (
   root: LiveFolderDirectoryHandle,
@@ -427,8 +488,23 @@ export const createWorkspaceDraftFromArtifactSnapshot = async (
   const draft = await parseWorkspaceFolderImport(
     snapshotArtifactFiles(snapshot, rootLabel),
     defaults,
+    {
+      limits: liveFolderImportLimits,
+      requireMarkdown: false,
+      rootLabel,
+    },
   );
-  if (!previous) return draft;
+  const draftWithExclusions = {
+    ...draft,
+    excludedPaths: snapshot.excludedPaths ?? [],
+    sourceKind: "live-folder" as const,
+    profile: {
+      ...draft.profile,
+      ignoredFileCount:
+        draft.profile.ignoredFileCount + (snapshot.excludedPaths?.length ?? 0),
+    },
+  };
+  if (!previous) return draftWithExclusions;
 
   const previousPaths = getWorkspaceFilePaths(
     previous.files,
@@ -464,9 +540,9 @@ export const createWorkspaceDraftFromArtifactSnapshot = async (
   });
   const fileIds = new Set(remappedFiles.map((file) => file.id));
   return {
-    ...draft,
+    ...draftWithExclusions,
     workspace: {
-      ...draft.workspace,
+      ...draftWithExclusions.workspace,
       files: remappedFiles,
       activeFileId: fileIds.has(previous.activeFileId)
         ? previous.activeFileId

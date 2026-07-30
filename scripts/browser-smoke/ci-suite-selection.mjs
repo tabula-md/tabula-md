@@ -15,7 +15,10 @@ const PLAYWRIGHT = {
   ],
   panels: ["right-panels.spec.mjs"],
   performance: ["performance.spec.mjs"],
-  storage: ["storage-restore.spec.mjs"],
+  storage: [
+    "storage-restore.spec.mjs",
+    "live-folder.spec.mjs",
+  ],
   collaboration: ["collaboration-capability.spec.mjs"],
   share: ["share-capability.spec.mjs"],
   regression: ["accessibility-regression.spec.mjs"],
@@ -164,6 +167,8 @@ export function selectBrowserSmokeSuites(changedPaths) {
         addPlaywright("performance", "performance check changed");
       } else if (
         path.endsWith("/storage-restore.spec.mjs") ||
+        path.endsWith("/live-folder.spec.mjs") ||
+        path.endsWith("/suites/live-folder.mjs") ||
         path.endsWith("/suites/workspace-menu.mjs")
       ) {
         addPlaywright("storage", "storage restore changed");

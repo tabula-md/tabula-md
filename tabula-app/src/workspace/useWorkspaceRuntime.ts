@@ -807,6 +807,7 @@ export function useWorkspaceRuntime() {
     downloadCurrentFile,
     downloadWorkspaceArchive,
     disconnectLiveWorkspaceFolder,
+    disconnectLiveWorkspaceFolderAndKeepCopy,
     emptyDropActive,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDragOver,
@@ -817,6 +818,7 @@ export function useWorkspaceRuntime() {
     jsonShareImport,
     keepTabulaLiveFolderVersion,
     liveFolderConflict,
+    liveFolderOpening,
     mergeLiveFolderConflictManually,
     openLiveWorkspaceFolder,
     workspaceExportReview,
@@ -1038,8 +1040,14 @@ export function useWorkspaceRuntime() {
     onCloseChrome: closeFloatingChrome,
     onImportFileChange: handleImportInputChange,
     onImportWorkspaceChange: handleWorkspaceImportInputChange,
-    onOpenLiveWorkspace: isLiveFolderSupported
+    onOpenLiveWorkspace: isLiveFolderSupported &&
+        workspaceSourceKind !== "live-folder"
       ? openLiveWorkspaceFolder
+      : undefined,
+    onDisconnectLiveWorkspace: workspaceSourceKind === "live-folder"
+      ? () => {
+          void disconnectLiveWorkspaceFolderAndKeepCopy();
+        }
       : undefined,
     onOpenAbout: openAbout,
     onOpenHelp: openHelp,
@@ -1382,6 +1390,7 @@ export function useWorkspaceRuntime() {
         infoDialog,
         jsonShareImport,
         liveFolderConflict,
+        liveFolderOpening,
         workspaceFolderImport,
         workspaceExportReview,
         language: workspacePreferences.language,
