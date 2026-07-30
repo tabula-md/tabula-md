@@ -787,3 +787,19 @@ export {
   KNOWLEDGE_PROFILE_REGISTRY,
   getKnowledgeProfileDefinition,
 } from "./knowledgeProfileRegistry";
+
+export type {
+  WorkspaceArtifact,
+  WorkspaceArtifactContent,
+  WorkspaceArtifactDraft,
+  WorkspaceArtifactKind,
+} from "./workspaceArtifact";
+export {
+  cloneWorkspaceArtifact,
+  createWorkspaceArtifact,
+  getWorkspaceArtifactBytes,
+  getWorkspaceArtifactKind,
+  getWorkspaceArtifactMediaType,
+  hashWorkspaceArtifactContent,
+  isWorkspaceArtifactEditable,
+} from "./workspaceArtifact";
