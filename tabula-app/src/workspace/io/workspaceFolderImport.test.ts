@@ -155,8 +155,8 @@ describe("workspace folder import", () => {
 
     expect(workspace.files).toHaveLength(5);
     expect(draft.profile).toMatchObject({
-      format: "okf",
-      okfVersion: "0.1",
+      syntaxes: ["gfm"],
+      schemas: [{ id: "okf", version: "0.1" }],
       conventions: ["openwiki"],
       preservedSupportFileCount: 2,
       ignoredFileCount: 0,

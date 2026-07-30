@@ -41,6 +41,12 @@ export const KNOWLEDGE_PROFILE_REGISTRY = [
     supportLevels: ["preserve", "understand"],
   },
   {
+    id: "openwiki",
+    label: "OpenWiki",
+    kind: "convention",
+    supportLevels: ["preserve", "understand"],
+  },
+  {
     id: "okf-0.1",
     label: "Open Knowledge Format 0.1",
     kind: "schema",

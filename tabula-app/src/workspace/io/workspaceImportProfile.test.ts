@@ -52,8 +52,8 @@ describe("workspace import profile", () => {
     });
 
     expect(profile).toMatchObject({
-      format: "okf",
-      okfVersion: "0.1",
+      syntaxes: ["gfm"],
+      schemas: [{ id: "okf", version: "0.1" }],
       conventions: ["openwiki"],
       preservedSupportFileCount: 1,
       ignoredFileCount: 1,
@@ -91,12 +91,12 @@ describe("workspace import profile", () => {
     });
 
     expect(profile).toMatchObject({
-      format: "markdown-wiki",
+      syntaxes: ["gfm"],
+      schemas: [],
       conventions: ["obsidian"],
       linkSyntaxes: ["wikilinks", "embeds"],
       ignoredFileCount: 1,
     });
-    expect(profile.okfVersion).toBeUndefined();
   });
 
   it("keeps an unlinked document folder classified as plain Markdown", () => {
@@ -109,11 +109,46 @@ describe("workspace import profile", () => {
       sourcePaths: ["One.md", "Two.md", "notes.txt"],
       importedPaths: ["One.md", "Two.md"],
     })).toMatchObject({
-      format: "plain-markdown",
+      syntaxes: ["gfm"],
       conventions: [],
+      schemas: [],
+      workflows: [],
+      agentInstructions: [],
+      deliveries: [],
       linkSyntaxes: [],
       preservedSupportFileCount: 0,
       ignoredFileCount: 1,
+    });
+  });
+
+  it("represents mixed syntax, workflow, instruction, and delivery profiles together", () => {
+    expect(detectWorkspaceImportProfile({
+      documents: [
+        { id: "raw", path: "raw/source.md", markdown: "# Source" },
+        { id: "wiki", path: "wiki/guide.mdx", markdown: "# Guide" },
+        { id: "agents", path: "AGENTS.md", markdown: "# Instructions" },
+        { id: "skill", path: ".agents/skills/review/SKILL.md", markdown: "# Skill" },
+      ],
+      supportFiles: [{ path: "llms.txt", text: "# Docs" }],
+      sourcePaths: [
+        "raw/source.md",
+        "wiki/guide.mdx",
+        "AGENTS.md",
+        ".agents/skills/review/SKILL.md",
+        "llms.txt",
+      ],
+      importedPaths: [
+        "raw/source.md",
+        "wiki/guide.mdx",
+        "AGENTS.md",
+        ".agents/skills/review/SKILL.md",
+        "llms.txt",
+      ],
+    })).toMatchObject({
+      syntaxes: ["gfm", "mdx"],
+      workflows: ["llm-wiki"],
+      agentInstructions: ["agents-md", "agent-skills"],
+      deliveries: ["llms-txt"],
     });
   });
 });

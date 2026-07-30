@@ -1,12 +1,13 @@
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import type {
-  WorkspaceImportConvention,
   WorkspaceImportEvidence,
   WorkspaceImportEvidenceCode,
-  WorkspaceImportFormat,
   WorkspaceImportLinkSyntax,
   WorkspaceImportProfile,
 } from "./workspaceImportProfile";
+import type {
+  WorkspaceConventionProfile,
+} from "@tabula-md/tabula";
 
 type WorkspaceFolderImportCopy = {
   close: string;
@@ -23,7 +24,7 @@ type WorkspaceFolderImportCopy = {
   links: string;
   files: string;
   format: (profile: WorkspaceImportProfile) => string;
-  convention: (value: WorkspaceImportConvention) => string;
+  convention: (value: WorkspaceConventionProfile) => string;
   linkSyntax: (value: WorkspaceImportLinkSyntax) => string;
   fileHandling: (preserved: number, ignored: number) => string;
   evidence: (value: WorkspaceImportEvidence) => string;
@@ -33,8 +34,8 @@ type RawWorkspaceFolderImportCopy = Omit<
   WorkspaceFolderImportCopy,
   "format" | "convention" | "linkSyntax" | "fileHandling" | "evidence"
 > & {
-  formats: Record<WorkspaceImportFormat, string>;
-  conventionLabels: Record<WorkspaceImportConvention, string>;
+  formats: Record<"plain-markdown" | "markdown-wiki" | "okf", string>;
+  conventionLabels: Record<WorkspaceConventionProfile, string>;
   linkLabels: Record<WorkspaceImportLinkSyntax, string>;
   fileHandling: (preserved: number, ignored: number) => string;
   evidenceLabels: Record<
@@ -283,9 +284,13 @@ export const getWorkspaceFolderImportCopy = (
   const copy = copies[language];
   return {
     ...copy,
-    format: (profile) => profile.format === "okf" && profile.okfVersion
-      ? `OKF ${profile.okfVersion}`
-      : copy.formats[profile.format],
+    format: (profile) => {
+      const okf = profile.schemas.find((schema) => schema.id === "okf");
+      if (okf) return `OKF ${okf.version}`;
+      return profile.conventions.length > 0 || profile.workflows.length > 0
+        ? copy.formats["markdown-wiki"]
+        : copy.formats["plain-markdown"];
+    },
     convention: (value) => copy.conventionLabels[value],
     linkSyntax: (value) => copy.linkLabels[value],
     fileHandling: copy.fileHandling,

@@ -1,15 +1,9 @@
 import {
   createWorkspaceKnowledgeIndex,
   getWorkspaceOkfCompatibility,
+  type WorkspaceProfile,
   type WorkspaceSourceDocument,
 } from "@tabula-md/tabula";
-
-export type WorkspaceImportFormat =
-  | "plain-markdown"
-  | "markdown-wiki"
-  | "okf";
-
-export type WorkspaceImportConvention = "openwiki" | "obsidian";
 
 export type WorkspaceImportLinkSyntax =
   | "markdown-links"
@@ -32,10 +26,7 @@ export type WorkspaceImportEvidence = {
   value?: string;
 };
 
-export type WorkspaceImportProfile = {
-  format: WorkspaceImportFormat;
-  okfVersion?: string;
-  conventions: readonly WorkspaceImportConvention[];
+export type WorkspaceImportProfile = WorkspaceProfile & {
   linkSyntaxes: readonly WorkspaceImportLinkSyntax[];
   evidence: readonly WorkspaceImportEvidence[];
   preservedSupportFileCount: number;
@@ -56,6 +47,15 @@ type WorkspaceImportProfileInput = {
 
 const getBasename = (path: string) =>
   path.split("/").at(-1)?.toLocaleLowerCase() ?? "";
+
+const getExtension = (path: string) => {
+  const basename = getBasename(path);
+  const dotIndex = basename.lastIndexOf(".");
+  return dotIndex > 0 ? basename.slice(dotIndex) : "";
+};
+
+const hasPathSegment = (path: string, segment: string) =>
+  path.toLocaleLowerCase().split("/").includes(segment);
 
 const hasOpenWikiStateShape = (text: string) => {
   try {
@@ -79,11 +79,17 @@ const hasOpenWikiStateShape = (text: string) => {
 const createFallbackProfile = (
   input: WorkspaceImportProfileInput,
 ): WorkspaceImportProfile => ({
-  format: "plain-markdown",
+  syntaxes: input.sourcePaths.some((path) => getExtension(path) === ".mdx")
+    ? ["gfm", "mdx"]
+    : ["gfm"],
   conventions: input.sourcePaths.some((path) =>
-    path.toLocaleLowerCase().split("/").includes(".obsidian"))
+    hasPathSegment(path, ".obsidian"))
     ? ["obsidian"]
     : [],
+  schemas: [],
+  workflows: [],
+  agentInstructions: [],
+  deliveries: [],
   linkSyntaxes: [],
   evidence: input.sourcePaths.some((path) =>
     path.toLocaleLowerCase().split("/").includes(".obsidian"))
@@ -127,7 +133,7 @@ export const detectWorkspaceImportProfile = (
     const hasOpenWikiState = input.supportFiles.some((file) =>
       getBasename(file.path) === ".last-update.json" &&
       hasOpenWikiStateShape(file.text));
-    const conventions: WorkspaceImportConvention[] = [];
+    const conventions: WorkspaceImportProfile["conventions"][number][] = [];
     if (
       hasOpenWikiState &&
       (Boolean(compatibility.declaredVersion) || directoryIndexCount > 0)
@@ -162,21 +168,45 @@ export const detectWorkspaceImportProfile = (
     }
     if (hasWikilinks) evidence.push({ code: "wikilinks" });
 
+    const markdownPathCount = input.sourcePaths.filter((path) =>
+      [".md", ".markdown"].includes(getExtension(path))).length;
+    const mdxPathCount = input.sourcePaths.filter((path) =>
+      getExtension(path) === ".mdx").length;
+    const syntaxes: WorkspaceImportProfile["syntaxes"][number][] = [];
+    if (markdownPathCount > 0 || mdxPathCount === 0) syntaxes.push("gfm");
+    if (mdxPathCount > 0) syntaxes.push("mdx");
+    const lowerPaths = input.sourcePaths.map((path) =>
+      path.toLocaleLowerCase());
+    const hasRawRole = lowerPaths.some((path) =>
+      path.split("/").includes("raw"));
+    const hasWikiRole = lowerPaths.some((path) =>
+      path.split("/").includes("wiki"));
+    const agentInstructions:
+      WorkspaceImportProfile["agentInstructions"][number][] = [];
+    if (lowerPaths.some((path) => getBasename(path) === "agents.md")) {
+      agentInstructions.push("agents-md");
+    }
+    if (lowerPaths.some((path) => getBasename(path) === "claude.md")) {
+      agentInstructions.push("claude-md");
+    }
+    if (lowerPaths.some((path) =>
+      getBasename(path) === "skill.md" &&
+      path.split("/").includes("skills"))) {
+      agentInstructions.push("agent-skills");
+    }
+
     return {
-      format: compatibility.declaredVersion
-        ? "okf"
-        : (
-            directoryIndexCount > 0 ||
-            hasActivityLog ||
-            typedConceptCount > 1 ||
-            internalLinkCount > 1
-          )
-          ? "markdown-wiki"
-          : "plain-markdown",
-      ...(compatibility.declaredVersion
-        ? { okfVersion: compatibility.declaredVersion }
-        : {}),
+      syntaxes,
       conventions,
+      schemas: compatibility.declaredVersion
+        ? [{ id: "okf", version: compatibility.declaredVersion }]
+        : [],
+      workflows: hasRawRole && hasWikiRole ? ["llm-wiki"] : [],
+      agentInstructions,
+      deliveries: lowerPaths.some((path) =>
+        getBasename(path) === "llms.txt")
+        ? ["llms-txt"]
+        : [],
       linkSyntaxes,
       evidence,
       preservedSupportFileCount: input.supportFiles.length,

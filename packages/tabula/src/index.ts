@@ -789,6 +789,20 @@ export {
 } from "./knowledgeProfileRegistry";
 
 export type {
+  WorkspaceAgentInstructionProfile,
+  WorkspaceConventionProfile,
+  WorkspaceDeliveryProfile,
+  WorkspaceProfile,
+  WorkspaceSchemaProfile,
+  WorkspaceSyntaxProfile,
+  WorkspaceWorkflowProfile,
+} from "./workspaceProfile";
+export {
+  createEmptyWorkspaceProfile,
+  isOrdinaryMarkdownProfile,
+} from "./workspaceProfile";
+
+export type {
   WorkspaceArtifact,
   WorkspaceArtifactContent,
   WorkspaceArtifactDraft,

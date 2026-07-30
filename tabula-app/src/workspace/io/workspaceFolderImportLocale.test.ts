@@ -15,9 +15,12 @@ describe("workspace folder import copy", () => {
   it("explains the detected standard separately from producer conventions", () => {
     const copy = getWorkspaceFolderImportCopy("en");
     const profile = {
-      format: "okf",
-      okfVersion: "0.1",
+      syntaxes: ["gfm"],
       conventions: ["openwiki"],
+      schemas: [{ id: "okf", version: "0.1" }],
+      workflows: [],
+      agentInstructions: [],
+      deliveries: [],
       linkSyntaxes: ["markdown-links"],
       evidence: [{ code: "okf-version", value: "0.1" }],
       preservedSupportFileCount: 1,
