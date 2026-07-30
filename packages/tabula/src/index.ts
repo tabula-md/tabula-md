@@ -777,3 +777,13 @@ export {
   planWorkspaceOkfConformance,
   TABULA_GENERATED_OKF_INDEX_MARKER,
 } from "./workspaceOkfConformance";
+
+export type {
+  KnowledgeProfileDefinition,
+  KnowledgeProfileKind,
+  KnowledgeSupportLevel,
+} from "./knowledgeProfileRegistry";
+export {
+  KNOWLEDGE_PROFILE_REGISTRY,
+  getKnowledgeProfileDefinition,
+} from "./knowledgeProfileRegistry";
