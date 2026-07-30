@@ -803,6 +803,21 @@ export {
 } from "./workspaceProfile";
 
 export type {
+  MarkdownCapability,
+  MarkdownCapabilityAnalysis,
+  MarkdownCapabilityDefinition,
+  MarkdownCapabilityDiagnostic,
+  MarkdownCapabilityFamily,
+  MarkdownCapabilityOccurrence,
+  MarkdownSurfaceSupport,
+} from "./markdownCapabilityRegistry";
+export {
+  MARKDOWN_CAPABILITY_REGISTRY,
+  analyzeMarkdownCapabilities,
+  getMarkdownCapabilityDefinition,
+} from "./markdownCapabilityRegistry";
+
+export type {
   WorkspaceArtifact,
   WorkspaceArtifactContent,
   WorkspaceArtifactDraft,
