@@ -311,10 +311,10 @@ export async function run(ctx) {
         exact: true,
       }).isVisible() &&
         await detectedWorkspace.getByText(
-          "0 support files preserved. 1 unsupported file skipped",
+          "1 support file preserved. 0 unsupported files skipped",
           { exact: true },
         ).isVisible(),
-      "Folder import should explain a plain Markdown workspace and skipped files before replacing local state.",
+      "Folder import should explain a plain Markdown workspace and preserved support files before replacing local state.",
     );
     expect(
       (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1,

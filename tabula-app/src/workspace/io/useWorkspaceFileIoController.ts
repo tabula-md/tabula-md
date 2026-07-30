@@ -32,7 +32,9 @@ import { getWorkspaceIoCopy } from "./workspaceIoLocale";
 import { productAnalytics } from "../../observability/productAnalytics";
 import {
   captureWorkspaceKnowledgeBaseline,
-  getWorkspaceArtifactBytes,
+  createWorkspaceArtifact,
+  planExternalChangeResolution,
+  type ExternalChangeResolution,
   type WorkspaceKnowledgeBaseline,
   type WorkspaceSnapshot,
   type WorkspaceSourceAdapter,
@@ -42,10 +44,34 @@ import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
 import type { WorkspaceExportReview } from "./workspaceExportReviewModel";
 import {
   createArtifactSnapshotFromWorkspace,
+  createWorkspaceDraftFromArtifactSnapshot,
   getLiveFolderWorkspaceWritePlan,
   isLiveFolderSupported,
   pickLiveFolderSourceAdapter,
 } from "./workspaceLiveFolder";
+
+export type LiveFolderConflictReview = {
+  resolution: Extract<
+    ExternalChangeResolution,
+    { type: "conflict-review" }
+  >;
+  externalSnapshot: WorkspaceSnapshot;
+  localSnapshot: WorkspaceSnapshot;
+};
+
+const replaceSnapshotArtifact = (
+  snapshot: WorkspaceSnapshot,
+  artifactId: string,
+  replacement: WorkspaceSnapshot["artifacts"][number] | null,
+): WorkspaceSnapshot => ({
+  capturedAt: new Date().toISOString(),
+  artifacts: replacement
+    ? snapshot.artifacts.map((artifact) =>
+        artifact.id === artifactId
+          ? { ...replacement, id: artifactId }
+          : artifact)
+    : snapshot.artifacts.filter((artifact) => artifact.id !== artifactId),
+});
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -201,6 +227,8 @@ export function useWorkspaceFileIoController({
   const liveFolderWriteQueueRef = useRef(Promise.resolve());
   const [workspaceSourceKind, setWorkspaceSourceKind] =
     useState<WorkspaceSourceKind>("browser-copy");
+  const [liveFolderConflict, setLiveFolderConflict] =
+    useState<LiveFolderConflictReview | null>(null);
   const queueAnimationFrameTask = useAnimationFrameTask();
   const copy = getWorkspaceIoCopy(preferences.language);
 
@@ -341,6 +369,7 @@ export function useWorkspaceFileIoController({
   const disconnectLiveWorkspaceFolder = () => {
     pendingLiveFolderRef.current = null;
     activeLiveFolderRef.current = null;
+    setLiveFolderConflict(null);
     setWorkspaceSourceKind("browser-copy");
   };
 
@@ -350,26 +379,16 @@ export function useWorkspaceFileIoController({
       if (!adapter) return;
       const sourceSnapshot = await adapter.readSnapshot();
       const selectedRoot = adapter.source.label ?? "Workspace";
-      const selectedFiles = sourceSnapshot.artifacts.map((artifact) => {
-        const bytes = Uint8Array.from(
-          getWorkspaceArtifactBytes(artifact.content),
-        );
-        const name = artifact.path.split("/").at(-1) ?? artifact.path;
-        const file = new File([bytes], name, {
-          type: artifact.mediaType,
-        });
-        Object.defineProperty(file, "webkitRelativePath", {
-          configurable: true,
-          value: `${selectedRoot}/${artifact.path}`,
-        });
-        return file;
-      });
-      const draft = await parseWorkspaceFolderImport(selectedFiles, {
+      const draft = await createWorkspaceDraftFromArtifactSnapshot(
+        sourceSnapshot,
+        selectedRoot,
+        {
         viewMode: preferences.newFileViewMode,
         readingWidth: preferences.readingWidth,
         lineWrapping: preferences.lineWrapping,
         lineNumbers: preferences.lineNumbers,
-      });
+        },
+      );
       pendingLiveFolderRef.current = { adapter };
       onCloseChrome();
       setWorkspaceFolderImport(draft);
@@ -381,6 +400,201 @@ export function useWorkspaceFileIoController({
         error,
       });
       showToast(copy.openFailed, "error");
+    });
+  };
+
+  const applyArtifactSnapshotToWorkspace = async (
+    snapshot: WorkspaceSnapshot,
+  ) => {
+    const active = activeLiveFolderRef.current;
+    if (!active) return null;
+    const previous = getWorkspaceSnapshot?.() ?? {
+      files,
+      folders,
+      openFileIds,
+      activeFileId,
+    };
+    const draft = await createWorkspaceDraftFromArtifactSnapshot(
+      snapshot,
+      active.adapter.source.label ?? "Workspace",
+      {
+        viewMode: preferences.newFileViewMode,
+        readingWidth: preferences.readingWidth,
+        lineWrapping: preferences.lineWrapping,
+        lineNumbers: preferences.lineNumbers,
+      },
+      previous,
+    );
+    const nextKnowledgeBaseline = captureWorkspaceKnowledgeBaseline(
+      getWorkspaceKnowledgeDocuments(
+        draft.workspace.files,
+        draft.workspace.folders,
+      ),
+    );
+    replaceWorkspace(draft.workspace);
+    replaceKnowledgeBaseline(nextKnowledgeBaseline);
+    return createArtifactSnapshotFromWorkspace(
+      draft.workspace.files,
+      draft.workspace.folders,
+    );
+  };
+
+  const checkLiveFolderExternalChanges = () => {
+    const active = activeLiveFolderRef.current;
+    if (!active?.adapter.checkExternalChanges || liveFolderConflict) return;
+    liveFolderWriteQueueRef.current = liveFolderWriteQueueRef.current
+      .then(async () => {
+        const current = activeLiveFolderRef.current;
+        if (!current?.adapter.checkExternalChanges) return;
+        const external = await current.adapter.checkExternalChanges(
+          current.baseline,
+        );
+        if (external.changes.length === 0) return;
+        const local = await createArtifactSnapshotFromWorkspace(
+          getWorkspaceSnapshot?.().files ?? files,
+          getWorkspaceSnapshot?.().folders ?? folders,
+        );
+        const resolutions = planExternalChangeResolution(
+          current.baseline,
+          local,
+          external.snapshot,
+        );
+        const conflict = resolutions.find(
+          (
+            resolution,
+          ): resolution is Extract<
+            ExternalChangeResolution,
+            { type: "conflict-review" }
+          > => resolution.type === "conflict-review",
+        );
+        if (conflict) {
+          setLiveFolderConflict({
+            resolution: conflict,
+            externalSnapshot: external.snapshot,
+            localSnapshot: local,
+          });
+          return;
+        }
+        const nextBaseline = await applyArtifactSnapshotToWorkspace(
+          external.snapshot,
+        );
+        if (nextBaseline) current.baseline = nextBaseline;
+      })
+      .catch((error: unknown) => {
+        clientErrorReporter.report({
+          feature: "workspace",
+          operation: "check-live-folder",
+          error,
+        });
+        showToast(copy.liveFolderCheckFailed, "error");
+      });
+  };
+
+  const useExternalLiveFolderVersion = () => {
+    const review = liveFolderConflict;
+    const active = activeLiveFolderRef.current;
+    if (!review || !active) return;
+    const external = review.resolution.external;
+    const localId = review.resolution.local.id;
+    const resolvedLocal = replaceSnapshotArtifact(
+      review.localSnapshot,
+      localId,
+      external,
+    );
+    const nextBaseline = replaceSnapshotArtifact(
+      active.baseline,
+      localId,
+      external,
+    );
+    setLiveFolderConflict(null);
+    void applyArtifactSnapshotToWorkspace(resolvedLocal).then((mapped) => {
+      if (!mapped) return;
+      const mappedReplacement = mapped.artifacts.find(
+        (artifact) => artifact.id === localId,
+      ) ?? null;
+      active.baseline = replaceSnapshotArtifact(
+        nextBaseline,
+        localId,
+        mappedReplacement,
+      );
+    });
+  };
+
+  const keepTabulaLiveFolderVersion = () => {
+    const review = liveFolderConflict;
+    const active = activeLiveFolderRef.current;
+    if (!review || !active?.adapter.writeChanges) return;
+    const { change, local } = review.resolution;
+    const changes = change.type === "deleted"
+      ? [{ type: "create" as const, artifact: local }]
+      : change.type === "moved"
+        ? [
+            {
+              type: "move" as const,
+              artifactId: local.id,
+              fromPath: change.external.path,
+              toPath: local.path,
+            },
+            { type: "update" as const, artifact: local },
+          ]
+        : [{ type: "update" as const, artifact: local }];
+    setLiveFolderConflict(null);
+    liveFolderWriteQueueRef.current = liveFolderWriteQueueRef.current
+      .then(async () => {
+        const result = await active.adapter.writeChanges?.(changes);
+        if (!result?.ok) {
+          setLiveFolderConflict(review);
+          showToast(copy.liveFolderWriteFailed, "error");
+          return;
+        }
+        active.baseline = replaceSnapshotArtifact(
+          active.baseline,
+          local.id,
+          local,
+        );
+      });
+  };
+
+  const mergeLiveFolderConflictManually = () => {
+    const review = liveFolderConflict;
+    const active = activeLiveFolderRef.current;
+    if (!review || !active) return;
+    const { external, local } = review.resolution;
+    if (
+      local.content.kind !== "text" ||
+      (external && external.content.kind !== "text")
+    ) {
+      return;
+    }
+    const localText = local.content.text;
+    const externalText =
+      external?.content.kind === "text" ? external.content.text : "";
+    void createWorkspaceArtifact({
+      ...local,
+      content: {
+        kind: "text",
+        encoding: "utf-8",
+        text: [
+          "<<<<<<< Tabula",
+          localText,
+          "=======",
+          externalText,
+          ">>>>>>> External",
+        ].join("\n"),
+      },
+    }).then(async (merged) => {
+      const resolvedLocal = replaceSnapshotArtifact(
+        review.localSnapshot,
+        local.id,
+        merged,
+      );
+      active.baseline = replaceSnapshotArtifact(
+        active.baseline,
+        local.id,
+        external,
+      );
+      setLiveFolderConflict(null);
+      await applyArtifactSnapshotToWorkspace(resolvedLocal);
     });
   };
 
@@ -433,7 +647,11 @@ export function useWorkspaceFileIoController({
   };
 
   useEffect(() => {
-    if (isRoomSession || !activeLiveFolderRef.current) return;
+    if (
+      isRoomSession ||
+      !activeLiveFolderRef.current ||
+      liveFolderConflict
+    ) return;
     const timer = window.setTimeout(() => {
       const filesSnapshot = files;
       const foldersSnapshot = folders;
@@ -477,7 +695,28 @@ export function useWorkspaceFileIoController({
         });
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [copy, files, folders, isRoomSession, showToast]);
+  }, [
+    copy,
+    files,
+    folders,
+    isRoomSession,
+    liveFolderConflict,
+    showToast,
+  ]);
+
+  useEffect(() => {
+    if (workspaceSourceKind !== "live-folder" || liveFolderConflict) return;
+    const onFocus = () => checkLiveFolderExternalChanges();
+    const interval = window.setInterval(
+      checkLiveFolderExternalChanges,
+      5_000,
+    );
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [liveFolderConflict, workspaceSourceKind]);
 
   useEffect(() => {
     if (isRoomSession) disconnectLiveWorkspaceFolder();
@@ -522,6 +761,7 @@ export function useWorkspaceFileIoController({
   return {
     emptyDropActive,
     isLiveFolderSupported: isLiveFolderSupported(),
+    liveFolderConflict,
     workspaceFolderImport,
     workspaceSourceKind,
     workspaceExportReview: pendingWorkspaceExport?.review ?? null,
@@ -534,6 +774,9 @@ export function useWorkspaceFileIoController({
     handleImportInputChange,
     handleWorkspaceImportInputChange,
     openLiveWorkspaceFolder,
+    keepTabulaLiveFolderVersion,
+    mergeLiveFolderConflictManually,
+    useExternalLiveFolderVersion,
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDrop,
