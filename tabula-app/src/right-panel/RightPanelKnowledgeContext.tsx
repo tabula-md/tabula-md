@@ -3,6 +3,7 @@ import {
   type WorkspaceKnowledgeHealthReport,
   type WorkspaceKnowledgeIndex,
 } from "@tabula-md/tabula";
+import type { ReactNode } from "react";
 import { ArrowUpRight, ChevronRight } from "lucide-react";
 import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 import type { KnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
@@ -56,6 +57,7 @@ export function RightPanelKnowledgeContext({
   healthReport,
   index,
   onSelectHealthIssue,
+  children,
 }: {
   activeFileId: string;
   activeFileTitle: string;
@@ -64,6 +66,7 @@ export function RightPanelKnowledgeContext({
   healthReport?: WorkspaceKnowledgeHealthReport;
   index?: WorkspaceKnowledgeIndex;
   onSelectHealthIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
+  children?: ReactNode;
 }) {
   const analysis = index?.analysesByDocumentId.get(activeFileId);
   const metadata = analysis?.knowledgeMetadata;
@@ -80,7 +83,10 @@ export function RightPanelKnowledgeContext({
   return (
     <section className="right-knowledge-context" aria-label={copy.documentContext}>
       {!analysis || !metadata ? (
-        <PanelEmptyState>{copy.notConcept}</PanelEmptyState>
+        <div className="right-knowledge-context-scroll">
+          <PanelEmptyState>{copy.notConcept}</PanelEmptyState>
+          {children}
+        </div>
       ) : (
         <div className="right-knowledge-context-scroll">
           <header className="right-knowledge-document-heading">
@@ -246,6 +252,7 @@ export function RightPanelKnowledgeContext({
               </div>
             )}
           </section>
+          {children}
         </div>
       )}
     </section>

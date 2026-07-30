@@ -1,13 +1,20 @@
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 
 const english = {
-  reviewTitle: "Review export readiness",
+  reviewTitle: "Review workspace",
   reviewDescription:
-    "Resolve portability, evidence, and generated-file concerns before downloading this workspace.",
-  closeReview: "Close export preflight",
+    "Review compatibility, evidence, maintenance, and generated files across this knowledge workspace.",
+  closeReview: "Close workspace review",
+  reviewWorkspace: "Review workspace",
+  workspaceSummary: (version: string, count: number) =>
+    `OKF ${version} · ${count} ${count === 1 ? "concept" : "concepts"}`,
+  documentsForAttention: (label: string) => `${label} documents`,
   required: "Required",
   needsReview: "Needs review",
   maintenance: "Maintenance",
+  needsAttention: "Needs attention",
+  noWorkspaceAttention: "No documents need attention.",
+  conceptCount: (count: number) => `${count} concepts`,
   current: "Current",
   reviewDue: "Review due",
   noReviewDate: "Unscheduled",
@@ -56,19 +63,25 @@ const english = {
   verification: "Verification",
   latestVerification: "Latest verification",
   neverVerified: "No source verification has been recorded.",
-  issues: "Needs attention",
+  issues: "Document issues",
   noIssues: "No issues detected by Tabula for this document.",
   openSource: "Open source",
 };
 
 const korean: typeof english = {
-  reviewTitle: "내보내기 준비 검토",
+  reviewTitle: "워크스페이스 검토",
   reviewDescription:
-    "워크스페이스를 다운로드하기 전에 이식성, 근거 자료, 생성 파일 문제를 확인합니다.",
-  closeReview: "내보내기 사전 검사 닫기",
+    "이 지식 워크스페이스의 호환성, 근거 자료, 유지보수, 생성 파일을 검토합니다.",
+  closeReview: "워크스페이스 검토 닫기",
+  reviewWorkspace: "워크스페이스 검토",
+  workspaceSummary: (version, count) => `OKF ${version} · Concept ${count}개`,
+  documentsForAttention: (label) => `${label} 문서`,
   required: "필수 수정",
   needsReview: "검토 필요",
   maintenance: "유지보수",
+  needsAttention: "확인 필요",
+  noWorkspaceAttention: "확인할 문서가 없습니다.",
+  conceptCount: (count) => `Concept ${count}개`,
   current: "현재 유효",
   reviewDue: "검토 기한 경과",
   noReviewDate: "일정 없음",
@@ -117,7 +130,7 @@ const korean: typeof english = {
   verification: "검증",
   latestVerification: "최근 검증",
   neverVerified: "근거 자료 검증 기록이 없습니다.",
-  issues: "확인 필요",
+  issues: "문서 문제",
   noIssues: "Tabula 검사에서 이 문서의 문제가 발견되지 않았습니다.",
   openSource: "근거 자료 열기",
 };

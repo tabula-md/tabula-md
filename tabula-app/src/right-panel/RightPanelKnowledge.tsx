@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   createWorkspaceKnowledgeIndex,
+  getWorkspaceKnowledgePosture,
   getWorkspaceKnowledgeHealth,
   getWorkspaceKnowledgeHealthDelta,
   planWorkspaceOkfLog,
@@ -23,6 +24,7 @@ import {
   KNOWLEDGE_VERIFICATION_ISSUE_CODES,
 } from "./RightPanelKnowledgeVerification";
 import { RightPanelKnowledgeContext } from "./RightPanelKnowledgeContext";
+import { RightPanelKnowledgeOverview } from "./RightPanelKnowledgeOverview";
 import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelKnowledgeProps = {
@@ -68,9 +70,13 @@ export function RightPanelKnowledge({
 }: RightPanelKnowledgeProps) {
   const knowledgeCopy = getKnowledgePanelCopy(language);
   const compatibilityCopy = getKnowledgeCompatibilityCopy(language);
-  const [exportPreflightOpen, setExportPreflightOpen] = useState(false);
+  const [workspaceReviewOpen, setWorkspaceReviewOpen] = useState(false);
   const healthReport = useMemo(
     () => index ? getWorkspaceKnowledgeHealth(index) : undefined,
+    [index],
+  );
+  const knowledgePosture = useMemo(
+    () => index ? getWorkspaceKnowledgePosture(index) : undefined,
     [index],
   );
   const healthDelta = useMemo(
@@ -109,16 +115,39 @@ export function RightPanelKnowledge({
   ).size, [healthReport]);
 
   useEffect(() => {
-    if (knowledgeCompatibilityOpenRequest > 0) setExportPreflightOpen(true);
+    if (knowledgeCompatibilityOpenRequest > 0) setWorkspaceReviewOpen(true);
   }, [knowledgeCompatibilityOpenRequest]);
+  const knowledgeVersion = compatibilityReport?.declaredVersion
+    ?? compatibilityReport?.targetVersion;
+  const showWorkspaceReview = Boolean(
+    knowledgePosture &&
+      knowledgePosture.conceptCount > 0 &&
+      knowledgeVersion,
+  );
 
   return (
     <>
-      {activeFileId ? (
-        <section
-          className="right-panel-knowledge"
-          aria-label={knowledgeCopy.documentContext}
-        >
+      <section
+        className="right-panel-knowledge"
+        aria-label={knowledgeCopy.documentContext}
+      >
+        {showWorkspaceReview && knowledgePosture && knowledgeVersion && (
+          <header className="right-knowledge-workspace-bar">
+            <span>
+              {knowledgeCopy.workspaceSummary(
+                knowledgeVersion,
+                knowledgePosture.conceptCount,
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => setWorkspaceReviewOpen(true)}
+            >
+              {knowledgeCopy.reviewWorkspace}
+            </button>
+          </header>
+        )}
+        {activeFileId ? (
           <RightPanelKnowledgeContext
             activeFileId={activeFileId}
             activeFileTitle={activeFileTitle}
@@ -127,21 +156,31 @@ export function RightPanelKnowledge({
             healthReport={healthReport}
             index={index}
             onSelectHealthIssue={onSelectHealthIssue}
-          />
-        </section>
-      ) : (
-        <section className="right-panel-content">
-          <PanelEmptyState>{noDocumentCopy}</PanelEmptyState>
-        </section>
-      )}
+          >
+            {knowledgePosture && index && (
+              <RightPanelKnowledgeOverview
+                activeFileId={activeFileId}
+                copy={knowledgeCopy}
+                index={index}
+                onSelectFile={onSelectFile}
+                posture={knowledgePosture}
+              />
+            )}
+          </RightPanelKnowledgeContext>
+        ) : (
+          <section className="right-panel-content">
+            <PanelEmptyState>{noDocumentCopy}</PanelEmptyState>
+          </section>
+        )}
+      </section>
 
-      {exportPreflightOpen && (
+      {workspaceReviewOpen && (
         <KnowledgeReviewDialog
           copy={knowledgeCopy}
           maintenanceCount={healthReport?.attentionCount ?? 0}
           requiredCount={compatibilityReport?.errorCount ?? 0}
           verificationCount={verificationCount}
-          onClose={() => setExportPreflightOpen(false)}
+          onClose={() => setWorkspaceReviewOpen(false)}
         >
           <RightPanelKnowledgeCompatibility
             copy={compatibilityCopy}
@@ -162,7 +201,7 @@ export function RightPanelKnowledge({
             onSelectFile={onSelectFile}
             onSelectHealthIssue={(issue) => {
               onSelectHealthIssue(issue);
-              setExportPreflightOpen(false);
+              setWorkspaceReviewOpen(false);
             }}
             onSetActiveFileOkfType={onSetActiveFileOkfType}
             onVerifyKnowledgeDocument={onVerifyKnowledgeDocument}

@@ -8,6 +8,9 @@ export const description = "OKF concept graph roles, filters, details, and metad
 const fixtureRoot = path.resolve(
   "scripts/browser-smoke/fixtures/openwiki-okf",
 );
+const healthFixtureRoot = path.resolve(
+  "scripts/browser-smoke/fixtures/okf-health",
+);
 
 const readFixtureEntries = async (directory, relativeDirectory = "") => {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -60,6 +63,7 @@ export async function run(ctx) {
     withPage,
   } = ctx;
   const fixtureEntries = await readFixtureEntries(fixtureRoot);
+  const healthFixtureEntries = await readFixtureEntries(healthFixtureRoot);
 
   await withPage(browser, "/", async (page) => {
     await page.locator('input[aria-label="Open folder"]').evaluate(
@@ -236,10 +240,30 @@ export async function run(ctx) {
         (await page.getByRole("button", {
           name: "Review workspace",
           exact: true,
-        }).count()) === 0 &&
+        }).count()) === 1 &&
         (await page.locator(".right-graph-panel").count()) === 0,
-      "Knowledge should not expose browse, graph, or review-workspace modes during editing.",
+      "Knowledge should keep browsing and graph views separate while exposing workspace review as an explicit action.",
     );
+    await page.getByRole("button", {
+      name: "Review workspace",
+      exact: true,
+    }).click();
+    const directWorkspaceReview = page.getByRole("dialog", {
+      name: "Review workspace",
+      exact: true,
+    });
+    await directWorkspaceReview.waitFor();
+    expect(
+      await directWorkspaceReview.getByRole("heading", {
+        name: "Knowledge base compatibility",
+        exact: true,
+      }).isVisible(),
+      "Knowledge should open the existing compatibility and maintenance review without requiring an export.",
+    );
+    await directWorkspaceReview.getByRole("button", {
+      name: "Close workspace review",
+      exact: true,
+    }).click();
 
     await sidePanelNavigation.getByRole("button", {
       name: "Search",
@@ -251,11 +275,13 @@ export async function run(ctx) {
       exact: true,
     });
     await conceptSearch.fill("dispatches work");
+    const runtimeSearchResult = page.getByRole("button", {
+      name: "architecture/runtime",
+      exact: true,
+    });
+    await runtimeSearchResult.waitFor({ state: "visible", timeout: 5_000 });
     expect(
-      await page.getByRole("button", {
-        name: "architecture/runtime",
-        exact: true,
-      }).isVisible() &&
+      await runtimeSearchResult.isVisible() &&
         (await page.locator(".right-panel-search-result").count()) === 1,
       "Search should retrieve concept body text without turning Knowledge into a catalog.",
     );
@@ -332,7 +358,7 @@ export async function run(ctx) {
       (await page.getByRole("button", { name: "Replace index", exact: true }).count()) === 0,
       "Cancelling curated index replacement should leave the source untouched.",
     );
-    await page.getByRole("button", { name: "Close export preflight", exact: true }).click();
+    await page.getByRole("button", { name: "Close workspace review", exact: true }).click();
     await openProjectMenu(page);
     await page.getByRole("button", {
       name: "Export workspace (.zip)",
@@ -348,6 +374,196 @@ export async function run(ctx) {
     expect(
       reviewedDownload.suggestedFilename().endsWith(".zip"),
       "Confirming the review should download the reviewed workspace snapshot.",
+    );
+  });
+
+  await withPage(browser, "/", async (page) => {
+    await page.locator('input[aria-label="Open folder"]').evaluate(
+      (input, entries) => {
+        const dataTransfer = new DataTransfer();
+        for (const entry of entries) {
+          const file = new File(
+            [entry.content],
+            entry.path.split("/").at(-1),
+            { type: "text/markdown" },
+          );
+          Object.defineProperty(file, "webkitRelativePath", {
+            value: `okf-health/${entry.path}`,
+          });
+          dataTransfer.items.add(file);
+        }
+        Object.defineProperty(input, "files", {
+          configurable: true,
+          value: dataTransfer.files,
+        });
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      },
+      healthFixtureEntries,
+    );
+    await page.getByRole("dialog", { name: "Open folder" }).waitFor();
+    await page.getByRole("button", { name: "Open folder", exact: true }).click();
+    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+
+    await ensureSidePanelOpen(page);
+    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await waitForPanelTab(page, "Files");
+    const fileStatus = (fileName) => page.locator(
+      `.right-file-tree-row[data-file-name="${fileName}"] `
+      + ".right-file-knowledge-status",
+    );
+    expect(
+      (await fileStatus("payments.md").count()) === 0 &&
+        (await fileStatus("refunds.md").count()) === 1 &&
+        (await fileStatus("checkout-incident.md").count()) === 1 &&
+        (await fileStatus("legacy-gateway.md").count()) === 1 &&
+        (await fileStatus("routing-rewrite.md").count()) === 1 &&
+        (await fileStatus("support-ownership.md").count()) === 1 &&
+        (await fileStatus("catalog.md").count()) === 1,
+      "Files should stay quiet for healthy concepts and show one status dot for each document that needs attention.",
+    );
+    expect(
+      (await fileStatus("catalog.md").getAttribute("data-knowledge-priority")) ===
+          "critical" &&
+        (await fileStatus("refunds.md").getAttribute(
+          "data-knowledge-priority",
+        )) === "attention" &&
+        (await fileStatus("checkout-incident.md").getAttribute(
+          "data-knowledge-priority",
+        )) === "attention" &&
+        (await fileStatus("support-ownership.md").getAttribute(
+          "data-knowledge-priority",
+        )) === "maintenance",
+      "A file status dot should use the highest operational priority across its independent concerns.",
+    );
+    await page.getByRole("button", {
+      name: "Open checkout-incident.md",
+      exact: true,
+    }).hover();
+    expect(
+      (await fileStatus("checkout-incident.md").evaluate(
+        (status) => getComputedStyle(status, "::before").opacity,
+      )) === "0.45",
+      "Hovering a file row should leave its status dot quiet.",
+    );
+    await fileStatus("checkout-incident.md").hover();
+    await page.locator(".app-tooltip").waitFor({ state: "visible", timeout: 2_000 });
+    expect(
+      (await fileStatus("checkout-incident.md").evaluate(
+        (status) => getComputedStyle(status, "::before").opacity,
+      )) === "1" &&
+        (await page.locator(".app-tooltip").textContent()) ===
+          "Draft\nUnverified\nNo review date",
+      "Hovering a file status dot should strengthen its color and reveal every concern on a separate line.",
+    );
+    await page.getByRole("button", {
+      name: "Open payments.md",
+      exact: true,
+    }).click();
+    await waitForActiveTab(page, { exact: "payments.md" });
+    await selectDocumentViewMode(page, "Edit");
+    await waitForEditorReady(page, { mode: "edit" });
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await waitForPanelTab(page, "Knowledge");
+    expect(
+      await page.getByText(
+        "OKF 0.2 · 7 concepts",
+        { exact: true },
+      ).isVisible() &&
+        await page.getByRole("button", {
+          name: "Review workspace",
+          exact: true,
+        }).isVisible(),
+      "Knowledge should expose the workspace standard, concept count, and review action without becoming a dashboard.",
+    );
+
+    const knowledgeContext = page.getByRole("region", {
+      name: "Knowledge context",
+    }).first();
+    const knowledgePassport = knowledgeContext.getByRole("region", {
+      name: "Knowledge passport",
+    });
+    expect(
+      await knowledgePassport.getByText("Lifecycle", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Stable", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Trust", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText(
+          "Human review recorded",
+          { exact: true },
+        ).isVisible() &&
+        await knowledgePassport.getByText(
+          "taeha · 2026-07-24",
+          { exact: true },
+        ).isVisible() &&
+        await knowledgePassport.getByText("Freshness", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Current", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText(
+          "Review after 2099-12-31",
+          { exact: true },
+        ).isVisible() &&
+        await knowledgeContext.getByText(
+          "No issues detected by Tabula for this document.",
+          { exact: true },
+        ).isVisible(),
+      "The active concept should expose a stable lifecycle, trust, and freshness passport.",
+    );
+    const attentionList = knowledgeContext.getByRole("region", {
+      name: "Needs attention",
+    });
+    expect(
+      await attentionList.getByText("7 concepts", { exact: true }).isVisible() &&
+        await attentionList.getByRole(
+          "button",
+          { name: "Review due 2", exact: true },
+        ).isEnabled() &&
+        await attentionList.getByRole(
+          "button",
+          { name: "Unverified 1", exact: true },
+        ).isEnabled() &&
+        await attentionList.getByRole(
+          "button",
+          { name: "Invalid review date 1", exact: true },
+        ).isEnabled(),
+      "Workspace knowledge should present actionable review queues rather than a status dashboard.",
+    );
+    await attentionList.getByRole(
+      "button",
+      { name: "Review due 2", exact: true },
+    ).click();
+    const reviewDueDocuments = attentionList.getByRole("region", {
+      name: "Review due documents",
+      exact: true,
+    });
+    expect(
+      await reviewDueDocuments.getByRole("button", {
+        name: /Legacy payment gateway/,
+      }).isVisible() &&
+        await reviewDueDocuments.getByRole("button", {
+          name: /Refund policy/,
+        }).isVisible(),
+      "An attention count should expand into every matching document instead of opening only the first match.",
+    );
+    await reviewDueDocuments.getByRole("button", {
+      name: /Refund policy/,
+    }).click();
+    await waitForActiveTab(page, { exact: "refunds.md" });
+    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", {
+      name: "Open payments.md",
+      exact: true,
+    }).click();
+    await waitForActiveTab(page, { exact: "payments.md" });
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await waitForPanelTab(page, "Knowledge");
+    expect(
+      await knowledgeContext.getByText(
+        "Payments API contract",
+        { exact: true },
+      ).isVisible() &&
+        await knowledgeContext.getByText(
+          "Settlement SLO",
+          { exact: true },
+        ).isVisible(),
+      "The document passport should lead into inspectable provenance.",
     );
   });
 

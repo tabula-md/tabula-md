@@ -1,12 +1,182 @@
 .right-panel-knowledge {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
 }
 
-.right-knowledge-context {
+.right-knowledge-workspace-bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--right-tight-gap);
+  min-height: 42px;
+  padding: 6px var(--right-row-x);
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.right-knowledge-workspace-bar > span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-knowledge-workspace-bar > button {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-control);
+  color: var(--text-soft);
+  background: var(--surface-workbench);
+  font-size: var(--font-ui-caption);
+  white-space: nowrap;
+}
+
+.right-knowledge-workspace-bar > button:hover,
+.right-knowledge-workspace-bar > button:focus-visible {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.right-knowledge-overview {
   display: grid;
+  gap: 7px;
+  padding: 14px var(--right-row-x) 2px;
+  border-top: 1px solid var(--line-subtle);
+}
+
+.right-knowledge-overview header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--right-tight-gap);
+}
+
+.right-knowledge-overview h2,
+.right-knowledge-overview p {
+  margin: 0;
+}
+
+.right-knowledge-overview h2 {
+  color: var(--text-soft);
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-regular);
+}
+
+.right-knowledge-overview p {
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.right-knowledge-attention-list {
+  display: grid;
+  gap: 2px;
+}
+
+.right-knowledge-attention-summary {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--right-tight-gap);
+  min-width: 0;
+  min-height: 34px;
+  padding: 5px 7px;
+  border-radius: var(--right-row-radius);
+  color: var(--text-soft);
+  background: transparent;
+  font-size: var(--font-ui-secondary);
+  text-align: left;
+}
+
+.right-knowledge-attention-summary:hover,
+.right-knowledge-attention-summary:focus-visible,
+.right-knowledge-attention-summary[aria-expanded="true"] {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.right-knowledge-attention-summary > strong {
+  color: var(--attention);
+  font-size: var(--font-ui-caption);
+  font-weight: var(--weight-ui-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.right-knowledge-attention-documents {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 6px 7px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line-subtle);
+}
+
+.right-knowledge-attention-document {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--right-tight-gap);
+  min-width: 0;
+  min-height: 42px;
+  padding: 5px 7px;
+  border-radius: var(--right-row-radius);
+  color: var(--text-muted);
+  background: transparent;
+  text-align: left;
+}
+
+.right-knowledge-attention-document:hover,
+.right-knowledge-attention-document:focus-visible,
+.right-knowledge-attention-document[aria-current="page"] {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.right-knowledge-attention-document > span,
+.right-knowledge-attention-document strong,
+.right-knowledge-attention-document small {
+  min-width: 0;
+}
+
+.right-knowledge-attention-document > span {
+  display: grid;
+  gap: 1px;
+}
+
+.right-knowledge-attention-document strong,
+.right-knowledge-attention-document small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-knowledge-attention-document strong {
+  color: var(--text-soft);
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-regular);
+}
+
+.right-knowledge-attention-document small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-ui-caption);
+}
+
+.right-knowledge-overview-empty {
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+  line-height: 1.4;
+}
+
+.right-knowledge-context {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
 }
