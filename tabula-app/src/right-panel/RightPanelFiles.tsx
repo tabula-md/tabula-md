@@ -1,6 +1,9 @@
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 import {
+  getOkfDocumentAttentionSignals,
   stripMarkdownExtension,
+  type OkfDocumentAttentionSignal,
+  type WorkspaceKnowledgeIndex,
 } from "@tabula-md/tabula";
 import {
   type DragEvent as ReactDragEvent,
@@ -16,6 +19,7 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   ClipboardCopy,
+  CircleHelp,
   Copy,
   Ellipsis,
   File,
@@ -28,6 +32,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
+import type { KnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import {
   getWorkspaceName,
@@ -50,6 +55,11 @@ import {
   ContextMenuTrigger,
 } from "../ui/ContextMenu";
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../ui/Menu";
+import {
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "../ui/Popover";
 import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelFilesCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
@@ -60,6 +70,8 @@ type RightPanelFilesProps = {
   activeFileId: string;
   collapsedFolderIds: Set<string>;
   copy: RightPanelFilesCopy;
+  knowledgeIndex?: WorkspaceKnowledgeIndex;
+  knowledgeStatusCopy: KnowledgePanelCopy;
   onNewFile: (parentId?: string) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -67,6 +79,7 @@ type RightPanelFilesProps = {
   onCollapseAllFolders: (folderIds: Iterable<string>) => void;
   onExpandAllFolders: () => void;
   onSelectFile: (fileId: string) => void;
+  onReviewKnowledgeFile: (fileId: string) => void;
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
@@ -81,6 +94,76 @@ type RightPanelFilesProps = {
 const RIGHT_TREE_INDENT = 16;
 const FOLDER_AUTO_EXPAND_DELAY = 600;
 
+const getKnowledgePriority = (
+  signals: readonly OkfDocumentAttentionSignal[],
+) => {
+  if (signals.includes("invalid-review-date")) return "critical";
+  if (signals.includes("review-due") || signals.includes("unverified")) {
+    return "attention";
+  }
+  return "maintenance";
+};
+
+const getKnowledgeSignalLabel = (
+  signal: OkfDocumentAttentionSignal,
+  copy: KnowledgePanelCopy,
+  staleAfter?: string,
+) => {
+  if (signal === "review-due" && staleAfter) return copy.reviewDueSince(staleAfter);
+  if (signal === "review-unscheduled") return copy.noReviewScheduled;
+  if (signal === "invalid-review-date" && staleAfter) {
+    return copy.invalidReviewDateValue(staleAfter);
+  }
+  if (signal === "invalid-review-date") return copy.invalidReviewDate;
+  if (signal === "unverified") return copy.unverified;
+  if (signal === "draft") return copy.draft;
+  return copy.deprecated;
+};
+
+function FileKnowledgeStatus({
+  copy,
+  fileTitle,
+  onReview,
+  signals,
+  staleAfter,
+}: {
+  copy: KnowledgePanelCopy;
+  fileTitle: string;
+  onReview: () => void;
+  signals: readonly OkfDocumentAttentionSignal[];
+  staleAfter?: string;
+}) {
+  const labels = signals.map((signal) =>
+    getKnowledgeSignalLabel(signal, copy, staleAfter));
+
+  return (
+    <PopoverRoot>
+      <PopoverTrigger asChild>
+        <button
+          className="right-file-knowledge-status"
+          data-knowledge-priority={getKnowledgePriority(signals)}
+          data-tooltip={labels.join("\n")}
+          type="button"
+          aria-label={copy.fileAttentionLabel(fileTitle, labels.join(", "))}
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="right-file-knowledge-popover"
+        aria-label={copy.attentionDetails}
+      >
+        <strong>{copy.attentionDetails}</strong>
+        <ul>
+          {labels.map((label) => <li key={label}>{label}</li>)}
+        </ul>
+        <button type="button" onClick={onReview}>
+          {copy.reviewInKnowledge}
+        </button>
+      </PopoverContent>
+    </PopoverRoot>
+  );
+}
+
 const releasePointerActionFocus = (event: ReactMouseEvent<HTMLButtonElement>) => {
   if (event.detail > 0) event.currentTarget.blur();
 };
@@ -91,6 +174,8 @@ export function RightPanelFiles({
   activeFileId,
   collapsedFolderIds,
   copy,
+  knowledgeIndex,
+  knowledgeStatusCopy,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -98,6 +183,7 @@ export function RightPanelFiles({
   onCollapseAllFolders,
   onExpandAllFolders,
   onSelectFile,
+  onReviewKnowledgeFile,
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
@@ -129,6 +215,16 @@ export function RightPanelFiles({
   const treeScrollRef = useRef<HTMLDivElement | null>(null);
   const fileButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const filesBeforeCreateRef = useRef<ReadonlySet<string> | null>(null);
+  const knowledgeSignalsByFileId = useMemo(() => {
+    const signals = new Map<string, readonly OkfDocumentAttentionSignal[]>();
+    if (!knowledgeIndex) return signals;
+
+    for (const [documentId, analysis] of knowledgeIndex.analysesByDocumentId) {
+      const documentSignals = getOkfDocumentAttentionSignals(analysis);
+      if (documentSignals.length > 0) signals.set(documentId, documentSignals);
+    }
+    return signals;
+  }, [knowledgeIndex]);
   const visibleRows = useMemo(() => {
     const nextFileTreeRoot = buildFileTree(files, folders);
     return flattenVisibleFileTree(nextFileTreeRoot, collapsedFolderIds);
@@ -479,18 +575,6 @@ export function RightPanelFiles({
             </button>
             {!isRootFolder && !folderIsRenaming && (
               <span className="right-file-actions">
-                <button
-                  className="right-file-action"
-                  type="button"
-                  aria-label={`${copy.newDocument}: ${node.name}`}
-                  data-tooltip={copy.newDocument}
-                  onClick={(event) => {
-                    createAndRenameDocument(node.id);
-                    releasePointerActionFocus(event);
-                  }}
-                >
-                  <FilePlus2 size={14} />
-                </button>
                 <MenuRoot
                   open={folderMenuOpen}
                   onOpenChange={(open) => setActionMenuFolderId(open ? node.id : null)}
@@ -584,6 +668,9 @@ export function RightPanelFiles({
     const menuOpen = file.id === actionMenuFileId;
     const fileIsDragging = draggedItem?.type === "file" && draggedItem.id === file.id;
     const fileParentId = file.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
+    const knowledgeSignals = knowledgeSignalsByFileId.get(file.id) ?? [];
+    const knowledgeMetadata = knowledgeIndex?.analysesByDocumentId
+      .get(file.id)?.knowledgeMetadata;
 
     return (
       <ContextMenuRoot key={node.id}>
@@ -665,31 +752,16 @@ export function RightPanelFiles({
                 </span>
                 <span className="right-row-label">{stripMarkdownExtension(node.name)}</span>
               </button>
+              {knowledgeSignals.length > 0 && (
+                <FileKnowledgeStatus
+                  copy={knowledgeStatusCopy}
+                  fileTitle={file.title}
+                  onReview={() => onReviewKnowledgeFile(file.id)}
+                  signals={knowledgeSignals}
+                  staleAfter={knowledgeMetadata?.staleAfter}
+                />
+              )}
               <span className="right-file-actions" aria-label={copy.actions(file.title)}>
-                <button
-                  className="right-file-action"
-                  type="button"
-                  aria-label={`${copy.copyMarkdown}: ${file.title}`}
-                  data-tooltip={copy.copyMarkdown}
-                  onClick={(event) => {
-                    onCopyFile(file.id);
-                    releasePointerActionFocus(event);
-                  }}
-                >
-                  <ClipboardCopy size={14} />
-                </button>
-                <button
-                  className="right-file-action danger"
-                  type="button"
-                  aria-label={`${copy.delete}: ${file.title}`}
-                  data-tooltip={copy.delete}
-                  onClick={(event) => {
-                    releasePointerActionFocus(event);
-                    deleteFileFromMenu(file.id);
-                  }}
-                >
-                  <Trash2 size={14} />
-                </button>
                 <MenuRoot
                   open={menuOpen}
                   onOpenChange={(open) => setActionMenuFileId(open ? file.id : null)}
@@ -827,6 +899,32 @@ export function RightPanelFiles({
           )}
         </div>
         <div className="right-file-toolbar-actions">
+            {knowledgeIndex && (
+              <PopoverRoot>
+                <PopoverTrigger asChild>
+                  <button
+                    className="right-file-toolbar-button"
+                    type="button"
+                    aria-label={knowledgeStatusCopy.fileAttentionLegend}
+                    data-tooltip={knowledgeStatusCopy.fileAttentionLegend}
+                  >
+                    <CircleHelp size={16} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  className="right-file-knowledge-legend"
+                  aria-label={knowledgeStatusCopy.fileAttentionLegend}
+                >
+                  <strong>{knowledgeStatusCopy.fileAttentionLegend}</strong>
+                  <p>
+                    <span aria-hidden="true" />
+                    {knowledgeStatusCopy.attentionDotMeaning}
+                  </p>
+                  <p>{knowledgeStatusCopy.noAttentionDotMeaning}</p>
+                </PopoverContent>
+              </PopoverRoot>
+            )}
             {collapsibleFolderIds.length > 0 && (
               <button
                 className="right-file-toolbar-button"

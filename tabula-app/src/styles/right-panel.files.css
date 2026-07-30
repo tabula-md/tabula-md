@@ -62,6 +62,10 @@
   color: var(--text-soft);
 }
 
+.right-file-tree-row.file {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
 .right-file-tree-row svg {
   width: var(--right-icon-size);
   height: var(--right-icon-size);
@@ -113,6 +117,103 @@
 .right-file-document-icon svg {
   width: var(--right-icon-size);
   height: var(--right-icon-size);
+}
+
+.right-file-knowledge-status {
+  display: grid;
+  place-items: center;
+  width: var(--control-size-compact);
+  height: var(--control-size-compact);
+  padding: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+}
+
+.right-file-knowledge-status::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--knowledge-status-maintenance);
+  opacity: 0.45;
+  transition: opacity var(--motion-hover) ease;
+  content: "";
+}
+
+.right-file-knowledge-status[data-knowledge-priority="attention"]::before {
+  background: var(--knowledge-status-attention);
+}
+
+.right-file-knowledge-status[data-knowledge-priority="critical"]::before {
+  background: var(--knowledge-status-critical);
+}
+
+.right-file-knowledge-status:hover::before,
+.right-file-knowledge-status:focus-visible::before,
+.right-file-knowledge-status[data-state="open"]::before {
+  opacity: 1;
+}
+
+.right-file-knowledge-status:hover,
+.right-file-knowledge-status:focus-visible,
+.right-file-knowledge-status[data-state="open"] {
+  background: var(--surface-active);
+}
+
+.right-file-knowledge-popover,
+.right-file-knowledge-legend {
+  display: grid;
+  gap: 8px;
+  width: min(260px, calc(100vw - 16px));
+  padding: 12px;
+  color: var(--text-soft);
+  font-size: var(--font-ui-secondary);
+  line-height: 1.4;
+}
+
+.right-file-knowledge-popover > strong,
+.right-file-knowledge-legend > strong {
+  color: var(--text-primary);
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-medium);
+}
+
+.right-file-knowledge-popover ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.right-file-knowledge-popover > button {
+  min-height: var(--control-size-row);
+  padding: 0 10px;
+  border-radius: var(--radius-control);
+  color: var(--text-soft);
+  background: var(--surface-muted);
+  font-size: var(--font-ui-secondary);
+  text-align: left;
+}
+
+.right-file-knowledge-popover > button:hover,
+.right-file-knowledge-popover > button:focus-visible {
+  color: var(--text-primary);
+  background: var(--surface-active);
+}
+
+.right-file-knowledge-legend p {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+}
+
+.right-file-knowledge-legend p > span {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--knowledge-status-attention);
 }
 
 .right-file-actions {
@@ -195,6 +296,11 @@
     width: var(--control-size-touch);
     height: var(--control-size-touch);
     border-radius: var(--radius-surface);
+  }
+
+  .right-file-knowledge-status {
+    width: var(--control-size-touch);
+    height: var(--control-size-touch);
   }
 
   .right-file-action-menu {

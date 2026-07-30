@@ -273,7 +273,7 @@
   font-weight: var(--weight-ui-medium);
   line-height: 1.25;
   pointer-events: none;
-  white-space: normal;
+  white-space: pre-line;
   transform: translateX(-50%);
   animation: app-tooltip-in var(--motion-hover) ease-out;
 }
