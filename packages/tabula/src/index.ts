@@ -813,6 +813,22 @@ export type {
 export {
   analyzeLlmWikiWorkflow,
 } from "./workspaceLlmWikiProfile";
+export type {
+  AgentInstructionApplication,
+  AgentInstructionChange,
+  AgentInstructionDocument,
+  AgentInstructionIssue,
+  AgentInstructionIssueCode,
+  AgentInstructionKind,
+  AgentInstructionOptions,
+  AgentInstructionReport,
+  AgentInstructionTrust,
+  AgentSkillReport,
+} from "./workspaceAgentInstructions";
+export {
+  analyzeWorkspaceAgentInstructions,
+  getAgentInstructionChanges,
+} from "./workspaceAgentInstructions";
 
 export type {
   OkfConceptTypeUpdateFailure,

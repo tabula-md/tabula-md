@@ -10,6 +10,10 @@ import {
   type OkfAdvancedSupportSummary,
 } from "./workspaceOkfAdvancedContracts";
 import {
+  analyzeWorkspaceAgentInstructions,
+  type AgentInstructionReport,
+} from "./workspaceAgentInstructions";
+import {
   createWorkspaceOkfInspection,
   detectWorkspaceOkfVersion,
   getOkfVersionAdapter,
@@ -75,6 +79,7 @@ export type OkfCompatibilityReport = {
   errorCount: number;
   warningCount: number;
   advancedSupport: OkfAdvancedSupportSummary;
+  agentInstructions: AgentInstructionReport;
   documents: readonly OkfDocumentCompatibility[];
   issues: readonly OkfCompatibilityIssue[];
 };
@@ -169,6 +174,12 @@ export const getWorkspaceOkfCompatibility = (
           unsupportedRuntimes: [],
         },
       };
+  const availablePaths = options.availablePaths
+    ?? [...index.documentsById.values()].map((document) => document.path);
+  const agentInstructions = analyzeWorkspaceAgentInstructions(
+    index,
+    availablePaths,
+  );
   const strictValidation = Boolean(versionAdapter);
   const versionIssuesByDocumentId = new Map<string, OkfCompatibilityIssue[]>();
   for (const diagnostic of versionReport?.diagnostics ?? []) {
@@ -378,6 +389,7 @@ export const getWorkspaceOkfCompatibility = (
     errorCount,
     warningCount,
     advancedSupport: advancedReport.support,
+    agentInstructions,
     documents: documentReports,
     issues,
   };
