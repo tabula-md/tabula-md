@@ -77,7 +77,6 @@ export function WorkspaceMenuSurface({
         ref={workspaceImportInputRef}
         className="ui-input-surface workspace-file-input"
         type="file"
-        accept=".md,text/markdown"
         multiple
         {...{ webkitdirectory: "" }}
         onChange={onImportWorkspaceChange}
