@@ -1334,6 +1334,7 @@ export function useWorkspaceRuntime() {
       workbench: workbenchProps,
     },
     workspaceSession: {
+      sourceKind: workspaceSession.source.kind,
       emptySurface: {
         dropActive: emptyDropActive,
         language: workspacePreferences.language,
