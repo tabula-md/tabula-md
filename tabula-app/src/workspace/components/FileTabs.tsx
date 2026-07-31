@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { stripMarkdownExtension } from "@tabula-md/tabula";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { Collaborator } from "../../collaboration/liveCollaboration";
 import type { RenameFileResult } from "../state/useWorkspaceFiles";
@@ -15,6 +16,8 @@ import { NewDocumentButton } from "./NewDocumentButton";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import { getWorkspaceFileIconKind } from "../workspaceFilePresentation";
+import { WorkspaceFileTypeIcon } from "./WorkspaceFileTypeIcon";
 
 type TabScrollState = {
   canScrollLeft: boolean;
@@ -41,8 +44,6 @@ const emptyTabScrollState: TabScrollState = {
   canScrollLeft: false,
   canScrollRight: false,
 };
-
-const getTabDisplayTitle = (title: string) => title.replace(/\.(?:md|markdown)$/i, "");
 
 export const getDocumentCollaborators = (
   collaborators: readonly Collaborator[],
@@ -143,7 +144,7 @@ export function FileTabs({
 
   const startRenamingFile = (file: WorkspaceFile) => {
     setRenamingFileId(file.id);
-    setRenamingTitle(getTabDisplayTitle(file.title));
+    setRenamingTitle(file.title);
     onChromeInteraction?.();
   };
 
@@ -257,7 +258,8 @@ export function FileTabs({
             displayTitle: file.title,
             fullPath: file.title,
           };
-          const tabDisplayTitle = getTabDisplayTitle(tabLabel.displayTitle);
+          const tabDisplayTitle = stripMarkdownExtension(tabLabel.displayTitle);
+          const fileIconKind = getWorkspaceFileIconKind(file);
           return (
             <div
               className={`tab-item ${isActiveFile ? "active" : ""} ${
@@ -349,6 +351,14 @@ export function FileTabs({
                       tabLabel.locationLabel ? " has-location" : ""
                     }`}
                   >
+                    {fileIconKind !== "markdown" && (
+                      <span className="tab-file-type-icon" aria-hidden="true">
+                        <WorkspaceFileTypeIcon
+                          kind={fileIconKind}
+                          size={14}
+                        />
+                      </span>
+                    )}
                     <span className="tab-title">{tabDisplayTitle}</span>
                     {tabLabel.locationLabel && (
                       <span className="tab-location" aria-hidden="true">

@@ -8,6 +8,7 @@ import type { WorkspaceOverlaySurfaceProps } from "./components/WorkspaceOverlay
 import type { WorkspaceTopChromeProps } from "./components/WorkspaceTopChrome";
 import type { WorkspaceFile } from "./workspaceStorage";
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
+import { isWorkspaceMarkdownFile } from "./workspaceFilePresentation";
 
 export type WorkspaceAppWorkbenchProps = Omit<
   DocumentWorkbenchProps,
@@ -56,6 +57,7 @@ export function createWorkspaceRuntimeFacade({
   ...runtime
 }: CreateWorkspaceRuntimeFacadeOptions): WorkspaceRuntimeFacade {
   const splitViewOpen =
+    isWorkspaceMarkdownFile(runtime.documentRuntime.workbench.activeFile) &&
     runtime.documentRuntime.surface.documentControls.activeViewMode === "split";
 
   return {

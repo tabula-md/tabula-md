@@ -24,8 +24,12 @@ const fileComment = (id: string, createdAt: string, overrides: Partial<RightPane
 describe("rightPanelCommentViewModel", () => {
   it("strips supported Markdown extensions from display paths", () => {
     expect(stripMarkdownExtension("Notes/Plan.md")).toBe("Notes/Plan");
+    expect(stripMarkdownExtension("Notes/Plan.mdx")).toBe("Notes/Plan");
     expect(stripMarkdownExtension("Notes/Plan.markdown")).toBe("Notes/Plan");
     expect(stripMarkdownExtension("Notes/Plan.txt")).toBe("Notes/Plan.txt");
+    expect(stripMarkdownExtension("Notes/query.sql")).toBe("Notes/query.sql");
+    expect(stripMarkdownExtension("Notes/.last-update.json")).toBe("Notes/.last-update.json");
+    expect(stripMarkdownExtension("Notes/.instructions.md")).toBe("Notes/.instructions.md");
   });
 
   it("separates open and resolved comment groups", () => {

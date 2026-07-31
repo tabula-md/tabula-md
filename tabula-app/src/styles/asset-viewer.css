@@ -1,0 +1,123 @@
+.file-shell.asset-file-shell {
+  grid-template-rows: 50px minmax(0, 1fr);
+}
+
+.workspace-asset-toolbar {
+  width: var(--document-chrome-width);
+}
+
+.workspace-asset-workspace {
+  grid-row: 2;
+  margin: 0;
+  padding: 0;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+.workspace-asset-content {
+  min-width: 0;
+  min-height: 100%;
+  color: var(--text-primary);
+  background: var(--app-background);
+}
+
+.workspace-asset-content.text {
+  box-sizing: border-box;
+  width: var(--editor-frame-width);
+  margin-left: var(--document-lane-margin-left);
+  margin-right: var(--document-lane-margin-right);
+  padding:
+    18px
+    var(--editor-right-inset)
+    40px
+    var(--editor-left-rail);
+  overflow: auto;
+}
+
+.workspace-asset-source {
+  min-width: max-content;
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.workspace-asset-content.image {
+  display: grid;
+  place-items: center;
+  padding: 28px;
+}
+
+.workspace-asset-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 10%);
+}
+
+.workspace-asset-content.pdf {
+  height: 100%;
+}
+
+.workspace-asset-pdf {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border: 0;
+  background: var(--app-background);
+}
+
+.workspace-asset-content.binary {
+  display: grid;
+  place-items: center;
+}
+
+.workspace-asset-unavailable {
+  display: grid;
+  place-items: center;
+  max-width: 420px;
+  padding: 32px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.workspace-asset-unavailable strong {
+  margin-top: 12px;
+  color: var(--text-primary);
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-medium);
+}
+
+.workspace-asset-unavailable p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+}
+
+.tab-file-type-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.right-file-tree-row.file.asset .right-file-document-icon {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 720px) {
+  .workspace-asset-content.text {
+    width: 100%;
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .workspace-asset-content.image {
+    padding: 16px;
+  }
+}

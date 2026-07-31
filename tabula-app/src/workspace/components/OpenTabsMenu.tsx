@@ -4,6 +4,7 @@ import {
   CopyX,
   Undo2,
 } from "lucide-react";
+import { stripMarkdownExtension } from "@tabula-md/tabula";
 import { useMemo, useState } from "react";
 import {
   MenuContent,
@@ -33,9 +34,6 @@ type OpenTabsMenuProps = {
   onSelectFile: (fileId: string) => void;
 };
 
-const getTabDisplayTitle = (title: string) =>
-  title.replace(/\.(?:md|markdown)$/i, "");
-
 export function OpenTabsMenu({
   activeFile,
   folders,
@@ -55,7 +53,7 @@ export function OpenTabsMenu({
     [folders, openFiles],
   );
   const activeTabTitle = activeFile
-    ? getTabDisplayTitle(
+    ? stripMarkdownExtension(
         tabLabels.get(activeFile.id)?.displayTitle ?? activeFile.title,
       )
     : null;
@@ -118,7 +116,7 @@ export function OpenTabsMenu({
             >
               {openFiles.map((file) => {
                 const tabLabel = tabLabels.get(file.id);
-                const title = getTabDisplayTitle(tabLabel?.displayTitle ?? file.title);
+                const title = stripMarkdownExtension(tabLabel?.displayTitle ?? file.title);
                 const label = tabLabel?.locationLabel
                   ? `${title} · ${tabLabel.locationLabel}`
                   : title;

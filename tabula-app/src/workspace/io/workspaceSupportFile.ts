@@ -1,7 +1,7 @@
 const BINARY_SUPPORT_FILE_PREFIX = "tabula.md:binary-support-file;base64,";
 const BASE64_CHUNK_BYTES = 0x8000;
 
-export const isMarkdownWorkspacePath = (path: string) => /\.md$/i.test(path);
+export const isMarkdownWorkspacePath = (path: string) => /\.mdx?$/i.test(path);
 
 export const encodeBinaryWorkspaceSupportFile = (bytes: Uint8Array) => {
   let binary = "";
@@ -16,8 +16,7 @@ export const decodeBinaryWorkspaceSupportFile = (
   content: string,
 ): Uint8Array | undefined => {
   if (
-    isMarkdownWorkspacePath(path)
-    || !content.startsWith(BINARY_SUPPORT_FILE_PREFIX)
+    !isEncodedBinaryWorkspaceSupportFile(path, content)
   ) {
     return undefined;
   }
@@ -28,6 +27,14 @@ export const decodeBinaryWorkspaceSupportFile = (
     return undefined;
   }
 };
+
+export const isEncodedBinaryWorkspaceSupportFile = (
+  path: string,
+  content: string,
+) => (
+  !isMarkdownWorkspacePath(path) &&
+  content.startsWith(BINARY_SUPPORT_FILE_PREFIX)
+);
 
 export const isBinaryWorkspaceSupportFile = (
   path: string,

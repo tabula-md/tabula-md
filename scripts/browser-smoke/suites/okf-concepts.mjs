@@ -62,6 +62,13 @@ export async function run(ctx) {
   const fixtureEntries = [
     ...await readFixtureEntries(fixtureRoot),
     { path: "scratch.tmp", content: "preserved in the browser copy" },
+    {
+      path: "diagram.png",
+      content:
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAA"
+        + "DUlEQVR42mNk+M/wHwAF/gL+AvzZAAAAAElFTkSuQmCC",
+      encoding: "base64",
+    },
   ];
 
   await withPage(browser, "/", async (page) => {
@@ -70,8 +77,12 @@ export async function run(ctx) {
         const dataTransfer = new DataTransfer();
         for (const entry of entries) {
           const name = entry.path.split("/").at(-1);
+          const content = entry.encoding === "base64"
+            ? Uint8Array.from(atob(entry.content), (character) =>
+                character.charCodeAt(0))
+            : entry.content;
           const file = new File(
-            [entry.content],
+            [content],
             name,
             {
               type: entry.path.endsWith(".md")
@@ -132,7 +143,7 @@ export async function run(ctx) {
         (await resultValue("Concepts")) === "3" &&
         (await resultValue("Directory indexes")) === "2" &&
         (await resultValue("Activity log")) === "Present" &&
-        (await resultValue("Bundle assets preserved")) === "2" &&
+        (await resultValue("Bundle assets preserved")) === "3" &&
         /^\d+$/.test((await resultValue("Required compatibility fixes")) ?? "") &&
         /^\d+$/.test((await resultValue("Knowledge health attention")) ?? ""),
       "OKF import orientation should summarize the detected structure and existing review models.",
@@ -157,6 +168,9 @@ export async function run(ctx) {
         exact: true,
       }).isVisible() &&
         await importResult.getByText("scratch.tmp", {
+          exact: true,
+        }).isVisible() &&
+        await importResult.getByText("diagram.png", {
           exact: true,
         }).isVisible(),
       "Import details should retain every non-Markdown bundle asset after replacement.",
@@ -184,8 +198,65 @@ export async function run(ctx) {
         (await page.getByRole("button", {
           name: "Open scratch.tmp",
           exact: true,
+        }).count()) === 1 &&
+        (await page.getByRole("button", {
+          name: "Open diagram.png",
+          exact: true,
         }).count()) === 1,
       "All bundle assets should survive folder import without becoming knowledge documents.",
+    );
+    await page.getByRole("button", {
+      name: "Open scratch.tmp",
+      exact: true,
+    }).click();
+    await waitForActiveTab(page, { exact: "scratch.tmp" });
+    const textAssetViewer = page.getByRole("region", {
+      name: "scratch.tmp file",
+    });
+    expect(
+      await textAssetViewer.getByText(
+        "preserved in the browser copy",
+        { exact: true },
+      ).isVisible() &&
+        await page.getByRole("button", {
+          name: "Copy contents",
+          exact: true,
+        }).isVisible() &&
+        await page.getByRole("button", {
+          name: "Download",
+          exact: true,
+        }).isVisible() &&
+        (await page.locator(".workspace-asset-header").count()) === 0 &&
+        (await page.locator(".workspace-asset-footer").count()) === 0 &&
+        (await page.locator(".cm-content").count()) === 0,
+      "Text assets should reuse quiet document chrome without becoming Markdown editors.",
+    );
+    await page.getByRole("button", {
+      name: "Open diagram.png",
+      exact: true,
+    }).click();
+    await waitForActiveTab(page, { exact: "diagram.png" });
+    const imageAssetViewer = page.getByRole("region", {
+      name: "diagram.png file",
+    });
+    const imageLocator = imageAssetViewer.getByRole("img", {
+      name: "diagram.png preview",
+    });
+    const imageState = await imageLocator.evaluate((image) => ({
+      complete: image.complete,
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
+    }));
+    expect(
+      imageState.complete &&
+        imageState.naturalWidth > 0 &&
+        imageState.naturalHeight > 0 &&
+        await page.getByRole("button", {
+          name: "Download",
+          exact: true,
+        }).isVisible(),
+      `Safe raster assets should open as images instead of encoded text. `
+        + `imageState=${JSON.stringify(imageState)}`,
     );
     await page.getByRole("button", {
       name: "Knowledge attention legend",

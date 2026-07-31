@@ -6,9 +6,11 @@ import {
 } from "./workspaceRuntimeFacade";
 
 const createFacadeInput = ({
+  activeFileTitle = "Plan.md",
   rightPanelOpen,
   splitViewOpen,
 }: {
+  activeFileTitle?: string;
   rightPanelOpen: boolean;
   splitViewOpen: boolean;
 }): CreateWorkspaceRuntimeFacadeOptions => ({
@@ -18,7 +20,12 @@ const createFacadeInput = ({
         activeViewMode: splitViewOpen ? "split" : "visual",
       },
     },
-    workbench: {},
+    workbench: {
+      activeFile: {
+        id: "active-file",
+        title: activeFileTitle,
+      },
+    },
   } as unknown as WorkspaceRuntimeFacade["documentRuntime"],
   workspaceSession: {
     emptySurface: {},
@@ -72,5 +79,15 @@ describe("createWorkspaceRuntimeFacade", () => {
     }));
 
     expect(facade.chrome.mainPanelClassName).toBe("main-panel");
+  });
+
+  it("does not reserve split-view layout space for a bundle asset", () => {
+    const facade = createWorkspaceRuntimeFacade(createFacadeInput({
+      activeFileTitle: "query.sql",
+      rightPanelOpen: true,
+      splitViewOpen: true,
+    }));
+
+    expect(facade.chrome.mainPanelClassName).toBe("main-panel right-panel-open");
   });
 });
