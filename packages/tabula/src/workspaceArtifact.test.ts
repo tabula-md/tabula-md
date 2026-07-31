@@ -42,6 +42,25 @@ describe("workspace artifacts", () => {
     expect(getWorkspaceArtifactBytes(clone.content)).not.toBe(bytes);
   });
 
+  it("preserves an explicit UTF-8 byte order mark", async () => {
+    const content = {
+      kind: "text" as const,
+      text: "# Readme\n",
+      encoding: "utf-8" as const,
+      bom: "utf-8" as const,
+    };
+    const artifact = await createWorkspaceArtifact({
+      id: "readme",
+      path: "README.md",
+      content,
+    });
+
+    expect(Array.from(getWorkspaceArtifactBytes(artifact.content).slice(0, 3)))
+      .toEqual([0xef, 0xbb, 0xbf]);
+    expect(new TextDecoder().decode(getWorkspaceArtifactBytes(content)))
+      .toBe("# Readme\n");
+  });
+
   it("recognizes instructions and assets without treating them as documents", async () => {
     const instruction = await createWorkspaceArtifact({
       id: "agents",

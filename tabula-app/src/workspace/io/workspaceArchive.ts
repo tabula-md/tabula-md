@@ -1,5 +1,8 @@
 import { strToU8, zip } from "fflate";
-import { getWorkspacePathSegmentIssue } from "@tabula-md/tabula";
+import {
+  getWorkspaceArtifactBytes,
+  getWorkspacePathSegmentIssue,
+} from "@tabula-md/tabula";
 import {
   WORKSPACE_ROOT_FOLDER_ID,
   type WorkspaceFile,
@@ -60,7 +63,16 @@ export const getWorkspaceArchiveEntries = (files: WorkspaceFile[], folders: Work
     const archivePath = [...getFolderPath(file.parentId, foldersById), requireArchivePathSegment(file.title)].join("/");
     return {
       path: archivePath,
-      content: decodeBinaryWorkspaceSupportFile(archivePath, file.text) ?? file.text,
+      content:
+        decodeBinaryWorkspaceSupportFile(archivePath, file.text) ??
+        (file.artifact?.bom
+          ? getWorkspaceArtifactBytes({
+              kind: "text",
+              text: file.text,
+              encoding: "utf-8",
+              bom: file.artifact.bom,
+            })
+          : file.text),
     };
   })];
   for (const entry of entries) {

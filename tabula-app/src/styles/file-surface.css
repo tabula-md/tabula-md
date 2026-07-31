@@ -124,6 +124,24 @@
   );
 }
 
+.artifact-unavailable-surface {
+  align-items: center;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  min-height: 240px;
+  padding: 32px;
+  text-align: center;
+}
+
+.artifact-unavailable-surface strong {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
 .file-shell.view-edit .file-status-bar,
 .file-shell.view-visual .file-status-bar {
   width: var(--editor-frame-width);

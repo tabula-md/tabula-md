@@ -53,7 +53,7 @@ describe("workspace import profile", () => {
     });
 
     expect(profile).toMatchObject({
-      syntaxes: ["gfm"],
+      syntaxes: ["commonmark"],
       schemas: [{ id: "okf", version: "0.1" }],
       conventions: ["openwiki"],
       preservedSupportFileCount: 1,
@@ -102,7 +102,7 @@ describe("workspace import profile", () => {
     });
 
     expect(profile).toMatchObject({
-      syntaxes: ["gfm"],
+      syntaxes: ["commonmark"],
       schemas: [],
       conventions: ["obsidian"],
       linkSyntaxes: ["wikilinks", "embeds"],
@@ -120,7 +120,7 @@ describe("workspace import profile", () => {
       sourcePaths: ["One.md", "Two.md", "notes.txt"],
       importedPaths: ["One.md", "Two.md"],
     })).toMatchObject({
-      syntaxes: ["gfm"],
+      syntaxes: ["commonmark"],
       conventions: [],
       schemas: [],
       workflows: [],
@@ -130,6 +130,57 @@ describe("workspace import profile", () => {
       preservedSupportFileCount: 0,
       ignoredFileCount: 1,
     });
+  });
+
+  it("detects GFM only when GFM syntax is actually present", () => {
+    const profile = detectWorkspaceImportProfile({
+      documents: [{
+        id: "tasks",
+        path: "tasks.md",
+        markdown: "# Tasks\n\n- [ ] Ship",
+      }],
+      supportFiles: [],
+      sourcePaths: ["tasks.md"],
+      importedPaths: ["tasks.md"],
+    });
+
+    expect(profile.syntaxes).toEqual(["commonmark", "gfm"]);
+  });
+
+  it("keeps wikilinks as a capability without claiming Obsidian", () => {
+    const profile = detectWorkspaceImportProfile({
+      documents: [{
+        id: "home",
+        path: "Home.md",
+        markdown: "# Home\n\nSee [[Other]].",
+      }],
+      supportFiles: [],
+      sourcePaths: ["Home.md"],
+      importedPaths: ["Home.md"],
+    });
+
+    expect(profile.conventions).toEqual([]);
+    expect(profile.linkSyntaxes).toEqual(["wikilinks"]);
+  });
+
+  it("preserves unknown declared OKF versions without failing detection", () => {
+    const profile = detectWorkspaceImportProfile({
+      documents: [{
+        id: "root",
+        path: "index.md",
+        markdown: "---\nokf_version: \"0.3\"\n---\n\n# Files",
+      }],
+      supportFiles: [],
+      sourcePaths: ["index.md"],
+      importedPaths: ["index.md"],
+    });
+
+    expect(profile.schemas).toEqual([{ id: "okf", version: "0.3" }]);
+    expect(profile.diagnostics).toEqual([]);
+    expect(profile.detections).toContainEqual(expect.objectContaining({
+      profileId: "okf-0.3",
+      confidence: "declared",
+    }));
   });
 
   it("represents mixed syntax, workflow, instruction, and delivery profiles together", () => {
@@ -157,7 +208,7 @@ describe("workspace import profile", () => {
       ],
     });
     expect(profile).toMatchObject({
-      syntaxes: ["gfm", "mdx"],
+      syntaxes: ["commonmark", "mdx"],
       workflows: ["llm-wiki"],
       agentInstructions: ["agents-md", "agent-skills"],
       deliveries: ["llms-txt"],
@@ -210,7 +261,7 @@ describe("workspace import profile", () => {
       },
     ]);
 
-    expect(profile.syntaxes).toEqual(["gfm"]);
+    expect(profile.syntaxes).toEqual(["commonmark"]);
     expect(profile.diagnostics).toEqual([{
       code: "detector-failed",
       detectorId: "broken-test-detector",

@@ -1,4 +1,5 @@
 import {
+  WORKSPACE_ROOM_MAX_TREE_DEPTH,
   createWorkspaceArtifact,
   getExternalArtifactChanges,
   getWorkspaceArtifactBytes,
@@ -20,12 +21,14 @@ import {
   parseWorkspaceFolderImport,
   type WorkspaceFolderImportDefaults,
   type WorkspaceFolderImportDraft,
+  type WorkspaceFolderImportLimits,
 } from "./workspaceFolderImport";
 
 type PermissionStateValue = "denied" | "granted" | "prompt";
 
 export type LiveFolderFile = {
   arrayBuffer(): Promise<ArrayBuffer>;
+  size?: number;
 };
 
 export type LiveFolderWritable = {
@@ -68,6 +71,11 @@ type DirectoryPickerWindow = Window & {
 };
 
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
+const hasUtf8Bom = (bytes: Uint8Array) =>
+  bytes.byteLength >= 3 &&
+  bytes[0] === 0xef &&
+  bytes[1] === 0xbb &&
+  bytes[2] === 0xbf;
 
 const getArtifactContent = (bytes: Uint8Array) => {
   try {
@@ -75,6 +83,7 @@ const getArtifactContent = (bytes: Uint8Array) => {
       kind: "text" as const,
       text: textDecoder.decode(bytes),
       encoding: "utf-8" as const,
+      ...(hasUtf8Bom(bytes) ? { bom: "utf-8" as const } : {}),
     };
   } catch {
     return { kind: "binary" as const, bytes };
@@ -112,29 +121,87 @@ const readFileArtifact = async (
   });
 };
 
+const ignoredDirectoryNames = new Set([
+  ".cache",
+  ".git",
+  ".hg",
+  ".next",
+  ".nuxt",
+  ".pnpm-store",
+  ".svn",
+  ".turbo",
+  ".venv",
+  "__pycache__",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules",
+  "target",
+  "venv",
+]);
+
+const liveFolderImportLimits: WorkspaceFolderImportLimits = {
+  maxContentBytes: 100 * 1024 * 1024,
+  maxFiles: 5_000,
+  maxFolders: 2_000,
+  maxTreeDepth: WORKSPACE_ROOM_MAX_TREE_DEPTH,
+};
+
+const isIgnoredLiveFolderDirectory = (
+  name: string,
+  path: string,
+) =>
+  ignoredDirectoryNames.has(name) ||
+  path === ".yarn/cache" ||
+  path === ".yarn/unplugged";
+
+type LiveFolderReadResult = {
+  artifacts: WorkspaceArtifact[];
+  excludedPaths: string[];
+};
+
 const readDirectoryArtifacts = async (
   directory: LiveFolderDirectoryHandle,
   parentPath = "",
-): Promise<WorkspaceArtifact[]> => {
+): Promise<LiveFolderReadResult> => {
   const artifacts: WorkspaceArtifact[] = [];
+  const excludedPaths: string[] = [];
   for await (const [name, handle] of directory.entries()) {
     const path = parentPath ? `${parentPath}/${name}` : name;
     if (handle.kind === "directory") {
-      artifacts.push(...await readDirectoryArtifacts(handle, path));
+      if (isIgnoredLiveFolderDirectory(name, path)) {
+        excludedPaths.push(`${path}/`);
+        continue;
+      }
+      const nested = await readDirectoryArtifacts(handle, path);
+      artifacts.push(...nested.artifacts);
+      excludedPaths.push(...nested.excludedPaths);
     } else {
-      artifacts.push(await readFileArtifact(handle, path));
+      try {
+        artifacts.push(await readFileArtifact(handle, path));
+      } catch {
+        excludedPaths.push(path);
+      }
     }
   }
-  return artifacts.sort((first, second) =>
-    first.path.localeCompare(second.path));
+  return {
+    artifacts: artifacts.sort((first, second) =>
+      first.path.localeCompare(second.path)),
+    excludedPaths: excludedPaths.sort((first, second) =>
+      first.localeCompare(second)),
+  };
 };
 
 export const readLiveFolderSnapshot = async (
   directory: LiveFolderDirectoryHandle,
-): Promise<WorkspaceSnapshot> => ({
-  artifacts: await readDirectoryArtifacts(directory),
-  capturedAt: new Date().toISOString(),
-});
+): Promise<WorkspaceSnapshot> => {
+  const { artifacts, excludedPaths } = await readDirectoryArtifacts(directory);
+  return {
+    artifacts,
+    capturedAt: new Date().toISOString(),
+    excludedPaths,
+  };
+};
 
 const getParentDirectory = async (
   root: LiveFolderDirectoryHandle,
@@ -183,6 +250,116 @@ const writeArtifact = async (
   }
 };
 
+const removeArtifactAtPath = async (
+  root: LiveFolderDirectoryHandle,
+  path: string,
+) => {
+  const { directory, name } = await getParentDirectory(root, path, false);
+  await directory.removeEntry(name);
+};
+
+const getAffectedPaths = (changes: readonly ArtifactChange[]) =>
+  new Set(changes.flatMap((change) => {
+    if (change.type === "create" || change.type === "update") {
+      return [change.artifact.path];
+    }
+    if (change.type === "move") return [change.fromPath, change.toPath];
+    return [change.path];
+  }));
+
+const validateLiveFolderChanges = (
+  snapshot: WorkspaceSnapshot,
+  changes: readonly ArtifactChange[],
+) => {
+  const byId = new Map(
+    snapshot.artifacts.map((artifact) => [artifact.id, artifact]),
+  );
+  const byPath = new Map(
+    snapshot.artifacts.map((artifact) => [artifact.path, artifact]),
+  );
+
+  for (const change of changes) {
+    if (change.type === "create") {
+      if (
+        byId.has(change.artifact.id) ||
+        byPath.has(change.artifact.path)
+      ) {
+        return false;
+      }
+      byId.set(change.artifact.id, change.artifact);
+      byPath.set(change.artifact.path, change.artifact);
+      continue;
+    }
+
+    if (change.type === "update") {
+      const current = byId.get(change.artifact.id);
+      if (
+        !current ||
+        current.path !== change.artifact.path ||
+        (
+          change.expectedSourceHash &&
+          current.sourceHash !== change.expectedSourceHash
+        )
+      ) {
+        return false;
+      }
+      byId.set(change.artifact.id, change.artifact);
+      byPath.set(change.artifact.path, change.artifact);
+      continue;
+    }
+
+    if (change.type === "move") {
+      const current = byId.get(change.artifactId);
+      if (
+        !current ||
+        current.path !== change.fromPath ||
+        byPath.has(change.toPath) ||
+        (
+          change.expectedSourceHash &&
+          current.sourceHash !== change.expectedSourceHash
+        )
+      ) {
+        return false;
+      }
+      const moved = { ...current, path: change.toPath };
+      byPath.delete(change.fromPath);
+      byPath.set(change.toPath, moved);
+      byId.set(change.artifactId, moved);
+      continue;
+    }
+
+    const current = byId.get(change.artifactId);
+    if (
+      !current ||
+      current.path !== change.path ||
+      (
+        change.expectedSourceHash &&
+        current.sourceHash !== change.expectedSourceHash
+      )
+    ) {
+      return false;
+    }
+    byId.delete(change.artifactId);
+    byPath.delete(change.path);
+  }
+  return true;
+};
+
+const restoreLiveFolderPaths = async (
+  root: LiveFolderDirectoryHandle,
+  baseline: WorkspaceSnapshot,
+  paths: ReadonlySet<string>,
+) => {
+  for (const path of paths) {
+    if (await readArtifactAtPath(root, path)) {
+      await removeArtifactAtPath(root, path);
+    }
+  }
+  for (const artifact of baseline.artifacts) {
+    if (paths.has(artifact.path)) await writeArtifact(root, artifact);
+  }
+};
+
 const hasWritePermission = async (
   directory: LiveFolderDirectoryHandle,
   request: boolean,
@@ -215,72 +392,49 @@ export const createLiveFolderSourceAdapter = (
     if (!await hasWritePermission(directory, true)) {
       return { ok: false, reason: "permission" };
     }
+    const baseline = await readSnapshot();
+    if (!validateLiveFolderChanges(baseline, changes)) {
+      return { ok: false, reason: "conflict" };
+    }
+    const affectedPaths = getAffectedPaths(changes);
     try {
       for (const change of changes) {
         if (change.type === "create") {
-          if (await readArtifactAtPath(directory, change.artifact.path)) {
-            return { ok: false, reason: "conflict" };
-          }
           await writeArtifact(directory, change.artifact);
           continue;
         }
         if (change.type === "update") {
-          const current = await readArtifactAtPath(
-            directory,
-            change.artifact.path,
-          );
-          if (
-            !current ||
-            (
-              change.expectedSourceHash &&
-              current.sourceHash !== change.expectedSourceHash
-            )
-          ) {
-            return { ok: false, reason: "conflict" };
-          }
           await writeArtifact(directory, change.artifact);
           continue;
         }
         if (change.type === "move") {
           const current = await readArtifactAtPath(directory, change.fromPath);
-          if (
-            !current ||
-            await readArtifactAtPath(directory, change.toPath)
-          ) {
-            return { ok: false, reason: "conflict" };
-          }
+          if (!current) throw new Error("Move source disappeared after preflight.");
           await writeArtifact(directory, {
             ...current,
             id: change.artifactId,
             path: change.toPath,
           });
-          const { directory: parent, name } = await getParentDirectory(
-            directory,
-            change.fromPath,
-            false,
-          );
-          await parent.removeEntry(name);
+          await removeArtifactAtPath(directory, change.fromPath);
           continue;
         }
-        const current = await readArtifactAtPath(directory, change.path);
-        if (
-          !current ||
-          (
-            change.expectedSourceHash &&
-            current.sourceHash !== change.expectedSourceHash
-          )
-        ) {
-          return { ok: false, reason: "conflict" };
-        }
-        const { directory: parent, name } = await getParentDirectory(
-          directory,
-          change.path,
-          false,
-        );
-        await parent.removeEntry(name);
+        await removeArtifactAtPath(directory, change.path);
       }
       return { ok: true, snapshot: await readSnapshot() };
     } catch (error) {
+      try {
+        await restoreLiveFolderPaths(directory, baseline, affectedPaths);
+      } catch (rollbackError) {
+        return {
+          ok: false,
+          reason: "unknown",
+          error: {
+            message: "Live folder write and rollback both failed.",
+            rollbackError,
+            writeError: error,
+          },
+        };
+      }
       return { ok: false, reason: "unknown", error };
     }
   };
@@ -340,7 +494,12 @@ export const createArtifactSnapshotFromWorkspace = async (
       editable: file.artifact?.editable,
       content: binary
         ? { kind: "binary", bytes: binary }
-        : { kind: "text", text: file.text, encoding: "utf-8" },
+        : {
+            kind: "text",
+            text: file.text,
+            encoding: "utf-8",
+            ...(file.artifact?.bom ? { bom: file.artifact.bom } : {}),
+          },
     });
   }));
   return {
@@ -379,6 +538,7 @@ export const getLiveFolderWorkspaceWritePlan = (
         artifactId: artifact.id,
         fromPath: previous.path,
         toPath: artifact.path,
+        expectedSourceHash: previous.sourceHash,
       });
     }
     if (previous.sourceHash !== artifact.sourceHash) {
@@ -427,8 +587,23 @@ export const createWorkspaceDraftFromArtifactSnapshot = async (
   const draft = await parseWorkspaceFolderImport(
     snapshotArtifactFiles(snapshot, rootLabel),
     defaults,
+    {
+      limits: liveFolderImportLimits,
+      requireMarkdown: false,
+      rootLabel,
+    },
   );
-  if (!previous) return draft;
+  const draftWithExclusions = {
+    ...draft,
+    excludedPaths: snapshot.excludedPaths ?? [],
+    sourceKind: "live-folder" as const,
+    profile: {
+      ...draft.profile,
+      ignoredFileCount:
+        draft.profile.ignoredFileCount + (snapshot.excludedPaths?.length ?? 0),
+    },
+  };
+  if (!previous) return draftWithExclusions;
 
   const previousPaths = getWorkspaceFilePaths(
     previous.files,
@@ -464,9 +639,9 @@ export const createWorkspaceDraftFromArtifactSnapshot = async (
   });
   const fileIds = new Set(remappedFiles.map((file) => file.id));
   return {
-    ...draft,
+    ...draftWithExclusions,
     workspace: {
-      ...draft.workspace,
+      ...draftWithExclusions.workspace,
       files: remappedFiles,
       activeFileId: fileIds.has(previous.activeFileId)
         ? previous.activeFileId

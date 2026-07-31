@@ -1,4 +1,5 @@
 import {
+  analyzeMarkdownCapabilities,
   createWorkspaceKnowledgeIndex,
   getWorkspaceKnowledgeChangeSet,
   getWorkspaceKnowledgeHealth,
@@ -31,7 +32,18 @@ export const getWorkspaceExportReview = (
   if (documents.length === 0) return undefined;
   const index = createWorkspaceKnowledgeIndex(documents);
   const compatibility = getWorkspaceOkfCompatibility(index);
+  const markdownPortabilityWarningCount = documents.reduce(
+    (count, document) =>
+      count +
+      new Set(
+        analyzeMarkdownCapabilities(document.markdown).diagnostics
+          .filter((diagnostic) => diagnostic.severity === "warning")
+          .map((diagnostic) => diagnostic.capability),
+      ).size,
+    0,
+  );
   const hasKnowledgeSignal = Boolean(compatibility.declaredVersion) ||
+    markdownPortabilityWarningCount > 0 ||
     [...index.analysesByDocumentId.values()].some((analysis) =>
       Boolean(analysis.knowledgeMetadata.type) ||
       isReservedKnowledgePath(analysis.path)
@@ -48,7 +60,8 @@ export const getWorkspaceExportReview = (
   return {
     standardVersion: compatibility.declaredVersion ?? compatibility.targetVersion,
     requiredChangeCount: compatibility.errorCount,
-    portabilityWarningCount: compatibility.warningCount,
+    portabilityWarningCount:
+      compatibility.warningCount + markdownPortabilityWarningCount,
     attentionCount: health.attentionCount,
     noticeCount: health.noticeCount,
     ...(typeof changeCount === "number" ? { changeCount } : {}),

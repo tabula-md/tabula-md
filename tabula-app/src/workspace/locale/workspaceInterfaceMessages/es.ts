@@ -66,7 +66,7 @@ export const esWorkspaceInterfaceMessages = {
     filesSharedInRoom: "Compartido en esta sala",
     filesLocalDocument: "Documento local",
     filesDuplicate: "Duplicar",
-    filesCopyMarkdown: "Copiar Markdown",
+    filesCopyMarkdown: "Copiar archivo",
     filesCollapseAll: "Contraer todas las carpetas",
     filesExpandAll: "Expandir todas las carpetas",
     filesOpenMarkdown: "Abrir archivo Markdown",

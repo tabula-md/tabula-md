@@ -66,7 +66,7 @@ export const deWorkspaceInterfaceMessages = {
     filesSharedInRoom: "In diesem Raum geteilt",
     filesLocalDocument: "Lokales Dokument",
     filesDuplicate: "Duplizieren",
-    filesCopyMarkdown: "Markdown kopieren",
+    filesCopyMarkdown: "Datei kopieren",
     filesCollapseAll: "Alle Ordner einklappen",
     filesExpandAll: "Alle Ordner ausklappen",
     filesOpenMarkdown: "Markdown-Datei öffnen",

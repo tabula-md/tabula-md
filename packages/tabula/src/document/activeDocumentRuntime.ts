@@ -47,6 +47,7 @@ export type ActiveDocumentRuntime = {
   parsedMarkdown: ParsedFrontmatter;
   previewBodyStartOffset: number;
   readingWidth: ReadingWidth;
+  sourceOnly: boolean;
   renderedPreview: PreviewBody;
   largeDocumentMode: boolean;
   splitRatio: number;
@@ -136,6 +137,7 @@ export const createActiveDocumentEditorRuntime = (
     lineNumbers,
     lineWrapping,
     readingWidth,
+    sourceOnly: false,
     splitRatio,
     text,
     title,

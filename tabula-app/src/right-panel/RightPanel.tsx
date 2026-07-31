@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import {
   getRightPanelCommentGroups,
+  type MarkdownCapabilityAnalysis,
   type OkfConceptRepairUpdate,
   type OkfCompatibilityReport,
   type OkfIndexCandidate,
@@ -21,6 +22,7 @@ import {
   type WorkspaceKnowledgeLink,
   type WorkspaceOkfLogCandidate,
 } from "@tabula-md/tabula";
+import type { WorkspaceImportProfile } from "../workspace/io/workspaceImportProfile";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { MarkdownHeading } from "@tabula-md/tabula";
@@ -58,6 +60,8 @@ type RightPanelProps = {
   folders: WorkspaceFolder[];
   knowledgeIndex?: WorkspaceKnowledgeIndex;
   knowledgeCompatibilityReport?: OkfCompatibilityReport;
+  workspaceProfile?: WorkspaceImportProfile;
+  activeMarkdownCapabilities?: MarkdownCapabilityAnalysis;
   knowledgeIndexPending: boolean;
   knowledgeIndexSource: "none" | "worker" | "fallback";
   knowledgeBaseline?: WorkspaceKnowledgeBaseline;
@@ -133,6 +137,8 @@ export function RightPanel({
   folders,
   knowledgeIndex,
   knowledgeCompatibilityReport,
+  workspaceProfile,
+  activeMarkdownCapabilities,
   knowledgeIndexPending,
   knowledgeIndexSource,
   knowledgeBaseline,
@@ -441,6 +447,8 @@ export function RightPanel({
               activeFileTitle={activeFileTitle}
               noDocumentCopy={`${copy.tabs.knowledge}: ${copy.noDocumentOpen}`}
               compatibilityReport={knowledgeCompatibilityReport}
+              workspaceProfile={workspaceProfile}
+              activeMarkdownCapabilities={activeMarkdownCapabilities}
               knowledgeBaseline={knowledgeBaseline}
               knowledgeCompatibilityOpenRequest={knowledgeCompatibilityOpenRequest}
               index={knowledgeIndex}

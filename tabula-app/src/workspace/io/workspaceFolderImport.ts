@@ -33,17 +33,61 @@ export type WorkspaceFolderImportDefaults = {
   lineNumbers: boolean;
 };
 
+export type WorkspaceFolderImportLimits = {
+  maxContentBytes: number;
+  maxFiles: number;
+  maxFolders: number;
+  maxTreeDepth: number;
+};
+
+export type WorkspaceFolderImportOptions = {
+  limits?: WorkspaceFolderImportLimits;
+  requireMarkdown?: boolean;
+  rootLabel?: string;
+};
+
+const workspaceRoomImportLimits: WorkspaceFolderImportLimits = {
+  maxContentBytes: WORKSPACE_ROOM_MAX_CONTENT_BYTES,
+  maxFiles: WORKSPACE_ROOM_MAX_DOCUMENTS,
+  maxFolders: WORKSPACE_ROOM_MAX_FOLDERS,
+  maxTreeDepth: WORKSPACE_ROOM_MAX_TREE_DEPTH,
+};
+
 type FolderImportEntry = {
   file: File;
   segments: string[];
 };
 
 export type WorkspaceFolderImportDraft = {
+  excludedPaths: readonly string[];
+  sourceKind: "browser-copy" | "live-folder";
   workspace: WorkspaceState;
   profile: WorkspaceImportProfile;
 };
 
+export type WorkspaceFolderImportErrorCode =
+  | "content-too-large"
+  | "folder-tree-too-deep"
+  | "no-markdown"
+  | "too-many-files"
+  | "too-many-folders";
+
+export class WorkspaceFolderImportError extends Error {
+  constructor(
+    readonly code: WorkspaceFolderImportErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "WorkspaceFolderImportError";
+  }
+}
+
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
+const hasUtf8Bom = (bytes: Uint8Array) =>
+  bytes.byteLength >= 3 &&
+  bytes[0] === 0xef &&
+  bytes[1] === 0xbb &&
+  bytes[2] === 0xbf;
 
 const decodeImportedFile = (bytes: Uint8Array) => {
   try {
@@ -59,6 +103,7 @@ const getImportedArtifactContent = (bytes: Uint8Array) => {
       kind: "text" as const,
       text: textDecoder.decode(bytes),
       encoding: "utf-8" as const,
+      ...(hasUtf8Bom(bytes) ? { bom: "utf-8" as const } : {}),
     };
   } catch {
     return { kind: "binary" as const, bytes };
@@ -92,25 +137,35 @@ const extractSelectedRoot = (entries: FolderImportEntry[]) => {
 export const parseWorkspaceFolderImport = async (
   selectedFiles: readonly File[],
   defaults: WorkspaceFolderImportDefaults,
+  options: WorkspaceFolderImportOptions = {},
 ): Promise<WorkspaceFolderImportDraft> => {
+  const limits = options.limits ?? workspaceRoomImportLimits;
   const parsedEntries = selectedFiles
     .map((file) => ({ file, segments: parseRelativePath(file) }))
     .sort((first, second) =>
       first.segments.join("/").localeCompare(second.segments.join("/")));
   const {
     entries: normalizedEntries,
-    selectedRoot,
+    selectedRoot: inferredRoot,
   } = extractSelectedRoot(parsedEntries);
   const entries = normalizedEntries;
+  const selectedRoot = options.rootLabel ?? inferredRoot;
   if (
+    options.requireMarkdown !== false &&
     !entries.some(({ segments }) =>
       isMarkdownWorkspacePath(segments.at(-1) ?? ""))
   ) {
-    throw new Error("This workspace folder does not contain any Markdown files.");
+    throw new WorkspaceFolderImportError(
+      "no-markdown",
+      "This workspace folder does not contain any Markdown files.",
+    );
   }
 
-  if (entries.length > WORKSPACE_ROOM_MAX_DOCUMENTS) {
-    throw new Error(`A workspace can contain up to ${WORKSPACE_ROOM_MAX_DOCUMENTS} files.`);
+  if (entries.length > limits.maxFiles) {
+    throw new WorkspaceFolderImportError(
+      "too-many-files",
+      `A workspace can contain up to ${limits.maxFiles} files.`,
+    );
   }
 
   const folders: WorkspaceFolder[] = [createWorkspaceRootFolder(selectedRoot)];
@@ -119,8 +174,11 @@ export const parseWorkspaceFolderImport = async (
   let contentBytes = 0;
 
   const ensureFolder = (segments: readonly string[]) => {
-    if (segments.length > WORKSPACE_ROOM_MAX_TREE_DEPTH) {
-      throw new Error(`A workspace folder can be up to ${WORKSPACE_ROOM_MAX_TREE_DEPTH} levels deep.`);
+    if (segments.length > limits.maxTreeDepth) {
+      throw new WorkspaceFolderImportError(
+        "folder-tree-too-deep",
+        `A workspace folder can be up to ${limits.maxTreeDepth} levels deep.`,
+      );
     }
     let parentId = WORKSPACE_ROOT_FOLDER_ID;
     let path = "";
@@ -131,8 +189,11 @@ export const parseWorkspaceFolderImport = async (
         parentId = existingId;
         continue;
       }
-      if (folders.length - 1 >= WORKSPACE_ROOM_MAX_FOLDERS) {
-        throw new Error(`A workspace can contain up to ${WORKSPACE_ROOM_MAX_FOLDERS} folders.`);
+      if (folders.length - 1 >= limits.maxFolders) {
+        throw new WorkspaceFolderImportError(
+          "too-many-folders",
+          `A workspace can contain up to ${limits.maxFolders} folders.`,
+        );
       }
       const folder = { id: randomId(), title: segment, parentId } satisfies WorkspaceFolder;
       folders.push(folder);
@@ -145,8 +206,11 @@ export const parseWorkspaceFolderImport = async (
   for (const { file, segments } of entries) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     contentBytes += bytes.byteLength;
-    if (contentBytes > WORKSPACE_ROOM_MAX_CONTENT_BYTES) {
-      throw new Error("The file content in this workspace folder is too large.");
+    if (contentBytes > limits.maxContentBytes) {
+      throw new WorkspaceFolderImportError(
+        "content-too-large",
+        "The file content in this workspace folder is too large.",
+      );
     }
     const id = randomId();
     const path = segments.join("/");
@@ -170,15 +234,29 @@ export const parseWorkspaceFolderImport = async (
         kind: artifact.kind,
         mediaType: artifact.mediaType,
         contentKind: artifact.content.kind,
+        ...(artifact.content.kind === "text" && artifact.content.bom
+          ? { bom: artifact.content.bom }
+          : {}),
         sourceHash: artifact.sourceHash,
         editable: artifact.editable,
       },
     }));
   }
 
-  const workspace = finalizeWorkspaceState(files, undefined, {}, {
+  const preferredFile =
+    files.find((file, index) => {
+      const path = entries[index]?.segments.join("/") ?? file.title;
+      return !path.includes("/") && /^(?:readme|index)\.(?:md|markdown)$/i.test(path);
+    }) ??
+    files.find((file, index) =>
+      isMarkdownWorkspacePath(
+        entries[index]?.segments.join("/") ?? file.title,
+      )) ??
+    files.find((file) => file.artifact?.editable) ??
+    files[0];
+  const workspace = finalizeWorkspaceState(files, preferredFile?.id, {}, {
     folders,
-    openFileIds: [],
+    openFileIds: preferredFile ? [preferredFile.id] : [],
   });
   const importedPaths = entries.map(({ segments }) => segments.join("/"));
   const supportFiles = entries.flatMap(({ segments }, index) => {
@@ -192,6 +270,8 @@ export const parseWorkspaceFolderImport = async (
     "./workspaceImportProfile"
   );
   return {
+    excludedPaths: [],
+    sourceKind: "browser-copy",
     workspace,
     profile: detectWorkspaceImportProfile({
       documents: getWorkspaceKnowledgeDocuments(

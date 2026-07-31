@@ -10,7 +10,7 @@ export const enFilesMessages = {
   filesSharedInRoom: "Shared in this room",
   filesLocalDocument: "Local document",
   filesDuplicate: "Duplicate",
-  filesCopyMarkdown: "Copy Markdown",
+  filesCopyMarkdown: "Copy file",
   filesCollapseAll: "Collapse all folders",
   filesExpandAll: "Expand all folders",
   filesOpenMarkdown: "Open Markdown file",

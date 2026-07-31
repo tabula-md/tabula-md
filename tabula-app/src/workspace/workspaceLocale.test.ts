@@ -34,6 +34,9 @@ describe("workspace locale chrome copy", () => {
     expect(english.actions.preferences).toBe("Preferences");
     expect(english.actions.importFile).toBe("Import document (.md)…");
     expect(english.actions.importWorkspace).toBe("Open folder…");
+    expect(english.actions.disconnectLiveWorkspace).toBe(
+      "Disconnect local folder…",
+    );
     expect(english.actions.exportFile).toBe("Export document (.md)");
     expect(english.actions.exportWorkspace).toBe("Export workspace (.zip)");
     expect(english.emptyState.tagline).toBe(
@@ -48,6 +51,9 @@ describe("workspace locale chrome copy", () => {
     );
     expect(english.emptyState.openFileDescription).toBe(
       "Open one .md file without creating a project.",
+    );
+    expect(english.disconnectLiveWorkspace.confirm).toBe(
+      "Disconnect folder",
     );
     expect(english.share.live.startSession).toBe("Start session");
     expect(english.share.live.title).toBe("Open a live collaboration room");

@@ -14,6 +14,7 @@ import {
 
 class MemoryFileHandle implements LiveFolderFileHandle {
   readonly kind = "file";
+  failWrites = 0;
   constructor(
     readonly name: string,
     private bytes: Uint8Array,
@@ -25,6 +26,10 @@ class MemoryFileHandle implements LiveFolderFileHandle {
   async createWritable() {
     return {
       write: async (data: BufferSource | Blob | string) => {
+        if (this.failWrites > 0) {
+          this.failWrites -= 1;
+          throw new Error("Injected write failure");
+        }
         if (typeof data === "string") {
           this.bytes = new TextEncoder().encode(data);
         } else if (data instanceof Blob) {
@@ -148,6 +153,92 @@ describe("live folder source", () => {
       .toEqual(["archive/old.md", "docs/new.md", "README.md"]);
   });
 
+  it("skips generated dependency folders without hiding the exclusion", async () => {
+    const root = new MemoryDirectoryHandle("Project");
+    await put(root, "README.md", "# Project");
+    await put(root, ".obsidian/app.json", '{"vimMode":true}');
+    await put(root, "node_modules/dependency/index.js", "generated");
+    await put(root, ".git/objects/pack", "generated");
+    await put(root, "dist/index.js", "generated");
+
+    const snapshot = await createLiveFolderSourceAdapter(root).readSnapshot();
+
+    expect(snapshot.artifacts.map((item) => item.path)).toEqual([
+      ".obsidian/app.json",
+      "README.md",
+    ]);
+    expect(snapshot.excludedPaths).toEqual([
+      ".git/",
+      "dist/",
+      "node_modules/",
+    ]);
+
+    const draft = await createWorkspaceDraftFromArtifactSnapshot(
+      snapshot,
+      root.name,
+      {
+        viewMode: "edit",
+        readingWidth: "standard",
+        lineWrapping: false,
+        lineNumbers: false,
+      },
+    );
+    expect(draft).toMatchObject({
+      excludedPaths: [".git/", "dist/", "node_modules/"],
+      sourceKind: "live-folder",
+      profile: { ignoredFileCount: 3 },
+    });
+  });
+
+  it("does not apply collaboration-room file limits to a local folder", async () => {
+    const artifacts = await Promise.all(
+      Array.from({ length: 501 }, (_, index) =>
+        textArtifact(`file-${index}`, `notes/file-${index}.md`, `# ${index}`)),
+    );
+
+    const draft = await createWorkspaceDraftFromArtifactSnapshot(
+      {
+        artifacts,
+        capturedAt: "2026-07-30T00:00:00.000Z",
+      },
+      "Project",
+      {
+        viewMode: "edit",
+        readingWidth: "standard",
+        lineWrapping: false,
+        lineNumbers: false,
+      },
+    );
+
+    expect(draft.workspace.files).toHaveLength(501);
+    expect(draft.sourceKind).toBe("live-folder");
+  });
+
+  it("connects an empty folder so its first document can be created in Tabula", async () => {
+    const draft = await createWorkspaceDraftFromArtifactSnapshot(
+      {
+        artifacts: [],
+        capturedAt: "2026-07-30T00:00:00.000Z",
+      },
+      "Empty workspace",
+      {
+        viewMode: "edit",
+        readingWidth: "standard",
+        lineWrapping: false,
+        lineNumbers: false,
+      },
+    );
+
+    expect(draft.workspace.files).toEqual([]);
+    expect(draft.workspace.folders).toEqual([
+      expect.objectContaining({
+        title: "Empty workspace",
+        parentId: null,
+      }),
+    ]);
+    expect(draft.sourceKind).toBe("live-folder");
+  });
+
   it("does not overwrite an externally changed file", async () => {
     const root = new MemoryDirectoryHandle("Project");
     await put(root, "README.md", "# Base");
@@ -165,6 +256,40 @@ describe("live folder source", () => {
     expect(
       (await adapter.readSnapshot()).artifacts[0]?.content,
     ).toMatchObject({ kind: "text", text: "# External" });
+  });
+
+  it("restores earlier files when a later write fails", async () => {
+    const root = new MemoryDirectoryHandle("Project");
+    await put(root, "first.md", "# First");
+    await put(root, "second.md", "# Second");
+    const adapter = createLiveFolderSourceAdapter(root);
+    const baseline = await adapter.readSnapshot();
+    const first = baseline.artifacts.find((item) => item.path === "first.md")!;
+    const second = baseline.artifacts.find((item) => item.path === "second.md")!;
+    const changedFirst = await textArtifact(first.id, first.path, "# Changed first");
+    const changedSecond = await textArtifact(second.id, second.path, "# Changed second");
+    const secondHandle = root.children.get("second.md") as MemoryFileHandle;
+    secondHandle.failWrites = 1;
+
+    const result = await adapter.writeChanges?.([
+      {
+        type: "update",
+        artifact: changedFirst,
+        expectedSourceHash: first.sourceHash,
+      },
+      {
+        type: "update",
+        artifact: changedSecond,
+        expectedSourceHash: second.sourceHash,
+      },
+    ]);
+
+    expect(result).toMatchObject({ ok: false, reason: "unknown" });
+    const restored = await adapter.readSnapshot();
+    expect(restored.artifacts.map((artifact) => artifact.content)).toEqual([
+      expect.objectContaining({ kind: "text", text: "# First" }),
+      expect.objectContaining({ kind: "text", text: "# Second" }),
+    ]);
   });
 
   it("preserves local state when write permission is unavailable", async () => {
@@ -194,6 +319,10 @@ describe("live folder source", () => {
       "update",
       "create",
     ]);
+    expect(plan.changes[0]).toMatchObject({
+      type: "move",
+      expectedSourceHash: original.sourceHash,
+    });
     expect(plan.deletes).toEqual([
       expect.objectContaining({
         type: "delete",

@@ -27,12 +27,19 @@ export type WorkspaceSourceCapabilities = {
 export type WorkspaceSnapshot = {
   artifacts: readonly WorkspaceArtifact[];
   capturedAt: string;
+  excludedPaths?: readonly string[];
 };
 
 export type ArtifactChange =
   | { type: "create"; artifact: WorkspaceArtifact }
   | { type: "update"; artifact: WorkspaceArtifact; expectedSourceHash?: string }
-  | { type: "move"; artifactId: string; fromPath: string; toPath: string }
+  | {
+      type: "move";
+      artifactId: string;
+      fromPath: string;
+      toPath: string;
+      expectedSourceHash?: string;
+    }
   | { type: "delete"; artifactId: string; path: string; expectedSourceHash?: string };
 
 export type WriteResult =
@@ -69,6 +76,9 @@ const nowIso = () => new Date().toISOString();
 const cloneSnapshot = (snapshot: WorkspaceSnapshot): WorkspaceSnapshot => ({
   capturedAt: snapshot.capturedAt,
   artifacts: snapshot.artifacts.map(cloneWorkspaceArtifact),
+  excludedPaths: snapshot.excludedPaths
+    ? [...snapshot.excludedPaths]
+    : undefined,
 });
 
 const readOnlyCapabilities: WorkspaceSourceCapabilities = {
@@ -127,7 +137,14 @@ export const createBrowserCopySourceAdapter = (
           );
         } else if (change.type === "move") {
           const existing = artifacts.get(change.artifactId);
-          if (!existing || existing.path !== change.fromPath) {
+          if (
+            !existing ||
+            existing.path !== change.fromPath ||
+            (
+              change.expectedSourceHash &&
+              existing.sourceHash !== change.expectedSourceHash
+            )
+          ) {
             return { ok: false, reason: "conflict" };
           }
           artifacts.set(change.artifactId, {

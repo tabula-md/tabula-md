@@ -29,6 +29,7 @@ import {
   shouldPatchPreviewBodyImmediately,
 } from "../preview/previewDerivationPolicy";
 import type { WorkspaceFile } from "../workspace/workspaceStorage";
+import { isMarkdownWorkspacePath } from "../workspace/io/workspaceSupportFile";
 
 export type ActiveDocumentPreviewTextSnapshot = {
   fileId: string;
@@ -114,7 +115,10 @@ export const useActiveDocumentRuntime = (
   const activeFileId = activeFile?.id ?? "";
   const hasActiveFile = Boolean(activeFile);
   const activeText = options.text ?? activeFile?.text ?? "";
-  const activeViewMode = activeFile?.viewMode ?? "edit";
+  const sourceOnly = Boolean(
+    activeFile?.artifact && !isMarkdownWorkspacePath(activeFile.title),
+  );
+  const activeViewMode = sourceOnly ? "edit" : (activeFile?.viewMode ?? "edit");
   const activePreviewSnapshot = createActiveDocumentPreviewTextSnapshot(activeFile, activeText);
   const previousPreviewBodyTextSnapshotRef = useRef<PreviewBodyTextChangeSnapshot | null>(null);
   const largeDocumentMode = isLargeMarkdownDocument(activeText);
@@ -383,11 +387,26 @@ export const useActiveDocumentRuntime = (
   }, [activeFileId, activeText, activeViewMode, hasActiveFile, largeDocumentMode]);
 
   const editorState = useMemo(
-    () => createActiveDocumentEditorRuntime(activeFile, {
-      approximateTokenCount,
-      text: activeText,
-      wordCount,
-    }),
+    () => {
+      const runtime = createActiveDocumentEditorRuntime(
+        activeFile
+          ? {
+              ...activeFile,
+              ...(sourceOnly
+                ? { editingMode: "source" as const, viewMode: "edit" as const }
+                : {}),
+            }
+          : undefined,
+        {
+          approximateTokenCount,
+          text: activeText,
+          wordCount,
+        },
+      );
+      return sourceOnly
+        ? { ...runtime, canFormat: false, sourceOnly: true }
+        : runtime;
+    },
     [
       activeFile?.bookmarks,
       activeFile?.editingMode,
@@ -398,6 +417,7 @@ export const useActiveDocumentRuntime = (
       activeText,
       activeFile?.title,
       activeFile?.viewMode,
+      sourceOnly,
       approximateTokenCount,
       wordCount,
     ],

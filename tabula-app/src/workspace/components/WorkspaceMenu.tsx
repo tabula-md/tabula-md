@@ -8,6 +8,7 @@ import {
   FolderArchive,
   FolderSync,
   FolderInput,
+  Unplug,
   HelpCircle,
   Github,
   Info,
@@ -38,6 +39,7 @@ type WorkspaceMenuProps = {
   onImportFile: () => void;
   onImportWorkspace?: () => void;
   onOpenLiveWorkspace?: () => void;
+  onDisconnectLiveWorkspace?: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
   canExportFile: boolean;
@@ -127,6 +129,7 @@ export function WorkspaceMenu({
   onImportFile,
   onImportWorkspace,
   onOpenLiveWorkspace,
+  onDisconnectLiveWorkspace,
   onExportFile,
   onExportWorkspace,
   canExportFile,
@@ -181,7 +184,11 @@ export function WorkspaceMenu({
             {copy.actions.importWorkspace}
           </MenuRow>
         )}
-        {onOpenLiveWorkspace && (
+        {onDisconnectLiveWorkspace ? (
+          <MenuRow icon={<Unplug size={16} />} onClick={onDisconnectLiveWorkspace}>
+            {copy.actions.disconnectLiveWorkspace}
+          </MenuRow>
+        ) : onOpenLiveWorkspace && (
           <MenuRow icon={<FolderSync size={16} />} onClick={onOpenLiveWorkspace}>
             {copy.actions.openLiveWorkspace}
           </MenuRow>

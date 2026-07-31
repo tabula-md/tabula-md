@@ -141,7 +141,7 @@ const useLongLineWrappingSuspension = (
 export type TabulaDocumentSurfaceProps = {
   activeBookmarks: FileBookmark[];
   activeCommentAnchors: MarkdownCommentAnchor[];
-  activeFile: Pick<WorkspaceFile, "id" | "title">;
+  activeFile: Pick<WorkspaceFile, "id" | "title" | "artifact">;
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
   activePreviewCommentAnchors: MarkdownPreviewCommentAnchor[];
@@ -267,8 +267,12 @@ export function TabulaDocumentSurface({
 }: TabulaDocumentSurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   const shouldRenderPreview =
-    documentSurface.documentControls.activeViewMode === "split" ||
-    documentSurface.documentControls.activeViewMode === "preview";
+    !documentSurface.documentControls.sourceOnly &&
+    (
+      documentSurface.documentControls.activeViewMode === "split" ||
+      documentSurface.documentControls.activeViewMode === "preview"
+    );
+  const isBinaryArtifact = activeFile.artifact?.contentKind === "binary";
   const [MarkdownPreview, setMarkdownPreview] = useState<MarkdownPreviewComponent | null>(
     getLoadedMarkdownPreview,
   );
@@ -330,36 +334,46 @@ export function TabulaDocumentSurface({
         ref={editorSurfaceRef}
         onScroll={onEditorScroll}
       >
-        <MarkdownEditor
-          ref={editorRef}
-          ariaLabel={copy.editor}
-          interfaceCopy={copy}
-          fileId={activeFile.id}
-          value={text}
-          largeDocumentMode={largeDocumentMode}
-          lineWrapping={effectiveLineWrapping}
-          lineNumbers={
-            activeLineNumbers &&
-            documentSurface.documentControls.activeViewMode !== "visual"
-          }
-          visualEditing={documentSurface.documentControls.activeViewMode === "visual"}
-          bookmarks={activeBookmarks}
-          commentAnchors={activeCommentAnchors}
-          commentsEnabled={commentsEnabled}
-          collaborationBinding={isLive ? collaborationBinding : null}
-          activeCommentId={focusedCommentId}
-          searchMatches={isSourceSearchActive ? searchMatches : []}
-          activeSearchMatchIndex={isSourceSearchActive ? activeSearchMatchIndex : -1}
-          onChange={onTextChange}
-          onBookmarksChange={onBookmarksChange}
-          onHistoryStateChange={onEditorHistoryStateChange}
-          onOpenLineActions={onLineAction}
-          onOpenComment={onOpenComment}
-          onSelectionChange={onEditorSelectionChange}
-          onSelectionActionPositionChange={onEditorSelectionActionPositionChange}
-          onScrollRatioChange={onEditorScrollRatioChange}
-          resolveWorkspaceLink={resolveWorkspaceLink}
-        />
+        {isBinaryArtifact ? (
+          <div className="artifact-unavailable-surface" role="status">
+            <strong>{activeFile.title}</strong>
+            <span>{activeFile.artifact?.mediaType ?? "Binary file"}</span>
+          </div>
+        ) : (
+          <MarkdownEditor
+            ref={editorRef}
+            ariaLabel={copy.editor}
+            interfaceCopy={copy}
+            fileId={activeFile.id}
+            value={text}
+            largeDocumentMode={largeDocumentMode}
+            lineWrapping={effectiveLineWrapping}
+            lineNumbers={
+              activeLineNumbers &&
+              documentSurface.documentControls.activeViewMode !== "visual"
+            }
+            visualEditing={
+              !documentSurface.documentControls.sourceOnly &&
+              documentSurface.documentControls.activeViewMode === "visual"
+            }
+            bookmarks={activeBookmarks}
+            commentAnchors={activeCommentAnchors}
+            commentsEnabled={commentsEnabled}
+            collaborationBinding={isLive ? collaborationBinding : null}
+            activeCommentId={focusedCommentId}
+            searchMatches={isSourceSearchActive ? searchMatches : []}
+            activeSearchMatchIndex={isSourceSearchActive ? activeSearchMatchIndex : -1}
+            onChange={onTextChange}
+            onBookmarksChange={onBookmarksChange}
+            onHistoryStateChange={onEditorHistoryStateChange}
+            onOpenLineActions={onLineAction}
+            onOpenComment={onOpenComment}
+            onSelectionChange={onEditorSelectionChange}
+            onSelectionActionPositionChange={onEditorSelectionActionPositionChange}
+            onScrollRatioChange={onEditorScrollRatioChange}
+            resolveWorkspaceLink={resolveWorkspaceLink}
+          />
+        )}
       </article>
 
       {documentSurface.showSplitResizeHandle && (

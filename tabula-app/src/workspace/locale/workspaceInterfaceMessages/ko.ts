@@ -66,7 +66,7 @@ export const koWorkspaceInterfaceMessages = {
     filesSharedInRoom: "이 room에서 공유됨",
     filesLocalDocument: "로컬 문서",
     filesDuplicate: "복제",
-    filesCopyMarkdown: "Markdown 복사",
+    filesCopyMarkdown: "파일 복사",
     filesCollapseAll: "모든 폴더 접기",
     filesExpandAll: "모든 폴더 펼치기",
     filesOpenMarkdown: "Markdown 파일 열기",

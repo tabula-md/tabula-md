@@ -4,6 +4,14 @@ import { writeIndexedDbWorkspace } from "./workspaceIndexedDb";
 export const DEFAULT_WORKSPACE_PERSISTENCE_DELAY_MS = 400;
 
 type TimerHandle = ReturnType<typeof setTimeout>;
+type QueuedWorkspaceWrite = {
+  revision: number;
+  workspace: WorkspaceState;
+};
+type PersistenceWaiter = {
+  resolve: (persisted: boolean) => void;
+  revision: number;
+};
 
 type WorkspacePersistenceTimers = {
   clearTimeout: (timer: TimerHandle) => void;
@@ -30,10 +38,12 @@ export const createWorkspacePersistenceQueue = ({
   timers = defaultTimers,
   writeWorkspace = writeWorkspaceToPrimaryStore,
 }: WorkspacePersistenceQueueOptions = {}) => {
-  let pendingWorkspace: WorkspaceState | null = null;
+  let pendingWrite: QueuedWorkspaceWrite | null = null;
   let pendingTimer: TimerHandle | null = null;
-  let queuedWrite: WorkspaceState | null = null;
+  let queuedWrite: QueuedWorkspaceWrite | null = null;
   let writeInFlight = false;
+  let nextRevision = 0;
+  let waiters: PersistenceWaiter[] = [];
 
   const clearPendingTimer = () => {
     if (!pendingTimer) return;
@@ -41,55 +51,73 @@ export const createWorkspacePersistenceQueue = ({
     pendingTimer = null;
   };
 
-  const finishWrite = () => {
-    writeInFlight = false;
-    const nextWorkspace = queuedWrite;
-    queuedWrite = null;
-    if (nextWorkspace) persist(nextWorkspace);
+  const settleWaiters = (revision: number, persisted: boolean) => {
+    const settled = waiters.filter((waiter) => waiter.revision <= revision);
+    waiters = waiters.filter((waiter) => waiter.revision > revision);
+    settled.forEach((waiter) => waiter.resolve(persisted));
   };
 
-  const persist = (workspace: WorkspaceState) => {
+  const finishWrite = () => {
+    writeInFlight = false;
+    const nextWrite = queuedWrite;
+    queuedWrite = null;
+    if (nextWrite) persist(nextWrite);
+  };
+
+  const persist = (write: QueuedWorkspaceWrite) => {
     if (writeInFlight) {
-      queuedWrite = workspace;
+      queuedWrite = write;
       return;
     }
     writeInFlight = true;
     try {
-      void Promise.resolve(writeWorkspace(workspace))
-        .then(() => onPersisted?.(workspace))
-        .catch(onError)
+      void Promise.resolve(writeWorkspace(write.workspace))
+        .then(() => {
+          onPersisted?.(write.workspace);
+          settleWaiters(write.revision, true);
+        })
+        .catch((error) => {
+          onError?.(error);
+          settleWaiters(write.revision, false);
+        })
         .finally(finishWrite);
     } catch (error) {
       onError?.(error);
+      settleWaiters(write.revision, false);
       finishWrite();
     }
   };
 
   const flush = () => {
-    if (!pendingWorkspace) {
+    if (!pendingWrite) {
       clearPendingTimer();
       return;
     }
-    const workspace = pendingWorkspace;
-    pendingWorkspace = null;
+    const write = pendingWrite;
+    pendingWrite = null;
     clearPendingTimer();
-    persist(workspace);
+    persist(write);
   };
 
   return {
     cancel: () => {
-      pendingWorkspace = null;
+      pendingWrite = null;
       clearPendingTimer();
     },
     flush,
-    hasPending: () => Boolean(pendingWorkspace || queuedWrite),
+    hasPending: () => Boolean(pendingWrite || queuedWrite),
     persistNow: (workspace: WorkspaceState) => {
-      pendingWorkspace = null;
+      const write = { revision: ++nextRevision, workspace };
+      const completion = new Promise<boolean>((resolve) => {
+        waiters.push({ resolve, revision: write.revision });
+      });
+      pendingWrite = null;
       clearPendingTimer();
-      persist(workspace);
+      persist(write);
+      return completion;
     },
     schedule: (workspace: WorkspaceState) => {
-      pendingWorkspace = workspace;
+      pendingWrite = { revision: ++nextRevision, workspace };
       clearPendingTimer();
       pendingTimer = timers.setTimeout(flush, delayMs);
     },

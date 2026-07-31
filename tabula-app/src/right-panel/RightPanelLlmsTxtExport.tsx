@@ -100,7 +100,7 @@ export function RightPanelLlmsTxtExport({
                 type="button"
                 role="checkbox"
                 aria-checked={selected}
-                aria-label={`${copy.includeChange}: ${document.path}`}
+                aria-label={`${copy.llmsTitle}: ${document.path}`}
                 onClick={() => {
                   setSelectedIds((current) => {
                     const next = new Set(current);

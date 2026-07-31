@@ -45,6 +45,21 @@ describe("workspace source adapters", () => {
       .toBe(next.sourceHash);
   });
 
+  it("preserves excluded-path diagnostics when cloning source snapshots", async () => {
+    const readme = await artifact("readme", "README.md", "# One");
+    const archive = createImportedArchiveSourceAdapter(
+      { id: "zip", kind: "imported-archive", label: "docs.zip" },
+      {
+        ...snapshot([readme]),
+        excludedPaths: [".git/"],
+      },
+    );
+
+    await expect(archive.readSnapshot()).resolves.toMatchObject({
+      excludedPaths: [".git/"],
+    });
+  });
+
   it("detects updates, deletes, creates, and hash-preserving moves", async () => {
     const first = await artifact("first", "first.md", "# First");
     const second = await artifact("second", "second.md", "# Second");

@@ -273,6 +273,7 @@ export function DocumentWorkbench({
           centerPopover={centerPopover}
           language={language}
           searchOpen={searchOpen}
+          sourceOnly={documentSurface.documentControls.sourceOnly}
           onSetViewMode={onSetViewMode}
           onPreparePreview={prepareMarkdownPreview}
           onToggleViewOptions={onToggleViewOptions}

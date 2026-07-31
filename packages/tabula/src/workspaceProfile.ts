@@ -1,4 +1,4 @@
-export type WorkspaceSyntaxProfile = "gfm" | "mdx";
+export type WorkspaceSyntaxProfile = "commonmark" | "gfm" | "mdx";
 
 export type WorkspaceConventionProfile = "obsidian" | "openwiki";
 
@@ -35,8 +35,9 @@ export const createEmptyWorkspaceProfile = (): WorkspaceProfile => ({
 });
 
 export const isOrdinaryMarkdownProfile = (profile: WorkspaceProfile) =>
-  profile.syntaxes.length === 1 &&
-  profile.syntaxes[0] === "gfm" &&
+  profile.syntaxes.length >= 1 &&
+  profile.syntaxes.every((syntax) =>
+    syntax === "commonmark" || syntax === "gfm") &&
   profile.conventions.length === 0 &&
   profile.schemas.length === 0 &&
   profile.workflows.length === 0 &&

@@ -18,7 +18,6 @@ import {
   ClipboardCopy,
   Copy,
   Ellipsis,
-  File,
   FilePlus2,
   Folder,
   FolderOpen,
@@ -51,6 +50,8 @@ import {
 } from "../ui/ContextMenu";
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../ui/Menu";
 import { PanelEmptyState } from "./PanelEmptyState";
+import { getWorkspaceFileIconKind } from "../workspace/workspaceFilePresentation";
+import { WorkspaceFileTypeIcon } from "../workspace/components/WorkspaceFileTypeIcon";
 
 type RightPanelFilesCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
 
@@ -582,6 +583,8 @@ export function RightPanelFiles({
     const isActiveFile = file.id === activeFileId;
     const isRenaming = file.id === renamingFileId;
     const menuOpen = file.id === actionMenuFileId;
+    const canCopyText = file.artifact?.contentKind !== "binary";
+    const fileIconKind = getWorkspaceFileIconKind(file);
     const fileIsDragging = draggedItem?.type === "file" && draggedItem.id === file.id;
     const fileParentId = file.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
 
@@ -608,14 +611,14 @@ export function RightPanelFiles({
         style={virtualStyle}
       >
         <div
-          className={`right-row right-file-tree-row file ${isActiveFile ? "active" : ""} ${isRenaming ? "renaming" : ""}`}
+          className={`right-row right-file-tree-row file ${fileIconKind === "markdown" ? "" : "asset"} ${isActiveFile ? "active" : ""} ${isRenaming ? "renaming" : ""}`}
           data-file-name={file.title}
           style={{ paddingLeft: `${depth * RIGHT_TREE_INDENT}px` }}
         >
           {isRenaming ? (
             <div className="right-file-open-button">
               <span className="right-file-document-icon">
-                <File size={16} />
+                <WorkspaceFileTypeIcon kind={fileIconKind} size={16} />
               </span>
               <input
                 ref={renameInputRef}
@@ -661,35 +664,11 @@ export function RightPanelFiles({
                 onKeyDown={(event) => handleFileKeyDown(event, file.id)}
               >
                 <span className="right-file-document-icon">
-                  <File size={16} />
+                  <WorkspaceFileTypeIcon kind={fileIconKind} size={16} />
                 </span>
                 <span className="right-row-label">{stripMarkdownExtension(node.name)}</span>
               </button>
               <span className="right-file-actions" aria-label={copy.actions(file.title)}>
-                <button
-                  className="right-file-action"
-                  type="button"
-                  aria-label={`${copy.copyMarkdown}: ${file.title}`}
-                  data-tooltip={copy.copyMarkdown}
-                  onClick={(event) => {
-                    onCopyFile(file.id);
-                    releasePointerActionFocus(event);
-                  }}
-                >
-                  <ClipboardCopy size={14} />
-                </button>
-                <button
-                  className="right-file-action danger"
-                  type="button"
-                  aria-label={`${copy.delete}: ${file.title}`}
-                  data-tooltip={copy.delete}
-                  onClick={(event) => {
-                    releasePointerActionFocus(event);
-                    deleteFileFromMenu(file.id);
-                  }}
-                >
-                  <Trash2 size={14} />
-                </button>
                 <MenuRoot
                   open={menuOpen}
                   onOpenChange={(open) => setActionMenuFileId(open ? file.id : null)}
@@ -730,11 +709,11 @@ export function RightPanelFiles({
                       label={copy.rename}
                       onSelect={() => startRenamingFile(file)}
                     />
-                    <MenuItem
+                    {canCopyText && <MenuItem
                       icon={<ClipboardCopy size={14} />}
                       label={copy.copyMarkdown}
                       onSelect={() => onCopyFile(file.id)}
-                    />
+                    />}
                     <MenuItem
                       icon={<Copy size={14} />}
                       label={copy.duplicate}
@@ -774,11 +753,11 @@ export function RightPanelFiles({
           label={copy.rename}
           onSelect={() => startRenamingFile(file)}
         />
-        <ContextMenuItem
+        {canCopyText && <ContextMenuItem
           icon={<ClipboardCopy size={14} />}
           label={copy.copyMarkdown}
           onSelect={() => onCopyFile(file.id)}
-        />
+        />}
         <ContextMenuItem
           icon={<Copy size={14} />}
           label={copy.duplicate}

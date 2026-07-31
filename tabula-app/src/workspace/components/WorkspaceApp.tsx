@@ -8,6 +8,8 @@ import { WorkspaceTopChrome } from "./WorkspaceTopChrome";
 import { WorkspaceLoadingSurface } from "./WorkspaceLoadingSurface";
 import { useWorkspaceRuntime } from "../useWorkspaceRuntime";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
+import { getWorkspaceFilePresentation } from "../workspaceFilePresentation";
+import { WorkspaceAssetViewer } from "./WorkspaceAssetViewer";
 
 const MemoWorkspaceMenuSurface = memo(WorkspaceMenuSurface);
 const MemoWorkspaceTopChrome = memo(WorkspaceTopChrome);
@@ -25,6 +27,10 @@ export function WorkspaceApp() {
     workspaceSession,
   } = useWorkspaceRuntime();
   const { activeFile, ...documentWorkbenchProps } = documentRuntime.workbench;
+  const activeFilePresentation = activeFile
+    ? getWorkspaceFilePresentation(activeFile)
+    : undefined;
+  const assetOpen = activeFilePresentation?.kind === "asset";
 
   if (workspaceSession.localOpening) {
     return (
@@ -45,7 +51,9 @@ export function WorkspaceApp() {
           <MemoWorkspaceTopChrome {...chrome.top} />
 
           <section
-            className={documentRuntime.surface.fileShellClassName}
+            className={`${documentRuntime.surface.fileShellClassName}${
+              assetOpen ? " asset-file-shell" : ""
+            }`}
             id={activeFile ? getWorkspaceTabPanelId(activeFile.id) : undefined}
             role={activeFile ? "tabpanel" : undefined}
             aria-labelledby={activeFile ? getWorkspaceTabId(activeFile.id) : undefined}
@@ -53,10 +61,17 @@ export function WorkspaceApp() {
             {collaboration.liveRoomOpenState === "opening" ? (
               <LiveRoomLoadingSurface {...collaboration.loadingSurface} />
             ) : activeFile ? (
-              <DocumentWorkbench
-                {...documentWorkbenchProps}
-                activeFile={activeFile}
-              />
+              assetOpen ? (
+                <WorkspaceAssetViewer
+                  file={activeFile}
+                  language={documentWorkbenchProps.language}
+                />
+              ) : (
+                <DocumentWorkbench
+                  {...documentWorkbenchProps}
+                  activeFile={activeFile}
+                />
+              )
             ) : (
               <WorkspaceEmptySurface {...workspaceSession.emptySurface} />
             )}

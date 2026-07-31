@@ -124,6 +124,7 @@ test("routes storage and service suites through capability specs", () => {
   ]);
 
   assert(storage.playwrightFiles.includes("storage-restore.spec.mjs"));
+  assert(storage.playwrightFiles.includes("live-folder.spec.mjs"));
   assert(collaboration.playwrightFiles.includes("collaboration-capability.spec.mjs"));
   assert(share.playwrightFiles.includes("share-capability.spec.mjs"));
   assert.equal(storage.needsRoom, true);
@@ -158,6 +159,7 @@ test("falls back to the established PR safety checks for shared or unknown runti
       "responsive-layout.spec.mjs",
       "right-panels.spec.mjs",
       "storage-restore.spec.mjs",
+      "live-folder.spec.mjs",
       "collaboration-capability.spec.mjs",
       "share-capability.spec.mjs",
       "accessibility-regression.spec.mjs",

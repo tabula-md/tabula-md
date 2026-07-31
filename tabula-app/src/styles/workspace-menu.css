@@ -103,6 +103,34 @@
   overflow-y: auto;
 }
 
+.workspace-folder-opening-modal {
+  width: min(460px, calc(100vw - 48px));
+}
+
+.workspace-folder-opening-icon {
+  position: relative;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  color: var(--accent);
+}
+
+.workspace-folder-opening-icon svg:last-child {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  padding: 2px;
+  border-radius: 999px;
+  color: var(--text-primary);
+  background: var(--surface-muted);
+  animation: tabula-spin 0.9s linear infinite;
+}
+
+.workspace-folder-opening-icon svg:first-child {
+  animation: none;
+}
+
 .workspace-import-profile {
   display: grid;
   gap: var(--space-3);

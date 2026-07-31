@@ -1,15 +1,19 @@
 import {
+  getKnowledgeProfileDefinition,
+  getMarkdownCapabilityDefinition,
   getOkfFreshness,
   type AgentInstructionReport,
   type AgentInstructionChange,
   type WorkspaceKnowledgeHealthIssue,
   type WorkspaceKnowledgeHealthReport,
   type WorkspaceKnowledgeIndex,
+  type MarkdownCapabilityAnalysis,
 } from "@tabula-md/tabula";
 import { ArrowUpRight, ChevronRight } from "lucide-react";
 import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 import type { KnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { PanelEmptyState } from "./PanelEmptyState";
+import type { WorkspaceImportProfile } from "../workspace/io/workspaceImportProfile";
 
 const getOpenableResource = (resource: string | undefined) => {
   if (!resource) return undefined;
@@ -61,6 +65,8 @@ export function RightPanelKnowledgeContext({
   agentInstructions,
   onSelectFile,
   instructionChanges,
+  workspaceProfile,
+  markdownCapabilities,
 }: {
   activeFileId: string;
   activeFileTitle: string;
@@ -72,6 +78,8 @@ export function RightPanelKnowledgeContext({
   agentInstructions?: AgentInstructionReport;
   onSelectFile: (fileId: string) => void;
   instructionChanges?: readonly AgentInstructionChange[];
+  workspaceProfile?: WorkspaceImportProfile;
+  markdownCapabilities?: MarkdownCapabilityAnalysis;
 }) {
   const analysis = index?.analysesByDocumentId.get(activeFileId);
   const metadata = analysis?.knowledgeMetadata;
@@ -93,18 +101,94 @@ export function RightPanelKnowledgeContext({
       issue.code === "agents_scope_conflict_candidate"
       && issue.documentId === activeFileId,
   );
+  const activeInstructionIssues = agentInstructions?.issues.filter(
+    (issue) => issue.documentId === activeFileId,
+  ) ?? [];
   const activeSkill = agentInstructions?.skills.find(
     (skill) => skill.documentId === activeFileId,
   );
   const instructionChange = instructionChanges?.find(
     (change) => change.path === analysis?.path,
   );
+  const profileRows = (workspaceProfile?.detections ?? []).map((detection) => {
+    const definition = getKnowledgeProfileDefinition(detection.profileId);
+    return {
+      ...detection,
+      label:
+        definition?.label ??
+        (
+          detection.version
+            ? `Open Knowledge Format ${detection.version}`
+            : detection.profileId
+        ),
+      supportLevels: definition?.supportLevels ?? ["preserve"],
+    };
+  });
+  const capabilityRows = markdownCapabilities?.capabilities.flatMap(
+    (capability) => {
+      const definition = getMarkdownCapabilityDefinition(capability);
+      return definition ? [definition] : [];
+    },
+  ) ?? [];
+  const portabilityWarningCount =
+    markdownCapabilities?.diagnostics.filter(
+      (diagnostic) => diagnostic.severity === "warning",
+    ).length ?? 0;
   return (
     <section className="right-knowledge-context" aria-label={copy.documentContext}>
+      <div className="right-knowledge-context-scroll">
+      <section className="right-knowledge-context-section">
+        <h3>
+          <span>{copy.workspaceProfile}</span>
+          {profileRows.length > 0 && <span>{profileRows.length}</span>}
+        </h3>
+        {profileRows.length > 0 ? (
+          <div className="right-knowledge-profile-list">
+            {profileRows.map((profile) => (
+              <div key={profile.profileId}>
+                <strong>{profile.label}</strong>
+                <small>
+                  {profile.confidence} · {profile.supportLevels.join(", ")}
+                </small>
+                {(profile.healthIssueCount ?? 0) > 0 && (
+                  <span>
+                    {copy.profileIssues(profile.healthIssueCount ?? 0)}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p>{copy.noDetectedProfile}</p>
+        )}
+      </section>
+      {markdownCapabilities && (
+        <section className="right-knowledge-context-section">
+          <h3>
+            <span>{copy.markdownCapabilities}</span>
+            <span>{capabilityRows.length}</span>
+          </h3>
+          <div className="right-knowledge-profile-list">
+            {capabilityRows.map((capability) => (
+              <div key={capability.id}>
+                <strong>{capability.label}</strong>
+                <small>
+                  Visual: {capability.visual} · Preview: {capability.preview}
+                </small>
+              </div>
+            ))}
+          </div>
+          {portabilityWarningCount > 0 && (
+            <p className="right-knowledge-instruction-warning">
+              {copy.portabilityWarnings(portabilityWarningCount)}
+            </p>
+          )}
+        </section>
+      )}
       {!analysis || !metadata ? (
         <PanelEmptyState>{copy.notConcept}</PanelEmptyState>
       ) : (
-        <div className="right-knowledge-context-scroll">
+        <>
           <header className="right-knowledge-document-heading">
             <h2>{analysis.title || activeFileTitle}</h2>
             <p>{analysis.path}</p>
@@ -148,6 +232,19 @@ export function RightPanelKnowledgeContext({
                 {copy.instructionConflict}
               </p>
             )}
+            {activeInstructionIssues
+              .filter(
+                (issue) => issue.code !== "agents_scope_conflict_candidate",
+              )
+              .map((issue) => (
+                <p
+                  className="right-knowledge-instruction-warning"
+                  key={`${issue.code}:${issue.value ?? ""}`}
+                >
+                  {issue.code.replace(/_/g, " ")}
+                  {issue.value ? `: ${issue.value}` : ""}
+                </p>
+              ))}
             {activeSkill && (
               <div className="right-knowledge-skill-status">
                 <strong>{copy.skillDefinition}</strong>
@@ -336,8 +433,9 @@ export function RightPanelKnowledgeContext({
               </div>
             )}
           </section>
-        </div>
+        </>
       )}
+      </div>
     </section>
   );
 }

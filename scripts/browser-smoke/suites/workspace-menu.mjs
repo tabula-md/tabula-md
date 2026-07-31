@@ -187,7 +187,7 @@ export async function run(ctx) {
       (await page.locator(".right-file-action-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
       "File action menus should use elevation without a static border.",
     );
-    await page.getByRole("menuitem", { name: "Copy Markdown" }).click();
+    await page.getByRole("menuitem", { name: "Copy file" }).click();
     expect((await page.evaluate(() => window.__tabulaClipboard.at(-1) ?? "")) === "", "Blank file copy should preserve its source.");
     await page.locator(".right-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
 
@@ -311,7 +311,7 @@ export async function run(ctx) {
         exact: true,
       }).isVisible() &&
         await detectedWorkspace.getByText(
-          "GitHub Flavored Markdown",
+          "CommonMark",
           { exact: true },
         ).isVisible() &&
         await detectedWorkspace.getByText(
@@ -319,7 +319,7 @@ export async function run(ctx) {
           { exact: true },
         ).isVisible() &&
         await detectedWorkspace.getByText(
-          "2 Markdown files found.",
+          "commonmark-files",
           { exact: true },
         ).isVisible() &&
         await detectedWorkspace.getByText(
@@ -333,16 +333,14 @@ export async function run(ctx) {
       "Opening a workspace should preview its logical document paths before replacing local state.",
     );
     await page.getByRole("button", { name: "Open folder", exact: true }).click();
-    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    await waitForActiveTab(page, { exact: "Launch notes.md" });
     expect(
-      (await page.locator(".tab-item").count()) === 0,
-      "Opening a workspace should import its tree without opening every document as a tab.",
+      (await page.locator(".tab-item").count()) === 1,
+      "Opening a workspace should open one preferred document without opening every document as a tab.",
     );
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Files", exact: true }).click();
     await waitForPanelTab(page, "Files");
-    await page.getByRole("button", { name: "Open Launch notes.md" }).click();
-    await waitForActiveTab(page, { exact: "Launch notes.md" });
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 

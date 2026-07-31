@@ -104,7 +104,11 @@ export async function run(ctx) {
       "Folder import should distinguish the OKF standard from OpenWiki and link conventions.",
     );
     await page.getByRole("button", { name: "Open folder", exact: true }).click();
-    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    await waitForActiveTab(page, { exact: "index.md" });
+    expect(
+      (await page.locator(".tab-item").count()) === 1,
+      "Opening an OKF folder should open its root index as the preferred document.",
+    );
 
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Files", exact: true }).click();
@@ -334,7 +338,11 @@ export async function run(ctx) {
     );
     await page.getByRole("dialog", { name: "Open folder" }).waitFor();
     await page.getByRole("button", { name: "Open folder", exact: true }).click();
-    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    await waitForActiveTab(page, { exact: "index.md" });
+    expect(
+      (await page.locator(".tab-item").count()) === 1,
+      "Opening a migration folder should open its root index.",
+    );
 
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Knowledge", exact: true }).click();

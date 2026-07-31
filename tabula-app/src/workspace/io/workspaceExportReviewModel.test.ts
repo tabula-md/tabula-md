@@ -68,6 +68,20 @@ describe("workspace export review", () => {
     }));
   });
 
+  it("includes non-portable Markdown extensions in export review", () => {
+    const review = getWorkspaceExportReview([
+      file(
+        "extended",
+        "extended.md",
+        "# Extended\n\nInline math $x + y$ and a footnote.[^1]\n\n[^1]: Note",
+      ),
+    ], folders);
+
+    expect(review).toEqual(expect.objectContaining({
+      portabilityWarningCount: 2,
+    }));
+  });
+
   it("counts changes that have not been recorded since the baseline", () => {
     const original = [
       file("guide", "guide.md", "---\ntype: Guide\n---\n\n# Guide"),

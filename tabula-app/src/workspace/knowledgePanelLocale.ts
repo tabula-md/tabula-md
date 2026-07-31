@@ -43,6 +43,11 @@ const english = {
   instructionConflict: "Potential parent/child instruction conflict",
   instructionChanged: "Critical instruction change",
   instructionChangedDescription: "This instruction file changed since knowledge tracking began.",
+  workspaceProfile: "Workspace formats",
+  noDetectedProfile: "No known format or workflow was detected.",
+  markdownCapabilities: "Markdown features",
+  profileIssues: (count: number) => `${count} workflow ${count === 1 ? "issue" : "issues"}`,
+  portabilityWarnings: (count: number) => `${count} ${count === 1 ? "feature may" : "features may"} not be portable to other Markdown tools.`,
 };
 
 const korean: typeof english = {
@@ -88,6 +93,11 @@ const korean: typeof english = {
   instructionConflict: "상위·하위 instruction 충돌 가능성",
   instructionChanged: "중요 instruction 변경",
   instructionChangedDescription: "지식 변경 추적을 시작한 뒤 이 instruction 파일이 변경되었습니다.",
+  workspaceProfile: "워크스페이스 포맷",
+  noDetectedProfile: "감지된 알려진 포맷이나 워크플로가 없습니다.",
+  markdownCapabilities: "Markdown 기능",
+  profileIssues: (count: number) => `워크플로 문제 ${count}개`,
+  portabilityWarnings: (count: number) => `다른 Markdown 도구에서 호환되지 않을 수 있는 기능 ${count}개`,
 };
 
 export type KnowledgePanelCopy = typeof english;
