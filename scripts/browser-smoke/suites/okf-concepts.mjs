@@ -28,26 +28,6 @@ const readFixtureEntries = async (directory, relativeDirectory = "") => {
   return files;
 };
 
-const openExportPreflight = async (page, openProjectMenu) => {
-  await openProjectMenu(page);
-  await page.getByRole("button", {
-    name: "Export workspace (.zip)",
-    exact: true,
-  }).click();
-  const exportReview = page.getByRole("dialog", {
-    name: "Review workspace export",
-  });
-  await exportReview.waitFor();
-  await exportReview.getByRole("button", {
-    name: "Review issues",
-    exact: true,
-  }).click();
-  await page.getByRole("heading", {
-    name: "Workspace issues",
-    exact: true,
-  }).waitFor();
-};
-
 export async function run(ctx) {
   const {
     browser,
@@ -288,8 +268,8 @@ export async function run(ctx) {
       exact: true,
     }).click();
     await waitForActiveTab(page, { exact: "runtime.md" });
-    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
-    await waitForPanelTab(page, "Knowledge");
+    await page.getByRole("button", { name: "Properties", exact: true }).click();
+    await page.locator(".right-panel-properties").waitFor({ state: "visible" });
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
@@ -297,63 +277,41 @@ export async function run(ctx) {
       name: "Side panel sections",
     });
     const documentKnowledgeContext = page.getByRole("region", {
-      name: "Knowledge context",
+      name: "Properties",
     });
     await documentKnowledgeContext.getByRole("heading", {
-      name: "Runtime architecture",
+      name: "Metadata",
       exact: true,
     }).waitFor();
     expect(
-      await documentKnowledgeContext.getByRole("heading", {
-        name: "Runtime architecture",
-        exact: true,
-      }).isVisible() &&
-        !(await documentKnowledgeContext.getByText(
+      await documentKnowledgeContext.getByText(
           "How application services fit together at runtime.",
           { exact: true },
-        ).isVisible()) &&
+        ).isVisible() &&
         (await documentKnowledgeContext.getByText(
           "Needs attention",
           { exact: true },
         ).count()) === 0,
-      "Knowledge should lead with the active document and stay quiet when it has no actionable issue.",
+      "Properties should show the active document metadata and stay quiet when it has no actionable issue.",
     );
-    const knowledgePassport = documentKnowledgeContext.getByRole("region", {
-      name: "Knowledge passport",
-    });
-    expect(
-      await knowledgePassport.getByText("Lifecycle", { exact: true }).isVisible() &&
-        await knowledgePassport.getByText("Stable", { exact: true }).isVisible() &&
-        await knowledgePassport.getByText("Trust", { exact: true }).isVisible() &&
-        await knowledgePassport.getByText("Unverified", { exact: true }).isVisible() &&
-        await knowledgePassport.getByText("Freshness", { exact: true }).isVisible() &&
-        await knowledgePassport.getByText("Unscheduled", { exact: true }).isVisible(),
-      "Knowledge should keep lifecycle, trust, and freshness as independent document axes.",
-    );
-    await documentKnowledgeContext.locator(
-      ".right-knowledge-context-details > summary",
-    ).click();
-    expect(
-      await documentKnowledgeContext.getByText(
-        "How application services fit together at runtime.",
-        { exact: true },
-      ).isVisible() &&
-        await documentKnowledgeContext.getByText("Architecture", { exact: true }).isVisible() &&
-        await documentKnowledgeContext.getByText("runtime, platform", { exact: true }).isVisible() &&
-        await documentKnowledgeContext.getByText(
-          "Additional metadata",
-          { exact: true },
-        ).isVisible() &&
-        await documentKnowledgeContext.getByText(
-          "review_policy",
-          { exact: true },
-        ).isVisible() &&
-        await documentKnowledgeContext.getByText(
-          "quarterly-platform-review",
-          { exact: true },
-        ).isVisible(),
-      "Knowledge should keep descriptive and provenance metadata available in optional details.",
-    );
+    for (const label of [
+      "Metadata",
+      "Lifecycle",
+      "Stable",
+      "Trust",
+      "Unverified",
+      "Freshness",
+      "Unscheduled",
+      "Architecture",
+      "runtime, platform",
+      "review_policy",
+      "quarterly-platform-review",
+    ]) {
+      expect(
+        await documentKnowledgeContext.getByText(label, { exact: true }).isVisible(),
+        `Properties should expose ${label} as a named document field.`,
+      );
+    }
     expect(
       (await documentKnowledgeContext.getByRole("link", {
         name: /Open source/,
@@ -361,25 +319,12 @@ export async function run(ctx) {
           "https://github.com/acme/example/tree/main/src",
       "The active document context should keep its canonical source actionable.",
     );
-    const workspaceKnowledge = page.getByRole("region", {
-      name: "Workspace knowledge",
-    });
     expect(
-      await workspaceKnowledge.getByText(
-        "OKF 0.1 · 3 concepts",
-        { exact: true },
-      ).isVisible() &&
-        await workspaceKnowledge.getByText(
-          "No workspace issues",
-          { exact: true },
-        ).isVisible() &&
-        (await workspaceKnowledge.getByRole("button", {
-          name: "Workspace issues",
-          exact: true,
-        }).count()) === 0 &&
+      (await page.getByText("OKF 0.1 · 3 concepts", { exact: true }).count()) === 0 &&
+        (await page.locator(".workspace-issues-button").count()) === 0 &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
         (await page.locator(".right-graph-panel").count()) === 0,
-      "Knowledge should report workspace issue facts without prescribing a review workflow.",
+      "Document Properties should not contain a workspace summary or workspace workflow.",
     );
 
     await sidePanelNavigation.getByRole("button", {
@@ -427,64 +372,20 @@ export async function run(ctx) {
     expect(
       await exportReview.getByText("Compatibility", { exact: true }).isVisible() &&
         await exportReview.getByText("Knowledge health", { exact: true }).isVisible() &&
-        await exportReview.getByText("Handoff log", { exact: true }).isVisible(),
-      "Knowledge workspace export should surface its checks at the handoff boundary.",
+        await exportReview.getByText("Handoff log", { exact: true }).isVisible() &&
+        (await exportReview.getByRole("button", {
+          name: "Review issues",
+          exact: true,
+        }).count()) === 0 &&
+        (await page.locator(".workspace-issues-button").count()) === 0 &&
+        (await page.getByRole("dialog", {
+          name: "Workspace issues",
+          exact: true,
+        }).count()) === 0,
+      "Knowledge workspace export should own the handoff summary without opening a global issue dashboard.",
     );
-    await exportReview.getByRole("button", {
-      name: "Review issues",
-      exact: true,
-    }).click();
-    await page.getByRole("heading", {
-      name: "Workspace issues",
-      exact: true,
-    }).waitFor();
-    expect(
-      (await page.getByRole("dialog", {
-        name: "Review workspace export",
-      }).count()) === 0,
-      "Review issues should leave the summary and open the export preflight.",
-    );
-    expect(
-      await page.getByText("Compatible with OKF 0.1", { exact: true }).isVisible() &&
-        (await page.getByText("Required changes", { exact: true }).count()) === 0,
-      "A valid OpenWiki 0.1 bundle should pass compatibility without required changes.",
-    );
-    const rootIndex = page.locator(".right-compatibility-index-item > button")
-      .filter({ has: page.locator("strong", { hasText: /^index\.md$/ }) });
-    await rootIndex.click();
-    expect(
-      await rootIndex.getByText("Curated", { exact: true }).isVisible() &&
-        await page.getByRole("button", { name: "Current index", exact: true }).isVisible() &&
-        await page.getByRole("button", { name: "Generated candidate", exact: true }).isVisible(),
-      "A human-authored OpenWiki index should be distinguished from a generated candidate.",
-    );
-    await page.getByRole("button", {
-      name: "Replace curated index…",
-      exact: true,
-    }).click();
-    expect(
-      await page.getByText(
-        "This replaces human-written index content with the generated candidate.",
-        { exact: true },
-      ).isVisible() &&
-        await page.getByRole("button", { name: "Replace index", exact: true }).isVisible(),
-      "Replacing curated index prose should require a second explicit confirmation.",
-    );
-    await page.getByRole("button", { name: "Cancel", exact: true }).click();
-    expect(
-      (await page.getByRole("button", { name: "Replace index", exact: true }).count()) === 0,
-      "Cancelling curated index replacement should leave the source untouched.",
-    );
-    await page.getByRole("button", { name: "Close workspace issues", exact: true }).click();
-    await openProjectMenu(page);
-    await page.getByRole("button", {
-      name: "Export workspace (.zip)",
-      exact: true,
-    }).click();
     const reviewedDownloadPromise = page.waitForEvent("download");
-    await page.getByRole("dialog", {
-      name: "Review workspace export",
-    }).getByRole("button", {
+    await exportReview.getByRole("button", {
       name: /^Export(?: anyway)?$/,
     }).click();
     const reviewedDownload = await reviewedDownloadPromise;
@@ -600,149 +501,53 @@ export async function run(ctx) {
       "The file dot should explain the concrete issue on demand.",
     );
     await sourceAttention.getByRole("button", {
-      name: "View workspace issues",
+      name: "Open Properties",
       exact: true,
     }).click();
-    await waitForPanelTab(page, "Knowledge");
-    const workspaceIssues = page.getByRole("region", {
-      name: "Workspace issues",
+    await page.locator(".right-panel-properties").waitFor({ state: "visible" });
+    const sourceProperties = page.getByRole("region", {
+      name: "Properties",
       exact: true,
     });
     expect(
-      await workspaceIssues.getByText("source", { exact: true }).isVisible() &&
-        (await workspaceIssues.getByRole("button", {
-          name: "Next review document",
+      await sourceProperties.getByRole("heading", {
+        name: "Metadata",
+        exact: true,
+      }).isVisible() &&
+        await sourceProperties.getByText("Needs attention", { exact: true }).isVisible(),
+      "A file attention dot should open that document's Properties rather than a workspace queue.",
+    );
+    expect(
+      (await page.locator(".workspace-issues-button").count()) === 0 &&
+        (await page.getByRole("dialog", {
+          name: "Workspace issues",
           exact: true,
         }).count()) === 0,
-      "Workspace issues should be an on-demand issue list rather than a review-session wizard.",
+      "Document maintenance should remain in Files and Properties without a global issue dashboard.",
     );
-    await workspaceIssues.getByRole("button", {
-      name: "Back to document",
-      exact: true,
-    }).click();
-    await openExportPreflight(page, openProjectMenu);
-    const exportIssues = page.getByRole("dialog", {
-      name: "Workspace issues",
-      exact: true,
-    });
-    const humanReview = page.getByRole("region", { name: "Human review 1" });
-    await humanReview.locator(".right-compatibility-verification-row").click();
-    const evidenceCount = await humanReview.getByText(
-      "https://example.com/policy",
-      { exact: true },
-    ).count();
-    const priorVerificationCount = await humanReview.getByText(
-      /human:taeha/,
-    ).count();
-    expect(
-      evidenceCount > 0 && priorVerificationCount > 0,
-      `Human review should expose the source and prior verification before approval (evidence=${evidenceCount}, prior=${priorVerificationCount}).`,
-    );
-    await humanReview.getByRole("checkbox", {
-      name: "I compared this document with the sources listed above.",
-      exact: true,
-    }).click();
-    await humanReview.getByRole("button", {
-      name: /^Record as /,
-    }).click();
-    await humanReview.waitFor({ state: "detached" });
-    expect(
-      (await page.getByRole("region", { name: /^Human review/ }).count()) === 0,
-      "Recording a human verification should clear the outdated review signal.",
-    );
-    const expectedHealthMessages = [
-      "Refresh after 2020-01-01",
-      "Deprecated concept still has 1 references",
-      "Citation has no matching source: missing",
-      "Relationship target does not exist: missing.md",
-      "Source id is duplicated: policy",
-      "Source resource is duplicated: https://example.com/policy",
-    ];
-    const missingHealthMessages = [];
-    for (const message of expectedHealthMessages) {
-      if ((await exportIssues.getByText(message, { exact: true }).count()) === 0) {
-        missingHealthMessages.push(message);
-      }
-    }
-    expect(
-      await exportIssues.getByText("Knowledge health", { exact: true }).isVisible() &&
-        missingHealthMessages.length === 0,
-      `OKF compatibility should remain separate from read-only knowledge maintenance signals (missing: ${missingHealthMessages.join(", ")}).`,
-    );
-    await exportIssues.getByRole("button").filter({
-      hasText: "Refresh after 2020-01-01",
-    }).click();
-    await selectDocumentViewMode(page, "Edit");
-    await waitForEditorReady(page, { mode: "edit" });
-    await page.waitForFunction(() =>
-      window.getSelection()?.toString() === "stale_after: 2020-01-01"
-    );
-    expect(
-      await page.evaluate(() =>
-        window.getSelection()?.toString() === "stale_after: 2020-01-01"
-      ),
-      "Knowledge metadata signals should select the exact frontmatter field.",
-    );
-    await selectDocumentViewMode(page, "Preview");
-    await waitForEditorReady(page, { mode: "preview" });
-    await openExportPreflight(page, openProjectMenu);
-    await exportIssues.getByRole("button").filter({
-      hasText: "Relationship target does not exist: missing.md",
-    }).click();
-    await selectDocumentViewMode(page, "Edit");
-    await waitForEditorReady(page, { mode: "edit" });
-    await page.waitForFunction(() =>
-      window.getSelection()?.toString() === "[Missing](missing.md)"
-    );
-    expect(
-      await page.evaluate(() =>
-        window.getSelection()?.toString() === "[Missing](missing.md)"
-      ),
-      "Relationship signals should reopen editing and select the broken link.",
-    );
-    await openExportPreflight(page, openProjectMenu);
-    await page.getByRole("checkbox", {
-      name: "Include this change: notes/source.md",
-      exact: true,
-    }).click();
-    expect(
-      await page.getByText("[the target](Target.md)", { exact: false }).isVisible(),
-      "Resolved wikilinks should show a Markdown diff before conversion.",
-    );
+    await openProjectMenu(page);
     await page.getByRole("button", {
-      name: "Convert selected",
+      name: "Export workspace (.zip)",
       exact: true,
     }).click();
-    await page.getByText("Portable links", { exact: true }).waitFor({
-      state: "detached",
+    const boundaryReview = page.getByRole("dialog", {
+      name: "Review workspace export",
     });
+    await boundaryReview.waitFor();
     expect(
-      (await page.getByText("Portable links", { exact: true }).count()) === 0,
-      "Applying the reviewed conversion should clear the portable-link action.",
+      await boundaryReview.getByText("Compatibility", { exact: true }).isVisible() &&
+        await boundaryReview.getByText("Knowledge health", { exact: true }).isVisible() &&
+        await boundaryReview.getByText("Handoff log", { exact: true }).isVisible() &&
+        (await boundaryReview.getByRole("button", {
+          name: "Review issues",
+          exact: true,
+        }).count()) === 0,
+      "Workspace-wide checks should appear only as a concise export-boundary summary.",
     );
-    await page.getByText("Knowledge changes", { exact: true }).waitFor();
-    expect(
-      await page.getByText(
-        "0 added, 1 updated, 0 removed",
-        { exact: true },
-      ).isVisible() &&
-        await page.getByText(
-          "0 introduced, 1 resolved",
-          { exact: true },
-        ).isVisible() &&
-        await page.getByText("Log candidate", { exact: true }).isVisible() &&
-        await page.getByText(
-          "Updated [source](notes/source.md)",
-          { exact: false },
-        ).isVisible(),
-      "A reviewed document edit should produce a deterministic log candidate.",
-    );
-    await page.getByRole("button", { name: "Create log", exact: true }).click();
-    await page.getByText("No knowledge changes", { exact: true }).waitFor();
-    expect(
-      await page.getByText("No knowledge changes", { exact: true }).isVisible(),
-      "Materializing the log should advance the baseline only after the explicit action.",
-    );
+    await boundaryReview.getByRole("button", {
+      name: "Cancel",
+      exact: true,
+    }).click();
   });
 
   await withPage(browser, "/", async (page) => {

@@ -46,7 +46,7 @@ describe("room view state", () => {
     })).toMatchObject({ rightPanelOpen: true, rightPanelView: "links" });
   });
 
-  it("restores search and knowledge as separate panel views", () => {
+  it("restores search and properties as separate panel views", () => {
     expect(parseRoomViewState({
       openDocumentIds: ["readme"],
       rightPanelOpen: true,
@@ -56,8 +56,8 @@ describe("room view state", () => {
     expect(parseRoomViewState({
       openDocumentIds: ["readme"],
       rightPanelOpen: true,
-      rightPanelView: "knowledge",
-    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "knowledge" });
+      rightPanelView: "properties",
+    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "properties" });
   });
 
   it("migrates the retired graph panel to links", () => {
@@ -66,6 +66,14 @@ describe("room view state", () => {
       rightPanelOpen: true,
       rightPanelView: "graph",
     })).toMatchObject({ rightPanelOpen: true, rightPanelView: "links" });
+  });
+
+  it("migrates the retired knowledge panel to document properties", () => {
+    expect(parseRoomViewState({
+      openDocumentIds: ["readme"],
+      rightPanelOpen: true,
+      rightPanelView: "knowledge",
+    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "properties" });
   });
 
   it("restores valid tabs and falls back when the saved active document was deleted", () => {

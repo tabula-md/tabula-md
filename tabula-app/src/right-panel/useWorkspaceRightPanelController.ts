@@ -7,7 +7,6 @@ import {
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
 import type {
   MarkdownHeading,
-  WorkspaceKnowledgeBaseline,
   WorkspaceKnowledgeLink,
 } from "@tabula-md/tabula";
 import {
@@ -53,13 +52,6 @@ type RightPanelHandlers = Pick<
   | "onResolveAmbiguousLink"
   | "onSelectFile"
   | "onSelectKnowledgeHealthIssue"
-  | "onSetActiveFileOkfType"
-  | "onApplyOkfConceptRepairs"
-  | "onApplyOkfWikilinkRepairs"
-  | "onVerifyKnowledgeDocument"
-  | "onMaterializeOkfIndex"
-  | "onMaterializeOkfLog"
-  | "onStartKnowledgeTracking"
   | "onStartCommentReply"
   | "onToggleCommentResolved"
   | "onGoToComment"
@@ -77,8 +69,6 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & {
   commentsByFileId: Record<string, FileComment[]>;
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
-  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
-  knowledgeCompatibilityOpenRequest: number;
   focusTextRange: FocusTextRange;
   identityName: string;
   isLive: boolean;
@@ -112,8 +102,6 @@ export function useWorkspaceRightPanelController({
   commentsByFileId,
   files,
   folders,
-  knowledgeBaseline,
-  knowledgeCompatibilityOpenRequest,
   focusTextRange,
   formatCommentDate,
   identityName,
@@ -143,13 +131,6 @@ export function useWorkspaceRightPanelController({
   onResolveAmbiguousLink,
   onSelectFile,
   onSelectKnowledgeHealthIssue,
-  onSetActiveFileOkfType,
-  onApplyOkfConceptRepairs,
-  onApplyOkfWikilinkRepairs,
-  onVerifyKnowledgeDocument,
-  onMaterializeOkfIndex,
-  onMaterializeOkfLog,
-  onStartKnowledgeTracking,
   onStartCommentReply,
   onToggleCommentResolved,
   outlineHeadings,
@@ -174,7 +155,6 @@ export function useWorkspaceRightPanelController({
     [folders, visibleFiles],
   );
   const {
-    compatibilityReport: knowledgeCompatibilityReport,
     index: knowledgeIndex,
     pending: knowledgeIndexPending,
     source: knowledgeIndexSource,
@@ -257,11 +237,8 @@ export function useWorkspaceRightPanelController({
     files: visibleFiles,
     folders,
     knowledgeIndex,
-    knowledgeCompatibilityReport,
     knowledgeIndexPending,
     knowledgeIndexSource,
-    knowledgeBaseline,
-    knowledgeCompatibilityOpenRequest,
     activeFileId: visibleActiveFileId,
     activeFileTitle,
     activeOutlineHeadingIndex,
@@ -287,13 +264,6 @@ export function useWorkspaceRightPanelController({
     onSelectKnowledgeHealthIssue,
     onFocusLinkSource: focusLinkSource,
     onResolveAmbiguousLink,
-    onSetActiveFileOkfType,
-    onApplyOkfConceptRepairs,
-    onApplyOkfWikilinkRepairs,
-    onVerifyKnowledgeDocument,
-    onMaterializeOkfIndex,
-    onMaterializeOkfLog,
-    onStartKnowledgeTracking,
     onRenameFile,
     onDuplicateFile,
     onDeleteFile,

@@ -15,7 +15,6 @@ type WorkspaceExportReviewDialogProps = {
   review: WorkspaceExportReview;
   onCancel: () => void;
   onExport: () => void;
-  onReviewIssues: () => void;
 };
 
 export function WorkspaceExportReviewDialog({
@@ -23,7 +22,6 @@ export function WorkspaceExportReviewDialog({
   review,
   onCancel,
   onExport,
-  onReviewIssues,
 }: WorkspaceExportReviewDialogProps) {
   const copy = getWorkspaceExportReviewCopy(language);
   const compatibilityConcerns =
@@ -111,16 +109,13 @@ export function WorkspaceExportReviewDialog({
       </div>
 
       <div className="share-modal-actions workspace-export-review-actions">
-        <button className="ui-modal-action secondary share-modal-secondary" type="button" onClick={onCancel}>
-          {copy.cancel}
-        </button>
         <button
-          className="share-modal-secondary"
+          className="ui-modal-action secondary share-modal-secondary"
           type="button"
           {...(hasConcerns ? { "data-modal-initial-focus": true } : {})}
-          onClick={onReviewIssues}
+          onClick={onCancel}
         >
-          {copy.reviewIssues}
+          {copy.cancel}
         </button>
         <button
           className="share-modal-primary"

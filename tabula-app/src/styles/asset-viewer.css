@@ -99,13 +99,6 @@
   font-size: var(--font-ui-secondary);
 }
 
-.tab-file-type-icon {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  color: var(--text-muted);
-}
-
 .right-file-tree-row.file.asset .right-file-document-icon {
   color: var(--text-secondary);
 }

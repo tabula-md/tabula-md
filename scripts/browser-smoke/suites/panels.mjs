@@ -7,26 +7,6 @@ export const scenarios = [
   "resolves workspace links and previews in project context",
 ];
 
-const openExportPreflight = async (page, openProjectMenu) => {
-  await openProjectMenu(page);
-  await page.getByRole("button", {
-    name: "Export workspace (.zip)",
-    exact: true,
-  }).click();
-  const exportReview = page.getByRole("dialog", {
-    name: "Review workspace export",
-  });
-  await exportReview.waitFor();
-  await exportReview.getByRole("button", {
-    name: "Review issues",
-    exact: true,
-  }).click();
-  await page.getByRole("heading", {
-    name: "Workspace issues",
-    exact: true,
-  }).waitFor();
-};
-
 export async function run(ctx) {
   const {
     baseUrl,
@@ -464,8 +444,15 @@ export async function run(ctx) {
       "The side panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Files|Outline|Links|Comments|Search|Knowledge",
-      `The side panel should separate workspace search from active-document knowledge. Found: ${rightPanelState.tabs.join("|")}`,
+      rightPanelState.tabs.join("|") === "Files|Outline|Links|Comments|Search|Properties",
+      `The side panel should expose document Properties as a peer inspector. Found: ${rightPanelState.tabs.join("|")}`,
+    );
+    expect(
+      (await page.locator(".document-utility-controls").getByRole("button", {
+        name: "Properties",
+        exact: true,
+      }).count()) === 0,
+      "Properties should live in the right panel instead of duplicating a document-toolbar action.",
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
     expect(rightPanelState.workspaceName === "Project", "Files should identify the current workspace.");
@@ -541,8 +528,8 @@ export async function run(ctx) {
       "The side panel should not clip the status bar lane.",
     );
 
-    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
-    await page.locator(".right-panel-knowledge").waitFor({
+    await page.getByRole("button", { name: "Properties", exact: true }).click();
+    await page.locator(".right-panel-properties").waitFor({
       state: "visible",
     });
     expect(
@@ -551,13 +538,12 @@ export async function run(ctx) {
         exact: true,
       }).count()) === 0 &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0,
-      "Knowledge should stay focused on the active document during editing.",
+      "Properties should stay focused on the active document during editing.",
     );
     expect(
       (await page.locator(".right-compatibility-scroll").count()) === 0,
       "Compatibility repair controls should not interrupt ordinary Markdown editing.",
     );
-
     await page.getByRole("navigation", {
       name: "Side panel sections",
     }).getByRole("button", { name: "Search", exact: true }).click();
@@ -571,7 +557,7 @@ export async function run(ctx) {
         exact: true,
       }).isVisible() &&
         await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
-        (await page.locator(".right-knowledge-context").count()) === 0,
+        (await page.locator(".right-properties-context").count()) === 0,
       "Search should be an independent workspace retrieval surface.",
     );
 
@@ -639,18 +625,17 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Close Workspace menu", exact: true }).click();
     await waitForRenderFrame(page);
 
-    const sidePanelNavigation = page.getByRole("navigation", { name: "Side panel sections" });
-    await sidePanelNavigation.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await page.getByRole("button", { name: "Properties", exact: true }).click();
     expect(
-      await page.locator(".right-knowledge-context").isVisible() &&
+      await page.locator(".right-properties-context").isVisible() &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
         (await page.getByRole("button", {
           name: "Workspace issues",
           exact: true,
         }).count()) === 0 &&
         (await page.locator(".right-panel-search-field").count()) === 0 &&
-         (await page.locator(".right-graph-panel").count()) === 0,
-       "Knowledge should remain a stable active-document context instead of a catalog or dashboard.",
+       (await page.locator(".right-graph-panel").count()) === 0,
+       "Properties should remain a stable active-document inspector instead of a catalog or dashboard.",
     );
     await page.getByRole("button", { name: "Files", exact: true }).click();
 
@@ -2061,7 +2046,7 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Open Start.md", exact: true }).first().click();
     await waitForActiveTab(page, { exact: "Start.md" });
 
-    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
+    await page.getByRole("button", { name: "Properties", exact: true }).click();
     await page.getByRole("heading", { name: "Start", exact: true }).waitFor({
       state: "visible",
     });
@@ -2069,62 +2054,16 @@ export async function run(ctx) {
       await page.getByRole("heading", { name: "Start", exact: true }).isVisible() &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
         (await page.locator(".right-graph-panel").count()) === 0,
-      "Knowledge should keep the active document in context without opening a graph.",
+      "Properties should keep the active document in context without opening a graph.",
     );
 
-    await openExportPreflight(page, openProjectMenu);
-    const rootIndexCandidate = page.locator(".right-compatibility-index-item > button")
-      .filter({ has: page.locator("strong", { hasText: /^index\.md$/ }) });
-    await rootIndexCandidate.click();
     expect(
-      await page.getByText("Generated candidate", { exact: true }).isVisible() &&
-        await page.getByRole("button", { name: "Create index", exact: true }).isVisible() &&
-        (await page.locator(".right-compatibility-index-preview pre").textContent())
-          ?.includes("tabula.md:generated-okf-index"),
-      "A missing index should remain virtual until its generated Markdown is reviewed.",
-    );
-    const createIndexButton = page.getByRole("button", {
-      name: "Create index",
-      exact: true,
-    });
-    const createIndexColors = await createIndexButton.evaluate((button) => {
-      const buttonStyle = getComputedStyle(button);
-      const probe = document.createElement("span");
-      probe.style.color = "var(--text-inverse)";
-      probe.style.backgroundColor = "var(--text-primary)";
-      document.body.append(probe);
-      const probeStyle = getComputedStyle(probe);
-      const colors = {
-        expectedColor: probeStyle.color,
-        expectedBackground: probeStyle.backgroundColor,
-      };
-      probe.remove();
-      return {
-        color: buttonStyle.color,
-        expectedColor: colors.expectedColor,
-        background: buttonStyle.backgroundColor,
-        expectedBackground: colors.expectedBackground,
-      };
-    });
-    expect(
-      createIndexColors.color === createIndexColors.expectedColor &&
-        createIndexColors.background === createIndexColors.expectedBackground,
-      `Primary compatibility actions should keep visible inverse text. Got: ${
-        JSON.stringify(createIndexColors)
-      }`,
-    );
-    await createIndexButton.click();
-    await page.waitForFunction(() =>
-      Array.from(document.querySelectorAll(".right-compatibility-index-list strong"))
-        .some((element) => element.textContent?.trim() === "index.md")
-      && document.querySelector(".right-compatibility-index-action")?.textContent
-        ?.includes("Up to date")
-    );
-    expect(
-      await rootIndexCandidate.getByText("Generated", { exact: true }).isVisible() &&
-        await page.getByText("Up to date", { exact: true }).isVisible() &&
-        (await page.getByRole("button", { name: "Create index", exact: true }).count()) === 0,
-      "Materializing a reviewed index should create a managed index without touching curated content.",
+      (await page.locator(".workspace-issues-button").count()) === 0 &&
+        (await page.getByRole("dialog", {
+          name: "Workspace issues",
+          exact: true,
+        }).count()) === 0,
+      "Project context should not introduce a separate workspace issue dashboard.",
     );
   });
 

@@ -60,7 +60,6 @@ export type WorkspaceOverlaySurfaceProps = {
   onReplaceWorkspaceWithFolder: () => void;
   onOpenImportedRootIndex: () => void;
   onConfirmWorkspaceExport: () => void;
-  onReviewWorkspaceExportIssues: () => void;
 };
 
 export function WorkspaceOverlaySurface({
@@ -86,7 +85,6 @@ export function WorkspaceOverlaySurface({
   onReplaceWorkspaceWithFolder,
   onOpenImportedRootIndex,
   onConfirmWorkspaceExport,
-  onReviewWorkspaceExportIssues,
 }: WorkspaceOverlaySurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
   return (
@@ -130,7 +128,6 @@ export function WorkspaceOverlaySurface({
             review={workspaceExportReview}
             onCancel={onCloseWorkspaceExportReview}
             onExport={onConfirmWorkspaceExport}
-            onReviewIssues={onReviewWorkspaceExportIssues}
           />
         </Suspense>
       )}
