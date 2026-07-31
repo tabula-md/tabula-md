@@ -26,7 +26,6 @@ export function WorkspaceImportResultDialog({
     [copy.directoryIndexes, result.directoryIndexCount],
     [copy.activityLog, result.hasActivityLog ? copy.present : copy.missing],
     [copy.supportFiles, result.preservedSupportPaths.length],
-    [copy.excludedFiles, result.ignoredPaths.length],
     [copy.requiredFixes, result.requiredChangeCount],
     [copy.healthAttention, result.attentionCount],
   ] as const;
@@ -101,7 +100,6 @@ export function WorkspaceImportResultDialog({
           aria-label={copy.detailsLabel}
         >
           {pathList(copy.preservedPaths, result.preservedSupportPaths)}
-          {pathList(copy.excludedPaths, result.ignoredPaths)}
         </div>
       )}
 

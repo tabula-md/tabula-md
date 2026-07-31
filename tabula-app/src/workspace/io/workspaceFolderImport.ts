@@ -20,7 +20,6 @@ import {
 import {
   encodeBinaryWorkspaceSupportFile,
   isMarkdownWorkspacePath,
-  isPreservedWorkspaceSupportPath,
 } from "./workspaceSupportFile";
 import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
 import type { WorkspaceImportProfile } from "./workspaceImportProfile";
@@ -89,10 +88,7 @@ export const parseWorkspaceFolderImport = async (
     entries: normalizedEntries,
     selectedRoot,
   } = extractSelectedRoot(parsedEntries);
-  const entries = normalizedEntries.filter(({ segments }) =>
-    isMarkdownWorkspacePath(segments.at(-1) ?? "")
-    || isPreservedWorkspaceSupportPath(segments)
-  );
+  const entries = normalizedEntries;
   if (
     !entries.some(({ segments }) =>
       isMarkdownWorkspacePath(segments.at(-1) ?? ""))
@@ -155,7 +151,6 @@ export const parseWorkspaceFolderImport = async (
     folders,
     openFileIds: [],
   });
-  const importedPaths = entries.map(({ segments }) => segments.join("/"));
   const supportFiles = entries.flatMap(({ segments }, index) => {
     const path = segments.join("/");
     const file = files[index];
@@ -175,7 +170,6 @@ export const parseWorkspaceFolderImport = async (
       ),
       supportFiles,
       sourcePaths: normalizedEntries.map(({ segments }) => segments.join("/")),
-      importedPaths,
     }),
   };
 };

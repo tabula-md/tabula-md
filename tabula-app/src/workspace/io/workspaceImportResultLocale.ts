@@ -12,7 +12,6 @@ export type WorkspaceImportResultCopy = {
   present: string;
   missing: string;
   supportFiles: string;
-  excludedFiles: string;
   requiredFixes: string;
   healthAttention: string;
   v02Guidance: string;
@@ -21,7 +20,6 @@ export type WorkspaceImportResultCopy = {
   hideDetails: string;
   detailsLabel: string;
   preservedPaths: string;
-  excludedPaths: string;
   noPaths: string;
   dismiss: string;
 };
@@ -42,8 +40,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     activityLog: "Activity log",
     present: "Present",
     missing: "Missing",
-    supportFiles: "Support files preserved",
-    excludedFiles: "Files excluded",
+    supportFiles: "Bundle assets preserved",
     requiredFixes: "Required compatibility fixes",
     healthAttention: "Knowledge health attention",
     v02Guidance:
@@ -52,8 +49,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     showDetails: "Import details",
     hideDetails: "Hide import details",
     detailsLabel: "Import details",
-    preservedPaths: "Preserved support files",
-    excludedPaths: "Excluded files",
+    preservedPaths: "Preserved bundle assets",
     noPaths: "None",
     dismiss: "Close",
   },
@@ -72,8 +68,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     activityLog: "활동 log",
     present: "있음",
     missing: "없음",
-    supportFiles: "보존한 지원 파일",
-    excludedFiles: "제외한 파일",
+    supportFiles: "보존한 번들 자산",
     requiredFixes: "필수 호환성 수정",
     healthAttention: "지식 상태 확인 필요",
     v02Guidance:
@@ -82,8 +77,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     showDetails: "가져오기 세부사항",
     hideDetails: "가져오기 세부사항 숨기기",
     detailsLabel: "가져오기 세부사항",
-    preservedPaths: "보존한 지원 파일",
-    excludedPaths: "제외한 파일",
+    preservedPaths: "보존한 번들 자산",
     noPaths: "없음",
     dismiss: "닫기",
   },
@@ -102,8 +96,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     activityLog: "アクティビティ log",
     present: "あり",
     missing: "なし",
-    supportFiles: "保持した補助ファイル",
-    excludedFiles: "除外したファイル",
+    supportFiles: "保持したバンドル資産",
     requiredFixes: "必須の互換性修正",
     healthAttention: "ナレッジ状態の要確認",
     v02Guidance:
@@ -112,8 +105,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     showDetails: "インポートの詳細",
     hideDetails: "詳細を隠す",
     detailsLabel: "インポートの詳細",
-    preservedPaths: "保持した補助ファイル",
-    excludedPaths: "除外したファイル",
+    preservedPaths: "保持したバンドル資産",
     noPaths: "なし",
     dismiss: "閉じる",
   },
@@ -132,8 +124,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     activityLog: "活动 log",
     present: "存在",
     missing: "缺失",
-    supportFiles: "保留的支持文件",
-    excludedFiles: "排除的文件",
+    supportFiles: "保留的捆绑资源",
     requiredFixes: "必须修复的兼容性问题",
     healthAttention: "知识状态待检查",
     v02Guidance:
@@ -142,8 +133,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     showDetails: "导入详情",
     hideDetails: "隐藏导入详情",
     detailsLabel: "导入详情",
-    preservedPaths: "保留的支持文件",
-    excludedPaths: "排除的文件",
+    preservedPaths: "保留的捆绑资源",
     noPaths: "无",
     dismiss: "关闭",
   },
@@ -162,8 +152,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     activityLog: "Log de actividad",
     present: "Presente",
     missing: "Falta",
-    supportFiles: "Archivos auxiliares conservados",
-    excludedFiles: "Archivos excluidos",
+    supportFiles: "Recursos del paquete conservados",
     requiredFixes: "Correcciones de compatibilidad obligatorias",
     healthAttention: "Estado del conocimiento por revisar",
     v02Guidance:
@@ -172,8 +161,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     showDetails: "Detalles de importación",
     hideDetails: "Ocultar detalles",
     detailsLabel: "Detalles de importación",
-    preservedPaths: "Archivos auxiliares conservados",
-    excludedPaths: "Archivos excluidos",
+    preservedPaths: "Recursos del paquete conservados",
     noPaths: "Ninguno",
     dismiss: "Cerrar",
   },
@@ -192,8 +180,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     activityLog: "Log d’activité",
     present: "Présent",
     missing: "Absent",
-    supportFiles: "Fichiers auxiliaires conservés",
-    excludedFiles: "Fichiers exclus",
+    supportFiles: "Ressources du bundle conservées",
     requiredFixes: "Corrections de compatibilité requises",
     healthAttention: "État des connaissances à vérifier",
     v02Guidance:
@@ -202,8 +189,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     showDetails: "Détails de l’import",
     hideDetails: "Masquer les détails",
     detailsLabel: "Détails de l’import",
-    preservedPaths: "Fichiers auxiliaires conservés",
-    excludedPaths: "Fichiers exclus",
+    preservedPaths: "Ressources du bundle conservées",
     noPaths: "Aucun",
     dismiss: "Fermer",
   },
@@ -222,8 +208,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     activityLog: "Aktivitäts-log",
     present: "Vorhanden",
     missing: "Fehlt",
-    supportFiles: "Erhaltene Zusatzdateien",
-    excludedFiles: "Ausgeschlossene Dateien",
+    supportFiles: "Erhaltene Bundle-Dateien",
     requiredFixes: "Erforderliche Kompatibilitätskorrekturen",
     healthAttention: "Zu prüfender Wissenszustand",
     v02Guidance:
@@ -232,8 +217,7 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     showDetails: "Importdetails",
     hideDetails: "Importdetails ausblenden",
     detailsLabel: "Importdetails",
-    preservedPaths: "Erhaltene Zusatzdateien",
-    excludedPaths: "Ausgeschlossene Dateien",
+    preservedPaths: "Erhaltene Bundle-Dateien",
     noPaths: "Keine",
     dismiss: "Schließen",
   },

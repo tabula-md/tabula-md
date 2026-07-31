@@ -300,15 +300,15 @@ export async function run(ctx) {
       const launchNotes = new File(["# Launch notes\n\nReady."], "Launch notes.md", { type: "text/markdown" });
       const questions = new File(["# Questions"], "Questions.md", { type: "text/markdown" });
       const query = new File(["SELECT 1;"], "query.sql", { type: "text/plain" });
-      const ignored = new File(["ignored"], "notes.txt", { type: "text/plain" });
+      const notes = new File(["preserved"], "notes.txt", { type: "text/plain" });
       Object.defineProperty(launchNotes, "webkitRelativePath", { value: "Workspace/Planning/Launch notes.md" });
       Object.defineProperty(questions, "webkitRelativePath", { value: "Workspace/Planning/Research/Questions.md" });
       Object.defineProperty(query, "webkitRelativePath", { value: "Workspace/references/query.sql" });
-      Object.defineProperty(ignored, "webkitRelativePath", { value: "Workspace/Planning/notes.txt" });
+      Object.defineProperty(notes, "webkitRelativePath", { value: "Workspace/Planning/notes.txt" });
       dataTransfer.items.add(launchNotes);
       dataTransfer.items.add(questions);
       dataTransfer.items.add(query);
-      dataTransfer.items.add(ignored);
+      dataTransfer.items.add(notes);
       Object.defineProperty(input, "files", { configurable: true, value: dataTransfer.files });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
@@ -321,16 +321,16 @@ export async function run(ctx) {
         exact: true,
       }).isVisible() &&
         await detectedWorkspace.getByText(
-          "2 Markdown · 1 support · 1 excluded",
+          "2 Markdown · 2 assets",
           { exact: true },
         ).isVisible(),
-      "Folder import should distinguish Markdown, support, and excluded files before replacing local state.",
+      "Folder import should distinguish Markdown documents from preserved bundle assets before replacing local state.",
     );
     expect(
       (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1 &&
         (await page.getByText("references/query.sql", { exact: true }).count()) === 1 &&
         (await page.getByText("Planning/notes.txt", { exact: true }).count()) === 1,
-      "Folder import should preview imported, preserved, and excluded paths before replacing local state.",
+      "Folder import should preview Markdown documents and every preserved bundle asset before replacing local state.",
     );
     expect(
       await page.getByText(

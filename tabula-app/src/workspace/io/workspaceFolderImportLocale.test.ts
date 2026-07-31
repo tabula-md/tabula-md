@@ -12,10 +12,9 @@ describe("workspace folder import copy", () => {
       "replaces the current browser workspace",
     );
     expect(copy.exportCurrentWorkspace).toBe("Export current workspace");
-    expect(copy.summary(2, 1, 3)).toBe(
-      "2 Markdown · 1 support · 3 excluded",
-    );
-    expect(copy.supportNote).toContain("references/");
+    expect(copy.summary(2, 3)).toBe("2 Markdown · 3 assets");
+    expect(copy.supportNote).toContain("All non-Markdown files");
+    expect(copy.supportNote).toContain("does not");
   });
 
   it("explains the detected standard separately from producer conventions", () => {
@@ -28,9 +27,7 @@ describe("workspace folder import copy", () => {
       evidence: [{ code: "okf-version", value: "0.1" }],
       markdownFileCount: 3,
       preservedSupportPaths: ["references/query.sql"],
-      ignoredPaths: ["notes.txt", "source.ts"],
       preservedSupportFileCount: 1,
-      ignoredFileCount: 2,
     } as const;
 
     expect(copy.format(profile)).toBe("OKF 0.1");

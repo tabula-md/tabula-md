@@ -38,7 +38,7 @@ describe("workspace import result", () => {
       ),
       createFolderFile("log.md", "# Log"),
       createFolderFile("references/query.sql", "SELECT 1;"),
-      createFolderFile("source.ts", "console.log('excluded');"),
+      createFolderFile("source.ts", "console.log('preserved');"),
     ], defaults);
 
     const result = await getWorkspaceImportResult(draft);
@@ -48,8 +48,7 @@ describe("workspace import result", () => {
       conceptCount: 1,
       directoryIndexCount: 1,
       hasActivityLog: true,
-      preservedSupportPaths: ["references/query.sql"],
-      ignoredPaths: ["source.ts"],
+      preservedSupportPaths: ["references/query.sql", "source.ts"],
       rootIndexDocumentId: expect.any(String),
       suggestsV02Transition: true,
     });

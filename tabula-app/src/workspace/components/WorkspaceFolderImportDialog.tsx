@@ -84,7 +84,6 @@ export function WorkspaceFolderImportDialog({
               {copy.summary(
                 profile.markdownFileCount,
                 profile.preservedSupportFileCount,
-                profile.ignoredFileCount,
               )}
             </dd>
           </div>
@@ -104,7 +103,6 @@ export function WorkspaceFolderImportDialog({
         <div>
           {pathSection(copy.markdownPaths, markdownPaths)}
           {pathSection(copy.supportPaths, profile.preservedSupportPaths)}
-          {pathSection(copy.excludedPaths, profile.ignoredPaths)}
           <p className="workspace-folder-import-support-note">
             {copy.supportNote}
           </p>

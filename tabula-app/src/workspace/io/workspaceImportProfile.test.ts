@@ -26,14 +26,17 @@ describe("workspace import profile", () => {
           markdown: "# Log\n\n## 2026-07-27\n\n- Updated runtime.",
         },
       ],
-      supportFiles: [{
-        path: ".last-update.json",
-        text: JSON.stringify({
-          updatedAt: "2026-07-27T00:00:00Z",
-          command: "update",
-          gitHead: "abc123",
-        }),
-      }],
+      supportFiles: [
+        {
+          path: ".last-update.json",
+          text: JSON.stringify({
+            updatedAt: "2026-07-27T00:00:00Z",
+            command: "update",
+            gitHead: "abc123",
+          }),
+        },
+        { path: "ignored.ts", text: "export {};" },
+      ],
       sourcePaths: [
         "index.md",
         "architecture/index.md",
@@ -42,13 +45,6 @@ describe("workspace import profile", () => {
         ".last-update.json",
         "ignored.ts",
       ],
-      importedPaths: [
-        "index.md",
-        "architecture/index.md",
-        "architecture/runtime.md",
-        "log.md",
-        ".last-update.json",
-      ],
     });
 
     expect(profile).toMatchObject({
@@ -56,10 +52,8 @@ describe("workspace import profile", () => {
       okfVersion: "0.1",
       conventions: ["openwiki"],
       markdownFileCount: 4,
-      preservedSupportPaths: [".last-update.json"],
-      ignoredPaths: ["ignored.ts"],
-      preservedSupportFileCount: 1,
-      ignoredFileCount: 1,
+      preservedSupportPaths: [".last-update.json", "ignored.ts"],
+      preservedSupportFileCount: 2,
     });
     expect(profile.evidence).toEqual(expect.arrayContaining([
       { code: "okf-version", value: "0.1" },
@@ -84,13 +78,15 @@ describe("workspace import profile", () => {
           markdown: "# Launch",
         },
       ],
-      supportFiles: [],
+      supportFiles: [{
+        path: ".obsidian/app.json",
+        text: "{}",
+      }],
       sourcePaths: [
         ".obsidian/app.json",
         "Home.md",
         "Projects/Launch.md",
       ],
-      importedPaths: ["Home.md", "Projects/Launch.md"],
     });
 
     expect(profile).toMatchObject({
@@ -98,9 +94,8 @@ describe("workspace import profile", () => {
       conventions: ["obsidian"],
       linkSyntaxes: ["wikilinks", "embeds"],
       markdownFileCount: 2,
-      preservedSupportPaths: [],
-      ignoredPaths: [".obsidian/app.json"],
-      ignoredFileCount: 1,
+      preservedSupportPaths: [".obsidian/app.json"],
+      preservedSupportFileCount: 1,
     });
     expect(profile.okfVersion).toBeUndefined();
   });
@@ -111,18 +106,15 @@ describe("workspace import profile", () => {
         { id: "one", path: "One.md", markdown: "# One" },
         { id: "two", path: "Two.md", markdown: "# Two" },
       ],
-      supportFiles: [],
+      supportFiles: [{ path: "notes.txt", text: "notes" }],
       sourcePaths: ["One.md", "Two.md", "notes.txt"],
-      importedPaths: ["One.md", "Two.md"],
     })).toMatchObject({
       format: "plain-markdown",
       conventions: [],
       linkSyntaxes: [],
       markdownFileCount: 2,
-      preservedSupportPaths: [],
-      ignoredPaths: ["notes.txt"],
-      preservedSupportFileCount: 0,
-      ignoredFileCount: 1,
+      preservedSupportPaths: ["notes.txt"],
+      preservedSupportFileCount: 1,
     });
   });
 });

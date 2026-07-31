@@ -61,7 +61,7 @@ export async function run(ctx) {
   } = ctx;
   const fixtureEntries = [
     ...await readFixtureEntries(fixtureRoot),
-    { path: "scratch.tmp", content: "excluded from the browser copy" },
+    { path: "scratch.tmp", content: "preserved in the browser copy" },
   ];
 
   await withPage(browser, "/", async (page) => {
@@ -132,8 +132,7 @@ export async function run(ctx) {
         (await resultValue("Concepts")) === "3" &&
         (await resultValue("Directory indexes")) === "2" &&
         (await resultValue("Activity log")) === "Present" &&
-        (await resultValue("Support files preserved")) === "1" &&
-        (await resultValue("Files excluded")) === "1" &&
+        (await resultValue("Bundle assets preserved")) === "2" &&
         /^\d+$/.test((await resultValue("Required compatibility fixes")) ?? "") &&
         /^\d+$/.test((await resultValue("Knowledge health attention")) ?? ""),
       "OKF import orientation should summarize the detected structure and existing review models.",
@@ -160,7 +159,7 @@ export async function run(ctx) {
         await importResult.getByText("scratch.tmp", {
           exact: true,
         }).isVisible(),
-      "Import details should retain the preserved and excluded file receipt after replacement.",
+      "Import details should retain every non-Markdown bundle asset after replacement.",
     );
     await importResult.getByRole("button", {
       name: "Open root index",
@@ -181,8 +180,12 @@ export async function run(ctx) {
       (await page.getByRole("button", {
         name: "Open .last-update.json",
         exact: true,
-      }).count()) === 1,
-      "OpenWiki run state should survive folder import as a workspace support file.",
+      }).count()) === 1 &&
+        (await page.getByRole("button", {
+          name: "Open scratch.tmp",
+          exact: true,
+        }).count()) === 1,
+      "All bundle assets should survive folder import without becoming knowledge documents.",
     );
     await page.getByRole("button", {
       name: "Knowledge attention legend",

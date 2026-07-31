@@ -7,7 +7,6 @@ export type WorkspaceImportResult = {
   directoryIndexCount: number;
   hasActivityLog: boolean;
   preservedSupportPaths: readonly string[];
-  ignoredPaths: readonly string[];
   requiredChangeCount: number;
   attentionCount: number;
   rootIndexDocumentId?: string;
@@ -45,7 +44,6 @@ export const getWorkspaceImportResult = async (
       evidence.code === "activity-log"
     ),
     preservedSupportPaths: draft.profile.preservedSupportPaths,
-    ignoredPaths: draft.profile.ignoredPaths,
     requiredChangeCount: review?.requiredChangeCount ?? 0,
     attentionCount: review?.attentionCount ?? 0,
     ...(rootIndexDocumentId ? { rootIndexDocumentId } : {}),

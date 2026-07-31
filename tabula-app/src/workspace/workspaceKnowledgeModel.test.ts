@@ -35,7 +35,7 @@ describe("workspace knowledge model", () => {
     });
   });
 
-  it("excludes preserved support files from the knowledge index", () => {
+  it("excludes preserved bundle assets from the knowledge index", () => {
     const root = createWorkspaceRootFolder();
     const documents = getWorkspaceKnowledgeDocuments([
       createWorkspaceFile(1, {

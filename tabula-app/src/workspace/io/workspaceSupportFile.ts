@@ -3,17 +3,6 @@ const BASE64_CHUNK_BYTES = 0x8000;
 
 export const isMarkdownWorkspacePath = (path: string) => /\.md$/i.test(path);
 
-export const isPreservedWorkspaceSupportPath = (
-  segments: readonly string[],
-) => {
-  const basename = segments.at(-1)?.toLocaleLowerCase() ?? "";
-  return basename === ".last-update.json"
-    || (
-      !isMarkdownWorkspacePath(basename)
-      && segments.slice(0, -1).some((segment) => segment.toLocaleLowerCase() === "references")
-    );
-};
-
 export const encodeBinaryWorkspaceSupportFile = (bytes: Uint8Array) => {
   let binary = "";
   for (let offset = 0; offset < bytes.length; offset += BASE64_CHUNK_BYTES) {
