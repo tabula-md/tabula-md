@@ -119,6 +119,33 @@ describe("workspace folder import", () => {
       .toMatchObject({ kind: "asset", contentKind: "binary", editable: false });
     expect(workspace.files.find((file) => file.title === "custom.unknown")?.artifact)
       .toMatchObject({ kind: "support", contentKind: "binary", editable: false });
+    expect(workspace.files.find((file) => file.title === "page.mdx"))
+      .toMatchObject({ viewMode: "edit", editingMode: "source" });
+  });
+
+  it("includes MDX headings and Markdown links in the workspace knowledge graph", async () => {
+    const workspace = await parseWorkspaceFolderFiles([
+      createFolderFile("README.md", "# Readme"),
+      createFolderFile(
+        "guide.mdx",
+        "import Card from './Card.js'\n\n<Card>\n# Guide\n\n[Readme](./README.md)\n</Card>\n",
+      ),
+    ], defaults);
+
+    const documents = getWorkspaceKnowledgeDocuments(workspace.files, workspace.folders);
+    expect(documents.map((document) => document.path).sort()).toEqual([
+      "README.md",
+      "guide.mdx",
+    ]);
+    const index = createWorkspaceKnowledgeIndex(documents);
+    const guide = workspace.files.find((file) => file.title === "guide.mdx");
+    expect(index.analysesByDocumentId.get(guide?.id ?? "")?.headings)
+      .toEqual([expect.objectContaining({ text: "Guide" })]);
+    expect(index.outgoingLinksByDocumentId.get(guide?.id ?? ""))
+      .toEqual([expect.objectContaining({
+        status: "resolved",
+        targetPath: "README.md",
+      })]);
   });
 
   it("preserves OpenWiki run state without treating it as a knowledge document", async () => {
@@ -155,8 +182,8 @@ describe("workspace folder import", () => {
 
     expect(workspace.files).toHaveLength(5);
     expect(draft.profile).toMatchObject({
-      format: "okf",
-      okfVersion: "0.1",
+      syntaxes: ["gfm"],
+      schemas: [{ id: "okf", version: "0.1" }],
       conventions: ["openwiki"],
       preservedSupportFileCount: 2,
       ignoredFileCount: 0,

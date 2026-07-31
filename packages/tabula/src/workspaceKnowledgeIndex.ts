@@ -8,6 +8,7 @@ import {
   type OkfTrustTier,
   type WorkspaceKnowledgeMetadata,
 } from "./workspaceOkfMetadata";
+import { maskMdxSyntax } from "./mdxSourceSyntax";
 
 export type { WorkspaceKnowledgeMetadata } from "./workspaceOkfMetadata";
 
@@ -210,13 +211,16 @@ const wikiLinkIgnoredAncestorTypes = new Set([
 ]);
 
 export const analyzeWorkspaceDocument = (document: WorkspaceSourceDocument): DocumentAnalysis => {
-  const parsed = parseFrontmatterData(document.markdown);
+  const analysisSource = /\.mdx$/i.test(document.path)
+    ? maskMdxSyntax(document.markdown)
+    : document.markdown;
+  const parsed = parseFrontmatterData(analysisSource);
   const root = fromMarkdown(parsed.body) as AstNode;
   const definitions = new Map<string, string>();
   const headings: DocumentHeadingAnalysis[] = [];
   const links: DocumentLinkAnalysis[] = [];
   const headingSlugger = new GithubSlugger();
-  const bodyLineOffset = document.markdown.slice(0, parsed.bodyOffset).split("\n").length - 1;
+  const bodyLineOffset = analysisSource.slice(0, parsed.bodyOffset).split("\n").length - 1;
 
   visitAst(root, (node) => {
     if (node.type === "definition" && node.identifier && typeof node.url === "string") {

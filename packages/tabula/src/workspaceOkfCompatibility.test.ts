@@ -61,6 +61,11 @@ describe("workspace OKF compatibility", () => {
 
   it("reports each strict concept requirement without treating empty frontmatter as absent", () => {
     const report = getWorkspaceOkfCompatibility(createWorkspaceKnowledgeIndex([
+      {
+        id: "index",
+        path: "index.md",
+        markdown: "---\nokf_version: \"0.1\"\n---\n\n# Catalog",
+      },
       { id: "missing", path: "Missing.md", markdown: "# Missing" },
       { id: "invalid", path: "Invalid.md", markdown: "---\ntype: [\n---\n" },
       { id: "empty", path: "Empty.md", markdown: "---\n---\n\n# Empty" },
@@ -78,7 +83,7 @@ describe("workspace OKF compatibility", () => {
 
   it("validates reserved index and log structure including the root-only version exception", () => {
     const report = getWorkspaceOkfCompatibility(createWorkspaceKnowledgeIndex([
-      { id: "root-index", path: "index.md", markdown: "---\ntitle: Catalog\n---\n\nNo heading" },
+      { id: "root-index", path: "index.md", markdown: "---\nokf_version: \"0.1\"\ntitle: Catalog\n---\n\nNo heading" },
       { id: "nested-index", path: "docs/index.md", markdown: "---\nokf_version: \"0.1\"\n---\n\n# Docs" },
       {
         id: "log",
@@ -89,7 +94,6 @@ describe("workspace OKF compatibility", () => {
 
     expect(report.issues.map((issue) => [issue.code, issue.value])).toEqual([
       ["reserved_frontmatter_not_allowed", undefined],
-      ["root_index_version_invalid", undefined],
       ["root_index_extra_metadata", "title"],
       ["index_structure_invalid", undefined],
       ["log_date_invalid", "July 23"],
@@ -144,6 +148,7 @@ describe("workspace OKF compatibility", () => {
       status: "conformant",
       targetVersion: "0.2",
       declaredVersion: "9.0",
+      detection: "future",
       errorCount: 0,
       warningCount: 1,
     });
@@ -151,5 +156,66 @@ describe("workspace OKF compatibility", () => {
       code: "unsupported_okf_version",
       value: "9.0",
     });
+  });
+
+  it("does not apply a version contract to undeclared OKF-like Markdown", () => {
+    const markdown = "---\ntype: Note\nunknown_field: keep\n---\n\n# Concept";
+    const index = createWorkspaceKnowledgeIndex([
+      { id: "concept", path: "Concept.md", markdown },
+      { id: "plain", path: "Plain.md", markdown: "# Plain" },
+    ]);
+    const report = getWorkspaceOkfCompatibility(index);
+
+    expect(report).toMatchObject({
+      detection: "okf-like",
+      status: "conformant",
+      errorCount: 0,
+    });
+    expect(report.declaredVersion).toBeUndefined();
+    expect(index.documentsById.get("concept")?.markdown).toBe(markdown);
+  });
+
+  it("surfaces OKF 0.2 advanced support without making soft guidance an error", () => {
+    const report = getWorkspaceOkfCompatibility(createWorkspaceKnowledgeIndex([
+      {
+        id: "index",
+        path: "index.md",
+        markdown: "---\nokf_version: \"0.2\"\n---\n\n# Catalog",
+      },
+      {
+        id: "computation",
+        path: "computations/value.md",
+        markdown: [
+          "---",
+          "type: Attested Computation",
+          "runtime: custom-runtime",
+          "computation: ../references/value.sql",
+          "---",
+        ].join("\n"),
+      },
+    ]), {
+      availablePaths: [
+        "index.md",
+        "computations/value.md",
+        "references/value.sql",
+      ],
+    });
+
+    expect(report).toMatchObject({
+      status: "conformant",
+      errorCount: 0,
+      advancedSupport: {
+        level: "advanced-partial",
+        unsupportedComputationCount: 1,
+        unsupportedRuntimes: ["custom-runtime"],
+      },
+    });
+    expect(report.issues).toContainEqual(expect.objectContaining({
+      code: "okf_02_runtime_unsupported",
+      severity: "warning",
+    }));
+    expect(report.issues).not.toContainEqual(expect.objectContaining({
+      code: "okf_02_computation_resource_missing",
+    }));
   });
 });

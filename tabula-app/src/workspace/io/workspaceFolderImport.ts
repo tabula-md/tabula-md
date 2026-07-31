@@ -20,6 +20,7 @@ import {
 } from "../workspaceStorage";
 import {
   encodeBinaryWorkspaceSupportFile,
+  isMdxWorkspacePath,
   isMarkdownWorkspacePath,
 } from "./workspaceSupportFile";
 import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
@@ -154,12 +155,14 @@ export const parseWorkspaceFolderImport = async (
       path,
       content: getImportedArtifactContent(bytes),
     });
+    const isMdx = isMdxWorkspacePath(path);
     files.push(createWorkspaceFile(files.length + 1, {
       id,
       title: segments.at(-1) ?? file.name,
       text: decodeImportedFile(bytes),
       parentId: ensureFolder(segments.slice(0, -1)),
-      viewMode: defaults.viewMode,
+      viewMode: isMdx ? "edit" : defaults.viewMode,
+      editingMode: isMdx ? "source" : undefined,
       readingWidth: defaults.readingWidth,
       lineWrapping: defaults.lineWrapping,
       lineNumbers: defaults.lineNumbers,

@@ -3,6 +3,20 @@ import {
   inspectFrontmatterData,
 } from "./markdown/parse";
 import type { WorkspaceKnowledgeIndex } from "./workspaceKnowledgeIndex";
+import {
+  validateOkf02AdvancedContracts,
+  type OkfAdvancedContractOptions,
+  type OkfAdvancedDiagnosticCode,
+  type OkfAdvancedSupportSummary,
+} from "./workspaceOkfAdvancedContracts";
+import {
+  createWorkspaceOkfInspection,
+  detectWorkspaceOkfVersion,
+  getOkfVersionAdapter,
+  type OkfBundleDetectionKind,
+  type OkfVersion,
+  type OkfVersionDiagnosticCode,
+} from "./workspaceOkfVersionAdapters";
 
 /** Canonical specification: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md */
 export const OKF_TARGET_VERSION = "0.2";
@@ -27,7 +41,9 @@ export type OkfCompatibilityIssueCode =
   | "log_date_invalid"
   | "log_dates_out_of_order"
   | "nonstandard_markdown_extension"
-  | "wikilink_syntax";
+  | "wikilink_syntax"
+  | OkfAdvancedDiagnosticCode
+  | OkfVersionDiagnosticCode;
 
 export type OkfCompatibilityIssue = {
   code: OkfCompatibilityIssueCode;
@@ -50,12 +66,15 @@ export type OkfDocumentCompatibility = {
 export type OkfCompatibilityReport = {
   targetVersion: typeof OKF_TARGET_VERSION;
   declaredVersion?: string;
+  detection: OkfBundleDetectionKind;
+  validatedVersion?: OkfVersion;
   status: OkfCompatibilityStatus;
   conceptCount: number;
   reservedDocumentCount: number;
   ignoredDocumentCount: number;
   errorCount: number;
   warningCount: number;
+  advancedSupport: OkfAdvancedSupportSummary;
   documents: readonly OkfDocumentCompatibility[];
   issues: readonly OkfCompatibilityIssue[];
 };
@@ -132,11 +151,52 @@ const getLogStructureIssues = (
 
 export const getWorkspaceOkfCompatibility = (
   index: WorkspaceKnowledgeIndex,
+  options: OkfAdvancedContractOptions = {},
 ): OkfCompatibilityReport => {
+  const bundleInspection = createWorkspaceOkfInspection(index);
+  const detection = detectWorkspaceOkfVersion(bundleInspection);
+  const versionAdapter = getOkfVersionAdapter(detection.version);
+  const versionReport = versionAdapter?.validate(bundleInspection);
+  const advancedReport = detection.version === "0.2"
+    ? validateOkf02AdvancedContracts(index, options)
+    : {
+        diagnostics: [],
+        support: {
+          level: "core" as const,
+          attestedComputationCount: 0,
+          supportedComputationCount: 0,
+          unsupportedComputationCount: 0,
+          unsupportedRuntimes: [],
+        },
+      };
+  const strictValidation = Boolean(versionAdapter);
+  const versionIssuesByDocumentId = new Map<string, OkfCompatibilityIssue[]>();
+  for (const diagnostic of versionReport?.diagnostics ?? []) {
+    const issues = versionIssuesByDocumentId.get(diagnostic.documentId) ?? [];
+    issues.push(createIssue(
+      diagnostic.documentId,
+      diagnostic.path,
+      diagnostic.code,
+      diagnostic.severity,
+      diagnostic.value,
+    ));
+    versionIssuesByDocumentId.set(diagnostic.documentId, issues);
+  }
+  for (const diagnostic of advancedReport.diagnostics) {
+    const issues = versionIssuesByDocumentId.get(diagnostic.documentId) ?? [];
+    issues.push(createIssue(
+      diagnostic.documentId,
+      diagnostic.path,
+      diagnostic.code,
+      diagnostic.severity,
+      diagnostic.value,
+    ));
+    versionIssuesByDocumentId.set(diagnostic.documentId, issues);
+  }
   const documents = [...index.documentsById.values()]
     .sort((first, second) => compareText(first.path, second.path));
   const documentReports: OkfDocumentCompatibility[] = [];
-  let declaredVersion: string | undefined;
+  const declaredVersion = detection.declaredVersion;
 
   for (const document of documents) {
     const role = getDocumentRole(document.path);
@@ -151,7 +211,7 @@ export const getWorkspaceOkfCompatibility = (
         "nonstandard_markdown_extension",
         "warning",
       ));
-    } else if (role === "concept") {
+    } else if (role === "concept" && strictValidation) {
       if (inspection.status === "absent") {
         issues.push(createIssue(
           document.id,
@@ -193,7 +253,7 @@ export const getWorkspaceOkfCompatibility = (
           conceptType = type.trim();
         }
       }
-    } else {
+    } else if (role !== "concept" && strictValidation) {
       const isRootIndex = role === "index" && document.path === "index.md";
       let body = document.markdown;
       if (inspection.status === "invalid") {
@@ -222,14 +282,14 @@ export const getWorkspaceOkfCompatibility = (
               "error",
             ));
           } else {
-            declaredVersion = version.trim();
-            if (!(OKF_SUPPORTED_VERSIONS as readonly string[]).includes(declaredVersion)) {
+            const rootVersion = version.trim();
+            if (!(OKF_SUPPORTED_VERSIONS as readonly string[]).includes(rootVersion)) {
               issues.push(createIssue(
                 document.id,
                 document.path,
                 "unsupported_okf_version",
                 "warning",
-                declaredVersion,
+                rootVersion,
               ));
             }
           }
@@ -253,6 +313,21 @@ export const getWorkspaceOkfCompatibility = (
           : getLogStructureIssues(document.id, document.path, body)
       ));
     }
+
+    if (
+      document.path === "index.md"
+      && detection.kind === "future"
+      && detection.declaredVersion
+    ) {
+      issues.push(createIssue(
+        document.id,
+        document.path,
+        "unsupported_okf_version",
+        "warning",
+        detection.declaredVersion,
+      ));
+    }
+    issues.push(...(versionIssuesByDocumentId.get(document.id) ?? []));
 
     const hasWikiLinks = index.analysesByDocumentId.get(document.id)?.links
       .some((link) => link.syntax === "wikilink");
@@ -290,6 +365,8 @@ export const getWorkspaceOkfCompatibility = (
   return {
     targetVersion: OKF_TARGET_VERSION,
     ...(declaredVersion ? { declaredVersion } : {}),
+    detection: detection.kind,
+    ...(detection.version ? { validatedVersion: detection.version } : {}),
     status: errorCount > 0 ? "nonconformant" : "conformant",
     conceptCount: documentReports.filter((document) => document.role === "concept").length,
     reservedDocumentCount: documentReports.filter(
@@ -300,6 +377,7 @@ export const getWorkspaceOkfCompatibility = (
     ).length,
     errorCount,
     warningCount,
+    advancedSupport: advancedReport.support,
     documents: documentReports,
     issues,
   };

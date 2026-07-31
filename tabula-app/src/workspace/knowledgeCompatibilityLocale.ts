@@ -1,4 +1,5 @@
 import type {
+  OkfAdvancedDiagnosticCode,
   OkfCompatibilityIssue,
   OkfCompatibilityIssueCode,
   WorkspaceKnowledgeHealthIssue,
@@ -39,6 +40,22 @@ export type KnowledgeCompatibilityCopy = {
   unavailable: string;
   noDocuments: string;
   compatible: (version: string) => string;
+  okfLike: string;
+  markdownOnly: string;
+  futureVersion: (version: string) => string;
+  migrationTitle: string;
+  migrationDescription: string;
+  migrationProducer: string;
+  migrationChangedFiles: (count: number) => string;
+  migrationManualCitations: (count: number) => string;
+  migrationMissingProducers: (count: number) => string;
+  migrationDeletedFiles: (count: number) => string;
+  migrationDecisions: (count: number) => string;
+  migrationFile: string;
+  migrationApply: string;
+  supportCore: string;
+  supportAdvanced: (count: number) => string;
+  supportAdvancedPartial: (count: number, runtimes: string) => string;
   requiredChanges: (count: number) => string;
   portabilityWarnings: (count: number) => string;
   requiredSection: string;
@@ -422,7 +439,26 @@ const actionCopies: Partial<Record<WorkspaceLanguage, KnowledgeConformanceAction
   },
 };
 
+const advancedIssuesEn: Record<OkfAdvancedDiagnosticCode, string> = {
+  okf_02_attester_invalid: "Add a valid attester resource",
+  okf_02_attester_resource_missing: "Restore the attester resource: {{value}}",
+  okf_02_computation_missing: "Add a computation file or an inline Computation code block",
+  okf_02_computation_resource_missing: "Restore the computation file: {{value}}",
+  okf_02_executor_invalid: "Add a valid executor resource",
+  okf_02_executor_resource_missing: "Restore the executor resource: {{value}}",
+  okf_02_parameter_duplicate: "Use each parameter name once: {{value}}",
+  okf_02_parameters_invalid: "Use typed parameters with name, type, and required",
+  okf_02_receipt_empty: "Declare at least one receipt field",
+  okf_02_runtime_missing: "Declare the computation runtime",
+  okf_02_runtime_unsupported: "Runtime is structurally readable but not supported: {{value}}",
+  okf_02_source_author_invalid: "Use an OKF actor identity for the source author: {{value}}",
+  okf_02_stale_computation_in_use: "Refresh this stale computation; {{value}} concepts still use it",
+  okf_02_usage_window_invalid: "Use a valid usage_window date range",
+  okf_02_usage_window_missing: "Add usage_window to frame usage_count",
+};
+
 const enIssues: Record<OkfCompatibilityIssueCode, string> = {
+  ...advancedIssuesEn,
   concept_frontmatter_missing: "Add YAML frontmatter",
   concept_frontmatter_invalid: "Fix invalid YAML frontmatter",
   concept_type_missing: "Add a non-empty type",
@@ -438,6 +474,178 @@ const enIssues: Record<OkfCompatibilityIssueCode, string> = {
   log_dates_out_of_order: "Put the newest log date first",
   nonstandard_markdown_extension: "Rename this file to use the .md extension",
   wikilink_syntax: "Use Markdown links for OKF portability",
+  okf_01_timestamp_invalid: "Use an ISO 8601 timestamp",
+  okf_02_actor_invalid: "Use an OKF actor identity: {{value}}",
+  okf_02_generated_invalid: "Use valid generated.by and generated.at values",
+  okf_02_sources_invalid: "Fix invalid sources metadata",
+  okf_02_stale_after_invalid: "Use YYYY-MM-DD for stale_after: {{value}}",
+  okf_02_status_invalid: "Use draft, stable, or deprecated for status: {{value}}",
+  okf_02_verified_invalid: "Use valid verified.by and verified.at values",
+};
+
+const detectionCopies: Record<
+  WorkspaceLanguage,
+  { okfLike: string; markdownOnly: string; futureVersion: string }
+> = {
+  en: {
+    okfLike: "OKF-like Markdown (no version declared)",
+    markdownOnly: "Markdown workspace (OKF not declared)",
+    futureVersion: "OKF {{version}} opened in best-effort mode",
+  },
+  ko: {
+    okfLike: "OKF 유사 Markdown (버전 선언 없음)",
+    markdownOnly: "Markdown 워크스페이스 (OKF 선언 없음)",
+    futureVersion: "OKF {{version}}를 최선 지원 모드로 열었습니다",
+  },
+  ja: {
+    okfLike: "OKF 形式に近い Markdown（バージョン宣言なし）",
+    markdownOnly: "Markdown ワークスペース（OKF 宣言なし）",
+    futureVersion: "OKF {{version}} をベストエフォートモードで開きました",
+  },
+  zh: {
+    okfLike: "类似 OKF 的 Markdown（未声明版本）",
+    markdownOnly: "Markdown 工作区（未声明 OKF）",
+    futureVersion: "已以尽力支持模式打开 OKF {{version}}",
+  },
+  es: {
+    okfLike: "Markdown similar a OKF (sin versión declarada)",
+    markdownOnly: "Espacio Markdown (OKF no declarado)",
+    futureVersion: "OKF {{version}} abierto en modo de compatibilidad parcial",
+  },
+  fr: {
+    okfLike: "Markdown de type OKF (sans version déclarée)",
+    markdownOnly: "Espace Markdown (OKF non déclaré)",
+    futureVersion: "OKF {{version}} ouvert en mode de compatibilité partielle",
+  },
+  de: {
+    okfLike: "OKF-ähnliches Markdown (keine Version deklariert)",
+    markdownOnly: "Markdown-Workspace (OKF nicht deklariert)",
+    futureVersion: "OKF {{version}} im Best-Effort-Modus geöffnet",
+  },
+};
+
+type KnowledgeMigrationMessages = {
+  title: string;
+  description: string;
+  producer: string;
+  changedFiles: string;
+  manualCitations: string;
+  missingProducers: string;
+  deletedFiles: string;
+  decisions: string;
+  file: string;
+  apply: string;
+  supportCore: string;
+  supportAdvanced: string;
+  supportAdvancedPartial: string;
+};
+
+const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
+  en: {
+    title: "Migration preview",
+    description: "Review an explicit OKF 0.1 → 0.2 migration. Nothing changes until you apply selected files.",
+    producer: "Producer identity",
+    changedFiles: "{{count}} files changed",
+    manualCitations: "{{count}} citations need source IDs",
+    missingProducers: "{{count}} files need a producer",
+    deletedFiles: "{{count}} files deleted",
+    decisions: "{{count}} decisions needed",
+    file: "Migration change",
+    apply: "Apply migration",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
+  },
+  ko: {
+    title: "마이그레이션 미리보기",
+    description: "OKF 0.1 → 0.2 변경을 검토합니다. 선택한 파일에 명시적으로 적용하기 전에는 아무것도 바뀌지 않습니다.",
+    producer: "생산자 식별자",
+    changedFiles: "변경 파일 {{count}}개",
+    manualCitations: "출처 ID 결정 필요 {{count}}개",
+    missingProducers: "생산자 입력 필요 {{count}}개",
+    deletedFiles: "삭제 파일 {{count}}개",
+    decisions: "수동 결정 {{count}}개",
+    file: "마이그레이션 변경",
+    apply: "마이그레이션 적용",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · computation {{count}}개",
+    supportAdvancedPartial: "OKF 0.2 advanced · 미지원 {{count}}개 ({{runtimes}})",
+  },
+  ja: {
+    title: "移行プレビュー",
+    description: "OKF 0.1 → 0.2 の移行を確認します。選択したファイルを適用するまで変更されません。",
+    producer: "生成者 ID",
+    changedFiles: "{{count}} 件のファイルを変更",
+    manualCitations: "{{count}} 件の引用にソース ID が必要",
+    missingProducers: "{{count}} 件のファイルに生成者が必要",
+    deletedFiles: "{{count}} 件のファイルを削除",
+    decisions: "{{count}} 件の判断が必要",
+    file: "移行変更",
+    apply: "移行を適用",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
+  },
+  zh: {
+    title: "迁移预览",
+    description: "检查 OKF 0.1 → 0.2 迁移。应用所选文件前不会发生任何更改。",
+    producer: "生成者标识",
+    changedFiles: "更改 {{count}} 个文件",
+    manualCitations: "{{count}} 条引用需要来源 ID",
+    missingProducers: "{{count}} 个文件需要生成者",
+    deletedFiles: "删除 {{count}} 个文件",
+    decisions: "需要 {{count}} 项决定",
+    file: "迁移更改",
+    apply: "应用迁移",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
+  },
+  es: {
+    title: "Vista previa de migración",
+    description: "Revisa la migración explícita de OKF 0.1 → 0.2. Nada cambia hasta aplicar los archivos seleccionados.",
+    producer: "Identidad del productor",
+    changedFiles: "{{count}} archivos modificados",
+    manualCitations: "{{count}} citas necesitan ID de fuente",
+    missingProducers: "{{count}} archivos necesitan productor",
+    deletedFiles: "{{count}} archivos eliminados",
+    decisions: "{{count}} decisiones pendientes",
+    file: "Cambio de migración",
+    apply: "Aplicar migración",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
+  },
+  fr: {
+    title: "Aperçu de la migration",
+    description: "Vérifiez la migration explicite OKF 0.1 → 0.2. Rien ne change avant l’application des fichiers sélectionnés.",
+    producer: "Identité du producteur",
+    changedFiles: "{{count}} fichiers modifiés",
+    manualCitations: "{{count}} citations nécessitent un ID de source",
+    missingProducers: "{{count}} fichiers nécessitent un producteur",
+    deletedFiles: "{{count}} fichiers supprimés",
+    decisions: "{{count}} décisions nécessaires",
+    file: "Modification de migration",
+    apply: "Appliquer la migration",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
+  },
+  de: {
+    title: "Migrationsvorschau",
+    description: "Prüft die explizite Migration von OKF 0.1 → 0.2. Erst beim Anwenden ausgewählter Dateien werden Änderungen geschrieben.",
+    producer: "Erzeugerkennung",
+    changedFiles: "{{count}} Dateien geändert",
+    manualCitations: "{{count}} Zitate benötigen Quellen-IDs",
+    missingProducers: "{{count}} Dateien benötigen einen Erzeuger",
+    deletedFiles: "{{count}} Dateien gelöscht",
+    decisions: "{{count}} Entscheidungen erforderlich",
+    file: "Migrationsänderung",
+    apply: "Migration anwenden",
+    supportCore: "OKF 0.2 core",
+    supportAdvanced: "OKF 0.2 advanced · {{count}} computations",
+    supportAdvancedPartial: "OKF 0.2 advanced · {{count}} unsupported ({{runtimes}})",
+  },
 };
 
 const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
@@ -486,6 +694,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "Frontmatter와 type 추가",
     setConceptType: "Concept type 설정",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "YAML frontmatter 추가",
       concept_frontmatter_invalid: "잘못된 YAML frontmatter 수정",
       concept_type_missing: "비어 있지 않은 type 추가",
@@ -501,6 +710,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "최신 log 날짜를 먼저 배치",
       nonstandard_markdown_extension: "파일 확장자를 .md로 변경",
       wikilink_syntax: "OKF 이식성을 위해 Markdown 링크 사용",
+      okf_01_timestamp_invalid: "timestamp를 ISO 8601 형식으로 변경",
+      okf_02_actor_invalid: "OKF actor 형식 사용: {{value}}",
+      okf_02_generated_invalid: "generated.by와 generated.at 값 수정",
+      okf_02_sources_invalid: "잘못된 sources 메타데이터 수정",
+      okf_02_stale_after_invalid: "stale_after를 YYYY-MM-DD로 변경: {{value}}",
+      okf_02_status_invalid: "status에 draft, stable 또는 deprecated 사용: {{value}}",
+      okf_02_verified_invalid: "verified.by와 verified.at 값 수정",
     },
   },
   ja: {
@@ -525,6 +741,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "Frontmatter と type を追加",
     setConceptType: "Concept type を設定",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "YAML frontmatter を追加",
       concept_frontmatter_invalid: "不正な YAML frontmatter を修正",
       concept_type_missing: "空でない type を追加",
@@ -540,6 +757,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "最新の log 日付を先頭にする",
       nonstandard_markdown_extension: "拡張子を .md に変更",
       wikilink_syntax: "OKF の移植性のため Markdown リンクを使用",
+      okf_01_timestamp_invalid: "timestamp を ISO 8601 形式にする",
+      okf_02_actor_invalid: "OKF actor 形式を使用: {{value}}",
+      okf_02_generated_invalid: "generated.by と generated.at を修正",
+      okf_02_sources_invalid: "不正な sources メタデータを修正",
+      okf_02_stale_after_invalid: "stale_after を YYYY-MM-DD にする: {{value}}",
+      okf_02_status_invalid: "status は draft、stable、deprecated のいずれかにする: {{value}}",
+      okf_02_verified_invalid: "verified.by と verified.at を修正",
     },
   },
   zh: {
@@ -564,6 +788,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "添加 frontmatter 和 type",
     setConceptType: "设置 concept type",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "添加 YAML frontmatter",
       concept_frontmatter_invalid: "修复无效的 YAML frontmatter",
       concept_type_missing: "添加非空 type",
@@ -579,6 +804,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "将最新 log 日期放在最前",
       nonstandard_markdown_extension: "将文件扩展名改为 .md",
       wikilink_syntax: "为确保 OKF 可移植性，请使用 Markdown 链接",
+      okf_01_timestamp_invalid: "将 timestamp 改为 ISO 8601 格式",
+      okf_02_actor_invalid: "使用 OKF actor 格式：{{value}}",
+      okf_02_generated_invalid: "修复 generated.by 和 generated.at",
+      okf_02_sources_invalid: "修复无效的 sources 元数据",
+      okf_02_stale_after_invalid: "将 stale_after 改为 YYYY-MM-DD：{{value}}",
+      okf_02_status_invalid: "status 使用 draft、stable 或 deprecated：{{value}}",
+      okf_02_verified_invalid: "修复 verified.by 和 verified.at",
     },
   },
   es: {
@@ -603,6 +835,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "Añadir frontmatter y type",
     setConceptType: "Definir el tipo de concepto",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "Añadir frontmatter YAML",
       concept_frontmatter_invalid: "Corregir el frontmatter YAML no válido",
       concept_type_missing: "Añadir un type no vacío",
@@ -618,6 +851,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "Poner primero la fecha más reciente del log",
       nonstandard_markdown_extension: "Cambiar la extensión del archivo a .md",
       wikilink_syntax: "Usar enlaces Markdown para la portabilidad de OKF",
+      okf_01_timestamp_invalid: "Usar una marca de tiempo ISO 8601",
+      okf_02_actor_invalid: "Usar una identidad de actor OKF: {{value}}",
+      okf_02_generated_invalid: "Corregir generated.by y generated.at",
+      okf_02_sources_invalid: "Corregir los metadatos sources no válidos",
+      okf_02_stale_after_invalid: "Usar YYYY-MM-DD en stale_after: {{value}}",
+      okf_02_status_invalid: "Usar draft, stable o deprecated en status: {{value}}",
+      okf_02_verified_invalid: "Corregir verified.by y verified.at",
     },
   },
   fr: {
@@ -642,6 +882,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "Ajouter le frontmatter et le type",
     setConceptType: "Définir le type de concept",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "Ajouter un frontmatter YAML",
       concept_frontmatter_invalid: "Corriger le frontmatter YAML invalide",
       concept_type_missing: "Ajouter un type non vide",
@@ -657,6 +898,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "Placer la date de log la plus récente en premier",
       nonstandard_markdown_extension: "Utiliser l’extension .md pour ce fichier",
       wikilink_syntax: "Utiliser des liens Markdown pour la portabilité OKF",
+      okf_01_timestamp_invalid: "Utiliser un horodatage ISO 8601",
+      okf_02_actor_invalid: "Utiliser une identité d’acteur OKF : {{value}}",
+      okf_02_generated_invalid: "Corriger generated.by et generated.at",
+      okf_02_sources_invalid: "Corriger les métadonnées sources invalides",
+      okf_02_stale_after_invalid: "Utiliser YYYY-MM-DD pour stale_after : {{value}}",
+      okf_02_status_invalid: "Utiliser draft, stable ou deprecated pour status : {{value}}",
+      okf_02_verified_invalid: "Corriger verified.by et verified.at",
     },
   },
   de: {
@@ -681,6 +929,7 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
     addFrontmatterAndType: "Frontmatter und type hinzufügen",
     setConceptType: "Konzepttyp festlegen",
     issues: {
+      ...advancedIssuesEn,
       concept_frontmatter_missing: "YAML-Frontmatter hinzufügen",
       concept_frontmatter_invalid: "Ungültiges YAML-Frontmatter korrigieren",
       concept_type_missing: "Einen nicht leeren type hinzufügen",
@@ -696,6 +945,13 @@ const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
       log_dates_out_of_order: "Das neueste log-Datum zuerst setzen",
       nonstandard_markdown_extension: "Die Dateiendung in .md ändern",
       wikilink_syntax: "Für OKF-Portabilität Markdown-Links verwenden",
+      okf_01_timestamp_invalid: "Einen ISO-8601-Zeitstempel verwenden",
+      okf_02_actor_invalid: "Eine OKF-Akteurkennung verwenden: {{value}}",
+      okf_02_generated_invalid: "generated.by und generated.at korrigieren",
+      okf_02_sources_invalid: "Ungültige sources-Metadaten korrigieren",
+      okf_02_stale_after_invalid: "Für stale_after YYYY-MM-DD verwenden: {{value}}",
+      okf_02_status_invalid: "Für status draft, stable oder deprecated verwenden: {{value}}",
+      okf_02_verified_invalid: "verified.by und verified.at korrigieren",
     },
   },
 };
@@ -713,6 +969,8 @@ export const getKnowledgeCompatibilityCopy = (
 ): KnowledgeCompatibilityCopy => {
   const copy = copies[language];
   const actions = actionCopies[language] ?? actionCopies.en;
+  const detectionCopy = detectionCopies[language];
+  const migrationCopy = migrationCopies[language];
   return {
     open: copy.open,
     back: copy.back,
@@ -722,6 +980,30 @@ export const getKnowledgeCompatibilityCopy = (
     unavailable: copy.unavailable,
     noDocuments: copy.noDocuments,
     compatible: (version) => formatMessage(copy.compatible, { version }),
+    okfLike: detectionCopy.okfLike,
+    markdownOnly: detectionCopy.markdownOnly,
+    futureVersion: (version) =>
+      formatMessage(detectionCopy.futureVersion, { version }),
+    migrationTitle: migrationCopy.title,
+    migrationDescription: migrationCopy.description,
+    migrationProducer: migrationCopy.producer,
+    migrationChangedFiles: (count) =>
+      formatMessage(migrationCopy.changedFiles, { count }),
+    migrationManualCitations: (count) =>
+      formatMessage(migrationCopy.manualCitations, { count }),
+    migrationMissingProducers: (count) =>
+      formatMessage(migrationCopy.missingProducers, { count }),
+    migrationDeletedFiles: (count) =>
+      formatMessage(migrationCopy.deletedFiles, { count }),
+    migrationDecisions: (count) =>
+      formatMessage(migrationCopy.decisions, { count }),
+    migrationFile: migrationCopy.file,
+    migrationApply: migrationCopy.apply,
+    supportCore: migrationCopy.supportCore,
+    supportAdvanced: (count) =>
+      formatMessage(migrationCopy.supportAdvanced, { count }),
+    supportAdvancedPartial: (count, runtimes) =>
+      formatMessage(migrationCopy.supportAdvancedPartial, { count, runtimes }),
     requiredChanges: (count) => formatMessage(
       count === 1 ? copy.requiredChange : copy.requiredChanges,
       { count },

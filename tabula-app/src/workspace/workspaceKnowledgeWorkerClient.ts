@@ -29,6 +29,7 @@ export type WorkspaceKnowledgeState = {
 type KnowledgeDocumentsById = ReadonlyMap<string, WorkspaceSourceDocument>;
 
 type SyncTarget = {
+  availablePaths: readonly string[];
   documentsById: KnowledgeDocumentsById;
   revision: number;
 };
@@ -71,6 +72,13 @@ const documentsMatch = (
   first.path === second.path &&
   first.markdown === second.markdown,
 );
+
+const pathsMatch = (
+  first: readonly string[],
+  second: readonly string[],
+) =>
+  first.length === second.length
+  && first.every((path, index) => path === second[index]);
 
 const documentsDifferOnlyByPath = (
   previousDocumentsById: KnowledgeDocumentsById,
@@ -124,10 +132,12 @@ const hydrateTransferIndex = (
 });
 
 class WorkspaceKnowledgeWorkerClient {
+  private committedAvailablePaths: readonly string[] = [];
   private committedDocumentsById: KnowledgeDocumentsById = new Map();
   private committedIndex?: WorkspaceKnowledgeIndex;
   private inFlightSync?: InFlightSync;
   private latestTarget: SyncTarget = {
+    availablePaths: [],
     documentsById: new Map(),
     revision: 0,
   };
@@ -147,8 +157,12 @@ class WorkspaceKnowledgeWorkerClient {
     return () => this.listeners.delete(listener);
   };
 
-  sync(documents: readonly WorkspaceSourceDocument[]) {
+  sync(
+    documents: readonly WorkspaceSourceDocument[],
+    availablePaths: readonly string[] = documents.map((document) => document.path),
+  ) {
     const nextTarget: SyncTarget = {
+      availablePaths: [...new Set(availablePaths)].sort(),
       documentsById: toDocumentMap(documents),
       revision: this.latestTarget.revision + 1,
     };
@@ -273,7 +287,12 @@ class WorkspaceKnowledgeWorkerClient {
           this.committedDocumentsById,
           target.documentsById,
         );
-    if (!reset && delta.removedDocumentIds.length === 0 && delta.upsertedDocuments.length === 0) {
+    if (
+      !reset
+      && delta.removedDocumentIds.length === 0
+      && delta.upsertedDocuments.length === 0
+      && pathsMatch(this.committedAvailablePaths, target.availablePaths)
+    ) {
       this.commitUnchangedTarget(target);
       return;
     }
@@ -286,6 +305,7 @@ class WorkspaceKnowledgeWorkerClient {
         requestId,
         revision: target.revision,
         reset,
+        availablePaths: target.availablePaths,
         ...delta,
       } satisfies WorkspaceKnowledgeSyncRequest);
     } catch {
@@ -333,6 +353,7 @@ class WorkspaceKnowledgeWorkerClient {
       return;
     }
     this.committedIndex = nextIndex;
+    this.committedAvailablePaths = inFlight.availablePaths;
     this.committedDocumentsById = inFlight.documentsById;
     this.inFlightSync = undefined;
     const pending = this.pendingSync;
@@ -353,6 +374,7 @@ class WorkspaceKnowledgeWorkerClient {
   }
 
   private commitUnchangedTarget(target: SyncTarget) {
+    this.committedAvailablePaths = target.availablePaths;
     this.committedDocumentsById = target.documentsById;
     if (target.revision === this.latestTarget.revision) {
       this.setState({
@@ -395,9 +417,13 @@ class WorkspaceKnowledgeWorkerClient {
         return;
       }
       this.committedDocumentsById = target.documentsById;
+      this.committedAvailablePaths = target.availablePaths;
       this.committedIndex = index;
       this.setState({
-        compatibilityReport: runtime.getKnowledgeCompatibility(index),
+        compatibilityReport: runtime.getKnowledgeCompatibility(
+          index,
+          target.availablePaths,
+        ),
         elapsedMs: performance.now() - startedAt,
         index,
         pending: false,

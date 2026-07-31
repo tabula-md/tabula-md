@@ -593,6 +593,7 @@ export {
   createCurrentFileDownloadDraft,
   createImportedWorkspaceFileDraft,
   getNewFilePreferenceOverrides,
+  isMdxImportFileName,
   isSupportedImportFileDescriptor,
 } from "./workspaceIoModel";
 
@@ -703,6 +704,24 @@ export {
 } from "./workspaceKnowledgeIndex";
 
 export type {
+  MdxAnalysisDiagnostic,
+  MdxAnalysisDiagnosticCode,
+  MdxSourceAnalysis,
+} from "./mdxAnalysis";
+export {
+  analyzeMdxSource,
+} from "./mdxAnalysis";
+export type {
+  MdxSourceRange,
+  MdxSourceRangeKind,
+} from "./mdxSourceSyntax";
+export {
+  REGISTERED_MDX_COMPONENTS,
+  maskMdxSyntax,
+  scanMdxSourceRanges,
+} from "./mdxSourceSyntax";
+
+export type {
   WorkspaceKnowledgeMaintenancePlan,
   WorkspaceKnowledgePathChange,
   WorkspaceKnowledgeMaintenanceUpdate,
@@ -738,6 +757,62 @@ export {
   OKF_TARGET_VERSION,
   getWorkspaceOkfCompatibility,
 } from "./workspaceOkfCompatibility";
+export type {
+  OkfBundleDetectionKind,
+  OkfConceptModel,
+  OkfSourceFootnoteLink,
+  OkfVersion,
+  OkfVersionAdapter,
+  OkfVersionDetection,
+  OkfVersionDiagnostic,
+  OkfVersionDiagnosticCode,
+  OkfVersionDiagnosticSeverity,
+  OkfVersionReport,
+  WorkspaceInspection,
+} from "./workspaceOkfVersionAdapters";
+export {
+  OKF_VERSION_ADAPTERS,
+  createWorkspaceOkfInspection,
+  detectWorkspaceOkfVersion,
+  getOkfVersionAdapter,
+  isOkfActor,
+} from "./workspaceOkfVersionAdapters";
+export type {
+  OkfMigrationCandidate,
+  OkfMigrationIssue,
+  OkfMigrationIssueCode,
+  OkfMigrationOptions,
+  OkfMigrationPlan,
+  OkfMigrationUpdate,
+} from "./workspaceOkfMigration";
+export {
+  getOkfMigrationUpdates,
+  planOkf01To02Migration,
+} from "./workspaceOkfMigration";
+export type {
+  OkfAdvancedContractOptions,
+  OkfAdvancedContractReport,
+  OkfAdvancedDiagnostic,
+  OkfAdvancedDiagnosticCode,
+  OkfAdvancedSupportLevel,
+  OkfAdvancedSupportSummary,
+} from "./workspaceOkfAdvancedContracts";
+export {
+  validateOkf02AdvancedContracts,
+} from "./workspaceOkfAdvancedContracts";
+export type {
+  LlmWikiArtifactRole,
+  LlmWikiHealthIssue,
+  LlmWikiHealthIssueCode,
+  LlmWikiRoleAssignment,
+  LlmWikiRoleBasis,
+  LlmWikiRoleRule,
+  LlmWikiWorkflowOptions,
+  LlmWikiWorkflowReport,
+} from "./workspaceLlmWikiProfile";
+export {
+  analyzeLlmWikiWorkflow,
+} from "./workspaceLlmWikiProfile";
 
 export type {
   OkfConceptTypeUpdateFailure,
@@ -787,6 +862,35 @@ export {
   KNOWLEDGE_PROFILE_REGISTRY,
   getKnowledgeProfileDefinition,
 } from "./knowledgeProfileRegistry";
+
+export type {
+  WorkspaceAgentInstructionProfile,
+  WorkspaceConventionProfile,
+  WorkspaceDeliveryProfile,
+  WorkspaceProfile,
+  WorkspaceSchemaProfile,
+  WorkspaceSyntaxProfile,
+  WorkspaceWorkflowProfile,
+} from "./workspaceProfile";
+export {
+  createEmptyWorkspaceProfile,
+  isOrdinaryMarkdownProfile,
+} from "./workspaceProfile";
+
+export type {
+  MarkdownCapability,
+  MarkdownCapabilityAnalysis,
+  MarkdownCapabilityDefinition,
+  MarkdownCapabilityDiagnostic,
+  MarkdownCapabilityFamily,
+  MarkdownCapabilityOccurrence,
+  MarkdownSurfaceSupport,
+} from "./markdownCapabilityRegistry";
+export {
+  MARKDOWN_CAPABILITY_REGISTRY,
+  analyzeMarkdownCapabilities,
+  getMarkdownCapabilityDefinition,
+} from "./markdownCapabilityRegistry";
 
 export type {
   WorkspaceArtifact,

@@ -141,7 +141,7 @@ const useLongLineWrappingSuspension = (
 export type TabulaDocumentSurfaceProps = {
   activeBookmarks: FileBookmark[];
   activeCommentAnchors: MarkdownCommentAnchor[];
-  activeFile: Pick<WorkspaceFile, "id">;
+  activeFile: Pick<WorkspaceFile, "id" | "title">;
   activeLineNumbers: boolean;
   activeLineWrapping: boolean;
   activePreviewCommentAnchors: MarkdownPreviewCommentAnchor[];
@@ -394,6 +394,7 @@ export function TabulaDocumentSurface({
               uiLanguage={language}
               metadata={previewMetadata}
               body={previewBody}
+              sourceFormat={/\.mdx$/i.test(activeFile.title) ? "mdx" : "markdown"}
               sourceLineOffset={previewBodySourceLineOffset}
               bodyTextChange={previewBodyTextChange}
               largeDocumentMode={largeDocumentMode}

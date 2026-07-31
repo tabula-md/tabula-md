@@ -186,7 +186,7 @@ export function TabulaEmbeddedDocumentWorkbench({
         <TabulaDocumentSurface
           activeBookmarks={bookmarks}
           activeCommentAnchors={[]}
-          activeFile={{ id: documentId }}
+          activeFile={{ id: documentId, title }}
           activeLineNumbers={lineNumbers}
           activeLineWrapping={lineWrapping}
           activePreviewCommentAnchors={[]}

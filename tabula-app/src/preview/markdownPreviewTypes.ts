@@ -52,6 +52,7 @@ export type MarkdownPreviewWorkspaceDocument = {
 export type MarkdownPreviewProps = {
   metadata: MarkdownPreviewMetadata[];
   body: string;
+  sourceFormat?: "markdown" | "mdx";
   sourceLineOffset?: number;
   bodyTextChange?: TextChange | null;
   largeDocumentMode?: boolean;

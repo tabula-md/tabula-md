@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { detectWorkspaceImportProfile } from "./workspaceImportProfile";
+import { WORKSPACE_PROFILE_DETECTORS } from "./workspaceProfileDetector";
 
 describe("workspace import profile", () => {
   it("separates an OKF declaration from OpenWiki producer conventions", () => {
@@ -52,8 +53,8 @@ describe("workspace import profile", () => {
     });
 
     expect(profile).toMatchObject({
-      format: "okf",
-      okfVersion: "0.1",
+      syntaxes: ["gfm"],
+      schemas: [{ id: "okf", version: "0.1" }],
       conventions: ["openwiki"],
       preservedSupportFileCount: 1,
       ignoredFileCount: 1,
@@ -64,6 +65,16 @@ describe("workspace import profile", () => {
       { code: "directory-indexes", count: 1 },
       { code: "activity-log" },
       { code: "openwiki-state" },
+    ]));
+    expect(profile.detections).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        profileId: "okf-0.1",
+        confidence: "declared",
+      }),
+      expect.objectContaining({
+        profileId: "openwiki",
+        confidence: "strong",
+      }),
     ]));
   });
 
@@ -91,12 +102,12 @@ describe("workspace import profile", () => {
     });
 
     expect(profile).toMatchObject({
-      format: "markdown-wiki",
+      syntaxes: ["gfm"],
+      schemas: [],
       conventions: ["obsidian"],
       linkSyntaxes: ["wikilinks", "embeds"],
       ignoredFileCount: 1,
     });
-    expect(profile.okfVersion).toBeUndefined();
   });
 
   it("keeps an unlinked document folder classified as plain Markdown", () => {
@@ -109,11 +120,100 @@ describe("workspace import profile", () => {
       sourcePaths: ["One.md", "Two.md", "notes.txt"],
       importedPaths: ["One.md", "Two.md"],
     })).toMatchObject({
-      format: "plain-markdown",
+      syntaxes: ["gfm"],
       conventions: [],
+      schemas: [],
+      workflows: [],
+      agentInstructions: [],
+      deliveries: [],
       linkSyntaxes: [],
       preservedSupportFileCount: 0,
       ignoredFileCount: 1,
     });
+  });
+
+  it("represents mixed syntax, workflow, instruction, and delivery profiles together", () => {
+    const profile = detectWorkspaceImportProfile({
+      documents: [
+        { id: "raw", path: "raw/source.md", markdown: "# Source" },
+        { id: "wiki", path: "wiki/guide.mdx", markdown: "# Guide" },
+        { id: "agents", path: "AGENTS.md", markdown: "# Instructions" },
+        { id: "skill", path: ".agents/skills/review/SKILL.md", markdown: "# Skill" },
+      ],
+      supportFiles: [{ path: "llms.txt", text: "# Docs" }],
+      sourcePaths: [
+        "raw/source.md",
+        "wiki/guide.mdx",
+        "AGENTS.md",
+        ".agents/skills/review/SKILL.md",
+        "llms.txt",
+      ],
+      importedPaths: [
+        "raw/source.md",
+        "wiki/guide.mdx",
+        "AGENTS.md",
+        ".agents/skills/review/SKILL.md",
+        "llms.txt",
+      ],
+    });
+    expect(profile).toMatchObject({
+      syntaxes: ["gfm", "mdx"],
+      workflows: ["llm-wiki"],
+      agentInstructions: ["agents-md", "agent-skills"],
+      deliveries: ["llms-txt"],
+    });
+    const workflow = profile.detections.find(
+      (detection) => detection.profileId === "llm-wiki",
+    );
+    expect(workflow).toMatchObject({
+      confidence: "heuristic",
+      roleAssignments: expect.arrayContaining([
+        {
+          path: "raw/source.md",
+          role: "source-material",
+          basis: "heuristic",
+        },
+        {
+          path: "wiki/guide.mdx",
+          role: "compiled-knowledge",
+          basis: "heuristic",
+        },
+        {
+          path: "AGENTS.md",
+          role: "workflow-rules",
+          basis: "heuristic",
+        },
+      ]),
+    });
+    expect(workflow?.evidence).toEqual(expect.arrayContaining([
+      { code: "llm-wiki-source-material", count: 1 },
+      { code: "llm-wiki-compiled-knowledge", count: 1 },
+      { code: "llm-wiki-health-issues", count: expect.any(Number) },
+    ]));
+  });
+
+  it("isolates detector failures and keeps the remaining profile results", () => {
+    const profile = detectWorkspaceImportProfile({
+      documents: [
+        { id: "one", path: "One.md", markdown: "# One" },
+      ],
+      supportFiles: [],
+      sourcePaths: ["One.md"],
+      importedPaths: ["One.md"],
+    }, [
+      WORKSPACE_PROFILE_DETECTORS[0]!,
+      {
+        id: "broken-test-detector",
+        detect: () => {
+          throw new Error("broken detector");
+        },
+      },
+    ]);
+
+    expect(profile.syntaxes).toEqual(["gfm"]);
+    expect(profile.diagnostics).toEqual([{
+      code: "detector-failed",
+      detectorId: "broken-test-detector",
+    }]);
   });
 });

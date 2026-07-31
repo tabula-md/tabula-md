@@ -912,6 +912,29 @@
   line-height: 1.4;
 }
 
+.right-compatibility-migration-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px var(--right-tight-gap);
+  padding: 0 var(--right-row-x);
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  line-height: 1.4;
+}
+
+.right-compatibility-support {
+  margin: 0 var(--right-row-x);
+  padding: 6px 8px;
+  border-radius: var(--right-row-radius);
+  color: var(--text-soft);
+  background: var(--surface-muted);
+  font-size: var(--font-ui-secondary);
+}
+
+.right-compatibility-support.advanced-partial {
+  color: var(--attention);
+}
+
 .right-compatibility-diff {
   display: grid;
   gap: 5px;

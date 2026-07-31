@@ -3,6 +3,7 @@ import {
   createCurrentFileDownloadDraft,
   createImportedWorkspaceFileDraft,
   getNewFilePreferenceOverrides,
+  isMdxImportFileName,
   isSupportedImportFileDescriptor,
 } from "./workspaceIoModel";
 
@@ -26,8 +27,12 @@ describe("workspaceIoModel", () => {
   it("accepts Markdown and plain text import descriptors", () => {
     expect(isSupportedImportFileDescriptor({ name: "Spec.md", type: "" })).toBe(true);
     expect(isSupportedImportFileDescriptor({ name: "Spec.markdown", type: "" })).toBe(true);
+    expect(isSupportedImportFileDescriptor({ name: "Guide.mdx", type: "" })).toBe(true);
+    expect(isSupportedImportFileDescriptor({ name: "Guide", type: "text/mdx" })).toBe(true);
     expect(isSupportedImportFileDescriptor({ name: "notes", type: "text/plain" })).toBe(true);
     expect(isSupportedImportFileDescriptor({ name: "archive.json", type: "application/json" })).toBe(false);
+    expect(isMdxImportFileName("Guide.MDX")).toBe(true);
+    expect(isMdxImportFileName("Guide.md")).toBe(false);
   });
 
   it("creates text file download drafts", () => {

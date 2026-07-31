@@ -24,6 +24,7 @@ import type {
 } from "../workspace/workspaceStorage";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
+import { getWorkspaceFilePaths } from "../workspace/workspaceDisplayTitles";
 import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIndex";
 
 type FocusTextRange = (start: number, end?: number) => void;
@@ -55,6 +56,7 @@ type RightPanelHandlers = Pick<
   | "onSelectKnowledgeHealthIssue"
   | "onSetActiveFileOkfType"
   | "onApplyOkfConceptRepairs"
+  | "onApplyOkfMigration"
   | "onApplyOkfWikilinkRepairs"
   | "onVerifyKnowledgeDocument"
   | "onMaterializeOkfIndex"
@@ -145,6 +147,7 @@ export function useWorkspaceRightPanelController({
   onSelectKnowledgeHealthIssue,
   onSetActiveFileOkfType,
   onApplyOkfConceptRepairs,
+  onApplyOkfMigration,
   onApplyOkfWikilinkRepairs,
   onVerifyKnowledgeDocument,
   onMaterializeOkfIndex,
@@ -173,12 +176,16 @@ export function useWorkspaceRightPanelController({
     () => getWorkspaceKnowledgeDocuments(visibleFiles, folders),
     [folders, visibleFiles],
   );
+  const availableKnowledgePaths = useMemo(
+    () => [...getWorkspaceFilePaths(visibleFiles, folders).values()].sort(),
+    [folders, visibleFiles],
+  );
   const {
     compatibilityReport: knowledgeCompatibilityReport,
     index: knowledgeIndex,
     pending: knowledgeIndexPending,
     source: knowledgeIndexSource,
-  } = useWorkspaceKnowledgeIndex(knowledgeDocuments);
+  } = useWorkspaceKnowledgeIndex(knowledgeDocuments, availableKnowledgePaths);
   const outlineCursorRef = useRef({ fileId: visibleActiveFileId, offset: 0 });
   if (outlineCursorRef.current.fileId !== visibleActiveFileId) {
     outlineCursorRef.current = { fileId: visibleActiveFileId, offset: 0 };
@@ -289,6 +296,7 @@ export function useWorkspaceRightPanelController({
     onResolveAmbiguousLink,
     onSetActiveFileOkfType,
     onApplyOkfConceptRepairs,
+    onApplyOkfMigration,
     onApplyOkfWikilinkRepairs,
     onVerifyKnowledgeDocument,
     onMaterializeOkfIndex,

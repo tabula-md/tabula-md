@@ -15,9 +15,14 @@ describe("workspace folder import copy", () => {
   it("explains the detected standard separately from producer conventions", () => {
     const copy = getWorkspaceFolderImportCopy("en");
     const profile = {
-      format: "okf",
-      okfVersion: "0.1",
+      syntaxes: ["gfm"],
       conventions: ["openwiki"],
+      schemas: [{ id: "okf", version: "0.1" }],
+      workflows: [],
+      agentInstructions: [],
+      deliveries: [],
+      detections: [],
+      diagnostics: [],
       linkSyntaxes: ["markdown-links"],
       evidence: [{ code: "okf-version", value: "0.1" }],
       preservedSupportFileCount: 1,
@@ -32,6 +37,12 @@ describe("workspace folder import copy", () => {
     );
     expect(copy.evidence(profile.evidence[0])).toBe(
       "Root index declares OKF 0.1.",
+    );
+    expect(copy.profileKind("schema")).toBe("Knowledge schema");
+    expect(copy.confidence("declared")).toBe("Declared");
+    expect(copy.profileFileCount(2)).toBe("2 files");
+    expect(copy.detectorWarning(1)).toContain(
+      "Files are still preserved",
     );
   });
 });

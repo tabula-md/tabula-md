@@ -5,6 +5,7 @@ import {
   createCurrentFileDownloadDraft,
   createImportedWorkspaceFileDraft,
   getNewFilePreferenceOverrides,
+  isMdxImportFileName,
   isSupportedImportFileDescriptor,
   type ImportedWorkspaceFileDraft as CoreImportedWorkspaceFileDraft,
   type TextFileDownloadDraft,
@@ -15,6 +16,7 @@ export {
   createCurrentFileDownloadDraft,
   createImportedWorkspaceFileDraft,
   getNewFilePreferenceOverrides,
+  isMdxImportFileName,
   isSupportedImportFileDescriptor,
 };
 

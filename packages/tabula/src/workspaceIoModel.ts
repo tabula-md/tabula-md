@@ -37,6 +37,9 @@ export type WorkspaceImportFileDescriptor = {
   type: string;
 };
 
+export const isMdxImportFileName = (fileName: string) =>
+  /\.mdx$/i.test(fileName);
+
 export type ImportedWorkspaceFileDraft<
   TViewMode extends string = FileViewMode,
   TReadingWidth extends string = ReadingWidth,
@@ -66,7 +69,9 @@ export const isSupportedImportFileDescriptor = (file: WorkspaceImportFileDescrip
   return (
     fileName.endsWith(".md") ||
     fileName.endsWith(".markdown") ||
+    isMdxImportFileName(fileName) ||
     file.type === "text/markdown" ||
+    file.type === "text/mdx" ||
     file.type === "text/plain"
   );
 };

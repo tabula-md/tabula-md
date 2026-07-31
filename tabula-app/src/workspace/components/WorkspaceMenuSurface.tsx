@@ -71,7 +71,7 @@ export function WorkspaceMenuSurface({
         ref={importInputRef}
         className="ui-input-surface workspace-file-input"
         type="file"
-        accept=".md,.markdown,text/markdown,text/plain"
+        accept=".md,.markdown,.mdx,text/markdown,text/mdx,text/plain"
         onChange={onImportFileChange}
         aria-label={interfaceCopy.sidePanel.files.openMarkdown}
       />

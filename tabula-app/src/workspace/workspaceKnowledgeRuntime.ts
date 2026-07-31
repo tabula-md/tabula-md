@@ -81,7 +81,8 @@ export const updateKnowledgeIndex = (
 
 export const getKnowledgeCompatibility = (
   index: WorkspaceKnowledgeIndex,
-): OkfCompatibilityReport => getWorkspaceOkfCompatibility(index);
+  availablePaths?: readonly string[],
+): OkfCompatibilityReport => getWorkspaceOkfCompatibility(index, { availablePaths });
 
 export const getKnowledgeMaintenancePlan = (
   previousDocuments: readonly WorkspaceSourceDocument[],

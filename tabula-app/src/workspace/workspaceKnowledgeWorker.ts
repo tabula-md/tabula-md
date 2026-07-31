@@ -63,7 +63,10 @@ workerScope.onmessage = (event) => {
     const responseBase = {
       requestId: request.requestId,
       revision: request.revision,
-      compatibilityReport: getKnowledgeCompatibility(knowledgeIndex),
+      compatibilityReport: getKnowledgeCompatibility(
+        knowledgeIndex,
+        request.availablePaths,
+      ),
     };
     if (request.reset || !previousIndex) {
       const index = createTransferIndex(knowledgeIndex);

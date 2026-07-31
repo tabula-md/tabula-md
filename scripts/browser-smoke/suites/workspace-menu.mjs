@@ -311,10 +311,22 @@ export async function run(ctx) {
         exact: true,
       }).isVisible() &&
         await detectedWorkspace.getByText(
+          "GitHub Flavored Markdown",
+          { exact: true },
+        ).isVisible() &&
+        await detectedWorkspace.getByText(
+          "Detected · 2 files",
+          { exact: true },
+        ).isVisible() &&
+        await detectedWorkspace.getByText(
+          "2 Markdown files found.",
+          { exact: true },
+        ).isVisible() &&
+        await detectedWorkspace.getByText(
           "1 support file preserved. 0 unsupported files skipped",
           { exact: true },
         ).isVisible(),
-      "Folder import should explain a plain Markdown workspace and preserved support files before replacing local state.",
+      "Folder import should explain its detected profile evidence and preserved support files before replacing local state.",
     );
     expect(
       (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1,
