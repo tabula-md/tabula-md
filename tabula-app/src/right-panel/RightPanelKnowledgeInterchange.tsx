@@ -116,7 +116,7 @@ export function RightPanelKnowledgeInterchange({
             .slice(0, 4)
             .map((code) => (
               <small className="loss" key={code}>
-                {code.replaceAll("_", " ")}
+                {code.replace(/_/g, " ")}
               </small>
             ))}
         </div>
