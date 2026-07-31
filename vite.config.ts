@@ -49,6 +49,13 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           const normalizedId = id.replaceAll("\\", "/");
+          if (
+            normalizedId.endsWith(
+              "/tabula-app/src/workspace/workspaceLocale.ts",
+            )
+          ) {
+            return "workspace-locale";
+          }
           if (!normalizedId.includes("node_modules")) {
             return;
           }
