@@ -59,7 +59,6 @@ export type WorkspaceOverlaySurfaceProps = {
   onReplaceWorkspaceWithJsonShare: (workspace: WorkspaceState) => void;
   onReplaceWorkspaceWithFolder: () => void;
   onOpenImportedRootIndex: () => void;
-  onReviewImportedWorkspace: () => void;
   onConfirmWorkspaceExport: () => void;
   onReviewWorkspaceExportIssues: () => void;
 };
@@ -86,7 +85,6 @@ export function WorkspaceOverlaySurface({
   onReplaceWorkspaceWithJsonShare,
   onReplaceWorkspaceWithFolder,
   onOpenImportedRootIndex,
-  onReviewImportedWorkspace,
   onConfirmWorkspaceExport,
   onReviewWorkspaceExportIssues,
 }: WorkspaceOverlaySurfaceProps) {
@@ -122,7 +120,6 @@ export function WorkspaceOverlaySurface({
             result={workspaceImportResult}
             onClose={onCloseWorkspaceImportResult}
             onOpenRootIndex={onOpenImportedRootIndex}
-            onReviewWorkspace={onReviewImportedWorkspace}
           />
         </Suspense>
       )}

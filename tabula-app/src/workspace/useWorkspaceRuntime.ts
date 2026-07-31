@@ -1021,10 +1021,6 @@ export function useWorkspaceRuntime() {
       selectFile(rootIndexDocumentId);
     }
   });
-  const reviewImportedWorkspace = useEventCallback(() => {
-    closeWorkspaceImportResult();
-    reviewWorkspaceExportIssues();
-  });
   const { menuSurfaceProps } = useWorkspaceMenuController({
     importInputRef,
     workspaceImportInputRef,
@@ -1394,7 +1390,6 @@ export function useWorkspaceRuntime() {
         onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
         onReplaceWorkspaceWithFolder: replaceWorkspaceWithFolder,
         onOpenImportedRootIndex: openImportedRootIndex,
-        onReviewImportedWorkspace: reviewImportedWorkspace,
         onConfirmWorkspaceExport: confirmWorkspaceArchiveExport,
         onReviewWorkspaceExportIssues: reviewWorkspaceExportIssues,
       },

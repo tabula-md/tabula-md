@@ -112,10 +112,9 @@ export const getWorkspaceKnowledgeReviewEntries = (
     const lifecycle = typed ? metadata.status : undefined;
     const trust = typed ? metadata.trustTier : undefined;
     const freshness = typed ? getOkfFreshness(metadata) : undefined;
-    const lifecycleConcern = lifecycle === "draft" ||
-      lifecycle === "deprecated";
-    const trustConcern = trust === "unverified";
-    const freshnessConcern = freshness === "stale";
+    const lifecycleConcern = false;
+    const trustConcern = false;
+    const freshnessConcern = false;
     const compatibilityIssues = compatibilityByDocument.get(documentId) ?? [];
     const healthIssues = healthByDocument.get(documentId) ?? [];
     const owner = getOwner(analysis.metadata.owner);

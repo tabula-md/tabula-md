@@ -101,7 +101,7 @@ const getKnowledgePriority = (
   if (signals.includes("review-due") || signals.includes("unverified")) {
     return "attention";
   }
-  return "maintenance";
+  return "attention";
 };
 
 const getKnowledgeSignalLabel = (
@@ -110,14 +110,11 @@ const getKnowledgeSignalLabel = (
   staleAfter?: string,
 ) => {
   if (signal === "review-due" && staleAfter) return copy.reviewDueSince(staleAfter);
-  if (signal === "review-unscheduled") return copy.noReviewScheduled;
   if (signal === "invalid-review-date" && staleAfter) {
     return copy.invalidReviewDateValue(staleAfter);
   }
   if (signal === "invalid-review-date") return copy.invalidReviewDate;
-  if (signal === "unverified") return copy.unverified;
-  if (signal === "draft") return copy.draft;
-  return copy.deprecated;
+  return copy.unverified;
 };
 
 function FileKnowledgeStatus({

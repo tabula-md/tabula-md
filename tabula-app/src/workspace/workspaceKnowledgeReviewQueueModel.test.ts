@@ -99,9 +99,9 @@ describe("workspace knowledge review queue", () => {
       trust: "unverified",
       freshness: "stale",
       priority: "required",
-      lifecycleConcern: true,
-      trustConcern: true,
-      freshnessConcern: true,
+      lifecycleConcern: false,
+      trustConcern: false,
+      freshnessConcern: false,
       compatibilityIssues: compatibility.issues,
       healthIssues: health.issues,
     })]);
@@ -197,7 +197,27 @@ describe("workspace knowledge review queue", () => {
     })).toEqual([]);
   });
 
-  it("does not expose malformed stale_after metadata as a review date", () => {
+  it("does not turn lifecycle or missing review dates into workspace issues", () => {
+    const index = createWorkspaceKnowledgeIndex([
+      {
+        id: "draft",
+        path: "draft.md",
+        markdown: "---\ntype: Guide\nstatus: draft\n---\n# Draft",
+      },
+      {
+        id: "deprecated",
+        path: "deprecated.md",
+        markdown: "---\ntype: Guide\nstatus: deprecated\n---\n# Deprecated",
+      },
+    ]);
+
+    expect(getWorkspaceKnowledgeReviewEntries(index, {
+      compatibility: emptyCompatibility,
+      health: emptyHealth,
+    })).toEqual([]);
+  });
+
+  it("exposes reported malformed metadata without inventing a review date", () => {
     const index = createWorkspaceKnowledgeIndex([{
       id: "invalid-date",
       path: "invalid-date.md",
@@ -210,9 +230,27 @@ describe("workspace knowledge review queue", () => {
       ].join("\n"),
     }]);
 
-    expect(getWorkspaceKnowledgeReviewEntries(index, {
+    const invalidMetadataIssue = {
+      code: "optional_metadata_invalid" as const,
+      severity: "attention" as const,
+      documentId: "invalid-date",
+      path: "invalid-date.md",
+      value: "stale_after",
+    };
+    const entries = getWorkspaceKnowledgeReviewEntries(index, {
       compatibility: emptyCompatibility,
-      health: emptyHealth,
-    })[0]).not.toHaveProperty("reviewDate");
+      health: {
+        ...emptyHealth,
+        attentionCount: 1,
+        documentCount: 1,
+        issues: [invalidMetadataIssue],
+      },
+    });
+
+    expect(entries).toEqual([expect.objectContaining({
+      documentId: "invalid-date",
+      healthIssues: [invalidMetadataIssue],
+    })]);
+    expect(entries[0]).not.toHaveProperty("reviewDate");
   });
 });

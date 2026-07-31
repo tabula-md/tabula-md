@@ -15,8 +15,6 @@ import type {
 import {
   ArrowLeft,
   Check,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   ListFilter,
 } from "lucide-react";
@@ -152,9 +150,6 @@ export function RightPanelKnowledgeQueue({
     ),
     [entries],
   );
-  const activeIndex = visibleEntries.findIndex(
-    (entry) => entry.documentId === activeFileId,
-  );
   useEffect(() => {
     rowRefs.current.get(activeFileId)?.scrollIntoView({ block: "nearest" });
   }, [activeFileId, visibleEntries]);
@@ -168,18 +163,6 @@ export function RightPanelKnowledgeQueue({
     setFreshness(new Set());
     setHealthIssues(new Set());
   };
-  const selectRelative = (offset: -1 | 1) => {
-    if (visibleEntries.length === 0) return;
-    const nextIndex = activeIndex < 0
-      ? 0
-      : Math.min(
-          visibleEntries.length - 1,
-          Math.max(0, activeIndex + offset),
-        );
-    const entry = visibleEntries[nextIndex];
-    if (entry) onSelectFile(entry.documentId);
-  };
-
   return (
     <section
       className="right-knowledge-queue"
@@ -323,36 +306,6 @@ export function RightPanelKnowledgeQueue({
           );
         })}
       </div>
-
-      <footer className="right-knowledge-queue-navigation">
-        <button
-          type="button"
-          aria-label={copy.previousDocument}
-          title={copy.previousDocument}
-          disabled={visibleEntries.length === 0 || activeIndex === 0}
-          onClick={() => selectRelative(-1)}
-        >
-          <ChevronLeft size={16} aria-hidden="true" />
-        </button>
-        <span>
-          {copy.reviewPosition(
-            activeIndex >= 0 ? activeIndex + 1 : 0,
-            visibleEntries.length,
-          )}
-        </span>
-        <button
-          type="button"
-          aria-label={copy.nextDocument}
-          title={copy.nextDocument}
-          disabled={
-            visibleEntries.length === 0 ||
-            activeIndex === visibleEntries.length - 1
-          }
-          onClick={() => selectRelative(1)}
-        >
-          <ChevronRight size={16} aria-hidden="true" />
-        </button>
-      </footer>
     </section>
   );
 }

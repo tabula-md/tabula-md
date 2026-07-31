@@ -11,11 +11,8 @@ export type OkfReviewSchedule =
   | "invalid";
 
 export type OkfDocumentAttentionSignal =
-  | "draft"
-  | "deprecated"
   | "unverified"
   | "review-due"
-  | "review-unscheduled"
   | "invalid-review-date";
 
 export type WorkspaceKnowledgePosture = {
@@ -57,13 +54,12 @@ export const getOkfDocumentAttentionSignals = (
   if (!metadata.type || !isConceptPath(analysis.path)) return [];
   const signals: OkfDocumentAttentionSignal[] = [];
 
-  if (metadata.status === "draft") signals.push("draft");
-  if (metadata.status === "deprecated") signals.push("deprecated");
-  if (metadata.trustTier === "unverified") signals.push("unverified");
+  if (metadata.generated && metadata.trustTier === "unverified") {
+    signals.push("unverified");
+  }
 
   const reviewSchedule = getOkfReviewSchedule(metadata, today);
   if (reviewSchedule === "due") signals.push("review-due");
-  if (reviewSchedule === "unscheduled") signals.push("review-unscheduled");
   if (reviewSchedule === "invalid") signals.push("invalid-review-date");
   return signals;
 };

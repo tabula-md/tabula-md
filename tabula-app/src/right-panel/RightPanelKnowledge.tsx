@@ -168,12 +168,6 @@ export function RightPanelKnowledge({
                 </button>
               ) : <small>{knowledgeCopy.workspaceReady}</small>}
             </span>
-            <button
-              type="button"
-              onClick={() => setWorkspaceReviewOpen(true)}
-            >
-              {knowledgeCopy.reviewWorkspace}
-            </button>
           </header>
         )}
         {reviewQueueOpen ? (

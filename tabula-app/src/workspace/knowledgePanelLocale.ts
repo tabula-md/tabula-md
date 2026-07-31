@@ -1,24 +1,23 @@
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 
 const english = {
-  reviewTitle: "Review workspace",
+  reviewTitle: "Workspace issues",
   reviewDescription:
-    "Review compatibility, human review, maintenance, changes, indexes, and the activity log across this workspace.",
-  closeReview: "Close workspace review",
-  reviewWorkspace: "Review workspace",
+    "Inspect compatibility errors, maintenance needs, and trust issues across this workspace.",
+  closeReview: "Close workspace issues",
   workspaceContext: "Workspace knowledge",
   workspaceSummary: (version: string, count: number) =>
     `OKF ${version} · ${count} ${count === 1 ? "concept" : "concepts"}`,
   knowledgeSummary: (count: number) =>
     `Knowledge workspace · ${count} ${count === 1 ? "concept" : "concepts"}`,
   workspaceAttention: (count: number) =>
-    `${count} need attention`,
-  workspaceReady: "No required attention",
+    `${count} ${count === 1 ? "issue" : "issues"}`,
+  workspaceReady: "No workspace issues",
   openReviewQueue: (count: number) =>
-    `Open review queue with ${count} ${count === 1 ? "document" : "documents"}`,
-  reviewQueue: "Review queue",
+    `Open ${count} workspace ${count === 1 ? "issue" : "issues"}`,
+  reviewQueue: "Workspace issues",
   reviewQueueDescription:
-    "Documents that need a decision, verification, or maintenance.",
+    "Errors and maintenance needs that Tabula can point you to.",
   backToDocument: "Back to document",
   filters: "Filters",
   closeFilters: "Close filters",
@@ -49,12 +48,9 @@ const english = {
   sortReviewDate: "Review date",
   sortPath: "Path",
   sortOwner: "Owner",
-  priorityRequired: "Required",
-  priorityAttention: "Attention",
+  priorityRequired: "Error",
+  priorityAttention: "Maintenance",
   priorityNotice: "Notice",
-  previousDocument: "Previous review document",
-  nextDocument: "Next review document",
-  reviewPosition: (current: number, total: number) => `${current} of ${total}`,
   reviewDate: "Review date",
   lifecycleLabel: (value: string) => ({
     draft: "Draft",
@@ -89,12 +85,14 @@ const english = {
   fileAttentionLegend: "Knowledge attention legend",
   attentionDetails: "Attention details",
   attentionDotMeaning:
-    "Dot: Tabula found knowledge metadata that needs attention.",
+    "Dot: Tabula found an error or maintenance action for this document.",
   noAttentionDotMeaning:
     "No dot: no attention was found, or the file is not an OKF concept.",
-  reviewInKnowledge: "Open review queue",
+  reviewInKnowledge: "View workspace issues",
   documentContext: "Knowledge context",
   knowledgePassport: "Knowledge passport",
+  details: "Details",
+  openIssue: "Open in document",
   notConcept: "This file is preserved in the workspace, but it is not a Markdown knowledge concept.",
   description: "Description",
   properties: "Properties",
@@ -130,20 +128,19 @@ const english = {
 };
 
 const korean: typeof english = {
-  reviewTitle: "워크스페이스 검토",
+  reviewTitle: "워크스페이스 문제",
   reviewDescription:
-    "워크스페이스 전체의 호환성, 사람 검토, 유지보수, 변경 사항, index, 활동 log를 검토합니다.",
-  closeReview: "워크스페이스 검토 닫기",
-  reviewWorkspace: "워크스페이스 검토",
+    "워크스페이스 전체의 호환성 오류, 유지보수 필요 사항, 신뢰 문제를 확인합니다.",
+  closeReview: "워크스페이스 문제 닫기",
   workspaceContext: "워크스페이스 지식",
   workspaceSummary: (version, count) => `OKF ${version} · Concept ${count}개`,
   knowledgeSummary: (count) => `지식 워크스페이스 · Concept ${count}개`,
-  workspaceAttention: (count) => `${count}개 확인 필요`,
-  workspaceReady: "필수 확인 사항 없음",
-  openReviewQueue: (count) => `검토할 문서 ${count}개 열기`,
-  reviewQueue: "문서 검토 큐",
+  workspaceAttention: (count) => `문제 ${count}개`,
+  workspaceReady: "워크스페이스 문제 없음",
+  openReviewQueue: (count) => `워크스페이스 문제 ${count}개 열기`,
+  reviewQueue: "워크스페이스 문제",
   reviewQueueDescription:
-    "판단, 검증 또는 유지보수가 필요한 문서입니다.",
+    "Tabula가 위치를 알려줄 수 있는 오류와 유지보수 필요 사항입니다.",
   backToDocument: "현재 문서로 돌아가기",
   filters: "필터",
   closeFilters: "필터 닫기",
@@ -173,12 +170,9 @@ const korean: typeof english = {
   sortReviewDate: "검토일",
   sortPath: "경로",
   sortOwner: "담당자",
-  priorityRequired: "필수 수정",
-  priorityAttention: "확인 필요",
+  priorityRequired: "오류",
+  priorityAttention: "유지보수",
   priorityNotice: "참고",
-  previousDocument: "이전 검토 문서",
-  nextDocument: "다음 검토 문서",
-  reviewPosition: (current, total) => `${total}개 중 ${current}`,
   reviewDate: "검토일",
   lifecycleLabel: (value) => ({
     draft: "초안",
@@ -213,12 +207,14 @@ const korean: typeof english = {
   fileAttentionLegend: "지식 주의 표시 안내",
   attentionDetails: "확인할 사항",
   attentionDotMeaning:
-    "원 표시: Tabula가 확인이 필요한 지식 metadata를 발견했습니다.",
+    "원 표시: Tabula가 이 문서에서 오류 또는 유지보수 작업을 발견했습니다.",
   noAttentionDotMeaning:
     "원 없음: 발견된 주의 사항이 없거나 OKF concept가 아닌 파일입니다.",
-  reviewInKnowledge: "검토 큐 열기",
+  reviewInKnowledge: "워크스페이스 문제 보기",
   documentContext: "지식 문맥",
   knowledgePassport: "지식 여권",
+  details: "세부 정보",
+  openIssue: "문서에서 열기",
   notConcept: "워크스페이스에는 보존되지만 Markdown 지식 concept는 아닌 파일입니다.",
   description: "설명",
   properties: "속성",

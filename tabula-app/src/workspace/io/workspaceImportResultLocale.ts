@@ -4,6 +4,7 @@ export type WorkspaceImportResultCopy = {
   close: string;
   title: string;
   description: (version: string) => string;
+  importedSummary: (conceptCount: number, issueCount: number) => string;
   format: string;
   concepts: string;
   directoryIndexes: string;
@@ -16,7 +17,6 @@ export type WorkspaceImportResultCopy = {
   healthAttention: string;
   v02Guidance: string;
   openRootIndex: string;
-  reviewWorkspace: string;
   showDetails: string;
   hideDetails: string;
   detailsLabel: string;
@@ -32,6 +32,10 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     title: "OKF workspace imported",
     description: (version) =>
       `Tabula imported a separate browser copy and detected OKF ${version}.`,
+    importedSummary: (conceptCount, issueCount) =>
+      issueCount > 0
+        ? `${conceptCount} OKF concepts imported · ${issueCount} issues`
+        : `${conceptCount} OKF concepts imported`,
     format: "Detected format",
     concepts: "Concepts",
     directoryIndexes: "Directory indexes",
@@ -43,9 +47,8 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     requiredFixes: "Required compatibility fixes",
     healthAttention: "Knowledge health attention",
     v02Guidance:
-      "This workspace declares OKF 0.1. Review compatibility before adopting OKF 0.2 metadata and lifecycle practices.",
+      "This workspace declares OKF 0.1. OKF 0.2 metadata and lifecycle practices may require compatibility changes.",
     openRootIndex: "Open root index",
-    reviewWorkspace: "Review workspace",
     showDetails: "Import details",
     hideDetails: "Hide import details",
     detailsLabel: "Import details",
@@ -59,6 +62,10 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     title: "OKF 워크스페이스를 가져왔습니다",
     description: (version) =>
       `Tabula가 분리된 브라우저 사본을 만들고 OKF ${version}을 감지했습니다.`,
+    importedSummary: (conceptCount, issueCount) =>
+      issueCount > 0
+        ? `OKF concept ${conceptCount}개를 가져왔습니다 · 문제 ${issueCount}개`
+        : `OKF concept ${conceptCount}개를 가져왔습니다`,
     format: "감지된 형식",
     concepts: "Concept",
     directoryIndexes: "디렉터리 index",
@@ -70,9 +77,8 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     requiredFixes: "필수 호환성 수정",
     healthAttention: "지식 상태 확인 필요",
     v02Guidance:
-      "이 워크스페이스는 OKF 0.1을 선언합니다. OKF 0.2 메타데이터와 생명주기 관행을 도입하기 전에 호환성을 검토하세요.",
+      "이 워크스페이스는 OKF 0.1을 선언합니다. OKF 0.2 메타데이터와 생명주기 관행을 사용하려면 호환성 수정이 필요할 수 있습니다.",
     openRootIndex: "루트 index 열기",
-    reviewWorkspace: "워크스페이스 검토",
     showDetails: "가져오기 세부사항",
     hideDetails: "가져오기 세부사항 숨기기",
     detailsLabel: "가져오기 세부사항",
@@ -86,6 +92,10 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     title: "OKF ワークスペースをインポートしました",
     description: (version) =>
       `Tabula は別のブラウザーコピーを作成し、OKF ${version} を検出しました。`,
+    importedSummary: (conceptCount, issueCount) =>
+      issueCount > 0
+        ? `${conceptCount} 件の OKF concept をインポート · 問題 ${issueCount} 件`
+        : `${conceptCount} 件の OKF concept をインポート`,
     format: "検出形式",
     concepts: "Concept",
     directoryIndexes: "ディレクトリ index",
@@ -97,9 +107,8 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     requiredFixes: "必須の互換性修正",
     healthAttention: "ナレッジ状態の要確認",
     v02Guidance:
-      "このワークスペースは OKF 0.1 を宣言しています。OKF 0.2 のメタデータとライフサイクル運用を採用する前に互換性を確認してください。",
+      "このワークスペースは OKF 0.1 を宣言しています。OKF 0.2 のメタデータとライフサイクル運用には互換性の調整が必要な場合があります。",
     openRootIndex: "ルート index を開く",
-    reviewWorkspace: "ワークスペースを確認",
     showDetails: "インポートの詳細",
     hideDetails: "詳細を隠す",
     detailsLabel: "インポートの詳細",
@@ -113,6 +122,10 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     title: "已导入 OKF 工作区",
     description: (version) =>
       `Tabula 创建了独立的浏览器副本，并检测到 OKF ${version}。`,
+    importedSummary: (conceptCount, issueCount) =>
+      issueCount > 0
+        ? `已导入 ${conceptCount} 个 OKF concept · ${issueCount} 个问题`
+        : `已导入 ${conceptCount} 个 OKF concept`,
     format: "检测格式",
     concepts: "Concept",
     directoryIndexes: "目录 index",
@@ -124,9 +137,8 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     requiredFixes: "必须修复的兼容性问题",
     healthAttention: "知识状态待检查",
     v02Guidance:
-      "此工作区声明 OKF 0.1。采用 OKF 0.2 元数据和生命周期实践前，请先检查兼容性。",
+      "此工作区声明 OKF 0.1。使用 OKF 0.2 元数据和生命周期实践可能需要兼容性调整。",
     openRootIndex: "打开根 index",
-    reviewWorkspace: "检查工作区",
     showDetails: "导入详情",
     hideDetails: "隐藏导入详情",
     detailsLabel: "导入详情",
@@ -140,6 +152,10 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     title: "Espacio OKF importado",
     description: (version) =>
       `Tabula creó una copia separada en el navegador y detectó OKF ${version}.`,
+    importedSummary: (conceptCount, issueCount) =>
+      issueCount > 0
+        ? `${conceptCount} conceptos OKF importados · ${issueCount} problemas`
+        : `${conceptCount} conceptos OKF importados`,
     format: "Formato detectado",
     concepts: "Conceptos",
     directoryIndexes: "Índices de directorio",
@@ -151,9 +167,8 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     requiredFixes: "Correcciones de compatibilidad obligatorias",
     healthAttention: "Estado del conocimiento por revisar",
     v02Guidance:
-      "Este espacio declara OKF 0.1. Revisa la compatibilidad antes de adoptar metadatos y prácticas de ciclo de vida de OKF 0.2.",
+      "Este espacio declara OKF 0.1. Los metadatos y las prácticas de ciclo de vida de OKF 0.2 pueden requerir cambios de compatibilidad.",
     openRootIndex: "Abrir index raíz",
-    reviewWorkspace: "Revisar espacio",
     showDetails: "Detalles de importación",
     hideDetails: "Ocultar detalles",
     detailsLabel: "Detalles de importación",
@@ -167,6 +182,10 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     title: "Espace OKF importé",
     description: (version) =>
       `Tabula a créé une copie séparée dans le navigateur et détecté OKF ${version}.`,
+    importedSummary: (conceptCount, issueCount) =>
+      issueCount > 0
+        ? `${conceptCount} concepts OKF importés · ${issueCount} problèmes`
+        : `${conceptCount} concepts OKF importés`,
     format: "Format détecté",
     concepts: "Concepts",
     directoryIndexes: "Index de répertoire",
@@ -178,9 +197,8 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     requiredFixes: "Corrections de compatibilité requises",
     healthAttention: "État des connaissances à vérifier",
     v02Guidance:
-      "Cet espace déclare OKF 0.1. Vérifiez la compatibilité avant d’adopter les métadonnées et pratiques de cycle de vie OKF 0.2.",
+      "Cet espace déclare OKF 0.1. Les métadonnées et pratiques de cycle de vie OKF 0.2 peuvent nécessiter des ajustements de compatibilité.",
     openRootIndex: "Ouvrir l’index racine",
-    reviewWorkspace: "Vérifier l’espace",
     showDetails: "Détails de l’import",
     hideDetails: "Masquer les détails",
     detailsLabel: "Détails de l’import",
@@ -194,6 +212,10 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     title: "OKF-Workspace importiert",
     description: (version) =>
       `Tabula hat eine getrennte Browserkopie erstellt und OKF ${version} erkannt.`,
+    importedSummary: (conceptCount, issueCount) =>
+      issueCount > 0
+        ? `${conceptCount} OKF-Concepts importiert · ${issueCount} Probleme`
+        : `${conceptCount} OKF-Concepts importiert`,
     format: "Erkanntes Format",
     concepts: "Concepts",
     directoryIndexes: "Verzeichnis-Indexes",
@@ -205,9 +227,8 @@ const copies: Record<WorkspaceLanguage, WorkspaceImportResultCopy> = {
     requiredFixes: "Erforderliche Kompatibilitätskorrekturen",
     healthAttention: "Zu prüfender Wissenszustand",
     v02Guidance:
-      "Dieser Workspace deklariert OKF 0.1. Prüfen Sie die Kompatibilität, bevor Sie Metadaten und Lebenszykluspraktiken aus OKF 0.2 übernehmen.",
+      "Dieser Workspace deklariert OKF 0.1. Metadaten und Lebenszykluspraktiken aus OKF 0.2 können Kompatibilitätsanpassungen erfordern.",
     openRootIndex: "Root-index öffnen",
-    reviewWorkspace: "Workspace prüfen",
     showDetails: "Importdetails",
     hideDetails: "Importdetails ausblenden",
     detailsLabel: "Importdetails",

@@ -43,7 +43,7 @@ const openExportPreflight = async (page, openProjectMenu) => {
     exact: true,
   }).click();
   await page.getByRole("heading", {
-    name: "Review workspace",
+    name: "Workspace issues",
     exact: true,
   }).waitFor();
 };
@@ -107,6 +107,19 @@ export async function run(ctx) {
       "Folder import should distinguish the OKF standard from OpenWiki and link conventions.",
     );
     await page.getByRole("button", { name: "Import and replace", exact: true }).click();
+    const importToast = page.locator(".app-toast");
+    await importToast.waitFor();
+    expect(
+      /3 OKF concepts imported(?: · \d+ issues)?/.test(await importToast.textContent()) &&
+        (await page.getByRole("dialog", {
+          name: "OKF workspace imported",
+        }).count()) === 0,
+      "An OKF import should open the workspace immediately and summarize the result without a blocking step.",
+    );
+    await importToast.getByRole("button", {
+      name: "Import details",
+      exact: true,
+    }).click();
     const importResult = page.getByRole("dialog", {
       name: "OKF workspace imported",
     });
@@ -127,14 +140,14 @@ export async function run(ctx) {
     );
     expect(
       await importResult.getByText(
-        "This workspace declares OKF 0.1. Review compatibility before adopting OKF 0.2 metadata and lifecycle practices.",
+        "This workspace declares OKF 0.1. OKF 0.2 metadata and lifecycle practices may require compatibility changes.",
         { exact: true },
       ).isVisible() &&
-        await importResult.getByRole("button", {
-          name: "Review workspace",
+        (await importResult.getByRole("button", {
+          name: "Workspace issues",
           exact: true,
-        }).isVisible(),
-      "An OKF 0.1 import should explain the 0.2 transition and offer workspace review.",
+        }).count()) === 0,
+      "Optional import details may explain the detected version without prescribing a workspace review step.",
     );
     await importResult.getByRole("button", {
       name: "Import details",
@@ -178,7 +191,7 @@ export async function run(ctx) {
     const attentionLegend = page.locator(".right-file-knowledge-legend");
     expect(
       await attentionLegend.getByText(
-        "Dot: Tabula found knowledge metadata that needs attention.",
+        "Dot: Tabula found an error or maintenance action for this document.",
         { exact: true },
       ).isVisible() &&
         await attentionLegend.getByText(
@@ -193,60 +206,16 @@ export async function run(ctx) {
       + ".right-file-knowledge-status",
     );
     expect(
-      (await runtimeKnowledgeStatus.count()) === 1 &&
-        (await runtimeKnowledgeStatus.getAttribute("data-knowledge-priority")) ===
-          "attention" &&
-        (await runtimeKnowledgeStatus.getAttribute("aria-label")) ===
-          "runtime.md needs attention: Unverified, No review date",
-      "Files should quietly mark a concept that needs trust and freshness attention.",
+      (await runtimeKnowledgeStatus.count()) === 0,
+      "Files should not turn an ordinary draft, unverified document, or missing review date into an issue by itself.",
     );
-    await runtimeKnowledgeStatus.hover();
-    await page.locator(".app-tooltip").waitFor({ state: "visible", timeout: 2_000 });
-    expect(
-      (await runtimeKnowledgeStatus.evaluate(
-        (status) => getComputedStyle(status, "::before").opacity,
-      )) === "1" &&
-        (await page.locator(".app-tooltip").textContent()) ===
-          "Unverified\nNo review date",
-      "The file status should become vivid on hover and explain each signal on its own line.",
-    );
-    await runtimeKnowledgeStatus.focus();
-    expect(
-      (await runtimeKnowledgeStatus.evaluate(
-        (status) => getComputedStyle(status, "::before").opacity,
-      )) === "1",
-      "Keyboard focus should strengthen the file status without relying on color alone.",
-    );
-    await runtimeKnowledgeStatus.press("Enter");
-    const attentionDetails = page.locator(".right-file-knowledge-popover");
-    expect(
-      await attentionDetails.getByText("Unverified", { exact: true }).isVisible() &&
-        await attentionDetails.getByText(
-          "No review date",
-          { exact: true },
-        ).isVisible(),
-      "Activating a status should expose the same concerns to keyboard and touch users.",
-    );
-    await attentionDetails.getByRole("button", {
-      name: "Open review queue",
+    await page.getByRole("button", {
+      name: "Open runtime.md",
       exact: true,
     }).click();
     await waitForActiveTab(page, { exact: "runtime.md" });
+    await page.getByRole("button", { name: "Knowledge", exact: true }).click();
     await waitForPanelTab(page, "Knowledge");
-    const filesReviewQueue = page.getByRole("region", {
-      name: "Review queue",
-      exact: true,
-    });
-    expect(
-      await filesReviewQueue.locator(
-        '.right-knowledge-queue-row[aria-current="page"]',
-      ).getByText("Runtime architecture", { exact: true }).isVisible(),
-      "A Files attention signal should open the shared queue at that document.",
-    );
-    await filesReviewQueue.getByRole("button", {
-      name: "Back to document",
-      exact: true,
-    }).click();
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
@@ -256,15 +225,45 @@ export async function run(ctx) {
     const documentKnowledgeContext = page.getByRole("region", {
       name: "Knowledge context",
     });
+    await documentKnowledgeContext.getByRole("heading", {
+      name: "Runtime architecture",
+      exact: true,
+    }).waitFor();
     expect(
       await documentKnowledgeContext.getByRole("heading", {
         name: "Runtime architecture",
         exact: true,
       }).isVisible() &&
-        await documentKnowledgeContext.getByText(
+        !(await documentKnowledgeContext.getByText(
           "How application services fit together at runtime.",
           { exact: true },
-        ).isVisible() &&
+        ).isVisible()) &&
+        (await documentKnowledgeContext.getByText(
+          "Needs attention",
+          { exact: true },
+        ).count()) === 0,
+      "Knowledge should lead with the active document and stay quiet when it has no actionable issue.",
+    );
+    const knowledgePassport = documentKnowledgeContext.getByRole("region", {
+      name: "Knowledge passport",
+    });
+    expect(
+      await knowledgePassport.getByText("Lifecycle", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Stable", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Trust", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Unverified", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Freshness", { exact: true }).isVisible() &&
+        await knowledgePassport.getByText("Unscheduled", { exact: true }).isVisible(),
+      "Knowledge should keep lifecycle, trust, and freshness as independent document axes.",
+    );
+    await documentKnowledgeContext.locator(
+      ".right-knowledge-context-details > summary",
+    ).click();
+    expect(
+      await documentKnowledgeContext.getByText(
+        "How application services fit together at runtime.",
+        { exact: true },
+      ).isVisible() &&
         await documentKnowledgeContext.getByText("Architecture", { exact: true }).isVisible() &&
         await documentKnowledgeContext.getByText("runtime, platform", { exact: true }).isVisible() &&
         await documentKnowledgeContext.getByText(
@@ -279,19 +278,7 @@ export async function run(ctx) {
           "quarterly-platform-review",
           { exact: true },
         ).isVisible(),
-      "Knowledge should explain the active document rather than opening a workspace browser.",
-    );
-    const knowledgePassport = documentKnowledgeContext.getByRole("region", {
-      name: "Knowledge passport",
-    });
-    expect(
-      await knowledgePassport.getByText("Lifecycle", { exact: true }).isVisible() &&
-        await knowledgePassport.getByText("Stable", { exact: true }).isVisible() &&
-        await knowledgePassport.getByText("Trust", { exact: true }).isVisible() &&
-        await knowledgePassport.getByText("Unverified", { exact: true }).isVisible() &&
-        await knowledgePassport.getByText("Freshness", { exact: true }).isVisible() &&
-        await knowledgePassport.getByText("Unscheduled", { exact: true }).isVisible(),
-      "Knowledge should keep lifecycle, trust, and freshness as independent document axes.",
+      "Knowledge should keep descriptive and provenance metadata available in optional details.",
     );
     expect(
       (await documentKnowledgeContext.getByRole("link", {
@@ -309,78 +296,17 @@ export async function run(ctx) {
         { exact: true },
       ).isVisible() &&
         await workspaceKnowledge.getByText(
-          /(?:\d+ need attention|No required attention)/,
+          "No workspace issues",
+          { exact: true },
         ).isVisible() &&
-        await workspaceKnowledge.getByRole("button", {
-          name: "Review workspace",
+        (await workspaceKnowledge.getByRole("button", {
+          name: "Workspace issues",
           exact: true,
-        }).isVisible() &&
+        }).count()) === 0 &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
         (await page.locator(".right-graph-panel").count()) === 0,
-      "Knowledge should add a compact workspace review entry without becoming a browser or graph.",
+      "Knowledge should report workspace issue facts without prescribing a review workflow.",
     );
-    await workspaceKnowledge.getByRole("button", {
-      name: /Open review queue with \d+ documents?/,
-    }).click();
-    await page.getByRole("heading", {
-      name: "Review queue",
-      exact: true,
-    }).waitFor();
-    const reviewQueue = page.getByRole("region", {
-      name: "Review queue",
-      exact: true,
-    });
-    expect(
-      (await reviewQueue.locator(".right-knowledge-queue-row").count()) === 3 &&
-        await reviewQueue.getByText("Runtime architecture", { exact: true }).isVisible() &&
-        await reviewQueue.getByText("Authentication boundary", { exact: true }).isVisible() &&
-        await reviewQueue.getByText("Deployment runbook", { exact: true }).isVisible(),
-      "The review queue should group every concern into one row per concept document.",
-    );
-    await reviewQueue.getByRole("button", { name: "Filters", exact: true }).click();
-    await reviewQueue.getByRole("button", { name: /^Unverified\s+3$/ }).click();
-    expect(
-      (await reviewQueue.locator(".right-knowledge-queue-row").count()) === 3,
-      "Review queue metadata facets should reuse the same trust vocabulary as Search.",
-    );
-    await reviewQueue.getByLabel("Sort by", { exact: true }).selectOption("path");
-    await reviewQueue.getByRole("button", {
-      name: "Next review document",
-      exact: true,
-    }).click();
-    await waitForActiveTab(page, { exact: "deployment.md" });
-    await reviewQueue.getByRole("button", {
-      name: "Previous review document",
-      exact: true,
-    }).click();
-    await waitForActiveTab(page, { exact: "runtime.md" });
-    await reviewQueue.getByRole("button", {
-      name: "Back to document",
-      exact: true,
-    }).click();
-    await documentKnowledgeContext.getByRole("heading", {
-      name: "Runtime architecture",
-      exact: true,
-    }).waitFor();
-    await workspaceKnowledge.getByRole("button", {
-      name: "Review workspace",
-      exact: true,
-    }).click();
-    await page.getByRole("heading", {
-      name: "Review workspace",
-      exact: true,
-    }).waitFor();
-    expect(
-      await page.getByRole("heading", {
-        name: "Compatibility",
-        exact: true,
-      }).isVisible(),
-      "Workspace review should name compatibility as one review section.",
-    );
-    await page.getByRole("button", {
-      name: "Close workspace review",
-      exact: true,
-    }).click();
 
     await sidePanelNavigation.getByRole("button", {
       name: "Search",
@@ -435,7 +361,7 @@ export async function run(ctx) {
       exact: true,
     }).click();
     await page.getByRole("heading", {
-      name: "Review workspace",
+      name: "Workspace issues",
       exact: true,
     }).waitFor();
     expect(
@@ -475,7 +401,7 @@ export async function run(ctx) {
       (await page.getByRole("button", { name: "Replace index", exact: true }).count()) === 0,
       "Cancelling curated index replacement should leave the source untouched.",
     );
-    await page.getByRole("button", { name: "Close workspace review", exact: true }).click();
+    await page.getByRole("button", { name: "Close workspace issues", exact: true }).click();
     await openProjectMenu(page);
     await page.getByRole("button", {
       name: "Export workspace (.zip)",
@@ -548,25 +474,83 @@ export async function run(ctx) {
     );
     await page.getByRole("dialog", { name: "Import folder" }).waitFor();
     await page.getByRole("button", { name: "Import and replace", exact: true }).click();
+    const migrationToast = page.locator(".app-toast");
+    await migrationToast.waitFor();
+    expect(
+      /2 OKF concepts imported(?: · \d+ issues)?/.test(await migrationToast.textContent()) &&
+        (await page.getByRole("dialog", {
+          name: "OKF workspace imported",
+        }).count()) === 0,
+      "OKF 0.2 imports should also remain non-blocking.",
+    );
+    await migrationToast.getByRole("button", {
+      name: "Import details",
+      exact: true,
+    }).click();
     const migrationImportResult = page.getByRole("dialog", {
       name: "OKF workspace imported",
     });
     await migrationImportResult.waitFor();
     expect(
       (await migrationImportResult.getByText(
-        "This workspace declares OKF 0.1. Review compatibility before adopting OKF 0.2 metadata and lifecycle practices.",
+        "This workspace declares OKF 0.1. OKF 0.2 metadata and lifecycle practices may require compatibility changes.",
         { exact: true },
       ).count()) === 0,
       "An OKF 0.2 import should not show 0.1 transition guidance.",
     );
     await migrationImportResult.getByRole("button", {
-      name: "Review workspace",
+      name: "Open root index",
       exact: true,
     }).click();
-    await page.getByRole("heading", {
-      name: "Review workspace",
+    await waitForActiveTab(page, { exact: "index.md" });
+    await ensureSidePanelOpen(page);
+    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await waitForPanelTab(page, "Files");
+    const sourceKnowledgeStatus = page.locator(
+      '.right-file-tree-row[data-file-name="source.md"] '
+      + ".right-file-knowledge-status",
+    );
+    expect(
+      (await sourceKnowledgeStatus.count()) === 1 &&
+        (await sourceKnowledgeStatus.getAttribute("data-knowledge-priority")) ===
+          "attention",
+      "Files should use an attention dot only when a document has a concrete maintenance action.",
+    );
+    await sourceKnowledgeStatus.click();
+    const sourceAttention = page.locator(".right-file-knowledge-popover");
+    expect(
+      await sourceAttention.getByText(
+        "Review due since 2020-01-01",
+        { exact: true },
+      ).isVisible(),
+      "The file dot should explain the concrete issue on demand.",
+    );
+    await sourceAttention.getByRole("button", {
+      name: "View workspace issues",
       exact: true,
-    }).waitFor();
+    }).click();
+    await waitForPanelTab(page, "Knowledge");
+    const workspaceIssues = page.getByRole("region", {
+      name: "Workspace issues",
+      exact: true,
+    });
+    expect(
+      await workspaceIssues.getByText("source", { exact: true }).isVisible() &&
+        (await workspaceIssues.getByRole("button", {
+          name: "Next review document",
+          exact: true,
+        }).count()) === 0,
+      "Workspace issues should be an on-demand issue list rather than a review-session wizard.",
+    );
+    await workspaceIssues.getByRole("button", {
+      name: "Back to document",
+      exact: true,
+    }).click();
+    await openExportPreflight(page, openProjectMenu);
+    const exportIssues = page.getByRole("dialog", {
+      name: "Workspace issues",
+      exact: true,
+    });
     const humanReview = page.getByRole("region", { name: "Human review 1" });
     await humanReview.locator(".right-compatibility-verification-row").click();
     const evidenceCount = await humanReview.getByText(
@@ -592,32 +576,26 @@ export async function run(ctx) {
       (await page.getByRole("region", { name: /^Human review/ }).count()) === 0,
       "Recording a human verification should clear the outdated review signal.",
     );
+    const expectedHealthMessages = [
+      "Refresh after 2020-01-01",
+      "Deprecated concept still has 1 references",
+      "Citation has no matching source: missing",
+      "Relationship target does not exist: missing.md",
+      "Source id is duplicated: policy",
+      "Source resource is duplicated: https://example.com/policy",
+    ];
+    const missingHealthMessages = [];
+    for (const message of expectedHealthMessages) {
+      if ((await exportIssues.getByText(message, { exact: true }).count()) === 0) {
+        missingHealthMessages.push(message);
+      }
+    }
     expect(
-      await page.getByText("Knowledge health", { exact: true }).isVisible() &&
-        await page.getByText("Refresh after 2020-01-01", { exact: true }).isVisible() &&
-        await page.getByText(
-          "Deprecated concept still has 1 references",
-          { exact: true },
-        ).isVisible() &&
-        await page.getByText(
-          "Citation has no matching source: missing",
-          { exact: true },
-        ).isVisible() &&
-        await page.getByText(
-          "Relationship target does not exist: missing.md",
-          { exact: true },
-        ).isVisible() &&
-        await page.getByText(
-          "Source id is duplicated: policy",
-          { exact: true },
-        ).isVisible() &&
-        await page.getByText(
-          "Source resource is duplicated: https://example.com/policy",
-          { exact: true },
-        ).isVisible(),
-      "OKF compatibility should remain separate from read-only knowledge maintenance signals.",
+      await exportIssues.getByText("Knowledge health", { exact: true }).isVisible() &&
+        missingHealthMessages.length === 0,
+      `OKF compatibility should remain separate from read-only knowledge maintenance signals (missing: ${missingHealthMessages.join(", ")}).`,
     );
-    await page.getByRole("button").filter({
+    await exportIssues.getByRole("button").filter({
       hasText: "Refresh after 2020-01-01",
     }).click();
     await selectDocumentViewMode(page, "Edit");
@@ -634,7 +612,7 @@ export async function run(ctx) {
     await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
     await openExportPreflight(page, openProjectMenu);
-    await page.getByRole("button").filter({
+    await exportIssues.getByRole("button").filter({
       hasText: "Relationship target does not exist: missing.md",
     }).click();
     await selectDocumentViewMode(page, "Edit");

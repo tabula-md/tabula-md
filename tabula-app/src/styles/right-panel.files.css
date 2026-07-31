@@ -133,7 +133,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--knowledge-status-maintenance);
+  background: var(--knowledge-status-attention);
   opacity: 0.45;
   transition: opacity var(--motion-hover) ease;
   content: "";

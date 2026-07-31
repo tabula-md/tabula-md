@@ -3,7 +3,7 @@ import {
   type WorkspaceKnowledgeHealthReport,
   type WorkspaceKnowledgeIndex,
 } from "@tabula-md/tabula";
-import { ArrowUpRight, ChevronRight } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
 import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 import type { KnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { PanelEmptyState } from "./PanelEmptyState";
@@ -88,150 +88,12 @@ export function RightPanelKnowledgeContext({
             <p>{analysis.path}</p>
           </header>
 
-          <RightPanelKnowledgePassport copy={copy} metadata={metadata} />
-
-          {metadata.description && (
-            <section className="right-knowledge-context-section">
-              <h3>{copy.description}</h3>
-              <p>{metadata.description}</p>
-            </section>
-          )}
-
-          <section className="right-knowledge-context-section">
-            <h3>{copy.properties}</h3>
-            <dl className="right-knowledge-property-list">
-              <div>
-                <dt>{copy.type}</dt>
-                <dd>{metadata.type ?? copy.notSet}</dd>
-              </div>
-              {owner && (
-                <div>
-                  <dt>{copy.owner}</dt>
-                  <dd>{owner}</dd>
-                </div>
-              )}
-              {metadata.tags.length > 0 && (
-                <div>
-                  <dt>{copy.tags}</dt>
-                  <dd>{metadata.tags.join(", ")}</dd>
-                </div>
-              )}
-            </dl>
-          </section>
-
-          {extensionMetadata.length > 0 && (
-            <section className="right-knowledge-context-section">
-              <h3>{copy.additionalMetadata}</h3>
-              <dl className="right-knowledge-property-list">
-                {extensionMetadata.map(({ key, value }) => (
-                  <div key={key}>
-                    <dt>{key}</dt>
-                    <dd>{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          )}
-
-          <section className="right-knowledge-context-section">
-            <h3>{copy.provenance}</h3>
-            {metadata.generated && (
-              <dl className="right-knowledge-property-list">
-                <div>
-                  <dt>{copy.generatedBy}</dt>
-                  <dd>{metadata.generated.by}</dd>
-                </div>
-                <div>
-                  <dt>{copy.generatedAt}</dt>
-                  <dd>{metadata.generated.at}</dd>
-                </div>
-              </dl>
-            )}
-            {metadata.resource && (() => {
-              const href = getOpenableResource(metadata.resource);
-              const content = (
-                <>
-                  <span>
-                    <strong>{copy.canonicalResource}</strong>
-                    <small>{metadata.resource}</small>
-                  </span>
-                  {href && <ArrowUpRight size={14} aria-hidden="true" />}
-                </>
-              );
-              return href ? (
-                <a
-                  className="right-knowledge-source-row"
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={`${copy.openSource}: ${metadata.resource}`}
-                >
-                  {content}
-                </a>
-              ) : <div className="right-knowledge-source-row">{content}</div>;
-            })()}
-            <div className="right-knowledge-source-group">
-              <h4>{copy.sources}</h4>
-              {metadata.sources.length === 0 ? (
-                <p>{copy.noSources}</p>
-              ) : metadata.sources.map((source, sourceIndex) => {
-                const href = getOpenableResource(source.resource);
-                const label = source.title || source.id || source.resource;
-                return href ? (
-                  <a
-                    className="right-knowledge-source-row"
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                    key={`${source.resource}:${sourceIndex}`}
-                    aria-label={`${copy.openSource}: ${label}`}
-                  >
-                    <span>
-                      <strong>{label}</strong>
-                      <small>{source.resource}</small>
-                    </span>
-                    <ArrowUpRight size={14} aria-hidden="true" />
-                  </a>
-                ) : (
-                  <div
-                    className="right-knowledge-source-row"
-                    key={`${source.resource}:${sourceIndex}`}
-                  >
-                    <span>
-                      <strong>{label}</strong>
-                      <small>{source.resource}</small>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="right-knowledge-context-section">
-            <h3>{copy.verification}</h3>
-            {metadata.verified.length === 0 ? (
-              <p>{copy.neverVerified}</p>
-            ) : (
-              <dl className="right-knowledge-property-list">
-                <div>
-                  <dt>{copy.latestVerification}</dt>
-                  <dd>
-                    {displayActor(metadata.verified.at(-1)!.by)}
-                    <small>{metadata.verified.at(-1)!.at}</small>
-                  </dd>
-                </div>
-              </dl>
-            )}
-          </section>
-
-          <section className="right-knowledge-context-section">
-            <h3>
-              <span>{copy.issues}</span>
-              {issues.length > 0 && <span>{issues.length}</span>}
-            </h3>
-            {issues.length === 0 ? (
-              <p>{copy.noIssues}</p>
-            ) : (
+          {issues.length > 0 && (
+            <section className="right-knowledge-context-section right-knowledge-action-section">
+              <h3>
+                <span>{copy.issues}</span>
+                <span>{issues.length}</span>
+              </h3>
               <div className="right-knowledge-issue-list">
                 {issues.map((issue, issueIndex) => (
                   <button
@@ -240,12 +102,156 @@ export function RightPanelKnowledgeContext({
                     onClick={() => onSelectHealthIssue(issue)}
                   >
                     <span>{compatibilityCopy.healthIssue(issue)}</span>
-                    <ChevronRight size={14} aria-hidden="true" />
+                    <small>{copy.openIssue}</small>
                   </button>
                 ))}
               </div>
-            )}
-          </section>
+            </section>
+          )}
+
+          <RightPanelKnowledgePassport copy={copy} metadata={metadata} />
+
+          <details className="right-knowledge-context-details">
+            <summary>
+              <ChevronDown size={14} aria-hidden="true" />
+              <span>{copy.details}</span>
+            </summary>
+            <div>
+              {metadata.description && (
+                <section className="right-knowledge-context-section">
+                  <h3>{copy.description}</h3>
+                  <p>{metadata.description}</p>
+                </section>
+              )}
+
+              <section className="right-knowledge-context-section">
+                <h3>{copy.properties}</h3>
+                <dl className="right-knowledge-property-list">
+                  <div>
+                    <dt>{copy.type}</dt>
+                    <dd>{metadata.type ?? copy.notSet}</dd>
+                  </div>
+                  {owner && (
+                    <div>
+                      <dt>{copy.owner}</dt>
+                      <dd>{owner}</dd>
+                    </div>
+                  )}
+                  {metadata.tags.length > 0 && (
+                    <div>
+                      <dt>{copy.tags}</dt>
+                      <dd>{metadata.tags.join(", ")}</dd>
+                    </div>
+                  )}
+                </dl>
+              </section>
+
+              {extensionMetadata.length > 0 && (
+                <section className="right-knowledge-context-section">
+                  <h3>{copy.additionalMetadata}</h3>
+                  <dl className="right-knowledge-property-list">
+                    {extensionMetadata.map(({ key, value }) => (
+                      <div key={key}>
+                        <dt>{key}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              )}
+
+              <section className="right-knowledge-context-section">
+                <h3>{copy.provenance}</h3>
+                {metadata.generated && (
+                  <dl className="right-knowledge-property-list">
+                    <div>
+                      <dt>{copy.generatedBy}</dt>
+                      <dd>{metadata.generated.by}</dd>
+                    </div>
+                    <div>
+                      <dt>{copy.generatedAt}</dt>
+                      <dd>{metadata.generated.at}</dd>
+                    </div>
+                  </dl>
+                )}
+                {metadata.resource && (() => {
+                  const href = getOpenableResource(metadata.resource);
+                  const content = (
+                    <>
+                      <span>
+                        <strong>{copy.canonicalResource}</strong>
+                        <small>{metadata.resource}</small>
+                      </span>
+                      {href && <ArrowUpRight size={14} aria-hidden="true" />}
+                    </>
+                  );
+                  return href ? (
+                    <a
+                      className="right-knowledge-source-row"
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`${copy.openSource}: ${metadata.resource}`}
+                    >
+                      {content}
+                    </a>
+                  ) : <div className="right-knowledge-source-row">{content}</div>;
+                })()}
+                <div className="right-knowledge-source-group">
+                  <h4>{copy.sources}</h4>
+                  {metadata.sources.length === 0 ? (
+                    <p>{copy.noSources}</p>
+                  ) : metadata.sources.map((source, sourceIndex) => {
+                    const href = getOpenableResource(source.resource);
+                    const label = source.title || source.id || source.resource;
+                    return href ? (
+                      <a
+                        className="right-knowledge-source-row"
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer"
+                        key={`${source.resource}:${sourceIndex}`}
+                        aria-label={`${copy.openSource}: ${label}`}
+                      >
+                        <span>
+                          <strong>{label}</strong>
+                          <small>{source.resource}</small>
+                        </span>
+                        <ArrowUpRight size={14} aria-hidden="true" />
+                      </a>
+                    ) : (
+                      <div
+                        className="right-knowledge-source-row"
+                        key={`${source.resource}:${sourceIndex}`}
+                      >
+                        <span>
+                          <strong>{label}</strong>
+                          <small>{source.resource}</small>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="right-knowledge-context-section">
+                <h3>{copy.verification}</h3>
+                {metadata.verified.length === 0 ? (
+                  <p>{copy.neverVerified}</p>
+                ) : (
+                  <dl className="right-knowledge-property-list">
+                    <div>
+                      <dt>{copy.latestVerification}</dt>
+                      <dd>
+                        {displayActor(metadata.verified.at(-1)!.by)}
+                        <small>{metadata.verified.at(-1)!.at}</small>
+                      </dd>
+                    </div>
+                  </dl>
+                )}
+              </section>
+            </div>
+          </details>
         </div>
       )}
     </section>

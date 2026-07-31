@@ -35,7 +35,6 @@
   --success: #15803d;
   --success-soft: #eef8f1;
   --attention: #6f5740;
-  --knowledge-status-maintenance: #7b7c85;
   --knowledge-status-attention: #b8710b;
   --knowledge-status-critical: #c94e49;
   --danger-text: #b4534b;
@@ -140,7 +139,6 @@
   --success: #65d48a;
   --success-soft: rgba(101, 212, 138, 0.14);
   --attention: #d7b78d;
-  --knowledge-status-maintenance: #a7a7b0;
   --knowledge-status-attention: #dea64d;
   --knowledge-status-critical: #f07d75;
   --danger-text: #ff9a8f;

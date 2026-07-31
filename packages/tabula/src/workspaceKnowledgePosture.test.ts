@@ -89,7 +89,7 @@ describe("workspace knowledge posture", () => {
     });
   });
 
-  it("keeps independent lifecycle, trust, and freshness concerns visible", () => {
+  it("signals only actionable review, trust, and metadata problems", () => {
     const index = createWorkspaceKnowledgeIndex([
       {
         id: "deprecated",
@@ -99,7 +99,16 @@ describe("workspace knowledge posture", () => {
       {
         id: "unverified",
         path: "unverified.md",
-        markdown: "---\ntype: Runbook\nstatus: draft\nstale_after: 2026-07-01\n---\n\n# Unverified",
+        markdown: [
+          "---",
+          "type: Runbook",
+          "status: draft",
+          "stale_after: 2026-07-01",
+          "generated: { by: agent:writer, at: 2026-07-20T00:00:00Z }",
+          "---",
+          "",
+          "# Unverified",
+        ].join("\n"),
       },
       {
         id: "due",
@@ -138,16 +147,8 @@ describe("workspace knowledge posture", () => {
       "2026-07-29",
     );
 
-    expect(signals("deprecated")).toEqual([
-      "deprecated",
-      "unverified",
-      "review-unscheduled",
-    ]);
-    expect(signals("unverified")).toEqual([
-      "draft",
-      "unverified",
-      "review-due",
-    ]);
+    expect(signals("deprecated")).toEqual([]);
+    expect(signals("unverified")).toEqual(["unverified", "review-due"]);
     expect(signals("due")).toEqual(["review-due"]);
     expect(signals("current")).toEqual([]);
     expect(signals("index")).toEqual([]);

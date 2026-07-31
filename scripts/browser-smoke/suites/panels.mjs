@@ -22,7 +22,7 @@ const openExportPreflight = async (page, openProjectMenu) => {
     exact: true,
   }).click();
   await page.getByRole("heading", {
-    name: "Review workspace",
+    name: "Workspace issues",
     exact: true,
   }).waitFor();
 };
@@ -547,7 +547,7 @@ export async function run(ctx) {
     });
     expect(
       (await page.getByRole("button", {
-        name: "Review workspace",
+        name: "Workspace issues",
         exact: true,
       }).count()) === 0 &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0,
@@ -645,7 +645,7 @@ export async function run(ctx) {
       await page.locator(".right-knowledge-context").isVisible() &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
         (await page.getByRole("button", {
-          name: "Review workspace",
+          name: "Workspace issues",
           exact: true,
         }).count()) === 0 &&
         (await page.locator(".right-panel-search-field").count()) === 0 &&

@@ -10,7 +10,6 @@ type WorkspaceImportResultDialogProps = {
   result: WorkspaceImportResult;
   onClose: () => void;
   onOpenRootIndex: () => void;
-  onReviewWorkspace: () => void;
 };
 
 export function WorkspaceImportResultDialog({
@@ -18,7 +17,6 @@ export function WorkspaceImportResultDialog({
   result,
   onClose,
   onOpenRootIndex,
-  onReviewWorkspace,
 }: WorkspaceImportResultDialogProps) {
   const copy = getWorkspaceImportResultCopy(language);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -114,16 +112,6 @@ export function WorkspaceImportResultDialog({
           onClick={onClose}
         >
           {copy.dismiss}
-        </button>
-        <button
-          className="share-modal-secondary"
-          type="button"
-          {...(!result.rootIndexDocumentId
-            ? { "data-modal-initial-focus": true }
-            : {})}
-          onClick={onReviewWorkspace}
-        >
-          {copy.reviewWorkspace}
         </button>
         {result.rootIndexDocumentId && (
           <button

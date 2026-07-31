@@ -33,6 +33,7 @@ import {
   getWorkspaceImportResult,
   type WorkspaceImportResult,
 } from "./workspaceImportResultModel";
+import { getWorkspaceImportResultCopy } from "./workspaceImportResultLocale";
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -354,7 +355,19 @@ export function useWorkspaceFileIoController({
     });
     setWorkspaceFolderImport(null);
     void getWorkspaceImportResult(importResultDraft)
-      .then((result) => setWorkspaceImportResult(result ?? null))
+      .then((result) => {
+        if (!result) return;
+        const resultCopy = getWorkspaceImportResultCopy(preferences.language);
+        const issueCount = result.requiredChangeCount + result.attentionCount;
+        showToast(
+          resultCopy.importedSummary(result.conceptCount, issueCount),
+          "neutral",
+          {
+            actionLabel: resultCopy.showDetails,
+            onAction: () => setWorkspaceImportResult(result),
+          },
+        );
+      })
       .catch((error: unknown) => {
         clientErrorReporter.report({
           feature: "workspace",

@@ -3,13 +3,14 @@ import { WORKSPACE_LANGUAGE_OPTIONS } from "../workspaceLocale";
 import { getWorkspaceImportResultCopy } from "./workspaceImportResultLocale";
 
 describe("workspace import result copy", () => {
-  it("keeps the result and its next actions localized", () => {
+  it("keeps the result and its optional details localized", () => {
     for (const { value } of WORKSPACE_LANGUAGE_OPTIONS) {
       const copy = getWorkspaceImportResultCopy(value);
       expect(copy.title.trim()).not.toBe("");
       expect(copy.description("0.1")).toContain("0.1");
+      expect(copy.importedSummary(3, 2)).toContain("3");
+      expect(copy.importedSummary(3, 2)).toContain("2");
       expect(copy.openRootIndex.trim()).not.toBe("");
-      expect(copy.reviewWorkspace.trim()).not.toBe("");
       expect(copy.showDetails.trim()).not.toBe("");
       expect(copy.dismiss.trim()).not.toBe("");
     }
@@ -20,6 +21,6 @@ describe("workspace import result copy", () => {
 
     expect(copy.v02Guidance).toContain("OKF 0.1");
     expect(copy.v02Guidance).toContain("OKF 0.2");
-    expect(copy.v02Guidance).toContain("Review");
+    expect(copy.v02Guidance).not.toMatch(/\breview\b/i);
   });
 });
