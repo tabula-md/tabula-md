@@ -83,6 +83,11 @@ export class WorkspaceFolderImportError extends Error {
 }
 
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
+const hasUtf8Bom = (bytes: Uint8Array) =>
+  bytes.byteLength >= 3 &&
+  bytes[0] === 0xef &&
+  bytes[1] === 0xbb &&
+  bytes[2] === 0xbf;
 
 const decodeImportedFile = (bytes: Uint8Array) => {
   try {
@@ -98,6 +103,7 @@ const getImportedArtifactContent = (bytes: Uint8Array) => {
       kind: "text" as const,
       text: textDecoder.decode(bytes),
       encoding: "utf-8" as const,
+      ...(hasUtf8Bom(bytes) ? { bom: "utf-8" as const } : {}),
     };
   } catch {
     return { kind: "binary" as const, bytes };
@@ -228,15 +234,29 @@ export const parseWorkspaceFolderImport = async (
         kind: artifact.kind,
         mediaType: artifact.mediaType,
         contentKind: artifact.content.kind,
+        ...(artifact.content.kind === "text" && artifact.content.bom
+          ? { bom: artifact.content.bom }
+          : {}),
         sourceHash: artifact.sourceHash,
         editable: artifact.editable,
       },
     }));
   }
 
-  const workspace = finalizeWorkspaceState(files, undefined, {}, {
+  const preferredFile =
+    files.find((file, index) => {
+      const path = entries[index]?.segments.join("/") ?? file.title;
+      return !path.includes("/") && /^(?:readme|index)\.(?:md|markdown)$/i.test(path);
+    }) ??
+    files.find((file, index) =>
+      isMarkdownWorkspacePath(
+        entries[index]?.segments.join("/") ?? file.title,
+      )) ??
+    files.find((file) => file.artifact?.editable) ??
+    files[0];
+  const workspace = finalizeWorkspaceState(files, preferredFile?.id, {}, {
     folders,
-    openFileIds: [],
+    openFileIds: preferredFile ? [preferredFile.id] : [],
   });
   const importedPaths = entries.map(({ segments }) => segments.join("/"));
   const supportFiles = entries.flatMap(({ segments }, index) => {

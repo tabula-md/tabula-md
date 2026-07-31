@@ -33,7 +33,13 @@ export type WorkspaceSnapshot = {
 export type ArtifactChange =
   | { type: "create"; artifact: WorkspaceArtifact }
   | { type: "update"; artifact: WorkspaceArtifact; expectedSourceHash?: string }
-  | { type: "move"; artifactId: string; fromPath: string; toPath: string }
+  | {
+      type: "move";
+      artifactId: string;
+      fromPath: string;
+      toPath: string;
+      expectedSourceHash?: string;
+    }
   | { type: "delete"; artifactId: string; path: string; expectedSourceHash?: string };
 
 export type WriteResult =
@@ -131,7 +137,14 @@ export const createBrowserCopySourceAdapter = (
           );
         } else if (change.type === "move") {
           const existing = artifacts.get(change.artifactId);
-          if (!existing || existing.path !== change.fromPath) {
+          if (
+            !existing ||
+            existing.path !== change.fromPath ||
+            (
+              change.expectedSourceHash &&
+              existing.sourceHash !== change.expectedSourceHash
+            )
+          ) {
             return { ok: false, reason: "conflict" };
           }
           artifacts.set(change.artifactId, {

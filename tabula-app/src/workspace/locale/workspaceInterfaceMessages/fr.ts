@@ -66,7 +66,7 @@ export const frWorkspaceInterfaceMessages = {
     filesSharedInRoom: "Partagé dans cette salle",
     filesLocalDocument: "Document local",
     filesDuplicate: "Dupliquer",
-    filesCopyMarkdown: "Copier le Markdown",
+    filesCopyMarkdown: "Copier le fichier",
     filesCollapseAll: "Replier tous les dossiers",
     filesExpandAll: "Déplier tous les dossiers",
     filesOpenMarkdown: "Ouvrir un fichier Markdown",

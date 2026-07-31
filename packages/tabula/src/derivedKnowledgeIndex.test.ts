@@ -105,4 +105,33 @@ describe("derived knowledge index adapters", () => {
     expect(second).toEqual(first);
     expect(await adapter.query({ text: "Tabula" })).toHaveLength(1);
   });
+
+  it("maps the earliest matched term back to its exact source range", async () => {
+    const artifact = await createWorkspaceArtifact({
+      id: "mapped",
+      path: "mapped.md",
+      kind: "document",
+      content: {
+        kind: "text",
+        text: "ＡＢＣ first and considerably-longer-second",
+        encoding: "utf-8",
+      },
+    });
+    const adapter = createFullTextKnowledgeIndexAdapter();
+    await adapter.build({ artifacts: [artifact], capturedAt: "mapped" });
+
+    const [result] = await adapter.query({
+      text: "considerably-longer-second abc",
+    });
+
+    expect(result?.source.range).toEqual({ from: 0, to: 3 });
+    expect(
+      artifact.content.kind === "text"
+        ? artifact.content.text.slice(
+            result!.source.range.from,
+            result!.source.range.to,
+          )
+        : "",
+    ).toBe("ＡＢＣ");
+  });
 });

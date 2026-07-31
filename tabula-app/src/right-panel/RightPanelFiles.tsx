@@ -582,6 +582,7 @@ export function RightPanelFiles({
     const isActiveFile = file.id === activeFileId;
     const isRenaming = file.id === renamingFileId;
     const menuOpen = file.id === actionMenuFileId;
+    const canCopyText = file.artifact?.contentKind !== "binary";
     const fileIsDragging = draggedItem?.type === "file" && draggedItem.id === file.id;
     const fileParentId = file.parentId ?? WORKSPACE_ROOT_FOLDER_ID;
 
@@ -666,7 +667,7 @@ export function RightPanelFiles({
                 <span className="right-row-label">{stripMarkdownExtension(node.name)}</span>
               </button>
               <span className="right-file-actions" aria-label={copy.actions(file.title)}>
-                <button
+                {canCopyText && <button
                   className="right-file-action"
                   type="button"
                   aria-label={`${copy.copyMarkdown}: ${file.title}`}
@@ -677,7 +678,7 @@ export function RightPanelFiles({
                   }}
                 >
                   <ClipboardCopy size={14} />
-                </button>
+                </button>}
                 <button
                   className="right-file-action danger"
                   type="button"
@@ -730,11 +731,11 @@ export function RightPanelFiles({
                       label={copy.rename}
                       onSelect={() => startRenamingFile(file)}
                     />
-                    <MenuItem
+                    {canCopyText && <MenuItem
                       icon={<ClipboardCopy size={14} />}
                       label={copy.copyMarkdown}
                       onSelect={() => onCopyFile(file.id)}
-                    />
+                    />}
                     <MenuItem
                       icon={<Copy size={14} />}
                       label={copy.duplicate}
@@ -774,11 +775,11 @@ export function RightPanelFiles({
           label={copy.rename}
           onSelect={() => startRenamingFile(file)}
         />
-        <ContextMenuItem
+        {canCopyText && <ContextMenuItem
           icon={<ClipboardCopy size={14} />}
           label={copy.copyMarkdown}
           onSelect={() => onCopyFile(file.id)}
-        />
+        />}
         <ContextMenuItem
           icon={<Copy size={14} />}
           label={copy.duplicate}

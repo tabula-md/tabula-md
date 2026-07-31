@@ -1,11 +1,14 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
+  useState,
   type RefObject,
 } from "react";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
 import type {
+  MarkdownCapabilityAnalysis,
   MarkdownHeading,
   WorkspaceKnowledgeBaseline,
   WorkspaceKnowledgeLink,
@@ -26,6 +29,8 @@ import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferenc
 import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
 import { getWorkspaceFilePaths } from "../workspace/workspaceDisplayTitles";
 import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIndex";
+import type { WorkspaceImportProfile } from "../workspace/io/workspaceImportProfile";
+import { isMarkdownWorkspacePath } from "../workspace/io/workspaceSupportFile";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
@@ -180,6 +185,78 @@ export function useWorkspaceRightPanelController({
     () => [...getWorkspaceFilePaths(visibleFiles, folders).values()].sort(),
     [folders, visibleFiles],
   );
+  const workspaceProfileInput = useMemo(() => {
+    const paths = getWorkspaceFilePaths(visibleFiles, folders);
+    const sourcePaths = [...paths.values()];
+    return {
+      documents: knowledgeDocuments,
+      supportFiles: visibleFiles.flatMap((file) => {
+        const path = paths.get(file.id) ?? file.title;
+        return !isMarkdownWorkspacePath(path) &&
+            file.artifact?.contentKind !== "binary"
+          ? [{ path, text: file.text }]
+          : [];
+      }),
+      sourcePaths,
+      importedPaths: sourcePaths,
+    };
+  }, [folders, knowledgeDocuments, visibleFiles]);
+  const workspaceProfileInputSignature =
+    rightPanelOpen && rightPanelView === "knowledge"
+      ? JSON.stringify(workspaceProfileInput)
+      : "";
+  const stableWorkspaceProfileInputRef = useRef({
+    signature: workspaceProfileInputSignature,
+    value: workspaceProfileInput,
+  });
+  if (
+    stableWorkspaceProfileInputRef.current.signature !==
+    workspaceProfileInputSignature
+  ) {
+    stableWorkspaceProfileInputRef.current = {
+      signature: workspaceProfileInputSignature,
+      value: workspaceProfileInput,
+    };
+  }
+  const stableWorkspaceProfileInput =
+    stableWorkspaceProfileInputRef.current.value;
+  const [workspaceProfile, setWorkspaceProfile] =
+    useState<WorkspaceImportProfile>();
+  const [activeMarkdownCapabilities, setActiveMarkdownCapabilities] =
+    useState<MarkdownCapabilityAnalysis>();
+  const activeFileIsMarkdown = Boolean(
+    activeFile && isMarkdownWorkspacePath(activeFile.title),
+  );
+  useEffect(() => {
+    if (!rightPanelOpen || rightPanelView !== "knowledge") return undefined;
+    let cancelled = false;
+    void import("../workspace/io/workspaceImportProfile").then(
+      ({
+        analyzeWorkspaceMarkdownCapabilities,
+        detectWorkspaceImportProfile,
+      }) => {
+        if (!cancelled) {
+          setWorkspaceProfile(
+            detectWorkspaceImportProfile(stableWorkspaceProfileInput),
+          );
+          setActiveMarkdownCapabilities(
+            activeFileIsMarkdown
+              ? analyzeWorkspaceMarkdownCapabilities(text)
+              : undefined,
+          );
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeFileIsMarkdown,
+    rightPanelOpen,
+    rightPanelView,
+    stableWorkspaceProfileInput,
+    text,
+  ]);
   const {
     compatibilityReport: knowledgeCompatibilityReport,
     index: knowledgeIndex,
@@ -265,6 +342,8 @@ export function useWorkspaceRightPanelController({
     folders,
     knowledgeIndex,
     knowledgeCompatibilityReport,
+    workspaceProfile,
+    activeMarkdownCapabilities,
     knowledgeIndexPending,
     knowledgeIndexSource,
     knowledgeBaseline,

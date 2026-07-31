@@ -67,6 +67,7 @@ type FullTextEntry = {
   sourceHash: string;
   text: string;
   normalizedText: string;
+  normalizedSourceOffsets: readonly number[];
   from: number;
   to: number;
 };
@@ -79,7 +80,27 @@ const cloneTextArtifact = (artifact: WorkspaceArtifact): WorkspaceArtifact => ({
 });
 
 const normalizeSearchText = (value: string) =>
-  value.normalize("NFKC").toLocaleLowerCase();
+  value.normalize("NFKD").toLocaleLowerCase();
+
+const normalizeSearchTextWithSourceOffsets = (value: string) => {
+  let normalizedText = "";
+  const normalizedSourceOffsets = [0];
+  let sourceOffset = 0;
+  for (const character of value) {
+    const sourceFrom = sourceOffset;
+    sourceOffset += character.length;
+    const normalizedCharacter = normalizeSearchText(character);
+    normalizedText += normalizedCharacter;
+    for (let index = 0; index < normalizedCharacter.length; index += 1) {
+      normalizedSourceOffsets.push(
+        index === normalizedCharacter.length - 1
+          ? sourceOffset
+          : sourceFrom,
+      );
+    }
+  }
+  return { normalizedSourceOffsets, normalizedText };
+};
 
 const getSearchTerms = (query: string) =>
   [...new Set(
@@ -109,13 +130,15 @@ const createEntries = (artifact: WorkspaceArtifact): FullTextEntry[] => {
   for (const line of text.split(/\r?\n/)) {
     const lineTo = lineFrom + line.length;
     if (line.trim()) {
+      const normalized = normalizeSearchTextWithSourceOffsets(line);
       entries.push({
         artifactId: artifact.id,
         artifactKind: artifact.kind,
         path: artifact.path,
         sourceHash: artifact.sourceHash,
         text: line,
-        normalizedText: normalizeSearchText(line),
+        normalizedText: normalized.normalizedText,
+        normalizedSourceOffsets: normalized.normalizedSourceOffsets,
         from: lineFrom,
         to: lineTo,
       });
@@ -207,9 +230,18 @@ export const createFullTextKnowledgeIndexAdapter = (
             countOccurrences(entry.normalizedText, term)
           );
           if (counts.some((count) => count === 0)) return [];
-          const firstMatch = Math.min(...terms.map((term) =>
-            entry.normalizedText.indexOf(term)
-          ));
+          const matches = terms.map((term) => ({
+            from: entry.normalizedText.indexOf(term),
+            term,
+          }));
+          const firstMatch = matches.reduce((first, candidate) =>
+            candidate.from < first.from ? candidate : first
+          );
+          const normalizedTo = firstMatch.from + firstMatch.term.length;
+          const sourceFrom =
+            entry.normalizedSourceOffsets[firstMatch.from] ?? 0;
+          const sourceTo =
+            entry.normalizedSourceOffsets[normalizedTo] ?? sourceFrom;
           return [{
             id: `${providerId}:${entry.artifactId}:${entry.from}:${entry.to}`,
             providerId,
@@ -220,9 +252,8 @@ export const createFullTextKnowledgeIndexAdapter = (
               path: entry.path,
               sourceHash: entry.sourceHash,
               range: {
-                from: entry.from + Math.max(firstMatch, 0),
-                to: entry.from + Math.max(firstMatch, 0)
-                  + terms[0]!.length,
+                from: entry.from + sourceFrom,
+                to: entry.from + sourceTo,
               },
             },
           }];

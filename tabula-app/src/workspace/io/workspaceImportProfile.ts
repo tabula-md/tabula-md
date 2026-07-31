@@ -1,7 +1,9 @@
 import type {
+  MarkdownCapabilityAnalysis,
   WorkspaceProfile,
   WorkspaceSourceDocument,
 } from "@tabula-md/tabula";
+import { analyzeMarkdownCapabilities } from "@tabula-md/tabula";
 import {
   createWorkspaceProfileFromDetections,
   runWorkspaceProfileDetectors,
@@ -16,6 +18,7 @@ export type WorkspaceImportLinkSyntax =
   | "embeds";
 
 export type WorkspaceImportEvidenceCode =
+  | "commonmark-files"
   | "gfm-files"
   | "mdx-files"
   | "okf-version"
@@ -69,7 +72,7 @@ const createFallbackProfile = (
   input: WorkspaceImportProfileInput,
   diagnostics: readonly ProfileDiagnostic[],
 ): WorkspaceImportProfile => ({
-  syntaxes: ["gfm"],
+  syntaxes: ["commonmark"],
   conventions: [],
   schemas: [],
   workflows: [],
@@ -132,3 +135,7 @@ export type {
   WorkspaceInspection,
   WorkspaceProfileDetector,
 } from "./workspaceProfileDetector";
+
+export const analyzeWorkspaceMarkdownCapabilities = (
+  markdown: string,
+): MarkdownCapabilityAnalysis => analyzeMarkdownCapabilities(markdown);

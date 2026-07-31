@@ -7,6 +7,7 @@ import {
   planWorkspaceOkfLog,
   planWorkspaceOkfConformance,
   type OkfCompatibilityReport,
+  type MarkdownCapabilityAnalysis,
   type OkfConceptRepairUpdate,
   type OkfIndexCandidate,
   type OkfMigrationUpdate,
@@ -16,6 +17,7 @@ import {
   type WorkspaceKnowledgeIndex,
   type WorkspaceOkfLogCandidate,
 } from "@tabula-md/tabula";
+import type { WorkspaceImportProfile } from "../workspace/io/workspaceImportProfile";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getKnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
@@ -32,6 +34,8 @@ type RightPanelKnowledgeProps = {
   activeFileTitle: string;
   noDocumentCopy: string;
   compatibilityReport?: OkfCompatibilityReport;
+  workspaceProfile?: WorkspaceImportProfile;
+  activeMarkdownCapabilities?: MarkdownCapabilityAnalysis;
   knowledgeBaseline?: WorkspaceKnowledgeBaseline;
   knowledgeCompatibilityOpenRequest: number;
   index?: WorkspaceKnowledgeIndex;
@@ -54,6 +58,8 @@ export function RightPanelKnowledge({
   activeFileTitle,
   noDocumentCopy,
   compatibilityReport,
+  workspaceProfile,
+  activeMarkdownCapabilities,
   knowledgeBaseline,
   knowledgeCompatibilityOpenRequest,
   index,
@@ -143,6 +149,8 @@ export function RightPanelKnowledge({
             agentInstructions={compatibilityReport?.agentInstructions}
             compatibilityCopy={compatibilityCopy}
             copy={knowledgeCopy}
+            workspaceProfile={workspaceProfile}
+            markdownCapabilities={activeMarkdownCapabilities}
             healthReport={healthReport}
             index={index}
             instructionChanges={instructionChanges}

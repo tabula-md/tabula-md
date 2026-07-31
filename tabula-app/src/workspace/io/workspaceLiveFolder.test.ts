@@ -14,6 +14,7 @@ import {
 
 class MemoryFileHandle implements LiveFolderFileHandle {
   readonly kind = "file";
+  failWrites = 0;
   constructor(
     readonly name: string,
     private bytes: Uint8Array,
@@ -25,6 +26,10 @@ class MemoryFileHandle implements LiveFolderFileHandle {
   async createWritable() {
     return {
       write: async (data: BufferSource | Blob | string) => {
+        if (this.failWrites > 0) {
+          this.failWrites -= 1;
+          throw new Error("Injected write failure");
+        }
         if (typeof data === "string") {
           this.bytes = new TextEncoder().encode(data);
         } else if (data instanceof Blob) {
@@ -253,6 +258,40 @@ describe("live folder source", () => {
     ).toMatchObject({ kind: "text", text: "# External" });
   });
 
+  it("restores earlier files when a later write fails", async () => {
+    const root = new MemoryDirectoryHandle("Project");
+    await put(root, "first.md", "# First");
+    await put(root, "second.md", "# Second");
+    const adapter = createLiveFolderSourceAdapter(root);
+    const baseline = await adapter.readSnapshot();
+    const first = baseline.artifacts.find((item) => item.path === "first.md")!;
+    const second = baseline.artifacts.find((item) => item.path === "second.md")!;
+    const changedFirst = await textArtifact(first.id, first.path, "# Changed first");
+    const changedSecond = await textArtifact(second.id, second.path, "# Changed second");
+    const secondHandle = root.children.get("second.md") as MemoryFileHandle;
+    secondHandle.failWrites = 1;
+
+    const result = await adapter.writeChanges?.([
+      {
+        type: "update",
+        artifact: changedFirst,
+        expectedSourceHash: first.sourceHash,
+      },
+      {
+        type: "update",
+        artifact: changedSecond,
+        expectedSourceHash: second.sourceHash,
+      },
+    ]);
+
+    expect(result).toMatchObject({ ok: false, reason: "unknown" });
+    const restored = await adapter.readSnapshot();
+    expect(restored.artifacts.map((artifact) => artifact.content)).toEqual([
+      expect.objectContaining({ kind: "text", text: "# First" }),
+      expect.objectContaining({ kind: "text", text: "# Second" }),
+    ]);
+  });
+
   it("preserves local state when write permission is unavailable", async () => {
     const root = new MemoryDirectoryHandle("Project");
     root.permission = "denied";
@@ -280,6 +319,10 @@ describe("live folder source", () => {
       "update",
       "create",
     ]);
+    expect(plan.changes[0]).toMatchObject({
+      type: "move",
+      expectedSourceHash: original.sourceHash,
+    });
     expect(plan.deletes).toEqual([
       expect.objectContaining({
         type: "delete",

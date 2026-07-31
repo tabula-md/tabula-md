@@ -1,5 +1,6 @@
 import {
   analyzeLlmWikiWorkflow,
+  analyzeMarkdownCapabilities,
   createWorkspaceKnowledgeIndex,
   getKnowledgeProfileDefinition,
   getWorkspaceOkfCompatibility,
@@ -90,12 +91,14 @@ const result = (
   } = {},
 ): ProfileDetectionResult => {
   const definition = getKnowledgeProfileDefinition(profileId);
-  if (!definition) {
+  const inferredOkfSchema =
+    profileId.startsWith("okf-") && Boolean(options.version);
+  if (!definition && !inferredOkfSchema) {
     throw new Error(`Unknown workspace profile detector result: ${profileId}`);
   }
   return {
     profileId,
-    kind: definition.kind,
+    kind: definition?.kind ?? "schema",
     confidence,
     evidence,
     diagnostics: [],
@@ -110,10 +113,29 @@ const getAnalyses = (inspection: WorkspaceInspection) =>
 
 export const WORKSPACE_PROFILE_DETECTORS: readonly WorkspaceProfileDetector[] = [
   {
-    id: "gfm",
+    id: "commonmark",
     detect: (input) => {
       const fileCount = input.sourcePaths.filter((path) =>
         [".md", ".markdown"].includes(getExtension(path))).length;
+      return fileCount > 0
+        ? result(
+            "commonmark",
+            "strong",
+            [{ code: "commonmark-files", count: fileCount }],
+            { fileCount },
+          )
+        : null;
+    },
+  },
+  {
+    id: "gfm",
+    detect: (input) => {
+      const fileCount = input.documents.filter((document) => {
+        const capabilities = analyzeMarkdownCapabilities(document.markdown)
+          .capabilities;
+        return capabilities.includes("gfm-table") ||
+          capabilities.includes("gfm-task-list");
+      }).length;
       return fileCount > 0
         ? result("gfm", "strong", [{ code: "gfm-files", count: fileCount }], {
             fileCount,
@@ -138,17 +160,15 @@ export const WORKSPACE_PROFILE_DETECTORS: readonly WorkspaceProfileDetector[] = 
     detect: (input) => {
       const hasConfig = input.sourcePaths.some((path) =>
         hasPathSegment(path, ".obsidian"));
+      if (!hasConfig) return null;
       const wikilinkCount = getAnalyses(input)
         .flatMap((analysis) => analysis.links)
         .filter((link) => link.syntax === "wikilink").length;
-      if (!hasConfig && wikilinkCount === 0) return null;
       return result(
         "obsidian",
-        hasConfig ? "declared" : "strong",
+        "declared",
         [
-          ...(hasConfig
-            ? [{ code: "obsidian-config" as const }]
-            : []),
+          { code: "obsidian-config" as const },
           ...(wikilinkCount > 0
             ? [{ code: "wikilinks" as const, count: wikilinkCount }]
             : []),
@@ -175,8 +195,8 @@ export const WORKSPACE_PROFILE_DETECTORS: readonly WorkspaceProfileDetector[] = 
       ).length;
       const hasActivityLog = analyses.some((analysis) =>
         getBasename(analysis.path) === "log.md");
-      return version
-        ? result(
+      if (version) {
+        return result(
             `okf-${version}`,
             "declared",
             [
@@ -198,6 +218,19 @@ export const WORKSPACE_PROFILE_DETECTORS: readonly WorkspaceProfileDetector[] = 
                 : []),
             ],
             { version },
+          );
+      }
+      return typedConceptCount > 0 && directoryIndexCount > 0
+        ? result(
+            "okf-like",
+            "heuristic",
+            [
+              { code: "typed-concepts", count: typedConceptCount },
+              { code: "directory-indexes", count: directoryIndexCount },
+              ...(hasActivityLog
+                ? [{ code: "activity-log" as const }]
+                : []),
+            ],
           )
         : null;
     },
@@ -406,6 +439,7 @@ export const createWorkspaceProfileFromDetections = (
 
   for (const detection of detections) {
     switch (detection.profileId) {
+      case "commonmark":
       case "gfm":
       case "mdx":
         syntaxes.push(detection.profileId);

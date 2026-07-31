@@ -66,7 +66,7 @@ export const zhWorkspaceInterfaceMessages = {
     filesSharedInRoom: "已在此房间共享",
     filesLocalDocument: "本地文档",
     filesDuplicate: "创建副本",
-    filesCopyMarkdown: "复制 Markdown",
+    filesCopyMarkdown: "复制文件",
     filesCollapseAll: "折叠所有文件夹",
     filesExpandAll: "展开所有文件夹",
     filesOpenMarkdown: "打开 Markdown 文件",

@@ -5,7 +5,12 @@ export type WorkspaceArtifactKind =
   | "support";
 
 export type WorkspaceArtifactContent =
-  | { kind: "text"; text: string; encoding: "utf-8" }
+  | {
+      kind: "text";
+      text: string;
+      encoding: "utf-8";
+      bom?: "utf-8";
+    }
   | { kind: "binary"; bytes: Uint8Array };
 
 export type WorkspaceArtifact = {
@@ -28,6 +33,7 @@ export type WorkspaceArtifactDraft = Omit<
 };
 
 const textEncoder = new TextEncoder();
+const utf8Bom = Uint8Array.of(0xef, 0xbb, 0xbf);
 
 const extensionMediaTypes: Readonly<Record<string, string>> = {
   ".css": "text/css",
@@ -115,10 +121,15 @@ export const isWorkspaceArtifactEditable = (
 
 export const getWorkspaceArtifactBytes = (
   content: WorkspaceArtifactContent,
-) =>
-  content.kind === "binary"
-    ? content.bytes
-    : textEncoder.encode(content.text);
+) => {
+  if (content.kind === "binary") return content.bytes;
+  const bytes = textEncoder.encode(content.text);
+  if (content.bom !== "utf-8") return bytes;
+  const withBom = new Uint8Array(utf8Bom.byteLength + bytes.byteLength);
+  withBom.set(utf8Bom);
+  withBom.set(bytes, utf8Bom.byteLength);
+  return withBom;
+};
 
 const toHex = (bytes: Uint8Array) =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");

@@ -15,6 +15,7 @@ export type DocumentSurfaceDocumentState = {
   lineNumbers: boolean;
   lineWrapping: boolean;
   readingWidth: ReadingWidth;
+  sourceOnly?: boolean;
   title: string;
   viewMode: FileViewMode;
   editingMode?: FileEditingMode;
@@ -58,6 +59,7 @@ export const buildDocumentSurface = ({
       activeLineNumbers: document.lineNumbers,
       activeLineWrapping: document.lineWrapping,
       activeReadingWidth: document.readingWidth,
+      sourceOnly: document.sourceOnly,
       activeEditingMode: getFileEditingMode(document),
       activeViewMode: document.viewMode,
     },

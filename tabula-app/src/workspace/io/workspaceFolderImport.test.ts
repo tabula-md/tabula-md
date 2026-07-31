@@ -49,7 +49,7 @@ const readFixtureFiles = async (
 };
 
 describe("workspace folder import", () => {
-  it("imports Markdown documents into their logical folder tree without opening every file", async () => {
+  it("imports Markdown documents into their logical folder tree and opens one file", async () => {
     const workspace = await parseWorkspaceFolderFiles([
       createFolderFile("Planning/Launch notes.md", "# Launch"),
       createFolderFile("Planning/Research/Questions.md", "# Questions"),
@@ -59,8 +59,8 @@ describe("workspace folder import", () => {
     expect(workspace.folders.map((folder) => folder.title)).toEqual(["Selected workspace", "Planning", "Research"]);
     expect(workspace.files[1]?.parentId).toBe(workspace.folders[2]?.id);
     expect(workspace.files[0]).toMatchObject({ readingWidth: "standard", lineWrapping: false });
-    expect(workspace.openFileIds).toEqual([]);
-    expect(workspace.activeFileId).toBe("");
+    expect(workspace.openFileIds).toEqual([workspace.files[0]?.id]);
+    expect(workspace.activeFileId).toBe(workspace.files[0]?.id);
   });
 
   it("preserves Markdown documents and unrecognized file types", async () => {
@@ -75,12 +75,34 @@ describe("workspace folder import", () => {
       "notes.txt",
       "README.md",
     ]);
-    expect(workspace.files.find((file) => file.title === "notes.txt")?.artifact)
+    expect(workspace.files.find((file) => file.title === "notes.txt"))
       .toMatchObject({
+        viewMode: "edit",
+        editingMode: "source",
+        artifact: {
         kind: "support",
         contentKind: "text",
         editable: true,
+        },
       });
+  });
+
+  it("round-trips a UTF-8 BOM without exposing it in editor text", async () => {
+    const bytes = new Uint8Array([
+      0xef,
+      0xbb,
+      0xbf,
+      ...new TextEncoder().encode("# Readme\r\n"),
+    ]);
+    const workspace = await parseWorkspaceFolderFiles([
+      createFolderFile("README.md", bytes),
+    ], defaults);
+    const file = workspace.files[0]!;
+
+    expect(file.text).toBe("# Readme\r\n");
+    expect(file.artifact?.bom).toBe("utf-8");
+    const entry = getWorkspaceArchiveEntries(workspace.files, workspace.folders)[0]!;
+    expect(entry.content).toEqual(bytes);
   });
 
   it("round-trips a mixed knowledge workspace path-for-path and byte-for-byte", async () => {
@@ -183,7 +205,7 @@ describe("workspace folder import", () => {
 
     expect(workspace.files).toHaveLength(5);
     expect(draft.profile).toMatchObject({
-      syntaxes: ["gfm"],
+      syntaxes: ["commonmark"],
       schemas: [{ id: "okf", version: "0.1" }],
       conventions: ["openwiki"],
       preservedSupportFileCount: 2,

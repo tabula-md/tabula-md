@@ -1006,7 +1006,7 @@ export function useWorkspaceRuntime() {
     consumeSelectionCommentRequest,
     startCommentReply,
   } = workspaceCommentActions;
-  const clearLocalWorkspace = useEventCallback(() => {
+  const clearLocalWorkspace = useEventCallback(async () => {
     if (activeRoom) return;
     disconnectLiveWorkspaceFolder();
     handleUserWorkspaceBoundary();
@@ -1015,10 +1015,11 @@ export function useWorkspaceRuntime() {
     replaceCommentsByFileId({});
     setKnowledgeBaseline(undefined);
     clearFileHistory();
-    localWorkspacePersistence.persistNow(starterWorkspace);
     closeFloatingChrome();
     syncUrlForLocalWorkspace("replace");
-    showToast(workspaceMenuCopy.clearWorkspace.cleared);
+    if (await localWorkspacePersistence.persistNow(starterWorkspace)) {
+      showToast(workspaceMenuCopy.clearWorkspace.cleared);
+    }
   });
   const reviewWorkspaceExportIssues = useEventCallback(() => {
     closeWorkspaceExportReview();

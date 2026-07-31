@@ -87,6 +87,7 @@ export type WorkspaceFileArtifactMetadata = {
   kind: WorkspaceArtifactKind;
   mediaType?: string;
   contentKind: "text" | "binary";
+  bom?: "utf-8";
   sourceHash: string;
   editable: boolean;
 };
@@ -323,6 +324,7 @@ const normalizeWorkspaceFileArtifactMetadata = (
     contentKind,
     sourceHash: value.sourceHash,
     editable: value.editable,
+    ...(value.bom === "utf-8" ? { bom: "utf-8" as const } : {}),
     ...(typeof value.mediaType === "string"
       ? { mediaType: value.mediaType }
       : {}),

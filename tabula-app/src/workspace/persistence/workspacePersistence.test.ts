@@ -91,9 +91,49 @@ describe("workspace persistence queue", () => {
       writeWorkspace: vi.fn().mockResolvedValue(undefined),
     });
 
-    queue.persistNow(persistedWorkspace);
+    const completion = queue.persistNow(persistedWorkspace);
 
     await vi.waitFor(() => expect(onPersisted).toHaveBeenCalledWith(persistedWorkspace));
+    await expect(completion).resolves.toBe(true);
+  });
+
+  it("waits for a superseding queued write before resolving persistence", async () => {
+    let finishFirstWrite: (() => void) | undefined;
+    const firstWrite = new Promise<void>((resolve) => {
+      finishFirstWrite = resolve;
+    });
+    const writeWorkspace = vi.fn()
+      .mockReturnValueOnce(firstWrite)
+      .mockResolvedValue(undefined);
+    const queue = createWorkspacePersistenceQueue({ writeWorkspace });
+
+    queue.persistNow(createWorkspace("# First"));
+    const superseded = queue.persistNow(createWorkspace("# Superseded"));
+    const latest = queue.persistNow(createWorkspace("# Latest"));
+    let supersededFinished = false;
+    void superseded.then(() => {
+      supersededFinished = true;
+    });
+
+    await Promise.resolve();
+    expect(supersededFinished).toBe(false);
+    finishFirstWrite?.();
+    await firstWrite;
+
+    await expect(superseded).resolves.toBe(true);
+    await expect(latest).resolves.toBe(true);
+    expect(writeWorkspace).toHaveBeenLastCalledWith(createWorkspace("# Latest"));
+  });
+
+  it("resolves persistence as false when the write fails", async () => {
+    const onError = vi.fn();
+    const queue = createWorkspacePersistenceQueue({
+      onError,
+      writeWorkspace: vi.fn().mockRejectedValue(new Error("write failed")),
+    });
+
+    await expect(queue.persistNow(createWorkspace("# Failed"))).resolves.toBe(false);
+    expect(onError).toHaveBeenCalledOnce();
   });
 
   it("serializes writes and keeps only the latest state while a write is in flight", async () => {

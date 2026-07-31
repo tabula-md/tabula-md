@@ -47,6 +47,7 @@ type DocumentControlsProps = {
   searchOpen: boolean;
   showSearch?: boolean;
   showSyncScrolling?: boolean;
+  sourceOnly?: boolean;
   onSetViewMode: (viewMode: FileViewMode) => void;
   onPreparePreview: () => void;
   onToggleViewOptions: () => void;
@@ -98,6 +99,7 @@ export function DocumentControls({
   searchOpen,
   showSearch = true,
   showSyncScrolling = true,
+  sourceOnly = false,
   onSetViewMode,
   onPreparePreview,
   onToggleViewOptions,
@@ -117,11 +119,19 @@ export function DocumentControls({
     activeViewMode,
     copy,
   });
+  const viewModeOptions = sourceOnly
+    ? controls.viewModeOptions.filter((option) => option.viewMode === "edit")
+    : controls.viewModeOptions;
+  const editingModeOptions = sourceOnly
+    ? controls.editingModeOptions.filter(
+        (option) => option.editingMode === "source",
+      )
+    : controls.editingModeOptions;
   return (
     <div className="document-controls-wrap">
       <nav className="document-controls" aria-label={controls.documentControlsLabel}>
         <div className="document-view-mode-control" role="group" aria-label={controls.viewModeLabel}>
-          {controls.viewModeOptions.map((option) => {
+          {viewModeOptions.map((option) => {
             const nextViewMode =
               option.active && option.viewMode === "preview"
                 ? getEditingModeViewMode(activeEditingMode)
@@ -197,7 +207,7 @@ export function DocumentControls({
                   role="group"
                   aria-label={controls.editingModeLabel}
                 >
-                  {controls.editingModeOptions.map((option) => (
+                  {editingModeOptions.map((option) => (
                     <button
                       key={option.editingMode}
                       className={`editor-controls-row editing-mode-option ${option.active ? "active" : ""}`}
@@ -222,7 +232,7 @@ export function DocumentControls({
               <section className="editor-controls-section">
                 <h3 className="editor-controls-heading">{controls.viewModeLabel}</h3>
                 <div role="group" aria-label={controls.viewModeLabel}>
-                  {controls.viewModeOptions.map((option) => (
+                  {viewModeOptions.map((option) => (
                     <button
                       key={option.viewMode}
                       className={`editor-controls-row editor-view-option ${option.active ? "active" : ""}`}

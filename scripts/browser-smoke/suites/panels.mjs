@@ -1448,7 +1448,7 @@ export async function run(ctx) {
     const fileActionContract = await page.evaluate(() => ({
       closeTabCount: document.querySelectorAll('.right-file-action[aria-label^="Close tab "]').length,
       moreActionCount: document.querySelectorAll('.right-file-action[aria-label^="More actions for "]').length,
-      copyMarkdownCount: document.querySelectorAll('.right-file-action[aria-label^="Copy Markdown: "]').length,
+      copyFileCount: document.querySelectorAll('.right-file-action[aria-label^="Copy file: "]').length,
       renameCount: document.querySelectorAll('.right-file-action[aria-label^="Rename "]').length,
       duplicateCount: document.querySelectorAll('.right-file-action[aria-label^="Duplicate "]').length,
       deleteCount: document.querySelectorAll('.right-file-action[aria-label^="Delete: "]').length,
@@ -1458,7 +1458,7 @@ export async function run(ctx) {
     }));
     expect(fileActionContract.closeTabCount === 0, "Right Files should leave tab closing to the document tabs.");
     expect(fileActionContract.moreActionCount >= 1, "Right Files should expose a compact more-action menu for each project file.");
-    expect(fileActionContract.copyMarkdownCount >= 1, "File rows should expose Copy Markdown as their primary hover action.");
+    expect(fileActionContract.copyFileCount >= 1, "File rows should expose Copy file as their primary hover action.");
     expect(fileActionContract.deleteCount >= 1, "File rows should expose Delete as a direct hover action.");
     expect(fileActionContract.renameCount === 0, "Right Files should hide rename behind a more-action menu.");
     expect(fileActionContract.duplicateCount === 0, "Right Files should hide duplicate behind a more-action menu.");
@@ -1471,7 +1471,7 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: `Open ${rightFilesActiveTitle}` }).click();
     await waitForRenderFrame(page);
-    await page.getByRole("button", { name: `Copy Markdown: ${rightFilesActiveTitle}` }).click();
+    await page.getByRole("button", { name: `Copy file: ${rightFilesActiveTitle}` }).click();
     await page.getByRole("region", { name: "Document toolbar" }).hover();
     await page.waitForFunction((actionLabel) => {
       const button = Array.from(document.querySelectorAll(".right-file-action"))

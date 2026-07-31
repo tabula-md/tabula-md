@@ -66,7 +66,7 @@ export const jaWorkspaceInterfaceMessages = {
     filesSharedInRoom: "このルームで共有中",
     filesLocalDocument: "ローカルドキュメント",
     filesDuplicate: "複製",
-    filesCopyMarkdown: "Markdown をコピー",
+    filesCopyMarkdown: "ファイルをコピー",
     filesCollapseAll: "すべてのフォルダーを折りたたむ",
     filesExpandAll: "すべてのフォルダーを展開",
     filesOpenMarkdown: "Markdownファイルを開く",

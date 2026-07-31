@@ -23,6 +23,12 @@ export type KnowledgeProfileDefinition = {
 
 export const KNOWLEDGE_PROFILE_REGISTRY = [
   {
+    id: "commonmark",
+    label: "CommonMark",
+    kind: "syntax",
+    supportLevels: ["preserve", "understand", "edit", "validate"],
+  },
+  {
     id: "gfm",
     label: "GitHub Flavored Markdown",
     kind: "syntax",
@@ -59,6 +65,12 @@ export const KNOWLEDGE_PROFILE_REGISTRY = [
     supportLevels: ["preserve", "understand", "edit", "validate"],
   },
   {
+    id: "okf-like",
+    label: "OKF-like typed knowledge",
+    kind: "schema",
+    supportLevels: ["preserve", "understand", "edit"],
+  },
+  {
     id: "llm-wiki",
     label: "LLM Wiki",
     kind: "workflow",
@@ -80,13 +92,13 @@ export const KNOWLEDGE_PROFILE_REGISTRY = [
     id: "agent-skills",
     label: "Agent Skills",
     kind: "agent-instruction",
-    supportLevels: ["preserve", "understand"],
+    supportLevels: ["preserve", "understand", "edit", "validate"],
   },
   {
     id: "llms-txt",
     label: "llms.txt",
     kind: "delivery",
-    supportLevels: ["preserve"],
+    supportLevels: ["preserve", "understand", "edit", "validate"],
   },
   {
     id: "graphrag",
