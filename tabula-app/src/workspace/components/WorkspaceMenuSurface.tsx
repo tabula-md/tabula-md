@@ -24,6 +24,7 @@ export type WorkspaceMenuSurfaceProps = {
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
+  onOpenLiveWorkspace?: () => void;
   onClearWorkspace: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
@@ -48,6 +49,7 @@ export function WorkspaceMenuSurface({
   onCloseChrome,
   onImportFileChange,
   onImportWorkspaceChange,
+  onOpenLiveWorkspace,
   onClearWorkspace,
   onExportFile,
   onExportWorkspace,
@@ -77,7 +79,6 @@ export function WorkspaceMenuSurface({
         ref={workspaceImportInputRef}
         className="ui-input-surface workspace-file-input"
         type="file"
-        accept=".md,text/markdown"
         multiple
         {...{ webkitdirectory: "" }}
         onChange={onImportWorkspaceChange}
@@ -100,6 +101,9 @@ export function WorkspaceMenuSurface({
           onCloseChrome();
           workspaceImportInputRef.current?.click();
         } : undefined}
+        onOpenLiveWorkspace={canClearWorkspace
+          ? onOpenLiveWorkspace
+          : undefined}
         canExportFile={canExportFile}
         canExportWorkspace={canExportWorkspace}
         onExportFile={() => {

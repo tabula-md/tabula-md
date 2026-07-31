@@ -777,3 +777,48 @@ export {
   planWorkspaceOkfConformance,
   TABULA_GENERATED_OKF_INDEX_MARKER,
 } from "./workspaceOkfConformance";
+
+export type {
+  KnowledgeProfileDefinition,
+  KnowledgeProfileKind,
+  KnowledgeSupportLevel,
+} from "./knowledgeProfileRegistry";
+export {
+  KNOWLEDGE_PROFILE_REGISTRY,
+  getKnowledgeProfileDefinition,
+} from "./knowledgeProfileRegistry";
+
+export type {
+  WorkspaceArtifact,
+  WorkspaceArtifactContent,
+  WorkspaceArtifactDraft,
+  WorkspaceArtifactKind,
+} from "./workspaceArtifact";
+export {
+  cloneWorkspaceArtifact,
+  createWorkspaceArtifact,
+  getWorkspaceArtifactBytes,
+  getWorkspaceArtifactKind,
+  getWorkspaceArtifactMediaType,
+  hashWorkspaceArtifactContent,
+  isWorkspaceArtifactEditable,
+} from "./workspaceArtifact";
+
+export type {
+  ArtifactChange,
+  ExternalArtifactChange,
+  ExternalChangeResolution,
+  ExternalChangeResult,
+  WorkspaceSnapshot,
+  WorkspaceSource,
+  WorkspaceSourceAdapter,
+  WorkspaceSourceCapabilities,
+  WorkspaceSourceKind,
+  WriteResult,
+} from "./workspaceSource";
+export {
+  createBrowserCopySourceAdapter,
+  createImportedArchiveSourceAdapter,
+  getExternalArtifactChanges,
+  planExternalChangeResolution,
+} from "./workspaceSource";

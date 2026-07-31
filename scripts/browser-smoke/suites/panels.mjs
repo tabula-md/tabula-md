@@ -134,7 +134,7 @@ export async function run(ctx) {
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the side panel.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New document|Import document (.md)…|Open folder…|Export document (.md)|Export workspace (.zip)|Preferences|About|Help|Follow us|GitHub|Clear local workspace…",
+        "New document|Import document (.md)…|Open folder…|Connect local folder…|Export document (.md)|Export workspace (.zip)|Preferences|About|Help|Follow us|GitHub|Clear local workspace…",
       "The workspace menu should expose file entry points, preferences, support, and public links without duplicating Share.",
     );
     const xPublicLink = workbenchPanels.publicLinks.find((link) => link.text === "Follow us");

@@ -6,6 +6,7 @@ import {
   FileOutput,
   FilePlus2,
   FolderArchive,
+  FolderSync,
   FolderInput,
   HelpCircle,
   Github,
@@ -36,6 +37,7 @@ type WorkspaceMenuProps = {
   onAddFile: () => void;
   onImportFile: () => void;
   onImportWorkspace?: () => void;
+  onOpenLiveWorkspace?: () => void;
   onExportFile: () => void;
   onExportWorkspace: () => void;
   canExportFile: boolean;
@@ -124,6 +126,7 @@ export function WorkspaceMenu({
   onAddFile,
   onImportFile,
   onImportWorkspace,
+  onOpenLiveWorkspace,
   onExportFile,
   onExportWorkspace,
   canExportFile,
@@ -176,6 +179,11 @@ export function WorkspaceMenu({
         {onImportWorkspace && (
           <MenuRow icon={<FolderInput size={16} />} onClick={onImportWorkspace}>
             {copy.actions.importWorkspace}
+          </MenuRow>
+        )}
+        {onOpenLiveWorkspace && (
+          <MenuRow icon={<FolderSync size={16} />} onClick={onOpenLiveWorkspace}>
+            {copy.actions.openLiveWorkspace}
           </MenuRow>
         )}
         <div className="workspace-menu-divider" role="separator" />

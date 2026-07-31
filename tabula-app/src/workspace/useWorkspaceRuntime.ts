@@ -802,17 +802,25 @@ export function useWorkspaceRuntime() {
     confirmWorkspaceArchiveExport,
     downloadCurrentFile,
     downloadWorkspaceArchive,
+    disconnectLiveWorkspaceFolder,
     emptyDropActive,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDrop,
     handleImportInputChange,
     handleWorkspaceImportInputChange,
+    isLiveFolderSupported,
     jsonShareImport,
+    keepTabulaLiveFolderVersion,
+    liveFolderConflict,
+    mergeLiveFolderConflictManually,
+    openLiveWorkspaceFolder,
     workspaceExportReview,
     workspaceFolderImport,
+    workspaceSourceKind,
     replaceWorkspaceWithFolder,
     replaceWorkspaceWithJsonShare,
+    useExternalLiveFolderVersion,
   } = useWorkspaceIoController({
     activeFile,
     isRoomSession: Boolean(activeRoom),
@@ -994,6 +1002,7 @@ export function useWorkspaceRuntime() {
   } = workspaceCommentActions;
   const clearLocalWorkspace = useEventCallback(() => {
     if (activeRoom) return;
+    disconnectLiveWorkspaceFolder();
     handleUserWorkspaceBoundary();
     const starterWorkspace = createStarterWorkspaceState();
     replaceWorkspace(starterWorkspace);
@@ -1025,6 +1034,9 @@ export function useWorkspaceRuntime() {
     onCloseChrome: closeFloatingChrome,
     onImportFileChange: handleImportInputChange,
     onImportWorkspaceChange: handleWorkspaceImportInputChange,
+    onOpenLiveWorkspace: isLiveFolderSupported
+      ? openLiveWorkspaceFolder
+      : undefined,
     onOpenAbout: openAbout,
     onOpenHelp: openHelp,
     preferences: workspacePreferences,
@@ -1334,6 +1346,10 @@ export function useWorkspaceRuntime() {
       workbench: workbenchProps,
     },
     workspaceSession: {
+      sourceKind:
+        workspaceSession.mode === "room"
+          ? workspaceSession.source.kind
+          : workspaceSourceKind,
       emptySurface: {
         dropActive: emptyDropActive,
         language: workspacePreferences.language,
@@ -1360,6 +1376,7 @@ export function useWorkspaceRuntime() {
       workspace: {
         infoDialog,
         jsonShareImport,
+        liveFolderConflict,
         workspaceFolderImport,
         workspaceExportReview,
         language: workspacePreferences.language,
@@ -1374,6 +1391,10 @@ export function useWorkspaceRuntime() {
         onCloseJsonShareImport: closeJsonShareImport,
         onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
         onReplaceWorkspaceWithFolder: replaceWorkspaceWithFolder,
+        onKeepTabulaLiveFolderVersion: keepTabulaLiveFolderVersion,
+        onMergeLiveFolderConflictManually:
+          mergeLiveFolderConflictManually,
+        onUseExternalLiveFolderVersion: useExternalLiveFolderVersion,
         onConfirmWorkspaceExport: confirmWorkspaceArchiveExport,
         onReviewWorkspaceExportIssues: reviewWorkspaceExportIssues,
       },

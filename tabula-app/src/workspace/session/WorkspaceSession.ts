@@ -1,4 +1,5 @@
 import type { LocationRoom } from "../workspaceStorage";
+import type { WorkspaceSource } from "@tabula-md/tabula";
 import type { WorkspaceRoomRuntime } from "../../collaboration/liveCollaboration";
 import {
   useRoomWorkspaceStore,
@@ -14,6 +15,7 @@ export type RoomWorkspaceBootstrap = {
 
 export type LocalWorkspaceSession = {
   readonly mode: "local";
+  readonly source: WorkspaceSource;
   readonly follow: FollowStore;
   readonly viewStore: WorkspaceStoreBinding;
   dispose(): void;
@@ -21,6 +23,7 @@ export type LocalWorkspaceSession = {
 
 export type RoomWorkspaceSession = {
   readonly mode: "room";
+  readonly source: WorkspaceSource;
   readonly origin: "created" | "joined";
   readonly room: LocationRoom;
   readonly follow: FollowStore;
@@ -38,6 +41,7 @@ export const createLocalWorkspaceSession = (): LocalWorkspaceSession => {
   const follow = createFollowStore();
   return {
     mode: "local",
+    source: { id: "browser-copy", kind: "browser-copy" },
     follow,
     viewStore: useWorkspaceStore,
     dispose: () => follow.dispose(),
@@ -59,6 +63,11 @@ export const createRoomWorkspaceSession = (
 
   return {
     mode: "room",
+    source: {
+      id: room.roomId,
+      kind: "collaboration-room",
+      label: "Live collaboration",
+    },
     origin,
     room,
     follow,

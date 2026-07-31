@@ -14,6 +14,7 @@ import {
   type FileEditingMode,
   type FileViewMode,
   type ReadingWidth,
+  type WorkspaceArtifactKind,
   type WorkspaceKnowledgeBaseline,
 } from "@tabula-md/tabula";
 import { PRODUCT_NAME } from "../product";
@@ -79,6 +80,15 @@ export type WorkspaceFile = {
   lineWrapping: boolean;
   lineNumbers: boolean;
   bookmarks?: FileBookmark[];
+  artifact?: WorkspaceFileArtifactMetadata;
+};
+
+export type WorkspaceFileArtifactMetadata = {
+  kind: WorkspaceArtifactKind;
+  mediaType?: string;
+  contentKind: "text" | "binary";
+  sourceHash: string;
+  editable: boolean;
 };
 
 export const WORKSPACE_ROOT_FOLDER_ID = "workspace-root";
@@ -142,6 +152,7 @@ export type StoredWorkspaceFile = {
   lineWrapping: boolean;
   lineNumbers: boolean;
   bookmarks?: FileBookmark[];
+  artifact?: WorkspaceFileArtifactMetadata;
 };
 
 export type StoredProjectV7 = {
@@ -287,6 +298,37 @@ const getFileEditingModeValue = (value: unknown): FileEditingMode | undefined =>
 const getReadingWidth = (value: unknown): ReadingWidth | undefined =>
   typeof value === "string" && READING_WIDTHS.includes(value as ReadingWidth) ? (value as ReadingWidth) : undefined;
 
+const normalizeWorkspaceFileArtifactMetadata = (
+  value: unknown,
+): WorkspaceFileArtifactMetadata | undefined => {
+  if (!isRecord(value)) return undefined;
+  const kind = typeof value.kind === "string" &&
+      ["document", "asset", "instruction", "support"].includes(value.kind)
+    ? value.kind as WorkspaceArtifactKind
+    : undefined;
+  const contentKind =
+    value.contentKind === "text" || value.contentKind === "binary"
+      ? value.contentKind
+      : undefined;
+  if (
+    !kind ||
+    !contentKind ||
+    typeof value.sourceHash !== "string" ||
+    typeof value.editable !== "boolean"
+  ) {
+    return undefined;
+  }
+  return {
+    kind,
+    contentKind,
+    sourceHash: value.sourceHash,
+    editable: value.editable,
+    ...(typeof value.mediaType === "string"
+      ? { mediaType: value.mediaType }
+      : {}),
+  };
+};
+
 const normalizeFileBookmarks = (bookmarks: unknown, textLength: number): FileBookmark[] => {
   if (!Array.isArray(bookmarks)) {
     return [];
@@ -329,6 +371,7 @@ const normalizeWorkspaceFile = (value: unknown, index: number): WorkspaceFile | 
     lineWrapping: typeof value.lineWrapping === "boolean" ? value.lineWrapping : true,
     lineNumbers: typeof value.lineNumbers === "boolean" ? value.lineNumbers : true,
     bookmarks: normalizeFileBookmarks(value.bookmarks, text.length),
+    artifact: normalizeWorkspaceFileArtifactMetadata(value.artifact),
   };
 };
 
@@ -600,6 +643,7 @@ export const serializeFile = (file: WorkspaceFile): StoredWorkspaceFile => {
     lineWrapping: file.lineWrapping,
     lineNumbers: file.lineNumbers,
     bookmarks: file.bookmarks ?? [],
+    artifact: file.artifact,
   };
 };
 
