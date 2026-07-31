@@ -1,5 +1,7 @@
 import {
   getOkfFreshness,
+  type AgentInstructionReport,
+  type AgentInstructionChange,
   type WorkspaceKnowledgeHealthIssue,
   type WorkspaceKnowledgeHealthReport,
   type WorkspaceKnowledgeIndex,
@@ -56,6 +58,9 @@ export function RightPanelKnowledgeContext({
   healthReport,
   index,
   onSelectHealthIssue,
+  agentInstructions,
+  onSelectFile,
+  instructionChanges,
 }: {
   activeFileId: string;
   activeFileTitle: string;
@@ -64,6 +69,9 @@ export function RightPanelKnowledgeContext({
   healthReport?: WorkspaceKnowledgeHealthReport;
   index?: WorkspaceKnowledgeIndex;
   onSelectHealthIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
+  agentInstructions?: AgentInstructionReport;
+  onSelectFile: (fileId: string) => void;
+  instructionChanges?: readonly AgentInstructionChange[];
 }) {
   const analysis = index?.analysesByDocumentId.get(activeFileId);
   const metadata = analysis?.knowledgeMetadata;
@@ -77,6 +85,20 @@ export function RightPanelKnowledgeContext({
   const issues = healthReport?.issues.filter(
     (issue) => issue.documentId === activeFileId,
   ) ?? [];
+  const instructionApplication = agentInstructions?.applications.find(
+    (application) => application.documentId === activeFileId,
+  );
+  const instructionConflict = agentInstructions?.issues.some(
+    (issue) =>
+      issue.code === "agents_scope_conflict_candidate"
+      && issue.documentId === activeFileId,
+  );
+  const activeSkill = agentInstructions?.skills.find(
+    (skill) => skill.documentId === activeFileId,
+  );
+  const instructionChange = instructionChanges?.find(
+    (change) => change.path === analysis?.path,
+  );
   return (
     <section className="right-knowledge-context" aria-label={copy.documentContext}>
       {!analysis || !metadata ? (
@@ -87,6 +109,64 @@ export function RightPanelKnowledgeContext({
             <h2>{analysis.title || activeFileTitle}</h2>
             <p>{analysis.path}</p>
           </header>
+
+          <section className="right-knowledge-context-section">
+            <h3>
+              <span>{copy.applicableInstructions}</span>
+              {(instructionApplication?.instructions.length ?? 0) > 0 && (
+                <span>{instructionApplication?.instructions.length}</span>
+              )}
+            </h3>
+            {instructionApplication?.instructions.length ? (
+              <div className="right-knowledge-issue-list">
+                {instructionApplication.instructions.map((instruction) => (
+                  <button
+                    type="button"
+                    key={instruction.documentId}
+                    onClick={() => onSelectFile(instruction.documentId)}
+                  >
+                    <span>
+                      {instruction.kind === "agents"
+                        ? copy.agentsInstruction
+                        : copy.claudeSteering}
+                      <small>
+                        {instruction.path}
+                        {instruction.vendorSpecific
+                          ? ` · ${copy.vendorSpecific}`
+                          : ""}
+                      </small>
+                    </span>
+                    <ChevronRight size={14} aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p>{copy.noApplicableInstructions}</p>
+            )}
+            {instructionConflict && (
+              <p className="right-knowledge-instruction-warning">
+                {copy.instructionConflict}
+              </p>
+            )}
+            {activeSkill && (
+              <div className="right-knowledge-skill-status">
+                <strong>{copy.skillDefinition}</strong>
+                <span>
+                  {activeSkill.trust === "unreviewed"
+                    ? copy.unreviewedSkill
+                    : activeSkill.name}
+                </span>
+                <small>{copy.scriptsNotExecuted}</small>
+              </div>
+            )}
+            {instructionChange && (
+              <div className="right-knowledge-skill-status">
+                <strong>{copy.instructionChanged}</strong>
+                <span>{instructionChange.kind}</span>
+                <small>{copy.instructionChangedDescription}</small>
+              </div>
+            )}
+          </section>
 
           {metadata.description && (
             <section className="right-knowledge-context-section">

@@ -163,6 +163,10 @@ const getDefaultEvidenceLabel = (value: WorkspaceImportEvidence) => {
       return `${count(value)} Agent Skill ${count(value) === 1 ? "file" : "files"} found.`;
     case "llms-files":
       return `${count(value)} llms.txt ${count(value) === 1 ? "file" : "files"} found.`;
+    case "llms-validation-issues":
+      return `${count(value)} llms.txt ${count(value) === 1 ? "issue needs" : "issues need"} review.`;
+    case "llms-external-links":
+      return `${count(value)} external llms.txt ${count(value) === 1 ? "link" : "links"} found.`;
     default:
       return value.code;
   }

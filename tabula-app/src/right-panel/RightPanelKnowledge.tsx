@@ -3,6 +3,7 @@ import {
   createWorkspaceKnowledgeIndex,
   getWorkspaceKnowledgeHealth,
   getWorkspaceKnowledgeHealthDelta,
+  getAgentInstructionChanges,
   planWorkspaceOkfLog,
   planWorkspaceOkfConformance,
   type OkfCompatibilityReport,
@@ -90,6 +91,20 @@ export function RightPanelKnowledge({
     },
     [index, knowledgeBaseline],
   );
+  const instructionChanges = useMemo(
+    () => {
+      if (!knowledgeBaseline || !index) return undefined;
+      try {
+        return getAgentInstructionChanges(
+          createWorkspaceKnowledgeIndex(knowledgeBaseline.documents),
+          index,
+        );
+      } catch {
+        return undefined;
+      }
+    },
+    [index, knowledgeBaseline],
+  );
   const conformancePlan = useMemo(
     () => index && compatibilityReport
       ? planWorkspaceOkfConformance(index, compatibilityReport)
@@ -125,11 +140,14 @@ export function RightPanelKnowledge({
           <RightPanelKnowledgeContext
             activeFileId={activeFileId}
             activeFileTitle={activeFileTitle}
+            agentInstructions={compatibilityReport?.agentInstructions}
             compatibilityCopy={compatibilityCopy}
             copy={knowledgeCopy}
             healthReport={healthReport}
             index={index}
+            instructionChanges={instructionChanges}
             onSelectHealthIssue={onSelectHealthIssue}
+            onSelectFile={onSelectFile}
           />
         </section>
       ) : (

@@ -187,6 +187,43 @@
   font-size: var(--font-ui-secondary);
 }
 
+.right-knowledge-issue-list button > span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.right-knowledge-issue-list button small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-knowledge-context-section > .right-knowledge-instruction-warning {
+  color: var(--attention);
+}
+
+.right-knowledge-skill-status {
+  display: grid;
+  gap: 2px;
+  padding: 7px;
+  border-radius: var(--right-row-radius);
+  color: var(--text-soft);
+  background: var(--surface-muted);
+  font-size: var(--font-ui-secondary);
+}
+
+.right-knowledge-skill-status strong {
+  font-weight: var(--weight-ui-medium);
+}
+
+.right-knowledge-skill-status small {
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+}
+
 .knowledge-review-modal-layer {
   padding: clamp(12px, 3vw, 34px);
 }

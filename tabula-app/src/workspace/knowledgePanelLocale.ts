@@ -32,6 +32,17 @@ const english = {
   issues: "Needs attention",
   noIssues: "No issues for this document.",
   openSource: "Open source",
+  applicableInstructions: "Applicable agent instructions",
+  noApplicableInstructions: "No scoped instruction file applies.",
+  agentsInstruction: "AGENTS.md instruction",
+  claudeSteering: "CLAUDE.md steering",
+  vendorSpecific: "Vendor-specific",
+  skillDefinition: "Agent Skill",
+  unreviewedSkill: "Imported Skill · unreviewed",
+  scriptsNotExecuted: "Skill scripts are preserved but never run automatically.",
+  instructionConflict: "Potential parent/child instruction conflict",
+  instructionChanged: "Critical instruction change",
+  instructionChangedDescription: "This instruction file changed since knowledge tracking began.",
 };
 
 const korean: typeof english = {
@@ -66,6 +77,17 @@ const korean: typeof english = {
   issues: "확인 필요",
   noIssues: "이 문서에서 확인할 문제가 없습니다.",
   openSource: "근거 자료 열기",
+  applicableInstructions: "현재 적용되는 에이전트 지침",
+  noApplicableInstructions: "현재 범위에 적용되는 instruction 파일이 없습니다.",
+  agentsInstruction: "AGENTS.md 지침",
+  claudeSteering: "CLAUDE.md steering",
+  vendorSpecific: "Vendor 전용",
+  skillDefinition: "Agent Skill",
+  unreviewedSkill: "가져온 Skill · 미검토",
+  scriptsNotExecuted: "Skill script는 보존하지만 자동 실행하지 않습니다.",
+  instructionConflict: "상위·하위 instruction 충돌 가능성",
+  instructionChanged: "중요 instruction 변경",
+  instructionChangedDescription: "지식 변경 추적을 시작한 뒤 이 instruction 파일이 변경되었습니다.",
 };
 
 export type KnowledgePanelCopy = typeof english;

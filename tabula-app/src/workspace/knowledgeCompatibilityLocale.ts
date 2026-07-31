@@ -56,6 +56,28 @@ export type KnowledgeCompatibilityCopy = {
   supportCore: string;
   supportAdvanced: (count: number) => string;
   supportAdvancedPartial: (count: number, runtimes: string) => string;
+  llmsTitle: string;
+  llmsDescription: string;
+  llmsOptional: string;
+  llmsPrivateExcluded: (count: number) => string;
+  llmsIncluded: (count: number) => string;
+  llmsDownload: string;
+  llmsPreview: string;
+  interchangeTitle: string;
+  interchangeDescription: string;
+  interchangeBaseIri: string;
+  interchangeBaseRequired: string;
+  interchangeFormat: string;
+  interchangeMapped: (count: number) => string;
+  interchangeLosses: (count: number) => string;
+  interchangePartial: string;
+  interchangeDownload: string;
+  interchangeImport: string;
+  interchangeImportDescription: string;
+  interchangeChooseFile: string;
+  interchangeImportMapped: (count: number) => string;
+  interchangeImportInvalid: string;
+  interchangeNoWrite: string;
   requiredChanges: (count: number) => string;
   portabilityWarnings: (count: number) => string;
   requiredSection: string;
@@ -648,6 +670,96 @@ const migrationCopies: Record<WorkspaceLanguage, KnowledgeMigrationMessages> = {
   },
 };
 
+type KnowledgeDeliveryMessages = {
+  title: string;
+  description: string;
+  optional: string;
+  privateExcluded: string;
+  included: string;
+  download: string;
+  preview: string;
+};
+
+const deliveryCopies: Partial<Record<WorkspaceLanguage, KnowledgeDeliveryMessages>> & {
+  en: KnowledgeDeliveryMessages;
+} = {
+  en: {
+    title: "llms.txt delivery",
+    description: "Select documents for a generated delivery index. The workspace and any existing llms.txt stay unchanged.",
+    optional: "Optional",
+    privateExcluded: "{{count}} private documents excluded by default",
+    included: "{{count}} documents included",
+    download: "Download generated llms.txt",
+    preview: "Generated preview",
+  },
+  ko: {
+    title: "llms.txt 배포",
+    description: "배포용 목차에 넣을 문서를 선택합니다. 워크스페이스와 기존 llms.txt는 변경하지 않습니다.",
+    optional: "선택 사항",
+    privateExcluded: "비공개 문서 {{count}}개 기본 제외",
+    included: "포함 문서 {{count}}개",
+    download: "생성된 llms.txt 다운로드",
+    preview: "생성 미리보기",
+  },
+};
+
+type KnowledgeInterchangeMessages = {
+  title: string;
+  description: string;
+  baseIri: string;
+  baseRequired: string;
+  format: string;
+  mapped: string;
+  losses: string;
+  partial: string;
+  download: string;
+  importTitle: string;
+  importDescription: string;
+  chooseFile: string;
+  importMapped: string;
+  importInvalid: string;
+  noWrite: string;
+};
+
+const interchangeCopies: Partial<
+  Record<WorkspaceLanguage, KnowledgeInterchangeMessages>
+> & { en: KnowledgeInterchangeMessages } = {
+  en: {
+    title: "Knowledge interchange",
+    description: "Export reviewed JSON-LD or SKOS mappings. Markdown remains the source of truth.",
+    baseIri: "Canonical base IRI",
+    baseRequired: "Enter a valid absolute base IRI",
+    format: "Interchange format",
+    mapped: "{{count}} concepts mapped",
+    losses: "{{count}} mapping limitations",
+    partial: "Partial round-trip · source unchanged",
+    download: "Download mapping",
+    importTitle: "JSON-LD import preview",
+    importDescription: "Inspect proposed Markdown mappings without writing files or loading remote contexts.",
+    chooseFile: "Choose JSON-LD",
+    importMapped: "{{count}} concepts ready for review",
+    importInvalid: "This file cannot be mapped",
+    noWrite: "Preview only. No Markdown file or RDF store was created.",
+  },
+  ko: {
+    title: "지식 교환",
+    description: "검토 가능한 JSON-LD 또는 SKOS 매핑을 내보냅니다. 원본은 계속 Markdown입니다.",
+    baseIri: "Canonical base IRI",
+    baseRequired: "유효한 절대 base IRI를 입력하세요",
+    format: "교환 형식",
+    mapped: "매핑된 concept {{count}}개",
+    losses: "매핑 한계 {{count}}개",
+    partial: "부분 round-trip · 원본 변경 없음",
+    download: "매핑 다운로드",
+    importTitle: "JSON-LD 가져오기 미리보기",
+    importDescription: "파일을 쓰거나 원격 context를 불러오지 않고 Markdown 매핑 후보를 검토합니다.",
+    chooseFile: "JSON-LD 선택",
+    importMapped: "검토할 concept {{count}}개",
+    importInvalid: "매핑할 수 없는 파일입니다",
+    noWrite: "미리보기 전용입니다. Markdown 파일이나 RDF 저장소를 만들지 않았습니다.",
+  },
+};
+
 const copies: Record<WorkspaceLanguage, KnowledgeCompatibilityMessages> = {
   en: {
     open: "Check knowledge base compatibility",
@@ -971,6 +1083,8 @@ export const getKnowledgeCompatibilityCopy = (
   const actions = actionCopies[language] ?? actionCopies.en;
   const detectionCopy = detectionCopies[language];
   const migrationCopy = migrationCopies[language];
+  const deliveryCopy = deliveryCopies[language] ?? deliveryCopies.en;
+  const interchangeCopy = interchangeCopies[language] ?? interchangeCopies.en;
   return {
     open: copy.open,
     back: copy.back,
@@ -1004,6 +1118,33 @@ export const getKnowledgeCompatibilityCopy = (
       formatMessage(migrationCopy.supportAdvanced, { count }),
     supportAdvancedPartial: (count, runtimes) =>
       formatMessage(migrationCopy.supportAdvancedPartial, { count, runtimes }),
+    llmsTitle: deliveryCopy.title,
+    llmsDescription: deliveryCopy.description,
+    llmsOptional: deliveryCopy.optional,
+    llmsPrivateExcluded: (count) =>
+      formatMessage(deliveryCopy.privateExcluded, { count }),
+    llmsIncluded: (count) =>
+      formatMessage(deliveryCopy.included, { count }),
+    llmsDownload: deliveryCopy.download,
+    llmsPreview: deliveryCopy.preview,
+    interchangeTitle: interchangeCopy.title,
+    interchangeDescription: interchangeCopy.description,
+    interchangeBaseIri: interchangeCopy.baseIri,
+    interchangeBaseRequired: interchangeCopy.baseRequired,
+    interchangeFormat: interchangeCopy.format,
+    interchangeMapped: (count) =>
+      formatMessage(interchangeCopy.mapped, { count }),
+    interchangeLosses: (count) =>
+      formatMessage(interchangeCopy.losses, { count }),
+    interchangePartial: interchangeCopy.partial,
+    interchangeDownload: interchangeCopy.download,
+    interchangeImport: interchangeCopy.importTitle,
+    interchangeImportDescription: interchangeCopy.importDescription,
+    interchangeChooseFile: interchangeCopy.chooseFile,
+    interchangeImportMapped: (count) =>
+      formatMessage(interchangeCopy.importMapped, { count }),
+    interchangeImportInvalid: interchangeCopy.importInvalid,
+    interchangeNoWrite: interchangeCopy.noWrite,
     requiredChanges: (count) => formatMessage(
       count === 1 ? copy.requiredChange : copy.requiredChanges,
       { count },

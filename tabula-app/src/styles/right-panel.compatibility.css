@@ -935,6 +935,79 @@
   color: var(--attention);
 }
 
+.right-llms-document-list {
+  display: grid;
+  gap: 2px;
+}
+
+.right-llms-document-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--right-tight-gap);
+  min-height: 42px;
+  padding: 4px var(--right-row-x);
+  border-radius: var(--right-row-radius);
+}
+
+.right-llms-document-row:hover {
+  background: var(--surface-muted);
+}
+
+.right-llms-document-row > span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.right-llms-document-row strong,
+.right-llms-document-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-llms-document-row strong {
+  color: var(--text-soft);
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-regular);
+}
+
+.right-llms-document-row small {
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+}
+
+.right-llms-document-row > button:last-child {
+  min-height: 26px;
+  padding: 0 7px;
+  border-radius: var(--right-row-radius);
+  color: var(--text-muted);
+  background: transparent;
+  font-size: var(--font-ui-caption);
+}
+
+.right-llms-document-row > button:last-child.active {
+  color: var(--text-primary);
+  background: var(--surface-workbench);
+}
+
+.right-llms-preview {
+  display: block;
+  padding: 9px;
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+  font-size: var(--font-ui-caption);
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.right-compatibility-apply-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .right-compatibility-diff {
   display: grid;
   gap: 5px;
@@ -1215,4 +1288,127 @@
   padding: 0 var(--right-row-x);
   color: var(--text-muted);
   font-size: var(--font-ui-secondary);
+}
+
+.right-interchange-base {
+  display: grid;
+  gap: 4px;
+  padding: 0 var(--right-row-x);
+  color: var(--text-soft);
+  font-size: var(--font-ui-secondary);
+}
+
+.right-interchange-base input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--right-row-radius);
+  color: var(--text-primary);
+  background: var(--surface-muted);
+  font: inherit;
+}
+
+.right-interchange-formats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin: 0 var(--right-row-x);
+  padding: 2px;
+  border-radius: var(--right-row-radius);
+  background: var(--surface-muted);
+}
+
+.right-interchange-formats button {
+  min-height: 28px;
+  border-radius: calc(var(--right-row-radius) - 2px);
+  color: var(--text-muted);
+}
+
+.right-interchange-formats button.active {
+  color: var(--text-primary);
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-control);
+}
+
+.right-compatibility-apply-row button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.right-interchange-import {
+  display: flex;
+  align-items: center;
+  gap: var(--right-tight-gap);
+  padding: 6px var(--right-row-x) 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.right-interchange-import > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.right-interchange-import strong,
+.right-interchange-preview strong {
+  color: var(--text-primary);
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-medium);
+}
+
+.right-interchange-import small,
+.right-interchange-preview small,
+.right-interchange-preview span,
+.right-interchange-preview p {
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  line-height: 1.4;
+}
+
+.right-interchange-upload {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 5px;
+  min-height: 30px;
+  margin-left: auto;
+  padding: 0 9px;
+  border-radius: var(--right-row-radius);
+  color: var(--text-primary);
+  background: var(--surface-muted);
+  cursor: pointer;
+  font-size: var(--font-ui-secondary);
+}
+
+.right-interchange-upload:hover,
+.right-interchange-upload:focus-within {
+  background: var(--surface-hover);
+}
+
+.right-interchange-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.right-interchange-preview {
+  display: grid;
+  gap: 3px;
+  margin: 0 var(--right-row-x);
+  padding: 8px;
+  border-radius: var(--right-row-radius);
+  background: var(--surface-muted);
+}
+
+.right-interchange-preview small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
 }

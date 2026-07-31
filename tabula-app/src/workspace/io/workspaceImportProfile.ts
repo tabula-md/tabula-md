@@ -34,7 +34,9 @@ export type WorkspaceImportEvidenceCode =
   | "agents-files"
   | "claude-files"
   | "skill-files"
-  | "llms-files";
+  | "llms-files"
+  | "llms-validation-issues"
+  | "llms-external-links";
 
 export type WorkspaceImportEvidence = {
   code: WorkspaceImportEvidenceCode;

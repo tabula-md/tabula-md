@@ -813,6 +813,34 @@ export type {
 export {
   analyzeLlmWikiWorkflow,
 } from "./workspaceLlmWikiProfile";
+export type {
+  AgentInstructionApplication,
+  AgentInstructionChange,
+  AgentInstructionDocument,
+  AgentInstructionIssue,
+  AgentInstructionIssueCode,
+  AgentInstructionKind,
+  AgentInstructionOptions,
+  AgentInstructionReport,
+  AgentInstructionTrust,
+  AgentSkillReport,
+} from "./workspaceAgentInstructions";
+export {
+  analyzeWorkspaceAgentInstructions,
+  getAgentInstructionChanges,
+} from "./workspaceAgentInstructions";
+export type {
+  LlmsTxtExportCandidate,
+  LlmsTxtExportOptions,
+  LlmsTxtExportSection,
+  LlmsTxtValidationIssue,
+  LlmsTxtValidationIssueCode,
+  LlmsTxtValidationReport,
+} from "./workspaceLlmsTxt";
+export {
+  planLlmsTxtExport,
+  validateLlmsTxt,
+} from "./workspaceLlmsTxt";
 
 export type {
   OkfConceptTypeUpdateFailure,
@@ -926,3 +954,32 @@ export {
   getExternalArtifactChanges,
   planExternalChangeResolution,
 } from "./workspaceSource";
+
+export type {
+  DerivedKnowledgeIndex,
+  DerivedKnowledgeIndexDelta,
+  KnowledgeIndexAdapter,
+  KnowledgeQuery,
+  KnowledgeResult,
+  KnowledgeSourceRange,
+  KnowledgeSourceReference,
+} from "./derivedKnowledgeIndex";
+export {
+  createFullTextKnowledgeIndexAdapter,
+} from "./derivedKnowledgeIndex";
+
+export type {
+  JsonLdImportCandidate,
+  JsonLdImportPreview,
+  JsonLdValue,
+  KnowledgeInterchangeExport,
+  KnowledgeInterchangeExportOptions,
+  KnowledgeInterchangeLoss,
+  KnowledgeInterchangeLossCode,
+  KnowledgeInterchangeMapping,
+} from "./knowledgeInterchange";
+export {
+  exportWorkspaceJsonLd,
+  exportWorkspaceSkosConceptScheme,
+  previewJsonLdImport,
+} from "./knowledgeInterchange";

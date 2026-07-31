@@ -421,7 +421,11 @@ export async function run(ctx) {
       "Relationship signals should reopen editing and select the broken link.",
     );
     await openExportPreflight(page, openProjectMenu);
-    await page.getByRole("checkbox", {
+    const portableLinksReview = page.getByRole("region", {
+      name: "Portable links",
+      exact: true,
+    });
+    await portableLinksReview.getByRole("checkbox", {
       name: "Include this change: notes/source.md",
       exact: true,
     }).click();

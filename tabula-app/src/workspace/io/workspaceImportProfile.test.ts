@@ -216,4 +216,29 @@ describe("workspace import profile", () => {
       detectorId: "broken-test-detector",
     }]);
   });
+
+  it("validates an existing llms.txt without rewriting it", () => {
+    const source = [
+      "## Docs",
+      "",
+      "- [Missing](/missing.md)",
+      "- malformed",
+    ].join("\n");
+    const profile = detectWorkspaceImportProfile({
+      documents: [{ id: "guide", path: "guide.md", markdown: "# Guide" }],
+      supportFiles: [{ path: "llms.txt", text: source }],
+      sourcePaths: ["guide.md", "llms.txt"],
+      importedPaths: ["guide.md", "llms.txt"],
+    });
+    const detection = profile.detections.find(
+      (candidate) => candidate.profileId === "llms-txt",
+    );
+
+    expect(detection?.evidence).toContainEqual({
+      code: "llms-validation-issues",
+      count: 3,
+    });
+    expect(profile.deliveries).toEqual(["llms-txt"]);
+    expect(source).toContain("- malformed");
+  });
 });
