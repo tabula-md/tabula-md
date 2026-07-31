@@ -5,6 +5,7 @@
 @import "./styles/tabs.css";
 @import "./styles/workspace-menu.css";
 @import "./styles/file-surface.css";
+@import "./styles/asset-viewer.css";
 @import "./styles/empty-workspace.css";
 @import "./styles/editor-controls.css";
 @import "./styles/editor-code.css";
