@@ -47,7 +47,11 @@ export async function run(ctx) {
     });
     await page.getByRole("dialog", { name: "Open folder" }).waitFor();
     await page.getByRole("button", { name: "Open folder", exact: true }).click();
-    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    await waitForActiveTab(page, { exact: "Guide.md" });
+    expect(
+      (await page.locator(".tab-item").count()) === 1,
+      "Opening a knowledge folder should open one preferred document.",
+    );
 
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Files", exact: true }).click();
