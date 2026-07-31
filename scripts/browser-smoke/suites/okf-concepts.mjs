@@ -175,11 +175,16 @@ export async function run(ctx) {
       exact: true,
     });
     await conceptSearch.fill("dispatches work");
+    const conceptSearchResult = page.getByRole("button", {
+      name: "architecture/runtime",
+      exact: true,
+    });
+    await conceptSearchResult.waitFor();
+    await page.waitForFunction(
+      () => document.querySelectorAll(".right-panel-search-result").length === 1,
+    );
     expect(
-      await page.getByRole("button", {
-        name: "architecture/runtime",
-        exact: true,
-      }).isVisible() &&
+      await conceptSearchResult.isVisible() &&
         (await page.locator(".right-panel-search-result").count()) === 1,
       "Search should retrieve concept body text without turning Knowledge into a catalog.",
     );
