@@ -4,7 +4,7 @@ import { getWorkspaceExportReviewCopy } from "./workspaceExportReviewLocale";
 describe("workspace export review copy", () => {
   it("keeps export choices explicit in Korean", () => {
     const copy = getWorkspaceExportReviewCopy("ko");
-    expect(copy.reviewIssues).toBe("문제 검토");
+    expect(copy.exportAnyway).toBe("그대로 내보내기");
     expect(copy.exportAnyway).toBe("그대로 내보내기");
   });
 

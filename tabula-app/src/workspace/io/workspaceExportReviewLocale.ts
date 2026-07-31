@@ -16,7 +16,6 @@ export type WorkspaceExportReviewCopy = {
   noUnloggedChanges: string;
   unloggedChanges: (count: number) => string;
   cancel: string;
-  reviewIssues: string;
   export: string;
   exportAnyway: string;
 };
@@ -38,7 +37,6 @@ const english: WorkspaceExportReviewCopy = {
   noUnloggedChanges: "No unlogged changes",
   unloggedChanges: (count) => `${count} ${count === 1 ? "change is" : "changes are"} not in log.md`,
   cancel: "Cancel",
-  reviewIssues: "Review issues",
   export: "Export",
   exportAnyway: "Export anyway",
 };
@@ -59,7 +57,6 @@ const korean: WorkspaceExportReviewCopy = {
   noUnloggedChanges: "로그에 반영되지 않은 변경 없음",
   unloggedChanges: (count) => `${count}개 변경이 log.md에 반영되지 않음`,
   cancel: "취소",
-  reviewIssues: "문제 검토",
   export: "내보내기",
   exportAnyway: "그대로 내보내기",
 };
@@ -83,7 +80,6 @@ const copies: Record<WorkspaceLanguage, WorkspaceExportReviewCopy> = {
     noUnloggedChanges: "ログ未記録の変更なし",
     unloggedChanges: (count) => `${count} 件の変更が log.md に未記録`,
     cancel: "キャンセル",
-    reviewIssues: "問題を確認",
     export: "エクスポート",
     exportAnyway: "そのままエクスポート",
   },
@@ -103,7 +99,6 @@ const copies: Record<WorkspaceLanguage, WorkspaceExportReviewCopy> = {
     noUnloggedChanges: "没有未记录的更改",
     unloggedChanges: (count) => `${count} 项更改尚未写入 log.md`,
     cancel: "取消",
-    reviewIssues: "检查问题",
     export: "导出",
     exportAnyway: "仍然导出",
   },
@@ -123,7 +118,6 @@ const copies: Record<WorkspaceLanguage, WorkspaceExportReviewCopy> = {
     noUnloggedChanges: "No hay cambios sin registrar",
     unloggedChanges: (count) => `${count} ${count === 1 ? "cambio no está" : "cambios no están"} en log.md`,
     cancel: "Cancelar",
-    reviewIssues: "Revisar problemas",
     export: "Exportar",
     exportAnyway: "Exportar de todos modos",
   },
@@ -143,7 +137,6 @@ const copies: Record<WorkspaceLanguage, WorkspaceExportReviewCopy> = {
     noUnloggedChanges: "Aucune modification non journalisée",
     unloggedChanges: (count) => `${count} ${count === 1 ? "modification absente" : "modifications absentes"} de log.md`,
     cancel: "Annuler",
-    reviewIssues: "Vérifier les problèmes",
     export: "Exporter",
     exportAnyway: "Exporter quand même",
   },
@@ -163,7 +156,6 @@ const copies: Record<WorkspaceLanguage, WorkspaceExportReviewCopy> = {
     noUnloggedChanges: "Keine nicht protokollierten Änderungen",
     unloggedChanges: (count) => `${count} ${count === 1 ? "Änderung fehlt" : "Änderungen fehlen"} in log.md`,
     cancel: "Abbrechen",
-    reviewIssues: "Probleme prüfen",
     export: "Exportieren",
     exportAnyway: "Trotzdem exportieren",
   },

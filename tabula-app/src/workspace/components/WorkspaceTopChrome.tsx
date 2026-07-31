@@ -186,7 +186,6 @@ export function WorkspaceTopChrome({
       )}
     </>
   );
-
   return (
     <TopChrome
       workspaceMenuOpen={workspaceMenuOpen}

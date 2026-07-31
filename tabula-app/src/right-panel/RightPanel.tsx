@@ -4,11 +4,10 @@ import {
   type ReactNode,
   type RefObject,
   useMemo,
-  useState,
 } from "react";
 import {
+  FileSliders,
   Folder,
-  LibraryBig,
   Link2,
   ListTree,
   MessageSquare,
@@ -17,15 +16,9 @@ import {
 } from "lucide-react";
 import {
   getRightPanelCommentGroups,
-  type OkfConceptRepairUpdate,
-  type OkfCompatibilityReport,
-  type OkfIndexCandidate,
-  type OkfWikilinkRepairUpdate,
-  type WorkspaceKnowledgeBaseline,
   type WorkspaceKnowledgeHealthIssue,
   type WorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeLink,
-  type WorkspaceOkfLogCandidate,
 } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
@@ -50,8 +43,8 @@ const RightPanelComments = lazy(() => import("./RightPanelComments").then((modul
 const RightPanelSearch = lazy(() => import("./RightPanelSearch").then((module) => ({
   default: module.RightPanelSearch,
 })));
-const RightPanelKnowledge = lazy(() => import("./RightPanelKnowledge").then((module) => ({
-  default: module.RightPanelKnowledge,
+const RightPanelProperties = lazy(() => import("./RightPanelProperties").then((module) => ({
+  default: module.RightPanelProperties,
 })));
 
 const panelFallback = (
@@ -64,11 +57,8 @@ type RightPanelProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   knowledgeIndex?: WorkspaceKnowledgeIndex;
-  knowledgeCompatibilityReport?: OkfCompatibilityReport;
   knowledgeIndexPending: boolean;
   knowledgeIndexSource: "none" | "worker" | "fallback";
-  knowledgeBaseline?: WorkspaceKnowledgeBaseline;
-  knowledgeCompatibilityOpenRequest: number;
   activeFileId: string;
   activeFileTitle: string;
   isLiveWorkspace: boolean;
@@ -97,13 +87,6 @@ type RightPanelProps = {
     link: WorkspaceKnowledgeLink,
     targetPath: string,
   ) => boolean;
-  onSetActiveFileOkfType: (conceptType: string) => boolean;
-  onApplyOkfConceptRepairs: (updates: readonly OkfConceptRepairUpdate[]) => boolean;
-  onApplyOkfWikilinkRepairs: (updates: readonly OkfWikilinkRepairUpdate[]) => boolean;
-  onVerifyKnowledgeDocument: (documentId: string, verifiedBy: string) => boolean;
-  onMaterializeOkfIndex: (candidate: OkfIndexCandidate) => boolean;
-  onMaterializeOkfLog: (candidate: WorkspaceOkfLogCandidate) => Promise<boolean>;
-  onStartKnowledgeTracking: () => boolean;
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
@@ -138,11 +121,8 @@ export function RightPanel({
   files,
   folders,
   knowledgeIndex,
-  knowledgeCompatibilityReport,
   knowledgeIndexPending,
   knowledgeIndexSource,
-  knowledgeBaseline,
-  knowledgeCompatibilityOpenRequest,
   activeFileId,
   activeFileTitle,
   isLiveWorkspace,
@@ -168,13 +148,6 @@ export function RightPanel({
   onSelectKnowledgeHealthIssue,
   onFocusLinkSource,
   onResolveAmbiguousLink,
-  onSetActiveFileOkfType,
-  onApplyOkfConceptRepairs,
-  onApplyOkfWikilinkRepairs,
-  onVerifyKnowledgeDocument,
-  onMaterializeOkfIndex,
-  onMaterializeOkfLog,
-  onStartKnowledgeTracking,
   onRenameFile,
   onDuplicateFile,
   onDeleteFile,
@@ -204,8 +177,6 @@ export function RightPanel({
 }: RightPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const knowledgeCopy = getKnowledgePanelCopy(language);
-  const [knowledgeReviewQueueOpenRequest, setKnowledgeReviewQueueOpenRequest] =
-    useState(0);
   const closePanelLabel = getWorkspaceChromeCopy(language).topChrome.closeSidePanel;
   const {
     showResolved,
@@ -247,7 +218,9 @@ export function RightPanel({
   );
   const hasLiveFiles = isLiveWorkspace;
   const hasOpenComments = openCommentGroups.some((group) => group.comments.length > 0);
-  const panelTitle = copy.tabs[effectiveView];
+  const panelTitle = effectiveView === "properties"
+    ? knowledgeCopy.properties
+    : copy.tabs[effectiveView];
   const renderTab = (
     tabView: RightPanelView,
     label: string,
@@ -287,11 +260,9 @@ export function RightPanel({
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
           {renderTab("search", copy.tabs.search, <Search size={14} />)}
           {renderTab(
-            "knowledge",
-            copy.tabs.knowledge,
-            <LibraryBig size={14} />,
-            undefined,
-            copy.knowledgeDescription,
+            "properties",
+            knowledgeCopy.properties,
+            <FileSliders size={14} />,
           )}
         </nav>
         <button
@@ -325,8 +296,7 @@ export function RightPanel({
             onSelectFile={onSelectFile}
             onReviewKnowledgeFile={(fileId) => {
               onSelectFile(fileId);
-              onSetView("knowledge");
-              setKnowledgeReviewQueueOpenRequest((request) => request + 1);
+              onSetView("properties");
             }}
             onRenameFile={onRenameFile}
             onDuplicateFile={onDuplicateFile}
@@ -449,28 +419,14 @@ export function RightPanel({
           </Suspense>
         )}
 
-        {effectiveView === "knowledge" && (
+        {effectiveView === "properties" && (
           <Suspense fallback={panelFallback}>
-            <RightPanelKnowledge
+            <RightPanelProperties
               activeFileId={activeFileId}
-              activeFileTitle={activeFileTitle}
-              noDocumentCopy={`${copy.tabs.knowledge}: ${copy.noDocumentOpen}`}
-              compatibilityReport={knowledgeCompatibilityReport}
-              knowledgeBaseline={knowledgeBaseline}
-              knowledgeCompatibilityOpenRequest={knowledgeCompatibilityOpenRequest}
-              knowledgeReviewQueueOpenRequest={knowledgeReviewQueueOpenRequest}
+              noDocumentCopy={`${knowledgeCopy.properties}: ${copy.noDocumentOpen}`}
               index={knowledgeIndex}
               language={language}
-              onApplyConceptRepairs={onApplyOkfConceptRepairs}
-              onApplyWikilinkRepairs={onApplyOkfWikilinkRepairs}
-              onVerifyKnowledgeDocument={onVerifyKnowledgeDocument}
-              identityName={identityName}
-              onMaterializeIndex={onMaterializeOkfIndex}
-              onMaterializeLog={onMaterializeOkfLog}
-              onSelectFile={onSelectFile}
               onSelectHealthIssue={onSelectKnowledgeHealthIssue}
-              onSetActiveFileOkfType={onSetActiveFileOkfType}
-              onStartKnowledgeTracking={onStartKnowledgeTracking}
             />
           </Suspense>
         )}

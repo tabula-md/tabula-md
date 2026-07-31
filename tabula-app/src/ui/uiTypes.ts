@@ -7,7 +7,7 @@ export type RightPanelView =
   | "comments"
   | "files"
   | "search"
-  | "knowledge";
+  | "properties";
 
 export type KeyboardShortcut = {
   keys: string;
