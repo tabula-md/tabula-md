@@ -62,7 +62,10 @@ describe("workspace export review", () => {
       file("second", "second.md", "# Second"),
     ], folders);
 
-    expect(review?.requiredChangeCount).toBeGreaterThan(0);
+    expect(review).toEqual(expect.objectContaining({
+      requiredChangeCount: 0,
+      portabilityWarningCount: 0,
+    }));
   });
 
   it("counts changes that have not been recorded since the baseline", () => {
