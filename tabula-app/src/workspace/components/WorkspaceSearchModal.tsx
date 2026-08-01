@@ -20,7 +20,7 @@ export type WorkspaceSearchModalProps = {
   language: WorkspaceLanguage;
   pending: boolean;
   onClose: () => void;
-  onSelectFile: (fileId: string) => void;
+  onSelectFile: (fileId: string, range?: { from: number; to: number }) => void;
 };
 
 export function WorkspaceSearchModal({
@@ -37,8 +37,8 @@ export function WorkspaceSearchModal({
 
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const closeLabel = getWorkspaceChromeCopy(language).documentControls.closeSearch;
-  const selectFile = (fileId: string) => {
-    onSelectFile(fileId);
+  const selectFile = (fileId: string, range?: { from: number; to: number }) => {
+    onSelectFile(fileId, range);
     onClose();
   };
 

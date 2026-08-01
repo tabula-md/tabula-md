@@ -327,7 +327,7 @@ export async function run(ctx) {
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
     await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({ state: "visible" });
     const conceptSearch = page.getByRole("searchbox", {
-      name: "Search documents and metadata",
+      name: "Search documents, passages, and files",
       exact: true,
     });
     await conceptSearch.fill("dispatches work");

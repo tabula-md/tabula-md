@@ -554,23 +554,48 @@ export async function run(ctx) {
       (await page.locator(".right-compatibility-scroll").count()) === 0,
       "Compatibility repair controls should not interrupt ordinary Markdown editing.",
     );
+    await page.locator('.tab-item[data-file-name^="Untitled"] .tab-select-button').first().click();
+    await waitForActiveTab(page, { startsWith: "Untitled" });
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
     await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
       state: "visible",
     });
     await page.getByRole("searchbox", {
-      name: "Search documents and metadata",
+      name: "Search documents, passages, and files",
       exact: true,
     }).waitFor({ state: "visible" });
     expect(
       await page.getByRole("searchbox", {
-        name: "Search documents and metadata",
+        name: "Search documents, passages, and files",
         exact: true,
       }).isVisible() &&
         await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
         await page.locator(".right-properties-context").isVisible(),
       "Workspace Search should open as a modal retrieval surface over document context.",
     );
+
+    const workspaceSearchbox = page.getByRole("searchbox", {
+      name: "Search documents, passages, and files",
+      exact: true,
+    });
+    await workspaceSearchbox.fill("Start here");
+    const headingSearchResult = page.locator(
+      '.right-panel-search-result[data-search-result-kind="heading"]',
+    ).filter({ hasText: "Start here" });
+    await headingSearchResult.waitFor({ state: "visible" });
+    await headingSearchResult.click();
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+      state: "detached",
+    });
+    await waitForActiveTab(page, { exact: "README.md" });
+    await page.waitForFunction(() =>
+      document.querySelector(".cm-activeLine")?.textContent?.includes("Start here"),
+    );
+
+    await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+      state: "visible",
+    });
 
     await page.getByRole("button", { name: "Search settings", exact: true }).click();
     const matchCaseOption = page.getByRole("menuitemcheckbox", {

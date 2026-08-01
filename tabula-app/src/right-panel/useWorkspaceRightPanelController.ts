@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   type RefObject,
@@ -174,6 +175,11 @@ export function useWorkspaceRightPanelController({
     source: knowledgeIndexSource,
   } = useWorkspaceKnowledgeIndex(knowledgeDocuments);
   const outlineCursorRef = useRef({ fileId: visibleActiveFileId, offset: 0 });
+  const pendingSearchRangeRef = useRef<{
+    fileId: string;
+    from: number;
+    to: number;
+  } | null>(null);
   if (outlineCursorRef.current.fileId !== visibleActiveFileId) {
     outlineCursorRef.current = { fileId: visibleActiveFileId, offset: 0 };
   }
@@ -260,6 +266,26 @@ export function useWorkspaceRightPanelController({
       setLeftPanelOpen(false);
     }
   }, [onSelectFile, setLeftPanelOpen, setRightPanelOpen, setRightPanelView]);
+  const selectSearchResult = useCallback((
+    fileId: string,
+    range?: { from: number; to: number },
+  ) => {
+    if (range && fileId === visibleActiveFileId) {
+      window.requestAnimationFrame(() => focusTextRange(range.from, range.to));
+    } else {
+      pendingSearchRangeRef.current = range ? { fileId, ...range } : null;
+    }
+    onSelectFile(fileId);
+  }, [focusTextRange, onSelectFile, visibleActiveFileId]);
+  useEffect(() => {
+    const pending = pendingSearchRangeRef.current;
+    if (!pending || pending.fileId !== visibleActiveFileId) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      pendingSearchRangeRef.current = null;
+      focusTextRange(pending.from, pending.to);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusTextRange, visibleActiveFileId]);
 
   const leftPanelProps: WorkspaceLeftPanelProps = {
     isOpen: leftPanelOpen,
@@ -295,7 +321,7 @@ export function useWorkspaceRightPanelController({
     language,
     pending: knowledgeIndexPending,
     onClose: () => setWorkspaceSearchOpen(false),
-    onSelectFile,
+    onSelectFile: selectSearchResult,
   };
 
   const rightPanelProps: WorkspaceRightPanelProps = {

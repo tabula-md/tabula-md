@@ -18,9 +18,12 @@ import {
   ArrowLeft,
   Check,
   ExternalLink,
+  FileText,
+  Hash,
   ListFilter,
   Search,
   SlidersHorizontal,
+  TextQuote,
   X,
 } from "lucide-react";
 import {
@@ -32,8 +35,13 @@ import {
   searchWorkspaceFiles,
   type MetadataFacet,
   type WorkspaceFileSearchEntry,
+  type WorkspaceFileSearchMatch,
 } from "../editor/workspaceFileSearchModel";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import {
+  isEncodedBinaryWorkspaceSupportFile,
+  isMarkdownWorkspacePath,
+} from "../workspace/io/workspaceSupportFile";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
@@ -48,7 +56,7 @@ type RightPanelSearchProps = {
   folders: WorkspaceFolder[];
   index?: WorkspaceKnowledgeIndex;
   language: WorkspaceLanguage;
-  onSelectFile: (fileId: string) => void;
+  onSelectFile: (fileId: string, range?: { from: number; to: number }) => void;
 };
 
 type MetadataFacetSectionProps = {
@@ -132,21 +140,26 @@ export function RightPanelSearch({
     () => getWorkspaceFileTabLabels(files, folders),
     [files, folders],
   );
-  const conceptFiles = useMemo(() => files.filter((file) => {
-    const path = index?.documentsById.get(file.id)?.path;
-    if (!path) return false;
-    const basename = path.split("/").at(-1)?.toLocaleLowerCase();
-    return basename !== "index.md" && basename !== "log.md";
-  }), [files, index]);
   const searchEntries = useMemo(
-    () => conceptFiles.map((file): WorkspaceFileSearchEntry => {
+    () => files.map((file): WorkspaceFileSearchEntry => {
       const analysis = index?.analysesByDocumentId.get(file.id);
       const metadata = analysis?.knowledgeMetadata;
+      const isMarkdown = isMarkdownWorkspacePath(file.title);
+      const basename = file.title.split("/").at(-1)?.toLocaleLowerCase();
+      const isTextSupportFile = !isMarkdown &&
+        !isEncodedBinaryWorkspaceSupportFile(file.title, file.text);
+      const extension = file.title.split(".").at(-1);
       return {
         fileId: file.id,
         displayPath: stripMarkdownExtension(
           fileLabels.get(file.id)?.fullPath ?? file.title,
         ),
+        browseByDefault: Boolean(
+          analysis && basename !== "index.md" && basename !== "log.md",
+        ),
+        contentKind: isMarkdown ? "markdown" : isTextSupportFile ? "text" : undefined,
+        content: isMarkdown || isTextSupportFile ? file.text : undefined,
+        format: isMarkdown ? "Markdown" : extension?.toLocaleUpperCase(),
         title: analysis?.title,
         description: metadata?.description,
         type: metadata?.type,
@@ -163,10 +176,9 @@ export function RightPanelSearch({
         status: metadata?.type ? metadata.status : undefined,
         trustTier: metadata?.type ? metadata.trustTier : undefined,
         freshness: metadata?.type ? getOkfFreshness(metadata) : undefined,
-        markdown: file.text,
       };
     }),
-    [conceptFiles, fileLabels, index],
+    [fileLabels, files, index],
   );
   const typeFacets = useMemo(
     () => getMetadataFacets(searchEntries, (entry) => entry.type),
@@ -214,7 +226,23 @@ export function RightPanelSearch({
     selectedStatuses.size > 0 ||
     selectedTrustTiers.size > 0 ||
     selectedFreshness.size > 0;
-  const visibleEntries = hasQuery || hasFilters ? result.files : searchEntries;
+  const visibleEntries = hasQuery || hasFilters
+    ? result.files
+    : searchEntries.filter((entry) => entry.browseByDefault);
+  type VisibleDestination = {
+    file: WorkspaceFileSearchEntry;
+    match?: WorkspaceFileSearchMatch;
+    index: number;
+  };
+  const visibleDestinations = useMemo<VisibleDestination[]>(
+    () => visibleEntries.flatMap((file): VisibleDestination[] => {
+    const matches = hasQuery ? result.matchesByFileId.get(file.fileId) ?? [] : [];
+    return matches.length > 0
+      ? matches.map((match, index) => ({ file, match, index }))
+      : [{ file, match: undefined, index: 0 }];
+    }),
+    [hasQuery, result.matchesByFileId, visibleEntries],
+  );
   const hasActiveOptions = Object.values(options).some(Boolean);
 
   const keepAvailable = <TValue extends string>(
@@ -467,37 +495,61 @@ export function RightPanelSearch({
             {(hasQuery || hasFilters) && !result.error && visibleEntries.length === 0 && (
               <PanelEmptyState>{copy.noMatches}</PanelEmptyState>
             )}
-            {visibleEntries.length > 0 && (
+            {visibleDestinations.length > 0 && (
               <>
                 <p className="right-panel-search-result-count">
-                  {copy.documentCount(visibleEntries.length)}
+                  {copy.documentCount(visibleDestinations.length)}
                 </p>
                 <div className="right-panel-search-results" aria-label={copy.results}>
-                  {visibleEntries.map((file) => {
+                  {visibleDestinations.map(({ file, match, index }) => {
                     const resource = getOpenableResource(file.resource);
                     const title = file.title?.trim() ||
                       file.displayPath.split("/").at(-1) ||
                       file.displayPath;
+                    const range = match?.from === undefined || match.to === undefined ||
+                        file.contentKind !== "markdown"
+                      ? undefined
+                      : { from: match.from, to: match.to };
+                    const matchIcon = match?.kind === "heading"
+                      ? <Hash size={13} aria-hidden="true" />
+                      : match?.kind === "passage"
+                        ? <TextQuote size={13} aria-hidden="true" />
+                        : match?.kind === "metadata"
+                          ? <SlidersHorizontal size={13} aria-hidden="true" />
+                          : match?.kind === "document"
+                            ? <FileText size={13} aria-hidden="true" />
+                            : null;
                     return (
-                      <div className="right-panel-search-result-row" key={file.fileId}>
+                      <div
+                        className="right-panel-search-result-row"
+                        key={`${file.fileId}-${match?.kind ?? "browse"}-${match?.from ?? index}-${index}`}
+                      >
                         <button
                           className="right-panel-search-result"
                           type="button"
-                          aria-label={file.displayPath}
-                          onClick={() => onSelectFile(file.fileId)}
+                          aria-label={match?.label
+                            ? `${file.displayPath}: ${match.label}`
+                            : file.displayPath}
+                          data-search-result-kind={match?.kind ?? "document"}
+                          onClick={() => onSelectFile(file.fileId, range)}
                         >
                           <span className="right-panel-search-result-copy">
                             <span className="right-panel-search-result-title">{title}</span>
                             <span className="right-panel-search-result-path">
                               {file.displayPath}
                             </span>
-                            {file.description && (
+                            {match?.preview && match.kind !== "document" ? (
+                              <span className="right-panel-search-result-match">
+                                {matchIcon}
+                                <span>{match.preview}</span>
+                              </span>
+                            ) : file.description ? (
                               <span className="right-panel-search-result-description">
                                 {file.description}
                               </span>
-                            )}
+                            ) : null}
                             <span className="right-panel-search-result-metadata">
-                              {file.type || copy.untyped}
+                              {file.type || file.format || copy.untyped}
                             </span>
                           </span>
                         </button>
