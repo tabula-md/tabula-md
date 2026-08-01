@@ -182,7 +182,7 @@ export async function run(ctx) {
     expect((await page.locator(".intro-action-button").count()) === 0, "Blank writing documents should not show README actions.");
 
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await waitForPanelTab(page, "Files");
     await page.getByRole("button", { name: "More actions for Untitled.md" }).click();
     expect(
@@ -255,7 +255,7 @@ export async function run(ctx) {
       "Tab management should remain available after closing all tabs so the last tab can be reopened.",
     );
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await waitForPanelTab(page, "Files");
     expect(
       (await page.locator(".right-file-tree-row.file").count()) === 2,
@@ -361,7 +361,7 @@ export async function run(ctx) {
       "A plain Markdown import should preserve its tree without opening tabs or adding OKF orientation.",
     );
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await waitForPanelTab(page, "Files");
     await page.getByRole("button", { name: "Open Launch notes.md" }).click();
     await waitForActiveTab(page, { exact: "Launch notes.md" });
@@ -1201,7 +1201,7 @@ export async function run(ctx) {
       templateSurfaceCount: document.querySelectorAll(".left-library-item, .left-template-detail").length,
     }));
 
-    expect(menuSurface.menuOpen, "The workspace menu should open from the top-left menu button.");
+    expect(menuSurface.menuOpen, "The workspace menu should open from the Workspace panel header.");
     expect(menuSurface.menuBorderTopWidth === "0px", "Workspace menus should use elevation without static borders.");
     expect(menuSurface.templateButtonCount === 0, "Templates should not ship as a visible menu item yet.");
     expect(menuSurface.agentButtonCount === 0, "Agent should not ship as an inert menu item yet.");

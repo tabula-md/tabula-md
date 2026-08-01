@@ -409,7 +409,7 @@ export async function run(ctx) {
       await targetTab.click();
     } else {
       await secondPage.getByRole("button", { name: "Toggle side panel" }).click();
-      await secondPage.getByRole("button", { name: "Files", exact: true }).click();
+      await secondPage.getByRole("button", { name: "Workspace panel", exact: true }).click();
       await secondPage.getByRole("button", { name: `Open ${targetFileName}` }).click();
     }
     await secondPage.waitForFunction(

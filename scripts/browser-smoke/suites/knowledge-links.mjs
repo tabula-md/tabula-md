@@ -50,7 +50,7 @@ export async function run(ctx) {
     await page.locator(".empty-file-state").waitFor({ state: "visible" });
 
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await waitForPanelTab(page, "Files");
     await page.getByRole("button", { name: "Open Start.md", exact: true }).click();
     await waitForActiveTab(page, { exact: "Start.md" });

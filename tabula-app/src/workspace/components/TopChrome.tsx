@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 import {
-  Menu,
-  PanelLeftClose,
   PanelLeftOpen,
   PanelRightOpen,
   Search,
@@ -15,7 +13,6 @@ import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 
 type TopChromeProps = {
-  workspaceMenuOpen: boolean;
   workspaceSearchOpen: boolean;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
@@ -28,7 +25,6 @@ type TopChromeProps = {
   activeText: string;
   fileTabs: ReactNode;
   shareControls: ReactNode;
-  onToggleWorkspaceMenu: () => void;
   onToggleLeftPanel: () => void;
   onToggleWorkspaceSearch: () => void;
   onToggleRightPanel: () => void;
@@ -36,7 +32,6 @@ type TopChromeProps = {
 };
 
 export function TopChrome({
-  workspaceMenuOpen,
   workspaceSearchOpen,
   leftPanelOpen,
   rightPanelOpen,
@@ -49,7 +44,6 @@ export function TopChrome({
   activeText,
   fileTabs,
   shareControls,
-  onToggleWorkspaceMenu,
   onToggleLeftPanel,
   onToggleWorkspaceSearch,
   onToggleRightPanel,
@@ -57,9 +51,6 @@ export function TopChrome({
 }: TopChromeProps) {
   const copy = getWorkspaceChromeCopy(language).topChrome;
   const panelCopy = getWorkspaceInterfaceCopy(language).sidePanel;
-  const workspaceMenuLabel = workspaceMenuOpen
-    ? copy.closeWorkspaceMenu
-    : copy.openWorkspaceMenu;
   const sidePanelLabel = copy.toggleSidePanel;
   const liveCollaborators = isLiveConnected ? [identity, ...collaborators] : [];
   const getInitial = (collaborator: Collaborator) =>
@@ -91,26 +82,18 @@ export function TopChrome({
   return (
     <>
       <div className="workspace-controls" aria-label={panelCopy.label}>
-        <button
-          className={`panel-toggle top-panel-toggle workspace-menu-button ${workspaceMenuOpen ? "active" : ""}`}
-          type="button"
-          aria-label={workspaceMenuLabel}
-          data-tooltip={workspaceMenuLabel}
-          aria-expanded={workspaceMenuOpen}
-          onClick={onToggleWorkspaceMenu}
-        >
-          <Menu size={16} />
-        </button>
-        <button
-          className={`panel-toggle top-panel-toggle left-panel-trigger ${leftPanelOpen ? "active" : ""}`}
-          type="button"
-          aria-label={panelCopy.tabs.files}
-          data-tooltip={panelCopy.tabs.files}
-          aria-pressed={leftPanelOpen}
-          onClick={onToggleLeftPanel}
-        >
-          {leftPanelOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
-        </button>
+        {!leftPanelOpen && (
+          <button
+            className="panel-toggle top-panel-toggle left-panel-trigger"
+            type="button"
+            aria-label={copy.workspacePanel}
+            data-tooltip={copy.workspacePanel}
+            aria-pressed="false"
+            onClick={onToggleLeftPanel}
+          >
+            <PanelLeftOpen size={16} />
+          </button>
+        )}
         <button
           className={`panel-toggle top-panel-toggle workspace-search-trigger ${
             workspaceSearchOpen ? "active" : ""

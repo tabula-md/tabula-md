@@ -2269,7 +2269,7 @@ export async function run(ctx) {
       await secondPage.waitForSelector(".tab-item.active[data-room-id]:not([data-room-id=''])");
       if ((await secondPage.locator('.tab-item[data-file-name="large-presence-performance.md"]').count()) === 0) {
         await secondPage.getByRole("button", { name: "Toggle side panel" }).click();
-        await secondPage.getByRole("button", { name: "Files", exact: true }).click();
+        await secondPage.getByRole("button", { name: "Workspace panel", exact: true }).click();
         await secondPage.getByRole("button", { name: "Open large-presence-performance.md" }).click();
       }
       await selectDocumentViewMode(secondPage, "Edit");

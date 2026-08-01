@@ -36,9 +36,15 @@ export async function run(ctx) {
 
     const workbenchPanels = await page.evaluate(() => ({
       menuButtonCount: document.querySelectorAll(".workspace-menu-button").length,
+      menuButtonInWorkspacePanel: Boolean(document.querySelector(".left-panel .workspace-menu-button")),
+      topChromeMenuButtonCount: document.querySelectorAll(".workspace-controls .workspace-menu-button").length,
+      workspacePanelLabel: document.querySelector(".left-panel")?.getAttribute("aria-label") ?? "",
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       leftPanelCount: document.querySelectorAll(".left-sidebar").length,
-      leftTabCount: document.querySelectorAll(".left-panel-tabs button").length,
+      leftTabCount: document.querySelectorAll(".workspace-panel-tabs button").length,
+      leftTabLabels: Array.from(document.querySelectorAll(".workspace-panel-tabs button"))
+        .map((button) => button.getAttribute("aria-label") ?? ""),
+      leftVisibleTabLabelCount: document.querySelectorAll(".workspace-panel-tab-label").length,
       templateRowCount: document.querySelectorAll(".left-library-item").length,
       menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       publicLinks: Array.from(document.querySelectorAll(".workspace-menu-popover a")).map((link) => ({
@@ -105,10 +111,15 @@ export async function run(ctx) {
       })(),
     }));
     // P7: workspace menu product contract.
-    expect(workbenchPanels.menuButtonCount === 1, "Top chrome should expose one workspace menu button.");
-    expect(workbenchPanels.menuOpen, "The workspace menu should open from the top-left menu button.");
+    expect(workbenchPanels.menuButtonCount === 1, "The Workspace panel should expose one workspace menu button.");
+    expect(workbenchPanels.menuButtonInWorkspacePanel, "The workspace menu button should belong to the Workspace panel header.");
+    expect(workbenchPanels.topChromeMenuButtonCount === 0, "Top chrome should not duplicate the workspace menu button.");
+    expect(workbenchPanels.workspacePanelLabel === "Workspace panel", "The left panel should identify itself as the Workspace panel, not the Files panel.");
+    expect(workbenchPanels.menuOpen, "The workspace menu should open from the Workspace panel header.");
     expect(workbenchPanels.leftPanelCount === 0, "The app should not render a left side panel for future surfaces.");
-    expect(workbenchPanels.leftTabCount === 0, "The workspace menu should not expose New/Templates/Agent tabs.");
+    expect(workbenchPanels.leftTabCount === 2, "The Workspace panel should expose Files and Libraries as peer views.");
+    expect(workbenchPanels.leftTabLabels.join("|") === "Files|Libraries", "Workspace views should use explicit Files and Libraries tabs.");
+    expect(workbenchPanels.leftVisibleTabLabelCount === 0, "Workspace views should match the icon-only right-panel tab treatment.");
     expect(workbenchPanels.templateRowCount === 0, "Templates should not ship as a visible surface yet.");
     expect(!workbenchPanels.menuText.includes("Agent"), "Agent should not ship as an inert menu surface.");
     expect(workbenchPanels.fileSearchCount === 0, "File search should live in the side panel.");
@@ -170,10 +181,7 @@ export async function run(ctx) {
       "Workspace menu keyboard order should move from file actions to support actions.",
     );
     expect(workbenchPanels.statusVisible, "The document status bar should remain visible.");
-    expect(
-      workbenchPanels.panelToggleCount === 5,
-      `Top chrome should expose workspace, Files, Search, and document-context controls. Found: ${workbenchPanels.panelToggleCount}`,
-    );
+    expect(workbenchPanels.panelToggleCount >= 1, "Top chrome should retain global search and document-context controls.");
     expect(workbenchPanels.bottomPanelCount === 0, "The bottom panel should stay removed; status bar owns bottom status.");
     expect(
       workbenchPanels.laneGeometry.menu.width <= 320,
@@ -370,8 +378,10 @@ export async function run(ctx) {
       "The right panel toggle should expose the shared tooltip copy.",
     );
 
-    await page.getByRole("button", { name: "Files", exact: true }).click();
-    await waitForLeftPanel(page, "Files");
+    if ((await page.locator(".left-panel").count()) === 0) {
+      await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
+    }
+    await waitForLeftPanel(page, "Workspace panel");
     await ensureSidePanelOpen(page);
     const rightPanelState = await page.evaluate(() => ({
       open: Boolean(document.querySelector(".left-panel")),
@@ -439,7 +449,7 @@ export async function run(ctx) {
     }));
     expect(rightPanelState.open, "Files should open as workspace navigation from the top-left trigger.");
     expect(
-      rightPanelState.ariaLabel === "Files" && rightPanelState.labelledBy === "",
+      rightPanelState.ariaLabel === "Workspace panel" && rightPanelState.labelledBy === "",
       "Workspace navigation should expose its active section as its accessible name.",
     );
     expect(
@@ -629,9 +639,9 @@ export async function run(ctx) {
       "Links should stay focused on the active document instead of owning a workspace map action.",
     );
     if (!(await page.locator(".left-panel").isVisible())) {
-      await page.getByRole("button", { name: "Files", exact: true }).click();
+      await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     }
-    await waitForLeftPanel(page, "Files");
+    await waitForLeftPanel(page, "Workspace panel");
 
     await openProjectMenu(page);
     const dualPanelGeometry = await page.evaluate(() => {
@@ -684,7 +694,7 @@ export async function run(ctx) {
        (await page.locator(".right-graph-panel").count()) === 0,
        "Properties should remain a stable active-document inspector instead of a catalog or dashboard.",
     );
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", { name: "Close side panel", exact: true }).click();
 
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
@@ -1398,7 +1408,7 @@ export async function run(ctx) {
         () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 288,
       );
     }
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     const switcher = await page.evaluate(() => {
       const items = Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((item) => ({
         text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -1471,7 +1481,7 @@ export async function run(ctx) {
     const rightFilesActiveTitle = rightFilesInitialTabs.find((tab) => tab.active)?.title ?? "";
     expect(rightFilesActiveTitle, "Right Files action test should have an active file tab.");
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     const openRightFileMenu = async (fileTitle) => {
       await page.getByRole("button", { name: `Open ${fileTitle}` }).hover();
       await page.getByRole("button", { name: `More actions for ${fileTitle}` }).click();

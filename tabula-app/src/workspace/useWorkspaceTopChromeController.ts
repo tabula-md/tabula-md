@@ -39,7 +39,6 @@ type UseWorkspaceTopChromeControllerOptions = {
   workspaceSearchOpen: boolean;
   rightPanelOpen: boolean;
   topPopover: TopPopover;
-  workspaceMenuOpen: boolean;
   onAddFile: () => void;
   onChangeUserName: (nextName: string) => void;
   onCloseAllFiles: () => void;
@@ -62,7 +61,6 @@ type UseWorkspaceTopChromeControllerOptions = {
   onToggleWorkspaceSearch: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
-  onToggleWorkspaceMenu: () => void;
   setCenterPopover: SetCenterPopover;
   setPreferencesOpen: SetPreferencesOpen;
   setTopPopover: SetTopPopover;
@@ -92,7 +90,6 @@ export function useWorkspaceTopChromeController({
   workspaceSearchOpen,
   rightPanelOpen,
   topPopover,
-  workspaceMenuOpen,
   onAddFile,
   onChangeUserName,
   onCloseAllFiles,
@@ -115,7 +112,6 @@ export function useWorkspaceTopChromeController({
   onToggleWorkspaceSearch,
   onToggleRightPanel,
   onToggleFollowing,
-  onToggleWorkspaceMenu,
   setCenterPopover,
   setPreferencesOpen,
   setTopPopover,
@@ -183,7 +179,6 @@ export function useWorkspaceTopChromeController({
     workspaceSearchOpen,
     rightPanelOpen,
     shareOpen,
-    workspaceMenuOpen,
     onAddFile,
     onChangeUserName,
     onChromeInteraction: closeDocumentChrome,
@@ -207,7 +202,6 @@ export function useWorkspaceTopChromeController({
     onToggleRightPanel,
     onToggleFollowing,
     onToggleShare: toggleShare,
-    onToggleWorkspaceMenu,
   };
 
   return {

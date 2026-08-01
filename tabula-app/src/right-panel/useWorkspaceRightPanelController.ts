@@ -80,6 +80,7 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   isLive: boolean;
   language: WorkspaceLanguage;
   leftPanelOpen: boolean;
+  workspaceMenuOpen: boolean;
   workspaceSearchOpen: boolean;
   onImportFile: () => void;
   outlineHeadings: MarkdownHeading[];
@@ -97,6 +98,7 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   setRightPanelView: (view: RightPanelView) => void;
   setLeftPanelOpen: (isOpen: boolean) => void;
   setWorkspaceSearchOpen: (isOpen: boolean) => void;
+  onToggleWorkspaceMenu: () => void;
   text: string;
 };
 
@@ -118,6 +120,7 @@ export function useWorkspaceRightPanelController({
   isLive,
   language,
   leftPanelOpen,
+  workspaceMenuOpen,
   workspaceSearchOpen,
   onAddComment,
   onAddCommentReply,
@@ -145,6 +148,7 @@ export function useWorkspaceRightPanelController({
   onSelectKnowledgeHealthIssue,
   onStartCommentReply,
   onToggleCommentResolved,
+  onToggleWorkspaceMenu,
   outlineHeadings,
   parsedMarkdownBody,
   previewSurfaceRef,
@@ -243,8 +247,11 @@ export function useWorkspaceRightPanelController({
     [setRightPanelOpen],
   );
   const closeLeftPanel = useCallback(
-    () => setLeftPanelOpen(false),
-    [setLeftPanelOpen],
+    () => {
+      if (workspaceMenuOpen) onToggleWorkspaceMenu();
+      setLeftPanelOpen(false);
+    },
+    [onToggleWorkspaceMenu, setLeftPanelOpen, workspaceMenuOpen],
   );
   const selectFromLeftPanel = useCallback((fileId: string) => {
     onSelectFile(fileId);
@@ -285,6 +292,8 @@ export function useWorkspaceRightPanelController({
     onMoveFolder,
     onRenameFolder,
     onRenameWorkspace,
+    workspaceMenuOpen,
+    onToggleWorkspaceMenu,
   };
 
   const searchModalProps: WorkspaceSearchModalProps = {

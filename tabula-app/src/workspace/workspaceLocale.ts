@@ -854,6 +854,12 @@ export const getWorkspaceMenuCopy = (language: WorkspaceLanguage) =>
 
 export type WorkspaceChromeCopy = {
   topChrome: {
+    workspacePanel: string;
+    workspaceViews: string;
+    files: string;
+    libraries: string;
+    noLibraries: string;
+    renameWorkspace: (name: string) => string;
     openWorkspaceMenu: string;
     closeWorkspaceMenu: string;
     toggleSidePanel: string;
@@ -925,6 +931,12 @@ export type WorkspaceChromeCopy = {
 const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
   en: {
     topChrome: {
+      workspacePanel: "Workspace panel",
+      workspaceViews: "Workspace views",
+      files: "Files",
+      libraries: "Libraries",
+      noLibraries: "No libraries connected.",
+      renameWorkspace: (name) => `Rename workspace ${name}`,
       openWorkspaceMenu: "Open Workspace menu",
       closeWorkspaceMenu: "Close Workspace menu",
       toggleSidePanel: "Toggle side panel",
@@ -994,6 +1006,12 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
   },
   ko: {
     topChrome: {
+      workspacePanel: "작업공간 패널",
+      workspaceViews: "작업공간 보기",
+      files: "파일",
+      libraries: "라이브러리",
+      noLibraries: "연결된 라이브러리가 없습니다.",
+      renameWorkspace: (name) => `작업공간 ${name} 이름 바꾸기`,
       openWorkspaceMenu: "작업공간 메뉴 열기",
       closeWorkspaceMenu: "작업공간 메뉴 닫기",
       toggleSidePanel: "사이드 패널 전환",
@@ -1063,6 +1081,12 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
   },
   ja: {
     topChrome: {
+      workspacePanel: "ワークスペースパネル",
+      workspaceViews: "ワークスペースビュー",
+      files: "ファイル",
+      libraries: "ライブラリ",
+      noLibraries: "接続されたライブラリはありません。",
+      renameWorkspace: (name) => `ワークスペース ${name} の名前を変更`,
       openWorkspaceMenu: "ワークスペースメニューを開く",
       closeWorkspaceMenu: "ワークスペースメニューを閉じる",
       toggleSidePanel: "サイドパネルを切り替える",
@@ -1132,6 +1156,12 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
   },
   zh: {
     topChrome: {
+      workspacePanel: "工作区面板",
+      workspaceViews: "工作区视图",
+      files: "文件",
+      libraries: "库",
+      noLibraries: "尚未连接任何库。",
+      renameWorkspace: (name) => `重命名工作区 ${name}`,
       openWorkspaceMenu: "打开工作区菜单",
       closeWorkspaceMenu: "关闭工作区菜单",
       toggleSidePanel: "切换侧边栏",
@@ -1201,6 +1231,12 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
   },
   es: {
     topChrome: {
+      workspacePanel: "Panel del espacio de trabajo",
+      workspaceViews: "Vistas del espacio de trabajo",
+      files: "Archivos",
+      libraries: "Bibliotecas",
+      noLibraries: "No hay bibliotecas conectadas.",
+      renameWorkspace: (name) => `Renombrar espacio de trabajo ${name}`,
       openWorkspaceMenu: "Abrir menú del espacio",
       closeWorkspaceMenu: "Cerrar menú del espacio",
       toggleSidePanel: "Alternar panel lateral",
@@ -1270,6 +1306,12 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
   },
   fr: {
     topChrome: {
+      workspacePanel: "Panneau de l’espace de travail",
+      workspaceViews: "Vues de l’espace de travail",
+      files: "Fichiers",
+      libraries: "Bibliothèques",
+      noLibraries: "Aucune bibliothèque connectée.",
+      renameWorkspace: (name) => `Renommer l’espace de travail ${name}`,
       openWorkspaceMenu: "Ouvrir le menu de l’espace",
       closeWorkspaceMenu: "Fermer le menu de l’espace",
       toggleSidePanel: "Afficher ou masquer le panneau latéral",
@@ -1339,6 +1381,12 @@ const workspaceChromeCopy: Record<WorkspaceLanguage, WorkspaceChromeCopy> = {
   },
   de: {
     topChrome: {
+      workspacePanel: "Arbeitsbereichspanel",
+      workspaceViews: "Arbeitsbereichsansichten",
+      files: "Dateien",
+      libraries: "Bibliotheken",
+      noLibraries: "Keine Bibliotheken verbunden.",
+      renameWorkspace: (name) => `Arbeitsbereich ${name} umbenennen`,
       openWorkspaceMenu: "Workspace-Menü öffnen",
       closeWorkspaceMenu: "Workspace-Menü schließen",
       toggleSidePanel: "Seitenleiste ein-/ausblenden",

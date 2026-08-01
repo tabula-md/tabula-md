@@ -168,7 +168,7 @@ export async function run(ctx) {
     );
 
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await waitForPanelTab(page, "Files");
     expect(
       (await page.getByRole("button", {
@@ -473,7 +473,7 @@ export async function run(ctx) {
     }).click();
     await waitForActiveTab(page, { exact: "index.md" });
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await waitForPanelTab(page, "Files");
     const sourceKnowledgeStatus = page.locator(
       '.right-file-tree-row[data-file-name="source.md"] '

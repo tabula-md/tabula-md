@@ -128,6 +128,7 @@ export function WorkspaceLeftPanel({
         isLiveWorkspace={isLive}
         overlayMode={overlayMode}
         panelRef={panelRef}
+        onClose={onClose}
       />
     </>
   );

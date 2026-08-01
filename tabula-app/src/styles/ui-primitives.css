@@ -55,6 +55,55 @@
   opacity: 0.35;
 }
 
+.ui-panel-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 3px;
+  border-radius: var(--radius-surface);
+  background: var(--surface-muted);
+}
+
+.ui-panel-tab {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--right-control-size);
+  height: var(--right-control-size);
+  min-width: 0;
+  padding: 0;
+  border-radius: var(--radius-control);
+  color: var(--text-soft);
+  background: transparent;
+  font-size: var(--font-ui-secondary);
+  font-weight: var(--weight-ui-regular);
+}
+
+.ui-panel-tab svg {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.ui-panel-tab:hover,
+.ui-panel-tab.active {
+  color: var(--text-primary);
+  background: var(--surface-active);
+}
+
+.ui-panel-tab.active::after {
+  position: absolute;
+  right: 8px;
+  bottom: 3px;
+  left: 8px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  content: "";
+}
+
 .ui-input-surface {
   min-width: 0;
   border: 0;

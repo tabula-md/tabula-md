@@ -21,14 +21,57 @@
   grid-column: 1;
   grid-row: 1;
   display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: 50px auto minmax(0, 1fr);
   width: var(--left-panel-width);
   min-width: 0;
   min-height: 0;
   height: 100vh;
-  padding: 50px var(--right-panel-x) var(--right-panel-bottom);
+  padding: 0 var(--right-panel-x) var(--right-panel-bottom);
   color: var(--text-primary);
   background: var(--surface-workbench);
+}
+
+.workspace-panel-header {
+  display: grid;
+  grid-template-columns: var(--right-control-size) minmax(0, 1fr) var(--right-control-size);
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.workspace-panel-header .right-file-workspace-identity {
+  justify-self: stretch;
+}
+
+.workspace-panel-header .right-file-workspace-name,
+.workspace-panel-header .right-file-workspace-name-input {
+  width: 100%;
+  text-align: left;
+}
+
+.workspace-panel-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--right-tight-gap);
+  min-width: 0;
+  min-height: var(--control-size-row);
+  margin-bottom: var(--right-section-gap);
+}
+
+.workspace-library-panel {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: var(--space-5);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.workspace-library-panel p {
+  margin: 0;
+  font-size: var(--font-ui-secondary);
+  line-height: 1.45;
 }
 
 .left-panel .right-panel-body {
@@ -76,6 +119,10 @@
     width: min(360px, calc(100vw - 48px));
     height: 100dvh;
     box-shadow: var(--shadow-popover);
+  }
+
+  .main-panel.left-panel-open .workspace-controls {
+    display: none;
   }
 
   .left-panel-divider {

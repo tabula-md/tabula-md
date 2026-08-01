@@ -277,6 +277,10 @@ const focusMarkdownEditor = async (page) => {
 
 const openProjectMenu = async (page) => {
   if ((await page.locator(".workspace-menu-popover").count()) === 0) {
+    if ((await page.locator(".left-panel").count()) === 0) {
+      await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
+      await waitForLeftPanel(page, "Workspace panel");
+    }
     await page.getByRole("button", { name: "Open Workspace menu", exact: true }).click();
     await waitForWorkspaceMenuState(page, true);
   }
