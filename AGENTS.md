@@ -9,7 +9,9 @@ Product guardrails:
 
 - Keep the app Markdown-file-first.
 - Do not turn the first screen into a dashboard, database, or marketing page.
-- Treat the right panel as project context: Files, Outline, Comments.
+- Treat the left panel as workspace context; Files, Libraries, and future workspace
+  views live inside it without becoming the panel's identity.
+- Treat the right panel as document context: Outline, Comments, Properties.
 - Comments are product comments, not a separate notes system.
 - Use `Tabula` as the product name.
 - Use `tabula.md` only when referring to the domain or URL.

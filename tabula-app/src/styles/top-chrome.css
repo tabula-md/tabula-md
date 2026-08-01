@@ -40,7 +40,11 @@
 }
 
 .main-panel.left-panel-open .top-document-zone {
-  padding-left: 0;
+  padding-left: calc(var(--control-size-compact) + var(--space-2) + var(--space-3));
+}
+
+.main-panel.left-panel-open .workspace-controls {
+  left: calc(var(--left-panel-width) + var(--space-3));
 }
 
 .top-right-zone {

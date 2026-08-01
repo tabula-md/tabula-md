@@ -190,7 +190,7 @@ export function RightPanel({
     tooltip = label,
   ) => (
     <button
-      className={`right-panel-tab ${effectiveView === tabView ? "active" : ""}`}
+      className={`ui-panel-tab right-panel-tab ${effectiveView === tabView ? "active" : ""}`}
       type="button"
       aria-label={label}
       data-tooltip={tooltip}
@@ -214,7 +214,7 @@ export function RightPanel({
       data-knowledge-index-source={knowledgeIndexSource}
     >
       <div className="right-panel-header">
-        <nav className="right-panel-tabs" aria-label={copy.sections}>
+        <nav className="ui-panel-tabs right-panel-tabs" aria-label={copy.sections}>
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
           {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}

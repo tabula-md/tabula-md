@@ -761,8 +761,8 @@ async function openFilesPanel(page) {
   if ((await page.locator(".right-panel").count()) === 0) {
     await page.getByRole("button", { name: "Toggle side panel" }).click();
   }
-  if ((await page.getByRole("button", { name: "Files", exact: true }).count()) > 0) {
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+  if ((await page.getByRole("button", { name: "Workspace panel", exact: true }).count()) > 0) {
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
   }
 }
 

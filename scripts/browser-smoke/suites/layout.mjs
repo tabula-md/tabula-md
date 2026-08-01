@@ -280,8 +280,8 @@ export async function run(ctx) {
       "Document status bar should be visible.",
     );
     expect(
-      chrome.topLeftMenuCount === 1,
-      "The top-left workspace menu button should render.",
+      chrome.topLeftMenuCount === 0,
+      "The workspace menu button should stay inside the closed Workspace panel.",
     );
     expect(
       !chrome.workspaceMenu,
@@ -301,7 +301,7 @@ export async function run(ctx) {
     );
     expect(
       chrome.documentZone.x >= chrome.left.x + chrome.left.width + 8,
-      "The top tab lane should start after the workspace menu.",
+      "The top tab lane should start after the Workspace panel and search controls.",
     );
     expect(
       chrome.documentZone.x + chrome.documentZone.width <=
@@ -390,6 +390,8 @@ export async function run(ctx) {
       };
     };
 
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
+    await waitForLeftPanel(page, "Workspace panel");
     const closedLayout = await page.evaluate(readStableDocumentLayout);
     await openProjectMenu(page);
     const menuLayout = await page.evaluate(readStableDocumentLayout);

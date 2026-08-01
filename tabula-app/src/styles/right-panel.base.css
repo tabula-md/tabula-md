@@ -58,38 +58,6 @@
   margin-bottom: var(--right-section-gap);
 }
 
-.right-panel-tabs {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex: 0 0 auto;
-  min-width: 0;
-  min-height: 34px;
-  padding: 3px;
-  border-radius: var(--radius-surface);
-  background: var(--surface-muted);
-}
-
-.right-panel-tab {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: var(--right-control-size);
-  height: var(--right-control-size);
-  min-width: 0;
-  padding: 0;
-  border-radius: var(--radius-control);
-  color: var(--text-soft);
-  background: transparent;
-  font-size: var(--font-ui-secondary);
-  font-weight: var(--weight-ui-regular);
-}
-
-.right-panel-tab svg {
-  display: block;
-  flex: 0 0 auto;
-}
-
 .right-panel-tab-status-dot {
   position: absolute;
   right: 6px;
@@ -113,23 +81,6 @@
 .right-panel-tab:hover .right-panel-tab-status-dot,
 .right-panel-tab:focus-visible .right-panel-tab-status-dot {
   box-shadow: 0 0 0 2px var(--surface-active);
-}
-
-.right-panel-tab:hover,
-.right-panel-tab.active {
-  color: var(--text-primary);
-  background: var(--surface-active);
-}
-
-.right-panel-tab.active::after {
-  position: absolute;
-  right: 8px;
-  bottom: 3px;
-  left: 8px;
-  height: 2px;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  content: "";
 }
 
 .right-panel-overlay-toggle {
@@ -188,6 +139,10 @@
   gap: var(--right-tight-gap);
   align-items: center;
   min-width: 0;
+}
+
+.right-files-panel > .right-file-toolbar {
+  justify-content: flex-end;
 }
 
 .right-file-workspace-identity {

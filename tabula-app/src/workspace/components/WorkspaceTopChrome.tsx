@@ -43,7 +43,6 @@ export type WorkspaceTopChromeProps = {
   workspaceSearchOpen: boolean;
   rightPanelOpen: boolean;
   shareOpen: boolean;
-  workspaceMenuOpen: boolean;
   onAddFile: FileTabsProps["onAddFile"];
   onChangeUserName: (nextName: string) => void;
   onChromeInteraction: NonNullable<FileTabsProps["onChromeInteraction"]>;
@@ -67,7 +66,6 @@ export type WorkspaceTopChromeProps = {
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
   onToggleShare: () => void;
-  onToggleWorkspaceMenu: () => void;
 };
 
 export function WorkspaceTopChrome({
@@ -92,7 +90,6 @@ export function WorkspaceTopChrome({
   workspaceSearchOpen,
   rightPanelOpen,
   shareOpen,
-  workspaceMenuOpen,
   onAddFile,
   onChangeUserName,
   onChromeInteraction,
@@ -116,7 +113,6 @@ export function WorkspaceTopChrome({
   onToggleRightPanel,
   onToggleFollowing,
   onToggleShare,
-  onToggleWorkspaceMenu,
 }: WorkspaceTopChromeProps) {
   const displayedParticipants = useMemo(
     () => getCollaboratorDisplayList([identity, ...collaborators]),
@@ -196,7 +192,6 @@ export function WorkspaceTopChrome({
   );
   return (
     <TopChrome
-      workspaceMenuOpen={workspaceMenuOpen}
       workspaceSearchOpen={workspaceSearchOpen}
       leftPanelOpen={leftPanelOpen}
       rightPanelOpen={rightPanelOpen}
@@ -209,7 +204,6 @@ export function WorkspaceTopChrome({
       activeText={activeText}
       fileTabs={fileTabs}
       shareControls={shareControls}
-      onToggleWorkspaceMenu={onToggleWorkspaceMenu}
       onToggleLeftPanel={onToggleLeftPanel}
       onToggleWorkspaceSearch={onToggleWorkspaceSearch}
       onToggleRightPanel={onToggleRightPanel}
