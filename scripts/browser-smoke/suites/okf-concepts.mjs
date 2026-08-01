@@ -83,88 +83,13 @@ export async function run(ctx) {
       },
       fixtureEntries,
     );
-    await page.getByRole("dialog", { name: "Import folder" }).waitFor();
-    const detectedWorkspace = page.getByRole("region", {
-      name: "Detected workspace",
-    });
-    expect(
-      await detectedWorkspace.getByText("OKF 0.1", { exact: true }).isVisible() &&
-        await detectedWorkspace.getByText("OpenWiki", { exact: true }).isVisible() &&
-        await detectedWorkspace.getByText("Markdown links", { exact: true }).isVisible() &&
-        await detectedWorkspace.getByText(
-          "Root index declares OKF 0.1.",
-          { exact: true },
-        ).isVisible(),
-      "Folder import should distinguish the OKF standard from OpenWiki and link conventions.",
-    );
-    await page.getByRole("button", { name: "Import and replace", exact: true }).click();
+    await waitForActiveTab(page, { exact: "index.md" });
     const importToast = page.locator(".app-toast");
     await importToast.waitFor();
     expect(
-      /3 OKF concepts imported(?: · \d+ issues)?/.test(await importToast.textContent()) &&
-        (await page.getByRole("dialog", {
-          name: "OKF workspace imported",
-        }).count()) === 0,
-      "An OKF import should open the workspace immediately and summarize the result without a blocking step.",
-    );
-    await importToast.getByRole("button", {
-      name: "Import details",
-      exact: true,
-    }).click();
-    const importResult = page.getByRole("dialog", {
-      name: "OKF workspace imported",
-    });
-    await importResult.waitFor();
-    const resultValue = async (label) =>
-      importResult.getByText(label, { exact: true }).locator("..").locator("dd")
-        .textContent();
-    expect(
-      (await resultValue("Detected format")) === "OKF 0.1" &&
-        (await resultValue("Concepts")) === "3" &&
-        (await resultValue("Directory indexes")) === "2" &&
-        (await resultValue("Activity log")) === "Present" &&
-        (await resultValue("Bundle assets preserved")) === "3" &&
-        /^\d+$/.test((await resultValue("Required compatibility fixes")) ?? "") &&
-        /^\d+$/.test((await resultValue("Knowledge health attention")) ?? ""),
-      "OKF import orientation should summarize the detected structure and existing review models.",
-    );
-    expect(
-      await importResult.getByText(
-        "This workspace declares OKF 0.1. OKF 0.2 metadata and lifecycle practices may require compatibility changes.",
-        { exact: true },
-      ).isVisible() &&
-        (await importResult.getByRole("button", {
-          name: "Workspace issues",
-          exact: true,
-        }).count()) === 0,
-      "Optional import details may explain the detected version without prescribing a workspace review step.",
-    );
-    await importResult.getByRole("button", {
-      name: "Import details",
-      exact: true,
-    }).click();
-    expect(
-      await importResult.getByText(".last-update.json", {
-        exact: true,
-      }).isVisible() &&
-        await importResult.getByText("scratch.tmp", {
-          exact: true,
-        }).isVisible() &&
-        await importResult.getByText("diagram.png", {
-          exact: true,
-        }).isVisible(),
-      "Import details should retain every non-Markdown bundle asset after replacement.",
-    );
-    await importResult.getByRole("button", {
-      name: "Open root index",
-      exact: true,
-    }).click();
-    await waitForActiveTab(page, { exact: "index.md" });
-    expect(
-      (await page.getByRole("dialog", {
-        name: "OKF workspace imported",
-      }).count()) === 0,
-      "Opening the root index should dismiss the one-time import orientation.",
+      (await importToast.textContent())?.includes("Folder imported.") &&
+        (await page.getByRole("dialog").count()) === 0,
+      "A first folder import should open the root index immediately without an import report.",
     );
 
     await ensureSidePanelOpen(page);
@@ -441,36 +366,29 @@ export async function run(ctx) {
       },
       migrationEntries,
     );
-    await page.getByRole("dialog", { name: "Import folder" }).waitFor();
-    await page.getByRole("button", { name: "Import and replace", exact: true }).click();
+    const replacementDialog = page.getByRole("dialog", {
+      name: "Replace workspace?",
+    });
+    await replacementDialog.waitFor();
+    expect(
+      (await replacementDialog.getByText("OKF 0.2", { exact: true }).count()) === 0 &&
+        (await replacementDialog.getByText("source.md", { exact: true }).count()) === 0,
+      "Replacing an existing workspace should not require reviewing format or file inventories.",
+    );
+    await replacementDialog.getByRole("button", {
+      name: "Import folder",
+      exact: true,
+    }).click();
     const migrationToast = page.locator(".app-toast");
     await migrationToast.waitFor();
     expect(
-      /2 OKF concepts imported(?: · \d+ issues)?/.test(await migrationToast.textContent()) &&
-        (await page.getByRole("dialog", {
-          name: "OKF workspace imported",
+      (await migrationToast.textContent())?.includes("Folder imported.") &&
+        (await migrationToast.getByRole("button", {
+          name: "Import details",
+          exact: true,
         }).count()) === 0,
-      "OKF 0.2 imports should also remain non-blocking.",
+      "A replacement import should finish with a concise notification and no report action.",
     );
-    await migrationToast.getByRole("button", {
-      name: "Import details",
-      exact: true,
-    }).click();
-    const migrationImportResult = page.getByRole("dialog", {
-      name: "OKF workspace imported",
-    });
-    await migrationImportResult.waitFor();
-    expect(
-      (await migrationImportResult.getByText(
-        "This workspace declares OKF 0.1. OKF 0.2 metadata and lifecycle practices may require compatibility changes.",
-        { exact: true },
-      ).count()) === 0,
-      "An OKF 0.2 import should not show 0.1 transition guidance.",
-    );
-    await migrationImportResult.getByRole("button", {
-      name: "Open root index",
-      exact: true,
-    }).click();
     await waitForActiveTab(page, { exact: "index.md" });
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Files", exact: true }).click();

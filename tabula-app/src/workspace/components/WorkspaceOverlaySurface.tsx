@@ -14,7 +14,6 @@ import {
 import type { ShortcutPlatform } from "../keyboardShortcuts";
 import type { WorkspaceExportReview } from "../io/workspaceExportReviewModel";
 import type { WorkspaceFolderImportDraft } from "../io/workspaceFolderImport";
-import type { WorkspaceImportResult } from "../io/workspaceImportResultModel";
 
 const WorkspaceFolderImportDialog = lazy(() =>
   import("./WorkspaceFolderImportDialog").then((module) => ({
@@ -26,22 +25,14 @@ const WorkspaceExportReviewDialog = lazy(() =>
     default: module.WorkspaceExportReviewDialog,
   }))
 );
-const WorkspaceImportResultDialog = lazy(() =>
-  import("./WorkspaceImportResultDialog").then((module) => ({
-    default: module.WorkspaceImportResultDialog,
-  }))
-);
-
 type JsonShareImportState =
   | { status: "loading" }
   | { status: "error"; errorMessage: string }
   | { status: "ready"; workspace: WorkspaceState };
 
 export type WorkspaceOverlaySurfaceProps = {
-  hasCurrentWorkspace: boolean;
   infoDialog: WorkspaceInfoDialogKind | null;
   workspaceFolderImport: WorkspaceFolderImportDraft | null;
-  workspaceImportResult: WorkspaceImportResult | null;
   workspaceExportReview: WorkspaceExportReview | null;
   jsonShareImport: JsonShareImportState | null;
   language: WorkspaceLanguage;
@@ -50,23 +41,18 @@ export type WorkspaceOverlaySurfaceProps = {
   onDismissToast: () => void;
   onCloseInfoDialog: () => void;
   onCloseWorkspaceFolderImport: () => void;
-  onCloseWorkspaceImportResult: () => void;
   onCloseWorkspaceExportReview: () => void;
-  onExportCurrentWorkspaceBeforeImport: () => void;
   onPauseToast: () => void;
   onResumeToast: () => void;
   onCloseJsonShareImport: () => void;
   onReplaceWorkspaceWithJsonShare: (workspace: WorkspaceState) => void;
   onReplaceWorkspaceWithFolder: () => void;
-  onOpenImportedRootIndex: () => void;
   onConfirmWorkspaceExport: () => void;
 };
 
 export function WorkspaceOverlaySurface({
-  hasCurrentWorkspace,
   infoDialog,
   workspaceFolderImport,
-  workspaceImportResult,
   workspaceExportReview,
   jsonShareImport,
   language,
@@ -75,15 +61,12 @@ export function WorkspaceOverlaySurface({
   onDismissToast,
   onCloseInfoDialog,
   onCloseWorkspaceFolderImport,
-  onCloseWorkspaceImportResult,
   onCloseWorkspaceExportReview,
-  onExportCurrentWorkspaceBeforeImport,
   onPauseToast,
   onResumeToast,
   onCloseJsonShareImport,
   onReplaceWorkspaceWithJsonShare,
   onReplaceWorkspaceWithFolder,
-  onOpenImportedRootIndex,
   onConfirmWorkspaceExport,
 }: WorkspaceOverlaySurfaceProps) {
   const copy = getWorkspaceSurfaceCopy(language);
@@ -101,23 +84,9 @@ export function WorkspaceOverlaySurface({
       {workspaceFolderImport && (
         <Suspense fallback={null}>
           <WorkspaceFolderImportDialog
-            hasCurrentWorkspace={hasCurrentWorkspace}
             language={language}
-            workspace={workspaceFolderImport.workspace}
-            profile={workspaceFolderImport.profile}
             onCancel={onCloseWorkspaceFolderImport}
-            onExportCurrentWorkspace={onExportCurrentWorkspaceBeforeImport}
             onReplace={onReplaceWorkspaceWithFolder}
-          />
-        </Suspense>
-      )}
-      {workspaceImportResult && (
-        <Suspense fallback={null}>
-          <WorkspaceImportResultDialog
-            language={language}
-            result={workspaceImportResult}
-            onClose={onCloseWorkspaceImportResult}
-            onOpenRootIndex={onOpenImportedRootIndex}
           />
         </Suspense>
       )}
