@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import {
+  ChevronDown,
+  MoreHorizontal,
+  PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
   PanelRightOpen,
   Search,
   Users,
@@ -14,6 +18,8 @@ import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 
 type TopChromeProps = {
   workspaceSearchOpen: boolean;
+  workspaceMenuOpen: boolean;
+  workspaceName: string;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   isLiveConnected: boolean;
@@ -26,6 +32,7 @@ type TopChromeProps = {
   fileTabs: ReactNode;
   shareControls: ReactNode;
   onToggleLeftPanel: () => void;
+  onToggleWorkspaceMenu: () => void;
   onToggleWorkspaceSearch: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
@@ -33,6 +40,8 @@ type TopChromeProps = {
 
 export function TopChrome({
   workspaceSearchOpen,
+  workspaceMenuOpen,
+  workspaceName,
   leftPanelOpen,
   rightPanelOpen,
   isLiveConnected,
@@ -45,6 +54,7 @@ export function TopChrome({
   fileTabs,
   shareControls,
   onToggleLeftPanel,
+  onToggleWorkspaceMenu,
   onToggleWorkspaceSearch,
   onToggleRightPanel,
   onToggleFollowing,
@@ -80,39 +90,47 @@ export function TopChrome({
     ].filter(Boolean).join(" · ");
   };
   return (
-    <>
-      <div className="workspace-controls" aria-label={panelCopy.label}>
-        {!leftPanelOpen && (
+    <header className="top-chrome">
+      <div className="top-document-zone">
+        <div className="workspace-controls" aria-label={panelCopy.label}>
           <button
-            className="panel-toggle top-panel-toggle left-panel-trigger"
+            className={`panel-toggle top-panel-toggle left-panel-trigger ${leftPanelOpen ? "active" : ""}`}
             type="button"
             aria-label={copy.workspacePanel}
             data-tooltip={copy.workspacePanel}
-            aria-pressed="false"
+            aria-pressed={leftPanelOpen}
             onClick={onToggleLeftPanel}
           >
-            <PanelLeftOpen size={16} />
+            {leftPanelOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
           </button>
-        )}
-        <button
-          className={`panel-toggle top-panel-toggle workspace-search-trigger ${
-            workspaceSearchOpen ? "active" : ""
-          }`}
-          type="button"
-          aria-label={panelCopy.tabs.search}
-          data-tooltip={panelCopy.tabs.search}
-          aria-expanded={workspaceSearchOpen}
-          onClick={onToggleWorkspaceSearch}
-        >
-          <Search size={16} />
-        </button>
-      </div>
+          <button
+            className={`workspace-name-trigger workspace-menu-button ${workspaceMenuOpen ? "active" : ""}`}
+            type="button"
+            aria-label={workspaceMenuOpen ? copy.closeWorkspaceMenu : copy.openWorkspaceMenu}
+            aria-expanded={workspaceMenuOpen}
+            onClick={onToggleWorkspaceMenu}
+          >
+            <span>{workspaceName}</span>
+            <ChevronDown className="workspace-menu-chevron" size={14} aria-hidden="true" />
+            <MoreHorizontal className="workspace-menu-mobile-icon" size={18} aria-hidden="true" />
+          </button>
+          <button
+            className={`panel-toggle top-panel-toggle workspace-search-trigger ${
+              workspaceSearchOpen ? "active" : ""
+            }`}
+            type="button"
+            aria-label={panelCopy.tabs.search}
+            data-tooltip={`${panelCopy.tabs.search} · ⌘K`}
+            aria-expanded={workspaceSearchOpen}
+            onClick={onToggleWorkspaceSearch}
+          >
+            <Search size={16} />
+          </button>
+        </div>
 
-      <header className="top-chrome">
-        <div className="top-document-zone">
-          {fileTabs}
+        {fileTabs}
 
-          <div className="top-right-zone">
+        <div className="top-right-zone">
           {isLiveConnected && (
             <div className="presence sharing-presence" aria-label={sharingTooltip}>
               <Users size={16} aria-hidden="true" />
@@ -153,21 +171,18 @@ export function TopChrome({
 
           {shareControls}
 
-          {!rightPanelOpen && (
-            <button
-              className="panel-toggle top-panel-toggle"
-              type="button"
-              aria-label={sidePanelLabel}
-              data-tooltip={sidePanelLabel}
-              aria-pressed="false"
-              onClick={onToggleRightPanel}
-            >
-              <PanelRightOpen size={16} />
-            </button>
-          )}
-          </div>
+          <button
+            className={`panel-toggle top-panel-toggle ${rightPanelOpen ? "active" : ""}`}
+            type="button"
+            aria-label={sidePanelLabel}
+            data-tooltip={sidePanelLabel}
+            aria-pressed={rightPanelOpen}
+            onClick={onToggleRightPanel}
+          >
+            {rightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+          </button>
         </div>
-      </header>
-    </>
+      </div>
+    </header>
   );
 }

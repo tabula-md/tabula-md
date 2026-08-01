@@ -14,6 +14,7 @@ import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getCollaboratorDisplayList } from "../../collaboration/collabCollaborators";
 import { OpenTabsMenu } from "./OpenTabsMenu";
 import {
+  getWorkspaceName,
   type LocationRoom,
   type WorkspaceFile,
   type WorkspaceFolder,
@@ -41,6 +42,7 @@ export type WorkspaceTopChromeProps = {
   room?: LocationRoom | null;
   leftPanelOpen: boolean;
   workspaceSearchOpen: boolean;
+  workspaceMenuOpen: boolean;
   rightPanelOpen: boolean;
   shareOpen: boolean;
   onAddFile: FileTabsProps["onAddFile"];
@@ -62,6 +64,7 @@ export type WorkspaceTopChromeProps = {
   onStopSession: () => void;
   onRetrySession: () => void;
   onToggleLeftPanel: () => void;
+  onToggleWorkspaceMenu: () => void;
   onToggleWorkspaceSearch: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
@@ -88,6 +91,7 @@ export function WorkspaceTopChrome({
   room,
   leftPanelOpen,
   workspaceSearchOpen,
+  workspaceMenuOpen,
   rightPanelOpen,
   shareOpen,
   onAddFile,
@@ -109,6 +113,7 @@ export function WorkspaceTopChrome({
   onStopSession,
   onRetrySession,
   onToggleLeftPanel,
+  onToggleWorkspaceMenu,
   onToggleWorkspaceSearch,
   onToggleRightPanel,
   onToggleFollowing,
@@ -193,6 +198,8 @@ export function WorkspaceTopChrome({
   return (
     <TopChrome
       workspaceSearchOpen={workspaceSearchOpen}
+      workspaceMenuOpen={workspaceMenuOpen}
+      workspaceName={getWorkspaceName(folders)}
       leftPanelOpen={leftPanelOpen}
       rightPanelOpen={rightPanelOpen}
       isLiveConnected={isLiveConnected}
@@ -205,6 +212,7 @@ export function WorkspaceTopChrome({
       fileTabs={fileTabs}
       shareControls={shareControls}
       onToggleLeftPanel={onToggleLeftPanel}
+      onToggleWorkspaceMenu={onToggleWorkspaceMenu}
       onToggleWorkspaceSearch={onToggleWorkspaceSearch}
       onToggleRightPanel={onToggleRightPanel}
       onToggleFollowing={onToggleFollowing}

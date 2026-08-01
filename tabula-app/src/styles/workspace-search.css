@@ -12,11 +12,16 @@
   --right-control-size: var(--control-size-compact);
 
   width: min(680px, calc(100vw - 32px));
-  height: min(480px, calc(100dvh - min(18vh, 144px) - 32px));
-  max-height: none;
+  height: auto;
+  max-height: min(480px, calc(100dvh - min(18vh, 144px) - 32px));
   padding: 10px;
   overflow: hidden;
   border: 1px solid var(--line-subtle);
+}
+
+.workspace-search-modal .right-panel-search {
+  height: auto;
+  max-height: 458px;
 }
 
 .workspace-search-modal .right-panel-search-controls {
@@ -42,6 +47,46 @@
   padding: 8px 10px;
 }
 
+.workspace-command-section {
+  display: grid;
+  gap: 4px;
+  padding: 2px 0 8px;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.workspace-command-section h2 {
+  margin: 0;
+  padding: 4px 10px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  font-weight: var(--weight-ui-medium);
+}
+
+.workspace-command-results {
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-command-result {
+  display: grid;
+  grid-template-columns: var(--icon-size-medium) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-size-row);
+  padding: 0 10px;
+  border-radius: var(--radius-control);
+  color: var(--text-soft);
+  background: transparent;
+  font-size: var(--font-ui-body);
+  text-align: left;
+}
+
+.workspace-command-result:hover,
+.workspace-command-result:focus-visible {
+  color: var(--text-primary);
+  background: var(--surface-muted);
+}
+
 .workspace-search-loading {
   min-height: 120px;
 }
@@ -58,6 +103,12 @@
   .share-modal.workspace-search-modal {
     width: 100%;
     height: calc(100dvh - 16px);
+    max-height: none;
+  }
+
+  .workspace-search-modal .right-panel-search {
+    height: 100%;
+    max-height: none;
   }
 
   .workspace-search-close {

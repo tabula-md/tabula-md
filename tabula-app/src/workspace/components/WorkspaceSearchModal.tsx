@@ -2,9 +2,9 @@ import { lazy, Suspense } from "react";
 import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import { X } from "lucide-react";
 import { ModalSurface } from "../../ui/ModalSurface";
-import { PanelEmptyState } from "../../right-panel/PanelEmptyState";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
+import type { WorkspaceSearchCommand } from "../../right-panel/RightPanelSearch";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 
@@ -21,6 +21,7 @@ export type WorkspaceSearchModalProps = {
   pending: boolean;
   onClose: () => void;
   onSelectFile: (fileId: string) => void;
+  commands: readonly WorkspaceSearchCommand[];
 };
 
 export function WorkspaceSearchModal({
@@ -32,6 +33,7 @@ export function WorkspaceSearchModal({
   pending,
   onClose,
   onSelectFile,
+  commands,
 }: WorkspaceSearchModalProps) {
   if (!isOpen) return null;
 
@@ -58,9 +60,7 @@ export function WorkspaceSearchModal({
       >
         <X size={16} aria-hidden="true" />
       </button>
-      {files.length === 0 ? (
-        <PanelEmptyState>{copy.search.noDocuments}</PanelEmptyState>
-      ) : pending && !index ? (
+      {pending && files.length > 0 && !index ? (
         <section className="workspace-search-loading" aria-busy="true" />
       ) : (
         <Suspense fallback={<section className="workspace-search-loading" aria-busy="true" />}>
@@ -71,6 +71,13 @@ export function WorkspaceSearchModal({
             index={index}
             language={language}
             onSelectFile={selectFile}
+            commands={commands.map((command) => ({
+              ...command,
+              onSelect: () => {
+                command.onSelect();
+                onClose();
+              },
+            }))}
           />
         </Suspense>
       )}

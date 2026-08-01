@@ -17,6 +17,7 @@ import {
 import {
   ArrowLeft,
   Check,
+  Command,
   ExternalLink,
   ListFilter,
   Search,
@@ -37,7 +38,7 @@ import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferenc
 import type { WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
-import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
+import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { MenuCheckboxItem, MenuContent, MenuRoot, MenuTrigger } from "../ui/Menu";
 import { PanelEmptyState } from "./PanelEmptyState";
@@ -49,6 +50,14 @@ type RightPanelSearchProps = {
   index?: WorkspaceKnowledgeIndex;
   language: WorkspaceLanguage;
   onSelectFile: (fileId: string) => void;
+  commands?: readonly WorkspaceSearchCommand[];
+};
+
+export type WorkspaceSearchCommand = {
+  id: string;
+  label: string;
+  keywords?: readonly string[];
+  onSelect: () => void;
 };
 
 type MetadataFacetSectionProps = {
@@ -109,9 +118,11 @@ export function RightPanelSearch({
   index,
   language,
   onSelectFile,
+  commands = [],
 }: RightPanelSearchProps) {
   const labels = getWorkspaceChromeCopy(language).documentControls;
   const metadataCopy = getKnowledgePanelCopy(language);
+  const commandSectionLabel = getWorkspaceMenuCopy(language).aria.workspaceActions;
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [options, setOptions] = useState<SearchOptions>(DEFAULT_SEARCH_OPTIONS);
@@ -209,6 +220,18 @@ export function RightPanelSearch({
     [deferredQuery, filters, options, searchEntries],
   );
   const hasQuery = deferredQuery.trim().length > 0;
+  const normalizedQuery = deferredQuery.trim();
+  const commandMode = normalizedQuery.startsWith(">");
+  const commandQuery = (commandMode ? normalizedQuery.slice(1) : normalizedQuery)
+    .trim()
+    .toLocaleLowerCase();
+  const visibleCommands = commands.filter((command) => {
+    if (!commandQuery) return true;
+    return [command.label, ...(command.keywords ?? [])]
+      .join(" ")
+      .toLocaleLowerCase()
+      .includes(commandQuery);
+  });
   const hasFilters = selectedTypes.size > 0 ||
     selectedTags.size > 0 ||
     selectedStatuses.size > 0 ||
@@ -382,56 +405,87 @@ export function RightPanelSearch({
                 aria-invalid={Boolean(result.error)}
                 placeholder={copy.placeholder}
                 onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && commandMode && visibleCommands[0]) {
+                    event.preventDefault();
+                    visibleCommands[0].onSelect();
+                  }
+                }}
               />
             </label>
-            <button
-              className="right-panel-search-filter-trigger"
-              type="button"
-              aria-label={copy.filters}
-              data-tooltip={copy.filters}
-              onClick={() => setFilterViewOpen(true)}
-            >
-              <ListFilter size={16} aria-hidden="true" />
-              {hasFilters && (
-                <span className="right-panel-control-status-dot" aria-hidden="true" />
-              )}
-            </button>
-            <MenuRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <MenuTrigger asChild>
-                <button
-                  className="right-panel-search-settings-trigger"
-                  type="button"
-                  aria-label={copy.settings}
-                  data-tooltip={copy.settings}
-                  aria-expanded={settingsOpen}
+            {commands.length === 0 && (
+              <button
+                className="right-panel-search-filter-trigger"
+                type="button"
+                aria-label={copy.filters}
+                data-tooltip={copy.filters}
+                onClick={() => setFilterViewOpen(true)}
+              >
+                <ListFilter size={16} aria-hidden="true" />
+                {hasFilters && (
+                  <span className="right-panel-control-status-dot" aria-hidden="true" />
+                )}
+              </button>
+            )}
+            {commands.length === 0 && (
+              <MenuRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
+                <MenuTrigger asChild>
+                  <button
+                    className="right-panel-search-settings-trigger"
+                    type="button"
+                    aria-label={copy.settings}
+                    data-tooltip={copy.settings}
+                    aria-expanded={settingsOpen}
+                  >
+                    <SlidersHorizontal size={16} />
+                    {hasActiveOptions && (
+                      <span className="right-panel-control-status-dot" aria-hidden="true" />
+                    )}
+                  </button>
+                </MenuTrigger>
+                <MenuContent
+                  className="right-panel-search-settings"
+                  ariaLabel={copy.settings}
                 >
-                  <SlidersHorizontal size={16} />
-                  {hasActiveOptions && (
-                    <span className="right-panel-control-status-dot" aria-hidden="true" />
-                  )}
-                </button>
-              </MenuTrigger>
-              <MenuContent className="right-panel-search-settings" ariaLabel={copy.settings}>
-                {([
-                  ["caseSensitive", "Aa", labels.matchCase],
-                  ["wholeWord", "wd", labels.matchWholeWord],
-                  ["regexp", ".*", labels.useRegularExpression],
-                ] as const).map(([option, abbreviation, label]) => (
-                  <MenuCheckboxItem
-                    key={option}
-                    checked={options[option]}
-                    icon={options[option] ? <Check size={14} /> : undefined}
-                    label={label}
-                    trailing={<span aria-hidden="true">{abbreviation}</span>}
-                    onCheckedChange={() => toggleOption(option)}
-                    onSelect={(event) => event.preventDefault()}
-                  />
-                ))}
-              </MenuContent>
-            </MenuRoot>
+                  {([
+                    ["caseSensitive", "Aa", labels.matchCase],
+                    ["wholeWord", "wd", labels.matchWholeWord],
+                    ["regexp", ".*", labels.useRegularExpression],
+                  ] as const).map(([option, abbreviation, label]) => (
+                    <MenuCheckboxItem
+                      key={option}
+                      checked={options[option]}
+                      icon={options[option] ? <Check size={14} /> : undefined}
+                      label={label}
+                      trailing={<span aria-hidden="true">{abbreviation}</span>}
+                      onCheckedChange={() => toggleOption(option)}
+                      onSelect={(event) => event.preventDefault()}
+                    />
+                  ))}
+                </MenuContent>
+              </MenuRoot>
+            )}
           </div>
 
           <div className="right-panel-search-scroll">
+            {visibleCommands.length > 0 && (
+              <section className="workspace-command-section" aria-label={commandSectionLabel}>
+                <h2>{commandSectionLabel}</h2>
+                <div className="workspace-command-results">
+                  {visibleCommands.map((command) => (
+                    <button
+                      className="workspace-command-result"
+                      type="button"
+                      key={command.id}
+                      onClick={command.onSelect}
+                    >
+                      <Command size={14} aria-hidden="true" />
+                      <span>{command.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
             {hasFilters && (
               <div className="right-panel-search-active-filters" aria-label={copy.filters}>
                 <div className="right-panel-search-filter-chips">
@@ -464,10 +518,10 @@ export function RightPanelSearch({
             {result.error && (
               <p className="right-panel-search-message error">{result.error}</p>
             )}
-            {(hasQuery || hasFilters) && !result.error && visibleEntries.length === 0 && (
+            {!commandMode && (hasQuery || hasFilters) && !result.error && visibleEntries.length === 0 && (
               <PanelEmptyState>{copy.noMatches}</PanelEmptyState>
             )}
-            {visibleEntries.length > 0 && (
+            {!commandMode && visibleEntries.length > 0 && (
               <>
                 <p className="right-panel-search-result-count">
                   {copy.documentCount(visibleEntries.length)}

@@ -25,7 +25,7 @@ export const jaWorkspaceInterfaceMessages = {
     panelSearch: "検索",
     panelKnowledge: "ナレッジ",
     panelKnowledgeDescription: "ドキュメントの知識、リンク、ワークスペースの状態を確認",
-    searchPlaceholder: "ドキュメントとメタデータを検索",
+    searchPlaceholder: "ドキュメントを検索またはコマンドを実行",
     searchSettings: "検索設定",
     searchFilters: "フィルター",
     searchBackToResults: "結果に戻る",

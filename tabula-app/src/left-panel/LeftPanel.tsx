@@ -1,10 +1,9 @@
-import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Files, Library, Menu, PanelLeftClose } from "lucide-react";
+import type { RefObject } from "react";
+import { PanelLeftClose } from "lucide-react";
 import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
-import { getWorkspaceName } from "../workspace/workspaceStorage";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
@@ -33,20 +32,10 @@ export type LeftPanelProps = {
   onMoveFileToFolder: (fileId: string, folderId: string) => Promise<void>;
   onMoveFolder: (folderId: string, parentId: string) => Promise<void>;
   onRenameFolder: (folderId: string, nextTitle: string) => Promise<boolean>;
-  onRenameWorkspace: (nextTitle: string) => boolean;
   onClose: () => void;
-  workspaceMenuOpen: boolean;
-  onToggleWorkspaceMenu: () => void;
   overlayMode?: boolean;
   panelRef?: RefObject<HTMLElement | null>;
 };
-
-type WorkspacePanelView = "files" | "libraries";
-
-const workspacePanelViewIcons = {
-  files: <Files size={14} />,
-  libraries: <Library size={14} />,
-} satisfies Record<WorkspacePanelView, ReactNode>;
 
 export function LeftPanel({
   isOpen,
@@ -70,21 +59,13 @@ export function LeftPanel({
   onMoveFileToFolder,
   onMoveFolder,
   onRenameFolder,
-  onRenameWorkspace,
   onClose,
-  workspaceMenuOpen,
-  onToggleWorkspaceMenu,
   overlayMode = false,
   panelRef,
 }: LeftPanelProps) {
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const chromeCopy = getWorkspaceChromeCopy(language).topChrome;
   const knowledgeCopy = getKnowledgePanelCopy(language);
-  const workspaceName = getWorkspaceName(folders);
-  const [view, setView] = useState<WorkspacePanelView>("files");
-  const [renamingWorkspace, setRenamingWorkspace] = useState(false);
-  const [renamingWorkspaceTitle, setRenamingWorkspaceTitle] = useState("");
-  const workspaceRenameInputRef = useRef<HTMLInputElement | null>(null);
   const {
     collapsedFileTreeFolderIds,
     toggleFileTreeFolderCollapsed,
@@ -95,39 +76,7 @@ export function LeftPanel({
     commentsByFileId: {},
   });
 
-  const startRenamingWorkspace = () => {
-    setRenamingWorkspaceTitle(workspaceName);
-    setRenamingWorkspace(true);
-  };
-  const cancelRenamingWorkspace = () => {
-    setRenamingWorkspace(false);
-    setRenamingWorkspaceTitle("");
-  };
-  const commitRenamingWorkspace = () => {
-    if (onRenameWorkspace(renamingWorkspaceTitle)) {
-      cancelRenamingWorkspace();
-      return;
-    }
-    window.setTimeout(() => {
-      workspaceRenameInputRef.current?.focus();
-      workspaceRenameInputRef.current?.select();
-    }, 0);
-  };
-
-  useLayoutEffect(() => {
-    if (!renamingWorkspace) return;
-    const frame = window.requestAnimationFrame(() => {
-      workspaceRenameInputRef.current?.focus();
-      workspaceRenameInputRef.current?.select();
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [renamingWorkspace]);
-
   if (!isOpen) return null;
-
-  const workspaceMenuLabel = workspaceMenuOpen
-    ? chromeCopy.closeWorkspaceMenu
-    : chromeCopy.openWorkspaceMenu;
 
   return (
     <aside
@@ -141,83 +90,20 @@ export function LeftPanel({
       data-live-workspace={isLiveWorkspace || undefined}
     >
       <header className="workspace-panel-header">
-        <button
-          className={`right-file-toolbar-button workspace-menu-button ${workspaceMenuOpen ? "active" : ""}`}
-          type="button"
-          aria-label={workspaceMenuLabel}
-          data-tooltip={workspaceMenuLabel}
-          aria-expanded={workspaceMenuOpen}
-          onClick={onToggleWorkspaceMenu}
-        >
-          <Menu size={16} />
-        </button>
-        <div className="right-file-workspace-identity">
-          {renamingWorkspace ? (
-            <input
-              ref={workspaceRenameInputRef}
-              className="ui-input-surface right-file-workspace-name-input"
-              value={renamingWorkspaceTitle}
-              aria-label={chromeCopy.renameWorkspace(workspaceName)}
-              onChange={(event) => setRenamingWorkspaceTitle(event.target.value)}
-              onBlur={commitRenamingWorkspace}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") commitRenamingWorkspace();
-                if (event.key === "Escape") cancelRenamingWorkspace();
-              }}
-            />
-          ) : (
-            <button
-              className="right-file-workspace-name"
-              type="button"
-              aria-label={chromeCopy.renameWorkspace(workspaceName)}
-              data-tooltip={copy.files.rename}
-              onClick={startRenamingWorkspace}
-            >
-              {workspaceName}
-            </button>
-          )}
-        </div>
-        <button
-          className="right-file-toolbar-button workspace-panel-close"
-          type="button"
-          aria-label={chromeCopy.closeSidePanel}
-          data-tooltip={chromeCopy.closeSidePanel}
-          onClick={onClose}
-        >
-          <PanelLeftClose size={16} />
-        </button>
+        <h2>{chromeCopy.files}</h2>
+        {overlayMode && (
+          <button
+            className="right-file-toolbar-button workspace-panel-close"
+            type="button"
+            aria-label={chromeCopy.closeSidePanel}
+            data-tooltip={chromeCopy.closeSidePanel}
+            onClick={onClose}
+          >
+            <PanelLeftClose size={16} />
+          </button>
+        )}
       </header>
-      <div className="workspace-panel-view-header">
-        <nav
-          className="ui-panel-tabs workspace-panel-tabs"
-          aria-label={chromeCopy.workspaceViews}
-          role="tablist"
-        >
-          {(["files", "libraries"] as const).map((nextView) => (
-            <button
-              key={nextView}
-              id={`workspace-panel-${nextView}-tab`}
-              className={`ui-panel-tab workspace-panel-tab ${view === nextView ? "active" : ""}`}
-              type="button"
-              role="tab"
-              aria-label={chromeCopy[nextView]}
-              data-tooltip={chromeCopy[nextView]}
-              aria-controls={`workspace-panel-${nextView}-view`}
-              aria-selected={view === nextView}
-              onClick={() => setView(nextView)}
-            >
-              {workspacePanelViewIcons[nextView]}
-            </button>
-          ))}
-        </nav>
-      </div>
-      {view === "files" ? (
-        <div
-          className="right-panel-body files"
-          id="workspace-panel-files-view"
-          role="tabpanel"
-          aria-labelledby="workspace-panel-files-tab"
-        >
+      <div className="right-panel-body files" id="workspace-panel-files-view">
           <RightPanelFiles
             files={files}
             folders={folders}
@@ -243,17 +129,7 @@ export function LeftPanel({
             onMoveFolder={onMoveFolder}
             onRenameFolder={onRenameFolder}
           />
-        </div>
-      ) : (
-        <section
-          className="workspace-library-panel"
-          id="workspace-panel-libraries-view"
-          role="tabpanel"
-          aria-labelledby="workspace-panel-libraries-tab"
-        >
-          <p>{chromeCopy.noLibraries}</p>
-        </section>
-      )}
+      </div>
     </aside>
   );
 }

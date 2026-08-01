@@ -1,5 +1,5 @@
 export const enSearchMessages = {
-  searchPlaceholder: "Search documents and metadata",
+  searchPlaceholder: "Search documents or run a command",
   searchSettings: "Search settings",
   searchFilters: "Filters",
   searchBackToResults: "Back to results",

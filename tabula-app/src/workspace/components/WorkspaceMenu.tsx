@@ -1,10 +1,7 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronRight,
-  FileInput,
-  FileOutput,
-  FilePlus2,
   FolderArchive,
   FolderInput,
   HelpCircle,
@@ -12,6 +9,7 @@ import {
   Info,
   Monitor,
   Moon,
+  PencilLine,
   SlidersHorizontal,
   Sun,
   Trash2,
@@ -22,6 +20,7 @@ import type {
 } from "../state/useWorkspacePreferences";
 import {
   getWorkspaceMenuCopy,
+  getWorkspaceChromeCopy,
   WORKSPACE_LANGUAGE_OPTIONS,
 } from "../workspaceLocale";
 
@@ -30,16 +29,14 @@ type WorkspaceMenuProps = {
   preferencesOpen: boolean;
   theme: WorkspaceTheme;
   language: WorkspaceLanguage;
+  workspaceName: string;
   onTogglePreferences: () => void;
   onChangeTheme: (theme: WorkspaceTheme) => void;
   onChangeLanguage: (language: WorkspaceLanguage) => void;
-  onAddFile: () => void;
-  onImportFile: () => void;
   onImportWorkspace?: () => void;
-  onExportFile: () => void;
   onExportWorkspace: () => void;
-  canExportFile: boolean;
   canExportWorkspace: boolean;
+  onRenameWorkspace: (nextTitle: string) => boolean;
   onClearWorkspace?: () => void;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
@@ -118,25 +115,35 @@ export function WorkspaceMenu({
   preferencesOpen,
   theme,
   language,
+  workspaceName,
   onTogglePreferences,
   onChangeTheme,
   onChangeLanguage,
-  onAddFile,
-  onImportFile,
   onImportWorkspace,
-  onExportFile,
   onExportWorkspace,
-  canExportFile,
   canExportWorkspace,
+  onRenameWorkspace,
   onClearWorkspace,
   onOpenAbout,
   onOpenHelp,
 }: WorkspaceMenuProps) {
+  const copy = getWorkspaceMenuCopy(language);
+  const renameWorkspaceLabel = getWorkspaceChromeCopy(language).topChrome.renameWorkspace(
+    workspaceName,
+  );
+  const [renamingWorkspace, setRenamingWorkspace] = useState(false);
+  const [workspaceTitle, setWorkspaceTitle] = useState(workspaceName);
+  const commitWorkspaceName = () => {
+    if (onRenameWorkspace(workspaceTitle)) {
+      setRenamingWorkspace(false);
+      return;
+    }
+    setWorkspaceTitle(workspaceName);
+  };
+
   if (!isOpen) {
     return null;
   }
-
-  const copy = getWorkspaceMenuCopy(language);
 
   const renderSegment = <Value extends string>(
     currentValue: Value,
@@ -167,25 +174,39 @@ export function WorkspaceMenu({
       aria-label={copy.aria.workspaceMenu}
     >
       <nav className="workspace-menu-list" aria-label={copy.aria.workspaceActions}>
-        <MenuRow icon={<FilePlus2 size={16} />} onClick={onAddFile}>
-          {copy.actions.newFile}
-        </MenuRow>
-        <MenuRow icon={<FileInput size={16} />} onClick={onImportFile}>
-          {copy.actions.importFile}
-        </MenuRow>
+        {renamingWorkspace ? (
+          <input
+            className="ui-input-surface workspace-menu-rename-input"
+            value={workspaceTitle}
+            autoFocus
+            aria-label={renameWorkspaceLabel}
+            onChange={(event) => setWorkspaceTitle(event.target.value)}
+            onBlur={commitWorkspaceName}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") commitWorkspaceName();
+              if (event.key === "Escape") {
+                setWorkspaceTitle(workspaceName);
+                setRenamingWorkspace(false);
+              }
+            }}
+          />
+        ) : (
+          <MenuRow
+            icon={<PencilLine size={16} />}
+            onClick={() => {
+              setWorkspaceTitle(workspaceName);
+              setRenamingWorkspace(true);
+            }}
+          >
+            {renameWorkspaceLabel}
+          </MenuRow>
+        )}
         {onImportWorkspace && (
           <MenuRow icon={<FolderInput size={16} />} onClick={onImportWorkspace}>
             {copy.actions.importWorkspace}
           </MenuRow>
         )}
         <div className="workspace-menu-divider" role="separator" />
-        <MenuRow
-          icon={<FileOutput size={16} />}
-          disabled={!canExportFile}
-          onClick={onExportFile}
-        >
-          {copy.actions.exportFile}
-        </MenuRow>
         <MenuRow
           icon={<FolderArchive size={16} />}
           disabled={!canExportWorkspace}

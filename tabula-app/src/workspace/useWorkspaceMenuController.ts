@@ -18,13 +18,12 @@ type UseWorkspaceMenuControllerOptions = {
   importInputRef: RefObject<HTMLInputElement | null>;
   workspaceImportInputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
-  onAddFile: () => void;
   canClearWorkspace: boolean;
-  canExportFile: boolean;
   canExportWorkspace: boolean;
   onClearWorkspace: () => void;
-  onExportFile: () => void;
   onExportWorkspace: () => void;
+  workspaceName: string;
+  onRenameWorkspace: (nextTitle: string) => boolean;
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
@@ -41,13 +40,12 @@ export function useWorkspaceMenuController({
   importInputRef,
   workspaceImportInputRef,
   isOpen,
-  onAddFile,
   canClearWorkspace,
-  canExportFile,
   canExportWorkspace,
   onClearWorkspace,
-  onExportFile,
   onExportWorkspace,
+  workspaceName,
+  onRenameWorkspace,
   onCloseChrome,
   onImportFileChange,
   onImportWorkspaceChange,
@@ -87,18 +85,17 @@ export function useWorkspaceMenuController({
       importInputRef,
       workspaceImportInputRef,
       canClearWorkspace,
-      canExportFile,
       canExportWorkspace,
+      workspaceName,
       onImportFileChange,
       onImportWorkspaceChange,
       onClearWorkspace,
-      onExportFile,
       onExportWorkspace,
+      onRenameWorkspace,
       onCloseChrome,
       onTogglePreferences: togglePreferences,
       onChangeTheme: setTheme,
       onChangeLanguage: setLanguage,
-      onAddFile,
       onOpenAbout,
       onOpenHelp,
     }),
@@ -106,13 +103,12 @@ export function useWorkspaceMenuController({
       importInputRef,
       workspaceImportInputRef,
       isOpen,
-      onAddFile,
       canClearWorkspace,
-      canExportFile,
       canExportWorkspace,
       onClearWorkspace,
-      onExportFile,
       onExportWorkspace,
+      workspaceName,
+      onRenameWorkspace,
       onCloseChrome,
       onImportFileChange,
       onImportWorkspaceChange,

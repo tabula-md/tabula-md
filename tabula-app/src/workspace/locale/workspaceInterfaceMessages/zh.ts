@@ -25,7 +25,7 @@ export const zhWorkspaceInterfaceMessages = {
     panelSearch: "搜索",
     panelKnowledge: "知识",
     panelKnowledgeDescription: "查看文档知识、链接和工作区状态",
-    searchPlaceholder: "搜索文档和元数据",
+    searchPlaceholder: "搜索文档或运行命令",
     searchSettings: "搜索设置",
     searchFilters: "筛选条件",
     searchBackToResults: "返回结果",

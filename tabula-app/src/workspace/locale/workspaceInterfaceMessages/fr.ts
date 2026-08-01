@@ -25,7 +25,7 @@ export const frWorkspaceInterfaceMessages = {
     panelSearch: "Recherche",
     panelKnowledge: "Connaissances",
     panelKnowledgeDescription: "Examiner les connaissances, les liens et l’état de l’espace",
-    searchPlaceholder: "Rechercher des documents et métadonnées",
+    searchPlaceholder: "Rechercher des documents ou exécuter une commande",
     searchSettings: "Paramètres de recherche",
     searchFilters: "Filtres",
     searchBackToResults: "Retour aux résultats",

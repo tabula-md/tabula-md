@@ -26,6 +26,9 @@ import type {
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
 import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIndex";
+import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
+import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
+import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
@@ -58,7 +61,6 @@ type LeftPanelHandlers = Pick<
   | "onDuplicateFile"
   | "onRenameFile"
   | "onRenameFolder"
-  | "onRenameWorkspace"
   | "onMoveFileToFolder"
   | "onMoveFolder"
 >;
@@ -80,9 +82,9 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   isLive: boolean;
   language: WorkspaceLanguage;
   leftPanelOpen: boolean;
-  workspaceMenuOpen: boolean;
   workspaceSearchOpen: boolean;
   onImportFile: () => void;
+  onExportFile: () => void;
   outlineHeadings: MarkdownHeading[];
   parsedMarkdownBody: string;
   previewSurfaceRef: RefObject<HTMLElement | null>;
@@ -98,7 +100,6 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   setRightPanelView: (view: RightPanelView) => void;
   setLeftPanelOpen: (isOpen: boolean) => void;
   setWorkspaceSearchOpen: (isOpen: boolean) => void;
-  onToggleWorkspaceMenu: () => void;
   text: string;
 };
 
@@ -120,7 +121,6 @@ export function useWorkspaceRightPanelController({
   isLive,
   language,
   leftPanelOpen,
-  workspaceMenuOpen,
   workspaceSearchOpen,
   onAddComment,
   onAddCommentReply,
@@ -135,11 +135,11 @@ export function useWorkspaceRightPanelController({
   onIdentityNameChange,
   onIdentityNameCommit,
   onImportFile,
+  onExportFile,
   onNewFile,
   onNewFolder,
   onRenameFile,
   onRenameFolder,
-  onRenameWorkspace,
   onMoveFileToFolder,
   onMoveFolder,
   onReplyDraftChange,
@@ -148,7 +148,6 @@ export function useWorkspaceRightPanelController({
   onSelectKnowledgeHealthIssue,
   onStartCommentReply,
   onToggleCommentResolved,
-  onToggleWorkspaceMenu,
   outlineHeadings,
   parsedMarkdownBody,
   previewSurfaceRef,
@@ -247,11 +246,8 @@ export function useWorkspaceRightPanelController({
     [setRightPanelOpen],
   );
   const closeLeftPanel = useCallback(
-    () => {
-      if (workspaceMenuOpen) onToggleWorkspaceMenu();
-      setLeftPanelOpen(false);
-    },
-    [onToggleWorkspaceMenu, setLeftPanelOpen, workspaceMenuOpen],
+    () => setLeftPanelOpen(false),
+    [setLeftPanelOpen],
   );
   const selectFromLeftPanel = useCallback((fileId: string) => {
     onSelectFile(fileId);
@@ -291,9 +287,6 @@ export function useWorkspaceRightPanelController({
     onMoveFileToFolder,
     onMoveFolder,
     onRenameFolder,
-    onRenameWorkspace,
-    workspaceMenuOpen,
-    onToggleWorkspaceMenu,
   };
 
   const searchModalProps: WorkspaceSearchModalProps = {
@@ -305,6 +298,41 @@ export function useWorkspaceRightPanelController({
     pending: knowledgeIndexPending,
     onClose: () => setWorkspaceSearchOpen(false),
     onSelectFile,
+    commands: [
+      {
+        id: "new-document",
+        label: getWorkspaceInterfaceCopy(language).sidePanel.files.newDocument,
+        keywords: ["create", "file", "document"],
+        onSelect: () => onNewFile(),
+      },
+      {
+        id: "import-document",
+        label: getWorkspaceMenuCopy(language).actions.importFile,
+        keywords: ["open", "markdown", "file"],
+        onSelect: onImportFile,
+      },
+      {
+        id: "export-document",
+        label: getWorkspaceMenuCopy(language).actions.exportFile,
+        keywords: ["download", "markdown", "file"],
+        onSelect: onExportFile,
+      },
+      {
+        id: "toggle-workspace-panel",
+        label: getWorkspaceChromeCopy(language).topChrome.workspacePanel,
+        keywords: ["files", "sidebar", "left"],
+        onSelect: () => setLeftPanelOpen(!leftPanelOpen),
+      },
+      {
+        id: "open-document-properties",
+        label: getKnowledgePanelCopy(language).reviewInKnowledge,
+        keywords: ["outline", "links", "comments", "properties", "right"],
+        onSelect: () => {
+          setRightPanelView("properties");
+          setRightPanelOpen(true);
+        },
+      },
+    ],
   };
 
   const rightPanelProps: WorkspaceRightPanelProps = {

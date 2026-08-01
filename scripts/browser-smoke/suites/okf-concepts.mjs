@@ -327,7 +327,7 @@ export async function run(ctx) {
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
     await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({ state: "visible" });
     const conceptSearch = page.getByRole("searchbox", {
-      name: "Search documents and metadata",
+      name: "Search documents or run a command",
       exact: true,
     });
     await conceptSearch.fill("dispatches work");
@@ -341,17 +341,11 @@ export async function run(ctx) {
         (await page.locator(".right-panel-search-result").count()) === 1,
       "Search should retrieve concept body text without turning Knowledge into a catalog.",
     );
-    await conceptSearch.fill("");
-    await page.getByRole("button", { name: "Filters", exact: true }).click();
-    await page.getByRole("button", { name: /^Architecture\s+1$/ }).click();
-    await page.getByRole("button", { name: "Show 1 document", exact: true }).click();
+    await conceptSearch.fill("> export");
     expect(
-      (await page.locator(".right-panel-search-result").count()) === 1 &&
-        await page.getByRole("button", {
-          name: "Remove Type: Architecture",
-          exact: true,
-        }).isVisible(),
-      "Metadata filters should visibly constrain the result list and remain removable.",
+      await page.getByRole("button", { name: "Export document (.md)", exact: true }).isVisible() &&
+        (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0,
+      "The global retrieval surface should expose commands without showing advanced filters by default.",
     );
 
     await openProjectMenu(page);

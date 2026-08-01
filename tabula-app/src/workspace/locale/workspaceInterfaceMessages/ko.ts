@@ -25,7 +25,7 @@ export const koWorkspaceInterfaceMessages = {
     panelSearch: "검색",
     panelKnowledge: "지식",
     panelKnowledgeDescription: "문서 지식, 링크, 워크스페이스 상태 검토",
-    searchPlaceholder: "문서 및 메타데이터 검색",
+    searchPlaceholder: "문서를 검색하거나 명령 실행",
     searchSettings: "검색 설정",
     searchFilters: "필터",
     searchBackToResults: "결과로 돌아가기",

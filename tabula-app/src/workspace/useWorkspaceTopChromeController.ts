@@ -37,6 +37,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   room?: LocationRoom | null;
   leftPanelOpen: boolean;
   workspaceSearchOpen: boolean;
+  workspaceMenuOpen: boolean;
   rightPanelOpen: boolean;
   topPopover: TopPopover;
   onAddFile: () => void;
@@ -58,6 +59,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   onStopSession: () => void;
   onRetrySession: () => void;
   onToggleLeftPanel: () => void;
+  onToggleWorkspaceMenu: () => void;
   onToggleWorkspaceSearch: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
@@ -88,6 +90,7 @@ export function useWorkspaceTopChromeController({
   room,
   leftPanelOpen,
   workspaceSearchOpen,
+  workspaceMenuOpen,
   rightPanelOpen,
   topPopover,
   onAddFile,
@@ -109,6 +112,7 @@ export function useWorkspaceTopChromeController({
   onStopSession,
   onRetrySession,
   onToggleLeftPanel,
+  onToggleWorkspaceMenu,
   onToggleWorkspaceSearch,
   onToggleRightPanel,
   onToggleFollowing,
@@ -177,6 +181,7 @@ export function useWorkspaceTopChromeController({
     room,
     leftPanelOpen,
     workspaceSearchOpen,
+    workspaceMenuOpen,
     rightPanelOpen,
     shareOpen,
     onAddFile,
@@ -198,6 +203,7 @@ export function useWorkspaceTopChromeController({
     onStopSession,
     onRetrySession,
     onToggleLeftPanel,
+    onToggleWorkspaceMenu,
     onToggleWorkspaceSearch,
     onToggleRightPanel,
     onToggleFollowing,

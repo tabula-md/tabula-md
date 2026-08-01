@@ -12,14 +12,10 @@
 }
 
 .workspace-controls {
-  position: fixed;
-  top: var(--space-2);
-  left: var(--space-3);
-  z-index: calc(var(--layer-panel) + 2);
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
-  width: auto;
   height: var(--control-size-row);
   min-width: 0;
   overflow: visible;
@@ -28,23 +24,46 @@
 .top-document-zone {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
   align-items: center;
   gap: var(--space-3);
   width: 100%;
   height: var(--control-size-row);
   min-width: 0;
   margin: 0;
-  padding-left: calc(var(--control-size-compact) * 3 + var(--space-2) * 2 + var(--space-3));
   overflow: visible;
 }
 
-.main-panel.left-panel-open .top-document-zone {
-  padding-left: calc(var(--control-size-compact) + var(--space-2) + var(--space-3));
+.workspace-name-trigger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  max-width: min(220px, 24vw);
+  height: var(--control-size-compact);
+  min-width: 0;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: transparent;
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-medium);
 }
 
-.main-panel.left-panel-open .workspace-controls {
-  left: calc(var(--left-panel-width) + var(--space-3));
+.workspace-name-trigger:hover,
+.workspace-name-trigger.active {
+  background: var(--surface-hover);
+}
+
+.workspace-name-trigger span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-menu-mobile-icon {
+  display: none;
 }
 
 .top-right-zone {
@@ -1017,6 +1036,24 @@
     flex-basis: var(--control-size-touch);
     width: var(--control-size-touch);
     height: var(--control-size-touch);
+  }
+
+  .workspace-name-trigger {
+    display: grid;
+    place-items: center;
+    flex: 0 0 var(--control-size-touch);
+    width: var(--control-size-touch);
+    height: var(--control-size-touch);
+    padding: 0;
+  }
+
+  .workspace-name-trigger span,
+  .workspace-menu-chevron {
+    display: none;
+  }
+
+  .workspace-menu-mobile-icon {
+    display: block;
   }
 
   .tabbar > .open-tabs-trigger {

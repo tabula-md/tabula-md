@@ -25,7 +25,7 @@ export const deWorkspaceInterfaceMessages = {
     panelSearch: "Suche",
     panelKnowledge: "Wissen",
     panelKnowledgeDescription: "Wissen, Links und Workspace-Status des Dokuments prüfen",
-    searchPlaceholder: "Dokumente und Metadaten suchen",
+    searchPlaceholder: "Dokumente suchen oder einen Befehl ausführen",
     searchSettings: "Sucheinstellungen",
     searchFilters: "Filter",
     searchBackToResults: "Zurück zu den Ergebnissen",

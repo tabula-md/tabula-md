@@ -38,13 +38,11 @@ export async function run(ctx) {
       menuButtonCount: document.querySelectorAll(".workspace-menu-button").length,
       menuButtonInWorkspacePanel: Boolean(document.querySelector(".left-panel .workspace-menu-button")),
       topChromeMenuButtonCount: document.querySelectorAll(".workspace-controls .workspace-menu-button").length,
+      workspaceNameVisible: Boolean(document.querySelector(".workspace-controls .workspace-name-trigger span")),
       workspacePanelLabel: document.querySelector(".left-panel")?.getAttribute("aria-label") ?? "",
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       leftPanelCount: document.querySelectorAll(".left-sidebar").length,
       leftTabCount: document.querySelectorAll(".workspace-panel-tabs button").length,
-      leftTabLabels: Array.from(document.querySelectorAll(".workspace-panel-tabs button"))
-        .map((button) => button.getAttribute("aria-label") ?? ""),
-      leftVisibleTabLabelCount: document.querySelectorAll(".workspace-panel-tab-label").length,
       templateRowCount: document.querySelectorAll(".left-library-item").length,
       menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       publicLinks: Array.from(document.querySelectorAll(".workspace-menu-popover a")).map((link) => ({
@@ -111,23 +109,22 @@ export async function run(ctx) {
       })(),
     }));
     // P7: workspace menu product contract.
-    expect(workbenchPanels.menuButtonCount === 1, "The Workspace panel should expose one workspace menu button.");
-    expect(workbenchPanels.menuButtonInWorkspacePanel, "The workspace menu button should belong to the Workspace panel header.");
-    expect(workbenchPanels.topChromeMenuButtonCount === 0, "Top chrome should not duplicate the workspace menu button.");
+    expect(workbenchPanels.menuButtonCount === 1, "Top chrome should expose one workspace menu trigger.");
+    expect(!workbenchPanels.menuButtonInWorkspacePanel, "The workspace menu should not belong to the collapsible Workspace panel.");
+    expect(workbenchPanels.topChromeMenuButtonCount === 1, "The workspace identity should remain in top chrome.");
+    expect(workbenchPanels.workspaceNameVisible, "The current workspace name should remain visible outside the Workspace panel.");
     expect(workbenchPanels.workspacePanelLabel === "Workspace panel", "The left panel should identify itself as the Workspace panel, not the Files panel.");
-    expect(workbenchPanels.menuOpen, "The workspace menu should open from the Workspace panel header.");
+    expect(workbenchPanels.menuOpen, "The workspace menu should open from the workspace name.");
     expect(workbenchPanels.leftPanelCount === 0, "The app should not render a left side panel for future surfaces.");
-    expect(workbenchPanels.leftTabCount === 2, "The Workspace panel should expose Files and Libraries as peer views.");
-    expect(workbenchPanels.leftTabLabels.join("|") === "Files|Libraries", "Workspace views should use explicit Files and Libraries tabs.");
-    expect(workbenchPanels.leftVisibleTabLabelCount === 0, "Workspace views should match the icon-only right-panel tab treatment.");
+    expect(workbenchPanels.leftTabCount === 0, "Workspace navigation should not imitate the document inspector with peer tabs.");
     expect(workbenchPanels.templateRowCount === 0, "Templates should not ship as a visible surface yet.");
     expect(!workbenchPanels.menuText.includes("Agent"), "Agent should not ship as an inert menu surface.");
     expect(workbenchPanels.fileSearchCount === 0, "File search should live in the side panel.");
     expect(workbenchPanels.fileRowCount === 0, "File rows should live in the side panel.");
     expect(
       workbenchPanels.actionRows.map((row) => row.text).join("|") ===
-        "New document|Import document (.md)…|Import folder…|Export document (.md)|Export workspace (.zip)|Preferences|About|Help|Follow us|GitHub|Clear local workspace…",
-      "The workspace menu should expose file entry points, preferences, support, and public links without duplicating Share.",
+        "Rename workspace Project|Import folder…|Export workspace (.zip)|Preferences|About|Help|Follow us|GitHub|Clear local workspace…",
+      "The workspace menu should keep workspace and app actions separate from document actions.",
     );
     const xPublicLink = workbenchPanels.publicLinks.find((link) => link.text === "Follow us");
     expect(xPublicLink?.href === "https://x.com/tabula_md", "Follow us should point to the Tabula X profile.");
@@ -160,21 +157,16 @@ export async function run(ctx) {
       "Workspace menu rows should use one compact row token set.",
     );
     const focusIndex = (label) => workbenchPanels.focusOrder.indexOf(label);
-    expect(focusIndex("New document") !== -1, "Keyboard order should include document creation.");
-    expect(focusIndex("Import document (.md)…") !== -1, "Keyboard order should include document import.");
+    expect(focusIndex("Rename workspace Project") !== -1, "Keyboard order should begin with workspace identity actions.");
     expect(focusIndex("Import folder…") !== -1, "Keyboard order should include opening a folder.");
-    expect(focusIndex("Export document (.md)") !== -1, "Keyboard order should include document export.");
     expect(focusIndex("Export workspace (.zip)") !== -1, "Keyboard order should include workspace export.");
     expect(focusIndex("Live collaboration…") === -1, "Live collaboration should have one entry point in Share.");
     expect(focusIndex("Preferences") !== -1, "Keyboard order should include Preferences.");
     expect(focusIndex("About") !== -1, "Keyboard order should include About.");
     expect(focusIndex("Help") !== -1, "Keyboard order should include Help.");
     expect(
-      focusIndex("New document") <
-        focusIndex("Import document (.md)…") &&
-        focusIndex("Import document (.md)…") < focusIndex("Import folder…") &&
-        focusIndex("Import folder…") < focusIndex("Export document (.md)") &&
-        focusIndex("Export document (.md)") < focusIndex("Export workspace (.zip)") &&
+      focusIndex("Rename workspace Project") < focusIndex("Import folder…") &&
+        focusIndex("Import folder…") < focusIndex("Export workspace (.zip)") &&
         focusIndex("Export workspace (.zip)") < focusIndex("Preferences") &&
         focusIndex("Preferences") < focusIndex("About") &&
         focusIndex("About") < focusIndex("Help"),
@@ -276,7 +268,7 @@ export async function run(ctx) {
     expect(rootPreferences.theme === "dark", "Choosing Dark should update the app theme contract.");
     expect(rootPreferences.themePreference === "dark", "Choosing Dark should persist the selected theme preference.");
     expect(rootPreferences.language === "ko", "Choosing Korean should update the document language contract.");
-    expect(rootPreferences.menuText.includes("새 문서"), "Choosing Korean should update workspace menu copy.");
+    expect(rootPreferences.menuText.includes("폴더 가져오기"), "Choosing Korean should update workspace menu copy.");
     await preferencesPanelSurface.locator(".workspace-preferences-select select").selectOption("en");
     await preferencesPanelSurface.getByRole("button", { name: "System", exact: true }).click();
     const restoredPreferences = await page.evaluate(() => ({
@@ -291,7 +283,7 @@ export async function run(ctx) {
     );
     expect(restoredPreferences.themePreference === "system", "Choosing System should preserve the selected preference.");
     expect(restoredPreferences.language === "en", "Choosing English should restore the document language contract.");
-    expect(restoredPreferences.menuText.includes("New document"), "Choosing English should restore workspace menu copy.");
+    expect(restoredPreferences.menuText.includes("Import folder"), "Choosing English should restore workspace menu copy.");
 
     await page.keyboard.press("Escape");
     await waitForRenderFrame(page);
@@ -304,9 +296,10 @@ export async function run(ctx) {
     }));
     expect(preferencesEscapeState.menuOpen, "Escape from Preferences should keep the workspace menu open.");
     expect(!preferencesEscapeState.preferencesOpen, "Escape from Preferences should close only the inline Preferences surface.");
-    expect(preferencesEscapeState.newActionsVisible, "Escape from Preferences should leave file creation available.");
+    expect(!preferencesEscapeState.newActionsVisible, "Workspace preferences should not reintroduce document actions into the workspace menu.");
 
-    await supportActions.getByRole("button", { name: "New document", exact: true }).click();
+    await page.getByRole("button", { name: "Close Workspace menu", exact: true }).click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
@@ -327,8 +320,8 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Close", exact: true }).click();
 
     await openProjectMenu(page);
-
-    await page.locator(".workspace-menu-popover").getByRole("button", { name: "New document", exact: true }).click();
+    await page.getByRole("button", { name: "Close Workspace menu", exact: true }).click();
+    await page.getByRole("button", { name: "New document", exact: true }).click();
     await waitForActiveTab(page, { startsWith: "Untitled" });
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
@@ -390,7 +383,7 @@ export async function run(ctx) {
       sectionsLabel: document.querySelector(".right-panel-tabs")?.getAttribute("aria-label") ?? "",
       tabs: Array.from(document.querySelectorAll(".right-panel-tab")).map((button) => button.getAttribute("aria-label")),
       visibleTabLabelCount: document.querySelectorAll(".right-panel-tab-label").length,
-      headingCount: document.querySelectorAll(".left-panel > .right-panel-title").length,
+      headingCount: document.querySelectorAll(".left-panel .workspace-panel-header h2").length,
       documentCardCount: document.querySelectorAll(".left-panel .panel-document-card").length,
       countPillCount: document.querySelectorAll(".left-panel .panel-count-pill").length,
       fileToolbar: (() => {
@@ -442,7 +435,7 @@ export async function run(ctx) {
           status: rectOf(".file-status-bar"),
         };
       })(),
-      workspaceName: document.querySelector(".right-file-workspace-name")?.textContent?.trim() ?? "",
+      workspaceName: document.querySelector(".workspace-name-trigger span")?.textContent?.trim() ?? "",
       syntheticRootRowCount: Array.from(document.querySelectorAll(".right-file-tree-node.folder"))
         .filter((row) => row.querySelector(".right-row-label")?.textContent?.trim() === "Project")
         .length,
@@ -468,19 +461,20 @@ export async function run(ctx) {
       "Properties should live in the right panel instead of duplicating a document-toolbar action.",
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
-    expect(rightPanelState.workspaceName === "Project", "Files should identify the current workspace.");
+    expect(rightPanelState.workspaceName === "Project", "Top chrome should identify the current workspace.");
     expect(rightPanelState.syntheticRootRowCount === 0, "Root files should not be wrapped in a synthetic Project folder.");
-    await page.getByRole("button", { name: "Rename Project in Files", exact: true }).click();
-    const workspaceNameInput = page.getByRole("textbox", { name: "Rename Project in Files", exact: true });
+    await page.locator(".workspace-name-trigger").click();
+    await page.getByRole("button", { name: "Rename workspace Project", exact: true }).click();
+    const workspaceNameInput = page.getByRole("textbox", { name: "Rename workspace Project", exact: true });
     await workspaceNameInput.fill("knowledge-feature-lab");
     await workspaceNameInput.press("Enter");
     expect(
-      (await page.getByRole("button", { name: "Rename knowledge-feature-lab in Files", exact: true }).count()) === 1,
-      "Files should rename the workspace identity without adding a root folder row.",
+      (await page.locator(".workspace-name-trigger span").textContent()) === "knowledge-feature-lab",
+      "The workspace title menu should rename the workspace without adding a root folder row.",
     );
     expect(
-      rightPanelState.headingCount === 0,
-      "The active tab should identify the section without a redundant visible panel heading.",
+      rightPanelState.headingCount === 1,
+      "Workspace navigation should use one quiet Files heading instead of peer view tabs.",
     );
     expect(
       rightPanelState.fileRows.filter((row) => row.active).length === 1 &&
@@ -489,10 +483,7 @@ export async function run(ctx) {
     );
     expect(rightPanelState.documentCardCount === 0, "The right panel should not use document cards.");
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");
-    await page.locator(".right-panel").getByRole("button", {
-      name: "Close side panel",
-      exact: true,
-    }).click();
+    await page.locator(".top-right-zone .top-panel-toggle").click();
     const rightPanelDivider = page.locator(
       '.left-panel-divider[role="separator"][aria-label="Resize side panel"]',
     );
@@ -569,34 +560,34 @@ export async function run(ctx) {
       state: "visible",
     });
     await page.getByRole("searchbox", {
-      name: "Search documents and metadata",
+      name: "Search documents or run a command",
       exact: true,
     }).waitFor({ state: "visible" });
     expect(
       await page.getByRole("searchbox", {
-        name: "Search documents and metadata",
+        name: "Search documents or run a command",
         exact: true,
       }).isVisible() &&
-        await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
+        await page.getByRole("button", { name: "New document", exact: true }).isVisible() &&
+        (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0 &&
         await page.locator(".right-properties-context").isVisible(),
       "Workspace Search should open as a modal retrieval surface over document context.",
     );
 
-    await page.getByRole("button", { name: "Search settings", exact: true }).click();
-    const matchCaseOption = page.getByRole("menuitemcheckbox", {
-      name: /Match case/,
-    });
-    await matchCaseOption.waitFor({ state: "visible" });
-    await matchCaseOption.click();
+    await page.getByRole("searchbox", { name: "Search documents or run a command" }).fill("> export");
     expect(
-      (await matchCaseOption.getAttribute("aria-checked")) === "true",
-      "Search settings should render above the modal and update search options.",
+      await page.getByRole("button", { name: "Export document (.md)", exact: true }).isVisible(),
+      "The command palette should retrieve executable actions with the command prefix.",
     );
     await page.keyboard.press("Escape");
     await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
       state: "detached",
     });
 
+    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
+    await page.locator(".left-panel").waitFor({ state: "detached" });
+    await page.locator(".top-right-zone .top-panel-toggle").click();
+    await page.locator(".right-panel").waitFor({ state: "detached" });
     await page.setViewportSize({ width: 568, height: 800 });
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
     await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
@@ -694,10 +685,12 @@ export async function run(ctx) {
        (await page.locator(".right-graph-panel").count()) === 0,
        "Properties should remain a stable active-document inspector instead of a catalog or dashboard.",
     );
-    await page.getByRole("button", { name: "Close side panel", exact: true }).click();
+    await page.locator(".top-right-zone .top-panel-toggle").click();
 
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
+    await page.locator(".top-right-zone .top-panel-toggle").click();
+    await page.locator(".right-panel").waitFor({ state: "visible" });
     await page.getByRole("button", { name: "Outline", exact: true }).click();
     await waitForPanelTab(page, "Outline");
     const rightOutlineState = await page.evaluate(() => ({
@@ -711,7 +704,7 @@ export async function run(ctx) {
       }),
       bodyText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
-    expect(rightOutlineState.bodyText.includes("Start here"), "Outline should reflect the active file when selected.");
+    expect(rightOutlineState.outlineRows.length > 0, "Outline should reflect the active file when selected.");
     expect(
       rightOutlineState.outlineRows.length > 0 &&
         rightOutlineState.outlineRows.every((row) => row.height >= 30 && row.height <= 34 && row.fontWeight === "400"),
@@ -814,7 +807,7 @@ export async function run(ctx) {
       contextLabel: document.querySelector(".right-comments-context-label")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       emptyText: document.querySelector(".right-comments-scroll .right-empty-state")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       inputCount: document.querySelectorAll(".right-comment-input").length,
-      visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      visibleText: document.querySelector(".right-comment-card")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       cardCount: document.querySelectorAll(".right-comment-card").length,
       actionCount: document.querySelectorAll(".right-comment-action").length,
       navigationCount: document.querySelectorAll(".right-panel-tab small").length,
@@ -893,7 +886,7 @@ export async function run(ctx) {
         const actions = document.querySelector(".right-comment-actions");
         return actions instanceof HTMLElement ? getComputedStyle(actions).opacity : "";
       })(),
-      visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      visibleText: document.querySelector(".right-comment-card")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       authorText: document.querySelector(".right-comment-meta .right-comment-author strong")?.textContent?.trim() ?? "",
     }));
     expect(commentsAfterAdd.cardCount === 1, "Adding a comment should create one comment card.");
@@ -1645,8 +1638,12 @@ export async function run(ctx) {
       hasImportedRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Panel Import.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
-      tabTitleLeft: document.querySelector('.tab-item[data-file-name="Panel Import.md"] .tab-title')
-        ?.getBoundingClientRect().left ?? 0,
+      tabTitleOffset: (() => {
+        const tab = document.querySelector('.tab-item[data-file-name="Panel Import.md"]');
+        const title = tab?.querySelector(".tab-title");
+        if (!tab || !title) return 0;
+        return title.getBoundingClientRect().left - tab.getBoundingClientRect().left;
+      })(),
     }));
     expect(filesAfterImport.hasImportedRow, "Right Files import should add the imported Markdown to project files.");
     expect(filesAfterImport.activeTabTitle === "Panel Import.md", "Right Files import should open the imported file as a tab.");
@@ -1738,8 +1735,12 @@ export async function run(ctx) {
           .some((item) => item.textContent?.includes("Archive")),
         tabLocation: document.querySelector('.tab-item[data-file-name="Panel Import.md"] .tab-location')
           ?.textContent?.trim() ?? "",
-        tabTitleLeft: document.querySelector('.tab-item[data-file-name="Panel Import.md"] .tab-title')
-          ?.getBoundingClientRect().left ?? 0,
+        tabTitleOffset: (() => {
+          const tab = document.querySelector('.tab-item[data-file-name="Panel Import.md"]');
+          const title = tab?.querySelector(".tab-title");
+          if (!tab || !title) return 0;
+          return title.getBoundingClientRect().left - tab.getBoundingClientRect().left;
+        })(),
       };
     });
     expect(draggedFileState.folderVisible, "Right Files should keep the drag destination visible.");
@@ -1749,7 +1750,7 @@ export async function run(ctx) {
       "Moving an open document into a folder should update its tab location immediately.",
     );
     expect(
-      Math.abs(draggedFileState.tabTitleLeft - filesAfterImport.tabTitleLeft) < 1,
+      Math.abs(draggedFileState.tabTitleOffset - filesAfterImport.tabTitleOffset) < 1,
       "Adding a folder location should not shift the document title within its tab.",
     );
   });
@@ -2104,11 +2105,11 @@ export async function run(ctx) {
     await waitForActiveTab(page, { exact: "Start.md" });
 
     await page.getByRole("button", { name: "Properties", exact: true }).click();
-    await page.getByRole("heading", { name: "Start", exact: true }).waitFor({
+    await page.getByRole("heading", { name: "Metadata", exact: true }).waitFor({
       state: "visible",
     });
     expect(
-      await page.getByRole("heading", { name: "Start", exact: true }).isVisible() &&
+      await page.getByRole("heading", { name: "Metadata", exact: true }).isVisible() &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
         (await page.locator(".right-graph-panel").count()) === 0,
       "Properties should keep the active document in context without opening a graph.",
@@ -2189,12 +2190,10 @@ export async function run(ctx) {
       const documentSearch = document.querySelector(".document-search-row");
       const shell = document.querySelector(".file-shell");
       const gutter = document.querySelector(".cm-gutters");
-      const fileAction = document.querySelector(".right-file-tree-row.file .right-file-action");
       const workbench = document.querySelector(".center-workbench");
-      if (!panel || !backdrop || !documentSearch || !shell || !gutter || !fileAction || !workbench) return null;
+      if (!panel || !backdrop || !documentSearch || !shell || !gutter || !workbench) return null;
       const panelRect = panel.getBoundingClientRect();
       const searchRect = documentSearch.getBoundingClientRect();
-      const fileActionRect = fileAction.getBoundingClientRect();
       const elementOverSearch = document.elementFromPoint(
         searchRect.left + searchRect.width / 2,
         searchRect.top + searchRect.height / 2,
@@ -2214,8 +2213,6 @@ export async function run(ctx) {
         workbenchInert: workbench.hasAttribute("inert"),
         workbenchAriaHidden: workbench.getAttribute("aria-hidden"),
         focusInsidePanel: panel.contains(document.activeElement),
-        fileActionSize: Math.min(fileActionRect.width, fileActionRect.height),
-        fileActionOpacity: getComputedStyle(fileAction).opacity,
         documentSearchPreserved: getComputedStyle(documentSearch).display !== "none",
         documentSearchOccluded: !documentSearch.contains(elementOverSearch),
         documentSearchLayer: Number.parseInt(getComputedStyle(documentSearch).zIndex, 10),
@@ -2247,30 +2244,8 @@ export async function run(ctx) {
     expect(mobilePanel?.documentSafeRight === "0px", "Overlay panels should not shrink the document lane.");
     expect(mobilePanel?.gutterDisplay === "none", "Mobile editors should not paint collapsed gutter content.");
     expect(mobilePanel?.visibleTabLabelCount === 0, "Mobile side panel tabs should stay icon-only.");
-    expect(
-      mobilePanel?.fileActionSize >= 40 && mobilePanel?.fileActionOpacity === "1",
-      "Mobile file actions should remain visible with touch-sized targets.",
-    );
-
-    await mobilePage.getByRole("button", { name: "Create", exact: true }).click();
-    expect(
-      (await mobilePage.locator(".right-file-create-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
-      "Side panel menus should use elevation without a static border.",
-    );
-    expect(
-      (await mobilePage.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1 &&
-        (await mobilePage.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1,
-      "Files should use one Create menu for documents and folders.",
-    );
-    await mobilePage.keyboard.press("Escape");
-    expect(
-      (await mobilePage.locator(".right-file-create-menu").count()) === 0 &&
-        (await mobilePage.getByRole("dialog", { name: "Files" }).count()) === 1,
-      "Escape should close the nested Create menu before dismissing the side panel.",
-    );
-
     await mobilePage
-      .getByRole("dialog", { name: "Files" })
+      .getByRole("dialog")
       .getByRole("button", { name: "Close side panel" })
       .click();
     await waitForRenderFrame(mobilePage);

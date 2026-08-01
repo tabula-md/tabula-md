@@ -16,17 +16,16 @@ export type WorkspaceMenuSurfaceProps = {
   preferencesOpen: boolean;
   theme: WorkspaceTheme;
   canClearWorkspace: boolean;
-  canExportFile: boolean;
   canExportWorkspace: boolean;
-  onAddFile: () => void;
+  workspaceName: string;
   onChangeLanguage: (language: WorkspaceLanguage) => void;
   onChangeTheme: (theme: WorkspaceTheme) => void;
   onCloseChrome: () => void;
   onImportFileChange: ChangeEventHandler<HTMLInputElement>;
   onImportWorkspaceChange: ChangeEventHandler<HTMLInputElement>;
   onClearWorkspace: () => void;
-  onExportFile: () => void;
   onExportWorkspace: () => void;
+  onRenameWorkspace: (nextTitle: string) => boolean;
   onOpenAbout: () => void;
   onOpenHelp: () => void;
   onTogglePreferences: () => void;
@@ -40,17 +39,16 @@ export function WorkspaceMenuSurface({
   preferencesOpen,
   theme,
   canClearWorkspace,
-  canExportFile,
   canExportWorkspace,
-  onAddFile,
+  workspaceName,
   onChangeLanguage,
   onChangeTheme,
   onCloseChrome,
   onImportFileChange,
   onImportWorkspaceChange,
   onClearWorkspace,
-  onExportFile,
   onExportWorkspace,
+  onRenameWorkspace,
   onOpenAbout,
   onOpenHelp,
   onTogglePreferences,
@@ -88,28 +86,20 @@ export function WorkspaceMenuSurface({
         preferencesOpen={preferencesOpen}
         theme={theme}
         language={language}
+        workspaceName={workspaceName}
         onTogglePreferences={onTogglePreferences}
         onChangeTheme={onChangeTheme}
         onChangeLanguage={onChangeLanguage}
-        onAddFile={onAddFile}
-        onImportFile={() => {
-          onCloseChrome();
-          importInputRef.current?.click();
-        }}
         onImportWorkspace={canClearWorkspace ? () => {
           onCloseChrome();
           workspaceImportInputRef.current?.click();
         } : undefined}
-        canExportFile={canExportFile}
         canExportWorkspace={canExportWorkspace}
-        onExportFile={() => {
-          onCloseChrome();
-          onExportFile();
-        }}
         onExportWorkspace={() => {
           onCloseChrome();
           onExportWorkspace();
         }}
+        onRenameWorkspace={onRenameWorkspace}
         onClearWorkspace={canClearWorkspace ? () => {
           onCloseChrome();
           setClearWorkspaceOpen(true);
