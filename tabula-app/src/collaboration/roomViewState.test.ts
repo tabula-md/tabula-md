@@ -35,7 +35,7 @@ describe("room view state", () => {
   });
 
   it("rejects malformed state instead of changing the room workspace", () => {
-    expect(parseRoomViewState({ openDocumentIds: "all", rightPanelView: "files" })).toBeNull();
+    expect(parseRoomViewState({ openDocumentIds: "all", rightPanelView: "properties" })).toBeNull();
   });
 
   it("restores the links panel as tab-local room state", () => {
@@ -46,12 +46,18 @@ describe("room view state", () => {
     })).toMatchObject({ rightPanelOpen: true, rightPanelView: "links" });
   });
 
-  it("restores search and properties as separate panel views", () => {
+  it("migrates retired left-side views out of the right panel", () => {
     expect(parseRoomViewState({
       openDocumentIds: ["readme"],
       rightPanelOpen: true,
       rightPanelView: "search",
-    })).toMatchObject({ rightPanelOpen: true, rightPanelView: "search" });
+    })).toMatchObject({ rightPanelOpen: false, rightPanelView: "properties" });
+
+    expect(parseRoomViewState({
+      openDocumentIds: ["readme"],
+      rightPanelOpen: true,
+      rightPanelView: "files",
+    })).toMatchObject({ rightPanelOpen: false, rightPanelView: "properties" });
 
     expect(parseRoomViewState({
       openDocumentIds: ["readme"],
@@ -86,14 +92,14 @@ describe("room view state", () => {
       activeDocumentId: "notes",
       openDocumentIds: ["notes", "deleted"],
       rightPanelOpen: false,
-      rightPanelView: "files",
+      rightPanelView: "properties",
     })).toMatchObject({ activeFileId: "notes", openFileIds: ["notes"] });
 
     expect(restoreRoomWorkspaceView(workspace, {
       activeDocumentId: "deleted",
       openDocumentIds: ["deleted"],
       rightPanelOpen: false,
-      rightPanelView: "files",
+      rightPanelView: "properties",
     })).toMatchObject({ activeFileId: "readme", openFileIds: ["readme"] });
   });
 
@@ -107,7 +113,7 @@ describe("room view state", () => {
     expect(restoreRoomWorkspaceView(workspace, {
       openDocumentIds: [],
       rightPanelOpen: false,
-      rightPanelView: "files",
+      rightPanelView: "properties",
     })).toMatchObject({ activeFileId: "", openFileIds: [] });
   });
 });

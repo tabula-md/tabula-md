@@ -210,6 +210,16 @@ const waitForPanelTab = async (page, label) => {
   );
 };
 
+const waitForLeftPanel = async (page, label) => {
+  await page.locator(".left-panel").waitFor({ state: "visible" });
+  await page.waitForFunction(
+    ({ label }) =>
+      document.querySelector(".left-panel")?.getAttribute("aria-label") === label &&
+      !document.querySelector('.left-panel [aria-busy="true"]'),
+    { label },
+  );
+};
+
 const waitForWorkspaceMenuState = async (page, open = true) => {
   await page.locator(".workspace-menu-popover").waitFor({ state: open ? "visible" : "detached" });
 };
@@ -356,6 +366,7 @@ export const createSmokeContext = (browser, controls = {}) => ({
   waitForActiveTab,
   waitForEditorReady,
   waitForFileCount,
+  waitForLeftPanel,
   waitForPanelTab,
   waitForProjectContextState,
   waitForRenderFrame,
