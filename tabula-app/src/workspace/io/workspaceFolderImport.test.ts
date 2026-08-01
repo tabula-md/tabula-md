@@ -113,14 +113,6 @@ describe("workspace folder import", () => {
     const { workspace } = draft;
 
     expect(workspace.files).toHaveLength(5);
-    expect(draft.profile).toMatchObject({
-      format: "okf",
-      okfVersion: "0.1",
-      conventions: ["openwiki"],
-      markdownFileCount: 3,
-      preservedSupportPaths: [".last-update.json", "ignored.json"],
-      preservedSupportFileCount: 2,
-    });
     expect(workspace.files.map((file) => file.title)).toEqual(
       expect.arrayContaining([
         ".last-update.json",
@@ -192,15 +184,6 @@ describe("workspace folder import", () => {
     expect(createWorkspaceKnowledgeIndex(
       getWorkspaceKnowledgeDocuments(workspace.files, workspace.folders),
     ).documentsById.size).toBe(2);
-    expect(draft.profile).toMatchObject({
-      markdownFileCount: 2,
-      preservedSupportPaths: [
-        "references/diagram.png",
-        "references/query.sql",
-        "source.ts",
-      ],
-      preservedSupportFileCount: 3,
-    });
   });
 
   it("round-trips the OpenWiki fixture byte-for-byte", async () => {

@@ -595,13 +595,11 @@ export function useWorkspaceRuntime() {
     closeJsonShareImport,
     closeWorkspaceExportReview,
     closeWorkspaceFolderImport,
-    closeWorkspaceImportResult,
     copyFile,
     confirmWorkspaceArchiveExport,
     downloadCurrentFile,
     downloadWorkspaceArchive,
     emptyDropActive,
-    exportCurrentWorkspaceBeforeImport,
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDragOver,
     handleEmptyWorkspaceDrop,
@@ -610,7 +608,6 @@ export function useWorkspaceRuntime() {
     jsonShareImport,
     workspaceExportReview,
     workspaceFolderImport,
-    workspaceImportResult,
     replaceWorkspaceWithFolder,
     replaceWorkspaceWithJsonShare,
   } = useWorkspaceIoController({
@@ -804,13 +801,6 @@ export function useWorkspaceRuntime() {
     closeFloatingChrome();
     syncUrlForLocalWorkspace("replace");
     showToast(workspaceMenuCopy.clearWorkspace.cleared);
-  });
-  const openImportedRootIndex = useEventCallback(() => {
-    const rootIndexDocumentId = workspaceImportResult?.rootIndexDocumentId;
-    closeWorkspaceImportResult();
-    if (rootIndexDocumentId) {
-      selectFile(rootIndexDocumentId);
-    }
   });
   const { menuSurfaceProps } = useWorkspaceMenuController({
     importInputRef,
@@ -1161,28 +1151,22 @@ export function useWorkspaceRuntime() {
     },
     overlays: {
       workspace: {
-        hasCurrentWorkspace: files.length > 0,
         infoDialog,
         jsonShareImport,
         workspaceFolderImport,
-        workspaceImportResult,
         workspaceExportReview,
         language: workspacePreferences.language,
         shortcutPlatform,
         toast,
         onCloseInfoDialog: () => setInfoDialog(null),
         onCloseWorkspaceFolderImport: closeWorkspaceFolderImport,
-        onCloseWorkspaceImportResult: closeWorkspaceImportResult,
         onCloseWorkspaceExportReview: closeWorkspaceExportReview,
-        onExportCurrentWorkspaceBeforeImport:
-          exportCurrentWorkspaceBeforeImport,
         onDismissToast: dismissToast,
         onPauseToast: pauseToast,
         onResumeToast: resumeToast,
         onCloseJsonShareImport: closeJsonShareImport,
         onReplaceWorkspaceWithJsonShare: replaceWorkspaceWithJsonShare,
         onReplaceWorkspaceWithFolder: replaceWorkspaceWithFolder,
-        onOpenImportedRootIndex: openImportedRootIndex,
         onConfirmWorkspaceExport: confirmWorkspaceArchiveExport,
       },
     },

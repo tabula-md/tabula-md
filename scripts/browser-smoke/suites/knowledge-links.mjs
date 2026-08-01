@@ -45,9 +45,11 @@ export async function run(ctx) {
       });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await page.getByRole("dialog", { name: "Import folder" }).waitFor();
-    await page.getByRole("button", { name: "Import and replace", exact: true }).click();
-    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    await page.locator(".app-toast").waitFor();
+    expect(
+      (await page.getByRole("dialog").count()) === 0,
+      "A first folder import should not add a confirmation step.",
+    );
 
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Files", exact: true }).click();

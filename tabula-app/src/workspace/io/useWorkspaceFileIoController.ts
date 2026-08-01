@@ -29,11 +29,6 @@ import {
 } from "@tabula-md/tabula";
 import { getWorkspaceKnowledgeDocuments } from "../workspaceKnowledgeModel";
 import type { WorkspaceExportReview } from "./workspaceExportReviewModel";
-import {
-  getWorkspaceImportResult,
-  type WorkspaceImportResult,
-} from "./workspaceImportResultModel";
-import { getWorkspaceImportResultCopy } from "./workspaceImportResultLocale";
 
 const downloadTextFile = (fileName: string, content: string, type = "text/plain;charset=utf-8") => {
   const blob = new Blob([content], { type });
@@ -175,8 +170,6 @@ export function useWorkspaceFileIoController({
   const [emptyDropActive, setEmptyDropActive] = useState(false);
   const [workspaceFolderImport, setWorkspaceFolderImport] =
     useState<WorkspaceFolderImportDraft | null>(null);
-  const [workspaceImportResult, setWorkspaceImportResult] =
-    useState<WorkspaceImportResult | null>(null);
   const [pendingWorkspaceExport, setPendingWorkspaceExport] = useState<{
     review: WorkspaceExportReview;
     snapshot: Pick<WorkspaceState, "files" | "folders" | "openFileIds" | "activeFileId">;
@@ -255,18 +248,6 @@ export function useWorkspaceFileIoController({
     }
     setPendingWorkspaceExport({ review, snapshot: workspaceSnapshot });
   };
-  const exportCurrentWorkspaceBeforeImport = () => {
-    const workspaceSnapshot = getWorkspaceFileIoBoundaryWorkspaceSnapshot({
-      activeFile,
-      activeFileId,
-      files,
-      folders,
-      getWorkspaceSnapshot,
-      onBeforeWorkspaceBoundary,
-      openFileIds,
-    });
-    void exportWorkspaceSnapshot(workspaceSnapshot);
-  };
   const closeWorkspaceExportReview = () => setPendingWorkspaceExport(null);
   const confirmWorkspaceArchiveExport = () => {
     if (!pendingWorkspaceExport) return;
@@ -305,39 +286,22 @@ export function useWorkspaceFileIoController({
     void importFile(file);
   };
 
-  const handleWorkspaceImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(event.target.files ?? []);
-    event.target.value = "";
-    if (selectedFiles.length === 0) return;
-
-    void parseWorkspaceFolderImport(selectedFiles, {
-      viewMode: preferences.newFileViewMode,
-      readingWidth: preferences.readingWidth,
-      lineWrapping: preferences.lineWrapping,
-      lineNumbers: preferences.lineNumbers,
-    }).then((draft) => {
-      onCloseChrome();
-      setWorkspaceFolderImport(draft);
-    }).catch((error: unknown) => {
-      clientErrorReporter.report({ feature: "workspace", operation: "open-folder", error });
-      showToast(copy.openFailed, "error");
-    });
-  };
-
-  const closeWorkspaceFolderImport = () => setWorkspaceFolderImport(null);
-  const closeWorkspaceImportResult = () => setWorkspaceImportResult(null);
-
-  const replaceWorkspaceWithFolder = () => {
-    if (!workspaceFolderImport || isRoomSession) return;
-    const importResultDraft = workspaceFolderImport;
+  const applyWorkspaceFolderImport = (draft: WorkspaceFolderImportDraft) => {
+    if (isRoomSession) return;
+    const knowledgeDocuments = getWorkspaceKnowledgeDocuments(
+      draft.workspace.files,
+      draft.workspace.folders,
+    );
+    const initialDocument = knowledgeDocuments.find((document) =>
+      document.path.toLocaleLowerCase() === "index.md"
+    ) ?? knowledgeDocuments[0];
     const knowledgeBaseline = captureWorkspaceKnowledgeBaseline(
-      getWorkspaceKnowledgeDocuments(
-        workspaceFolderImport.workspace.files,
-        workspaceFolderImport.workspace.folders,
-      ),
+      knowledgeDocuments,
     );
     const nextWorkspace = {
-      ...workspaceFolderImport.workspace,
+      ...draft.workspace,
+      activeFileId: initialDocument?.id ?? draft.workspace.activeFileId,
+      openFileIds: initialDocument ? [initialDocument.id] : [],
       commentsByFileId: {},
       knowledgeBaseline,
     };
@@ -354,30 +318,39 @@ export function useWorkspaceFileIoController({
       showToast(copy.saveOpenedWorkspaceFailed, "error");
     });
     setWorkspaceFolderImport(null);
-    void getWorkspaceImportResult(importResultDraft)
-      .then((result) => {
-        if (!result) return;
-        const resultCopy = getWorkspaceImportResultCopy(preferences.language);
-        const issueCount = result.requiredChangeCount + result.attentionCount;
-        showToast(
-          resultCopy.importedSummary(result.conceptCount, issueCount),
-          "neutral",
-          {
-            actionLabel: resultCopy.showDetails,
-            onAction: () => setWorkspaceImportResult(result),
-          },
-        );
-      })
-      .catch((error: unknown) => {
-        clientErrorReporter.report({
-          feature: "workspace",
-          operation: "orient-folder-import",
-          error,
-        });
-      });
+    showToast(copy.folderImported);
     onCloseChrome();
     syncUrlForLocalWorkspace("replace");
     queueAnimationFrameTask(() => editorRef.current?.focus());
+  };
+
+  const handleWorkspaceImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (selectedFiles.length === 0) return;
+
+    void parseWorkspaceFolderImport(selectedFiles, {
+      viewMode: preferences.newFileViewMode,
+      readingWidth: preferences.readingWidth,
+      lineWrapping: preferences.lineWrapping,
+      lineNumbers: preferences.lineNumbers,
+    }).then((draft) => {
+      onCloseChrome();
+      if (files.length === 0) {
+        applyWorkspaceFolderImport(draft);
+        return;
+      }
+      setWorkspaceFolderImport(draft);
+    }).catch((error: unknown) => {
+      clientErrorReporter.report({ feature: "workspace", operation: "open-folder", error });
+      showToast(copy.openFailed, "error");
+    });
+  };
+
+  const closeWorkspaceFolderImport = () => setWorkspaceFolderImport(null);
+  const replaceWorkspaceWithFolder = () => {
+    if (!workspaceFolderImport) return;
+    applyWorkspaceFolderImport(workspaceFolderImport);
   };
 
   const getDroppedImportFile = (event: DragEvent<HTMLElement>) => {
@@ -419,12 +392,10 @@ export function useWorkspaceFileIoController({
   return {
     emptyDropActive,
     workspaceFolderImport,
-    workspaceImportResult,
     workspaceExportReview: pendingWorkspaceExport?.review ?? null,
     copyFile,
     downloadCurrentFile,
     downloadWorkspaceArchive,
-    exportCurrentWorkspaceBeforeImport,
     closeWorkspaceExportReview,
     confirmWorkspaceArchiveExport,
     handleImportInputChange,
@@ -433,7 +404,6 @@ export function useWorkspaceFileIoController({
     handleEmptyWorkspaceDragLeave,
     handleEmptyWorkspaceDrop,
     closeWorkspaceFolderImport,
-    closeWorkspaceImportResult,
     replaceWorkspaceWithFolder,
   };
 }

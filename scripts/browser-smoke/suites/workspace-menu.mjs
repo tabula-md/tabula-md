@@ -314,57 +314,44 @@ export async function run(ctx) {
       Object.defineProperty(input, "files", { configurable: true, value: dataTransfer.files });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await page.getByRole("dialog", { name: "Import folder" }).waitFor();
-    const detectedWorkspace = page.getByRole("region", {
-      name: "Detected workspace",
+    const replacementDialog = page.getByRole("dialog", {
+      name: "Replace workspace?",
     });
-    expect(
-      await detectedWorkspace.getByText("Plain Markdown", {
-        exact: true,
-      }).isVisible() &&
-        await detectedWorkspace.getByText(
-          "2 Markdown · 2 assets",
-          { exact: true },
-        ).isVisible(),
-      "Folder import should distinguish Markdown documents from preserved bundle assets before replacing local state.",
-    );
-    expect(
-      (await page.getByText("Planning/Research/Questions.md", { exact: true }).count()) === 1 &&
-        (await page.getByText("references/query.sql", { exact: true }).count()) === 1 &&
-        (await page.getByText("Planning/notes.txt", { exact: true }).count()) === 1,
-      "Folder import should preview Markdown documents and every preserved bundle asset before replacing local state.",
-    );
+    await replacementDialog.waitFor();
     expect(
       await page.getByText(
-        "Importing replaces the current browser workspace, including its documents and comments. Export it first if you may need it again.",
+        "This replaces the current documents and comments with a browser copy that won’t stay in sync.",
         { exact: true },
       ).isVisible(),
-      "Folder import should explicitly warn that it replaces the current browser workspace.",
+      "Replacement confirmation should focus on the current workspace at risk.",
     );
-    const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", {
-      name: "Export current workspace",
-      exact: true,
-    }).click();
-    const currentWorkspaceDownload = await downloadPromise;
     expect(
-      (await currentWorkspaceDownload.suggestedFilename()).endsWith(".zip"),
-      "Folder import should let people export the current browser workspace before replacement.",
+      (await replacementDialog.getByRole("button", {
+        name: "Cancel",
+        exact: true,
+      }).count()) === 1 &&
+        (await replacementDialog.getByRole("button", {
+          name: "Import folder",
+          exact: true,
+        }).count()) === 1 &&
+        (await replacementDialog.getByRole("button", {
+          name: "Export current workspace",
+          exact: true,
+        }).count()) === 0,
+      "Replacement confirmation should expose only cancel and confirm decisions.",
     );
-    await page.getByRole("button", { name: "Import and replace", exact: true }).click();
-    await page.locator(".empty-file-state").waitFor({ state: "visible" });
+    await page.getByRole("button", { name: "Import folder", exact: true }).click();
+    await waitForActiveTab(page, { exact: "Launch notes.md" });
     expect(
-      (await page.locator(".tab-item").count()) === 0 &&
+      (await page.locator(".tab-item").count()) === 1 &&
         (await page.getByRole("dialog", {
           name: "OKF workspace imported",
         }).count()) === 0,
-      "A plain Markdown import should preserve its tree without opening tabs or adding OKF orientation.",
+      "A plain Markdown import should open its first document without adding OKF orientation.",
     );
     await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Files", exact: true }).click();
     await waitForPanelTab(page, "Files");
-    await page.getByRole("button", { name: "Open Launch notes.md" }).click();
-    await waitForActiveTab(page, { exact: "Launch notes.md" });
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
