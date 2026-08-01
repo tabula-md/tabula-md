@@ -952,6 +952,29 @@
   -webkit-line-clamp: 2;
 }
 
+.right-panel-search-result-match {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px;
+  color: var(--text-soft);
+  font-size: var(--font-ui-secondary);
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.right-panel-search-result-match svg {
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.right-panel-search-result-match > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .right-panel-search-result-metadata {
   margin-top: 1px;
 }
