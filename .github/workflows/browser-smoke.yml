@@ -32,12 +32,12 @@ jobs:
 
     steps:
       - name: Checkout Tabula.md
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -72,7 +72,7 @@ jobs:
 
       - name: Checkout room relay
         if: github.event_name != 'pull_request' || steps.select.outputs.needs_room == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: tabula-md/tabula-room
           # Pull requests use the known-compatible relay; scheduled runs test room main.
@@ -81,7 +81,7 @@ jobs:
 
       - name: Checkout JSON server
         if: github.event_name != 'pull_request' || steps.select.outputs.needs_json == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: tabula-md/tabula-json
           # Pull requests use the known-compatible server; scheduled runs test JSON main.
@@ -134,7 +134,7 @@ jobs:
 
       - name: Upload Playwright failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: output/playwright
