@@ -21,44 +21,14 @@
   grid-column: 1;
   grid-row: 1;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   width: var(--left-panel-width);
   min-width: 0;
   min-height: 0;
   height: 100vh;
-  padding: var(--right-panel-top) var(--right-panel-x) var(--right-panel-bottom);
+  padding: 50px var(--right-panel-x) var(--right-panel-bottom);
   color: var(--text-primary);
   background: var(--surface-workbench);
-}
-
-.left-panel-header {
-  display: flex;
-  align-items: center;
-  min-height: var(--control-size-row);
-  margin-bottom: var(--right-section-gap);
-  padding-left: var(--right-row-x);
-}
-
-.left-panel-header strong {
-  font-size: var(--font-ui-body);
-  font-weight: var(--weight-ui-medium);
-}
-
-.left-panel-close {
-  display: grid;
-  place-items: center;
-  width: var(--right-control-size);
-  height: var(--right-control-size);
-  margin-left: auto;
-  border-radius: var(--right-row-radius);
-  color: var(--text-soft);
-  background: transparent;
-}
-
-.left-panel-close:hover,
-.left-panel-close:focus-visible {
-  color: var(--text-primary);
-  background: var(--surface-hover);
 }
 
 .left-panel .right-panel-body {

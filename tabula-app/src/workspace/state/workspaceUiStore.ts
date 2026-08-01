@@ -19,6 +19,7 @@ type WorkspaceUiStoreState = {
   rightPanelOpen: boolean;
   rightPanelView: RightPanelView;
   workspaceMenuOpen: boolean;
+  workspaceSearchOpen: boolean;
   preferencesOpen: boolean;
   searchOpen: boolean;
   splitDragging: boolean;
@@ -40,11 +41,13 @@ type WorkspaceUiStoreActions = {
   setSplitDragging: (isDragging: boolean) => void;
   setTopPopover: (popover: UiValueUpdater<TopPopover>) => void;
   setWorkspaceMenuOpen: (isOpen: UiValueUpdater<boolean>) => void;
+  setWorkspaceSearchOpen: (isOpen: UiValueUpdater<boolean>) => void;
   toggleLeftPanel: (view: LeftPanelView) => void;
   togglePreferences: () => void;
   toggleRightPanel: () => void;
   toggleSearch: () => void;
   toggleWorkspaceMenu: () => void;
+  toggleWorkspaceSearch: () => void;
 };
 
 export type WorkspaceUiStore = WorkspaceUiStoreState & WorkspaceUiStoreActions;
@@ -57,6 +60,7 @@ const DEFAULT_WORKSPACE_UI_STORE_STATE: WorkspaceUiStoreState = {
   rightPanelOpen: false,
   rightPanelView: "properties",
   workspaceMenuOpen: false,
+  workspaceSearchOpen: false,
   preferencesOpen: false,
   searchOpen: false,
   splitDragging: false,
@@ -71,6 +75,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       centerPopover: null,
       preferencesOpen: false,
       workspaceMenuOpen: false,
+      workspaceSearchOpen: false,
     });
   },
 
@@ -84,6 +89,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       centerPopover: null,
       preferencesOpen: false,
       workspaceMenuOpen: false,
+      workspaceSearchOpen: false,
       leftPanelOpen: true,
       leftPanelView: "files",
     });
@@ -95,8 +101,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       centerPopover: null,
       preferencesOpen: false,
       workspaceMenuOpen: false,
-      leftPanelOpen: true,
-      leftPanelView: "search",
+      workspaceSearchOpen: true,
     });
   },
 
@@ -105,6 +110,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       topPopover: "share",
       centerPopover: null,
       workspaceMenuOpen: false,
+      workspaceSearchOpen: false,
     });
   },
 
@@ -148,6 +154,12 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
     set((state) => ({ workspaceMenuOpen: applyUiValueUpdater(state.workspaceMenuOpen, isOpen) }));
   },
 
+  setWorkspaceSearchOpen: (isOpen) => {
+    set((state) => ({
+      workspaceSearchOpen: applyUiValueUpdater(state.workspaceSearchOpen, isOpen),
+    }));
+  },
+
   togglePreferences: () => {
     set((state) => ({
       preferencesOpen: !state.preferencesOpen,
@@ -163,6 +175,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       preferencesOpen: false,
       topPopover: null,
       centerPopover: null,
+      workspaceSearchOpen: false,
     }));
   },
 
@@ -173,6 +186,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       preferencesOpen: false,
       topPopover: null,
       centerPopover: null,
+      workspaceSearchOpen: false,
     }));
   },
 
@@ -181,12 +195,24 @@ export const useWorkspaceUiStore = create<WorkspaceUiStore>()((set) => ({
       searchOpen: !state.searchOpen,
       topPopover: null,
       centerPopover: null,
+      workspaceSearchOpen: false,
+    }));
+  },
+
+  toggleWorkspaceSearch: () => {
+    set((state) => ({
+      workspaceSearchOpen: !state.workspaceSearchOpen,
+      workspaceMenuOpen: false,
+      preferencesOpen: false,
+      topPopover: null,
+      centerPopover: null,
     }));
   },
 
   toggleWorkspaceMenu: () => {
     set((state) => ({
       workspaceMenuOpen: !state.workspaceMenuOpen,
+      workspaceSearchOpen: false,
       preferencesOpen: false,
       topPopover: null,
       centerPopover: null,

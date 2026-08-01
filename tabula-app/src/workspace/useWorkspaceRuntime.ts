@@ -399,11 +399,12 @@ export function useWorkspaceRuntime() {
     setCenterPopover,
     workspaceMenuOpen,
     setWorkspaceMenuOpen,
+    workspaceSearchOpen,
+    setWorkspaceSearchOpen,
     preferencesOpen,
     setPreferencesOpen,
     leftPanelOpen,
     setLeftPanelOpen,
-    leftPanelView,
     rightPanelOpen,
     setRightPanelOpen,
     rightPanelView,
@@ -411,6 +412,7 @@ export function useWorkspaceRuntime() {
     closeFloatingChrome,
     openFilesPanel,
     toggleWorkspaceMenu,
+    toggleWorkspaceSearch,
     toggleLeftPanel,
     toggleRightPanel,
   } = workspaceChrome;
@@ -832,7 +834,7 @@ export function useWorkspaceRuntime() {
     setPreferencesOpen,
     setTopPopover,
   });
-  const { knowledgeIndex, leftPanelProps, rightPanelProps } =
+  const { knowledgeIndex, leftPanelProps, rightPanelProps, searchModalProps } =
     useWorkspaceRightPanelController({
       activeCommentId: focusedCommentId,
       activeFile,
@@ -851,7 +853,7 @@ export function useWorkspaceRuntime() {
       isLive: isLiveChromeVisible,
       language: workspacePreferences.language,
       leftPanelOpen,
-      leftPanelView,
+      workspaceSearchOpen,
       onAddComment: addFileComment,
       onAddCommentReply: addFileCommentReply,
       onCancelSelectionComment: cancelSelectionComment,
@@ -892,6 +894,7 @@ export function useWorkspaceRuntime() {
       setRightPanelOpen,
       setRightPanelView,
       setLeftPanelOpen,
+      setWorkspaceSearchOpen,
       text,
     });
   const resolveWorkspaceLink = useMemo(
@@ -1011,7 +1014,7 @@ export function useWorkspaceRuntime() {
     lastClosedFile,
     room: activeRoom,
     leftPanelOpen,
-    leftPanelView,
+    workspaceSearchOpen,
     rightPanelOpen,
     topPopover,
     workspaceMenuOpen,
@@ -1047,7 +1050,8 @@ export function useWorkspaceRuntime() {
     onStartSession: startSessionWithPendingCommit,
     onStopSession: stopSessionWithPendingCommit,
     onRetrySession: retryCollaborationConnection,
-    onToggleLeftPanel: toggleLeftPanel,
+    onToggleLeftPanel: () => toggleLeftPanel("files"),
+    onToggleWorkspaceSearch: toggleWorkspaceSearch,
     onToggleRightPanel: toggleRightPanel,
     onToggleFollowing: toggleFollowing,
     onToggleWorkspaceMenu: toggleWorkspaceMenu,
@@ -1119,6 +1123,7 @@ export function useWorkspaceRuntime() {
     openFilesPanel,
     openHelp,
     openDocumentSearch: openSearchFromCurrentSelection,
+    openWorkspaceSearch: () => setWorkspaceSearchOpen(true),
     selectAdjacentFile,
     setActiveFileViewMode: setViewModeWithPendingCommit,
     setCenterPopover,
@@ -1152,6 +1157,7 @@ export function useWorkspaceRuntime() {
     panels: {
       left: leftPanelProps,
       right: rightPanelProps,
+      search: searchModalProps,
     },
     overlays: {
       workspace: {

@@ -8,7 +8,6 @@ import type { JsonShareController } from "../share/useJsonShareController";
 import type { RenameFileResult } from "./state/useWorkspaceFiles";
 import type { WorkspaceLanguage } from "./state/useWorkspacePreferences";
 import type { TopPopover } from "../ui/uiTypes";
-import type { LeftPanelView } from "../ui/uiTypes";
 import type { LocationRoom, WorkspaceFile, WorkspaceFolder } from "./workspaceStorage";
 import type { FollowState } from "../collaboration/followModel";
 
@@ -37,7 +36,7 @@ type UseWorkspaceTopChromeControllerOptions = {
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
   leftPanelOpen: boolean;
-  leftPanelView: LeftPanelView;
+  workspaceSearchOpen: boolean;
   rightPanelOpen: boolean;
   topPopover: TopPopover;
   workspaceMenuOpen: boolean;
@@ -59,7 +58,8 @@ type UseWorkspaceTopChromeControllerOptions = {
   onStartSession: () => void;
   onStopSession: () => void;
   onRetrySession: () => void;
-  onToggleLeftPanel: (view: LeftPanelView) => void;
+  onToggleLeftPanel: () => void;
+  onToggleWorkspaceSearch: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
   onToggleWorkspaceMenu: () => void;
@@ -89,7 +89,7 @@ export function useWorkspaceTopChromeController({
   openFiles,
   room,
   leftPanelOpen,
-  leftPanelView,
+  workspaceSearchOpen,
   rightPanelOpen,
   topPopover,
   workspaceMenuOpen,
@@ -112,6 +112,7 @@ export function useWorkspaceTopChromeController({
   onStopSession,
   onRetrySession,
   onToggleLeftPanel,
+  onToggleWorkspaceSearch,
   onToggleRightPanel,
   onToggleFollowing,
   onToggleWorkspaceMenu,
@@ -179,7 +180,7 @@ export function useWorkspaceTopChromeController({
     openFiles,
     room,
     leftPanelOpen,
-    leftPanelView,
+    workspaceSearchOpen,
     rightPanelOpen,
     shareOpen,
     workspaceMenuOpen,
@@ -202,6 +203,7 @@ export function useWorkspaceTopChromeController({
     onStopSession,
     onRetrySession,
     onToggleLeftPanel,
+    onToggleWorkspaceSearch,
     onToggleRightPanel,
     onToggleFollowing,
     onToggleShare: toggleShare,

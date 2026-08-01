@@ -20,6 +20,8 @@ export function useWorkspaceChromeController({
   const setCenterPopover = useWorkspaceUiStore((state) => state.setCenterPopover);
   const workspaceMenuOpen = useWorkspaceUiStore((state) => state.workspaceMenuOpen);
   const setWorkspaceMenuOpen = useWorkspaceUiStore((state) => state.setWorkspaceMenuOpen);
+  const workspaceSearchOpen = useWorkspaceUiStore((state) => state.workspaceSearchOpen);
+  const setWorkspaceSearchOpen = useWorkspaceUiStore((state) => state.setWorkspaceSearchOpen);
   const preferencesOpen = useWorkspaceUiStore((state) => state.preferencesOpen);
   const setPreferencesOpen = useWorkspaceUiStore((state) => state.setPreferencesOpen);
   const leftPanelOpen = useWorkspaceUiStore((state) => state.leftPanelOpen);
@@ -36,6 +38,7 @@ export function useWorkspaceChromeController({
   const openUiFilesPanel = useWorkspaceUiStore((state) => state.openFilesPanel);
   const openSharePanel = useWorkspaceUiStore((state) => state.openSharePanel);
   const toggleWorkspaceMenu = useWorkspaceUiStore((state) => state.toggleWorkspaceMenu);
+  const toggleUiWorkspaceSearch = useWorkspaceUiStore((state) => state.toggleWorkspaceSearch);
   const toggleUiLeftPanel = useWorkspaceUiStore((state) => state.toggleLeftPanel);
   const toggleUiRightPanel = useWorkspaceUiStore((state) => state.toggleRightPanel);
 
@@ -64,6 +67,12 @@ export function useWorkspaceChromeController({
   const toggleRightPanel = () => {
     const willOpen = !rightPanelOpen;
     toggleUiRightPanel();
+    if (willOpen && usesOverlayPanels()) setLeftPanelOpen(false);
+  };
+
+  const toggleWorkspaceSearch = () => {
+    const willOpen = !workspaceSearchOpen;
+    toggleUiWorkspaceSearch();
     if (willOpen && usesOverlayPanels()) setLeftPanelOpen(false);
   };
 
@@ -96,6 +105,12 @@ export function useWorkspaceChromeController({
         setTopPopover(null);
         setCenterPopover(null);
         setSearchOpen(false);
+        return;
+      }
+
+      if (workspaceSearchOpen) {
+        event.preventDefault();
+        setWorkspaceSearchOpen(false);
         return;
       }
 
@@ -138,8 +153,10 @@ export function useWorkspaceChromeController({
     selectionActionPosition,
     setSearchOpen,
     setSelectionActionPosition,
+    setWorkspaceSearchOpen,
     topPopover,
     workspaceMenuOpen,
+    workspaceSearchOpen,
   ]);
 
   useEffect(() => {
@@ -192,6 +209,8 @@ export function useWorkspaceChromeController({
     setCenterPopover,
     workspaceMenuOpen,
     setWorkspaceMenuOpen,
+    workspaceSearchOpen,
+    setWorkspaceSearchOpen,
     preferencesOpen,
     setPreferencesOpen,
     leftPanelOpen,
@@ -206,6 +225,7 @@ export function useWorkspaceChromeController({
     openFilesPanel,
     openSharePanel,
     toggleWorkspaceMenu,
+    toggleWorkspaceSearch,
     toggleLeftPanel,
     toggleRightPanel,
   };

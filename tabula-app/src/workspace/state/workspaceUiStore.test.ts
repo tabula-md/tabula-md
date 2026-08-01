@@ -68,6 +68,21 @@ describe("workspace UI store", () => {
     });
   });
 
+  it("opens workspace search independently from Files navigation", () => {
+    useWorkspaceUiStore.getState().openFilesPanel();
+    useWorkspaceUiStore.getState().toggleWorkspaceSearch();
+
+    expect(useWorkspaceUiStore.getState()).toMatchObject({
+      leftPanelOpen: true,
+      leftPanelView: "files",
+      workspaceSearchOpen: true,
+    });
+
+    useWorkspaceUiStore.getState().toggleWorkspaceSearch();
+
+    expect(useWorkspaceUiStore.getState().workspaceSearchOpen).toBe(false);
+  });
+
   it("opens Share and closes conflicting chrome", () => {
     useWorkspaceUiStore.getState().setCenterPopover("view");
     useWorkspaceUiStore.getState().setWorkspaceMenuOpen(true);

@@ -9,7 +9,6 @@ import type {
   ConnectionStatus,
 } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
-import type { LeftPanelView } from "../../ui/uiTypes";
 import type { JsonShareController } from "../../share/useJsonShareController";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getCollaboratorDisplayList } from "../../collaboration/collabCollaborators";
@@ -41,7 +40,7 @@ export type WorkspaceTopChromeProps = {
   openFiles: WorkspaceFile[];
   room?: LocationRoom | null;
   leftPanelOpen: boolean;
-  leftPanelView: LeftPanelView;
+  workspaceSearchOpen: boolean;
   rightPanelOpen: boolean;
   shareOpen: boolean;
   workspaceMenuOpen: boolean;
@@ -63,7 +62,8 @@ export type WorkspaceTopChromeProps = {
   onStartSession: () => void;
   onStopSession: () => void;
   onRetrySession: () => void;
-  onToggleLeftPanel: (view: LeftPanelView) => void;
+  onToggleLeftPanel: () => void;
+  onToggleWorkspaceSearch: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
   onToggleShare: () => void;
@@ -89,7 +89,7 @@ export function WorkspaceTopChrome({
   openFiles,
   room,
   leftPanelOpen,
-  leftPanelView,
+  workspaceSearchOpen,
   rightPanelOpen,
   shareOpen,
   workspaceMenuOpen,
@@ -112,6 +112,7 @@ export function WorkspaceTopChrome({
   onStopSession,
   onRetrySession,
   onToggleLeftPanel,
+  onToggleWorkspaceSearch,
   onToggleRightPanel,
   onToggleFollowing,
   onToggleShare,
@@ -196,8 +197,8 @@ export function WorkspaceTopChrome({
   return (
     <TopChrome
       workspaceMenuOpen={workspaceMenuOpen}
+      workspaceSearchOpen={workspaceSearchOpen}
       leftPanelOpen={leftPanelOpen}
-      leftPanelView={leftPanelView}
       rightPanelOpen={rightPanelOpen}
       isLiveConnected={isLiveConnected}
       language={language}
@@ -210,6 +211,7 @@ export function WorkspaceTopChrome({
       shareControls={shareControls}
       onToggleWorkspaceMenu={onToggleWorkspaceMenu}
       onToggleLeftPanel={onToggleLeftPanel}
+      onToggleWorkspaceSearch={onToggleWorkspaceSearch}
       onToggleRightPanel={onToggleRightPanel}
       onToggleFollowing={onToggleFollowing}
     />

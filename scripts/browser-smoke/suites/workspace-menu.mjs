@@ -97,12 +97,14 @@ export async function run(ctx) {
     );
     expect((await page.locator(".right-comments-toolbar").count()) === 0, "Comments should hide unusable controls in an empty workspace.");
     await page.getByRole("button", { name: "Search", exact: true }).click();
-    await waitForPanelTab(page, "Search");
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({ state: "visible" });
     expect(
-      (await page.locator(".right-panel-body").getByText("No documents to search", { exact: true }).count()) === 1,
+      (await page.getByRole("dialog", { name: "Search", exact: true })
+        .getByText("No documents to search", { exact: true }).count()) === 1,
       "Workspace Search should describe the unavailable search scope.",
     );
     expect((await page.locator(".right-panel-search-controls").count()) === 0, "Search should hide unusable controls in an empty workspace.");
+    await page.keyboard.press("Escape");
     await page.locator(".right-panel").getByRole("button", { name: "Close side panel", exact: true }).click();
     expect((await page.locator(".live-button").count()) === 0, "Live should live inside Share, not as a separate top-right action.");
     expect((await page.locator(".blank-document-action").count()) === 0, "The first screen should not show canvas-style onboarding actions.");

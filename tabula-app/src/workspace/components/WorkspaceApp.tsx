@@ -10,6 +10,7 @@ import { useWorkspaceRuntime } from "../useWorkspaceRuntime";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 import { getWorkspaceFilePresentation } from "../workspaceFilePresentation";
 import { WorkspaceAssetViewer } from "./WorkspaceAssetViewer";
+import { WorkspaceSearchModal } from "./WorkspaceSearchModal";
 
 const MemoWorkspaceMenuSurface = memo(WorkspaceMenuSurface);
 const MemoWorkspaceTopChrome = memo(WorkspaceTopChrome);
@@ -47,6 +48,7 @@ export function WorkspaceApp() {
   return (
     <main className="app-shell">
       <WorkspaceOverlaySurface {...overlays.workspace} />
+      <WorkspaceSearchModal {...panels.search} />
       <section className={chrome.mainPanelClassName}>
         <MemoWorkspaceMenuSurface {...chrome.menu} />
 
