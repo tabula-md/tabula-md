@@ -3,6 +3,7 @@ import type { DocumentWorkbenchProps } from "../document/DocumentWorkbench";
 import type { LiveRoomOpenState } from "../collaboration/liveRoomOpenState";
 import type { WorkspaceRightPanelProps } from "../right-panel/WorkspaceRightPanel";
 import type { WorkspaceLeftPanelProps } from "../left-panel/WorkspaceLeftPanel";
+import type { WorkspaceSearchModalProps } from "./components/WorkspaceSearchModal";
 import type { WorkspaceEmptySurfaceProps } from "./components/WorkspaceEmptySurface";
 import type { WorkspaceMenuSurfaceProps } from "./components/WorkspaceMenuSurface";
 import type { WorkspaceOverlaySurfaceProps } from "./components/WorkspaceOverlaySurface";
@@ -35,6 +36,7 @@ export type WorkspaceRuntimeFacade = {
   panels: {
     left: WorkspaceLeftPanelProps;
     right: WorkspaceRightPanelProps;
+    search: WorkspaceSearchModalProps;
   };
   overlays: {
     workspace: WorkspaceOverlaySurfaceProps;

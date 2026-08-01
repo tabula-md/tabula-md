@@ -554,8 +554,10 @@ export async function run(ctx) {
       (await page.locator(".right-compatibility-scroll").count()) === 0,
       "Compatibility repair controls should not interrupt ordinary Markdown editing.",
     );
-    await page.locator('.left-panel-trigger[aria-label="Search"]').click();
-    await waitForLeftPanel(page, "Search");
+    await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+      state: "visible",
+    });
     await page.getByRole("searchbox", {
       name: "Search documents and metadata",
       exact: true,
@@ -567,9 +569,41 @@ export async function run(ctx) {
       }).isVisible() &&
         await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
         await page.locator(".right-properties-context").isVisible(),
-      "Workspace Search should coexist with the active document inspector on wide screens.",
+      "Workspace Search should open as a modal retrieval surface over document context.",
     );
 
+    await page.getByRole("button", { name: "Search settings", exact: true }).click();
+    const matchCaseOption = page.getByRole("menuitemcheckbox", {
+      name: /Match case/,
+    });
+    await matchCaseOption.waitFor({ state: "visible" });
+    await matchCaseOption.click();
+    expect(
+      (await matchCaseOption.getAttribute("aria-checked")) === "true",
+      "Search settings should render above the modal and update search options.",
+    );
+    await page.keyboard.press("Escape");
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+      state: "detached",
+    });
+
+    await page.setViewportSize({ width: 568, height: 800 });
+    await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+      state: "visible",
+    });
+    const closeWorkspaceSearch = page.getByRole("button", {
+      name: "Close search",
+      exact: true,
+    });
+    await closeWorkspaceSearch.waitFor({ state: "visible" });
+    await closeWorkspaceSearch.click();
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+      state: "detached",
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    await ensureSidePanelOpen(page);
     await page.getByRole("button", { name: "Links", exact: true }).click();
     await waitForPanelTab(page, "Links");
     const emptyOutgoingSection = page.locator('.right-links-section[aria-label="Outgoing"]');
@@ -594,7 +628,9 @@ export async function run(ctx) {
       (await page.getByRole("button", { name: "Open map", exact: true }).count()) === 0,
       "Links should stay focused on the active document instead of owning a workspace map action.",
     );
-    await page.getByRole("button", { name: "Files", exact: true }).click();
+    if (!(await page.locator(".left-panel").isVisible())) {
+      await page.getByRole("button", { name: "Files", exact: true }).click();
+    }
     await waitForLeftPanel(page, "Files");
 
     await openProjectMenu(page);
@@ -2131,7 +2167,10 @@ export async function run(ctx) {
       "Touch layouts should reserve tab width for documents instead of redundant previous/next buttons.",
     );
 
-    await mobilePage.getByRole("button", { name: "Search", exact: true }).click();
+    await mobilePage.locator(".document-toolbar-row").getByRole("button", {
+      name: "Search",
+      exact: true,
+    }).click();
     await mobilePage.locator(".document-search-row").waitFor({ state: "visible" });
     await ensureSidePanelOpen(mobilePage);
     const mobilePanel = await mobilePage.evaluate(() => {

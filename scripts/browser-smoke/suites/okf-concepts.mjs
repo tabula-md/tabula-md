@@ -273,9 +273,6 @@ export async function run(ctx) {
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });
 
-    const sidePanelNavigation = page.getByRole("navigation", {
-      name: "Side panel sections",
-    });
     const documentKnowledgeContext = page.getByRole("region", {
       name: "Properties",
     });
@@ -327,11 +324,8 @@ export async function run(ctx) {
       "Document Properties should not contain a workspace summary or workspace workflow.",
     );
 
-    await sidePanelNavigation.getByRole("button", {
-      name: "Search",
-      exact: true,
-    }).click();
-    await waitForPanelTab(page, "Search");
+    await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
+    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({ state: "visible" });
     const conceptSearch = page.getByRole("searchbox", {
       name: "Search documents and metadata",
       exact: true,

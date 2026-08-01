@@ -36,6 +36,7 @@ export type WorkspaceLeftPanelProps = Omit<
 > & {
   activeFileId?: string;
   isLive: boolean;
+  onClose: () => void;
 };
 
 export function WorkspaceLeftPanel({
@@ -72,11 +73,13 @@ export function WorkspaceLeftPanel({
     if (!overlayMode || !leftPanelProps.isOpen) return undefined;
     const panel = panelRef.current;
     if (!panel) return undefined;
-    const workbench = document.querySelector<HTMLElement>(".center-workbench");
-    if (workbench) {
-      workbench.inert = true;
-      workbench.setAttribute("aria-hidden", "true");
-    }
+    const backgroundSurfaces = Array.from(document.querySelectorAll<HTMLElement>(
+      ".top-document-zone, .file-shell",
+    ));
+    backgroundSurfaces.forEach((surface) => {
+      surface.inert = true;
+      surface.setAttribute("aria-hidden", "true");
+    });
     panel.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
@@ -91,10 +94,10 @@ export function WorkspaceLeftPanel({
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      if (workbench) {
-        workbench.inert = false;
-        workbench.removeAttribute("aria-hidden");
-      }
+      backgroundSurfaces.forEach((surface) => {
+        surface.inert = false;
+        surface.removeAttribute("aria-hidden");
+      });
       window.requestAnimationFrame(() => {
         document.querySelector<HTMLElement>(".left-panel-trigger.active")?.focus();
       });
@@ -125,7 +128,6 @@ export function WorkspaceLeftPanel({
         isLiveWorkspace={isLive}
         overlayMode={overlayMode}
         panelRef={panelRef}
-        onClose={onClose}
       />
     </>
   );

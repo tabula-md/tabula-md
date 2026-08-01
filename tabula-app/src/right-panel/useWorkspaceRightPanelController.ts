@@ -6,6 +6,7 @@ import {
 } from "react";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
 import type { WorkspaceLeftPanelProps } from "../left-panel/WorkspaceLeftPanel";
+import type { WorkspaceSearchModalProps } from "../workspace/components/WorkspaceSearchModal";
 import type {
   MarkdownHeading,
   WorkspaceKnowledgeLink,
@@ -14,7 +15,7 @@ import {
   getActiveOutlineHeadingIndex,
   getOutlineHeadingOffsets,
 } from "../editor/outlineNavigationModel";
-import type { LeftPanelView, RightPanelView } from "../ui/uiTypes";
+import type { RightPanelView } from "../ui/uiTypes";
 import type { LiveSelection } from "../collaboration/liveCollaboration";
 import type {
   FileComment,
@@ -79,7 +80,7 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   isLive: boolean;
   language: WorkspaceLanguage;
   leftPanelOpen: boolean;
-  leftPanelView: LeftPanelView;
+  workspaceSearchOpen: boolean;
   onImportFile: () => void;
   outlineHeadings: MarkdownHeading[];
   parsedMarkdownBody: string;
@@ -95,6 +96,7 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   setRightPanelOpen: (isOpen: boolean) => void;
   setRightPanelView: (view: RightPanelView) => void;
   setLeftPanelOpen: (isOpen: boolean) => void;
+  setWorkspaceSearchOpen: (isOpen: boolean) => void;
   text: string;
 };
 
@@ -116,7 +118,7 @@ export function useWorkspaceRightPanelController({
   isLive,
   language,
   leftPanelOpen,
-  leftPanelView,
+  workspaceSearchOpen,
   onAddComment,
   onAddCommentReply,
   onCancelCommentReply,
@@ -157,6 +159,7 @@ export function useWorkspaceRightPanelController({
   setRightPanelOpen,
   setRightPanelView,
   setLeftPanelOpen,
+  setWorkspaceSearchOpen,
   text,
 }: UseWorkspaceRightPanelControllerOptions) {
   const visibleFiles = files;
@@ -260,13 +263,11 @@ export function useWorkspaceRightPanelController({
 
   const leftPanelProps: WorkspaceLeftPanelProps = {
     isOpen: leftPanelOpen,
-    view: leftPanelView,
     isLive,
     language,
     files: visibleFiles,
     folders,
     knowledgeIndex,
-    knowledgeIndexPending,
     knowledgeIndexSource,
     activeFileId: visibleActiveFileId,
     onClose: closeLeftPanel,
@@ -284,6 +285,17 @@ export function useWorkspaceRightPanelController({
     onMoveFolder,
     onRenameFolder,
     onRenameWorkspace,
+  };
+
+  const searchModalProps: WorkspaceSearchModalProps = {
+    files: visibleFiles,
+    folders,
+    index: knowledgeIndex,
+    isOpen: workspaceSearchOpen,
+    language,
+    pending: knowledgeIndexPending,
+    onClose: () => setWorkspaceSearchOpen(false),
+    onSelectFile,
   };
 
   const rightPanelProps: WorkspaceRightPanelProps = {
@@ -336,5 +348,6 @@ export function useWorkspaceRightPanelController({
     knowledgeIndex,
     leftPanelProps,
     rightPanelProps,
+    searchModalProps,
   };
 }

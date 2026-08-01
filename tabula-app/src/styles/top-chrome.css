@@ -1,8 +1,7 @@
 .top-chrome {
   position: relative;
   z-index: var(--layer-chrome);
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  display: block;
   align-items: center;
   column-gap: var(--space-3);
   min-width: 0;
@@ -12,12 +11,14 @@
   background: var(--app-background);
 }
 
-.top-left-zone {
-  position: relative;
+.workspace-controls {
+  position: fixed;
+  top: var(--space-2);
+  left: var(--space-3);
+  z-index: calc(var(--layer-panel) + 2);
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  grid-column: 1;
   width: auto;
   height: var(--control-size-row);
   min-width: 0;
@@ -30,12 +31,16 @@
   grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
   gap: var(--space-3);
-  grid-column: 2;
   width: 100%;
   height: var(--control-size-row);
   min-width: 0;
   margin: 0;
+  padding-left: calc(var(--control-size-compact) * 3 + var(--space-2) * 2 + var(--space-3));
   overflow: visible;
+}
+
+.main-panel.left-panel-open .top-document-zone {
+  padding-left: 0;
 }
 
 .top-right-zone {

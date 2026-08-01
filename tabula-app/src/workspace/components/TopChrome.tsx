@@ -1,17 +1,23 @@
 import type { ReactNode } from "react";
-import { Folder, Menu, PanelRightOpen, Search, Users } from "lucide-react";
+import {
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightOpen,
+  Search,
+  Users,
+} from "lucide-react";
 import { getLineNumberForPresenceSelection as getLineNumberForSelection } from "@tabula-md/tabula";
 import type { Collaborator } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
-import type { LeftPanelView } from "../../ui/uiTypes";
 
 type TopChromeProps = {
   workspaceMenuOpen: boolean;
+  workspaceSearchOpen: boolean;
   leftPanelOpen: boolean;
-  leftPanelView: LeftPanelView;
   rightPanelOpen: boolean;
   isLiveConnected: boolean;
   language: WorkspaceLanguage;
@@ -23,15 +29,16 @@ type TopChromeProps = {
   fileTabs: ReactNode;
   shareControls: ReactNode;
   onToggleWorkspaceMenu: () => void;
-  onToggleLeftPanel: (view: LeftPanelView) => void;
+  onToggleLeftPanel: () => void;
+  onToggleWorkspaceSearch: () => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
 };
 
 export function TopChrome({
   workspaceMenuOpen,
+  workspaceSearchOpen,
   leftPanelOpen,
-  leftPanelView,
   rightPanelOpen,
   isLiveConnected,
   language,
@@ -44,6 +51,7 @@ export function TopChrome({
   shareControls,
   onToggleWorkspaceMenu,
   onToggleLeftPanel,
+  onToggleWorkspaceSearch,
   onToggleRightPanel,
   onToggleFollowing,
 }: TopChromeProps) {
@@ -81,8 +89,8 @@ export function TopChrome({
     ].filter(Boolean).join(" · ");
   };
   return (
-    <header className="top-chrome">
-      <div className="top-left-zone">
+    <>
+      <div className="workspace-controls" aria-label={panelCopy.label}>
         <button
           className={`panel-toggle top-panel-toggle workspace-menu-button ${workspaceMenuOpen ? "active" : ""}`}
           type="button"
@@ -94,35 +102,34 @@ export function TopChrome({
           <Menu size={16} />
         </button>
         <button
-          className={`panel-toggle top-panel-toggle left-panel-trigger ${
-            leftPanelOpen && leftPanelView === "files" ? "active" : ""
-          }`}
+          className={`panel-toggle top-panel-toggle left-panel-trigger ${leftPanelOpen ? "active" : ""}`}
           type="button"
           aria-label={panelCopy.tabs.files}
           data-tooltip={panelCopy.tabs.files}
-          aria-pressed={leftPanelOpen && leftPanelView === "files"}
-          onClick={() => onToggleLeftPanel("files")}
+          aria-pressed={leftPanelOpen}
+          onClick={onToggleLeftPanel}
         >
-          <Folder size={16} />
+          {leftPanelOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
         </button>
         <button
-          className={`panel-toggle top-panel-toggle left-panel-trigger ${
-            leftPanelOpen && leftPanelView === "search" ? "active" : ""
+          className={`panel-toggle top-panel-toggle workspace-search-trigger ${
+            workspaceSearchOpen ? "active" : ""
           }`}
           type="button"
           aria-label={panelCopy.tabs.search}
           data-tooltip={panelCopy.tabs.search}
-          aria-pressed={leftPanelOpen && leftPanelView === "search"}
-          onClick={() => onToggleLeftPanel("search")}
+          aria-expanded={workspaceSearchOpen}
+          onClick={onToggleWorkspaceSearch}
         >
           <Search size={16} />
         </button>
       </div>
 
-      <div className="top-document-zone">
-        {fileTabs}
+      <header className="top-chrome">
+        <div className="top-document-zone">
+          {fileTabs}
 
-        <div className="top-right-zone">
+          <div className="top-right-zone">
           {isLiveConnected && (
             <div className="presence sharing-presence" aria-label={sharingTooltip}>
               <Users size={16} aria-hidden="true" />
@@ -175,8 +182,9 @@ export function TopChrome({
               <PanelRightOpen size={16} />
             </button>
           )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }

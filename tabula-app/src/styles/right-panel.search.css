@@ -320,7 +320,8 @@
   pointer-events: none;
 }
 
-.right-panel-search-settings {
+.ui-menu.right-panel-search-settings {
+  z-index: calc(var(--layer-modal) + 1);
   min-width: 210px;
 }
 

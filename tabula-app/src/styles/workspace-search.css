@@ -1,0 +1,87 @@
+.share-modal-layer.workspace-search-layer {
+  place-items: start center;
+  padding-top: min(18vh, 144px);
+}
+
+.share-modal.workspace-search-modal {
+  --right-section-gap: 8px;
+  --right-tight-gap: 6px;
+  --right-row-x: 10px;
+  --right-row-radius: var(--radius-control);
+  --right-row-height: var(--control-size-row);
+  --right-control-size: var(--control-size-compact);
+
+  width: min(680px, calc(100vw - 32px));
+  height: min(480px, calc(100dvh - min(18vh, 144px) - 32px));
+  max-height: none;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line-subtle);
+}
+
+.workspace-search-modal .right-panel-search-controls {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.workspace-search-modal .right-panel-search-field {
+  background: transparent;
+}
+
+.workspace-search-modal .right-panel-search-field input {
+  font-size: var(--font-ui-heading);
+}
+
+.workspace-search-modal .right-panel-search-scroll,
+.workspace-search-modal .right-panel-search-filter-scroll {
+  padding: 0 2px 2px;
+}
+
+.workspace-search-modal .right-panel-search-result {
+  min-height: 54px;
+  padding: 8px 10px;
+}
+
+.workspace-search-loading {
+  min-height: 120px;
+}
+
+.workspace-search-close {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .share-modal-layer.workspace-search-layer {
+    padding: 8px;
+  }
+
+  .share-modal.workspace-search-modal {
+    width: 100%;
+    height: calc(100dvh - 16px);
+  }
+
+  .workspace-search-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: var(--right-control-size);
+    height: var(--right-control-size);
+    border-radius: var(--right-row-radius);
+    color: var(--text-soft);
+    background: var(--surface-overlay);
+  }
+
+  .workspace-search-close:hover,
+  .workspace-search-close:focus-visible {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+  }
+
+  .workspace-search-modal .right-panel-search-controls,
+  .workspace-search-modal .right-panel-search-filter-header {
+    padding-right: calc(var(--right-control-size) + var(--right-tight-gap));
+  }
+}
