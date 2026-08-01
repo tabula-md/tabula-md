@@ -7,10 +7,12 @@ import {
 
 const createFacadeInput = ({
   activeFileTitle = "Plan.md",
+  leftPanelOpen = false,
   rightPanelOpen,
   splitViewOpen,
 }: {
   activeFileTitle?: string;
+  leftPanelOpen?: boolean;
   rightPanelOpen: boolean;
   splitViewOpen: boolean;
 }): CreateWorkspaceRuntimeFacadeOptions => ({
@@ -36,6 +38,9 @@ const createFacadeInput = ({
     top: {},
   } as unknown as CreateWorkspaceRuntimeFacadeOptions["chrome"],
   panels: {
+    left: {
+      isOpen: leftPanelOpen,
+    },
     right: {
       isOpen: rightPanelOpen,
     },
@@ -79,6 +84,18 @@ describe("createWorkspaceRuntimeFacade", () => {
     }));
 
     expect(facade.chrome.mainPanelClassName).toBe("main-panel");
+  });
+
+  it("reserves independent layout space for workspace navigation", () => {
+    const facade = createWorkspaceRuntimeFacade(createFacadeInput({
+      leftPanelOpen: true,
+      rightPanelOpen: true,
+      splitViewOpen: false,
+    }));
+
+    expect(facade.chrome.mainPanelClassName).toBe(
+      "main-panel left-panel-open right-panel-open",
+    );
   });
 
   it("does not reserve split-view layout space for a bundle asset", () => {

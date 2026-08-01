@@ -401,6 +401,9 @@ export function useWorkspaceRuntime() {
     setWorkspaceMenuOpen,
     preferencesOpen,
     setPreferencesOpen,
+    leftPanelOpen,
+    setLeftPanelOpen,
+    leftPanelView,
     rightPanelOpen,
     setRightPanelOpen,
     rightPanelView,
@@ -408,6 +411,7 @@ export function useWorkspaceRuntime() {
     closeFloatingChrome,
     openFilesPanel,
     toggleWorkspaceMenu,
+    toggleLeftPanel,
     toggleRightPanel,
   } = workspaceChrome;
   const openInfoDialog = useEventCallback((kind: WorkspaceInfoDialogKind) => {
@@ -828,7 +832,7 @@ export function useWorkspaceRuntime() {
     setPreferencesOpen,
     setTopPopover,
   });
-  const { knowledgeIndex, rightPanelProps } =
+  const { knowledgeIndex, leftPanelProps, rightPanelProps } =
     useWorkspaceRightPanelController({
       activeCommentId: focusedCommentId,
       activeFile,
@@ -846,6 +850,8 @@ export function useWorkspaceRuntime() {
       identityName: identity.name,
       isLive: isLiveChromeVisible,
       language: workspacePreferences.language,
+      leftPanelOpen,
+      leftPanelView,
       onAddComment: addFileComment,
       onAddCommentReply: addFileCommentReply,
       onCancelSelectionComment: cancelSelectionComment,
@@ -885,6 +891,7 @@ export function useWorkspaceRuntime() {
       onSelectionCommentRequestHandled: consumeSelectionCommentRequest,
       setRightPanelOpen,
       setRightPanelView,
+      setLeftPanelOpen,
       text,
     });
   const resolveWorkspaceLink = useMemo(
@@ -1003,6 +1010,8 @@ export function useWorkspaceRuntime() {
     openFiles,
     lastClosedFile,
     room: activeRoom,
+    leftPanelOpen,
+    leftPanelView,
     rightPanelOpen,
     topPopover,
     workspaceMenuOpen,
@@ -1038,6 +1047,7 @@ export function useWorkspaceRuntime() {
     onStartSession: startSessionWithPendingCommit,
     onStopSession: stopSessionWithPendingCommit,
     onRetrySession: retryCollaborationConnection,
+    onToggleLeftPanel: toggleLeftPanel,
     onToggleRightPanel: toggleRightPanel,
     onToggleFollowing: toggleFollowing,
     onToggleWorkspaceMenu: toggleWorkspaceMenu,
@@ -1140,6 +1150,7 @@ export function useWorkspaceRuntime() {
       top: topChromeProps,
     },
     panels: {
+      left: leftPanelProps,
       right: rightPanelProps,
     },
     overlays: {

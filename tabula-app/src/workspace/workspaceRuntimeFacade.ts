@@ -2,6 +2,7 @@ import type { DocumentSurfaceModel } from "@tabula-md/tabula";
 import type { DocumentWorkbenchProps } from "../document/DocumentWorkbench";
 import type { LiveRoomOpenState } from "../collaboration/liveRoomOpenState";
 import type { WorkspaceRightPanelProps } from "../right-panel/WorkspaceRightPanel";
+import type { WorkspaceLeftPanelProps } from "../left-panel/WorkspaceLeftPanel";
 import type { WorkspaceEmptySurfaceProps } from "./components/WorkspaceEmptySurface";
 import type { WorkspaceMenuSurfaceProps } from "./components/WorkspaceMenuSurface";
 import type { WorkspaceOverlaySurfaceProps } from "./components/WorkspaceOverlaySurface";
@@ -32,6 +33,7 @@ export type WorkspaceRuntimeFacade = {
     top: WorkspaceTopChromeProps;
   };
   panels: {
+    left: WorkspaceLeftPanelProps;
     right: WorkspaceRightPanelProps;
   };
   overlays: {
@@ -66,6 +68,7 @@ export function createWorkspaceRuntimeFacade({
       ...chrome,
       mainPanelClassName: [
         "main-panel",
+        runtime.panels.left.isOpen && "left-panel-open",
         runtime.panels.right.isOpen && "right-panel-open",
         splitViewOpen && "split-view-open",
       ].filter(Boolean).join(" "),

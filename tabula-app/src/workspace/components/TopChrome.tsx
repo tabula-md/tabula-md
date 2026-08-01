@@ -1,13 +1,17 @@
 import type { ReactNode } from "react";
-import { Menu, PanelRightOpen, Users } from "lucide-react";
+import { Folder, Menu, PanelRightOpen, Search, Users } from "lucide-react";
 import { getLineNumberForPresenceSelection as getLineNumberForSelection } from "@tabula-md/tabula";
 import type { Collaborator } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
+import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import type { LeftPanelView } from "../../ui/uiTypes";
 
 type TopChromeProps = {
   workspaceMenuOpen: boolean;
+  leftPanelOpen: boolean;
+  leftPanelView: LeftPanelView;
   rightPanelOpen: boolean;
   isLiveConnected: boolean;
   language: WorkspaceLanguage;
@@ -19,12 +23,15 @@ type TopChromeProps = {
   fileTabs: ReactNode;
   shareControls: ReactNode;
   onToggleWorkspaceMenu: () => void;
+  onToggleLeftPanel: (view: LeftPanelView) => void;
   onToggleRightPanel: () => void;
   onToggleFollowing: (actorId: string) => void;
 };
 
 export function TopChrome({
   workspaceMenuOpen,
+  leftPanelOpen,
+  leftPanelView,
   rightPanelOpen,
   isLiveConnected,
   language,
@@ -36,10 +43,12 @@ export function TopChrome({
   fileTabs,
   shareControls,
   onToggleWorkspaceMenu,
+  onToggleLeftPanel,
   onToggleRightPanel,
   onToggleFollowing,
 }: TopChromeProps) {
   const copy = getWorkspaceChromeCopy(language).topChrome;
+  const panelCopy = getWorkspaceInterfaceCopy(language).sidePanel;
   const workspaceMenuLabel = workspaceMenuOpen
     ? copy.closeWorkspaceMenu
     : copy.openWorkspaceMenu;
@@ -83,6 +92,30 @@ export function TopChrome({
           onClick={onToggleWorkspaceMenu}
         >
           <Menu size={16} />
+        </button>
+        <button
+          className={`panel-toggle top-panel-toggle left-panel-trigger ${
+            leftPanelOpen && leftPanelView === "files" ? "active" : ""
+          }`}
+          type="button"
+          aria-label={panelCopy.tabs.files}
+          data-tooltip={panelCopy.tabs.files}
+          aria-pressed={leftPanelOpen && leftPanelView === "files"}
+          onClick={() => onToggleLeftPanel("files")}
+        >
+          <Folder size={16} />
+        </button>
+        <button
+          className={`panel-toggle top-panel-toggle left-panel-trigger ${
+            leftPanelOpen && leftPanelView === "search" ? "active" : ""
+          }`}
+          type="button"
+          aria-label={panelCopy.tabs.search}
+          data-tooltip={panelCopy.tabs.search}
+          aria-pressed={leftPanelOpen && leftPanelView === "search"}
+          onClick={() => onToggleLeftPanel("search")}
+        >
+          <Search size={16} />
         </button>
       </div>
 

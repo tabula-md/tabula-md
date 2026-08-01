@@ -7,12 +7,10 @@ import {
 } from "react";
 import {
   FileSliders,
-  Folder,
   Link2,
   ListTree,
   MessageSquare,
   PanelRightClose,
-  Search,
 } from "lucide-react";
 import {
   getRightPanelCommentGroups,
@@ -21,11 +19,9 @@ import {
   type WorkspaceKnowledgeLink,
 } from "@tabula-md/tabula";
 import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
-import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { MarkdownHeading } from "@tabula-md/tabula";
 import type { RightPanelView } from "../ui/uiTypes";
 import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
-import { RightPanelFiles } from "./RightPanelFiles";
 import { RightPanelOutline } from "./RightPanelOutline";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
@@ -39,9 +35,6 @@ const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => 
 })));
 const RightPanelComments = lazy(() => import("./RightPanelComments").then((module) => ({
   default: module.RightPanelComments,
-})));
-const RightPanelSearch = lazy(() => import("./RightPanelSearch").then((module) => ({
-  default: module.RightPanelSearch,
 })));
 const RightPanelProperties = lazy(() => import("./RightPanelProperties").then((module) => ({
   default: module.RightPanelProperties,
@@ -61,7 +54,6 @@ type RightPanelProps = {
   knowledgeIndexSource: "none" | "worker" | "fallback";
   activeFileId: string;
   activeFileTitle: string;
-  isLiveWorkspace: boolean;
   language: WorkspaceLanguage;
   activeOutlineHeadingIndex?: number;
   outlineHeadings: MarkdownHeading[];
@@ -77,9 +69,6 @@ type RightPanelProps = {
   replyDraftByCommentId: Record<string, string>;
   onSetView: (view: RightPanelView) => void;
   onClose: () => void;
-  onNewFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile | undefined;
-  onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
-  onImportFile: () => void;
   onSelectFile: (fileId: string) => void;
   onSelectKnowledgeHealthIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
   onFocusLinkSource: (link: WorkspaceKnowledgeLink) => void;
@@ -87,15 +76,6 @@ type RightPanelProps = {
     link: WorkspaceKnowledgeLink,
     targetPath: string,
   ) => boolean;
-  onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
-  onDuplicateFile: (fileId: string) => void;
-  onDeleteFile: (fileId: string) => void;
-  onDeleteFolder: (folderId: string) => void;
-  onCopyFile: (fileId: string) => void;
-  onMoveFileToFolder: (fileId: string, folderId: string) => Promise<void>;
-  onMoveFolder: (folderId: string, parentId: string) => Promise<void>;
-  onRenameFolder: (folderId: string, nextTitle: string) => Promise<boolean>;
-  onRenameWorkspace: (nextTitle: string) => boolean;
   onGoToOutlineHeading: (heading: MarkdownHeading, index: number) => void;
   onCommentDraftChange: (draft: string) => void;
   onIdentityNameChange: (name: string) => void;
@@ -125,7 +105,6 @@ export function RightPanel({
   knowledgeIndexSource,
   activeFileId,
   activeFileTitle,
-  isLiveWorkspace,
   language,
   activeOutlineHeadingIndex,
   outlineHeadings,
@@ -141,22 +120,10 @@ export function RightPanel({
   replyDraftByCommentId,
   onSetView,
   onClose,
-  onNewFile,
-  onNewFolder,
-  onImportFile,
   onSelectFile,
   onSelectKnowledgeHealthIssue,
   onFocusLinkSource,
   onResolveAmbiguousLink,
-  onRenameFile,
-  onDuplicateFile,
-  onDeleteFile,
-  onDeleteFolder,
-  onCopyFile,
-  onMoveFileToFolder,
-  onMoveFolder,
-  onRenameFolder,
-  onRenameWorkspace,
   onGoToOutlineHeading,
   onCommentDraftChange,
   onIdentityNameChange,
@@ -182,15 +149,11 @@ export function RightPanel({
     showResolved,
     collapsedReplyIds,
     collapsedCommentFileIds,
-    collapsedFileTreeFolderIds,
     collapsedLinkSections,
     collapsedOutlineHeadingIds,
     toggleResolvedSection,
     toggleRepliesCollapsed,
     toggleCommentFileCollapsed,
-    toggleFileTreeFolderCollapsed,
-    collapseAllFileTreeFolders,
-    expandAllFileTreeFolders,
     toggleLinkSectionCollapsed,
     toggleOutlineHeadingCollapsed,
     collapseAllOutlineHeadings,
@@ -210,13 +173,11 @@ export function RightPanel({
   }
 
   const activeFile = files.find((file) => file.id === activeFileId);
-  const hasDocuments = files.length > 0;
   const effectiveView = view;
   const { openCommentGroups, resolvedCommentGroups } = getRightPanelCommentGroups(
     files,
     commentsByFileId,
   );
-  const hasLiveFiles = isLiveWorkspace;
   const hasOpenComments = openCommentGroups.some((group) => group.comments.length > 0);
   const panelTitle = effectiveView === "properties"
     ? knowledgeCopy.properties
@@ -254,11 +215,9 @@ export function RightPanel({
     >
       <div className="right-panel-header">
         <nav className="right-panel-tabs" aria-label={copy.sections}>
-          {renderTab("files", copy.tabs.files, <Folder size={14} />, hasLiveFiles ? "live" : undefined)}
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
           {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
           {renderTab("comments", copy.tabs.comments, <MessageSquare size={14} />, hasOpenComments ? "comments" : undefined)}
-          {renderTab("search", copy.tabs.search, <Search size={14} />)}
           {renderTab(
             "properties",
             knowledgeCopy.properties,
@@ -278,38 +237,6 @@ export function RightPanel({
       </div>
 
       <div className={`right-panel-body ${effectiveView}`} id="right-panel-body">
-        {effectiveView === "files" && (
-          <RightPanelFiles
-            files={files}
-            folders={folders}
-            activeFileId={activeFileId}
-            copy={copy.files}
-            knowledgeIndex={knowledgeIndex}
-            knowledgeStatusCopy={knowledgeCopy}
-            collapsedFolderIds={collapsedFileTreeFolderIds}
-            onNewFile={(parentId) => onNewFile(parentId ? { parentId } : undefined)}
-            onNewFolder={onNewFolder}
-            onImportFile={onImportFile}
-            onToggleFolder={toggleFileTreeFolderCollapsed}
-            onCollapseAllFolders={collapseAllFileTreeFolders}
-            onExpandAllFolders={expandAllFileTreeFolders}
-            onSelectFile={onSelectFile}
-            onReviewKnowledgeFile={(fileId) => {
-              onSelectFile(fileId);
-              onSetView("properties");
-            }}
-            onRenameFile={onRenameFile}
-            onDuplicateFile={onDuplicateFile}
-            onDeleteFile={onDeleteFile}
-            onDeleteFolder={onDeleteFolder}
-            onCopyFile={onCopyFile}
-            onMoveFileToFolder={onMoveFileToFolder}
-            onMoveFolder={onMoveFolder}
-            onRenameFolder={onRenameFolder}
-            onRenameWorkspace={onRenameWorkspace}
-          />
-        )}
-
         {!activeFile && (
           effectiveView === "outline" ||
           effectiveView === "links" ||
@@ -317,12 +244,6 @@ export function RightPanel({
         ) && (
           <section className="right-panel-content">
             <PanelEmptyState>{copy.noDocumentOpen}</PanelEmptyState>
-          </section>
-        )}
-
-        {!hasDocuments && effectiveView === "search" && (
-          <section className="right-panel-content">
-            <PanelEmptyState>{copy.search.noDocuments}</PanelEmptyState>
           </section>
         )}
 
@@ -403,21 +324,6 @@ export function RightPanel({
           </Suspense>
         )}
 
-        {hasDocuments && effectiveView === "search" && knowledgeIndexPending && !knowledgeIndex &&
-          panelFallback}
-
-        {hasDocuments && effectiveView === "search" && (!knowledgeIndexPending || knowledgeIndex) && (
-          <Suspense fallback={panelFallback}>
-            <RightPanelSearch
-              copy={copy.search}
-              files={files}
-              folders={folders}
-              index={knowledgeIndex}
-              language={language}
-              onSelectFile={onSelectFile}
-            />
-          </Suspense>
-        )}
 
         {effectiveView === "properties" && (
           <Suspense fallback={panelFallback}>

@@ -25,7 +25,7 @@ describe("workspace UI store", () => {
     });
   });
 
-  it("opens project files panel as a single chrome action", () => {
+  it("opens project files navigation as a single chrome action", () => {
     useWorkspaceUiStore.getState().setTopPopover("plus");
     useWorkspaceUiStore.getState().setWorkspaceMenuOpen(true);
     useWorkspaceUiStore.getState().setPreferencesOpen(true);
@@ -38,8 +38,33 @@ describe("workspace UI store", () => {
       centerPopover: null,
       workspaceMenuOpen: false,
       preferencesOpen: false,
-      rightPanelOpen: true,
-      rightPanelView: "files",
+      leftPanelOpen: true,
+      leftPanelView: "files",
+      rightPanelOpen: false,
+      rightPanelView: "comments",
+    });
+  });
+
+  it("switches and toggles workspace navigation independently", () => {
+    useWorkspaceUiStore.getState().toggleLeftPanel("search");
+
+    expect(useWorkspaceUiStore.getState()).toMatchObject({
+      leftPanelOpen: true,
+      leftPanelView: "search",
+    });
+
+    useWorkspaceUiStore.getState().toggleLeftPanel("files");
+
+    expect(useWorkspaceUiStore.getState()).toMatchObject({
+      leftPanelOpen: true,
+      leftPanelView: "files",
+    });
+
+    useWorkspaceUiStore.getState().toggleLeftPanel("files");
+
+    expect(useWorkspaceUiStore.getState()).toMatchObject({
+      leftPanelOpen: false,
+      leftPanelView: "files",
     });
   });
 

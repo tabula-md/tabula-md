@@ -17,11 +17,9 @@ type RoomWorkspaceView = {
 };
 
 const isRightPanelView = (value: unknown): value is RightPanelView =>
-  value === "files" ||
   value === "outline" ||
   value === "links" ||
   value === "comments" ||
-  value === "search" ||
   value === "properties";
 
 const getStorageKey = (roomId: string) => `${ROOM_VIEW_STATE_KEY_PREFIX}:${roomId}`;
@@ -30,10 +28,13 @@ export const parseRoomViewState = (value: unknown): RoomViewState | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const candidate = value as Partial<RoomViewState>;
   const storedRightPanelView = (value as { rightPanelView?: unknown }).rightPanelView;
+  const migratedLeftPanelView = storedRightPanelView === "files" || storedRightPanelView === "search";
   const rightPanelView = storedRightPanelView === "graph"
     ? "links"
     : storedRightPanelView === "knowledge"
       ? "properties"
+      : migratedLeftPanelView
+        ? "properties"
       : storedRightPanelView;
   if (!Array.isArray(candidate.openDocumentIds) || !isRightPanelView(rightPanelView)) {
     return null;
@@ -47,7 +48,7 @@ export const parseRoomViewState = (value: unknown): RoomViewState | null => {
     openDocumentIds: candidate.openDocumentIds.filter(
       (id, index, ids): id is string => typeof id === "string" && Boolean(id.trim()) && ids.indexOf(id) === index,
     ),
-    rightPanelOpen: candidate.rightPanelOpen === true,
+    rightPanelOpen: !migratedLeftPanelView && candidate.rightPanelOpen === true,
     rightPanelView,
   };
 };
