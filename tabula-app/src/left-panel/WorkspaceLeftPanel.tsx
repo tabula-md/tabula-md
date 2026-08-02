@@ -75,7 +75,7 @@ export function WorkspaceLeftPanel({
             onClick={onClose}
           />
           <LeftPanelDivider
-            label={copy.resize}
+            label={copy.resizeWorkspace}
             width={width}
             onWidthChange={setWidth}
           />

@@ -517,7 +517,7 @@ export async function run(ctx) {
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");
     await page.locator(".right-panel .right-panel-trigger").click();
     const rightPanelDivider = page.locator(
-      '.left-panel-divider[role="separator"][aria-label="Resize side panel"]',
+      '.left-panel-divider[role="separator"][aria-label="Resize workspace panel"]',
     );
     expect(
       (await rightPanelDivider.getAttribute("aria-valuemax")) === "920",
@@ -1396,7 +1396,7 @@ export async function run(ctx) {
     }
     await waitForRenderFrame(page);
     const overflowPanelDivider = page.getByRole("separator", {
-      name: "Resize side panel",
+      name: "Resize document panel",
       exact: true,
     });
     const overflowDividerBox = await overflowPanelDivider.boundingBox();
@@ -1443,7 +1443,10 @@ export async function run(ctx) {
         () => Math.round(document.querySelector(".right-panel")?.getBoundingClientRect().width ?? 0) === 288,
       );
     }
-    await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
+    if ((await page.locator(".left-panel").count()) === 0) {
+      await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
+      await waitForLeftPanel(page, "Workspace panel");
+    }
     const switcher = await page.evaluate(() => {
       const items = Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((item) => ({
         text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -1455,7 +1458,7 @@ export async function run(ctx) {
           "",
         current: item.classList.contains("active"),
       }));
-      const panel = document.querySelector(".right-panel");
+      const panel = document.querySelector(".left-panel");
       const toolbarButton = panel?.querySelector(".right-file-toolbar-button");
       const inputRect = toolbarButton?.getBoundingClientRect();
       const target =
@@ -1464,7 +1467,7 @@ export async function run(ctx) {
 
       return {
         open: Boolean(panel),
-        visibleAtToolbar: Boolean(target?.closest(".right-panel")),
+        visibleAtToolbar: Boolean(target?.closest(".left-panel")),
         itemCount: items.length,
         titles: items.map((item) => item.title),
         hasReadme: items.some((item) => item.text.includes("README")),
@@ -1481,8 +1484,8 @@ export async function run(ctx) {
         hasMarkdownExtensionInTitle: items.some((item) => /\.(md|markdown)\b/i.test(item.title)),
       };
     });
-    expect(switcher.open, "All files should open in the side panel.");
-    expect(switcher.visibleAtToolbar, "All files should be visible inside the side panel.");
+    expect(switcher.open, "All files should open in the workspace panel.");
+    expect(switcher.visibleAtToolbar, "All files should be visible inside the workspace panel.");
     expect(switcher.itemCount >= overflow.tabCount, "Document switcher should list open documents.");
     expect(switcher.hasReadme, "Document switcher should include README.");
     const sortedSwitcherTitles = [...switcher.titles].sort((firstTitle, secondTitle) =>

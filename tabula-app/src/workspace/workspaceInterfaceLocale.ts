@@ -35,7 +35,8 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
       dismiss: copy.panelDismiss,
       label: copy.panelLabel,
       sections: copy.panelSections,
-      resize: copy.panelResize,
+      resizeWorkspace: copy.panelResizeWorkspace,
+      resizeDocument: copy.panelResizeDocument,
       tabs: {
         files: copy.panelFiles,
         outline: copy.panelOutline,

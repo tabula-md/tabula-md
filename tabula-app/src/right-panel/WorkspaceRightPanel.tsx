@@ -73,7 +73,7 @@ export function WorkspaceRightPanel({
             onClick={onClose}
           />
           <RightPanelDivider
-            label={copy.resize}
+            label={copy.resizeDocument}
             width={width}
             onWidthChange={setWidth}
           />
