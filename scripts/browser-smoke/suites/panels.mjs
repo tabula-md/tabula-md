@@ -601,9 +601,19 @@ export async function run(ctx) {
         exact: true,
       }).isVisible() &&
         await page.getByRole("button", { name: "New document", exact: true }).isVisible() &&
-        (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0 &&
+        await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
         await page.locator(".right-properties-context").isVisible(),
       "Workspace Search should open as a modal retrieval surface over document context.",
+    );
+
+    expect(
+      await page.locator('#workspace-palette-item-0[data-active="true"]').count() === 1,
+      "The command palette should begin with a keyboard-active result.",
+    );
+    await page.keyboard.press("ArrowDown");
+    expect(
+      await page.locator('#workspace-palette-item-1[data-active="true"]').count() === 1,
+      "Arrow keys should move the active command palette result.",
     );
 
     await page.getByRole("searchbox", { name: "Search documents or run a command" }).fill("> export");

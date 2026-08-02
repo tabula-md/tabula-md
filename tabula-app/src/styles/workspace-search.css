@@ -82,7 +82,8 @@
 }
 
 .workspace-command-result:hover,
-.workspace-command-result:focus-visible {
+.workspace-command-result:focus-visible,
+.workspace-command-result[data-active="true"] {
   color: var(--text-primary);
   background: var(--surface-muted);
 }

@@ -37,6 +37,7 @@ import {
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
+import { getWorkspaceFilePresentation } from "../workspace/workspaceFilePresentation";
 import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
@@ -128,6 +129,7 @@ export function RightPanelSearch({
   const [options, setOptions] = useState<SearchOptions>(DEFAULT_SEARCH_OPTIONS);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filterViewOpen, setFilterViewOpen] = useState(false);
+  const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(() => new Set());
   const [selectedTags, setSelectedTags] = useState<Set<string>>(() => new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<OkfLifecycleStatus>>(
@@ -143,16 +145,11 @@ export function RightPanelSearch({
     () => getWorkspaceFileTabLabels(files, folders),
     [files, folders],
   );
-  const conceptFiles = useMemo(() => files.filter((file) => {
-    const path = index?.documentsById.get(file.id)?.path;
-    if (!path) return false;
-    const basename = path.split("/").at(-1)?.toLocaleLowerCase();
-    return basename !== "index.md" && basename !== "log.md";
-  }), [files, index]);
   const searchEntries = useMemo(
-    () => conceptFiles.map((file): WorkspaceFileSearchEntry => {
+    () => files.map((file): WorkspaceFileSearchEntry => {
       const analysis = index?.analysesByDocumentId.get(file.id);
       const metadata = analysis?.knowledgeMetadata;
+      const presentation = getWorkspaceFilePresentation(file);
       return {
         fileId: file.id,
         displayPath: stripMarkdownExtension(
@@ -160,7 +157,9 @@ export function RightPanelSearch({
         ),
         title: analysis?.title,
         description: metadata?.description,
-        type: metadata?.type,
+        type: metadata?.type ?? (
+          presentation.kind === "asset" ? presentation.format : undefined
+        ),
         tags: metadata?.tags,
         resource: metadata?.resource,
         sourceValues: metadata?.sources.flatMap((source) => [
@@ -174,10 +173,12 @@ export function RightPanelSearch({
         status: metadata?.type ? metadata.status : undefined,
         trustTier: metadata?.type ? metadata.trustTier : undefined,
         freshness: metadata?.type ? getOkfFreshness(metadata) : undefined,
-        markdown: file.text,
+        markdown: presentation.kind === "markdown" || presentation.viewer === "text"
+          ? file.text
+          : undefined,
       };
     }),
-    [conceptFiles, fileLabels, index],
+    [fileLabels, files, index],
   );
   const typeFacets = useMemo(
     () => getMetadataFacets(searchEntries, (entry) => entry.type),
@@ -232,12 +233,16 @@ export function RightPanelSearch({
       .toLocaleLowerCase()
       .includes(commandQuery);
   });
+  const showCommands = commandMode || !hasQuery;
   const hasFilters = selectedTypes.size > 0 ||
     selectedTags.size > 0 ||
     selectedStatuses.size > 0 ||
     selectedTrustTiers.size > 0 ||
     selectedFreshness.size > 0;
   const visibleEntries = hasQuery || hasFilters ? result.files : searchEntries;
+  const visibleDocumentEntries = commandMode ? [] : visibleEntries;
+  const paletteItemCount = (showCommands ? visibleCommands.length : 0) +
+    visibleDocumentEntries.length;
   const hasActiveOptions = Object.values(options).some(Boolean);
 
   const keepAvailable = <TValue extends string>(
@@ -264,6 +269,34 @@ export function RightPanelSearch({
     () => keepAvailable(freshnessFacets, setSelectedFreshness),
     [freshnessFacets],
   );
+  useEffect(() => {
+    setActiveResultIndex(0);
+  }, [commandMode, deferredQuery, hasFilters]);
+
+  const moveActiveResult = (offset: -1 | 1) => {
+    if (paletteItemCount === 0) return;
+    setActiveResultIndex((current) => {
+      const next = (current + offset + paletteItemCount) % paletteItemCount;
+      window.requestAnimationFrame(() => {
+        document.getElementById(`workspace-palette-item-${next}`)?.scrollIntoView({
+          block: "nearest",
+        });
+      });
+      return next;
+    });
+  };
+
+  const selectActiveResult = () => {
+    if (paletteItemCount === 0) return;
+    const selectedIndex = Math.min(activeResultIndex, paletteItemCount - 1);
+    const commandCount = showCommands ? visibleCommands.length : 0;
+    if (selectedIndex < commandCount) {
+      visibleCommands[selectedIndex]?.onSelect();
+      return;
+    }
+    const file = visibleDocumentEntries[selectedIndex - commandCount];
+    if (file) onSelectFile(file.fileId);
+  };
 
   const toggleFacet = <TValue extends string>(
     setSelected: Dispatch<SetStateAction<Set<TValue>>>,
@@ -403,17 +436,27 @@ export function RightPanelSearch({
                 spellCheck={false}
                 aria-label={copy.placeholder}
                 aria-invalid={Boolean(result.error)}
+                aria-activedescendant={
+                  paletteItemCount > 0
+                    ? `workspace-palette-item-${Math.min(activeResultIndex, paletteItemCount - 1)}`
+                    : undefined
+                }
                 placeholder={copy.placeholder}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && commandMode && visibleCommands[0]) {
+                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
                     event.preventDefault();
-                    visibleCommands[0].onSelect();
+                    moveActiveResult(event.key === "ArrowDown" ? 1 : -1);
+                    return;
+                  }
+                  if (event.key === "Enter" && paletteItemCount > 0) {
+                    event.preventDefault();
+                    selectActiveResult();
                   }
                 }}
               />
             </label>
-            {commands.length === 0 && (
+            {!commandMode && (
               <button
                 className="right-panel-search-filter-trigger"
                 type="button"
@@ -427,7 +470,7 @@ export function RightPanelSearch({
                 )}
               </button>
             )}
-            {commands.length === 0 && (
+            {!commandMode && (
               <MenuRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
                 <MenuTrigger asChild>
                   <button
@@ -468,15 +511,19 @@ export function RightPanelSearch({
           </div>
 
           <div className="right-panel-search-scroll">
-            {visibleCommands.length > 0 && (
+            {showCommands && visibleCommands.length > 0 && (
               <section className="workspace-command-section" aria-label={commandSectionLabel}>
                 <h2>{commandSectionLabel}</h2>
                 <div className="workspace-command-results">
-                  {visibleCommands.map((command) => (
+                  {visibleCommands.map((command, commandIndex) => (
                     <button
                       className="workspace-command-result"
                       type="button"
                       key={command.id}
+                      id={`workspace-palette-item-${commandIndex}`}
+                      aria-selected={activeResultIndex === commandIndex}
+                      data-active={activeResultIndex === commandIndex || undefined}
+                      onMouseMove={() => setActiveResultIndex(commandIndex)}
                       onClick={command.onSelect}
                     >
                       <Command size={14} aria-hidden="true" />
@@ -521,13 +568,14 @@ export function RightPanelSearch({
             {!commandMode && (hasQuery || hasFilters) && !result.error && visibleEntries.length === 0 && (
               <PanelEmptyState>{copy.noMatches}</PanelEmptyState>
             )}
-            {!commandMode && visibleEntries.length > 0 && (
+            {visibleDocumentEntries.length > 0 && (
               <>
                 <p className="right-panel-search-result-count">
                   {copy.documentCount(visibleEntries.length)}
                 </p>
                 <div className="right-panel-search-results" aria-label={copy.results}>
-                  {visibleEntries.map((file) => {
+                  {visibleDocumentEntries.map((file, fileIndex) => {
+                    const paletteIndex = (showCommands ? visibleCommands.length : 0) + fileIndex;
                     const resource = getOpenableResource(file.resource);
                     const title = file.title?.trim() ||
                       file.displayPath.split("/").at(-1) ||
@@ -537,7 +585,11 @@ export function RightPanelSearch({
                         <button
                           className="right-panel-search-result"
                           type="button"
+                          id={`workspace-palette-item-${paletteIndex}`}
                           aria-label={file.displayPath}
+                          aria-selected={activeResultIndex === paletteIndex}
+                          data-active={activeResultIndex === paletteIndex || undefined}
+                          onMouseMove={() => setActiveResultIndex(paletteIndex)}
                           onClick={() => onSelectFile(file.fileId)}
                         >
                           <span className="right-panel-search-result-copy">

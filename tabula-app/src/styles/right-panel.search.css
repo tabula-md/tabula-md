@@ -957,7 +957,8 @@
 }
 
 .right-panel-search-result:hover,
-.right-panel-search-result:focus-visible {
+.right-panel-search-result:focus-visible,
+.right-panel-search-result[data-active="true"] {
   color: var(--text-primary);
   background: var(--surface-hover);
 }
