@@ -333,7 +333,7 @@ export function useWorkspaceRightPanelController({
     commands: [
       {
         id: "search-workspace",
-        label: "Search workspace…",
+        label: `${getWorkspaceInterfaceCopy(language).sidePanel.tabs.search}…`,
         keywords: ["find", "content", "metadata", "files"],
         closeOnSelect: false,
         onSelect: () => setWorkspaceSearchMode("search"),
