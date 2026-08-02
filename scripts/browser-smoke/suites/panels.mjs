@@ -43,6 +43,8 @@ export async function run(ctx) {
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
       leftPanelCount: document.querySelectorAll(".left-sidebar").length,
       leftTabCount: document.querySelectorAll(".workspace-panel-tabs button").length,
+      leftTabLabels: Array.from(document.querySelectorAll(".workspace-panel-tabs button"))
+        .map((button) => button.getAttribute("aria-label")),
       templateRowCount: document.querySelectorAll(".left-library-item").length,
       menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
       publicLinks: Array.from(document.querySelectorAll(".workspace-menu-popover a")).map((link) => ({
@@ -116,7 +118,11 @@ export async function run(ctx) {
     expect(workbenchPanels.workspacePanelLabel === "Workspace panel", "The left panel should identify itself as the Workspace panel, not the Files panel.");
     expect(workbenchPanels.menuOpen, "The workspace menu should open from the workspace name.");
     expect(workbenchPanels.leftPanelCount === 0, "The app should not render a left side panel for future surfaces.");
-    expect(workbenchPanels.leftTabCount === 0, "Workspace navigation should not imitate the document inspector with peer tabs.");
+    expect(workbenchPanels.leftTabCount === 2, "Workspace navigation should expose Files and Libraries.");
+    expect(
+      workbenchPanels.leftTabLabels.join("|") === "Files|Libraries",
+      "The Workspace panel should separate workspace files from reusable library bundles.",
+    );
     expect(workbenchPanels.templateRowCount === 0, "Templates should not ship as a visible surface yet.");
     expect(!workbenchPanels.menuText.includes("Agent"), "Agent should not ship as an inert menu surface.");
     expect(workbenchPanels.fileSearchCount === 0, "File search should live in the side panel.");
@@ -473,8 +479,8 @@ export async function run(ctx) {
       "The workspace title menu should rename the workspace without adding a root folder row.",
     );
     expect(
-      rightPanelState.headingCount === 1,
-      "Workspace navigation should use one quiet Files heading instead of peer view tabs.",
+      rightPanelState.headingCount === 0,
+      "Workspace navigation should use icon tabs instead of repeating the active section as a heading.",
     );
     expect(
       rightPanelState.fileRows.filter((row) => row.active).length === 1 &&

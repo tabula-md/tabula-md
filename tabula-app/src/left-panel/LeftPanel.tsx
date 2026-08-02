@@ -1,5 +1,5 @@
-import type { RefObject } from "react";
-import { PanelLeftClose } from "lucide-react";
+import { useState, type RefObject } from "react";
+import { Files, Library, PanelLeftClose } from "lucide-react";
 import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
@@ -9,6 +9,10 @@ import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { RightPanelFiles } from "../right-panel/RightPanelFiles";
 import { useRightPanelCollapseState } from "../right-panel/useRightPanelCollapseState";
+import { LibraryPanel } from "../libraries/LibraryPanel";
+import { getLibraryPanelCopy } from "../libraries/libraryPanelLocale";
+
+type LeftPanelView = "files" | "libraries";
 
 export type LeftPanelProps = {
   isOpen: boolean;
@@ -66,6 +70,8 @@ export function LeftPanel({
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const chromeCopy = getWorkspaceChromeCopy(language).topChrome;
   const knowledgeCopy = getKnowledgePanelCopy(language);
+  const libraryCopy = getLibraryPanelCopy(language);
+  const [activeView, setActiveView] = useState<LeftPanelView>("files");
   const {
     collapsedFileTreeFolderIds,
     toggleFileTreeFolderCollapsed,
@@ -90,7 +96,28 @@ export function LeftPanel({
       data-live-workspace={isLiveWorkspace || undefined}
     >
       <header className="workspace-panel-header">
-        <h2>{chromeCopy.files}</h2>
+        <nav className="ui-panel-tabs workspace-panel-tabs" aria-label={libraryCopy.sections}>
+          <button
+            type="button"
+            className={`ui-panel-tab ${activeView === "files" ? "active" : ""}`}
+            aria-label={libraryCopy.files}
+            aria-pressed={activeView === "files"}
+            data-tooltip={libraryCopy.files}
+            onClick={() => setActiveView("files")}
+          >
+            <Files size={16} />
+          </button>
+          <button
+            type="button"
+            className={`ui-panel-tab ${activeView === "libraries" ? "active" : ""}`}
+            aria-label={libraryCopy.libraries}
+            aria-pressed={activeView === "libraries"}
+            data-tooltip={libraryCopy.libraries}
+            onClick={() => setActiveView("libraries")}
+          >
+            <Library size={16} />
+          </button>
+        </nav>
         {overlayMode && (
           <button
             className="right-file-toolbar-button workspace-panel-close"
@@ -103,7 +130,8 @@ export function LeftPanel({
           </button>
         )}
       </header>
-      <div className="right-panel-body files" id="workspace-panel-files-view">
+      {activeView === "files" ? (
+        <div className="right-panel-body files" id="workspace-panel-files-view">
           <RightPanelFiles
             files={files}
             folders={folders}
@@ -129,7 +157,12 @@ export function LeftPanel({
             onMoveFolder={onMoveFolder}
             onRenameFolder={onRenameFolder}
           />
-      </div>
+        </div>
+      ) : (
+        <div className="right-panel-body libraries" id="workspace-panel-libraries-view">
+          <LibraryPanel language={language} />
+        </div>
+      )}
     </aside>
   );
 }
