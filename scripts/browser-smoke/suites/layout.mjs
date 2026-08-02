@@ -14,6 +14,7 @@ export async function run(ctx) {
     waitForActiveTab,
     waitForEditorReady,
     waitForFileCount,
+    waitForLeftPanel,
     withPage,
   } = ctx;
 
@@ -226,7 +227,6 @@ export async function run(ctx) {
       };
 
       return {
-        left: readRect(".top-left-zone"),
         documentZone: readRect(".top-document-zone"),
         right: readRect(".top-right-zone"),
         actionRow: readRect(".document-toolbar-row"),
@@ -249,7 +249,6 @@ export async function run(ctx) {
     });
 
     for (const [name, rect] of Object.entries({
-      left: chrome.left,
       documentZone: chrome.documentZone,
       right: chrome.right,
       actionRow: chrome.actionRow,
@@ -280,8 +279,8 @@ export async function run(ctx) {
       "Document status bar should be visible.",
     );
     expect(
-      chrome.topLeftMenuCount === 0,
-      "The workspace menu button should stay inside the closed Workspace panel.",
+      chrome.topLeftMenuCount === 1,
+      "The closed Workspace panel should expose one workspace menu button in the top chrome.",
     );
     expect(
       !chrome.workspaceMenu,
@@ -300,8 +299,9 @@ export async function run(ctx) {
       "Status controls should not render as floating canvas chips.",
     );
     expect(
-      chrome.documentZone.x >= chrome.left.x + chrome.left.width + 8,
-      "The top tab lane should start after the Workspace panel and search controls.",
+      chrome.documentZone.x >= chrome.centerWorkbench.x &&
+        chrome.documentZone.x <= chrome.centerWorkbench.x + 16,
+      "The closed-panel top chrome should align with the workbench padding.",
     );
     expect(
       chrome.documentZone.x + chrome.documentZone.width <=
@@ -490,11 +490,11 @@ export async function run(ctx) {
         content:
           "---\ntitle: Split layout\ndescription: Frontmatter should remain readable beside the editor.\n---\n\n## Start here\n\nSplit layout smoke content.",
       });
-      await ensureSidePanelOpen(page);
       await selectDocumentViewMode(page, "Edit");
       await waitForEditorReady(page, { mode: "edit" });
       await selectDocumentViewMode(page, "Split");
       await waitForEditorReady(page, { mode: "split" });
+      await ensureSidePanelOpen(page);
 
       const splitLayout = await page.evaluate(() => {
         const readRect = (selector) => {

@@ -1737,7 +1737,7 @@ export async function run(ctx) {
     await folderDocumentRenameInput.waitFor({ state: "visible" });
     await folderDocumentRenameInput.fill("Archive note");
     await page.keyboard.press("Enter");
-    await waitForRenderFrame(page);
+    await waitForActiveTab(page, { exact: "Archive note.md" });
     const folderDocumentState = await page.evaluate(() => {
       const activeTitle = document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "";
       const row = Array.from(document.querySelectorAll(".workspace-file-tree-row.file"))

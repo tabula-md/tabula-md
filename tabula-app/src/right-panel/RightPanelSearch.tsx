@@ -379,6 +379,14 @@ export function RightPanelSearch({
     );
   };
 
+  if (!isPalette && files.length === 0) {
+    return (
+      <section className="right-panel-search" aria-label={copy.results}>
+        <PanelEmptyState>{copy.noDocuments}</PanelEmptyState>
+      </section>
+    );
+  }
+
   return (
     <section
       className={`right-panel-search ${filterViewOpen ? "filter-view" : ""}`.trim()}
