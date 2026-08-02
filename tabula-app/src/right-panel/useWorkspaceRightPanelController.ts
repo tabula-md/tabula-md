@@ -25,6 +25,7 @@ import type {
 } from "../workspace/workspaceStorage";
 import { getWorkspaceName } from "../workspace/workspaceStorage";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import type { WorkspaceSearchMode } from "../workspace/state/workspaceUiStore";
 import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
 import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIndex";
 import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
@@ -84,6 +85,8 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   language: WorkspaceLanguage;
   leftPanelOpen: boolean;
   workspaceSearchOpen: boolean;
+  workspaceSearchMode: WorkspaceSearchMode;
+  openFileIds: string[];
   workspaceMenuOpen: boolean;
   onImportFile: () => void;
   onToggleWorkspaceMenu: () => void;
@@ -104,6 +107,7 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   setRightPanelView: (view: RightPanelView) => void;
   setLeftPanelOpen: (isOpen: boolean) => void;
   setWorkspaceSearchOpen: (isOpen: boolean) => void;
+  setWorkspaceSearchMode: (mode: WorkspaceSearchMode) => void;
   text: string;
 };
 
@@ -126,6 +130,8 @@ export function useWorkspaceRightPanelController({
   language,
   leftPanelOpen,
   workspaceSearchOpen,
+  workspaceSearchMode,
+  openFileIds,
   workspaceMenuOpen,
   onAddComment,
   onAddCommentReply,
@@ -170,6 +176,7 @@ export function useWorkspaceRightPanelController({
   setRightPanelView,
   setLeftPanelOpen,
   setWorkspaceSearchOpen,
+  setWorkspaceSearchMode,
   text,
 }: UseWorkspaceRightPanelControllerOptions) {
   const visibleFiles = files;
@@ -306,11 +313,21 @@ export function useWorkspaceRightPanelController({
     folders,
     index: knowledgeIndex,
     isOpen: workspaceSearchOpen,
+    mode: workspaceSearchMode,
     language,
+    activeFileId: visibleActiveFileId,
+    openFileIds,
     pending: knowledgeIndexPending,
     onClose: () => setWorkspaceSearchOpen(false),
     onSelectFile,
     commands: [
+      {
+        id: "search-workspace",
+        label: "Search workspace…",
+        keywords: ["find", "content", "metadata", "files"],
+        closeOnSelect: false,
+        onSelect: () => setWorkspaceSearchMode("search"),
+      },
       {
         id: "new-document",
         label: getWorkspaceInterfaceCopy(language).sidePanel.files.newDocument,

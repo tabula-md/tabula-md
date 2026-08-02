@@ -35,6 +35,7 @@ import {
   type WorkspaceFileSearchEntry,
 } from "../editor/workspaceFileSearchModel";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
+import type { WorkspaceSearchMode } from "../workspace/state/workspaceUiStore";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { getWorkspaceFilePresentation } from "../workspace/workspaceFilePresentation";
@@ -50,6 +51,9 @@ type RightPanelSearchProps = {
   folders: WorkspaceFolder[];
   index?: WorkspaceKnowledgeIndex;
   language: WorkspaceLanguage;
+  mode: WorkspaceSearchMode;
+  activeFileId?: string;
+  openFileIds: readonly string[];
   onSelectFile: (fileId: string) => void;
   commands?: readonly WorkspaceSearchCommand[];
 };
@@ -58,6 +62,7 @@ export type WorkspaceSearchCommand = {
   id: string;
   label: string;
   keywords?: readonly string[];
+  closeOnSelect?: boolean;
   onSelect: () => void;
 };
 
@@ -118,10 +123,14 @@ export function RightPanelSearch({
   folders,
   index,
   language,
+  mode,
+  activeFileId,
+  openFileIds,
   onSelectFile,
   commands = [],
 }: RightPanelSearchProps) {
   const labels = getWorkspaceChromeCopy(language).documentControls;
+  const isPalette = mode === "palette";
   const metadataCopy = getKnowledgePanelCopy(language);
   const commandSectionLabel = getWorkspaceMenuCopy(language).aria.workspaceActions;
   const [query, setQuery] = useState("");
@@ -222,26 +231,43 @@ export function RightPanelSearch({
   );
   const hasQuery = deferredQuery.trim().length > 0;
   const normalizedQuery = deferredQuery.trim();
-  const commandMode = normalizedQuery.startsWith(">");
-  const commandQuery = (commandMode ? normalizedQuery.slice(1) : normalizedQuery)
+  const commandQuery = normalizedQuery
     .trim()
     .toLocaleLowerCase();
-  const visibleCommands = commands.filter((command) => {
+  const visibleCommands = isPalette ? commands.filter((command) => {
     if (!commandQuery) return true;
     return [command.label, ...(command.keywords ?? [])]
       .join(" ")
       .toLocaleLowerCase()
       .includes(commandQuery);
-  });
-  const showCommands = commandMode || !hasQuery;
+  }) : [];
   const hasFilters = selectedTypes.size > 0 ||
     selectedTags.size > 0 ||
     selectedStatuses.size > 0 ||
     selectedTrustTiers.size > 0 ||
     selectedFreshness.size > 0;
-  const visibleEntries = hasQuery || hasFilters ? result.files : searchEntries;
-  const visibleDocumentEntries = commandMode ? [] : visibleEntries;
-  const paletteItemCount = (showCommands ? visibleCommands.length : 0) +
+  const openFileOrder = useMemo(
+    () => new Map(openFileIds.map((fileId, index) => [fileId, index])),
+    [openFileIds],
+  );
+  const paletteEntries = useMemo(() => {
+    const candidates = hasQuery ? result.files : searchEntries;
+    return [...candidates].sort((first, second) => {
+      if (first.fileId === activeFileId) return -1;
+      if (second.fileId === activeFileId) return 1;
+      const firstOpen = openFileOrder.get(first.fileId);
+      const secondOpen = openFileOrder.get(second.fileId);
+      if (firstOpen !== undefined && secondOpen === undefined) return -1;
+      if (firstOpen === undefined && secondOpen !== undefined) return 1;
+      if (firstOpen !== undefined && secondOpen !== undefined) return firstOpen - secondOpen;
+      return 0;
+    });
+  }, [activeFileId, hasQuery, openFileOrder, result.files, searchEntries]);
+  const visibleEntries = isPalette
+    ? paletteEntries
+    : (hasQuery || hasFilters ? result.files : []);
+  const visibleDocumentEntries = visibleEntries;
+  const paletteItemCount = visibleCommands.length +
     visibleDocumentEntries.length;
   const hasActiveOptions = Object.values(options).some(Boolean);
 
@@ -271,7 +297,12 @@ export function RightPanelSearch({
   );
   useEffect(() => {
     setActiveResultIndex(0);
-  }, [commandMode, deferredQuery, hasFilters]);
+  }, [deferredQuery, hasFilters, mode]);
+
+  useEffect(() => {
+    setQuery("");
+    setFilterViewOpen(false);
+  }, [mode]);
 
   const moveActiveResult = (offset: -1 | 1) => {
     if (paletteItemCount === 0) return;
@@ -289,7 +320,7 @@ export function RightPanelSearch({
   const selectActiveResult = () => {
     if (paletteItemCount === 0) return;
     const selectedIndex = Math.min(activeResultIndex, paletteItemCount - 1);
-    const commandCount = showCommands ? visibleCommands.length : 0;
+    const commandCount = visibleCommands.length;
     if (selectedIndex < commandCount) {
       visibleCommands[selectedIndex]?.onSelect();
       return;
@@ -441,7 +472,7 @@ export function RightPanelSearch({
                     ? `workspace-palette-item-${Math.min(activeResultIndex, paletteItemCount - 1)}`
                     : undefined
                 }
-                placeholder={copy.placeholder}
+                placeholder={isPalette ? copy.placeholder : copy.label}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -456,7 +487,7 @@ export function RightPanelSearch({
                 }}
               />
             </label>
-            {!commandMode && (
+            {!isPalette && (
               <button
                 className="right-panel-search-filter-trigger"
                 type="button"
@@ -470,7 +501,7 @@ export function RightPanelSearch({
                 )}
               </button>
             )}
-            {!commandMode && (
+            {!isPalette && (
               <MenuRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
                 <MenuTrigger asChild>
                   <button
@@ -511,7 +542,7 @@ export function RightPanelSearch({
           </div>
 
           <div className="right-panel-search-scroll">
-            {showCommands && visibleCommands.length > 0 && (
+            {visibleCommands.length > 0 && (
               <section className="workspace-command-section" aria-label={commandSectionLabel}>
                 <h2>{commandSectionLabel}</h2>
                 <div className="workspace-command-results">
@@ -565,7 +596,7 @@ export function RightPanelSearch({
             {result.error && (
               <p className="right-panel-search-message error">{result.error}</p>
             )}
-            {!commandMode && (hasQuery || hasFilters) && !result.error && visibleEntries.length === 0 && (
+            {!isPalette && (hasQuery || hasFilters) && !result.error && visibleEntries.length === 0 && (
               <PanelEmptyState>{copy.noMatches}</PanelEmptyState>
             )}
             {visibleDocumentEntries.length > 0 && (
@@ -575,7 +606,9 @@ export function RightPanelSearch({
                 </p>
                 <div className="right-panel-search-results" aria-label={copy.results}>
                   {visibleDocumentEntries.map((file, fileIndex) => {
-                    const paletteIndex = (showCommands ? visibleCommands.length : 0) + fileIndex;
+                    const paletteIndex = visibleCommands.length + fileIndex;
+                    const match = result.matches.find((candidate) =>
+                      candidate.file.fileId === file.fileId);
                     const resource = getOpenableResource(file.resource);
                     const title = file.title?.trim() ||
                       file.displayPath.split("/").at(-1) ||
@@ -600,6 +633,11 @@ export function RightPanelSearch({
                             {file.description && (
                               <span className="right-panel-search-result-description">
                                 {file.description}
+                              </span>
+                            )}
+                            {!isPalette && match?.snippet && match.snippet !== file.description && (
+                              <span className="right-panel-search-result-description">
+                                {match.snippet}
                               </span>
                             )}
                             <span className="right-panel-search-result-metadata">

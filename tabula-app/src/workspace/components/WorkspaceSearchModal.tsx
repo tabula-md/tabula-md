@@ -5,6 +5,7 @@ import { ModalSurface } from "../../ui/ModalSurface";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
 import type { WorkspaceSearchCommand } from "../../right-panel/RightPanelSearch";
+import type { WorkspaceSearchMode } from "../state/workspaceUiStore";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
 
@@ -17,7 +18,10 @@ export type WorkspaceSearchModalProps = {
   folders: WorkspaceFolder[];
   index?: WorkspaceKnowledgeIndex;
   isOpen: boolean;
+  mode: WorkspaceSearchMode;
   language: WorkspaceLanguage;
+  activeFileId?: string;
+  openFileIds: readonly string[];
   pending: boolean;
   onClose: () => void;
   onSelectFile: (fileId: string) => void;
@@ -29,7 +33,10 @@ export function WorkspaceSearchModal({
   folders,
   index,
   isOpen,
+  mode,
   language,
+  activeFileId,
+  openFileIds,
   pending,
   onClose,
   onSelectFile,
@@ -46,7 +53,7 @@ export function WorkspaceSearchModal({
 
   return (
     <ModalSurface
-      ariaLabel={copy.tabs.search}
+      ariaLabel={mode === "palette" ? "Command palette" : copy.tabs.search}
       className="workspace-search-modal"
       layerClassName="workspace-search-layer"
       onClose={onClose}
@@ -66,16 +73,19 @@ export function WorkspaceSearchModal({
         <Suspense fallback={<section className="workspace-search-loading" aria-busy="true" />}>
           <WorkspaceSearch
             copy={copy.search}
+            mode={mode}
             files={files}
             folders={folders}
             index={index}
             language={language}
+            activeFileId={activeFileId}
+            openFileIds={openFileIds}
             onSelectFile={selectFile}
             commands={commands.map((command) => ({
               ...command,
               onSelect: () => {
                 command.onSelect();
-                onClose();
+                if (command.closeOnSelect !== false) onClose();
               },
             }))}
           />

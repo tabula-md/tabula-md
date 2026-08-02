@@ -76,7 +76,11 @@ describe("workspace UI store", () => {
       leftPanelOpen: true,
       leftPanelView: "files",
       workspaceSearchOpen: true,
+      workspaceSearchMode: "palette",
     });
+
+    useWorkspaceUiStore.getState().setWorkspaceSearchMode("search");
+    expect(useWorkspaceUiStore.getState().workspaceSearchMode).toBe("search");
 
     useWorkspaceUiStore.getState().toggleWorkspaceSearch();
 

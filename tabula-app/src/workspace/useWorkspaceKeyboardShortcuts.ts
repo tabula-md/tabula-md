@@ -9,6 +9,7 @@ type WorkspaceShortcutAction =
   | "previousFile"
   | "nextFile"
   | "documentSearch"
+  | "commandPalette"
   | "workspaceSearch"
   | "editMode"
   | "splitMode"
@@ -31,6 +32,7 @@ type UseWorkspaceKeyboardShortcutsArgs = {
   openFilesPanel: () => void;
   openHelp: () => void;
   openDocumentSearch: () => void;
+  openCommandPalette: () => void;
   openWorkspaceSearch: () => void;
   selectAdjacentFile: (direction: -1 | 1) => void;
   setActiveFileViewMode: (nextViewMode: FileViewMode) => void;
@@ -57,6 +59,10 @@ export function getWorkspaceShortcutAction(
   }
 
   if (hasCommandModifier && !event.altKey && !event.shiftKey && isShortcutKey(event, "k")) {
+    return "commandPalette";
+  }
+
+  if (hasCommandModifier && !event.altKey && event.shiftKey && isShortcutKey(event, "f")) {
     return "workspaceSearch";
   }
 
@@ -123,6 +129,7 @@ export function useWorkspaceKeyboardShortcuts({
   openFilesPanel,
   openHelp,
   openDocumentSearch,
+  openCommandPalette,
   openWorkspaceSearch,
   selectAdjacentFile,
   setActiveFileViewMode,
@@ -162,6 +169,12 @@ export function useWorkspaceKeyboardShortcuts({
       if (action === "documentSearch") {
         closeFloatingChrome();
         openDocumentSearch();
+        return;
+      }
+
+      if (action === "commandPalette") {
+        closeFloatingChrome();
+        openCommandPalette();
         return;
       }
 

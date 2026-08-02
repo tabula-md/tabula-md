@@ -800,6 +800,9 @@ describe("workspace keyboard shortcuts controller", () => {
       "documentSearch",
     );
     expect(getWorkspaceShortcutAction(keyEvent({ code: "KeyK", metaKey: true, key: "k" }), targetState)).toBe(
+      "commandPalette",
+    );
+    expect(getWorkspaceShortcutAction(keyEvent({ code: "KeyF", metaKey: true, shiftKey: true, key: "f" }), targetState)).toBe(
       "workspaceSearch",
     );
     expect(

@@ -56,6 +56,21 @@ describe("searchWorkspaceFiles", () => {
       .toEqual([files[1]]);
   });
 
+  it("ranks titles before paths, metadata, and body matches and exposes context", () => {
+    const result = searchWorkspaceFiles([
+      { fileId: "body", displayPath: "Guides/Other", markdown: "Alpha launch plan" },
+      { fileId: "path", displayPath: "Alpha/Reference" },
+      { fileId: "title", displayPath: "Notes/Record", title: "Alpha" },
+    ], "alpha", DEFAULT_SEARCH_OPTIONS);
+
+    expect(result.files.map((file) => file.fileId)).toEqual(["title", "path", "body"]);
+    expect(result.matches.map(({ field, snippet }) => ({ field, snippet }))).toEqual([
+      { field: "title", snippet: "Alpha" },
+      { field: "path", snippet: "Alpha/Reference" },
+      { field: "body", snippet: "Alpha launch plan" },
+    ]);
+  });
+
   it("searches normalized knowledge metadata", () => {
     expect(searchWorkspaceFiles(files, "runbook", DEFAULT_SEARCH_OPTIONS).files)
       .toEqual([files[0]]);

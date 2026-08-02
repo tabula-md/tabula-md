@@ -22,6 +22,8 @@ export function useWorkspaceChromeController({
   const setWorkspaceMenuOpen = useWorkspaceUiStore((state) => state.setWorkspaceMenuOpen);
   const workspaceSearchOpen = useWorkspaceUiStore((state) => state.workspaceSearchOpen);
   const setWorkspaceSearchOpen = useWorkspaceUiStore((state) => state.setWorkspaceSearchOpen);
+  const workspaceSearchMode = useWorkspaceUiStore((state) => state.workspaceSearchMode);
+  const setWorkspaceSearchMode = useWorkspaceUiStore((state) => state.setWorkspaceSearchMode);
   const preferencesOpen = useWorkspaceUiStore((state) => state.preferencesOpen);
   const setPreferencesOpen = useWorkspaceUiStore((state) => state.setPreferencesOpen);
   const leftPanelOpen = useWorkspaceUiStore((state) => state.leftPanelOpen);
@@ -72,6 +74,7 @@ export function useWorkspaceChromeController({
 
   const toggleWorkspaceSearch = () => {
     const willOpen = !workspaceSearchOpen;
+    if (willOpen) setWorkspaceSearchMode("search");
     toggleUiWorkspaceSearch();
     if (willOpen && usesOverlayPanels()) setLeftPanelOpen(false);
   };
@@ -210,7 +213,9 @@ export function useWorkspaceChromeController({
     workspaceMenuOpen,
     setWorkspaceMenuOpen,
     workspaceSearchOpen,
+    workspaceSearchMode,
     setWorkspaceSearchOpen,
+    setWorkspaceSearchMode,
     preferencesOpen,
     setPreferencesOpen,
     leftPanelOpen,
