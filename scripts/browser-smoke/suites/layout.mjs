@@ -575,4 +575,47 @@ export async function run(ctx) {
     },
     { viewport: { width: 1100, height: 800 } },
   );
+
+  await withPage(
+    browser,
+    "/",
+    async (page) => {
+      await openMarkdownFile(page, {
+        name: "mobile-frontmatter.md",
+        content: [
+          "---",
+          "title: Mobile metadata",
+          "description: Frontmatter values should remain readable on a narrow screen.",
+          "---",
+          "",
+          "# Mobile document",
+        ].join("\n"),
+      });
+      await selectDocumentViewMode(page, "Visual");
+      await waitForEditorReady(page, { mode: "visual" });
+
+      const visualFrontmatter = await page.locator(".cm-visual-frontmatter").evaluate(
+        (frontmatter) => {
+          const row = frontmatter.querySelector(".cm-visual-frontmatter-row");
+          const value = row?.querySelector("strong");
+          if (!row || !value) return null;
+          const rowStyle = window.getComputedStyle(row);
+          const valueRect = value.getBoundingClientRect();
+          return {
+            columns: rowStyle.gridTemplateColumns.split(" ").length,
+            rowHeight: Math.round(row.getBoundingClientRect().height),
+            valueWidth: Math.round(valueRect.width),
+          };
+        },
+      );
+
+      expect(
+        visualFrontmatter?.columns === 1 &&
+          visualFrontmatter.valueWidth >= 180 &&
+          visualFrontmatter.rowHeight <= 90,
+        `Narrow Visual frontmatter should stack metadata into readable rows. state=${JSON.stringify(visualFrontmatter)}`,
+      );
+    },
+    { viewport: { width: 390, height: 760 } },
+  );
 }

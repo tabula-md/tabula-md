@@ -369,6 +369,14 @@
   font-weight: var(--preview-supporting-font-weight);
 }
 
+@container (max-width: 420px) {
+  .markdown-editor .cm-visual-editor .cm-visual-frontmatter-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    align-items: start;
+  }
+}
+
 .markdown-editor .cm-visual-editor .cm-visual-image-block {
   min-height: 120px;
 }
