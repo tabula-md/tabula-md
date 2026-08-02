@@ -18,7 +18,7 @@ import {
   type WorkspaceKnowledgeIndex,
   type WorkspaceKnowledgeLink,
 } from "@tabula-md/tabula";
-import { useRightPanelCollapseState } from "./useRightPanelCollapseState";
+import { useDocumentPanelState } from "./useDocumentPanelState";
 import type { MarkdownHeading } from "@tabula-md/tabula";
 import type { RightPanelView } from "../ui/uiTypes";
 import type { FileComment, WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
@@ -30,6 +30,7 @@ import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
 import type { MetadataFocusSection } from "./RightPanelPropertiesContext";
+import { PanelShell } from "../shared/PanelShell";
 
 const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => ({
   default: module.RightPanelLinks,
@@ -161,7 +162,7 @@ export function RightPanel({
     toggleOutlineHeadingCollapsed,
     collapseAllOutlineHeadings,
     expandAllOutlineHeadings,
-  } = useRightPanelCollapseState({
+  } = useDocumentPanelState({
     activeFileId,
     activeCommentId,
     activeReplyCommentId,
@@ -171,10 +172,6 @@ export function RightPanel({
     () => getWorkspaceFileTabLabels(files, folders),
     [files, folders],
   );
-  if (!isOpen) {
-    return null;
-  }
-
   const activeFile = files.find((file) => file.id === activeFileId);
   const effectiveView = view;
   const { openCommentGroups, resolvedCommentGroups } = getRightPanelCommentGroups(
@@ -207,13 +204,12 @@ export function RightPanel({
   );
 
   return (
-    <aside
-      ref={panelRef}
-      className="right-panel"
-      role={overlayMode ? "dialog" : undefined}
-      aria-modal={overlayMode || undefined}
-      aria-label={panelTitle}
-      tabIndex={overlayMode ? -1 : undefined}
+    <PanelShell
+      side="right"
+      panelRef={panelRef}
+      isOpen={isOpen}
+      overlayMode={overlayMode}
+      ariaLabel={panelTitle}
       data-knowledge-index-source={knowledgeIndexSource}
     >
       <header className="panel-chrome-row right-panel-header">
@@ -341,6 +337,6 @@ export function RightPanel({
           </Suspense>
         )}
       </div>
-    </aside>
+    </PanelShell>
   );
 }

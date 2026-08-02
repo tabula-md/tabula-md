@@ -77,7 +77,7 @@ export async function run(ctx) {
       };
     });
     await ensureSidePanelOpen(page);
-    expect((await page.locator(".right-file-tree-row.file").count()) === 0, "Fresh projects should contain no hidden files.");
+    expect((await page.locator(".workspace-file-tree-row.file").count()) === 0, "Fresh projects should contain no hidden files.");
     expect(
       (await page.locator(".right-panel-body").getByText("No documents yet", { exact: true }).count()) === 1,
       "An empty Files panel should describe the document state instead of a failed search.",
@@ -186,7 +186,7 @@ export async function run(ctx) {
     await waitForPanelTab(page, "Files");
     await page.getByRole("button", { name: "More actions for Untitled.md" }).click();
     expect(
-      (await page.locator(".right-file-action-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
+      (await page.locator(".workspace-file-action-menu").evaluate((menu) => getComputedStyle(menu).borderTopWidth)) === "0px",
       "File action menus should use elevation without a static border.",
     );
     await page.getByRole("menuitem", { name: "Copy Markdown" }).click();
@@ -258,7 +258,7 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await waitForPanelTab(page, "Files");
     expect(
-      (await page.locator(".right-file-tree-row.file").count()) === 2,
+      (await page.locator(".workspace-file-tree-row.file").count()) === 2,
       "Close all tabs should leave the workspace documents available in Files.",
     );
   });
@@ -445,7 +445,7 @@ export async function run(ctx) {
       "A cleared workspace should stay empty after an immediate reload.",
     );
     await ensureSidePanelOpen(page);
-    const remainingFiles = await page.locator(".right-file-tree-row.file").evaluateAll((rows) =>
+    const remainingFiles = await page.locator(".workspace-file-tree-row.file").evaluateAll((rows) =>
       rows.map((row) => row.getAttribute("title")),
     );
     expect(
@@ -575,7 +575,7 @@ export async function run(ctx) {
     await waitForPanelTab(page, "Files");
     expect((await page.locator(".right-panel").count()) === 1, "The global side-panel control should open project files.");
     const closedTabFileState = await page.evaluate(() => ({
-      fileRows: Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((row) => ({
+      fileRows: Array.from(document.querySelectorAll(".workspace-file-tree-row.file")).map((row) => ({
         title: row.getAttribute("data-file-name") ?? "",
         text: row.textContent?.replace(/\s+/g, " ").trim() ?? "",
         active: row.classList.contains("active"),

@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import type { FileComment } from "../workspace/workspaceStorage";
 
-type UseRightPanelCollapseStateOptions = {
+type UseDocumentPanelStateOptions = {
   activeFileId: string;
   activeCommentId?: string | null;
   activeReplyCommentId?: string | null;
   commentsByFileId: Record<string, FileComment[]>;
 };
 
-export type RightPanelLinkSection = "outgoing" | "backlinks";
+export type DocumentPanelLinkSection = "outgoing" | "backlinks";
 
 const emptyCollapsedOutlineHeadingIds = new Set<string>();
 
@@ -22,17 +22,16 @@ const toggleSetValue = <Value,>(currentIds: Set<Value>, id: Value) => {
   return nextIds;
 };
 
-export function useRightPanelCollapseState({
+export function useDocumentPanelState({
   activeFileId,
   activeCommentId,
   activeReplyCommentId,
   commentsByFileId,
-}: UseRightPanelCollapseStateOptions) {
+}: UseDocumentPanelStateOptions) {
   const [showResolved, setShowResolved] = useState(false);
   const [collapsedReplyIds, setCollapsedReplyIds] = useState<Set<string>>(() => new Set());
   const [collapsedCommentFileIds, setCollapsedCommentFileIds] = useState<Set<string>>(() => new Set());
-  const [collapsedFileTreeFolderIds, setCollapsedFileTreeFolderIds] = useState<Set<string>>(() => new Set());
-  const [collapsedLinkSections, setCollapsedLinkSections] = useState<Set<RightPanelLinkSection>>(
+  const [collapsedLinkSections, setCollapsedLinkSections] = useState<Set<DocumentPanelLinkSection>>(
     () => new Set(),
   );
   const [
@@ -93,7 +92,6 @@ export function useRightPanelCollapseState({
     showResolved,
     collapsedReplyIds,
     collapsedCommentFileIds,
-    collapsedFileTreeFolderIds,
     collapsedLinkSections,
     collapsedOutlineHeadingIds,
     toggleResolvedSection: () => setShowResolved((isVisible) => !isVisible),
@@ -101,12 +99,7 @@ export function useRightPanelCollapseState({
       setCollapsedReplyIds((currentIds) => toggleSetValue(currentIds, commentId)),
     toggleCommentFileCollapsed: (fileId: string) =>
       setCollapsedCommentFileIds((currentIds) => toggleSetValue(currentIds, fileId)),
-    toggleFileTreeFolderCollapsed: (folderId: string) =>
-      setCollapsedFileTreeFolderIds((currentIds) => toggleSetValue(currentIds, folderId)),
-    collapseAllFileTreeFolders: (folderIds: Iterable<string>) =>
-      setCollapsedFileTreeFolderIds(new Set(folderIds)),
-    expandAllFileTreeFolders: () => setCollapsedFileTreeFolderIds(new Set()),
-    toggleLinkSectionCollapsed: (section: RightPanelLinkSection) =>
+    toggleLinkSectionCollapsed: (section: DocumentPanelLinkSection) =>
       setCollapsedLinkSections((currentSections) => toggleSetValue(currentSections, section)),
     toggleOutlineHeadingCollapsed: (headingId: string) =>
       setCollapsedOutlineHeadingIdsByFileId((currentByFileId) => {

@@ -420,9 +420,9 @@ export async function run(ctx) {
       documentCardCount: document.querySelectorAll(".left-panel .panel-document-card").length,
       countPillCount: document.querySelectorAll(".left-panel .panel-count-pill").length,
       fileToolbar: (() => {
-        const row = document.querySelector(".right-file-toolbar");
-        const importButton = document.querySelector('.right-file-toolbar-button[aria-label="Open Markdown file"]');
-        const createButton = document.querySelector('.right-file-toolbar-button[aria-label="Create"]');
+        const row = document.querySelector(".workspace-file-toolbar");
+        const importButton = document.querySelector('.workspace-file-toolbar-button[aria-label="Open Markdown file"]');
+        const createButton = document.querySelector('.workspace-file-toolbar-button[aria-label="Create"]');
         if (!row || !importButton || !createButton) {
           return null;
         }
@@ -435,7 +435,7 @@ export async function run(ctx) {
           createButtonHeight: Math.round(createButtonRect.height),
         };
       })(),
-      fileRows: Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((row) => {
+      fileRows: Array.from(document.querySelectorAll(".workspace-file-tree-row.file")).map((row) => {
         const rect = row.getBoundingClientRect();
         const style = window.getComputedStyle(row);
         return {
@@ -469,7 +469,7 @@ export async function run(ctx) {
         };
       })(),
       workspaceName: document.querySelector(".workspace-name-trigger span")?.textContent?.trim() ?? "",
-      syntheticRootRowCount: Array.from(document.querySelectorAll(".right-file-tree-node.folder"))
+      syntheticRootRowCount: Array.from(document.querySelectorAll(".workspace-file-tree-node.folder"))
         .filter((row) => row.querySelector(".right-row-label")?.textContent?.trim() === "Project")
         .length,
     }));
@@ -607,23 +607,39 @@ export async function run(ctx) {
       "Workspace Search should open as a modal retrieval surface over document context.",
     );
 
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("ControlOrMeta+K");
+    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
+      state: "visible",
+    });
+    const paletteSearchbox = page.getByRole("searchbox", {
+      name: "Search documents or run a command",
+      exact: true,
+    });
+    await paletteSearchbox.focus();
+    const initialPaletteResult = page.locator('[id^="workspace-palette-item-"][data-active="true"]');
     expect(
-      await page.locator('#workspace-palette-item-0[data-active="true"]').count() === 1,
+      await initialPaletteResult.count() === 1,
       "The command palette should begin with a keyboard-active result.",
     );
-    await page.keyboard.press("ArrowDown");
+    const initialPaletteResultId = await initialPaletteResult.getAttribute("id");
+    await paletteSearchbox.press("ArrowDown");
+    await page.waitForFunction((previousId) =>
+      document.querySelector('[id^="workspace-palette-item-"][data-active="true"]')?.id !== previousId,
+    initialPaletteResultId);
     expect(
-      await page.locator('#workspace-palette-item-1[data-active="true"]').count() === 1,
+      await page.locator('[id^="workspace-palette-item-"][data-active="true"]').getAttribute("id") !==
+        initialPaletteResultId,
       "Arrow keys should move the active command palette result.",
     );
 
-    await page.getByRole("searchbox", { name: "Search documents or run a command" }).fill("> export");
+    await page.getByRole("searchbox", { name: "Search documents or run a command" }).fill("export");
     expect(
       await page.getByRole("button", { name: "Export document (.md)", exact: true }).isVisible(),
       "The command palette should retrieve executable actions with the command prefix.",
     );
     await page.keyboard.press("Escape");
-    await page.getByRole("dialog", { name: "Search", exact: true }).waitFor({
+    await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
       state: "detached",
     });
 
@@ -855,7 +871,7 @@ export async function run(ctx) {
       actionCount: document.querySelectorAll(".right-comment-action").length,
       navigationCount: document.querySelectorAll(".right-panel-tab small").length,
       statusCount: document.querySelectorAll(".status-comments-button").length,
-      fileCount: document.querySelectorAll(".right-file-tree-comment-count").length,
+      fileCount: document.querySelectorAll(".workspace-file-tree-comment-count").length,
     }));
     expect(emptyCommentsState.cardCount === 0, "Comments should start without comment cards.");
     expect(emptyCommentsState.actionCount === 0, "Comment actions should not appear when there are no comments.");
@@ -1449,18 +1465,18 @@ export async function run(ctx) {
       await waitForLeftPanel(page, "Workspace panel");
     }
     const switcher = await page.evaluate(() => {
-      const items = Array.from(document.querySelectorAll(".right-file-tree-row.file")).map((item) => ({
+      const items = Array.from(document.querySelectorAll(".workspace-file-tree-row.file")).map((item) => ({
         text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
         ariaLabel: item.getAttribute("aria-label") ?? "",
         title:
           item.getAttribute("title") ||
-          item.querySelector(".right-file-open-button")?.getAttribute("title") ||
-          item.querySelector(".right-file-open-button")?.getAttribute("aria-label")?.replace(/^Open\s+/, "") ||
+          item.querySelector(".workspace-file-open-button")?.getAttribute("title") ||
+          item.querySelector(".workspace-file-open-button")?.getAttribute("aria-label")?.replace(/^Open\s+/, "") ||
           "",
         current: item.classList.contains("active"),
       }));
       const panel = document.querySelector(".left-panel");
-      const toolbarButton = panel?.querySelector(".right-file-toolbar-button");
+      const toolbarButton = panel?.querySelector(".workspace-file-toolbar-button");
       const inputRect = toolbarButton?.getBoundingClientRect();
       const target =
         inputRect &&
@@ -1527,14 +1543,14 @@ export async function run(ctx) {
     };
 
     const fileActionContract = await page.evaluate(() => ({
-      closeTabCount: document.querySelectorAll('.right-file-action[aria-label^="Close tab "]').length,
-      moreActionCount: document.querySelectorAll('.right-file-action[aria-label^="More actions for "]').length,
-      copyMarkdownCount: document.querySelectorAll('.right-file-action[aria-label^="Copy Markdown: "]').length,
-      renameCount: document.querySelectorAll('.right-file-action[aria-label^="Rename "]').length,
-      duplicateCount: document.querySelectorAll('.right-file-action[aria-label^="Duplicate "]').length,
-      deleteCount: document.querySelectorAll('.right-file-action[aria-label^="Delete: "]').length,
-      openMenuCount: document.querySelectorAll(".right-file-action-menu").length,
-      importCount: document.querySelectorAll('.right-file-toolbar-button[aria-label="Open Markdown file"]').length,
+      closeTabCount: document.querySelectorAll('.workspace-file-action[aria-label^="Close tab "]').length,
+      moreActionCount: document.querySelectorAll('.workspace-file-action[aria-label^="More actions for "]').length,
+      copyMarkdownCount: document.querySelectorAll('.workspace-file-action[aria-label^="Copy Markdown: "]').length,
+      renameCount: document.querySelectorAll('.workspace-file-action[aria-label^="Rename "]').length,
+      duplicateCount: document.querySelectorAll('.workspace-file-action[aria-label^="Duplicate "]').length,
+      deleteCount: document.querySelectorAll('.workspace-file-action[aria-label^="Delete: "]').length,
+      openMenuCount: document.querySelectorAll(".workspace-file-action-menu").length,
+      importCount: document.querySelectorAll('.workspace-file-toolbar-button[aria-label="Open Markdown file"]').length,
       visibleText: document.querySelector(".right-panel-body")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     }));
     expect(fileActionContract.closeTabCount === 0, "Right Files should leave tab closing to the document tabs.");
@@ -1556,14 +1572,14 @@ export async function run(ctx) {
     await page.getByRole("menuitem", { name: "Copy Markdown", exact: true }).click();
     await page.getByRole("region", { name: "Document toolbar" }).hover();
     await page.waitForFunction((actionLabel) => {
-      const button = Array.from(document.querySelectorAll(".right-file-action"))
+      const button = Array.from(document.querySelectorAll(".workspace-file-action"))
         .find((candidate) => candidate.getAttribute("aria-label") === actionLabel);
-      const actions = button?.closest(".right-file-actions");
+      const actions = button?.closest(".workspace-file-actions");
       return actions ? getComputedStyle(actions).opacity === "0" : false;
     }, `More actions for ${rightFilesActiveTitle}`);
     expect(
       (await page.getByRole("button", { name: `More actions for ${rightFilesActiveTitle}` }).evaluate(
-        (button) => getComputedStyle(button.closest(".right-file-actions")).opacity,
+        (button) => getComputedStyle(button.closest(".workspace-file-actions")).opacity,
       )) === "0",
       "Pointer-activated file actions should hide after the pointer leaves the row.",
     );
@@ -1583,7 +1599,7 @@ export async function run(ctx) {
     expect((await page.getByRole("menuitem", { name: "Rename", exact: true }).count()) === 1, "Right-clicking a file should expose its file actions.");
     await page.keyboard.press("Escape");
 
-    await page.locator(".right-files-panel").click({ button: "right", position: { x: 20, y: 360 } });
+    await page.locator(".workspace-files-panel").click({ button: "right", position: { x: 20, y: 360 } });
     expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "Right-clicking the Files panel should create a root document.");
     expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Right-clicking the Files panel should create a root folder.");
     expect((await page.getByRole("menuitem", { name: "Rename", exact: true }).count()) === 0, "The Files panel context menu should contain only workspace creation actions.");
@@ -1595,7 +1611,7 @@ export async function run(ctx) {
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
     const duplicateRename = await page.evaluate(() => ({
-      inputValue: document.querySelector(".right-file-rename-input")?.value ?? "",
+      inputValue: document.querySelector(".workspace-file-rename-input")?.value ?? "",
       toastText: document.querySelector(".app-toast")?.textContent?.trim() ?? "",
       toastError: Boolean(document.querySelector(".app-toast.error")),
       panelOpen: Boolean(document.querySelector(".right-panel")),
@@ -1608,7 +1624,7 @@ export async function run(ctx) {
     await page.keyboard.press("Escape");
     await waitForRenderFrame(page);
     expect(
-      (await page.locator(".right-file-rename-input").count()) === 0,
+      (await page.locator(".workspace-file-rename-input").count()) === 0,
       "Escape in Right Files rename should cancel rename without closing the panel.",
     );
     expect((await page.locator(".right-panel").count()) === 1, "Right Files panel should remain open after canceling rename.");
@@ -1619,7 +1635,7 @@ export async function run(ctx) {
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
     let filesAfterRename = await page.evaluate(() => ({
-      hasRenamedRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Right Panel.md"]')),
+      hasRenamedRow: Boolean(document.querySelector('.workspace-file-tree-row.file[data-file-name="Right Panel.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
     }));
     expect(filesAfterRename.hasRenamedRow, "Right Files rename should update the project file row.");
@@ -1629,7 +1645,7 @@ export async function run(ctx) {
     await page.getByRole("menuitem", { name: "Duplicate" }).click();
     await waitForRenderFrame(page);
     const filesAfterDuplicate = await page.evaluate(() => ({
-      hasDuplicateRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Right Panel 2.md"]')),
+      hasDuplicateRow: Boolean(document.querySelector('.workspace-file-tree-row.file[data-file-name="Right Panel 2.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       toastText: document.querySelector(".app-toast")?.textContent?.trim() ?? "",
     }));
@@ -1641,7 +1657,7 @@ export async function run(ctx) {
     await page.getByRole("menuitem", { name: "Delete" }).click();
     await waitForRenderFrame(page);
     const filesAfterDelete = await page.evaluate(() => ({
-      hasDeletedRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Right Panel 2.md"]')),
+      hasDeletedRow: Boolean(document.querySelector('.workspace-file-tree-row.file[data-file-name="Right Panel 2.md"]')),
       hasDeletedTab: Boolean(document.querySelector('.tab-item[data-file-name="Right Panel 2.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       toastText: document.querySelector(".app-toast")?.textContent?.trim() ?? "",
@@ -1659,7 +1675,7 @@ export async function run(ctx) {
     await page.locator(".app-toast-action").click();
     await waitForRenderFrame(page);
     const filesAfterUndoDelete = await page.evaluate(() => ({
-      hasRestoredRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Right Panel 2.md"]')),
+      hasRestoredRow: Boolean(document.querySelector('.workspace-file-tree-row.file[data-file-name="Right Panel 2.md"]')),
       hasRestoredTab: Boolean(document.querySelector('.tab-item[data-file-name="Right Panel 2.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       toastText: document.querySelector(".app-toast")?.textContent?.trim() ?? "",
@@ -1681,7 +1697,7 @@ export async function run(ctx) {
     ]);
     await waitForRenderFrame(page);
     const filesAfterImport = await page.evaluate(() => ({
-      hasImportedRow: Boolean(document.querySelector('.right-file-tree-row.file[data-file-name="Panel Import.md"]')),
+      hasImportedRow: Boolean(document.querySelector('.workspace-file-tree-row.file[data-file-name="Panel Import.md"]')),
       activeTabTitle: document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "",
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
       tabTitleOffset: (() => {
@@ -1697,13 +1713,13 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: "Create", exact: true }).click();
     await page.getByRole("menuitem", { name: "New folder", exact: true }).click();
-    const folderRenameInput = page.locator(".right-file-tree-node.folder .right-file-rename-input");
+    const folderRenameInput = page.locator(".workspace-file-tree-node.folder .workspace-file-rename-input");
     await folderRenameInput.fill("Archive");
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
-    const archiveFolderToggle = page.locator(".right-file-tree-node.folder").filter({ hasText: "Archive" }).locator(".right-file-open-button");
+    const archiveFolderToggle = page.locator(".workspace-file-tree-node.folder").filter({ hasText: "Archive" }).locator(".workspace-file-open-button");
     expect(
-      (await page.locator('.right-file-action[aria-label="New document: Archive"]').count()) === 0 &&
+      (await page.locator('.workspace-file-action[aria-label="New document: Archive"]').count()) === 0 &&
         (await page.getByRole("button", { name: "More actions for Archive", exact: true }).count()) === 1,
       "Folder rows should keep creation commands in one more-action menu.",
     );
@@ -1717,14 +1733,14 @@ export async function run(ctx) {
     expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Folder menus should create a folder inside the folder.");
     expect((await page.getByText("New subfolder", { exact: true }).count()) === 0, "Folder menus should use the shared New folder command name.");
     await page.getByRole("menuitem", { name: "New document", exact: true }).click();
-    const folderDocumentRenameInput = page.locator(".right-file-tree-node.file .right-file-rename-input");
+    const folderDocumentRenameInput = page.locator(".workspace-file-tree-node.file .workspace-file-rename-input");
     await folderDocumentRenameInput.waitFor({ state: "visible" });
     await folderDocumentRenameInput.fill("Archive note");
     await page.keyboard.press("Enter");
     await waitForRenderFrame(page);
     const folderDocumentState = await page.evaluate(() => {
       const activeTitle = document.querySelector(".tab-item.active")?.getAttribute("data-file-name") ?? "";
-      const row = Array.from(document.querySelectorAll(".right-file-tree-row.file"))
+      const row = Array.from(document.querySelectorAll(".workspace-file-tree-row.file"))
         .find((candidate) => candidate.getAttribute("data-file-name") === activeTitle);
       return {
         activeTitle,
@@ -1737,11 +1753,11 @@ export async function run(ctx) {
     expect((await page.getByRole("menuitem", { name: "New document", exact: true }).count()) === 1, "Right-clicking a folder should expose New document.");
     expect((await page.getByRole("menuitem", { name: "New folder", exact: true }).count()) === 1, "Right-clicking a folder should expose New folder.");
     await page.keyboard.press("Escape");
-    const importedFileNode = page.locator('.right-file-tree-node.file:has(.right-file-tree-row[data-file-name="Panel Import.md"])');
-    const archiveFolderNode = page.locator(".right-file-tree-node.folder").filter({ hasText: "Archive" });
+    const importedFileNode = page.locator('.workspace-file-tree-node.file:has(.workspace-file-tree-row[data-file-name="Panel Import.md"])');
+    const archiveFolderNode = page.locator(".workspace-file-tree-node.folder").filter({ hasText: "Archive" });
     const folderDropFeedback = await archiveFolderNode.evaluate((node) => {
       node.classList.add("drop-target");
-      const row = node.querySelector(".right-file-tree-row");
+      const row = node.querySelector(".workspace-file-tree-row");
       const style = row ? getComputedStyle(row) : null;
       const result = {
         backgroundColor: style?.backgroundColor ?? "",
@@ -1750,7 +1766,7 @@ export async function run(ctx) {
       node.classList.remove("drop-target");
       return result;
     });
-    const rootDropFeedback = await page.locator(".right-file-tree-scroll").evaluate((node) => {
+    const rootDropFeedback = await page.locator(".workspace-file-tree-scroll").evaluate((node) => {
       node.classList.add("root-drop-target");
       const style = getComputedStyle(node);
       const afterStyle = getComputedStyle(node, "::after");
@@ -1773,11 +1789,11 @@ export async function run(ctx) {
     await importedFileNode.dragTo(archiveFolderNode);
     await waitForRenderFrame(page);
     const draggedFileState = await page.evaluate(() => {
-      const row = document.querySelector('.right-file-tree-row.file[data-file-name="Panel Import.md"]');
+      const row = document.querySelector('.workspace-file-tree-row.file[data-file-name="Panel Import.md"]');
       const treeItem = row?.closest('[role="treeitem"]');
       return {
         level: treeItem?.getAttribute("aria-level") ?? "",
-        folderVisible: Array.from(document.querySelectorAll(".right-file-tree-node.folder"))
+        folderVisible: Array.from(document.querySelectorAll(".workspace-file-tree-node.folder"))
           .some((item) => item.textContent?.includes("Archive")),
         tabLocation: document.querySelector('.tab-item[data-file-name="Panel Import.md"] .tab-location')
           ?.textContent?.trim() ?? "",

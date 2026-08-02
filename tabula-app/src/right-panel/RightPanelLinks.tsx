@@ -14,14 +14,14 @@ import {
   type RightPanelDocumentLinkGroup,
   type RightPanelLinkTargetGroup,
 } from "./rightPanelLinksModel";
-import type { RightPanelLinkSection } from "./useRightPanelCollapseState";
+import type { DocumentPanelLinkSection } from "./useDocumentPanelState";
 
 type RightPanelLinksCopy = WorkspaceInterfaceCopy["sidePanel"]["links"];
 
 type RightPanelLinksProps = {
   activeFileId: string;
   activeFileTitle: string;
-  collapsedSections: ReadonlySet<RightPanelLinkSection>;
+  collapsedSections: ReadonlySet<DocumentPanelLinkSection>;
   copy: RightPanelLinksCopy;
   fileLabels: ReadonlyMap<string, WorkspaceFileTabLabel>;
   index?: WorkspaceKnowledgeIndex;
@@ -31,7 +31,7 @@ type RightPanelLinksProps = {
     targetPath: string,
   ) => boolean;
   onSelectFile: (fileId: string) => void;
-  onToggleSection: (section: RightPanelLinkSection) => void;
+  onToggleSection: (section: DocumentPanelLinkSection) => void;
 };
 
 type LinkSectionProps<Item> = {

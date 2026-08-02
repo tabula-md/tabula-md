@@ -43,7 +43,7 @@ import {
   getValidDropFolderIds,
   type DraggedTreeItem,
   type FileTreeNode,
-} from "./fileTreeModel";
+} from "./workspaceFileTreeModel";
 import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import {
   ContextMenuContent,
@@ -52,7 +52,7 @@ import {
   ContextMenuTrigger,
 } from "../ui/ContextMenu";
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../ui/Menu";
-import { PanelEmptyState } from "./PanelEmptyState";
+import { PanelEmptyState } from "../right-panel/PanelEmptyState";
 import {
   getWorkspaceFileIconKind,
   isWorkspaceMarkdownFile,
@@ -63,14 +63,14 @@ import {
   restoreWorkspaceRenameExtension,
 } from "../workspace/workspaceRenameTitle";
 
-type RightPanelFilesCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
+type WorkspaceFileTreeCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
 
-type RightPanelFilesProps = {
+type WorkspaceFileTreeProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
   activeFileId: string;
   collapsedFolderIds: Set<string>;
-  copy: RightPanelFilesCopy;
+  copy: WorkspaceFileTreeCopy;
   knowledgeIndex?: WorkspaceKnowledgeIndex;
   knowledgeStatusCopy: KnowledgePanelCopy;
   onNewFile: (parentId?: string) => WorkspaceFile | undefined;
@@ -142,7 +142,7 @@ function FileKnowledgeStatus({
 
   return (
     <button
-      className="right-file-knowledge-status"
+      className="workspace-file-knowledge-status"
       data-knowledge-priority={getKnowledgePriority(signals)}
       data-tooltip={labels.join(" · ")}
       type="button"
@@ -156,7 +156,7 @@ const releasePointerActionFocus = (event: ReactMouseEvent<HTMLButtonElement>) =>
   if (event.detail > 0) event.currentTarget.blur();
 };
 
-export function RightPanelFiles({
+export function WorkspaceFileTree({
   files,
   folders,
   activeFileId,
@@ -180,7 +180,7 @@ export function RightPanelFiles({
   onMoveFileToFolder,
   onMoveFolder,
   onRenameFolder,
-}: RightPanelFilesProps) {
+}: WorkspaceFileTreeProps) {
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState("");
   const [actionMenuFileId, setActionMenuFileId] = useState<string | null>(null);
@@ -434,7 +434,7 @@ export function RightPanelFiles({
 
   const eventTargetsTreeNode = (event: ReactDragEvent<HTMLElement>) => (
     event.target instanceof Element
-    && event.target.closest(".right-file-tree-node") !== null
+    && event.target.closest(".workspace-file-tree-node") !== null
   );
 
   const prepareRootDrop = (event: ReactDragEvent<HTMLElement>) => {
@@ -478,7 +478,7 @@ export function RightPanelFiles({
         <ContextMenuTrigger asChild>
         <li
           ref={treeVirtualizer.measureElement}
-          className={`right-file-tree-node folder ${folderIsDragging ? "dragging" : ""} ${folderIsDropTarget ? "drop-target" : ""}`.trim()}
+          className={`workspace-file-tree-node folder ${folderIsDragging ? "dragging" : ""} ${folderIsDropTarget ? "drop-target" : ""}`.trim()}
           data-index={virtualRow.index}
           role="treeitem"
           aria-level={depth + 1}
@@ -497,24 +497,24 @@ export function RightPanelFiles({
           style={virtualStyle}
         >
           <div
-            className="right-row right-file-tree-row folder"
+            className="right-row workspace-file-tree-row folder"
             style={{ paddingLeft: `${depth * RIGHT_TREE_INDENT}px` }}
           >
             <button
-              className="right-file-open-button"
+              className="workspace-file-open-button"
               type="button"
               aria-expanded={!folderCollapsed}
               onClick={() => onToggleFolder(node.id)}
             >
               <span
-                className="right-file-folder-icon"
+                className="workspace-file-folder-icon"
               >
                 {folderCollapsed ? <Folder size={16} /> : <FolderOpen size={16} />}
               </span>
               {folderIsRenaming ? (
                 <input
                   ref={folderRenameInputRef}
-                  className="ui-input-surface right-file-rename-input"
+                  className="ui-input-surface workspace-file-rename-input"
                   value={renamingFolderTitle}
                   aria-label={copy.renameFolder(node.name)}
                   onClick={(event) => event.stopPropagation()}
@@ -533,15 +533,15 @@ export function RightPanelFiles({
               )}
             </button>
             {!isRootFolder && !folderIsRenaming && (
-              <span className="right-file-actions">
+              <span className="workspace-file-actions">
                 <MenuRoot
                   open={folderMenuOpen}
                   onOpenChange={(open) => setActionMenuFolderId(open ? node.id : null)}
                 >
-                  <span className="right-file-menu-wrap">
+                  <span className="workspace-file-menu-wrap">
                     <MenuTrigger asChild>
                       <button
-                        className="right-file-action"
+                        className="workspace-file-action"
                         type="button"
                         aria-label={copy.moreActions(node.name)}
                         data-tooltip={copy.moreActions(node.name)}
@@ -552,7 +552,7 @@ export function RightPanelFiles({
                     </MenuTrigger>
                   </span>
                   <MenuContent
-                    className="right-file-action-menu"
+                    className="workspace-file-action-menu"
                     ariaLabel={copy.actions(node.name)}
                     onCloseAutoFocus={(event) => event.preventDefault()}
                   >
@@ -588,7 +588,7 @@ export function RightPanelFiles({
         </li>
         </ContextMenuTrigger>
         <ContextMenuContent
-          className="right-file-action-menu"
+          className="workspace-file-action-menu"
           ariaLabel={copy.actions(node.name)}
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
@@ -638,7 +638,7 @@ export function RightPanelFiles({
       <ContextMenuTrigger asChild>
       <li
         ref={treeVirtualizer.measureElement}
-        className={`right-file-tree-node file ${fileIsDragging ? "dragging" : ""}`.trim()}
+        className={`workspace-file-tree-node file ${fileIsDragging ? "dragging" : ""}`.trim()}
         data-index={virtualRow.index}
         role="treeitem"
         aria-level={depth + 1}
@@ -656,15 +656,15 @@ export function RightPanelFiles({
         style={virtualStyle}
       >
         <div
-          className={`right-row right-file-tree-row file ${
+          className={`right-row workspace-file-tree-row file ${
             markdownFile ? "markdown" : "asset"
           } ${isActiveFile ? "active" : ""} ${isRenaming ? "renaming" : ""}`}
           data-file-name={file.title}
           style={{ paddingLeft: `${depth * RIGHT_TREE_INDENT}px` }}
         >
           {isRenaming ? (
-            <div className="right-file-open-button">
-              <span className="right-file-document-icon">
+            <div className="workspace-file-open-button">
+              <span className="workspace-file-document-icon">
                 <WorkspaceFileTypeIcon
                   kind={fileIconKind}
                   size={16}
@@ -672,7 +672,7 @@ export function RightPanelFiles({
               </span>
               <input
                 ref={renameInputRef}
-                className="ui-input-surface right-file-rename-input"
+                className="ui-input-surface workspace-file-rename-input"
                 type="text"
                 defaultValue={renamingTitle}
                 aria-label={copy.renameInPanel(file.title)}
@@ -707,13 +707,13 @@ export function RightPanelFiles({
                     fileButtonRefs.current.delete(file.id);
                   }
                 }}
-                className="right-file-open-button"
+                className="workspace-file-open-button"
                 type="button"
                 aria-label={copy.open(file.title)}
                 onClick={() => onSelectFile(file.id)}
                 onKeyDown={(event) => handleFileKeyDown(event, file.id)}
               >
-                <span className="right-file-document-icon">
+                <span className="workspace-file-document-icon">
                   <WorkspaceFileTypeIcon
                     kind={fileIconKind}
                     size={16}
@@ -730,15 +730,15 @@ export function RightPanelFiles({
                   staleAfter={knowledgeMetadata?.staleAfter}
                 />
               )}
-              <span className="right-file-actions" aria-label={copy.actions(file.title)}>
+              <span className="workspace-file-actions" aria-label={copy.actions(file.title)}>
                 <MenuRoot
                   open={menuOpen}
                   onOpenChange={(open) => setActionMenuFileId(open ? file.id : null)}
                 >
-                  <span className="right-file-menu-wrap">
+                  <span className="workspace-file-menu-wrap">
                     <MenuTrigger asChild>
                       <button
-                        className="right-file-action"
+                        className="workspace-file-action"
                         type="button"
                         aria-label={copy.moreActions(file.title)}
                         data-tooltip={copy.moreActions(file.title)}
@@ -752,7 +752,7 @@ export function RightPanelFiles({
                     </MenuTrigger>
                   </span>
                   <MenuContent
-                    className="right-file-action-menu"
+                    className="workspace-file-action-menu"
                     ariaLabel={copy.actions(file.title)}
                     onCloseAutoFocus={(event) => event.preventDefault()}
                   >
@@ -798,7 +798,7 @@ export function RightPanelFiles({
       </li>
       </ContextMenuTrigger>
       <ContextMenuContent
-        className="right-file-action-menu"
+        className="workspace-file-action-menu"
         ariaLabel={copy.actions(file.title)}
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
@@ -843,12 +843,12 @@ export function RightPanelFiles({
   return (
     <ContextMenuRoot>
     <ContextMenuTrigger asChild>
-    <section className="right-panel-content right-files-panel">
-      <div className="right-file-toolbar">
-        <div className="right-file-toolbar-actions">
+    <section className="right-panel-content workspace-files-panel">
+      <div className="workspace-file-toolbar">
+        <div className="workspace-file-toolbar-actions">
             {collapsibleFolderIds.length > 0 && (
               <button
-                className="right-file-toolbar-button"
+                className="workspace-file-toolbar-button"
                 type="button"
                 aria-label={allFoldersCollapsed ? copy.expandAll : copy.collapseAll}
                 data-tooltip={allFoldersCollapsed ? copy.expandAll : copy.collapseAll}
@@ -863,7 +863,7 @@ export function RightPanelFiles({
               </button>
             )}
             <button
-              className="right-file-toolbar-button"
+              className="workspace-file-toolbar-button"
               type="button"
               aria-label={copy.openMarkdown}
               data-tooltip={copy.openMarkdown}
@@ -872,10 +872,10 @@ export function RightPanelFiles({
               <Upload size={16} />
             </button>
             <MenuRoot open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
-              <div className="right-file-create-menu-wrap">
+              <div className="workspace-file-create-menu-wrap">
                 <MenuTrigger asChild>
                   <button
-                    className={`right-file-toolbar-button ${createMenuOpen ? "active" : ""}`}
+                    className={`workspace-file-toolbar-button ${createMenuOpen ? "active" : ""}`}
                     type="button"
                     aria-label={copy.create}
                     data-tooltip={copy.create}
@@ -885,7 +885,7 @@ export function RightPanelFiles({
                 </MenuTrigger>
               </div>
               <MenuContent
-                className="right-file-create-menu"
+                className="workspace-file-create-menu"
                 ariaLabel={copy.createInWorkspace}
                 onCloseAutoFocus={(event) => event.preventDefault()}
               >
@@ -901,13 +901,13 @@ export function RightPanelFiles({
       </div>
       {visibleRows.length > 0 ? (
         <div
-          className={`right-file-tree-scroll ${dropTargetFolderId === WORKSPACE_ROOT_FOLDER_ID ? "root-drop-target" : ""}`.trim()}
+          className={`workspace-file-tree-scroll ${dropTargetFolderId === WORKSPACE_ROOT_FOLDER_ID ? "root-drop-target" : ""}`.trim()}
           ref={treeScrollRef}
           onDragOver={prepareRootDrop}
           onDrop={dropItemAtRoot}
         >
           <ol
-            className="right-file-tree virtual"
+            className="workspace-file-tree virtual"
             aria-label={copy.tree}
             role="tree"
             style={{ height: `${treeVirtualizer.getTotalSize()}px` }}
@@ -924,7 +924,7 @@ export function RightPanelFiles({
     </section>
     </ContextMenuTrigger>
     <ContextMenuContent
-      className="right-file-action-menu"
+      className="workspace-file-action-menu"
       ariaLabel={copy.createInWorkspace}
       onCloseAutoFocus={(event) => event.preventDefault()}
     >

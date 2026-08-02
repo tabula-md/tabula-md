@@ -7,11 +7,12 @@ import type { WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStora
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
-import { RightPanelFiles } from "../right-panel/RightPanelFiles";
-import { useRightPanelCollapseState } from "../right-panel/useRightPanelCollapseState";
+import { WorkspaceFileTree } from "./WorkspaceFileTree";
+import { useWorkspaceFileTreeState } from "./useWorkspaceFileTreeState";
 import { LibraryPanel } from "../libraries/LibraryPanel";
 import { getLibraryPanelCopy } from "../libraries/libraryPanelLocale";
 import { WorkspaceNavigationControls } from "../workspace/components/WorkspaceNavigationControls";
+import { PanelShell } from "../shared/PanelShell";
 
 type LeftPanelView = "files" | "libraries";
 
@@ -84,25 +85,19 @@ export function LeftPanel({
   const libraryCopy = getLibraryPanelCopy(language);
   const [activeView, setActiveView] = useState<LeftPanelView>("files");
   const {
-    collapsedFileTreeFolderIds,
-    toggleFileTreeFolderCollapsed,
-    collapseAllFileTreeFolders,
-    expandAllFileTreeFolders,
-  } = useRightPanelCollapseState({
-    activeFileId,
-    commentsByFileId: {},
-  });
-
-  if (!isOpen) return null;
+    collapsedFolderIds,
+    toggleFolderCollapsed,
+    collapseAllFolders,
+    expandAllFolders,
+  } = useWorkspaceFileTreeState();
 
   return (
-    <aside
-      ref={panelRef}
-      className="left-panel"
-      role={overlayMode ? "dialog" : undefined}
-      aria-modal={overlayMode || undefined}
-      aria-label={chromeCopy.workspacePanel}
-      tabIndex={overlayMode ? -1 : undefined}
+    <PanelShell
+      side="left"
+      panelRef={panelRef}
+      isOpen={isOpen}
+      overlayMode={overlayMode}
+      ariaLabel={chromeCopy.workspacePanel}
       data-knowledge-index-source={knowledgeIndexSource}
       data-live-workspace={isLiveWorkspace || undefined}
     >
@@ -143,21 +138,21 @@ export function LeftPanel({
         </nav>
       </header>
       {activeView === "files" ? (
-        <div className="right-panel-body files" id="workspace-panel-files-view">
-          <RightPanelFiles
+        <div className="workspace-panel-body files" id="workspace-panel-files-view">
+          <WorkspaceFileTree
             files={files}
             folders={folders}
             activeFileId={activeFileId}
             copy={copy.files}
             knowledgeIndex={knowledgeIndex}
             knowledgeStatusCopy={knowledgeCopy}
-            collapsedFolderIds={collapsedFileTreeFolderIds}
+            collapsedFolderIds={collapsedFolderIds}
             onNewFile={(parentId) => onNewFile(parentId ? { parentId } : undefined)}
             onNewFolder={onNewFolder}
             onImportFile={onImportFile}
-            onToggleFolder={toggleFileTreeFolderCollapsed}
-            onCollapseAllFolders={collapseAllFileTreeFolders}
-            onExpandAllFolders={expandAllFileTreeFolders}
+            onToggleFolder={toggleFolderCollapsed}
+            onCollapseAllFolders={collapseAllFolders}
+            onExpandAllFolders={expandAllFolders}
             onSelectFile={onSelectFile}
             onReviewKnowledgeFile={onOpenProperties}
             onRenameFile={onRenameFile}
@@ -171,10 +166,10 @@ export function LeftPanel({
           />
         </div>
       ) : (
-        <div className="right-panel-body libraries" id="workspace-panel-libraries-view">
+        <div className="workspace-panel-body libraries" id="workspace-panel-libraries-view">
           <LibraryPanel language={language} />
         </div>
       )}
-    </aside>
+    </PanelShell>
   );
 }

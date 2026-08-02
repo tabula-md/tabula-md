@@ -131,7 +131,7 @@
   line-height: 1.45;
 }
 
-.right-file-toolbar {
+.workspace-file-toolbar {
   display: flex;
   justify-content: space-between;
   gap: var(--right-tight-gap);
@@ -139,17 +139,17 @@
   min-width: 0;
 }
 
-.right-files-panel > .right-file-toolbar {
+.workspace-files-panel > .workspace-file-toolbar {
   justify-content: flex-end;
 }
 
-.right-file-workspace-identity {
+.workspace-file-workspace-identity {
   min-width: 0;
   flex: 1 1 auto;
 }
 
-.right-file-workspace-name,
-.right-file-workspace-name-input {
+.workspace-file-workspace-name,
+.workspace-file-workspace-name-input {
   display: block;
   width: 100%;
   min-width: 0;
@@ -166,28 +166,28 @@
   white-space: nowrap;
 }
 
-.right-file-workspace-name {
+.workspace-file-workspace-name {
   border-radius: var(--right-row-radius);
 }
 
-.right-file-workspace-name:hover,
-.right-file-workspace-name:focus-visible {
+.workspace-file-workspace-name:hover,
+.workspace-file-workspace-name:focus-visible {
   background: var(--surface-hover);
 }
 
-.right-file-workspace-name-input:focus,
-.right-file-workspace-name-input:focus-visible {
+.workspace-file-workspace-name-input:focus,
+.workspace-file-workspace-name-input:focus-visible {
   outline: 0;
 }
 
-.right-file-toolbar-actions {
+.workspace-file-toolbar-actions {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   gap: var(--right-tight-gap);
 }
 
-.right-file-toolbar-button,
+.workspace-file-toolbar-button,
 .right-panel-toolbar-button {
   display: grid;
   place-items: center;
@@ -200,19 +200,19 @@
   background: var(--surface-muted);
 }
 
-.right-file-create-menu-wrap {
+.workspace-file-create-menu-wrap {
   position: relative;
   display: grid;
   place-items: center;
 }
 
-.right-file-create-menu {
+.workspace-file-create-menu {
   width: 168px;
 }
 
-.right-file-toolbar-button:hover,
-.right-file-toolbar-button:focus-visible,
-.right-file-toolbar-button.active,
+.workspace-file-toolbar-button:hover,
+.workspace-file-toolbar-button:focus-visible,
+.workspace-file-toolbar-button.active,
 .right-panel-toolbar-button:hover,
 .right-panel-toolbar-button:focus-visible {
   color: var(--text-primary);

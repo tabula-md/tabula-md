@@ -242,7 +242,7 @@ export async function run(ctx) {
       name: "Knowledge attention legend",
       exact: true,
     }).click();
-    const attentionLegend = page.locator(".right-file-knowledge-legend");
+    const attentionLegend = page.locator(".workspace-file-knowledge-legend");
     expect(
       await attentionLegend.getByText(
         "Dot: Tabula found an error or maintenance action for this document.",
@@ -256,8 +256,8 @@ export async function run(ctx) {
     );
     await page.keyboard.press("Escape");
     const runtimeKnowledgeStatus = page.locator(
-      '.right-file-tree-row[data-file-name="runtime.md"] '
-      + ".right-file-knowledge-status",
+      '.workspace-file-tree-row[data-file-name="runtime.md"] '
+      + ".workspace-file-knowledge-status",
     );
     expect(
       (await runtimeKnowledgeStatus.count()) === 0,
@@ -470,8 +470,8 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await waitForPanelTab(page, "Files");
     const sourceKnowledgeStatus = page.locator(
-      '.right-file-tree-row[data-file-name="source.md"] '
-      + ".right-file-knowledge-status",
+      '.workspace-file-tree-row[data-file-name="source.md"] '
+      + ".workspace-file-knowledge-status",
     );
     expect(
       (await sourceKnowledgeStatus.count()) === 1 &&
@@ -480,7 +480,7 @@ export async function run(ctx) {
       "Files should use an attention dot only when a document has a concrete maintenance action.",
     );
     await sourceKnowledgeStatus.click();
-    const sourceAttention = page.locator(".right-file-knowledge-popover");
+    const sourceAttention = page.locator(".workspace-file-knowledge-popover");
     expect(
       await sourceAttention.getByText(
         "Review due since 2020-01-01",

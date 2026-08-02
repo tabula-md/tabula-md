@@ -99,7 +99,7 @@
   font-size: var(--font-ui-secondary);
 }
 
-.right-file-tree-row.file.asset .right-file-document-icon {
+.workspace-file-tree-row.file.asset .workspace-file-document-icon {
   color: var(--text-secondary);
 }
 

@@ -58,12 +58,12 @@
   font-weight: var(--weight-ui-medium);
 }
 
-.left-panel .right-panel-body {
+.workspace-panel-body {
   min-height: 0;
   overflow: hidden;
 }
 
-.left-panel .right-panel-body.libraries {
+.workspace-panel-body.libraries {
   overflow-y: auto;
 }
 

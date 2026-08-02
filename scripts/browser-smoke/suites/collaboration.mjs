@@ -198,7 +198,7 @@ export async function run(ctx) {
     await firstPage.getByRole("button", { name: "Toggle side panel" }).click();
     await firstPage.waitForSelector(".right-panel-tab .right-panel-tab-status-dot.live");
     expect(
-      (await firstPage.locator(".right-file-icon-live-dot").count()) === 0,
+      (await firstPage.locator(".workspace-file-icon-live-dot").count()) === 0,
       "Live state should be shown on the Files tab, not repeated in the file tree.",
     );
     await firstPage.locator(".right-panel").getByRole("button", { name: "Close side panel", exact: true }).click();

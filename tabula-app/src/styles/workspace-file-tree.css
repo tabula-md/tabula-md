@@ -1,5 +1,5 @@
-.right-file-tree,
-.right-file-tree-children {
+.workspace-file-tree,
+.workspace-file-tree-children {
   display: grid;
   gap: 2px;
   margin: 0;
@@ -7,47 +7,47 @@
   list-style: none;
 }
 
-.right-files-panel {
+.workspace-files-panel {
   grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
 }
 
-.right-file-tree-scroll {
+.workspace-file-tree-scroll {
   position: relative;
   min-height: 0;
   overflow: auto;
 }
 
-.right-file-tree-scroll.root-drop-target {
+.workspace-file-tree-scroll.root-drop-target {
   border-radius: var(--right-row-radius);
   background: var(--surface-hover);
 }
 
-.right-file-tree.virtual {
+.workspace-file-tree.virtual {
   position: relative;
   display: block;
   width: 100%;
 }
 
-.right-file-tree-node {
+.workspace-file-tree-node {
   position: relative;
   min-width: 0;
 }
 
-.right-file-tree-node.dragging {
+.workspace-file-tree-node.dragging {
   opacity: 0.42;
 }
 
-.right-file-tree-node.drop-target .right-file-tree-row {
+.workspace-file-tree-node.drop-target .workspace-file-tree-row {
   color: var(--text-primary);
   background: var(--surface-hover);
 }
 
-.right-file-tree-children {
+.workspace-file-tree-children {
   position: relative;
 }
 
-.right-file-tree-row {
+.workspace-file-tree-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -58,20 +58,20 @@
   line-height: 1;
 }
 
-.right-file-tree-row.folder {
+.workspace-file-tree-row.folder {
   color: var(--text-soft);
 }
 
-.right-file-tree-row.file {
+.workspace-file-tree-row.file {
   grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
-.right-file-tree-row svg {
+.workspace-file-tree-row svg {
   width: var(--right-icon-size);
   height: var(--right-icon-size);
 }
 
-.right-file-open-button {
+.workspace-file-open-button {
   display: grid;
   grid-template-columns: var(--right-icon-size) minmax(0, 1fr);
   align-items: center;
@@ -87,19 +87,19 @@
   text-align: left;
 }
 
-.right-file-open-button:hover,
-.right-file-open-button:focus-visible {
+.workspace-file-open-button:hover,
+.workspace-file-open-button:focus-visible {
   color: var(--text-primary);
   background: transparent;
 }
 
-.right-file-open-button svg {
+.workspace-file-open-button svg {
   width: var(--right-icon-size);
   height: var(--right-icon-size);
 }
 
-.right-file-folder-icon,
-.right-file-document-icon {
+.workspace-file-folder-icon,
+.workspace-file-document-icon {
   position: relative;
   display: grid;
   place-items: center;
@@ -109,17 +109,17 @@
   line-height: 0;
 }
 
-.right-file-folder-icon svg {
+.workspace-file-folder-icon svg {
   width: var(--icon-size-medium);
   height: var(--icon-size-medium);
 }
 
-.right-file-document-icon svg {
+.workspace-file-document-icon svg {
   width: var(--right-icon-size);
   height: var(--right-icon-size);
 }
 
-.right-file-knowledge-status {
+.workspace-file-knowledge-status {
   display: grid;
   place-items: center;
   width: var(--control-size-compact);
@@ -129,7 +129,7 @@
   background: transparent;
 }
 
-.right-file-knowledge-status::before {
+.workspace-file-knowledge-status::before {
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -139,25 +139,25 @@
   content: "";
 }
 
-.right-file-knowledge-status[data-knowledge-priority="attention"]::before {
+.workspace-file-knowledge-status[data-knowledge-priority="attention"]::before {
   background: var(--knowledge-status-attention);
 }
 
-.right-file-knowledge-status[data-knowledge-priority="critical"]::before {
+.workspace-file-knowledge-status[data-knowledge-priority="critical"]::before {
   background: var(--knowledge-status-critical);
 }
 
-.right-file-knowledge-status:hover::before,
-.right-file-knowledge-status:focus-visible::before {
+.workspace-file-knowledge-status:hover::before,
+.workspace-file-knowledge-status:focus-visible::before {
   opacity: 1;
 }
 
-.right-file-knowledge-status:hover,
-.right-file-knowledge-status:focus-visible {
+.workspace-file-knowledge-status:hover,
+.workspace-file-knowledge-status:focus-visible {
   background: var(--surface-active);
 }
 
-.right-file-actions {
+.workspace-file-actions {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
@@ -167,13 +167,13 @@
   transition: opacity var(--motion-hover) ease;
 }
 
-.right-file-tree-row.file:hover .right-file-actions,
-.right-file-tree-row.folder:hover .right-file-actions,
-.right-file-actions:has(.right-file-action:focus-visible) {
+.workspace-file-tree-row.file:hover .workspace-file-actions,
+.workspace-file-tree-row.folder:hover .workspace-file-actions,
+.workspace-file-actions:has(.workspace-file-action:focus-visible) {
   opacity: 1;
 }
 
-.right-file-action {
+.workspace-file-action {
   display: grid;
   place-items: center;
   width: var(--control-size-compact);
@@ -184,28 +184,28 @@
   background: transparent;
 }
 
-.right-file-action:hover,
-.right-file-action:focus-visible {
+.workspace-file-action:hover,
+.workspace-file-action:focus-visible {
   color: var(--text-primary);
   background: var(--surface-active);
 }
 
-.right-file-action.danger:hover,
-.right-file-action.danger:focus-visible {
+.workspace-file-action.danger:hover,
+.workspace-file-action.danger:focus-visible {
   color: var(--danger-text);
 }
 
-.right-file-menu-wrap {
+.workspace-file-menu-wrap {
   position: relative;
   display: inline-flex;
   align-items: center;
 }
 
-.right-file-action-menu {
+.workspace-file-action-menu {
   min-width: 184px;
 }
 
-.right-file-rename-input {
+.workspace-file-rename-input {
   width: 100%;
   min-width: 0;
   height: var(--control-size-row);
@@ -217,34 +217,34 @@
   line-height: var(--control-size-row);
 }
 
-.right-file-rename-input:focus,
-.right-file-rename-input:focus-visible {
+.workspace-file-rename-input:focus,
+.workspace-file-rename-input:focus-visible {
   outline: 0;
 }
 
-.right-file-rename-input::selection {
+.workspace-file-rename-input::selection {
   color: var(--selection-text);
   background: var(--selection-background);
 }
 
 @media (hover: none), (pointer: coarse), (max-width: 560px) {
-  .right-file-actions {
+  .workspace-file-actions {
     min-width: var(--control-size-touch);
     opacity: 1;
   }
 
-  .right-file-action {
+  .workspace-file-action {
     width: var(--control-size-touch);
     height: var(--control-size-touch);
     border-radius: var(--radius-surface);
   }
 
-  .right-file-knowledge-status {
+  .workspace-file-knowledge-status {
     width: var(--control-size-touch);
     height: var(--control-size-touch);
   }
 
-  .right-file-action-menu {
+  .workspace-file-action-menu {
     min-width: 176px;
   }
 

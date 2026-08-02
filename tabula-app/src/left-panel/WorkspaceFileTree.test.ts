@@ -3,10 +3,10 @@ import {
   buildFileTree,
   flattenVisibleFileTree,
   getValidDropFolderIds,
-} from "./fileTreeModel";
+} from "./workspaceFileTreeModel";
 import { WORKSPACE_ROOT_FOLDER_ID, createWorkspaceFile, createWorkspaceRootFolder } from "../workspace/workspaceStorage";
 
-describe("right panel file rows", () => {
+describe("workspace file tree rows", () => {
   it("flattens only expanded tree branches into virtual rows", () => {
     const rootFile = createWorkspaceFile(1, { title: "Root", parentId: WORKSPACE_ROOT_FOLDER_ID });
     const nestedFile = createWorkspaceFile(2, { title: "Nested", parentId: "docs" });
