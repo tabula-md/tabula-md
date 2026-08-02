@@ -425,6 +425,10 @@ export function useWorkspaceRuntime() {
   });
   const openAbout = useEventCallback(() => openInfoDialog("about"));
   const openHelp = useEventCallback(() => openInfoDialog("help"));
+  useEffect(() => {
+    if (activeFile || !rightPanelOpen) return;
+    setRightPanelOpen(false);
+  }, [activeFile, rightPanelOpen, setRightPanelOpen]);
   const roomController = useWorkspaceRoomController({
     activeRoomSession,
     activeViewMode,

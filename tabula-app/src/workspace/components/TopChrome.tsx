@@ -138,7 +138,7 @@ export function TopChrome({
 
           {shareControls}
 
-          {!rightPanelOpen && (
+          {activeDocumentId && !rightPanelOpen && (
             <button
               className="panel-toggle top-panel-toggle right-panel-trigger"
               type="button"

@@ -178,6 +178,7 @@ export function useWorkspaceTopChromeController({
     language,
     lastClosedFile,
     openFiles,
+    hasDocuments: files.length > 0,
     room,
     leftPanelOpen,
     workspaceSearchOpen,

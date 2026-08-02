@@ -39,6 +39,7 @@ export type WorkspaceTopChromeProps = {
   language: WorkspaceLanguage;
   lastClosedFile?: WorkspaceFile;
   openFiles: WorkspaceFile[];
+  hasDocuments: boolean;
   room?: LocationRoom | null;
   leftPanelOpen: boolean;
   workspaceSearchOpen: boolean;
@@ -88,6 +89,7 @@ export function WorkspaceTopChrome({
   language,
   lastClosedFile,
   openFiles,
+  hasDocuments,
   room,
   leftPanelOpen,
   workspaceSearchOpen,
@@ -137,7 +139,7 @@ export function WorkspaceTopChrome({
       collaborators={displayedCollaborators}
       roomId={room?.roomId}
       language={language}
-      leadingControl={
+      leadingControl={(openFiles.length > 0 || lastClosedFile) ? (
         <OpenTabsMenu
           activeFile={activeFile}
           folders={folders}
@@ -150,7 +152,7 @@ export function WorkspaceTopChrome({
           onReopenLastClosedFile={onReopenLastClosedFile}
           onSelectFile={onSelectFile}
         />
-      }
+      ) : undefined}
       onAddFile={onAddFile}
       onSelectFile={onSelectFile}
       onRenameFile={onRenameFile}
@@ -160,7 +162,7 @@ export function WorkspaceTopChrome({
     />
   );
 
-  const shareControls = (
+  const shareControls = hasDocuments ? (
     <>
       <ShareTrigger
         connectionStatus={connectionStatus}
@@ -194,7 +196,7 @@ export function WorkspaceTopChrome({
         </ShareControlsBoundary>
       )}
     </>
-  );
+  ) : null;
   return (
     <TopChrome
       workspaceSearchOpen={workspaceSearchOpen}
