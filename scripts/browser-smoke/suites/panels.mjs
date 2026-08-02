@@ -32,6 +32,17 @@ export async function run(ctx) {
     await waitForEditorReady(page, { mode: "edit" });
     await selectDocumentViewMode(page, "Preview");
     await waitForEditorReady(page, { mode: "preview" });
+    const closedPanelChromeGeometry = await page.evaluate(() => {
+      const rectOf = (selector) => {
+        const rect = document.querySelector(selector)?.getBoundingClientRect();
+        return rect ? { x: Math.round(rect.x), y: Math.round(rect.y) } : null;
+      };
+      return {
+        leftToggle: rectOf(".top-chrome .left-panel-trigger"),
+        rightToggle: rectOf(".top-chrome .right-panel-trigger"),
+        share: rectOf(".share-trigger"),
+      };
+    });
     await openProjectMenu(page);
 
     const workbenchPanels = await page.evaluate(() => ({
@@ -47,6 +58,17 @@ export async function run(ctx) {
         .map((button) => button.getAttribute("aria-label")),
       templateRowCount: document.querySelectorAll(".left-library-item").length,
       menuText: document.querySelector(".workspace-menu-popover")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      openPanelChromeGeometry: (() => {
+        const rectOf = (selector) => {
+          const rect = document.querySelector(selector)?.getBoundingClientRect();
+          return rect ? { x: Math.round(rect.x), y: Math.round(rect.y) } : null;
+        };
+        return {
+          leftToggle: rectOf(".left-panel .left-panel-trigger"),
+          rightToggle: rectOf(".top-chrome .right-panel-trigger"),
+          share: rectOf(".share-trigger"),
+        };
+      })(),
       publicLinks: Array.from(document.querySelectorAll(".workspace-menu-popover a")).map((link) => ({
         text: link.textContent?.replace(/\s+/g, " ").trim() ?? "",
         href: link.getAttribute("href") ?? "",
@@ -115,6 +137,10 @@ export async function run(ctx) {
     expect(workbenchPanels.menuButtonInWorkspacePanel, "The workspace menu should move into the open Workspace panel.");
     expect(workbenchPanels.topChromeMenuButtonCount === 0, "Top chrome should not duplicate the workspace identity while the Workspace panel is open.");
     expect(workbenchPanels.workspaceNameVisible, "The current workspace name should remain visible inside the Workspace panel.");
+    expect(
+      JSON.stringify(workbenchPanels.openPanelChromeGeometry) === JSON.stringify(closedPanelChromeGeometry),
+      "Opening Workspace navigation should not move Share or either panel toggle.",
+    );
     expect(workbenchPanels.workspacePanelLabel === "Workspace panel", "The left panel should identify itself as the Workspace panel, not the Files panel.");
     expect(workbenchPanels.menuOpen, "The workspace menu should open from the workspace name.");
     expect(workbenchPanels.leftPanelCount === 0, "The app should not render a left side panel for future surfaces.");

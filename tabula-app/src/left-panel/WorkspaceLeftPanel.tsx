@@ -1,13 +1,11 @@
 import {
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
   type ComponentProps,
 } from "react";
 import { getBrowserStorage, readBrowserStorage, writeBrowserStorage } from "../browserStorage";
-import { keepFocusInside } from "../ui/ModalSurface";
-import { useEventCallback } from "../shared/useEventCallback";
+import { useWorkspacePanelOverlay } from "../shared/useWorkspacePanelOverlay";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import {
   clampRightPanelWidth,
@@ -46,10 +44,15 @@ export function WorkspaceLeftPanel({
   ...leftPanelProps
 }: WorkspaceLeftPanelProps) {
   const [width, setWidth] = useState(readLeftPanelWidth);
-  const [overlayMode, setOverlayMode] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
-  const closePanel = useEventCallback(onClose);
   const copy = getWorkspaceInterfaceCopy(leftPanelProps.language).sidePanel;
+  const overlayMode = useWorkspacePanelOverlay({
+    isOpen: leftPanelProps.isOpen,
+    panelRef,
+    activeControlSelector: ".left-panel-trigger.active",
+    restoreControlSelector: ".top-chrome .left-panel-trigger",
+    onClose,
+  });
 
   useLayoutEffect(() => {
     document.documentElement.style.setProperty("--left-panel-width", `${width}px`);
@@ -59,50 +62,6 @@ export function WorkspaceLeftPanel({
       String(width),
     );
   }, [width]);
-
-  useLayoutEffect(() => {
-    const updateOverlayMode = () => setOverlayMode(
-      leftPanelProps.isOpen && window.innerWidth <= 1160,
-    );
-    updateOverlayMode();
-    window.addEventListener("resize", updateOverlayMode);
-    return () => window.removeEventListener("resize", updateOverlayMode);
-  }, [leftPanelProps.isOpen]);
-
-  useEffect(() => {
-    if (!overlayMode || !leftPanelProps.isOpen) return undefined;
-    const panel = panelRef.current;
-    if (!panel) return undefined;
-    const backgroundSurfaces = Array.from(document.querySelectorAll<HTMLElement>(
-      ".top-document-zone, .file-shell",
-    ));
-    backgroundSurfaces.forEach((surface) => {
-      surface.inert = true;
-      surface.setAttribute("aria-hidden", "true");
-    });
-    panel.focus();
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented) return;
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        closePanel();
-        return;
-      }
-      keepFocusInside(event, panel);
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      backgroundSurfaces.forEach((surface) => {
-        surface.inert = false;
-        surface.removeAttribute("aria-hidden");
-      });
-      window.requestAnimationFrame(() => {
-        document.querySelector<HTMLElement>(".left-panel-trigger.active")?.focus();
-      });
-    };
-  }, [closePanel, leftPanelProps.isOpen, overlayMode]);
 
   return (
     <>

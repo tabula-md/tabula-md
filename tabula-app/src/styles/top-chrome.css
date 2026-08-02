@@ -12,6 +12,7 @@
 }
 
 .workspace-controls {
+  grid-column: 1;
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -19,6 +20,10 @@
   height: var(--control-size-row);
   min-width: 0;
   overflow: visible;
+}
+
+.top-document-zone > .tabbar {
+  grid-column: 2;
 }
 
 .top-document-zone {
@@ -67,6 +72,7 @@
 }
 
 .top-right-zone {
+  grid-column: 3;
   position: relative;
   display: flex;
   align-items: center;

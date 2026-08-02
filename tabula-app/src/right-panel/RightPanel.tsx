@@ -213,7 +213,7 @@ export function RightPanel({
       tabIndex={overlayMode ? -1 : undefined}
       data-knowledge-index-source={knowledgeIndexSource}
     >
-      <div className="right-panel-header">
+      <header className="panel-chrome-row right-panel-header">
         <nav className="ui-panel-tabs right-panel-tabs" aria-label={copy.sections}>
           {renderTab("outline", copy.tabs.outline, <ListTree size={14} />)}
           {renderTab("links", copy.tabs.links, <Link2 size={14} />)}
@@ -234,7 +234,7 @@ export function RightPanel({
         >
           <PanelRightClose size={16} />
         </button>
-      </div>
+      </header>
 
       <div className={`right-panel-body ${effectiveView}`} id="right-panel-body">
         {!activeFile && (

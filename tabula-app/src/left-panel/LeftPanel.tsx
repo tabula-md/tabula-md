@@ -106,7 +106,7 @@ export function LeftPanel({
       data-knowledge-index-source={knowledgeIndexSource}
       data-live-workspace={isLiveWorkspace || undefined}
     >
-      <div className="workspace-panel-chrome">
+      <header className="panel-chrome-row workspace-panel-chrome">
         <WorkspaceNavigationControls
           language={language}
           leftPanelOpen={isOpen}
@@ -117,7 +117,7 @@ export function LeftPanel({
           onToggleWorkspaceMenu={onToggleWorkspaceMenu}
           onToggleWorkspaceSearch={onToggleWorkspaceSearch}
         />
-      </div>
+      </header>
       <header className="workspace-panel-header">
         <nav className="ui-panel-tabs workspace-panel-tabs" aria-label={libraryCopy.sections}>
           <button
