@@ -71,6 +71,13 @@
   min-height: 100%;
 }
 
+.library-panel-message {
+  margin: 0;
+  padding: var(--space-4) var(--right-row-x);
+  color: var(--text-muted);
+  font-size: var(--font-ui-secondary);
+}
+
 .library-empty-state {
   display: grid;
   justify-items: start;
@@ -123,6 +130,105 @@
 .library-browse-action:hover,
 .library-browse-action:focus-visible {
   background: var(--surface-hover);
+}
+
+.library-list,
+.library-file-tree,
+.library-folder > ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.library-item + .library-item {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.library-item-trigger,
+.library-folder-row {
+  width: 100%;
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.library-item-trigger {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 56px;
+  padding: var(--space-2) var(--right-row-x);
+  text-align: left;
+}
+
+.library-item-trigger:hover,
+.library-item-trigger:focus-visible,
+.library-folder-row:hover,
+.library-folder-row:focus-visible {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.library-item-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.library-item-copy strong,
+.library-item-copy span,
+.library-folder-row span,
+.library-file-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-item-copy strong {
+  color: var(--text-primary);
+  font-size: var(--font-ui-body);
+  font-weight: var(--weight-ui-medium);
+}
+
+.library-item-copy span {
+  font-size: var(--font-ui-caption);
+  font-weight: var(--weight-ui-regular);
+}
+
+.library-item-body {
+  padding: 0 0 var(--space-2);
+}
+
+.library-folder-row,
+.library-file-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-size-row);
+  padding-right: var(--right-row-x);
+  padding-left: calc(var(--right-row-x) + var(--library-depth) * 14px);
+  font-size: var(--font-ui-secondary);
+}
+
+.library-file-row {
+  color: var(--text-muted);
+  padding-left: calc(var(--right-row-x) + 28px + var(--library-depth) * 14px);
+}
+
+.library-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-1) var(--right-row-x) 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+  text-decoration: none;
+}
+
+.library-source-link:hover,
+.library-source-link:focus-visible {
+  color: var(--text-primary);
 }
 
 .left-panel-backdrop {

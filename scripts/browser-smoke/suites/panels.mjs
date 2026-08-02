@@ -5,6 +5,7 @@ export const scenarios = [
   "exposes project context panels and the document switcher",
   "runs direct Files actions without leaving the panel",
   "resolves workspace links and previews in project context",
+  "browses connected libraries without mixing them into workspace files",
 ];
 
 export async function run(ctx) {
@@ -2167,6 +2168,86 @@ export async function run(ctx) {
           exact: true,
         }).count()) === 0,
       "Project context should not introduce a separate workspace issue dashboard.",
+    );
+  });
+
+  await withPage(browser, "/", async (page) => {
+    if ((await page.locator(".left-panel").count()) === 0) {
+      await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
+      await waitForLeftPanel(page, "Workspace panel");
+    }
+    await page.getByRole("button", { name: "Libraries", exact: true }).click();
+    await page.locator(".library-panel").waitFor({ state: "visible" });
+    await page.waitForFunction(
+      () => document.querySelector(".library-panel")?.getAttribute("aria-busy") !== "true",
+    );
+    expect(
+      await page.getByRole("link", { name: "Browse libraries", exact: true }).isVisible(),
+      "An empty Libraries view should offer the external catalog without inventing an import button.",
+    );
+
+    await page.evaluate(async (library) => {
+      await new Promise((resolve, reject) => {
+        const request = indexedDB.open("tabula-libraries-v1");
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction("libraries", "readwrite");
+          transaction.objectStore("libraries").put(library);
+          transaction.oncomplete = () => {
+            database.close();
+            resolve(undefined);
+          };
+          transaction.onerror = () => reject(transaction.error);
+        };
+      });
+    }, {
+      schema: "tabula.library",
+      formatVersion: 1,
+      id: "example.design-system",
+      name: "Design system",
+      version: "1.2.0",
+      publisher: "Example",
+      sourceUrl: "https://libraries.example.com/design-system",
+      connectedAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      files: [
+        { path: "README.md", content: "# Design system", encoding: "utf-8" },
+        { path: "tokens/colors.md", content: "# Colors", encoding: "utf-8" },
+      ],
+    });
+
+    await page.reload();
+    await page.waitForSelector(".tabbar");
+    if ((await page.locator(".left-panel").count()) === 0) {
+      await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
+      await waitForLeftPanel(page, "Workspace panel");
+    }
+    await page.getByRole("button", { name: "Libraries", exact: true }).click();
+    await page.getByRole("button", { name: "Open Design system", exact: true }).waitFor({
+      state: "visible",
+    });
+    expect(
+      (await page.getByRole("link", { name: "Browse libraries", exact: true }).count()) === 0,
+      "Browse libraries should belong to the empty state rather than compete with connected bundles.",
+    );
+    await page.getByRole("button", { name: "Open Design system", exact: true }).click();
+    expect(
+      await page.getByText("Example · Version 1.2.0 · 2 files", { exact: true }).isVisible() &&
+        (await page.locator('[aria-label="Read-only library"]').count()) === 1 &&
+        (await page.locator(".library-file-row").count()) === 2 &&
+        await page.getByRole("link", { name: "Open library source", exact: true }).isVisible(),
+      "Connected libraries should expose identity, version, provenance, read-only state, and files.",
+    );
+    const tokensFolder = page.getByRole("button", {
+      name: "Close folder tokens",
+      exact: true,
+    });
+    await tokensFolder.click();
+    expect(
+      (await page.getByText("colors.md", { exact: true }).count()) === 0 &&
+        await page.getByRole("button", { name: "Open folder tokens", exact: true }).isVisible(),
+      "Library folders should collapse independently without changing workspace files.",
     );
   });
 
