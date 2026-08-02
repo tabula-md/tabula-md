@@ -22,6 +22,16 @@ type TabScrollState = {
   canScrollRight: boolean;
 };
 
+type ActiveTabScrollGeometry = {
+  scrollLeft: number;
+  clientWidth: number;
+  scrollWidth: number;
+  activeLeft: number;
+  activeRight: number;
+  scrollPadding: number;
+  alignToStart: boolean;
+};
+
 type FileTabsProps = {
   files: WorkspaceFile[];
   folders: WorkspaceFolder[];
@@ -50,6 +60,31 @@ export const getDocumentCollaborators = (
   (collaborator) =>
     (collaborator.activeDocumentId ?? collaborator.selection?.documentId) === documentId,
 );
+
+export const getActiveTabScrollLeft = ({
+  scrollLeft,
+  clientWidth,
+  scrollWidth,
+  activeLeft,
+  activeRight,
+  scrollPadding,
+  alignToStart,
+}: ActiveTabScrollGeometry) => {
+  const visibleLeft = scrollLeft + scrollPadding;
+  const visibleRight = scrollLeft + clientWidth - scrollPadding;
+  let nextScrollLeft = scrollLeft;
+
+  if (alignToStart) {
+    nextScrollLeft = activeLeft;
+  } else if (activeLeft < visibleLeft) {
+    nextScrollLeft = activeLeft - scrollPadding;
+  } else if (activeRight > visibleRight) {
+    nextScrollLeft = activeRight - clientWidth + scrollPadding;
+  }
+
+  const maxScrollLeft = Math.max(0, scrollWidth - clientWidth);
+  return Math.max(0, Math.min(nextScrollLeft, maxScrollLeft));
+};
 
 export function FileTabs({
   files,
@@ -107,24 +142,28 @@ export function FileTabs({
     }
 
     const scrollPadding = Math.min(44, Math.floor(element.clientWidth * 0.2));
-    const activeLeft = activeTabElement.offsetLeft;
-    const activeRight = activeLeft + activeTabElement.offsetWidth;
+    const scrollRect = element.getBoundingClientRect();
+    const activeRect = activeTabElement.getBoundingClientRect();
+    const activeLeft = element.scrollLeft + activeRect.left - scrollRect.left;
+    const activeRight = activeLeft + activeRect.width;
     const isTouchLayout = window.matchMedia("(max-width: 560px)").matches;
-    const visibleLeft = element.scrollLeft + scrollPadding;
-    const visibleRight = element.scrollLeft + element.clientWidth - scrollPadding;
-    let nextScrollLeft = visibleLeft;
+    const nextScrollLeft = getActiveTabScrollLeft({
+      scrollLeft: element.scrollLeft,
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      activeLeft,
+      activeRight,
+      scrollPadding,
+      alignToStart: isTouchLayout,
+    });
 
-    if (isTouchLayout) {
-      nextScrollLeft = activeLeft;
-    } else if (activeLeft < visibleLeft) {
-      nextScrollLeft = activeLeft - scrollPadding;
-    } else if (activeRight > visibleRight) {
-      nextScrollLeft = activeRight - element.clientWidth + scrollPadding;
+    if (Math.abs(nextScrollLeft - element.scrollLeft) < 0.5) {
+      updateTabScrollState();
+      return;
     }
 
-    const maxScrollLeft = Math.max(0, element.scrollWidth - element.clientWidth);
     element.scrollTo({
-      left: Math.max(0, Math.min(nextScrollLeft, maxScrollLeft)),
+      left: nextScrollLeft,
       behavior,
     });
     window.setTimeout(updateTabScrollState, behavior === "smooth" ? 260 : 0);
