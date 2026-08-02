@@ -483,15 +483,15 @@ export async function run(ctx) {
       "The side panel sections nav should use scoped terminology.",
     );
     expect(
-      rightPanelState.tabs.join("|") === "Outline|Links|Comments|Properties",
+      rightPanelState.tabs.join("|") === "Outline|Links|Comments|Metadata",
       `The right panel should contain only document context. Found: ${rightPanelState.tabs.join("|")}`,
     );
     expect(
       (await page.locator(".document-utility-controls").getByRole("button", {
-        name: "Properties",
+        name: "Metadata",
         exact: true,
       }).count()) === 0,
-      "Properties should live in the right panel instead of duplicating a document-toolbar action.",
+      "Metadata should live in the right panel instead of duplicating a document-toolbar action.",
     );
     expect(rightPanelState.visibleTabLabelCount === 0, "Side panel tabs should stay icon-only.");
     expect(rightPanelState.workspaceName === "Project", "Top chrome should identify the current workspace.");
@@ -572,7 +572,7 @@ export async function run(ctx) {
     );
 
     await ensureSidePanelOpen(page);
-    await page.getByRole("button", { name: "Properties", exact: true }).click();
+    await page.getByRole("button", { name: "Metadata", exact: true }).click();
     await page.locator(".right-panel-properties").waitFor({
       state: "visible",
     });
@@ -582,7 +582,7 @@ export async function run(ctx) {
         exact: true,
       }).count()) === 0 &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0,
-      "Properties should stay focused on the active document during editing.",
+      "Metadata should stay focused on the active document during editing.",
     );
     expect(
       (await page.locator(".right-compatibility-scroll").count()) === 0,
@@ -601,7 +601,7 @@ export async function run(ctx) {
         name: "Search documents or run a command",
         exact: true,
       }).isVisible() &&
-        await page.getByRole("button", { name: "New document", exact: true }).isVisible() &&
+        (await page.getByRole("button", { name: "New document", exact: true }).count()) === 0 &&
         await page.getByRole("button", { name: "Filters", exact: true }).isVisible() &&
         await page.locator(".right-properties-context").isVisible(),
       "Workspace Search should open as a modal retrieval surface over document context.",
@@ -716,7 +716,7 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Close Workspace menu", exact: true }).click();
     await waitForRenderFrame(page);
 
-    await page.getByRole("button", { name: "Properties", exact: true }).click();
+    await page.getByRole("button", { name: "Metadata", exact: true }).click();
     expect(
       await page.locator(".right-properties-context").isVisible() &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
@@ -726,7 +726,7 @@ export async function run(ctx) {
         }).count()) === 0 &&
         (await page.locator(".right-panel-search-field").count()) === 0 &&
        (await page.locator(".right-graph-panel").count()) === 0,
-       "Properties should remain a stable active-document inspector instead of a catalog or dashboard.",
+       "Metadata should remain a stable active-document inspector instead of a catalog or dashboard.",
     );
     await page.locator(".right-panel .right-panel-trigger").click();
 
@@ -2150,7 +2150,7 @@ export async function run(ctx) {
     await page.getByRole("button", { name: "Open Start.md", exact: true }).first().click();
     await waitForActiveTab(page, { exact: "Start.md" });
 
-    await page.getByRole("button", { name: "Properties", exact: true }).click();
+    await page.getByRole("button", { name: "Metadata", exact: true }).click();
     await page.getByRole("heading", { name: "Metadata", exact: true }).waitFor({
       state: "visible",
     });
@@ -2158,7 +2158,7 @@ export async function run(ctx) {
       await page.getByRole("heading", { name: "Metadata", exact: true }).isVisible() &&
         (await page.getByRole("button", { name: "Browse", exact: true }).count()) === 0 &&
         (await page.locator(".right-graph-panel").count()) === 0,
-      "Properties should keep the active document in context without opening a graph.",
+      "Metadata should keep the active document in context without opening a graph.",
     );
 
     expect(

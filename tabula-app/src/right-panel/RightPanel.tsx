@@ -6,7 +6,7 @@ import {
   useMemo,
 } from "react";
 import {
-  FileSliders,
+  Braces,
   Link2,
   ListTree,
   MessageSquare,
@@ -29,6 +29,7 @@ import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { PanelEmptyState } from "./PanelEmptyState";
+import type { MetadataFocusSection } from "./RightPanelPropertiesContext";
 
 const RightPanelLinks = lazy(() => import("./RightPanelLinks").then((module) => ({
   default: module.RightPanelLinks,
@@ -54,6 +55,7 @@ type RightPanelProps = {
   knowledgeIndexSource: "none" | "worker" | "fallback";
   activeFileId: string;
   activeFileTitle: string;
+  metadataFocusSection?: MetadataFocusSection;
   language: WorkspaceLanguage;
   activeOutlineHeadingIndex?: number;
   outlineHeadings: MarkdownHeading[];
@@ -105,6 +107,7 @@ export function RightPanel({
   knowledgeIndexSource,
   activeFileId,
   activeFileTitle,
+  metadataFocusSection,
   language,
   activeOutlineHeadingIndex,
   outlineHeadings,
@@ -221,7 +224,7 @@ export function RightPanel({
           {renderTab(
             "properties",
             knowledgeCopy.properties,
-            <FileSliders size={14} />,
+            <Braces size={14} />,
           )}
         </nav>
         <button
@@ -332,6 +335,7 @@ export function RightPanel({
               noDocumentCopy={`${knowledgeCopy.properties}: ${copy.noDocumentOpen}`}
               index={knowledgeIndex}
               language={language}
+              focusSection={metadataFocusSection}
               onSelectHealthIssue={onSelectKnowledgeHealthIssue}
             />
           </Suspense>

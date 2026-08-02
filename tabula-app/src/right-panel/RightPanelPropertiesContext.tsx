@@ -5,7 +5,7 @@ import {
   type WorkspaceKnowledgeIndex,
 } from "@tabula-md/tabula";
 import { ArrowUpRight } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type Ref } from "react";
 import type { KnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 import type { KnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { PanelEmptyState } from "./PanelEmptyState";
@@ -72,13 +72,20 @@ function PropertySection({
   title,
   count,
   children,
+  sectionRef,
 }: {
   title: string;
   count?: number;
   children: ReactNode;
+  sectionRef?: Ref<HTMLElement>;
 }) {
   return (
-    <section className="right-properties-section" aria-label={title}>
+    <section
+      ref={sectionRef}
+      className="right-properties-section"
+      aria-label={title}
+      tabIndex={sectionRef ? -1 : undefined}
+    >
       <h3 className="right-properties-section-title">
         <span>{title}</span>
         {typeof count === "number" && (
@@ -90,12 +97,15 @@ function PropertySection({
   );
 }
 
+export type MetadataFocusSection = "freshness" | "trust";
+
 export function RightPanelPropertiesContext({
   activeFileId,
   compatibilityCopy,
   copy,
   healthReport,
   index,
+  focusSection,
   onSelectHealthIssue,
 }: {
   activeFileId: string;
@@ -103,8 +113,20 @@ export function RightPanelPropertiesContext({
   copy: KnowledgePanelCopy;
   healthReport?: WorkspaceKnowledgeHealthReport;
   index?: WorkspaceKnowledgeIndex;
+  focusSection?: MetadataFocusSection;
   onSelectHealthIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
 }) {
+  const freshnessRef = useRef<HTMLElement | null>(null);
+  const trustRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const target = focusSection === "freshness" ? freshnessRef.current : trustRef.current;
+    if (!target) return;
+    const frame = window.requestAnimationFrame(() => {
+      target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      target.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeFileId, focusSection]);
   const analysis = index?.analysesByDocumentId.get(activeFileId);
   const metadata = analysis?.knowledgeMetadata;
   const owner = formatMetadataValue(analysis?.metadata.owner);
@@ -199,7 +221,7 @@ export function RightPanelPropertiesContext({
           )}
 
           {hasFreshnessMetadata && (
-            <PropertySection title={copy.freshness}>
+            <PropertySection title={copy.freshness} sectionRef={freshnessRef}>
               <dl className="right-properties-list">
                 <PropertyRow label={copy.status} value={freshnessValue} />
                 <PropertyRow label={copy.reviewDate} value={reviewDateValue} />
@@ -208,7 +230,7 @@ export function RightPanelPropertiesContext({
           )}
 
           {hasTrustMetadata && (
-            <PropertySection title={copy.trust}>
+            <PropertySection title={copy.trust} sectionRef={trustRef}>
               <dl className="right-properties-list">
                 <PropertyRow label={copy.status} value={trustValue} />
                 {latestVerification ? (

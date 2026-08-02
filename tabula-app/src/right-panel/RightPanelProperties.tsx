@@ -7,7 +7,10 @@ import {
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getKnowledgeCompatibilityCopy } from "../workspace/knowledgeCompatibilityLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
-import { RightPanelPropertiesContext } from "./RightPanelPropertiesContext";
+import {
+  RightPanelPropertiesContext,
+  type MetadataFocusSection,
+} from "./RightPanelPropertiesContext";
 import { PanelEmptyState } from "./PanelEmptyState";
 
 type RightPanelPropertiesProps = {
@@ -15,6 +18,7 @@ type RightPanelPropertiesProps = {
   noDocumentCopy: string;
   index?: WorkspaceKnowledgeIndex;
   language: WorkspaceLanguage;
+  focusSection?: MetadataFocusSection;
   onSelectHealthIssue: (issue: WorkspaceKnowledgeHealthIssue) => void;
 };
 
@@ -23,6 +27,7 @@ export function RightPanelProperties({
   noDocumentCopy,
   index,
   language,
+  focusSection,
   onSelectHealthIssue,
 }: RightPanelPropertiesProps) {
   const knowledgeCopy = getKnowledgePanelCopy(language);
@@ -44,6 +49,7 @@ export function RightPanelProperties({
           copy={knowledgeCopy}
           healthReport={healthReport}
           index={index}
+          focusSection={focusSection}
           onSelectHealthIssue={onSelectHealthIssue}
         />
       ) : (

@@ -2,6 +2,7 @@ import {
   useCallback,
   useMemo,
   useRef,
+  useState,
   type RefObject,
 } from "react";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
@@ -31,6 +32,7 @@ import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIn
 import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
+import type { MetadataFocusSection } from "./RightPanelPropertiesContext";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
@@ -191,6 +193,10 @@ export function useWorkspaceRightPanelController({
     source: knowledgeIndexSource,
   } = useWorkspaceKnowledgeIndex(knowledgeDocuments);
   const outlineCursorRef = useRef({ fileId: visibleActiveFileId, offset: 0 });
+  const [metadataFocus, setMetadataFocus] = useState<{
+    fileId: string;
+    section: MetadataFocusSection;
+  }>();
   if (outlineCursorRef.current.fileId !== visibleActiveFileId) {
     outlineCursorRef.current = { fileId: visibleActiveFileId, offset: 0 };
   }
@@ -269,8 +275,12 @@ export function useWorkspaceRightPanelController({
       setLeftPanelOpen(false);
     }
   }, [onSelectFile, setLeftPanelOpen]);
-  const openDocumentProperties = useCallback((fileId: string) => {
+  const openDocumentProperties = useCallback((
+    fileId: string,
+    section: MetadataFocusSection,
+  ) => {
     onSelectFile(fileId);
+    setMetadataFocus({ fileId, section });
     setRightPanelView("properties");
     setRightPanelOpen(true);
     if (typeof window !== "undefined" && window.innerWidth <= 1160) {
@@ -355,7 +365,7 @@ export function useWorkspaceRightPanelController({
       {
         id: "open-document-properties",
         label: getKnowledgePanelCopy(language).reviewInKnowledge,
-        keywords: ["outline", "links", "comments", "properties", "right"],
+        keywords: ["metadata", "frontmatter", "status", "trust", "right"],
         onSelect: () => {
           setRightPanelView("properties");
           setRightPanelOpen(true);
@@ -375,6 +385,9 @@ export function useWorkspaceRightPanelController({
     knowledgeIndexSource,
     activeFileId: visibleActiveFileId,
     activeFileTitle,
+    metadataFocusSection: metadataFocus?.fileId === visibleActiveFileId
+      ? metadataFocus?.section
+      : undefined,
     activeOutlineHeadingIndex,
     outlineHeadings,
     commentsByFileId,

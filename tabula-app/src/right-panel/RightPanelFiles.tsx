@@ -19,7 +19,6 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   ClipboardCopy,
-  CircleHelp,
   Copy,
   Ellipsis,
   FilePlus2,
@@ -53,11 +52,6 @@ import {
   ContextMenuTrigger,
 } from "../ui/ContextMenu";
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from "../ui/Menu";
-import {
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-} from "../ui/Popover";
 import { PanelEmptyState } from "./PanelEmptyState";
 import {
   getWorkspaceFileIconKind,
@@ -86,7 +80,10 @@ type RightPanelFilesProps = {
   onCollapseAllFolders: (folderIds: Iterable<string>) => void;
   onExpandAllFolders: () => void;
   onSelectFile: (fileId: string) => void;
-  onReviewKnowledgeFile: (fileId: string) => void;
+  onReviewKnowledgeFile: (
+    fileId: string,
+    section: "freshness" | "trust",
+  ) => void;
   onRenameFile: (fileId: string, nextTitle: string) => Promise<RenameFileResult>;
   onDuplicateFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
@@ -132,38 +129,26 @@ function FileKnowledgeStatus({
 }: {
   copy: KnowledgePanelCopy;
   fileTitle: string;
-  onReview: () => void;
+  onReview: (section: "freshness" | "trust") => void;
   signals: readonly OkfDocumentAttentionSignal[];
   staleAfter?: string;
 }) {
   const labels = signals.map((signal) =>
     getKnowledgeSignalLabel(signal, copy, staleAfter));
+  const targetSection = signals.includes("invalid-review-date") ||
+      signals.includes("review-due")
+    ? "freshness"
+    : "trust";
 
   return (
-    <PopoverRoot>
-      <PopoverTrigger asChild>
-        <button
-          className="right-file-knowledge-status"
-          data-knowledge-priority={getKnowledgePriority(signals)}
-          data-tooltip={labels.join("\n")}
-          type="button"
-          aria-label={copy.fileAttentionLabel(fileTitle, labels.join(", "))}
-        />
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        className="right-file-knowledge-popover"
-        aria-label={copy.attentionDetails}
-      >
-        <strong>{copy.attentionDetails}</strong>
-        <ul>
-          {labels.map((label) => <li key={label}>{label}</li>)}
-        </ul>
-        <button type="button" onClick={onReview}>
-          {copy.reviewInKnowledge}
-        </button>
-      </PopoverContent>
-    </PopoverRoot>
+    <button
+      className="right-file-knowledge-status"
+      data-knowledge-priority={getKnowledgePriority(signals)}
+      data-tooltip={labels.join(" · ")}
+      type="button"
+      aria-label={copy.fileAttentionLabel(fileTitle, labels.join(", "))}
+      onClick={() => onReview(targetSection)}
+    />
   );
 }
 
@@ -740,7 +725,7 @@ export function RightPanelFiles({
                 <FileKnowledgeStatus
                   copy={knowledgeStatusCopy}
                   fileTitle={file.title}
-                  onReview={() => onReviewKnowledgeFile(file.id)}
+                  onReview={(section) => onReviewKnowledgeFile(file.id, section)}
                   signals={knowledgeSignals}
                   staleAfter={knowledgeMetadata?.staleAfter}
                 />
@@ -861,32 +846,6 @@ export function RightPanelFiles({
     <section className="right-panel-content right-files-panel">
       <div className="right-file-toolbar">
         <div className="right-file-toolbar-actions">
-            {knowledgeIndex && (
-              <PopoverRoot>
-                <PopoverTrigger asChild>
-                  <button
-                    className="right-file-toolbar-button"
-                    type="button"
-                    aria-label={knowledgeStatusCopy.fileAttentionLegend}
-                    data-tooltip={knowledgeStatusCopy.fileAttentionLegend}
-                  >
-                    <CircleHelp size={16} />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  align="end"
-                  className="right-file-knowledge-legend"
-                  aria-label={knowledgeStatusCopy.fileAttentionLegend}
-                >
-                  <strong>{knowledgeStatusCopy.fileAttentionLegend}</strong>
-                  <p>
-                    <span aria-hidden="true" />
-                    {knowledgeStatusCopy.attentionDotMeaning}
-                  </p>
-                  <p>{knowledgeStatusCopy.noAttentionDotMeaning}</p>
-                </PopoverContent>
-              </PopoverRoot>
-            )}
             {collapsibleFolderIds.length > 0 && (
               <button
                 className="right-file-toolbar-button"
