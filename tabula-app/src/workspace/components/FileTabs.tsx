@@ -16,6 +16,10 @@ import { NewDocumentButton } from "./NewDocumentButton";
 import { getWorkspaceTabId, getWorkspaceTabPanelId } from "../workspaceA11yIds";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import {
+  getWorkspaceRenameDisplayTitle,
+  restoreWorkspaceRenameExtension,
+} from "../workspaceRenameTitle";
 
 type TabScrollState = {
   canScrollLeft: boolean;
@@ -181,7 +185,7 @@ export function FileTabs({
 
   const startRenamingFile = (file: WorkspaceFile) => {
     setRenamingFileId(file.id);
-    setRenamingTitle(file.title);
+    setRenamingTitle(getWorkspaceRenameDisplayTitle(file.title));
     onChromeInteraction?.();
   };
 
@@ -190,7 +194,11 @@ export function FileTabs({
       return;
     }
 
-    const result = await onRenameFile(renamingFileId, nextRawTitle);
+    const currentTitle = files.find((file) => file.id === renamingFileId)?.title ?? "";
+    const result = await onRenameFile(
+      renamingFileId,
+      restoreWorkspaceRenameExtension(currentTitle, nextRawTitle),
+    );
     if (!result.ok) {
       window.requestAnimationFrame(() => {
         const input = renameInputRef.current;

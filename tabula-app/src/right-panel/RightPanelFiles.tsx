@@ -64,6 +64,10 @@ import {
   isWorkspaceMarkdownFile,
 } from "../workspace/workspaceFilePresentation";
 import { WorkspaceFileTypeIcon } from "../workspace/components/WorkspaceFileTypeIcon";
+import {
+  getWorkspaceRenameDisplayTitle,
+  restoreWorkspaceRenameExtension,
+} from "../workspace/workspaceRenameTitle";
 
 type RightPanelFilesCopy = WorkspaceInterfaceCopy["sidePanel"]["files"];
 
@@ -303,7 +307,7 @@ export function RightPanelFiles({
   const startRenamingFile = (file: WorkspaceFile) => {
     setActionMenuFileId(null);
     setRenamingFileId(file.id);
-    setRenamingTitle(file.title);
+    setRenamingTitle(getWorkspaceRenameDisplayTitle(file.title));
   };
 
   const cancelRenamingFile = () => {
@@ -311,8 +315,15 @@ export function RightPanelFiles({
     setRenamingTitle("");
   };
 
-  const commitRenamingFile = async (fileId: string, nextTitle: string) => {
-    const result = await onRenameFile(fileId, nextTitle);
+  const commitRenamingFile = async (
+    fileId: string,
+    currentTitle: string,
+    nextTitle: string,
+  ) => {
+    const result = await onRenameFile(
+      fileId,
+      restoreWorkspaceRenameExtension(currentTitle, nextTitle),
+    );
     if (result.ok) {
       cancelRenamingFile();
       return true;
@@ -683,13 +694,13 @@ export function RightPanelFiles({
                 autoComplete="off"
                 spellCheck={false}
                 onBlur={(event) => {
-                  commitRenamingFile(file.id, event.currentTarget.value);
+                  commitRenamingFile(file.id, file.title, event.currentTarget.value);
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
                     event.stopPropagation();
-                    commitRenamingFile(file.id, event.currentTarget.value);
+                    commitRenamingFile(file.id, file.title, event.currentTarget.value);
                     return;
                   }
 
