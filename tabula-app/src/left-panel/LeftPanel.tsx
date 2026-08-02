@@ -1,5 +1,5 @@
 import { useState, type RefObject } from "react";
-import { Files, Library, PanelLeftClose } from "lucide-react";
+import { Files, Library } from "lucide-react";
 import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
@@ -11,6 +11,7 @@ import { RightPanelFiles } from "../right-panel/RightPanelFiles";
 import { useRightPanelCollapseState } from "../right-panel/useRightPanelCollapseState";
 import { LibraryPanel } from "../libraries/LibraryPanel";
 import { getLibraryPanelCopy } from "../libraries/libraryPanelLocale";
+import { WorkspaceNavigationControls } from "../workspace/components/WorkspaceNavigationControls";
 
 type LeftPanelView = "files" | "libraries";
 
@@ -23,6 +24,9 @@ export type LeftPanelProps = {
   activeFileId: string;
   isLiveWorkspace: boolean;
   language: WorkspaceLanguage;
+  workspaceMenuOpen: boolean;
+  workspaceName: string;
+  workspaceSearchOpen: boolean;
   onNewFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -37,6 +41,8 @@ export type LeftPanelProps = {
   onMoveFolder: (folderId: string, parentId: string) => Promise<void>;
   onRenameFolder: (folderId: string, nextTitle: string) => Promise<boolean>;
   onClose: () => void;
+  onToggleWorkspaceMenu: () => void;
+  onToggleWorkspaceSearch: () => void;
   overlayMode?: boolean;
   panelRef?: RefObject<HTMLElement | null>;
 };
@@ -50,6 +56,9 @@ export function LeftPanel({
   activeFileId,
   isLiveWorkspace,
   language,
+  workspaceMenuOpen,
+  workspaceName,
+  workspaceSearchOpen,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -64,6 +73,8 @@ export function LeftPanel({
   onMoveFolder,
   onRenameFolder,
   onClose,
+  onToggleWorkspaceMenu,
+  onToggleWorkspaceSearch,
   overlayMode = false,
   panelRef,
 }: LeftPanelProps) {
@@ -95,6 +106,18 @@ export function LeftPanel({
       data-knowledge-index-source={knowledgeIndexSource}
       data-live-workspace={isLiveWorkspace || undefined}
     >
+      <div className="workspace-panel-chrome">
+        <WorkspaceNavigationControls
+          language={language}
+          leftPanelOpen={isOpen}
+          workspaceMenuOpen={workspaceMenuOpen}
+          workspaceName={workspaceName}
+          workspaceSearchOpen={workspaceSearchOpen}
+          onToggleLeftPanel={onClose}
+          onToggleWorkspaceMenu={onToggleWorkspaceMenu}
+          onToggleWorkspaceSearch={onToggleWorkspaceSearch}
+        />
+      </div>
       <header className="workspace-panel-header">
         <nav className="ui-panel-tabs workspace-panel-tabs" aria-label={libraryCopy.sections}>
           <button
@@ -118,17 +141,6 @@ export function LeftPanel({
             <Library size={16} />
           </button>
         </nav>
-        {overlayMode && (
-          <button
-            className="right-file-toolbar-button workspace-panel-close"
-            type="button"
-            aria-label={chromeCopy.closeSidePanel}
-            data-tooltip={chromeCopy.closeSidePanel}
-            onClick={onClose}
-          >
-            <PanelLeftClose size={16} />
-          </button>
-        )}
       </header>
       {activeView === "files" ? (
         <div className="right-panel-body files" id="workspace-panel-files-view">

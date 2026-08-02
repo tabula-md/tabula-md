@@ -349,6 +349,7 @@
 
 @media (max-width: 560px) {
   .right-panel {
+    --right-panel-x: var(--space-2);
     --right-control-size: var(--control-size-touch);
     --right-row-height: var(--control-size-touch);
 
@@ -363,6 +364,10 @@
   .right-panel-header,
   .right-panel-tabs {
     min-height: var(--control-size-touch);
+  }
+
+  .right-panel-header {
+    align-items: flex-start;
   }
 
   .right-panel-tab {

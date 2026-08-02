@@ -224,18 +224,16 @@ export function RightPanel({
             <FileSliders size={14} />,
           )}
         </nav>
-        {overlayMode && (
-          <button
-            className="right-panel-overlay-toggle"
-            type="button"
-            aria-label={closePanelLabel}
-            data-tooltip={closePanelLabel}
-            aria-pressed="true"
-            onClick={onClose}
-          >
-            <PanelRightClose size={16} />
-          </button>
-        )}
+        <button
+          className="right-panel-overlay-toggle right-panel-trigger active"
+          type="button"
+          aria-label={closePanelLabel}
+          data-tooltip={closePanelLabel}
+          aria-pressed="true"
+          onClick={onClose}
+        >
+          <PanelRightClose size={16} />
+        </button>
       </div>
 
       <div className={`right-panel-body ${effectiveView}`} id="right-panel-body">

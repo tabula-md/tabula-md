@@ -1,20 +1,11 @@
 import type { ReactNode } from "react";
-import {
-  ChevronDown,
-  MoreHorizontal,
-  PanelLeftClose,
-  PanelLeftOpen,
-  PanelRightClose,
-  PanelRightOpen,
-  Search,
-  Users,
-} from "lucide-react";
+import { PanelRightOpen, Users } from "lucide-react";
 import { getLineNumberForPresenceSelection as getLineNumberForSelection } from "@tabula-md/tabula";
 import type { Collaborator } from "../../collaboration/liveCollaboration";
 import type { FollowState } from "../../collaboration/followModel";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import { getWorkspaceChromeCopy } from "../workspaceLocale";
-import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
+import { WorkspaceNavigationControls } from "./WorkspaceNavigationControls";
 
 type TopChromeProps = {
   workspaceSearchOpen: boolean;
@@ -60,7 +51,6 @@ export function TopChrome({
   onToggleFollowing,
 }: TopChromeProps) {
   const copy = getWorkspaceChromeCopy(language).topChrome;
-  const panelCopy = getWorkspaceInterfaceCopy(language).sidePanel;
   const sidePanelLabel = copy.toggleSidePanel;
   const liveCollaborators = isLiveConnected ? [identity, ...collaborators] : [];
   const getInitial = (collaborator: Collaborator) =>
@@ -92,41 +82,18 @@ export function TopChrome({
   return (
     <header className="top-chrome">
       <div className="top-document-zone">
-        <div className="workspace-controls" aria-label={panelCopy.label}>
-          <button
-            className={`panel-toggle top-panel-toggle left-panel-trigger ${leftPanelOpen ? "active" : ""}`}
-            type="button"
-            aria-label={copy.workspacePanel}
-            data-tooltip={copy.workspacePanel}
-            aria-pressed={leftPanelOpen}
-            onClick={onToggleLeftPanel}
-          >
-            {leftPanelOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
-          </button>
-          <button
-            className={`workspace-name-trigger workspace-menu-button ${workspaceMenuOpen ? "active" : ""}`}
-            type="button"
-            aria-label={workspaceMenuOpen ? copy.closeWorkspaceMenu : copy.openWorkspaceMenu}
-            aria-expanded={workspaceMenuOpen}
-            onClick={onToggleWorkspaceMenu}
-          >
-            <span>{workspaceName}</span>
-            <ChevronDown className="workspace-menu-chevron" size={14} aria-hidden="true" />
-            <MoreHorizontal className="workspace-menu-mobile-icon" size={18} aria-hidden="true" />
-          </button>
-          <button
-            className={`panel-toggle top-panel-toggle workspace-search-trigger ${
-              workspaceSearchOpen ? "active" : ""
-            }`}
-            type="button"
-            aria-label={panelCopy.tabs.search}
-            data-tooltip={`${panelCopy.tabs.search} · ⌘K`}
-            aria-expanded={workspaceSearchOpen}
-            onClick={onToggleWorkspaceSearch}
-          >
-            <Search size={16} />
-          </button>
-        </div>
+        {!leftPanelOpen && (
+          <WorkspaceNavigationControls
+            language={language}
+            leftPanelOpen={leftPanelOpen}
+            workspaceMenuOpen={workspaceMenuOpen}
+            workspaceName={workspaceName}
+            workspaceSearchOpen={workspaceSearchOpen}
+            onToggleLeftPanel={onToggleLeftPanel}
+            onToggleWorkspaceMenu={onToggleWorkspaceMenu}
+            onToggleWorkspaceSearch={onToggleWorkspaceSearch}
+          />
+        )}
 
         {fileTabs}
 
@@ -171,16 +138,18 @@ export function TopChrome({
 
           {shareControls}
 
-          <button
-            className={`panel-toggle top-panel-toggle ${rightPanelOpen ? "active" : ""}`}
-            type="button"
-            aria-label={sidePanelLabel}
-            data-tooltip={sidePanelLabel}
-            aria-pressed={rightPanelOpen}
-            onClick={onToggleRightPanel}
-          >
-            {rightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-          </button>
+          {!rightPanelOpen && (
+            <button
+              className="panel-toggle top-panel-toggle right-panel-trigger"
+              type="button"
+              aria-label={sidePanelLabel}
+              data-tooltip={sidePanelLabel}
+              aria-pressed="false"
+              onClick={onToggleRightPanel}
+            >
+              <PanelRightOpen size={16} />
+            </button>
+          )}
         </div>
       </div>
     </header>

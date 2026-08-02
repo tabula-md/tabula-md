@@ -37,7 +37,7 @@ export async function run(ctx) {
     const workbenchPanels = await page.evaluate(() => ({
       menuButtonCount: document.querySelectorAll(".workspace-menu-button").length,
       menuButtonInWorkspacePanel: Boolean(document.querySelector(".left-panel .workspace-menu-button")),
-      topChromeMenuButtonCount: document.querySelectorAll(".workspace-controls .workspace-menu-button").length,
+      topChromeMenuButtonCount: document.querySelectorAll(".top-chrome .workspace-menu-button").length,
       workspaceNameVisible: Boolean(document.querySelector(".workspace-controls .workspace-name-trigger span")),
       workspacePanelLabel: document.querySelector(".left-panel")?.getAttribute("aria-label") ?? "",
       menuOpen: Boolean(document.querySelector(".workspace-menu-popover")),
@@ -112,9 +112,9 @@ export async function run(ctx) {
     }));
     // P7: workspace menu product contract.
     expect(workbenchPanels.menuButtonCount === 1, "Top chrome should expose one workspace menu trigger.");
-    expect(!workbenchPanels.menuButtonInWorkspacePanel, "The workspace menu should not belong to the collapsible Workspace panel.");
-    expect(workbenchPanels.topChromeMenuButtonCount === 1, "The workspace identity should remain in top chrome.");
-    expect(workbenchPanels.workspaceNameVisible, "The current workspace name should remain visible outside the Workspace panel.");
+    expect(workbenchPanels.menuButtonInWorkspacePanel, "The workspace menu should move into the open Workspace panel.");
+    expect(workbenchPanels.topChromeMenuButtonCount === 0, "Top chrome should not duplicate the workspace identity while the Workspace panel is open.");
+    expect(workbenchPanels.workspaceNameVisible, "The current workspace name should remain visible inside the Workspace panel.");
     expect(workbenchPanels.workspacePanelLabel === "Workspace panel", "The left panel should identify itself as the Workspace panel, not the Files panel.");
     expect(workbenchPanels.menuOpen, "The workspace menu should open from the workspace name.");
     expect(workbenchPanels.leftPanelCount === 0, "The app should not render a left side panel for future surfaces.");
@@ -489,7 +489,7 @@ export async function run(ctx) {
     );
     expect(rightPanelState.documentCardCount === 0, "The right panel should not use document cards.");
     expect(rightPanelState.countPillCount === 0, "The right panel should not use count pills.");
-    await page.locator(".top-right-zone .top-panel-toggle").click();
+    await page.locator(".right-panel .right-panel-trigger").click();
     const rightPanelDivider = page.locator(
       '.left-panel-divider[role="separator"][aria-label="Resize side panel"]',
     );
@@ -592,7 +592,7 @@ export async function run(ctx) {
 
     await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await page.locator(".left-panel").waitFor({ state: "detached" });
-    await page.locator(".top-right-zone .top-panel-toggle").click();
+    await page.locator(".right-panel .right-panel-trigger").click();
     await page.locator(".right-panel").waitFor({ state: "detached" });
     await page.setViewportSize({ width: 568, height: 800 });
     await page.locator('.workspace-search-trigger[aria-label="Search"]').click();
@@ -691,7 +691,7 @@ export async function run(ctx) {
        (await page.locator(".right-graph-panel").count()) === 0,
        "Properties should remain a stable active-document inspector instead of a catalog or dashboard.",
     );
-    await page.locator(".top-right-zone .top-panel-toggle").click();
+    await page.locator(".right-panel .right-panel-trigger").click();
 
     await selectDocumentViewMode(page, "Edit");
     await waitForEditorReady(page, { mode: "edit" });

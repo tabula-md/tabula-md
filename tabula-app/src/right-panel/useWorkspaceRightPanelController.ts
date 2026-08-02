@@ -23,6 +23,7 @@ import type {
   WorkspaceFile,
   WorkspaceFolder,
 } from "../workspace/workspaceStorage";
+import { getWorkspaceName } from "../workspace/workspaceStorage";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
 import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIndex";
@@ -83,7 +84,10 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   language: WorkspaceLanguage;
   leftPanelOpen: boolean;
   workspaceSearchOpen: boolean;
+  workspaceMenuOpen: boolean;
   onImportFile: () => void;
+  onToggleWorkspaceMenu: () => void;
+  onToggleWorkspaceSearch: () => void;
   onExportFile: () => void;
   outlineHeadings: MarkdownHeading[];
   parsedMarkdownBody: string;
@@ -122,6 +126,7 @@ export function useWorkspaceRightPanelController({
   language,
   leftPanelOpen,
   workspaceSearchOpen,
+  workspaceMenuOpen,
   onAddComment,
   onAddCommentReply,
   onCancelCommentReply,
@@ -135,6 +140,8 @@ export function useWorkspaceRightPanelController({
   onIdentityNameChange,
   onIdentityNameCommit,
   onImportFile,
+  onToggleWorkspaceMenu,
+  onToggleWorkspaceSearch,
   onExportFile,
   onNewFile,
   onNewFolder,
@@ -268,12 +275,17 @@ export function useWorkspaceRightPanelController({
     isOpen: leftPanelOpen,
     isLive,
     language,
+    workspaceMenuOpen,
+    workspaceName: getWorkspaceName(folders),
+    workspaceSearchOpen,
     files: visibleFiles,
     folders,
     knowledgeIndex,
     knowledgeIndexSource,
     activeFileId: visibleActiveFileId,
     onClose: closeLeftPanel,
+    onToggleWorkspaceMenu,
+    onToggleWorkspaceSearch,
     onNewFile,
     onNewFolder,
     onImportFile,
