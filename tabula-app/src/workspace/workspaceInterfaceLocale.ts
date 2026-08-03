@@ -83,6 +83,14 @@ export const getWorkspaceInterfaceCopy = (language: WorkspaceLanguage) => {
           : format(copy.searchConcepts, { count }),
         untyped: copy.searchUntyped,
       },
+      commandPalette: {
+        placeholder: copy.palettePlaceholder,
+        openDocuments: copy.paletteOpenDocuments,
+        documents: copy.paletteDocuments,
+        noResults: copy.paletteNoResults,
+        navigate: copy.paletteNavigate,
+        run: copy.paletteRun,
+      },
       files: {
         sharedWorkspace: copy.filesSharedWorkspace,
         currentDocument: copy.panelFiles,

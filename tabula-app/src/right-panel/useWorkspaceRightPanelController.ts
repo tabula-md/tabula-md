@@ -1,10 +1,19 @@
 import {
+  createElement,
   useCallback,
   useMemo,
   useRef,
   useState,
   type RefObject,
 } from "react";
+import {
+  Braces,
+  Download,
+  FileInput,
+  FilePlus2,
+  PanelLeft,
+  Search,
+} from "lucide-react";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
 import type { WorkspaceLeftPanelProps } from "../left-panel/WorkspaceLeftPanel";
 import type { WorkspaceSearchModalProps } from "../workspace/components/WorkspaceSearchModal";
@@ -32,6 +41,7 @@ import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIn
 import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
+import { formatShortcut } from "../workspace/keyboardShortcuts";
 import type { MetadataFocusSection } from "./RightPanelPropertiesContext";
 
 type FocusTextRange = (start: number, end?: number) => void;
@@ -333,8 +343,10 @@ export function useWorkspaceRightPanelController({
     commands: [
       {
         id: "search-workspace",
-        label: `${getWorkspaceInterfaceCopy(language).sidePanel.tabs.search}…`,
+        label: `${getWorkspaceInterfaceCopy(language).sidePanel.search.label}…`,
         keywords: ["find", "content", "metadata", "files"],
+        shortcut: formatShortcut("Mod+Shift+F"),
+        icon: createElement(Search, { size: 16 }),
         closeOnSelect: false,
         onSelect: () => setWorkspaceSearchMode("search"),
       },
@@ -342,30 +354,37 @@ export function useWorkspaceRightPanelController({
         id: "new-document",
         label: getWorkspaceInterfaceCopy(language).sidePanel.files.newDocument,
         keywords: ["create", "file", "document"],
+        icon: createElement(FilePlus2, { size: 16 }),
         onSelect: () => onNewFile(),
       },
       {
         id: "import-document",
         label: getWorkspaceMenuCopy(language).actions.importFile,
         keywords: ["open", "markdown", "file"],
+        icon: createElement(FileInput, { size: 16 }),
         onSelect: onImportFile,
       },
       {
         id: "export-document",
         label: getWorkspaceMenuCopy(language).actions.exportFile,
         keywords: ["download", "markdown", "file"],
+        icon: createElement(Download, { size: 16 }),
+        enabled: Boolean(activeFile),
         onSelect: onExportFile,
       },
       {
         id: "toggle-workspace-panel",
         label: getWorkspaceChromeCopy(language).topChrome.workspacePanel,
         keywords: ["files", "sidebar", "left"],
+        icon: createElement(PanelLeft, { size: 16 }),
         onSelect: () => setLeftPanelOpen(!leftPanelOpen),
       },
       {
         id: "open-document-properties",
         label: getKnowledgePanelCopy(language).reviewInKnowledge,
         keywords: ["metadata", "frontmatter", "status", "trust", "right"],
+        icon: createElement(Braces, { size: 16 }),
+        enabled: Boolean(activeFile),
         onSelect: () => {
           setRightPanelView("properties");
           setRightPanelOpen(true);

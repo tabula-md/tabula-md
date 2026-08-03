@@ -17,7 +17,6 @@ import {
 import {
   ArrowLeft,
   Check,
-  Command,
   ExternalLink,
   ListFilter,
   Search,
@@ -35,12 +34,11 @@ import {
   type WorkspaceFileSearchEntry,
 } from "../editor/workspaceFileSearchModel";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
-import type { WorkspaceSearchMode } from "../workspace/state/workspaceUiStore";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspace/workspaceStorage";
 import { getWorkspaceFileTabLabels } from "../workspace/workspaceDisplayTitles";
 import { getWorkspaceFilePresentation } from "../workspace/workspaceFilePresentation";
 import type { WorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
-import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
+import { getWorkspaceChromeCopy } from "../workspace/workspaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import { MenuCheckboxItem, MenuContent, MenuRoot, MenuTrigger } from "../ui/Menu";
 import { PanelEmptyState } from "./PanelEmptyState";
@@ -51,19 +49,7 @@ type RightPanelSearchProps = {
   folders: WorkspaceFolder[];
   index?: WorkspaceKnowledgeIndex;
   language: WorkspaceLanguage;
-  mode: WorkspaceSearchMode;
-  activeFileId?: string;
-  openFileIds: readonly string[];
   onSelectFile: (fileId: string) => void;
-  commands?: readonly WorkspaceSearchCommand[];
-};
-
-export type WorkspaceSearchCommand = {
-  id: string;
-  label: string;
-  keywords?: readonly string[];
-  closeOnSelect?: boolean;
-  onSelect: () => void;
 };
 
 type MetadataFacetSectionProps = {
@@ -123,22 +109,15 @@ export function RightPanelSearch({
   folders,
   index,
   language,
-  mode,
-  activeFileId,
-  openFileIds,
   onSelectFile,
-  commands = [],
 }: RightPanelSearchProps) {
   const labels = getWorkspaceChromeCopy(language).documentControls;
-  const isPalette = mode === "palette";
   const metadataCopy = getKnowledgePanelCopy(language);
-  const commandSectionLabel = getWorkspaceMenuCopy(language).aria.workspaceActions;
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [options, setOptions] = useState<SearchOptions>(DEFAULT_SEARCH_OPTIONS);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filterViewOpen, setFilterViewOpen] = useState(false);
-  const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(() => new Set());
   const [selectedTags, setSelectedTags] = useState<Set<string>>(() => new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<OkfLifecycleStatus>>(
@@ -230,45 +209,13 @@ export function RightPanelSearch({
     [deferredQuery, filters, options, searchEntries],
   );
   const hasQuery = deferredQuery.trim().length > 0;
-  const normalizedQuery = deferredQuery.trim();
-  const commandQuery = normalizedQuery
-    .trim()
-    .toLocaleLowerCase();
-  const visibleCommands = isPalette ? commands.filter((command) => {
-    if (!commandQuery) return true;
-    return [command.label, ...(command.keywords ?? [])]
-      .join(" ")
-      .toLocaleLowerCase()
-      .includes(commandQuery);
-  }) : [];
   const hasFilters = selectedTypes.size > 0 ||
     selectedTags.size > 0 ||
     selectedStatuses.size > 0 ||
     selectedTrustTiers.size > 0 ||
     selectedFreshness.size > 0;
-  const openFileOrder = useMemo(
-    () => new Map(openFileIds.map((fileId, index) => [fileId, index])),
-    [openFileIds],
-  );
-  const paletteEntries = useMemo(() => {
-    const candidates = hasQuery ? result.files : searchEntries;
-    return [...candidates].sort((first, second) => {
-      if (first.fileId === activeFileId) return -1;
-      if (second.fileId === activeFileId) return 1;
-      const firstOpen = openFileOrder.get(first.fileId);
-      const secondOpen = openFileOrder.get(second.fileId);
-      if (firstOpen !== undefined && secondOpen === undefined) return -1;
-      if (firstOpen === undefined && secondOpen !== undefined) return 1;
-      if (firstOpen !== undefined && secondOpen !== undefined) return firstOpen - secondOpen;
-      return 0;
-    });
-  }, [activeFileId, hasQuery, openFileOrder, result.files, searchEntries]);
-  const visibleEntries = isPalette
-    ? paletteEntries
-    : (hasQuery || hasFilters ? result.files : []);
+  const visibleEntries = hasQuery || hasFilters ? result.files : [];
   const visibleDocumentEntries = visibleEntries;
-  const paletteItemCount = visibleCommands.length +
-    visibleDocumentEntries.length;
   const hasActiveOptions = Object.values(options).some(Boolean);
 
   const keepAvailable = <TValue extends string>(
@@ -295,40 +242,6 @@ export function RightPanelSearch({
     () => keepAvailable(freshnessFacets, setSelectedFreshness),
     [freshnessFacets],
   );
-  useEffect(() => {
-    setActiveResultIndex(0);
-  }, [deferredQuery, hasFilters, mode]);
-
-  useEffect(() => {
-    setQuery("");
-    setFilterViewOpen(false);
-  }, [mode]);
-
-  const moveActiveResult = (offset: -1 | 1) => {
-    if (paletteItemCount === 0) return;
-    setActiveResultIndex((current) => {
-      const next = (current + offset + paletteItemCount) % paletteItemCount;
-      window.requestAnimationFrame(() => {
-        document.getElementById(`workspace-palette-item-${next}`)?.scrollIntoView({
-          block: "nearest",
-        });
-      });
-      return next;
-    });
-  };
-
-  const selectActiveResult = () => {
-    if (paletteItemCount === 0) return;
-    const selectedIndex = Math.min(activeResultIndex, paletteItemCount - 1);
-    const commandCount = visibleCommands.length;
-    if (selectedIndex < commandCount) {
-      visibleCommands[selectedIndex]?.onSelect();
-      return;
-    }
-    const file = visibleDocumentEntries[selectedIndex - commandCount];
-    if (file) onSelectFile(file.fileId);
-  };
-
   const toggleFacet = <TValue extends string>(
     setSelected: Dispatch<SetStateAction<Set<TValue>>>,
     value: TValue,
@@ -379,7 +292,7 @@ export function RightPanelSearch({
     );
   };
 
-  if (!isPalette && files.length === 0) {
+  if (files.length === 0) {
     return (
       <section className="right-panel-search" aria-label={copy.results}>
         <PanelEmptyState>{copy.noDocuments}</PanelEmptyState>
@@ -473,30 +386,13 @@ export function RightPanelSearch({
                 autoFocus
                 autoComplete="off"
                 spellCheck={false}
-                aria-label={copy.placeholder}
+                aria-label={copy.label}
                 aria-invalid={Boolean(result.error)}
-                aria-activedescendant={
-                  paletteItemCount > 0
-                    ? `workspace-palette-item-${Math.min(activeResultIndex, paletteItemCount - 1)}`
-                    : undefined
-                }
-                placeholder={isPalette ? copy.placeholder : copy.label}
+                placeholder={copy.label}
                 onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                    event.preventDefault();
-                    moveActiveResult(event.key === "ArrowDown" ? 1 : -1);
-                    return;
-                  }
-                  if (event.key === "Enter" && paletteItemCount > 0) {
-                    event.preventDefault();
-                    selectActiveResult();
-                  }
-                }}
               />
             </label>
-            {!isPalette && (
-              <button
+            <button
                 className="right-panel-search-filter-trigger"
                 type="button"
                 aria-label={copy.filters}
@@ -508,9 +404,7 @@ export function RightPanelSearch({
                   <span className="right-panel-control-status-dot" aria-hidden="true" />
                 )}
               </button>
-            )}
-            {!isPalette && (
-              <MenuRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <MenuRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
                 <MenuTrigger asChild>
                   <button
                     className="right-panel-search-settings-trigger"
@@ -546,32 +440,9 @@ export function RightPanelSearch({
                   ))}
                 </MenuContent>
               </MenuRoot>
-            )}
           </div>
 
           <div className="right-panel-search-scroll">
-            {visibleCommands.length > 0 && (
-              <section className="workspace-command-section" aria-label={commandSectionLabel}>
-                <h2>{commandSectionLabel}</h2>
-                <div className="workspace-command-results">
-                  {visibleCommands.map((command, commandIndex) => (
-                    <button
-                      className="workspace-command-result"
-                      type="button"
-                      key={command.id}
-                      id={`workspace-palette-item-${commandIndex}`}
-                      aria-selected={activeResultIndex === commandIndex}
-                      data-active={activeResultIndex === commandIndex || undefined}
-                      onMouseMove={() => setActiveResultIndex(commandIndex)}
-                      onClick={command.onSelect}
-                    >
-                      <Command size={14} aria-hidden="true" />
-                      <span>{command.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
             {hasFilters && (
               <div className="right-panel-search-active-filters" aria-label={copy.filters}>
                 <div className="right-panel-search-filter-chips">
@@ -604,7 +475,7 @@ export function RightPanelSearch({
             {result.error && (
               <p className="right-panel-search-message error">{result.error}</p>
             )}
-            {!isPalette && (hasQuery || hasFilters) && !result.error && visibleEntries.length === 0 && (
+            {(hasQuery || hasFilters) && !result.error && visibleEntries.length === 0 && (
               <PanelEmptyState>{copy.noMatches}</PanelEmptyState>
             )}
             {visibleDocumentEntries.length > 0 && (
@@ -613,8 +484,7 @@ export function RightPanelSearch({
                   {copy.documentCount(visibleEntries.length)}
                 </p>
                 <div className="right-panel-search-results" aria-label={copy.results}>
-                  {visibleDocumentEntries.map((file, fileIndex) => {
-                    const paletteIndex = visibleCommands.length + fileIndex;
+                  {visibleDocumentEntries.map((file) => {
                     const match = result.matches.find((candidate) =>
                       candidate.file.fileId === file.fileId);
                     const resource = getOpenableResource(file.resource);
@@ -626,11 +496,7 @@ export function RightPanelSearch({
                         <button
                           className="right-panel-search-result"
                           type="button"
-                          id={`workspace-palette-item-${paletteIndex}`}
                           aria-label={file.displayPath}
-                          aria-selected={activeResultIndex === paletteIndex}
-                          data-active={activeResultIndex === paletteIndex || undefined}
-                          onMouseMove={() => setActiveResultIndex(paletteIndex)}
                           onClick={() => onSelectFile(file.fileId)}
                         >
                           <span className="right-panel-search-result-copy">
@@ -643,7 +509,7 @@ export function RightPanelSearch({
                                 {file.description}
                               </span>
                             )}
-                            {!isPalette && match?.snippet && match.snippet !== file.description && (
+                            {match?.snippet && match.snippet !== file.description && (
                               <span className="right-panel-search-result-description">
                                 {match.snippet}
                               </span>

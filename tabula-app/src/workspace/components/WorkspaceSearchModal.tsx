@@ -4,10 +4,13 @@ import { X } from "lucide-react";
 import { ModalSurface } from "../../ui/ModalSurface";
 import type { WorkspaceLanguage } from "../state/useWorkspacePreferences";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
-import type { WorkspaceSearchCommand } from "../../right-panel/RightPanelSearch";
+import {
+  WorkspaceCommandPalette,
+  type WorkspaceSearchCommand,
+} from "./WorkspaceCommandPalette";
 import type { WorkspaceSearchMode } from "../state/workspaceUiStore";
 import { getWorkspaceInterfaceCopy } from "../workspaceInterfaceLocale";
-import { getWorkspaceChromeCopy } from "../workspaceLocale";
+import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspaceLocale";
 
 const WorkspaceSearch = lazy(() => import("../../right-panel/RightPanelSearch").then(
   ({ RightPanelSearch }) => ({ default: RightPanelSearch }),
@@ -46,6 +49,10 @@ export function WorkspaceSearchModal({
 
   const copy = getWorkspaceInterfaceCopy(language).sidePanel;
   const closeLabel = getWorkspaceChromeCopy(language).documentControls.closeSearch;
+  const paletteCopy = {
+    ...copy.commandPalette,
+    actions: getWorkspaceMenuCopy(language).aria.workspaceActions,
+  };
   const selectFile = (fileId: string) => {
     onSelectFile(fileId);
     onClose();
@@ -54,7 +61,7 @@ export function WorkspaceSearchModal({
   return (
     <ModalSurface
       ariaLabel={mode === "palette" ? "Command palette" : copy.tabs.search}
-      className="workspace-search-modal"
+      className={`workspace-search-modal ${mode === "palette" ? "command-palette-modal" : ""}`.trim()}
       layerClassName="workspace-search-layer"
       onClose={onClose}
     >
@@ -67,27 +74,33 @@ export function WorkspaceSearchModal({
       >
         <X size={16} aria-hidden="true" />
       </button>
-      {pending && files.length > 0 && !index ? (
+      {mode === "palette" ? (
+        <WorkspaceCommandPalette
+          files={files}
+          folders={folders}
+          activeFileId={activeFileId}
+          openFileIds={openFileIds}
+          copy={paletteCopy}
+          onSelectFile={selectFile}
+          commands={commands.map((command) => ({
+            ...command,
+            onSelect: () => {
+              command.onSelect();
+              if (command.closeOnSelect !== false) onClose();
+            },
+          }))}
+        />
+      ) : pending && files.length > 0 && !index ? (
         <section className="workspace-search-loading" aria-busy="true" />
       ) : (
         <Suspense fallback={<section className="workspace-search-loading" aria-busy="true" />}>
           <WorkspaceSearch
             copy={copy.search}
-            mode={mode}
             files={files}
             folders={folders}
             index={index}
             language={language}
-            activeFileId={activeFileId}
-            openFileIds={openFileIds}
             onSelectFile={selectFile}
-            commands={commands.map((command) => ({
-              ...command,
-              onSelect: () => {
-                command.onSelect();
-                if (command.closeOnSelect !== false) onClose();
-              },
-            }))}
           />
         </Suspense>
       )}

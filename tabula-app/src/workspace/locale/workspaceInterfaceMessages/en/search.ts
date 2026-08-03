@@ -1,5 +1,11 @@
 export const enSearchMessages = {
   searchPlaceholder: "Search documents or run a command",
+  palettePlaceholder: "Search commands and documents",
+  paletteOpenDocuments: "Open documents",
+  paletteDocuments: "Documents",
+  paletteNoResults: "No commands or documents found",
+  paletteNavigate: "Navigate",
+  paletteRun: "Run",
   searchSettings: "Search settings",
   searchFilters: "Filters",
   searchBackToResults: "Back to results",

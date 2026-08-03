@@ -47,45 +47,147 @@
   padding: 8px 10px;
 }
 
-.workspace-command-section {
+.share-modal.workspace-search-modal.command-palette-modal {
+  width: min(640px, calc(100vw - 32px));
+  padding: 0;
+}
+
+.command-palette {
   display: grid;
-  gap: 4px;
-  padding: 2px 0 8px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: min(440px, calc(100dvh - min(18vh, 144px) - 32px));
+}
+
+.command-palette-search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 0 16px;
+  color: var(--text-muted);
   border-bottom: 1px solid var(--line-subtle);
 }
 
-.workspace-command-section h2 {
+.command-palette-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font-size: var(--font-ui-heading);
+}
+
+.command-palette-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.command-palette-results {
+  min-height: 92px;
+  overflow: auto;
+  padding: 6px;
+}
+
+.command-palette-entry h2 {
   margin: 0;
-  padding: 4px 10px;
+  padding: 8px 10px 5px;
   color: var(--text-muted);
   font-size: var(--font-ui-caption);
   font-weight: var(--weight-ui-medium);
 }
 
-.workspace-command-results {
+.command-palette-result {
   display: grid;
-  gap: 2px;
-}
-
-.workspace-command-result {
-  display: grid;
-  grid-template-columns: var(--icon-size-medium) minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-2);
-  min-height: var(--control-size-row);
-  padding: 0 10px;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 5px 10px;
   border-radius: var(--radius-control);
   color: var(--text-soft);
   background: transparent;
-  font-size: var(--font-ui-body);
   text-align: left;
 }
 
-.workspace-command-result:hover,
-.workspace-command-result:focus-visible,
-.workspace-command-result[data-active="true"] {
+.command-palette-result:hover,
+.command-palette-result:focus-visible,
+.command-palette-result[data-active="true"] {
   color: var(--text-primary);
   background: var(--surface-muted);
+}
+
+.command-palette-result-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+  background: var(--surface-overlay);
+}
+
+.command-palette-result[data-active="true"] .command-palette-result-icon {
+  color: var(--text-primary);
+}
+
+.command-palette-result-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.command-palette-result-copy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette-result-copy > span:first-child {
+  font-size: var(--font-ui-body);
+}
+
+.command-palette-result-copy > span + span {
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+}
+
+.command-palette-result kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--surface-overlay);
+  font: inherit;
+  font-size: var(--font-ui-caption);
+}
+
+.command-palette-empty {
+  display: grid;
+  min-height: 88px;
+  margin: 0;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: var(--font-ui-body);
+}
+
+.command-palette-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  min-height: 34px;
+  padding: 0 12px;
+  align-items: center;
+  border-top: 1px solid var(--line-subtle);
+  color: var(--text-muted);
+  font-size: var(--font-ui-caption);
+}
+
+.command-palette-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .workspace-search-loading {
@@ -105,6 +207,15 @@
     width: 100%;
     height: calc(100dvh - 16px);
     max-height: none;
+  }
+
+  .share-modal.workspace-search-modal.command-palette-modal {
+    height: auto;
+    max-height: calc(100dvh - 16px);
+  }
+
+  .command-palette {
+    max-height: calc(100dvh - 16px);
   }
 
   .workspace-search-modal .right-panel-search {

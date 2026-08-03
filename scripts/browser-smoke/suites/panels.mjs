@@ -593,12 +593,12 @@ export async function run(ctx) {
       state: "visible",
     });
     await page.getByRole("searchbox", {
-      name: "Search documents or run a command",
+      name: "Workspace search",
       exact: true,
     }).waitFor({ state: "visible" });
     expect(
       await page.getByRole("searchbox", {
-        name: "Search documents or run a command",
+        name: "Workspace search",
         exact: true,
       }).isVisible() &&
         (await page.getByRole("button", { name: "New document", exact: true }).count()) === 0 &&
@@ -612,12 +612,12 @@ export async function run(ctx) {
     await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
       state: "visible",
     });
-    const paletteSearchbox = page.getByRole("searchbox", {
-      name: "Search documents or run a command",
+    const paletteSearchbox = page.getByRole("combobox", {
+      name: "Search commands and documents",
       exact: true,
     });
     await paletteSearchbox.focus();
-    const initialPaletteResult = page.locator('[id^="workspace-palette-item-"][data-active="true"]');
+    const initialPaletteResult = page.locator('[id^="command-palette-item-"][data-active="true"]');
     expect(
       await initialPaletteResult.count() === 1,
       "The command palette should begin with a keyboard-active result.",
@@ -625,17 +625,18 @@ export async function run(ctx) {
     const initialPaletteResultId = await initialPaletteResult.getAttribute("id");
     await paletteSearchbox.press("ArrowDown");
     await page.waitForFunction((previousId) =>
-      document.querySelector('[id^="workspace-palette-item-"][data-active="true"]')?.id !== previousId,
+      document.querySelector('[id^="command-palette-item-"][data-active="true"]')?.id !== previousId,
     initialPaletteResultId);
     expect(
-      await page.locator('[id^="workspace-palette-item-"][data-active="true"]').getAttribute("id") !==
+      await page.locator('[id^="command-palette-item-"][data-active="true"]').getAttribute("id") !==
         initialPaletteResultId,
       "Arrow keys should move the active command palette result.",
     );
 
-    await page.getByRole("searchbox", { name: "Search documents or run a command" }).fill("export");
+    await page.getByRole("combobox", { name: "Search commands and documents" }).fill("export");
     expect(
-      await page.getByRole("button", { name: "Export document (.md)", exact: true }).isVisible(),
+      await page.getByRole("option", { name: "Export document (.md)", exact: true }).isVisible() &&
+        (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0,
       "The command palette should retrieve executable actions with the command prefix.",
     );
     await page.keyboard.press("Escape");

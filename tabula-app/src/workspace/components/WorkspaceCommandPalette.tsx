@@ -1,0 +1,259 @@
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { stripMarkdownExtension } from "@tabula-md/tabula";
+import {
+  ArrowDown,
+  ArrowUp,
+  CornerDownLeft,
+  File,
+  FileText,
+  Search,
+} from "lucide-react";
+import { rankCommandPaletteCandidates } from "../commandPaletteModel";
+import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
+import { getWorkspaceFilePresentation } from "../workspaceFilePresentation";
+import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
+
+export type WorkspaceSearchCommand = {
+  id: string;
+  label: string;
+  keywords?: readonly string[];
+  shortcut?: string;
+  icon?: ReactNode;
+  enabled?: boolean;
+  closeOnSelect?: boolean;
+  onSelect: () => void;
+};
+
+type CommandPaletteCopy = {
+  placeholder: string;
+  openDocuments: string;
+  documents: string;
+  noResults: string;
+  navigate: string;
+  run: string;
+  actions: string;
+};
+
+type WorkspaceCommandPaletteProps = {
+  files: WorkspaceFile[];
+  folders: WorkspaceFolder[];
+  activeFileId?: string;
+  openFileIds: readonly string[];
+  commands: readonly WorkspaceSearchCommand[];
+  copy: CommandPaletteCopy;
+  onSelectFile: (fileId: string) => void;
+};
+
+type PaletteCommandEntry = {
+  id: string;
+  kind: "command";
+  label: string;
+  searchText: string;
+  priority: number;
+  command: WorkspaceSearchCommand;
+};
+
+type PaletteDocumentEntry = {
+  id: string;
+  kind: "document";
+  label: string;
+  path: string;
+  searchText: string;
+  priority: number;
+  file: WorkspaceFile;
+  isOpen: boolean;
+  isMarkdown: boolean;
+};
+
+type PaletteEntry = PaletteCommandEntry | PaletteDocumentEntry;
+
+const MAX_VISIBLE_RESULTS = 12;
+
+export function WorkspaceCommandPalette({
+  files,
+  folders,
+  activeFileId,
+  openFileIds,
+  commands,
+  copy,
+  onSelectFile,
+}: WorkspaceCommandPaletteProps) {
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const fileLabels = useMemo(
+    () => getWorkspaceFileTabLabels(files, folders),
+    [files, folders],
+  );
+  const openFileOrder = useMemo(
+    () => new Map(openFileIds.map((fileId, index) => [fileId, index])),
+    [openFileIds],
+  );
+  const commandEntries = useMemo<PaletteCommandEntry[]>(() => commands
+    .filter((command) => command.enabled !== false)
+    .map((command, index) => ({
+      id: `command-${command.id}`,
+      kind: "command",
+      label: command.label,
+      searchText: [command.label, ...(command.keywords ?? [])].join(" "),
+      priority: 80 - index,
+      command,
+    })), [commands]);
+  const documentEntries = useMemo<PaletteDocumentEntry[]>(() => files.map((file) => {
+    const labels = fileLabels.get(file.id);
+    const presentation = getWorkspaceFilePresentation(file);
+    const displayTitle = labels?.displayTitle ?? file.title;
+    const label = presentation.kind === "markdown"
+      ? stripMarkdownExtension(displayTitle)
+      : displayTitle;
+    const fullPath = labels?.fullPath ?? displayTitle;
+    const path = presentation.kind === "markdown"
+      ? stripMarkdownExtension(fullPath)
+      : fullPath;
+    const openIndex = openFileOrder.get(file.id);
+    return {
+      id: `document-${file.id}`,
+      kind: "document",
+      label,
+      path,
+      searchText: `${label} ${path}`,
+      priority: file.id === activeFileId
+        ? 220
+        : openIndex === undefined ? 20 : 180 - openIndex,
+      file,
+      isOpen: openIndex !== undefined,
+      isMarkdown: presentation.kind === "markdown",
+    };
+  }), [activeFileId, fileLabels, files, openFileOrder]);
+  const normalizedQuery = query.trim();
+  const visibleEntries = useMemo<PaletteEntry[]>(() => {
+    if (!normalizedQuery) {
+      const openDocuments = rankCommandPaletteCandidates(
+        documentEntries.filter(({ isOpen }) => isOpen),
+        "",
+      );
+      return [...openDocuments, ...commandEntries].slice(0, MAX_VISIBLE_RESULTS);
+    }
+    return rankCommandPaletteCandidates(
+      [...commandEntries, ...documentEntries],
+      normalizedQuery,
+    ).slice(0, MAX_VISIBLE_RESULTS);
+  }, [commandEntries, documentEntries, normalizedQuery]);
+
+  useEffect(() => setActiveIndex(0), [normalizedQuery]);
+
+  const moveActive = (offset: -1 | 1) => {
+    if (visibleEntries.length === 0) return;
+    setActiveIndex((current) => {
+      const next = (current + offset + visibleEntries.length) % visibleEntries.length;
+      window.requestAnimationFrame(() => {
+        document.getElementById(`command-palette-item-${next}`)?.scrollIntoView({
+          block: "nearest",
+        });
+      });
+      return next;
+    });
+  };
+  const selectEntry = (entry: PaletteEntry | undefined) => {
+    if (!entry) return;
+    if (entry.kind === "command") entry.command.onSelect();
+    else onSelectFile(entry.file.id);
+  };
+  const getSectionLabel = (entry: PaletteEntry, index: number) => {
+    const previous = visibleEntries[index - 1];
+    if (entry.kind === "command") {
+      return previous?.kind === "command" ? undefined : copy.actions;
+    }
+    const label = entry.isOpen && !normalizedQuery
+      ? copy.openDocuments
+      : copy.documents;
+    const previousLabel = previous?.kind === "document"
+      ? (previous.isOpen && !normalizedQuery ? copy.openDocuments : copy.documents)
+      : undefined;
+    return previousLabel === label ? undefined : label;
+  };
+
+  return (
+    <section className="command-palette">
+      <label className="command-palette-search">
+        <Search size={18} aria-hidden="true" />
+        <input
+          data-modal-initial-focus
+          type="text"
+          role="combobox"
+          autoComplete="off"
+          spellCheck={false}
+          aria-autocomplete="list"
+          aria-label={copy.placeholder}
+          aria-expanded="true"
+          aria-controls="command-palette-results"
+          aria-activedescendant={visibleEntries.length > 0
+            ? `command-palette-item-${Math.min(activeIndex, visibleEntries.length - 1)}`
+            : undefined}
+          placeholder={copy.placeholder}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              moveActive(event.key === "ArrowDown" ? 1 : -1);
+              return;
+            }
+            if (event.key === "Enter") {
+              event.preventDefault();
+              selectEntry(visibleEntries[Math.min(activeIndex, visibleEntries.length - 1)]);
+            }
+          }}
+        />
+      </label>
+
+      <div className="command-palette-results" id="command-palette-results" role="listbox">
+        {visibleEntries.length === 0 ? (
+          <p className="command-palette-empty">{copy.noResults}</p>
+        ) : visibleEntries.map((entry, index) => {
+          const sectionLabel = getSectionLabel(entry, index);
+          const selected = activeIndex === index;
+          return (
+            <div className="command-palette-entry" key={entry.id}>
+              {sectionLabel && <h2>{sectionLabel}</h2>}
+              <button
+                id={`command-palette-item-${index}`}
+                className="command-palette-result"
+                type="button"
+                role="option"
+                aria-selected={selected}
+                data-active={selected || undefined}
+                onMouseMove={() => setActiveIndex(index)}
+                onClick={() => selectEntry(entry)}
+              >
+                <span className="command-palette-result-icon" aria-hidden="true">
+                  {entry.kind === "command"
+                    ? (entry.command.icon ?? <CornerDownLeft size={16} />)
+                    : (entry.isMarkdown ? <FileText size={16} /> : <File size={16} />)}
+                </span>
+                <span className="command-palette-result-copy">
+                  <span>{entry.label}</span>
+                  {entry.kind === "document" && entry.path !== entry.label && (
+                    <span>{entry.path}</span>
+                  )}
+                </span>
+                {entry.kind === "command" && entry.command.shortcut && (
+                  <kbd>{entry.command.shortcut}</kbd>
+                )}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <footer className="command-palette-footer" aria-hidden="true">
+        <span><ArrowUp size={12} /><ArrowDown size={12} /> {copy.navigate}</span>
+        <span><CornerDownLeft size={12} /> {copy.run}</span>
+      </footer>
+    </section>
+  );
+}
