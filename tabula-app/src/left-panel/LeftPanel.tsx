@@ -1,4 +1,4 @@
-import { useState, type RefObject } from "react";
+import type { RefObject } from "react";
 import { Files, Library } from "lucide-react";
 import type { WorkspaceKnowledgeIndex } from "@tabula-md/tabula";
 import type { RenameFileResult } from "../workspace/state/useWorkspaceFiles";
@@ -14,7 +14,7 @@ import { getLibraryPanelCopy } from "../libraries/libraryPanelLocale";
 import { WorkspaceNavigationControls } from "../workspace/components/WorkspaceNavigationControls";
 import { PanelShell } from "../shared/PanelShell";
 
-type LeftPanelView = "files" | "libraries";
+import type { LeftPanelView } from "../ui/uiTypes";
 
 export type LeftPanelProps = {
   isOpen: boolean;
@@ -28,6 +28,8 @@ export type LeftPanelProps = {
   workspaceMenuOpen: boolean;
   workspaceName: string;
   workspaceSearchOpen: boolean;
+  activeView: LeftPanelView;
+  onSetView: (view: LeftPanelView) => void;
   onNewFile: (overrides?: Partial<WorkspaceFile>) => WorkspaceFile | undefined;
   onNewFolder: (parentId?: string) => WorkspaceFolder | undefined;
   onImportFile: () => void;
@@ -60,6 +62,8 @@ export function LeftPanel({
   workspaceMenuOpen,
   workspaceName,
   workspaceSearchOpen,
+  activeView,
+  onSetView,
   onNewFile,
   onNewFolder,
   onImportFile,
@@ -83,7 +87,6 @@ export function LeftPanel({
   const chromeCopy = getWorkspaceChromeCopy(language).topChrome;
   const knowledgeCopy = getKnowledgePanelCopy(language);
   const libraryCopy = getLibraryPanelCopy(language);
-  const [activeView, setActiveView] = useState<LeftPanelView>("files");
   const {
     collapsedFolderIds,
     toggleFolderCollapsed,
@@ -121,7 +124,7 @@ export function LeftPanel({
             aria-label={libraryCopy.files}
             aria-pressed={activeView === "files"}
             data-tooltip={libraryCopy.files}
-            onClick={() => setActiveView("files")}
+            onClick={() => onSetView("files")}
           >
             <Files size={16} />
           </button>
@@ -131,7 +134,7 @@ export function LeftPanel({
             aria-label={libraryCopy.libraries}
             aria-pressed={activeView === "libraries"}
             data-tooltip={libraryCopy.libraries}
-            onClick={() => setActiveView("libraries")}
+            onClick={() => onSetView("libraries")}
           >
             <Library size={16} />
           </button>

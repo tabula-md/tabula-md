@@ -1,18 +1,10 @@
 import {
-  createElement,
   useCallback,
   useMemo,
   useRef,
   useState,
   type RefObject,
 } from "react";
-import {
-  Braces,
-  Download,
-  FileInput,
-  FilePlus2,
-  PanelLeft,
-} from "lucide-react";
 import type { WorkspaceRightPanelProps } from "./WorkspaceRightPanel";
 import type { WorkspaceLeftPanelProps } from "../left-panel/WorkspaceLeftPanel";
 import type { WorkspaceSearchModalProps } from "../workspace/components/WorkspaceSearchModal";
@@ -24,7 +16,7 @@ import {
   getActiveOutlineHeadingIndex,
   getOutlineHeadingOffsets,
 } from "../editor/outlineNavigationModel";
-import type { RightPanelView } from "../ui/uiTypes";
+import type { LeftPanelView, RightPanelView } from "../ui/uiTypes";
 import type { LiveSelection } from "../collaboration/liveCollaboration";
 import type {
   FileComment,
@@ -36,10 +28,10 @@ import { getWorkspaceName } from "../workspace/workspaceStorage";
 import type { WorkspaceLanguage } from "../workspace/state/useWorkspacePreferences";
 import { getWorkspaceKnowledgeDocuments } from "../workspace/workspaceKnowledgeModel";
 import { useWorkspaceKnowledgeIndex } from "../workspace/useWorkspaceKnowledgeIndex";
-import { getWorkspaceChromeCopy, getWorkspaceMenuCopy } from "../workspace/workspaceLocale";
 import { getWorkspaceInterfaceCopy } from "../workspace/workspaceInterfaceLocale";
 import { getKnowledgePanelCopy } from "../workspace/knowledgePanelLocale";
 import type { MetadataFocusSection } from "./RightPanelPropertiesContext";
+import { buildWorkspaceCommandRegistry } from "../workspace/workspaceCommandRegistry";
 
 type FocusTextRange = (start: number, end?: number) => void;
 
@@ -93,13 +85,22 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   isLive: boolean;
   language: WorkspaceLanguage;
   leftPanelOpen: boolean;
+  leftPanelView: LeftPanelView;
   workspaceSearchOpen: boolean;
   openFileIds: string[];
   workspaceMenuOpen: boolean;
   onImportFile: () => void;
+  onImportWorkspace: () => void;
   onToggleWorkspaceMenu: () => void;
   onToggleWorkspaceSearch: () => void;
   onExportFile: () => void;
+  onExportWorkspace: () => void;
+  onCloseActiveFile: () => void;
+  onCloseAllFiles: () => void;
+  onCloseOtherFiles: () => void;
+  onReopenLastClosedFile: () => void;
+  hasLastClosedFile: boolean;
+  onOpenDocumentSearch: () => void;
   outlineHeadings: MarkdownHeading[];
   parsedMarkdownBody: string;
   previewSurfaceRef: RefObject<HTMLElement | null>;
@@ -114,6 +115,7 @@ type UseWorkspaceRightPanelControllerOptions = RightPanelHandlers & LeftPanelHan
   setRightPanelOpen: (isOpen: boolean) => void;
   setRightPanelView: (view: RightPanelView) => void;
   setLeftPanelOpen: (isOpen: boolean) => void;
+  setLeftPanelView: (view: LeftPanelView) => void;
   setWorkspaceSearchOpen: (isOpen: boolean) => void;
   text: string;
 };
@@ -136,6 +138,7 @@ export function useWorkspaceRightPanelController({
   isLive,
   language,
   leftPanelOpen,
+  leftPanelView,
   workspaceSearchOpen,
   openFileIds,
   workspaceMenuOpen,
@@ -152,9 +155,17 @@ export function useWorkspaceRightPanelController({
   onIdentityNameChange,
   onIdentityNameCommit,
   onImportFile,
+  onImportWorkspace,
   onToggleWorkspaceMenu,
   onToggleWorkspaceSearch,
   onExportFile,
+  onExportWorkspace,
+  onCloseActiveFile,
+  onCloseAllFiles,
+  onCloseOtherFiles,
+  onReopenLastClosedFile,
+  hasLastClosedFile,
+  onOpenDocumentSearch,
   onNewFile,
   onNewFolder,
   onRenameFile,
@@ -181,6 +192,7 @@ export function useWorkspaceRightPanelController({
   setRightPanelOpen,
   setRightPanelView,
   setLeftPanelOpen,
+  setLeftPanelView,
   setWorkspaceSearchOpen,
   text,
 }: UseWorkspaceRightPanelControllerOptions) {
@@ -278,6 +290,20 @@ export function useWorkspaceRightPanelController({
       setLeftPanelOpen(false);
     }
   }, [onSelectFile, setLeftPanelOpen]);
+  const openLeftPanel = useCallback((view: LeftPanelView) => {
+    setLeftPanelView(view);
+    setLeftPanelOpen(true);
+    if (typeof window !== "undefined" && window.innerWidth <= 1160) {
+      setRightPanelOpen(false);
+    }
+  }, [setLeftPanelOpen, setLeftPanelView, setRightPanelOpen]);
+  const openRightPanel = useCallback((view: RightPanelView) => {
+    setRightPanelView(view);
+    setRightPanelOpen(true);
+    if (typeof window !== "undefined" && window.innerWidth <= 1160) {
+      setLeftPanelOpen(false);
+    }
+  }, [setLeftPanelOpen, setRightPanelOpen, setRightPanelView]);
   const openDocumentProperties = useCallback((
     fileId: string,
     section: MetadataFocusSection,
@@ -298,6 +324,8 @@ export function useWorkspaceRightPanelController({
     workspaceMenuOpen,
     workspaceName: getWorkspaceName(folders),
     workspaceSearchOpen,
+    activeView: leftPanelView,
+    onSetView: setLeftPanelView,
     files: visibleFiles,
     folders,
     knowledgeIndex,
@@ -331,48 +359,32 @@ export function useWorkspaceRightPanelController({
     openFileIds,
     onClose: () => setWorkspaceSearchOpen(false),
     onSelectFile,
-    commands: [
-      {
-        id: "new-document",
-        label: getWorkspaceInterfaceCopy(language).sidePanel.files.newDocument,
-        keywords: ["create", "file", "document"],
-        icon: createElement(FilePlus2, { size: 16 }),
-        onSelect: () => onNewFile(),
-      },
-      {
-        id: "import-document",
-        label: getWorkspaceMenuCopy(language).actions.importFile,
-        keywords: ["open", "markdown", "file"],
-        icon: createElement(FileInput, { size: 16 }),
-        onSelect: onImportFile,
-      },
-      {
-        id: "export-document",
-        label: getWorkspaceMenuCopy(language).actions.exportFile,
-        keywords: ["download", "markdown", "file"],
-        icon: createElement(Download, { size: 16 }),
-        enabled: Boolean(activeFile),
-        onSelect: onExportFile,
-      },
-      {
-        id: "toggle-workspace-panel",
-        label: getWorkspaceChromeCopy(language).topChrome.workspacePanel,
-        keywords: ["files", "sidebar", "left"],
-        icon: createElement(PanelLeft, { size: 16 }),
-        onSelect: () => setLeftPanelOpen(!leftPanelOpen),
-      },
-      {
-        id: "open-document-properties",
-        label: getKnowledgePanelCopy(language).reviewInKnowledge,
-        keywords: ["metadata", "frontmatter", "status", "trust", "right"],
-        icon: createElement(Braces, { size: 16 }),
-        enabled: Boolean(activeFile),
-        onSelect: () => {
-          setRightPanelView("properties");
-          setRightPanelOpen(true);
+    commands: buildWorkspaceCommandRegistry({
+      language,
+      activeFileId: activeFile?.id,
+      fileCount: visibleFiles.length,
+      openFileCount: openFileIds.length,
+      hasLastClosedFile,
+      actions: {
+        newFile: () => { onNewFile(); },
+        newFolder: () => { onNewFolder(); },
+        importFile: onImportFile,
+        exportActiveFile: onExportFile,
+        duplicateActiveFile: () => {
+          if (activeFile) onDuplicateFile(activeFile.id);
         },
+        openDocumentSearch: onOpenDocumentSearch,
+        closeActiveFile: onCloseActiveFile,
+        closeOtherFiles: onCloseOtherFiles,
+        closeAllFiles: onCloseAllFiles,
+        reopenLastClosedFile: onReopenLastClosedFile,
+        importWorkspace: onImportWorkspace,
+        exportWorkspace: onExportWorkspace,
+        toggleWorkspaceMenu: onToggleWorkspaceMenu,
+        openLeftPanel,
+        openRightPanel,
       },
-    ],
+    }),
   };
 
   const rightPanelProps: WorkspaceRightPanelProps = {

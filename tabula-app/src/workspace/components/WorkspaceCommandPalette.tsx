@@ -2,7 +2,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
 import {
   getOkfFreshness,
@@ -27,17 +26,8 @@ import {
 import { getWorkspaceFileTabLabels } from "../workspaceDisplayTitles";
 import { getWorkspaceFilePresentation } from "../workspaceFilePresentation";
 import type { WorkspaceFile, WorkspaceFolder } from "../workspaceStorage";
-
-export type WorkspaceSearchCommand = {
-  id: string;
-  label: string;
-  keywords?: readonly string[];
-  shortcut?: string;
-  icon?: ReactNode;
-  enabled?: boolean;
-  closeOnSelect?: boolean;
-  onSelect: () => void;
-};
+import type { WorkspaceSearchCommand } from "../workspaceCommandRegistry";
+export type { WorkspaceSearchCommand } from "../workspaceCommandRegistry";
 
 type CommandPaletteCopy = {
   placeholder: string;
@@ -89,7 +79,7 @@ type PaletteDocumentEntry = {
 
 type PaletteEntry = PaletteCommandEntry | PaletteDocumentEntry;
 
-const MAX_VISIBLE_RESULTS = 12;
+const MAX_VISIBLE_RESULTS = 30;
 
 export function WorkspaceCommandPalette({
   files,
@@ -295,6 +285,7 @@ export function WorkspaceCommandPalette({
                 className="command-palette-result"
                 type="button"
                 role="option"
+                aria-label={entry.label}
                 aria-selected={selected}
                 data-active={selected || undefined}
                 onMouseMove={() => setActiveIndex(index)}
@@ -334,6 +325,11 @@ export function WorkspaceCommandPalette({
                 </span>
                 {entry.kind === "command" && entry.command.shortcut && (
                   <kbd>{entry.command.shortcut}</kbd>
+                )}
+                {entry.kind === "command" && !entry.command.shortcut && (
+                  <span className="command-palette-result-kind" aria-hidden="true">
+                    {entry.command.category}
+                  </span>
                 )}
                 {entry.kind === "document" && entry.match && (
                   <span className="command-palette-result-kind">

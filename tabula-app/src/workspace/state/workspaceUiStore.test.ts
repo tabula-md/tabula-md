@@ -46,11 +46,11 @@ describe("workspace UI store", () => {
   });
 
   it("switches and toggles workspace navigation independently", () => {
-    useWorkspaceUiStore.getState().toggleLeftPanel("search");
+    useWorkspaceUiStore.getState().toggleLeftPanel("libraries");
 
     expect(useWorkspaceUiStore.getState()).toMatchObject({
       leftPanelOpen: true,
-      leftPanelView: "search",
+      leftPanelView: "libraries",
     });
 
     useWorkspaceUiStore.getState().toggleLeftPanel("files");

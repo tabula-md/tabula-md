@@ -643,10 +643,15 @@ export async function run(ctx) {
         (await page.getByRole("button", { name: "Filters", exact: true }).count()) === 0,
       "The command palette should retrieve executable actions with the command prefix.",
     );
-    await page.keyboard.press("Escape");
+    await page.getByRole("combobox", { name: "Search commands and documents" }).fill("libraries");
+    await page.getByRole("combobox", { name: "Search commands and documents" }).press("Enter");
     await page.getByRole("dialog", { name: "Command palette", exact: true }).waitFor({
       state: "detached",
     });
+    expect(
+      await page.locator("#workspace-panel-libraries-view").isVisible(),
+      "A registry command should open Libraries inside the workspace panel.",
+    );
 
     await page.getByRole("button", { name: "Workspace panel", exact: true }).click();
     await page.locator(".left-panel").waitFor({ state: "detached" });
